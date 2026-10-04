@@ -58,7 +58,7 @@ class ThrottledHttpFetch(
   // freeze short. TMDB and other small-Retry-After hosts sit well under it, unchanged.
   maxPause:     FiniteDuration = 60.seconds,
   jitterMillis: () => Long     = () => (scala.util.Random.nextDouble() * 250).toLong,
-  now:          () => Instant  = () => Instant.now(),
+  clock:          java.time.Clock,
   sleep:        Long => Unit   = Thread.sleep,
   summaryInterval: FiniteDuration = 5.minutes,
   // Where the pace-report goes. Defaults to this class's logger; injected in
@@ -87,11 +87,11 @@ class ThrottledHttpFetch(
    *  a timer keeps this decorator thread-free; a host that stops being called
    *  simply stops reporting, which is the honest signal anyway. */
   private def record(host: String, throttled: Boolean): Unit = {
-    val s = stats.computeIfAbsent(host, _ => new HostCallStats(now().toEpochMilli))
+    val s = stats.computeIfAbsent(host, _ => new HostCallStats(clock.instant().toEpochMilli))
     // Flush the elapsed window BEFORE counting this call, so each summary covers
     // exactly its own interval and the call that trips the boundary opens the
     // next one rather than being double-counted at the edge.
-    val nowMs = now().toEpochMilli
+    val nowMs = clock.instant().toEpochMilli
     val since = s.lastSummaryMs.get()
     if (nowMs - since >= summaryInterval.toMillis && s.lastSummaryMs.compareAndSet(since, nowMs)) {
       val total = s.requests.getAndSet(0)
@@ -110,7 +110,7 @@ class ThrottledHttpFetch(
   /** Park until this host's gate elapses, plus a little jitter so the fleet
    *  doesn't resume in lockstep and immediately re-trip the limit. */
   private def awaitGate(host: String): Unit = Option(pausedUntil.get(host)).foreach { until =>
-    val waitMs = java.time.Duration.between(now(), until).toMillis + jitterMillis()
+    val waitMs = java.time.Duration.between(clock.instant(), until).toMillis + jitterMillis()
     if (waitMs > 0) sleep(waitMs)
   }
 
@@ -140,7 +140,7 @@ class ThrottledHttpFetch(
   /** Stand the whole fleet down on this host for `pause`, and say so once. */
   private def gate(host: String, pause: FiniteDuration): Unit = {
     record(host, throttled = true)
-    pausedUntil.put(host, now().plusMillis(pause.toMillis))
+    pausedUntil.put(host, clock.instant().plusMillis(pause.toMillis))
   }
 
   private def throttled[T](url: String)(block: => T): T = hostOf(url) match {

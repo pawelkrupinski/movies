@@ -4,7 +4,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.time.Instant
-import java.util.concurrent.atomic.AtomicReference
 import scala.collection.mutable
 import scala.concurrent.duration._
 
@@ -16,25 +15,17 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
   private val FlicksUk = "https://www.flicks.co.uk/cinema/sessions/x/2026-07-31/"
   private val FlicksUs = "https://www.flicks.us/cinema/sessions/x/2026-07-31/"
 
-  /** A clock the test advances by hand, so pacing is asserted on the recorded
-   *  sleeps rather than on wall-clock timing (which would make this flaky). */
-  private class TestClock {
-    private val instant = new AtomicReference(Instant.EPOCH)
-    def now(): Instant = instant.get()
-    def advance(by: FiniteDuration): Unit = instant.updateAndGet(_.plusMillis(by.toMillis))
-  }
-
   private def fixture(interval: Option[FiniteDuration] = Some(250.millis)) = {
     val delegate = new RecordingHttpFetch(_ => "body")
     val slept    = mutable.ListBuffer.empty[Long]
-    val clock    = new TestClock
+    val clock    = new MutableClock(Instant.EPOCH)   // advanced by hand: pacing is asserted on the recorded sleeps
     val paced    = new RateLimitedHttpFetch(
       delegate,
       intervalFor = url => if (url.contains("filmstarts.de")) interval else None,
-      now         = () => clock.now(),
+      clock       = clock,
       // Sleeping IS the passage of time here: record it and advance the clock,
       // so a second call sees the state a real sleep would have left behind.
-      sleep       = ms => { slept += ms; clock.advance(ms.millis) }
+      sleep       = ms => { slept += ms; clock.advanceMillis(ms) }
     )
     (delegate, paced, slept, clock)
   }
@@ -44,12 +35,12 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
   private def flicksFixture() = {
     val delegate = new RecordingHttpFetch(_ => "body")
     val slept    = mutable.ListBuffer.empty[Long]
-    val clock    = new TestClock
+    val clock    = new MutableClock(Instant.EPOCH)   // advanced by hand: pacing is asserted on the recorded sleeps
     val paced    = new RateLimitedHttpFetch(
       delegate,
       intervalFor = RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of())),
-      now         = () => clock.now(),
-      sleep       = ms => { slept += ms; clock.advance(ms.millis) }
+      clock       = clock,
+      sleep       = ms => { slept += ms; clock.advanceMillis(ms) }
     )
     (delegate, paced, slept, clock)
   }
@@ -93,7 +84,7 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
   it should "not wait when the interval has already elapsed naturally" in {
     val (_, paced, slept, clock) = fixture()
     paced.get(Paced)
-    clock.advance(400.millis)         // slower than the pace all by itself
+    clock.advanceMillis((400.millis).toMillis)         // slower than the pace all by itself
     paced.get(Paced)
     slept shouldBe empty
   }

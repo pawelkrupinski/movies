@@ -204,11 +204,12 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
     // A virtual clock: sleeping advances it. The pipeline asks the paced host every interval — at
     // the host's full capacity — and the shadow at its capped rate, both through ONE shared pacer.
     val interval = 1000L
-    var clock    = 0L
+    val clock    = new tools.MutableClock(Instant.EPOCH)
+    def at       = clock.millis()
     val pacer    = new RateLimitedHttpFetch(new HttpFetch {
       override def get(url: String): String                                    = "{}"
       override def post(url: String, body: String, contentType: String): String = "{}"
-    }, _ => Some(interval.millis), now = () => Instant.ofEpochMilli(clock), sleep = ms => clock += ms)
+    }, _ => Some(interval.millis), clock = clock, sleep = ms => clock.advanceMillis(ms))
     val rate     = IdentityShadowLookupRate(6)   // one every 10 s
     val budget   = new ShadowLookupBudget(rate.allowanceOver(10.minutes), rate.pace, _ => ())
     val live     = new ShadowLiveFetch(pacer, budget)
@@ -218,9 +219,9 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
     var pipelineWait = 0L   // the longest any one pipeline request waited
     var shadowAsks   = 0
     events.foreach { case (t, who) =>
-      clock = clock.max(t)
+      if (t > at) clock.setTo(Instant.ofEpochMilli(t))
       if (who == "shadow") { if (scala.util.Try(live.get("https://paced.example/x")).isSuccess) shadowAsks += 1 }
-      else { val before = clock; pacer.get("https://paced.example/y"); pipelineWait = pipelineWait.max(clock - before) }
+      else { val before = at; pacer.get("https://paced.example/y"); pipelineWait = pipelineWait.max(at - before) }
     }
     shadowAsks shouldBe rate.allowanceOver(10.minutes)
     pipelineWait should be <= shadowAsks * interval

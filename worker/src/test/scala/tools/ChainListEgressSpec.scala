@@ -24,7 +24,7 @@ class ChainListEgressSpec extends AnyFlatSpec with Matchers {
 
   "without proxy credentials" should "fetch the list directly and only note an unread one" in {
     val direct = new Recording("direct", _ => "{}")
-    val egress = new ChainListEgress(direct, proxyShards = None)
+    val egress = new ChainListEgress(direct, proxyShards = None, SpecClock.Pinned)
     egress.fetchFor(Multikino)(listUrl).body shouldBe "{}"
     direct.calls shouldBe Seq(listUrl)
     egress.judged(unread).failing shouldBe false
@@ -33,7 +33,7 @@ class ChainListEgressSpec extends AnyFlatSpec with Matchers {
   "with proxy credentials" should "read the list through the residential proxy, not the blocked direct address" in {
     val direct = new Recording("direct", blocked)
     val proxy  = new Recording("proxy", _ => """{"result":[]}""")
-    val page   = new ChainListEgress(direct, Some(IndexedSeq(proxy))).fetchFor(Multikino)(listUrl)
+    val page   = new ChainListEgress(direct, Some(IndexedSeq(proxy)), SpecClock.Pinned).fetchFor(Multikino)(listUrl)
     page shouldBe FetchedPage(listUrl, """{"result":[]}""")
     proxy.calls shouldBe Seq(listUrl)
     direct.calls shouldBe empty
@@ -42,7 +42,7 @@ class ChainListEgressSpec extends AnyFlatSpec with Matchers {
   it should "fall back to the direct fetch when the proxy fails" in {
     val direct = new Recording("direct", _ => "direct")
     val proxy  = new Recording("proxy", url => throw new java.io.IOException("Tunnel failed, got: 503"))
-    new ChainListEgress(direct, Some(IndexedSeq(proxy))).fetchFor(Multikino)(listUrl).body shouldBe "direct"
+    new ChainListEgress(direct, Some(IndexedSeq(proxy)), SpecClock.Pinned).fetchFor(Multikino)(listUrl).body shouldBe "direct"
   }
 
   // Multikino's list wants the home page's session cookie. The audit warmed it up
@@ -53,14 +53,14 @@ class ChainListEgressSpec extends AnyFlatSpec with Matchers {
     val proxy = new Recording("proxy", url =>
       if (Multikino.warmUpUrl.contains(url)) ""
       else { listCalls += 1; if (listCalls == 1) throw new HttpStatusException(401, "GET", url, None) else "{}" })
-    RosterSourceReader.readDirectory(new ChainListEgress(new Recording("direct", blocked), Some(IndexedSeq(proxy))).fetchFor(Multikino),
+    RosterSourceReader.readDirectory(new ChainListEgress(new Recording("direct", blocked), Some(IndexedSeq(proxy)), SpecClock.Pinned).fetchFor(Multikino),
       java.time.LocalDate.of(2026, 9, 24))(Multikino, Nil)
     proxy.calls.count(Multikino.warmUpUrl.contains) shouldBe 1
     listCalls shouldBe 2
   }
 
   it should "fail the audit on a list that stays unread" in {
-    val egress = new ChainListEgress(new Recording("direct", blocked), Some(IndexedSeq(new Recording("proxy", blocked))))
+    val egress = new ChainListEgress(new Recording("direct", blocked), Some(IndexedSeq(new Recording("proxy", blocked))), SpecClock.Pinned)
     val judged = egress.judged(unread)
     judged.failing shouldBe true
     judged.describe should include("residential proxy")

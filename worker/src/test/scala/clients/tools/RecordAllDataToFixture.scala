@@ -95,7 +95,7 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
     new RecordingHttpFetch(captureDate, EgressWiring.multikinoChain(configuration, processProxyShards, new RealHttpFetch(), clock))
   override lazy val biletynaFetch: HttpFetch =
     new RecordingHttpFetch(captureDate, EgressWiring.paidEgressChain(processProxyShards,
-      EgressWiring.zyteOver(configuration, None, clock), new RealHttpFetch()))
+      EgressWiring.zyteOver(configuration, None, clock), new RealHttpFetch(), clock))
 
   // TestWiring stubs the TMDB key to "test-api-key" (fine for replay, where the
   // fixture filename strips api_key). But RECORDING fires the real request, so

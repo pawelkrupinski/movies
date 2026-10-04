@@ -70,11 +70,11 @@ trait HttpWiring { self: WorkerWiring =>
           new RateLimitedHttpFetch(
             new CountingHttpFetch(sharedRealHttpLeaf,
               workerMetrics.httpMetrics.recorderFor(country.code, phase)),
-            pace),
-          meter = workerMetrics.httpBreakers.meterFor(country.code, phase)),
-        paceFor = pace),
+            pace, clock = clock),
+          meter = workerMetrics.httpBreakers.meterFor(country.code, phase), clock = clock),
+        paceFor = pace, clock = clock),
         fleetHostPace, url => HostPolicies.fleetIntervalFor(url, configuration).map(d => FiniteDuration(d.toMillis, MILLISECONDS)),
-        FleetPacedHttpFetch.Horizon),
+        FleetPacedHttpFetch.Horizon, clock),
       uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
   }
 

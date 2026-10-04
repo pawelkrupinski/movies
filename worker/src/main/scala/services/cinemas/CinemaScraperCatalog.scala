@@ -128,7 +128,7 @@ class CinemaScraperCatalog(
            configuration: settings.ProcessConfiguration = new settings.ProcessConfiguration(tools.Env.of()),
            proxyShards: Option[IndexedSeq[HttpFetch]] = None) =
     this(http, venueClock, clock, titles, configuration, proxyShards,
-      modules.wiring.EgressWiring.paidEgressChain(proxyShards, modules.wiring.EgressWiring.zyteOver(configuration, None, clock), http))
+      modules.wiring.EgressWiring.paidEgressChain(proxyShards, modules.wiring.EgressWiring.zyteOver(configuration, None, clock), http, clock))
 
   // Per-film detail bodies are static between passes and IDENTICAL across a
   // chain's locations, so each chain shares ONE CachingDetailFetch: a film's

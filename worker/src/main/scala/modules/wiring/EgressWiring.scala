@@ -72,7 +72,7 @@ trait EgressWiring { self: WorkerWiring =>
   // behind a doomed proxy attempt on every single call.
   private def proxyPrimary(fallback: HttpFetch, warmUrl: Option[String] = None,
                            keyOf: String => String = StickyShardHttpFetch.hostAndPath): HttpFetch =
-    proxyShards.fold(fallback)(EgressWiring.proxyPrimary(_, fallback, warmUrl, keyOf, decodoMeter, recordProxyOutcome, decodoBreakerMeter))
+    proxyShards.fold(fallback)(EgressWiring.proxyPrimary(_, fallback, clock, warmUrl, keyOf, decodoMeter, recordProxyOutcome, decodoBreakerMeter))
 
   // Meter the residential-proxy leg to /uptime: a green "Residential proxy" bar
   // means the proxy served, a red one means it failed and we fell back to Zyte
@@ -116,7 +116,7 @@ trait EgressWiring { self: WorkerWiring =>
   // never open the scrapes'. The paid-egress counters still see it: it is paid for.
   lazy val multikinoPosterFetch: HttpFetch = {
     val fallback = zyteThenDirect(httpFetch, Some(MultikinoClient.HomeUrl))
-    proxyShards.fold(fallback)(EgressWiring.proxyPrimary(_, fallback, Some(MultikinoClient.HomeUrl), meter = decodoMeter,
+    proxyShards.fold(fallback)(EgressWiring.proxyPrimary(_, fallback, clock, Some(MultikinoClient.HomeUrl), meter = decodoMeter,
       breakerMeter = decodoBreakerMeter))
   }
   // Zyte residential egress → direct fallback (Zyte only when ZYTE_API_KEY is set).
@@ -180,8 +180,8 @@ object EgressWiring {
    *  ALONE: Zyte is the proxy's paid fallback, so a tool run without Decodo credentials never
    *  builds a Zyte leg, whatever ZYTE_API_KEY says. */
   def paidEgressChain(proxyShards: Option[IndexedSeq[HttpFetch]], zyteOver: HttpFetch => HttpFetch, direct: HttpFetch,
-                      warmUrl: Option[String] = None): HttpFetch =
-    proxyShards.fold(direct)(proxyPrimary(_, zyteOver(direct), warmUrl))
+                      clock: java.time.Clock, warmUrl: Option[String] = None): HttpFetch =
+    proxyShards.fold(direct)(proxyPrimary(_, zyteOver(direct), clock, warmUrl))
 
   /** Zyte over `configuration`'s key (cookie-walled on `cookieSource`) → `direct`: the leg
    *  [[paidEgressChain]] puts behind the proxy. */
@@ -192,7 +192,7 @@ object EgressWiring {
   /** Multikino's chain for a recording or diagnostic tool: proxy (warmed on the homepage) → Zyte → `direct`. */
   def multikinoChain(configuration: settings.ProcessConfiguration, proxyShards: Option[IndexedSeq[HttpFetch]],
                      direct: HttpFetch, clock: java.time.Clock): HttpFetch =
-    paidEgressChain(proxyShards, zyteOver(configuration, Some(MultikinoClient.HomeUrl), clock), direct, Some(MultikinoClient.HomeUrl))
+    paidEgressChain(proxyShards, zyteOver(configuration, Some(MultikinoClient.HomeUrl), clock), direct, clock, Some(MultikinoClient.HomeUrl))
 
   /** The /uptime row the residential-proxy leg is metered under. */
   private val ResidentialProxyService = "Residential proxy"
@@ -206,13 +206,13 @@ object EgressWiring {
   /** The residential proxy (sticky across `shards`, each warmed on `warmUrl`
    *  when given, metered and circuit-broken) with `fallback` behind it — the
    *  chain the trait's `proxyPrimary` explains, shared with `tools.RosterAudit`. */
-  def proxyPrimary(shards: IndexedSeq[HttpFetch], fallback: HttpFetch, warmUrl: Option[String] = None,
+  def proxyPrimary(shards: IndexedSeq[HttpFetch], fallback: HttpFetch, clock: java.time.Clock, warmUrl: Option[String] = None,
                    keyOf: String => String = StickyShardHttpFetch.hostAndPath,
                    meter: HttpOutcomeRecorder = HttpOutcomeRecorder.noop,
                    onOutcome: (String, Option[String]) => Unit = FallbackHttpFetch.NoOutcome,
                    breakerMeter: tools.CircuitBreakerMeter = tools.CircuitBreakerMeter.noop): HttpFetch = {
     val legs = warmUrl.fold(shards)(u => shards.map(new SessionWarmingHttpFetch(_, u)))
-    val proxyLeg = meteredProxyLeg(new StickyShardHttpFetch(legs, keyOf), meter, breakerMeter)
+    val proxyLeg = meteredProxyLeg(new StickyShardHttpFetch(legs, keyOf), meter, clock, breakerMeter)
     new FallbackHttpFetch(Seq("proxy" -> proxyLeg, "fallback" -> fallback), onOutcome = onOutcome,
                           endsChain = FallbackHttpFetch.OriginAnswered)
   }
@@ -223,14 +223,15 @@ object EgressWiring {
    *  has opened. Extracted to a pure function — rather than inlined in
    *  `proxyPrimary` — so this composition is unit-testable without the rest of
    *  `WorkerWiring`. */
-  private[wiring] def breakerGuarded(proxyLeg: HttpFetch, breakerMeter: tools.CircuitBreakerMeter = tools.CircuitBreakerMeter.noop): HttpFetch =
-    new HostCircuitBreakerHttpFetch(proxyLeg, meter = breakerMeter)
+  private[wiring] def breakerGuarded(proxyLeg: HttpFetch, clock: java.time.Clock,
+                                     breakerMeter: tools.CircuitBreakerMeter = tools.CircuitBreakerMeter.noop): HttpFetch =
+    new HostCircuitBreakerHttpFetch(proxyLeg, meter = breakerMeter, clock = clock)
 
   /** [[breakerGuarded]] around the proxy leg with its paid-egress `meter` INSIDE
    *  the breaker: every attempt that reached Decodo is counted with its outcome,
    *  and a fast-fail from an open breaker — which sends nothing — is not, or an
    *  open breaker would read as the proxy failing at 100%. */
-  private[wiring] def meteredProxyLeg(proxyLeg: HttpFetch, meter: HttpOutcomeRecorder,
+  private[wiring] def meteredProxyLeg(proxyLeg: HttpFetch, meter: HttpOutcomeRecorder, clock: java.time.Clock,
                                       breakerMeter: tools.CircuitBreakerMeter = tools.CircuitBreakerMeter.noop): HttpFetch =
-    breakerGuarded(new CountingHttpFetch(proxyLeg, meter), breakerMeter)
+    breakerGuarded(new CountingHttpFetch(proxyLeg, meter), clock, breakerMeter)
 }

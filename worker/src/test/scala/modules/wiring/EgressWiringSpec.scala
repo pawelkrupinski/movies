@@ -24,7 +24,7 @@ class EgressWiringSpec extends AnyFlatSpec with Matchers {
 
   "breakerGuarded" should "let the first few failures reach the delegate, then stop calling it" in {
     val deadProxy = new CountingFailingFetch(tunnelFailed)
-    val guarded   = EgressWiring.breakerGuarded(deadProxy)
+    val guarded   = EgressWiring.breakerGuarded(deadProxy, SpecClock.Pinned)
 
     // The default breaker opens after 4 consecutive trip-worthy failures
     // (HostCircuitBreakerHttpFetch's failureThreshold) — each of these reaches
@@ -45,7 +45,7 @@ class EgressWiringSpec extends AnyFlatSpec with Matchers {
     val fallback  = new GetOnlyHttpFetch {
       override def get(url: String): String = { working.incrementAndGet(); "ok" }
     }
-    val chain = new FallbackHttpFetch(Seq("proxy" -> EgressWiring.breakerGuarded(deadProxy), "fallback" -> fallback))
+    val chain = new FallbackHttpFetch(Seq("proxy" -> EgressWiring.breakerGuarded(deadProxy, SpecClock.Pinned), "fallback" -> fallback))
 
     // Trip the breaker.
     (1 to 4).foreach(_ => chain.get("https://vwc.odeon.co.uk/x") shouldBe "ok")
@@ -64,7 +64,7 @@ class EgressWiringSpec extends AnyFlatSpec with Matchers {
     val healthy = new GetOnlyHttpFetch {
       override def get(url: String): String = "ok"
     }
-    val guarded = EgressWiring.breakerGuarded(healthy)
+    val guarded = EgressWiring.breakerGuarded(healthy, SpecClock.Pinned)
     (1 to 20).foreach(_ => guarded.get("https://vwc.odeon.co.uk/x") shouldBe "ok")
   }
 
@@ -75,7 +75,7 @@ class EgressWiringSpec extends AnyFlatSpec with Matchers {
   "meteredProxyLeg" should "count the attempts that reached the proxy, and not the breaker's fast-fails" in {
     val outcomes  = mutable.ListBuffer.empty[String]
     val deadProxy = new CountingFailingFetch(tunnelFailed)
-    val leg       = EgressWiring.meteredProxyLeg(deadProxy, (o: String) => outcomes += o)
+    val leg       = EgressWiring.meteredProxyLeg(deadProxy, (o: String) => outcomes += o, SpecClock.Pinned)
 
     (1 to 4).foreach(_ => an[java.io.IOException] should be thrownBy leg.get("https://vwc.odeon.co.uk/x"))
     a[CircuitOpenException] should be thrownBy leg.get("https://vwc.odeon.co.uk/y")
@@ -86,7 +86,7 @@ class EgressWiringSpec extends AnyFlatSpec with Matchers {
   it should "count a 401 from the origin behind the proxy as the 401 it is" in {
     val outcomes = mutable.ListBuffer.empty[String]
     val leg = EgressWiring.meteredProxyLeg(
-      new CountingFailingFetch(url => new HttpStatusException(401, "GET", url, None)), (o: String) => outcomes += o)
+      new CountingFailingFetch(url => new HttpStatusException(401, "GET", url, None)), (o: String) => outcomes += o, SpecClock.Pinned)
     an[HttpStatusException] should be thrownBy leg.get("https://vwc.odeon.co.uk/x")
     outcomes.toList shouldBe List(HttpOutcome.Http401)
   }
@@ -100,7 +100,7 @@ class EgressWiringSpec extends AnyFlatSpec with Matchers {
   "proxyPrimary" should "end the chain on the origin's not-found instead of masking it with a blocked fallback" in {
     val fallback = new CountingFailingFetch(url => new HttpStatusException(403, "GET", url, None))
     val originSaysGone = new CountingFailingFetch(url => new HttpStatusException(404, "GET", url, None))
-    val chain = EgressWiring.proxyPrimary(IndexedSeq(originSaysGone), fallback)
+    val chain = EgressWiring.proxyPrimary(IndexedSeq(originSaysGone), fallback, SpecClock.Pinned)
 
     val thrown = the[HttpStatusException] thrownBy chain.get("https://vwc.odeon.co.uk/showtimes/by-business-date/2026-10-02")
     thrown.code shouldBe 404
@@ -109,7 +109,7 @@ class EgressWiringSpec extends AnyFlatSpec with Matchers {
 
   it should "still fall through on a failure that is not the origin's answer" in {
     val working = new GetOnlyHttpFetch { override def get(url: String): String = "ok" }
-    val chain = EgressWiring.proxyPrimary(IndexedSeq(new CountingFailingFetch(tunnelFailed)), working)
+    val chain = EgressWiring.proxyPrimary(IndexedSeq(new CountingFailingFetch(tunnelFailed)), working, SpecClock.Pinned)
     chain.get("https://vwc.odeon.co.uk/x") shouldBe "ok"
   }
 }

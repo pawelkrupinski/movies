@@ -87,7 +87,7 @@ class RetryClassificationSpec extends AnyFlatSpec with Matchers {
 
   /** Whether one such failure opens the host's breaker (threshold 1). */
   private def tripsOriginBreaker(failure: Throwable): Boolean = {
-    val breaker = new HostCircuitBreakerHttpFetch(throwing(failure), failureThreshold = 1)
+    val breaker = new HostCircuitBreakerHttpFetch(throwing(failure), failureThreshold = 1, clock = SpecClock.Pinned)
     Try(breaker.get(Url))
     breaker.openRemainingMillis("www.odeon.co.uk") > 0
   }
@@ -97,7 +97,7 @@ class RetryClassificationSpec extends AnyFlatSpec with Matchers {
    *  route answering, however often it repeats. */
   private def fallsThroughProxyLeg(failure: Throwable): Boolean = {
     val fallback = new RequestLogHttpFetch(new ConstantHttpFetch("ok"))
-    val chain   = EgressWiring.proxyPrimary(IndexedSeq(throwing(failure)), fallback)
+    val chain   = EgressWiring.proxyPrimary(IndexedSeq(throwing(failure)), fallback, SpecClock.Pinned)
     val answers = (1 to 10).map(_ => Try(chain.get(Url)).toOption)
     answers.forall(_.contains("ok")) && fallback.calls.size == 10 &&
       !failure.isInstanceOf[HttpStatusException] && !ReadOutcome.isAbsent(failure)

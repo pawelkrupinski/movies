@@ -11,7 +11,7 @@ import scala.concurrent.duration._
  *  hosts are never paced by it. */
 class FleetPacedHttpFetchSpec extends AnyFlatSpec with Matchers {
   private final class World {
-    var at     = Instant.parse("2026-10-04T21:00:00Z")
+    val clock  = new MutableClock(Instant.parse("2026-10-04T21:00:00Z"))
     val slept  = scala.collection.mutable.ArrayBuffer.empty[Long]
     val pace   = new InMemoryFleetHostPace
     val leaf   = new HttpFetch {
@@ -20,7 +20,7 @@ class FleetPacedHttpFetchSpec extends AnyFlatSpec with Matchers {
     }
     /** One country's worker's fetch: its own decorator, the fleet's one pace. */
     def worker(): FleetPacedHttpFetch = new FleetPacedHttpFetch(leaf, pace,
-      url => Option.when(url.contains("wikidata"))(500.millis), horizon = 2.seconds, now = () => at, sleep = ms => { slept += ms; () })
+      url => Option.when(url.contains("wikidata"))(500.millis), horizon = 2.seconds, clock = clock, sleep = ms => { slept += ms; () })
   }
   private val wikidata = "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q1"
 
@@ -37,7 +37,7 @@ class FleetPacedHttpFetchSpec extends AnyFlatSpec with Matchers {
     (1 to 5).foreach(_ => pl.get(wikidata))   // slots to +2.0 s taken
     val back = intercept[CircuitOpenException](pl.get(wikidata))
     (back.host, back.openForMs) shouldBe (("www.wikidata.org", 2500L))
-    w.at = w.at.plusMillis(2500)
+    w.clock.advanceMillis(2500)
     pl.get(wikidata) shouldBe "ok"            // its time come, it is served
   }
 

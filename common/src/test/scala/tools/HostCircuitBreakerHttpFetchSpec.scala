@@ -19,8 +19,8 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
   private def notFound: String => String = url => throw new HttpStatusException(404, "GET", url, None)
   private def tooManyRequests: String => String = url => throw new HttpStatusException(429, "GET", url, None)
 
-  private def breaker(delegate: HttpFetch, now: () => Instant = () => Instant.parse("2026-06-23T00:00:00Z")) =
-    new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds, now = now)
+  private def breaker(delegate: HttpFetch, clock: java.time.Clock = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"))) =
+    new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds, clock = clock)
 
   "the breaker" should "open after the failure threshold and then fast-fail WITHOUT touching the wire" in {
     val delegate = new RecordingHttpFetch(timeout)
@@ -107,11 +107,11 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
 
   it should "go half-open after the cooldown and close again on a success" in {
     val delegate = new RecordingHttpFetch(timeout)
-    var clock = Instant.parse("2026-06-23T00:00:00Z")
-    val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds, now = () => clock)
+    val clock = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"))
+    val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds, clock = clock)
     (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
     cb.openRemainingMillis(hostA) should be > 0L
-    clock = clock.plusSeconds(61) // cooldown elapsed → half-open
+    clock.advanceSeconds(61) // cooldown elapsed → half-open
     cb.openRemainingMillis(hostA) shouldBe 0L
     delegate.respond = _ => "ok"
     val callsBefore = delegate.calls
@@ -126,10 +126,10 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     // the wire together. Re-entering the breaker from inside the probe's own call
     // is the deterministic stand-in for that second queued thread.
     val delegate = new RecordingHttpFetch(timeout)
-    var clock    = Instant.parse("2026-06-23T00:00:00Z")
-    val cb       = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds, now = () => clock)
+    val clock    = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"))
+    val cb       = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds, clock = clock)
     (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
-    clock = clock.plusSeconds(61) // cooldown elapsed
+    clock.advanceSeconds(61) // cooldown elapsed
 
     var reentered: Option[Throwable] = None
     delegate.respond = _ => {
@@ -148,14 +148,14 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     // was already open. Filmstarts' ~5min 429 blocks therefore read as 60s ones.
     val said     = scala.collection.mutable.ListBuffer.empty[String]
     val delegate = new RecordingHttpFetch(timeout)
-    var clock    = Instant.parse("2026-06-23T00:00:00Z")
+    val clock    = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"))
     val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds,
-      now = () => clock, report = Some(message => { said += message; () }))
+      clock = clock, report = Some(message => { said += message; () }))
 
     (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
-    clock = clock.plusSeconds(61)
+    clock.advanceSeconds(61)
     a[HttpTimeoutException] should be thrownBy cb.get(urlA) // probe fails → re-open
-    clock = clock.plusSeconds(61)
+    clock.advanceSeconds(61)
     a[HttpTimeoutException] should be thrownBy cb.get(urlA) // probe fails → re-open
 
     said.count(_.contains(hostA)) shouldBe 3
@@ -164,12 +164,12 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
   it should "announce the recovery too, so a blackout has an end in the log" in {
     val said     = scala.collection.mutable.ListBuffer.empty[String]
     val delegate = new RecordingHttpFetch(timeout)
-    var clock    = Instant.parse("2026-06-23T00:00:00Z")
+    val clock    = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"))
     val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds,
-      now = () => clock, report = Some(message => { said += message; () }))
+      clock = clock, report = Some(message => { said += message; () }))
 
     (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
-    clock = clock.plusSeconds(61)
+    clock.advanceSeconds(61)
     delegate.respond = _ => "ok"
     cb.get(urlA) shouldBe "ok"
 
@@ -184,7 +184,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     val said     = scala.collection.mutable.ListBuffer.empty[String]
     val delegate = new RecordingHttpFetch(timeout)
     val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds,
-      now = () => Instant.parse("2026-06-23T00:00:00Z"), report = Some(message => { said += message; () }))
+      clock = new MutableClock(Instant.parse("2026-06-23T00:00:00Z")), report = Some(message => { said += message; () }))
 
     (1 to 3).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
     delegate.respond = _ => "ok"
@@ -209,14 +209,14 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     // is not trip-worthy (the host replied), and it used to fall through both the success
     // and the failure branch — so the one reply that proves recovery bought another 60s of
     // fast-fail, and a host answering 404s could never be re-probed back to life.
-    var clock = Instant.parse("2026-06-23T00:00:00Z")
+    val clock = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"))
     val delegate = new RecordingHttpFetch(timeout)
-    val cb = breaker(delegate, () => clock)
+    val cb = breaker(delegate, clock)
 
     (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
     cb.openRemainingMillis(hostA) should be > 0L
 
-    clock = clock.plusSeconds(61)          // cooldown elapsed → this call is the probe
+    clock.advanceSeconds(61)          // cooldown elapsed → this call is the probe
     delegate.respond = notFound
     a[HttpStatusException] should be thrownBy cb.get(urlA)
 

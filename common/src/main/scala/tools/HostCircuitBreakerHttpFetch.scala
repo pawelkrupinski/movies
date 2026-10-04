@@ -61,7 +61,7 @@ class HostCircuitBreakerHttpFetch(
   delegate:         HttpFetch,
   failureThreshold: Int            = 4,
   openDuration:     FiniteDuration = 60.seconds,
-  now:              () => Instant  = () => Instant.now(),
+  clock:              java.time.Clock,
   // Where the open/re-open/close transitions go. Defaults to this class's logger;
   // injected in tests so the transitions can be asserted on as data instead of
   // scraped out of captured log output (same seam as ThrottledHttpFetch's report).
@@ -76,7 +76,7 @@ class HostCircuitBreakerHttpFetch(
   /** How many hosts are open right now: skipped outright, their cooldown still running. A host
    *  whose cooldown has run out with no call since is half-open, not open. */
   def openHosts: Int = {
-    val at = now()
+    val at = clock.instant()
     breakers.values.stream.filter(_.openUntil.exists(_.isAfter(at))).count().toInt
   }
   meter.watch(() => openHosts)
@@ -87,7 +87,7 @@ class HostCircuitBreakerHttpFetch(
   /** Millis until this host's open breaker goes half-open, or 0 if it isn't open. */
   private[tools] def openRemainingMillis(host: String): Long =
     Option(breakers.get(host)).flatMap(_.openUntil)
-      .map(until => JDuration.between(now(), until).toMillis)
+      .map(until => JDuration.between(clock.instant(), until).toMillis)
       .filter(_ > 0L).getOrElse(0L)
 
   /** Route one transition to the injected sink, or to `level` on this class's
@@ -113,7 +113,7 @@ class HostCircuitBreakerHttpFetch(
       val failures = (if (prev == null) 0 else prev.failures) + 1
       if (failures >= failureThreshold) {
         (if (wasOpen) reopened else opened).set(true)
-        Breaker(failures, Some(now().plusMillis(openDuration.toMillis)), why)
+        Breaker(failures, Some(clock.instant().plusMillis(openDuration.toMillis)), why)
       } else Breaker(failures, None, why)
     })
     if (opened.get()) meter.opened()
@@ -163,9 +163,9 @@ class HostCircuitBreakerHttpFetch(
       else prev.openUntil match {
         case None => prev // accruing failures but closed
         case Some(until) =>
-          val left = JDuration.between(now(), until).toMillis
+          val left = JDuration.between(clock.instant(), until).toMillis
           if (left > 0L) { remaining.set(left); cause.set(prev.lastFailure); prev }
-          else Breaker(prev.failures, Some(now().plusMillis(openDuration.toMillis)), prev.lastFailure)
+          else Breaker(prev.failures, Some(clock.instant().plusMillis(openDuration.toMillis)), prev.lastFailure)
       })
     (remaining.get(), cause.get())
   }

@@ -3,7 +3,6 @@ package tools
 import play.api.Logging
 
 import java.net.URI
-import java.time.Instant
 import java.util.Locale
 import scala.concurrent.duration.FiniteDuration
 
@@ -16,7 +15,7 @@ import scala.concurrent.duration.FiniteDuration
  * it turns back never reaches them.
  */
 final class FleetPacedHttpFetch(delegate: HttpFetch, pace: FleetHostPace, intervalFor: String => Option[FiniteDuration],
-                                horizon: FiniteDuration, now: () => Instant = () => Instant.now(), sleep: Long => Unit = Thread.sleep)
+                                horizon: FiniteDuration, clock: java.time.Clock, sleep: Long => Unit = Thread.sleep)
     extends HttpFetch with Logging {
 
   private def hostOf(url: String): Option[String] =
@@ -24,7 +23,7 @@ final class FleetPacedHttpFetch(delegate: HttpFetch, pace: FleetHostPace, interv
 
   private def paced[T](url: String)(block: => T): T = {
     for { interval <- intervalFor(url); host <- hostOf(url) } {
-      val at = now()
+      val at = clock.instant()
       pace.take(host, interval, horizon, at) match {
         case Right(slot) =>
           val waitMs = java.time.Duration.between(at, slot).toMillis

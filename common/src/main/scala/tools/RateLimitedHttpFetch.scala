@@ -37,7 +37,7 @@ import scala.concurrent.duration._
 class RateLimitedHttpFetch(
   delegate:    HttpFetch,
   intervalFor: String => Option[FiniteDuration],
-  now:         () => Instant = () => Instant.now(),
+  clock:         java.time.Clock,
   sleep:       Long => Unit  = Thread.sleep
 ) extends HttpFetch with Logging {
 
@@ -55,13 +55,13 @@ class RateLimitedHttpFetch(
       host     <- hostOf(url)
     } {
       val claimed = nextSlot.compute(host, (_, previous) => {
-        val earliest = now()
+        val earliest = clock.instant()
         val slot =
           if (previous == null || previous.isBefore(earliest)) earliest else previous
         slot.plusMillis(interval.toMillis)
       }).minusMillis(interval.toMillis)
 
-      val waitMs = java.time.Duration.between(now(), claimed).toMillis
+      val waitMs = java.time.Duration.between(clock.instant(), claimed).toMillis
       if (waitMs > 0) sleep(waitMs)
     }
     block

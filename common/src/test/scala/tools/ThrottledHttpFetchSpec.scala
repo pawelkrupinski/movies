@@ -33,7 +33,7 @@ class ThrottledHttpFetchSpec extends AnyFlatSpec with Matchers {
     val slept    = mutable.ListBuffer.empty[Long]
     val throttle = new ThrottledHttpFetch(
       delegate, maxAttempts = maxAttempts,
-      jitterMillis = () => 0, now = () => Instant.EPOCH, sleep = ms => { slept += ms; () })
+      jitterMillis = () => 0, clock = new MutableClock(Instant.EPOCH), sleep = ms => { slept += ms; () })
     (delegate, throttle, slept)
   }
 
@@ -144,7 +144,7 @@ class ThrottledHttpFetchSpec extends AnyFlatSpec with Matchers {
   it should "use the default pause when the server sends no Retry-After" in {
     val (delegate, throttle, slept) = fixture()
     val t = new ThrottledHttpFetch(delegate, defaultPause = 7.seconds,
-      jitterMillis = () => 0, now = () => Instant.EPOCH, sleep = ms => { slept += ms; () })
+      jitterMillis = () => 0, clock = new MutableClock(Instant.EPOCH), sleep = ms => { slept += ms; () })
     delegate.queue(Tmdb, http429(None), () => "ok")
     t.get(Tmdb) shouldBe "ok"
     slept should contain (7000L)
@@ -157,10 +157,10 @@ class ThrottledHttpFetchSpec extends AnyFlatSpec with Matchers {
     // requests, throttles and the clean-rate together.
     val delegate = new ScriptedFetch
     val reports  = mutable.ListBuffer.empty[String]
-    var clockMs  = 0L
+    val clock    = new MutableClock(Instant.EPOCH)
     val throttle = new ThrottledHttpFetch(
       delegate, maxAttempts = 1, jitterMillis = () => 0,
-      now = () => Instant.ofEpochMilli(clockMs), sleep = _ => (),
+      clock = clock, sleep = _ => (),
       summaryInterval = 5.minutes, report = Some(msg => { reports += msg; () }))
 
     // Three clean calls, then one 429 — 4 requests, 1 throttled = 75% clean.
@@ -172,7 +172,7 @@ class ThrottledHttpFetchSpec extends AnyFlatSpec with Matchers {
 
     withClue("no summary before the interval elapses: ") { reports shouldBe empty }
 
-    clockMs = 5.minutes.toMillis
+    clock.setTo(Instant.ofEpochMilli(5.minutes.toMillis))
     throttle.get(Tmdb) shouldBe "default"
 
     reports should have size 1
@@ -187,15 +187,15 @@ class ThrottledHttpFetchSpec extends AnyFlatSpec with Matchers {
     // problem for as long as it did.
     val delegate = new ScriptedFetch
     val reports  = mutable.ListBuffer.empty[String]
-    var clockMs  = 0L
+    val clock    = new MutableClock(Instant.EPOCH)
     val throttle = new ThrottledHttpFetch(
       delegate, maxAttempts = 1, jitterMillis = () => 0,
-      now = () => Instant.ofEpochMilli(clockMs), sleep = _ => (),
+      clock = clock, sleep = _ => (),
       summaryInterval = 5.minutes, report = Some(msg => { reports += msg; () }))
 
     delegate.queue(Tmdb, () => throw new HttpStatusException(503, "GET", Tmdb, None))
     a [HttpStatusException] should be thrownBy throttle.get(Tmdb)
-    clockMs = 5.minutes.toMillis
+    clock.setTo(Instant.ofEpochMilli(5.minutes.toMillis))
     throttle.get(Tmdb)
 
     reports.head should include ("1 throttled")
@@ -207,17 +207,17 @@ class ThrottledHttpFetchSpec extends AnyFlatSpec with Matchers {
     // forever and the next pace could never be seen to have worked.
     val delegate = new ScriptedFetch
     val reports  = mutable.ListBuffer.empty[String]
-    var clockMs  = 0L
+    val clock    = new MutableClock(Instant.EPOCH)
     val throttle = new ThrottledHttpFetch(
       delegate, maxAttempts = 1, jitterMillis = () => 0,
-      now = () => Instant.ofEpochMilli(clockMs), sleep = _ => (),
+      clock = clock, sleep = _ => (),
       summaryInterval = 5.minutes, report = Some(msg => { reports += msg; () }))
 
     delegate.queue(Tmdb, http429(None))
     a [HttpStatusException] should be thrownBy throttle.get(Tmdb)
-    clockMs = 5.minutes.toMillis
+    clock.setTo(Instant.ofEpochMilli(5.minutes.toMillis))
     throttle.get(Tmdb)                       // flushes window 1 (0% clean)
-    clockMs = 10.minutes.toMillis
+    clock.setTo(Instant.ofEpochMilli(10.minutes.toMillis))
     throttle.get(Tmdb)                       // flushes window 2 — clean only
 
     reports should have size 2
