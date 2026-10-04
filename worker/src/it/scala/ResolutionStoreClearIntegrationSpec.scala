@@ -17,7 +17,7 @@ class ResolutionStoreClearIntegrationSpec extends AnyFlatSpec with Matchers with
   override protected def afterAll(): Unit = try { unreachable.close(); isolated.drop() } finally super.afterAll()
 
   "MongoResolutionStore.removeAll" should "forget every stored resolution" in {
-    val store = new MongoResolutionStore(Some(isolated.database), "resolve_test", normalizer = services.movies.SingleCountryNormalizer.titleNormalizer, ttlMismatches = new services.TtlIndexMismatches, clock = _root_.tools.SpecClock.Pinned)
+    val store = new MongoResolutionStore(Some(isolated.database), "resolve_test", normalizer = services.movies.SingleCountryNormalizer.titleNormalizer, ttlMismatches = new services.TtlIndexMismatches, clock = _root_.tools.MongoTtlSpecClock.Pinned)
     store.put("anora|2024", "1064213")   // fire-and-forget: wait for it to land
     _root_.tools.Eventually.poll(timeoutMs = 10000, pollMs = 20)(store.get("anora|2024").isDefined) shouldBe true
     store.removeAll() shouldBe 1
@@ -26,7 +26,7 @@ class ResolutionStoreClearIntegrationSpec extends AnyFlatSpec with Matchers with
 
   it should "throw, not answer zero forgotten, when it cannot reach the store" in {
     val blind = new MongoResolutionStore(Some(unreachable.getDatabase("resolution-clear")), "resolve_test",
-      normalizer = services.movies.SingleCountryNormalizer.titleNormalizer, ttlMismatches = new services.TtlIndexMismatches, clock = _root_.tools.SpecClock.Pinned)
+      normalizer = services.movies.SingleCountryNormalizer.titleNormalizer, ttlMismatches = new services.TtlIndexMismatches, clock = _root_.tools.MongoTtlSpecClock.Pinned)
     an[Exception] should be thrownBy blind.removeAll()
   }
 }

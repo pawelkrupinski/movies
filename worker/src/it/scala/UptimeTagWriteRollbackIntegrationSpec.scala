@@ -45,7 +45,7 @@ class UptimeTagWriteRollbackIntegrationSpec extends AnyFlatSpec with Matchers wi
   )
 
   private val tagCollection: MongoCollection[Document] = db.getCollection("uptimeServiceTags")
-  private val monitor  = new UptimeMonitor(Some(db), clock = _root_.tools.SpecClock.Pinned)
+  private val monitor  = new UptimeMonitor(Some(db), clock = _root_.tools.MongoTtlSpecClock.Pinned)
   private val service  = "__uptime-tag-rollback-sentinel__"
 
   /**

@@ -3,13 +3,12 @@ package services.tasks
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.time.Instant
 import scala.concurrent.duration.*
 
 /** The chunk-run store on a real Mongo: a run's stored keys — read keys-only, the chunks' parses left
  *  on the server — name every chunk stored, and the chunks themselves come back whole. */
 class MongoChunkScrapeStoreIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
-  private val now = Instant.parse("2026-10-01T10:00:00Z")
+  private val now = tools.MongoTtlSpecClock.Pinned.instant()
 
   "MongoChunkScrapeStore" should "name every stored chunk by key, and return each one's value" in {
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "chunk-store") { db =>

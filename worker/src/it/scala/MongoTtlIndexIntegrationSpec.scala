@@ -250,7 +250,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
       new com.mongodb.client.model.IndexOptions().expireAfter(100L, TimeUnit.SECONDS)
     ).toFuture(), 10.seconds)
     forget()
-    val monitor = new UptimeMonitor(Some(database), surfaceExternalWrites = true, clock = _root_.tools.SpecClock.Pinned)
+    val monitor = new UptimeMonitor(Some(database), surfaceExternalWrites = true, clock = _root_.tools.MongoTtlSpecClock.Pinned)
     try {
       // The index work runs on a daemon thread, so give it room to have done the wrong thing.
       eventually(timeout(Span(5, Seconds)), interval(Span(150, Millis))) {

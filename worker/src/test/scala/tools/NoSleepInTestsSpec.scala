@@ -75,8 +75,6 @@ class NoSleepInTestsSpec extends AnyFlatSpec with Matchers {
       "waits for real change streams (another thread, fed by Mongo) to go quiet between fixpoint passes; bounded",
     "web/src/it/scala/UserStateAcrossPodsIntegrationSpec.scala" ->
       "holds a real Mongo transaction open for a set time from another thread — the outage being simulated",
-    "web/src/it/scala/MongoAuthExchangeCodeStoreIntegrationSpec.scala" ->
-      "holds a real Mongo transaction past the store's own timeout, so the spec proves that timeout fires",
     "worker/src/it/scala/MongoCachingDetailFetchIntegrationSpec.scala"       -> RealMongo,
     "worker/src/it/scala/MongoTaskQueueIntegrationSpec.scala"                -> RealMongo,
     "worker/src/it/scala/MovieRepositoryIntegrationSpec.scala"               -> RealMongo,

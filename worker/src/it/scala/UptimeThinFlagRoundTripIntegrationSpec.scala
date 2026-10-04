@@ -40,11 +40,11 @@ class UptimeThinFlagRoundTripIntegrationSpec extends AnyFlatSpec with Matchers w
   }
 
   "a thin success" should "survive a flush to Mongo and a hydrate into a fresh monitor" in {
-    val writer = new UptimeMonitor(Some(db), clock = _root_.tools.SpecClock.Pinned)
+    val writer = new UptimeMonitor(Some(db), clock = _root_.tools.MongoTtlSpecClock.Pinned)
     writer.recordSuccess(service, 20L, thin = true)
     writer.close()   // flushes the dirty bucket
 
-    val fresh = new UptimeMonitor(Some(db), clock = _root_.tools.SpecClock.Pinned)
+    val fresh = new UptimeMonitor(Some(db), clock = _root_.tools.MongoTtlSpecClock.Pinned)
     reader = Some(fresh)
     Eventually.eventually({
       fresh.history(service).map(_.thin) shouldBe Seq(true)
