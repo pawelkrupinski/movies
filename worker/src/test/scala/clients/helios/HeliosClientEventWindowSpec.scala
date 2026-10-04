@@ -44,6 +44,24 @@ class HeliosClientEventWindowSpec extends AnyFlatSpec with Matchers {
   // Poznań had 247 screenings inside those six days on 2026-08-05 and another 81
   // beyond them. Both endpoints take an arbitrary range, so the near week is
   // asked for as before and a second window sweeps the rest to the horizon.
+  // `today` is by-name (the venue clock); read once per window build it could
+  // straddle Warsaw midnight and leave the near and far windows a day apart —
+  // a gap or an overlap in the programme. A clock that ticks a day per read
+  // makes that straddle happen on every call.
+  it should "build both windows from ONE reading of today" in {
+    val fetch = recordingFetch()
+    var day   = java.time.LocalDate.of(2026, 8, 5)
+    def ticking: java.time.LocalDate = { val d = day; day = day.plusDays(1); d }
+    new HeliosClient(fetch, today = ticking, titles = titleNormalizer).fetch()
+
+    val windows = fetch.gets.filter(_.contains("/screening"))
+      .flatMap("""dateTimeFrom=(\d{4}-\d{2}-\d{2})T[^&]*&dateTimeTo=(\d{4}-\d{2}-\d{2})""".r.findFirstMatchIn(_))
+      .map(m => java.time.LocalDate.parse(m.group(1)) -> java.time.LocalDate.parse(m.group(2))).toSeq
+    windows should have size 2
+    windows(1)._1 shouldBe windows(0)._2.plusDays(1)
+    windows(0)._2 shouldBe windows(0)._1.plusDays(6)
+  }
+
   it should "sweep the programme past the near week, out to the scrape horizon" in {
     val fetch = recordingFetch()
     val today = java.time.LocalDate.of(2026, 8, 5)

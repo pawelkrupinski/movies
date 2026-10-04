@@ -84,10 +84,12 @@ class HeliosClient(
     // it was and a second sweeps everything after it, out to the horizon.
     // Splitting keeps the near-term response small, and leaves the recorded
     // fixtures for the near window matching byte-for-byte.
-    val nearEnd = today.plusDays(6)
-    val farEnd  = today.plusDays(ScrapeHorizon.MaxDays.toLong)
+    // `today` is by-name: read ONCE, so the windows can't straddle midnight.
+    val from    = today
+    val nearEnd = from.plusDays(6)
+    val farEnd  = from.plusDays(ScrapeHorizon.MaxDays.toLong)
     val windows = Seq(
-      s"dateTimeFrom=${today}T00:00:00&dateTimeTo=${nearEnd}T23:59:59",
+      s"dateTimeFrom=${from}T00:00:00&dateTimeTo=${nearEnd}T23:59:59",
       s"dateTimeFrom=${nearEnd.plusDays(1)}T00:00:00&dateTimeTo=${farEnd}T23:59:59"
     )
     val screeningsUrls = windows.map(w => s"$ApiBase/cinema/$sourceId/screening?$w")
