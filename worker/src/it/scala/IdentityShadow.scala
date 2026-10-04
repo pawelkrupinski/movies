@@ -34,7 +34,16 @@ object IdentityShadow {
   /** `misses` counts every request the recording could not answer, each time it is asked — so a
    *  lookup that meets a gap is `Unknown` however often the gap was met before. */
   final class Corpus(val label: String, val country: Country, val rows: Seq[ArchivedScrape], rawFetch: HttpFetch,
-                     val misses: () => Long, val missedKeys: () => Seq[String]) {
+                     val misses: () => Long, val missedKeys: () => Seq[String], threadMisses: Option[() => Long] = None) {
+    /** How the lookups tell a gap from an answer: by the gaps met on the asking thread when the corpus counts them per
+     *  thread (lookups then read side by side), else by the replay's one counter, lookups taking turns. */
+    def gaps: TmdbIdentityLookups.Gaps = threadMisses.fold[TmdbIdentityLookups.Gaps](new TmdbIdentityLookups.CountedGaps(misses))(onThread =>
+      new TmdbIdentityLookups.Gaps {
+        def answered[A](read: => A): Answer[A] = {
+          val before = onThread()
+          scala.util.Try(read).toOption.filter(_ => onThread() == before).fold[Answer[A]](Answer.Unknown)(Answer.Known(_))
+        }
+      })
     val normalizer: TitleNormalizer = TitleNormalizer.forCountry(country)
     val fetch = new CountingFetch(rawFetch)
     def isHardCluster: Boolean = label.startsWith("hc-")
@@ -50,7 +59,8 @@ object IdentityShadow {
    *  its `enrichment-<cc>` tree (under `KINOWO_FIXTURE_ROOT`) and the remembered verdicts beside
    *  it, read-only — exactly a hermetic leg's chain. A request neither answers is REFUSED and
    *  named, never fetched. */
-  def full(countries: Set[Country], corpusDir: Path, root: settings.FixtureRoot): Seq[Corpus] =
+  def full(countries: Set[Country], corpusDir: Path, root: settings.FixtureRoot,
+           live: Option[settings.IdentityLiveGaps] = None): Seq[Corpus] =
     Country.all.filter(countries).flatMap { c =>
       Option(corpusDir.resolve(s"cinema-scrapes-${c.code}.json.gz")).filter(Files.exists(_)).map { path =>
         val missing = new MissingFixtures
@@ -65,8 +75,8 @@ object IdentityShadow {
         cache.preload()
         val fetch = new FallbackHttpFetch(Seq(
           "tree"  -> new clients.tools.FakeHttpFetch(tree, strict = true, foldYear = false, root = root),
-          "cache" -> new CachingEnrichmentFetch(cache, leaf)))
-        new Corpus(s"full-${c.code}", c, CorpusFixture.readFrom(path), fetch, () => leaf.met, () => missing.keys.map(_._2))
+          "cache" -> new CachingEnrichmentFetch(cache, live.fold[HttpFetch](leaf)(key => new LiveGapLeaf(key, leaf)))))
+        new Corpus(s"full-${c.code}", c, CorpusFixture.readFrom(path), fetch, () => leaf.met, () => missing.keys.map(_._2), Some(() => leaf.metOnThread))
       }
     }
 
@@ -77,13 +87,62 @@ object IdentityShadow {
    *  still sees every gap as `Unknown` through `met`, which counts EVERY gap met — `missing`
    *  names each once, so counting it would read a repeated gap as the empty answer. */
   final class GapLeaf(missing: MissingFixtures) extends HttpFetch {
-    private val gaps = new java.util.concurrent.atomic.AtomicLong()
+    private val gaps     = new java.util.concurrent.atomic.AtomicLong()
+    private val onThread = ThreadLocal.withInitial[java.lang.Long](() => 0L)
     def met: Long = gaps.get()
-    private def gap(method: String, url: String): Unit = { gaps.incrementAndGet(); missing.record(s"$method $url", s"$method $url") }
+    /** The gaps met on the calling thread: what tells one lookup's gap from another's when they read side by side. */
+    def metOnThread: Long = onThread.get()
+    private def gap(method: String, url: String): Unit = {
+      gaps.incrementAndGet(); onThread.set(onThread.get() + 1); missing.record(s"$method $url", s"$method $url")
+    }
     override def get(url: String): String = { gap("GET", url); "{}" }
     override def get(url: String, headers: Map[String, String]): String = { gap("GET", url); "{}" }
     override def getBytes(url: String): Array[Byte] = { gap("BYTES", url); Array.emptyByteArray }
     override def post(url: String, body: String, contentType: String): String = { gap("POST", url); "{}" }
+  }
+
+  /** A gap TMDB or IMDb can answer, answered LIVE, the stub key swapped for a real one; anything else, and a live
+   *  failure, is still the gap. For the local resolver-only loop only (`settings.IdentityLiveGaps`): at most
+   *  [[LiveGapLeaf.PerHost]] requests at a time per host, a 429 or 503 retried after a back-off, and every answer kept
+   *  on disk ([[LiveGapLeaf.Store]]) so a re-run after a rule change asks nothing it asked before. */
+  final class LiveGapLeaf(key: settings.IdentityLiveGaps, gap: GapLeaf) extends HttpFetch {
+    import LiveGapLeaf._
+    private val real = new RealHttpFetch()
+    private val slots = new java.util.concurrent.ConcurrentHashMap[String, java.util.concurrent.Semaphore]()
+    private def answerable(url: String) = url.contains("themoviedb.org") || url.contains("imdb.com")
+    private def keyed(url: String) = url.replace(s"api_key=$StubTmdbKey", s"api_key=${key.tmdbKey}")
+    private def stored(id: String)(read: => String): String = {
+      val file = Store.resolve(java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(id.getBytes("UTF-8"))))
+      if (Files.exists(file)) Files.readString(file)
+      else { val answer = read; Files.createDirectories(Store); Files.writeString(file, answer); answer }
+    }
+    private def paced(url: String)(read: => String): String = {
+      val host = java.net.URI.create(url).getHost
+      val slot = slots.computeIfAbsent(host, _ => new java.util.concurrent.Semaphore(PerHost))
+      @scala.annotation.tailrec def attempt(n: Int): String =
+        scala.util.Try { slot.acquire(); try read finally slot.release() } match {
+          case scala.util.Success(answer) => answer
+          case scala.util.Failure(e: HttpStatusException) if (e.code == 429 || e.code == 503) && n < Retries =>
+            Thread.sleep(BackOff.toMillis * (n + 1)); attempt(n + 1)
+          case scala.util.Failure(e) => throw e
+        }
+      attempt(0)
+    }
+    private def tried(url: String, id: => String, read: => String, orGap: => String): String =
+      if (!answerable(url)) orGap else scala.util.Try(stored(id)(paced(url)(read))).getOrElse(orGap)
+    override def get(url: String): String = tried(url, s"GET $url", real.get(keyed(url)), gap.get(url))
+    override def get(url: String, headers: Map[String, String]): String =
+      tried(url, s"GET $url", real.get(keyed(url), headers), gap.get(url, headers))
+    override def getBytes(url: String): Array[Byte] = gap.getBytes(url)
+    override def post(url: String, body: String, contentType: String): String =
+      tried(url, s"POST $url $body", real.post(keyed(url), body, contentType), gap.post(url, body, contentType))
+  }
+
+  object LiveGapLeaf {
+    val PerHost = 4
+    val Retries = 6
+    val BackOff: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.DurationInt(5).seconds
+    val Store: Path = java.nio.file.Paths.get("target", "identity-live-gaps")
   }
 
   // ── today's pipeline ──────────────────────────────────────────────────────────────────
@@ -175,6 +234,16 @@ object IdentityShadow {
     override def detail(l: Listing): Answer[Option[DetailFacts]] = details.computeIfAbsent((l.venue, l.page.getOrElse("")), _ => inner.detail(l))
     override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = queries.computeIfAbsent(q, _ => inner.candidates(q))
     override def film(id: Int): Answer[Option[IdentityMeasures.Film]]      = films.computeIfAbsent(id, _ => inner.film(id))
+    // What a resolve announces it will ask, answered ahead on a few threads: a live-gap replay
+    // (`settings.IdentityLiveGaps`) otherwise asks its live questions one after another.
+    override def prefetch(qs: Iterable[CandidateQuery], ids: Iterable[Int], pages: Iterable[Listing]): Unit = {
+      inner.prefetch(qs, ids, pages)
+      val pool = java.util.concurrent.Executors.newFixedThreadPool(Memo.PrefetchThreads)
+      try {
+        (qs.toSeq.map(q => () => { candidates(q); () }) ++ ids.toSeq.map(id => () => { film(id); () }))
+          .map(task => pool.submit(new java.util.concurrent.Callable[Unit] { def call(): Unit = task() })).foreach(_.get())
+      } finally pool.shutdown()
+    }
     def sizes: (Int, Int, Int) = (details.size, queries.size, films.size)
     /** Every candidate question and film record asked through it, with the answer it got. */
     def asked: (Map[CandidateQuery, Answer[Seq[Hit]]], Map[Int, Answer[Option[IdentityMeasures.Film]]]) =
@@ -182,6 +251,8 @@ object IdentityShadow {
     def unknown: (Int, Int, Int) = (details.values.asScala.count(!_.isKnown), queries.values.asScala.count(!_.isKnown),
       films.values.asScala.count(!_.isKnown))
   }
+
+  object Memo { val PrefetchThreads = 8 }
 
   /** A simulated TMDB OUTAGE: a deterministic share of candidate queries and film records
    *  withheld as `Unknown`. */

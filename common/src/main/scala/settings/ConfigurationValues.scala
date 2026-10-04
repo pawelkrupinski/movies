@@ -172,6 +172,8 @@ final case class IdentityShadowOutput(value: Path) extends AnyVal
 /** `KINOWO_IDENTITY_SEED_FILMS` — today's films as listing-key sets, the ID-seeding review's previous assignment. */
 final case class IdentitySeedFilms(value: Path) extends AnyVal
 final case class IdentityDump(value: Path) extends AnyVal
+/** `KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY` — a resolver-only replay asks TMDB and IMDb live for what its recording cannot answer. */
+final case class IdentityLiveGaps(tmdbKey: String) extends AnyVal
 final case class IdentityShadowPermutations(value: Int) extends AnyVal
 /** `KINOWO_IDENTITY_PIPELINE_CACHE` — where the identity shadow run keeps each corpus's booted
  *  pipeline answers, so resolver variants measure against one boot. */

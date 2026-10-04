@@ -20,7 +20,8 @@ import scala.util.Try
  * explanations and candidates are written beside it, as the CI measure's focus mode prints them.
  *
  * Opt-in: runs when `KINOWO_IDENTITY_DUMP` (the output directory), `KINOWO_IDENTITY_FULL`,
- * `KINOWO_IDENTITY_CORPUS_DIR` and `KINOWO_FIXTURE_ROOT` are set. Nothing is judged here — the CI measure
+ * `KINOWO_IDENTITY_CORPUS_DIR` and `KINOWO_FIXTURE_ROOT` are set. With `KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY`
+ * what the recording cannot answer is asked of TMDB and IMDb live — the loop for a change asking new questions. Nothing is judged here — the CI measure
  * judges; this says what moved.
  */
 class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with IntegrationMongoSuite {
@@ -32,7 +33,7 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
   private val corpora: Seq[Corpus] = for {
     _      <- out.toSeq
     dir    <- configuration.identityCorpusDirectory.toSeq
-    corpus <- IdentityShadow.full(configuration.identityFullCorpora.value, dir.value, configuration.fixtureRoot)
+    corpus <- IdentityShadow.full(configuration.identityFullCorpora.value, dir.value, configuration.fixtureRoot, configuration.identityLiveGaps)
   } yield corpus
 
   corpora.foreach { c =>
@@ -42,7 +43,7 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
       val listings = listingsOf(w, c.normalizer)
       val lookups  = new Memo(new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
         language = c.country.language, retrySleep = (_: Long) => ()), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers,
-        new TmdbIdentityLookups.CountedGaps(c.misses)))
+        c.gaps))
       val (resolution, seconds) = timed(IdentityResolver.resolve(listings, lookups, c.normalizer, IdentityCalibration.resolver))
       val clusterOf = resolution.decisions.zipWithIndex.flatMap { case (d, i) => d.members.map(_ -> i) }.toMap
       Files.createDirectories(dir)

@@ -306,6 +306,10 @@ final class ProcessConfiguration(val env: Env) {
   /** `KINOWO_IDENTITY_DUMP` — a directory the resolver-only run writes every listing's decision to
    *  (`IdentityResolveDumpIntegrationSpec`): the fast local loop for a resolver change. */
   def identityDump: Option[IdentityDump] = text("KINOWO_IDENTITY_DUMP").map(dir => IdentityDump(Path.of(dir)))
+  /** `KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY` — a TMDB key with which the resolver-only replay
+   *  (`IdentityResolveDumpIntegrationSpec`) answers what its recording cannot from TMDB and IMDb LIVE,
+   *  instead of as gaps: the local loop for a change that asks new questions. Never in CI. */
+  def identityLiveGaps: Option[IdentityLiveGaps] = text("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY").map(IdentityLiveGaps(_))
   /** `KINOWO_IDENTITY_SEED_FILMS` — a directory of `films-<cc>.json`, today's films as sets of listing
    *  keys (`scripts.ListingKeyBackfill --export`), that the ID-seeding review assigns ids from. */
   def identitySeedFilms: Option[IdentitySeedFilms] =

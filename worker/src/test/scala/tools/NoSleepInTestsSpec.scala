@@ -50,6 +50,8 @@ class NoSleepInTestsSpec extends AnyFlatSpec with Matchers {
 
   private val Allowlist: Map[String, String] = Map(
     "worker/src/test/scala/tools/NoSleepInTestsSpec.scala" -> SelfTest,
+    "worker/src/it/scala/IdentityShadow.scala" ->
+      "the local live-gap replay backs off a real TMDB/IMDb 429 before retrying: a network wait, no clock to step",
     "testkit/src/main/scala/tools/Eventually.scala" ->
       "THE polling primitive: it sleeps between probes of a condition, never instead of one",
     "testkit/src/test/scala/tools/EventuallySpec.scala" ->
