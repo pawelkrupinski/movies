@@ -6,7 +6,7 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import play.api.libs.json.{JsArray, Json}
-import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime}
@@ -47,7 +47,15 @@ class KinoRemusClient(http: HttpFetch, override val cinema: Cinema) extends Cine
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(TicketManagerUrl, FilmListUrl)
   override def sourceUrl: Option[String] = Some(TicketManagerUrl)
 
-  protected def fetchUnfiltered(): Seq[CinemaMovie] = parse(HttpRead.page(http, FeedUrl), HttpRead.page(http, FilmListUrl), cinema)
+  // The feed is the programme and propagates its failure. The KDK film list
+  // only links screenings to their pages, so it failing costs the links, not
+  // the screenings — an enrichment read, not a listing page.
+  protected def fetchUnfiltered(): Seq[CinemaMovie] = {
+    val feed     = HttpRead.page(http, FeedUrl)
+    val filmList = ListingPages.readEnrichment("kino-remus-films", Seq(FilmListUrl), identity[String])(HttpRead.page(http, _))
+      .flatMap(_._2.toOption).headOption.getOrElse("")
+    parse(feed, filmList, cinema)
+  }
 
   override val detailGroup: String = "kino-remus"
   override def defersTmdbResolution: Boolean = false

@@ -91,4 +91,18 @@ class KinoRemusClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   it should "propagate a fetch failure instead of reporting an empty scrape" in {
     a[HttpStatusException] should be thrownBy new KinoRemusClient(new FailingHttpFetch(503), KinoRemus).fetch()
   }
+
+  // The KDK film list only links screenings to their pages; the Ticket Manager
+  // feed is the programme. KDK being down must cost the links, not every screening.
+  it should "keep every screening, unlinked, when only the KDK film list fails" in {
+    val replay = new FakeHttpFetch("kino-remus")
+    val kdkDown = new tools.HttpFetch {
+      def get(url: String): String =
+        if (url == KinoRemusClient.FilmListUrl) throw new HttpStatusException(503, "GET", url, None) else replay.get(url)
+      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
+    }
+    val unlinked = new KinoRemusClient(kdkDown, KinoRemus).fetch()
+    unlinked.flatMap(_.showtimes) should have size 64
+    unlinked.flatMap(_.filmUrl) shouldBe empty
+  }
 }
