@@ -578,7 +578,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       } finally repo1.close()
 
       // The restore: drop the watched collection out from under the saved token.
-      Await.ready(db.getCollection(services.movies.ScreeningsRepository.Collection).drop().toFuture(), 15.seconds)
+      Await.ready(db.getCollection(services.movies.ScreeningsRepository.Collection).drop().toFuture(), SpecTimeouts.Io)
 
       val repo2   = new MongoScreeningsRepository(Some(db), persistResumeToken = true)
       val gotD    = new CountDownLatch(1)
