@@ -1,5 +1,10 @@
 import { setExecutor } from "../src/exec.js";
 import { setHttpClient } from "../src/http.js";
+import { isolateGitEnvironment } from "./git-isolation.js";
+
+// The throwaway repositories some suites build with real git must never reach the repository this
+// checkout shares with every other worktree; see git-isolation.ts.
+isolateGitEnvironment(process.env);
 
 // No test may reach a real host, cluster, registry or GitHub: a stray ssh from a test could run
 // `switch-to-configuration` on a production machine. A test that needs a command or a response

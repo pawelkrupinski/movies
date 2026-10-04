@@ -7,19 +7,22 @@ import { dirname, join } from "node:path";
  * A throwaway git repository, never this one: the mobile page shells out to real `git log`, and the
  * point of these tests is the exact-match anchoring and the per-directory scoping, which this
  * repository's own history cannot be relied on to exercise on demand.
+ *
+ * The git environment is isolated for every test by setup.ts (git-isolation.ts), which also supplies
+ * the identity and unsigned commits, so no repository here needs a `git config` of its own.
  */
 export class TempRepo {
   readonly root: string;
 
   constructor(root?: string) {
     this.root = root ?? mkdtempSync(join(tmpdir(), "mobile-dashboard-"));
-    if (!root) {
-      this.git("init", "-q");
-      this.git("config", "user.email", "t@t");
-      this.git("config", "user.name", "t");
-      this.git("config", "commit.gpgsign", "false");
-      this.git("config", "tag.gpgsign", "false");
-    }
+    if (!root) this.git("init", "-q");
+  }
+
+  /** A clone of this repository at `into`, with this one as its `origin`. */
+  cloneTo(into: string): TempRepo {
+    execFileSync("git", ["clone", "-q", this.root, into], { stdio: ["ignore", "pipe", "pipe"] });
+    return new TempRepo(into);
   }
 
   git(...args: string[]): string {

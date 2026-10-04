@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -100,7 +99,7 @@ describe("mobile tag fetch", () => {
     origin.tag("mobile-android-2.0.9", first);
     cloneDir = mkdtempSync(join(tmpdir(), "mobile-clone-"));
     clone = join(cloneDir, "clone");
-    execFileSync("git", ["clone", "-q", origin.root, clone]);
+    origin.cloneTo(clone);
   });
   afterEach(() => {
     origin.cleanup();
@@ -116,7 +115,7 @@ describe("mobile tag fetch", () => {
   });
 
   it("is not fatal when origin cannot be reached", async () => {
-    execFileSync("git", ["remote", "set-url", "origin", "/nonexistent"], { cwd: clone });
+    new TempRepo(clone).git("remote", "set-url", "origin", "/nonexistent");
     expect(await fetchMobileTags(clone)).toBe(false);
     expect(await mobileTagSha(clone, "android", "2.0.9")).toBe(first);
   });
