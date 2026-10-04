@@ -22,6 +22,9 @@ enum TmdbKind(val collection: String, val answerFields: Option[Seq[String]]) {
   case Person extends TmdbKind("tmdb_people", None)
   /** A question: a title search's or person search's ranked ids, a find's films, IMDb's suggestions. */
   case Query  extends TmdbKind("tmdb_queries", None)
+  /** What another film database FAMILY answered ([[FamilyAnswerStore]]): its title and person searches' films, and its
+   *  records of films — kept long, since a released film's facts do not move. */
+  case Family extends TmdbKind("identity_family_answers", None)
 }
 
 /** Where the normalized documents live: the storage seam, and nothing else. Every rule — what a

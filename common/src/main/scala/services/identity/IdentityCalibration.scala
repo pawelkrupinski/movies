@@ -72,6 +72,23 @@ final case class IdentityCalibration(version: String,
     case _ => render(m)
   }
 
+  /** This calibration with the search priors' spread — [[PriorSignals]] in the listing-film scope — scaled by `scale`
+   *  about each one's positives-weighted mean weight: ×1.5 trusts where a source's search ranks the film more, ×0.5
+   *  less, while the score's scale stays put. Another film database's search is not TMDB's, and the signal-combination
+   *  experiment (2026-10-04, REPORT §10) chose each source's scale by cross-validation ([[agreement.VoterFamily]]). */
+  def withPriorSpread(scale: Double): IdentityCalibration = if (scale == 1.0) this else {
+    val listingFilm = model(IdentityMeasures.ListingFilm)
+    val spread = listingFilm.signals.map { case (name, weights) =>
+      name -> (if (!PriorSignals(name) || weights.bins.isEmpty) weights else {
+        val positives = weights.bins.map(_.positives).sum.max(1)
+        val centre    = weights.bins.map(bin => bin.positives * bin.weight).sum / positives
+        def scaled(w: Double) = centre + scale * (w - centre)
+        weights.copy(bins = weights.bins.map(bin => bin.copy(weight = scaled(bin.weight))), missing = weights.missing.map { case (k, w) => k -> scaled(w) })
+      })
+    }
+    copy(version = s"$version-spread$scale", scopes = scopes.updated(IdentityMeasures.ListingFilm, listingFilm.copy(signals = spread)))
+  }
+
   /** Is this probability high enough to show the film's ratings? */
   def showsRatings(probability: Double): Boolean = probability >= ratingCut
   /** The probability a listing's film must reach to show its ratings — the cut an own match is accepted at. */
@@ -93,6 +110,9 @@ final case class IdentityCalibration(version: String,
 }
 
 object IdentityCalibration {
+
+  /** The listing-film signals that weigh where and among what a search returned a film, not the film's facts. */
+  val PriorSignals: Set[String] = Set("search.rank", "rivals", "popularity.log2")
 
   /** A number's bin, inclusive at both ends; an open end is `None`. */
   final case class Bin(atLeast: Option[Double], atMost: Option[Double], weight: Double, positives: Int, negatives: Int) {

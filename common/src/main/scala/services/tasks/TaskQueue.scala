@@ -57,13 +57,17 @@ object TaskType {
   // payload. Read-model content against a fresh projection; share-card pointers against the disk.
   case object AuditReadModelContent extends TaskType { val name = "AuditReadModelContent" }
   case object AuditShareCards       extends TaskType { val name = "AuditShareCards"       }
+  /** An identity agreement question one film database family has not answered yet, and TMDB's find of an agreed
+   *  IMDb id (`services.identity.AgreementQuestions`). */
+  case object AgreementQuestion     extends TaskType { val name = "AgreementQuestion"     }
+  case object AgreementFind         extends TaskType { val name = "AgreementFind"         }
 
   val all: Seq[TaskType] =
     Seq(ScrapeCinema, EnrichDetails, ReadVenuePage, ResolveImdbId, ImdbRating, FilmwebRating, RtRating, McRating,
         RefreshAllImdb, RefreshAllFilmweb, RefreshAllMetacritic, RefreshAllRt, RefreshAllOmdb, SettleNow,
         ScrapeChunk, ScrapeChunkReduce,
         RenderShareCard, ShareCardBackfill, PruneShareCards, ReleaseShareCardHold,
-        AuditReadModelContent, AuditShareCards)
+        AuditReadModelContent, AuditShareCards, AgreementQuestion, AgreementFind)
 
   def byName(s: String): Option[TaskType] = all.find(_.name == s)
 }

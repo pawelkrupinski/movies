@@ -1,0 +1,1 @@
+{"entities": {"Q43": {"type": "item", "id": "Q43", "claims": {"P297": [{"mainsnak": {"snaktype": "value", "property": "P297", "hash": "c5d44c37ebd43fd3e833ad3ed6a625f0e6a1d33d", "datavalue": {"value": "TR", "type": "string"}, "datatype": "external-id"}, "type": "statement", "id": "q43$8E2552E4-2A17-4D8C-9D77-CDF56CFBF263", "rank": "normal"}]}}}, "success": 1}

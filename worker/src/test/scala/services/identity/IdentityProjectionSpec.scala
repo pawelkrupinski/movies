@@ -161,7 +161,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     val w = World()
     w.scrape(programme)
     val phases = w.projection.tick().phases
-    phases.map(_.name) shouldBe Seq("listings", "snapshot", "resolve", "seed", "index", "draft", "details", "finish", "fingerprints", "guard",
+    phases.map(_.name) shouldBe Seq("listings", "snapshot", "resolve", "agreement", "seed", "index", "draft", "details", "finish", "fingerprints", "guard",
       "compare", "writes")
     phases.foreach(p => (p.seconds >= 0 && p.allocatedBytes >= 0) shouldBe true)
     phases.map(_.allocatedBytes).sum should be > 0L

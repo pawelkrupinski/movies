@@ -115,7 +115,10 @@ final class IdentityProjection(
   /** Handed the listings each resolution was of, so the listings read for the next are the model's objects, not copies. */
   adopt:       Seq[Listing] => Unit = _ => (),
   /** How many projections of a scope run between two of the whole corpus ([[IdentityProjection.ScopedBetweenWhole]]). */
-  scopedBetweenWhole: Int = IdentityProjection.ScopedBetweenWhole
+  scopedBetweenWhole: Int = IdentityProjection.ScopedBetweenWhole,
+  /** The resolution as projected: the model's, with the no-matches other film databases agree on taken
+   *  (`agreement.AgreementStage`), given each listing the resolution decided. */
+  agreement:   (Resolution, ListingKey => Option[Listing]) => Resolution = (resolution, _) => resolution
 ) extends Logging {
 
   private val mapping = new FilmIdMapping(filmIds)
@@ -207,8 +210,11 @@ final class IdentityProjection(
           case Failure(other) => throw other
           case Success(None) =>
             refuse(IdentityProjectionMetrics.Refusal.NotReady, "the identity model is not ready", keep = true)
-          case Success(Some(IdentityProjection.Resolved(resolution, held, modelled))) =>
+          case Success(Some(IdentityProjection.Resolved(modelResolution, held, modelled))) =>
             adopt(modelled)
+            // built only when the agreement meets a decision it has not seen: a quiet tick builds none
+            lazy val decided = venues.iterator.flatMap(_._2).map(projected => projected.listing.key -> projected.listing).toMap
+            val resolution = phases("agreement")(agreement(modelResolution, key => decided.get(key)))
             val at    = clock.instant()
             phases("seed")(seedSlotMemo())
             if (previous.isEmpty) { live = new LiveProjectionIndex(normalizer); shapes = FilmShapes(); carried = ProjectionScope.Changes.none }

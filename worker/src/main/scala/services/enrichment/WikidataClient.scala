@@ -99,10 +99,6 @@ class WikidataClient(http: HttpFetch) {
       }
     }.required
 
-  private def firstClaim(entity: JsValue, property: String): Option[String] =
-    (entity \ "claims" \ property).asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-      .flatMap(c => (c \ "mainsnak" \ "datavalue" \ "value").asOpt[String]).headOption
-
   /** Year from the first P577 (publication date) claim, whose value is a time
    *  object (`{"time":"+2026-01-01T00:00:00Z",…}`), not a plain string. */
   private def firstPublicationYear(entity: JsValue): Option[Int] =
@@ -121,6 +117,68 @@ class WikidataClient(http: HttpFetch) {
       val yearMatch       = YearWindow.agrees(queryYear, pubYear, YearTolerance).contains(true)
       (exact || (titleContains && yearMatch)) && !YearWindow.contradicts(queryYear, pubYear, YearTolerance)
     }
+
+  // ── As an identity family: search, a director's films, an item's record ─────────────────────────────────────
+
+  /** The film items Wikidata's entity search finds for `text` in `language` and in English, at most `limit`, with the
+   *  label each search gave — a novel or a series of the title never passes ([[isFilm]]). */
+  def identitySearch(text: String, language: String, limit: Int): Seq[(String, String)] = {
+    val found = Seq(language, "en").distinct.flatMap { lang =>
+      entitySearch(s"$ActionBase?action=wbsearchentities&search=${quote(text)}&language=$lang&uselang=$lang&type=item&limit=15&format=json")
+    }.distinctBy(_._1)
+    val items = if (found.isEmpty) Map.empty else entitiesOf(entitiesUrl(found.map(_._1), Seq("claims")))
+    found.filter { case (id, _) => items.get(id).exists(isFilm) }.take(limit)
+  }
+
+  /** The items crediting as director (P57) the first two people an entity search in `language` finds for `name`. */
+  def identityDirectedBy(name: String, language: String): Seq[String] = {
+    val people = entitySearch(s"$ActionBase?action=wbsearchentities&search=${quote(name)}&language=$language&type=item&limit=5&format=json").map(_._1)
+    val items  = if (people.isEmpty) Map.empty else entitiesOf(entitiesUrl(people, Seq("claims")))
+    people.filter(person => items.get(person).exists(item => claimIds(item, "P31").contains(QHuman))).take(2).flatMap { person =>
+      searchHits(s"$ActionBase?action=query&list=search&srsearch=haswbstatement:P57=$person&srnamespace=0&srlimit=60&format=json")
+    }.distinct.take(60)
+  }
+
+  /** The film item's record — titles first in `language`, original title (P1476), earliest publication year (P577),
+   *  duration (P2047), directors (P57) by label, countries of origin (P495) by ISO code — and the ids other databases
+   *  know it by, each as that database's family spells its own; `None` for no film item. */
+  def identityRecord(id: String, language: String): Option[(services.identity.IdentityMeasures.Film, Map[String, String])] =
+    entitiesOf(entitiesUrl(Seq(id), Seq("claims", "labels", "aliases", "sitelinks"))).get(id).filter(isFilm).flatMap { item =>
+      val order = (Seq(language, "en", "mul") ++ PreferredLanguages).distinct
+      def rank(lang: String) = { val at = order.indexOf(lang); if (at < 0) order.size else at }
+      val labels   = (item \ "labels").asOpt[Map[String, JsObject]].getOrElse(Map.empty).toSeq.sortBy(l => rank(l._1)).flatMap(l => (l._2 \ "value").asOpt[String])
+      val aliases  = (item \ "aliases").asOpt[Map[String, Seq[JsObject]]].getOrElse(Map.empty).toSeq.sortBy(a => rank(a._1))
+        .flatMap(_._2.flatMap(a => (a \ "value").asOpt[String]))
+      val original = claimValues(item, "P1476").flatMap(v => (v \ "text").asOpt[String]).headOption
+      val year     = claimValues(item, PPublicationDate).flatMap(v => (v \ "time").asOpt[String]).flatMap(t => raw"(18|19|20)\d\d".r.findFirstIn(t)).map(_.toInt).minOption
+      val runtime  = claimValues(item, "P2047").flatMap(v => (v \ "amount").asOpt[String]).flatMap(_.toDoubleOption).headOption.map(_.toInt)
+      val directors = { val ids = claimIds(item, "P57"); val named = if (ids.isEmpty) Map.empty else entitiesOf(entitiesUrl(ids, Seq("labels")))
+        ids.flatMap(named.get).flatMap(labelOf(_, "en")) }
+      val countries = claimIds(item, "P495").flatMap(isoOf)
+      val crossIds = Map("wikidata" -> id) ++ CrossIds.flatMap { case (property, database, own) => firstClaim(item, property).map(value => database -> own(value)) }
+      labelOf(item, language).map { title =>
+        (services.identity.IdentityMeasures.Film(title, original.filterNot(_ == title),
+          (labels ++ aliases).filterNot(t => t == title || original.contains(t)).distinct.take(40), year, runtime,
+          Option(directors).filter(_.nonEmpty), Option(countries).filter(_.nonEmpty)), crossIds)
+      }
+    }
+
+  /** A country item's ISO code (P297), asked once per client: a country's claims are megabytes, and few countries recur. */
+  private val isoCodes = new java.util.concurrent.ConcurrentHashMap[String, Option[String]]()
+  private def isoOf(country: String): Option[String] =
+    Option(isoCodes.get(country)).getOrElse {
+      val code = entitiesOf(entitiesUrl(Seq(country), Seq("claims"))).get(country).flatMap(firstClaim(_, "P297"))
+      isoCodes.put(country, code); code
+    }
+
+  /** The items a `wbsearchentities` search returned, with their labels. */
+  private def entitySearch(url: String): Seq[(String, String)] =
+    HttpRead.jsonObject(http, url, UserAgentHeader) { js =>
+      (js \ "search").asOpt[Seq[JsObject]] match {
+        case Some(hits) => ReadOutcome.Answered(hits.flatMap(hit => (hit \ "id").asOpt[String].map(_ -> (hit \ "label").asOpt[String].getOrElse(""))))
+        case None       => ReadOutcome.unexpectedBody(url, "no search", js.toString)
+      }
+    }.required
 
   private def searchByFilmwebId(filmwebId: String): Seq[String] = {
     val encoded = URLEncoder.encode(s"haswbstatement:P5032=$filmwebId", StandardCharsets.UTF_8)
@@ -190,6 +248,41 @@ object WikidataClient {
   private val PLetterboxd      = "P6127"  // Letterboxd id      → "the-matrix"
   private val PPublicationDate = "P577"   // publication date   → {"time":"+2026-…"}
   private val QFilm            = "Q11424" // instance-of value: film (title-search filter)
+
+  private val QHuman = "Q5"
+  private val PreferredLanguages = Seq("pl", "de", "es", "fr", "it", "pt", "nl", "sv", "cs")
+  /** Film classes an item's P31 may name, and classes that make it no film unless it names one of those too. */
+  private val FilmClasses = Set("Q11424", "Q24862", "Q506240", "Q202866", "Q226730", "Q93204", "Q17517379", "Q24869", "Q20650540", "Q1366112",
+    "Q29168811", "Q130232", "Q645928", "Q4220917", "Q2484376", "Q336144", "Q622548", "Q18011172", "Q157443", "Q20667187", "Q1257444",
+    "Q1054574", "Q2321734", "Q52207399", "Q790192", "Q959790", "Q917641", "Q319221")
+  private val NotFilm = Set("Q5398426", "Q5", "Q7725634", "Q482994", "Q1259759", "Q21191270", "Q7889", "Q3464665")
+  /** The other databases' ids an item states, under the identity families' names, as each family spells its own. */
+  private val CrossIds: Seq[(String, String, String => String)] = Seq(
+    (PImdb, "imdb", identity), (PTmdb, "tmdb", identity), ("P5032", "filmweb", identity),
+    (PRottenTomatoes, "rt", _.stripPrefix("m/")), (PMetacritic, "metacritic", _.stripPrefix("movie/")))
+
+  /** A film item: one naming a film class, or stating an IMDb title or TMDB movie id — never one only a non-film class
+   *  (a novel, a person, a series) names. */
+  def isFilm(item: JsValue): Boolean = {
+    val classes = claimIds(item, "P31").toSet
+    if ((classes intersect NotFilm).nonEmpty && (classes intersect FilmClasses).isEmpty) false
+    else (classes intersect FilmClasses).nonEmpty || claimValues(item, PImdb).flatMap(_.asOpt[String]).exists(_.startsWith("tt")) ||
+      claimValues(item, PTmdb).nonEmpty
+  }
+  private def claimValues(item: JsValue, property: String): Seq[JsValue] =
+    (item \ "claims" \ property).asOpt[JsArray].fold(Seq.empty[JsValue])(_.value.toSeq.flatMap(c => (c \ "mainsnak" \ "datavalue" \ "value").toOption))
+  private def claimIds(item: JsValue, property: String): Seq[String] = claimValues(item, property).flatMap(v => (v \ "id").asOpt[String])
+  private def firstClaim(item: JsValue, property: String): Option[String] = claimValues(item, property).flatMap(_.asOpt[String]).headOption
+  private def labelOf(item: JsValue, language: String): Option[String] = {
+    val labels = (item \ "labels").asOpt[Map[String, JsObject]].getOrElse(Map.empty)
+    Seq(language, "en", "mul").flatMap(labels.get).headOption.orElse(labels.values.headOption).flatMap(l => (l \ "value").asOpt[String])
+  }
+
+  /** `text` percent-encoded byte by byte, but A–Z a–z 0–9 `_.-~` — a space as `%20`, as Wikimedia's own clients write it. */
+  def quote(text: String): String = text.getBytes(StandardCharsets.UTF_8).map { byte =>
+    val c = (byte & 0xff).toChar
+    if ((c.isLetterOrDigit && c < 128) || "_.-~".contains(c)) c.toString else f"%%${byte & 0xff}%02X"
+  }.mkString
 
   /** Deburred, case-folded, alnum-only — matches the shape the other resolvers'
    *  corroboration uses so label/title comparison is diacritic/case-insensitive. */

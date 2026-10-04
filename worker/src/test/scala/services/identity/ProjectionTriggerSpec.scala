@@ -19,6 +19,7 @@ class ProjectionTriggerSpec extends AnyFlatSpec with Matchers {
     var settles   = true
     val trigger   = new ProjectionTrigger(() => { runs += 1; settles }, MovieChangeStream.Debounce(30.seconds, 2.minutes), scheduler, clock)
     def after(seconds: Long): Unit = scheduler.advance(Duration.ofSeconds(seconds))
+    def afterMillis(millis: Long): Unit = scheduler.advance(Duration.ofMillis(millis))
   }
 
   "a projection trigger" should "run once a burst goes quiet, the burst in one run" in {
@@ -36,6 +37,18 @@ class ProjectionTriggerSpec extends AnyFlatSpec with Matchers {
     val w = new World
     (1 to 12).foreach { _ => w.trigger.request(); w.after(20) }   // never 30 s quiet, 240 s long
     w.runs shouldBe 2                       // at 120 s, and 120 s after the next burst's first, at 240 s
+  }
+
+  it should "run an answer's short window within it, however a scrape's long one keeps asking beside it" in {
+    val w = new World
+    w.trigger.request(); w.after(10)
+    w.trigger.request(ProjectionTrigger.Answer); w.trigger.request()   // a scrape asking again must not push the answer back
+    w.after(1)
+    w.runs shouldBe 1
+    (1 to 10).foreach { _ => w.trigger.request(ProjectionTrigger.Answer); w.afterMillis(500) }   // a burst of answers, never a second quiet
+    w.runs shouldBe 2                       // at the 5 s cap after the burst's first
+    w.after(60)
+    w.runs shouldBe 2                       // nothing asked since
   }
 
   it should "not run until asked" in {

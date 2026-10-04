@@ -17,4 +17,10 @@ class ResolverDecisionBsonSpec extends AnyFlatSpec with Matchers {
     val matched = ResolverDecision(Seq(snowLeopard), Some(996584), 0.9, ResolverDecision.Basis.OwnMatch, Nil)()
     ResolverDecisionBson.decode(ResolverDecisionBson.encode(matched)) shouldBe matched
   }
+
+  it should "read back with each agreeing family's own id of its film" in {
+    val agreed = ResolverDecision(Seq(snowLeopard), Some(996584), 1.0, ResolverDecision.Basis.Agreed, Seq("imdb, metacritic, rt agree on 'Snow Leopard'"),
+      agreed = Map("imdb" -> "tt13920372", "metacritic" -> "snow-leopard", "rt" -> "snow_leopard_2023"))()
+    ResolverDecisionBson.decode(ResolverDecisionBson.encode(agreed)) shouldBe agreed
+  }
 }

@@ -310,6 +310,10 @@ final class ProcessConfiguration(val env: Env) {
   /** `KINOWO_IDENTITY_DUMP` — a directory the resolver-only run writes every listing's decision to
    *  (`IdentityResolveDumpIntegrationSpec`): the fast local loop for a resolver change. */
   def identityDump: Option[IdentityDump] = text("KINOWO_IDENTITY_DUMP").map(dir => IdentityDump(Path.of(dir)))
+  /** `KINOWO_IDENTITY_AGREEMENT_CACHE` — with it, the resolver-only replay also runs the agreement stage over its no-matches
+   *  (`agreement.AgreementStage`), the families answered from this directory (`<host>/<sha256 of "METHOD url body">`, the
+   *  signal-combination experiment's cache), else live — a measuring loop, never in CI. */
+  def identityAgreementCache: Option[IdentityAgreementCache] = text("KINOWO_IDENTITY_AGREEMENT_CACHE").map(dir => IdentityAgreementCache(Path.of(dir)))
   /** `KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY` — a TMDB key with which the resolver-only replay
    *  (`IdentityResolveDumpIntegrationSpec`) answers what its recording cannot from TMDB and IMDb LIVE,
    *  instead of as gaps: the local loop for a change that asks new questions. Never in CI. */

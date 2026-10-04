@@ -240,7 +240,12 @@ class FilmwebClient(http: HttpFetch) {
     // + author). Feeds the synopsis tie-break in `pickBest` AND is stored on the
     // Filmweb slot as a Polish synopsis fallback for films TMDB/IMDb didn't cover.
     val plot = (json \ "plot" \ "synopsis").asOpt[String].filter(_.nonEmpty)
-    FilmPreview(directors, genres, plot)
+    FilmPreview(directors, genres, plot,
+      runtime       = (json \ "duration").asOpt[Int].filter(_ > 0),
+      countries     = (json \ "countries").asOpt[JsArray].map(_.value.toSeq).getOrElse(Nil).flatMap(c => (c \ "code").asOpt[String]).filter(_.nonEmpty),
+      originalTitle = (json \ "originalTitle" \ "title").asOpt[String].filter(_.nonEmpty),
+      year          = (json \ "year").asOpt[Int],
+      entity        = (json \ "entityName").asOpt[String])
   }
 
   def parseRating(body: String): Option[Double] = ratingOf(Json.parse(body))
@@ -413,7 +418,9 @@ object FilmwebClient {
    *  [[FilmwebClient.pickBest]] and is stored on the Filmweb slot as a Polish
    *  synopsis fallback. Other /preview fields (cast, duration, countries) are
    *  present in the JSON but unused. */
-  case class FilmPreview(directors: Set[String], genres: Seq[String] = Seq.empty, plot: Option[String] = None)
+  case class FilmPreview(directors: Set[String], genres: Seq[String] = Seq.empty, plot: Option[String] = None,
+                         runtime: Option[Int] = None, countries: Seq[String] = Nil, originalTitle: Option[String] = None,
+                         year: Option[Int] = None, entity: Option[String] = None)
 
   /** Resolved Filmweb metadata for a film — the Filmweb counterpart of a TMDB /
    *  IMDb content slot. Canonical URL + optional 1–10 user rating + Polish genre

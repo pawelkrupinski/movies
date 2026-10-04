@@ -23,21 +23,28 @@ final class ProjectionTrigger(run: () => Boolean, debounce: MovieChangeStream.De
                               clock: Clock, retryAfter: FiniteDuration = ProjectionTrigger.RetryAfter,
                               retryAtMost: FiniteDuration = ProjectionTrigger.RetryAtMost) {
   private var pending: Option[ScheduledFuture[?]] = None
-  private var since   = 0L
+  /** Each window's burst since the last run: its first request, and when it is due. */
+  private val bursts  = scala.collection.mutable.Map.empty[MovieChangeStream.Debounce, (Long, Long)]
   private var backoff = retryAfter
 
   /** Run within `debounce` of now, with whatever else asks in the meantime. */
-  def request(): Unit = synchronized {
-    val now = clock.millis()
-    if (pending.isEmpty) since = now
-    schedule(math.min(now + debounce.quiet.toMillis, since + debounce.cap.toMillis) - now)
+  def request(): Unit = request(debounce)
+
+  /** Run within `window` of now: each window gathers its own burst — pushed `window.quiet` past its last request, never
+   *  past `window.cap` after its first — and the run is due when the soonest is, so a long window never postpones a
+   *  short one (an agreement answer's, [[ProjectionTrigger.Answer]], beside a scrape's). */
+  def request(window: MovieChangeStream.Debounce): Unit = synchronized {
+    val now   = clock.millis()
+    val since = bursts.get(window).fold(now)(_._1)
+    bursts(window) = (since, math.min(now + window.quiet.toMillis, since + window.cap.toMillis))
+    schedule(bursts.valuesIterator.map(_._2).min - now)
   }
 
   /** Run after the current backoff, unless a run is already due sooner; the backoff doubles. */
   def retry(): Unit = synchronized {
     val in = backoff.toMillis
     backoff = (backoff * 2).min(retryAtMost)
-    if (pending.forall(_.getDelay(TimeUnit.MILLISECONDS) > in)) { since = clock.millis(); schedule(in) }
+    if (pending.forall(_.getDelay(TimeUnit.MILLISECONDS) > in)) schedule(in)
   }
 
   private def schedule(inMillis: Long): Unit = {
@@ -46,12 +53,15 @@ final class ProjectionTrigger(run: () => Boolean, debounce: MovieChangeStream.De
   }
 
   private def fire(): Unit = {
-    synchronized { pending = None }
+    synchronized { pending = None; bursts.clear() }
     if (run()) synchronized { backoff = retryAfter } else retry()
   }
 }
 
 object ProjectionTrigger {
+  /** An answer the identity can be updated by — the agreement's family answers: projected within seconds of it, a
+   *  burst of them every few seconds at most. */
+  val Answer: MovieChangeStream.Debounce = MovieChangeStream.Debounce(1.second, 5.seconds)
   /** How long an unsettled projection waits before it is tried again, and the most that wait doubles to. */
   val RetryAfter: FiniteDuration  = 1.minute
   val RetryAtMost: FiniteDuration = 15.minutes

@@ -20,6 +20,7 @@ object ResolverDecisionBson {
     .append("leaning", decision.leaning.fold[BsonValue](BsonNull())(lean =>
       new BsonDocument("film", BsonInt32(lean.film)).append("imdbNumber", BsonInt32(lean.imdbNumber))))
     .append("unanswered", BsonInt32(decision.unanswered))
+    .append("agreed", new BsonDocument(decision.agreed.toSeq.sorted.map { case (family, id) => new org.bson.BsonElement(family, BsonString(id)) }.asJava))
 
   def decode(d: BsonDocument): ResolverDecision = {
     def strings(name: String) = d.getArray(name).getValues.asScala.toSeq.map(_.asString.getValue)
@@ -29,6 +30,7 @@ object ResolverDecisionBson {
         ResolverDecision.Fallback(taken.getString("source").getValue, taken.getString("id").getValue, taken.getDouble("probability").getValue)),
       Option(d.get("leaning")).filter(_.isDocument).map(_.asDocument).map(lean =>
         ResolverDecision.Leaning(lean.getInt32("film").getValue, lean.getInt32("imdbNumber").getValue)),
-      Option(d.get("unanswered")).filter(_.isInt32).fold(0)(_.asInt32.getValue))()
+      Option(d.get("unanswered")).filter(_.isInt32).fold(0)(_.asInt32.getValue),
+      Option(d.get("agreed")).filter(_.isDocument).fold(Map.empty[String, String])(_.asDocument.asScala.map { case (family, id) => family -> id.asString.getValue }.toMap))()
   }
 }

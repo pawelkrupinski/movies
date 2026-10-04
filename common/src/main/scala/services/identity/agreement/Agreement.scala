@@ -1,0 +1,190 @@
+package services.identity.agreement
+
+import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver,
+  Listing}
+import services.movies.{TitleContainment, TitleNormalizer}
+
+import scala.collection.mutable
+
+/**
+ * The film database families a cluster TMDB matched to nothing may be identified by when several of them, each on its
+ * own, identify the same film (signal-combination experiment, 2026-10-04: "≥3 independent families agree, none names a
+ * different film, and the listing's title names the film" — 17 right, 0 wrong titles; every family alone added wrongs,
+ * 15–45% of its gains). A family's sources mirror each other and count once. Each family's search is weighed with
+ * TMDB's calibration, its search priors' spread scaled by `priorSpread` (chosen per source by cross-validation, REPORT
+ * §10: 19 right, 0 wrong, against 17 / 0 with TMDB's own spread).
+ */
+enum VoterFamily(val label: String, val priorSpread: Double) {
+  /** IMDb's own title and name search, and its records (Cinemeta and OMDb mirror it). */
+  case Imdb extends VoterFamily("imdb", 1.5)
+  /** Wikidata's film items, and the Wikipedia articles that name them. */
+  case Wiki extends VoterFamily("wiki", 0.5)
+  /** Filmweb's search and film records — a voter where it indexes the country's titles (PL, DE, ES). */
+  case Filmweb extends VoterFamily("filmweb", 0.5)
+  case Metacritic extends VoterFamily("metacritic", 1.0)
+  case RottenTomatoes extends VoterFamily("rt", 1.5)
+}
+
+/** One film a family's search names: the family's own id for it, and its title and year as the search gave them. */
+final case class SourceHit(id: String, title: String, originalTitle: Option[String], year: Option[Int])
+
+/** A family's record of a film: what the identity measures read of it, and the ids other databases know it by
+ *  (`"imdb" -> "tt0087843"`, `"tmdb" -> "311"`) — what links two families' films without comparing their facts. */
+final case class SourceRecord(film: IdentityMeasures.Film, crossIds: Map[String, String] = Map.empty)
+
+/** What a family answers, from what it keeps: `Unknown` while a question is not answered yet — a gap, never "no film". */
+trait FamilyAnswers {
+  def family: VoterFamily
+  def titled(text: String): Answer[Seq[SourceHit]]
+  /** The films a person of this name directed; `Known(Nil)` for a family with no person search. */
+  def directedBy(name: String): Answer[Seq[SourceHit]]
+  def record(id: String): Answer[Option[SourceRecord]]
+  /** Is the answer to `question` (`title|<text>`, `director|<name>`, `record|<id>`) still fresh? A stale one is read
+   *  all the same, and asked again. */
+  def fresh(question: String): Boolean = true
+}
+
+/** A family's identification of a cluster: its own id and record of the film it took, when it took one. */
+final case class FamilyPick(family: VoterFamily, id: String, record: SourceRecord)
+
+/** What a family made of a cluster: the film it took, if any, and every film's record it weighed on the way — a family
+ *  that weighed a film and took none has looked at it and turned it down. */
+final case class FamilyVerdict(family: VoterFamily, pick: Option[FamilyPick], weighed: Seq[SourceRecord] = Nil)
+
+object FamilyVerdict {
+  /** A family that took `pick`. */
+  def took(pick: FamilyPick): FamilyVerdict = FamilyVerdict(pick.family, Some(pick), Seq(pick.record))
+}
+
+/** The film a cluster's families agree on, with the families that named it. */
+final case class AgreedFilm(families: Set[VoterFamily], record: SourceRecord, ids: Map[VoterFamily, String]) {
+  /** The film's id in `database` ("imdb", "tmdb"), as any agreeing family's record links it. */
+  def crossId(database: String): Option[String] = Seq(record).flatMap(_.crossIds.get(database)).headOption
+}
+
+/** A family's answers as the resolver's lookups — the family as the film database, as TMDB is to the model. Its ids
+ *  are numbered as this resolve meets them (it asks its questions in one sorted order), so the resolve is a function of
+ *  the answers; the venues' own detail pages come from `venues`. */
+final class FamilyLookups(answers: FamilyAnswers, venues: IdentityLookups) extends IdentityLookups {
+  private val numbers = mutable.LinkedHashMap.empty[String, Int]
+  private val named   = mutable.HashMap.empty[Int, SourceHit]
+  private val read    = mutable.LinkedHashMap.empty[String, SourceRecord]
+  /** Every film's record this resolve read, in the order it read them. */
+  def weighed: Seq[SourceRecord] = read.values.toSeq
+  private def hitOf(hit: SourceHit): Hit = {
+    val number = numbers.getOrElseUpdate(hit.id, numbers.size + 1)
+    named.getOrElseUpdate(number, hit)
+    Hit(number, hit.title, hit.originalTitle, hit.year, 0.0)
+  }
+  /** The family's own id of a film this resolve numbered. */
+  def idOf(number: Int): Option[String] = named.get(number).map(_.id)
+
+  override def hasDetail(listing: Listing): Boolean                  = venues.hasDetail(listing)
+  override def detail(listing: Listing): Answer[Option[DetailFacts]] = venues.detail(listing)
+  override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = query match {
+    case CandidateQuery.Title(text)    => answers.titled(text).mapKnown(_.map(hitOf))
+    case CandidateQuery.Director(name) => answers.directedBy(name).mapKnown(_.map(hitOf))
+    case _                             => Answer.Known(Nil)
+  }
+  override def film(number: Int): Answer[Option[IdentityMeasures.Film]] =
+    named.get(number).fold[Answer[Option[IdentityMeasures.Film]]](Answer.Known(None)) { hit =>
+      val answer = answers.record(hit.id)
+      answer.toOption.flatten.foreach(record => read(hit.id) = record)
+      answer.mapKnown(_.map(_.film))
+    }
+
+  extension [A](answer: Answer[A]) private def mapKnown[B](f: A => B): Answer[B] = answer match {
+    case Answer.Known(value) => Answer.Known(f(value))
+    case Answer.Unknown      => Answer.Unknown
+  }
+}
+
+object Agreement {
+
+  /** How many families must agree. */
+  val Quorum = 3
+
+  /** The film `family` identifies `listings` as — the resolver itself over the family's answers, as the experiment ran
+   *  it — or none, with every record it weighed; `Unknown` while a question it asked is not answered yet. */
+  def verdict(listings: Seq[Listing], answers: FamilyAnswers, venues: IdentityLookups, normalizer: TitleNormalizer,
+              calibration: IdentityCalibration): Answer[FamilyVerdict] = {
+    val lookups    = new FamilyLookups(answers, venues)
+    val resolution = IdentityResolver.resolve(listings, lookups, normalizer, calibration)
+    if (resolution.unknownQueries > 0 || resolution.unknownFilms > 0) Answer.Unknown
+    else resolution.decisions.flatMap(_.film).distinct match {
+      case Seq(number) =>
+        (for { id <- lookups.idOf(number); answered <- answers.record(id).toOption; record <- answered }
+          yield FamilyVerdict(answers.family, Some(FamilyPick(answers.family, id, record)), lookups.weighed))
+          .fold[Answer[FamilyVerdict]](Answer.Unknown)(Answer.Known(_))
+      case _ => Answer.Known(FamilyVerdict(answers.family, None, lookups.weighed)) // none, or the family splits the cluster: no one film
+    }
+  }
+
+  /** The film ≥ [[Quorum]] families' picks agree on, when no family picks another (picks join by a shared cross-id, else
+   *  by [[equivalent]] facts) nor weighed it and took none, the listing's title names it ([[namesIt]]), the listing bills
+   *  one work ([[billsSeveral]]) and no stage work ([[stagesAWork]]). The experiment's one wrong without the title guard:
+   *  "Akademia Polskiego Filmu: Kino żydowskie w Polsce" → "Znachor" (1937), whose year and director fit a series'
+   *  episode; the replay's without the weighed one: "Okładka „Tempo”", a Finnish dance film, → "Tempo" (2003), which
+   *  IMDb's search found, weighed and turned down while Filmweb, RT and Wikidata took it. */
+  def agreed(listings: Seq[Listing], verdicts: Seq[FamilyVerdict]): Option[AgreedFilm] = {
+    val picks = verdicts.flatMap(_.pick)
+    val groups = mutable.ArrayBuffer.empty[(mutable.Set[VoterFamily], FamilyPick, mutable.Map[VoterFamily, String])]
+    picks.sortBy(_.family.ordinal).foreach { pick =>
+      groups.find { case (_, lead, _) => sameFilm(lead.record, pick.record) } match {
+        case Some((families, _, ids)) => families += pick.family; ids(pick.family) = pick.id
+        case None                     => groups += ((mutable.Set(pick.family), pick, mutable.Map(pick.family -> pick.id)))
+      }
+    }
+    groups.toSeq match {
+      case Seq((families, lead, ids)) if families.size >= Quorum =>
+        val records = picks.filter(pick => families(pick.family)).map(_.record)
+        val merged  = lead.record.copy(crossIds = records.flatMap(_.crossIds).toMap ++ lead.record.crossIds)
+        val turnedDown = verdicts.exists(verdict => verdict.pick.isEmpty && verdict.weighed.exists(sameFilm(_, lead.record)))
+        Option.when(listings.nonEmpty && !turnedDown && listings.forall(listing => namesIt(listing, records.map(_.film)) && !billsSeveral(listing) && !stagesAWork(listing)))(
+          AgreedFilm(families.toSet, merged, ids.toMap))
+      case _ => None
+    }
+  }
+
+  /** The same film by a shared cross-id, else by [[equivalent]] facts. */
+  def sameFilm(a: SourceRecord, b: SourceRecord): Boolean =
+    a.crossIds.exists { case (database, id) => b.crossIds.get(database).contains(id) } || equivalent(a.film, b.film)
+
+  /** The same film by its facts, no cross-id linking them: years within one, no clash of Latin-script directors, and a
+   *  shared title — or, titled in two languages, the same director the same year and a shared word of four letters. */
+  def equivalent(a: IdentityMeasures.Film, b: IdentityMeasures.Film): Boolean = {
+    val yearsApart = a.year.zip(b.year).exists { case (x, y) => math.abs(x - y) > 1 }
+    val (da, db)   = (a.directors.getOrElse(Nil), b.directors.getOrElse(Nil))
+    val sameDirector = da.nonEmpty && db.nonEmpty && IdentityMeasures.directorRelation(da, db) == IdentityMeasures.Category("same_person")
+    val clash      = da.nonEmpty && db.nonEmpty && latin(da ++ db) && !sameDirector
+    def titles(f: IdentityMeasures.Film) = f.titles.map(IdentityMeasures.key).filter(_.nonEmpty).toSet
+    def words(f: IdentityMeasures.Film)  = f.titles.flatMap(TitleContainment.tokens).filter(_.length >= 4).toSet
+    !yearsApart && !clash && ((titles(a) intersect titles(b)).nonEmpty ||
+      (sameDirector && a.year.isDefined && a.year == b.year && (words(a) intersect words(b)).nonEmpty))
+  }
+
+  private def latin(names: Seq[String]): Boolean =
+    names.forall(_.forall(c => !Character.isLetter(c) || Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN))
+
+  /** Does the listing's title name one of the films' titles — be it, or carry it whole (four letters at least)? */
+  def namesIt(listing: Listing, films: Seq[IdentityMeasures.Film]): Boolean = {
+    val own    = (Seq(listing.cleanTitle, listing.rawTitle, listing.title) ++ listing.originalTitle).map(IdentityMeasures.key).filter(_.nonEmpty).toSet
+    val titles = films.flatMap(_.titles).distinct
+    val raw    = TitleContainment.tokens(listing.rawTitle)
+    titles.map(IdentityMeasures.key).exists(own) ||
+      titles.exists(title => title.length >= 4 && { val words = TitleContainment.tokens(title); words.nonEmpty && raw.containsSlice(words) })
+  }
+
+  /** Does the listing name a stage work ([[services.identity.StageWorks]]) — an opera or ballet a house's relay
+   *  bills? The films its families find are the work's screen namesakes ("ReTransmisje Met: Così fan tutte" → Tinto
+   *  Brass's 1992 "Così fan tutte", replay 2026-10-04), never the relay, whose record TMDB alone keeps. */
+  def stagesAWork(listing: Listing): Boolean =
+    (Seq(listing.title, listing.cleanTitle).distinct.map(title => IdentityMeasures.Listing(title, Some(listing.rawTitle).filter(_ != title))))
+      .exists(IdentityMeasures.stageWorks(_).nonEmpty)
+
+  private val Bill   = """(?i)\s\+\s|double bill|double feature|podw[oó]jny seans|zestaw""".r
+  private val Quoted = """[„"“][^"”„]+["”]""".r
+  /** Does the listing bill several works — a "+", a double bill or a set, or two quoted titles? */
+  def billsSeveral(listing: Listing): Boolean =
+    Bill.findFirstIn(listing.rawTitle).isDefined || Quoted.findAllIn(listing.rawTitle).size >= 2
+}

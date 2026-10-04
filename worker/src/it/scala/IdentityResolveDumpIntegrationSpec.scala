@@ -80,9 +80,55 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
         }
         Files.writeString(dir.resolve(s"focus-${c.country.code}.txt"), trace.mkString("", "\n", "\n"))
       }
+      configuration.identityAgreementCache.foreach(cache => agreed(c, w, lookups, listings, resolution, cache, dir))
       println(f"[${c.label}] ${listings.size} listings → ${resolution.decisions.size} clusters " +
         f"(${resolution.decisions.count(_.film.isDefined)} with a film) in $seconds%.1fs; unanswered queries ${resolution.unknownQueries}")
     }
+  }
+
+  /** The agreement stage over the resolution's no-matches, the families answered from the experiment's cache, else live —
+   *  asked until nothing is open — and every cluster it takes written to `agreed-<cc>.jsonl`. */
+  private def agreed(c: Corpus, w: ArchiveReplayWiring, lookups: IdentityLookups, listings: Seq[Listing], resolution: Resolution,
+                     cache: settings.IdentityAgreementCache, dir: java.nio.file.Path): Unit = {
+    import services.identity.agreement.{AgreementStage, VoterFamily}
+    val fetch    = new ExperimentCacheFetch(cache.value)
+    val store    = new FamilyAnswerStore(new InMemoryTmdbDocuments, new tools.MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))
+    val families = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Metacritic, VoterFamily.RottenTomatoes) ++
+      Option.when(Set("pl", "de", "es")(c.country.code))(VoterFamily.Filmweb)
+    val sources: Map[VoterFamily, FamilySource] = Seq(new ImdbFamily(new services.enrichment.ImdbClient(fetch)),
+      new WikiFamily(new services.enrichment.WikidataClient(fetch), c.country.language.getLanguage),
+      new FilmwebFamily(new services.enrichment.FilmwebClient(fetch)), new RottenTomatoesFamily(new services.enrichment.RottenTomatoesClient(fetch)),
+      new MetacriticFamily(new services.enrichment.MetacriticClient(fetch))).filter(source => families.contains(source.family)).map(s => s.family -> s).toMap
+    val tmdb  = new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language, retrySleep = (_: Long) => ())
+    val stage = new AgreementStage(families.map(family => family -> store.answers(family)).toMap, lookups, c.normalizer,
+      IdentityCalibration.resolver, tmdbOf = imdb => Answer.Known(Try(tmdb.findByImdbId(imdb).map(_.id)).toOption.flatten),
+      stored = new services.identity.agreement.InMemoryAgreementVerdicts)
+    val byKey = listings.map(l => l.key -> l).toMap
+    var rounds = 0
+    var taken  = stage.apply(resolution, byKey.get, store.version)
+    while (stage.wanted.nonEmpty && rounds < 12) {
+      rounds += 1
+      val open = stage.wanted.toSeq
+      println(s"[${c.label}] agreement round $rounds: ${open.size} open question(s)")
+      // each family's questions four at a time, as the experiment read the sites unblocked
+      open.groupBy(_._1).toSeq.map { case (family, asks) =>
+        java.util.concurrent.CompletableFuture.runAsync { () =>
+          asks.map(_._2).grouped(4).foreach(_.map(question => java.util.concurrent.CompletableFuture.runAsync(() =>
+            { Try(AgreementQuestions.file(store, family, sources(family), question)); () })).foreach(_.join()))
+        }
+      }.foreach(_.join())
+      taken = stage.apply(resolution, byKey.get, store.version)
+    }
+    val lines = taken.decisions.filter(_.basis == ResolverDecision.Basis.Agreed).flatMap { d =>
+      d.members.flatMap(byKey.get).map(l => Json.stringify(JsObject(Seq(
+        "venue" -> JsString(l.key.venue), "rawTitle" -> JsString(l.key.rawTitle),
+        "film" -> d.film.fold[play.api.libs.json.JsValue](JsNull)(JsNumber(_)),
+        "fallback" -> d.fallback.fold[play.api.libs.json.JsValue](JsNull)(f => JsString(f.id)),
+        "agreement" -> JsString(d.explanation.lastOption.getOrElse(""))))))
+    }
+    Files.writeString(dir.resolve(s"agreed-${c.country.code}.jsonl"), lines.mkString("", "\n", "\n"))
+    println(s"[${c.label}] agreement: ${taken.decisions.count(_.basis == ResolverDecision.Basis.Agreed)} cluster(s) taken after $rounds round(s); " +
+      s"${stage.wanted.size} question(s) still open")
   }
 
   override protected def afterAll(): Unit = {

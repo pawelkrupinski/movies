@@ -1,0 +1,1 @@
+{"entities": {"Q212": {"type": "item", "id": "Q212", "claims": {"P297": [{"mainsnak": {"snaktype": "value", "property": "P297", "hash": "62ac72332238544ca044eca11a9201eafb1f5261", "datavalue": {"value": "UA", "type": "string"}, "datatype": "external-id"}, "type": "statement", "id": "q212$B2DDF74E-9BC1-4C1C-AB33-1E5FCD42B09C", "rank": "normal"}]}}}, "success": 1}

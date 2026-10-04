@@ -21,12 +21,14 @@ import services.movies.ListingKey
  *    ([[Acceptance.leaning]]) — never a match, only what a no-match's card may keep an earlier answer's IMDb id of.
  *  - `unanswered`, how many of the cluster's candidate queries had no answer yet: a no-match with one is a gap, not a
  *    verdict on the film a card holds.
+ *  - `agreed`, for a [[ResolverDecision.Basis.Agreed]] film, each agreeing family's own id of it (`"rt" -> "dune_2021"`):
+ *    the signals the agreement rests on, kept with the decision as every other measure's evidence is.
  */
 final case class ResolverDecision(members: Seq[ListingKey], film: Option[Int], confidence: Double,
                                   basis: ResolverDecision.Basis, explanation: Seq[String],
                                   contradictions: Seq[String] = Nil, fallback: Option[ResolverDecision.Fallback] = None,
                                   leaning: Option[ResolverDecision.Leaning] = None,
-                                  unanswered: Int = 0)(
+                                  unanswered: Int = 0, agreed: Map[String, String] = Map.empty)(
                                   val trace: DecisionTrace = DecisionTrace.Empty) {
   lazy val listings: Set[ListingKey] = members.toSet
   def tmdbId: Option[Int]            = film
@@ -53,8 +55,11 @@ object ResolverDecision {
     case Vetoed
     /** Unmatched: candidates were scored, and none reached the acceptance cut. */
     case BelowThreshold
+    /** No TMDB rule took a film, but ≥3 other film database families each identified the same one
+     *  (`agreement.AgreementStage`) — never decided by the model, only on the way to the projection. */
+    case Agreed
 
-    def matched: Boolean = this == Pinned || this == OwnMatch || this == PooledMatch
+    def matched: Boolean = this == Pinned || this == OwnMatch || this == PooledMatch || this == Agreed
   }
 
   def percent(p: Double): String = f"${p * 100}%.1f%%"

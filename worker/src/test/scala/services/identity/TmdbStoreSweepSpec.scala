@@ -38,6 +38,15 @@ class TmdbStoreSweepSpec extends AnyFlatSpec with Matchers {
     d.get(TmdbKind.Film, Seq("1", "2")).keySet shouldBe Set("1")
   }
 
+  // Another film database family's answers are no question of the model's: kept a year and more since last fetched,
+  // unread by the model or not — the agreement reads them only for clusters TMDB matched to nothing.
+  it should "keep another family's answers until long after they were fetched, read by the model or not" in {
+    val d = new InMemoryTmdbDocuments
+    d.put(TmdbKind.Family, Seq("imdb|record|tt1" -> doc(daysAgo(200)), "imdb|record|tt2" -> doc(daysAgo(401))))
+    new TmdbStoreSweep(d, () => Some(Set.empty), clock).sweep().deleted shouldBe 1
+    d.get(TmdbKind.Family, Seq("imdb|record|tt1", "imdb|record|tt2")).keySet shouldBe Set("imdb|record|tt1")
+  }
+
   it should "delete no answer while no model is taken up, but still age markers out" in {
     val d = store()
     new TmdbStoreSweep(d, () => None, clock).sweep() shouldBe TmdbStoreSweep.Swept(markers = 1, deleted = 1, modelUp = false)
