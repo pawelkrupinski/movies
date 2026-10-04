@@ -216,12 +216,13 @@ object GatsbyBoxOfficeParser {
       else if (has("format.projection.digital"))                               List("2D")
       else                                                                     Nil
 
-    // Subtitled / closed / open caption all mean "you can read the dialogue";
-    // the accessibility-only tags (audio description, sensory-friendly) are not
-    // a screening FORMAT and stay out of this list.
+    // Subtitled and open caption both put the dialogue on the screen. Closed
+    // caption does not: Showcase US tags nearly every session with it, beside
+    // AudioDescription — the caption and audio-description DEVICES the venue
+    // lends — so like those accessibility-only tags (audio description,
+    // sensory-friendly) it is not a screening FORMAT and stays out of this list.
     val language =
-      if (has("accessibility.subtitled") || has("accessibility.closedcaption") ||
-          has("accessibility.opencaption")) List("SUB")
+      if (has("accessibility.subtitled") || has("accessibility.opencaption")) List("SUB")
       else if (has("accessibility.dubbed") || has("localization.dubbed")) List("DUB")
       else Nil
 

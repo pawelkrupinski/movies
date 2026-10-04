@@ -126,6 +126,18 @@ class UsWebediaChainsSpec extends AnyFlatSpec with Matchers with OptionValues {
     aliens.format shouldBe List("2D")
   }
 
+  it should "not badge a screening subtitled for a closed-caption device being on offer" in {
+    // Showcase US tags 412 of Legacy Place's 502 sessions `Accessibility.ClosedCaption`, always
+    // together with `AudioDescription`: the caption and audio-description DEVICES the venue lends
+    // at almost every show. Nothing is on the screen, so read as SUB it put a subtitle badge on
+    // 82% of the venue and filled the "subtitles" filter with English films in English. Only the
+    // two sessions tagged `Accessibility.Subtitled` are subtitled.
+    val slots = showcaseFilms.flatMap(_.showtimes)
+    slots.count(_.format.contains("SUB")) shouldBe 2
+    GatsbyBoxOfficeParser.formatTokens(Seq("Format.Projection.Digital", "Showtime.Accessibility.ClosedCaption",
+      "Showtime.Accessibility.AudioDescription")) shouldBe List("2D")
+  }
+
   it should "leave runtime, synopsis, cast and director to TMDB, as the UK brands do" in {
     // The platform's static query declares these fields but populates none of
     // them — measured 0/89 on Showcase US and 0/184 on Landmark, matching the
