@@ -115,6 +115,18 @@ class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
     an[java.util.concurrent.CancellationException] should be thrownBy parkedThenStopped(gates = 2).get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
   }
 
+  // A Scala `Future { }` on a gated EC hands the pool a promise-backed Runnable, not a j.u.c.Future:
+  // interrupted on its permit it was never run nor completed, and an `Await` on it hung to its bound.
+  it should "fail a Scala Future interrupted while waiting for a permit, not leave it incomplete" in {
+    val pool   = java.util.concurrent.Executors.newSingleThreadExecutor()
+    val permit = new java.util.concurrent.Semaphore(0)
+    val ec     = scala.concurrent.ExecutionContext.fromExecutorService(DaemonExecutors.semaphoreGated(pool, permit))
+    val parked = scala.concurrent.Future(1)(using ec)
+    Eventually.eventually(permit.hasQueuedThreads shouldBe true, pollMs = 5)
+    pool.shutdownNow()
+    an[java.util.concurrent.CancellationException] should be thrownBy scala.concurrent.Await.result(parked, SpecTimeouts.Io)
+  }
+
   "boundedEC" should "cap concurrency for a single EC" in {
     val peak = ExecutorProbes.peakConcurrency(10, IndexedSeq(DaemonExecutors.boundedEC("bounded", 3)))
     peak should be <= 3

@@ -49,10 +49,14 @@ object DaemonExecutors {
         catch { case _: RejectedExecutionException if es.isShutdown => cancelUnrun(command) }
     }
 
-  /** Release whoever waits on `task`, which will never run: cancelled when it is a `Future`, or a
-   *  permit gate's wrapper of one; a bare `Runnable` has no waiter to release. */
+  /** Release whoever waits on `task`, which will never run: cancelled when it is a `Future`; failed
+   *  with a `CancellationException` when it is a Scala promise (a `Future { }` or a stage of one is
+   *  scheduled as a promise that is itself the Runnable); reached through a permit gate's wrapper;
+   *  a bare `Runnable` has no waiter to release. */
   private[tools] def cancelUnrun(task: Runnable): Unit = task match {
     case future: java.util.concurrent.Future[?] => future.cancel(false); ()
+    case promise: scala.concurrent.Promise[?]   =>
+      promise.tryFailure(new java.util.concurrent.CancellationException("never run: its executor was shut down")); ()
     case gated: PermitGated                     => cancelUnrun(gated.command)
     case _                                      => ()
   }
