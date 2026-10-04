@@ -206,7 +206,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       case Some(film) => Answer.Known(Some(film))
       case None       => imdb.fold[Answer[Option[Int]]](Answer.Known(None))(tmdbOf)
     }
-    val line = s"${agreed.families.toSeq.map(_.label).sorted.mkString(", ")} agree on '${agreed.record.film.title}'" +
+    val leaning = Option.when(agreed.leaning.nonEmpty)(s", ${agreed.leaning.toSeq.map(_.label).sorted.mkString(", ")} leaning to it").getOrElse("")
+    val line = s"${agreed.families.toSeq.map(_.label).sorted.mkString(", ")}$leaning agree on '${agreed.record.film.title}'" +
       agreed.record.film.year.fold("")(year => s" ($year)") + imdb.fold("")(id => s" $id")
     val ids  = agreed.ids.map { case (family, id) => family.label -> id }
     tmdb match {

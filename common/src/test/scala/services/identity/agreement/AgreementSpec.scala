@@ -85,6 +85,36 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(bare, takers :+ FamilyVerdict(VoterFamily.RottenTomatoes, None, Seq(rt), leaning = Some(SourceRecord(klondike1932)))) shouldBe None
   }
 
+  "A family leaning to the film two others took" should "complete the agreement, never stand in for a pick" in {
+    // PL "Kafarnaum" (fixture identity-unmatched): Wikidata and Filmweb take Labaki's 2018 film; IMDb leans to it at 33.0%
+    // beside 3.1%, below its cut
+    val capernaum = film("Capernaum", 2018, "Nadine Labaki", 126).copy(alternativeTitles = Seq("Kafarnaum"))
+    val record    = SourceRecord(capernaum, Map("imdb" -> "tt8267604"))
+    val bare      = Seq(listing(KinoMuza, "Kafarnaum"))
+    val took      = (family: VoterFamily) => FamilyVerdict.took(FamilyPick(family, "1", record))
+    val leaned    = (family: VoterFamily) => FamilyVerdict(family, None, Seq(record), leaning = Some(record))
+    Agreement.agreed(bare, Seq(took(VoterFamily.Wiki), took(VoterFamily.Filmweb))) shouldBe None
+    val agreed = Agreement.agreed(bare, Seq(took(VoterFamily.Wiki), took(VoterFamily.Filmweb), leaned(VoterFamily.Imdb)))
+    agreed.map(a => (a.families, a.leaning)) shouldBe Some((Set(VoterFamily.Wiki, VoterFamily.Filmweb), Set(VoterFamily.Imdb)))
+    Agreement.agreed(bare, Seq(took(VoterFamily.Wiki), leaned(VoterFamily.Filmweb), leaned(VoterFamily.Imdb))) shouldBe None
+  }
+
+  it should "not complete it when the listing's title is only the film's translation, and another film's own — three takers do" in {
+    // PL "Obcy w domu" (fixture identity-unmatched, labelled the 1986 Polish film): Wikidata and Filmweb take "Hider in the
+    // House" (1989), released in Poland under that title, IMDb leaning to it — but IMDb also weighed the film whose
+    // original title the listing bills
+    val hider  = SourceRecord(film("Hider in the House", 1989, "Matthew Patrick", 108).copy(alternativeTitles = Seq("Obcy w domu")),
+      Map("imdb" -> "tt0097503"))
+    val polish = SourceRecord(IdentityMeasures.Film("Obcy w domu", Some("Obcy w domu"), Nil, Some(1986), Some(72), Some(Nil), None, None),
+      Map("imdb" -> "tt7605088"))
+    val bare   = Seq(listing(KinoMuza, "Obcy w domu"))
+    val took   = (family: VoterFamily) => FamilyVerdict.took(FamilyPick(family, "1", hider))
+    val imdb   = FamilyVerdict(VoterFamily.Imdb, None, Seq(hider, polish), leaning = Some(hider))
+    Agreement.agreed(bare, Seq(took(VoterFamily.Wiki), took(VoterFamily.Filmweb), imdb)) shouldBe None
+    Agreement.agreed(bare, Seq(took(VoterFamily.Wiki), took(VoterFamily.Filmweb), imdb.copy(weighed = Seq(hider)))) should not be empty
+    Agreement.agreed(bare, Seq(took(VoterFamily.Wiki), took(VoterFamily.Filmweb), took(VoterFamily.RottenTomatoes), imdb)) should not be empty
+  }
+
   "A listing naming a stage work" should "agree on none of its screen namesakes" in {
     val relay = listing(KinoMuza, "ReTransmisje Met: Na żywo w HD - Così fan tutte")
     Agreement.stagesAWork(relay) shouldBe true

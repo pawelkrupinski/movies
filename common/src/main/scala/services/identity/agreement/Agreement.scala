@@ -58,8 +58,8 @@ object FamilyVerdict {
   def took(pick: FamilyPick): FamilyVerdict = FamilyVerdict(pick.family, Some(pick), Seq(pick.record))
 }
 
-/** The film a cluster's families agree on, with the families that named it. */
-final case class AgreedFilm(families: Set[VoterFamily], record: SourceRecord, ids: Map[VoterFamily, String]) {
+/** The film a cluster's families agree on, with the families that named it and those whose evidence leaned to it. */
+final case class AgreedFilm(families: Set[VoterFamily], record: SourceRecord, ids: Map[VoterFamily, String], leaning: Set[VoterFamily] = Set.empty) {
   /** The film's id in `database` ("imdb", "tmdb"), as any agreeing family's record links it. */
   def crossId(database: String): Option[String] = Seq(record).flatMap(_.crossIds.get(database)).headOption
 }
@@ -103,8 +103,10 @@ final class FamilyLookups(answers: FamilyAnswers, venues: IdentityLookups) exten
 
 object Agreement {
 
-  /** How many families must agree. */
+  /** How many families must agree: each taking the film, or leaning to it ([[leaningOf]]) beside at least [[Takers]]. */
   val Quorum = 3
+  /** How many of the agreeing families must take the film: a lean completes an agreement, never stands in for one. */
+  val Takers = 2
 
   /** The film `family` identifies `listings` as — the resolver itself over the family's answers, as the experiment ran
    *  it — or none, with every record it weighed; `Unknown` while a question it asked is not answered yet. */
@@ -138,8 +140,9 @@ object Agreement {
       case _                 => None
     }
 
-  /** The film ≥ [[Quorum]] families' picks agree on, when no family picks another (picks join, through any agreeing record, by a shared cross-id, else
-   *  by [[equivalent]] facts) nor weighed it and took none leaning to another, the listing's title names it ([[namesIt]]), the listing bills
+  /** The film ≥ [[Quorum]] families agree on — ≥ [[Takers]] of them picking it, the rest leaning to it — when no family picks another (picks join, through any agreeing record, by a shared cross-id, else
+   *  by [[equivalent]] facts) nor weighed it and took none leaning to another, the listing's title names it ([[namesIt]]) —
+   *  and, where a lean completes the quorum, is no other film's own ([[anothersOwnTitle]]) — the listing bills
    *  one work ([[billsSeveral]]) and no stage work ([[stagesAWork]]). The experiment's one wrong without the title guard:
    *  "Akademia Polskiego Filmu: Kino żydowskie w Polsce" → "Znachor" (1937), whose year and director fit a series'
    *  episode; the replay's without the weighed one: "Okładka „Tempo”", a Finnish dance film, → "Tempo" (2003), which
@@ -147,16 +150,31 @@ object Agreement {
   def agreed(listings: Seq[Listing], verdicts: Seq[FamilyVerdict]): Option[AgreedFilm] = {
     val picks = verdicts.flatMap(_.pick).sortBy(_.family.ordinal)
     filmsOf(picks) match {
-      case Seq(group) if group.size >= Quorum =>
+      case Seq(group) if group.size >= Takers =>
         val lead    = group.head
         val records = group.map(_.record)
         val merged  = lead.record.copy(crossIds = records.flatMap(_.crossIds).toMap ++ lead.record.crossIds)
         def isIt(record: SourceRecord) = records.exists(sameFilm(_, record))
+        val leaning    = verdicts.filter(verdict => verdict.pick.isEmpty && verdict.leaning.exists(isIt)).map(_.family).toSet
         val turnedDown = verdicts.exists(verdict => verdict.pick.isEmpty && verdict.weighed.exists(isIt) && !verdict.leaning.exists(isIt))
-        Option.when(listings.nonEmpty && !turnedDown && listings.forall(listing => namesIt(listing, records.map(_.film)) && !billsSeveral(listing) && !stagesAWork(listing)))(
-          AgreedFilm(group.map(_.family).toSet, merged, group.map(pick => pick.family -> pick.id).toMap))
+        // a lean completes a quorum only where the listing's title is no other film's own: three takers outweigh that
+        // (PL "Ghost in the shell", the 2017 film's own title, is the 1995 one by five families)
+        val completed = group.size < Quorum
+        Option.when(group.size + leaning.size >= Quorum && listings.nonEmpty && !turnedDown && !(completed && anothersOwnTitle(listings, records, verdicts)) &&
+          listings.forall(listing => namesIt(listing, records.map(_.film)) && !billsSeveral(listing) && !stagesAWork(listing)))(
+          AgreedFilm(group.map(_.family).toSet, merged, group.map(pick => pick.family -> pick.id).toMap, leaning))
       case _ => None
     }
+  }
+
+  /** Is the listing's title another film's ORIGINAL title — one a family weighed — while it is none of the agreed film's
+   *  records' original titles, only a translation they file? Then the venue may well bill that film by its own name:
+   *  PL "Obcy w domu" is "Hider in the House" (1989) in Polish, and the 1986 Polish film IMDb weighed beside it. */
+  private def anothersOwnTitle(listings: Seq[Listing], records: Seq[SourceRecord], verdicts: Seq[FamilyVerdict]): Boolean = {
+    val billed = listings.flatMap(l => Seq(l.title, l.cleanTitle)).map(IdentityMeasures.key).filter(_.nonEmpty).toSet
+    def original(record: SourceRecord) = record.film.originalTitle.map(IdentityMeasures.key).filter(billed)
+    records.forall(original(_).isEmpty) &&
+      verdicts.flatMap(_.weighed).exists(weighed => original(weighed).nonEmpty && !records.exists(sameFilm(_, weighed)))
   }
 
   /** The picks as the films they name: a pick joins every film one of whose picks is the [[sameFilm]] — through ANY
