@@ -326,6 +326,11 @@ class CaffeineMovieCache(
   // in-memory fold / settle, so its duplicate sits stranded forever. Bounded, so
   // a genuinely empty corpus still proceeds after the attempts. Default 0
   // attempts = one plain hydrate (tests, cold start); prod sets the env.
+  // Set once a rehydrate's corpus read has been answered whole — an empty corpus included — and
+  // never cleared: from then on a failed read only leaves the cache a little stale. Declared
+  // BEFORE the boot hydrate below, whose write a later initialiser would reset.
+  @volatile private var hydrated = false
+
   bootHydrate()
 
   private def bootHydrate(): Unit = {
@@ -695,6 +700,7 @@ class CaffeineMovieCache(
       return 0
     }
     val rows          = read.answered.get
+    hydrated = true
     // A failed read was turned away above. An ANSWERED empty corpus while the cache
     // holds rows would evict every one of them — a real Mongo wipe is a degenerate
     // manual operation, acceptable to handle only on a restart, so the cache is left
@@ -861,7 +867,20 @@ class CaffeineMovieCache(
       }
   }
 
+  /** Re-read while no corpus read has ever completed. A boot read that failed past its attempts
+   *  (Mongo slow, or briefly gone) left the cache empty, and only the change stream — rows written
+   *  after boot — and the backstop hours later filled it: every quiescent row was invisible to the
+   *  fold and the settle meanwhile. Once hydrated this is one field read. */
+  private[movies] def coldRetryTick(): Unit =
+    if (!hydrated) {
+      logger.warn("MovieCache cold-retry: no corpus read has completed yet — reading again.")
+      rehydrate(); ()
+    }
+
   def start(): Unit = {
+    refreshScheduler.scheduleAtFixedRate(
+      () => Try(coldRetryTick()).recover { case exception => logger.warn(s"MovieCache cold-retry tick failed: ${exception.getMessage}") },
+      CaffeineMovieCache.ColdRetryInterval.toSeconds, CaffeineMovieCache.ColdRetryInterval.toSeconds, TimeUnit.SECONDS)
     watchHandle = repository.watchChangesFencedWithVenues(applyUpsert, applyDelete, applyVenueSlots)
     logger.info(
       s"MovieCache incremental change-stream watch ${if (watchHandle.isDefined) "active" else "unavailable — backstop only"}; " +
@@ -878,4 +897,10 @@ class CaffeineMovieCache(
     watchHandle.foreach(h => Try(h.close()))
     refreshScheduler.shutdown()
   }
+}
+
+object CaffeineMovieCache {
+  /** How often a cache with no completed corpus read reads again — tight, because the state it
+   *  recovers from is a cache missing every quiescent row, not drift. */
+  val ColdRetryInterval: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.FiniteDuration(30, TimeUnit.SECONDS)
 }

@@ -62,4 +62,39 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repositoryOf(), bootHydrateMaxAttempts = settings.BootHydrateMaxAttempts(3), bootHydrateRetry = settings.BootHydrateRetryInterval(5.millis), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     cache.entries should have size 0  // no rows, and it didn't hang
   }
+
+  /** A store whose whole-corpus read fails while `failing` holds — Mongo slow past every page retry. */
+  private final class FailingReadRepository(row: StoredMovieRecord) extends StoredRowsRepository(Seq(row), titleNormalizer) {
+    @volatile var failing = true
+    val reads = new java.util.concurrent.atomic.AtomicInteger(0)
+    override def findAllChecked(): tools.ReadOutcome[Seq[StoredMovieRecord]] = {
+      reads.incrementAndGet()
+      if (failing) tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new com.mongodb.MongoTimeoutException("slow")))
+      else super.findAllChecked()
+    }
+  }
+
+  // A boot read that failed past its attempts left the worker's cache EMPTY, and only the change
+  // stream (rows written after boot) and the 6-hour backstop ever filled it: every quiescent row
+  // was invisible to the fold and the settle for hours after a Mongo blip at boot.
+  "the cold-retry tick" should "re-read a cache whose boot read failed, until a read completes" in {
+    val repository = new FailingReadRepository(base)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    cache.entries should have size 0
+
+    cache.coldRetryTick()          // still failing: still cold
+    cache.entries should have size 0
+    repository.failing = false
+    cache.coldRetryTick()
+    cache.entries should have size 1
+  }
+
+  it should "cost nothing once a read has completed" in {
+    val repository = new FailingReadRepository(base)
+    repository.failing = false
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val readsAtBoot = repository.reads.get()
+    cache.coldRetryTick()
+    repository.reads.get() shouldBe readsAtBoot
+  }
 }
