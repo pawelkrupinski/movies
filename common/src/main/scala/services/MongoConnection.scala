@@ -78,7 +78,7 @@ class MongoConnection(
     startReconnect: (String, Runnable) => Unit = MongoConnection.startDaemon,
     // Connections in the pool this connection builds for itself (unused when it
     // borrows `sharedClient`) — see [[MongoTuning]].
-    maxPoolSize: MongoMaxPoolSize = MongoMaxPoolSize(MongoConnection.DefaultMaxPoolSize)) extends Logging {
+    maxPoolSize: MongoMaxPoolSize = MongoMaxPoolSize(MongoConnection.DefaultMaxPoolSize)) extends DatabaseBinding with Logging {
 
   private val connectionRequired = required == MongoRequirement.Required
 
@@ -107,6 +107,13 @@ class MongoConnection(
   // and started from inside `init` it could read the unassigned field, die on an NPE,
   // and leave the connection degraded for good.
   if (connectionRequired && initResult._2.isEmpty) uri.map(_.value).foreach(retryInBackground)
+
+  /** A required connection that found Mongo unreachable at boot: every repository wired from
+   *  [[database]] then holds `None` for good — see [[DatabaseBinding]]. */
+  val boundDegraded: Boolean = connectionRequired && initResult._2.isEmpty
+
+  /** The reconnect published a database nothing wired at boot will read: restart to use it. */
+  def restartRequired: Boolean = boundDegraded && initResult._2.isDefined
 
   /** The shared `MongoDatabase` view — pre-bound to `dbName`. Repos
    *  `.withCodecRegistry(...)` it. `None` only when `required` is false and
@@ -166,7 +173,8 @@ class MongoConnection(
                 // probe was in flight, and publishing here would hand the owner a
                 // client it will never close. One step with `close()` — see there.
                 val published = publishLock.synchronized { if (!closed) initResult = (Some(client), Some(db)); !closed }
-                if (published) logger.info(s"MongoConnection to ${dbName.value} RECOVERED — serving from the database again.")
+                if (published) logger.warn(s"MongoConnection to ${dbName.value} RECOVERED — but every repository wired at boot " +
+                  "holds no database; the process reports itself unhealthy so it is restarted onto it.")
                 else if (sharedClient.isEmpty) client.close()
               case Failure(exception: DatabaseOwnershipConflict) =>
                 // Reachable, but refused for good — the `onConnected` claim found another
@@ -209,7 +217,9 @@ class MongoConnection(
             // is exactly how a slow Mongo became a total outage on 2026-07-18. Start
             // degraded instead (`database` None → repos no-op, pages render film-less),
             // let the health check pass, and reconnect in the background once the
-            // cluster answers. A MISCONFIGURATION still aborts: nothing about a bad URI
+            // cluster answers — and, once it does, report not-alive (`restartRequired`) so the
+            // probe restarts the process: the repositories wired now keep their `None` for good
+            // (see DatabaseBinding). A MISCONFIGURATION still aborts: nothing about a bad URI
             // or bad credentials fixes itself, so failing loudly at boot is right.
             if (connectionRequired && !MongoConnection.isTransient(exception))
               throw new IllegalStateException(

@@ -43,7 +43,8 @@ trait ControllersWiring { self: Wiring =>
   // identically by every deployment — no per-country/read-model dependency.
   lazy val catalogController = new CatalogController(controllerComponents)
   lazy val clientSupportController = new ClientSupportController(controllerComponents)
-  lazy val healthController = new HealthController(controllerComponents, readiness = () => webReadModel.hydrated)
+  lazy val healthController = new HealthController(controllerComponents, readiness = () => webReadModel.hydrated,
+    databases = Seq(mongoConnection, usersConnection))
   lazy val wellKnownController = new WellKnownController(controllerComponents)
   lazy val legalController   = new LegalController(controllerComponents, country)
   lazy val supportController = new SupportController(controllerComponents, country)

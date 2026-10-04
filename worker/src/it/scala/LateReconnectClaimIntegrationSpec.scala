@@ -35,11 +35,19 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
       val polish = open(Country.Poland)
       german.database shouldBe None
       polish.database shouldBe None
+      polish.boundDegraded shouldBe true
+      polish.restartRequired shouldBe false   // still down: alive, so an outage is no crash loop
       val forwarder = forward(port, target.getHost, target.getPort)
       try {
         eventually(polish.database should not be empty)(using patience, implicitly)
         german.database shouldBe None
         new DatabaseOwner(db).owner() shouldBe Some(Country.Poland.code)
+        // Everything wired at boot holds the degraded `None`: only a restart rebinds it.
+        polish.restartRequired shouldBe true
+        german.restartRequired shouldBe false
+        val bootedLive = new MongoConnection(Some(mongoTarget.uri), settings.MongoDatabaseName(db.name), required = services.MongoRequirement.Required,
+          probeTimeout = settings.MongoProbeTimeout(2.seconds), onConnected = MongoConnection.claimFor(Country.Poland))
+        try { bootedLive.boundDegraded shouldBe false; bootedLive.restartRequired shouldBe false } finally bootedLive.close()
       } finally { german.close(); polish.close(); forwarder.close() }
     }
 

@@ -25,9 +25,10 @@ import services.tasks.LivenessWatchdog
  * construct, so the fold is unit-testable without standing up a Mongo-backed
  * wiring per country.
  */
-private[modules] class WorkerFleet(watchdogs: Seq[LivenessWatchdog]) {
+private[modules] class WorkerFleet(watchdogs: Seq[LivenessWatchdog], databases: Seq[services.DatabaseBinding] = Nil) {
 
   /** True only while EVERY country's heartbeat is fresh — one wedged country
-   *  wedges the process, because they share a JVM. */
-  def isAlive: Boolean = watchdogs.forall(_.isAlive)
+   *  wedges the process, because they share a JVM — and no country's Mongo came back under
+   *  repositories wired without it ([[services.DatabaseBinding]]): only a restart rebinds them. */
+  def isAlive: Boolean = watchdogs.forall(_.isAlive) && !services.DatabaseBinding.anyRestartRequired(databases)
 }

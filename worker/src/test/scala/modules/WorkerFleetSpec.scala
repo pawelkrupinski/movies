@@ -31,6 +31,15 @@ class WorkerFleetSpec extends AnyFlatSpec with Matchers {
   private def fresh = watchdog(1.minute.toMillis)
   private def stale = watchdog(6.minutes.toMillis)
 
+  private def recovered = new services.DatabaseBinding { def boundDegraded = true; def restartRequired = true }
+
+  // A country that booted into an unreachable Mongo wired every repository to no database; its
+  // reconnect cannot rebind them, so once Mongo answers the process asks to be restarted.
+  "isAlive" should "be false once a country's Mongo recovered under repositories wired without it" in {
+    new WorkerFleet(Seq(fresh, fresh), Seq(services.DatabaseBinding.Bound, recovered)).isAlive shouldBe false
+    new WorkerFleet(Seq(fresh, fresh), Seq(services.DatabaseBinding.Bound, services.DatabaseBinding.Bound)).isAlive shouldBe true
+  }
+
   "isAlive" should "be true while every country's heartbeat is fresh" in {
     new WorkerFleet(Seq(fresh, fresh, fresh)).isAlive shouldBe true
   }

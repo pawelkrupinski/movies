@@ -114,7 +114,7 @@ object WorkerMain extends Logging {
     // /health is a property of the MACHINE, not of any one country, so it folds
     // across every wiring — see [[WorkerFleet]]. Metrics likewise cover all countries
     // (shared registry, `country` label).
-    val fleet = new WorkerFleet(wirings.map(_.livenessWatchdog))
+    val fleet = new WorkerFleet(wirings.map(_.livenessWatchdog), wirings.map(_.mongoConnection))
     // Process-wide config (KINOWO_HEAP_DUMP_DIR), so it reads the same on every
     // wiring — one dump dir per machine, not per country.
     val heapDumpDir = wirings.head.heapDumpDirectory
