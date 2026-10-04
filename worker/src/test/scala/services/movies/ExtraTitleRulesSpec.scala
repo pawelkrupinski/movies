@@ -199,6 +199,8 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Ojczyzna | PRZEDPREMIERA"         -> "Ojczyzna",
     // Found by SearchQueryMarkersSpec over the 08-06 corpus (NCKF, Kino na Boku, Kinematograf).
     "Przypadek - seans"                                               -> "Przypadek",
+    "Vincent. Legenda oceanu- seans"                                  -> "Vincent. Legenda oceanu",
+    "Przypadek – seans"                                               -> "Przypadek",
     "Człowiek z marmuru: pokaz"                                       -> "Człowiek z marmuru",
     "Pokaz specjalny – Księga lata"                                   -> "Księga lata",
     "Takie jest życie - przedpremiera" -> "Takie jest życie",
@@ -531,6 +533,12 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
   it should "be load-bearing — the seed rules alone leave the marker in place" in {
     searchStripCases.foreach { case (in, _) =>
       withClue(s"seedOnly.search('$in') should be unchanged: ")(seedOnly.search(in) shouldBe in)
+    }
+  }
+
+  it should "strip a '- seans' suffix only when the dash is spaced, never a hyphenated compound" in {
+    Seq("Anty-seans", "Seansowo", "Film o seansach").foreach { title =>
+      withClue(s"search('$title'): ")(withExtras.search(title) shouldBe title)
     }
   }
 
