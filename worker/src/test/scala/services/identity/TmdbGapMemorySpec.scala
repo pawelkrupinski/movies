@@ -56,4 +56,29 @@ class TmdbGapMemorySpec extends AnyFlatSpec with Matchers {
     clock.advance(Duration.ofHours(23))
     memory.due(gaps) shouldBe AnswersChanged.Empty
   }
+
+  // Per-question backoff alone left every question of a long TMDB outage up to six hours behind a
+  // TMDB answering again. The first clean round after an all-failed one makes them due at once.
+  it should "offer every question failed during an outage again as soon as a round finds TMDB answering" in {
+    val clock  = new MutableClock(Instant.parse("2026-09-28T12:00:00Z"))
+    val memory = new TmdbGapMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    val lalka  = CandidateQuery.Title("Lalka")
+    val gaps   = AnswersChanged(Set(lalka), Set(1018))
+    (1 to 10).foreach { _ => memory.failed(Seq(lalka), Seq(1018)); memory.roundEnded(answered = 0, failed = 2) }
+    clock.advance(Duration.ofMinutes(1))
+    memory.due(gaps) shouldBe AnswersChanged.Empty                   // six hours of backoff
+    memory.roundEnded(answered = 3, failed = 0)                      // TMDB answers again
+    memory.due(gaps) shouldBe gaps
+  }
+
+  it should "keep a question's own backoff when it fails while other reads answer" in {
+    val clock  = new MutableClock(Instant.parse("2026-09-28T12:00:00Z"))
+    val memory = new TmdbGapMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    val lalka  = CandidateQuery.Title("Lalka")
+    val gaps   = AnswersChanged(Set(lalka), Set.empty)
+    memory.failed(Seq(lalka), Nil); memory.roundEnded(answered = 5, failed = 1)
+    clock.advance(Duration.ofMinutes(1))
+    memory.roundEnded(answered = 5, failed = 0)
+    memory.due(gaps) shouldBe AnswersChanged.Empty
+  }
 }

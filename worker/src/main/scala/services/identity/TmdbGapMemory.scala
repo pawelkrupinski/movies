@@ -33,8 +33,12 @@ final class TmdbGapMemory(docs: TmdbDocuments, language: String, clock: Clock, r
     val films = gaps.films.map(id => id -> filmMarker(id)).toMap
     val held  = docs.get(TmdbKind.Query, (ids.values ++ films.values).toSeq)
     val now   = clock.millis()
+    // A failure marked before TMDB recovered from an outage is due at once: its backoff was the
+    // outage's, and TMDB answers again.
+    val recovered = docs.get(TmdbKind.Query, Seq(HealthMarker)).get(HealthMarker).flatMap(long(_, RecoveredAt))
     def recent(marker: String) = held.get(marker).exists(doc =>
-      TmdbStore.fetchedAt(doc).exists(_ > now - waitOf(doc)))
+      TmdbStore.fetchedAt(doc).exists(at => at > now - waitOf(doc) &&
+        !(failureWaitOf(doc).isDefined && recovered.exists(at <= _))))
     gaps.copy(queries = gaps.queries.filterNot(q => recent(ids(q))), films = gaps.films.filterNot(id => recent(films(id))))
   }
 
@@ -57,14 +61,30 @@ final class TmdbGapMemory(docs: TmdbDocuments, language: String, clock: Clock, r
     }
   }
 
+  /** How the round's reads came out, as a whole. A round where every read FAILED is TMDB down, not
+   *  a question it cannot answer; the first round after one where reads answered and none failed is
+   *  its recovery, and every failure marked before it is due again at once ([[due]]) — otherwise a
+   *  long outage left each question up to [[MaxFailureRetry]] behind a TMDB answering again. A round
+   *  with answers AND failures is neither: a question that keeps failing while others answer keeps
+   *  its own backoff. */
+  def roundEnded(answered: Int, failed: Int): Unit = {
+    lazy val inOutage = docs.get(TmdbKind.Query, Seq(HealthMarker)).get(HealthMarker).exists(doc => long(doc, OutageSince).isDefined)
+    val now = clock.millis()
+    if (failed > 0 && answered == 0)
+      docs.put(TmdbKind.Query, Seq(HealthMarker -> new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(OutageSince, BsonInt64(now))))
+    else if (failed == 0 && answered > 0 && inOutage)
+      docs.put(TmdbKind.Query, Seq(HealthMarker -> new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(RecoveredAt, BsonInt64(now))))
+  }
+
   // Stamped as a fetch, so the store sweep ages markers out like answers (`TmdbStoreSweep`).
   private def mark(queries: Iterable[CandidateQuery], films: Iterable[Int])(doc: String => BsonDocument): Unit = {
     val markers = queries.map(queryMarker).toSeq ++ films.map(filmMarker).toSeq
     if (markers.nonEmpty) docs.put(TmdbKind.Query, markers.map(marker => marker -> doc(marker)))
   }
 
-  private def failureWaitOf(doc: BsonDocument): Option[Long] =
-    Option(doc.get(FailureWait)).filter(_.isInt64).map(_.asInt64.getValue)
+  private def failureWaitOf(doc: BsonDocument): Option[Long] = long(doc, FailureWait)
+  private def long(doc: BsonDocument, field: String): Option[Long] =
+    Option(doc.get(field)).filter(_.isInt64).map(_.asInt64.getValue)
   private def waitOf(doc: BsonDocument): Long = failureWaitOf(doc).getOrElse(retryAfter.toMillis)
 
   private def queryMarker(q: CandidateQuery) = s"$Prefix${TmdbStore.questionId(language, q)}"
@@ -80,4 +100,8 @@ object TmdbGapMemory {
   val MaxFailureRetry: FiniteDuration   = 6.hours
   /** The marker field holding a failed question's current wait, in millis. */
   private val FailureWait = "failureWaitMs"
+  /** The one marker holding TMDB's health across rounds: in an outage since, or recovered at. */
+  private val HealthMarker = s"${Prefix}tmdb-health"
+  private val OutageSince  = "outageSinceMs"
+  private val RecoveredAt  = "recoveredAtMs"
 }

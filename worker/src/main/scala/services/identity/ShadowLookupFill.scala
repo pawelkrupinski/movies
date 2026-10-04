@@ -184,6 +184,7 @@ final class ShadowLookupFill(
     // Then, with what the allowance has left, questions asked again because they have aged
     // (`TmdbRefreshes`) — through the same live fetch.
     refreshes().iterator.takeWhile(_ => budget.remaining > 0).foreach(lookups.candidates)
+    gapMemory.foreach(_.roundEnded(budget.answered.get, budget.failed.get))
     current = Some(if (budget.paceOverloaded) at.halved else IdentityShadowLookupRate((at.perMinute * 2).min(rate.perMinute)))
     val r = ShadowLookupRound(budget.asked.get, budget.answered.get, budget.failed.get, budget.deferred.get, gaps.total,
       budget.backedOff, at)
