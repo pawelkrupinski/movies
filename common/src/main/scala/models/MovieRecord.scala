@@ -253,17 +253,27 @@ case class MovieRecord(
   //     a properly broken-up synopsis reads better than a longer wall of text.
 
   /** Iterate `data` in source-priority order — Multikino first, then the
-   *  rest of `Cinema.all`, then `Tmdb`, then `Imdb`. Used by every "first
-   *  non-empty" merged accessor. */
+   *  rest of `Cinema.all`, then `Tmdb`, then `Imdb` — and sources of EQUAL priority
+   *  (two titles of one film at one venue, or sources the priority list does not rank)
+   *  by their wire name. Used by every "first non-empty" merged accessor, so the order is
+   *  the record's own: a slot map of up to four entries iterates in insertion order,
+   *  and the same slots assembled another way gave a film another year — and key. */
   private def prioritized: Seq[(Source, SourceData)] =
-    data.toSeq.sortBy { case (s, _) => Source.priorityOf(s) }
+    data.toSeq.sortBy { case (s, _) => (Source.priorityOf(s), s.displayName) }
+
+  /** The first value `of` gives in [[prioritized]] order, found in one pass rather than by sorting every slot: the order
+   *  is total (priority, then wire name), so the first is the least. A film at hundreds of venues asked its year sorted
+   *  them all. */
+  private def firstPrioritized[A](of: SourceData => Option[A]): Option[A] =
+    data.iterator.flatMap { case (s, sd) => of(sd).map(v => (Source.priorityOf(s), s.displayName, v)) }
+      .minByOption { case (priority, name, _) => (priority, name) }.map(_._3)
 
   /** Cinema-only iteration in the same priority order — used by accessors
    *  that should *not* fall back to TMDB/IMDb (e.g. `cinemaOriginalTitle`,
    *  which is specifically the cinema-reported English title used as a
    *  TMDB-search hint). */
   private def prioritizedCinema: Seq[(Cinema, SourceData)] =
-    cinemaData.toSeq.sortBy { case (c, _) => Source.priority.getOrElse(c, Int.MaxValue) }
+    cinemaData.toSeq.sortBy { case (c, _) => (Source.priority.getOrElse(c, Int.MaxValue), c.displayName) }
 
   /** Display title for the row, derived deterministically (no scrape-order
    *  dependence) by the shared `chooseDisplay` ladder: dominant clean form
@@ -347,7 +357,7 @@ case class MovieRecord(
   /** First non-empty trailer URL across cinema sources in priority order.
    *  Cinema-only: Tmdb / Imdb slots currently don't carry trailers. */
   def trailerUrl: Option[String] =
-    prioritized.iterator.flatMap(_._2.trailerUrl).nextOption()
+    firstPrioritized(_.trailerUrl)
 
   /** Every distinct trailer URL across cinema sources, in source-priority
    *  order. Same cinema giving the same URL across slots collapses; URL
@@ -563,7 +573,7 @@ case class MovieRecord(
    *  displays over the TMDB slot's `Cecil B. DeMille` sitting beside it. */
   def director: Seq[String] =
     tools.CreditSpelling.alignedTo(
-      prioritized.iterator.map(_._2.director).find(_.nonEmpty).getOrElse(Seq.empty),
+      firstPrioritized(sd => Option.when(sd.director.nonEmpty)(sd.director)).getOrElse(Seq.empty),
       slotCredits(Tmdb, _.director))
 
   /** One source slot's cast or director list, empty when the slot is absent. */
@@ -572,11 +582,11 @@ case class MovieRecord(
 
   /** First non-None runtime across sources in priority order. */
   def runtimeMinutes: Option[Int] =
-    prioritized.iterator.flatMap(_._2.runtimeMinutes).nextOption()
+    firstPrioritized(_.runtimeMinutes)
 
   /** First non-None release year across sources in priority order. */
   def releaseYear: Option[Int] =
-    prioritized.iterator.flatMap(_._2.releaseYear).nextOption()
+    firstPrioritized(_.releaseYear)
 
   /** TMDB's release year specifically — the authoritative theatrical year for a
    *  resolved film, regardless of what cinemas report (they frequently list the

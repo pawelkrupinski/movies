@@ -5,7 +5,7 @@ import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonDouble, BsonInt32, B
 import scala.jdk.CollectionConverters._
 
 /** A [[ResolverDecision]] as BSON fields — the one encoding every identity collection storing a
- *  decision uses (`identity_shadow_decisions`, `identity_model_families`). */
+ *  decision uses (`identity_model_families`). */
 object ResolverDecisionBson {
 
   def encode(decision: ResolverDecision): BsonDocument = new BsonDocument()

@@ -51,7 +51,9 @@ object ReadModelDerivation {
     // A premiere keeps its own row (split from its film), and a title's format words become chips.
     Derivation(DerivationVersion("793bbccad0b72e98"), DerivationScope.Full),
     // A card title drops a trailing "(YYYY)" equal to the year the card prints beside it.
-    Derivation(DerivationVersion("1af346c3379caf11"), DerivationScope.Cards))
+    Derivation(DerivationVersion("1af346c3379caf11"), DerivationScope.Cards),
+    // A film's first value among slots of equal priority is taken in name order, not the slot map's (its poster).
+    Derivation(DerivationVersion("c2dcd1d6f117fd7d"), DerivationScope.Cards))
 
   def current: DerivationVersion = History.last.version
 

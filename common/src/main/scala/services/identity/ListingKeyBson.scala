@@ -6,7 +6,7 @@ import services.movies.ListingKey
 import scala.jdk.CollectionConverters._
 
 /** A [[ListingKey]] as a BSON subdocument — the one encoding every identity collection
- *  (`identity_pins`, `identity_shadow_decisions`, `identity_shadow_diff`) stores a listing in. */
+ *  (`identity_pins`, `identity_model_families`, `identity_traces`) stores a listing in. */
 object ListingKeyBson {
 
   def encode(k: ListingKey): BsonDocument = k match {
