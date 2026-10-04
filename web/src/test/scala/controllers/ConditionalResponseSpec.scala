@@ -23,27 +23,48 @@ class ConditionalResponseSpec extends AnyFlatSpec with Matchers with OptionValue
   /** A response builder whose model stamp never moves and whose clock is `now`,
    *  answering as a `Future` so Play's result extractors read it like a
    *  controller's. */
-  private class Responses(cache: EncodedResponseCache = TestResponseCache(), now: Instant = stamp) {
-    private val underlying = new ConditionalResponse(cache, modelStamp = _ => stamp, now = () => now)
+  private val build = settings.CommitSha("38e52ff")
+
+  private class Responses(cache: EncodedResponseCache = TestResponseCache(), now: Instant = stamp,
+                          build: settings.CommitSha = build) {
+    private val underlying = new ConditionalResponse(cache, modelStamp = _ => stamp, now = () => now, build = build)
     def serve(request: play.api.mvc.RequestHeader, contentType: String, policy: CachePolicy,
               cacheKey: String = "", city: Option[City] = None,
               cacheBody: Boolean = true)(body: => String): Future[play.api.mvc.Result] =
       Future.successful(underlying.serve(request, contentType, policy, cacheKey, city, cacheBody)(ResponseBody.text(body)))
   }
-  private def responses(cache: EncodedResponseCache = TestResponseCache(), now: Instant = stamp) =
-    new Responses(cache, now)
+  private def responses(cache: EncodedResponseCache = TestResponseCache(), now: Instant = stamp,
+                        build: settings.CommitSha = build) =
+    new Responses(cache, now, build)
 
   private def gzipRequest(path: String, host: String = "kinowo.net") =
     FakeRequest("GET", path).withHeaders("Accept-Encoding" -> "gzip", "Host" -> host)
 
   // ── The validator ───────────────────────────────────────────────────────────
 
-  "the ETag" should "be weak: the key's hash and the stamp's epoch seconds, both in hex" in {
+  "the ETag" should "be weak: the key's hash, the build's hash and the stamp's epoch seconds, all in hex" in {
     val result  = responses().serve(gzipRequest("/poznan/"), "text/html", CachePolicy.RevalidatedAnywhere)("<p>")
     val bodyKey = "kinowo.net" + "/poznan/"
     header("ETag", result) shouldBe
-      Some("W/\"" + Integer.toHexString(bodyKey.hashCode) + "-" + stamp.getEpochSecond.toHexString + "\"")
+      Some("W/\"" + Integer.toHexString(bodyKey.hashCode) + "-" + Integer.toHexString(build.value.hashCode) + "-" +
+        stamp.getEpochSecond.toHexString + "\"")
     header("Last-Modified", result) shouldBe Some("Sat, 5 Sep 2026 10:20:30 GMT")
+  }
+
+  // A rolling deploy runs two builds side by side, and the stamp is each pod's own read-model
+  // version: the same data at the same stamp, rendered by two templates, is two different bodies.
+  // Without the build in the validator, a client revalidating the old build's page against the new
+  // pod could be told 304 and keep markup (and asset URLs) the new build no longer serves.
+  it should "differ between builds, so one build never 304s another's page" in {
+    val oldBuild = responses(build = settings.CommitSha("1111111"))
+    val newBuild = responses(build = settings.CommitSha("2222222"))
+    val heldEtag = header("ETag", oldBuild.serve(gzipRequest("/poznan/"), "text/html", CachePolicy.RevalidatedAnywhere)("<p>old")).value
+
+    val result = newBuild.serve(gzipRequest("/poznan/").withHeaders("If-None-Match" -> heldEtag), "text/html",
+      CachePolicy.RevalidatedAnywhere)("<p>new")
+
+    status(result) shouldBe OK
+    header("ETag", result) should not be Some(heldEtag)
   }
 
   it should "answer a matching If-None-Match with a bodiless 304 that still carries Vary and the validators" in {
@@ -149,7 +170,7 @@ class ConditionalResponseSpec extends AnyFlatSpec with Matchers with OptionValue
   /** A response builder whose model stamp the test moves, the clock `now` to match. */
   private final class MovingStamp(var stamp: Instant, var now: Instant) {
     private val cache      = TestResponseCache()
-    private val underlying = new ConditionalResponse(cache, modelStamp = _ => stamp, now = () => now)
+    private val underlying = new ConditionalResponse(cache, modelStamp = _ => stamp, now = () => now, build = build)
     def serve(request: play.api.mvc.RequestHeader)(body: => String): Future[play.api.mvc.Result] =
       Future.successful(underlying.serve(request, "text/html", CachePolicy.RevalidatedAnywhere)(ResponseBody.text(body)))
   }

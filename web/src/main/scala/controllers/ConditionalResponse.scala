@@ -32,11 +32,15 @@ import java.time.Instant
  */
 class ConditionalResponse(responseCache: EncodedResponseCache,
                           modelStamp: Option[City] => Instant,
-                          now: () => Instant) {
+                          now: () => Instant,
+                          // The build serving the response — part of every ETag (see `etagAt`).
+                          build: settings.CommitSha) {
 
   /** Every response here varies by exactly this, on the 200s and the 304 alike:
    *  the class itself decides between the gzip and the identity representation. */
   private val Vary = "Accept-Encoding"
+
+  private val buildTag = Integer.toHexString(build.value.hashCode)
 
   /** Does this client take gzip — the ONE compressed form the origin offers.
    *
@@ -195,8 +199,14 @@ class ConditionalResponse(responseCache: EncodedResponseCache,
     // re-render (see `EncodedResponseCache.gzippedBody`), the validators must name
     // THAT copy. Stamping the new version on the old body would let a client
     // revalidate the old bytes into a 304 for the new ones and keep them.
+    //
+    // AND OF THE BUILD. During a rolling deploy two builds serve the same URL, each stamping its own
+    // read-model version; the same data rendered by two templates is two bodies, and a validator
+    // naming only the data let the new pod 304 the old build's page — keeping markup and asset URLs
+    // the new build no longer serves. (`If-Modified-Since` cannot carry a build; a browser sends the
+    // ETag alongside it, and with `If-None-Match` present the date is not consulted.)
     def etagAt(version: Instant): String =
-      "W/\"" + Integer.toHexString(bodyKey.hashCode) + "-" + version.getEpochSecond.toHexString +
+      "W/\"" + Integer.toHexString(bodyKey.hashCode) + "-" + buildTag + "-" + version.getEpochSecond.toHexString +
         (if (version.getNano == 0) "" else "." + version.getNano.toHexString) + "\""
     // `Last-Modified` is second-grained by its format; the ETag carries the full version.
     def validatorsAt(version: Instant): Seq[(String, String)] = {

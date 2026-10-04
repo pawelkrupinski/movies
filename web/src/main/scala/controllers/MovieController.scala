@@ -182,6 +182,9 @@ class MovieController( cc: ControllerComponents,
                        // Where each listing render's allocation is reported (`WebRenderMetrics`);
                        // nowhere unless the composition root says.
                        recordRender: (String, Long) => Unit = (_, _) => (),
+                       // The build serving the pages — in every validator, so two builds side by
+                       // side in a rolling deploy never answer one another's revalidation with a 304.
+                       build: settings.CommitSha = settings.CommitSha("unknown"),
                      ) extends AbstractController(cc) with Logging {
 
   private implicit val fragments: FilmCardFragments = filmCards
@@ -240,6 +243,7 @@ class MovieController( cc: ControllerComponents,
     responseCache,
     modelStamp = city => city.fold(readModel.lastModified)(c => readModel.lastModifiedFor(c.slug)),
     now        = () => movieControllerService.now(),
+    build      = build,
   )
 
   // The plain HTML pages (`/{city}/`, `/{city}/movies`) are byte-identical for

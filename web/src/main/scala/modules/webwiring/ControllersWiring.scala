@@ -37,7 +37,8 @@ trait ControllersWiring { self: Wiring =>
     // Read per render, so an `/admin/config` change reaches the page.
     pageTags = () => controllers.PageTags.from(processConfiguration),
     filmCards = filmCards,
-    recordRender = webRenderMetrics.record)
+    recordRender = webRenderMetrics.record,
+    build = processConfiguration.commit)
   // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
   // identically by every deployment — no per-country/read-model dependency.
   lazy val catalogController = new CatalogController(controllerComponents)

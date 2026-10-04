@@ -41,7 +41,7 @@ class StaleWhileRevalidateSpec extends AnyFlatSpec with Matchers with OptionValu
     var now: Instant   = t0
     val refresh        = new ManualExecutionContext
     val cache          = new EncodedResponseCache(refresh, () => now)
-    val responses      = new ConditionalResponse(cache, modelStamp = _ => stamp, now = () => now)
+    val responses      = new ConditionalResponse(cache, modelStamp = _ => stamp, now = () => now, build = settings.CommitSha("spec"))
 
     var renders = 0
     var content = "old"
