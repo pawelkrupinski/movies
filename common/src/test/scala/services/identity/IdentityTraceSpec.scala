@@ -38,6 +38,18 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // A veto names its member by its evidence, which a trace digests: with the count of listings that share the
+  // evidence in the name (`×490` → `×489`), a trace was rewritten whenever one more venue listed it.
+  it should "name the vetoing member the same however many listings share its evidence" in {
+    val wrongDirector = listing(Multikino, "Mulholland Drive", Some(1961), Some("Lee Tamahori"), Some(62))
+    val again         = listing(Rialto, "Mulholland Drive", Some(1961), Some("Lee Tamahori"), Some(62))
+    def by(listings: Seq[Listing]) =
+      IdentityResolver.resolve(listings, new FilmTable(lynch.take(1), normalizer), normalizer, IdentityCalibration.resolver)
+        .decisionOf(wrongDirector.key).trace.vetoed.flatMap(_.by)
+    by(Seq(wrongDirector)) shouldBe defined
+    by(Seq(wrongDirector, again)) shouldBe by(Seq(wrongDirector))
+  }
+
   it should "say, for a listing no rule took, which condition stopped each rule" in {
     // two films of one title and nothing published: no rule can tell them apart
     val films = Seq(F(1, "Tatarak", 2009, "Andrzej Wajda", 85), F(2, "Tatarak", 1965, "Someone Else", 90))

@@ -8,8 +8,11 @@ private[identity] final class EvidenceNode(val evidence: Evidence, val listings:
   val venues: Set[String] = listings.map(_.venue).toSet
   /** The title's words, once per node: `namesOnlyItsVenue` reads them against every candidate. */
   lazy val titleWords: Seq[String] = services.movies.TitleContainment.tokens(evidence.title)
-  def label: String       = s"'${evidence.title}'${evidence.statedYear.fold("")(year => s" [$year]")}" +
-    (if (evidence.directors.nonEmpty) s" {${evidence.directors.mkString(", ")}}" else "") + s" ×$weight"
+  /** The evidence as text: title, stated year, directors. */
+  def name: String        = s"'${evidence.title}'${evidence.statedYear.fold("")(year => s" [$year]")}" +
+    (if (evidence.directors.nonEmpty) s" {${evidence.directors.mkString(", ")}}" else "")
+  /** [[name]] and how many listings share it — for a log line, never a stored trace (the count drifts tick to tick). */
+  def label: String       = s"$name ×$weight"
 }
 
 private[identity] object EvidenceNode {

@@ -299,4 +299,16 @@ class IdentityCalibrationSpec extends AnyFlatSpec with Matchers {
     IdentityCalibration.Condition("year.distance", atLeast = Some(6)).holds(Map("year.distance" -> Number(7))) shouldBe true
     IdentityCalibration.Condition("year.distance", atLeast = Some(6)).holds(Map("year.distance" -> Missing("film"))) shouldBe false
   }
+
+  // The evidence a trace keeps is digested, and a trace is rewritten when its digest moves: rendered as the
+  // raw count, `venues.corroborating=571` became `=570` as one venue's listing came and went, and ~8% of the
+  // US traces were rewritten every tick for a weight that never moved.
+  "a trace's evidence" should "name a counted measure by the bin its weight comes from, not the raw count" in {
+    def lines(venues: Int) = model.evidence(ListingFilm,
+      IdentityMeasures.listingFilm(itEndsWithUs, itEndsWithUsFilm, searchRank = None, rivals = 0, corroboratingVenues = venues))
+    val (some, more) = (lines(570), lines(571))
+    some.exists(_.startsWith("venues.corroborating=")) shouldBe true
+    some shouldBe more
+    some.mkString(" ") should not include "570"
+  }
 }

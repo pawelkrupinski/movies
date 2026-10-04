@@ -92,7 +92,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     val vetoed = scored.headOption.filter(best => best.denied && !film.contains(best.candidate.tmdbId)).map { best =>
       val by = cluster.find(node => scope.of(node).exists(own => own.candidate.tmdbId == best.candidate.tmdbId && own.denied))
       DecisionTrace.Veto(by.flatMap(node => scope.of(node).find(_.candidate.tmdbId == best.candidate.tmdbId)).flatMap(_.denial)
-        .orElse(best.denial).getOrElse("denied"), by.map(_.label))
+        .orElse(best.denial).getOrElse("denied"), by.map(_.name))
     }
     DecisionTrace(pooled, vetoed, nodes)
   }

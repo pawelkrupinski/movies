@@ -54,10 +54,23 @@ final case class IdentityCalibration(version: String,
     contributions(scope, measures).filter(_._2 != 0).sortBy(c => (-math.abs(c._2), c._1)).take(top)
       .map { case (s, w) => f"$s=${render(measures.get(s))}%s(${if (w >= 0) "+" else ""}$w%.2f)" }.mkString(" ")
 
-  /** Every measure that moved `measures`' probability, with its weight, largest first: `director=same_person +4.22`. */
-  def evidence(scope: String, measures: Map[String, Measure]): Seq[String] =
+  /** Every measure that moved `measures`' probability, with its weight, largest first: `director=same_person +4.22`.
+   *  A number is named by the bin its weight comes from (`venues.corroborating=300..* +5.06`), never its raw
+   *  value: a trace keeps these lines and is rewritten when they move, and a count drifting inside one bin
+   *  (571 → 570 venues) moved every such trace each tick for a weight that had not changed. */
+  def evidence(scope: String, measures: Map[String, Measure]): Seq[String] = {
+    val signals = model(scope).signals
     contributions(scope, measures).filter(_._2 != 0).sortBy(c => (-math.abs(c._2), c._1))
-      .map { case (s, w) => f"$s=${render(measures.get(s))}%s ${if (w >= 0) "+" else ""}$w%.2f" }
+      .map { case (s, w) => f"$s=${binned(signals.get(s), measures.get(s))}%s ${if (w >= 0) "+" else ""}$w%.2f" }
+  }
+
+  /** A number as the bin of `weights` it falls in (`a..b`, `*` for an open end); anything else as [[render]]. */
+  private def binned(weights: Option[SignalWeights], m: Option[Measure]): String = m match {
+    case Some(Number(x)) =>
+      def end(bound: Option[Double]) = bound.fold("*")(b => if (b == math.rint(b)) b.toLong.toString else f"$b%.2f")
+      weights.flatMap(_.bins.find(_.contains(x))).fold(render(m))(bin => s"${end(bin.atLeast)}..${end(bin.atMost)}")
+    case _ => render(m)
+  }
 
   /** Is this probability high enough to show the film's ratings? */
   def showsRatings(probability: Double): Boolean = probability >= ratingCut
