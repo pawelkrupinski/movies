@@ -239,6 +239,27 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.stop()
   }
 
+  // A reopen INTO the outage opens a stream that goes live once Mongo answers — but its catch-up
+  // read failed, so what was written while the streams were down is in neither. Live streams and a
+  // warm model made every later tick a no-op: those writes waited on the backstop's count drift.
+  it should "read again once the streams are live, when the reopen's catch-up read failed" in {
+    val repository = new UnreadableReadModelRepository
+    repository.healReads()
+    repository.upsertMovie(movie("belle|2021"))
+    val rm = started(repository)
+
+    repository.failingReads = true
+    repository.failMovieStream()
+    repository.upsertMovie(movie("during|2026"))
+    rm.coldRetryTick()                 // reopened, but its read failed
+    rm.movie("during|2026") shouldBe None
+    repository.healReads()
+    rm.coldRetryTick()
+
+    rm.movie("during|2026") shouldBe defined
+    rm.stop()
+  }
+
   it should "back off reopening a stream that keeps dying, rather than reload every tick" in {
     val repository = new InMemoryReadModelRepository {
       override def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription] = {

@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Seconds, Span}
 
-import java.net.{InetSocketAddress, ServerSocket, Socket, URI}
+import java.net.URI
 import org.mongodb.scala.SingleObservableFuture
 import scala.concurrent.duration._
 
@@ -26,7 +26,7 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
   "a reconnect after an unreachable boot" should "claim the database before publishing it, and refuse another country's" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "late-reconnect-claim") { db =>
       new DatabaseOwner(db).claim(Country.Poland)
-      val port = freePort()
+      val port = tools.TcpForwarder.freePort()
       val via  = s"mongodb://127.0.0.1:$port/?directConnection=true&connectTimeoutMS=300"
       def open(country: Country) = new MongoConnection(Some(settings.MongoUri(via)), settings.MongoDatabaseName(db.name), required = services.MongoRequirement.Required,
         probeTimeout = settings.MongoProbeTimeout(2.seconds), serverSelectionTimeout = Some(MongoConnection.ServerSelectionTimeout(500.millis)),
@@ -37,7 +37,7 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
       polish.database shouldBe None
       polish.boundDegraded shouldBe true
       polish.restartRequired shouldBe false   // still down: alive, so an outage is no crash loop
-      val forwarder = forward(port, target.getHost, target.getPort)
+      val forwarder = tools.TcpForwarder.start(target.getHost, target.getPort, port)
       try {
         eventually(polish.database should not be empty)(using patience, implicitly)
         german.database shouldBe None
@@ -96,28 +96,4 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
           scala.concurrent.Await.result(shared.getDatabase(db.name).getCollection("movies").countDocuments().toFuture(), 5.seconds)
       } finally shared.close()
     }
-
-  private def freePort(): Int = { val s = new ServerSocket(0); try s.getLocalPort finally s.close() }
-
-  /** A byte-pipe from `port` to `host:targetPort`, one thread pair per accepted socket. */
-  private def forward(port: Int, host: String, targetPort: Int): AutoCloseable = {
-    val server = new ServerSocket()
-    server.bind(new InetSocketAddress("127.0.0.1", port))
-    def pipe(from: Socket, to: Socket): Unit = daemon {
-      try from.getInputStream.transferTo(to.getOutputStream) catch { case _: java.io.IOException => () }
-      finally { from.close(); to.close() }
-    }
-    daemon {
-      try while (true) {
-        val client   = server.accept()
-        val upstream = new Socket(host, targetPort)
-        pipe(client, upstream); pipe(upstream, client)
-      } catch { case _: java.io.IOException => () }
-    }
-    () => server.close()
-  }
-
-  private def daemon(body: => Unit): Unit = {
-    val t = new Thread(() => body); t.setDaemon(true); t.start()
-  }
 }

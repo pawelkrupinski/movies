@@ -356,7 +356,8 @@ class WebReadModel(
       // meanwhile, which the scan may not have read.
       filmCities.rebuild(nextFilmCities, (filmId, city) => during.placements.contains((filmId, city)))
     } else filmCities.addAll(nextFilmCities)
-    if (moviesComplete && screeningsComplete) _hydrated = true
+    lastReloadComplete = moviesComplete && screeningsComplete
+    if (lastReloadComplete) _hydrated = true
     else
       logger.warn(s"WebReadModel reload: incomplete read (movies complete=$moviesComplete, " +
         s"screenings complete=$screeningsComplete) — added what was read, evicted nothing it could not see.")
@@ -371,6 +372,10 @@ class WebReadModel(
     cityStamps.values.removeIf(stamp => !stamp.isAfter(floor))
     ms.size
   }
+
+  // Whether the latest reload read both collections whole. Read by the tick thread right after its
+  // own reload.
+  @volatile private var lastReloadComplete = false
 
   // Set once a reload has read BOTH collections whole, and never cleared: from then on the model
   // serves a complete corpus, and a later failed read only leaves it a little stale.
@@ -404,6 +409,14 @@ class WebReadModel(
       reopenAttempts = 0
       ticksUntilReopen = 0
       if (!_hydrated) coldReload()
+      else if (catchUpOwed) {
+        // Reopened into the outage: the streams are live now, but what was written while they were
+        // down reached neither them nor that reopen's failed read. Read again — anything written
+        // from here on, the live streams carry.
+        logger.warn("WebReadModel: change streams are live again but the writes made while they were down are unread — reloading.")
+        reload()
+        if (lastReloadComplete) catchUpOwed = false
+      }
     }
 
   private def coldReload(): Unit = {
@@ -418,6 +431,9 @@ class WebReadModel(
   // own thread touches them.
   private var reopenAttempts   = 0
   private var ticksUntilReopen = 0
+  // A reopen that could not read the corpus whole, or take a checkpoint to replay from, left the
+  // writes made while the streams were down unread.
+  private var catchUpOwed      = false
   private val MaxTicksBetweenReopens =
     math.max(1L, reloadInterval.value.toSeconds / math.max(1L, coldRetryInterval.value.toSeconds))
 
@@ -435,6 +451,9 @@ class WebReadModel(
         s"screenings live=${screeningWatch.exists(_.live)}) — reopening, attempt $reopenAttempts.")
       val checkpoint = reader.streamCheckpoint()
       reload()
+      // Caught up only by a whole read AND a replay from before it; short of either, the next tick
+      // that finds the streams live reads again (`catchUpOwed`).
+      catchUpOwed = !(lastReloadComplete && checkpoint.isDefined)
       if (!movieWatch.exists(_.live)) {
         movieWatch.foreach(watch => Try(watch.close()))
         movieWatch = reader.watchMovies(applyMovieUpsert, applyMovieDelete, checkpoint)
@@ -445,7 +464,7 @@ class WebReadModel(
       }
     }
 
-  private def streamsLive: Boolean = movieWatch.exists(_.live) && screeningWatch.exists(_.live)
+  private[readmodel] def streamsLive: Boolean = movieWatch.exists(_.live) && screeningWatch.exists(_.live)
 
   /** Periodic backstop tick. While both change streams are live they keep the
    *  model current, so re-reading and re-decoding the whole corpus every tick is
