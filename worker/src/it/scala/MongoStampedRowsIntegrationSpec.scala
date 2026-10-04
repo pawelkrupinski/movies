@@ -39,7 +39,8 @@ class MongoStampedRowsIntegrationSpec extends AnyFlatSpec with Matchers with Int
       store.retention.deleteIfStill(scanned) shouldBe 1
       store.lastFetchedAt("imdb|tmdb:1") shouldBe None
       store.lastFetchedAt("imdb|tmdb:2") shouldBe Some(fresh)
-      Await.result(database.getCollection("freshness").countDocuments().toFuture(), SpecTimeouts.Io) shouldBe 2L
+      // `markFresh` writes without waiting: "imdb|tmdb:3", never scanned (it is fresh), may land after the delete
+      Eventually.eventually(Await.result(database.getCollection("freshness").countDocuments().toFuture(), SpecTimeouts.Io) shouldBe 2L)
     } finally {
       Await.result(database.drop().toFuture(), SpecTimeouts.Io)
       client.close()
