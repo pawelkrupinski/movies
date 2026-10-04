@@ -17,41 +17,51 @@
 # `COPY stage/` stays a single fixed path and only the launcher name differs.
 # The Play `-D` props below are harmless no-op system properties for the
 # worker (it isn't a Play app).
-FROM ubuntu:26.04
-# THE TEMURIN JRE, INSTALLED HERE BECAUSE `eclipse-temurin:27-jre` IS NOT PUBLISHED YET. JDK 27
-# went GA on 2026-09-15 and Adoptium ships its binaries, but Docker Hub's official image lags.
-# This block is that image's own Dockerfile (adoptium/containers, ubuntu/noble, jre) reproduced on 26.04:
-# the same OS packages, locale, JAVA_HOME and CDS archive, with the tarball's SHA-256 pinned here
-# instead of a GPG check against a keyserver on every build. Once the official tag exists, replace
-# everything down to the `java --version` line with `FROM eclipse-temurin:27-jre`.
+# THE RUNTIME: Temurin's JRE modules plus `jcmd`, jlinked from the Temurin JDK here because
+# `eclipse-temurin:27-jre` is not published yet (JDK 27 went GA on 2026-09-15; Docker Hub's official
+# image lags) and because the JRE has no `jcmd`. The modules are exactly the JRE tarball's
+# (`java --list-modules` on it) plus `jdk.jcmd` and `jdk.attach`, which `jcmd` needs to start JFR,
+# take a heap histogram or read a flag on a live pod (`kubectl exec ... -- jcmd 1 JFR.start ...`).
+# The tarball's SHA-256 is pinned here instead of a GPG check against a keyserver on every build.
+# Once the official tag exists this stage could become `FROM eclipse-temurin:27-jdk` — but not the
+# runtime `-jre` image, which would drop `jcmd` again.
 # JdkVersionParitySpec holds JAVA_VERSION's major to the JDK CI builds the stage with.
 # BUILD IT NATIVELY. A `--platform linux/amd64` build on Apple Silicon fails at the `tar` below with
 # `Cannot open: Function not implemented` for every file in a subdirectory: 26.04's GNU tar makes a
 # syscall neither QEMU nor Rosetta translates. A real amd64 kernel has it (checked on k3s-worker-1,
 # 2026-09-27), and CI builds on one. Locally, build for the Mac's own arm64.
-ENV JAVA_HOME=/opt/java/openjdk
-ENV PATH=$JAVA_HOME/bin:$PATH
-ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
-ENV JAVA_VERSION=jdk-27+35
+FROM ubuntu:26.04 AS jdk
 RUN set -eux; \
     apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        fontconfig ca-certificates p11-kit tzdata locales wget; \
-    echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen; \
-    locale-gen en_US.UTF-8; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates wget; \
     case "$(dpkg --print-architecture)" in \
-      amd64) ESUM='2cb1b81ab49f516e5aeb28ee8acf3c73d64c77ca432ac959c6511a335342d8e9'; \
-             BINARY_URL='https://github.com/adoptium/temurin27-binaries/releases/download/jdk-27%2B35/OpenJDK27U-jre_x64_linux_hotspot_27_35.tar.gz' ;; \
-      arm64) ESUM='a41b54098373f1ca8f75ee344db19b93ac39eca6c529c3ee9dc50f4b3e7857de'; \
-             BINARY_URL='https://github.com/adoptium/temurin27-binaries/releases/download/jdk-27%2B35/OpenJDK27U-jre_aarch64_linux_hotspot_27_35.tar.gz' ;; \
+      amd64) ESUM='1cf69a4848ffb728b3b260dfd45206a51566ab571a02a30092271d4c580bccbc'; \
+             BINARY_URL='https://github.com/adoptium/temurin27-binaries/releases/download/jdk-27%2B35/OpenJDK27U-jdk_x64_linux_hotspot_27_35.tar.gz' ;; \
+      arm64) ESUM='e4ec5c7276290c7bde0baecba9a29be4962f5388684296406a9799d465936087'; \
+             BINARY_URL='https://github.com/adoptium/temurin27-binaries/releases/download/jdk-27%2B35/OpenJDK27U-jdk_aarch64_linux_hotspot_27_35.tar.gz' ;; \
       *) echo "Unsupported arch: $(dpkg --print-architecture)"; exit 1 ;; \
     esac; \
     wget --progress=dot:giga -O /tmp/openjdk.tar.gz "$BINARY_URL"; \
     echo "$ESUM */tmp/openjdk.tar.gz" | sha256sum -c -; \
-    mkdir -p "$JAVA_HOME"; \
-    tar --extract --file /tmp/openjdk.tar.gz --directory "$JAVA_HOME" --strip-components 1 --no-same-owner; \
-    rm -f /tmp/openjdk.tar.gz; \
-    apt-get purge -y --auto-remove wget; \
+    mkdir -p /tmp/jdk; \
+    tar --extract --file /tmp/openjdk.tar.gz --directory /tmp/jdk --strip-components 1 --no-same-owner; \
+    /tmp/jdk/bin/jlink --output /opt/java/openjdk --no-man-pages --no-header-files \
+      --add-modules java.base,java.compiler,java.datatransfer,java.desktop,java.instrument,java.logging,java.management,java.management.rmi,java.naming,java.net.http,java.prefs,java.rmi,java.scripting,java.se,java.security.jgss,java.security.sasl,java.smartcardio,java.sql,java.sql.rowset,java.transaction.xa,java.xml,java.xml.crypto,jdk.accessibility,jdk.charsets,jdk.crypto.cryptoki,jdk.dynalink,jdk.httpserver,jdk.incubator.vector,jdk.jdwp.agent,jdk.jfr,jdk.localedata,jdk.management,jdk.management.agent,jdk.management.jfr,jdk.naming.dns,jdk.naming.rmi,jdk.net,jdk.nio.mapmode,jdk.sctp,jdk.security.auth,jdk.security.jgss,jdk.unsupported,jdk.xml.dom,jdk.zipfs,jdk.jcmd,jdk.attach
+
+FROM ubuntu:26.04
+# The OS side of Temurin's own JRE image (adoptium/containers, ubuntu/noble, jre) reproduced on 26.04:
+# the same OS packages, locale, JAVA_HOME and CDS archive, over the runtime the `jdk` stage linked.
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH=$JAVA_HOME/bin:$PATH
+ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
+ENV JAVA_VERSION=jdk-27+35
+COPY --from=jdk /opt/java/openjdk /opt/java/openjdk
+RUN set -eux; \
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        fontconfig ca-certificates p11-kit tzdata locales; \
+    echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen; \
+    locale-gen en_US.UTF-8; \
     rm -rf /var/lib/apt/lists/*; \
     find "$JAVA_HOME/lib" -name '*.so' -exec dirname '{}' ';' | sort -u > /etc/ld.so.conf.d/docker-openjdk.conf; \
     ldconfig; \

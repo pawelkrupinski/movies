@@ -93,4 +93,15 @@ class WorkerDurableDiagnosticsConfigSpec extends AnyFlatSpec with Matchers {
     build should include (""""infra" / "nix" / "files" / "heap-dumps.sh") -> "bin/heap-dumps.sh"""")
     "heapDumpScript\\)".r.findAllIn(build).size shouldBe 2
   }
+
+  // A live pod's CPU or allocation can be attributed only from inside its JVM: `jcmd 1 JFR.start` / `GC.class_histogram`.
+  // Temurin's JRE has no `jcmd`, so the image links its runtime with the two modules it needs; the plain `-jre` image
+  // (or a jlink list that loses them) would leave a hot pod unprofilable again. Building the `jdk` stage and attaching
+  // its `jcmd` to a running JVM is what proved the list works; this keeps it from being dropped.
+  "the runtime the image ships" should "carry jcmd, linked with the attach module it drives" in {
+    val linked = """(?s)jlink --output /opt/java/openjdk.*?--add-modules (\S+)""".r.findFirstMatchIn(dockerfile)
+      .map(_.group(1).split(',').toSet).getOrElse(fail("the Dockerfile no longer jlinks the runtime"))
+    linked should contain allOf ("jdk.jcmd", "jdk.attach", "jdk.jfr", "java.se")
+    dockerfile should include ("COPY --from=jdk /opt/java/openjdk /opt/java/openjdk")
+  }
 }
