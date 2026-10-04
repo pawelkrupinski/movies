@@ -156,7 +156,7 @@ class WorkerWiring(
       settle     = WorkerWiring.IdentityModelSettle,
       scheduler  = identityModelScheduler,
       metrics    = workerMetrics.identityModel.forCountry(country.code),
-      batched    = batch => if (batch.moved) { identityProjectionTrigger.request(); identityFillTrigger.request() },
+      batched    = onModelBatch,
       reading    = () => tracked.fold("")(_.render),
       beforeDrain = () => venuePageIndex.settle(),
       // A new listing waits for its venue page, read into venue_pages by a ReadVenuePage task, so
@@ -184,9 +184,22 @@ class WorkerWiring(
     for { key <- configuration.anthropicApiKey; db <- mongoConnection.database }
     yield new services.identity.ProposalFill(new services.identity.MongoIdentityTraceReads(db), identityProposals,
       new services.identity.AnthropicProposer(key), clock)
-  lazy val identityProposalSchedule: Option[services.tasks.ClaimedPeriodicTask] = managedResources.stoppingEach(identityProposalFill.map(fill =>
-    new services.tasks.ClaimedPeriodicTask("identity-proposals", () => { fill.round(); () }, WorkerWiring.ProposalInterval,
-      WorkerWiring.ProposalInitialDelay, scheduledRunStore, clock)))
+  /** A proposal round once a burst of the model's re-decided families has gone quiet — titles it left unresolved are asked
+   *  then, not on the hour — and one after boot for what earlier runs left. Each title is asked once (`ProposalFill`), so
+   *  the model's cost follows new titles, not rounds; the long debounce bounds the trace scans. On its own thread: a round
+   *  waits on the language model, which no projection may wait behind. */
+  lazy val identityProposalTrigger: Option[services.identity.EventTrigger] = identityProposalFill.map { fill =>
+    new services.identity.EventTrigger(() => { fill.round(); true }, WorkerWiring.ProposalDebounce, identityProposalScheduler, clock)
+  }
+  protected lazy val identityProposalScheduler: java.util.concurrent.ScheduledExecutorService =
+    managedResources.executor("identity proposals")(tools.DaemonExecutors.scheduler(s"identity-proposals-${country.code}"))
+
+  /** What a drain of the identity model sets off: the projection of what moved, the fill of the gaps it found, and — once
+   *  families were decided again, some perhaps left unresolved — a proposal round. Nothing of these runs on a period. */
+  protected[modules] def onModelBatch(batch: services.identity.ModelBatch): Unit = if (batch.moved) {
+    identityProjectionTrigger.request(); identityFillTrigger.request()
+    if (batch.familiesResolved > 0) identityProposalTrigger.foreach(_.request())
+  }
 
   /** A cut-over model's lookups: [[storedLookups]] first, and a TMDB or IMDb question the store has no
    *  answer to asked live through `identityLookupFetch`, which files the answer into the store. */
@@ -477,7 +490,9 @@ class WorkerWiring(
     boot.step("closure schedule")(closureSchedule.start())
     boot.step("tmdb store sweep")(identityTmdbSweepSchedule.start())
     boot.step("orphan film-state sweep")(orphanFilmStateSweepSchedule.start())
-    boot.step("identity proposals")(identityProposalSchedule.foreach(_.start()))
+    boot.step("identity proposals")(identityProposalTrigger.zip(identityProposalFill).foreach { case (trigger, fill) =>
+      trigger.once(WorkerWiring.ProposalInitialDelay) { fill.round(); () }
+    })
     boot.step("omdb backfill")(omdbBackfillReaper.foreach(_.start()))
     boot.step("share cards")(shareCardReapers.foreach(_.start()))
     boot.step("facebook rescrapes")(startFacebookRescrapes())
@@ -566,8 +581,10 @@ object WorkerWiring {
   /** The closure sweep's cadence: its evidence moves in days (a gone venue is re-probed
    *  daily), so a daily verdict loses nothing. */
   val ClosureSweepInterval: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(24, "hours")
-  /** How often the model is asked about new unresolved titles, and how long after boot first. */
-  val ProposalInterval: scala.concurrent.duration.FiniteDuration     = scala.concurrent.duration.Duration(60, "minutes")
+  /** How long a proposal round waits for a burst of re-decided families to go quiet, and at most after its first. */
+  val ProposalDebounce: services.movies.MovieChangeStream.Debounce =
+    services.movies.MovieChangeStream.Debounce(scala.concurrent.duration.Duration(10, "minutes"), scala.concurrent.duration.Duration(30, "minutes"))
+  /** How long after boot the first proposal round runs, for what earlier runs left unresolved. */
   val ProposalInitialDelay: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(20, "minutes")
   /** Well after boot, away from the other daily sweeps: it reads the whole of `movies`. */
   val OrphanSweepInitialDelay: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(3, "hours")

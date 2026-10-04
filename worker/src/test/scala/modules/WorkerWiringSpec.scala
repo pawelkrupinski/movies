@@ -584,4 +584,39 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     w.manual.advance(java.time.Duration.ofHours(3))
     w.projected shouldBe 1                                        // once: the hours are the claimed reconcile's
   }
+
+  // Proposals run on the model's events, not on the hour: a round once a burst of re-decided families goes quiet, and
+  // one after boot. Nothing between.
+  "A worker's identity proposals" should "run after boot and after the model re-decides families, never on a period" in {
+    class Proposing extends TestWiring {
+      val manual = new tools.ManualScheduler(new tools.MutableClock(TestWiring.FixedInstant))
+      var rounds = 0
+      private val traces = new services.identity.IdentityTraceReads {
+        def byRule(rule: String, limit: Int) = Nil
+        def byFilm(film: Int, limit: Int) = Nil
+        def byTitle(text: String, limit: Int) = Nil
+        def ruleCounts() = Nil
+        def byBlocker(blocker: String, limit: Int) = Nil
+        def blockers() = Nil
+        def unresolved(limit: Int, wanted: services.identity.ListingTrace => Boolean) = { rounds += 1; Nil }
+      }
+      override lazy val identityProposalFill: Option[services.identity.ProposalFill] = Some(new services.identity.ProposalFill(traces,
+        new services.identity.ProposalIndex(new services.identity.InMemoryProposalStore), new services.identity.Proposer {
+          val model = "test"; def propose(asks: Seq[services.identity.ProposalAsk]) = Map.empty }, clock))
+      override protected lazy val identityProposalScheduler: java.util.concurrent.ScheduledExecutorService = manual
+      def batch(resolved: Int) = services.identity.ModelBatch(1, 0, resolved, 10, 0.1, services.identity.IncrementalResolver.FamilySizes(Nil, 0, 0))
+    }
+    val w = new Proposing
+    w.identityProposalTrigger.get.once(WorkerWiring.ProposalInitialDelay) { w.identityProposalFill.get.round(); () }
+    w.manual.advance(java.time.Duration.ofMinutes(WorkerWiring.ProposalInitialDelay.toMinutes))
+    w.rounds shouldBe 1                                           // after boot
+    w.manual.advance(java.time.Duration.ofHours(5))
+    w.rounds shouldBe 1                                           // no period
+    w.onModelBatch(w.batch(resolved = 0))
+    w.manual.advance(java.time.Duration.ofHours(1))
+    w.rounds shouldBe 1                                           // a drain that re-decided nothing asks nothing
+    w.onModelBatch(w.batch(resolved = 3))
+    w.manual.advance(java.time.Duration.ofMinutes(10))
+    w.rounds shouldBe 2                                           // re-decided families, quiet for 10 minutes
+  }
 }
