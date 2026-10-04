@@ -139,9 +139,11 @@ class FilmwebRatings(
     // /film/Zaproszenie-2026-10109168. The MC and RT refreshers make the same
     // check against the year their PAGE publishes; only Filmweb can read it off
     // the URL. An undated URL is not evidence and is left alone.
-    val filmwebCredit = e.data.get(models.Filmweb).toSeq.flatMap(_.director).toSet
+    // The suspect page's own credit (its slot was written off this URL), weighed
+    // against the TRUSTED side only — TMDB's crew and the cinemas' credits.
+    val pageCredit = e.data.get(models.Filmweb).toSeq.flatMap(_.director).toSet
     if (!MetacriticClient.yearsCompatible(key.year, FilmwebClient.yearInUrl(url)) &&
-        !RatingPageIdentity.directorsAgree(e, filmwebCredit, tmdb.directorsFor)) {
+        !RatingPageIdentity.directorsAgree(e, pageCredit, tmdb.directorsFor)) {
       logger.info(s"Filmweb: $label $url → URL names ${FilmwebClient.yearInUrl(url).getOrElse("?")}, " +
         "not this film — dropping the URL")
       cache.putIfPresent(key, r => r.copy(filmwebUrl = None, filmwebRating = None, data = r.data - (Filmweb: Source)))

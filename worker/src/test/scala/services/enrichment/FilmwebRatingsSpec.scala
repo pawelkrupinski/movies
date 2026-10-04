@@ -74,6 +74,36 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     row.flatMap(_.data.get(Filmweb)) shouldBe None
   }
 
+  // The director exemption (a retrospective's screening year vs the film's own:
+  // "Przekleństwa niewinności" 2026 is Coppola's 1999 film) must be decided by
+  // the TRUSTED side — TMDB's credit or the cinemas' — agreeing with the page.
+  // The Filmweb slot was written off the suspect page itself, so its credit can
+  // only ever agree with itself.
+  private def retrospective(slots: Map[Source, SourceData]) = {
+    val url = "https://www.filmweb.pl/film/Przekle%C5%84stwa+niewinno%C5%9Bci-1999-1084"
+    val repository = new InMemoryMovieRepository(Seq(
+      ("Przekleństwa niewinności", Some(2026),
+        mkEnrichment("tt0159097", filmwebUrl = Some(url), filmwebRating = Some(7.4)).copy(data = slots))
+    ), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val filmweb = new FilmwebClient(filmwebSite(Map("/film/1084/rating" -> """{"rate":7.4,"count":1000}""")))
+    new FilmwebRatings(cache, disabledTmdb, filmweb).refreshOneSync(cache.keyOf("Przekleństwa niewinności", Some(2026)))
+    cache.get(cache.keyOf("Przekleństwa niewinności", Some(2026))).flatMap(_.filmwebUrl)
+  }
+  private val pageCredit = Filmweb -> SourceData(director = Seq("Sofia Coppola"), releaseYear = Some(1999))
+
+  it should "be kept across a retrospective's year when TMDB credits the page's director" in {
+    retrospective(Map(pageCredit, Tmdb -> SourceData(director = Seq("Sofia Coppola")))) shouldBe defined
+  }
+
+  it should "be dropped when only the suspect page's own slot credits that director" in {
+    retrospective(Map(pageCredit)) shouldBe None
+  }
+
+  it should "be dropped when the trusted credit names someone else" in {
+    retrospective(Map(pageCredit, Tmdb -> SourceData(director = Seq("Wanda Jakubowska")))) shouldBe None
+  }
+
   it should "be kept when the URL's year agrees with the film's" in {
     val url = "https://www.filmweb.pl/film/Zaproszenie-2026-10109168"
     val repository = new InMemoryMovieRepository(Seq(
