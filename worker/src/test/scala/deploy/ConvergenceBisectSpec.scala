@@ -92,7 +92,7 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers with tools.SuiteCo
       "VERDICT_FILE" -> verdict.toString, "FIRST_BAD_FILE" -> firstBad.toString,
       "CONVERGENCE_PATHS_FILE" -> PathsFile.toString,
       "PATH" -> s"${history.date.getParent}:${configuration.executableSearchPath.value.mkString(java.io.File.pathSeparator)}") ++ env
-    val status = Process(Seq("bash", Script.toString, "bisect", good, bad), history.repo.root.toFile, all*)
+    val status = history.repo.process(Seq("bash", Script.toString, "bisect", good, bad), all*)
       .!(ProcessLogger(_ => ()))
     val pinned = Option.when(Files.exists(firstBad))(Files.readString(firstBad).trim)
     (status, Files.readString(verdict), pinned)
@@ -232,7 +232,7 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers with tools.SuiteCo
          |exit 0
          |""".stripMargin)
     val path = s"${gh.getParent}:${configuration.executableSearchPath.value.mkString(java.io.File.pathSeparator)}"
-    val out = Process(Seq("bash", Script.toString, "last-green"), history.repo.root.toFile,
+    val out = history.repo.process(Seq("bash", Script.toString, "last-green"),
       "PATH" -> path, "COUNTRY" -> "poland", "WORKFLOW" -> "Identity model convergence", "RUN_ID" -> "30").!!.trim
 
     out shouldBe history.good

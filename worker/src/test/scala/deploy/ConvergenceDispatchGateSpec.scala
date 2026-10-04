@@ -41,8 +41,8 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
          |                   echo "$$3" >> "$dispatched" ;;
          |esac
          |""".stripMargin)
-    val status = Process(Seq("bash", Script.toString, head, "main", "Country convergence", "Other convergence"),
-      repo.root.toFile, "PATH" -> s"${gh.getParent}:${configuration.executableSearchPath.value.mkString(java.io.File.pathSeparator)}").!(ProcessLogger(_ => ()))
+    val status = repo.process(Seq("bash", Script.toString, head, "main", "Country convergence", "Other convergence"),
+      "PATH" -> s"${gh.getParent}:${configuration.executableSearchPath.value.mkString(java.io.File.pathSeparator)}").!(ProcessLogger(_ => ()))
     (status, Files.readString(dispatched).linesIterator.toSeq)
   }
 
