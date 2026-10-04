@@ -281,9 +281,7 @@ trait ScrapeWiring { self: WorkerWiring =>
 
   // Cinema scraping is driven by a durable Mongo task queue: the ScrapeReaper
   // enqueues each cinema at most once per freshness window, and the TaskWorker
-  // scrapes it (skipping if a concurrent run already refreshed it). Detail and
-  // rating enrichment are governed by KINOWO_DEFERRED_DETAIL and
-  // KINOWO_QUEUE_ENRICHMENT independently.
+  // scrapes it (skipping if a concurrent run already refreshed it).
 
   // The shared scrape core, injected into ScrapeCinemaHandler: every scrape archived and handed to the
   // identity intake. The archive is wrapped to hand each landing to the copied-feed detector (where one
@@ -306,10 +304,6 @@ trait ScrapeWiring { self: WorkerWiring =>
   // oldest-first order and otherwise camp on the whole per-tick budget forever.
   lazy val scrapeFreshnessPolicy    = new ScrapeFreshnessPolicy(freshnessStore, venueCadence = Some(venueCadenceStore), clock = clock)
 
-  // ONE shared due schedule (`scrapeDueWindow`, an eager member of the root) backs
-  // both the scrape reaper (enqueue) and the scrape handler (pickup re-gate), so
-  // they agree on what's due and a cinema's scrapes spread across the freshness
-  // window instead of falling due in a lockstep wave.
   // Each cinema's recent scrape costs, recorded by the handler (plain) and the chunk
   // planner (fan-out) and read by `scrapePhasePlanner` to space the scrape schedule.
   lazy val scrapeCostStore: ScrapeCostStore =
@@ -328,8 +322,8 @@ trait ScrapeWiring { self: WorkerWiring =>
     // The same archive the runner writes: it is what says whether a venue is
     // merely failing or has 404'd for over a day.
     scrapeArchive = scrapeArchive,
-    costs = scrapeCostStore
-  , clock = clock)
+    costs = scrapeCostStore,
+    clock = clock)
 
   // Post-boot enqueue ramp window: after a restart, ramp the per-tick scrape cap up
   // over this long instead of enqueuing the full `maxScrapeEnqueuePerTick` from the

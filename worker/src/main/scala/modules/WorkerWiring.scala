@@ -324,9 +324,9 @@ class WorkerWiring(
       tuning = MongoTuning.from(configuration), sharedClient = sharedMongoClient)
   }
 
-  /** The one clock a no-match `TmdbAttempt` is stamped from — `MovieService` on the
-   *  movies path (and, before it was deleted, `StagingSteps` on the staging path). The fixture harness pins it, so
-   *  a replayed corpus is byte-identical across arrival orders. */
+  /** The one clock this wiring's stamps are taken from — a no-match `TmdbAttempt`, an uptime
+   *  bucket, a scheduled run. The fixture harness pins it, so a replayed corpus is byte-identical
+   *  across arrival orders. */
   lazy val clock: java.time.Clock = java.time.Clock.systemUTC()
 
   // ── Shared due schedules (eager) ──────────────────────────────────────────
@@ -370,19 +370,13 @@ class WorkerWiring(
     RatingCadence.BaseInterval
   )
 
-  // Subscribe BEFORE start() so the bus's first MovieDetailsComplete events reach
-  // the enrichment handlers.
-  //   MovieDetailsComplete → movieService    (TMDB stage)
-  //   ImdbIdMissing        → imdbIdResolver  (recover the missing IMDb id)
-  // Resolution stays inline (one-shot per scraped row). Ratings are NOT enqueued
-  // off resolution any more — the EnrichmentReaper is the sole rating-enqueue path
-  // (capped + phase-spread), so a cohort of resolutions can't fan out into an
-  // instant rating-task burst. ImdbIdMissing is the only resolution event with a
-  // subscriber now (id recovery); the old TmdbResolved / ImdbIdResolved events
-  // were removed once nothing consumed them.
+  // Subscribe BEFORE start() so the bus's first events reach their handlers. Ratings are
+  // NOT enqueued off any event — the EnrichmentReaper is the sole rating-enqueue path
+  // (capped + phase-spread).
   // A venue page read into venue_pages: its answer is the model's now, and the next settle tells the
   // model of every page whose answer that changed.
   eventBus.subscribe { case services.events.VenueDetailRead(group, page) => venuePageIndex.pageRead(group, page) }
+  // ImdbIdMissing → imdbIdResolver: recover the missing IMDb id.
   eventBus.subscribe(imdbIdResolver.onImdbIdMissing)
   // The coordinator enqueues a chunked scrape's reduce once its last chunk task
   // finishes (the ChunkScrapeReaper backstop covers lost completions).
@@ -466,11 +460,8 @@ class WorkerWiring(
     // wedged-but-alive JVM the throttle watchdog can't see.
     boot.step("liveness watchdog")(livenessWatchdog.start())
     boot.step("enrichment reaper")(enrichmentReaper.start())
-    // A cut-over country's identity is the projection's (`IdentityCutoverWiring`): the old path's
-    // reapers — the TMDB retry / concluding and the deferred detail that feeds the TMDB resolve —
-    // are not started, and neither is staging's below.
-    // A cut-over country still enriches venue detail pages (the model reads them from the slots);
-    // only the TMDB re-try sweep is the old identity path's.
+    // Identity is the projection's (`IdentityCutoverWiring`), so no TMDB retry reaper starts. Venue
+    // detail pages are still enriched: the model reads them.
     boot.step("detail reaper")(detailReaper.start())
     boot.step("settle reaper")(settleReaper.start())
     boot.step("identity lookup refresh")(identityLookupRefreshSchedule.start())

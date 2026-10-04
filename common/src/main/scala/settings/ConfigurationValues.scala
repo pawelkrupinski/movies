@@ -125,17 +125,17 @@ final case class GapFill(value: Boolean) extends AnyVal
 final case class IdentityRatingGateEnabled(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_PROJECTION_SECONDS` — the identity projection's period. */
 final case class IdentityProjectionInterval(value: FiniteDuration) extends AnyVal
-/** `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` — how often the identity shadow run resolves (its own
- *  claimed window, independent of the settle). */
-final case class IdentityShadowInterval(value: scala.concurrent.duration.FiniteDuration) extends AnyVal
-/** `KINOWO_IDENTITY_SHADOW_INITIAL_DELAY_SECONDS` — how long after boot the first shadow run waits. */
-final case class IdentityShadowInitialDelay(value: scala.concurrent.duration.FiniteDuration) extends AnyVal
-/** `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` — live asks per minute the shadow fill may make: the cap on
- *  its share of the lookup chain it shares with the pipeline. */
+/** `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` — how often the identity model's paced live lookup fill
+ *  runs a round (its own claimed window, independent of the settle). */
+final case class IdentityShadowInterval(value: FiniteDuration) extends AnyVal
+/** `KINOWO_IDENTITY_SHADOW_INITIAL_DELAY_SECONDS` — how long after boot the fill's first round waits. */
+final case class IdentityShadowInitialDelay(value: FiniteDuration) extends AnyVal
+/** `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` — live asks per minute the lookup fill may make: the cap on
+ *  its share of the lookup chain. */
 final case class IdentityShadowLookupRate(perMinute: Int) extends AnyVal {
-  def pace: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(60000L / perMinute.max(1), "millis")
+  def pace: FiniteDuration = scala.concurrent.duration.Duration(60000L / perMinute.max(1), "millis")
   /** How many asks fit in `window` at this rate (at least one). */
-  def allowanceOver(window: scala.concurrent.duration.FiniteDuration): Int = (perMinute.toLong * window.toSeconds / 60).toInt.max(1)
+  def allowanceOver(window: FiniteDuration): Int = (perMinute.toLong * window.toSeconds / 60).toInt.max(1)
   def halved: IdentityShadowLookupRate = IdentityShadowLookupRate((perMinute / 2).max(1))
 }
 /** `KINOWO_IDENTITY_LOOKUPS` — the convergence leg sweeps identity lookups. */
