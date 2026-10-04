@@ -81,13 +81,21 @@ class MovieControllerService(
   /** Every OTHER city in `country` with an upcoming showing of `filmId` right
    *  now — what a film page needs to link directly to its sibling-city
    *  near-duplicates (`/{city}/movie/{slug}`), which used to be reachable only
-   *  through the sitemap and nothing else. Same `isUpcoming` predicate
+   *  through the sitemap and nothing else. Same [[StartedShowtimeCut]]
    *  [[schedulesFor]] applies, checked per city instead of building each
    *  city's whole schedule. */
   def citiesShowing(filmId: String, excluding: City, country: Country, now: LocalDateTime): Seq[City] = {
-    val film = Set(filmId)
+    val film    = Set(filmId)
+    // `now` is `excluding`'s wall clock; each sibling city judges on its own (the US spans six zones).
+    val instant = now.atZone(excluding.zoneId)
     country.allSorted.filter { c =>
-      c != excluding && readModel.screeningsOfFilms(c.slug, film).exists(_.showtimes.exists(_.isUpcoming(now)))
+      c != excluding && {
+        val cut = StartedShowtimeCut(c, instant.withZoneSameInstant(c.zoneId).toLocalDateTime)
+        readModel.screeningsOfFilms(c.slug, film).exists { sc =>
+          val venueCut = MovieControllerService.cinemaByName(sc.cinema).fold(cut.latest)(cut.at)
+          sc.showtimes.exists(_.dateTime.isAfter(venueCut))
+        }
+      }
     }
   }
 
@@ -111,9 +119,10 @@ class MovieControllerService(
     schedulesFor(city, readModel.screeningsOfFilms(city.slug, filmIds), nowIn(city))
 
   private def schedulesFor(city: City, cityScreenings: Seq[CityScreening], now: LocalDateTime): Seq[FilmSchedule] = {
-    // `Showtime.isUpcoming(now)` is `dateTime.isAfter(now.minus(Grace))`: the cutoff once,
-    // not a fresh LocalDateTime per showtime of the city (54k on New York).
-    val cutoff = now.minus(Showtime.Grace)
+    // `Showtime.isUpcoming(now)` is `dateTime.isAfter(now.minus(Grace))`: the cutoffs once,
+    // not a fresh LocalDateTime per showtime of the city (54k on New York) — one per venue
+    // clock, for the venues across a zone line from their city.
+    val cutoff = StartedShowtimeCut(city, now)
     val asOf   = now.toLocalDate
     // Grouped in a pre-sized mutable map rather than `groupBy`, whose persistent HashMap
     // copied nodes on every insert: ~1.7 MB a New York render, for 2,600 rows.
@@ -124,7 +133,7 @@ class MovieControllerService(
       readModel.movie(filmId).flatMap { resolved =>
         val key   = (city.slug, filmId)
         val prior = built.getIfPresent(key)
-        if (prior != null && prior.stillHolds(screenings, resolved, asOf, cutoff, readModel.filmSlugs.slugFor(resolved._id)))
+        if (prior != null && prior.stillHolds(screenings, resolved, asOf, cutoff.latest, readModel.filmSlugs.slugFor(resolved._id)))
           Some((prior.earliest, prior.schedule))
         else {
           val byDate = showingsByDate(screenings, cutoff)
@@ -208,11 +217,11 @@ class MovieControllerService(
    *  runs, rather than regrouping (cinema, showtime) tuples by date and again by
    *  cinema: on a New-York-sized city that was 25 MB of tuples, maps and orderings per
    *  render, where this is an array per cinema and a `CinemaShowtimes` per run. */
-  private def showingsByDate(screenings: Seq[CityScreening], cutoff: LocalDateTime): Seq[(LocalDate, Seq[CinemaShowtimes])] = {
+  private def showingsByDate(screenings: Seq[CityScreening], cutoff: StartedShowtimeCut): Seq[(LocalDate, Seq[CinemaShowtimes])] = {
     // A cinema can carry the film on more than one row; its showtimes merge, in row order.
     val perCinema = new java.util.LinkedHashMap[Cinema, scala.collection.mutable.ArrayBuffer[Showtime]]()
-    for (sc <- screenings; cinema <- MovieControllerService.cinemaByName(sc.cinema); st <- sc.showtimes)
-      if (st.dateTime.isAfter(cutoff)) perCinema.computeIfAbsent(cinema, _ => scala.collection.mutable.ArrayBuffer.empty).addOne(st)
+    for (sc <- screenings; cinema <- MovieControllerService.cinemaByName(sc.cinema); venueCut = cutoff.at(cinema); st <- sc.showtimes)
+      if (st.dateTime.isAfter(venueCut)) perCinema.computeIfAbsent(cinema, _ => scala.collection.mutable.ArrayBuffer.empty).addOne(st)
     if (perCinema.isEmpty) return Nil
     val runs = scala.collection.mutable.ArrayBuffer.empty[(LocalDate, CinemaShowtimes)]
     perCinema.forEach { (cinema, showtimes) =>

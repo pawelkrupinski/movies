@@ -112,7 +112,10 @@ object ShowingsMarkup {
             escapeInto(out, cinema.displayName)
         }
         out.append("</div><div>")
-        for (slot <- slots) badgeInto(out, slot, day, zone, clock, commonToks, prefix)
+        // A venue across a zone line from its city lapses on its own clock, so its pills carry
+        // their own expiry rather than the day's city-zone base plus their time.
+        val venueZone = models.VenueClock.zoneOf(cinema, zone)
+        for (slot <- slots) badgeInto(out, slot, day, venueZone, clock, commonToks, prefix)
         out.append("</div></div>")
         flush()
       }

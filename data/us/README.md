@@ -119,9 +119,8 @@ Eighteen metros still straddle a real boundary. Splitting a metro at a zone line
 would cut travel-sheds people drive across daily, so instead each minority venue —
 30 of 5,029 — carries its OWN zone (`UsRosterData.venueZones`, written by the
 generator), which `VenueClock` reads before its city's: its scrape day, its
-"upcoming" in the worker's gauges and its scrape cadence are its own wall clock.
-The web page still cuts started showtimes on the city's clock, an hour out for
-these venues.
+scrape cadence and the web's started-showtime cut (`StartedShowtimeCut`, and the
+pills' own expiry) are its own wall clock.
 
 ## Re-harvesting
 

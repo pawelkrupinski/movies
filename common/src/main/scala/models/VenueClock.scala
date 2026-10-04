@@ -52,6 +52,8 @@ object VenueClock {
   def fixedOn(day: LocalDate): VenueClock =
     new VenueClock(Clock.fixed(day.atTime(LocalTime.NOON).toInstant(ZoneOffset.UTC), ZoneOffset.UTC))
 
-  private def zoneOf(cinema: Cinema, fallback: ZoneId): ZoneId =
+  /** The zone `cinema` keeps its calendar in: its own ([[UsRoster.venueZones]]), else its
+   *  city's, else `fallback`. */
+  def zoneOf(cinema: Cinema, fallback: ZoneId): ZoneId =
     UsRoster.venueZones.getOrElse(cinema, City.forCinema(cinema).fold(fallback)(_.zoneId))
 }
