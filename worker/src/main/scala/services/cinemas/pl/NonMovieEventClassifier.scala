@@ -38,14 +38,6 @@ import scala.util.matching.Regex
  *  exposes; this one works off the title for venues that expose none). */
 object NonMovieEventClassifier {
 
-  /** Word-anchored markers of a live stage/music event. Anchored on `\b` so
-   *  `\bteatr` matches "Teatr Skene", "Teatralne popołudnie", "teatru capitol"
-   *  but NOT "Kinoteatrze Rialto"; `spektakl` (not followed by a Polish letter)
-   *  matches "spektakl komediowy", "Spektakl- Pomoc Domowa", "Spektakl_kubuś…"
-   *  but NOT "Społeczeństwo spektaklu" (an inflected form — a real film).
-   *  `\bgala\b` ignores "Galaxy"/"Galaktyki" (no boundary after "gala").
-   *  `koncert`/`gala`/`balet` are Polish-only spellings, so the English
-   *  "Royal Ballet" / "…Opera" of the kept broadcasts never match. */
   /** Mystery / blind screenings — sold as an event, never resolving to a title: "Seans w
    *  ciemno", "Seans niespodzianka" (collapsed "seanswciemno"), and Germany's "Sneak
    *  Preview" / "OV Sneak-Preview" / CineStar's "CineSneak". Not a bare "sneak": "Sneakers"
@@ -65,6 +57,14 @@ object NonMovieEventClassifier {
     MysteryScreeningMarkers.exists(_.findFirstIn(t).isDefined)
   }
 
+  /** Word-anchored markers of a live stage/music event. Anchored on `\b` so
+   *  `\bteatr` matches "Teatr Skene", "Teatralne popołudnie", "teatru capitol"
+   *  but NOT "Kinoteatrze Rialto"; `spektakl` (not followed by a Polish letter)
+   *  matches "spektakl komediowy", "Spektakl- Pomoc Domowa", "Spektakl_kubuś…"
+   *  but NOT "Społeczeństwo spektaklu" (an inflected form — a real film).
+   *  `\bgala\b` ignores "Galaxy"/"Galaktyki" (no boundary after "gala").
+   *  `koncert`/`gala`/`balet` are Polish-only spellings, so the English
+   *  "Royal Ballet" / "…Opera" of the kept broadcasts never match. */
   private val EventMarkers = MysteryScreeningMarkers ++ List(
     """\bstand[\s-]?up\b""".r,
     """\bkabaret""".r,
