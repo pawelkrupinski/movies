@@ -44,7 +44,8 @@ object IdentityModelMetrics {
  *    page, a proposal) — mapped back through
  *    [[ObservationReads]] to the questions that read it.
  *
- * Events are queued from any thread and drained on ONE thread every `settle`, as one
+ * Events are queued from any thread and drained on ONE thread a moment after they arrive ([[wake]]: a burst together,
+ * within `settle` of its first event — no period runs between events), as one
  * [[IncrementalResolver.batch]], so a family several venues touch in that window is resolved once.
  * On start it takes up the model its store kept ([[IncrementalResolver.restore]]) over the
  * archive's listings. A drain that fails leaves the engine half-updated, so the model is rebuilt
@@ -82,11 +83,34 @@ final class IdentityModelService(
 
   /** A venue's scrape was archived with `films`: its listings now. */
   def venueScraped(cinema: Cinema, films: Seq[CinemaMovie]): Unit = {
-    venues.put(cinema.displayName, Listing.distinct(Listing.all(Seq(cinema -> films), normalizer))); ()
+    venues.put(cinema.displayName, Listing.distinct(Listing.all(Seq(cinema -> films), normalizer))); wake()
   }
 
   /** New content was filed under `key` (the TMDB store, the venue page index, the proposal index). */
-  def observed(key: String): Unit = { observations.add(key); () }
+  def observed(key: String): Unit = { observations.add(key); wake() }
+
+  /** Drain soon: `quiet` after the last event of a burst, never more than `settle` after its first — so a burst several
+   *  venues land in is resolved together, as the fixed `settle` period batched it, and an event alone is taken in within
+   *  seconds. Nothing runs between events: there is no period, only the deadlines a drain leaves ([[drainAndReschedule]]).
+   *  Called by every event this model queues, and by whoever files what a drain reads (`VenuePageIndex.pageRead`). */
+  def wake(): Unit = wakeAfter(None)
+
+  private val wakeLock = new Object
+  private var wakeDue: Option[(java.util.concurrent.ScheduledFuture[?], Long)] = scala.None
+  private var burstSince = 0L
+  /** A drain at the next event's debounce, or at `at` (a deadline) when that is sooner than any drain already due. */
+  private def wakeAfter(at: Option[java.time.Instant]): Unit = wakeLock.synchronized {
+    val now = clock.millis()
+    val due = at.fold {
+      if (wakeDue.isEmpty) burstSince = now
+      math.min(now + IdentityModelService.Quiet.min(settle).toMillis, burstSince + settle.toMillis)
+    }(_.toEpochMilli)
+    if (wakeDue.forall { case (_, dueAt) => at.isEmpty || due < dueAt }) {
+      wakeDue.foreach(_._1.cancel(false))
+      val run: Runnable = () => { wakeLock.synchronized { wakeDue = scala.None }; drainAndReschedule() }
+      wakeDue = scala.util.Try(scheduler.schedule(run, math.max(0L, due - now), TimeUnit.MILLISECONDS)).toOption.map(_ -> due)
+    }
+  }
 
   /** The model brought up to NOW — taken up if it is not yet, every queued event drained — on its
    *  own thread: what a projection reads. `None` when it cannot be had within `timeout` (a rebuild
@@ -125,10 +149,20 @@ final class IdentityModelService(
   def takeUpSettled: Boolean = tookUp
 
   def start(): Unit = {
-    scheduler.execute(() => try tryTakeUp() finally tookUp = true)
-    scheduler.scheduleWithFixedDelay(() => tick(), settle.toMillis, settle.toMillis, TimeUnit.MILLISECONDS)
+    scheduler.execute(() => try tryTakeUp() finally { tookUp = true; drainAndReschedule() })
     ()
   }
+
+  /** A drain, then the one deadline it leaves, if any: a failed take-up's retry, the first waiting listing's
+   *  `pageWait.limit`, or — a settle of announced pages failed — another try one `settle` on. */
+  private def drainAndReschedule(): Unit = {
+    tick()
+    val takeUpRetry = if (model.isEmpty) retryAt else scala.None
+    val pageLimit   = waiting.valuesIterator.flatMap(_.valuesIterator.map(_._2)).minOption.map(_.plusMillis(pageWait.limit.toMillis))
+    val settleRetry = Option.when(settleFailed)(clock.instant().plusMillis(settle.toMillis))
+    (takeUpRetry ++ pageLimit ++ settleRetry).minOption.foreach(at => wakeAfter(Some(at)))
+  }
+  @volatile private var settleFailed = false
 
   // When a model that could not be taken up is next tried, and how long the wait after that one grows to.
   // Touched only on the model's thread.
@@ -159,8 +193,12 @@ final class IdentityModelService(
     // A settle that fails (a venue page's read timing out) has touched no engine state and leaves its pages
     // noted for the next one (`VenuePageIndex.settle`): this drain goes on without them. Thrown on, it reached
     // `safely`, which rebuilt the whole model from its store — minutes on US — over one read.
+    settleFailed = false
     try beforeDrain()
-    catch { case NonFatal(e) => logger.warn(s"identity model: settling announced pages failed — retried at the next drain: $e", e) }
+    catch { case NonFatal(e) =>
+      settleFailed = true
+      logger.warn(s"identity model: settling announced pages failed — retried at the next drain: $e", e)
+    }
     val scraped = venues.keySet.asScala.toSeq.flatMap(venue => Option(venues.remove(venue)).map(venue -> _))
     val keys    = observations.asScala.toSeq.filter(observations.remove)
     val (admitted, released) = admit(engine, scraped)
@@ -228,4 +266,6 @@ object IdentityModelService {
   /** The wait before a failed take-up is first retried; it doubles with each failure after, up to [[MaxRetry]]. */
   val FirstRetry: FiniteDuration = FiniteDuration(1, TimeUnit.MINUTES)
   val MaxRetry: FiniteDuration   = FiniteDuration(30, TimeUnit.MINUTES)
+  /** How long a drain waits after an event for the rest of its burst (never past the `settle` cap after the first). */
+  val Quiet: FiniteDuration = FiniteDuration(2, TimeUnit.SECONDS)
 }

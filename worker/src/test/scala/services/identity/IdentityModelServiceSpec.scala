@@ -396,4 +396,34 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     service.drain()
     held(service) shouldBe lalkaKey
   }
+
+  it should "drain a moment after an event, a burst together within its cap, and never between events" in {
+    // No period: the model is woken by what it queues. A burst of scrapes is one batch, as the fixed period batched it; an
+    // event alone is taken in seconds later; with nothing arriving, nothing runs.
+    val world   = new World
+    world.scrapes = Map(Multikino -> Seq(movie(Multikino, "Lalka")))
+    val clock   = new _root_.tools.MutableClock(java.time.Instant.parse("2026-10-04T20:00:00Z"))
+    val manual  = new _root_.tools.ManualScheduler(clock)
+    val batches = scala.collection.mutable.ArrayBuffer.empty[ModelBatch]
+    val service = new IdentityModelService(
+      () => new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration, store = world.store),
+      world.reads, () => listingsOf(world.scrapes), normalizer, 10.seconds, manual, batched = batches += _, clock = clock)
+    service.start(); manual.runDue()                                // take-up
+    batches.clear()
+    manual.advance(java.time.Duration.ofHours(1))
+    batches shouldBe empty                                          // nothing arrived: nothing ran
+    world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka"), movie(Multikino, "Matilda")))
+    manual.advance(java.time.Duration.ofMillis(1999))
+    batches shouldBe empty
+    manual.advance(java.time.Duration.ofMillis(1))
+    batches.loneElement.venues shouldBe 1                           // 2 s after it
+    batches.clear()
+    (1 to 8).foreach { i =>                                         // a burst, an event every 1.5 s for 12 s
+      world.scrape(service, Helios, Seq(movie(Helios, s"Film $i")))
+      manual.advance(java.time.Duration.ofMillis(1500))
+    }
+    batches.size shouldBe 1                                         // the 10 s cap, then the rest after the burst
+    manual.advance(java.time.Duration.ofSeconds(2))
+    batches.size shouldBe 2
+  }
 }

@@ -376,7 +376,8 @@ class WorkerWiring(
   // (capped + phase-spread).
   // A venue page read into venue_pages: its answer is the model's now, and the next settle tells the
   // model of every page whose answer that changed.
-  eventBus.subscribe { case services.events.VenueDetailRead(group, page) => venuePageIndex.pageRead(group, page) }
+  // A page read is what a drain's settle takes in (`VenuePageIndex.settle`): the model is woken for it, there being no period.
+  eventBus.subscribe { case services.events.VenueDetailRead(group, page) => venuePageIndex.pageRead(group, page); identityModel.wake() }
   // ImdbIdMissing → imdbIdResolver: recover the missing IMDb id.
   eventBus.subscribe(imdbIdResolver.onImdbIdMissing)
   // The coordinator enqueues a chunked scrape's reduce once its last chunk task
