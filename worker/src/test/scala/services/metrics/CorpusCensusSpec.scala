@@ -73,7 +73,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     private def anyKey: Option[CacheKey] = Option.when(keys.nonEmpty)(keys(rng.nextInt(keys.size)))
     private var next = 7
 
-    def step(): String = rng.nextInt(11) match {
+    def step(): String = rng.nextInt(12) match {
       case 0 =>
         next += 1; cache.put(cache.keyOf(s"Film $next", Some(2026)), film(rng, next)); s"put Film $next"
       case 1 => anyKey.fold("—") { key =>
@@ -106,6 +106,22 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
       case 8 => anyKey.fold("—") { key =>
           val id = cache.idOf(key).get
           repository.delete(id); cache.applyDelete(id); s"stream delete of ${key.cleanTitle}"
+        }
+      case 10 => anyKey.fold("—") { key =>
+          // another process's change confined to one venue's showtimes, applied from that venue alone
+          val stored = repository.findByIdChecked(cache.idOf(key).get).answered.get
+          stored.record.data.keys.collect { case s: CinemaShowing => s.cinema }.toSeq.sortBy(_.displayName).headOption.fold("—") { at =>
+            val moved = stored.record.copy(data = stored.record.data.map {
+              case (s: CinemaShowing, slot) if s.cinema == at =>
+                s -> slot.copy(showtimes = rng.shuffle(starts).take(rng.nextInt(3)).map(Showtime(_, bookingUrl = Some("https://book/venue"))))
+              case other => other
+            })
+            repository.upsert(stored.id, key, moved)
+            val read = repository.findByIdChecked(stored.id).answered.get.record
+            val slots = read.data.toSeq.collect { case (s: CinemaShowing, slot) if s.cinema == at => s -> slot }
+            cache.applyVenueSlots(services.movies.VenueSlots(stored.id, Map(at -> slots)), FilmWriteFence.Unfenced)
+            s"venue apply at $at of ${key.cleanTitle}"
+          }
         }
       case 9 => anyKey.fold("—") { key =>
           // another process's write the change stream missed, caught by the backstop rehydrate
@@ -164,7 +180,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     val cache  = cacheOver(unreadable)
     cache.put(cache.keyOf("Written Since Boot", Some(2026)), ready(Helios, 2, tomorrow))
     cache.hydrated shouldBe false
-    val census = censusOver(cache, registry, metrics = CorpusScanMetrics.prometheus(counter, "pl"))
+    val census = censusOver(cache, registry, metrics = CorpusCensusMetrics.prometheus(counter, "pl"))
     census.seed()
     census.publish()
     census.publish()
@@ -178,13 +194,48 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
   it should "not count a tick over a cache that holds the whole corpus" in {
     val registry = new PrometheusRegistry()
     val counter  = CorpusCensus.incompleteCounter(registry)
-    val census   = censusOver(cacheOver(splitRepository()), registry, metrics = CorpusScanMetrics.prometheus(counter, "pl"))
+    val census   = censusOver(cacheOver(splitRepository()), registry, metrics = CorpusCensusMetrics.prometheus(counter, "pl"))
     census.seed()
     census.publish()
     PrometheusExposition.sample(PrometheusExposition.render(registry), CorpusCensus.IncompleteMetricName, """country="pl"""") shouldBe Some(0.0)
   }
 
   // ── Kept, not re-read ───────────────────────────────────────────────────────────────────────────
+
+  // Told of a film under the cache's lock for it, on the writer's thread: a wide release lands once per venue, and
+  // deriving its part there cost a pass over its thousands of slots per landing.
+  it should "only note a changed film when told of it, and derive it at the next reading" in {
+    val counting = new services.movies.CountingNormalizer(normalizer.rules, _.startsWith("Wide"))
+    val cache    = new services.movies.CaffeineMovieCache(splitRepository(), normalizer = counting, clock = CorpusMetricsFixtures.clock)
+    val census   = censusOver(cache, new PrometheusRegistry())
+    census.seed()
+    val wide = row("Wide Film", MovieRecord(tmdbId = Some(1), data = venues.map(v =>
+      (CinemaShowing.keyFor(v, "Wide Film", normalizer): Source) -> SourceData(title = Some("Wide Film"),
+        showtimes = Seq(Showtime(tomorrow, bookingUrl = None)))).toMap))
+    val key = cache.keyOf("Wide Film", Some(2026))
+    counting.reset()
+    (1 to 50).foreach(_ => census.held(key, Some(wide)))
+    counting.calls shouldBe 0
+    census.reading().subset(Subset.Total) shouldBe 1
+    counting.calls should be > 0
+  }
+
+  // A film whose part cannot be derived keeps its last part — and is tried again on the next reading, not left
+  // wrong until its next write.
+  it should "derive again at the next reading a film it could not derive" in {
+    val census = censusOver(cacheOver(splitRepository()), new PrometheusRegistry())
+    census.seed()
+    val key    = CacheKey("Flaky", Some(2026), normalizer)
+    var broken = true
+    val film   = row("Flaky", ready(Helios, 1, tomorrow))
+    val flaky  = film.copy(record = new MovieRecord(tmdbId = Some(1), data = film.record.data) {
+      override def readyToProject: Boolean = if (broken) throw new IllegalStateException("bug") else super.readyToProject
+    })
+    census.held(key, Some(flaky))
+    census.reading().subset(Subset.Total) shouldBe 0
+    broken = false
+    census.reading().subset(Subset.Total) shouldBe 1
+  }
 
   // A scrape landing moves one slot of a film that can hold thousands: re-deriving every slot on each landing made a
   // film's landings cost the square of its venues.

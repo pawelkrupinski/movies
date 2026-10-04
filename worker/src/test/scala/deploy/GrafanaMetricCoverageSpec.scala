@@ -18,7 +18,7 @@ import scala.jdk.CollectionConverters._
  * `kinowo_worker_native_offbook_gap_bytes` (whose own doc comment calls it "the
  * primary signal" for the ~5-6h native OOM), `kinowo_worker_rating_resolved_not_run`
  * ("so Grafana can alert on it" — Grafana had never heard of it), and
- * `kinowo_worker_corpus_scan_incomplete_total`, the only surviving evidence that
+ * `kinowo_worker_corpus_census_incomplete_total`, the only surviving evidence that
  * the census gauges have gone stale.
  *
  * The worker's family list is derived from a real registry scrape rather than

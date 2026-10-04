@@ -3,7 +3,7 @@ package deploy
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.{CorpusCensus, CorpusScanMetrics, PrometheusExposition, WorkerCorpusMetrics, WorkerMetrics, WorkerShowtimesMetrics, WorkerSourceFilmsMetrics}
+import services.metrics.{CorpusCensus, CorpusCensusMetrics, PrometheusExposition, WorkerCorpusMetrics, WorkerMetrics, WorkerShowtimesMetrics, WorkerSourceFilmsMetrics}
 
 /**
  * Guards the dashboard/alert coverage over the CORPUS-INTEGRITY event families —
@@ -22,7 +22,7 @@ import services.metrics.{CorpusCensus, CorpusScanMetrics, PrometheusExposition, 
  *    value: flat, plausible, and indistinguishable from a quiet corpus. A frozen
  *    gauge also holds a constant ratio against its own `max_over_time` baseline,
  *    so `kinowo-showtime-volume-collapsed` cannot fire on it either. The ONLY
- *    remaining signal is `kinowo_worker_corpus_scan_incomplete_total` — which
+ *    remaining signal is `kinowo_worker_corpus_census_incomplete_total` — which
  *    makes charting AND alerting on it a hard requirement, not a nicety. Without
  *    it the 2026-07-27 shape (`Missing field: sourceData` failing every batch for
  *    ~50 minutes) is invisible on every panel and every rule we own.
@@ -56,7 +56,7 @@ class GrafanaCorpusIntegritySpec extends AnyFlatSpec with Matchers {
     val metrics = WorkerMetrics.singleCountry(Country.Poland, poolSize = settings.WorkerPoolSize(1))
     new CorpusCensus(services.metrics.CorpusMetricsFixtures.cacheOver(services.metrics.CorpusMetricsFixtures.repositoryOf()),
       metrics.corpusGauge, metrics.servedGauge, metrics.showtimesGauge, metrics.widestSlotsGauge, Country.Poland.code,
-      Country.Poland.cities, _root_.tools.SpecClock.Pinned, CorpusScanMetrics.prometheus(metrics.corpusScanIncomplete, Country.Poland.code))
+      Country.Poland.cities, _root_.tools.SpecClock.Pinned, CorpusCensusMetrics.prometheus(metrics.corpusCensusIncomplete, Country.Poland.code))
     PrometheusExposition.render(metrics.registry)
   }
 

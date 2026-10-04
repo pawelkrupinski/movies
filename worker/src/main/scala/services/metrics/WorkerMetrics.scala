@@ -123,7 +123,7 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   // Counts census ticks that could not count the whole corpus. The gauges above publish
   // NOTHING on such a tick (a partial count is indistinguishable from a real collapse),
   // so this counter is what keeps a stuck census visible instead of frozen-and-plausible.
-  val corpusScanIncomplete: Counter = CorpusCensus.incompleteCounter(registry)
+  val corpusCensusIncomplete: Counter = CorpusCensus.incompleteCounter(registry)
 
   // Whether each env-gated alerter / integration is wired (see EnvGatedFeature): the
   // alerters are recorded per country by each wiring, the integrations once by WorkerMain.

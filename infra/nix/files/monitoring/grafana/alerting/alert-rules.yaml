@@ -1009,14 +1009,14 @@ groups:
       # (decode, connection, timeout), not routine noise. The
       # counter is materialized at 0 per country from boot, so `increase` has a
       # baseline to move off immediately rather than only once it has gone wrong.
-      # The threshold is TWO failed passes inside the 30m window, not one — a
-      # single transient miss self-heals on the next tick and the gauges were
-      # only one sample stale — and it is written `> 1.5`, not `> 1`, because
-      # `increase` extrapolates: once the counter has moved off 0 since boot, ONE
-      # failed pass reads ~1.02 and sat above `> 1` for the whole half hour, so
-      # the rule paged on exactly the single miss it claimed to ride out
+      # The threshold is FIVE missed ticks inside the 45m window — about 25
+      # minutes of a cache that has not read the corpus, the half hour the rule
+      # asked for when the census was a 15-minute scan and two failed passes
+      # paged (ticks come every 5 minutes since 2026-10-04, three times as
+      # often) — and it is written `> 4.5`, not `> 4`, because `increase`
+      # extrapolates: four misses read ~4.04 and would sit above `> 4`
       # (infra/test/alert-rules/grafana-fleet-alerts.yml). `for: 10m` then asks
-      # for the second failure to stand for two more passes.
+      # for it to stand for two more ticks.
       - uid: kinowo-corpus-census-stuck
         title: Corpus census stuck (country)
         condition: C
@@ -1027,7 +1027,7 @@ groups:
           severity: critical
         annotations:
           summary: '{{ $labels.country }} corpus census cannot read the whole collection — its census gauges are frozen'
-          description: 'kinowo_worker_corpus_scan_incomplete_total is rising for "{{ $labels.country }}": the corpus census (counted from the worker's cache every 5 minutes) finds the cache has never read the whole corpus since boot, so kinowo_worker_corpus_movies / _movies_served / _showtimes / _film_widest_slots have STOPPED publishing and are showing their last complete values. Treat every census panel on the Fly-health dashboard as stale until this clears — including the ones the showtime-collapse and films-served alerts read, which cannot fire on a frozen gauge. Check the worker logs for `corpus-census: the cache does not hold the whole corpus` and for `MovieCache rehydrate` / `MovieCache cold-retry` and the read error underneath them (2026-07-27 was a required-field decode bug failing every batch; see reference_failed_read_is_not_data).'
+          description: 'kinowo_worker_corpus_census_incomplete_total is rising for "{{ $labels.country }}": the corpus census (counted from the worker''s cache every 5 minutes) finds the cache has never read the whole corpus since boot, so kinowo_worker_corpus_movies / _movies_served / _showtimes / _film_widest_slots have STOPPED publishing and are showing their last complete values. Treat every census panel on the Fly-health dashboard as stale until this clears — including the ones the showtime-collapse and films-served alerts read, which cannot fire on a frozen gauge. Check the worker logs for `corpus-census: the cache does not hold the whole corpus` and for `MovieCache rehydrate` / `MovieCache cold-retry` and the read error underneath them (2026-07-27 was a required-field decode bug failing every batch; see reference_failed_read_is_not_data).'
         data:
           - refId: A
             relativeTimeRange: { from: 1800, to: 0 }
@@ -1035,7 +1035,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
-              expr: 'sum by (country) (increase(kinowo_worker_corpus_scan_incomplete_total[45m]))'
+              expr: 'sum by (country) (increase(kinowo_worker_corpus_census_incomplete_total[45m]))'
               instant: true
               range: false
               intervalMs: 1000
@@ -1050,7 +1050,7 @@ groups:
               expression: A
               conditions:
                 - type: query
-                  evaluator: { type: gt, params: [1.5] }
+                  evaluator: { type: gt, params: [4.5] }
                   operator: { type: and }
                   query: { params: [] }
                   reducer: { type: last, params: [] }

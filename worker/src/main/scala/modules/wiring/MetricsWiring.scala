@@ -1,7 +1,7 @@
 package modules.wiring
 
 import modules.WorkerWiring
-import services.metrics.{CinemaContentCensus, CinemaScrapeCensus, CorpusCensus, CorpusScanMetrics, RatingRunCensus, RetiredVenueCensus, WorkerTaskMetrics}
+import services.metrics.{CinemaContentCensus, CinemaScrapeCensus, CorpusCensus, CorpusCensusMetrics, RatingRunCensus, RetiredVenueCensus, WorkerTaskMetrics}
 
 /** This country's slice of the process-wide `/metrics` registry: the
  *  per-country task-pipeline facade, the cache-occupancy gauges, and the
@@ -34,7 +34,7 @@ trait MetricsWiring { self: WorkerWiring =>
   lazy val corpusCensus: CorpusCensus = managedResources.stopping(
     new CorpusCensus(movieCache, workerMetrics.corpusGauge, workerMetrics.servedGauge, workerMetrics.showtimesGauge,
       workerMetrics.widestSlotsGauge, country.code, country.cities, clock,
-      CorpusScanMetrics.prometheus(workerMetrics.corpusScanIncomplete, country.code)))
+      CorpusCensusMetrics.prometheus(workerMetrics.corpusCensusIncomplete, country.code)))
   // One venue's scraped feed under another's name, told by booking sessions as each scrape lands
   // (CopiedFeedArchive) — it replaced the programme-comparing census the corpus scan used to carry.
   // Only over the venues read through an upstream known to copy feeds; None where there are none.

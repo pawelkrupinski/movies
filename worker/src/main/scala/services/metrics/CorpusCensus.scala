@@ -23,8 +23,9 @@ import scala.util.Try
  * `movie_slots`: on the US a pass read every film, every venue slot and every screenings row four times an hour, and
  * cost 29% of the worker's CPU at its earlier 5-minute cadence (2026-09-30). The cache already holds every film, and
  * hears of every change — a scrape landing, the identity projection's writes, another process's write through the
- * change stream, a rehydrate. So each film's part in the census ([[FilmCensus]]) is derived when the cache's copy of it
- * changes (`MovieCache.onResident`), and kept:
+ * change stream, a rehydrate. So the cache notes each film it changed (`MovieCache.onResident`, a map put under the
+ * film's lock), each tick derives the noted films' parts ([[FilmCensus]]) — reusing every slot it holds unchanged — and
+ * keeps them:
  *   - the time-free counts — the corpus subsets but `unresolved_with_showtimes` — as running sums, moved by each
  *     film's old and new part;
  *   - the rest — films served, upcoming showtimes, unresolved-yet-screening, the widest film — depend on the clock as
@@ -39,7 +40,7 @@ import scala.util.Try
  *
  * Honest about what it does not know, as the scan was: until the cache has read the whole corpus once (`hydrated`)
  * and every film it holds has been counted, a tick publishes NOTHING and counts the miss on
- * `kinowo_worker_corpus_scan_incomplete_total` instead. A cache that only holds the films written since boot is not a
+ * `kinowo_worker_corpus_census_incomplete_total` instead. A cache that only holds the films written since boot is not a
  * smaller corpus, and as a gauge value the two are indistinguishable (2026-07-27: a decode bug failed every batch and
  * the censuses published 0 while the corpus sat intact).
  */
@@ -52,13 +53,16 @@ final class CorpusCensus(
   countryCode:     String,
   cities:          Seq[City],
   clock:           Clock,
-  metrics:         CorpusScanMetrics = CorpusScanMetrics.noop,
+  metrics:         CorpusCensusMetrics = CorpusCensusMetrics.noop,
   publishInterval: FiniteDuration    = CorpusCensus.DefaultPublishInterval
 ) extends services.Stoppable with Logging {
   import CorpusCensus._
 
-  private val films  = new ConcurrentHashMap[CacheKey, FilmCensus]()
+  // Each film's part, as of the last drain, and the time-free subsets' running sums over them. Both guarded by `parts`.
+  private val parts  = scala.collection.mutable.HashMap.empty[CacheKey, FilmCensus]
   private val static = new Array[Long](StaticSubsets.size)
+  // The films the cache changed since the last drain, each as it now holds it (`None`: gone).
+  private val dirty  = new ConcurrentHashMap[CacheKey, Option[StoredMovieRecord]]()
   @volatile private var seeded = false
 
   // Every (city, scope) and city seeded at 0, so a city that empties reads as an explicit 0, not a vanished series.
@@ -72,23 +76,37 @@ final class CorpusCensus(
 
   private val scheduler = DaemonExecutors.scheduler("corpus-census")
 
-  /** Take the film `key` now holds (`None`: gone) in place of its last part. Called under the cache's lock for the
-   *  key, so one key's calls never cross. */
-  private[metrics] def held(key: CacheKey, film: Option[StoredMovieRecord]): Unit = {
-    val prior = Option(films.get(key))
-    val next  = film.map(FilmCensus.of(_, cache.normalizer, prior))
-    next.fold(films.remove(key))(films.put(key, _))
-    static.synchronized {
-      prior.foreach(p => add(p.subsets, -1))
-      next.foreach(n => add(n.subsets, +1))
+  /** Note the film `key` now holds (`None`: gone), for the next drain to derive. Called under the cache's lock for
+   *  the key, on the writer's thread — so it only notes: deriving a film's part is linear in its slots, and a wide
+   *  release at 3,300 venues was re-derived whole for each venue's landing, inside that lock. */
+  private[metrics] def held(key: CacheKey, film: Option[StoredMovieRecord]): Unit = { dirty.put(key, film); () }
+
+  /** Derive the part of every film noted since the last drain, in place of its last one. A film whose derivation
+   *  throws keeps its last part and stays noted, so the next drain tries it again rather than leaving it wrong until
+   *  its next write. Caller holds `parts`. */
+  private def drain(): Unit = dirty.keySet().asScala.toSeq.foreach { key =>
+    Option(dirty.remove(key)).foreach { film =>
+      val prior = parts.get(key)
+      Try(film.map(FilmCensus.of(_, cache.normalizer, prior))) match {
+        case scala.util.Success(next) =>
+          next.fold(parts.remove(key))(parts.put(key, _))
+          prior.foreach(p => add(p.subsets, -1))
+          next.foreach(n => add(n.subsets, +1))
+        case scala.util.Failure(e) =>
+          dirty.putIfAbsent(key, film)
+          logger.warn(s"corpus-census: could not count '${key.cleanTitle}' (${e.getMessage}) — it keeps its last count until the next tick.")
+      }
     }
   }
 
   private def add(subsets: Int, by: Int): Unit =
     StaticSubsets.indices.foreach(i => if ((subsets & (1 << i)) != 0) static(i) += by)
 
-  /** The census as the parts held now give it, against the clock now. */
-  def reading(): Reading = tally(films.values.iterator.asScala, static.synchronized(static.toSeq), cities, clock)
+  /** The census as the films the cache holds now give it, against the clock now. */
+  def reading(): Reading = parts.synchronized {
+    drain()
+    tally(parts.valuesIterator, static.toSeq, cities, clock)
+  }
 
   /** Publish [[reading]] — or, while the cache does not hold the whole corpus, nothing, counted as a miss. */
   def publish(): Unit =
@@ -137,7 +155,7 @@ object CorpusCensus {
   /** Every 5 minutes: a tick reads nothing, and the clock-bound gauges move by the minute (a showtime passing). */
   val DefaultPublishInterval: FiniteDuration = 5.minutes
 
-  val IncompleteMetricName = "kinowo_worker_corpus_scan_incomplete_total"
+  val IncompleteMetricName = "kinowo_worker_corpus_census_incomplete_total"
 
   /** Register the shared counter every country's census increments (leading `country` label). */
   def incompleteCounter(registry: PrometheusRegistry): Counter =
@@ -295,18 +313,18 @@ object SlotCensus {
 
 /** Where [[CorpusCensus]] reports a tick that could not count the whole corpus. A trait so the census stays testable
  *  without a Prometheus registry. */
-trait CorpusScanMetrics {
+trait CorpusCensusMetrics {
   def recordIncompleteSample(): Unit
 }
 
-object CorpusScanMetrics {
-  val noop: CorpusScanMetrics = new CorpusScanMetrics { def recordIncompleteSample(): Unit = () }
+object CorpusCensusMetrics {
+  val noop: CorpusCensusMetrics = new CorpusCensusMetrics { def recordIncompleteSample(): Unit = () }
 
   /** Binds one country's slice of the shared counter, materializing the series at 0 up front: a healthy country must
    *  be an explicit 0, not an absent series, or an alert on it has nothing to compare against. */
-  def prometheus(counter: Counter, countryCode: String): CorpusScanMetrics = {
+  def prometheus(counter: Counter, countryCode: String): CorpusCensusMetrics = {
     counter.labelValues(countryCode)
-    new CorpusScanMetrics {
+    new CorpusCensusMetrics {
       def recordIncompleteSample(): Unit = counter.labelValues(countryCode).inc()
     }
   }
