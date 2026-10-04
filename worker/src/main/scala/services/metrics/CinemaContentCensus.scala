@@ -4,10 +4,11 @@ import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Country
 import services.cinemas.common.CinemaScraper
-import services.scrapes.{ContentStamp, ScrapeArchiveRepository}
+import services.scrapes.{BarrenAttempt, ContentStamp, ForwardingScrapeArchive, ScrapeArchiveRepository, SuccessfulScrape}
 
 import java.time.{Clock, Instant}
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 
 /**
  * Surfaces cinemas that SCRAPE fine and produce nothing — the failure mode no
@@ -55,12 +56,14 @@ import scala.concurrent.duration._
  * too. They are the number that makes a drifting parser ASKABLE, instead of
  * invisible: a venue quiet far longer than a season is worth opening the site for.
  *
- * Sampled from the scrape archive rather than the corpus, because the archive is
- * the only place that remembers the last scrape which HAD content — the read model
- * simply has no row for a film nobody is showing. That is a Mongo read, so it runs
- * on its own slow cadence ([[CinemaContentCensus.DefaultSampleInterval]]): the
- * thing being measured moves in days, and there is no sense paying a query a minute
- * to watch it.
+ * Kept from the scrape archive rather than the corpus, because the archive is the
+ * only place that remembers the last scrape which HAD content — the read model simply
+ * has no row for a film nobody is showing. Its stamps are read ONCE, at the first
+ * reading, and then kept as each scrape is archived ([[watching]]): the archive is
+ * written nowhere else. A daily re-read ([[CinemaContentCensus.RereadInterval]])
+ * catches what that misses — a write that failed after it was counted. Until a read
+ * has succeeded, nothing is published. This read every venue's stamp every 30
+ * minutes until 2026-10-04: 5,000 documents a reading on the US.
  */
 class CinemaContentCensus(
   scrapers:     Seq[CinemaScraper],
@@ -70,9 +73,17 @@ class CinemaContentCensus(
   staleVenues:  Gauge,
   country:      Country,
   clock:        Clock,
-  override protected val sampleInterval: FiniteDuration = CinemaContentCensus.DefaultSampleInterval
+  override protected val sampleInterval: FiniteDuration = CinemaContentCensus.DefaultSampleInterval,
+  rereadInterval: FiniteDuration = CinemaContentCensus.RereadInterval
 ) extends SampledCensus {
   import CinemaContentCensus._
+
+  // Each venue's stamp, as the last read gave it and every scrape archived since moved it.
+  private val stamps = new java.util.concurrent.ConcurrentHashMap[String, ContentStamp]()
+  // The venues a scrape moved since the last read began: a read cannot know whether it saw their newest stamp.
+  private val moved  = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
+  // When the archive was last read whole; None until it has been.
+  @volatile private var lastRead: Option[Instant] = None
 
   override protected val censusName: String = "cinema-content-census"
 
@@ -91,17 +102,49 @@ class CinemaContentCensus(
   // `start()` takes the first reading at once, so the series appears within the boot.
 
   def sample(): Unit = {
-    val stamps = archive.contentStamps()
-    // Empty means the read failed (or there is no archive at all) — NOT that every
-    // cinema has gone quiet. Publishing that would turn a Mongo blip into a
-    // roster-wide outage on the panel, which is the exact inversion this metric
-    // exists to avoid. Hold the previous reading instead.
-    if (stamps.isEmpty && roster.nonEmpty) return
+    val now = clock.instant()
+    if (lastRead.forall(at => !now.isBefore(at.plusMillis(rereadInterval.toMillis)))) read(now)
+    // Never read whole: nothing to stand behind, so the gauges hold whatever they held.
+    if (lastRead.isDefined) {
+      val census = quiet(roster, stamps.asScala.toMap, now)
+      oldestAge.labelValues(countryCode).set(census.oldestAgeSeconds)
+      neverContent.labelValues(countryCode).set(census.neverContent.toDouble)
+      staleVenues.labelValues(countryCode).set(census.staleVenues.toDouble)
+    }
+  }
 
-    val census = quiet(roster, stamps, clock.instant())
-    oldestAge.labelValues(countryCode).set(census.oldestAgeSeconds)
-    neverContent.labelValues(countryCode).set(census.neverContent.toDouble)
-    staleVenues.labelValues(countryCode).set(census.staleVenues.toDouble)
+  private def read(now: Instant): Unit = {
+    moved.clear()
+    val read = archive.contentStamps()
+    // Empty means the read failed (or there is no archive at all) — NOT that every
+    // cinema has gone quiet. Taken, that would turn a Mongo blip into a roster-wide
+    // outage on the panel, the exact inversion this metric exists to avoid. The next
+    // reading reads again.
+    if (read.nonEmpty || roster.isEmpty) {
+      read.foreach { case (venue, stamp) => if (!moved.contains(venue)) stamps.put(venue, stamp) }
+      lastRead = Some(now)
+    }
+  }
+
+  /** `underlying`, every scrape filed in it also moving that venue's stamp here — as the archive's own rules move it
+   *  ([[ScrapeArchiveRepository.record]]): a listing with films is the venue's newest content; an attempt that
+   *  produced none, unless older than that content, says only whether the source vouched for its silence. */
+  def watching(underlying: ScrapeArchiveRepository): ScrapeArchiveRepository = new ForwardingScrapeArchive(underlying) {
+    override protected def storeSuccess(cinema: models.Cinema, city: Option[String], scrape: SuccessfulScrape): Unit = {
+      super.storeSuccess(cinema, city, scrape)
+      moved.add(cinema.displayName)
+      stamps.put(cinema.displayName, ContentStamp(Some(scrape.at)))
+      ()
+    }
+    override protected def storeBarren(cinema: models.Cinema, city: Option[String], attempt: BarrenAttempt): Unit = {
+      super.storeBarren(cinema, city, attempt)
+      // A venue not held yet is left to the read: its content stamp is the archive's to say.
+      stamps.computeIfPresent(cinema.displayName, (_, held) => {
+        moved.add(cinema.displayName)
+        if (held.lastContentAt.exists(_.isAfter(attempt.at))) held else held.copy(noScheduleListed = attempt.noScheduleListed)
+      })
+      ()
+    }
   }
 }
 
@@ -158,8 +201,9 @@ object CinemaContentCensus {
     .labelNames("country")
     .register(registry)
 
-  /** Every 30 minutes. The measured thing moves in days, and unlike its in-memory
-   *  sibling each reading is a Mongo query — a per-minute cadence would buy no
-   *  resolution and add a query a minute for the life of the worker. */
+  /** Every 30 minutes: the measured thing moves in days. A reading reads nothing but the stamps held here. */
   val DefaultSampleInterval: FiniteDuration = 30.minutes
+
+  /** How often the stamps are read from the archive again, to catch what the scrapes filed here missed. */
+  val RereadInterval: FiniteDuration = 1.day
 }

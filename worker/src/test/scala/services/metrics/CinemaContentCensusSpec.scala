@@ -34,12 +34,13 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
   /** An archive that answers with exactly `stamps` — including, when empty, the
    *  read that could not be completed. */
   private class StubArchive(var stamps: Map[String, ContentStamp]) extends ScrapeArchiveRepository {
+    var reads = 0
     def enabled: Boolean = true
     protected def storeSuccess(c: Cinema, city: Option[String], s: services.scrapes.SuccessfulScrape): Unit = ()
     protected def storeBarren(c: Cinema, city: Option[String], a: services.scrapes.BarrenAttempt): Unit     = ()
     def find(cinema: Cinema): Option[ArchivedScrape] = None
     def scan(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome = tools.ScanOutcome.complete
-    def contentStamps(): Map[String, ContentStamp] = stamps
+    def contentStamps(): Map[String, ContentStamp] = { reads += 1; stamps }
   }
 
   private val healthyStamps = Map(
@@ -53,12 +54,12 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
     (c, oldestAge, neverContent)
   }
 
-  private def censusWithStale(archive: ScrapeArchiveRepository, scrapers: Seq[CinemaScraper] = roster) = {
+  private def censusWithStale(archive: ScrapeArchiveRepository, scrapers: Seq[CinemaScraper] = roster,
+                              clock: Clock = Clock.fixed(now, ZoneOffset.UTC)) = {
     val registry = new PrometheusRegistry()
     val (oldestAge, neverContent) = CinemaContentCensus.gauges(registry)
     val stale = CinemaContentCensus.staleVenuesGauge(registry)
-    val c = new CinemaContentCensus(scrapers, archive, oldestAge, neverContent, stale, Country.Poland,
-      Clock.fixed(now, ZoneOffset.UTC))
+    val c = new CinemaContentCensus(scrapers, archive, oldestAge, neverContent, stale, Country.Poland, clock)
     (c, oldestAge, neverContent, stale)
   }
 
@@ -171,4 +172,62 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
     c.sample()
     valueOf(stale) shouldBe 1.0
   }
+
+  // It read every venue's stamp every 30 minutes — 5,000 documents a reading on the US — to learn what each scrape
+  // had already told the worker as it was archived.
+  "the content census" should "follow each archived scrape without reading the archive again" in {
+    val archive = new StubArchive(healthyStamps)
+    val clock   = new tools.MutableClock(now)
+    val (c, oldestAge, neverContent, stale) = censusWithStale(archive, clock = clock)
+    val filing  = c.watching(new services.scrapes.InMemoryScrapeArchiveRepository)
+    c.sample()
+    valueOf(stale) shouldBe 1.0                                      // the 40-day-quiet venue
+
+    // The quiet venue lists films again, and the never-produced one produces its first.
+    filing.record(services.scrapes.ScrapeAttempt(quiet, Cinema.cityOf(quiet), now, listingComplete = true, films = Seq(film)))
+    filing.record(services.scrapes.ScrapeAttempt(never, Cinema.cityOf(never), now, listingComplete = true, films = Seq(film)))
+    clock.advance(java.time.Duration.ofHours(2))
+    c.sample()
+
+    archive.reads shouldBe 1
+    valueOf(stale) shouldBe 0.0
+    valueOf(neverContent) shouldBe 0.0
+    valueOf(oldestAge) shouldBe (3 * 3600).toDouble                  // the one that produced an hour before `now`
+  }
+
+  it should "take an empty scrape's word that the venue lists no schedule, but not over newer content" in {
+    val archive = new StubArchive(Map(
+      producing.displayName -> ContentStamp(Some(now.minusSeconds(3600))),
+      quiet.displayName     -> ContentStamp(Some(now.minusSeconds(40 * 86400)))))
+    val (c, _, _, stale) = censusWithStale(archive)
+    val filing = c.watching(new services.scrapes.InMemoryScrapeArchiveRepository)
+    c.sample()
+    valueOf(stale) shouldBe 1.0
+    filing.record(services.scrapes.ScrapeAttempt(quiet, Cinema.cityOf(quiet), now, listingComplete = true, films = Seq.empty,
+      noScheduleListed = true))
+    // An empty attempt older than the venue's newest content changes nothing.
+    filing.record(services.scrapes.ScrapeAttempt(producing, Cinema.cityOf(producing), now.minusSeconds(7200), listingComplete = true,
+      films = Seq.empty, noScheduleListed = true))
+    c.sample()
+    valueOf(stale) shouldBe 0.0                                      // closed for the season, on its own word
+    archive.reads shouldBe 1
+  }
+
+  it should "read again until a read succeeds, then once a day" in {
+    val archive = new StubArchive(Map.empty)                         // the first read fails
+    val clock   = new tools.MutableClock(now)
+    val (c, _, _, stale) = censusWithStale(archive, clock = clock)
+    c.sample()
+    stale.collect().getDataPoints.size shouldBe 0
+    archive.stamps = healthyStamps
+    c.sample()
+    valueOf(stale) shouldBe 1.0
+    archive.reads shouldBe 2
+    clock.advance(java.time.Duration.ofHours(23)); c.sample()
+    archive.reads shouldBe 2
+    clock.advance(java.time.Duration.ofHours(1)); c.sample()
+    archive.reads shouldBe 3
+  }
+
+  private val film = models.CinemaMovie(models.Movie("Film"), quiet, None, None, None, Nil, Nil, Nil)
 }

@@ -284,11 +284,12 @@ trait ScrapeWiring { self: WorkerWiring =>
   // scrapes it (skipping if a concurrent run already refreshed it).
 
   // The shared scrape core, injected into ScrapeCinemaHandler: every scrape archived and handed to the
-  // identity intake. The archive is wrapped to hand each landing to the copied-feed detector (where one
-  // runs), and once more, outermost, to page for a gone venue nothing else pages for.
+  // identity intake. The archive is wrapped to hand each landing to the content census, and to the
+  // copied-feed detector (where one runs), and once more, outermost, to page for a gone venue nothing
+  // else pages for.
   lazy val cinemaScrapeRunner = new CinemaScrapeRunner(identityListingIntake,
     new GoneVenueAlertingArchive(
-      copiedFeedDetector.foldLeft(scrapeArchive)(new services.cinemas.roster.CopiedFeedArchive(_, _)),
+      copiedFeedDetector.foldLeft(cinemaContentCensus.watching(scrapeArchive))(new services.cinemas.roster.CopiedFeedArchive(_, _)),
       venuesPagedElsewhere,
       fallbackPager(services.alerts.TelegramAlertKind.GoneVenue)),
     completeness = workerMetrics.listingIncomplete.recorderFor(country.code))
