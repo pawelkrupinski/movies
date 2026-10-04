@@ -1401,6 +1401,26 @@ abstract class CountryConvergenceBehaviour(
     }
   }
 
+  /** Every card the settled corpus serves is one a user can trust — see [[ServedOutputInvariants]]:
+   *  one card per film and slug in a city, no showtime listed twice, every link followable, every
+   *  rating in range and linked to its own film, the year TMDB's, the title free of screening markers,
+   *  country and genre names the country's language spells. The same rules the Polish fixture boot is
+   *  held to (`ServedOutputInvariantsSpec`), over this country's recorded corpus. */
+  s"the ${country.displayName} read model" should "serve only cards that keep the served-output invariants" in {
+    {
+      val (w, _) = shared
+      val cards = ServedOutputInvariants.cardsOf(w, country, w.movieCache.normalizer, renderAt)
+      info(s"${country.displayName}: ${ServedOutputInvariants.coverage(cards)} held to the served-output invariants")
+      withClue("the read model serves no card, so this asserts nothing: ")(cards should not be empty)
+      val verdict = ServedOutputAllowlist.judge(country, w.movieCache.normalizer, cards)
+      withClue(s"${country.displayName}'s served cards break the served-output invariants — fix the stage that produced " +
+        s"the value, or allowlist the card in ServedOutputAllowlist with why it is right:\n${verdict.unexplained.mkString("\n")}\n") {
+        verdict.unexplained shouldBe empty
+      }
+      withClue("Allowlisted but no longer breaking a rule — drop the entry: ")(verdict.stale shouldBe empty)
+    }
+  }
+
   /**
    * The NEXT DAY, over the settled corpus: every venue re-reports its listing with the
    * first day's showtimes gone, a few films open at one more venue in their city, one venue
