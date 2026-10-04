@@ -1,6 +1,6 @@
 package services.cinemas.pl
 
-import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse, SlotsToMovies}
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
@@ -44,7 +44,6 @@ object KinoEvaClient {
 
   private val DayHeader = """(\d{1,2})\s+(\p{L}+)\s+(\d{4})""".r
   private val Runtime   = """(?:(\d+)\s*h)?\s*(?:(\d+)\s*min)?""".r
-  private val Age       = """(?i)od\s+(\d+)\s+lat""".r
 
   private case class RawSlot(
     title:    String,
@@ -100,7 +99,7 @@ object KinoEvaClient {
         rawTitle = rawTitle,
         dateTime = LocalDateTime.of(date, time),
         genres   = titleCell.text.trim.stripPrefix(heading.ownText.trim).split(",").toSeq.map(_.trim).filter(_.nonEmpty),
-        age      = details.flatMap(Age.findFirstMatchIn(_)).headOption.map(m => s"${m.group(1)}+"),
+        age      = details.flatMap(AgeRating.polishMinimumAge).headOption,
         runtime  = details.flatMap(runtimeOf).headOption
       )
     }

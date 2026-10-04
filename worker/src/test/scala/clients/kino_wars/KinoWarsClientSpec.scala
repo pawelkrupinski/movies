@@ -48,7 +48,7 @@ class KinoWarsClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val gwiazdozbior = film("Gwiazdozbiór psa")
     gwiazdozbior.movie.runtimeMinutes.value shouldBe 119
     gwiazdozbior.movie.genres shouldBe Seq("Akcja", "przygodowy", "sci-fi", "thriller")
-    gwiazdozbior.ageRating.value shouldBe "14"
+    gwiazdozbior.ageRating.value shouldBe "14+"   // the "N+" every other PL venue badges
     gwiazdozbior.posterUrl.value shouldBe
       "https://kino.wysokiemazowieckie.pl/images/filmy/2026/Gwiazdozbiór_Psa_-_plakat_główny_net_zmniejszony.jpg"
     gwiazdozbior.filmUrl.value shouldBe "https://kino.wysokiemazowieckie.pl/repertuar/gwiazdozbior-psa"

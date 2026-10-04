@@ -1,6 +1,6 @@
 package services.cinemas.pl
 
-import services.cinemas.common.{CinemaScraper, ScrapeHorizon, ScraperParse, ListingPages}
+import services.cinemas.common.{AgeRating, CinemaScraper, ScrapeHorizon, ScraperParse, ListingPages}
 import models._
 import play.api.libs.json.Json
 import tools.{HttpFetch, HttpRead}
@@ -76,7 +76,6 @@ object KinoBajkaBlonieClient {
   private val FormContentType = "application/x-www-form-urlencoded"
 
   private val FilmLink = """^https://kino\.blonie\.pl/film/[^/]+/?$""".r
-  private val AgeFrom  = """(?i)od\s+lat:?\s*(\d+)""".r
 
   /** The film-dates POST: every upcoming day after yesterday, up to the shared horizon. */
   def datesBody(filmId: String, today: LocalDate): String =
@@ -136,7 +135,7 @@ object KinoBajkaBlonieClient {
         director    = Seq.empty,
         showtimes   = dateTimes.map(Showtime(_, None, format = format)),
         trailerUrl  = trailerOf(page),
-        ageRating   = facts.lift(ageAt).flatMap(AgeFrom.findFirstMatchIn).map(m => s"${m.group(1)}+")
+        ageRating   = facts.lift(ageAt).flatMap(AgeRating.polishMinimumAge)
       )
     }
 

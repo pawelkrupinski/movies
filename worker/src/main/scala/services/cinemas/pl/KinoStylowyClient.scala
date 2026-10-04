@@ -66,7 +66,6 @@ object KinoStylowyClient {
   def dayUrl(day: LocalDate): String = s"$BaseUrl/repertuar/repertuar.html?rep_date=$day"
 
   private val RepDate  = """rep_date=(\d{4}-\d{2}-\d{2})""".r
-  private val AgeDigits = """(\d+)""".r
   private val Year     = """(?:19|20)\d{2}""".r
 
   private case class RawSlot(
@@ -138,7 +137,7 @@ object KinoStylowyClient {
 
   /** "od lat 12" → "12+"; "od lat " (no number: unrated) → None. */
   private def ageOf(badge: Element): Option[String] =
-    AgeDigits.findFirstIn(badge.text).flatMap(n => AgeRating.normalize(s"$n+"))
+    AgeRating.polishMinimumAge(badge.text)
 
   private[pl] def parseDetail(html: String): FilmDetail = {
     val doc  = Jsoup.parse(html, BaseUrl)

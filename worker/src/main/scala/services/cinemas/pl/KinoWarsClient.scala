@@ -90,7 +90,6 @@ object KinoWarsClient {
   private val ScreeningDay = """^\d{1,2}\.\d{1,2}\.\d{4}(?=\s*r\.)""".r
   private val TimeToken = """\b(\d{1,2}:\d{2})\b""".r
   private val Runtime   = """(\d+)\s*min""".r
-  private val AgeFrom   = """(?i)od lat\s*(\d+)""".r
   /** The trailing `/ PL` (Polish film) or bare `/` left once a version word is peeled. */
   private val TrailingVersionSlash = """\s*/\s*(?:PL)?\s*$""".r
 
@@ -173,7 +172,7 @@ object KinoWarsClient {
         format    = format,
         runtime   = meta.flatMap(Runtime.findFirstMatchIn).flatMap(_.group(1).toIntOption),
         genres    = meta.toSeq.flatMap(genresOf),
-        ageRating = meta.flatMap(AgeFrom.findFirstMatchIn).map(_.group(1)).flatMap(AgeRating.normalize),
+        ageRating = meta.flatMap(AgeRating.polishMinimumAge),
         synopsis  = synopsisOf(paragraphs),
         poster    = Option(item.selectFirst(".item-image img")).map(_.attr("abs:src")).filter(_.nonEmpty),
         filmUrl   = Option(item.selectFirst(".item-image a[href], a.readmore[href]")).map(_.attr("abs:href")).filter(_.nonEmpty),
@@ -187,7 +186,7 @@ object KinoWarsClient {
    *  a segment that is itself an age rating or a runtime means there is none. */
   private def genresOf(meta: String): Seq[String] =
     meta.split('|').headOption.toSeq
-      .filterNot(segment => AgeFrom.findFirstIn(segment).isDefined || Runtime.findFirstIn(segment).isDefined)
+      .filterNot(segment => AgeRating.polishMinimumAge(segment).isDefined || Runtime.findFirstIn(segment).isDefined)
       .flatMap(_.split(','))
       .map(_.trim)
       .filter(_.nonEmpty)

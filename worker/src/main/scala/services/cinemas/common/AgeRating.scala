@@ -39,4 +39,14 @@ object AgeRating {
   /** As `normalize`, but also drops the Polish "no restriction" marker(s) first. */
   def normalizeDroppingNoRestriction(raw: Option[String]): Option[String] =
     normalize(raw.filterNot(r => NoRestrictionMarkers.contains(r.trim.toLowerCase(Locale.ROOT))))
+
+  /** A minimum age as the Polish venues spell it — "Od lat: 12", "od lat 12",
+   *  "od 12 lat" — badged "12+" like every other PL source; `None` when the
+   *  label states no age ("od lat " on an unrated film, "Bez ograniczeń"). */
+  def polishMinimumAge(text: String): Option[String] =
+    PolishMinimumAge.findFirstMatchIn(text)
+      .flatMap(m => Option(m.group(1)).orElse(Option(m.group(2))))
+      .flatMap(age => normalize(s"$age+"))
+
+  private val PolishMinimumAge = """(?i)\bod\s+lat:?\s*(\d{1,2})\b|\bod\s+(\d{1,2})\s*lat\b""".r
 }
