@@ -112,6 +112,24 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     Await.result(raw.countDocuments(Filters.eq("id", u.id)).toFuture(), 10.seconds) shouldBe 1L
   }
 
+  it should "keep serving, its plain index kept, over a database that already holds a duplicate id" in {
+    tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "users-duplicate-id") { db =>
+      val raw = db.getCollection("users")
+      Await.result(raw.createIndex(org.mongodb.scala.model.Indexes.ascending("id")).toFuture(), 10.seconds)
+      val rows = db.withCodecRegistry(UserCodecs.registry).getCollection[User]("users")
+      Seq("google", "facebook").foreach(provider =>
+        Await.result(rows.insertOne(sentinelUser("dup").copy(id = "dup@example.com", provider = provider)).toFuture(), 10.seconds))
+      val logged = tools.LogCapture.thisThread("services.users") {
+        val duplicated = new MongoUserRepository(Some(db))
+        duplicated.enabled shouldBe true
+        noException should be thrownBy duplicated.findById("dup@example.com")
+      }
+      logged.map(_.getFormattedMessage).exists(_.contains("users has NO unique id index")) shouldBe true
+      val index = Await.result(raw.listIndexes().toFuture(), 10.seconds).map(_.toBsonDocument).find(_.getString("name").getValue == "id_1")
+      withClue(s"id_1 must survive, still plain: $index ")(index.exists(i => !i.getBoolean("unique", org.bson.BsonBoolean.FALSE).getValue) shouldBe true)
+    }
+  }
+
   it should "treat upsert(same id, changed fields) as an update — newest write wins" in {
     val u   = sentinelUser("update")
     users.upsert(u)
