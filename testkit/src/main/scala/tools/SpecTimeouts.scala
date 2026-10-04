@@ -33,12 +33,49 @@ object SpecTimeouts {
   val Scale: Int = ProcessConfiguration.resolve().specTimeScale.value
 
   /** One operation completing: a Mongo/driver round trip, a future, a latch a worker thread
-   *  counts down, a thread finishing its run. */
-  val Io: FiniteDuration = 60.seconds * Scale
+   *  counts down, a thread finishing its run. Past the suite's [[SuiteDeadline]], [[PastDeadline]]. */
+  def Io: FiniteDuration = withinSuiteDeadline(IoBound)
 
   /** Eventual consistency: a change stream delivering, a projection catching up, a poller's
-   *  condition coming true — [[Eventually]]'s default deadline. */
-  val Settle: FiniteDuration = 60.seconds * Scale
+   *  condition coming true — [[Eventually]]'s default deadline. Past the suite's
+   *  [[SuiteDeadline]], [[PastDeadline]]. */
+  def Settle: FiniteDuration = withinSuiteDeadline(SettleBound)
+
+  private val IoBound: FiniteDuration     = 60.seconds * Scale
+  private val SettleBound: FiniteDuration = 60.seconds * Scale
+
+  /**
+   * THE HUNG-SUITE BUDGET. A generous bound per wait makes a regression that hangs every test
+   * of a suite cost a minute PER TEST, which runs a CI job past its `timeout-minutes`: the job is
+   * cancelled, with no JUnit report and no flake rerun to say what broke. So a suite gets a
+   * deadline, counted from its first [[Io]] / [[Settle]] read: past it, those bounds shrink to
+   * [[PastDeadline]], and the rest of a hung suite fails in seconds per test, inside the job.
+   *
+   * The suite is told by the thread asking — ScalaTest names a thread running a suite
+   * `…-ScalaTest-running-<suite>`; a bound read anywhere else (a thread a spec started, a
+   * patience built at construction) is the full one. [[Run]] is never shrunk: the whole-corpus
+   * suites wait a pipeline pass long after their start. The slowest suite outside those runs
+   * under two minutes locally, so ten is no green suite's limit.
+   */
+  val SuiteDeadline: FiniteDuration = 10.minutes * Scale
+  val PastDeadline: FiniteDuration  = 10.seconds * Scale
+
+  private val suiteStarts = new java.util.concurrent.ConcurrentHashMap[String, java.lang.Long]()
+  private val SuiteThread = "ScalaTest-running-(.+)$".r.unanchored
+
+  private def withinSuiteDeadline(bound: FiniteDuration): FiniteDuration =
+    boundFor(bound, Thread.currentThread.getName, System.nanoTime(), suiteStarts)
+
+  /** `bound`, or [[PastDeadline]] once the suite `threadName` runs has been waiting on bounds for
+   *  longer than [[SuiteDeadline]] — `starts` holding when each suite first asked. */
+  private[tools] def boundFor(bound: FiniteDuration, threadName: String, nowNanos: Long,
+                              starts: java.util.concurrent.ConcurrentHashMap[String, java.lang.Long]): FiniteDuration =
+    threadName match {
+      case SuiteThread(suite) =>
+        val start = starts.computeIfAbsent(suite, _ => nowNanos)
+        if (nowNanos - start > SuiteDeadline.toNanos) bound.min(PastDeadline) else bound
+      case _ => bound
+    }
 
   /** A whole run: a pipeline pass over a corpus, a full projection, a batch of renders. */
   val Run: FiniteDuration = 10.minutes * Scale
