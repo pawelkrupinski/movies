@@ -84,7 +84,8 @@ object FilmIdCounters {
  * a caller misuses it.
  */
 trait FilmIdCounterStore {
-  /** Every stored entry — failed when the read, or the decoding of any entry, did not succeed. */
+  /** Every stored entry — failed when the read did not succeed. An entry that cannot be decoded is
+   *  skipped, never freed (see `MongoFilmIdCounterStore.decode`). */
   def allChecked(): tools.ReadOutcome[Seq[FilmIdCounter]]
   /** Insert `entries`; returns how many landed (a refused one did not). */
   def insert(entries: Seq[FilmIdCounter]): Int
@@ -116,14 +117,11 @@ final class MongoFilmIdCounterStore(database: MongoDatabase) extends FilmIdCount
       case _ => ()
     }
 
-  /** An entry that does not decode fails the read: skipped, its film id and counter would read
-   *  as free, and the map is append-only precisely so that neither is ever handed out twice. */
+  /** Every entry, a document that does not decode skipped and logged ([[MongoFilmIdCounterStore.decode]]);
+   *  failed only when the read itself failed. */
   def allChecked(): tools.ReadOutcome[Seq[FilmIdCounter]] = {
     val read = tools.MongoRead(60.seconds)(coll.find().batchSize(tools.MongoReplies.Default).toFuture())
-      .flatMap(docs => tools.ReadOutcome.of(docs.map { d =>
-        val doc = d.toBsonDocument
-        FilmIdCounter(doc.getString("_id").getValue, doc.getNumber("counter").longValue)
-      }))
+      .map(docs => MongoFilmIdCounterStore.decode(docs.map(_.toBsonDocument)))
     read match {
       case tools.ReadOutcome.Failed(cause) => logger.warn(s"${MongoFilmIdCounterStore.Collection}: read failed: ${cause.explain}")
       case _                 => ()
@@ -146,8 +144,30 @@ final class MongoFilmIdCounterStore(database: MongoDatabase) extends FilmIdCount
     }
 }
 
-object MongoFilmIdCounterStore {
+object MongoFilmIdCounterStore extends Logging {
   val Collection = "identity_film_ids"
+
+  /** The entries `docs` hold, one by one. A document that does not decode is logged and skipped —
+   *  failing the whole read on it stopped every film id being assigned until someone edited the
+   *  collection by hand — without ever freeing what it holds:
+   *  - its `_id`, if it is a film id, stays refused by the store's `_id` (an insert of it is turned
+   *    away as already mapped, never handed out twice);
+   *  - its `counter`, if it is a number, stays reserved: it is kept as an entry under a film id no
+   *    film has, so the next counter still starts past it. */
+  private[identity] def decode(docs: Seq[org.bson.BsonDocument]): Seq[FilmIdCounter] = docs.flatMap { doc =>
+    val id      = Option(doc.get("_id"))
+    val counter = Option(doc.get("counter")).filter(_.isNumber).map(_.asNumber.longValue)
+    (id.filter(_.isString).map(_.asString.getValue), counter) match {
+      case (Some(filmId), Some(c)) => Some(FilmIdCounter(filmId, c))
+      case (_, reserved) =>
+        logger.warn(s"$Collection: entry ${id.getOrElse("(no _id)")} does not decode (${doc.toJson.take(200)}) — skipped" +
+          reserved.fold("")(c => s", its counter $c kept reserved"))
+        reserved.map(c => FilmIdCounter(s"$UndecodedPrefix${id.fold("")(_.toString)}", c))
+    }
+  }
+
+  /** The film id a reserved counter of an undecodable entry is kept under: no film's id starts so. */
+  private[identity] val UndecodedPrefix = "\u0000undecoded:"
 
   /** A bulk insert refused ONLY for entries already mapped (duplicate `_id`). A write-concern
    *  failure arrives as the same exception with no write errors, and must throw, not read as

@@ -62,14 +62,17 @@ class FilmIdCounterStoreContractSpec extends AnyFlatSpec with Matchers with Befo
     }
   }
 
-  // An entry the store cannot decode was skipped, so the map read as complete without it — and its
-  // film id and counter as free to hand out again, in a map that exists to never do that.
-  "MongoFilmIdCounterStore" should "fail the read, not skip, an entry it cannot decode" in {
+  // An entry the store cannot decode failed the whole read, which stopped every film id being
+  // assigned until the collection was edited by hand. It is skipped now — but what it holds is not
+  // freed: its film id stays refused by the store's `_id`, so it is still never handed out twice.
+  "MongoFilmIdCounterStore" should "skip an entry it cannot decode, never handing its film id out again" in {
     val store = fresh(classOf[MongoFilmIdCounterStore])
     store.insert(Seq(FilmIdCounter("belle|2013", 1))) shouldBe 1
     Await.result(isolatedDatabase.database.getCollection(MongoFilmIdCounterStore.Collection)
       .insertOne(org.mongodb.scala.Document("_id" -> "dune|2021", "counter" -> "two")).toFuture(), 30.seconds)
-    store.allChecked() shouldBe a[tools.ReadOutcome.Failed]
-    new FilmIdMapping(store).load().isLeft shouldBe true
+    store.allChecked().required shouldBe Seq(FilmIdCounter("belle|2013", 1))
+    val mapping = new FilmIdMapping(store)
+    mapping.append(Seq(film("dune|2021", 1), film("arrival|2016", 1))) shouldBe Right(1)
+    mapping.load().map(_.counterOf("arrival|2016")) shouldBe Right(Some(2))
   }
 }

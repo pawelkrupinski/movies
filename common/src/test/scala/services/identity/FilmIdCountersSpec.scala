@@ -73,4 +73,17 @@ class FilmIdCountersCostSpec extends AnyFlatSpec with Matchers {
     (System.nanoTime() - started) / 1e9 should be < 5.0
   }
 
+
+  "MongoFilmIdCounterStore.decode" should "skip an undecodable entry, keeping the others and the counter it holds" in {
+    import org.bson.{BsonDocument, BsonInt64, BsonString}
+    def doc(id: org.bson.BsonValue, counter: org.bson.BsonValue) = new BsonDocument("_id", id).append("counter", counter)
+    val decoded = MongoFilmIdCounterStore.decode(Seq(
+      doc(new BsonString("belle|2013"), new BsonInt64(1)),
+      doc(new BsonString("dune|2021"), new BsonString("two")),     // no counter to keep
+      doc(new BsonInt64(7), new BsonInt64(9))))                     // its counter stays taken
+    decoded.filterNot(_.filmId.startsWith(MongoFilmIdCounterStore.UndecodedPrefix)) shouldBe Seq(FilmIdCounter("belle|2013", 1))
+    val map = FilmIdCounters.of(decoded).toOption.get
+    map.nextCounter shouldBe 10
+    map.counterOf("dune|2021") shouldBe None
+  }
 }
