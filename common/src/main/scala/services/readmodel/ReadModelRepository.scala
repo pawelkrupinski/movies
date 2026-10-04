@@ -36,6 +36,18 @@ final case class ShareCardRef(filmId: String, shareCard: Option[String])
  *  every `web_screenings` row filed under its id. */
 final case class StoredCard(movie: Option[ResolvedMovie], screenings: Seq[CityScreening])
 
+/** A `web_screenings` row as the WEB holds it: without the fields only the worker reads.
+ *  `listingKeys` (the identity cutover's per-row listing keys) is 6–13% of the collection's
+ *  bytes — 11 MB of US's 187 MB on 2026-10-04 — and nothing the web renders or compares reads it,
+ *  so its boot hydrate and change stream leave it on the server rather than pay for it on the
+ *  wire and the heap. The worker's reads keep every field: its projector compares rows whole. */
+object ServedScreening {
+  /** What a served read projects away — field names as stored. */
+  val WorkerOnlyFields: Seq[String] = Seq("listingKeys")
+  /** The row as a served read returns it: a store that cannot project gets the same answer. */
+  def apply(row: CityScreening): CityScreening = row.copy(listingKeys = Seq.empty)
+}
+
 /**
  * Read side of the denormalised read model — what the **web** depends on.
  * Segregated from [[ReadModelWriter]] (ISP): the serving app never writes, so
@@ -75,6 +87,10 @@ trait ReadModelReader {
    *  The in-memory store has nothing to page, so the default walks [[findAllScreenings]]. */
   def foreachScreening(f: CityScreening => Unit): tools.ScanOutcome = { findAllScreenings().foreach(f); tools.ScanOutcome.complete }
 
+  /** [[foreachScreening]] as the web serves each row ([[ServedScreening]]) — the web read model's
+   *  hydrate. The Mongo store leaves the worker-only fields on the server; the default strips them. */
+  def foreachServedScreening(f: CityScreening => Unit): tools.ScanOutcome = foreachScreening(row => f(ServedScreening(row)))
+
   /** Just the `_id`s of every read-model movie — the projector's reconcile prune
    *  needs only the id set to spot orphaned films, never the full `ResolvedMovie`
    *  payload. Default derives from [[findAllMovies]] (fine for the in-memory
@@ -112,6 +128,7 @@ trait ReadModelReader {
    *  point (disabled, a standalone Mongo), in which case a watch can only start now. */
   def streamCheckpoint(): Option[StreamCheckpoint]
   def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription]
+  /** Delivers each row as the web serves it ([[ServedScreening]]): its only consumer is the web's model. */
   def watchScreenings(onUpsert: CityScreening => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription]
   def close(): Unit
 }

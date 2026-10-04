@@ -118,8 +118,10 @@ class InMemoryReadModelRepository extends ReadModelReader with ReadModelWriter {
 
   def watchScreenings(onUpsert: CityScreening => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription] = {
     screeningWatchesOpened.incrementAndGet()
-    replay(from, movies = false, screeningsStore, onUpsert, onDelete)
-    screeningWatcher = Some((onUpsert, onDelete))
+    // Served rows, as the Mongo stream's server-side projection delivers them.
+    val onServedUpsert = (row: CityScreening) => onUpsert(ServedScreening(row))
+    replay(from, movies = false, screeningsStore, onServedUpsert, onDelete)
+    screeningWatcher = Some((onServedUpsert, onDelete))
     screeningStreamLive.set(true)
     Some(subscription(screeningStreamLive, { screeningWatcher = None }))
   }

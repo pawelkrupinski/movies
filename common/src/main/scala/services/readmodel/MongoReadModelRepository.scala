@@ -7,7 +7,7 @@ import models.{CityScreening, ResolvedMovie}
 import org.bson.{BsonDocumentReader, BsonTimestamp}
 import org.bson.codecs.{Codec, DecoderContext}
 import org.mongodb.scala.bson.BsonDocument
-import org.mongodb.scala.model.{CountOptions, Filters, Indexes, Projections, ReplaceOneModel, Sorts}
+import org.mongodb.scala.model.{Aggregates, CountOptions, Filters, Indexes, Projections, ReplaceOneModel, Sorts}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import play.api.Logging
 import services.movies.{KeysetScan, RepositoryWrite}
@@ -94,7 +94,8 @@ class MongoReadModelRepository(
 
   /** Every document of `coll`, decoded and handed to `f` one keyset page at a time — never the
    *  whole collection at once — plus whether the scan reached the end. */
-  private def pagedForeach[A: ClassTag](coll: Option[MongoCollection[A]], label: String)(f: A => Unit): tools.ScanOutcome =
+  private def pagedForeach[A: ClassTag](coll: Option[MongoCollection[A]], label: String,
+                                        projection: Option[org.bson.conversions.Bson] = None)(f: A => Unit): tools.ScanOutcome =
     coll match {
       case Some(c) =>
         val codec = ReadModelCodecs.registry.get(implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]])
@@ -106,7 +107,8 @@ class MongoReadModelRepository(
           keyOf          = _.getString("_id").getValue,
           fetchPage      = (afterId, limit) => {
             val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
-            Await.result(c.find[BsonDocument](filter).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
+            val found  = c.find[BsonDocument](filter)
+            Await.result(projection.fold(found)(found.projection).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
           },
           onIncomplete   = exception =>
             logger.warn(s"$label keyset scan failed after retries: ${exception.getClass.getSimpleName}: ${exception.getMessage} — scan incomplete")
@@ -137,6 +139,8 @@ class MongoReadModelRepository(
   def findAllScreenings(): Seq[CityScreening] = pagedFindAll(screenings, "ReadModelRepository.findAllScreenings").required
   override def foreachScreening(f: CityScreening => Unit): tools.ScanOutcome =
     pagedForeach(screenings, "ReadModelRepository.foreachScreening")(f)
+  override def foreachServedScreening(f: CityScreening => Unit): tools.ScanOutcome =
+    pagedForeach(screenings, "ReadModelRepository.foreachServedScreening", Some(Projections.exclude(ServedScreening.WorkerOnlyFields*)))(f)
 
   // ── Id-only projections (the reconcile prune) ───────────────────────────────
   // The prune needs only ids/filmIds to spot orphaned documents; projecting them
@@ -290,25 +294,27 @@ class MongoReadModelRepository(
   }
 
   def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription] =
-    movies.map(watch(_, onUpsert, onDelete, MongoReadModelRepository.MoviesCollection, from))
+    movies.map(watch(_, onUpsert, onDelete, MongoReadModelRepository.MoviesCollection, from, pipeline = Nil))
 
   def watchScreenings(onUpsert: CityScreening => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription] =
-    screenings.map(watch(_, onUpsert, onDelete, MongoReadModelRepository.ScreeningsCollection, from))
+    screenings.map(watch(_, onUpsert, onDelete, MongoReadModelRepository.ScreeningsCollection, from,
+      pipeline = Seq(Aggregates.project(Projections.exclude(ServedScreening.WorkerOnlyFields.map(field => s"fullDocument.$field")*)))))
 
   /** Route each insert / update / replace to `onUpsert` (full post-image via
    *  `UPDATE_LOOKUP`) and each delete to `onDelete(_id)`. The driver auto-
    *  resumes across transient blips; a terminal error flips `live` to false so
-   *  the caller's periodic reload takes over. Requires a replica set.
+   *  the caller's periodic reload takes over. Requires a replica set. `pipeline` runs on the server
+   *  over each event — the screenings stream drops the post-image's worker-only fields there.
    *
    *  A document the codec refuses is SKIPPED and counted, never the end of the stream — see
    *  [[services.movies.ChangeEventDecoder]]: decoded inside the driver, one such document
    *  ended the cursor, and every later write waited on the periodic reload. */
   private def watch[T: ClassTag](coll: MongoCollection[T], onUpsert: T => Unit, onDelete: String => Unit, label: String,
-                                 from: Option[StreamCheckpoint]): StreamSubscription = {
+                                 from: Option[StreamCheckpoint], pipeline: Seq[org.bson.conversions.Bson]): StreamSubscription = {
     val subRef = new AtomicReference[Subscription]()
     val alive  = new AtomicBoolean(true)
     val decoder = services.movies.ChangeEventDecoder.of[T](label, coll.codecRegistry, decodeFailures)
-    val stream = coll.watch[org.bson.BsonDocument]().fullDocument(FullDocument.UPDATE_LOOKUP)
+    val stream = coll.watch[org.bson.BsonDocument](pipeline).fullDocument(FullDocument.UPDATE_LOOKUP)
     from.fold(stream)(checkpoint => stream.startAtOperationTime(new BsonTimestamp(checkpoint.value)))
       .subscribe(new Observer[ChangeStreamDocument[org.bson.BsonDocument]] {
         override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }

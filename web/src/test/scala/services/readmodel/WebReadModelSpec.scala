@@ -399,7 +399,21 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.allScreenings().map(_._id) should contain theSameElementsAs Seq("s1", "s2")
   }
 
-  it should "still evict the rows and cities a complete read no longer holds" in {
+  "the model" should "hold each row without the worker-only listingKeys, from the hydrate and from the stream" in {
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(movie("belle|2021"))
+    repository.upsertScreening(screening("s1", "belle|2021", "wroclaw").copy(listingKeys = Seq("k1")))
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
+    rm.start()
+    try {
+      repository.upsertScreening(screening("s2", "belle|2021", "wroclaw").copy(listingKeys = Seq("k2")))
+
+      rm.allScreenings().map(_._id) should contain theSameElementsAs Seq("s1", "s2")
+      rm.allScreenings().flatMap(_.listingKeys) shouldBe empty
+    } finally rm.stop()
+  }
+
+  "reload" should "still evict the rows and cities a complete read no longer holds" in {
     val repository = new InMemoryReadModelRepository
     repository.upsertMovie(movie("belle|2021"))
     repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))

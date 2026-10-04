@@ -18,8 +18,9 @@ package models
  * `listingKeys` is the identity migration's dual write into the read model
  * (docs/design/identity-resolver.md §16): the serialised [[services.movies.ListingKey]] of every
  * venue listing whose showtimes this row carries — sorted, and more than one where the venue's
- * slots of the film are unioned here. Nothing reads it yet; it is what lets the cutover key a
- * served screening by `(FilmId, ListingKey)` instead of by title.
+ * slots of the film are unioned here. It is what lets the cutover key a served screening by
+ * `(FilmId, ListingKey)` instead of by title. The web never reads it: its reads project it away
+ * (`services.readmodel.ServedScreening`).
  */
 case class CityScreening(
   _id:       String,

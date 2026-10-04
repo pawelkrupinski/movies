@@ -341,7 +341,7 @@ class WebReadModel(
 
     val seenByCity      = new java.util.HashMap[String, java.util.HashSet[String]]()
     val nextFilmCities  = new java.util.HashMap[String, java.util.Set[String]]()
-    val screeningsComplete = reader.foreachScreening { projected =>
+    val screeningsComplete = reader.foreachServedScreening { projected =>
       val s = onCurrentPage(projected)
       byCity.computeIfAbsent(s.city, _ => new ConcurrentHashMap[String, CityScreening]())
         .compute(s._id, (id, held) => if (applied.contains(id)) held else s)
