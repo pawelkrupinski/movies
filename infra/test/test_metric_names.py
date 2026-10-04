@@ -21,8 +21,11 @@ those carry their WHY in alert-backtest-allowlist.yml's `conditional_metrics`, t
 live dead-alert backtest excuses.
 
 REFRESHING THE SNAPSHOT. A name the fleet stops exporting stays in a stale snapshot, and every
-reader of it passes for good -- so the snapshot carries the day it was taken and this check refuses
-one older than MAX_AGE_DAYS. Refresh (read-only: one Prometheus label-values query):
+reader of it passes for good -- so the snapshot carries the day it was taken, and one older than
+MAX_AGE_DAYS raises a CI warning annotation. A warning, never a failure: this runs in the job that
+gates staging fleet closures, and a calendar date must not block an infra fix (possibly mid-incident)
+behind a refresh that needs the fleet SOCKS proxy. An UNDATED snapshot still fails -- that is a code
+change. Refresh (read-only: one Prometheus label-values query):
 
     ssh -f -N kinowo-fleet                          # the fleet SOCKS proxy, 127.0.0.1:1080
     infra/bin/snapshot-label-values --names-only    # rewrites metric-names.json
@@ -50,20 +53,21 @@ SNAPSHOT = os.path.join(HERE, "metric-names.json")
 ALLOWLIST = os.path.join(HERE, "alert-backtest-allowlist.yml")
 RESNAPSHOT = ("re-run infra/bin/snapshot-label-values --names-only (fleet SOCKS proxy up: ssh -f -N kinowo-fleet) "
               "and commit metric-names.json")
-# How old the snapshot may be before the check refuses it: a fortnight's window, refreshed monthly.
+# How old the snapshot may be before the check warns: a fortnight's window, refreshed monthly.
 MAX_AGE_DAYS = 45
 
 
-def snapshot_age_problem(document, today):
-    """Why `document` is too old (or undated) to vouch for the fleet on `today`, else None."""
+def snapshot_age(document, today):
+    """(failure, warning) for `document` on `today`: undated is a failure (a code change can fix it);
+    older than MAX_AGE_DAYS only a warning -- see REFRESHING THE SNAPSHOT for why a date never fails."""
     taken = document.get("taken")
     if not taken:
-        return "metric-names.json carries no 'taken' date -- " + RESNAPSHOT
+        return "metric-names.json carries no 'taken' date -- " + RESNAPSHOT, None
     age = (today - datetime.date.fromisoformat(taken)).days
     if age > MAX_AGE_DAYS:
-        return ("metric-names.json was taken %s, %d days ago (limit %d): a name the fleet stopped exporting "
-                "would still pass -- %s" % (taken, age, MAX_AGE_DAYS, RESNAPSHOT))
-    return None
+        return None, ("metric-names.json was taken %s, %d days ago (limit %d): a name the fleet stopped "
+                      "exporting would still pass -- %s" % (taken, age, MAX_AGE_DAYS, RESNAPSHOT))
+    return None, None
 
 
 def expressions():
@@ -100,11 +104,13 @@ class TheCheckItself(unittest.TestCase):
                        problems(exprs, {"country:kept:count"}, {"node_cpu_seconds_total"}, {}))
         self.assertEqual(found, ['__name__=~"nope_.*"', "country:gone:count", "node_cpu_typo"])
 
-    def test_refuses_a_stale_or_undated_snapshot(self):
+    def test_refuses_an_undated_snapshot_and_only_warns_on_a_stale_one(self):
         today = datetime.date(2026, 10, 4)
-        self.assertIsNone(snapshot_age_problem({"taken": "2026-09-20"}, today))
-        self.assertIn("days ago", snapshot_age_problem({"taken": "2026-08-01"}, today))
-        self.assertIn("no 'taken' date", snapshot_age_problem({}, today))
+        self.assertEqual(snapshot_age({"taken": "2026-09-20"}, today), (None, None))
+        failure, warning = snapshot_age({"taken": "2026-08-01"}, today)
+        self.assertIsNone(failure)   # a calendar date must never turn the staging gate red
+        self.assertIn("days ago", warning)
+        self.assertIn("no 'taken' date", snapshot_age({}, today)[0])
 
     def test_a_conditional_metric_is_excused(self):
         self.assertEqual(problems([("rule", "a_only_when_broken == 1")], set(), set(),
@@ -115,8 +121,10 @@ class EveryNameExists(unittest.TestCase):
 
     def test_the_snapshot_is_fresh(self):
         with open(SNAPSHOT, encoding="utf-8") as handle:
-            problem = snapshot_age_problem(json.load(handle), datetime.date.today())
-        self.assertIsNone(problem, problem)
+            failure, warning = snapshot_age(json.load(handle), datetime.date.today())
+        self.assertIsNone(failure, failure)
+        if warning:   # a GitHub workflow command; test_alert_rules.sh passes it through on success
+            print("::warning title=Stale metric-name snapshot::" + warning)
 
     def test_every_name_read_by_a_panel_variable_alert_or_recording_rule_exists(self):
         with open(SNAPSHOT, encoding="utf-8") as handle:

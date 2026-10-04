@@ -121,6 +121,8 @@ done
 for check in test_alert_rule_coverage.py test_label_shapes.py test_metric_names.py; do
   if out="$(python3 "$here/$check" 2>&1)"; then
     echo "  ok  $check"
+    # A check may pass with a warning (a stale snapshot): surface its GitHub annotation.
+    grep '^::warning' <<<"$out" || true
   else
     echo "  FAILED $check"
     echo "$out" | sed 's/^/         /'
