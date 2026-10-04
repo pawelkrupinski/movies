@@ -151,6 +151,30 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
     read.reads.get() shouldBe 2
   }
 
+  // The in-flight marker clears before a read's save callback runs, so the next read can finish
+  // and save first; the older save must not then overwrite it.
+  it should "never store an older read over a newer one whose save ran first" in {
+    val read  = new GatedRead
+    val clock = new MutableClock(Start)
+    val store = new MapStore
+    val tasks = scala.collection.mutable.ArrayBuffer.empty[Runnable]
+    def runAll(): Unit = while (tasks.nonEmpty) { val t = tasks.remove(0); t.run() }
+    val queued   = new ExecutionContext {
+      def execute(task: Runnable): Unit = tasks += task
+      def reportFailure(cause: Throwable): Unit = throw cause
+    }
+    val snapshot = new RefreshingSnapshot[Int]("spec", () => read(), () => None, refreshAfter = 15.seconds, clock, store)(using queued)
+    snapshot.refreshIfOlderThan(60.seconds)
+    tasks.remove(0).run()                                    // the first read; its save callback now queued
+    val firstSave = tasks.toSeq; tasks.clear()
+    clock.advanceSeconds(61)
+    snapshot.refreshIfOlderThan(60.seconds)
+    runAll()                                                 // the second read, and its save
+    firstSave.foreach(_.run())                               // the first read's save, last
+    runAll()
+    store.saved("spec").value shouldBe 2
+  }
+
   "refreshIfOlderThan" should "re-read a snapshot past the threshold and leave a younger one alone" in {
     val read     = new GatedRead
     val clock    = new MutableClock(Start)

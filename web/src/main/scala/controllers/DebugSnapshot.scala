@@ -142,6 +142,18 @@ final class RefreshingSnapshot[A](
   private def olderThan(snapshot: DebugSnapshot[A], threshold: FiniteDuration): Boolean =
     snapshot.takenAt.forall(at => JDuration.between(at, clock.instant()).toMillis >= threshold.toMillis)
 
+  // When the snapshot last stored was taken. The in-flight marker is cleared before a read's save
+  // callback runs, so the next read can finish and save first; without this the older save landed
+  // last and a restart came up on it.
+  private var lastSaved: Option[Instant] = None
+
+  private def saveIfNewest(snapshot: DebugSnapshot[A]): Unit = synchronized {
+    if (lastSaved.forall(saved => snapshot.takenAt.exists(_.isAfter(saved)))) {
+      store.save(label, snapshot)
+      lastSaved = snapshot.takenAt
+    }
+  }
+
   private def refresh(): Future[DebugSnapshot[A]] = {
     val promise = Promise[DebugSnapshot[A]]()
     if (inFlight.compareAndSet(None, Some(promise.future))) {
@@ -162,7 +174,7 @@ final class RefreshingSnapshot[A](
       })
       promise.future.onComplete {
         // Stored after the waiting caller is released, not on its time.
-        case Success(snapshot)  => store.save(label, snapshot)
+        case Success(snapshot)  => saveIfNewest(snapshot)
         case Failure(exception) =>
           logger.warn(s"$label: re-read failed, keeping the previous snapshot: " +
             s"${exception.getClass.getSimpleName}: ${exception.getMessage}")
