@@ -56,6 +56,16 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
     HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of())) should not be Some(java.time.Duration.ofMillis(4321))
   }
 
+  "a fleet-paced row" should "hold Wikidata to one pace across the fleet, retuned by its knob, and leave the process pace alone" in {
+    val url     = "https://www.wikidata.org/w/api.php?action=wbsearchentities&search=Klondike"
+    val flipped = Env.of()
+    flipped.installOverrides(Map("KINOWO_WIKIDATA_FLEET_PACE_MS" -> "1500").get)
+    HostPolicies.fleetIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of()))  shouldBe Some(java.time.Duration.ofMillis(500))
+    HostPolicies.fleetIntervalFor(url, new _root_.settings.ProcessConfiguration(flipped))   shouldBe Some(java.time.Duration.ofMillis(1500))
+    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of())) shouldBe None
+    HostPolicies.fleetIntervalFor(exactHost("filmstarts.de"), new _root_.settings.ProcessConfiguration(Env.of())) shouldBe None
+  }
+
   it should "leave a host that merely ENDS with the suffix text on the defaults" in {
     for (row <- HostPolicies.all; suffix <- row.hostSuffixes) withClue(s"$suffix: ") {
       val url = lookalikeOf(suffix)
@@ -66,7 +76,7 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "differ from the defaults in at least one of connect timeout, request timeout, pace, or headers" in {
+  it should "differ from the defaults in at least one of connect timeout, request timeout, pace, fleet pace, or headers" in {
     // A row that no longer overrides anything is dead data: the host would get
     // exactly what it gets with no row, so the row only misleads the next reader
     // into thinking the host is special-cased.
@@ -75,6 +85,7 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
         row.connectTimeout != HostPolicies.DefaultConnectTimeout ||
         row.requestTimeout != HostPolicies.DefaultRequestTimeout ||
         row.minRequestInterval.isDefined ||
+        row.fleetMinInterval.isDefined ||
         row.headers.nonEmpty
       overridesSomething shouldBe true
     }

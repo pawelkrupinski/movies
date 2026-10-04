@@ -28,6 +28,10 @@ import java.time.Duration
  *  resolve in `HostPolicies` reads it per request, so the next request uses the
  *  new value. Still DATA, not an if-branch — any future host can name its own key.
  *
+ *  `fleetMinInterval` is the pace [[FleetPacedHttpFetch]] holds the WHOLE FLEET to for a host every country's
+ *  worker asks from the same egress (a shared origin, where `minRequestInterval` paces one process); `fleetPaceKnob`
+ *  retunes it at runtime as `paceKnob` does.
+ *
  *  `headers` are sent on EVERY request to this host, GET and POST alike, on top
  *  of the defaults — for a host whose edge admits us only when we identify
  *  ourselves a particular way. An explicit caller header of the same name still
@@ -42,6 +46,8 @@ final case class HostPolicy(
   minRequestInterval: Option[Duration] = None,
   paceKnob: Option[settings.PaceKnob] = None,
   headers: Map[String, String] = Map.empty,
+  fleetMinInterval: Option[Duration] = None,
+  fleetPaceKnob: Option[settings.PaceKnob] = None,
 )
 
 /** The per-host network policy [[RealHttpFetch]] consults — the ONE place a host
@@ -380,6 +386,16 @@ object HostPolicies {
     // nothing: `EnrichDetailsHandler` reports it `Done` unmarked, so the next
     // scrape re-enqueues it.
     HostPolicy(Set("kinosfinks.okn.edu.pl"), requestTimeout = Duration.ofSeconds(8)),
+
+    // Wikidata — the identity agreement's Wiki family (searches, film items, their directors' labels), asked by every
+    // country's worker from the same egress. Its first hour (2026-10-04) 429'd: five workers each running their four
+    // task threads on its backlog, and the breaker's 60 s fast-fail windows deferring whole runs of questions at once.
+    // Wikimedia asks a client to keep to serial requests and back off on 429; 2 req/s across the FLEET is that, paced
+    // where every worker sees every other's slots (`FleetHostPace`, the fleet database). A question met by a full pace
+    // is deferred to its slot, not parked on a thread. KINOWO_WIKIDATA_FLEET_PACE_MS retunes it live.
+    HostPolicy(Set("www.wikidata.org"),
+      fleetMinInterval = Some(Duration.ofMillis(500)),
+      fleetPaceKnob    = Some(PaceKnob.WikidataFleet)),
   )
 
   /** True when `url`'s host matches one of `suffixes` (exact host or a dotted
@@ -417,6 +433,14 @@ object HostPolicies {
       case Some(knob) =>
         Some(configuration.hostPace(knob, HostPace(policy.minRequestInterval.getOrElse(Duration.ZERO))).value)
     }
+
+  /** The fleet-wide minimum gap between two requests to `url`'s host, if the fleet shares a pace for it
+   *  ([[FleetPacedHttpFetch]]); its knob's live value when it names one. */
+  def fleetIntervalFor(url: String, configuration: ProcessConfiguration): Option[Duration] =
+    policyFor(url).flatMap(policy => policy.fleetPaceKnob match {
+      case None       => policy.fleetMinInterval
+      case Some(knob) => Some(configuration.hostPace(knob, HostPace(policy.fleetMinInterval.getOrElse(Duration.ZERO))).value)
+    })
 
   /** The connect (TCP+TLS handshake) budget for `url`: the matching host policy's,
    *  else the tight default. */

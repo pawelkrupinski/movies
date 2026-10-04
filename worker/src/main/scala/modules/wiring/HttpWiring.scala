@@ -4,7 +4,9 @@ import clients.TmdbClient
 import modules.WorkerWiring
 import services.enrichment.{FilmwebClient, ImdbClient, LetterboxdClient, LetterboxdIdResolver, MetacriticClient, OMDbClient, RottenTomatoesClient, WikidataClient}
 import services.metrics.WorkerHttpMetrics
-import tools.{CountingHttpFetch, HostCircuitBreakerHttpFetch, HttpFetch, MonitoringHttpFetch, RateLimitedHttpFetch, RealHttpFetch, ThrottledHttpFetch, TlsTrust}
+import tools.{CountingHttpFetch, FleetHostPace, FleetPacedHttpFetch, HostCircuitBreakerHttpFetch, HostPolicies, HttpFetch, InMemoryFleetHostPace, MongoFleetHostPace, MonitoringHttpFetch, RateLimitedHttpFetch, RealHttpFetch, ThrottledHttpFetch, TlsTrust}
+
+import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
 /** The two phase-labelled HTTP chains over ONE wire leaf, and the third-party
  *  metadata / rating / resolution clients that draw from the `enrich` one.
@@ -62,6 +64,7 @@ trait HttpWiring { self: WorkerWiring =>
   protected def phaseFetch(phase: String): HttpFetch = {
     val pace = RateLimitedHttpFetch.configuredInterval(configuration)
     new MonitoringHttpFetch(
+      new FleetPacedHttpFetch(
       new ThrottledHttpFetch(
         new HostCircuitBreakerHttpFetch(
           new RateLimitedHttpFetch(
@@ -70,8 +73,15 @@ trait HttpWiring { self: WorkerWiring =>
             pace),
           meter = workerMetrics.httpBreakers.meterFor(country.code, phase)),
         paceFor = pace),
+        fleetHostPace, url => HostPolicies.fleetIntervalFor(url, configuration).map(d => FiniteDuration(d.toMillis, MILLISECONDS)),
+        FleetPacedHttpFetch.Horizon),
       uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
   }
+
+  /** The fleet's shared host paces (`fleet_host_pace` in the fleet database): every country's worker holds a shared
+   *  origin to one budget. Without the fleet database each worker paces itself alone. */
+  lazy val fleetHostPace: FleetHostPace =
+    fleetMongoConnection.database.fold[FleetHostPace](new InMemoryFleetHostPace)(new MongoFleetHostPace(_))
 
   // Cinema-site HTTP — every listing scrape, chunk scrape and per-film detail
   // fetch. The `scrape` phase; dominates volume and is what the scrape-health panel
