@@ -212,6 +212,15 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
     moved
   }
 
+  /** Whether every venue slot of `is` reads to a listing's pick ([[PipelineFilms.pick]]: the slot's year, as its
+   *  titles may carry it, and its directors) as the same slot of `was` does. */
+  private def pickedAlike(was: StoredMovieRecord, is: StoredMovieRecord): Boolean =
+    (was.record eq is.record) || is.record.data.forall {
+      case (source: models.CinemaShowing, sd) => was.record.data.get(source).exists(w =>
+        (w eq sd) || (w.releaseYear == sd.releaseYear && w.rawTitle == sd.rawTitle && w.title == sd.title && w.director == sd.director))
+      case _ => true
+    }
+
   /** Content alike: the same identity fields and the same record, showtimes by digest. */
   private def sameFilm(is: StoredMovieRecord, was: StoredMovieRecord): Boolean =
     is.storedKey == was.storedKey && is.title == was.title && is.year == was.year &&
@@ -229,12 +238,21 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
   }
 
   private def restore(r: StoredMovieRecord, reslot: mutable.HashSet[ListingKey]): Unit = {
-    val id = r.id.value
+    val id     = r.id.value
+    val slots  = r.record.data.toSeq.map { case (source, sd) => source -> IdentityProjectionPlan.slotOf(source, sd) }
+    val layout = slots.map { case (_, slot) => slot.at -> slot.key.map(canonical) }
+    // The same film at the same slots, each read the same by a listing's pick: no listing's previous film can move, so
+    // only the record is replaced — most films written are written for their showtimes, and the wide ones (thousands of
+    // slots) re-pointed every listing at every slot of theirs for nothing.
+    if (storedById.get(id).exists(was => was.record.tmdbId == r.record.tmdbId && pickedAlike(was, r)) &&
+        slotsOfFilm.get(id).exists(_.toSet == layout.toSet)) {
+      storedById = storedById.updated(id, r)
+      return
+    }
     unstore(id, reslot)
     storedById = storedById.updated(id, r)
     val ref   = PipelineFilmRef(id, r.record.tmdbId)
-    val slots = r.record.data.toSeq.map { case (source, sd) => source -> IdentityProjectionPlan.slotOf(source, sd) }
-    slotsOfFilm(id) = slots.map { case (_, slot) => slot.at -> slot.key.map(canonical) }
+    slotsOfFilm(id) = layout
     slots.foreach { case (source, slot) =>
       slot.at.foreach { at =>
         filmsAtSlot(at) = filmsAtSlot.getOrElse(at, Map.empty).updated(id, ref -> source)

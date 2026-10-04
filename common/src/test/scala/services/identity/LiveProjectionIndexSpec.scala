@@ -136,4 +136,31 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
     (index.clusterOf.keysIterator ++ index.clusters.valuesIterator.flatMap(_.members) ++ index.previousOf.keysIterator ++
       index.listingsOf.valuesIterator.flatten).foreach(k => withClue(k)(k should be theSameInstanceAs own(k)))
   }
+
+  it should "re-point a listing when a film written at the same slots now reads otherwise to its pick" in {
+    // Two films hold "Lalka" at Multikino; the listing (1968, no director) is on the one whose slot is of its year. That
+    // film written again with its slot of another year — same slots (a slot with a page is keyed by it, not its year),
+    // same TMDB film — moves the listing to the other.
+    val live    = new LiveProjectionIndex(normalizer)
+    val listing = CinemaMovie(Movie("Lalka", releaseYear = Some(1968)), Multikino, None, None, None, Nil, Nil, Seq(Showtime(start, None)))
+    val read    = Seq(ProjectedListing.of(Listing.of(Multikino, listing, normalizer), listing))
+    val at      = CinemaShowing.keyFor(Multikino, read.head.listing.cleanTitle, normalizer): models.Source
+    def film(id: String, year: Int, director: String) = StoredMovieRecord("Lalka", None, MovieRecord(tmdbId = Some(id.last.asDigit),
+      data = Map(at -> SourceData(title = Some("Lalka"), rawTitle = Some("Lalka"), releaseYear = Some(year), director = Seq(director),
+        filmUrl = Some(s"https://multikino.pl/filmy/lalka-$id")))),
+      FilmId(id), Some(s"lalka$id|"))
+    val decided  = Seq(ResolverDecision(read.map(_.listing.key), None, 0.9, ResolverDecision.Basis.OwnMatch, Nil)())
+    val counters = FilmIdCounters.of(Seq(FilmIdCounter("f1", 1L), FilmIdCounter("f2", 2L))).toOption.get
+    var stored   = Map("f1" -> film("f1", 2026, "Maciej Kawalski"), "f2" -> film("f2", 1968, "Wojciech Has"))
+    live.update(Seq(Multikino.displayName -> read), _ => true, decided, stored.values.toSeq)
+    live.index(counters).previousOf(read.head.listing.key).id shouldBe "f2"
+    val rewritten = film("f2", 2025, "Wojciech Has")
+    stored += "f2" -> rewritten
+    live.written(Seq(ProjectedFilm(rewritten.id, 2, rewritten.title, rewritten.year, rewritten.key(normalizer), rewritten.record, Nil)), Nil)
+    live.update(Seq(Multikino.displayName -> read), _ => true, decided, stored.values.toSeq)
+    val built = IdentityProjectionPlan.index(read, Resolution(decided, 0, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map.empty), stored.values.toSeq,
+      counters, normalizer)
+    built.previousOf(read.head.listing.key).id shouldBe "f1"
+    live.index(counters).previousOf shouldBe built.previousOf
+  }
 }

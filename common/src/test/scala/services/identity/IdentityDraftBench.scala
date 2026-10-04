@@ -114,7 +114,8 @@ object IdentityDraftBench {
       stored   = stored -- plan.retired ++ changed.map(f =>
         f.id -> StoredMovieRecord(f.title, f.year, services.movies.ShowtimesDigest.stripForCache(f.record), f.id, Some(f.key)))
       counters = counters.appended(plan.counterAdditions).toOption.get
-      live.written(changed, plan.retired)
+      val (_, writtenS, writtenMB) = timed(live.written(changed, plan.retired))
+      println(f"  written ${writtenS}%.3fs ${writtenMB}%.0fMB")
       shapes.commit(whole = scope.whole)
       lastOk   = true
     }
@@ -122,7 +123,7 @@ object IdentityDraftBench {
     // worker keeps anyway (those stay reachable below).
     def used(): Long = { (1 to 4).foreach { _ => System.gc(); Thread.sleep(200) }; val r = Runtime.getRuntime; r.totalMemory - r.freeMemory }
     val all = used()
-    def histogram(name: String): Unit = args.lift(2).filterNot(_ == "whole").foreach { dir =>
+    def histogram(name: String): Unit = args.lift(2).filterNot(a => a == "whole" || a == "adopt" || a == "-").foreach { dir =>
       val out = new ProcessBuilder("jcmd", ProcessHandle.current.pid.toString, "GC.class_histogram").redirectOutput(new java.io.File(s"$dir/$name.txt")).start()
       out.waitFor(); ()
     }
