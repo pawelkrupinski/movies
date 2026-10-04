@@ -33,7 +33,12 @@ class CinemaSlotInvariantsSpec extends CorpusShapeSpec {
 
   private val RecordedBeforeFix =
     "recorded 2026-10-03 before the parser fix named here; the recorded corpus is the parser's OUTPUT, so it keeps " +
-      "the old value until re-recorded — drop the entry then (this test's stale check will say so)"
+      "the old value until re-recorded — listed in awaitingReRecord, so a fresh recording reports it instead of failing; drop it once every corpus is re-recorded"
+
+  override protected val awaitingReRecord: Set[AllowedListing] =
+    (Seq("Kino Muza" -> "Międzynarodowy Dzień Animacji") ++
+      Seq("Kino Mikro" -> "Lalka (+ ENG", "Mikro Bronowice" -> "Lalka (+ ENG", "Kino Mikro" -> "World Space Week - Interstellar",
+        "Kino Mikro" -> "Zaproszenie")).map(AllowedListing.apply.tupled).toSet
 
   protected val allowlist: Map[AllowedListing, String] = Map(
     AllowedListing("Pictureville (Science and Media Museum Bradford)", "Jubilee (1978)") ->

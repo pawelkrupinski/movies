@@ -12,6 +12,12 @@ object AllowedListing {
   /** The venue of an entry that holds wherever the title is listed — a chain-wide event billing. */
   val AnyVenue = "*"
   def anywhere(listing: String): AllowedListing = AllowedListing(AnyVenue, listing)
+
+  /** The entries a corpus proves stale: allowlisted, carried by the corpus, no longer breaking the rule — less
+   *  those awaiting a re-record, which a fresh recording cures by design. */
+  def stale(allowlist: Set[AllowedListing], carried: Set[AllowedListing], stillBreaking: Set[AllowedListing],
+            awaitingReRecord: Set[AllowedListing]): Set[AllowedListing] =
+    (allowlist & carried) -- stillBreaking -- awaitingReRecord
 }
 
 /**
@@ -35,6 +41,11 @@ abstract class CorpusShapeSpec extends AnyFlatSpec with Matchers with SuiteConfi
   protected def allowlist: Map[AllowedListing, String]
   /** What the failure tells the reader to do. */
   protected def remedy: String
+  /** Allowlisted listings whose breakage is in a corpus recorded BEFORE the parser fix that cures it: a fresh
+   *  recording stops carrying the bad value, which is the fix arriving, not a stale entry — so these are reported,
+   *  not failed, once a corpus no longer breaks them (drop them by hand when every corpus is re-recorded). Every
+   *  one must also be an allowlist entry. */
+  protected def awaitingReRecord: Set[AllowedListing] = Set.empty
 
   private lazy val wiring: FixtureTestWiring = {
     val w = new FixtureTestWiring("08-06-2026")
@@ -69,9 +80,16 @@ abstract class CorpusShapeSpec extends AnyFlatSpec with Matchers with SuiteConfi
     it should "keep every allowlist entry it carries still breaking the rule (the backlog only shrinks)" in {
       val checked = corpus()
       val carried = checked.carried ++ checked.carried.map(at => AllowedListing.anywhere(at.listing))
-      val stale   = (allowlist.keySet & carried) -- checked.found.flatMap(f => entryFor(f._1))
+      val passing = (allowlist.keySet & carried) -- checked.found.flatMap(f => entryFor(f._1))
+      val cured   = passing & awaitingReRecord
+      if (cured.nonEmpty) info(s"${checked.name}: re-recorded past their fix (drop once every corpus is): ${cured.toSeq.map(_.toString).sorted.mkString(", ")}")
+      val stale   = AllowedListing.stale(allowlist.keySet, carried, checked.found.flatMap(f => entryFor(f._1)).toSet, awaitingReRecord)
       withClue("Allowlisted but no longer breaking the rule — drop the entry: ")(stale.toSeq.map(_.toString).sorted shouldBe empty)
     }
+  }
+
+  "the allowlist" should "hold every listing awaiting a re-record" in {
+    (awaitingReRecord -- allowlist.keySet).toSeq.map(_.toString).sorted shouldBe empty
   }
 
   private lazy val boot = new Checked(ListingCorpora.fixtureBoot(wiring))
