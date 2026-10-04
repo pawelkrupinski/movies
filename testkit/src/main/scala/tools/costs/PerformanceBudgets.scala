@@ -25,19 +25,25 @@ object PerformanceBudgets {
   private def mb(n: Double): Long = (n * 1024 * 1024).toLong
 
   // ── Web renders over the fixture corpus (Poznań, `RenderBudgetSpec`) ──────────────────────────
-  // Measured 2026-10-04 on e3a5b22ef; two runs agreed within 1%.
+  // Measured 2026-10-04 on e3a5b22ef, two runs within 1%, through the production actions in `Mode.Prod`
+  // (its memoising minifier renders the shared stylesheets once; a test-mode controller re-renders them
+  // per page, which put the warm film page at 3.64 MB) — the gzip-accepting request whole, body bytes
+  // included. NOT the same scope as the commit-message figures for these pages: 0e2630b9b's "film page
+  // 3,718 -> 1,731 KB" is one Warsaw film rendered and written; the budget here is Poznań's HEAVIEST film
+  // (196 showtimes), and its cost grows with the showtimes (Warsaw's 524-showtime film writes ~2x).
+  // "Cold" includes filling the minifier's memo, which is why the film page's cold is above its warm.
 
   /** The city listing with every controller cache empty: schedules, cards, JSON-LD all built. */
-  val ListingCold = bytes("listing render, cold caches", measured = mb(19.8))
+  val ListingCold = bytes("listing render, cold caches", measured = mb(20.0))
   /** The city listing with the controller's caches full and the response blob missed (`?diag=`). */
-  val ListingWarm = bytes("listing render, warm caches", measured = mb(3.33))
+  val ListingWarm = bytes("listing render, warm caches", measured = mb(1.82))
   /** The city listing served from the gzipped blob. */
   val ListingBlobHit = bytes("listing render, response blob hit", measured = kb(7.0))
   /** The heaviest film page, cold and warm. */
-  val FilmPageCold = bytes("film page render, cold caches", measured = mb(3.75))
-  val FilmPageWarm = bytes("film page render, warm caches", measured = mb(3.64))
+  val FilmPageCold = bytes("film page render, cold caches", measured = mb(4.74))
+  val FilmPageWarm = bytes("film page render, warm caches", measured = mb(2.93))
   /** The facet page of the country the most films list. */
-  val BrowseWarm = bytes("facet page render, warm caches", measured = mb(2.45))
+  val BrowseWarm = bytes("facet page render, warm caches", measured = mb(1.93))
   /** `/api/repertoire` and `/api/details`, every film's JSON built (cold) or kept (warm). */
   val ApiRepertoireCold = bytes("/api/repertoire render, cold caches", measured = mb(14.3))
   val ApiRepertoireWarm = bytes("/api/repertoire render, warm caches", measured = mb(1.35))

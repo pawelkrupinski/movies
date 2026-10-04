@@ -42,10 +42,12 @@ class RenderBudgetSpec extends AnyFlatSpec with Matchers {
     w
   }
 
-  /** A controller wired as production wires it, over the snapshot; `blobs`: the response cache, by
+  /** A controller wired as production wires it, over the snapshot — in `Mode.Prod`, whose memoising minifier
+   *  renders the shared stylesheets once rather than per page (a test-mode controller passes them through,
+   *  and its film page cost 3.6 MB against production's 1.7); `blobs`: the response cache, by
    *  default one too small to hold any body, so every request renders. */
   private def controller(blobs: EncodedResponseCache = TestResponseCache(maxBytes = 1)): MovieController =
-    TestMovieController.build(Nil, readModel = Some(wiring.webReadModel), clock = clock, responseCache = blobs,
+    TestMovieController.build(Nil, mode = play.api.Mode.Prod, readModel = Some(wiring.webReadModel), clock = clock, responseCache = blobs,
       filmCards = new CaffeineFilmCardFragments(CaffeineFilmCardFragments.DefaultMaxBytes))._1
 
   private val city: City = models.Poznan
