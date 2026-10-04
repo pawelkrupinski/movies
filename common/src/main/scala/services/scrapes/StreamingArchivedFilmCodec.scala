@@ -16,8 +16,11 @@ import services.movies.{BsonReads, ShowtimeCodec}
  *
  * A US archive is ~5,000 venues and 306 MB, more than half of it booking URLs (2026-10-03),
  * and the identity projection reads all of it every pass.
+ *
+ * Without `withShowtimes` it reads a film's listing and leaves its showtimes (`Nil`): the read the identity model's
+ * take-up and the projection make, which keep no showtime — on a US boot, decoding them was ~11 CPU-s of take-up.
  */
-private[scrapes] final class StreamingArchivedFilmCodec(movies: Codec[Movie]) extends Codec[ArchivedFilmDto] {
+private[scrapes] final class StreamingArchivedFilmCodec(movies: Codec[Movie], withShowtimes: Boolean = true) extends Codec[ArchivedFilmDto] {
   override def getEncoderClass: Class[ArchivedFilmDto] = classOf[ArchivedFilmDto]
 
   override def encode(w: BsonWriter, v: ArchivedFilmDto, c: EncoderContext): Unit = {
@@ -35,6 +38,7 @@ private[scrapes] final class StreamingArchivedFilmCodec(movies: Codec[Movie]) ex
     w.writeEndDocument()
     v.trailerUrl.foreach(w.writeString("trailerUrl", _))
     v.ageRating.foreach(w.writeString("ageRating", _))
+    v.showtimesDigest.foreach(w.writeInt32("showtimesDigest", _))
     w.writeEndDocument()
   }
 
@@ -51,7 +55,8 @@ private[scrapes] final class StreamingArchivedFilmCodec(movies: Codec[Movie]) ex
     var cast, director: Seq[String]       = null
     var externalIds: Map[String, String]  = null
     var urlPrefix: String                 = null
-    var showtimes: Seq[models.Showtime]   = null
+    var showtimes: Seq[models.Showtime]   = if (withShowtimes) null else Nil
+    var showtimesDigest                   = Option.empty[Int]
     r.readStartDocument()
     while (r.readBsonType() != BsonType.END_OF_DOCUMENT) {
       r.readName() match {
@@ -62,6 +67,7 @@ private[scrapes] final class StreamingArchivedFilmCodec(movies: Codec[Movie]) ex
         case "cast"        => cast = BsonReads.strings(r)
         case "director"    => director = BsonReads.strings(r)
         case ShowtimeCodec.RowPrefixField => urlPrefix = BsonReads.optionalString(r).orNull
+        case "showtimes" if !withShowtimes => r.skipValue()
         case "showtimes"   =>
           val read = Vector.newBuilder[models.Showtime]
           r.readStartArray()
@@ -76,6 +82,7 @@ private[scrapes] final class StreamingArchivedFilmCodec(movies: Codec[Movie]) ex
           externalIds = ids.result()
         case "trailerUrl"  => trailerUrl = BsonReads.optionalString(r)
         case "ageRating"   => ageRating = BsonReads.optionalString(r)
+        case "showtimesDigest" => showtimesDigest = if (r.getCurrentBsonType == BsonType.NULL) { r.readNull(); None } else Some(r.readInt32())
         case _             => r.skipValue()
       }
     }
@@ -83,6 +90,6 @@ private[scrapes] final class StreamingArchivedFilmCodec(movies: Codec[Movie]) ex
     if (movie == null || cast == null || director == null || showtimes == null || externalIds == null)
       throw new org.bson.codecs.configuration.CodecConfigurationException("ArchivedFilmDto: a required field is missing")
     ArchivedFilmDto(movie, posterUrl, filmUrl, synopsis, cast, director,
-      ShowtimeCodec.completed(showtimes, urlPrefix), externalIds, trailerUrl, ageRating)
+      ShowtimeCodec.completed(showtimes, urlPrefix), externalIds, trailerUrl, ageRating, showtimesDigest)
   }
 }

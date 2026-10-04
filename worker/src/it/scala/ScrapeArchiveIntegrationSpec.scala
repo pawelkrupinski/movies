@@ -110,6 +110,31 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
     } finally purge()
   }
 
+  // The identity model's take-up and the projection's listing read keep no showtime: a US boot decoded every one in
+  // the archive for them (~11 CPU-s of `ShowtimeCodec.read`, JFR). A lean scan leaves them on the server.
+  it should "scan the listings without their showtimes, each film's digest read instead" in {
+    val repository = new MongoScrapeArchiveRepository(Some(db))
+    try {
+      repository.record(scraped(Noon, Seq(fullyPopulated, minimal)))
+      val lean = Seq.newBuilder[services.scrapes.LeanListing]
+      repository.scanLean(_ == Multikino)(lean ++= _).isComplete shouldBe true
+      lean.result().map(l => (l.cinema, l.at, l.films)) shouldBe
+        Seq((Multikino, Noon, Seq(fullyPopulated, minimal).map(f => f.copy(showtimes = Nil) -> f.showtimes.##)))
+    } finally purge()
+  }
+
+  it should "scan whole a listing stored before its films carried a showtimes digest" in {
+    val repository = new MongoScrapeArchiveRepository(Some(db))
+    try {
+      repository.record(scraped(Noon, Seq(fullyPopulated, minimal)))
+      Await.result(db.getCollection(ScrapeArchiveRepository.Collection).updateOne(Filters.eq("_id", Multikino.displayName),
+        org.mongodb.scala.model.Updates.unset("films.$[].showtimesDigest")).toFuture(), 10.seconds)
+      val lean = Seq.newBuilder[services.scrapes.LeanListing]
+      repository.scanLean(_ == Multikino)(lean ++= _).isComplete shouldBe true
+      lean.result().flatMap(_.films) shouldBe Seq(fullyPopulated, minimal).map(f => f.copy(showtimes = Nil) -> f.showtimes.##)
+    } finally purge()
+  }
+
   // A success is `$set` field by field (the row carries the guard ledger's fields too), and an
   // IgnoreNone field that is None encodes as nothing to set: the previous scrape's value stayed
   // on the row, where the replace it succeeded dropped it.

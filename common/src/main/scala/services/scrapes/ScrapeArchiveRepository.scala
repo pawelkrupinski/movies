@@ -37,6 +37,15 @@ case class SuccessfulScrape(
   def showtimeCount: Int = films.iterator.map(_.showtimes.size).sum
 }
 
+/** A venue's last successful listing without its showtimes: each film with none (`Nil`), beside the digest of the
+ *  ones it has (`showtimes.##`) — enough to tell they moved, nothing to build a screening from. */
+final case class LeanListing(cinema: Cinema, at: Instant, films: Seq[(CinemaMovie, Int)])
+
+object LeanListing {
+  def of(row: ArchivedScrape): Option[LeanListing] =
+    row.lastSuccess.map(s => LeanListing(row.cinema, s.at, s.films.map(f => f.copy(showtimes = Nil) -> f.showtimes.##)))
+}
+
 /** A scrape attempt that produced nothing — empty or thrown. Carries no content
  *  by definition, so it is recorded as a marker beside the last good listing
  *  rather than in place of it. */
@@ -199,6 +208,12 @@ trait ScrapeArchiveRepository {
    *  with no accepted listing, a handful of the US archive's 5,000 rows, every five minutes. */
   def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome =
     scan(page => consume(page.filter(row => keep(row.cinema))))
+
+  /** [[scanVenues]] of each venue's last successful listing WITHOUT its showtimes ([[LeanListing]]): what a reader
+   *  that keeps none wants — the identity model's take-up, the projection's listing read. Here the full rows,
+   *  reduced; a repository that can leave the showtimes where they are (Mongo) does, and reads only their digest. */
+  def scanLean(keep: Cinema => Boolean)(consume: Seq[LeanListing] => Unit): tools.ScanOutcome =
+    scanVenues(keep)(page => consume(page.flatMap(LeanListing.of)))
 
   /** Every archived scrape, all at once — the replay/repopulate entry point, for a caller that
    *  needs the rows themselves; one that only reduces them should [[scan]]. Empty on an

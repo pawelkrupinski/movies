@@ -151,7 +151,7 @@ class WorkerWiring(
           traces = identityTraces)
       },
       reads      = identityReads,
-      archive    = () => Listing.distinct(Listing.all(identityListingIntake.listings(cinemaScrapers.map(_.cinema)), titleNormalizer)),
+      archive    = () => Listing.distinct(Listing.all(identityListingIntake.identities(cinemaScrapers.map(_.cinema)), titleNormalizer)),
       normalizer = titleNormalizer,
       settle     = WorkerWiring.IdentityModelSettle,
       scheduler  = identityModelScheduler,

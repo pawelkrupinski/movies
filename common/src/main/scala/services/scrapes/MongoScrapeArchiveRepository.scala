@@ -35,7 +35,11 @@ case class ArchivedFilmDto(
   showtimes:   Seq[Showtime],
   externalIds: Map[String, String],
   trailerUrl:  Option[String],
-  ageRating:   Option[String]
+  ageRating:   Option[String],
+  // `showtimes.##`, written with them: what a reader that wants the film without its showtimes — the identity
+  // model's take-up, the projection's listing read — tells a change in them by, leaving them on the server. Absent
+  // on a film written before it existed, whose reader reads the showtimes instead.
+  showtimesDigest: Option[Int] = None
 )
 
 /** The newest attempt that produced nothing, stored beside the listing it failed
@@ -95,7 +99,7 @@ object StoredScrapeDto {
 
   def toFilmDto(f: CinemaMovie): ArchivedFilmDto =
     ArchivedFilmDto(f.movie, f.posterUrl, f.filmUrl, f.synopsis, f.cast, f.director,
-      f.showtimes, f.externalIds, f.trailerUrl, f.ageRating)
+      f.showtimes, f.externalIds, f.trailerUrl, f.ageRating, Some(f.showtimes.##))
 
   def fromSuccess(cinema: Cinema, city: Option[String], scrape: SuccessfulScrape): StoredScrapeDto =
     StoredScrapeDto(
@@ -149,6 +153,11 @@ object ScrapeArchiveCodecs extends PersistedCodecs {
       DEFAULT_CODEC_REGISTRY)
     fromRegistries(fromCodecs(new StreamingArchivedFilmCodec(macros.get(classOf[Movie]))), macros)
   }
+
+  /** [[registry]] reading every film WITHOUT its showtimes (`Nil`, their digest kept): for a read that projects
+   *  `films.showtimes` out on the server, and wants a venue's listing, not its screenings. */
+  val leanRegistry: CodecRegistry =
+    fromRegistries(fromCodecs(new StreamingArchivedFilmCodec(registry.get(classOf[Movie]), withShowtimes = false)), registry)
 }
 
 /**
@@ -332,50 +341,72 @@ class MongoScrapeArchiveRepository(
 
   /** [[scan]], fetching only the rows whose `_id` names a venue `keep` admits: the ids are read
    *  first anyway, so a venue left out costs its id and nothing else. */
-  override def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome = coll.fold(tools.ScanOutcome.complete) { c =>
-    // Budget enough retries to outlast a tunnel restart. The proxy dies mid-run and its supervisor
-    // brings it back within a couple of seconds; 3 attempts at 1s backoff could expire inside that
-    // window, turning a blip into an empty corpus. 5 attempts backing off 2s→32s covers it with room
-    // to spare.
-    def failed(exception: Throwable): Unit =
-      logger.warn(s"ScrapeArchiveRepository.scan incomplete after retries — the rows read so far are a partial " +
-        s"archive, not a smaller one: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
-    // Every venue's id first — a keyset read of ids alone, a few small pages — then the rows a page
-    // of FindAllBatchSize at a time, several pages side by side (`KeysetScan.byKeys`): a row is a
-    // venue's whole listing, so a page is several round trips and a decode, and the US archive read
-    // page after page was ~6 s of every identity projection.
-    val ids      = Vector.newBuilder[String]
-    val idsWhole = services.movies.KeysetScan.scan[org.bson.BsonDocument](
-      label          = "ScrapeArchiveRepository id batch",
-      batchSize      = MongoScrapeArchiveRepository.IdBatchSize,
-      maxAttempts    = 5,
-      initialBackoff = 2.seconds,
-      keyOf          = _.getString("_id").getValue,
-      fetchPage      = (afterId, limit) => Await.result(
-        c.withDocumentClass[org.bson.BsonDocument]().find(afterId.fold(Filters.empty())(Filters.gt("_id", _)))
-          .projection(Projections.include("_id")).sort(org.mongodb.scala.model.Sorts.ascending("_id")).limit(limit)
-          .batchSize(tools.MongoReplies.Default).toFuture(),
-        60.seconds),
-      onIncomplete   = failed
-    )(page => page.foreach { row =>
-      val id = row.getString("_id").getValue
-      // A row whose id names no venue decodes to nothing (`StoredScrapeDto.toDomain`), kept or not.
-      if (Cinema.byDisplayName.get(id).exists(keep)) ids += id
-    })
-    idsWhole.andThen(services.movies.KeysetScan.byKeys[StoredScrapeDto](
-      label          = "ScrapeArchiveRepository keyset batch",
-      keys           = ids.result(),
-      batchSize      = MongoScrapeArchiveRepository.FindAllBatchSize,
-      inFlight       = MongoScrapeArchiveRepository.ScanPagesInFlight,
-      maxAttempts    = 5,
-      initialBackoff = 2.seconds,
-      fetchKeys      = page => Await.result(
-        c.find(Filters.in("_id", page*)).sort(org.mongodb.scala.model.Sorts.ascending("_id"))
-          .batchSize(tools.MongoReplies.ScrapeArchive).toFuture(),
-        60.seconds),
-      onIncomplete   = failed
-    )(page => consume(page.flatMap(StoredScrapeDto.toDomain))))
+  override def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome =
+    scanRows(keep, lean = false)(page => consume(page.flatMap(StoredScrapeDto.toDomain)))
+
+  /** [[scanVenues]] with `films.showtimes` left on the server and in the reader: each film's showtimes digest is read
+   *  instead, as it was written. A venue holding a film written before the digest existed is read again whole once
+   *  the lean scan is done — a row's next scrape writes it with one. */
+  override def scanLean(keep: Cinema => Boolean)(consume: Seq[LeanListing] => Unit): tools.ScanOutcome = {
+    val undigested = Set.newBuilder[String]
+    val lean = scanRows(keep, lean = true) { page =>
+      val (digested, older) = page.partition(_.films.getOrElse(Nil).forall(_.showtimesDigest.isDefined))
+      undigested ++= older.map(_._id)
+      consume(digested.flatMap(dto => StoredScrapeDto.toDomain(dto).flatMap(row => row.lastSuccess.map(s =>
+        LeanListing(row.cinema, s.at, s.films.zip(dto.films.getOrElse(Nil)).map { case (film, stored) => film -> stored.showtimesDigest.get })))))
+    }
+    val whole = undigested.result()
+    if (whole.isEmpty) lean else lean.andThen(scanVenues(c => whole(c.displayName))(page => consume(page.flatMap(LeanListing.of))))
   }
+
+  /** The stored rows of the venues `keep` admits, a page at a time; `lean`: without their films' showtimes. */
+  private def scanRows(keep: Cinema => Boolean, lean: Boolean)(consume: Seq[StoredScrapeDto] => Unit): tools.ScanOutcome =
+    coll.fold(tools.ScanOutcome.complete) { c =>
+      // Budget enough retries to outlast a tunnel restart. The proxy dies mid-run and its supervisor
+      // brings it back within a couple of seconds; 3 attempts at 1s backoff could expire inside that
+      // window, turning a blip into an empty corpus. 5 attempts backing off 2s→32s covers it with room
+      // to spare.
+      def failed(exception: Throwable): Unit =
+        logger.warn(s"ScrapeArchiveRepository.scan incomplete after retries — the rows read so far are a partial " +
+          s"archive, not a smaller one: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+      // Every venue's id first — a keyset read of ids alone, a few small pages — then the rows a page
+      // of FindAllBatchSize at a time, several pages side by side (`KeysetScan.byKeys`): a row is a
+      // venue's whole listing, so a page is several round trips and a decode, and the US archive read
+      // page after page was ~6 s of every identity projection.
+      val ids      = Vector.newBuilder[String]
+      val idsWhole = services.movies.KeysetScan.scan[org.bson.BsonDocument](
+        label          = "ScrapeArchiveRepository id batch",
+        batchSize      = MongoScrapeArchiveRepository.IdBatchSize,
+        maxAttempts    = 5,
+        initialBackoff = 2.seconds,
+        keyOf          = _.getString("_id").getValue,
+        fetchPage      = (afterId, limit) => Await.result(
+          c.withDocumentClass[org.bson.BsonDocument]().find(afterId.fold(Filters.empty())(Filters.gt("_id", _)))
+            .projection(Projections.include("_id")).sort(org.mongodb.scala.model.Sorts.ascending("_id")).limit(limit)
+            .batchSize(tools.MongoReplies.Default).toFuture(),
+          60.seconds),
+        onIncomplete   = failed
+      )(page => page.foreach { row =>
+        val id = row.getString("_id").getValue
+        // A row whose id names no venue decodes to nothing (`StoredScrapeDto.toDomain`), kept or not.
+        if (Cinema.byDisplayName.get(id).exists(keep)) ids += id
+      })
+      idsWhole.andThen(services.movies.KeysetScan.byKeys[StoredScrapeDto](
+        label          = "ScrapeArchiveRepository keyset batch",
+        keys           = ids.result(),
+        batchSize      = MongoScrapeArchiveRepository.FindAllBatchSize,
+        inFlight       = MongoScrapeArchiveRepository.ScanPagesInFlight,
+        maxAttempts    = 5,
+        initialBackoff = 2.seconds,
+        fetchKeys      = page => Await.result(
+          (if (lean) c.withCodecRegistry(ScrapeArchiveCodecs.leanRegistry).find(Filters.in("_id", page*))
+            .projection(Projections.exclude("films.showtimes"))
+          else c.find(Filters.in("_id", page*))).sort(org.mongodb.scala.model.Sorts.ascending("_id"))
+            .batchSize(tools.MongoReplies.ScrapeArchive).toFuture(),
+          60.seconds),
+        onIncomplete   = failed
+      )(consume))
+    }
 
   /** Every archive operation is best-effort: it records something that already
    *  happened, so its failure must not propagate into the scrape. */

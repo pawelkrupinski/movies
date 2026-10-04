@@ -14,7 +14,10 @@ import java.time.Instant
 final case class ProjectedListing(listing: Listing, row: Int, showtimes: Int)
 
 object ProjectedListing {
-  def of(listing: Listing, row: CinemaMovie): ProjectedListing = ProjectedListing(listing, rowDigest(row), row.showtimes.##)
+  def of(listing: Listing, row: CinemaMovie): ProjectedListing = of(listing, row, row.showtimes.##)
+
+  /** `row`, read without its showtimes, whose digest (`showtimes.##`) is `showtimes`. */
+  def of(listing: Listing, row: CinemaMovie, showtimes: Int): ProjectedListing = ProjectedListing(listing, rowDigest(row), showtimes)
 
   /** A digest of everything on `row` but its showtimes, the same in every JVM — the slot memo's fingerprints outlive
    *  the worker ([[VenueSlotFingerprints]]) — so its venue is read by name: a roster venue (`UsCinema`) is an

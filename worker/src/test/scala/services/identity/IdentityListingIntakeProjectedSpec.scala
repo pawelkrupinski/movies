@@ -4,7 +4,7 @@ import models.{Cinema, CinemaMovie, Helios, KinoApollo, KinoMuza, Movie, Multiki
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{InMemoryScrapeGuardLedger, SingleCountryNormalizer}
-import services.scrapes.{ArchivedScrape, ForwardingScrapeArchive, InMemoryScrapeArchiveRepository, ScrapeAttempt}
+import services.scrapes.{ArchivedScrape, ForwardingScrapeArchive, InMemoryScrapeArchiveRepository, LeanListing, ScrapeAttempt}
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 
@@ -22,11 +22,14 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
   private def film(cinema: Cinema, title: String, hours: Int*): CinemaMovie =
     CinemaMovie(Movie(title), cinema, None, None, None, Nil, Nil, hours.map(h => Showtime(start.plusHours(h.toLong), None)))
 
-  /** An in-memory archive that counts the rows its keyed reads hand over. */
+  /** An in-memory archive that counts the rows its keyed reads hand over, with their showtimes and without. */
   private final class Counting extends ForwardingScrapeArchive(new InMemoryScrapeArchiveRepository) {
-    var rowsRead = 0
+    var wholeRowsRead, leanRowsRead = 0
+    def rowsRead: Int = wholeRowsRead + leanRowsRead
     override def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome =
-      super.scanVenues(keep) { rows => rowsRead += rows.size; consume(rows) }
+      super.scanVenues(keep) { rows => wholeRowsRead += rows.size; consume(rows) }
+    override def scanLean(keep: Cinema => Boolean)(consume: Seq[LeanListing] => Unit): tools.ScanOutcome =
+      super.scanLean(keep) { rows => leanRowsRead += rows.size; consume(rows) }
     def store(cinema: Cinema, at: Instant, films: CinemaMovie*): Unit =
       record(ScrapeAttempt(cinema, Cinema.cityOf(cinema), at, listingComplete = true, films, error = None))
   }
@@ -86,5 +89,30 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     w.project()._2 shouldBe 1                                  // KinoMuza back: read again
     (4 to IdentityListingIntake.WholeReadEvery).foreach(_ => w.project()._2 shouldBe 0)
     w.project() shouldBe ((w.whole, 2))                        // the thirteenth call: whole again
+  }
+
+  // Neither the identity model's take-up nor the projection keeps a showtime, yet a US boot decoded every one in the
+  // archive for them: ~11 CPU-s of `ShowtimeCodec.read` at take-up (JFR). The projection wants only their digest.
+  "the identity model's take-up and the projection's listing read" should "read the archives without their showtimes" in {
+    val w = new World
+    w.archive.store(Multikino, clock.instant(), film(Multikino, "Lalka", 0, 1))
+    w.archive.store(Helios, clock.instant(), film(Helios, "Diuna", 2))
+    w.intake.recordCinemaScrape(Helios, Seq(film(Helios, "Diuna", 2, 3)), listingIsComplete = true, sourceKey = None, viaFallback = false)
+    val taken = w.intake.identities(live)
+    taken.flatMap(_._2).flatMap(_.showtimes) shouldBe empty
+    taken.map { case (c, fs) => c -> fs.map(_.movie.title) } shouldBe w.intake.listings(live).map { case (c, fs) => c -> fs.map(_.movie.title) }
+    def wholeRead[A](body: => A): (A, Int) = {
+      val before = w.accepted.wholeRowsRead + w.archive.wholeRowsRead
+      val value  = body
+      (value, w.accepted.wholeRowsRead + w.archive.wholeRowsRead - before)
+    }
+    wholeRead(w.intake.identities(live))._2 shouldBe 0
+    val expected = w.whole
+    wholeRead(w.project()._1) shouldBe ((expected, 0))
+    w.archive.store(Helios, clock.instant().plusSeconds(60), film(Helios, "Diuna", 2, 4))
+    w.intake.recordCinemaScrape(Helios, Seq(film(Helios, "Diuna", 2, 4)), listingIsComplete = true, sourceKey = None, viaFallback = false)
+    val moved = w.whole
+    moved should not be expected
+    wholeRead(w.project()._1) shouldBe ((moved, 0))             // a showtime moved: its digest tells
   }
 }

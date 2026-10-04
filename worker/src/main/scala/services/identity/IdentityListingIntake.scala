@@ -48,7 +48,11 @@ final class IdentityListingIntake(
    *  archive's copy of a venue that already has an accepted listing, are never fetched. An archive that
    *  could not be read whole counts as empty — a partial read is not a smaller archive. The
    *  listings share their repeated values ([[ListingValuePool]]). */
-  def listings(live: Seq[Cinema]): Seq[(Cinema, Seq[CinemaMovie])] = read(live)((_, films) => films)
+  def listings(live: Seq[Cinema]): Seq[(Cinema, Seq[CinemaMovie])] = read(live, lean = false)
+
+  /** [[listings]] without a showtime (each film's `Nil`): what the identity model takes up, which reads none. Left on
+   *  the server, they were ~11 CPU-s of a US boot's take-up decoding them (`ShowtimeCodec.read`, JFR). */
+  def identities(live: Seq[Cinema]): Seq[(Cinema, Seq[CinemaMovie])] = read(live, lean = true)
 
   /** [[listings]] as the projection holds them: each listing without its row or showtimes, only their digests
    *  ([[ProjectedListing]]), each venue's rows reduced as its page is read.
@@ -65,7 +69,8 @@ final class IdentityListingIntake(
     val written = dirty.synchronized { val names = dirty.toSet; dirty.clear(); names }
     val whole   = calls % IdentityListingIntake.WholeReadEvery == 0
     calls += 1
-    def project(cinema: Cinema, films: Seq[CinemaMovie]) = films.map(cm => ProjectedListing.of(Listing.of(cinema, cm, normalizer), cm))
+    def project(cinema: Cinema, films: Seq[(CinemaMovie, Int)]) =
+      films.map { case (cm, showtimes) => ProjectedListing.of(Listing.of(cinema, cm, normalizer), cm, showtimes) }
     val acceptedNow = heldAccepted.refresh(accepted, wanted, written, whole, project)
     val archivedNow = heldArchived.refresh(archive, wanted.filter { case (name, _) => !acceptedNow.contains(name) }, written, whole, project)
     live.distinct.sortBy(_.displayName).flatMap(c => acceptedNow.get(c.displayName).orElse(archivedNow.get(c.displayName)).flatten.getOrElse(Nil))
@@ -81,12 +86,12 @@ final class IdentityListingIntake(
   /** The rows each of `venues` publishes now, showtimes and all — what the projection builds a venue's slots from. */
   def rowsOf(venues: Set[Cinema]): Map[Cinema, Seq[CinemaMovie]] = listings(venues.toSeq).toMap
 
-  /** Each venue of `live` publishing something, with `view` of its listing: its accepted one, else the archive's. */
-  private def read[A](live: Seq[Cinema])(view: (Cinema, Seq[CinemaMovie]) => A): Seq[(Cinema, A)] = {
+  /** Each venue of `live` publishing something, with its listing: its accepted one, else the archive's; `lean`: without showtimes. */
+  private def read(live: Seq[Cinema], lean: Boolean): Seq[(Cinema, Seq[CinemaMovie])] = {
     val wanted          = live.toSet
     val values          = new ListingValuePool
-    val acceptedByVenue = IdentityListingIntake.lastListings(accepted, wanted, values, view)
-    val archivedByVenue = IdentityListingIntake.lastListings(archive, c => wanted(c) && !acceptedByVenue.contains(c), values, view)
+    val acceptedByVenue = IdentityListingIntake.lastListings(accepted, wanted, values, lean)
+    val archivedByVenue = IdentityListingIntake.lastListings(archive, c => wanted(c) && !acceptedByVenue.contains(c), values, lean)
     live.distinct.sortBy(_.displayName).flatMap(c => acceptedByVenue.get(c).orElse(archivedByVenue.get(c)).flatten.map(c -> _))
   }
 
@@ -140,7 +145,7 @@ object IdentityListingIntake {
     /** The listings of `wanted`'s venues in `repository` now, re-read for those whose stamp moved, whose venue is
      *  another object or that were `written`, or all of them when `whole`; empty when a read could not complete. */
     def refresh(repository: ScrapeArchiveRepository, wanted: Map[String, Cinema], written: Set[String], whole: Boolean,
-                project: (Cinema, Seq[CinemaMovie]) => Seq[ProjectedListing]): Map[String, Option[Seq[ProjectedListing]]] = {
+                project: (Cinema, Seq[(CinemaMovie, Int)]) => Seq[ProjectedListing]): Map[String, Option[Seq[ProjectedListing]]] = {
       val stamps = if (whole) Map.empty[String, services.scrapes.ContentStamp] else repository.contentStamps()
       // No stamps is a read that failed or an empty archive: either way read it whole, which answers both.
       val present = stamps.collect { case (name, services.scrapes.ContentStamp(Some(at), _)) if wanted.contains(name) => name -> at }
@@ -151,8 +156,8 @@ object IdentityListingIntake {
         if (whole || stamps.isEmpty) c => wanted.get(c.displayName).exists(_ eq c)
         else c => present.contains(c.displayName) && !keep.contains(c.displayName) && wanted.get(c.displayName).exists(_ eq c)
       val fresh    = Map.newBuilder[String, Entry]
-      val complete = repository.scanVenues(reread)(_.foreach(row => row.lastSuccess.foreach(s =>
-        fresh += row.cinema.displayName -> Entry(row.cinema, Some(s.at), Option.when(s.films.nonEmpty)(project(row.cinema, s.films))))))
+      val complete = repository.scanLean(reread)(_.foreach(row =>
+        fresh += row.cinema.displayName -> Entry(row.cinema, Some(row.at), Option.when(row.films.nonEmpty)(project(row.cinema, row.films)))))
       entries = if (complete.isComplete) keep ++ fresh.result() else Map.empty
       entries.map { case (name, entry) => name -> entry.listings }
     }
@@ -162,13 +167,14 @@ object IdentityListingIntake {
   val Collection = "identity_listings"
 
   /** Each `keep` venue's last successful listing in `repository`, scanned a page at a time, its values held
-   *  in `values`, and taken as `view` of it as its page is read (`None`: it listed nothing); empty when the
-   *  scan could not complete. */
-  private def lastListings[A](repository: ScrapeArchiveRepository, keep: Cinema => Boolean, values: ListingValuePool,
-                              view: (Cinema, Seq[CinemaMovie]) => A): Map[Cinema, Option[A]] = {
-    val byVenue  = Map.newBuilder[Cinema, Option[A]]
-    val complete = repository.scanVenues(keep)(_.foreach(row => row.lastSuccess.foreach(s =>
-      byVenue += row.cinema -> Option.when(s.films.nonEmpty)(view(row.cinema, s.films.map(values.film))))))
+   *  in `values` (`None`: it listed nothing) — `lean`, without showtimes; empty when the scan could not complete. */
+  private def lastListings(repository: ScrapeArchiveRepository, keep: Cinema => Boolean, values: ListingValuePool,
+                           lean: Boolean): Map[Cinema, Option[Seq[CinemaMovie]]] = {
+    val byVenue = Map.newBuilder[Cinema, Option[Seq[CinemaMovie]]]
+    def add(cinema: Cinema, films: Seq[CinemaMovie]): Unit = byVenue += cinema -> Option.when(films.nonEmpty)(films.map(values.film))
+    val complete =
+      if (lean) repository.scanLean(keep)(_.foreach(row => add(row.cinema, row.films.map(_._1))))
+      else repository.scanVenues(keep)(_.foreach(row => row.lastSuccess.foreach(s => add(row.cinema, s.films))))
     if (complete.isComplete) byVenue.result() else Map.empty
   }
 }

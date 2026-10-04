@@ -21,6 +21,8 @@ abstract class ForwardingScrapeArchive(underlying: ScrapeArchiveRepository) exte
   override def scan(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome = underlying.scan(consume)
   override def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome =
     underlying.scanVenues(keep)(consume)
+  override def scanLean(keep: Cinema => Boolean)(consume: Seq[LeanListing] => Unit): tools.ScanOutcome =
+    underlying.scanLean(keep)(consume)
   override def contentStamps(): Map[String, ContentStamp]         = underlying.contentStamps()
   override def close(): Unit                                      = underlying.close()
 }
