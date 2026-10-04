@@ -320,7 +320,7 @@
   }
   document.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
-    if (!(e.target instanceof Element) || !e.target.matches('.panel-label[role="button"]')) return;
+    if (!(e.target instanceof Element) || !e.target.matches('#format-panel [role="button"]')) return;
     e.preventDefault();   // Space would otherwise scroll the panel
     e.target.click();
   });
@@ -1376,7 +1376,7 @@
     return label;
   }
 
-  // A collapsible area group: a header row (area checkbox + name + chevron) over
+  // A collapsible area group: a header row (area checkbox, then the name + chevron fold control) over
   // a `submenu-list` body of the area's cinema rows, collapsed by default. Reuses
   // the country/genre submenu classes so the fold looks native. The area checkbox
   // (de)selects the whole area; clicking anywhere else on the header folds it.
@@ -1405,16 +1405,25 @@
     right.className = 'submenu-right';
     right.appendChild(chevron);
 
+    // The fold control is the name + chevron BESIDE the checkbox — never a
+    // `role="button"` around it, which would nest one control in another.
+    const fold = document.createElement('span');
+    fold.className = 'cinema-area-fold';
+    fold.style.cssText = 'display:flex; flex:1; align-items:center; gap:6px; min-width:0';
+    fold.appendChild(name);
+    fold.appendChild(right);
+
     header.appendChild(areaCb);
-    header.appendChild(name);
-    header.appendChild(right);
+    header.appendChild(fold);
 
     const body = document.createElement('div');
     body.className = 'submenu-list cinema-area-cinemas';
     body.style.display = 'none';                          // collapsed by default
     area.cinemas.forEach(c => body.appendChild(buildCinemaRow(c)));
 
-    makeFoldHeader(header, body);
+    makeFoldHeader(fold, body);
+    // The rest of the row (its padding) still folds on a click, as it always did.
+    header.onclick = e => { if (!fold.contains(e.target)) fold.click(); };
 
     group.appendChild(header);
     group.appendChild(body);

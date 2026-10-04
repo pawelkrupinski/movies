@@ -4377,6 +4377,25 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // over the area's cinema rows, collapsed by default. The fixture city is flat,
   // so we inject a two-area grouping over its real cinemas and drive the same JS
   // London ships — no London fixture corpus needed.
+  // The area header held the area's checkbox INSIDE its `role="button"` fold
+  // row — an interactive control nested in another, which a screen reader
+  // flattens (the checkbox stops being announced as one). The fold control is
+  // now the name + chevron beside the checkbox, not around it.
+  "an area group's fold" should "sit beside its area checkbox, not around it" in {
+    onPath("/") { page =>
+      page.eval(
+        "const cs = ALL_CINEMAS; window.CINEMA_AREAS = [{name:'Group A', slug:'group-a', cinemas: cs}];" +
+        "buildCinemaPanel();")
+      page.evalBool("document.querySelector('.cinema-area-toggle').closest('[role=\"button\"]') === null") shouldBe true
+      val fold = "document.querySelector('.cinema-area-header [role=\"button\"]')"
+      page.evalString(s"$fold.textContent") should include ("Group A")
+      page.evalString(s"$fold.getAttribute('aria-expanded')") shouldBe "false"
+      page.eval(s"$fold.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))")
+      page.evalString(s"$fold.getAttribute('aria-expanded')") shouldBe "true"
+      page.evalBool("document.querySelector('.cinema-area-cinemas').style.display !== 'none'") shouldBe true
+    }
+  }
+
   "the area-grouped cinema filter" should "render collapsible groups; area (de)select drives disabledCinemas + indeterminate state" in {
     onPath("/") { page =>
       page.eval(
