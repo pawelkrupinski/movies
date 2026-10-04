@@ -68,6 +68,21 @@ class LocalServerApiTest {
         assertTrue("showtimes should be HH:MM", showtimes.all { hhmm.matches(it.time) })
     }
 
+    /** The revalidation every warm launch sends: the `Last-Modified` the listing
+     *  came with, echoed back as `If-Modified-Since`, must be a bodiless 304 — the
+     *  server's own conditional answer, not one this harness invents. Both
+     *  payloads track the city's one stamp, so the listing's date revalidates the
+     *  details too. */
+    @Test
+    fun `a revalidation with the listing's own Last-Modified is a 304`() = runBlocking {
+        val lastModified = api.fetchRepertoire(citySlug = "poznan", ifModifiedSince = null).lastModified
+        assertNotNull("the JSON API should stamp a Last-Modified", lastModified)
+        assertTrue("repertoire should revalidate to a 304",
+            api.fetchRepertoire(citySlug = "poznan", ifModifiedSince = lastModified).notModified)
+        assertTrue("details should revalidate to a 304 on the listing's stamp",
+            api.fetchDetails(citySlug = "poznan", ifModifiedSince = lastModified).notModified)
+    }
+
     @Test
     fun `cinema links derive from the live showings, deduped and sorted`() = runBlocking {
         val films = api.fetchRepertoire(citySlug = "poznan", ifModifiedSince = null).items!!

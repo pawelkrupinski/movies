@@ -37,6 +37,18 @@ final class LocalServerRepertoireTests: LocalServerTestCase {
                         "the JSON API should stamp Last-Modified — the repertoire cache keys its conditional request on it")
     }
 
+    /// The revalidation every warm launch sends (`ConditionalListEndpoint`): the
+    /// listing's own `Last-Modified`, echoed back as `If-Modified-Since`, must be a
+    /// bodiless 304 — the server's conditional answer, not one this harness invents.
+    /// Both payloads track the city's one stamp, so it revalidates the details too.
+    func testARevalidationWithTheListingsOwnLastModifiedIsNotModified() throws {
+        let lastModified = try XCTUnwrap(try repertoire().fetched.lastModified)
+        for endpoint in ["repertoire", "details"] {
+            XCTAssertEqual(try status(of: City.apiURL(base: baseURL, slug: city, endpoint: endpoint),
+                                      ifModifiedSince: lastModified), 304, endpoint)
+        }
+    }
+
     func testEveryFilmCarriesWhatTheCardRenders() throws {
         let (films, _) = try repertoire()
         XCTAssertFalse(films.isEmpty)

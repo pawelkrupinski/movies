@@ -60,8 +60,8 @@ class LocalServerTestCase: XCTestCase {
     /// The status a GET of `url` gets, whatever it is — for asserting on the
     /// answers `fetch` collapses: a route the server does not know must be a
     /// 404, not a 500 that reads as the endpoint under test misbehaving.
-    func status(of url: URL) throws -> Int {
-        try send(url).response.statusCode
+    func status(of url: URL, ifModifiedSince: String? = nil) throws -> Int {
+        try send(url, ifModifiedSince: ifModifiedSince).response.statusCode
     }
 
     /// One round trip, however the server answered. Uses
@@ -70,9 +70,11 @@ class LocalServerTestCase: XCTestCase {
     /// `URLSession.shared.data(for:)`. The completion-handler dataTask is
     /// present on both Darwin and Linux, so this one helper works in both
     /// CI containers.
-    private func send(_ url: URL) throws -> (data: Data?, response: HTTPURLResponse) {
+    private func send(_ url: URL, ifModifiedSince: String? = nil) throws -> (data: Data?, response: HTTPURLResponse) {
         var request = URLRequest(url: url)
         request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
+        // What `ConditionalListEndpoint` sends on a warm launch.
+        if let ifModifiedSince { request.setValue(ifModifiedSince, forHTTPHeaderField: "If-Modified-Since") }
         request.cachePolicy = .reloadIgnoringLocalCacheData
 
         let semaphore = DispatchSemaphore(value: 0)

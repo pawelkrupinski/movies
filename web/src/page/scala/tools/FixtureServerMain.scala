@@ -2,9 +2,7 @@ package tools
 
 import testsupport.TestMessages.given
 
-import controllers.{ApiCityCinemas, ApiFilm, ApiFilmDetails}
 import models.City
-import play.api.libs.json.Json
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
@@ -208,26 +206,48 @@ object FixtureServerMain {
     }
 
     // The three JSON endpoints the mobile apps consume — the Android `KinowoApi`
-    // and iOS `RepertoireStore` / `DetailsStore` / cinema filter all decode
-    // these. Rendered from the same fixture schedules the HTML routes use, via
-    // the production `ApiFilm` / `ApiFilmDetails` / `ApiCityCinemas`
-    // projections, so a wire-shape drift in `MovieController`'s JSON is caught
-    // by the mobile LocalServer suites.
-    def repertoireJsonFor(c: City): String = Json.toJson(schedulesFor(c).map(ApiFilm.from(_, c.country.language))).toString
-    def detailsJsonFor(c: City): String =
-      Json.toJson(schedulesFor(c).map(ApiFilmDetails.from).filter(ApiFilmDetails.hasContent)).toString
-    def cinemasJsonFor(c: City): String = Json.toJson(ApiCityCinemas.from(c)).toString
+    // and iOS `RepertoireStore` / `DetailsStore` / cinema filter all decode these.
+    // Answered by the production `MovieController` actions themselves, over the
+    // same read model the HTML routes render, so the mobile LocalServer suites
+    // see the real wire: the per-film JSON cache and array writer, `?days=`,
+    // and the server's own `Last-Modified` / `ETag` / 304 — which a route
+    // projecting `ApiFilm` itself, stamping a constant date and ignoring
+    // `If-Modified-Since`, never let them assert on.
+    val api = controllers.TestMovieController.build(
+      Nil, readModel = Some(wiring.webReadModel),
+      clock = java.time.Clock.fixed(now.atZone(models.Country.default.zone).toInstant, java.time.ZoneOffset.UTC))._1
 
-    val jsonRoutes: PartialFunction[String, String] = Function.unlift { p =>
-      resolve(p).flatMap {
-        case (c, sub) if sub.startsWith("/api/repertoire") => Some(repertoireJsonFor(c))
-        case (c, sub) if sub.startsWith("/api/details")    => Some(detailsJsonFor(c))
-        case (c, sub) if sub.startsWith("/api/cinemas")    => Some(cinemasJsonFor(c))
-        case _                                             => None
+    def apiAction(c: City, sub: String, request: play.api.mvc.RequestHeader): Option[play.api.mvc.Action[play.api.mvc.AnyContent]] =
+      sub.takeWhile(_ != '?') match {
+        case "/api/repertoire" => Some(api.apiRepertoire(c.slug, request.getQueryString("days").flatMap(_.toIntOption)))
+        case "/api/details"    => Some(api.apiDetails(c.slug))
+        case "/api/cinemas"    => Some(api.apiCinemas(c.slug))
+        case _                 => None
+      }
+
+    def apiRoute(exchange: com.sun.net.httpserver.HttpExchange): Boolean = {
+      val uri     = exchange.getRequestURI.toString
+      val request = play.api.test.FakeRequest("GET", uri).withHeaders(
+        Seq("If-Modified-Since", "If-None-Match").flatMap(name => Option(exchange.getRequestHeaders.getFirst(name)).map(name -> _))*)
+      resolve(exchange.getRequestURI.getPath).flatMap { case (c, sub) => apiAction(c, sub, request) } match {
+        case None         => false
+        case Some(action) =>
+          import play.api.test.Helpers.{contentAsBytes, contentType, defaultAwaitTimeout, headers, status}
+          val result = action(request)
+          headers(result).foreach { case (name, value) => exchange.getResponseHeaders.add(name, value) }
+          val body = contentAsBytes(result).toArray
+          if (body.isEmpty) exchange.sendResponseHeaders(status(result), -1)
+          else {
+            contentType(result).foreach(ct => exchange.getResponseHeaders.add("Content-Type", s"$ct; charset=UTF-8"))
+            exchange.sendResponseHeaders(status(result), body.length.toLong)
+            val os = exchange.getResponseBody
+            try os.write(body) finally os.close()
+          }
+          true
       }
     }
 
-    val server = new TestHttpServer(routes, jsonRoutes = jsonRoutes)
+    val server = new TestHttpServer(routes, dynamicRoute = apiRoute)
 
     Files.write(portFile, server.port.toString.getBytes(StandardCharsets.UTF_8))
     System.err.println(s"[FixtureServerMain] listening on ${server.baseUrl} — wrote port $portFile")

@@ -21,19 +21,14 @@ import java.nio.file.{Files, Paths}
  */
 class TestHttpServer(
   routes: PartialFunction[String, String],
-  // JSON API routes (`/api/repertoire`, `/api/details`) the mobile apps
-  // consume. Served as `application/json` with a `Last-Modified` header so the
-  // Android `KinowoApi` / iOS `RepertoireStore` exercise the real wire
-  // contract — not text/html like the page routes. Defaults to empty.
-  jsonRoutes: PartialFunction[String, String] = PartialFunction.empty,
-  // Escape hatch for a route `routes`/`jsonRoutes` can't express: both are
-  // path-to-body maps with no method or header awareness, which is fine for
+  // Escape hatch for a route `routes` can't express: it is a
+  // path-to-body map with no method or header awareness, which is fine for
   // GET-only fixture pages but not for a REST API that answers differently by
   // verb (`PUT`/`DELETE /api/me/:country/hidden-films/:title`) or by request
-  // header (a conditional `GET` needing a real 304). Tried BEFORE `routes`/
-  // `jsonRoutes`; returns whether it wrote a response (and so short-circuits
-  // them) — false falls through unchanged. Defaults to never matching, so
-  // every existing caller (a `routes`/`jsonRoutes`-only construction) is
+  // header (a conditional `GET` needing a real 304 — `FixtureServerMain`'s JSON
+  // API). Tried BEFORE `routes`; returns whether it wrote a response (and so
+  // short-circuits it) — false falls through unchanged. Defaults to never
+  // matching, so every existing caller (a `routes`-only construction) is
   // completely unaffected.
   dynamicRoute: HttpExchange => Boolean = _ => false,
   // Serve requests concurrently rather than on the JDK server's one dispatcher
@@ -41,12 +36,6 @@ class TestHttpServer(
   // the next one overtakes it, which one thread would make impossible.
   concurrent: Boolean = false,
 ) extends AutoCloseable {
-  // Stable HTTP-date stamped on every JSON response so clients can capture a
-  // `Last-Modified` (and a future conditional-GET test has a value to echo
-  // back). Anchored at the fixture snapshot midnight, GMT.
-  private val jsonLastModified: String =
-    java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME.format(
-      java.time.ZonedDateTime.of(2026, 5, 17, 0, 0, 0, 0, java.time.ZoneOffset.UTC))
   private val server: HttpServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
 
   // THE CLASSLOADER OF WHOEVER BUILT THIS SERVER, pinned onto every handler
@@ -131,13 +120,6 @@ class TestHttpServer(
             val os = exception.getResponseBody
             try os.write(bytes) finally os.close()
           }
-        } else if (jsonRoutes.isDefinedAt(routeKey)) {
-          val bytes = jsonRoutes(routeKey).getBytes(StandardCharsets.UTF_8)
-          exception.getResponseHeaders.add("Content-Type", "application/json; charset=UTF-8")
-          exception.getResponseHeaders.add("Last-Modified", jsonLastModified)
-          exception.sendResponseHeaders(200, bytes.length.toLong)
-          val os = exception.getResponseBody
-          try os.write(bytes) finally os.close()
         } else {
           routes.lift(routeKey) match {
           case Some(html) =>

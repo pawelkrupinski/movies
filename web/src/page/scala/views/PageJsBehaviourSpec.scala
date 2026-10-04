@@ -228,8 +228,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // `GET/PUT/DELETE /api/me/pl/hidden-films(/:title)` — the granular,
       // per-country API `bootMergeFromServer`/`hideFilmOnServer`/
-      // `unhideFilmOnServer`/`clearHiddenFilmsOnServer` call. `routes`/
-      // `jsonRoutes` are pure path→body maps with no method awareness, so
+      // `unhideFilmOnServer`/`clearHiddenFilmsOnServer` call. `routes` is a
+      // pure path→body map with no method awareness, so
       // this needs `TestHttpServer`'s `dynamicRoute` escape hatch instead.
       // Deliberately STATIC, like `userStateJson` above: always answers
       // `["Film A"]` regardless of what a PUT/DELETE claims, the same
