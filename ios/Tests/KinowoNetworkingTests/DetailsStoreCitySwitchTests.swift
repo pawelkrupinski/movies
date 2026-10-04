@@ -12,11 +12,11 @@ final class DetailsStoreCitySwitchTests: XCTestCase {
     private let city = "detailscity"
     private let otherCity = "otherdetailscity"
     /// One instance for the whole case: saves and reads are ordered per cache.
-    private let cache = ConditionalPayloadCache<FilmDetails>.details()
+    private let directory = ConditionalPayloadCache<FilmDetails>.scratchDirectory()
+    private lazy var cache = ConditionalPayloadCache<FilmDetails>.details(in: directory)
 
     override func tearDown() {
-        cache.save([], deployment: deployment, city: city, lastModified: nil)
-        cache.save([], deployment: deployment, city: otherCity, lastModified: nil)
+        ConditionalPayloadCache<FilmDetails>.discardScratchDirectory(directory)
         URLProtocolStub.handler = nil
         super.tearDown()
     }

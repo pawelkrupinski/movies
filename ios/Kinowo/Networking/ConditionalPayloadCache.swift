@@ -41,14 +41,21 @@ import Foundation
 /// its whole life — and caches of different files have nothing to order
 /// against each other, so one's slow write never holds up another's read.
 /// Two instances over the same file would not be ordered against each other.
+///
+/// The DIRECTORY is the caller's: the app root passes `defaultDirectory` (the
+/// user's caches), a test a fresh directory of its own. It has no default, so
+/// no test can reach the real caches — and the entry a concurrent run, or the
+/// developer's own simulator session, keeps there — by leaving it out.
 struct ConditionalPayloadCache<Payload: Codable> {
+    private let directory: URL
     private let file: String
     private let legacyFiles: [String]
     /// Every file access of this cache, in issue order. A reference, so copies
     /// of the struct share it.
     let queue: DispatchQueue
 
-    init(file: String, legacyFiles: [String] = []) {
+    init(directory: URL, file: String, legacyFiles: [String] = []) {
+        self.directory = directory
         self.file = file
         self.legacyFiles = legacyFiles
         queue = DispatchQueue(label: "kinowo.conditional-payload-cache.\(file)", qos: .utility)
@@ -64,10 +71,11 @@ struct ConditionalPayloadCache<Payload: Codable> {
         }
     }
 
-    private static var cacheDir: URL {
+    /// Where the app keeps its entries: the user's caches directory.
+    static var defaultDirectory: URL {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
     }
-    private var url: URL { Self.cacheDir.appendingPathComponent(file) }
+    private var url: URL { directory.appendingPathComponent(file) }
 
     /// Persist `body` — the payload exactly as the server sent it, already
     /// encoded, so nothing is re-encoded and the queue holds only the file
@@ -96,7 +104,7 @@ struct ConditionalPayloadCache<Payload: Codable> {
     private func write(_ entry: Data) {
         try? entry.write(to: url, options: .atomic)
         for legacy in legacyFiles {
-            try? FileManager.default.removeItem(at: Self.cacheDir.appendingPathComponent(legacy))
+            try? FileManager.default.removeItem(at: directory.appendingPathComponent(legacy))
         }
     }
 
@@ -172,15 +180,15 @@ struct ConditionalPayloadCache<Payload: Codable> {
 // state never collides. Factories, not shared values: each call builds a new
 // cache with its own queue, for the one store that owns it.
 extension ConditionalPayloadCache where Payload == Film {
-    /// `/{city}/api/repertoire`.
-    static func repertoire() -> Self {
-        .init(file: "repertoire-entry.json", legacyFiles: ["repertoire.json", "repertoire-meta.txt"])
+    /// `/{city}/api/repertoire`, kept in `directory`.
+    static func repertoire(in directory: URL) -> Self {
+        .init(directory: directory, file: "repertoire-entry.json", legacyFiles: ["repertoire.json", "repertoire-meta.txt"])
     }
 }
 
 extension ConditionalPayloadCache where Payload == FilmDetails {
-    /// `/{city}/api/details`.
-    static func details() -> Self {
-        .init(file: "details-entry.json", legacyFiles: ["details.json", "details-meta.txt"])
+    /// `/{city}/api/details`, kept in `directory`.
+    static func details(in directory: URL) -> Self {
+        .init(directory: directory, file: "details-entry.json", legacyFiles: ["details.json", "details-meta.txt"])
     }
 }

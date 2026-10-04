@@ -6,11 +6,11 @@ final class RepertoireCacheLastModifiedTests: XCTestCase {
     private let poland = URL(string: "https://kinowo.net")!
     private let germany = URL(string: "https://showtimes.cc/de")!
     /// One instance for the whole case: saves and reads are ordered per cache.
-    private let cache = ConditionalPayloadCache<Film>.repertoire()
+    private let directory = ConditionalPayloadCache<Film>.scratchDirectory()
+    private lazy var cache = ConditionalPayloadCache<Film>.repertoire(in: directory)
 
     override func tearDown() {
-        // Reset the bound meta so cases don't leak into one another.
-        cache.save([], deployment: poland, city: "", lastModified: nil)
+        ConditionalPayloadCache<Film>.discardScratchDirectory(directory)
         super.tearDown()
     }
 
@@ -99,8 +99,7 @@ final class RepertoireCacheLastModifiedTests: XCTestCase {
     /// stale entry costs one full response, never a wrong one.
     func testAnOlderBuildsMetaFileIsIgnored() async {
         cache.remove()
-        let url = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("repertoire-meta.txt")
+        let url = directory.appendingPathComponent("repertoire-meta.txt")
         try? "berlin\nSun, 26 Jul 2026 17:29:46 GMT".write(to: url, atomically: true, encoding: .utf8)
         let stamp = await cache.lastModified(deployment: poland, city: "berlin")
         XCTAssertNil(stamp)

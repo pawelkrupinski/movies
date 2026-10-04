@@ -16,11 +16,11 @@ final class RepertoireStoreReloadPruningTests: XCTestCase {
     private let deployment = URL(string: "https://reload-pruning-test.invalid")!
     private let city = "testcity"
     /// One instance for the whole case: saves and reads are ordered per cache.
-    private let cache = ConditionalPayloadCache<Film>.repertoire()
+    private let directory = ConditionalPayloadCache<Film>.scratchDirectory()
+    private lazy var cache = ConditionalPayloadCache<Film>.repertoire(in: directory)
 
     override func tearDown() {
-        // Reset the bound disk cache so cases don't leak into one another.
-        cache.save([], deployment: deployment, city: city, lastModified: nil)
+        ConditionalPayloadCache<Film>.discardScratchDirectory(directory)
         URLProtocolStub.handler = nil
         super.tearDown()
     }

@@ -11,11 +11,12 @@ final class ConditionalPayloadCacheQueueTests: XCTestCase {
     private struct Item: Codable, Equatable { let title: String }
 
     private static let file = "conditional-payload-queue-test.json"
-    private let cache = ConditionalPayloadCache<Item>(file: file)
+    private let directory = ConditionalPayloadCache<Item>.scratchDirectory()
+    private lazy var cache = ConditionalPayloadCache<Item>(directory: directory, file: Self.file)
     private let deployment = URL(string: "https://kinowo.net")!
 
     override func tearDown() {
-        cache.remove()
+        ConditionalPayloadCache<Item>.discardScratchDirectory(directory)
         super.tearDown()
     }
 
@@ -28,8 +29,7 @@ final class ConditionalPayloadCacheQueueTests: XCTestCase {
 
         // A read is ordered after the save, so the entry is on disk once it answers.
         XCTAssertEqual(cache.load(deployment: deployment, city: "poznan"), [Item(title: "Diuna")])
-        let onDisk = try Data(contentsOf: FileManager.default
-            .urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent(Self.file))
+        let onDisk = try Data(contentsOf: directory.appendingPathComponent(Self.file))
         XCTAssertEqual(onDisk.suffix(body.count), body)
     }
 
@@ -39,7 +39,7 @@ final class ConditionalPayloadCacheQueueTests: XCTestCase {
     /// (the repertoire stamp) — nor does any process-wide queue exist for
     /// every instance to meet on.
     func testACacheIsNotHeldUpByAnotherCachesQueue() {
-        let other = ConditionalPayloadCache<Item>(file: "conditional-payload-queue-test-other.json")
+        let other = ConditionalPayloadCache<Item>(directory: directory, file: "conditional-payload-queue-test-other.json")
         let released = DispatchSemaphore(value: 0)
         other.queue.async { released.wait() }
         defer { released.signal() }

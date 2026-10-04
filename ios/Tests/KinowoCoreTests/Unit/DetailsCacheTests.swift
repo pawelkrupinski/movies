@@ -6,11 +6,20 @@ final class DetailsCacheTests: XCTestCase {
     private let poland = URL(string: "https://kinowo.net")!
     private let germany = URL(string: "https://showtimes.cc/de")!
     /// One instance for the whole case: saves and reads are ordered per cache.
-    private let cache = ConditionalPayloadCache<FilmDetails>.details()
+    private let directory = ConditionalPayloadCache<FilmDetails>.scratchDirectory()
+    private lazy var cache = ConditionalPayloadCache<FilmDetails>.details(in: directory)
 
     override func tearDown() {
-        cache.save([], deployment: poland, city: "", lastModified: nil)
+        ConditionalPayloadCache<FilmDetails>.discardScratchDirectory(directory)
         super.tearDown()
+    }
+
+    /// The entry lands in the directory the cache was given — a test's own —
+    /// and nowhere else: concurrent runs once shared `details-entry.json` in
+    /// the user's caches, and each one's tearDown reset the other's entry.
+    func testTheEntryIsWrittenInTheGivenDirectory() {
+        cache.save([], deployment: poland, city: "poznan", lastModified: "x")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.appendingPathComponent("details-entry.json").path))
     }
 
     func testSaveAndLoadDetailsRoundTrips() {

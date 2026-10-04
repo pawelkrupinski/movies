@@ -33,7 +33,9 @@ final class PosterStoreInjectionTests: XCTestCase {
         posters.seed(Data([1]), for: showing)
         posters.seed(Data([2]), for: finished)
 
-        let store = RepertoireStore(session: URLProtocolStub.session(), posters: posters)
+        let caches = ConditionalPayloadCache<Film>.scratchDirectory()
+        defer { ConditionalPayloadCache<Film>.discardScratchDirectory(caches) }
+        let store = RepertoireStore(session: URLProtocolStub.session(), cache: .repertoire(in: caches), posters: posters)
         store.films = [film(poster: showing)]
         await store.reconcilePostersIfNeeded()
 

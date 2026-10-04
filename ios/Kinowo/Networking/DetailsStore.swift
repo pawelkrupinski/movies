@@ -28,7 +28,7 @@ final class DetailsStore: ObservableObject {
     /// `base` is the bare host; the fetch URL is `…/{citySlug}/api/details`.
     /// Same city-qualification contract as `RepertoireStore`.
     init(base: URL = kinowoBaseURL, citySlug: String = City.default.slug, session: URLSession = .shared,
-         cache: ConditionalPayloadCache<FilmDetails> = .details()) {
+         cache: ConditionalPayloadCache<FilmDetails>) {
         endpoint = ConditionalListEndpoint(
             base: base, citySlug: citySlug, endpoint: "details", cache: cache, session: session)
     }
@@ -92,7 +92,7 @@ final class DetailsStore: ObservableObject {
     /// (only `ShowtimeTuningScreen` calls it), but not `#if DEBUG`-gated
     /// because that screen itself compiles in every configuration.
     static func seeded(_ details: [FilmDetails]) -> DetailsStore {
-        let store = DetailsStore()
+        let store = DetailsStore(cache: .details(in: ConditionalPayloadCache<FilmDetails>.defaultDirectory))
         store.byTitle = details.keyedByTitle()
         return store
     }

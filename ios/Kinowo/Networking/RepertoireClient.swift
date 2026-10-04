@@ -54,7 +54,7 @@ final class RepertoireStore: ObservableObject {
     /// `use(citySlug:)` once the first-launch gate lands. `posters` is the
     /// composition root's `PosterStore`, the one the grid's images read.
     init(base: URL = kinowoBaseURL, citySlug: String = City.default.slug, session: URLSession = .shared,
-         cache: ConditionalPayloadCache<Film> = .repertoire(), posters: PosterStore) {
+         cache: ConditionalPayloadCache<Film>, posters: PosterStore) {
         endpoint = ConditionalListEndpoint(
             base: base, citySlug: citySlug, endpoint: "repertoire", cache: cache, session: session)
         self.session = session

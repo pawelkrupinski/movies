@@ -12,6 +12,7 @@ import KinowoTestSupport
 final class CountrySwitchTests: XCTestCase {
 
     private var defaults: UserDefaults!
+    private let directory = ConditionalPayloadCache<Film>.scratchDirectory()
 
     override func setUp() {
         super.setUp()
@@ -20,6 +21,7 @@ final class CountrySwitchTests: XCTestCase {
 
     override func tearDown() {
         defaults.discardScratch(suiteName: "CountrySwitchTests")
+        ConditionalPayloadCache<Film>.discardScratchDirectory(directory)
         URLProtocolStub.handler = nil
         super.tearDown()
     }
@@ -34,8 +36,9 @@ final class CountrySwitchTests: XCTestCase {
         }
         let session = URLProtocolStub.session()
         let prefs = UserPreferences(store: defaults)
-        let store = RepertoireStore(base: poland.baseURL, citySlug: "poznan", session: session, posters: .throwaway())
-        let details = DetailsStore(base: poland.baseURL, citySlug: "poznan", session: session)
+        let store = RepertoireStore(base: poland.baseURL, citySlug: "poznan", session: session,
+                                    cache: .repertoire(in: directory), posters: .throwaway())
+        let details = DetailsStore(base: poland.baseURL, citySlug: "poznan", session: session, cache: .details(in: directory))
 
         switchCountry(to: unitedKingdom, prefs: prefs, store: store, details: details)
         store.use(citySlug: "london")

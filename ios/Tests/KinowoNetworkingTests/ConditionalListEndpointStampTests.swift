@@ -12,10 +12,11 @@ final class ConditionalListEndpointStampTests: XCTestCase {
 
     private let deployment = URL(string: "https://stamp-test.invalid")!
     private let city = "stampcity"
-    private let cache = ConditionalPayloadCache<FilmDetails>(file: "conditional-list-endpoint-stamp-test.json")
+    private let directory = ConditionalPayloadCache<FilmDetails>.scratchDirectory()
+    private lazy var cache = ConditionalPayloadCache<FilmDetails>(directory: directory, file: "conditional-list-endpoint-stamp-test.json")
 
     override func tearDown() {
-        cache.remove()
+        ConditionalPayloadCache<FilmDetails>.discardScratchDirectory(directory)
         URLProtocolStub.handler = nil
         super.tearDown()
     }

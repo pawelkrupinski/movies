@@ -5,7 +5,7 @@ import StoreKit
 @main
 struct KinowoApp: App {
     @StateObject private var store: RepertoireStore
-    @StateObject private var details = DetailsStore()
+    @StateObject private var details = DetailsStore(cache: .details(in: ConditionalPayloadCache<FilmDetails>.defaultDirectory))
     @StateObject private var catalog = CatalogStore()
     @StateObject private var prefs: UserPreferences
     @StateObject private var authService: AuthService
@@ -33,7 +33,8 @@ struct KinowoApp: App {
         let authService = AuthService()
         let posters = PosterStore()
         self.posters = posters
-        _store = StateObject(wrappedValue: RepertoireStore(posters: posters))
+        _store = StateObject(wrappedValue: RepertoireStore(
+            cache: .repertoire(in: ConditionalPayloadCache<Film>.defaultDirectory), posters: posters))
         _prefs = StateObject(wrappedValue: preferences)
         _authService = StateObject(wrappedValue: authService)
         _sync = StateObject(wrappedValue: StateSyncService(
