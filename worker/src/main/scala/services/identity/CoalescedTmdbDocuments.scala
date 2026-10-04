@@ -2,6 +2,7 @@ package services.identity
 
 import org.bson.BsonDocument
 
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{CompletableFuture, ConcurrentLinkedQueue, ExecutionException, Semaphore, TimeUnit, TimeoutException}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
@@ -42,6 +43,9 @@ final class CoalescedTmdbDocuments(inner: TmdbDocuments, maxBatch: Int = Coalesc
   def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit    = if (docs.nonEmpty) writes(kind)(docs)
 
   override def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = inner.answers(kind, ids)
+
+  /** Calls made and not yet returned, across every kind's reads and writes. */
+  private[identity] def calling: Int = (reads.values ++ writes.values).map(_.calling).sum
 }
 
 object CoalescedTmdbDocuments {
@@ -59,10 +63,16 @@ object CoalescedTmdbDocuments {
   private[identity] final class Coalescer[A, B](maxBatch: Int, inFlight: Int = InFlight)(run: Seq[A] => Seq[Try[B]]) {
     private val queued = new ConcurrentLinkedQueue[(A, CompletableFuture[B])]()
     private val slots  = new Semaphore(inFlight)
+    private val unreturned = new AtomicInteger
 
     def apply(request: A): B = {
       val result = new CompletableFuture[B]()
       queued.add(request -> result)
+      unreturned.incrementAndGet()   // after the add: a count of n means n requests queued or taken
+      try callUntilAnswered(result) finally { unreturned.decrementAndGet(); () }
+    }
+
+    private def callUntilAnswered(result: CompletableFuture[B]): B = {
       while (!result.isDone) {
         if (!queued.isEmpty && slots.tryAcquire()) try runBatch() finally slots.release()
         // Its request taken by another batch, or every slot taken: look again shortly.
@@ -73,6 +83,9 @@ object CoalescedTmdbDocuments {
 
     /** Requests queued for a batch that has not taken them yet. */
     private[identity] def waiting: Int = queued.size
+
+    /** Calls made and not yet returned: each one's request is queued, or taken by a batch. */
+    private[identity] def calling: Int = unreturned.get
 
     // Every request the batch took is answered whatever `run` throws: an interrupt (a shutdown) or a
     // fatal error fails them all, then goes on up the runner's own stack.

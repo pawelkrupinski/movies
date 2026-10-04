@@ -62,7 +62,6 @@ class NoSleepInTestsSpec extends AnyFlatSpec with Matchers {
     "worker/src/test/scala/tools/SharedLiveAnswersSpec.scala"                -> Overlap,
     "worker/src/test/scala/tools/IdentityLookupSweepSpec.scala"              -> Overlap,
     "worker/src/test/scala/modules/WorkerWiringSpec.scala"                   -> Overlap,
-    "worker/src/test/scala/services/identity/CoalescedTmdbDocumentsSpec.scala" -> Overlap,
     "worker/src/test/scala/services/identity/IdentityProjectionSpec.scala"   -> Overlap,
     "worker/src/test/scala/services/identity/TmdbDocumentsSpec.scala"        -> Overlap,
     "worker/src/test/scala/services/identity/TmdbStoreSpec.scala"            -> Overlap,
