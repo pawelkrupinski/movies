@@ -647,24 +647,6 @@
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
-    "_id" : "f0904c2a59219921",
-    "title" : "Trzy korony marynarza + prelekcja Tomasza Poborcy",
-    "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/drty555555.png",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Trzy+korony+marynarza+%2B+prelekcja+Tomasza+Poborcy/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Trzy+korony+marynarza+%2B+prelekcja+Tomasza+Poborcy",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Trzy+korony+marynarza+%2B+prelekcja+Tomasza+Poborcy"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { },
-    "shareCardPending" : false
-  }, {
     "_id" : "f0a8ba4000ef7999",
     "title" : "Sunny Dancer",
     "posterUrl" : "https://stacjafalenica.pl/wp-content/uploads/2026/08/f1.jpg",
@@ -6945,24 +6927,6 @@
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
-    "_id" : "f5005e02b34b9340",
-    "title" : "Niewinni czarodzieje + prelekcja Michała Oleszczyka i dyskusja po seansie",
-    "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/do_stronki.jpg",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Niewinni+czarodzieje+%2B+prelekcja+Micha%C5%82a+Oleszczyka+i+dyskusja+po+seansie/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Niewinni+czarodzieje+%2B+prelekcja+Micha%C5%82a+Oleszczyka+i+dyskusja+po+seansie",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Niewinni+czarodzieje+%2B+prelekcja+Micha%C5%82a+Oleszczyka+i+dyskusja+po+seansie"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { },
-    "shareCardPending" : false
-  }, {
     "_id" : "f5074bf765065245",
     "title" : "Ravekjavik x NCKF: Bestia w dżungli + panel dyskusyjny",
     "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/adasssssssss.png",
@@ -8189,6 +8153,32 @@
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
+    "_id" : "f621e9647af1a330",
+    "title" : "Próba orkiestry + prelekcja Julii Palmowskiej z portalu Pełna Sala",
+    "originalTitle" : "Prova d'orchestra",
+    "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/projekt_bez_nazwy__13__02.png",
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/uIZpc0SZeIBShwBY3WX36BwEp6q.jpg", "https://m.media-amazon.com/images/M/MV5BNjQ2MWE4YzktMmIwZS00MjAwLWE5MTctZmZlZDZjZWYzOWU5XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 72,
+    "releaseYear" : 1979,
+    "genres" : [ "Komedia", "Dramat", "Muzyczny" ],
+    "countries" : [ "Niemcy", "Włochy" ],
+    "directors" : [ "Federico Fellini" ],
+    "cast" : [ "Balduin Baas", "Clara Colosimo", "Elizabeth Labi", "Ronaldo Bonacchi", "Ferdinando Villella" ],
+    "synopsis" : "Muzycy orkiestry rozbawieni i żartujący zjawiają się na próbie do oratorium. Okazuje się, że w środku czeka ekipa filmowa, która chce nakręcić o nich dokument. Ich opowiadania o konkretnych instrumentach, przerywa przybycie dyrygenta, apodyktycznego i krzykliwego. W przerwie szef orkiestry odpowiada na pytania filmowców, o to czym jest dla niego muzyka i jakie w ogóle spełnia funkcje. Po przerwie zastaje muzyków kompletnie zdezorganizowanych, gotowych do buntu przeciw jego nieograniczonej władzy.",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "imdb" : 7.1,
+      "imdbUrl" : "https://www.imdb.com/title/tt0079759/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Prova+d%27orchestra/?category=2",
+      "rottenTomatoes" : 78,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/orchestra_rehearsal",
+      "filmweb" : 7.4,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Pr%C3%B3ba+orkiestry-1978-30823"
+    },
+    "weightedRating" : 7.433333333333334,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
     "_id" : "f624332e7629717e",
     "title" : "Odyseja",
     "posterUrl" : "https://medstore.cinemaone.pl/ODYSEJAPLAKATPLdigital.jpg",
@@ -8325,24 +8315,6 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Krajobraz+po+bitwie-1970-6867"
     },
     "weightedRating" : 7.333333333333333,
-    "synopsisByCity" : { },
-    "shareCardPending" : false
-  }, {
-    "_id" : "f6398a657020b792",
-    "title" : "Popiół i diament + prelekcja Tomasza Poborcy",
-    "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/fghjg5.png",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Popi%C3%B3%C5%82+i+diament+%2B+prelekcja+Tomasza+Poborcy/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Popi%C3%B3%C5%82+i+diament+%2B+prelekcja+Tomasza+Poborcy",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Popi%C3%B3%C5%82+i+diament+%2B+prelekcja+Tomasza+Poborcy"
-    },
-    "weightedRating" : 0,
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
@@ -16621,24 +16593,6 @@
     "ageRating" : "12",
     "shareCardPending" : false
   }, {
-    "_id" : "fb73cad159fc9b11",
-    "title" : "Próba orkiestry + prelekcja Julii Palmowskiej z portalu Pełna Sala",
-    "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/projekt_bez_nazwy__13__02.png",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Pr%C3%B3ba+orkiestry+%2B+prelekcja+Julii+Palmowskiej+z+portalu+Pe%C5%82na+Sala/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Pr%C3%B3ba+orkiestry+%2B+prelekcja+Julii+Palmowskiej+z+portalu+Pe%C5%82na+Sala",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Pr%C3%B3ba+orkiestry+%2B+prelekcja+Julii+Palmowskiej+z+portalu+Pe%C5%82na+Sala"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { },
-    "shareCardPending" : false
-  }, {
     "_id" : "fb7797264bc28470",
     "title" : "Tony",
     "posterUrl" : "https://stacjafalenica.pl/wp-content/uploads/2026/08/TONY_fotos_1-scaled.jpg",
@@ -19229,6 +19183,31 @@
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
+    "_id" : "fccdf807627302db",
+    "title" : "Trzy korony marynarza + prelekcja Tomasza Poborcy",
+    "originalTitle" : "Les Trois couronnes du matelot",
+    "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/drty555555.png",
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/jN3ZPCVfzKvtL1X63gu5MHKwEBw.jpg", "https://m.media-amazon.com/images/M/MV5BMTIwNDU1ODQ5NF5BMl5BanBnXkFtZTcwNDY1OTMzMQ@@._V1_.jpg" ],
+    "runtimeMinutes" : 117,
+    "releaseYear" : 1991,
+    "genres" : [ "Przygodowy", "Fantasy" ],
+    "countries" : [ "Francja" ],
+    "directors" : [ "Raúl Ruiz" ],
+    "cast" : [ "Jean-Bernard Guillard", "Philippe Deplanche", "Nadège Clair", "Lisa Lyon", "Jean Badin" ],
+    "synopsis" : "W tym klasycznie surrealistycznym fantasy, marynarz, znany z opowiadania opowieści, widzi studenta zabijającego swojego nauczyciela i postanawia wysnuć długą, nieprawdopodobną opowieść dla niego. Mówi chłopcu o jego licznych przygodach w egzotycznych portach Ameryki Południowej, gdzie odwiedzał palarnie opium i przebywał w burdelach. W takich mrocznych, zjawiskowych miejscach, marynarz spotyka wiele dziwnych, mistycznych postaci.",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "imdb" : 7.1,
+      "imdbUrl" : "https://www.imdb.com/title/tt0084824/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Les+Trois+couronnes+du+matelot/?category=2",
+      "rottenTomatoes" : 77,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/les_trois_couronnes_du_matelot_1982",
+      "filmwebUrl" : "https://www.filmweb.pl/film/Trzy+korony+marynarza-1983-195125"
+    },
+    "weightedRating" : 7.4,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
     "_id" : "fcd81bb0c875d855",
     "title" : "Donnie Darko",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/WEB_Plakat_kwadrat_wXtTJ1e.jpg",
@@ -20182,6 +20161,32 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=DKF+Kropka%3A+Riefenstahl"
     },
     "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
+    "_id" : "fde994d00680df04",
+    "title" : "Popiół i diament + prelekcja Tomasza Poborcy",
+    "originalTitle" : "Popiół i diament",
+    "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/fghjg5.png",
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/66yNLyK66WgySI7sZLXUfa7NRHp.jpg", "https://m.media-amazon.com/images/M/MV5BNjc4ZGEwMmItZGI3OS00Y2NiLWFlMDUtNmIwY2NhZGFmNjAxXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 110,
+    "releaseYear" : 1958,
+    "genres" : [ "Dramat", "Wojenny", "Romans" ],
+    "countries" : [ "Polska" ],
+    "directors" : [ "Andrzej Wajda" ],
+    "cast" : [ "Zbigniew Cybulski", "Ewa Krzyżewska", "Wacław Zastrzeżynski", "Adam Pawlikowski", "Bogumił Kobiela" ],
+    "synopsis" : "Młody akowiec, Maciek Chełmicki, otrzymuje rozkaz zastrzelenia sekretarza KW PPR. Zbieg okoliczności powoduje, że zabija kogoś innego. Spotykając się twarzą w twarz ze swoją ofiarą doznaje szoku. Staje przed koniecznością powtórzenia zamachu. Poznaje Krystynę, dziewczynę pracującą jako barmanka w restauracji hotelu \"Monopol\". Uczucie do niej uświadamia mu jeszcze bardziej bezsens zabijania w chwili zakończenia wojny. Wierność złożonej przysiędze, a tym samym obowiązek podporządkowania się rozkazowi, przeważa szalę.",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "imdb" : 7.7,
+      "imdbUrl" : "https://www.imdb.com/title/tt0052080/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Popi%C3%B3%C5%82+i+diament/?category=2",
+      "rottenTomatoes" : 96,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/ashes_and_diamonds",
+      "filmweb" : 7.8,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Popi%C3%B3%C5%82+i+diament-1958-1118"
+    },
+    "weightedRating" : 8.366666666666667,
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
@@ -22645,6 +22650,32 @@
     "ageRating" : "12",
     "shareCardPending" : false
   }, {
+    "_id" : "ff97750cb78f68a2",
+    "title" : "Niewinni czarodzieje + prelekcja Michała Oleszczyka i dyskusja po seansie",
+    "originalTitle" : "Niewinni czarodzieje",
+    "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/do_stronki.jpg",
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/8WGu0A50DZ826LHBFhYp274hNDn.jpg", "https://m.media-amazon.com/images/M/MV5BNzdhNTFjMGYtYTlmNS00NjlhLWI2MWMtOTljYzQxMjliOTExXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 87,
+    "releaseYear" : 1960,
+    "genres" : [ "Romans", "Komedia" ],
+    "countries" : [ "Polska" ],
+    "directors" : [ "Andrzej Wajda" ],
+    "cast" : [ "Tadeusz Łomnicki", "Krystyna Stypułkowska", "Zbigniew Cybulski", "Wanda Koczeska", "Kalina Jędrusik" ],
+    "synopsis" : "Historia przypadkowego spotkania młodego lekarza i dziewczyny, którzy poznają się w piwnicy jazzowej i spędzają ze sobą noc. Akcja rozgrywa się głównie w czterech ścianach mieszkania, a tło społeczne zostaje ledwo zarysowane. Niewiele też dowiadujemy się o samych bohaterach, poza tym, że noszą imiona Pelagia i Bazyli. Młodzi ludzie przybierają wobec siebie maski obojętności, ukrywając pod nimi rodzące się uczucie. Prowadzą grę pozorów i zwodniczych gestów, ulegając przy tym coraz silniejszej wzajemnej fascynacji, której jednak w ramach konwencji gry - starają się oprzeć. A wszystko to zatopione w nostalgiczno - egzystencjalnym klimacie.",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "imdb" : 7.3,
+      "imdbUrl" : "https://www.imdb.com/title/tt0054119/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Niewinni+czarodzieje/?category=2",
+      "rottenTomatoes" : 88,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/innocent_sorcerers",
+      "filmweb" : 7.8,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Niewinni+czarodzieje-1960-898"
+    },
+    "weightedRating" : 7.966666666666666,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
     "_id" : "ffa1d03f286356c0",
     "title" : "Tedi i magiczna lampa",
     "posterUrl" : "https://biletyna.pl/file/get/id/406644",
@@ -25074,18 +25105,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000KinoPort\u0000https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/\u0000Angel’s Egg" ]
-  }, {
-    "_id" : "f0904c2a59219921|lodz|Kino NCKF EC1",
-    "filmId" : "f0904c2a59219921",
-    "city" : "lodz",
-    "cinema" : "Kino NCKF EC1",
-    "filmUrl" : "https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/trzy-korony-marynarza-prelekcja-tomasza-poborcy",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-27T19:00:00",
-      "bookingUrl" : "https://bilety.ec1lodz.pl/rezerwacja/termin.html?d=5&idl=31&target=Lw==&date_termin=2026-06-27",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino NCKF EC1\u0000https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/trzy-korony-marynarza-prelekcja-tomasza-poborcy\u0000Trzy korony marynarza + prelekcja Tomasza Poborcy" ]
   }, {
     "_id" : "f0a8ba4000ef7999|warszawa|KINOkawiarnia Stacja Falenica",
     "filmId" : "f0a8ba4000ef7999",
@@ -58009,18 +58028,6 @@
     } ],
     "listingKeys" : [ "P\u0000Kino Spektrum\u0000Matador | Fiesta Kina Hiszpańskiego\u0000" ]
   }, {
-    "_id" : "f5005e02b34b9340|lodz|Kino NCKF EC1",
-    "filmId" : "f5005e02b34b9340",
-    "city" : "lodz",
-    "cinema" : "Kino NCKF EC1",
-    "filmUrl" : "https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/niewinni-czarodzieje-prelekcja-michala-oleszczyka-i-dyskusja-po-seansie",
-    "showtimes" : [ {
-      "dateTime" : "2026-07-10T19:00:00",
-      "bookingUrl" : "https://bilety.ec1lodz.pl/rezerwacja/termin.html?d=5&idl=31&target=Lw==&date_termin=2026-07-10",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino NCKF EC1\u0000https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/niewinni-czarodzieje-prelekcja-michala-oleszczyka-i-dyskusja-po-seansie\u0000Niewinni czarodzieje + prelekcja Michała Oleszczyka i dyskusja po seansie" ]
-  }, {
     "_id" : "f5074bf765065245|lodz|Kino NCKF EC1",
     "filmId" : "f5074bf765065245",
     "city" : "lodz",
@@ -74705,6 +74712,18 @@
     } ],
     "listingKeys" : [ "N\u0000Helios Gorzów Wielkopolski\u0000https://helios.pl/gorzow-wielkopolski/kino-helios/wydarzenie/sny-o-milosci-knt-2629\u0000Sny o miłości - KNT" ]
   }, {
+    "_id" : "f621e9647af1a330|lodz|Kino NCKF EC1",
+    "filmId" : "f621e9647af1a330",
+    "city" : "lodz",
+    "cinema" : "Kino NCKF EC1",
+    "filmUrl" : "https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/proba-orkiestry-1978",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-13T19:30:00",
+      "bookingUrl" : "https://bilety.ec1lodz.pl/rezerwacja/termin.html?d=5&idl=31&target=Lw==&date_termin=2026-06-13",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino NCKF EC1\u0000https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/proba-orkiestry-1978\u0000Próba orkiestry + prelekcja Julii Palmowskiej z portalu Pełna Sala" ]
+  }, {
     "_id" : "f624332e7629717e|lublin|Kino Bajka",
     "filmId" : "f624332e7629717e",
     "city" : "lublin",
@@ -75114,19 +75133,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino Pod Baranami\u0000https://kinopodbaranami.pl/film.php?film_id=12801\u0000Krajobraz po bitwie (Landscape After the Battle)" ]
-  }, {
-    "_id" : "f6398a657020b792|lodz|Kino NCKF EC1",
-    "filmId" : "f6398a657020b792",
-    "city" : "lodz",
-    "cinema" : "Kino NCKF EC1",
-    "filmUrl" : "https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/andrzej-wajda-notatki-popiol-i-diament-prelekcja-tomasza-poborcy",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T19:00:00",
-      "bookingUrl" : "https://bilety.ec1lodz.pl/rezerwacja/termin.html?d=5&idl=31&target=Lz9fZ2w9MSoxbnZxM2c5Kl9nY2xfYXUqTVRFek1UazVNemN5TkM0eE56WXdNelF4TURnNQ==&date_termin=2026-06-26",
-      "room" : "Odeon",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino NCKF EC1\u0000https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/andrzej-wajda-notatki-popiol-i-diament-prelekcja-tomasza-poborcy\u0000Popiół i diament + prelekcja Tomasza Poborcy" ]
   }, {
     "_id" : "f63cab9285191fbd|opole|Kino Meduza",
     "filmId" : "f63cab9285191fbd",
@@ -147845,18 +147851,6 @@
     } ],
     "listingKeys" : [ "N\u0000Kino Nowe Horyzonty\u0000https://www.kinonh.pl/op.s?id=22203\u0000Batman" ]
   }, {
-    "_id" : "fb73cad159fc9b11|lodz|Kino NCKF EC1",
-    "filmId" : "fb73cad159fc9b11",
-    "city" : "lodz",
-    "cinema" : "Kino NCKF EC1",
-    "filmUrl" : "https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/proba-orkiestry-1978",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-13T19:30:00",
-      "bookingUrl" : "https://bilety.ec1lodz.pl/rezerwacja/termin.html?d=5&idl=31&target=Lw==&date_termin=2026-06-13",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino NCKF EC1\u0000https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/proba-orkiestry-1978\u0000Próba orkiestry + prelekcja Julii Palmowskiej z portalu Pełna Sala" ]
-  }, {
     "_id" : "fb7797264bc28470|grudziadz|Kinoteatr Rondo",
     "filmId" : "fb7797264bc28470",
     "city" : "grudziadz",
@@ -157301,6 +157295,18 @@
     } ],
     "listingKeys" : [ "N\u0000Kino Bajka\u0000https://kinobajka.pl/film_do_repertuaru/triumf-serca/\u0000Triumf serca" ]
   }, {
+    "_id" : "fccdf807627302db|lodz|Kino NCKF EC1",
+    "filmId" : "fccdf807627302db",
+    "city" : "lodz",
+    "cinema" : "Kino NCKF EC1",
+    "filmUrl" : "https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/trzy-korony-marynarza-prelekcja-tomasza-poborcy",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-27T19:00:00",
+      "bookingUrl" : "https://bilety.ec1lodz.pl/rezerwacja/termin.html?d=5&idl=31&target=Lw==&date_termin=2026-06-27",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino NCKF EC1\u0000https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/trzy-korony-marynarza-prelekcja-tomasza-poborcy\u0000Trzy korony marynarza + prelekcja Tomasza Poborcy" ]
+  }, {
     "_id" : "fcd81bb0c875d855|szczecin|Kino Zamek",
     "filmId" : "fcd81bb0c875d855",
     "city" : "szczecin",
@@ -163460,6 +163466,19 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino Sfinks\u0000https://kinosfinks.okn.edu.pl/wydarzenie-3127-dkf_kropka_riefenstahl-szczegoly-21474.html\u0000DKF Kropka: Riefenstahl" ]
+  }, {
+    "_id" : "fde994d00680df04|lodz|Kino NCKF EC1",
+    "filmId" : "fde994d00680df04",
+    "city" : "lodz",
+    "cinema" : "Kino NCKF EC1",
+    "filmUrl" : "https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/andrzej-wajda-notatki-popiol-i-diament-prelekcja-tomasza-poborcy",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T19:00:00",
+      "bookingUrl" : "https://bilety.ec1lodz.pl/rezerwacja/termin.html?d=5&idl=31&target=Lz9fZ2w9MSoxbnZxM2c5Kl9nY2xfYXUqTVRFek1UazVNemN5TkM0eE56WXdNelF4TURnNQ==&date_termin=2026-06-26",
+      "room" : "Odeon",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino NCKF EC1\u0000https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/andrzej-wajda-notatki-popiol-i-diament-prelekcja-tomasza-poborcy\u0000Popiół i diament + prelekcja Tomasza Poborcy" ]
   }, {
     "_id" : "fde9d598c635184d|lodz|Kino Tatry",
     "filmId" : "fde9d598c635184d",
@@ -181349,6 +181368,18 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino nad Wartą\u0000https://www.bilety24.pl/kino/1621-lalka-164633?id=988001\u0000LALKA" ]
+  }, {
+    "_id" : "ff97750cb78f68a2|lodz|Kino NCKF EC1",
+    "filmId" : "ff97750cb78f68a2",
+    "city" : "lodz",
+    "cinema" : "Kino NCKF EC1",
+    "filmUrl" : "https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/niewinni-czarodzieje-prelekcja-michala-oleszczyka-i-dyskusja-po-seansie",
+    "showtimes" : [ {
+      "dateTime" : "2026-07-10T19:00:00",
+      "bookingUrl" : "https://bilety.ec1lodz.pl/rezerwacja/termin.html?d=5&idl=31&target=Lw==&date_termin=2026-07-10",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino NCKF EC1\u0000https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/niewinni-czarodzieje-prelekcja-michala-oleszczyka-i-dyskusja-po-seansie\u0000Niewinni czarodzieje + prelekcja Michała Oleszczyka i dyskusja po seansie" ]
   }, {
     "_id" : "ffa1d03f286356c0|jastrzebie-zdroj|Teatr Elektryczny",
     "filmId" : "ffa1d03f286356c0",
