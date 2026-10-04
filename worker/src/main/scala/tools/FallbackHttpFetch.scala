@@ -42,7 +42,7 @@ class FallbackHttpFetch(
 
   private val failureLog = new RepeatedFailureLog(logger, repeats)
 
-  override def get(url: String): String = tryEach("get", url, _.get(url))
+  override def get(url: String): String = tryEach("get", url, _.get(url))(identity)
 
   // Headers must ride the chain — must NOT inherit the base default
   // (`get(url, headers) = get(url)`), which silently DROPS them. Odeon
@@ -54,17 +54,21 @@ class FallbackHttpFetch(
   // gap was invisible until then because every other proxied source authenticates
   // with a cookie or nothing at all.
   override def get(url: String, headers: Map[String, String]): String =
-    tryEach("get", url, _.get(url, headers))
+    tryEach("get", url, _.get(url, headers))(identity)
 
   // Raw bytes through the same fallback chain — must NOT inherit the lossy base
   // default (`get(url).getBytes(UTF_8)`), which would mojibake a legacy
   // single-byte page fetched through this chain.
-  override def getBytes(url: String): Array[Byte] = tryEach("getBytes", url, _.getBytes(url))
+  override def getBytes(url: String): Array[Byte] = tryEach("getBytes", url, _.getBytes(url))(FallbackHttpFetch.asciiHead)
 
   override def post(url: String, body: String, contentType: String): String =
-    tryEach("post", url, _.post(url, body, contentType))
+    tryEach("post", url, _.post(url, body, contentType))(identity)
 
-  private def tryEach[T](verb: String, url: String, call: HttpFetch => T): T = {
+  /** Each backend in turn. A 2xx whose body is a bot-protection interstitial ([[ChallengePage]])
+   *  is that leg FAILING, not answering: a challenged residential exit IP is exactly what the
+   *  next route (Zyte) exists to get past, and returning the interstitial skipped it, failed the
+   *  read anyway, and booked the proxy leg as having served. `text` is how a body is searched. */
+  private def tryEach[T](verb: String, url: String, call: HttpFetch => T)(text: T => String): T = {
     val failures        = mutable.ListBuffer.empty[String]
     var lastFailure     = Option.empty[Throwable]
     var result: Option[T] = None
@@ -73,7 +77,11 @@ class FallbackHttpFetch(
     while (result.isEmpty && it.hasNext) {
       val (name, backend) = it.next()
       try {
-        result = Some(call(backend))
+        val answer = call(backend)
+        ChallengePage.detect(text(answer)).foreach { vendor =>
+          throw new UnexpectedBodyException(url, s"a $vendor challenge page", text(answer))
+        }
+        result = Some(answer)
         safeOutcome(name, None)
       } catch {
         case t: Throwable =>
@@ -138,6 +146,12 @@ object FallbackHttpFetch {
   val NoOutcome: (String, Option[String]) => Unit = (_, _) => ()
 
   val NeverEnds: Throwable => Boolean = _ => false
+
+  // The interstitials are small ASCII pages, so the head of a byte body read as single-byte
+  // characters is enough to recognise one without decoding a whole listing.
+  private val ChallengeSearchBytes = 64 * 1024
+  private[tools] def asciiHead(bytes: Array[Byte]): String =
+    new String(bytes, 0, math.min(bytes.length, ChallengeSearchBytes), java.nio.charset.StandardCharsets.ISO_8859_1)
 
   /** For a chain of egress ROUTES to one origin: the origin's "not found" (404/410)
    *  through any route is final. Letting it fall through buried it — Odeon's ocapi

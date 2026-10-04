@@ -50,6 +50,27 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
     exception.getMessage should include ("d-failure")
   }
 
+  // A residential-proxy exit IP that Cloudflare challenges answers 200 with the interstitial. The
+  // chain took that as the proxy leg SERVING, handed the challenge to the scraper (which failed
+  // the read) and never tried Zyte — the leg that exists to clear exactly that block — while
+  // /uptime booked the proxy as healthy.
+  it should "roll over to the next backend when one answers a challenge page with a 2xx" in {
+    val challenge = "<html><head><title>Just a moment...</title></head><script>window._cf_chl_opt={}</script></html>"
+    val outcomes  = mutable.ListBuffer.empty[(String, Option[String])]
+    val chain = new FallbackHttpFetch(Seq("proxy" -> ok(challenge), "fallback" -> ok("<html>listing</html>")),
+      onOutcome = (name, error) => outcomes += ((name, error)))
+    chain.get("https://cinema.example/listing") shouldBe "<html>listing</html>"
+    chain.getBytes("https://cinema.example/listing").toSeq shouldBe "<html>listing</html>".getBytes("UTF-8").toSeq
+    outcomes.collect { case ("proxy", error) => error.isDefined }.toSet shouldBe Set(true)
+  }
+
+  it should "fail, not answer, when every backend answers a challenge page" in {
+    val challenge = "<title>Just a moment...</title>"
+    val chain = new FallbackHttpFetch(Seq("proxy" -> ok(challenge), "fallback" -> ok(challenge)))
+    val exception = intercept[RuntimeException](chain.get("https://cinema.example/listing"))
+    exception.getMessage should include ("Cloudflare challenge")
+  }
+
   it should "exercise the same fallback for post as for get" in {
     val secondary = new RoutingHttpFetch(Seq("https://x" -> "post-body"))
     val chain = new FallbackHttpFetch(Seq("primary" -> boom("503"), "secondary" -> secondary))
