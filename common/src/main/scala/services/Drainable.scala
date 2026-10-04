@@ -4,9 +4,9 @@ package services
  *
  *  `stop()` is a one-way door — it shuts the executor down, and every later
  *  submission is rejected. That is right at shutdown and wrong for a harness that
- *  drains between phases: the replay boot drains the enrichment pools, then folds
- *  staging, and the fold is what publishes `ImdbIdMissing`. Drained with `stop()`,
- *  every one of those events reached a dead pool and the whole id-recovery ladder
+ *  drains between phases: the replay boot drains the enrichment pools, then runs
+ *  the step that publishes `ImdbIdMissing`. Drained with `stop()`, every one of
+ *  those events reached a dead pool and the whole id-recovery ladder
  *  — the route prod takes for bare-title films TMDB cannot identify — silently did
  *  nothing.
  *

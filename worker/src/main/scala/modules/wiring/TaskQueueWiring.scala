@@ -66,8 +66,8 @@ trait TaskQueueWiring { self: WorkerWiring =>
     poolSize = workerPoolSize,
     // The SAME composite credit-throttle signal the reapers read, so the pool
     // duty-cycles in lockstep with the enqueue-backoff under a credit crunch.
-    // Each completed task announces itself so StagingReaper can chain the next
-    // staging step; non-staging completions are ignored by its subscriber.
+    // Each completed task announces itself (TaskFinished): the chunked-scrape coordinator
+    // enqueues a run's reduce off its last chunk, and a share-card render re-projects its film.
     onCompleted = task => eventBus.publish(TaskFinished(task.taskType, task.dedupKey, task.payload)),
     // Report claims / outcomes / handler durations to the Prometheus metrics.
     observer = taskMetrics

@@ -64,8 +64,8 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
    * The resolution basis has to survive BOTH persistence paths, and it was
    * reaching neither: `StoredMovieDto` had no column for it and `MovieRecordPatch`
    * no field, so a basis lived only in the in-memory cache and vanished at the next
-   * hydrate. `CinemaCorroboration.resolvedOnWeakerEvidenceThanAvailable` reads a
-   * missing basis as "not a guess", so every restarted worker treated every row as
+   * hydrate. The (since deleted) re-resolve-a-guess check read a missing basis as
+   * "not a guess", so every restarted worker treated every row as
    * settled and the re-resolve-a-guess path could never fire — which is how
    * "Mistyczka" stayed pinned to another film's tmdbId, original title and Filmweb
    * URL. The round-trip above covers the whole-document write; this covers the

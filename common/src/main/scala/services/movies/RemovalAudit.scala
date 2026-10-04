@@ -115,18 +115,6 @@ object RemovalAudit {
     logger.info(s"[scrape-prune] cinema='$cinema' SKIPPED prune (looks partial): " +
       s"batch=$batchFilms known=$knownSlots consecutive=$consecutive reason=$reason")
 
-  /** The breadth guard gave up on a cinema: the thin ratio persisted across enough
-   *  consecutive ticks that it stopped being a plausible bad fetch, so the prune
-   *  finally runs and the venue's accumulated stale slots are let go. The
-   *  counterpart to [[scrapePruneSkipped]], mirroring [[scrapeDepthAccepted]] below
-   *  — a cinema that keeps tripping this either genuinely shed most of its board,
-   *  or (Kino Aurum, 2026-09-13) has been quietly accumulating never-pruned
-   *  decorated-title variants for weeks, each acceptance only ever clawing back
-   *  down to whatever this one tick happened to list. */
-  def scrapePruneAccepted(cinema: String, batchFilms: Int, knownSlots: Int, consecutive: Int): Unit =
-    logger.warn(s"[scrape-prune] cinema='$cinema' ACCEPTED a sustained partial listing after " +
-      s"$consecutive consecutive rejections: batch=$batchFilms known=$knownSlots reason=breadth-guard-exhausted")
-
   /** The DEPTH guard rejected a whole tick: the cinema's films all came back but
    *  carrying a fraction of their screenings, which is a degraded fetch (a chunked
    *  scrape that lost most of its dates) rather than a real schedule cut. The tick
@@ -145,14 +133,6 @@ object RemovalAudit {
   def scrapeDepthAccepted(cinema: String, batchShowtimes: Int, knownShowtimes: Int, consecutive: Int): Unit =
     logger.warn(s"[scrape-depth] cinema='$cinema' ACCEPTED a sustained reduction after " +
       s"$consecutive consecutive rejections: batch=$batchShowtimes vs known=$knownShowtimes reason=depth-guard-exhausted")
-
-  /** A venue's scrape came from a different upstream listing than its stored one: the
-   *  venue was rewired, so both guards stand aside and this listing becomes the new
-   *  baseline, retiring the old source's rows. WARN, like the guard lines it stands in
-   *  for — it is the one path by which a thin listing lands unguarded. */
-  def scrapeRewired(cinema: String, from: Option[String], to: Option[String]): Unit =
-    logger.warn(s"[scrape-depth] cinema='$cinema' REWIRED ${from.getOrElse("?")} -> ${to.getOrElse("?")}: " +
-      "guards skipped, listing lands as the new baseline reason=source-rewired")
 
   /** All of a film's screening slots cleared at once (`whole` = the slot map was
    *  empty, so every slot went) — INFO; a partial stale-slot trim on a healthy

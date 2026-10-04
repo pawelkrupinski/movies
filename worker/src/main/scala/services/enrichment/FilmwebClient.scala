@@ -181,12 +181,6 @@ class FilmwebClient(http: HttpFetch) {
   def ratingFor(url: String): Option[Double] =
     idFromUrl(url).flatMap(rating)
 
-  /** Genres for a stored canonical Filmweb URL — the `/preview` half of what
-   *  `lookup` returns, recovered from the URL alone (no search round-trips).
-   *  Used when a cached url-discovery hit needs to rebuild the Filmweb slot. */
-  def genresFor(url: String): Seq[String] =
-    idFromUrl(url).flatMap(preview).map(_.genres).getOrElse(Seq.empty)
-
   /** Rebuild the FULL Filmweb metadata for a stored canonical URL — the
    *  resolution-cache HIT path, where only the URL survived (the search + pickBest
    *  ran on a prior enrichment). /info (title, originalTitle, year) + /preview

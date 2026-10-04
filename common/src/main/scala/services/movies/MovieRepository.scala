@@ -105,15 +105,13 @@ trait MovieRepository {
   /** The slot map a `movies` document is allowed to carry — showtimes removed once
    *  `screenings` is their authority, kept when there is nowhere else to hold them.
    *
-   *  On the trait rather than in the Mongo class because it is not this repository's
-   *  private business: `MongoStagingFolder` writes `movies` DIRECTLY, bypassing
-   *  `upsert` because its upserts and its staging deletes have to commit in one
-   *  session, and it has to write the same shape. It did not, and the difference is
-   *  not cosmetic. A slot map with its showtimes inline grows with the number of
+   *  On the trait because it is the storage contract, not this repository's private
+   *  business: the (since deleted) staging fold wrote `movies` directly, in a shape
+   *  that did not strip, and the difference was not cosmetic. A slot map with its showtimes inline grows with the number of
    *  venues screening the film, and the United States has 5,031 of them: on
    *  2026-09-01 the fold of `Avengers: Doomsday` threw
    *  `BsonMaximumSizeExceededException` on every single attempt, so the group was
-   *  never consumed, so `StagingReaper` re-enqueued it every tick — forever, with no
+   *  never consumed, so the staging reaper re-enqueued it every tick — forever, with no
    *  backoff and no give-up, since the exception carries no transient label to retry
    *  on and none to abandon on either.
    *
@@ -1375,8 +1373,8 @@ class MongoMovieRepository(
   private def ensureIndexes(db: MongoDatabase, coll: MongoCollection[StoredMovieDto]): Unit = {
     // The lookup key lives in its own field now that `_id` is the permanent `FilmId`
     // (see [[FilmId]]). A document written before then has no `key` — its `_id` IS its
-    // key — so backfill it once, here, before anything queries by key: the staging fold's
-    // sanitize-group read and the cache's cold lookup both filter on `key`. Idempotent
+    // key — so backfill it once, here, before anything queries by key: the cache's cold
+    // lookup filters on `key`. Idempotent
     // (only documents lacking the field) and a pipeline update, so one round trip.
     Try {
       val backfilled = Await.result(coll.updateMany(Filters.exists("key", false),

@@ -45,9 +45,7 @@ final case class EnrichmentTickInterval(value: FiniteDuration) extends AnyVal
 final case class DetailMaxEnqueuePerTick(value: Int) extends AnyVal
 /** `KINOWO_DETAIL_TICK_INTERVAL_SECONDS`. */
 final case class DetailTickInterval(value: FiniteDuration) extends AnyVal
-/** `KINOWO_TMDB_RETRY_MAX_ENQUEUE_PER_TICK`. */
-final case class TmdbRetryMaxEnqueuePerTick(value: Int) extends AnyVal
-/** `KINOWO_SETTLE_INTERVAL_SECONDS`. */
+/** The settle reaper's period — the wiring passes the identity projection's interval. */
 final case class SettleInterval(value: FiniteDuration) extends AnyVal
 /** `KINOWO_OMDB_BACKFILL_INTERVAL_SECONDS`. */
 final case class OmdbBackfillInterval(value: FiniteDuration) extends AnyVal

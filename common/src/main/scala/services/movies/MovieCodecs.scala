@@ -63,8 +63,8 @@ case class StoredMovieDto(
   // a film's slots have landed in `movie_slots`, the 2026-07 slot migration
   // `$unset` this field entirely — and as a required `Map` it decoded as
   // `Missing field: sourceData`, killing the whole keyset batch (so the corpus
-  // scan reported incomplete) and aborting every staging fold that loaded such a
-  // row (so PL newcomers never left `pending_movies`). Encoding is unchanged —
+  // scan reported incomplete) and aborting every write path that loaded such a
+  // row. Encoding is unchanged —
   // `fromDomain` always writes the map, empty or not.
   sourceData:        Option[Map[String, SourceData]],
   // Longest synopsis kept per source after its live slot was pruned, keyed by
@@ -426,7 +426,7 @@ object MovieCodecs extends PersistedCodecs {
   /** `SourceData`, `StoredScreeningsDto` and `StoredSlotDto` are READ by the hand-written codecs above,
    *  each writing through the macro codec derived here; `Showtime` has no macro codec — [[ShowtimeCodec]]. */
   type OmittingNone = (SourceData, TitleSearch)
-  /** `movies` (and `pending_movies`), `screenings`, `movie_slots`. */
+  /** `movies`, `screenings`, `movie_slots`. */
   type WritingNone  = (StoredTmdbAttempt, StoredMovieDto, StoredScreeningsDto, StoredSlotDto)
 
   val registry: CodecRegistry = {

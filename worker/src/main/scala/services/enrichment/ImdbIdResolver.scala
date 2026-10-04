@@ -122,35 +122,19 @@ class ImdbIdResolver(
   def resolveSync(title: String, year: Option[Int], searchTitle: String): Unit =
     resolve(title, year, searchTitle)
 
-  /** Cache-free id lookup: query IMDb's suggestion endpoint for `searchTitle`
-   *  and return the id, or None on no match. Throws when no rung answered and one
-   *  of them failed, so the staging row is retried rather than concluded. Used by the
-   *  staging promoter to recover a missing imdbId INLINE — a staging row isn't in
-   *  the cache, so the event-driven `onImdbIdMissing` (which reads + `putIfPresent`s
-   *  the cache) can't reach it; recovering here folds the row already carrying the
-   *  id, the same end state the direct path's `ImdbIdMissing` chain produces. */
-  def findIdFor(searchTitle: String, year: Option[Int], record: models.MovieRecord = models.MovieRecord()): Option[String] = {
-    logger.info(s"IMDb-id (staging): looking up [search='$searchTitle'] (${year.getOrElse("?")})")
-    val id = lookupId(searchTitle, year, record)
-    logger.info(s"IMDb-id (staging): [search='$searchTitle'] (${year.getOrElse("?")}) → ${id.getOrElse("no match")}")
-    id
-  }
-
   /**
    * Every rung, cache-free — suggestion endpoint, director corroboration, Wikidata,
    * Letterboxd, OMDb, Cinemeta — for a row that is NOT in the movie cache.
    *
-   * Extracted because the STAGING recovery could not reach any of it. That path holds a
-   * `pending_movies` row, not a cached one, so it called `findIdFor`, which is the first
-   * rung alone; the other five lived inside `resolve`, behind a `cache.get`. In a replay
-   * where staging handles nearly every newcomer that is not a subtlety — one leg logged
-   * 1,696 staging lookups against 11 that reached the full ladder — and it is precisely
-   * the long tail those rungs exist for. IMDb's suggestion endpoint answers a Polish
+   * Extracted because a recovery holding a row that is not cached (the since-deleted
+   * staging fold's) reached only the first rung; the other five lived inside
+   * `resolve`, behind a `cache.get` — and one replay leg logged 1,696 such lookups against
+   * 11 that reached the full ladder, precisely the long tail those rungs exist for. IMDb's suggestion endpoint answers a Polish
    * query with the film's ENGLISH title ("Brzezina" → "The Birch Wood") and the matcher
    * rejects it, while Cinemeta returns tt0068321 for the same query — the exact id
    * production holds.
    */
-  private def lookupId(searchTitle: String, year: Option[Int], record: models.MovieRecord): Option[String] = {
+  private[enrichment] def lookupId(searchTitle: String, year: Option[Int], record: models.MovieRecord = models.MovieRecord()): Option[String] = {
     // A row no source dated still has a year when its title brackets one ("It (1990)"): without
     // it the search is yearless, and the lone IMDb film of the bare name binds (It, 2017).
     val reported = record.cinemaData.values.flatMap(_.releaseYear).toSet ++ year

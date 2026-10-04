@@ -10,7 +10,7 @@ package services.titlerules
  *  reshape what's persisted, so an edit there re-keys/merges/splits the corpus.
  *  `GlobalStructural` only rewrites the title used for EXTERNAL LOOKUPS
  *  (`apiQuery`) — the stored row is untouched, so its effect can be previewed
- *  non-destructively (see `TitleRuleSet.transientAffected`). */
+ *  non-destructively. */
 sealed trait RuleScope { def name: String; def changesRecord: Boolean }
 
 object RuleScope {

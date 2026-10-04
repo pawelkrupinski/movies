@@ -184,9 +184,6 @@ final class ProcessConfiguration(val env: Env) {
     DetailMaxEnqueuePerTick(env.positiveLong("KINOWO_DETAIL_MAX_ENQUEUE_PER_TICK", default.value.toLong).toInt)
   def detailTickInterval(default: DetailTickInterval): DetailTickInterval =
     DetailTickInterval(seconds("KINOWO_DETAIL_TICK_INTERVAL_SECONDS", default.value))
-  def tmdbRetryMaxEnqueuePerTick(default: TmdbRetryMaxEnqueuePerTick): TmdbRetryMaxEnqueuePerTick =
-    TmdbRetryMaxEnqueuePerTick(env.positiveLong("KINOWO_TMDB_RETRY_MAX_ENQUEUE_PER_TICK", default.value.toLong).toInt)
-  def settleInterval(default: SettleInterval): SettleInterval = SettleInterval(seconds("KINOWO_SETTLE_INTERVAL_SECONDS", default.value))
   def omdbBackfillInterval(default: OmdbBackfillInterval): OmdbBackfillInterval =
     OmdbBackfillInterval(seconds("KINOWO_OMDB_BACKFILL_INTERVAL_SECONDS", default.value))
   def filmwebDropThreshold(default: FilmwebDropThreshold): FilmwebDropThreshold =

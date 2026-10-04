@@ -269,11 +269,11 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
   })
 
   "the ladder" should "throw, not conclude 'no match', when IMDb's read failed and no backstop answered" in {
-    // IMDb's suggestion endpoint blocked used to come back as None and be logged (and,
-    // on the staging path, stamped done for good) as "no match".
+    // IMDb's suggestion endpoint blocked used to come back as None and be logged (and
+    // stamped done for good) as "no match".
     val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val resolver = new ImdbIdResolver(cache, imdbDown)
-    a[tools.HttpStatusException] should be thrownBy resolver.findIdFor("Mortal Kombat II", Some(2026))
+    a[tools.HttpStatusException] should be thrownBy resolver.lookupId("Mortal Kombat II", Some(2026))
   }
 
   it should "still take a later rung's answer when an earlier rung failed" in {
@@ -281,7 +281,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val cinemeta = new CinemetaClient(RoutingHttpFetch.getOnly(Seq("search=" ->
       """{"metas":[{"id":"tt31000001","type":"movie","name":"Cactus Pears","releaseInfo":"2026"}]}""")))
     val resolver = new ImdbIdResolver(cache, imdbDown, cinemeta = Some(cinemeta))
-    resolver.findIdFor("Cactus Pears", Some(2026)) shouldBe Some("tt31000001")
+    resolver.lookupId("Cactus Pears", Some(2026)) shouldBe Some("tt31000001")
   }
 
   // ── hint-keyed cache ─────────────────────────────────────────────────────────
@@ -296,7 +296,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
         throw new RuntimeException("ImdbIdResolver should not POST")
     })
 
-  "findIdFor" should "read a yearless row's year off its bracketed title, so a far-off namesake is refused" in {
+  "lookupId" should "read a yearless row's year off its bracketed title, so a far-off namesake is refused" in {
     // Cultplex lists "It (1990)" with no year field. Searched as "It" with no year, the one
     // movie IMDb titles "It" — the 2017 film — bound, and two films shared tt1396484.
     // Recorded from the hard-clusters UK responses.
@@ -304,18 +304,18 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       new CaffeineMovieCache(new InMemoryMovieRepository(Seq.empty, normalizer = titleNormalizer),
         normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned),
       imdbStub(Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_it.json"))))
-    resolver.findIdFor("It (1990)", None) shouldBe None
-    resolver.findIdFor("It (2017)", None) shouldBe Some("tt1396484")
+    resolver.lookupId("It (1990)", None) shouldBe None
+    resolver.lookupId("It (2017)", None) shouldBe Some("tt1396484")
   }
 
-  "the IMDb id cache" should "look up the same search once for two findIdFor calls" in {
+  "the IMDb id cache" should "look up the same search once for two lookupId calls" in {
     val calls = new java.util.concurrent.atomic.AtomicInteger(0)
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val resolver = new ImdbIdResolver(cache, countingImdb(calls),
       imdbIdCache = new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore(normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)))
 
-    resolver.findIdFor("Mortal Kombat II", Some(2026)) shouldBe Some("tt17490712")
-    resolver.findIdFor("Mortal Kombat II", Some(2026)) shouldBe Some("tt17490712")
+    resolver.lookupId("Mortal Kombat II", Some(2026)) shouldBe Some("tt17490712")
+    resolver.lookupId("Mortal Kombat II", Some(2026)) shouldBe Some("tt17490712")
     calls.get() shouldBe 1
   }
 
@@ -325,8 +325,8 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val resolver = new ImdbIdResolver(cache, countingImdb(calls),
       imdbIdCache = services.resolution.ResolutionCache.passthrough)
 
-    resolver.findIdFor("Mortal Kombat II", Some(2026))
-    resolver.findIdFor("Mortal Kombat II", Some(2026))
+    resolver.lookupId("Mortal Kombat II", Some(2026))
+    resolver.lookupId("Mortal Kombat II", Some(2026))
     calls.get() shouldBe 2
   }
 

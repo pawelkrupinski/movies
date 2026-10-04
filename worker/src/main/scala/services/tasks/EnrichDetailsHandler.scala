@@ -47,22 +47,6 @@ object EnrichDetailsTasks {
    *  waiting listing needs (`VenuePageWait`). */
   def pageAttempted(group: String, page: String): String = s"detail-page|$group|$page|attempted"
 
-  /** Enqueue a detail task for `(enricher's group, film)` unless it's already
-   *  detail-fresh. The freshness pre-check just avoids queue churn; the queue's
-   *  unique index is the real cross-server guarantee that a `(group, film)`
-   *  detail task can't be queued twice. Returns true iff newly enqueued. Shared
-   *  by the ONE-SHOT producers (the event enqueuer on first appearance, the inline
-   *  scrape path) so the enqueue rule lives in one place. The PERIODIC reaper uses
-   *  [[enqueueIfDue]] instead — it must gate on the same [[DueWindow]] the handler
-   *  re-gates on, or it churns the queue. (`!isFresh ⟹ isDue`, so a task these
-   *  one-shot paths enqueue is always still due at the handler — never churned.) */
-  def enqueueIfStale(queue: TaskQueue, freshness: FreshnessStore, enricher: DetailEnricher, key: CacheKey, ref: String,
-                     now: Instant): Boolean = {
-    val dk = dedupKey(enricher.detailGroup, key)
-    !freshness.isFresh(dk, FreshnessKind.DetailEnrich, now) &&
-      queue.enqueue(TaskType.EnrichDetails, dk, payload(enricher, key, ref)) == EnqueueResult.Added
-  }
-
   /** Enqueue a detail task only when it's DUE under `dueWindow` — the phase-spread
    *  gate the periodic [[DetailReaper]] enqueues on and [[EnrichDetailsHandler]]
    *  re-gates on (shared instance). The phase offset, hashed from `dk`, scatters a

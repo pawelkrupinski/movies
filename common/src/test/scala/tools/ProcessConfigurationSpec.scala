@@ -96,7 +96,7 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
   it should "read a tuning knob, falling back to the caller's default for an unusable value" in {
     resolvedFrom("KINOWO_SCRAPE_TASKS_PER_VENUE" -> "3").scrapeTasksPerVenue(ScrapeTasksPerVenue(1)) shouldBe ScrapeTasksPerVenue(3)
     resolvedFrom("KINOWO_SCRAPE_TASKS_PER_VENUE" -> "0").scrapeTasksPerVenue(ScrapeTasksPerVenue(1)) shouldBe ScrapeTasksPerVenue(1)
-    resolvedFrom("KINOWO_SETTLE_INTERVAL_SECONDS" -> "90").settleInterval(SettleInterval(5.minutes)) shouldBe SettleInterval(90.seconds)
+    resolvedFrom("KINOWO_OMDB_BACKFILL_INTERVAL_SECONDS" -> "90").omdbBackfillInterval(OmdbBackfillInterval(5.minutes)) shouldBe OmdbBackfillInterval(90.seconds)
     resolvedFrom().scrapeFreshness(ScrapeFreshness(3.hours)) shouldBe ScrapeFreshness(3.hours)
     resolvedFrom("KINOWO_OCINE_PACE_MS" -> "900").hostPace(PaceKnob.Ocine, HostPace(java.time.Duration.ofMillis(500))) shouldBe
       HostPace(java.time.Duration.ofMillis(900))

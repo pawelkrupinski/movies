@@ -20,8 +20,7 @@ object DecodeFailureMetrics {
   val SourceMoviesCollection = "movies"
 
   /** Every collection counted, seeded at 0 so the first failure moves `increase()`. The last
-   *  three are counted only by their change streams, which skip a post-image they cannot decode
-   *  (`pending_movies` is watched only by the web's dev-only /debug stream, so it is not seeded). */
+   *  three are counted only by their change streams, which skip a post-image they cannot decode. */
   val Collections: Seq[String] =
     Seq(MongoReadModelRepository.MoviesCollection, MongoReadModelRepository.ScreeningsCollection, SourceMoviesCollection,
       services.movies.ScreeningsRepository.Collection, services.movies.SlotsRepository.Collection, "userStates")

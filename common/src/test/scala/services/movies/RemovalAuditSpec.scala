@@ -123,16 +123,6 @@ class RemovalAuditSpec extends AnyFlatSpec with Matchers {
     msg should include ("consecutive=1")
   }
 
-  "RemovalAudit.scrapePruneAccepted" should "log the breadth guard giving up at WARN" in {
-    val events = capture(RemovalAudit.scrapePruneAccepted("Kino Aurum", batchFilms = 11, knownSlots = 58, consecutive = 4))
-    events.map(_.getLevel) shouldBe Seq(Level.WARN)
-    val msg = events.head.getFormattedMessage
-    msg should include ("ACCEPTED")
-    msg should include ("Kino Aurum")
-    msg should include ("known=58")
-    msg should include ("4 consecutive rejections")
-  }
-
   "RemovalAudit.screeningsCleared" should "log INFO for a whole-film clear and DEBUG for a partial trim" in {
     capture(RemovalAudit.screeningsCleared("screenings.replaceFilm", "odyseja|2026", 4, whole = true, "stale-slot-prune"))
       .map(_.getLevel) shouldBe Seq(Level.INFO)

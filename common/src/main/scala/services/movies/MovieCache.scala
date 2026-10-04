@@ -297,11 +297,6 @@ class CaffeineMovieCache(
    *  gate was built to stop. */
   private[services] def indexSnapshot: Map[CacheKey, FilmId] = corpusIndex.snapshot
 
-  /** The keys resident in the cache, for [[indexSnapshot]] to cover exactly. */
-  private[services] def residentKeys: Set[CacheKey] = {
-    import scala.jdk.CollectionConverters._
-    positive.asMap().keySet().asScala.toSet
-  }
   /** The resident corpus, for `kinowo_worker_cache_*`. UNBOUNDED by design — it is
    *  the hydrated corpus, not a working set — so it reports entries and no maximum:
    *  a maximum of zero would render as "full" on a ratio panel. What it is worth

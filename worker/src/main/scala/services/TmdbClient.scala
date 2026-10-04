@@ -380,11 +380,6 @@ class TmdbClient(
     TmdbClient.parsePosters(body)
   }.getOrElse(Seq.empty)
 
-  /** TMDB person id for a name search — the first of [[findPersonCandidates]].
-   *  Callers that can VERIFY the choice against a filmography should walk the
-   *  candidates instead; this is for callers with nothing to check against. */
-  def findPerson(name: String): Option[Int] = findPersonCandidates(name).headOption
-
   /** The films TMDB edited between `start` and `end` (at most 14 days apart), one page. */
   def changedMovies(start: java.time.LocalDate, end: java.time.LocalDate, page: Int): (Seq[Int], Int) = authHeader.map { auth =>
     TmdbClient.changedIds(httpGet(s"$ApiBase/movie/changes?start_date=$start&end_date=$end&page=$page${apiKeyParameter("&")}", auth))

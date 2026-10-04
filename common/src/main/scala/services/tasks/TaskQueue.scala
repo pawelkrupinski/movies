@@ -29,16 +29,13 @@ object TaskType {
   case object RefreshAllMetacritic extends TaskType { val name = "RefreshAllMetacritic" }
   case object RefreshAllRt         extends TaskType { val name = "RefreshAllRt"         }
   case object RefreshAllOmdb       extends TaskType { val name = "RefreshAllOmdb"       }
-  // Operator-triggered consolidation: fold same-film rows into one record per
-  // tmdbId (MovieService.settle → MovieCache.canonicalizeBySanitize), the same
-  // work the periodic SettleReaper does, on demand from the `/tasks` page.
+  // Operator-triggered identity projection, the same work the periodic SettleReaper
+  // schedules, on demand from the `/tasks` page's "settle" button.
   case object SettleNow            extends TaskType { val name = "SettleNow"            }
 
-  // Staging incubation: a newcomer in `pending_movies` walks these the same way
-  // the direct path walks EnrichDetails → ResolveTmdb → ResolveImdbId, but pointed
-  // at staging rows and ending in a fold into `movies`. Each step is its own task
-  // so it retries/backs off independently; `StagingReaper` chains them (off the
-  // generic `TaskFinished` event) and is the periodic backstop. See StagingSteps.
+  // RETIRED — the staging fold's steps, deleted with the old film pipeline (43e8ed84c). Nothing
+  // enqueues them; they stay only so a row enqueued before that deploy still decodes (an unknown
+  // name throws in `MongoTaskQueue`) and the worker completes it unrun (`CutoverTaskHandlers`).
   case object StagingDetail        extends TaskType { val name = "StagingDetail"        }
   case object StagingResolveTmdb   extends TaskType { val name = "StagingResolveTmdb"   }
   case object StagingResolveImdbId extends TaskType { val name = "StagingResolveImdbId" }
