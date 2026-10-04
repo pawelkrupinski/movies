@@ -60,12 +60,14 @@ class MetricsController(cc: ControllerComponents, monitor: UptimeMonitor, fallba
     // `history` to sum it in the controller is what OOM-killed `web-us` on a
     // 30-second scrape loop — see `UptimeMonitor.recentTotals`.
     val totals = monitor.recentTotals(clock.millis() - MetricsController.RecentWindowMs)
-    // Both already cheap, in-memory reads: `serviceTagsSnapshot()` is the
-    // monitor's own polled-every-5-minutes map, and `findAll()` is
-    // `FallbackStore`'s in-process mirror (see its own class doc) — neither
-    // touches Mongo on the request path.
-    val body = MetricsController.render(totals, country) +
-      MetricsController.renderFallbackSaturation(monitor.serviceTagsSnapshot(), fallbackStore.findAll(), country) +
+    // `serviceTagsSnapshot()` is the monitor's own polled-every-5-minutes map, and `findAll()`
+    // is `FallbackStore`'s in-process mirror (see its own class doc). A mirror whose hydrate has
+    // not landed THROWS rather than answer "nothing on fallback": the fallback families are then
+    // left out — absent, not a false 0 — and the rest of the exposition is served, since it is the
+    // tier's only signal for request rate, latency and disk.
+    val fallback = scala.util.Try(fallbackStore.findAll()).fold(_ => "",
+      states => MetricsController.renderFallbackSaturation(monitor.serviceTagsSnapshot(), states, country))
+    val body = MetricsController.render(totals, country) + fallback +
       movieMetrics.render() + jvmMetrics.render()
     Ok(body).as("text/plain; version=0.0.4; charset=utf-8")
   }

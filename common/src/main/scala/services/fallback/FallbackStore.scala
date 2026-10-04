@@ -43,7 +43,8 @@ class InMemoryFallbackStore extends FallbackStore {
  * proven string-list idiom rather than nested-document parsing.
  */
 class MongoFallbackStore(
-  db: Option[MongoDatabase] = None,
+  db: Option[MongoDatabase],
+  clock: java.time.Clock,
   collectionName: String = MongoFallbackStore.CollectionName
 ) extends FallbackStore with Logging {
   import MongoFallbackStore._
@@ -54,13 +55,27 @@ class MongoFallbackStore(
   // Whether the mirror holds what Mongo does. A hydrate that FAILED left it empty, and an empty
   // mirror read as "no cinema is on fallback": the scraper then rebuilt each state from nothing
   // and `put` wrote it over the stored one — its failure streak, its history and whether it had
-  // already paged, gone. Until a hydrate lands, a read hydrates again or throws.
+  // already paged, gone. Until a hydrate lands, a read throws — and hydrates again first once
+  // `HydrateRetry` has passed since the last attempt: retried on EVERY read, each a 10 s blocking
+  // read under one lock, a boot asking once per cinema stalled for cinemas × 10 s and every web
+  // /metrics scrape waited 10 s for its 500.
   @volatile private var hydrated = coll.isEmpty
-  coll.foreach(c => { hydrated = hydrate(c); () })
+  @volatile private var nextHydrateAt = Long.MinValue
+  @volatile private var attempts = 0
+  coll.foreach(attemptHydrate)
+
+  /** How many hydrates were attempted — for the specs. */
+  def hydrateAttempts: Int = attempts
+
+  private def attemptHydrate(c: MongoCollection[Document]): Unit = {
+    attempts += 1
+    hydrated = hydrate(c)
+    nextHydrateAt = clock.millis() + HydrateRetry.toMillis
+  }
 
   private def ensureHydrated(): Unit =
     if (!hydrated) coll.foreach { c =>
-      synchronized { if (!hydrated) hydrated = hydrate(c) }
+      synchronized { if (!hydrated && clock.millis() >= nextHydrateAt) attemptHydrate(c) }
       if (!hydrated) throw new IllegalStateException(s"$collectionName could not be read — fallback state unknown")
     }
 
@@ -100,6 +115,9 @@ class MongoFallbackStore(
 
 object MongoFallbackStore {
   val CollectionName = "filmwebFallback"
+
+  /** How long after a failed hydrate the next read tries again; reads meanwhile throw at once. */
+  val HydrateRetry: FiniteDuration = 1.minute
 
   private val Sep = "\t"
 

@@ -40,7 +40,7 @@ trait AdminWiring { self: Wiring =>
 
   // Read-only on the web side: the worker writes fallback state; the /uptime page's
   // Filmweb-fallback section reads it (hydrated from Mongo at boot).
-  lazy val filmwebFallbackStore: FallbackStore = new MongoFallbackStore(mongoConnection.database)
+  lazy val filmwebFallbackStore: FallbackStore = new MongoFallbackStore(mongoConnection.database, clock)
   lazy val uptimeController = new UptimeController(controllerComponents, adminAction, uptimeMonitor, filmwebFallbackStore, country, clock)(using materializer)
   lazy val tasksController  = new TasksController(controllerComponents, adminAction, taskQueue, bulkTaskResultStore, country, clock)
   // Live config: install the override cache as Env's source + publish web's knobs

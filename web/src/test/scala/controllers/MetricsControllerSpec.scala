@@ -153,6 +153,20 @@ class MetricsControllerSpec extends AnyFlatSpec with Matchers {
     body should include ("kinowo_fallback_total_venues{country=\"pl\",client=\"CineworldClient\"} 1")
   }
 
+  it should "serve the rest of the exposition, without the fallback families, while the fallback state is unreadable" in {
+    val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
+    monitor.tagService("Cineworld Leeds", Set("shared:CineworldClient"))
+    val unreadable = new InMemoryFallbackStore {
+      override def findAll(): Seq[FallbackState] = throw new IllegalStateException("filmwebFallback could not be read")
+    }
+    val result = newController(monitor, unreadable).metrics(FakeRequest())
+
+    status(result) shouldBe 200
+    val body = contentAsString(result)
+    body should include ("kinowo_uptime_recent_successes")
+    body should not include "kinowo_fallback_active_venues"
+  }
+
   private def fallbackState(cinema: String, active: Boolean) = FallbackState(
     cinema = cinema,
     active = active,
