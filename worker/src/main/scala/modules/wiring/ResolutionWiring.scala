@@ -67,10 +67,12 @@ trait ResolutionWiring { self: WorkerWiring =>
     forceRatingRefresh = (key, record) => { ratingEnqueuer.enqueueDueFor(key, record, clock.instant(), force = true); () },
     clock = clock)
 
-  // The tick is the identity projection, on the projection's own period (`IdentityCutoverWiring`).
-  def settleTick(): Unit = identityProjection.tickQuietly()
+  // The worker projects as its identity model takes its scrapes in (`identityProjectionTrigger`); the clock runs only the
+  // whole corpus's reconciliation, the boot's first projection one `identityProjectionInterval` after boot and then every
+  // `IdentityProjection.ReconcileEvery`. One that did not settle is tried again by the trigger, not an hour later.
+  def settleTick(): Unit = if (!identityProjection.reconcileQuietly()) identityProjectionTrigger.retry()
   lazy val settleReaper = managedResources.stopping(new SettleReaper(() => settleTick(),
-    interval = SettleInterval(identityProjectionInterval.value),
+    interval = SettleInterval(services.identity.IdentityProjection.ReconcileEvery),
     initialDelay = SettleReaper.InitialDelay(identityProjectionInterval.value),
     runStore = scheduledRunStore, clock = clock))
 }

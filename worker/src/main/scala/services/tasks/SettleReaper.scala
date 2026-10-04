@@ -8,10 +8,10 @@ import java.time.Clock
 import scala.concurrent.duration._
 
 /**
- * Runs the worker's periodic tick — the identity projection (`IdentityCutoverWiring`) — once per `interval`: the
- * projection that reads every archive's stamps, records the slot fingerprints and, every
- * `IdentityProjection.ScopedBetweenWhole` of them, reconciles the whole corpus. Between two, the projection also runs as the
- * identity model takes this worker's scrapes in (`ProjectionTrigger`).
+ * Runs the worker's one periodic projection — the identity projection's reconciliation of the whole corpus
+ * (`IdentityProjection.ReconcileEvery`), which also reads every archive's stamps and records the slot fingerprints; its
+ * first run is the boot's projection. Every other projection runs as the identity model takes the worker's scrapes in
+ * (`ProjectionTrigger`).
  *
  * Cluster-safe: a multi-machine worker gates each tick on a window occurrence claim ([[ScheduledRunStore]]) so one
  * machine projects per window.

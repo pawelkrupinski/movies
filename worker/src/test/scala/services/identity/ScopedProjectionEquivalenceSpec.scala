@@ -308,4 +308,24 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
     (1 to 3).map(_ => w.projection.tick().scoped) shouldBe Seq(true, true, false)
     w.drifts shouldBe Seq(0)
   }
+
+  it should "not count a projection settled while a written film lacks its TMDB details, nor one that failed" in {
+    // No period comes back for them: the trigger tries an unsettled projection again (`ProjectionTrigger.retry`).
+    val s = new Scenario(new Random(3))
+    var broken = false
+    val w = new ProjectionWorld(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository),
+      slots = Some(new services.movies.InMemorySlotsRepository), normalizer = normalizer), venues, clock,
+      read => if (broken) throw new IllegalStateException("model down") else s.resolve(read), details = (_, _) => None)
+    venues.foreach(c => s.programme(c) = Vector.fill(3)(s.listing(c)))
+    w.scrape(s.programme.toMap)
+    val first = w.projection.tick()
+    first.changed.exists(_.record.tmdbId.isDefined) shouldBe true
+    w.projection.settled(first) shouldBe false
+    broken = true
+    w.projection.tickChangedQuietly() shouldBe false
+    broken = false
+    // With nothing written to build on, the next projection on scrapes reads and projects the whole corpus.
+    w.projection.tickChanged().map(_.scoped) shouldBe Some(false)
+    w.projection.tickChanged().map(_.scoped) shouldBe Some(true)
+  }
 }

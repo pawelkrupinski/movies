@@ -2262,6 +2262,14 @@ burst is 30 s quiet, never more than 2 min after its first drain (the read model
 `IdentityListingIntakeProjectedSpec` holds `projectedChanged` to reading only the venues taken, and `ProjectionTriggerSpec`
 the debounce.
 
+**No five-minute period (2026-10-04, later).** The periodic projection is gone: the clock runs only the whole corpus's
+reconciliation — the boot's first projection one `identityProjectionInterval` after boot, then every
+`IdentityProjection.ReconcileEvery` (an hour), which also reads the archives' stamps and records the slot fingerprints.
+Everything else runs on scrapes. What the period used to come back for, the trigger does: a projection that did not
+settle (`IdentityProjection.settled`: refused, failed, a write declined, a written film's TMDB details still missing) runs
+again after a backoff of 1 min doubling to 15 (`ProjectionTrigger.retry`), and one with nothing written to build on
+projects the whole corpus. A stored film another writer changed is projected by the next run on scrapes or the hour's.
+
 ## 19. The shadow run's paced live lookup fill
 
 §17's shadow run answers only from the model's TMDB store, and most of the resolver's questions (yearless

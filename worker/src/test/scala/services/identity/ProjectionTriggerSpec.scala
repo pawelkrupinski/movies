@@ -16,7 +16,8 @@ class ProjectionTriggerSpec extends AnyFlatSpec with Matchers {
     val clock     = new MutableClock(Instant.parse("2026-10-04T18:00:00Z"))
     val scheduler = new ManualScheduler(clock)
     var runs      = 0
-    val trigger   = new ProjectionTrigger(() => runs += 1, MovieChangeStream.Debounce(30.seconds, 2.minutes), scheduler, clock)
+    var settles   = true
+    val trigger   = new ProjectionTrigger(() => { runs += 1; settles }, MovieChangeStream.Debounce(30.seconds, 2.minutes), scheduler, clock)
     def after(seconds: Long): Unit = scheduler.advance(Duration.ofSeconds(seconds))
   }
 
@@ -41,5 +42,34 @@ class ProjectionTriggerSpec extends AnyFlatSpec with Matchers {
     val w = new World
     w.after(3600)
     w.runs shouldBe 0
+  }
+
+  it should "run again after a doubling backoff while a run does not settle, and from the start once one does" in {
+    // There is no period to come back on: a refused or failed projection, or one whose film still lacks its TMDB details,
+    // is tried again by the trigger itself.
+    val w = new World
+    w.settles = false
+    w.trigger.request(); w.after(30)
+    w.runs shouldBe 1
+    w.after(59); w.runs shouldBe 1
+    w.after(1);  w.runs shouldBe 2           // 1 min
+    w.after(120); w.runs shouldBe 3          // 2 min
+    w.settles = true
+    w.after(240); w.runs shouldBe 4          // 4 min, and settled: no more
+    w.after(3600); w.runs shouldBe 4
+    w.settles = false
+    w.trigger.request(); w.after(30); w.runs shouldBe 5
+    w.after(60); w.runs shouldBe 6           // the backoff started over
+  }
+
+  it should "leave a run already due sooner when asked to retry one made elsewhere" in {
+    val w = new World
+    w.trigger.request()                      // due in 30 s
+    w.trigger.retry()                        // 1 min: later, so the run due stands
+    w.after(30); w.runs shouldBe 1
+    w.after(3600); w.runs shouldBe 1
+    w.trigger.retry()                        // the hourly reconcile did not settle: 1 min (the settled run reset it)
+    w.after(59); w.runs shouldBe 1
+    w.after(1); w.runs shouldBe 2
   }
 }

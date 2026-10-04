@@ -160,15 +160,26 @@ final class IdentityProjection(
 
   /** One projection — of the corpus `whole` when asked, as the hourly reconciliation is, else of what moved. Throws only
    *  what reading its inputs throws. */
-  def tick(whole: Boolean = false): ProjectionTick = project(whole, light = false)
+  def tick(whole: Boolean = false): ProjectionTick = synchronized { started = true; project(whole, light = false) }
+
+  /** Whether a periodic projection has been asked for yet: until then, the boot's — of the whole corpus — waits its turn. */
+  private var started = false
 
   /** A projection of what moved since the last, run as the identity model takes this worker's scrapes in rather than on
    *  the period: its listings read only where this worker's own scrapes moved them ([[changedListings]]), and never the
    *  whole corpus's reconcile or the slot fingerprints' record, which stay with the periodic [[tick]]. */
   def tickChanged(): Option[ProjectionTick] = synchronized {
-    // Until a periodic projection has run, the next is of the whole corpus — the boot's, which waits its turn on the period.
-    Option.when(last.isDefined)(project(whole = false, light = true))
+    // With nothing written to build on — a projection refused, failed or declined a write — the next one reads and
+    // projects the whole corpus. Until the period has asked for its first, that is the boot's, which waits its turn.
+    if (last.isDefined) Some(project(whole = false, light = true))
+    else Option.when(started)(project(whole = false, light = false))
   }
+
+  /** Whether `tick` left nothing for another projection to do: not refused, every write taken, every written film's
+   *  TMDB details fetched. One that did not is tried again ([[ProjectionTrigger.retry]]) — no five-minute period does. */
+  def settled(tick: ProjectionTick): Boolean =
+    tick.refused.isEmpty && tick.declined == 0 &&
+      !tick.changed.exists(film => film.record.tmdbId.isDefined && !film.record.data.contains(models.Tmdb))
 
   private def project(whole: Boolean, light: Boolean): ProjectionTick = synchronized {
     // Until this projection has written everything it planned, the next one projects the whole corpus.
@@ -293,16 +304,21 @@ final class IdentityProjection(
   }
 
   /** [[tick]], for a scheduler that must keep running whatever one projection throws. */
-  def tickQuietly(): Unit = quietly(tick())
+  def tickQuietly(): Unit = { quietly(Some(tick())); () }
 
-  /** [[tickChanged]], a failure logged and counted as [[tickQuietly]]'s is. */
-  def tickChangedQuietly(): Unit = quietly(tickChanged())
+  /** The hourly projection of the whole corpus (`tick(whole = true)`), a failure logged as [[tickQuietly]]'s is; whether
+   *  it [[settled]]. */
+  def reconcileQuietly(): Boolean = quietly(Some(tick(whole = true)))
 
-  private def quietly(run: => Any): Unit =
-    try { run; () }
+  /** [[tickChanged]], a failure logged as [[tickQuietly]]'s is; whether it [[settled]] (nothing to project is settled). */
+  def tickChangedQuietly(): Boolean = quietly(tickChanged())
+
+  private def quietly(run: => Option[ProjectionTick]): Boolean =
+    try run.forall(settled)
     catch { case NonFatal(e) =>
       metrics.refused(IdentityProjectionMetrics.Refusal.Failed)
       logger.warn("identity projection failed; the stored films keep serving", e)
+      false
     }
 
   private def write(resolution: Resolution, detailed: ProjectionDraft, plan: ProjectionPlan, stored: Seq[StoredMovieRecord], listings: Int,
@@ -383,9 +399,14 @@ object IdentityProjection {
         d.copy(record = r.copy(searchTitle = d.record.searchTitle, retainedSynopses = d.record.retainedSynopses))))
     }
 
-  /** How many projections of a scope run between two of the whole corpus — the reconciliation that would put right a film
-   *  a scope missed, and counts it ([[IdentityProjectionMetrics.drifted]]): an hour at the default five-minute period. */
+  /** How many periodic projections of a scope run between two of the whole corpus — the reconciliation that would put right
+   *  a film a scope missed, and counts it ([[IdentityProjectionMetrics.drifted]]). The worker's projections run on scrapes
+   *  and are reconciled by the clock ([[ReconcileEvery]]); this paces [[tick]] alone, which an operator's settle runs. */
   private[identity] val ScopedBetweenWhole = 11
+
+  /** How often the worker projects the whole corpus — the reconciliation, the archives' stamps read and the slot
+   *  fingerprints recorded. Every other projection runs as the identity model takes this worker's scrapes in. */
+  val ReconcileEvery: FiniteDuration = scala.concurrent.duration.Duration(1, java.util.concurrent.TimeUnit.HOURS)
 
   /** How many independent films a projection writes at once. */
   private[identity] val WriteConcurrency = 8
