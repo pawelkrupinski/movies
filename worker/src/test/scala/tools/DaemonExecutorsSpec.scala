@@ -95,32 +95,23 @@ class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
     an[java.util.concurrent.CancellationException] should be thrownBy submitted.get.get(2, TimeUnit.SECONDS)
   }
 
-  // A task parked on the budget's permit when the EC is shut down NOW is interrupted before it ever
-  // ran: its future stayed incomplete, and whoever waited on it waited forever. Cancelled instead.
-  it should "be cancelled from a bounded EC whose permit it was still waiting for at shutdownNow" in {
-    val executionContext = DaemonExecutors.boundedEC("parked-on-permit", 1)
-    val release          = new CountDownLatch(1)
-    val running          = new CountDownLatch(1)
-    executionContext.execute(() => { running.countDown(); try release.await() catch { case _: InterruptedException => () } })
-    running.await(5, TimeUnit.SECONDS) shouldBe true
-    val parked = executionContext.submit(() => 1)
-    executionContext.shutdownNow()
-    try an[java.util.concurrent.CancellationException] should be thrownBy parked.get(2, TimeUnit.SECONDS)
-    finally release.countDown()
-  }
-
-  // The same through a sub-limited EC, whose task sits inside two gates: the inner gate holds the
-  // outer gate's wrapper, which must still reach the task.
-  it should "be cancelled from a sub-limited EC whose own permit it was still waiting for at shutdownNow" in {
-    val executionContext = new SharedExecutionBudget(4).executionContext("parked-on-sub-permit", subLimit = 1)
-    val release          = new CountDownLatch(1)
-    val running          = new CountDownLatch(1)
-    executionContext.execute(() => { running.countDown(); try release.await() catch { case _: InterruptedException => () } })
-    running.await(5, TimeUnit.SECONDS) shouldBe true
-    val parked = executionContext.submit(() => 1)
-    executionContext.shutdownNow()
-    try an[java.util.concurrent.CancellationException] should be thrownBy parked.get(2, TimeUnit.SECONDS)
-    finally release.countDown()
+  // A task parked on a permit gate when its executor is shut down NOW is interrupted before it ever
+  // ran: its future stayed incomplete, and whoever waited on it waited forever. Cancelled instead —
+  // also through two gates, as a sub-limited EC stacks them, where the inner gate holds the outer
+  // gate's wrapper. Gates over a pool the spec controls, so the task is seen parked before the stop.
+  it should "be cancelled when interrupted while waiting for a permit, through one gate or two" in {
+    def parkedThenStopped(gates: Int): java.util.concurrent.Future[Int] = {
+      val pool       = java.util.concurrent.Executors.newSingleThreadExecutor()
+      val inner      = new java.util.concurrent.Semaphore(0)
+      val innerGated = DaemonExecutors.semaphoreGated(pool, inner)
+      val gated      = if (gates == 1) innerGated else DaemonExecutors.semaphoreGated(innerGated, new java.util.concurrent.Semaphore(1))
+      val parked     = DaemonExecutors.dropRejectedAfterShutdown(gated).submit(() => 1)
+      Eventually.eventually(inner.hasQueuedThreads shouldBe true, timeoutMs = 5000, pollMs = 5)
+      pool.shutdownNow()
+      parked
+    }
+    an[java.util.concurrent.CancellationException] should be thrownBy parkedThenStopped(gates = 1).get(2, TimeUnit.SECONDS)
+    an[java.util.concurrent.CancellationException] should be thrownBy parkedThenStopped(gates = 2).get(2, TimeUnit.SECONDS)
   }
 
   "boundedEC" should "cap concurrency for a single EC" in {
