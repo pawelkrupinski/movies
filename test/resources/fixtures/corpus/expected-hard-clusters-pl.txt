@@ -28,7 +28,6 @@ samsonidalila|2026	Samson i Dalila (2026) tmdb=— imdb=— address=samson-i-dal
 tediimagicznalampa|2026	Tedi i magiczna lampa (2026) tmdb=1187326 imdb=tt36164852 address=tedi-i-magiczna-lampa cinemas=[CKF Stylowy, Centrum Kultury w Świeciu, Chemik, Cinema City, Cinema City Arkadia, Cinema City Bemowo, Cinema City Biała Podlaska, Cinema City Bielsko-Biała, Planet Cinema]
 twojeimie|2016	Twoje imię (2016) tmdb=372058 imdb=tt5311514 address=twoje-imie cinemas=[Kino Kosmos]
 uwierzwducha1010klasykafilmowa|1990	Uwierz w ducha | 10/10 Klasyka filmowa (1990) tmdb=251 imdb=tt0099653 address=uwierz-w-ducha-10-10-klasyka-filmowa cinemas=[Dolnośląskie Centrum Filmowe, Kino Apollo Wałbrzych, Kino Lot, Kino Piast]
-vincentlegendaoceanuseans|	Vincent. Legenda oceanu- seans (—) tmdb=— imdb=— address=vincent-legenda-oceanu-seans cinemas=[Kino Stary Młyn]
 vincentlegendaoceanu|	Vincent. legenda oceanu (—) tmdb=— imdb=— address=vincent-legenda-oceanu-2 cinemas=[Kino Parczew]
-vincentlegendaoceanu|2026	Vincent. Legenda oceanu (2026) tmdb=677558 imdb=tt13518550 address=vincent-legenda-oceanu cinemas=[Bajka, Cinema City, Cinema City Arkadia, Cinema City Bemowo, Cinema City Biała Podlaska, Cinema1, Helios Aleja Bielany, Kino Kosmos, Kino Pałacowe, Kino Sztuka, Kinoteka, Nasze Kino]
+vincentlegendaoceanu|2026	Vincent. Legenda oceanu (2026) tmdb=677558 imdb=tt13518550 address=vincent-legenda-oceanu cinemas=[Bajka, Cinema City, Cinema City Arkadia, Cinema City Bemowo, Cinema City Biała Podlaska, Cinema1, Helios Aleja Bielany, Kino Kosmos, Kino Pałacowe, Kino Stary Młyn, Kino Sztuka, Kinoteka, Nasze Kino]
 zawiescieczerwonelatarnie|1991	Zawieście czerwone latarnie (1991) tmdb=10404 imdb=tt0101640 address=zawiescie-czerwone-latarnie cinemas=[Kino Amondo, Kino Zamek, KinoPort]
