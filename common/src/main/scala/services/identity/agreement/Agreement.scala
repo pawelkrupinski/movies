@@ -47,9 +47,9 @@ trait FamilyAnswers {
 /** A family's identification of a cluster: its own id and record of the film it took, when it took one. */
 final case class FamilyPick(family: VoterFamily, id: String, record: SourceRecord)
 
-/** What a family made of a cluster: the film it took, if any, and every film's record it weighed on the way — a family
- *  that weighed a film and took none has looked at it and turned it down, unless it is the film its evidence `leaning`
- *  favours though no rule took it ([[Agreement.leaningOf]]). */
+/** What a family made of a cluster: the film it took, if any, every film's record it weighed on the way, and the film its
+ *  evidence `leaning` favours though no rule took it ([[Agreement.leaningOf]]) — a family that weighed a film and took
+ *  none, leaning to another, has looked at it and turned it down. */
 final case class FamilyVerdict(family: VoterFamily, pick: Option[FamilyPick], weighed: Seq[SourceRecord] = Nil,
                                leaning: Option[SourceRecord] = None)
 
@@ -134,9 +134,9 @@ object Agreement {
 
   /** The film a family's evidence LEANS to though it took none: on every listing, its best undenied candidate, at
    *  [[services.identity.Acceptance.LeanMargin]] times the runner-up's probability — the model's own lean
-   *  (`Acceptance.leaning`) over the family's search. Not a pick, never counted as one: only what keeps the family's
-   *  having weighed the film from reading as turning it down (PL "Sukienka": RT weighed "The Dress" at 6.0%, its
-   *  runner-up at 2.7%; Tempo's IMDb weighed "Tempo" at 2.9% under "Old" at 33.0%, and leans to that). */
+   *  (`Acceptance.leaning`) over the family's search. Never a pick: a lean completes a quorum beside two takers, and
+   *  a lean to another film is what makes a family's having weighed the film turning it down (PL "Sukienka": RT weighed
+   *  "The Dress" at 6.0%, its runner-up at 2.7%; Tempo's IMDb weighed "Tempo" at 2.9% under "Old" at 33.0%). */
   private[agreement] def leaningOf(listings: Seq[Listing], lookups: FamilyLookups, answers: FamilyAnswers, normalizer: TitleNormalizer,
                                    calibration: IdentityCalibration): Option[SourceRecord] =
     IdentityResolver.candidatesOf(listings, lookups, normalizer, calibration)(_ => true).map { node =>
@@ -148,7 +148,7 @@ object Agreement {
     }
 
   /** The film ≥ [[Quorum]] families agree on — ≥ [[Takers]] of them picking it, the rest leaning to it — when no family picks another (picks join, through any agreeing record, by a shared cross-id, else
-   *  by [[equivalent]] facts) nor weighed it and took none leaning to another, the listing's title names it ([[namesIt]]) —
+   *  by [[equivalent]] facts) nor weighed it and took none, leaning to another, the listing's title names it ([[namesIt]]) —
    *  and, where a lean completes the quorum, is no other film's own ([[anothersOwnTitle]]) — the listing bills
    *  one work ([[billsSeveral]]) and no stage work ([[stagesAWork]]). The experiment's one wrong without the title guard:
    *  "Akademia Polskiego Filmu: Kino żydowskie w Polsce" → "Znachor" (1937), whose year and director fit a series'
@@ -163,7 +163,9 @@ object Agreement {
         val merged  = lead.record.copy(crossIds = records.flatMap(_.crossIds).toMap ++ lead.record.crossIds)
         def isIt(record: SourceRecord) = records.exists(sameFilm(_, record))
         val leaning    = verdicts.filter(verdict => verdict.pick.isEmpty && verdict.leaning.exists(isIt)).map(_.family).toSet
-        val turnedDown = verdicts.exists(verdict => verdict.pick.isEmpty && verdict.weighed.exists(isIt) && !verdict.leaning.exists(isIt))
+        // weighed and turned down for another film its evidence favours — weighed among films it favours none of is no
+        // evidence against this one (US "Spider Baby": Metacritic's best a Spider-Man film at 5.3%, its next 3.0%)
+        val turnedDown = verdicts.exists(verdict => verdict.pick.isEmpty && verdict.weighed.exists(isIt) && verdict.leaning.exists(!isIt(_)))
         val corroborated = Set(ListingFacts).filter(_ => creditedByTheListing(listings, records)) ++ Set(ModelLean).filter(_ => modelLean.exists(isIt))
         // a lean or corroboration completes a quorum only where the listing's title is no other film's own: three takers
         // outweigh that (PL "Ghost in the shell", the 2017 film's own title, is the 1995 one by five families)

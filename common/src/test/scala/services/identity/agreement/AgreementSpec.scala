@@ -64,13 +64,25 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     agreed.map(_.families) shouldBe Some(Set(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb))
   }
 
-  "A family that weighed the film the others agree on and took none" should "turn the agreement down" in {
+  "A family that weighed the film the others agree on and took none, leaning to another" should "turn the agreement down" in {
     val tempo   = film("Tempo", 2003, "Eric Styles")
+    val old     = SourceRecord(film("Old", 2021, "M. Night Shyamalan"), Map("imdb" -> "tt10954652"))
     val dance   = Seq(listing(KinoMuza, "Okładka „Tempo”"))
     val takers  = Seq(VoterFamily.Filmweb, VoterFamily.RottenTomatoes, VoterFamily.Wiki).map(f => FamilyVerdict.took(FamilyPick(f, "1", SourceRecord(tempo))))
+    val weighed = Seq(SourceRecord(tempo, Map("imdb" -> "tt0307553")), old)
     Agreement.agreed(dance, takers) should not be empty
-    Agreement.agreed(dance, takers :+ FamilyVerdict(VoterFamily.Imdb, None, Seq(SourceRecord(tempo, Map("imdb" -> "tt0307553"))))) shouldBe None
-    Agreement.agreed(dance, takers :+ FamilyVerdict(VoterFamily.Imdb, None, Seq(SourceRecord(klondike1932)))) should not be empty
+    Agreement.agreed(dance, takers :+ FamilyVerdict(VoterFamily.Imdb, None, weighed, leaning = Some(old))) shouldBe None
+    Agreement.agreed(dance, takers :+ FamilyVerdict(VoterFamily.Imdb, None, Seq(SourceRecord(klondike1932)), leaning = Some(SourceRecord(klondike1932)))) should not be empty
+  }
+
+  it should "not turn it down when its evidence leans to no film at all" in {
+    // US "Spider Baby" (fixture identity-unmatched): Metacritic weighed Hill's film among Spider-Man films, 5.3% the best,
+    // 3.0% the next — no film its evidence favours, so no evidence against the one three families took
+    val spider  = SourceRecord(film("Spider Baby or, The Maddest Story Ever Told", 1967, "Jack Hill", 81).copy(alternativeTitles = Seq("Spider Baby")),
+      Map("imdb" -> "tt0058606"))
+    val bare    = Seq(listing(KinoMuza, "Spider Baby"))
+    val takers  = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.RottenTomatoes).map(f => FamilyVerdict.took(FamilyPick(f, "1", spider)))
+    Agreement.agreed(bare, takers :+ FamilyVerdict(VoterFamily.Metacritic, None, Seq(spider))) should not be empty
   }
 
   it should "not turn it down while that film is the one its own evidence leans to" in {
@@ -80,7 +92,6 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val bare   = Seq(listing(KinoMuza, "Sukienka"))
     val takers = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(f => FamilyVerdict.took(FamilyPick(f, "1", SourceRecord(dress.copy(alternativeTitles = Seq("Sukienka"))))))
     val rt     = SourceRecord(dress.copy(year = None))
-    Agreement.agreed(bare, takers :+ FamilyVerdict(VoterFamily.RottenTomatoes, None, Seq(rt))) shouldBe None
     Agreement.agreed(bare, takers :+ FamilyVerdict(VoterFamily.RottenTomatoes, None, Seq(rt), leaning = Some(rt))) should not be empty
     Agreement.agreed(bare, takers :+ FamilyVerdict(VoterFamily.RottenTomatoes, None, Seq(rt), leaning = Some(SourceRecord(klondike1932)))) shouldBe None
   }
