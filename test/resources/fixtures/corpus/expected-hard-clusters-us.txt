@@ -15,7 +15,7 @@ itsawonderfullife|1946	It's a Wonderful Life (1946) tmdb=1585 imdb=tt0038650 add
 itsthegreatpumpkincharliebrown|1966	It's the Great Pumpkin, Charlie Brown (1966) tmdb=13353 imdb=tt0060550 address=it-s-the-great-pumpkin-charlie-brown cinemas=[Dreamland Nantucket]
 itwasjustanaccident|2025	It Was Just an Accident (2025) tmdb=1456349 imdb=tt36491653 address=it-was-just-an-accident cinemas=[Apollo Theatre Oberlin]
 it|	It (1990) (—) tmdb=— imdb=— address=it-1990 cinemas=[Bright Star Cinemas, Rooftop Cinema Crossroads Kansas City, Rooftop Cinema Ft Worth, Rooftop Cinema Los Angeles, Rooftop Cinema New York]
-it|2017	It (2017) tmdb=346364 imdb=— address=it cinemas=[Alamo Drafthouse Indianapolis]
+it|2017	It (2017) tmdb=346364 imdb=tt1396484 address=it cinemas=[Alamo Drafthouse Indianapolis]
 practicalmagic2|2026	Practical Magic 2 (2026) tmdb=1302904 imdb=tt32588798 address=practical-magic-2 cinemas=[12th Street Cinema Aurora, 2nd Street Cinema Beaumont, 4 Star Cinema Kilgore, 400 Theater, 411 Twin Drive In Centre, 88 Drive-In Theatre Commerce City, 89er Kingfisher, AB Cinemas Mt. Kisco]
 practicalmagic|1998	Practical Magic (1998) tmdb=6435 imdb=tt0120791 address=practical-magic cinemas=[Flix Brewhouse Albuquerque Coors]
 queensofthedead|2025	Queens of the Dead (2025) tmdb=1318435 imdb=tt32986431 address=queens-of-the-dead cinemas=[Alamo Drafthouse Winchester]
