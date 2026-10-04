@@ -35,7 +35,7 @@ import scala.util.{Random, Try}
  *   2. THE RIGHT ANSWER — the films checked in for the clusters (`expected-hard-clusters-<cc>.txt`).
  *   3. NO CHURN — a further projection, and two identical rescrapes each projected, write nothing.
  *   4. AN OUTAGE IS NOT AN ANSWER — with TMDB failing half its requests, then back, the films come
- *      out as the undisturbed boot's (their IMDb ids reported, not asserted).
+ *      out as the undisturbed boot's, IMDb ids included.
  *
  * Each pass runs in its own uniquely-named database (`IsolatedMongoDatabase`), dropped
  * in `afterAll`.
@@ -370,12 +370,10 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
       if (unmatched.nonEmpty)
         info(s"$name: ${unmatched.size} film(s) unmatched while TMDB failed (held open, not concluded):\n  " +
              unmatched.take(12).mkString("\n  "))
-      // The films themselves — identity, title, year, TMDB match, cinemas — must come back. An IMDb id the
-      // id recovery looked up during the outage is REPORTED, not asserted: that recovery runs once per
-      // match and is not re-asked when TMDB failed under it (as before the cut-over, 2026-09-25).
-      def identity(fs: Seq[Film]) = fs.map(_.copy(imdbId = None, address = None))
-      val idDrift = diff(refFilms, recovered, reference.label, "outage-recovered").map(_._2)
-      if (idDrift.nonEmpty) info(s"$name: ${idDrift.size} film(s) differ after the recovery (IMDb ids included):\n${idDrift.take(12).mkString("\n")}")
+      // The films themselves — identity, title, year, TMDB match, IMDb id, cinemas — must come back. The IMDb id
+      // included: a film matched while TMDB failed is announced to the id recovery only once its details are in,
+      // so the recovery searches with what TMDB says of it, as the undisturbed boot's did.
+      def identity(fs: Seq[Film]) = fs.map(_.copy(address = None))
       val drift = diff(identity(refFilms), identity(recovered), reference.label, "outage-recovered").map(_._2)
       withClue(s"$name: ${drift.size} film(s) not back to the undisturbed boot after TMDB recovered:\n${drift.take(12).mkString("\n")}\n") {
         drift shouldBe empty

@@ -387,6 +387,33 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.projection.tick().refused.get should include("Obcy")
   }
 
+  /** TMDB down while a film is first matched: its details (`external_ids` among them) fail, so it is written with its
+   *  TMDB id and nothing TMDB says about it. Announced then, its IMDb-id recovery searched with no original title and
+   *  no director, missed, and was never asked again — the details landing later changed neither its TMDB nor its IMDb
+   *  id. A film is announced once its TMDB answer is whole, and only then. */
+  "A film whose TMDB details failed" should "be announced once they arrive, not while it lacks them" in {
+    var tmdbDown = true
+    val matched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => ProjectionWorld.unmatched(read).map { r =>
+      val decisions = r.resolution.decisions.zipWithIndex.map { case (d, i) =>
+        ResolverDecision(d.members, Some(500 + i), 0.9, ResolverDecision.Basis.OwnMatch, Nil)() }
+      r.copy(resolution = r.resolution.copy(decisions = decisions))
+    }
+    val w = new ProjectionWorld(new InMemoryMovieRepository(normalizer = normalizer), programme.keys.toSeq, clock, matched,
+      details = (record, _) => Option.unless(tmdbDown)(record.copy(
+        data = record.data + (models.Tmdb -> models.SourceData(title = Some("Original"))))))
+    w.scrape(programme)
+    val down = w.projection.tick()
+    w.repository.findAll().flatMap(_.record.tmdbId) should have size 3
+    w.projection.settled(down) shouldBe false
+    w.announced shouldBe empty
+
+    tmdbDown = false
+    w.projection.settled(w.projection.tick()) shouldBe true
+    w.announced.map(_.cleanTitle).sorted shouldBe Seq("Diuna", "Lalka", "Obcy")
+    w.projection.tick()
+    w.announced should have size 3 // announced once, not again by a projection that changes nothing
+  }
+
   /** A country's first projection fetches the TMDB details of every film it matched (~2,250 on a US
    *  boot): one at a time, it waited on each in a row. */
   "A projection's TMDB details" should "be fetched side by side, each onto its own draft" in {

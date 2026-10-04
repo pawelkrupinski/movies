@@ -84,8 +84,9 @@ object IdentityProjectionMetrics {
  *  5. fetches, BY ID, the TMDB details of a film new to its record (`details`);
  *  6. writes the films that changed and retires the ids no film carries (through the cache's
  *     projection funnel, no identity gate), extends the FilmId map, and announces a film whose
- *     TMDB answer changed to the enrichment chain (`announce`: IMDb-id recovery, and every rating
- *     re-fetched — the record was built afresh, without its former identity's ratings).
+ *     TMDB answer changed, once its details are in, to the enrichment chain (`announce`: IMDb-id
+ *     recovery, and every rating re-fetched — the record was built afresh, without its former
+ *     identity's ratings).
  *
  * `movies` / `movie_slots` / `screenings` keep their shape, so `ReadModelProjector` and every
  * enrichment keyed by the film read them unchanged, and switching the country back leaves rows the
@@ -179,7 +180,7 @@ final class IdentityProjection(
    *  TMDB details fetched. One that did not is tried again ([[ProjectionTrigger.retry]]) — no five-minute period does. */
   def settled(tick: ProjectionTick): Boolean =
     tick.refused.isEmpty && tick.declined == 0 &&
-      !tick.changed.exists(film => film.record.tmdbId.isDefined && !film.record.data.contains(models.Tmdb))
+      !tick.changed.exists(film => IdentityProjection.awaitsDetails(film.record))
 
   private def project(whole: Boolean, light: Boolean): ProjectionTick = synchronized {
     // Until this projection has written everything it planned, the next one projects the whole corpus.
@@ -336,8 +337,11 @@ final class IdentityProjection(
       if (!patch) _ => None else f => before.get(f.id).filter(s => s.key(normalizer) == f.key).map(_.record)
     val declined = phases("writes")(writeAll(changed, plan.retired, IdentityProjection.independent(changed, plan.films, stored, normalizer),
       patchable))
-    // a film now identified otherwise: by TMDB, or — one TMDB has no record of — by the fallback source's IMDb id
-    changed.filter(f => before.get(f.id).forall(s => s.record.tmdbId != f.record.tmdbId || s.record.imdbId != f.record.imdbId)).foreach { f =>
+    // A film now identified otherwise — by TMDB, or, one TMDB has no record of, by the fallback source's IMDb id — once
+    // its TMDB answer is whole: announced while its details were still to come (TMDB failing), its IMDb-id recovery
+    // searched without the film's original title or director and was never asked again once they arrived.
+    changed.filter(f => !IdentityProjection.awaitsDetails(f.record) && before.get(f.id).forall(s =>
+      IdentityProjection.awaitsDetails(s.record) || s.record.tmdbId != f.record.tmdbId || s.record.imdbId != f.record.imdbId)).foreach { f =>
       Try(announce(CacheKey.stored(f.title, f.key), f.record)).failed.foreach(e => logger.warn(s"identity projection: announcing ${f.id} (${f.title}) failed", e))
     }
     val seconds = started.seconds
@@ -385,6 +389,9 @@ final class IdentityProjection(
 }
 
 object IdentityProjection {
+  /** Whether `record` names a TMDB film whose details — its cross-reference ids among them — TMDB has not given yet. */
+  private[identity] def awaitsDetails(record: MovieRecord): Boolean = record.tmdbId.isDefined && !record.data.contains(models.Tmdb)
+
   /** How many films' TMDB details a projection fetches at once — within what TMDB tolerates (see the
    *  external-api-rate-limits budgets). */
   private[identity] val DetailsConcurrency = 8
