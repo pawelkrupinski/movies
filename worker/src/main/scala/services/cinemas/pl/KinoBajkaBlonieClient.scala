@@ -58,7 +58,7 @@ class KinoBajkaBlonieClient(
     val filmIds = ListingPages.readEach("kino-blonie", filmUrls, identity[String], timeout = 30.seconds) { url =>
       val page = Jsoup.parse(HttpRead.page(http, url), url)
       filmIdOf(page).map(page -> _)
-    }.collect { case (url, Some(film)) => url -> film }.toMap
+    }.flatMap { case (url, film) => film.map(url -> _) }.toMap
     val dated = ListingPages.readEach("kino-blonie-dates", filmIds.keys.toSeq, identity[String], timeout = 30.seconds) { url =>
       val (page, id) = filmIds(url)
       parseFilm(page, url, showtimesOf(HttpRead.postPage(http, AjaxUrl, datesBody(id, today), FormContentType)), cinema)
