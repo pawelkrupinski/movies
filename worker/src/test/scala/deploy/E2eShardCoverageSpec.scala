@@ -70,16 +70,39 @@ class E2eShardCoverageSpec extends AnyFlatSpec with Matchers {
       case (name, src) if !src.contains("@CorpusReplay") && !src.contains("@CountryScoped") => name
     }
     ridingRest should not be empty
-    ridingRest.foreach { name =>
-      withClue(s"$name rides e2eRest but an alias also runs it by name: ") {
-        buildSbt.linesIterator.filter(_.contains(s"e2e/Test/testOnly services.movies.$name"))
-          .filterNot(_.contains("-- -z recorded:")).toSeq shouldBe empty
-      }
+    withClue("These ride e2eRest but an alias also runs them by name: ") {
+      E2eShardCoverageSpec.runWholeByName(buildSbt, ridingRest.toSet) shouldBe empty
     }
+  }
+
+  it should "read each testOnly command on its own: every spec it names, and only its own -z" in {
+    val rest = Set("RestSpec")
+    E2eShardCoverageSpec.runWholeByName("""e2e/Test/testOnly services.movies.OwnSpec services.movies.RestSpec"""", rest) shouldBe Seq("RestSpec")
+    E2eShardCoverageSpec.runWholeByName(
+      """"; e2e/Test/testOnly services.movies.RestSpec ; e2e/Test/testOnly services.movies.OwnSpec -- -z recorded:pl"""", rest) shouldBe Seq("RestSpec")
+    E2eShardCoverageSpec.runWholeByName(
+      """s"; e2e/Test/testOnly services.movies.$spec ; e2e/Test/testOnly services.movies.OwnSpec services.movies.RestSpec -- -z recorded:$code"""", rest) shouldBe empty
   }
 
   it should "keep the rest shard selecting by exclusion so a new spec can't be dropped" in {
     buildSbt should include("""addCommandAlias("e2eRest",     "e2e/Test/testOnly * -- -l services.movies.CorpusReplay""")
     e2eJob should include("cmd: e2eRest")
   }
+}
+
+object E2eShardCoverageSpec {
+  private val TestOnly = """e2e/Test/testOnly\s+([^;"]*)""".r
+
+  /** The `rest` specs some `testOnly` command in `buildSbt` runs whole: named among its specs (any position, not only
+   *  the first) without its OWN arguments narrowing it to a recorded corpus (`-- -z recorded:<cc>`) — a `-z` on
+   *  another command of the same alias or line narrows nothing here. */
+  def runWholeByName(buildSbt: String, rest: Set[String]): Seq[String] =
+    TestOnly.findAllMatchIn(buildSbt).flatMap { command =>
+      val (names, arguments) = command.group(1).split("""\s+--\s+""", 2) match {
+        case Array(n, a) => (n, a)
+        case Array(n)    => (n, "")
+      }
+      if (arguments.contains("-z recorded:")) Nil
+      else names.split("""\s+""").iterator.map(_.stripPrefix("services.movies.")).filter(rest)
+    }.toSeq.distinct.sorted
 }
