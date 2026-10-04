@@ -112,9 +112,10 @@ object OcineParser {
   /** The site's `propietatsDesc` vocabulary → format tokens, screen first and the
    *  language version last, the order the Webedia clients use. The baseline
    *  every session carries ("Estándar", "Digital") says nothing and is dropped;
-   *  an unmapped value is kept, upper-cased, because a NEW room type or format
-   *  must not vanish from the row — it is the screening's only distinguishing
-   *  mark. The version tokens are SensaCine's own, so a Spanish visitor reads
+   *  an unmapped value is kept, upper-cased, so a NEW room type or format reaches
+   *  `ScreeningTokens`, which logs it as unrecognised rather than this parser
+   *  dropping it unseen — every token mapped here must be in that vocabulary too
+   *  (`OcineClientSpec` checks), or the projection drops it. The version tokens are SensaCine's own, so a Spanish visitor reads
    *  the same badge whichever source served the venue. The unmarked version is
    *  the Castilian one (dubbed or native), which earns no badge. */
   def formatTokens(descriptions: Seq[String]): List[String] = {

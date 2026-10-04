@@ -129,7 +129,9 @@ object ScreeningTokens extends Logging {
     "2d" -> List("2D"), "3d" -> List("3D"),
     "imax" -> List("IMAX"), "imaxexperience" -> List("IMAX"),
     "4dx" -> List("4DX"), "4de" -> List("4DE"), "4de3d" -> List("4DE", "3D"),
-    "screenx" -> List("SCREENX"), "isense" -> List("ISENSE"), "plf" -> List("PLF"),
+    // Ocine's own box office names its motion-seat room just "Sala 4D", with no system.
+    "4d" -> List("4D"),
+    "screenx" -> List("SCREENX"), "ice" -> List("ICE"), "isense" -> List("ISENSE"), "plf" -> List("PLF"),
     "epic" -> List("EPIC"), "infinity" -> List("INFINITY"), "dbox" -> List("DBOX"),
     "laser" -> List("LASER"), "hdr" -> List("HDR"),
     "atmos" -> List("ATMOS"), "dolbyatmos" -> List("ATMOS"), "dolby" -> List("DOLBY"),
@@ -154,6 +156,7 @@ object ScreeningTokens extends Logging {
     // The market abbreviations the Webedia clients emit, kept verbatim: each is
     // the spelling that country's cinemagoers read.
     "vo" -> List("VO"), "vose" -> List("VOSE"), "vosi" -> List("VOSI"), "dob" -> List("DOB"), "cat" -> List("CAT"),
+    "eus" -> List("EUS"),
     "ov" -> List("OV"), "omu" -> List("OmU"), "omeu" -> List("OmeU"), "df" -> List("DF"),
 
     // ── Per-screening accessibility ────────────────────────────────────────

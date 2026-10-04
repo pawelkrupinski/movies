@@ -93,6 +93,16 @@ class OcineClientSpec extends AnyFlatSpec with Matchers with OptionValues {
       .find(_.dateTime == LocalDateTime.of(2026, 9, 25, 15, 45)).value.format shouldBe List("3D", "4D", "INFINITY")
   }
 
+  it should "keep every room and version token through the shared badge vocabulary" in {
+    // The projection passes each token through `ScreeningTokens`, which DROPS a label it does not
+    // know: Girona's 22 screenings in its 4D room read as plain 2D/3D ones, and an ICE-room one (a
+    // variant its box office lists) or a Basque one would too — each the only mark of that screening.
+    val tokens = services.movies.ScreeningTokens.of(models.Country.Spain)
+    val emitted = films.flatMap(_.showtimes).flatMap(_.format).distinct ++
+      OcineParser.formatTokens(Seq("Sala ICE", "Versión Euskera"))
+    emitted.filter(token => tokens.normalize(Seq(token)) != List(token)) shouldBe empty
+  }
+
   it should "strip the variant marker a Catalan-only film's title carries" in {
     val conan = film("Detectiu conan: L'àngel caigut de la carretera")
     conan.movie.rawTitle.value shouldBe "Detectiu conan: L'àngel caigut de la carretera (Català)"
