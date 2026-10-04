@@ -34,14 +34,4 @@ check "the sample's fresh answer replaces an older one here" "sample-fresh" "$(c
 check "an answer recorded here after the sample's is kept" "suite-newer" "$(cat "$tree/tmdb/both")"
 check "the identity marker names both legs" "full-leg sample-leg" "$(tr '\n' ' ' < "$tree/.identity-lookups-v3" | sed 's/ $//')"
 
-# An OVERLAY merge: the convergence row's overlay stamp is LATER than the sample's fill (their
-# setups ran side by side), and the overlay publish packs only files newer than that stamp.
-mkdir -p "$work/overlay/$tree" && cd "$work/overlay" || exit 1
-touch "$work/overlay-stamp"
-bash "$script" merge "$work/recordings.tar.zst" > /dev/null
-check "without a stamp, a taken file keeps the sample's mtime" "" "$(find "$tree" -type f -newer "$work/overlay-stamp")"
-rm -rf "${work:?}/overlay/$tree" && mkdir -p "$work/overlay/$tree"
-bash "$script" merge "$work/recordings.tar.zst" "$work/overlay-stamp" > /dev/null
-check "with an overlay stamp, every taken file is newer than it" "4" "$(find "$tree" -type f -newer "$work/overlay-stamp" | wc -l | tr -d ' ')"
-
 spec_summary

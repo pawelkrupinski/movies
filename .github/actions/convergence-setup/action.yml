@@ -19,7 +19,7 @@ inputs:
     description: A token that can read this repo's runs and releases.
     required: true
   mode:
-    description: "`hermetic` restores the PINNED recorded pair; `overlay` that pair plus the identity model's overlay; `record` the newest corpus and the working tree."
+    description: "`hermetic` restores the PINNED recorded pair; `record` the newest corpus and the working tree."
     required: false
     default: hermetic
   corpus-run:
@@ -372,23 +372,6 @@ runs:
               echo "NO remembered-answer cache in the artifact — this leg re-asks every"
               echo "unresolved film's rating slugs live, and publishes the cache it builds."
           fi
-
-    # An OVERLAY leg (`Identity model convergence`) replays the pinned pair plus the model's own
-    # enrichment — recorded by earlier overlay legs over THIS pair, published as
-    # `identity-overlay-<code>-<corpus run>.tar.gz` — and records what it still lacks on top. The
-    # stamp dates the replay: every file the run then writes is newer, which is what the
-    # overlay publish packs (see convergence-overlay-publish).
-    - name: Unpack the identity model's overlay
-      if: inputs.mode == 'overlay'
-      shell: bash
-      env:
-          GH_TOKEN: ${{ inputs.token }}
-      run: |
-          set -euo pipefail
-          overlay="identity-overlay-${{ inputs.code }}-${KINOWO_CONVERGENCE_PIN_CORPUS_RUN}.tar.gz"
-          .github/scripts/restore-identity-overlay.sh "${{ inputs.code }}" "$overlay" "$RUNNER_TEMP/overlay-files.txt"
-          echo "KINOWO_CONVERGENCE_OVERLAY_ASSET=$overlay" >> "$GITHUB_ENV"
-          sleep 1; touch "$RUNNER_TEMP/overlay-stamp"
 
     - name: Wait for MongoDB, started in the background above
       shell: bash

@@ -7,8 +7,8 @@
 # without that job's second checkout and setup (~1 minute on every leg's critical path,
 # and one more runner per country per push). A RECORDING is the one exception to the
 # gate, and only to its stopping power: there the sample carries `continue-on-error`, so
-# the whole corpus is recorded past a red sample (see the sample step below). A recording or an
-# overlay leg may also run the sample as a `sample` row of its own (`sample-row`), beside the suite
+# the whole corpus is recorded past a red sample (see the sample step below). A leg may also run
+# the sample as a `sample` row of its own (`sample-row`), beside the suite
 # rather than in front of it — the suite then runs ungated, and a red sample costs its runner, not
 # wall time.
 #
@@ -157,12 +157,8 @@ on:
             # `record` (only `Record scrape fixtures`): the old behaviour — expire, fill live,
             # record, publish — plus the transient failures a hermetic replay needs, and the
             # PINNED pair the hermetic legs replay once the full leg's boot is complete.
-            #
-            # `overlay` (`Identity model convergence` until a pair recorded by the identity model is pinned): the pinned pair, replayed as hermetic
-            # replays it, plus the identity model's own overlay — and what both lack is fetched live,
-            # recorded and published as that overlay (convergence-overlay-publish), never into the pair.
             mode:
-                description: "`hermetic` (replay the recorded pair, never the network), `record` (fill and publish it) or `overlay` (replay the pair, fill and publish only its gaps, as the identity model's overlay)."
+                description: "`hermetic` (replay the recorded pair, never the network) or `record` (fill and publish it)."
                 required: false
                 type: string
                 default: hermetic
@@ -180,12 +176,11 @@ on:
             # United States' leg, the run's longest once the UK's replays moved out, sets it (run
             # 37105119296). The identity lane's US leg sets it too: its sample was 79 s of that
             # lane's 10-minute critical path (run 37150307201), and an ungated suite costs a runner
-            # on a red sample, never wall time. Either way its recordings — a recording's tree
-            # entries, an overlay leg's live gap fills — reach the convergence row's one publish
-            # through `.github/scripts/sample-recordings.sh`. A hermetic leg (which records nothing)
-            # never sets it.
+            # on a red sample, never wall time. In a recording its tree entries reach the
+            # convergence row's one publish through `.github/scripts/sample-recordings.sh`; a
+            # hermetic leg records nothing, so there is nothing to merge.
             sample-row:
-                description: Run the sample as a row of its own and merge what it records into the convergence row's publish (record and overlay modes).
+                description: Run the sample as a row of its own, beside the suite; in a recording, merge what it records into the convergence row's publish.
                 required: false
                 type: boolean
                 default: false
@@ -227,7 +222,7 @@ jobs:
     # knows the answer. (A recording is the exception; see the sample step.)
     #
     # It used to be a JOB of its own ahead of this one, for exactly that stopping power. A
-    # step stops the suite just as surely, and the job cost every hermetic and overlay leg
+    # step stops the suite just as surely, and the job cost every hermetic leg
     # ~1 minute of critical path (a second checkout, ~10 s, and a second convergence-setup,
     # ~45 s, before the full leg's own) and one more runner per country per push. Recordings
     # had already folded it in, for ~4 minutes of their critical path.
@@ -282,8 +277,8 @@ jobs:
         timeout-minutes: ${{ matrix.phase == 'convergence' && inputs.job-timeout-minutes || inputs.order-job-timeout-minutes }}
         permissions:
             # `contents: write` for the rolling release the fixture trees live in —
-            # see "Publish" below for why that, rather than an artifact — and for an
-            # OVERLAY leg's overlay. The replay row never writes either (its publish
+            # see "Publish" below for why that, rather than an artifact. The replay row never
+            # writes it (its publish
             # steps are gated on the phase), and `permissions:` takes no expression, so
             # it is granted a scope it does not use rather than the two rows being two
             # jobs again.
@@ -430,8 +425,7 @@ jobs:
                   .github/scripts/unpack-fixture-archive.sh "scrape-archive/scrapes-${{ inputs.code }}.tar.gz"
 
             # A SAMPLE row hands on only what its sample records: every file under the tree newer
-            # than this (an unpacked file keeps its archived mtime) — a recording's entries, an
-            # overlay leg's live gap fills.
+            # than this (an unpacked file keeps its archived mtime) — a recording's entries.
             - name: Mark the tree before the sample records into it
               if: matrix.phase == 'sample'
               shell: bash
@@ -439,7 +433,7 @@ jobs:
 
             # THE GATE: this country's sample, first, ahead of the suite in every row.
             #
-            # HERMETIC and OVERLAY legs: a red sample fails this step, which ends the job — the
+            # HERMETIC legs: a red sample fails this step, which ends the job — the
             # suite below is skipped, and only the `always()`/`failure()` steps after it run.
             # That is the whole of the gate the separate `sample` job used to be.
             #
@@ -459,8 +453,8 @@ jobs:
             # alive so the publishes below run normally — the sample once had no step ceiling,
             # so it could only ever be cancelled, which is how it spent ten consecutive runs
             # throwing away the capture that would have made the eleventh fast enough to pass.
-            # Twenty minutes, not the ~70 s a hermetic sample takes: a cold tree (an overlay leg's
-            # first fills, a recording's live sweep) can spend ~11 minutes enriching a ~100-film
+            # Twenty minutes, not the ~70 s a hermetic sample takes: a cold tree (a recording's
+            # live sweep) can spend ~11 minutes enriching a ~100-film
             # slice live (Germany: 47 films in 5m15s on 2026-08-16, every one a live fetch), and
             # cold is a state this gate has to survive, not one to be timed out of. Every job
             # ceiling is sized over this step and the suite's together (ConvergenceLegWiringSpec,
@@ -488,7 +482,6 @@ jobs:
                   OMDB_API_KEY:     ${{ secrets.OMDB_API_KEY }}
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
                   KINOWO_CONVERGENCE_HERMETIC: ${{ inputs.mode == 'hermetic' }}
-                  KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' }}
                   KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}
 
             # The sample's own verdict, the moment it ends — as the sample job posted it when
@@ -506,15 +499,6 @@ jobs:
             # A SAMPLE row: what the sample recorded, for the convergence row to merge before it
             # publishes (sample-recordings.sh). `always()`, as the publish is: a red sample still
             # recorded what it fetched.
-            #
-            # An OVERLAY leg needs this as much as a recording does. The sample's corpus is a slice
-            # of the full one, but the model clusters a slice differently and asks for what its
-            # clusters are called: on the first overlay run over pin 37121141759 (run 37123700230)
-            # the US sample live-filled Metacritic and Rotten Tomatoes slugs for "Met Opera 2026-27:
-            # Silent Night (2027)" — 2 of the overlay's 183 new files, both in the sample's window —
-            # that the full corpus, where those listings join "The Metropolitan Opera: Silent
-            # Night", has no reason to ask. Unpublished, every later sample would fetch them live
-            # again rather than replay them.
             - name: Pack the sample's recordings
               if: always() && matrix.phase == 'sample' && steps.sample.outcome != 'skipped'
               shell: bash
@@ -593,7 +577,7 @@ jobs:
                   # in a RECORDING leg. A hermetic one refuses that request and names it.
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
                   KINOWO_CONVERGENCE_HERMETIC: ${{ inputs.mode == 'hermetic' }}
-                  # GAP-FILL in a RECORDING's order row as well as an overlay leg: it replays the
+                  # GAP-FILL in a RECORDING's order row: it replays the
                   # working tree it restored (the last recording's) and fetches live only what that
                   # lacks, ONCE between its three passes (`SharedLiveAnswers`), never refreshing it.
                   # Inside the convergence row the passes replayed what the boot had just fetched;
@@ -601,7 +585,7 @@ jobs:
                   # web for the same page need not hear the same answer — an arrival-order
                   # "dependence" the pipeline does not have (run 36801876786). Nothing it records
                   # is published: the convergence row is the one writer.
-                  KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' || (inputs.mode == 'record' && matrix.phase != 'convergence') }}
+                  KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'record' && matrix.phase != 'convergence' }}
                   KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
                   # The OMDb rung of ImdbIdResolver is gated on this key
@@ -660,15 +644,11 @@ jobs:
 
             # A leg whose sample ran in a row of its own: its recordings, merged into this tree
             # before it is packed — a hermetic sample leg replays the pair a recording's publish pins,
-            # and an overlay leg's next sample replays the overlay, so the sample's requests have to
-            # be in what this row publishes. The sample row is done minutes before this row gets
+            # so the sample's requests have to be in what this row publishes. The sample row is done minutes before this row gets
             # here; one that ended without uploading leaves the tree without them, and says so.
             #
             # The PRODUCER is the sample row's job name as each caller renders it: `enrichment
             # (<country>) / sample` in the recorder, `<country> / sample` in the identity lane.
-            # An overlay merge passes its overlay stamp: the two rows' setups run side by side, so
-            # a sample's fill can predate this row's stamp, and the overlay publish takes only
-            # files newer than it.
             - name: Merge the sample row's recordings
               if: always() && inputs.sample-row && matrix.phase == 'convergence'
               timeout-minutes: 30
@@ -676,7 +656,6 @@ jobs:
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   PRODUCER: ${{ inputs.mode == 'record' && format('({0}) / sample', inputs.country) || format('{0} / sample', inputs.country) }}
-                  MODE: ${{ inputs.mode }}
               run: |
                   set -uo pipefail
                   if ! scripts/ci/wait-for-run-artifact.sh "enrichment-sample-${{ inputs.code }}" "$PRODUCER" 1500; then
@@ -684,8 +663,7 @@ jobs:
                       exit 0
                   fi
                   gh run download "$GITHUB_RUN_ID" --name "enrichment-sample-${{ inputs.code }}" --dir sample-download
-                  fresh=(); [ "$MODE" = overlay ] && fresh=("$RUNNER_TEMP/overlay-stamp")
-                  .github/scripts/sample-recordings.sh merge "sample-download/enrichment-sample-${{ inputs.code }}.tar.zst" "${fresh[@]}"
+                  .github/scripts/sample-recordings.sh merge "sample-download/enrichment-sample-${{ inputs.code }}.tar.zst"
 
             # The capture this leg just spent an hour building — a recording's sample's
             # included, which ran first in this job — back to the release it was restored from.
@@ -703,28 +681,14 @@ jobs:
             # out of time before then still publishes its working tree, so the next
             # recording resumes from it — but a hermetic leg must never replay a half-recorded
             # pair. Replays re-ask nothing: they share the boot's cache.
-            # Not for an overlay leg: a green NEW-MODEL leg must not mark the pipeline's corpus green.
             - uses: ./.github/actions/convergence-publish
-              if: always() && matrix.phase == 'convergence' && inputs.mode != 'overlay'
+              if: always() && matrix.phase == 'convergence'
               with:
                   code: ${{ inputs.code }}
                   token: ${{ secrets.GITHUB_TOKEN }}
                   green: ${{ steps.suite.outcome == 'success' }}
                   mode: ${{ inputs.mode }}
                   complete: ${{ inputs.mode == 'record' && steps.suite.outcome != 'cancelled' }}
-
-            # OVERLAY legs: what the identity model needed and the pipeline's tree lacked, fetched
-            # live and recorded, published beside the pair — never into it. The sample's and the
-            # full row's recordings together — made in this job, or merged in above from a `sample`
-            # row; `always()`, so a red sample, which ended the job before the suite, still
-            # publishes what it fetched (as the sample job's own publish did). One publisher: the
-            # order and sample rows replay the same tree, and a sibling row's upload would clobber
-            # this one.
-            - uses: ./.github/actions/convergence-overlay-publish
-              if: always() && matrix.phase == 'convergence' && inputs.mode == 'overlay'
-              with:
-                  code:  ${{ inputs.code }}
-                  token: ${{ secrets.GITHUB_TOKEN }}
 
             # A red HERMETIC leg on main asks `convergence-bisect.yml` which commit did it — with
             # the sample, which the bisect first checks reproduces the failure, unless it was
@@ -754,7 +718,7 @@ jobs:
                   name:  ${{ inputs.code }}-${{ matrix.phase }}
                   token: ${{ secrets.GITHUB_TOKEN }}
 
-            # A red sample's findings — a hermetic or overlay leg's, which ended the job there,
+            # A red sample's findings — a hermetic leg's, which ended the job there,
             # or a recording's, which recorded past it. The row that ran the sample's alone (the
             # `convergence` row, or a recording's `sample` row): the artifact is named after the
             # sample, not the row.
@@ -768,7 +732,7 @@ jobs:
 
             # A recording's sample step carries `continue-on-error` so the full corpus is recorded
             # past it; this is where its red comes back, once both recordings are published. (A
-            # hermetic or overlay leg's red sample already failed the job.)
+            # hermetic leg's red sample already failed the job.)
             - name: Fail the leg on the sample's verdict
               if: always() && inputs.mode == 'record' && steps.sample.outcome == 'failure'
               shell: bash

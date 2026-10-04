@@ -45,7 +45,7 @@ class LegVerdictWiringSpec extends AnyFlatSpec with Matchers {
    *  ended, minutes before the full leg behind it reports. Folded into the full leg's job it would
    *  otherwise surface only with the row's verdict, hours later on a green sample. One row posts it,
    *  so the order row cannot race the convergence row for the one status context. */
-  "every hermetic or overlay leg" should "post its sample's verdict straight after the sample step" in {
+  "every hermetic leg" should "post its sample's verdict straight after the sample step" in {
     val body   = leg("convergence")
     val steps  = body.split("\n\\s+- (?=uses:|name:)").toSeq.drop(1)
     val sample = steps.indexWhere(_.startsWith("name: Run the ${{ inputs.country }} sample ahead of the suite"))

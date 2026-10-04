@@ -22,13 +22,6 @@ class ConvergencePublishMainOnlySpec extends AnyFlatSpec with Matchers {
     publish should include(MainOnly)
   }
 
-  "the identity model's overlay publish" should "upload to the shared release only from main" in {
-    val overlay = RepoFile.step(RepoFile.read(".github/actions/convergence-overlay-publish/action.yml"),
-      "Publish the overlay to the rolling release")
-    overlay should include("\"$RELEASE\" upload")
-    overlay should include(MainOnly)
-  }
-
   "the convergence workflows" should "write the shared release nowhere except through that gated action" in {
     val writers = Seq(
       ".github/workflows/country-convergence-leg.yml",

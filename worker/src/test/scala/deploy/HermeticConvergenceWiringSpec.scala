@@ -25,7 +25,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     yaml.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
 
   // Every verdict caller replays the pinned pair: since `Record scrape fixtures` pins pairs the identity
-  // model recorded (run 37216285654 on), no caller fills gaps live as an overlay, so every red leg is
+  // model recorded (run 37216285654 on), no caller fills gaps live, so every red leg is
   // one a bisect can replay.
   "a verdict leg" should "be hermetic, and no verdict caller ask for anything else" in {
     """mode:[\s\S]*?default:\s*hermetic""".r.findFirstIn(leg) shouldBe defined
@@ -109,7 +109,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   // then the full leg's setup restoring that same upload — ~4 minutes of every recording's
   // critical path (run 36909637796) to hand a tree from one runner to the next. Run in the full
   // leg's job, first, over the tree on disk, the full leg replays exactly what the sample recorded,
-  // as it did through the release, and one publish carries both. The hermetic and overlay legs
+  // as it did through the release, and one publish carries both. The hermetic legs
   // followed: their sample job cost ~1 minute of checkout and setup ahead of every full leg.
   private val SampleStep = "Run the ${{ inputs.country }} sample ahead of the suite"
   private val SuiteStep  = "Run the ${{ inputs.country }} ${{ matrix.phase }} suite"

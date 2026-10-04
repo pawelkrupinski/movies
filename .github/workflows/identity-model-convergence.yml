@@ -13,8 +13,7 @@
 # `mode: hermetic`: every leg replays the pair `Record scrape fixtures` pinned for its country
 # (`hermetic-<code>.txt`) and touches no network, so a red leg means the code changed — and is
 # bisected. Every pair pinned since run 37216285654 (2026-10-04, main 971ccd34e) was recorded by the
-# identity model, the old pipeline being gone; the `overlay` mode that filled an old-pipeline pair's
-# gaps live is no verdict caller's any more. (HermeticConvergenceWiringSpec)
+# identity model, the old pipeline being gone. (HermeticConvergenceWiringSpec)
 #
 # ONE LANE: the run in flight is never cancelled, at most one newer run waits behind it, and each newer
 # dispatch replaces the waiting one. A day of pushes into a running leg produces exactly two runs: the
@@ -56,7 +55,7 @@ jobs:
     # so their replays no longer bound the lane. The United States runs its sample in a row of its
     # own too (`sampleRow`), beside its suite rather than in front of it: 79 s of the lane's 10.0-minute
     # critical path (run 37150307201), its convergence row then ungated — a red sample costs a
-    # runner, not wall time — and the sample's live fills merged into that row's one overlay publish. `heap` is the sbt JVM's `-Xmx`: the US holds its
+    # runner, not wall time. `heap` is the sbt JVM's `-Xmx`: the US holds its
     # whole corpus resident (it died at 8g on a 114-116k-document read model).
     leg:
         needs: preflight

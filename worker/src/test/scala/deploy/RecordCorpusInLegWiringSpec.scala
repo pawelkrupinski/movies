@@ -56,13 +56,13 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
     withClue("restored before anything replays it: ")(at(s"- name: $Restore") should be < at(s"- name: $Sample"))
   }
 
-  // Gap-filled, as an overlay leg is: no boot of its own to have fetched what its passes ask, so
+  // Gap-filled: no boot of its own to have fetched what its passes ask, so
   // what the restored tree lacks is fetched ONCE between them (SharedLiveAnswers), and its sample
   // — which gates nothing in a recording and whose recordings no row would publish — skipped.
   it should "replay a recording's order row gap-filled, without a sample of its own" in {
     RepoFile.step(convergence, Sample) should include("if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)\n")
     RepoFile.step(convergence, "Run the ${{ inputs.country }} ${{ matrix.phase }} suite") should include(
-      "KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'overlay' || (inputs.mode == 'record' && matrix.phase != 'convergence') }}")
+      "KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'record' && matrix.phase != 'convergence' }}")
   }
 
   "a recording leg" should "record, close the tunnel and upload its corpus before the sample replays it" in {

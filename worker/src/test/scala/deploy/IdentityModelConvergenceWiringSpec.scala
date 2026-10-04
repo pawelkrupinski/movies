@@ -11,7 +11,6 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val workflow = RepoFile.read(".github/workflows/identity-model-convergence.yml")
   private lazy val leg      = RepoFile.read(".github/workflows/country-convergence-leg.yml")
   private lazy val main     = RepoFile.read(".github/workflows/main.yml")
-  private lazy val overlay  = RepoFile.read(".github/actions/convergence-overlay-publish/action.yml")
 
   "the convergence suite" should "be dispatched by Main's convergence kick, on the pipeline-path gate" in {
     val triggers = RepoFile.block(workflow, "on")
@@ -68,29 +67,24 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.jobs(workflow)("leg") should include regex """mode:\s+hermetic"""
   }
 
-  /** An overlay leg — a caller replaying a pair with gaps — fills them live and publishes them beside
-   *  the pair, never into it. */
-  it should "fill and publish an overlay leg's gaps as an overlay, never into the recorded pair" in {
-    overlay should include("identity-overlay-")
-    val commands = overlay.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
-    Seq("enrichment-${{ inputs.code }}.tar.", "hermetic-", "gh release delete", "delete-asset").foreach(commands should not include _)
-    // ONE overlay publisher per leg, under `always()` and after the sample: the sample runs in the
-    // full row's job, so a red sample — which ends that job before the suite — still publishes what
-    // it fetched, as the separate sample job's own publish did.
-    val publishes = leg.linesIterator.sliding(2).collect {
-      case Seq(uses, cond) if uses.contains("uses: ./.github/actions/convergence-overlay-publish") => cond.trim }.toSeq
-    publishes shouldBe Seq("if: always() && matrix.phase == 'convergence' && inputs.mode == 'overlay'")
-    val convergence = RepoFile.block(leg, "convergence")
-    RepoFile.positionOf(convergence, "- name: Run the ${{ inputs.country }} sample ahead of the suite") should be <
-      RepoFile.positionOf(convergence, "uses: ./.github/actions/convergence-overlay-publish")
+  /** The overlay mode — replay an old-pipeline pair, fill its gaps live, publish them beside it —
+   *  outlived its one caller once the pinned pairs became the identity model's own: a leg either
+   *  replays a pair or records one, and nothing publishes an overlay. */
+  it should "know no overlay mode: a leg replays a pinned pair or records one" in {
+    val setup = RepoFile.read(".github/actions/convergence-setup/action.yml")
+    Seq(leg, setup).foreach { yaml =>
+      yaml should not include "inputs.mode == 'overlay'"
+      yaml should not include "inputs.mode != 'overlay'"
+    }
+    leg should not include "convergence-overlay-publish"
+    RepoFile.exists(".github/actions/convergence-overlay-publish") shouldBe false
   }
 
   /** The US sample was 79 s in front of the lane's critical path, its convergence row (run
    *  37150307201). In a row of its own it runs beside the suite: the convergence row runs ungated, the
-   *  sample row speaks for the sample (its verdict, its red-sample ratchet), and its live fills — which
-   *  a slice of the corpus can ask and the whole cannot (run 37123700230's two Silent Night slugs) —
-   *  are merged into the convergence row's one overlay publish rather than published a second time. */
-  it should "run the US sample in a row of its own and publish its fills through the convergence row" in {
+   *  sample row speaks for the sample (its verdict, its red-sample ratchet), and what it records — in a
+   *  recording, which runs the same rows — is merged into the convergence row's one publish. */
+  it should "run the US sample in a row of its own, merged into the convergence row" in {
     RepoFile.matrixRows(workflow).filter(_.get("sampleRow").contains("true")).map(_("country")) shouldBe
       Seq("united-states")
     RepoFile.jobs(workflow)("leg") should include("sample-row:                    ${{ matrix.sampleRow == true }}")
@@ -99,25 +93,18 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.step(convergence, "Run the ${{ inputs.country }} sample ahead of the suite") should include(
       "if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)\n")
     Seq("Mark the tree before the sample records into it", "Pack the sample's recordings").foreach { name =>
-      withClue(s"$name, in an overlay leg's sample row too: ")(RepoFile.step(convergence, name) should not include "inputs.mode == 'record'")
+      withClue(s"$name, in every mode's sample row: ")(RepoFile.step(convergence, name) should not include "inputs.mode == 'record'")
     }
     val merge = RepoFile.step(convergence, "Merge the sample row's recordings")
     merge should include("if: always() && inputs.sample-row && matrix.phase == 'convergence'\n")
     withClue("the identity lane renders the sample row as `<country> / sample`: ") {
       merge should include("format('{0} / sample', inputs.country)")
     }
-    merge should include("""[ "$MODE" = overlay ] && fresh=("$RUNNER_TEMP/overlay-stamp")""")
     convergence.indexOf("- name: Merge the sample row's recordings") should be <
-      convergence.indexOf("uses: ./.github/actions/convergence-overlay-publish")
+      convergence.indexOf("uses: ./.github/actions/convergence-publish")
     withClue("a red sample row ratchets its findings: ") {
       convergence should include("if: always() && (matrix.phase == 'convergence' || matrix.phase == 'sample') && steps.sample.outcome == 'failure'")
     }
-  }
-
-  it should "never mark a corpus green from an overlay leg" in {
-    val conditions = leg.linesIterator.sliding(2).collect { case Seq(uses, cond) if uses.contains("uses: ./.github/actions/convergence-publish") => cond }.toSeq
-    conditions should not be empty
-    conditions.foreach(cond => cond should (include("inputs.mode == 'record'") or include("inputs.mode != 'overlay'")))
   }
 
   /** One lane: finish the run in flight, keep one newer run pending, and let each newer dispatch replace
@@ -128,8 +115,7 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     concurrency should include("cancel-in-progress: false")
   }
 
-  /** A red hermetic leg on main asks the bisect which commit did it; an overlay leg replays live fills,
-   *  so it leaves no request — the bisect needs a replay that does not move. */
+  /** A red hermetic leg on main asks the bisect which commit did it — a replay that does not move. */
   it should "request a bisect for a red hermetic leg, and file an issue for a failed scheduled run" in {
     RepoFile.jobs(workflow).keySet shouldBe Set("preflight", "leg", "request-bisect", "report")
     val requests = leg.linesIterator.sliding(2).collect { case Seq(uses, cond) if uses.contains("convergence-bisect-request") => cond }.toSeq

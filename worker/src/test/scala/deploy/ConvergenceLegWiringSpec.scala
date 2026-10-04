@@ -219,7 +219,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /** The separate `sample` job cost every hermetic and overlay leg a second checkout and
+  /** The separate `sample` job cost every hermetic leg a second checkout and
    *  convergence-setup (~1 minute) ahead of the full leg, and one more runner per country
    *  per push. */
   it should "hold no sample job, and no `needs:` edge for a row to wait on" in {
@@ -369,7 +369,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
 
   it should "let the sample write the release it now publishes to" in {
     // `contents: read` was right while the sample only consumed the tree. It publishes
-    // now (a recording's tree, an overlay leg's overlay), and a permission short of
+    // now (a recording's tree), and a permission short of
     // `write` fails that step and nothing else — the suite still passes, and the loop
     // above quietly stays open.
     RepoFile.block(RepoFile.block(leg, "convergence"), "permissions") should include("contents: write")
@@ -498,7 +498,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  the whole run. */
   it should "leave the publish to the row that is not racing another for it" in {
     RepoFile.block(leg, "convergence") should
-      include(s"$PublishAction\n              if: always() && matrix.phase == 'convergence' && inputs.mode != 'overlay'")
+      include(s"$PublishAction\n              if: always() && matrix.phase == 'convergence'\n")
   }
 
   /**
@@ -595,7 +595,6 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val unpack = RepoFile.step(setup, "Unpack whichever fixtures are present")
     unpack should include("scripts/ci/in-background.sh wait tree-restore")
     unpack should include("""stage="$RUNNER_TEMP/tree-stage/test/resources/fixtures"""")
-    withClue("moved in before the overlay is laid over it: ")(at("Unpack whichever fixtures") should be < at("Unpack the identity model's overlay"))
   }
 
   /** The prod-Mongo tunnel's `socat` is not on the runner image, and installing it inside the
