@@ -112,4 +112,11 @@ class RetiredVenueCensusSpec extends AnyFlatSpec with Matchers {
     empty.sample()
     emptyRows.labelValues("pl", "movie_slots").get() shouldBe 5.0
   }
+
+  // The rows it counts move only when the roster does (a deploy, so a boot reading) or the daily cleanup runs (which
+  // takes a reading as it finishes). An hourly reading read every row id of both side collections 22 more times a day
+  // to learn nothing new.
+  it should "read on its own once a day, leaving the rest to the boot and the cleanup's readings" in {
+    RetiredVenueCensus.DefaultSampleInterval shouldBe scala.concurrent.duration.Duration(1, "day")
+  }
 }

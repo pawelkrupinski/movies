@@ -95,17 +95,17 @@ object RetiredVenueCensus {
 
   private val Collections = Seq(ScreeningsRepository.Collection, SlotsRepository.Collection)
 
-  /** Hourly: the rows appear the moment a venue leaves the roster and should go with the next
-   *  cleanup, so this moves on the scale of deploys, not minutes. Two id-only reads per tick.
-   *  The cleanup tick (`StrandedSideRowsCleanup`) also takes a reading right after it sweeps,
-   *  so a removal shows at once instead of up to an hour later. */
-  val DefaultSampleInterval: FiniteDuration = 1.hour
+  /** Daily. The rows change only when the roster does — a deploy, whose boot takes the first reading —
+   *  or when the cleanup (`StrandedSideRowsCleanup`) sweeps them, and it takes a reading right after it
+   *  does. Between those nothing moves but the upcoming count's clock. Hourly, this read every row id of
+   *  both side collections 24 times a day to learn nothing new. */
+  val DefaultSampleInterval: FiniteDuration = 1.day
 
   /** The two shared gauges every country's census writes into, registered once. */
   def gauges(registry: PrometheusRegistry): (Gauge, Gauge) = {
     val rows = Gauge.builder()
       .name(RowsName)
-      .help("Side-collection rows (collection=screenings|movie_slots) filed under a venue this country's roster no longer lists, by country. Nothing serves them, and only the daily retired-venue sweep (RetiredVenueRows) deletes them: before it, Kino Etiuda OBK's rows stayed for days after it left the PL roster, invisible. Zero is healthy; above zero for over two days (the cleanup's 24h grace plus its daily tick) means a removed venue's rows outlived it. Hourly, id-only reads; a failed read keeps the last value. Alerted by RetiredVenueRowsLingering.")
+      .help("Side-collection rows (collection=screenings|movie_slots) filed under a venue this country's roster no longer lists, by country. Nothing serves them, and only the daily retired-venue sweep (RetiredVenueRows) deletes them: before it, Kino Etiuda OBK's rows stayed for days after it left the PL roster, invisible. Zero is healthy; above zero for over two days (the cleanup's 24h grace plus its daily tick) means a removed venue's rows outlived it. Read at boot, after each cleanup and daily, id-only; a failed read keeps the last value. Alerted by RetiredVenueRowsLingering.")
       .labelNames("country", "collection")
       .register(registry)
     val future = Gauge.builder()
