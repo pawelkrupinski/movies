@@ -13,7 +13,7 @@ import scala.util.matching.Regex
  * machine at once, sharing one `.git` (config, refs, stash — every worktree commits through it),
  * one `/tmp`, one home directory.
  *
- * Two rules, over every test file in every language the repository tests in — shell (`*-test.sh`,
+ * Four rules, over every test file in every language the repository tests in — shell (`*-test.sh`,
  * `*-spec.sh`), Python (`test_*.py`, `*_test.py`), Scala (`src/test`, `src/it`, `src/page`,
  * `src/fixtures`, testkit), TypeScript/JavaScript (`*.test.*`, `*.spec.*`, the dashboard's `test/`,
  * the Playwright suite), Swift and Kotlin tests — each offender named `file:line`:
@@ -139,7 +139,8 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
       "close-mongo-tunnel.sh kills listeners BY PORT and then proves the port dead: the spec's stages need the port free between them, which holding it would defeat",
   )
 
-  private val FixedTemp = """(?<![\w.$}-])/(?:var/)?tmp/[\w.-]""".r
+  // A `mktemp` template (`/tmp/kinowo.XXXXXX`) names a fresh path per run, not a fixed one.
+  private val FixedTemp = """(?<![\w.$}-])/(?:var/)?tmp/(?![\w.-]*XXX)[\w.-]""".r
   /** What writes a file in any of the languages: a redirect, a file-making command, a writing API.
    *  A fixed path that is only a STRING — an argument a parser is fed, a stub's recorded argument, an
    *  assertion on a workflow's text — shares nothing, so a line must write as well as name one. */
@@ -215,7 +216,8 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
     val caught = Seq("echo x > /tmp/foo", "mkdir -p /tmp/x", "Files.writeString(Paths.get(\"/tmp/a\"), s)",
       "writeFileSync(\"/tmp/a.json\", s)", "open('/tmp/out.txt', 'w')", "cp a /var/tmp/b")
     val passed = Seq("POOL_APK=\"/tmp/app-debug.apk\"", "arguments(Seq(\"--export\", \"/tmp/lk/\"))",
-      "echo x > \"$work/tmp/y\"", "Map(\"dir\" -> \"/tmp/x\")", "xs.map(x => \"/tmp/x\")", "echo y > \"$(mktemp)\"")
+      "echo x > \"$work/tmp/y\"", "Map(\"dir\" -> \"/tmp/x\")", "xs.map(x => \"/tmp/x\")", "echo y > \"$(mktemp)\"",
+      "d=$(mktemp -d /tmp/kinowo-spec.XXXXXX) && echo y > \"$d/f\"")
     caught.filter(FixedTempWrite.findFirstIn(_).isEmpty) shouldBe empty
     passed.filter(FixedTempWrite.findFirstIn(_).isDefined) shouldBe empty
   }
