@@ -172,6 +172,18 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna")), two, modelLean = Some(lean.copy(crossIds = Map("imdb" -> "tt0000001")))) shouldBe None
   }
 
+  "Venues billing the title widely" should "complete two takers' agreement, unless a listing's facts rule the film out" in {
+    // UK/US "Festive Fun with Peppa Cinema Experience" (fixture identity-unmatched): IMDb and RT take the 2026 event film,
+    // billed by over a hundred venues each; a one-venue "Zamki na piasku" has only its two takers
+    val peppa  = SourceRecord(IdentityMeasures.Film("Festive Fun with Peppa Cinema Experience", None, Nil, Some(2026), Some(60), Some(Nil), None, None),
+      Map("imdb" -> "tt46666063"))
+    val takers = Seq(VoterFamily.Imdb, VoterFamily.RottenTomatoes).map(f => FamilyVerdict.took(FamilyPick(f, "1", peppa)))
+    val venues = Seq(models.KinoMuza, models.KinoApollo, models.Rialto).map(listing(_, "Festive Fun with Peppa Cinema Experience"))
+    Agreement.agreed(venues, takers).map(_.corroborated) shouldBe Some(Set(Agreement.Venues))
+    Agreement.agreed(venues.take(2), takers) shouldBe None
+    Agreement.agreed(venues :+ listing(models.KinoBulgarska, "Festive Fun with Peppa Cinema Experience", year = Some(2019)), takers) shouldBe None
+  }
+
   "A listing naming a stage work" should "agree on none of its screen namesakes" in {
     val relay = listing(KinoMuza, "ReTransmisje Met: Na żywo w HD - Così fan tutte")
     Agreement.stagesAWork(relay) shouldBe true

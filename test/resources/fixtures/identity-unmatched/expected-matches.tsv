@@ -1,5 +1,5 @@
 country	venue	rawTitle	film	title
-pl	GOK Promyk	Norymberga	tmdb:1214931	filmweb, imdb, wiki agree on 'Nuremberg' (2025) tt29567915
+pl	GOK Promyk	Norymberga	tmdb:1214931	filmweb, imdb, wiki, corroborated by venues agree on 'Nuremberg' (2025) tt29567915
 pl	Kasyno Oficerskie	Pianista - Kino Konesera	tmdb:423	imdb, filmweb, wiki leaning to it agree on 'The Pianist' (2002) tt0253474
 pl	Kino Goplana	Sukienka	tmdb:737496	Sukienka (2020)
 pl	Kino Grajfka	Klondike	tmdb:913760	Klondike (2022)
@@ -10,18 +10,192 @@ pl	Kino Sokół	SKRZYŻOWANIE - 50 na 51 - spotkanie z Janem Englertem	tmdb:1207
 pl	Kino Sokół Nisko	Lalka	tmdb:1321666	Lalka (2026)
 pl	Kino Spektrum	Akademia Polskiego Filmu: Znachor (1937) | Gatunki międzywojnia II: melodramat	tmdb:293920	imdb, filmweb, wiki leaning to it agree on 'Znachor' (1937) tt0031008
 pl	Kino Starówka	WAJDA: re-wizje: BEZ ZNIECZULENIA | 15+	tmdb:42199	Bez znieczulenia (1978)
-pl	Kino za Rogiem Brusy	Norymberga	tmdb:1214931	filmweb, imdb, wiki agree on 'Nuremberg' (2025) tt29567915
+pl	Kino za Rogiem Brusy	Norymberga	tmdb:1214931	filmweb, imdb, wiki, corroborated by venues agree on 'Nuremberg' (2025) tt29567915
 pl	Kino za Rogiem Cafe	Dobry chłopiec	tmdb:1381027	filmweb, wiki, imdb leaning to it agree on 'Dobry chłopiec' (2025) tt34381258
 pl	Kino za Rogiem Cafe	Dobry chłopiec	tmdb:1381027	filmweb, wiki, imdb leaning to it agree on 'Dobry chłopiec' (2025) tt34381258
-pl	Kino za Rogiem w Siedlcu	Norymberga	tmdb:1214931	filmweb, imdb, wiki agree on 'Nuremberg' (2025) tt29567915
+pl	Kino za Rogiem w Siedlcu	Norymberga	tmdb:1214931	filmweb, imdb, wiki, corroborated by venues agree on 'Nuremberg' (2025) tt29567915
 pl	Kino Światowid Elbląg	AKW: Blisko	tmdb:901563	Blisko (2022)
 pl	Kino Światowid Elbląg	AKW: Powoli	tmdb:1058642	Powoli (2023)
 pl	Kino Żak	Filmowa Bryza czyli Pomorze w Kadrze: Ostatni dzień lata	tmdb:227245	Ostatni dzień lata (1958)
 pl	Kinoteka	Ghost in the shell	tmdb:9323	Ghost in the Shell (1995)
 pl	Kozienicki Dom Kultury	Dyrygent	tmdb:95269	Dyrygent (1980)
+pl	Multikino Bydgoszcz	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
+pl	Multikino Gdańsk	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
+pl	Multikino Katowice	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
+pl	Multikino Kielce	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
+pl	Multikino Kraków	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
+pl	Multikino Lublin	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
+pl	Multikino Młociny	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
+pl	Multikino Olsztyn	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
+pl	Multikino Pasaż Grunwaldzki	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
+pl	Multikino Rzeszów	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
+pl	Multikino Stary Browar	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
+pl	Multikino Szczecin	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
+pl	Multikino Tychy	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
+pl	Multikino Zabrze	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
+pl	Multikino Złote Tarasy	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
+pl	Multikino Łódź	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
 pl	Patria	Dyrygent	tmdb:95269	Dyrygent (1980)
 uk	Depot Lewes	EXHIBITION ON SCREEN: Caravaggio	tmdb:1496903	rt, wiki, imdb leaning to it agree on 'Caravaggio' (2025) tt38351366
 uk	Lumiere Romford	Once Upon A Time in America	tmdb:311	Once Upon a Time in America (1984)
+uk	Odeon Birmingham New Street	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cabot Circus	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Andover	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Bath	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Belfast	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Bournemouth BH2	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Braehead	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Bridgend	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Brighton	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Cardiff	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Chatham	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Chelmsford	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Colchester	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Crewe	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Epsom	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Exeter	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Greenwich	Agbara Nla: The Return	imdb:tt47091674	imdb, wiki, corroborated by venues agree on 'Agbara Nla: The Return' (2026) tt47091674
+uk	Odeon Cinema Greenwich	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Guildford	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Harrogate	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Hastings	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Hatfield	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Huddersfield	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Kilmarnock	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Kingston	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Lincoln	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Llanelli	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Maidstone	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Manchester Great Northern	Agbara Nla: The Return	imdb:tt47091674	imdb, wiki, corroborated by venues agree on 'Agbara Nla: The Return' (2026) tt47091674
+uk	Odeon Cinema Manchester Trafford Centre	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Mansfield	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Metrocentre	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Milton Keynes	Agbara Nla: The Return	imdb:tt47091674	imdb, wiki, corroborated by venues agree on 'Agbara Nla: The Return' (2026) tt47091674
+uk	Odeon Cinema Milton Keynes	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Newark	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Northwich Barons Quay	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Oldham	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Orpington	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Port Solent	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Rochdale	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Salisbury	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Silverlink	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Southend-on-Sea	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Stoke-on-Trent	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Streatham	Agbara Nla: The Return	imdb:tt47091674	imdb, wiki, corroborated by venues agree on 'Agbara Nla: The Return' (2026) tt47091674
+uk	Odeon Cinema Streatham	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Swadlincote	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Tamworth	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Taunton	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Tunbridge Wells	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Wimbledon	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Cinema Wrexham	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Liverpool ONE	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Liverpool Switch Island	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Luxe Birmingham Broadway Plaza	Agbara Nla: The Return	imdb:tt47091674	imdb, wiki, corroborated by venues agree on 'Agbara Nla: The Return' (2026) tt47091674
+uk	Odeon Luxe Birmingham Broadway Plaza	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Luxe Derby	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Luxe East Kilbride	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Luxe Edinburgh (Edinburgh West)	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Luxe Glasgow	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Luxe Hull	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Luxe Lee Valley	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Luxe Leeds (Thorpe Park)	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Luxe Maidenhead	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Luxe Nuneaton	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Luxe Peterborough	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Luxe Sheffield	Agbara Nla: The Return	imdb:tt47091674	imdb, wiki, corroborated by venues agree on 'Agbara Nla: The Return' (2026) tt47091674
+uk	Odeon Luxe Telford	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Middlesbrough	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Odeon Northampton	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Showroom Sheffield	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Storyhouse Chester	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Accrington	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Altrincham	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Barrow	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Basildon	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Basingstoke	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Bedford	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Bicester	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Birkenhead	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Birmingham	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Blackburn	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Bolton	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Bristol Cribbs Causeway	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Bristol Longwell Green	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Bromley	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Bury	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Camberley	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Carlisle	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Carmarthen	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Castleford	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Cheshire Oaks	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Cleveleys	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Colchester	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Cramlington	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Cwmbran	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Dagenham	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Darlington	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Doncaster	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Eastleigh	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Eltham	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Exeter	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Farnborough	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Finchley Road	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Fulham	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Gateshead	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Glasgow Fort	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Glasgow St. Enoch	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Halifax	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Hamilton	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Harrow	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Hartlepool	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Hull	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Inverness	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Islington	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Lancaster	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Leamington Spa	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Leeds (Kirkstall Road)	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Leeds (The Light)	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Leicester	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Manchester Printworks	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Manchester Quayside	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Merthyr Tydfil	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Newbury	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Newcastle-under-Lyme	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas North Finchley	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Northampton	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Norwich	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Nottingham	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Oxford	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Piccadilly	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Plymouth	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Poole	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Portsmouth	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Preston	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Purley Way Croydon	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Reading	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Redditch	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Romford	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Scunthorpe	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Sheffield	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Southport	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Staines	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Stirling	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Stratford	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Stroud	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Swansea	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Swindon	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Thanet Westwood Cross	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Torbay (Paignton)	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Watford	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas West End (Leicester Square)	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Westfield Shepherd's Bush	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Wood Green	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas Worcester	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Cinemas York	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Edinburgh Ocean Terminal	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Vue Edinburgh Omni Centre	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 de	Acud Kino	Die Unbeugsamen	tmdb:317055	Непокорённые (1945)
 de	Cine K Oldenburg	Fantasy	tmdb:1318829	Fantasy (2026)
 de	Cinema Quadrat e.V.	Ghost School	tmdb:1516456	filmweb, imdb, rt, wiki, corroborated by listing agree on 'Ghost School' (2025) tt37547768
@@ -37,4 +211,175 @@ us	Alamo Drafthouse Indianapolis	Student Bodies	tmdb:21515	Student Bodies (1981)
 us	Alamo Drafthouse Indianapolis	THE BRIDE OF FRANKENSTEIN	tmdb:229	imdb, metacritic, rt, wiki agree on 'Bride of Frankenstein' (1935) tt0026138
 us	Alamo Drafthouse Raleigh	Spider Baby	tmdb:28504	Spider Baby (1967)
 us	Alamo Drafthouse Wrigleyville	Lady Frankenstein	tmdb:3122	Lady Frankenstein (1971)
+us	Century Corpus Christi 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Allen 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Alliance Town Center	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Antelope Valley Mall	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Atlantic North	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Bistro Raleigh	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Bridge Street	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Buckland Hills 18	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Carefree Circle	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Cedar Hills 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Cedar Park 12	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Centreville 12	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century Arden	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century Bel Mar 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century Blue Oaks	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century Daly City 20	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century Downtown Pleasant Hill 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century Greenback Lane 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century Huntington Beach 20	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century Jordan Creek 20	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century Napa Valley 12	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century Northridge Mall 14	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century Orange	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century Rio Plex 24	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century River Park	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century San Mateo 12	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century Sandy Union Heights 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century Santa Fe Station 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century Walnut Creek 14	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century at Pacific Commons	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century at Tanforan	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Century at the River	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Christiana	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Colonel Glenn	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Colony Square Mall	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Connecticut Post 14	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Dallas 17	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Davenport 18	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Dayton South 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Denton 14	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Durbin Park	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Eastport Portland 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Egyptian 24	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Fayette Mall	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Florence 14	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Franklin Park 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Harlingen 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Hazlet 12	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Huber Heights 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Katy 19	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Lancaster	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Legacy Plano	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Lincoln Square Cinemas	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Louis Joliet Mall	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Majestic Cinemas Meridian	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Mall Del Norte	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Mansfield 12	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Memorial City	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Milford 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Moosic 20	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Myrtle Beach 14	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark North Hills Pittsburgh	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark North McKinney 14	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Northeast Mall 18	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Ontario Towne Center	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Palace 20	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Paradise 24	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Polaris 18	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Preston Crossings 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Roanoke	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Rockwall 12	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark San Jose Oakridge 20	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Seven Bridges Woodridge	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Somerdale 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Southpark Meadows	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Stoneridge Plaza Movies 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Strongsville 14	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark The Greene Beavercreek	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark The Woodlands	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Tinseltown El Paso	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Tinseltown Fayetteville	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Tinseltown Grapevine	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Tinseltown Jacksonville	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Tinseltown Louisville	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Tinseltown Lubbock	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Tinseltown Mission	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Tinseltown North Canton	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Tinseltown Pearl	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Tinseltown Pflugerville	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Tinseltown Rochester	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Tinseltown Shreveport	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Towson	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Tracy 14	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Tulsa 17	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Valley View	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Waco	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Webster 18	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark West Plano 20	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark West Springfield 15	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Western Hills 14	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Cinemark Willowbrook Mall	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Galaxy Theatres Gig Harbour	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Galaxy Theatres Green Valley	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Galaxy Theatres Riverbank	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Harkins Gateway Pavilions 18	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Arnot Mall Horseheads	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Avalon Alpharetta	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Barkley Village Bellingham	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Battery Park	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Bellingham	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Benders Landing	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Brandywine Town Center	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Bridgeport Village Tigard	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal City North	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Clarksville	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Clifton Park	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Colonie Center Albany	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Commonwealth	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Crocker Park	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Deerfield Towne Center Mason	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Downingtown Cinema	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Eastview Victor	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Edgmont Square	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Edwards Alhambra Renaissance	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Flintridge La Canada	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Fresno Riverpark	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Galleria Mall Poughkeepsie	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Greenway Grand Palace Houston	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Greenwood	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Gulf Coast Fort Myer	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Hacienda Crossings Dublin	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Hollywood Greenville	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Hollywood Naples	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Independence Mall Kingston	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Independence Plaza Hamilton	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Irvine Spectrum	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Issaquah Highland	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal King Of Prussia	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Laurel Town Center	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Lynbrook	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Majestic Silver Spring	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Mall Of Georgia	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Mayfaire Wilmington	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal New Roc City	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Northwoods San Antonio	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Opry Mills Nashville	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Oviedo Mall	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Palladium High Point	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Palmetto Grand Mt Pleasant	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Peoples Plaza	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Quaker Crossing	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Red Rock Stadium Las Vegas	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal River Ridge Lynchburg	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Short Pump	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Springfield Town Center	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Stonecrest at Piper Glen Charlotte	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Streets Of Indian Lake	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Tangram	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal UA Grant Plaza	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal UA Kaufman Astoria	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal UA Midway	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal UA Sheepshead Bay	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Valencia Stadium	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Virginia Gateway Gainesville	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Walden Galleria Stadium	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Warrington Crossing	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Washington Township	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Waugh Chapel	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Webster Place Chicago	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Regal Winter Park Village	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Robinson Robinson Township	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 es	Cinebaix	La leyenda del innombrable	imdb:tt1549862	filmweb, imdb, wiki, corroborated by listing agree on 'La llegenda de l'innombrable' (2010) tt1549862

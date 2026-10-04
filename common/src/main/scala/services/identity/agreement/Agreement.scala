@@ -112,6 +112,9 @@ object Agreement {
   val Takers = 1
   /** The listing's own published year and director, crediting the film the takers took: a vote of the venue's own. */
   val ListingFacts = "listing"
+  /** At least [[WidelyBilled]] venues billing the cluster's title: a release, not a one-off event a namesake fits. */
+  val Venues = "venues"
+  val WidelyBilled = 3
   /** The TMDB film the model's own evidence leans to though no rule took it (`ResolverDecision.leaning`), linked by its
    *  IMDb id to the film the takers took. */
   val ModelLean = "tmdb"
@@ -150,8 +153,10 @@ object Agreement {
 
   /** The film the families' evidence, pooled, agrees on: ≥ [[Takers]] families take it (picks join, through any agreeing
    *  record, by a shared cross-id, else by [[equivalent]] facts), and with the families leaning to it and what
-   *  corroborates it ([[ListingFacts]], [[ModelLean]]) it holds ≥ [[Quorum]] — that plus one for each family taking
-   *  another film the listing's title names. No family weighed it and took none leaning to another; the listing's title
+   *  corroborates it ([[ListingFacts]], [[ModelLean]], [[Venues]]) it holds ≥ [[Quorum]] — that plus one for each family
+   *  taking another film the listing's title names. No listing's own year or director rules out a taker's record
+   *  (DE "Der kleine Maulwurf", the venues' 1968 Miler, not IMDb's and Wikidata's 2011 compilation); no family weighed
+   *  it and took none leaning to another; the listing's title
    *  names it ([[namesIt]]) — and, where leans or corroboration complete the quorum, is no other film's own
    *  ([[anothersOwnTitle]]); the listing bills one work ([[billsSeveral]]) and no stage work ([[stagesAWork]]). The
    *  experiment's one wrong without the title guard: "Akademia Polskiego Filmu: Kino żydowskie w Polsce" → "Znachor"
@@ -166,6 +171,7 @@ object Agreement {
     named.filter(_.size >= Takers).map(group => supported(listings, group, verdicts, modelLean)).sortBy(film => -film.support).headOption.flatMap { film =>
       val dissent = named.filterNot(_.exists(pick => film.agreed.families(pick.family))).map(_.size).sum
       Option.when(film.support >= Quorum + dissent && !film.turnedDown && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
+        !film.records.take(film.agreed.families.size).exists(contradictedByTheListing(listings, _)) &&
         listings.forall(listing => !billsSeveral(listing) && !stagesAWork(listing)))(film.agreed)
     }
   }
@@ -185,7 +191,8 @@ object Agreement {
     val merged  = lead.record.copy(crossIds = records.flatMap(_.crossIds).toMap ++ lead.record.crossIds)
     def isIt(record: SourceRecord) = records.exists(sameFilm(_, record))
     val leaning = verdicts.filter(verdict => verdict.pick.isEmpty && verdict.leaning.exists(isIt)).map(_.family).toSet
-    val corroborated = Set(ListingFacts).filter(_ => creditedByTheListing(listings, records)) ++ Set(ModelLean).filter(_ => modelLean.exists(isIt))
+    val corroborated = Set(ListingFacts).filter(_ => creditedByTheListing(listings, records)) ++ Set(ModelLean).filter(_ => modelLean.exists(isIt)) ++
+      Set(Venues).filter(_ => listings.map(_.venue).distinct.size >= WidelyBilled)
     // weighed and turned down for another film its evidence favours — weighed among films it favours none of is no
     // evidence against this one (US "Spider Baby": Metacritic's best a Spider-Man film at 5.3%, its next 3.0%)
     // — nor for one the listing's own year or director rules out (DE "Überleben", Danial Miller's in 2020 by the venue:
@@ -210,11 +217,13 @@ object Agreement {
     dated.nonEmpty && dated.forall(credits)
   }
 
-  /** Does a listing's own year (more than one apart) or director (another person, in the same script) rule the film out? */
+  /** Does a listing's own year (more than one apart) or director (another person in the same script, sharing no name's
+   *  stem — "Marc Donskoi" is "Mark Donskoy") rule the film out? */
   private def contradictedByTheListing(listings: Seq[Listing], record: SourceRecord): Boolean = listings.exists { listing =>
     record.film.year.zip(listing.year).exists { case (a, b) => math.abs(a - b) > 1 } ||
       record.film.directors.exists(directors => directors.nonEmpty && listing.directors.nonEmpty &&
-        IdentityMeasures.directorRelation(listing.directors, directors) == IdentityMeasures.Category("different"))
+        IdentityMeasures.directorRelation(listing.directors, directors) == IdentityMeasures.Category("different") &&
+        namePrefixes(listing.directors).intersect(namePrefixes(directors)).isEmpty)
   }
 
   /** Is the listing's title another film's ORIGINAL title — one a family weighed — while it is none of the agreed film's
