@@ -281,6 +281,29 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     queue.enqueue(TaskType.EnrichDetails, dk, EnrichDetailsTasks.payload(enricher, key, "http://ref")) shouldBe EnqueueResult.Duplicate
   }
 
+  // Kino Kolory's page lists "Biograficzny/Muzyczny" as one genre and Kino Scena Kultura's poster has raw
+  // spaces: a detail page's fields land by the listing's own rules (`SlotFields`), and a re-read of the
+  // page as it was changes nothing.
+  it should "land a detail page's genres and poster as the listing's land" in {
+    val cache    = seededCache("Mariinka")
+    val pages    = new InMemoryVenuePageStore
+    val fresh    = new InMemoryFreshnessStore
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(genres = Seq("Biograficzny/Muzyczny"),
+      posterUrl = Some("https://kino.pl/plakaty/Czas, który nie nadszedł.jpg"))))
+    val task     = taskFor("kino-apollo", cache, "Mariinka", enricher)
+    def handle() = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned),
+      noBus, dueWindow, clock = specClock, pages = pages).handle(task) shouldBe Done
+    def slot = cache.get(cache.keyOf("Mariinka", None)).flatMap(_.cinemaData.get(KinoApollo))
+
+    handle()
+    slot.map(_.genres) shouldBe Some(Seq("Biograficzny", "Muzyczny"))
+    slot.flatMap(_.posterUrl) shouldBe Some("https://kino.pl/plakaty/Czas,%20który%20nie%20nadszedł.jpg")
+    val landed = slot
+    fresh.markFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant().minus(2, ChronoUnit.DAYS))
+    handle()
+    withClue("a re-read of an unchanged page must not rewrite the slot: ")(slot shouldBe landed)
+  }
+
   // End to end: the venue reused its URL for a different film, which is what Kino
   // Pionier did to `pionier1907.pl/event/lalka` — Wojciech Has's 1968 picture,
   // then the 2026 one. `DetailReaper` re-reads that page every 6h, but the

@@ -1,7 +1,6 @@
 package services.movies
 
 import models.{CinemaMovie, SourceData}
-import services.cinemas.CountryNames
 import tools.{PersonName, TextNormalization}
 
 /**
@@ -32,7 +31,9 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
     cm:            CinemaMovie,
     displayTitle:  String,
     priorSlot:     Option[SourceData]
-  ): SourceData =
+  ): SourceData = {
+    // The venue's page for the film: what a link it printed relative to its own site resolves against.
+    val filmPage = SlotFields.url(cm.filmUrl, None)
     SourceData(
       title          = stringPool.canonicalSome(displayTitle),
       // Verbatim upstream title, kept so the merge key is re-derivable when the
@@ -62,10 +63,10 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
                        else priorSlot.map(_.director).getOrElse(Seq.empty),
       runtimeMinutes = StringPool.small(cm.movie.runtimeMinutes.filter(FilmRuntime.plausible)).orElse(priorSlot.flatMap(_.runtimeMinutes)),
       releaseYear    = StringPool.small(cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))),
-      countries      = { val cs = stringPool.canonicalAll(cm.movie.countries.map(c => CountryNames.canonical(c, enrichmentLanguage)).distinct)
+      countries      = { val cs = stringPool.canonicalAll(SlotFields.countries(cm.movie.countries, enrichmentLanguage))
                          if (cs.nonEmpty) cs else priorSlot.map(_.countries).getOrElse(Seq.empty) },
-      genres         = if (cm.movie.genres.nonEmpty) stringPool.canonicalAll(cm.movie.genres)
-                       else priorSlot.map(_.genres).getOrElse(Seq.empty),
+      genres         = { val gs = stringPool.canonicalAll(SlotFields.genres(cm.movie.genres))
+                         if (gs.nonEmpty) gs else priorSlot.map(_.genres).getOrElse(Seq.empty) },
       // Interned like the fields above, and for the same reason: a film's poster,
       // film page and trailer are ONE url repeated across every cinema showing it.
       // Highest-yield strings in the corpus by some margin — the 2026-07-27 UK heap
@@ -74,9 +75,11 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
       // deliberately NOT interned: it is per-screening, only 1.6x repeated
       // (182,719 -> 116,571 distinct), so pooling it would evict this whole
       // low-cardinality vocabulary for almost no saving.
-      posterUrl      = stringPool.canonical(cm.posterUrl).orElse(priorSlot.flatMap(_.posterUrl)),
+      // Each through `SlotFields.url`, so no client serves a link a reader cannot follow.
+      posterUrl      = stringPool.canonical(SlotFields.url(cm.posterUrl, filmPage)).orElse(priorSlot.flatMap(_.posterUrl)),
+      // As published: it is also the venue's detail ref (`DetailEnricher.nativeRefOf`).
       filmUrl        = stringPool.canonical(cm.filmUrl),
-      trailerUrl     = stringPool.canonical(cm.trailerUrl).orElse(priorSlot.flatMap(_.trailerUrl)),
+      trailerUrl     = stringPool.canonical(SlotFields.url(cm.trailerUrl, filmPage)).orElse(priorSlot.flatMap(_.trailerUrl)),
       // Canonical order so a reorder-only re-scrape stores a byte-identical slot and
       // the write-through guard skips it. Past showings the fresh scrape drops are NOT
       // retained: under the index-only cache the resident `priorSlot` is stripped (Nil
@@ -85,11 +88,14 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
       // one deferred write it would save. Dropping a just-passed showtime is
       // display-neutral (the web filters past showtimes at render). See
       // MovieRecordMerge.sortShowtimes.
-      showtimes      = MovieRecordMerge.sortShowtimes(cm.showtimes),
+      // Booking links made followable and a screening the listing printed twice kept once
+      // (`SlotFields.showtimes`) before the sort.
+      showtimes      = MovieRecordMerge.sortShowtimes(SlotFields.showtimes(cm.showtimes, filmPage)),
       // Carry the certificate forward on a listing-only re-scrape, like the detail
       // fields above, so a tick that lacks it doesn't wipe a value the detail merge added.
       ageRating      = stringPool.canonical(cm.ageRating).orElse(priorSlot.flatMap(_.ageRating))
     )
+  }
 
   /** Cast/crew names as the display layer needs them, for the two casings a
    *  cinema source invents: SHOUTED credits are title-cased

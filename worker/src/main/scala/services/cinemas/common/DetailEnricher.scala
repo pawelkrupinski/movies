@@ -79,15 +79,6 @@ case class FilmDetail(
       ageRating      = opt(ageRating, before.ageRating))
   }
 
-  /** This detail with its countries named as the corpus names them for a deployment serving `language`
-   *  (`CountryNames.canonical`, as `CinemaSlotBuilder` names a listing's): a page writes "Niderlandy"
-   *  where every listing-built slot holds "Holandia", and a slot it filled showed the film under two
-   *  spellings across venues until the next canonicalised write flipped it. Applied before ANY merge —
-   *  fill or overrule — and to the read it is compared with, so a page that only re-spells a country
-   *  has said nothing new. */
-  def inLanguage(language: java.util.Locale): FilmDetail =
-    copy(countries = countries.map(c => services.cinemas.CountryNames.canonical(c, language)).distinct)
-
   /** `authoritative` flips each detail-owned field from "fill the gap" to "the
    *  page just told us, believe it" — never overwriting with nothing either way. */
   private def merged(slot: SourceData, screeningTokens: ScreeningTokens, authoritative: Boolean): SourceData = {

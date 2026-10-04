@@ -4,7 +4,7 @@ import services.events.EventBus
 import models.{CinemaShowing, Source, SourceData}
 import services.freshness.{FreshnessKind, FreshnessStore}
 import play.api.Logging
-import services.movies.{CacheKey, MovieCache}
+import services.movies.{CacheKey, MovieCache, SlotFields}
 import services.UptimeMonitor
 import services.cinemas.common.{DetailEnricher, DetailFetchOutcome, FilmDetail}
 import services.venuepages.VenuePage
@@ -106,6 +106,16 @@ class EnrichDetailsHandler(
   private val reader = new services.venuepages.VenuePageReader(pages, freshness, event => bus.publish(event), clock)
 
   private val normalizer: services.movies.TitleNormalizer = cache.normalizer
+
+  /** A detail page's fields as a cinema slot holds them — the rules the listing's own fields land
+   *  by (`SlotFields`), so a page's "Niderlandy", "Biograficzny/Muzyczny" or relative poster never
+   *  sits beside the listing's "Holandia". */
+  private def landed(detail: FilmDetail): FilmDetail =
+    detail.copy(
+      countries  = SlotFields.countries(detail.countries, enrichmentLanguage),
+      genres     = SlotFields.genres(detail.genres),
+      posterUrl  = SlotFields.url(detail.posterUrl, None),
+      trailerUrl = SlotFields.url(detail.trailerUrl, None))
   import HandlerOutcome._
 
   override val taskType: TaskType = TaskType.EnrichDetails
@@ -149,7 +159,7 @@ class EnrichDetailsHandler(
             freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
             Done
           case DetailFetchOutcome.Fetched(read) =>
-            val detail = read.inLanguage(enrichmentLanguage)
+            val detail = landed(read)
             val title  = task.payload.getOrElse(EnrichDetailsTasks.TitleKey, "")
             val year   = task.payload.get(EnrichDetailsTasks.YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)
             // The row the task was asked for, by its stored key; a task queued before the key rode
@@ -203,8 +213,10 @@ class EnrichDetailsHandler(
             // reader stamps the page read before this handler merges, so a marker read here
             // made every read — the first included — authoritative, and a re-read every
             // refresh window rewrote the listing's own countries and genres with the page's.
+            // Both reads as a slot may hold them (`landed`): compared raw, a page that spells a
+            // country or lists its genres the way it always has would differ from what it landed as.
             val changed = prior match {
-              case Some(VenuePage.Read(before)) => detail.changedSince(before.inLanguage(enrichmentLanguage))
+              case Some(VenuePage.Read(before)) => detail.changedSince(landed(before))
               case _                            => FilmDetail()
             }
             // Merge into the target slot(s), creating one if absent: a chain's network
