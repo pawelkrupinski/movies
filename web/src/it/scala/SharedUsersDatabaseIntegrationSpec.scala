@@ -94,7 +94,7 @@ class SharedUsersDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with 
     usersOn(Country.UnitedKingdom, shared).upsert(bob)
 
     val germany = usersOn(Country.Germany, shared)
-    germany.findByEmail(bob.email.value).value.id            shouldBe bob.id
+    germany.findById(bob.id).value.id                        shouldBe bob.id
     germany.findByProviderSub("google", bob.providerSub).value.id shouldBe bob.id
   }
 

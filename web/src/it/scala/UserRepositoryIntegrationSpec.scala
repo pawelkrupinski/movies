@@ -102,11 +102,14 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     users.findByProviderSub("facebook", u.providerSub) shouldBe empty
   }
 
-  it should "find by email case-insensitively (account-linking key)" in {
-    val u = sentinelUser("case-email").copy(email = Some("__integration-test-CaSe@Example.com"))
+  it should "refuse a second row for an account's id, so a sign-in race cannot split one account in two" in {
+    val u = sentinelUser("unique-id")
     users.upsert(u)
-    users.findByEmail("__integration-test-case@example.com").value.id shouldBe u.id
-    users.findByEmail("__INTEGRATION-TEST-CASE@EXAMPLE.COM").value.id shouldBe u.id
+    val raw = database.getCollection("users")
+    val second = org.mongodb.scala.Document("id" -> u.id, "provider" -> "facebook", "providerSub" -> "fb-race")
+    val refused = scala.util.Try(Await.result(raw.insertOne(second).toFuture(), 10.seconds))
+    withClue("a second document under one id: ")(refused.failed.toOption.exists { case e: com.mongodb.MongoWriteException => services.MongoErrors.isDuplicateKey(e); case _ => false } shouldBe true)
+    Await.result(raw.countDocuments(Filters.eq("id", u.id)).toFuture(), 10.seconds) shouldBe 1L
   }
 
   it should "treat upsert(same id, changed fields) as an update — newest write wins" in {
@@ -170,6 +173,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   // rather than merely "unlikely to lose the race" as an upsert-based test
   // would only prove probabilistically.
   it should "reject a second row for a userId that already has one" in {
+    states.enabled shouldBe true   // the store builds its index on first use: run alone, nothing else has
     val coll   = database.withCodecRegistry(UserCodecs.registry).getCollection[UserState]("userStates")
     val userId = "__integration-test-state-unique"
     Await.result(coll.insertOne(UserState(userId, Set("A"), Set.empty, Now)).toFuture(), 10.seconds)

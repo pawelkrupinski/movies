@@ -34,8 +34,6 @@ trait UserRepository {
 
   def findByProviderSub(provider: String, providerSub: String): Option[User]
 
-  def findByEmail(email: String): Option[User]
-
   def delete(id: String): Unit
 
   /** Write `user` as the whole row — except `sessionVersion`, which never
@@ -67,10 +65,18 @@ trait UserRepository {
 class MongoUserRepository(database: Option[MongoDatabase]) extends UserRepository with Logging {
 
   private lazy val coll: Option[MongoCollection[User]] = database.map { db =>
-    // Lookup speed only — the store serves without it — so a failed build is logged
-    // (`MongoIndex` warns) rather than failing the boot.
+    // UNIQUE, because `id` is the key every write addresses: `upsert` is a findOneAndUpdate
+    // with `upsert(true)` on it, and two concurrent first sign-ins of one email (the app and
+    // the site, a double callback) could each insert a row without a unique index — after
+    // which `findById` answers either and `delete` (the data-deletion path) leaves the other.
+    // `MongoIndex` converts the earlier plain index in place. Loud, not fatal: an index not
+    // in place (duplicate rows already there) is an ERROR, but the store keeps serving.
     services.MongoIndex.ensure(db, "users", org.mongodb.scala.model.Indexes.ascending("id"),
-      new org.mongodb.scala.model.IndexOptions(), "users")
+      new org.mongodb.scala.model.IndexOptions().unique(true), "users") match {
+      case services.MongoIndex.Outcome.NotInPlace(reason) =>
+        logger.error(s"users has NO unique id index ($reason). A sign-in race can write a second row for one account.")
+      case _ => ()
+    }
     db.withCodecRegistry(UserCodecs.registry).getCollection[User]("users")
   }
 
@@ -88,16 +94,6 @@ class MongoUserRepository(database: Option[MongoDatabase]) extends UserRepositor
        .headOption(),
       10.seconds
     )
-  }
-
-  def findByEmail(email: String): Option[User] = coll.flatMap { c =>
-    // Case-insensitive match: providers normalise differently
-    // (`Alice@Example.com` from one, `alice@example.com` from another)
-    // but they're the same person. Mongo regex with the i flag is the
-    // path-of-least-resistance — anchored to start + end so we don't
-    // match partial substrings.
-    val pattern = "^" + java.util.regex.Pattern.quote(email) + "$"
-    Await.result(c.find(Filters.regex("email", pattern, "i")).headOption(), 10.seconds)
   }
 
   def delete(id: String): Unit = coll.foreach { c =>
@@ -167,9 +163,6 @@ class InMemoryUserRepository extends UserRepository {
 
   def findByProviderSub(provider: String, providerSub: String): Option[User] =
     bySub.get((provider, providerSub)).flatMap(byId.get)
-
-  def findByEmail(email: String): Option[User] =
-    byId.values.find(_.email.exists(_.equalsIgnoreCase(email)))
 
   def upsert(user: User): User = synchronized {
     val kept = user.copy(sessionVersion = byId.get(user.id).map(_.sessionVersion).fold(user.sessionVersion)(_ max user.sessionVersion))

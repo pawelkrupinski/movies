@@ -1,7 +1,6 @@
 package services.users
 
 import models.User
-import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -69,27 +68,6 @@ class UserRepositorySpec extends AnyFlatSpec with Matchers with UserSessionVersi
     new InMemoryUserRepository().enabled shouldBe true
   }
 
-  "UserRepository.findByEmail" should "find the user by case-insensitive email" in {
-    val repository = new InMemoryUserRepository
-    repository.upsert(Alice)
-    repository.findByEmail("alice@example.com").value      shouldBe Alice
-    repository.findByEmail("ALICE@EXAMPLE.COM").value      shouldBe Alice    // case-insensitive
-    repository.findByEmail("Alice@Example.com").value      shouldBe Alice
-  }
-
-  it should "return None when no user has that email" in {
-    val repository = new InMemoryUserRepository
-    repository.upsert(Alice)
-    repository.findByEmail("bob@example.com") shouldBe empty
-  }
-
-  it should "return None for users whose email is None — anonymous users don't match arbitrary lookups" in {
-    val repository = new InMemoryUserRepository
-    repository.upsert(Alice.copy(id = "no-email", email = None))
-    repository.findByEmail("any@x") shouldBe empty
-    repository.findByEmail("")      shouldBe empty
-  }
-
   "UserRepository.delete" should "remove the user row + its provider/sub index entry" in {
     val repository = new InMemoryUserRepository
     repository.upsert(Alice)
@@ -98,7 +76,6 @@ class UserRepositorySpec extends AnyFlatSpec with Matchers with UserSessionVersi
     repository.delete("uuid-alice")
     repository.findById("uuid-alice")                          shouldBe empty
     repository.findByProviderSub("google", "g-12345")          shouldBe empty
-    repository.findByEmail("alice@example.com")                shouldBe empty
   }
 
   it should "no-op on a delete of a non-existent id" in {

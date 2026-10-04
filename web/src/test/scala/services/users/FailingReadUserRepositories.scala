@@ -10,7 +10,6 @@ class FailingReadUserRepository(failure: => Throwable = new RuntimeException("us
   extends InMemoryUserRepository with FailsOnPurpose {
   override def findById(id: String): Option[User]                                   = throw failure
   override def findByProviderSub(provider: String, providerSub: String): Option[User] = throw failure
-  override def findByEmail(email: String): Option[User]                              = throw failure
 }
 
 /** A [[UserStateRepository]] whose `find` THROWS while writes still land — see

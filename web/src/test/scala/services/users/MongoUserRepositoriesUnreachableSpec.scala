@@ -25,7 +25,6 @@ class MongoUserRepositoriesUnreachableSpec extends AnyFlatSpec with Matchers wit
   "MongoUserRepository" should "throw, not answer None, when a lookup cannot reach Mongo" in {
     an[Exception] should be thrownBy users.findById("alice@example.com")
     an[Exception] should be thrownBy users.findByProviderSub("facebook", "fb-1")
-    an[Exception] should be thrownBy users.findByEmail("alice@example.com")
   }
 
   // The `id` index used to be built inside a bare `Try`: a failure left no trace at all.

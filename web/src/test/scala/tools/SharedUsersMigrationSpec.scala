@@ -149,7 +149,6 @@ class SharedUsersMigrationSpec extends AnyFlatSpec with Matchers {
     def enabled                                             = true
     def findById(id: String): Option[User]                  = None
     def findByProviderSub(p: String, sub: String): Option[User] = None
-    def findByEmail(email: String): Option[User]            = None
     def delete(id: String): Unit                            = ()
     def upsert(user: User): User                            = user
     def revokeSessions(id: String): Option[User]            = None
