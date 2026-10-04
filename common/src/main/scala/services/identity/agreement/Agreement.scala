@@ -147,35 +147,47 @@ object Agreement {
       case _                 => None
     }
 
-  /** The film ≥ [[Quorum]] families agree on — ≥ [[Takers]] of them picking it, the rest leaning to it — when no family picks another (picks join, through any agreeing record, by a shared cross-id, else
-   *  by [[equivalent]] facts) nor weighed it and took none, leaning to another, the listing's title names it ([[namesIt]]) —
-   *  and, where a lean completes the quorum, is no other film's own ([[anothersOwnTitle]]) — the listing bills
-   *  one work ([[billsSeveral]]) and no stage work ([[stagesAWork]]). The experiment's one wrong without the title guard:
-   *  "Akademia Polskiego Filmu: Kino żydowskie w Polsce" → "Znachor" (1937), whose year and director fit a series'
-   *  episode; the replay's without the weighed one: "Okładka „Tempo”", a Finnish dance film, → "Tempo" (2003), which
-   *  IMDb's search found, weighed and turned down while Filmweb, RT and Wikidata took it. */
+  /** The film the families' evidence, pooled, agrees on: ≥ [[Takers]] families take it (picks join, through any agreeing
+   *  record, by a shared cross-id, else by [[equivalent]] facts), and with the families leaning to it and what
+   *  corroborates it ([[ListingFacts]], [[ModelLean]]) it holds ≥ [[Quorum]] — that plus one for each family taking
+   *  another film the listing's title names. No family weighed it and took none leaning to another; the listing's title
+   *  names it ([[namesIt]]) — and, where leans or corroboration complete the quorum, is no other film's own
+   *  ([[anothersOwnTitle]]); the listing bills one work ([[billsSeveral]]) and no stage work ([[stagesAWork]]). The
+   *  experiment's one wrong without the title guard: "Akademia Polskiego Filmu: Kino żydowskie w Polsce" → "Znachor"
+   *  (1937), whose year and director fit a series' episode; the replay's without the weighed one: "Okładka „Tempo”", a
+   *  Finnish dance film, → "Tempo" (2003), which IMDb's search found, weighed and turned down for "Old" while Filmweb,
+   *  RT and Wikidata took it. */
   def agreed(listings: Seq[Listing], verdicts: Seq[FamilyVerdict], modelLean: Option[SourceRecord] = None): Option[AgreedFilm] = {
     val picks = verdicts.flatMap(_.pick).sortBy(_.family.ordinal)
-    filmsOf(picks) match {
-      case Seq(group) if group.size >= Takers =>
-        val lead    = group.head
-        val records = group.map(_.record)
-        val merged  = lead.record.copy(crossIds = records.flatMap(_.crossIds).toMap ++ lead.record.crossIds)
-        def isIt(record: SourceRecord) = records.exists(sameFilm(_, record))
-        val leaning    = verdicts.filter(verdict => verdict.pick.isEmpty && verdict.leaning.exists(isIt)).map(_.family).toSet
-        // weighed and turned down for another film its evidence favours — weighed among films it favours none of is no
-        // evidence against this one (US "Spider Baby": Metacritic's best a Spider-Man film at 5.3%, its next 3.0%)
-        val turnedDown = verdicts.exists(verdict => verdict.pick.isEmpty && verdict.weighed.exists(isIt) && verdict.leaning.exists(!isIt(_)))
-        val corroborated = Set(ListingFacts).filter(_ => creditedByTheListing(listings, records)) ++ Set(ModelLean).filter(_ => modelLean.exists(isIt))
-        // a lean or corroboration completes a quorum only where the listing's title is no other film's own: three takers
-        // outweigh that (PL "Ghost in the shell", the 2017 film's own title, is the 1995 one by five families)
-        val completed = group.size < Quorum
-        Option.when(group.size + leaning.size + corroborated.size >= Quorum && listings.nonEmpty && !turnedDown &&
-          !(completed && anothersOwnTitle(listings, records, verdicts)) &&
-          listings.forall(listing => namesIt(listing, records.map(_.film)) && !billsSeveral(listing) && !stagesAWork(listing)))(
-          AgreedFilm(group.map(_.family).toSet, merged, group.map(pick => pick.family -> pick.id).toMap, leaning, corroborated))
-      case _ => None
+    // a family taking a film the listing's title does not name is no evidence on the listing's (US "A Night at the
+    // Opera": Wikidata's "The Old Maid", by the director the venue credits)
+    val named = filmsOf(picks).filter(group => listings.nonEmpty && listings.forall(listing => namesIt(listing, group.map(_.record.film))))
+    named.filter(_.size >= Takers).map(group => supported(listings, group, verdicts, modelLean)).sortBy(film => -film.support).headOption.flatMap { film =>
+      val dissent = named.filterNot(_.exists(pick => film.agreed.families(pick.family))).map(_.size).sum
+      Option.when(film.support >= Quorum + dissent && !film.turnedDown && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
+        listings.forall(listing => !billsSeveral(listing) && !stagesAWork(listing)))(film.agreed)
     }
+  }
+
+  /** A film ≥ [[Takers]] families took, as the evidence stands for it: the takers, the families leaning to it, what
+   *  corroborates it, and whether a family weighed it and turned it down. */
+  private final case class Supported(agreed: AgreedFilm, records: Seq[SourceRecord], turnedDown: Boolean) {
+    val support: Int = agreed.families.size + agreed.leaning.size + agreed.corroborated.size
+    /** Short of [[Quorum]] takers, completed by leans or corroboration. */
+    def completed: Boolean = agreed.families.size < Quorum
+  }
+
+  private def supported(listings: Seq[Listing], group: Seq[FamilyPick], verdicts: Seq[FamilyVerdict], modelLean: Option[SourceRecord]): Supported = {
+    val lead    = group.head
+    val records = group.map(_.record)
+    val merged  = lead.record.copy(crossIds = records.flatMap(_.crossIds).toMap ++ lead.record.crossIds)
+    def isIt(record: SourceRecord) = records.exists(sameFilm(_, record))
+    val leaning = verdicts.filter(verdict => verdict.pick.isEmpty && verdict.leaning.exists(isIt)).map(_.family).toSet
+    val corroborated = Set(ListingFacts).filter(_ => creditedByTheListing(listings, records)) ++ Set(ModelLean).filter(_ => modelLean.exists(isIt))
+    // weighed and turned down for another film its evidence favours — weighed among films it favours none of is no
+    // evidence against this one (US "Spider Baby": Metacritic's best a Spider-Man film at 5.3%, its next 3.0%)
+    val turnedDown = verdicts.exists(verdict => verdict.pick.isEmpty && verdict.weighed.exists(isIt) && verdict.leaning.exists(!isIt(_)))
+    Supported(AgreedFilm(group.map(_.family).toSet, merged, group.map(pick => pick.family -> pick.id).toMap, leaning, corroborated), records, turnedDown)
   }
 
   /** Do the listings credit the film themselves: every listing publishing a year and a director credits one of the

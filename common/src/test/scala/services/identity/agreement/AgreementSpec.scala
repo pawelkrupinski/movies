@@ -64,6 +64,22 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     agreed.map(_.families) shouldBe Some(Set(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb))
   }
 
+  "A family taking another film" should "be outweighed only by a margin of the quorum, or not count when the title does not name its film" in {
+    // DE "Command Performance" (fixture identity-unmatched): Wikidata and Filmweb take Lundgren's 2009 film, IMDb and RT
+    // lean to it, Metacritic takes Roeg's "Performance"; US "A Night at the Opera"-style: a pick the title does not name
+    val command = SourceRecord(film("Command Performance", 2009, "Dolph Lundgren", 89), Map("imdb" -> "tt1210801"))
+    val roeg    = SourceRecord(film("Performance", 1970, "Nicolas Roeg", 105))
+    val bare    = Seq(listing(KinoMuza, "Command Performance"))
+    val took    = (family: VoterFamily, record: SourceRecord) => FamilyVerdict.took(FamilyPick(family, "1", record))
+    val leaned  = (family: VoterFamily) => FamilyVerdict(family, None, Seq(command), leaning = Some(command))
+    val five    = Seq(took(VoterFamily.Wiki, command), took(VoterFamily.Filmweb, command), leaned(VoterFamily.Imdb), leaned(VoterFamily.RottenTomatoes))
+    Agreement.agreed(bare, five :+ took(VoterFamily.Metacritic, roeg)) should not be empty
+    Agreement.agreed(bare, five.dropRight(1) :+ took(VoterFamily.Metacritic, roeg)) shouldBe None
+    val oldMaid = SourceRecord(film("The Old Maid", 1939, "Edmund Goulding", 95))
+    Agreement.agreed(bare, Seq(took(VoterFamily.Wiki, command), took(VoterFamily.Filmweb, command), took(VoterFamily.Imdb, command),
+      took(VoterFamily.Metacritic, oldMaid))) should not be empty
+  }
+
   "A family that weighed the film the others agree on and took none, leaning to another" should "turn the agreement down" in {
     val tempo   = film("Tempo", 2003, "Eric Styles")
     val old     = SourceRecord(film("Old", 2021, "M. Night Shyamalan"), Map("imdb" -> "tt10954652"))
