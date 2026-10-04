@@ -42,8 +42,9 @@ class NoSleepInTestsSpec extends AnyFlatSpec with Matchers {
     "TODO(sleep-backlog): the Mongo repository stamps with the system clock (no Clock seam on that path), so rows " +
       "need real milliseconds between them; give the Mongo path a Clock and step it instead"
   private val Browser =
-    "drives a real Chrome over CDP: a render, animation or socket drop happens in another process on its own " +
-      "timeline — TODO(sleep-backlog) where a DOM condition could be polled instead"
+    "TODO(sleep-backlog): asserts that something does NOT happen in a real Chrome (no PUT past the debounce, no " +
+      "reload after a session check or past midnight) by waiting a window out; the page exposes no settled signal " +
+      "for those paths to wait on instead"
 
   private val SelfTest = "its self-test feeds the matcher these shapes as string literals"
 
@@ -77,10 +78,13 @@ class NoSleepInTestsSpec extends AnyFlatSpec with Matchers {
       "holds a real Mongo transaction open for a set time from another thread — the outage being simulated",
     "worker/src/it/scala/MovieRepositoryIntegrationSpec.scala"               -> RealMongo,
     "worker/src/it/scala/MovieRepositoryUpdatedSinceIntegrationSpec.scala"   -> RealMongo,
-    "web/src/page/scala/tools/CdpDriver.scala"                               -> Browser,
-    "web/src/page/scala/tools/CdpSocketLossSpec.scala"                       -> Browser,
-    "web/src/page/scala/tools/CdpWaitForSpec.scala"                          -> Browser,
-    "web/src/page/scala/views/HiddenFilmsSyncModelSpec.scala"                -> Browser,
+    "web/src/page/scala/tools/CdpDriver.scala" ->
+      "THE browser polling primitive (waitFor / pollUntil) and Chrome's port-file wait: sleeps between probes, never instead of one",
+    "web/src/page/scala/tools/CdpWaitForSpec.scala" ->
+      "SIGSTOPs Chrome's renderer for a set time — the freeze being simulated; the assertion is waitFor's verdict",
+    "web/src/page/scala/views/HiddenFilmsSyncModelSpec.scala" -> (
+      "a fake server that answers one DELETE late, widening the sync race on purpose, and a quiesce that needs the page " +
+        "idle across consecutive polls (quiet is a span, not an instant); every assertion waits on that quiet"),
     "web/src/page/scala/views/PageJsBehaviourSpec.scala"                     -> Browser)
 
   /** Files whose own `extends Clock` is allowed, and why. */
