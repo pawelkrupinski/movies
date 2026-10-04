@@ -9,7 +9,7 @@ object Eventually {
    *  rather than a generic timeout. Always tries at least once, and the last sleep is
    *  cut short so there is always one try AT the deadline. */
   def eventually(check: => org.scalatest.Assertion,
-                 timeoutMs: Long = 2000,
+                 timeoutMs: Long = SpecTimeouts.Settle.toMillis,
                  pollMs: Long = 20): org.scalatest.Assertion = {
     val deadline = System.nanoTime() / 1000000 + timeoutMs
     while (true) {
@@ -32,7 +32,7 @@ object Eventually {
    *  own `withClue`/assertion instead of taking `eventually`'s generic failure. Was
    *  reimplemented inline, slightly differently, in three separate `it/` specs before
    *  this became the one copy. */
-  def poll(timeoutMs: Long, pollMs: Long = 100)(probe: => Boolean): Boolean = {
+  def poll(timeoutMs: Long = SpecTimeouts.Settle.toMillis, pollMs: Long = 100)(probe: => Boolean): Boolean = {
     val deadline = System.nanoTime() / 1000000 + timeoutMs
     var ok = probe
     while (!ok && System.nanoTime() / 1000000 < deadline) { Thread.sleep(pollMs); ok = probe }
@@ -52,8 +52,9 @@ object Eventually {
    *  it — or the loop stops owing itself an event and spins to the deadline.
    *
    *  `fired` is by-name and re-checked every pass; pass something that waits about a
-   *  second (`latch.await(1, TimeUnit.SECONDS)`, `poll(1000)(…)`), so the loop paces itself. */
-  def awaitStreamLive(what: String, fired: => Boolean, timeoutMs: Long = 60000)(change: Int => Unit): org.scalatest.Assertion = {
+   *  [[SpecTimeouts.Pace]] (`latch.await(SpecTimeouts.Pace.toMillis, MILLISECONDS)`, `poll(SpecTimeouts.Pace.toMillis)(…)`),
+   *  so the loop paces itself. */
+  def awaitStreamLive(what: String, fired: => Boolean, timeoutMs: Long = SpecTimeouts.Settle.toMillis)(change: Int => Unit): org.scalatest.Assertion = {
     val deadline = System.nanoTime() / 1000000 + timeoutMs
     var passes   = 0
     var live     = false

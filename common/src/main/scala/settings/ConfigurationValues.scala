@@ -166,6 +166,8 @@ final case class HardClusterDump(value: Boolean) extends AnyVal
 final case class IdentityCorpusDirectory(value: Path) extends AnyVal
 /** `KINOWO_IDENTITY_GATE=strict` — the identity query-coverage gate fails on any gap. */
 final case class IdentityGateStrict(value: Boolean) extends AnyVal
+/** How many times longer than its default every test wait bound runs (`tools.SpecTimeouts`). */
+final case class SpecTimeScale(value: Int) extends AnyVal
 /** `KINOWO_IDENTITY_FULL` — the full recorded corpora the identity gate measures. */
 final case class IdentityFullCorpora(value: Set[models.Country]) extends AnyVal
 final case class IdentityShadowOutput(value: Path) extends AnyVal

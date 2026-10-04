@@ -252,6 +252,10 @@ final class ProcessConfiguration(val env: Env) {
   /** `KINOWO_ALLOW_REMOTE_IT` (`1` or `true`). */
   def remoteIntegrationAllowed: RemoteIntegrationAllowed = RemoteIntegrationAllowed(env.flag("KINOWO_ALLOW_REMOTE_IT"))
 
+  /** `KINOWO_SPEC_TIME_SCALE` — a whole-number multiplier on every test wait bound (`tools.SpecTimeouts`),
+   *  for a runner slower than the defaults allow for; 1 when unset. */
+  def specTimeScale: SpecTimeScale = SpecTimeScale(count("KINOWO_SPEC_TIME_SCALE", 1))
+
   /** `KINOWO_RACE_SEED`, else `default`. */
   def raceSeed(default: RaceSeed): RaceSeed = text("KINOWO_RACE_SEED").flatMap(_.toLongOption).map(RaceSeed(_)).getOrElse(default)
 
