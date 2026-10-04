@@ -1416,6 +1416,58 @@
           }
         }
       ]
+    },
+    {
+      "id": 26,
+      "type": "timeseries",
+      "title": "Heap allocated per listing render \u2014 p50 / p95",
+      "description": "kinowo_web_page_render_allocated_bytes: heap one page render allocated on the thread producing its response bytes (page=listing is a city's whole repertoire render, listing_schedules the share spent building its schedules). A city listing is the web tier's biggest allocation: New York cost ~320 MB a render before 2026-10-02 and ~20 MB after. A step up here is a render regression the pod's whole-JVM allocation counters only show as more GC. Cache hits render nothing and are not recorded.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 102,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum by (le, country, page) (rate(kinowo_web_page_render_allocated_bytes_bucket{country=~\"$country\"}[$__rate_interval])))",
+          "legendFormat": "p50 {{country}} {{page}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, country, page) (rate(kinowo_web_page_render_allocated_bytes_bucket{country=~\"$country\"}[$__rate_interval])))",
+          "legendFormat": "p95 {{country}} {{page}}",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
     }
   ],
   "annotations": {

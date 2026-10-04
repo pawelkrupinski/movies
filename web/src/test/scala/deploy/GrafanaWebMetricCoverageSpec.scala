@@ -51,6 +51,7 @@ class GrafanaWebMetricCoverageSpec extends AnyFlatSpec with Matchers {
     new UserStateIndexMetrics(registry, "pl")
     new WebDecodeFailureMetrics(registry, "pl")
     new services.metrics.WebReadModelStreamMetrics(registry, "pl", _ => true)
+    new services.metrics.WebRenderMetrics(registry, "pl")
     registry
       .scrape()
       .asScala
@@ -64,16 +65,31 @@ class GrafanaWebMetricCoverageSpec extends AnyFlatSpec with Matchers {
   /** Every provisioned dashboard, found by walking the directory rather than by
    *  naming them — a dashboard added tomorrow counts as coverage without this
    *  spec being edited, which is the same argument as enumerating the registry. */
-  private lazy val allDashboardJson: String = {
-    def jsonUnder(dir: File): Seq[File] =
-      Option(dir.listFiles()).getOrElse(Array.empty[File]).toSeq.flatMap {
-        case d if d.isDirectory             => jsonUnder(d)
-        case f if f.getName.endsWith(".json") => Seq(f)
-        case _                              => Nil
+  private lazy val allDashboardJson: String =
+    filesUnder(RepoFile.locate("infra/nix/files/monitoring/grafana/dashboards"), ".json")
+      .map(RepoFile.read).mkString("\n")
+
+  /** Every file under `dir` whose name ends in `suffix`, sorted by path. */
+  private def filesUnder(dir: File, suffix: String): Seq[File] = {
+    def walk(d: File): Seq[File] =
+      Option(d.listFiles()).getOrElse(Array.empty[File]).toSeq.flatMap {
+        case sub if sub.isDirectory       => walk(sub)
+        case f if f.getName.endsWith(suffix) => Seq(f)
+        case _                            => Nil
       }
-    val root = RepoFile.locate("infra/nix/files/monitoring/grafana/dashboards")
-    jsonUnder(root).sortBy(_.getPath).map(RepoFile.read).mkString("\n")
+    walk(dir).sortBy(_.getPath)
   }
+
+  /** Every family the web's main sources name as a literal `.name("kinowo_…")` on a
+   *  metric builder — what the tier registers, read from the code rather than from the
+   *  constructor list above, so the two can be compared. */
+  private lazy val familiesNamedInSource: Seq[String] =
+    filesUnder(RepoFile.locate("web/src/main/scala"), ".scala")
+      .flatMap(f => BuilderName.findAllMatchIn(RepoFile.read(f)).map(_.group(1)))
+      .distinct
+      .sorted
+
+  private val BuilderName = raw"""\.name\("(kinowo_[a-z0-9_]+)"\)""".r
 
   "every web metric family the registry exports" should "be drawn on a dashboard" in {
     webFamilies should not be empty // a broken enumeration must not pass vacuously
@@ -97,5 +113,21 @@ class GrafanaWebMetricCoverageSpec extends AnyFlatSpec with Matchers {
     webFamilies should contain ("kinowo_web_host_memory_available_bytes")
     // The client appends `_total`; the registry reports the BASE name.
     webFamilies should contain ("kinowo_web_http_requests")
+  }
+
+  /** The constructor list above is hand-written, and a metric class left off it is not
+   *  caught by the coverage check — it is invisible to it. `kinowo_web_page_render_allocated_bytes`
+   *  (`WebRenderMetrics`, 2026-10-02) shipped exactly that way: registered in production,
+   *  drawn nowhere, and this spec green. So every family the source names must reach the
+   *  enumeration. */
+  it should "reach every family the web's sources register" in {
+    familiesNamedInSource should not be empty // a broken scan must not pass vacuously
+    val unreached = familiesNamedInSource.filterNot(webFamilies.contains)
+    withClue(
+      s"registered in web/src/main but not constructed by this spec: ${unreached.mkString(", ")}. " +
+        "Construct its class in `webFamilies` so the coverage check above can see it. "
+    ) {
+      unreached shouldBe empty
+    }
   }
 }
