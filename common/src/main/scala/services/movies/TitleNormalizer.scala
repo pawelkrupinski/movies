@@ -320,7 +320,16 @@ class TitleNormalizer(val rules: TitleRuleSet) {
    *  are no spellings (a TMDB-only row in the live merge) and the last resort if
    *  the ladder empties; callers pass the row's clean key / search title. */
   def chooseDisplay(perCinemaTitles: Seq[String], fallback: String,
-                    tmdbTitle: Option[String] = None): String = {
+                    tmdbTitle: Option[String] = None, shownYear: Option[Int] = None): String = {
+    // A card prints the row's year beside its title, so a trailing "(2023)" equal to that year
+    // says it twice. It comes off EVERY candidate before the vote, so no tie-break can bring it
+    // back ("The Ballad of Songbirds and Snakes (2023) (2023)"); a different year is the venue's
+    // own information and stays.
+    val withoutYear = (t: String) => TitleNormalizer.withoutTrailingYear(t, shownYear)
+    displayLadder(perCinemaTitles.map(withoutYear), withoutYear(fallback), tmdbTitle.map(withoutYear))
+  }
+
+  private def displayLadder(perCinemaTitles: Seq[String], fallback: String, tmdbTitle: Option[String]): String = {
     val votePool    = if (perCinemaTitles.nonEmpty) perCinemaTitles else Seq(fallback)
     val dominantKey = votePool.groupBy(sanitize).toSeq.sortBy { case (k, ts) => (-ts.size, k) }.head._1
     val chosen = tmdbTitle
@@ -349,6 +358,18 @@ class TitleNormalizer(val rules: TitleRuleSet) {
  * string functions no country's rule set can disagree about — is [[TitleText]].
  */
 object TitleNormalizer {
+
+  private val TrailingBracketYear = """\s*[(\[](\d{4})[)\]]\s*$""".r
+
+  /** `title` without a trailing bracketed year equal to `year` — never to nothing. */
+  private[movies] def withoutTrailingYear(title: String, year: Option[Int]): String =
+    year.fold(title) { y =>
+      TrailingBracketYear.findFirstMatchIn(title)
+        .filter(_.group(1).toInt == y)
+        .map(m => title.substring(0, m.start).trim)
+        .filter(_.nonEmpty)
+        .getOrElse(title)
+    }
 
   /** A NEW normalizer for `country`. A [[TitleRuleSet]] compiles ~180 regexes and
    *  builds its tier maps at construction, and every instance fills its own memo

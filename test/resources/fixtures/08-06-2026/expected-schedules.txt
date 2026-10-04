@@ -1306,8 +1306,8 @@ cinemaScrapes:
 showings:
   2026-06-08  Kino Apollo                   18:30
 
-=== Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) ===
-displayTitle:      Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977)
+=== Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble ===
+displayTitle:      Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble
 cinemaTitles:      CZŁOWIEK Z MARMURU | CZŁOWIEK Z MARMURU / MAN OF MARBLE | CZŁOWIEK Z MARMURU | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin | CZŁOWIEK Z MARMURU\ Wajda: re-wizje | Cykl „Wajda: re-wizje" - Człowiek z marmuru / Man of Marble (1977) | Człowiek z marmuru | Człowiek z marmuru (1977) | „WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin” | Człowiek z marmuru (Man of Marble) | Re- wizje iv. przegląd filmów andrzeja wajdy - człowiek z marmuru | WAJDA RE-WIZJE: CZŁOWIEK Z MARMURU | WAJDA: re- wizje: CZŁOWIEK Z MARMURU | WAJDA: re-wizje: "Człowiek z marmuru" | WAJDA: re-wizje: Człowiek z marmuru | WAJDA: re-wizje: Człowiek z marmuru: pokaz z prelekcją wideo Joanny Najbor | Wajda re-wizje: Człowiek z marmuru | Wajda re-wizje: człowiek z marmuru | Wajda: Re-wizje. Człowiek z marmuru | „Człowiek z marmuru”
 runtimeMinutes:    153
 releaseYear:       1977
@@ -4053,15 +4053,15 @@ displayTitle:      Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie
 cinemaTitles:      Freak Show | Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie | Kino bez barier: Freak Show (AD + CC)
 runtimeMinutes:    75
 releaseYear:       2026
-countries:         Polska, USA, Wielka Brytania, Szwecja
+countries:         Polska
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_freak2.jpg
 synopsis.length:   171
-cast:              Alex Lawther, Ian Nelson, AnnaSophia Robb, Celia Weston
+cast:              Nadia Markiewicz, Agata Wąsik, Daniel Kotowski
 director:          Łukasz Ronduda, Filip Pawlak
 tmdbId:            1451034
-imdbId:            tt5089534
+imdbId:            —
 originalTitle:     Freak Show
-imdbRating:        6.5
+imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
 filmwebRating:     6.8
@@ -4081,15 +4081,15 @@ displayTitle:      Kino bez barier: Freak Show (AD + CC)
 cinemaTitles:      Freak Show | Kino bez barier: Freak Show (AD + CC + PJM) + spotkanie | Kino bez barier: Freak Show (AD + CC)
 runtimeMinutes:    75
 releaseYear:       2026
-countries:         Polska, USA, Wielka Brytania, Szwecja
+countries:         Polska
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_freak2.jpg
 synopsis.length:   171
-cast:              Alex Lawther, Ian Nelson, AnnaSophia Robb, Celia Weston
+cast:              Nadia Markiewicz, Agata Wąsik, Daniel Kotowski
 director:          Łukasz Ronduda, Filip Pawlak
 tmdbId:            1451034
-imdbId:            tt5089534
+imdbId:            —
 originalTitle:     Freak Show
-imdbRating:        6.5
+imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
 filmwebRating:     6.8

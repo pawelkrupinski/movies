@@ -123,6 +123,25 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
     client.parseSuggestions(body, "Opętanie", Some(1973)) shouldBe Some("tt0070486")
   }
 
+  /** The UK hard clusters: an RBO Cinema Season 2026-27 relay, its banner stripped to the work's
+   *  name, asked IMDb for "Alice's Adventures in Wonderland" / "Tosca" with the row's year 2027 and
+   *  bound the CLOSEST year — the 1972 film and the 1941 one — so the classic's ratings rendered on
+   *  a ballet. And Cultplex's "It (1990)" bound It (2017). The closest year is evidence only when
+   *  it is close. Recorded from the hard-clusters UK responses (same URLs). */
+  it should "refuse a title match whose year is far from the row's" in {
+    client.parseSuggestions(loadFixture("/fixtures/imdb/suggestion_alices_adventures_in_wonderland.json"),
+      "Alice's Adventures in Wonderland", Some(2027)) shouldBe None
+    client.parseSuggestions(loadFixture("/fixtures/imdb/suggestion_tosca.json"), "Tosca", Some(2027)) shouldBe None
+    client.parseSuggestions(loadFixture("/fixtures/imdb/suggestion_it.json"), "It", Some(1990)) shouldBe None
+    // Nor may the foreign-title fallback bind IMDb's first MOVIE when IMDb's own top answer is
+    // something else: "It (1990)" answers the 1990 miniseries first, then "Strike It Rich" (1990).
+    client.parseSuggestions(loadFixture("/fixtures/imdb/suggestion_it_1990.json"), "It (1990)", Some(1990)) shouldBe None
+    // A near year still binds: production vs release year.
+    client.parseSuggestions(loadFixture("/fixtures/imdb/suggestion_it.json"), "It", Some(2018)) shouldBe Some("tt1396484")
+    client.parseSuggestions(loadFixture("/fixtures/imdb/suggestion_alices_adventures_in_wonderland.json"),
+      "Alice's Adventures in Wonderland", Some(1972)) shouldBe Some("tt0068190")
+  }
+
   it should "filter out non-movie entries (video games, TV series) even when the title matches" in {
     val body =
       """{"d":[

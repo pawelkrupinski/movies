@@ -63,6 +63,23 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "never give a second film the imdbId another film already holds" in {
+    // Two read-model films sharing one imdbId show one film's ratings on the other.
+    val bus     = new InProcessEventBus()
+    val holder  = MovieRecord(tmdbId = Some(999), imdbId = Some("tt17490712"))
+    val seeking = MovieRecord(tmdbId = Some(1024),
+      data = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Mortal Kombat II"))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(
+      Seq(("Mortal Kombat", Some(1995), holder), ("Mortal Kombat 2", Some(2026), seeking)), normalizer = titleNormalizer),
+      normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json"))))
+    bus.subscribe(resolver.onImdbIdMissing)
+    bus.publish(ImdbIdMissing("Mortal Kombat 2", Some(2026), "Mortal Kombat II"))
+    resolver.drain()
+    cache.get(cache.keyOf("Mortal Kombat 2", Some(2026))).flatMap(_.imdbId) shouldBe None
+    cache.get(cache.keyOf("Mortal Kombat", Some(1995))).flatMap(_.imdbId) shouldBe Some("tt17490712")
+  }
+
   it should "replace the id of a row with no TMDB id when its facts now find another, and leave a TMDB-linked row's" in {
     // US "Volcanoes" took IMDb's first "Volcanoes" before its sibling's year merged in; searched again with the
     // year (`MergeRetrigger`), the answer it finds now is the row's. A TMDB-linked id is TMDB's, not a search's.
@@ -278,6 +295,18 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       override def post(url: String, body: String, contentType: String): String =
         throw new RuntimeException("ImdbIdResolver should not POST")
     })
+
+  "findIdFor" should "read a yearless row's year off its bracketed title, so a far-off namesake is refused" in {
+    // Cultplex lists "It (1990)" with no year field. Searched as "It" with no year, the one
+    // movie IMDb titles "It" — the 2017 film — bound, and two films shared tt1396484.
+    // Recorded from the hard-clusters UK responses.
+    val resolver = new ImdbIdResolver(
+      new CaffeineMovieCache(new InMemoryMovieRepository(Seq.empty, normalizer = titleNormalizer),
+        normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned),
+      imdbStub(Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_it.json"))))
+    resolver.findIdFor("It (1990)", None) shouldBe None
+    resolver.findIdFor("It (2017)", None) shouldBe Some("tt1396484")
+  }
 
   "the IMDb id cache" should "look up the same search once for two findIdFor calls" in {
     val calls = new java.util.concurrent.atomic.AtomicInteger(0)

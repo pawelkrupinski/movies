@@ -269,7 +269,9 @@ case class MovieRecord(
    *  dependence) by the shared `chooseDisplay` ladder: dominant clean form
    *  across the per-cinema reported titles → the `Tmdb` slot's Polish title
    *  (when it shares that identity and is well-formed) → the cinema
-   *  `preferredDisplay` ladder → `recase`.
+   *  `preferredDisplay` ladder → `recase`. A trailing bracketed year equal to
+   *  [[resolvedYear]] — the year the card prints beside the title — is dropped from
+   *  every spelling first.
    *
    *  Caller supplies cleanTitle (the post-decoration-strip anchor the cache keys
    *  the row by) because the record itself doesn't carry it; it's the fallback
@@ -288,7 +290,8 @@ case class MovieRecord(
     normalizer.chooseDisplay(
       perCinemaTitles = cinemaData.values.flatMap(_.title).toSeq ++ extraCinemaTitles,
       fallback        = cleanTitle,
-      tmdbTitle       = data.get(Tmdb).flatMap(_.title))
+      tmdbTitle       = data.get(Tmdb).flatMap(_.title),
+      shownYear       = resolvedYear)
 
   /** TMDB-resolved original (production-language) title. None when TMDB
    *  hasn't filled this row yet. */

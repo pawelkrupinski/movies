@@ -151,7 +151,11 @@ class ImdbIdResolver(
    * production holds.
    */
   private def lookupId(searchTitle: String, year: Option[Int], record: models.MovieRecord): Option[String] = {
-    val years = (record.cinemaData.values.flatMap(_.releaseYear).toSet ++ year).toSeq.sorted
+    // A row no source dated still has a year when its title brackets one ("It (1990)"): without
+    // it the search is yearless, and the lone IMDb film of the bare name binds (It, 2017).
+    val reported = record.cinemaData.values.flatMap(_.releaseYear).toSet ++ year
+    val years = (if (reported.nonEmpty) reported
+                 else services.movies.EmbeddedYear.ofAll(searchTitle +: record.evidence.titles.toSeq).toSet).toSeq.sorted
     val yearSeq = if (years.isEmpty) Seq(year) else years.map(Option(_))
     // Each rung is asked in turn and the first id wins; a rung whose source FAILED does not
     // stop the ones after it, but if none answers the failure is thrown, not booked as
@@ -224,6 +228,9 @@ class ImdbIdResolver(
       // The sorted year set is order-independent; the per-year EXACT match still refuses
       // a same-series sibling ("Kicia Kocia w przedszkolu" 2024) at no reported year.
       lookupId(searchTitle, year, record) match {
+        case Some(id) if heldByAnotherFilm(id, key, record) =>
+          logger.warn(s"IMDb-id: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → $id refused: another film " +
+            s"already holds it [search='$searchTitle']")
         case Some(id) =>
           logger.info(s"IMDb-id: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → resolved $id")
           // putIfPresent so a concurrent `cache.invalidate` between the lookup and
@@ -237,6 +244,13 @@ class ImdbIdResolver(
       }
     }
   }
+
+  /** Whether a row other than `key`'s — and not the same TMDB film — already carries `id`. Two
+   *  films sharing an imdbId show one's ratings on the other, so the second never takes it. */
+  private def heldByAnotherFilm(id: String, key: services.movies.CacheKey, record: models.MovieRecord): Boolean =
+    cache.entries.exists { case (other, row) =>
+      other != key && row.imdbId.contains(id) && !(record.tmdbId.isDefined && row.tmdbId == record.tmdbId)
+    }
 
   /** Wait for in-flight id write-backs, leaving the pool able to take more. Waits for
    *  the queue to drain, not a fixed window — the bounded cap was returning before

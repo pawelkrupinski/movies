@@ -264,21 +264,40 @@ class ImdbClient(http: HttpFetch) {
     // down. "Opętanie" answers Żuławski's "Possession" (1981) first — its Polish title —
     // and a 1973 TV film of that exact name at rank ~1M; binding the latter misnamed a
     // 4K revival of the former.
+    //
+    // The closest year is evidence only when it is CLOSE: a title match IMDb dates more than
+    // [[ImdbClient.YearTolerance]] from the row's year is another film of that name ("Tosca"
+    // 1941 for a 2027 opera relay, "It" 2017 for Cultplex's "It (1990)"). One IMDb has not
+    // dated yet still binds, as before.
     val exact =
-      if (year.isDefined) ranked.headOption.map(_.id)
+      if (year.isDefined) ranked.headOption.filter(s => ImdbClient.yearAgrees(s.year, year)).map(_.id)
       else if (titleMatches.sizeIs == 1 && movies.headOption.contains(titleMatches.head)) titleMatches.headOption.map(_.id)
       else None
     // Foreign-title fallback: when nothing matches the local title, accept
-    // IMDb's #1 movie suggestion only if its year corroborates the one TMDB
+    // IMDb's #1 suggestion only if it is a movie and its year corroborates the one TMDB
     // gave us. That pair of signals (query relevance + exact year) is enough
-    // to bind e.g. "Kumotry"→"Double Trouble" without wild-guessing.
+    // to bind e.g. "Kumotry"→"Double Trouble" without wild-guessing. IMDb's top TITLE
+    // (a `tt` id of any kind; a promo or a person listed ahead of it is no answer — "Twoje
+    // imię" leads with a festival link), not its first MOVIE: "It (1990)" answers the 1990
+    // miniseries first, and the first movie after it, "Strike It Rich" (1990), merely
+    // shares the year.
+    val topAnswer = (js \ "d").asOpt[JsArray].map(_.value.toSeq).getOrElse(Nil)
+      .flatMap(e => (e \ "id").asOpt[String]).find(_.startsWith("tt"))
     exact.orElse(year.flatMap(request => movies.headOption.collect {
-      case s if s.year.contains(request) => s.id
+      case s if s.year.contains(request) && topAnswer.contains(s.id) => s.id
     }))
   }
 }
 
 object ImdbClient {
+  /** How far IMDb's year may sit from the row's and still be the same film: a production
+   *  year a year or two before the release a venue or TMDB reports. */
+  val YearTolerance: Int = 2
+
+  /** Whether IMDb's `found` year can be the row's `wanted` one — true when either is unknown. */
+  private[services] def yearAgrees(found: Option[Int], wanted: Option[Int]): Boolean =
+    (for (f <- found; w <- wanted) yield math.abs(f - w) <= YearTolerance).getOrElse(true)
+
   private val Endpoint        = "https://caching.graphql.imdb.com/"
   val SuggestionBase          = "https://v3.sg.media-imdb.com/suggestion"
   /** Leading English article, for treating "The Bodyguard" and "Bodyguard" as the same

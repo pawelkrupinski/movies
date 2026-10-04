@@ -107,4 +107,31 @@ class MovieRecordDisplayTitleSpec extends AnyFlatSpec with Matchers {
     ))
     record.displayTitle("Robin hood. Koniec legendy", titleNormalizer) shouldBe "Robin hood. Koniec legendy"
   }
+
+  it should "never keep a bracketed year the card already shows beside the title" in {
+    // Vue lists "… and Snakes (2023)", Lonsdale "… & Snakes": a 1-vs-1 vote whose
+    // tie-break picked Vue's spelling, year and all — "… (2023) (2023)" on the card.
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Multikino  -> SourceData(title = Some("The Hunger Games: The Ballad of Songbirds and Snakes (2023)")),
+      KinoApollo -> SourceData(title = Some("The Hunger Games: The Ballad of Songbirds & Snakes")),
+      Tmdb       -> SourceData(title = Some("The Hunger Games: The Ballad of Songbirds & Snakes"), releaseYear = Some(2023))
+    ))
+    record.displayTitle("thehungergamestheballadofsongbirdssnakes", titleNormalizer) should not include "2023"
+  }
+
+  it should "keep a bracketed year that is NOT the year the card shows" in {
+    // Only the shown year is redundant; a different one is the venue's own information.
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> SourceData(title = Some("Nosferatu (1922)")),
+      Tmdb      -> SourceData(releaseYear = Some(2024))
+    ))
+    record.displayTitle("nosferatu", titleNormalizer) shouldBe "Nosferatu (1922)"
+  }
+
+  it should "drop the shown year from a lone spelling too" in {
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> SourceData(title = Some("It (1990)"), releaseYear = Some(1990))
+    ))
+    record.displayTitle("it", titleNormalizer) shouldBe "It"
+  }
 }
