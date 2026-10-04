@@ -28,7 +28,8 @@ import scala.jdk.CollectionConverters._
  *
  * Against a real split store, counting the documents Mongo returns per collection: the in-memory
  * repository has no side collections and no wire to count on. Each boot is measured both ways —
- * the old shape (no handover: each reader reads for itself) and the new — so the gain is a number.
+ * no handover (each reader reads for itself: the hydrate, the projector's slots-only check, and its
+ * learning read off the boot thread) and the handover — so the gain is a number.
  */
 class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
@@ -71,8 +72,8 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(new MongoScreeningsRepository(Some(db))),
       slots = Some(new MongoSlotsRepository(Some(db))), normalizer = titleNormalizer)
 
-  /** One worker boot's corpus readers, as `WorkerWiring` builds and starts them; how long it took. */
-  private def boot(db: MongoDatabase, handOver: Boolean): Long = {
+  /** One worker boot's corpus readers, as `WorkerWiring` builds and starts them, until `done`; how long it took. */
+  private def boot(db: MongoDatabase, handOver: Boolean, done: () => Boolean = () => true): Long = {
     val started    = System.nanoTime()
     val repository = repositoryOn(db)
     val readModel  = new MongoReadModelRepository(Some(db))
@@ -87,6 +88,7 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     census.start()
     org.scalatest.concurrent.Eventually.eventually(org.scalatest.concurrent.Eventually.timeout(SpecTimeouts.Settle)) {
       census.reading().subset(WorkerCorpusMetrics.Subset.Total) shouldBe Films
+      done() shouldBe true
     }
     val took = (System.nanoTime() - started) / 1000000
     census.stop(); projector.stop(); cache.stop(); repository.close()
@@ -108,7 +110,9 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
 
     boot(db, handOver = true)               // warm the JVM, so neither measured boot pays for it
     returned.reset()
-    val before = boot(db, handOver = false)
+    val (slots, screenings) = (Films * cinemas.size, Films * cinemas.size)
+    // Until the projector's learning read, off the boot thread, has read the screenings too.
+    val before = boot(db, handOver = false, done = () => returned.of("screenings") >= 2L * screenings)
     val readBefore = (returned.of("movies"), returned.of("movie_slots"), returned.of("screenings"))
     info(s"before: ${before}ms, returned ${returned.summary}")
 
@@ -117,8 +121,7 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     val readAfter = (returned.of("movies"), returned.of("movie_slots"), returned.of("screenings"))
     info(s"after: ${after}ms, returned ${returned.summary}")
 
-    val (slots, screenings) = (Films * cinemas.size, Films * cinemas.size)
-    readBefore shouldBe ((2L * Films, 2L * slots, 1L * screenings))   // hydrate, slots-only check; the census reads nothing
+    readBefore shouldBe ((3L * Films, 3L * slots, 2L * screenings))   // hydrate, slots-only check, learning; the census reads nothing
     readAfter  shouldBe ((1L * Films, 1L * slots, 1L * screenings))   // the hydrate alone
   }
 }
