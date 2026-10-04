@@ -53,8 +53,11 @@ class ProfileEndpointSpec extends AnyFlatSpec with Matchers {
   "JfrFlightRecorder" should "write its recording when it ends, and refuse a second while it runs" in {
     val dir      = HeapDumpDirectory(Files.createTempDirectory("profile"))
     val recorder = new JfrFlightRecorder(dir, clock = _root_.tools.SpecClock.Pinned)
-    val file     = recorder.record(1.second).toOption.get
+    // Long enough that the second ask lands while it runs on any machine — a one-second recording had ended on a loaded
+    // laptop before the second ask — then ended by hand, which writes the file as its own end would.
+    val file     = recorder.record(10.minutes).toOption.get
     recorder.record(1.second) shouldBe Left("a recording is already running")
+    jdk.jfr.FlightRecorder.getFlightRecorder.getRecordings.forEach(r => if (r.getName == "kinowo-worker-profile") r.stop())
     tools.Eventually.poll(pollMs = 200)(Files.exists(java.nio.file.Path.of(file)) && Files.size(java.nio.file.Path.of(file)) > 0)
     Files.size(java.nio.file.Path.of(file)) should be > 0L
   }
