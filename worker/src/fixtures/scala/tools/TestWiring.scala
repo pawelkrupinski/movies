@@ -97,7 +97,7 @@ trait TestWiring extends WorkerWiring {
     detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache,
     freshnessStore, uptimeMonitor, detailCaptureBus,
     detailDueWindow, screeningTokens = screeningTokens, pages = venuePageStore
-  , clock = clock)
+  , clock = clock, enrichmentLanguage = country.language)
   // The fixture pipeline drives ONE `detailReaper.tick()` per pass and expects it
   // to enqueue the whole deferred-detail corpus (the prod per-tick cap would
   // truncate the snapshot). The cap is a prod burst-shedding lever, not a

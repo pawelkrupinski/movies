@@ -90,6 +90,9 @@ class EnrichDetailsHandler(
   // SAME instance the DetailReaper enqueues on — see the class doc / [[DueWindow]].
   dueWindow:        DueWindow,
   clock:            Clock,
+  // The language the country's corpus names countries in (`CountryNames.canonical`): a page's own
+  // spelling ("Niderlandy") lands as the one every listing-built slot holds ("Holandia").
+  enrichmentLanguage: java.util.Locale,
   // The country's badge vocabulary, for the detail-page `format` merged below.
   // Wired at the composition root beside the cache's own copy; defaulted like the
   // cache's, for the same reason — a wrong value mis-SPELLS a badge rather than
@@ -97,10 +100,7 @@ class EnrichDetailsHandler(
   screeningTokens:  services.movies.ScreeningTokens = services.movies.ScreeningTokens.forDefaultCountry(),
   // `venue_pages`, where every page read is written once (`VenuePageReader`): wired to the country's
   // collection at the composition root; in memory where a test does not look at it.
-  pages:            services.venuepages.VenuePageStore = new services.venuepages.InMemoryVenuePageStore,
-  // The language the country's corpus names countries in (`CountryNames.canonical`): a page's own
-  // spelling ("Niderlandy") lands as the one every listing-built slot holds ("Holandia").
-  enrichmentLanguage: java.util.Locale = services.cinemas.CountryNames.DefaultLanguage
+  pages:            services.venuepages.VenuePageStore = new services.venuepages.InMemoryVenuePageStore
 ) extends TaskHandler with Logging {
 
   private val reader = new services.venuepages.VenuePageReader(pages, freshness, event => bus.publish(event), clock)

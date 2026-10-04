@@ -171,7 +171,7 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book")))))))
     val bus = new RecordingEventBus
     new EnrichDetailsHandler(Map(Group -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), bus, new DueWindow(6.hours),
-      clock = clock, pages = world.pages).handle(Task("id", TaskType.EnrichDetails, EnrichDetailsTasks.dedupKey(Group, key),
+      clock = clock, enrichmentLanguage = models.Country.Poland.language, pages = world.pages).handle(Task("id", TaskType.EnrichDetails, EnrichDetailsTasks.dedupKey(Group, key),
       EnrichDetailsTasks.payload(enricher, key, Page), attempts = 1))
     bus.published should contain (VenueDetailRead(Group, Page))
     world.index.pageRead(Group, Page); world.index.settle()
@@ -179,7 +179,7 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
 
     val gone = new FakeDetailEnricher(KinoApollo, Group, failure = Some(new HttpStatusException(404, "GET", "http://gone", None)))
     new EnrichDetailsHandler(Map(Group -> gone), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), bus, new DueWindow(6.hours),
-      clock = clock, pages = world.pages).handle(Task("id2", TaskType.EnrichDetails, EnrichDetailsTasks.dedupKey(Group, key),
+      clock = clock, enrichmentLanguage = models.Country.Poland.language, pages = world.pages).handle(Task("id2", TaskType.EnrichDetails, EnrichDetailsTasks.dedupKey(Group, key),
       EnrichDetailsTasks.payload(gone, key, "http://gone"), attempts = 1))
     world.index.pageRead(Group, "http://gone"); world.index.settle()
     world.index.answer(gone, "http://gone") shouldBe Some(None)

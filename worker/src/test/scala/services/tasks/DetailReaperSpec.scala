@@ -337,7 +337,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
       failure = Some(new HttpStatusException(404, "GET", "http://ref", None)))
     val r = new DetailReaper(Seq(gone), cache, queue, fresh, dueWindow = window, clock = specClock)
     val h = new EnrichDetailsHandler(Map("kino-apollo" -> gone), cache, fresh,
-      new services.UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), new InProcessEventBus(), window, clock = _root_.tools.SpecClock.Pinned)
+      new services.UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), new InProcessEventBus(), window, clock = _root_.tools.SpecClock.Pinned, enrichmentLanguage = models.Country.Poland.language)
 
     r.tick() shouldBe 1
     // Run the task the way the worker does, so the queue is clear for the next tick
@@ -358,7 +358,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
       failure = Some(new HttpStatusException(404, "GET", "http://ref", None)))
     val r = new DetailReaper(Seq(gone), cache, queue, fresh, dueWindow = window, clock = specClock)
     val h = new EnrichDetailsHandler(Map("kino-apollo" -> gone), cache, fresh,
-      new services.UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), new InProcessEventBus(), window, clock = _root_.tools.SpecClock.Pinned)
+      new services.UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), new InProcessEventBus(), window, clock = _root_.tools.SpecClock.Pinned, enrichmentLanguage = models.Country.Poland.language)
 
     // Before the detail is even attempted the row is legitimately outstanding.
     r.reapStuckPending() shouldBe 0
