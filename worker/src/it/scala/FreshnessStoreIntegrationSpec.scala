@@ -25,7 +25,7 @@ class FreshnessStoreIntegrationSpec extends AnyFlatSpec with Matchers with tools
     IsolatedMongoDatabase.withDatabase(mongoTarget, "freshness-store") { db =>
       val coll = db.getCollection("freshness")
       val ids  = (0 until 5).map(i => s"__it-freshness-page-${i}__")
-      val at   = new Date()
+      val at   = Date.from(tools.SpecClock.Pinned.instant()) // the hydrate loads every stamp, whatever its age
       ids.foreach(id => Await.result(
         coll.insertOne(Document("_id" -> id, "kind" -> FreshnessKind.DetailEnrich.label, "lastFetchedAt" -> at)).toFuture(),
         10.seconds))

@@ -60,7 +60,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
     "worker/src/test/scala/tools/FileEnrichmentCacheStoreSpec.scala"    -> FileAges,
     "worker/src/test/scala/tools/EnrichmentFreshnessSpec.scala"         -> FileAges
   ) ++ Seq(
-    "FreshnessStoreIntegrationSpec", "MongoTaskQueueIntegrationSpec",
+    "MongoTaskQueueIntegrationSpec",
     "MovieRepositoryIntegrationSpec", "MovieRepositoryUpdatedSinceIntegrationSpec",
     "MoviesWriteSkippedWhenUnchangedIntegrationSpec", "ProdCoverageIntegrationSpec",
     "RepositoryWriteFailureIntegrationSpec", "RetiredVenueRowsIntegrationSpec", "ScanStitchedPagingSpec",
