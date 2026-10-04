@@ -160,7 +160,7 @@ final case class StepSummaryFile(value: Path) extends AnyVal
 final case class HardClusterRecording(value: Boolean) extends AnyVal
 /** `KINOWO_HARD_CLUSTERS_COUNTRIES` — the countries a hard-cluster run is narrowed to. */
 final case class HardClusterCountries(value: Set[models.Country]) extends AnyVal
-/** `KINOWO_HARD_CLUSTERS_DUMP` — print every hard-cluster pass's films. */
+/** `KINOWO_HARD_CLUSTERS_DUMP` (`1` or `true`) — print every hard-cluster pass's films. */
 final case class HardClusterDump(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_CORPUS_DIR` — recorded corpora the listing-key spec sweeps. */
 final case class IdentityCorpusDirectory(value: Path) extends AnyVal

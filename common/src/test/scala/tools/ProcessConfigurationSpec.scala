@@ -44,6 +44,16 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
     resolvedFrom("KINOWO_CONVERGENCE_FILL_ONLY" -> "no").gapFill shouldBe GapFill(false)
   }
 
+  // Every boolean harness switch reads through the one `Env.flag` rule (`1` or `true`), not a
+  // spelling of its own: they took "true" alone, one of them any value at all.
+  it should "read every boolean harness switch as one flag, `1` and `true` alike" in {
+    val on = resolvedFrom("KINOWO_CONVERGENCE_HERMETIC" -> "1", "KINOWO_CONVERGENCE_FILL_ONLY" -> "1", "KINOWO_IDENTITY_LOOKUPS" -> "1",
+      "KINOWO_IDENTITY_BOOT_ONLY" -> "1", "KINOWO_HARD_CLUSTERS_DUMP" -> "true")
+    (on.hermeticReplay, on.gapFill, on.identityLookupSweep, on.identityPipelineBootOnly, on.hardClusterDump) shouldBe
+      (HermeticReplay(true), GapFill(true), IdentityLookupSweepEnabled(true), IdentityPipelineBootOnly(true), HardClusterDump(true))
+    resolvedFrom("KINOWO_HARD_CLUSTERS_DUMP" -> "no").hardClusterDump shouldBe HardClusterDump(false)
+  }
+
   it should "resolve the commit and the port, with their defaults" in {
     resolvedFrom("COMMIT_SHA" -> "abc123").commit shouldBe CommitSha("abc123")
     resolvedFrom("PORT" -> "9123").healthPort(HealthPort(9000)) shouldBe HealthPort(9123)

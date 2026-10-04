@@ -258,14 +258,13 @@ final class ProcessConfiguration(val env: Env) {
   /** `KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES`, when a run points at a particular tree. */
   def enrichmentFixtureTree: Option[EnrichmentFixtureTree] = text("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES").map(EnrichmentFixtureTree(_))
 
-  /** `KINOWO_CONVERGENCE_HERMETIC` (`true`). */
-  def hermeticReplay: HermeticReplay = HermeticReplay(text("KINOWO_CONVERGENCE_HERMETIC").exists(_.equalsIgnoreCase("true")))
-  /** `KINOWO_CONVERGENCE_FILL_ONLY` (`true`). */
-  def gapFill: GapFill = GapFill(text("KINOWO_CONVERGENCE_FILL_ONLY").exists(_.equalsIgnoreCase("true")))
+  /** `KINOWO_CONVERGENCE_HERMETIC` (`1` or `true`). */
+  def hermeticReplay: HermeticReplay = HermeticReplay(env.flag("KINOWO_CONVERGENCE_HERMETIC"))
+  /** `KINOWO_CONVERGENCE_FILL_ONLY` (`1` or `true`). */
+  def gapFill: GapFill = GapFill(env.flag("KINOWO_CONVERGENCE_FILL_ONLY"))
 
-  /** `KINOWO_IDENTITY_LOOKUPS` (`true`). */
-  def identityLookupSweep: IdentityLookupSweepEnabled =
-    IdentityLookupSweepEnabled(text("KINOWO_IDENTITY_LOOKUPS").exists(_.equalsIgnoreCase("true")))
+  /** `KINOWO_IDENTITY_LOOKUPS` (`1` or `true`). */
+  def identityLookupSweep: IdentityLookupSweepEnabled = IdentityLookupSweepEnabled(env.flag("KINOWO_IDENTITY_LOOKUPS"))
 
   def corpusRunId: Option[CorpusRunId]                     = text("KINOWO_CONVERGENCE_CORPUS_RUN").map(CorpusRunId(_))
   def corpusRecordedAt: Option[CorpusRecordedAt]           = text("KINOWO_CONVERGENCE_CORPUS_RECORDED_AT").map(CorpusRecordedAt(_))
@@ -288,8 +287,8 @@ final class ProcessConfiguration(val env: Env) {
    *  naming no country are dropped. */
   def hardClusterCountries: Option[HardClusterCountries] =
     text("KINOWO_HARD_CLUSTERS_COUNTRIES").map(codes => HardClusterCountries(codes.split(",").iterator.map(_.trim).flatMap(Country.byCode).toSet))
-  /** `KINOWO_HARD_CLUSTERS_DUMP` (any value) — print every pass's films. */
-  def hardClusterDump: HardClusterDump = HardClusterDump(text("KINOWO_HARD_CLUSTERS_DUMP").isDefined)
+  /** `KINOWO_HARD_CLUSTERS_DUMP` (`1` or `true`) — print every pass's films. */
+  def hardClusterDump: HardClusterDump = HardClusterDump(env.flag("KINOWO_HARD_CLUSTERS_DUMP"))
 
   /** `KINOWO_IDENTITY_CORPUS_DIR` — recorded corpora the listing-key spec widens its sweep to. */
   def identityCorpusDirectory: Option[IdentityCorpusDirectory] =
@@ -319,10 +318,10 @@ final class ProcessConfiguration(val env: Env) {
    *  when a corpus's file is there, written after a boot when it is not. */
   def identityPipelineCache: Option[IdentityPipelineCache] =
     text("KINOWO_IDENTITY_PIPELINE_CACHE").map(dir => IdentityPipelineCache(Path.of(dir)))
-  /** `KINOWO_IDENTITY_BOOT_ONLY=true` — boot each corpus's pipeline into the cache and measure
+  /** `KINOWO_IDENTITY_BOOT_ONLY` (`1` or `true`) — boot each corpus's pipeline into the cache and measure
    *  nothing: the CI measure boots the BASE commit's projection this way before applying a variant. */
   def identityPipelineBootOnly: IdentityPipelineBootOnly =
-    IdentityPipelineBootOnly(text("KINOWO_IDENTITY_BOOT_ONLY").contains("true"))
+    IdentityPipelineBootOnly(env.flag("KINOWO_IDENTITY_BOOT_ONLY"))
   /** `KINOWO_IDENTITY_ROBUSTNESS=off` — skip the robustness measures that resolve a corpus again. */
   def identityShadowRobustness: IdentityShadowRobustness =
     IdentityShadowRobustness(!text("KINOWO_IDENTITY_ROBUSTNESS").contains("off"))
