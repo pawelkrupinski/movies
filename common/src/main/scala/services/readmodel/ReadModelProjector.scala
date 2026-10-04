@@ -765,25 +765,6 @@ class ReadModelProjector(
           s"a removal the change stream did not apply: ${ReadModelProjector.idsForLog(unlisted.map(_._id))}.")
       }
     }
-    // THE SELF-HEAL FOR A SILENT CHANGE STREAM (prune only). A terminal cursor error reopens
-    // itself; a cursor that is open and delivering nothing — a server-side stall, a stale
-    // resume position after a migration — reopens nothing, and this sweep healed a MISSING card
-    // or venue but never re-projected a CHANGED row, so the site served stale ratings and
-    // showtimes until someone restarted the worker. Every row written after the `movies`
-    // cursor's last delivered event is what that cursor has failed to deliver; re-project
-    // exactly those. Bounded to the rows that moved: `updatedAt` is indexed, and in steady
-    // state — a live cursor delivers a write within seconds — the read returns nothing.
-    // Whole rows (showtimes included) from a full stitch, so the projection is the one the
-    // stream would have made. Independent of `scanComplete`: it is its own bounded read, and a
-    // stale card is a stale card whether or not the prune could run.
-    // A catch-up that re-projected every row it read raises the floor to the instant its read
-    // started, so while the cursor STAYS dead each sweep reads only what was written since the
-    // last one — not the same rows again, which on a cursor subscribed after the corpus was
-    // written was the whole corpus every sweep. A row whose projection threw holds the floor
-    // where it was, so the next sweep reads it again. The alert on the cursor's age (the
-    // DELIVERY floor, which a catch-up never moves) is what ends the state. Only while a movies cursor is
-    // SUBSCRIBED: a repository that never opened one (a test wiring, a Mongo-less boot) has
-    // promised no deliveries, and the prune must stay the id-only sweep it is there.
     // THE ROLLING CONTENT CHECK: one slice of the corpus per sweep, read whole and
     // re-projected, so a row whose stored projection has drifted is corrected within a day
     // even though nothing about it changes again. Deterministic by row id, so the slices
@@ -798,16 +779,46 @@ class ReadModelProjector(
       if (derivationPass == DerivationPass.Unchecked) armDerivationPass(liveRowIds.toVector)
     }
     sweepCount += 1
+    if (!reproject) catchUpUndelivered(kind)
+    // Measurement (prune only): a `prune` sweep with didWork=true is the deletes/re-keys
+    // the change stream can't deliver. Surfaced as kinowo_worker_readmodel_reconcile_sweeps.
+    val didWork = reprojected > 0 || prunedFilms > 0 || prunedScreenings > 0
+    if (!reproject) metrics.recordReconcileSweep(ReconcileKind.Prune, didWork)
+    logger.info(s"read-model $kind sweep: reprojected $reprojected doc(s), pruned $prunedFilms film(s) + " +
+      s"$prunedScreenings orphan screening(s)${if (scanComplete) "" else " [scan INCOMPLETE — prune skipped]"}.")
+    (healed.toSeq, scanComplete && !projectionFailed && !pruneFailed)
+  }
 
-    var caughtUp = 0
+  /** Caller holds `lock`. THE SELF-HEAL FOR A SILENT CHANGE STREAM (prune sweeps only). A terminal
+   *  cursor error reopens itself; a cursor that is open and delivering nothing — a server-side stall,
+   *  a stale resume position after a migration — reopens nothing, and the sweep healed a MISSING card
+   *  or venue but never re-projected a CHANGED row, so the site served stale ratings and showtimes
+   *  until someone restarted the worker. Every row written after the `movies` cursor's last
+   *  delivered event is what that cursor has failed to deliver; re-project exactly those. Bounded to
+   *  the rows that moved: `updatedAt` is indexed, and in steady state — a live cursor delivers a
+   *  write within seconds — the read returns nothing. Whole rows (showtimes included) from a full
+   *  stitch, so the projection is the one the stream would have made. Independent of whether the
+   *  sweep's own scan completed: it is its own bounded read, and a stale card is a stale card
+   *  whether or not the prune could run.
+   *
+   *  A catch-up that re-projected every row it read raises the floor to the instant its read
+   *  started, so while the cursor STAYS dead each sweep reads only what was written since the last
+   *  one — not the same rows again, which on a cursor subscribed after the corpus was written was
+   *  the whole corpus every sweep. A row whose projection threw holds the floor where it was, so the
+   *  next sweep reads it again. The alert on the cursor's age (the DELIVERY floor, which a catch-up
+   *  never moves) is what ends the state. Only while a movies cursor is SUBSCRIBED: a repository
+   *  that never opened one (a test wiring, a Mongo-less boot) has promised no deliveries, and the
+   *  prune must stay the id-only sweep it is there. */
+  private def catchUpUndelivered(kind: String): Unit = {
     val liveness = movieRepository.changeStreamLiveness
-    if (!reproject && liveness.isWatching(ChangeStreamLiveness.Movies)) {
+    if (liveness.isWatching(ChangeStreamLiveness.Movies)) {
       val readFrom = liveness.now()
       val floor    = liveness.catchUpFloor(ChangeStreamLiveness.Movies)
       // Whether every event the cursors delivered before this read had been applied when it began.
       // Until then a row inside the overlap may be one a LIVE cursor delivered and whose apply is
       // still queued: projecting it is harmless, but it is no write the cursor missed.
       val backlogApplied = liveness.appliedThrough(liveness.lastTicket)
+      var caughtUp = 0
       var failed   = false
       val past     = scala.collection.mutable.Set.empty[String]
       def catchUp(row: StoredMovieRecord)(counted: Int => Boolean): Unit =
@@ -831,13 +842,6 @@ class ReadModelProjector(
         logger.warn(s"read-model $kind sweep: re-projected $caughtUp row(s) written since the movies change stream last " +
           s"delivered ($floor) — the cursor is open but not delivering them.")
     }
-    // Measurement (prune only): a `prune` sweep with didWork=true is the deletes/re-keys
-    // the change stream can't deliver. Surfaced as kinowo_worker_readmodel_reconcile_sweeps.
-    val didWork = reprojected > 0 || prunedFilms > 0 || prunedScreenings > 0
-    if (!reproject) metrics.recordReconcileSweep(ReconcileKind.Prune, didWork)
-    logger.info(s"read-model $kind sweep: reprojected $reprojected doc(s), pruned $prunedFilms film(s) + " +
-      s"$prunedScreenings orphan screening(s)${if (scanComplete) "" else " [scan INCOMPLETE — prune skipped]"}.")
-    (healed.toSeq, scanComplete && !projectionFailed && !pruneFailed)
   }
 
   /** Which of the rows a prune sweep healed were MISSES — the rest the change stream had in flight.
