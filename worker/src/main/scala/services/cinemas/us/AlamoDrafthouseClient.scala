@@ -4,7 +4,7 @@ import models.{Cinema, CinemaMovie}
 import services.cinemas.common.{CinemaScraper, ScrapeHorizon}
 import tools.{HttpFetch, HttpRead}
 
-import java.time.{LocalDate, ZoneId}
+import java.time.LocalDate
 
 /**
  * Alamo Drafthouse — 40 US venues, served off the chain's own public JSON API
@@ -57,10 +57,9 @@ class AlamoDrafthouseClient(
   http:      HttpFetch,
   venueSlug: String,
   override val cinema: Cinema,
-  // The venue's own zone, only ever used to resolve "today" for the far-date
-  // sanity bound. The US spans six zones, so the catalog hands each venue its
-  // own rather than letting a worker in Europe decide.
-  zone:      ZoneId   = AlamoDrafthouseClient.DefaultZone,
+  // The VENUE's calendar day, asked per scrape, for the far-date sanity bound. The US
+  // spans six zones, so the catalog asks it in the venue's own rather than letting a
+  // worker in Europe decide.
   today:     => LocalDate
 ) extends CinemaScraper {
 
@@ -116,8 +115,4 @@ object AlamoDrafthouseClient {
    *  other chain clients and the Flicks fallback use, so a venue's primary and
    *  its fallback cover one window and neither prunes the other's tail. */
   val MaxHorizonDays = ScrapeHorizon.MaxDays
-
-  /** Only ever the default for resolving "today" when a venue is built without
-   *  an explicit zone; every catalogued venue is handed its own. */
-  val DefaultZone: ZoneId = models.TimeZones.UsCentral
 }

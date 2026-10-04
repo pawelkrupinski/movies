@@ -1990,7 +1990,7 @@ class CinemaScraperCatalog(
   // on 2026-08-30), as do both Webedia hosts — so all three use `http`, not the
   // residential `flicksFetch` the Flicks leg needs.
   private def alamo(venue: UsChainVenues.AlamoVenue, cinema: Cinema): AlamoDrafthouseClient =
-    new AlamoDrafthouseClient(http, venue.slug, cinema, TimeZones.named(venue.zoneId), today = venueClock.today(TimeZones.named(venue.zoneId)))
+    new AlamoDrafthouseClient(http, venue.slug, cinema, today = venueClock.today(TimeZones.named(venue.zoneId)))
   private def webedia(baseUrl: String, venue: UsChainVenues.WebediaVenue, cinema: Cinema): GatsbyBoxOfficeClient =
     new GatsbyBoxOfficeClient(http, baseUrl, venue.theaterId, cinema,
       timeZone = venue.zoneId, venuePath = Some(venue.venuePath), today = venueClock.today(TimeZones.named(venue.zoneId)),

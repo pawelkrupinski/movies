@@ -9,7 +9,7 @@ import services.cinemas.common.ScrapeHorizon
 import services.cinemas.us.{AlamoDrafthouseClient, AlamoDrafthouseParser}
 import tools.HttpFetch
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 
 /**
  * Replays Alamo Drafthouse Lakeline (venue slug `lakeline`, Austin) through
@@ -26,8 +26,7 @@ class AlamoDrafthouseClientSpec extends AnyFlatSpec with Matchers with OptionVal
   private val Lakeline = UsRoster.byDisplayName("Alamo Drafthouse Lakeline")
 
   private def clientOn(fixtures: HttpFetch, venueSlug: String = "lakeline") =
-    new AlamoDrafthouseClient(fixtures, venueSlug, Lakeline,
-      ZoneId.of("America/Chicago"), today = Today)
+    new AlamoDrafthouseClient(fixtures, venueSlug, Lakeline, today = Today)
 
   private val films: Seq[CinemaMovie] = clientOn(new FakeHttpFetch("alamo-drafthouse")).fetch()
 
