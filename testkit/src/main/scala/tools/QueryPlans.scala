@@ -3,7 +3,7 @@ package tools
 import com.mongodb.event.{CommandListener, CommandStartedEvent}
 import com.mongodb.{ConnectionString, MongoClientSettings}
 import org.bson.{BsonArray, BsonDocument, BsonString, BsonValue}
-import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
+import org.mongodb.scala.{MongoClient, MongoDatabase, ObservableFuture, SingleObservableFuture}
 
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.concurrent.Await
@@ -30,8 +30,10 @@ object QueryPlans {
   private val Plumbing = Seq("$db", "lsid", "$clusterTime", "txnNumber", "$readPreference", "readConcern", "writeConcern",
     "ordered", "bypassDocumentValidation", "batchSize", "singleBatch", "maxTimeMS", "apiVersion", "apiStrict", "apiDeprecationErrors")
 
-  /** One planned statement: the collection, the statement as sent, and its winning plan. */
-  final case class Plan(collection: String, statement: BsonDocument, stages: Seq[String], docsExamined: Long, keysExamined: Long) {
+  /** One planned statement: the collection, the statement as sent, its winning plan's stages and the
+   *  indexes they read. */
+  final case class Plan(collection: String, statement: BsonDocument, stages: Seq[String], docsExamined: Long, keysExamined: Long,
+                        indexes: Seq[String] = Nil) {
     def collectionScan: Boolean = stages.contains("COLLSCAN")
     /** A blocking in-memory sort: the index served the filter but not the order. */
     def inMemorySort: Boolean   = stages.contains("SORT")
@@ -59,13 +61,30 @@ object QueryPlans {
     finally { Await.result(database.drop().toFuture(), 60.seconds); client.close() }
   }
 
-  /** The plan of every command `work` sends, against the database it wrote — read before that database
-   *  is dropped. */
-  def of(target: IntegrationMongoTarget, purpose: String)(work: MongoDatabase => Unit): Seq[Plan] =
+  /** What a workload sent, planned; and each index of the collections it wrote that none of its plans
+   *  read, as `collection.index` — a cost on every write that buys nothing. A unique index (a constraint,
+   *  read or not) and a TTL index (read by the server's expiry, not by a query) are never unused. */
+  final case class Recorded(plans: Seq[Plan], unusedIndexes: Seq[String])
+
+  /** The plan of every command `work` sends, and the indexes none reads — against the database it wrote,
+   *  read before that database is dropped. */
+  def of(target: IntegrationMongoTarget, purpose: String)(work: MongoDatabase => Unit): Recorded =
     recording(target, s"plans-$purpose") { (db, sent) =>
       work(db)
-      explain(db, sent())
+      val plans = explain(db, sent())
+      Recorded(plans, unusedIndexes(db, plans))
     }
+
+  private def unusedIndexes(database: MongoDatabase, plans: Seq[Plan]): Seq[String] = {
+    val read = plans.flatMap(p => p.indexes.map(index => s"${p.collection}.$index")).toSet
+    Await.result(database.listCollectionNames().toFuture(), 30.seconds).sorted.flatMap { collection =>
+      Await.result(database.getCollection[BsonDocument](collection).listIndexes[BsonDocument]().toFuture(), 30.seconds)
+        .filterNot(index => index.getString("name").getValue == "_id_" || index.containsKey("expireAfterSeconds") ||
+          Option(index.get("unique")).exists(_.asBoolean.getValue))
+        .map(index => s"$collection.${index.getString("name").getValue}")
+        .filterNot(read)
+    }
+  }
 
   /** Every statement of `commands` planned against `database` as it holds now: a write command carrying
    *  several statements is explained one statement at a time, the only way `explain` takes one. */
@@ -74,20 +93,23 @@ object QueryPlans {
       val explain   = new BsonDocument("explain", statement).append("verbosity", new BsonString("executionStats"))
       val explained = Await.result(database
         .runCommand[BsonDocument](explain).toFuture(), 30.seconds)
-      val stages = winningStages(explained)
-      Plan(statement.getString(statement.getFirstKey).getValue, statement, stages,
-        sum(explained, "totalDocsExamined"), sum(explained, "totalKeysExamined"))
+      Plan(statement.getString(statement.getFirstKey).getValue, statement, winning(explained, "stage"),
+        sum(explained, "totalDocsExamined"), sum(explained, "totalKeysExamined"), winning(explained, "indexName").distinct)
     }
 
-  /** What is wrong with `plans`: each one that scans or sorts in memory and is not `allowed` (a shape, and
-   *  why it may), then each allowance that no longer names such a plan — so a fixed scan cannot leave its
-   *  excuse behind. Empty when every statement is served by an index. */
-  def violations(plans: Seq[Plan], allowed: Map[String, String]): Seq[String] = {
-    val unindexed = plans.filter(p => p.collectionScan || p.inMemorySort)
-    val stale     = allowed.keySet.toSeq.sorted.filterNot(shape => unindexed.exists(_.shape == shape))
-    (if (plans.isEmpty) Seq("no command was planned") else Nil) ++
+  /** What is wrong with a recording: each plan that scans or sorts in memory and is not `allowed` (a shape,
+   *  and why it may), each index no plan read that is not `unread` (an index, and why it is kept), and each
+   *  allowance that no longer names anything — so a fixed scan or a dropped index cannot leave its excuse
+   *  behind. Empty when every statement is served by an index and every index serves a statement. */
+  def violations(recorded: Recorded, allowed: Map[String, String], unread: Map[String, String] = Map.empty): Seq[String] = {
+    val unindexed  = recorded.plans.filter(p => p.collectionScan || p.inMemorySort)
+    val staleScans = allowed.keySet.toSeq.sorted.filterNot(shape => unindexed.exists(_.shape == shape))
+    val staleUnread = unread.keySet.toSeq.sorted.filterNot(recorded.unusedIndexes.contains)
+    (if (recorded.plans.isEmpty) Seq("no command was planned") else Nil) ++
       unindexed.filterNot(p => allowed.contains(p.shape)).map(p => s"unindexed: $p").distinct ++
-      stale.map(shape => s"allowed, but no longer scans or sorts: $shape")
+      recorded.unusedIndexes.filterNot(unread.contains).map(index => s"no statement reads index $index") ++
+      staleScans.map(shape => s"allowed, but no longer scans or sorts: $shape") ++
+      staleUnread.map(index => s"kept unread, but read now or gone: $index")
   }
 
   private def isChangeStream(command: BsonDocument): Boolean =
@@ -108,14 +130,15 @@ object QueryPlans {
     }
   }
 
-  /** The stage names of the winning plan, outermost first — classic and slot-based explains alike. */
-  private def winningStages(explained: BsonDocument): Seq[String] = {
+  /** The `field` values of the winning plan (its stage names, its index names), outermost first — classic
+   *  and slot-based explains alike. */
+  private def winning(explained: BsonDocument, field: String): Seq[String] = {
     def walk(value: BsonValue, inWinning: Boolean): Seq[String] = value match {
       case d: BsonDocument =>
         d.entrySet.asScala.toSeq.flatMap { entry =>
           entry.getKey match {
             case "rejectedPlans" | "allPlansExecution" | "slotBasedPlan" => Nil
-            case "stage" if inWinning && entry.getValue.isString => Seq(entry.getValue.asString.getValue)
+            case `field` if inWinning && entry.getValue.isString => Seq(entry.getValue.asString.getValue)
             case "winningPlan" => walk(entry.getValue, inWinning = true)
             case _             => walk(entry.getValue, inWinning)
           }

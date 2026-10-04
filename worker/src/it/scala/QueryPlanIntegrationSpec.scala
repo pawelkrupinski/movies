@@ -27,11 +27,12 @@ import scala.concurrent.duration._
  */
 class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
-  private def plansOf(purpose: String)(work: MongoDatabase => Unit): Seq[QueryPlans.Plan] = QueryPlans.of(mongoTarget, purpose)(work)
+  private def plansOf(purpose: String)(work: MongoDatabase => Unit): QueryPlans.Recorded = QueryPlans.of(mongoTarget, purpose)(work)
 
-  private def assertIndexed(plans: Seq[QueryPlans.Plan], allowed: Map[String, String] = Map.empty): Unit =
-    withClue(s"every planned statement:\n${plans.map(_.toString).distinct.mkString("\n")}\n") {
-      QueryPlans.violations(plans, allowed) shouldBe empty
+  private def assertIndexed(recorded: QueryPlans.Recorded, allowed: Map[String, String] = Map.empty,
+                            unread: Map[String, String] = Map.empty): Unit =
+    withClue(s"every planned statement:\n${recorded.plans.map(_.toString).distinct.mkString("\n")}\n") {
+      QueryPlans.violations(recorded, allowed, unread) shouldBe empty
     }
 
   private def await[A](f: scala.concurrent.Future[A]): A = Await.result(f, 30.seconds)
@@ -42,17 +43,17 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
 
   "the read model's drift counts" should "count index keys, never read a document" in {
     var counted = Option.empty[(Long, Long)]
-    val plans = plansOf("readmodel") { db =>
+    val recorded = plansOf("readmodel") { db =>
       val rm = new MongoReadModelRepository(Some(db))
       tools.ReadModelSnapshot.loadInto(rm, tools.ReadModelSnapshot.read())
       counted = for (m <- rm.countMovies().answered; s <- rm.countScreenings().answered) yield (m, s)
       rm.close()
     }
     counted.exists { case (m, s) => m > 100 && s > 100 } shouldBe true
-    val counts = plans.filter(_.statement.getFirstKey == "aggregate")
+    val counts = recorded.plans.filter(_.statement.getFirstKey == "aggregate")
     counts should have size 2
     counts.foreach(c => withClue(s"$c: ")(c.docsExamined shouldBe 0L))
-    assertIndexed(plans)
+    assertIndexed(recorded)
   }
 
   "the task queue" should "enqueue, claim, settle, reap and count by index" in {
@@ -105,8 +106,37 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
       repository.findByIdChecked(stored.id).answered shouldBe defined
       repository.findByIdChecked(FilmId("no-such-film")).answered shouldBe empty
       repository.delete("Film 3", Some(2003))
+      // The change-stream catch-up in steady state: nothing written since its cursor.
+      repository.foreachRecordUpdatedSince(Instant.parse("2100-01-01T00:00:00Z"))(_ => ()) shouldBe tools.ScanOutcome.Complete
       repository.close()
-    }, allowed = Map.empty)
+    }, allowed = Map("movies find filter{updatedAt:{$gt}} sort{_id}" -> (
+      "the change-stream catch-up: the updatedAt range is the rows written since the cursor (none, in steady state), " +
+      "and the keyset page's limit makes its sort a top-k of one page")),
+    unread = Seq("screenings", "movie_slots").map(side => s"$side.listingKey_1" -> (
+      "a read by listing is the identity migration's next phase (docs/design/identity-resolver.md: slots move by ListingKey); " +
+      "nothing reads it yet")).toMap)
+  }
+
+  "the scrape archive" should "record, read and scan venues by id, and carry no index nothing reads" in {
+    import models.{Cinema, CinemaMovie, Movie}
+    import services.scrapes.{MongoScrapeArchiveRepository, ScrapeAttempt}
+    assertIndexed(plansOf("archive") { db =>
+      val repository = new MongoScrapeArchiveRepository(Some(db))
+      val at = Instant.parse("2026-07-28T06:00:00Z")
+      def film(title: String, cinema: Cinema) = CinemaMovie(movie = Movie(title, None, None, Nil, Nil, None, None), cinema = cinema,
+        posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil,
+        showtimes = Seq(Showtime(LocalDateTime.parse("2026-08-01T18:00"), bookingUrl = None)))
+      val cinemas = Cinema.all.take(5)
+      cinemas.foreach(c => repository.record(ScrapeAttempt(cinema = c, city = Cinema.cityOf(c), at = at, listingComplete = true,
+        films = Seq(film(s"Film at ${c.displayName}", c)))))
+      repository.record(ScrapeAttempt(cinema = cinemas.head, city = Cinema.cityOf(cinemas.head), at = at.plusSeconds(3600),
+        listingComplete = true, films = Nil))
+      repository.find(cinemas(1))
+      repository.contentStamps()
+      repository.scanLean(_ => true)(_ => ()) shouldBe tools.ScanOutcome.Complete
+      repository.findAll() should have size 5
+      repository.close()
+    })
   }
 
   "the chunked-scrape store" should "read and clear a run's chunks by index" in {
@@ -140,7 +170,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
   }
 
   "the uptime monitor" should "flush buckets and tag services by index" in {
-    val plans = plansOf("uptime") { db =>
+    val recorded = plansOf("uptime") { db =>
       val monitor = new UptimeMonitor(Some(db), clock = _root_.tools.MongoTtlSpecClock.Pinned)
       awaitIndexes(db, "uptimeBuckets", 3)
       awaitIndexes(db, ServiceTags.Collection, 2)
@@ -152,8 +182,8 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
         await(db.getCollection(written).estimatedDocumentCount().toFuture()) shouldBe 5L, timeoutMs = 10000))
       monitor.close()
     }
-    Seq("uptimeBuckets", ServiceTags.Collection).foreach(written => withClue(s"$written written, among $plans: ")(
-      plans.exists(p => p.collection == written && p.statement.getFirstKey == "update") shouldBe true))
-    assertIndexed(plans)
+    Seq("uptimeBuckets", ServiceTags.Collection).foreach(written => withClue(s"$written written, among ${recorded.plans}: ")(
+      recorded.plans.exists(p => p.collection == written && p.statement.getFirstKey == "update") shouldBe true))
+    assertIndexed(recorded)
   }
 }

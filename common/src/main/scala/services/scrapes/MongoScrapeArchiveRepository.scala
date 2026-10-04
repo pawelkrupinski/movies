@@ -8,7 +8,7 @@ import models.{Cinema, CinemaMovie, Movie, Showtime}
 import org.bson.codecs.configuration.CodecRegistry
 import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
-import org.mongodb.scala.model.{Filters, Indexes, Projections, Updates}
+import org.mongodb.scala.model.{Filters, Projections, Updates}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
 import services.PersistedCodecs
@@ -184,10 +184,9 @@ class MongoScrapeArchiveRepository(
     val c = db.withCodecRegistry(ScrapeArchiveCodecs.registry)
       .getCollection[StoredScrapeDto](collection)
       .withWriteConcern(WriteConcern.W1.withJournal(false))
-    // Supports "which cinemas have gone stale / are failing" reads without
-    // scanning; the collection is small enough that nothing else needs an index.
-    Try(Await.result(c.createIndex(Indexes.ascending("scrapedAt")).toFuture(), 10.seconds))
-    Try(Await.result(c.createIndex(Indexes.ascending("lastBarren.at")).toFuture(), 10.seconds))
+    // No secondary index: every read and write here addresses a venue by `_id` or pages by it.
+    // The `scrapedAt` and `lastBarren.at` indexes this used to build were for "which venues went
+    // stale / are failing" reads that were never written — paid on every scrape's write for nothing.
     c
   }
 

@@ -16,23 +16,34 @@ class QueryPlansSpec extends AnyFlatSpec with Matchers with org.scalatest.LoneEl
   private val sortedInMemory  = plan("SORT", "FETCH", "IXSCAN")
 
   "a plan served by an index" should "be no violation" in {
-    QueryPlans.violations(Seq(indexed), Map.empty) shouldBe empty
+    QueryPlans.violations(QueryPlans.Recorded(Seq(indexed), Nil), Map.empty) shouldBe empty
   }
 
   "a collection scan, or an in-memory sort" should "each be a violation" in {
-    QueryPlans.violations(Seq(scanned), Map.empty).loneElement should startWith("unindexed: films find filter{key}")
-    QueryPlans.violations(Seq(sortedInMemory), Map.empty).loneElement should startWith("unindexed: films find filter{key}")
+    QueryPlans.violations(QueryPlans.Recorded(Seq(scanned), Nil), Map.empty).loneElement should startWith("unindexed: films find filter{key}")
+    QueryPlans.violations(QueryPlans.Recorded(Seq(sortedInMemory), Nil), Map.empty).loneElement should startWith("unindexed: films find filter{key}")
   }
 
   it should "be none when its shape is allowed" in {
-    QueryPlans.violations(Seq(scanned), Map(scanned.shape -> "why")) shouldBe empty
+    QueryPlans.violations(QueryPlans.Recorded(Seq(scanned), Nil), Map(scanned.shape -> "why")) shouldBe empty
   }
 
   "an allowance" should "be a violation once nothing it names scans" in {
-    QueryPlans.violations(Seq(indexed), Map(indexed.shape -> "why")) shouldBe Seq(s"allowed, but no longer scans or sorts: ${indexed.shape}")
+    QueryPlans.violations(QueryPlans.Recorded(Seq(indexed), Nil), Map(indexed.shape -> "why")) shouldBe Seq(s"allowed, but no longer scans or sorts: ${indexed.shape}")
   }
 
   "nothing planned" should "be a violation, not a pass" in {
-    QueryPlans.violations(Nil, Map.empty) shouldBe Seq("no command was planned")
+    QueryPlans.violations(QueryPlans.Recorded(Nil, Nil), Map.empty) shouldBe Seq("no command was planned")
+  }
+
+  "an index no statement read" should "be a violation, unless it is kept with a reason" in {
+    val recorded = QueryPlans.Recorded(Seq(indexed), Seq("films.listingKey_1"))
+    QueryPlans.violations(recorded, Map.empty) shouldBe Seq("no statement reads index films.listingKey_1")
+    QueryPlans.violations(recorded, Map.empty, unread = Map("films.listingKey_1" -> "why")) shouldBe empty
+  }
+
+  "an index kept unread" should "be a violation once a statement reads it" in {
+    QueryPlans.violations(QueryPlans.Recorded(Seq(indexed), Nil), Map.empty, unread = Map("films.key_1" -> "why")) shouldBe
+      Seq("kept unread, but read now or gone: films.key_1")
   }
 }

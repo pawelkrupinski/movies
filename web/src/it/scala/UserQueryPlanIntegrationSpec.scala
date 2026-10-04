@@ -15,7 +15,7 @@ class UserQueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.
   private val Now = Instant.parse("2026-05-19T12:00:00Z")
 
   "the users stores" should "find, write and delete an account and its state by index" in {
-    val plans = QueryPlans.of(mongoTarget, "users") { db =>
+    val recorded = QueryPlans.of(mongoTarget, "users") { db =>
       val users  = new MongoUserRepository(Some(db))
       val states = new MongoUserStateRepository(Some(db), _root_.tools.SpecClock.Pinned)
       (1 to 10).foreach { i =>
@@ -30,8 +30,8 @@ class UserQueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.
       states.delete("user-4@example.com")
       users.close(); states.close()
     }
-    withClue(s"every planned statement:\n${plans.map(_.toString).distinct.mkString("\n")}\n") {
-      QueryPlans.violations(plans, Map(
+    withClue(s"every planned statement:\n${recorded.plans.map(_.toString).distinct.mkString("\n")}\n") {
+      QueryPlans.violations(recorded, Map(
         "users find filter{$and:[{provider},{providerSub}]}" ->
           "Facebook's data-deletion callback, a handful of calls a year over one row per account: an index would be paid on every sign-in"
       )) shouldBe empty
