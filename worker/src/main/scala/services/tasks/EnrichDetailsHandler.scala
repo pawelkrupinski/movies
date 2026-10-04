@@ -19,6 +19,10 @@ object EnrichDetailsTasks {
   val RefKey    = "ref"
   val TitleKey  = "title"
   val YearKey   = "year"
+  /** The row's key AS STORED (`normalized|year`). A cut-over country holds several films of one
+   *  title and year apart by key alone (`lalka|` and `lalka~1164|`); re-deriving the key from the
+   *  title and year addresses whichever owns the bare one, and lands the page on the wrong film. */
+  val RowKey    = "row"
 
   def dedupKey(group: String, key: CacheKey): String =
     s"detail|$group|${key.cleanTitle}|${key.year.map(_.toString).getOrElse("")}"
@@ -28,7 +32,8 @@ object EnrichDetailsTasks {
       GroupKey -> enricher.detailGroup,
       RefKey   -> ref,
       TitleKey -> key.cleanTitle,
-      YearKey  -> key.year.map(_.toString).getOrElse("")
+      YearKey  -> key.year.map(_.toString).getOrElse(""),
+      RowKey   -> services.movies.StoredMovieRecord.keyFor(key)
     )
 
   /** The PAGE's own stamps: `page` of `group` was read into venue_pages, or found gone. Keyed by the
@@ -148,7 +153,9 @@ class EnrichDetailsHandler(
           case DetailFetchOutcome.Fetched(detail) =>
             val title  = task.payload.getOrElse(EnrichDetailsTasks.TitleKey, "")
             val year   = task.payload.get(EnrichDetailsTasks.YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)
-            val rowKey = cache.keyOf(title, year)
+            // The row the task was asked for, by its stored key; a task queued before the key rode
+            // along (one deploy's worth) falls back to the title and year.
+            val rowKey = task.payload.get(EnrichDetailsTasks.RowKey).fold(cache.keyOf(title, year))(CacheKey.stored(title, _))
             // For a 1:1 venue the listing slot is keyed per shown title
             // (`CinemaShowing`), so target THAT slot — a bare-cinema target would
             // create a separate empty slot and the detail would never merge into the

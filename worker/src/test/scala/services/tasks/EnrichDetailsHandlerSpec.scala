@@ -398,6 +398,42 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     slot.flatMap(_.runtimeMinutes) shouldBe Some(151)
   }
 
+  // Convergence run 37165536574: two films titled "Lalka" with no year — keys `lalka|` and
+  // `lalka~1164|` — and the venue's listing on the second. The task carried only the title and
+  // year, so the handler re-derived `lalka|`, found no slot of the venue on THAT film, and
+  // fabricated one there: one listing held by two films.
+  it should "land the page on the row the task was asked for, not on another film of the same title" in {
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val showing = CinemaShowing.keyFor(KinoApollo, "Lalka", titleNormalizer)
+    val bare    = services.movies.CacheKey.stored("Lalka", "lalka|")
+    val second  = services.movies.CacheKey.stored("Lalka", "lalka~1164|")
+    cache.put(bare, MovieRecord(data = Map(CinemaShowing.keyFor(CinemaCityKinepolis, "Lalka", titleNormalizer) -> SourceData(title = Some("Lalka")))))
+    cache.put(second, MovieRecord(data = Map(showing -> SourceData(title = Some("Lalka"), filmUrl = Some("http://ref"),
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book")))))))
+    val page = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(runtimeMinutes = Some(170))))
+    val task = Task("id", TaskType.EnrichDetails, EnrichDetailsTasks.pageDedupKey("kino-apollo", "http://ref"),
+      EnrichDetailsTasks.payload(page, second, "http://ref"), attempts = 1)
+    new EnrichDetailsHandler(Map("kino-apollo" -> page), cache, new InMemoryFreshnessStore,
+      new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock).handle(task) shouldBe Done
+
+    cache.get(second).flatMap(_.data.get(showing)).flatMap(_.runtimeMinutes) shouldBe Some(170)
+    withClue("the other film must not gain the venue's listing: ")(cache.get(bare).map(_.data.contains(showing)) shouldBe Some(false))
+  }
+
+  // A task queued by the previous build carries no stored key: it must still land, by title and year,
+  // rather than fail or stall the queue across the deploy.
+  it should "still land a task queued without the row's stored key" in {
+    val cache    = seededCache("Dune")
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(director = Seq("Denis Villeneuve"))))
+    val current  = taskFor("kino-apollo", cache, "Dune", enricher)
+    val queued   = current.copy(payload = current.payload - EnrichDetailsTasks.RowKey)
+    new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore,
+      new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock).handle(queued) shouldBe Done
+    cache.get(cache.keyOf("Dune", None)).flatMap(_.cinemaData.get(KinoApollo)).map(_.director) shouldBe Some(Seq("Denis Villeneuve"))
+    withClue("the stored key must not split the dedup key: an old and a new task for one film are one task: ")(
+      queued.dedupKey shouldBe current.dedupKey)
+  }
+
   // venue_pages is the ONE place a page's facts are written: the handler reads the page through it,
   // so the identity model can read the page before any film row holds it.
   it should "write the page it read to venue_pages, read or gone" in {
