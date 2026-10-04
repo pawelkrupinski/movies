@@ -25,10 +25,11 @@ When to record a fixture:
   and picking the wrong one is a real-world case just like a malformed
   payload, and belongs in the same permanent regression suite: capture the
   exact response, name the fixture after the ambiguity it demonstrates
-  (`search_lalka_2026.json`, not `search_results_1.json`), and add a case to
-  the relevant `*MisresolveSpec`/`*TitleOnlyResolveSpec` asserting the
-  correct outcome (or, where nothing safe can be concluded, that the code
-  refuses rather than guesses). Each incident like this — "Lalka" (two
+  (`search_lalka_2026.json`, not `search_results_1.json`) and replay it in
+  the lookup spec (`TmdbIdentityLookupsSpec`), and add the decision itself as
+  a case in `IdentityResolverCasesSpec` (common: a small film table shaped
+  like the incident) asserting the correct outcome (or, where nothing safe
+  can be concluded, that the resolver refuses rather than guesses). Each incident like this — "Lalka" (two
   exact-title matches, wrong one more popular, 2026-09-08), "The Visitor"
   (two same-year matches, only the director disambiguates) — grows this into
   a standing library of real ambiguity shapes that any future change to the

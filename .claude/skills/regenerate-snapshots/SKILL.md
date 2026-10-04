@@ -1,6 +1,6 @@
 ---
 name: regenerate-snapshots
-description: How to regenerate the three checked-in snapshot layers — the whole-corpus assertion (expected-schedules.txt), the projected read-model snapshot (read-model-snapshot.json), and the rendered-HTML page snapshots (expected-*.html). Use whenever a change alters the HTML a Twirl template emits, or alters the pipeline's output (scrapers, enrichment, TitleNormalizer, staging fold, ReadModelProjector, model fields, raw fixtures).
+description: How to regenerate the three checked-in snapshot layers — the whole-corpus assertion (expected-schedules.txt), the projected read-model snapshot (read-model-snapshot.json), and the rendered-HTML page snapshots (expected-*.html). Use whenever a change alters the HTML a Twirl template emits, or alters the pipeline's output (scrapers, enrichment, TitleNormalizer, the identity resolver, ReadModelProjector, model fields, raw fixtures).
 ---
 
 # Regenerating the snapshots
@@ -19,7 +19,7 @@ There are THREE snapshot layers, regenerated for DIFFERENT changes (plus the sma
 - **`read-model-snapshot.json`** — the pipeline's OUTPUT (what `web_movies` /
   `web_screenings` hold). Regenerate when you change anything that alters that
   output: a cinema scraper, the enrichment pipeline, `TitleNormalizer` rules,
-  the staging fold, `ReadModelProjector`/`ReadModelProjection`, model fields, or
+  the identity resolver/projection, `ReadModelProjector`/`ReadModelProjection`, model fields, or
   the raw fixture files under `08-06-2026/`. A render-only Twirl/CSS change does
   NOT touch it.
 - **`expected-*.html`** — the RENDERED output. A pipeline change usually
@@ -30,7 +30,7 @@ There are THREE snapshot layers, regenerated for DIFFERENT changes (plus the sma
 
 `PageSnapshotSpec` (`web/src/page/scala/views/PageSnapshotSpec.scala`)
 diffs the rendered HTML for `/` (per city: Poznań, Wrocław, Warszawa)
-and `/plan` against checked-in expected files under
+against checked-in expected files under
 `test/resources/fixtures/08-06-2026/`. Any change that alters the HTML a
 Twirl template emits — new or changed attributes on an element,
 added/removed markup, reordered output, changed inline JS — will break
@@ -45,10 +45,9 @@ When your change intentionally alters the rendered HTML:
    rm test/resources/fixtures/08-06-2026/expected-index.html
    rm test/resources/fixtures/08-06-2026/expected-wroclaw-index.html
    rm test/resources/fixtures/08-06-2026/expected-warszawa-index.html
-   rm test/resources/fixtures/08-06-2026/expected-plan.html
    ```
    Delete only the pages your change affects. When in doubt, delete
-   all four — they regenerate in seconds.
+   all three — they regenerate in seconds.
 
 2. Run the snapshot spec:
    ```
@@ -107,8 +106,8 @@ in-JVM `PageSnapshotSpec` / `PageJsBehaviourSpec` LOAD a checked-in projected
 read model — `test/resources/fixtures/08-06-2026/read-model-snapshot.json` — via
 `FixtureTestWiring.bootFromSnapshotOrPipeline` (see
 `worker/src/fixtures/scala/tools/ReadModelSnapshot.scala`). The snapshot is the
-deterministic output of `bootStartup` (scrape → enrich → stage → fold →
-project), captured once instead of ~15× across the page-test runners.
+deterministic output of `bootStartup` (scrape → identity projection until it
+writes nothing → read-model projection), captured once instead of ~15× across the page-test runners.
 
 The guard is `FilmScheduleEndToEndSpec` ("...match the checked-in read-model
 snapshot..."), which boots the REAL pipeline and diffs it against the file —

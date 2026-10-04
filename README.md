@@ -14,7 +14,7 @@ Live at **<https://kinowo.net>**.
   Apollo, Kino Bułgarska, Kino Muza, Kino Pałacowe, Rialto, and
   Charlie Monroe. Each cinema has its own client under
   `worker/src/main/scala/services/cinemas/`, in a per-country
-  subpackage (`pl/`, `uk/`, `de/`); the country-agnostic scraping
+  subpackage (`pl/`, `uk/`, `us/`, `es/`); the country-agnostic scraping
   machinery lives in `common/`.
 - **Enriches** every film with posters, synopses, trailers, and
   ratings from TMDB, IMDb, Filmweb, Metacritic, Rotten Tomatoes,
@@ -26,8 +26,8 @@ Live at **<https://kinowo.net>**.
   per-user hidden films and disabled cinemas server-side. Anonymous
   visitors fall back to `localStorage`.
 - **iOS and Android apps** (`ios/Kinowo/`, `android/`) render the
-  same data — they call the `/api/repertoire` and `/api/details`
-  JSON endpoints.
+  same data — they call the `/:city/api/repertoire`, `/:city/api/details`
+  and `/:city/api/cinemas` JSON endpoints.
 
 ## Stack
 
@@ -50,13 +50,14 @@ Live at **<https://kinowo.net>**.
 common/                   # Shared domain used by both apps
 │   └── src/main/scala/
 │       ├── models/           # Movie, MovieRecord, Showtime, Cinema, User, ...
-│       └── services/         # movies/ (cache/repository/merge), events/, cinemas/,
-│                             #   readmodel/, titlerules/, freshness/, staging/, tasks/
+│       └── services/         # movies/ (cache/repository), identity/ (the film resolver),
+│                             #   events/, cinemas/, readmodel/, titlerules/, freshness/, tasks/
 worker/                   # Scrape + enrich app (one pod per country)
 │   └── src/main/scala/services/
 │       ├── cinemas/          # One client per cinema chain / venue
 │       ├── enrichment/       # TMDB / IMDb / Filmweb / Metacritic / RT clients + ratings
-│       └── tasks/, staging/, schedule/, alerts/   # scrape loop + read-model projection
+│       ├── identity/         # identity projection: listings → films → read model
+│       └── tasks/, schedule/, alerts/   # scrape loop, task queue, alerting
 web/                      # Play serving app (one pod per country)
 │   ├── src/main/scala/
 │   │   ├── controllers/      # MovieController, AuthController, UserStateController, ...
@@ -75,15 +76,17 @@ infra/                    # NixOS fleet, k3s manifests, Prometheus + Grafana
 
 ## Running locally
 
-Prereqs: **JDK 17+** (25 recommended), **sbt 1.12**, and a local
+Prereqs: **JDK 27** (the build emits Java 21 bytecode), **sbt 1.12**, and a local
 **MongoDB** (the local stack expects it on port **27018** as a
 single-node replica set — see below).
 
 The repository is two apps: **worker** scrapes + enriches into Mongo and
 projects a read model; **web** serves that read model. `sbt localStack`
-boots both against one local Mongo — the worker replays the checked-in
-fixtures (`test/resources/fixtures/today`) so you get a full corpus
-offline, and web serves it on :9000:
+boots both against one local Mongo — the worker replays a recorded fixture
+tree (`test/resources/fixtures/today`, not checked in: record it with
+`.github/scripts/record-country-fixture.sh` or unzip the daily
+`country-fixture-artifact` workflow's artifact; `KINOWO_FIXTURE_DIR` picks
+another tree) so you get a full corpus offline, and web serves it on :9000:
 
 ```bash
 # One-time: a local Mongo on 27018 (replica set → live change streams)
@@ -96,9 +99,8 @@ sbt localStack
 
 To run just the serving app against an existing Mongo, use `sbt web/run`
 — it reads `MONGODB_URI` / `MONGODB_DB` (db defaults to `kinowo`) and
-serves whatever a worker has already projected into the read model. Web
-rehydrates its in-memory cache from Mongo via 4-way parallel cursors
-(see `MongoMovieRepository.findAll` and `MeasureStartup`).
+serves whatever a worker has already projected into the read model
+(`web_movies` / `web_screenings`, loaded into memory by `WebReadModel`).
 
 ### Useful local endpoints (city-scoped routes take a `:city` slug, e.g. `poznan`)
 
@@ -107,8 +109,7 @@ rehydrates its in-memory cache from Mongo via 4-way parallel cursors
   `/:city/movie?title=...` form still resolves, 301-ing onto the slug, and so
   do the pre-rename `/:city/film…` / `/:city/filmy` addresses)
 - `/:city/movies` — browse / filter the full film catalogue
-- `/:city/plan` — pick movies + cinemas + rooms, get an availability summary
-- `/:city/api/repertoire`, `/:city/api/details` — the JSON feeds the mobile apps read
+- `/:city/api/repertoire`, `/:city/api/details`, `/:city/api/cinemas` — the JSON feeds the mobile apps read
 - `/debug` — dev page exposing the source `movies` corpus;
   `/debug/readmodel` — the projected read model web actually serves
 - `POST /:city/debug/rehydrate` — reload the in-memory cache from Mongo

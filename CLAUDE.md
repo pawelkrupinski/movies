@@ -68,7 +68,7 @@ shifts any of them is not committable until that snapshot is
 regenerated and committed alongside it:
 
 - **`expected-*.html`** — the rendered HTML for `/` (per city: Poznań,
-  Wrocław, Warszawa) and `/plan`, diffed by `PageSnapshotSpec`. Shifts
+  Wrocław, Warszawa), diffed by `PageSnapshotSpec`. Shifts
   on any Twirl template, markup, `data-*`/CSS-class, `PosterProxy`, or
   inline-JS change. (Comments inside inline `<style>`/`<script>` are
   stripped by `tools.Minify`, so those don't shift it; HTML `<!-- -->`
@@ -91,7 +91,7 @@ regenerated and committed alongside it:
   slow, never wrong).
 
 The last two shift on any cinema scraper, enrichment,
-`TitleNormalizer`, staging-fold, `ReadModelProjector`, model-field, or
+`TitleNormalizer`, identity-resolver, `ReadModelProjector`, model-field, or
 raw-fixture change — and a pipeline change usually shifts the rendered
 HTML too, so regenerate all three.
 
@@ -505,9 +505,9 @@ one lands *in this codebase*; the general definitions are assumed.
   catch-alls.
 - **Open / Closed.** Adding a cinema is a new `CinemaXClient` fitting
   the existing scrape contract — `ScrapeReaper` doesn't change. Adding
-  a rating source is a new `*Ratings` class subscribing to the existing
-  `TmdbResolved` / `ImdbIdMissing` bus events — bus, cache, and service
-  don't change.
+  a rating source is a new `*Ratings` class plus one `RatingSource` entry
+  in `RatingSources` — `RatingEnqueuer`, the `EnrichmentReaper`, cache,
+  and service don't change.
 - **Liskov Substitution.** `InMemoryMovieRepository` honours
   `MovieRepository`'s write-through contract — `upsert` updates the
   store, `delete` removes from it, `findAll` returns current contents.
