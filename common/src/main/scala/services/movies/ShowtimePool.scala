@@ -29,8 +29,20 @@ import models.{CityScreening, Showtime}
 final class ShowtimePool {
   private val instants: Interner[LocalDateTime] = Interner.newWeakInterner[LocalDateTime]()
   private val prefixes: Interner[String]        = Interner.newWeakInterner[String]()
+  private val rooms: Interner[Some[String]]      = Interner.newWeakInterner[Some[String]]()
+  private val formats: Interner[List[String]]    = Interner.newWeakInterner[List[String]]()
 
   def canonical(at: LocalDateTime): LocalDateTime = instants.intern(at)
+
+  /** `read` with each showtime's instant, room and format the pool's: a scan holding the corpus decoded every one
+   *  afresh (worker-us boot: 1.2M showtimes, each its own LocalDateTime, LocalDate, LocalTime and format list, for a
+   *  few thousand distinct values). A showtime already sharing them is handed back as it is. */
+  def showtimes(read: Seq[Showtime]): Seq[Showtime] = read.map { st =>
+    val at     = canonical(st.dateTime)
+    val room   = st.room match { case some: Some[String] => rooms.intern(some); case None => None }
+    val format = if (st.format.isEmpty) st.format else formats.intern(st.format)
+    if ((at eq st.dateTime) && (room eq st.room) && (format eq st.format)) st else st.copy(dateTime = at, room = room, format = format)
+  }
 
   /** `row` with every showtime's instant the shared one and its booking URL split at the row's
    *  shared prefix — the row itself when they all already are. */

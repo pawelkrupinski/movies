@@ -764,6 +764,8 @@ class MongoMovieRepository(
     val wall = tools.Stopwatch.start()
     val (slotReads, screeningReads, stitching) = (tools.Stopwatch.total(), tools.Stopwatch.total(), tools.Stopwatch.total())
     var films = 0
+    // One pool for the scan: equal instants, rooms and formats across its pages are one object ([[ShowtimePool]]).
+    val shared = new ShowtimePool
     val moviesComplete = scanByKeyset(filter) { batch =>
       val ids = batch.map(_._id).toSet
       // `withShowtimes = false` skips this read entirely rather than discarding its result:
@@ -789,7 +791,8 @@ class MongoMovieRepository(
       } else {
         films += batch.size
         onBatch(stitching(batch.map(dto => stitchRow(StoredMovieDto.toDomain(dto, normalizer),
-          pageScr.getOrElse(dto._id, Map.empty), pageSlots.getOrElse(dto._id, Map.empty)))))
+          pageScr.getOrElse(dto._id, Map.empty).map { case (slot, read) => slot -> shared.showtimes(read) },
+          pageSlots.getOrElse(dto._id, Map.empty)))))
       }
     }
     // A whole-corpus scan (the hydrate, the 5-min corpus census) at info; a catch-up's

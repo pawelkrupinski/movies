@@ -71,6 +71,30 @@ class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers with tools.Integr
     }
   }
 
+  it should "hand every film of a scan the same instant, room and format objects for equal values" in {
+    // A scan holding the corpus (the boot's one read) decoded each showtime's afresh: worker-us held 1.2M
+    // LocalDateTimes, each with its LocalDate and LocalTime, for a few thousand distinct instants.
+    tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "scan-stitched-sharing") { db =>
+      val screenings = new MongoScreeningsRepository(Some(db))
+      val repository = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(screenings),
+        slots = Some(new MongoSlotsRepository(Some(db))), findAllBatchSize = 2, normalizer = titleNormalizer)
+      sentinels.zipWithIndex.foreach { case ((title, year), index) =>
+        repository.upsert(title, year, MovieRecord(tmdbId = Some(6001 + index),
+          data = Map[Source, SourceData](Multikino -> SourceData(title = Some(s"scan ${index + 1}"),
+            showtimes = Seq(Showtime(when, Some(s"https://book/$index"), Some("Sala 1"), List("2D")))))))
+      }
+      val read = Seq.newBuilder[Showtime]
+      repository.foreachRecord(r => if (r.record.tmdbId.exists(t => t > 6000 && t <= 6005)) read ++= r.record.data.values.flatMap(_.showtimes)) shouldBe tools.ScanOutcome.Complete
+      val showtimes = read.result()
+      showtimes should have size 5
+      showtimes.map(_.bookingUrl).toSet should have size 5
+      withClue("instants: ")(showtimes.map(s => System.identityHashCode(s.dateTime)).distinct should have size 1)
+      withClue("rooms: ")(showtimes.map(s => System.identityHashCode(s.room)).distinct should have size 1)
+      withClue("formats: ")(showtimes.map(s => System.identityHashCode(s.format)).distinct should have size 1)
+      removeSentinels(repository)
+    }
+  }
+
   private def removeSentinels(repository: MongoMovieRepository): Unit =
     sentinels.foreach { case (title, year) => repository.delete(title, year) }
 
