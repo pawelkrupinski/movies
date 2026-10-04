@@ -64,6 +64,13 @@ class ShareCardJanitor(
     def delete(file: StoredFile, reason: String): Unit =
       if (store.delete(file)) { deleted += file.path; counts(reason) += 1; metrics.pruned(file.kind, reason) }
 
+    // One film whose re-projection fails (its row unreadable for a moment) is logged and left for
+    // the next prune; thrown on, it ended the loop, and every film after it kept pointing at a card
+    // this run had just deleted, with the budget pass and the metrics skipped.
+    def refreshEach(filmId: String): Unit =
+      try refresh(filmId)
+      catch { case scala.util.control.NonFatal(e) => logger.warn(s"share cards: re-projecting $filmId after retiring its card failed: $e", e) }
+
     files.filter(file => file.temp && old(file)).foreach(delete(_, PruneReason.Temp))
 
     if (daily && complete) {
@@ -71,7 +78,7 @@ class ShareCardJanitor(
       // A film off the screens whose document still points at a card just retired: re-project it,
       // so it points at nothing rather than at a missing file.
       refs.filter(ref => ref.shareCard.nonEmpty && !screened(ref.filmId) && deleted.contains(store.cardPath(ref.filmId)))
-        .foreach(ref => refresh(ref.filmId))
+        .foreach(ref => refreshEach(ref.filmId))
     }
 
     val remaining    = files.filterNot(file => deleted(file.path))

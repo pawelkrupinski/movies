@@ -29,6 +29,17 @@ class ShareCardJanitorSpec extends AnyFlatSpec with Matchers {
     refreshed shouldBe Seq("fgone2")
   }
 
+  it should "re-project every film still pointing at a retired card when one re-projection fails" in new Setup {
+    Seq("fgone1", "fgone2").foreach { id =>
+      readModel.upsertMovie(film(id = id).copy(shareCard = Some(ShareCardFile.url(id, "0" * 16))))
+      putFilm(id, old)
+    }
+    val refreshed = collection.mutable.Buffer.empty[String]
+    val report = janitor(refresh = id => { refreshed += id; if (refreshed.size == 1) throw new java.io.IOException("row unreadable") }).prune()
+    report.deleted shouldBe Map("retired" -> 6)
+    refreshed.toSet shouldBe Set("fgone1", "fgone2")
+  }
+
   it should "leave any file younger than the grace period alone, referenced or not" in new Setup {
     putFilm("fgone", young)
     put(s"fgone.jpg.${ShareCardStore.writerId}-deadbeef.tmp", young)
