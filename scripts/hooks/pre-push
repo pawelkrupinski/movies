@@ -40,13 +40,6 @@ set -uo pipefail
 
 root="$(git rev-parse --show-toplevel)" || exit 1
 cd "$root" || exit 1
-# git hands a hook the pushed repository's GIT_DIR / GIT_INDEX_FILE / GIT_WORK_TREE. Every check below
-# inherits them — sbt and its forked test JVMs, the script specs, a temporary worktree's commands — and
-# an inherited GIT_DIR beats the directory a command runs in, so a spec's scratch repository, or the
-# temporary checkout itself, would act on THIS repository (2026-10-04: a spec committed "Spec" history
-# and wrote user.name=Spec and core.bare=true into the config every worktree shares). From here on git
-# finds the repository from the directory it runs in, like it does at a terminal.
-unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_COMMON_DIR GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_PREFIX GIT_NAMESPACE
 
 Zero=0000000000000000000000000000000000000000
 
