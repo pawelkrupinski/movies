@@ -33,7 +33,7 @@ final class ManagedResources(grace: FiniteDuration = ManagedResources.Grace, sto
 
   /** `service`, stopped by [[closeAll]] — a reaper, census or cache that owns its own scheduler. */
   def stopping[A <: services.Stoppable](service: A): A =
-    register(service.getClass.getSimpleName, service)(_.stop())
+    hold(Held(service.getClass.getSimpleName, service, left => service.stopWithin(left), () => true), service)
 
   /** Each of `services` (an `Option` of one, a `Seq` of several), stopped by [[closeAll]]. */
   def stoppingEach[C <: IterableOnce[services.Stoppable]](all: C): C = {

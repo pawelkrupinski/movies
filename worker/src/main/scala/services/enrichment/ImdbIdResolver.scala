@@ -258,9 +258,18 @@ class ImdbIdResolver(
    *  shutting down a pool that still had inbound work coming. */
   def drain(): Unit = pool.drain()
 
-  /** Drain, then end the pool — shutdown only. A caller that merely wants the
+  /** Drain within `budget`, then end the pool — shutdown only. A caller that merely wants the
    *  in-flight work finished wants [[drain]]: this one rejects everything after it,
    *  and the replay boot drains BEFORE the staging fold publishes the
-   *  `ImdbIdMissing` events that need this resolver. */
-  def stop(): Unit = pool.stop()
+   *  `ImdbIdMissing` events that need this resolver.
+   *
+   *  Lookups still queued at the budget are dropped: the row keeps no imdbId, so it is asked
+   *  again — on its next Filmweb rating refresh, the daily OMDb backfill sweep, or its next
+   *  TMDB (re-)identification — exactly as a failed lookup is. */
+  override def stopWithin(budget: scala.concurrent.duration.FiniteDuration): Unit = {
+    val dropped = pool.stop(budget)
+    if (dropped > 0) logger.info(s"ImdbIdResolver: stopped with $dropped id lookup(s) unfinished — dropped; each row is asked again on its next trigger.")
+  }
+
+  def stop(): Unit = stopWithin(tools.ManagedResources.Grace)
 }

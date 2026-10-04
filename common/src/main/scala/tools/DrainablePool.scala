@@ -3,6 +3,7 @@ package tools
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.{ExecutionContextExecutorService, Future}
+import scala.concurrent.duration.FiniteDuration
 
 /**
  * An execution context plus the in-flight bookkeeping that tells when it has gone
@@ -22,7 +23,7 @@ import scala.concurrent.{ExecutionContextExecutorService, Future}
  * pool is not, which is why the drain order (publishers before subscribers) still
  * matters and is still the caller's to choose.
  */
-final class DrainablePool(executionContext: ExecutionContextExecutorService) {
+final class DrainablePool(executionContext: ExecutionContextExecutorService, stopwatch: Stopwatch = Stopwatch.System) {
 
   private val inFlight = new AtomicInteger(0)
 
@@ -36,11 +37,20 @@ final class DrainablePool(executionContext: ExecutionContextExecutorService) {
   /** Block until nothing submitted here is still running. The pool stays usable. */
   def drain(): Unit = while (inFlight.get() > 0) Thread.sleep(PollInterval.toMillis)
 
-  /** Drain, then end the pool. After this every [[submit]] is rejected. */
-  def stop(): Unit = {
-    drain()
-    executionContext.shutdown()
-    while (!executionContext.isTerminated) executionContext.awaitTermination(1, TimeUnit.HOURS)
+  /** Drain for at most `within`, then end the pool, interrupting what still runs and dropping what
+   *  is still queued. Returns how many submitted tasks were abandoned that way. After this every
+   *  [[submit]] is rejected.
+   *
+   *  Bounded because it runs at shutdown inside a fixed stop window: an unbounded drain of a
+   *  backlog ran past the pod's grace to the SIGKILL, and every close after it never happened.
+   *  Only for work that is recomputable — whatever enqueued it must ask again later. */
+  def stop(within: FiniteDuration): Int = {
+    val started = stopwatch.start()
+    while (inFlight.get() > 0 && started.elapsed < within) Thread.sleep(PollInterval.toMillis)
+    val abandoned = inFlight.get()
+    executionContext.shutdownNow()
+    executionContext.awaitTermination(PollInterval.toMillis * 20, TimeUnit.MILLISECONDS)
+    abandoned
   }
 
   /** Short enough that a drain of fast work isn't dominated by the wait, long enough

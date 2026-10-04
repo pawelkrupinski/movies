@@ -43,6 +43,18 @@ class ManagedResourcesSpec extends AnyFlatSpec with Matchers {
     stopwatch.elapsed should be < (grace * 2)
   }
 
+  it should "hand a stopping service what is left of the grace, to bound its own drain" in {
+    @volatile var handed = Option.empty[scala.concurrent.duration.FiniteDuration]
+    val grace   = scala.concurrent.duration.Duration(3, "seconds")
+    val managed = new ManagedResources(grace)
+    managed.stopping(new services.Stoppable {
+      def stop(): Unit = ()
+      override def stopWithin(budget: scala.concurrent.duration.FiniteDuration): Unit = handed = Some(budget)
+    })
+    managed.closeAll()
+    handed.exists(budget => budget > scala.concurrent.duration.Duration.Zero && budget <= grace) shouldBe true
+  }
+
   "A resource registered once the stop has begun" should "be closed at once" in {
     val closed  = ListBuffer.empty[String]
     val managed = new ManagedResources
