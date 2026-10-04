@@ -32,9 +32,9 @@ import scala.concurrent.Await
  */
 class SharedUsersDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
-  // Own prefix so the drop in `afterAll` can never reach a database another spec
-  // (or a local dev's corpus) is using.
-  private val Prefix   = "kinowo_it_sharedusers"
+  // Unique per run, so the drop in `afterAll` can never reach a database another spec, another run on
+  // the same server (two agents' itAll side by side), or a local dev's corpus is using.
+  private val Prefix   = s"kinowo_it_sharedusers_${ProcessHandle.current().pid()}_${System.nanoTime()}"
   private val SharedDb = s"${Prefix}_users"
 
   private lazy val client: MongoClient = MongoClient(mongoTarget.uri.value)

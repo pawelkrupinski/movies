@@ -49,7 +49,11 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
   // itAll runs side by side drop each other's database mid-test (seen 2026-10-04: "Cannot create
   // collection kinowo_it_wiring_de.database_owner - database is in the process of being dropped").
   private val SharedDatabase = """"MONGODB_DB"|\.databasePrefix\b|\bMongoAddress\s*\.\s*fromEnv\b|getDatabase\(\s*"kinowo"\s*\)""".r
-  private val FixedName      = """\bs?"kinowo_""".r
+  // `\bs?"` would need a word character before a plain `"`, so it caught only `s"kinowo_…"` and let
+  // SharedUsersDatabaseIntegrationSpec's plain "kinowo_it_sharedusers" through. A line naming no
+  // database (a `kinowo_worker_…` metric name) is not one.
+  private val FixedName      = """(?:\bs)?"kinowo_""".r
+  private val DatabaseWord   = """(?i)database|db\b|prefix""".r
   private val UniquePerRun   = """nanoTime|\bpid\(\)""".r
   private val Delete         = """\.delete(?:Many|One)\s*\(""".r
   private val PatternFilter  = """Filters\.regex\(|\$regex|BsonRegularExpression|Pattern\.compile""".r
@@ -59,7 +63,8 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
   private def sharedDatabaseLines(path: Path): Seq[String] =
     read(path).linesIterator.zipWithIndex.collect {
       case (line, index) if SharedDatabase.findFirstIn(code(line)).isDefined ||
-          (FixedName.findFirstIn(code(line)).isDefined && UniquePerRun.findFirstIn(code(line)).isEmpty) =>
+          (FixedName.findFirstIn(code(line)).isDefined && DatabaseWord.findFirstIn(code(line)).isDefined &&
+            UniquePerRun.findFirstIn(code(line)).isEmpty) =>
         s"$path:${index + 1}: ${line.trim}"
     }.toSeq
 
