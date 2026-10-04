@@ -62,10 +62,15 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /** While the pinned pair is one the OLD pipeline recorded, the model's enrichment gaps are filled live
-   *  and published as an overlay beside it — so the next dispatch replays more and fetches less. */
-  it should "fill and publish the model's gaps as an overlay, never into the recorded pair" in {
-    RepoFile.jobs(workflow)("leg") should include regex """mode:\s+overlay"""
+  /** The pinned pair is the identity model's own recording, so the lane replays it hermetically —
+   *  the mode whose red legs are bisected. */
+  it should "replay the pinned pair hermetically" in {
+    RepoFile.jobs(workflow)("leg") should include regex """mode:\s+hermetic"""
+  }
+
+  /** An overlay leg — a caller replaying a pair with gaps — fills them live and publishes them beside
+   *  the pair, never into it. */
+  it should "fill and publish an overlay leg's gaps as an overlay, never into the recorded pair" in {
     overlay should include("identity-overlay-")
     val commands = overlay.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
     Seq("enrichment-${{ inputs.code }}.tar.", "hermetic-", "gh release delete", "delete-asset").foreach(commands should not include _)

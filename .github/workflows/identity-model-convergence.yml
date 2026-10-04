@@ -10,11 +10,11 @@
 # `convergence-bisect.yml` which commit did it (`request-bisect`), and a failed scheduled run files an
 # issue (`report`).
 #
-# `mode: overlay` while the pinned pair is one the OLD pipeline recorded: a film the model matches and
-# the pipeline did not is enriched through requests the pair lacks, so the legs fetch exactly those live,
-# record them and publish them as `identity-overlay-<code>-<corpus run>.tar.gz`
-# (convergence-overlay-publish). Once `Record scrape fixtures` pins a pair recorded by the identity model,
-# this goes `hermetic` — the mode whose red legs are bisected.
+# `mode: hermetic`: every leg replays the pair `Record scrape fixtures` pinned for its country
+# (`hermetic-<code>.txt`) and touches no network, so a red leg means the code changed — and is
+# bisected. Every pair pinned since run 37216285654 (2026-10-04, main 971ccd34e) was recorded by the
+# identity model, the old pipeline being gone; the `overlay` mode that filled an old-pipeline pair's
+# gaps live is no verdict caller's any more. (HermeticConvergenceWiringSpec)
 #
 # ONE LANE: the run in flight is never cancelled, at most one newer run waits behind it, and each newer
 # dispatch replaces the waiting one. A day of pushes into a running leg produces exactly two runs: the
@@ -89,9 +89,8 @@ jobs:
             order-suite-timeout-minutes:   ${{ matrix.orderSuite || 120 }}
             sample-row:                    ${{ matrix.sampleRow == true }}
             heap:                          ${{ matrix.heap }}
-            # Replay the pipeline's pair plus the model's overlay, and record and publish what the
-            # model still needs on top — so the next run of this build replays it all.
-            mode:                          overlay
+            # Replay the pinned pair and nothing else: the verdict a bisect can trust.
+            mode:                          hermetic
         # TMDB_API_KEY / OMDB_API_KEY, and the GITHUB_TOKEN the setup action reads.
         secrets: inherit
 

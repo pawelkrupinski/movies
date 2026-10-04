@@ -24,14 +24,14 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   private def directives(yaml: String): String =
     yaml.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
 
-  // The one exception, until `Record scrape fixtures` pins a pair the identity model recorded: the
-  // suite replays the OLD pipeline's pair, so it fills the model's gaps live as an overlay. Hermetic
-  // again — and so bisected again — once that pair is pinned.
-  "a verdict leg" should "be hermetic unless its caller says otherwise, and no verdict caller asks for more than an overlay" in {
+  // Every verdict caller replays the pinned pair: since `Record scrape fixtures` pins pairs the identity
+  // model recorded (run 37216285654 on), no caller fills gaps live as an overlay, so every red leg is
+  // one a bisect can replay.
+  "a verdict leg" should "be hermetic, and no verdict caller ask for anything else" in {
     """mode:[\s\S]*?default:\s*hermetic""".r.findFirstIn(leg) shouldBe defined
     // The `mode:` KEY, not any key ending in it (a checkout's `sparse-checkout-cone-mode:`).
     verdictCallers.foreach(caller =>
-      directives(caller).linesIterator.map(_.trim).filter(_.startsWith("mode:")).map(_.split("\\s+").last).toSet should be(Set("overlay")))
+      directives(caller).linesIterator.map(_.trim).filter(_.startsWith("mode:")).map(_.split("\\s+").last).toSet should be(Set("hermetic")))
   }
 
   it should "hand the mode to BOTH suite steps under the name the wiring reads" in {
