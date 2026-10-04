@@ -133,7 +133,7 @@ object ScreeningTokens extends Logging {
     "4d" -> List("4D"),
     "screenx" -> List("SCREENX"), "ice" -> List("ICE"), "isense" -> List("ISENSE"), "plf" -> List("PLF"),
     "epic" -> List("EPIC"), "infinity" -> List("INFINITY"), "dbox" -> List("DBOX"),
-    "laser" -> List("LASER"), "hdr" -> List("HDR"),
+    "laser" -> List("LASER"), "hdr" -> List("HDR"), "hfr" -> List("HFR"),
     "atmos" -> List("ATMOS"), "dolbyatmos" -> List("ATMOS"), "dolby" -> List("DOLBY"),
     "4k" -> List("4K"), "4kscreening" -> List("4K"),
     "70mm" -> List("70MM"), "70mmscreening" -> List("70MM"),

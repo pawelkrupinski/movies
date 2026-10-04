@@ -137,6 +137,17 @@ class GatsbyBoxOfficeClientSpec extends AnyFlatSpec with Matchers with OptionVal
       List("2D", "IMAX")
   }
 
+  it should "emit only premium tokens the shared badge vocabulary keeps" in {
+    // The projection drops a token `ScreeningTokens` does not know: an HFR screening read as a plain one.
+    val tags = Seq("imax", "4dx", "screenx", "infinityvision", "laser", "hfr", "4k", "35mm", "plf", "dolbyatmos")
+      .map(tag => s"Format.Projection.$tag") ++ Seq("Auditorium.Experience.4DX", "Auditorium.Experience.ScreenX",
+        "Auditorium.Experience.InfinityVision", "Auditorium.Experience.PLF", "Auditorium.Experience.DolbyAtmos")
+    val emitted = WebediaBoxOffice.premiumTokens(tags)
+    emitted.size shouldBe 10
+    val vocabulary = services.movies.ScreeningTokens.of(models.Country.UnitedKingdom)
+    emitted.filter(token => vocabulary.normalize(Seq(token)) != List(token)) shouldBe empty
+  }
+
   it should "badge the spoken language of a foreign-language screening" in {
     // "Jana Nayagan" is a Tamil release shown subtitled — the session carries
     // Localization.Language.Tamil alongside Showtime.Accessibility.Subtitled, so
