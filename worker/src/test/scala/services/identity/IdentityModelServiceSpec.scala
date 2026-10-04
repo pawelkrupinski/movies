@@ -269,6 +269,44 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     } finally scheduler.shutdownNow()
   }
 
+  // A drain that throws part-way leaves the engine half-updated: the model is rebuilt from its store, over the archive's
+  // listings — the scrape the failed drain had dequeued included — and counted; a rebuild that fails too leaves the model
+  // down for the tick's backoff, never a half-updated engine serving.
+  it should "rebuild the model from its store when a drain fails, and go down for the backoff when the rebuild fails too" in {
+    val world     = new World
+    val scheduler = Executors.newSingleThreadScheduledExecutor()
+    val built     = new java.util.concurrent.atomic.AtomicInteger()
+    var rebuilds  = 0
+    var downs     = 0
+    var brokenAt  = Set.empty[Int]   // which take-ups (1-based) throw
+    var drainFail = false
+    val failingPages = new PageWait {
+      def awaiting(listing: Listing): Boolean = if (drainFail) { drainFail = false; throw new IllegalStateException("drain broke") } else false
+      def request(listing: Listing): Unit = ()
+      val limit: FiniteDuration = 1.hour
+    }
+    val service = new IdentityModelService(
+      () => { val n = built.incrementAndGet(); if (brokenAt(n)) throw new IllegalStateException("store unreachable")
+              new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration, store = world.store) },
+      world.reads, () => listingsOf(world.scrapes), normalizer, 1.hour, scheduler, pageWait = failingPages,
+      metrics = new IdentityModelMetrics { def batch(batch: ModelBatch): Unit = (); def rebuilt(): Unit = rebuilds += 1; def takeUpFailed(): Unit = downs += 1 },
+      clock = _root_.tools.SpecClock.Pinned)
+    try {
+      service.takeUp()
+      drainFail = true
+      world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025)), movie(Multikino, "Matilda")))
+      service.tick()
+      (built.get, rebuilds, downs) shouldBe ((2, 1, 0))
+      decided(service.peek(10.seconds).get.resolution.decisions) shouldBe world.expected // the dequeued scrape is in
+
+      brokenAt = Set(3); drainFail = true
+      world.scrape(service, Helios, Seq(movie(Helios, "Lalka", Some(2025))))
+      service.tick()
+      (built.get, rebuilds, downs) shouldBe ((3, 2, 1))
+      service.peek(10.seconds) shouldBe None
+    } finally scheduler.shutdownNow()
+  }
+
   // ── a new listing waits for its venue page (a cut-over country) ─────────────────────────────
 
   /** Which listings' pages are unread, and the pages asked for: what a cut-over country's VenuePageWait

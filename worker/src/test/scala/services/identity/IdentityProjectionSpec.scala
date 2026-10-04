@@ -39,10 +39,11 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
                             val archive: InMemoryScrapeArchiveRepository = new InMemoryScrapeArchiveRepository,
                             val accepted: InMemoryScrapeArchiveRepository = new InMemoryScrapeArchiveRepository,
                             val filmIds: InMemoryFilmIdCounterStore = new InMemoryFilmIdCounterStore,
-                            val fingerprints: VenueSlotFingerprints = new InMemoryVenueSlotFingerprints) {
+                            val fingerprints: VenueSlotFingerprints = new InMemoryVenueSlotFingerprints,
+                            resolveOverride: Option[Seq[Listing] => Option[IdentityProjection.Resolved]] = None) {
     /** This world's worker restarted: what Mongo holds kept, everything in memory (the cache, the intake's held
      *  listings, the projection's slot memo) built afresh. */
-    def restarted: World = new World(repository, venues, listingsRead, announceFails, archive, accepted, filmIds, fingerprints)
+    def restarted: World = new World(repository, venues, listingsRead, announceFails, archive, accepted, filmIds, fingerprints, resolveOverride)
     val refusals   = scala.collection.mutable.ListBuffer.empty[IdentityProjectionMetrics.Refusal]
     val cache      = new CaffeineMovieCache(repository, normalizer = normalizer, clock = _root_.tools.SpecClock.Pinned)
     val intake     = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
@@ -52,7 +53,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     val rowsRead   = scala.collection.mutable.ListBuffer.empty[Cinema]
     val projection = new IdentityProjection(
       listings = () => { listingsRead(); intake.projected(venues) }, rows = venues => { rowsRead ++= venues; intake.rowsOf(venues) },
-      resolve = IdentityProjection.resolving(() => NoFilmLookups, new InMemoryPinStore, normalizer, IdentityCalibration.resolver), cache = cache,
+      resolve = resolveOverride.getOrElse(IdentityProjection.resolving(() => NoFilmLookups, new InMemoryPinStore, normalizer, IdentityCalibration.resolver)), cache = cache,
       filmIds = filmIds, details = (_, _) => None, announce = (k, _) => { if (announceFails) throw new IllegalStateException(s"bus down for ${k.cleanTitle}"); announced += k; () }, normalizer = normalizer,
       slots = new CinemaSlotBuilder(Country.Poland.language, new StringPool),
       tokens = ScreeningTokens.of(Country.Poland), metrics = new IdentityProjectionMetrics {
@@ -102,6 +103,52 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     val failed = tools.LogCapture.thisThread(name)(down.projection.tickQuietly()).filter(_.getLevel == ch.qos.logback.classic.Level.WARN)
     failed.map(e => Option(e.getThrowableProxy).map(_.getMessage)) shouldBe Seq(Some("archive down"))
     down.refusals.toSeq shouldBe Seq(IdentityProjectionMetrics.Refusal.Failed) // and counted: the stored films keep serving
+  }
+
+  // The two refusals a resolve itself can call for: a model not ready yet (a boot before its first build) and a
+  // constraint edge crossing families. Either leaves every stored film serving, writes nothing and is counted.
+  it should "refuse, writing nothing, while the identity model is not ready or a constraint crosses families" in {
+    val first = new World
+    first.scrape(programme)
+    first.projection.tick().refused shouldBe None
+    val stored = first.repository.findAll().map(r => r.id -> r.record).toMap
+
+    val notReady = new World(first.repository, archive = first.archive, accepted = first.accepted, filmIds = first.filmIds,
+      resolveOverride = Some(_ => None))
+    notReady.scrape(programme - KinoMuza)
+    val waiting = notReady.projection.tick()
+    waiting.refused shouldBe Some("the identity model is not ready")
+    waiting.written shouldBe 0
+    notReady.refusals.toSeq shouldBe Seq(IdentityProjectionMetrics.Refusal.NotReady)
+
+    val crossing = new World(first.repository, archive = first.archive, accepted = first.accepted, filmIds = first.filmIds,
+      resolveOverride = Some(_ => throw new IdentityResolver.FamilyCrossing(2, "2 constraint edges cross a family")))
+    crossing.scrape(programme - KinoMuza)
+    crossing.projection.tick().refused shouldBe Some("2 constraint edges cross a family")
+    crossing.refusals.toSeq shouldBe Seq(IdentityProjectionMetrics.Refusal.Crossing)
+
+    first.repository.findAll().map(r => r.id -> r.record).toMap shouldBe stored // the stored films keep serving, untouched
+  }
+
+  // The venue slot fingerprints are a saving: a store that cannot take them must not fail the projection, and the
+  // fingerprints it missed are written by the next one.
+  it should "project through a fingerprint store that fails, and record the fingerprints once it answers again" in {
+    var down = true
+    val inner = new InMemoryVenueSlotFingerprints
+    val flaky = new VenueSlotFingerprints {
+      def all(): Set[Long] = inner.all()
+      def update(add: Set[Long], remove: Set[Long]): Unit =
+        if (down) throw new IllegalStateException("fingerprints down") else inner.update(add, remove)
+    }
+    val w = new World(fingerprints = flaky)
+    w.scrape(programme)
+    w.projection.tick().refused shouldBe None
+    w.repository.findAll().map(_.title).sorted shouldBe Seq("Diuna", "Lalka", "Obcy")
+    inner.all() shouldBe empty
+
+    down = false
+    w.projection.tick().refused shouldBe None
+    inner.all() should not be empty
   }
 
   // One at a time, a US boot's first projection waited on ~2,250 films' round-trips in a row.

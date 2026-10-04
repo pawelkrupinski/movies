@@ -211,4 +211,18 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
     shadowAsks shouldBe rate.allowanceOver(10.minutes)
     pipelineWait should be <= shadowAsks * interval
   }
+
+  // What ends a host's asks for the round is the host overloading — never a permanent answer. An open breaker and a
+  // network failure (a timeout is an IOException) are overload; a replayed fixture's miss and a parse error are not.
+  "ShadowLiveFetch.isOverload" should "read a breaker, a network failure and a 429/5xx as overload, and nothing else" in {
+    def status(code: Int) = new HttpStatusException(code, "GET", "https://api.themoviedb.org/3/x", None)
+    ShadowLiveFetch.isOverload(status(429)) shouldBe true
+    ShadowLiveFetch.isOverload(status(503)) shouldBe true
+    ShadowLiveFetch.isOverload(status(403)) shouldBe false
+    ShadowLiveFetch.isOverload(new tools.CircuitOpenException("api.themoviedb.org", 30000L)) shouldBe true
+    ShadowLiveFetch.isOverload(new java.net.http.HttpTimeoutException("request timed out")) shouldBe true
+    ShadowLiveFetch.isOverload(new java.net.ConnectException("refused")) shouldBe true
+    ShadowLiveFetch.isOverload(new java.io.FileNotFoundException("no fixture")) shouldBe false
+    ShadowLiveFetch.isOverload(new IllegalArgumentException("bad json")) shouldBe false
+  }
 }
