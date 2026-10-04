@@ -49,10 +49,11 @@ object DaemonExecutors {
         catch { case _: RejectedExecutionException if es.isShutdown => cancelUnrun(command) }
     }
 
-  /** Release whoever waits on `task`, which will never run: cancelled when it is a `Future`; a
-   *  bare `Runnable` has no waiter to release. */
+  /** Release whoever waits on `task`, which will never run: cancelled when it is a `Future`, or a
+   *  permit gate's wrapper of one; a bare `Runnable` has no waiter to release. */
   private[tools] def cancelUnrun(task: Runnable): Unit = task match {
     case future: java.util.concurrent.Future[?] => future.cancel(false); ()
+    case gated: PermitGated                     => cancelUnrun(gated.command)
     case _                                      => ()
   }
 
@@ -75,11 +76,20 @@ object DaemonExecutors {
    *  [[SharedExecutionBudget]] so the gating logic lives in one place. */
   private[tools] def semaphoreGated(underlying: ExecutorService, permits: Semaphore): ExecutorService =
     new DelegatingExecutorService(underlying) {
-      override def execute(command: Runnable): Unit = underlying.execute { () =>
-        permits.acquire()
-        try command.run() finally permits.release()
-      }
+      override def execute(command: Runnable): Unit = underlying.execute(new PermitGated(command, permits))
     }
+
+  /** `command`, run once a permit is taken from `permits`. Interrupted while parked for one —
+   *  `shutdownNow` — the task never runs: cancelled ([[cancelUnrun]] reaches through this wrapper,
+   *  and through a second gate's), so its waiter is released rather than left on a future nothing
+   *  will ever complete. */
+  private final class PermitGated(val command: Runnable, permits: Semaphore) extends Runnable {
+    override def run(): Unit = {
+      val acquired = try { permits.acquire(); true }
+                     catch { case _: InterruptedException => cancelUnrun(command); Thread.currentThread().interrupt(); false }
+      if (acquired) try command.run() finally permits.release()
+    }
+  }
 
   private[tools] def virtualThreadExecutor(name: String): ExecutorService =
     Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name(s"$name-", 0L).factory())
