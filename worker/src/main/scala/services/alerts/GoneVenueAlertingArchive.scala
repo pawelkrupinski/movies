@@ -1,7 +1,7 @@
 package services.alerts
 
 import models.Cinema
-import services.scrapes.{BarrenAttempt, ForwardingScrapeArchive, GoneUpstream, ScrapeArchiveRepository, ScrapeAttempt, ScrapeOutcome}
+import services.scrapes.{BarrenAttempt, ForwardingScrapeArchive, GoneUpstream, ScrapeArchiveRepository, ScrapeOutcome}
 
 /**
  * The scrape archive, plus one page when a venue with no fallback has answered
@@ -33,7 +33,8 @@ final class GoneVenueAlertingArchive(
     // The count before this attempt, so only the attempt that MOVES it onto the
     // threshold pages: the retries of that run leave it there, and would page again.
     val before  = if (watched) underlying.find(cinema).flatMap(_.lastBarren).flatMap(_.failedRuns) else None
-    underlying.record(ScrapeAttempt(cinema, city, attempt.at, listingComplete = true, films = Nil, error = attempt.error))
+    // Filed as every forwarding archive files it, so the source's word that it lists no schedule reaches the store.
+    super.storeBarren(cinema, city, attempt)
     if (watched && !before.contains(FailedRuns))
       // Read back rather than re-derive, so the count paged on is the one the archive
       // holds. Neither step can fail the scrape: the Mongo archive's reads and the

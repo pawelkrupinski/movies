@@ -91,4 +91,17 @@ class GoneVenueAlertingArchiveSpec extends AnyFlatSpec with Matchers {
     h.failRun(KinoMuza)
     h.pages should have size 1
   }
+
+  // It sits outermost on every scrape the runner archives, so an attempt it files without the source's own word that
+  // the venue lists no schedule leaves the archive unable to tell a closed venue from a broken parser — and the content
+  // census counts every venue closed for the season as stale, the shape that held its alert firing for 44 hours
+  // (17 US drive-ins, 2026-09-27..29).
+  it should "file an empty scrape's own word that the venue lists no schedule" in {
+    val underlying = new InMemoryScrapeArchiveRepository
+    val archive    = new GoneVenueAlertingArchive(underlying, pagedElsewhere = Set.empty, notify = _ => ())
+    archive.record(ScrapeAttempt(KinoMuza, Cinema.cityOf(KinoMuza), Start, listingComplete = true, films = Seq.empty,
+      noScheduleListed = true))
+    underlying.find(KinoMuza).flatMap(_.lastBarren).map(_.noScheduleListed) shouldBe Some(true)
+    underlying.contentStamps().get(KinoMuza.displayName).map(_.noScheduleListed) shouldBe Some(true)
+  }
 }
