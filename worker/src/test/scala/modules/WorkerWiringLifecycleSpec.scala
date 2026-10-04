@@ -31,15 +31,15 @@ class WorkerWiringLifecycleSpec extends AnyFlatSpec with Matchers {
   }
 
   "A started and stopped worker wiring" should "shut every pool it registered and leave no thread of its own" in {
-    val before = ThreadLeaks.live()
-    val wiring = new PooledWiring
-    wiring.start()
-    wiring.buildPools()
-    wiring.managedResources.open should be >= 3
-    wiring.stop()
-    wiring.managedResources.open shouldBe 0
-    wiring.managedResources.unterminated shouldBe empty
-    ThreadLeaks.survivors(before) shouldBe empty
+    ThreadLeaks.of {
+      val wiring = new PooledWiring
+      wiring.start()
+      wiring.buildPools()
+      wiring.managedResources.open should be >= 3
+      wiring.stop()
+      wiring.managedResources.open shouldBe 0
+      wiring.managedResources.unterminated shouldBe empty
+    } shouldBe empty
   }
 
   "A pool built after the stop" should "be shut at once" in {

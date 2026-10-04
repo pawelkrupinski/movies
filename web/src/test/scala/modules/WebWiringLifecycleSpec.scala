@@ -20,14 +20,14 @@ class WebWiringLifecycleSpec extends AnyFlatSpec with Matchers {
   }
 
   "A booted and stopped web wiring" should "shut every pool it registered and leave no thread of its own" in {
-    val before = ThreadLeaks.live()
-    val wiring = new TestWebWiring()
-    wiring.boot()
-    Seq(wiring.movieController, wiring.pageRefreshExecutor)
-    wiring.managedResources.open should be >= 1
-    wiring.shutdown()
-    wiring.managedResources.open shouldBe 0
-    wiring.managedResources.unterminated shouldBe empty
-    ThreadLeaks.survivors(before) shouldBe empty
+    ThreadLeaks.of {
+      val wiring = new TestWebWiring()
+      wiring.boot()
+      Seq(wiring.movieController, wiring.pageRefreshExecutor)
+      wiring.managedResources.open should be >= 1
+      wiring.shutdown()
+      wiring.managedResources.open shouldBe 0
+      wiring.managedResources.unterminated shouldBe empty
+    } shouldBe empty
   }
 }
