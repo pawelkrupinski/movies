@@ -115,7 +115,7 @@ object OcineParser {
    *  an unmapped value is kept, upper-cased, so a NEW room type or format reaches
    *  `ScreeningTokens`, which logs it as unrecognised rather than this parser
    *  dropping it unseen — every token mapped here must be in that vocabulary too
-   *  (`OcineClientSpec` checks), or the projection drops it. The version tokens are SensaCine's own, so a Spanish visitor reads
+   *  (`SourceTokenTablesSpec` checks), or the projection drops it. The version tokens are SensaCine's own, so a Spanish visitor reads
    *  the same badge whichever source served the venue. The unmarked version is
    *  the Castilian one (dubbed or native), which earns no badge. */
   def formatTokens(descriptions: Seq[String]): List[String] = {
@@ -128,7 +128,9 @@ object OcineParser {
     (screen ++ unknown ++ version).distinct
   }
 
-  private val Baseline: Set[String] = Set("estándar", "estandar", "digital", "analógica", "analogica")
+  /** Labels that earn no badge: the baseline every session carries, and the kids' room, a
+   *  special-audience label `ScreeningTokens` refuses as a badge (it is an event, not a format). */
+  private val Baseline: Set[String] = Set("estándar", "estandar", "digital", "analógica", "analogica", "sala kids")
 
   private val Tokens: Map[String, String] = Map(
     "2d"               -> "2D",
@@ -139,14 +141,13 @@ object OcineParser {
     "sala ice"         -> "ICE",
     "sala premium"     -> "PREMIUM",
     "urban"            -> "URBAN",
-    "sala kids"        -> "KIDS",
     "atmos"            -> "ATMOS",
     "versión original" -> "VO",
     "versión vose"     -> "VOSE",
     "versión catalán"  -> "CAT",
     "versión euskera"  -> "EUS",
   )
-  private val ScreenOrder  = List("2D", "3D", "4D", "SCREENX", "INFINITY", "ICE", "PREMIUM", "URBAN", "KIDS", "ATMOS")
+  private val ScreenOrder  = List("2D", "3D", "4D", "SCREENX", "INFINITY", "ICE", "PREMIUM", "URBAN", "ATMOS")
   private val VersionOrder = List("VO", "VOSE", "CAT", "EUS")
 
   private def normalise(s: String): String = s.trim.toLowerCase(Locale.ROOT)

@@ -110,6 +110,15 @@ object ScreeningTokens extends Logging {
    *  call: each remembers which labels it has already reported. */
   def forDefaultCountry(): ScreeningTokens = of(models.Country.default)
 
+  /** Whether `label` names a badge of the vocabulary — in some country's: a voice-over label counts,
+   *  though a country with no voice-over drops it. The bar a source's own token table is held to
+   *  (`SourceTokenTablesSpec`): a parser mapping its codes onto a label this refuses has that token
+   *  dropped at the ingest choke point, the screening published unmarked. */
+  def isBadge(label: String): Boolean = {
+    val k = key(label)
+    VoiceoverLabels.contains(k) || Canonical.contains(k) || LanguageNames.contains(k)
+  }
+
   /** The labels that name a voice-over, whose TOKEN is the country's own. Helios
    *  spells it `LEC`, and does so 42 times to `LEK`'s one: its `speakingType`
    *  vocabulary is exactly {Napisy, DUB, ORG, LEC}, and lektor is the only one of
