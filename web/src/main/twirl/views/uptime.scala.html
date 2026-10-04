@@ -413,6 +413,7 @@
     // in the initial render or over SSE.
     function recordUpdate(d) {
       var ts = String(d.bucketTs);
+      if (!barSlots[ts]) slotTimestamps.push(ts);
       barSlots[ts] = {timeFrom: d.timeFrom, timeTo: d.timeTo, dateLabel: d.dateLabel};
       (barDetail[d.service] = barDetail[d.service] || {})[ts] = {
         status: d.status, successes: d.successes, failures: d.failures,
@@ -454,9 +455,21 @@
             for (; t < newTs; t += BUCKET_MS) barsDiv.appendChild(makeBar(t, 'bar empty'));
           }
           barsDiv.appendChild(makeBar(newTs, barClass(d)));
-          while (barsDiv.children.length > @UptimeMonitor.MaxBuckets) barsDiv.removeChild(barsDiv.firstElementChild);
+          while (barsDiv.children.length > @UptimeMonitor.MaxBuckets) forgetBar(d.service, barsDiv.firstElementChild);
         }
       });
+      forgetSlotsBefore(Number(d.bucketTs) - @UptimeMonitor.MaxBuckets * BUCKET_MS);
+    }
+
+    // A bar that slides off its row takes its hover detail with it, and a slot
+    // no row can still show takes its labels — or a tab left open keeps every
+    // bucket it was ever sent.
+    function forgetBar(service, bar) {
+      if (barDetail[service]) delete barDetail[service][bar.dataset.ts];
+      bar.remove();
+    }
+    function forgetSlotsBefore(floor) {
+      while (slotTimestamps.length && Number(slotTimestamps[0]) <= floor) delete barSlots[slotTimestamps.shift()];
     }
 
     // ── SSE live updates ────────────────────────────────────────────────

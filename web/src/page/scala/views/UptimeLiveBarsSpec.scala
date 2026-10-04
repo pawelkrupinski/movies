@@ -110,6 +110,26 @@ class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAl
     }
   }
 
+  // A tab left open on /uptime folds every live frame into the hover payload,
+  // while each row only ever keeps `MaxBuckets` bars. The payload used to keep
+  // every bucket and slot label it was ever sent — a day's tab held ~100 per
+  // service per day of detail no bar could show any more.
+  it should "forget the detail of bars that slide off the row" in {
+    onUptime { page =>
+      val frames = (1 to UptimeMonitor.MaxBuckets * 2).map { i =>
+        s"{service:'TestSvc',bucketTs:${lastTs + i * step},status:'green',fallback:false," +
+          "successes:1,failures:0,zeroes:0,errors:[],timeFrom:'a',timeTo:'b',dateLabel:'c'}"
+      }
+      page.eval(s"[${frames.mkString(",")}].forEach(applyUpdate)")
+
+      page.evalInt(allBars) shouldBe UptimeMonitor.MaxBuckets
+      page.evalBool(
+        "Object.keys(barDetail.TestSvc).every(ts => " +
+        "  document.querySelector('.row[data-service=\"TestSvc\"] .bar[data-ts=\"' + ts + '\"]'))") shouldBe true
+      page.evalInt("Object.keys(barSlots).length") should be <= UptimeMonitor.MaxBuckets
+    }
+  }
+
   private def hover(service: String, ts: Long): String =
     s"""document.querySelector('.row[data-service="$service"] .bar[data-ts="$ts"]')""" +
       """.dispatchEvent(new MouseEvent('mouseover', {bubbles: true}))"""
