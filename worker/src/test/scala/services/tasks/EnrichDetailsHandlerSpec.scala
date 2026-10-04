@@ -292,7 +292,7 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
       posterUrl = Some("https://kino.pl/plakaty/Czas, który nie nadszedł.jpg"))))
     val task     = taskFor("kino-apollo", cache, "Mariinka", enricher)
     def handle() = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned),
-      noBus, dueWindow, clock = specClock, pages = pages).handle(task) shouldBe Done
+      noBus, dueWindow, clock = specClock, enrichmentLanguage = polish, pages = pages).handle(task) shouldBe Done
     def slot = cache.get(cache.keyOf("Mariinka", None)).flatMap(_.cinemaData.get(KinoApollo))
 
     handle()
