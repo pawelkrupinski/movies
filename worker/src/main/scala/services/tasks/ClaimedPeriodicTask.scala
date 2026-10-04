@@ -31,10 +31,16 @@ class ClaimedPeriodicTask(name: String, run: () => Unit, interval: => FiniteDura
 
   private def scheduleNext(delay: FiniteDuration): Unit = {
     scheduler.schedule(new Runnable {
-      def run(): Unit = { ScheduledTick.logged(name, logger)(tickIfClaimed()); scheduleNext(interval) }
+      def run(): Unit = { ScheduledTick.logged(name, logger)(tickIfClaimed()); scheduleNext(intervalOr(delay)) }
     }, delay.toMillis, TimeUnit.MILLISECONDS)
     ()
   }
+
+  /** The next run's delay: `interval` read afresh, or — when it cannot be read — `fallback`, said
+   *  out loud. Read bare, an `interval` that threw ended the schedule for good, silently. */
+  private def intervalOr(fallback: FiniteDuration): FiniteDuration =
+    try interval
+    catch { case scala.util.control.NonFatal(e) => logger.warn(s"$name: interval unreadable, next run in ${fallback.toMillis}ms: $e", e); fallback }
 
   /** Run only if this machine wins the current window's claim. True when it ran. */
   def tickIfClaimed(): Boolean = {
