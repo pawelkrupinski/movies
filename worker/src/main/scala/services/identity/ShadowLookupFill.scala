@@ -22,6 +22,7 @@ final class ShadowLookupBudget(allowance: Int, pace: FiniteDuration, sleep: Long
   val answered = new AtomicInteger()
   /** How many more asks this round's allowance has room for. */
   def remaining: Int = synchronized(allowance - used)
+  /** Asks whose read FAILED — taught nothing (a 5xx, a timeout, a 429, an open breaker); not a 404. */
   val failed   = new AtomicInteger()
   val deferred = new AtomicInteger()
 
@@ -61,8 +62,9 @@ final class ShadowLiveFetch(fetch: HttpFetch, budget: ShadowLookupBudget) extend
     if (!budget.acquire(host)) throw new LookupGap(s"deferred: $url")
     else try { val a = call(fetch); budget.answered.incrementAndGet(); a }
     catch {
-      case definitive: HttpStatusException if HttpStatusException.isDurable(definitive.code) =>
-        budget.answered.incrementAndGet(); throw definitive
+      // The one classifier: a 404/410 is TMDB's answer ("nothing here"); everything else taught nothing.
+      case absent if tools.ReadOutcome.isAbsent(absent) =>
+        budget.answered.incrementAndGet(); throw absent
       case NonFatal(e) =>
         budget.failed.incrementAndGet()
         val overload = ShadowLiveFetch.isOverload(e)
@@ -158,15 +160,23 @@ final class ShadowLookupFill(
     // before the model's gaps and refreshes are chosen.
     try beforeRound() catch { case NonFatal(e) => logger.warn("identity shadow fill: TMDB changes not swept, this round", e) }
     val asked = gapMemory.fold(questions())(_.due(questions()))
-    // Asked and still unanswered — not deferred for want of budget — is remembered, and asked again
-    // a day later rather than every round (`TmdbGapMemory`).
-    def stillUnanswered[A](answer: => Answer[A]): Boolean = {
-      val deferred = budget.deferred.get
-      !answer.isKnown && budget.deferred.get == deferred
+    // Asked and still unanswered — not deferred for want of budget — is remembered (`TmdbGapMemory`):
+    // a durable non-answer is asked again a day later, one whose read failed on a short backoff.
+    def outcome[A](answer: => Answer[A]): ShadowLookupFill.Asked = {
+      val (deferred, failed) = (budget.deferred.get, budget.failed.get)
+      // A read that failed wins over the deferrals its back-off then caused within the same question.
+      if (answer.isKnown) ShadowLookupFill.Asked.Settled
+      else if (budget.failed.get != failed) ShadowLookupFill.Asked.Failed
+      else if (budget.deferred.get != deferred) ShadowLookupFill.Asked.Settled
+      else ShadowLookupFill.Asked.Unanswered
     }
-    val unansweredQueries = asked.queries.toSeq.sorted.filter(q => stillUnanswered(lookups.candidates(q)))
-    val unansweredFilms   = asked.films.toSeq.sorted.filter(id => stillUnanswered(lookups.film(id)))
-    gapMemory.foreach(_.unanswered(unansweredQueries, unansweredFilms))
+    val queryOutcomes = asked.queries.toSeq.sorted.map(q => q -> outcome(lookups.candidates(q)))
+    val filmOutcomes  = asked.films.toSeq.sorted.map(id => id -> outcome(lookups.film(id)))
+    def those[K](outcomes: Seq[(K, ShadowLookupFill.Asked)], kind: ShadowLookupFill.Asked) = outcomes.collect { case (k, `kind`) => k }
+    gapMemory.foreach { memory =>
+      memory.unanswered(those(queryOutcomes, ShadowLookupFill.Asked.Unanswered), those(filmOutcomes, ShadowLookupFill.Asked.Unanswered))
+      memory.failed(those(queryOutcomes, ShadowLookupFill.Asked.Failed), those(filmOutcomes, ShadowLookupFill.Asked.Failed))
+    }
     // Then, with what the allowance has left, questions asked again because they have aged
     // (`TmdbRefreshes`) — through the same live fetch.
     refreshes().iterator.takeWhile(_ => budget.remaining > 0).foreach(lookups.candidates)
@@ -191,4 +201,17 @@ final class ShadowLookupFill(
         }
         finally running.set(false)
       }
+}
+
+object ShadowLookupFill {
+  /** What one asked gap came to in a round. */
+  private[identity] sealed trait Asked
+  private[identity] object Asked {
+    /** Answered, or deferred for want of budget: nothing to remember. */
+    case object Settled    extends Asked
+    /** TMDB answered and left it unanswered (a 404, nothing the store takes): the day's wait. */
+    case object Unanswered extends Asked
+    /** A read it took failed (5xx, timeout, 429, open breaker): the short failure backoff. */
+    case object Failed     extends Asked
+  }
 }

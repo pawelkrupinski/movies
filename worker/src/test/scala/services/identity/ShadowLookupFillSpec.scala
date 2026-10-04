@@ -44,10 +44,10 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
   private def fill(store: TmdbStore, service: HttpFetch, rate: Int = 600, sleeps: mutable.Buffer[Long] = mutable.Buffer.empty,
                    rounds: mutable.Buffer[ShadowLookupRound] = mutable.Buffer.empty,
                    beforeRound: () => Unit = () => (), refreshes: () => Seq[CandidateQuery] = () => Nil,
-                   gaps: TmdbStore => AnswersChanged = modelGaps) =
+                   gaps: TmdbStore => AnswersChanged = modelGaps, gapMemory: Option[TmdbGapMemory] = None) =
     new ShadowLookupFill(() => gaps(store), new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()),
       service, new TmdbNormalizer(store), IdentityShadowLookupRate(rate), IdentityShadowInterval(30.minutes), rounds += _,
-      DaemonExecutors.directExecutor(), sleeps += _, beforeRound, refreshes)
+      DaemonExecutors.directExecutor(), sleeps += _, beforeRound, refreshes, gapMemory)
 
   /** What the identity model over the store's answers finds unanswered — what a round asks. */
   private def modelGaps(s: TmdbStore): AnswersChanged = {
@@ -134,6 +134,34 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
     }
     round.backedOff shouldBe true
     f.effectiveRate shouldBe IdentityShadowLookupRate(600)
+  }
+
+  // A read that FAILED taught nothing about the film. One that failed without overloading (a 403, an
+  // error body) was remembered like TMDB's "nothing here" and held back a day; one that overloaded
+  // (a 503) was not remembered at all and asked again every round. Both now wait a short backoff.
+  it should "remember a question whose read failed for minutes, and one TMDB answered 404 for a day" in {
+    val clock   = new tools.MutableClock(TestWiring.FixedInstant)
+    val memory  = new TmdbGapMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    val Seq(absent, refused, failing) = Seq("Absent", "Refused", "Failing").map(CandidateQuery.Title(_))
+    val service = new HttpFetch {
+      private def answer(url: String): String =
+        if (url.contains("Failing")) throw new HttpStatusException(503, "GET", url, None)
+        else if (url.contains("Refused")) throw new HttpStatusException(403, "GET", url, None)
+        else if (url.contains("Absent")) throw new HttpStatusException(404, "GET", url, None)
+        else """{"results":[],"crew":[],"cast":[]}"""
+      override def get(url: String): String                                    = answer(url)
+      override def get(url: String, headers: Map[String, String]): String      = answer(url)
+      override def post(url: String, body: String, contentType: String): String = answer(url)
+    }
+    // Two rounds: the 503 backs the host off, which would defer anything asked after it.
+    fill(store(), service, gaps = _ => AnswersChanged(Set(absent, refused), Set.empty), gapMemory = Some(memory)).round()
+    fill(store(), service, gaps = _ => AnswersChanged(Set(failing), Set.empty), gapMemory = Some(memory)).round()
+    val asked = AnswersChanged(Set(absent, refused, failing), Set.empty)
+
+    clock.advance(java.time.Duration.ofMinutes(1))
+    memory.due(asked) shouldBe AnswersChanged.Empty                   // each remembered: not asked every round
+    clock.advance(java.time.Duration.ofMinutes(5))
+    memory.due(asked) shouldBe AnswersChanged(Set(refused, failing), Set.empty)   // the failures, minutes later
   }
 
   "a background round" should "end quietly when the worker's shutdown interrupts it, leaving the interrupt set, not escape as uncaught" in {
