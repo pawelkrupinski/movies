@@ -150,7 +150,7 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
    *  read and one write however many there are. One whose value did not move is only re-stamped
    *  (`fetchedAt`), at most once per [[TmdbStore.RenewEvery]], and announced to no one. Announced once
    *  written and unlocked, so a listener never runs holding a document's lock. */
-  private def updateAll(kind: TmdbKind, ids: Seq[String])(change: (String, Option[BsonDocument]) => BsonDocument): Unit = {
+  private def updateAll(kind: TmdbKind, ids: Seq[String], renew: Boolean = true)(change: (String, Option[BsonDocument]) => BsonDocument): Unit = {
     val distinct = ids.distinct
     val moved = locks.locking(distinct.map(keyOf(kind, _))) {
       val now     = clock.millis()
@@ -159,7 +159,7 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
         def value = before.get(id).map { d => val c = d.clone(); Stamps.foreach(c.remove); c }
         val after = change(id, value)   // `change` may edit what it is given: compare with a fresh copy
         if (!value.contains(after)) Some((id, after.append(ChangedAt, BsonInt64(now)).append(FetchedAt, BsonInt64(now)), true))
-        else before.get(id).filter(d => fetchedAt(d).forall(_ < now - RenewEvery.toMillis))
+        else before.get(id).filter(d => renew && fetchedAt(d).forall(_ < now - RenewEvery.toMillis))
           .map(d => (id, d.clone().append(FetchedAt, BsonInt64(now)), false))
       }
       if (written.nonEmpty) docs.put(kind, written.map { case (id, d, _) => id -> d })
@@ -210,9 +210,12 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
       d
     }
 
+  /** A search or credit naming films: it files a hit where no record is held, and never renews a film it
+   *  only named — it did not fetch the film's record, and renewing each named film once it was a day old
+   *  made every re-asked question ~20 film writes (DE's whole fill pace, for records that had not moved). */
   private def hitsSeen(hits: Seq[Hit]): Unit = {
     val byId = hits.map(hit => hit.tmdbId.toString -> hit).toMap
-    updateAll(TmdbKind.Film, hits.map(_.tmdbId.toString)) { (id, before) =>
+    updateAll(TmdbKind.Film, hits.map(_.tmdbId.toString), renew = false) { (id, before) =>
       val d = before.getOrElse(new BsonDocument())
       if (Option(d.get("record")).exists(_.isDocument)) d else d.append("hit", hitDoc(byId(id)))
     }

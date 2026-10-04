@@ -91,6 +91,20 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.lookups.candidates(CandidateQuery.Title("Mulholland")).toOption.get.map(_.title) shouldBe Seq("Mulholland Drive")
   }
 
+  // A refreshed search only names its films: it is not a fetch of their records. Re-stamping each named film
+  // (`fetchedAt`) once it was a day old made every re-asked question ~20 film writes — DE's tmdb_films took
+  // ~4.8 writes/s, the fill's whole pace, for records that had not changed (2026-10-04).
+  it should "not write a film whose record it names again, however long ago that record was fetched" in {
+    val w = new World
+    w.normalizer.filed("GET", url("credits,release_dates", language), Success(local()))
+    w.normalizer.filed("GET", url("alternative_titles", "en-US"), Success(english))
+    val before = w.docs.get(TmdbKind.Film, Seq(film.toString))(film.toString)
+    w.clock.advance(java.time.Duration.ofMillis((TmdbStore.RenewEvery * 3).toMillis))
+    val search = """{"results":[{"id":1018,"title":"Mulholland Dr.","original_title":"Mulholland Drive","release_date":"2001-06-06","popularity":8.9}]}"""
+    w.normalizer.filed("GET", s"https://api.themoviedb.org/3/search/movie?language=$language&include_adult=false&query=Mulholland", Success(search))
+    w.docs.get(TmdbKind.Film, Seq(film.toString))(film.toString) shouldBe before
+  }
+
   "a 404" should "be read as the client reads it: a record's missing half, a person with no credits; a search's is no answer" in {
     val w = new World
     w.normalizer.filed("GET", url("credits,release_dates", language), Failure(new HttpStatusException(404, "GET", "…", None)))
