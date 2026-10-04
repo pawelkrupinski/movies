@@ -46,4 +46,12 @@ class QueryPlansSpec extends AnyFlatSpec with Matchers with org.scalatest.LoneEl
     QueryPlans.violations(QueryPlans.Recorded(Seq(indexed), Nil), Map.empty, unread = Map("films.key_1" -> "why")) shouldBe
       Seq("kept unread, but read now or gone: films.key_1")
   }
+
+  "a plain find of the whole collection" should "be no violation: a collection scan is its best plan" in {
+    val whole = QueryPlans.Plan("films", new BsonDocument("find", new BsonString("films")).append("filter", new BsonDocument()),
+      Seq("COLLSCAN"), docsExamined = 9, keysExamined = 0)
+    QueryPlans.violations(QueryPlans.Recorded(Seq(whole), Nil), Map.empty) shouldBe empty
+    QueryPlans.violations(QueryPlans.Recorded(Seq(whole.copy(statement = whole.statement.clone().append("sort",
+      new BsonDocument("year", new org.bson.BsonInt32(1))))), Nil), Map.empty) should have size 1
+  }
 }

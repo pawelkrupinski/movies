@@ -82,8 +82,6 @@ final class InMemoryTmdbDocuments extends TmdbDocuments with TmdbDocumentRetenti
 final class MongoTmdbDocuments(db: MongoDatabase) extends TmdbDocuments with TmdbDocumentRetention {
   private val Timeout = 30.seconds
   private val Batch   = 500
-  /** A whole collection's stale stamps, read in default-sized replies: minutes at most. */
-  private val ScanTimeout = 5.minutes
   private def coll(kind: TmdbKind): MongoCollection[BsonDocument] = db.getCollection[BsonDocument](kind.collection)
 
   def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = read(kind, ids, None)
@@ -102,10 +100,8 @@ final class MongoTmdbDocuments(db: MongoDatabase) extends TmdbDocuments with Tmd
     }.toMap
 
   def fetchedBefore(kind: TmdbKind, cutoff: Long): Seq[(String, Long)] =
-    Await.result(coll(kind).find(Filters.lt(TmdbStore.FetchedAt, cutoff))
-      .projection(org.mongodb.scala.model.Projections.include(TmdbStore.FetchedAt))
-      .batchSize(tools.MongoReplies.Default).toFuture(), ScanTimeout)
-      .flatMap(d => TmdbStore.fetchedAt(d).map(d.getString("_id").getValue -> _))
+    services.retention.StampedRows.scanBefore(coll(kind), Filters.lt(TmdbStore.FetchedAt, cutoff), TmdbStore.FetchedAt)(
+      _.getString("_id").getValue)(TmdbStore.fetchedAt)
 
   def deleteIfStill(kind: TmdbKind, stamped: Seq[(String, Long)]): Int = stamped.grouped(Batch).map { batch =>
     Await.result(coll(kind).bulkWrite(batch.map { case (id, at) =>

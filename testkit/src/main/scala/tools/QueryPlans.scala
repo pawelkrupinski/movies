@@ -34,7 +34,12 @@ object QueryPlans {
    *  indexes they read. */
   final case class Plan(collection: String, statement: BsonDocument, stages: Seq[String], docsExamined: Long, keysExamined: Long,
                         indexes: Seq[String] = Nil) {
-    def collectionScan: Boolean = stages.contains("COLLSCAN")
+    /** A scan of a collection for a statement that asks for less than all of it. A plain `find()` with no
+     *  filter and no order reads every document, so a collection scan IS its best plan (whether it may
+     *  read the whole collection at all is `NoUnboundedMongoReadSpec`'s question). */
+    def collectionScan: Boolean = stages.contains("COLLSCAN") && !wholeRead
+    private def wholeRead: Boolean = statement.getFirstKey == "find" &&
+      Seq("filter", "sort").forall(k => Option(statement.get(k)).forall(v => v.isDocument && v.asDocument.isEmpty))
     /** A blocking in-memory sort: the index served the filter but not the order. */
     def inMemorySort: Boolean   = stages.contains("SORT")
     /** The statement without its values — what a spec names when it allows a shape. */

@@ -46,29 +46,39 @@ object StampedRows {
   /** The documents of `collection`, stamped by their `Date` field `field`. */
   def inMongo(collection: MongoCollection[Document], field: String): StampedRows = new StampedRows {
     private val Timeout = 30.seconds
-    def stampedBefore(cutoff: Instant): Seq[(String, Instant)] = {
-      val found = Vector.newBuilder[(String, Instant)]
-      val before = Filters.lt(field, java.util.Date.from(cutoff))
-      val complete = services.movies.KeysetScan.scan[Document](
-        label = s"${collection.namespace.getCollectionName} retention scan", batchSize = 2000, maxAttempts = 3,
-        initialBackoff = 500.millis, keyOf = _.getString("_id"),
-        fetchPage = (after, limit) => Await.result(collection
-          .find(after.fold(before)(a => Filters.and(before, Filters.gt("_id", a))))
-          .projection(org.mongodb.scala.model.Projections.include(field))
-          .sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), Timeout)
-      )(_.foreach(d => Option(d.getDate(field)).foreach(at => found += d.getString("_id") -> at.toInstant)))
-      complete match {
-        case tools.ScanOutcome.Incomplete(cause) =>
-          throw new IllegalStateException(s"${collection.namespace.getCollectionName}: retention scan incomplete", cause)
-        case tools.ScanOutcome.Complete => found.result()
-      }
-    }
+    def stampedBefore(cutoff: Instant): Seq[(String, Instant)] =
+      scanBefore(collection, Filters.lt(field, java.util.Date.from(cutoff)), field)(_.getString("_id"))(d =>
+        Option(d.getDate(field)).map(_.toInstant))
     def deleteIfStill(stamped: Seq[(String, Instant)]): Int = stamped.grouped(500).map { batch =>
       Await.result(collection.bulkWrite(batch.map { case (key, at) =>
         DeleteOneModel(Filters.and(Filters.equal("_id", key), Filters.equal(field, java.util.Date.from(at))))
       }, BulkWriteOptions().ordered(false)).toFuture(), Timeout).getDeletedCount
     }.sum
   }
+
+  /** Every document of `collection` matching `before` (a stamp's cutoff), as its `_id` and its stamp
+   *  `field` (`stampOf`; a document without one is not named) — read in `_id`-keyset pages that carry the
+   *  stamp alone, the way every retention scan reads: bounded replies, an `_id` index walk, never one
+   *  unbounded cursor. Throws when the scan cannot be completed, so a sweep deletes nothing on a part read. */
+  def scanBefore[D, A](collection: MongoCollection[D], before: org.bson.conversions.Bson, field: String)(idOf: D => String)
+                      (stampOf: D => Option[A])(using scala.reflect.ClassTag[D]): Seq[(String, A)] = {
+    val found = Vector.newBuilder[(String, A)]
+    val complete = services.movies.KeysetScan.scan[D](
+      label = s"${collection.namespace.getCollectionName} retention scan", batchSize = 2000, maxAttempts = 3,
+      initialBackoff = 500.millis, keyOf = idOf,
+      fetchPage = (after, limit) => Await.result(collection
+        .find(after.fold(before)(a => Filters.and(before, Filters.gt("_id", a))))
+        .projection(org.mongodb.scala.model.Projections.include(field))
+        .sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), ScanPageTimeout)
+    )(_.foreach(d => stampOf(d).foreach(at => found += idOf(d) -> at)))
+    complete match {
+      case tools.ScanOutcome.Incomplete(cause) =>
+        throw new IllegalStateException(s"${collection.namespace.getCollectionName}: retention scan incomplete", cause)
+      case tools.ScanOutcome.Complete => found.result()
+    }
+  }
+
+  private val ScanPageTimeout = 30.seconds
 
   /** `durable`'s rows, deleting each from `mirror` too — a store whose reads come from a mirror. */
   def mirrored(durable: StampedRows, mirror: StampedRows): StampedRows = new StampedRows {

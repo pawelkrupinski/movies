@@ -156,7 +156,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
     })
   }
 
-  "the TMDB store" should "read and write by id, and sweep by a scan it means" in {
+  "the TMDB store" should "read, write and sweep by id" in {
     import services.identity.{MongoTmdbDocuments, TmdbKind, TmdbStore}
     assertIndexed(plansOf("tmdb") { db =>
       val documents = new MongoTmdbDocuments(db)
@@ -166,10 +166,97 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
       documents.answers(TmdbKind.Film, Seq("3"))
       val stale = documents.fetchedBefore(TmdbKind.Film, 10L)
       documents.deleteIfStill(TmdbKind.Film, stale) shouldBe 9
+    })
+  }
+
+  "the identity trace store and its admin reads" should "write by family and id, and read a rule's, a film's, a blocker's listings by index" in {
+    import services.identity.{FamilyTraces, ListingTrace, MongoIdentityTraceReads, MongoIdentityTraceStore}
+    import services.movies.ListingKey
+    assertIndexed(plansOf("traces") { db =>
+      def key(n: Int) = ListingKey.Published(s"Venue $n", s"Film $n", None, Nil)
+      def trace(n: Int, family: String) = ListingTrace(key(n), family, Some(100 + n % 3), "OwnMatch", Seq(s"accept:rule-${n % 2}"), None, Nil,
+        Some(100 + n % 3))
+      val store = new MongoIdentityTraceStore(db)
+      store.replace(Set.empty, FamilyTraces.of((1 to 20).map(n => trace(n, s"f${n % 4}")) :+
+        trace(21, "f9").copy(film = None, blocker = Some("search:found-nothing"))))
+      store.flush()
+      store.replace(Set("f1"), FamilyTraces.of(Seq(trace(1, "f1"))))
+      store.flush()
+      val reads = new MongoIdentityTraceReads(db)
+      reads.byRule("accept:rule-1", 10)
+      reads.byFilm(101, 10)
+      reads.byBlocker("search:found-nothing", 10)
+      reads.unresolved(10, _ => true)
+      reads.byTitle("film 2", 10)
+      reads.ruleCounts()
+      reads.blockers()
+      store.close()
     }, allowed = Map(
-      "tmdb_films find filter{fetchedAt:{$lt}}" -> (
-        "TmdbStoreSweep, once a day: its cutoff (the 7-day gap-marker grace) names most of the store, so an index on " +
-        "fetchedAt would be paid on every hot-path write to read nearly every document anyway")))
+      "identity_traces find filter{listing.rawTitle}" ->
+        "the admin page's free-text title search, by hand: a case-insensitive substring match no index can serve",
+      "identity_traces aggregate pipeline[{$unwind},{$group:{n:{$sum},_id}},{$sort:{n}}]" ->
+        "the admin page's every-rule count: a tally of the whole collection, by hand",
+      "identity_traces find filter{$and:[{blocker:{$exists}},{blocker:{$not}}]} sort{_id}" -> (
+        "ProposalFill's page of unresolved listings in _id order: the sparse blocker index holds only the unresolved, and " +
+        "the page's limit makes the sort a top-k (an _id-ordered partial index is not allowed on _id)")))
+  }
+
+  "the venue page store" should "read, write and scan pages by id" in {
+    import services.venuepages.{MongoVenuePageStore, VenuePage, VenuePageKey}
+    assertIndexed(plansOf("venue-pages") { db =>
+      val store = new MongoVenuePageStore(db)
+      (1 to 10).foreach(n => store.put(VenuePage(VenuePageKey("helios", s"/film/$n"), VenuePage.Gone(404), Far)))
+      store.get(VenuePageKey("helios", "/film/3")) shouldBe defined
+      store.foreach(_ => ()) shouldBe tools.ScanOutcome.Complete
+    })
+  }
+
+  "the stores keyed by id alone" should "read, write and sweep by id" in {
+    import services.attempts.{AttemptOutcome, EnrichmentAttempt, MongoEnrichmentAttemptReader, MongoEnrichmentAttemptStore}
+    import services.cadence.{MongoRatingCadenceReader, MongoRatingCadenceStore}
+    import services.freshness.{FreshnessKind, MongoFreshnessStore}
+    import services.identity.MongoVenueSlotFingerprints
+    import services.movies.ChangeStreamResumeToken
+    import services.closure.MongoClosureLedger
+    import services.resolution.MongoResolutionStore
+    import services.tasks.{MongoScrapeCostStore, ScrapeCost}
+    assertIndexed(plansOf("by-id") { db =>
+      val keys = (1 to 10).map(n => s"imdb|tmdb:$n")
+      val freshness = new MongoFreshnessStore(Some(db))
+      Await.result(freshness.whenReady(FreshnessKind.ImdbRating), 30.seconds)
+      keys.foreach(freshness.markFresh(_, FreshnessKind.ImdbRating, Far))
+      freshness.invalidate(keys.head)
+      val attempts = new MongoEnrichmentAttemptStore(Some(db))
+      keys.foreach(attempts.record(_, EnrichmentAttempt(Far, 12L, AttemptOutcome.Unchanged)))
+      new MongoEnrichmentAttemptReader(Some(db)).forKeys(keys.take(3))
+      val cadence = new MongoRatingCadenceStore(Some(db))
+      keys.foreach(cadence.record(_, Some("7.1"), Far))
+      val cadenceReads = new MongoRatingCadenceReader(Some(db))
+      tools.Eventually.eventually(cadenceReads.all() should have size 10, timeoutMs = 10000)
+      cadenceReads.forKeys(keys.take(3))
+      Seq(freshness.retention, attempts.retention, cadence.retention).foreach { rows =>
+        tools.Eventually.eventually(rows.stampedBefore(Far.plusSeconds(1)) should not be empty, timeoutMs = 10000)
+        rows.deleteIfStill(rows.stampedBefore(Far.plusSeconds(1)).take(2))
+      }
+      freshness.close(); attempts.close(); cadence.close()
+      val resolutions = new MongoResolutionStore(Some(db), "resolve_imdb", normalizer = titleNormalizer,
+        ttlMismatches = new TtlIndexMismatches, clock = _root_.tools.MongoTtlSpecClock.Pinned)
+      resolutions.put("anora|2024", "tt28607951")
+      tools.Eventually.eventually(resolutions.get("anora|2024") shouldBe defined, timeoutMs = 10000)
+      resolutions.removeForFilm("anora")
+      val costs = new MongoScrapeCostStore(db)
+      (1 to 3).foreach(n => costs.record(s"scrape|venue-$n", ScrapeCost(n)))
+      costs.recent()
+      val ledger = new MongoClosureLedger(db)
+      ledger.confirm("Kino Gone", Far); ledger.confirmed(); ledger.withdraw("Kino Gone")
+      val fingerprints = new MongoVenueSlotFingerprints(db)
+      fingerprints.update((1L to 10L).toSet, Set.empty); fingerprints.update(Set(11L), Set(1L)); fingerprints.all()
+      val token = new ChangeStreamResumeToken("movies", Some(db), enabled = true)
+      token.advance(new org.bson.BsonDocument("_data", new org.bson.BsonString("826A")), token.generation)
+      token.save(force = true)
+      token.load().answered shouldBe defined
+      token.clear()
+    })
   }
 
   "the uptime monitor" should "flush buckets and tag services by index" in {
