@@ -67,26 +67,25 @@ class MovieServiceAnnounceResolvedSpec extends AnyFlatSpec with Matchers {
     waiting(queue) shouldBe 3L // rt + mc + fw now; IMDb waits for ImdbIdResolver to land the id
   }
 
-  it should "publish ImdbIdMissing (→ id recovery) for a tmdbNoMatch promotion, but enqueue no rating tasks (no ids yet)" in {
-    // TMDB found nothing, so the film has no id to query ratings against — but we
-    // STILL kick the id-recovery chain (IMDb suggestion → director → Wikidata →
-    // Letterboxd → OMDb → Wikidata-title → Cinemeta) so the TMDB-less long tail can land
-    // an imdbId → rating + a resolved year, instead of waiting for the daily OMDb sweep.
-    val (service, seen, freshness, queue) = fixture()
+  it should "kick no title-search IMDb recovery for a tmdbNoMatch promotion, and enqueue nothing it has no id for" in {
+    // A film TMDB has no record of takes its IMDb id from the identity resolver's fallback source
+    // (`ResolverDecision.fallback`), on every fact it publishes — never from the title-search ladder,
+    // which guessed PL "Lalka" (2026) the 1968 film's id and its 6.9.
+    val (service, seen, _, queue) = fixture()
     service.announceResolvedNewMovie(
       CacheKey("Obscure Local Premiere", Some(2026), titleNormalizer), MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy)))
 
-    seen.toSeq should matchPattern { case Seq(ImdbIdMissing("Obscure Local Premiere", Some(2026), _)) => }
-    waiting(queue) shouldBe 0L // no tmdbId/imdbId yet → nothing eligible; ratings follow once the id lands
+    seen shouldBe empty
+    waiting(queue) shouldBe 0L // no tmdbId/imdbId → nothing eligible
   }
 
-  it should "stay silent for a tmdbNoMatch promotion that ALREADY carries an imdbId (nothing to recover)" in {
+  it should "enqueue the IMDb rating of a tmdbNoMatch promotion the fallback source gave an imdbId, at once" in {
     val (service, seen, _, queue) = fixture()
     service.announceResolvedNewMovie(
       CacheKey("Obscure Local Premiere", Some(2026), titleNormalizer), MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy), imdbId = Some("tt9999999")))
 
     seen shouldBe empty
-    waiting(queue) shouldBe 0L
+    waiting(queue) shouldBe 1L // IMDb's rating, off the fallback's id
   }
 
   "announceReidentified" should "re-fetch every rating of a film an identity projection rebuilt under a new TMDB answer, though its title rated it minutes before" in {

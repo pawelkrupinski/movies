@@ -51,8 +51,10 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: S
       }
     case CandidateQuery.ImdbTitled(title) =>
       suggestedMovies(title) match {
-        case Answer.Known(movies) => answered(TmdbIdentityLookups.everyTitled(ImdbClient.titled(title, movies, id => Some(imdb.titlesOf(id))).getOrElse(Nil)
-          .map(tmdb.findByImdbId(_).take(1).toSeq.map(TmdbIdentityLookups.hitOf))))
+        case Answer.Known(movies) => answered {
+          val found = ImdbClient.titled(title, movies, id => Some(imdb.titlesOf(id))).getOrElse(Nil).map(tt => tt -> tmdb.findByImdbId(tt).take(1).toSeq.map(TmdbIdentityLookups.hitOf))
+          TmdbIdentityLookups.titledHits(found.map(_._2), TmdbIdentityLookups.fallbackHits(found.collect { case (tt, Nil) => tt }, movies))
+        }
         case Answer.Unknown       => Answer.Unknown
       }
   }
@@ -67,7 +69,9 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: S
       val read = answered(imdb.suggestedMovies(title)); recentSuggestions.put(title, read); read
     }
 
-  override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = answered(tmdb.identityRecord(tmdbId))
+  override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
+    if (FallbackIds.isFallback(tmdbId)) FallbackIds.imdbId(tmdbId).fold[Answer[Option[IdentityMeasures.Film]]](Answer.Known(None))(tt => answered(imdb.identityRecord(tt)))
+    else answered(tmdb.identityRecord(tmdbId))
 }
 
 object TmdbIdentityLookups {
@@ -76,6 +80,18 @@ object TmdbIdentityLookups {
    *  Bourdos's 2012 one), and the one found is not the ONE film IMDb lists under it. ONE reading for the live
    *  lookups and the store's. */
   def everyTitled(found: Seq[Seq[Hit]]): Seq[Hit] = if (found.exists(_.isEmpty)) Nil else found.flatten.distinctBy(_.tmdbId)
+
+  /** An IMDb-titled answer: the TMDB films found ([[everyTitled]]), and the ones TMDB holds no record of as fallback
+   *  candidates ([[fallbackHits]]) — which no TMDB rule weighs. ONE reading for the live lookups and the store's. */
+  def titledHits(found: Seq[Seq[Hit]], fallbacks: Seq[Hit]): Seq[Hit] = everyTitled(found) ++ fallbacks
+
+  /** The IMDb titles `ids` (those TMDB holds no record of) as fallback candidates, each as IMDb's suggestion names it —
+   *  no popularity, since IMDb's suggestion order is no TMDB popularity. ONE reading for the live lookups and the store's. */
+  def fallbackHits(ids: Seq[String], movies: Seq[ImdbClient.Suggestion]): Seq[Hit] =
+    ids.distinct.flatMap(tt => FallbackIds.ofImdbId(tt).map { id =>
+      val named = movies.find(_.id == tt)
+      Hit(id, named.flatMap(_.title).getOrElse(tt), None, named.flatMap(_.year), 0.0)
+    })
 
   /** A TMDB film row as the model's candidate — from a live answer here, or a normalized one. */
   def hitOf(r: TmdbClient.SearchResult): Hit = Hit(r.id, r.title, r.originalTitle, r.releaseYear, r.popularity)

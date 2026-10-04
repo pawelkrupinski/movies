@@ -9,8 +9,11 @@ enum ClusterId {
   case Unmatched(first: ListingKey)
 }
 
-/** A cluster: its listings published now, and its TMDB film. */
-final case class Cluster(members: Set[ListingKey], film: Option[Int])
+/** A cluster: its listings published now, the TMDB film the resolver matched them to, and — for none — the fallback source's
+ *  film it took instead ([[ResolverDecision.fallback]]), whether a question it was reached on is not answered yet, and the
+ *  TMDB film its evidence leans to ([[ResolverDecision.leaning]]). */
+final case class Cluster(members: Set[ListingKey], film: Option[Int], fallback: Option[ResolverDecision.Fallback] = None,
+                         unanswered: Boolean = false, leaning: Option[ResolverDecision.Leaning] = None)
 
 /** What a projection reads off the whole listing set, the resolution and the stored films before it drafts any film
  *  ([[IdentityProjectionPlan.index]]): every listing by key, each listing's previous film (`previousOf` — the film whose

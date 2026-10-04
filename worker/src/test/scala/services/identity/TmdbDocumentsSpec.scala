@@ -60,14 +60,17 @@ trait TmdbDocumentsBehaviour extends AnyFlatSpec with Matchers {
     d.get(TmdbKind.Film, Seq("1018"))("1018") shouldBe film("Lalka (1968)")
   }
 
-  it should "give an answer only the fields it reads: a film's record and hit, never its partials" in {
+  it should "give an answer only the fields it reads: a film's record and hit, and of its partials only the IMDb id" in {
     val d = newDocuments()
     val stored = new BsonDocument("record", new BsonDocument("title", BsonString("Lalka")))
-      .append("local", new BsonDocument("title", BsonString("Lalka"))).append("english", new BsonDocument("title", BsonString("The Doll")))
+      .append("local", new BsonDocument("title", BsonString("Lalka")).append("imdb_id", BsonString("tt0064570")))
+      .append("english", new BsonDocument("title", BsonString("The Doll")))
     d.put(TmdbKind.Film, Seq("1018" -> stored))
     d.put(TmdbKind.Film, Seq("7" -> new BsonDocument("local", new BsonDocument("title", BsonString("Partial only")))))
     d.answers(TmdbKind.Film, Seq("1018", "7", "9")) shouldBe
-      Map("1018" -> new BsonDocument("record", new BsonDocument("title", BsonString("Lalka"))), "7" -> new BsonDocument())
+      Map("1018" -> new BsonDocument("record", new BsonDocument("title", BsonString("Lalka")))
+        .append("local", new BsonDocument("imdb_id", BsonString("tt0064570"))).append("english", new BsonDocument()),
+        "7" -> new BsonDocument("local", new BsonDocument()))
     d.get(TmdbKind.Film, Seq("1018"))("1018") shouldBe stored                       // the write path still reads it whole
   }
 }

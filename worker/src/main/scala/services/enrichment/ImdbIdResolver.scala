@@ -50,7 +50,7 @@ class ImdbIdResolver(
   // OMDb id backstop — its English DB carries much of the niche/foreign long tail
   // (Indian, Malayalam, festival titles) that IMDb's suggestion endpoint and
   // Letterboxd miss. Previously only the once-daily `OmdbBackfill` sweep hit it; wiring it as a
-  // ladder rung lets a TMDB-less newcomer's id land promptly. `findImdbId` is
+  // ladder rung lets a newcomer's id land promptly. `findImdbId` is
   // title+year+director corroborated, so a fuzzy hit can't bind an unrelated film.
   // None (default / `OMDB_API_KEY` unset) skips it.
   omdb: Option[OMDbClient] = None,
@@ -98,10 +98,10 @@ class ImdbIdResolver(
    *  (`ImdbClient.findId`) and write it back to the cached row — the
    *  `EnrichmentReaper` then enqueues its IMDb rating on the next pass.
    *
-   *  No-op when a TMDB-linked row already carries an imdbId (a stale event raced with
-   *  another resolver) or when the search returns nothing — we'd rather leave the row
-   *  imdbId-less than guess a wrong id. A row with no TMDB id is searched again as its
-   *  facts grow, and takes a different answer (see `resolve`). */
+   *  No-op when the row already carries an imdbId (a stale event raced with another
+   *  resolver), has no TMDB id (its IMDb id is the identity resolver's fallback source's to
+   *  give), or when the search returns nothing — we'd rather leave the row imdbId-less than
+   *  guess a wrong id. */
   val onImdbIdMissing: PartialFunction[DomainEvent, Unit] = {
     case ImdbIdMissing(title, year, searchTitle) => pool.submit(resolveOrWarn(title, year, searchTitle))
   }
@@ -177,15 +177,15 @@ class ImdbIdResolver(
           tmdbId   <- record.tmdbId
           imdbId   <- resolver.resolveImdbId(tmdbId)
         } yield imdbId,
-        // OMDb backstop — the English DB that covers most of the TMDB-less
-        // long tail (Indian/Malayalam/festival titles). title+year+director
+        // OMDb backstop — the English DB that covers much of the long tail TMDB's
+        // IMDb cross-references miss (Indian/Malayalam/festival titles). title+year+director
         // corroborated (see OMDbClient) so a fuzzy hit can't bind a wrong film.
         // This is the id the once-daily OmdbBackfill sweep would have supplied
         // hours later; running it inline lands it now. A lookup OMDb could not answer
         // (down, quota spent) falls through to the next rung; nothing is recorded for it.
         () => omdb.flatMap(_.findImdbId((searchTitle +: record.evidence.titles.toSeq).distinct, year, directors)),
         // Wikidata DIRECT-title — distinct from the Filmweb-id path above: for a
-        // TMDB-less film with no Filmweb entity page, search Wikidata's film items
+        // film with no Filmweb entity page, search Wikidata's film items
         // by title and bind the first whose label + P577 year corroborate. Catches
         // films with a Wikidata entry (hence RT/MC/Letterboxd slugs too) that the
         // English-DB resolvers miss.
@@ -200,9 +200,9 @@ class ImdbIdResolver(
 
   private def resolve(title: String, year: Option[Int], searchTitle: String): Unit = {
     val key = cache.keyOf(title, year)
-    // A row with no TMDB id is searched again as its facts grow (`MergeRetrigger`); its id is replaced only
-    // by a different answer, and kept when the search now finds nothing.
-    cache.get(key).filter(record => record.imdbId.isEmpty || record.tmdbId.isEmpty).foreach { record =>
+    // Only a TMDB film TMDB gave no IMDb id: a film TMDB has no record of takes its IMDb id from the identity
+    // resolver's fallback source (`ResolverDecision.fallback`), on every fact it publishes, never from a title search.
+    cache.get(key).filter(record => record.imdbId.isEmpty && record.tmdbId.isDefined).foreach { record =>
       logger.info(s"IMDb-id: looking up '${key.cleanTitle}' (${key.year.getOrElse("?")}) [search='$searchTitle']")
       // Try every year the film's cinemas report (plus the key year), sorted — the
       // mirror of the staging recovery. IMDb's release year can sit at any cinema's

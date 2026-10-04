@@ -1,6 +1,6 @@
 package services.identity
 
-import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData}
+import models.{Cinema, CinemaMovie, CinemaShowing, Imdb, MovieRecord, Source, SourceData}
 import services.movies.{CacheKey, CinemaSlotBuilder, FilmId, ListingKey, ScreeningTokens,
   ShowtimesDigest, StoredMovieRecord, TitleNormalizer}
 import services.resolution.TmdbAttempt
@@ -194,7 +194,11 @@ object IdentityProjectionPlan {
   /** Cluster `id` of `decisions`, over the listings `published`: none when it publishes none. */
   def clusterOf(id: ClusterId, decisions: Seq[ResolverDecision], published: ListingKey => Boolean): Option[Cluster] = {
     val members = decisions.iterator.flatMap(_.members).filter(published).toSet
-    Option.when(members.nonEmpty)(Cluster(members, id match { case ClusterId.Matched(film) => Some(film); case _ => None }))
+    Option.when(members.nonEmpty)(id match {
+      case ClusterId.Matched(film) => Cluster(members, Some(film))
+      case _                       => Cluster(members, None, decisions.iterator.flatMap(_.fallback).nextOption(), decisions.exists(_.unanswered > 0),
+                                        decisions.iterator.flatMap(_.leaning).nextOption())
+    })
   }
 
   /** The drafts of the films `scope` names — every film of the corpus, or the ones a tick's changes reach, closed over
@@ -210,8 +214,9 @@ object IdentityProjectionPlan {
     val previousOf    = if (scope.whole) index.previousOf else index.previousOf.filter { case (k, _) => scope.listings(k) }
     val previousFilms = (if (scope.whole) index.listingsOf.toSeq else scope.films.toSeq.flatMap(id => index.listingsOf.get(id).map(id -> _)))
       .map { case (id, ls) => IdSeeding.Film(id, ls) }
-    val clusters      = (if (scope.whole) index.clusters.values.toSeq else scope.clusters.toSeq.map(index.clusters))
-      .map(c => c.members -> c.film)
+    val inScope       = if (scope.whole) index.clusters.values.toSeq else scope.clusters.toSeq.map(index.clusters)
+    val clusters      = inScope.map(c => c.members -> c.film)
+    val unmatchedOf   = inScope.filter(_.film.isEmpty).map(c => c.members -> c).toMap
     val stored        = if (scope.whole) storedById.values.toSeq else scope.films.toSeq.flatMap(storedById.get)
     val numbered      = previousFilms.map(f => covered.counterOf(f.id).get -> f.listings)
 
@@ -322,7 +327,16 @@ object IdentityProjectionPlan {
       val sameFilm = previous.exists(_.record.tmdbId == film)
       val base = previous.filter(_ => sameFilm).map(_.record).getOrElse(
         MovieRecord(retainedSynopses = previous.map(_.record.retainedSynopses).getOrElse(Map.empty)))
-      val record = base.copy(
+      // A film TMDB has no record of carries the IMDb id of the fallback film the resolver took for it — else the one it
+      // held, when that is the TMDB film its listings' evidence leans to though no rule took it ([[ResolverDecision.Leaning]]:
+      // "Tatarak", Wajda's 2009 film below the rating cut), else none: an id a title search guessed (the pipeline's, the
+      // former TMDB-less enrichments') is not the resolver's answer — PL "Lalka" (2026) held the 1968 film's, and its 6.9.
+      // The rating and IMDb's slot go with an id that goes. A no-match reached before every question was answered is a
+      // gap, not a verdict: the record keeps what it holds.
+      val imdb   = unmatchedOf.get(members).filterNot(_.unanswered).map { cluster =>
+        cluster.fallback.map(_.id).orElse(base.imdbId.filter(id => cluster.leaning.exists(_.imdbNumber == IdentityMeasures.imdbNumber(id)))) }
+      val held   = imdb.fold(base)(id => if (id == base.imdbId) base else base.copy(imdbId = id, imdbRating = None, data = base.data - Imdb))
+      val record = held.copy(
         tmdbId        = film,
         tmdbAttempt   = if (film.isDefined) None else base.tmdbAttempt.orElse(Some(TmdbAttempt(ResolverVerdict, at))),
         detailPending = false,
@@ -330,7 +344,7 @@ object IdentityProjectionPlan {
         // A chain's network detail slot is venue source data no listing is published at: kept from the
         // stored film whatever it is matched to, as its venue slots are rebuilt from theirs.
         // The venue slots first, and the rest over them: no venue slot is a non-venue source or a chain's network one.
-        data          = venueData ++ base.data.filter { case (source, _) => Source.cinemaOf(source).isEmpty } ++
+        data          = venueData ++ held.data.filter { case (source, _) => Source.cinemaOf(source).isEmpty } ++
                           previous.fold(Map.empty[Source, SourceData])(_.record.data.filter { case (source, _) => Cinema.Networks.contains(source) }))
       FilmDraft(counter, previous.map(_.id), keys, record, anchor)
     }

@@ -234,7 +234,9 @@ enum CandidateQuery {
   /** Every film IMDb lists under this very title in ANY language — its own title, its original or one of its
    *  AKAs — found in TMDB by its IMDb id: the record a local title names when TMDB carries no translation of it
    *  ("Camino dla opornych" is IMDb's Polish title of TMDB's "Compostelle", "Kuźma" IMDb's "Kuzma"). Each film
-   *  found reads the title as one of its own ([[CorpusContext.titlesByImdb]]); a path, never a rank. */
+   *  found reads the title as one of its own ([[CorpusContext.titlesByImdb]]); a path, never a rank. The ones TMDB holds
+   *  no record of are answered too, under their FALLBACK ids ([[FallbackIds]]): never a candidate TMDB's rules weigh,
+   *  only what a cluster no TMDB film was taken for may fall back to ([[ResolverDecision.fallback]]). */
   case ImdbTitled(title: String)
 
   def sortKey: String = this match {
@@ -243,6 +245,7 @@ enum CandidateQuery {
     case Imdb(t)       => s"i\u0000$t"
     case ImdbTitled(t) => s"a\u0000$t"
   }
+
 }
 
 object CandidateQuery {

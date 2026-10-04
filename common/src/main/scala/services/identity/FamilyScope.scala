@@ -5,13 +5,17 @@ import services.identity.IdentityMeasures.ListingFilm
 import scala.collection.mutable
 
 /** One family's scoring: every member node's candidates — the family's pool — scored on the node's
- *  own evidence ([[of]]), or on a cluster's evidence pooled into one listing ([[pooled]]). */
+ *  own evidence ([[of]]), or on a cluster's evidence pooled into one listing ([[pooled]]). A `fallback` scope's pool is
+ *  instead the members' fallback-source films ([[CandidateGeneration.fallbackOf]]), scored by the very same measures and
+ *  denials: what a cluster no TMDB film was taken for may fall back to. */
 private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring, acceptance: Acceptance,
-                                          counted: () => Unit, related: () => Unit = () => ()) {
+                                          counted: () => Unit, related: () => Unit = () => (), fallback: Boolean = false) {
   import scoring.{backing, calibration, evidenceDenial, houses, namesItsSeasonProduction, namesOnlyItsVenue, pins}
-  import scoring.generation.{candidateById, directed, imdbOnly, imdbSuggested, imdbTitled, ownSearch, ownWalk, sharedOf, soleResults}
+  import scoring.generation.{candidateById, candidateOf, directed, fallbackOf, imdbOnly, imdbSuggested, imdbTitled, ownSearch, ownWalk, sharedOf, soleResults}
 
-  val pool: Seq[Candidate] = members.flatMap(member => ownSearch(member.id).keys ++ ownWalk(member.id)).distinct.sorted.map(candidateById)
+  val pool: Seq[Candidate] =
+    if (fallback) members.flatMap(member => fallbackOf(member.id)).distinct.sorted.flatMap(candidateOf)
+    else members.flatMap(member => ownSearch(member.id).keys ++ ownWalk(member.id)).distinct.sorted.map(candidateById)
   /** Which pieces of the members' titles are qualifiers — an edition, a banner — rather than
    *  works, learned from how the pool's records bill them (`IdentityMeasures.Qualifiers`): a
    *  record titled only a listing's qualifier does not name it. The family's own pool, so a

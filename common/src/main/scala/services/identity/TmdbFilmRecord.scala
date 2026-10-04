@@ -30,6 +30,7 @@ object TmdbFilmRecord {
       val title = (localized \ "title").as[String]
       val countries = main.flatMap(d => (d \ "production_countries").asOpt[Seq[JsValue]].getOrElse(Nil)
         .flatMap(c => (c \ "iso_3166_1").asOpt[String]) ++ (d \ "origin_country").asOpt[Seq[String]].getOrElse(Nil)).distinct
+      val imdbId = main.flatMap(d => (d \ "imdb_id").asOpt[String]).find(_.nonEmpty)
       Some(IdentityMeasures.Film(
         title             = title,
         originalTitle     = (localized \ "original_title").asOpt[String],
@@ -38,8 +39,8 @@ object TmdbFilmRecord {
         runtime           = main.flatMap(d => (d \ "runtime").asOpt[Int]).find(_ > 0),
         directors         = Option.when(hasCrew)(directors),
         countries         = Option.when(countries.nonEmpty)(countries),
-        popularity        = main.flatMap(d => (d \ "popularity").asOpt[Double]).headOption) ->
-        main.flatMap(d => (d \ "imdb_id").asOpt[String]).find(_.nonEmpty))
+        popularity        = main.flatMap(d => (d \ "popularity").asOpt[Double]).headOption,
+        imdbNumber        = imdbId.fold(0)(IdentityMeasures.imdbNumber)) -> imdbId)
     }
   }
 

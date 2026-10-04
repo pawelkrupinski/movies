@@ -303,7 +303,8 @@ final class IdentityProjection(
       if (!patch) _ => None else f => before.get(f.id).filter(s => s.key(normalizer) == f.key).map(_.record)
     val declined = phases("writes")(writeAll(changed, plan.retired, IdentityProjection.independent(changed, plan.films, stored, normalizer),
       patchable))
-    changed.filter(f => before.get(f.id).forall(_.record.tmdbId != f.record.tmdbId)).foreach { f =>
+    // a film now identified otherwise: by TMDB, or — one TMDB has no record of — by the fallback source's IMDb id
+    changed.filter(f => before.get(f.id).forall(s => s.record.tmdbId != f.record.tmdbId || s.record.imdbId != f.record.imdbId)).foreach { f =>
       Try(announce(CacheKey.stored(f.title, f.key), f.record)).failed.foreach(e => logger.warn(s"identity projection: announcing ${f.id} (${f.title}) failed", e))
     }
     val seconds = started.seconds

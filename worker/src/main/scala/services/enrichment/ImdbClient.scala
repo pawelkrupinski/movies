@@ -210,6 +210,11 @@ class ImdbClient(http: HttpFetch) {
    *  title IMDb does not have; a failed read throws. */
   def titlesOf(imdbId: String): Seq[String] = graphQl(titlesQueryBody(imdbId)).fold(Seq.empty[String])(titlesIn)
 
+  /** IMDb's record of `imdbId` as the identity measures read it ([[identityRecordIn]]); `None` when IMDb has no such
+   *  title; a failed read throws. */
+  def identityRecord(imdbId: String): Option[services.identity.IdentityMeasures.Film] =
+    graphQl(ImdbClient.identityRecordBody(imdbId)).flatMap(ImdbClient.identityRecordIn)
+
   /** The suggestion endpoint's answer for `title`: an object carrying its `d` array
    *  (empty when IMDb knows nothing by that name). Anything else is a failed read. */
   private def suggestions(title: String): Option[JsObject] = {
@@ -321,6 +326,40 @@ object ImdbClient {
   /** The IMDb id a [[titlesQueryBody]] asks about; `None` for any other body. */
   def titlesQueryId(body: String): Option[String] =
     Option.when(body.contains(Json.stringify(JsString(TitlesQuery))))(Json.parse(body)).flatMap(js => (js \ "variables" \ "id").asOpt[String])
+  /** The GraphQL query [[identityRecord]] asks: what the identity measures read of a title — its titles in every
+   *  language, year, running time, directors and countries (ISO codes) — in one round-trip. */
+  private val IdentityRecordQuery = "query IdentityRecord($id:ID!){title(id:$id){titleText{text} originalTitleText{text} " +
+    "releaseYear{year} runtime{seconds} countriesOfOrigin{countries{id}} principalCredits{category{id} credits{name{nameText{text}}}} " +
+    "akas(first:100){edges{node{text}}}}}"
+  def identityRecordBody(imdbId: String): String =
+    Json.stringify(Json.obj("query" -> IdentityRecordQuery, "variables" -> Json.obj("id" -> imdbId)))
+  /** The IMDb id an [[identityRecordBody]] asks about; `None` for any other body. */
+  def identityRecordId(body: String): Option[String] =
+    Option.when(body.contains(Json.stringify(JsString(IdentityRecordQuery))))(Json.parse(body)).flatMap(js => (js \ "variables" \ "id").asOpt[String])
+  /** An [[IdentityRecordQuery]] answer as the identity measures read a film; `None` when IMDb has no such title. Its
+   *  directors and countries are unknown, not "none", when the answer carries no credits or countries at all. */
+  def identityRecordIn(js: JsValue): Option[services.identity.IdentityMeasures.Film] = {
+    val title    = js \ "data" \ "title"
+    val titles   = titlesIn(js)
+    val own      = (title \ "titleText" \ "text").asOpt[String].filter(_.trim.nonEmpty).orElse(titles.headOption)
+    val credits  = (title \ "principalCredits").asOpt[Seq[JsValue]]
+    val directed = credits.map(_.filter(c => (c \ "category" \ "id").asOpt[String].contains("director"))
+      .flatMap(c => (c \ "credits").asOpt[Seq[JsValue]].getOrElse(Nil)).flatMap(c => (c \ "name" \ "nameText" \ "text").asOpt[String])
+      .filter(_.trim.nonEmpty).distinct)
+    val countries = (title \ "countriesOfOrigin" \ "countries").asOpt[Seq[JsValue]].map(_.flatMap(c => (c \ "id").asOpt[String]).filter(_.nonEmpty))
+    own.map { name =>
+      val original = (title \ "originalTitleText" \ "text").asOpt[String].filter(_.trim.nonEmpty)
+      services.identity.IdentityMeasures.Film(
+        title             = name,
+        originalTitle     = original,
+        alternativeTitles = titles.filterNot(t => t == name || original.contains(t)),
+        year              = (title \ "releaseYear" \ "year").asOpt[Int],
+        runtime           = (title \ "runtime" \ "seconds").asOpt[Int].map(_ / 60).filter(_ > 0),
+        directors         = directed,
+        countries         = countries.filter(_.nonEmpty))
+    }
+  }
+
   /** The titles a [[TitlesQuery]] answer lists, each once. */
   def titlesIn(js: JsValue): Seq[String] = {
     val title = js \ "data" \ "title"

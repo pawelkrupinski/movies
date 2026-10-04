@@ -9,6 +9,7 @@ import org.scalatest.matchers.should.Matchers
 import tools.{HttpStatusException, MutableClock, TestWiring}
 
 import scala.collection.mutable
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success}
 
 /** TMDB's answers normalized as they are fetched: read back exactly as the client parses them, with
@@ -211,7 +212,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   /** A film document carries the two partial responses its record was parsed from beside the
    *  record: ~650 of ~1,000 bytes that no answer reads. A take-up fetched and decoded them for every
    *  film it named — UK's store batches took 12.4 s of a 21 s context. Answers read only what they use. */
-  "the model's lookups" should "read a film's answer fields, never its partial responses" in {
+  "the model's lookups" should "read a film's answer fields, of its partial responses only the IMDb id" in {
     val w = new World
     val observed = new NormalizingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true), w.normalizer)
     new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()).identityRecord(film) shouldBe defined
@@ -222,7 +223,22 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     lookups.film(film) shouldBe w.lookups.film(film)
     lookups.film(film).toOption.flatten shouldBe defined
     wholeFilmReads.get shouldBe 0
-    w.docs.answers(TmdbKind.Film, Seq(film.toString))(film.toString).keySet should not contain allOf ("local", "english")
+    val answer = w.docs.answers(TmdbKind.Film, Seq(film.toString))(film.toString)
+    Seq("local", "english").flatMap(partial => Option(answer.get(partial))).flatMap(_.asDocument.keySet.asScala).toSet shouldBe Set("imdb_id")
+  }
+
+  // A record filed before records carried IMDb's number holds none; the answer still names it, off the partials'
+  // `imdb_id` — the number a no-match's lean is compared with a card's carried IMDb id by.
+  "a film's record filed without its IMDb number" should "still answer with the number its responses name" in {
+    val w = new World
+    val observed = new NormalizingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true), w.normalizer)
+    new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()).identityRecord(film) shouldBe defined
+    w.lookups.film(film).toOption.flatten.map(_.imdbNumber) shouldBe Some(166924)
+    val filed = w.docs.get(TmdbKind.Film, Seq(film.toString))(film.toString)
+    filed.getDocument("record").remove("imdbNumber")
+    w.docs.put(TmdbKind.Film, Seq(film.toString -> filed))
+    w.docs.get(TmdbKind.Film, Seq(film.toString))(film.toString).getDocument("record").containsKey("imdbNumber") shouldBe false
+    w.lookups.film(film).toOption.flatten.map(_.imdbNumber) shouldBe Some(166924)
   }
 
   /** `docs`, with `onGet` run before each whole-document read — the read every write's compare makes. */
@@ -304,6 +320,47 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.normalizer.filed("GET", services.enrichment.ImdbClient.suggestionUrl("Camino dla opornych"),
       Success(scala.io.Source.fromResource("fixtures/imdb/suggestion_camino_dla_opornych.json")(using scala.io.Codec.UTF8).mkString))
     w.lookups.candidates(CandidateQuery.ImdbTitled("Camino dla opornych")) shouldBe Answer.Unknown
+  }
+
+  /** IMDb's suggestions for "Snow Leopard", TMDB's finds of the two IMDb displays under that title (Pema Tseden's 2023
+   *  film, which TMDB holds, and Lixing Wang's 2020 one, which it does not), IMDb's titles of the suggestions it displays
+   *  otherwise, and IMDb's record of the 2020 film — as recorded 2026-10-04. */
+  private final class SnowLeopardFetch extends tools.HttpFetch {
+    private def fixture(path: String) = scala.io.Source.fromResource(path)(using scala.io.Codec.UTF8).mkString
+    override def get(url: String): String =
+      if (url.startsWith(services.enrichment.ImdbClient.SuggestionBase)) fixture("fixtures/imdb/suggestion_snow_leopard.json")
+      else if (url.contains("/find/tt21223152")) fixture("fixtures/tmdb/find_snow_leopard_2023.json")
+      else if (url.contains("/find/tt13920372")) fixture("fixtures/tmdb/find_snow_leopard_none.json")
+      else throw new HttpStatusException(404, "GET", url, None)
+    override def post(url: String, body: String, contentType: String): String =
+      (services.enrichment.ImdbClient.titlesQueryId(body), services.enrichment.ImdbClient.identityRecordId(body)) match {
+        case (Some(tt @ ("tt31034190" | "tt0077847")), _) => fixture(s"fixtures/imdb/akas_$tt.json")
+        case (_, Some("tt13920372"))                      => fixture("fixtures/imdb/identity_record_snow_leopard.json")
+        case other                                        => throw new HttpStatusException(404, "POST", s"$url $other", None)
+      }
+  }
+
+  "a fallback question" should "offer only the film IMDb lists under the title that TMDB has no record of, read back from the store as asked live" in {
+    val w     = new World
+    val fetch = new NormalizingHttpFetch(new SnowLeopardFetch, w.normalizer)
+    val live  = new TmdbIdentityLookups(new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()),
+      new services.enrichment.ImdbClient(fetch), Nil)
+    val query = CandidateQuery.ImdbTitled("Snow Leopard")
+    val wang  = FallbackIds.ofImdbId("tt13920372").get
+    live.candidates(query).toOption.map(_.map(hit => (hit.tmdbId, hit.year))) shouldBe Some(Seq((wang, Some(2020))))
+    w.lookups.candidates(query) shouldBe live.candidates(query)
+    val record = live.film(wang)
+    record.toOption.flatten.map(f => (f.title, f.year, f.directors, f.countries)) shouldBe
+      Some(("Snow Leopard", Some(2020), Some(Seq("Lixing Wang")), Some(Seq("CN"))))
+    w.lookups.film(wang) shouldBe record
+  }
+
+  it should "be unknown to the store until IMDb's record of the film is filed" in {
+    val w     = new World
+    val fetch = new NormalizingHttpFetch(new SnowLeopardFetch, w.normalizer)
+    new TmdbIdentityLookups(new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()),
+      new services.enrichment.ImdbClient(fetch), Nil).candidates(CandidateQuery.ImdbTitled("Snow Leopard"))
+    w.lookups.film(FallbackIds.ofImdbId("tt13920372").get) shouldBe Answer.Unknown
   }
 
   "IMDb's films under a title" should "be none when one of them has no TMDB record: the one found is not the only one" in {

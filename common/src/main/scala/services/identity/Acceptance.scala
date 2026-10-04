@@ -319,6 +319,19 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     } yield taken
   }
 
+  /** The film a node's evidence LEANS to though no rule took it: the best eligible candidate on a listing billing one
+   *  work, at [[LeanMargin]] times the runner-up's probability — every fact the listing publishes weighed in it, the
+   *  priors lending — and no closer record. Not the runner-up rule's facts alone: a bare title's "facts" are the
+   *  records' missing credits (US "Lady Frankenstein", 35.8% beside 2025's "Frankenstein" at 4.0%, lost on its record
+   *  crediting a director the listing does not name). Not a match: the film a no-match's card may keep the ratings of, when an
+   *  earlier answer gave the card that film's ([[IdentityProjectionPlan]]). PL "Tatarak" read 18.4% for Wajda's 2009
+   *  film, its 1965 namesake 3.3%; "Lalka" leans to the 2026 film at 68.1%, not the 1968 one the old pipeline rated
+   *  it as; "Bolek i Lolek" (28.9% beside "Reksio" at 28.9%) and the 1986 and 2025 "Caravaggio" lean to neither. */
+  def leaning(ranked: Seq[Scored]): Option[Scored] =
+    Option.when(ranked.headOption.forall(any => !IdentityMeasures.billsTwoWorks(any.listing)) && !billsBothItsWorks(ranked))(eligibleOf(ranked))
+      .flatMap(eligible => eligible.headOption.filter(best => eligible.lift(1).forall(runnerUp =>
+        best.probability >= Acceptance.LeanMargin * runnerUp.probability) && closerThan(best, eligible).isEmpty))
+
   /** The eligible record the listing's title sits inside ([[titledCloser]]) whose answered facts
    *  `best`'s do not beat, if any: then `best`, which the title only overlaps, is not the listing's
    *  film on that evidence — on its own or pooled. */
@@ -380,6 +393,22 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   /** What [[contradicted]] read: the year distance and the runtime delta the listing published. */
   private def contradiction(scored: Scored): String =
     (scored.number("year.distance").map(d => f"year.distance=$d%.0f") ++ scored.number("runtime.delta").map(d => f"runtime.delta=$d%.0f")).mkString(" ")
+
+  /** The film a cluster no TMDB film was taken for FALLS BACK to, from a fallback source's pool (a `fallback`
+   *  [[FamilyScope]]): the best eligible film whose record carries the listing's title as its own — its title, original
+   *  or an alternative title — CORROBORATED by a fact the listing publishes, its director or its very year, contradicted by
+   *  none, on a listing billing one work, with no rival so titled that its facts do not favour it over. Stricter than any
+   *  TMDB rule: a fallback record has no search rank or popularity to lend, and a wrong film is worse than none (measured
+   *  2026-09-30: every correct rating page for a film TMDB lacks came from a row publishing a year or a director). */
+  def fallback(ranked: Seq[Scored]): Option[Scored] = {
+    val titled = eligibleOf(ranked).filter(_.category("title").exists(IdentityMeasures.Rivalling))
+    titled.headOption.filter(best => !IdentityMeasures.billsTwoWorks(best.listing) && !contradicted(best) && corroborated(best) &&
+      !best.category("director").contains("different") && titled.drop(1).forall(favours(best, _)))
+  }
+
+  /** A fact the listing publishes agrees: the director it credits, or the year it gives, exactly. */
+  private def corroborated(scored: Scored): Boolean =
+    IdentityMeasures.sameDirector(scored.measures) || scored.number("year.distance").contains(0.0)
 
   /** A published year more than one off, or a runtime 30 minutes or more off: the listing's own facts against it. */
   def contradicted(scored: Scored): Boolean =
@@ -600,6 +629,10 @@ private[identity] object Acceptance {
    *  when it did, and what that candidate's evidence said there — the facts against it, its probability against the
    *  cut, the rival it lost to. */
   final case class Refused(why: String, film: Option[Int] = None, detail: String = "")
+
+  /** How many times its runner-up's probability the film a no-match leans to holds ([[Acceptance.leaning]]): a tie
+   *  between namesakes is no lean. */
+  val LeanMargin = 2.0
   /** A candidate as a refusal names it: "1365683 Primavera (2025)". */
   def named(scored: Scored): String =
     s"${scored.candidate.tmdbId} ${scored.candidate.film.title}${scored.candidate.film.year.fold("")(year => s" ($year)")}"

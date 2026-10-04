@@ -46,8 +46,16 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
 
   // ── golden path: recover the IMDb id, and only that ───────────────────────────
 
-  "refreshOneSync" should "recover a missing imdbId by title and write no Rotten Tomatoes link" in {
-    val cache = cacheWith(MovieRecord())
+  "refreshOneSync" should "leave a film TMDB has no record of to the identity resolver's fallback source" in {
+    // Its IMDb id is the resolver's to give, on every fact it publishes (`ResolverDecision.fallback`): a title
+    // search guessed PL "Lalka" (2026) the 1968 film's.
+    val cache = cacheWith(MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy)))
+    new OmdbBackfill(cache, omdbStub, clock = _root_.tools.SpecClock.Pinned).refreshOneSync(keyOf(cache))
+    cache.get(keyOf(cache)).flatMap(_.imdbId) shouldBe None
+  }
+
+  it should "recover a missing imdbId by title and write no Rotten Tomatoes link" in {
+    val cache = cacheWith(MovieRecord(tmdbId = Some(603)))
     new OmdbBackfill(cache, omdbStub, clock = _root_.tools.SpecClock.Pinned).refreshOneSync(keyOf(cache))
 
     val e = cache.get(keyOf(cache)).get
@@ -75,7 +83,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "recover imdbId via title search when only the rottenTomatoesUrl is already set" in {
-    val cache = cacheWith(MovieRecord(rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/existing")))
+    val cache = cacheWith(MovieRecord(tmdbId = Some(603), rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/existing")))
     new OmdbBackfill(cache, omdbStub, clock = _root_.tools.SpecClock.Pinned).refreshOneSync(keyOf(cache))
 
     val e = cache.get(keyOf(cache)).get
@@ -84,7 +92,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "make NO write when OMDb cannot supply the imdbId" in {
-    val repository = new InMemoryMovieRepository(Seq(("Film", Some(2024), MovieRecord())), normalizer = titleNormalizer)
+    val repository = new InMemoryMovieRepository(Seq(("Film", Some(2024), MovieRecord(tmdbId = Some(603)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     repository.upserts.clear()
     // ?t= returns no match → nothing to write.
@@ -108,7 +116,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a no-op when the OMDb key is unset (feature off — no HTTP call)" in {
-    val cache = cacheWith(MovieRecord())
+    val cache = cacheWith(MovieRecord(tmdbId = Some(603)))
     val keyless = new OMDbClient(
       http = new GetOnlyHttpFetch { def get(url: String): String = throw new RuntimeException("feature off — no call") },
       apiKey = None
@@ -121,7 +129,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "record no miss when OMDb cannot be read, so the next sweep asks again" in {
-    val cache    = cacheWith(MovieRecord())
+    val cache    = cacheWith(MovieRecord(tmdbId = Some(603)))
     val attempts = new InMemoryOmdbAttemptStore
     val failing  = new OMDbClient(
       http = new GetOnlyHttpFetch { def get(url: String): String = throw new tools.HttpStatusException(401, "GET", url, None) },
@@ -134,7 +142,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "propagate an OMDb failure to the task (its retry sees it) and leave the row untouched" in {
-    val cache = cacheWith(MovieRecord())
+    val cache = cacheWith(MovieRecord(tmdbId = Some(603)))
     val failing = new OMDbClient(
       http = new GetOnlyHttpFetch { def get(url: String): String = throw new tools.HttpStatusException(503, "GET", url, None) },
       apiKey = Some(settings.OmdbApiKey("test-key"))
@@ -147,7 +155,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
 
   "refreshAll" should "recover the imdbId for every row missing one and leave every RT link alone" in {
     val repository = new InMemoryMovieRepository(Seq(
-      ("A", None, MovieRecord()),                                                          // imdbId missing
+      ("A", None, MovieRecord(tmdbId = Some(603))),                                                          // imdbId missing
       ("B", None, MovieRecord(imdbId = Some("tt0002"))),                                   // has its id → skip
       ("C", None, MovieRecord(imdbId = Some("tt0003"), rottenTomatoesUrl = Some(RtUrl)))   // fully identified → skip
     ), normalizer = titleNormalizer)
@@ -166,9 +174,9 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
     // every row missing an id, corpus-wide, every sweep. It must now do ONE
     // batched `all()` read instead.
     val repository = new InMemoryMovieRepository(Seq(
-      ("A", None, MovieRecord()),                                  // imdbId missing
-      ("B", None, MovieRecord()),                                  // imdbId missing
-      ("C", None, MovieRecord()),                                  // imdbId missing
+      ("A", None, MovieRecord(tmdbId = Some(603))),                                  // imdbId missing
+      ("B", None, MovieRecord(tmdbId = Some(603))),                                  // imdbId missing
+      ("C", None, MovieRecord(tmdbId = Some(603))),                                  // imdbId missing
       ("D", None, MovieRecord(imdbId = Some("tt9")))               // has its id
     ), normalizer = titleNormalizer)
     val cache    = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
@@ -198,7 +206,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
   }
 
   "backoff" should "skip a film still within its backoff window — no HTTP call" in {
-    val cache = cacheWith(MovieRecord())
+    val cache = cacheWith(MovieRecord(tmdbId = Some(603)))
     val attempts = new InMemoryOmdbAttemptStore
     attempts.record(filmKey(cache), 1, T0) // missed at T0, level 1 → 2-day window
     var httpCalls = 0
@@ -211,7 +219,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "record a miss (level 1) when OMDb resolves nothing" in {
-    val cache = cacheWith(MovieRecord())
+    val cache = cacheWith(MovieRecord(tmdbId = Some(603)))
     val attempts = new InMemoryOmdbAttemptStore
     val omdb = new OMDbClient(new GetOnlyHttpFetch { def get(url: String): String = """{"Response":"False","Error":"Movie not found!"}""" }, apiKey = Some(settings.OmdbApiKey("k")))
 
@@ -220,7 +228,7 @@ class OmdbBackfillSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "re-probe once the backoff window has elapsed" in {
-    val cache = cacheWith(MovieRecord())
+    val cache = cacheWith(MovieRecord(tmdbId = Some(603)))
     val attempts = new InMemoryOmdbAttemptStore
     attempts.record(filmKey(cache), 1, T0) // 2-day window from T0
     val clock = Clock.fixed(T0.plusMillis(3.days.toMillis), ZoneOffset.UTC) // past the window

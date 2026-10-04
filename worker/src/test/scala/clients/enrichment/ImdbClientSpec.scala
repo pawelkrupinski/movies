@@ -442,4 +442,18 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   it should "still report None when the suggestion endpoint has no such title" in {
     failingWith(statusError(404)).findId("Nonexistent Film", Some(2014)) shouldBe None
   }
+
+  "an identity record" should "read IMDb's title, year, directors and countries as the identity measures read a film" in {
+    // Kuzma (2026), recorded 2026-10-04: IMDb gives no running time, so none is read — unknown, not zero.
+    val body = scala.io.Source.fromResource("fixtures/imdb/identity_record_kuzma.json")(using scala.io.Codec.UTF8).mkString
+    val film = ImdbClient.identityRecordIn(play.api.libs.json.Json.parse(body))
+    film.map(f => (f.title, f.originalTitle, f.year, f.runtime, f.directors, f.countries)) shouldBe
+      Some(("Kuzma", Some("Kuzma"), Some(2026), None, Some(Seq("Artem Hryhorian")), Some(Seq("UA"))))
+    ImdbClient.identityRecordId(ImdbClient.identityRecordBody("tt43338336")) shouldBe Some("tt43338336")
+    ImdbClient.identityRecordId(ImdbClient.titlesQueryBody("tt43338336")) shouldBe None
+  }
+
+  it should "be no film when IMDb has no such title" in {
+    ImdbClient.identityRecordIn(play.api.libs.json.Json.parse("""{"data":{"title":null}}""")) shouldBe None
+  }
 }

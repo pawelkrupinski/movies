@@ -18,8 +18,9 @@ import scala.util.control.NonFatal
  * then fills `imdbRating` from the recovered id on its next tick.
  *
  * FALLBACK SEMANTICS:
- *   - Acts only on a row MISSING `imdbId` (nothing to gain otherwise — skip the
- *     HTTP call).
+ *   - Acts only on a TMDB film MISSING `imdbId` (nothing to gain otherwise — skip the
+ *     HTTP call). A film TMDB has no record of takes its IMDb id from the identity
+ *     resolver's fallback source, on every fact it publishes (`ResolverDecision.fallback`).
  *   - Writes via `orElse` against the live cached row, so a canonical writer
  *     that filled the id in between keeps its value — OMDb never overrides.
  *   - The imdb-id search is title-match guarded (see [[OMDbClient]]) so a fuzzy
@@ -54,7 +55,7 @@ class OmdbBackfill(
 
   protected def refreshOne(key: CacheKey): Option[String] =
     cache.get(key).flatMap { e =>
-      if (e.imdbId.isDefined) None               // already identified
+      if (e.imdbId.isDefined || e.tmdbId.isEmpty) None // already identified, or the resolver's to identify
       else if (inBackoff(key)) None              // recently probed + missed → still backing off (no HTTP)
       else {
         // Original (production/English) title first — OMDb is an English DB; the

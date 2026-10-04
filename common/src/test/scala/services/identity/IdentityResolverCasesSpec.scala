@@ -769,6 +769,52 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(d.render)(d.film shouldBe None)
   }
 
+  /** A film TMDB holds no record of — PL "Kuźma", "Superfutrzak" — is taken from the FALLBACK source when no TMDB film
+   *  was, and only on a fact the listing publishes: its director, or its very year. A bare title, a year against the
+   *  record, or a TMDB film of that title its facts leave standing falls back to nothing; of two IMDb namesakes, the one
+   *  its year names. */
+  "A listing no TMDB film was taken for" should "fall back to the IMDb film its facts corroborate, and to none otherwise" in {
+    val kuzma = F(9900001, "Kuźma", 2025, "Anna Nowak", 88, imdbOnly = true)
+    def fallbackOf(l: Listing, films: Seq[F]) = { val d = resolve(Seq(l), films).decisionOf(l.key); withClue(d.render)(d.film shouldBe None); d.fallback.map(_.id) }
+    fallbackOf(listing(KinoMuza, "Kuźma", director = Some("Anna Nowak")), Seq(kuzma)) shouldBe Some("tt9900001")
+    fallbackOf(listing(KinoMuza, "Kuźma", year = Some(2025)), Seq(kuzma)) shouldBe Some("tt9900001")
+    fallbackOf(listing(KinoMuza, "Kuźma"), Seq(kuzma)) shouldBe None
+    fallbackOf(listing(KinoMuza, "Kuźma", year = Some(1990)), Seq(kuzma)) shouldBe None
+    fallbackOf(listing(KinoMuza, "Kuźma", director = Some("Anna Nowak")), Seq(kuzma, F(41, "Kuźma", 1970, "", 0), F(42, "Kuźma", 1981, "", 0))) shouldBe None
+    val older = F(9800002, "Kuźma", 1999, "Jan Kowalski", 95, imdbOnly = true)
+    fallbackOf(listing(KinoMuza, "Kuźma", year = Some(1999)), Seq(kuzma, older)) shouldBe Some("tt9800002")
+  }
+
+  /** UK Cineworld's "Royal Ballet and Opera: Tosca" ×123 (Oliver Mears) fell back to IMDb's record of the 2025/26
+   *  production — which TMDB holds too, as "Royal Ballet & Opera 2025/26: Tosca", unlinked to IMDb's id — while its own
+   *  runtime left that TMDB film below the cut. A TMDB film the title names, or crediting its director, that no fact rules
+   *  out is one TMDB knows the listing may be: its rules not taking it is no licence to take a fallback in its place. */
+  it should "fall back to nothing while a TMDB film its title names or its director credits stands undenied" in {
+    val imdbs = F(9810381, "Royal Ballet and Opera: Tosca", 2025, "Oliver Mears", 210, imdbOnly = true)
+    val seasons = Seq(F(1482356, "Royal Ballet & Opera 2025/26: Tosca", 2025, "Oliver Mears", 195, 0.3, searched = false),
+      F(1702784, "Royal Ballet & Opera 2026/27: Tosca", 2027, "Oliver Mears", 205, 0.3, searched = false))
+    val d = IdentityResolver.resolve(Seq(listing(KinoMuza, "Royal Ballet and Opera: Tosca", director = Some("Oliver Mears"), runtime = Some(210))),
+      new FilmTable(imdbs +: seasons, normalizer), normalizer, IdentityCalibration.resolver).decisions.head
+    withClue(d.render)((d.film, d.fallback) shouldBe ((None, None)))
+  }
+
+  /** A no-match whose own evidence still prefers one film — below the rating cut, its facts favouring it over every
+   *  namesake — names it as the film it LEANS to, the one a card may keep an earlier answer's ratings of: PL "Tatarak"
+   *  read 18.4% for Wajda's 2009 film beside the 1965 one. Two namesakes only an IMDb lookup found, alike in all but
+   *  their credit, or a double bill, lean to none. */
+  "A no-match" should "name the one film its evidence leans to, and none on a tie or a double bill" in {
+    val films = Seq(F(1, "Tatarak", 2009, "Andrzej Wajda", 85, 1), F(2, "Tatarak", 1965, "Someone Else", 20, 0.3),
+      F(3, "Lalka", 1968, "Wojciech Has", 159, 1, searched = false), F(4, "Lalka", 1968, "Another Has", 150, 1, searched = false))
+    val lean   = listing(KinoMuza, "Tatarak")
+    val tie    = listing(KinoMuza, "Lalka")
+    val bill   = listing(KinoMuza, "Tatarak + Lalka")
+    val r      = IdentityResolver.resolve(Seq(lean, tie, bill), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    def of(l: Listing) = { val d = r.decisionOf(l.key); withClue(d.render)(d.film shouldBe None); d }
+    of(lean).leaning shouldBe Some(ResolverDecision.Leaning(1, 1))
+    of(tie).leaning shouldBe None
+    of(bill).leaning shouldBe None
+  }
+
   "A listing the evidence cannot place" should "stay unmatched, and say which candidate it refused" in {
     val films = Seq(F(1, "Opętanie", 1981, "Andrzej Żuławski", 124), F(2, "Opętanie", 1973, "Someone Else", 90))
     val bare = listing(Multikino, "Opętanie")

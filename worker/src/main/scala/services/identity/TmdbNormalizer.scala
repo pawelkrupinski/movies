@@ -29,10 +29,14 @@ final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tool
     try normalize(method, url, outcome)
     catch { case NonFatal(e) => logger.warn(s"identity store: $method ${tools.RedactedUrl(url)} not normalized: $e") }
 
-  /** A POST's answer: IMDb's titles of one title (`ImdbClient.titlesOf`); any other POST, and a failed one, files nothing. */
+  /** A POST's answer: IMDb's titles of one title (`ImdbClient.titlesOf`), or its identity record
+   *  (`ImdbClient.identityRecord`); any other POST, and a failed one, files nothing. */
   def filedPost(url: String, body: String, outcome: Try[String]): Unit =
-    try if (url == ImdbClient.Endpoint) ImdbClient.titlesQueryId(body).zip(outcome.toOption).foreach { case (id, answer) =>
-      store.imdbTitles(TmdbStore.imdbTitlesId(id), ImdbClient.titlesIn(bodies.parse(answer)))
+    try if (url == ImdbClient.Endpoint) outcome.toOption.foreach { answer =>
+      ImdbClient.titlesQueryId(body).foreach(id => store.imdbTitles(TmdbStore.imdbTitlesId(id), ImdbClient.titlesIn(bodies.parse(answer))))
+      // a reply without GraphQL data is a failed read, not IMDb saying it has no such title
+      ImdbClient.identityRecordId(body).map(_ -> bodies.parse(answer)).filter { case (_, js) => (js \ "data").toOption.isDefined }
+        .foreach { case (id, js) => store.imdbRecord(TmdbStore.imdbRecordId(id), ImdbClient.identityRecordIn(js)) }
     }
     catch { case NonFatal(e) => logger.warn(s"identity store: POST ${tools.RedactedUrl(url)} not normalized: $e") }
 

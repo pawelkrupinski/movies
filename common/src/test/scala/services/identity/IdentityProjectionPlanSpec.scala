@@ -1,6 +1,6 @@
 package services.identity
 
-import models.{Cinema, CinemaMovie, CinemaShowing, Country, Helios, KinoApollo, KinoMuza, Movie, MovieRecord, Multikino, Rialto, Showtime, SourceData, Tmdb}
+import models.{Cinema, CinemaMovie, CinemaShowing, Country, Filmweb, Helios, Imdb, KinoApollo, KinoMuza, Movie, MovieRecord, Multikino, Rialto, Showtime, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{CinemaSlotBuilder, FilmId, ListingKey, ScreeningTokens, SingleCountryNormalizer, StoredMovieRecord, StringPool}
@@ -123,6 +123,30 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     d.drafts.head.needsDetails shouldBe Some(1)
   }
 
+  /** "Tatarak" at Kino Domu Sztuki leans to Wajda's 2009 film below the rating cut, and the old pipeline gave its card
+   *  that film's IMDb id and ratings: right, kept. "Lalka" (2026) leans to the 2026 film, and its card held the 1968
+   *  film's: dropped, as every carried guess no lean names is. */
+  it should "keep an unmatched film's ratings when its listings lean to the film its IMDb id names, or a question is unanswered" in {
+    val carried = StoredMovieRecord("Obcy", Some(1979), MovieRecord(imdbId = Some("tt1360887"), imdbRating = Some(6.3),
+      searchTitle = Some("Obcy"), data = Map(slotOf(obcy.head))), FilmId("obcy|1979"), Some("obcy|1979"))
+    def leaning(imdbNumber: Int) = decision(None, obcy*).copy(leaning = Some(ResolverDecision.Leaning(51010, imdbNumber)))(DecisionTrace.Empty)
+    def drafted(d: ResolverDecision) =
+      IdentityProjectionPlan.draft(obcy, resolution(d), Seq(carried), FilmIdCounters.empty, normalizer, slots, tokens, at, rowsOf(obcy)).drafts.head.record
+    val kept = drafted(leaning(1360887))
+    (kept.imdbId, kept.imdbRating) shouldBe ((Some("tt1360887"), Some(6.3)))
+    val other = drafted(leaning(64570))
+    (other.imdbId, other.imdbRating) shouldBe ((None, None))
+    // A no-match reached before every question was answered is a gap, not a verdict: the card keeps what it holds.
+    val gap = drafted(decision(None, obcy*).copy(unanswered = 1)(DecisionTrace.Empty))
+    (gap.imdbId, gap.imdbRating) shouldBe ((Some("tt1360887"), Some(6.3)))
+  }
+
+  it should "keep an unmatched film's record as it is when the resolver matched it to no film before" in {
+    val first  = plan(obcy, resolution(decision(None, obcy*)))
+    val second = plan(obcy, resolution(decision(None, obcy*)), storedOf(first), counters(first))
+    second.films.map(_.record) shouldBe first.films.map(_.record)
+  }
+
   /** A chain's venue pages land on its network slot (`CinemaCityChain`), which no listing is
    *  published at: venue source data, not the matched film's, so it stays whatever the match. Dropped,
    *  a cut-over country lost every Cinema City page's detail at its next projection (Identity model
@@ -151,6 +175,28 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
         normalizer, slots, tokens, at, rowsOf(Seq(bunkier)))
       withClue(s"resolved to $film: ")(d.drafts.head.record.data.get(enriched._1).flatMap(_.releaseYear) shouldBe Some(2021))
     }
+  }
+
+  /** A film TMDB has no record of carries the IMDb id of the fallback film the resolver took for it, or none: the
+   *  title-search guess it held — PL "Lalka" (2026) the 1968 film's id and its 6.9 — goes, with IMDb's rating and slot,
+   *  while what other sources' own corroborated searches gave it (Filmweb's page, `TmdbLessRatingLinks`) stays. A
+   *  no-match reached before every question was answered is a gap: the record keeps what it holds. */
+  "A stored film no TMDB film was taken for" should "carry the fallback film's IMDb id, or none once every question was answered" in {
+    val guessed = StoredMovieRecord("Obcy", Some(1979), MovieRecord(imdbId = Some("tt0064570"), imdbRating = Some(6.9),
+      filmwebUrl = Some("https://www.filmweb.pl/film/x"), filmwebRating = Some(7.1), searchTitle = Some("Obcy"),
+      data = Map(Imdb -> SourceData(title = Some("Lalka")), Filmweb -> SourceData(title = Some("Obcy")), slotOf(obcy.head))),
+      FilmId("obcy|1979"), Some("obcy|1979"))
+    def drafted(d: ResolverDecision) =
+      IdentityProjectionPlan.draft(obcy, resolution(d), Seq(guessed), FilmIdCounters.empty, normalizer, slots, tokens, at, rowsOf(obcy)).drafts.head.record
+    val none = drafted(decision(None, obcy*))
+    (none.imdbId, none.imdbRating, none.data.contains(Imdb)) shouldBe ((None, None, false))
+    (none.filmwebUrl, none.filmwebRating, none.data.contains(Filmweb)) shouldBe ((Some("https://www.filmweb.pl/film/x"), Some(7.1), true))
+    val taken = drafted(decision(None, obcy*).copy(fallback = Some(ResolverDecision.Fallback("imdb", "tt0079993", 0.4)))(DecisionTrace.Empty))
+    (taken.imdbId, taken.imdbRating, taken.data.contains(Imdb)) shouldBe ((Some("tt0079993"), None, false))
+    val same = drafted(decision(None, obcy*).copy(fallback = Some(ResolverDecision.Fallback("imdb", "tt0064570", 0.4)))(DecisionTrace.Empty))
+    (same.imdbId, same.imdbRating, same.data.contains(Imdb)) shouldBe ((Some("tt0064570"), Some(6.9), true))
+    val gap = drafted(decision(None, obcy*).copy(unanswered = 1)(DecisionTrace.Empty))
+    (gap.imdbId, gap.imdbRating) shouldBe ((Some("tt0064570"), Some(6.9)))
   }
 
   "Two stored films the resolver joins" should "keep the OLDER id, retire the other and count one merge" in {

@@ -15,10 +15,19 @@ import services.movies.ListingKey
  *  - `explanation` is the evidence it rests on, in order: each member's own best match, what
  *    joined the members, what was kept apart, and the lookups that could not be answered;
  *    `contradictions` the cannot-links that held a neighbour apart.
+ *  - `fallback`, for no match, the film a fallback source holds that the cluster's evidence takes instead
+ *    ([[Acceptance.fallback]]) — never a TMDB `film`.
+ *  - `leaning`, for no match, the one TMDB film its members' own evidence leans to though no rule took it
+ *    ([[Acceptance.leaning]]) — never a match, only what a no-match's card may keep an earlier answer's IMDb id of.
+ *  - `unanswered`, how many of the cluster's candidate queries had no answer yet: a no-match with one is a gap, not a
+ *    verdict on the film a card holds.
  */
 final case class ResolverDecision(members: Seq[ListingKey], film: Option[Int], confidence: Double,
                                   basis: ResolverDecision.Basis, explanation: Seq[String],
-                                  contradictions: Seq[String] = Nil)(val trace: DecisionTrace = DecisionTrace.Empty) {
+                                  contradictions: Seq[String] = Nil, fallback: Option[ResolverDecision.Fallback] = None,
+                                  leaning: Option[ResolverDecision.Leaning] = None,
+                                  unanswered: Int = 0)(
+                                  val trace: DecisionTrace = DecisionTrace.Empty) {
   lazy val listings: Set[ListingKey] = members.toSet
   def tmdbId: Option[Int]            = film
   def render: String =
@@ -49,6 +58,12 @@ object ResolverDecision {
   }
 
   def percent(p: Double): String = f"${p * 100}%.1f%%"
+
+  /** A film of a fallback source ([[FallbackIds.Source]]) a no-match takes: the source's name and its own id ("imdb",
+   *  "tt0064570"), and the probability its evidence gave it. */
+  final case class Fallback(source: String, id: String, probability: Double)
+  /** The film a no-match leans to, and IMDb's title number for it ([[IdentityMeasures.Film.imdbNumber]]). */
+  final case class Leaning(film: Int, imdbNumber: Int)
 }
 
 /** A resolve's result over a listing set. `violations` counts cannot-linked pairs inside one

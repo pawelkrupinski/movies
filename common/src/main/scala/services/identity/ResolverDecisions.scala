@@ -48,10 +48,39 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     val best  = scored.headOption.filter(scored => !film.contains(scored.candidate.tmdbId)).map(scored =>
       s"best ${if (scored.denied) "vetoed" else "rejected"} candidate ${scored.candidate.tmdbId} at ${ResolverDecision.percent(scored.probability)}${scored.denial.fold("")(why => s", denied: $why,")} (${calibration.explain(ListingFilm, scored.measures)})")
     val gaps  = Option.when(unknown > 0)(s"$unknown lookup(s) unanswerable")
+    // a cluster no TMDB film was taken for, every question answered: the one fallback film its members take
+    val fallback = if (film.isDefined || unknown > 0) None else fallbackOf(cluster, scope)
+    // the one TMDB film the members lean to, none of them denying it
+    val leaned  = if (film.isDefined) Nil else cluster.flatMap(node => acceptance.leaning(scope.of(node))).map(_.candidate).distinctBy(_.tmdbId)
+    val leaning = leaned match {
+      case Seq(lean) if lean.film.imdbNumber > 0 && !cluster.exists(node => families.denies(node, lean.tmdbId)) =>
+        Some(ResolverDecision.Leaning(lean.tmdbId, lean.film.imdbNumber))
+      case _ => None
+    }
     ResolverDecision(cluster.flatMap(_.listings.map(_.key)).sorted, film, confidence, basis,
       (own.take(4) ++ Option.when(own.size > 4)(s"… ${own.size - 4} more own match(es)") ++ vote ++ joins ++
-        apart.take(4) ++ best ++ gaps) :+ s"node ${cluster.head.listings.head.key}", contradictions = apart)(
+        apart.take(4) ++ best ++ gaps ++ fallback.map(taken => s"falls back to ${taken.source} ${taken.id} at ${ResolverDecision.percent(taken.probability)}") ++
+        leaning.map(lean => s"leans to ${lean.film} (tt${lean.imdbNumber})")) :+
+        s"node ${cluster.head.listings.head.key}", contradictions = apart, fallback = fallback, leaning = leaning, unanswered = unknown)(
       traceOf(cluster, scope, scored, film, basis, edges, ids))
+  }
+
+  /** The fallback film a cluster no TMDB film was taken for falls back to: the one every member that takes one takes
+   *  ([[Acceptance.fallback]], over the family's fallback pool), denied by no member's evidence — and none while a TMDB
+   *  film the title names, or crediting the listing's director, stood undenied: TMDB then knows a film the listing may
+   *  be, and its rules not taking it is no licence to take another source's in its place. UK Cineworld's "Royal Ballet
+   *  and Opera: Tosca" ×123 fell back to IMDb's record of the 2025/26 production, which TMDB holds too, unlinked. */
+  private def fallbackOf(cluster: Seq[EvidenceNode], scope: FamilyScope): Option[ResolverDecision.Fallback] = {
+    val fallbacks = new FamilyScope(scope.members, scoring, acceptance, () => (), fallback = true)
+    lazy val tmdbNamesake = cluster.exists(node => scope.of(node).exists(scored =>
+      !scored.denied && (scored.titleNamesIt || IdentityMeasures.sameDirector(scored.measures))))
+    if (fallbacks.pool.isEmpty) None
+    else cluster.flatMap(node => acceptance.fallback(fallbacks.of(node))).distinctBy(_.candidate.tmdbId) match {
+      case Seq(taken) if !tmdbNamesake && !cluster.exists(node => families.denies(node, taken.candidate.tmdbId)) =>
+        FallbackIds.unapply(taken.candidate.tmdbId).flatMap { case (source, _) =>
+          FallbackIds.imdbId(taken.candidate.tmdbId).map(ResolverDecision.Fallback(source.label, _, taken.probability)) }
+      case _ => None
+    }
   }
 
   /** The rules behind the decision ([[DecisionTrace]]): each node's own accepting rule, joins and cannot-links,

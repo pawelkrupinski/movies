@@ -195,18 +195,20 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
         segments += live.whole
       }
     }
-    // 2. films: each one's base candidate, and the title keys it files under
+    // 2. films: each one's base candidate, and the title keys it files under — a fallback source's film none: it is a
+    // candidate only a no-match's fallback scores, never a record the corpus's titles, seasons or houses are read off
     val filedUnder = mutable.HashSet.empty[String]
+    def filmKeysOf(id: Int, film: IdentityMeasures.Film) = if (FallbackIds.isFallback(id)) Set.empty[String] else filmKeys(film)
     films.toSeq.sorted.grouped(slices.records).foreach { slice =>
     lookups.prefetch(Nil, slice.filter(id => bestHits.contains(id) && (rerecorded(id) || !records.contains(id))), Nil)
     slice.foreach { id =>
-      base.remove(id).foreach(old => filmKeys(old.film).foreach { key => filedUnder += key; filmsByKey.updateWith(key)(_.map(_ - id).filter(_.nonEmpty)) })
+      base.remove(id).foreach(old => filmKeysOf(id, old.film).foreach { key => filedUnder += key; filmsByKey.updateWith(key)(_.map(_ - id).filter(_.nonEmpty)) })
       bestHits.get(id) match {
         case Some(byQuery) =>
           if (rerecorded(id) || !records.contains(id)) records(id) = lookups.film(id)
           val candidate = Candidate.of(id, byQuery.values.toSeq, records(id).toOption.flatten)
           base(id) = candidate
-          filmKeys(candidate.film).foreach { key => filedUnder += key; filmsByKey.updateWith(key)(ids => Some(ids.getOrElse(Set.empty) + id)) }
+          filmKeysOf(id, candidate.film).foreach { key => filedUnder += key; filmsByKey.updateWith(key)(ids => Some(ids.getOrElse(Set.empty) + id)) }
         case None => records.remove(id); lookups.released(Nil, Seq(id), Nil)
       }
     }
@@ -222,9 +224,10 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
       val next = base.get(id).map(candidate => candidate.copy(film = IdentityMeasures.withVenueTitles(candidate.film,
         venueTitlesOf.get(id).fold(Seq.empty[String])(_.values.flatten.toSeq.distinct.sorted))))
       if (next != candidates.get(id)) {
-        val before = candidates.get(id).toSeq.flatMap(candidate => IdentityMeasures.seasonWorks(candidate.film))
+        def seasonWorksOf(candidate: Candidate) = if (FallbackIds.isFallback(id)) Set.empty[(String, Int)] else IdentityMeasures.seasonWorks(candidate.film)
+        val before = candidates.get(id).toSeq.flatMap(seasonWorksOf)
         next.fold(candidates.remove(id))(candidate => candidates.put(id, candidate))
-        val after  = next.toSeq.flatMap(candidate => IdentityMeasures.seasonWorks(candidate.film))
+        val after  = next.toSeq.flatMap(seasonWorksOf)
         before.foreach(pair => seasonFilms.updateWith(pair)(_.map(_ - id).filter(_.nonEmpty)))
         after.foreach(pair => seasonFilms.updateWith(pair)(held => Some(held.getOrElse(Set.empty) + id)))
         billed ++= reachers.getOrElse(id, Set.empty) ++ (before ++ after).distinct.flatMap(seasonNodes.getOrElse(_, Set.empty))

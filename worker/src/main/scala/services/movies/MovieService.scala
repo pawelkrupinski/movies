@@ -58,28 +58,16 @@ class MovieService(
   def rehydrate(): Int = cache.rehydrate()
 
   /** Announce a film newly identified, or identified as another film: stamp its resolution time
-   *  (for the first-rating delay metric), kick IMDb-id recovery for a TMDB-only hit (`ImdbIdMissing`
+   *  (for the first-rating delay metric), kick IMDb-id recovery for a TMDB film TMDB gave no IMDb id (`ImdbIdMissing`
    *  → `ImdbIdResolver`), and IMMEDIATELY enqueue the now-eligible rating tasks (`enqueueNewcomerRatings`)
-   *  so its ratings don't wait for the `EnrichmentReaper`'s next tick. A film resolved without an imdbId
-   *  enqueues only its non-IMDb ratings now; IMDb follows once `ImdbIdResolver` lands the id. */
+   *  so its ratings don't wait for the `EnrichmentReaper`'s next tick. A film TMDB has no record of carries the IMDb id
+   *  the identity resolver's fallback source gave it, if any (`ResolverDecision.fallback`) — never one a title search
+   *  guessed — so its ratings, IMDb's among them, are enqueued as they stand. */
   def announceResolvedNewMovie(key: CacheKey, record: MovieRecord): Unit =
     if (record.tmdbId.isDefined) {
       publishTmdbOutcome(key, record)
       enqueueNewcomerRatings(key, record)
-    } else if (record.tmdbNoMatch && record.imdbId.isEmpty) {
-      // TMDB found nothing, so the match path above never published `ImdbIdMissing`
-      // and the film would only ever get an id from the once-daily OMDb sweep. Kick
-      // the same id-recovery chain HERE too: `ImdbIdResolver` runs its full ladder
-      // (IMDb suggestion → director → Filmweb/Wikidata → Letterboxd → OMDb → Wikidata-title
-      // → Cinemeta) against the freshly-folded cached row. This is what lets the
-      // TMDB-less long tail (niche/foreign titles — the Flicks catalogue in
-      // particular) land an imdbId → rating AND a resolved year that stabilises its
-      // read-model key, instead of waiting hours for the sweep. The id is the only
-      // effect; ratings follow once the reaper sees the now-eligible row.
-      val searchTitle = record.searchTitle.orElse(record.originalTitle).getOrElse(cache.normalizer.searchQuery(key.cleanTitle))
-      logger.info(s"TMDB: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no match; publishing ImdbIdMissing(search='$searchTitle') to attempt id recovery")
-      bus.publish(ImdbIdMissing(key.cleanTitle, key.year, searchTitle))
-    }
+    } else enqueueNewcomerRatings(key, record)
 
   /** Announce a film an identity projection wrote under a new TMDB answer. The projection builds
    *  such a record afresh, without the ratings its former identity held, so — as after a forced

@@ -361,7 +361,10 @@ object IdentityMeasures {
    *  ISO 3166-1 alpha-2 codes. */
   final case class Film(title: String, originalTitle: Option[String] = None, alternativeTitles: Seq[String] = Nil,
                         year: Option[Int] = None, runtime: Option[Int] = None, directors: Option[Seq[String]] = None,
-                        countries: Option[Seq[String]] = None, popularity: Option[Double] = None) {
+                        countries: Option[Seq[String]] = None, popularity: Option[Double] = None,
+                        /** IMDb's title number for the film (tt0064570 → 64570, [[IdentityMeasures.imdbNumber]]), 0 when
+                         *  TMDB names none: an Int, not the id, so a model of every candidate's record carries no string. */
+                        imdbNumber: Int = 0) {
     /** Its title, original title and alternative titles, in that order: every derived form below reads these. */
     private[identity] def titles: Seq[String] = Seq(title) ++ originalTitle ++ alternativeTitles
     /** The film's titles and their delimited pieces as yearless tokens, once per record (`billing`). */
@@ -1150,6 +1153,10 @@ object IdentityMeasures {
   /** The title relations under which another film RIVALS a listing's film: the listing's title
    *  names it as closely (`rivals`). */
   val Rivalling: Set[String] = Set("exact", "original", "alternative")
+  /** An IMDb id's title number ("tt0064570" → 64570), 0 for anything else. */
+  def imdbNumber(imdbId: String): Int =
+    Option.when(imdbId.startsWith("tt"))(imdbId.drop(2)).flatMap(_.toIntOption).filter(_ > 0).getOrElse(0)
+
   /** The relations under which a film carries the listing's title as one of its own: whole, or as a delimited piece. */
   val TitlesItsOwn: Set[String] = Rivalling + "segment"
   /** The ONE film the listing's search titles name on IMDb ([[CandidateQuery.ImdbTitled]]), with the titles that name

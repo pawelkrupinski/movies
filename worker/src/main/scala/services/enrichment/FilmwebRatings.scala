@@ -158,7 +158,8 @@ class FilmwebRatings(
         logger.info(s"Filmweb: $label $url → no rating on page")
         None
     }
-    if (e.imdbId.isEmpty)
+    // A film TMDB has no record of takes its IMDb id from the identity resolver's fallback source, never from a title search.
+    if (e.imdbId.isEmpty && e.tmdbId.isDefined)
       onImdbIdMissing(key.cleanTitle, key.year, e.originalTitle.getOrElse(cache.normalizer.apiQuery(key.cleanTitle)))
     change
   }
@@ -184,7 +185,7 @@ class FilmwebRatings(
         // resolution hint — re-kick TMDB / IMDb / (when resolved) the title-ratings
         // so a film TMDB missed can now be found via Filmweb's data.
         cache.get(key).foreach(after => cache.retriggerAfterEnrichment(key, e, after))
-        if (e.imdbId.isEmpty)
+        if (e.imdbId.isEmpty && e.tmdbId.isDefined)
           onImdbIdMissing(key.cleanTitle, key.year, e.originalTitle.getOrElse(cache.normalizer.apiQuery(key.cleanTitle)))
         if (changed) fw.rating.map(RatingDisplay.label) else None
       case None =>

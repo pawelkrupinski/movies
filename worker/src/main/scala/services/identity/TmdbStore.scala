@@ -14,9 +14,10 @@ import scala.jdk.CollectionConverters._
 /** The kinds of document the normalized TMDB store keeps, each its own collection. */
 enum TmdbKind(val collection: String, val answerFields: Option[Seq[String]]) {
   /** A film: its record's two partial responses, the record parsed from them, and its hit fields. An
-   *  answer reads only the record or the hit: the partials (~650 of ~1,000 bytes on UK) are the write
-   *  path's, which re-parses the record when one changes. */
-  case Film   extends TmdbKind("tmdb_films", Some(Seq("record", "hit")))
+   *  answer reads the record or the hit, and of the partials (~650 of ~1,000 bytes on UK, the write path's,
+   *  which re-parses the record when one changes) only the IMDb id: a record filed before records carried
+   *  its number has none ([[StoredTmdbLookups]] takes it from here). */
+  case Film   extends TmdbKind("tmdb_films", Some(Seq("record", "hit", "local.imdb_id", "english.imdb_id")))
   /** A person: the films they are credited as directing and as writing. */
   case Person extends TmdbKind("tmdb_people", None)
   /** A question: a title search's or person search's ranked ids, a find's films, IMDb's suggestions. */
@@ -28,11 +29,22 @@ enum TmdbKind(val collection: String, val answerFields: Option[Seq[String]]) {
 trait TmdbDocuments {
   /** These documents, by id — any number of ids: a store batches its own reads. */
   def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument]
-  /** These documents as an ANSWER reads them: only `kind`'s [[TmdbKind.answerFields]]. A store that
+  /** These documents as an ANSWER reads them: only `kind`'s [[TmdbKind.answerFields]] — a dotted one as a Mongo
+   *  projection gives it, the sub-document (empty when it lacks the field) holding only that field. A store that
    *  can leave the rest on the server does. */
   def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = kind.answerFields.fold(get(kind, ids)) { fields =>
     get(kind, ids).view.mapValues { d =>
-      val kept = new BsonDocument(); fields.foreach(f => Option(d.get(f)).foreach(v => kept.put(f, v))); kept
+      val kept = new BsonDocument()
+      fields.foreach(_.split('.') match {
+        case Array(field)        => Option(d.get(field)).foreach(kept.put(field, _))
+        case Array(field, inner) => Option(d.get(field)).filter(_.isDocument).map(_.asDocument).foreach { sub =>
+          val projected = Option(kept.get(field)).map(_.asDocument).getOrElse(new BsonDocument())
+          Option(sub.get(inner)).foreach(projected.put(inner, _))
+          kept.put(field, projected)
+        }
+        case _                   => ()
+      })
+      kept
     }.toMap
   }
   def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit
@@ -187,6 +199,11 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
       d
     })))
 
+  /** IMDb's record of a title (`ImdbClient.identityRecord`) — `None`, filed as null, when IMDb has no such title: what a
+   *  fallback candidate is scored on ([[FallbackIds]]). */
+  private[identity] def imdbRecord(id: String, record: Option[IdentityMeasures.Film]): Unit =
+    update(TmdbKind.Query, id)(_ => new BsonDocument("record", IdentityAnswerBson.film(record)))
+
   /** Every title IMDb lists one of its titles under (`ImdbClient.titlesOf`). */
   private[identity] def imdbTitles(id: String, titles: Seq[String]): Unit =
     update(TmdbKind.Query, id)(_ => new BsonDocument("titles", BsonArray.fromIterable(titles.map(BsonString(_)))))
@@ -274,6 +291,7 @@ object TmdbStore {
   def personSearchId(query: String): String                  = s"person|$query"
   def findId(imdbId: String): String                         = s"find|$imdbId"
   def imdbTitlesId(imdbId: String): String                   = s"imdbtitles|$imdbId"
+  def imdbRecordId(imdbId: String): String                   = s"imdbrecord|$imdbId"
   def suggestionsId(url: String): String                     = s"imdb|${url.stripPrefix(services.enrichment.ImdbClient.SuggestionBase)}"
 
   private def ints(values: Seq[Int]): BsonArray = BsonArray.fromIterable(values.map(BsonInt32(_)))

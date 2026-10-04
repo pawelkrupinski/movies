@@ -43,10 +43,12 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
       heldDocument(TmdbKind.Query, TmdbStore.suggestionsId(ImdbClient.suggestionUrl(title))).toSeq.flatMap(suggestionsOf).take(ImdbClient.SuggestedMovies).map(_.id)
     }.distinct
     load(TmdbKind.Query, titled.map(TmdbStore.imdbTitlesId) ++ titled.map(TmdbStore.findId))
-    // And every film any of them names.
+    // And every film any of them names: TMDB's records, and a fallback source's for the ids TMDB holds none of.
     val named = held(TmdbKind.Query).values.asScala.flatMap(_.document).filter(_.containsKey("ids")).flatMap(intsOf(_)) ++
       held(TmdbKind.Person).values.asScala.flatMap(_.document).flatMap(d => intsOf(d, "directed") ++ intsOf(d, "wrote"))
-    load(TmdbKind.Film, (named ++ films).map(_.toString).toSeq)
+    val (fallbacks, tmdbFilms) = films.toSeq.partition(FallbackIds.isFallback)
+    load(TmdbKind.Film, (named ++ tmdbFilms).map(_.toString).toSeq)
+    load(TmdbKind.Query, fallbacks.flatMap(FallbackIds.imdbId).map(TmdbStore.imdbRecordId))
     details.prefetch(Nil, Nil, pages)
   }
 
@@ -81,20 +83,38 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
         else sequence(finds.flatten.map(f => hitsOf(intsOf(f).take(1)))).mapKnown(_.flatten.distinctBy(_.tmdbId))
       }
     case CandidateQuery.ImdbTitled(title) =>
-      val id = TmdbStore.suggestionsId(ImdbClient.suggestionUrl(title))
-      document(TmdbKind.Query, id).flatMap { d =>
-        ImdbClient.titled(title, suggestionsOf(d), tt => document(TmdbKind.Query, TmdbStore.imdbTitlesId(tt)).map(stringsOf(_, "titles")))
-      }.fold[Answer[Seq[Hit]]](Answer.Unknown) { ids =>
-        val finds = ids.map(tt => document(TmdbKind.Query, TmdbStore.findId(tt)))
-        if (finds.exists(_.isEmpty)) Answer.Unknown
-        else sequence(finds.flatten.map(f => hitsOf(intsOf(f).take(1)))).mapKnown(TmdbIdentityLookups.everyTitled)
+      document(TmdbKind.Query, TmdbStore.suggestionsId(ImdbClient.suggestionUrl(title))).fold[Answer[Seq[Hit]]](Answer.Unknown) { d =>
+        val movies = suggestionsOf(d)
+        ImdbClient.titled(title, movies, tt => document(TmdbKind.Query, TmdbStore.imdbTitlesId(tt)).map(stringsOf(_, "titles")))
+          .fold[Answer[Seq[Hit]]](Answer.Unknown) { ids =>
+            val finds = ids.map(tt => tt -> document(TmdbKind.Query, TmdbStore.findId(tt)))
+            if (finds.exists(_._2.isEmpty)) Answer.Unknown
+            else sequence(finds.flatMap(_._2).map(f => hitsOf(intsOf(f).take(1)))).mapKnown(found =>
+              TmdbIdentityLookups.titledHits(found, TmdbIdentityLookups.fallbackHits(finds.collect { case (tt, Some(f)) if intsOf(f).isEmpty => tt }, movies)))
+          }
       }
   }
 
   def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
-    document(TmdbKind.Film, tmdbId.toString).flatMap(d => Option(d.get("record"))) match {
-      case Some(record) => Answer.Known(IdentityAnswerBson.filmOf(record))
-      case None         => Answer.Unknown
+    if (FallbackIds.isFallback(tmdbId)) fallbackFilm(tmdbId)
+    else document(TmdbKind.Film, tmdbId.toString).flatMap(d => Option(d.get("record")).map(d -> _)) match {
+      case Some((d, record)) => Answer.Known(IdentityAnswerBson.filmOf(record).map(withImdbNumber(_, d)))
+      case None              => Answer.Unknown
+    }
+
+  /** `film` with the IMDb number its responses name: a record filed before the record carried one holds none, while
+   *  the responses it was parsed from ([[TmdbStore.Partial]]) still hold TMDB's `imdb_id`. */
+  private def withImdbNumber(film: IdentityMeasures.Film, d: BsonDocument): IdentityMeasures.Film =
+    if (film.imdbNumber > 0) film
+    else TmdbStore.Partial.values.iterator.flatMap(partial => Option(d.get(partial.field)).filter(_.isDocument))
+      .flatMap(response => Option(response.asDocument.get("imdb_id")).filter(_.isString).map(_.asString.getValue))
+      .map(IdentityMeasures.imdbNumber).find(_ > 0).fold(film)(number => film.copy(imdbNumber = number))
+
+  /** A fallback source's film: IMDb's record of the title, as `ImdbClient.identityRecord` read it. */
+  private def fallbackFilm(id: Int): Answer[Option[IdentityMeasures.Film]] =
+    FallbackIds.imdbId(id).fold[Answer[Option[IdentityMeasures.Film]]](Answer.Known(None)) { tt =>
+      document(TmdbKind.Query, TmdbStore.imdbRecordId(tt)).flatMap(d => Option(d.get("record")))
+        .fold[Answer[Option[IdentityMeasures.Film]]](Answer.Unknown)(record => Answer.Known(IdentityAnswerBson.filmOf(record)))
     }
 
   // ── documents, read once per prefetch and filed with `reads` ──────────────────────

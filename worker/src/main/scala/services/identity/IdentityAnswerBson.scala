@@ -16,13 +16,14 @@ object IdentityAnswerBson {
     f.directors.foreach(ds => d.append("directors", strings(ds)))
     f.countries.foreach(cs => d.append("countries", strings(cs)))
     f.popularity.foreach(p => d.append("popularity", BsonDouble(p)))
+    if (f.imdbNumber > 0) d.append("imdbNumber", BsonInt32(f.imdbNumber))
     d
   }
 
   def filmOf(value: BsonValue): Option[IdentityMeasures.Film] = Option.when(!value.isNull)(value.asDocument).map { d =>
     IdentityMeasures.Film(d.getString("title").getValue, string(d, "originalTitle"), stringsOf(d.get("alternativeTitles")),
       int(d, "year"), int(d, "runtime"), Option(d.get("directors")).map(stringsOf), Option(d.get("countries")).map(stringsOf),
-      Option(d.get("popularity")).map(_.asDouble.getValue))
+      Option(d.get("popularity")).map(_.asDouble.getValue), int(d, "imdbNumber").getOrElse(0))
   }
 
   private def strings(values: Seq[String]): BsonArray = BsonArray.fromIterable(values.map(BsonString(_)))

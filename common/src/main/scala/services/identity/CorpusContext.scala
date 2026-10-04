@@ -187,7 +187,10 @@ private[identity] object CorpusContext {
    *  own candidates (its searches' and walks'), `recorded` every record their answers named. */
   def of(nodes: Seq[EvidenceNode], reached: EvidenceNode => Seq[Int], recorded: Map[Int, Candidate],
          answers: CandidateQuery => Option[Seq[Int]], sanitize: String => String): CorpusContext = {
-    val byOriginal  = IdentityMeasures.venueTitles(nodes.map(_.evidence.measured), recorded.toSeq.sortBy(_._1).map { case (id, candidate) => id -> candidate.film })
+    // a fallback source's film is a candidate only a no-match's fallback scores, never a record the corpus's titles,
+    // seasons or houses are read off ([[FallbackIds]])
+    val corpusRecords = recorded.filter { case (id, _) => !FallbackIds.isFallback(id) }
+    val byOriginal  = IdentityMeasures.venueTitles(nodes.map(_.evidence.measured), corpusRecords.toSeq.sortBy(_._1).map { case (id, candidate) => id -> candidate.film })
     val byFacts     = nodes.groupBy(titleOf).toSeq.flatMap { case (_, keyed) =>
       val sorted = keyed.sortBy(_.id)
       val found  = sorted.flatMap(node => searchFound(node.evidence.measured, answers))
@@ -196,7 +199,7 @@ private[identity] object CorpusContext {
       .groupMap(_._1)(_._2).map { case (id, titles) => id -> titles.distinct.sorted }
     val candidates  = recorded.map { case (id, candidate) =>
       id -> candidate.copy(film = IdentityMeasures.withVenueTitles(candidate.film, venueTitles.getOrElse(id, Nil))) }
-    val seasonFilms   = seasonProductions(candidates.map { case (id, candidate) => id -> candidate.film })
+    val seasonFilms   = seasonProductions(candidates.collect { case (id, candidate) if !FallbackIds.isFallback(id) => id -> candidate.film })
     val houseEvidence = nodes.flatMap { node =>
       val listing = node.evidence.measured
       IdentityMeasures.Houses.evidence(listing, billedFilms(reached(node), listing, seasonFilms.getOrElse(_, Set.empty)).map(candidates(_).film)) }
