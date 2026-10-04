@@ -283,7 +283,9 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     // it names them and drops the closing sentence, which would push it past
     // MaxDescription. The one-town form is asserted below.
     d should include ("All London cinema listings (")
-    d should include ("IMDb, Filmweb, Metacritic and Rotten Tomatoes ratings")
+    // Filmweb is Polish: only the Polish deployment rates or links it.
+    d should include ("IMDb, Metacritic and Rotten Tomatoes ratings")
+    d should not include "Filmweb"
   }
 
   it should "keep the English closing sentence for a place that is one town" in {

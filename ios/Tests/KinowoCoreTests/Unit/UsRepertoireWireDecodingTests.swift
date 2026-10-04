@@ -5,7 +5,7 @@ import XCTest
 /// `api_repertoire_us.json` is rendered and kept current by the web's
 /// `ApiRepertoireUsWireSpec` — through `[Film]`. It carries what a Polish
 /// listing never does: an age-rating certificate, English day labels, US
-/// rating sites, and showtimes the US web prints on a 12-hour clock but the
+/// rating sites, no Filmweb (a Polish site), and showtimes the US web prints on a 12-hour clock but the
 /// API must keep as `HH:mm` (the sort key, the from-hour filter and pruning
 /// all read it).
 final class UsRepertoireWireDecodingTests: XCTestCase {
@@ -23,7 +23,9 @@ final class UsRepertoireWireDecodingTests: XCTestCase {
         XCTAssertEqual(film.ratings.imdb, 7.4)
         XCTAssertEqual(film.ratings.metascore, 68)
         XCTAssertEqual(film.ratings.rottenTomatoes, 91)
+        // Filmweb is Polish: no score and no link, so `RatingBadgesView` draws no FW pill.
         XCTAssertNil(film.ratings.filmweb)
+        XCTAssertNil(film.ratings.filmwebURL)
         XCTAssertNil(film.posterURL)
     }
 

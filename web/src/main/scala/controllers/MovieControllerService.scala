@@ -271,7 +271,8 @@ class MovieControllerService(
       director = resolved.directors,
       cinemaFilmUrls = cinemaFilmUrls,
       showings = showings,
-      resolved = resolved,
+      // As the city's country serves it: no Filmweb outside Poland, on any surface.
+      resolved = resolved.servedIn(city.country),
       slug = readModel.filmSlugs.slugFor(resolved._id),
       asOf = asOf
     )

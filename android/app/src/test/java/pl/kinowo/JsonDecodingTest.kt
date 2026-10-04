@@ -99,7 +99,9 @@ class JsonDecodingTest {
         assertEquals(7.4, f.ratings.imdb!!, 0.0)
         assertEquals(68, f.ratings.metascore)
         assertEquals(91, f.ratings.rottenTomatoes)
+        // Filmweb is Polish: no score and no link, so `RatingBadges` draws no FW pill.
         assertNull(f.ratings.filmweb)
+        assertNull(f.ratings.filmwebURL)
         assertNull(f.posterURL)
         val slots = f.showings.flatMap { it.cinemas }.flatMap { it.showtimes }
         assertEquals(listOf("19:30", "00:05", "12:30"), slots.map { it.time })

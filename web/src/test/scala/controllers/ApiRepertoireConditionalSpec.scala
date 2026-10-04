@@ -46,6 +46,13 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     (film \ "trailerURLs").toOption shouldBe None
   }
 
+  it should "link a Polish film to Filmweb (its search page while no direct one is known)" in {
+    val (ctrl, _) = buildController()
+    val film = play.api.libs.json.Json.parse(contentAsString(ctrl.apiRepertoire("poznan")(FakeRequest())))
+      .as[Seq[play.api.libs.json.JsValue]].head
+    (film \ "ratings" \ "filmwebURL").as[String] should startWith ("https://www.filmweb.pl/search?query=")
+  }
+
   it should "carry releaseYear and genres on the lean listing (mobile card parity)" in {
     val (ctrl, _) = buildController()
     val result = ctrl.apiRepertoire("poznan")(FakeRequest())

@@ -80,6 +80,11 @@ case class ResolvedMovie(
    *  cinema text — the fallback is cinema-free by construction. */
   def synopsisFor(city: City): Option[String] =
     synopsisByCity.get(city.slug).orElse(synopsis)
+
+  /** This film as `country` serves it — see [[ResolvedRatings.servedIn]]. Itself, not a
+   *  copy, wherever nothing is withheld. */
+  def servedIn(country: Country): ResolvedMovie =
+    if (country.filmwebEnabled) this else copy(ratings = ratings.servedIn(country))
 }
 
 /**
@@ -98,4 +103,13 @@ case class ResolvedRatings(
   rottenTomatoesUrl: String,
   filmweb:           Option[Double],
   filmwebUrl:        String
-)
+) {
+  /** These ratings as `country` serves them. Filmweb is a Polish site, so where the
+   *  country does not wire it there is no Filmweb score and no link — whatever the
+   *  stored row says: the projection derives a Filmweb search URL for every film, and
+   *  a row projected abroad is not re-projected for a change no Polish row shows. The
+   *  empty URL is the one every surface declines to link (`WebHref` takes only
+   *  http(s)), and the value a stored row missing the field decodes to. */
+  def servedIn(country: Country): ResolvedRatings =
+    if (country.filmwebEnabled) this else copy(filmweb = None, filmwebUrl = "")
+}

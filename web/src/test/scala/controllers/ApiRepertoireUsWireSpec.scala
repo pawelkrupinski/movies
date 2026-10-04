@@ -30,12 +30,14 @@ class ApiRepertoireUsWireSpec extends AnyFlatSpec with Matchers {
   private val venue   = newYork.cinemas.head
   private val today   = java.time.LocalDate.of(2026, 6, 10) // TestMovieController.clock's date
 
-  private val body: String = {
+  private lazy val controller: MovieController = {
     val record = MovieRecord(
       imdbId            = Some("tt1234567"),
       imdbRating        = Some(7.4),
       metascore         = Some(68),
       rottenTomatoes    = Some(91),
+      // A Filmweb score a US row should never have, so the spec sees it withheld.
+      filmwebRating     = Some(6.9),
       metacriticUrl     = Some("https://www.metacritic.com/movie/wire-test/"),
       rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/wire_test"),
       data = Map[Source, SourceData](
@@ -51,8 +53,10 @@ class ApiRepertoireUsWireSpec extends AnyFlatSpec with Matchers {
           genres = Seq("Drama"), countries = Seq("United States"), director = Seq("Jane Doe"), cast = Seq("John Roe"))
       )
     )
-    val (controller, _) = TestMovieController.build(Seq(("Wire Test", Some(2026), record)),
-      servingCountry = models.Country.UnitedStates)
+    TestMovieController.build(Seq(("Wire Test", Some(2026), record)), servingCountry = models.Country.UnitedStates)._1
+  }
+
+  private lazy val body: String = {
     val result = controller.apiRepertoire(newYork.slug)(FakeRequest())
     status(result) shouldBe OK
     contentAsString(result)
@@ -71,13 +75,30 @@ class ApiRepertoireUsWireSpec extends AnyFlatSpec with Matchers {
     (film \ "showings" \ 0 \ "label").as[String] should include ("June")
   }
 
+  // Filmweb is a Polish site: a US listing neither links nor scores it, on the API,
+  // the listing page or its JSON-LD — even for a row that carries a Filmweb rating.
+  it should "offer no Filmweb link or score" in {
+    val ratings = Json.parse(body).as[Seq[JsValue]].head \ "ratings"
+    (ratings \ "filmwebURL").toOption shouldBe None
+    (ratings \ "filmweb").toOption shouldBe None
+  }
+
+  "A US city's listing page" should "offer no Filmweb link or score, in the cards or the JSON-LD" in {
+    val html = contentAsString(controller.index(newYork.slug)(FakeRequest("GET", s"/${newYork.slug}/")))
+    html should include ("Wire Test")
+    // Links and pills only: the page also embeds the Polish language pack, whose copy names Filmweb.
+    // Links and pills only: the page also carries the pill's CSS and the Polish language
+    // pack, whose copy names Filmweb.
+    html should (not include "filmweb.pl" and not include "class=\"rating-fw\"")
+  }
+
   private val fixtures = Seq(
     "ios/Tests/KinowoCoreTests/Fixtures/api_repertoire_us.json",
     "android/app/src/test/resources/fixtures/repertoire_us.json",
   )
 
   fixtures.foreach { rel =>
-    it should s"be what the decoder fixture $rel holds" in {
+    "A US city's /api/repertoire body" should s"be what the decoder fixture $rel holds" in {
       // web's Test JVM is forked in `web/` (guarded by TestJvmSpec), so the repo root is its parent.
       val file    = new java.io.File("..", rel)
       val current = if (file.exists()) new String(Files.readAllBytes(file.toPath), StandardCharsets.UTF_8) else null

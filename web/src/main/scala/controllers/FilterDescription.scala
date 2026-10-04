@@ -130,7 +130,8 @@ object FilterDescription {
         (if (towns.isEmpty) s" Sieh nach, was heute $locative im Kino läuft." else "")
     else
       s"All $genitiveLabel cinema listings$places – today's showtimes, " +
-        s"IMDb, Filmweb, Metacritic and Rotten Tomatoes ratings." +
+        // No Filmweb: a Polish site, which only the Polish deployment rates or links.
+        s"IMDb, Metacritic and Rotten Tomatoes ratings." +
         (if (towns.isEmpty) s" See what's on today $locative." else "")
   }
 
