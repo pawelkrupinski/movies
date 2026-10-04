@@ -39,7 +39,7 @@ class UserAcrossPodsSpec extends AnyFlatSpec with Matchers {
   /** The shared database, and a way to stand up another pod over it. */
   private class Fleet {
     val users  = new InMemoryUserRepository
-    val states = new InMemoryUserStateRepository
+    val states = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     users.upsert(alice())
     // She already has a state row — a pod can only hold a copy of one that exists.
     states.upsert(models.UserState("alice@example.com", Set.empty, Set.empty, Now.minusSeconds(60)))

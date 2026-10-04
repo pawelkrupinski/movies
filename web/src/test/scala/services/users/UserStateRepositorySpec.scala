@@ -9,42 +9,18 @@ import java.time.Instant
 
 class UserStateRepositorySpec extends AnyFlatSpec with Matchers with UserStateWritesContract {
 
-  protected val writesStore: InMemoryUserStateRepository = new InMemoryUserStateRepository
+  protected val writesStore: InMemoryUserStateRepository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
   protected val userIdPrefix = "contract-"
   protected def seed(state: UserState): Unit = writesStore.upsert(state)
 
   private val Now = Instant.parse("2026-05-19T12:00:00Z")
 
-  /** A store with no change stream — it keeps the trait's default liveness. */
-  private final class StreamlessUserStateRepository extends UserStateRepository {
-    def enabled                                       = true
-    def find(userId: String): Option[UserState]       = None
-    def patchLegacyState(userId: String, patch: LegacyStatePatch, now: Instant): Option[UserState] = None
-    def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] = None
-    def delete(userId: String): Unit                  = ()
-    def close(): Unit                                 = ()
-  }
-
-  "A streamless UserStateRepository" should "keep its default liveness to itself" in {
-    val stamped = new StreamlessUserStateRepository
-    val other   = new StreamlessUserStateRepository
-    stamped.changeStreamLiveness.delivered(UserStateRepository.Collection)
-
-    stamped.changeStreamLiveness.lastDelivered(UserStateRepository.Collection) shouldBe defined
-    other.changeStreamLiveness.lastDelivered(UserStateRepository.Collection) shouldBe empty
-  }
-
-  it should "hand back the same liveness on every call" in {
-    val repository = new StreamlessUserStateRepository
-    repository.changeStreamLiveness should be theSameInstanceAs repository.changeStreamLiveness
-  }
-
   "UserStateRepository" should "return None for a user with no stored state — callers fall back to UserState.empty" in {
-    new InMemoryUserStateRepository().find("nobody") shouldBe empty
+    new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned).find("nobody") shouldBe empty
   }
 
   it should "round-trip an upserted state via find" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     val s = UserState(
       userId          = "u1",
       hiddenFilms     = Set("Madagaskar"),
@@ -56,7 +32,7 @@ class UserStateRepositorySpec extends AnyFlatSpec with Matchers with UserStateWr
   }
 
   it should "let upsert overwrite the previous state — second write wins" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     repository.upsert(UserState("u1", Set.empty,    Set.empty,         Now))
     repository.upsert(UserState("u1", Set("Hidden"), Set("Kino Foo"), Now.plusSeconds(60)))
     val got = repository.find("u1").value
@@ -65,7 +41,7 @@ class UserStateRepositorySpec extends AnyFlatSpec with Matchers with UserStateWr
   }
 
   it should "keep states for different users isolated" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     repository.upsert(UserState("u1", Set("A"), Set.empty, Now))
     repository.upsert(UserState("u2", Set("B"), Set.empty, Now))
     repository.find("u1").value.hiddenFilms shouldBe Set("A")
@@ -73,7 +49,7 @@ class UserStateRepositorySpec extends AnyFlatSpec with Matchers with UserStateWr
   }
 
   "UserStateRepository.delete" should "remove the row, leaving subsequent finds empty" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     repository.upsert(UserState("u1", Set("A"), Set.empty, Now))
     repository.find("u1") should be (defined)
     repository.delete("u1")
@@ -81,7 +57,7 @@ class UserStateRepositorySpec extends AnyFlatSpec with Matchers with UserStateWr
   }
 
   it should "no-op on a delete of a non-existent userId" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     noException should be thrownBy repository.delete("never-existed")
   }
 
@@ -97,7 +73,7 @@ class UserStateRepositorySpec extends AnyFlatSpec with Matchers with UserStateWr
   // ── watchChanges (the seam UserChangeTimeCache consumes) ─────────────────
 
   "InMemoryUserStateRepository.watchChanges" should "dispatch every upsert to the registered listener" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     val seen = scala.collection.mutable.Buffer.empty[UserState]
     repository.watchChanges(onUpsert = seen += _, onDelete = _ => (), onDisconnect = () => ())
 
@@ -107,7 +83,7 @@ class UserStateRepositorySpec extends AnyFlatSpec with Matchers with UserStateWr
   }
 
   it should "dispatch every delete, by userId, to the registered listener" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     val deleted = scala.collection.mutable.Buffer.empty[String]
     repository.upsert(UserState("u1", Set("A"), Set.empty, Now))
     repository.watchChanges(onUpsert = _ => (), onDelete = deleted += _, onDisconnect = () => ())
@@ -117,7 +93,7 @@ class UserStateRepositorySpec extends AnyFlatSpec with Matchers with UserStateWr
   }
 
   it should "replace the previous registration rather than add a second listener" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     val first  = scala.collection.mutable.Buffer.empty[UserState]
     val second = scala.collection.mutable.Buffer.empty[UserState]
     repository.watchChanges(onUpsert = first += _,  onDelete = _ => (), onDisconnect = () => ())
@@ -129,7 +105,7 @@ class UserStateRepositorySpec extends AnyFlatSpec with Matchers with UserStateWr
   }
 
   it should "detach on the returned handle's close — no further dispatch" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     val seen = scala.collection.mutable.Buffer.empty[UserState]
     val handle = repository.watchChanges(onUpsert = seen += _, onDelete = _ => (), onDisconnect = () => ())
     handle.value.close()
@@ -139,7 +115,7 @@ class UserStateRepositorySpec extends AnyFlatSpec with Matchers with UserStateWr
   }
 
   it should "fire onDisconnect on simulateDisconnect — the fake's stand-in for a dead cursor" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     var disconnected = false
     repository.watchChanges(onUpsert = _ => (), onDelete = _ => (), onDisconnect = () => { disconnected = true })
 
@@ -149,7 +125,7 @@ class UserStateRepositorySpec extends AnyFlatSpec with Matchers with UserStateWr
 
 
   it should "publish an applied hidden-films change to the watcher, and stay silent on a declined one" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     val seen       = scala.collection.mutable.ListBuffer.empty[UserState]
     repository.watchChanges(seen += _, _ => (), () => ())
     repository.upsert(UserState("u1", Set.empty, Set.empty, Now, Map("pl" -> Set("A"))))

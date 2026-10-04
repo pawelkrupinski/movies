@@ -157,6 +157,7 @@ class SharedUsersMigrationSpec extends AnyFlatSpec with Matchers {
   }
 
   private class DroppingUserStateRepository extends UserStateRepository {
+    val changeStreamLiveness                          = services.movies.ChangeStreamLiveness.unwatched(_root_.tools.SpecClock.Pinned)
     def enabled                                       = true
     def find(userId: String): Option[UserState]       = None
     def patchLegacyState(userId: String, patch: services.users.LegacyStatePatch, now: java.time.Instant): Option[UserState] = None
@@ -192,7 +193,7 @@ class SharedUsersMigrationSpec extends AnyFlatSpec with Matchers {
 
   "unwrittenStates" should "report nothing when every row reads back" in {
     val rows  = Seq(state("alice@example.com", Mid), state("bob@example.com", Mid))
-    val store = new InMemoryUserStateRepository
+    val store = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     rows.foreach(store.upsert)
 
     SharedUsersMigration.unwrittenStates(rows, store) shouldBe empty

@@ -23,7 +23,7 @@ class HiddenFilmsLimitsSpec extends AnyFlatSpec with Matchers {
     val users  = new InMemoryUserRepository
     users.upsert(models.User(id = "u1", provider = "google", providerSub = "G-u1", email = Some("u1@example.com"),
       displayName = None, avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH))
-    val states = new InMemoryUserStateRepository
+    val states = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     states.upsert(UserState("u1", Set.empty, Set.empty, Instant.EPOCH, Map("pl" -> bucket)))
     (new UserStateController(Helpers.stubControllerComponents(), states, new AccountDeletion(users, states),
       NoUserChangeTimeCache, new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", clock), users, clock), states)

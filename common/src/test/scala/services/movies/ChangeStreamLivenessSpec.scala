@@ -14,7 +14,7 @@ import scala.concurrent.duration._
 class ChangeStreamLivenessSpec extends AnyFlatSpec with Matchers {
 
   "appliedThrough" should "hold until every event handed off up to the mark has been applied, on any cursor" in {
-    val liveness = new ChangeStreamLiveness()
+    val liveness = new ChangeStreamLiveness(tools.SpecClock.Pinned)
     liveness.appliedThrough(liveness.lastTicket) shouldBe true               // nothing ever handed off
     val slot   = liveness.queued(ChangeStreamLiveness.Slots)
     val movies = liveness.queued(ChangeStreamLiveness.Movies)
@@ -31,12 +31,12 @@ class ChangeStreamLivenessSpec extends AnyFlatSpec with Matchers {
 
   "awaitStreamApplied" should "not wait at all when no cursor ever subscribed" in {
     val started = System.nanoTime()
-    ReadModelProjector.awaitStreamApplied(new ChangeStreamLiveness(), grace = 10.seconds, timeout = 10.seconds)
+    ReadModelProjector.awaitStreamApplied(new ChangeStreamLiveness(tools.SpecClock.Pinned), grace = 10.seconds, timeout = 10.seconds)
     (System.nanoTime() - started).nanos should be < 5.seconds
   }
 
   it should "give up at its timeout on an apply that never runs, rather than hold the sweep" in {
-    val liveness = new ChangeStreamLiveness()
+    val liveness = new ChangeStreamLiveness(tools.SpecClock.Pinned)
     liveness.watching(ChangeStreamLiveness.Movies)
     liveness.queued(ChangeStreamLiveness.Movies)                             // never applied
     val started = System.nanoTime()
@@ -49,7 +49,7 @@ class ChangeStreamLivenessSpec extends AnyFlatSpec with Matchers {
   }
 
   "appliedThrough" should "hold for a re-read opened up to the mark until it is over, held by a debounce or not" in {
-    val liveness = new ChangeStreamLiveness()
+    val liveness = new ChangeStreamLiveness(tools.SpecClock.Pinned)
     val held     = liveness.reread()
     val mark     = liveness.lastTicket
     liveness.appliedThrough(mark) shouldBe false

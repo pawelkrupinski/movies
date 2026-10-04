@@ -10,7 +10,7 @@ class AccountDeletionSpec extends AnyFlatSpec with Matchers {
 
   private def fixture = {
     val userRepository  = new InMemoryUserRepository
-    val stateRepository = new InMemoryUserStateRepository
+    val stateRepository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     (new AccountDeletion(userRepository, stateRepository), userRepository, stateRepository)
   }
 

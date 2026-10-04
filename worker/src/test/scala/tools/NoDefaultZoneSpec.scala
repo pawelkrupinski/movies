@@ -43,13 +43,8 @@ class NoDefaultZoneSpec extends AnyFlatSpec with Matchers {
     "common/src/main/scala/models/SpanishRosterData.scala"          -> RosterData,
     "worker/src/main/scala/services/cinemas/us/UsChainVenues.scala" -> RosterData)
 
-  private val NoClockSeam =
-    "TODO(clock-default-backlog): built where no clock is in scope (a trait's default member, the Mongo " +
-      "repositories, which have no Clock seam yet); thread one through and drop the default"
-
   /** `file: Owner.parameter` → why that main-code parameter may still default to the live clock. */
   private val ClockDefaultAllowlist: Map[String, String] = Map(
-    "common/src/main/scala/services/movies/ChangeStreamLiveness.scala: ChangeStreamLiveness.clock" -> NoClockSeam,
     "common/src/main/scala/services/movies/EmbeddedYear.scala: ofAll.maxYear" ->
       "a plausibility cap on a year read out of a title (next year at most); only New Year moves it, never a venue's day",
   )

@@ -144,7 +144,7 @@ object SharedUsersMigration {
         // atomic field-scoped pipelines) — `UserStateRows` is that replace, and a
         // failed one is reported here and caught by the read-back below.
         val userStore   = new MongoUserRepository(Some(targetDb))
-        val stateStore  = new MongoUserStateRepository(Some(targetDb))
+        val stateStore  = new MongoUserStateRepository(Some(targetDb), java.time.Clock.systemUTC())
         users.foreach(userStore.upsert)
         states.foreach { state =>
           scala.util.Try(UserStateRows.replace(targetDb, state)).failed

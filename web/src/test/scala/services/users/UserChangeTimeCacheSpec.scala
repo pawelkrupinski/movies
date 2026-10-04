@@ -12,13 +12,13 @@ class UserChangeTimeCacheSpec extends AnyFlatSpec with Matchers {
   private val Now = Instant.parse("2026-05-19T12:00:00Z")
 
   "CaffeineUserChangeTimeCache" should "have no answer for a user it's never seen" in {
-    val cache = new CaffeineUserChangeTimeCache(new InMemoryUserStateRepository)
+    val cache = new CaffeineUserChangeTimeCache(new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned))
     cache.start()
     cache.lastChangeAt("nobody") shouldBe empty
   }
 
   it should "learn a user's change time from the repository's change stream" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     val cache = new CaffeineUserChangeTimeCache(repository)
     cache.start()
 
@@ -27,7 +27,7 @@ class UserChangeTimeCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "update on a second write to the same user" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     val cache = new CaffeineUserChangeTimeCache(repository)
     cache.start()
 
@@ -37,7 +37,7 @@ class UserChangeTimeCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "forget a user on a delete" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     val cache = new CaffeineUserChangeTimeCache(repository)
     cache.start()
 
@@ -58,7 +58,7 @@ class UserChangeTimeCacheSpec extends AnyFlatSpec with Matchers {
   // failure must clear everything, not just stop updating — a stale positive
   // here silently tells a real requester "nothing changed" when it did.
   it should "invalidate EVERY entry — not just the affected user's — when the stream disconnects" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     val cache = new CaffeineUserChangeTimeCache(repository)
     cache.start()
 
@@ -74,7 +74,7 @@ class UserChangeTimeCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "resume learning changes after a stream disconnect — the registration itself survives" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     val cache = new CaffeineUserChangeTimeCache(repository)
     cache.start()
 
@@ -87,7 +87,7 @@ class UserChangeTimeCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "stop dispatching to this cache once stopped" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     val cache = new CaffeineUserChangeTimeCache(repository)
     cache.start()
     cache.stop()
@@ -97,7 +97,7 @@ class UserChangeTimeCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "evict the least-recently-used entry once the size cap is hit" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     val cache = new CaffeineUserChangeTimeCache(repository, maxEntries = 2)
     cache.start()
 
@@ -112,7 +112,7 @@ class UserChangeTimeCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not trust an entry older than entryTtl even with no disconnect at all" in {
-    val repository = new InMemoryUserStateRepository
+    val repository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     val clock = new tools.MutableClock(Now)
     val cache = new CaffeineUserChangeTimeCache(repository, entryTtl = 1.minute, ticker = clock.ticker)
     cache.start()
@@ -126,7 +126,7 @@ class UserChangeTimeCacheSpec extends AnyFlatSpec with Matchers {
 
   /** A repository that behaves like one with no change-stream support at all
    *  (a store that can't stream, per `UserStateRepository.watchChanges`'s doc). */
-  private class NoWatchUserStateRepository extends InMemoryUserStateRepository {
+  private class NoWatchUserStateRepository extends InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned) {
     override def watchChanges(
       onUpsert:     UserState => Unit,
       onDelete:     String => Unit,

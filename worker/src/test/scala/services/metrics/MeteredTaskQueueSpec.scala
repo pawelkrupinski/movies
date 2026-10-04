@@ -22,7 +22,7 @@ class MeteredTaskQueueSpec extends AnyFlatSpec with Matchers {
     queue.enqueue(TaskType.ImdbRating, "film|2026")        // dup of the active one → deduped
 
     val out = series.scrape(Seq(WorkerTaskMetrics.CountryQueueSample("pl", QueueSnapshot(Map.empty, Nil),
-      services.movies.ChangeStreamLiveness.unwatched())), now)
+      services.movies.ChangeStreamLiveness.unwatched(_root_.tools.SpecClock.Pinned))), now)
     out should include ("""kinowo_worker_tasks_enqueued_total{country="pl",result="added",task_type="ImdbRating"} 1""")
     out should include ("""kinowo_worker_tasks_enqueued_total{country="pl",result="deduped",task_type="ImdbRating"} 1""")
   }
@@ -41,7 +41,7 @@ class MeteredTaskQueueSpec extends AnyFlatSpec with Matchers {
     queue.enqueue(TaskType.ImdbRating, "film|2026") shouldBe EnqueueResult.Failed("mongo down")
 
     val out = series.scrape(Seq(WorkerTaskMetrics.CountryQueueSample("pl", QueueSnapshot(Map.empty, Nil),
-      services.movies.ChangeStreamLiveness.unwatched())), now)
+      services.movies.ChangeStreamLiveness.unwatched(_root_.tools.SpecClock.Pinned))), now)
     out should include ("""kinowo_worker_tasks_enqueued_total{country="pl",result="failed",task_type="ImdbRating"} 1""")
   }
 }

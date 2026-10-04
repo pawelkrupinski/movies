@@ -31,7 +31,7 @@ trait UsersWiring { self: Wiring =>
   // replica set, made only for signed-in visitors. `UserAcrossPodsSpec` pins
   // these sequences.
   lazy val userRepository:      UserRepository      = new MongoUserRepository(usersConnection.database)
-  lazy val userStateRepository: UserStateRepository = new MongoUserStateRepository(usersConnection.database,
+  lazy val userStateRepository: UserStateRepository = new MongoUserStateRepository(usersConnection.database, clock,
     writeOutcomes = userStateWriteMetrics, indexHealth = userStateIndexMetrics, decodeFailures = webDecodeFailureMetrics)
 
   // The last-1000-active-users change-time cache behind `hiddenFilms()`'s

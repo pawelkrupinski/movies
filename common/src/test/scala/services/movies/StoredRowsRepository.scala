@@ -12,6 +12,7 @@ import scala.collection.mutable
  *  sequence that changes between calls (a boot hydrate that finds Mongo empty once). */
 class StoredRowsRepository(rows: => Seq[StoredMovieRecord],
                            override val normalizer: TitleNormalizer) extends MovieRepository with KeyAddressedMovieWrites {
+  override val changeStreamLiveness: ChangeStreamLiveness = ChangeStreamLiveness.unwatched(tools.SpecClock.Pinned)
   val upserts = mutable.ListBuffer.empty[(FilmId, String, MovieRecord)]
   def enabled: Boolean = true
   def findAll(): Seq[StoredMovieRecord] = rows

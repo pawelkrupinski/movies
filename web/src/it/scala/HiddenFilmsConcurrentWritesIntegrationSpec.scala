@@ -32,7 +32,7 @@ class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matche
   private val outcomes = new ConcurrentLinkedQueue[(String, String)]()
   private val isolated = IsolatedMongoDatabase.open(mongoTarget, "hidden-films-concurrent")
   private val database = isolated.database
-  private val states = new MongoUserStateRepository(Some(database),
+  private val states = new MongoUserStateRepository(Some(database), _root_.tools.SpecClock.Pinned,
     writeOutcomes = (endpoint: String, outcome: String) => { outcomes.add(endpoint -> outcome); () })
   private val users  = new InMemoryUserRepository
   private val pool   = Executors.newFixedThreadPool(32)

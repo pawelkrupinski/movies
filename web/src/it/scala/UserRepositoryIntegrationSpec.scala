@@ -23,7 +23,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   private lazy val isolated = tools.IsolatedMongoDatabase.open(mongoTarget, "user-repository")
   private lazy val database = isolated.database
   private lazy val users    = new MongoUserRepository(Some(database))
-  private lazy val states   = new MongoUserStateRepository(Some(database))
+  private lazy val states   = new MongoUserStateRepository(Some(database), _root_.tools.SpecClock.Pinned)
   // For seeding whole rows: the production store has no whole-row write (see `UserStateRows`).
   protected def seed(state: UserState): Unit = UserStateRows.replace(database, state)
 
@@ -38,7 +38,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   // read that variable and open a MongoClient of its own, behind the composition root.
   "The users stores" should "stay disabled when handed no database, never opening their own connection" in {
     val ownUsers  = new MongoUserRepository(None)
-    val ownStates = new MongoUserStateRepository(None)
+    val ownStates = new MongoUserStateRepository(None, _root_.tools.SpecClock.Pinned)
     try {
       ownUsers.enabled  shouldBe false
       ownStates.enabled shouldBe false
@@ -186,7 +186,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   // sibling spec's `userStates` write reaches it (the shape that flaked a `screenings` watcher).
   it should "stream a delete through to the change-time cache, even though the event key names no user" in
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "userstate-stream-delete") { db =>
-      val isolated = new MongoUserStateRepository(Some(db))
+      val isolated = new MongoUserStateRepository(Some(db), _root_.tools.SpecClock.Pinned)
       val cache    = new CaffeineUserChangeTimeCache(isolated)
       val userId   = "__integration-test-state-stream-delete"
       cache.start()
@@ -209,7 +209,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   it should "keep its change stream open past a row it cannot decode" in
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "userstate-malformed") { db =>
       val counted  = new java.util.concurrent.ConcurrentLinkedQueue[String]()
-      val isolated = new MongoUserStateRepository(Some(db),
+      val isolated = new MongoUserStateRepository(Some(db), _root_.tools.SpecClock.Pinned,
         decodeFailures = collection => { counted.add(collection); () })
       tools.MalformedChangeEventProbe.failure(
         seen => isolated.watchChanges(state => seen(state.userId), _ => (), () => ()).get,
@@ -235,13 +235,13 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         .get("accesses").value.asDocument()
       (accesses.get("since"), accesses.get("ops").asNumber().longValue())
     }
-    val booted = new MongoUserStateRepository(Some(database))
+    val booted = new MongoUserStateRepository(Some(database), _root_.tools.SpecClock.Pinned)
     try booted.enabled shouldBe true finally booted.close() // boots once: the index exists, unique
     Await.result(coll.find(Filters.eq("userId", "__integration-test-index-use"))
       .hint(org.mongodb.scala.bson.collection.immutable.Document("userId" -> 1)).toFuture(), 10.seconds)
     val before = userIdIndexAccesses()
     before._2 should be >= 1L
-    val rebooted = new MongoUserStateRepository(Some(database))
+    val rebooted = new MongoUserStateRepository(Some(database), _root_.tools.SpecClock.Pinned)
     try {
       rebooted.enabled shouldBe true
       userIdIndexAccesses() shouldBe before
@@ -260,7 +260,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     val pendingReopen = new java.util.concurrent.atomic.AtomicReference[() => Unit]()
     val manualReopen: (String, () => Unit) => ChangeStreamReopen =
       (name, reopen) => new ChangeStreamReopen(name, reopen, (_, run) => pendingReopen.set(run))
-    val mongo    = new MongoUserStateRepository(Some(db), reopenDriver = manualReopen)
+    val mongo    = new MongoUserStateRepository(Some(db), _root_.tools.SpecClock.Pinned, reopenDriver = manualReopen)
     val lostTrack = new java.util.concurrent.atomic.AtomicInteger(0)
     val delivered = new java.util.concurrent.atomic.AtomicInteger(0)
     val handle   = mongo.watchChanges(_ => { delivered.incrementAndGet(); () }, _ => (), () => { lostTrack.incrementAndGet(); () })

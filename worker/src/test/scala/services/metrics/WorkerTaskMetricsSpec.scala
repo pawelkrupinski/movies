@@ -42,7 +42,7 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
   private def scrapePl(series: WorkerTaskMetrics.Series,
                        snapshot: QueueSnapshot = emptySnapshot,
                       ): String =
-    series.scrape(Seq(CountryQueueSample("pl", snapshot, ChangeStreamLiveness.unwatched())), now)
+    series.scrape(Seq(CountryQueueSample("pl", snapshot, ChangeStreamLiveness.unwatched(_root_.tools.SpecClock.Pinned))), now)
 
   it should "tag every task-pipeline series with the emitting country" in {
     val (m, series) = newPl()
@@ -66,8 +66,8 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     uk.recordEnqueue(TaskType.ScrapeCinema, WorkerTaskMetrics.EnqueueResult.Added)
 
     val out = series.scrape(Seq(
-      CountryQueueSample("pl", emptySnapshot, ChangeStreamLiveness.unwatched()),
-      CountryQueueSample("uk", emptySnapshot, ChangeStreamLiveness.unwatched())), now)
+      CountryQueueSample("pl", emptySnapshot, ChangeStreamLiveness.unwatched(_root_.tools.SpecClock.Pinned)),
+      CountryQueueSample("uk", emptySnapshot, ChangeStreamLiveness.unwatched(_root_.tools.SpecClock.Pinned))), now)
 
     out should include ("""kinowo_worker_tasks_enqueued_total{country="pl",result="added",task_type="ScrapeCinema"} 2""")
     out should include ("""kinowo_worker_tasks_enqueued_total{country="uk",result="added",task_type="ScrapeCinema"} 1""")

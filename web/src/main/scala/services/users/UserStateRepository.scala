@@ -82,13 +82,10 @@ trait UserStateRepository {
     onDisconnect: () => Unit
   ): Option[AutoCloseable] = None
 
-  /** When the `userStates` cursor last delivered an event — see
-   *  `ChangeStreamLiveness`. Default: a repository with no stream, whose
-   *  cursor ages from this instance's first ask and is never stamped — one
-   *  per repository, so nothing stamped on one is seen through another. */
-  def changeStreamLiveness: ChangeStreamLiveness = unwatchedLiveness
-
-  private lazy val unwatchedLiveness: ChangeStreamLiveness = ChangeStreamLiveness.unwatched()
+  /** When the `userStates` cursor last delivered an event — see `ChangeStreamLiveness`.
+   *  One per repository, so nothing stamped on one is seen through another; a repository
+   *  with no stream answers [[ChangeStreamLiveness.unwatched]] on its own clock. */
+  def changeStreamLiveness: ChangeStreamLiveness
 
   def close(): Unit
 }
@@ -102,6 +99,8 @@ class MongoUserStateRepository(
   // shared `MongoConnection`); `None` (no Mongo configured, or the connection
   // failed) leaves the store disabled. It never opens a client of its own.
   database: Option[MongoDatabase],
+  // The composition root's clock: the `userStates` cursor's liveness ages on it.
+  clock: java.time.Clock,
   // The reopen driver for the `userStates` cursor. Production schedules on a daemon
   // thread; a spec hands over one that fires when it says so.
   reopenDriver: (String, () => Unit) => ChangeStreamReopen = ChangeStreamReopen.onDaemonScheduler,
@@ -203,7 +202,7 @@ class MongoUserStateRepository(
     }
   }
 
-  private val liveness = new ChangeStreamLiveness()
+  private val liveness = new ChangeStreamLiveness(clock)
   // Written by the caller's thread, read on the driver's: volatile so a registration (or
   // its close) is seen by the next event rather than whenever the cache line happens to move.
   @volatile private var listener: Option[(UserState => Unit, String => Unit, () => Unit)] = None
@@ -339,9 +338,9 @@ object MongoUserStateRepository {
   }
 }
 
-class InMemoryUserStateRepository extends UserStateRepository {
+class InMemoryUserStateRepository(clock: java.time.Clock) extends UserStateRepository {
   private val store = scala.collection.mutable.Map.empty[String, UserState]
-  private val liveness = new ChangeStreamLiveness()
+  private val liveness = new ChangeStreamLiveness(clock)
   private var listener: Option[(UserState => Unit, String => Unit, () => Unit)] = None
 
   def enabled: Boolean = true

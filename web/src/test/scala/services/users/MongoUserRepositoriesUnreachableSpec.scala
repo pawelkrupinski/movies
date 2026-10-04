@@ -20,7 +20,7 @@ class MongoUserRepositoriesUnreachableSpec extends AnyFlatSpec with Matchers wit
   override protected def afterAll(): Unit = try client.close() finally super.afterAll()
 
   private lazy val users  = new MongoUserRepository(Some(db))
-  private lazy val states = new MongoUserStateRepository(Some(db))
+  private lazy val states = new MongoUserStateRepository(Some(db), _root_.tools.SpecClock.Pinned)
 
   "MongoUserRepository" should "throw, not answer None, when a lookup cannot reach Mongo" in {
     an[Exception] should be thrownBy users.findById("alice@example.com")

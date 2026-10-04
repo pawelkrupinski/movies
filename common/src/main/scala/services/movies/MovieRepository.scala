@@ -379,16 +379,14 @@ trait MovieRepository {
   /** When each change-stream cursor last DELIVERED an event — see [[ChangeStreamLiveness]].
    *  The worker's `/metrics` ages every cursor off it, and the read-model prune sweep uses
    *  the `movies` cursor's instant as the floor of what a silent stream may have missed.
-   *  Default: a repository with no stream, whose cursors age from creation and are never
-   *  stamped — [[MongoMovieRepository]] and [[InMemoryMovieRepository]] each answer with the
-   *  stream's own. */
-  def changeStreamLiveness: ChangeStreamLiveness = unwatchedLiveness
+   *  A repository with no stream answers one per instance from [[ChangeStreamLiveness.unwatched]],
+   *  on its own clock: its cursors age from creation and are never stamped. */
+  def changeStreamLiveness: ChangeStreamLiveness
   /** Re-reads the change stream holds back for the rest of their film's burst — see
    *  [[MovieChangeStream.Debounce]]; 0 where nothing is watched or nothing debounces. */
   def heldChanges: Int = 0
   /** Queue every held re-read now — for a caller that must see the stream settled. */
   def releaseHeldChanges(): Unit = ()
-  private lazy val unwatchedLiveness: ChangeStreamLiveness = ChangeStreamLiveness.unwatched()
 
   /** Release any underlying resources. No-op when nothing to release. */
   def close(): Unit
@@ -1361,7 +1359,10 @@ class MongoMovieRepository(
   def isWatchingChangeStream: Boolean = changeStream.exists(_.isWatching)
 
   override def changeStreamLiveness: ChangeStreamLiveness =
-    changeStream.fold(super.changeStreamLiveness)(_.liveness)
+    changeStream.fold(unwatchedLiveness)(_.liveness)
+
+  /** A disabled store's: no cursor, nothing ever delivered. */
+  private lazy val unwatchedLiveness: ChangeStreamLiveness = ChangeStreamLiveness.unwatched(clock)
   override def heldChanges: Int          = changeStream.fold(0)(_.held)
   override def releaseHeldChanges(): Unit = changeStream.foreach(_.releaseHeld())
 

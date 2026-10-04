@@ -37,7 +37,7 @@ import scala.jdk.CollectionConverters._
  * computed against `now` like the delivery age, so a stuck apply climbs rather than freezes.
  */
 final class ChangeStreamLiveness(
-  clock:  Clock = Clock.systemUTC(),
+  clock:  Clock,
   // Where the open, subscribe and delivery instants — every one a catch-up floor — come from.
   // A repository hands in the sequence it stamps `updatedAt` from, so a floor and a row's stamp
   // are ordered even inside one millisecond (see [[now]]); None keeps a sequence of its own.
@@ -165,7 +165,7 @@ object ChangeStreamLiveness {
   /** Every cursor a [[MovieChangeStream]] runs — the label set the gauge is seeded with. */
   val Collections: Seq[String] = Seq(Movies, Screenings, Slots)
 
-  /** For a repository with no change stream at all: every cursor ages from creation and
-   *  nothing ever stamps it. */
-  def unwatched(): ChangeStreamLiveness = new ChangeStreamLiveness()
+  /** For a repository with no change stream at all: every cursor ages from creation on
+   *  `clock` and nothing ever stamps it. */
+  def unwatched(clock: Clock): ChangeStreamLiveness = new ChangeStreamLiveness(clock)
 }

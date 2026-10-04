@@ -167,12 +167,13 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
   private val ClassHeader  = """\bclass\s+(\w+)\s*(?:\[[^\]]*\])?\s*(?=\()""".r
 
   /** Production classes whose constructor defaults `clock` to the system clock. */
-  private lazy val clockDefaulted: Set[String] = scalaFiles(ScalaSourceScan.MainRoots).flatMap { path =>
-    val src  = read(path).linesIterator.map(code).mkString("\n")
+  private lazy val clockDefaulted: Set[String] =
+    scalaFiles(ScalaSourceScan.MainRoots).flatMap(path => clockDefaultedIn(read(path).linesIterator.map(code).mkString("\n"))).toSet
+
+  private def clockDefaultedIn(src: String): Seq[String] =
     ClassHeader.findAllMatchIn(src).collect {
       case m if ClockDefault.findFirstIn(argumentsAt(src, m.end)).isDefined => m.group(1)
     }.toSeq
-  }.toSet
 
   private val DateLiteral   = """"(20\d\d)-(\d\d)(?:-(\d\d))?""".r
   private val DateOfLiteral = """Local(?:Date|DateTime)\.of\(\s*(20\d\d)\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})""".r
@@ -199,7 +200,8 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
       }
     }.toMap
 
-    clockDefaulted should contain ("ChangeStreamLiveness") // the scan still finds a defaulted clock (the NoDefaultZoneSpec backlog)
+    // The scan sees a defaulted clock (NoDefaultZoneSpec refuses one in main code, so none is left to find there).
+    clockDefaultedIn("final class Liveness(clock: Clock = Clock.systemUTC(), n: Int)\nclass Pinned(clock: Clock)") shouldBe Seq("Liveness")
     val constructions = clockDefaulted.toSeq.sorted.map(name => name -> s"""\\bnew\\s+$name\\b\\s*(?:\\[[^\\]]*\\])?\\s*\\(""".r)
     val offenders = held.toSeq.sortBy(_._1.toString).flatMap { case (path, why) =>
       val src = sources(path)

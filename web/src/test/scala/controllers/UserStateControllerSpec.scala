@@ -31,7 +31,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   private def fixture(
     prefilled:       Option[UserState] = None,
     changeTimeCache: UserChangeTimeCache = NoUserChangeTimeCache,
-    stateRepository: InMemoryUserStateRepository = new InMemoryUserStateRepository,
+    stateRepository: InMemoryUserStateRepository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned),
     legacyMetrics:   LegacyUserStateMetrics = new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", specClock),
     userRepository:  InMemoryUserRepository = new InMemoryUserRepository
   ): (UserStateController, InMemoryUserStateRepository, InMemoryUserRepository) = {
@@ -43,7 +43,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
   /** Counts `find` calls so a fast-path test can prove storage was never
    *  touched, not just that the response happened to be correct. */
-  private class CountingUserStateRepository extends InMemoryUserStateRepository {
+  private class CountingUserStateRepository extends InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned) {
     var findCalls: Int = 0
     override def find(userId: String): Option[UserState] = { findCalls += 1; super.find(userId) }
   }
@@ -309,7 +309,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "answer with the bucket as actually stored, including a write that landed alongside it" in {
-    val alongside = new InMemoryUserStateRepository {
+    val alongside = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned) {
       override def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] = {
         super.changeHiddenFilms(userId, country, HiddenFilmsChange.Hide("Other Tab", UserStateController.MaxHiddenPerCountry), now)
         super.changeHiddenFilms(userId, country, change, now)
@@ -331,7 +331,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "503 when the store could not write at all" in {
-    val failing = new InMemoryUserStateRepository {
+    val failing = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned) {
       override def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] = None
     }
     val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), stateRepository = failing)
@@ -367,7 +367,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "503 when the store could not write at all" in {
-    val failing = new InMemoryUserStateRepository {
+    val failing = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned) {
       override def patchLegacyState(userId: String, patch: LegacyStatePatch, now: Instant): Option[UserState] = None
     }
     val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), stateRepository = failing)
