@@ -17,9 +17,13 @@ import java.nio.file.Paths
  * wrong at a different edge). Rules, each naming file:line, in the cinema clients:
  *
  *  1. No clock regex literal: `\d{1,2}:\d{2}`, `(\d{1,2}):(\d{2})`, `\d{2}:\d{2}`, or the dotted
- *     `[.:]` / `[:.]` forms.
- *  2. No `LocalTime.of(m.group(…)…)` — `ScraperParse.clockAt(m, hourGroup)` reads it without a
- *     throw that would take the page's other screenings with it.
+ *     `[.:]` / `[:.]` / `\.` forms (a `\d{2}\.\d{2}` followed by a further `\.` field is a date).
+ *  2. No clock built from parsed numbers: `LocalTime.of(h, m)` / `date.atTime(h, m)` with a first
+ *     argument that is not a literal — `ScraperParse.clock` / `clockAt` / `meridiemClockAt` read it
+ *     without a throw that would take the page's other screenings with it. The first cut matched
+ *     only `LocalTime.of(m.group(`, and nine reads (a `split(":")`, an extractor's bound `h`, a
+ *     `date.atTime(m.group(4).toInt, …)`, two hand-rolled am/pm converters, a hand-rolled
+ *     `hh < 24 && mm < 60`) went on unseen.
  */
 class NoHandRolledClockPatternSpec extends AnyFlatSpec with Matchers {
 
@@ -29,11 +33,12 @@ class NoHandRolledClockPatternSpec extends AnyFlatSpec with Matchers {
   private val Source     = s"$ClientRoot/common/ScraperParse.scala"
 
   private val ClockLiteral =
-    """\\d\{(?:1,2|2)\}\)?(?::|\[[.:]{2}\])\(?\\d\{2\}""".r
-  private val GroupClock = """LocalTime\.of\(\s*\w+\.group\(""".r
+    """\\d\{(?:1,2|2)\}\)?(?::|\\\.|\[[.:]{2}\])\(?\\d\{2\}(?!\)?\\\.)""".r
+  /** A two-argument `LocalTime.of(` / `.atTime(` whose first argument is not an integer literal. */
+  private val NumbersClock = """(?:LocalTime\.of|\.atTime)\(\s*(?!\d)[^,()]*(?:\([^()]*\))?[^,()]*,""".r
 
   private[tools] def clockRules(src: String): Seq[Int] =
-    Seq(ClockLiteral, GroupClock)
+    Seq(ClockLiteral, NumbersClock)
       .flatMap(_.findAllMatchIn(src).map(m => src.substring(0, m.start).count(_ == '\n') + 1))
       .distinct.sorted
 
@@ -47,6 +52,18 @@ class NoHandRolledClockPatternSpec extends AnyFlatSpec with Matchers {
     clockRules("""godz\.?\s*(${ScraperParse.ClockText})""") shouldBe empty
     clockRules("""(\d{1,2})\.(\d{1,2})\.(\d{4})""") shouldBe empty   // a date
     clockRules("ScraperParse.clockAt(m, 1)") shouldBe empty
+    // The shapes the first cut let through.
+    clockRules("""^(\d{1,2})\.(\d{2})$""") shouldBe Seq(1)
+    clockRules("LocalTime.of(parts(0).toInt, parts(1).toInt)") shouldBe Seq(1)
+    clockRules("Try(LocalTime.of(h.toInt, m.toInt)).toOption") shouldBe Seq(1)
+    clockRules("Try(LocalTime.of(hour24, m.group(2).toInt)).toOption") shouldBe Seq(1)
+    clockRules("Try(d.atTime(m.group(4).toInt, m.group(5).toInt)).toOption") shouldBe Seq(1)
+    clockRules("date.atTime(hh, mm)") shouldBe Seq(1)
+    // A day-first date, a constant time and a whole-LocalTime atTime are no clock read.
+    clockRules("""(\d{2}\.\d{2}\.\d{4})""") shouldBe empty
+    clockRules("""(\d{2})\.(\d{2})\.(\d{4})""") shouldBe empty
+    clockRules("LocalTime.of(18, 0)") shouldBe empty
+    clockRules("date.atTime(time)") shouldBe empty
   }
 
   "the cinema clients" should "spell and read a clock only through ScraperParse" in {
@@ -56,7 +73,7 @@ class NoHandRolledClockPatternSpec extends AnyFlatSpec with Matchers {
       clockRules(codeOf(path)).map(line => s"$path:$line: ${read(Paths.get(path.toString)).linesIterator.drop(line - 1).next().trim}")
     }
     withClue("Compose the clock from ScraperParse's fragments (raw\"\"\"…${ScraperParse.ClockParts}…\"\"\") and read it with " +
-      "ScraperParse.clockAt(m, hourGroup) or parseHHmm, instead of a pattern of the client's own:\n" +
+      "ScraperParse.clock / clockAt / meridiemClockAt or parseHHmm, instead of a pattern of the client's own:\n" +
       found.mkString("\n") + "\n")(found shouldBe empty)
   }
 }

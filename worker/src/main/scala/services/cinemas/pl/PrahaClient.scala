@@ -118,7 +118,7 @@ object PrahaClient {
           case Some(year) => Try(LocalDate.of(year.toInt, month, day)).toOption
           case None       => Try(MonthDay.of(month, day)).toOption.flatMap(ScraperParse.upcomingDate(_, today))
         }
-        date.flatMap(d => Try(d.atTime(m.group(4).toInt, m.group(5).toInt)).toOption)
+        date.flatMap(d => ScraperParse.clockAt(m, 4).map(d.atTime))
       }
     }
 }

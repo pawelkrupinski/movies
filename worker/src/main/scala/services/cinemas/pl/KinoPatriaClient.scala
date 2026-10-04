@@ -57,13 +57,13 @@ object KinoPatriaClient {
   val RepertoireUrl = "https://kinopatria.com/repertuar/"
 
   // "19.15", " 15.00" — dot-separated HH.MM (not HH:MM) with optional leading space
-  private val TimePat = """^\s*(\d{1,2})\.(\d{2})\s*$""".r
+  private val TimePat = raw"""^\s*${ScraperParse.ClockPartsDotted}\s*$$""".r
 
   // "DD-MM-YYYY" as emitted by data-date attributes in the daily tabs
   private val DailyDatePat = """^(\d{2})-(\d{2})-(\d{4})$""".r
 
   // "DD.MM" as emitted by the amy-head cells in the weekly grid
-  private val WeeklyDatePat = """^(\d{1,2})\.(\d{2})$""".r
+  private val WeeklyDatePat = """^(\d{1,2})\.(0[1-9]|1[0-2])$""".r
 
   /** Parse a time token of the form "HH.MM" (dot-separated, as used on this
    *  site rather than the conventional colon). */

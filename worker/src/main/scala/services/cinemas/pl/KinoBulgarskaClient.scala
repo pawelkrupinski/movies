@@ -7,7 +7,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
-import java.time.{LocalDate, LocalDateTime, LocalTime, Period}
+import java.time.{LocalDate, LocalTime, Period}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -98,11 +98,7 @@ class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate) extends CinemaSc
           val title   = normalizeTitle(link.text())
 
           val timeOpt = Option(section.selectFirst(".start-info.clock")).flatMap { clockElement =>
-            val text = clockElement.text().replaceAll("\\s+", "")
-            Try {
-              val parts = text.split(":")
-              LocalDateTime.of(date, LocalTime.of(parts(0).toInt, parts(1).toInt))
-            }.toOption
+            ScraperParse.parseHHmm(clockElement.text().replaceAll("\\s+", "")).map(date.atTime)
           }
 
           val room = Option(section.selectFirst(".show-type-badge a"))

@@ -111,7 +111,24 @@ private[cinemas] object ScraperParse {
     * `hourGroup` and its minute in the next; `None` for an hour or minute no clock has
     * ("25:00"), never a throw that would take the page's other screenings with it. */
   def clockAt(m: Regex.Match, hourGroup: Int): Option[LocalTime] =
-    Try(LocalTime.of(m.group(hourGroup).toInt, m.group(hourGroup + 1).toInt)).toOption
+    Option(m.group(hourGroup)).zip(Option(m.group(hourGroup + 1))).flatMap { case (hour, minute) => clock(hour, minute) }
+
+  /** An hour and a minute already split out of a page (an extractor's bindings, a `split(":")`);
+    * `None` for one that is no number or no clock ("24", "60"). */
+  def clock(hour: String, minute: String): Option[LocalTime] =
+    Try(LocalTime.of(hour.trim.toInt, minute.trim.toInt)).toOption
+
+  /** A [[ClockParts]] match whose group `markerGroup` holds an optional "am" / "p.m." marker: a
+    * marked hour 1–12 is a 12-hour clock ("12:10 am" → 00:10, "7:05 pm" → 19:05); a marker on an
+    * hour no 12-hour clock has ("19:30 pm", "0:15 am") is ignored rather than read twice. */
+  def meridiemClockAt(m: Regex.Match, hourGroup: Int, markerGroup: Int): Option[LocalTime] =
+    clockAt(m, hourGroup).map { time =>
+      val marker = Option(m.group(markerGroup)).map(_.trim.toLowerCase(Locale.ROOT))
+      if (time.getHour == 0 || time.getHour > 12) time
+      else if (marker.exists(_.startsWith("p"))) time.withHour(time.getHour % 12 + 12)
+      else if (marker.exists(_.startsWith("a"))) time.withHour(time.getHour % 12)
+      else time
+    }
 
   /** ISO `2026-09-06` or the day-first `6.09.2026` / `06-09-2026` / `06/09/2026`
     * the Polish cinema pages spell their dates in. Groups 1-3 are the ISO

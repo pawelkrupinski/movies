@@ -11,7 +11,7 @@ import play.api.libs.json.{JsValue, Json}
 import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -215,7 +215,7 @@ object KinoPortClient {
       strongText       = strongs.asScala.map(_.text.trim).mkString(" ").replaceAll("\\s+", " ").trim
       (time, title)   <- strongText match {
                            case TimeTitlePat(h, m, t) =>
-                             Try(LocalTime.of(h.toInt, m.toInt)).toOption.map(_ -> t.trim).filter(_._2.nonEmpty)
+                             ScraperParse.clock(h, m).map(_ -> t.trim).filter(_._2.nonEmpty)
                            case _ => None
                          }
     } yield {

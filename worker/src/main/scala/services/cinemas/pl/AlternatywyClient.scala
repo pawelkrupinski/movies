@@ -118,9 +118,9 @@ class AlternatywyClient(
     for {
       day        <- Try(dayStr.toInt).toOption
       month      <- ScraperParse.PolishMonths.get(monthStr.trim.toLowerCase(Locale.ROOT))
-      (hh, mm)   <- parseTime(timeStr)
+      time       <- TimePat.findFirstMatchIn(timeStr.trim).flatMap(ScraperParse.clockAt(_, 1))
       date       <- ScraperParse.monthDay(day, month).flatMap(ScraperParse.upcomingDate(_, today, Period.ofWeeks(1)))
-      dateTime   <- Try(date.atTime(hh, mm)).toOption
+      dateTime    = date.atTime(time)
     } yield {
       val room      = Some(roomStr.split(":", 2).last.trim).filter(_.nonEmpty)
       val posterUrl = Some(img.attr("data-src")).map(_.trim).filter(_.nonEmpty)
@@ -135,12 +135,6 @@ object AlternatywyClient {
 
   private val TimePat = raw"""^${ScraperParse.ClockParts}$$""".r
 
-  private def parseTime(s: String): Option[(Int, Int)] = s.trim match {
-    case TimePat(h, m) =>
-      val hh = h.toInt; val mm = m.toInt
-      if (hh < 24 && mm < 60) Some(hh -> mm) else None
-    case _ => None
-  }
 
   /** Titles arrive in the image alt as `Okładka „Title"`, `Okładka Title`, or
    *  with a trailing event subtitle (`„Flying Lion"  Adam Święs Trio`). The

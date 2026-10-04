@@ -3,11 +3,11 @@ package services.cinemas.pl
 import models._
 import tools.{DaemonExecutors, HttpFetch, HttpRead, ParallelDetailFetch}
 import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, ListingPages}
+import services.cinemas.common.{CinemaScraper, ListingPages, ScraperParse}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import java.time.LocalDate
+import java.time.{LocalDate, LocalTime}
 import java.util.concurrent.TimeoutException
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -156,9 +156,7 @@ class FilmwebShowtimesClient(
         val fallbackTitle = (js \ "title").asOpt[String].map(_.trim).filter(_.nonEmpty)
         val showtimes = (js \ "hours").asOpt[String].getOrElse("")
           .split("\\s+").iterator.map(_.trim).filter(_.nonEmpty).flatMap { tok =>
-            hourToTime(tok).map { case (hh, mm) =>
-              Showtime(date.atTime(hh, mm), orderLinks.get(tok), None, format)
-            }
+            hourToTime(tok).map(time => Showtime(date.atTime(time), orderLinks.get(tok), None, format))
           }.toSeq
         RawSeance(filmId, showtimes, fallbackTitle)
       }
@@ -230,7 +228,7 @@ object FilmwebShowtimesClient extends play.api.Logging {
       resolved
     } finally executionContext.shutdown()
   }
-  private val HourPat     = """^(\d{1,2})\.(\d{2})$""".r
+  private val HourPat     = raw"""^${ScraperParse.ClockPartsDotted}$$""".r
   private val DateParameter   = """[?&]date=(\d{4}-\d{2}-\d{2})""".r
 
   /** Language-version flags Filmweb sets on a seance, mapped to the project's
@@ -267,12 +265,8 @@ object FilmwebShowtimesClient extends play.api.Logging {
   private def formatTokens(js: JsValue): List[String] =
     VersionTokens.collect { case (field, token) if (js \ field).asOpt[String].exists(_.nonEmpty) => token }.toList
 
-  private def hourToTime(token: String): Option[(Int, Int)] = token match {
-    case HourPat(h, m) =>
-      val hh = h.toInt; val mm = m.toInt
-      if (hh < 24 && mm < 60) Some(hh -> mm) else None
-    case _ => None
-  }
+  private def hourToTime(token: String): Option[LocalTime] =
+    HourPat.findFirstMatchIn(token).flatMap(ScraperParse.clockAt(_, 1))
 
   private def dateOf(url: String): Option[LocalDate] =
     DateParameter.findFirstMatchIn(url).flatMap(m => Try(LocalDate.parse(m.group(1))).toOption)

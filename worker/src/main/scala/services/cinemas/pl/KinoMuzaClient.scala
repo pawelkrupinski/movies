@@ -7,7 +7,7 @@ import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
-import java.time.{LocalDate, LocalDateTime, LocalTime, Period}
+import java.time.{LocalDate, Period}
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 import services.movies.TitleNormalizer
@@ -167,13 +167,7 @@ class KinoMuzaClient(http: HttpFetch, today: => LocalDate,
               val room       = Option(item.selectFirst("span.text-gold"))
                                  .map(_.parent().text().trim)
                                  .filter(_.nonEmpty)
-              timeText.flatMap { t =>
-                Try {
-                  val parts = t.split(":")
-                  Showtime(LocalDateTime.of(date, LocalTime.of(parts(0).toInt, parts(1).toInt)),
-                           bookingUrl, room)
-                }.toOption
-              }
+              timeText.flatMap(ScraperParse.parseHHmm).map(time => Showtime(date.atTime(time), bookingUrl, room))
             }
           }
         }.toSeq.distinctBy(_.dateTime)

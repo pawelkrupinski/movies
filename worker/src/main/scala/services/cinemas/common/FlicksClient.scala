@@ -423,11 +423,5 @@ object FlicksClient {
 
   /** "10:10 am" / "7:05 pm" → `LocalTime`. */
   private def parseAmPm(text: String): Option[LocalTime] =
-    AmPmPat.findFirstMatchIn(text).flatMap { m =>
-      val minute = m.group(2).toInt
-      val pm     = m.group(3).equalsIgnoreCase("pm")
-      val hour12 = m.group(1).toInt % 12
-      val hour   = if (pm) hour12 + 12 else hour12
-      Try(LocalTime.of(hour, minute)).toOption
-    }
+    AmPmPat.findFirstMatchIn(text).flatMap(ScraperParse.meridiemClockAt(_, 1, 3))
 }

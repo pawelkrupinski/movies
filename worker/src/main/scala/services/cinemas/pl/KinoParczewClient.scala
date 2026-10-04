@@ -111,7 +111,7 @@ object KinoParczewClient {
       } yield {
         val times = Seq(
           ScraperParse.clockAt(m, 7),
-          Option(m.group(9)).flatMap(h => Try(LocalTime.of(h.toInt, m.group(10).toInt)).toOption)
+          ScraperParse.clockAt(m, 9)
         ).flatten
         (from, to, times)
       }

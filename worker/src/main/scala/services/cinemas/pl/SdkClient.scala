@@ -26,7 +26,7 @@ class SdkClient(http: HttpFetch) extends CinemaScraper {
   private val BaseUrl    = "https://sdk.waw.pl"
   private val ListingUrl = s"$BaseUrl/wydarzenia/rodzaj-wydarzenia/kino"
   private val PageSize   = 11
-  private val DateTimePat = """(\d{2}\.\d{2}\.\d{4})\s*/\s*\S+\s*/\s*(\d{1,2})\.(\d{2})""".r
+  private val DateTimePat = raw"""(\d{2}\.\d{2}\.\d{4})\s*/\s*\S+\s*/\s*${ScraperParse.ClockPartsDotted}""".r
 
   private case class Item(title: String, dateTime: LocalDateTime, detailUrl: String, poster: Option[String])
 
@@ -89,7 +89,7 @@ class SdkClient(http: HttpFetch) extends CinemaScraper {
       link.flatMap { a =>
         val title = a.attr("title").trim.replaceFirst("(?i)\\s*/\\s*(kino|film|z cyklu).*$", "").replaceAll("[„”\"“]", "").trim
         val dt    = DateTimePat.findFirstMatchIn(element.text).flatMap { m =>
-          ScraperParse.parseDate(m.group(1)).flatMap(d => Try(d.atTime(m.group(2).toInt, m.group(3).toInt)).toOption)
+          ScraperParse.parseDate(m.group(1)).flatMap(d => ScraperParse.clockAt(m, 2).map(d.atTime))
         }
         val poster = Option(element.selectFirst("figure.item-image img[src]")).map(_.attr("src")).filter(_.nonEmpty)
                        .map(u => if (u.startsWith("http")) u else s"$BaseUrl/${u.stripPrefix("/")}")

@@ -28,6 +28,32 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.parseHHmm("25:99") shouldBe None
   }
 
+  "clockAt" should "read an optional group that did not participate as no clock, not a throw" in {
+    val m = raw"""${ScraperParse.ClockParts}(?:-${ScraperParse.ClockParts})?""".r.findFirstMatchIn("19:30").get
+    ScraperParse.clockAt(m, 1) shouldBe Some(LocalTime.of(19, 30))
+    ScraperParse.clockAt(m, 3) shouldBe None
+  }
+
+  "clock" should "read split-out numbers, and refuse a non-clock" in {
+    ScraperParse.clock("9", "05") shouldBe Some(LocalTime.of(9, 5))
+    ScraperParse.clock("24", "00") shouldBe None
+    ScraperParse.clock("19", "30-21") shouldBe None
+  }
+
+  "meridiemClockAt" should "read a 12-hour clock by its marker, and a 24-hour one whatever the marker" in {
+    val pattern = raw"""(?i)${ScraperParse.ClockParts}\s*([ap]\.?m\.?)?""".r
+    def read(text: String) = pattern.findFirstMatchIn(text).flatMap(ScraperParse.meridiemClockAt(_, 1, 3))
+    read("7:05 pm") shouldBe Some(LocalTime.of(19, 5))
+    read("7:05 P.M.") shouldBe Some(LocalTime.of(19, 5))
+    read("12:10 am") shouldBe Some(LocalTime.of(0, 10))
+    read("12:10 pm") shouldBe Some(LocalTime.of(12, 10))
+    read("10:10 am") shouldBe Some(LocalTime.of(10, 10))
+    read("19:30") shouldBe Some(LocalTime.of(19, 30))
+    read("19:30 pm") shouldBe Some(LocalTime.of(19, 30))
+    read("0:15 am") shouldBe Some(LocalTime.of(0, 15))
+    read("25:00 pm") shouldBe None
+  }
+
   "DayMonthYearPat" should "capture a month name that carries a diacritic" in {
     // `\w` is ASCII-only in Java, so it stops at the "ś"/"ź" and these two —
     // the only genitive month names with a diacritic — silently stop matching.
