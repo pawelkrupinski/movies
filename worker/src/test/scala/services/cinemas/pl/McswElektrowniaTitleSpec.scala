@@ -38,6 +38,17 @@ class McswElektrowniaTitleSpec extends AnyFlatSpec with Matchers {
     vitelloni.format shouldBe List("2D", "NAP")
   }
 
+  // The venue writes the title in capitals and the facts after it in lower case
+  // (genres, age) or as known names (countries) — so a capitalised segment that
+  // states none of those is still the title's: Polish titles carry commas.
+  it should "keep a comma inside a capitalised title" in {
+    parseTitle("POWIEDZ MI, CO CZUJESZ, Polska, dramat, od 12 lat KS N 2026T2D4471") shouldBe
+      TitleParts("POWIEDZ MI, CO CZUJESZ", Some(2026), Seq("Polska"), Seq("dramat"), Some("12"), List("2D", "NAP"))
+    // A lower-case credit the venue doesn't otherwise write stays out of it.
+    parseTitle("SZTUKA NA EKRANIE - TURNER & CONSTABLE, dokumentalny, reż. David Bickerstaff, Wielka Brytania").title shouldBe
+      "SZTUKA NA EKRANIE - TURNER & CONSTABLE"
+  }
+
   "The day page" should "carry the parsed facts on every screening" in {
     // kino.mcswelektrownia.pl/MSI/mvc/pl?sort=Date&date=2026-10-03&datestart=0, captured 2026-10-01
     val html  = Files.readString(Path.of("test/resources/fixtures/mcsw-elektrownia/day_page_genre_tail_glued_by_dash.html"))

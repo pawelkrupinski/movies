@@ -143,6 +143,9 @@ object McswElektrowniaCinemaClient {
       .orElse(Option.when(t.toLowerCase(Locale.ROOT).split("\\s+").forall(Genres))(t.toLowerCase(Locale.ROOT).split("\\s+").toSeq.map(Piece.Genre(_))))
   }
 
+  private def isCapitalised(segment: String): Boolean =
+    segment.exists(_.isLetter) && segment == segment.toUpperCase(Locale.ROOT)
+
   /** Read a composite title (see the class doc). A dash tail is the title's only when one of its
    *  segments states nothing this venue writes ("SZTUKA NA EKRANIE-HAUSER" keeps its performer). */
   private[cinemas] def parseTitle(raw: String): TitleParts = {
@@ -150,7 +153,11 @@ object McswElektrowniaCinemaClient {
     val body    = Note.replaceAllIn(code.fold(raw.trim)(m => raw.trim.take(m.start)), "")
     val unmarked = Markers.replaceFirstIn(body, "").trim
     val segments = unmarked.split(",").map(_.trim).toSeq
-    val (head, rest) = (segments.headOption.getOrElse(""), segments.drop(1))
+    // The title is written in capitals and the facts after it are not (genres,
+    // age) or are names `piece` knows (countries), so a capitalised segment that
+    // states nothing is still the title's — "POWIEDZ MI, CO CZUJESZ".
+    val titleSegments = 1 + segments.drop(1).takeWhile(s => isCapitalised(s) && s.split("/").exists(piece(_).isEmpty)).size
+    val (head, rest) = (segments.take(titleSegments).mkString(", "), segments.drop(titleSegments))
     val dashed = """^(.+?\S)\s*[-–]\s*(\S.*)$""".r.findFirstMatchIn(head).flatMap { m =>
       val tail = m.group(2).split("/").toSeq.map(piece)
       Option.when(tail.forall(_.isDefined))(m.group(1).trim -> tail.flatten.flatten)
