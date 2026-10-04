@@ -13,7 +13,12 @@ import play.api.libs.json.{JsString, Writes}
  *  string, and `RenderSafetyLintSpec` makes every data-driven `href`/`src` in a template
  *  go through one.
  *
- *  Renders as its URL (`toString`), so `href="@href"` escapes it like any other value. */
+ *  Renders as its URL (`toString`), so `href="@href"` escapes it like any other value.
+ *
+ *  How to use: type the view-model or API field `Option[WebHref]` and build it once with
+ *  `WebHref.of(rawUrl)` where the data enters the controller layer (a rejected URL is `None`:
+ *  no link). In a template, `@for(href <- film.bookingUrl){<a href="@href">…</a>}`; in JSON the
+ *  implicit `Writes` emits the URL. Never splice a raw `String` URL into `href`/`src`. */
 final class WebHref private (val url: String) extends AnyVal {
   override def toString: String = url
 

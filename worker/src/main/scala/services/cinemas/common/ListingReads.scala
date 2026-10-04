@@ -23,6 +23,13 @@ import scala.jdk.CollectionConverters._
  * ([[ListingPages]], [[ScrapeHorizon]], [[DayPickerProgramme]]) record into whichever scope is
  * open; outside any scope (a unit test driving a parser) a record is a no-op. There is no way
  * to mark a listing complete: the scope starts complete and can only lose that.
+ *
+ * How to use, writing a client: walk a paged listing through [[ListingPages]], [[ScrapeHorizon]] or
+ * [[DayPickerProgramme]] and it is recorded for you. A page read by hand that fails and is skipped
+ * must say so — `ListingReads.pageFailed(e)` (or `ListingPages.reportFailed(attempts)` over a batch
+ * of `Try`s) — never `Try(page).toOption` / `getOrElse(Nil)`, which turns the lost page into films
+ * that stopped screening. Hand work to another thread with `ListingReads.carry(body)`. The scraper
+ * wrappers open the scope; a client never calls [[during]] or [[attempt]] itself.
  */
 final class ListingReads private () {
   private val failures = new ConcurrentLinkedQueue[Throwable]()

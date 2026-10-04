@@ -14,6 +14,13 @@ import java.time.{Clock, Instant, LocalDate, LocalDateTime, LocalTime, ZoneId, Z
  * a listing marked complete, and a metric judged "upcoming" in the pod's UTC. Every ask goes
  * through here, per call, in the zone the venue keeps its own calendar in (`NoDefaultZoneSpec`
  * fails the build on any other way of reading one).
+ *
+ * How to use: take a `VenueClock` as a constructor parameter (no default); the composition root
+ * builds one from its injected clock (`new VenueClock(clock)`, `VenueClock.system` in a launcher) and
+ * a test passes `VenueClock.fixedOn(day)` or `new VenueClock(steppedClock)`. Ask it per call, never
+ * once at construction: `venueClock.todayAt(cinema, city.zoneId)` for a venue, `todayIn(city)` /
+ * `nowIn(city)` for a city, `today(TimeZones.Germany)` for a named zone. Never `LocalDate.now`,
+ * `ZoneId.systemDefault` or a zone-id string outside [[TimeZones]].
  */
 final class VenueClock(clock: Clock) {
   def instant: Instant = clock.instant()

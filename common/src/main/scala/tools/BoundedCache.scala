@@ -19,6 +19,11 @@ import com.github.benmanes.caffeine.cache.Caffeine
  *
  * The returned builder is a plain Caffeine builder: add `expireAfterWrite`, `recordStats`, a ticker
  * or an executor as before.
+ *
+ * How to use: `BoundedCache.ofSize(10_000).expireAfterWrite(Duration.ofHours(1)).build[K, V]()` when
+ * entries are about the same size; `BoundedCache.ofWeight[K, V](64L << 20)((k, v) => v.length).build()`
+ * when they vary (a body, a page). Pick the bound from what the cache may hold at most, not from
+ * what it holds today.
  */
 object BoundedCache {
 

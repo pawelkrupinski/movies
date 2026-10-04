@@ -20,6 +20,25 @@ import scala.util.control.NonFatal
  * ([[ReadOutcome.none]]) — the only other road to `Absent`. A parser that THROWS is an
  * unexpected body too: that replaces the `Try(parse(body)).toOption` that read a changed
  * page format as "no data".
+ *
+ * How to use — pick the helper by what the caller needs:
+ *
+ *  - a page that must be there (a listing, a day page): `HttpRead.page(fetch, url)` (or `postPage` /
+ *    `pageBytes`) — the body, and a throw for anything else, so the scrape fails loudly;
+ *  - a page that may legitimately be gone (a rating page): `pageOrNone(fetch, url)` — `None` only on 404/410;
+ *  - a body to parse: `html(fetch, url, PageMarker("…"))`, `jsonObject` / `jsonArray` / `postJsonObject`,
+ *    or `text`, with a parser that answers a [[ReadOutcome]]:
+ *    {{{
+ *    HttpRead.jsonObject(http, url) { o =>
+ *      if ((o \ "results").asOpt[Seq[JsValue]].forall(_.isEmpty)) ReadOutcome.none("no results")
+ *      else ReadOutcome.Answered(parse(o))
+ *    }.toOptionOrThrow   // the bridge for an Option-returning client: Failed throws
+ *    }}}
+ *  - a body some other transport already fetched: `checkJsonObject` / `checkJsonArray`;
+ *  - a venue detail page: `DetailFetchOutcome.page`, not this.
+ *
+ * Do NOT wrap a read or its parse in `Try(…).toOption` / `.getOrElse(Nil)`: `NoSwallowedFailureSpec`
+ * fails the build on that shape.
  */
 object HttpRead {
 

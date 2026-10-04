@@ -20,6 +20,10 @@ enum Retention {
  * that did not exist. `CollectionRetentionSpec` enumerates the collection names in main sources and
  * fails on one not declared here, on an entry no source names any more, on a [[Retention.Sweep]] whose
  * class is gone, and on a [[Retention.Unswept]] backlog that grew.
+ *
+ * How to use: adding a collection, add its line to [[Declared]] in the same change —
+ * `"name" -> Ttl("expiresAt")` (with a `MongoTtlIndex` on that field), `Sweep("TheClassThatDeletes")`,
+ * or `KeptForever("why it is bounded")`. Never a new `Unswept`; dropping a collection, drop its line.
  */
 object CollectionRetention {
   import Retention._

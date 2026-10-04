@@ -9,8 +9,13 @@ import play.twirl.api.Html
  *  A `<script>` element ends at the first `</script` in its text whatever the JSON
  *  around it means, and `Json.stringify` leaves `<` alone, so a scraped cinema name,
  *  synopsis or upstream error string containing `</script>` would close the element
- *  and run whatever follows as markup. Escaping every `<` to `<` rules that out
- *  (and `<!--` with it); the value parses identically. */
+ *  and run whatever follows as markup. Escaping every `<` to `\u003c` rules that out
+ *  (and `<!--` with it); the value parses identically.
+ *
+ *  How to use, in a template: `@controllers.ScriptJson.embed(Json.toJson(value))` for a value,
+ *  `@controllers.ScriptJson.embedSerialized(text)` for JSON text already serialised; in Scala,
+ *  `ScriptJson.stringify(value)`. Never wrap the JSON stringifier's output in `Html` yourself —
+ *  `RenderSafetyLintSpec` fails the build on it. */
 object ScriptJson {
 
   def escape(json: String): String = json.replace("<", "\\u003c")

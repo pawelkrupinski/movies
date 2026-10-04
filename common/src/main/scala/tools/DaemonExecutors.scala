@@ -109,7 +109,12 @@ object DaemonExecutors {
    *  `name-N`) whose queue holds at most `queueCapacity` waiting tasks; a task submitted to a full
    *  queue is handled as `whenFull` says. The one place a fixed pool is built: `Executors.newFixed…`
    *  queues without bound, so a producer outrunning the pool grew it until the heap was gone, each
-   *  queued task retaining what it closed over. */
+   *  queued task retaining what it closed over.
+   *
+   *  Pick `whenFull` by what the producer can afford: [[WhenFull.RunOnCaller]] when it may be slowed
+   *  and order does not matter (fan-out work), [[WhenFull.WaitForRoom]] when order must be kept
+   *  ([[singleThreadExecutor]]). In a wiring, register it:
+   *  `managedResources.executor("x")(DaemonExecutors.boundedPool("x", 4, 1_000, WhenFull.RunOnCaller))`. */
   def boundedPool(name: String, threads: Int, queueCapacity: Int, whenFull: WhenFull, virtual: Boolean = false): ExecutorService = {
     require(threads > 0 && queueCapacity > 0, s"$name: threads ($threads) and queue capacity ($queueCapacity) must be positive")
     val factory: ThreadFactory = if (virtual) Thread.ofVirtual().name(s"$name-", 0L).factory() else daemonPlatform(name)

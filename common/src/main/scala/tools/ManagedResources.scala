@@ -17,6 +17,14 @@ import scala.util.control.NonFatal
  * hand-kept list. Registering at the creation site makes forgetting impossible to spell, and a lazy
  * member never created is never forced into existence just to be shut. `NoUnmanagedWiringExecutorSpec`
  * fails the build on a wiring executor created without registering.
+ *
+ * How to use, in a wiring member — register where the thing is built, in the same expression:
+ * {{{
+ * lazy val pool    = managedResources.executor("enrichment")(DaemonExecutors.boundedEC("enrichment", 4))
+ * lazy val reaper  = managedResources.stopping(new SomeReaper(…))            // a services.Stoppable
+ * lazy val client  = managedResources.register("http", newClient())(_.close()) // anything else closeable
+ * }}}
+ * and call `closeAll()` from the root's `stop()`.
  */
 final class ManagedResources(grace: FiniteDuration = ManagedResources.Grace, stopwatch: Stopwatch = Stopwatch.System) extends Logging {
   // `close` is handed what is left of the stop's grace.

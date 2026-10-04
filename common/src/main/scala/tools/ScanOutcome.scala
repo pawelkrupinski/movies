@@ -13,6 +13,15 @@ package tools
  * of this type into an error (`-Wnonunit-statement`, filtered to the outcome types in
  * `build.sbt`), so every caller branches on [[isComplete]] or matches the two cases — and a
  * destructive step driven by a scan says, in code, that it saw the whole collection.
+ *
+ * How to use: walk a collection with `KeysetScan.scan` / `collect` (never an unbounded `find()`),
+ * which answers this. Then gate anything destructive on it —
+ * {{{
+ * val outcome = repository.foreachRecord(seen += _.id)
+ * if (outcome.isComplete) prune(all -- seen) else logger.warn(s"prune skipped: ${outcome.explain}")
+ * }}}
+ * — chain two scans with `andThen`, and turn a collecting scan into a read with `collected(rows)`. An
+ * in-memory store answers `ScanOutcome.complete`.
  */
 sealed trait ScanOutcome {
   import ScanOutcome._

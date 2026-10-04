@@ -23,6 +23,21 @@ import scala.annotation.tailrec
  * The answer cannot be dropped unread (the build's `-Wnonunit-statement` filter names this type,
  * like `ScanOutcome` and `ReadOutcome`): a caller says what "another writer kept changing it"
  * means for it. A read or write that throws propagates — that is a failure, not a lost race.
+ *
+ * How to use (Mongo; `MongoScrapeArchiveRepository.recordBarren` is a live example):
+ * {{{
+ * GuardedWrite(3)(() => readProjected(id, Fields)) { asRead =>
+ *   decide(asRead)                                  // Option[Bson]: the update, or None for nothing to do
+ * } { (asRead, update) =>
+ *   MongoGuard.updateIfUnchanged(c, MongoGuard.unchanged(id, asRead, Fields), update, timeout, insert = false)
+ * } match {
+ *   case GuardedWrite.Landed(_)            => …
+ *   case GuardedWrite.Unneeded             => …
+ *   case GuardedWrite.ChangedUnderYou(n)   => logger.warn(…)   // say what losing the race means here
+ * }
+ * }}}
+ * `Fields` are the fields the decision read; use `MongoGuard.wholeUnchanged` when no field set proves
+ * the row unchanged. `NoUnguardedReadModifyWriteSpec` fails the build on a read-then-write without it.
  */
 sealed trait GuardedWrite[+A] {
   def landed: Boolean = this.isInstanceOf[GuardedWrite.Landed[?]]

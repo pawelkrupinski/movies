@@ -24,6 +24,13 @@ import scala.util.control.NonFatal
  *
  * Each case explains itself ([[explain]]) so the log line says WHY a read came back the
  * way it did.
+ *
+ * How to use: produce one through [[HttpRead]] (HTTP) or [[MongoRead]] (Mongo); in a parser, answer
+ * `Answered(value)`, or `ReadOutcome.none("why")` only for a validated empty answer. Consume it by
+ * matching the three cases, or with a bridge: `required` (a listing page — anything else throws),
+ * `toOptionOrThrow` (an `Option` client: absent is `None`, failed throws), `answered` (a caller that
+ * acts only on an answer and records the failure itself, via `isFailed` / `explain`). The build will
+ * not let a `ReadOutcome` be dropped unread.
  */
 sealed trait ReadOutcome[+A] {
   import ReadOutcome._
