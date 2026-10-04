@@ -293,11 +293,14 @@ object EkobiletClient {
     val paragraphs = document.select("#offcanvasRightInfo .offcanvas-body p").asScala.toSeq
       .map(_.text.trim).filter(_.nonEmpty)
     val metadata = paragraphs.collectFirst(Function.unlift(MetadataLine.findPrefixMatchOf))
-    val credits  = paragraphs.find(CreditsLabel.findPrefixOf(_).isDefined).map(labelledCredits).getOrElse(Map.empty)
+    // A credits paragraph of its own, else the labels after the metadata line's year ("… 71 min
+    // reżyseria: Pete Ohs obsada: Lena Góra, …" — Kino Rejs): either way each label ends at the next.
+    val credits  = paragraphs.find(CreditsLabel.findPrefixOf(_).isDefined).orElse(metadata.map(_.source.toString))
+      .map(labelledCredits).getOrElse(Map.empty)
     def names(text: Option[String]): Seq[String] = text.toSeq.flatMap(_.split(',')).map(_.trim).filter(_.nonEmpty)
     FilmDetail(
       synopsis       = paragraphs.find(p => MetadataLine.findPrefixMatchOf(p).isEmpty && CreditsLabel.findPrefixOf(p).isEmpty),
-      director       = names(metadata.flatMap(m => Option(m.group(DirectorGroup))).orElse(credits.get("reżyseria"))),
+      director       = names(credits.get("reżyseria")),
       cast           = names(credits.get("obsada")),
       runtimeMinutes = metadata.flatMap(m => Option(m.group(RuntimeGroup))).flatMap(_.toIntOption),
       releaseYear    = metadata.flatMap(m => m.group(YearGroup).toIntOption),
@@ -316,18 +319,17 @@ object EkobiletClient {
 
   /** A credit's label in a labelled credits paragraph — never the synopsis, whose prose would not
    *  open with one. */
-  private val CreditsLabel =
-    """(?iu)\b(reżyseria|scenariusz|obsada|muzyka|zdjęcia|montaż|produkcja|kraj)\s*:""".r
+  private val CreditLabels = "reżyseria|scenariusz|obsada|muzyka|zdjęcia|montaż|produkcja|kraj"
+  private val CreditsLabel = raw"""(?iu)\b($CreditLabels)\s*:""".r
 
   private val CountriesGroup = "countries"
   private val YearGroup      = "year"
   private val RuntimeGroup   = "runtime"
-  private val DirectorGroup  = "director"
 
-  /** The metadata paragraph's text: "<countries> <year>[, <N> min][ reżyseria: <names>]",
+  /** The metadata paragraph's text: "<countries> <year>[, <N> min][ reżyseria: <names>][ obsada: …]",
    *  e.g. "Francja, Belgia 2026, 88 min reżyseria: Philippe Riche". Anchored at
    *  the paragraph's start and requiring a letters-only country list before the
    *  year, so a synopsis that merely mentions a year never matches. */
   private val MetadataLine =
-    raw"""(?i)^(?<$CountriesGroup>\p{L}[\p{L} ,.-]*?)\s+(?<$YearGroup>\d{4})(?:\s*,\s*(?<$RuntimeGroup>\d+)\s*min\.?)?(?:\s*reżyseria:\s*(?<$DirectorGroup>.+))?$$""".r
+    raw"""(?iu)^(?<$CountriesGroup>\p{L}[\p{L} ,.-]*?)\s+(?<$YearGroup>\d{4})(?:\s*,\s*(?<$RuntimeGroup>\d+)\s*min\.?)?(?:\s*(?:$CreditLabels)\s*:.*)?$$""".r
 }

@@ -112,10 +112,14 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
    *  canonical `cleanTitle`, it reproduces the cased query the per-client casing
    *  used to produce (now that cinema slots keep their raw spelling).
    *
+   *  The format tags are peeled AGAIN at the end: the listing title peels only the tags at its
+   *  end, so one a search strip exposes ("Diuna 2D dubbing - pokaz specjalny", "Straszny film
+   *  napisy - Młodzieżowy Klub Filmowy") went into the query and found no film.
+   *
    *  Lives here rather than on `MovieService` because it composes two of THIS
    *  instance's rules; a caller holding the normalizer should not have to route
    *  through the enrichment service to combine them. */
-  def searchQuery(title: String): String = apiQuery(recase(title))
+  def searchQuery(title: String): String = FormatTags.stripFormatTags(apiQuery(recase(title)))
 
   /** Display-side casing applied to EVERY scraper's title at the scrape choke
    *  point (`MovieCache.recordCinemaScrape`). Banner-aware: when a leading

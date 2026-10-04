@@ -204,7 +204,7 @@ object SystemBiletowyClient {
   // (`Reżyseria: Sam Raimi | Produkcja: USA, 1987`), or the end of text. The
   // label's end is `(?!\p{L})`, not `\b`: Java's `\b` is ASCII-only, so it sees
   // no boundary after the `ą` of "Występują".
-  private val FieldLabels = "Obsada|Występują|Scenariusz|Muzyka|Zdjęcia|Gatunek|Produkcja|Czas|Dystrybutor"
+  private val FieldLabels = "Obsada|Aktorzy|Występują|Scenariusz|Muzyka|Zdjęcia|Gatunek|Produkcja|Czas|Dystrybutor"
   private val DirectorPat =
     ("""(?i)Reżyseria\s*:?\s*(.+?)\s*(?=(?:""" + FieldLabels + """)(?!\p{L})|\||$)""").r
 

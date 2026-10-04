@@ -9907,23 +9907,6 @@
     },
     "shareCardPending" : false
   }, {
-    "_id" : "f7456f50d3d35fa9",
-    "title" : "Straszny Film napisy - Młodzieżowy Klub Filmowy Leżak",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Straszny+Film+napisy+-+M%C5%82odzie%C5%BCowy+Klub+Filmowy+Le%C5%BCak/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Straszny+Film+napisy+-+M%C5%82odzie%C5%BCowy+Klub+Filmowy+Le%C5%BCak",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Straszny+Film+napisy+-+M%C5%82odzie%C5%BCowy+Klub+Filmowy+Le%C5%BCak"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { },
-    "shareCardPending" : false
-  }, {
     "_id" : "f74cd604849d1a03",
     "title" : "Baczne Oczka: II sezon",
     "fallbackPosterUrls" : [ ],
@@ -11392,6 +11375,32 @@
   }, {
     "_id" : "f84ee0f9135837f5~strasznyfilm2dnapisypremierakrajowa",
     "title" : "Straszny Film - 2D napisy - Premiera Krajowa",
+    "originalTitle" : "Scary Movie",
+    "posterUrl" : "https://img.helios.pl/pliki/film/straszny-film-6/straszny-film-6-plakat-66159.jpg",
+    "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8117S2R.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8117S2R1.jpg", "https://movies.helios.pl/images/DuzheStrashneKino6.jpg", "https://img.helios.pl/pliki/film/duzhe-strashne-kino-6-ua/duzhe-strashne-kino-6-ua-plakat-700.jpg", "https://www.novekino.pl/multimedia/straszny_film/plakat.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/straszny-film-plakat-net.jpg", "https://biletyna.pl/file/get/id/364278", "https://fwcdn.pl/fpo/42/81/10084281/8238139.3.jpg", "https://image.tmdb.org/t/p/w500/tjlyem5ky1AetxplBEOVtMPBue8.jpg", "https://m.media-amazon.com/images/M/MV5BNTJjMDk1NzAtMGVmNS00NTFmLWFlOTQtZDk5M2I2NjZiZDdlXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 96,
+    "releaseYear" : 2026,
+    "genres" : [ "Komedia" ],
+    "countries" : [ "USA", "Wielka Brytania" ],
+    "directors" : [ "Michael Tiddes" ],
+    "cast" : [ "Marlon Wayans", "Shawn Wayans", "Anna Faris", "Regina Hall", "Damon Wayans Jr." ],
+    "synopsis" : "Dwadzieścia sześć lat po tym, jak udało im się uciec przed podejrzanie znajomym zamaskowanym zabójcą, czwórka bohaterów znów znalazła się na celowniku mordercy – i żadna seria horrorów nie jest już bezpieczna.",
+    "trailerUrls" : [ "https://www.youtube.com/embed/I52lvbssW7I", "https://www.youtube.com/embed/O4NvamUcTEw" ],
+    "ratings" : {
+      "imdb" : 5.6,
+      "imdbUrl" : "https://www.imdb.com/title/tt32093575/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Scary+Movie/?category=2",
+      "rottenTomatoes" : 24,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/scary_movie_2026",
+      "filmweb" : 5.4,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Straszny+film-2026-10084281"
+    },
+    "weightedRating" : 4.466666666666667,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
+    "_id" : "f84ee0f9135837f5~strasznyfilmnapisymlodziezowyklubfilmowylezak",
+    "title" : "Straszny Film napisy - Młodzieżowy Klub Filmowy Leżak",
     "originalTitle" : "Scary Movie",
     "posterUrl" : "https://img.helios.pl/pliki/film/straszny-film-6/straszny-film-6-plakat-66159.jpg",
     "fallbackPosterUrls" : [ "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8117S2R.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8117S2R1.jpg", "https://movies.helios.pl/images/DuzheStrashneKino6.jpg", "https://img.helios.pl/pliki/film/duzhe-strashne-kino-6-ua/duzhe-strashne-kino-6-ua-plakat-700.jpg", "https://www.novekino.pl/multimedia/straszny_film/plakat.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/straszny-film-plakat-net.jpg", "https://biletyna.pl/file/get/id/364278", "https://fwcdn.pl/fpo/42/81/10084281/8238139.3.jpg", "https://image.tmdb.org/t/p/w500/tjlyem5ky1AetxplBEOVtMPBue8.jpg", "https://m.media-amazon.com/images/M/MV5BNTJjMDk1NzAtMGVmNS00NTFmLWFlOTQtZDk5M2I2NjZiZDdlXkEyXkFqcGc@._V1_.jpg" ],
@@ -21534,7 +21543,7 @@
     "shareCardPending" : false
   }, {
     "_id" : "feee8eeed381c094~followingpokazprzedpremierowyprelekcjaprzedseansem",
-    "title" : "Following | Pokaz Przedpremierowy | prelekcja przed seansem",
+    "title" : "Following | Pokaz Przedpremierowy | Prelekcja przed seansem",
     "originalTitle" : "Following",
     "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/FOLLOWING-5.jpg",
     "fallbackPosterUrls" : [ "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/following_1.jpg?itok=T19JaABN", "https://www.kinokultura.pl/foto,20577,ffe784cf71171f1a51144da77739b374,jpg.html", "https://ec1lodz.pl/fileadmin/user_upload/6tf3e.png", "https://gcf.org.pl/wp-content/uploads/2026/06/Following-grafika.jpg", "https://image.tmdb.org/t/p/w500/qkveZO2DqNHWkScH4XcqFU2VMOp.jpg", "https://m.media-amazon.com/images/M/MV5BYTQxYzIwMTAtYjZlNi00YzkwLWI4ZGYtNzNlZjU3N2MyNzI4XkEyXkFqcGc@._V1_.jpg" ],
@@ -91420,18 +91429,6 @@
     } ],
     "listingKeys" : [ "N\u0000Kinoteka\u0000https://kinoteka.pl/film/wtf-fest-maly-otik/\u0000WTF Fest | Mały Otik" ]
   }, {
-    "_id" : "f7456f50d3d35fa9|nowy-sacz|Kino Sokół",
-    "filmId" : "f7456f50d3d35fa9",
-    "city" : "nowy-sacz",
-    "cinema" : "Kino Sokół",
-    "filmUrl" : "https://www.bilety24.pl/kino/1225-straszny-film-napisy-mlodziezowy-klub-filmowy-lezak-157038?id=934145",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-10T16:15:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1225-straszny-film-napisy-mlodziezowy-klub-filmowy-lezak-157038?id=934145",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Sokół\u0000https://www.bilety24.pl/kino/1225-straszny-film-napisy-mlodziezowy-klub-filmowy-lezak-157038?id=934145\u0000STRASZNY FILM napisy - Młodzieżowy Klub Filmowy LEŻAK" ]
-  }, {
     "_id" : "f74cd604849d1a03|gliwice|Kino Amok",
     "filmId" : "f74cd604849d1a03",
     "city" : "gliwice",
@@ -104079,6 +104076,18 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino Hel\u0000https://www.bilety24.pl/kino/1255-straszny-film-2d-napisy-premiera-krajowa--157412?id=937287\u0000STRASZNY FILM - 2D napisy - Premiera Krajowa" ]
+  }, {
+    "_id" : "f84ee0f9135837f5~strasznyfilmnapisymlodziezowyklubfilmowylezak|nowy-sacz|Kino Sokół",
+    "filmId" : "f84ee0f9135837f5~strasznyfilmnapisymlodziezowyklubfilmowylezak",
+    "city" : "nowy-sacz",
+    "cinema" : "Kino Sokół",
+    "filmUrl" : "https://www.bilety24.pl/kino/1225-straszny-film-napisy-mlodziezowy-klub-filmowy-lezak-157038?id=934145",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-10T16:15:00",
+      "bookingUrl" : "https://www.bilety24.pl/kino/1225-straszny-film-napisy-mlodziezowy-klub-filmowy-lezak-157038?id=934145",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Sokół\u0000https://www.bilety24.pl/kino/1225-straszny-film-napisy-mlodziezowy-klub-filmowy-lezak-157038?id=934145\u0000STRASZNY FILM napisy - Młodzieżowy Klub Filmowy LEŻAK" ]
   }, {
     "_id" : "f84ee0f9135837f5~strasznyfilmukrainskidubbing|bydgoszcz|Cinema City Bydgoszcz",
     "filmId" : "f84ee0f9135837f5~strasznyfilmukrainskidubbing",

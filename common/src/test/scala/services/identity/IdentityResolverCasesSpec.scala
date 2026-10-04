@@ -188,15 +188,16 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   }
 
   "A spelling a learned venue decoration wraps" should "take the film its plain siblings matched" in {
-    // UK, Cineworld's "(4DX Rewind) Shrek": the whole title names no film, so its own search is
-    // empty and the plain "Shrek" the other venues list never reaches it. "(4DX Rewind)" is a
+    // A strand no title rule strips (Cineworld's "(4DX Rewind) Shrek" was one until its rule):
+    // the whole title names no film, so its own search is
+    // empty and the plain "Shrek" the other venues list never reaches it. "(Retro Rewind)" is a
     // LEARNED decoration (it recurs around other films' titles and no record carries it), so
     // "Shrek" is one of its title shapes: searched and read by the title relation, and the film
     // it then takes on its own joins it to its plain siblings.
     val films     = Seq(F(808, "Shrek", 2001, "Andrew Adamson", 90, 60), F(809, "Shrek 2", 2004, "Andrew Adamson", 93, 50))
     val plain     = Seq(Multikino, Helios).map(listing(_, "Shrek", Some(2001), Some("Andrew Adamson")))
-    val decorated = Seq(KinoApollo, KinoMuza).map(listing(_, "(4DX Rewind) Shrek"))
-    val learned   = TitleDecorations(Set(Seq("4dx", "rewind")), Set.empty)
+    val decorated = Seq(KinoApollo, KinoMuza).map(listing(_, "(Retro Rewind) Shrek"))
+    val learned   = TitleDecorations(Set(Seq("retro", "rewind")), Set.empty)
     def run(d: TitleDecorations) = IdentityResolver.resolve(plain ++ decorated, new FilmTable(films, normalizer), normalizer, weights, decorations = d)
     val r = run(learned)
     withClue((plain ++ decorated).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {

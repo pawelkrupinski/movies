@@ -8941,7 +8941,7 @@ showings:
 
 === Straszny film ===
 displayTitle:      Straszny film
-cinemaTitles:      Duzhe strashne kino 6 - UA | STRASZNY FILM | STRASZNY FILM - 2D dubbing - Premiera Krajowa | STRASZNY FILM - 2D napisy - Premiera Krajowa | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
+cinemaTitles:      Duzhe strashne kino 6 - UA | STRASZNY FILM | STRASZNY FILM - 2D dubbing - Premiera Krajowa | STRASZNY FILM - 2D napisy - Premiera Krajowa | STRASZNY FILM napisy - Młodzieżowy Klub Filmowy LEŻAK | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
 runtimeMinutes:    96
 releaseYear:       2026
 countries:         USA, Wielka Brytania
@@ -9090,7 +9090,7 @@ showings:
 
 === Straszny film ukraiński dubbing ===
 displayTitle:      Straszny film ukraiński dubbing
-cinemaTitles:      Duzhe strashne kino 6 - UA | STRASZNY FILM | STRASZNY FILM - 2D dubbing - Premiera Krajowa | STRASZNY FILM - 2D napisy - Premiera Krajowa | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
+cinemaTitles:      Duzhe strashne kino 6 - UA | STRASZNY FILM | STRASZNY FILM - 2D dubbing - Premiera Krajowa | STRASZNY FILM - 2D napisy - Premiera Krajowa | STRASZNY FILM napisy - Młodzieżowy Klub Filmowy LEŻAK | Straszny film | Straszny film ukraiński dubbing | Дуже страшне кіно 6
 runtimeMinutes:    96
 releaseYear:       2026
 countries:         USA, Wielka Brytania

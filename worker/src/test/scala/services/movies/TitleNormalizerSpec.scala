@@ -501,4 +501,31 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
   it should "leave a digit-only title alone (no letters to case)" in {
     recase("2 + 2 = 5") shouldBe "2 + 2 = 5"
   }
+
+  // ── what a listing's title search sends (found by SearchQueryMarkersSpec over the recorded corpora) ──
+
+  "searchQuery" should "peel a format tag a search strip leaves at the end" in {
+    val listing = (cinema: models.Cinema, raw: String) => titles.searchQuery(titles.listingTitle(cinema, raw)._1)
+    listing(models.KinoApollo, "Diuna: Część trzecia 2D dubbing - pokaz specjalny") shouldBe "Diuna: Część trzecia"
+    listing(models.KinoApollo, "STRASZNY FILM napisy - Młodzieżowy Klub Filmowy LEŻAK") shouldBe "Straszny Film"
+    listing(models.KinoApollo, "LUNA I ROZGADANA ŚWINKA | 2D | DUB | BO |") shouldBe "Luna i rozgadana świnka"
+    listing(models.KinoApollo, "ANDRE RIEU: NIECH ŻYJE MAASTRICHT! - 2D - Koncert") shouldBe "Andre Rieu: Niech Żyje Maastricht!"
+    listing(models.KinoApollo, "Chłopiec i czapla (napisy PL) | Poniedziałki ze Studiem Ghibli") shouldBe "Chłopiec i czapla"
+    listing(models.KinoApollo, "KINO PLENEROWE: Wartość sentymentalna - LEKTOR - WSTĘP WOLNY") shouldBe "Wartość sentymentalna"
+    listing(models.KinoApollo, "Spider-Man. Całkiem nowy dzień (2D dubbing) - PRZEDPREMIERA!") shouldBe "Spider-Man. Całkiem nowy dzień"
+  }
+
+  "listingTitle" should "peel Kino Cinema N's '2d pol' and keep a bracket the format strip cannot take whole" in {
+    titles.listingTitle(models.KinoApollo, "Lalka 2d pol")._1 shouldBe "Lalka"
+    titles.listingTitle(models.KinoApollo, "REQUIEM DLA SNU w 4K")._1 shouldBe "REQUIEM DLA SNU"
+    titles.listingTitle(models.KinoApollo, "Lalka (+ ENG SUBS)")._1 shouldBe "Lalka (+ ENG SUBS)"
+    titles.listingTitle(models.KinoApollo, "Lalka (napisy)")._1 shouldBe "Lalka"
+  }
+
+  it should "drop MOK Międzyrzecz's shouted 'PREMIERA' ahead of the format tag, at that venue only" in {
+    titles.listingTitle(models.KinoMOKMiedzyrzecz, "Witajcie w Hope PREMIERA 2D napisy")._1 shouldBe "Witajcie w Hope"
+    titles.listingTitle(models.KinoMOKMiedzyrzecz, "Lalka PREMIERA")._1 shouldBe "Lalka"
+    titles.listingTitle(models.KinoApollo, "Lalka PREMIERA")._1 shouldBe "Lalka PREMIERA"
+    titles.listingTitle(models.KinoMOKMiedzyrzecz, "Witajcie w Hope premiera")._1 shouldBe "Witajcie w Hope"
+  }
 }

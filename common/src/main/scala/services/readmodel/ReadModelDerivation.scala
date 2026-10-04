@@ -53,7 +53,10 @@ object ReadModelDerivation {
     // A card title drops a trailing "(YYYY)" equal to the year the card prints beside it.
     Derivation(DerivationVersion("1af346c3379caf11"), DerivationScope.Cards),
     // A film's first value among slots of equal priority is taken in name order, not the slot map's (its poster).
-    Derivation(DerivationVersion("c2dcd1d6f117fd7d"), DerivationScope.Cards))
+    Derivation(DerivationVersion("c2dcd1d6f117fd7d"), DerivationScope.Cards),
+    // A title's search form re-peels the format tags a search strip exposes, and knows the strands the recorded
+    // country corpora named (SearchQueryMarkersSpec): a card's lookup title moves with it.
+    Derivation(DerivationVersion("b029df625de7c5a5"), DerivationScope.Cards))
 
   def current: DerivationVersion = History.last.version
 

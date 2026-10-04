@@ -140,6 +140,18 @@ class EkobiletClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     detail.countries shouldBe Seq("Belgia", "Francja")
   }
 
+  // Kino Rejs's metadata paragraph carries the cast after the director ("reżyseria: Pete Ohs<br>obsada: Lena Góra, …"):
+  // read to the paragraph's end, the director was "Pete Ohs obsada: Lena Góra" (CinemaSlotInvariantsSpec).
+  it should "end the metadata line's director at the cast label after it, and read that cast" in {
+    val rejs   = new EkobiletClient(new FakeHttpFetch("08-06-2026"), "kinorejs", KinoRejs, today = LocalDate.of(2026, 6, 8))
+    val detail = rejs.fetchFilmDetail("https://ekobilet.pl/kinorejs/erupcja-62724").value
+    detail.director       shouldBe Seq("Pete Ohs")
+    detail.cast           should contain allOf ("Lena Góra", "Charli XCX", "Agata Trzebuchowska")
+    detail.countries      shouldBe Seq("USA", "Polska")
+    detail.runtimeMinutes shouldBe Some(71)
+    detail.synopsis.value should startWith("Jest upalne warszawskie lato")
+  }
+
   it should "keep an ordinary synopsis-only detail page's synopsis and invent no metadata" in {
     val tonClient = new EkobiletClient(new FakeHttpFetch("ekobilet-detail"), "kinoton", KinoTon, today = LocalDate.of(2026, 9, 27))
     val detail = tonClient.fetchFilmDetail("https://ekobilet.pl/kinoton/ice-cream-man-63797").value

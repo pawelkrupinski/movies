@@ -185,6 +185,13 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
     directorOf("<div>Gatunek: dramat</div>") shouldBe empty
   }
 
+  // Kino Mikro's credits (recorded corpus, 2026-10-04): the cast is labelled "aktorzy:", and with no label to stop
+  // at the director took the cast, the country, the year and the runtime ("Maria Dębska Polska 2026", "162'").
+  it should "stop the director at Kino Mikro's 'aktorzy:' cast label" in {
+    directorOf("<div>reżyseria: Maciej Kawalski</div><div>aktorzy: Marcin Dorociński, Kamila Urzędowska</div>" +
+      "<div>Polska 2026, 162'</div>") shouldBe Seq("Maciej Kawalski")
+  }
+
   // Casing is repaired only where the source shouts: a mixed-case title is the
   // venue's own spelling and stays as given.
   it should "down-case a shouted title but keep a mixed-case one as given" in {

@@ -51,8 +51,9 @@ object FormatTags {
     "dubbing", "dubb", "dub", "napisy", "nap", "lektor", "lek",
     "sub", "subs", "subtitled", "subtitles", "dubbed", "35mm", "70mm", "4k")
   private val FormatSeparators = Set("-", "–", "—", "|", "/", ":")
-  // "… - ON 35MM", "… in 70mm": the print is billed with a preposition, which goes with it.
-  private val PrintPreposition = """(?i)\s+(?:on|in)\s+(\d{2}mm)\s*$""".r
+  // "… - ON 35MM", "… in 70mm", Kino Kolory's "REQUIEM DLA SNU w 4K": the print is billed with a preposition,
+  // which goes with it (left behind, the title ended "REQUIEM DLA SNU w").
+  private val PrintPreposition = """(?i)\s+(?:on|in|w)\s+(\d{2}mm|4k)\s*$""".r
   private val FormatBracketTag = """\s*\[[^\]]*\]\s*$""".r
   private val FormatParenTag   =
     """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|ATMOS|4DX|dubbing|napisy|lektor|dubbed|subtitled|subtitles|35mm|70mm|4K(?!\s*restor))\b[^)]*)\)\s*$""".r
@@ -84,8 +85,16 @@ object FormatTags {
 
   private def isDroppableTag(tok: String): Boolean = {
     val w = bareWord(tok)
-    w.isEmpty || FormatSeparators.contains(w) || FormatVersionWords.contains(w)
+    (w.isEmpty || FormatSeparators.contains(w) || FormatVersionWords.contains(w)) && !closesEarlierBracket(tok)
   }
+
+  /** A token closing a bracket it did not open ("SUBS)" of "Lalka (+ ENG SUBS)") is the END of a bracketed
+   *  tag the bracket strips did not take whole; dropping it alone left "Lalka (+ ENG" as the title. */
+  private def closesEarlierBracket(tok: String): Boolean =
+    (tok.count(c => c == ')' || c == ']')) > (tok.count(c => c == '(' || c == '['))
+
+  /** "PL" and Kino Cinema N's "pol" ("Lalka 2d pol"). */
+  private val LanguageQualifiers = Set("pl", "pol")
 
   /** True when the trailing token is a bare "PL" qualifying the version word
    *  before it ("Lalka 2D PL", "… | DUBBING PL", "Lalka | 2D | PL" — ekobilet and
@@ -93,7 +102,7 @@ object FormatTags {
    *  format word in front and is left whole. Separators between the two are
    *  skipped; the PL itself yields no token. */
   private def isLanguageQualifier(toks: Vector[String]): Boolean =
-    bareWord(toks.last) == "pl" &&
+    LanguageQualifiers.contains(bareWord(toks.last)) &&
       toks.init.reverseIterator.map(bareWord).find(w => w.nonEmpty && !FormatSeparators.contains(w))
         .exists(FormatVersionWords.contains)
 
