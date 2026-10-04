@@ -56,7 +56,9 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
   "a stored URL naming a different film's year" should "be dropped rather than refreshed" in {
     val url = "https://www.filmweb.pl/film/Zaproszenie-2026-10109168"
     val repository = new InMemoryMovieRepository(Seq(
-      ("Zaproszenie", Some(1986), mkEnrichment("tt0092281", filmwebUrl = Some(url), filmwebRating = Some(7.4)))
+      ("Zaproszenie", Some(1986), mkEnrichment("tt0092281", filmwebUrl = Some(url), filmwebRating = Some(7.4))
+        .copy(data = Map[Source, SourceData](Filmweb -> SourceData(
+          originalTitle = Some("The Invite"), director = Seq("Olivia Wilde"), releaseYear = Some(2026)))))
     ), normalizer = titleNormalizer)
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val filmweb = new FilmwebClient(filmwebSite(Map("/film/10109168/rating" -> """{"rate":7.4,"count":1000}""")))
@@ -67,6 +69,9 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val row = cache.get(cache.keyOf("Zaproszenie", Some(1986)))
     row.flatMap(_.filmwebUrl)    shouldBe None
     row.flatMap(_.filmwebRating) shouldBe None
+    // The page's credits/original title came off the same wrong film — they'd
+    // keep feeding display fields and re-resolution hints if left behind.
+    row.flatMap(_.data.get(Filmweb)) shouldBe None
   }
 
   it should "be kept when the URL's year agrees with the film's" in {

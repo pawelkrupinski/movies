@@ -117,8 +117,8 @@ class FilmwebRatings(
   //   - Row doesn't have filmwebUrl → expensive: full lookup with TMDB-
   //     derived fallback title + director set (search → /info per candidate
   //     → /preview per candidate when verifying directors → rating).
-  // Per-row failures are swallowed (network blip, Filmweb soft-block); the
-  // next refresh tries again.
+  // A failed read (network blip, Filmweb soft-block) throws out of
+  // `ratingFor`; the caller records it and the next refresh tries again.
   protected def refreshOne(key: CacheKey): Option[String] =
     cache.get(key).flatMap { e =>
       e.filmwebUrl match {
@@ -144,7 +144,7 @@ class FilmwebRatings(
         !RatingPageIdentity.directorsAgree(e, filmwebCredit, tmdb.directorsFor)) {
       logger.info(s"Filmweb: $label $url → URL names ${FilmwebClient.yearInUrl(url).getOrElse("?")}, " +
         "not this film — dropping the URL")
-      cache.putIfPresent(key, _.copy(filmwebUrl = None, filmwebRating = None))
+      cache.putIfPresent(key, r => r.copy(filmwebUrl = None, filmwebRating = None, data = r.data - (Filmweb: Source)))
       return None
     }
     val change = filmweb.ratingFor(url) match {
