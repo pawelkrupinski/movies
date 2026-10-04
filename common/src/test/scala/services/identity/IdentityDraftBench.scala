@@ -10,7 +10,7 @@ import java.time.{Instant, LocalDateTime}
  *  venue spread), timed and allocation-counted per tick: run with
  *  `sbt "common/Test/runMain services.identity.IdentityDraftBench"`. Not a spec — a measuring tool. */
 object IdentityDraftBench {
-  // `sbt "common/Test/runMain services.identity.IdentityDraftBench 8 300 <dir>"` projects 8 ticks, re-reading 300 venues
+  // `sbt "common/Test/runMain services.identity.IdentityDraftBench 8 300 <dir> [adopt]"` projects 8 ticks, re-reading 300 venues
   // a tick, scopes after the first as production does, and writes class histograms of the state kept between ticks to
   // <dir> (optional); a trailing `whole` projects the whole corpus every tick.
   private val normalizer = SingleCountryNormalizer.titleNormalizer
@@ -32,17 +32,29 @@ object IdentityDraftBench {
       val n = math.min(venueCount, math.max(1, 13000 / (f + 1)))
       rng.shuffle(venues).take(n).map(f -> _)
     }
-    var rows: Map[(Int, Cinema), CinemaMovie] = placement.map { case (f, c) => (f, c) -> cm(c, f, 0) }.toMap
-    def listings = rows.toSeq.map { case ((_, c), row) => ProjectedListing.of(Listing.of(c, row, normalizer), row) }
+    // As production: the archive's rows (each a scrape's own objects), the identity model's listings (read from its store,
+    // so its own objects and keys), and the intake's per venue, projected anew from a scrape's rows each time a venue is
+    // read again — with the model's object for a listing it holds the same when `adopt` is given.
+    val shift = scala.collection.mutable.HashMap.empty[(Int, Cinema), Int]
+    var rows: Map[(Int, Cinema), CinemaMovie] = placement.map { case (f, c) => shift((f, c)) = 0; (f, c) -> cm(c, f, 0) }.toMap
+    val adopt   = args.contains("adopt")
+    var modelled = rows.map { case ((f, c), _) => val l = Listing.of(c, cm(c, f, shift((f, c))), normalizer); l.key -> l }
+    def scraped(c: Cinema): Seq[ProjectedListing] = rows.toSeq.collect { case ((f, cc), _) if cc eq c =>
+      val row = cm(c, f, shift((f, c)))
+      rows += (f, c) -> row
+      val fresh = Listing.of(c, row, normalizer)
+      ProjectedListing.of(if (adopt) modelled.get(fresh.key).filter(_ == fresh).getOrElse(fresh) else fresh, row)
+    }
     val rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]] = vs => rows.toSeq.collect { case ((_, c), row) if vs(c) => c -> row }.groupMap(_._1)(_._2)
-    val first  = listings
-    val byFilm = first.groupBy(l => l.listing.rawTitle)
-    val decisions = byFilm.toSeq.zipWithIndex.map { case ((_, ls), i) =>
-      ResolverDecision(ls.map(_.listing.key).sorted, Some(i + 1), 0.9, ResolverDecision.Basis.OwnMatch, Nil)() }
+    val byFilm = modelled.values.toSeq.groupBy(_.rawTitle)
+    val decisions = byFilm.toSeq.sortBy(_._1).zipWithIndex.map { case ((_, ls), i) =>
+      // Decoded from the model's store: keys of their own.
+      ResolverDecision(ls.map(l => services.movies.ListingKey.Native(new String(l.key.venue), new String(l.page.get), new String(l.rawTitle)): ListingKey).sorted,
+        Some(i + 1), 0.9, ResolverDecision.Basis.OwnMatch, Nil)() }
       .sortBy(_.members.head)(using ListingKey.ordering)
     val resolution = Resolution(decisions, decisions.size, decisions.zipWithIndex.flatMap { case (d, i) => d.members.map(_ -> i) }.toMap,
       Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
-    println(s"${first.size} listings, ${decisions.size} films, ${(0 until filmCount).map(f => normalizer.sanitize(s"Film Number $f")).distinct.size} distinct slot titles")
+    println(s"${rows.size} listings, ${decisions.size} films, ${(0 until filmCount).map(f => normalizer.sanitize(s"Film Number $f")).distinct.size} distinct slot titles")
 
     var memo     = new VenueSlotMemo(0L)
     var stored   = Map.empty[services.movies.FilmId, StoredMovieRecord]
@@ -61,20 +73,22 @@ object IdentityDraftBench {
     // every venue on a cadence, `rereads` venues a tick are read again into new objects whether or not they moved.
     val rereads   = args.lift(1).flatMap(_.toIntOption).getOrElse(300)
     var venueSeqs = Map.empty[String, Seq[ProjectedListing]]
-    def byVenue(all: Seq[ProjectedListing]): Seq[(String, Seq[ProjectedListing])] = {
-      val reread = rng.shuffle(venues.map(_.displayName)).take(rereads).toSet
-      all.groupBy(_.listing.venue).foreach { case (venue, ls) =>
-        if (!venueSeqs.get(venue).exists(_ == ls) || reread(venue)) venueSeqs += venue -> ls
-      }
+    var moved     = venues.toSet
+    def byVenue(): Seq[(String, Seq[ProjectedListing])] = {
+      val reread = rng.shuffle(venues).take(rereads).toSet
+      venues.foreach(c => if (moved(c) || reread(c)) { val ls = scraped(c); if (ls.nonEmpty) venueSeqs += c.displayName -> ls })
+      moved = Set.empty
       venueSeqs.toSeq
     }
     (1 to ticks).foreach { tick =>
-      if (tick > 2) rng.shuffle(rows.keys.toSeq).take(200).foreach(k => rows += k -> cm(k._2, k._1, tick))
-      val now = listings
-      val storedSeq = stored.values.toSeq
+      if (tick > 2) rng.shuffle(rows.keys.toSeq).take(200).foreach { k =>
+        shift(k) = tick; moved += k._2
+        val l = Listing.of(k._2, cm(k._2, k._1, tick), normalizer)
+        modelled += l.key -> l
+      }
       val held = (_: services.movies.ListingKey) => true
       val ((index, changes), indexS, indexMB) = timed {
-        val changes = live.update(byVenue(now), held, resolution.decisions, stored.values.toSeq)
+        val changes = live.update(byVenue(), held, resolution.decisions, stored.values.toSeq)
         (live.index(counters), changes)
       }
       val (scope, scopeS, scopeMB) = timed(if (!lastOk || !scoped) ProjectionScope.Whole else

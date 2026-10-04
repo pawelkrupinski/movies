@@ -53,7 +53,8 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
       tokens      = screeningTokens,
       metrics     = workerMetrics.identityCutover.forCountry(country.code),
       clock       = clock,
-      fingerprints = venueSlotFingerprints)
+      fingerprints = venueSlotFingerprints,
+      adopt       = identityListingIntake.adopt)
 
   /** The venue slots the projection last kept (`identity_slot_fingerprints`), in memory without a database. */
   lazy val venueSlotFingerprints: VenueSlotFingerprints =

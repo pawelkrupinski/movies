@@ -74,12 +74,23 @@ final class IdentityListingIntake(
     val written = dirty.synchronized { val names = dirty.toSet; dirty.clear(); names }
     val whole   = calls % IdentityListingIntake.WholeReadEvery == 0
     calls += 1
+    // A listing the identity model holds the same is its object, not a second copy of it ([[adopt]]).
+    lazy val modelled = adopted.iterator.map(l => l.key -> l).toMap
     def project(cinema: Cinema, films: Seq[(CinemaMovie, Int)]) =
-      films.map { case (cm, showtimes) => ProjectedListing.of(Listing.of(cinema, cm, normalizer), cm, showtimes) }
+      films.map { case (cm, showtimes) =>
+        val listing = Listing.of(cinema, cm, normalizer)
+        ProjectedListing.of(modelled.get(listing.key).filter(_ == listing).getOrElse(listing), cm, showtimes)
+      }
     val acceptedNow = heldAccepted.refresh(accepted, wanted, written, whole, project)
     val archivedNow = heldArchived.refresh(archive, wanted.filter { case (name, _) => !acceptedNow.contains(name) }, written, whole, project)
     live.distinct.sortBy(_.displayName).flatMap(c => acceptedNow.get(c.displayName).orElse(archivedNow.get(c.displayName)).flatten.map(c -> _))
   }
+
+  /** The listings the identity model holds, as the projection last read them: each venue re-read from now on is projected
+   *  with the model's object for a listing it holds the same. Projected anew from every scrape, the projection held a
+   *  second copy of every listing beside the model's (worker-us: 100k listings, their keys and catalogue ids). */
+  def adopt(held: Seq[Listing]): Unit = heldLock.synchronized { adopted = held }
+  private var adopted: Seq[Listing] = Nil
 
   // The projection's held listings, by venue name, one set per archive; venues written since the last read.
   private val heldLock     = new Object

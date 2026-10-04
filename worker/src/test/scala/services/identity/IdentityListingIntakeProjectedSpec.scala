@@ -115,4 +115,18 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     moved should not be expected
     wholeRead(w.project()._1) shouldBe ((moved, 0))             // a showtime moved: its digest tells
   }
+
+  it should "project a listing the identity model holds the same as the model's object, not a copy of it" in {
+    // A venue read again is projected from new rows. Each projected as a listing of its own, the projection held a second
+    // copy of every listing the model holds (worker-us: 100k listings, their keys and catalogue ids).
+    val w = new World
+    w.archive.store(Multikino, clock.instant(), film(Multikino, "Lalka", 0, 1), film(Multikino, "Obcy", 2))
+    val modelled = w.whole.map(_.listing).filter(_.title == "Lalka")
+    w.intake.adopt(modelled)
+    w.archive.store(Multikino, clock.instant().plusSeconds(60), film(Multikino, "Lalka", 0, 1, 3), film(Multikino, "Obcy", 2))
+    val (read, _) = w.project()
+    read shouldBe w.whole
+    read.find(_.listing.title == "Lalka").get.listing should be theSameInstanceAs modelled.head
+    read.find(_.listing.title == "Obcy").get.listing should not be theSameInstanceAs (w.whole.find(_.listing.title == "Obcy").get.listing)
+  }
 }

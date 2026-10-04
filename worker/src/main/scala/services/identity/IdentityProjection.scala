@@ -110,6 +110,8 @@ final class IdentityProjection(
   metrics:     IdentityProjectionMetrics,
   clock:       Clock,
   fingerprints: VenueSlotFingerprints,
+  /** Handed the listings each resolution was of, so the listings read for the next are the model's objects, not copies. */
+  adopt:       Seq[Listing] => Unit = _ => (),
   /** How many projections of a scope run between two of the whole corpus ([[IdentityProjection.ScopedBetweenWhole]]). */
   scopedBetweenWhole: Int = IdentityProjection.ScopedBetweenWhole
 ) extends Logging {
@@ -182,7 +184,8 @@ final class IdentityProjection(
           case Failure(other) => throw other
           case Success(None) =>
             refuse(IdentityProjectionMetrics.Refusal.NotReady, "the identity model is not ready", keep = true)
-          case Success(Some(IdentityProjection.Resolved(resolution, held))) =>
+          case Success(Some(IdentityProjection.Resolved(resolution, held, modelled))) =>
+            adopt(modelled)
             val at    = clock.instant()
             phases("seed")(seedSlotMemo())
             if (previous.isEmpty) { live = new LiveProjectionIndex(normalizer); shapes = FilmShapes(); carried = ProjectionScope.Changes.none }
@@ -383,8 +386,8 @@ object IdentityProjection {
       f.record.tmdbId.forall(id => !heldTmdb(id) && tmdbTakers(id) == 1)).map(_.id).toSet
   }
 
-  /** A resolution and the listings it decided. */
-  final case class Resolved(resolution: Resolution, listings: Set[ListingKey])
+  /** A resolution, the listings it decided, and the model's objects of them (none for a resolve of the listings read). */
+  final case class Resolved(resolution: Resolution, listings: Set[ListingKey], modelled: Seq[Listing] = Nil)
 
   /** A WHOLE resolve of the listings a projection reads — the projection before the incremental
    *  model, and the reference the specs hold it to. */
@@ -397,5 +400,5 @@ object IdentityProjection {
 
   /** The incremental model, brought up to now on its own thread — no resolve here. */
   def modelled(model: IdentityModelService, timeout: FiniteDuration): (() => Seq[Listing]) => Option[Resolved] = _ =>
-    model.current(timeout).map(snapshot => Resolved(snapshot.resolution, snapshot.listings.map(_.key).toSet))
+    model.current(timeout).map(snapshot => Resolved(snapshot.resolution, snapshot.listings.map(_.key).toSet, snapshot.listings))
 }

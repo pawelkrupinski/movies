@@ -116,4 +116,24 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
     val byKey   = live.index(FilmIdCounters.empty).byKey
     again.foreach(l => withClue(l.listing.rawTitle)(byKey(l.listing.key) should be theSameInstanceAs l))
   }
+
+  it should "name each listing by its own key object, not the copies a decision or a stored slot was read with" in {
+    // A decision's keys and a stored slot's are read anew from the store: kept as they came, the index held ~4.8 key
+    // objects per listing on worker-us.
+    val live    = new LiveProjectionIndex(normalizer)
+    val rows    = Seq(row(new Random(1), Multikino), row(new Random(2), Helios))
+    val read    = rows.map(cm => ProjectedListing.of(Listing.of(cm.cinema, cm, normalizer), cm))
+    def copy(k: ListingKey): ListingKey = k match {
+      case ListingKey.Native(v, p, r)        => ListingKey.Native(new String(v), new String(p), new String(r))
+      case ListingKey.Published(v, r, y, ds) => ListingKey.Published(new String(v), new String(r), y, ds.map(new String(_)))
+    }
+    val decided = read.map(l => ResolverDecision(Seq(copy(l.listing.key)), Some(1), 0.9, ResolverDecision.Basis.OwnMatch, Nil)())
+    val stored  = Seq(film(new Random(3), "f1", read))
+    live.update(read.groupBy(_.listing.venue).toSeq, _ => true, decided, stored)
+    val index   = live.index(FilmIdCounters.of(Seq(FilmIdCounter("f1", 1L))).toOption.get)
+    val own     = read.map(l => l.listing.key -> l.listing.key).toMap
+    index.clusterOf.keySet should not be empty
+    (index.clusterOf.keysIterator ++ index.clusters.valuesIterator.flatMap(_.members) ++ index.previousOf.keysIterator ++
+      index.listingsOf.valuesIterator.flatten).foreach(k => withClue(k)(k should be theSameInstanceAs own(k)))
+  }
 }

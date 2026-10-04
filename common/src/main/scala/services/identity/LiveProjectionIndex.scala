@@ -139,14 +139,14 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
         decisions.put(d, id)
         touched += id
         decisionsOf(id) = d :: decisionsOf.getOrElse(id, Nil)
-        d.members.foreach(decisionOf(_) = d)
+        d.members.foreach(k => decisionOf(canonical(k)) = d)
       }
     }
     published.foreach(k => decisionOf.get(k).foreach(d => touched += decisions.get(d)))
     val regrouped = mutable.HashSet.empty[ListingKey]
     touched.foreach { id =>
       val was  = clusters.get(id)
-      val next = clusterFor(id, decisionsOf.getOrElse(id, Nil), byKey.contains)
+      val next = clusterFor(id, decisionsOf.getOrElse(id, Nil), byKey.contains).map(c => c.copy(members = c.members.map(canonical)))
       if (next != was) {
         // A listing that left the cluster is gone, or in a cluster that moved too: the clusters partition.
         was.foreach(_.members.foreach(k => if (clusterOf.get(k).contains(id)) clusterOf = clusterOf - k))
@@ -181,6 +181,10 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
     afterWrites ++= writtenInto.keysIterator.filterNot(placedAsWritten)
     ()
   }
+
+  /** `k` as the listing published under it holds it: one key object per listing, not one per map that names it — a stored
+   *  slot's and a decision's are read anew from the store (worker-us held ~4.8 per listing). */
+  private def canonical(k: ListingKey): ListingKey = byKey.get(k).fold(k)(_.listing.key)
 
   /** Listings the last writes moved to another film: changes for the next [[update]]. */
   private val afterWrites = mutable.HashSet.empty[ListingKey]
@@ -230,7 +234,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
     storedById = storedById.updated(id, r)
     val ref   = PipelineFilmRef(id, r.record.tmdbId)
     val slots = r.record.data.toSeq.map { case (source, sd) => source -> IdentityProjectionPlan.slotOf(source, sd) }
-    slotsOfFilm(id) = slots.map { case (_, slot) => slot.at -> slot.key }
+    slotsOfFilm(id) = slots.map { case (_, slot) => slot.at -> slot.key.map(canonical) }
     slots.foreach { case (source, slot) =>
       slot.at.foreach { at =>
         filmsAtSlot(at) = filmsAtSlot.getOrElse(at, Map.empty).updated(id, ref -> source)
@@ -238,7 +242,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
       }
       // The listing the slot is — at the slot's own title almost always (re-pointed above), but a slot folded under
       // another title than its listing's is reached only here.
-      slot.key.foreach { k =>
+      slot.key.map(canonical).foreach { k =>
         ownersOfKey(k) = ownersOfKey.getOrElse(k, Set.empty).filterNot(_.id == id) + ref
         reslot += k
       }
