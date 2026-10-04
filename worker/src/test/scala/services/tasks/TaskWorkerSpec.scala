@@ -118,6 +118,52 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     q.claim("w1", 1.minute, specClock.instant().plusSeconds(10)).map(_.dedupKey) shouldBe Some("imdb|x")
   }
 
+  // Prod PL 2026-10-04: a pod replaced at 22:08 left three tasks worked-on until their 5-minute lease ran out.
+  "a stopping worker" should "hand an in-flight task back as its handler returns to the stop: claimable at once, no attempt charged" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ImdbRating, "rating|x", submittedAt = t0)
+    val running = new java.util.concurrent.CountDownLatch(1)
+    val fetching = new TaskHandler {
+      val taskType: TaskType = ImdbRating
+      def handle(task: Task): HandlerOutcome = {
+        running.countDown()
+        new java.util.concurrent.CountDownLatch(1).await()   // an in-flight fetch: only the stop's interrupt ends it
+        HandlerOutcome.Done
+      }
+    }
+    val w = new TaskWorker(q, Seq(fetching), poolSize = settings.WorkerPoolSize(1), clock = specClock)
+    w.start()
+    running.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true
+    w.stop()
+    q.countByState() shouldBe Map(TaskState.Waiting -> 1L)
+    q.claim("next-pod", 5.minutes, specClock.instant()).map(t => (t.dedupKey, t.attempts)) shouldBe Some(("rating|x", 1))
+  }
+
+  it should "hand back a task whose handler outlives the grace, and keep it handed back when that handler finishes late" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ImdbRating, "rating|y", submittedAt = t0)
+    val (running, finish) = (new java.util.concurrent.CountDownLatch(1), new java.util.concurrent.CountDownLatch(1))
+    val stubborn = new TaskHandler {
+      val taskType: TaskType = ImdbRating
+      def handle(task: Task): HandlerOutcome = {
+        running.countDown()
+        var done = false
+        while (!done) try { done = finish.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) || true }
+                      catch { case _: InterruptedException => () }   // ignores the interrupt
+        HandlerOutcome.Done
+      }
+    }
+    val w = new TaskWorker(q, Seq(stubborn), poolSize = settings.WorkerPoolSize(1), stopGrace = 50.millis, clock = specClock)
+    w.start()
+    running.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true
+    w.stop()
+    q.countByState() shouldBe Map(TaskState.Waiting -> 1L)            // handed back by the stop itself
+    finish.countDown()                                                // the handler finishes late…
+    eventually(timeout(Span(SpecTimeouts.Io.toMillis, Millis))) {
+      q.claim("next-pod", 5.minutes, specClock.instant()).map(_.dedupKey) shouldBe Some("rating|y")   // …and its Done took nothing
+    }
+  }
+
   "TaskWorker.retryBackoffFor" should "ramp exponentially from 5s and cap at 30 minutes" in {
     TaskWorker.retryBackoffFor(1)   shouldBe 5.seconds
     TaskWorker.retryBackoffFor(2)   shouldBe 10.seconds

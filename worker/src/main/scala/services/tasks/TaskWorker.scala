@@ -14,6 +14,7 @@ import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
 import scala.concurrent.duration._
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 /** Does the actual work for one task type. The first thing a handler should do
@@ -85,6 +86,8 @@ class TaskWorker(
   // handler's wall-clock). Default no-op keeps the worker decoupled from the
   // metrics sink; the composition root wires WorkerTaskMetrics here.
   observer:          TaskObserver   = TaskObserver.NoOp,
+  // How long `stop()` waits for in-flight handlers to return before handing their tasks back itself.
+  stopGrace:         FiniteDuration = TaskWorker.StopGrace,
   // What "now" is for claims and a released task's back-off — the wiring's clock. It has to
   // ADVANCE: a clock that stands still (TestWiring's pinned one) parks every backed-off task
   // forever, so a harness that starts the task worker must give the wiring a moving clock.
@@ -101,6 +104,10 @@ class TaskWorker(
   }
 
   private val running:  AtomicBoolean          = new AtomicBoolean(false)
+  // The task each worker holds while its handler runs: what `stop()` hands back if the handler outlives the grace.
+  private val inFlight = new java.util.concurrent.ConcurrentHashMap[String, Task]()
+  // Set by `stop()` alone: a worker driven without `start()` (a test's `claimAndRun`) is not stopping.
+  @volatile private var stopping = false
   private val workers:  mutable.Buffer[Thread] = mutable.Buffer.empty
   // Decouples the change-stream producer from the worker threads: producers ring,
   // idle workers park on it. Carries no task — the claim is still the source of
@@ -190,7 +197,12 @@ class TaskWorker(
         // successful claimer hands off) instead of the whole pool per enqueue.
         doorbell.ring()
         observer.onStarted(task)          // claimed and kicked off
-        runHandler(task, workerId)
+        inFlight.put(workerId, task)
+        // `Try` lets an InterruptedException through (it is not NonFatal): the stop's interrupt reaching a handler
+        // lands here, and its task is handed back rather than left leased.
+        try runHandler(task, workerId)
+        catch { case e: InterruptedException => if (stopping) handBack(task, workerId, 0L) else throw e }
+        finally inFlight.remove(workerId, task)
     }
 
   /** The doorbell's ring count — for tests asserting the baton hand-off. */
@@ -211,6 +223,9 @@ class TaskWorker(
       outcome match {
         case Success(Done)    => completeWith(task, workerId, Outcome.Done, millis)
         case Success(Skipped) => completeWith(task, workerId, Outcome.Skipped, millis)
+        // Stopping: whatever the handler made of the interrupt is the shutdown's, not the task's — handed back at
+        // once, its attempt given back, for the next pod to claim without waiting out a lease or a backoff.
+        case _ if stopping => handBack(task, workerId, millis)
         case Success(Reschedule(err)) =>
           if (task.attempts >= maxAttempts.value) exhaust(task, workerId, err, millis)
           else {
@@ -284,17 +299,41 @@ class TaskWorker(
     if (notBefore.isAfter(ceiling)) ceiling else notBefore
   }
 
+  /** A task its worker stopped holding: back to waiting, claimable at once, the attempt `claim` charged given back. */
+  private def handBack(task: Task, workerId: String, handleMillis: Long): PollResult = {
+    queue.release(task.id, workerId, Some("the worker stopped"), notBefore = None, refundAttempt = true)
+    observer.onFinished(task, Outcome.Deferred, handleMillis)
+    PollResult.Returned
+  }
+
+  /** Stop claiming, interrupt every worker (a sleep, an in-flight fetch), wait up to [[stopGrace]] for their handlers to
+   *  return — each hands its task back ([[handBack]]) — then hand back any task still held: a dying pod leaves nothing
+   *  leased behind it. Before, its tasks sat worked-on until their lease ran out (5 min) or came back charged and backed
+   *  off as failures (prod PL 2026-10-04: three tasks held by a pod gone since 22:08 until 22:13). The queue's ownership
+   *  guard turns a late completion from a handler that outlived the grace into a no-op. */
   override def stop(): Unit = {
+    stopping = true
     running.set(false)
     watchHandle.foreach(h => Try(h.close()))
     reaper.shutdown()
     doorbell.ringAll()             // wake every parked worker so it sees running=false
-    workers.foreach(_.interrupt()) // break any in-flight retryBackoff sleep
+    workers.foreach(_.interrupt()) // break any in-flight retryBackoff sleep or fetch
+    val waited = tools.Stopwatch.start()
+    workers.foreach(t => Try(t.join((stopGrace - waited.elapsed).toMillis.max(1L))))
+    val held = inFlight.asScala.toSeq
+    held.foreach { case (workerId, task) =>
+      Try(queue.release(task.id, workerId, Some("the worker stopped"), notBefore = None, refundAttempt = true))
+    }
+    if (held.nonEmpty) logger.info(s"TaskWorker stopped: handed back ${held.size} task(s) still running after ${stopGrace.toSeconds}s")
     ()
   }
 }
 
 object TaskWorker {
+
+  /** How long a stopping worker waits for its in-flight handlers before handing their tasks back itself — well inside
+   *  the pod's 30 s termination grace, which the rest of the shutdown shares. */
+  val StopGrace: FiniteDuration = 10.seconds
 
   /** How long a claimed task may run before its lease is taken back. */
   final case class ProcessingTimeout(value: FiniteDuration) extends AnyVal
