@@ -124,9 +124,15 @@ class HeliosClient(
     val eventScreenings = window(eventsUrls)(parseEventScreenings)
     val screeningsById  = eventScreenings ++ regular
 
-    val movieBodies    = fetchBodies("helios-movies", screeningsById.values.map(_.movieId).filter(_.nonEmpty).toSeq.distinct)(id => s"$ApiBase/movie/$id")
-    val screenBodies   = fetchBodies("helios-screens", screeningsById.values.map(_.screenId).toSeq.distinct)(id =>
-      s"$ApiBase/cinema/$sourceId/screen/$id")
+    // A movie body is part of the listing: a REST-only film (a Latin-titled UA screening NUXT
+    // lists in Cyrillic) is emitted only from its body, so one that fails can drop a film and
+    // leaves the listing incomplete. A screen body only names a showtime's room: one that fails
+    // drops nothing, and must not keep the venue from pruning.
+    val movieBodies    = ListingPages.readMore("helios-movies", screeningsById.values.map(_.movieId).filter(_.nonEmpty).toSeq.distinct,
+      (id: String) => s"$ApiBase/movie/$id", timeout = 1.minute)(HttpRead.page(detailFetch, _)).toMap
+    val screenBodies   = ListingPages.readEnrichment("helios-screens", screeningsById.values.map(_.screenId).toSeq.distinct,
+      (id: String) => s"$ApiBase/cinema/$sourceId/screen/$id", timeout = 1.minute)(HttpRead.page(detailFetch, _))
+      .flatMap { case (id, attempt) => attempt.toOption.map(id -> _) }.toMap
 
     RestData(
       screeningsById = screeningsById,
@@ -254,13 +260,6 @@ class HeliosClient(
       val noRestriction = symbol.contains("0") || description.exists(_.equalsIgnoreCase("b.o."))
       if (noRestriction) None else symbol
     }.flatMap(services.cinemas.common.AgeRating.normalize)
-
-  // Detail bodies (movie metadata, screen names) go through `detailFetch` so the
-  // shared chain cache dedups them across locations and passes.
-  private def fetchBodies(label: String, ids: Seq[String])(urlFor: String => String): Map[String, String] =
-    ListingPages.readMore(label, ids, urlFor, timeout = 1.minute) { url =>
-      Option(HttpRead.page(detailFetch, url))
-    }.toMap.collect { case (id, Some(body)) => id -> body }
 
   // ── REST enrichment of NUXT movies ────────────────────────────────────────
   //

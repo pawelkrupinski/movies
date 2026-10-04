@@ -28,4 +28,19 @@ class HeliosClientEventRoomSpec extends AnyFlatSpec with Matchers {
     showtime.get.room   shouldBe Some("Sala 2")
     showtime.get.format should contain("NAP")
   }
+
+  // A screen body only names a showtime's room — no film depends on it — so one that fails leaves
+  // the room empty and the listing complete; reported, it kept the venue from ever pruning.
+  it should "leave the room empty, and the listing's completeness untouched, when a screen lookup fails" in {
+    val recorded = new FakeHttpFetch("helios/event-room")
+    val failingScreens = new tools.GetOnlyHttpFetch {
+      override def get(url: String): String =
+        if (url.contains("/screen/")) throw new java.io.IOException("screen lookup down") else recorded.get(url)
+    }
+    val (movies, reads) = services.cinemas.common.ListingReads.during(
+      new HeliosClient(failingScreens, titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay).fetch())
+    movies.flatMap(_.showtimes).flatMap(_.room) shouldBe empty
+    movies.find(_.movie.title.contains("All You Need Is Kill")) shouldBe defined
+    reads.failed.map(_.getMessage).filter(_.contains("screen lookup down")) shouldBe empty
+  }
 }
