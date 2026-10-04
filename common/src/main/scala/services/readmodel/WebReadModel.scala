@@ -35,6 +35,8 @@ class WebReadModel(
     reloadInterval:    ReadModelReloadInterval    = WebReadModel.DefaultReloadInterval,
     coldRetryInterval: ReadModelColdRetryInterval = WebReadModel.DefaultColdRetryInterval,
     driftSettle:       WebReadModel.DriftSettle   = WebReadModel.DefaultDriftSettle,
+    // Each reopen of a change stream that ended (`kinowo_web_readmodel_stream_reopens_total`).
+    streamMetrics:     ReadModelStreamMetrics     = ReadModelStreamMetrics.noop,
     // What the change stamps are read from; the system clock outside specs.
     clock:             java.time.Clock) extends Stoppable with Logging {
 
@@ -455,16 +457,27 @@ class WebReadModel(
       // that finds the streams live reads again (`catchUpOwed`).
       catchUpOwed = !(lastReloadComplete && checkpoint.isDefined)
       if (!movieWatch.exists(_.live)) {
+        streamMetrics.reopened(MongoReadModelRepository.MoviesCollection)
         movieWatch.foreach(watch => Try(watch.close()))
         movieWatch = reader.watchMovies(applyMovieUpsert, applyMovieDelete, checkpoint)
       }
       if (!screeningWatch.exists(_.live)) {
+        streamMetrics.reopened(MongoReadModelRepository.ScreeningsCollection)
         screeningWatch.foreach(watch => Try(watch.close()))
         screeningWatch = reader.watchScreenings(applyScreeningUpsert, applyScreeningDelete, checkpoint)
       }
     }
 
   private[readmodel] def streamsLive: Boolean = movieWatch.exists(_.live) && screeningWatch.exists(_.live)
+
+  /** Whether `collection`'s change stream (`web_movies` / `web_screenings`) is delivering now — the
+   *  `kinowo_web_readmodel_stream_live` gauge. Down, the model learns that collection's writes only
+   *  from the reopen's catch-up read or the backstop. */
+  def streamLive(collection: String): Boolean = collection match {
+    case MongoReadModelRepository.MoviesCollection     => movieWatch.exists(_.live)
+    case MongoReadModelRepository.ScreeningsCollection => screeningWatch.exists(_.live)
+    case _                                             => false
+  }
 
   /** Periodic backstop tick. While both change streams are live they keep the
    *  model current, so re-reading and re-decoding the whole corpus every tick is

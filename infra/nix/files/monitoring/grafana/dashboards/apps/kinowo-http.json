@@ -1244,6 +1244,178 @@
           }
         }
       ]
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Circuit breakers \u2014 hosts open now, by leg",
+      "description": "kinowo_worker_http_breaker_open_hosts: hosts whose per-host breaker is OPEN (every call fast-fails). decodo = the residential-proxy leg failing for those destinations (calls fall straight through to Zyte); scrape = cinema sites down; enrich = metadata/rating APIs (TMDB, IMDb, \u2026) down.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 86,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (country, leg) (kinowo_worker_http_breaker_open_hosts{country=~\"$country\"})",
+          "legendFormat": "{{country}} {{leg}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Circuit breakers \u2014 openings, by leg",
+      "description": "kinowo_worker_http_breaker_opens_total: closed -> open transitions. A burst is an upstream going away; a steady rate is a flapping host.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 86,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (country, leg) (increase(kinowo_worker_http_breaker_opens_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} {{leg}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "type": "timeseries",
+      "title": "Web read model \u2014 change streams live (0 = ended, catch-up only)",
+      "description": "kinowo_web_readmodel_stream_live per pod and collection. At 0 that pod sees the collection's writes only through the cold-retry reopen's catch-up read.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 94,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "min by (country, collection) (kinowo_web_readmodel_stream_live{country=~\"$country\"})",
+          "legendFormat": "{{country}} {{collection}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "type": "timeseries",
+      "title": "Web read model \u2014 change-stream reopens",
+      "description": "kinowo_web_readmodel_stream_reopens_total: reopens of an ended stream (Mongo outage outlasting the driver's resume). Zero is healthy; a steady climb is a stream that cannot stay open.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 94,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (country, collection) (increase(kinowo_web_readmodel_stream_reopens_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} {{collection}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
     }
   ],
   "annotations": {

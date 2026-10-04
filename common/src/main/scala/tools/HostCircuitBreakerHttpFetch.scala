@@ -65,11 +65,21 @@ class HostCircuitBreakerHttpFetch(
   // Where the open/re-open/close transitions go. Defaults to this class's logger;
   // injected in tests so the transitions can be asserted on as data instead of
   // scraped out of captured log output (same seam as ThrottledHttpFetch's report).
-  report:           Option[String => Unit] = None
+  report:           Option[String => Unit] = None,
+  // Where the open count and each opening go (`kinowo_worker_http_breaker_*`); unmetered by default.
+  meter:            CircuitBreakerMeter = CircuitBreakerMeter.noop
 ) extends HttpFetch with Logging {
   import HostCircuitBreakerHttpFetch.Breaker
 
   private val breakers = new ConcurrentHashMap[String, Breaker]()
+
+  /** How many hosts are open right now: skipped outright, their cooldown still running. A host
+   *  whose cooldown has run out with no call since is half-open, not open. */
+  def openHosts: Int = {
+    val at = now()
+    breakers.values.stream.filter(_.openUntil.exists(_.isAfter(at))).count().toInt
+  }
+  meter.watch(() => openHosts)
 
   private def hostOf(url: String): Option[String] =
     scala.util.Try(Option(URI.create(url).getHost)).toOption.flatten.map(_.toLowerCase(Locale.ROOT))
@@ -106,6 +116,7 @@ class HostCircuitBreakerHttpFetch(
         Breaker(failures, Some(now().plusMillis(openDuration.toMillis)), why)
       } else Breaker(failures, None, why)
     })
+    if (opened.get()) meter.opened()
     if (opened.get())
       announce(logger.warn(_), s"Circuit OPEN for $host after $failureThreshold consecutive failures " +
         s"(last: ${why.getOrElse("unknown")}) — skipping all calls to it for ${openDuration.toSeconds}s.")

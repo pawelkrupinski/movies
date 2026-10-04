@@ -66,7 +66,12 @@ trait ReadModelWiring { self: Wiring =>
   lazy val webReadModel: WebReadModel = managedResources.stopping(new WebReadModel(readModelRepository,
     reloadInterval    = processConfiguration.readModelReloadInterval(WebReadModel.DefaultReloadInterval),
     coldRetryInterval = processConfiguration.readModelColdRetryInterval(WebReadModel.DefaultColdRetryInterval),
+    streamMetrics     = webReadModelStreamMetrics,
     clock             = clock))
+
+  // Read at scrape time, so the model (forced at boot) is never built by the metric.
+  lazy val webReadModelStreamMetrics = new services.metrics.WebReadModelStreamMetrics(webJvmMetrics.registry, country.code,
+    collection => webReadModel.streamLive(collection))
 
   // Reads come straight from the read model; enrichment + projection happen in
   // the worker process.

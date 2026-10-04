@@ -72,7 +72,7 @@ trait EgressWiring { self: WorkerWiring =>
   // behind a doomed proxy attempt on every single call.
   private def proxyPrimary(fallback: HttpFetch, warmUrl: Option[String] = None,
                            keyOf: String => String = StickyShardHttpFetch.hostAndPath): HttpFetch =
-    proxyShards.fold(fallback)(EgressWiring.proxyPrimary(_, fallback, warmUrl, keyOf, decodoMeter, recordProxyOutcome))
+    proxyShards.fold(fallback)(EgressWiring.proxyPrimary(_, fallback, warmUrl, keyOf, decodoMeter, recordProxyOutcome, decodoBreakerMeter))
 
   // Meter the residential-proxy leg to /uptime: a green "Residential proxy" bar
   // means the proxy served, a red one means it failed and we fell back to Zyte
@@ -91,6 +91,8 @@ trait EgressWiring { self: WorkerWiring =>
     workerMetrics.paidEgress.recorderFor(country.code, PaidEgressMetrics.Provider.Zyte)
   private lazy val decodoMeter: HttpOutcomeRecorder =
     workerMetrics.paidEgress.recorderFor(country.code, PaidEgressMetrics.Provider.Decodo)
+  private lazy val decodoBreakerMeter: tools.CircuitBreakerMeter =
+    workerMetrics.httpBreakers.meterFor(country.code, services.metrics.HttpBreakerMetrics.Leg.Decodo)
 
   // The one JDK client every Zyte chain this wiring composes calls the Zyte API through.
   // Lazy, and handed on by name, so a wiring without ZYTE_API_KEY never builds it.
@@ -114,7 +116,8 @@ trait EgressWiring { self: WorkerWiring =>
   // never open the scrapes'. The paid-egress counters still see it: it is paid for.
   lazy val multikinoPosterFetch: HttpFetch = {
     val fallback = zyteThenDirect(httpFetch, Some(MultikinoClient.HomeUrl))
-    proxyShards.fold(fallback)(EgressWiring.proxyPrimary(_, fallback, Some(MultikinoClient.HomeUrl), meter = decodoMeter))
+    proxyShards.fold(fallback)(EgressWiring.proxyPrimary(_, fallback, Some(MultikinoClient.HomeUrl), meter = decodoMeter,
+      breakerMeter = decodoBreakerMeter))
   }
   // Zyte residential egress → direct fallback (Zyte only when ZYTE_API_KEY is set).
   lazy val zyteFetch: HttpFetch = zyteThenDirect(httpFetch)
@@ -206,9 +209,10 @@ object EgressWiring {
   def proxyPrimary(shards: IndexedSeq[HttpFetch], fallback: HttpFetch, warmUrl: Option[String] = None,
                    keyOf: String => String = StickyShardHttpFetch.hostAndPath,
                    meter: HttpOutcomeRecorder = HttpOutcomeRecorder.noop,
-                   onOutcome: (String, Option[String]) => Unit = FallbackHttpFetch.NoOutcome): HttpFetch = {
+                   onOutcome: (String, Option[String]) => Unit = FallbackHttpFetch.NoOutcome,
+                   breakerMeter: tools.CircuitBreakerMeter = tools.CircuitBreakerMeter.noop): HttpFetch = {
     val legs = warmUrl.fold(shards)(u => shards.map(new SessionWarmingHttpFetch(_, u)))
-    val proxyLeg = meteredProxyLeg(new StickyShardHttpFetch(legs, keyOf), meter)
+    val proxyLeg = meteredProxyLeg(new StickyShardHttpFetch(legs, keyOf), meter, breakerMeter)
     new FallbackHttpFetch(Seq("proxy" -> proxyLeg, "fallback" -> fallback), onOutcome = onOutcome,
                           endsChain = FallbackHttpFetch.OriginAnswered)
   }
@@ -219,13 +223,14 @@ object EgressWiring {
    *  has opened. Extracted to a pure function — rather than inlined in
    *  `proxyPrimary` — so this composition is unit-testable without the rest of
    *  `WorkerWiring`. */
-  private[wiring] def breakerGuarded(proxyLeg: HttpFetch): HttpFetch =
-    new HostCircuitBreakerHttpFetch(proxyLeg)
+  private[wiring] def breakerGuarded(proxyLeg: HttpFetch, breakerMeter: tools.CircuitBreakerMeter = tools.CircuitBreakerMeter.noop): HttpFetch =
+    new HostCircuitBreakerHttpFetch(proxyLeg, meter = breakerMeter)
 
   /** [[breakerGuarded]] around the proxy leg with its paid-egress `meter` INSIDE
    *  the breaker: every attempt that reached Decodo is counted with its outcome,
    *  and a fast-fail from an open breaker — which sends nothing — is not, or an
    *  open breaker would read as the proxy failing at 100%. */
-  private[wiring] def meteredProxyLeg(proxyLeg: HttpFetch, meter: HttpOutcomeRecorder): HttpFetch =
-    breakerGuarded(new CountingHttpFetch(proxyLeg, meter))
+  private[wiring] def meteredProxyLeg(proxyLeg: HttpFetch, meter: HttpOutcomeRecorder,
+                                      breakerMeter: tools.CircuitBreakerMeter = tools.CircuitBreakerMeter.noop): HttpFetch =
+    breakerGuarded(new CountingHttpFetch(proxyLeg, meter), breakerMeter)
 }

@@ -50,6 +50,7 @@ class GrafanaWebMetricCoverageSpec extends AnyFlatSpec with Matchers {
     new UserStateWriteMetrics(registry, "pl")
     new UserStateIndexMetrics(registry, "pl")
     new WebDecodeFailureMetrics(registry, "pl")
+    new services.metrics.WebReadModelStreamMetrics(registry, "pl", _ => true)
     registry
       .scrape()
       .asScala

@@ -67,7 +67,8 @@ trait HttpWiring { self: WorkerWiring =>
           new RateLimitedHttpFetch(
             new CountingHttpFetch(sharedRealHttpLeaf,
               workerMetrics.httpMetrics.recorderFor(country.code, phase)),
-            pace)),
+            pace),
+          meter = workerMetrics.httpBreakers.meterFor(country.code, phase)),
         paceFor = pace),
       uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
   }

@@ -100,6 +100,9 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     "kinowo_web_cache_hit_ratio",
     // Added 2026-09-24: documents the web's read-model scans skipped as undecodable.
     "kinowo_web_decode_failures",
+    // The read model's change streams per collection: live now, and reopens of an ended one.
+    "kinowo_web_readmodel_stream_live",
+    "kinowo_web_readmodel_stream_reopens_total",
     "kinowo_web_cache_evictions_total",
     "kinowo_uptime_recent_successes",
     "kinowo_uptime_recent_failures",

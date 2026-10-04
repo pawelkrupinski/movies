@@ -100,6 +100,9 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   // Per-request outcome of the PAID egress legs (Zyte, Decodo) — see PaidEgressMetrics.
   val paidEgress: PaidEgressMetrics = new PaidEgressMetrics(countryCodes, registry)
 
+  // The per-host circuit breakers' open hosts and openings, by leg — see HttpBreakerMetrics.
+  val httpBreakers: HttpBreakerMetrics = new HttpBreakerMetrics(countryCodes, registry)
+
   // Every in-app Telegram alert's delivery attempt — see TelegramNotificationMetrics.
   val telegramNotifications: TelegramNotificationMetrics = new TelegramNotificationMetrics(countryCodes, registry)
 
