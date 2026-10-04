@@ -260,7 +260,29 @@ object ServedOutputAllowlist {
     Country.Germany -> Map(
       AllowedCard.anywhere("A Beautiful Planet - Ein IMAX 3D-Erlebnis") -> "the IMAX documentary's own German title (TMDB 400617)"))
 
-  final case class Verdict(unexplained: Seq[String], stale: Seq[String])
+  /** What a corpus's verdict may do to the build. A CHECKED-IN corpus (the Polish fixture boot) changes only
+   *  with a commit, so a finding or a stale entry there is that commit's to answer: it fails. A RECORDED corpus
+   *  moves nightly under every push, so a finding a fresh recording brings, or an entry it cures, is a DATA
+   *  change, not the push's — it is reported, never failed (the convergence lane must not go red on a
+   *  recording; cf. `CorpusShapeSpec.awaitingReRecord`). */
+  sealed trait CorpusKind
+  object CorpusKind {
+    case object CheckedIn extends CorpusKind
+    case object Recorded  extends CorpusKind
+  }
+
+  final case class Verdict(unexplained: Seq[String], stale: Seq[String]) {
+    /** The lines that fail the build, and those only reported, for a corpus of `kind`. */
+    def enforced(kind: CorpusKind): Enforced = {
+      val lines = unexplained ++ stale.map(entry => s"allowlisted but no longer breaking a rule — drop: $entry")
+      kind match {
+        case CorpusKind.CheckedIn => Enforced(failures = lines, reported = Nil)
+        case CorpusKind.Recorded  => Enforced(failures = Nil, reported = lines)
+      }
+    }
+  }
+
+  final case class Enforced(failures: Seq[String], reported: Seq[String])
 
   def judge(country: Country, normalizer: TitleNormalizer, cards: Seq[ServedCard]): Verdict = {
     val allowed = entries.getOrElse(country, Map.empty)

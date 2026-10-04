@@ -1412,12 +1412,17 @@ abstract class CountryConvergenceBehaviour(
       val cards = ServedOutputInvariants.cardsOf(w, country, w.movieCache.normalizer, renderAt)
       info(s"${country.displayName}: ${ServedOutputInvariants.coverage(cards)} held to the served-output invariants")
       withClue("the read model serves no card, so this asserts nothing: ")(cards should not be empty)
-      val verdict = ServedOutputAllowlist.judge(country, w.movieCache.normalizer, cards)
-      withClue(s"${country.displayName}'s served cards break the served-output invariants — fix the stage that produced " +
-        s"the value, or allowlist the card in ServedOutputAllowlist with why it is right:\n${verdict.unexplained.mkString("\n")}\n") {
-        verdict.unexplained shouldBe empty
+      // A recorded corpus moves nightly: what it finds is REPORTED — here and in the leg's step summary —
+      // never failed, so a recording cannot turn the lane red under an unrelated push.
+      val enforced = ServedOutputAllowlist.judge(country, w.movieCache.normalizer, cards).enforced(ServedOutputAllowlist.CorpusKind.Recorded)
+      if (enforced.reported.nonEmpty) {
+        val report = s"${country.displayName}: ${enforced.reported.size} served-output finding(s) over the recorded corpus — fix the " +
+          s"stage that produced the value, or allowlist the card in ServedOutputAllowlist with why:\n${enforced.reported.mkString("\n")}"
+        info(report)
+        configuration.stepSummaryFile.foreach(summary => Try(java.nio.file.Files.writeString(summary.value,
+          s"```\n$report\n```\n\n", java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND)))
       }
-      withClue("Allowlisted but no longer breaking a rule — drop the entry: ")(verdict.stale shouldBe empty)
+      enforced.failures shouldBe empty
     }
   }
 

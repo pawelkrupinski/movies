@@ -108,6 +108,28 @@ class ServedOutputInvariantsSpec extends AnyFlatSpec with Matchers {
       .map(_.finding) should contain only ("country-not-canonical (→ Vereinigte Staaten): USA", "filmweb-served-outside-poland")
   }
 
+  "a verdict" should "fail a checked-in corpus on a finding or a stale entry, and only report them over a recorded one" in {
+    import ServedOutputAllowlist.{CorpusKind, Verdict}
+    val verdict = Verdict(unexplained = Seq("pl / poznan / 'Diuna': title-empty"), stale = Seq("AllowedCard(*,Lalka)"))
+    val checkedIn = verdict.enforced(CorpusKind.CheckedIn)
+    checkedIn.failures shouldBe Seq("pl / poznan / 'Diuna': title-empty",
+      "allowlisted but no longer breaking a rule — drop: AllowedCard(*,Lalka)")
+    checkedIn.reported shouldBe empty
+    val recorded = verdict.enforced(CorpusKind.Recorded)
+    recorded.failures shouldBe empty
+    recorded.reported shouldBe checkedIn.failures
+    Verdict(Nil, Nil).enforced(CorpusKind.CheckedIn).failures shouldBe empty
+  }
+
+  they should "judge a stale entry as one the corpus serves that no longer breaks a rule" in {
+    val diuna = card(title = "Diuna", times = Seq(at(18), at(18)))
+    ServedOutputAllowlist.judge(Country.Poland, SingleCountryNormalizer.titleNormalizer, Seq(diuna)).unexplained shouldBe
+      Seq("pl / poznan / 'Diuna': showtime-repeated: Kino Rialto 2026-06-08T18:00 ×2")
+    ServedOutputAllowlist.judge(Country.Poland, SingleCountryNormalizer.titleNormalizer,
+      Seq(card(title = "Bez końca 2d pl lolo", variants = 2, city = Country.Poland.cities.find(_.slug == "slawno").get))).stale shouldBe
+      Seq("AllowedCard(slawno,Bez końca 2d pl lolo)")
+  }
+
   "the fixture boot 08-06-2026" should "serve only cards that keep the served-output invariants" in {
     val wiring = new FixtureTestWiring("08-06-2026")
     wiring.bootStartup()
@@ -116,10 +138,11 @@ class ServedOutputInvariantsSpec extends AnyFlatSpec with Matchers {
     cards.size should be > 100
     withClue("no card joined a stored film with a tmdbId, so the rules reading it held over nothing: ")(
       cards.count(_.record.exists(_.tmdbId.isDefined)) should be > 100)
-    val verdict = ServedOutputAllowlist.judge(Country.Poland, SingleCountryNormalizer.titleNormalizer, cards)
+    // Checked in: a finding or a stale entry here is the commit's own, so it fails.
+    val enforced = ServedOutputAllowlist.judge(Country.Poland, SingleCountryNormalizer.titleNormalizer, cards)
+      .enforced(ServedOutputAllowlist.CorpusKind.CheckedIn)
     withClue(s"Served cards break the served-output invariants — fix the stage that produced the value, or allowlist " +
-      s"the card in ServedOutputAllowlist with why it is right:\n${verdict.unexplained.mkString("\n")}\n")(verdict.unexplained shouldBe empty)
-    withClue("Allowlisted but no longer breaking a rule — drop the entry: ")(verdict.stale shouldBe empty)
+      s"the card in ServedOutputAllowlist with why it is right:\n${enforced.failures.mkString("\n")}\n")(enforced.failures shouldBe empty)
   }
 }
 
