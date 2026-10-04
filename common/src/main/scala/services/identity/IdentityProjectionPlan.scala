@@ -369,7 +369,23 @@ object IdentityProjectionPlan {
   }
 
   /** The canary over every cluster of `index`: what a projection reports, whichever films it drafted. */
-  def canary(index: ProjectionIndex): Map[ShadowRelation, Int] = canaryOf(index.clusters.values.toSeq.map(c => c.members -> c.film), index.previousOf)
+  def canary(index: ProjectionIndex): Map[ShadowRelation, Int] = {
+    // `ShadowDiff.clustersOf`'s relation, read off the index: a film's listings are `listingsOf` it, so nothing is sorted
+    // into a decision or grouped by film again — on US that was ~100k keys sorted and grouped every five minutes.
+    val counts = scala.collection.mutable.HashMap.empty[ShadowRelation, Int]
+    index.clusters.valuesIterator.foreach { cluster =>
+      val placed = cluster.members.filter(index.previousOf.contains)
+      val films  = placed.iterator.map(index.previousOf).toSet
+      val relation =
+        if (films.isEmpty) None
+        else if (films.sizeIs > 1) Some(ShadowRelation.Merged)
+        else if (index.listingsOf.getOrElse(films.head.id, Set.empty) != placed) Some(ShadowRelation.Split)
+        else if (films.head.tmdbId == cluster.film) Some(ShadowRelation.Identical)
+        else Some(ShadowRelation.Moved)
+      relation.foreach(r => counts(r) = counts.getOrElse(r, 0) + 1)
+    }
+    ShadowRelation.values.map(r => r -> counts.getOrElse(r, 0)).toMap
+  }
 
   /** The canary compares the films as STORED — one per TMDB film — with the films before. */
   private def canaryOf(clusters: Seq[(Set[ListingKey], Option[Int])], previousOf: Map[ListingKey, PipelineFilmRef]): Map[ShadowRelation, Int] =

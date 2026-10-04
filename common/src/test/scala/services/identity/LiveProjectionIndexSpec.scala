@@ -95,6 +95,9 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
           kept.clusters shouldBe built.clusters
           kept.clusterOf shouldBe built.clusterOf
           kept.storedById.keySet shouldBe built.storedById.keySet
+          // The canary read off the index is the shadow diff's, every relation.
+          IdentityProjectionPlan.canary(kept) shouldBe ShadowDiff.counts(ShadowDiff.clustersOf(kept.clusters.values.toSeq.map(c =>
+            ResolverDecision(c.members.toSeq.sorted, c.film, 1.0, ResolverDecision.Basis.OwnMatch, Nil)()), kept.previousOf))
         }
       }
     }
