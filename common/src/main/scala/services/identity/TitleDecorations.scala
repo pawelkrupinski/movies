@@ -128,6 +128,17 @@ object TitleDecorations {
     }.sortBy(d => (-d.films, d.side, d.decoration))
   }
 
+  /** `learned` — this recording's decorations — with every `earlier` one it did not learn again, unless a title of
+   *  `recordTitles` now carries it. A recording sees only the programmes billed that week: a banner learned around two
+   *  films stays a banner after its season ends ("WAJDA: re-wizje"), and comes back with the next one. What both learned
+   *  is this recording's; the list is ordered as [[learn]] orders it. */
+  def accumulate(earlier: Seq[Learned], learned: Seq[Learned], recordTitles: Iterable[String]): Seq[Learned] = {
+    val relearned = learned.map(d => (d.side, d.decoration)).toSet
+    val kept      = earlier.filterNot(d => relearned((d.side, d.decoration)))
+    val inRecords = carried(recordTitles, kept.map(d => d.decoration.split(" ").toSeq).toSet)
+    (learned ++ kept.filterNot(d => inRecords(d.decoration.split(" ").toSeq))).sortBy(d => (-d.films, d.side, d.decoration))
+  }
+
   /** The remainders that are not a decorated spelling of another remainder: "lalka" and "lalka 2d"
    *  are one film. */
   private def distinctFilms(rests: Set[Seq[String]]): Set[Seq[String]] =

@@ -5,6 +5,8 @@
 # (`scripts/identity-calibrate.sh --decorations-only`; no production data, so no secret), and it
 # goes stale as venues bill new programmes: a season's "ENCORE" screenings ("The Metropolitan
 # Opera: Macbeth ENCORE (2026)") are unknown to decorations learned before they were listed.
+# A relearn keeps every decoration the checked-in file holds that no recorded film title now carries
+# (`TitleDecorations.accumulate`): one recording sees only that week's programmes.
 # Dispatch-only; the learned file comes back as an artifact to review and commit, never pushed.
 #
 name: Identity decorations

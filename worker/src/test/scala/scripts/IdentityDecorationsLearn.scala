@@ -13,7 +13,8 @@ import java.nio.file.{Files, Path, Paths}
  * `common/src/main/resources/identity-decorations.json` — the refit path of the decorations the
  * resolver strips, run by `scripts/identity-calibrate.sh` before the weights are fitted (whose
  * title shapes read them). ONE rule for every country: the listings and records of every corpus
- * are pooled, and the artefact is a function of those sets (sorted, no clock).
+ * are pooled, and the artefact is a function of those sets and of the decorations `--out` already
+ * holds, which a relearn keeps (`TitleDecorations.accumulate`; sorted, no clock).
  *
  *   worker/Test/runMain scripts.IdentityDecorationsLearn --corpora <dir> --fixtures <dir> [--out <json>] [--version <v>]
  */
@@ -28,13 +29,16 @@ object IdentityDecorationsLearn {
     val fixtures = path("fixtures").getOrElse(sys.error("--fixtures <dir of enrichment-<cc>/ trees>"))
     val hard     = path("hard-clusters").getOrElse(Paths.get("test/resources/fixtures/corpus"))
     val out      = path("out").getOrElse(Artefact)
-    write(learn(corpora, fixtures, hard, opts.getOrElse("version", "unversioned")), out)
+    // Relearned on top of what `out` holds: a recording sees only that week's programmes (`TitleDecorations.accumulate`).
+    val earlier = Option.when(Files.exists(out))(Json.parse(Files.readString(out)).as[TitleDecorations.Artefact])
+    write(learn(corpora, fixtures, hard, opts.getOrElse("version", "unversioned"), earlier.fold(Seq.empty[TitleDecorations.Learned])(_.decorations)), out)
     println(s"wrote $out")
   }
 
   /** Every corpus listing's venue and titles, and every recorded film record's titles, of every
    *  country, learned from as one pool. */
-  def learn(corpora: Path, fixtures: Path, hardClusters: Path, version: String): TitleDecorations.Artefact = {
+  def learn(corpora: Path, fixtures: Path, hardClusters: Path, version: String,
+            earlier: Seq[TitleDecorations.Learned] = Nil): TitleDecorations.Artefact = {
     val perCountry = Country.all.map { country =>
       val cc = country.code
       val sources = Seq(
@@ -63,7 +67,7 @@ object IdentityDecorationsLearn {
         "the run — that no recorded film record's title, original title or " +
         "alternative title carries",
       Map("listingTitles" -> titled.size, "venues" -> titled.map(_._1).distinct.size, "recordTitles" -> records.distinct.size),
-      TitleDecorations.learn(titled, records, perCountry.flatMap(_._3)))
+      TitleDecorations.accumulate(earlier, TitleDecorations.learn(titled, records, perCountry.flatMap(_._3)), records))
   }
 
   def write(artefact: TitleDecorations.Artefact, out: Path): Unit = {

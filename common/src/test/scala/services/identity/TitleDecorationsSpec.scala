@@ -82,6 +82,30 @@ class TitleDecorationsSpec extends AnyFlatSpec with Matchers {
     TitleDecorations.learn(listings, Seq("Friday"), empty).map(_.decoration) shouldBe Seq("the 13th 1980")
   }
 
+  "Relearning" should "keep what an earlier recording learned when the programme it was seen around has ended" in {
+    // PL's "WAJDA: re-wizje …", "Seans Seniora …" and "… 30 rocznica" were learned on 09-28 and gone from the 10-03
+    // recording's programme; relearned from that one recording alone they were dropped — and Kino Konesera's, BOKino's
+    // and Pora dla Seniora's banners, new since 09-28, were unknown until a relearn. A banner a venue once billed around
+    // two films is still a banner when it comes back.
+    val earlier = TitleDecorations.learn(Seq("A" -> "Seans Seniora Lalka", "B" -> "Seans Seniora Obcy", "A" -> "Lalka", "B" -> "Obcy"), Nil)
+    val now     = TitleDecorations.learn(Seq("A" -> "Kino Konesera Cwał", "A" -> "Kino Konesera Pianista", "A" -> "Cwał", "A" -> "Pianista"), Nil)
+    TitleDecorations.accumulate(earlier, now, Nil).map(_.decoration) should contain theSameElementsAs Seq("seans seniora", "kino konesera")
+  }
+
+  it should "drop an earlier decoration a film record's title now carries: it is the film's word now" in {
+    val earlier = TitleDecorations.learn(Seq("A" -> "Seans Seniora Lalka", "B" -> "Seans Seniora Obcy", "A" -> "Lalka", "B" -> "Obcy"), Nil)
+    TitleDecorations.accumulate(earlier, Nil, Seq("Seans seniora")).map(_.decoration) shouldBe empty
+  }
+
+  it should "prefer what this recording learned of a decoration it learned again, and order the list as learning does" in {
+    val earlier = TitleDecorations.learn(Seq("A" -> "Seans Seniora Lalka", "B" -> "Seans Seniora Obcy", "A" -> "Lalka", "B" -> "Obcy"), Nil)
+    val now     = TitleDecorations.learn(Seq("A" -> "Seans Seniora Lalka", "B" -> "Seans Seniora Obcy", "C" -> "Seans Seniora Cwał",
+      "A" -> "Lalka", "B" -> "Obcy", "C" -> "Cwał", "A" -> "Kino Konesera Cwał", "A" -> "Kino Konesera Pianista", "A" -> "Pianista"), Nil)
+    val merged  = TitleDecorations.accumulate(earlier, now, Nil)
+    merged.find(_.decoration == "seans seniora").map(_.films) shouldBe Some(3)
+    merged shouldBe merged.sortBy(d => (-d.films, d.side, d.decoration))
+  }
+
   "Stripping" should "cut a learned decoration off either edge, keeping the title's own text" in {
     val d = TitleDecorations(Set(Seq("4dx", "rewind")), Set(Seq("2d", "pl"), Seq("w", "helios", "na", "scenie"), Seq("pokaz", "w", "dkf")))
     d.strip("(4DX Rewind) Shrek") shouldBe Seq("Shrek")
