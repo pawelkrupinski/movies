@@ -287,11 +287,21 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     back.record.data.keySet shouldBe Set(Helios)
   }
 
-  it should "round-trip the tmdbNoMatch / detailPending conclusion markers when set" in {
-    val record = MovieRecord(imdbId = Some("tt0000004"), tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy), detailPending = true)
+  it should "round-trip the tmdbNoMatch conclusion marker when set" in {
+    val record = MovieRecord(imdbId = Some("tt0000004"), tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))
     val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain("conc|2025", record, Instant.EPOCH)), titleNormalizer)
-    back.record.tmdbNoMatch   shouldBe true
-    back.record.detailPending shouldBe true
+    back.record.tmdbNoMatch shouldBe true
+  }
+
+  // `detailPending` held a film out of the old TMDB stage until its venue page landed; the identity
+  // projection never sets it, and documents written before may still carry one.
+  it should "decode a document still carrying the retired detailPending flag" in {
+    val record = MovieRecord(tmdbId = Some(7), data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Legacy"))))
+    val raw = new BsonDocument()
+    codec.encode(new BsonDocumentWriter(raw), StoredMovieDto.fromDomain("legacy|2025", record, Instant.EPOCH), EncoderContext.builder().build())
+    raw.put("detailPending", org.bson.BsonBoolean.TRUE)
+    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()), titleNormalizer)
+    back.record shouldBe record
   }
 
   it should "read a legacy tmdbNoMatch flag as a no-match attempt on unknown inputs, which the next look retries" in {
@@ -311,14 +321,13 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     again.get("tmdbAttempt").isDocument shouldBe true
   }
 
-  it should "default tmdbNoMatch / detailPending to false on a legacy document that lacks them" in {
+  it should "default tmdbNoMatch to false on a legacy document that lacks it" in {
     val record = MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Legacy"))))
     val raw = new BsonDocument()
     codec.encode(new BsonDocumentWriter(raw), StoredMovieDto.fromDomain("legacy|2025", record, Instant.EPOCH), EncoderContext.builder().build())
-    raw.remove("tmdbNoMatch"); raw.remove("detailPending")  // a document written before the fields existed
+    raw.remove("tmdbNoMatch")  // a document written before the field existed
     val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()), titleNormalizer)
-    back.record.tmdbNoMatch   shouldBe false
-    back.record.detailPending shouldBe false
+    back.record.tmdbNoMatch shouldBe false
   }
 
   it should "round-trip retainedSynopses (kept after a cinema's slot was pruned)" in {

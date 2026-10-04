@@ -810,7 +810,7 @@ class MongoMovieRepository(
    *  batch to `onBatch`. Two guarantees both callers rely on:
    *
    *   - Exactly-once: `_id` is unique and immutable and the `gt`/sort run server-side,
-   *     so a concurrent write (the worker re-keys years, clears `detailPending`, …) can
+   *     so a concurrent write (the worker re-keys years, …) can
    *     neither resurface a visited row nor hide one — no duplicate at a page boundary,
    *     no skip. (The prior single `_id`-sorted cursor gave the same guarantee.)
    *   - Bounded: no single cursor buffers the entire corpus, so the async driver's
@@ -1277,7 +1277,6 @@ class MongoMovieRepository(
     scalar("tmdbAttempt",       p.tmdbAttempt,       (a: services.resolution.TmdbAttempt) =>
       new org.bson.BsonDocument("evidence", new org.mongodb.scala.bson.BsonString(a.evidence))
         .append("at", BsonDateTime(a.at.toEpochMilli)))
-    scalar("detailPending",     p.detailPending,     (b: Boolean) => new org.mongodb.scala.bson.BsonBoolean(b))
     scalar("retainedSynopses", p.retainedSynopses, (m: Map[Source, String]) => {
       val doc = new org.bson.BsonDocument()
       m.foreach { case (source, synopsis) => doc.put(source.displayName, new org.mongodb.scala.bson.BsonString(synopsis)) }

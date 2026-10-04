@@ -285,7 +285,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // the sort reads weightedRating, not the old raw-IMDb key (which was both
       // empty here AND never matched its header, so the column never sorted).
       val debugRows = Seq(
-        StoredMovieRecord.synthesised("Pending Film",    Some(2024), MovieRecord(detailPending = true, tmdbId = Some(1), imdbRating = Some(6.0)), services.movies.SingleCountryNormalizer.titleNormalizer),
+        StoredMovieRecord.synthesised("Pending Film",    Some(2024), MovieRecord(tmdbId = Some(1), imdbRating = Some(6.0)), services.movies.SingleCountryNormalizer.titleNormalizer),
         StoredMovieRecord.synthesised("Unresolved Film", Some(2023), MovieRecord(), services.movies.SingleCountryNormalizer.titleNormalizer),
         StoredMovieRecord.synthesised("Done Film",       Some(2022), MovieRecord(tmdbId = Some(7), metascore = Some(90), rottenTomatoes = Some(90)), services.movies.SingleCountryNormalizer.titleNormalizer),
       )

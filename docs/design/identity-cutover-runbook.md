@@ -181,9 +181,11 @@ Lalka ×9 fixed and ~80 right lost net. Under investigation; r5 stays.
 
 ## 7. Phase 6: what became dead once all five were on
 
-Done: the switch and the shadow run went in ea3d56300, the rest of the list in 43e8ed84c. The list
-as planned (a few names below — `SettleReaper`, `CorpusIndex`, `MovieDetailsComplete`,
-`CutoverTaskHandlers` — survive in a narrower role):
+Done: the switch and the shadow run went in ea3d56300, the rest of the list in 43e8ed84c. The
+leftovers went on 2026-10-04: `MovieDetailsComplete`, the `detailPending` gate and field, the retired
+task types with `CutoverTaskHandlers` (a queued row of a deleted type is now dropped by
+`MongoTaskQueue.claim`), and `ScrapeLandingMetrics`, renamed `ListingIntakeMetrics` (its metric names
+kept). The list as planned (`SettleReaper` and `CorpusIndex` survive in a narrower role):
 
 - **Landing**: `ScrapeLanding` (divert / redirect / variant re-key / prune; its guard logic now lives
   in `ListingIntake`), `ListingLanding`, `LandingStore`, `MovieCache.recordCinemaScrape` and

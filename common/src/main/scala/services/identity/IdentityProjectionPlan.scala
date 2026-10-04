@@ -346,7 +346,6 @@ object IdentityProjectionPlan {
       val record = held.copy(
         tmdbId        = film,
         tmdbAttempt   = if (film.isDefined) None else base.tmdbAttempt.orElse(Some(TmdbAttempt(ResolverVerdict, at))),
-        detailPending = false,
         searchTitle   = base.searchTitle.orElse(Some(normalizer.apiQuery(normalizer.recase(anchor)))),
         // A chain's network detail slot is venue source data no listing is published at: kept from the
         // stored film whatever it is matched to, as its venue slots are rebuilt from theirs.

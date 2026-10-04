@@ -224,10 +224,6 @@ class MovieService(
       wikidataId        = resolvedWikidata,
       metacriticUrl     = ifSameFilm(existing.metacriticUrl),
       rottenTomatoesUrl = ifSameFilm(existing.rottenTomatoesUrl),
-      // A resolve clears any prior `tmdbNoMatch` (default `false` here); carry a
-      // pending deferred-detail fetch forward so resolving TMDB first doesn't
-      // prematurely mark the row detail-done.
-      detailPending     = existing.detailPending,
       data              = carriedData + ((Tmdb: Source) -> tmdbSlot)
     )
   }

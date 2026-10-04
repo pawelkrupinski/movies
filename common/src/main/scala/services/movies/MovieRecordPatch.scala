@@ -36,7 +36,6 @@ final case class MovieRecordPatch(
   rottenTomatoesUrl: FieldUpdate[String]                    = FieldUpdate.NoChange,
   searchTitle:       FieldUpdate[String]                    = FieldUpdate.NoChange,
   tmdbAttempt:       FieldUpdate[TmdbAttempt]               = FieldUpdate.NoChange,
-  detailPending:     FieldUpdate[Boolean]                   = FieldUpdate.NoChange,
   // Whole-map, unlike `data`'s per-key diff: the per-cinema split exists because
   // different venues' scrapes write different slots concurrently, while the retained
   // synopses are rewritten as a set by the prune that owns them. A whole-map update
@@ -54,7 +53,7 @@ final case class MovieRecordPatch(
     wikidataId == FieldUpdate.NoChange &&
     metacriticUrl == FieldUpdate.NoChange &&
     rottenTomatoesUrl == FieldUpdate.NoChange && searchTitle == FieldUpdate.NoChange &&
-    tmdbAttempt == FieldUpdate.NoChange && detailPending == FieldUpdate.NoChange &&
+    tmdbAttempt == FieldUpdate.NoChange &&
     retainedSynopses == FieldUpdate.NoChange &&
     data.isEmpty
 
@@ -67,11 +66,6 @@ final case class MovieRecordPatch(
       case FieldUpdate.NoChange  => existing
       case FieldUpdate.Unset     => None
       case FieldUpdate.SetTo(v)  => Some(v)
-    }
-    // Non-Option scalars (always present); only NoChange / SetTo apply.
-    def mergeFlag(u: FieldUpdate[Boolean], existing: Boolean): Boolean = u match {
-      case FieldUpdate.SetTo(v) => v
-      case _                    => existing
     }
     val mergedData = data.foldLeft(current.data) {
       case (acc, (source, FieldUpdate.SetTo(sd)))  => acc + (source -> sd)
@@ -92,7 +86,6 @@ final case class MovieRecordPatch(
       rottenTomatoesUrl = merge(rottenTomatoesUrl, current.rottenTomatoesUrl),
       searchTitle       = merge(searchTitle,       current.searchTitle),
       tmdbAttempt       = merge(tmdbAttempt,       current.tmdbAttempt),
-      detailPending     = mergeFlag(detailPending, current.detailPending),
       retainedSynopses  = retainedSynopses match {
                             case FieldUpdate.SetTo(v) => v
                             case FieldUpdate.Unset    => Map.empty
@@ -121,7 +114,6 @@ object MovieRecordPatch {
       rottenTomatoesUrl = diffOpt(before.rottenTomatoesUrl, after.rottenTomatoesUrl),
       searchTitle       = diffOpt(before.searchTitle,       after.searchTitle),
       tmdbAttempt       = diffOpt(before.tmdbAttempt,       after.tmdbAttempt),
-      detailPending     = diffFlag(before.detailPending,     after.detailPending),
       retainedSynopses  = diffMap(before.retainedSynopses,  after.retainedSynopses),
       data              = diffData(before.data, after.data)
     )
@@ -132,9 +124,6 @@ object MovieRecordPatch {
     if (before == after) FieldUpdate.NoChange
     else if (after.isEmpty) FieldUpdate.Unset
     else FieldUpdate.SetTo(after)
-
-  private def diffFlag(before: Boolean, after: Boolean): FieldUpdate[Boolean] =
-    if (before == after) FieldUpdate.NoChange else FieldUpdate.SetTo(after)
 
   private def diffOpt[A](before: Option[A], after: Option[A]): FieldUpdate[A] =
     if (before == after) FieldUpdate.NoChange

@@ -47,17 +47,15 @@ case class MovieRecord(
   searchTitle:       Option[String]   = None,
 
   // ── Enrichment-conclusion markers (persisted) ─────────────────────────────
-  // Gate read-model projection: a row is published only once its enrichment
-  // has *concluded* — cinema detail done (where deferred) AND TMDB reached a
+  // Gate read-model projection: a row is published only once TMDB reached a
   // definitive answer (a hit, i.e. `tmdbId` set, or a recorded no-match
   // `tmdbAttempt`). A purely transient TMDB failure leaves both unset, so the row
-  // stays held back and keeps retrying. See `readyToProject`.
+  // stays held back. See `readyToProject`.
   //
   // `tmdbAttempt` is the last TMDB search that found nothing: WHAT it searched
   // with and WHEN, so the next look can tell whether anything it would search
   // with has changed (see `services.resolution.TmdbAttempt`). A hit clears it.
   tmdbAttempt:       Option[services.resolution.TmdbAttempt] = None,
-  detailPending:     Boolean          = false,
 
   // Per-source data from the most recent refresh. Cinemas contribute on
   // every scrape tick (their slot gets replaced wholesale, and dropped if
@@ -208,7 +206,7 @@ case class MovieRecord(
    *  then falls back to the cinema slot (TMDB's `tmdbYear` is gone), so the row re-keys
    *  onto the scraped year. The `EnrichmentReaper` re-runs every rating refresher after,
    *  so the cleared ratings repopulate against the now-correct identity. Cinema-side
-   *  state (`detailPending`, the cinema slots, their retained synopses) is preserved. */
+   *  state (the cinema slots, their retained synopses) is preserved. */
   def scrapedOnly: MovieRecord = copy(
     imdbId = None, imdbRating = None, metascore = None,
     filmwebUrl = None, filmwebRating = None, rottenTomatoes = None,
@@ -614,24 +612,10 @@ case class MovieRecord(
    *  the row stays held back (`readyToProject` false) and keeps retrying. */
   def tmdbConcluded: Boolean = tmdbId.isDefined || tmdbNoMatch
 
-  /** Cinema detail enrichment is done — true unless a deferred detail fetch is
-   *  still outstanding. Inline / no-detail cinemas never set `detailPending`,
-   *  so this is trivially true for them. */
-  def detailDone: Boolean = !detailPending
-
-  /** Ready to publish to the read model. TMDB must have concluded (a hit, or a
+  /** Ready to publish to the read model: TMDB has concluded (a hit, or a
    *  definitive `tmdbNoMatch`) — holding un-concluded rows back is what keeps the
-   *  pre-enrichment yearless orphan (`sanitize(title)|`) out of `web_movies`.
-   *
-   *  Cinema detail (`detailPending`) only gates a row that has NO TMDB data: a
-   *  `tmdbNoMatch` row's poster/synopsis can come only from the cinema detail
-   *  page, so it waits for that. A TMDB-resolved row already carries TMDB's
-   *  poster/synopsis/ratings and its showtimes come from the listing tick, so a
-   *  still-pending — or permanently failing — cinema detail must NOT hold it
-   *  back; otherwise one flaky detail page hides an otherwise-complete film from
-   *  every cinema (the "Dzień objawienia" disappearance). The detail, when it
-   *  lands, just adds cinema-specific extras. */
-  def readyToProject: Boolean = tmdbConcluded && (tmdbId.isDefined || detailDone)
+   *  pre-enrichment yearless orphan (`sanitize(title)|`) out of `web_movies`. */
+  def readyToProject: Boolean = tmdbConcluded
 
   /** Polish-language genre names — first non-empty list in genre-priority
    *  order: TMDB → Filmweb → cinema slots (in their normal priority order).

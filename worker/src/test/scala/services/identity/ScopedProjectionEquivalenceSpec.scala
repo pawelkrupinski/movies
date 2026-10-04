@@ -171,7 +171,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
               val change: MovieRecord => MovieRecord = rng.nextInt(6) match {
                 case 0 => _.copy(imdbRating = Some(rating))
                 case 1 => r => r.copy(data = r.data + (CinemaCityChain -> SourceData(synopsis = Some(s"Network $t"))))
-                case 2 => _.copy(detailPending = true)
+                case 2 => _.copy(rottenTomatoes = Some((rating * 10).toInt))
                 case 3 => r => r.copy(data = r.data.map {
                   case (venue: CinemaShowing, slot) => venue -> slot.copy(releaseYear = otherYear, director = otherDirector.toSeq)
                   case other => other

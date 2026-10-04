@@ -56,9 +56,6 @@ case class StoredMovieDto(
   // The last TMDB search that found nothing — its input fingerprint and time.
   // Optional on the wire so legacy documents decode to None.
   tmdbAttempt:       Option[StoredTmdbAttempt],
-  // Optional on the wire so legacy documents (written before this existed) decode
-  // to None → default false; only persisted when true to keep documents lean.
-  detailPending:     Option[Boolean],
   // Optional on the wire so a MIGRATED document decodes to None → empty map. Once
   // a film's slots have landed in `movie_slots`, the 2026-07 slot migration
   // `$unset` this field entirely — and as a required `Map` it decoded as
@@ -108,7 +105,6 @@ object StoredMovieDto {
       searchTitle       = r.searchTitle,
       tmdbNoMatch       = None,
       tmdbAttempt       = r.tmdbAttempt.map(a => StoredTmdbAttempt(a.evidence, a.at)),
-      detailPending     = Option.when(r.detailPending)(true),
       // Always `Some` — the write shape is unchanged (an empty map still encodes as
       // `sourceData: {}`). Only READS tolerate the field's absence; dropping the
       // embedded copy is the migration's job, not the codec's.
@@ -134,7 +130,6 @@ object StoredMovieDto {
       searchTitle       = dto.searchTitle,
       tmdbAttempt       = dto.tmdbAttempt.map(a => TmdbAttempt(a.evidence, a.at))
                             .orElse(Option.when(dto.tmdbNoMatch.contains(true))(TmdbAttempt.Legacy)),
-      detailPending     = dto.detailPending.getOrElse(false),
       // Drop any legacy bare-Cinema slot a per-title CinemaShowing slot now
       // supersedes — pre-split rows (before commit 847f555f) keyed a cinema's
       // slot by the bare Cinema, so a re-scraped film carries BOTH keys with the

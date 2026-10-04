@@ -1918,7 +1918,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   }
 
   // Regression: `findAll` ran an UNSORTED scan (`c.find()`). Over a collection
-  // the worker writes concurrently (resolving TMDB, clearing `detailPending`,
+  // the worker writes concurrently (resolving TMDB,
   // re-keying years), an unsorted scan can return the same document more than
   // once — and skip others — when an intervening write relocates it mid-scan.
   // On /debug that surfaced as phantom duplicate rows (the same `_id` rendered

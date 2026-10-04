@@ -17,7 +17,7 @@ class ChangeStreamMetricsSpec extends AnyFlatSpec with Matchers {
 
   it should "classify resolution-lifecycle fields as identity" in {
     ChangeStreamMetrics.updateKinds(Set("tmdbId", "updatedAt"))        shouldBe Set(Kind.Identity)
-    ChangeStreamMetrics.updateKinds(Set("detailPending", "updatedAt")) shouldBe Set(Kind.Identity)
+    ChangeStreamMetrics.updateKinds(Set("tmdbAttempt", "updatedAt")) shouldBe Set(Kind.Identity)
     // `wikidataId` is an external identifier like the two above, and it reaches the
     // change stream the same way now that `MovieRecordPatch` carries it — before that
     // it could only ride a whole-document replace. An unclassified field falls to the
@@ -31,7 +31,7 @@ class ChangeStreamMetricsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "report every kind a multi-field update touched" in {
-    ChangeStreamMetrics.updateKinds(Set("sourceData.Helios", "detailPending", "updatedAt")) shouldBe
+    ChangeStreamMetrics.updateKinds(Set("sourceData.Helios", "tmdbAttempt", "updatedAt")) shouldBe
       Set(Kind.SourceData, Kind.Identity)
   }
 
