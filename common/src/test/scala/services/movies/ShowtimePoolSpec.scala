@@ -30,4 +30,17 @@ class ShowtimePoolSpec extends AnyFlatSpec with Matchers {
     val again = pool.showtimes(first)
     assert(again.head eq first.head)
   }
+
+  // Each `screenings` row stores its URLs' shared prefix once and every showtime the rest; read back, each row's prefix
+  // was a String of its own — ~100k on a US scan for a few thousand distinct venue booking pages.
+  it should "share the URL prefix equal rows were stored with, keeping each showtime's whole URL" in {
+    val pool = new ShowtimePool
+    def row(session: String) = Showtime(at, Some(s"https://web.picturehouses.com/order/showtimes/$session"))
+      .withUrlPrefix(new String("https://web.picturehouses.com/order/showtimes/"))
+    val Seq(a) = pool.showtimes(Seq(row("021-98528/seats")))
+    val Seq(b) = pool.showtimes(Seq(row("021-98558/seats")))
+    assert(a.urlSplitPrefix.get eq b.urlSplitPrefix.get)
+    a.bookingUrl shouldBe Some("https://web.picturehouses.com/order/showtimes/021-98528/seats")
+    b.bookingUrl shouldBe Some("https://web.picturehouses.com/order/showtimes/021-98558/seats")
+  }
 }

@@ -71,7 +71,7 @@ class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers with tools.Integr
     }
   }
 
-  it should "hand every film of a scan the same instant, room and format objects for equal values" in {
+  it should "hand every film of a scan the same instant, room, format and URL prefix objects for equal values" in {
     // A scan holding the corpus (the boot's one read) decoded each showtime's afresh: worker-us held 1.2M
     // LocalDateTimes, each with its LocalDate and LocalTime, for a few thousand distinct instants.
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "scan-stitched-sharing") { db =>
@@ -81,14 +81,16 @@ class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers with tools.Integr
       sentinels.zipWithIndex.foreach { case ((title, year), index) =>
         repository.upsert(title, year, MovieRecord(tmdbId = Some(6001 + index),
           data = Map[Source, SourceData](Multikino -> SourceData(title = Some(s"scan ${index + 1}"),
-            showtimes = Seq(Showtime(when, Some(s"https://book/$index"), Some("Sala 1"), List("2D")))))))
+            showtimes = Seq(Showtime(when, Some(s"https://book/order/s$index"), Some("Sala 1"), List("2D")),
+              Showtime(when.plusHours(2), Some(s"https://book/order/t$index"), Some("Sala 1"), List("2D")))))))
       }
       val read = Seq.newBuilder[Showtime]
       repository.foreachRecord(r => if (r.record.tmdbId.exists(t => t > 6000 && t <= 6005)) read ++= r.record.data.values.flatMap(_.showtimes)) shouldBe tools.ScanOutcome.Complete
       val showtimes = read.result()
-      showtimes should have size 5
-      showtimes.map(_.bookingUrl).toSet should have size 5
-      withClue("instants: ")(showtimes.map(s => System.identityHashCode(s.dateTime)).distinct should have size 1)
+      showtimes should have size 10
+      showtimes.map(_.bookingUrl).toSet should have size 10
+      withClue("instants: ")(showtimes.map(s => System.identityHashCode(s.dateTime)).distinct should have size 2)
+      withClue("row URL prefixes: ")(showtimes.flatMap(_.urlSplitPrefix).map(System.identityHashCode).distinct should have size 1)
       withClue("rooms: ")(showtimes.map(s => System.identityHashCode(s.room)).distinct should have size 1)
       withClue("formats: ")(showtimes.map(s => System.identityHashCode(s.format)).distinct should have size 1)
       removeSentinels(repository)
