@@ -47,6 +47,16 @@ class RialtoGenreSpec extends AnyFlatSpec with Matchers {
     client.parseGenres("""<p class="movie-parameters">Od lat 12 | 99 min</p>""") shouldBe empty
   }
 
+  // Poland's convergence leg (run 37184550126): Rialto's page for "Romeo i Julia" (id=164262),
+  // re-read the next day, said "Gatunek nieznany" ("genre unknown") where the day before it
+  // said "Dramat, ekranizacja" — split on whitespace into the genres "Gatunek" and "Nieznany",
+  // which then overruled the slot's real ones. Recorded page from that run's enrichment tree.
+  it should "read the page's own \"genre unknown\" placeholder as no genre, not as two genres" in {
+    val unknown = new String(Files.readAllBytes(Paths.get("test/resources/fixtures/rialto-genre-unknown/romeo-i-julia.html")))
+    client.parseGenres(unknown) shouldBe empty
+    client.parseGenres("""<p class="movie-parameters">gatunek nieznany | 90 min</p>""") shouldBe empty
+  }
+
   it should "ignore a duration-only line with no genre" in {
     client.parseGenres("""<p class="movie-parameters">90 min</p>""") shouldBe empty
   }

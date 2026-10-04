@@ -42,8 +42,11 @@ class RialtoClient(http: HttpFetch
   // intact so "Sci-Fi" survives as one genre.
   private val GenreSepPat = """[,/\s]+""".r
   // A first segment that is itself an age rating ("Od lat 12", "b.o.") or a
-  // runtime means the film simply has no genre — don't emit it as one.
-  private val NonGenreSegmentPat = """(?i)^(?:od lat \d+|b\.o\.|\d+\s*min)$""".r
+  // runtime means the film simply has no genre — don't emit it as one. Nor does
+  // the page's own placeholder "Gatunek nieznany" ("genre unknown"), which the
+  // separator split read as the two genres "Gatunek" and "Nieznany" — and which,
+  // on a re-read, overruled the real genres the page had given the day before.
+  private val NonGenreSegmentPat = """(?i)^(?:od lat \d+|b\.o\.|\d+\s*min|gatunek\s+nieznany)$""".r
 
   private val NonFilmTitlePatterns = Seq("bilet podarunkowy", "karta podarunkowa", "voucher")
 
@@ -199,7 +202,7 @@ class RialtoClient(http: HttpFetch
    *  Split on the page's inconsistent comma / space / slash delimiters and
    *  title-cased to match the genres TMDB / Filmweb and the other cinemas
    *  contribute. Empty for pages without the marker or whose first segment is
-   *  an age rating / runtime rather than a genre. */
+   *  an age rating / runtime / the "genre unknown" placeholder rather than a genre. */
   def parseGenres(html: String): Seq[String] =
     GenrePat.findFirstMatchIn(html).map(_.group(1).trim).filterNot(NonGenreSegmentPat.matches).map { segment =>
       GenreSepPat.split(segment).map(_.trim).filter(_.nonEmpty)
