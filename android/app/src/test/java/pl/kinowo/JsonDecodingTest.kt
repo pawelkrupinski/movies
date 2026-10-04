@@ -84,4 +84,26 @@ class JsonDecodingTest {
         assertEquals("The Magic Tree", byTitle["Drzewo Magii"]?.originalTitle)
         assertNull(byTitle["Film bez zwiastuna"]?.originalTitle)
     }
+
+    /** A US listing exactly as the server writes it (`repertoire_us.json` is
+     *  rendered and kept current by the web's `ApiRepertoireUsWireSpec`): an
+     *  age-rating certificate, English day labels, US rating sites, and showtimes
+     *  the US web prints on a 12-hour clock but the API keeps as `HH:mm`. */
+    @Test
+    fun `a US listing decodes its certificate, labels, ratings and 24-hour showtimes`() {
+        val films = json.decodeFromString<List<Film>>(fixture("repertoire_us.json"))
+        assertEquals(1, films.size)
+        val f = films.single()
+        assertEquals("PG-13", f.ageRating)
+        assertEquals(listOf("Wednesday 10 June", "Thursday 11 June"), f.showings.map { it.label })
+        assertEquals(7.4, f.ratings.imdb!!, 0.0)
+        assertEquals(68, f.ratings.metascore)
+        assertEquals(91, f.ratings.rottenTomatoes)
+        assertNull(f.ratings.filmweb)
+        assertNull(f.posterURL)
+        val slots = f.showings.flatMap { it.cinemas }.flatMap { it.showtimes }
+        assertEquals(listOf("19:30", "00:05", "12:30"), slots.map { it.time })
+        assertEquals(listOf("Theater 4", null, null), slots.map { it.room })
+        assertEquals(listOf("https://tickets.example.com/b/1930", "https://tickets.example.com/b/0005", null), slots.map { it.bookingURL })
+    }
 }
