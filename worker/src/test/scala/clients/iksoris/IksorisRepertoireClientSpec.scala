@@ -54,6 +54,13 @@ class IksorisRepertoireClientSpec extends AnyFlatSpec with Matchers with OptionV
     resident.movie.rawTitle.value shouldBe "RESIDENT EVIL - napisy"
   }
 
+  // The stripped version tag is the showing's language version — the sibling
+  // iKsoris clients (booking, calendar) keep it on the showtime; this one threw
+  // it away, so a subtitled showing read as an undifferentiated one.
+  it should "carry the stripped version tag onto each showtime's format" in {
+    kepno.find(_.movie.title == "RESIDENT EVIL").value.showtimes.map(_.format).toSet shouldBe Set(List("NAP"))
+  }
+
   "IksorisRepertoireClient (termin skin, Kino Plon)" should "read every day the picker links, however far ahead" in {
     plon.map(_.cinema).toSet shouldBe Set(KinoPlon)
     plon.size shouldBe 10

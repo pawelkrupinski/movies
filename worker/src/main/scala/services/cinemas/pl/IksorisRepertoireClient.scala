@@ -65,7 +65,8 @@ object IksorisRepertoireClient {
     dateTime: LocalDateTime,
     runtime:  Option[Int],
     poster:   Option[String],
-    booking:  Option[String]
+    booking:  Option[String],
+    format:   List[String]
   )
 
   /** The days the picker links, in page order. */
@@ -79,7 +80,7 @@ object IksorisRepertoireClient {
     val slots = days.flatMap { case (day, document) =>
       document.select(".terminy .termin, .terminy .termin-box").asScala.toSeq.flatMap(parseShowing(_, day))
     }
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, group, showtimes) =>
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, None, s.format)) { (title, group, showtimes) =>
       CinemaMovie(
         movie     = Movie(
           title          = title,
@@ -99,7 +100,7 @@ object IksorisRepertoireClient {
 
   private def parseShowing(box: Element, day: LocalDate): Seq[RawSlot] =
     Option(box.selectFirst(".nazwa, .kalendarium-nazwa-wydarzenia")).map(_.ownText.trim.stripSuffix("/").trim).filter(_.nonEmpty).toSeq.flatMap { rawTitle =>
-      val title   = ScraperParse.stripFormatTags(rawTitle)
+      val (title, format) = ScraperParse.extractFormatTags(rawTitle)
       val runtime = Runtime.findFirstMatchIn(box.text).flatMap(_.group(1).toIntOption)
       val poster  = Option(box.selectFirst("img.termin-img")).map(_.attr("abs:src")).filter(_.nonEmpty)
       // "Kup" (buy) when online sale is open; a showing sold as reservation-only
@@ -109,7 +110,7 @@ object IksorisRepertoireClient {
       box.select(".termin-start, a[data-content]").asScala.toSeq.flatMap { timeNode =>
         ScraperParse.parseHHmm(timeNode.text).map { time =>
           val booking = if (timeNode.tagName == "a") Some(timeNode.attr("abs:href")).filter(_.nonEmpty) else buyLink
-          RawSlot(title, rawTitle, LocalDateTime.of(day, time), runtime, poster, booking)
+          RawSlot(title, rawTitle, LocalDateTime.of(day, time), runtime, poster, booking, format)
         }
       }
     }
