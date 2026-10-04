@@ -3502,7 +3502,7 @@ displayTitle:      K-popowe łowczynie demonów
 cinemaTitles:      K- POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW: KARAOKE | K-Popowe Łowczynie Demonów | K-Popowe Łowczynie Demonów (seans z napisami karaoke) | K-popowe Łowczynie Demonów: Karaoke | K-popowe Łowczynie demonów | K-popowe łowczynie demonów | K-popowe łowczynie demonów | w wersji karaoke | K-popowe łowczynie demonów: Karaoke | K-popowe łowczynie demonów: karaoke
 runtimeMinutes:    96
 releaseYear:       2025
-countries:         USA, Kanada, Canada
+countries:         USA, Kanada
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/KPopoweLowczynieDemonow_plakat-HQ.jpg
 synopsis.length:   425
 cast:              Arden Cho, May Hong, Ji-young Yoo, Ahn Hyo-seop, 김윤진
@@ -3637,7 +3637,7 @@ displayTitle:      K-popowe Łowczynie Demonów: Karaoke
 cinemaTitles:      K- POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW: KARAOKE | K-Popowe Łowczynie Demonów | K-Popowe Łowczynie Demonów (seans z napisami karaoke) | K-popowe Łowczynie Demonów: Karaoke | K-popowe Łowczynie demonów | K-popowe łowczynie demonów | K-popowe łowczynie demonów | w wersji karaoke | K-popowe łowczynie demonów: Karaoke | K-popowe łowczynie demonów: karaoke
 runtimeMinutes:    96
 releaseYear:       2025
-countries:         USA, Kanada, Canada
+countries:         USA, Kanada
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/05/KPopoweLowczynieDemonow_plakat-HQ.jpg
 synopsis.length:   170
 cast:              Arden Cho, May Hong, Ji-young Yoo, Ahn Hyo-seop, 김윤진

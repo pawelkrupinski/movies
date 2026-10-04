@@ -381,6 +381,42 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     withClue("an unchanged page must not overrule the listing: ")(slot.map(_.countries) shouldBe listed)
   }
 
+  // Poland's convergence leg: a page filling a slot whose listing carried no countries stored them
+  // as the page spells them — Kino Atlantic's "Niderlandy" — where every listing-built slot
+  // (`CinemaSlotBuilder`) holds the canonical "Holandia": one film, two spellings across venues,
+  // flipped by the next canonicalised write.
+  it should "canonicalise the countries a page fills, in the country's enrichment language" in {
+    def filled(language: java.util.Locale) = {
+      val cache = seededCache("Mariinka")
+      val page  = new FakeDetailEnricher(KinoApollo, "kino-apollo",
+        Some(FilmDetail(countries = Seq("Niderlandy", "Belgia", "Holandia"))))
+      new EnrichDetailsHandler(Map("kino-apollo" -> page), cache, new InMemoryFreshnessStore,
+        new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock,
+        enrichmentLanguage = language).handle(taskFor("kino-apollo", cache, "Mariinka", page)) shouldBe Done
+      cache.get(cache.keyOf("Mariinka", None)).flatMap(_.cinemaData.get(KinoApollo)).map(_.countries)
+    }
+    filled(java.util.Locale.forLanguageTag("pl-PL")) shouldBe Some(Seq("Holandia", "Belgia"))
+    filled(java.util.Locale.UK)                      shouldBe Some(Seq("Netherlands", "Belgium"))
+  }
+
+  it should "canonicalise the countries a re-read overrules the slot with" in {
+    val cache = seededCache("Mariinka")
+    val fresh = new InMemoryFreshnessStore
+    val pages = new InMemoryVenuePageStore
+    def read(countries: String*) = {
+      val page = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(countries = countries)))
+      val task = taskFor("kino-apollo", cache, "Mariinka", page)
+      fresh.markFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant().minus(2, ChronoUnit.DAYS))
+      new EnrichDetailsHandler(Map("kino-apollo" -> page), cache, fresh,
+        new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus, dueWindow, clock = specClock, pages = pages)
+        .handle(task) shouldBe Done
+      cache.get(cache.keyOf("Mariinka", None)).flatMap(_.cinemaData.get(KinoApollo)).map(_.countries)
+    }
+    read("Francja")              shouldBe Some(Seq("Francja"))
+    read("Niderlandy", "Belgia") shouldBe Some(Seq("Holandia", "Belgia"))
+    withClue("a page re-spelling the same countries says nothing new: ")(read("Holandia", "Belgia") shouldBe Some(Seq("Holandia", "Belgia")))
+  }
+
   // A cut-over country asks per PAGE, and the page's read stamp is written by the read itself, before
   // the merge: read back as "seen before", it made a page's FIRST read authoritative over the listing.
   it should "fill, not overrule, on a page's first read when asked per page" in {

@@ -97,7 +97,10 @@ class EnrichDetailsHandler(
   screeningTokens:  services.movies.ScreeningTokens = services.movies.ScreeningTokens.forDefaultCountry(),
   // `venue_pages`, where every page read is written once (`VenuePageReader`): wired to the country's
   // collection at the composition root; in memory where a test does not look at it.
-  pages:            services.venuepages.VenuePageStore = new services.venuepages.InMemoryVenuePageStore
+  pages:            services.venuepages.VenuePageStore = new services.venuepages.InMemoryVenuePageStore,
+  // The language the country's corpus names countries in (`CountryNames.canonical`): a page's own
+  // spelling ("Niderlandy") lands as the one every listing-built slot holds ("Holandia").
+  enrichmentLanguage: java.util.Locale = services.cinemas.CountryNames.DefaultLanguage
 ) extends TaskHandler with Logging {
 
   private val reader = new services.venuepages.VenuePageReader(pages, freshness, event => bus.publish(event), clock)
@@ -150,7 +153,8 @@ class EnrichDetailsHandler(
             // permanently. `reapStuckPending` can now let it through.
             freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
             Done
-          case DetailFetchOutcome.Fetched(detail) =>
+          case DetailFetchOutcome.Fetched(read) =>
+            val detail = read.inLanguage(enrichmentLanguage)
             val title  = task.payload.getOrElse(EnrichDetailsTasks.TitleKey, "")
             val year   = task.payload.get(EnrichDetailsTasks.YearKey).filter(_.nonEmpty).flatMap(_.toIntOption)
             // The row the task was asked for, by its stored key; a task queued before the key rode
@@ -205,7 +209,7 @@ class EnrichDetailsHandler(
             // made every read — the first included — authoritative, and a re-read every
             // refresh window rewrote the listing's own countries and genres with the page's.
             val changed = prior match {
-              case Some(VenuePage.Read(before)) => detail.changedSince(before)
+              case Some(VenuePage.Read(before)) => detail.changedSince(before.inLanguage(enrichmentLanguage))
               case _                            => FilmDetail()
             }
             // Merge into the target slot(s), creating one if absent: a chain's network

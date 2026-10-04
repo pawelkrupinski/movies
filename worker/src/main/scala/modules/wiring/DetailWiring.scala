@@ -47,7 +47,7 @@ trait DetailWiring { self: WorkerWiring =>
   lazy val enrichDetailsHandler = new EnrichDetailsHandler(
     detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache,
     freshnessStore, uptimeMonitor, eventBus, detailDueWindow, clock = clock,
-    screeningTokens = screeningTokens, pages = venuePageStore
+    screeningTokens = screeningTokens, pages = venuePageStore, enrichmentLanguage = country.language
   )
   /** Reads a venue page into venue_pages for a listing no film row holds yet (a cut-over country's wait). */
   lazy val readVenuePageHandler = new services.venuepages.ReadVenuePageHandler(
