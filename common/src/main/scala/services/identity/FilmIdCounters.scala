@@ -153,10 +153,12 @@ object MongoFilmIdCounterStore extends Logging {
    *  - its `_id`, if it is a film id, stays refused by the store's `_id` (an insert of it is turned
    *    away as already mapped, never handed out twice);
    *  - its `counter`, if it is a number, stays reserved: it is kept as an entry under a film id no
-   *    film has, so the next counter still starts past it. */
+   *    film has, so the next counter still starts past it.
+   *  A counter below 1 is no counter ([[FilmIdCounters.of]] refuses the whole map over one): its
+   *  entry is skipped, and nothing reserved for it. */
   private[identity] def decode(docs: Seq[org.bson.BsonDocument]): Seq[FilmIdCounter] = docs.flatMap { doc =>
     val id      = Option(doc.get("_id"))
-    val counter = Option(doc.get("counter")).filter(_.isNumber).map(_.asNumber.longValue)
+    val counter = Option(doc.get("counter")).filter(_.isNumber).map(_.asNumber.longValue).filter(_ >= 1)
     (id.filter(_.isString).map(_.asString.getValue), counter) match {
       case (Some(filmId), Some(c)) => Some(FilmIdCounter(filmId, c))
       case (_, reserved) =>

@@ -60,19 +60,6 @@ class FilmIdCountersSpec extends AnyFlatSpec with Matchers {
     MongoFilmIdCounterStore.onlyAlreadyMapped(
       bulk(Collections.emptyList(), new WriteConcernError(64, "WriteConcernFailed", "waiting for replication timed out", new BsonDocument()))) shouldBe false
   }
-}
-
-/** A projection asks `nextCounter` of every film it drafts (~2,250 US) over a map as large as the
- *  country's history: answered by a walk of the map each time, that was seconds of every projection. */
-class FilmIdCountersCostSpec extends AnyFlatSpec with Matchers {
-  "nextCounter" should "be answered without walking the whole map on every ask" in {
-    val counters = FilmIdCounters.of((1 to 200000).map(i => FilmIdCounter(s"f$i", i.toLong))).toOption.get
-    val started  = System.nanoTime()
-    (1 to 20000).foreach(_ => counters.nextCounter shouldBe 200001L)
-    // A walk per ask is 4e9 steps — tens of seconds; once, it is microseconds per ask.
-    (System.nanoTime() - started) / 1e9 should be < 5.0
-  }
-
 
   "MongoFilmIdCounterStore.decode" should "skip an undecodable entry, keeping the others and the counter it holds" in {
     import org.bson.{BsonDocument, BsonInt64, BsonString}
@@ -85,5 +72,30 @@ class FilmIdCountersCostSpec extends AnyFlatSpec with Matchers {
     val map = FilmIdCounters.of(decoded).toOption.get
     map.nextCounter shouldBe 10
     map.counterOf("dune|2021") shouldBe None
+  }
+
+  it should "skip, not reserve, a counter below 1, which no map can hold" in {
+    import org.bson.{BsonDocument, BsonInt64, BsonString}
+    def doc(id: org.bson.BsonValue, counter: org.bson.BsonValue) = new BsonDocument("_id", id).append("counter", counter)
+    val decoded = MongoFilmIdCounterStore.decode(Seq(
+      doc(new BsonString("belle|2013"), new BsonInt64(1)),
+      doc(new BsonInt64(7), new BsonInt64(0)),                      // undecodable id, invalid counter
+      doc(new BsonString("dune|2021"), new BsonInt64(-3))))         // a film id under an invalid counter
+    withClue("one bad document must not fail the whole map again: ") {
+      FilmIdCounters.of(decoded).map(_.entries) shouldBe Right(Seq(FilmIdCounter("belle|2013", 1)))
+    }
+  }
+
+}
+
+/** A projection asks `nextCounter` of every film it drafts (~2,250 US) over a map as large as the
+ *  country's history: answered by a walk of the map each time, that was seconds of every projection. */
+class FilmIdCountersCostSpec extends AnyFlatSpec with Matchers {
+  "nextCounter" should "be answered without walking the whole map on every ask" in {
+    val counters = FilmIdCounters.of((1 to 200000).map(i => FilmIdCounter(s"f$i", i.toLong))).toOption.get
+    val started  = System.nanoTime()
+    (1 to 20000).foreach(_ => counters.nextCounter shouldBe 200001L)
+    // A walk per ask is 4e9 steps — tens of seconds; once, it is microseconds per ask.
+    (System.nanoTime() - started) / 1e9 should be < 5.0
   }
 }
