@@ -26,8 +26,8 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
    *      drops it (Helios' REST year flakes), or a venue page's year the detail enrichment wrote
    *      — treating a missing year as loss, not a change;
    *    - cast/director cased for display (`displayNames`: ALL CAPS down for
-   *      Cinema City, all-lowercase up for Flicks), runtime-zero squashed to
-   *      None, and country names canonicalised. */
+   *      Cinema City, all-lowercase up for Flicks), a runtime no screened film has (zero, or Filmtheater
+   *      Bleicherode's 6000-minute "flüstern & SCHREIEN") squashed to None, and country names canonicalised. */
   def build(
     cm:            CinemaMovie,
     displayTitle:  String,
@@ -60,7 +60,7 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
                        else priorSlot.map(_.cast).getOrElse(Seq.empty),
       director       = if (cm.director.nonEmpty) displayNames(cm.director)
                        else priorSlot.map(_.director).getOrElse(Seq.empty),
-      runtimeMinutes = StringPool.small(cm.movie.runtimeMinutes.filter(_ > 0)).orElse(priorSlot.flatMap(_.runtimeMinutes)),
+      runtimeMinutes = StringPool.small(cm.movie.runtimeMinutes.filter(FilmRuntime.plausible)).orElse(priorSlot.flatMap(_.runtimeMinutes)),
       releaseYear    = StringPool.small(cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))),
       countries      = { val cs = stringPool.canonicalAll(cm.movie.countries.map(c => CountryNames.canonical(c, enrichmentLanguage)).distinct)
                          if (cs.nonEmpty) cs else priorSlot.map(_.countries).getOrElse(Seq.empty) },
