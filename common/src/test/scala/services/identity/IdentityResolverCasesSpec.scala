@@ -833,6 +833,20 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     of(bill).leaning shouldBe None
   }
 
+  /** PL Kino 1410 bills the Met's relays "Carmen | metropolitan opera: live in hd 2026/27": TMDB holds no Met 2026/27
+   *  Carmen, but Royal Ballet & Opera's of that season, and the banner — learned only from the RBO records its works
+   *  reached — was RBO's, so its season production was taken. Its "Makbet" bills the Met's "Macbeth" in another language
+   *  ([[IdentityMeasures.stageBilling]]): the banner is the Met, and RBO's Carmen another house's production. */
+  "A season relay's banner" should "be the house it bills a stage work under in another language, not the other house of its works" in {
+    val films = Seq(F(1702759, "Royal Ballet & Opera 2026/27: Carmen", 2026, "Damiano Michieletto", 200, 0.5),
+      F(1703622, "The Metropolitan Opera 2026/27: Macbeth", 2026, "", 0, 0.5))
+    val carmen = listing(KinoMuza, "Carmen | metropolitan opera: live in hd 2026/27")
+    val makbet = listing(KinoMuza, "Makbet | metropolitan opera: live in hd 2026/27")
+    val r = IdentityResolver.resolve(Seq(carmen, makbet), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    withClue(r.decisionOf(makbet.key).render)(r.decisionOf(makbet.key).film shouldBe Some(1703622))
+    withClue(r.decisionOf(carmen.key).render)(r.decisionOf(carmen.key).film shouldBe None)
+  }
+
   "A listing the evidence cannot place" should "stay unmatched, and say which candidate it refused" in {
     val films = Seq(F(1, "Opętanie", 1981, "Andrzej Żuławski", 124), F(2, "Opętanie", 1973, "Someone Else", 90))
     val bare = listing(Multikino, "Opętanie")

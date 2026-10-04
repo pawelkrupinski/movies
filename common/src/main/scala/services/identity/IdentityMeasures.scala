@@ -176,18 +176,35 @@ object IdentityMeasures {
    *  [[billing]]'s order: a record carrying its broadcast title beside an alternative streaming
    *  title ("National Theatre at Home: …") bills the work under both. */
   def billings(listing: Listing, film: Film): Seq[Billing] = {
-    def banner(title: Seq[String], work: Seq[String]): Option[Seq[String]] =
-      Option.when(title.lengthIs > work.length)(
-        if (title.endsWith(work)) Some(title.dropRight(work.length)) else if (title.startsWith(work)) Some(title.drop(work.length)) else None
-      ).flatten
     val works = (listing.billedWorks intersect film.billedWorks).toSeq.sortBy(work => (-work.length, work.mkString(" ")))
-    works.iterator.map { work =>
-      (for {
-        listingHouse <- listing.billedTitles.flatMap(banner(_, work))
-        filmHouse    <- film.billedTitles.flatMap(banner(_, work))
-      } yield Billing(listingHouse, filmHouse, work.mkString))
-        .sortBy(billed => (billed.listingHouse, billed.filmHouse, billed.listingWords.mkString(" "), billed.filmWords.mkString(" ")))
-    }.find(_.nonEmpty).getOrElse(Nil)
+    works.iterator.map(work => billedUnder(listing, work, film, work, work.mkString)).find(_.nonEmpty).getOrElse(Nil)
+  }
+
+  /** The banners a title puts on a work it carries — its words before or after the work. */
+  private def bannerOf(title: Seq[String], work: Seq[String]): Option[Seq[String]] =
+    Option.when(title.lengthIs > work.length)(
+      if (title.endsWith(work)) Some(title.dropRight(work.length)) else if (title.startsWith(work)) Some(title.drop(work.length)) else None
+    ).flatten
+
+  /** Every way the listing bills `listingWork` and the film `filmWork` under banners, as the one work `work`. */
+  private def billedUnder(listing: Listing, listingWork: Seq[String], film: Film, filmWork: Seq[String], work: String): Seq[Billing] =
+    (for {
+      listingHouse <- listing.billedTitles.flatMap(bannerOf(_, listingWork))
+      filmHouse    <- film.billedTitles.flatMap(bannerOf(_, filmWork))
+    } yield Billing(listingHouse, filmHouse, work))
+      .sortBy(billed => (billed.listingHouse, billed.filmHouse, billed.listingWords.mkString(" "), billed.filmWords.mkString(" ")))
+
+  /** How the listing and the film bill one STAGE WORK under banners, each in its own language ([[StageWorks]]), when no
+   *  work of theirs is the same words: PL "Makbet | metropolitan opera: live in hd 2026/27" and the Met's "The
+   *  Metropolitan Opera 2026/27: Macbeth". What a season's banner is learned from ([[Houses.evidence]]): billed by its
+   *  literal works alone, Kino 1410's Met banner met only Royal Ballet & Opera's records of "Carmen" and "Così fan
+   *  tutte", and was learned as RBO's — whose season productions it then took. */
+  def stageBilling(listing: Listing, film: Film): Option[Billing] = {
+    def staged(works: Set[Seq[String]]) = works.toSeq.flatMap(work => StageWorks.resolver.named(key(work.mkString(" "))).map(_ -> work))
+    val filmWorks = staged(film.billedWorks).groupMap(_._1)(_._2)
+    staged(listing.billedWorks).sortBy { case (id, work) => (-work.length, id, work.mkString(" ")) }.iterator
+      .map { case (id, listingWork) => filmWorks.getOrElse(id, Nil).sortBy(_.mkString(" ")).flatMap(billedUnder(listing, listingWork, film, _, s"work:$id")) }
+      .find(_.nonEmpty).flatMap(_.headOption)
   }
 
   /** Does the film's record bill the listing's work under the listing's OWN house — the banner the
@@ -266,7 +283,8 @@ object IdentityMeasures {
      *  its season, when the listing names one (another season's record says nothing about which
      *  house this season's broadcast is). */
     def evidence(l: Listing, films: Iterable[Film]): Iterable[Billing] =
-      films.filter(f => l.seasonYear.isEmpty || namesSeasonProduction(l, f)).flatMap(billing(l, _))
+      films.filter(f => l.seasonYear.isEmpty || namesSeasonProduction(l, f))
+        .flatMap(f => billing(l, f).orElse(Option.when(l.seasonYear.isDefined)(stageBilling(l, f)).flatten))
   }
 
   /** Which pieces of a title are its QUALIFIER rather than its work, LEARNED from how the film
