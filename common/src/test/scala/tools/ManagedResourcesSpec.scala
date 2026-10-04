@@ -33,7 +33,8 @@ class ManagedResourcesSpec extends AnyFlatSpec with Matchers {
     val managed = new ManagedResources
     val pool    = managed.executor("queued")(DaemonExecutors.boundedPool("managed-queued", threads = 1, queueCapacity = 4, WhenFull.RunOnCaller))
     val running = new java.util.concurrent.CountDownLatch(1)
-    pool.execute(() => { running.countDown(); try Thread.sleep(60_000) catch { case _: InterruptedException => () } })
+    val never   = new java.util.concurrent.CountDownLatch(1)  // released only by closeAll's interrupt
+    pool.execute(() => { running.countDown(); try never.await() catch { case _: InterruptedException => () } })
     running.await(5, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
     val queued = pool.submit(() => 1)
     managed.closeAll()
