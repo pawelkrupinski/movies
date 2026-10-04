@@ -8,7 +8,7 @@ import java.nio.file.{Files, Paths}
 
 /**
  * Pins the compiler rule that makes a read outcome impossible to drop unread: `build.sbt` turns
- * on `-Wnonunit-statement` and silences it for every type except the outcome types it names, so
+ * on `-Wnonunit-statement` and `-Wvalue-discard` (an outcome returned where Unit is expected) and silences them for every type except the outcome types it names, so
  * (under `-Werror`) a statement that computes a [[ScanOutcome]] or a [[ReadOutcome]] and throws
  * it away does not compile. The rule found, the day it went in, four readers that dropped an
  * incomplete scan and answered with part of a collection as the whole.
@@ -36,6 +36,19 @@ class OutcomesCannotBeDroppedSpec extends AnyFlatSpec with Matchers {
 
   "build.sbt" should "turn the unused-value warning on" in {
     build should include("\"-Wnonunit-statement\"")
+  }
+
+  it should "turn the discarded-value warning on — an outcome landing in a Unit-typed position" in {
+    build should include("\"-Wvalue-discard\"")
+  }
+
+  it should "keep a discarded outcome an error, in both of the compiler's spellings" in {
+    Guarded.foreach { name =>
+      silenced(s"discarded non-Unit value of type $name. Add `: Unit` to discard silently.") shouldBe false
+      silenced(s"Discarded non-Unit value of type Option[$name]. Add `: Unit` to discard silently.") shouldBe false
+    }
+    silenced("discarded non-Unit value of type Int. Add `: Unit` to discard silently.") shouldBe true
+    silenced("Discarded non-Unit value of type Int. Add `: Unit` to discard silently.") shouldBe true
   }
 
   it should "keep an unused outcome an error, bare or wrapped" in {

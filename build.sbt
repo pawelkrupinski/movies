@@ -45,8 +45,11 @@ ThisBuild / scalacOptions ++= Seq(
   // another writer must not be dropped unread: an unused value of one of these types is an error. The warning is on
   // for every type and silenced for all others — dropping an `Int` or a `Future` is
   // not what this guards. See `tools.ScanOutcome`, `tools.ReadOutcome` and `tools.GuardedWrite`.
+  // `-Wvalue-discard` is the same rule where the value lands in a Unit-typed position instead of
+  // a statement — a `def f(): Unit = repo.scan(...)`, a lambda handed to `foreach` or `boot.step`.
   "-Wnonunit-statement",
-  "-Wconf:msg=(?s)^(?!.*\\b(ScanOutcome|ReadOutcome|GuardedWrite)\\b).*unused value.*:silent"
+  "-Wvalue-discard",
+  "-Wconf:msg=(?s)^(?!.*\\b(ScanOutcome|ReadOutcome|GuardedWrite)\\b).*(unused value|[dD]iscarded non-Unit value).*:silent"
 )
 ThisBuild / javacOptions ++= Seq("--release", "21")
 
