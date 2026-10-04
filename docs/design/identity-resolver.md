@@ -2241,6 +2241,27 @@ exactly rather than hide it.
 
 ---
 
+### 18.4 Projecting as the model takes the scrapes in (2026-10-04)
+
+The scoped projection still ran on the five-minute period, so a scrape reached its films up to five minutes later and
+each country's projection work landed in one burst. Now the identity model tells a `ProjectionTrigger` of every drain
+that moved a venue's listings or re-decided a family (`ModelBatch.moved`), and the trigger runs `tickChanged` once that
+burst is 30 s quiet, never more than 2 min after its first drain (the read model's change debounce,
+`MovieChangeStream.Debounce.Worker`). A run on scrapes:
+
+- reads its listings with `IdentityListingIntake.projectedChanged`: only the venues the intake took a scrape of since its
+  last read (and a venue now another roster object, or one it holds nothing of) — no archive's stamps. What another
+  process filed is read by the next periodic projection, as before;
+- projects the scope those changes close over, exactly as a periodic scoped projection does, and writes the same;
+- records no slot fingerprints and never reconciles: both stay with the periodic projection, whose count of scoped
+  projections between two whole ones it does not advance — the hourly reconcile stays hourly;
+- waits for the first periodic projection after a boot, which is of the whole corpus and keeps its place off the boot.
+
+**Proof.** `ScopedProjectionEquivalenceSpec` projects its scoped world by `tickChanged` on about half its ticks (by
+`tick` otherwise, and whenever none has run yet); every store, FilmId map and metric still equals the whole world's.
+`IdentityListingIntakeProjectedSpec` holds `projectedChanged` to reading only the venues taken, and `ProjectionTriggerSpec`
+the debounce.
+
 ## 19. The shadow run's paced live lookup fill
 
 §17's shadow run answers only from the model's TMDB store, and most of the resolver's questions (yearless

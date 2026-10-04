@@ -36,7 +36,8 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
 
     override lazy val settleReaper: services.tasks.SettleReaper = {
       val runs = scheduledRunStore
-      new services.tasks.SettleReaper(() => (), runStore = runs, clock = _root_.tools.SpecClock.Pinned) {
+      new services.tasks.SettleReaper(() => (), settings.SettleInterval(5.minutes), services.tasks.SettleReaper.InitialDelay(5.minutes),
+          runStore = runs, clock = _root_.tools.SpecClock.Pinned) {
         override def start(): Unit = projectionStarted = true
       }
     }

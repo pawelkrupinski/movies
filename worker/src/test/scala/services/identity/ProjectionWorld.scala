@@ -43,6 +43,7 @@ private[identity] final class ProjectionWorld(
   val rowsRead   = scala.collection.mutable.ListBuffer.empty[Cinema]
   val projection = new IdentityProjection(
     listings = () => { listingsRead(); intake.projectedByVenue(venues) }, rows = venues => { rowsRead ++= venues; intake.rowsOf(venues) },
+    changedListings = Some(() => { listingsRead(); intake.projectedChanged(venues) }),
     resolve = resolve, cache = cache, filmIds = filmIds, details = details,
     announce = (k, _) => { if (announceFails) throw new IllegalStateException(s"bus down for ${k.cleanTitle}"); announced += k; () },
     normalizer = normalizer, slots = new CinemaSlotBuilder(Country.Poland.language, new StringPool),

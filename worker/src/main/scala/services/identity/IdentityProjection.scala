@@ -110,6 +110,9 @@ final class IdentityProjection(
   metrics:     IdentityProjectionMetrics,
   clock:       Clock,
   fingerprints: VenueSlotFingerprints,
+  /** The listings as [[listings]] gives them, read again only where this worker's own scrapes moved them: what a projection
+   *  run on those ([[tickChanged]]) reads, leaving what other processes filed to the next periodic [[tick]]. */
+  changedListings: Option[() => Seq[(Cinema, Seq[ProjectedListing])]] = None,
   /** Handed the listings each resolution was of, so the listings read for the next are the model's objects, not copies. */
   adopt:       Seq[Listing] => Unit = _ => (),
   /** How many projections of a scope run between two of the whole corpus ([[IdentityProjection.ScopedBetweenWhole]]). */
@@ -159,13 +162,23 @@ final class IdentityProjection(
 
   /** One projection — of the corpus `whole` when asked, as the hourly reconciliation is, else of what moved. Throws only
    *  what reading its inputs throws. */
-  def tick(whole: Boolean = false): ProjectionTick = synchronized {
+  def tick(whole: Boolean = false): ProjectionTick = project(whole, light = false)
+
+  /** A projection of what moved since the last, run as the identity model takes this worker's scrapes in rather than on
+   *  the period: its listings read only where this worker's own scrapes moved them ([[changedListings]]), and never the
+   *  whole corpus's reconcile or the slot fingerprints' record, which stay with the periodic [[tick]]. */
+  def tickChanged(): Option[ProjectionTick] = synchronized {
+    // Until a periodic projection has run, the next is of the whole corpus — the boot's, which waits its turn on the period.
+    Option.when(last.isDefined)(project(whole = false, light = true))
+  }
+
+  private def project(whole: Boolean, light: Boolean): ProjectionTick = synchronized {
     // Until this projection has written everything it planned, the next one projects the whole corpus.
     val previous = last
     last = None
     val started  = tools.Stopwatch.start()
     val phases   = new ProjectionPhases
-    val venues   = phases("listings")(listings())
+    val venues   = phases("listings")(if (light) changedListings.getOrElse(listings)() else listings())
     val listed   = venues.iterator.map(_._2.size).sum
     val stored   = phases("snapshot")(cache.snapshot())
     def refuse(reason: IdentityProjectionMetrics.Refusal, why: String, resolution: Option[Resolution] = None, keep: Boolean = false) = {
@@ -200,12 +213,12 @@ final class IdentityProjection(
               carried ++ updated ++ ProjectionScope.standing(index)
             }
             val moved = changes.map(c => phases("scope")(ProjectionScope.close(index, c)))
-            val reconcile = moved.isDefined && (whole || scopedSinceWhole >= scopedBetweenWhole)
+            val reconcile = moved.isDefined && !light && (whole || scopedSinceWhole >= scopedBetweenWhole)
             val freed = changes.fold(Set.empty[String])(_.keys)
             val (scope, draft, detailed, plan) = drafted(moved.filterNot(_ => reconcile).getOrElse(ProjectionScope.Whole), freed,
               changes.fold(Set.empty[ListingKey])(_.listings), index, at, phases)
             val slotCounts = slotMemo.endTick(retainUnseen = !scope.whole)
-            phases("fingerprints")(recordSlotFingerprints())
+            if (!light) phases("fingerprints")(recordSlotFingerprints())
             val misses = slotMemo.lastMisses()
             phases.note(s"venue slots reused ${slotCounts._1}, built ${slotCounts._2} " +
               s"(rows moved ${misses._1}, priors moved ${misses._2}, new ${misses._3})")
@@ -231,7 +244,8 @@ final class IdentityProjection(
                   shapes.commit(whole = scope.whole)
                   carried = ProjectionScope.Changes.none
                   last = Some(Last(counters.size + plan.counterAdditions.size))
-                  scopedSinceWhole = if (scope.whole) 0 else scopedSinceWhole + 1
+                  // The hour between two reconciles is counted in periodic projections; one run on scrapes counts none.
+                  scopedSinceWhole = if (scope.whole) 0 else if (light) scopedSinceWhole else scopedSinceWhole + 1
                 }
                 tick.copy(slotsReused = slotCounts._1, slotsBuilt = slotCounts._2, slotMisses = misses, scoped = !scope.whole)
             }
@@ -281,8 +295,13 @@ final class IdentityProjection(
   }
 
   /** [[tick]], for a scheduler that must keep running whatever one projection throws. */
-  def tickQuietly(): Unit =
-    try { tick(); () }
+  def tickQuietly(): Unit = quietly(tick())
+
+  /** [[tickChanged]], a failure logged and counted as [[tickQuietly]]'s is. */
+  def tickChangedQuietly(): Unit = quietly(tickChanged())
+
+  private def quietly(run: => Any): Unit =
+    try { run; () }
     catch { case NonFatal(e) =>
       metrics.refused(IdentityProjectionMetrics.Refusal.Failed)
       logger.warn("identity projection failed; the stored films keep serving", e)

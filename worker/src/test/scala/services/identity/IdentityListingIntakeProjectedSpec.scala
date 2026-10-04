@@ -42,6 +42,10 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     def reads: Int = accepted.rowsRead + archive.rowsRead
     /** `projected(venues)`, and the rows it read. */
     def project(venues: Seq[Cinema] = live): (Seq[ProjectedListing], Int) = { val before = reads; val p = intake.projected(venues); (p, reads - before) }
+    /** `projectedChanged(venues)`, flattened, and the rows it read. */
+    def changed(venues: Seq[Cinema] = live): (Seq[ProjectedListing], Int) = {
+      val before = reads; val p = intake.projectedChanged(venues).flatMap(_._2); (p, reads - before)
+    }
     /** What a whole read gives, through a reader that holds nothing. */
     def whole: Seq[ProjectedListing] =
       intake.listings(live).flatMap { case (c, films) => films.map(cm => ProjectedListing.of(Listing.of(c, cm, normalizer), cm)) }
@@ -144,5 +148,22 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     read shouldBe first
     read.find(_.listing.title == "Lalka").get.listing should be theSameInstanceAs modelled.head
     read.find(_.listing.title == "Obcy").get should be theSameInstanceAs first.find(_.listing.title == "Obcy").get
+  }
+
+  it should "read again, between two reads of the stamps, only the venues it took a scrape of" in {
+    // A projection run on the intake's own scrapes reads its listings by `projectedChanged`: no archive's stamps, only
+    // the venues the intake took since. A row another process filed is read by the next stamped read.
+    val w = new World
+    w.archive.store(Multikino, clock.instant(), film(Multikino, "Lalka", 0, 1))
+    w.archive.store(Helios, clock.instant(), film(Helios, "Diuna", 2))
+    w.project()
+    w.changed() shouldBe ((w.whole, 0))                        // nothing taken: nothing read
+    w.intake.recordCinemaScrape(Helios, Seq(film(Helios, "Diuna", 2, 4)), listingIsComplete = true, sourceKey = None, viaFallback = false)
+    w.changed() shouldBe ((w.whole, 1))                        // Helios, which it took, and Helios alone
+    w.archive.store(Multikino, clock.instant().plusSeconds(60), film(Multikino, "Lalka", 0, 1, 5))
+    val (between, read) = w.changed()
+    read shouldBe 0                                            // filed elsewhere: not this read's to see
+    between should not be w.whole
+    w.project() shouldBe ((w.whole, 1))                        // the stamps see it
   }
 }

@@ -42,6 +42,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
   lazy val identityProjection: IdentityProjection =
     new IdentityProjection(
       listings    = () => identityListingIntake.projectedByVenue(cinemaScrapers.map(_.cinema)),
+      changedListings = Some(() => identityListingIntake.projectedChanged(cinemaScrapers.map(_.cinema))),
       rows        = identityListingIntake.rowsOf,
       resolve     = IdentityProjection.modelled(identityModel, IdentityCutoverWiring.ModelTimeout),
       cache       = movieCache,
@@ -55,6 +56,11 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
       clock       = clock,
       fingerprints = venueSlotFingerprints,
       adopt       = identityListingIntake.adopt)
+
+  /** Projects what moved as the identity model takes this worker's scrapes in, between the periodic projections. */
+  lazy val identityProjectionTrigger: services.identity.ProjectionTrigger =
+    new services.identity.ProjectionTrigger(() => identityProjection.tickChangedQuietly(), services.movies.MovieChangeStream.Debounce.Worker,
+      managedResources.executor("identity projection")(tools.DaemonExecutors.scheduler(s"identity-projection-${country.code}")), clock)
 
   /** The venue slots the projection last kept (`identity_slot_fingerprints`), in memory without a database. */
   lazy val venueSlotFingerprints: VenueSlotFingerprints =

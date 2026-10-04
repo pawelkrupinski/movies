@@ -70,18 +70,30 @@ final class IdentityListingIntake(
    *  the projection tells a venue that did not move from one that did without comparing their listings
    *  (`LiveProjectionIndex`). */
   def projectedByVenue(live: Seq[Cinema]): Seq[(Cinema, Seq[ProjectedListing])] = heldLock.synchronized {
+    val read = if (calls % IdentityListingIntake.WholeReadEvery == 0) IdentityListingIntake.Read.Whole else IdentityListingIntake.Read.Stamped
+    calls += 1
+    projectedBy(live, read)
+  }
+
+  /** [[projectedByVenue]] reading again only the venues this intake took a scrape of since the last read, a venue now
+   *  another roster object, and a venue it holds nothing of: no archive's stamps are read. What another process filed
+   *  meanwhile is read by the next [[projectedByVenue]] — what a projection run on this intake's own scrapes, between
+   *  two of those, reads its listings by. */
+  def projectedChanged(live: Seq[Cinema]): Seq[(Cinema, Seq[ProjectedListing])] = heldLock.synchronized {
+    projectedBy(live, IdentityListingIntake.Read.Changed)
+  }
+
+  private def projectedBy(live: Seq[Cinema], read: IdentityListingIntake.Read): Seq[(Cinema, Seq[ProjectedListing])] = {
     val wanted  = live.distinct.map(c => c.displayName -> c).toMap
     val written = dirty.synchronized { val names = dirty.toSet; dirty.clear(); names }
-    val whole   = calls % IdentityListingIntake.WholeReadEvery == 0
-    calls += 1
     // A listing the identity model holds the same is its object, not a second copy of it ([[adopt]]).
     def project(cinema: Cinema, films: Seq[(CinemaMovie, Int)]) =
       films.map { case (cm, showtimes) =>
         val listing = Listing.of(cinema, cm, normalizer)
         ProjectedListing.of(IdentityListingIntake.modelledAs(adopted, listing), cm, showtimes)
       }
-    val acceptedNow = heldAccepted.refresh(accepted, wanted, written, whole, project)
-    val archivedNow = heldArchived.refresh(archive, wanted.filter { case (name, _) => !acceptedNow.contains(name) }, written, whole, project)
+    val acceptedNow = heldAccepted.refresh(accepted, wanted, written, read, project)
+    val archivedNow = heldArchived.refresh(archive, wanted.filter { case (name, _) => !acceptedNow.contains(name) }, written, read, project)
     live.distinct.sortBy(_.displayName).flatMap(c => acceptedNow.get(c.displayName).orElse(archivedNow.get(c.displayName)).flatten.map(c -> _))
   }
 
@@ -165,17 +177,28 @@ object IdentityListingIntake {
 
     /** The listings of `wanted`'s venues in `repository` now, re-read for those whose stamp moved, whose venue is
      *  another object or that were `written`, or all of them when `whole`; empty when a read could not complete. */
-    def refresh(repository: ScrapeArchiveRepository, wanted: Map[String, Cinema], written: Set[String], whole: Boolean,
+    def refresh(repository: ScrapeArchiveRepository, wanted: Map[String, Cinema], written: Set[String], read: Read,
                 project: (Cinema, Seq[(CinemaMovie, Int)]) => Seq[ProjectedListing]): Map[String, Option[Seq[ProjectedListing]]] = {
-      val stamps = if (whole) Map.empty[String, services.scrapes.ContentStamp] else repository.contentStamps()
-      // No stamps is a read that failed or an empty archive: either way read it whole, which answers both.
-      val present = stamps.collect { case (name, services.scrapes.ContentStamp(Some(at), _)) if wanted.contains(name) => name -> at }
-      val keep = if (whole || stamps.isEmpty) Map.empty[String, Entry] else entries.filter { case (name, entry) =>
-        present.get(name).exists(at => entry.stamp.contains(at)) && (entry.cinema eq wanted(name)) && !written(name)
+      val current: Cinema => Boolean = c => wanted.get(c.displayName).exists(_ eq c)
+      val (keep, reread) = read match {
+        case Read.Whole => (Map.empty[String, Entry], current)
+        case Read.Changed =>
+          // Only what this intake knows moved: what it took a scrape of, a venue now another roster object, one it
+          // holds nothing of (a venue the archive has no row of is never fetched, `scanLean` reading by id).
+          val keep = entries.filter { case (name, entry) => wanted.get(name).exists(_ eq entry.cinema) && !written(name) }
+          (keep, (c: Cinema) => current(c) && !keep.contains(c.displayName))
+        case Read.Stamped =>
+          val stamps = repository.contentStamps()
+          // No stamps is a read that failed or an empty archive: either way read it whole, which answers both.
+          if (stamps.isEmpty) (Map.empty[String, Entry], current)
+          else {
+            val present = stamps.collect { case (name, services.scrapes.ContentStamp(Some(at), _)) if wanted.contains(name) => name -> at }
+            val keep = entries.filter { case (name, entry) =>
+              present.get(name).exists(at => entry.stamp.contains(at)) && (entry.cinema eq wanted(name)) && !written(name)
+            }
+            (keep, (c: Cinema) => present.contains(c.displayName) && !keep.contains(c.displayName) && current(c))
+          }
       }
-      val reread: Cinema => Boolean =
-        if (whole || stamps.isEmpty) c => wanted.get(c.displayName).exists(_ eq c)
-        else c => present.contains(c.displayName) && !keep.contains(c.displayName) && wanted.get(c.displayName).exists(_ eq c)
       val fresh    = Map.newBuilder[String, Entry]
       val complete = repository.scanLean(reread)(_.foreach(row =>
         fresh += row.cinema.displayName -> Entry(row.cinema, Some(row.at), Option.when(row.films.nonEmpty)(project(row.cinema, row.films)))))
@@ -197,6 +220,9 @@ object IdentityListingIntake {
   /** The model's object for `listing` when it holds one the same, else `listing`. */
   private def modelledAs(modelled: Map[ListingKey, Listing], listing: Listing): Listing =
     modelled.get(listing.key).filter(_ == listing).getOrElse(listing)
+
+  /** How a projection read takes the archives: whole, by their rows' stamps, or only what this intake took since. */
+  private[identity] enum Read { case Whole, Stamped, Changed }
 
   /** Where each venue's accepted listing is kept. */
   val Collection = "identity_listings"

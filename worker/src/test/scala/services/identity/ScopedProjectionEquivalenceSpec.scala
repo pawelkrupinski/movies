@@ -205,7 +205,9 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
       }
       scrape(touched)
       scoped.announced.clear(); whole.announced.clear()
-      val a = scoped.projection.tick()
+      // The scoped world projects as the model takes its scrapes in about half the time (`tickChanged`), on the period
+      // otherwise — and on the period whenever none has run yet.
+      val a = Option.when(rng.nextBoolean())(scoped.projection.tickChanged()).flatten.getOrElse(scoped.projection.tick())
       val b = whole.projection.tick()
       withClue(s"seed $seed, tick $t (scoped: ${a.scoped}, refused: ${a.refused}; ${events.mkString(", ")}): ") {
         a.refused shouldBe b.refused
@@ -283,5 +285,27 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
     w.scrape(s.programme.toMap)
     (1 to 7).map(_ => w.projection.tick().scoped) shouldBe Seq(false, true, true, false, true, true, false)
     w.drifts shouldBe Seq(0, 0)
+  }
+
+  it should "project as the model takes the scrapes in only once the period has projected, and never count toward the reconcile" in {
+    // A worker's first projection is of the whole corpus, on the period after boot; one run on scrapes waits for it. Run
+    // on scrapes, a projection reads only the venues the intake took (no stamps), records no slot fingerprints, and leaves
+    // the hour between two whole projections to be counted by the periodic ones.
+    val s = new Scenario(new Random(3))
+    val w = world(s, 2)
+    venues.foreach(c => s.programme(c) = Vector.fill(2)(s.listing(c)))
+    w.scrape(s.programme.toMap)
+    w.projection.tickChanged() shouldBe None
+    w.projection.tick().scoped shouldBe false
+    val recorded = w.fingerprints.all()
+    (1 to 3).foreach { i =>
+      s.programme(Rialto) = s.programme(Rialto) :+ s.listing(Rialto)
+      w.scrape(Map(Rialto -> s.programme(Rialto)))
+      val changed = w.projection.tickChanged().get
+      withClue(s"run $i: ")(changed.scoped shouldBe true)
+    }
+    w.fingerprints.all() shouldBe recorded
+    (1 to 3).map(_ => w.projection.tick().scoped) shouldBe Seq(true, true, false)
+    w.drifts shouldBe Seq(0)
   }
 }

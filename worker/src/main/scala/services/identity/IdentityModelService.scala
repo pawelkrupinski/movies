@@ -15,7 +15,10 @@ final case class ModelSnapshot(resolution: Resolution, gaps: AnswersChanged, lis
 
 /** What the model did with one drained batch of events. */
 final case class ModelBatch(venues: Int, observations: Int, familiesResolved: Int, families: Int, seconds: Double,
-                            sizes: IncrementalResolver.FamilySizes)
+                            sizes: IncrementalResolver.FamilySizes) {
+  /** Whether it moved anything a projection reads: a venue's listings, or a family decided again. */
+  def moved: Boolean = venues > 0 || familiesResolved > 0
+}
 
 /** The model's gauges; the Prometheus ones live in `services.metrics`. */
 trait IdentityModelMetrics {
@@ -56,6 +59,8 @@ final class IdentityModelService(
   settle:     FiniteDuration,
   scheduler:  ScheduledExecutorService,
   metrics:    IdentityModelMetrics = IdentityModelMetrics.Silent,
+  /** Told of each batch the model drained: what moved, for whoever projects the model ([[ProjectionTrigger]]). */
+  batched:    ModelBatch => Unit = _ => (),
   // What the model's lookups report of their reading (`TrackedLookups.render`), for the take-up log.
   reading:    () => String = () => "",
   /** Run on the model's thread before each drain: what turns queued announcements into observed keys
@@ -168,6 +173,7 @@ final class IdentityModelService(
       val batch = ModelBatch(scraped.size, keys.size, engine.familiesResolved - before, engine.familyCount, started.seconds,
         engine.sizes)
       metrics.batch(batch)
+      batched(batch)
       batch
     }
   }

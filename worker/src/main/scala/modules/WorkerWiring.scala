@@ -156,6 +156,7 @@ class WorkerWiring(
       settle     = WorkerWiring.IdentityModelSettle,
       scheduler  = identityModelScheduler,
       metrics    = workerMetrics.identityModel.forCountry(country.code),
+      batched    = batch => if (batch.moved) identityProjectionTrigger.request(),
       reading    = () => tracked.fold("")(_.render),
       beforeDrain = () => venuePageIndex.settle(),
       // A new listing waits for its venue page, read into venue_pages by a ReadVenuePage task, so

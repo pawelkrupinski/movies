@@ -135,6 +135,23 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     reported.map(_.families) shouldBe Seq(2)
   }
 
+  it should "tell whoever projects the model of each drain that moved something, and of no other" in {
+    val world   = new World
+    world.scrapes = Map(Multikino -> Seq(movie(Multikino, "Lalka")))
+    val batches = scala.collection.mutable.ArrayBuffer.empty[ModelBatch]
+    val service = new IdentityModelService(
+      () => new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration, store = world.store),
+      world.reads, () => listingsOf(world.scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(),
+      batched = batches += _, clock = _root_.tools.SpecClock.Pinned)
+    service.takeUp()
+    batches.clear()
+    service.drain()
+    batches shouldBe empty                                         // nothing queued
+    service.venueScraped(Multikino, Seq(movie(Multikino, "Lalka"), movie(Multikino, "Matilda")))
+    service.drain()
+    batches.loneElement.moved shouldBe true
+  }
+
   it should "report how large its families are: the largest, its busiest node, and none past a region" in {
     val world    = new World
     world.scrapes = Map(Multikino -> Seq(movie(Multikino, "Lalka"), movie(Multikino, "Matilda")), Helios -> Seq(movie(Helios, "Lalka")))
