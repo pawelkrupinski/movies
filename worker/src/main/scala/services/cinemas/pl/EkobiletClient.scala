@@ -293,10 +293,11 @@ object EkobiletClient {
     val paragraphs = document.select("#offcanvasRightInfo .offcanvas-body p").asScala.toSeq
       .map(_.text.trim).filter(_.nonEmpty)
     val metadata = paragraphs.collectFirst(Function.unlift(MetadataLine.findPrefixMatchOf))
-    // A credits paragraph of its own, else the labels after the metadata line's year ("… 71 min
-    // reżyseria: Pete Ohs obsada: Lena Góra, …" — Kino Rejs): either way each label ends at the next.
-    val credits  = paragraphs.find(CreditsLabel.findPrefixOf(_).isDefined).orElse(metadata.map(_.source.toString))
-      .map(labelledCredits).getOrElse(Map.empty)
+    // The labels after the metadata line's year ("… 71 min reżyseria: Pete Ohs obsada: Lena Góra, …" — Kino Rejs)
+    // and a credits paragraph of its own, read together — the paragraph's winning a label both carry — so a panel
+    // splitting them (the director on the metadata line, the cast below) keeps both. Each label ends at the next.
+    val credits  = metadata.map(m => labelledCredits(m.source.toString)).getOrElse(Map.empty) ++
+      paragraphs.find(CreditsLabel.findPrefixOf(_).isDefined).map(labelledCredits).getOrElse(Map.empty)
     def names(text: Option[String]): Seq[String] = text.toSeq.flatMap(_.split(',')).map(_.trim).filter(_.nonEmpty)
     FilmDetail(
       synopsis       = paragraphs.find(p => MetadataLine.findPrefixMatchOf(p).isEmpty && CreditsLabel.findPrefixOf(p).isEmpty),
