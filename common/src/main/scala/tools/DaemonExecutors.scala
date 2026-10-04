@@ -165,10 +165,17 @@ enum WhenFull(val handler: RejectedExecutionHandler) {
   case RunOnCaller extends WhenFull((task: Runnable, pool: ThreadPoolExecutor) =>
     if (pool.isShutdown) throw new RejectedExecutionException("shut down")
     else task.run())
-  /** The submitting thread waits until the queue has room: order is kept, the producer blocks. */
+  /** The submitting thread waits until the queue has room: order is kept, the producer blocks.
+   *  Room can come from the pool shutting down — `shutdownNow` drains the queue after its workers
+   *  stopped taking from it — so a task that lands in the queue of a pool shut down meanwhile is
+   *  taken back and refused (cancelled by [[DaemonExecutors.dropRejectedAfterShutdown]]), never left
+   *  where nothing will run it. */
   case WaitForRoom extends WhenFull((task: Runnable, pool: ThreadPoolExecutor) =>
     if (pool.isShutdown) throw new RejectedExecutionException("shut down")
-    else pool.getQueue.put(task))
+    else {
+      pool.getQueue.put(task)
+      if (pool.isShutdown && pool.getQueue.remove(task)) throw new RejectedExecutionException("shut down")
+    })
 }
 
 /** An `AbstractExecutorService` whose lifecycle (`shutdown` / `shutdownNow` /

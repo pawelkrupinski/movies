@@ -77,6 +77,24 @@ class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
     try done.await(2, TimeUnit.SECONDS) shouldBe true finally caller.interrupt()
   }
 
+  // A producer waiting for room got it from `shutdownNow` draining the queue — after the pool had
+  // stopped taking from it — and put its task where nothing would ever run it, its future forever
+  // incomplete. A task that lands in the queue of a pool shut down meanwhile is taken back, cancelled.
+  it should "cancel a task whose producer got room only from the pool shutting down" in {
+    val pool    = DaemonExecutors.singleThreadExecutor("stranded-wait-for-room", queueCapacity = 1)
+    val release = new CountDownLatch(1)
+    pool.execute(() => try release.await() catch { case _: InterruptedException => () })
+    pool.execute(() => ())                                       // fills the queue
+    val submitted = new java.util.concurrent.atomic.AtomicReference[java.util.concurrent.Future[Int]]()
+    val producer  = new Thread(() => submitted.set(pool.submit(() => 1)))
+    producer.setDaemon(true)
+    producer.start()
+    Eventually.eventually(producer.getState shouldBe Thread.State.WAITING, timeoutMs = 5000, pollMs = 5)
+    pool.shutdownNow()
+    producer.join(5000)
+    an[java.util.concurrent.CancellationException] should be thrownBy submitted.get.get(2, TimeUnit.SECONDS)
+  }
+
   "boundedEC" should "cap concurrency for a single EC" in {
     val peak = ExecutorProbes.peakConcurrency(10, IndexedSeq(DaemonExecutors.boundedEC("bounded", 3)))
     peak should be <= 3
