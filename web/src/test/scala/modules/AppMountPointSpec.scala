@@ -103,16 +103,18 @@ class AppMountPointSpec extends AnyFlatSpec with Matchers {
   // Caddy, so neither ever carries the country prefix — mounting them under it
   // would crashloop every non-Polish pod and blank its metrics.
   "the operational endpoints" should "answer at the host root, wherever the app is mounted" in {
-    val routes = AppLoader.rootOperationalRoutes(stubAction("health"), stubAction("metrics"))
+    val routes = AppLoader.rootOperationalRoutes(stubAction("health"), stubAction("ready"), stubAction("metrics"))
     routes.handlerFor(FakeRequest("GET", "/health")) should be (defined)
+    routes.handlerFor(FakeRequest("GET", "/ready")) should be (defined)
     routes.handlerFor(FakeRequest("GET", "/metrics")) should be (defined)
   }
 
   it should "claim nothing else, so the mounted router still owns every page" in {
-    val routes = AppLoader.rootOperationalRoutes(stubAction("health"), stubAction("metrics"))
+    val routes = AppLoader.rootOperationalRoutes(stubAction("health"), stubAction("ready"), stubAction("metrics"))
     routes.handlerFor(FakeRequest("GET", "/")) shouldBe empty
     routes.handlerFor(FakeRequest("GET", "/uk/kent/")) shouldBe empty
     routes.handlerFor(FakeRequest("GET", "/uk/health")) shouldBe empty
+    routes.handlerFor(FakeRequest("GET", "/uk/ready")) shouldBe empty
     routes.handlerFor(FakeRequest("POST", "/health")) shouldBe empty
   }
 

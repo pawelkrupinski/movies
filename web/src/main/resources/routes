@@ -160,6 +160,8 @@ DELETE  /api/me                     controllers.UserStateController.deleteAccoun
 
 # ── Health / Uptime ───────────────────────────────────────────────────────────
 GET     /health                     controllers.HealthController.check
+# Readiness: 503 until the read model has completed a whole read (see HealthController).
+GET     /ready                      controllers.HealthController.ready
 # Prometheus exposition: the in-app /uptime health, JVM/process metrics, and the HTTP request
 # counter and latency histogram from modules.HttpMetricsFilter.
 #

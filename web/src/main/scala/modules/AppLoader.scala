@@ -57,12 +57,12 @@ class AppLoader extends ApplicationLoader {
 
 object AppLoader {
 
-  /** The two endpoints that must answer at the HOST ROOT no matter where the
+  /** The endpoints that must answer at the HOST ROOT no matter where the
    *  application is mounted, layered IN FRONT of the mounted router.
    *
    *  Everything else about this deployment moved one segment down, and that is
    *  the point — but these two are not fetched by a browser following a link.
-   *  `/health` is hit by the kubelet on the POD's own address (startup,
+   *  `/health` and `/ready` are hit by the kubelet on the POD's own address (startup,
    *  readiness and liveness probes in `movies-gitops/web/base/all.yaml`), and
    *  `/metrics` by a Prometheus that runs outside the cluster and scrapes
    *  `10.20.0.12:<nodePort>/metrics` directly. Neither goes through Caddy, so
@@ -72,10 +72,11 @@ object AppLoader {
    *
    *  Layered unconditionally rather than only for a prefixed country, so there
    *  is ONE routing shape to reason about: at the root the mounted router serves
-   *  the same two paths through the same actions, and the overlay is a no-op. */
-  private[modules] def rootOperationalRoutes(health: => Handler, metrics: => Handler): Router =
+   *  the same paths through the same actions, and the overlay is a no-op. */
+  private[modules] def rootOperationalRoutes(health: => Handler, ready: => Handler, metrics: => Handler): Router =
     Router.from {
       case GET(p"/health")  => health
+      case GET(p"/ready")   => ready
       case GET(p"/metrics") => metrics
     }
 
@@ -202,7 +203,7 @@ class AppComponents(context: Context, val env: Env, val country: Country, val mo
   // `router.RoutesPrefix`, so every reverse route (`controllers.routes.*`, the
   // asset URLs in every template) emits the deployment's mount point too.
   lazy val router: Router =
-    AppLoader.rootOperationalRoutes(healthController.check, metricsController.metrics)
+    AppLoader.rootOperationalRoutes(healthController.check, healthController.ready, metricsController.metrics)
       .orElse(new Routes(httpErrorHandler, landingController, wellKnownController, movieController, catalogController, clientSupportController, debugController, debugStreamController, authController, userStateController, healthController, metricsController, uptimeController, tasksController, legalController, supportController, facebookDataDeletionController, envConfigController, identityAdminController, assets)
         .withPrefix(httpConfiguration.context))
 

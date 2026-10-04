@@ -441,7 +441,62 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.screeningsForCity("wroclaw").map(_._id) shouldBe Seq("s1")
   }
 
-  it should "cost nothing once the model is warm" in {
+  // A boot whose films read but whose screenings did not serves every film with no showtimes,
+  // and `movies` is not empty, so a cold retry gated on "no films" never looked again — the
+  // site stayed showtime-less until the 30-minute backstop. Cold is "no complete read yet".
+  it should "re-read when the boot read the films but not the screenings" in {
+    @volatile var screeningsFail = true
+    val repository = new InMemoryReadModelRepository {
+      override def foreachScreening(f: CityScreening => Unit): tools.ScanOutcome =
+        if (screeningsFail) tools.ScanOutcome.of(whole = false, "screenings fail on purpose") else super.foreachScreening(f)
+    }
+    repository.upsertMovie(movie("belle|2021"))
+    repository.upsertScreening(screening("s1", "belle|2021", "wroclaw"))
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
+    rm.reload()
+    rm.allMovies().map(_._id) shouldBe Seq("belle|2021")
+    rm.hydrated shouldBe false
+
+    screeningsFail = false
+    rm.coldRetryTick()
+
+    rm.screeningsForCity("wroclaw").map(_._id) shouldBe Seq("s1")
+    rm.hydrated shouldBe true
+  }
+
+  // `hydrated` is what the web pod's `/ready` reports: a rolling deploy must not hand traffic
+  // to a pod whose boot read failed, nor hold back one that read a genuinely empty corpus.
+  "hydrated" should "stay false until a read of both collections completes" in {
+    val repository = new UnreadableReadModelRepository
+    repository.upsertMovie(movie("belle|2021"))
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
+    rm.hydrated shouldBe false
+    rm.reload()
+    rm.hydrated shouldBe false
+
+    repository.healReads()
+    rm.reload()
+    rm.hydrated shouldBe true
+  }
+
+  it should "be true for a corpus that really is empty" in {
+    val rm = new WebReadModel(new InMemoryReadModelRepository, clock = _root_.tools.SpecClock.Pinned)
+    rm.reload()
+    rm.hydrated shouldBe true
+  }
+
+  it should "stay true once reached, though a later read fails — a warm model keeps serving" in {
+    val repository = new UnreadableReadModelRepository
+    repository.healReads()
+    repository.upsertMovie(movie("belle|2021"))
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
+    rm.reload()
+    repository.failingReads = true
+    rm.reload()
+    rm.hydrated shouldBe true
+  }
+
+  "coldRetryTick" should "cost nothing once the model is warm" in {
     val repository = new InMemoryReadModelRepository
     repository.upsertMovie(movie("belle|2021"))
     val rm = started(repository)
