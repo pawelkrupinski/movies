@@ -30,18 +30,17 @@ class KinoprogrammClient(
   http: HttpFetch,
   path: String,                 // the venue page's path, e.g. "/kino/hannover/kino-am-raschplatz-60676"
   override val cinema: Cinema,
-  /** The day the horizon is measured from; `None` means today in Germany. */
+  /** The day the horizon is measured from, asked per scrape — today in Germany. */
   today: => LocalDate
 ) extends CinemaScraper {
   import KinoprogrammClient._
-
-  private def referenceDay: LocalDate = today
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
 
   override def sourceUrl: Option[String] = Some(BaseUrl + path)
 
   def fetch(): Seq[CinemaMovie] = {
+    val referenceDay = today
     val films = Seq.newBuilder[Film]
     // A week that fails to fetch or parse counts as blank; only a walk on which
     // EVERY week failed fails the scrape (`ScrapeHorizon` rethrows), so one bad

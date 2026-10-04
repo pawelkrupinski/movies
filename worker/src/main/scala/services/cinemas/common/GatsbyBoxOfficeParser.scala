@@ -284,10 +284,9 @@ object GatsbyBoxOfficeParser {
  * trailing-junk quirk, and all tag screenings from the identical dotted
  * vocabulary.
  *
- * `WebediaShowtimesClient` still carries its own inline copies of both rules
- * and should be migrated onto this object (at which point this belongs in its
- * own file next to it) — that migration is deliberately out of scope for the
- * change that introduced this file.
+ * `WebediaShowtimesClient` shares [[cleanBookingUrl]]; it still reads its own
+ * booking link (first provider's URL, no `default` preference) and its own tag
+ * table, whose German/Spanish vocabulary differs from the UK brands'.
  */
 object WebediaBoxOffice {
 

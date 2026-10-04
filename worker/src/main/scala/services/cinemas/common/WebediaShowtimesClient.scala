@@ -302,7 +302,7 @@ object WebediaShowtimesClient {
         (s \ "startsAt").asOpt[String].flatMap(parseLocalDateTime).map { dt =>
           val booking = (s \ "data" \ "ticketing").asOpt[Seq[JsValue]].getOrElse(Nil)
             .flatMap(t => (t \ "urls").asOpt[Seq[String]].getOrElse(Nil))
-            .headOption.map(cleanBookingUrl)
+            .headOption.map(WebediaBoxOffice.cleanBookingUrl)
           Showtime(dt, booking, None,
             formatTokens(bucketKey, (s \ "tags").asOpt[Seq[String]].getOrElse(Nil), market))
         }
@@ -407,10 +407,4 @@ object WebediaShowtimesClient {
         .findFirstMatchIn(s).map(_.group(1).toInt).getOrElse(0)
     Some(part(market.hourMarker) * 60 + part(market.minuteMarker)).filter(_ > 0)
   }
-
-  /** The relay booking URLs arrive with a trailing "; SSR" render marker glued
-   *  on ("…&code=2D; SSR"); take the URL up to the first whitespace and drop a
-   *  stray trailing ";". */
-  private def cleanBookingUrl(url: String): String =
-    url.trim.split("\\s+").headOption.getOrElse(url).stripSuffix(";")
 }
