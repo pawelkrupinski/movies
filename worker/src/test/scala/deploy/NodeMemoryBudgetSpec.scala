@@ -130,7 +130,8 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
     ("web", "es") ->  762, ("worker", "es") ->  757,
     // web-us DERIVED, not measured: its 7d RSS peak to 2026-10-03 was 1524 MiB on -Xmx1024m, less the
     // 256 MiB its heap then gave back (-Xmx768m). Replace with a measured 7d peak after 2026-10-10.
-    ("web", "us") -> 1268, ("worker", "us") -> 1647,
+    // worker-us re-measured 2026-10-04 on -Xmx1152m: 1528 MiB over six boots in 4h (1570-1620 on 1280m).
+    ("web", "us") -> 1268, ("worker", "us") -> 1528,
   )
 
   /** How far above its measured peak a request may sit. `-Xms` equals `-Xmx` on every deployment
