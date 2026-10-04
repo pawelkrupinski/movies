@@ -4,9 +4,9 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import models._
 import tools.{HttpFetch, HttpRead}
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.time.{LocalDate, LocalDateTime, LocalTime, MonthDay, Period}
 import java.time.format.TextStyle
 import java.util.Locale
 import scala.jdk.CollectionConverters._
@@ -141,19 +141,18 @@ object TheOldCourtClient {
     }
   }
 
-  /** "Fri 7th Aug 20:30-21:15" → 2026-08-07T20:30, taking the year from `today`. */
-  private def parseWhen(text: String, today: LocalDate): Option[LocalDateTime] =
+  /** "Fri 7th Aug 20:30-21:15" → 2026-08-07T20:30, taking the year from `today`.
+   *  The listing only ever runs forward, so a date more than a day behind us is
+   *  next year's — the December→January rollover, and a 29 February listed in a
+   *  non-leap December, without a year on the page. */
+  def parseWhen(text: String, today: LocalDate): Option[LocalDateTime] =
     WhenPat.findFirstMatchIn(text).flatMap { m =>
       for {
-        month <- MonthsByAbbreviation.get(m.group(2).toLowerCase(Locale.ROOT).take(3))
-        time  <- Try(LocalTime.of(m.group(3).toInt, m.group(4).toInt)).toOption
-        date  <- Try(LocalDate.of(today.getYear, month, m.group(1).toInt)).toOption
-      } yield {
-        // The listing only ever runs forward, so a date already behind us is next
-        // year's — the December→January rollover, without a year on the page.
-        val resolved = if (date.isBefore(today.minusDays(1))) date.plusYears(1) else date
-        LocalDateTime.of(resolved, time)
-      }
+        month    <- MonthsByAbbreviation.get(m.group(2).toLowerCase(Locale.ROOT).take(3))
+        time     <- Try(LocalTime.of(m.group(3).toInt, m.group(4).toInt)).toOption
+        dayMonth <- Try(MonthDay.of(month, m.group(1).toInt)).toOption
+        date     <- ScraperParse.upcomingDate(dayMonth, today, grace = Period.ofDays(1))
+      } yield LocalDateTime.of(date, time)
     }
 
   private[uk] def cleanTitle(raw: String): String = StrandSuffixPat.replaceAllIn(raw, "").trim

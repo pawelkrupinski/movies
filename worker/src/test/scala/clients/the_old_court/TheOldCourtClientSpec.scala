@@ -81,4 +81,12 @@ class TheOldCourtClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     fromDecember.find(_.movie.title == "Whilst she was gone").value
       .showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.of(2027, 8, 7, 20, 30))
   }
+
+  it should "place a 29 February listed from a non-leap December on next year's leap day" in {
+    // The page prints no year, so a leap day seen in December 2027 can only be
+    // February 2028 — building it in 2027 first (which has no 29 February) used
+    // to drop the screening outright.
+    TheOldCourtClient.parseWhen("Tue 29th Feb 19:00-21:00", LocalDate.of(2027, 12, 10)) shouldBe
+      Some(LocalDateTime.of(2028, 2, 29, 19, 0))
+  }
 }
