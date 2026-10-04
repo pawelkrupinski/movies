@@ -1279,6 +1279,22 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     taken(listing(KinoMuza, "ReTransmisje Met: Na żywo w HD - Così fan tutte"), Seq(brass)) shouldBe None
   }
 
+  it should "take it through another title the listing is searched by names several films on IMDb" in {
+    // PL Helios's "Camino dla opornych - KNT" publishes the original title "Santiago", which IMDb lists a dozen films
+    // under: that title names none of them, and is no namesake of the listing's own title. The plain listing beside it
+    // takes Compostelle; Helios's is not Gordon Douglas's 1956 "Santiago" its original names.
+    val compostelle = F(1404604, "Compostelle", 2026, "Ben Eyrich", 98, popularity = 2, alternatives = Seq("Santiago: The Camino Therapy"),
+      imdbTitles = Seq("Camino dla opornych"))
+    val santiagos   = Seq(F(197704, "Santiago", 1956, "Gordon Douglas", 118, popularity = 5, imdbTitles = Seq("Santiago")),
+      F(86324, "Santiago", 2007, "Somebody", 131, popularity = 1, imdbTitles = Seq("Santiago")))
+    // (its learned "KNT" decoration off, which this case's listing does not carry)
+    val helios = listing(Helios, "Camino dla opornych", runtime = Some(98)).copy(originalTitle = Some("Santiago"))
+    val plain  = listing(KinoMuza, "Camino dla opornych")
+    def film(l: Listing) = shipped(Seq(l), compostelle +: santiagos).decisionOf(l.key).film
+    film(plain) shouldBe Some(1404604)
+    film(helios) should not be Some(197704)
+  }
+
   it should "leave a title IMDb lists two films under to what else the listing publishes" in {
     // PL "Lalka": IMDb lists Has's 1968 film and Kawalski's 2026 one under it; a listing publishing nothing else is
     // neither by the title alone.

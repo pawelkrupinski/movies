@@ -29,12 +29,14 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     // The ONE film IMDb lists under the listing's title (an AKA TMDB does not carry), when no film beside it carries the
     // title already: it carries it too, so the listing's facts are read against a film its title names. PL "Camino dla
     // opornych" [97′] read IMDb's Polish title of "Compostelle" as no relation, and its runtime alone denied the film.
-    val titledBy   = imdbTitles.filter(_._2.exists(_.exists(_.isLetter))) match {
-      case one if one.sizeIs == 1 => one.headOption.filter { case (id, _) =>
-        this.pool.exists(_.tmdbId == id) && !this.pool.exists(other => other.tmdbId != id && IdentityMeasures.TitlesItsOwn(related(other.tmdbId).value)) &&
-          this.pool.find(_.tmdbId == id).exists(candidate => IdentityMeasures.takesImdbTitle(listing, candidate.film)) }
-      case _ => None
-    }
+    // A namesake of the listing's own title, not of the original it publishes beside it: Helios bills "Camino dla
+    // opornych" with the original "Santiago", which Gordon Douglas's 1956 film is titled — the original is a fact its
+    // own measure weighs, and IMDb's title names the film the listing's title is.
+    lazy val untranslated = listing.copy(originalTitle = None)
+    val titledBy   = IdentityMeasures.soleImdbTitled(imdbTitles).filter { case (id, _) =>
+      this.pool.exists(_.tmdbId == id) && !this.pool.exists(other => other.tmdbId != id &&
+        IdentityMeasures.TitlesItsOwn(IdentityMeasures.titleRelation(untranslated, other.film, houses, qualifiers).value)) &&
+        this.pool.find(_.tmdbId == id).exists(candidate => IdentityMeasures.takesImdbTitle(listing, candidate.film)) }
     val scoredPool = titledBy.fold(this.pool) { case (id, titles) => this.pool.map(candidate =>
       if (candidate.tmdbId == id) candidate.copy(film = IdentityMeasures.withVenueTitles(candidate.film, titles.toSeq.sorted)) else candidate) }
     val relationOf = titledBy.fold(related) { case (id, _) =>

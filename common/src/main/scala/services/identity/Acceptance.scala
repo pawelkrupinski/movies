@@ -218,7 +218,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     // it ("Miłość 2024" is not Haneke's 2012 film), no numbered set ("Bolek i Lolek – zestaw IV"), a title of words,
     // not a number ("2026"), and no stage work broadcast as a non-season film (the Met's "Così fan tutte").
     def titledRung(scored: Scored): Boolean =
-      scored.imdbTitled.exists(_.exists(_.isLetter)) && suggested.count(_.imdbTitled.nonEmpty) == 1 &&
+      IdentityMeasures.soleImdbTitled(ranked.filter(_.imdbTitled.nonEmpty).map(s => s.candidate.tmdbId -> s.imdbTitled).toMap)
+        .exists(_._1 == scored.candidate.tmdbId) &&
         !ranked.exists(other => (other ne scored) && other.category("title").exists(IdentityMeasures.TitlesItsOwn)) &&
         IdentityMeasures.takesImdbTitle(scored.listing, scored.candidate.film)
     def rung(scored: Scored): Boolean = titledRung(scored) || scored.imdb.exists { place =>

@@ -1152,6 +1152,16 @@ object IdentityMeasures {
   val Rivalling: Set[String] = Set("exact", "original", "alternative")
   /** The relations under which a film carries the listing's title as one of its own: whole, or as a delimited piece. */
   val TitlesItsOwn: Set[String] = Rivalling + "segment"
+  /** The ONE film the listing's search titles name on IMDb ([[CandidateQuery.ImdbTitled]]), with the titles that name
+   *  it: a title IMDb lists under several films names none of them ("Santiago", the original Helios publishes beside
+   *  "Camino dla opornych", is a dozen films), and the films the rest name must be one. `titled`: each film with the
+   *  titles IMDb lists it under. */
+  def soleImdbTitled(titled: Map[Int, Set[String]]): Option[(Int, Set[String])] = {
+    val sole = titled.toSeq.flatMap { case (film, titles) => titles.filter(_.exists(_.isLetter)).map(_ -> film) }
+      .groupMap(_._1)(_._2).collect { case (title, Seq(film)) => film -> title }.toSeq.groupMap(_._1)(_._2)
+    Option.when(sole.sizeIs == 1)(sole.head).map { case (film, titles) => film -> titles.toSet }
+  }
+
   /** May the listing take a title IMDb lists `f` under (an AKA TMDB does not carry) as `f`'s own: no year the title
    *  writes, or the venue states, against the film's ("Miłość 2024" is not Haneke's 2012 film), no director it credits
    *  against the film's, no numbered set ("Bolek i Lolek – zestaw
