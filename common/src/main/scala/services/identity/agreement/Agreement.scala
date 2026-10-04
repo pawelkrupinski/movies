@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver,
+import services.identity.{Acceptance, Answer, CandidateQuery, DetailFacts, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver,
   Listing}
 import services.movies.{TitleContainment, TitleNormalizer}
 
@@ -48,8 +48,10 @@ trait FamilyAnswers {
 final case class FamilyPick(family: VoterFamily, id: String, record: SourceRecord)
 
 /** What a family made of a cluster: the film it took, if any, and every film's record it weighed on the way — a family
- *  that weighed a film and took none has looked at it and turned it down. */
-final case class FamilyVerdict(family: VoterFamily, pick: Option[FamilyPick], weighed: Seq[SourceRecord] = Nil)
+ *  that weighed a film and took none has looked at it and turned it down, unless it is the film its evidence `leaning`
+ *  favours though no rule took it ([[Agreement.leaningOf]]). */
+final case class FamilyVerdict(family: VoterFamily, pick: Option[FamilyPick], weighed: Seq[SourceRecord] = Nil,
+                               leaning: Option[SourceRecord] = None)
 
 object FamilyVerdict {
   /** A family that took `pick`. */
@@ -116,12 +118,28 @@ object Agreement {
         (for { id <- lookups.idOf(number); answered <- answers.record(id).toOption; record <- answered }
           yield FamilyVerdict(answers.family, Some(FamilyPick(answers.family, id, record)), lookups.weighed))
           .fold[Answer[FamilyVerdict]](Answer.Unknown)(Answer.Known(_))
-      case _ => Answer.Known(FamilyVerdict(answers.family, None, lookups.weighed)) // none, or the family splits the cluster: no one film
+      case _ => // none, or the family splits the cluster: no one film
+        Answer.Known(FamilyVerdict(answers.family, None, lookups.weighed, leaningOf(listings, lookups, answers, normalizer, calibration)))
     }
   }
 
+  /** The film a family's evidence LEANS to though it took none: on every listing, its best undenied candidate, at
+   *  [[services.identity.Acceptance.LeanMargin]] times the runner-up's probability — the model's own lean
+   *  (`Acceptance.leaning`) over the family's search. Not a pick, never counted as one: only what keeps the family's
+   *  having weighed the film from reading as turning it down (PL "Sukienka": RT weighed "The Dress" at 6.0%, its
+   *  runner-up at 2.7%; Tempo's IMDb weighed "Tempo" at 2.9% under "Old" at 33.0%, and leans to that). */
+  private[agreement] def leaningOf(listings: Seq[Listing], lookups: FamilyLookups, answers: FamilyAnswers, normalizer: TitleNormalizer,
+                                   calibration: IdentityCalibration): Option[SourceRecord] =
+    IdentityResolver.candidatesOf(listings, lookups, normalizer, calibration)(_ => true).map { node =>
+      val eligible = node.candidates.filterNot(_.denied).sortBy(-_.probability)
+      eligible.headOption.filter(best => eligible.lift(1).forall(runnerUp => best.probability >= Acceptance.LeanMargin * runnerUp.probability)).map(_.tmdbId)
+    }.distinct match {
+      case Seq(Some(number)) => lookups.idOf(number).flatMap(id => answers.record(id).toOption.flatten)
+      case _                 => None
+    }
+
   /** The film ≥ [[Quorum]] families' picks agree on, when no family picks another (picks join, through any agreeing record, by a shared cross-id, else
-   *  by [[equivalent]] facts) nor weighed it and took none, the listing's title names it ([[namesIt]]), the listing bills
+   *  by [[equivalent]] facts) nor weighed it and took none leaning to another, the listing's title names it ([[namesIt]]), the listing bills
    *  one work ([[billsSeveral]]) and no stage work ([[stagesAWork]]). The experiment's one wrong without the title guard:
    *  "Akademia Polskiego Filmu: Kino żydowskie w Polsce" → "Znachor" (1937), whose year and director fit a series'
    *  episode; the replay's without the weighed one: "Okładka „Tempo”", a Finnish dance film, → "Tempo" (2003), which
@@ -133,7 +151,8 @@ object Agreement {
         val lead    = group.head
         val records = group.map(_.record)
         val merged  = lead.record.copy(crossIds = records.flatMap(_.crossIds).toMap ++ lead.record.crossIds)
-        val turnedDown = verdicts.exists(verdict => verdict.pick.isEmpty && verdict.weighed.exists(weighed => records.exists(sameFilm(_, weighed))))
+        def isIt(record: SourceRecord) = records.exists(sameFilm(_, record))
+        val turnedDown = verdicts.exists(verdict => verdict.pick.isEmpty && verdict.weighed.exists(isIt) && !verdict.leaning.exists(isIt))
         Option.when(listings.nonEmpty && !turnedDown && listings.forall(listing => namesIt(listing, records.map(_.film)) && !billsSeveral(listing) && !stagesAWork(listing)))(
           AgreedFilm(group.map(_.family).toSet, merged, group.map(pick => pick.family -> pick.id).toMap))
       case _ => None

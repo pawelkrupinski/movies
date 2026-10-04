@@ -73,6 +73,18 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(dance, takers :+ FamilyVerdict(VoterFamily.Imdb, None, Seq(SourceRecord(klondike1932)))) should not be empty
   }
 
+  it should "not turn it down while that film is the one its own evidence leans to" in {
+    // PL "Sukienka" (fixture identity-unmatched): RT weighed "The Dress" at 6.0%, its runner-up at 2.7% — below its cut, but
+    // the film its evidence favours; Tempo's IMDb weighed it at 2.9% under "Old" at 33%, and leaned to that
+    val dress  = film("The Dress", 2020, "Tadeusz Łysiak", 30)
+    val bare   = Seq(listing(KinoMuza, "Sukienka"))
+    val takers = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(f => FamilyVerdict.took(FamilyPick(f, "1", SourceRecord(dress.copy(alternativeTitles = Seq("Sukienka"))))))
+    val rt     = SourceRecord(dress.copy(year = None))
+    Agreement.agreed(bare, takers :+ FamilyVerdict(VoterFamily.RottenTomatoes, None, Seq(rt))) shouldBe None
+    Agreement.agreed(bare, takers :+ FamilyVerdict(VoterFamily.RottenTomatoes, None, Seq(rt), leaning = Some(rt))) should not be empty
+    Agreement.agreed(bare, takers :+ FamilyVerdict(VoterFamily.RottenTomatoes, None, Seq(rt), leaning = Some(SourceRecord(klondike1932)))) shouldBe None
+  }
+
   "A listing naming a stage work" should "agree on none of its screen namesakes" in {
     val relay = listing(KinoMuza, "ReTransmisje Met: Na żywo w HD - Così fan tutte")
     Agreement.stagesAWork(relay) shouldBe true
