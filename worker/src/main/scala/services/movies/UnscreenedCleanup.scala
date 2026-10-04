@@ -1,19 +1,33 @@
 package services.movies
 
-import models.SourceData
+import models.{MovieRecord, SourceData}
 import play.api.Logging
 import services.Stoppable
 import tools.DaemonExecutors
 
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService, TimeUnit}
+import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
- * Daily tick: drop rows that no cinema is currently showing — every cinema's
- * scrape tick has pruned its slot via `recordCinemaScrape`, leaving an empty
- * `cinemaData` view. Without this cleanup the cache
- * + Mongo grow forever, holding enrichment for thousands of films that
- * dropped out of all schedules months ago.
+ * Drops rows that no cinema is currently showing — an empty (or husk-only) cinema
+ * view. Without this cleanup the cache + Mongo grow forever, holding enrichment for
+ * thousands of films that dropped out of all schedules months ago.
+ *
+ * EVENT-DRIVEN (2026-10-04; it was a daily walk of the whole cache). The cache hands
+ * this class every row it STORES ([[MovieCache.onStored]]) — the identity projection's
+ * write, another writer's `put`, a change-stream apply — and a row stored with no live
+ * cinema slot is nominated there and judged on this class's own thread moments later:
+ * the write that leaves a film with no cinema is the event.
+ *
+ * What an event can miss, and the backstop each has:
+ *  - nominations queued in memory when the process dies, and the rows the boot hydrate
+ *    stored before this class subscribed: ONE whole-cache pass shortly after each boot
+ *    ([[start]]), never repeated;
+ *  - another process's write whose change-stream event never arrived: the cache's own
+ *    backstop rehydrate stores every row again, and each row it stores is nominated as
+ *    any other write is. No periodic pass of this class's own is left.
  *
  * Trade-off: a film that returns after a gap pays the full re-enrichment
  * cost on its next scrape (TMDB search → IMDb suggestion → MC/RT/Filmweb
@@ -23,7 +37,7 @@ import scala.util.Try
  *
  * TWO WITNESSES, because that trade-off is only acceptable when the row is
  * genuinely dead. An empty in-memory `cinemaData` is not proof of that: the
- * first tick fires 20s after EVERY boot (below), so a cache that has not
+ * boot pass fires 20s after EVERY boot (below), so a cache that has not
  * finished hydrating reads as "no cinema screens this film" for rows that are
  * playing tonight. On 2026-07-27 that cost 19 still-playing arthouse features
  * (`Filipinana (2026)`, `Clarissa (2026)`, `Błogosławieni niszczyciele (2026)`,
@@ -50,32 +64,58 @@ import scala.util.Try
  * reports a failed slot read as unreadable rather than as a film with no cinemas.
  * Exactly the rows a delete would clear, from exactly the read a serve would use.
  *
- * Lifecycle owned by `AppLoader` (`start()` schedules the daily tick;
- * `stop()` is registered as a shutdown hook). Per CLAUDE.md, the class
- * never self-subscribes or self-schedules.
+ * Lifecycle owned by the wiring (`start()` subscribes to the cache and schedules
+ * the boot pass; `stop()` runs at shutdown) — the class never self-subscribes or
+ * self-schedules. The scheduler is injected so a spec can hold the work and run it.
  */
-class UnscreenedCleanup(cache: MovieCache, repository: MovieRepository) extends Stoppable with Logging {
+class UnscreenedCleanup(
+  cache:      MovieCache,
+  repository: MovieRepository,
+  scheduler:  ScheduledExecutorService = DaemonExecutors.scheduler("unscreened-cleanup")
+) extends Stoppable with Logging {
   // Fold titles with the rules the corpus was keyed under, not a process default.
   private val normalizer: services.movies.TitleNormalizer = cache.normalizer
 
-  private val scheduler = DaemonExecutors.scheduler("unscreened-cleanup")
-
-  // First run shortly after boot so newly hydrated rows get a pass; then
-  // every 24h. The hour-of-day this lands on shifts with each restart, which
-  // is fine — there's no consumer timing dependency.
+  // The boot pass, once, shortly after boot.
   private val StartupDelaySeconds = 20L
-  private val RunEveryHours       = 24L
+
+  // Keys a write nominated that no drain has judged yet, and whether a drain is queued for them.
+  private val nominated   = ConcurrentHashMap.newKeySet[CacheKey]()
+  private val drainQueued = new AtomicBoolean(false)
 
   /** Walk every cached row; drop the ones with no cinema slot left. Returns
-   *  the count of rows removed. Public so the backfill script (and tests)
-   *  can invoke a one-shot pass; the daily scheduler calls the same method.
+   *  the count of rows removed. Public so a script (and tests) can invoke a
+   *  one-shot pass; the boot pass calls the same method.
    *
    *  An empty in-memory `cinemaData` only NOMINATES a row — it never convicts
    *  it. Every candidate is corroborated against the durable record, and a row
    *  dies only when THAT reports no cinemas either, on a read that actually
    *  succeeded. See the class doc for why. */
-  def removeUnscreened(): Int = {
-    val candidates = cache.entries.collect { case (k, e) if !e.cinemaData.values.exists(alive) => k }
+  def removeUnscreened(): Int = removeAmong(cache.entries)
+
+  /** Judge the rows writes nominated since the last drain, as the cache holds them NOW: a row written
+   *  again with a cinema since, or gone from the cache, is no candidate any more. */
+  private[movies] def drainNominated(): Int = {
+    drainQueued.set(false)
+    val keys = nominated.asScala.toSeq
+    keys.foreach(nominated.remove)
+    removeAmong(keys.flatMap(key => cache.get(key).map(key -> _)))
+  }
+
+  /** Called on the writer's thread, under its locks: only queue the key. */
+  private def nominate(key: CacheKey): Unit = {
+    nominated.add(key)
+    if (drainQueued.compareAndSet(false, true))
+      scheduler.execute(quietly("cleanup of nominated rows")(drainNominated()))
+  }
+
+  private def quietly(what: String)(body: => Int): Runnable = () =>
+    Try(body).failed.foreach(exception => logger.warn(s"Unscreened-row $what failed: ${exception.getMessage}"))
+
+  private def unscreened(record: MovieRecord): Boolean = !record.cinemaData.values.exists(alive)
+
+  private def removeAmong(rows: Seq[(CacheKey, MovieRecord)]): Int = {
+    val candidates = rows.collect { case (k, e) if unscreened(e) => k }
     val checked    = candidates.map(key => key -> repository.findByKeyChecked(key))
 
     // An ABSENT row (`None`, read fine) is nothing to keep and nothing to lose: the cache
@@ -130,13 +170,11 @@ class UnscreenedCleanup(cache: MovieCache, repository: MovieRepository) extends 
   private def label(key: CacheKey): String = s"${key.cleanTitle} (${key.year.getOrElse("—")})"
 
   def start(): Unit = {
-    logger.info(s"Unscreened-row cleanup scheduled every ${RunEveryHours}h (first run in ${StartupDelaySeconds}s).")
-    scheduler.scheduleAtFixedRate(
-      () => Try(removeUnscreened()).recover {
-        case exception => logger.warn(s"Unscreened-row cleanup tick failed: ${exception.getMessage}")
-      },
-      StartupDelaySeconds, RunEveryHours * 3600, TimeUnit.SECONDS
-    )
+    cache.onStored((key, record) => if (unscreened(record)) nominate(key))
+    logger.info(s"Unscreened-row cleanup: on each write that leaves a film with no cinema, and one whole-cache pass " +
+      s"in ${StartupDelaySeconds}s.")
+    scheduler.schedule(quietly("cleanup's boot pass")(removeUnscreened()), StartupDelaySeconds, TimeUnit.SECONDS)
+    ()
   }
 
   def stop(): Unit = scheduler.shutdown()

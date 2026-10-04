@@ -127,6 +127,12 @@ trait MovieCache extends MovieCacheReader {
    *  projection reads of a film another writer moved is projected on that, not on a period. */
   def onChanged(listener: FilmId => Unit): Unit
 
+  /** Call `listener` with each row the cache now holds, as it holds it, the moment it is stored — every writer's, the
+   *  identity projection's own included, a change-stream apply, and every row a hydrate or rehydrate loads. Called on the
+   *  writer's thread, often under its locks: a listener only looks at what it is handed and hands the work off, never
+   *  reading or writing the cache or the store inline. */
+  def onStored(listener: (CacheKey, MovieRecord) => Unit): Unit
+
   // ── Internal write surface (services.* only) ─────────────────────────────
   private[services] def put(key: CacheKey, e: MovieRecord): WriteOutcome
   /** The identity projection's write (docs/design/identity-resolver.md §8, phase 5): film `id` AS
@@ -262,7 +268,12 @@ class CaffeineMovieCache(
   private def store(key: CacheKey, record: MovieRecord, id: FilmId): Unit = {
     positive.put(key, record)
     corpusIndex.put(key, id)
+    storedListeners.forEach(_(key, record))
   }
+
+  // Declared before the boot hydrate below, which stores through `store`.
+  private val storedListeners = new java.util.concurrent.CopyOnWriteArrayList[(CacheKey, MovieRecord) => Unit]()
+  def onStored(listener: (CacheKey, MovieRecord) => Unit): Unit = { storedListeners.add(listener); () }
 
   /** The permanent id behind `key`: the one the index holds, else the stored row's, else
    *  a fresh one for a row this cache is about to create. Ids are never re-derived from

@@ -24,6 +24,13 @@ import scala.concurrent.duration._
  *
  * Every store is scanned before the corpus is read, and the corpus before anything is deleted: a film
  * present at any moment of the corpus read protects its rows, and a scan that fails deletes nothing.
+ *
+ * Why this is a sweep and not an action on a film's removal (`MovieCache.retireProjected`, a change-stream
+ * delete), as the unscreened and stranded-side-row cleanups are: at the moment a film leaves, its rows are
+ * as fresh as its last rating refresh, so `keepFor` forbids deleting any of them — they come due `keepFor`
+ * after their last write, a moment no write or delete marks. And a removal is not yet a departure: a merge
+ * retires its loser BEFORE the survivor that takes over the TMDB id can be written (the store's unique
+ * `tmdbId` index orders the two), so "no film holds this id" is briefly true of a film that stays.
  */
 final class OrphanFilmStateSweep(
   stores:      Seq[(String, StampedRows)],

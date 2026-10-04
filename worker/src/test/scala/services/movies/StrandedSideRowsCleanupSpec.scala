@@ -10,8 +10,9 @@ import java.util.concurrent.{ScheduledFuture, ScheduledThreadPoolExecutor, TimeU
 
 /**
  * `StrandedSideRowsCleanup` is the schedule around `MovieRepository.deleteStrandedSideRows`
- * (whose rule `StrandedSideRowsSpec` pins): one run shortly after boot, then daily, and
- * a tick that fails must not take the schedule down with it.
+ * (whose rule `StrandedSideRowsSpec` pins) and the retired-venue sweep: a tick shortly after
+ * boot, then daily, the stranded sweep on the ticks it is due (weekly), and a tick that fails
+ * must not take the schedule down with it.
  */
 class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
 
@@ -40,7 +41,7 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
   "start" should "schedule one sweep shortly after boot and then every 24h, and the tick sweeps" in {
     val (repository, screenings) = repositoryWithStrandedRow()
     val scheduler = new HeldScheduler
-    val cleanup   = new StrandedSideRowsCleanup(repository, () => RetiredVenueRows.none, () => (), scheduler)
+    val cleanup   = new StrandedSideRowsCleanup(repository, () => RetiredVenueRows.none, () => (), () => true, scheduler)
     try {
       cleanup.start()
 
@@ -61,7 +62,7 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
       override def deleteStrandedSideRows(): StrandedSideRows = throw new RuntimeException("mongo went away")
     }
     val scheduler = new HeldScheduler
-    val cleanup   = new StrandedSideRowsCleanup(failing, () => { retiredSwept += 1; RetiredVenueRows.none }, () => (), scheduler)
+    val cleanup   = new StrandedSideRowsCleanup(failing, () => { retiredSwept += 1; RetiredVenueRows.none }, () => (), () => true, scheduler)
     try {
       cleanup.start()
       noException should be thrownBy scheduler.ticks.head._1.run()
@@ -74,7 +75,7 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
     var retiredSwept = 0
     val scheduler = new HeldScheduler
     val cleanup   = new StrandedSideRowsCleanup(repository,
-      () => { retiredSwept += 1; throw new RuntimeException("mongo went away") }, () => (), scheduler)
+      () => { retiredSwept += 1; throw new RuntimeException("mongo went away") }, () => (), () => true, scheduler)
     try {
       cleanup.start()
       noException should be thrownBy scheduler.ticks.head._1.run()
@@ -93,7 +94,7 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
     val scheduler = new HeldScheduler
     val cleanup   = new StrandedSideRowsCleanup(repository,
       () => { events :+= "retired"; throw new RuntimeException("mongo went away") },
-      () => events :+= s"reported:${screenings.findForFilm("dead|2020").isEmpty}", scheduler)
+      () => events :+= s"reported:${screenings.findForFilm("dead|2020").isEmpty}", () => true, scheduler)
     try {
       cleanup.start()
       noException should be thrownBy scheduler.ticks.head._1.run()
@@ -103,7 +104,63 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
 
   "removeStranded" should "return what the repository swept" in {
     val (repository, _) = repositoryWithStrandedRow()
-    new StrandedSideRowsCleanup(repository, () => RetiredVenueRows.none, () => (), new HeldScheduler).removeStranded() shouldBe
+    new StrandedSideRowsCleanup(repository, () => RetiredVenueRows.none, () => (), () => true, new HeldScheduler).removeStranded() shouldBe
       StrandedSideRows(screenings = 1, slots = 0, filmIds = Set("dead|2020"))
+  }
+
+  /** The stranded sweep is a backstop now: a film's own delete takes its side rows (the event), so
+   *  the sweep runs one day in seven, once that day, while the retired-venue sweep — which no film
+   *  delete covers — keeps every daily tick. */
+  "the daily tick" should "run the stranded backstop once a week and the retired-venue sweep every day" in {
+    val (repository, screenings) = repositoryWithStrandedRow()
+    // A Wednesday, the day before the backstop's Thursday.
+    val clock     = new _root_.tools.MutableClock(java.time.Instant.parse("2026-10-07T10:00:00Z"))
+    val runStore  = new services.schedule.InMemoryScheduledRunStore
+    var retired   = 0
+    val scheduler = new HeldScheduler
+    val cleanup   = new StrandedSideRowsCleanup(repository, () => { retired += 1; RetiredVenueRows.none }, () => (),
+      StrandedSideRowsCleanup.weekly(runStore, clock), scheduler)
+    try {
+      cleanup.start()
+      val tick = scheduler.ticks.head._1
+
+      tick.run()                                              // Wednesday: not the backstop's day
+      screenings.findForFilm("dead|2020") should not be empty
+
+      clock.advance(java.time.Duration.ofDays(1))             // Thursday
+      tick.run()
+      screenings.findForFilm("dead|2020") shouldBe empty
+      runStore.claimedIds should have size 1
+
+      screenings.upsertSlot("dead|2020", "helios␟dead", ListedShowtimes(tomorrow, None))
+      clock.advance(java.time.Duration.ofHours(6))            // a second boot's tick, the same Thursday
+      tick.run()
+      (1 to 6).foreach { _ => clock.advance(java.time.Duration.ofDays(1)); tick.run() }   // Friday to Wednesday
+      screenings.findForFilm("dead|2020") should not be empty
+
+      clock.advance(java.time.Duration.ofDays(1))             // the next Thursday
+      tick.run()
+      screenings.findForFilm("dead|2020") shouldBe empty
+      retired shouldBe 10                                     // every tick swept retired venues
+    } finally cleanup.stop()
+  }
+
+  /** What the backstop is a backstop FOR: retiring a film (the identity projection's removal of a
+   *  merge's loser, or of a film no venue lists) deletes its side rows at that moment, no sweep run. */
+  "retiring a film" should "take its side rows with it, without the sweep" in {
+    val screenings = new InMemoryScreeningsRepository
+    val slots      = new InMemorySlotsRepository
+    val repository = new InMemoryMovieRepository(screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
+    repository.upsert("Gone", Some(2026), MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("Gone"), releaseYear = Some(2026), showtimes = tomorrow))))
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val id    = cache.idOf(cache.keyOf("Gone", Some(2026))).get
+    screenings.findForFilm(id.value) should not be empty
+    slots.findForFilm(id.value) should not be empty
+
+    cache.retireProjected(id) shouldBe WriteOutcome.Written
+
+    screenings.findForFilm(id.value) shouldBe empty
+    slots.findForFilm(id.value) shouldBe empty
   }
 }

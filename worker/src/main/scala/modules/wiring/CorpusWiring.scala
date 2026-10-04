@@ -80,11 +80,11 @@ trait CorpusWiring { self: WorkerWiring =>
 
   lazy val unscreenedCleanup = managedResources.stopping(new UnscreenedCleanup(movieCache, movieRepository))
 
-  // The other daily sweep: side-collection rows whose film left the corpus before
-  // deletes and merges carried their rows with them — and, on the same tick, rows filed
-  // under a venue this country's roster no longer lists.
+  // Daily: side-collection rows filed under a venue this country's roster no longer lists. Weekly, on
+  // the same tick: the backstop for rows whose film is gone, which a film's delete carries with it.
   lazy val strandedSideRowsCleanup = managedResources.stopping(new StrandedSideRowsCleanup(movieRepository,
     retiredVenues = () => RetiredVenueRows.sweep(Some(screeningsRepository), Some(slotsRepository),
       VenueRoster.venuesOf(country), now = clock.instant()),
-    afterSweeps = () => retiredVenueCensus.sample()))
+    afterSweeps = () => retiredVenueCensus.sample(),
+    strandedDue = StrandedSideRowsCleanup.weekly(scheduledRunStore, clock)))
 }

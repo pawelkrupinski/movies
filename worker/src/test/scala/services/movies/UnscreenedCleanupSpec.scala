@@ -187,4 +187,82 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     removed                                                     shouldBe 1
     cache.get(cache.keyOf("Dkfzakopeta", Some(2026)))     shouldBe None
   }
+
+  // ── Event-driven: the write that leaves a film with no cinema ─────────────────────────────
+
+  /** Holds what the cleanup hands its scheduler — the boot pass and each drain of nominated rows —
+   *  so a spec runs it by hand, and can say that the boot pass never ran. */
+  private class HeldScheduler extends java.util.concurrent.ScheduledThreadPoolExecutor(1) {
+    var executed = Vector.empty[Runnable]
+    var delayed  = Vector.empty[Runnable]
+    override def execute(command: Runnable): Unit = executed :+= command
+    override def schedule(command: Runnable, delay: Long, unit: java.util.concurrent.TimeUnit): java.util.concurrent.ScheduledFuture[?] = {
+      delayed :+= command
+      super.schedule((() => ()): Runnable, 0, unit)
+    }
+    def runExecuted(): Unit = { val now = executed; executed = Vector.empty; now.foreach(_.run()) }
+  }
+
+  "start" should "drop a film on the write that leaves it with no cinema, with no pass over the cache" in {
+    val (repository, _) = splitRepository(Seq(
+      ("Ending",  Some(2026), mkRecord("tt1", Map(Helios -> cinemaSlot("Ending")))),
+      ("Running", Some(2026), mkRecord("tt2", Map(Helios -> cinemaSlot("Running"))))))
+    val cache     = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val scheduler = new HeldScheduler
+    val cleanup   = new UnscreenedCleanup(cache, repository, scheduler)
+    try {
+      cleanup.start()
+      val key = cache.keyOf("Ending", Some(2026))
+      val id  = cache.idOf(key).get
+
+      // The identity projection's write: the film's last venue stopped listing it.
+      cache.writeProjected(id, key, mkRecord("tt1", Map.empty)) shouldBe WriteOutcome.Written
+      scheduler.executed should have size 1
+      scheduler.runExecuted()
+
+      cache.get(key)                                       shouldBe None
+      repository.deletes                                   shouldBe Seq(("Ending", Some(2026)))
+      cache.get(cache.keyOf("Running", Some(2026)))        should not be empty
+      scheduler.delayed                                    should have size 1   // the boot pass, held: it never ran
+    } finally cleanup.stop()
+  }
+
+  it should "nominate nothing on a write that keeps a cinema, and spare a row a write gave a cinema back" in {
+    val (repository, _) = splitRepository(Seq(("Back", Some(2026), mkRecord("tt3", Map(Helios -> cinemaSlot("Back"))))))
+    val cache     = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val scheduler = new HeldScheduler
+    val cleanup   = new UnscreenedCleanup(cache, repository, scheduler)
+    try {
+      cleanup.start()
+      val key = cache.keyOf("Back", Some(2026))
+      val id  = cache.idOf(key).get
+
+      cache.writeProjected(id, key, mkRecord("tt3", Map(Helios -> cinemaSlot("Back"), models.Multikino -> cinemaSlot("Back"))))
+      scheduler.executed shouldBe empty
+
+      cache.writeProjected(id, key, mkRecord("tt3", Map.empty))
+      cache.writeProjected(id, key, mkRecord("tt3", Map(Helios -> cinemaSlot("Back"))))   // before the drain ran
+      scheduler.runExecuted()
+
+      cache.get(key)     should not be empty
+      repository.deletes shouldBe empty
+    } finally cleanup.stop()
+  }
+
+  it should "KEEP a nominated row when the durable read FAILED" in {
+    val repository = new UnreadableByIdMovieRepository(Seq(("Unread", Some(2026), mkRecord("tt4", Map(Helios -> cinemaSlot("Unread"))))),
+      titleNormalizer = titleNormalizer)
+    val cache     = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val scheduler = new HeldScheduler
+    val cleanup   = new UnscreenedCleanup(cache, repository, scheduler)
+    try {
+      cleanup.start()
+      val key = cache.keyOf("Unread", Some(2026))
+      cache.writeProjected(cache.idOf(key).get, key, mkRecord("tt4", Map.empty))
+      scheduler.runExecuted()
+
+      cache.get(key)     should not be empty
+      repository.deletes shouldBe empty
+    } finally cleanup.stop()
+  }
 }
