@@ -82,6 +82,8 @@ object WriteFailureTripwire {
       "installs a validator no film document can satisfy, to prove a failed write is counted, rolled back and retried"),
     Expected("__repository-delete-failure-sentinel__", "RepositoryWriteFailureIntegrationSpec",
       "puts a view under the side collections' names, to prove a refused bulk delete is counted"),
+    Expected("integrationtestdottedalwaysraced|1950", "MovieRepositoryIntegrationSpec",
+      "moves the row under every attempt of the dotted-name replace, to prove it gives up and reports not landed"),
   )
 
   private def excused(line: String): Boolean = expected.exists(e => line.contains(e.lineContains))

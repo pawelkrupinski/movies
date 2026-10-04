@@ -553,6 +553,46 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     }
   }
 
+  // THE MIGRATION SHAPE ON A SIDE COLLECTION. A dump-and-restore drops `screenings` too, and its cursor
+  // (`SideCollectionWatch`) has its own token and its own reopen: resuming from a token taken before the
+  // drop replays into the invalidate, the token must be cleared, and the cursor must come back at "now".
+  // The `movies` half of this is the test above; without this one a screenings cursor that stayed dead
+  // after a restore would leave every showtime change unprojected until the backstop or a restart.
+  it should "recover the screenings change stream when a collection drop invalidated its persisted token" in {
+    import java.time.LocalDateTime
+    import java.util.concurrent.{CountDownLatch, TimeUnit}
+    import services.movies.MongoScreeningsRepository
+    tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "screenings-dropresume-spec") { db =>
+      def at(h: Int): Seq[Showtime] = Seq(Showtime(LocalDateTime.of(2099, 1, 2, h, 0), bookingUrl = Some("https://book")))
+      val filmWarm = "__it-screenings-drop-warmup__"
+      val filmD    = "__it-screenings-drop-D__"
+      val repo1    = new MongoScreeningsRepository(Some(db), persistResumeToken = true)
+      val gotWarm  = new CountDownLatch(1)
+      val handle1  = repo1.watchApplied { (fid, applied) => if (fid == filmWarm) gotWarm.countDown(); applied() }
+      handle1 shouldBe defined
+      try {
+        awaitStreamLive("a warm-up event", gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+          repo1.upsertSlot(filmWarm, "Multikino␟W", ListedShowtimes(at(pass % 23 + 1), None))
+        }
+        handle1.foreach(_.close()) // token persisted at "just after the warm-up"
+      } finally repo1.close()
+
+      // The restore: drop the watched collection out from under the saved token.
+      Await.ready(db.getCollection(services.movies.ScreeningsRepository.Collection).drop().toFuture(), 15.seconds)
+
+      val repo2   = new MongoScreeningsRepository(Some(db), persistResumeToken = true)
+      val gotD    = new CountDownLatch(1)
+      val handle2 = repo2.watchApplied { (fid, applied) => if (fid == filmD) gotD.countDown(); applied() }
+      try {
+        // A fresh hour each pass: the cursor works through invalidate → clear → reopen on its backoff,
+        // and only a stream of real changes can catch it whenever it is back.
+        awaitStreamLive("a screenings change after the drop", gotD.await(2, TimeUnit.SECONDS), timeoutMs = 45000) { pass =>
+          repo2.upsertSlot(filmD, "Multikino␟D", ListedShowtimes(at(pass % 23 + 1), None))
+        }
+      } finally { handle2.foreach(_.close()); repo2.close() }
+    }
+  }
+
   // End-to-end: the MovieCache now applies change-stream DELETES incrementally
   // (`applyDelete`), so a removed source row leaves the cache the moment the delete lands
   // — no waiting for the 30-min backstop rehydrate. Real stream against a replica set.
@@ -1156,6 +1196,47 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       e.imdbRating shouldBe Some(8.8)
       e.cinemaData.get(HeliosOstrowWlkp).flatMap(_.synopsis) shouldBe Some("from Ostrów")
     } finally repo.close()
+  }
+
+  // A row that moves under EVERY attempt: the fallback gives up after its attempts rather than
+  // replacing blind, and reports the write as not landed (false), so the cache rolls its copy back
+  // and the next tick retries — the last racing write stays, the patch is not half-applied.
+  it should "report a dotted-name write that the row kept changing under as not landed, replacing nothing" in {
+    val title  = "__integration-test-dotted-always-raced__"
+    val year   = Some(1950)
+    val stored = MovieRecord(imdbId = Some("tt0000150"), imdbRating = Some(6.0),
+      data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Always raced"))))
+    var races  = 0
+    val racing: MongoMovieRepository = new MongoMovieRepository(Some(specDb), java.time.Clock.systemUTC(), normalizer = titleNormalizer) {
+      override protected def dottedReplaceRead(c: org.mongodb.scala.MongoCollection[services.movies.StoredMovieDto], id: String) = {
+        val asRead = super.dottedReplaceRead(c, id)
+        races += 1
+        repository.updateIfPresent(title, year, stored, stored.copy(imdbRating = Some(7.0 + races))) shouldBe true
+        asRead
+      }
+    }
+    try {
+      repository.upsert(title, year, stored)
+      val after = stored.copy(data = stored.data + (HeliosOstrowWlkp -> SourceData(title = Some("Always raced"), synopsis = Some("from Ostrów"))))
+      racing.updateIfPresent(title, year, stored, after) shouldBe false
+
+      races shouldBe services.movies.MovieRepository.DottedReplaceAttempts
+      val e = repository.findAll().find(_.record.imdbId.contains("tt0000150")).getOrElse(fail("film gone")).record
+      e.imdbRating shouldBe Some(7.0 + races)            // the last racing write stands…
+      e.cinemaData.get(HeliosOstrowWlkp) shouldBe None   // …and the patch never landed over it
+    } finally racing.close()
+  }
+
+  // An ABSENT row on the dotted-name path: there is nothing to patch, so nothing is written — no
+  // replace, no insert, and no side-collection delta for a film that is not stored.
+  it should "report a dotted-name write to an absent row as not present, writing nothing" in {
+    val title  = "__integration-test-dotted-absent__"
+    val year   = Some(1951)
+    val before = MovieRecord(imdbId = Some("tt0000151"), data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Absent"))))
+    val after  = before.copy(data = before.data + (HeliosOstrowWlkp -> SourceData(title = Some("Absent"), synopsis = Some("from Ostrów"))))
+
+    repository.updateIfPresent(title, year, before, after) shouldBe false
+    repository.findAll().find(_.record.imdbId.contains("tt0000151")) shouldBe None
   }
 
   // The split is on whenever a screenings repo is wired: `movies` is written WITHOUT
