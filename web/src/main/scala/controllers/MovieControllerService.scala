@@ -133,7 +133,7 @@ class MovieControllerService(
       readModel.movie(filmId).flatMap { resolved =>
         val key   = (city.slug, filmId)
         val prior = built.getIfPresent(key)
-        if (prior != null && prior.stillHolds(screenings, resolved, asOf, cutoff.latest, readModel.filmSlugs.slugFor(resolved._id)))
+        if (prior != null && prior.stillHolds(screenings, resolved, asOf, cutoff, readModel.filmSlugs.slugFor(resolved._id)))
           Some((prior.earliest, prior.schedule))
         else {
           val byDate = showingsByDate(screenings, cutoff)
@@ -147,7 +147,8 @@ class MovieControllerService(
                 .flatMap(sc => MovieControllerService.cinemaByName(sc.cinema).flatMap(c => sc.filmUrl.map(c -> _)))
                 .sortBy(_._1.displayName)
             val schedule = filmSchedule(resolved, cinemaFilmUrls, byDate, city, asOf)
-            built.put(key, Built(screenings, resolved, asOf, earliest, schedule))
+            val upcoming = cutoff.earliest(byDate.iterator.flatMap(_._2).map(run => run.cinema -> run.showtimes.head.dateTime))
+            built.put(key, Built(screenings, resolved, asOf, earliest, upcoming, schedule))
             Some((earliest, schedule))
           }
         }
@@ -178,13 +179,13 @@ class MovieControllerService(
    *  a rebuild would produce. The read model replaces a row or a movie document on any
    *  write rather than mutating it, so "the same object" is "unchanged". */
   private final case class Built(rows: Vector[CityScreening], resolved: ResolvedMovie, asOf: LocalDate,
-                                 earliest: LocalDateTime, schedule: FilmSchedule) {
+                                 earliest: LocalDateTime, upcoming: StartedShowtimeCut.Earliest, schedule: FilmSchedule) {
     def stillHolds(current: Vector[CityScreening], currentResolved: ResolvedMovie, today: LocalDate,
-                   cutoff: LocalDateTime, slug: Option[String]): Boolean =
+                   cutoff: StartedShowtimeCut, slug: Option[String]): Boolean =
       (resolved eq currentResolved) && asOf == today &&
-        // No showtime has lapsed since: the earliest one is still upcoming, so all are —
-        // and the cutoff only moves forward, so none has become upcoming either.
-        cutoff.isBefore(earliest) &&
+        // No showtime has lapsed since: each venue's earliest one is still upcoming on its own
+        // clock, so all are — and the cutoff only moves forward, so none has become upcoming either.
+        cutoff.noneLapsed(upcoming) &&
         schedule.slug == slug &&
         rows.size == current.size && sameRows(current)
 
