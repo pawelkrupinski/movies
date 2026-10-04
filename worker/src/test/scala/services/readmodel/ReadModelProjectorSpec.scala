@@ -912,6 +912,36 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // A LIVE cursor's backlog is not a silent cursor. The overlap re-reads rows stamped under the
+  // delivery floor — which are exactly the rows a live cursor has DELIVERED but whose apply is
+  // still queued behind a scrape burst. Projecting one there is harmless (the apply then writes
+  // nothing), but counting it books a delivered write as one the cursor failed to deliver: the
+  // catch-up metric and its "not delivering" warning, whose healthy reading is zero.
+  it should "not count an overlap row whose delivered event is still waiting to be applied" in {
+    val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
+    val repository = new InMemoryMovieRepository(clock = clock, normalizer = titleNormalizer)
+    val rm         = new InMemoryReadModelRepository()
+    val m          = new RecordingReadModelProjectionMetrics()
+    val projector  = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.reconcile()
+    val liveness = repository.changeStreamLiveness
+    liveness.watching(ChangeStreamLiveness.Movies)
+    clock.advance(services.movies.MovieRepository.CatchUpOverlap.multipliedBy(3))
+
+    repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(9.9), Seq(at("2026-06-12T20:00"))))
+    clock.advanceSeconds(1)
+    liveness.delivered(ChangeStreamLiveness.Movies)           // the cursor delivered it…
+    val ticket = liveness.queued(ChangeStreamLiveness.Movies) // …and its apply waits in the queue
+    clock.advanceSeconds(1)
+
+    projector.pruneOrphans()
+    withClue("a delivered write whose apply is merely queued is not one the cursor missed: ") {
+      m.caughtUp.last shouldBe 0
+    }
+    liveness.applied(ChangeStreamLiveness.Movies, ticket)
+  }
+
   it should "re-read a caught-up row whose projection failed on the next sweep" in {
     val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
     val repository = new InMemoryMovieRepository(clock = clock, normalizer = titleNormalizer)

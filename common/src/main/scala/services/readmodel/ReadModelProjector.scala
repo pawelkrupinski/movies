@@ -804,6 +804,10 @@ class ReadModelProjector(
     if (!reproject && liveness.isWatching(ChangeStreamLiveness.Movies)) {
       val readFrom = liveness.now()
       val floor    = liveness.catchUpFloor(ChangeStreamLiveness.Movies)
+      // Whether every event the cursors delivered before this read had been applied when it began.
+      // Until then a row inside the overlap may be one a LIVE cursor delivered and whose apply is
+      // still queued: projecting it is harmless, but it is no write the cursor missed.
+      val backlogApplied = liveness.appliedThrough(liveness.lastTicket)
       var failed   = false
       val past     = scala.collection.mutable.Set.empty[String]
       def catchUp(row: StoredMovieRecord)(counted: Int => Boolean): Unit =
@@ -816,9 +820,10 @@ class ReadModelProjector(
         // …and the overlap under it: a write stamped under the floor may have committed after the
         // last catch-up's scan (see `MovieRepository.CatchUpOverlap`). A row there that the stream
         // or the last catch-up already projected writes nothing again; only one whose projection
-        // was stale — the write that landed behind the scan — counts as caught up.
+        // was stale — the write that landed behind the scan — counts as caught up, and only while
+        // no delivered event still waits for its apply (see `backlogApplied`).
         .andThen(movieRepository.foreachRecordUpdatedSince(floor.minus(MovieRepository.CatchUpOverlap)) { row =>
-          if (!past(row.id.value)) catchUp(row)(_ > 0)
+          if (!past(row.id.value)) catchUp(row)(written => written > 0 && backlogApplied)
         })
       if (complete.isComplete && !failed) liveness.caughtUp(ChangeStreamLiveness.Movies, readFrom)
       metrics.recordCatchUp(caughtUp)
