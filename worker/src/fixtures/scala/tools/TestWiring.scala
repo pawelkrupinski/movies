@@ -214,14 +214,37 @@ trait TestWiring extends WorkerWiring {
     // how long the whole of it took, not whether the projection or the enrichment after it spent it.
     val scope = country.code
     val tick  = PhaseTimer.timed(scope, "  identityTick")(projection.tick(whole))
+    enrichAfterProjection(scope)
+    // Production projects again whatever that enrichment moved — an IMDb year completing a yearless film's key — as
+    // the cache tells its trigger (`MovieCache.onChanged`). Here it is done at once, never on a timer beside this one.
+    Iterator.continually { val moved = movedByEnrichment.getAndSet(false); moved }.take(TestWiring.EnrichmentReprojections)
+      .takeWhile(identity).foreach { _ =>
+        PhaseTimer.timed(scope, "  identityTick")(projection.tick())
+        enrichAfterProjection(scope)
+      }
+    tick
+  }
+
+  private def enrichAfterProjection(scope: String): Unit = {
+    movedByEnrichment.set(false)
     // The venue pages of the films it wrote, enriched as a cut-over worker's detail reaper does: the
     // model reads them from the slots and re-asks each page the enrichment announces, so the next
     // projection decides with them.
     PhaseTimer.timed(scope, "  identityDetails")(enrichDetailsUntilQuiet())
     PhaseTimer.timed(scope, "  identityDrainServices")(drainServices())
     PhaseTimer.timed(scope, "  identityRatings")(enrichRatingsSync())
-    tick
   }
+
+  /** Whether a write other than the projection's moved a stored film since the last projection's enrichment began. */
+  private lazy val movedByEnrichment = {
+    val moved = new java.util.concurrent.atomic.AtomicBoolean(false)
+    movieCache.onChanged(_ => moved.set(true))
+    moved
+  }
+
+  // The harness projects by hand (`projectIdentity`): the trigger production runs on a timer never runs here.
+  override protected lazy val identityProjectionTriggerScheduler: java.util.concurrent.ScheduledExecutorService =
+    new tools.ManualScheduler(new tools.MutableClock(TestWiring.FixedInstant))
 
   /** The enrichment reaper's per-tick cap is a burst-shedding lever in production;
    *  a harness that drives ONE sweep to quiescence wants the whole corpus offered,
@@ -405,6 +428,10 @@ trait TestWiring extends WorkerWiring {
 object TestWiring {
   /** The instant every harness clock starts at. */
   val FixedInstant: java.time.Instant = java.time.Instant.parse("2026-06-08T12:00:00Z")
+
+  /** The most projections one `projectIdentity` runs again after its enrichment moved stored films: an enrichment of what
+   *  a projection wrote moves less each round, and settles in one or two. */
+  val EnrichmentReprojections = 4
 
   /** How many venues a cut-over scrape walk lands at once ([[TestWiring.landCutover]]): each landing
    *  waits on a few Mongo round-trips, so the walk is bound by how many are in flight, not by a

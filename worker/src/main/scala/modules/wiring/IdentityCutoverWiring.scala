@@ -60,10 +60,15 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
   lazy val identityProjectionTrigger: services.identity.ProjectionTrigger = {
     val trigger = new services.identity.ProjectionTrigger(() => identityProjection.tickChangedQuietly(),
       services.movies.MovieChangeStream.Debounce.Worker,
-      managedResources.executor("identity projection")(tools.DaemonExecutors.scheduler(s"identity-projection-${country.code}")), clock)
+      identityProjectionTriggerScheduler, clock)
     movieCache.onChanged(_ => trigger.request())
     trigger
   }
+
+  /** Where the trigger runs its projections. A harness that projects by hand (`TestWiring.projectIdentity`) hands it one
+   *  that never runs them: a projection on a timer beside the harness's own made its films hang on timing. */
+  protected lazy val identityProjectionTriggerScheduler: java.util.concurrent.ScheduledExecutorService =
+    managedResources.executor("identity projection")(tools.DaemonExecutors.scheduler(s"identity-projection-${country.code}"))
 
   /** The venue slots the projection last kept (`identity_slot_fingerprints`), in memory without a database. */
   lazy val venueSlotFingerprints: VenueSlotFingerprints =
