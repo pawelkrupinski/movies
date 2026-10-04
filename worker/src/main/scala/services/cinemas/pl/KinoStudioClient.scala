@@ -222,8 +222,7 @@ object KinoStudioClient {
               startBlock()
               val day   = m.group(1).toInt
               val month = m.group(2).toInt
-              val year  = if (month < today.getMonthValue) today.getYear + 1 else today.getYear
-              Try(LocalDate.of(year, month, day)).toOption.foreach { d =>
+              ScraperParse.monthDay(day, month).flatMap(ScraperParse.upcomingMonthDate(_, today)).foreach { d =>
                 pendingDates = pendingDates :+ d
               }
             }

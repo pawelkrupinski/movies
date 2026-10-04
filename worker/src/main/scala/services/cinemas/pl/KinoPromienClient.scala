@@ -9,7 +9,7 @@ import org.jsoup.nodes.Document
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime}
+import java.time.{LocalDate, LocalDateTime, Period}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -156,7 +156,5 @@ object KinoPromienClient {
    *  year unless that lands more than a month in the past (a December page seen
    *  in January), in which case roll to next year. */
   private def inferredDate(day: Int, month: Int, today: LocalDate): Option[LocalDate] =
-    Try(LocalDate.of(today.getYear, month, day)).toOption.map { thisYear =>
-      if (thisYear.isBefore(today.minusMonths(1))) thisYear.plusYears(1) else thisYear
-    }
+    ScraperParse.monthDay(day, month).flatMap(ScraperParse.upcomingDate(_, today, Period.ofMonths(1)))
 }

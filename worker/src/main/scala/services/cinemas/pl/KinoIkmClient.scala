@@ -7,9 +7,8 @@ import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime}
+import java.time.{LocalDate, LocalDateTime, Period}
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino IKM — Kino Kunszt Wodny, run by the Instytut Kultury Miejskiej in
@@ -101,13 +100,11 @@ object KinoIkmClient {
   /** The leading `DD.MM` of a `.tday` label, with the year inferred relative to
    *  `today`. The page carries no year, so a date more than six months in the
    *  past rolls forward to next year (year-boundary case); recent-past dates
-   *  stay put. Mirrors `KinoBulgarskaClient`'s rollover. */
+   *  stay put ([[ScraperParse.upcomingDate]]). */
   def parseDate(text: String, today: LocalDate): Option[LocalDate] =
-    DatePat.findFirstMatchIn(text).flatMap { m =>
-      Try(LocalDate.of(today.getYear, m.group(2).toInt, m.group(1).toInt)).toOption.map { candidate =>
-        if (candidate.isBefore(today.minusMonths(6))) candidate.plusYears(1) else candidate
-      }
-    }
+    DatePat.findFirstMatchIn(text)
+      .flatMap(m => ScraperParse.monthDay(m.group(1).toInt, m.group(2).toInt))
+      .flatMap(ScraperParse.upcomingDate(_, today, Period.ofMonths(6)))
 
   // The `.ttitle h4` reads "reż. <names> / napisy: …". Take everything after
   // "reż." up to the first " / " (the subtitle/accessibility note), then split

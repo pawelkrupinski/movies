@@ -7,7 +7,7 @@ import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
-import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.time.{LocalDate, LocalDateTime, LocalTime, Period}
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 import services.movies.TitleNormalizer
@@ -20,17 +20,13 @@ class KinoMuzaClient(http: HttpFetch, today: => LocalDate,
   private val RepertoireUrl = "https://www.kinomuza.pl/repertuar/"
 
   private def parseDate(ddMM: String): Option[LocalDate] =
-    Try {
-      val parts     = ddMM.trim.split("\\.")
-      val candidate = LocalDate.of(today.getYear, parts(1).toInt, parts(0).toInt)
-      // Only roll forward when the date is *substantially* in the past —
-      // matches `KinoBulgarskaClient`'s rule. A 2-day-old listing (the
-      // site still shows yesterday's screening, the snapshot test runs
-      // 2 days after its capture date, …) is this year, not next; only
-      // a year-boundary January-from-December case justifies rolling
-      // forward. 6 months is the sweet spot between the two.
-      if (candidate.isBefore(today.minusMonths(6))) candidate.plusYears(1) else candidate
-    }.toOption
+    // Only roll forward when the date is *substantially* in the past: a
+    // 2-day-old listing (the site still shows yesterday's screening, the
+    // snapshot test runs 2 days after its capture date, …) is this year,
+    // not next. 6 months is the sweet spot.
+    Try(ddMM.trim.split("\\.").take(2).map(_.toInt)).toOption.collect { case Array(day, month) => (day, month) }
+      .flatMap { case (day, month) => ScraperParse.monthDay(day, month) }
+      .flatMap(ScraperParse.upcomingDate(_, today, Period.ofMonths(6)))
 
   // The listing scrape returns just the listing — title, director, runtime,
   // year, country, showtimes (no synopsis/poster/trailer). Fetching all 80+

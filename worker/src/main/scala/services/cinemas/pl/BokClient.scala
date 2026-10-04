@@ -178,9 +178,7 @@ object BokClient {
   /** "05.06" (DD.MM, no year) → a date; year from `today`, rolling forward when
    *  the month is already behind us. */
   def parseDate(raw: String, today: LocalDate): Option[LocalDate] =
-    DatePat.findFirstMatchIn(raw).flatMap { m =>
-      val mon  = m.group(2).toInt
-      val year = if (mon < today.getMonthValue) today.getYear + 1 else today.getYear
-      Try(LocalDate.of(year, mon, m.group(1).toInt)).toOption
-    }
+    DatePat.findFirstMatchIn(raw)
+      .flatMap(m => ScraperParse.monthDay(m.group(1).toInt, m.group(2).toInt))
+      .flatMap(ScraperParse.upcomingMonthDate(_, today))
 }

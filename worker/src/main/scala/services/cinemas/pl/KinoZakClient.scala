@@ -93,8 +93,7 @@ class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
    *  the year from `today`. */
   private def slotsFor(days: Seq[(Int, Int)], time: LocalTime): Seq[LocalDateTime] =
     days.flatMap { case (day, month) =>
-      val year = if (month < today.getMonthValue) today.getYear + 1 else today.getYear
-      Try(LocalDateTime.of(LocalDate.of(year, month, day), time)).toOption
+      ScraperParse.monthDay(day, month).flatMap(ScraperParse.upcomingMonthDate(_, today)).map(LocalDateTime.of(_, time))
     }
 
   // ── Listing ─────────────────────────────────────────────────────────────

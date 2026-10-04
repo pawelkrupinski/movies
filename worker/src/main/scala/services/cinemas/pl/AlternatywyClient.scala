@@ -7,7 +7,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
 
-import java.time.LocalDate
+import java.time.{LocalDate, Period}
 import java.util.Locale
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
@@ -119,20 +119,14 @@ class AlternatywyClient(
       day        <- Try(dayStr.toInt).toOption
       month      <- ScraperParse.PolishMonths.get(monthStr.trim.toLowerCase(Locale.ROOT))
       (hh, mm)   <- parseTime(timeStr)
-      dateTime   <- Try(inferYear(day, month).atTime(hh, mm)).toOption
+      date       <- ScraperParse.monthDay(day, month).flatMap(ScraperParse.upcomingDate(_, today, Period.ofWeeks(1)))
+      dateTime   <- Try(date.atTime(hh, mm)).toOption
     } yield {
       val room      = Some(roomStr.split(":", 2).last.trim).filter(_.nonEmpty)
       val posterUrl = Some(img.attr("data-src")).map(_.trim).filter(_.nonEmpty)
       val filmUrl   = img.parents().asScala.find(_.tagName == "a").map(_.attr("href")).filter(_.nonEmpty)
       Screening(title, rawTitle, Showtime(dateTime, bookingUrl = None, room = room), posterUrl, filmUrl)
     }
-  }
-
-  /** The page omits the year; pick the one that makes the date upcoming, rolling
-   *  to next year only for a month already more than a week past. */
-  private def inferYear(day: Int, month: Int): LocalDate = {
-    val candidate = LocalDate.of(today.getYear, month, day)
-    if (candidate.isBefore(today.minusWeeks(1))) candidate.plusYears(1) else candidate
   }
 }
 

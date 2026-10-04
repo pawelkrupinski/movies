@@ -7,7 +7,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.time.{LocalDate, LocalDateTime, LocalTime, Period}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -146,11 +146,7 @@ object KinoAwangarda2Client {
     Try(LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption
 
   /** The `DD.MM` mapped to a `LocalDate`, rolling forward into next year only
-   *  when it sits >6 months before `today` (the Dec→Jan boundary) — mirrors
-   *  `KinoMuzaClient`/`KinoBulgarskaClient`. */
+   *  when it sits >6 months before `today` (the Dec→Jan boundary). */
   private def dateOf(day: Int, month: Int, today: LocalDate): Option[LocalDate] =
-    Try {
-      val candidate = LocalDate.of(today.getYear, month, day)
-      if (candidate.isBefore(today.minusMonths(6))) candidate.plusYears(1) else candidate
-    }.toOption
+    ScraperParse.monthDay(day, month).flatMap(ScraperParse.upcomingDate(_, today, Period.ofMonths(6)))
 }

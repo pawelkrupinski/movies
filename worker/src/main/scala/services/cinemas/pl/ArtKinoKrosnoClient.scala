@@ -121,8 +121,7 @@ object ArtKinoKrosnoClient {
       header <- Option(p.selectFirst("span[style*=x-large]")).map(_.text)
       m      <- DatePat.findFirstMatchIn(header)
       month  <- monthOf(m.group(2))
-      year   = if (month < today.getMonthValue) today.getYear + 1 else today.getYear
-      date   <- Try(LocalDate.of(year, month, m.group(1).toInt)).toOption
+      date   <- ScraperParse.monthDay(m.group(1).toInt, month).flatMap(ScraperParse.upcomingMonthDate(_, today))
     } yield date
 
   /** The month number for a header's month word, falling back to its first

@@ -170,6 +170,11 @@ private[cinemas] object ScraperParse {
   def upcomingMonthDate(dayMonth: MonthDay, today: LocalDate): Option[LocalDate] =
     upcomingDate(dayMonth, today, grace = Period.ofDays(today.getDayOfMonth - 1))
 
+  /** A page's numeric day and month as a `MonthDay` for [[upcomingDate]] / [[upcomingMonthDate]],
+    * `None` when no year has that day (a "31.04"). Every yearless page date goes through those
+    * two — never a year rule of a client's own (`NoHandRolledYearInferenceSpec`). */
+  def monthDay(day: Int, month: Int): Option[MonthDay] = Try(MonthDay.of(month, day)).toOption
+
   /** Every calendar day from `from` to `to` inclusive, at `time` — the
     * "screens daily HH:MM from DD.MM.YYYY to DD.MM.YYYY" shape several small
     * venues (Kino Narew, Kino Parczew) spell a multi-day run in, instead of

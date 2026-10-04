@@ -76,10 +76,7 @@ object KinoPatriaClient {
    *  the month is strictly before today's month, assume next year (the
    *  schedule wraps the calendar year boundary). */
   private[cinemas] def inferYear(day: Int, month: Int, today: LocalDate): Option[LocalDate] =
-    Try {
-      val year = if (month < today.getMonthValue) today.getYear + 1 else today.getYear
-      LocalDate.of(year, month, day)
-    }.toOption
+    ScraperParse.monthDay(day, month).flatMap(ScraperParse.upcomingMonthDate(_, today))
 
   private[cinemas] def parseRepertoire(html: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] = {
     val doc = Jsoup.parse(html, RepertoireUrl)
