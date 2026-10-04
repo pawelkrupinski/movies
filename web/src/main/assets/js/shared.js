@@ -2639,10 +2639,10 @@
 
   function maybeShowAnonymousNag() {
     if (isLoggedIn() || !HAS_OAUTH_PROVIDERS) return;
-    const lastAt = parseInt(localStorage.getItem('lastAnonymousNagAt') || '0', 10);
+    const lastAt = parseInt(_hintGet('lastAnonymousNagAt') || '0', 10);
     const dayMs  = 24 * 60 * 60 * 1000;
     if (Date.now() - lastAt < dayMs) return;
-    localStorage.setItem('lastAnonymousNagAt', Date.now().toString());
+    _hintSet('lastAnonymousNagAt', Date.now().toString());
     showAnonymousNag();
   }
 

@@ -26,6 +26,7 @@
 
 const js = require('@eslint/js');
 const globals = require('globals');
+const storageAccessInTry = require('./eslint-rules/storage-access-in-try');
 
 module.exports = [
   js.configs.recommended,
@@ -59,13 +60,16 @@ module.exports = [
         nearestCityWithinKm: 'readonly',
       },
     },
+    plugins: { kinowo: { rules: { 'storage-access-in-try': storageAccessInTry } } },
     rules: {
+      // Storage throws where site data is blocked — see the rule's own header.
+      'kinowo/storage-access-in-try': 'error',
       // Leading-underscore args are intentional placeholders (e.g.
       // DOM-event handlers that receive `e` but ignore it).
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       // Empty `catch {}` is the idiomatic localStorage / sessionStorage
-      // try-catch when the only possible failure (quota) is one we
-      // accept silently.
+      // try-catch when the only possible failures (blocked site data, a
+      // full quota) are ones we accept silently.
       'no-empty': ['warn', { allowEmptyCatch: true }],
       // Many shared.js functions are exported by being defined at top
       // level — ESLint's flat config treats them as unused unless we

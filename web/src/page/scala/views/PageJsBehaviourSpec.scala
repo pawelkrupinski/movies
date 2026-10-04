@@ -5180,6 +5180,29 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // Where the browser blocks site data (Safari "Block All Cookies", cookies
+  // disabled for the site), merely READING `localStorage` throws. The hide is
+  // still worth doing for the session — the list writes are guarded and fail
+  // quietly — but the "only on this device" nag read `localStorage` bare, so an
+  // anonymous visitor's ✕ threw before the card was dropped and nothing moved.
+  // `/li` carries an OAuth provider (the nag only shows where one exists); the
+  // avatar menu is removed so the page reads as the anonymous visitor's.
+  it should "still drop the card where the browser blocks localStorage" in {
+    onLoggedInIndex { page =>
+      pinDateFilterAnytime(page)
+      val title = firstVisibleTitle(page)
+      page.eval(
+        "(() => { document.getElementById('auth-menu').remove();" +
+        "  Object.defineProperty(window, 'localStorage', { configurable: true," +
+        "    get() { throw new DOMException('The operation is insecure.', 'SecurityError'); } });" +
+        s"  hideFilm(document.querySelector('.col[data-title=${jsString(title)}] .hide-btn')); })()"
+      )
+      page.evalString(
+        s"document.querySelector('.col[data-title=${jsString(title)}]').style.display"
+      ) shouldBe "none"
+    }
+  }
+
   // ── The facet listing (/{city}/filmy) ──────────────────────────────────────
   //
   // `browse.scala.html` is its own view with its own inline `applyFilters`: the
