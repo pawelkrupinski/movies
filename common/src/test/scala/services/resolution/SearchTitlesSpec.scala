@@ -67,4 +67,29 @@ class SearchTitlesSpec extends AnyFlatSpec with Matchers {
     found should contain theSameElementsAs Seq(
       "Akademia Kina Polskiego: Człowiek z żelaza", "Man of Iron", "Ktoś inny: Wariant")
   }
+
+  // A festival/preview "decorated" title ("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", "Ojczyzna (pokaz
+  // przedpremierowy)") matches TMDB by none of its decoration, so the search tries the cinema's
+  // original title, each side of the "X | Y" pipe and the de-parenthesised title.
+  it should "offer the original title, each pipe side, and the de-parenthesised title" in {
+    SearchTitles.candidates("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", Some("Possession")) should
+      contain allOf ("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", "Possession", "Opętanie", "ŻUŁAWSKI. KINO EKSTAZY")
+    SearchTitles.candidates("Ojczyzna (pokaz przedpremierowy)", None) should contain ("Ojczyzna")
+    SearchTitles.candidates("Plain Title", None) shouldBe Seq("Plain Title")
+  }
+
+  // A banner is joined with a dash as often as a pipe. "500 mil" is the worked example: TMDB's Polish
+  // title is exactly "500 mil", but the whole decorated string was the only candidate. Both dash forms occur.
+  it should "split a dash-joined programme banner, without touching hyphenated words" in {
+    SearchTitles.candidates("Filmoczule Dla Edukacji z Odn i WZiSS Ump – 500 mil", None) should contain ("500 mil")
+    SearchTitles.candidates("Ladies Night - Narodziny gwiazdy", None) should contain ("Narodziny gwiazdy")
+    SearchTitles.candidates("Spider-Man", None) shouldBe Seq("Spider-Man")
+  }
+
+  it should "also draw on the row's other reported titles (cinemaTitles + slot originals), de-decorated" in {
+    SearchTitles.candidates(
+      title = "KINO SENIORA | Opętanie", originalTitle = None,
+      extraTitles = Seq("Opętanie (pokaz)", "Possession")
+    ) should contain allOf ("Opętanie", "Possession")
+  }
 }
