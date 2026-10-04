@@ -1,6 +1,6 @@
 package services.identity
 
-import models.SourceData
+import models.Source
 import services.movies.{ListingKey, ShowtimesDigest, StoredMovieRecord, TitleNormalizer}
 
 import scala.collection.mutable
@@ -20,21 +20,21 @@ import scala.collection.mutable
  * Single-threaded: the projection's tick holds it.
  */
 final class LiveProjectionIndex(normalizer: TitleNormalizer) {
-  import IdentityProjectionPlan.{Slot, clusterOf => clusterFor, oneByKey, ownerOf}
+  import IdentityProjectionPlan.{clusterOf => clusterFor, oneByKey, ownerOf}
 
-  // Listings: each venue's listing as last read (the object, to tell it unmoved), one listing per key at it.
+  // Listings: each venue's listing as last read (the object, to tell it unmoved) — one listing per key at it is worked
+  // out again only for a venue an update reads by key (a key's venue is its own, `ListingKey.venue`).
   private val venueListings = mutable.HashMap.empty[String, Seq[ProjectedListing]]
-  private val venueByKey    = mutable.HashMap.empty[String, Map[ListingKey, ProjectedListing]]
-  private val venueOfKey    = mutable.HashMap.empty[ListingKey, String]
   private var byKey         = Map.empty[ListingKey, ProjectedListing]
-  // Each published listing's venue slot, and the published listings at each: whose previous film a slot moves.
-  private val slotOfKey     = mutable.HashMap.empty[ListingKey, (String, String)]
+  // The published listings at each venue slot (a listing's own is `PipelineFilms.slotOf` it): whose previous film a
+  // slot moves.
   private val keysAtSlot    = mutable.HashMap.empty[(String, String), Set[ListingKey]]
 
-  // Stored films: each one's venue slots and the listing keys its slots are, indexed both ways.
+  // Stored films: each one's venue slots and the listing keys its slots are, indexed both ways — by where each slot is
+  // and its source only: a slot's data is read off the stored record as it is now, so a record read again is not kept.
   private var storedById    = Map.empty[String, StoredMovieRecord]
-  private val slotsOfFilm   = mutable.HashMap.empty[String, Seq[Slot]]
-  private val filmsAtSlot   = mutable.HashMap.empty[(String, String), Map[String, (PipelineFilmRef, SourceData)]]
+  private val slotsOfFilm   = mutable.HashMap.empty[String, Seq[(Option[(String, String)], Option[ListingKey])]]
+  private val filmsAtSlot   = mutable.HashMap.empty[(String, String), Map[String, (PipelineFilmRef, Source)]]
   private val ownersOfKey   = mutable.HashMap.empty[ListingKey, Set[PipelineFilmRef]]
 
   private var previousOf    = Map.empty[ListingKey, PipelineFilmRef]
@@ -59,36 +59,41 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
   def update(venues: Seq[(String, Seq[ProjectedListing])], held: ListingKey => Boolean, resolved: Seq[ResolverDecision],
              stored: Seq[StoredMovieRecord]): ProjectionScope.Changes = {
     val keys = mutable.HashSet.empty[ListingKey]   // whose published listing (or whether it is published) moved
+    val byKeyAt = mutable.HashMap.empty[String, Map[ListingKey, ProjectedListing]]
+    def at(venue: String): Map[ListingKey, ProjectedListing] = byKeyAt.getOrElseUpdate(venue, oneByKey(venueListings.getOrElse(venue, Nil)))
     // 1. Listings: a venue whose listing is another object, or gone.
     val live = venues.iterator.map(_._1).toSet
     venues.foreach { case (venue, listings) =>
       if (!venueListings.get(venue).exists(_ eq listings)) {
-        val was = venueByKey.getOrElse(venue, Map.empty)
+        val was = at(venue)
         val now = oneByKey(listings)
         was.foreach { case (k, l) => if (!now.get(k).exists(n => (n eq l) || n == l)) keys += k }
-        was.keysIterator.filterNot(now.contains).foreach(venueOfKey.remove)
-        now.keysIterator.foreach(venueOfKey(_) = venue)
+        // An unmoved listing read again is a new object of the same value: index that one, so the old read is not kept.
+        now.foreach { case (k, n) => if (byKey.get(k).exists(l => (l ne n) && l == n)) byKey = byKey.updated(k, n) }
         venueListings(venue) = listings
-        venueByKey(venue) = now
+        byKeyAt(venue) = now
       }
     }
     venueListings.keys.filterNot(live).toSeq.foreach { venue =>
-      venueByKey.remove(venue).foreach { gone => keys ++= gone.keys; gone.keysIterator.foreach(venueOfKey.remove) }
+      keys ++= at(venue).keys
       venueListings.remove(venue)
+      byKeyAt.remove(venue)
     }
     // …and a listing new to its venue, or one the model took up or let go: published, held and indexed must agree.
-    venueByKey.valuesIterator.foreach(_.keysIterator.foreach(k => if (held(k) != byKey.contains(k)) keys += k))
+    venueListings.valuesIterator.foreach(_.foreach { l => val k = l.listing.key; if (held(k) != byKey.contains(k)) keys += k })
     val published = mutable.HashSet.empty[ListingKey]   // whose entry in `byKey` moved
     keys.foreach { k =>
-      val listing = venueOfKey.get(k).flatMap(venueByKey.get).flatMap(_.get(k)).filter(_ => held(k))
+      val listing = (if (venueListings.contains(k.venue)) at(k.venue).get(k) else None).filter(_ => held(k))
       if (listing != byKey.get(k)) {
         published += k
-        slotOfKey.remove(k).foreach(slot => keysAtSlot(slot) = keysAtSlot.getOrElse(slot, Set.empty) - k)
+        byKey.get(k).foreach { was =>
+          val slot = PipelineFilms.slotOf(was.listing, normalizer)
+          keysAtSlot.updateWith(slot)(_.map(_ - k).filter(_.nonEmpty))
+        }
         listing match {
           case Some(l) =>
             byKey = byKey.updated(k, l)
             val slot = PipelineFilms.slotOf(l.listing, normalizer)
-            slotOfKey(k) = slot
             keysAtSlot(slot) = keysAtSlot.getOrElse(slot, Set.empty) + k
           case None => byKey = byKey - k
         }
@@ -187,7 +192,8 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
     keys.foreach { k =>
       val next = byKey.get(k).flatMap { l =>
         ownersOfKey.get(k).flatMap(ownerOf).orElse(
-          filmsAtSlot.get(slotOfKey(k)).flatMap(at => PipelineFilms.pick(l.listing, at.values.toSeq, normalizer)))
+          filmsAtSlot.get(PipelineFilms.slotOf(l.listing, normalizer)).flatMap(at => PipelineFilms.pick(l.listing, at.values.toSeq.flatMap { case (ref, source) =>
+            storedById.get(ref.id).flatMap(_.record.data.get(source)).map(ref -> _) }, normalizer)))
       }
       val was = previousOf.get(k)
       if (next != was) {
@@ -210,11 +216,11 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
   private def unstore(id: String, reslot: mutable.HashSet[ListingKey]): Unit = {
     storedById.get(id).foreach(r => reslot ++= listingsOf.getOrElse(r.id.value, Set.empty))
     storedById = storedById - id
-    slotsOfFilm.remove(id).foreach(_.foreach { slot =>
+    slotsOfFilm.remove(id).foreach(_.foreach { case (at, key) =>
       // What it moves by leaving is a listing it was on (above): another film's listing at its slot was not picked
       // over it, and stays picked without it.
-      slot.at.foreach(at => filmsAtSlot.updateWith(at)(_.map(_ - id).filter(_.nonEmpty)))
-      slot.key.foreach(k => ownersOfKey.updateWith(k)(_.map(_.filterNot(_.id == id)).filter(_.nonEmpty)))
+      at.foreach(at => filmsAtSlot.updateWith(at)(_.map(_ - id).filter(_.nonEmpty)))
+      key.foreach(k => ownersOfKey.updateWith(k)(_.map(_.filterNot(_.id == id)).filter(_.nonEmpty)))
     })
   }
 
@@ -223,11 +229,11 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
     unstore(id, reslot)
     storedById = storedById.updated(id, r)
     val ref   = PipelineFilmRef(id, r.record.tmdbId)
-    val slots = IdentityProjectionPlan.slotsOf(r)
-    slotsOfFilm(id) = slots
-    slots.foreach { slot =>
+    val slots = r.record.data.toSeq.map { case (source, sd) => source -> IdentityProjectionPlan.slotOf(source, sd) }
+    slotsOfFilm(id) = slots.map { case (_, slot) => slot.at -> slot.key }
+    slots.foreach { case (source, slot) =>
       slot.at.foreach { at =>
-        filmsAtSlot(at) = filmsAtSlot.getOrElse(at, Map.empty).updated(id, ref -> slot.data)
+        filmsAtSlot(at) = filmsAtSlot.getOrElse(at, Map.empty).updated(id, ref -> source)
         reslot ++= keysAtSlot.getOrElse(at, Set.empty)
       }
       // The listing the slot is — at the slot's own title almost always (re-pointed above), but a slot folded under

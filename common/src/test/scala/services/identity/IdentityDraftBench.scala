@@ -10,8 +10,9 @@ import java.time.{Instant, LocalDateTime}
  *  venue spread), timed and allocation-counted per tick: run with
  *  `sbt "common/Test/runMain services.identity.IdentityDraftBench"`. Not a spec — a measuring tool. */
 object IdentityDraftBench {
-  // `sbt "common/Test/runMain services.identity.IdentityDraftBench 8"` projects scopes after the first tick, as production
-  // does; a trailing `whole` projects the whole corpus every tick.
+  // `sbt "common/Test/runMain services.identity.IdentityDraftBench 8 300 <dir>"` projects 8 ticks, re-reading 300 venues
+  // a tick, scopes after the first as production does, and writes class histograms of the state kept between ticks to
+  // <dir> (optional); a trailing `whole` projects the whole corpus every tick.
   private val normalizer = SingleCountryNormalizer.titleNormalizer
   private val slots      = new CinemaSlotBuilder(Country.Poland.language, new StringPool)
   private val tokens     = ScreeningTokens.of(Country.Poland)
@@ -56,11 +57,14 @@ object IdentityDraftBench {
       val a = body
       (a, (System.nanoTime() - t) / 1e9, (threads.getCurrentThreadAllocatedBytes - b) / 1e6)
     }
-    // As the intake: a venue's listing is the same object until the venue is read again.
+    // As the intake: a venue's listing is the same object until the venue is read again — and, as production scrapes
+    // every venue on a cadence, `rereads` venues a tick are read again into new objects whether or not they moved.
+    val rereads   = args.lift(1).flatMap(_.toIntOption).getOrElse(300)
     var venueSeqs = Map.empty[String, Seq[ProjectedListing]]
     def byVenue(all: Seq[ProjectedListing]): Seq[(String, Seq[ProjectedListing])] = {
+      val reread = rng.shuffle(venues.map(_.displayName)).take(rereads).toSet
       all.groupBy(_.listing.venue).foreach { case (venue, ls) =>
-        if (!venueSeqs.get(venue).exists(_ == ls)) venueSeqs += venue -> ls
+        if (!venueSeqs.get(venue).exists(_ == ls) || reread(venue)) venueSeqs += venue -> ls
       }
       venueSeqs.toSeq
     }
@@ -104,9 +108,17 @@ object IdentityDraftBench {
     // worker keeps anyway (those stay reachable below).
     def used(): Long = { (1 to 4).foreach { _ => System.gc(); Thread.sleep(200) }; val r = Runtime.getRuntime; r.totalMemory - r.freeMemory }
     val all = used()
+    def histogram(name: String): Unit = args.lift(2).filterNot(_ == "whole").foreach { dir =>
+      val out = new ProcessBuilder("jcmd", ProcessHandle.current.pid.toString, "GC.class_histogram").redirectOutput(new java.io.File(s"$dir/$name.txt")).start()
+      out.waitFor(); ()
+    }
+    histogram("all")
     shapes = null; val noShapes = used()
+    histogram("noShapes")
     live = null; val noLive = used()
+    histogram("noLive")
     memo = null; val noMemo = used()
+    histogram("noMemo")
     println(f"retained: FilmShapes ${(all - noShapes) / 1e6}%.0fMB, LiveProjectionIndex ${(noShapes - noLive) / 1e6}%.0fMB, " +
       f"VenueSlotMemo ${(noLive - noMemo) / 1e6}%.0fMB; still live ${noMemo / 1e6}%.0fMB (${stored.size} stored, ${venueSeqs.size} venues, ${rows.size} rows)")
   }

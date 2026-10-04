@@ -99,4 +99,21 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
       }
     }
   }
+
+  it should "hold a venue's listings as last read, not the read they replaced" in {
+    // A scrape reads every venue again into new objects, moved or not. An unmoved listing is no change — but indexed as
+    // first read, every venue read since kept a second copy of its listings, showtimes and all, for as long as it ran.
+    val live    = new LiveProjectionIndex(normalizer)
+    val rows    = Seq(row(new Random(1), Multikino), row(new Random(2), Multikino))
+    def read()  = rows.map(cm => ProjectedListing.of(Listing.of(cm.cinema, cm, normalizer), cm))
+    val first   = read()
+    val decided = first.map(l => ResolverDecision(Seq(l.listing.key), Some(1), 0.9, ResolverDecision.Basis.OwnMatch, Nil)())
+    live.update(Seq(Multikino.displayName -> first), _ => true, decided, Nil)
+    val again   = read()
+    again shouldBe first
+    val changes = live.update(Seq(Multikino.displayName -> again), _ => true, decided, Nil)
+    changes.listings shouldBe empty
+    val byKey   = live.index(FilmIdCounters.empty).byKey
+    again.foreach(l => withClue(l.listing.rawTitle)(byKey(l.listing.key) should be theSameInstanceAs l))
+  }
 }

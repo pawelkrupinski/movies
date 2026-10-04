@@ -343,9 +343,10 @@ object IdentityProjectionPlan {
    *  data, and the listing key it is the slot of, if any. */
   final case class Slot(at: Option[(String, String)], data: SourceData, key: Option[ListingKey])
 
-  def slotsOf(r: StoredMovieRecord): Seq[Slot] = r.record.data.toSeq.map { case (source, sd) =>
+  def slotsOf(r: StoredMovieRecord): Seq[Slot] = r.record.data.toSeq.map { case (source, sd) => slotOf(source, sd) }
+
+  def slotOf(source: Source, sd: SourceData): Slot =
     Slot(source match { case cs: CinemaShowing => Some(cs.cinema.displayName -> cs.titleKey); case _ => None }, sd, ListingKey.ofSource(source, sd))
-  }
 
   /** The film a listing is the slot of, of the films whose slot it is: the smallest id. */
   def ownerOf(refs: Set[PipelineFilmRef]): Option[PipelineFilmRef] = refs.minByOption(_.id)
@@ -394,7 +395,7 @@ object IdentityProjectionPlan {
         case (showing: CinemaShowing, slot) => showing.cinema -> ((showing: Source) -> slot) }.groupMap(_._1)(_._2)))
     def priorsOf(id: String): Map[Cinema, Int] = storedById.get(id).fold(Map.empty[Cinema, Int])(r => shapes.priorsOf(r.record))
     // One venue's listings on a film, and what its slots are built from.
-    def previousAt(ofVenue: Seq[ProjectedListing]): Seq[Option[String]] = ofVenue.map(r => index.previousOf.get(r.listing.key).map(_.id))
+    def previousAt(keys: Seq[ListingKey]): Seq[Option[String]] = keys.map(k => index.previousOf.get(k).map(_.id))
     def priorsAt(cinema: Cinema, previous: Seq[Option[String]]): Seq[Int] =
       previous.flatten.distinct.sorted.map(id => priorsOf(id).getOrElse(cinema, 0))
     def groupOf(cinema: Cinema, ofVenue: Seq[ProjectedListing], counter: Long): (VenueGroup, Seq[Option[String]], Seq[Int]) = {
@@ -403,7 +404,7 @@ object IdentityProjectionPlan {
       // since a slot carries forward its own listing's film's slot: two rows trading films trade the slot each
       // carries, the set of priors unchanged. Left out, a slot built over one film's prior was taken from the memo
       // for the other's (a venue's "Lalka" and "Lalka 2D" trading films kept the director only one of them had).
-      val previous = previousAt(ofVenue)
+      val previous = previousAt(ofVenue.map(_.listing.key))
       val priors   = priorsAt(cinema, previous)
       // Each row's film by its counter, which a film keeps for good and has from its first draft: what the key of a
       // slot once written is worked out from ([[VenueSlotMemo.written]]), a film new to the store included.
@@ -423,10 +424,10 @@ object IdentityProjectionPlan {
           val dirtyVenues = dirtyAt.getOrElse(counter, Set.empty).map(byKey(_).listing.cinema)
           val groups = was.venues.toSeq.sortBy(_._1.displayName).map { case (cinema, venue) =>
             // Moved: one of its listings did, or which film one is on, or the slots those films hold at the venue.
-            lazy val previous = previousAt(venue.group.rows)
+            lazy val previous = previousAt(venue.keys)
             val moved = dirtyVenues(cinema) || previous != venue.previous || priorsAt(cinema, previous) != venue.priors
             if (!moved) cinema -> Left(venue)
-            else cinema -> Right(groupOf(cinema, venue.group.rows.map(r => byKey(r.listing.key)), counter))
+            else cinema -> Right(groupOf(cinema, venue.keys.map(byKey), counter))
           }
           Planned(counter, members, was.keys, was.titles, groups, Some(was))
         case _ =>
@@ -450,7 +451,7 @@ object IdentityProjectionPlan {
         case Seq(id) => storedById.get(id).map(_ => slotsByVenueOf(id).getOrElse(group.cinema, Nil))
         case _ => None
       }
-    planned.foreach(_.groups.foreach { case (_, Left(venue)) => venueSlots(venue.group.key) = venue.lean; case _ => () })
+    planned.foreach(_.groups.foreach { case (_, Left(venue)) => venueSlots(venue.memoKey) = venue.lean; case _ => () })
     val pending    = planned.flatMap(_.groups.collect { case (_, Right((group, _, _))) => group }).filter(group =>
       memo.lookup(group.key, storedAt(group)).fold(true) { lean => venueSlots(group.key) = lean; false })
     pending.groupBy(_.cinema).toSeq.sortBy(_._1.displayName).grouped(RowBatch).foreach { batch =>
@@ -472,7 +473,7 @@ object IdentityProjectionPlan {
       // Each venue's slots, and the film's as a whole: of a film drafted again, the venues it rebuilt replace theirs.
       val venueShapes = plan.groups.iterator.map {
         case (cinema, Left(venue))            => cinema -> venue
-        case (cinema, Right((group, previous, priors))) => cinema -> VenueShape(group, venueSlots(group.key), previous, priors)
+        case (cinema, Right((group, previous, priors))) => cinema -> VenueShape(group.rows.map(_.listing.key), group.key, venueSlots(group.key), previous, priors)
       }.toMap
       val venueData = plan.was.fold(venueShapes.valuesIterator.flatMap(_.lean).toMap) { was =>
         plan.groups.foldLeft(was.venueData) {
@@ -497,7 +498,7 @@ object IdentityProjectionPlan {
       FilmDraft(counter, previous.map(_.id), keys, record, anchor)
     }
     val venues = planned.map(plan => plan.counter -> plan.groups.map {
-      case (cinema, Left(venue))           => cinema -> venue.group.rows.map(_.listing.key)
+      case (cinema, Left(venue))           => cinema -> venue.keys
       case (cinema, Right((group, _, _)))  => cinema -> group.rows.map(_.listing.key)
     }.toMap).toMap
 
@@ -608,10 +609,11 @@ object IdentityProjectionPlan {
   }
 }
 
-/** One venue of a drafted film: its group, the slots built for it, the film each of its listings was on, and what those
- *  films' slots at the venue were (their priors) — the venue is reused while each listing is on the same film and those
- *  slots are unmoved. */
-private[identity] final case class VenueShape(group: IdentityProjectionPlan.VenueGroup, lean: Seq[(Source, SourceData)],
+/** One venue of a drafted film: its listings' keys (not the listings — a venue read again holds new ones, and the old
+ *  are let go), its memo key, the slots built for it, the film each of its listings was on, and what those films' slots
+ *  at the venue were (their priors) — the venue is reused while each listing is on the same film and those slots are
+ *  unmoved. */
+private[identity] final case class VenueShape(keys: Seq[ListingKey], memoKey: VenueSlotMemo.Key, lean: Seq[(Source, SourceData)],
                                               previous: Seq[Option[String]], priors: Seq[Int])
 
 /** A drafted film: the listings it was drafted with (and in key order), how many carry each clean title (its anchor),
