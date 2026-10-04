@@ -26,7 +26,7 @@ import scala.collection.mutable
  */
 final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: IdentityLookups, normalizer: TitleNormalizer,
                            calibration: IdentityCalibration, tmdbOf: String => Answer[Option[Int]], stored: AgreementVerdicts,
-                           ask: AgreementStage.Open => Unit = _ => ()) {
+                           ask: AgreementStage.Open => Unit = _ => (), metrics: AgreementStage.Metrics = AgreementStage.Metrics.Silent) {
 
   @volatile private var gaps: Set[(VoterFamily, String)] = Set.empty
   @volatile private var finds: Set[String] = Set.empty
@@ -52,6 +52,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   /** The questions handed to `ask` since the families' answers last moved: a tick that filed nothing hands nothing. */
   private val handed      = mutable.Set.empty[(VoterFamily, String)]
   private val handedFinds = mutable.Set.empty[String]
+  /** How many clusters the current [[apply]] asked the resolver about again — the stage's cost, for [[metrics]]. */
+  private var resolves    = 0
   private var handedAt    = -1L
 
   /** The last resolution applied to, at which `version`, and what it came to: a tick handed the same decisions while
@@ -75,6 +77,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   }
 
   private def applied(resolution: Resolution, listingOf: ListingKey => Option[Listing], version: Long): Resolution = {
+    val started = tools.Stopwatch.start()
+    resolves = 0
     val asked  = mutable.Set.empty[(VoterFamily, String)]
     val finding = mutable.Set.empty[String]
     val moved  = mutable.ArrayBuffer.empty[StoredVerdict]
@@ -110,6 +114,10 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     if (handedAt != version) { handed.clear(); handedFinds.clear(); handedAt = version }
     val open = AgreementStage.Open(gaps -- handed, finds -- handedFinds)
     if (open.questions.nonEmpty || open.finds.nonEmpty) { ask(open); handed ++= open.questions; handedFinds ++= open.finds }
+    val agreedNow = decisions.filter(_.basis == ResolverDecision.Basis.Agreed)
+    metrics.applied(AgreementStage.Applied(waiting = waiting.size, verdicts = held.size, agreed = held.valuesIterator.count(_.agreed.isDefined),
+      takenTmdb = agreedNow.count(_.film.isDefined), takenFallback = agreedNow.count(_.fallback.isDefined),
+      open = gaps.groupMapReduce(_._1)(_ => 1)(_ + _), finds = finds.size, resolves = resolves, seconds = started.seconds))
     resolution.copy(decisions = decisions)
   }
 
@@ -139,6 +147,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  waiting on its questions, while one is a gap. */
   private def resolved(id: String, digest: Long, listings: Seq[Listing], version: Long, asked: mutable.Set[(VoterFamily, String)],
                        moved: mutable.ArrayBuffer[StoredVerdict]): Option[StoredVerdict] = {
+    resolves += 1
     val reads = mutable.Map.empty[String, Long]
     val gaps  = mutable.Set.empty[(VoterFamily, String)]
     val verdicts = families.toSeq.sortBy(_._1.ordinal).map { case (_, answers) =>
@@ -231,4 +240,12 @@ object AgreementStage {
 
   /** A model decision's cluster id, its listings sorted, and their digest. */
   private final case class Digested(id: String, listings: Seq[Listing], digest: Long)
+
+  /** What one [[AgreementStage.apply]] that read anything came to: the clusters waiting on a family's answer, the verdicts
+   *  kept and how many agreed, the decisions taken as a TMDB film or an IMDb fallback, the questions still open per family
+   *  and TMDB finds, how many clusters it resolved again, and how long it took. */
+  final case class Applied(waiting: Int, verdicts: Int, agreed: Int, takenTmdb: Int, takenFallback: Int, open: Map[VoterFamily, Int],
+                           finds: Int, resolves: Int, seconds: Double)
+  trait Metrics { def applied(applied: Applied): Unit }
+  object Metrics { val Silent: Metrics = _ => () }
 }

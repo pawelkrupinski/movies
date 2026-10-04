@@ -68,7 +68,10 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
         .fold[services.identity.Answer[Option[Int]]](services.identity.Answer.Unknown)(d =>
           services.identity.Answer.Known(services.identity.TmdbStore.intsOf(d.get("ids")).headOption)),
       stored = agreementVerdicts,
-      ask = open => services.identity.AgreementQuestions.enqueueOpen(taskQueue, open.questions, open.finds, clock))
+      ask = open => services.identity.AgreementQuestions.enqueueOpen(taskQueue, open.questions, open.finds, clock, agreementQuestionMetrics),
+      metrics = workerMetrics.identityAgreement.stage(country.code))
+  /** How the agreement's questions are enqueued and asked, per family and outcome. */
+  lazy val agreementQuestionMetrics: services.identity.AgreementQuestionMetrics = workerMetrics.identityAgreement.questions(country.code)
   /** The agreement's verdicts (`identity_agreements`), kept as the model's families are. */
   lazy val agreementVerdicts: services.identity.agreement.AgreementVerdicts =
     mongoConnection.database.fold[services.identity.agreement.AgreementVerdicts](new services.identity.agreement.InMemoryAgreementVerdicts)(
@@ -84,9 +87,9 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
    *  agreed IMDb id — each filed answer asking for a projection, which reads it. */
   lazy val agreementHandlers: Seq[services.tasks.TaskHandler] = Seq(
     new services.identity.AgreementQuestionHandler(familyAnswerStore, familySources,
-      () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock),
+      () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics),
     new services.identity.AgreementFindHandler(imdbId => { tmdbClient.findByImdbId(imdbId); () },
-      () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock))
+      () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics))
   /** Projects what moved: as the identity model takes this worker's scrapes in, and as another writer moves a stored film
    *  (`MovieCache.onChanged`) — there is no period between. */
   lazy val identityProjectionTrigger: services.identity.EventTrigger = {

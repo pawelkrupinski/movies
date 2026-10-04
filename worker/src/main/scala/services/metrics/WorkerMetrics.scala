@@ -93,6 +93,7 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   val identityModel: IdentityModelGauges = new IdentityModelGauges(registry)
   // A cut-over country's identity projection — see IdentityCutoverMetrics.
   val identityCutover: IdentityCutoverMetrics = new IdentityCutoverMetrics(registry)
+  val identityAgreement: IdentityAgreementMetrics = new IdentityAgreementMetrics(registry)
 
   // Listings landed incomplete, and venues stuck incomplete — see ListingIncompleteMetrics.
   val listingIncomplete: ListingIncompleteMetrics = new ListingIncompleteMetrics(countryCodes, registry)

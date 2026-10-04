@@ -72,6 +72,26 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
     store.answers(VoterFamily.Metacritic).titled("Dune") shouldBe Answer.Unknown
   }
 
+  "the agreement's questions" should "report each enqueue's result and each question's outcome" in {
+    val enqueues = scala.collection.mutable.ArrayBuffer.empty[(String, Boolean)]
+    val outcomes = scala.collection.mutable.ArrayBuffer.empty[(String, String)]
+    val metrics  = new AgreementQuestionMetrics {
+      def enqueued(family: String, added: Boolean): Unit = { enqueues += family -> added; () }
+      def asked(family: String, outcome: String): Unit   = { outcomes += family -> outcome; () }
+    }
+    val queue = new InMemoryTaskQueue
+    AgreementQuestions.enqueueOpen(queue, Set(VoterFamily.Imdb -> "title|Klondike"), Set("tt1"), clock, metrics)
+    AgreementQuestions.enqueueOpen(queue, Set(VoterFamily.Imdb -> "title|Klondike"), Set.empty, clock, metrics)
+    enqueues.toSeq shouldBe Seq("imdb" -> true, "tmdb-find" -> true, "imdb" -> false)
+    val store = world()
+    val handler = new AgreementQuestionHandler(store, Map(VoterFamily.Imdb -> new Answering(VoterFamily.Imdb),
+      VoterFamily.Metacritic -> new Answering(VoterFamily.Metacritic, Some(new HttpStatusException(503, "GET", "https://www.metacritic.com/x", None)))),
+      () => (), clock, metrics)
+    handler.handle(task(VoterFamily.Imdb, "title|Klondike")); handler.handle(task(VoterFamily.Imdb, "title|Klondike"))
+    handler.handle(task(VoterFamily.Metacritic, "title|Dune"))
+    outcomes.toSeq shouldBe Seq("imdb" -> "answered", "imdb" -> "fresh", "metacritic" -> "failed")
+  }
+
   "a find's handler" should "ask TMDB about the agreed IMDb id and ask for a projection" in {
     val found = new java.util.concurrent.ConcurrentLinkedQueue[String]; val projections = new AtomicInteger
     new AgreementFindHandler(id => { found.add(id); () }, () => { projections.incrementAndGet(); () }, clock)

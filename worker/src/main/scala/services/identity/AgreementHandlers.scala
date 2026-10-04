@@ -3,7 +3,7 @@ package services.identity
 import play.api.Logging
 import services.identity.agreement.VoterFamily
 import services.tasks.HandlerOutcome.{Deferred, Done, Reschedule, Skipped}
-import services.tasks.{HandlerOutcome, Task, TaskHandler, TaskQueue, TaskType}
+import services.tasks.{EnqueueResult, HandlerOutcome, Task, TaskHandler, TaskQueue, TaskType}
 import tools.{CircuitOpenException, HttpStatusException}
 
 import java.time.Clock
@@ -26,14 +26,15 @@ object AgreementQuestions {
 
   /** Every open question and find, one task each — one already queued is not queued again — claimed after every other
    *  task ([[Behind]]). */
-  def enqueueOpen(queue: TaskQueue, wanted: Set[(VoterFamily, String)], finds: Set[String], clock: Clock): Unit = {
+  def enqueueOpen(queue: TaskQueue, wanted: Set[(VoterFamily, String)], finds: Set[String], clock: Clock,
+                  metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent): Unit = {
     wanted.toSeq.sortBy { case (family, question) => (family.ordinal, question) }.foreach { case (family, question) =>
-      queue.enqueue(TaskType.AgreementQuestion, s"agreement|${family.label}|$question",
-        Map(Family -> family.label, Question -> question), submittedAt = clock.instant(), claimAhead = -Behind)
+      metrics.enqueued(family.label, queue.enqueue(TaskType.AgreementQuestion, s"agreement|${family.label}|$question",
+        Map(Family -> family.label, Question -> question), submittedAt = clock.instant(), claimAhead = -Behind) == EnqueueResult.Added)
     }
     finds.toSeq.sorted.foreach(imdbId =>
-      queue.enqueue(TaskType.AgreementFind, s"agreement-find|$imdbId", Map(ImdbId -> imdbId), submittedAt = clock.instant(),
-        claimAhead = -Behind))
+      metrics.enqueued(AgreementQuestionMetrics.TmdbFind, queue.enqueue(TaskType.AgreementFind, s"agreement-find|$imdbId",
+        Map(ImdbId -> imdbId), submittedAt = clock.instant(), claimAhead = -Behind) == EnqueueResult.Added))
   }
 
   /** The statuses that answer a question with nothing — a query the site refuses (Filmweb's 400 for an overlong title),
@@ -41,14 +42,20 @@ object AgreementQuestions {
   val NothingThere: Set[Int] = Set(400, 404, 410)
 
   /** `family`'s answer to `question` (`title|<text>`, `director|<name>`, `record|<id>`), asked of `source` and filed. */
-  def file(store: FamilyAnswerStore, family: VoterFamily, source: FamilySource, question: String): Unit = {
-    def answer[A](read: => A, nothing: A): A = try read catch { case e: HttpStatusException if NothingThere(e.code) => nothing }
+  def file(store: FamilyAnswerStore, family: VoterFamily, source: FamilySource, question: String): Unit = { fileAs(store, family, source, question); () }
+
+  /** [[file]], saying whether the family answered or said there was nothing there. */
+  def fileAs(store: FamilyAnswerStore, family: VoterFamily, source: FamilySource, question: String): String = {
+    var outcome = AgreementQuestionMetrics.Answered
+    def answer[A](read: => A, nothing: A): A =
+      try read catch { case e: HttpStatusException if NothingThere(e.code) => outcome = AgreementQuestionMetrics.Nothing; nothing }
     question.split("\\|", 2) match {
       case Array("title", text)    => store.fileTitled(family, text, answer(source.titled(text), Nil))
       case Array("director", name) => store.fileDirected(family, name, answer(source.directedBy(name), Nil))
       case Array("record", id)     => store.fileRecord(family, id, answer(source.record(id), None))
       case _                       => throw new IllegalArgumentException(s"no such question: $question")
     }
+    outcome
   }
 
   /** A failed ask as the queue takes it: a host whose breaker is open was never asked — the attempt is given back and
@@ -65,28 +72,61 @@ object AgreementQuestions {
 
 /** One family question: asked of the family's live source and filed — skipped when the store already holds a fresh
  *  answer — and, once filed, a projection asked for (`filed`), which reads it. */
-final class AgreementQuestionHandler(store: FamilyAnswerStore, sources: Map[VoterFamily, FamilySource], filed: () => Unit, clock: Clock)
-    extends TaskHandler with Logging {
+final class AgreementQuestionHandler(store: FamilyAnswerStore, sources: Map[VoterFamily, FamilySource], filed: () => Unit, clock: Clock,
+                                     metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent) extends TaskHandler with Logging {
   val taskType: TaskType = TaskType.AgreementQuestion
 
   def handle(task: Task): HandlerOutcome = {
     val asked = for { family <- AgreementQuestions.familyOf(task); question <- AgreementQuestions.questionOf(task); source <- sources.get(family) }
       yield (family, question, source)
     asked.fold[HandlerOutcome](Skipped) { case (family, question, source) =>
-      if (!store.wanted(FamilyAnswerStore.questionId(family, question))) Skipped
-      else try { AgreementQuestions.file(store, family, source, question); filed(); Done }
-      catch { case scala.util.control.NonFatal(e) => AgreementQuestions.failed(e, s"${family.label} '$question'", clock) }
+      val outcome: HandlerOutcome =
+        if (!store.wanted(FamilyAnswerStore.questionId(family, question))) { metrics.asked(family.label, AgreementQuestionMetrics.Fresh); Skipped }
+        else try { metrics.asked(family.label, AgreementQuestions.fileAs(store, family, source, question)); filed(); Done }
+        catch { case scala.util.control.NonFatal(e) => AgreementQuestions.failed(e, s"${family.label} '$question'", clock) }
+      outcome match {
+        case _: Deferred   => metrics.asked(family.label, AgreementQuestionMetrics.Deferred)
+        case _: Reschedule => metrics.asked(family.label, AgreementQuestionMetrics.Failed)
+        case _             => ()
+      }
+      outcome
     }
   }
 }
 
 /** TMDB's `find` of an agreed IMDb id: asked through the TMDB client, whose answer the TMDB store files as it files
  *  every TMDB answer — and, once asked, a projection asked for. */
-final class AgreementFindHandler(find: String => Unit, filed: () => Unit, clock: Clock) extends TaskHandler {
+final class AgreementFindHandler(find: String => Unit, filed: () => Unit, clock: Clock,
+                                 metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent) extends TaskHandler {
   val taskType: TaskType = TaskType.AgreementFind
 
   def handle(task: Task): HandlerOutcome = AgreementQuestions.imdbIdOf(task).fold[HandlerOutcome](Skipped) { imdbId =>
-    try { find(imdbId); filed(); Done }
+    val outcome = try { find(imdbId); filed(); Done }
     catch { case scala.util.control.NonFatal(e) => AgreementQuestions.failed(e, s"TMDB find '$imdbId'", clock) }
+    metrics.asked(AgreementQuestionMetrics.TmdbFind, outcome match {
+      case Done          => AgreementQuestionMetrics.Answered
+      case _: Deferred   => AgreementQuestionMetrics.Deferred
+      case _             => AgreementQuestionMetrics.Failed
+    })
+    outcome
+  }
+}
+
+/** Where the agreement's questions report: each one enqueued (`added`, or already queued), and each one asked, by how it
+ *  came out — [[Answered]], [[Nothing]] there (a refused query, a missing page: filed as no film), [[Fresh]] (an answer
+ *  already filed: skipped), [[Deferred]] (the host's breaker open) or [[Failed]] (asked again on the queue's backoff). A
+ *  family is its label (`imdb`, `rt` …), TMDB's find of an agreed IMDb id [[TmdbFind]]. */
+trait AgreementQuestionMetrics {
+  def enqueued(family: String, added: Boolean): Unit
+  def asked(family: String, outcome: String): Unit
+}
+
+object AgreementQuestionMetrics {
+  val Answered = "answered"; val Nothing = "nothing"; val Fresh = "fresh"; val Deferred = "deferred"; val Failed = "failed"
+  val Outcomes: Seq[String] = Seq(Answered, Nothing, Fresh, Deferred, Failed)
+  val TmdbFind = "tmdb-find"
+  val Silent: AgreementQuestionMetrics = new AgreementQuestionMetrics {
+    def enqueued(family: String, added: Boolean): Unit = ()
+    def asked(family: String, outcome: String): Unit = ()
   }
 }

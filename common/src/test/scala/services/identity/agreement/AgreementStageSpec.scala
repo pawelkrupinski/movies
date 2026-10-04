@@ -63,6 +63,21 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     again.decisions.head should be theSameInstanceAs first.decisions.head
   }
 
+  it should "report each pass: clusters waiting and agreed, films taken, questions open, clusters resolved" in {
+    val passes = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Applied]
+    val stage  = new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+      tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, metrics = passes += _)
+    stage.apply(resolution, listingOf, version = 1)
+    val waitingPass = passes.last
+    (waitingPass.waiting, waitingPass.agreed, waitingPass.takenTmdb, waitingPass.resolves) shouldBe ((1, 0, 0, 1))
+    waitingPass.open.get(VoterFamily.RottenTomatoes) shouldBe Some(1)
+    val agreeingStage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+      tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, metrics = passes += _)
+    agreeingStage.apply(resolution, listingOf, version = 1)
+    val agreedPass = passes.last
+    (agreedPass.waiting, agreedPass.verdicts, agreedPass.agreed, agreedPass.takenTmdb, agreedPass.takenFallback) shouldBe ((0, 1, 1, 1, 0))
+  }
+
   it should "take the agreed IMDb id as its fallback film when TMDB holds none" in {
     val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts)
     stage.apply(resolution, listingOf, version = 1).decisions.head.fallback shouldBe Some(ResolverDecision.Fallback("imdb", "tt16315948", 1.0))
