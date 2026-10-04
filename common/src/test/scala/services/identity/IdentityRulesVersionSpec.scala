@@ -33,6 +33,15 @@ class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
       "scala/services/movies/MovieCache.scala", "scala/services/identity/IdentityProjectionPlan.scala", "resources/fonts/DejaVuSans.ttf")
   }
 
+  // Each of these changes, often, for reasons no decision reads: every setting's value type (a new setting
+  // anywhere), how a decision's explanation is built and written, the trace store's Mongo writes. The resolver
+  // reaches them through narrow files of their own (`settings.DatabaseNames`, `IdentityTraceSink`,
+  // `DocumentDigest`), so a change to them re-resolves no worker's corpus.
+  it should "leave out the volatile files beside what the resolver reads, which change no decision" in {
+    digested should contain noneOf ("scala/settings/ConfigurationValues.scala", "scala/services/identity/IdentityTraceStore.scala")
+    digested should contain ("scala/services/identity/IdentityTraceSink.scala")
+  }
+
   it should "be the digest of exactly those files, so no other file can move it" in {
     val digest = java.security.MessageDigest.getInstance("SHA-256")
     digested.foreach { path =>

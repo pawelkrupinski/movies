@@ -33,7 +33,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
                                 rules: String = "",
                                 regionBatch: Int = IncrementalResolver.RegionBatch,
                                 mutation: IncrementalResolver.Mutation = IncrementalResolver.Mutation.None,
-                                traces: IdentityTraceStore = IdentityTraceStore.Discard) {
+                                traces: IdentityTraceSink = IdentityTraceSink.Discard) {
   import IdentityResolver.RegionFamily
   import IncrementalResolver.Mutation
 
@@ -126,7 +126,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     finally {
       val gone = dropped -- families.valuesIterator.map(_.storeId)
       store.replace(gone, Nil)
-      traces.replace(gone, Nil)
+      traces.settle(gone, Nil)
     }
     ruled()
   }
@@ -241,16 +241,16 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     val traced = settled.values.toSeq.map { family =>
       val id     = StoredFamily.idOf(family.listings)
       val titled = family.listings.iterator.flatMap(key => heldListing(key).map(listing => key -> (listing.cinema, listing.rawTitle))).toMap
-      FamilyTraces(id, () => ListingTrace.of(id, family, key =>
+      SettledFamily(id, family, key =>
         titled.get(key).fold(Seq.empty[String]) { case (cinema, raw) =>
-          byClean.synchronized(normalizer.firedRules(cinema, raw, byClean)) }, Some(calibration)))
+          byClean.synchronized(normalizer.firedRules(cinema, raw, byClean)) }, Some(calibration))
     }
     clock.slices(settled.values.foreach(family => remember(family.copy(decisions = family.decisions.map(_.copy()(DecisionTrace.Empty))),
       context.slice(family.reads).digest)))
     val added   = settled.values.toSeq.flatMap(family => familyOf(family.listings.head).flatMap(families.get))
       .map(family => StoredFamily(family.storeId, family.resolved, family.digest))
     store.replace(removed -- added.map(_.id), added)
-    traces.replace(removed, traced)
+    traces.settle(removed, traced)
     ruled()
   }
 

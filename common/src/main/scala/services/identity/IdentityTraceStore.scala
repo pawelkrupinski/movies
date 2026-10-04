@@ -3,7 +3,7 @@ package services.identity
 import java.util.Locale
 
 import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonInt64, BsonNull, BsonString, BsonValue}
+import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonNull, BsonString, BsonValue}
 import org.mongodb.scala.model.{Filters, IndexModel, Indexes, Projections, ReplaceOneModel, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import services.movies.ListingKey
@@ -47,9 +47,9 @@ object ListingTrace {
     }
 }
 
-/** One family's traces as a resolve hands them over: its id, and how to BUILD them — lazily, by the store, off the
- *  resolver's thread for one that writes them ([[MongoIdentityTraceStore]]), so a store writing in batches holds one
- *  batch, not a restore's whole corpus. */
+/** One family's traces as a store receives them (from a settled family, [[IdentityTraceStore.settle]]): its id, and
+ *  how to BUILD them — lazily, by the store, off the resolver's thread for one that writes them
+ *  ([[MongoIdentityTraceStore]]), so a store writing in batches holds one batch, not a restore's whole corpus. */
 final case class FamilyTraces(family: String, build: () => IterableOnce[ListingTrace])
 
 object FamilyTraces {
@@ -59,7 +59,11 @@ object FamilyTraces {
 }
 
 /** Where the traces go: replaced a family at a time, as the families themselves are. */
-trait IdentityTraceStore {
+trait IdentityTraceStore extends IdentityTraceSink {
+  /** The settled families' traces, each built by [[ListingTrace.of]] when the store asks for it. */
+  final def settle(removed: Set[String], settled: Seq[SettledFamily]): Unit =
+    replace(removed, settled.map(s => FamilyTraces(s.id, () => ListingTrace.of(s.id, s.family, s.titleRules, s.calibration))))
+
   /** Drop the traces of the families `removed` names, then keep what `added` builds. A family handed over again is
    *  removed in the same call or an earlier one (the model re-resolved it), so its earlier traces never stand beside. */
   def replace(removed: Set[String], added: Seq[FamilyTraces]): Unit
@@ -178,7 +182,7 @@ final class MongoIdentityTraceStore(db: MongoDatabase) extends IdentityTraceStor
         .flatMap(_.get("_id").collect { case id if id.isString => id.asString.getValue }).toSet
     val kept = scala.collection.mutable.HashSet.empty[String]
     added.iterator.grouped(WriteBatch).foreach { batch =>
-      val docs   = batch.map(trace => ListingKey.serialised(trace.listing) -> digested(encode(trace)))
+      val docs   = batch.map(trace => ListingKey.serialised(trace.listing) -> DocumentDigest.of(encode(trace), DigestField))
       kept ++= docs.map(_._1)
       val stored = Await.result(collection.find(Filters.in("_id", docs.map(_._1)*)).projection(Projections.include(DigestField))
         .batchSize(tools.MongoReplies.Default).toFuture(), Timeout)
@@ -306,13 +310,6 @@ object MongoIdentityTraceStore {
   /** A trace document's content digest, which a rewrite of an unchanged trace is skipped by. */
   val DigestField = "digest"
 
-  /** `doc` with its content digest under `field`: 64 bits from its canonical JSON, two MurmurHash3 seeds. */
-  private[identity] def digested(doc: BsonDocument, field: String = DigestField): BsonDocument = {
-    val json = doc.toJson
-    val high = scala.util.hashing.MurmurHash3.stringHash(json, 0x2f1d7a3b).toLong
-    val low  = scala.util.hashing.MurmurHash3.stringHash(json, 0x6c8e9cf5).toLong & 0xffffffffL
-    doc.clone().append(field, BsonInt64((high << 32) | low))
-  }
   /** How many traces one bulk write carries. */
   val WriteBatch = 1000
 

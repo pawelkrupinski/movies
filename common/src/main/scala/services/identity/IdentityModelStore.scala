@@ -71,7 +71,7 @@ final class MongoIdentityModelStore(db: MongoDatabase) extends IdentityModelStor
   def replace(removed: Set[String], added: Seq[StoredFamily]): Unit = {
     if (removed.nonEmpty) Await.result(collection.deleteMany(Filters.in("_id", removed.toSeq*)).toFuture(), Timeout)
     added.grouped(WriteBatch).foreach { batch =>
-      val docs   = batch.map(family => family.id -> MongoIdentityTraceStore.digested(encode(family), ContentField))
+      val docs   = batch.map(family => family.id -> DocumentDigest.of(encode(family), ContentField))
       val stored = Await.result(collection.find(Filters.in("_id", docs.map(_._1)*)).projection(Projections.include(ContentField))
         .batchSize(tools.MongoReplies.Default).toFuture(), Timeout)
         .flatMap(d => d.get("_id").map(_.asString.getValue -> d.get(ContentField).filter(_.isInt64).map(_.asInt64.getValue))).toMap
