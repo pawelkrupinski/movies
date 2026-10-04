@@ -64,10 +64,10 @@ class TmdbGapMemorySpec extends AnyFlatSpec with Matchers {
     val memory = new TmdbGapMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
     val lalka  = CandidateQuery.Title("Lalka")
     val gaps   = AnswersChanged(Set(lalka), Set(1018))
-    (1 to 10).foreach { _ => memory.failed(Seq(lalka), Seq(1018)); memory.roundEnded(answered = 0, failed = 2) }
+    (1 to 10).foreach { _ => memory.failed(Seq(lalka), Seq(1018)); memory.roundEnded(answered = 0, failed = 1, deferred = 4) }
     clock.advance(Duration.ofMinutes(1))
     memory.due(gaps) shouldBe AnswersChanged.Empty                   // six hours of backoff
-    memory.roundEnded(answered = 3, failed = 0)                      // TMDB answers again
+    memory.roundEnded(answered = 3, failed = 0, deferred = 0)                      // TMDB answers again
     memory.due(gaps) shouldBe gaps
   }
 
@@ -76,9 +76,23 @@ class TmdbGapMemorySpec extends AnyFlatSpec with Matchers {
     val memory = new TmdbGapMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
     val lalka  = CandidateQuery.Title("Lalka")
     val gaps   = AnswersChanged(Set(lalka), Set.empty)
-    memory.failed(Seq(lalka), Nil); memory.roundEnded(answered = 5, failed = 1)
+    memory.failed(Seq(lalka), Nil); memory.roundEnded(answered = 5, failed = 1, deferred = 0)
     clock.advance(Duration.ofMinutes(1))
-    memory.roundEnded(answered = 5, failed = 0)
+    memory.roundEnded(answered = 5, failed = 0, deferred = 0)
+    memory.due(gaps) shouldBe AnswersChanged.Empty
+  }
+
+  // A round asking ONE question that fails is that question's failure, not TMDB down: marked an
+  // outage, the next clean round released it, and a persistently failing question was retried every
+  // other round instead of backing off to six hours.
+  it should "keep a lone failed read's own backoff: too few reads to call an outage" in {
+    val clock  = new MutableClock(Instant.parse("2026-09-28T12:00:00Z"))
+    val memory = new TmdbGapMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    val lalka  = CandidateQuery.Title("Lalka")
+    val gaps   = AnswersChanged(Set(lalka), Set.empty)
+    memory.failed(Seq(lalka), Nil); memory.roundEnded(answered = 0, failed = 1, deferred = 0)
+    clock.advance(Duration.ofMinutes(1))
+    memory.roundEnded(answered = 5, failed = 0, deferred = 0)
     memory.due(gaps) shouldBe AnswersChanged.Empty
   }
 }

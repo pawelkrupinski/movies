@@ -66,11 +66,14 @@ final class TmdbGapMemory(docs: TmdbDocuments, language: String, clock: Clock, r
    *  its recovery, and every failure marked before it is due again at once ([[due]]) — otherwise a
    *  long outage left each question up to [[MaxFailureRetry]] behind a TMDB answering again. A round
    *  with answers AND failures is neither: a question that keeps failing while others answer keeps
-   *  its own backoff. */
-  def roundEnded(answered: Int, failed: Int): Unit = {
+   *  its own backoff. Nor is a round of fewer than [[MinOutageReads]] reads: one question failing
+   *  alone is that question's failure, and calling it an outage released its backoff every other
+   *  round. A read counts once it was wanted — failed, or deferred behind the host's back-off (an
+   *  outage fails ONE read, then the budget defers the rest to that host). */
+  def roundEnded(answered: Int, failed: Int, deferred: Int): Unit = {
     lazy val inOutage = docs.get(TmdbKind.Query, Seq(HealthMarker)).get(HealthMarker).exists(doc => long(doc, OutageSince).isDefined)
     val now = clock.millis()
-    if (failed > 0 && answered == 0)
+    if (failed > 0 && answered == 0 && failed + deferred >= MinOutageReads)
       docs.put(TmdbKind.Query, Seq(HealthMarker -> new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(OutageSince, BsonInt64(now))))
     else if (failed == 0 && answered > 0 && inOutage)
       docs.put(TmdbKind.Query, Seq(HealthMarker -> new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(RecoveredAt, BsonInt64(now))))
@@ -100,6 +103,9 @@ object TmdbGapMemory {
   val MaxFailureRetry: FiniteDuration   = 6.hours
   /** The marker field holding a failed question's current wait, in millis. */
   private val FailureWait = "failureWaitMs"
+  /** The fewest reads a round must have wanted, all unanswered, to call TMDB down rather than blame
+   *  the questions it asked. */
+  val MinOutageReads: Int = 3
   /** The one marker holding TMDB's health across rounds: in an outage since, or recovered at. */
   private val HealthMarker = s"${Prefix}tmdb-health"
   private val OutageSince  = "outageSinceMs"
