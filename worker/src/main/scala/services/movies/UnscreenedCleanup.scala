@@ -6,7 +6,7 @@ import services.Stoppable
 import tools.DaemonExecutors
 
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService, TimeUnit}
+import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -16,15 +16,15 @@ import scala.util.Try
  * thousands of films that dropped out of all schedules months ago.
  *
  * EVENT-DRIVEN (2026-10-04; it was a daily walk of the whole cache). The cache hands
- * this class every row it STORES ([[MovieCache.onStored]]) — the identity projection's
- * write, another writer's `put`, a change-stream apply — and a row stored with no live
- * cinema slot is nominated there and judged on this class's own thread moments later:
- * the write that leaves a film with no cinema is the event.
+ * this class every film it holds as it changes ([[MovieCache.onResident]]) — the identity
+ * projection's write, another writer's `put`, a change-stream apply, a rehydrate's load —
+ * and, on subscribing, every film it already holds. A film held with no live cinema slot
+ * is nominated there and judged on this class's own thread moments later: the write that
+ * leaves a film with no cinema is the event.
  *
  * What an event can miss, and the backstop each has:
- *  - nominations queued in memory when the process dies, and the rows the boot hydrate
- *    stored before this class subscribed: ONE whole-cache pass shortly after each boot
- *    ([[start]]), never repeated;
+ *  - nominations queued in memory when the process dies: the next boot's subscription
+ *    hands over every film held, so each one still empty is nominated then;
  *  - another process's write whose change-stream event never arrived: the cache's own
  *    backstop rehydrate stores every row again, and each row it stores is nominated as
  *    any other write is. No periodic pass of this class's own is left.
@@ -36,9 +36,9 @@ import scala.util.Try
  * festival items, anniversary screenings, and similar.
  *
  * TWO WITNESSES, because that trade-off is only acceptable when the row is
- * genuinely dead. An empty in-memory `cinemaData` is not proof of that: the
- * boot pass fires 20s after EVERY boot (below), so a cache that has not
- * finished hydrating reads as "no cinema screens this film" for rows that are
+ * genuinely dead. An empty in-memory `cinemaData` is not proof of that: a whole-cache
+ * pass used to fire 20s after EVERY boot, and a cache that had not
+ * finished hydrating read as "no cinema screens this film" for rows that are
  * playing tonight. On 2026-07-27 that cost 19 still-playing arthouse features
  * (`Filipinana (2026)`, `Clarissa (2026)`, `Błogosławieni niszczyciele (2026)`,
  * …) in a single pass 20s after a restart — and the delete cascade then cleared
@@ -64,8 +64,8 @@ import scala.util.Try
  * reports a failed slot read as unreadable rather than as a film with no cinemas.
  * Exactly the rows a delete would clear, from exactly the read a serve would use.
  *
- * Lifecycle owned by the wiring (`start()` subscribes to the cache and schedules
- * the boot pass; `stop()` runs at shutdown) — the class never self-subscribes or
+ * Lifecycle owned by the wiring (`start()` subscribes to the cache; `stop()` runs
+ * at shutdown) — the class never self-subscribes or
  * self-schedules. The scheduler is injected so a spec can hold the work and run it.
  */
 class UnscreenedCleanup(
@@ -76,16 +76,13 @@ class UnscreenedCleanup(
   // Fold titles with the rules the corpus was keyed under, not a process default.
   private val normalizer: services.movies.TitleNormalizer = cache.normalizer
 
-  // The boot pass, once, shortly after boot.
-  private val StartupDelaySeconds = 20L
-
   // Keys a write nominated that no drain has judged yet, and whether a drain is queued for them.
   private val nominated   = ConcurrentHashMap.newKeySet[CacheKey]()
   private val drainQueued = new AtomicBoolean(false)
 
   /** Walk every cached row; drop the ones with no cinema slot left. Returns
    *  the count of rows removed. Public so a script (and tests) can invoke a
-   *  one-shot pass; the boot pass calls the same method.
+   *  one-shot pass.
    *
    *  An empty in-memory `cinemaData` only NOMINATES a row — it never convicts
    *  it. Every candidate is corroborated against the durable record, and a row
@@ -170,11 +167,8 @@ class UnscreenedCleanup(
   private def label(key: CacheKey): String = s"${key.cleanTitle} (${key.year.getOrElse("—")})"
 
   def start(): Unit = {
-    cache.onStored((key, record) => if (unscreened(record)) nominate(key))
-    logger.info(s"Unscreened-row cleanup: on each write that leaves a film with no cinema, and one whole-cache pass " +
-      s"in ${StartupDelaySeconds}s.")
-    scheduler.schedule(quietly("cleanup's boot pass")(removeUnscreened()), StartupDelaySeconds, TimeUnit.SECONDS)
-    ()
+    cache.onResident((key, film) => film.foreach(f => if (unscreened(f.record)) nominate(key)))
+    logger.info("Unscreened-row cleanup: on each film the cache holds with no cinema, the ones held at boot included.")
   }
 
   def stop(): Unit = scheduler.shutdown()

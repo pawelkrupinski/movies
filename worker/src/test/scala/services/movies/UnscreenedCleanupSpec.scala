@@ -190,8 +190,8 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
 
   // ── Event-driven: the write that leaves a film with no cinema ─────────────────────────────
 
-  /** Holds what the cleanup hands its scheduler — the boot pass and each drain of nominated rows —
-   *  so a spec runs it by hand, and can say that the boot pass never ran. */
+  /** Holds what the cleanup hands its scheduler — each drain of nominated rows, and anything it would delay — so a spec
+   *  runs it by hand, and can say that nothing was put off. */
   private class HeldScheduler extends java.util.concurrent.ScheduledThreadPoolExecutor(1) {
     var executed = Vector.empty[Runnable]
     var delayed  = Vector.empty[Runnable]
@@ -223,7 +223,25 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
       cache.get(key)                                       shouldBe None
       repository.deletes                                   shouldBe Seq(("Ending", Some(2026)))
       cache.get(cache.keyOf("Running", Some(2026)))        should not be empty
-      scheduler.delayed                                    should have size 1   // the boot pass, held: it never ran
+      scheduler.delayed                                    shouldBe empty
+    } finally cleanup.stop()
+  }
+
+  it should "judge the films the cache held with no cinema before it subscribed, on subscribing" in {
+    val (repository, _) = splitRepository(Seq(
+      ("Stranded", Some(2026), mkRecord("tt5", Map.empty)),
+      ("Running",  Some(2026), mkRecord("tt2", Map(Helios -> cinemaSlot("Running"))))))
+    val cache     = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val scheduler = new HeldScheduler
+    val cleanup   = new UnscreenedCleanup(cache, repository, scheduler)
+    try {
+      cleanup.start()
+      scheduler.executed should have size 1
+      scheduler.runExecuted()
+
+      repository.deletes                            shouldBe Seq(("Stranded", Some(2026)))
+      cache.get(cache.keyOf("Running", Some(2026))) should not be empty
+      scheduler.delayed                             shouldBe empty
     } finally cleanup.stop()
   }
 
