@@ -302,7 +302,10 @@ object ExtraTitleRules {
    *  " + ": a film announced after the plus ("Spotkanie z Kamilą Urzędowską + pokaz filmu "Lalka"") went with it, and the
    *  search asked for the meeting. Stamped order 13 by [[all]]. */
   val beforePlusEvent: Seq[TitleRule] = Seq(
-    searchReplace("xtra-pokaz-filmu",              """(?iu)^.*?\bpokaz\s+filmu\s+["„]?([^"„”]+?)["”]?\s*$""", "$1", "'… pokaz filmu <film>' screening of a film"),
+    // The film after "pokaz filmu" is quoted or capitalised; "– pokaz filmu z prelekcją" names what the screening
+    // comes WITH, and replacing the title with that searched for nothing. Case-insensitivity is scoped to the
+    // keyword, since a global (?i) makes \p{Lu} match lowercase too.
+    searchReplace("xtra-pokaz-filmu",              """(?u)^.*?\b(?i:pokaz\s+filmu)\s+(?:["„]([^"„”]+?)["”]|(\p{Lu}[^"„”]*?))\s*$""", "$1$2", "'… pokaz filmu <film>' screening of a film, the film quoted or capitalised"),
   )
 
   /** Strips that fix enrichment without merging the row away — a premiere or a

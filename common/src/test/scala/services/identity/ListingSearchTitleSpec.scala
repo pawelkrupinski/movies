@@ -37,6 +37,12 @@ class ListingSearchTitleSpec extends AnyFlatSpec with Matchers {
     search("Lalka (+ ENG") shouldBe "Lalka"
     // a closed bracket and a plain "+ <event>" are as before
     search("Hamnet + pokaz filmu") shouldBe "Hamnet"
+    // "pokaz filmu" followed by what the screening comes WITH, not a film's name:
+    // the film is the one before it, never "z prelekcją"
+    search("Lalka – pokaz filmu z prelekcją") shouldBe "Lalka"
+    search("Lalka - pokaz filmu i spotkanie z reżyserem") shouldBe "Lalka"
+    // an unquoted capitalised film after it is still the film
+    search("Klub Filmowy: pokaz filmu Mira") shouldBe "Mira"
   }
 
   "A plain title" should "have no search title of its own" in {
