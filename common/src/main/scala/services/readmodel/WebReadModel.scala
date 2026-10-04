@@ -83,12 +83,15 @@ class WebReadModel(
   /** The conditional-GET validator for one city: the latest of the model-wide
    *  floor, the city's own stamp, and the stamps of any slug it formerly used
    *  (`screeningsForCity` still serves rows filed under those, so they are part
-   *  of what the city renders). */
+   *  of what the city renders).
+   *
+   *  The city stamps are read BEFORE the floor: a reload advances the floor past them first and
+   *  only then drops them, so a stamp found gone means the floor already covers it. Read floor
+   *  first, a request racing the reload took the floor from before it and the stamp from after,
+   *  and answered a validator older than one already handed out. */
   def lastModifiedFor(citySlug: String): java.time.Instant = {
-    var latest = _globalFloor.get()
-    latest = laterOf(latest, cityStamps.get(citySlug))
-    City.formerSlugs(citySlug).foreach(former => latest = laterOf(latest, cityStamps.get(former)))
-    latest
+    val stamps = (citySlug +: City.formerSlugs(citySlug)).map(cityStamps.get)
+    stamps.foldLeft(_globalFloor.get())(laterOf)
   }
 
   private def laterOf(current: java.time.Instant, candidate: java.time.Instant): java.time.Instant =

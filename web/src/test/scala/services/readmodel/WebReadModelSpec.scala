@@ -594,6 +594,38 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.stop()
   }
 
+  // The same, under a request reading the validator WHILE a reload drops the city stamps: it read
+  // the floor before the reload advanced it and the city's stamp after the reload dropped it, and
+  // answered the old floor — a validator older than one already handed out, which the encoded-
+  // response cache still held a body for, rendered before the city's change. A race loop: the
+  // window is two reads wide, so the loop runs until it is seen or the budget is spent.
+  it should "never move a city's validator backwards for a request racing a reload" in {
+    val clock      = java.time.Clock.fixed(java.time.Instant.parse("2026-06-10T10:00:00Z"), java.time.ZoneOffset.UTC)
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(titled("belle|2021", "Belle", Some(2021)))
+    val rm = new WebReadModel(repository, driftSettle = WebReadModel.DriftSettle(Duration.Zero), clock = clock)
+    rm.start()
+    @volatile var racing = true
+    val backwards = new java.util.concurrent.atomic.AtomicReference[Option[(java.time.Instant, java.time.Instant)]](None)
+    val requests = new Thread(() => {
+      var seen = rm.lastModifiedFor("warszawa")
+      while (racing && backwards.get.isEmpty) {
+        val now = rm.lastModifiedFor("warszawa")
+        if (now.isBefore(seen)) backwards.set(Some(seen -> now)) else seen = now
+      }
+    })
+    requests.setDaemon(true)
+    requests.start()
+    val deadline = System.nanoTime() + 2_000_000_000L
+    var n = 0
+    try while (System.nanoTime() < deadline && backwards.get.isEmpty) {
+      repository.upsertScreening(screening(s"s-waw-$n", "belle|2021", "warszawa"))
+      rm.reload()
+      n += 1
+    } finally { racing = false; requests.join(5000); rm.stop() }
+    backwards.get shouldBe None
+  }
+
   it should "move a city's validator when a screening is deleted from it, and no other city's" in {
     val (repository, rm) = twoCityModel()
     val londonBefore = rm.lastModifiedFor("london")
