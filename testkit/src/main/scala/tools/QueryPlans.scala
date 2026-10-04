@@ -59,6 +59,14 @@ object QueryPlans {
     finally { Await.result(database.drop().toFuture(), 60.seconds); client.close() }
   }
 
+  /** The plan of every command `work` sends, against the database it wrote — read before that database
+   *  is dropped. */
+  def of(target: IntegrationMongoTarget, purpose: String)(work: MongoDatabase => Unit): Seq[Plan] =
+    recording(target, s"plans-$purpose") { (db, sent) =>
+      work(db)
+      explain(db, sent())
+    }
+
   /** Every statement of `commands` planned against `database` as it holds now: a write command carrying
    *  several statements is explained one statement at a time, the only way `explain` takes one. */
   def explain(database: MongoDatabase, commands: Seq[BsonDocument]): Seq[Plan] =
@@ -70,6 +78,17 @@ object QueryPlans {
       Plan(statement.getString(statement.getFirstKey).getValue, statement, stages,
         sum(explained, "totalDocsExamined"), sum(explained, "totalKeysExamined"))
     }
+
+  /** What is wrong with `plans`: each one that scans or sorts in memory and is not `allowed` (a shape, and
+   *  why it may), then each allowance that no longer names such a plan — so a fixed scan cannot leave its
+   *  excuse behind. Empty when every statement is served by an index. */
+  def violations(plans: Seq[Plan], allowed: Map[String, String]): Seq[String] = {
+    val unindexed = plans.filter(p => p.collectionScan || p.inMemorySort)
+    val stale     = allowed.keySet.toSeq.sorted.filterNot(shape => unindexed.exists(_.shape == shape))
+    (if (plans.isEmpty) Seq("no command was planned") else Nil) ++
+      unindexed.filterNot(p => allowed.contains(p.shape)).map(p => s"unindexed: $p").distinct ++
+      stale.map(shape => s"allowed, but no longer scans or sorts: $shape")
+  }
 
   private def isChangeStream(command: BsonDocument): Boolean =
     Option(command.get("pipeline")).exists(p => p.isArray && p.asArray.asScala.exists(s => s.isDocument && s.asDocument.containsKey("$changeStream")))

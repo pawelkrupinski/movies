@@ -27,23 +27,12 @@ import scala.concurrent.duration._
  */
 class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
-  /** Plans `work`'s commands against the database it wrote. */
-  private def plansOf(purpose: String)(work: MongoDatabase => Unit): Seq[QueryPlans.Plan] =
-    QueryPlans.recording(mongoTarget, s"plans-$purpose") { (db, sent) =>
-      work(db)
-      QueryPlans.explain(db, sent())
-    }
+  private def plansOf(purpose: String)(work: MongoDatabase => Unit): Seq[QueryPlans.Plan] = QueryPlans.of(mongoTarget, purpose)(work)
 
-  /** No plan scans or sorts in memory, but those `allowed` names (a shape, and why it may scan); and every
-   *  allowance still names a plan that scans or sorts, so a fixed one cannot linger. */
-  private def assertIndexed(plans: Seq[QueryPlans.Plan], allowed: Map[String, String] = Map.empty): Unit = {
-    plans should not be empty
-    val unindexed = plans.filter(p => p.collectionScan || p.inMemorySort)
+  private def assertIndexed(plans: Seq[QueryPlans.Plan], allowed: Map[String, String] = Map.empty): Unit =
     withClue(s"every planned statement:\n${plans.map(_.toString).distinct.mkString("\n")}\n") {
-      unindexed.filterNot(p => allowed.contains(p.shape)).map(_.toString).distinct shouldBe empty
-      allowed.keySet.filterNot(shape => unindexed.exists(_.shape == shape)) shouldBe empty
+      QueryPlans.violations(plans, allowed) shouldBe empty
     }
-  }
 
   private def await[A](f: scala.concurrent.Future[A]): A = Await.result(f, 30.seconds)
 
