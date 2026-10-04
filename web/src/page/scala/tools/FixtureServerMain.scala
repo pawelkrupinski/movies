@@ -144,6 +144,16 @@ object FixtureServerMain {
         oauthProviders = oauthConfigured, renderedAt = now, isLargeCity = isLarge).body
     }
 
+    // `/{city}/us-clock` — the listing as a US deployment prints it: the city's corpus on a
+    // US city's 12-hour clock ("7:30 PM", `ClockStyle.TwelveHour`), so the browser suite can
+    // drive the pills and the from-hour picker a US visitor gets. Only Poland carries a corpus.
+    def usClockPageFor(c: City): String = {
+      implicit val ci: City = models.Country.UnitedStates.cities.find(_.zoneId == models.TimeZones.UsEastern)
+        .getOrElse(sys.error("no Eastern US city"))
+      views.html.repertoire(schedulesFor(c), c.cinemaDisplayNames, c.cinemaPillMap, devMode = false, minifier = tools.Minify,
+        pinnedToday = wiring.pinnedToday, oauthProviders = oauthConfigured, renderedAt = now).body
+    }
+
     // The city-selection screens, from `landings()` so this route table and
     // `FixtureServerLandingSpec` read the same strings.
     //
@@ -185,6 +195,7 @@ object FixtureServerMain {
       case s if s.startsWith("/movies?")                => Some(indexPageFor(c))
       case "/movie-many"                                => Some(manyCinemaFilmPageFor(c))
       case "/many-showtimes"                             => Some(manyShowtimesPageFor(c))
+      case "/us-clock"                                  => Some(usClockPageFor(c))
       case s if s.startsWith("/movie/")                 => Some(filmPageFor(c, s.stripPrefix("/movie/")))
       case _                                            => None
     }
