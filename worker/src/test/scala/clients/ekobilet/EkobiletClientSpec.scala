@@ -128,6 +128,18 @@ class EkobiletClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     detail.director       shouldBe Seq("Philippe Riche")
   }
 
+  it should "read a labelled credits paragraph as credits, not as the synopsis" in {
+    // Kino Meduza opens the panel with "Reżyseria: … Obsada: … Kraj: …" (one <p>, <br>-separated
+    // labels): stored as the synopsis, the plot after it was lost (CinemaSlotInvariantsSpec).
+    val meduza = new EkobiletClient(new FakeHttpFetch("kino-meduza"), "opolskielamy", KinoMeduza,
+      today = LocalDate.of(2026, 6, 8))
+    val detail = meduza.fetchFilmDetail("https://ekobilet.pl/opolskielamy/mlode-matki-60256").value
+    detail.synopsis.value should startWith("W swoim najnowszym obrazie bracia Dardenne")
+    detail.director  shouldBe Seq("Jean-Pierre Dardenne", "Luc Dardenne")
+    detail.cast      should contain allOf ("Babette Verbeek", "Gunter Duret")
+    detail.countries shouldBe Seq("Belgia", "Francja")
+  }
+
   it should "keep an ordinary synopsis-only detail page's synopsis and invent no metadata" in {
     val tonClient = new EkobiletClient(new FakeHttpFetch("ekobilet-detail"), "kinoton", KinoTon, today = LocalDate.of(2026, 9, 27))
     val detail = tonClient.fetchFilmDetail("https://ekobilet.pl/kinoton/ice-cream-man-63797").value

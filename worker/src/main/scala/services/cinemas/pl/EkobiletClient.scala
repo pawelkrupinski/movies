@@ -293,15 +293,31 @@ object EkobiletClient {
     val paragraphs = document.select("#offcanvasRightInfo .offcanvas-body p").asScala.toSeq
       .map(_.text.trim).filter(_.nonEmpty)
     val metadata = paragraphs.collectFirst(Function.unlift(MetadataLine.findPrefixMatchOf))
+    val credits  = paragraphs.find(CreditsLabel.findPrefixOf(_).isDefined).map(labelledCredits).getOrElse(Map.empty)
+    def names(text: Option[String]): Seq[String] = text.toSeq.flatMap(_.split(',')).map(_.trim).filter(_.nonEmpty)
     FilmDetail(
-      synopsis       = paragraphs.find(p => MetadataLine.findPrefixMatchOf(p).isEmpty),
-      director       = metadata.flatMap(m => Option(m.group(DirectorGroup))).toSeq
-                         .flatMap(_.split(',')).map(_.trim).filter(_.nonEmpty),
+      synopsis       = paragraphs.find(p => MetadataLine.findPrefixMatchOf(p).isEmpty && CreditsLabel.findPrefixOf(p).isEmpty),
+      director       = names(metadata.flatMap(m => Option(m.group(DirectorGroup))).orElse(credits.get("reżyseria"))),
+      cast           = names(credits.get("obsada")),
       runtimeMinutes = metadata.flatMap(m => Option(m.group(RuntimeGroup))).flatMap(_.toIntOption),
       releaseYear    = metadata.flatMap(m => m.group(YearGroup).toIntOption),
-      countries      = metadata.toSeq.flatMap(_.group(CountriesGroup).split(',')).map(_.trim).filter(_.nonEmpty)
+      countries      = names(metadata.map(_.group(CountriesGroup)).orElse(credits.get("kraj")))
     )
   }
+
+  /** A credits paragraph's labelled fields, lower-cased label → its text: "Reżyseria: A, B
+   *  Obsada: C Kraj: Belgia" (Kino Meduza's panel, its labels `<br>`-separated). */
+  private def labelledCredits(paragraph: String): Map[String, String] = {
+    val labels = CreditsLabel.findAllMatchIn(paragraph).toSeq
+    labels.zip(labels.drop(1).map(_.start) :+ paragraph.length).map { case (label, end) =>
+      label.group(1).toLowerCase(java.util.Locale.ROOT) -> paragraph.substring(label.end, end).trim
+    }.toMap
+  }
+
+  /** A credit's label in a labelled credits paragraph — never the synopsis, whose prose would not
+   *  open with one. */
+  private val CreditsLabel =
+    """(?iu)\b(reżyseria|scenariusz|obsada|muzyka|zdjęcia|montaż|produkcja|kraj)\s*:""".r
 
   private val CountriesGroup = "countries"
   private val YearGroup      = "year"

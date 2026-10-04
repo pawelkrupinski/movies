@@ -1,6 +1,6 @@
 package clients.kinematograf_lodz
 
-import models.KinoCharlie
+import models.{KinematografLodz, KinoCharlie}
 import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
@@ -102,6 +102,16 @@ class KinematografLodzClientSpec extends AnyFlatSpec with Matchers with OptionVa
   it should "strip the 'reż.' director suffix from the title" in {
     val movies = fetched
     movies.map(_.movie.title).exists(_.contains("reż.")) shouldBe false
+  }
+
+  it should "strip a 'reż.' director suffix the recorded page bills without its comma" in {
+    // "Mały Kinematograf: Baczne oczka reż. Katarzyna Agopsowicz, (2026)": the rule wanted ", reż.",
+    // so the director and year stayed in the title the TMDB search runs (CinemaSlotInvariantsSpec).
+    val recorded = new KinematografLodzClient(new FakeHttpFetch("kinematograf-lodz"), KinematografLodz,
+      LocalDate.of(2026, 6, 7), titles = titleNormalizer).fetch()
+    val film = recorded.find(_.movie.rawTitle.exists(_.contains("Baczne oczka"))).value
+    film.movie.title shouldBe "Mały Kinematograf: Baczne oczka"
+    film.director    shouldBe Seq("Katarzyna Agopsowicz")
   }
 
   it should "strip the trailing '(YYYY)' release-year suffix from the title" in {

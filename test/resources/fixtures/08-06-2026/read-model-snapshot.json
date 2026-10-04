@@ -15980,8 +15980,8 @@
     },
     "shareCardPending" : false
   }, {
-    "_id" : "fb0523e2ba7a269c~malykinematografbaczneoczkarezkatarzynaagopsowicz",
-    "title" : "Mały Kinematograf: Baczne oczka reż. Katarzyna Agopsowicz,",
+    "_id" : "fb0523e2ba7a269c~malykinematografbaczneoczka",
+    "title" : "Mały Kinematograf: Baczne oczka",
     "originalTitle" : "Pucio kocha zwierzaki",
     "posterUrl" : "https://stacjafalenica.pl/wp-content/uploads/2026/07/Pucio-kocha-zwierzaki-7.png",
     "fallbackPosterUrls" : [ "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/boo.png", "https://medstore.cinemaone.pl/Puciokochazwierzaki16x9.jpg", "https://image.tmdb.org/t/p/w500/kHYBDgJk4e0FueP0ZRTWMqbSmf0.jpg" ],
@@ -17967,7 +17967,7 @@
     "genres" : [ "Dramat" ],
     "countries" : [ "Francja", "Belgia" ],
     "directors" : [ "Jean-Pierre Dardenne", "Luc Dardenne" ],
-    "cast" : [ "Babette Verbeek", "Elsa Houben", "Janaïna Halloy Fokan", "Lucie Laruelle", "Samia Hilmi" ],
+    "cast" : [ "Babette Verbeek", "Elsa Houben", "Janaina Halloy Fokan", "Lucie Laruelle", "Samia Hilmi", "Jef Jacobs", "Gunter Duret" ],
     "synopsis" : "Jessica, Perla, Julie, Ariane i Naïma zamieszkują razem dom samotnej matki. Mają nadzieję na lepsze jutro dla siebie i swoich dzieci.",
     "trailerUrls" : [ "https://www.youtube.com/embed/mLU9X49qFyo" ],
     "ratings" : {
@@ -17983,8 +17983,7 @@
     "weightedRating" : 7.75,
     "synopsisByCity" : {
       "warszawa" : "Akcja nowego filmu braci Dardenne rozgrywa się w domu opieki dla młodych matek w belgijskim Liège. Poznajemy pięć nastolatek – Julie, Jessicę, Perlę, Naïmę i Ariane – zmuszonych do tego, by zmierzyć się z trudami wczesnego macierzyństwa. Każda z dziewczyn, których los do tej pory nie oszczędzał, ma inną historię.\n\nKrytycy zgodnie uważają, że jest to jeden z najbardziej wzruszających oraz przekonujących filmów braci Dardenne.\n\nJulie, mająca w przeszłości problemy z nałogami, próbuje zacząć wszystko od nowa. Jessica i Perla, poza wychowawcami oraz pracownikami ośrodka, nie mogą liczyć na żadne wsparcie. Pierwszą z dziewczyn po urodzeniu porzuciła matka, z którą po latach chciałaby się pojednać, druga zmaga się z obojętnością ze strony siostry oraz partnera. Naïma marzy, by w końcu znaleźć stabilizację i bezpieczeństwo. Z kolei piętnastoletnia Ariane, chcąc skończyć szkołę, myśli o tym, by oddać dziecko do rodziny zastępczej, wbrew woli swojej matki.\n\nMłode bohaterki zmagają się nie tylko z trudami codzienności pełnej nowych obowiązków, ale również z traumami z przeszłości, które noszą w sobie. Dom opieki wydaje się być jedynym miejscem, gdzie czują się rozumiane i zaopiekowane.\n\n„*Młode matki*” to kolejna pełna humanizmu i empatii opowieść belgijskich braci o tych, którzy zwykle nie mają głosu. Realizm historii łączy się tu z nutą nadziei związaną z wartościami takimi jak solidarność czy wsparcie. Film, oparty na obserwacjach z autentycznego ośrodka pomocy, obrazuje ich walkę o lepszą przyszłość dla siebie i swoich dzieci.",
-      "czestochowa" : "W swojej twórczości bracia Dardenne koncentrują się na marginalizowanych członkach społeczeństwa, szczególnie ludziach młodych. Bohaterki ich najnowszego filmu, Jessica, Perla, Julie, Ariane i Naïma mieszkają w nowoczesnym domu samotnej matki w Liège. Każda z nich ma inne doświadczenia rodzinne, odmienną sytuację życiową i boryka się z innego rodzaju problemem. Różnią się też podejściem do macierzyństwa, które spada na nie przedwcześnie. W historiach o pragnieniu miłości i znalezienia swojej drogi w życiu wybrzmiewa samotność, rozpacz, smutek, bezradność i zagubienie.",
-      "opole" : "Reżyseria: Jean-Pierre Dardenne, Luc Dardenne Obsada: Babette Verbeek, Elsa Houben, Janaina Halloy Fokan, Lucie Laruelle, Samia Hilmi, Jef Jacobs, Gunter Duret Kraj: Belgia, Francja"
+      "czestochowa" : "W swojej twórczości bracia Dardenne koncentrują się na marginalizowanych członkach społeczeństwa, szczególnie ludziach młodych. Bohaterki ich najnowszego filmu, Jessica, Perla, Julie, Ariane i Naïma mieszkają w nowoczesnym domu samotnej matki w Liège. Każda z nich ma inne doświadczenia rodzinne, odmienną sytuację życiową i boryka się z innego rodzaju problemem. Różnią się też podejściem do macierzyństwa, które spada na nie przedwcześnie. W historiach o pragnieniu miłości i znalezienia swojej drogi w życiu wybrzmiewa samotność, rozpacz, smutek, bezradność i zagubienie."
     },
     "shareCardPending" : false
   }, {
@@ -17998,7 +17997,7 @@
     "genres" : [ "Dramat" ],
     "countries" : [ "Francja", "Belgia" ],
     "directors" : [ "Jean-Pierre Dardenne", "Luc Dardenne" ],
-    "cast" : [ "Babette Verbeek", "Elsa Houben", "Janaïna Halloy Fokan", "Lucie Laruelle", "Samia Hilmi" ],
+    "cast" : [ "Babette Verbeek", "Elsa Houben", "Janaina Halloy Fokan", "Lucie Laruelle", "Samia Hilmi", "Jef Jacobs", "Gunter Duret" ],
     "synopsis" : "Jessica, Perla, Julie, Ariane i Naïma zamieszkują razem dom samotnej matki. Mają nadzieję na lepsze jutro dla siebie i swoich dzieci.",
     "trailerUrls" : [ "https://www.youtube.com/embed/mLU9X49qFyo" ],
     "ratings" : {
@@ -18025,7 +18024,7 @@
     "genres" : [ "Dramat" ],
     "countries" : [ "Francja", "Belgia" ],
     "directors" : [ "Jean-Pierre Dardenne", "Luc Dardenne" ],
-    "cast" : [ "Babette Verbeek", "Elsa Houben", "Janaïna Halloy Fokan", "Lucie Laruelle", "Samia Hilmi" ],
+    "cast" : [ "Babette Verbeek", "Elsa Houben", "Janaina Halloy Fokan", "Lucie Laruelle", "Samia Hilmi", "Jef Jacobs", "Gunter Duret" ],
     "synopsis" : "Jessica, Perla, Julie, Ariane i Naïma zamieszkują razem dom samotnej matki. Mają nadzieję na lepsze jutro dla siebie i swoich dzieci.",
     "trailerUrls" : [ "https://www.youtube.com/embed/mLU9X49qFyo" ],
     "ratings" : {
@@ -18052,7 +18051,7 @@
     "genres" : [ "Dramat" ],
     "countries" : [ "Francja", "Belgia" ],
     "directors" : [ "Jean-Pierre Dardenne", "Luc Dardenne" ],
-    "cast" : [ "Babette Verbeek", "Elsa Houben", "Janaïna Halloy Fokan", "Lucie Laruelle", "Samia Hilmi" ],
+    "cast" : [ "Babette Verbeek", "Elsa Houben", "Janaina Halloy Fokan", "Lucie Laruelle", "Samia Hilmi", "Jef Jacobs", "Gunter Duret" ],
     "synopsis" : "Jessica, Perla, Julie, Ariane i Naïma zamieszkują razem dom samotnej matki. Mają nadzieję na lepsze jutro dla siebie i swoich dzieci.",
     "trailerUrls" : [ "https://www.youtube.com/embed/mLU9X49qFyo" ],
     "ratings" : {
@@ -18079,7 +18078,7 @@
     "genres" : [ "Dramat" ],
     "countries" : [ "Francja", "Belgia" ],
     "directors" : [ "Jean-Pierre Dardenne", "Luc Dardenne" ],
-    "cast" : [ "Babette Verbeek", "Elsa Houben", "Janaïna Halloy Fokan", "Lucie Laruelle", "Samia Hilmi" ],
+    "cast" : [ "Babette Verbeek", "Elsa Houben", "Janaina Halloy Fokan", "Lucie Laruelle", "Samia Hilmi", "Jef Jacobs", "Gunter Duret" ],
     "synopsis" : "Jessica, Perla, Julie, Ariane i Naïma zamieszkują razem dom samotnej matki. Mają nadzieję na lepsze jutro dla siebie i swoich dzieci.",
     "trailerUrls" : [ "https://www.youtube.com/embed/mLU9X49qFyo" ],
     "ratings" : {
@@ -18108,7 +18107,7 @@
     "genres" : [ "Dramat" ],
     "countries" : [ "Francja", "Belgia" ],
     "directors" : [ "Jean-Pierre Dardenne", "Luc Dardenne" ],
-    "cast" : [ "Babette Verbeek", "Elsa Houben", "Janaïna Halloy Fokan", "Lucie Laruelle", "Samia Hilmi" ],
+    "cast" : [ "Babette Verbeek", "Elsa Houben", "Janaina Halloy Fokan", "Lucie Laruelle", "Samia Hilmi", "Jef Jacobs", "Gunter Duret" ],
     "synopsis" : "Jessica, Perla, Julie, Ariane i Naïma zamieszkują razem dom samotnej matki. Mają nadzieję na lepsze jutro dla siebie i swoich dzieci.",
     "trailerUrls" : [ "https://www.youtube.com/embed/mLU9X49qFyo" ],
     "ratings" : {
@@ -18135,7 +18134,7 @@
     "genres" : [ "Dramat" ],
     "countries" : [ "Francja", "Belgia" ],
     "directors" : [ "Jean-Pierre Dardenne", "Luc Dardenne" ],
-    "cast" : [ "Babette Verbeek", "Elsa Houben", "Janaïna Halloy Fokan", "Lucie Laruelle", "Samia Hilmi" ],
+    "cast" : [ "Babette Verbeek", "Elsa Houben", "Janaina Halloy Fokan", "Lucie Laruelle", "Samia Hilmi", "Jef Jacobs", "Gunter Duret" ],
     "synopsis" : "Jessica, Perla, Julie, Ariane i Naïma zamieszkują razem dom samotnej matki. Mają nadzieję na lepsze jutro dla siebie i swoich dzieci.",
     "trailerUrls" : [ "https://www.youtube.com/embed/mLU9X49qFyo" ],
     "ratings" : {
@@ -146855,8 +146854,8 @@
     } ],
     "listingKeys" : [ "N\u0000KINOkawiarnia Stacja Falenica\u0000https://stacjafalenica.pl/filmy/pucio-kocha-zwierzaki/\u0000Pucio kocha zwierzaki" ]
   }, {
-    "_id" : "fb0523e2ba7a269c~malykinematografbaczneoczkarezkatarzynaagopsowicz|lodz|Kino Kinematograf",
-    "filmId" : "fb0523e2ba7a269c~malykinematografbaczneoczkarezkatarzynaagopsowicz",
+    "_id" : "fb0523e2ba7a269c~malykinematografbaczneoczka|lodz|Kino Kinematograf",
+    "filmId" : "fb0523e2ba7a269c~malykinematografbaczneoczka",
     "city" : "lodz",
     "cinema" : "Kino Kinematograf",
     "filmUrl" : "https://muzeumkinematografii.pl/repertuar/maly-kinematograf-baczne-oczka-rez-katarzyna-agopsowicz-2026/",
