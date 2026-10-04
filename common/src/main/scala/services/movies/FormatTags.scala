@@ -132,11 +132,13 @@ object FormatTags {
       // Tokens peeled inside a [..]/(..) tag also carry version meaning, so
       // capture them before deleting the tag — UNLESS the tag names the Ukrainian
       // dub/lektor version, which is kept whole so it stays its own card.
-      FormatBracketTag.findFirstIn(t).filterNot(uaGuarded).foreach { tag =>
+      // A tag that is the WHOLE title is the title — "[REC]", Balagueró's film, came out as no
+      // title at all (US corpus 2026-10-01, served in Detroit and Omaha as an empty card).
+      FormatBracketTag.findFirstIn(t).filterNot(uaGuarded).filter(_.trim != t).foreach { tag =>
         captureTagWords(tag, dropped)
         t = FormatBracketTag.replaceFirstIn(t, "").trim
       }
-      FormatParenTag.findFirstIn(t).filterNot(uaGuarded).foreach { tag =>
+      FormatParenTag.findFirstIn(t).filterNot(uaGuarded).filter(_.trim != t).foreach { tag =>
         captureTagWords(tag, dropped)
         t = FormatParenTag.replaceFirstIn(t, "").trim
       }

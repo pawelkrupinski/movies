@@ -24,6 +24,14 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("Lawrence of Arabia in 70mm") shouldBe ("Lawrence of Arabia", List("70MM"))
   }
 
+  // Balagueró's "[REC]" (US corpus 2026-10-01) came out as no title at all: served as an empty card.
+  they should "never take a tag that is the whole title" in {
+    FormatTags.extractFormatTags("[REC]") shouldBe ("[REC]", Nil)
+    FormatTags.extractFormatTags("[REC] 3D") shouldBe ("[REC]", List("3D"))
+    FormatTags.extractFormatTags("(IMAX 3D)")._1 shouldBe "(IMAX 3D)"
+    FormatTags.extractFormatTags("Diuna [3D]") shouldBe ("Diuna", List("3D"))
+  }
+
   they should "leave a word inside the title its own" in {
     // "4K Restoration" names the edition, not the screen: the trailing word is no format.
     FormatTags.extractFormatTags("Horror Season 2026 Dracula 4K Restoration") shouldBe ("Horror Season 2026 Dracula 4K Restoration", Nil)
