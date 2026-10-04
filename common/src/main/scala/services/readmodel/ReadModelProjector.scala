@@ -1193,7 +1193,7 @@ class ReadModelProjector(
     lesson.cards.foreach { case (card, venues) =>
       val vouched = venues.flatMap { venue =>
         lastScreenings.get(card, venue.id).filter(row => row.input.isEmpty && row.output == venue.output)
-          .map(row => venue.id -> row.copy(input = Some(venue.input)))
+          .map(row => venue.id -> WrittenScreening(row.output, Some(venue.input)))
       }
       lastScreenings.updateRows(card, vouched)
     }
@@ -1425,7 +1425,15 @@ object ReadModelProjector {
  *  itself (`output`, the minimal-write diff) and of the inputs it was built from
  *  (`input`, [[ReadModelProjection.VenueScreening.inputHash]]) — `None` when this process
  *  did not build it, so nothing vouches that the current inputs would build it again. */
-private[readmodel] final case class WrittenScreening(output: Int, input: Option[Int])
+private[readmodel] final case class WrittenScreening private (output: Int, private val inputHash: Int, private val built: Boolean) {
+  def input: Option[Int] = Option.when(built)(inputHash)
+}
+
+private[readmodel] object WrittenScreening {
+  // The input hash unboxed and flagged rather than an Option: each of the US's ~100k rows held a Some and a boxed
+  // Integer, 32 bytes beside the row's own 24 (dump 2026-10-04).
+  def apply(output: Int, input: Option[Int]): WrittenScreening = new WrittenScreening(output, input.getOrElse(0), input.isDefined)
+}
 
 /** One venue's screenings row as a projection plans it: rebuilt (`built`), or carried
  *  unbuilt because the row written from the same `input` is still current. */

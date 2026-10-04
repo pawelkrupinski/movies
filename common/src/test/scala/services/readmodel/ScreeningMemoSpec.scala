@@ -107,4 +107,15 @@ class ScreeningMemoSpec extends AnyFlatSpec with Matchers {
     memo.forget("legacy-row-id")
     memo.holds("legacy-row-id") shouldBe false
   }
+
+  // Each of the US's ~100k rows held its input hash as Some(Integer): 32 bytes beside its own 24 (dump 2026-10-04).
+  "a written row" should "keep its input hash unboxed, and read back what it was given" in {
+    classOf[WrittenScreening].getDeclaredFields.map(_.getType).filterNot(_.isPrimitive) shouldBe empty
+    WrittenScreening(7, Some(9)).input shouldBe Some(9)
+    WrittenScreening(7, Some(0)).input shouldBe Some(0)
+    WrittenScreening(7, None).input shouldBe None
+    WrittenScreening(7, None) should not be WrittenScreening(7, Some(0))
+    WrittenScreening(7, Some(9)) shouldBe WrittenScreening(7, Some(9))
+    WrittenScreening(7, Some(9)).output shouldBe 7
+  }
 }
