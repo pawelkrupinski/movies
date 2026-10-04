@@ -77,7 +77,6 @@ class NoSleepInTestsSpec extends AnyFlatSpec with Matchers {
     "web/src/it/scala/UserStateAcrossPodsIntegrationSpec.scala" ->
       "holds a real Mongo transaction open for a set time from another thread — the outage being simulated",
     "worker/src/it/scala/MovieRepositoryIntegrationSpec.scala"               -> RealMongo,
-    "worker/src/it/scala/MovieRepositoryUpdatedSinceIntegrationSpec.scala"   -> RealMongo,
     "web/src/page/scala/tools/CdpDriver.scala" ->
       "THE browser polling primitive (waitFor / pollUntil) and Chrome's port-file wait: sleeps between probes, never instead of one",
     "web/src/page/scala/tools/CdpWaitForSpec.scala" ->

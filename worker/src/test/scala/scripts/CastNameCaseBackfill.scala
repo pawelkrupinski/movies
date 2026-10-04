@@ -156,7 +156,7 @@ object CastNameCaseBackfill {
     val counts =
       backfillSlots(new MongoSlotsRepository(Some(database)), apply) +
         backfillEmbedded(new MongoMovieRepository(
-          sharedDb = Some(database), normalizer = normalizer), apply) +
+          sharedDb = Some(database), clock = java.time.Clock.systemUTC(), normalizer = normalizer), apply) +
         backfillReadModel(new MongoReadModelRepository(Some(database)), apply)
 
     val seconds = (System.currentTimeMillis() - startedAtMs) / 1000.0

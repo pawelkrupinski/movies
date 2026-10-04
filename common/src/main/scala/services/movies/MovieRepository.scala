@@ -434,6 +434,10 @@ object MovieRepository {
   /** How many times the dotted-name fallback reads and patches again when the document moved under it. */
   val DottedReplaceAttempts = 3
 
+  /** A `movies` document as the dotted-name fallback read it: decoded, to patch, and `whole`, as
+   *  stored, for the replace to be guarded on. */
+  final case class ReadDocument(stored: StoredMovieDto, whole: org.bson.BsonDocument)
+
   /** The corpus collection. Named here rather than inline so
    *  [[services.DebugMirror]] can state what the local /debug mirror has to carry. */
   val Collection = "movies"
@@ -472,6 +476,9 @@ class MongoMovieRepository(
   // client this class borrows and never closes). `None` (no Mongo configured, or the
   // connection failed) leaves the store disabled. It never opens a client of its own.
   sharedDb: Option[MongoDatabase],
+  // The composition root's clock. Every `updatedAt` is a stamp from one strictly increasing
+  // sequence over it ([[stamps]]), never a bare reading.
+  clock: java.time.Clock,
   // Cursor page size for the keyset-paged corpus scan shared by `findAll` and
   // `foreachRecord` — the cap on how many rows any ONE cursor delivers before the
   // next `_id`-keyset page. Bounds the async driver's synchronous read-completion
@@ -544,6 +551,12 @@ class MongoMovieRepository(
   // read model's skipped documents. Noop for scripts/web/tests.
   decodeFailures: services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop
 ) extends MovieRepository with KeyAddressedMovieWrites with Logging {
+  /** Every `updatedAt` this store writes: strictly increasing within the process, so the stamp
+   *  is a version the dotted-replace guard can trust (two writes in one millisecond no longer
+   *  share one) and a cursor the catch-up can trust (its floor is a stamp from this same
+   *  sequence — see [[ChangeStreamLiveness.now]]). */
+  private val stamps = new tools.MonotonicStampSequence(clock)
+
 
   override def hasScreenings: Boolean = screenings.isDefined
   override def hasSlots:       Boolean = slots.isDefined
@@ -1054,7 +1067,7 @@ class MongoMovieRepository(
         SlotsRepository.applyFilm(s, id, slotPayload)
       }
       val slotsLanded = slotsWrite.contains(WriteOutcome.Written)
-      val now  = Instant.now()
+      val now  = stamps.next()
       val opts = new ReplaceOptions().upsert(true)
       // What to write, and whether the stored document already equals it — the decision is
       // `MoviesUpsert`'s, so it is unit-tested apart from the three reads that feed it.
@@ -1165,17 +1178,19 @@ class MongoMovieRepository(
               // the replace carries exactly the diff the `$set` path would, every other
               // field preserved. Absent row → nothing to replace → report not-present.
               //
-              // …and the replace lands only over the document as read (its `updatedAt`, which every
-              // write moves): a rating refresh landing between the read and the replace was wiped by
-              // it, the same null this fallback exists to avoid. On a mismatch the patch is applied
-              // again to the document as it now is.
-              tools.GuardedWrite(MovieRepository.DottedReplaceAttempts)(() => dottedReplaceRead(c, id)) { stored =>
-                dottedReplaceRecord(stored.map(dto => StoredMovieDto.toDomain(dto, normalizer).record), patch)
-              } { (stored, merged) =>
-                services.MongoGuard.replaceIfUnchanged(c,
-                  services.MongoGuard.unchanged(BsonString(id),
-                    stored.map(dto => BsonDocument("updatedAt" -> BsonDateTime(dto.updatedAt.toEpochMilli))), Seq("updatedAt")),
-                  StoredMovieDto.fromDomain(id, key, merged, Instant.now()), 10.seconds, insert = false)
+              // …and the replace lands only over the document as read, WHOLE: a rating refresh
+              // landing between the read and the replace was wiped by it, the same null this
+              // fallback exists to avoid. Not over its `updatedAt` alone — this process's stamps
+              // are strictly increasing, but another process's (a second worker mid-rollout, a
+              // script) can equal the one read, and that write would then be taken for the row as
+              // read. On a mismatch the patch is applied again to the document as it now is.
+              tools.GuardedWrite(MovieRepository.DottedReplaceAttempts)(() => dottedReplaceRead(c, id)) { asRead =>
+                dottedReplaceRecord(asRead.map(read => StoredMovieDto.toDomain(read.stored, normalizer).record), patch)
+              } { (asRead, merged) =>
+                // An absent row decided nothing above, so only a row as read reaches here.
+                asRead.exists(read => services.MongoGuard.replaceIfUnchanged(c,
+                  services.MongoGuard.wholeUnchanged(BsonString(id), read.whole),
+                  StoredMovieDto.fromDomain(id, key, merged, stamps.next()), 10.seconds, insert = false))
               } match {
                 case tools.GuardedWrite.Landed(_)                 => 1L
                 case tools.GuardedWrite.Unneeded                  => 0L
@@ -1212,8 +1227,11 @@ class MongoMovieRepository(
 
   /** The stored document the dotted-name fallback patches — a seam a spec uses to land another write
    *  between this read and the replace. */
-  protected def dottedReplaceRead(c: MongoCollection[StoredMovieDto], id: String): Option[StoredMovieDto] =
-    Option(Await.result(c.find(Filters.eq("_id", id)).first().toFuture(), 10.seconds))
+  protected def dottedReplaceRead(c: MongoCollection[StoredMovieDto], id: String): Option[MovieRepository.ReadDocument] =
+    Option(Await.result(c.withDocumentClass[org.bson.BsonDocument]().find(Filters.eq("_id", id)).first().toFuture(), 10.seconds))
+      .map(whole => MovieRepository.ReadDocument(
+        c.codecRegistry.get(classOf[StoredMovieDto]).decode(new org.bson.BsonDocumentReader(whole), org.bson.codecs.DecoderContext.builder().build()),
+        whole))
 
   // Translate a `MovieRecordPatch` into a `$set`/`$unset` Mongo update. Each
   // scalar field gets its own atom; the `data` map gets per-source
@@ -1260,7 +1278,7 @@ class MongoMovieRepository(
       case (source, FieldUpdate.Unset)     => atoms += Updates.unset(s"sourceData.${source.displayName}")
       case (_, FieldUpdate.NoChange)       => ()
     }
-    atoms += Updates.set("updatedAt", BsonDateTime(Instant.now().toEpochMilli))
+    atoms += Updates.set("updatedAt", BsonDateTime(stamps.next().toEpochMilli))
     Updates.combine(atoms.toSeq*)
   }
 
@@ -1285,6 +1303,8 @@ class MongoMovieRepository(
       screeningsMetrics   = screeningsMetrics,
       slotsMetrics        = slotsMetrics,
       changeDemandWindow  = changeDemandWindow,
+      clock               = clock,
+      stamps              = stamps,
       decodeFailures      = decodeFailures,
       debounce            = changeDebounce,
       // Only where both side collections are split out is a venue readable alone.

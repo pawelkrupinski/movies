@@ -36,9 +36,17 @@ import scala.jdk.CollectionConverters._
  * run ([[applied]]): how many are waiting per cursor, and how long the OLDEST has waited —
  * computed against `now` like the delivery age, so a stuck apply climbs rather than freezes.
  */
-final class ChangeStreamLiveness(clock: Clock = Clock.systemUTC()) {
+final class ChangeStreamLiveness(
+  clock:  Clock = Clock.systemUTC(),
+  // Where the open, subscribe and delivery instants — every one a catch-up floor — come from.
+  // A repository hands in the sequence it stamps `updatedAt` from, so a floor and a row's stamp
+  // are ordered even inside one millisecond (see [[now]]); None keeps a sequence of its own.
+  stamps: Option[tools.MonotonicStampSequence] = None
+) {
+  private val sequence: tools.MonotonicStampSequence = stamps.getOrElse(new tools.MonotonicStampSequence(clock))
+
   /** When this instance was created — the floor every never-delivered cursor ages from. */
-  val openedAt: Instant = clock.instant()
+  val openedAt: Instant = sequence.next()
 
   private val last       = new ConcurrentHashMap[String, Instant]()
   private val subscribed = new ConcurrentHashMap[String, Instant]()
@@ -46,14 +54,14 @@ final class ChangeStreamLiveness(clock: Clock = Clock.systemUTC()) {
   /** A cursor on `collection` subscribed (the driver's `onSubscribe`, or a fake's register).
    *  Until then nothing was promised: a repository with no change stream at all — a test
    *  wiring, a Mongo-less boot — has nothing to catch up on, only nothing to deliver. */
-  def watching(collection: String): Unit = { subscribed.put(collection, clock.instant()); () }
+  def watching(collection: String): Unit = { subscribed.put(collection, sequence.next()); () }
 
   /** Whether a cursor on `collection` has ever subscribed in this process. */
   def isWatching(collection: String): Boolean = subscribed.containsKey(collection)
 
   /** One event was DELIVERED by `collection`'s cursor (the driver's `onNext`), whatever
    *  it carried and whatever the apply does with it. */
-  def delivered(collection: String): Unit = { last.put(collection, clock.instant()); () }
+  def delivered(collection: String): Unit = { last.put(collection, sequence.next()); () }
 
   /** The instant of the last delivered event, `None` when the cursor delivered nothing
    *  since [[openedAt]]. */
@@ -68,9 +76,12 @@ final class ChangeStreamLiveness(clock: Clock = Clock.systemUTC()) {
   // from `last` so that a catch-up never makes a dead cursor LOOK alive to the age gauge.
   private val caughtUpThrough = new ConcurrentHashMap[String, Instant]()
 
-  /** The instant a catch-up read about to start should hand back to [[caughtUp]]. From this
-   *  clock, because it is compared against `updatedAt`, which is stamped by the same one. */
-  def now(): Instant = clock.instant()
+  /** The instant a catch-up read about to start should hand back to [[caughtUp]]. A stamp from
+   *  the sequence `updatedAt` is stamped from, because it is compared against it: every row
+   *  written after this read began carries a later stamp, even one written in the same
+   *  millisecond — which a plain clock reading, equal to that row's stamp, let the next
+   *  catch-up's `updatedAt > floor` skip. */
+  def now(): Instant = sequence.next()
 
   /** The floor for the next catch-up read: the later of the cursor's last delivery (or its
    *  open) and the start of the last catch-up that re-projected everything it read. Without

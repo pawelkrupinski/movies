@@ -37,7 +37,7 @@ object GenreLanguageAudit {
     val (conn, db) = CountryDatabase.open(country)
     // The audited country's rules: its rows' keys were sanitized by them, not by Poland's.
     val titleNormalizer = TitleNormalizer.forCountry(country)
-    val repo = AmbientMovieRepository.over(Some(db), titleNormalizer)
+    val repo = AmbientMovieRepository.over(Some(db), titleNormalizer, java.time.Clock.systemUTC())
     val all  = repo.findAll()
     val rows = all.filter(s => filter.forall(f => s.title.toLowerCase.contains(f.toLowerCase)))
 

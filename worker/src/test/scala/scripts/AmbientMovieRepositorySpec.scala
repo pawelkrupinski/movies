@@ -13,7 +13,7 @@ class AmbientMovieRepositorySpec extends AnyFlatSpec with Matchers {
   private val title = "Wallace & Gromit"
 
   "AmbientMovieRepository.open" should "key the store by the configured country's title rules, not Poland's" in {
-    val german = AmbientMovieRepository.open(new _root_.settings.ProcessConfiguration(_root_.tools.Env.of("KINOWO_COUNTRY" -> "de")))
+    val german = AmbientMovieRepository.open(new _root_.settings.ProcessConfiguration(_root_.tools.Env.of("KINOWO_COUNTRY" -> "de")), _root_.tools.SpecClock.Pinned)
     try {
       // The positive control: the two countries' rules do key this title apart.
       TitleNormalizer.forCountry(Country.Germany).sanitize(title) should not be TitleNormalizer.forCountry(Country.Poland).sanitize(title)

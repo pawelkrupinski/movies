@@ -56,7 +56,7 @@ class MovieKeyIndexConversionIntegrationSpec extends AnyFlatSpec with Matchers w
     poller.start()
     val events = try LogCapture.capture("services.MongoIndex", Some(Level.INFO)) {
       alongside()
-      val repository = new MongoMovieRepository(Some(instance.database), normalizer = titleNormalizer)
+      val repository = new MongoMovieRepository(Some(instance.database), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer)
       try repository.enabled shouldBe true finally repository.close()
     } finally { running.set(false); poller.join(10000) }
     (gaps.asScala.toSeq, events.filter(_.getFormattedMessage.contains(s" on ${instance.database.name}.")))

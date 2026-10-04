@@ -310,7 +310,9 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
   // read kept failing: counters flat, change-stream ages stopped, and no alert able to tell.
   it should "render the rest of the exposition when a country's queue read fails, holding only that gauge" in {
     val (m, series) = newPl()
-    val clock    = new tools.MutableClock(now.minusSeconds(10))
+    // A millisecond earlier than the delivery: the liveness takes its open and each delivery from a
+    // strictly increasing stamp sequence, so on this unmoving clock the delivery is the open's + 1 ms.
+    val clock    = new tools.MutableClock(now.minusSeconds(10).minusMillis(1))
     val liveness = new ChangeStreamLiveness(clock)
     liveness.delivered(ChangeStreamLiveness.Movies)                 // 10s before `now`
     val queued   = QueueSnapshot(Map(TaskState.Waiting -> 5L), Nil)

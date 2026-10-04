@@ -67,7 +67,7 @@ object AddMissingMovieSlots {
       val (connection, database) = CountryDatabase.open(country)
       val screenings = new MongoScreeningsRepository(Some(database))
       // Slots deliberately NOT wired: the record's `data` must be the embedded map.
-      val movies     = new MongoMovieRepository(Some(database), screenings = Some(screenings), normalizer = TitleNormalizer.forCountry(country))
+      val movies     = new MongoMovieRepository(Some(database), java.time.Clock.systemUTC(), screenings = Some(screenings), normalizer = TitleNormalizer.forCountry(country))
       val (counts, complete) = run(movies, new MongoSlotsRepository(Some(database)), screenings, apply)
       println(s"${country.displayName} (${country.mongoDb}): ${counts.describe}${if (complete) "" else " — SCAN INCOMPLETE, re-run"}")
       incomplete ||= !complete

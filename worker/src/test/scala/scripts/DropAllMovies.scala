@@ -31,7 +31,7 @@ object DropAllMovies {
     val db     = conn.database.getOrElse { println("Could not open the database — nothing to drop."); sys.exit(1) }
     val dbName = db.name
 
-    val repository   = new MongoMovieRepository(Some(db), normalizer = titleNormalizer)
+    val repository   = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer)
     val before = repository.findAll()
     println(s"$dbName.movies: ${before.size} row(s) currently stored.\n")
 

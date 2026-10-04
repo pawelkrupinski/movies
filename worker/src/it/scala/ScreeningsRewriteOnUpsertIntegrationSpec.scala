@@ -53,7 +53,7 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
   it should "not rewrite a film's screenings when the upsert leaves its showtimes unchanged" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, CorpusSuite) { db =>
     val counting   = new CountingScreeningsRepository(new MongoScreeningsRepository(Some(db)))
-    val repository = new MongoMovieRepository(Some(db),
+    val repository = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(),
       screenings = Some(counting), slots = Some(new MongoSlotsRepository(Some(db))),
       normalizer = titleNormalizer)
     val id         = StoredMovieRecord.keyFor(title, year, titleNormalizer)
@@ -101,7 +101,7 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, CorpusSuite) { db =>
     val counting   = new CountingScreeningsRepository(new MongoScreeningsRepository(Some(db)))
     val countSlots = new CountingSlotsRepository(new MongoSlotsRepository(Some(db)))
-    val repository = new MongoMovieRepository(Some(db),
+    val repository = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(),
       screenings = Some(counting), slots = Some(countSlots), normalizer = titleNormalizer)
     val readModel  = new services.readmodel.MongoReadModelRepository(Some(db))
     val projector  = new services.readmodel.ReadModelProjector(repository, readModel, readModel, clock = tools.SpecClock.Pinned)

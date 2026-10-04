@@ -31,6 +31,15 @@ object MongoGuard {
       asRead.flatMap(row => Option(row.get(field))).fold(Filters.exists(field, false))(Filters.eq(field, _))
     })*)
 
+  /** Matches `id`'s row only while it is, whole, the document `asRead` — every field, value and
+   *  order as read. For a row whose version stamp alone cannot prove it unchanged: two writers in
+   *  different processes can stamp the same instant, and a guard on that stamp then takes the
+   *  other writer's row for the one it read. `$literal`, so a stored string that starts with `$`
+   *  is compared as the string it is. */
+  def wholeUnchanged(id: BsonValue, asRead: BsonDocument): Bson =
+    Filters.and(Filters.eq("_id", id), Filters.expr(new BsonDocument("$eq",
+      new org.bson.BsonArray(java.util.List.of(new org.bson.BsonString("$$ROOT"), new BsonDocument("$literal", asRead))))))
+
   /** `update` only where `guard` matches — whether it landed. With `insert`, a row absent when read is
    *  created; a duplicate `_id` then is the guard's insert meeting a row another writer created since
    *  the read: a mismatch, not a failure. Without it, a row deleted since the read stays deleted.

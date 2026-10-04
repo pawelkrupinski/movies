@@ -38,7 +38,7 @@ class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers with tools.Integr
       val realSlots  = new MongoSlotsRepository(Some(db))
       val slots      = new CountingSlotsRepository(realSlots)
       // batchSize 2 so a handful of sentinels spans several pages
-      val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings),
+      val repository = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(screenings),
         slots = Some(slots), findAllBatchSize = 2, normalizer = titleNormalizer)
       sentinels.zipWithIndex.foreach { case ((title, year), index) =>
         repository.upsert(title, year, MovieRecord(tmdbId = Some(6001 + index),

@@ -21,7 +21,7 @@ class VenueReadIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
 
   "readVenues" should "read the venues' slots exactly as the whole-film read stitches them" in {
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "venue-read") { db =>
-      val repository = new MongoMovieRepository(Some(db), screenings = Some(new MongoScreeningsRepository(Some(db))),
+      val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(new MongoScreeningsRepository(Some(db))),
         slots = Some(new MongoSlotsRepository(Some(db))), normalizer = titleNormalizer)
       repository.upsert("Anora", Some(2024), MovieRecord(tmdbId = Some(1064213), data = Map[Source, SourceData](
         CinemaShowing(Multikino, "anora")           -> SourceData(title = Some("Anora"), filmUrl = Some("https://mk/anora"), showtimes = Seq(at(18), at(21))),
@@ -40,7 +40,7 @@ class VenueReadIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
   it should "decline when a venue's showtimes row has no slot row beside it" in {
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "venue-read-orphan") { db =>
       val screenings = new MongoScreeningsRepository(Some(db))
-      val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings),
+      val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(screenings),
         slots = Some(new MongoSlotsRepository(Some(db))), normalizer = titleNormalizer)
       repository.upsert("Anora", Some(2024), MovieRecord(tmdbId = Some(1064213), data = Map[Source, SourceData](
         CinemaShowing(KinoApollo, "anora") -> SourceData(title = Some("Anora"), showtimes = Seq(at(20))))))

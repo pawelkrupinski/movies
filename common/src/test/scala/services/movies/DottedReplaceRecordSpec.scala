@@ -23,7 +23,7 @@ class DottedReplaceRecordSpec extends AnyFlatSpec with Matchers {
 
   private def neverConnects =
     MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=200").getDatabase("test")
-  private val repo = new MongoMovieRepository(sharedDb = Some(neverConnects), normalizer = titleNormalizer)
+  private val repo = new MongoMovieRepository(sharedDb = Some(neverConnects), clock = _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer)
 
   // What Mongo holds: a fully-rated row.
   private val persisted = MovieRecord(

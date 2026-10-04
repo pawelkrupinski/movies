@@ -18,7 +18,7 @@ final class ProjectedMongoCorpus(db: MongoDatabase) {
   val databaseName: String = db.name
   val screenings = new MongoScreeningsRepository(Some(db))
   val slots      = new MongoSlotsRepository(Some(db))
-  val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots),
+  val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(screenings), slots = Some(slots),
     normalizer = titleNormalizer)
   val readModel  = new MongoReadModelRepository(Some(db))
   val projector  = new ReadModelProjector(repository, readModel, readModel, clock = tools.SpecClock.Pinned)

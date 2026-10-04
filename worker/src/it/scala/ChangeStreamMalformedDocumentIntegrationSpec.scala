@@ -42,10 +42,10 @@ class ChangeStreamMalformedDocumentIntegrationSpec extends AnyFlatSpec with Matc
 
   "the movies change stream" should "deliver a valid write after a movies document it cannot decode" in
     survives("movies") { (db, failures) => seen =>
-      val repo = new MongoMovieRepository(Some(db), normalizer = titleNormalizer, decodeFailures = failures)
+      val repo = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer, decodeFailures = failures)
       repo.watchChanges(r => seen(r.id.value), _ => ()).get
     } { db =>
-      val repo = new MongoMovieRepository(Some(db), normalizer = titleNormalizer)
+      val repo = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer)
       n => { repo.upsert(s"Valid $n", Some(2026), MovieRecord()); StoredMovieRecord.keyFor(s"Valid $n", Some(2026), titleNormalizer) }
     }(undecodableFilm)
 

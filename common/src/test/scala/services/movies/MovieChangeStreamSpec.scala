@@ -126,6 +126,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     slotsMetrics        = slotsMetrics,
     changeDemandWindow  = ChangeStreamDemand.DefaultWindow,
     clock               = clock,
+    stamps              = new tools.MonotonicStampSequence(clock),
     rereadRetryMillis   = rereadRetryMillis,
     decodeFailures      = decodeFailures,
     debounce            = debounce,

@@ -50,7 +50,6 @@ class NoDefaultZoneSpec extends AnyFlatSpec with Matchers {
   /** `file: Owner.parameter` → why that main-code parameter may still default to the live clock. */
   private val ClockDefaultAllowlist: Map[String, String] = Map(
     "common/src/main/scala/services/movies/ChangeStreamLiveness.scala: ChangeStreamLiveness.clock" -> NoClockSeam,
-    "common/src/main/scala/services/movies/MovieChangeStream.scala: MovieChangeStream.clock"       -> NoClockSeam,
     "common/src/main/scala/services/movies/EmbeddedYear.scala: ofAll.maxYear" ->
       "a plausibility cap on a year read out of a title (next year at most); only New Year moves it, never a venue's day",
   )

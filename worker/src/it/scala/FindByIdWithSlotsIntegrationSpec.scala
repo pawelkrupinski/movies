@@ -17,7 +17,7 @@ class FindByIdWithSlotsIntegrationSpec extends AnyFlatSpec with Matchers with to
 
   "findByIdWithSlotsChecked" should "return the film with its slots and no showtimes, where findByIdChecked has both" in {
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "find-by-id-with-slots") { db =>
-      val repository = new MongoMovieRepository(Some(db), screenings = Some(new MongoScreeningsRepository(Some(db))),
+      val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(new MongoScreeningsRepository(Some(db))),
         slots = Some(new MongoSlotsRepository(Some(db))), normalizer = titleNormalizer)
       repository.upsert("Anora", Some(2024), MovieRecord(tmdbId = Some(1064213), data = Map[Source, SourceData](
         Multikino -> SourceData(title = Some("Anora"), filmUrl = Some("https://mk/anora"), showtimes = Seq(Showtime(when, None))))))

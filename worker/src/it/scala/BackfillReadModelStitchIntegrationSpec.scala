@@ -47,7 +47,7 @@ class BackfillReadModelStitchIntegrationSpec extends AnyFlatSpec with Matchers w
   // The film is written through a fully-split repository, so its showtimes land in
   // `screenings` and its slot in `movie_slots` — the shape every prod film has.
   private val writer = new MongoMovieRepository(
-    Some(db), screenings = Some(screeningsRepository), slots = Some(slotsRepository),
+    Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(screeningsRepository), slots = Some(slotsRepository),
     normalizer = titleNormalizer
   )
   private val readModel = new MongoReadModelRepository(Some(db))

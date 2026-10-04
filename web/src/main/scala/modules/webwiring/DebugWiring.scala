@@ -108,7 +108,7 @@ trait DebugWiring { self: Wiring =>
         // country's database, and folding its titles with the serving country's
         // rules would key rows the way no worker ever wrote them.
         val normalizer = services.movies.TitleNormalizer.forCountry(country)
-        val repository = new MongoMovieRepository(conn.database,
+        val repository = new MongoMovieRepository(conn.database, clock,
           screenings = Some(screenings), slots = Some(slots), normalizer = normalizer)
         val freshness  = mirrorFreshnessOf(conn)
         val listing    = debugSnapshot(s"/debug listing ${country.code}", freshness)(CorpusListing.read(repository))

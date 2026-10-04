@@ -34,7 +34,7 @@ class MovieRepositoryDuplicateTmdbIdDoesNotOrphanSlotIntegrationSpec extends Any
   }
 
   private val slots = new MongoSlotsRepository(Some(db))
-  private val repository = new MongoMovieRepository(Some(db),
+  private val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned,
     screenings = Some(new MongoScreeningsRepository(Some(db))),
     slots      = Some(slots),
     normalizer = titleNormalizer)

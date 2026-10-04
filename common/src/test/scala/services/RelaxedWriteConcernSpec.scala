@@ -28,7 +28,7 @@ class RelaxedWriteConcernSpec extends AnyFlatSpec with Matchers {
     MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=200").getDatabase("test")
 
   "MongoMovieRepository" should "write the `movies` collection with w:1 j:false" in {
-    new MongoMovieRepository(sharedDb = Some(neverConnects), normalizer = titleNormalizer).collectionWriteConcern shouldBe Some(relaxed)
+    new MongoMovieRepository(sharedDb = Some(neverConnects), clock = _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer).collectionWriteConcern shouldBe Some(relaxed)
   }
 
   "MongoReadModelRepository" should "write the derived collections with w:1 j:false" in {

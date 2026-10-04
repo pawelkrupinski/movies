@@ -150,7 +150,7 @@ object ConvergenceStorage {
     // corpora through Polish rules — `minionsimonster` all over again, and the
     // convergence legs caught it.
     // …and debounced as the worker's country is, when the leg names it (`changeDebounce`).
-    override lazy val movies     = new MongoMovieRepository(shared, normalizer = normalizer,
+    override lazy val movies     = new MongoMovieRepository(shared, java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC), normalizer = normalizer,
       screenings = Some(screenings), slots = Some(slots), changeDebounce = changeDebounce)
     override lazy val screenings = new MongoScreeningsRepository(shared)
     override lazy val slots      = new MongoSlotsRepository(shared)

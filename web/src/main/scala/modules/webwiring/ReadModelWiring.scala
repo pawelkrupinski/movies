@@ -59,7 +59,7 @@ trait ReadModelWiring { self: Wiring =>
     services.movies.TitleNormalizer.forCountry(country)
 
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
-    movieMirrorConnection.database,
+    movieMirrorConnection.database, clock,
     screenings = Some(screeningsRepository), slots = Some(slotsRepository),
     normalizer = titleNormalizer, decodeFailures = webDecodeFailureMetrics)
   lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database, decodeFailures = webDecodeFailureMetrics)

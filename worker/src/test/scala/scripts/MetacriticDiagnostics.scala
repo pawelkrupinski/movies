@@ -52,7 +52,7 @@ object MetacriticDiagnostics {
 
   def main(args: Array[String]): Unit = {
     val configuration = _root_.settings.ProcessConfiguration.resolve()
-    val repository = AmbientMovieRepository.open(configuration)
+    val repository = AmbientMovieRepository.open(configuration, java.time.Clock.systemUTC())
     if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to diagnose.")
       sys.exit(1)

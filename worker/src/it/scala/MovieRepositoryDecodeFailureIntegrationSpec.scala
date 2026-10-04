@@ -21,7 +21,7 @@ class MovieRepositoryDecodeFailureIntegrationSpec extends AnyFlatSpec with Match
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "movies-decode-failure") { db =>
       val counted    = scala.collection.mutable.ListBuffer.empty[String]
       val metrics: DecodeFailureMetrics = (collection: String) => { counted += collection; () }
-      val repository = new MongoMovieRepository(Some(db), normalizer = titleNormalizer,
+      val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer,
         foreachRecordBatchAttempts = 1, decodeFailures = metrics)
       repository.enabled shouldBe true
       // `sourceData` must be a document; a string cannot be decoded into one.

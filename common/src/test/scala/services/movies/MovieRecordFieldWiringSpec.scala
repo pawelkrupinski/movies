@@ -135,7 +135,7 @@ class MovieRecordFieldWiringSpec extends AnyFlatSpec with Matchers {
     // `InMemoryMovieRepository` passes — while Mongo never receives it. Asserted against
     // the field names the update document actually emits.
     val repository = new MongoMovieRepository(
-      sharedDb   = Some(MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=200").getDatabase("test")),
+      sharedDb   = Some(MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=200").getDatabase("test")), clock = _root_.tools.SpecClock.Pinned,
       normalizer = titleNormalizer)
     val update = repository.patchToUpdate(MovieRecordPatch.diff(MovieRecord(), everyFieldSet))
       .toBsonDocument(classOf[BsonDocument], MovieCodecs.registry)

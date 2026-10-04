@@ -139,7 +139,7 @@ object ReresolveSelfLockedRows {
     // would key the reset on a title no cinema ever published and search TMDB for a
     // concatenated string. Same trap as the unstitched read that wiped live screenings on
     // 2026-08-10; the fix is to wire them, as `AmbientMovieRepository` does.
-    val repo: MovieRepository = AmbientMovieRepository.over(Some(db), TitleNormalizer.forCountry(configuration.country))
+    val repo: MovieRepository = AmbientMovieRepository.over(Some(db), TitleNormalizer.forCountry(configuration.country), java.time.Clock.systemUTC())
 
     val found = wanted.keys.toSeq.sorted.map(id => id -> repo.findById(FilmId(id)))
     val (locked, skipped) = stillLocked(found, wanted)

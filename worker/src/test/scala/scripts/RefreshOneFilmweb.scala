@@ -14,7 +14,7 @@ object RefreshOneFilmweb {
   def main(args: Array[String]): Unit = {
     val (title, year) = ("Chłopiec na krańcach świata", Some(2026))
     val configuration = _root_.settings.ProcessConfiguration.resolve()
-    val repository  = AmbientMovieRepository.open(configuration)
+    val repository  = AmbientMovieRepository.open(configuration, java.time.Clock.systemUTC())
     if (!repository.enabled) { println("MONGODB_URI not set."); sys.exit(1) }
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val ratings = new FilmwebRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = configuration.tmdbApiKey), new FilmwebClient(new RealHttpFetch))

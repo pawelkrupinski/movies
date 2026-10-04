@@ -28,7 +28,7 @@ object CorpusCensusBench {
       MongoDatabaseName(s"${country.mongoDb}_prod_mirror"), MongoRequirement.Required)
     val normalizer = TitleNormalizer.forCountry(country)
     // Wired as CorpusWiring wires prod: showtimes and slots in their own collections, stitched per page.
-    val repo       = AmbientMovieRepository.over(conn.database, normalizer)
+    val repo       = AmbientMovieRepository.over(conn.database, normalizer, java.time.Clock.systemUTC())
     val registry   = new PrometheusRegistry()
     val scan = new WorkerCorpusScan(repo, Seq(
       new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), country.code, clock = _root_.tools.SpecClock.Pinned),

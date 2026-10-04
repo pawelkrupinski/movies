@@ -20,7 +20,7 @@ object CountryRatingRefresh {
   def main(args: Array[String]): Unit = {
     val country = args.headOption.flatMap(Country.byCode).getOrElse(Country.UnitedKingdom)
     val (conn, db) = CountryDatabase.open(country)
-    val repo  = AmbientMovieRepository.over(Some(db), TitleNormalizer.forCountry(country))
+    val repo  = AmbientMovieRepository.over(Some(db), TitleNormalizer.forCountry(country), java.time.Clock.systemUTC())
     val queue = new MongoTaskQueue(Some(db))
 
     val affected = repo.findAll().filter(r =>

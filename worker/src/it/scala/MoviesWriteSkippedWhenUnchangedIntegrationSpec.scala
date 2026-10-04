@@ -46,7 +46,7 @@ class MoviesWriteSkippedWhenUnchangedIntegrationSpec extends AnyFlatSpec with Ma
     super.afterAll()
   }
 
-  private val repository = new MongoMovieRepository(Some(db),
+  private val repository = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(),
     screenings = Some(new MongoScreeningsRepository(Some(db))),
     slots      = Some(new MongoSlotsRepository(Some(db))),
     normalizer = titleNormalizer)

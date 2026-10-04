@@ -46,7 +46,7 @@ class ProdCoverageIntegrationSpec extends AnyFlatSpec with Matchers with BeforeA
 
   private val database = MongoClient(mongoTarget.uri.value).getDatabase(s"prod_coverage_spec_${System.nanoTime()}")
 
-  private val movies     = new MongoMovieRepository(sharedDb = Some(database), normalizer = titleNormalizer)
+  private val movies     = new MongoMovieRepository(sharedDb = Some(database), clock = java.time.Clock.systemUTC(), normalizer = titleNormalizer)
   private val slots      = new MongoSlotsRepository(Some(database))
   private val screenings = new MongoScreeningsRepository(Some(database))
 

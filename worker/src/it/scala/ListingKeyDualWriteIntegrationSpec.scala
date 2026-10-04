@@ -52,7 +52,7 @@ class ListingKeyDualWriteIntegrationSpec extends AnyFlatSpec with Matchers with 
     IsolatedMongoDatabase.withDatabase(mongoTarget, "listing-key-dual-write") { db =>
       val screenings = new MongoScreeningsRepository(Some(db))
       val slots      = new MongoSlotsRepository(Some(db))
-      val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
+      val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
       val (title, year) = ("Belle", Some(2013))
       val id = StoredMovieRecord.keyFor(title, year, titleNormalizer)
       def rowId(s: Source) = SlotKeyed.idOf(id, s.displayName)

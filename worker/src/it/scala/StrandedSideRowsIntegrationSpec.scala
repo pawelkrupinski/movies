@@ -24,7 +24,7 @@ class StrandedSideRowsIntegrationSpec extends AnyFlatSpec with Matchers with too
       val screenings = new MongoScreeningsRepository(Some(db))
       val slots      = new MongoSlotsRepository(Some(db))
       // One id per page, so the live-id scan has to page (two films ⇒ three fetches).
-      val repository = new MongoMovieRepository(Some(db), normalizer = titleNormalizer,
+      val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer,
         screenings = Some(screenings), slots = Some(slots), findAllBatchSize = 1)
       try {
         repository.enabled shouldBe true

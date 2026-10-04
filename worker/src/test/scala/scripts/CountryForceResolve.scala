@@ -30,7 +30,7 @@ object CountryForceResolve {
     val country = args.headOption.flatMap(Country.byCode).getOrElse(Country.UnitedKingdom)
     val dbName  = country.mongoDb
     val (conn, db) = CountryDatabase.open(country)
-    val repo  = AmbientMovieRepository.over(Some(db), TitleNormalizer.forCountry(country))
+    val repo  = AmbientMovieRepository.over(Some(db), TitleNormalizer.forCountry(country), java.time.Clock.systemUTC())
     val queue = new MongoTaskQueue(Some(db))
 
     val rows = repo.findAll()
