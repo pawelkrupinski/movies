@@ -11,7 +11,6 @@ import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcom
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * KINOMUZEUM (Muzeum Sztuki Nowoczesnej, Warszawa). The `/pl/repertuar` page is
@@ -101,7 +100,7 @@ class KinomuzeumClient(http: HttpFetch, today: => LocalDate
       slug <- SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1))
       c    <- card
       spans = c.select("p.allcaps span").asScala.toSeq.map(_.text.trim).filter(_.nonEmpty)
-      time <- spans.find(s => """^\d{1,2}:\d{2}$""".r.matches(s))
+      time <- spans.find(KinomuzeumClient.ClockOnly.matches)
       dt   <- KinomuzeumClient.parseTime(date, time)
     } yield {
       val title   = a.text.trim
@@ -121,8 +120,10 @@ object KinomuzeumClient {
   def parseDate(raw: String, today: LocalDate): Option[LocalDate] =
     ScraperParse.parseDayMonth(raw).flatMap(ScraperParse.upcomingMonthDate(_, today))
 
+  private val ClockOnly = raw"""^${ScraperParse.ClockText}$$""".r
+
   def parseTime(date: LocalDate, time: String): Option[LocalDateTime] =
-    """(\d{1,2}):(\d{2})""".r.findFirstMatchIn(time).flatMap(m => Try(date.atTime(m.group(1).toInt, m.group(2).toInt)).toOption)
+    ScraperParse.parseHHmm(time).map(date.atTime)
 
   final case class Detail(runtime: Option[Int], year: Option[Int], countries: Seq[String],
                           director: Seq[String], synopsis: Option[String], poster: Option[String])

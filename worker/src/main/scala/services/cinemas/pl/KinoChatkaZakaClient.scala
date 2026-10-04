@@ -68,7 +68,7 @@ object KinoChatkaZakaClient {
   // "23.06.2026" off the `<h3>` date header — full year, so no inference.
   private val ListDatePat = """(\d{1,2})\.(\d{1,2})\.(\d{4})""".r
   // The detail meta description's leading "… | HH:MM" stamp.
-  private val DetailTimePat = """\|\s*(\d{1,2}):(\d{2})""".r
+  private val DetailTimePat = raw"""\|\s*${ScraperParse.ClockParts}""".r
   // The detail meta's "reż. Director, Country[/Country…] Year (NN min)" line.
   private val DetailMetaPat = """(?s)reż\.\s*(.+?),\s*([^()]+?)\s+(\d{4})\s*\((\d+)\s*min\)""".r
   // A trailing "(Original title)" segment on the descriptive list title.
@@ -98,7 +98,7 @@ object KinoChatkaZakaClient {
   private def parseDetail(html: String): Option[Detail] = {
     val description = Option(Jsoup.parse(html).selectFirst("meta[name=description]")).map(_.attr("content")).getOrElse("")
     DetailTimePat.findFirstMatchIn(description).flatMap { t =>
-      Try(java.time.LocalTime.of(t.group(1).toInt, t.group(2).toInt)).toOption.map { time =>
+      ScraperParse.clockAt(t, 1).map { time =>
         val meta = DetailMetaPat.findFirstMatchIn(description)
         Detail(
           time      = time,

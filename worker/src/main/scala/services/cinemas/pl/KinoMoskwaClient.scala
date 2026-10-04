@@ -94,7 +94,7 @@ object KinoMoskwaClient {
     s"$BaseUrl/kalendarz/?yr=${date.getYear}&month=${date.getMonthValue}&dy=${date.getDayOfMonth}&time=day&mcat=all"
 
   // Room suffix: /S/ = sala Studyjna (small), /D/ = sala Moskwa (large).
-  private val TimeRoomPat = """(\d{1,2}:\d{2})/([DS])/""".r
+  private val TimeRoomPat = raw"""(${ScraperParse.ClockText})/([DS])/""".r
   // Strip leading ordinal "N. " added by My Calendar.
   private val OrdinalPat  = """^\d+\.\s+""".r
 

@@ -97,7 +97,7 @@ object KinoKijowClient {
   // `\p{L}`, not `\w`: Java's `\w` is ASCII-only by default, so "10 paź 18:00"
   // never matched and every OCTOBER screening was silently dropped. The other
   // eleven abbreviations happen to be ASCII, which is why it went unnoticed.
-  private val DateTimePat = """(\d{1,2})\s+(\p{L}+)\s+(\d{2}:\d{2})""".r
+  private val DateTimePat = raw"""(\d{1,2})\s+(\p{L}+)\s+(${ScraperParse.ClockText})""".r
 
   private[cinemas] case class RawSlot(title: String, format: List[String], dateTime: LocalDateTime, bookingUrl: String)
 

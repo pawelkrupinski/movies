@@ -49,7 +49,7 @@ object KinoGrunwaldClient {
 
   // "2.10 piątek - 16:00 i 19:00" — day.month, a weekday name (ignored beyond
   // matching), one or two HH:MM times joined by " i ".
-  private val DateLine = """^(\d{1,2})\.(\d{1,2})\s+\p{L}+\s*-\s*(\d{1,2}:\d{2})(?:\s+i\s+(\d{1,2}:\d{2}))?$""".r
+  private val DateLine = raw"""^(\d{1,2})\.(\d{1,2})\s+\p{L}+\s*-\s*(${ScraperParse.ClockText})(?:\s+i\s+(${ScraperParse.ClockText}))?$$""".r
   private val PremierowoSuffix = """(?i)\s*-\s*premierowo\s*$""".r
 
   private case class RawSlot(title: String, dateTime: java.time.LocalDateTime)

@@ -9,13 +9,29 @@ import java.time.{LocalDate, LocalDateTime, LocalTime, MonthDay, Period}
 import java.time.temporal.TemporalAmount
 import scala.jdk.CollectionConverters._
 import scala.util.Try
+import scala.util.matching.Regex
 
 /** Parsing snippets shared by the hand-rolled cinema scrapers. Each of these
   * shapes was copy-pasted across several `*Client`s before — keeping one copy
   * here means a fix (or a new quoting/format quirk) lands in every scraper at
   * once. */
 private[cinemas] object ScraperParse {
-  private val HourMinute = """(\d{1,2}):(\d{2})""".r
+
+  /** A clock time as the pages print it, for a client's own pattern to compose with
+    * `raw"""…${ScraperParse.ClockParts}…"""` instead of spelling the digits again
+    * (`NoHandRolledClockPatternSpec`). The `Parts` forms capture the hour and the minute,
+    * read back by [[clockAt]]; the `Text` forms capture nothing, for a pattern that captures
+    * the whole time and reads it with [[parseHHmm]]. `Dotted` also takes the "19.30" a
+    * Polish page often prints. */
+  val ClockParts: String       = """(\d{1,2}):(\d{2})"""
+  val ClockPartsDotted: String = """(\d{1,2})[.:](\d{2})"""
+  val ClockText: String        = """\d{1,2}:\d{2}"""
+  val ClockTextDotted: String  = """\d{1,2}[.:]\d{2}"""
+  /** The `HH:mm` of a machine-written stamp ("2026-09-06 19:30"), always two-digit, read
+    * with `LocalDateTime.parse` — where a one-digit hour is not this format at all. */
+  val IsoClockText: String     = """\d{2}:\d{2}"""
+
+  private val HourMinute = ClockParts.r
   private val CssUrl     = """url\((?:'|"|&quot;)?(.+?)(?:'|"|&quot;)?\)""".r
 
   /** Polish genitive month names as the cinema pages spell dates ("5 maja",
@@ -85,8 +101,17 @@ private[cinemas] object ScraperParse {
   /** The first `HH:mm` in `s` as a `LocalTime`, or `None` when there's no
     * match or the captured hour/minute is out of range. */
   def parseHHmm(s: String): Option[LocalTime] =
-    HourMinute.findFirstMatchIn(s)
-      .flatMap(m => Try(LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption)
+    HourMinute.findFirstMatchIn(s).flatMap(clockAt(_, 1))
+
+  /** An ISO `yyyy-MM-dd` day at the first clock time in `hour`; `None` when either is unreadable. */
+  def isoDateAtClock(day: String, hour: String): Option[LocalDateTime] =
+    Try(LocalDate.parse(day)).toOption.flatMap(date => parseHHmm(hour).map(date.atTime))
+
+  /** The time a [[ClockParts]] / [[ClockPartsDotted]] match captured, its hour in group
+    * `hourGroup` and its minute in the next; `None` for an hour or minute no clock has
+    * ("25:00"), never a throw that would take the page's other screenings with it. */
+  def clockAt(m: Regex.Match, hourGroup: Int): Option[LocalTime] =
+    Try(LocalTime.of(m.group(hourGroup).toInt, m.group(hourGroup + 1).toInt)).toOption
 
   /** ISO `2026-09-06` or the day-first `6.09.2026` / `06-09-2026` / `06/09/2026`
     * the Polish cinema pages spell their dates in. Groups 1-3 are the ISO

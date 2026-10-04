@@ -8,7 +8,6 @@ import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcom
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Cinemas in the Nove Kino chain (e.g. Atlantic, Warszawa). Each cinema's
@@ -127,10 +126,7 @@ object NoveKinoClient {
   // groups the presentation variants into one row (see `fetchBare`).
 
   def parseDateTime(day: String, hour: String): Option[LocalDateTime] =
-    """(\d{1,2}):(\d{2})""".r.findFirstMatchIn(hour).flatMap(m =>
-      Try(LocalDateTime.parse(s"${day}T${pad(m.group(1))}:${m.group(2)}:00")).toOption)
-
-  private def pad(s: String): String = if (s.length == 1) s"0$s" else s
+    ScraperParse.isoDateAtClock(day, hour)
 
   /** Pull the text after a `Label:` token out of the description blob. */
   def after(desc: String, label: String): Option[String] =

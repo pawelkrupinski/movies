@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
+
 import models._
 import services.movies.FormatTags
 import tools.{HttpFetch, HttpRead}
@@ -44,7 +46,7 @@ object KinoSlezaClient {
   val RepertoireUrl = s"$BaseUrl/kino-sleza/repertuar/"
 
   private val DatePat = """(\d{1,2})\.(\d{1,2})\.(\d{4})""".r
-  private val TimePat = """(\d{1,2}):(\d{2})""".r
+  private val TimePat = ScraperParse.ClockParts.r
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] =
     Jsoup.parse(html, BaseUrl).select("div.movie").asScala.toSeq.flatMap(parseMovie(_, cinema))

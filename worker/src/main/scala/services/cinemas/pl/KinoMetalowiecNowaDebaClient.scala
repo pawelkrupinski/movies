@@ -58,7 +58,7 @@ object KinoMetalowiecNowaDebaClient {
   val RepertoireUrl = "https://www.soknowadeba.pl/repertuar-kina-metalowiec/"
 
   private val DayHeader    = """^(\d{1,2})\s+(\p{L}+)$""".r
-  private val Screening    = """^(\d{1,2}:\d{2})\s+(.+)$""".r
+  private val Screening    = raw"""^(${ScraperParse.ClockText})\s+(.+)$$""".r
   private val Minutes      = """(\d+)\s*min""".r
   private val AgeYears     = """(\d+)\s*\+""".r
   private val YouTubeUrl   = """"youtube_url":"([^"]+)"""".r

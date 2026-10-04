@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
+
 import java.util.Locale
 
 import tools.{HttpFetch, HttpRead}
@@ -174,7 +176,7 @@ class TeatrZiemiRybnickiejClient(http: HttpFetch) extends CinemaScraper {
   // "8.06.2026, godz. 15.30" (detail page uses a dot in the time;
   // the listing uses a colon — accept both).
   private val DateTimePat =
-    """(\d{1,2})\.(\d{1,2})\.(\d{4})\s*,?\s*godz\.?\s*(\d{1,2})[.:](\d{2})""".r
+    raw"""(\d{1,2})\.(\d{1,2})\.(\d{4})\s*,?\s*godz\.?\s*${ScraperParse.ClockPartsDotted}""".r
 
   private def parseShowtimes(root: Element): Seq[Showtime] =
     root.select(".dates li").asScala.toSeq.flatMap { li =>

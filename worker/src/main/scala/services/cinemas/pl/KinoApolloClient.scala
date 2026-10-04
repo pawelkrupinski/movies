@@ -58,7 +58,7 @@ class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer
   private val DatePat      = """jet-listing-dynamic-field__content[^>]*>(\d{1,2}\.\d{1,2}\.\d{4})</div>""".r
   // WordPress media poster URL.
   private val PosterPat    = """https://kinoapollo\.pl/wp-content/uploads/\d{4}/\d{2}/[^\s'"\)]+\.(?:jpg|jpeg|png)""".r
-  private val TimeOnlyPat  = """^\d{1,2}:\d{2}$""".r
+  private val TimeOnlyPat  = raw"""^${ScraperParse.ClockText}$$""".r
   // Per-event detail-page anchor — the "Czytaj opis" button next to each
   // screening. Excludes feed / page archive URLs which use the same /kino/
   // prefix but don't correspond to a film. Slug never contains a slash.

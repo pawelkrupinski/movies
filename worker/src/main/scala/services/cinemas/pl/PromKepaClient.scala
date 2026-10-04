@@ -58,7 +58,7 @@ class PromKepaClient(http: HttpFetch) extends CinemaScraper {
 
 object PromKepaClient {
 
-  private val TimelinePat = """(\d{1,2}\.\d{2}\.\d{4},\s*\d{1,2}:\d{2})""".r
+  private val TimelinePat = raw"""(\d{1,2}\.\d{2}\.\d{4},\s*${ScraperParse.ClockText})""".r
   // "reż. David Frankel, USA 2026, 120'"
   private val MetaPat = """reż\.\s*(.+?),\s*(.+?)\s+((?:19|20)\d{2}),\s*(\d+)['’]""".r
 

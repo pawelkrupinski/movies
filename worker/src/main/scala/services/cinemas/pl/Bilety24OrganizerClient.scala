@@ -104,7 +104,7 @@ object Bilety24OrganizerClient {
 
   // title="Film: <Title> - 2026-06-19 18:50 - Katowice" — the title may itself
   // contain " - ", so the non-greedy capture stops at the first " - <ISO date>".
-  private val SlotPat = """(?s)Film:\s*(.+?)\s*-\s*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s*-""".r
+  private val SlotPat = raw"""(?s)Film:\s*(.+?)\s*-\s*(\d{4}-\d{2}-\d{2})\s+(${ScraperParse.IsoClockText})\s*-""".r
 
   // Trailing programme-strand markers Forum Bolesławiec glues with an underscore:
   // "_DKF" (Dyskusyjny Klub Filmowy), "_FKS" (Filmowy Klub Seniora).

@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
+
 import java.util.Locale
 
 import org.jsoup.Jsoup
@@ -119,7 +121,7 @@ object KinoPortClient {
    *  (U+2013) or a plain hyphen. The separator is OPTIONAL: some screenings
    *  (first seen 2026-09-19, e.g. "12:30 PUCIO KOCHA ZWIERZAKI") drop it
    *  entirely, running the time straight into the title. */
-  private val TimeTitlePat = """^(\d{1,2}):(\d{2})\s*(?:[–-]\s*)?(.+)$""".r
+  private val TimeTitlePat = raw"""^${ScraperParse.ClockParts}\s*(?:[–-]\s*)?(.+)$$""".r
   /** ` (72′)` — runtime in minutes, U+2032 PRIME, immediately after the strong. */
   private val RuntimePat = """\((\d{1,3})′\)""".r
   /** `2026, reż. Mikołaj Janik` / `2025` — the caption line, whether wrapped in

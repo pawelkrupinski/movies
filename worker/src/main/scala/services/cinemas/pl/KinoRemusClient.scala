@@ -75,7 +75,7 @@ object KinoRemusClient {
    *  „…” with straight and English quotes, sometimes within one title. */
   private val Quotes = "[„”“\"]".r
 
-  private val ScreeningHour = """godz\.\s*(\d{1,2}[:.]\d{2})""".r
+  private val ScreeningHour = raw"""godz\.\s*(${ScraperParse.ClockTextDotted})""".r
 
   /** The film page's header line, `„Lalka”/dramat, romans/13+/2D`: genres and
    *  age rating are the two slash-separated fields before the version. */

@@ -167,7 +167,7 @@ object KinoZakClient {
   /** "DD[ - DD] <month-genitive> o HH:MM" — the day-range separator is a hyphen
    *  or an en/em-dash with optional surrounding spaces. */
   private val SeansLine =
-    """(\d{1,2})(?:\s*[-–—]\s*(\d{1,2}))?\s+([\p{L}]+)\s+o\s+(\d{1,2}:\d{2})""".r
+    raw"""(\d{1,2})(?:\s*[-–—]\s*(\d{1,2}))?\s+([\p{L}]+)\s+o\s+(${ScraperParse.ClockText})""".r
 
   /** Polish month abbreviations as the calendar listing spells them
    *  (`Cze`, `Lip`, …) → month number. */

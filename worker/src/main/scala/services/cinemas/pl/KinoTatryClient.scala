@@ -72,7 +72,7 @@ object KinoTatryClient {
   val BaseUrl     = "https://kinotatrylodz.pl"
   val HomepageUrl = s"$BaseUrl/"
 
-  private val TimePat    = """(\d{1,2}:\d{2})""".r
+  private val TimePat    = raw"""(${ScraperParse.ClockText})""".r
   private val YearPat    = """Premiera\D{0,12}(\d{4})""".r
 
   /** The release year mined from a `/repertuar/<slug>/` detail page's

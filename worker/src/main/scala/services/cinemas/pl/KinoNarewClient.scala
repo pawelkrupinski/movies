@@ -54,7 +54,7 @@ object KinoNarewClient {
   // en/em-dash; the second day is optional (a single-day listing).
   private val DateRange = """(\d{1,2})(?:\s*[–—-]\s*(\d{1,2}))?\s+(\p{L}+)\s+(\d{4})r\.""".r
   // "godz. 17.00/2D/dubbing" — the hour/minute separator is a literal dot.
-  private val GodzTime  = """godz\.?\s*(\d{1,2})[.:](\d{2})""".r
+  private val GodzTime  = raw"""godz\.?\s*${ScraperParse.ClockPartsDotted}""".r
 
   private case class RawSlot(
     title:     String,
@@ -113,7 +113,7 @@ object KinoNarewClient {
 
     val godzParagraph = paragraphs.find(p => p.text.trim.toLowerCase(Locale.ROOT).startsWith("godz"))
     val time = godzParagraph.flatMap(p => GodzTime.findFirstMatchIn(p.text))
-      .flatMap(m => Try(java.time.LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption)
+      .flatMap(m => ScraperParse.clockAt(m, 1))
 
     (paragraphs.headOption.map(_.text.trim).filter(_.nonEmpty), time) match {
       case (Some(rawTitle), Some(t)) if ranges.nonEmpty =>

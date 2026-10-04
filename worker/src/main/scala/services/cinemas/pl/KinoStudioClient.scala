@@ -95,7 +95,7 @@ object KinoStudioClient {
   private val DatePat = """^(\d{1,2})\.(\d{1,2})\b""".r
 
   /** "HH:MM" time tokens. The rebuilt page uses `:`; the older one used `.`. */
-  private val TimePat = """(\d{1,2})[.:](\d{2})""".r
+  private val TimePat = ScraperParse.ClockPartsDotted.r
 
   /** Trailing release year on the `produkcja:` line ("Izrael, Włochy 2024"). */
   private val YearPat = """(\d{4})\s*$""".r
@@ -237,7 +237,7 @@ object KinoStudioClient {
             if (lower.contains("godziny") || lower.contains("seansów") || lower.contains("seansow")) {
               val strong = Option(el.selectFirst("strong")).map(_.text).getOrElse(text)
               pendingTimes = TimePat.findAllMatchIn(strong)
-                .flatMap(m => Try(LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption)
+                .flatMap(m => ScraperParse.clockAt(m, 1))
                 .toSeq
             }
             // Metadata block — gatunek, reżyseria, obsada, produkcja, czas

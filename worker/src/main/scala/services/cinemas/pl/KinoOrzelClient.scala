@@ -56,7 +56,7 @@ object KinoOrzelClient {
   // title itself can contain " - " (e.g. "KONWICKI: pisarz - scenarzysta …"),
   // so the non-greedy name group is anchored by the date that must follow the
   // separating dash — backtracking lands the split on the real date boundary.
-  private val TitlePat     = """^Film:\s*(.+?)\s*-\s*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s*-\s*.+$""".r
+  private val TitlePat     = raw"""^Film:\s*(.+?)\s*-\s*(\d{4}-\d{2}-\d{2})\s+(${ScraperParse.IsoClockText})\s*-\s*.+$$""".r
 
   private case class RawSlot(filmId: String, title: String, dateTime: LocalDateTime, booking: String, poster: Option[String])
 

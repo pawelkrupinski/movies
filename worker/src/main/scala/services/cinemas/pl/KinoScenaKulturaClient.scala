@@ -7,7 +7,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -103,9 +103,10 @@ object KinoScenaKulturaClient {
 
   /** The local `LocalDateTime` from a `(yyyy, MM, dd, HH, mm)` match. */
   private def dateTimeOf(m: scala.util.matching.Regex.Match): Option[LocalDateTime] =
-    Try(LocalDateTime.of(
-      LocalDate.of(m.group(1).toInt, m.group(2).toInt, m.group(3).toInt),
-      LocalTime.of(m.group(4).toInt, m.group(5).toInt))).toOption
+    for {
+      date <- Try(LocalDate.of(m.group(1).toInt, m.group(2).toInt, m.group(3).toInt)).toOption
+      time <- ScraperParse.clockAt(m, 4)
+    } yield LocalDateTime.of(date, time)
 
   /** Genres are the comma-list before the first `|` in the
    *  "Thriller, Sci-Fi | 12+ | 124 min." attribute line. */

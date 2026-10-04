@@ -114,7 +114,7 @@ class AmondoClient(http: HttpFetch
 
 object AmondoClient {
 
-  private val TimePat = """(\d{1,2}):(\d{2})""".r
+  private val TimePat = ScraperParse.ClockParts.r
 
   def parseDateTime(date: String, time: String): Option[LocalDateTime] =
     TimePat.findFirstMatchIn(time).flatMap(m => Try(LocalDateTime.parse(s"${date}T${pad(m.group(1))}:${m.group(2)}:00")).toOption)

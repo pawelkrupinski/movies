@@ -226,8 +226,8 @@ object FlicksClient {
 
   private val SlugPat    = """/movie/([^/?#]+)""".r
   private val DigitsPat  = """(\d+)""".r
-  private val OptTimePat = """(\d{1,2}):(\d{2}):\d{2}""".r
-  private val AmPmPat    = """(?i)(\d{1,2}):(\d{2})\s*(am|pm)""".r
+  private val OptTimePat = raw"""${ScraperParse.ClockParts}:\d{2}""".r
+  private val AmPmPat    = raw"""(?i)${ScraperParse.ClockParts}\s*(am|pm)""".r
   // Keys lifted from a session button's `data-eventjson` blob (jsoup returns it
   // entity-decoded, so we match against real quotes). `content_cast` and
   // `content_genre` are comma-separated lists; `content_awards` has no model
@@ -414,7 +414,7 @@ object FlicksClient {
    *  visible "10:10 am" text. */
   private def parseTime(button: Element): Option[LocalTime] = {
     val fromOptLabel = OptTimePat.findAllMatchIn(button.attr("data-optlabel")).toSeq.lastOption
-      .flatMap(m => Try(LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption)
+      .flatMap(m => ScraperParse.clockAt(m, 1))
     fromOptLabel.orElse {
       val text = Option(button.selectFirst("span.times-calendar-times__el__time")).map(_.text).getOrElse("")
       parseAmPm(text)

@@ -69,7 +69,7 @@ object KinoPatriaClient {
    *  site rather than the conventional colon). */
   private[cinemas] def parseTime(s: String): Option[LocalTime] =
     TimePat.findFirstMatchIn(s.trim).flatMap { m =>
-      Try(LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption
+      ScraperParse.clockAt(m, 1)
     }
 
   /** Infer the full year for a (day, month) pair relative to `today`. If

@@ -91,7 +91,7 @@ object KinoprogrammClient {
 
   private val Runtime = """(?iu)Laufzeit:\s*(\d+)\s*Min""".r
   private val Fsk     = """(?iu)\bFSK\s*(\d+)\b""".r
-  private val Time    = """(\d{1,2}):(\d{2})""".r
+  private val Time    = ScraperParse.ClockParts.r
 
   /** Every film on one week page. A page without the programme list is not an
    *  empty week but a changed layout or a block page, so it throws; a list with
@@ -131,7 +131,7 @@ object KinoprogrammClient {
     }
 
   private def parseTime(text: String): Option[LocalTime] =
-    Time.findFirstMatchIn(text).flatMap(m => Try(LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption)
+    Time.findFirstMatchIn(text).flatMap(m => ScraperParse.clockAt(m, 1))
 
   /** Merge a venue's films across the weeks walked: one `CinemaMovie` per film —
    *  keyed by the film's own page, since two films can share a title — showtimes

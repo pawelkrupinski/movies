@@ -11,7 +11,6 @@ import services.movies.TitleNormalizer
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kinoteka (Warszawa, PKiN). The `/repertuar/` page is per-day; its date nav
@@ -150,10 +149,7 @@ class KinotekaClient(http: HttpFetch, titles: TitleNormalizer
 object KinotekaClient {
 
   def parseDateTime(day: String, hour: String): Option[LocalDateTime] =
-    """(\d{1,2}):(\d{2})""".r.findFirstMatchIn(hour).flatMap(m =>
-      Try(LocalDateTime.parse(s"${day}T${pad(m.group(1))}:${m.group(2)}:00")).toOption)
-
-  private def pad(s: String): String = if (s.length == 1) s"0$s" else s
+    ScraperParse.isoDateAtClock(day, hour)
 
   final case class Detail(runtime: Option[Int], year: Option[Int], originalTitle: Option[String],
                           countries: Seq[String], director: Seq[String], cast: Seq[String],

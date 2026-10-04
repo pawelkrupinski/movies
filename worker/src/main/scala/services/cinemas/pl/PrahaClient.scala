@@ -61,7 +61,7 @@ object PrahaClient {
   // both tolerated without capturing the weekday (redundant with the date
   // itself) and without requiring the year (see `parseStamp`, which infers it
   // from `today` via `ScraperParse.upcomingDate` when absent).
-  private val StampPat = """(\d{1,2})\s+(\p{L}+)(?:\s+(\d{4}))?(?:\s*\([^)]*\))?\s*/\s*(\d{1,2}):(\d{2})""".r
+  private val StampPat = raw"""(\d{1,2})\s+(\p{L}+)(?:\s+(\d{4}))?(?:\s*\([^)]*\))?\s*/\s*${ScraperParse.ClockParts}""".r
 
   private case class RawSlot(
     title:    String,

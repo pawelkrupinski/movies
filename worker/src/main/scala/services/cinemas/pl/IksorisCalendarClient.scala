@@ -78,7 +78,7 @@ object IksorisCalendarClient {
     s"${page.origin.value}/index/ajax.html?ajax=pobierzTerminy&idg=${page.eventGroup}&selectedDate=$day"
 
   // "2026-09-27 (niedziela) 14:30" — the weekday in between is ignored.
-  private val WhenPat = """^(\d{4}-\d{2}-\d{2})\b.*?(\d{1,2}:\d{2})\s*$""".r
+  private val WhenPat = raw"""^(\d{4}-\d{2}-\d{2})\b.*?(${ScraperParse.ClockText})\s*$$""".r
   // "Bez znieczulenia/„WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy" — a
   // film cycle's name glued on after a slash and an opening Polish quote.
   private val CycleSuffix = """\s*/\s*„.*$""".r

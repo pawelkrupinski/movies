@@ -56,7 +56,7 @@ object KinoParczewClient {
 
   // "Codziennie od 02.10.2026 do 08.10.2026 o godzinie 16:00 i 19:00"
   private val Run =
-    """(?i)codziennie\s+od\s+(\d{1,2})\.(\d{1,2})\.(\d{4})\s+do\s+(\d{1,2})\.(\d{1,2})\.(\d{4})\s+o\s+godzinie\s+(\d{1,2}):(\d{2})(?:\s+i\s+(\d{1,2}):(\d{2}))?""".r
+    raw"""(?i)codziennie\s+od\s+(\d{1,2})\.(\d{1,2})\.(\d{4})\s+do\s+(\d{1,2})\.(\d{1,2})\.(\d{4})\s+o\s+godzinie\s+${ScraperParse.ClockParts}(?:\s+i\s+${ScraperParse.ClockParts})?""".r
 
   def filmLinks(homeHtml: String): Seq[String] =
     Jsoup.parse(homeHtml, HomeUrl).select("a[href*=/filmy/]").asScala.toSeq
@@ -110,7 +110,7 @@ object KinoParczewClient {
         to   <- Try(LocalDate.of(m.group(6).toInt, m.group(5).toInt, m.group(4).toInt)).toOption
       } yield {
         val times = Seq(
-          Try(LocalTime.of(m.group(7).toInt, m.group(8).toInt)).toOption,
+          ScraperParse.clockAt(m, 7),
           Option(m.group(9)).flatMap(h => Try(LocalTime.of(h.toInt, m.group(10).toInt)).toOption)
         ).flatten
         (from, to, times)

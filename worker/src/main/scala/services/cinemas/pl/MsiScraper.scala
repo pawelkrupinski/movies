@@ -62,7 +62,7 @@ private[cinemas] object MsiScraper {
   // `\p{L}`, not `\w`: Java's `\w` is ASCII-only by default, so the one Polish
   // month abbreviation carrying a diacritic — "paź" — never matched, and every
   // OCTOBER screening was silently dropped at every MSI venue.
-  private val EventTimePat = """(\d{1,2})\s+(\p{L}+)\s+(\d{2}):(\d{2})""".r
+  private val EventTimePat = raw"""(\d{1,2})\s+(\p{L}+)\s+${ScraperParse.ClockParts}""".r
 
   // The MSI page also embeds full film metadata in a `var RepertoireEvents = [
   // {…} ]` JS array (one flat object per screening) that Jsoup doesn't surface.

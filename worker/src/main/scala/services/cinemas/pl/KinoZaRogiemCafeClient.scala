@@ -76,7 +76,7 @@ object KinoZaRogiemCafeClient {
   val RepertoireUrl = s"$BaseUrl/repertuar/"
 
   // "Dzisiaj, 11:00" or "Jutro, 17:30"
-  private val RelativeDatePat = """(Dzisiaj|Jutro),\s*(\d{1,2}:\d{2})""".r
+  private val RelativeDatePat = raw"""(Dzisiaj|Jutro),\s*(${ScraperParse.ClockText})""".r
 
   // /film/<slug>/ URL
   private val SlugPat = """/film/([^/]+)/""".r

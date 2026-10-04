@@ -105,8 +105,8 @@ object ModernEventsCalendarClient {
 
   private val DayId       = """(?:^|_)(\d{8})$""".r
   private val DayFormat   = DateTimeFormatter.BASIC_ISO_DATE
-  private val ClockTime   = """(?i)(\d{1,2}):(\d{2})\s*([ap]\.?m\.?)?""".r
-  private val LeadingTime = """^\d{1,2}[:.]\d{2}\s*[–—-]\s*""".r
+  private val ClockTime   = raw"""(?i)${ScraperParse.ClockParts}\s*([ap]\.?m\.?)?""".r
+  private val LeadingTime = raw"""^${ScraperParse.ClockTextDotted}\s*[–—-]\s*""".r
 
   /** The calendar's AJAX handle: which skin, its serialised shortcode `atts`,
    *  the endpoint, and the month the page itself rendered. */

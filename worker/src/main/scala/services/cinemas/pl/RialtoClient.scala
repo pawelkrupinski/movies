@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
+
 import java.util.Locale
 
 import models._
@@ -21,7 +23,7 @@ class RialtoClient(http: HttpFetch
   private val BaseUrl       = "https://www.kinorialto.poznan.pl"
 
 
-  private val DateTimePat = """- (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}) -""".r
+  private val DateTimePat = raw"""- (\d{4}-\d{2}-\d{2}) (${ScraperParse.IsoClockText}) -""".r
   private val RuntimePat  = """(\d+)\s*min""".r
   private val YearPat     = """\b((?:19|20)\d{2})\b""".r
   // The event page (not the repertoire listing) heads the description with a

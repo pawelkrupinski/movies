@@ -128,7 +128,7 @@ object KinoZamekClient {
     * `21 czerwca (niedziela), godz. 19:00`. The weekday parenthetical is optional
     * because not every entry carries one. */
   private val ScreeningLine =
-    """(?i)(\d{1,2})\s+(\p{L}+)\b[^,]*,\s*godz(?:ina)?\.?\s*(\d{1,2})[:.](\d{2})""".r
+    raw"""(?i)(\d{1,2})\s+(\p{L}+)\b[^,]*,\s*godz(?:ina)?\.?\s*${ScraperParse.ClockPartsDotted}""".r
 
   /** `12-06-2026` inside the comma-separated `p.event-details` list. */
   private val EventDetailsDate = """(\d{2})-(\d{2})-(\d{4})""".r
@@ -175,7 +175,7 @@ object KinoZamekClient {
         case Some(matched) =>
           for {
             month <- ScraperParse.polishMonth(matched.group(2))
-            time  <- Try(LocalTime.of(matched.group(3).toInt, matched.group(4).toInt)).toOption
+            time  <- ScraperParse.clockAt(matched, 3)
             date  <- resolveDate(matched.group(1).toInt, month, dated, today)
             if !date.isBefore(today)
           } yield Screening(date, time, heading, directorAfter(paragraphs, index))

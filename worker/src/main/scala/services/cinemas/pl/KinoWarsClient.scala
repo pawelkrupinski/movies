@@ -88,7 +88,7 @@ object KinoWarsClient {
    *  that day's shows ("godz. 17:00 i 20:00"). Anchored so a date quoted inside
    *  the synopsis prose is never read as a screening. */
   private val ScreeningDay = """^\d{1,2}\.\d{1,2}\.\d{4}(?=\s*r\.)""".r
-  private val TimeToken = """\b(\d{1,2}:\d{2})\b""".r
+  private val TimeToken = raw"""\b(${ScraperParse.ClockText})\b""".r
   private val Runtime   = """(\d+)\s*min""".r
   /** The trailing `/ PL` (Polish film) or bare `/` left once a version word is peeled. */
   private val TrailingVersionSlash = """\s*/\s*(?:PL)?\s*$""".r

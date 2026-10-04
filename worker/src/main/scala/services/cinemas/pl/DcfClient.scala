@@ -31,7 +31,7 @@ class DcfClient(http: HttpFetch
   private val TicketBase    = "https://dcf.bilety24.pl/kup-bilety/?id="
 
   // aria-label: "Tytuł; Miejsce: Sala Warszawa; Data: 05.06.2026 15:30"
-  private val AriaPat = """^(.+?); Miejsce: (.+?); Data: (\d{2}\.\d{2}\.\d{4}) (\d{2}:\d{2})$""".r
+  private val AriaPat = raw"""^(.+?); Miejsce: (.+?); Data: (\d{2}\.\d{2}\.\d{4}) (${ScraperParse.IsoClockText})$$""".r
   private val FilmIdPat   = """film-(\d+)""".r
 
   private case class RawSlot(dateTime: LocalDateTime, room: Option[String], bookingUrl: Option[String])

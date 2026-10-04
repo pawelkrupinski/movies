@@ -63,7 +63,7 @@ object KinoKikaClient {
   // CSS class on row divs: "row 2026-06-07" (date embedded as a class token)
   private val DateClassPat = """(\d{4}-\d{2}-\d{2})""".r
   // "godz. 16:45"
-  private val GodzPat = """godz\.\s*(\d{1,2}:\d{2})""".r
+  private val GodzPat = raw"""godz\.\s*(${ScraperParse.ClockText})""".r
   // "sala KIKA", "sala PUFA" etc. — the room name after "sala"
   private val SalaPat = """sala\s+(\S+)""".r
 

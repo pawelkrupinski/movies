@@ -9,7 +9,6 @@ import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcom
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino Iluzjon (Filmoteka Narodowa, Warszawa). The `/repertuar.html` page is a
@@ -33,7 +32,7 @@ class IluzjonClient(http: HttpFetch, today: => LocalDate
   private val BaseUrl     = "https://www.iluzjon.fn.org.pl"
   private val ListingUrl  = s"$BaseUrl/repertuar.html"
   private val FilmIdPat   = """filmy/info/(\d+)/""".r
-  private val TimeTitlePat = """^(\d{1,2}):(\d{2})\s*-\s*(.+)$""".r
+  private val TimeTitlePat = raw"""^${ScraperParse.ClockParts}\s*-\s*(.+)$$""".r
 
   private case class RawSlot(filmId: String, title: String, dateTime: LocalDateTime, room: Option[String],
                              booking: Option[String], poster: Option[String], detailPath: String)
@@ -103,7 +102,7 @@ class IluzjonClient(http: HttpFetch, today: => LocalDate
       for {
         filmId <- FilmIdPat.findFirstMatchIn(href).map(_.group(1))
         m      <- TimeTitlePat.findFirstMatchIn(link.text.trim)
-        t      <- Try(java.time.LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption
+        t      <- ScraperParse.clockAt(m, 1)
       } yield {
         val title   = m.group(3).trim
         val room    = Option(row.selectFirst("div.location")).map(_.text.trim.replaceAll("[()]", "").trim).filter(_.nonEmpty)

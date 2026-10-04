@@ -6,7 +6,7 @@ import models._
 import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime, LocalTime, MonthDay, Period}
+import java.time.{LocalDate, LocalDateTime, MonthDay, Period}
 import java.time.format.TextStyle
 import java.util.Locale
 import scala.jdk.CollectionConverters._
@@ -92,7 +92,7 @@ object TheOldCourtClient {
   private val CinemaBookingPath = "/sales/the-old-court-cinema/"
 
   /** "Fri 7th Aug 20:30-21:15" — the end time is ignored; the start is the showtime. */
-  private val WhenPat = """\b(\d{1,2})(?:st|nd|rd|th)\s+([A-Za-z]{3,})\s+(\d{1,2}):(\d{2})""".r
+  private val WhenPat = raw"""\b(\d{1,2})(?:st|nd|rd|th)\s+([A-Za-z]{3,})\s+${ScraperParse.ClockParts}""".r
 
   /** Programme-strand labels the venue appends to a real film title. "The Old
    *  Courters" is its seniors' club matinee, so "Tuner (The Old Courters)" and
@@ -149,7 +149,7 @@ object TheOldCourtClient {
     WhenPat.findFirstMatchIn(text).flatMap { m =>
       for {
         month    <- MonthsByAbbreviation.get(m.group(2).toLowerCase(Locale.ROOT).take(3))
-        time     <- Try(LocalTime.of(m.group(3).toInt, m.group(4).toInt)).toOption
+        time     <- ScraperParse.clockAt(m, 3)
         dayMonth <- Try(MonthDay.of(month, m.group(1).toInt)).toOption
         date     <- ScraperParse.upcomingDate(dayMonth, today, grace = Period.ofDays(1))
       } yield LocalDateTime.of(date, time)

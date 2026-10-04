@@ -42,7 +42,7 @@ object KinoKarolinkaClient {
   val RepertoireUrl = s"$BaseUrl/wydarzenia"
 
   private val FilmMarker  = "Kino Karolinka"
-  private val TimePat     = """godz\.?\s*(\d{1,2}:\d{2})""".r
+  private val TimePat     = raw"""godz\.?\s*(${ScraperParse.ClockText})""".r
 
   private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String], filmUrl: Option[String])
 

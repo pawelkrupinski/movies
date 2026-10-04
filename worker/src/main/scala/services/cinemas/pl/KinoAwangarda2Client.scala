@@ -9,7 +9,6 @@ import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, Period}
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino Awangarda 2 (Olsztyn). A bespoke Joomla site whose weekly repertoire is a
@@ -68,7 +67,7 @@ object KinoAwangarda2Client {
   /** The screening time on a film line: `HH.MM` (or `HH:MM`). The only `DD.MM`-
    *  shaped token on a screening line is the time (day headers are separate
    *  blocks), so the first match is the showtime. */
-  private val ScreeningTime = """\b(\d{1,2})[.:](\d{2})\b""".r
+  private val ScreeningTime = raw"""\b${ScraperParse.ClockPartsDotted}\b""".r
 
   /** A quoted substring inside the link text. */
   private val Quoted = """"([^"]+)"""".r
@@ -143,7 +142,7 @@ object KinoAwangarda2Client {
       .filterNot(_.matches(""".*\d.*"""))
 
   private def timeOf(m: scala.util.matching.Regex.Match): Option[LocalTime] =
-    Try(LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption
+    ScraperParse.clockAt(m, 1)
 
   /** The `DD.MM` mapped to a `LocalDate`, rolling forward into next year only
    *  when it sits >6 months before `today` (the Dec→Jan boundary). */

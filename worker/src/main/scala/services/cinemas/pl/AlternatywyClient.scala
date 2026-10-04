@@ -133,7 +133,7 @@ class AlternatywyClient(
 object AlternatywyClient {
   val RepertoireUrl = "https://alternatywy.art/repertuar/"
 
-  private val TimePat = """^(\d{1,2}):(\d{2})$""".r
+  private val TimePat = raw"""^${ScraperParse.ClockParts}$$""".r
 
   private def parseTime(s: String): Option[(Int, Int)] = s.trim match {
     case TimePat(h, m) =>

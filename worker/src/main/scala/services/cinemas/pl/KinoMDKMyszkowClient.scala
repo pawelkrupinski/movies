@@ -60,7 +60,7 @@ object KinoMDKMyszkowClient {
   // "25, 26, 27.09.2026" — a comma day-list, then the shared month.year.
   private val DateListPat = """([\d,\s]+)\.(\d{1,2})\.(\d{4})""".r
   private val RuntimePat  = """czas trwania:\s*(\d+)\s*min""".r
-  private val TimePat     = """godz\.?\s*(\d{1,2}:\d{2})""".r
+  private val TimePat     = raw"""godz\.?\s*(${ScraperParse.ClockText})""".r
 
   private val BoilerplateStarts = Seq("czas trwania", "źródło", "bilety", "data")
 
