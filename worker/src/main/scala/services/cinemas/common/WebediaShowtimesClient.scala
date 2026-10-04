@@ -325,7 +325,7 @@ object WebediaShowtimesClient {
    *
    *  Probed 2026-09-02 over 120 venues per market; the list is the union of
    *  what both sites actually emit (Spain: Imax/Laser/4k/3d/4DE/4DE3D,
-   *  DolbyAtmos, VIP — Germany: 2D/3d/4k, DBox/DolbyAtmos/PLF, Premium), plus
+   *  DolbyAtmos, VIP, InfinityVision (Ocine Girona, 2026-10-04) — Germany: 2D/3d/4k, DBox/DolbyAtmos/PLF, Premium), plus
    *  the 4DX and Dolby projection rows the family has always spelled this way. */
   private val ScreenTokens: List[(String, String)] = List(
     "format.projection.2d"             -> "2D",
@@ -338,6 +338,7 @@ object WebediaShowtimesClient {
     "format.projection.dolby"          -> "DOLBY",
     "auditorium.experience.dolbyatmos" -> "ATMOS",
     "auditorium.experience.screenx"    -> "SCREENX",
+    "auditorium.experience.infinityvision" -> "INFINITY",
     "auditorium.experience.dbox"       -> "DBOX",
     "auditorium.experience.plf"        -> "PLF",
     "showtime.experience.premium"      -> "PREMIUM",

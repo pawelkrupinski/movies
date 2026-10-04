@@ -147,6 +147,15 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
       WebediaMarket.Spain) shouldBe List("3D", "VOSE")
   }
 
+  // SensaCine tags Ocine Girona's Infinity Vision room `Auditorium.Experience.InfinityVision` (probed
+  // live 2026-10-04: its one 3D session that day) — the same tag the Gatsby brands' parser already
+  // reads as INFINITY. Unmapped here, the screening read as a plain 3D one.
+  it should "badge an Infinity Vision room" in {
+    WebediaShowtimesClient.formatTokens(
+      "dubbed", Seq("Format.Projection.3d", "Auditorium.Experience.InfinityVision"),
+      WebediaMarket.Spain) shouldBe List("3D", "INFINITY", "DOB")
+  }
+
   // ENGLISH subtitles are their own version, and the one the old tags-only
   // reading got flatly wrong: `Localization.Subtitle.English` merely CONTAINS
   // "subtitle", so an English-subtitled screening was sold as `VOSE` — "original
