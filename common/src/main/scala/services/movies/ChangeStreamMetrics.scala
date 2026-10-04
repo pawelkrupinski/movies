@@ -79,13 +79,11 @@ object ChangeStreamMetrics {
       val Declined       = "declined"
       /** The store cannot read venues alone. */
       val Unsupported    = "unsupported"
-      /** A listener was still not ready for the venues when the wait for it ran out. */
-      val WaitExpired    = "wait_expired"
     }
     /** Every (path, reason) pair, for pre-registering the series. */
     val Series: Seq[(String, String)] = Seq(Venues -> Reason.Applied) ++
-      Seq(Reason.NotShowtimes, Reason.TooManyVenues, Reason.Failing, Reason.VenueReadFailed, Reason.Declined, Reason.Unsupported,
-        Reason.WaitExpired).map(Film -> _)
+      Seq(Reason.NotShowtimes, Reason.TooManyVenues, Reason.Failing, Reason.VenueReadFailed, Reason.Declined, Reason.Unsupported)
+        .map(Film -> _)
   }
 
   object Op {

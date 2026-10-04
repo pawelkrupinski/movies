@@ -59,8 +59,9 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
 
   private def stored(record: MovieRecord) = StoredMovieRecord.synthesised("Foo", Some(2024), record, titleNormalizer)
 
-  private def projector(rm: InMemoryReadModelRepository, bootStudy: Option[BootCorpusStudy] = None) =
-    new ReadModelProjector(new InMemoryMovieRepository(normalizer = titleNormalizer), rm, rm, clock = clock, bootStudy = bootStudy)
+  private def projector(rm: InMemoryReadModelRepository, bootStudy: Option[BootCorpusStudy] = None,
+                        source: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = titleNormalizer)) =
+    new ReadModelProjector(source, rm, rm, clock = clock, bootStudy = bootStudy)
 
   "A change at some venues" should "write from those venues alone exactly what projecting the whole film writes" in {
     var accepted, declined = 0
@@ -84,7 +85,6 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
         venue.onVenueSlots(VenueSlots(FilmId(now.id.value), atCinemas)) match {
           case services.movies.VenueVerdict.Applied          => accepted += 1
           case services.movies.VenueVerdict.Declined(reason) => declined += 1; reasons += reason; venue.onMovieUpsert(now)
-          case services.movies.VenueVerdict.NotYet           => fail("a row projected above cannot be one still to learn")
         }
         withClue(s"round $round step $step: ") {
           venueRm.findAllMovies().toSet shouldBe wholeRm.findAllMovies().toSet
@@ -195,8 +195,33 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
     whole.stop(); booted.stop()
   }
 
-  // No census pass comes to teach it later: a row the boot read did not hand over is re-read whole on its first
-  // change, at once, rather than waited for.
+  // A boot whose hydrate read was not handed over (it failed, or its derivation ran past its wait) used to leave every
+  // film's first venue change re-read whole for the process's life: 78 of the US's 78 venue applies, 2026-10-01.
+  it should "learn the rows from a corpus read of its own when the boot had none to hand over" in {
+    // A film every venue of which lists showtimes (the boot's heal projects any other whole, which teaches it too),
+    // changing at a venue that lists it once (one listing twice at a venue is always re-read whole).
+    val world = Iterator.from(17).map(seed => new Restart(seed.toLong)).find { w =>
+      w.record.data.forall { case (_: CinemaShowing, slot) => slot.showtimes.nonEmpty; case _ => true } &&
+        w.record.data.keys.count { case CinemaShowing(c, _) => c == w.cinema; case _ => false } == 1
+    }.get
+    import world.*
+    val missing = new BootCorpusStudy(titleNormalizer)
+    missing.bootCorpus(None)
+    // Its own copy of the store as it stood at the boot, so the change below reaches it only through the venue path.
+    val source = new InMemoryMovieRepository(Seq(("Foo", Some(2024), record)), normalizer = titleNormalizer)
+    source.findAll().map(_.id) shouldBe Seq(row.id)
+    val learning = projector(afterRm, Some(missing), source = source)
+    learning.prepare()
+    val venues = change(cinema)
+    org.scalatest.concurrent.Eventually.eventually(org.scalatest.concurrent.Eventually.timeout(_root_.tools.SpecTimeouts.Settle)) {
+      learning.onVenueSlots(venues) shouldBe services.movies.VenueVerdict.Applied
+    }
+    afterRm.findAllMovies().toSet shouldBe beforeRm.findAllMovies().toSet
+    afterRm.findAllScreenings().toSet shouldBe beforeRm.findAllScreenings().toSet
+    whole.stop(); booted.stop(); learning.stop()
+  }
+
+  // A row no read taught it — written since, or never ready — is re-read whole on its first change, at once.
   it should "decline a change at a row it never learned, at once" in {
     val world = new Restart(13)
     import world.*

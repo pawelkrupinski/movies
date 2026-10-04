@@ -1078,7 +1078,9 @@ class ReadModelProjector(
       seedFromReadModel()
       val study = bootStudy.flatMap(_.take())
       healMissingCards(study)
-      study.foreach(learnAtBoot)
+      // Without the hydrate's rows, read them for the lessons, off the boot thread: without them every film's first
+      // venue change after the boot is re-read whole (78 of the US's 78 venue applies in half an hour, 2026-10-01).
+      study.fold { scheduler.execute(() => continuing("read model: learning the corpus failed")(learnFromCorpus())); () }(learnAtBoot)
     } catch {
       case scala.util.control.NonFatal(exception) =>
         logger.error(s"read model: the boot reads failed (${exception.getClass.getSimpleName}: ${exception.getMessage}) — " +
@@ -1187,10 +1189,22 @@ class ReadModelProjector(
   }
 
   /** Learn every row of the boot hydrate's complete read. Before the seed the memo has no row to vouch:
-   *  learning then would mark each row known with every venue unvouched. A row learned from nothing —
-   *  no hydrate read was handed over — is declined on its first venue change and re-read whole. */
+   *  learning then would mark each row known with every venue unvouched. */
   private def learnAtBoot(rows: Seq[BootRow]): Unit = lock.synchronized {
     if (seeded) rows.foreach(row => learnFrom(row.id.value, row.lesson))
+  }
+
+  /** Learn every ready row from a read of the corpus with its showtimes — what [[learnAtBoot]] takes from the
+   *  hydrate's read, when the boot had none to hand over (it failed, or its derivation ran past its wait). One row at
+   *  a time under the lock, so the change stream's applies interleave; a change at a row not learned yet meanwhile is
+   *  re-read whole, as it would be anyway. */
+  private[readmodel] def learnFromCorpus(): Unit = {
+    val read = movieRepository.foreachRecord { row =>
+      if (row.record.readyToProject)
+        Try(Lesson.of(ReadModelProjection.partition(row, normalizer))).foreach(lesson =>
+          lock.synchronized(if (seeded) learnFrom(row.id.value, lesson)))
+    }
+    logger.info(s"read model: learned the corpus's rows from a read of its own (${read.explain}).")
   }
 
   /** Project, at boot, every ready row one of whose cards is missing — before the

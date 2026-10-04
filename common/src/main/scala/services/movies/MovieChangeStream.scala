@@ -63,7 +63,7 @@ final class MovieChangeStream(
   screeningsMetrics:   SideCollectionChangeMetrics,
   slotsMetrics:        SideCollectionChangeMetrics,
   changeDemandWindow:  Int,
-  // The repository's clock: the debounce and venue waits run on it, and the liveness ages from it.
+  // The repository's clock: the debounce runs on it, and the liveness ages from it.
   clock:               java.time.Clock,
   // The sequence the repository stamps `updatedAt` from — the liveness takes every catch-up floor
   // from it, so a floor and a row's stamp are strictly ordered (see [[ChangeStreamLiveness.now]]).
@@ -80,9 +80,6 @@ final class MovieChangeStream(
   // confined to a few venues' showtimes skip the whole-film re-read ([[applyVenues]]). None (every
   // repository but the worker's) re-reads every change whole.
   readVenues:          Option[(String, Set[models.Cinema]) => Option[VenueSlots]] = None,
-  // How often a venue apply a listener was not ready for asks again, and how long it waits at most.
-  venueRetryMillis:    Long = MovieChangeStream.VenueRetryMillis,
-  venueWaitMillis:     Long = MovieChangeStream.VenueWaitMillis,
   // Waits out each film's debounce (built only when `debounce` is set) — injected so a spec can
   // step a debounce boundary on a hand-moved `clock` instead of sleeping across it.
   debounceScheduler:   () => java.util.concurrent.ScheduledExecutorService = () => tools.DaemonExecutors.scheduler("movie-change-debounce")
@@ -198,7 +195,7 @@ final class MovieChangeStream(
   }
 
   /** Re-reads the debounce is holding for the rest of their film's burst. */
-  def held: Int = pending.values().asScala.count(!_.queued) + waiting.get()
+  def held: Int = pending.values().asScala.count(!_.queued)
 
   /** Queue every re-read the debounce holds, now — at close, so their events are applied before
    *  the final positions are saved, and wherever a caller must see the stream settled. */
@@ -222,7 +219,7 @@ final class MovieChangeStream(
   private def queue(filmId: String, entry: Pending): Unit = if (entry.handOff()) {
     applyOffLoop(entry.cursor, entry.demand) {
       pending.remove(filmId, entry)
-      applyOrWait(filmId, entry.venues, entry.hold, drain(entry), clock.millis(), () => liveness.finished(entry.ticket))
+      applyChange(filmId, entry.venues, entry.hold, drain(entry), () => liveness.finished(entry.ticket))
     }
   }
 
@@ -345,9 +342,8 @@ final class MovieChangeStream(
    *  apply is harmless: it is a superset of every part. A US wide release carries thousands of
    *  venues' showtimes, and a change at one of them re-read every one: most of a busy US worker's
    *  change-apply CPU (JFR, 2026-10-01). */
-  private def applyVenues(filmId: String, venues: Option[Set[models.Cinema]]): MovieChangeStream.VenueOutcome = {
+  private def applyVenues(filmId: String, venues: Option[Set[models.Cinema]]): Boolean = {
     import ChangeStreamMetrics.Apply.Reason
-    import MovieChangeStream.VenueOutcome
     val reason = readVenues match {
       case None       => Reason.Unsupported
       case Some(read) => venues.filter(_.nonEmpty) match {
@@ -359,52 +355,23 @@ final class MovieChangeStream(
           read(filmId, at) match {
             case None        => Reason.VenueReadFailed
             case Some(slots) =>
-              val unapplied = movieChanges.dispatchPart(MovieChangeStream.VenueDelivery(slots, mark))
-              val declined  = unapplied.collect { case VenueVerdict.Declined(why) => why }
+              val declined = movieChanges.dispatchPart(MovieChangeStream.VenueDelivery(slots, mark))
+                .collect { case VenueVerdict.Declined(why) => why }
               declined.foreach(changeStreamMetrics.recordVenueDecline)
-              if (unapplied.isEmpty) Reason.Applied
-              else if (declined.isEmpty) return VenueOutcome.NotYet
-              else Reason.Declined
+              if (declined.isEmpty) Reason.Applied else Reason.Declined
           }
       }
     }
     val applied = reason == Reason.Applied
     changeStreamMetrics.recordApply(if (applied) ChangeStreamMetrics.Apply.Venues else ChangeStreamMetrics.Apply.Film, reason)
-    if (applied) VenueOutcome.Applied else VenueOutcome.Whole
+    applied
   }
 
-  /** Apply a film's venues — or, when a listener is not ready for them yet, ask again every
-   *  `venueRetryMillis` until it is, or until `venueWaitMillis` after the first ask, and then re-read
-   *  it whole. The events stay unacknowledged the whole time, so
-   *  a restart replays them; the wait counts as held ([[held]]), so a caller settling the stream waits
-   *  for it too. A later change to the film queues its own apply meanwhile, as always. */
-  private def applyOrWait(filmId: String, venues: Option[Set[models.Cinema]], hold: CursorHold,
-                          acks: Seq[() => Unit], firstAsked: Long, finished: () => Unit): Unit = {
-    // Once the film is applied, or its re-read has failed and is left to `rereadLater` — not while
-    // it waits for a listener.
-    def over(apply: => Unit): Unit = try apply finally finished()
-    val outcome = try applyVenues(filmId, venues) catch { case thrown: Throwable => finished(); throw thrown }
-    outcome match {
-      case MovieChangeStream.VenueOutcome.Applied => over(acks.foreach(_()))
-      case MovieChangeStream.VenueOutcome.NotYet if clock.millis() - firstAsked < venueWaitMillis =>
-        waiting.incrementAndGet()
-        scala.util.Try(rereadRetry.schedule((() => {
-          backlog.incrementAndGet()
-          changeApply.execute { () =>
-            try applyOrWait(filmId, venues, hold, acks, firstAsked, finished)
-            finally { waiting.decrementAndGet(); backlog.decrementAndGet() }
-          }
-        }): Runnable, venueRetryMillis, java.util.concurrent.TimeUnit.MILLISECONDS))
-          .failed.foreach { _ => waiting.decrementAndGet(); over(applyReread(filmId, hold)(acks)) } // shutting down: apply it whole now
-      case MovieChangeStream.VenueOutcome.NotYet =>
-        changeStreamMetrics.recordApply(ChangeStreamMetrics.Apply.Film, ChangeStreamMetrics.Apply.Reason.WaitExpired)
-        over(applyReread(filmId, hold)(acks))
-      case MovieChangeStream.VenueOutcome.Whole => over(applyReread(filmId, hold)(acks))
-    }
-  }
-
-  // Venue applies waiting for a listener to be ready for them — see `applyOrWait`.
-  private val waiting = new AtomicInteger(0)
+  /** Apply a film's change from its venues alone when every listener can, else re-read it whole. */
+  private def applyChange(filmId: String, venues: Option[Set[models.Cinema]], hold: CursorHold,
+                          acks: Seq[() => Unit], finished: () => Unit): Unit =
+    try { if (applyVenues(filmId, venues)) acks.foreach(_()) else applyReread(filmId, hold)(acks) }
+    finally finished()
 
   /** One apply's re-read and fan-out, then the `acks` of every event it covers — a cursor's resume
    *  position moves only once an event is fully APPLIED, listeners included, so a shutdown
@@ -704,15 +671,6 @@ object MovieChangeStream {
 
   /** Some of a film's venues on their way to the listeners, with the fence mark taken before the read. */
   private final case class VenueDelivery(venues: VenueSlots, mark: Long)
-
-  /** How a film's venue apply went: applied, a listener not ready for it yet, or the film owed whole. */
-  private enum VenueOutcome { case Applied, NotYet, Whole }
-
-  /** How often a venue apply a listener was not ready for asks again, and for how long at most —
-   *  the projector learns a booted worker's rows from the first corpus census pass, two minutes after
-   *  boot and a few seconds long, then every 15 minutes; past this, the film is re-read whole. */
-  private[movies] val VenueRetryMillis = 5000L
-  private[movies] val VenueWaitMillis  = 30 * 60 * 1000L
 
   /** The most venues one apply reads alone; a burst across more re-reads the film whole. */
   private[movies] val MaxVenuesApplied = 16
