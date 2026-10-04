@@ -19,8 +19,11 @@ object CutoverTaskHandlers {
   val OldPathTypes: Set[TaskType] = Set(TaskType.ResolveTmdb, TaskType.RefreshAllTmdb,
     TaskType.StagingDetail, TaskType.StagingResolveTmdb, TaskType.StagingResolveImdbId, TaskType.StagingFold)
 
+  /** `handlers` with every old path type completed unrun — including a type whose handler was deleted
+   *  with the old path, so a task of it still queued is completed, not handed back to be claimed again for
+   *  ever (PL's leftover ResolveTmdb: 22,570 claims overnight, starving the tasks queued behind it). */
   def of(handlers: Seq[TaskHandler]): Seq[TaskHandler] =
-    handlers.map(h => if (OldPathTypes(h.taskType)) new Retired(h.taskType) else h)
+    handlers.filterNot(h => OldPathTypes(h.taskType)) ++ OldPathTypes.toSeq.sortBy(_.name).map(new Retired(_))
 
   /** Completes every task of `taskType` unrun. */
   final class Retired(val taskType: TaskType) extends TaskHandler {
