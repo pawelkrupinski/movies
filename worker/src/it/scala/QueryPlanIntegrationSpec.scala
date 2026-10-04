@@ -1,0 +1,170 @@
+package services
+
+import models.{CinemaShowing, KinoMuranow, MovieRecord, Showtime, Source, SourceData, Tmdb}
+import org.mongodb.scala.{Document, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import services.movies.SingleCountryNormalizer.titleNormalizer
+import services.movies.{FilmId, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
+import services.readmodel.MongoReadModelRepository
+import services.sharecards.{MongoFacebookRescrapeStore, RescrapeEntry, RescrapeKind, RescrapeTarget}
+import services.tasks.{MongoChunkScrapeStore, MongoTaskQueue, TaskType}
+import tools.QueryPlans
+
+import java.time.{Instant, LocalDateTime}
+import scala.concurrent.Await
+import scala.concurrent.duration._
+
+/**
+ * Every query and write filter a store sends on its hot path, planned by a real Mongo: each must be
+ * served by an index — no collection scan, and no in-memory sort — unless it is listed below with why
+ * a scan is right.
+ *
+ * A collection scan answers correctly, so no result-checking spec sees one; it shows only at production
+ * size, as load. The read model's "cheap" drift counts scanned every screening on every backstop tick, and
+ * `uptimeServiceTags` scanned its collection on every tag upsert. This holds each store's actual
+ * commands — recorded off the wire, not restated — to an index.
+ */
+class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
+
+  /** Plans `work`'s commands against the database it wrote. */
+  private def plansOf(purpose: String)(work: MongoDatabase => Unit): Seq[QueryPlans.Plan] =
+    QueryPlans.recording(mongoTarget, s"plans-$purpose") { (db, sent) =>
+      work(db)
+      QueryPlans.explain(db, sent())
+    }
+
+  /** No plan scans or sorts in memory, but those `allowed` names (a shape, and why it may scan); and every
+   *  allowance still names a plan that scans or sorts, so a fixed one cannot linger. */
+  private def assertIndexed(plans: Seq[QueryPlans.Plan], allowed: Map[String, String] = Map.empty): Unit = {
+    plans should not be empty
+    val unindexed = plans.filter(p => p.collectionScan || p.inMemorySort)
+    withClue(s"every planned statement:\n${plans.map(_.toString).distinct.mkString("\n")}\n") {
+      unindexed.filterNot(p => allowed.contains(p.shape)).map(_.toString).distinct shouldBe empty
+      allowed.keySet.filterNot(shape => unindexed.exists(_.shape == shape)) shouldBe empty
+    }
+  }
+
+  private def await[A](f: scala.concurrent.Future[A]): A = Await.result(f, 30.seconds)
+
+  /** Indexes built off the caller's thread are awaited, or the plan would race their creation. */
+  private def awaitIndexes(db: MongoDatabase, collection: String, count: Int): Unit =
+    tools.Eventually.eventually(await(db.getCollection(collection).listIndexes().toFuture()).size should be >= count, timeoutMs = 10000)
+
+  "the read model's drift counts" should "count index keys, never read a document" in {
+    var counted = Option.empty[(Long, Long)]
+    val plans = plansOf("readmodel") { db =>
+      val rm = new MongoReadModelRepository(Some(db))
+      tools.ReadModelSnapshot.loadInto(rm, tools.ReadModelSnapshot.read())
+      counted = for (m <- rm.countMovies().answered; s <- rm.countScreenings().answered) yield (m, s)
+      rm.close()
+    }
+    counted.exists { case (m, s) => m > 100 && s > 100 } shouldBe true
+    val counts = plans.filter(_.statement.getFirstKey == "aggregate")
+    counts should have size 2
+    counts.foreach(c => withClue(s"$c: ")(c.docsExamined shouldBe 0L))
+    assertIndexed(plans)
+  }
+
+  "the task queue" should "enqueue, claim, settle, reap and count by index" in {
+    assertIndexed(plansOf("tasks") { db =>
+      val queue = new MongoTaskQueue(Some(db.withCodecRegistry(services.movies.MovieCodecs.registry)))
+      awaitIndexes(db, "tasks", 4)
+      val t0    = Instant.parse("2026-06-07T12:00:00Z")
+      (1 to 20).foreach(i => queue.enqueue(TaskType.ScrapeCinema, s"scrape|venue-$i", Map.empty, t0.plusSeconds(i.toLong), None, Duration.Zero))
+      val claimed = queue.claim("worker-a", 1.minute, t0.plusSeconds(60)).get
+      queue.complete(claimed.id, "worker-a")
+      val second = queue.claim("worker-a", 1.minute, t0.plusSeconds(60)).get
+      queue.release(second.id, "worker-a", Some("boom"), Some(t0.plusSeconds(600)), refundAttempt = false)
+      queue.claim("worker-b", 1.minute, t0.plusSeconds(60))
+      queue.reapExpiredLeases(t0.plusSeconds(3600))
+      queue.countByState()
+      queue.waitingCount(TaskType.ScrapeCinema)
+      queue.amendWaiting("scrape|venue-20", Map("a" -> "b"))
+    })
+  }
+
+  "the fleet's Facebook re-scrape queue" should "claim its oldest due entry off the index, sorting nothing in memory" in {
+    assertIndexed(plansOf("rescrapes") { db =>
+      val store = new MongoFacebookRescrapeStore(db.getCollection[Document](MongoFacebookRescrapeStore.Collection))
+      awaitIndexes(db, MongoFacebookRescrapeStore.Collection, 2)
+      val t0 = Instant.parse("2026-09-25T12:00:00Z")
+      store.add((1 to 30).map(i => RescrapeEntry("pl", RescrapeTarget.Page(s"https://kinowo.net/f/$i"), t0.plusSeconds(i.toLong * (if (i % 2 == 0) 1 else 1000)))))
+      store.add(Seq(RescrapeEntry("us", RescrapeTarget.FilmPages("us", "film-1"), t0)))
+      store.hasDue("pl", RescrapeKind.Page, t0.plusSeconds(100)) shouldBe true
+      val claimed = store.claim("pl", RescrapeKind.Page, t0.plusSeconds(100), 5.minutes).get
+      store.complete(claimed)
+      store.claim("pl", RescrapeKind.Page, t0.plusSeconds(100), 5.minutes).foreach(store.retry(_, t0.plusSeconds(900), countAttempt = true))
+      store.waitingPages("pl")
+    })
+  }
+
+  "the film store and its side collections" should "find, write, patch and delete a film by index" in {
+    assertIndexed(plansOf("films") { db =>
+      val screenings = new MongoScreeningsRepository(Some(db))
+      val slots      = new MongoSlotsRepository(Some(db))
+      val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(screenings), slots = Some(slots),
+                                                normalizer = titleNormalizer)
+      val at   = LocalDateTime.of(2099, 3, 1, 18, 0)
+      val shop = CinemaShowing(KinoMuranow, "belle")
+      def record(title: String, tmdbId: Int, hours: Int*) = MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
+        shop -> SourceData(title = Some(title), filmUrl = Some(s"https://muranow.pl/$title"), showtimes = hours.map(h => Showtime(at.withHour(h), None))),
+        Tmdb -> SourceData(title = Some(title))))
+      (1 to 10).foreach(i => repository.upsert(s"Film $i", Some(2000 + i), record(s"Film $i", 100 + i, 18)))
+      repository.updateIfPresent("Film 1", Some(2001), record("Film 1", 101, 18), record("Film 1", 101, 18, 21)) shouldBe true
+      val stored = repository.findByKeyChecked(services.movies.CacheKey("Film 2", Some(2002), titleNormalizer)).answered.get
+      repository.findByIdChecked(stored.id).answered shouldBe defined
+      repository.findByIdChecked(FilmId("no-such-film")).answered shouldBe empty
+      repository.delete("Film 3", Some(2003))
+      repository.close()
+    }, allowed = Map.empty)
+  }
+
+  "the chunked-scrape store" should "read and clear a run's chunks by index" in {
+    assertIndexed(plansOf("chunks") { db =>
+      val store = new MongoChunkScrapeStore(Some(db))
+      val now   = Instant.parse("2026-09-25T12:00:00Z")
+      awaitIndexes(db, "scrape_chunks", 3)
+      val run   = store.startRun("helios-lodz", Seq("a", "b"), now, 1.hour).get
+      store.storeChunk("helios-lodz", run, "a", "{}", now)
+      store.storedKeys("helios-lodz", run)
+      store.loadChunks("helios-lodz", run)
+      store.activeRun("helios-lodz")
+      store.completeRun("helios-lodz", run)
+    })
+  }
+
+  "the TMDB store" should "read and write by id, and sweep by a scan it means" in {
+    import services.identity.{MongoTmdbDocuments, TmdbKind, TmdbStore}
+    assertIndexed(plansOf("tmdb") { db =>
+      val documents = new MongoTmdbDocuments(db)
+      def film(n: Int) = new org.bson.BsonDocument(TmdbStore.FetchedAt, new org.bson.BsonInt64(n.toLong))
+      documents.put(TmdbKind.Film, (1 to 20).map(n => s"$n" -> film(n)))
+      documents.get(TmdbKind.Film, Seq("1", "2", "99"))
+      documents.answers(TmdbKind.Film, Seq("3"))
+      val stale = documents.fetchedBefore(TmdbKind.Film, 10L)
+      documents.deleteIfStill(TmdbKind.Film, stale) shouldBe 9
+    }, allowed = Map(
+      "tmdb_films find filter{fetchedAt:{$lt}}" -> (
+        "TmdbStoreSweep, once a day: its cutoff (the 7-day gap-marker grace) names most of the store, so an index on " +
+        "fetchedAt would be paid on every hot-path write to read nearly every document anyway")))
+  }
+
+  "the uptime monitor" should "flush buckets and tag services by index" in {
+    val plans = plansOf("uptime") { db =>
+      val monitor = new UptimeMonitor(Some(db), clock = _root_.tools.MongoTtlSpecClock.Pinned)
+      awaitIndexes(db, "uptimeBuckets", 3)
+      awaitIndexes(db, ServiceTags.Collection, 2)
+      (1 to 5).foreach { i => monitor.recordSuccess(s"venue-$i", 120L); monitor.recordFailure(s"venue-$i", "boom") }
+      (1 to 5).foreach(i => monitor.tagService(s"venue-$i", Set("chain:helios")))
+      monitor.flushNow()
+      // Both writes are fire-and-forget: wait for them to land, or the plans would race their sending.
+      Seq("uptimeBuckets", ServiceTags.Collection).foreach(written => tools.Eventually.eventually(
+        await(db.getCollection(written).estimatedDocumentCount().toFuture()) shouldBe 5L, timeoutMs = 10000))
+      monitor.close()
+    }
+    Seq("uptimeBuckets", ServiceTags.Collection).foreach(written => withClue(s"$written written, among $plans: ")(
+      plans.exists(p => p.collection == written && p.statement.getFirstKey == "update") shouldBe true))
+    assertIndexed(plans)
+  }
+}

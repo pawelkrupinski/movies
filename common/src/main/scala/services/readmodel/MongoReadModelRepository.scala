@@ -7,7 +7,7 @@ import models.{CityScreening, ResolvedMovie}
 import org.bson.{BsonDocumentReader, BsonTimestamp}
 import org.bson.codecs.{Codec, DecoderContext}
 import org.mongodb.scala.bson.BsonDocument
-import org.mongodb.scala.model.{Filters, Projections, ReplaceOneModel, Sorts}
+import org.mongodb.scala.model.{CountOptions, Filters, Indexes, Projections, ReplaceOneModel, Sorts}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import play.api.Logging
 import services.movies.{KeysetScan, RepositoryWrite}
@@ -221,15 +221,18 @@ class MongoReadModelRepository(
     case _ => None
   }
 
-  // Server-side document counts — the read model's cheap integrity probe. These
-  // count index entries (no payload decode), so the web's backstop can detect
-  // drift without re-reading the whole corpus. `-1` signals "unavailable".
+  // Server-side document counts — the read model's cheap integrity probe, so the web's
+  // backstop can detect drift without re-reading the whole corpus. Hinted onto `_id`, a
+  // count is a COUNT_SCAN of index keys; unhinted, an empty-filter `countDocuments` is a
+  // COLLSCAN that reads every document (all of web_screenings, every 30 minutes, per pod).
+  // Exact, unlike `estimatedDocumentCount`'s metadata, which an unclean shutdown leaves off
+  // until the next validate: a wrong estimate would read as drift and reload every tick.
   def countMovies():     tools.ReadOutcome[Long] = count(movies, "countMovies")
   def countScreenings(): tools.ReadOutcome[Long] = count(screenings, "countScreenings")
 
   private def count[T](coll: Option[MongoCollection[T]], op: String): tools.ReadOutcome[Long] = coll match {
     case Some(c) =>
-      val counted = tools.MongoRead(10.seconds)(c.countDocuments().toFuture())
+      val counted = tools.MongoRead(10.seconds)(c.countDocuments(Filters.empty(), CountOptions().hint(Indexes.ascending("_id"))).toFuture())
       counted match {
         case tools.ReadOutcome.Failed(cause) => logger.warn(s"ReadModelRepository.$op failed: ${cause.explain}")
         case _                 => ()

@@ -96,8 +96,12 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
 
   locally {
     val thread = new Thread(() => {
+      // Equality, sort, range: `claim` asks for the OLDEST due entry, so `enqueuedAt` comes before
+      // the `notBefore` range — that way the index walk is already in claim order and stops at the
+      // first due key. With the range first (the index's first shape), every due entry was fetched
+      // and sorted in memory on every claim.
       Try(Await.result(collection.createIndex(
-        Indexes.ascending("country", "kind", "notBefore", "enqueuedAt")).toFuture(), Timeout))
+        Indexes.ascending("country", "kind", "enqueuedAt", "notBefore")).toFuture(), Timeout))
         .recover { case e => logger.warn(s"facebook_rescrapes index creation failed: ${e.getMessage}") }
       ()
     }, "facebook-rescrapes-init")
