@@ -67,15 +67,18 @@ trait ResolutionWiring { self: WorkerWiring =>
     forceRatingRefresh = (key, record) => { ratingEnqueuer.enqueueDueFor(key, record, clock.instant(), force = true); () },
     clock = clock)
 
-  // The worker projects as its identity model takes its scrapes in (`identityProjectionTrigger`); the clock runs only the
-  // whole corpus's reconciliation, the boot's first projection one `identityProjectionInterval` after boot and then every
-  // `IdentityProjection.ReconcileEvery`. One that did not settle is tried again by the trigger, not an hour later.
+  // The worker projects as its identity model takes its scrapes in (`identityProjectionTrigger`), from the boot's first
+  // projection on; the clock runs only the whole corpus's reconciliation, every `IdentityProjection.ReconcileEvery` from
+  // an hour after boot, so each has a projection before it to measure its drift against. One that did not settle is
+  // tried again by the trigger, not an hour later.
   def settleTick(): Unit = if (!identityProjection.reconcileQuietly()) identityProjectionTrigger.retry()
+  def bootProjectionTick(): Unit = if (!identityProjection.projectQuietly()) identityProjectionTrigger.retry()
   // The boot's projection runs once, on the trigger's scheduler, never behind the reconcile's claim: an hourly window a
   // previous pod already claimed skipped it, and every projection on scrapes waits for it — a restarted worker projected
-  // nothing until the next hour (2026-10-04, US/UK/DE 20:10–21:00).
+  // nothing until the next hour (2026-10-04, US/UK/DE 20:10–21:00). It is a projection, not a reconcile: with none
+  // before it there is no drift to measure.
   lazy val settleReaper = {
-    identityProjectionTrigger.once(identityProjectionInterval.value)(settleTick())
+    identityProjectionTrigger.once(identityProjectionInterval.value)(bootProjectionTick())
     managedResources.stopping(new SettleReaper(() => settleTick(),
     interval = SettleInterval(services.identity.IdentityProjection.ReconcileEvery),
     initialDelay = SettleReaper.InitialDelay(services.identity.IdentityProjection.ReconcileEvery),

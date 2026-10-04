@@ -285,6 +285,33 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
     w.scrape(s.programme.toMap)
     (1 to 7).map(_ => w.projection.tick().scoped) shouldBe Seq(false, true, true, false, true, true, false)
     w.drifts shouldBe Seq(0, 0)
+    w.reconciles shouldBe Seq(true, true)   // the first, with nothing before it, is the boot's, not a reconcile
+  }
+
+  it should "project on scrapes once the boot's projection ran, and count that one as no reconcile" in {
+    // The boot path (ResolutionWiring.bootProjectionTick) is projectQuietly: through tick(), which lets every projection
+    // the model's scrapes ask for run — any other way in, and each would wait for the first forever (9b8d0aacc's outage).
+    val s = new Scenario(new Random(9))
+    val w = world(s, IdentityProjection.ScopedBetweenWhole)
+    venues.foreach(c => s.programme(c) = Vector.fill(2)(s.listing(c)))
+    w.scrape(s.programme.toMap)
+    w.projection.tickChanged() shouldBe empty        // nothing before the boot's
+    w.projection.projectQuietly() shouldBe true
+    w.projection.tickChanged() shouldBe defined
+    w.reconciles shouldBe empty
+  }
+
+  it should "count an hourly reconcile with no projection before it as unmeasured, and measure the next one's drift" in {
+    // Prod 2026-10-04: every worker restarted within the hour, and its only whole projection was the boot's first —
+    // no projection before it, so no scope to check: drift was never measured, and no series said so.
+    val s = new Scenario(new Random(5))
+    val w = world(s, IdentityProjection.ScopedBetweenWhole)
+    venues.foreach(c => s.programme(c) = Vector.fill(2)(s.listing(c)))
+    w.scrape(s.programme.toMap)
+    w.projection.tick(whole = true)
+    (w.reconciles.toSeq, w.drifts.toSeq) shouldBe ((Seq(false), Nil))
+    w.projection.tick(whole = true)
+    (w.reconciles.toSeq, w.drifts.toSeq) shouldBe ((Seq(false, true), Seq(0)))
   }
 
   it should "project as the model takes the scrapes in only once the period has projected, and never count toward the reconcile" in {

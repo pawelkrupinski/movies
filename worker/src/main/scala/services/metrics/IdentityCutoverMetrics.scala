@@ -27,6 +27,8 @@ import services.identity.{IdentityProjectionMetrics, Regroupings, ShadowRelation
  *  - `kinowo_worker_identity_projection_drift_total` — films an hourly projection of the whole corpus changed that the
  *    scoped projections between (`ProjectionScope`: only the films their changes reach) would have left as they were.
  *    Zero, always: anything else is a film a scope missed, which the whole projection has just put right.
+ *  - `kinowo_worker_identity_projection_reconciles_total{measured}` — hourly projections of the whole corpus, `measured`
+ *    when an earlier projection gave one a scope to check drift against: an hour of `false` alone is drift not measured.
  *
  * Nothing is seeded: a country not cut over exports no series.
  */
@@ -68,6 +70,12 @@ final class IdentityCutoverMetrics(registry: PrometheusRegistry) {
     .labelNames("country")
     .register(registry)
 
+  private val reconciles: Counter = Counter.builder()
+    .name("kinowo_worker_identity_projection_reconciles_total")
+    .help("Hourly whole-corpus identity projections; measured=true when an earlier projection gave one a scope to check drift against.")
+    .labelNames("country", "measured")
+    .register(registry)
+
   private val drift: Counter = Counter.builder()
     .name("kinowo_worker_identity_projection_drift_total")
     .help("Films a reconciling whole-corpus identity projection changed that the scoped projections before it would have left; 0 unless a scope missed one.")
@@ -75,6 +83,10 @@ final class IdentityCutoverMetrics(registry: PrometheusRegistry) {
     .register(registry)
 
   def forCountry(country: String): IdentityProjectionMetrics = new IdentityProjectionMetrics {
+    // Exported at 0 from boot: no drift reads 0, not absent, and an unmeasured hour shows as reconciles{measured=false}.
+    drift.labelValues(country)
+    Seq("true", "false").foreach(reconciles.labelValues(country, _))
+    def reconciled(measured: Boolean): Unit = reconciles.labelValues(country, measured.toString).inc()
     def projected(filmCount: Int, listingCount: Int, moved: Regroupings, relations: Map[ShadowRelation, Int], took: Double): Unit = {
       films.labelValues(country, "projection").set(filmCount.toDouble)
       listings.labelValues(country, "projection").set(listingCount.toDouble)
@@ -84,7 +96,6 @@ final class IdentityCutoverMetrics(registry: PrometheusRegistry) {
       seconds.labelValues(country).set(took)
     }
     def refused(reason: IdentityProjectionMetrics.Refusal): Unit = refusals.labelValues(country, reason.label).inc()
-    // Touched at 0 too, so the series exists from the first reconciliation and a rate over it reads 0, not absent.
     def drifted(films: Int): Unit = drift.labelValues(country).inc(films.toDouble)
   }
 }

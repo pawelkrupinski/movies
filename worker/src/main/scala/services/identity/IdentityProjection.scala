@@ -55,6 +55,9 @@ trait IdentityProjectionMetrics {
   def refused(reason: IdentityProjectionMetrics.Refusal): Unit
   /** A reconciling projection of the whole corpus changed `films` films a scoped projection would have left as they were. */
   def drifted(films: Int): Unit
+  /** A reconciling projection of the whole corpus ran — `measured` when an earlier projection gave it the scope to check
+   *  its drift against, unmeasured when none had (`drifted` is then not called). */
+  def reconciled(measured: Boolean): Unit
 }
 
 object IdentityProjectionMetrics {
@@ -68,6 +71,7 @@ object IdentityProjectionMetrics {
     def projected(films: Int, listings: Int, regroupings: Regroupings, canary: Map[ShadowRelation, Int], seconds: Double): Unit = ()
     def refused(reason: Refusal): Unit = ()
     def drifted(films: Int): Unit = ()
+    def reconciled(measured: Boolean): Unit = ()
   }
 }
 
@@ -229,7 +233,8 @@ final class IdentityProjection(
               carried ++ updated ++ ProjectionScope.standing(index)
             }
             val moved = changes.map(c => phases("scope")(ProjectionScope.close(index, c)))
-            val reconcile = moved.isDefined && !light && (whole || scopedSinceWhole >= scopedBetweenWhole)
+            val reconciling = !light && (whole || scopedSinceWhole >= scopedBetweenWhole)
+            val reconcile   = moved.isDefined && reconciling
             val freed = changes.fold(Set.empty[String])(_.keys)
             val (scope, draft, detailed, plan) = drafted(moved.filterNot(_ => reconcile).getOrElse(ProjectionScope.Whole), freed,
               changes.fold(Set.empty[ListingKey])(_.listings), index, at, phases)
@@ -254,6 +259,7 @@ final class IdentityProjection(
                 val films     = stored.size - scopeStored.size + plan.films.size
                 val tick      = write(resolution, detailed, plan, stored, listed, films, canary, started, phases, patch = !scope.whole,
                   movedElsewhere = changes.fold(Set.empty[String])(_.films))
+                if (reconciling) metrics.reconciled(measured = reconcile)
                 if (reconcile) moved.foreach(drift(_, freed, index, tick))
                 if (tick.declined == 0) {
                   // The index holds what was written: a film written counts as moved next time only if another writer moves it.
@@ -312,7 +318,11 @@ final class IdentityProjection(
   }
 
   /** [[tick]], for a scheduler that must keep running whatever one projection throws. */
-  def tickQuietly(): Unit = { quietly(Some(tick())); () }
+  def tickQuietly(): Unit = { projectQuietly(); () }
+
+  /** [[tick]] — the boot's first projection, of the whole corpus — a failure logged as [[tickQuietly]]'s is; whether it
+   *  [[settled]]. */
+  def projectQuietly(): Boolean = quietly(Some(tick()))
 
   /** The hourly projection of the whole corpus (`tick(whole = true)`), a failure logged as [[tickQuietly]]'s is; whether
    *  it [[settled]]. */

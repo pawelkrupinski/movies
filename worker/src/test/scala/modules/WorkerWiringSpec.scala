@@ -573,7 +573,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       var projected = 0
       override lazy val scheduledRunStore: services.schedule.ScheduledRunStore = services.schedule.NeverClaimScheduledRunStore
       override protected lazy val identityProjectionTriggerScheduler: java.util.concurrent.ScheduledExecutorService = manual
-      override def settleTick(): Unit = projected += 1
+      override def bootProjectionTick(): Unit = projected += 1
     }
     val w = new Booting
     w.settleReaper
