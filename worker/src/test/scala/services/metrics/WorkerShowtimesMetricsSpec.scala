@@ -1,7 +1,5 @@
 package services.metrics
 
-import services.movies.SingleCountryNormalizer.titleNormalizer
-
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Helios
 import org.scalatest.flatspec.AnyFlatSpec
@@ -21,8 +19,8 @@ class WorkerShowtimesMetricsSpec extends AnyFlatSpec with Matchers {
   private def gauge(text: String, city: String): Option[Double] =
     PrometheusExposition.sample(text, WorkerShowtimesMetrics.Name, s"""city="$city",country="pl"""")
 
-  "countAll" should "sum upcoming showtimes per city, dropping past slots" in {
-    val counts = WorkerShowtimesMetrics.countAll(upcomingCorpus, models.City.all, clock, titleNormalizer)
+  "The corpus census" should "sum upcoming showtimes per city, dropping past slots" in {
+    val counts = reading(upcomingCorpus).showtimes
 
     // Poznań: (today+tomorrow) 2 + (today) 1 = 3; the past-only slot drops out.
     counts.getOrElse("poznan", 0)  shouldBe 3
@@ -31,21 +29,21 @@ class WorkerShowtimesMetricsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "count individual slots, not films (a film with two upcoming slots counts twice)" in {
-    val counts = WorkerShowtimesMetrics.countAll(
-      Seq(row("Double", ready(Helios, 9, today, tomorrow))), models.City.all, clock, titleNormalizer)
+    val counts = reading(Seq(row("Double", ready(Helios, 9, today, tomorrow)))).showtimes
     counts.getOrElse("poznan", 0) shouldBe 2
   }
 
   it should "exclude a film whose TMDB enrichment hasn't concluded (not ready to project)" in {
-    val counts = WorkerShowtimesMetrics.countAll(Seq(pendingInPoznan), models.City.all, clock, titleNormalizer)
+    val counts = reading(Seq(pendingInPoznan)).showtimes
     counts.getOrElse("poznan", 0) shouldBe 0
   }
 
-  "sample" should "publish the per-city showtime counts onto the shared registry" in {
+  "Its publish" should "publish the per-city showtime counts onto the shared registry" in {
     val registry = new PrometheusRegistry()
-    val metrics  = new WorkerShowtimesMetrics(WorkerShowtimesMetrics.gauge(registry), "pl", clock = clock, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer)
+    val census   = censusOver(cacheOver(repositoryOf(upcomingCorpus*)), registry)
 
-    new WorkerCorpusScan(repositoryOf(upcomingCorpus*), Seq(metrics)).sample()
+    census.seed()
+    census.publish()
     val text = PrometheusExposition.render(registry)
 
     gauge(text, "poznan")  shouldBe Some(3.0)
@@ -54,7 +52,7 @@ class WorkerShowtimesMetricsSpec extends AnyFlatSpec with Matchers {
 
   it should "seed every city at 0 before the first sample (a drop-to-zero is a sample, not an absence)" in {
     val registry = new PrometheusRegistry()
-    new WorkerShowtimesMetrics(WorkerShowtimesMetrics.gauge(registry), "pl", clock = clock, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer) // constructed, not yet sampled
+    censusOver(cacheOver(repositoryOf(upcomingCorpus*)), registry) // constructed, not yet published
 
     val text = PrometheusExposition.render(registry)
     gauge(text, "krakow") shouldBe Some(0.0)

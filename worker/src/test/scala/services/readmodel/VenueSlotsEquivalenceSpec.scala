@@ -59,8 +59,8 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
 
   private def stored(record: MovieRecord) = StoredMovieRecord.synthesised("Foo", Some(2024), record, titleNormalizer)
 
-  private def projector(rm: InMemoryReadModelRepository) =
-    new ReadModelProjector(new InMemoryMovieRepository(normalizer = titleNormalizer), rm, rm, clock = clock)
+  private def projector(rm: InMemoryReadModelRepository, bootStudy: Option[BootCorpusStudy] = None) =
+    new ReadModelProjector(new InMemoryMovieRepository(normalizer = titleNormalizer), rm, rm, clock = clock, bootStudy = bootStudy)
 
   "A change at some venues" should "write from those venues alone exactly what projecting the whole film writes" in {
     var accepted, declined = 0
@@ -137,7 +137,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
   }
 
   // After a boot the projector knows only the read model's contents, not the rows they came from: it
-  // learns them from the corpus census's read, and a change at a film's venues waits until it has.
+  // learns them from the boot hydrate's read, and a film it never learned is re-read whole.
   private final class Restart(seed: Long) {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val (beforeRm, afterRm) = (new InMemoryReadModelRepository(), new InMemoryReadModelRepository())
@@ -150,7 +150,9 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
     Seq(beforeRm, afterRm).foreach { rm => val p = projector(rm); p.onMovieUpsert(row); p.stop() }
     val whole = projector(beforeRm)                          // a projector that keeps projecting whole
     whole.onMovieUpsert(row)
-    val booted = projector(afterRm)                          // the restarted worker's
+    val study  = new BootCorpusStudy(titleNormalizer)
+    study.bootCorpus(Some(Seq(row)))                         // the restarted worker's hydrate read, before any change
+    val booted = projector(afterRm, Some(study))             // the restarted worker's
     def cinema = record.data.collectFirst { case (CinemaShowing(c, _), slot) if slot.showtimes.nonEmpty => c }.get
     def change(at: models.Cinema): VenueSlots = {
       record = record.copy(data = record.data.map {
@@ -163,17 +165,11 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  "The projector" should "learn a row from a census read, wait for it until then, and apply its venues alone after" in {
+  "The projector" should "learn a row from the boot hydrate's read, and apply its venues alone after" in {
     val world = new Restart(7)
     import world.*
-    booted.learn(ReadModelProjection.partition(row, titleNormalizer)) shouldBe false   // before its seed: refused
-    booted.seedFromReadModel()
+    booted.prepare()
     val venues = change(cinema)
-    booted.onVenueSlots(venues) shouldBe services.movies.VenueVerdict.NotYet           // not learned yet: wait
-    // The census reads the source — already changed at this venue — so that venue's stored row stays
-    // unvouched; it is the one the change rewrites, so the apply needs nothing from it.
-    booted.learn(ReadModelProjection.partition(row, titleNormalizer)) shouldBe true
-    booted.learnedAll()
     booted.onVenueSlots(venues) shouldBe services.movies.VenueVerdict.Applied
     afterRm.findAllMovies().toSet shouldBe beforeRm.findAllMovies().toSet
     afterRm.findAllScreenings().toSet shouldBe beforeRm.findAllScreenings().toSet
@@ -188,9 +184,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
     val drifted = afterRm.findAllScreenings().head
     val stale   = drifted.copy(showtimes = Seq(times.head))
     afterRm.upsertScreening(stale)                                                       // the read model drifted
-    booted.seedFromReadModel()
-    booted.learn(ReadModelProjection.partition(row, titleNormalizer))
-    booted.learnedAll()
+    booted.prepare()
     record.data.collectFirst { case (CinemaShowing(c, _), slot) if slot.showtimes.nonEmpty && c.displayName != drifted.cinema => c }
       .foreach { at =>
         booted.onVenueSlots(change(at)) shouldBe services.movies.VenueVerdict.Applied
@@ -199,5 +193,17 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
           beforeRm.findAllScreenings().filter(_.cinema == at.displayName).toSet
       }
     whole.stop(); booted.stop()
+  }
+
+  // No census pass comes to teach it later: a row the boot read did not hand over is re-read whole on its first
+  // change, at once, rather than waited for.
+  it should "decline a change at a row it never learned, at once" in {
+    val world = new Restart(13)
+    import world.*
+    val unlearned = projector(afterRm)
+    unlearned.prepare()
+    unlearned.onVenueSlots(change(cinema)) shouldBe
+      services.movies.VenueVerdict.Declined(services.movies.ChangeStreamMetrics.VenueDecline.ProjectorRowUnprojected)
+    whole.stop(); booted.stop(); unlearned.stop()
   }
 }

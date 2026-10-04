@@ -3,7 +3,7 @@ package deploy
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.{CorpusScanMetrics, PrometheusExposition, WorkerCorpusMetrics, WorkerCorpusScan, WorkerMetrics, WorkerShowtimesMetrics, WorkerSourceFilmsMetrics}
+import services.metrics.{CorpusCensus, CorpusScanMetrics, PrometheusExposition, WorkerCorpusMetrics, WorkerMetrics, WorkerShowtimesMetrics, WorkerSourceFilmsMetrics}
 
 /**
  * Guards the dashboard/alert coverage over the CORPUS-INTEGRITY event families —
@@ -54,10 +54,9 @@ class GrafanaCorpusIntegritySpec extends AnyFlatSpec with Matchers {
    *  the naming this spec is checking. */
   private lazy val exposed: String = {
     val metrics = WorkerMetrics.singleCountry(Country.Poland, poolSize = settings.WorkerPoolSize(1))
-    new WorkerCorpusMetrics(metrics.corpusGauge, Country.Poland.code, clock = _root_.tools.SpecClock.Pinned)
-    new WorkerSourceFilmsMetrics(metrics.servedGauge, Country.Poland.code, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    new WorkerShowtimesMetrics(metrics.showtimesGauge, Country.Poland.code, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    CorpusScanMetrics.prometheus(metrics.corpusScanIncomplete, Country.Poland.code)
+    new CorpusCensus(services.metrics.CorpusMetricsFixtures.cacheOver(services.metrics.CorpusMetricsFixtures.repositoryOf()),
+      metrics.corpusGauge, metrics.servedGauge, metrics.showtimesGauge, metrics.widestSlotsGauge, Country.Poland.code,
+      Country.Poland.cities, _root_.tools.SpecClock.Pinned, CorpusScanMetrics.prometheus(metrics.corpusScanIncomplete, Country.Poland.code))
     PrometheusExposition.render(metrics.registry)
   }
 
@@ -99,25 +98,25 @@ class GrafanaCorpusIntegritySpec extends AnyFlatSpec with Matchers {
 
   "the census freshness counter" should "be charted alongside the gauges it qualifies" in {
     withClue(
-      s"${WorkerCorpusScan.IncompleteMetricName} is charted nowhere. The census gauges " +
+      s"${CorpusCensus.IncompleteMetricName} is charted nowhere. The census gauges " +
         s"(${censusGauges.mkString(", ")}) deliberately publish NOTHING on a pass that could not " +
         "read the whole corpus — they hold their last complete values — so a flat line on those " +
         "panels means EITHER a quiet corpus OR a census that has stopped reading, and the two are " +
         "indistinguishable without this counter. Chart it next to them. "
     ) {
-      mustBeCharted(WorkerCorpusScan.IncompleteMetricName)
+      mustBeCharted(CorpusCensus.IncompleteMetricName)
     }
   }
 
   it should "have an alert rule of its own" in {
     withClue(
-      s"no alert rule reads ${WorkerCorpusScan.IncompleteMetricName}. Freezing the gauges on a " +
+      s"no alert rule reads ${CorpusCensus.IncompleteMetricName}. Freezing the gauges on a " +
         "failed read also disarmed the rules that watched them: kinowo-showtime-volume-collapsed " +
         "compares kinowo_worker_showtimes against its own max_over_time baseline, and a frozen " +
         "gauge holds that ratio at 1.0 forever. So a total read failure now pages nobody unless " +
         s"this counter does it. Add a rule to $AlertRules. "
     ) {
-      alertRules should include(WorkerCorpusScan.IncompleteMetricName)
+      alertRules should include(CorpusCensus.IncompleteMetricName)
     }
   }
 

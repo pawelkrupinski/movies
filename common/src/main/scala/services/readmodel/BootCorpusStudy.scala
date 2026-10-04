@@ -14,7 +14,7 @@ import scala.util.Try
  *  The hydrate reads every film whole. From those rows this derives, on a thread of its own, the two
  *  things the projector's boot reads need:
  *   - what the missing-card check asks of each ready row;
- *   - the lesson [[ReadModelProjector.learn]] would have taken from the corpus census's first pass.
+ *   - the lesson the projector learns each row's venues from (`ReadModelProjector.learnFrom`).
  *
  *  Before this, the check read the corpus slots-only (4.0 s on a worker-us boot). The census's
  *  first pass then read it whole (12.5 s), two minutes after the hydrate had read the same rows

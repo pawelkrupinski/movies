@@ -2,10 +2,6 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.City
-import services.movies.StoredMovieRecord
-
-import java.time.Clock
 
 /**
  * Per-city census of how many INDIVIDUAL SHOWTIMES (single dated slots) the source
@@ -17,100 +13,27 @@ import java.time.Clock
  * The general total is `sum(kinowo_worker_showtimes)` in Grafana — the per-city series
  * sum to it exactly, since every slot belongs to exactly one city.
  *
- * Apples-to-apples with the films gauge by construction: each row runs through the REAL
- * projection's screenings path ([[ReadModelProjection.screeningsAll]] — same per-title
- * card split + cinema→city bucketing), gates on the same `readyToProject` predicate the
- * projector writes by (a film still pending TMDB enrichment contributes 0 slots, matching
- * the read model), and counts only UPCOMING slots ([[models.Showtime.isUpcoming]] in the
+ * Apples-to-apples with the films gauge by construction: the same cards and cities, the
+ * same `readyToProject` gate (a film still pending TMDB enrichment contributes 0 slots,
+ * matching the read model), and only UPCOMING slots ([[models.Showtime.isUpcoming]] in the
  * city's own zone) so retained past showings don't inflate the count.
  *
- * Counted off the SHARED [[WorkerCorpusScan]] pass (default every 5 min), decoupled from
- * the Fly scrape rate and read-only, so it adds no write load and no reads of its own;
- * between samples the gauge re-reads its cached value. Mirrors
- * [[WorkerSourceFilmsMetrics]]' shape.
+ * Counted by [[CorpusCensus]] from each venue slot's showtime STARTS, which is all the
+ * worker's cache keeps of them: a venue listing one showtime twice counts it twice, where
+ * the read model lists it once (see [[CorpusCensus]]).
  */
-class WorkerShowtimesMetrics(
-  showtimes:   Gauge,
-  countryCode: String,
-  clock:       Clock,
-  cities:      Seq[City] = City.all,
-  // The corpus this collector counts belongs to `countryCode`, so the film ids it
-  // projects must fold titles with THAT country's rules — otherwise the gauge
-  // counts ids no reader ever addresses. The wiring hands over its own.
-  normalizer:  services.movies.TitleNormalizer
-) extends CorpusMetricsCollector {
-
-  import WorkerShowtimesMetrics._
-
-  // Seed every city at 0 so a city that empties reads as an explicit 0, not a
-  // vanished series — a drop-to-zero must be a sample, not an absence.
-  for (c <- cities) showtimes.labelValues(countryCode, c.slug).set(0.0)
-
-  def startSample(): CorpusRowSampler = new CorpusRowSampler {
-    private val tally = new ShowtimeTally(cities, clock, normalizer)
-
-    def accept(row: CorpusRow): Unit = tally.accept(row)
-
-    /** Publishes ONLY a complete census — see [[WorkerCorpusMetrics]] for the incident
-     *  that forced this. It matters most here: `kinowo-showtime-volume-collapsed` pages
-     *  when a country falls under 60% of its 6h peak, so a partial scan publishes exactly
-     *  the shape that rule exists to catch and the page cannot be told from a real
-     *  collapse. A rule this sharp has to be fed only counts the scan stands behind. */
-    def publish(scanComplete: Boolean): Unit = if (scanComplete) {
-      val counts = tally.counts
-      for (c <- cities) showtimes.labelValues(countryCode, c.slug).set(counts.getOrElse(c.slug, 0).toDouble)
-    }
-  }
-}
-
 object WorkerShowtimesMetrics {
   /** Sibling of `kinowo_worker_movies_served` — same worker prefix, same
    *  `country`+`city` labels; a gauge (not a counter), so no `_total` suffix. */
   val Name = "kinowo_worker_showtimes"
 
-  /** Build and register the ONE shared gauge every country's sampler writes into
+  /** Build and register the ONE shared gauge every country's census writes into
    *  (leading `country` label, then `city`). Called once when the shared worker
    *  registry is built. */
   def gauge(registry: PrometheusRegistry): Gauge =
     Gauge.builder()
       .name(Name)
-      .help("Upcoming individual showtimes (single dated slots) the source `movies` collection would serve per country and city, sampled every 15 min through the REAL projection path and gated on readyToProject. sum() across cities is the country total. The volume complement to kinowo_worker_movies_served (which counts distinct films).")
+      .help("Upcoming individual showtimes (single dated slots) the source `movies` collection would serve per country and city, counted through the projection's own card split and gated on readyToProject. sum() across cities is the country total. The volume complement to kinowo_worker_movies_served (which counts distinct films).")
       .labelNames("country", "city")
       .register(registry)
-
-  /** Running tally, per city slug, of how many upcoming showtimes the corpus would serve
-   *  — folded one row at a time so the shared scan never buffers the corpus. Pure given a
-   *  fixed `clock`, so it's unit-tested directly (see [[countAll]]). Each row is projected
-   *  exactly as the read model does (per-title split + cinema→city bucketing) and gated on
-   *  `readyToProject`; a row that fails to project is skipped, matching the projector's
-   *  per-row resilience. */
-  class ShowtimeTally(cities: Seq[City], clock: Clock, normalizer: services.movies.TitleNormalizer) {
-    private val bySlug = cities.map(c => c.slug -> c).toMap
-    // Each city's "now", read once a pass rather than once per card and city.
-    private val nowIn  = { val venueClock = new models.VenueClock(clock); cities.map(c => c.slug -> venueClock.nowIn(c)).toMap }
-    private val acc    = scala.collection.mutable.Map.empty[String, Int].withDefaultValue(0)
-
-    def accept(row: CorpusRow): Unit =
-      row.venues(normalizer).foreach(_.foreach { venues =>
-        // Each venue is one (film, city, cinema) row; sum its upcoming showtimes into
-        // the owning city. A venue belongs to exactly one city, so the per-city
-        // series sum to the general total without double-counting.
-        venues.groupBy(_.citySlug).foreach { case (citySlug, inCity) =>
-          nowIn.get(citySlug).foreach { now =>
-            val upcoming = inCity.iterator.flatMap(_.showtimes).count(_.isUpcoming(now))
-            if (upcoming > 0) acc(citySlug) += upcoming
-          }
-        }
-      })
-
-    def counts: Map[String, Int] = acc.toMap
-  }
-
-  /** The tally over a fixed set of rows — the pure-logic entry point the specs drive;
-   *  production folds the same [[ShowtimeTally]] row-by-row off the shared scan. */
-  def countAll(rows: IterableOnce[StoredMovieRecord], cities: Seq[City], clock: Clock, normalizer: services.movies.TitleNormalizer): Map[String, Int] = {
-    val tally = new ShowtimeTally(cities, clock, normalizer)
-    rows.iterator.foreach(stored => tally.accept(new CorpusRow(stored)))
-    tally.counts
-  }
 }

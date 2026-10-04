@@ -4,17 +4,17 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.CorpusMetricsFixtures.{clock, past, ready, repositoryOf, row, slot, tomorrow}
+import services.metrics.CorpusMetricsFixtures.{cacheOver, censusOver, clock, past, ready, reading, repositoryOf, row, slot, tomorrow}
 import org.scalatest.prop.TableDrivenPropertyChecks.*
 
 import java.time.{Clock, LocalDateTime, ZoneId, ZoneOffset}
-import services.metrics.WorkerCorpusMetrics.{CorpusCounts, Subset}
+import services.metrics.WorkerCorpusMetrics.Subset
 
 /**
  * Locks the corpus census the worker exposes for the Grafana "corpus coverage"
  * chart: total records, the any-rating / tmdb-id / imdb-id populations, and the
  * four per-source rating counts (imdb/rt/mc/fw) — all carried on one labelled
- * `kinowo_worker_corpus_movies{subset=…}` gauge.
+ * `kinowo_worker_corpus_movies{subset=…}` gauge, as [[CorpusCensus]] counts it.
  */
 class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
 
@@ -24,6 +24,16 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
     records.zipWithIndex.map { case (r, i) => row(s"A Film $i", r) }
 
   private def render(registry: PrometheusRegistry): String = PrometheusExposition.render(registry)
+
+  /** Each subset over `records`, as the census counts them. */
+  private def counts(records: Seq[MovieRecord], at: Clock = clock): Map[String, Int] = reading(rows(records), at).corpus.toMap
+
+  /** The census over a cache of `records`, seeded and published once. */
+  private def publish(registry: PrometheusRegistry, records: Seq[MovieRecord]): Unit = {
+    val census = censusOver(cacheOver(repositoryOf(rows(records)*)), registry)
+    census.seed()
+    census.publish()
+  }
 
   private def gauge(text: String, subset: String): Option[Double] =
     PrometheusExposition.sample(text, WorkerCorpusMetrics.Name, s"""country="pl",subset="$subset"""")
@@ -40,7 +50,7 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
   // The population that was invisible: rows resolved to a film their own cinemas
   // contradict. Five sat in prod undetected until a hand-written scan found them,
   // so the point of the series is that nobody has to go looking again.
-  "CorpusCounts" should "count rows whose cinemas contradict the film they resolved to" in {
+  "The corpus census" should "count rows whose cinemas contradict the film they resolved to" in {
     val misresolved = models.MovieRecord(
       tmdbId = Some(1667002),
       data = Map[models.Source, models.SourceData](
@@ -52,21 +62,21 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
         models.Tmdb -> models.SourceData(title = Some("Lalka"), runtimeMinutes = Some(162)),
         models.KinoApollo -> models.SourceData(title = Some("Lalka"), runtimeMinutes = Some(147))))
 
-    val c = CorpusCounts.from(Seq(misresolved, corroborated), clock)
-    c.bySubset.toMap.apply(Subset.Misresolved) shouldBe 1
-    c.total shouldBe 2
+    val c = counts(Seq(misresolved, corroborated))
+    c(Subset.Misresolved) shouldBe 1
+    c(Subset.Total) shouldBe 2
   }
 
-  "CorpusCounts" should "tally each subset independently" in {
-    val c = CorpusCounts.from(corpus, clock)
-    c.total         shouldBe 5
-    c.withTmdbId    shouldBe 3
-    c.withImdbId    shouldBe 2
-    c.imdbRating    shouldBe 1
-    c.rtRating      shouldBe 1
-    c.mcRating      shouldBe 1
-    c.fwRating      shouldBe 1
-    c.withAnyRating shouldBe 3 // three records carry at least one of imdb/rt/mc/fw
+  it should "tally each subset independently" in {
+    val c = counts(corpus)
+    c(Subset.Total)         shouldBe 5
+    c(Subset.WithTmdbId)    shouldBe 3
+    c(Subset.WithImdbId)    shouldBe 2
+    c(Subset.ImdbRating)    shouldBe 1
+    c(Subset.RtRating)      shouldBe 1
+    c(Subset.McRating)      shouldBe 1
+    c(Subset.FwRating)      shouldBe 1
+    c(Subset.WithAnyRating) shouldBe 3 // three records carry at least one of imdb/rt/mc/fw
   }
 
   // The OUTCOME half of `misresolved`, and the half that used to be silent: the sweep
@@ -75,15 +85,15 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
   // on the site while its venues still sell tickets. Every other census gauge gates on
   // `readyToProject`, so these rows drop out of all of them without being counted
   // anywhere. Four needed hand repair on 2026-09-06 before this series existed.
-  "CorpusCounts" should "count an unresolved row whose cinemas are still screening it" in {
+  it should "count an unresolved row whose cinemas are still screening it" in {
     val invisible  = MovieRecord(data = Map[models.Source, models.SourceData](models.KinoApollo -> slot(tomorrow)))
     val resolved   = ready(models.KinoApollo, 1321666, tomorrow)
     // Unresolved too, but every showing has passed — legitimately gone, not invisible.
     val playedOut  = MovieRecord(data = Map[models.Source, models.SourceData](models.KinoApollo -> slot(past)))
 
-    val c = CorpusCounts.from(Seq(invisible, resolved, playedOut), clock)
-    c.bySubset.toMap.apply(Subset.UnresolvedWithShowtimes) shouldBe 1
-    c.total shouldBe 3
+    val c = counts(Seq(invisible, resolved, playedOut))
+    c(Subset.UnresolvedWithShowtimes) shouldBe 1
+    c(Subset.Total) shouldBe 3
   }
 
   // A showtime is the venue's wall clock. Judged in the pod's zone (UTC) a Los Angeles
@@ -113,35 +123,33 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
     ("Europe/Madrid",       "2026-10-24T20:00:00Z", "2026-10-24T21:20",       false),
   )
 
-  "CorpusCounts" should "judge each slot's showtimes in its own venue's zone, across DST changes" in {
+  it should "judge each slot's showtimes in its own venue's zone, across DST changes" in {
     forAll(venueLocal) { (zone, nowUtc, showtime, screening) =>
       val at      = Clock.fixed(java.time.Instant.parse(nowUtc), ZoneOffset.UTC)
       val record  = MovieRecord(data = Map[models.Source, models.SourceData](cinemaIn(zone) -> slot(LocalDateTime.parse(showtime))))
       withClue(s"$zone at $nowUtc, show $showtime: ") {
-        WorkerCorpusMetrics.unresolvedYetScreening(record, at) shouldBe screening
+        counts(Seq(record), at)(Subset.UnresolvedWithShowtimes) shouldBe (if (screening) 1 else 0)
       }
     }
   }
 
-  it should "publish the unresolved-yet-screening series through a real scan" in {
+  it should "publish the unresolved-yet-screening series from the cache" in {
     val registry = new PrometheusRegistry()
-    val metrics  = new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl", clock)
     val invisible = MovieRecord(data = Map[models.Source, models.SourceData](models.KinoApollo -> slot(tomorrow)))
 
-    new WorkerCorpusScan(repositoryOf(rows(Seq(invisible, ready(models.KinoApollo, 1, tomorrow)))*), Seq(metrics)).sample()
+    publish(registry, Seq(invisible, ready(models.KinoApollo, 1, tomorrow)))
 
     gauge(render(registry), Subset.UnresolvedWithShowtimes) shouldBe Some(1.0)
   }
 
   "an empty corpus" should "count zero everywhere" in {
-    CorpusCounts.from(Nil, clock) shouldBe CorpusCounts.empty
+    counts(Nil).values.toSet shouldBe Set(0)
   }
 
-  "WorkerCorpusMetrics.sample" should "publish every subset onto the shared registry" in {
+  "The corpus census's publish" should "publish every subset onto the shared registry" in {
     val registry = new PrometheusRegistry()
-    val metrics  = new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl", clock)
 
-    new WorkerCorpusScan(repositoryOf(rows(corpus)*), Seq(metrics)).sample()
+    publish(registry, corpus)
     val text = render(registry)
 
     gauge(text, Subset.Total)         shouldBe Some(5.0)
@@ -160,7 +168,7 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
   // census is the truth — the same reason an incomplete pass publishes nothing.
   it should "publish no series before the first complete census" in {
     val registry = new PrometheusRegistry()
-    new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl", clock) // constructed, not yet sampled
+    censusOver(cacheOver(repositoryOf(rows(corpus)*)), registry) // constructed, not yet published
     val text = render(registry)
 
     Subset.all.foreach(s => gauge(text, s) shouldBe None)

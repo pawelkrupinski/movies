@@ -33,6 +33,12 @@ case class StoredMovieRecord(title: String, year: Option[Int], record: MovieReco
   /** The cache key this row answers to — the stored key, labelled with the display title. */
   private[services] def cacheKey(normalizer: TitleNormalizer): CacheKey =
     storedKey.fold(CacheKey(title, year, normalizer))(CacheKey.stored(title, _))
+
+  /** This row as a read of it back from the store would give it ([[StoredMovieRecord.fromStorage]]): titled with the
+   *  display title its record votes for under its stored key. A row the cache holds keeps the title it was keyed under,
+   *  which its record's later slots can outvote — and the read model titles, and splits, the row the store gives. */
+  def asReadBack(normalizer: TitleNormalizer): StoredMovieRecord =
+    storedKey.fold(this)(key => StoredMovieRecord.fromStorage(id.value, Some(key), record, normalizer))
 }
 
 object StoredMovieRecord {
@@ -795,7 +801,7 @@ class MongoMovieRepository(
           pageSlots.getOrElse(dto._id, Map.empty)))))
       }
     }
-    // A whole-corpus scan (the hydrate, the 5-min corpus census) at info; a catch-up's
+    // A whole-corpus scan (the hydrate, the backstop rehydrate) at info; a catch-up's
     // updated-since slice, which runs on every read-model sweep, only at debug.
     val report: String => Unit = if (filter.toBsonDocument.isEmpty) logger.info(_) else logger.debug(_)
     report(s"MovieRepository.scanStitched: $films film(s) in ${wall.millis}ms — slot reads " +

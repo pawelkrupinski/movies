@@ -61,8 +61,8 @@ wrong: a wrong poster still lists the showtimes, a pruned card 404s.
 **The gauge that finds them:**
 `kinowo_worker_corpus_movies{subset="unresolved_with_showtimes"}` — rows that
 fail `readyToProject` while their cinemas still list an upcoming showtime, i.e.
-exactly the population the projector prunes. It rides the shared
-`WorkerCorpusScan` pass, so it costs no reads of its own.
+exactly the population the projector prunes. `CorpusCensus` counts it from the
+worker's cache, so it costs no reads of its own.
 
 Note the pairing: `subset="misresolved"` counts the sweep's **input** (rows whose
 venues contradict them), and `unresolved_with_showtimes` counts the **outcome**

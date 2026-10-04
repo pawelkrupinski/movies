@@ -1,7 +1,5 @@
 package services.metrics
 
-import services.movies.SingleCountryNormalizer.titleNormalizer
-
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -22,8 +20,8 @@ class WorkerSourceFilmsMetricsSpec extends AnyFlatSpec with Matchers {
   private def gauge(text: String, city: String, scope: String): Option[Double] =
     PrometheusExposition.sample(text, WorkerSourceFilmsMetrics.Name, s"""city="$city",country="pl",scope="$scope"""")
 
-  "countAll" should "count distinct ready films per city, by scope" in {
-    val counts = WorkerSourceFilmsMetrics.countAll(upcomingCorpus, models.City.all, clock, titleNormalizer)
+  "The corpus census" should "count distinct ready films per city, by scope" in {
+    val counts = reading(upcomingCorpus).served
 
     // Poznań: 2 films with a future showing (past-only drops out); 1 shows tomorrow.
     counts.getOrElse(("poznan", Scope.All), 0)      shouldBe 2
@@ -34,17 +32,18 @@ class WorkerSourceFilmsMetricsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "exclude a film whose TMDB enrichment hasn't concluded (not ready to project)" in {
-    val counts = WorkerSourceFilmsMetrics.countAll(Seq(pendingInPoznan), models.City.all, clock, titleNormalizer)
+    val counts = reading(Seq(pendingInPoznan)).served
 
     counts.getOrElse(("poznan", Scope.All), 0)      shouldBe 0
     counts.getOrElse(("poznan", Scope.Tomorrow), 0) shouldBe 0
   }
 
-  "sample" should "publish the per-city counts onto the shared registry" in {
+  "Its publish" should "publish the per-city counts onto the shared registry" in {
     val registry = new PrometheusRegistry()
-    val metrics  = new WorkerSourceFilmsMetrics(WorkerSourceFilmsMetrics.gauge(registry), "pl", clock = clock, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer)
+    val census   = censusOver(cacheOver(repositoryOf(upcomingCorpus*)), registry)
 
-    new WorkerCorpusScan(repositoryOf(upcomingCorpus*), Seq(metrics)).sample()
+    census.seed()
+    census.publish()
     val text = PrometheusExposition.render(registry)
 
     gauge(text, "poznan", Scope.All)      shouldBe Some(2.0)
@@ -55,7 +54,7 @@ class WorkerSourceFilmsMetricsSpec extends AnyFlatSpec with Matchers {
 
   it should "seed every city at 0 before the first sample (a drop-to-zero is a sample, not an absence)" in {
     val registry = new PrometheusRegistry()
-    new WorkerSourceFilmsMetrics(WorkerSourceFilmsMetrics.gauge(registry), "pl", clock = clock, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer) // constructed, not yet sampled
+    censusOver(cacheOver(repositoryOf(upcomingCorpus*)), registry) // constructed, not yet published
 
     val text = PrometheusExposition.render(registry)
     gauge(text, "krakow", Scope.All)      shouldBe Some(0.0)

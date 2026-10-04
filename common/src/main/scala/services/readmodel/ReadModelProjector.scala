@@ -140,9 +140,6 @@ class ReadModelProjector(
   // Each projected row's display-title groups and the card each files its venues under, from its last
   // projection: what lets [[onVenueSlots]] place a venue without the rest of the film. A few entries a row.
   private val lastGroups     = scala.collection.mutable.Map.empty[String, RowGroups]
-  // Whether a census pass has offered every row to [[learn]]: before it, a row not projected yet is one
-  // it has still to reach, and a change at its venues waits for it rather than re-reading it.
-  @volatile private var learned = false
   // Whether the boot seed has run: [[learn]] vouches venue rows against it.
   @volatile private var seeded  = false
   // Cards published by an expired hold that still have no share card: `shareCardPending` on their
@@ -199,8 +196,6 @@ class ReadModelProjector(
   def onVenueSlots(venues: services.movies.VenueSlots): services.movies.VenueVerdict = lock.synchronized {
     val rowId = venues.filmId.value
     planVenues(rowId, venues) match {
-      case Left(services.movies.ChangeStreamMetrics.VenueDecline.ProjectorRowUnprojected) if !learned =>
-        services.movies.VenueVerdict.NotYet
       case Left(reason) => services.movies.VenueVerdict.Declined(reason)
       case Right(byCard) =>
         appliedSinceSweep.foreach(_ += rowId)
@@ -1171,24 +1166,15 @@ class ReadModelProjector(
       s"${if (watchHandle.isDefined) "active" else "unavailable — orphan-prune only"}.")
   } else logger.info("ReadModelProjector disabled (read model or movies repository not enabled).")
 
-  /** Learn a row the change stream has not projected since this worker booted, from a read some
-   *  other pass already made — the corpus census, every film with its showtimes — without writing:
-   *  its title groups, and the inputs of each venue row whose stored content is exactly what the row
-   *  projects to. That is what [[onVenueSlots]] needs to apply a change at a few of its venues from
-   *  those venues alone; the boot seed knows only the rows' contents. Without it each film's first
-   *  change after every deploy re-read the whole film (`projector_row_unprojected`: 78 of the US's 78
-   *  declines in half an hour, 2026-10-01). A venue row whose content differs is drift and stays
-   *  unvouched — a change at its card is re-read whole, and the content check rewrites it. A row the
-   *  stream has projected meanwhile is left alone: it knows better. */
-  def learn(partition: ReadModelProjection.Partition): Boolean = lock.synchronized {
-    // Before the seed, the memo has no row to vouch: learning now would mark the row known with every
-    // venue unvouched. Refused, so the caller does not count the pass as having offered every row.
-    if (seeded && partition.stored.record.readyToProject && !lastGroups.contains(partition.stored.id.value))
-      learnFrom(partition.stored.id.value, Lesson.of(partition))
-    seeded
-  }
-
-  /** Caller holds `lock`. */
+  /** Learn a row the change stream has not projected since this worker booted, from the boot hydrate's
+   *  read of it (every film with its showtimes, see [[BootCorpusStudy]]) and without writing: its title
+   *  groups, and the inputs of each venue row whose stored content is exactly what the row projects to.
+   *  That is what [[onVenueSlots]] needs to apply a change at a few of its venues from those venues
+   *  alone; the boot seed knows only the rows' contents. Without it each film's first change after
+   *  every deploy re-read the whole film (`projector_row_unprojected`: 78 of the US's 78 declines in
+   *  half an hour, 2026-10-01). A venue row whose content differs is drift and stays unvouched — a
+   *  change at its card is re-read whole, and the content check rewrites it. A row the stream has
+   *  projected meanwhile is left alone: it knows better. Caller holds `lock`. */
   private def learnFrom(rowId: String, lesson: Lesson): Unit = if (!lastGroups.contains(rowId)) {
     lesson.cards.foreach { case (card, venues) =>
       val vouched = venues.flatMap { venue =>
@@ -1200,18 +1186,12 @@ class ReadModelProjector(
     lastGroups.update(rowId, RowGroups(lesson.anchorKey, lesson.cardByGroup, lesson.multiSlot))
   }
 
-  /** Learn every row of the boot hydrate's complete read, as a census pass would. Then mark the
-   *  corpus as learned: every row has now been offered. */
+  /** Learn every row of the boot hydrate's complete read. Before the seed the memo has no row to vouch:
+   *  learning then would mark each row known with every venue unvouched. A row learned from nothing —
+   *  no hydrate read was handed over — is declined on its first venue change and re-read whole. */
   private def learnAtBoot(rows: Seq[BootRow]): Unit = lock.synchronized {
-    if (seeded) {
-      rows.foreach(row => learnFrom(row.id.value, row.lesson))
-      learned = true
-    }
+    if (seeded) rows.foreach(row => learnFrom(row.id.value, row.lesson))
   }
-
-  /** A census pass has offered [[learn]] every row: one the projector still does not know is
-   *  declined from now on, not waited for. */
-  def learnedAll(): Unit = learned = true
 
   /** Project, at boot, every ready row one of whose cards is missing — before the
    *  first prune can delete the card it has under an old id.

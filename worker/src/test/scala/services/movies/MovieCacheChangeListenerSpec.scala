@@ -50,4 +50,35 @@ class MovieCacheChangeListenerSpec extends AnyFlatSpec with Matchers {
     w.cache.applyUpsert(stored.copy(record = stored.record.copy(metascore = Some(61))), FilmWriteFence.Unfenced)
     w.changed.toSeq shouldBe Seq(id)
   }
+
+  // The corpus census keeps each film's part from what the cache holds, so it must hear of EVERY change — the identity
+  // projection's included, which `onChanged` leaves out — and start from every film already held.
+  "its resident listeners" should "hear of every film held, then of every change by any path, and of a film's going" in {
+    val w     = new World
+    val heard = scala.collection.mutable.ListBuffer.empty[(CacheKey, Option[Option[Int]])]
+    w.cache.onResident((key, film) => heard += key -> film.map(_.record.metascore))
+    heard.toSeq shouldBe Seq(filmKey -> Some(None))                // the film held when it registered
+    heard.clear()
+
+    w.cache.putIfPresent(filmKey, identity)                         // moved nothing
+    heard shouldBe empty
+    val before = w.resident
+    w.cache.patchProjected(id, filmKey, before, before.copy(metascore = Some(70))) shouldBe WriteOutcome.Written
+    val stored = w.repository.findByIdChecked(id).answered.get
+    w.cache.applyUpsert(stored.copy(record = stored.record.copy(metascore = Some(61))), FilmWriteFence.Unfenced)
+    w.cache.putIfPresent(filmKey, _.copy(metascore = Some(62)))
+    w.cache.retireProjected(id) shouldBe WriteOutcome.Written
+    heard.toSeq shouldBe Seq(filmKey -> Some(Some(70)), filmKey -> Some(Some(61)), filmKey -> Some(Some(62)), filmKey -> None)
+  }
+
+  it should "hear a write the store refused put back as it was" in {
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+      slots = Some(new UnwritableSlotsRepository), normalizer = normalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = normalizer, clock = _root_.tools.SpecClock.Pinned)
+    val heard = scala.collection.mutable.ListBuffer.empty[Option[MovieRecord]]
+    cache.onResident((_, film) => heard += film.map(_.record))
+    cache.put(filmKey, film).failed shouldBe true
+    cache.get(filmKey) shouldBe None                                  // rolled back
+    heard.toSeq.map(_.isDefined) shouldBe Seq(true, false)            // held, then gone again
+  }
 }

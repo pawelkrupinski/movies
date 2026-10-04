@@ -127,11 +127,15 @@ trait MovieCache extends MovieCacheReader {
    *  projection reads of a film another writer moved is projected on that, not on a period. */
   def onChanged(listener: FilmId => Unit): Unit
 
-  /** Call `listener` with each row the cache now holds, as it holds it, the moment it is stored — every writer's, the
-   *  identity projection's own included, a change-stream apply, and every row a hydrate or rehydrate loads. Called on the
-   *  writer's thread, often under its locks: a listener only looks at what it is handed and hands the work off, never
-   *  reading or writing the cache or the store inline. */
-  def onStored(listener: (CacheKey, MovieRecord) => Unit): Unit
+  /** Call `listener` with each key whose held film changed here, by ANY path — every writer's, the identity
+   *  projection's included, the change stream's and a rehydrate's — with the film as now held, or `None` once it is gone.
+   *  Called first with every film held when it registers, so a listener starts from the whole cache. Each key's calls
+   *  come in order, under that key's lock: a listener must be quick, and must not touch this cache. */
+  def onResident(listener: (CacheKey, Option[StoredMovieRecord]) => Unit): Unit
+
+  /** Whether a corpus read has ever been answered whole, so the films held here are the whole corpus rather than the
+   *  rows written since boot. */
+  def hydrated: Boolean
 
   // ── Internal write surface (services.* only) ─────────────────────────────
   private[services] def put(key: CacheKey, e: MovieRecord): WriteOutcome
@@ -259,7 +263,9 @@ class CaffeineMovieCache(
    *
    *  It shadows `positive`, so it is only as correct as the funnels below: EVERY write
    *  to `positive` goes through `store` / `evict` / the `computeResident` compute, and
-   *  nothing else may call `positive.put` or `positive.invalidate` directly. The cache
+   *  nothing else may call `positive.put` or `positive.invalidate` directly. The same
+   *  funnels `announce` each change to the resident listeners (`onResident`); a rollback
+   *  that puts a row back by hand announces it itself. The cache
    *  is unbounded, so there is no eviction path to miss. */
   private[movies] val corpusIndex: CorpusIndex =
     new CorpusIndex
@@ -268,12 +274,29 @@ class CaffeineMovieCache(
   private def store(key: CacheKey, record: MovieRecord, id: FilmId): Unit = {
     positive.put(key, record)
     corpusIndex.put(key, id)
-    storedListeners.forEach(_(key, record))
+    announce(key)
   }
 
-  // Declared before the boot hydrate below, which stores through `store`.
-  private val storedListeners = new java.util.concurrent.CopyOnWriteArrayList[(CacheKey, MovieRecord) => Unit]()
-  def onStored(listener: (CacheKey, MovieRecord) => Unit): Unit = { storedListeners.add(listener); () }
+  private val residentListeners = new java.util.concurrent.CopyOnWriteArrayList[(CacheKey, Option[StoredMovieRecord]) => Unit]()
+
+  def onResident(listener: (CacheKey, Option[StoredMovieRecord]) => Unit): Unit = {
+    residentListeners.add(listener)
+    positive.asMap().keySet().forEach(key => announce(key, java.util.List.of(listener)))
+  }
+
+  /** Tell the resident listeners what `key` holds now. Read under the key's own lock, so two writes to one key cannot
+   *  reach a listener in the opposite order; `positive` itself is left as it is. Every change to `positive` calls it
+   *  once the change is made — `store` and `evict`, and the writes that cannot go through them. */
+  private def announce(key: CacheKey, to: java.util.List[(CacheKey, Option[StoredMovieRecord]) => Unit] = residentListeners): Unit =
+    if (!to.isEmpty) { positive.asMap().compute(key, (_, held) => {
+      val film = Option(held).map(storedAt(key, _))
+      to.forEach(_(key, film))
+      held
+    }); () }
+
+  /** The film `key` holds as `record`, under its indexed id. */
+  private def storedAt(key: CacheKey, record: MovieRecord): StoredMovieRecord =
+    StoredMovieRecord(key.cleanTitle, key.year, record, corpusIndex.idOf(key).getOrElse(FilmId.legacy(key)), Some(StoredMovieRecord.keyFor(key)))
 
   /** The permanent id behind `key`: the one the index holds, else the stored row's, else
    *  a fresh one for a row this cache is about to create. Ids are never re-derived from
@@ -311,6 +334,7 @@ class CaffeineMovieCache(
   private def evict(key: CacheKey): Unit = {
     positive.invalidate(key)
     corpusIndex.remove(key)
+    announce(key)
   }
 
   /** The resident corpus, for `kinowo_worker_cache_*`. UNBOUNDED by design — it is
@@ -360,7 +384,8 @@ class CaffeineMovieCache(
   // Set once a rehydrate's corpus read has been answered whole — an empty corpus included — and
   // never cleared: from then on a failed read only leaves the cache a little stale. Declared
   // BEFORE the boot hydrate below, whose write a later initialiser would reset.
-  @volatile private var hydrated = false
+  @volatile private var wholeCorpusRead = false
+  def hydrated: Boolean = wholeCorpusRead
 
   bootHydrate()
 
@@ -461,6 +486,7 @@ class CaffeineMovieCache(
           case Some(previous) => if (positive.asMap().replace(key, cached, previous)) corpusIndex.put(key, id)
           case None           => if (positive.asMap().remove(key, cached)) corpusIndex.remove(key)
         }
+        announce(key)
       }
       touch()
       outcome
@@ -684,10 +710,15 @@ class CaffeineMovieCache(
 
   /** Caffeine's `computeIfPresent` on `key`: the value `f` produced, or `None` — metered —
    *  when the key had left the cache by the time it computed. */
-  private def computeResident(key: CacheKey)(f: MovieRecord => MovieRecord): Option[MovieRecord] =
-    Option(positive.asMap().computeIfPresent(key, new java.util.function.BiFunction[CacheKey, MovieRecord, MovieRecord] {
-      override def apply(k: CacheKey, current: MovieRecord): MovieRecord = f(current)
-    })).orElse {
+  private def computeResident(key: CacheKey)(f: MovieRecord => MovieRecord): Option[MovieRecord] = {
+    // Whether `f` handed back another row than the one held: a write that changes nothing is not announced, since the
+    // landing hands every listing's unchanged row back, once per venue of a film shown at thousands.
+    var moved = false
+    val computed = Option(positive.asMap().computeIfPresent(key, new java.util.function.BiFunction[CacheKey, MovieRecord, MovieRecord] {
+      override def apply(k: CacheKey, current: MovieRecord): MovieRecord = { val next = f(current); moved = next ne current; next }
+    }))
+    if (moved) announce(key)
+    computed.orElse {
       // The Caffeine-level race the since-deleted `ScrapeLanding`'s comment on `landed` named: a
       // concurrent `rekey` of some OTHER title invalidated this key between the
       // read and this compute. Recorded here, not at each caller, because this is
@@ -696,6 +727,7 @@ class CaffeineMovieCache(
       listingIntakeMetrics.recordWriteSkipped(ListingIntakeMetrics.SkipReason.CacheMissRace)
       None
     }
+  }
 
   /** The repository half of [[putIfPresent]] / [[putSlotIfPresent]]: write the `before` →
    *  `after` diff, and on failure put the resident `prior` back in place of `updated`. */
@@ -722,7 +754,7 @@ class CaffeineMovieCache(
       // reported as success, the failure healed in memory and never in Mongo. `replace`
       // only if it is still ours — under the title lock nothing else wrote this key,
       // but an eviction may have.
-      if (positive.asMap().replace(key, updated, prior)) corpusIndex.put(key, id)
+      if (positive.asMap().replace(key, updated, prior)) { corpusIndex.put(key, id); announce(key) }
     }
     touch()
     wrote
@@ -740,7 +772,7 @@ class CaffeineMovieCache(
   def snapshot(): Seq[StoredMovieRecord] = {
     import scala.jdk.CollectionConverters._
     positive.asMap().asScala.iterator
-      .map { case (k, e) => StoredMovieRecord(k.cleanTitle, k.year, e, corpusIndex.idOf(k).getOrElse(FilmId.legacy(k)), Some(StoredMovieRecord.keyFor(k))) }
+      .map { case (k, e) => storedAt(k, e) }
       .toSeq
       .sortBy(_.title.toLowerCase(Locale.ROOT))
   }
@@ -779,7 +811,7 @@ class CaffeineMovieCache(
       return 0
     }
     val rows          = read.answered.get
-    hydrated = true
+    wholeCorpusRead = true
     // A failed read was turned away above. An ANSWERED empty corpus while the cache
     // holds rows would evict every one of them — a real Mongo wipe is a degenerate
     // manual operation, acceptable to handle only on a restart, so the cache is left
@@ -959,7 +991,7 @@ class CaffeineMovieCache(
    *  after boot — and the backstop hours later filled it: every quiescent row was invisible to the
    *  fold and the settle meanwhile. Once hydrated this is one field read. */
   private[movies] def coldRetryTick(): Unit =
-    if (!hydrated) {
+    if (!wholeCorpusRead) {
       logger.warn("MovieCache cold-retry: no corpus read has completed yet — reading again.")
       rehydrate(); ()
     }

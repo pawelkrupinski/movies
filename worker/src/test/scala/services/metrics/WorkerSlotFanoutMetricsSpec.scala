@@ -1,11 +1,9 @@
 package services.metrics
 
-import io.prometheus.metrics.core.metrics.Gauge
-import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.CorpusMetricsFixtures.row
+import services.metrics.CorpusMetricsFixtures.{reading, row}
 
 /**
  * The widest-film gauge must count the slots that BECOME `screenings` rows, and nothing else.
@@ -18,57 +16,31 @@ import services.metrics.CorpusMetricsFixtures.row
  */
 class WorkerSlotFanoutMetricsSpec extends AnyFlatSpec with Matchers {
 
-  private def fixture = {
-    val registry = new PrometheusRegistry()
-    val gauge = Gauge.builder().name("kinowo_worker_film_widest_slots")
-      .help("test").labelNames("country").register(registry)
-    (registry, new WorkerSlotFanoutMetrics(gauge, "pl"))
-  }
-
-  private def widest(registry: PrometheusRegistry): Option[Double] =
-    PrometheusExposition.sample(PrometheusExposition.render(registry),
-      "kinowo_worker_film_widest_slots", """country="pl"""")
+  private def widest(films: (String, MovieRecord)*): Int = reading(films.map { case (title, record) => row(title, record) }).widest
 
   private def slot(title: String) = SourceData(title = Some(title))
 
-  private def corpusRow(title: String, record: MovieRecord) = new CorpusRow(row(title, record))
-
-  "WorkerSlotFanoutMetrics" should "count a film's cinema slots and not its metadata sources" in {
-    val (registry, metrics) = fixture
-    val sampler = metrics.startSample()
+  "The corpus census" should "count a film's cinema slots and not its metadata sources" in {
     // Two venues, three metadata sources. The blast radius is two.
-    sampler.accept(corpusRow("Wide Release", MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+    widest("Wide Release" -> MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino   -> slot("Wide Release"),
       KinoMuranow -> slot("Wide Release"),
       Tmdb        -> slot("Wide Release"),
       Imdb        -> slot("Wide Release"),
-      Filmweb     -> slot("Wide Release")))))
-    sampler.publish(scanComplete = true)
-
-    widest(registry) shouldBe Some(2.0)
+      Filmweb     -> slot("Wide Release")))) shouldBe 2
   }
 
   it should "report zero for a film that no cinema screens" in {
-    val (registry, metrics) = fixture
-    val sampler = metrics.startSample()
     // Resolved against TMDB, showing nowhere. It writes no `screenings` row, so it has no
     // blast radius — the case that made the old count structurally unable to reach zero.
-    sampler.accept(corpusRow("Metadata Only", MovieRecord(tmdbId = Some(2), data = Map[Source, SourceData](
-      Tmdb -> slot("Metadata Only"), Imdb -> slot("Metadata Only")))))
-    sampler.publish(scanComplete = true)
-
-    widest(registry) shouldBe Some(0.0)
+    widest("Metadata Only" -> MovieRecord(tmdbId = Some(2), data = Map[Source, SourceData](
+      Tmdb -> slot("Metadata Only"), Imdb -> slot("Metadata Only")))) shouldBe 0
   }
 
   it should "take the maximum across the corpus, not the last row" in {
-    val (registry, metrics) = fixture
-    val sampler = metrics.startSample()
-    sampler.accept(corpusRow("Three Venues", MovieRecord(data = Map[Source, SourceData](
-      Multikino -> slot("Three Venues"), KinoMuranow -> slot("Three Venues"), Helios -> slot("Three Venues")))))
-    sampler.accept(corpusRow("One Venue", MovieRecord(data = Map[Source, SourceData](
-      Multikino -> slot("One Venue")))))
-    sampler.publish(scanComplete = true)
-
-    widest(registry) shouldBe Some(3.0)
+    widest(
+      "Three Venues" -> MovieRecord(data = Map[Source, SourceData](
+        Multikino -> slot("Three Venues"), KinoMuranow -> slot("Three Venues"), Helios -> slot("Three Venues"))),
+      "One Venue" -> MovieRecord(data = Map[Source, SourceData](Multikino -> slot("One Venue")))) shouldBe 3
   }
 }

@@ -169,7 +169,7 @@ object ReadModelProjection {
 
   object VenueScreening {
     /** `showtimes` each once, in their order — `showtimes` itself when no two are equal, as one
-     *  slot's nearly always are, so the census's every venue builds no second copy of them. */
+     *  slot's nearly always are, so a venue builds no second copy of them. */
     private[readmodel] def distinct(showtimes: Seq[Showtime]): Seq[Showtime] =
       if (showtimes.lengthCompare(1) <= 0) showtimes
       else {
@@ -201,8 +201,7 @@ object ReadModelProjection {
     def citySlug: String = city.slug
 
     /** The venue's showtimes across its slots, each once — the SET its row lists, before the
-     *  row's canonical ordering. What a census counts, without building the row. Derived once: a
-     *  census pass asks it of every venue three times over, and its row a fourth. */
+     *  row's canonical ordering. Derived once, and the row built from it. */
     lazy val showtimes: Seq[Showtime] = slots match {
       case Seq(only) => VenueScreening.distinct(only.showtimes)
       case _         => slots.flatMap(_.showtimes).distinct
@@ -290,10 +289,8 @@ object ReadModelProjection {
     /** The SCREENINGS half of [[projectAll]] — one screenings list per display-title
      *  variant — WITHOUT materialising the `ResolvedMovie` metadata. Byte-identical to
      *  `projectAll.map(_._2)`, but skips the costly `resolve` / [[synopsisByCity]] /
-     *  ratings work per row. For callers that only need the per-(city,cinema) showtime
-     *  buckets — the source-films census counts qualifying cards per city and never
-     *  looks at the metadata half, so re-projecting it over the whole corpus on a timer
-     *  was pure waste. */
+     *  ratings work per row, for callers that only need the per-(city,cinema) showtime
+     *  buckets. */
     def screeningsAll: Seq[Seq[CityScreening]] = venuesAll.map(_.map(_.screening))
 
     /** [[screeningsAll]] with each row's inputs gathered but the row not yet built — so a
@@ -311,9 +308,9 @@ object ReadModelProjection {
    *  cinema slot with no reported title falls into the record's anchor key
    *  (`sanitize(stored.title)`). Groups are sorted by key for deterministic output. */
   def partition(stored: StoredMovieRecord, normalizer: TitleNormalizer): Partition = {
-    val anchorKey = normalizer.sanitize(stored.title)
+    val anchorKey = anchorKeyOf(stored, normalizer)
     val groups = stored.record.cinemaSlots
-      .groupBy { case (_, slot) => slot.title.map(normalizer.sanitize).getOrElse(anchorKey) }
+      .groupBy { case (_, slot) => titleKeyOf(slot, normalizer).getOrElse(anchorKey) }
       .view.mapValues(_.map(_._1).toSet).toSeq
       .sortBy(_._1)
     // The film id for one display-title variant. The variant that carries the row's own
@@ -338,6 +335,14 @@ object ReadModelProjection {
       else groups.map(_._1).zip(split.map(_.filmId)).toMap
     new Partition(stored, normalizer, split, anchorKey, cardByGroup)
   }
+
+  /** The group key of a row's cinema slots that report no title of their own: the row's own title, sanitized. */
+  def anchorKeyOf(stored: StoredMovieRecord, normalizer: TitleNormalizer): String = normalizer.sanitize(stored.title)
+
+  /** The group key a cinema slot reports: its own title, sanitized — `None` for a slot with no title, which falls into
+   *  the row's anchor group ([[anchorKeyOf]]). A row whose slots fall into two or more groups projects one card per
+   *  group ([[partition]]). */
+  def titleKeyOf(slot: SourceData, normalizer: TitleNormalizer): Option[String] = slot.title.map(normalizer.sanitize)
 
   /** Single-question forms of the [[Partition]] methods, for a caller that asks a row
    *  one thing. A caller asking two or more derives the partition once instead. */

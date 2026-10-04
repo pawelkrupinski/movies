@@ -1,7 +1,7 @@
 package modules.wiring
 
 import modules.WorkerWiring
-import services.metrics.{CinemaContentCensus, CinemaScrapeCensus, CorpusScanMetrics, RatingRunCensus, RetiredVenueCensus, WorkerCorpusMetrics, WorkerCorpusScan, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics, WorkerTaskMetrics}
+import services.metrics.{CinemaContentCensus, CinemaScrapeCensus, CorpusCensus, CorpusScanMetrics, RatingRunCensus, RetiredVenueCensus, WorkerTaskMetrics}
 
 /** This country's slice of the process-wide `/metrics` registry: the
  *  per-country task-pipeline facade, the cache-occupancy gauges, and the
@@ -28,47 +28,19 @@ trait MetricsWiring { self: WorkerWiring =>
   // Per-country task-pipeline facade (enqueue/claim/finish/merge/… all tagged with
   // this country) over the shared, registered-once Series.
   lazy val taskMetrics: WorkerTaskMetrics = workerMetrics.taskMetricsFor(country)
-  // Periodic census of THIS country's movies corpus (counts of resolved/rated
-  // rows), sampled off-band into the shared corpus gauge — see WorkerCorpusMetrics.
-  lazy val corpusMetrics: WorkerCorpusMetrics =
-    new WorkerCorpusMetrics(workerMetrics.corpusGauge, country.code, clock = clock)
-
-  // Per-city count of films the SOURCE `movies` collection would serve in this
-  // country — the worker-side mirror of the web's kinowo_web_movies_served (read
-  // model), so a Grafana panel overlays the two and a divergence flags drift.
-  lazy val sourceFilmsMetrics: WorkerSourceFilmsMetrics =
-    new WorkerSourceFilmsMetrics(workerMetrics.servedGauge, country.code, cities = country.cities,
-      normalizer = titleNormalizer, clock = clock)
-  // Per-city (and, summed, country total) count of individual upcoming SHOWTIMES
-  // the source `movies` collection would serve — the slot-volume complement to
-  // sourceFilmsMetrics, exposed as kinowo_worker_showtimes{country,city}.
-  lazy val showtimesMetrics: WorkerShowtimesMetrics =
-    new WorkerShowtimesMetrics(workerMetrics.showtimesGauge, country.code, cities = country.cities,
-      normalizer = titleNormalizer, clock = clock)
-  // The widest film's slot count — the blast radius of one film's write, since every write
-  // path is per-film and the screenings cursor rings once per row written (see
-  // WorkerSlotFanoutMetrics). Rides the same corpus pass as the three censuses above.
-  lazy val slotFanoutMetrics: WorkerSlotFanoutMetrics =
-    new WorkerSlotFanoutMetrics(workerMetrics.widestSlotsGauge, country.code)
+  // THIS country's `movies` census — corpus coverage, per-city films served (overlaid on the web's
+  // read-model gauge), per-city upcoming showtimes, the widest film — kept film by film as the
+  // cache changes, with no read of its own (see CorpusCensus).
+  lazy val corpusCensus: CorpusCensus = managedResources.stopping(
+    new CorpusCensus(movieCache, workerMetrics.corpusGauge, workerMetrics.servedGauge, workerMetrics.showtimesGauge,
+      workerMetrics.widestSlotsGauge, country.code, country.cities, clock,
+      CorpusScanMetrics.prometheus(workerMetrics.corpusScanIncomplete, country.code)))
   // One venue's scraped feed under another's name, told by booking sessions as each scrape lands
   // (CopiedFeedArchive) — it replaced the programme-comparing census the corpus scan used to carry.
   // Only over the venues read through an upstream known to copy feeds; None where there are none.
   lazy val copiedFeedDetector: Option[services.cinemas.roster.CopiedFeedDetector] =
     Some(services.cinemas.roster.CopiedFeedDetector.watchedVenues(countryScrapers)).filter(_.nonEmpty)
       .map(new services.cinemas.roster.CopiedFeedDetector(workerMetrics.copiedFeedPairsGauge, country, _))
-  // ONE 15-minute corpus scan feeding every census above, and the projector's learning (`ProjectorLearning`). The first three each used to run
-  // their own timer AND their own full scan of the same rows — 14,704 documents per
-  // country per 5 min for Poland alone (measured 2026-07-18) — see WorkerCorpusScan.
-  lazy val corpusScan: WorkerCorpusScan = managedResources.stopping(
-    new WorkerCorpusScan(movieRepository,
-      censusCollectors :+
-        // …and teaches the read-model projector the rows it has not projected since boot.
-        new services.metrics.ProjectorLearning(readModelProjector, titleNormalizer),
-      metrics = corpusScanMetrics, bootCensus = Some(bootCensus)))
-  private lazy val censusCollectors = Seq(corpusMetrics, sourceFilmsMetrics, showtimesMetrics, slotFanoutMetrics)
-  private lazy val corpusScanMetrics = CorpusScanMetrics.prometheus(workerMetrics.corpusScanIncomplete, country.code)
-  // The census's first pass, over the cache's boot hydrate read (see BootCensus).
-  lazy val bootCensus: services.metrics.BootCensus = new services.metrics.BootCensus(censusCollectors, corpusScanMetrics)
   // Per-site backlog of resolved films whose rating has NEVER run — the never-run
   // latency the first-attempt histogram can't show (see RatingRunCensus).
   lazy val ratingRunCensus: RatingRunCensus = managedResources.stopping(

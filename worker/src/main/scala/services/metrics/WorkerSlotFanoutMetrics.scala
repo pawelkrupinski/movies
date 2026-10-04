@@ -28,59 +28,18 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
  * This gauge is what watches the part the fix does not cover, and what will say — before it
  * bites — that a new market has landed a film wider than anything the pipeline has carried.
  *
- * Counted off the SHARED [[WorkerCorpusScan]] pass (default every 15 min) like its three
- * sibling censuses, so it costs no reads of its own — it reads only each row's slot count
- * and ignores the showtimes the pass stitches. Mirrors [[WorkerCorpusMetrics]]' shape,
- * including its refusal to publish a partial pass.
+ * CINEMA SLOTS ONLY (`MovieRecord.cinemaSlotCount`): this counted every source until
+ * 2026-09-06, which added the Tmdb / Imdb / Filmweb metadata slots, and only cinema slots
+ * become `screenings` rows. A slot counts whether or not it holds showtimes, and a row held
+ * back from the read model counts too: its slots are written all the same.
+ *
+ * Counted by [[CorpusCensus]] from the films the worker's cache holds, like its three
+ * sibling censuses, including their refusal to publish a partial corpus.
  */
-class WorkerSlotFanoutMetrics(widest: Gauge, countryCode: String) extends CorpusMetricsCollector {
-
-  // Seed at 0 so the series exists from boot — a country whose corpus empties must read as
-  // an explicit 0, not as a vanished series.
-  widest.labelValues(countryCode).set(0.0)
-
-  def startSample(): CorpusRowSampler = new CorpusRowSampler {
-    private var max = 0
-
-    // The row's OWN slot map, not the projection's: it is what `replaceFilm` writes and
-    // therefore what the change stream rings for. A row held back from the read model still
-    // has its slots written, so this deliberately does not gate on `readyToProject` the way
-    // the served-films censuses do.
-    //
-    // CINEMA SLOTS, NOT EVERY SOURCE. This counted `data.size` until 2026-09-06, which added the
-    // Tmdb / Imdb / Filmweb metadata slots to a number the help text and the panel both describe as
-    // cinema slots: every film read two or three wider than it is, and a TMDB-only film with no
-    // venue at all reported a fanout. Only cinema slots become `screenings` rows, so only they are
-    // the blast radius. `Source.cinemaOf` is the test because it covers `CinemaShowing` as well as
-    // `Cinema` -- a per-title venue slot rings the stream exactly like its venue does.
-    //
-    // IT DELIBERATELY DOES NOT ASK FOR SHOWTIMES. `showtimesOf` is what `replaceFilm` actually
-    // keys on, and it would be the truer measure on a stitched row -- but this rides a corpus scan
-    // that may be the CHEAP one, whose rows carry no showtimes at all, and a gauge that silently
-    // reads zero on half the scans is worse than one that counts a slot whose showtimes are empty.
-    //
-    // `cinemaSlotCount`, NOT `cinemaSlots.size`, which materialises a `Seq` of pairs for every row.
-    // This runs once per film on a corpus-wide pass, and the number it wants is a count. The
-    // predicate lives on `MovieRecord` beside `cinemaSlots` rather than being spelled out here, so
-    // the two cannot drift into disagreeing about what a cinema slot is.
-    def accept(corpusRow: CorpusRow): Unit = {
-      val row = corpusRow.stored
-      val slots = row.record.cinemaSlotCount
-      if (slots > max) max = slots
-    }
-
-    /** Publishes ONLY a complete census, for [[WorkerCorpusMetrics]]' reason and one of its
-     *  own: a MAXIMUM over a truncated scan is not a smaller maximum, it is the maximum of
-     *  whichever rows the scan happened to reach, and published as a gauge the two look
-     *  identical. Skipping leaves the last good value and `WorkerCorpusScan` counts the miss. */
-    def publish(scanComplete: Boolean): Unit = if (scanComplete) widest.labelValues(countryCode).set(max.toDouble)
-  }
-}
-
 object WorkerSlotFanoutMetrics {
   val Name = "kinowo_worker_film_widest_slots"
 
-  /** Build and register the ONE shared gauge every country's sampler writes into. Called
+  /** Build and register the ONE shared gauge every country's census writes into. Called
    *  once when the shared worker registry is built. */
   def gauge(registry: PrometheusRegistry): Gauge =
     Gauge.builder()

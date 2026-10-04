@@ -2,12 +2,9 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.MovieRecord
-
-import java.time.{Clock, ZoneOffset}
 
 /**
- * A periodic census of the live `movies` corpus, exposed as Prometheus gauges on
+ * A census of the live `movies` corpus, exposed as Prometheus gauges on
  * the SAME registry/endpoint as [[WorkerTaskMetrics]] (`/metrics`, scraped by the
  * fleet's Prometheus on monitoring-1, charted by the Grafana beside it).
  * Where WorkerTaskMetrics counts the task *pipeline*, this counts the corpus
@@ -23,51 +20,15 @@ import java.time.{Clock, ZoneOffset}
  *   - `misresolved`      resolved to a film its own cinemas contradict
  *   - `unresolved_with_showtimes`  NOT resolved, yet still screening — invisible on the site
  *
- * Counted off the SHARED [[WorkerCorpusScan]] pass (default every 15 min), decoupled
- * from the scrape rate, so it costs no reads of its own. Most subsets read ids and
- * ratings only; `unresolved_with_showtimes` also reads the showtimes the pass already
- * stitches for its sibling collectors, which is why it is free to compute here and
- * would not be over the worker's cache (whose slots carry no showtimes at all).
- * Between samples the gauge just re-reads its cached value. Mirrors the web app's
- * [[controllers.WebMovieMetrics]] sample-and-cache shape.
+ * Counted by [[CorpusCensus]], film by film as the worker's cache changes: most subsets read ids and ratings only;
+ * `unresolved_with_showtimes` reads each venue slot's showtime starts, against the clock at each tick.
  */
-class WorkerCorpusMetrics(corpus: Gauge, countryCode: String, clock: Clock)
-  extends CorpusMetricsCollector {
-  import WorkerCorpusMetrics._
-
-  // No boot seed: a series at 0 reads as an empty corpus, so every restart drew the coverage
-  // chart to 0 and back. Each series appears with the first complete census instead.
-
-  def startSample(): CorpusRowSampler = new CorpusRowSampler {
-    // One instant for the whole pass, so `unresolved_with_showtimes` cannot count a row
-    // as still-screening and its neighbour as expired because the scan crossed a
-    // showtime's start while walking the corpus. Each slot reads it in its own venue's zone.
-    private val now    = Clock.fixed(clock.instant(), ZoneOffset.UTC)
-    private var counts = CorpusCounts.empty
-
-    def accept(row: CorpusRow): Unit = counts = counts.add(row.stored.record, now)
-
-    /** Publishes ONLY a complete census. A partial scan's counts are not a smaller
-     *  corpus, they are fewer rows read — and published as a gauge the two are
-     *  indistinguishable. On 2026-07-27 the `Missing field: sourceData` decode bug failed
-     *  every batch, so this published `total=0` for ~50 minutes while the corpus sat
-     *  intact at 943 films; the panel read as "Poland's corpus is gone". Skipping leaves
-     *  the last good value in place and [[WorkerCorpusScan]] counts the miss, so a
-     *  census that is genuinely stuck is still visible — as a stuck census, which is what
-     *  it is, rather than as an imaginary collapse. */
-    def publish(scanComplete: Boolean): Unit =
-      if (scanComplete)
-        counts.bySubset.foreach { case (subset, value) => corpus.labelValues(countryCode, subset).set(value.toDouble) }
-  }
-}
-
 object WorkerCorpusMetrics {
   val Name = "kinowo_worker_corpus_movies"
 
-  /** Build and register the ONE shared gauge every country's sampler writes into
+  /** Build and register the ONE shared gauge every country's census writes into
    *  (leading `country` label, then `subset`). Called once when the shared worker
-   *  registry is built; each per-country [[WorkerCorpusMetrics]] then samples its
-   *  own slice of it. */
+   *  registry is built; each country's [[CorpusCensus]] then writes its own slice of it. */
   def gauge(registry: PrometheusRegistry): Gauge =
     Gauge.builder()
       .name(Name)
@@ -107,75 +68,4 @@ object WorkerCorpusMetrics {
       Seq(Total, WithAnyRating, WithTmdbId, WithImdbId, ImdbRating, RtRating, McRating, FwRating,
         Misresolved, UnresolvedWithShowtimes)
   }
-
-  /** Pure tally of a corpus, accumulated one record at a time so the worker's
-   *  paged scan never holds the whole collection on the heap. */
-  case class CorpusCounts(
-    total: Int, withAnyRating: Int, withTmdbId: Int, withImdbId: Int,
-    imdbRating: Int, rtRating: Int, mcRating: Int, fwRating: Int, misresolved: Int,
-    unresolvedWithShowtimes: Int
-  ) {
-    /** `now` is the pass's single (fixed) reading of the clock — only
-     *  `unresolved_with_showtimes` needs it, to tell a row still screening from one
-     *  whose retained showtimes have all passed. */
-    def add(r: MovieRecord, now: Clock): CorpusCounts = CorpusCounts(
-      total         = total + 1,
-      withAnyRating = withAnyRating + bool(hasAnyRating(r)),
-      withTmdbId    = withTmdbId + bool(r.tmdbId.isDefined),
-      withImdbId    = withImdbId + bool(r.imdbId.isDefined),
-      imdbRating    = imdbRating + bool(r.imdbRating.isDefined),
-      rtRating      = rtRating + bool(r.rottenTomatoes.isDefined),
-      mcRating      = mcRating + bool(r.metascore.isDefined),
-      fwRating      = fwRating + bool(r.filmwebRating.isDefined),
-      misresolved   = misresolved + bool(services.movies.CinemaCorroboration.contradicts(r)),
-      unresolvedWithShowtimes = unresolvedWithShowtimes + bool(unresolvedYetScreening(r, now))
-    )
-
-    /** Pair each subset label with its count, in `Subset.all` order. */
-    def bySubset: Seq[(String, Int)] = Seq(
-      Subset.Total -> total, Subset.WithAnyRating -> withAnyRating,
-      Subset.WithTmdbId -> withTmdbId, Subset.WithImdbId -> withImdbId,
-      Subset.ImdbRating -> imdbRating, Subset.RtRating -> rtRating,
-      Subset.McRating -> mcRating, Subset.FwRating -> fwRating,
-      Subset.Misresolved -> misresolved,
-      Subset.UnresolvedWithShowtimes -> unresolvedWithShowtimes
-    )
-  }
-
-  object CorpusCounts {
-    val empty: CorpusCounts = CorpusCounts(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    def from(records: IterableOnce[MovieRecord], now: Clock): CorpusCounts =
-      records.iterator.foldLeft(empty)((acc, r) => acc.add(r, now))
-  }
-
-  /** A row counts toward `with_any_rating` if any one of the four sources rated it. */
-  def hasAnyRating(r: MovieRecord): Boolean =
-    r.imdbRating.isDefined || r.filmwebRating.isDefined || r.rottenTomatoes.isDefined || r.metascore.isDefined
-
-  /** A row the read model will NOT carry that its cinemas are still screening.
-   *
-   *  Gated on the projector's OWN predicate (`readyToProject`), not on `tmdbId`
-   *  alone, so the gauge counts exactly the rows that get pruned rather than a
-   *  near-miss population that happens to correlate. "Still screening" means an
-   *  upcoming showtime on one of the row's CINEMA slots — past showtimes are
-   *  retained for a while, and a row whose every showing has passed is legitimately
-   *  gone rather than invisible.
-   *
-   *  Only meaningful over the STITCHED rows [[WorkerCorpusScan]] walks: the worker's
-   *  cache strips `showtimes` to a digest, so the same predicate over a cache record
-   *  would read every row as not-screening.
-   *
-   *  A showtime is venue-local wall-clock, so each slot is judged against `now` in its
-   *  own venue's zone: read in the pod's zone (UTC), a Los Angeles row playing only
-   *  tonight read as played out 7 hours early, and a Warsaw showing as upcoming for 2
-   *  hours after it began. */
-  def unresolvedYetScreening(r: MovieRecord, now: Clock): Boolean =
-    !r.readyToProject && r.cinemaSlots.exists { case (source, slot) =>
-      models.Source.cinemaOf(source).exists { cinema =>
-        val local = new models.VenueClock(now).nowAt(cinema, now.getZone)
-        slot.showtimes.exists(_.isUpcoming(local))
-      }
-    }
-
-  private def bool(b: Boolean): Int = if (b) 1 else 0
 }

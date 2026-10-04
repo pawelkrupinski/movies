@@ -700,7 +700,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
 
     scans.get() shouldBe 0
     rm.movieUpserts.drop(before).map(_._id) shouldBe Seq("bar|2024")                     // the uncarded row healed
-    // Every row learned: a change at a film the projector does not know is no longer waited for.
+    // Every row learned: a change at a film the projector does not know is re-read whole.
     booted.onVenueSlots(services.movies.VenueSlots(FilmId("absent|2024"), Map.empty)) shouldBe
       services.movies.VenueVerdict.Declined(services.movies.ChangeStreamMetrics.VenueDecline.ProjectorRowUnprojected)
     booted.stop()
@@ -719,7 +719,9 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     booted.prepare()
     scans.get() shouldBe 1
     rm.movieUpserts.map(_._id) shouldBe Seq("bar|2024")
-    booted.onVenueSlots(services.movies.VenueSlots(FilmId("absent|2024"), Map.empty)) shouldBe services.movies.VenueVerdict.NotYet
+    // No later pass teaches it a row: one it does not know is re-read whole at once, not waited for.
+    booted.onVenueSlots(services.movies.VenueSlots(FilmId("absent|2024"), Map.empty)) shouldBe
+      services.movies.VenueVerdict.Declined(services.movies.ChangeStreamMetrics.VenueDecline.ProjectorRowUnprojected)
     booted.stop()
   }
 

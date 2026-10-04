@@ -42,6 +42,14 @@ object ShowtimesDigest {
    *  city-local — it only has to be the same one throughout. */
   def startMinute(dateTime: LocalDateTime): Int = (dateTime.toEpochSecond(ZoneOffset.UTC) / 60).toInt
 
+  /** A slot's showtime starts ([[startMinute]]), ascending: from resident showtimes when present, else the stripped
+   *  slot's stamped starts — the very array it holds, not a copy. Empty for a slot stripped without them. */
+  def startMinutes(sd: SourceData): IArray[Int] =
+    if (sd.showtimes.nonEmpty) IArray.from(sd.showtimes.iterator.map(s => startMinute(s.dateTime))).sorted
+    else sd.showtimeStartMinutes.getOrElse(NoStarts)
+
+  private val NoStarts: IArray[Int] = IArray.empty[Int]
+
   /** A slot's effective showtime COUNT, past ones included: from resident showtimes when
    *  present, else the stripped slot's stamped starts. `0` for a slot stripped without
    *  them. The depth guard wants [[upcomingShowtimeCount]] instead. */
@@ -70,8 +78,7 @@ object ShowtimesDigest {
   /** [[stripForCache]] of one slot. */
   def stripSlot(sd: SourceData): SourceData =
     if (sd.showtimes.isEmpty && sd.showtimesDigest.isDefined) sd
-    else sd.copy(showtimes = Nil, showtimesDigest = Some(slotDigest(sd)),
-                 showtimeStartMinutes = Some(IArray.from(sd.showtimes.iterator.map(s => startMinute(s.dateTime))).sorted))
+    else sd.copy(showtimes = Nil, showtimesDigest = Some(slotDigest(sd)), showtimeStartMinutes = Some(startMinutes(sd)))
 
   /** Whole-record content digest, for a VIEWER that has to decide "did anything I
    *  render change?" from two renders of the same film (the /debug table's

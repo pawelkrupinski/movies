@@ -2,15 +2,16 @@ package services.metrics
 
 import services.movies.SingleCountryNormalizer
 
-import models.{Helios, HeliosMagnolia, KinoApollo, MovieRecord, Rialto, Showtime, Source, SourceData}
-import services.movies.{InMemoryMovieRepository, MovieRepository, StoredMovieRecord}
+import io.prometheus.metrics.model.registry.PrometheusRegistry
+import models.{City, Helios, HeliosMagnolia, KinoApollo, MovieRecord, Rialto, Showtime, Source, SourceData}
+import services.movies.{CaffeineMovieCache, InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository, MovieCache, MovieRepository, StoredMovieRecord}
 
 import java.time.{Clock, LocalDateTime, ZoneId}
 
 /**
  * The corpus the worker's census specs ([[WorkerCorpusMetricsSpec]],
  * [[WorkerSourceFilmsMetricsSpec]], [[WorkerShowtimesMetricsSpec]],
- * [[WorkerCorpusScanSpec]]) share: one fixed "now", one row/showtime builder and one
+ * [[CorpusCensusSpec]]) share: one fixed "now", one row/showtime builder and one
  * repository factory, so the film gauge and the showtime gauge are provably counting
  * the SAME rows (a film shown in a city there is N slots here).
  */
@@ -59,4 +60,24 @@ object CorpusMetricsFixtures {
    *  tests already use, so the specs exercise the real `foreachRecord` contract. */
   def repositoryOf(rows: StoredMovieRecord*): MovieRepository =
     new InMemoryMovieRepository(rows.map(r => (r.title, r.year, r.record)), normalizer = SingleCountryNormalizer.titleNormalizer)
+
+  /** A store split as production's is — showtimes in `screenings`, slots in `movie_slots` — so a cache over it holds
+   *  every film LEAN, as the worker's does. */
+  def splitRepository(): InMemoryMovieRepository =
+    new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository), slots = Some(new InMemorySlotsRepository),
+      normalizer = SingleCountryNormalizer.titleNormalizer)
+
+  /** The worker's cache over `repository`, hydrated from it. */
+  def cacheOver(repository: MovieRepository): CaffeineMovieCache =
+    new CaffeineMovieCache(repository, normalizer = SingleCountryNormalizer.titleNormalizer, clock = clock)
+
+  /** The census over `cache`, onto `registry`'s census gauges, reading `at`. Not started: a spec seeds and publishes it. */
+  def censusOver(cache: MovieCache, registry: PrometheusRegistry, at: Clock = clock,
+                 metrics: CorpusScanMetrics = CorpusScanMetrics.noop): CorpusCensus =
+    new CorpusCensus(cache, WorkerCorpusMetrics.gauge(registry), WorkerSourceFilmsMetrics.gauge(registry),
+      WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry), "pl", City.all, at, metrics)
+
+  /** The census of exactly `rows`, against `at`. */
+  def reading(rows: Seq[StoredMovieRecord], at: Clock = clock): CorpusCensus.Reading =
+    CorpusCensus.read(rows, City.all, at, SingleCountryNormalizer.titleNormalizer)
 }

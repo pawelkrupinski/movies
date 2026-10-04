@@ -57,7 +57,7 @@ class WorkerWiringEagernessSpec extends AnyFlatSpec with Matchers {
     override lazy val readModelRepository     = sentinel("readModelRepository")
     override lazy val readModelProjector      = sentinel("readModelProjector")
     // Metrics
-    override lazy val corpusScan              = sentinel("corpusScan")
+    override lazy val corpusCensus            = sentinel("corpusCensus")
     override lazy val cinemaScrapeCensus      = sentinel("cinemaScrapeCensus")
     override lazy val cinemaContentCensus     = sentinel("cinemaContentCensus")
     // Task queue + worker

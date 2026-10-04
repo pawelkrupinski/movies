@@ -9,22 +9,22 @@ import org.bson.BsonDocument
 import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.{BootCensus, CorpusMetricsCollector, CorpusRow, CorpusRowSampler, ProjectorLearning, WorkerCorpusMetrics, WorkerCorpusScan}
+import services.metrics.{CorpusCensus, WorkerCorpusMetrics, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
 import services.movies.{BootCorpusReader, CaffeineMovieCache, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.readmodel.{BootCorpusStudy, MongoReadModelRepository, ReadModelProjector}
 
-import java.util.concurrent.{ConcurrentHashMap, CountDownLatch, TimeUnit}
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.Await
 import scala.jdk.CollectionConverters._
 
 /**
- * A worker boot reads the corpus ONCE. Its three whole-corpus readers — the cache hydrate, the
- * read-model projector's missing-card check (and the learning that used to ride the census) and the
- * corpus census's first pass — each read every film with its `movie_slots` and `screenings`, three
- * times in a boot's first two minutes (worker-us, 2026-10-04: 9.4 s + 4.0 s + 12.5 s). Now the
- * hydrate hands its read to the other two.
+ * A worker boot reads the corpus ONCE. Its whole-corpus readers — the cache hydrate, the read-model
+ * projector's missing-card check (and its learning) and the corpus census's first pass — each read
+ * every film with its `movie_slots` and `screenings`, three times in a boot's first two minutes
+ * (worker-us, 2026-10-04: 9.4 s + 4.0 s + 12.5 s). Now the hydrate hands its read to the projector,
+ * and the census counts the cache, reading nothing at all.
  *
  * Against a real split store, counting the documents Mongo returns per collection: the in-memory
  * repository has no side collections and no wire to count on. Each boot is measured both ways —
@@ -71,15 +71,6 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(new MongoScreeningsRepository(Some(db))),
       slots = Some(new MongoSlotsRepository(Some(db))), normalizer = titleNormalizer)
 
-  /** A census collector that says when a pass has published. */
-  private final class PassDone extends CorpusMetricsCollector {
-    val done = new CountDownLatch(1)
-    def startSample(): CorpusRowSampler = new CorpusRowSampler {
-      def accept(row: CorpusRow): Unit = ()
-      def publish(scanComplete: Boolean): Unit = done.countDown()
-    }
-  }
-
   /** One worker boot's corpus readers, as `WorkerWiring` builds and starts them; how long it took. */
   private def boot(db: MongoDatabase, handOver: Boolean): Long = {
     val started    = System.nanoTime()
@@ -87,22 +78,22 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     val readModel  = new MongoReadModelRepository(Some(db))
     val study      = new BootCorpusStudy(titleNormalizer)
     val projector  = new ReadModelProjector(repository, readModel, readModel, clock = _root_.tools.SpecClock.Pinned, bootStudy = Some(study))
-    val passDone   = new PassDone
-    val gauges: Seq[CorpusMetricsCollector] = Seq(new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(new io.prometheus.metrics.model.registry.PrometheusRegistry()), "pl",
-      clock = _root_.tools.SpecClock.Pinned), passDone)
-    val bootCensus = new BootCensus(gauges)
-    val census     = new WorkerCorpusScan(repository, gauges :+ new ProjectorLearning(projector, titleNormalizer), bootCensus = Some(bootCensus))
-    val readers: Seq[BootCorpusReader] = if (handOver) Seq(study, bootCensus) else Nil
+    val readers: Seq[BootCorpusReader] = if (handOver) Seq(study) else Nil
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned, bootReaders = readers)
     projector.prepare()
-    if (!handOver) census.sample()          // the first tick, two minutes in, before the handover
-    passDone.done.await(SpecTimeouts.Settle.toMillis, TimeUnit.MILLISECONDS) shouldBe true
+    val registry = new io.prometheus.metrics.model.registry.PrometheusRegistry()
+    val census   = new CorpusCensus(cache, WorkerCorpusMetrics.gauge(registry), WorkerSourceFilmsMetrics.gauge(registry),
+      WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry), "pl", models.City.all, _root_.tools.SpecClock.Pinned)
+    census.start()
+    org.scalatest.concurrent.Eventually.eventually(org.scalatest.concurrent.Eventually.timeout(SpecTimeouts.Settle)) {
+      census.reading().subset(WorkerCorpusMetrics.Subset.Total) shouldBe Films
+    }
     val took = (System.nanoTime() - started) / 1000000
     census.stop(); projector.stop(); cache.stop(); repository.close()
     took
   }
 
-  "a worker boot" should "read the corpus once, where it read it three times" in withDatabase("boot-corpus-read-once") { (db, returned) =>
+  "a worker boot" should "read the corpus once, where its readers read it three times" in withDatabase("boot-corpus-read-once") { (db, returned) =>
     val repository = repositoryOn(db)
     (1 to Films).foreach { film =>
       repository.upsert(s"Film $film", Some(2024), MovieRecord(tmdbId = Some(film), data = cinemas.map { cinema =>
@@ -127,7 +118,7 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     info(s"after: ${after}ms, returned ${returned.summary}")
 
     val (slots, screenings) = (Films * cinemas.size, Films * cinemas.size)
-    readBefore shouldBe ((3L * Films, 3L * slots, 2L * screenings))   // hydrate, slots-only check, census
+    readBefore shouldBe ((2L * Films, 2L * slots, 1L * screenings))   // hydrate, slots-only check; the census reads nothing
     readAfter  shouldBe ((1L * Films, 1L * slots, 1L * screenings))   // the hydrate alone
   }
 }

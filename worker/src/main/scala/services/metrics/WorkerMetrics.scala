@@ -120,10 +120,10 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   val (retiredVenueRowsGauge, retiredVenueFutureGauge) = RetiredVenueCensus.gauges(registry)
   val copiedFeedPairsGauge: Gauge = services.cinemas.roster.CopiedFeedDetector.gauge(registry)
 
-  // Counts census passes that could not read the whole corpus. The gauges above publish
-  // NOTHING on such a pass (a partial count is indistinguishable from a real collapse),
+  // Counts census ticks that could not count the whole corpus. The gauges above publish
+  // NOTHING on such a tick (a partial count is indistinguishable from a real collapse),
   // so this counter is what keeps a stuck census visible instead of frozen-and-plausible.
-  val corpusScanIncomplete: Counter = WorkerCorpusScan.incompleteCounter(registry)
+  val corpusScanIncomplete: Counter = CorpusCensus.incompleteCounter(registry)
 
   // Whether each env-gated alerter / integration is wired (see EnvGatedFeature): the
   // alerters are recorded per country by each wiring, the integrations once by WorkerMain.

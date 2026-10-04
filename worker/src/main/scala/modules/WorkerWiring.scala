@@ -505,12 +505,12 @@ class WorkerWiring(
     boot.step("chunk scrape reaper")(chunkScrapeReaper.start())
     // Say so, loudly, for any alerter a missing env var has wired off (gauge + WARN).
     boot.step("alerters")(reportAlerters())
-    // Census the corpus for the /metrics gauges (off-band, read-only paged scan):
+    // Census the corpus for the /metrics gauges, from the cache and its changes (no read):
     // corpus coverage, per-city would-serve films (to overlay against the web's
-    // read-model gauge) and per-city upcoming-showtime volume, all off ONE scan.
+    // read-model gauge), per-city upcoming-showtime volume and the widest film.
     // (The process-level jvmVitals sampler is started once by WorkerMain via the
     // shared WorkerMetrics bundle, not per-country here.)
-    boot.step("corpus scan")(corpusScan.start())
+    boot.step("corpus census")(corpusCensus.start())
     // Find the copied feeds that predate this boot, from each venue's latest archived scrape.
     boot.step("copied feed seed")(copiedFeedDetector.foreach(_.start(scrapeArchive, services.cinemas.roster.CopiedFeedDetector.SeedDelay)))
     // Census the per-site never-run rating backlog (off-band, in-memory scan).
