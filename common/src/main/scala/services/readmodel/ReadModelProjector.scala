@@ -1072,9 +1072,17 @@ class ReadModelProjector(
    *  meanwhile is projected once they are done. */
   def prepare(): Unit = if (enabled) {
     attach()
+    // A read that THROWS ends the boot reads, never the boot: [[watch]] runs after this on the same
+    // boot thread, and a throw out of here skipped it — no stream projection and no sweeps, for the
+    // life of the process. Without a seed each card is rewritten on its first projection, and the
+    // first sweep heals what the missing-card heal would have: costly, but the projector runs.
     try {
       seedFromReadModel()
       healMissingCards()
+    } catch {
+      case scala.util.control.NonFatal(exception) =>
+        logger.error(s"read model: the boot reads failed (${exception.getClass.getSimpleName}: ${exception.getMessage}) — " +
+          "projecting without them; the sweeps heal what they would have", exception)
     } finally releaseBootHold()
   }
 

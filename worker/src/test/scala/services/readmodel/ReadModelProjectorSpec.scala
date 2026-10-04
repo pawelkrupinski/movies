@@ -966,6 +966,23 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // The boot reads run on a background boot thread, with the watch after them: a boot read that
+  // THREW (a Mongo error outside the read outcomes — a decode bug, a driver state error) skipped the
+  // watch and the paced sweeps for the life of the process, with one error log to show for it — no
+  // projection at all until a restart.
+  it should "still watch and project when its boot reads throw" in {
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
+    val rm = new InMemoryReadModelRepository() {
+      override def findAllMoviesChecked(): tools.ReadOutcome[Seq[ResolvedMovie]] = throw new IllegalStateException("the boot read blows up")
+    }
+    val projector = new ReadModelProjector(repository, rm, rm, clock = specClock)
+    noException should be thrownBy projector.start()
+    try {
+      repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+      rm.movieUpserts.map(_.title) should contain ("Foo")   // projected off the stream
+    } finally projector.stop()
+  }
+
   it should "not re-project a changed row the cursor did deliver" in {
     val (projector, repository, rm) = fixture()
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
