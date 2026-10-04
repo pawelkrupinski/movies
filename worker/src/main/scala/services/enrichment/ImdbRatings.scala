@@ -96,7 +96,7 @@ class ImdbRatings(
       // "United Kingdom"); canonicalise into the deployment's language so the
       // merged dedup operates on the same strings the other sources write
       // (Polish "USA"/"Wielka Brytania" on `kinowo`, English as-is elsewhere).
-      countries      = d.countries.map(c => CountryNames.canonical(c, enrichmentLanguage)).distinct,
+      countries      = services.movies.SlotFields.countries(d.countries, enrichmentLanguage),
       posterUrl      = d.posterUrl
     )
     val hasContent = slot.title.isDefined || slot.originalTitle.isDefined ||

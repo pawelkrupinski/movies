@@ -2,7 +2,6 @@ package services.movies
 
 import clients.TmdbClient
 import play.api.Logging
-import services.cinemas.CountryNames
 import services.events.{EventBus, ImdbIdMissing}
 import services.freshness.{FreshnessKind, FreshnessStore, InMemoryFreshnessStore}
 import services.resolution.TmdbBasis
@@ -187,7 +186,7 @@ class MovieService(
         // of America" → "USA" to match the strings cinemas write; a non-Polish
         // deployment keeps TMDB's already-localised name ("United Kingdom") so
         // it isn't mislabelled with a Polish one.
-        countries      = if (d.countries.nonEmpty) d.countries.map(c => CountryNames.canonical(c, tmdb.language)).distinct
+        countries      = if (d.countries.nonEmpty) SlotFields.countries(d.countries, tmdb.language)
                          else if (existingMatchesLanguage) existingTmdbSlot.countries else Seq.empty,
         genres         = if (d.genres.nonEmpty) d.genres
                          else if (existingMatchesLanguage) existingTmdbSlot.genres else Seq.empty,
