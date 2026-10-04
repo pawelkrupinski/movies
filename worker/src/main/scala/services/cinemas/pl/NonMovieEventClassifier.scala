@@ -2,6 +2,8 @@ package services.cinemas.pl
 
 import java.util.Locale
 
+import models.CinemaMovie
+
 import scala.util.matching.Regex
 /** Decides whether a scraped listing is a live STAGE/MUSIC event rather than a
  *  film. Small municipal & arthouse venues sell tickets to their own concerts,
@@ -187,6 +189,21 @@ object NonMovieEventClassifier {
    *  that the surrounding rule holds for them too: the broadcast veto still wins,
    *  and matching is still done on the lowercased title. See
    *  `OnlyMovieEventsFilter.venueEventMarkers` for how a client supplies them. */
+  /** [[isLiveEvent]] on a whole listing: a listing that states a film's record —
+   *  a director credit AND a production year — is a film whatever its title
+   *  says. The title alone can't tell Fosse's "Kabaret" (1972) or "Koncert"
+   *  (2009) from a cabaret night or a gig, since the event vocabulary IS the
+   *  film's name. Either half alone is not enough: a theatre play credits its
+   *  director, and an event row can carry a catalogue year. Every client that
+   *  filters a built listing goes through this, so the veto holds for all. */
+  def isLiveEvent(listing: CinemaMovie, venueMarkers: Seq[Regex]): Boolean =
+    !carriesFilmRecord(listing) && isLiveEvent(listing.movie.title, venueMarkers)
+
+  def isLiveEvent(listing: CinemaMovie): Boolean = isLiveEvent(listing, Nil)
+
+  private def carriesFilmRecord(listing: CinemaMovie): Boolean =
+    listing.director.exists(_.trim.nonEmpty) && listing.movie.releaseYear.isDefined
+
   def isLiveEvent(title: String, venueMarkers: Seq[Regex] = Nil): Boolean = {
     val t = title.toLowerCase(Locale.ROOT)
     if (isScreenedBroadcast(t)) false

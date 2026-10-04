@@ -74,7 +74,7 @@ class KinoSwiatowidElblagClient(
     }
 
   override def reduceChunks(chunks: Map[String, Seq[CinemaMovie]]): Seq[CinemaMovie] =
-    super.reduceChunks(chunks).filterNot(cm => NonMovieEventClassifier.isLiveEvent(cm.movie.title))
+    super.reduceChunks(chunks).filterNot(NonMovieEventClassifier.isLiveEvent)
 }
 
 object KinoSwiatowidElblagClient {

@@ -38,5 +38,5 @@ trait OnlyMovieEventsFilter extends CinemaScraper {
   protected def venueEventMarkers: Seq[Regex] = Nil
 
   final def fetch(): Seq[CinemaMovie] =
-    fetchUnfiltered().filterNot(cm => NonMovieEventClassifier.isLiveEvent(cm.movie.title, venueEventMarkers))
+    fetchUnfiltered().filterNot(cm => NonMovieEventClassifier.isLiveEvent(cm, venueEventMarkers))
 }

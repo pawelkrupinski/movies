@@ -151,7 +151,7 @@ class EkobiletClient(
         if (showtimes.isEmpty) None else Some(group.head.copy(showtimes = showtimes))
       }
       .filterNot(isStageTicket)
-      .filterNot(cm => NonMovieEventClassifier.isLiveEvent(cm.movie.title))
+      .filterNot(NonMovieEventClassifier.isLiveEvent)
 }
 
 object EkobiletClient {

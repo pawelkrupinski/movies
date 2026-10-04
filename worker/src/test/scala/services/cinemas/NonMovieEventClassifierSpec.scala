@@ -237,4 +237,26 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
       "Magik", "Kino Iluzjon zaprasza: Vertigo", "Iluzjonista - pokaz filmu",
     ).foreach(t => withClue(s"expected KEPT: [$t] ")(NonMovieEventClassifier.isLiveEvent(t) shouldBe false))
   }
+
+  // A title alone can't tell Fosse's "Kabaret" (1972) or Mihăileanu's "Koncert"
+  // (2009) from a cabaret night or a gig: the event vocabulary IS the film's
+  // name. What tells them apart is what the listing states — a director credit
+  // AND a production year is a film's record. Either alone is not: a theatre
+  // play credits its director, an event row can carry a catalogue year.
+  private def listing(title: String, director: Seq[String] = Nil, year: Option[Int] = None) =
+    models.CinemaMovie(models.Movie(title, releaseYear = year), models.KinoMuza, None, None, None, Nil, director, Nil)
+
+  "isLiveEvent on a listing" should "keep a film whose title is event vocabulary when it carries a film's credits" in {
+    Seq(
+      listing("Kabaret", Seq("Bob Fosse"), Some(1972)),
+      listing("Koncert", Seq("Radu Mihăileanu"), Some(2009)),
+      listing("Koncert życzeń", Seq("Jerzy Passendorfer"), Some(1967))
+    ).foreach(l => withClue(l.movie.title)(NonMovieEventClassifier.isLiveEvent(l) shouldBe false))
+  }
+
+  it should "still drop the event rows that carry only part of a film's record" in {
+    NonMovieEventClassifier.isLiveEvent(listing("Kabaret K2 - Jedziemy na luzie")) shouldBe true
+    NonMovieEventClassifier.isLiveEvent(listing("Pani domu jest tylko jedna - spektakl komediowy", Seq("Jan Kowalski"))) shouldBe true
+    NonMovieEventClassifier.isLiveEvent(listing("SIOSTRZYCZKI - koncert komediowy", year = Some(2026))) shouldBe true
+  }
 }

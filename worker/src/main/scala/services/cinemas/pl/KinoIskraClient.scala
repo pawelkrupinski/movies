@@ -63,6 +63,8 @@ class KinoIskraClient(
   // screenings — a white scrape instead of a red one. A film's record only adds
   // metadata to what the listing already shows, so one that fails to load leaves
   // that film bare rather than failing the venue. Records load side by side.
+  // Live events are dropped after the merge, so a film whose title is event
+  // vocabulary keeps itself by its record's director and year.
   def fetch(): Seq[CinemaMovie] = {
     val slots   = listing(HttpRead.page(http, RepertoireUrl), today)
     val records = ParallelDetailFetch.keyed("kino-iskra", slots.map(_.movieId), 30.seconds)(movieUrl)(url =>
@@ -86,7 +88,7 @@ class KinoIskraClient(
         showtimes = showtimes,
         ageRating = record.ageRating
       )
-    }
+    }.filterNot(NonMovieEventClassifier.isLiveEvent)
   }
 }
 
@@ -132,13 +134,14 @@ object KinoIskraClient {
 
   private val Minutes = """(\d{2,3})\s*min""".r
 
-  /** Every film screening on the `/repertuar/` page, live events excluded. */
+  /** Every screening on the `/repertuar/` page; live events are dropped once
+   *  each listing carries its record (see `fetch`). */
   private[pl] def listing(html: String, today: LocalDate): Seq[Slot] =
     Jsoup.parse(html, BaseUrl).select("div.list-by-movie h2.movie-title[data-movie]").asScala.toSeq.flatMap { heading =>
       val title  = heading.ownText.trim
       val format = ScraperParse.formatTokensIn(heading.select("sup").asScala.map(_.text).mkString(" ").toLowerCase(Locale.ROOT))
       val block  = heading.closest("div.bg-gray-light")
-      if (title.isEmpty || block == null || NonMovieEventClassifier.isLiveEvent(title)) Seq.empty
+      if (title.isEmpty || block == null) Seq.empty
       else block.select("button.event-button").asScala.toSeq.flatMap { button =>
         val spans = button.select("span").asScala.toSeq.map(_.text.trim)
         for {
