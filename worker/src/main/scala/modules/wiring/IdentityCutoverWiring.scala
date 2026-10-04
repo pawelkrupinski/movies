@@ -69,7 +69,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
           services.identity.Answer.Known(services.identity.TmdbStore.intsOf(d.get("ids")).headOption)),
       stored = agreementVerdicts,
       ask = open => services.identity.AgreementQuestions.enqueueOpen(taskQueue, open.questions, open.finds, clock, agreementQuestionMetrics),
-      metrics = workerMetrics.identityAgreement.stage(country.code))
+      metrics = workerMetrics.identityAgreement.stage(country.code), clock = clock)
   /** How the agreement's questions are enqueued and asked, per family and outcome. */
   lazy val agreementQuestionMetrics: services.identity.AgreementQuestionMetrics = workerMetrics.identityAgreement.questions(country.code)
   /** The agreement's verdicts (`identity_agreements`), kept as the model's families are. */

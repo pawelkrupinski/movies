@@ -139,38 +139,42 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     refreshed.flatMap(_.questions).filter(_._1 == VoterFamily.RottenTomatoes) should not be empty
   }
 
-  it should "resolve a waiting cluster again only once one of its own questions is answered, not on another's filing" in {
+  it should "resolve a waiting cluster again only once all its questions are answered, or some after it waited long" in {
     var resolves = 0
-    var rtAnswered = false
-    val rt = new FamilyAnswers {
-      val family: VoterFamily = VoterFamily.RottenTomatoes
-      private def held = new HeldFamilyAnswers(family, Map("klondike_2022" -> SourceRecord(klondike)), unanswered = !rtAnswered)
-      def titled(text: String)     = held.titled(text)
+    var rtAnswered, filmwebAnswered = false
+    def flipping(of: VoterFamily, records: Map[String, SourceRecord], isAnswered: => Boolean): FamilyAnswers = new FamilyAnswers {
+      private val family0 = of
+      val family: VoterFamily = of
+      private def held = new HeldFamilyAnswers(family0, records, unanswered = !isAnswered)
+      def titled(text: String)     = { if (family0 == VoterFamily.Imdb) resolves += 1; held.titled(text) }
       def directedBy(name: String) = held.directedBy(name)
       def record(id: String)       = held.record(id)
       override def fresh(question: String) = held.fresh(question)
     }
-    val counting = (agreeing() + (VoterFamily.RottenTomatoes -> rt)).map { case (family, answers) => family -> new FamilyAnswers {
-      val family: VoterFamily = answers.family
-      def titled(text: String)     = { resolves += 1; answers.titled(text) }
-      def directedBy(name: String) = answers.directedBy(name)
-      def record(id: String)       = answers.record(id)
-      override def fresh(question: String) = answers.fresh(question)
-    } }
+    val families = Map(
+      VoterFamily.Imdb           -> flipping(VoterFamily.Imdb, Map("tt16315948" -> SourceRecord(klondike, Map("imdb" -> "tt16315948"))), true),
+      VoterFamily.Wiki           -> flipping(VoterFamily.Wiki, Map("Q1" -> SourceRecord(klondike, Map("imdb" -> "tt16315948"))), true),
+      VoterFamily.Filmweb        -> flipping(VoterFamily.Filmweb, Map("880000" -> SourceRecord(klondike)), filmwebAnswered),
+      VoterFamily.RottenTomatoes -> flipping(VoterFamily.RottenTomatoes, Map("klondike_2022" -> SourceRecord(klondike)), rtAnswered))
+    val clock = new tools.MutableClock(java.time.Instant.parse("2026-10-04T21:00:00Z"))
     val handed = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Open]
-    val stage = new AgreementStage(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
-      new InMemoryAgreementVerdicts, ask = handed += _)
+    val stage = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+      new InMemoryAgreementVerdicts, ask = handed += _, clock = clock)
     val model = resolution
     stage.apply(model, listingOf, version = 1).decisions.head.film shouldBe None
     val (afterFirst, handedFirst) = (resolves, handed.size)
     stage.apply(model, listingOf, version = 1)
     (resolves, handed.size) shouldBe ((afterFirst, handedFirst))   // a quiet tick: no resolve, nothing handed
-    stage.apply(model, listingOf, version = 2)                      // another cluster's answer filed: still nothing to resolve
-    resolves shouldBe afterFirst
-    stage.wanted should contain (VoterFamily.RottenTomatoes -> "title|Klondike")
     rtAnswered = true
-    stage.apply(model, listingOf, version = 3).decisions.head.film shouldBe Some(913760)   // its own answered: resolved, taken
+    stage.apply(model, listingOf, version = 2)                      // one of its questions answered, Filmweb's still open: no resolve
+    resolves shouldBe afterFirst
+    clock.advanceSeconds(AgreementStage.PartialAfter.toSeconds)
+    stage.apply(model, listingOf, version = 3)                      // waited long with some answered: resolved on what came
     resolves should be > afterFirst
+    val afterPartial = resolves
+    filmwebAnswered = true
+    stage.apply(model, listingOf, version = 4).decisions.head.film shouldBe Some(913760)   // all answered: resolved, taken
+    resolves should be > afterPartial
   }
 
   it should "stay as the model left it while a family has not answered, and name the question" in {

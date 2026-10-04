@@ -26,7 +26,8 @@ import scala.collection.mutable
  */
 final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: IdentityLookups, normalizer: TitleNormalizer,
                            calibration: IdentityCalibration, tmdbOf: String => Answer[Option[Int]], stored: AgreementVerdicts,
-                           ask: AgreementStage.Open => Unit = _ => (), metrics: AgreementStage.Metrics = AgreementStage.Metrics.Silent) {
+                           ask: AgreementStage.Open => Unit = _ => (), metrics: AgreementStage.Metrics = AgreementStage.Metrics.Silent,
+                           clock: java.time.Clock = java.time.Clock.systemUTC()) {
 
   @volatile private var gaps: Set[(VoterFamily, String)] = Set.empty
   @volatile private var finds: Set[String] = Set.empty
@@ -48,7 +49,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   private val checked = TrieMap.empty[String, (Long, Long)]
   /** The clusters a family has not answered for yet, at the `version` and listings' digest they were last resolved at,
    *  with the questions they wait on: not resolved again until one of those is answered or their listings move. */
-  private val waiting = TrieMap.empty[String, (Long, Long, Set[(VoterFamily, String)])]
+  private val waiting = TrieMap.empty[String, AgreementStage.Waiting]
   /** The questions handed to `ask` since the families' answers last moved: a tick that filed nothing hands nothing. */
   private val handed      = mutable.Set.empty[(VoterFamily, String)]
   private val handedFinds = mutable.Set.empty[String]
@@ -137,8 +138,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         stands
       }
     }
-    .orElse(waiting.get(id).filter { case (_, listed, gaps) => listed == digest && !gaps.exists(answered) } match {
-      case Some((_, _, gaps)) => asked ++= gaps; None   // none of its own questions answered since: nothing to resolve again
+    .orElse(waiting.get(id).filter(w => w.listings == digest && !due(w)) match {
+      case Some(w) => asked ++= w.gaps; None   // its questions not all answered yet: a resolve now could reach no verdict
       case None               => resolved(id, digest, listings, version, asked, moved)
     })
   }
@@ -154,7 +155,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       Agreement.verdict(listings, new Recording(answers, gaps, reads), venues, normalizer, calibrations(answers.family))
     }
     asked ++= gaps
-    if (verdicts.contains(Answer.Unknown)) { waiting(id) = (version, digest, gaps.toSet); None }
+    if (verdicts.contains(Answer.Unknown)) { waiting(id) = AgreementStage.Waiting(digest, gaps.toSet, clock.instant()); None }
     else {
       waiting -= id
       Some {
@@ -170,6 +171,14 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  for another cluster's question resolves none of the rest again (prod PL 2026-10-04: re-resolving every waiting
    *  cluster on each filing ran a 24 s, 540 MB agreement phase back to back). */
   private def answered(gap: (VoterFamily, String)): Boolean = families.get(gap._1).exists(_.fresh(gap._2))
+
+  /** Is a waiting cluster due a resolve? Once every question it waits on is answered — any gap left, and the families
+   *  could reach no verdict, so resolving on each answer as a backlog drains (every cluster gets one, every tick) only
+   *  re-ran the same partial resolve: prod PL 2026-10-04, 25–48 s an agreement phase after the per-question fix — or once
+   *  some are and it has waited [[AgreementStage.PartialAfter]], so a question never answered holds no cluster for ever. */
+  private def due(waiting: AgreementStage.Waiting): Boolean =
+    waiting.gaps.forall(answered) ||
+      (!clock.instant().isBefore(waiting.since.plusMillis(AgreementStage.PartialAfter.toMillis)) && waiting.gaps.exists(answered))
 
   /** A stored read whose answer is stale, as the question to ask again. */
   private def staleOf(question: String): Option[(VoterFamily, String)] = question.split("\\|", 2) match {
@@ -248,4 +257,9 @@ object AgreementStage {
                            finds: Int, resolves: Int, seconds: Double)
   trait Metrics { def applied(applied: Applied): Unit }
   object Metrics { val Silent: Metrics = _ => () }
+
+  /** A cluster waiting on families' answers: its listings' digest, the questions it waits on, and since when. */
+  private final case class Waiting(listings: Long, gaps: Set[(VoterFamily, String)], since: java.time.Instant)
+  /** How long a cluster with some of its questions answered waits for the rest before it is resolved on what came. */
+  val PartialAfter: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, java.util.concurrent.TimeUnit.MINUTES)
 }
