@@ -4624,6 +4624,38 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // A screen reader heard the funnel and every fold row as inert: nothing said
+  // whether the panel or a list was open, and the fold rows — plain `<div>`s
+  // with an onclick — could not be reached or opened from the keyboard at all.
+  "the Filtry panel and its folds" should "say whether they are open, and open from the keyboard" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      val expanded = (selector: String) =>
+        page.evalString(s"document.querySelector('$selector').getAttribute('aria-expanded')")
+      expanded("#format-filter-btn") shouldBe "false"
+      openFiltry(page)
+      expanded("#format-filter-btn") shouldBe "true"
+
+      page.evalString("document.getElementById('genre-row').getAttribute('role')") shouldBe "button"
+      page.evalInt("document.getElementById('genre-row').tabIndex") shouldBe 0
+      expanded("#genre-row") shouldBe "false"
+      page.eval(
+        "(() => { const row = document.getElementById('genre-row'); row.focus();" +
+        "  row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()")
+      page.evalString("document.getElementById('genre-list').style.display") shouldBe ""
+      expanded("#genre-row") shouldBe "true"
+
+      // A cinema fold built at runtime behaves the same.
+      val header = "#room-list .room-cinema-header"
+      expanded(header) shouldBe "false"
+      page.eval(s"document.querySelector('$header').dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }))")
+      expanded(header) shouldBe "true"
+
+      page.eval("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))")
+      expanded("#format-filter-btn") shouldBe "false"
+    }
+  }
+
   "unchecking a country" should "leave ?country= listing the still-checked countries (inclusion set, captured on Copy)" in {
     onPath("/") { page =>
       clearLocalStorage(page)

@@ -272,9 +272,17 @@
 
   // Hide every navbar dropdown except (optionally) one — used by each toggle handler
   // so opening any panel closes all the others.
+  // Every open/close of a dropdown goes through here, so its trigger
+  // (`aria-controls` naming the panel) always says whether it is open.
+  function setPanelOpen(panel, open) {
+    panel.style.display = open ? 'block' : 'none';
+    const trigger = document.querySelector('[aria-controls="' + panel.id + '"]');
+    if (trigger) trigger.setAttribute('aria-expanded', String(open));
+  }
+
   function closeOtherPanels(except) {
     document.querySelectorAll('.dropdown-panel').forEach(p => {
-      if (p !== except) p.style.display = 'none';
+      if (p !== except) setPanelOpen(p, false);
     });
   }
 
@@ -284,9 +292,38 @@
     const opening = panel.style.display === 'none';
     if (opening) ensureSubmenuPanels();   // lazily build the grid-scanned lists
     closeOtherPanels(opening ? panel : null);
-    panel.style.display = opening ? 'block' : 'none';
+    setPanelOpen(panel, opening);
     if (opening) clampPanel(panel);
   }
+
+  // ── Folds ─────────────────────────────────────────────────────────────────
+  //
+  // A fold is a header row over a `.submenu-list` body: the Filtry submenus
+  // (`#<key>-row` over `#<key>-list`, in `_navbar`) and the cinema / area
+  // groups built at runtime. The header is a `role="button"` row, so it is
+  // focusable and says whether its body is open; Enter or Space on it does
+  // what a click does (the delegated handler below, which serves every
+  // `role="button"` row in the panel — the hidden-films and city rows too).
+  function setFoldOpen(header, body, open) {
+    body.style.display = open ? '' : 'none';
+    header.setAttribute('aria-expanded', String(open));
+    const chevron = header.querySelector('.submenu-chevron');
+    if (chevron) chevron.classList.toggle('open', open);
+  }
+  function toggleFold(header, body) { setFoldOpen(header, body, body.style.display === 'none'); }
+  // A header built at runtime, made the same kind of control `_navbar`'s are.
+  function makeFoldHeader(header, body) {
+    header.setAttribute('role', 'button');
+    header.tabIndex = 0;
+    header.setAttribute('aria-expanded', 'false');
+    header.onclick = () => toggleFold(header, body);
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (!(e.target instanceof Element) || !e.target.matches('.panel-label[role="button"]')) return;
+    e.preventDefault();   // Space would otherwise scroll the panel
+    e.target.click();
+  });
 
   function resetFormatFilter() {
     document.querySelector('input[name="format-dim"][value=""]').checked  = true;
@@ -305,17 +342,15 @@
       var list = document.getElementById(key + '-list');
       if (list) {
         list.querySelectorAll('input[type="checkbox"]').forEach(function(checkbox) { checkbox.checked = true; });
-        list.style.display = 'none';
+        setFoldOpen(document.getElementById(key + '-row'), list, false);
       }
-      var chevron = document.getElementById(key + '-chevron');
-      if (chevron) chevron.classList.remove('open');
       updateSubmenuCount(key);
     });
     // Re-enable every cinema in this city — the picker lives in the same panel
     // and counts as a filter (the funnel icon lights for it), so "Wyczyść"
     // clears it too, matching the iOS/Android Wyczyść which resets disabledCinemas.
     if (document.getElementById('cinema-list')) toggleAllCinemas(true);
-    document.getElementById('format-panel').style.display = 'none';
+    setPanelOpen(document.getElementById('format-panel'), false);
     onFormatChange();
   }
 
@@ -341,11 +376,7 @@
 
   function toggleSubmenu(key) {
     var list = document.getElementById(key + '-list');
-    var chevron = document.getElementById(key + '-chevron');
-    if (!list) return;
-    var opening = list.style.display === 'none';
-    list.style.display = opening ? '' : 'none';
-    if (chevron) chevron.classList.toggle('open', opening);
+    if (list) toggleFold(document.getElementById(key + '-row'), list);
   }
 
   function updateSubmenuCount(key) {
@@ -557,11 +588,7 @@
       inner.style.display = 'none';
       inner.style.marginLeft = '12px';
 
-      header.onclick = function() {
-        var opening = inner.style.display === 'none';
-        inner.style.display = opening ? '' : 'none';
-        chevron.classList.toggle('open', opening);
-      };
+      makeFoldHeader(header, inner);
 
       rooms.forEach(function(room) {
         var label = document.createElement('label');
@@ -1375,11 +1402,7 @@
     body.style.display = 'none';                          // collapsed by default
     area.cinemas.forEach(c => body.appendChild(buildCinemaRow(c)));
 
-    header.onclick = () => {
-      const opening = body.style.display === 'none';
-      body.style.display = opening ? '' : 'none';
-      chevron.classList.toggle('open', opening);
-    };
+    makeFoldHeader(header, body);
 
     group.appendChild(header);
     group.appendChild(body);

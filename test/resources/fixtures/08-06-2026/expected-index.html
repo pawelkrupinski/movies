@@ -157,14 +157,14 @@ hide(true);
 
   <div id="filtry-wrapper" class="navbar-filtry" style="position:relative">
     
-    <button id="format-filter-btn" onclick="toggleFormatPanel(event)" class="btn refresh-btn btn-sm filter-icon-btn" aria-label="Filtry" title="Filtry" data-i18n-attr="aria-label:nav.filters;title:nav.filters">
+    <button id="format-filter-btn" onclick="toggleFormatPanel(event)" aria-expanded="false" aria-controls="format-panel" class="btn refresh-btn btn-sm filter-icon-btn" aria-label="Filtry" title="Filtry" data-i18n-attr="aria-label:nav.filters;title:nav.filters">
       <svg class="filter-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
       </svg>
     </button>
     <div id="format-panel" class="dropdown-panel" style="display:none" onclick="event.stopPropagation()">
       
-      <div id="hidden-row" class="panel-label" style="display:none; justify-content:space-between; align-items:center;"
+      <div id="hidden-row" class="panel-label" role="button" tabindex="0" style="display:none; justify-content:space-between; align-items:center;"
            onclick="openHiddenModal(event)">
         <span data-i18n="nav.hiddenFilms">Ukryte filmy</span>
         <span id="hidden-row-count" class="hidden-row-count"></span>
@@ -189,52 +189,52 @@ hide(true);
         <div class="panel-divider"></div>
       </div>
 
-      <div id="country-row" class="panel-label submenu-row" onclick="toggleSubmenu('country')">
+      <div id="country-row" class="panel-label submenu-row" role="button" tabindex="0" aria-expanded="false" aria-controls="country-list" onclick="toggleSubmenu('country')">
         <span data-i18n="nav.country">Kraj produkcji</span>
         <span class="submenu-right">
           <span id="country-row-count" class="submenu-row-count" style="display:none"></span>
-          <span id="country-chevron" class="submenu-chevron">&#8250;</span>
+          <span class="submenu-chevron">&#8250;</span>
         </span>
       </div>
       <div id="country-list" class="submenu-list" style="display:none"></div>
       <div class="panel-divider"></div>
 
-      <div id="genre-row" class="panel-label submenu-row" onclick="toggleSubmenu('genre')">
+      <div id="genre-row" class="panel-label submenu-row" role="button" tabindex="0" aria-expanded="false" aria-controls="genre-list" onclick="toggleSubmenu('genre')">
         <span data-i18n="nav.genre">Gatunek</span>
         <span class="submenu-right">
           <span id="genre-row-count" class="submenu-row-count" style="display:none"></span>
-          <span id="genre-chevron" class="submenu-chevron">&#8250;</span>
+          <span class="submenu-chevron">&#8250;</span>
         </span>
       </div>
       <div id="genre-list" class="submenu-list" style="display:none"></div>
       <div class="panel-divider"></div>
 
-      <div id="director-row" class="panel-label submenu-row" onclick="toggleSubmenu('director')">
+      <div id="director-row" class="panel-label submenu-row" role="button" tabindex="0" aria-expanded="false" aria-controls="director-list" onclick="toggleSubmenu('director')">
         <span data-i18n="nav.director">Reżyseria</span>
         <span class="submenu-right">
           <span id="director-row-count" class="submenu-row-count" style="display:none"></span>
-          <span id="director-chevron" class="submenu-chevron">&#8250;</span>
+          <span class="submenu-chevron">&#8250;</span>
         </span>
       </div>
       <div id="director-list" class="submenu-list" style="display:none"></div>
       <div class="panel-divider"></div>
 
-      <div id="cast-row" class="panel-label submenu-row" onclick="toggleSubmenu('cast')">
+      <div id="cast-row" class="panel-label submenu-row" role="button" tabindex="0" aria-expanded="false" aria-controls="cast-list" onclick="toggleSubmenu('cast')">
         <span data-i18n="nav.cast">Obsada</span>
         <span class="submenu-right">
           <span id="cast-row-count" class="submenu-row-count" style="display:none"></span>
-          <span id="cast-chevron" class="submenu-chevron">&#8250;</span>
+          <span class="submenu-chevron">&#8250;</span>
         </span>
       </div>
       <div id="cast-list" class="submenu-list" style="display:none"></div>
       <div class="panel-divider"></div>
 
       
-      <div id="room-row" class="panel-label submenu-row" onclick="toggleSubmenu('room')">
+      <div id="room-row" class="panel-label submenu-row" role="button" tabindex="0" aria-expanded="false" aria-controls="room-list" onclick="toggleSubmenu('room')">
         <span data-i18n="nav.rooms">Sale</span>
         <span class="submenu-right">
           <span id="room-row-count" class="submenu-row-count" style="display:none"></span>
-          <span id="room-chevron" class="submenu-chevron">&#8250;</span>
+          <span class="submenu-chevron">&#8250;</span>
         </span>
       </div>
       <div id="room-list" class="submenu-list" style="display:none"></div>
@@ -277,7 +277,7 @@ hide(true);
 
       
       
-        <div id="city-picker-row" class="panel-label submenu-row" onclick="goToCityPicker()">
+        <div id="city-picker-row" class="panel-label submenu-row" role="button" tabindex="0" onclick="goToCityPicker()">
           <span data-i18n="nav.city">Miasto</span>
           <span class="submenu-right">
             <span class="city-picker-current">Poznań</span>
