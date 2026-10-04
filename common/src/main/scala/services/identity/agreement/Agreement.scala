@@ -120,31 +120,35 @@ object Agreement {
     }
   }
 
-  /** The film ≥ [[Quorum]] families' picks agree on, when no family picks another (picks join by a shared cross-id, else
+  /** The film ≥ [[Quorum]] families' picks agree on, when no family picks another (picks join, through any agreeing record, by a shared cross-id, else
    *  by [[equivalent]] facts) nor weighed it and took none, the listing's title names it ([[namesIt]]), the listing bills
    *  one work ([[billsSeveral]]) and no stage work ([[stagesAWork]]). The experiment's one wrong without the title guard:
    *  "Akademia Polskiego Filmu: Kino żydowskie w Polsce" → "Znachor" (1937), whose year and director fit a series'
    *  episode; the replay's without the weighed one: "Okładka „Tempo”", a Finnish dance film, → "Tempo" (2003), which
    *  IMDb's search found, weighed and turned down while Filmweb, RT and Wikidata took it. */
   def agreed(listings: Seq[Listing], verdicts: Seq[FamilyVerdict]): Option[AgreedFilm] = {
-    val picks = verdicts.flatMap(_.pick)
-    val groups = mutable.ArrayBuffer.empty[(mutable.Set[VoterFamily], FamilyPick, mutable.Map[VoterFamily, String])]
-    picks.sortBy(_.family.ordinal).foreach { pick =>
-      groups.find { case (_, lead, _) => sameFilm(lead.record, pick.record) } match {
-        case Some((families, _, ids)) => families += pick.family; ids(pick.family) = pick.id
-        case None                     => groups += ((mutable.Set(pick.family), pick, mutable.Map(pick.family -> pick.id)))
-      }
-    }
-    groups.toSeq match {
-      case Seq((families, lead, ids)) if families.size >= Quorum =>
-        val records = picks.filter(pick => families(pick.family)).map(_.record)
+    val picks = verdicts.flatMap(_.pick).sortBy(_.family.ordinal)
+    filmsOf(picks) match {
+      case Seq(group) if group.size >= Quorum =>
+        val lead    = group.head
+        val records = group.map(_.record)
         val merged  = lead.record.copy(crossIds = records.flatMap(_.crossIds).toMap ++ lead.record.crossIds)
-        val turnedDown = verdicts.exists(verdict => verdict.pick.isEmpty && verdict.weighed.exists(sameFilm(_, lead.record)))
+        val turnedDown = verdicts.exists(verdict => verdict.pick.isEmpty && verdict.weighed.exists(weighed => records.exists(sameFilm(_, weighed))))
         Option.when(listings.nonEmpty && !turnedDown && listings.forall(listing => namesIt(listing, records.map(_.film)) && !billsSeveral(listing) && !stagesAWork(listing)))(
-          AgreedFilm(families.toSet, merged, ids.toMap))
+          AgreedFilm(group.map(_.family).toSet, merged, group.map(pick => pick.family -> pick.id).toMap))
       case _ => None
     }
   }
+
+  /** The picks as the films they name: a pick joins every film one of whose picks is the [[sameFilm]] — through ANY
+   *  family's record, so a record that names a film only in another family's terms (Wikidata's crediting "Kukla" as
+   *  Filmweb does, beside IMDb's id that IMDb's "Kukla Kesherovic" carries) joins the three, and two films a pick links
+   *  are one. Each film's picks in family order. */
+  private def filmsOf(picks: Seq[FamilyPick]): Seq[Seq[FamilyPick]] =
+    picks.foldLeft(Vector.empty[Vector[FamilyPick]]) { (films, pick) =>
+      val (joined, apart) = films.partition(_.exists(member => sameFilm(member.record, pick.record)))
+      apart :+ (joined.flatten :+ pick).sortBy(_.family.ordinal)
+    }
 
   /** The same film by a shared cross-id, else by [[equivalent]] facts. */
   def sameFilm(a: SourceRecord, b: SourceRecord): Boolean =

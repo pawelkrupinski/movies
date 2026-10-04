@@ -52,6 +52,18 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(Seq(bill), all.map(f => FamilyVerdict.took(FamilyPick(f.family, "1", SourceRecord(film("Znachor", 1937, "Michał Waszyński")))))) shouldBe None
   }
 
+  it should "join a family to the agreement through any agreeing family's record, not only the first family's" in {
+    // DE "Fantasy" (fixture identity-unmatched): Filmweb credits "Kukla", IMDb "Kukla Kesherovic" — a clash on their own;
+    // Wikidata's record credits "Kukla" too and links IMDb's id, so the three name one film
+    val imdb    = SourceRecord(film("Fantasy", 2025, "Kukla Kesherovic", 98), Map("imdb" -> "tt36112899"))
+    val wiki    = SourceRecord(film("Fantasy", 2025, "Kukla").copy(runtime = None), Map("imdb" -> "tt36112899", "wikidata" -> "Q135441923"))
+    val filmweb = SourceRecord(film("Fantasy", 2025, "Kukla", 98))
+    val bare    = Seq(listing(KinoMuza, "Fantasy", year = Some(2025)))
+    val agreed  = Agreement.agreed(bare, Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Imdb, "tt36112899", imdb)),
+      FamilyVerdict.took(FamilyPick(VoterFamily.Wiki, "Q135441923", wiki)), FamilyVerdict.took(FamilyPick(VoterFamily.Filmweb, "10088643", filmweb))))
+    agreed.map(_.families) shouldBe Some(Set(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb))
+  }
+
   "A family that weighed the film the others agree on and took none" should "turn the agreement down" in {
     val tempo   = film("Tempo", 2003, "Eric Styles")
     val dance   = Seq(listing(KinoMuza, "Okładka „Tempo”"))
