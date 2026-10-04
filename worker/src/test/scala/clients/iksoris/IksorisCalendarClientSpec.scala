@@ -108,4 +108,16 @@ class IksorisCalendarClientSpec extends AnyFlatSpec with Matchers with OptionVal
     }
     an[IllegalStateException] should be thrownBy new IksorisCalendarClient(erroring, page, KinoWCK, today).fetch()
   }
+
+  // A day the calendar marks as scheduled answering `{"status":"error"}` is a
+  // failed read, not a day without screenings — read as the latter, a whole
+  // month of such days became a "complete" listing of nothing.
+  it should "treat a day reply without its data array as a failed read" in {
+    val replay = new FakeHttpFetch("kino-wck")
+    val erroring = new tools.HttpFetch {
+      def get(url: String): String = if (url.contains("pobierzTerminy")) """{"status":"error"}""" else replay.get(url)
+      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
+    }
+    an[IllegalStateException] should be thrownBy new IksorisCalendarClient(erroring, page, KinoWCK, today).fetch()
+  }
 }

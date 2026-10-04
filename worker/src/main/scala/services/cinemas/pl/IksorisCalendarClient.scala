@@ -61,8 +61,9 @@ class IksorisCalendarClient(
     }
     val days = (thisMonth ++ later.result()).filterNot(_.isBefore(today))
     // Parsed inside the day's Try: a day answering 200 with an HTML session page
-    // drops that day, not the whole scrape.
-    val attempts = days.map(day => Try(Json.parse(HttpRead.page(http, dayUrl(page, day)))))
+    // or a `{"status":"error"}` without its `data` drops that day (and marks the
+    // listing incomplete), not the whole scrape — and is never read as empty.
+    val attempts = days.map(day => Try(dayShowings(HttpRead.page(http, dayUrl(page, day)))))
     ListingPages.requireAnyReached(attempts)
     parse(attempts.flatMap(_.toOption), cinema)
   }
@@ -101,8 +102,14 @@ object IksorisCalendarClient {
       .flatMap(button => Try(LocalDate.parse(button.attr("data-day"))).toOption).distinct
   }
 
-  def parse(dayJsons: Seq[JsValue], cinema: Cinema): Seq[CinemaMovie] = {
-    val slots = dayJsons.flatMap(day => (day \ "data").asOpt[Seq[JsValue]].getOrElse(Seq.empty)).flatMap(showing)
+  /** A day reply's showings; a reply without its `data` array throws — the
+   *  calendar marked this day as scheduled, so "no data" is a failed read. */
+  private[pl] def dayShowings(dayJson: String): Seq[JsValue] =
+    (Json.parse(dayJson) \ "data").asOpt[Seq[JsValue]].getOrElse(
+      throw new IllegalStateException(s"iKsoris day reply carries no data: ${dayJson.take(200)}"))
+
+  def parse(days: Seq[Seq[JsValue]], cinema: Cinema): Seq[CinemaMovie] = {
+    val slots = days.flatten.flatMap(showing)
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, None, s.format)) { (title, group, showtimes) =>
       CinemaMovie(
         movie     = Movie(title, rawTitle = Some(group.head.rawTitle).filter(_ != title)),
