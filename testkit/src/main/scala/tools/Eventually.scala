@@ -38,4 +38,31 @@ object Eventually {
     while (!ok && System.nanoTime() / 1000000 < deadline) { Thread.sleep(pollMs); ok = probe }
     ok
   }
+  /** Block until a change stream demonstrably DELIVERS, by making changes until one
+   *  comes back, then assert it did.
+   *
+   *  A `watch` subscribes and returns; the cursor opens asynchronously (the server-side
+   *  open completes later, in `onSubscribe`). So a write issued right after it returns can
+   *  beat the cursor open, and an event nobody was listening for is simply gone — after
+   *  which the latch the test is really about can only time out. A fixed `Thread.sleep` is
+   *  a guess at that window, and it makes a slow runner look exactly like the bug a spec
+   *  exists to catch.
+   *
+   *  `change(n)` MUST make a genuinely different write each pass — `n` is there to vary
+   *  it — or the loop stops owing itself an event and spins to the deadline.
+   *
+   *  `fired` is by-name and re-checked every pass; pass something that waits about a
+   *  second (`latch.await(1, TimeUnit.SECONDS)`, `poll(1000)(…)`), so the loop paces itself. */
+  def awaitStreamLive(what: String, fired: => Boolean, timeoutMs: Long = 60000)(change: Int => Unit): org.scalatest.Assertion = {
+    val deadline = System.nanoTime() / 1000000 + timeoutMs
+    var passes   = 0
+    var live     = false
+    while (!live && System.nanoTime() / 1000000 < deadline) {
+      passes += 1
+      change(passes)
+      live = fired
+    }
+    import org.scalatest.Assertions.{assert, withClue}
+    withClue(s"the change stream never delivered $what, so nothing after it is testing what it claims to: ")(assert(live))
+  }
 }

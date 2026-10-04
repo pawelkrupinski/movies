@@ -14,6 +14,7 @@ import org.mongodb.scala.{Document, MongoClient, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
 import services.movies.{ChangeStreamMetrics, MongoMovieRepository, StoredMovieRecord, FilmId}
 import tools.Eventually
+import tools.Eventually.awaitStreamLive
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -36,35 +37,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   private val isolatedSpecDb     = tools.IsolatedMongoDatabase.open(mongoTarget, "movie-repository-spec")
   private val specDb = isolatedSpecDb.database
   private val repository = new MongoMovieRepository(Some(specDb), normalizer = titleNormalizer)
-
-  /** Block until a change stream demonstrably DELIVERS, by making changes until one
-   *  comes back, then assert it did.
-   *
-   *  `watchChanges` / `watch` subscribe and return; the cursor opens asynchronously
-   *  (`MovieRepository.ensureWatching` hands the driver an `Observer` and the server-side
-   *  open completes later, in `onSubscribe`). So a write issued right after one of them
-   *  returns can beat the cursor open, and an event nobody was listening for is simply
-   *  gone — after which the latch the test is really about can only time out. A fixed
-   *  `Thread.sleep` is a guess at that window, and it makes a slow runner look exactly
-   *  like the bug the spec exists to catch.
-   *
-   *  `change(n)` MUST make a genuinely different write each pass — `n` is there to vary
-   *  it — or the loop stops owing itself an event and spins to the deadline.
-   *
-   *  `fired` is by-name and re-checked every pass; pass something that waits about a
-   *  second (`latch.await(1, TimeUnit.SECONDS)`), so the loop paces itself. */
-  private def awaitStreamLive(what: String, fired: => Boolean)(change: Int => Unit): Unit = {
-    val deadline = System.nanoTime() / 1000000 + 60000
-    var passes   = 0
-    var live     = false
-    while (!live && System.nanoTime() / 1000000 < deadline) {
-      passes += 1
-      change(passes)
-      live = fired
-    }
-    withClue(s"the change stream never delivered $what, so nothing below is testing " +
-             s"what it claims to: ")(live shouldBe true)
-  }
 
   /** Poll `accounted` until it reaches `target` or `budgetMs` elapses — a named,
    *  self-documenting call at the two coalescing settle-loops that share this shape,

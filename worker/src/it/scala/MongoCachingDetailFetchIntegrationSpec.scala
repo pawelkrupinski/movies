@@ -7,6 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.MongoCachingDetailFetch
 import tools.GetOnlyHttpFetch
+import tools.Eventually.eventually
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -37,11 +38,13 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
    *  by `_id == url`), polling rather than racing a fixed sleep — a 300ms sleep
    *  lost the race on a slow CI Mongo, so the second instance missed the cache
    *  and re-fetched, failing `gets == 1` intermittently. */
-  private def awaitStored(url: String): Unit = {
-    val deadline = System.nanoTime() / 1000000 + 10.seconds.toMillis
-    while (System.nanoTime() / 1000000 < deadline &&
-           Await.result(db.getCollection(collName).find(Filters.eq("_id", s"${Chain.name}|$url")).headOption(), 5.seconds).isEmpty)
-      Thread.sleep(25)
+  private def awaitStored(url: String): Unit = { storedDocument(s"${Chain.name}|$url"); () }
+
+  /** The cache document under `id`, polled for until the fire-and-forget store lands. */
+  private def storedDocument(id: String): org.mongodb.scala.Document = {
+    def read = Await.result(db.getCollection(collName).find(Filters.eq("_id", id)).headOption(), 5.seconds)
+    eventually(withClue(s"$id never stored: ")(read should not be empty), timeoutMs = 10.seconds.toMillis)
+    read.get
   }
 
   "Two MongoCachingDetailFetch instances sharing a collection" should "fetch the underlying only once for the same URL" in {
@@ -105,10 +108,7 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     val (h, c)      = (s"https://helios.pl/api/movie/${System.nanoTime()}", s"https://www.cinema-city.pl/filmy/${System.nanoTime()}")
     helios.get(h); cinemaCity.get(c)
     def lifetime(id: String): Long = {
-      val deadline = System.nanoTime() / 1000000 + 10.seconds.toMillis
-      def doc = Await.result(db.getCollection(collName).find(Filters.eq("_id", id)).headOption(), 5.seconds)
-      while (System.nanoTime() / 1000000 < deadline && doc.isEmpty) Thread.sleep(25)
-      val d = doc.getOrElse(fail(s"$id never stored"))
+      val d = storedDocument(id)
       (d("expireAt").asDateTime.getValue - d("fetchedAt").asDateTime.getValue) / 1000
     }
     lifetime(s"helios|$h") shouldBe 2.hours.toSeconds
@@ -127,13 +127,12 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
 
   /** The index is built on a daemon thread, so poll for it rather than race a sleep. */
   private def awaitExpireAtIndex(): Unit = {
-    val deadline = System.nanoTime() / 1000000 + 10.seconds.toMillis
     def current: Option[Long] =
       Await.result(db.getCollection(collName).listIndexes().toFuture(), 5.seconds)
         .find(_.get("key").exists(_.asDocument().containsKey("expireAt")))
         .flatMap(_.get("expireAfterSeconds")).map(_.asNumber().longValue())
-    while (System.nanoTime() / 1000000 < deadline && !current.contains(0L)) Thread.sleep(25)
-    current shouldBe Some(0L)
+    eventually(current shouldBe Some(0L), timeoutMs = 10.seconds.toMillis)
+    ()
   }
 
   it should "NOT be remembered when the failure is transient, so a 5xx still retries" in {

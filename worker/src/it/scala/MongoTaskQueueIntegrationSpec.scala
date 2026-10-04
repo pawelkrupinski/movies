@@ -114,9 +114,10 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   it should "time out a task stuck in processing past its lease" in {
     val key = s"detail|it-reap-${System.nanoTime()}"
     queue.enqueue(TaskType.EnrichDetails, key, submittedAt = t0)
-    drainUntil(_.dedupKey == key, "w1", lease = 1.millis)
-    Thread.sleep(10)
-    queue.reapExpiredLeases(Instant.now()) should be >= 1
+    // Leased at t0 for 1 ms, reaped at a second past it: the lease is judged on the instants
+    // handed in, so no real time has to pass for it to run out.
+    drainUntil(_.dedupKey == key, "w1", lease = 1.millis, now = t0)
+    queue.reapExpiredLeases(t0.plusSeconds(1)) should be >= 1
     // Back to waiting → claimable again.
     drainUntil(_.dedupKey == key, "w2").dedupKey shouldBe key
   }
@@ -215,11 +216,12 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
 
   // Claim repeatedly until the task matching `p` is handed out (other tests'
   // leftovers may be claimed first; harmless — they just lease and stay).
-  private def drainUntil(p: services.tasks.Task => Boolean, worker: String, lease: FiniteDuration = 5.minutes) = {
+  private def drainUntil(p: services.tasks.Task => Boolean, worker: String, lease: FiniteDuration = 5.minutes,
+                         now: Instant = Instant.now()) = {
     var found: Option[services.tasks.Task] = None
     var tries = 0
     while (found.isEmpty && tries < 50) {
-      queue.claim(worker, lease) match {
+      queue.claim(worker, lease, now) match {
         case Some(t) if p(t) => found = Some(t)
         case Some(_)         => () // someone else's task; leave it leased
         case None            => tries = 50

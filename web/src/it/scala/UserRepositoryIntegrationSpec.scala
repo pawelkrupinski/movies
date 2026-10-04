@@ -9,7 +9,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.ChangeStreamReopen
 import services.users.{UserSessionVersionContract, CaffeineUserChangeTimeCache, UserStateRows, UserStateWritesContract, MongoUserRepository, MongoUserStateRepository, UserCodecs}
-import tools.Eventually.eventually
+import tools.Eventually.{awaitStreamLive, eventually, poll}
 
 import java.time.Instant
 import scala.concurrent.Await
@@ -191,7 +191,10 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       val userId   = "__integration-test-state-stream-delete"
       cache.start()
       try {
-        Thread.sleep(500) // the cursor opens at "now": give it a moment to be open before writing
+        // The cursor opens at "now", asynchronously: write until it delivers before writing the row under test.
+        val warm = "__integration-test-state-stream-warm"
+        awaitStreamLive("a warm-up row", poll(1000)(cache.lastChangeAt(warm).isDefined))(pass =>
+          UserStateRows.replace(db, UserState(warm, Set(s"W$pass"), Set.empty, Now)))
         UserStateRows.replace(db, UserState(userId, Set("X"), Set.empty, Now))
         eventually(cache.lastChangeAt(userId) shouldBe Some(Now), timeoutMs = 10000)
 
@@ -223,19 +226,25 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   // no uniqueness for a concurrent first write to hit, and a collection scan for every `find`.
   it should "leave an already-unique userId index alone on the next boot" in {
     val coll = database.getCollection("userStates")
-    def userIdIndexCreatedAt(): Any =
-      Await.result(coll.aggregate(Seq(org.mongodb.scala.bson.collection.immutable.Document(
+    // An index's access counter starts at 0 when it is built, so a rebuilt index forgets the
+    // use made of it before — no wait between the boots is needed to tell the two apart.
+    def userIdIndexAccesses(): (Any, Long) = {
+      val accesses = Await.result(coll.aggregate(Seq(org.mongodb.scala.bson.collection.immutable.Document(
         "$indexStats" -> org.mongodb.scala.bson.collection.immutable.Document()))).toFuture(), 10.seconds)
         .find(_.get("name").map(_.asString.getValue).contains("userId_1")).value
-        .get("accesses").value.asDocument().get("since")
+        .get("accesses").value.asDocument()
+      (accesses.get("since"), accesses.get("ops").asNumber().longValue())
+    }
     val booted = new MongoUserStateRepository(Some(database))
     try booted.enabled shouldBe true finally booted.close() // boots once: the index exists, unique
-    val before = userIdIndexCreatedAt()
-    Thread.sleep(50)
+    Await.result(coll.find(Filters.eq("userId", "__integration-test-index-use"))
+      .hint(org.mongodb.scala.bson.collection.immutable.Document("userId" -> 1)).toFuture(), 10.seconds)
+    val before = userIdIndexAccesses()
+    before._2 should be >= 1L
     val rebooted = new MongoUserStateRepository(Some(database))
     try {
       rebooted.enabled shouldBe true
-      userIdIndexCreatedAt() shouldBe before
+      userIdIndexAccesses() shouldBe before
     } finally rebooted.close()
   }
 
@@ -253,10 +262,12 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
       (name, reopen) => new ChangeStreamReopen(name, reopen, (_, run) => pendingReopen.set(run))
     val mongo    = new MongoUserStateRepository(Some(db), reopenDriver = manualReopen)
     val lostTrack = new java.util.concurrent.atomic.AtomicInteger(0)
-    val handle   = mongo.watchChanges(_ => (), _ => (), () => { lostTrack.incrementAndGet(); () })
+    val delivered = new java.util.concurrent.atomic.AtomicInteger(0)
+    val handle   = mongo.watchChanges(_ => { delivered.incrementAndGet(); () }, _ => (), () => { lostTrack.incrementAndGet(); () })
     try {
-      Await.result(raw.insertOne(UserState("__integration-test-warm", Set.empty, Set.empty, Now)).toFuture(), 10.seconds)
-      Thread.sleep(500)
+      // Dropping the collection ends only a cursor that is open: write until it delivers first.
+      awaitStreamLive("a warm-up row", poll(1000)(delivered.get() > 0))(pass =>
+        Await.result(raw.insertOne(UserState(s"__integration-test-warm-$pass", Set.empty, Set.empty, Now)).toFuture(), 10.seconds))
       Await.result(raw.drop().toFuture(), 10.seconds) // the cursor's terminal end
       eventually(Option(pendingReopen.get()) should not be empty, timeoutMs = 10000)
       val atDeath = lostTrack.get()
