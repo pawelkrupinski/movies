@@ -5,6 +5,7 @@
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
+. "$REPO_ROOT/scripts/scratch-git.sh"
 
 printf '\033[36m▸\033[0m rerun-failed-sbt.sh\n'
 
@@ -12,7 +13,7 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 repo="$work/repo"; stub="$work/bin"
 mkdir -p "$repo/worker/src/test/scala/a" "$repo/target/reports" "$stub"
-git -C "$repo" init -q
+scratch_repo "$repo"
 printf 'package a\nclass OneSpec\n' > "$repo/worker/src/test/scala/a/OneSpec.scala"
 printf 'package a\nclass TwoSpec\n' > "$repo/worker/src/test/scala/a/TwoSpec.scala"
 for cls in a.OneSpec a.TwoSpec; do

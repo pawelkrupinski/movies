@@ -2,12 +2,12 @@
 # pre-push's path selection: which checks a push's changed paths run, and that an unrelated push
 # runs none of them. Run: bash scripts/hooks/pre-push-test.sh
 set -uo pipefail
-# Run as pre-push's own `hooktest` check, git exports GIT_DIR / GIT_INDEX_FILE / GIT_WORK_TREE for the
-# repository being pushed; left set, every `git` in the scratch repositories below would act on THAT
-# repository instead (it once committed the scratch "Spec base" history onto the branch being pushed).
-unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_PREFIX
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
+# Run as pre-push's own `hooktest` check, this inherits the GIT_DIR the hook was handed; the scratch
+# repositories below would otherwise BE the repository being pushed (it once committed this spec's
+# "Spec base" history onto a pushed branch). See scratch-git.sh.
+. "$REPO_ROOT/scripts/scratch-git.sh"
 
 printf '\033[36m▸\033[0m pre-push --plan\n'
 
@@ -41,34 +41,33 @@ if command -v shellcheck >/dev/null; then
   trap 'rm -rf "$scratch"' EXIT
   repo="$scratch/repo"
   mkdir -p "$repo/scripts/hooks"
-  git -C "$repo" init -q
-  git -C "$repo" config user.email spec@example.com; git -C "$repo" config user.name Spec
+  scratch_repo "$repo"
   cp "$REPO_ROOT/scripts/hooks/pre-push" "$repo/scripts/hooks/pre-push"
   printf '#!/usr/bin/env bash\necho "$1"\n' > "$repo/a.sh"
-  git -C "$repo" add -A; git -C "$repo" commit -qm base
-  base="$(git -C "$repo" rev-parse HEAD)"
+  scratch_git "$repo" add -A; scratch_git "$repo" commit -qm base
+  base="$(scratch_git "$repo" rev-parse HEAD)"
   # The PUSHED commit adds a warning (an unused variable); the working tree then fixes it.
   printf '#!/usr/bin/env bash\nunused=1\necho "$1"\n' > "$repo/a.sh"
-  git -C "$repo" commit -qam "adds a warning"
-  head="$(git -C "$repo" rev-parse HEAD)"
+  scratch_git "$repo" commit -qam "adds a warning"
+  head="$(scratch_git "$repo" rev-parse HEAD)"
   printf '#!/usr/bin/env bash\necho "$1"\n' > "$repo/a.sh"
 
   (cd "$repo" && bash scripts/hooks/pre-push --range "$base..$head" >/dev/null 2>&1); code=$?
   check "judges the commits being pushed, not a working tree that has moved on" "1" "$code"
   check "leaves the working tree as it was" "0" "$(grep -c unused "$repo/a.sh")"
-  check "leaves no temporary worktree behind" "1" "$(git -C "$repo" worktree list | wc -l | tr -d ' ')"
+  check "leaves no temporary worktree behind" "1" "$(scratch_git "$repo" worktree list | wc -l | tr -d ' ')"
 
   # The other way round: the pushed commit is clean, the working tree is dirty with a warning.
-  git -C "$repo" commit -qam "fixes it"; fixed="$(git -C "$repo" rev-parse HEAD)"
+  scratch_git "$repo" commit -qam "fixes it"; fixed="$(scratch_git "$repo" rev-parse HEAD)"
   printf '#!/usr/bin/env bash\nunused=1\necho "$1"\n' > "$repo/a.sh"
   (cd "$repo" && bash scripts/hooks/pre-push --range "$base..$fixed" >/dev/null 2>&1); code=$?
   check "passes a clean pushed commit whatever the working tree holds" "0" "$code"
-  check "...and removes its temporary worktree on success too" "1" "$(git -C "$repo" worktree list | wc -l | tr -d ' ')"
-  git -C "$repo" checkout -q -- a.sh
+  check "...and removes its temporary worktree on success too" "1" "$(scratch_git "$repo" worktree list | wc -l | tr -d ' ')"
+  scratch_git "$repo" checkout -q -- a.sh
 
   # A symbolic end (`--range A..HEAD`) is the same commit as the checkout: checked in place.
   printf '#!/usr/bin/env bash\necho "$1"\n' > "$repo/b.sh"
-  git -C "$repo" add b.sh; git -C "$repo" commit -qm "adds b"
+  scratch_git "$repo" add b.sh; scratch_git "$repo" commit -qm "adds b"
   out="$(cd "$repo" && bash scripts/hooks/pre-push --range "$fixed..HEAD" 2>&1)"
   check "checks a clean checkout in place, even when the range names it symbolically" "1 0" \
     "$(printf '%s\n' "$out" | grep -c 'shellcheck ok') $(printf '%s\n' "$out" | grep -c 'temporary checkout')"
@@ -82,11 +81,21 @@ if command -v shellcheck >/dev/null; then
   printf '#!/usr/bin/env bash\npwd -P > "%s/sbt-ran-in"\n' "$scratch" > "$scratch/bin/sbt"
   chmod +x "$scratch/bin/sbt"
   mkdir -p "$repo/src"; echo 'object A' > "$repo/src/A.scala"
-  git -C "$repo" add src/A.scala; git -C "$repo" commit -qm "adds a Scala source"
-  scala="$(git -C "$repo" rev-parse HEAD)"
+  scratch_git "$repo" add src/A.scala; scratch_git "$repo" commit -qm "adds a Scala source"
+  scala="$(scratch_git "$repo" rev-parse HEAD)"
   (cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1)
   check "with no other sbt in the checkout, the sbt check runs in place, warm" \
     "$(cd "$repo" && pwd -P)" "$(cat "$scratch/sbt-ran-in")"
+  # git runs the hook with the pushed repository's GIT_DIR / GIT_INDEX_FILE / GIT_WORK_TREE exported;
+  # a check that inherited them would aim every scratch repository of its own at this one.
+  printf '#!/usr/bin/env bash\necho "${GIT_DIR-unset} ${GIT_INDEX_FILE-unset} ${GIT_WORK_TREE-unset}" > "%s/sbt-saw"\n' "$scratch" \
+    > "$scratch/bin/sbt"
+  (cd "$repo" && GIT_DIR="$repo/.git" GIT_INDEX_FILE="$repo/.git/index" GIT_WORK_TREE="$repo" \
+     PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1)
+  check "a check does not inherit the git environment the hook was handed" "unset unset unset" \
+    "$(cat "$scratch/sbt-saw" 2>/dev/null)"
+  printf '#!/usr/bin/env bash\npwd -P > "%s/sbt-ran-in"\n' "$scratch" > "$scratch/bin/sbt"
+
   (cd "$repo" && exec -a "java -jar /fake/sbt-launch.jar web/run" sleep 300) &
   live_sbt=$!
   # The hook finds it by name: wait until the background shell has exec'd under it, or a busy

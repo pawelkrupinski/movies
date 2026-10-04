@@ -170,6 +170,7 @@ jobs:
               run: |
                   scripts/ci/in-background.sh start ci-helper-specs bash -e -c '
                       bash scripts/hooks/pre-push-test.sh
+                      bash scripts/scratch-git-test.sh
                       bash scripts/ci/preflight-test.sh
                       bash scripts/ci/flake-ledger-test.sh
                       bash scripts/ci/leg-verdict-test.sh
