@@ -325,7 +325,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   /** IMDb's suggestions for "Snow Leopard", TMDB's finds of the two IMDb displays under that title (Pema Tseden's 2023
    *  film, which TMDB holds, and Lixing Wang's 2020 one, which it does not), IMDb's titles of the suggestions it displays
    *  otherwise, and IMDb's record of the 2020 film — as recorded 2026-10-04. */
-  private final class SnowLeopardFetch extends tools.HttpFetch {
+  private class SnowLeopardFetch extends tools.HttpFetch {
     private def fixture(path: String) = scala.io.Source.fromResource(path)(using scala.io.Codec.UTF8).mkString
     override def get(url: String): String =
       if (url.startsWith(services.enrichment.ImdbClient.SuggestionBase)) fixture("fixtures/imdb/suggestion_snow_leopard.json")
@@ -361,6 +361,28 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     new TmdbIdentityLookups(new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()),
       new services.enrichment.ImdbClient(fetch), Nil).candidates(CandidateQuery.ImdbTitled("Snow Leopard"))
     w.lookups.film(FallbackIds.ofImdbId("tt13920372").get) shouldBe Answer.Unknown
+  }
+
+  // IMDb answering 404 for a title's titles or record is IMDb having no such title: the live client reads it as no
+  // titles / no record, an answer. The normalizer filed nothing for a failed POST, so the store said Unknown for ever
+  // where the live lookup had answered — the hard clusters' "normalized store answers as the recorded responses" once
+  // their re-recording held such 404s (hc-pl "2D", hc-uk "It (1990)").
+  it should "read IMDb's 404 on a title's titles or record from the store as the live lookup reads it" in {
+    val w     = new World
+    val fetch = new NormalizingHttpFetch(new SnowLeopardFetch {
+      override def post(url: String, body: String, contentType: String): String =
+        throw new HttpStatusException(404, "POST", url, None)
+    }, w.normalizer)
+    val live  = new TmdbIdentityLookups(new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()),
+      new services.enrichment.ImdbClient(fetch), Nil)
+    val query = CandidateQuery.ImdbTitled("Snow Leopard")
+    val wang  = FallbackIds.ofImdbId("tt13920372").get
+    val asked = live.candidates(query)
+    asked.toOption shouldBe defined
+    w.lookups.candidates(query) shouldBe asked
+    val record = live.film(wang)
+    record shouldBe Answer.Known(None)
+    w.lookups.film(wang) shouldBe record
   }
 
   "IMDb's films under a title" should "be none when one of them has no TMDB record: the one found is not the only one" in {

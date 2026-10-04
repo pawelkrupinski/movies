@@ -18,9 +18,9 @@ import scala.util.control.NonFatal
  * what the client made of the body. A response that answers no identity question is ignored.
  *
  * Failures follow the clients' own reading: a 404 on a film's record or a person's credits is an
- * answer (the clients read it as `{"crew":[]}`), on IMDb's suggestions an empty one; a 404 on a
- * search or a find, and any transient failure, is no answer — nothing is written, and what the
- * store held stands.
+ * answer (the clients read it as `{"crew":[]}`), on IMDb's suggestions an empty one, on IMDb's titles
+ * or record of a title none; a 404 on a search or a find, and any transient failure, is no answer —
+ * nothing is written, and what the store held stands.
  */
 final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tools.JsonBodies) extends Logging {
   import TmdbStore.Partial
@@ -30,13 +30,19 @@ final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tool
     catch { case NonFatal(e) => logger.warn(s"identity store: $method ${tools.RedactedUrl(url)} not normalized: $e") }
 
   /** A POST's answer: IMDb's titles of one title (`ImdbClient.titlesOf`), or its identity record
-   *  (`ImdbClient.identityRecord`); any other POST, and a failed one, files nothing. */
+   *  (`ImdbClient.identityRecord`). A 404 is IMDb having no such title — no titles, no record — as the client reads
+   *  it; any other POST, and any other failure, files nothing. */
   def filedPost(url: String, body: String, outcome: Try[String]): Unit =
-    try if (url == ImdbClient.Endpoint) outcome.toOption.foreach { answer =>
-      ImdbClient.titlesQueryId(body).foreach(id => store.imdbTitles(TmdbStore.imdbTitlesId(id), ImdbClient.titlesIn(bodies.parse(answer))))
-      // a reply without GraphQL data is a failed read, not IMDb saying it has no such title
-      ImdbClient.identityRecordId(body).map(_ -> bodies.parse(answer)).filter { case (_, js) => (js \ "data").toOption.isDefined }
-        .foreach { case (id, js) => store.imdbRecord(TmdbStore.imdbRecordId(id), ImdbClient.identityRecordIn(js)) }
+    try if (url == ImdbClient.Endpoint) outcome match {
+      case Success(answer) =>
+        ImdbClient.titlesQueryId(body).foreach(id => store.imdbTitles(TmdbStore.imdbTitlesId(id), ImdbClient.titlesIn(bodies.parse(answer))))
+        // a reply without GraphQL data is a failed read, not IMDb saying it has no such title
+        ImdbClient.identityRecordId(body).map(_ -> bodies.parse(answer)).filter { case (_, js) => (js \ "data").toOption.isDefined }
+          .foreach { case (id, js) => store.imdbRecord(TmdbStore.imdbRecordId(id), ImdbClient.identityRecordIn(js)) }
+      case Failure(e) if tools.ReadOutcome.isAbsent(e) =>
+        ImdbClient.titlesQueryId(body).foreach(id => store.imdbTitles(TmdbStore.imdbTitlesId(id), Nil))
+        ImdbClient.identityRecordId(body).foreach(id => store.imdbRecord(TmdbStore.imdbRecordId(id), None))
+      case Failure(_) => ()
     }
     catch { case NonFatal(e) => logger.warn(s"identity store: POST ${tools.RedactedUrl(url)} not normalized: $e") }
 
