@@ -3,7 +3,7 @@ package services.tasks
 import models.{CinemaCityChain, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, CinemaShowing, KinoApollo, Movie, MovieRecord, Showtime, Source, SourceData}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.cinemas.FakeDetailEnricher
-import services.events.{MovieDetailsComplete, RecordingEventBus}
+import services.events.RecordingEventBus
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.UptimeMonitor
@@ -151,32 +151,17 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
       row.data.get(tea).flatMap(_.runtimeMinutes) shouldBe Some(131))
   }
 
-  it should "clear detailPending and publish MovieDetailsComplete (the TMDB re-trigger) once a held-back row's detail lands" in {
+  it should "clear detailPending once a held-back row's detail lands" in {
     val cache    = seededCache("Hamnet")
     val key      = cache.keyOf("Hamnet", None)
     cache.putIfPresent(key, _.copy(detailPending = true)) // held back awaiting its detail
-    val bus      = new RecordingEventBus
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo",
       Some(FilmDetail(synopsis = Some("..."), director = Seq("Chloé Zhao"), originalTitle = Some("Hamnet"))))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), bus, dueWindow, clock = specClock)
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), new RecordingEventBus, dueWindow, clock = specClock)
 
     h.handle(taskFor("kino-apollo", cache, "Hamnet", enricher)) shouldBe Done
-    // Released from the read-model / TMDB gate now that the detail is in.
+    // Released to the read model now that the detail is in.
     cache.get(key).map(_.detailPending) shouldBe Some(false)
-    // The TMDB re-trigger carries the detail-page director + original title — the
-    // hints a director-less first scrape lacked.
-    // The TMDB re-trigger; the page's own announcement (`VenueDetailRead`) is the identity model's.
-    bus.published.collect { case e: MovieDetailsComplete => e } shouldBe List(MovieDetailsComplete("Hamnet", None, Some("Hamnet"), Some("Chloé Zhao")))
-  }
-
-  it should "NOT re-trigger TMDB when refreshing a row that wasn't awaiting detail (no detailPending)" in {
-    val cache    = seededCache("Dune") // detailPending defaults false — a plain refresh
-    val bus      = new RecordingEventBus
-    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(synopsis = Some("x"))))
-    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), bus, dueWindow, clock = specClock)
-
-    h.handle(taskFor("kino-apollo", cache, "Dune", enricher)) shouldBe Done
-    bus.published.collect { case e: MovieDetailsComplete => e } shouldBe empty // a periodic detail refresh mustn't churn the TMDB stage
   }
 
   it should "write a chain enricher's detail into its shared network source, leaving venue slots untouched, so every venue shows it" in {

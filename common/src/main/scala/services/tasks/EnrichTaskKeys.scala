@@ -38,8 +38,7 @@ object EnrichTaskKeys {
 
   /** Payload for a `ResolveTmdb` task. The director + originalTitle hints let
    *  the worker's `directorWalk` / secondary-title search fire for films TMDB
-   *  doesn't index under their Polish title — they're the same hints the inline
-   *  resolution carried off the triggering `MovieDetailsComplete`. */
+   *  doesn't index under their Polish title. */
   def resolveTmdbPayload(
     title:         String,
     year:          Option[Int],

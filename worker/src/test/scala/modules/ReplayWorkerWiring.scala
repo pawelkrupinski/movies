@@ -53,7 +53,7 @@ class ReplayWorkerWiring(fixtureDirectory: String, localMongo: MongoAddress, fix
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore,
       interval = services.tasks.ScrapeReaper.TickInterval(24.hours), initialDelay = settings.ScrapeInitialDelay(initialScrapeDelay.value), runStore = scheduledRunStore, clock = _root_.tools.SpecClock.Pinned)
   override lazy val detailReaper =
-    new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus,
+    new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore,
       tickInterval = settings.DetailTickInterval(24.hours), runStore = scheduledRunStore, clock = _root_.tools.SpecClock.Pinned)
 
   // Helios bakes the scrape day into its REST URLs, so pin it to the captured

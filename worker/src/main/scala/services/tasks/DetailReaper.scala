@@ -2,7 +2,6 @@ package services.tasks
 
 import settings.{DetailMaxEnqueuePerTick, DetailTickInterval}
 
-import services.events.{EventBus, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore}
 import tools.{DaemonExecutors, ScheduledTick}
 import models.{Cinema, MovieRecord, Source}
@@ -25,14 +24,13 @@ import scala.concurrent.duration._
  *
  * It is ALSO the backstop for the `detailPending` gate: a film a deferred cinema
  * scrapes is held back (`detailPending`, out of the read model + the TMDB stage)
- * until its detail lands and `EnrichDetailsHandler` publishes
- * `MovieDetailsComplete`. If that detail can NEVER complete — the page is gone,
- * the row has no deferred slot/`filmUrl` anymore, or the completion event was
- * lost across a restart while the detail is already fresh — the row would
+ * until its detail lands and `EnrichDetailsHandler` clears the flag. If that detail
+ * can NEVER complete — the page is gone, the row has no deferred slot/`filmUrl`
+ * anymore, or the flag outlived a detail that is already fresh — the row would
  * otherwise stay invisible forever (the daily TMDB sweep deliberately skips
  * `detailPending` rows). `reapStuckPending` releases any `detailPending` row with
- * no outstanding (enqueueable, not-yet-fresh) detail: it clears the flag and
- * publishes `MovieDetailsComplete`, so the row finally resolves.
+ * no outstanding (enqueueable, not-yet-fresh) detail: it clears the flag, so the
+ * row finally reaches the read model.
  *
  * Walks the cache like `EnrichmentReaper`: for each row carrying a slot for a
  * deferred cinema with a `filmUrl`, enqueue (deduped + freshness-gated, so a
@@ -43,7 +41,6 @@ class DetailReaper(
   cache:     MovieCache,
   queue:     TaskQueue,
   freshness: FreshnessStore,
-  bus:       EventBus,
   // The shared per-row refresh schedule, phase-spread across its period (6h, the
   // DetailEnrich TTL) exactly like [[EnrichmentReaper]] / [[ScrapeReaper]]. The
   // SAME instance must back [[EnrichDetailsHandler]] so this enqueue gate and that
@@ -177,9 +174,9 @@ class DetailReaper(
   }
 
   /** Release any `detailPending` row that has no outstanding detail to fetch —
-   *  its detail is already fresh (the completion event was lost) or it has no
+   *  its detail is already fresh (the flag outlived it) or it has no
    *  deferred slot/`filmUrl` to enrich at all (orphaned flag). Clears the flag
-   *  and re-triggers TMDB via `MovieDetailsComplete`, so the row stops being held
+   *  so the row stops being held
    *  out of the read model. Returns how many were released. Scheduled (not run by
    *  the fixture harness's `enrichDetailsUntilQuiet`, which only calls `tick`). */
   def reapStuckPending(): Int = {
@@ -187,7 +184,6 @@ class DetailReaper(
     cache.entries.foreach { case (key, record) =>
       if (record.detailPending && !detailOutstanding(key, record)) {
         cache.putIfPresent(key, _.copy(detailPending = false))
-        bus.publish(MovieDetailsComplete.forRow(key.cleanTitle, key.year, cache.get(key)))
         released += 1
       }
     }

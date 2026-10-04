@@ -1,6 +1,6 @@
 package services.tasks
 
-import services.events.{EventBus, MovieDetailsComplete}
+import services.events.EventBus
 import models.{CinemaShowing, Source, SourceData}
 import services.freshness.{FreshnessKind, FreshnessStore}
 import play.api.Logging
@@ -190,10 +190,6 @@ class EnrichDetailsHandler(
                 else if (cinemaSlots.contains(derived)) Seq(derived)  // scrape wrote the base title too
                 else cinemaSlots                                  // decorated edition(s) → merge into the real slot(s)
               }
-            // Was this the detail the row was held back for? Capture before the
-            // merge clears the flag, so a periodic re-fetch of an already-done
-            // row (DetailReaper refreshing showtimes) doesn't re-trigger TMDB.
-            val wasPending = cache.get(rowKey).exists(_.detailPending)
             // Have we read this detail page BEFORE? Checked before `markFresh`
             // below stamps it. A re-read is authoritative for the fields the page
             // owns (`FilmDetail.refreshInto`): a venue that reuses a URL for a
@@ -211,8 +207,8 @@ class EnrichDetailsHandler(
             // Merge into the target slot(s), creating one if absent: a chain's network
             // source has no slot from a listing scrape, so it must be added here;
             // a 1:1 cinema's slot already exists, so this preserves its showtimes.
-            // Clearing `detailPending` releases the row to the read model + the
-            // TMDB stage now that its detail (director/originalTitle/year) is in.
+            // Clearing `detailPending` releases the row to the read model now that its
+            // detail (director/originalTitle/year) is in.
             // `putIfPresent` is a no-op on a row that was re-keyed between enqueue and
             // pickup. Recording a READ for a merge that did not happen would make the
             // NEXT fetch authoritative over the listing — the very harm the marker is
@@ -228,8 +224,6 @@ class EnrichDetailsHandler(
                 detailPending = false))
             freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
             if (merged) freshness.markFresh(EnrichDetailsTasks.readMarker(key), FreshnessKind.DetailEnrich, clock.instant())
-            // The detail just landed → enrich the film now, with the better hints.
-            if (wasPending) bus.publish(MovieDetailsComplete.forRow(title, year, cache.get(rowKey)))
             Done
         }
     }

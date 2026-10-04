@@ -10,8 +10,8 @@ import java.time.Clock
  * for the run, aggregate via the scraper's `reduceChunks`, and PUBLISH the full
  * listing through the same recording/fallback path a normal scrape uses
  * (`publishScrape` = `CinemaScrapeRunner.run` ∘ the uptime/Filmweb-fallback
- * decorator) — so uptime classification, the fallback, cache write-through and
- * `MovieDetailsComplete` events are all reused unchanged. Freshness is marked here
+ * decorator) — so uptime classification, the fallback and the archive write are
+ * all reused unchanged. Freshness is marked here
  * for the terminal SUCCESS; a plan that never gets this far (empty or failed) is
  * stamped by [[ChunkScrapePlanner]] against the same [[ScrapeFreshnessPolicy]], so
  * every chunked outcome advances the due schedule by one shared rule.

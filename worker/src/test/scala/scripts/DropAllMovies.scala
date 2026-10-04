@@ -56,8 +56,7 @@ object DropAllMovies {
       println(s"  Remaining: ${Await.result(coll.countDocuments().toFuture(), 30.seconds)}")
       println()
       println("Next app boot: the worker's first scrape repopulates the cache;")
-      println("each new MovieDetailsComplete event drives a fresh TMDB/IMDb/MC/RT/Filmweb")
-      println("resolution. Expect ~5 minutes of in-flight rating discovery before")
+      println("the identity projection resolves each film afresh. Expect ~5 minutes of in-flight rating discovery before")
       println("the cache reaches steady state.")
     } finally conn.close()
   }
