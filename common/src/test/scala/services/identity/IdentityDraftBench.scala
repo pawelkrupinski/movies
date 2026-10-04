@@ -43,11 +43,11 @@ object IdentityDraftBench {
       Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     println(s"${first.size} listings, ${decisions.size} films, ${(0 until filmCount).map(f => normalizer.sanitize(s"Film Number $f")).distinct.size} distinct slot titles")
 
-    val memo     = new VenueSlotMemo(0L)
+    var memo     = new VenueSlotMemo(0L)
     var stored   = Map.empty[services.movies.FilmId, StoredMovieRecord]
     var counters = FilmIdCounters.empty
-    val live     = new LiveProjectionIndex(normalizer)
-    val shapes   = FilmShapes()
+    var live     = new LiveProjectionIndex(normalizer)
+    var shapes   = FilmShapes()
     var lastOk   = false
     val scoped   = !args.contains("whole")
     val threads  = ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
@@ -100,5 +100,14 @@ object IdentityDraftBench {
       shapes.commit(whole = scope.whole)
       lastOk   = true
     }
+    // Retained heap: what each piece of kept state holds beyond the listings, rows and stored records the
+    // worker keeps anyway (those stay reachable below).
+    def used(): Long = { (1 to 4).foreach { _ => System.gc(); Thread.sleep(200) }; val r = Runtime.getRuntime; r.totalMemory - r.freeMemory }
+    val all = used()
+    shapes = null; val noShapes = used()
+    live = null; val noLive = used()
+    memo = null; val noMemo = used()
+    println(f"retained: FilmShapes ${(all - noShapes) / 1e6}%.0fMB, LiveProjectionIndex ${(noShapes - noLive) / 1e6}%.0fMB, " +
+      f"VenueSlotMemo ${(noLive - noMemo) / 1e6}%.0fMB; still live ${noMemo / 1e6}%.0fMB (${stored.size} stored, ${venueSeqs.size} venues, ${rows.size} rows)")
   }
 }
