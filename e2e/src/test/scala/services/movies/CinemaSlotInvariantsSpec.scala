@@ -36,16 +36,14 @@ class CinemaSlotInvariantsSpec extends CorpusShapeSpec {
       "the old value until re-recorded — listed in awaitingReRecord, so a fresh recording reports it instead of failing; drop it once every corpus is re-recorded"
 
   override protected val awaitingReRecord: Set[AllowedListing] =
-    (Seq("Kino Muza" -> "Międzynarodowy Dzień Animacji") ++
-      Seq("Kino Mikro" -> "Lalka (+ ENG", "Mikro Bronowice" -> "Lalka (+ ENG", "Kino Mikro" -> "World Space Week - Interstellar",
-        "Kino Mikro" -> "Zaproszenie")).map(AllowedListing.apply.tupled).toSet
+    Seq("Kino Mikro" -> "Lalka (+ ENG", "Mikro Bronowice" -> "Lalka (+ ENG", "Kino Mikro" -> "World Space Week - Interstellar",
+      "Kino Mikro" -> "Zaproszenie").map(AllowedListing.apply.tupled).toSet
 
   protected val allowlist: Map[AllowedListing, String] = Map(
     AllowedListing("Pictureville (Science and Media Museum Bradford)", "Jubilee (1978)") ->
       "'Jordan' is the punk icon Pamela Rooke's screen name, billed so in Jarman's Jubilee — a person, not the country",
     AllowedListing("Kino 1410", "Windą na szafot | Klasyka w") ->
       "the venue's own feed truncated the title (no rule or parser cuts 'kinie'); the listing has since left the feed, so it cannot be re-checked",
-    AllowedListing("Kino Muza", "Międzynarodowy Dzień Animacji") -> s"director '102’': $RecordedBeforeFix (ab7e4fd90)",
     AllowedListing.anywhere("Umamusume: Pretty Derby - Beginning of a") ->
       "Cinema City's feed cuts long titles (as it cut 'skarpetek 3. Ale ko'): the source's own spelling, nothing to read better",
     AllowedListing("Kino Rialto", "EKIPA ZWIERZAKÓW") -> (
