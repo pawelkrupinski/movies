@@ -1877,8 +1877,8 @@
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 63,
     "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ "Usa" ],
+    "countries" : [ "USA" ],
+    "directors" : [ ],
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
@@ -3090,7 +3090,7 @@
     "runtimeMinutes" : 75,
     "genres" : [ ],
     "countries" : [ ],
-    "directors" : [ "75’" ],
+    "directors" : [ ],
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
@@ -7697,7 +7697,7 @@
     "runtimeMinutes" : 67,
     "genres" : [ ],
     "countries" : [ ],
-    "directors" : [ "67’" ],
+    "directors" : [ ],
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
@@ -16419,7 +16419,7 @@
     "runtimeMinutes" : 45,
     "genres" : [ ],
     "countries" : [ ],
-    "directors" : [ "45’" ],
+    "directors" : [ ],
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {

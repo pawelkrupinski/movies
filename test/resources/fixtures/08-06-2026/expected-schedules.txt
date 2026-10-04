@@ -461,11 +461,11 @@ displayTitle:      Beavis and Butt-Head
 cinemaTitles:      Beavis and Butt-Head
 runtimeMinutes:    63
 releaseYear:       —
-countries:         —
+countries:         USA
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/bbh-800x450.jpg
 synopsis.length:   2961
 cast:              —
-director:          Usa
+director:          —
 tmdbId:            —
 imdbId:            —
 originalTitle:     —
@@ -814,7 +814,7 @@ countries:         —
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/choirak-1-800x450.jpg
 synopsis.length:   4348
 cast:              —
-director:          75’
+director:          —
 tmdbId:            —
 imdbId:            —
 originalTitle:     —
@@ -8019,7 +8019,7 @@ countries:         —
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/06/myszonek-leci-samolotem.jpg
 synopsis.length:   1951
 cast:              —
-director:          45’
+director:          —
 tmdbId:            —
 imdbId:            —
 originalTitle:     —
@@ -10465,7 +10465,7 @@ countries:         —
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/CJ4GEMADOgUxLjEuOQ.png
 synopsis.length:   3382
 cast:              —
-director:          67’
+director:          —
 tmdbId:            —
 imdbId:            —
 originalTitle:     —
