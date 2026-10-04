@@ -282,11 +282,17 @@ class MongoReadModelRepository(
 
   /** The server's `operationTime` on a `hello` — every write already applied is at or before
    *  it, so a stream started AT it replays each write a read made after this call could have
-   *  missed. A standalone server reports no operation time (and cannot stream anyway): `None`. */
+   *  missed. A standalone server reports no operation time (and cannot stream anyway): `None`.
+   *
+   *  The reply is read as a raw `BsonDocument`, which every codec registry decodes. Read as the
+   *  Scala `Document` it needed the Scala driver's registry: on a database built from the Java
+   *  `MongoClientSettings` defaults the decode threw ("The BsonCodec can only encode to Bson"),
+   *  every checkpoint was `None`, and the watches started "from now" — whenever their cursors
+   *  opened, so a write landing before that was in neither the hydrate nor the stream. */
   def streamCheckpoint(): Option[StreamCheckpoint] = sharedDb.flatMap { db =>
-    Try(Await.result(db.runCommand(Document("hello" -> 1)).toFuture(), 10.seconds)) match {
+    Try(Await.result(db.runCommand[org.bson.BsonDocument](Document("hello" -> 1)).toFuture(), 10.seconds)) match {
       case Success(reply) =>
-        reply.get("operationTime").filter(_.isTimestamp).map(time => StreamCheckpoint(time.asTimestamp.getValue))
+        Option(reply.get("operationTime")).filter(_.isTimestamp).map(time => StreamCheckpoint(time.asTimestamp.getValue))
       case Failure(exception) =>
         logger.warn(s"ReadModelRepository.streamCheckpoint failed, watching from now: ${exception.getMessage}")
         None

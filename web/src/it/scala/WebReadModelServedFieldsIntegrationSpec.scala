@@ -75,6 +75,11 @@ class WebReadModelServedFieldsIntegrationSpec extends AnyFlatSpec with Matchers 
       repository.upsertMovie(film)
       Seq("Kino A", "Kino B", "Kino C").map(row).foreach(repository.upsertScreening)
 
+      // The watches replay from this checkpoint, so "Kino D" below reaches the stream however late
+      // its cursor opens. Without one they watch "from now", and on a loaded machine the write
+      // beats the asynchronous cursor open and is never delivered. This client's Java-default
+      // codec registry once made every checkpoint here fail.
+      repository.streamCheckpoint() shouldBe defined
       val model = new WebReadModel(repository, clock = tools.SpecClock.Pinned)
       model.start()
       try {
