@@ -107,8 +107,9 @@ object Agreement {
 
   /** How many families must agree: each taking the film, or leaning to it ([[leaningOf]]) beside at least [[Takers]]. */
   val Quorum = 3
-  /** How many of the agreeing families must take the film: a lean completes an agreement, never stands in for one. */
-  val Takers = 2
+  /** How many of the agreeing families must take the film: leans complete an agreement, never make one alone (PL
+   *  "Pianista - Kino Konesera": IMDb takes "The Pianist", Wikidata and Filmweb lean to it). */
+  val Takers = 1
   /** The listing's own published year and director, crediting the film the takers took: a vote of the venue's own. */
   val ListingFacts = "listing"
   /** The TMDB film the model's own evidence leans to though no rule took it (`ResolverDecision.leaning`), linked by its
@@ -134,7 +135,7 @@ object Agreement {
 
   /** The film a family's evidence LEANS to though it took none: on every listing, its best undenied candidate, at
    *  [[services.identity.Acceptance.LeanMargin]] times the runner-up's probability — the model's own lean
-   *  (`Acceptance.leaning`) over the family's search. Never a pick: a lean completes a quorum beside two takers, and
+   *  (`Acceptance.leaning`) over the family's search. Never a pick: leans complete a quorum beside a taker, and
    *  a lean to another film is what makes a family's having weighed the film turning it down (PL "Sukienka": RT weighed
    *  "The Dress" at 6.0%, its runner-up at 2.7%; Tempo's IMDb weighed "Tempo" at 2.9% under "Old" at 33.0%). */
   private[agreement] def leaningOf(listings: Seq[Listing], lookups: FamilyLookups, answers: FamilyAnswers, normalizer: TitleNormalizer,

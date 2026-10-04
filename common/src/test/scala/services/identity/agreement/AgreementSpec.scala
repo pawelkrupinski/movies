@@ -112,7 +112,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(bare, takers :+ FamilyVerdict(VoterFamily.RottenTomatoes, None, Seq(rt), leaning = Some(SourceRecord(klondike1932)))) shouldBe None
   }
 
-  "A family leaning to the film two others took" should "complete the agreement, never stand in for a pick" in {
+  "Families leaning to the film others took" should "complete the agreement, never make one alone" in {
     // PL "Kafarnaum" (fixture identity-unmatched): Wikidata and Filmweb take Labaki's 2018 film; IMDb leans to it at 33.0%
     // beside 3.1%, below its cut
     val capernaum = film("Capernaum", 2018, "Nadine Labaki", 126).copy(alternativeTitles = Seq("Kafarnaum"))
@@ -123,7 +123,9 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(bare, Seq(took(VoterFamily.Wiki), took(VoterFamily.Filmweb))) shouldBe None
     val agreed = Agreement.agreed(bare, Seq(took(VoterFamily.Wiki), took(VoterFamily.Filmweb), leaned(VoterFamily.Imdb)))
     agreed.map(a => (a.families, a.leaning)) shouldBe Some((Set(VoterFamily.Wiki, VoterFamily.Filmweb), Set(VoterFamily.Imdb)))
-    Agreement.agreed(bare, Seq(took(VoterFamily.Wiki), leaned(VoterFamily.Filmweb), leaned(VoterFamily.Imdb))) shouldBe None
+    Agreement.agreed(bare, Seq(took(VoterFamily.Wiki), leaned(VoterFamily.Imdb))) shouldBe None
+    Agreement.agreed(bare, Seq(took(VoterFamily.Wiki), leaned(VoterFamily.Filmweb), leaned(VoterFamily.Imdb))) should not be empty
+    Agreement.agreed(bare, Seq(leaned(VoterFamily.Wiki), leaned(VoterFamily.Filmweb), leaned(VoterFamily.Imdb))) shouldBe None
   }
 
   it should "not complete it when the listing's title is only the film's translation, and another film's own — three takers do" in {
