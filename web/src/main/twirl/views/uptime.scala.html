@@ -448,6 +448,19 @@
           // backfilled slot matches the querySelector above and upgrades it.
           var last = barsDiv.lastElementChild;
           var newTs = Number(d.bucketTs);
+          if (last && last.dataset.ts && newTs < Number(last.dataset.ts)) {
+            // Older than the newest bar (a reconnect replaying a backlog): it
+            // goes at its own slot — or, older than a full row's first bar,
+            // nowhere, taking its detail with it.
+            var later = barsDiv.firstElementChild;
+            while (later && Number(later.dataset.ts) < newTs) later = later.nextElementSibling;
+            if (later === barsDiv.firstElementChild && barsDiv.children.length >= @UptimeMonitor.MaxBuckets) {
+              delete barDetail[d.service][timestamp];
+              return;
+            }
+            barsDiv.insertBefore(makeBar(newTs, barClass(d)), later);
+            return;
+          }
           if (last && last.dataset.ts) {
             var t = Number(last.dataset.ts) + BUCKET_MS;
             var floor = newTs - @UptimeMonitor.MaxBuckets * BUCKET_MS;

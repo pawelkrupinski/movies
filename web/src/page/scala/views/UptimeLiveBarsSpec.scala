@@ -130,6 +130,21 @@ class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAl
     }
   }
 
+  // A frame for a slot older than the row's first bar (a reconnect replaying a
+  // backlog, two pollers racing) was appended at the END, after the newest bar,
+  // and the timeline read out of order until a reload.
+  it should "place a frame older than every bar at its slot, not after the newest" in {
+    onUptime { page =>
+      val olderTs = lastTs - 6 * step   // one slot before the row's first bar
+      page.eval(
+        s"applyUpdate({service:'TestSvc',bucketTs:$olderTs,status:'red',fallback:false," +
+        "successes:0,failures:1,zeroes:0,errors:[],timeFrom:'a',timeTo:'b',dateLabel:'c'})")
+      val order = page.evalString(
+        "[...document.querySelectorAll('.row[data-service=\"TestSvc\"] .bar')].map(b => b.dataset.ts).join(',')")
+      order shouldBe (6 to 0 by -1).map(i => lastTs - i * step).mkString(",")
+    }
+  }
+
   private def hover(service: String, ts: Long): String =
     s"""document.querySelector('.row[data-service="$service"] .bar[data-ts="$ts"]')""" +
       """.dispatchEvent(new MouseEvent('mouseover', {bubbles: true}))"""
