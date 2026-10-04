@@ -24,7 +24,9 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 LOCAL_URI="mongodb://127.0.0.1:28017/?directConnection=true"
-SRC_DB="kinowo_sync_spec"
+# Unique per run: two agents running this spec against the one :28017 server would otherwise share
+# (and drop, on EXIT) each other's databases mid-case.
+SRC_DB="kinowo_sync_spec_$$_${RANDOM}"
 MIRROR_DB="${SRC_DB}_prod_mirror"
 # Real mirrored collections, so mirror-targets.js's list covers them without the
 # spec having to fake the target list. The incident happened in `pending_movies`
