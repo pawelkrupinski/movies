@@ -1,0 +1,646 @@
+country	venue	rawTitle	film	verdict	note
+pl	Bajka	BEZ KOŃCA 2D PL LOLO	tmdb:1596319	right	recall target: Closure (2026)
+pl	Kino 1410	André Rieu: Niech żyje Maastricht. Letni koncert 2026	tmdb:1702801	right	recall target: André Rieu's 2026 Summer Concert: Viva Maastricht! (2026)
+pl	Kino Grajfka	Klondike	tmdb:913760	right	recall target: Klondike (2022)
+pl	Kino Kameralne Cafe	Bohater	tmdb:672208	right	recall target: A Hero (2021)
+pl	Kino Kultura	Pasażerka - premiera książki, pokaz filmu + dyskusja	tmdb:25939	right	recall target: Passenger (1963)
+pl	Kino Kultura	Replika 51. FPFF w Gdyni: Kalafior przeznaczenia + spotkanie z reżyserką	tmdb:1571792	right	recall target: The Cauliflower of Destiny (2026)
+pl	Kino Millenium	KINO NA NIEDZIELE:CAMINO DLA OPORNYCH	tmdb:1404604	right	recall target: Compostelle (2026)
+pl	Kino PCKul	My Fair Lady	tmdb:11113	right	recall target: My Fair Lady (1964)
+pl	Kino Parczew	Vincent.legenda oceanu	tmdb:677558	right	recall target: The Last Whale Singer (2026)
+pl	2D	Kino Zmysłów: Vincent. Legenda oceanu	tmdb:Dubbing	right	recall target: Kino Wielicka Mediateka
+pl	Kino CK Lublin	Lalka	tmdb:1321666	right	recall target: The Doll (2026)
+pl	Kino Powiśle	OPERA-DZIEWCZYNA Z DZIKIEGO ZACHODU	tmdb:1703629	right	recall target: The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+pl	Kino Powiśle	OPERA-MANON	tmdb:1703631	right	recall target: The Metropolitan Opera 2026/27: Manon (2027)
+pl	Kino Powiśle	OPERA-OTELLO	tmdb:1703634	right	recall target: The Metropolitan Opera 2026/27: Otello (2027)
+pl	Kino Powiśle	OPERA-PARSIFAL	tmdb:1703636	right	recall target: The Metropolitan Opera 2026/27: Parsifal (2027)
+pl	Kino Powiśle	OPERA-SAMSON I DALILA	tmdb:1703624	right	recall target: The Metropolitan Opera 2026/27: Samson et Dalila (2026)
+pl	Kino Powiśle	RETRANSMISJA ANDRE RIEU. NIECH ŻYJE MAASTRICHT	tmdb:1702801	right	recall target: André Rieu's 2026 Summer Concert: Viva Maastricht! (2026)
+pl	Janosik	edukacja MH: Johnny	tmdb:920220	right	recall target: Johnny (2022)
+pl	Kino Goplana	Johnny	tmdb:920220	right	recall target: Johnny (2022)
+pl	Kino Powiśle	OPERA-MAKBET - retransmisja	tmdb:1703622	right	recall target: The Metropolitan Opera 2026/27: Macbeth (2026)
+pl	Kino Opalenica	TAJNY AGENT	tmdb:1220564	right	recall target: The Secret Agent (2025)
+pl	Kino za Rogiem Brusy	TAJNY AGENT - Klub Filmowy	tmdb:1220564	right	recall target: The Secret Agent (2025)
+pl	Kino Sokół	SKRZYŻOWANIE - 50 na 51 - spotkanie z Janem Englertem	tmdb:1207497	right	recall target: The Crossroads (2025)
+pl	Kino w Ratuszu	Kino Kobiet - KLAPS! "Jak żyć żeby nie zwariować"	tmdb:1489938	right	recall target: Jak żyć, żeby nie zwariować (2026)
+pl	Kino Świt	„Baranek Shaun i kudłata bestia” Rodzinne Poranki Filmowe	tmdb:1477104	right	recall target: Shaun the Sheep: The Beast of Mossy Bottom (2026)
+pl	Kino Żak	Filmowa Bryza czyli Pomorze w Kadrze: Ostatni dzień lata	tmdb:227245	right	recall target: The Last Day of Summer (1958)
+pl	Kinoteatr Rialto	Rialto DOCumentalnie - Lech Janerka – śpij, śpij inteligencie + spotkanie z Lechem Janerką oraz Grzegorzem Brzozowiczem	tmdb:1675929	right	recall target: Lech Janerka. Sleep On, Intellectual (2026)
+pl	Kinoteatr Rialto	Wielka Sztuka w Kinoteatrze Rialto - Frida: Viva la Vida	tmdb:649244	right	recall target: Frida. Viva la Vida (2019)
+pl	Kinoteka Kultury i Sztuki	Audiencja	tmdb:Kinoteka	right	recall target: 209149
+pl	Splat!FilmFest	Krew za krew	tmdb:Kinoteka	right	recall target: 1421155
+pl	Kinoteka Kultury i Sztuki	Niebezpieczne związki	tmdb:Kinoteka	right	recall target: 1598667
+pl	Splat!FilmFest	The Taxidermist	tmdb:Kinoteka	right	recall target: 1686904
+pl	Terminal Kultury Gocław	Kacper i Emma – najlepsi przyjaciele Edukacja Młode Horyzonty	tmdb:171658	right	recall target: Casper and Emma: Best Friends (2013)
+pl	Terminal Kultury Gocław	Lydia i Władca Burz Edukacja Młode Horyzonty	tmdb:1594694	right	recall target: Lydia and the Mist Rider (2026)
+pl	GOK Promyk	Norymberga	tmdb:1214931	right	recall target: Nuremberg (2025)
+pl	metropolitan opera: live in hd 2026/27	Samson i dalila	tmdb:Kino 1410	right	recall target: 1703624
+pl	Kino Amok	Samson i Dalila	tmdb:1703624	right	recall target: The Metropolitan Opera 2026/27: Samson et Dalila (2026)
+pl	Kino Kijów	OPERA 2026/2027 - SAMSON I DALILA- RETRANSMISJA	tmdb:1703624	right	recall target: The Metropolitan Opera 2026/27: Samson et Dalila (2026)
+pl	Kino Amok	Silent Night	tmdb:1707867	right	recall target: The Metropolitan Opera 2026/27: Silent Night (2027)
+pl	Kino Kameralne Cafe	Siostry (1972)	tmdb:22307	right	recall target: Sisters (1973)
+pl	Kino Kameralne Cafe	Pociąg "Czerwona Ruta"	tmdb:1479369	right	recall target: Red Rue Express (2026)
+pl	Kino Kijów	Pociąg Czerwona Ruta	tmdb:1479369	right	recall target: Red Rue Express (2026)
+pl	Kinoteka	Ghost in the shell	tmdb:9323	right	recall target: Ghost in the Shell (1995)
+pl	Kinoteatr Rialto	Dni Kina Niemego - Portier z Hotelu Atlantic	tmdb:5991	right	recall target: The Last Laugh (1924)
+pl	Grudzień	BCA Flash improwizuje w Kinotece	tmdb:Kinoteka	right	recall target: 1480407
+pl	Kino Amok	Manon	tmdb:1703631	right	recall target: The Metropolitan Opera 2026/27: Manon (2027)
+pl	Kino Zorza	KLAPS! - Rozważna i romantyczna	tmdb:1503762	right	recall target: Sense and Sensibility (2026)
+pl	Kino Światowid Elbląg	WAJDA: re-wizje: Bez znieczulenia	tmdb:42199	right	recall target: Without Anesthesia (1978)
+de	Cine K Oldenburg	Fantasy	tmdb:1318829	right	recall target: Fantasy (2026)
+de	Cinema Quadrat e.V.	Ghost School	tmdb:1516456	right	recall target: Ghost School (2026)
+de	Filmhauskino im Künstlerhaus	Warum eigentlich... bringen wir den Chef nicht um?	tmdb:19494	right	recall target: Nine to Five (1980)
+de	Kino Cafe Trauma	Command Performance	tmdb:23404	right	recall target: Command Performance (2009)
+de	Kino im Druckluft	Maria's Lovers	tmdb:77985	right	recall target: Maria's Lovers (1984)
+de	Rex Wuppertal	Die Nibelungen - Teil 1: Siegfried	tmdb:31506	right	recall target: Die Nibelungen: Siegfried (1924)
+de	Zeughauskino - Deutsches Historisches Museum	Camp der Verlorenen	tmdb:103203	right	recall target: Camp de Thiaroye (1988)
+de	Audi Programmkino	Mein neues altes Ich - Eine Reise in das Mysterium der Menopause	tmdb:1627786	right	recall target: Menopause Mystery (2026)
+de	Tivoli-Filmtheater	Hungarian Rhapsody: Queen - Live In Budapest	tmdb:142773	right	recall target: Queen: Budapest (2012)
+uk	Depot Lewes	NT Live: All My Sons (2026)	tmdb:1620001	right	recall target: National Theatre Live: All My Sons (2026)
+uk	Everyman Screen on the Green Islington	Ken Russell's The Devils presented by Deeper Into Movies	tmdb:31767	right	recall target: The Devils (1971)
+uk	Lumiere Romford	Once Upon A Time in America	tmdb:311	right	recall target: Once Upon a Time in America (1984)
+uk	Prince Charles London	NT Live: A Streetcar Named Desire	tmdb:291289	right	recall target: National Theatre Live: A Streetcar Named Desire (2014)
+uk	Odeon Birmingham New Street	Festive Fun with Peppa Cinema Experience	tmdb:1778515	right	recall target: Festive Fun with Peppa (2026)
+uk	Cineworld Bradford	The Royal Ballet: The Nutcracker	tmdb:1702761	right	recall target: Royal Ballet & Opera 2026/27: The Nutcracker (2026)
+uk	Brewery Arts Centre Kendal	Funny Girl - The Musical	tmdb:567896	right	recall target: Funny Girl (2018)
+us	Alamo Drafthouse Brooklyn	The City of The Dead	tmdb:39890	right	recall target: The City of the Dead (1960)
+us	Alamo Drafthouse Indianapolis	MOTHER!	tmdb:381283	right	recall target: mother! (2017)
+us	Alamo Drafthouse Indianapolis	Student Bodies	tmdb:21515	right	recall target: Student Bodies (1981)
+us	Alamo Drafthouse South Lamar	Ringu: VHS Version	tmdb:2671	right	recall target: Ring (1998)
+us	Alamo Drafthouse Wrigleyville	Lady Frankenstein	tmdb:3122	right	recall target: Lady Frankenstein (1971)
+us	Enzian Theater	Exhibition on Screen: Rembrandt	tmdb:527092	right	recall target: Rembrandt: From the National Gallery, London and Rijksmuseum, Amsterdam (2018)
+us	Glenwood Arts Theater	Exhibition on Screen: John Singer Sargent	tmdb:1220518	right	recall target: John Singer Sargent: Fashion and Swagger (2024)
+us	Lakewood Ranch Cinemas 6	A Night at the Opera	tmdb:37719	right	recall target: A Night at the Opera (1935)
+us	Sky Cinemas Santa Fe	Reel Rock 19	tmdb:1451675	right	recall target: Reel Rock 19 (2025)
+us	Alamo Drafthouse Cedars Dallas	Spider Baby	tmdb:28504	right	recall target: Spider Baby (1967)
+us	Fleet Science Center IMAX	Volcanoes 3D	tmdb:556541	right	recall target: Volcanoes: The Fires of Creation (2018)
+us	Oriental Theatre Milwaukee	NT Live: All My Sons	tmdb:1620001	right	recall target: National Theatre Live: All My Sons (2026)
+us	AMC 19th St. East 6	MetOpera: Carmen (2009)	tmdb:248042	right	recall target: Bizet: Carmen (2010)
+pl	Kinoteatr Rialto	Wielka Sztuka w Kinoteatrze Rialto - Frida: Viva la Vida	imdb:tt11312156	right	recall target: Frida: Viva la Vida
+pl	Janosik	edukacja MH: Johnny	imdb:tt15538570	right	recall target: Johnny
+pl	Kino Grajfka	Klondike	imdb:tt16315948	right	recall target: Klondike
+pl	Kino Alternatywy	Okładka „Tempo”	imdb:tt0307553	right	recall target: Tempo
+pl	Kino Alternatywy	Okładka „Short Stories”	imdb:tt2192582	right	recall target: Short Stories
+pl	Kino Kultura Gołdap	NADZIEJA	imdb:tt0847750	right	recall target: Nadzieja
+pl	Kino Kameralne Cafe	Siostry (1972)	imdb:tt0070698	right	recall target: Siostry (1972)
+pl	Dyskusyjny Klub Filmowy Politechnika	Imago	imdb:tt14417122	right	recall target: Imago
+pl	Kino Rialto	FRIDA KAHLO. IKONICZNA ARTYSTKA	imdb:tt13011980	right	recall target: Frida kahlo. Ikoniczna artystka
+pl	Kino Kultura	Replika 51. FPFF w Gdyni: Kalafior przeznaczenia + spotkanie z reżyserką	imdb:tt43699368	right	recall target: Replika 51. FPFF w Gdyni: Kalafior przez
+pl	Kino Parczew	Vincent.legenda oceanu	imdb:tt13518550	right	recall target: Vincent. legenda oceanu
+de	Cinema Quadrat e.V.	Ghost School	imdb:tt37547768	right	recall target: Ghost School
+de	Kinozentrum Frauentor	Snow Leopard	imdb:tt13920372	right	recall target: Snow Leopard
+de	Tivoli-Filmtheater	Hungarian Rhapsody: Queen - Live In Budapest	imdb:tt8378126	right	recall target: Hungarian Rhapsody: Queen - Live In Buda
+de	Murnau-Filmtheater	James Bond vs. Spectre - Ein Blick hinter die Kulissen	imdb:tt2379713	right	recall target: James Bond vs. Spectre - Ein Blick hinte
+de	Roxy Kino Kitzingen	To The Bone	imdb:tt5541240	right	recall target: To The Bone
+de	Studio-Kino	Till Eulenspiegel	imdb:tt0072294	right	recall target: Till Eulenspiegel
+de	CasaBlanca Art House	World Champion	imdb:tt13930782	right	recall target: World Champion
+de	Schlosstheater Münster	Das doppelte Lottchen	imdb:tt0042409	right	recall target: Das doppelte Lottchen
+de	Kino in der Lagerhalle	Don Quichotte	imdb:tt0406716	right	recall target: Don Quichotte
+uk	Depot Lewes	NT Live: All My Sons (2026)	imdb:tt39544163	right	recall target: NT Live: All My Sons (2026)
+uk	Brewery Arts Centre Kendal	Funny Girl - The Musical	imdb:tt37775809	right	recall target: Funny Girl - The Musical
+uk	IMAX at Glasgow Science Centre	Ocean Odyssey	imdb:tt14727208	right	recall target: Ocean Odyssey
+uk	Lumiere Romford	Once Upon A Time in America	imdb:tt0087843	right	recall target: Once Upon A Time in America
+us	Fleet Science Center IMAX	Volcanoes 3D	imdb:tt6164238	right	recall target: Volcanoes
+us	Alamo Drafthouse Downtown LA	The Scout	imdb:tt0111094	right	recall target: The Scout
+us	Alamo Drafthouse Indianapolis	MOTHER!	imdb:tt5109784	right	recall target: Mother!
+us	Lakewood Ranch Cinemas 6	A Night at the Opera	imdb:tt0026778	right	recall target: A Night at the Opera
+us	Enzian Theater	Exhibition on Screen: Rembrandt	imdb:tt6449472	right	recall target: Rembrandt
+us	Alamo Drafthouse Stone Oak	Last Shot	imdb:tt7641334	right	recall target: Last Shot
+us	Alamo Drafthouse Lower Manhattan	A Prayer for the Dying	imdb:tt0093771	right	recall target: A Prayer for the Dying
+pl	Kino CKiB Nowa Sarzyna	Lalka	imdb:tt0064570	wrong	must not: the 2026 film; 1968 film's id carried
+pl	Kino CK Lublin	Lalka	imdb:tt0064570	wrong	must not: the 2026 film; 1968 film's id carried
+pl	Kino Kadr Staszów	Lalka	imdb:tt0064570	wrong	must not: the 2026 film; 1968 film's id carried
+pl	Kinoteka	Ghost in the shell	imdb:tt1219827	wrong	must not: 2017 remake; listing is the 1995 film
+pl	Centrum 3D Przemyśl	ReTransmisje Met: Na żywo w HD - Così fan tutte	imdb:tt0472300	wrong	must not: another production of the opera
+pl	Kino Amok	Manon	imdb:tt0041634	wrong	must not: Met relay, not the 1949 film
+pl	Kino Amok	Silent Night	imdb:tt15799866	wrong	must not: Met relay, not the 2023 film
+pl	Bałtyk	Bałtycki Deser Dla Najmłodszych: Bolek i Lolek - "Baba Jaga" | "Miś Kudłatek - "Jesienna przygoda" | "Reksio kompan"	imdb:tt0027378	wrong	must not: cartoon set, not the 1936 film
+uk	The Old Court Windsor	Halloween Spooktacular	imdb:tt29763489	wrong	must not: event, no such film
+uk	Depot Lewes	EXHIBITION ON SCREEN: Caravaggio	imdb:tt0090798	wrong	must not: Exhibition on Screen, not Jarman's 1986 film
+uk	Odeon Luxe Warrington	The Gruffalo + The Gruffalo's Child	imdb:tt1461418	wrong	must not: double bill — neither film
+uk	Vue Cinemas Castleford	We're Going on a Bear Hunt + The Tiger Who Came to Tea	imdb:tt5859342	wrong	must not: double bill — neither film
+uk	Everyman Cinema Oxted	Toddler Club: Zog + The Snail & the Whale	imdb:tt9109620	wrong	must not: double bill — neither film
+uk	Everyman Cinema Bristol	Toddler Club: Tabby McTat + Room on the Broom	imdb:tt27742699	wrong	must not: double bill — neither film
+uk	Cultplex Manchester	It (1990)	imdb:tt1396484	wrong	must not: the 1990 miniseries, not 2017's It
+uk	Cineworld (Shaw Ridge) Swindon	Royal Ballet and Opera: Tosca	imdb:tt37810381	wrong	must not: 2025/26 production; listing kept apart from that season
+de	*	André Rieus Weihnachtskonzert 2026: Let it Snow	filmweb:747485	wrong	hand label: W śnieżną noc (2019) Luke Snellin
+de	*	André Rieus Weihnachtskonzert 2026: Let it Snow	imdb:tt43693579	right	hand label: André Rieu's 2026 Christmas Concert: Let It Snow (2026)
+de	*	Camp der Verlorenen	tmdb:103203	right	hand label: The Camp at Thiaroye (1988) Ousmane Sembène; Thierno Faty Sow
+de	*	Chasing Hope – Der andere Blick	tmdb:1786543	right	hand label: Chasing Hope – Der andere Blick (2026) Sandra Kaudelka
+de	*	Command Performance	filmweb:486026	right	hand label: Morderczy występ (2009) Dolph Lundgren
+de	*	Command Performance	tmdb:23404	right	hand label: Command Performance (2009) Dolph Lundgren
+de	*	Das automatische Gehirn	filmweb:645765	right	hand label: Mózg, fascynujący automat (2011) Petra Höfer; Freddie Röckenhaus
+de	*	Der kleine Maulwurf	tmdb:354209	wrong	hand label: Täältä tulee Myyrä (2011) Zdenek Miler
+de	*	Die Nibelungen - Teil 1: Siegfried	tmdb:5608	wrong	hand label: Die Nibelungen, Teil 1 - Siegfried (1966) Harald Reinl
+de	*	Die Sprengung	imdb:tt1816503	wrong	hand label: Der Lord von Finkenwärder (1964) Peter Hagen
+de	*	Die Story von Joanna	filmweb:631028	right	hand label: The Story of Joanna (1975) Gerard Damiano
+de	*	Die Unbeugsamen	filmweb:422551	right	hand label: Nepokoryonnye (1945) Mark Donskoy
+de	*	ENHYPEN World Tour 'Blood Saga'	imdb:tt46658854	right	hand label: ENHYPEN World Tour 'Blood Saga' (2026) Yunjeong Kim
+de	*	Fantasy	filmweb:10088643	right	hand label: Fantasy (2025) Kukla
+de	*	Fantasy	tmdb:1318829	right	hand label: Fantasy (2025) Kukla Kesherovic
+de	*	Ghost School	filmweb:10099678	right	hand label: Ghost School (2025) Seemab Gul
+de	*	Ghost School	rt:ghost_school	right	hand label: Ghost School () Seemab Gul
+de	*	Ghost School	tmdb:1516456	right	hand label: Ghost School (2025) Seemab Gul
+de	*	HYBE Cheering Party	imdb:tt46659669	right	hand label: Hybe Cheering Party (2026) Jineui Kim; Sanggeun Park
+de	*	Kleine Geheimnisse	filmweb:120462	right	hand label: Małe sekrety (2002) Alice Nellis
+de	*	Kleine Geheimnisse	tmdb:47387	right	hand label: Výlet (2002) Alice Nellis
+de	*	Mademoiselle Marie	imdb:tt6096628	right	hand label: Mademoiselle Marie (2016) Peter Ponnath
+de	*	Maria's Lovers	filmweb:30917	right	hand label: Kochankowie Marii (1984) Andriej Konczałowski
+de	*	Maria's Lovers	tmdb:77985	right	hand label: Maria's Lovers (1984) Andrei Konchalovsky
+de	*	Met Opera 2026/27: Camille Saint-Saëns SAMSON ET DALILA	filmweb:10084148	wrong	hand label: Poznaj swojego teścia (2026) John Hamburg
+de	*	Met Opera 2026/27: Camille Saint-Saëns SAMSON ET DALILA	imdb:tt43746565	right	hand label: The Metropolitan Opera: Samson et Dalila (2026) Darko Tresnjak
+de	*	Met Opera 2026/27: Camille Saint-Saëns SAMSON ET DALILA	rt:saint_saens_samson_et_dalila	wrong	hand label: Saint-Saëns - Samson et Dalila () Willy Vanduren
+de	*	Met Opera 2026/27: Giuseppe Verdi MACBETH	rt:the_metropolitan_opera_macbeth	right	hand label: The Metropolitan Opera: Macbeth (2026) Louisa Proske
+de	*	Met Opera 2026/27: Wolfgang Amadeus Mozart COSÌ FAN TUTTE	rt:mozart_cosi_fan_tutte	wrong	hand label: Mozart: Così fan tutte () Sven-Eric Bechtolf
+de	*	Mittwoch	filmweb:558234	right	hand label: Mittwoch (2000) Carsten Gebhardt
+de	*	Mittwoch	imdb:tt0276336	right	hand label: Mittwoch (2000) Carsten Gebhardt
+de	*	Nur für Verrückte	imdb:tt43695441	right	hand label: Nur für Verrückte (2026) Matthias Lehmann
+de	*	Pettersson und Findus Mitmachkino 2	imdb:tt41600591	right	hand label: Pettersson und Findus Mitmachkino 2 () Mirko Dreiling; Dirk Hampel; Benjamin Lorenzo
+de	*	SEVENTEEN World Tour 'New_'	imdb:tt46658626	right	hand label: Seventeen World Tour (New_) (2026) Taehwa Um
+de	*	SEVENTEEN World Tour 'New_'	rt:seventeen_world_tour_new_in_japan_live_viewing	wrong	hand label: SEVENTEEN WORLD TOUR [NEW_] IN JAPAN: LIVE VIEWING (2025) Oh Yoon-dong
+de	*	To The Bone	tmdb:900665	wrong	hand label: Kepler X-47 (2014) Erin Li
+de	*	Überleben	imdb:tt11465950	right	hand label: Survive (2020) Danial Miller
+es	*	Carmen (OPERA LIVE)	tmdb:21193	wrong	hand label: Carmen (1984)
+es	*	La leyenda del innombrable	filmweb:559450	right	hand label: La Llegenda de l'innombrable (2010) Salomón Shang
+es	*	La leyenda del innombrable	imdb:tt1549862	right	hand label: La llegenda de l'innombrable (2010) Salomón Shang
+pl	*	 SEVENTEEN WORLD TOUR ‘NEW_'	imdb:tt46658626	right	hand label: Seventeen World Tour (New_) (2026) Taehwa Um
+pl	*	 SEVENTEEN WORLD TOUR ‘NEW_'	rt:seventeen_world_tour_new_in_japan_live_viewing	wrong	hand label: SEVENTEEN WORLD TOUR [NEW_] IN JAPAN: LIVE VIEWING (2025) Oh Yoon-dong
+pl	*	11. UFF - Demony	filmweb:10131126	right	hand label: Demony (2026) Natalya Vorozhbit
+pl	*	11. UFF - Gala otwarcia + Demony	filmweb:10131126	right	hand label: Demony (2026) Natalya Vorozhbit
+pl	*	19. FGA: Mam rzekę we krwi	filmweb:10118870	right	hand label: Mam rzekę we krwi (2026) Barbora Hollan
+pl	*	A FESTIVAL 2026 | Budując Bastylię	filmweb:10109292	right	hand label: Budując Bastylię (2021)
+pl	*	AKW: Blisko	filmweb:10009831	right	hand label: Blisko (2022) Lukas Dhont
+pl	*	AKW: Blisko	tmdb:901563	right	hand label: Close (2022) Lukas Dhont
+pl	*	AKW: Powoli	filmweb:10032046	right	hand label: Powoli (2023) Marija Kavtaradze
+pl	*	AKW: Powoli	tmdb:1058642	right	hand label: Slow (2023) Marija Kavtaradze
+pl	*	ARS INDEPENDENT FESTIVAL: Konkurs Czarny Koń Filmu : PO ŚNIENIU	filmweb:10070570	right	hand label: Po śnieniu (2025) Christine Haroutounian
+pl	*	Akademia Kina Polskiego: Epitrafium dla Barbary Radziwiłłówny (1982)	filmweb:5434	right	hand label: Epitafium dla Barbary Radziwiłłówny (1982) Janusz Majewski
+pl	*	Akademia Polskiego Filmu: Dybuk + Droga młodych | Kino żydowskie w Polsce	imdb:tt11036312	wrong	hand label: Dybuk (2019) Santiago J. Zafra
+pl	*	Akademia Polskiego Filmu: Gatunki międzywojnia: Melodramat	tmdb:293920	right	hand label: Znachor (1937) Michal Waszynski
+pl	*	Akademia Polskiego Filmu: Kino żydowskie w Polsce	tmdb:293920	wrong	hand label: Znachor (1937) Michal Waszynski
+pl	*	Akademia Polskiego Filmu: W kręgu kina "społecznie użytecznego"	filmweb:34212	right	hand label: Strachy (1938) Eugeniusz Cękalski; Karol Szołowski
+pl	*	Akademia Polskiego Filmu: Wobec Zagłady	filmweb:31020	right	hand label: Ostatni etap (1947) Wanda Jakubowska
+pl	*	Akademia Polskiego Filmu: Znachor (1937) | Gatunki międzywojnia II: melodramat	tmdb:293920	right	hand label: Znachor (1937)
+pl	*	Akademia Polskiego Filmu: wykład dr. Łukasza Biskupskiego: „Bestia”, reż. Aleksander Hertz (1917), „Cud nad Wisłą”, reż. Ryszard Bolesławski (1921)	filmweb:36151	right	hand label: Bestia (1917) Aleksander Hertz
+pl	*	Akademia Polskiego Filmu: wykład dr. Łukasza Biskupskiego: „Bestia”, reż. Aleksander Hertz (1917), „Cud nad Wisłą”, reż. Ryszard Bolesławski (1921)	tmdb:319754	right	hand label: The Polish Dancer (1917) Aleksander Hertz
+pl	*	Audiencja | Kinoteka Kultury i Sztuki	tmdb:209149	right	hand label: The Audience (2013) Stephen Daldry; Robin Lough
+pl	*	Audiencja | Kinoteka Kultury i Sztuki	tmdb:786422	wrong	hand label: The Audience (2020)
+pl	*	Audiencja | Kinoteka Kultury i Sztuki	tmdb:81775	wrong	hand label: The Audience () Marco Ferreri
+pl	*	BEZ KOŃCA 2D PL LOLO	filmweb:10081351	right	hand label: Bez końca (2026) Michał Marczak
+pl	*	Bałtycki Deser Dla Najmłodszych: Bolek i Lolek - "Baba Jaga" | "Miś Kudłatek - "Jesienna przygoda" | "Reksio kompan"	filmweb:747480	wrong	hand label: Baba Jaga (2016) Caradog W. James
+pl	*	Bałtycki Deser Dla Najmłodszych: Bolek i Lolek - "Baba Jaga" | "Miś Kudłatek - "Jesienna przygoda" | "Reksio kompan"	tmdb:1167324	wrong	hand label: Bolek i Lolek (1936)
+pl	*	DKF: Wieloryb	filmweb:868478	right	hand label: Wieloryb (2022) Darren Aronofsky
+pl	*	DKF: Wieloryb	tmdb:785084	right	hand label: The Whale (2022) Darren Aronofsky
+pl	*	DOBRY CHŁOPIEC	filmweb:10064809	right	hand label: Dobry chłopiec (2025) Jan Komasa
+pl	*	DOBRY CHŁOPIEC	tmdb:1381027	right	hand label: Heel (2025) Jan Komasa
+pl	*	Dobry chłopiec	filmweb:10064809	right	hand label: Dobry chłopiec (2025) Jan Komasa
+pl	*	Dobry chłopiec	tmdb:1381027	right	hand label: Heel (2025) Jan Komasa
+pl	*	EDUKACJA MŁODE HORYZONTY - KARNET DLA KLAS I-III - CYKL "FILMOWE SEKRETY"	filmweb:10071143	wrong	hand label: Edukacja (1975) Krzysztof Kieślowski
+pl	*	EDUKACJA MŁODE HORYZONTY - KARNET DLA KLAS IV-VI - CYKL "KINO WSPÓŁCZESNE"	filmweb:10071143	wrong	hand label: Edukacja (1975) Krzysztof Kieślowski
+pl	*	EDUKACJA MŁODE HORYZONTY - KARNET DLA PRZEDSZKOLI - CYKL "CHODZĘ DO KINA"	filmweb:10071143	wrong	hand label: Edukacja (1975) Krzysztof Kieślowski
+pl	*	EVEREST: DRUGA STRONA	filmweb:10130537	right	hand label: Everest: Druga strona (2026) Elizabeth Chai Vasarhelyi; Jimmy Chin
+pl	*	EVEREST: DRUGA STRONA	tmdb:1714568	right	hand label: Everest: The Other Side (2026) Jimmy Chin; Elizabeth Chai Vasarhelyi
+pl	*	Edukacja Młode Horyzonty	filmweb:10071143	wrong	hand label: Edukacja (1975) Krzysztof Kieślowski
+pl	*	Everest: Druga strona	filmweb:10130537	right	hand label: Everest: Druga strona (2026) Elizabeth Chai Vasarhelyi; Jimmy Chin
+pl	*	Everest: Druga strona	tmdb:1714568	right	hand label: Everest: The Other Side (2026) Jimmy Chin; Elizabeth Chai Vasarhelyi
+pl	*	FRANZ KAFKA	filmweb:10008278	right	hand label: Franz Kafka (2025) Agnieszka Holland
+pl	*	FRIDA KAHLO. IKONICZNA ARTYSTKA	tmdb:607710	right	hand label: Frida Kahlo (2020)
+pl	*	Filmowa Bryza czyli Pomorze w Kadrze: Ostatni dzień lata	filmweb:8423	right	hand label: Ostatni dzień lata (1958) Tadeusz Konwicki
+pl	*	Filmowe popołudnie dla dzieci: Jesień	tmdb:12417	wrong	hand label: Autumn (2008) Özcan Alper
+pl	*	Frida Khalo. Ikoniczna artystka | TYLKO SZTUKA CIĘ NIE OSZUKA	tmdb:1360	wrong	hand label: Frida (2002) Julie Taymor
+pl	*	Ghost in the shell	filmweb:31866	right	hand label: Ghost in the Shell (1995) Mamoru Oshii
+pl	*	Ghost in the shell	tmdb:9323	right	hand label: Ghost in the Shell (1995) Mamoru Oshii
+pl	*	HANIA DEREJ	filmweb:340886	wrong	hand label: Hania (2007) Janusz Kamiński
+pl	*	HER DOCS: Posprzątaj ze mną + Czasem myślę o Hawajach	tmdb:152601	wrong	hand label: Her (2014) Spike Jonze
+pl	*	HER Docs - To nie jest świat dla ludzi z menopauzą	filmweb:10134515	right	hand label: To nie jest świat dla ludzi z menopauzą (2026)
+pl	*	HYBE CHEERING PARTY	imdb:tt46659669	right	hand label: Hybe Cheering Party (2026) Jineui Kim; Sanggeun Park
+pl	*	Imago	filmweb:872645	right	hand label: Imago (2023) Olga Chajdas
+pl	*	Imago	metacritic:imago	right	hand label: Imago () Olga Chajdas
+pl	*	Imago	tmdb:1139774	right	hand label: Imago (2023)
+pl	*	Johnny	filmweb:847549	right	hand label: Johnny (2022) Daniel Jaroszek
+pl	*	Kacper i Emma – najlepsi przyjaciele Edukacja Młode Horyzonty	tmdb:45840	wrong	hand label: Best Friends (1982) Norman Jewison
+pl	*	Kafarnaum	filmweb:807622	right	hand label: Kafarnaum (2018) Nadine Labaki
+pl	*	Kafarnaum	tmdb:517814	right	hand label: Capernaum (2018) Nadine Labaki
+pl	*	Klondike	metacritic:klondike	right	hand label: Klondike (2023) Maryna Er Gorbach
+pl	*	Klondike	tmdb:913760	right	hand label: Klondike (2022) Maryna Er Gorbach
+pl	*	Klub Filmowy WCK "Odlot"	filmweb:436704	right	hand label: Odlot (2009) Pete Docter; Bob Peterson
+pl	*	Koncert: Leszek Możdżer - solo	filmweb:810272	wrong	hand label: Solo (2018) Hugo Stuven Casasnovas
+pl	*	Krew za krew | Splat!FilmFest	rt:ikatan_darah	right	hand label: Ikatan Darah (2025) Sidharta Tata
+pl	*	Krew za krew | Splat!FilmFest	tmdb:1421155	right	hand label: Ikatan Darah (2025)
+pl	*	LALKA / DOLLY	tmdb:1309083	right	hand label: Dolly (2026) Rod Blackhurst
+pl	*	Lalka	filmweb:10057628	right	hand label: Lalka (2026) Maciej Kawalski
+pl	*	Lalka	filmweb:1174	wrong	hand label: Lalka (1968) Wojciech Has
+pl	*	Lalka (DOLLY)	tmdb:1309083	right	hand label: Dolly (2026) Rod Blackhurst
+pl	*	Lalka (Dolly)	tmdb:1309083	right	hand label: Dolly (2026) Rod Blackhurst
+pl	*	Lalka Dolly (Napisy)	tmdb:1309083	right	hand label: Dolly (2026) Rod Blackhurst
+pl	*	MARATON HALLOWEEN	tmdb:948	wrong	hand label: Halloween (2018) John Carpenter
+pl	*	Maraton Halloween	tmdb:948	wrong	hand label: Halloween (2018) John Carpenter
+pl	*	Maraton Halloween 2026	tmdb:948	wrong	hand label: Halloween (2018) John Carpenter
+pl	*	Materiał się liczy	imdb:tt38599478	right	hand label: Make Materials Matter (2025) Marc-Christoph Wagner; Simon Weyhe
+pl	*	Miłość 2024	filmweb:610244	wrong	hand label: Miłość (2012) Michael Haneke
+pl	*	Norymberga	filmweb:10072415	right	hand label: Norymberga (2025) James Vanderbilt
+pl	*	Norymberga	tmdb:1214931	right	hand label: Nuremberg (2025) James Vanderbilt
+pl	*	OPERA 2026/2027 - DWADZIEŚCIA LAT MET: UROCZYSTY JUBILEUSZ	filmweb:10068169	wrong	hand label: 28 lat później - Część 2: Świątynia kości (2026) Nia DaCosta
+pl	*	OPERA 2026/2027 - SAMSON I DALILA- RETRANSMISJA	filmweb:10114411	wrong	hand label: Miłość, śmierć i dojrzewanie w Camp Miasma (2026) Jane Schoenbrun
+pl	*	OPERA 2026/2027 - SAMSON I DALILA- RETRANSMISJA	imdb:tt43746565	right	hand label: The Metropolitan Opera: Samson et Dalila (2026) Darko Tresnjak
+pl	*	OPERA-COSI FAN TUTTE	tmdb:37265	wrong	hand label: All Ladies Do It (1992) Tinto Brass
+pl	*	OPERA-MAKBET - retransmisja	filmweb:678560	wrong	hand label: Retransmisja (1979) Zygmunt Rytka
+pl	*	Okładka „Short Stories”	tmdb:160833	right	hand label: Short Stories (2012) Mikhail Segal
+pl	*	Okładka „Tempo”	tmdb:631843	wrong	hand label: Old (2021) M. Night Shyamalan
+pl	*	Pamiętasz, Edith?	rt:edith	wrong	hand label: Edith (2016) Christian Cooke
+pl	*	Pasażerka - premiera książki, pokaz filmu + dyskusja	tmdb:25939	right	hand label: Passenger (1963) Andrzej Munk; Witold Lesiewicz
+pl	*	Pianista - Kino Konesera	filmweb:32225	right	hand label: Pianista (2002) Roman Polański
+pl	*	Pianista - Kino Konesera	tmdb:423	right	hand label: The Pianist (2002) Roman Polanski
+pl	*	Pociąg "Czerwona Ruta"	filmweb:8718	wrong	hand label: Pociąg (1959) Jerzy Kawalerowicz
+pl	*	Pociąg Czerwona Ruta	filmweb:8718	wrong	hand label: Pociąg (1959) Jerzy Kawalerowicz
+pl	*	Pociąg czerwona ruta	filmweb:8718	wrong	hand label: Pociąg (1959) Jerzy Kawalerowicz
+pl	*	Porwanie Baltazara Gąbki - zestaw bajek I	filmweb:564462	wrong	hand label: Porwanie (2011) John Singleton
+pl	*	Przytul mnie - zestaw VII	filmweb:564485	wrong	hand label: Przytul mnie (2010) Kaspar Munk
+pl	*	PŁAZY. PIONIERZY ŻYCIA NA LĄDZIE	filmweb:10105049	right	hand label: Płazy. Pionierzy życia na lądzie (2023) Sławomir Skupiński
+pl	*	Recepta na szczęście 2	tmdb:12890	wrong	hand label: Smart People (2008) Noam Murro
+pl	*	Reporterzy wolności - film i spotkanie z twórcami	filmweb:10131183	right	hand label: Reporterzy wolności (2025)
+pl	*	Retro Animacje w Kinie Ada	tmdb:1265827	wrong	hand label: Retro (2025) Karthik Subbaraj
+pl	*	SEVENTEEN WORLD TOUR 'NEW_'	imdb:tt46658626	right	hand label: Seventeen World Tour (New_) (2026) Taehwa Um
+pl	*	SEVENTEEN WORLD TOUR 'NEW_'	rt:seventeen_world_tour_new_in_japan_live_viewing	wrong	hand label: SEVENTEEN WORLD TOUR [NEW_] IN JAPAN: LIVE VIEWING (2025) Oh Yoon-dong
+pl	*	SKRZYŻOWANIE - 50 na 51 - spotkanie z Janem Englertem	filmweb:10036467	right	hand label: Skrzyżowanie (2024) Dominika Montean-Pańków
+pl	*	Samson i Dalila	imdb:tt43746565	right	hand label: The Metropolitan Opera: Samson et Dalila (2026) Darko Tresnjak
+pl	*	Samson i dalila | metropolitan opera: live in hd 2026/27	filmweb:10114411	wrong	hand label: Miłość, śmierć i dojrzewanie w Camp Miasma (2026) Jane Schoenbrun
+pl	*	Samson i dalila | metropolitan opera: live in hd 2026/27	imdb:tt43746565	right	hand label: The Metropolitan Opera: Samson et Dalila (2026) Darko Tresnjak
+pl	*	Siostry (1972)	filmweb:9559	right	hand label: Siostry (1972) Brian De Palma
+pl	*	Siostry (1972)	tmdb:22307	right	hand label: Sisters (1972) Brian De Palma
+pl	*	Słonik w lesie + Tańczący przyjaciel | Młode Horyzonty	filmweb:10087705	right	hand label: Słonik w lesie (2025) Meikeminne Clinckspoor
+pl	*	TAJNY AGENT	filmweb:10075964	right	hand label: Tajny agent (2025) Kleber Mendonça Filho
+pl	*	The Taxidermist | Splat!FilmFest	imdb:tt40381362	right	hand label: The Taxidermist () Paulo Nascimento
+pl	*	Weekend Seniora z Kulturą: Vivaldi i ja [2D LEKTOR] (seans z audiodeskrypcją)	tmdb:1365683	right	hand label: Primavera (2025) Damiano Michieletto
+pl	*	Wielka Sztuka w Kinoteatrze Rialto - Frida: Viva la Vida	tmdb:649244	right	hand label: Frida. Viva la Vida (2019) Giovanni Troilo
+pl	*	Wishbone ash – road warriors	filmweb:875866	wrong	hand label: Road Warriors (1995) Andy Cadiff
+pl	*	Wishbone ash – road warriors	rt:road_warriors	wrong	hand label: Road Warriors () Danny Lee
+pl	*	Wymarzony	tmdb:174316	wrong	hand label: A Case of You (2013) Kat Coiro
+pl	*	Zamki na piasku	tmdb:132892	wrong	hand label: Sandcastles (1972) Ted Post
+pl	*	edukacja MH: Johnny	filmweb:847549	right	hand label: Johnny (2022) Daniel Jaroszek
+uk	*	Agbara Nla: The Return	imdb:tt47091674	right	hand label: Agbara Nla: The Return (2026) Damilola Mike-Bamiloye; Joshua Mike-Bamiloye
+uk	*	EXHIBITION ON SCREEN: Caravaggio	imdb:tt38985948	right	hand label: Exhibition on Screen: Caravaggio (2025)
+uk	*	EXHIBITION ON SCREEN: Caravaggio	rt:exhibition_on_screen_caravaggio	right	hand label: Exhibition on Screen: Caravaggio (2025) Phil Grabsky; David Bickerstaff
+uk	*	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	right	hand label: Festive Fun with Peppa Cinema Experience (2026)
+uk	*	Festive Fun with Peppa Cinema Experience	rt:festive_fun_with_peppa_cinema_experience	right	hand label: Festive Fun with Peppa Cinema Experience ()
+uk	*	HYBE CHEERING PARTY	imdb:tt46659669	right	hand label: Hybe Cheering Party (2026) Jineui Kim; Sanggeun Park
+uk	*	Hybe Cheering Party	imdb:tt46659669	right	hand label: Hybe Cheering Party (2026) Jineui Kim; Sanggeun Park
+uk	*	Ken Russell's The Devils presented by Deeper Into Movies	filmweb:32858	right	hand label: Diabły (1971) Ken Russell
+uk	*	Ken Russell's The Devils presented by Deeper Into Movies	tmdb:11542	wrong	hand label: Altered States (1980) Ken Russell
+uk	*	Ken Russell's The Devils presented by Deeper Into Movies	tmdb:31767	right	hand label: The Devils (1971) Ken Russell
+uk	*	MetOpera 2025-26: La Sonnambula	imdb:tt37814715	wrong	hand label: La sonnambula by Vincenzo Bellini at the Gran Teatre del Liceu, Barcelona (2025) Pietro D'Agostino
+uk	*	MetOpera 2025-26: La Sonnambula	rt:the_metropolitan_opera_la_sonnambula	right	hand label: The Metropolitan Opera: La Sonnambula (2025)
+uk	*	MetOpera: La Fanciulla del West	rt:the_metropolitan_opera_la_fanciulla_del_west	right	hand label: The Metropolitan Opera: La Fanciulla del West (2027) Richard Jones
+uk	*	MetOpera: Samson et Dalila	rt:the_metropolitan_opera_samson_et_dalila	right	hand label: The Metropolitan Opera: Samson et Dalila (2026) Darko Tresnjak
+uk	*	NT Live: A Streetcar Named Desire	tmdb:702	wrong	hand label: A Streetcar Named Desire (1951) Elia Kazan
+uk	*	NT Live: All My Sons (2026)	tmdb:1620001	right	hand label: All My Sons (2026) Ivo van Hove
+uk	*	NT Live: The Misanthrope	tmdb:1693710	right	hand label: National Theatre Live: The Misanthrope (2026) Christine Lalla; Indhu Rubasingham
+uk	*	Ocean Odyssey	rt:ocean_odyssey_3d	right	hand label: Ocean Odyssey () Nick Robinson
+uk	*	Once Upon A Time in America	filmweb:1038	right	hand label: Dawno temu w Ameryce (1984) Sergio Leone
+uk	*	Once Upon A Time in America	tmdb:311	right	hand label: Once Upon a Time in America (1984) Sergio Leone
+uk	*	Paddington Bear: Winter Warmers	imdb:tt39048323	right	hand label: Paddington: Winter Warmers (2025)
+uk	*	RBO Cinema Season 2026-27: Manon	imdb:tt43658351	right	hand label: RBO Cinema Season 2026-27: Manon ()
+uk	*	SEVENTEEN WORLD TOUR 'NEW_'	imdb:tt38867073	wrong	hand label: Seventeen World Tour [New_] in Japan: Live Viewing (2025)
+uk	*	SEVENTEEN WORLD TOUR 'NEW_'	imdb:tt46658626	right	hand label: Seventeen World Tour (New_) (2026) Taehwa Um
+uk	*	SEVENTEEN WORLD TOUR 'NEW_'	rt:seventeen_world_tour_new_in_japan_live_viewing	wrong	hand label: SEVENTEEN WORLD TOUR [NEW_] IN JAPAN: LIVE VIEWING (2025) Oh Yoon-dong
+uk	*	Seventeen World Tour 'NEW_'	imdb:tt38867073	wrong	hand label: Seventeen World Tour [New_] in Japan: Live Viewing (2025)
+uk	*	Seventeen World Tour 'NEW_'	imdb:tt46658626	right	hand label: Seventeen World Tour (New_) (2026) Taehwa Um
+uk	*	Seventeen World Tour 'NEW_'	rt:seventeen_world_tour_new_in_japan_live_viewing	wrong	hand label: SEVENTEEN WORLD TOUR [NEW_] IN JAPAN: LIVE VIEWING (2025) Oh Yoon-dong
+uk	*	The Gruffalo + The Gruffalo's Child	tmdb:28118	wrong	hand label: The Gruffalo (2009) Max Lang; Jakob Schuh
+uk	*	Toddler Club: We're Going on a Bear Hunt + The Tiger Who Came to Tea	rt:the_tiger_who_came_to_tea	wrong	hand label: The Tiger Who Came to Tea (2019) Robin Shaw
+uk	*	Toddler Club: We're Going on a Bear Hunt + The Tiger Who Came to Tea	tmdb:644120	wrong	hand label: The Tiger Who Came to Tea (2019) Robin Shaw
+uk	*	We're Going on a Bear Hunt + The Tiger Who Came to Tea	rt:the_tiger_who_came_to_tea	wrong	hand label: The Tiger Who Came to Tea (2019) Robin Shaw
+uk	*	We're Going on a Bear Hunt + The Tiger Who Came to Tea	tmdb:644120	wrong	hand label: The Tiger Who Came to Tea (2019) Robin Shaw
+uk	*	We’re Going On A Bear Hunt + The Tiger Who Came To Tea	rt:the_tiger_who_came_to_tea	wrong	hand label: The Tiger Who Came to Tea (2019) Robin Shaw
+uk	*	We’re Going On A Bear Hunt + The Tiger Who Came To Tea	tmdb:644120	wrong	hand label: The Tiger Who Came to Tea (2019) Robin Shaw
+us	*	A Night at the Opera	filmweb:31509	right	hand label: Noc w operze (1935) Sam Wood; Edmund Goulding
+us	*	A Night at the Opera	tmdb:37719	right	hand label: A Night at the Opera (1935) Sam Wood; Edmund Goulding
+us	*	A Night at the Opera	tmdb:44919	wrong	hand label: The Old Maid (1939) Edmund Goulding
+us	*	A Prayer for the Dying	filmweb:7794	right	hand label: Modlitwa za konających (1987) Mike Hodges
+us	*	A Prayer for the Dying	metacritic:a-prayer-for-the-dying	wrong	hand label: A Prayer for the Dying (2026) Dara Van Dusen
+us	*	DEVO: RESTORATIONS AND REVELATIONS - Collected Film Works 1976-1984	filmweb:1214	wrong	hand label: Indiana Jones i Świątynia Zagłady (1984) Steven Spielberg
+us	*	Exhibition on Screen: John Singer Sargent	rt:exhibition_on_screen_john_singer_sargent_fashion_and_swagger	right	hand label: Exhibition on Screen: John Singer Sargent - Fashion & Swagger (2024) David Bickerstaff
+us	*	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	right	hand label: Festive Fun with Peppa Cinema Experience (2026)
+us	*	Festive Fun with Peppa Cinema Experience	rt:festive_fun_with_peppa_cinema_experience	right	hand label: Festive Fun with Peppa Cinema Experience ()
+us	*	Hybe Cheering Party	imdb:tt46659669	right	hand label: Hybe Cheering Party (2026) Jineui Kim; Sanggeun Park
+us	*	Lady Frankenstein	tmdb:3122	right	hand label: Lady Frankenstein (1971)
+us	*	MOTHER!	filmweb:760272	right	hand label: Mother! (2017) Darren Aronofsky
+us	*	MetOpera: Rigoletto (2022)	imdb:tt19363622	wrong	hand label: The Royal Opera: Rigoletto (2022)
+us	*	Penguin Island	tmdb:1269851	wrong	hand label: Giant Sea Serpent: Meet the Myth (2021) Bertrand Loyer
+us	*	Psycho Cinema's PsychoRama Sleepover	filmweb:107050	wrong	hand label: Piżama party (2004) Joe Nussbaum
+us	*	Reel Rock 19	filmweb:10134643	right	hand label: Reel Rock 19 (2025)
+us	*	Reel Rock 19	tmdb:1451675	right	hand label: Reel Rock 19 (2025) Josh Lowell
+us	*	Ringu: VHS Version	tmdb:2671	right	hand label: Ringu (1998) Hideo Nakata
+us	*	SEVENTEEN World Tour 'NEW_'	imdb:tt46658626	right	hand label: Seventeen World Tour (New_) (2026) Taehwa Um
+us	*	SEVENTEEN World Tour 'NEW_'	rt:seventeen_world_tour_new_in_japan_live_viewing	wrong	hand label: SEVENTEEN WORLD TOUR [NEW_] IN JAPAN: LIVE VIEWING (2025) Oh Yoon-dong
+us	*	Scrooge	tmdb:13765	right	hand label: Scrooge (1970) Ronald Neame
+us	*	Spider Baby	filmweb:479516	wrong	hand label: Spider Baby (2009) Jeff Broadstreet
+us	*	Spider Baby	tmdb:28504	right	hand label: Spider Baby or, The Maddest Story Ever Told (1967) Jack Hill
+us	*	Student Bodies	filmweb:211560	right	hand label: Ciała studenckie (1981) Michael Ritchie; Mickey Rose
+us	*	Student Bodies	tmdb:21515	right	hand label: Student Bodies (1981) Mickey Rose
+us	*	THE BRIDE OF FRANKENSTEIN	tmdb:229	right	hand label: Bride of Frankenstein (1935) James Whale
+us	*	TOMORROW X TOGETHER World Tour 'ACT : TOMORROW'	imdb:tt46658752	right	hand label: Tomorrow X Together World Tour 'Act: Tomorrow' (2026) Taehwa Um
+us	*	TOMORROW X TOGETHER World Tour 'ACT : TOMORROW'	rt:tomorrow_x_together_world_tour_act_sweet_mirage_in_la_live_viewing	wrong	hand label: TOMORROW X TOGETHER World Tour (Act: Sweet Mirage) in LA: Live Viewing (2023)
+us	*	TOMORROW X TOGETHER World Tour 'ACT : TOMORROW'	tmdb:1688795	right	hand label: TOMORROW X TOGETHER WORLD TOUR 'ACT:TOMORROW' (2025) Taehwan Yum
+us	*	The City of The Dead	filmweb:36590	right	hand label: Miasto umarłych (1960) John Llewellyn Moxey
+us	*	The City of The Dead	rt:the_city_of_the_dead	wrong	hand label: The City of the Dead () Sérgio Tréfaut
+us	*	The City of The Dead	tmdb:39890	right	hand label: Horror Hotel (1960) John Llewellyn Moxey
+us	*	The Scout	metacritic:the-scout	wrong	hand label: The Scout (2026) Paula González-Nasser
+us	*	Volcanoes 3D	filmweb:213781	wrong	hand label: Volcanoes (1955)
+us	*	Volcanoes 3D	tmdb:1028378	wrong	hand label: Serengeti (2022) Michael Dalton-Smith
+de	*	Chasing Hope – Der andere Blick	wikidata:Q141603679	right	hand label: Chasing Hope – Der andere Blick (2026) Sandra Kaudelka
+de	*	Chasing Hope – Der andere Blick	wikipedia:Q141603679	right	hand label: Chasing Hope – Der andere Blick (2026) Sandra Kaudelka
+de	*	Die Story von Joanna	tmdb:333621	right	hand label: Die Story von Joanna (1975) Gerard Damiano
+de	*	Hungarian Rhapsody: Queen - Live In Budapest	tmdb:142773	right	hand label: Magic – Queen in Budapest (1987) János Zsombolyai
+de	*	Jeder Acker, jede Fabrik	wikidata:Q141180912	right	hand label: Jeder Acker, jede Fabrik (2026) Johanna Schellhagen
+de	*	Jeder Acker, jede Fabrik	wikipedia:Q141180912	right	hand label: Jeder Acker, jede Fabrik (2026) Johanna Schellhagen
+de	*	Mein neues altes Ich - Eine Reise in das Mysterium der Menopause	wikidata:Q138644118	right	hand label: Mein neues altes Ich (2026) Louise Kjeldsen
+de	*	Mein neues altes Ich - Eine Reise in das Mysterium der Menopause	wikipedia:Q138644118	right	hand label: Mein neues altes Ich (2026) Louise Kjeldsen
+de	*	Überleben	imdb:tt11041046	wrong	hand label: Survive ()
+es	*	Carmen (OPERA LIVE)	tmdb:450170	wrong	hand label: Carmen (1921) Ernesto Vollrath
+pl	*	11. UFF - Dowżenko. Pierwsze spojrzenie	tmdb:1483101	right	hand label: Dowżenko. Pierwsze spojrzenie (2026) Konstantin Konovalov
+pl	*	Akademia Polskiego Filmu: W kręgu kina "społecznie użytecznego"	tmdb:409746	right	hand label: Strachy (1938) Eugeniusz Cękalski
+pl	*	Akademia Polskiego Filmu: Zimowy zmierzch + Harmonia | Wiatr odnowy - kino epoki Października	tmdb:259998	right	hand label: Zimowy zmierzch (1957) Stanisław Lenartowicz
+pl	*	Binti Edukacja Młode Horyzonty	tmdb:855156	right	hand label: Binti (2021) Seko Shamte
+pl	*	Bohater	tmdb:358996	wrong	hand label: Bohater (2015) Nikhil Advani
+pl	*	Częstochowa, lata 1793-1918 | Weekend seniora z kulturą 2026	tmdb:1627075	wrong	hand label: The Candy World Movie (2026) Sharnav Shan
+pl	*	Dni Kina Niemego - Portier z Hotelu Atlantic	tmdb:643	wrong	hand label: Pancernik Potiomkin (1925) Sergei Eisenstein
+pl	*	Dumna królewna	tmdb:41228	right	hand label: Dumna królewna (1952) Bořivoj Zeman
+pl	*	Fritzi – przyjaźń bez granic Edukacja Młode Horyzonty	tmdb:586943	right	hand label: Fritzi - przyjaźń bez granic (2019) Ralf Kukula; Matthias Bruhn
+pl	*	Johnny	tmdb:920220	right	hand label: Johnny (2022) Daniel Jaroszek
+pl	*	KLAPS! - Rozważna i romantyczna	tmdb:4584	right	hand label: Rozważna i romantyczna (1995) Ang Lee
+pl	*	Koncert: Leszek Możdżer - solo	tmdb:348350	wrong	hand label: Solo: A Star Wars Story (2018) Ron Howard
+pl	*	Krew za krew | Splat!FilmFest	wikidata:Q139604007	right	hand label: Ikatan Darah (2025) Sidharta Tata
+pl	*	Krew za krew | Splat!FilmFest	wikipedia:Q139604007	right	hand label: Ikatan Darah (2025) Sidharta Tata
+pl	*	LALKA / DOLLY	tmdb:81315	wrong	hand label: Lalka (1968) Wojciech Jerzy Has
+pl	*	Lalka	tmdb:81315	wrong	hand label: Lalka (1968) Wojciech Jerzy Has
+pl	*	Lalka (DOLLY)	tmdb:81315	wrong	hand label: Lalka (1968) Wojciech Jerzy Has
+pl	*	Lalka (Dolly)	tmdb:81315	wrong	hand label: Lalka (1968) Wojciech Jerzy Has
+pl	*	Lalka Dolly (Napisy)	tmdb:81315	wrong	hand label: Lalka (1968) Wojciech Jerzy Has
+pl	*	Miłość 2024	tmdb:86837	wrong	hand label: Miłość (2012) Michael Haneke
+pl	*	OPERA 2026/2027 - DWADZIEŚCIA LAT MET: UROCZYSTY JUBILEUSZ	tmdb:1228710	wrong	hand label: Gwiezdne wojny: Mandalorian i Grogu (2026) Jon Favreau
+pl	*	OPERA 2026/2027 - SAMSON I DALILA- RETRANSMISJA	tmdb:1228710	wrong	hand label: Gwiezdne wojny: Mandalorian i Grogu (2026) Jon Favreau
+pl	*	OPERA 2026/2027 - ZACZAROWANY FLET	tmdb:1228710	wrong	hand label: Gwiezdne wojny: Mandalorian i Grogu (2026) Jon Favreau
+pl	*	OPERA-PARSIFAL	tmdb:176167	wrong	hand label: Parsifal (1982) Hans-Jürgen Syberberg; Bernard Sobel
+pl	*	Okładka „Dekalog wartości. Co naprawdę jest ważne w życiu?”	tmdb:37452	wrong	hand label: Dekalog (1989) Krzysztof Kieślowski
+pl	*	Szczęściarze	tmdb:63961	wrong	hand label: Szczęściarze (1963) Philippe de Broca; Jean Girault
+pl	*	TAJNY AGENT	tmdb:1220564	right	hand label: Tajny agent (2025) Kleber Mendonça Filho
+pl	*	TAJNY AGENT	tmdb:12684	wrong	hand label: Tajny agent (1936) Alfred Hitchcock
+pl	*	TAJNY AGENT - Klub Filmowy	tmdb:1220564	right	hand label: Tajny agent (2025) Kleber Mendonça Filho
+pl	*	TAJNY AGENT - Klub Filmowy	tmdb:12684	wrong	hand label: Tajny agent (1936) Alfred Hitchcock
+pl	*	WAJDA: re-wizje: BEZ ZNIECZULENIA | 15+	tmdb:42199	right	hand label: Bez znieczulenia (1978) Andrzej Wajda
+pl	*	WAJDA: re-wizje: Bez znieczulenia	tmdb:42199	right	hand label: Bez znieczulenia (1978) Andrzej Wajda
+pl	*	Wielka Sztuka w Kinoteatrze Rialto - Frida: Viva la Vida	tmdb:1212009	wrong	hand label: Viva La Vida (2024) Han Yan
+pl	*	edukacja MH: Johnny	tmdb:920220	right	hand label: Johnny (2022) Daniel Jaroszek
+uk	*	Agbara Nla: The Return	wikidata:Q141637007	right	hand label: Agbara Nla: The Return ()
+uk	*	Agbara Nla: The Return	wikipedia:Q141637007	right	hand label: Agbara Nla: The Return ()
+uk	*	EXHIBITION ON SCREEN: Caravaggio	tmdb:1496903	right	hand label: Caravaggio (2025)
+uk	*	It (1990)	tmdb:982512	right	hand label: It (1990) Tommy Lee Wallace
+uk	*	MetOpera: Samson et Dalila	wikidata:Q123303374	wrong	hand label: Samson Et Dalila (1981) John Vernon
+uk	*	Royal Opera House: Carmen	tmdb:450170	wrong	hand label: Carmen (1921) Ernesto Vollrath
+us	*	It (1990)	tmdb:982512	right	hand label: It (1990) Tommy Lee Wallace
+us	*	MOTHER!	tmdb:381283	right	hand label: Mother! (2017) Darren Aronofsky
+us	*	Penguin Island	imdb:tt1729625	wrong	hand label: Penguin Island (2010) Simon Target
+de	*	André Rieus Weihnachtskonzert 2026: Let it Snow	tmdb:295151	wrong	hand label: Tage wie diese (2019) Luke Snellin
+de	*	Ghost School	tmdb:1599768	right	hand label: Geisterschule (2026) Seemab Guul
+de	*	Mein neues altes Ich - Eine Reise in das Mysterium der Menopause	tmdb:1627786	right	hand label: Mein Neues Altes Ich (2026) Louise Unmack Kjeldsen
+pl	*	11. UFF - Demony	tmdb:1085176	right	hand label: Демони (2027) Наталія Ворожбит
+pl	*	11. UFF - Gala otwarcia + Demony	tmdb:1085176	right	hand label: Демони (2027) Наталія Ворожбит
+pl	*	Balet z Opery Paryskiej 2026-2027: Romeo i Julia	tmdb:6003	wrong	hand label: Romeo i Julia (1968) Franco Zeffirelli
+pl	*	Filmowa Bryza czyli Pomorze w Kadrze: Ostatni dzień lata	tmdb:227245	right	hand label: Ostatni dzień lata (1958) Tadeusz Konwicki
+pl	*	Lalka	tmdb:1321666	right	hand label: Lalka (2026) Maciej Kawalski
+pl	*	Materiał się liczy	tmdb:1560938	right	hand label: Søren Pihlmann: Make Materials Matter (2025)
+pl	*	SKRZYŻOWANIE - 50 na 51 - spotkanie z Janem Englertem	tmdb:1207497	right	hand label: Skrzyżowanie (2025) Dominika Montean-Pańków
+uk	*	MetOpera 2025-26: La Sonnambula	tmdb:1482799	right	hand label: The Metropolitan Opera: La Sonnambula (2025) Rolando Villazón
+us	*	A Prayer for the Dying	tmdb:1241046	wrong	hand label: A Prayer for the Dying (2026) Dara Van Dusen
+us	*	Exhibition on Screen: John Singer Sargent	tmdb:1220518	right	hand label: John Singer Sargent: Fashion and Swagger (2024) David Bickerstaff
+us	*	MetOpera: Medea (2022–23)	tmdb:1601989	wrong	hand label: Medea (2025) Mario Martone; Barbara Napolitano
+us	*	SEVENTEEN World Tour 'NEW_'	tmdb:1443823	wrong	hand label: SEVENTEEN WORLD TOUR [RIGHT HERE] IN CINEMAS (2025) Yoon Dong Oh
+uk	*	NT Live: A Midsummer Night's Dream	tmdb:467450	wrong	hand label: Timon of Athens 2012 (same director)
+de	*	Die Unbeugsamen	tmdb:317055	right	hand label: Nepokoryonnye 1945 Donskoy
+pl	*	AKW: Powoli	tmdb:18240	wrong	hand label: The Proposal
+de	*	Die Nibelungen - Teil 1: Siegfried	tmdb:31506	right	hand label: Lang 1924
+de	*	Macbeth	rt:macbeth_2005	right	hand label: Macbeth () Mark Brozel
+de	*	Macbeth	tmdb:591293	right	hand label: ShakespeaRe-Told: Macbeth (2005) Mark Brozel
+pl	*	AKW: Blisko	rt:milosc_jest_blisko	wrong	hand label: Milość jest blisko () Radoslaw Dunaszewski
+pl	*	Binti Edukacja Młode Horyzonty	rt:binti_2021	right	hand label: Binti (2021) Seko Shamte
+pl	*	Kino Zmysłów: Vincent. Legenda oceanu | 2D | Dubbing	tmdb:677558	right	hand label: The Last Whale Singer (2026) Reza Memari; Steven Majaury; Pavel Hrubos
+pl	*	Klondike	rt:klondike_2022	right	hand label: Klondike (2023) Maryna Er Gorbach
+pl	*	LALKA / DOLLY	rt:lalka_1969	wrong	hand label: Lalka () Lola Doillon
+pl	*	LALKA / DOLLY	tmdb:1321666	wrong	hand label: Lalka (2026) Maciej Kawalski
+pl	*	Lalka	rt:lalka_1969	wrong	hand label: Lalka () Lola Doillon
+pl	*	Lalka (DOLLY)	rt:lalka_1969	wrong	hand label: Lalka () Lola Doillon
+pl	*	Lalka (DOLLY)	tmdb:1321666	wrong	hand label: Lalka (2026) Maciej Kawalski
+pl	*	Lalka (Dolly)	rt:lalka_1969	wrong	hand label: Lalka () Lola Doillon
+pl	*	Lalka (Dolly)	tmdb:1321666	wrong	hand label: Lalka (2026) Maciej Kawalski
+pl	*	Lalka Dolly (Napisy)	rt:lalka_1969	wrong	hand label: Lalka () Lola Doillon
+pl	*	Lalka Dolly (Napisy)	tmdb:1321666	wrong	hand label: Lalka (2026) Maciej Kawalski
+pl	*	OPERA 2026/2027 - ZACZAROWANY FLET	rt:2026_oscar_nominated_short_films_animated	wrong	hand label: 2026 Oscar-Nominated Short Films - Animated (2026)
+pl	*	Vincent. Legenda oceanu- seans	tmdb:677558	right	hand label: The Last Whale Singer (2026) Reza Memari; Steven Majaury; Pavel Hrubos
+pl	*	Zaczarowany flet	rt:2026_oscar_nominated_short_films_animated	wrong	hand label: 2026 Oscar-Nominated Short Films - Animated (2026)
+uk	*	Funny Girl - The Musical	tmdb:567896	right	hand label: Funny Girl (2018) Michael Mayer; Robert Delamere
+de	*	Command Performance	cinemeta:tt0020780	wrong	hand label: Command Performance (1931)
+de	*	Command Performance	imdb:tt0020780	wrong	hand label: Command Performance (1931) Walter Lang
+de	*	Command Performance	wikidata:Q18914912	wrong	hand label: Command Performance (1931) Walter Lang
+de	*	Das doppelte Lottchen	filmweb:411749	right	hand label: Mania czy Ania (2007) Toby Genkel
+de	*	Das doppelte Lottchen	imdb:tt0802982	right	hand label: Two Times Lotte (2007) Toby Genkel
+de	*	Die Nibelungen - Teil 1: Siegfried	wikidata:Q18051442	wrong	hand label: Die Nibelungen: Kriemhilds Rache (1924) Fritz Lang
+de	*	Die Unbeugsamen	imdb:tt0037941	right	hand label: The Taras Family (1945) Mark Donskoy
+de	*	Die Unbeugsamen	wikidata:Q4317333	right	hand label: Die Unbeugsamen (1945) Mark Donskoy
+de	*	Die Unbeugsamen	wikipedia:Q4317333	right	hand label: Die Unbeugsamen (1945) Mark Donskoy
+de	*	Ghost School	cinemeta:tt37547768	right	hand label: Ghost School (2025)
+de	*	James Bond vs. Spectre - Ein Blick hinter die Kulissen	filmweb:650970	wrong	hand label: St. Sebastian (2015) Danny DeVito
+de	*	Kleine Geheimnisse	letterboxd:some-secrets	right	hand label: Some Secrets (2002) Alice Nellis
+de	*	Kleine Geheimnisse	wikidata:Q11772214	right	hand label: Familienausflug mit kleinen Geheimnissen (2002) Alice Nellis
+de	*	Kleine Geheimnisse	wikipedia:Q11772214	right	hand label: Familienausflug mit kleinen Geheimnissen (2002) Alice Nellis
+de	*	Macbeth	filmweb:231451	wrong	hand label: The Walk (2005) Mark Brozel
+de	*	Macbeth	imdb:tt0436884	wrong	hand label: The Walk (2005) Mark Brozel
+de	*	Macbeth	tmdb:438101	wrong	hand label: The Walk (2005) Mark Brozel
+de	*	Met Opera 2026/27: Wolfgang Amadeus Mozart COSÌ FAN TUTTE	rt:the_metropolitan_opera_cosi_fan_tutte	right	hand label: The Metropolitan Opera: Così Fan Tutte (2026) Phelim McDermott
+de	*	Überleben	cinemeta:tt17080412	wrong	hand label: Survive (2022)
+de	*	Überleben	tmdb:1132079	wrong	hand label: Survive (2022) Mark Pellington
+es	*	Carmen (OPERA LIVE)	cinemeta:tt0085297	wrong	hand label: Carmen (1983)
+pl	*	11. UFF - Cicha powódź	tmdb:1423191	wrong	hand label: Resident Evil (2026) Zach Cregger
+pl	*	11. UFF - Demony	imdb:tt20149536	right	hand label: Demons (2026) Natalya Vorozhbit
+pl	*	11. UFF - Demony	metacritic:primetime	wrong	hand label: Primetime (2026) Lance Oppenheim
+pl	*	11. UFF - Dowżenko. Pierwsze spojrzenie	metacritic:the-history-of-concrete	wrong	hand label: The History of Concrete (2026) John Wilson
+pl	*	11. UFF - Gala otwarcia + Demony	imdb:tt20149536	right	hand label: Demons (2026) Natalya Vorozhbit
+pl	*	11. UFF - Gala otwarcia + Demony	metacritic:primetime	wrong	hand label: Primetime (2026) Lance Oppenheim
+pl	*	11. UFF - Rzadko budzę się śniąc	metacritic:the-history-of-concrete	wrong	hand label: The History of Concrete (2026) John Wilson
+pl	*	11. UFF - Zmęczeni	metacritic:unabomber	wrong	hand label: Unabomber (2026) Janus Metz
+pl	*	11. UFF - Zmęczeni	rt:turning_point_generation_9_11	wrong	hand label: Turning Point: Generation 9/11 (2026)
+pl	*	Akademia Polskiego Filmu: Bestia + Cud nad Wisłą | Budowa przemysłu filmowego	wikidata:Q3157001	wrong	hand label: Bestia (1999) Suneel Darshan
+pl	*	Akademia Polskiego Filmu: W kręgu kina "społecznie użytecznego"	imdb:tt0286163	right	hand label: Strachy (1938) Eugeniusz Cekalski; Karol Szolowski
+pl	*	Akademia Polskiego Filmu: W kręgu kina "społecznie użytecznego"	letterboxd:strachy	right	hand label: Strachy (1938) Eugeniusz Cekalski; Karol Szolowski
+pl	*	Akademia Polskiego Filmu: Wobec Zagłady	imdb:tt0040674	right	hand label: The Last Stage (1948) Wanda Jakubowska
+pl	*	BCA Flash improwizuje w Kinotece | Grudzień	tmdb:1423191	wrong	hand label: Resident Evil (2026) Zach Cregger
+pl	*	Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi	imdb:tt10845876	wrong	hand label: Ryjówka przeznaczenia (2026) Marcin Wasilewski
+pl	*	Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi	letterboxd:basia-radze-sobie	wrong	hand label: Basia. Radzę sobie! (2025) Marcin Wasilewski; Łukasz Kacprowicz; Ignas Meilūnas
+pl	*	Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi	tmdb:1370603	wrong	hand label: Basia. Radzę sobie! (2025) Marcin Wasilewski; Łukasz Kacprowicz; Ignas Meilūnas
+pl	*	DOBRY CHŁOPIEC	filmweb:10058977	wrong	hand label: Dobry chłopiec (2023) Tom Stuart
+pl	*	DOBRY CHŁOPIEC	tmdb:1128846	wrong	hand label: Dobry chłopiec (2023) Tom Stuart
+pl	*	DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO	wikidata:Q64830434	wrong	hand label: Dyrygent (1926) Feliks Kuczkowski
+pl	*	Dni Kina Niemego - Quo vadis?	filmweb:860980	wrong	hand label: Quo Vadis? (2004)
+pl	*	Dni Kina Niemego - Quo vadis?	imdb:tt0015253	right	hand label: Quo Vadis? (1924) Gabriellino D'Annunzio; Georg Jacoby
+pl	*	Dni Kina Niemego - Quo vadis?	rt:quo_vadis_2026	wrong	hand label: Quo Vadis (2026) Anira Wojan; Sukankan Roy
+pl	*	Dni Kina Niemego - Quo vadis?	wikidata:Q3285437	right	hand label: Quo Vadis? (1924) Gabriellino D'Annunzio; Georg Jacoby
+pl	*	Dobry chłopiec	filmweb:10058977	wrong	hand label: Dobry chłopiec (2023) Tom Stuart
+pl	*	Dobry chłopiec	tmdb:1128846	wrong	hand label: Dobry chłopiec (2023) Tom Stuart
+pl	*	Dumna królewna	imdb:tt0191383	right	hand label: The Proud Princess (1952) Bořivoj Zeman
+pl	*	Dyrygent	wikidata:Q64830434	wrong	hand label: Dyrygent (1926) Feliks Kuczkowski
+pl	*	Imago	imdb:tt14417122	right	hand label: Imago (2023) Olga Chajdas
+pl	*	Johnny	filmweb:625571	wrong	hand label: Kiedy dorosnę (2010) D. David Morin
+pl	*	Kafarnaum	filmweb:638865	wrong	hand label: Kafarnaum (2010) Jasco Viefhues
+pl	*	Kafarnaum	wikidata:Q106719543	wrong	hand label: Kafarnaum () Jasco Viefhues
+pl	*	Klondike	cinemeta:tt0023096	wrong	hand label: Klondike (1932)
+pl	*	Klondike	filmweb:10006285	right	hand label: Klondike (2022) Maryna Er Gorbach
+pl	*	Klondike	wikidata:Q110492062	right	hand label: Klondike (2022) Maryna Er Gorbach
+pl	*	LALKA / DOLLY	cinemeta:tt0064570	wrong	hand label: Lalka (1968)
+pl	*	Lalka	cinemeta:tt0064570	wrong	hand label: Lalka (1968)
+pl	*	Lalka	imdb:tt0064570	wrong	hand label: Lalka (1968) Wojciech Has
+pl	*	Lalka	imdb:tt37082105	right	hand label: Lalka (2026) Maciej Kawalski
+pl	*	Lalka	wikidata:Q139380938	right	hand label: Lalka (2026) Maciej Kawalski
+pl	*	Lalka	wikipedia:Q139380938	right	hand label: Lalka (2026) Maciej Kawalski
+pl	*	Lalka (DOLLY)	cinemeta:tt0064570	wrong	hand label: Lalka (1968)
+pl	*	Lalka (Dolly)	cinemeta:tt0064570	wrong	hand label: Lalka (1968)
+pl	*	Lalka Dolly (Napisy)	cinemeta:tt0064570	wrong	hand label: Lalka (1968)
+pl	*	My Fair Lady	cinemeta:tt0058385	right	hand label: My Fair Lady (1964)
+pl	*	My Fair Lady	filmweb:487823	wrong	hand label: My Fair Lady (2018)
+pl	*	My Fair Lady	imdb:tt10214520	wrong	hand label: My Fair Lady (2019) Razvan Dinca
+pl	*	My Fair Lady	tmdb:11113	right	hand label: My Fair Lady (1964) George Cukor
+pl	*	NADZIEJA	cinemeta:tt0847750	right	hand label: Nadzieja (2007)
+pl	*	NADZIEJA	filmweb:118419	wrong	hand label: Nadzieja (1997) Goldie Hawn
+pl	*	NADZIEJA	wikidata:Q11788952	right	hand label: Nadzieja (2007) Stanislaw Mucha
+pl	*	Niebezpieczne związki | Kinoteka Kultury i Sztuki	imdb:tt40258746	right	hand label: National Theatre Live: Les Liaisons Dangereuses (2026) Marianne Elliott
+pl	*	Niebezpieczne związki | Kinoteka Kultury i Sztuki	letterboxd:national-theatre-live-war-horse	wrong	hand label: National Theatre Live: War Horse (2014) Tim Van Someren; Marianne Elliott; Tom Morris
+pl	*	Niebezpieczne związki | Kinoteka Kultury i Sztuki	tmdb:257425	wrong	hand label: National Theatre Live: War Horse (2014) Tim Van Someren; Marianne Elliott; Tom Morris
+pl	*	Norymberga	wikidata:Q124393313	right	hand label: Norymberga (2025) James Vanderbilt
+pl	*	Norymberga	wikipedia:Q124393313	right	hand label: Norymberga (2025) James Vanderbilt
+pl	*	OPERA 2026/2027 - ZACZAROWANY FLET	cinemeta:tt43746565	wrong	hand label: The Metropolitan Opera: Samson et Dalila (2026)
+pl	*	Obcy w domu	cinemeta:tt7605088	right	hand label: Obcy w domu (1986)
+pl	*	Obcy w domu	filmweb:109199	wrong	hand label: Obcy w domu (1967) Pierre Rouve
+pl	*	Obcy w domu	tmdb:923171	right	hand label: Obcy w domu (1986)
+pl	*	Obcy w domu	wikidata:Q1233370	wrong	hand label: Obcy w domu (1989) Matthew Patrick
+pl	*	Obcy w domu	wikipedia:Q1233370	wrong	hand label: Obcy w domu (1989) Matthew Patrick
+pl	*	Okładka „Short Stories”	cinemeta:tt0368269	wrong	hand label: Short Stories (1998)
+pl	*	Okładka „Short Stories”	filmweb:674921	right	hand label: Opowieści (2012) Mikhail Segal
+pl	*	Okładka „Short Stories”	rt:rasskazy_2012	right	hand label: Short Stories (2012) Mikhail Segal
+pl	*	Okładka „Short Stories”	wikidata:Q20078052	wrong	hand label: Short Stories (1970) Davyd Cherkaskyi
+pl	*	Okładka „Tempo”	cinemeta:tt0307553	right	hand label: Tempo (2003)
+pl	*	Retrospektywa Krzysztofa Kiwerskiego	tmdb:689023	wrong	hand label: Awaria (1975) Krzysztof Kiwerski
+pl	*	Silent Night	cinemeta:tt0117745	wrong	hand label: Silent Night (1996)
+pl	*	Silent Night	imdb:tt0338434	wrong	hand label: Silent Night (2002) Rodney Gibbons
+pl	*	Silent Night	metacritic:silent-night	wrong	hand label: Silent Night (2012) Steven C. Miller
+pl	*	Silent Night	rt:silent_night_2010	wrong	hand label: Silent Night (2012) Steven C. Miller
+pl	*	Silent Night	tmdb:891699	wrong	hand label: Wśród nocnej ciszy (2023) 吴宇森
+pl	*	Silent Night	wikipedia:Q112078051	wrong	hand label: Silent Night (2023) John Woo
+pl	*	Sukienka	filmweb:10083268	wrong	hand label: Sukienka (2026) Frank Ariza; Jacob Santana
+pl	*	TAJNY AGENT	cinemeta:tt13679280	wrong	hand label: Tajný agent (2020)
+pl	*	TAJNY AGENT	wikidata:Q101245192	wrong	hand label: Agent kret (2020) Maite Alberdi
+pl	*	TAJNY AGENT - Klub Filmowy	cinemeta:tt13679280	wrong	hand label: Tajný agent (2020)
+pl	*	TAJNY AGENT - Klub Filmowy	wikidata:Q101245192	wrong	hand label: Agent kret (2020) Maite Alberdi
+pl	*	The Taxidermist | Splat!FilmFest	letterboxd:13-souls	right	hand label: 13 Souls (2026) Paulo Nascimento
+pl	*	The Taxidermist | Splat!FilmFest	tmdb:1686904	right	hand label: 13 Souls (2026) Paulo Nascimento
+pl	*	Twórcy	filmweb:10093972	wrong	hand label: Twórcy (2023) Madeleine Homan
+pl	*	Twórcy	imdb:tt1724975	wrong	hand label: The Creators (2012) Laura Gamse; Jacques de Villiers
+pl	*	Wymarzony	filmweb:646546	wrong	hand label: Wymarzony (2013) Kat Coiro
+pl	*	Wymarzony	imdb:tt0112899	wrong	hand label: Dream Man (1995) René Bonnière
+pl	*	Zaczarowany flet	cinemeta:tt43746565	wrong	hand label: The Metropolitan Opera: Samson et Dalila (2026)
+pl	*	Zamki na piasku	filmweb:111854	wrong	hand label: Zamki na piasku (1972) Ted Post
+pl	*	Zestaw filmów krótkometrażowych Maré V: Powiew zza progu + Przemebluję kuchnię	letterboxd:um-sopro-no-quintal	right	hand label: Um Sopro no Quintal (2021) Gretel Marín
+pl	*	Zestaw filmów krótkometrażowych Maré V: Powiew zza progu + Przemebluję kuchnię	tmdb:997355	right	hand label: Um Sopro no Quintal (2021) Gretel Marín
+pl	*	edukacja MH: Johnny	filmweb:625571	wrong	hand label: Kiedy dorosnę (2010) D. David Morin
+pl	*	„Foragers” + „Kobiety z Gazy”	cinemeta:tt3819668	wrong	hand label: Dragon Ball Z: Resurrection 'F' (2015) Tadayoshi Yamamuro
+pl	*	„Foragers” + „Kobiety z Gazy”	filmweb:645104	wrong	hand label: Tam, gdzie rosną grzyby (2012) Jason Cortlund; Julia Halperin
+pl	*	„Foragers” + „Kobiety z Gazy”	rt:forevers_end_2013	wrong	hand label: Forever's End (2013) J.C. Schroder
+uk	*	EXHIBITION ON SCREEN: Caravaggio	tmdb:208028	wrong	hand label: Exhibition (2014) Joanna Hogg
+uk	*	Funny Girl - The Musical	filmweb:865914	wrong	hand label: The Language of Flowers (2021) Michael Mayer
+uk	*	Funny Girl - The Musical	imdb:tt8851198	right	hand label: Funny Girl (2018) Robert Delamere
+uk	*	Ken Russell's The Devils presented by Deeper Into Movies	rt:the_devils	right	hand label: The Devils (1971) Ken Russell
+uk	*	NT Live: A Midsummer Night's Dream	letterboxd:national-theatre-live-timon-of-athens	wrong	hand label: National Theatre Live: Timon of Athens (2012) Nicholas Hytner
+uk	*	Ocean Odyssey	cinemeta:tt1869597	wrong	hand label: Ocean Odyssey (2008)
+uk	*	Ocean Odyssey	imdb:tt14727208	right	hand label: Ocean Odyssey (2021) Nick Robinson
+uk	*	Royal Ballet & Opera 2024-25: Romeo and Juliet	imdb:tt43662809	wrong	hand label: The Sleeping Beauty from English National Ballet () Ross MacGibbon; Kenneth MacMillan
+uk	*	Toddler Club: Tabby McTat + Room on the Broom	imdb:tt21051566	wrong	hand label: DJI - The next dream (2020) Various Directors
+us	*	A Night at the Opera	cinemeta:tt0026778	right	hand label: A Night at the Opera (1935)
+us	*	A Night at the Opera	wikidata:Q2547032	wrong	hand label: The Old Maid (1939) Edmund Goulding
+us	*	A Night at the Opera	wikipedia:Q2547032	wrong	hand label: The Old Maid (1939) Edmund Goulding
+us	*	A Prayer for the Dying	cinemeta:tt0093771	right	hand label: A Prayer for the Dying (1987)
+us	*	A Prayer for the Dying	filmweb:10113419	wrong	hand label: Modlitwa za umierających (2026) Dara van Dusen
+us	*	A Prayer for the Dying	imdb:tt0093771	right	hand label: A Prayer for the Dying (1987) Mike Hodges
+us	*	A Prayer for the Dying	rt:a_prayer_for_the_dying	right	hand label: A Prayer for the Dying (1987) Mike Hodges
+us	*	A Prayer for the Dying	wikidata:Q130259598	wrong	hand label: A Prayer for the Dying (2026)
+us	*	A Prayer for the Dying	wikipedia:Q130259598	wrong	hand label: A Prayer for the Dying (2026)
+us	*	Exhibition on Screen: Rembrandt	imdb:tt6449472	right	hand label: Exhibition on Screen: Rembrandt (2018)
+us	*	Exhibition on Screen: Rembrandt	rt:rembrandt-1999	wrong	hand label: Rembrandt (1999) Charles Matton
+us	*	Exhibition on Screen: Rembrandt	tmdb:208028	wrong	hand label: Exhibition (2014) Joanna Hogg
+us	*	Lady Frankenstein	imdb:tt0175621	wrong	hand label: Lust for Frankenstein (1998) Jesús Franco
+us	*	Lady Frankenstein	wikidata:Q3267834	wrong	hand label: Lust for Frankenstein (1998) Jesús Franco
+us	*	Last Shot	filmweb:10116476	wrong	hand label: Last Shot (2025) Parham Rahimzadeh
+us	*	Last Shot	imdb:tt0357054	wrong	hand label: The Last Shot (2004) Jeff Nathanson
+us	*	Last Shot	wikidata:Q1435036	wrong	hand label: The Last Shot (2004) Jeff Nathanson
+us	*	MOTHER!	filmweb:490001	wrong	hand label: Matka (2009) Joon-ho Bong
+us	*	MOTHER!	imdb:tt1216496	wrong	hand label: Mother (2009) Bong Joon Ho
+us	*	MOTHER!	metacritic:mother!	right	hand label: mother! (2017) Darren Aronofsky
+us	*	MOTHER!	rt:mother_2017	right	hand label: mother! (2017) Darren Aronofsky
+us	*	MOTHER!	wikipedia:Q25339558	right	hand label: Mother! (2017) Darren Aronofsky
+us	*	Penguin Island	cinemeta:tt47737611	right	hand label: Penguin Island (2026)
+us	*	Penguin Island	tmdb:1678907	right	hand label: Penguin Island (2026)
+us	*	Scrooge	cinemeta:tt0026972	wrong	hand label: Scrooge (1935)
+us	*	Scrooge	filmweb:9398	right	hand label: Opowieść wigilijna (1970) Ronald Neame
+us	*	Scrooge	rt:1018413-scrooge	right	hand label: Scrooge (1970) Ronald Neame
+us	*	Scrooge	wikidata:Q1058952	wrong	hand label: Scrooge (1951) Brian Desmond Hurst
+us	*	Scrooge	wikipedia:Q2249404	right	hand label: Scrooge (1970) Ronald Neame
+us	*	Student Bodies	cinemeta:tt0083133	right	hand label: Student Bodies (1981)
+us	*	Student Bodies	imdb:tt3132422	wrong	hand label: Beginner's Guide to Sex (2015) Andrew Drazek
+us	*	Student Bodies	metacritic:student-bodies	right	hand label: Student Bodies (1981) Mickey Rose; Michael Ritchie
+us	*	Student Bodies	rt:student_bodies	right	hand label: Student Bodies (1981) Mickey Rose
+us	*	THE BRIDE OF FRANKENSTEIN	filmweb:615902	wrong	hand label: The Bride of Frankenstein (2012) Justin Michael; Jacob Reed
+us	*	The City of The Dead	cinemeta:tt0053719	right	hand label: The City of the Dead (1960) John Llewellyn Moxey
+us	*	The City of The Dead	wikidata:Q194106	right	hand label: The City of the Dead (1960) John Llewellyn Moxey
+us	*	The Scout	cinemeta:tt0099392	wrong	hand label: The Scout (1989)
+us	*	The Scout	imdb:tt0111094	right	hand label: The Scout (1994) Michael Ritchie
+us	*	The Scout	rt:scout	right	hand label: The Scout (1994) Michael Ritchie
+us	*	The Scout	wikidata:Q1196825	wrong	hand label: The Scout (1983) Konrad Petzold; Jamyanguyn Buntar
+us	*	Volcanoes 3D	rt:volcanoes_the_fires_of_creation	right	hand label: Volcanoes: The Fires of Creation () Michael Dalton-Smith
+de	*	Command Performance	imdb:tt1210801	right	hand label: Command Performance (2009) Dolph Lundgren
+de	*	Die Nibelungen - Teil 1: Siegfried	wikidata:Q18341272	right	hand label: Die Nibelungen: Siegfried (1924) Fritz Lang
+de	*	Die Nibelungen - Teil 1: Siegfried	wikipedia:Q18341272	right	hand label: Die Nibelungen: Siegfried (1924) Fritz Lang
+pl	*	LALKA / DOLLY	imdb:tt0064570	wrong	hand label: Lalka (1968) Wojciech Has
+pl	*	Lalka (DOLLY)	imdb:tt0064570	wrong	hand label: Lalka (1968) Wojciech Has
+pl	*	Lalka (Dolly)	imdb:tt0064570	wrong	hand label: Lalka (1968) Wojciech Has
+pl	*	Lalka Dolly (Napisy)	imdb:tt0064570	wrong	hand label: Lalka (1968) Wojciech Has
+pl	*	Obcy w domu	imdb:tt0097503	wrong	hand label: Hider in the House (1989) Matthew Patrick
+us	*	Lady Frankenstein	imdb:tt0067321	right	hand label: Lady Frankenstein (1971) Mel Welles; Aureliano Luppi
+us	*	Student Bodies	imdb:tt0083133	right	hand label: Student Bodies (1981) Mickey Rose; Michael Ritchie
+us	*	The Scout	rt:the_scout_2025	wrong	hand label: The Scout (2026) Paula González-Nasser
+pl	*	AKW: Powoli	wikipedia:Q459057	wrong	hand label: Monster (2003) Patty Jenkins
+pl	*	Akademia Polskiego Filmu: Przygoda na Mariensztacie + Kierunek - Nowa Huta! | Socrealizm po polsku	cinemeta:tt27369017	wrong	hand label: Hope (2026) Na Hong-jin
+pl	*	Akademia Polskiego Filmu: Znachor (1937) | Gatunki międzywojnia II: melodramat	filmweb:36236	right	hand label: Znachor (1937) Michał Waszyński
+pl	*	Bałtycki Deser Dla Najmłodszych: Bolek i Lolek - "Baba Jaga" | "Miś Kudłatek - "Jesienna przygoda" | "Reksio kompan"	imdb:tt3622110	wrong	hand label: Don't Knock Twice (2016) Caradog W. James
+pl	*	Bochnia rocks - greg howe extraction featuring dennis chambers	filmweb:829070	wrong	hand label: Tyler Rake: Ocalenie (2020) Sam Hargrave
+pl	*	LALKA / DOLLY	filmweb:10057628	wrong	hand label: Lalka (2026) Maciej Kawalski
+pl	*	LALKA / DOLLY	rt:dolly	right	hand label: Dolly (2026) Rod Blackhurst
+pl	*	Lalka (DOLLY)	filmweb:10057628	wrong	hand label: Lalka (2026) Maciej Kawalski
+pl	*	Lalka (DOLLY)	rt:dolly	right	hand label: Dolly (2026) Rod Blackhurst
+pl	*	Lalka (Dolly)	filmweb:10057628	wrong	hand label: Lalka (2026) Maciej Kawalski
+pl	*	Lalka (Dolly)	rt:dolly	right	hand label: Dolly (2026) Rod Blackhurst
+pl	*	Lalka Dolly (Napisy)	filmweb:10057628	wrong	hand label: Lalka (2026) Maciej Kawalski
+pl	*	Lalka Dolly (Napisy)	rt:dolly	right	hand label: Dolly (2026) Rod Blackhurst
+pl	*	Misiowe Poranki: PODWODNY ŚWIAT PEŁEN PRZYGÓD	cinemeta:tt37458112	wrong	hand label: D54 (2026)
+pl	*	My Fair Lady	rt:my_fair_lady	right	hand label: My Fair Lady (1964) George Cukor
+pl	*	My Fair Lady	wikidata:Q201215	right	hand label: My Fair Lady (1964) George Cukor
+pl	*	My Fair Lady	wikipedia:Q201215	right	hand label: My Fair Lady (1964) George Cukor
+pl	*	TAJNY AGENT	imdb:tt27847051	right	hand label: The Secret Agent (2025) Kleber Mendonça Filho
+pl	*	TAJNY AGENT - Klub Filmowy	imdb:tt27847051	right	hand label: The Secret Agent (2025) Kleber Mendonça Filho
+pl	*	Wielka Sztuka w Kinoteatrze Rialto - Frida: Viva la Vida	rt:frida_viva_la_vida	right	hand label: Frida. Viva la Vida (2019) Gianni Troilo
+pl	*	Wrocławski Klub Ojca - DIY zabawki z drewna z recyklingu	cinemeta:tt0816711	wrong	hand label: World War Z (2013) Marc Forster
+uk	*	Toddler Club: Pip and Posy and Friends	imdb:tt38369557	right	hand label: Pip And Posy And Friends (2025)
+de	*	Fantasy	rt:fantasy_2025	right	hand label: 
+pl	*	Samson i Dalila	rt:the_metropolitan_opera_samson_et_dalila	right	hand label: 
+uk	*	It (1990)	rt:stephen_kings_it	right	hand label: 
+uk	*	NT Live: A Midsummer Night's Dream	rt:twelfth-night1987	wrong	hand label: Twelfth Night
+us	*	It (1990)	rt:stephen_kings_it	right	hand label: 
+us	*	Volcanoes 3D	rt:serengeti_2022	wrong	hand label: Serengeti
+pl	*	Dyrygent	tmdb:95269	right	judged 10-05: Wajda's The Conductor (1980), touring in the 2026 Wajda centenary retrospective (re-wizje); TMDB rank 1, no other Dyrygent film
+pl	*	DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO	tmdb:95269	right	judged 10-05: the same Wajda film, screened with a live concert
