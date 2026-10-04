@@ -91,6 +91,18 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(dance, takers :+ FamilyVerdict(VoterFamily.Imdb, None, Seq(SourceRecord(klondike1932)), leaning = Some(SourceRecord(klondike1932)))) should not be empty
   }
 
+  it should "not turn it down when the listing's own year or director contradicts the film it leans to" in {
+    // DE "Überleben" (fixture identity-unmatched): the venue credits Danial Miller in 2020; Filmweb leans to the 2022
+    // "Survive" by another director
+    val survive2020 = SourceRecord(film("Survive", 2020, "Danial Miller", 80), Map("imdb" -> "tt11465950"))
+    val survive2022 = SourceRecord(film("Survive", 2022, "Lee Yoon-ji", 92))
+    val credited    = Seq(listing(KinoMuza, "Survive", year = Some(2020), director = Some("Danial Miller")))
+    val takers      = Seq(VoterFamily.Imdb, VoterFamily.Wiki).map(f => FamilyVerdict.took(FamilyPick(f, "1", survive2020)))
+    val filmweb     = FamilyVerdict(VoterFamily.Filmweb, None, Seq(survive2020, survive2022), leaning = Some(survive2022))
+    Agreement.agreed(credited, takers :+ filmweb) should not be empty
+    Agreement.agreed(Seq(listing(KinoMuza, "Survive")), takers :+ filmweb) shouldBe None
+  }
+
   it should "not turn it down when its evidence leans to no film at all" in {
     // US "Spider Baby" (fixture identity-unmatched): Metacritic weighed Hill's film among Spider-Man films, 5.3% the best,
     // 3.0% the next — no film its evidence favours, so no evidence against the one three families took

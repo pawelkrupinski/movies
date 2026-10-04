@@ -173,6 +173,7 @@ object Agreement {
   /** A film ≥ [[Takers]] families took, as the evidence stands for it: the takers, the families leaning to it, what
    *  corroborates it, and whether a family weighed it and turned it down. */
   private final case class Supported(agreed: AgreedFilm, records: Seq[SourceRecord], turnedDown: Boolean) {
+    /** The records of it the takers took and the leaning families favour. */
     val support: Int = agreed.families.size + agreed.leaning.size + agreed.corroborated.size
     /** Short of [[Quorum]] takers, completed by leans or corroboration. */
     def completed: Boolean = agreed.families.size < Quorum
@@ -187,8 +188,13 @@ object Agreement {
     val corroborated = Set(ListingFacts).filter(_ => creditedByTheListing(listings, records)) ++ Set(ModelLean).filter(_ => modelLean.exists(isIt))
     // weighed and turned down for another film its evidence favours — weighed among films it favours none of is no
     // evidence against this one (US "Spider Baby": Metacritic's best a Spider-Man film at 5.3%, its next 3.0%)
-    val turnedDown = verdicts.exists(verdict => verdict.pick.isEmpty && verdict.weighed.exists(isIt) && verdict.leaning.exists(!isIt(_)))
-    Supported(AgreedFilm(group.map(_.family).toSet, merged, group.map(pick => pick.family -> pick.id).toMap, leaning, corroborated), records, turnedDown)
+    // — nor for one the listing's own year or director rules out (DE "Überleben", Danial Miller's in 2020 by the venue:
+    // Filmweb leaning to the 2022 "Survive")
+    val turnedDown = verdicts.exists(verdict => verdict.pick.isEmpty && verdict.weighed.exists(isIt) &&
+      verdict.leaning.exists(lean => !isIt(lean) && !contradictedByTheListing(listings, lean)))
+    val leant = verdicts.filter(verdict => verdict.pick.isEmpty).flatMap(_.leaning).filter(isIt)
+    Supported(AgreedFilm(group.map(_.family).toSet, merged, group.map(pick => pick.family -> pick.id).toMap, leaning, corroborated), records ++ leant,
+      turnedDown)
   }
 
   /** Do the listings credit the film themselves: every listing publishing a year and a director credits one of the
@@ -202,6 +208,13 @@ object Agreement {
           IdentityMeasures.directorRelation(listing.directors, directors) == IdentityMeasures.Category("same_person"))
     }
     dated.nonEmpty && dated.forall(credits)
+  }
+
+  /** Does a listing's own year (more than one apart) or director (another person, in the same script) rule the film out? */
+  private def contradictedByTheListing(listings: Seq[Listing], record: SourceRecord): Boolean = listings.exists { listing =>
+    record.film.year.zip(listing.year).exists { case (a, b) => math.abs(a - b) > 1 } ||
+      record.film.directors.exists(directors => directors.nonEmpty && listing.directors.nonEmpty &&
+        IdentityMeasures.directorRelation(listing.directors, directors) == IdentityMeasures.Category("different"))
   }
 
   /** Is the listing's title another film's ORIGINAL title — one a family weighed — while it is none of the agreed film's
