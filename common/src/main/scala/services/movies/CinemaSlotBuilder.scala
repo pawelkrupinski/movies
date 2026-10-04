@@ -23,7 +23,8 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
    *      (`priorSlot` carry-forward); else a listing tick WIPES the enrichment;
    *    - year fallback: keep the prior slot's year when the listing carries none — a tick that
    *      drops it (Helios' REST year flakes), or a venue page's year the detail enrichment wrote
-   *      — treating a missing year as loss, not a change;
+   *      — treating a missing year as loss, not a change; a listing with no page keeps neither its
+   *      prior year nor director, which key it (see `carryKeyed`);
    *    - cast/director cased for display (`displayNames`: ALL CAPS down for
    *      Cinema City, all-lowercase up for Flicks), a runtime no screened film has (zero, or Filmtheater
    *      Bleicherode's 6000-minute "flüstern & SCHREIEN") squashed to None, and country names canonicalised. */
@@ -34,6 +35,11 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
   ): SourceData = {
     // The venue's page for the film: what a link it printed relative to its own site resolves against.
     val filmPage = SlotFields.url(cm.filmUrl, None)
+    // A listing with no page is keyed by its year and directors (`ListingKey.Published`): a year or director carried
+    // from the prior slot is ANOTHER listing's (this one's own, missing, would be another key), and keys the slot as
+    // that listing — whose film the next projection then puts this one's slot on, a fresh film every projection
+    // (2026-10-04). Carried only where a page keys the listing, as the detail enrichment that writes them needs one.
+    val carryKeyed = cm.filmUrl.exists(_.trim.nonEmpty)
     SourceData(
       title          = stringPool.canonicalSome(displayTitle),
       // Verbatim upstream title, kept so the merge key is re-derivable when the
@@ -60,9 +66,9 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
       cast           = if (cm.cast.nonEmpty) displayNames(cm.cast)
                        else priorSlot.map(_.cast).getOrElse(Seq.empty),
       director       = if (cm.director.nonEmpty) displayNames(cm.director)
-                       else priorSlot.map(_.director).getOrElse(Seq.empty),
+                       else priorSlot.filter(_ => carryKeyed).map(_.director).getOrElse(Seq.empty),
       runtimeMinutes = StringPool.small(cm.movie.runtimeMinutes.filter(FilmRuntime.plausible)).orElse(priorSlot.flatMap(_.runtimeMinutes)),
-      releaseYear    = StringPool.small(cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))),
+      releaseYear    = StringPool.small(cm.movie.releaseYear.orElse(priorSlot.filter(_ => carryKeyed).flatMap(_.releaseYear))),
       countries      = { val cs = stringPool.canonicalAll(SlotFields.countries(cm.movie.countries, enrichmentLanguage))
                          if (cs.nonEmpty) cs else priorSlot.map(_.countries).getOrElse(Seq.empty) },
       genres         = { val gs = stringPool.canonicalAll(SlotFields.genres(cm.movie.genres))

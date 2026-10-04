@@ -21,6 +21,29 @@ class CinemaSlotBuilderSpec extends AnyFlatSpec with Matchers {
   }
 }
 
+class CinemaSlotBuilderCarrySpec extends AnyFlatSpec with Matchers {
+  private val slots = new CinemaSlotBuilder(Country.Poland.language, new StringPool)
+  private val prior = models.SourceData(title = Some("Lalka"), releaseYear = Some(2026), director = Seq("Maciej Kawalski"),
+    synopsis = Some("Ekranizacja powieści"))
+
+  // "Lalka 2D" at a venue that prints no page or credits took "Lalka"'s year and director from the slot it was built
+  // over, keyed its slot as "Lalka", and was re-made a fresh film every projection (seed 703, prod retired-by-overlap).
+  "CinemaSlotBuilder.build" should "key a page-less listing's slot as the listing, carrying no other listing's year or director" in {
+    val pageless = CinemaMovie(Movie("Lalka 2D"), KinoApollo, None, None, None, Nil, Nil, Nil)
+    val slot     = slots.build(pageless, "Lalka 2D", Some(prior))
+    (slot.releaseYear, slot.director) shouldBe ((None, Nil))
+    slot.synopsis shouldBe prior.synopsis                                 // what does not key it is still carried
+    ListingKey.ofSlot(KinoApollo, slot) shouldBe ListingKey.of(KinoApollo, pageless)
+  }
+
+  it should "carry a page-keyed listing's year and director, which its page's enrichment wrote" in {
+    val paged = CinemaMovie(Movie("Lalka"), KinoApollo, None, Some("https://kinoapollo.pl/film/lalka"), None, Nil, Nil, Nil)
+    val slot  = slots.build(paged, "Lalka", Some(prior))
+    (slot.releaseYear, slot.director) shouldBe ((Some(2026), Seq("Maciej Kawalski")))
+    ListingKey.ofSlot(KinoApollo, slot) shouldBe ListingKey.of(KinoApollo, paged)
+  }
+}
+
 class CinemaSlotBuilderFieldsSpec extends AnyFlatSpec with Matchers {
 
   private val slots = new CinemaSlotBuilder(Country.Poland.language, new StringPool)
