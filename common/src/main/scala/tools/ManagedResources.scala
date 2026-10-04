@@ -18,16 +18,17 @@ import scala.util.control.NonFatal
  * member never created is never forced into existence just to be shut. `NoUnmanagedWiringExecutorSpec`
  * fails the build on a wiring executor created without registering.
  */
-final class ManagedResources(grace: FiniteDuration = ManagedResources.Grace) extends Logging {
-  private final case class Held(name: String, resource: AnyRef, close: () => Unit, terminated: () => Boolean)
+final class ManagedResources(grace: FiniteDuration = ManagedResources.Grace, stopwatch: Stopwatch = Stopwatch.System) extends Logging {
+  // `close` is handed what is left of the stop's grace.
+  private final case class Held(name: String, resource: AnyRef, close: FiniteDuration => Unit, terminated: () => Boolean)
 
   private val held     = new ConcurrentLinkedDeque[Held]()
   private val shut     = new ConcurrentLinkedDeque[Held]()
   @volatile private var closing = false
 
-  /** `executor`, shut (interrupting what runs, then waiting up to the grace) by [[closeAll]]. */
+  /** `executor`, shut (interrupting what runs, then waiting for what is left of the grace) by [[closeAll]]. */
   def executor[E <: ExecutorService](name: String)(executor: E): E =
-    hold(Held(name, executor, () => { executor.shutdownNow(); executor.awaitTermination(grace.toMillis, TimeUnit.MILLISECONDS); () },
+    hold(Held(name, executor, left => { executor.shutdownNow(); executor.awaitTermination(left.toMillis, TimeUnit.MILLISECONDS); () },
       () => executor.isTerminated), executor)
 
   /** `service`, stopped by [[closeAll]] — a reaper, census or cache that owns its own scheduler. */
@@ -44,7 +45,7 @@ final class ManagedResources(grace: FiniteDuration = ManagedResources.Grace) ext
 
   /** `resource`, closed by `close` in [[closeAll]]. */
   def register[A](name: String, resource: A)(close: A => Unit): A =
-    hold(Held(name, resource.asInstanceOf[AnyRef], () => close(resource), () => true), resource)
+    hold(Held(name, resource.asInstanceOf[AnyRef], _ => close(resource), () => true), resource)
 
   private def hold[A](entry: Held, resource: A): A = {
     held.push(entry)
@@ -53,11 +54,15 @@ final class ManagedResources(grace: FiniteDuration = ManagedResources.Grace) ext
     resource
   }
 
-  /** Close everything registered, newest first; one that fails is logged and the rest still close. */
+  /** Close everything registered, newest first; one that fails is logged and the rest still close.
+   *  The grace is ONE budget for the whole stop, not one per executor: the pod's stop window is fixed
+   *  (web: 30 s less a 15 s preStop), and N executors whose tasks ignore their interrupt held it
+   *  N x grace, past the SIGKILL and before the root ever reached its Mongo close. */
   def closeAll(): Unit = {
     closing = true
+    val started = stopwatch.start()
     Iterator.continually(held.poll()).takeWhile(_ != null).foreach { entry =>
-      try entry.close()
+      try entry.close((grace - started.elapsed).max(Duration.Zero))
       catch { case NonFatal(e) => logger.warn(s"closing ${entry.name} failed: $e", e) }
       shut.push(entry)
     }

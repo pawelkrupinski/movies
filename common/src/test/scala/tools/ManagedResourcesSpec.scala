@@ -27,6 +27,22 @@ class ManagedResourcesSpec extends AnyFlatSpec with Matchers {
     managed.unterminated shouldBe empty
   }
 
+  // The pod's stop budget is fixed (web: 30 s grace less a 15 s preStop sleep), so the grace is one
+  // budget for the whole stop, not one per pool: N pools whose tasks ignore their interrupt used to
+  // hold the stop N x grace, past the kubelet's SIGKILL and before Mongo was ever closed.
+  it should "spend one grace across every stuck executor, not one each" in {
+    @volatile var release = false
+    val grace   = scala.concurrent.duration.Duration(400, "millis")
+    val managed = new ManagedResources(grace)
+    (1 to 3).foreach { n =>
+      val pool = managed.executor(s"stuck-$n")(java.util.concurrent.Executors.newSingleThreadExecutor())
+      pool.execute(() => while (!release) Thread.onSpinWait()) // deaf to the interrupt
+    }
+    val stopwatch = Stopwatch.System.start()
+    try managed.closeAll() finally release = true
+    stopwatch.elapsed should be < (grace * 2)
+  }
+
   "A resource registered once the stop has begun" should "be closed at once" in {
     val closed  = ListBuffer.empty[String]
     val managed = new ManagedResources
