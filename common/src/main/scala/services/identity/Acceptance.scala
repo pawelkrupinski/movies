@@ -52,9 +52,10 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   /** `scored` at what its evidence CLASS measured (`IdentityCalibration.classProbability`), lending and never withdrawing. */
   private def classAccepted(scored: Scored, measures: Map[String, IdentityMeasures.Measure]): Verdict =
     calibration.classProbability(ListingFilm, measures).toRight(Refused("no evidence class measured for it", Some(scored.candidate.tmdbId)))
-      .map(classProbability => scored -> math.max(scored.probability, classProbability))
-      .filterOrElse(accepted => calibration.showsRatings(accepted._2), Refused("below the rating cut", Some(scored.candidate.tmdbId),
-        cut(math.max(scored.probability, calibration.classProbability(ListingFilm, measures).getOrElse(0.0)))))
+      .flatMap { classProbability =>
+        val lent = math.max(scored.probability, classProbability)
+        Either.cond(calibration.showsRatings(lent), scored -> lent, Refused("below the rating cut", Some(scored.candidate.tmdbId), cut(lent)))
+      }
 
   /** The first of `rules` to accept, with its name. */
   private def firstOf(ranked: Seq[Scored], rules: Seq[Rule]): Option[(Accepted, String)] =
@@ -220,15 +221,14 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     // names above it ("BTS 'ARIRANG' IN SÃO PAULO" is TMDB's São Paulo record, not IMDb's first 2026 suggestion, Busan;
     // "Kroll" is TMDB's first, the 1991 film IMDb suggests, above 1972's "Krõll"), and
     // never for an instalment the title numbers otherwise ("Recepta na szczęście 2" is not the first film).
-    def searchNamesAnother(scored: Scored) = eligible.exists(rival => (rival ne scored) && rival.titleNamesIt &&
-      rival.rank.exists(r => scored.rank.forall(r < _)))
+    def searchNamesAnother(scored: Scored, rival: Scored) = (rival ne scored) && rival.titleNamesIt &&
+      rival.rank.exists(r => scored.rank.forall(r < _))
     def otherInstalment(scored: Scored) = scored.category("numeral").exists(IdentityMeasures.OtherInstalment)
     for {
       _      <- need(suggested.nonEmpty, "IMDb suggests none of its candidates")
       _      <- need(!IdentityMeasures.billsTwoWorks(any.listing), "a double bill")
       scored <- one(suggested.filter(rung), "no IMDb suggestion is taken by its year, its director or as the only one", "two IMDb suggestions qualify")
-      _      <- noneOf(eligible.find(rival => (rival ne scored) && rival.titleNamesIt && rival.rank.exists(r => scored.rank.forall(r < _))),
-                  "TMDB ranks another film the title names above it", scored)
+      _      <- noneOf(eligible.find(searchNamesAnother(scored, _)), "TMDB ranks another film the title names above it", scored)
       _      <- needOf(!otherInstalment(scored), "the title numbers another instalment", scored, s"numeral=${scored.category("numeral").getOrElse("")}")
       titled  = scored.copy(measures = scored.measures ++ Map("title" -> IdentityMeasures.Category("exact"),
                   "search.rank" -> IdentityMeasures.Number(1), "rivals" -> IdentityMeasures.Number(0)))
@@ -420,10 +420,9 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     lazy val billedAlike = eligibleOf(ranked).count(scored => bills(scored) && !scored.category("director").contains("different"))
     def billedWork(scored: Scored) = IdentityMeasures.sameDirector(scored.measures) && bills(scored) && billedAlike == 1 &&
       scored.number("runtime.delta").exists(_ <= BilledRuntime)
-    eligibleOf(ranked).filter(scored => IdentityMeasures.sameDirector(scored.measures) &&
-      (IdentityMeasures.sharesWork(scored.listing, scored.candidate.film) || bareWork(scored) || billedWork(scored)) && !contradicted(scored)) match {
-      case found => one(withoutHollow(found), "no film of its credited director shares its work", "two films of its director share its work", credited(ranked)).map(f => f -> f.probability)
-    }
+    val found = eligibleOf(ranked).filter(scored => IdentityMeasures.sameDirector(scored.measures) &&
+      (IdentityMeasures.sharesWork(scored.listing, scored.candidate.film) || bareWork(scored) || billedWork(scored)) && !contradicted(scored))
+    one(withoutHollow(found), "no film of its credited director shares its work", "two films of its director share its work", credited(ranked)).map(f => f -> f.probability)
   }
 
   /** The one eligible candidate the listing's title names EXACTLY that credits the director the

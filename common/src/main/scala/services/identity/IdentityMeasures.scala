@@ -673,6 +673,7 @@ object IdentityMeasures {
   /** Is the original title the venue publishes the film's WORK, as [[titleIsWorkOf]] — DE "Ein Hund namens Quill",
    *  published as "Quill", of "Quill - Ein Freund für´s Leben"? */
   def originalTitleIsWorkOf(l: Listing, f: Film): Option[Int] = workNamedBy(l.originalTitle.toSeq, f)
+  /** The words of the film's work (its title or original title before a subtitle) when one of `titles` is it. */
   private def workNamedBy(titles: Seq[String], f: Film): Option[Int] = {
     val own = titles.map(key).filter(_.nonEmpty).toSet
     (Seq(f.title) ++ f.originalTitle).flatMap(leadingWork).find(w => own(key(w))).map(w => TitleContainment.tokens(w).size)
@@ -681,10 +682,7 @@ object IdentityMeasures {
   /** Do the listing and the film bill the same WORK, each under its own subtitle — the title before a
    *  first comma, colon or dash ("BTS World Tour 'ARIRANG' In Buenos Aires: Live" and "…: Live
    *  Viewing")? The words of the work, or None. */
-  def billsWorkOf(l: Listing, f: Film): Option[Int] = {
-    val own = (Seq(l.title) ++ l.rawTitle).flatMap(leadingWork).map(key).filter(_.nonEmpty).toSet
-    (Seq(f.title) ++ f.originalTitle).flatMap(leadingWork).find(w => own(key(w))).map(w => TitleContainment.tokens(w).size)
-  }
+  def billsWorkOf(l: Listing, f: Film): Option[Int] = workNamedBy((Seq(l.title) ++ l.rawTitle).flatMap(leadingWork), f)
 
   private val WorkSubtitle = """\s*[,:]\s+|\s+[-–—]\s+""".r
   private def leadingWork(t: String): Option[String] = WorkSubtitle.findFirstMatchIn(t).map(m => t.substring(0, m.start).trim)
