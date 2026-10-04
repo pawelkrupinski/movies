@@ -101,6 +101,16 @@ class StringPoolSpec extends AnyFlatSpec with Matchers {
     StringPool.small(Some(100000)) shouldBe Some(100000)
   }
 
+  // An aggregator links every venue's listing of a film to ONE film page: worker-us held 181k flicks.us
+  // filmUrls with 2,028 distinct contents (heap dump 2026-10-04), each slot with its own String and Some.
+  "Two venues' slots of one film" should "share the film page they both link to" in {
+    val pool = new StringPool
+    def slot = models.SourceData(filmUrl = Some(new String("https://www.flicks.us/movie/verity/")))
+    val (a, b) = (pool.slot(slot), pool.slot(slot))
+    assert(a.filmUrl eq b.filmUrl)
+    a.filmUrl shouldBe Some("https://www.flicks.us/movie/verity/")
+  }
+
   // A film's cast is one list at every venue that shows it; each venue's slot held its own copy
   // (~985k list cells on the US worker).
   "canonicalAll" should "hand equal lists back as one instance" in {

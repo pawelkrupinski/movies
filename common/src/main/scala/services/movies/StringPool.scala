@@ -57,9 +57,9 @@ final class StringPool {
   /** A slot with its low-cardinality text interned — how a slot read back from the store (boot
    *  hydrate, the change stream, a rehydrate) joins the scrape path's instances. Without it nearly
    *  every cached slot kept its own copies: worker-uk held 1.23M duplicate String objects (37 MB)
-   *  while this pool held 3,916 strings. Not the film-page URL — one per cinema slot, so it shares
-   *  nothing and would crowd the vocabulary out (US holds ~100k slots) — nor the showtimes and title
-   *  searches, per-screening values. */
+   *  while this pool held 3,916 strings. The film-page URL too, as the scrape path already pools it: an
+   *  aggregator links every venue's listing of a film to one page (worker-us: 181k flicks.us filmUrls,
+   *  2,028 distinct, dump 2026-10-04). Not the showtimes and title searches, per-screening values. */
   def slot(sd: models.SourceData): models.SourceData = sd.copy(
     title          = canonical(sd.title),
     rawTitle       = canonical(sd.rawTitle),
@@ -71,6 +71,7 @@ final class StringPool {
     countries      = canonicalAll(sd.countries),
     genres         = canonicalAll(sd.genres),
     posterUrl      = canonical(sd.posterUrl),
+    filmUrl        = canonical(sd.filmUrl),
     trailerUrl     = canonical(sd.trailerUrl),
     language       = canonical(sd.language),
     ageRating      = canonical(sd.ageRating),
