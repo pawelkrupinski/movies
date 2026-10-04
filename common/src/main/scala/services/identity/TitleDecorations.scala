@@ -32,20 +32,30 @@ import services.movies.TitleContainment
  * (`IdentityMeasures.titleShapes`), so it is searched and read by the title relation; the listing's
  * own title, its card and its programme are untouched.
  */
-final case class TitleDecorations(prefixes: Set[Seq[String]], suffixes: Set[Seq[String]]) {
+final case class TitleDecorations(prefixes: Set[Seq[String]], suffixes: Set[Seq[String]], tails: Set[Seq[String]] = Set.empty) {
 
   /** Every spelling of `title` with ONE learned decoration taken off either edge, the title's own
    *  text kept (its casing and punctuation, which the search reads): "(4DX Rewind) Shrek" →
-   *  "Shrek". `IdentityMeasures.titleShapes` repeats it to a fixpoint. */
+   *  "Shrek" — or with a learned event TAIL it bills last cut off: "Punku + spotkanie z reżyserem" → "Punku".
+   *  `IdentityMeasures.titleShapes` repeats it to a fixpoint. */
   def strip(title: String): Seq[String] =
-    if (prefixes.isEmpty && suffixes.isEmpty) Nil
-    else TitleDecorations.words(title).toSeq.flatMap { ws =>
+    if (prefixes.isEmpty && suffixes.isEmpty && tails.isEmpty) Nil
+    else (TitleDecorations.words(title).toSeq.flatMap { ws =>
       val tokens = ws.map(_._1)
       val n = tokens.size
       val fromFront = (1 until n).filter(k => prefixes(tokens.take(k))).map(k => title.substring(ws(k)._2))
       val fromBack  = (1 until n).filter(k => suffixes(tokens.takeRight(k))).map(k => title.substring(0, ws(n - k)._2))
       (fromFront ++ fromBack).map(TitleDecorations.trimmed).filter(_.nonEmpty)
-    }.distinct
+    } ++ Option(withoutTail(title)).filter(_ != title)).distinct
+
+  /** `title` with every learned event tail it bills last cut off, with its join: "Punku + spotkanie z reżyserem +
+   *  PJM" → "Punku". What a talk or a signed screening follows is one work, not a double bill. */
+  def withoutTail(title: String): String =
+    if (tails.isEmpty) title
+    else TitleDecorations.LastBillJoin.findFirstMatchIn(title).filter { m =>
+      val piece = TitleContainment.tokens(title.substring(m.end))
+      (1 to math.min(piece.size, TitleDecorations.TailRun)).exists(n => tails(piece.take(n)))
+    }.fold(title)(m => withoutTail(title.substring(0, m.start).trim))
 }
 
 object TitleDecorations {
@@ -67,14 +77,21 @@ object TitleDecorations {
 
   /** The artefact `scripts.IdentityDecorationsLearn` writes: the decorations with provenance. */
   final case class Artefact(version: String, basis: String, inputs: Map[String, Int], decorations: Seq[Learned]) {
-    def decorationsOf: TitleDecorations = TitleDecorations(
-      decorations.filter(_.side == "prefix").map(d => d.decoration.split(" ").toSeq).toSet,
-      decorations.filter(_.side == "suffix").map(d => d.decoration.split(" ").toSeq).toSet)
+    def decorationsOf: TitleDecorations = {
+      def of(side: String) = decorations.filter(_.side == side).map(d => d.decoration.split(" ").toSeq).toSet
+      TitleDecorations(of("prefix"), of("suffix"), of(Tail))
+    }
   }
   implicit val learnedFormat: OFormat[Learned]   = Json.format[Learned]
   implicit val artefactFormat: OFormat[Artefact] = Json.format[Artefact]
 
   val ResourcePath = "identity-decorations.json"
+
+  /** The side a learned event tail is filed under: what a title bills LAST, after a spaced "+". */
+  val Tail = "tail"
+  /** The longest tail run learned: "spotkanie z" leads "… z reżyserem", "… z reżyserką" and "… z Janem Englertem" alike. */
+  private[identity] val TailRun = 3
+  private[identity] val LastBillJoin = """\s\+\s(?!.*\s\+\s)""".r
 
   def fromResource(path: String): Option[Artefact] =
     Option(getClass.getClassLoader.getResourceAsStream(path)).map { in =>
@@ -121,11 +138,36 @@ object TitleDecorations {
     val recurring = seen.toSeq.map { case (key, byRest) => key -> (byRest, distinctFilms(byRest.keySet)) }
       .filter { case ((side, run), (byRest, films)) =>
         films.size >= MinFilms || (films.size == 1 && aroundOneFilm(side, run, byRest, films.head)) }
-    val inRecords = carried(recordTitles, recurring.map(_._1._2).toSet)
-    recurring.collect { case ((side, run), (byRest, films)) if !inRecords(run) =>
+    val recurringTails = tailsOf(listings, byTokens.keySet)
+    val inRecords = carried(recordTitles, (recurring.map(_._1._2) ++ recurringTails.map(_._1)).toSet)
+    val edges = recurring.collect { case ((side, run), (byRest, films)) if !inRecords(run) =>
       Learned(side, run.mkString(" "), films.size, byRest.values.flatten.toSet.size, byRest.size,
         films.toSeq.map(_.mkString(" ")).sorted.take(ProvenanceExamples))
-    }.sortBy(d => (-d.films, d.side, d.decoration))
+    }
+    val billed = recurringTails.collect { case (run, (byFirst, films)) if !inRecords(run) =>
+      Learned(Tail, run.mkString(" "), films.size, byFirst.values.flatten.toSet.size, byFirst.size,
+        films.toSeq.map(_.mkString(" ")).sorted.take(ProvenanceExamples))
+    }
+    (edges ++ billed).sortBy(d => (-d.films, d.side, d.decoration))
+  }
+
+  /** An EVENT TAIL: a run of up to [[TailRun]] words that STARTS what titles bill last after a spaced "+", behind at
+   *  least [[MinFilms]] different works, each another listing's whole title — "spotkanie z" after "Punku" and "Kalafior
+   *  przeznaczenia", "PJM" after "Lalka" and "Obcy". A second WORK is billed after one first work ("Basia… + Kocia
+   *  Szajka", "We're Going on a Bear Hunt + The Tiger Who Came to Tea"), never a run beside many. Each run → the works
+   *  it follows → the venues billing them, and those works counted as [[distinctFilms]]. */
+  private def tailsOf(listings: Iterable[(String, String)], titles: Set[Seq[String]]): Seq[(Seq[String], (Map[Seq[String], Set[String]], Set[Seq[String]]))] = {
+    val seen = scala.collection.mutable.HashMap.empty[Seq[String], Map[Seq[String], Set[String]]]
+    listings.foreach { case (venue, title) =>
+      LastBillJoin.findFirstMatchIn(title).foreach { m =>
+        val first = TitleContainment.tokens(title.substring(0, m.start))
+        val piece = TitleContainment.tokens(title.substring(m.end))
+        if (first.nonEmpty && titles(first)) (1 to math.min(piece.size, TailRun)).foreach { n =>
+          seen.updateWith(piece.take(n))(v => Some(v.getOrElse(Map.empty).updatedWith(first)(vs => Some(vs.getOrElse(Set.empty) + venue))))
+        }
+      }
+    }
+    seen.toSeq.map { case (run, byFirst) => run -> (byFirst, distinctFilms(byFirst.keySet)) }.filter(_._2._2.size >= MinFilms)
   }
 
   /** `learned` — this recording's decorations — with every `earlier` one it did not learn again, unless a title of

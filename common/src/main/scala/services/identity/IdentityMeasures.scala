@@ -1094,19 +1094,20 @@ object IdentityMeasures {
   }
 
   /** What a double bill joins LAST with a spaced "+" ("… + The Tiger Who Came to Tea") — a film, or a talk. */
-  def billedSecondTitle(l: Listing): Option[String] = BillJoin.split(l.title).lastOption.filter(_ => billsTwoWorks(l)).map(_.trim)
+  def billedSecondTitle(l: Listing): Option[String] = BillJoin.split(l.decorations.withoutTail(l.title)).lastOption.filter(_ => billsTwoWorks(l)).map(_.trim)
 
   /** The yearless words of [[billedSecondTitle]]. */
   def billedSecondWork(l: Listing): Option[Seq[String]] = billedSecondTitle(l).map(yearlessTokens).filter(_.nonEmpty)
 
-  /** Does the listing bill two works with a spaced "+" — a double bill, whose facts are one of its films'? */
-  def billsTwoWorks(l: Listing): Boolean = (Seq(l.title) ++ l.rawTitle).exists(t => BillJoin.findFirstIn(t).isDefined)
+  /** Does the listing bill two works with a spaced "+" — a double bill, whose facts are one of its films'? Not when
+   *  what it bills last is a learned event tail ([[TitleDecorations.withoutTail]]): "Punku + spotkanie z reżyserem". */
+  def billsTwoWorks(l: Listing): Boolean = (Seq(l.title) ++ l.rawTitle).exists(t => BillJoin.findFirstIn(l.decorations.withoutTail(t)).isDefined)
   /** The works a DOUBLE BILL joins with a spaced "+" ("Basia. Humor w paski mam + Kocia Szajka"),
    *  each searched on its own: the database has no record of the bill, so without them the only
    *  candidates are what a credited director's filmography walks to. Searched, not shapes: a bill
    *  is neither of its works, which is why its family keys leave them out. */
   private def billedWorks(l: Listing): Seq[String] =
-    (Seq(l.title) ++ l.rawTitle).map(BillJoin.split(_).toSeq.map(_.trim).filter(_.nonEmpty)).filter(_.sizeIs > 1).flatten
+    (Seq(l.title) ++ l.rawTitle).map(t => BillJoin.split(l.decorations.withoutTail(t)).toSeq.map(_.trim).filter(_.nonEmpty)).filter(_.sizeIs > 1).flatten
 
   /** The stage works ([[StageWorks]]) a listing's title pieces name, in whatever language. */
   def stageWorks(l: Listing): Set[String] =

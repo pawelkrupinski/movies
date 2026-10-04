@@ -82,6 +82,34 @@ class TitleDecorationsSpec extends AnyFlatSpec with Matchers {
     TitleDecorations.learn(listings, Seq("Friday"), empty).map(_.decoration) shouldBe Seq("the 13th 1980")
   }
 
+  "Learning what a bill joins last" should "take a run that starts it after different films' titles, as an event's tail" in {
+    // PL: "Kalafior przeznaczenia + spotkanie z reżyserką", "Punku + spotkanie z reżyserem", "Lalka + PJM": a talk or a
+    // signed screening billed after the film, not a second work — read as a double bill, no rule took the film alone.
+    val ls = Seq("A" -> "Kalafior przeznaczenia + spotkanie z reżyserką", "B" -> "Punku + spotkanie z reżyserem",
+      "A" -> "Kalafior przeznaczenia", "B" -> "Punku", "C" -> "Lalka + PJM", "C" -> "Obcy + PJM", "C" -> "Lalka", "C" -> "Obcy")
+    val tails = TitleDecorations.learn(ls, Nil).filter(_.side == "tail")
+    tails.map(_.decoration) should contain allOf ("spotkanie z", "pjm")
+    tails.find(_.decoration == "pjm").map(_.examples) shouldBe Some(Seq("lalka", "obcy"))
+  }
+
+  it should "keep a second film billed after one film only, or one a record's title carries" in {
+    // UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" and PL "Basia… + Kocia Szajka" bill the same second
+    // work after the same first: a double bill, whichever venues carry it.
+    val ls = Seq("A" -> "Basia + Kocia Szajka", "B" -> "Basia + Kocia Szajka", "A" -> "Basia", "C" -> "Lalka + PJM", "C" -> "Obcy + PJM",
+      "C" -> "Lalka", "C" -> "Obcy")
+    TitleDecorations.learn(ls, Nil).filter(_.side == "tail").map(_.decoration) should not contain "kocia"
+    TitleDecorations.learn(ls, Seq("PJM: The Movie")).filter(_.side == "tail").map(_.decoration) should not contain "pjm"
+  }
+
+  "A learned bill tail" should "make a film billed with a talk no double bill, and its title before the talk a shape" in {
+    val d = TitleDecorations(Set.empty, Set.empty, Set(Seq("spotkanie", "z")))
+    val talk = IdentityMeasures.Listing("Kalafior przeznaczenia + spotkanie z reżyserką", decorations = d)
+    IdentityMeasures.billsTwoWorks(talk) shouldBe false
+    d.strip("Kalafior przeznaczenia + spotkanie z reżyserką") should contain("Kalafior przeznaczenia")
+    IdentityMeasures.billsTwoWorks(IdentityMeasures.Listing("Basia + Kocia Szajka", decorations = d)) shouldBe true
+    IdentityMeasures.billsTwoWorks(IdentityMeasures.Listing("Basia + Kocia Szajka + spotkanie z autorką", decorations = d)) shouldBe true
+  }
+
   "Relearning" should "keep what an earlier recording learned when the programme it was seen around has ended" in {
     // PL's "WAJDA: re-wizje …", "Seans Seniora …" and "… 30 rocznica" were learned on 09-28 and gone from the 10-03
     // recording's programme; relearned from that one recording alone they were dropped — and Kino Konesera's, BOKino's
@@ -139,7 +167,7 @@ class TitleDecorationsSpec extends AnyFlatSpec with Matchers {
   "The resolver's artefact" should "load, and hold only what learning emits" in {
     val artefact = TitleDecorations.fromResource(TitleDecorations.ResourcePath).get
     artefact.decorations.foreach { d =>
-      Set("prefix", "suffix") should contain(d.side)
+      Set("prefix", "suffix", "tail") should contain(d.side)
       d.films should be >= 1
       if (d.films < TitleDecorations.MinFilms) d.venues should be >= TitleDecorations.MinVenues
       d.examples should not be empty

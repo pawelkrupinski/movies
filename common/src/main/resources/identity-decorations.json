@@ -344,13 +344,6 @@
     "examples" : [ "dzien dziecka ksiedza jana kaczkowskiego", "mistyczka", "niebo nad normandia", "rolling loud" ]
   }, {
     "side" : "suffix",
-    "decoration" : "malayalam",
-    "films" : 4,
-    "venues" : 37,
-    "titles" : 4,
-    "examples" : [ "aaram", "bethlehem kudumba unit", "dhoomakethu", "pradhama drishtiya kuttakkar" ]
-  }, {
-    "side" : "suffix",
     "decoration" : "metropolitan opera live in hd 2026 27",
     "films" : 4,
     "venues" : 1,
@@ -531,6 +524,13 @@
     "venues" : 1,
     "titles" : 3,
     "examples" : [ "kopnieci w czasie", "niebo nad normandia", "zaproszenie" ]
+  }, {
+    "side" : "tail",
+    "decoration" : "prelekcja",
+    "films" : 3,
+    "venues" : 2,
+    "titles" : 3,
+    "examples" : [ "crash", "egon schiele poza tabu", "pasazer andrzej munk" ]
   }, {
     "side" : "prefix",
     "decoration" : "ars independent festival paul verhoeven retrospektywa",
@@ -1021,6 +1021,41 @@
     "venues" : 1,
     "titles" : 2,
     "examples" : [ "niesamowite przygody skarpetek 4 do roboty", "pucio kocha zwierzaki" ]
+  }, {
+    "side" : "tail",
+    "decoration" : "in person q",
+    "films" : 2,
+    "venues" : 6,
+    "titles" : 2,
+    "examples" : [ "24 hour party people", "charlie shaw s revenge" ]
+  }, {
+    "side" : "tail",
+    "decoration" : "pjm",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "kino bez barier gorzkie swieta ad cc", "kino bez barier ojczyzna ad cc" ]
+  }, {
+    "side" : "tail",
+    "decoration" : "spotkanie z rezyserem",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "lalka", "pasazer andrzej munk" ]
+  }, {
+    "side" : "tail",
+    "decoration" : "wstep sebastiana",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "crash", "nakarmic kruki" ]
+  }, {
+    "side" : "tail",
+    "decoration" : "wstep sebastiana smolinskiego",
+    "films" : 2,
+    "venues" : 1,
+    "titles" : 2,
+    "examples" : [ "crash", "nakarmic kruki" ]
   }, {
     "side" : "prefix",
     "decoration" : "avarachan",
