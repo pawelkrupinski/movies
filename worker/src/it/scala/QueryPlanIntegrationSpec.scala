@@ -11,7 +11,7 @@ import services.sharecards.{MongoFacebookRescrapeStore, RescrapeEntry, RescrapeK
 import services.tasks.{MongoChunkScrapeStore, MongoTaskQueue, TaskType}
 import tools.QueryPlans
 
-import java.time.{Instant, LocalDateTime}
+import java.time.LocalDateTime
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
@@ -34,6 +34,9 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
     withClue(s"every planned statement:\n${recorded.plans.map(_.toString).distinct.mkString("\n")}\n") {
       QueryPlans.violations(recorded, allowed, unread) shouldBe empty
     }
+
+  /** Every stamp from the TTL-safe pinned clock: a row stamped in the past could be expired mid-spec. */
+  private val Far = _root_.tools.MongoTtlSpecClock.Pinned.instant()
 
   private def await[A](f: scala.concurrent.Future[A]): A = Await.result(f, 30.seconds)
 
@@ -60,7 +63,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
     assertIndexed(plansOf("tasks") { db =>
       val queue = new MongoTaskQueue(Some(db.withCodecRegistry(services.movies.MovieCodecs.registry)))
       awaitIndexes(db, "tasks", 4)
-      val t0    = Instant.parse("2026-06-07T12:00:00Z")
+      val t0    = Far
       (1 to 20).foreach(i => queue.enqueue(TaskType.ScrapeCinema, s"scrape|venue-$i", Map.empty, t0.plusSeconds(i.toLong), None, Duration.Zero))
       val claimed = queue.claim("worker-a", 1.minute, t0.plusSeconds(60)).get
       queue.complete(claimed.id, "worker-a")
@@ -78,7 +81,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
     assertIndexed(plansOf("rescrapes") { db =>
       val store = new MongoFacebookRescrapeStore(db.getCollection[Document](MongoFacebookRescrapeStore.Collection))
       awaitIndexes(db, MongoFacebookRescrapeStore.Collection, 2)
-      val t0 = Instant.parse("2026-09-25T12:00:00Z")
+      val t0 = Far
       store.add((1 to 30).map(i => RescrapeEntry("pl", RescrapeTarget.Page(s"https://kinowo.net/f/$i"), t0.plusSeconds(i.toLong * (if (i % 2 == 0) 1 else 1000)))))
       store.add(Seq(RescrapeEntry("us", RescrapeTarget.FilmPages("us", "film-1"), t0)))
       store.hasDue("pl", RescrapeKind.Page, t0.plusSeconds(100)) shouldBe true
@@ -93,7 +96,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
     assertIndexed(plansOf("films") { db =>
       val screenings = new MongoScreeningsRepository(Some(db))
       val slots      = new MongoSlotsRepository(Some(db))
-      val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(screenings), slots = Some(slots),
+      val repository = new MongoMovieRepository(Some(db), _root_.tools.MongoTtlSpecClock.Pinned, screenings = Some(screenings), slots = Some(slots),
                                                 normalizer = titleNormalizer)
       val at   = LocalDateTime.of(2099, 3, 1, 18, 0)
       val shop = CinemaShowing(KinoMuranow, "belle")
@@ -107,7 +110,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
       repository.findByIdChecked(FilmId("no-such-film")).answered shouldBe empty
       repository.delete("Film 3", Some(2003))
       // The change-stream catch-up in steady state: nothing written since its cursor.
-      repository.foreachRecordUpdatedSince(Instant.parse("2100-01-01T00:00:00Z"))(_ => ()) shouldBe tools.ScanOutcome.Complete
+      repository.foreachRecordUpdatedSince(Far.plusSeconds(86400))(_ => ()) shouldBe tools.ScanOutcome.Complete
       repository.close()
     }, allowed = Map("movies find filter{updatedAt:{$gt}} sort{_id}" -> (
       "the change-stream catch-up: the updatedAt range is the rows written since the cursor (none, in steady state), " +
@@ -122,7 +125,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
     import services.scrapes.{MongoScrapeArchiveRepository, ScrapeAttempt}
     assertIndexed(plansOf("archive") { db =>
       val repository = new MongoScrapeArchiveRepository(Some(db))
-      val at = Instant.parse("2026-07-28T06:00:00Z")
+      val at = Far
       def film(title: String, cinema: Cinema) = CinemaMovie(movie = Movie(title, None, None, Nil, Nil, None, None), cinema = cinema,
         posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil,
         showtimes = Seq(Showtime(LocalDateTime.parse("2026-08-01T18:00"), bookingUrl = None)))
@@ -142,7 +145,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
   "the chunked-scrape store" should "read and clear a run's chunks by index" in {
     assertIndexed(plansOf("chunks") { db =>
       val store = new MongoChunkScrapeStore(Some(db))
-      val now   = Instant.parse("2026-09-25T12:00:00Z")
+      val now   = Far
       awaitIndexes(db, "scrape_chunks", 3)
       val run   = store.startRun("helios-lodz", Seq("a", "b"), now, 1.hour).get
       store.storeChunk("helios-lodz", run, "a", "{}", now)
