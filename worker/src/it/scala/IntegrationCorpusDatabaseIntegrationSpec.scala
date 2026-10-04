@@ -67,7 +67,26 @@ class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers
   }
 
   it should "be this run's own, so a second run started with the same MONGODB_DB cannot drop it mid-test" in {
-    IntegrationCorpusDatabase.named(mongoTarget, "drop-probe") should endWith(s"_${ProcessHandle.current().pid()}")
+    IntegrationCorpusDatabase.named(mongoTarget, "drop-probe") should endWith(s"_pid${ProcessHandle.current().pid()}")
     IntegrationCorpusDatabase.named(mongoTarget, "drop-probe") shouldBe IntegrationCorpusDatabase.named(mongoTarget, "drop-probe")
+  }
+
+  // A run that is killed never reaches its `finally`, and a later run never generates its pid-scoped
+  // name again: 351 such databases had piled up on the local server by 2026-10-04.
+  it should "reclaim a killed run's databases on the next scope it opens, and leave a live run's alone" in {
+    val client = MongoClient(mongoTarget.uri.value)
+    try {
+      val ended = new ProcessBuilder("true").start()
+      ended.waitFor()
+      val orphan = s"${mongoTarget.databasePrefix.value}_sweep-probe_pid${ended.pid()}"
+      val live   = IntegrationCorpusDatabase.named(mongoTarget, "sweep-probe-live")
+      Seq(orphan, live).foreach(seed(client, _))
+      try {
+        IntegrationCorpusDatabase.withDatabase(mongoTarget, "sweep-probe") { _ => () }
+        val names = databaseNames(client)
+        withClue(s"$orphan belongs to an ended run: ")(names should not contain orphan)
+        withClue(s"$live belongs to this, live, run: ")(names should contain(live))
+      } finally Seq(orphan, live).foreach(name => Await.result(client.getDatabase(name).drop().toFuture(), SpecTimeouts.Io))
+    } finally client.close()
   }
 }

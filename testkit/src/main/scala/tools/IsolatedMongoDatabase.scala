@@ -46,7 +46,8 @@ final class IsolatedMongoDatabase private (val client: MongoClient, val database
 
 object IsolatedMongoDatabase {
 
-  /** Prefix every isolated database shares, so a sweep can find strays. */
+  /** Prefix every isolated database shares. A killed run's strays are reclaimed by
+   *  [[RunScopedDatabaseName.sweepOrphans]], which every open runs first. */
   val Prefix: String = "kinowo_isolated"
 
   /** A uniquely-named database that outlives a single block — for a suite whose
@@ -59,6 +60,7 @@ object IsolatedMongoDatabase {
   def open(target: IntegrationMongoTarget, purpose: String): IsolatedMongoDatabase = {
     target.requireThrowaway()
     val client = MongoClient(target.uri.value)
+    RunScopedDatabaseName.sweepOrphans(client)
     new IsolatedMongoDatabase(client, client.getDatabase(nameFor(purpose)))
   }
 
@@ -70,13 +72,14 @@ object IsolatedMongoDatabase {
     val client = MongoClient(target.uri.value)
     val name   = nameFor(purpose)
     try {
+      RunScopedDatabaseName.sweepOrphans(client)
       val database = client.getDatabase(name)
       try body(database)
       finally Await.result(database.drop().toFuture(), SpecTimeouts.Io)
     } finally client.close()
   }
 
-  /** Mongo rejects a database name over 63 characters, and the pid+nanos suffix is
+  /** Mongo rejects a database name over 63 characters, and the run-scoped suffix is
    *  ~30 of them — so a caller's `purpose` is TRUNCATED to what is left rather than
    *  allowed to overflow. A too-long purpose used to surface as `InvalidNamespace`
    *  from deep inside a lazy wiring init, which reads as the storage being broken
@@ -84,7 +87,7 @@ object IsolatedMongoDatabase {
   private val MaxDatabaseNameLength = 63
 
   /**
-   * `kinowo_isolated_<purpose>_<pid>_<nanos>` — lower-cased and stripped of anything
+   * `kinowo_isolated_<purpose>_pid<pid>_<nanos>` ([[RunScopedDatabaseName]]) — lower-cased and stripped of anything
    * Mongo won't accept in a database name.
    *
    * PRIVATE, because it is not idempotent: the `<nanos>` means every call returns a
@@ -96,7 +99,7 @@ object IsolatedMongoDatabase {
    */
   private def nameFor(purpose: String): String = {
     val safe = purpose.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+", "_").stripPrefix("_").stripSuffix("_")
-    val suffix = s"_${ProcessHandle.current().pid()}_${System.nanoTime()}"
+    val suffix = RunScopedDatabaseName.freshSuffix()
     val room   = MaxDatabaseNameLength - Prefix.length - 1 - suffix.length
     s"${Prefix}_${safe.take(math.max(1, room))}$suffix"
   }

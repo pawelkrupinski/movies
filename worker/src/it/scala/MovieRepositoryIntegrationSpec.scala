@@ -407,7 +407,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     //
     // It also stops this spec writing `change_stream_tokens` in the SHARED database,
     // which `persistResumeToken = true` makes it do, and which other specs read.
-    val db     = client.getDatabase(s"kinowo_it_dropresume_${System.nanoTime()}")
+    val db     = client.getDatabase(tools.RunScopedDatabaseName.fresh("kinowo_it_dropresume"))
     def clearToken(): Unit = Await.ready(
       db.getCollection("change_stream_tokens").deleteOne(Filters.eq("_id", "movies")).toFuture(), SpecTimeouts.Io)
     clearToken() // start clean → repo1 opens at "now", not a stale prior-run token

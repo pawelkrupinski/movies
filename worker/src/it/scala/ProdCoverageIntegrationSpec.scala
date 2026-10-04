@@ -45,7 +45,7 @@ import scala.concurrent.Await
  */
 class ProdCoverageIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
-  private val database = MongoClient(mongoTarget.uri.value).getDatabase(s"prod_coverage_spec_${System.nanoTime()}")
+  private val database = MongoClient(mongoTarget.uri.value).getDatabase(tools.RunScopedDatabaseName.fresh("prod_coverage_spec"))
 
   private val movies     = new MongoMovieRepository(sharedDb = Some(database), clock = java.time.Clock.systemUTC(), normalizer = titleNormalizer)
   private val slots      = new MongoSlotsRepository(Some(database))

@@ -34,7 +34,7 @@ class SharedUsersDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with 
 
   // Unique per run, so the drop in `afterAll` can never reach a database another spec, another run on
   // the same server (two agents' itAll side by side), or a local dev's corpus is using.
-  private val Prefix   = s"kinowo_it_sharedusers_${ProcessHandle.current().pid()}_${System.nanoTime()}"
+  private val Prefix   = tools.RunScopedDatabaseName.fresh("kinowo_it_sharedusers")
   private val SharedDb = s"${Prefix}_users"
 
   private lazy val client: MongoClient = MongoClient(mongoTarget.uri.value)

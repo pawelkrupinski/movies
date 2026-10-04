@@ -30,21 +30,17 @@ import scala.concurrent.Await
  */
 object IntegrationCorpusDatabase {
 
-  /** This run's id: the JVM's pid, unique among the processes running on this machine at once —
-   *  and so among the runs sharing the one local `:28017` server. Constant for the JVM, so every
-   *  call for the same suite names the same database. */
-  private val RunId: String = ProcessHandle.current().pid().toString
-
   /** Mongo refuses a longer database name, deep inside whatever first touches it. */
   private val MaxDatabaseNameLength = 63
 
-  /** `<MONGODB_DB>_<suite>_<run>` — the configured database, suffixed per suite and per RUN. Keeping
+  /** `<MONGODB_DB>_<suite>_pid<pid>` — the configured database, suffixed per suite and per RUN
+   *  ([[RunScopedDatabaseName.forThisRun]]: the same name for every call in this JVM). Keeping
    *  the configured name as the PREFIX means the `IntegrationMongo` throwaway guard and the CI
    *  teardown still recognise it as a test database. The run suffix is what keeps two runs apart
    *  that were started with the same `MONGODB_DB` (two agents' itAll, or an itAll and a single spec
    *  beside it): each one's `finally` used to drop the database the other was mid-test in. */
   def named(target: IntegrationMongoTarget, suite: String): String = {
-    val name = s"${target.databasePrefix.value}_${suite}_$RunId"
+    val name = RunScopedDatabaseName.forThisRun(s"${target.databasePrefix.value}_$suite")
     require(name.length <= MaxDatabaseNameLength,
       s"$name is ${name.length} characters, over Mongo's $MaxDatabaseNameLength — shorten the suite name or MONGODB_DB")
     name
@@ -74,6 +70,7 @@ object IntegrationCorpusDatabase {
     target.requireThrowaway()
     val client = MongoClient(target.uri.value)
     try {
+      RunScopedDatabaseName.sweepOrphans(client)
       val database = client.getDatabase(named(target, suite))
       try body(database)
       finally Await.result(database.drop().toFuture(), SpecTimeouts.Io)

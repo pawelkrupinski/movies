@@ -21,13 +21,15 @@ import java.nio.file.{Files, Path, Paths}
  *
  *  1. No it/ source opens the SHARED database: no `"MONGODB_DB"` read, no
  *     `MongoAddress.fromEnv` (which carries it), no literal `getDatabase("kinowo")`, and no fixed
- *     `"kinowo_…"` name (one with no `nanoTime`/`pid()` in it), which every run on the same
+ *     `"kinowo_…"` name (one not built by `RunScopedDatabaseName`), which every run on the same
  *     server shares. Take a database of the
  *     spec's own from `IsolatedMongoDatabase` or `IntegrationCorpusDatabase`
- *     (`<MONGODB_DB>_<suite>_<pid>`) — both unique per run — and drop it afterwards.
+ *     (`<MONGODB_DB>_<suite>_pid<pid>`) — both unique per run — and drop it afterwards.
  *
- *  2. No `getDatabase` by a literal name, whatever its prefix, unless something unique to the run
- *     (`nanoTime`, `pid()`) is in it: two runs on one server would share it.
+ *  2. No `getDatabase` by a literal name, whatever its prefix: two runs on one server would share
+ *     it. Nor by a hand-made unique one (`nanoTime`, `pid()` spliced in): unique, but no later run
+ *     can tell whose it is, so a KILLED run's copy is never dropped (351 had piled up locally by
+ *     2026-10-04). `RunScopedDatabaseName` marks the owning pid, and every open sweeps the dead.
  *
  *  3. No delete by regex. In a database the spec owns, drop it; a pattern delete there is
  *     only allowed where the delete IS the scenario, and is allowlisted with that reason.
@@ -41,7 +43,8 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
   /** file → why it may still name the shared database. */
   private val SharedDatabaseAllowlist: Map[String, String] = Map(
     "worker/src/it/scala/IntegrationCorpusDatabaseIntegrationSpec.scala" ->
-      "reads the base MONGODB_DB only to assert the per-suite names derive from it; opens no database by it")
+      ("reads the base MONGODB_DB only to assert the per-suite names derive from it, and to name a dead run's orphan the " +
+        "sweep must reclaim; opens no database by it"))
 
   /** file → why it may open a database by a literal name. */
   private val LiteralDatabaseAllowlist: Map[String, String] = Map(
@@ -67,7 +70,7 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
   // database (a `kinowo_worker_…` metric name) is not one.
   private val FixedName      = """(?:\bs)?"kinowo_""".r
   private val DatabaseWord   = """(?i)database|db\b|prefix""".r
-  private val UniquePerRun   = """nanoTime|\bpid\(\)""".r
+  private val UniquePerRun   = """\bRunScopedDatabaseName\.""".r
   // A database opened by a literal name: plain ("x"), or interpolated with nothing unique to the run in
   // it. `admin` is the server's own, never written by a spec.
   private val LiteralDatabase = """getDatabase\(\s*(?:"(?!admin")|s")""".r
@@ -114,7 +117,8 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
     val offenders = files.filterNot(p => LiteralDatabaseAllowlist.contains(p.toString)).flatMap(literalDatabaseLines)
     withClue(
       "These it/ lines open a database whose name every run on the same server shares, so two runs drop each " +
-        "other's data. Take it from IsolatedMongoDatabase or IntegrationCorpusDatabase (both unique per run), or " +
+        "other's data — or a hand-made unique one no run ever sweeps once its own was killed. Take it from " +
+        "IsolatedMongoDatabase, IntegrationCorpusDatabase or RunScopedDatabaseName (unique per run, swept), or " +
         "allowlist the file with a reason:\n" + offenders.mkString("\n") + "\n") {
       offenders shouldBe empty
     }
@@ -129,7 +133,15 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "keep every allowlist entry pointing at a file that still needs it" in {
+  "the literal-database rule" should "catch a fixed or hand-made name, and pass a run-scoped one" in {
+    def flagged(line: String) = LiteralDatabase.findFirstIn(line).isDefined && UniquePerRun.findFirstIn(line).isEmpty
+    Seq("""client.getDatabase("kinowo_x")""", """client.getDatabase(s"kinowo_x_${System.nanoTime()}")""",
+      """client.getDatabase(s"x_${ProcessHandle.current().pid()}")""").filterNot(flagged) shouldBe empty
+    Seq("""client.getDatabase(RunScopedDatabaseName.fresh("kinowo_x"))""", """client.getDatabase(name)""",
+      """client.getDatabase("admin")""").filter(flagged) shouldBe empty
+  }
+
+  "it/ specs" should "keep every allowlist entry pointing at a file that still needs it" in {
     def stale(allowlist: Map[String, String], still: Path => Seq[String]) =
       allowlist.keys.toSeq.sorted.filterNot { file =>
         val path = Paths.get(file)

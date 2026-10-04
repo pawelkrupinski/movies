@@ -30,7 +30,7 @@ class ScrapeArchiveKeysetIntegrationSpec extends AnyFlatSpec with Matchers with 
 
   private val client   = MongoClient(mongoTarget.uri.value)
   private val database = client.getDatabase(
-    s"kinowo_isolated_archivekeyset_${ProcessHandle.current().pid()}_${System.nanoTime()}")
+    tools.RunScopedDatabaseName.fresh("kinowo_isolated_archivekeyset"))
 
   private def film(title: String) = CinemaMovie(
     movie     = Movie(title, None, None, Nil, Nil, None, None),
@@ -77,7 +77,7 @@ class ScrapeArchiveKeysetIntegrationSpec extends AnyFlatSpec with Matchers with 
         override def commandSucceeded(event: com.mongodb.event.CommandSucceededEvent): Unit =
           if (page(event.getCommandName)) { outstanding.decrementAndGet(); () }
       }).build())
-    val db         = listening.getDatabase(s"kinowo_isolated_archivescan_${ProcessHandle.current().pid()}_${System.nanoTime()}")
+    val db         = listening.getDatabase(tools.RunScopedDatabaseName.fresh("kinowo_isolated_archivescan"))
     val repository = new MongoScrapeArchiveRepository(Some(db))
     val cinemas    = Cinema.all.take(MongoScrapeArchiveRepository.FindAllBatchSize * 6)
     try {
@@ -111,7 +111,7 @@ class ScrapeArchiveKeysetIntegrationSpec extends AnyFlatSpec with Matchers with 
             ()
           }
       }).build())
-    val db         = listening.getDatabase(s"kinowo_isolated_archivevenues_${ProcessHandle.current().pid()}_${System.nanoTime()}")
+    val db         = listening.getDatabase(tools.RunScopedDatabaseName.fresh("kinowo_isolated_archivevenues"))
     val repository = new MongoScrapeArchiveRepository(Some(db))
     val cinemas    = Cinema.all.take(MongoScrapeArchiveRepository.FindAllBatchSize * 3)
     val kept       = cinemas.zipWithIndex.collect { case (cinema, i) if i % 7 == 0 => cinema }.toSet
