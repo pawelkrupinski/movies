@@ -123,4 +123,25 @@ class IdentityCutoverEndToEndSpec extends AnyFlatSpec with Matchers {
       unanswered shouldBe empty
     }
   }
+
+  /** A cut-over worker projects every five minutes, and on most ticks nothing moved: since the cut-over
+   *  the workers allocated 4-7x what they had (US ~25 GB a tick), every venue slot rebuilt each tick
+   *  (2.4 GB of a US draft) and the listings read whole each time — each found only by reading a
+   *  production log. A quiet tick over the settled fixture corpus is held to its allocation on the
+   *  projecting thread (the median of several, so the periodic whole reads and reconciles fall to
+   *  either side), and to building no venue slot and writing nothing. */
+  "A quiet projection of the settled corpus" should "stay within its allocation budget and rebuild no venue slot" in {
+    val (w, _) = booted
+    val ticks  = Vector.newBuilder[ProjectionTick]
+    val quiet  = tools.costs.AllocationMeter.median(warmups = 3, runs = 7)(ticks += w.identityProjection.tick())
+    val whole  = tools.costs.AllocationMeter.median(warmups = 1, runs = 3)(ticks += w.identityProjection.tick(whole = true))
+    val all    = ticks.result()
+    info(tools.costs.PerformanceBudgets.QuietProjectionTick.render(quiet))
+    info(tools.costs.PerformanceBudgets.WholeProjectionTick.render(whole))
+    all.foreach(t => withClue(s"${t.phases.map(_.render).mkString(", ")}: ")(t.refused shouldBe None))
+    all.map(_.written).sum shouldBe 0
+    tools.costs.PerformanceBudgets.QuietProjectionSlotsBuilt.check(all.map(_.slotsBuilt.toLong).sum, s"over ${all.size} ticks")
+    tools.costs.PerformanceBudgets.QuietProjectionTick.check(quiet)
+    tools.costs.PerformanceBudgets.WholeProjectionTick.check(whole)
+  }
 }

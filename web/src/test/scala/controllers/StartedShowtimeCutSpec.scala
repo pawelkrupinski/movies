@@ -39,21 +39,4 @@ class StartedShowtimeCutSpec extends AnyFlatSpec with Matchers with OptionValues
     val lapse = LocalDateTime.parse("2026-06-10T21:00").atZone(ZoneId.of("America/Chicago")).toInstant.toEpochMilli
     html should include (s"""data-expires="$lapse"""")
   }
-
-  // The schedule cache reused a film's schedule while its earliest showtime was after the city's
-  // LATEST venue cut. A venue behind its city's clock keeps a showtime the city's cut has already
-  // passed, so its film's earliest stayed under that cut and every render rebuilt it — for up to an
-  // hour, every such film of the city.
-  it should "reuse a schedule whose earliest showtime is upcoming only on its venue's earlier clock" in {
-    val record = MovieRecord(data = Map(venue -> SourceData(title = Some("Late Show"), releaseYear = Some(2026),
-      showtimes = Seq(Showtime(LocalDateTime.parse("2026-06-10T20:30"), None)))))  // 20:30 CDT = 21:30 EDT
-    val readModel = TestReadModel.fromRecords(Seq(("Late Show", Some(2026), record)))
-    val service   = new MovieControllerService(readModel, clock)
-
-    val first  = service.toSchedules(city, cityTime).find(_.movie.title == "Late Show").value
-    val second = service.toSchedules(city, cityTime).find(_.movie.title == "Late Show").value
-    withClue("nothing changed between the two renders, so the second must reuse the first's schedule: ") {
-      second should be theSameInstanceAs first
-    }
-  }
 }

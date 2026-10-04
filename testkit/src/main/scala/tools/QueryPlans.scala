@@ -1,11 +1,12 @@
 package tools
 
-import com.mongodb.event.{CommandListener, CommandStartedEvent}
+import com.mongodb.event.{CommandListener, CommandStartedEvent, CommandSucceededEvent}
 import com.mongodb.{ConnectionString, MongoClientSettings}
 import org.bson.{BsonArray, BsonDocument, BsonString, BsonValue}
 import org.mongodb.scala.{MongoClient, MongoDatabase, ObservableFuture, SingleObservableFuture}
 
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue}
+import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.Await
 import scala.jdk.CollectionConverters._
 
@@ -48,20 +49,73 @@ object QueryPlans {
 
   /** A database on its own client that records every planned command `body` sends through it. */
   def recording[A](target: IntegrationMongoTarget, purpose: String)(body: (MongoDatabase, () => Seq[BsonDocument]) => A): A = {
+    val sent = new ConcurrentLinkedQueue[BsonDocument]()
+    listening(target, purpose, new CommandListener {
+      override def commandStarted(event: CommandStartedEvent): Unit =
+        if (Planned(event.getCommandName) && !isChangeStream(event.getCommand)) sent.add(event.getCommand.clone())
+    })(database => body(database, () => sent.asScala.toSeq))
+  }
+
+  /** One read command and the documents its cursor returned, `getMore`s included. */
+  final case class Exchange(command: BsonDocument, returned: Long) {
+    def collection: String = command.getString(command.getFirstKey).getValue
+  }
+
+  /** What a workload's reads sent and got back: every `find` and `aggregate`, with the documents each
+   *  returned across its batches — what Mongo fetched and the driver decoded, which a store's result
+   *  does not show when it filters or reduces rows itself. */
+  final class Traffic private[QueryPlans] () {
+    private val exchanges = new ConcurrentHashMap[Long, (BsonDocument, AtomicLong)]()
+    private val byRequest = new ConcurrentHashMap[Int, Long]()
+    private val sequence  = new AtomicLong()
+    private val cursors   = new ConcurrentHashMap[Long, Long]()
+
+    /** Every exchange so far, in the order sent. */
+    def all: Seq[Exchange] =
+      exchanges.asScala.toSeq.sortBy(_._1).map { case (_, (command, returned)) => Exchange(command, returned.get) }
+    /** Forget what was recorded — to measure the next step alone. */
+    def reset(): Unit = { exchanges.clear(); byRequest.clear(); cursors.clear() }
+
+    private[QueryPlans] val listener: CommandListener = new CommandListener {
+      override def commandStarted(event: CommandStartedEvent): Unit = event.getCommandName match {
+        case "find" | "aggregate" if !isChangeStream(event.getCommand) =>
+          val id = sequence.incrementAndGet()
+          exchanges.put(id, (event.getCommand.clone(), new AtomicLong()))
+          byRequest.put(event.getRequestId, id)
+        case "getMore" =>
+          Option(cursors.get(event.getCommand.getInt64("getMore").getValue)).foreach(id => byRequest.put(event.getRequestId, id))
+        case _ => ()
+      }
+      override def commandSucceeded(event: CommandSucceededEvent): Unit =
+        Option(byRequest.remove(event.getRequestId)).foreach { id =>
+          val cursor = event.getResponse.getDocument("cursor")
+          val batch  = if (cursor.containsKey("firstBatch")) cursor.getArray("firstBatch") else cursor.getArray("nextBatch")
+          exchanges.get(id)._2.addAndGet(batch.size.toLong)
+          val next = cursor.getInt64("id").getValue
+          if (next != 0L) cursors.put(next, id)
+        }
+    }
+  }
+
+  /** A database on its own client that records the read [[Traffic]] `body` sends through it. */
+  def traffic[A](target: IntegrationMongoTarget, purpose: String)(body: (MongoDatabase, Traffic) => A): A = {
+    val traffic = new Traffic
+    listening(target, purpose, traffic.listener)(database => body(database, traffic))
+  }
+
+  /** `body` over a throwaway database of its own on a client `listener` hears every command of; the
+   *  database is dropped afterwards. */
+  private def listening[A](target: IntegrationMongoTarget, purpose: String, listener: CommandListener)(body: MongoDatabase => A): A = {
     target.requireThrowaway()
-    val sent   = new ConcurrentLinkedQueue[BsonDocument]()
     val client = MongoClient(MongoClientSettings.builder()
       .applyConnectionString(new ConnectionString(target.uri.value))
       // The Scala driver's registry, as `MongoClient(uri)` has it: the Java default would encode a Scala
       // `Document` with its generic `Bson` codec, which cannot decode one.
       .codecRegistry(MongoClient.DEFAULT_CODEC_REGISTRY)
-      .addCommandListener(new CommandListener {
-        override def commandStarted(event: CommandStartedEvent): Unit =
-          if (Planned(event.getCommandName) && !isChangeStream(event.getCommand)) sent.add(event.getCommand.clone())
-      })
+      .addCommandListener(listener)
       .build())
     val database = client.getDatabase(IntegrationCorpusDatabase.named(target, purpose))
-    try body(database, () => sent.asScala.toSeq)
+    try body(database)
     finally { Await.result(database.drop().toFuture(), SpecTimeouts.Io); client.close() }
   }
 

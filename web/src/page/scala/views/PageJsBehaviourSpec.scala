@@ -3516,6 +3516,32 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // Every DOM query one filter pass makes, counted over the fixture listing and over the same listing with
+  // 10,500 more pills on one film. A query per pill or per cinema group (the re-query the fold above made:
+  // ~19 ms of a ~65 ms pass on a 54k-pill city) shows as a count that grows with the grid; the pass reads
+  // its INDEX instead, so the count must not grow at all.
+  "a filter pass" should "make a fixed number of DOM queries, whatever the size of the grid" in {
+    def queries(path: String): Long = {
+      var counted = 0L
+      onPath(path) { page =>
+        pinDateFilterAnytime(page)
+        page.eval(
+          "window.__domQueries = 0; const _wrapped = [];" +
+          "  [[Element.prototype, ['querySelectorAll', 'querySelector', 'getElementsByClassName', 'getElementsByTagName']]," +
+          "   [Document.prototype, ['querySelectorAll', 'querySelector', 'getElementsByClassName', 'getElementsByTagName', 'getElementById']]]" +
+          "  .forEach(([proto, names]) => names.forEach(name => { const original = proto[name]; _wrapped.push([proto, name, original]);" +
+          "    proto[name] = function (...args) { window.__domQueries++; return original.apply(this, args); }; }));" +
+          "  applyFilters(); _wrapped.forEach(([proto, name, original]) => { proto[name] = original; });")
+        counted = page.evalInt("window.__domQueries").toLong
+      }
+      counted
+    }
+    val (fixture, inflated) = (queries("/"), queries("/many-showtimes"))
+    info(tools.costs.PerformanceBudgets.FilterPassDomQueries.render(inflated) + s" ($fixture on the fixture listing)")
+    withClue("a filter pass's DOM queries grew with the grid: ")(inflated shouldBe fixture)
+    tools.costs.PerformanceBudgets.FilterPassDomQueries.check(inflated)
+  }
+
   "a row folded away to keep a card short" should "still carry the filter's own verdict" in {
     onPath("/") { page =>
       clearLocalStorage(page)
