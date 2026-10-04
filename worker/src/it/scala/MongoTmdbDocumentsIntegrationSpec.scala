@@ -68,4 +68,34 @@ class MongoTmdbDocumentsIntegrationSpec extends services.identity.TmdbDocumentRe
         (0 until 64).map(i => i.toString -> i).toMap
     } finally watched.close()
   }
+
+  // Every projection tick re-read the same answers (worker-us: 237 `tmdb_films` finds in 90 s): kept
+  // across ticks, a document is asked of the server again only once something wrote it.
+  "cached answers" should "send no find for documents read before and unwritten since, and one for those written" in {
+    val finds = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+    val watched = MongoClient(MongoClientSettings.builder().applyConnectionString(new ConnectionString(mongoTarget.uri.value))
+      .codecRegistry(MongoClient.DEFAULT_CODEC_REGISTRY).addCommandListener(new com.mongodb.event.CommandListener {
+        override def commandStarted(event: com.mongodb.event.CommandStartedEvent): Unit =
+          if (event.getCommandName == "find") finds.add(event.getCommand.getString("find").getValue)
+      }).build())
+    try {
+      newDocuments()
+      val documents = new services.identity.CoalescedTmdbDocuments(new services.identity.CachedTmdbDocuments(
+        new MongoTmdbDocuments(watched.getDatabase(IntegrationCorpusDatabase.named(mongoTarget, "tmdb")))))
+      def film(n: Int) = new org.bson.BsonDocument("hit", new org.bson.BsonDocument("n", new org.bson.BsonInt32(n)))
+      documents.put(TmdbKind.Film, (1 to 600).map(i => i.toString -> film(i)))
+      val ids = (1 to 700).map(_.toString)
+      documents.answers(TmdbKind.Film, ids) should have size 600
+      finds.size should be > 0
+      finds.clear()
+      documents.answers(TmdbKind.Film, ids) should have size 600
+      finds.size shouldBe 0
+      documents.put(TmdbKind.Film, Seq("5" -> film(-5), "650" -> film(650)))
+      val again = documents.answers(TmdbKind.Film, ids)
+      import scala.jdk.CollectionConverters._
+      finds.asScala.toSeq shouldBe Seq("tmdb_films")
+      again("5") shouldBe film(-5)
+      again("650") shouldBe film(650)
+    } finally watched.close()
+  }
 }

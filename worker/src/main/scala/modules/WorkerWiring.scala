@@ -103,10 +103,12 @@ class WorkerWiring(
   lazy val identityTmdbDocuments: services.identity.TmdbDocuments =
     mongoConnection.database.fold[services.identity.TmdbDocuments](identityTmdbBackend)(_ =>
       new services.identity.CoalescedTmdbDocuments(identityTmdbBackend))
-  /** Where the store's documents are kept, under the coalescing in front of Mongo: what the sweep scans. */
+  /** Where the store's documents are kept, under the coalescing in front of Mongo: what the sweep scans
+   *  and deletes through. Over Mongo, its answers are kept across projection ticks until written or
+   *  deleted (`CachedTmdbDocuments`) — every write and delete passes through it. */
   private lazy val identityTmdbBackend: services.identity.TmdbDocuments & services.identity.TmdbDocumentRetention =
     mongoConnection.database.fold[services.identity.TmdbDocuments & services.identity.TmdbDocumentRetention](
-      new services.identity.InMemoryTmdbDocuments)(new services.identity.MongoTmdbDocuments(_))
+      new services.identity.InMemoryTmdbDocuments)(db => new services.identity.CachedTmdbDocuments(new services.identity.MongoTmdbDocuments(db)))
   /** The store's retention (`TmdbStoreSweep`): answers the model no longer reads, and stale gap markers. */
   lazy val identityTmdbSweep: services.identity.TmdbStoreSweep =
     new services.identity.TmdbStoreSweep(identityTmdbBackend,
