@@ -165,19 +165,33 @@ object HttpRead {
  * one) in place of the page. Matched on markers only the interstitial carries: a normal
  * page behind Cloudflare also loads `/cdn-cgi/challenge-platform/` as a beacon, so that
  * path alone is NOT a challenge (several real fixtures carry it).
+ *
+ * Imperva Incapsula is the same trap in another shape: it injects
+ * `<script src="/_Incapsula_Resource?SWJIYLWA=…">` into EVERY page it protects, so that
+ * resource alone is not a challenge either — matched on the block page's incident text or
+ * its `CWUDNSAI` iframe, and the `SWJIYLWA` script only on a body too small to be a page
+ * (the JS challenge is a bare head with that script and nothing else). Since the fallback
+ * chain fails a leg on a match, a false positive here fails a healthy proxied read.
  */
 object ChallengePage {
-  private val Signatures: Seq[(String, String)] = Seq(
-    "window._cf_chl_opt"                  -> "Cloudflare",
-    "<title>Just a moment...</title>"     -> "Cloudflare",
-    "Attention Required! | Cloudflare"    -> "Cloudflare",
-    "cf-browser-verification"             -> "Cloudflare",
-    "captcha-delivery.com"                -> "DataDome",
-    "_Incapsula_Resource"                 -> "Incapsula",
-    "px-captcha"                          -> "PerimeterX"
+  /** Bodies under this many characters are a bare interstitial, never a real listing. */
+  private val InterstitialMaxLength = 4096
+
+  private val Signatures: Seq[(String => Boolean, String)] = Seq(
+    contains("window._cf_chl_opt")                  -> "Cloudflare",
+    contains("<title>Just a moment...</title>")     -> "Cloudflare",
+    contains("Attention Required! | Cloudflare")    -> "Cloudflare",
+    contains("cf-browser-verification")             -> "Cloudflare",
+    contains("captcha-delivery.com")                -> "DataDome",
+    contains("Incapsula incident ID")               -> "Incapsula",
+    contains("_Incapsula_Resource?CWUDNSAI")        -> "Incapsula",
+    ((body: String) => body.length < InterstitialMaxLength && body.contains("_Incapsula_Resource?SWJIYLWA")) -> "Incapsula",
+    contains("px-captcha")                          -> "PerimeterX"
   )
+
+  private def contains(marker: String): String => Boolean = _.contains(marker)
 
   /** The vendor whose challenge this body is, if it is one. */
   def detect(body: String): Option[String] =
-    Signatures.collectFirst { case (marker, vendor) if body.contains(marker) => vendor }
+    Signatures.collectFirst { case (matches, vendor) if matches(body) => vendor }
 }

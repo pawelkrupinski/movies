@@ -91,6 +91,27 @@ class HttpReadSpec extends AnyFlatSpec with Matchers {
     HttpRead.text(answering(page), url)(b => Answered(b)) shouldBe Answered(page)
   }
 
+  // Imperva Incapsula injects this script into EVERY page it protects, so a real page carries it.
+  private val IncapsulaInjected = """<script type="text/javascript" src="/_Incapsula_Resource?SWJIYLWA=719d34d31c8e3a6e6fffd425f7e032f3&ns=1&cb=1" async></script>"""
+  // Its block page: an iframe on the CWUDNSAI resource and the incident line.
+  private val IncapsulaBlock =
+    """<html style="height:100%"><head><META NAME="ROBOTS" CONTENT="NOINDEX, NOFOLLOW"></head><body style="margin:0px;height:100%">
+      |<iframe id="main-iframe" src="/_Incapsula_Resource?CWUDNSAI=9&xinfo=1-2-0&incident_id=1-2&edet=12" frameborder=0>
+      |Request unsuccessful. Incapsula incident ID: 1-2</iframe></body></html>""".stripMargin
+  // Its JS challenge: a bare head running the injected script and nothing else.
+  private val IncapsulaJsChallenge =
+    s"""<html><head><META NAME="robots" CONTENT="noindex,nofollow">$IncapsulaInjected</head><body></body></html>"""
+
+  "ChallengePage" should "not mistake Incapsula's script injected into a real page for a challenge" in {
+    val page = s"<html><head>$IncapsulaInjected</head><body>${"<div class=\"film\">Diuna</div>" * 300}</body></html>"
+    ChallengePage.detect(page) shouldBe None
+  }
+
+  it should "recognise Incapsula's block page and its bare JS challenge" in {
+    ChallengePage.detect(IncapsulaBlock) shouldBe Some("Incapsula")
+    ChallengePage.detect(IncapsulaJsChallenge) shouldBe Some("Incapsula")
+  }
+
   "every helper" should "read a typed 404 as absent and a 503 as failed" in {
     HttpRead.text(throwing(new HttpStatusException(404, "GET", url, None)), url)(Answered(_)) shouldBe a[Absent]
     HttpRead.jsonArray(throwing(new HttpStatusException(503, "GET", url, None)), url)(Answered(_)) shouldBe a[Failed]

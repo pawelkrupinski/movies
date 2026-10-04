@@ -71,6 +71,18 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
     exception.getMessage should include ("Cloudflare challenge")
   }
 
+  // Imperva injects its `_Incapsula_Resource?SWJIYLWA=…` script into every page it protects: a
+  // healthy listing carrying it is the proxy SERVING, not a failed leg skipped for Zyte.
+  it should "take a protected site's real page carrying Incapsula's injected script as the leg serving" in {
+    val page = "<html><head><script type=\"text/javascript\" src=\"/_Incapsula_Resource?SWJIYLWA=719d34d31c8e3a6e6fffd425f7e032f3&ns=1\" async></script></head>" +
+      "<body>" + ("<div class=\"film\">Diuna</div>" * 300) + "</body></html>"
+    val outcomes = mutable.ListBuffer.empty[(String, Option[String])]
+    val chain = new FallbackHttpFetch(Seq("proxy" -> ok(page), "fallback" -> boom("must not be tried")),
+      onOutcome = (name, error) => outcomes += ((name, error)))
+    chain.get("https://cinema.example/listing") shouldBe page
+    outcomes.toSeq shouldBe Seq("proxy" -> None)
+  }
+
   it should "exercise the same fallback for post as for get" in {
     val secondary = new RoutingHttpFetch(Seq("https://x" -> "post-body"))
     val chain = new FallbackHttpFetch(Seq("primary" -> boom("503"), "secondary" -> secondary))
