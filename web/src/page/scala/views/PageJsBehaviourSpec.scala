@@ -5497,6 +5497,25 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // Every time the page comes back into view it re-checks the clock over every
+  // pill — 54k of them on New York. That pass looked each pill's day up from
+  // the pill (`closest('.date-group')`), and ran twice: once to prune, once
+  // more to find the next lapse. One walk, day by day, does both.
+  it should "re-check the clock in one walk over the days, not a lookup per pill" in {
+    onPath("/many-showtimes") { page =>
+      val pills = page.evalInt("document.querySelectorAll('.badge-time').length")
+      pills should be > 10000
+      page.eval(
+        "window.__dayLookups = 0; const _closest = Element.prototype.closest;" +
+        "  Element.prototype.closest = function (selector) {" +
+        "    if (selector === '.date-group') window.__dayLookups++;" +
+        "    return _closest.call(this, selector); };" +
+        "  document.dispatchEvent(new Event('visibilitychange'));")
+      page.evalInt("window.__dayLookups") shouldBe 0
+      page.evalInt("document.querySelectorAll('.badge-time').length") shouldBe pills
+    }
+  }
+
   // The guard that keeps expiry anchored to the SERVER's clock: the fixture
   // corpus is rendered against a pinned June-2026 `now`, so a prune reading the
   // visitor's wall clock would wipe the whole grid the moment the page loaded.
@@ -5544,7 +5563,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       //    level — the pass stops there and never revisits those hidden rows.
       page.eval("document.getElementById('search-input').value = 'zzzzz-no-such-film'; applyFilters()")
 
-      // 3. A slot lapses: removeExpired → buildIndex → applyFilters, all while
+      // 3. A slot lapses: sweepExpired → buildIndex → applyFilters, all while
       //    the search is still narrowing the grid.
       page.evalInt(
         "document.querySelector('.badge-time').dataset.expires = String(showtimeNow() - 1); " +

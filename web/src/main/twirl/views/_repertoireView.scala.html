@@ -434,73 +434,77 @@
   function showtimeNow() { return RENDERED_AT + (Date.now() - BOOT_AT); }
 
   // Epoch millis at which `badge` lapses, or Infinity when the page cannot say.
-  function slotExpiresAt(badge) {
+  // `dayFrom` is its `.date-group`'s `data-expires-from`, parsed once per day by
+  // the caller rather than looked up from every pill.
+  function slotExpiresAt(badge, dayFrom) {
     if (badge.dataset.expires) return parseInt(badge.dataset.expires, 10);
-    const day  = badge.closest('.date-group');
-    const from = day ? parseInt(day.dataset.expiresFrom, 10) : NaN;
-    const time = slotTime(badge);
+    const time  = slotTime(badge);
     const colon = time.indexOf(':');
-    if (isNaN(from) || colon < 0) return Infinity;
-    return from + (parseInt(time.slice(0, colon), 10) * 60 + parseInt(time.slice(colon + 1), 10)) * 60000;
+    if (isNaN(dayFrom) || colon < 0) return Infinity;
+    return dayFrom + (parseInt(time.slice(0, colon), 10) * 60 + parseInt(time.slice(colon + 1), 10)) * 60000;
   }
 
   // Lapsed slots are REMOVED, not hidden: `applyFilters` decides visibility from
   // the filter state alone, and would happily show a `display:none` badge again
   // on the next pass. Taking them out of the DOM keeps expiry out of the filter
-  // cascade entirely. Returns how many went.
-  function removeExpired(nowMs) {
-    let removed = 0;
-    for (const badge of document.querySelectorAll('.badge-time')) {
-      if (slotExpiresAt(badge) <= nowMs) { badge.remove(); removed++; }
+  // cascade entirely. One walk, day by day, both prunes and finds the next
+  // lapse among what stays — it runs over every pill each time the page comes
+  // back into view. Returns how many went, and when the next one goes.
+  function sweepExpired(nowMs) {
+    let removed = 0, next = Infinity;
+    for (const day of document.querySelectorAll('.date-group')) {
+      const dayFrom = parseInt(day.dataset.expiresFrom, 10);
+      for (const badge of day.querySelectorAll('.badge-time')) {
+        const at = slotExpiresAt(badge, dayFrom);
+        if (at <= nowMs) { badge.remove(); removed++; }
+        else if (at < next) next = at;
+      }
     }
-    if (removed === 0) return 0;
-    // Cascade upwards: a cinema with no slots left, a day with no cinemas, and
-    // finally a film with nothing left to show all go with their last child.
-    for (const cinemaGroup of document.querySelectorAll('.cinema-group[data-cinema]'))
-      if (!cinemaGroup.querySelector('.badge-time')) cinemaGroup.remove();
-    for (const group of document.querySelectorAll('.date-group[data-date]'))
-      if (!group.querySelector('.badge-time')) group.remove();
-    for (const col of document.querySelectorAll('#film-grid .col[data-title]'))
-      if (!col.querySelector('.badge-time')) col.remove();
-    return removed;
+    if (removed > 0) {
+      // Cascade upwards: a cinema with no slots left, a day with no cinemas, and
+      // finally a film with nothing left to show all go with their last child.
+      for (const cinemaGroup of document.querySelectorAll('.cinema-group[data-cinema]'))
+        if (!cinemaGroup.querySelector('.badge-time')) cinemaGroup.remove();
+      for (const group of document.querySelectorAll('.date-group[data-date]'))
+        if (!group.querySelector('.badge-time')) group.remove();
+      for (const col of document.querySelectorAll('#film-grid .col[data-title]'))
+        if (!col.querySelector('.badge-time')) col.remove();
+    }
+    return { removed, next };
   }
 
-  function pruneExpiredShowtimes() {
-    const removed = removeExpired(showtimeNow());
+  function sweepAndReindex() {
+    const sweep = sweepExpired(showtimeNow());
     // Before shared.js's deferred boot there's no INDEX — and none of the
     // shared.js helpers `applyFilters` calls exist yet either. `bootView` will
     // index and filter the already-pruned DOM itself a moment later.
-    if (removed > 0 && INDEX) {
+    if (sweep.removed > 0 && INDEX) {
       // Cards dropped out of the middle of the grid: `buildIndex` renumbers
       // them and forgets both the applied sort order and every remembered
       // visibility, so the pass below re-decides the whole grid from scratch.
       buildIndex();
       applyFilters();
     }
-    return removed;
+    return sweep;
   }
+
+  function pruneExpiredShowtimes() { return sweepAndReindex().removed; }
 
   let _expiryTimer = null;
 
-  // Wake exactly when the next slot lapses rather than polling — plus a beat, so
-  // a timer that fires a millisecond early can't re-arm itself in a tight loop.
+  // Prune what has lapsed, then wake exactly when the next slot lapses rather
+  // than polling — plus a beat, so a timer that fires a millisecond early can't
+  // re-arm itself in a tight loop.
   function scheduleExpiryPrune() {
     clearTimeout(_expiryTimer);
     _expiryTimer = null;
-    const now = showtimeNow();
-    let next = Infinity;
-    for (const badge of document.querySelectorAll('.badge-time')) {
-      const at = slotExpiresAt(badge);
-      if (at > now && at < next) next = at;
-    }
+    const next = sweepAndReindex().next;
     if (next === Infinity) return;   // nothing left that can expire
     // Cap the wait at a day: a page open that long re-checks anyway, and a
     // stray far-future value can't overflow setTimeout's 32-bit delay (which
     // would fire it immediately, forever).
-    _expiryTimer = setTimeout(refreshExpiry, Math.min(next - now + 250, 86400000));
+    _expiryTimer = setTimeout(scheduleExpiryPrune, Math.min(next - showtimeNow() + 250, 86400000));
   }
-
-  function refreshExpiry() { pruneExpiredShowtimes(); scheduleExpiryPrune(); }
 
   // ── Midnight day rollover ─────────────────────────────────────────────────
   //
@@ -530,7 +534,7 @@
     _dayTimer = setTimeout(scheduleDayRollover, Math.min(remaining + 250, 86400000));
   }
 
-  function onClockMoved() { scheduleDayRollover(); refreshExpiry(); }
+  function onClockMoved() { scheduleDayRollover(); scheduleExpiryPrune(); }
 
   // Runs at parse time — ahead of the deferred shared.js — so a page restored
   // from the bfcache or the HTTP cache is already pruned before it's indexed.

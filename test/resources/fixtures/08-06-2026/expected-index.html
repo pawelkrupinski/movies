@@ -12440,51 +12440,50 @@ gridEl.appendChild(frag);
 const RENDERED_AT = Number(document.getElementById('view-root').dataset.renderedAt);
 const BOOT_AT = Date.now();
 function showtimeNow() { return RENDERED_AT + (Date.now() - BOOT_AT); }
-function slotExpiresAt(badge) {
+function slotExpiresAt(badge, dayFrom) {
 if (badge.dataset.expires) return parseInt(badge.dataset.expires, 10);
-const day = badge.closest('.date-group');
-const from = day ? parseInt(day.dataset.expiresFrom, 10) : NaN;
 const time = slotTime(badge);
 const colon = time.indexOf(':');
-if (isNaN(from) || colon < 0) return Infinity;
-return from + (parseInt(time.slice(0, colon), 10) * 60 + parseInt(time.slice(colon + 1), 10)) * 60000;
+if (isNaN(dayFrom) || colon < 0) return Infinity;
+return dayFrom + (parseInt(time.slice(0, colon), 10) * 60 + parseInt(time.slice(colon + 1), 10)) * 60000;
 }
-function removeExpired(nowMs) {
-let removed = 0;
-for (const badge of document.querySelectorAll('.badge-time')) {
-if (slotExpiresAt(badge) <= nowMs) { badge.remove(); removed++; }
+function sweepExpired(nowMs) {
+let removed = 0, next = Infinity;
+for (const day of document.querySelectorAll('.date-group')) {
+const dayFrom = parseInt(day.dataset.expiresFrom, 10);
+for (const badge of day.querySelectorAll('.badge-time')) {
+const at = slotExpiresAt(badge, dayFrom);
+if (at <= nowMs) { badge.remove(); removed++; }
+else if (at < next) next = at;
 }
-if (removed === 0) return 0;
+}
+if (removed > 0) {
 for (const cinemaGroup of document.querySelectorAll('.cinema-group[data-cinema]'))
 if (!cinemaGroup.querySelector('.badge-time')) cinemaGroup.remove();
 for (const group of document.querySelectorAll('.date-group[data-date]'))
 if (!group.querySelector('.badge-time')) group.remove();
 for (const col of document.querySelectorAll('#film-grid .col[data-title]'))
 if (!col.querySelector('.badge-time')) col.remove();
-return removed;
 }
-function pruneExpiredShowtimes() {
-const removed = removeExpired(showtimeNow());
-if (removed > 0 && INDEX) {
+return { removed, next };
+}
+function sweepAndReindex() {
+const sweep = sweepExpired(showtimeNow());
+if (sweep.removed > 0 && INDEX) {
 buildIndex();
 applyFilters();
 }
-return removed;
+return sweep;
 }
+function pruneExpiredShowtimes() { return sweepAndReindex().removed; }
 let _expiryTimer = null;
 function scheduleExpiryPrune() {
 clearTimeout(_expiryTimer);
 _expiryTimer = null;
-const now = showtimeNow();
-let next = Infinity;
-for (const badge of document.querySelectorAll('.badge-time')) {
-const at = slotExpiresAt(badge);
-if (at > now && at < next) next = at;
-}
+const next = sweepAndReindex().next;
 if (next === Infinity) return;
-_expiryTimer = setTimeout(refreshExpiry, Math.min(next - now + 250, 86400000));
+_expiryTimer = setTimeout(scheduleExpiryPrune, Math.min(next - showtimeNow() + 250, 86400000));
 }
-function refreshExpiry() { pruneExpiredShowtimes(); scheduleExpiryPrune(); }
 let _dayTimer = null;
 function scheduleDayRollover() {
 clearTimeout(_dayTimer);
@@ -12493,7 +12492,7 @@ const remaining = parseInt(document.getElementById('view-root').dataset.nextDay,
 if (remaining <= 0) { location.reload(); return; }
 _dayTimer = setTimeout(scheduleDayRollover, Math.min(remaining + 250, 86400000));
 }
-function onClockMoved() { scheduleDayRollover(); refreshExpiry(); }
+function onClockMoved() { scheduleDayRollover(); scheduleExpiryPrune(); }
 onClockMoved();
 document.addEventListener('visibilitychange', function () {
 if (document.visibilityState === 'visible') onClockMoved();
