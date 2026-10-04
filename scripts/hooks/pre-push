@@ -6,7 +6,7 @@
 # push touches the paths it guards, so a typical push costs a few seconds and a Scala push well
 # under a minute on a warm build:
 #
-#   `eslint`      web/src/main/assets/js/**, eslint.config.js, package*.json
+#   `eslint`      web/src/main/assets/js/**, eslint.config.js, eslint-rules/** (the repo's own rules), package*.json
 #   `drift`       the generated roster chain (scripts/ci/generated-artefacts-drift.sh)
 #   `snapshot`    the read-model snapshot's input stamp (scripts/read-model-snapshot-inputs.sh)
 #   `sbt`         NoWallClockInTestsSpec, NoWallClockInClientsSpec, and the two Grafana
@@ -49,7 +49,7 @@ plan() {
     local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 hooktest=0 actionlint=0 shellcheck=0 ios=0 path
     while IFS= read -r path; do
         case "$path" in
-            web/src/main/assets/js/*.js|eslint.config.js|package.json|package-lock.json) eslint=1 ;;
+            web/src/main/assets/js/*.js|eslint.config.js|eslint-rules/*.js|package.json|package-lock.json) eslint=1 ;;
         esac
         case "$path" in
             common/src/main/scala/models/*|data/*|android/app/src/main/java/pl/kinowo/model/City.kt|ios/Kinowo/Models/City.swift|scripts/ci/generated-artefacts-drift.sh) drift=1 ;;

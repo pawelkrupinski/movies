@@ -12,6 +12,7 @@ plan() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --plan | tr '\
 
 check "production JS runs ESLint" "eslint" "$(plan web/src/main/assets/js/shared.js)"
 check "the ESLint config runs ESLint" "eslint" "$(plan eslint.config.js)"
+check "a repo-local ESLint rule runs ESLint" "eslint" "$(plan eslint-rules/storage-access-in-try.js)"
 check "a roster source runs the generated-artefact drift check" "drift" "$(plan data/pl/venues.json)"
 check "a model file runs the drift check AND the sbt lints" "drift sbt" "$(plan common/src/main/scala/models/Cinema.scala)"
 check "the iOS City list runs the drift check and the iOS compile" "drift ios" "$(plan ios/Kinowo/Models/City.swift)"
