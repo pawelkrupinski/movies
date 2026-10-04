@@ -43,6 +43,8 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
     factories = Map(
       classOf[RateLimitedHttpFetch]        -> ((d: HttpFetch) => new RateLimitedHttpFetch(d, intervalFor = _ => None)),
       classOf[ThrottledHttpFetch]          -> ((d: HttpFetch) => new ThrottledHttpFetch(d)),
+      classOf[FleetPacedHttpFetch]         -> ((d: HttpFetch) => new FleetPacedHttpFetch(d, new InMemoryFleetHostPace, intervalFor = _ => None,
+        horizon = FleetPacedHttpFetch.Horizon)),
       classOf[HostCircuitBreakerHttpFetch] -> ((d: HttpFetch) => new HostCircuitBreakerHttpFetch(d)),
       classOf[MemoizedHttpFetch]           -> ((d: HttpFetch) => new MemoizedHttpFetch(d)),
       classOf[CachingDetailFetch]          -> ((d: HttpFetch) => new CachingDetailFetch(d)),

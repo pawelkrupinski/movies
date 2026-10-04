@@ -29,7 +29,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
 
   "an unmatched cluster its families agree on" should "take the TMDB film the agreed IMDb id finds, and name the families" in {
     val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
-      tmdbOf = imdb => Answer.Known(Option.when(imdb == "tt16315948")(913760)), new InMemoryAgreementVerdicts)
+      tmdbOf = imdb => Answer.Known(Option.when(imdb == "tt16315948")(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     val decided = stage.apply(resolution, listingOf, version = 1)
     val klondikeDecision = decided.decisions.head
     (klondikeDecision.film, klondikeDecision.basis) shouldBe ((Some(913760), ResolverDecision.Basis.Agreed))
@@ -39,7 +39,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
 
   it should "hand back the same decision object while its verdict stands, so the projection redrafts it only when it moves" in {
     val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
-      new InMemoryAgreementVerdicts)
+      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     val model = resolution
     val first = stage.apply(model, listingOf, version = 1).decisions.head
     stage.apply(model, listingOf, version = 2).decisions.head should be theSameInstanceAs first
@@ -54,7 +54,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       def record(id: String)       = { reads += 1; answers.record(id) }
     } }
     val stage = new AgreementStage(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
-      new InMemoryAgreementVerdicts)
+      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     val model = resolution
     val first = stage.apply(model, listingOf, version = 1)
     val readFirst = reads
@@ -66,26 +66,26 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   it should "report each pass: clusters waiting and agreed, films taken, questions open, clusters resolved" in {
     val passes = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Applied]
     val stage  = new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver,
-      tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, metrics = passes += _)
+      tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, metrics = passes += _, clock = _root_.tools.SpecClock.Pinned)
     stage.apply(resolution, listingOf, version = 1)
     val waitingPass = passes.last
     (waitingPass.waiting, waitingPass.agreed, waitingPass.takenTmdb, waitingPass.resolves) shouldBe ((1, 0, 0, 1))
     waitingPass.open.get(VoterFamily.RottenTomatoes) shouldBe Some(1)
     val agreeingStage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
-      tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, metrics = passes += _)
+      tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts, metrics = passes += _, clock = _root_.tools.SpecClock.Pinned)
     agreeingStage.apply(resolution, listingOf, version = 1)
     val agreedPass = passes.last
     (agreedPass.waiting, agreedPass.verdicts, agreedPass.agreed, agreedPass.takenTmdb, agreedPass.takenFallback) shouldBe ((0, 1, 1, 1, 0))
   }
 
   it should "take the agreed IMDb id as its fallback film when TMDB holds none" in {
-    val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts)
+    val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     stage.apply(resolution, listingOf, version = 1).decisions.head.fallback shouldBe Some(ResolverDecision.Fallback("imdb", "tt16315948", 1.0))
   }
 
   it should "keep the families' own ids with the decision, and its verdict across a restart without asking them again" in {
     val verdicts = new InMemoryAgreementVerdicts
-    val first = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts)
+    val first = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
     first.apply(resolution, listingOf, version = 1).decisions.head.agreed shouldBe
       Map("imdb" -> "tt16315948", "wiki" -> "Q1", "filmweb" -> "880000", "rt" -> "klondike_2022")
     verdicts.all().map(_.agreed.map(_.families)) shouldBe Seq(Some(Set(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes)))
@@ -96,17 +96,17 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       def directedBy(name: String) = { asked += 1; answers.directedBy(name) }
       def record(id: String)       = { asked += 1; answers.record(id) }
     } }
-    val restarted = new AgreementStage(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts)
+    val restarted = new AgreementStage(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
     restarted.apply(resolution, listingOf, version = 0).decisions.head.film shouldBe Some(913760)
     asked shouldBe verdicts.all().head.reads.size   // each answer it read re-read once to see it stands, no resolve
   }
 
   it should "decide again when an answer it read moved, and drop the verdict of a cluster no longer unmatched" in {
     val verdicts = new InMemoryAgreementVerdicts
-    new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts)
+    new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
       .apply(resolution, listingOf, version = 1)
     val dissent = agreeing() ++ Seq(VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
-    val again = new AgreementStage(dissent, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts)
+    val again = new AgreementStage(dissent, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
     again.apply(resolution, listingOf, version = 1).decisions.head shouldBe resolution.decisions.head
     verdicts.all().map(_.agreed) shouldBe Seq(None)
     val matchedNow = resolution.copy(decisions = resolution.decisions.map(_.copy(film = Some(1))(services.identity.DecisionTrace.Empty)))
@@ -115,7 +115,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "ask TMDB about the agreed IMDb id before taking it as a fallback" in {
-    val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Unknown, new InMemoryAgreementVerdicts)
+    val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Unknown, new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     stage.apply(resolution, listingOf, version = 1).decisions.head shouldBe resolution.decisions.head
     stage.wantedFinds shouldBe Set("tt16315948")
   }
@@ -123,13 +123,13 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   it should "hand the questions it meets unanswered to the queue at once, and a stale answer's too while it uses it" in {
     val asked = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Open]
     new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
-      new InMemoryAgreementVerdicts, ask = asked += _).apply(resolution, listingOf, version = 1)
+      new InMemoryAgreementVerdicts, ask = asked += _, clock = _root_.tools.SpecClock.Pinned).apply(resolution, listingOf, version = 1)
     asked.flatMap(_.questions) should contain (VoterFamily.RottenTomatoes -> "title|Klondike")
     val staleRt = agreeing() + (VoterFamily.RottenTomatoes -> new HeldFamilyAnswers(VoterFamily.RottenTomatoes,
       Map("klondike_2022" -> SourceRecord(klondike)), stale = true))
     val refreshed = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Open]
     val stage = new AgreementStage(staleRt, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
-      new InMemoryAgreementVerdicts, ask = refreshed += _)
+      new InMemoryAgreementVerdicts, ask = refreshed += _, clock = _root_.tools.SpecClock.Pinned)
     stage.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)   // the stale answers still count
     refreshed.flatMap(_.questions).filter(_._1 == VoterFamily.RottenTomatoes) should contain (VoterFamily.RottenTomatoes -> "title|Klondike")
     refreshed.clear()
@@ -178,7 +178,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "stay as the model left it while a family has not answered, and name the question" in {
-    val stage = new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts)
+    val stage = new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
     stage.apply(resolution, listingOf, version = 1).decisions.head shouldBe resolution.decisions.head
     stage.wanted should contain (VoterFamily.RottenTomatoes -> "title|Klondike")
   }
