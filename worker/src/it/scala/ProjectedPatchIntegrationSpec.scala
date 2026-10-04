@@ -37,4 +37,8 @@ class ProjectedPatchIntegrationSpec extends AnyFlatSpec with Matchers with tools
 
   it should "write the film whole when the cache no longer holds the record it was patched from" in
     checked(ProjectedPatchCheck.writesWholeWhenResidentMoved)
+
+  it should "write no slot row for a patch that moves only a venue's showtimes" in {
+    checked(ProjectedPatchCheck.movesShowtimesWithoutSlotWrites)
+  }
 }

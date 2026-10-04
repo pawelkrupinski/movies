@@ -202,5 +202,13 @@ class SlotsRepositorySpec extends AnyFlatSpec with Matchers {
     SlotsRepository.slotOps(Map(slotA -> slot), Map(slotA -> listed)) shouldBe Map(slotA.displayName -> Some(slot))
     SlotsRepository.slotOps(Map.empty, Map(slotA -> listed)) shouldBe Map(slotA.displayName -> Some(slot))
   }
-}
 
+  // The cache keeps every slot stripped: its showtimes gone, their digest and starts kept. Read as "no showtimes", every
+  // projection patch of a venue whose showtimes moved rewrote its unchanged slot row — a `movie_slots` event, which sends
+  // the read model's change apply down the whole-film path: most of every country's whole-film re-reads (2026-10-04).
+  it should "not write a slot whose stripped copy held showtimes already, when only its showtimes move" in {
+    val at     = (h: Int) => Seq(Showtime(LocalDateTime.of(2026, 10, 3, h, 0), None))
+    val cached = ShowtimesDigest.stripSlot(sd("A").copy(showtimes = at(18)))
+    SlotsRepository.slotOps(Map(slotA -> cached), Map(slotA -> sd("A").copy(showtimes = at(20)))) shouldBe empty
+  }
+}

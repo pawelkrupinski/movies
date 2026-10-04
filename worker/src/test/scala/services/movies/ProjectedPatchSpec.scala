@@ -22,4 +22,8 @@ class ProjectedPatchSpec extends AnyFlatSpec with Matchers {
   it should "write the film whole when the cache no longer holds the record it was patched from" in {
     ProjectedPatchCheck.writesWholeWhenResidentMoved(() => world()) shouldBe Right(())
   }
+
+  it should "write no slot row for a patch that moves only a venue's showtimes" in {
+    ProjectedPatchCheck.movesShowtimesWithoutSlotWrites(() => world()) shouldBe Right(())
+  }
 }

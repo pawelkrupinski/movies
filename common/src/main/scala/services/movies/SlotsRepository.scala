@@ -267,9 +267,11 @@ object SlotsRepository {
     // `movie_slots` row behind it — and the showtimes row this update writes would then have no slot
     // row beside it, which the venue read declines (venue_read_failed, prod 2026-10-02). Showtimes
     // appearing is rare beside showtimes churning, so this costs few writes, and an existing row is
-    // rewritten with what it already holds.
+    // rewritten with what it already holds. A slot the cache holds stripped had showtimes when its stamped starts say so
+    // (`slotShowtimeCount`): read off its empty list, every venue whose showtimes merely moved rewrote its unchanged row.
     val gaining = after.iterator.collect {
-      case (source, slot) if slot.showtimes.nonEmpty && before.get(source).forall(_.showtimes.isEmpty) => source.displayName
+      case (source, slot) if slot.showtimes.nonEmpty && before.get(source).forall(ShowtimesDigest.slotShowtimeCount(_) == 0) =>
+        source.displayName
     }.toSet
     (b.keySet ++ a.keySet).iterator.flatMap { k =>
       (b.get(k), a.get(k)) match {

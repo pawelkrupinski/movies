@@ -76,4 +76,19 @@ object ProjectedPatchCheck {
       Left(s"the whole write left the wrong venues: ${stored._2.keySet}")
     else Right(())
   }
+
+  /** A patch that moves only a venue's showtimes writes that venue's screenings and no slot row: a `movie_slots` write is
+   *  a change event the read model's apply cannot take a venue at a time, so it re-reads the whole film. The resident
+   *  record is stripped, its slots' showtimes gone — read as "none", every such patch rewrote the venue's unchanged row. */
+  def movesShowtimesWithoutSlotWrites(world: () => World): Either[String, Unit] = {
+    val w = world()
+    w.cache.writeProjected(id, key, first)
+    val before = w.cache.snapshot().find(_.id == id).map(_.record).get
+    w.screenings.reset(); w.slots.reset()
+    val outcome = w.cache.patchProjected(id, key, before, before.copy(data = before.data + slot(Multikino, 0, 5)))
+    if (outcome != WriteOutcome.Written) Left(s"the patch reported $outcome")
+    else if (w.slots.writes.get() != 0) Left(s"a showtimes-only patch wrote ${w.slots.writes.get()} slot row(s)")
+    else if (held(w)._2.get(slot(Multikino)._1.displayName).map(_.size) != Some(2)) Left(s"the showtimes were not written: ${held(w)._2}")
+    else Right(())
+  }
 }
