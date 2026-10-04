@@ -102,6 +102,15 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
       HostPace(java.time.Duration.ofMillis(900))
   }
 
+  // A count past Int's range is unusable like any other bad value: read as a Long and narrowed,
+  // 3000000000 wrapped to a NEGATIVE per-tick cap instead of falling back to the default.
+  it should "fall back to the default for a per-tick enqueue cap past Int's range" in {
+    val resolved = resolvedFrom("KINOWO_ENRICHMENT_MAX_ENQUEUE_PER_TICK" -> "3000000000", "KINOWO_DETAIL_MAX_ENQUEUE_PER_TICK" -> "3000000000")
+    resolved.enrichmentMaxEnqueuePerTick(EnrichmentMaxEnqueuePerTick(250)) shouldBe EnrichmentMaxEnqueuePerTick(250)
+    resolved.detailMaxEnqueuePerTick(DetailMaxEnqueuePerTick(50)) shouldBe DetailMaxEnqueuePerTick(50)
+    resolvedFrom("KINOWO_DETAIL_MAX_ENQUEUE_PER_TICK" -> "70").detailMaxEnqueuePerTick(DetailMaxEnqueuePerTick(50)) shouldBe DetailMaxEnqueuePerTick(70)
+  }
+
   // Numeric knobs list on /admin/config as numbers with their defaults, so an admin sees what a
   // value falls back to. These two once read through the untyped `get`, which lists a bare
   // string with no default.

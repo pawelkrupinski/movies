@@ -177,11 +177,11 @@ final class ProcessConfiguration(val env: Env) {
   def scrapeFreshness(default: ScrapeFreshness): ScrapeFreshness = ScrapeFreshness(minutes("KINOWO_SCRAPE_FRESHNESS_MINUTES", default.value))
 
   def enrichmentMaxEnqueuePerTick(default: EnrichmentMaxEnqueuePerTick): EnrichmentMaxEnqueuePerTick =
-    EnrichmentMaxEnqueuePerTick(env.positiveLong("KINOWO_ENRICHMENT_MAX_ENQUEUE_PER_TICK", default.value.toLong).toInt)
+    EnrichmentMaxEnqueuePerTick(count("KINOWO_ENRICHMENT_MAX_ENQUEUE_PER_TICK", default.value))
   def enrichmentTickInterval(default: EnrichmentTickInterval): EnrichmentTickInterval =
     EnrichmentTickInterval(seconds("KINOWO_ENRICHMENT_TICK_INTERVAL_SECONDS", default.value))
   def detailMaxEnqueuePerTick(default: DetailMaxEnqueuePerTick): DetailMaxEnqueuePerTick =
-    DetailMaxEnqueuePerTick(env.positiveLong("KINOWO_DETAIL_MAX_ENQUEUE_PER_TICK", default.value.toLong).toInt)
+    DetailMaxEnqueuePerTick(count("KINOWO_DETAIL_MAX_ENQUEUE_PER_TICK", default.value))
   def detailTickInterval(default: DetailTickInterval): DetailTickInterval =
     DetailTickInterval(seconds("KINOWO_DETAIL_TICK_INTERVAL_SECONDS", default.value))
   def omdbBackfillInterval(default: OmdbBackfillInterval): OmdbBackfillInterval =
