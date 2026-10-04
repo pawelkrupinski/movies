@@ -49,18 +49,14 @@ class FlicksClient(
   cinemaSlug: String,
   override val cinema: Cinema,
   market:     FlicksMarket,
+  // The VENUE's calendar day, asked per plan — see `forVenue`: a worker in Europe planning
+  // US venues must not start from a date those venues have not reached.
   today:      => LocalDate
 ) extends PagedChunkScraper {
 
   import FlicksClient._
 
   private val baseUrl = market.baseUrl
-  // An absent `today` means the MARKET's current calendar day, not the JVM's: a
-  // worker in Europe planning US venues must not start from a date those venues
-  // have not reached. Resolved in the body rather than as a default argument
-  // because a Scala default cannot read an earlier parameter of the same list.
-  private def referenceDay: LocalDate = today
-
   private val programmeUrl = s"$baseUrl/cinema/$cinemaSlug/"
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
@@ -111,7 +107,8 @@ class FlicksClient(
   override def planSchedule(): ChunkPlan = {
     val html  = HttpRead.page(http, programmeUrl)
     val all   = parseProgrammeDates(html)
-    val dates = all.filter(d => !d.isBefore(referenceDay) && !d.isAfter(referenceDay.plusDays(MaxHorizonDays.toLong)))
+    val day   = today
+    val dates = all.filter(d => !d.isBefore(day) && !d.isAfter(day.plusDays(MaxHorizonDays.toLong)))
     if (dates.isEmpty && !hasTimetable(html))
       throw new IllegalStateException(
         s"Flicks programme page for '$cinemaSlug' carried no timetable block")

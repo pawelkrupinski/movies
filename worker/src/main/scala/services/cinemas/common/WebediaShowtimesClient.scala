@@ -46,15 +46,11 @@ class WebediaShowtimesClient(
   market:    WebediaMarket,
   theaterId: String,              // e.g. "A0263" — the letter prefix is per-country
   override val cinema: Cinema,
-  /** The day the horizon is measured from. `None` means "now, in the market's
-   *  own zone" — an OPTION rather than a defaulted `LocalDate.now(market.zoneId)`
-   *  because Scala 3 will not let a default argument read another parameter of
-   *  the same list, and the market is where the zone lives. Same shape as
-   *  [[FlicksClient]]. */
+  /** The VENUE's calendar day the horizon is measured from, asked per plan —
+   *  built through [[WebediaShowtimesClient.forVenue]], which reads the venue's
+   *  city zone. Same shape as [[FlicksClient]]. */
   today:     => LocalDate
 ) extends ChunkedCinemaScraper {
-
-  private def referenceDay: LocalDate = today
 
   import WebediaShowtimesClient._
 
@@ -95,10 +91,11 @@ class WebediaShowtimesClient(
   def planChunks(): Seq[String] = {
     val url  = sourceUrl.getOrElse(throw new IllegalStateException("WebediaShowtimesClient has no sourceUrl"))
     val html = HttpRead.page(http, url)
+    val day  = today
     parseShowtimeDates(html)
       .getOrElse(throw new IllegalStateException(
         s"$url carries no data-showtimes-dates attribute — ${market.host} markup changed?"))
-      .filter(d => !d.isBefore(referenceDay) && !d.isAfter(referenceDay.plusDays(MaxHorizonDays.toLong)))
+      .filter(d => !d.isBefore(day) && !d.isAfter(day.plusDays(MaxHorizonDays.toLong)))
       .map(_.toString)
   }
 

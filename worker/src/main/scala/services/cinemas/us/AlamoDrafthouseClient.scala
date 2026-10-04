@@ -65,7 +65,6 @@ class AlamoDrafthouseClient(
 
   import AlamoDrafthouseClient._
 
-  private def referenceDay: LocalDate = today
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
 
@@ -88,7 +87,7 @@ class AlamoDrafthouseClient(
       HttpRead.page(http, scheduleUrl(venueSlug)),
       venueSlug,
       cinema,
-      notAfter = referenceDay.plusDays(MaxHorizonDays.toLong)
+      notAfter = today.plusDays(MaxHorizonDays.toLong)
     )
 }
 

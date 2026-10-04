@@ -48,7 +48,6 @@ class OcineClient(
   import OcineClient._
 
   private val baseUrl      = OcineClient.baseUrl(ticketingServer)
-  private def referenceDay = today
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
 
@@ -72,7 +71,7 @@ class OcineClient(
   def fetchChunk(filmId: String): Seq[CinemaMovie] =
     OcineParser.film(
       HttpRead.page(http, s"$baseUrl/api/v1/pelicula/$filmId?lang=es"),
-      baseUrl, cinema, notAfter = referenceDay.plusDays(ScrapeHorizon.MaxDays.toLong)
+      baseUrl, cinema, notAfter = today.plusDays(ScrapeHorizon.MaxDays.toLong)
     ).toSeq
 }
 
