@@ -116,8 +116,9 @@ done
 # The loop above asks each case whether it passes; these ask whether the cases that exist are the
 # ones that matter (every alert has a firing and a quiet case; a long hold over a worker gauge
 # rides out a restart) and whether every label matcher, here and on the dashboards, names the
-# label values the fleet really produces (test_label_shapes.py, against label-values.json).
-for check in test_alert_rule_coverage.py test_label_shapes.py; do
+# label values the fleet really produces (test_label_shapes.py, against label-values.json), and
+# whether every metric name they read exists (test_metric_names.py, against metric-names.json).
+for check in test_alert_rule_coverage.py test_label_shapes.py test_metric_names.py; do
   if out="$(python3 "$here/$check" 2>&1)"; then
     echo "  ok  $check"
   else

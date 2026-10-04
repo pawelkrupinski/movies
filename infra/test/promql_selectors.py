@@ -159,3 +159,82 @@ def all_expressions():
     yield from rule_expressions()
     yield from grafana_rule_expressions()
     yield from dashboard_expressions()
+
+
+
+# ---- metric names ------------------------------------------------------------------------------
+# Shared by bin/backtest-alerts (which alerts read a metric Prometheus never had), test_metric_names.py
+# (which panels and rules name a metric the fleet snapshot never saw) and bin/snapshot-label-values.
+
+# Words that look like identifiers in PromQL and are not metric names.
+_KEYWORDS = {
+    "by", "without", "on", "ignoring", "group_left", "group_right", "and", "or", "unless", "bool",
+    "offset", "atan2", "inf", "nan", "start", "end",
+}
+_QUOTED = re.compile(r'"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'|`[^`]*`')
+_BRACES = re.compile(r"\{[^{}]*\}")
+_RANGE = re.compile(r"\[[^\]]*\]")
+_LABEL_LIST = re.compile(r"\b(by|without|on|ignoring|group_left|group_right)\s*\([^()]*\)")
+_IDENT = re.compile(r"(?<![A-Za-z0-9_:.$])([A-Za-z_:][A-Za-z0-9_:]*)(?![A-Za-z0-9_:])")
+_NAME_MATCHER = re.compile(r'__name__\s*=\s*"([^"]+)"')
+# A string (kept) or a `#` comment to the end of its line (dropped): matched together so a `#`
+# inside a string is never taken for one.
+_STRING_OR_COMMENT = re.compile(_QUOTED.pattern + r"|#[^\n]*")
+
+
+def metric_names(expr):
+    """Every metric name `expr` reads: bare selectors plus `{__name__="..."}`.
+
+    A scanner, not a parser -- but PromQL makes it exact enough: a metric name is an identifier
+    that is not a function call, not a keyword, and not inside a string, a comment, a label list,
+    a matcher block or a range. `{__name__=~...}` regexes are not names and are ignored.
+    """
+    expr = _STRING_OR_COMMENT.sub(lambda m: "" if m.group(0).startswith("#") else m.group(0), expr)
+    names = set(_NAME_MATCHER.findall(expr))
+    text = _QUOTED.sub('""', expr)
+    text = _BRACES.sub(" ", text)
+    text = _RANGE.sub(" ", text)
+    text = _LABEL_LIST.sub(" ", text)
+    for match in _IDENT.finditer(text):
+        word = match.group(1)
+        rest = text[match.end():].lstrip()
+        if rest.startswith("("):
+            continue  # a function call (or an aggregation)
+        if word.lower() in _KEYWORDS:
+            continue
+        if re.fullmatch(r"\d+[smhdwy]", word):
+            continue
+        names.add(word)
+    return names
+
+
+def name_patterns(expr):
+    """Every `{__name__=~"..."}` regex matcher in `expr` -- the names `metric_names` cannot list."""
+    return [s.name_matcher for s in selectors(expr)
+            if not s.name and s.name_matcher is not None and s.name_matcher.op == "=~"]
+
+
+def template_queries():
+    """(where, query) for every Prometheus template variable of every dashboard -- a variable
+    built on a dead metric empties its dropdown and blanks every panel scoped by it."""
+    for path in DASHBOARD_FILES:
+        with open(path, encoding="utf-8") as handle:
+            document = json.load(handle)
+        for variable in document.get("templating", {}).get("list", []):
+            query = variable.get("query")
+            query = query.get("query") if isinstance(query, dict) else query
+            if variable.get("type") == "query" and query:
+                inner = re.match(r'^\s*(?:label_values|query_result)\((.*)\)\s*$', query, re.S)
+                yield "%s variable %s" % (os.path.basename(path), variable.get("name")), \
+                    re.sub(r',\s*[A-Za-z_][A-Za-z0-9_]*\s*$', '', inner.group(1)) if inner else query
+
+
+def recorded_names():
+    """Every series name a Prometheus recording rule defines."""
+    import yaml
+    names = set()
+    for path in RULE_FILES:
+        with open(path, encoding="utf-8") as handle:
+            for group in yaml.safe_load(handle)["groups"]:
+                names.update(rule["record"] for rule in group["rules"] if "record" in rule)
+    return names
