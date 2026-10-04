@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.UptimeMonitor
 import services.fallback.InMemoryFallbackStore
 import services.identity.IdentityListingIntake
-import services.movies.{DepthGuardTime, InMemoryScrapeGuardLedger, ScrapeLandingMetrics}
+import services.movies.{DepthGuardTime, InMemoryScrapeGuardLedger, ListingIntakeMetrics}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.scrapes.InMemoryScrapeArchiveRepository
 
@@ -36,7 +36,7 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
 
   private def intakeOver(ledger: InMemoryScrapeGuardLedger) =
     new IdentityListingIntake(new InMemoryScrapeArchiveRepository, new InMemoryScrapeArchiveRepository, ledger,
-      titleNormalizer, 3, DepthGuardTime.clock, ScrapeLandingMetrics.noop)
+      titleNormalizer, 3, DepthGuardTime.clock, ListingIntakeMetrics.noop)
 
   private def run(primary: CinemaScraper): Option[String] = {
     val ledger  = new InMemoryScrapeGuardLedger

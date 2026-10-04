@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie}
-import services.movies.{ListingKey, ScrapeGuardState, ScrapeHealth, ScrapeLandingMetrics, ScrapeListing, TitleNormalizer}
+import services.movies.{ListingKey, ScrapeGuardState, ScrapeHealth, ListingIntakeMetrics, ScrapeListing, TitleNormalizer}
 
 import java.time.LocalDateTime
 
@@ -47,10 +47,10 @@ object ListingIntake {
   /** One guard's decision about a scrape: it rejected it as a bad fetch, or accepted a degraded one
    *  after its grace ran out. */
   enum Guarded(val guard: String, val verdict: String) {
-    case DepthReject   extends Guarded(ScrapeLandingMetrics.Guard.Depth, ScrapeLandingMetrics.Verdict.Reject)
-    case DepthAccept   extends Guarded(ScrapeLandingMetrics.Guard.Depth, ScrapeLandingMetrics.Verdict.Accept)
-    case BreadthReject extends Guarded(ScrapeLandingMetrics.Guard.Breadth, ScrapeLandingMetrics.Verdict.Reject)
-    case BreadthAccept extends Guarded(ScrapeLandingMetrics.Guard.Breadth, ScrapeLandingMetrics.Verdict.Accept)
+    case DepthReject   extends Guarded(ListingIntakeMetrics.Guard.Depth, ListingIntakeMetrics.Verdict.Reject)
+    case DepthAccept   extends Guarded(ListingIntakeMetrics.Guard.Depth, ListingIntakeMetrics.Verdict.Accept)
+    case BreadthReject extends Guarded(ListingIntakeMetrics.Guard.Breadth, ListingIntakeMetrics.Verdict.Reject)
+    case BreadthAccept extends Guarded(ListingIntakeMetrics.Guard.Breadth, ListingIntakeMetrics.Verdict.Accept)
   }
 
   def decide(cinema: Cinema, known: Seq[CinemaMovie], offer: Offer, guard: ScrapeGuardState, now: LocalDateTime,

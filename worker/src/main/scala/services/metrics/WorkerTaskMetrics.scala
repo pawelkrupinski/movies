@@ -3,7 +3,7 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
-import services.movies.{CacheSyncMetrics, RepositoryWriteMetrics, ChangeStreamLiveness, ChangeStreamMetrics, ScrapeLandingMetrics, ScreeningsMetrics, SideCollectionChangeMetrics}
+import services.movies.{CacheSyncMetrics, RepositoryWriteMetrics, ChangeStreamLiveness, ChangeStreamMetrics, ListingIntakeMetrics, ScreeningsMetrics, SideCollectionChangeMetrics}
 import services.readmodel.ReadModelProjectionMetrics
 import services.tasks.{QueueSnapshot, RatingLatencyMetrics, Task, TaskState, TaskType}
 
@@ -67,7 +67,7 @@ object TaskObserver {
  * gauges are refreshed from a per-country `QueueSnapshot` each `Series.scrape()`.
  */
 class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
-  extends TaskObserver with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ScrapeLandingMetrics with RepositoryWriteMetrics with services.readmodel.DecodeFailureMetrics with services.tasks.ChunkPageMemoMetrics {
+  extends TaskObserver with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ListingIntakeMetrics with RepositoryWriteMetrics with services.readmodel.DecodeFailureMetrics with services.tasks.ChunkPageMemoMetrics {
 
   // ── RatingLatencyMetrics ────────────────────────────────────────────────────
   def recordFirstRatingDelay(site: String, seconds: Double): Unit = series.recordFirstRatingDelay(countryCode, site, seconds)
@@ -91,7 +91,7 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   // ── CacheSyncMetrics ────────────────────────────────────────────────────────
   def recordRehydrate(changedUpserts: Int, deletes: Int): Unit = series.recordRehydrate(countryCode, changedUpserts, deletes)
 
-  // ── ScrapeLandingMetrics ────────────────────────────────────────────────────
+  // ── ListingIntakeMetrics ────────────────────────────────────────────────────
   def recordGuardVerdict(guard: String, verdict: String): Unit = series.recordScrapeGuardVerdict(countryCode, guard, verdict)
   def recordWriteSkipped(reason: String): Unit                 = series.recordScrapeWriteSkipped(countryCode, reason)
 
@@ -459,13 +459,13 @@ object WorkerTaskMetrics {
 
     private val scrapeGuardVerdicts = Counter.builder()
       .name("kinowo_worker_scrape_guard_verdicts")
-      .help("ScrapeLanding's depth and breadth guards (services.movies.ScrapeHealth) rejecting or accepting a tick, by country, guard (depth|breadth) and verdict (reject|accept). `healthy` is not counted — the overwhelming default on every tick of every cinema, and answered better by a scrape-completed counter elsewhere. Added 2026-09-13: before this, a guard stuck rejecting (or repeatedly giving up) for hours was visible only by grepping [scrape-depth]/[scrape-prune] log lines by cinema name — which is how long Kino Aurum's breadth-guard deadlock (57 accumulated slot-keys against an 11-film board, permanently below the prune-floor ratio) went unnoticed. A `reject` RATE that never falls is the signal to alert on; a sustained run of `accept`s on one axis means a scraper that has been degraded in the SAME shape for hours, not a one-off.")
+      .help("The listing intake's depth and breadth guards (services.movies.ScrapeHealth) rejecting or accepting a tick, by country, guard (depth|breadth) and verdict (reject|accept). `healthy` is not counted — the overwhelming default on every tick of every cinema, and answered better by a scrape-completed counter elsewhere. Added 2026-09-13: before this, a guard stuck rejecting (or repeatedly giving up) for hours was visible only by grepping [scrape-depth]/[scrape-prune] log lines by cinema name — which is how long Kino Aurum's breadth-guard deadlock (57 accumulated slot-keys against an 11-film board, permanently below the prune-floor ratio) went unnoticed. A `reject` RATE that never falls is the signal to alert on; a sustained run of `accept`s on one axis means a scraper that has been degraded in the SAME shape for hours, not a one-off.")
       .labelNames("country", "guard", "verdict")
       .register(registry)
 
     private val scrapeWriteSkipped = Counter.builder()
       .name("kinowo_worker_scrape_write_skipped")
-      .help("A scrape observed a title this tick but its write did not land, by country and reason (services.movies.ScrapeLandingMetrics.SkipReason): cache-miss-race is MovieCache.putIfPresent returning false because a concurrent rekey of some OTHER title invalidated this key between the read and the compute; unreadable-row is the cache-miss branch finding the stored row could not be read at all (see the WARN this pairs with). Both were already reasoned about and handled downstream (the title is spared from that tick's prune) but neither had a counter before 2026-09-13 — a skip this shaped throws nothing and logs nothing on its own, so a real, sustained skip and a once-off race were otherwise indistinguishable without reading screenings/movie_slots directly.")
+      .help("A MovieCache.putIfPresent write that did not land, by country and reason (services.movies.ListingIntakeMetrics.SkipReason): cache-miss-race is a concurrent rekey of some OTHER title invalidating this key between the read and the compute; repository-write-failed is MovieRepository.updateIfPresent answering false for a row the cache holds. Neither had a counter before 2026-09-13 — a skip this shaped throws nothing and logs nothing on its own, so a real, sustained skip and a once-off race were otherwise indistinguishable without reading screenings/movie_slots directly.")
       .labelNames("country", "reason")
       .register(registry)
 
@@ -499,9 +499,9 @@ object WorkerTaskMetrics {
         }
         RatingSites.foreach(s => ratingFirstAttemptDelay.labelValues(c, s))
         QueueStates.foreach(s => queueDepth.labelValues(c, s).set(0.0))
-        ScrapeLandingMetrics.Guards.foreach(g =>
-          ScrapeLandingMetrics.Verdicts.foreach(v => scrapeGuardVerdicts.labelValues(c, g, v).inc(0.0)))
-        ScrapeLandingMetrics.SkipReasons.foreach(r => scrapeWriteSkipped.labelValues(c, r).inc(0.0))
+        ListingIntakeMetrics.Guards.foreach(g =>
+          ListingIntakeMetrics.Verdicts.foreach(v => scrapeGuardVerdicts.labelValues(c, g, v).inc(0.0)))
+        ListingIntakeMetrics.SkipReasons.foreach(r => scrapeWriteSkipped.labelValues(c, r).inc(0.0))
         RepositoryWriteMetrics.Writes.foreach { case (collection, op) =>
           RepositoryWriteMetrics.SeededExceptions.foreach(e => repositoryWriteFailed.labelValues(c, collection, op, e).inc(0.0))
         }
@@ -606,7 +606,7 @@ object WorkerTaskMetrics {
       if (deletes > 0)        cacheRehydrateChanges.labelValues(country, "deleted").inc(deletes.toDouble)
     }
 
-    // ── ScrapeLandingMetrics ──────────────────────────────────────────────────
+    // ── ListingIntakeMetrics ──────────────────────────────────────────────────
     def recordScrapeGuardVerdict(country: String, guard: String, verdict: String): Unit =
       scrapeGuardVerdicts.labelValues(country, guard, verdict).inc()
     def recordScrapeWriteSkipped(country: String, reason: String): Unit =

@@ -37,7 +37,7 @@ private[identity] final class ProjectionWorld(
   var reported: Option[(Int, Map[ShadowRelation, Int])] = None
   val cache      = new CaffeineMovieCache(repository, normalizer = normalizer, clock = _root_.tools.SpecClock.Pinned)
   val intake     = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
-    services.movies.ScrapeLandingMetrics.noop)
+    services.movies.ListingIntakeMetrics.noop)
   val announced  = scala.collection.mutable.ListBuffer.empty[CacheKey]
   /** Every venue whose rows the projection read back, showtimes and all, to build its slots. */
   val rowsRead   = scala.collection.mutable.ListBuffer.empty[Cinema]

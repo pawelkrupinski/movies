@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie, VenueClock}
-import services.movies.{ListingKey, ScrapeGuardLedger, ScrapeGuardState, ScrapeLandingMetrics, ScrapeSink, TitleNormalizer}
+import services.movies.{ListingKey, ScrapeGuardLedger, ScrapeGuardState, ListingIntakeMetrics, ScrapeSink, TitleNormalizer}
 import services.scrapes.{ScrapeArchiveRepository, ScrapeAttempt}
 
 import java.time.Clock
@@ -25,7 +25,7 @@ final class IdentityListingIntake(
   normalizer:    TitleNormalizer,
   maxRejections: Int,
   clock:         Clock,
-  metrics:       ScrapeLandingMetrics,
+  metrics:       ListingIntakeMetrics,
   published:     (Cinema, Seq[CinemaMovie]) => Unit = (_, _) => ()
 ) extends ScrapeSink with play.api.Logging {
 

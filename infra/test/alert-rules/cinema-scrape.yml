@@ -461,7 +461,7 @@ tests:
               severity: "warning"
             exp_annotations:
               summary: "pl: 3 scraped listings did not reach the store (repository-write-failed)"
-              description: "A scrape in \"pl\" observed a film and its write did not land (repository-write-failed). The in-memory cache already shows the new state, so the SITE LOOKS RIGHT until the next restart re-reads the store -- which is exactly how a cinema's listings can sit stale for days with every scrape green. `repository-write-failed` is Mongo answering \"no document updated\" for a row the cache holds: look for the WARN line from MovieCache.putIfPresent naming the film, and whether its `_id` was re-keyed under the cache. `unreadable-row` pairs with a WARN from ScrapeLanding naming the row that would not decode -- usually a codec change meeting an old document."
+              description: "A scrape in \"pl\" observed a film and its write did not land (repository-write-failed). The in-memory cache already shows the new state, so the SITE LOOKS RIGHT until the next restart re-reads the store -- which is exactly how a cinema's listings can sit stale for days with every scrape green. `repository-write-failed` is Mongo answering \"no document updated\" for a row the cache holds: look for the WARN line from MovieCache.putIfPresent naming the film, and whether its `_id` was re-keyed under the cache."
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # A SCRAPE GUARD REJECTING EVERY HOUR FOR TWELVE -- Kino Aurum's depth guard on 2026-09-13/14. PL's

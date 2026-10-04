@@ -38,7 +38,7 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     val accepted = new Counting
     val archive  = new Counting
     val intake   = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
-      services.movies.ScrapeLandingMetrics.noop)
+      services.movies.ListingIntakeMetrics.noop)
     def reads: Int = accepted.rowsRead + archive.rowsRead
     /** `projected(venues)`, and the rows it read. */
     def project(venues: Seq[Cinema] = live): (Seq[ProjectedListing], Int) = { val before = reads; val p = intake.projected(venues); (p, reads - before) }

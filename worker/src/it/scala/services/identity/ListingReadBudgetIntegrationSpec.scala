@@ -3,7 +3,7 @@ package services.identity
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{InMemoryScrapeGuardLedger, ScrapeLandingMetrics, SingleCountryNormalizer}
+import services.movies.{InMemoryScrapeGuardLedger, ListingIntakeMetrics, SingleCountryNormalizer}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeAttempt}
 import tools.QueryPlans
 import tools.costs.PerformanceBudgets
@@ -45,7 +45,7 @@ class ListingReadBudgetIntegrationSpec extends AnyFlatSpec with Matchers with to
       val live = venues.take(40)
       (live.take(10) ++ venues.drop(55)).foreach(c => store(accepted, c, clock.instant(), 100))
       val intake = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, SingleCountryNormalizer.titleNormalizer,
-        3, clock, ScrapeLandingMetrics.noop)
+        3, clock, ListingIntakeMetrics.noop)
 
       traffic.reset()
       val first = intake.projectedByVenue(live)

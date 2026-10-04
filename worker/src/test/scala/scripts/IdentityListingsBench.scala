@@ -31,7 +31,7 @@ object IdentityListingsBench {
     val archive  = new MongoScrapeArchiveRepository(conn.database)
     val accepted = new MongoScrapeArchiveRepository(conn.database, IdentityListingIntake.Collection)
     val intake   = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, TitleNormalizer.forCountry(country),
-      maxRejections = 3, java.time.Clock.systemUTC(), services.movies.ScrapeLandingMetrics.noop)
+      maxRejections = 3, java.time.Clock.systemUTC(), services.movies.ListingIntakeMetrics.noop)
     val live     = archive.contentStamps().keys.flatMap(Cinema.byDisplayName.get).toSeq
     val threads  = ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
     val memory   = ManagementFactory.getMemoryMXBean

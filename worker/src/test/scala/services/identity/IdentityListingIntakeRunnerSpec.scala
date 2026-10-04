@@ -27,7 +27,7 @@ class IdentityListingIntakeRunnerSpec extends AnyFlatSpec with Matchers {
     val archive = new InMemoryScrapeArchiveRepository
     val ledger  = new InMemoryScrapeGuardLedger
     val intake  = new IdentityListingIntake(new InMemoryScrapeArchiveRepository, archive, ledger, titleNormalizer, 3,
-      DepthGuardTime.clock, services.movies.ScrapeLandingMetrics.noop)
+      DepthGuardTime.clock, services.movies.ListingIntakeMetrics.noop)
     val runner  = new CinemaScrapeRunner(intake, archive)
     val board   = new Board(films(10))
     runner.run(board)
@@ -39,7 +39,7 @@ class IdentityListingIntakeRunnerSpec extends AnyFlatSpec with Matchers {
   "the same shrink landed straight into the intake, the archive still holding the venue's last scrape" should
     "be held back by the depth guard (the control)" in {
     val archive = new InMemoryScrapeArchiveRepository
-    val metrics = new services.movies.RecordingScrapeLandingMetrics
+    val metrics = new services.movies.RecordingListingIntakeMetrics
     val intake  = new IdentityListingIntake(new InMemoryScrapeArchiveRepository, archive, new InMemoryScrapeGuardLedger,
       titleNormalizer, 3, DepthGuardTime.clock, metrics)
     archive.record(services.scrapes.ScrapeAttempt(Multikino, None, DepthGuardTime.Now, listingComplete = true, films(10), error = None))

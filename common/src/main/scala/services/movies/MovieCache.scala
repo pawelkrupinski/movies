@@ -220,9 +220,9 @@ class CaffeineMovieCache(
   // not defaulted: this is the production cache, and every CacheKey it builds
   // is a row identity.
   override val normalizer: TitleNormalizer,
-  // The silent-write-skip counter (`putIfPresent`) — see `ScrapeLandingMetrics`. No-op for
+  // The silent-write-skip counter (`putIfPresent`) — see `ListingIntakeMetrics`. No-op for
   // web/tests; the worker wires `WorkerTaskMetrics`.
-  scrapeLandingMetrics: ScrapeLandingMetrics = ScrapeLandingMetrics.noop,
+  listingIntakeMetrics: ListingIntakeMetrics = ListingIntakeMetrics.noop,
   // Stamps `lastModified`. System time in production; specs pin or step it.
   val clock: java.time.Clock,
   // Where the cache interns the strings a slot repeats across cinemas. The worker hands every
@@ -682,7 +682,7 @@ class CaffeineMovieCache(
       // read and this compute. Recorded here, not at each caller, because this is
       // the one place that KNOWS it happened — every `putIfPresent` caller
       // (scrape, rating refresh, rekey) shares the same race.
-      scrapeLandingMetrics.recordWriteSkipped(ScrapeLandingMetrics.SkipReason.CacheMissRace)
+      listingIntakeMetrics.recordWriteSkipped(ListingIntakeMetrics.SkipReason.CacheMissRace)
       None
     }
 
@@ -704,7 +704,7 @@ class CaffeineMovieCache(
       logger.warn(s"MovieCache.putIfPresent(${key.cleanTitle}, ${key.year.getOrElse("—")}): " +
         "the repository write reported failure for a row the cache still holds resident " +
         "— the Mongo document didn't match, or the write itself failed.")
-      scrapeLandingMetrics.recordWriteSkipped(ScrapeLandingMetrics.SkipReason.RepositoryWriteFailed)
+      listingIntakeMetrics.recordWriteSkipped(ListingIntakeMetrics.SkipReason.RepositoryWriteFailed)
       // …and put the resident row BACK. The write guard diffs against it, so a
       // cache left holding the state Mongo never took would make the next identical
       // update (the next tick re-asserting the same slot) look like a no-op: skipped,

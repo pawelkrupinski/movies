@@ -353,18 +353,17 @@ groups:
       # -----------------------------------------------------------------------------------------
       # A SCRAPE SAW A FILM AND ITS WRITE DID NOT LAND.
       #
-      # `kinowo_worker_scrape_write_skipped_total` (services.movies.ScrapeLandingMetrics) was
-      # published on 2026-09-13 and read by nothing until this rule. Two of its three reasons mean
-      # a listing the scrape observed never reached the store: `repository-write-failed` is
-      # `MovieRepository.updateIfPresent` answering false for a row that WAS in the cache -- the
-      # write `MovieCache.putIfPresent` used to report as a success regardless, which is half of
-      # how Kino Aurum's screenings sat five days stale in 2026-09 -- and `unreadable-row` is the
-      # stored row failing to read at all. Both were zero for every country over 2026-09-10..09-24,
-      # so ANY of either is news and the rule has no threshold to argue about.
+      # `kinowo_worker_scrape_write_skipped_total` (services.movies.ListingIntakeMetrics) was
+      # published on 2026-09-13 and read by nothing until this rule. `repository-write-failed` means
+      # a write never reached the store: `MovieRepository.updateIfPresent` answering false for a row
+      # that WAS in the cache -- the write `MovieCache.putIfPresent` used to report as a success
+      # regardless, which is half of how Kino Aurum's screenings sat five days stale in 2026-09. It
+      # was zero for every country over 2026-09-10..09-24, so ANY is news and the rule has no
+      # threshold to argue about. (`unreadable-row`, the deleted ScrapeLanding's unreadable stored
+      # row, went with it on 2026-10-04.)
       #
       # `cache-miss-race` IS LEFT OUT, deliberately: a concurrent rekey of another title
-      # invalidating this key between read and compute, reasoned about in `ScrapeLanding` and
-      # spared from that tick's prune. It runs at up to 17 an hour in PL (1635 over the same
+      # invalidating this key between read and compute. It runs at up to 17 an hour in PL (1635 over the same
       # fortnight) with no stale listing to show for it, so it is the routine case.
       #
       # NO `for:`: a counter read through an hour's increase() is already its own patience, and
@@ -372,7 +371,7 @@ groups:
       - alert: ScrapeWritesSkipped
         expr: >-
           sum by (country, reason) (
-            increase(kinowo_worker_scrape_write_skipped_total{reason=~"repository-write-failed|unreadable-row"}[1h])
+            increase(kinowo_worker_scrape_write_skipped_total{reason="repository-write-failed"}[1h])
           ) > 0
         labels:
           severity: warning
@@ -385,8 +384,7 @@ groups:
             listings can sit stale for days with every scrape green. `repository-write-failed` is
             Mongo answering "no document updated" for a row the cache holds: look for the WARN line
             from MovieCache.putIfPresent naming the film, and whether its `_id` was re-keyed under
-            the cache. `unreadable-row` pairs with a WARN from ScrapeLanding naming the row that
-            would not decode -- usually a codec change meeting an old document.
+            the cache.
 
       # -----------------------------------------------------------------------------------------
       # A SCRAPE GUARD HAS BEEN REJECTING EVERY HOUR FOR TWELVE HOURS.

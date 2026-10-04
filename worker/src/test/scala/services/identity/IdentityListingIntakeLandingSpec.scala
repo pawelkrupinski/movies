@@ -31,7 +31,7 @@ class IdentityListingIntakeLandingSpec extends AnyFlatSpec with Matchers {
 
   private def intake(accepted: InMemoryScrapeArchiveRepository) =
     new IdentityListingIntake(accepted, new InMemoryScrapeArchiveRepository, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
-      services.movies.ScrapeLandingMetrics.noop)
+      services.movies.ListingIntakeMetrics.noop)
 
   private def land(intake: IdentityListingIntake, cinema: Cinema, films: Seq[CinemaMovie]): Unit = {
     intake.recordCinemaScrape(cinema, films, listingIsComplete = true, sourceKey = None, viaFallback = false); ()
@@ -58,7 +58,7 @@ class IdentityListingIntakeLandingSpec extends AnyFlatSpec with Matchers {
     val published = new java.util.concurrent.ConcurrentLinkedQueue[Seq[String]]()
     val accepted  = new WatchedArchive(_ => { reads.incrementAndGet(); () })
     val target    = new IdentityListingIntake(accepted, new InMemoryScrapeArchiveRepository, new InMemoryScrapeGuardLedger,
-      normalizer, 3, clock, services.movies.ScrapeLandingMetrics.noop, published = (_, films) => { published.add(films.map(_.movie.title)); () })
+      normalizer, 3, clock, services.movies.ListingIntakeMetrics.noop, published = (_, films) => { published.add(films.map(_.movie.title)); () })
     land(target, Multikino, listing(Multikino, "Lalka", "Diuna"))
     reads.set(0)
     land(target, Multikino, listing(Multikino, "Lalka", "Diuna"))
@@ -81,7 +81,7 @@ class IdentityListingIntakeLandingSpec extends AnyFlatSpec with Matchers {
     val archive  = new InMemoryScrapeArchiveRepository
     archive.record(services.scrapes.ScrapeAttempt(Multikino, None, clock.instant(), listingComplete = true, shrunk))
     val target   = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
-      services.movies.ScrapeLandingMetrics.noop)
+      services.movies.ListingIntakeMetrics.noop)
     land(target, Multikino, full)
     land(target, Multikino, shrunk)
     withClue("positive control — readable, the depth guard holds the shrunken scrape back: ") {

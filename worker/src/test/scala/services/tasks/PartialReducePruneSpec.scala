@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.CinemaScrapeRunner
 import services.identity.IdentityListingIntake
-import services.movies.{InMemoryScrapeGuardLedger, ScrapeLandingMetrics}
+import services.movies.{InMemoryScrapeGuardLedger, ListingIntakeMetrics}
 import services.scrapes.InMemoryScrapeArchiveRepository
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
@@ -56,7 +56,7 @@ class PartialReducePruneSpec extends AnyFlatSpec with Matchers {
    *  `ChunkScrapeFlowSpec` stubs the publish out, which is exactly why it never saw this. */
   private def harness(scraper: FakeChunkedScraper): (IdentityListingIntake, ChunkScrapeHarness) = {
     val intake = new IdentityListingIntake(new InMemoryScrapeArchiveRepository, new InMemoryScrapeArchiveRepository,
-      new InMemoryScrapeGuardLedger, titleNormalizer, 3, clock, ScrapeLandingMetrics.noop)
+      new InMemoryScrapeGuardLedger, titleNormalizer, 3, clock, ListingIntakeMetrics.noop)
     val runner = new CinemaScrapeRunner(intake)
     (intake, new ChunkScrapeHarness(scraper, s => { runner.run(s); () }, clock, staleAfter = stale))
   }

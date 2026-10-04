@@ -57,7 +57,7 @@ trait CorpusWiring { self: WorkerWiring =>
     new CaffeineMovieCache(movieRepository,
       retrigger = enrichmentRetrigger, cacheMetrics = taskMetrics,
       normalizer = titleNormalizer, clock = clock,
-      scrapeLandingMetrics = taskMetrics,
+      listingIntakeMetrics = taskMetrics,
       stringPool = workerMetrics.stringPool,
       bootHydrateMaxAttempts = configuration.bootHydrateMaxAttempts,
       bootHydrateRetry       = configuration.bootHydrateRetryInterval(BootHydrateRetryInterval(1.second)),
