@@ -571,7 +571,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       val handle1  = repo1.watchApplied { (fid, applied) => if (fid == filmWarm) gotWarm.countDown(); applied() }
       handle1 shouldBe defined
       try {
-        awaitStreamLive("a warm-up event", gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+        awaitStreamLive("a warm-up event", gotWarm.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { pass =>
           repo1.upsertSlot(filmWarm, "Multikino␟W", ListedShowtimes(at(pass % 23 + 1), None))
         }
         handle1.foreach(_.close()) // token persisted at "just after the warm-up"
@@ -586,7 +586,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       try {
         // A fresh hour each pass: the cursor works through invalidate → clear → reopen on its backoff,
         // and only a stream of real changes can catch it whenever it is back.
-        awaitStreamLive("a screenings change after the drop", gotD.await(2, TimeUnit.SECONDS), timeoutMs = 45000) { pass =>
+        awaitStreamLive("a screenings change after the drop", gotD.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { pass =>
           repo2.upsertSlot(filmD, "Multikino␟D", ListedShowtimes(at(pass % 23 + 1), None))
         }
       } finally { handle2.foreach(_.close()); repo2.close() }
