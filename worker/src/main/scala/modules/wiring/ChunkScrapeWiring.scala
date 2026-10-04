@@ -9,7 +9,7 @@ import services.tasks.{ChunkRun, ChunkScrapeCoordinator, ChunkScrapePlanner, Chu
 
 /** ── Chunked (map-reduce) scrape machinery ──────────────────────────────────
  *  A chunked cinema (ChunkedCinemaScraper) is scraped as one ScrapeChunk task
- *  per chunk, gathered by ChunkScrapeCoordinator + the ChunkScrapeReaper backstop
+ *  per chunk, gathered by ChunkScrapeCoordinator + the ChunkScrapeReaper's per-run deadline
  *  and aggregated by one ScrapeChunkReduce task — namespaced by a per-run id so a
  *  re-scrape can't conflict with an in-flight one. See ChunkScrapeStore. */
 trait ChunkScrapeWiring { self: WorkerWiring =>
@@ -38,7 +38,8 @@ trait ChunkScrapeWiring { self: WorkerWiring =>
   // stale timeout. See ChunkScrapePlanner.chunkSpread.
   def scrapeChunkSpread: ScrapeChunkSpread = configuration.scrapeChunkSpread(ScrapeChunkSpread(ScrapeCadence.ChunkEnqueueSpread))
   lazy val chunkScrapePlanner       = new ChunkScrapePlanner(chunkScrapers, chunkScrapeStore, taskQueue, publishScrape,
-    scrapeFreshnessPolicy, chunkSpread = scrapeChunkSpread, costs = scrapeCostStore, clock = clock)
+    scrapeFreshnessPolicy, chunkSpread = scrapeChunkSpread, costs = scrapeCostStore, clock = clock,
+    runStarted = chunkScrapeReaper.armDeadline)
   lazy val chunkPageMemo: services.tasks.ChunkPageMemo = new services.tasks.MongoChunkPageMemo(mongoConnection.database, clock = clock)
   lazy val scrapeChunkHandler       = new ScrapeChunkHandler(chunkScrapers, chunkScrapeStore,
     pageMemo = chunkPageMemo, memoMetrics = taskMetrics, clock = clock)

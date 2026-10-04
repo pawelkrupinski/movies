@@ -102,7 +102,7 @@ class PartialReducePruneSpec extends AnyFlatSpec with Matchers {
     // drain chunk 'a' (stores) and 'b' (fails); the run cannot complete on its own
     runEachOnce(partial, now)
     val past = now.plusSeconds(16 * 60)
-    partial.reaper(Clock.fixed(past, ZoneOffset.UTC)).tick() shouldBe 1
+    partial.reaper(Clock.fixed(past, ZoneOffset.UTC)).sweep() shouldBe 1
     runEachOnce(partial, past)
 
     withClue(s"cinema now holds ${slotTitles(cache)}: ") {

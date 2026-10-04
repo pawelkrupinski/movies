@@ -206,7 +206,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     h.drain()                 // 'a' stores; 'b' fails (rescheduled, held back); not complete
     h.published shouldBe empty
     val past = now.plusSeconds(16 * 60)
-    h.reaper(Clock.fixed(past, ZoneOffset.UTC)).tick() shouldBe 1 // abandoned → enqueue partial reduce
+    h.reaper(Clock.fixed(past, ZoneOffset.UTC)).sweep() shouldBe 1 // abandoned → enqueue partial reduce
     h.drain(past)
     h.published should have size 1
     h.published.head.map(_.movie.title) shouldBe Seq("X") // partial: only the chunk that landed

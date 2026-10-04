@@ -39,7 +39,8 @@ case class ChunkRun(cinema: String, runId: String, expectedKeys: Seq[String], cr
  *   - One publish per run: the reduce task is dedup'd in the queue, and whichever
  *     instance finishes the last chunk (reading this shared store) enqueues it; a
  *     completion seen by no instance (split across instances, or lost to a
- *     restart) is recovered by the cluster-claimed `ChunkScrapeReaper` backstop.
+ *     restart) is recovered by the `ChunkScrapeReaper`: at the run's deadline, or by
+ *     its boot / cluster-claimed hourly sweep when the process holding it died.
  *   - Restart-safe: an instance dying mid-run loses nothing — the run doc + landed
  *     slices + queued chunk tasks all survive here; a surviving (or rebooted)
  *     instance's coordinator/reaper drives the run to its reduce, or partial-reduces

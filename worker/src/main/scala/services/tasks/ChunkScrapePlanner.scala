@@ -51,7 +51,10 @@ class ChunkScrapePlanner(
   chunkSpread:   ScrapeChunkSpread = ScrapeChunkSpread(Duration.Zero),
   // Where each planned run's fan-out is recorded, so the scrape schedule can space
   // venues by what they cost ([[CostSpacedPhaseOffset]]).
-  costs:         ScrapeCostStore = ScrapeCostStore.Discarding
+  costs:         ScrapeCostStore = ScrapeCostStore.Discarding,
+  // Told of each run this planner starts, so its abandonment deadline is armed then
+  // ([[ChunkScrapeReaper.armDeadline]]) rather than found by polling every run.
+  runStarted:    ChunkRun => Unit = _ => ()
 ) extends Logging {
 
   def isChunked(cinema: String): Boolean = chunkScrapers.contains(cinema)
@@ -106,6 +109,7 @@ class ChunkScrapePlanner(
             (if (windowMillis > 0 && total > 1) s", spread over ${windowMillis / 1000}s" else ""))
           // The planner task + one per chunk + the reduce.
           costs.record(ScrapeCinemaHandler.dedupKey(scraper.cinema), ScrapeCost(total + 2))
+          runStarted(ChunkRun(cinema, runId, keys, now))
           n
       }
   }

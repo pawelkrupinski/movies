@@ -7,8 +7,8 @@ import services.events.{DomainEvent, TaskFinished}
  * The fan-IN of a chunked scrape: subscribes to `TaskFinished(ScrapeChunk)` (an
  * event-driven task-finished hook) and, once every
  * expected chunk of the run has landed, enqueues the single `ScrapeChunkReduce`.
- * Idempotent via the reduce dedup key, so the periodic `ChunkScrapeReaper`
- * backstop can call it too without double-enqueuing.
+ * Idempotent via the reduce dedup key, so the `ChunkScrapeReaper` (a run's
+ * deadline, or its boot/hourly sweep) can call it too without double-enqueuing.
  */
 class ChunkScrapeCoordinator(store: ChunkScrapeStore, queue: TaskQueue) extends Logging {
 
