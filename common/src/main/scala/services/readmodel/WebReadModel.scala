@@ -384,7 +384,7 @@ class WebReadModel(
 
   private def liveScreeningCount: Int = byCity.values.asScala.iterator.map(_.size).sum
 
-  /** Cold-retry tick — the guard `reload`'s cannot be.
+  /** Cold-retry tick — the guard `reload`'s cannot be, and the keeper of the change streams.
    *
    *  `reload` protects a WARM cache from a failed read, but a boot read that fails leaves the
    *  model with holes and nothing to protect: no films at all, or (the films read, the
@@ -394,13 +394,58 @@ class WebReadModel(
    *  unrelated health-check restart happened to land on a recovered Mongo.
    *
    *  So until a read of both collections has completed ([[hydrated]]), keep reading. Once it
-   *  has, this costs one field read: drift is the backstop's job. */
+   *  has, and while both streams are live, this costs two field reads: drift is the backstop's job.
+   *
+   *  A stream that ENDED is reopened here ([[reopenDeadStreams]]): an outage outlasting the
+   *  driver's one resume ends it for good, and nothing else opens it again. */
   private[readmodel] def coldRetryTick(): Unit =
-    if (!_hydrated) {
-      logger.warn(s"WebReadModel cold-retry: no complete read yet (serving ${movies.size} movie(s), " +
-        s"$liveScreeningCount screening(s)) — the boot hydrate read failed; reloading.")
-      reload()
+    if (!streamsLive) reopenDeadStreams()
+    else {
+      reopenAttempts = 0
+      ticksUntilReopen = 0
+      if (!_hydrated) coldReload()
     }
+
+  private def coldReload(): Unit = {
+    logger.warn(s"WebReadModel cold-retry: no complete read yet (serving ${movies.size} movie(s), " +
+      s"$liveScreeningCount screening(s)) — the boot hydrate read failed; reloading.")
+    reload()
+  }
+
+  // The reopen backoff, in cold-retry ticks: a stream reopened into an outage that is still on
+  // dies again, and each reopen pays a full reload — so the waits double (1, 3, 7, … ticks) up
+  // to the backstop's interval, and reset once a tick finds both streams live. Only the tick's
+  // own thread touches them.
+  private var reopenAttempts   = 0
+  private var ticksUntilReopen = 0
+  private val MaxTicksBetweenReopens =
+    math.max(1L, reloadInterval.value.toSeconds / math.max(1L, coldRetryInterval.value.toSeconds))
+
+  /** Reopen each stream that is not live — the way `start` opens them: checkpoint, read the
+   *  corpus whole, then watch from the checkpoint, so what was written while the stream was down
+   *  is in the read or the replay. On the backoff above; a cold model reloads every tick anyway. */
+  private def reopenDeadStreams(): Unit =
+    if (ticksUntilReopen > 0) {
+      ticksUntilReopen -= 1
+      if (!_hydrated) coldReload()
+    } else {
+      reopenAttempts += 1
+      ticksUntilReopen = math.min((1L << math.min(reopenAttempts, 30)) - 1, MaxTicksBetweenReopens).toInt
+      logger.warn(s"WebReadModel: change stream(s) ended (movies live=${movieWatch.exists(_.live)}, " +
+        s"screenings live=${screeningWatch.exists(_.live)}) — reopening, attempt $reopenAttempts.")
+      val checkpoint = reader.streamCheckpoint()
+      reload()
+      if (!movieWatch.exists(_.live)) {
+        movieWatch.foreach(watch => Try(watch.close()))
+        movieWatch = reader.watchMovies(applyMovieUpsert, applyMovieDelete, checkpoint)
+      }
+      if (!screeningWatch.exists(_.live)) {
+        screeningWatch.foreach(watch => Try(watch.close()))
+        screeningWatch = reader.watchScreenings(applyScreeningUpsert, applyScreeningDelete, checkpoint)
+      }
+    }
+
+  private def streamsLive: Boolean = movieWatch.exists(_.live) && screeningWatch.exists(_.live)
 
   /** Periodic backstop tick. While both change streams are live they keep the
    *  model current, so re-reading and re-decoding the whole corpus every tick is
@@ -411,7 +456,6 @@ class WebReadModel(
    *  original backstop behaviour) or a count has drifted (a delivered event we
    *  failed to apply, or one missed by a silently-stalled stream). */
   private[readmodel] def backstopTick(): Unit = {
-    val streamsLive = movieWatch.exists(_.live) && screeningWatch.exists(_.live)
     if (!streamsLive) { reload(); return }
     drift().foreach { first =>
       // A COUNT TAKEN MID-WRITE IS NOT DRIFT. The count is read straight off the server, the
@@ -471,13 +515,15 @@ class WebReadModel(
       ColdRetrySeconds, ColdRetrySeconds, TimeUnit.SECONDS)
     logger.info(s"WebReadModel started; backstop reload every ${BackstopSeconds}s; " +
       s"cold retry every ${ColdRetrySeconds}s; " +
-      s"change-stream watches ${if (movieWatch.isDefined) "active" else "unavailable — backstop only"}.")
+      s"change-stream watches ${if (movieWatch.isDefined) "active" else "unavailable — reopened on the cold-retry cadence"}.")
   }
 
   def stop(): Unit = {
+    // The scheduler first: a tick in flight may be reopening a stream, which a close before it ends would miss.
+    scheduler.shutdown()
+    Try(scheduler.awaitTermination(5, TimeUnit.SECONDS))
     movieWatch.foreach(h => Try(h.close()))
     screeningWatch.foreach(h => Try(h.close()))
-    scheduler.shutdown()
   }
 }
 

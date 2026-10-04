@@ -219,6 +219,43 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.stop()
   }
 
+  // A Mongo outage longer than the driver's one resume ENDS a change stream for good, and
+  // nothing opened it again: every pod that lived through a blip served writes up to 30
+  // minutes late (the backstop) for the rest of its life, and paid a full reload every tick.
+  "coldRetryTick" should "reopen a change stream that died, catching up on what it missed" in {
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(movie("belle|2021"))
+    val rm = started(repository)
+
+    repository.failMovieStream()
+    repository.upsertMovie(movie("during|2026"))   // written while the stream was down
+    rm.coldRetryTick()
+    repository.upsertMovie(movie("after|2026"))    // written once it is back
+
+    rm.movie("during|2026") shouldBe defined
+    rm.movie("after|2026") shouldBe defined
+    repository.movieWatchesOpened.get() shouldBe 2
+    repository.screeningWatchesOpened.get() shouldBe 1   // the live one is left alone
+    rm.stop()
+  }
+
+  it should "back off reopening a stream that keeps dying, rather than reload every tick" in {
+    val repository = new InMemoryReadModelRepository {
+      override def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription] = {
+        val opened = super.watchMovies(onUpsert, onDelete, from)
+        failMovieStream()   // Mongo still down: the stream dies as soon as it opens
+        opened
+      }
+    }
+    val rm = started(repository)
+
+    (1 to 10).foreach(_ => rm.coldRetryTick())
+
+    // Reopened on ticks 1, 3 and 7 — not on all ten.
+    repository.movieWatchesOpened.get() shouldBe 1 + 3
+    rm.stop()
+  }
+
   it should "reload when a server-side count drifts from the in-memory model" in {
     // countScreenings reports one more than was streamed in — standing in for a
     // delivered event the applier dropped, which a count-blind backstop misses.

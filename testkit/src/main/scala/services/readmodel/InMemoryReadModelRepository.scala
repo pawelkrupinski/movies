@@ -51,10 +51,13 @@ class InMemoryReadModelRepository extends ReadModelReader with ReadModelWriter {
   private val movieStreamLive     = new AtomicBoolean(false)
   private val screeningStreamLive = new AtomicBoolean(false)
 
-  /** Simulate the change stream terminally ending — the subscription stays
-   *  registered (so already-applied state is intact) but reports `live == false`. */
-  def failMovieStream():     Unit = movieStreamLive.set(false)
-  def failScreeningStream(): Unit = screeningStreamLive.set(false)
+  /** Simulate the change stream terminally ending, as Mongo's does when an outage outlasts the
+   *  driver's one resume: it reports `live == false` and delivers nothing more. */
+  def failMovieStream():     Unit = { movieStreamLive.set(false); movieWatcher = None }
+  def failScreeningStream(): Unit = { screeningStreamLive.set(false); screeningWatcher = None }
+  /** How many watches were opened, per collection — a consumer re-opening a dead stream opens another. */
+  val movieWatchesOpened     = new AtomicInteger(0)
+  val screeningWatchesOpened = new AtomicInteger(0)
 
   def enabled: Boolean = true
 
@@ -106,6 +109,7 @@ class InMemoryReadModelRepository extends ReadModelReader with ReadModelWriter {
   def streamCheckpoint(): Option[StreamCheckpoint] = Some(StreamCheckpoint(lock.synchronized(history.size.toLong)))
 
   def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription] = {
+    movieWatchesOpened.incrementAndGet()
     replay(from, movies = true, moviesStore, onUpsert, onDelete)
     movieWatcher = Some((onUpsert, onDelete))
     movieStreamLive.set(true)
@@ -113,6 +117,7 @@ class InMemoryReadModelRepository extends ReadModelReader with ReadModelWriter {
   }
 
   def watchScreenings(onUpsert: CityScreening => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription] = {
+    screeningWatchesOpened.incrementAndGet()
     replay(from, movies = false, screeningsStore, onUpsert, onDelete)
     screeningWatcher = Some((onUpsert, onDelete))
     screeningStreamLive.set(true)
