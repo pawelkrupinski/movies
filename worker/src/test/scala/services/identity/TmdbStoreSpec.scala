@@ -310,4 +310,19 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     TmdbIdentityLookups.everyTitled(Seq(Seq(Hit(134673, "Renoir", None, Some(2012), 3.0)), Nil)) shouldBe empty
     TmdbIdentityLookups.everyTitled(Seq(Seq(Hit(1404604, "Compostelle", None, Some(2026), 2.0)))).map(_.tmdbId) shouldBe Seq(1404604)
   }
+
+  "A title's IMDb suggestions" should "be a gap to both questions they answer when their read met one" in {
+    // The hard-cluster replay answers an unrecorded suggestion URL 404 — IMDb's own "no such title", an empty list —
+    // and counts the miss. Read once for the IMDb-titled question and kept, the second question took the empty list
+    // as IMDb's answer without the miss counted: the store, which files nothing for a miss, said Unknown.
+    var misses = 0L
+    val fetch  = new tools.HttpFetch {
+      override def get(url: String): String = { misses += 1; throw new HttpStatusException(404, "GET", url, None) }
+      override def post(url: String, body: String, contentType: String): String = get(url)
+    }
+    val live = new TmdbIdentityLookups(new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()),
+      new services.enrichment.ImdbClient(fetch), Nil, new TmdbIdentityLookups.CountedGaps(() => misses))
+    live.candidates(CandidateQuery.ImdbTitled("B-Movie")) shouldBe Answer.Unknown
+    live.candidates(CandidateQuery.Imdb("B-Movie")) shouldBe Answer.Unknown
+  }
 }

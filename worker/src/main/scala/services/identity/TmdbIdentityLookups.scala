@@ -45,18 +45,27 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: S
       answered(tmdb.findPersonCandidates(CandidateQuery.personName(name))
         .flatMap(tmdb.personFilmography).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))
     case CandidateQuery.Imdb(title)       =>
-      answered(ImdbClient.suggested(suggestedMovies(title)).flatMap(tmdb.findByImdbId).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))
+      suggestedMovies(title) match {
+        case Answer.Known(movies) => answered(ImdbClient.suggested(movies).flatMap(tmdb.findByImdbId).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))
+        case Answer.Unknown       => Answer.Unknown
+      }
     case CandidateQuery.ImdbTitled(title) =>
-      answered(TmdbIdentityLookups.everyTitled(ImdbClient.titled(title, suggestedMovies(title), id => Some(imdb.titlesOf(id))).getOrElse(Nil)
-        .map(tmdb.findByImdbId(_).take(1).toSeq.map(TmdbIdentityLookups.hitOf))))
+      suggestedMovies(title) match {
+        case Answer.Known(movies) => answered(TmdbIdentityLookups.everyTitled(ImdbClient.titled(title, movies, id => Some(imdb.titlesOf(id))).getOrElse(Nil)
+          .map(tmdb.findByImdbId(_).take(1).toSeq.map(TmdbIdentityLookups.hitOf))))
+        case Answer.Unknown       => Answer.Unknown
+      }
   }
 
   // A title's IMDb suggestions answer two questions — the films IMDb suggests (`Imdb`) and those it lists under the
-  // title (`ImdbTitled`) — read once for a few minutes. A failed read throws and is never kept.
+  // title (`ImdbTitled`) — read once for a few minutes, AS ANSWERED: a read that met a gap (a replay's unrecorded
+  // request, a failure) is Unknown to both, never an empty list the second question would take for IMDb's answer.
   private val recentSuggestions = tools.BoundedCache.ofSize(512).expireAfterWrite(java.time.Duration.ofMinutes(10))
-    .build[String, Seq[ImdbClient.Suggestion]]()
-  private def suggestedMovies(title: String): Seq[ImdbClient.Suggestion] =
-    Option(recentSuggestions.getIfPresent(title)).getOrElse { val read = imdb.suggestedMovies(title); recentSuggestions.put(title, read); read }
+    .build[String, Answer[Seq[ImdbClient.Suggestion]]]()
+  private def suggestedMovies(title: String): Answer[Seq[ImdbClient.Suggestion]] =
+    Option(recentSuggestions.getIfPresent(title)).getOrElse {
+      val read = answered(imdb.suggestedMovies(title)); recentSuggestions.put(title, read); read
+    }
 
   override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = answered(tmdb.identityRecord(tmdbId))
 }
