@@ -156,7 +156,7 @@ you what is left:
 
 `CountrySpec`, `CatalogSpec`, `PageSnapshotSpec`, `NavbarDebugLinkSpec`,
 `TasksViewSpec`, `UptimeViewSpec`, `DebugViewCountrySwitchSpec`,
-`MovieControllerDebugCountrySpec`, `LandingCountryPreviewSpec`, iOS `CountryTests`
+`LandingCountryPreviewSpec`, iOS `CountryTests`
 and `CityChoiceSearchUITests`, Android `CountryTest`, `CityChoiceSearchTest`,
 `FiltersSheetOrderTest`, `LocaleStringsTest`, `UserPreferencesCountryTest`.
 

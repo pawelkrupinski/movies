@@ -13,7 +13,13 @@ settled, and — the load-bearing reason — so you check every outcome
 
 ## The chain, and why each piece exists
 
-Live in prod and working. Do not redesign it.
+> **Historical.** Steps 2 and 3 (`CrewConfirmation`, `UnresolvedTmdbReaper`) were deleted with the
+> old film pipeline on 2026-10-04 (43e8ed84c), and nothing calls `CinemaCorroboration` any more:
+> the identity resolver's `Acceptance` refuses a candidate a published fact contradicts, and a
+> wrong film is fixed by a pin (`docs/design/identity-resolver.md` §13). The log below is the record
+> of the sweeps run on the old chain.
+
+As it ran until 2026-10-04:
 
 1. **Detect** — `CinemaCorroboration.contradiction`
    (`common/.../services/movies/CinemaCorroboration.scala`) flags a row whose

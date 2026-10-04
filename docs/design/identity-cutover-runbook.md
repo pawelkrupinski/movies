@@ -1,13 +1,13 @@
 # Identity cutover runbook (programme phase 5, one country at a time)
 
-> **Historical.** Every country is cut over (gitops ca5ab00), and ea3d56300 removed the switch
-> (`KINOWO_IDENTITY_CUTOVER`), the shadow run and the old identity path's way back: there is no
-> flipping either way any more. What follows is the record of how the cut-over was run.
+> **Historical.** Every country is cut over (gitops ca5ab00), ea3d56300 (2026-10-03) removed the
+> switch (`KINOWO_IDENTITY_CUTOVER`), the shadow run and the old identity path's way back, and
+> 43e8ed84c (2026-10-04) deleted the old film pipeline itself (§7): there is no flipping either way
+> any more, and no command below can be run. What follows is the record of how the cut-over was run.
 
 What the switch does, when a country may take it, how to flip it, how to read it, and how to
 flip it back. The design is `docs/design/identity-resolver.md` §8 ("cutover, per country"), §10,
-§11 and §18 (as landed). Nothing here is enabled anywhere yet: `KINOWO_IDENTITY_CUTOVER` is unset
-in every overlay.
+§11 and §18 (as landed).
 
 ## 1. What the switch changes
 
@@ -95,7 +95,7 @@ out the grace.
 - `ReadModelServingDiffers` must not fire; read-model drift gauges at baseline.
 - `kinowo_worker_identity_projection_refusals_total` flat.
 
-## 5. Switching back
+## 5. Switching back (removed: there is no way back since ea3d56300)
 
 Remove the `KINOWO_IDENTITY_CUTOVER` line (or the country from it). On restart the country is on the
 old path again, over the projection's rows:
@@ -179,10 +179,11 @@ falls from 0.268 to 0.034 (it is certified below the single lowest same-film uni
 e.g. Odeon's "The Gruffalo + The Gruffalo's Child" double bill (28 new wrong in the UK) for PL's
 Lalka ×9 fixed and ~80 right lost net. Under investigation; r5 stays.
 
-## 7. Phase 6: what becomes dead once all five are on
+## 7. Phase 6: what became dead once all five were on
 
-Delete only after the LAST country has held phase-3 acceptance for a week (§8 "Phase 4: delete").
-Then no wiring reaches any of the following, and each goes with its specs:
+Done: the switch and the shadow run went in ea3d56300, the rest of the list in 43e8ed84c. The list
+as planned (a few names below — `SettleReaper`, `CorpusIndex`, `MovieDetailsComplete`,
+`CutoverTaskHandlers` — survive in a narrower role):
 
 - **Landing**: `ScrapeLanding` (divert / redirect / variant re-key / prune; its guard logic now lives
   in `ListingIntake`), `ListingLanding`, `LandingStore`, `MovieCache.recordCinemaScrape` and

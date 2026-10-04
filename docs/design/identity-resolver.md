@@ -1,6 +1,13 @@
 # Identity resolver: film identity as a function of the listing set
 
-Status: design, 2026-09-25. Prerequisites (a) to (d) below are on branch `identity-prereqs`.
+Status: implemented and the ONLY path. Every country is cut over; ea3d56300 (2026-10-03) removed
+the cut-over switch and the shadow run, and 43e8ed84c (2026-10-04) deleted the old film pipeline
+(`ScrapeLanding`, the staging fold, `FilmCanonicalizer`, `MixedFilmSplitter`, `SideCollectionMove`,
+`TmdbCandidateSearch`, `UnresolvedTmdbReaper`, …). Sections 1–18 are the design and rollout record:
+the old-pipeline classes, the shadow run (§17) and the switch (§18) they name are gone. §19 (the
+lookup fill) and the calibration tooling (§14) describe what runs today.
+
+Original status: design, 2026-09-25. Prerequisites (a) to (d) below were on branch `identity-prereqs`.
 The shadow prototype is on `identity-resolver-proof` (test code only). The proof report is the
 source for every number marked *(proof)*.
 
@@ -2020,6 +2027,9 @@ Still blocking dual reads:
 
 ## 17. Phase 1 (§8): the shadow run in production
 
+> **Historical.** The shadow run (`ShadowIdentityReaper`, `ShadowRunStore`, `identity_shadow_*`,
+> `KINOWO_IDENTITY_SHADOW`) was removed in ea3d56300; only its lookup fill (§19) survives.
+
 ### 17.1 What runs
 
 `ShadowIdentityReaper` (worker, `services.identity`) runs on its own cluster-claimed schedule
@@ -2109,7 +2119,11 @@ resolver on the pipeline's evidence, not its own.
 
 ## 18. Programme phase 5: per-country cutover (2026-09-26, branch `identity-phase5`)
 
-Built and tested; **off for every country**. The runbook (preconditions, the gitops line, reading
+> **Historical.** Every country took the switch, and ea3d56300 then removed it
+> (`KINOWO_IDENTITY_CUTOVER`, `IdentityCutoverCountries`): the projection is the only path.
+> `IdentityCutoverWiring` and the `kinowo_worker_identity_cutover_*` gauges keep their names.
+
+Built and tested, then switched on country by country. The runbook (preconditions, the gitops line, reading
 it, rollback, per-country blockers, the phase-6 deletion list) is
 `docs/design/identity-cutover-runbook.md`.
 
@@ -2183,9 +2197,10 @@ thresholds, its grace the scrape guards' own constant.
 searches, director walks, candidate records) are ones the pipeline never asks: over the Poznań
 capture, 4,559 lookups were unobserved and 337 of 723 clusters matched.
 
-`ShadowLookupFill` (worker, `services.identity`) closes that gap. After each shadow tick (the
-shadow run's own claimed schedule, `WorkerWiring.identityShadowSchedule`, no longer the settle's),
-on its own daemon thread, one round at a time:
+`ShadowLookupFill` (worker, `services.identity`) closes that gap. On its own cluster-claimed
+schedule (`WorkerWiring.identityLookupRefreshSchedule`, the `identity-lookup-refresh` task, every
+`KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS`, default 30 minutes), on its own daemon thread, one round
+at a time:
 
 - it asks the identity model's gaps (`IncrementalResolver.gaps`: the questions its nodes asked that the
   store cannot answer, and the film records it lacks), so the questions are exactly the resolver's own
@@ -2204,7 +2219,8 @@ on its own daemon thread, one round at a time:
   would write the pipeline's `detailCache-*`.
 
 Gauge: `kinowo_worker_identity_shadow_lookups{country,outcome=asked|answered|failed|deferred|rate}`,
-last round. Switch: `KINOWO_IDENTITY_SHADOW_LOOKUPS` (with `KINOWO_IDENTITY_SHADOW`), off by default.
+last round. Always on: the `KINOWO_IDENTITY_SHADOW_LOOKUPS` / `KINOWO_IDENTITY_SHADOW` switches it
+had while it fed the shadow run went with it.
 
 **The pipeline is never delayed beyond the cap.** TMDB is unpaced here, so the fill competes only
 through the shared 429 gate, which it stops feeding at its first overload. On a paced host, each

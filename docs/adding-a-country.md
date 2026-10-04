@@ -138,7 +138,8 @@ those is expensive to change once a `Country` is switchable.
    to `services.cinemas.common` beside `FlicksClient`; that is where
    `WebediaShowtimesClient` went when Spain joined Germany on it, and leaving it
    under `.de` would have made every Spanish scrape import a German package. Anything country-agnostic (the `CinemaScraper` contract, the
-   `Retrying`/`Chunked`/`AdaptiveTimeout`/`UptimeRecording` wrappers, the
+   `RetryingCinemaScraper` / `ChunkedCinemaScraper` / `AdaptiveTimeoutScraper` /
+   `UptimeRecordingScraper` wrappers, the
    `SlotsToMovies` fold, the Zyte egress plumbing) belongs in
    `services.cinemas.common` instead — if a new country's client wants to reuse
    a helper that currently sits under `pl`, lift the country-neutral part into

@@ -1,5 +1,10 @@
 # Stable film id
 
+> **Historical.** The pipeline this describes (the staging fold, `SideCollectionMove`, `ScrapeLanding`, `FilmCanonicalizer`, `MergeReason` / `RekeyReason`) was deleted on 2026-10-04 (43e8ed84c); film
+> identity is now the identity projection's (`docs/design/identity-resolver.md`). Kept as the record.
+
+`FilmId` is now assigned by `IdAssigner` over `identity_film_ids`.
+
 **Goal (Paweł, 2026-09-06):** the periodic settle must in effect never merge or
 split anything. Onboarding puts a screening in the right place; the settle
 exists to self-heal after a bug fix, not to finish the scrape path's work.

@@ -1,5 +1,8 @@
 # Loop A — the settle-beat spelling oscillation
 
+> **Historical.** The pipeline this describes (`MongoStagingFolder`, `FilmCanonicalizer`, the settle beat and their specs) was deleted on 2026-10-04 (43e8ed84c); film
+> identity is now the identity projection's (`docs/design/identity-resolver.md`). Kept as the record.
+
 Status: **FIXED** — `MongoStagingFolder.withStitchedCinemas`, regression test
 `integration.FoldSpellingAgreesWithSettleSpec`.
 
