@@ -33,8 +33,10 @@ class KinoprogrammClientSpec extends AnyFlatSpec with Matchers {
   private lazy val (cineStar, cineStarUrls) = scrape("A0738")
 
   "KinoprogrammClient" should "read every film and showtime the venue's weeks list" in {
-    cineStar should have size 36
-    cineStar.flatMap(_.showtimes) should have size 142
+    // 36 listed; CineStar's mystery screening "CineSneak" names no film and is dropped.
+    cineStar should have size 35
+    cineStar.map(_.movie.title) should contain ("Die Tribute von Panem - The Hunger Games")
+    cineStar.flatMap(_.showtimes) should have size 141   // CineSneak's one slot gone
     cineStar.flatMap(_.showtimes).map(_.dateTime.toLocalDate).max shouldBe LocalDate.of(2026, 10, 23)
   }
 
@@ -98,6 +100,28 @@ class KinoprogrammClientSpec extends AnyFlatSpec with Matchers {
     val title  = movies.groupBy(_.movie.title).collectFirst { case (t, same) if same.size == 2 => t }
     title shouldBe defined
     movies.filter(m => title.contains(m.movie.title)).flatMap(_.filmUrl).exists(_.endsWith("-999999")) shouldBe true
+  }
+
+  // kinoprogramm.com lists a venue's mystery screening as a film of its own ("Sneak Preview" at
+  // Abaton, 2026-10-04); Filmstarts gives the same slot no film at all. It names no film and
+  // could only render as a card nothing resolves — the non-film event filter drops it.
+  it should "drop a Sneak Preview, which names no film" in {
+    val real = new FakeHttpFetch("kinoprogramm")
+    val sneaky = new GetOnlyHttpFetch {
+      def get(url: String): String = {
+        val page = real.get(url)
+        if (!url.endsWith(s"datum=$Today")) page
+        else {
+          val doc = org.jsoup.Jsoup.parse(page)
+          import scala.jdk.CollectionConverters._
+          doc.selectFirst("article[data-kino-week-film]").select("a[href]").asScala.find(_.text.trim.nonEmpty).get.text("Sneak Preview")
+          doc.outerHtml
+        }
+      }
+    }
+    val movies = new KinoprogrammClient(sneaky, paths("A0738"), cinema("A0738"), today = Today).fetch()
+    movies.map(_.movie.title) should not contain "Sneak Preview"
+    movies should have size (cineStar.size - 1)
   }
 
   // A page without the programme list is a changed layout or a block page, never a

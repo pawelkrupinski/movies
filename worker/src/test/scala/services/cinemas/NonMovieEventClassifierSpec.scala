@@ -77,6 +77,9 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
     "Bonpodarunkowy",
     // Blind / mystery screenings, incl. the space-collapsed spelling.
     "Seans w ciemno_7.26",
+    "Sneak Preview",       // kinoprogramm.com's spelling of the same mystery screening
+    "OV Sneak-Preview",
+    "CineSneak",
     "Ukrytyseanswciemno",
     // Standalone festival panels / author meetings — no film attached.
     "Ravekjavikxnckfbestiawdzunglipaneldyskusyjny",
@@ -89,6 +92,8 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
   // transmissions and concert films) and art DOCUMENTARIES — all real cinema
   // content that merely contains event vocabulary.
   private val cinemaContent = List(
+    "Sneakers - Die Lautlosen",   // a real film, as is the 2025 animation "Sneaks"
+    "Sneaks",
     // Broadcasts — carry a broadcast marker that vetoes the event verdict.
     "Royal Ballet and Opera Sezon Kinowy 2026-27: Carmen",
     "Royal Ballet and Opera Sezon Kinowy 2026-27: Manon",
@@ -258,5 +263,12 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
     NonMovieEventClassifier.isLiveEvent(listing("Kabaret K2 - Jedziemy na luzie")) shouldBe true
     NonMovieEventClassifier.isLiveEvent(listing("Pani domu jest tylko jedna - spektakl komediowy", Seq("Jan Kowalski"))) shouldBe true
     NonMovieEventClassifier.isLiveEvent(listing("SIOSTRZYCZKI - koncert komediowy", year = Some(2026))) shouldBe true
+  }
+
+  "isMysteryScreening" should "name a sneak preview anywhere, and nothing a German title merely shares a word with" in {
+    Seq("Sneak Preview", "OV Sneak-Preview", "CineSneak", "Seans w ciemno").foreach(
+      NonMovieEventClassifier.isMysteryScreening(_) shouldBe true)
+    Seq("Die Tribute von Panem - The Hunger Games", "Sneakers - Die Lautlosen", "Sneaks").foreach(
+      NonMovieEventClassifier.isMysteryScreening(_) shouldBe false)
   }
 }

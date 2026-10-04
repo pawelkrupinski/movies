@@ -46,7 +46,26 @@ object NonMovieEventClassifier {
    *  `\bgala\b` ignores "Galaxy"/"Galaktyki" (no boundary after "gala").
    *  `koncert`/`gala`/`balet` are Polish-only spellings, so the English
    *  "Royal Ballet" / "…Opera" of the kept broadcasts never match. */
-  private val EventMarkers = List(
+  /** Mystery / blind screenings — sold as an event, never resolving to a title: "Seans w
+   *  ciemno", "Seans niespodzianka" (collapsed "seanswciemno"), and Germany's "Sneak
+   *  Preview" / "OV Sneak-Preview" / CineStar's "CineSneak". Not a bare "sneak": "Sneakers"
+   *  and the 2025 "Sneaks" are films. Language-neutral enough to apply outside Poland, unlike
+   *  the stage vocabulary below ("tribute" is a word of "Die Tribute von Panem"). */
+  private val MysteryScreeningMarkers = List(
+    """seans\s?w\s?ciemno""".r,
+    """seans\s?niespodziank""".r,
+    """\bsneak[\s-]?preview""".r,
+    """\bcinesneak\b""".r
+  )
+
+  /** Whether `title` is a mystery screening ([[MysteryScreeningMarkers]]) — the one part of
+   *  this classifier a non-Polish feed reads. */
+  def isMysteryScreening(title: String): Boolean = {
+    val t = title.toLowerCase(Locale.ROOT)
+    MysteryScreeningMarkers.exists(_.findFirstIn(t).isDefined)
+  }
+
+  private val EventMarkers = MysteryScreeningMarkers ++ List(
     """\bstand[\s-]?up\b""".r,
     """\bkabaret""".r,
     """\brecital""".r,
@@ -78,10 +97,6 @@ object NonMovieEventClassifier {
     """bon\s?podarunkow""".r,
     """bon\s?upominkow""".r,
     """\bvoucher""".r,
-    // Mystery / blind screenings ("Seans w ciemno", "Seans niespodzianka",
-    // collapsed "seanswciemno") — sold as an event, never resolve to a title.
-    """seans\s?w\s?ciemno""".r,
-    """seans\s?niespodziank""".r,
     // Activity classes sold through the same ticketing surface — a yoga session
     // ("Joga w chmurach – Studio Jogi…") is never a screening. Covers "joga",
     // "jogi", "jogą", "jogę" without touching any film title; closed by a

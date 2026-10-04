@@ -3,6 +3,7 @@ package services.cinemas.common
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
+import services.cinemas.pl.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
@@ -52,7 +53,11 @@ class KinoprogrammClient(
       films ++= week
       week.nonEmpty
     }
-    toMovies(films.result(), cinema, sourceUrl)
+    // The page lists a venue's mystery screening as a film ("Sneak Preview", CineStar's
+    // "CineSneak"), where Filmstarts gives the slot no film at all: it names nothing a card
+    // could resolve. Only the non-film classifier's mystery markers apply — its Polish stage
+    // vocabulary would drop "Die Tribute von Panem".
+    toMovies(films.result().filterNot(film => NonMovieEventClassifier.isMysteryScreening(film.title)), cinema, sourceUrl)
   }
 
   private def weekUrl(weekStart: LocalDate): String = s"$BaseUrl$path?datum=$weekStart"
