@@ -487,9 +487,6 @@ class WorkerWiring(
     // Backstop the chunked-scrape fan-in: recover complete runs whose completion
     // event was lost, and partial-reduce abandoned runs.
     boot.step("chunk scrape reaper")(chunkScrapeReaper.start())
-    // Incubate pending_movies through the queue: newcomers and every step run off
-    // events (subscribed above); this periodic tick only backstops stalled chains.
-    // The TaskWorker (above) drains the steps.
     // Say so, loudly, for any alerter a missing env var has wired off (gauge + WARN).
     boot.step("alerters")(reportAlerters())
     // Census the corpus for the /metrics gauges (off-band, read-only paged scan):

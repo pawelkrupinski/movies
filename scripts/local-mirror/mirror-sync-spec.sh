@@ -27,11 +27,12 @@ LOCAL_URI="mongodb://127.0.0.1:28017/?directConnection=true"
 SRC_DB="kinowo_sync_spec"
 MIRROR_DB="${SRC_DB}_prod_mirror"
 # Real mirrored collections, so mirror-targets.js's list covers them without the
-# spec having to fake the target list. `pending_movies` is where the incident
-# happened and is small enough to reason about; `movies` is what the gate's
-# other signals read, and has to look healthy so a case can only ever trip on
-# the signal it is about.
-GHOST_COLL="pending_movies"
+# spec having to fake the target list. The incident happened in `pending_movies`
+# (gone with the staging fold); `rating_cadence` stands in for it as a small
+# mirrored collection no gate signal reads. `movies` is what the gate's other
+# signals read, and has to look healthy so a case can only ever trip on the
+# signal it is about.
+GHOST_COLL="rating_cadence"
 
 m() { mongosh "$LOCAL_URI" --quiet --eval "$1" 2>/dev/null; }
 src() { m "db.getSiblingDB('$SRC_DB').getCollection('$1')${2}"; }

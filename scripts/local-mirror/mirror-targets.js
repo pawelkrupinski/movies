@@ -6,9 +6,8 @@
 // These are what a /debug page load reads: the corpus table (`movies`, with
 // `screenings` stitched back in for showtimes and `movie_slots` carrying the
 // per-film slot rows the corpus readers resolve alongside it), the per-row
-// expand's two stores (`enrichment_attempts`, `rating_cadence`), the staging
-// table (`pending_movies`), and the read-cache dump (`web_movies`,
-// `web_screenings`).
+// expand's two stores (`enrichment_attempts`, `rating_cadence`), and the
+// read-cache dump (`web_movies`, `web_screenings`).
 //
 // `cinema_scrapes` is the exception: it backs no page. It holds each cinema's
 // last content-bearing scrape — the listing the client actually produced, before
@@ -28,7 +27,6 @@
 const MIRRORED_COLLECTIONS = [
   "movies", "screenings", "movie_slots",
   "enrichment_attempts", "rating_cadence",
-  "pending_movies",
   "web_movies", "web_screenings",
   "cinema_scrapes",
 ];

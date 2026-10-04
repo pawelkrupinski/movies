@@ -24,14 +24,14 @@ cadence — i.e. **~340ms of pure latency**. Against the LAN mirror the ping is
 source of truth for both halves:
 
 - **Collections:** `movies`, `screenings`, `movie_slots`,
-  `enrichment_attempts`, `rating_cadence`, `pending_movies`, `web_movies`,
-  `web_screenings` — exactly what a `/debug` load reads. A collection this list
+  `enrichment_attempts`, `rating_cadence`, `web_movies`, `web_screenings` (plus
+  `cinema_scrapes`, for replays) — exactly what a `/debug` load reads. A collection this list
   omits reads as permanently **empty**, not slowly-from-prod: the `/debug`
   country stacks read the mirror unconditionally. `MongoConnectionSpec` fails
   if the app reads one the list omits, diffing it against
   `services.DebugMirror` rather than a literal — which is how `web_movies` /
-  `web_screenings` (a blank `/debug/readmodel` for every non-boot country) and
-  `pending_movies` (a blank staging table) turned up missing.
+  `web_screenings` (a blank `/debug/readmodel` for every non-boot country) turned
+  up missing.
 - **Databases:** every `kinowo*` database the tunnel exposes, discovered at
   startup (override with `KINOWO_MIRROR_DBS`). So the navbar's country switch
   (`/debug?country=uk`) is LAN-fast too, not just the boot country.
@@ -129,7 +129,7 @@ MONGODB_DB=kinowo_local
 ```
 
 `kinowo_local` is a normal database on the same replica set, so the read-model
-projector, the staging fold (transactions), and the Filmweb-fallback watcher all
+projector and the Filmweb-fallback watcher both
 get the change streams they need. `/debug` keeps reading the prod-synced
 `kinowo_prod_mirror` (via `MONGODB_MOVIES_MIRROR_URI`); the rest of the local
 site serves from whatever the local worker projects into `kinowo_local`.
