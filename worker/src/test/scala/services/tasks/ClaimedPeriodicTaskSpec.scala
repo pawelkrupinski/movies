@@ -31,7 +31,7 @@ class ClaimedPeriodicTaskSpec extends AnyFlatSpec with Matchers {
 
   // The next run's delay was read outside the logged tick: an interval that threw ended the
   // schedule for good, silently. It keeps the last delay and says why.
-  "A periodic task whose interval cannot be read" should "keep its schedule on the delay it had, and log why" in {
+  "A periodic task whose interval cannot be read" should "keep its schedule on the delay it had, at least the minimum, and log why" in {
     val runs      = new AtomicInteger
     val clock     = new MutableClock(Instant.parse("2026-09-26T10:00:00Z"))
     val scheduler = new ManualScheduler(clock)
@@ -42,10 +42,32 @@ class ClaimedPeriodicTaskSpec extends AnyFlatSpec with Matchers {
       interval, 20.millis, new InMemoryScheduledRunStore, clock, _ => scheduler)
     val logged = LogCapture.capture(classOf[ClaimedPeriodicTask].getName) {
       task.start()
-      scheduler.advance(Duration.ofMillis(60))
+      scheduler.advance(Duration.ofMillis(20 + ClaimedPeriodicTask.MinimumFallbackDelay.toMillis))
       task.stop()
     }
     runs.get() should be >= 2
     logged.exists(_.getFormattedMessage.contains("config unreadable")) shouldBe true
+  }
+
+  // The fallback was the last delay, which on the first tick is the initial delay: a zero one re-ran
+  // the tick back to back, forever, while the interval stayed unreadable. It is floored.
+  it should "not re-run back to back when its initial delay was zero" in {
+    val clock     = new MutableClock(Instant.parse("2026-09-26T10:00:00Z"))
+    val scheduler = new ManualScheduler(clock)
+    val reads     = new AtomicInteger
+    @volatile var broken = false
+    // Readable again after 100 broken reads, so a spinning schedule ends and the count shows it.
+    def interval: FiniteDuration =
+      if (!broken) 1.hour
+      else if (reads.incrementAndGet() >= 100) 1.hour
+      else throw new IllegalStateException("config unreadable")
+    val task = new ClaimedPeriodicTask("zero-initial-delay", () => (), interval, 0.millis, new InMemoryScheduledRunStore, clock, _ => scheduler)
+    LogCapture.capture(classOf[ClaimedPeriodicTask].getName) {
+      task.start()
+      broken = true
+      scheduler.advance(Duration.ofMillis(ClaimedPeriodicTask.MinimumFallbackDelay.toMillis - 1))
+      task.stop()
+    }
+    reads.get() shouldBe 2 // the first tick's claim and its next delay, then nothing for a minute
   }
 }

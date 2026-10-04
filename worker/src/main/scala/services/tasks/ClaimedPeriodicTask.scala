@@ -36,11 +36,17 @@ class ClaimedPeriodicTask(name: String, run: () => Unit, interval: => FiniteDura
     ()
   }
 
-  /** The next run's delay: `interval` read afresh, or — when it cannot be read — `fallback`, said
-   *  out loud. Read bare, an `interval` that threw ended the schedule for good, silently. */
-  private def intervalOr(fallback: FiniteDuration): FiniteDuration =
+  /** The next run's delay: `interval` read afresh, or — when it cannot be read — the last delay,
+   *  never under [[ClaimedPeriodicTask.MinimumFallbackDelay]], said out loud. Read bare, an
+   *  `interval` that threw ended the schedule for good, silently; falling back to a first run's
+   *  zero initial delay re-ran the tick back to back, forever. */
+  private def intervalOr(lastDelay: FiniteDuration): FiniteDuration =
     try interval
-    catch { case scala.util.control.NonFatal(e) => logger.warn(s"$name: interval unreadable, next run in ${fallback.toMillis}ms: $e", e); fallback }
+    catch {
+      case scala.util.control.NonFatal(e) =>
+        val fallback = lastDelay.max(ClaimedPeriodicTask.MinimumFallbackDelay)
+        logger.warn(s"$name: interval unreadable, next run in ${fallback.toMillis}ms: $e", e); fallback
+    }
 
   /** Run only if this machine wins the current window's claim. True when it ran. */
   def tickIfClaimed(): Boolean = {
@@ -49,4 +55,9 @@ class ClaimedPeriodicTask(name: String, run: () => Unit, interval: => FiniteDura
   }
 
   override def stop(): Unit = { scheduler.shutdown(); () }
+}
+
+object ClaimedPeriodicTask {
+  /** The least delay a task waits when its interval cannot be read. */
+  val MinimumFallbackDelay: FiniteDuration = 1.minute
 }
