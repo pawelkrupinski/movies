@@ -106,8 +106,13 @@ class ReadModelDerivationPassSpec extends AnyFlatSpec with Matchers {
   }
 
   "a boot that finds its own derivation recorded" should "leave the corpus to the rolling content check" in {
-    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
+    val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer, clock = clock)
     val rm         = derivedByOldCode(repository)
+    // Written long before this boot, as a corpus derived by an older release is, and delivered
+    // since — so the silent-cursor catch-up, overlap and all, has no reason to read it again.
+    clock.advance(services.movies.MovieRepository.CatchUpOverlap.multipliedBy(3))
+    repository.changeStreamLiveness.delivered(services.movies.ChangeStreamLiveness.Movies)
     val projector  = booted(repository, rm, new InMemoryReadModelDerivationMarker(Some(ReadModelDerivation.current.value)))
 
     projector.pruneOrphans()   // repairs one slice at most

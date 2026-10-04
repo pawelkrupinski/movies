@@ -434,6 +434,17 @@ object MovieRepository {
   /** How many times the dotted-name fallback reads and patches again when the document moved under it. */
   val DottedReplaceAttempts = 3
 
+  /** How long a `movies` write is waited for before it is given up on. */
+  val WriteTimeout: FiniteDuration = 10.seconds
+
+  /** How far before its floor a catch-up read starts. A row's `updatedAt` is stamped BEFORE its
+   *  write is sent, so a write stamped just under a catch-up's floor can commit after that
+   *  catch-up's scan has passed — and the next one, reading only past the floor, would skip it
+   *  for good. Twice the time a write is waited for, so a write still in flight when a scan ran
+   *  is past the floor's overlap by the time it can commit. Re-reading the rows inside it is
+   *  harmless: a projection writes only what changed. */
+  val CatchUpOverlap: java.time.Duration = java.time.Duration.ofMillis(2 * WriteTimeout.toMillis)
+
   /** A `movies` document as the dotted-name fallback read it: decoded, to patch, and `whole`, as
    *  stored, for the replace to be guarded on. */
   final case class ReadDocument(stored: StoredMovieDto, whole: org.bson.BsonDocument)
@@ -1077,7 +1088,7 @@ class MongoMovieRepository(
       // the caller retries only a write it was told FAILED.
       val moviesWrite = write("upsert", s"MovieRepository.upsert($title, $year)") {
         val moviesLanded = plan.unchanged ||
-          Try(Await.result(c.replaceOne(Filters.eq("_id", id), plan.document, opts).toFuture(), 10.seconds)).map(_ => true).recover {
+          Try(Await.result(c.replaceOne(Filters.eq("_id", id), plan.document, opts).toFuture(), MovieRepository.WriteTimeout)).map(_ => true).recover {
             case exception: Throwable if isDuplicateKey(exception) =>
               // The pre-check above catches every collision this read could see; this remains as
               // defence for the residual race it cannot — a sibling document landing the same
@@ -1190,7 +1201,7 @@ class MongoMovieRepository(
                 // An absent row decided nothing above, so only a row as read reaches here.
                 asRead.exists(read => services.MongoGuard.replaceIfUnchanged(c,
                   services.MongoGuard.wholeUnchanged(BsonString(id), read.whole),
-                  StoredMovieDto.fromDomain(id, key, merged, stamps.next()), 10.seconds, insert = false))
+                  StoredMovieDto.fromDomain(id, key, merged, stamps.next()), MovieRepository.WriteTimeout, insert = false))
               } match {
                 case tools.GuardedWrite.Landed(_)                 => 1L
                 case tools.GuardedWrite.Unneeded                  => 0L
@@ -1198,7 +1209,7 @@ class MongoMovieRepository(
                   throw new IllegalStateException(s"'$id' changed between its read and its replace $attempts times in a row")
               }
             } else {
-              Await.result(c.updateOne(Filters.eq("_id", id), patchToUpdate(patch), new UpdateOptions().upsert(false)).toFuture(), 10.seconds)
+              Await.result(c.updateOne(Filters.eq("_id", id), patchToUpdate(patch), new UpdateOptions().upsert(false)).toFuture(), MovieRepository.WriteTimeout)
                 .getMatchedCount
             })
         // Present when the movies write matched, OR a side-collection-only change (no movies

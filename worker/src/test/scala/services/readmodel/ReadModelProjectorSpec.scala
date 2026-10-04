@@ -876,6 +876,42 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     rm.movieUpserts should have size 2                       // Foo once, then Bar — never Foo again
   }
 
+  // THE WRITE IN FLIGHT ACROSS A SCAN. `updatedAt` is stamped before the write is sent, so a write
+  // stamped just under a catch-up's floor can land after that catch-up's scan — and the next one,
+  // reading only rows stamped past the floor, skipped it for good. Here the row is stamped five
+  // seconds before the first sweep's read began and becomes visible only after that sweep.
+  it should "catch up a row stamped before the last catch-up's floor but written after its scan" in {
+    val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
+    val repository = new InMemoryMovieRepository(clock = clock, normalizer = titleNormalizer)
+    val rm         = new InMemoryReadModelRepository()
+    val m          = new RecordingReadModelProjectionMetrics()
+    val projector  = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.reconcile()
+    clock.advanceSeconds(60)
+    repository.changeStreamLiveness.watching(ChangeStreamLiveness.Movies)
+    clock.advanceSeconds(60)
+    projector.pruneOrphans()                                 // the scan: nothing written since
+    val scannedAt = clock.instant()
+
+    clock.setTo(scannedAt.minusSeconds(5))                   // stamped before the scan began…
+    repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(9.9), Seq(at("2026-06-12T20:00"))))
+    clock.setTo(scannedAt.plusSeconds(60))                   // …and visible only after it
+
+    projector.pruneOrphans()
+    withClue("a write that committed after the last scan must be caught up, whatever its stamp: ") {
+      rm.movieUpserts.last.ratings.imdb shouldBe Some(9.9)
+    }
+    m.caughtUp.last shouldBe 1
+
+    clock.advanceSeconds(1)
+    projector.pruneOrphans()
+    withClue("re-reading it inside the overlap writes nothing, so it is not counted again: ") {
+      m.caughtUp.last shouldBe 0
+      rm.movieUpserts should have size 2
+    }
+  }
+
   it should "re-read a caught-up row whose projection failed on the next sweep" in {
     val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
     val repository = new InMemoryMovieRepository(clock = clock, normalizer = titleNormalizer)
@@ -1277,8 +1313,9 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   // 2026-09-19 put 0.78/s of projections no change stream asked for on the books, and
   // ReadModelProjectionTriggerUnaccounted fired.
   "the first prune after a boot" should "not re-project a spent-slot row the boot check already found nothing to write for" in {
+    val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
     val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
-                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer, clock = clock)
     val rm = new InMemoryReadModelRepository()
     repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
@@ -1286,6 +1323,10 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val previous = new ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), clock = specClock)
     previous.onMovieUpsert(repository.findAll().head)
     previous.stop()
+    // The previous process wrote it long before, and the cursor has delivered since — so the
+    // silent-cursor catch-up, overlap and all, has no reason to read it again.
+    clock.advance(services.movies.MovieRepository.CatchUpOverlap.multipliedBy(3))
+    repository.changeStreamLiveness.delivered(ChangeStreamLiveness.Movies)
     val m      = new RecordingReadModelProjectionMetrics()
     val booted = new ReadModelProjector(repository, rm, rm, m, scheduler = new CapturingScheduler,
                                         clock = clockSkippingSliceOf(repository.findAll().head.id))
@@ -1458,13 +1499,17 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     // catch-up cannot reach it either, and nothing about the film will ever change again.
     // Troy and 2046 at the Prince Charles and Glastonbury at the Southsea sat like this from
     // 2026-08-29 to 2026-09-08, serving August showtimes to real users.
-    val (projector, repository, rm) = fixture()
+    val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer, clock = clock)
+    val rm         = new InMemoryReadModelRepository()
+    val projector  = new ReadModelProjector(repository, rm, rm, clock = specClock)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projector.onMovieUpsert(repository.findAll().head)
     rm.findAllScreenings().flatMap(_.showtimes).map(_.dateTime.toString) shouldBe Seq("2026-06-12T20:00")
     projector.stop()
 
     repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(9.9), Seq(at("2026-07-20T18:00"))))
+    clock.advance(services.movies.MovieRepository.CatchUpOverlap.multipliedBy(3))   // the loss is long past
     // …and then the stream carries on delivering OTHER films, so the drifted row is older than
     // the cursor's last delivered event. This is what makes the case unreachable by every other
     // backstop and is exactly the production shape: the loss happened on 2026-08-29, the cursor

@@ -803,19 +803,28 @@ class ReadModelProjector(
     val liveness = movieRepository.changeStreamLiveness
     if (!reproject && liveness.isWatching(ChangeStreamLiveness.Movies)) {
       val readFrom = liveness.now()
-      val since    = liveness.catchUpFloor(ChangeStreamLiveness.Movies)
+      val floor    = liveness.catchUpFloor(ChangeStreamLiveness.Movies)
       var failed   = false
-      val complete = movieRepository.foreachRecordUpdatedSince(since) { row =>
+      val past     = scala.collection.mutable.Set.empty[String]
+      def catchUp(row: StoredMovieRecord)(counted: Int => Boolean): Unit =
         if (row.record.readyToProject)
           continuing(s"read-model $kind: a row written since the change stream last delivered failed to project") {
-            projectRow(row, ProjectTrigger.CatchUp); caughtUp += 1
+            if (counted(projectRow(row, ProjectTrigger.CatchUp))) caughtUp += 1
           }.getOrElse { failed = true }
-      }
+      // Every row stamped past the floor: what the cursor has not been seen to deliver.
+      val complete = movieRepository.foreachRecordUpdatedSince(floor) { row => past += row.id.value; catchUp(row)(_ => true) }
+        // …and the overlap under it: a write stamped under the floor may have committed after the
+        // last catch-up's scan (see `MovieRepository.CatchUpOverlap`). A row there that the stream
+        // or the last catch-up already projected writes nothing again; only one whose projection
+        // was stale — the write that landed behind the scan — counts as caught up.
+        .andThen(movieRepository.foreachRecordUpdatedSince(floor.minus(MovieRepository.CatchUpOverlap)) { row =>
+          if (!past(row.id.value)) catchUp(row)(_ > 0)
+        })
       if (complete.isComplete && !failed) liveness.caughtUp(ChangeStreamLiveness.Movies, readFrom)
       metrics.recordCatchUp(caughtUp)
       if (caughtUp > 0)
         logger.warn(s"read-model $kind sweep: re-projected $caughtUp row(s) written since the movies change stream last " +
-          s"delivered ($since) — the cursor is open but not delivering them.")
+          s"delivered ($floor) — the cursor is open but not delivering them.")
     }
     // Measurement (prune only): a `prune` sweep with didWork=true is the deletes/re-keys
     // the change stream can't deliver. Surfaced as kinowo_worker_readmodel_reconcile_sweeps.
