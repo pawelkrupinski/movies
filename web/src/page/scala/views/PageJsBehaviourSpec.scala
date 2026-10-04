@@ -3763,12 +3763,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // ── Desktop slides 1.5× slower than touch ────────────────────────────────────
   //
   // The day-change slide keeps its snappy 220 ms base on touch/mobile (a
-  // finger-flick wants an immediate response) but takes a longer 1.5× glide
-  // (330 ms) on a fine pointer, where a mouse-driven arrow / keyboard / dropdown
+  // finger-flick wants an immediate response) but takes a longer 2.5× glide
+  // (550 ms) on a fine pointer, where a mouse-driven arrow / keyboard / dropdown
   // step reads better slower. Both paths run the SAME `animateToDay` slide —
   // only the duration differs, gated on `matchMedia('(pointer: coarse)')`.
 
-  it should "slide 1.5x slower on desktop (fine pointer) than on touch" in {
+  it should "slide 2.5x slower on desktop (fine pointer) than on touch" in {
     onPath("/") { page =>
       enableSlideAnimation(page)
 
@@ -3784,6 +3784,29 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       touchMs shouldBe 220
       desktopMs shouldBe 550
       desktopMs shouldBe (touchMs * 2.5).round.toInt
+    }
+  }
+
+  // `transitionend` BUBBLES. The slide's commit listens for it on the track, and
+  // the track holds every card — whose own `transform` transition (the `.card`
+  // hover lift) ends whenever the grid sliding under a resting mouse moves the
+  // hover from one card to the next. That card's event used to commit the day
+  // ~200 ms into a 550 ms desktop slide: the grid snapped into place mid-glide.
+  it should "not commit the slide on a card's own transitionend" in {
+    onPath("/") { page =>
+      enableSlideAnimation(page)
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+      page.eval("window.animateToDay('tomorrow')")
+      page.waitFor("getComputedStyle(document.getElementById('day-track')).transitionDuration !== '0s'")
+      page.eval(
+        "document.querySelector('#day-track .card').dispatchEvent(" +
+        "  new TransitionEvent('transitionend', { bubbles: true, propertyName: 'transform' }))"
+      )
+      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
+      page.evalString("document.getElementById('date-filter').value") shouldBe "today"
+      // …and the slide's own end still commits it.
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0")
+      page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"
     }
   }
 

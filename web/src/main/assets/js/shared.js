@@ -2788,7 +2788,7 @@
   const FLICK_MIN_PX      = 24;    // ignore micro-flicks
   const SWIPE_DEADZONE_PX = 10;    // horizontal travel before we lock to a swipe
   const SWIPE_ANIM_MS     = 220;   // base slide-out / slide-in duration (touch/mobile)
-  // Desktop (fine pointer) takes a longer, more deliberate glide — 1.5× the base —
+  // Desktop (fine pointer) takes a longer, more deliberate glide — 2.5× the base —
   // while touch/mobile keeps the snappy base. A finger-flick wants an immediate
   // response; a mouse-driven arrow / keyboard / dropdown step reads better slower.
   const DESKTOP_ANIM_FACTOR = 2.5;
@@ -3034,8 +3034,10 @@
     setTrack(fromPx || 0);
     void track.offsetWidth;
     let done = false;
-    const finish = () => {
-      if (done) return;
+    // `transitionend` bubbles: a card's own transition inside the track (the
+    // hover lift, as the grid slides under a resting mouse) is not the slide's.
+    const finish = (event) => {
+      if (done || (event && event.target !== track)) return;
       done = true;
       track.removeEventListener('transitionend', finish);
       commitDay(targetValue);
@@ -3146,8 +3148,8 @@
     track.style.transition = 'transform ' + ms + 'ms ease';
     setTrack(0);
     let done = false;
-    const clear = () => {
-      if (done) return;
+    const clear = (event) => {
+      if (done || (event && event.target !== track)) return;   // a card's own, as in `slideArmedTo`
       done = true;
       track.removeEventListener('transitionend', clear);
       unmountNeighbors();
