@@ -28,4 +28,14 @@ class RunScopedDatabaseNameSpec extends AnyFlatSpec with Matchers {
     RunScopedDatabaseName.orphans(names, alive = _ == 222L) shouldBe Seq(
       "kinowo_stamped-rows_pid111", "kinowo_isolated_cut_pl_pid111_998", "kinowo_isolated_hc_pl_p0_111_175368434956833")
   }
+
+  it should "sweep only a server on this machine's loopback, where a dead pid is a dead run" in {
+    Seq("mongodb://127.0.0.1:28017/?directConnection=true", "mongodb://localhost:28017", "mongodb://[::1]:27017/kinowo",
+        "mongodb://127.0.0.1:27017,localhost:27018/?replicaSet=rs0")
+      .foreach(uri => withClue(uri)(RunScopedDatabaseName.isLoopbackOnly(uri) shouldBe true))
+    // Another machine's runs live in another pid space: a pid dead here may be its live run.
+    Seq("mongodb://ci-mongo.internal:27017", "mongodb://user:pw@127.0.0.1.example.com:27017",
+        "mongodb+srv://cluster0.example.mongodb.net", "mongodb://127.0.0.1:27017,db2.example.com:27017", "")
+      .foreach(uri => withClue(uri)(RunScopedDatabaseName.isLoopbackOnly(uri) shouldBe false))
+  }
 }

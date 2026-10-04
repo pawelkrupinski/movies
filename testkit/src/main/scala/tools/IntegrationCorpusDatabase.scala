@@ -70,7 +70,7 @@ object IntegrationCorpusDatabase {
     target.requireThrowaway()
     val client = MongoClient(target.uri.value)
     try {
-      RunScopedDatabaseName.sweepOrphans(client)
+      RunScopedDatabaseName.sweepOrphans(client, target.uri)
       val database = client.getDatabase(named(target, suite))
       try body(database)
       finally Await.result(database.drop().toFuture(), SpecTimeouts.Io)

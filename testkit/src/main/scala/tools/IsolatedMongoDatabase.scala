@@ -60,7 +60,7 @@ object IsolatedMongoDatabase {
   def open(target: IntegrationMongoTarget, purpose: String): IsolatedMongoDatabase = {
     target.requireThrowaway()
     val client = MongoClient(target.uri.value)
-    RunScopedDatabaseName.sweepOrphans(client)
+    RunScopedDatabaseName.sweepOrphans(client, target.uri)
     new IsolatedMongoDatabase(client, client.getDatabase(nameFor(purpose)))
   }
 
@@ -72,7 +72,7 @@ object IsolatedMongoDatabase {
     val client = MongoClient(target.uri.value)
     val name   = nameFor(purpose)
     try {
-      RunScopedDatabaseName.sweepOrphans(client)
+      RunScopedDatabaseName.sweepOrphans(client, target.uri)
       val database = client.getDatabase(name)
       try body(database)
       finally Await.result(database.drop().toFuture(), SpecTimeouts.Io)

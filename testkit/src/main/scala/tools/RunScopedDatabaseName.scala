@@ -1,6 +1,7 @@
 package tools
 
 import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
+import settings.MongoUri
 
 import scala.concurrent.Await
 import scala.util.control.NonFatal
@@ -17,7 +18,9 @@ import scala.util.control.NonFatal
  * neighbour's live database, and drop only the former.
  *
  * A pid that was reused by an unrelated live process only DEFERS a drop; it never drops a live
- * run's database. Every run-scoped name goes through here — `IntegrationDatabaseIsolationSpec`
+ * run's database. A pid is only readable on the machine that issued it, so the sweep runs only
+ * against a loopback server — never a shared remote, where another machine's live run would look
+ * dead from here. Every run-scoped name goes through here — `IntegrationDatabaseIsolationSpec`
  * fails an it spec that builds one by hand.
  */
 object RunScopedDatabaseName {
@@ -51,10 +54,36 @@ object RunScopedDatabaseName {
 
   private def isAlive(pid: Long): Boolean = ProcessHandle.of(pid).isPresent
 
-  /** Drop every database on `client`'s server whose owning run has ended; the names dropped. A
-   *  failed sweep is not this run's failure: it costs a leaked database, never a test. */
-  def sweepOrphans(client: MongoClient): Seq[String] =
-    try {
+  /** Whether every server `uri` names is this machine's loopback — the only server whose run-scoped
+   *  names were all given out by processes in THIS machine's pid space. On any other (a throwaway
+   *  remote reached with `KINOWO_ALLOW_REMOTE_IT`, a teammate's unauthenticated `mongodb://host`)
+   *  a pid that is dead here may be another machine's live run, so its database is never swept. */
+  private[tools] def isLoopbackOnly(uri: String): Boolean = {
+    val trimmed = uri.trim
+    val scheme  = "mongodb://"
+    trimmed.toLowerCase(java.util.Locale.ROOT).startsWith(scheme) && {
+      val authority = trimmed.drop(scheme.length).takeWhile(c => c != '/' && c != '?')
+      val hosts     = authority.split('@').last.split(',').toSeq.map(hostOf)
+      hosts.nonEmpty && hosts.forall(LoopbackHosts.contains)
+    }
+  }
+
+  private val LoopbackHosts = Set("localhost", "127.0.0.1", "::1")
+
+  /** `host[:port]` / `[v6]:port` → the host, lower-cased. */
+  private def hostOf(server: String): String = {
+    val host =
+      if (server.startsWith("[")) server.drop(1).takeWhile(_ != ']')
+      else server.takeWhile(_ != ':')
+    host.toLowerCase(java.util.Locale.ROOT)
+  }
+
+  /** Drop every database on `client`'s server whose owning run has ended; the names dropped —
+   *  none unless `uri` (the client's) is this machine's loopback ([[isLoopbackOnly]]). A failed
+   *  sweep is not this run's failure: it costs a leaked database, never a test. */
+  def sweepOrphans(client: MongoClient, uri: MongoUri): Seq[String] =
+    if (!isLoopbackOnly(uri.value)) Nil
+    else try {
       val dead = orphans(Await.result(client.listDatabaseNames().toFuture(), SpecTimeouts.Io), isAlive)
       dead.foreach(name => Await.result(client.getDatabase(name).drop().toFuture(), SpecTimeouts.Io))
       dead
