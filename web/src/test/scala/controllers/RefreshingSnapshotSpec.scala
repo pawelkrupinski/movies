@@ -151,6 +151,22 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
     read.reads.get() shouldBe 2
   }
 
+  // A read the executor refused never ran its body, so the marker its body clears stayed set: every
+  // later ask joined that failed read and none was ever started again.
+  it should "start a fresh read after one the executor refused" in {
+    val read     = new GatedRead
+    val refusals = new AtomicInteger(1)
+    val refusing = new ExecutionContext {
+      def execute(task: Runnable): Unit =
+        if (refusals.getAndDecrement() > 0) throw new java.util.concurrent.RejectedExecutionException("busy") else task.run()
+      def reportFailure(cause: Throwable): Unit = ()
+    }
+    val snapshot = new RefreshingSnapshot[Int]("spec", () => read(), () => None, refreshAfter = 15.seconds, new MutableClock(Start))(
+      using refusing)
+    an[java.util.concurrent.RejectedExecutionException] should be thrownBy snapshot.get()
+    snapshot.get().value shouldBe 1
+  }
+
   // The in-flight marker clears before a read's save callback runs, so the next read can finish
   // and save first; the older save must not then overwrite it.
   it should "never store an older read over a newer one whose save ran first" in {

@@ -156,7 +156,8 @@ final class RefreshingSnapshot[A](
 
   private def refresh(): Future[DebugSnapshot[A]] = {
     val promise = Promise[DebugSnapshot[A]]()
-    if (inFlight.compareAndSet(None, Some(promise.future))) {
+    val marker  = Some(promise.future)
+    if (inFlight.compareAndSet(None, marker)) {
       promise.completeWith(Future {
         // Over before the future completes, on the read's own thread: a callback queued after
         // completion left a window in which a stale ask joined the FINISHED read and started none.
@@ -172,6 +173,9 @@ final class RefreshingSnapshot[A](
           snapshot
         } finally inFlight.set(None)
       })
+      // A read the executor refused never ran the body that clears the marker: cleared here too, or
+      // every later ask joined that failed read and none was ever started again.
+      promise.future.onComplete(_ => { inFlight.compareAndSet(marker, None); () })(using ExecutionContext.parasitic)
       promise.future.onComplete {
         // Stored after the waiting caller is released, not on its time.
         case Success(snapshot)  => saveIfNewest(snapshot)
