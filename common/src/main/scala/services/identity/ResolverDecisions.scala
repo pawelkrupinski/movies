@@ -68,7 +68,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
       // node — alive until the trace writer got to it, and a restore hands the whole corpus over at once.
       // a match the node's own rules took, withdrawn because a title-linked sibling's evidence denies that film
       val withdrawn = if (accepted.isDefined) None else scope.takenAlone(node).flatMap { case ((best, _), _) =>
-        families.deniedBySibling(node, scope.members, scope, best.candidate.tmdbId, id => scope.takenAlone(nodeById(id)).isDefined)
+        families.deniedBySibling(node, scope.members, scope, best, id => scope.takenAlone(nodeById(id)).isDefined)
           .map { case (sibling, denial) => DecisionTrace.Refusal("withdrawn", "a title-linked sibling's own evidence denies its film",
             Some(best.candidate.tmdbId), s"${sibling.label}: $denial") }
       }

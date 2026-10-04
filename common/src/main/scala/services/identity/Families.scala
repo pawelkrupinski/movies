@@ -1,5 +1,6 @@
 package services.identity
 
+import services.identity.IdentityMeasures.ListingFilm
 import services.identity.Scored.Accepted
 import services.movies.TitleNormalizer
 
@@ -28,15 +29,25 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
    *  is. The node then goes to the group vote with its siblings, where every member's denial holds. */
   private def withoutSiblingDenials(members: Seq[EvidenceNode], scope: FamilyScope,
                                     alone: Map[String, Accepted]): Map[String, Accepted] =
-    alone.filter { case (id, (best, _)) => deniedBySibling(nodeById(id), members, scope, best.candidate.tmdbId, alone.contains).isEmpty }
+    alone.filter { case (id, (best, _)) => deniedBySibling(nodeById(id), members, scope, best, alone.contains).isEmpty }
 
-  /** The title-linked sibling, itself taken by no rule alone, whose own evidence denies `film` — and its denial: why a
-   *  node's own match of `film` is withdrawn ([[withoutSiblingDenials]]), which the node's trace says. */
-  def deniedBySibling(node: EvidenceNode, members: Seq[EvidenceNode], scope: FamilyScope, film: Int,
-                      takenAlone: String => Boolean): Option[(EvidenceNode, String)] =
+  /** The title-linked sibling, itself taken by no rule alone, whose own evidence denies `best`'s film — and its denial:
+   *  why a node's own match is withdrawn ([[withoutSiblingDenials]]), which the node's trace says. A denial by the
+   *  probability cut alone ([[Scored.deniedByCutOnly]]) — the sibling's title and facts reading low, no rule — withdraws
+   *  it only when the sibling compared a fact the node did not publish: the year a yearless listing lacks, a director
+   *  beside a bare title. When the node published every fact the sibling did, its own reading of them is the answer:
+   *  UK "Fallen Angels by Noel Coward" (×95), the 2026 recording by its credited screen director and its runtime, lost
+   *  it to the "…by Noël Coward" spelling crediting only the stage director at a longer runtime. */
+  def deniedBySibling(node: EvidenceNode, members: Seq[EvidenceNode], scope: FamilyScope, best: Scored,
+                      takenAlone: String => Boolean): Option[(EvidenceNode, String)] = {
+    lazy val ownFacts = IdentityMeasures.comparedFacts(ListingFilm, best.measures).keySet
+    def withdraws(denial: Scored) =
+      !denial.deniedByCutOnly || (IdentityMeasures.comparedFacts(ListingFilm, denial.measures).keySet -- ownFacts).nonEmpty
     members.iterator.filter(sibling => sibling.id != node.id && !takenAlone(sibling.id) && links.titleLinked(node, sibling))
-      .flatMap(sibling => scope.of(sibling).find(other => other.candidate.tmdbId == film && other.denied).map(other => sibling -> other.denial.getOrElse("denied")))
+      .flatMap(sibling => scope.of(sibling).find(other => other.candidate.tmdbId == best.candidate.tmdbId && other.denied && withdraws(other))
+        .map(other => sibling -> other.denial.getOrElse("denied")))
       .nextOption()
+  }
 
   /** How many listings every scope of every round scored ([[Resolution.scorings]]) — counted, not
    *  read off the scopes, so a round's replaced scopes and their scores are not kept alive. */

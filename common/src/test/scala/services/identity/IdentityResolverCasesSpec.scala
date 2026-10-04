@@ -1234,6 +1234,22 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
+  "A listing's own match" should "outweigh a title-linked sibling that denies the film only by the probability cut" in {
+    // UK, "Fallen Angels by Noel Coward" (×95 UK, ×360 US, 91%): the 2026 recording by its screen director, Annette
+    // Jolles, and its runtime, withdrawn because the "Fallen Angels by Noël Coward" spelling (×194), crediting only the
+    // stage director Scott Ellis and billing 15 minutes more, denies the film — by the cannot-link probability cut alone,
+    // no rule. A denial by a rule ("Samson i Dalila"'s season, above) still withdraws it.
+    val films  = Seq(F(11220, "Fallen Angels", 1995, "Wong Kar Wai", 99, popularity = 20), F(1702350, "Fallen Angels", 2026, "Annette Jolles", 95, popularity = 1),
+      F(1437981, "Coward", 2026, "Lukas Dhont", 117, popularity = 15))
+    val noel   = Seq(Multikino, Helios, KinoApollo).map(v => listing(v, "Fallen Angels by Noel Coward", director = Some("Scott Ellis"), runtime = Some(95))
+      .copy(directors = Seq("Scott Ellis", "Annette Jolles"), originalTitle = Some("Fallen Angels By Noël Coward")))
+    val accent = Seq(KinoMuza, Rialto, KinoPalacowe).map(listing(_, "Fallen Angels by Noël Coward", director = Some("Scott Ellis"), runtime = Some(110)))
+    val bare   = Seq(KinoMikro, KinoOaza).map(listing(_, "Fallen Angels", director = Some("Wong Kar Wai"), runtime = Some(98)))
+    val r      = shipped(noel ++ accent ++ bare, films)
+    noel.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(1702350)))
+    accent.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film should not be Some(11220)))
+  }
+
   "Curation pins" should "override the evidence: a pinned film, a denied one, and a pinned group" in {
     def pin(ls: Seq[Listing], claim: PinClaim) = Pin(ls.map(_.key), claim, "spec", "test", java.time.Instant.EPOCH)
     val films = Seq(F(1, "Opętanie", 1981, "Andrzej Żuławski", 124), F(2, "Opętanie", 1973, "Someone Else", 90))
