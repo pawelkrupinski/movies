@@ -139,8 +139,9 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
       "close-mongo-tunnel.sh kills listeners BY PORT and then proves the port dead: the spec's stages need the port free between them, which holding it would defeat",
   )
 
-  // A `mktemp` template (`/tmp/kinowo.XXXXXX`) names a fresh path per run, not a fixed one.
-  private val FixedTemp = """(?<![\w.$}-])/(?:var/)?tmp/(?![\w.-]*XXX)[\w.-]""".r
+  // A `mktemp` template (`/tmp/kinowo.XXXXXX`) names a fresh path per run, not a fixed one — its
+  // TRAILING X's are what mktemp replaces, so an X-run mid-name (`/tmp/XXX.log`) is still fixed.
+  private val FixedTemp = """(?<![\w.$}-])/(?:var/)?tmp/(?![\w.-]*XXX(?![\w.-]))[\w.-]""".r
   /** What writes a file in any of the languages: a redirect, a file-making command, a writing API.
    *  A fixed path that is only a STRING — an argument a parser is fed, a stub's recorded argument, an
    *  assertion on a workflow's text — shares nothing, so a line must write as well as name one. */
@@ -214,7 +215,8 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
 
   "the temp-path rule" should "catch a write to a fixed temp path, and not a path that is only a string" in {
     val caught = Seq("echo x > /tmp/foo", "mkdir -p /tmp/x", "Files.writeString(Paths.get(\"/tmp/a\"), s)",
-      "writeFileSync(\"/tmp/a.json\", s)", "open('/tmp/out.txt', 'w')", "cp a /var/tmp/b")
+      "writeFileSync(\"/tmp/a.json\", s)", "open('/tmp/out.txt', 'w')", "cp a /var/tmp/b",
+      "echo x > /tmp/XXX.log", "mkdir -p /tmp/run-XXX-cache")
     val passed = Seq("POOL_APK=\"/tmp/app-debug.apk\"", "arguments(Seq(\"--export\", \"/tmp/lk/\"))",
       "echo x > \"$work/tmp/y\"", "Map(\"dir\" -> \"/tmp/x\")", "xs.map(x => \"/tmp/x\")", "echo y > \"$(mktemp)\"",
       "d=$(mktemp -d /tmp/kinowo-spec.XXXXXX) && echo y > \"$d/f\"")
