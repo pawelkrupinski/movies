@@ -26,7 +26,7 @@ private[movies] final class CorpusIndex {
   def keyOf(id: FilmId): Option[CacheKey] = synchronized(keyById.get(id))
   def holdsId(id: FilmId): Boolean        = synchronized(keyById.contains(id))
 
-  /** The whole map, for the consistency check. */
+  /** The whole map, for the specs comparing two caches' indexes. */
   private[movies] def snapshot: Map[CacheKey, FilmId] = synchronized(idByKey.toMap)
 
   // Only this key's own id: `put` on another key may already have claimed the id.

@@ -217,25 +217,19 @@ class CaffeineMovieCache(
   rehydrateInterval: CacheRehydrateInterval = CacheRehydrateInterval(6.hours)
 ) extends MovieCache with Stoppable with Logging {
 
-  // Supplies `CacheKey.apply` throughout this class, so a key can never be built
-  // here under another country's rules.
-
-  // Films skipped this process's lifetime because their stored row could not be read.
-  // Exposed for tests + diagnostics: a non-zero value means scrapes are landing against
-  // an unreadable corpus, which is the state that used to silently prune boards.
-  private[services] val skippedUnreadable = new java.util.concurrent.atomic.AtomicLong(0)
-  // Writes refused because a different film already holds the key (two films, one
-  // title and year). Exposed for tests + diagnostics.
-  private[services] val keyCollisions = new java.util.concurrent.atomic.AtomicLong(0)
-
   // `recordStats` so the resident corpus can report its hit ratio — a read served
   // here is a Mongo read not made. Unbounded, so its eviction count stays 0 by
   // construction rather than by luck.
   private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().recordStats().build()
 
-  /** The derived views of `positive` that `recordCinemaScrape` needs, kept current as
-   *  rows are written rather than rebuilt per venue — see [[CorpusIndex]] for the
-   *  quadratic that cost the United States leg every run it ever had.
+  // Writes deferred this process's lifetime because the store could not say whether a document
+  // holds their key. Read by the specs: a non-zero value means scrapes are landing against an
+  // unreadable corpus, which is the state that used to silently prune boards.
+  private[services] val skippedUnreadable = new java.util.concurrent.atomic.AtomicLong(0)
+
+  /** The film id behind each resident key, and back ([[CorpusIndex]]): what every write asks
+   *  before it lands and every change-stream apply asks to find a film's key, without a store
+   *  round-trip.
    *
    *  It shadows `positive`, so it is only as correct as the funnels below: EVERY write
    *  to `positive` goes through `store` / `evict` / the `computeResident` compute, and
@@ -269,33 +263,24 @@ class CaffeineMovieCache(
   private def residentIdOf(key: CacheKey): FilmId =
     corpusIndex.idOf(key).getOrElse(throw new IllegalStateException(s"resident row '${key.cleanTitle}' (${key.year.getOrElse("—")}) has no film id"))
 
-  private def deferUnreadable(what: String, key: CacheKey): Unit = {
-    logger.warn(s"Deferring $what of '${key.cleanTitle}' (${key.year.getOrElse("—")}): the store could not say " +
-      "whether a document already holds the key, and writing would risk a second one.")
-    skippedUnreadable.incrementAndGet(); ()
-  }
-
   private def deferUnreadableWrite(key: CacheKey): WriteOutcome = {
-    deferUnreadable("write", key)
+    logger.warn(s"Deferring write of '${key.cleanTitle}' (${key.year.getOrElse("—")}): the store could not say " +
+      "whether a document already holds the key, and writing would risk a second one.")
+    skippedUnreadable.incrementAndGet()
     WriteOutcome.Declined("key-unreadable")
   }
 
   private[services] def idOf(key: CacheKey): Option[FilmId] = corpusIndex.idOf(key)
+
+  /** What the index currently believes, for `VenueSlotsEquivalenceSpec`: a venue apply must leave
+   *  it exactly as a whole-film apply does. */
+  private[services] def indexSnapshot: Map[CacheKey, FilmId] = corpusIndex.snapshot
 
   /** Drop a row and keep the index with it. The ONLY way out of `positive`. */
   private def evict(key: CacheKey): Unit = {
     positive.invalidate(key)
     corpusIndex.remove(key)
   }
-
-  /** What the index currently believes, and what the rows actually say.
-   *
-   *  The pair exists for the since-deleted `CorpusIndexConsistencySpec`, which replayed a realistic
-   *  scrape/fold/prune/rekey sequence and asserts they stay equal. A funnel that
-   *  stopped updating the index would otherwise fail SILENTLY and far away — as a film
-   *  re-diverting into staging every tick, which is the exact flap the widened divert
-   *  gate was built to stop. */
-  private[services] def indexSnapshot: Map[CacheKey, FilmId] = corpusIndex.snapshot
 
   /** The resident corpus, for `kinowo_worker_cache_*`. UNBOUNDED by design — it is
    *  the hydrated corpus, not a working set — so it reports entries and no maximum:
@@ -328,24 +313,14 @@ class CaffeineMovieCache(
   private[services] def withTitleLock[A](cleanTitle: String)(body: => A): A =
     lockFor(cleanTitle).synchronized(body)
 
-  // Per-tmdbId locks for the `put` identity gate (see below). Serialises the
-  // "is there already a row with this tmdbId?" check + the resulting fold,
-  // so two threads writing the same freshly-resolved tmdbId to different
-  // CacheKeys can't both pass the no-sibling check and produce duplicates.
-  // Always acquired *inside* a titleLock when both apply, so the lock order
-  // is stable (title → tmdb).
-  private val tmdbLocks = new ConcurrentHashMap[Int, AnyRef]()
-  private def tmdbLockFor(tmdbId: Int): AnyRef =
-    tmdbLocks.computeIfAbsent(tmdbId, _ => new Object())
-
   // Hydrate from Mongo on construction. Synchronous: Wiring builds the cache
   // during `start()`, so the first HTTP request only lands after the initial
   // findAll has completed. Pages render against a fully-populated cache; no
   // first-request flicker, no scrape-vs-hydrate race.
   //
   // RETRY an empty result (prod only): the worker boots alongside its Mongo, so
-  // an empty findAll at boot is almost always "Mongo not ready yet" (findAll
-  // swallows errors to Seq.empty). Without retry the cache starts empty and the
+  // an empty or failed read at boot is almost always "Mongo not ready yet" (`rehydrate`
+  // loads nothing either way). Without retry the cache starts empty and the
   // change stream only ever delivers rows written AFTER boot — leaving every
   // quiescent row (one not re-scraped since) Mongo-only and invisible to the
   // in-memory fold / settle, so its duplicate sits stranded forever. Bounded, so
@@ -376,30 +351,12 @@ class CaffeineMovieCache(
   private[services] def get(key: CacheKey): Option[MovieRecord] =
     Option(positive.getIfPresent(key))
 
-  /** Persist a row at `key`. **Identity gate**: when `e` carries a `tmdbId`
-   *  AND any other cache key already holds that same tmdbId, the write is
-   *  folded onto that canonical row instead of creating a duplicate — the
-   *  victim's cinema-side data is unioned in via `MovieRecordMerge.union`, the
-   *  source key is dropped from both cache and repository.
-   *
-   *  Identity check: **same `tmdbId`**, regardless of how the two rows spell
-   *  their cleanTitle. A film TMDB resolves to one id is ONE record — the
-   *  year-divergence case ("Viridiana" 1961 vs 1962), the cross-language case
-   *  (Polish "Diabeł ubiera się u Prady 2" vs Cyrillic "ДИЯВОЛ НОСИТЬ ПРАДА 2"),
-   *  and the decorated/dubbed edition ("…ukraiński dubbing") all fold onto it.
-   *  Each shown title is split back into its own CARD by the read-model
-   *  projection (`ReadModelProjection.projectAll`), so keeping one storage
-   *  record per film no longer hides any variant's display title — the split
-   *  moved from storage to display.
-   *
-   *  This is the only persist path in the codebase — `MovieRepository.upsert` is
-   *  called from nowhere else — so the gate is the chokepoint that prevents
-   *  new tmdbId-duplicates from ever being written. */
+  /** Persist a row at `key`, under the film id the key already has (the index's, else the stored
+   *  document's, else a fresh one). Deferred when the store cannot say whether a document holds
+   *  the key, and refused when another film does (`persist`). Which listings are one film is the
+   *  identity projection's to decide ([[writeProjected]]); this write folds nothing. */
   private[services] def put(key: CacheKey, e: MovieRecord): WriteOutcome =
-    idFor(key).fold(deferUnreadableWrite(key))(putAs(key, e, _))
-
-  /** [[put]] for a caller that holds the row's id. */
-  private def putAs(key: CacheKey, e: MovieRecord, id: FilmId): WriteOutcome = persist(key, e, id)
+    idFor(key).fold(deferUnreadableWrite(key))(persist(key, e, _))
 
   // Strip only when the read-split is active (showtimes live in `screenings`); without it
   // the cache must keep showtimes — there's nowhere else to hold them.
@@ -413,13 +370,11 @@ class CaffeineMovieCache(
 
   private def persist(key: CacheKey, e: MovieRecord, id: FilmId): WriteOutcome = corpusIndex.idOf(key).filter(_ != id) match {
     case Some(holder) =>
-      // A DIFFERENT film already answers to this key (the same-film cases were folded
-      // by `putAs` before this point): two films sharing a title and a year. Writing
-      // would put a second document under one key and drop the holder out of the
-      // cache — the property spec's first find. The row stays where it is instead.
+      // A DIFFERENT film already answers to this key: two films sharing a title and a
+      // year. Writing would put a second document under one key and drop the holder out
+      // of the cache — the property spec's first find. The row stays where it is instead.
       logger.warn(s"Refusing to write '${key.cleanTitle}' (${key.year.getOrElse("—")}) as $id: another film " +
         s"($holder) holds that key. The row keeps its current key.")
-      keyCollisions.incrementAndGet()
       WriteOutcome.Declined("key-held-by-another-film")
     case None => repository.writeFence.writing(id) {
       val clean  = withoutZeroRatings(e)
@@ -584,9 +539,8 @@ class CaffeineMovieCache(
       if (updated eq prior) true
       else {
         // `computeIfPresent` writes inside Caffeine's own lock, so it cannot go through
-        // `store`; index the value it produced instead. Same contract, one line later.
+        // `store` — and need not: the key keeps the id the index holds for it.
         val id = residentIdOf(key)
-        corpusIndex.put(key, id)
         val fullAfter = full.get()
         // Write-guard by DIGEST: equal non-showtime fields AND equal per-slot showtime digest
         // ⇒ no real change, skip the write. See ShowtimesDigest.leanEqual.
@@ -608,8 +562,7 @@ class CaffeineMovieCache(
    * shown at N venues lands N times a tick, so that was O(N²) per film per tick — a re-scrape
    * of the US corpus took ~12x its first scrape, and prod paid it on every landing of a
    * widely shown film. Here the no-op guard compares the ONE slot the write touches, the
-   * cache strips that slot alone, the index re-indexes it alone (`CorpusIndex.putSlot`), and
-   * the repository is handed the two records narrowed to it — every diff the repository
+   * cache strips that slot alone, and the repository is handed the two records narrowed to it — every diff the repository
    * makes is per source, so the narrowed pair yields exactly the patch the whole pair did.
    *
    * Identical results to `putIfPresent` by construction: the other slots and every
@@ -720,12 +673,11 @@ class CaffeineMovieCache(
 
   /** Put every stored row and evict the keys gone from the store; how many rows it put. An incomplete
    *  read (a page the scan could not read is skipped whole) changes nothing — no row put, none
-   *  evicted: its missing films are not gone. The 30-s tick reads again. */
+   *  evicted: its missing films are not gone. The next backstop tick reads again. */
   def rehydrate(): Int = {
-    // Additive sync — never blank the cache mid-rehydrate. The periodic
-    // 30-s tick (see `start()` below) runs while page loads are flying
-    // through `snapshot()`; an `invalidateAll()` window would briefly
-    // render an empty repertoire. Instead: put every Mongo row (cache's
+    // Additive sync — never blank the cache mid-rehydrate. The backstop
+    // tick (see `start()` below) runs while readers walk `snapshot()`;
+    // an `invalidateAll()` window would briefly show them an empty corpus. Instead: put every Mongo row (cache's
     // copy gets overwritten if it changed), then evict only the keys
     // that disappeared from Mongo since the last sync.
     import scala.jdk.CollectionConverters._
@@ -743,17 +695,14 @@ class CaffeineMovieCache(
       return 0
     }
     val rows          = read.answered.get
-    // `repository.findAll()` swallows every Mongo failure into `Seq.empty` — a
-    // TLS-selector race, a connection-pool churn, an Atlas-side reset all
-    // surface as "no rows". Treating that as "Mongo is genuinely empty,
-    // evict every cached row" wipes the live cache on every transient
-    // hiccup. Skip the eviction step when the result is empty AND the
-    // cache currently has rows: a real Mongo wipe is a degenerate manual
-    // operation that's acceptable to handle only on app restart.
+    // A failed read was turned away above. An ANSWERED empty corpus while the cache
+    // holds rows would evict every one of them — a real Mongo wipe is a degenerate
+    // manual operation, acceptable to handle only on a restart, so the cache is left
+    // intact rather than trusted to that one answer.
     val cachedSize = positive.estimatedSize()
     if (rows.isEmpty && cachedSize > 0) {
-      logger.warn(s"MovieCache rehydrate: findAll() returned empty while cache holds $cachedSize row(s) — " +
-                  "treating as a transient Mongo failure; cache left intact.")
+      logger.warn(s"MovieCache rehydrate: the corpus read answered empty while the cache holds $cachedSize row(s) — " +
+                  "cache left intact.")
       return 0
     }
     // Cold-boot empty result — `findAll()` returned nothing AND the cache was
@@ -881,13 +830,12 @@ class CaffeineMovieCache(
         }
         if (!fits) VenueVerdict.Declined(Why.CacheSlotsDiffer)
         else {
-          // The venues' slots re-indexed one by one (`putSlot`), not the whole row: `store` re-indexes
-          // every slot of the film, and a one-venue change to a wide film re-indexed thousands — 4% of
-          // the US worker's CPU (JFR 2026-10-01). The slot set is unchanged (checked above).
+          // Only the venues' slots are stripped again, not the whole row as `forCache` would: a
+          // one-venue change to a wide film stripped thousands of slots — 4% of the US worker's CPU
+          // (JFR 2026-10-01). The slot set is unchanged (checked above).
           val applied = repository.writeFence.ifUndisturbed(venues.filmId.value, mark) {
             val slots   = venues.atCinemas.valuesIterator.flatten.map { case (source, slot) => source -> forCacheSlot(slot) }.toSeq
-            val updated = resident.copy(data = resident.data ++ slots)
-            positive.put(key, updated)
+            store(key, resident.copy(data = resident.data ++ slots), venues.filmId)
           }
           if (applied) touch()
           VenueVerdict.Applied
