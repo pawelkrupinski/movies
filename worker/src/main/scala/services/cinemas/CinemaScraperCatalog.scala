@@ -102,6 +102,19 @@ class CinemaScraperCatalog(
   private def today: LocalDate = venueClock.todayInPoland
   private val UnitedKingdom: ZoneId = TimeZones.UnitedKingdom
 
+  /** The diagnostic ctor's body, with its one paid route built once: biletyna's pages and the
+   *  venues behind `zyteFetch` share it, as the worker's `biletynaFetch` sits on its `zyteFetch`. */
+  private def this(http: HttpFetch, venueClock: VenueClock, clock: Clock, titles: TitleNormalizer,
+                   configuration: settings.ProcessConfiguration, proxyShards: Option[IndexedSeq[HttpFetch]], paidRoute: HttpFetch) =
+    this(http, modules.wiring.EgressWiring.multikinoChain(configuration, proxyShards, http, clock), paidRoute,
+      venueClock, (_, h, ttl) => new CachingDetailFetch(h, ttl),
+      zyteFetch = paidRoute,
+      // The UK routes stay on `http`: Decodo's IPs are Polish, and a diagnostic runs Poland.
+      flicksFetch = http, vueFetch = http, odeonFetch = http,
+      // A diagnostic has no Zyte harvester wired, so Odeon venues throw → flicks fallback.
+      odeonAuthToken = () => None,
+      titles = titles)
+
   /** Diagnostic ctor (`FilmwebDiff`, `RosterAudit`, specs): every paid route — Multikino's API,
    *  biletyna's venue pages, the venues behind `zyteFetch` — is the residential proxy over
    *  `proxyShards` first, Zyte over `configuration`'s key behind it, then `http`; with no
@@ -114,15 +127,8 @@ class CinemaScraperCatalog(
            titles: TitleNormalizer = TitleNormalizer.forCountry(Country.default),
            configuration: settings.ProcessConfiguration = new settings.ProcessConfiguration(tools.Env.of()),
            proxyShards: Option[IndexedSeq[HttpFetch]] = None) =
-    this(http, modules.wiring.EgressWiring.multikinoChain(configuration, proxyShards, http, clock),
-      modules.wiring.EgressWiring.paidEgressChain(proxyShards, modules.wiring.EgressWiring.zyteOver(configuration, None, clock), http),
-      venueClock, (_, h, ttl) => new CachingDetailFetch(h, ttl),
-      zyteFetch = modules.wiring.EgressWiring.paidEgressChain(proxyShards, modules.wiring.EgressWiring.zyteOver(configuration, None, clock), http),
-      // The UK routes stay on `http`: Decodo's IPs are Polish, and a diagnostic runs Poland.
-      flicksFetch = http, vueFetch = http, odeonFetch = http,
-      // A diagnostic has no Zyte harvester wired, so Odeon venues throw → flicks fallback.
-      odeonAuthToken = () => None,
-      titles = titles)
+    this(http, venueClock, clock, titles, configuration, proxyShards,
+      modules.wiring.EgressWiring.paidEgressChain(proxyShards, modules.wiring.EgressWiring.zyteOver(configuration, None, clock), http))
 
   // Per-film detail bodies are static between passes and IDENTICAL across a
   // chain's locations, so each chain shares ONE CachingDetailFetch: a film's
