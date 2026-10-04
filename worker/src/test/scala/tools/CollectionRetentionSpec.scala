@@ -35,11 +35,15 @@ class CollectionRetentionSpec extends AnyFlatSpec with Matchers {
   private lazy val named: Set[String]   = sources.flatMap(namesIn).toSet
 
   "Every collection main sources name" should "declare its retention" in {
-    (named -- CollectionRetention.Declared.keySet) shouldBe empty
+    withClue("declare each new collection in services.CollectionRetention.Declared as \"name\" -> " +
+      "Ttl(\"expiryField\") | Sweep(\"SweepingClass\") | KeptForever(\"why\") (Unswept is a backlog that may only shrink): ")(
+      (named -- CollectionRetention.Declared.keySet) shouldBe empty)
   }
 
   "The declarations" should "name only collections the sources still name" in {
-    (CollectionRetention.Declared.keySet -- named) shouldBe empty
+    withClue("no main source names these collections any more — drop them from services.CollectionRetention.Declared " +
+      "(and drop the collection itself in prod if it still holds data): ")(
+      (CollectionRetention.Declared.keySet -- named) shouldBe empty)
   }
 
   they should "name a sweep class that exists, and a TTL field some source indexes with an expiry" in {
@@ -50,7 +54,8 @@ class CollectionRetentionSpec extends AnyFlatSpec with Matchers {
       case (name, Retention.Sweep(by)) if !defined(by) => s"$name: no class $by"
       case (name, Retention.Ttl(field)) if !expiring.exists(_.contains(s"\"$field\"")) => s"$name: no expiring index on $field"
     }
-    broken shouldBe empty
+    withClue("point each Sweep at the class that deletes the rows, and each Ttl at the field its expiring index uses: ")(
+      broken shouldBe empty)
   }
 
   they should "keep the unswept backlog from growing" in {

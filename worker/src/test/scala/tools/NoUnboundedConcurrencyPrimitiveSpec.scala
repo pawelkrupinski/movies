@@ -58,12 +58,14 @@ class NoUnboundedConcurrencyPrimitiveSpec extends AnyFlatSpec with Matchers {
   "Main sources" should "build caches, queues and pools only through their bounded factories, outside the allowlist" in {
     MainRoots.map(Paths.get(_)).foreach(root => withClue(s"$root must exist (run from the repo root)")(Files.isDirectory(root) shouldBe true))
     val unexplained = found.filterNot { case (file, _, text, _) => Allowlist.contains(file -> text) }
-    withClue(unexplained.map { case (file, line, text, fix) => s"$file:$line: $text — $fix" }.mkString("\n", "\n", "\n"))(unexplained shouldBe empty)
+    withClue(unexplained.map { case (file, line, text, fix) => s"$file:$line: $text — $fix" }.mkString(
+      "\nBound each of these through its factory, or, where unbounded is right, add (file, trimmed line) -> WHY to Allowlist:\n",
+      "\n", "\n"))(unexplained shouldBe empty)
   }
 
   "The allowlist" should "name only sites that still exist" in {
     val present = found.map { case (file, _, text, _) => file -> text }.toSet
-    (Allowlist.keySet -- present) shouldBe empty
+    withClue("No longer in the source — drop from Allowlist: ")((Allowlist.keySet -- present) shouldBe empty)
   }
 
   "The lint" should "flag each shape, and nothing in a comment, a factory, or a bounded queue" in {

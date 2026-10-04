@@ -102,7 +102,7 @@ class NoDefaultZoneSpec extends AnyFlatSpec with Matchers {
   it should "name zone ids only in TimeZones and the roster data" in {
     val found = report(sources.filterNot { case (path, _) => ZoneLiteralAllowlist.contains(path) }
       .flatMap { case (path, src) => zoneLiterals(src).map(path -> _) })
-    withClue("Use a models.TimeZones constant (add one there), or allowlist a data file with a reason:\n" +
+    withClue("Use a models.TimeZones constant (add one there), or add a data file to ZoneLiteralAllowlist with a reason:\n" +
       found.mkString("\n") + "\n")(found shouldBe empty)
   }
 
@@ -114,7 +114,8 @@ class NoDefaultZoneSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "keep every clock-default allowlist entry still defaulting (the backlog only shrinks)" in {
-    (ClockDefaultAllowlist.keySet -- clockDefaults.toSet).toSeq.sorted shouldBe empty
+    withClue("No longer defaulting to the live clock — drop these from ClockDefaultAllowlist: ")(
+      (ClockDefaultAllowlist.keySet -- clockDefaults.toSet).toSeq.sorted shouldBe empty)
   }
 
   it should "keep every zone-literal allowlist entry pointing at a file that still names one" in {

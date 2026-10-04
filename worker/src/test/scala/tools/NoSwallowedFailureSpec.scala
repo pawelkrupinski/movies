@@ -506,7 +506,10 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
   "Main sources" should "not answer a failed fetch, read or decode with an empty value, outside the allowlist" in {
     val offenders = found.filterNot(s => Allowed.contains(s.key))
     withClue(s"${offenders.size} site(s) turn a failure into data. Propagate it, or give the result a way to " +
-      s"say 'unknown' — or, if empty really is right here, allowlist the site with the reason:\n  " +
+      s"say 'unknown': read HTTP through tools.HttpRead (a ReadOutcome), a venue detail page through " +
+      s"DetailFetchOutcome.page, Mongo through tools.MongoRead / a ScanOutcome. If empty really is right here, " +
+      s"allowlist the site as (file, enclosing method, trimmed line) -> WHY — Allowlist here for HTTP/parse, " +
+      s"RepositoryReadSwallows for a Mongo read (HttpReadBacklog only shrinks):\n  " +
       offenders.mkString("\n  ") + "\n") {
       offenders shouldBe empty
     }

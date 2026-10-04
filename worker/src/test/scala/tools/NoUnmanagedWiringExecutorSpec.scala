@@ -43,11 +43,16 @@ class NoUnmanagedWiringExecutorSpec extends AnyFlatSpec with Matchers {
 
   "The wiring sources" should "register every pool they build with managedResources, outside the allowlist" in {
     val unexplained = found.filterNot { case (file, _, text) => Allowlist.contains(file -> text) }
-    withClue(unexplained.map { case (file, line, text) => s"$file:$line: $text" }.mkString("\n", "\n", "\n"))(unexplained shouldBe empty)
+    withClue(unexplained.map { case (file, line, text) => s"$file:$line: $text" }.mkString(
+      "\nThese pools are built but never shut by stop(). Wrap each in managedResources.executor(\"name\")(…) (or " +
+        "managedResources.register(…)) in the same member, e.g.\n" +
+        "  lazy val pool = managedResources.executor(\"x\")(DaemonExecutors.boundedEC(\"x\", 4))\n" +
+        "or, if something else owns and shuts it, add (file, trimmed line) -> WHY to Allowlist:\n", "\n", "\n"))(unexplained shouldBe empty)
   }
 
   "The allowlist" should "name only sites that still exist" in {
-    (Allowlist.keySet -- found.map { case (file, _, text) => file -> text }.toSet) shouldBe empty
+    withClue("drop these Allowlist entries — the line they name is gone or now registered: ")(
+      (Allowlist.keySet -- found.map { case (file, _, text) => file -> text }.toSet) shouldBe empty)
   }
 
   "The lint" should "flag a pool built outside a registration, in the same member or across its lines" in {

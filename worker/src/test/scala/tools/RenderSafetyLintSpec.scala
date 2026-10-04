@@ -48,14 +48,17 @@ class RenderSafetyLintSpec extends AnyFlatSpec with Matchers {
 
   "Twirl templates" should "splice raw HTML only from ScriptJson or a listed source" in {
     val found = sites(templates)(rawSplices)
-    withClue("Feed inline JSON through controllers.ScriptJson; render other data through Twirl's escaping: ") {
+    withClue("Feed inline JSON through controllers.ScriptJson; render other data through Twirl's escaping (or, for HTML " +
+      "the code built and vetted itself, list (template, expression) -> WHY in AllowedRawSplices): ") {
       unlisted(found, AllowedRawSplices) shouldBe empty
     }
     withClue("No longer in the source — drop from AllowedRawSplices: ")(stale(found, AllowedRawSplices) shouldBe empty)
   }
 
   they should "never serialise JSON except through ScriptJson" in {
-    sites(templates)(serialisations) shouldBe empty
+    withClue("Embed inline JSON with @controllers.ScriptJson.embed(Json.toJson(x)) (or ScriptJson.embedSerialized(text) " +
+      "for already-serialised JSON), never @Html(Json.stringify(…)) — a `</script>` in the data would end the block: ")(
+      sites(templates)(serialisations) shouldBe empty)
   }
 
   they should "take every data-driven href and src from a WebHref or an app route" in {
@@ -69,13 +72,15 @@ class RenderSafetyLintSpec extends AnyFlatSpec with Matchers {
   "Web Scala sources" should "build raw HTML and hand-written links only where listed" in {
     val scala = scalaFiles(Seq("web/src/main/scala"))
     val found = sites(scala)(source => rawSplices(source) ++ handWrittenLinks(source))
-    unlisted(found, AllowedScalaMarkup) shouldBe empty
+    withClue("Build markup in a Twirl template (it escapes) and links as controllers.WebHref; if this Scala source " +
+      "must build it, list (file, expression) -> what vets the value in AllowedScalaMarkup: ")(
+      unlisted(found, AllowedScalaMarkup) shouldBe empty)
     withClue("No longer in the source — drop from AllowedScalaMarkup: ")(stale(found, AllowedScalaMarkup) shouldBe empty)
   }
 
   "the dev-only exemption" should "name only templates that exist" in {
     val names = twirlFiles(Seq(Views)).map(_.getFileName.toString).toSet
-    DevOnlyTemplates.keySet.diff(names) shouldBe empty
+    withClue("No such template — drop from DevOnlyTemplates: ")(DevOnlyTemplates.keySet.diff(names) shouldBe empty)
   }
 
   private def templates: Seq[Path] =
