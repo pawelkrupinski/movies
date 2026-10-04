@@ -129,4 +129,20 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     read.find(_.listing.title == "Lalka").get.listing should be theSameInstanceAs modelled.head
     read.find(_.listing.title == "Obcy").get.listing should not be theSameInstanceAs (w.whole.find(_.listing.title == "Obcy").get.listing)
   }
+
+  it should "hold the model's object for a listing read before the model was adopted, without reading it again" in {
+    // A worker's first projection reads every venue before the model's listings reach the intake, and a venue that did not
+    // move is read again only by the whole read every twelfth call: an hour at the five-minute period, so worker-us held
+    // the copy beside the model's (98k listings, their keys and catalogue ids) for its first hour after every deploy.
+    val w = new World
+    w.archive.store(Multikino, clock.instant(), film(Multikino, "Lalka", 0, 1), film(Multikino, "Obcy", 2))
+    val (first, _) = w.project()
+    val modelled = w.whole.map(_.listing).filter(_.title == "Lalka")
+    w.intake.adopt(modelled)
+    val (read, rows) = w.project()
+    rows shouldBe 0
+    read shouldBe first
+    read.find(_.listing.title == "Lalka").get.listing should be theSameInstanceAs modelled.head
+    read.find(_.listing.title == "Obcy").get should be theSameInstanceAs first.find(_.listing.title == "Obcy").get
+  }
 }

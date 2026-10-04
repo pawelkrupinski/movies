@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie, VenueClock}
-import services.movies.{ScrapeGuardLedger, ScrapeGuardState, ScrapeLandingMetrics, ScrapeSink, TitleNormalizer}
+import services.movies.{ListingKey, ScrapeGuardLedger, ScrapeGuardState, ScrapeLandingMetrics, ScrapeSink, TitleNormalizer}
 import services.scrapes.{ScrapeArchiveRepository, ScrapeAttempt}
 
 import java.time.Clock
@@ -75,11 +75,10 @@ final class IdentityListingIntake(
     val whole   = calls % IdentityListingIntake.WholeReadEvery == 0
     calls += 1
     // A listing the identity model holds the same is its object, not a second copy of it ([[adopt]]).
-    lazy val modelled = adopted.iterator.map(l => l.key -> l).toMap
     def project(cinema: Cinema, films: Seq[(CinemaMovie, Int)]) =
       films.map { case (cm, showtimes) =>
         val listing = Listing.of(cinema, cm, normalizer)
-        ProjectedListing.of(modelled.get(listing.key).filter(_ == listing).getOrElse(listing), cm, showtimes)
+        ProjectedListing.of(IdentityListingIntake.modelledAs(adopted, listing), cm, showtimes)
       }
     val acceptedNow = heldAccepted.refresh(accepted, wanted, written, whole, project)
     val archivedNow = heldArchived.refresh(archive, wanted.filter { case (name, _) => !acceptedNow.contains(name) }, written, whole, project)
@@ -87,10 +86,16 @@ final class IdentityListingIntake(
   }
 
   /** The listings the identity model holds, as the projection last read them: each venue re-read from now on is projected
-   *  with the model's object for a listing it holds the same. Projected anew from every scrape, the projection held a
-   *  second copy of every listing beside the model's (worker-us: 100k listings, their keys and catalogue ids). */
-  def adopt(held: Seq[Listing]): Unit = heldLock.synchronized { adopted = held }
-  private var adopted: Seq[Listing] = Nil
+   *  with the model's object for a listing it holds the same, and each venue already held takes it now. Projected anew
+   *  from every scrape, the projection held a second copy of every listing beside the model's (worker-us: 100k listings,
+   *  their keys and catalogue ids) — and from a worker's first read, taken before the model reached the intake, until the
+   *  whole read an hour later. A venue that takes one is another object, which the projection reads as unmoved by value. */
+  def adopt(held: Seq[Listing]): Unit = heldLock.synchronized {
+    adopted = held.iterator.map(l => l.key -> l).toMap
+    heldAccepted.adopt(adopted)
+    heldArchived.adopt(adopted)
+  }
+  private var adopted = Map.empty[ListingKey, Listing]
 
   // The projection's held listings, by venue name, one set per archive; venues written since the last read.
   private val heldLock     = new Object
@@ -177,7 +182,21 @@ object IdentityListingIntake {
       entries = if (complete.isComplete) keep ++ fresh.result() else Map.empty
       entries.map { case (name, entry) => name -> entry.listings }
     }
+
+    /** Each held venue with the model's object for a listing it holds the same; a venue with none to take is kept as is. */
+    def adopt(modelled: Map[ListingKey, Listing]): Unit =
+      entries = entries.map { case (name, entry) =>
+        val taken = entry.listings.filter(_.exists(p => modelledAs(modelled, p.listing) ne p.listing))
+        name -> taken.fold(entry)(ls => entry.copy(listings = Some(ls.map { p =>
+          val listing = modelledAs(modelled, p.listing)
+          if (listing eq p.listing) p else p.copy(listing = listing)
+        })))
+      }
   }
+
+  /** The model's object for `listing` when it holds one the same, else `listing`. */
+  private def modelledAs(modelled: Map[ListingKey, Listing], listing: Listing): Listing =
+    modelled.get(listing.key).filter(_ == listing).getOrElse(listing)
 
   /** Where each venue's accepted listing is kept. */
   val Collection = "identity_listings"
