@@ -28,17 +28,20 @@ import java.util.concurrent.ConcurrentHashMap
  * well-formedness check) live on [[TitleText]] — they are pure string functions
  * that no country can disagree about.
  */
-class TitleNormalizer(val rules: TitleRuleSet) {
+class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.MemoEntries) {
 
-  // The memos behind [[cinemaClean]] and [[listingTitle]].
-  private val tidied       = new ConcurrentHashMap[String, String]()
-  private val formatPeeled = new ConcurrentHashMap[String, (String, List[String])]()
+  // The memos behind [[cinemaClean]] and [[listingTitle]], one entry per distinct title: BOUNDED,
+  // because a worker runs for days and the titles it lists turn over weekly — unbounded, every title
+  // ever listed stayed. See [[TitleRuleSet.MemoEntries]] for the size. The rule keys are one per
+  // venue name, bounded by the roster.
+  private val tidied       = tools.BoundedCache.ofSize(memoEntries).build[String, String]()
+  private val formatPeeled = tools.BoundedCache.ofSize(memoEntries).build[String, (String, List[String])]()
   private val ruleKeys     = new ConcurrentHashMap[String, String]()
 
   /** Apply a cinema's per-cinema cleanup rules to a raw scraped title, after the
    *  shared tidy-up every scraped title needs (see [[TitleText.tidy]]). */
   def cinemaClean(cinemaId: String, raw: String): String =
-    rules.perCinema(cinemaId, tidied.computeIfAbsent(raw, TitleText.tidy(_)))
+    rules.perCinema(cinemaId, tidied.get(raw, TitleText.tidy(_)))
 
   /** A venue's listed title as its slot carries it — [[cinemaClean]]ed by the venue's rules, its
    *  format tags peeled off (`FormatTags.extractFormatTags`) — with those tags.
@@ -50,7 +53,7 @@ class TitleNormalizer(val rules: TitleRuleSet) {
    *  own folds nothing, `TitleRuleSet.perCinema`), the rule key on the venue's name — never on the
    *  (venue, title) pair, which would hold an entry per listing. */
   def listingTitle(cinema: Cinema, raw: String): (String, List[String]) =
-    formatPeeled.computeIfAbsent(cinemaClean(ruleKeys.computeIfAbsent(cinema.displayName, TitleRuleKey.of(_)), raw),
+    formatPeeled.get(cinemaClean(ruleKeys.computeIfAbsent(cinema.displayName, TitleRuleKey.of(_)), raw),
       FormatTags.extractFormatTags(_))
 
   /** What the title rules did to a venue's `raw` title, as rule ids: the venue's own cleanup and the format
@@ -69,7 +72,7 @@ class TitleNormalizer(val rules: TitleRuleSet) {
   }
 
   /** How many titles [[listingTitle]] holds cleaned: one per distinct title, however many venues list it. */
-  private[movies] def listingTitlesCached: Int = formatPeeled.size
+  private[movies] def listingTitlesCached: Long = { formatPeeled.cleanUp(); formatPeeled.estimatedSize() }
 
   // ── Cinema-decoration stripping ────────────────────────────────────────────
   //
@@ -160,15 +163,11 @@ class TitleNormalizer(val rules: TitleRuleSet) {
   // film. Used by `sanitize` (the documentId) and `preferredDisplay`.
   private def canonical(t: String): String = rules.canonical(t)
 
-  // Memoised because `sanitize` is the hottest normaliser — called per movie ×
-  // per corpus row inside the since-deleted `ScrapeLanding`'s scrape scans (`concludedKeyFor`,
-  // `redirectToExistingVariant`, the per-tick index rebuilds) and every
-  // projection key. The inner `canonical` fold is already cached per-`TitleRuleSet`,
-  // but the outer NFD-normalise + deburr + Unicode `replaceAll` ran uncached on
-  // every call. Keyed on the raw title alone, which is only safe because the cache
-  // belongs to ONE rule set: the instance owns it, so two countries can never read
-  // each other's keys and no swap has to invalidate anything.
-  private val sanitizeCache = new ConcurrentHashMap[String, String]()
+  // Memoised because `sanitize` is called per listing on every projection key, and the outer
+  // NFD-normalise + deburr + Unicode `replaceAll` is not cheap (the inner `canonical` fold is cached
+  // per `TitleRuleSet`). Keyed on the raw title alone, which is only safe because the cache belongs
+  // to ONE rule set. Bounded like the memos above.
+  private val sanitizeCache = tools.BoundedCache.ofSize(memoEntries).build[String, String]()
 
   // Canonicalise, but never all the way to NOTHING. The Canonical tier is a set of
   // `^`-anchored banner rules, and a cinema can list a film whose title is nothing BUT
@@ -208,7 +207,7 @@ class TitleNormalizer(val rules: TitleRuleSet) {
    *  Per-script titles still get distinct keys (Latin vs Cyrillic translations
    *  of the same film stay as separate records). The imdbId re-merge step
    *  (later phase) folds those across scripts. */
-  def sanitize(title: String): String = sanitizeCache.computeIfAbsent(title, computeSanitize)
+  def sanitize(title: String): String = sanitizeCache.get(title, computeSanitize)
 
   // Group key for merging. Falls back to the plain Roman-numeral form when no
   // sibling title reduces to the same canonical.

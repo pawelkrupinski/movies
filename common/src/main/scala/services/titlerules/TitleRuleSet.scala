@@ -2,7 +2,6 @@ package services.titlerules
 
 import models.Country
 
-import java.util.concurrent.ConcurrentHashMap
 
 /** An immutable, compiled snapshot of all title rules, grouped by tier and
  *  pre-sorted so the hot normalisation path is a fold over a small list of
@@ -82,21 +81,22 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
   // worker's CPU-credit budget and roughly halved the e2e corpus pipeline.
   //
   // Lifecycle is automatic: the caches live and die with this set, which is
-  // immutable, so they always yield stable results, never staleness.
-  // ConcurrentHashMap for thread-safety (a TitleNormalizer is shared across a
-  // wiring's threads, lock-free).
-  private val structuralCache      = new ConcurrentHashMap[String, String]()
-  private val canonicalCache       = new ConcurrentHashMap[String, String]()
-  private val spellingUnifiedCache = new ConcurrentHashMap[String, String]()
-  private val perCinemaCache       = new ConcurrentHashMap[(String, String), String]()
-  private val programmePrefixCache = new ConcurrentHashMap[String, Option[String]]()
-  private val bannerBoundaryCache  = new ConcurrentHashMap[String, Option[Int]]()
+  // immutable, so they always yield stable results, never staleness. Thread-safe
+  // (a TitleNormalizer is shared across a wiring's threads) and BOUNDED
+  // ([[TitleRuleSet.MemoEntries]]): a worker runs for days while the titles it
+  // lists turn over weekly, and an unbounded memo kept every title ever listed.
+  private val structuralCache      = tools.BoundedCache.ofSize(TitleRuleSet.MemoEntries).build[String, String]()
+  private val canonicalCache       = tools.BoundedCache.ofSize(TitleRuleSet.MemoEntries).build[String, String]()
+  private val spellingUnifiedCache = tools.BoundedCache.ofSize(TitleRuleSet.MemoEntries).build[String, String]()
+  private val perCinemaCache       = tools.BoundedCache.ofSize(TitleRuleSet.MemoEntries).build[(String, String), String]()
+  private val programmePrefixCache = tools.BoundedCache.ofSize(TitleRuleSet.MemoEntries).build[String, Option[String]]()
+  private val bannerBoundaryCache  = tools.BoundedCache.ofSize(TitleRuleSet.MemoEntries).build[String, Option[Int]]()
 
   /** `apiQuery` tier — the full decoration + programme/access/event strip, then
    *  trim. Folded in rule order (former Search strips are numbered to run before
    *  the former structural strips, preserving the legacy composition). */
   def structural(t: String): String =
-    structuralCache.computeIfAbsent(t, k => fold(structuralRules, k).trim)
+    structuralCache.get(t, k => fold(structuralRules, k).trim)
 
   /** Alias of [[structural]] for `apiQuery`/`search` call sites after the tier merge. */
   def search(t: String): String = structural(t)
@@ -109,7 +109,7 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
    *  `apiQuery`). So two listings merge only when they resolve to the same key
    *  on their own. */
   def canonical(t: String): String =
-    canonicalCache.computeIfAbsent(t, k => fold(canonicalRules, k.trim))
+    canonicalCache.get(t, k => fold(canonicalRules, k.trim))
 
   /** The REWRITING half of the canonical tier — the rules that replace one spelling of a
    *  film with another (" & " → " i ", a lower-cased franchise prefix) rather than
@@ -125,7 +125,7 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
    *  deliberately separate programme row onto the base film's name. Measured, not
    *  supposed. Identity keeps the full fold; only display takes this subset. */
   def spellingUnified(t: String): String =
-    spellingUnifiedCache.computeIfAbsent(t, k => fold(spellingRules, k.trim))
+    spellingUnifiedCache.get(t, k => fold(spellingRules, k.trim))
 
   /** Per-cinema raw → clean cleanup (the old per-client `cleanTitle`). Unknown
    *  cinema → identity. NO implicit trim — clients that trimmed carry an explicit
@@ -137,17 +137,17 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
       // that kept one (venue, title) → title entry per listing for the process's life — 104,711
       // of them, ~8 MB, on the US worker's live heap (dump 2026-09-29).
       case None        => raw
-      case Some(rules) => perCinemaCache.computeIfAbsent((cinemaId, raw), k => fold(rules, k._2))
+      case Some(rules) => perCinemaCache.get((cinemaId, raw), k => fold(rules, k._2))
     }
 
   /** How many per-cinema folds are memoised — only venues WITH rules of their own may add one. */
-  private[titlerules] def perCinemaCached: Int = perCinemaCache.size
+  private[titlerules] def perCinemaCached: Long = { perCinemaCache.cleanUp(); perCinemaCache.estimatedSize() }
 
   /** The programme-prefix banner at the start of `title`, including the trailing
    *  ": " delimiter, when one of the `tag = "programmePrefix"` rules matches at
    *  the start. None otherwise. The tagged subset of [[leadingBannerBoundary]]. */
   def programmePrefix(title: String): Option[String] =
-    programmePrefixCache.computeIfAbsent(title, k =>
+    programmePrefixCache.get(title, k =>
       structuralRules.iterator
         .filter(_.tag.contains("programmePrefix"))
         .flatMap(r => r.compiled.flatMap(_.findPrefixMatchOf(k)).map(_.matched))
@@ -160,7 +160,7 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
    *  old Rialto-only, single-prefix casing to every prefix rule. `None` when no
    *  prefix rule matches at the start. */
   def leadingBannerBoundary(title: String): Option[Int] =
-    bannerBoundaryCache.computeIfAbsent(title, k =>
+    bannerBoundaryCache.get(title, k =>
       structuralRules.iterator
         .filter(r => r.enabled && r.isPrefixAnchored)
         .flatMap(r => r.compiled.flatMap(_.findPrefixMatchOf(k)))
@@ -185,6 +185,13 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
 }
 
 object TitleRuleSet {
+
+  /** How many distinct titles each title memo (here and in `TitleNormalizer`) holds at most. The
+   *  whole Polish fixture corpus (1,129 films) lists 1,297 distinct raw titles, 1,138 once cleaned,
+   *  each asked ~130 times a run (99.2% hits); the largest country's corpus is a few times that. 32k
+   *  keeps weeks of turnover for the largest at a few MB per memo, so a title still listed is never
+   *  evicted. */
+  val MemoEntries: Long = 32_768
 
   /** The in-code rule set as it applies to ONE country — the full seed minus
    *  every rule that declares a different language's countries. Each process

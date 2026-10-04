@@ -55,4 +55,12 @@ class ScrapeListingSpec extends AnyFlatSpec with Matchers {
     })
     normalizer.listingTitlesCached shouldBe 2
   }
+
+  // A worker runs for days and the titles it lists turn over weekly: the memo held every title ever
+  // listed. It now holds at most its bound, evicting the coldest.
+  it should "hold at most its bound of cleaned titles, however many distinct ones it has seen" in {
+    val normalizer = new TitleNormalizer(titleNormalizer.rules, memoEntries = 50)
+    (1 to 1000).foreach(n => normalizer.listingTitle(Helios, s"Film number $n"))
+    normalizer.listingTitlesCached should be <= 50L
+  }
 }
