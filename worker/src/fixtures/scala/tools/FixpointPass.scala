@@ -132,7 +132,7 @@ object FixpointPass {
 
   /** Wait until Mongo's change streams have delivered and applied what the last pass wrote:
    *  no event waiting on any cursor's apply thread or held by its debounce, and none delivered
-   *  for `quiet`.
+   *  for `quiet` of real time.
    *
    *  A Mongo cursor delivers whenever it gets there, so without this the projector's work
    *  for one pass lands in the NEXT one's ledger — on 2026-09-24 the UK leg's first pass
@@ -140,20 +140,30 @@ object FixpointPass {
    *  and a pass that wrote nothing to the corpus was reported as retiring a card and
    *  deleting 25 screenings. Call it after the pass that may look and inside the ledgered
    *  body, after the pass. An in-memory store rings its listeners inside the write and
-   *  needs neither. `now` is the liveness's own clock, the one its delivery stamps come from. */
-  def awaitStreamsQuiet(w: TestWiring, quiet: FiniteDuration = 2.seconds, within: FiniteDuration = 2.minutes): Unit = {
-    val liveness = w.movieRepository.changeStreamLiveness
+   *  needs neither. */
+  def awaitStreamsQuiet(w: TestWiring, quiet: FiniteDuration = 2.seconds, within: FiniteDuration = 2.minutes): Unit =
+    awaitQuiet(w.movieRepository.changeStreamLiveness, () => w.movieRepository.heldChanges,
+      () => w.movieRepository.releaseHeldChanges(), quiet, within)
+
+  private[tools] def awaitQuiet(liveness: services.movies.ChangeStreamLiveness, held: () => Int, releaseHeld: () => Unit,
+                                quiet: FiniteDuration, within: FiniteDuration): Unit = {
     val watched  = services.movies.ChangeStreamLiveness.Collections.filter(liveness.isWatching)
     val deadline = System.nanoTime() + within.toNanos
+    // Quiet is measured in REAL time, not on the liveness's clock: Mongo delivers on its own
+    // thread in real time, while the liveness's clock is its owner's — in a harness a pinned one
+    // whose stamp sequence moves a millisecond per reading, so "2 s since the last delivery" read
+    // off it never arrived (every leg's next-day test, run 37172281810). A delivery is seen by its
+    // stamp moving: the stamps are strictly increasing, so any delivery changes it.
+    def deliveries = watched.map(liveness.lastDelivered)
+    var seen        = deliveries
+    var quietSince  = System.nanoTime()
     def settled: Boolean = {
       // A re-read the debounce holds is a pass's write not yet applied: release it rather than
       // wait out its burst — the read it makes is of the film's state now, as a timer's would be.
-      w.movieRepository.releaseHeldChanges()
-      val now = liveness.now()
-      w.movieRepository.heldChanges == 0 && watched.forall { c =>
-        liveness.pendingApplies(c) == 0 &&
-          liveness.lastDelivered(c).forall(at => java.time.Duration.between(at, now).toMillis >= quiet.toMillis)
-      }
+      releaseHeld()
+      val latest = deliveries
+      if (latest != seen) { seen = latest; quietSince = System.nanoTime() }
+      held() == 0 && watched.forall(liveness.pendingApplies(_) == 0) && System.nanoTime() - quietSince >= quiet.toNanos
     }
     while (!settled) {
       if (System.nanoTime() > deadline)
