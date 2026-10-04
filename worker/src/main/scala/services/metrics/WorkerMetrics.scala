@@ -84,9 +84,9 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   // The sampled runtime-invariant audits (see services.tasks.RecheckedAudit): read-model content
   // against a fresh projection, and web_movies.shareCard against the card directory.
   val readModelContentAudit: services.tasks.RecheckedAudit.Series =
-    new services.tasks.RecheckedAudit.Series("kinowo_worker_readmodel_content", "read-model content", countryCodes, registry)
+    new services.tasks.RecheckedAudit.Series(services.tasks.RecheckedAudit.Names.ReadModelContent, "read-model content", countryCodes, registry)
   val shareCardAudit: services.tasks.RecheckedAudit.Series =
-    new services.tasks.RecheckedAudit.Series("kinowo_worker_share_cards", "share-card pointer", countryCodes, registry)
+    new services.tasks.RecheckedAudit.Series(services.tasks.RecheckedAudit.Names.ShareCards, "share-card pointer", countryCodes, registry)
 
   // The identity resolver's shadow run, per country — see IdentityShadowMetrics.
   val identityShadow: IdentityShadowMetrics = new IdentityShadowMetrics(registry)

@@ -80,16 +80,28 @@ class GrafanaWebMetricCoverageSpec extends AnyFlatSpec with Matchers {
     walk(dir).sortBy(_.getPath)
   }
 
-  /** Every family the web's main sources name as a literal `.name("kinowo_…")` on a
-   *  metric builder — what the tier registers, read from the code rather than from the
-   *  constructor list above, so the two can be compared. */
+  /** Every family the web's main sources spell as a whole `"kinowo_…"` string literal — what
+   *  the tier registers, read from the code rather than from the constructor list above, so the
+   *  two can be compared. Complete because no metric name may be interpolated (the worker's
+   *  `GrafanaMetricCoverageSpec` lints all three modules for that). */
   private lazy val familiesNamedInSource: Seq[String] =
     filesUnder(RepoFile.locate("web/src/main/scala"), ".scala")
-      .flatMap(f => BuilderName.findAllMatchIn(RepoFile.read(f)).map(_.group(1)))
+      .flatMap(f => NameLiteral.findAllMatchIn(RepoFile.read(f)).map(_.group(1)))
       .distinct
       .sorted
 
-  private val BuilderName = raw"""\.name\("(kinowo_[a-z0-9_]+)"\)""".r
+  private val NameLiteral = raw""""(kinowo_[a-z0-9_]+)"""".r
+
+  /** Families `MetricsController` writes as TEXT, never through a registry, so no enumeration
+   *  can reach them — the worker spec's `WebExportedFamilies` keeps them charted. */
+  private val HandRendered = Set(
+    "kinowo_web_movies_served",      // WebMovieMetrics: per-city served counts, sampled each minute
+    "kinowo_uptime_recent_successes", // the in-app /uptime buckets, one series per service
+    "kinowo_uptime_recent_failures",
+    "kinowo_uptime_recent_zeroes",
+    "kinowo_fallback_active_venues",  // per shared scraper client's fallback saturation
+    "kinowo_fallback_total_venues"
+  )
 
   "every web metric family the registry exports" should "be drawn on a dashboard" in {
     webFamilies should not be empty // a broken enumeration must not pass vacuously
@@ -122,12 +134,22 @@ class GrafanaWebMetricCoverageSpec extends AnyFlatSpec with Matchers {
    *  enumeration. */
   it should "reach every family the web's sources register" in {
     familiesNamedInSource should not be empty // a broken scan must not pass vacuously
-    val unreached = familiesNamedInSource.filterNot(webFamilies.contains)
+    // A counter registers under its base name, a gauge under its whole one.
+    val unreached = familiesNamedInSource
+      .filterNot(name => webFamilies.contains(name) || webFamilies.contains(name.stripSuffix("_total")))
+      .filterNot(HandRendered.contains)
     withClue(
       s"registered in web/src/main but not constructed by this spec: ${unreached.mkString(", ")}. " +
         "Construct its class in `webFamilies` so the coverage check above can see it. "
     ) {
       unreached shouldBe empty
+    }
+  }
+
+  it should "not exempt a hand-rendered family the sources no longer write" in {
+    val gone = HandRendered.filterNot(familiesNamedInSource.contains)
+    withClue(s"exempted as hand-rendered but not in web/src/main any more: ${gone.mkString(", ")}. ") {
+      gone shouldBe empty
     }
   }
 }

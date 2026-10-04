@@ -120,18 +120,34 @@ object RecheckedAudit {
     def confirmed(n: Int): Unit
   }
 
-  /** One audit's three counters, `<prefix>_audited_total`, `<prefix>_audit_suspects_total` and
-   *  `<prefix>_audit_confirmed_total`, registered once with a leading `country` label (see
+  /** One audit's three counter families, each spelled out whole (the client appends `_total`).
+   *  Literal names rather than one prefix interpolated three ways, so the build's metric scans
+   *  (deploy.GrafanaMetricCoverageSpec) can read every family the worker registers out of its
+   *  source — an interpolated `s"$prefix_audited"` is a name no scan can see. */
+  final case class Names(audited: String, suspects: String, confirmed: String)
+
+  object Names {
+    val ReadModelContent: Names = Names(
+      "kinowo_worker_readmodel_content_audited",
+      "kinowo_worker_readmodel_content_audit_suspects",
+      "kinowo_worker_readmodel_content_audit_confirmed")
+    val ShareCards: Names = Names(
+      "kinowo_worker_share_cards_audited",
+      "kinowo_worker_share_cards_audit_suspects",
+      "kinowo_worker_share_cards_audit_confirmed")
+  }
+
+  /** One audit's three counters ([[Names]]), registered once with a leading `country` label (see
    *  [[services.metrics.WorkerMetrics]]). Counters, not a gauge of the last run's findings: a run
    *  executes on whichever replica claims it, and a gauge would freeze at its last value on the
    *  replica that stopped running it. Counters from every replica `sum` correctly. */
-  final class Series(prefix: String, invariant: String, countryCodes: Seq[String], registry: PrometheusRegistry) {
-    private val auditedCounter = Counter.builder().name(s"${prefix}_audited")
+  final class Series(names: Names, invariant: String, countryCodes: Seq[String], registry: PrometheusRegistry) {
+    private val auditedCounter = Counter.builder().name(names.audited)
       .help(s"Ids sampled and judged by the $invariant audit.").labelNames("country").register(registry)
-    private val suspectsCounter = Counter.builder().name(s"${prefix}_audit_suspects")
+    private val suspectsCounter = Counter.builder().name(names.suspects)
       .help(s"Sampled ids that broke the $invariant invariant when sampled, queued for a re-check fifteen minutes later.")
       .labelNames("country").register(registry)
-    private val confirmedCounter = Counter.builder().name(s"${prefix}_audit_confirmed")
+    private val confirmedCounter = Counter.builder().name(names.confirmed)
       .help(s"Ids that STILL broke the $invariant invariant at their re-check: a violation, not a write in flight.")
       .labelNames("country").register(registry)
     countryCodes.foreach { c => auditedCounter.labelValues(c); suspectsCounter.labelValues(c); confirmedCounter.labelValues(c) }

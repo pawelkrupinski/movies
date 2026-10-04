@@ -20,7 +20,7 @@ class RecheckedAuditSpec extends AnyFlatSpec with Matchers with org.scalatest.Lo
 
   private class Rig(sampleSize: Int = 10) {
     val queue    = new InMemoryTaskQueue
-    val series   = new RecheckedAudit.Series("kinowo_worker_spec", "spec", Seq("pl"), new PrometheusRegistry())
+    val series   = new RecheckedAudit.Series(RecheckedAudit.Names.ReadModelContent, "spec", Seq("pl"), new PrometheusRegistry())
     var broken   = Set.empty[String]
     var unknown  = Set.empty[String]
     val audit    = new RecheckedAudit("spec", TaskType.AuditReadModelContent, queue, series.forCountry("pl"),

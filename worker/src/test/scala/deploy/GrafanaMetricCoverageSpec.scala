@@ -157,17 +157,20 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     walk(dir).sortBy(_.getPath)
   }
 
-  /** Every family the worker's main sources name as a literal `.name("kinowo_…")` on a
-   *  metric builder. Interpolated names (`s"${prefix}_audited"`) are not seen, so this is
-   *  a subset of what registers — enough to catch a class `WorkerMetrics` stopped wiring. */
+  /** Every family the worker's main sources spell as a whole `"kinowo_…"` string literal —
+   *  at a builder's `.name(…)` or passed to a helper that calls it. Complete because a metric
+   *  name may not be interpolated (see the lint below), so a class `WorkerMetrics` stops
+   *  wiring cannot drop out of [[workerFamilies]] unnoticed. */
   private lazy val workerFamiliesNamedInSource: Seq[String] =
     filesUnder(new java.io.File("worker/src/main/scala"))(_.getName.endsWith(".scala"))
-      .flatMap(f => BuilderName.findAllMatchIn(RepoFile.read(f.getPath)).map(_.group(1)))
-      .map(_.stripSuffix("_total")) // the client strips it too: the registry reports the base name
+      .flatMap(f => NameLiteral.findAllMatchIn(RepoFile.read(f.getPath)).map(_.group(1)))
       .distinct
       .sorted
 
-  private val BuilderName = raw"""\.name\("(kinowo_[a-z0-9_]+)"\)""".r
+  private val NameLiteral = raw""""(kinowo_[a-z0-9_]+)"""".r
+
+  /** A metric builder handed an interpolated name: `.name(s"…")`. */
+  private val InterpolatedName = raw"""\.name\(s"""".r
 
   /** Every alerting and recording rule's PromQL — Prometheus's rule files and Grafana's
    *  managed alerts — without the comments and annotations that name metrics in prose
@@ -366,10 +369,34 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
    *  then neither required on a panel nor accepted by the reverse guards. */
   "the worker registry enumeration" should "reach every family the worker's sources name" in {
     workerFamiliesNamedInSource should not be empty // a broken scan must not pass vacuously
-    val unreached = workerFamiliesNamedInSource.filterNot(workerFamilies.contains)
+    // A counter registers under its base name, a gauge under its whole one.
+    val unreached = workerFamiliesNamedInSource
+      .filterNot(name => workerFamilies.contains(name) || workerFamilies.contains(name.stripSuffix("_total")))
     withClue(s"named in worker/src/main but not registered by WorkerMetrics.singleCountry: ${unreached.mkString(", ")}. ") {
       unreached shouldBe empty
     }
+  }
+
+  /** The scan above is only complete if every name is a whole literal somewhere. RecheckedAudit
+   *  used to build its three families as `s"${prefix}_audited"` and friends — six registered
+   *  families, alert inputs among them, that no source scan could see. Interpolation is now
+   *  refused in any main source file that touches the Prometheus client. */
+  "a metric name" should "never be interpolated, so the source scans can see every family" in {
+    val prometheusSources =
+      Seq("worker", "web", "common").flatMap(m => filesUnder(new java.io.File(s"$m/src/main/scala"))(_.getName.endsWith(".scala")))
+        .filter(f => RepoFile.read(f.getPath).contains("io.prometheus"))
+    prometheusSources.size should be > 10 // the walk reaches the metric classes
+    val offenders = prometheusSources.filter(f => InterpolatedName.findFirstIn(RepoFile.read(f.getPath)).isDefined).map(_.getPath)
+    withClue(s"interpolated metric names in: ${offenders.mkString(", ")}. Spell each family as a whole string literal. ") {
+      offenders shouldBe empty
+    }
+  }
+
+  it should "be caught by the lint when it is" in {
+    InterpolatedName.findFirstIn("""Counter.builder().name(s"${prefix}_audited")""") shouldBe defined
+    InterpolatedName.findFirstIn("""Counter.builder().name("kinowo_worker_x")""") shouldBe empty
+    NameLiteral.findAllMatchIn("""Names("kinowo_worker_a_audited", "kinowo_worker_a_audit_suspects")""").map(_.group(1)).toSeq shouldBe
+      Seq("kinowo_worker_a_audited", "kinowo_worker_a_audit_suspects")
   }
 
   /** Every `kinowo_*` identifier appearing anywhere in a dashboard — panel targets and
