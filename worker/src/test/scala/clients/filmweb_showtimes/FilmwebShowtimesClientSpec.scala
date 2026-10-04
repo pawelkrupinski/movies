@@ -86,6 +86,37 @@ class FilmwebShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     movies.find(_.movie.title == "Pucio").value.movie.originalTitle shouldBe None
   }
 
+  // ── a title/info page that fails ─────────────────────────────────────────
+  // The info page only enriches a seance; a film whose seance carries its own title is still
+  // listed when the page fails, so the failure must not leave the listing incomplete (that kept
+  // the venue from ever pruning while one film's info kept failing). An untitled film IS dropped,
+  // and its failed page does make the listing incomplete.
+
+  private def withFailingInfo(titled: Boolean) = new tools.GetOnlyHttpFetch {
+    override def get(url: String): String =
+      if (url.contains("/title/582/info")) throw new java.io.IOException("info down")
+      else if (titled && url.contains("/seances")) http.get(url).replace("{\"film\":582,", "{\"film\":582,\"title\":\"Kosmiczny mecz\",")
+      else http.get(url)
+  }
+
+  "FilmwebShowtimesClient with a failing title/info page" should "keep the listing complete when the seance names the film itself" in {
+    val (movies, reads) = services.cinemas.common.ListingReads.during(
+      new FilmwebShowtimesClient(withFailingInfo(titled = true), 633, Multikino, daysAhead = 0, today = captureDate).fetch())
+    movies.map(_.movie.title) should contain ("Kosmiczny mecz")
+    reads.complete shouldBe true
+  }
+
+  it should "leave the listing incomplete when the film it drops had no title of its own" in {
+    val (movies, reads) = services.cinemas.common.ListingReads.during(
+      new FilmwebShowtimesClient(withFailingInfo(titled = false), 633, Multikino, daysAhead = 0, today = captureDate).fetch())
+    movies.flatMap(_.externalIds.get("filmweb")) should not contain "582"
+    reads.complete shouldBe false
+  }
+
+  "parseFilmInfo" should "read an empty body (Filmweb's 204 for an id it has no info for) as no info, not a failed page" in {
+    client.parseFilmInfo("") shouldBe None
+  }
+
   // ── /uptime source link ──────────────────────────────────────────────────
   // The cinema name on /uptime links to Filmweb's canonical, browser-renderable
   // showtimes page. Only the numeric id is in our model, so the city + name are

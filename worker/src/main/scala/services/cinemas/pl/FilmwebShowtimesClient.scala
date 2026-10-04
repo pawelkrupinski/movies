@@ -102,9 +102,14 @@ class FilmwebShowtimesClient(
 
     // One /title/{id}/info per unique film, in parallel.
     val filmIds = seances.map(_.filmId).distinct
-    val infos = ListingPages.readMore("filmweb-title-info", filmIds, id => titleInfoUrl(id), timeout = 1.minute) { url =>
-      Option(HttpRead.page(http, url)).flatMap(parseFilmInfo)
-    }.toMap
+    val infoReads = ListingPages.readEnrichment("filmweb-title-info", filmIds, id => titleInfoUrl(id), timeout = 1.minute) { url =>
+      parseFilmInfo(HttpRead.page(http, url))
+    }
+    // A film whose info failed is still listed under its seance's own title; only one with no
+    // such title is dropped, and only its page leaves the listing incomplete.
+    val titled = seances.filter(_.fallbackTitle.nonEmpty).map(_.filmId).toSet
+    ListingPages.reportFailed(infoReads.collect { case (id, attempt) if !titled(id) => attempt })
+    val infos = infoReads.collect { case (id, scala.util.Success(info)) => id -> info }.toMap
 
     seances.groupBy(_.filmId).toSeq.flatMap { case (filmId, group) =>
       val info = infos.get(filmId).flatten
@@ -168,8 +173,9 @@ class FilmwebShowtimesClient(
   /** Parse one /title/{id}/info response into title + originalTitle + year +
    *  poster URL. Pure + public so the spec can feed fixture bytes. */
   def parseFilmInfo(json: String): Option[FilmInfo] =
-    // Not JSON throws: the page read fails (ListingPages reports it), it is not "no info".
-    Option(Json.parse(json)).map { j =>
+    // An empty body (Filmweb answers an id it has no info for with an empty 204) is no info;
+    // anything else that is not JSON throws: the page read failed, it is not "no info".
+    Option.when(json.trim.nonEmpty)(Json.parse(json)).map { j =>
       FilmInfo(
         title         = (j \ "title").asOpt[String],
         originalTitle = (j \ "originalTitle").asOpt[String].map(_.trim).filter(_.nonEmpty),

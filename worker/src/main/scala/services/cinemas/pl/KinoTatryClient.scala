@@ -56,9 +56,10 @@ class KinoTatryClient(
     if (cards.isEmpty) return Seq.empty
 
     val detailUrls = cards.flatMap(_.filmUrl).distinct
-    val yearByUrl = ListingPages.readMore("kino-tatry-detail", detailUrls, identity, timeout = 1.minute) { url =>
-      Option(HttpRead.page(http, url)).flatMap(yearOf)
-    }.toMap
+    // A detail page carries only the release year: one that fails drops no film.
+    val yearByUrl = ListingPages.readEnrichment("kino-tatry-detail", detailUrls, identity, timeout = 1.minute) { url =>
+      yearOf(HttpRead.page(http, url))
+    }.toMap.collect { case (url, scala.util.Success(year)) => url -> year }
     cards.map { card =>
       val year = card.filmUrl.flatMap(yearByUrl.getOrElse(_, None))
       card.copy(movie = card.movie.copy(releaseYear = year))

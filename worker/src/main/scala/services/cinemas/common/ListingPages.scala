@@ -41,11 +41,26 @@ object ListingPages {
    *  incomplete; none of them failing the scrape, since the first page proved the source up. */
   def readMore[K, T](label: String, keys: Seq[K], urlOf: K => String, maxConcurrent: Int = 2,
                      timeout: FiniteDuration = PageTimeout)(read: String => T): Seq[(K, T)] = {
-    val distinct = keys.distinct
-    val fetched  = ParallelDetailFetch.keyed(label, distinct, timeout, maxConcurrent)(urlOf)(url => Try(read(url)))
-    val attempts = distinct.map(key => key -> fetched.getOrElse(key, Failure(new TimeoutException(s"$label: ${urlOf(key)} timed out"))))
+    val attempts = attemptEach(label, keys, urlOf, maxConcurrent, timeout)(read)
     reportFailed(attempts.map(_._2))
     attempts.flatMap { case (key, attempt) => attempt.toOption.map(key -> _) }
+  }
+
+  /** Pages that only ENRICH films the listing already holds — a release year, a poster, an
+   *  original title — read side by side like [[readMore]], every key's attempt returned in
+   *  `keys` order. A failed one is NOT reported: no film is dropped for want of it, so it says
+   *  nothing about what the cache may prune, and reporting it kept a venue whose one detail page
+   *  always timed out from ever pruning. A caller that DOES drop a film for a failed page reports
+   *  that page itself ([[reportFailed]]). */
+  def readEnrichment[K, T](label: String, keys: Seq[K], urlOf: K => String, maxConcurrent: Int = 2,
+                           timeout: FiniteDuration = PageTimeout)(read: String => T): Seq[(K, Try[T])] =
+    attemptEach(label, keys, urlOf, maxConcurrent, timeout)(read)
+
+  private def attemptEach[K, T](label: String, keys: Seq[K], urlOf: K => String, maxConcurrent: Int,
+                                timeout: FiniteDuration)(read: String => T): Seq[(K, Try[T])] = {
+    val distinct = keys.distinct
+    val fetched  = ParallelDetailFetch.keyed(label, distinct, timeout, maxConcurrent)(urlOf)(url => Try(read(url)))
+    distinct.map(key => key -> fetched.getOrElse(key, Failure(new TimeoutException(s"$label: ${urlOf(key)} timed out"))))
   }
 
   /** Report each failed page of a listing whose other pages answered, without failing it. */
