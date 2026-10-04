@@ -54,23 +54,34 @@ object SpecTimeouts {
    * The suite is told by the thread asking — ScalaTest names a thread running a suite
    * `…-ScalaTest-running-<suite>`; a bound read anywhere else (a thread a spec started, a
    * patience built at construction) is the full one. [[Run]] is never shrunk: the whole-corpus
-   * suites wait a pipeline pass long after their start. The slowest suite outside those runs
-   * under two minutes locally, so ten is no green suite's limit.
+   * suites wait a pipeline pass long after their start. A suite that runs past ten minutes BY
+   * DESIGN mixes in [[OutlivesSuiteDeadline]] and keeps its full bounds: the country convergence
+   * legs run for hours (US order-independence 12 min on CI, full legs up to 73), reading the
+   * oplog and dropping their database with an [[Io]] bound that ten seconds would turn into a
+   * flake on a loaded runner — and each carries a runaway guard of its own.
    */
   val SuiteDeadline: FiniteDuration = 10.minutes * Scale
   val PastDeadline: FiniteDuration  = 10.seconds * Scale
 
   private val suiteStarts = new java.util.concurrent.ConcurrentHashMap[String, java.lang.Long]()
+  private val outliving   = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
   private val SuiteThread = "ScalaTest-running-(.+)$".r.unanchored
 
   private def withinSuiteDeadline(bound: FiniteDuration): FiniteDuration =
     boundFor(bound, Thread.currentThread.getName, System.nanoTime(), suiteStarts)
 
+  /** Exempt the suite named `suiteName` (ScalaTest's name, as its thread carries it) from
+   *  [[SuiteDeadline]] — through [[OutlivesSuiteDeadline]], not called directly. */
+  private[tools] def outlivesSuiteDeadline(suiteName: String): Unit = { outliving.add(suiteName); () }
+
   /** `bound`, or [[PastDeadline]] once the suite `threadName` runs has been waiting on bounds for
-   *  longer than [[SuiteDeadline]] — `starts` holding when each suite first asked. */
+   *  longer than [[SuiteDeadline]] — `starts` holding when each suite first asked, `exempt` the
+   *  suites that run past it by design. */
   private[tools] def boundFor(bound: FiniteDuration, threadName: String, nowNanos: Long,
-                              starts: java.util.concurrent.ConcurrentHashMap[String, java.lang.Long]): FiniteDuration =
+                              starts: java.util.concurrent.ConcurrentHashMap[String, java.lang.Long],
+                              exempt: java.util.Set[String] = outliving): FiniteDuration =
     threadName match {
+      case SuiteThread(suite) if exempt.contains(suite) => bound
       case SuiteThread(suite) =>
         val start = starts.computeIfAbsent(suite, _ => nowNanos)
         if (nowNanos - start > SuiteDeadline.toNanos) bound.min(PastDeadline) else bound
@@ -86,4 +97,11 @@ object SpecTimeouts {
   /** A window watched for something NOT to happen — the absence claim's strength, chosen per
    *  site. A spec asserting a wait times out should prefer a max-duration bound on it. */
   def quiet(window: FiniteDuration): FiniteDuration = window
+}
+
+/** A suite that runs past [[SpecTimeouts.SuiteDeadline]] by design, and bounds a runaway itself
+ *  (a replay guard, its CI step's ceiling): its [[SpecTimeouts.Io]] / [[SpecTimeouts.Settle]]
+ *  waits keep their full bound however long it has been running. */
+trait OutlivesSuiteDeadline extends org.scalatest.Suite {
+  SpecTimeouts.outlivesSuiteDeadline(suiteName)
 }

@@ -94,7 +94,7 @@ abstract class CountryConvergenceBehaviour(
    * than cancelling the job (which does not).
    */
   replayGuard: FiniteDuration = ParallelReplays.DefaultWithin
-) extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.SuiteConfiguration {
+) extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.SuiteConfiguration with tools.OutlivesSuiteDeadline {
 
   /** Which recorded corpus this leg replayed, against the one its last green leg did —
    *  set once the corpus is read. Every failure carries its verdict, so a red leg says up
