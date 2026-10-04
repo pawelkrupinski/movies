@@ -153,6 +153,8 @@ lazy val common = (project in file("common"))
     // The identity projection's venue slot code is versioned the same way (`VenueSlotMemo.codeVersion`), from what builds
     // a slot (`IdentityRulesSources.VenueSlotRoots`, not following the leaves that reach the resolver): a deploy that
     // changes none of it keeps the fingerprints a restarted worker reuses its stored slots by.
+    // Both digest a Scala source's code, not its comments or spare whitespace (`project/SourceDigest.scala`): a
+    // comment-only edit moves neither.
     Compile / resourceGenerators += Def.task {
       val main     = baseDirectory.value / "src" / "main"
       val analysis = (Compile / compile).value
@@ -161,14 +163,9 @@ lazy val common = (project in file("common"))
         val sources  = IdentityRulesSources.of(analysis, roots, leaves)
         val resources = IdentityRulesSources.resources(main, sources.filterNot(leaves))
         val paths    = sources ++ resources
-        val digest   = java.security.MessageDigest.getInstance("SHA-256")
-        paths.foreach { path =>
-          digest.update(path.getBytes("UTF-8"))
-          digest.update(IO.readBytes(main / path))
-        }
         val version = (Compile / resourceManaged).value / s"$name-version.txt"
         val listed  = (Compile / resourceManaged).value / s"$name-sources.txt"
-        IO.write(version, digest.digest.map("%02x".format(_)).mkString)
+        IO.write(version, kinowo.build.SourceDigest.of(paths, path => IO.readBytes(main / path)))
         IO.write(listed, paths.mkString("\n"))
         Seq(version, listed)
       }
@@ -207,7 +204,10 @@ lazy val common = (project in file("common"))
     // on another module's, so the two compilations never meet.
     Test / unmanagedSources ++= Seq("MutableClock", "ManualScheduler", "Eventually", "SpecClock", "SpecTimeouts").map { name =>
       (LocalRootProject / baseDirectory).value / "testkit" / "src" / "main" / "scala" / "tools" / s"$name.scala"
-    }
+    },
+    // The build's source digest (the identity rules and venue slot versions), compiled here too so its specs check
+    // the very code the build digests with.
+    Test / unmanagedSources += (LocalRootProject / baseDirectory).value / "project" / "SourceDigest.scala"
   )
   .settings(unitReportSettings, testOrderSettings)
   .settings(noApiDocs)

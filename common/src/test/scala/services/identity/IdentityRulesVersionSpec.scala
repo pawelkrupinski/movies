@@ -1,10 +1,12 @@
 package services.identity
 
+import kinowo.build.SourceDigest
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.identity.VersionedSources.{main, resource, unlexable}
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.Files
 
 /** The rules version digests exactly what the resolver is built from (`IdentityRulesSources`, `build.sbt`): every
  *  stored family is re-resolved when it moves, so a change to code the resolver never reaches must not move it —
@@ -12,15 +14,7 @@ import java.nio.file.{Files, Path, Paths}
  *  to anything it does reach must. */
 class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
 
-  private def resource(name: String): String = {
-    val stream = getClass.getResourceAsStream(name)
-    withClue(s"$name is not on the classpath: ")(stream should not be null)
-    try new String(stream.readAllBytes(), StandardCharsets.UTF_8).trim finally stream.close()
-  }
   private lazy val digested: Seq[String] = resource("/identity-rules-sources.txt").linesIterator.toSeq
-  private lazy val main: Path =
-    Iterator.iterate(Paths.get("").toAbsolutePath)(_.getParent).takeWhile(_ != null).map(_.resolve("common/src/main"))
-      .find(Files.isDirectory(_)).getOrElse(fail("common/src/main not found above the working directory"))
 
   "the rules version" should "digest the resolver, what it reaches and the data it reads" in {
     digested should contain allOf ("scala/services/identity/IncrementalResolver.scala", "scala/services/identity/IdentityModelStore.scala",
@@ -42,13 +36,27 @@ class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
     digested should contain ("scala/services/identity/IdentityTraceSink.scala")
   }
 
+  private def read(edit: (String, String => String)*)(path: String): Array[Byte] = {
+    val bytes = Files.readAllBytes(main.resolve(path))
+    edit.find(_._1 == path).fold(bytes)(e => e._2(new String(bytes, StandardCharsets.UTF_8)).getBytes(StandardCharsets.UTF_8))
+  }
+
   it should "be the digest of exactly those files, so no other file can move it" in {
-    val digest = java.security.MessageDigest.getInstance("SHA-256")
-    digested.foreach { path =>
-      digest.update(path.getBytes(StandardCharsets.UTF_8))
-      digest.update(Files.readAllBytes(main.resolve(path)))
-    }
-    resource(IdentityRules.Resource) shouldBe digest.digest.map("%02x".format(_)).mkString
+    resource(IdentityRules.Resource) shouldBe SourceDigest.of(digested, read())
     IdentityRules.codeVersion shouldBe resource(IdentityRules.Resource)
+  }
+
+  it should "lex every Scala source it digests, so none falls back to its bytes and moves on a comment edit" in {
+    unlexable(digested) shouldBe empty
+  }
+
+  // Every move re-resolves every family of every worker on its next boot (US: ~2,330 families, ~45–60 s), and on
+  // 2026-10-03/04 comment-only edits moved it several times a day.
+  it should "not move on a comment-only edit to a file it digests, and move on a code edit" in {
+    val measures = "scala/services/identity/IdentityMeasures.scala"
+    val commented = SourceDigest.of(digested, read(measures -> (text => text.replaceFirst("\n", "\n// a note, and /* another */   \n\n"))))
+    commented shouldBe resource(IdentityRules.Resource)
+    val edited = SourceDigest.of(digested, read(measures -> (text => text + "\nprivate object SourceDigestProbe { val x = 1 }\n")))
+    edited should not be resource(IdentityRules.Resource)
   }
 }
