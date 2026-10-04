@@ -817,35 +817,31 @@
   }
   window.undoTruncation = undoTruncation;
 
-  function truncateShowings(cardEl, hasCinemaHeaders) {
-    const link = cardEl.querySelector('.showings-more');
+  // Fold one card's showings below ~10 rows, given what the last filter pass
+  // left visible: `days` is its `.date-group`s in order, each `{ element,
+  // visible, cinemaGroups: [{ element, visible, visibleCount }] }`, and `link`
+  // its "… +N" `.showings-more`. The listing hands in its INDEX, already holding
+  // every one of those facts from the pass it just ran (on New York, ~54k pills
+  // it would otherwise re-query); the facet view, with no index, reads them off
+  // the DOM (`truncateShowings`).
+  function foldShowings(link, days, hasCinemaHeaders) {
     if (!link) return;
-
-    const dateGroups = cardEl.querySelectorAll('.date-group');
-
     let lineCount = 0;
     let hidden = 0;
     let capped = false;
 
-    for (const dateGroup of dateGroups) {
-      if (dateGroup.style.display === 'none') continue;
-
-      const cinemaGroups = dateGroup.querySelectorAll('.cinema-group');
+    for (const day of days) {
+      if (!day.visible) continue;
       let dayHasVisible = false;
-      const dayLabelRow = 1;
-      let dayLines = dayLabelRow;
+      let dayLines = 1;   // the day's own label row
 
-      for (const cinemaGroup of cinemaGroups) {
-        if (cinemaGroup.style.display === 'none') continue;
-
-        const visibleBadges = [...cinemaGroup.querySelectorAll('.badge-time')].filter(
-          b => b.style.display !== 'none'
-        ).length;
+      for (const cinemaGroup of day.cinemaGroups) {
+        const visibleBadges = cinemaGroup.visible ? cinemaGroup.visibleCount : 0;
         if (visibleBadges === 0) continue;
 
         if (capped) {
           hidden += visibleBadges;
-          cinemaGroup.classList.add(TRUNCATED);
+          cinemaGroup.element.classList.add(TRUNCATED);
           continue;
         }
 
@@ -853,12 +849,12 @@
         const cinemaLines = (hasCinemaHeaders ? 1 : 0) + pillRows;
 
         if (lineCount + dayLines + cinemaLines <= _MAX_SHOWINGS_ROWS) {
-          cinemaGroup.classList.remove(TRUNCATED);
+          cinemaGroup.element.classList.remove(TRUNCATED);
           dayHasVisible = true;
           dayLines += cinemaLines;
         } else {
           hidden += visibleBadges;
-          cinemaGroup.classList.add(TRUNCATED);
+          cinemaGroup.element.classList.add(TRUNCATED);
           capped = true;
         }
       }
@@ -866,7 +862,7 @@
       if (dayHasVisible) {
         lineCount += dayLines;
       } else if (capped) {
-        dateGroup.classList.add(TRUNCATED);
+        day.element.classList.add(TRUNCATED);
       }
     }
 
@@ -876,14 +872,30 @@
     } else {
       // Too few folded away to be worth a link — unfold them again.
       if (hidden > 0) {
-        for (const dateGroup of dateGroups) {
-          dateGroup.classList.remove(TRUNCATED);
-          for (const cinemaGroup of dateGroup.querySelectorAll('.cinema-group'))
-            cinemaGroup.classList.remove(TRUNCATED);
+        for (const day of days) {
+          day.element.classList.remove(TRUNCATED);
+          for (const cinemaGroup of day.cinemaGroups) cinemaGroup.element.classList.remove(TRUNCATED);
         }
       }
       link.style.display = 'none';
     }
+  }
+  window.foldShowings = foldShowings;
+
+  // `foldShowings` for a card with no index behind it: the visibility the
+  // filter pass wrote is read back off the inline styles.
+  function truncateShowings(cardEl, hasCinemaHeaders) {
+    const shown = element => element.style.display !== 'none';
+    const days = [...cardEl.querySelectorAll('.date-group')].map(day => ({
+      element:      day,
+      visible:      shown(day),
+      cinemaGroups: [...day.querySelectorAll('.cinema-group')].map(cinemaGroup => ({
+        element:      cinemaGroup,
+        visible:      shown(cinemaGroup),
+        visibleCount: shown(cinemaGroup) ? [...cinemaGroup.querySelectorAll('.badge-time')].filter(shown).length : 0
+      }))
+    }));
+    foldShowings(cardEl.querySelector('.showings-more'), days, hasCinemaHeaders);
   }
 
   function truncateAllShowings(hasCinemaHeaders) {

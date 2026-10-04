@@ -3476,6 +3476,23 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // channel: one writer per property is what keeps either from silently undoing
   // the other's decision.
 
+  // The fold used to re-query every cinema group's pills after each filter
+  // pass — the pass that had just decided all of it into the INDEX. On a
+  // 54k-pill city that was ~19 ms of a ~65 ms pass.
+  "a filter pass" should "fold the cards from its index rather than re-querying their pills" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      page.evalInt("document.querySelectorAll('.showings-more').length") should be > 0
+      page.eval(
+        "window.__pillQueries = 0; const _qsa = Element.prototype.querySelectorAll;" +
+        "  Element.prototype.querySelectorAll = function (selector) {" +
+        "    if (selector === '.badge-time') window.__pillQueries++;" +
+        "    return _qsa.call(this, selector); };" +
+        "  applyFilters(); Element.prototype.querySelectorAll = _qsa;")
+      page.evalInt("window.__pillQueries") shouldBe 0
+    }
+  }
+
   "a row folded away to keep a card short" should "still carry the filter's own verdict" in {
     onPath("/") { page =>
       clearLocalStorage(page)

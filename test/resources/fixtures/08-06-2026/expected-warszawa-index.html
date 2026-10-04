@@ -19997,6 +19997,7 @@ INDEX = [...grid.querySelectorAll('.col[data-title]')].map((col, i) => {
 col.dataset.idx = String(i);
 return {
 element: col,
+more: col.querySelector('.showings-more'),
 ...cardFacts(col),
 visible: null,
 groups: [...col.querySelectorAll('.date-group[data-date]')].map(group => ({
@@ -20007,6 +20008,7 @@ cinemaGroups: [...group.querySelectorAll('.cinema-group[data-cinema]')].map(cg =
 element: cg,
 cinema: cg.dataset.cinema,
 visible: null,
+visibleCount: 0,
 badges: [...cg.querySelectorAll('.badge-time')].map(b => ({
 element: b,
 ...badgeFacts(b, cg.dataset.cinema),
@@ -20137,6 +20139,7 @@ for (const badge of cg.badges) setVisible(badge, true);
 cgVisibleCount = cg.badges.length;
 if (cg.badges.length > 0) cgFirstTime = group.date + 'T' + cg.badges[0].time;
 }
+cg.visibleCount = cgVisibleCount;
 if (cgVisibleCount > 0) {
 setVisible(cg, true);
 groupVisible = true;
@@ -20159,7 +20162,7 @@ earlyMap[i] = null;
 }
 }
 sortByEarliestVisible(earlyMap);
-truncateAllShowings(true);
+for (const col of INDEX) if (col.visible) foldShowings(col.more, col.groups, true);
 updateEmptyState(visibleCount);
 }
 function hideOneFilm(rawTitle) {

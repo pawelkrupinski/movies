@@ -55,6 +55,7 @@
       col.dataset.idx = String(i);
       return {
       element:  col,
+      more:     col.querySelector('.showings-more'),   // the "… +N" fold link
       ...cardFacts(col),
       visible:  null,  // remembered so we only write style.display on changes
       groups:   [...col.querySelectorAll('.date-group[data-date]')].map(group => ({
@@ -65,6 +66,7 @@
           element: cg,
           cinema:  cg.dataset.cinema,
           visible: null,
+          visibleCount: 0,   // its badges the last pass left on — what `foldShowings` counts
           badges:  [...cg.querySelectorAll('.badge-time')].map(b => ({
             element: b,
             ...badgeFacts(b, cg.dataset.cinema),
@@ -258,6 +260,7 @@
             if (cg.badges.length > 0) cgFirstTime = group.date + 'T' + cg.badges[0].time;
           }
 
+          cg.visibleCount = cgVisibleCount;
           if (cgVisibleCount > 0) {
             setVisible(cg, true);
             groupVisible = true;
@@ -283,14 +286,15 @@
     }
 
     sortByEarliestVisible(earlyMap);
-    // Cinema labels are always shown, so truncation always accounts for the
-    // per-cinema header line.
-    truncateAllShowings(true);
+    // Fold each shown card from the visibility this pass just decided — no
+    // re-query of the DOM it wrote. Cinema labels are always shown, so the
+    // fold always accounts for the per-cinema header line.
+    for (const col of INDEX) if (col.visible) foldShowings(col.more, col.groups, true);
     updateEmptyState(visibleCount);
   }
 
   // Fast path for hiding ONE film. The full applyFilters() above un-truncates
-  // (`undoTruncation`) and re-truncates (`truncateAllShowings`) every card's
+  // (`undoTruncation`) and re-folds (`foldShowings`) every card's
   // showings — ~1500 badges on a busy city — and re-walks the whole INDEX,
   // which is what made a single ✕ click cost ~0.5s. Hiding a film can't change
   // any OTHER card's visibility, sort position, or truncation, so we flip just
