@@ -337,7 +337,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not count a projection settled while a written film lacks its TMDB details, nor one that failed" in {
-    // No period comes back for them: the trigger tries an unsettled projection again (`ProjectionTrigger.retry`).
+    // No period comes back for them: the trigger tries an unsettled projection again (`EventTrigger.retry`).
     val s = new Scenario(new Random(3))
     var broken = false
     val w = new ProjectionWorld(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository),

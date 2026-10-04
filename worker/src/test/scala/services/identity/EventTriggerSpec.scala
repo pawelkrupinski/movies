@@ -8,16 +8,16 @@ import tools.{ManualScheduler, MutableClock}
 import java.time.{Duration, Instant}
 import scala.concurrent.duration._
 
-/** [[ProjectionTrigger]] runs a projection once a burst of the model's batches goes quiet, and never later than the cap
+/** [[EventTrigger]] runs a projection once a burst of the model's batches goes quiet, and never later than the cap
  *  after the burst's first — so a scrape's change reaches the films within the cap, a burst in one projection. */
-class ProjectionTriggerSpec extends AnyFlatSpec with Matchers {
+class EventTriggerSpec extends AnyFlatSpec with Matchers {
 
   private final class World {
     val clock     = new MutableClock(Instant.parse("2026-10-04T18:00:00Z"))
     val scheduler = new ManualScheduler(clock)
     var runs      = 0
     var settles   = true
-    val trigger   = new ProjectionTrigger(() => { runs += 1; settles }, MovieChangeStream.Debounce(30.seconds, 2.minutes), scheduler, clock)
+    val trigger   = new EventTrigger(() => { runs += 1; settles }, MovieChangeStream.Debounce(30.seconds, 2.minutes), scheduler, clock)
     def after(seconds: Long): Unit = scheduler.advance(Duration.ofSeconds(seconds))
     def afterMillis(millis: Long): Unit = scheduler.advance(Duration.ofMillis(millis))
   }
@@ -42,10 +42,10 @@ class ProjectionTriggerSpec extends AnyFlatSpec with Matchers {
   it should "run an answer's short window within it, however a scrape's long one keeps asking beside it" in {
     val w = new World
     w.trigger.request(); w.after(10)
-    w.trigger.request(ProjectionTrigger.Answer); w.trigger.request()   // a scrape asking again must not push the answer back
+    w.trigger.request(EventTrigger.Answer); w.trigger.request()   // a scrape asking again must not push the answer back
     w.after(1)
     w.runs shouldBe 1
-    (1 to 10).foreach { _ => w.trigger.request(ProjectionTrigger.Answer); w.afterMillis(500) }   // a burst of answers, never a second quiet
+    (1 to 10).foreach { _ => w.trigger.request(EventTrigger.Answer); w.afterMillis(500) }   // a burst of answers, never a second quiet
     w.runs shouldBe 2                       // at the 5 s cap after the burst's first
     w.after(60)
     w.runs shouldBe 2                       // nothing asked since

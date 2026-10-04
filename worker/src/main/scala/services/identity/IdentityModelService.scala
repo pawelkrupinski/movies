@@ -60,7 +60,7 @@ final class IdentityModelService(
   settle:     FiniteDuration,
   scheduler:  ScheduledExecutorService,
   metrics:    IdentityModelMetrics = IdentityModelMetrics.Silent,
-  /** Told of each batch the model drained: what moved, for whoever projects the model ([[ProjectionTrigger]]). */
+  /** Told of each batch the model drained: what moved, for whoever projects the model ([[EventTrigger]]). */
   batched:    ModelBatch => Unit = _ => (),
   // What the model's lookups report of their reading (`TrackedLookups.render`), for the take-up log.
   reading:    () => String = () => "",

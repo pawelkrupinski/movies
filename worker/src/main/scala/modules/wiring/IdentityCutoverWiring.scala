@@ -90,13 +90,13 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
    *  agreed IMDb id — each filed answer asking for a projection, which reads it. */
   lazy val agreementHandlers: Seq[services.tasks.TaskHandler] = Seq(
     new services.identity.AgreementQuestionHandler(familyAnswerStore, familySources,
-      () => identityProjectionTrigger.request(services.identity.ProjectionTrigger.Answer), clock),
+      () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock),
     new services.identity.AgreementFindHandler(imdbId => { tmdbClient.findByImdbId(imdbId); () },
-      () => identityProjectionTrigger.request(services.identity.ProjectionTrigger.Answer), clock))
+      () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock))
   /** Projects what moved: as the identity model takes this worker's scrapes in, and as another writer moves a stored film
    *  (`MovieCache.onChanged`) — there is no period between. */
-  lazy val identityProjectionTrigger: services.identity.ProjectionTrigger = {
-    val trigger = new services.identity.ProjectionTrigger(() => identityProjection.tickChangedQuietly(),
+  lazy val identityProjectionTrigger: services.identity.EventTrigger = {
+    val trigger = new services.identity.EventTrigger(() => identityProjection.tickChangedQuietly(),
       services.movies.MovieChangeStream.Debounce.Worker,
       identityProjectionTriggerScheduler, clock)
     movieCache.onChanged(_ => trigger.request())

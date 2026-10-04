@@ -84,7 +84,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
   private val Allowlist: Map[(String, String, String), String] = Map(
     ("worker/src/main/scala/services/identity/IdentityProjection.scala", "quietly",
       "catch { case NonFatal(e) =>") ->
-      "not a failure read as data: a projection that throws is logged, counted as a Failed refusal and answers 'not settled', which is what makes `ProjectionTrigger` run it again after a backoff — the stored films keep serving meanwhile",
+      "not a failure read as data: a projection that throws is logged, counted as a Failed refusal and answers 'not settled', which is what makes `EventTrigger` run it again after a backoff — the stored films keep serving meanwhile",
     ("common/src/main/scala/tools/DaemonExecutors.scala", "run",
       "catch { case _: InterruptedException => cancelUnrun(command); Thread.currentThread().interrupt(); false }") ->
       "not a failure read as data: an interrupt while parked for a permit is `shutdownNow` stopping a task that never started — the task is CANCELLED (its waiter sees a CancellationException) and the interrupt flag restored; false only says 'do not run it'",

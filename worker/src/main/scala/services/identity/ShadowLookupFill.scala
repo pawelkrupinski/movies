@@ -139,8 +139,12 @@ final class ShadowLookupFill(
   sleep:       Long => Unit = Thread.sleep,
   beforeRound: () => Unit = () => (),
   refreshes:   () => Seq[CandidateQuery] = () => Nil,
-  gapMemory:   Option[TmdbGapMemory] = None
+  gapMemory:   Option[TmdbGapMemory] = None,
+  clock:       java.time.Clock
 ) extends Logging {
+  // When the last round began: a round's allowance is the rate over the time since, never more than a `window` —
+  // rounds run as the model finds gaps (`EventTrigger`), not only once a window, and must not ask more for it.
+  @volatile private var lastRound: Option[java.time.Instant] = None
 
   private val running = new AtomicBoolean(false)
   @volatile private var current: Option[IdentityShadowLookupRate] = None
@@ -151,7 +155,11 @@ final class ShadowLookupFill(
   /** One round, on the calling thread. */
   def round(): ShadowLookupRound = {
     val at     = effectiveRate
-    val budget = new ShadowLookupBudget(at.allowanceOver(window.value), at.pace, sleep)
+    val now    = clock.instant()
+    val span   = lastRound.fold(window.value)(was => FiniteDuration(java.time.Duration.between(was, now).toMillis.max(0L),
+      java.util.concurrent.TimeUnit.MILLISECONDS).min(window.value))
+    lastRound  = Some(now)
+    val budget = new ShadowLookupBudget(at.allowanceOver(span), at.pace, sleep)
     // Live within the budget, every answer normalized into the model's TMDB store — where the model's
     // gaps are, by definition, not yet.
     val gaps    = new LookupGaps

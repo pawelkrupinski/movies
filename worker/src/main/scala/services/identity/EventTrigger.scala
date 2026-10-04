@@ -7,21 +7,21 @@ import java.util.concurrent.{ScheduledExecutorService, ScheduledFuture, TimeUnit
 import scala.concurrent.duration._
 
 /**
- * Runs `run` — a projection of what moved ([[IdentityProjection.tickChanged]]) — a short while after it is asked to, as
- * the identity model takes this worker's scrapes in: each request pushes the run to `debounce.quiet` after it, never past
- * `debounce.cap` after the first request it gathers (the read model's change debounce, `MovieChangeStream.Debounce`). A
- * scrape's changes reach the films within the cap rather than at the next five-minute projection, and a projection does
- * a burst's work in one pass rather than in a five-minute batch with the whole corpus's fixed costs at once.
+ * Runs `run` a short while after it is asked to, as events arrive — the identity projection of what moved
+ * ([[IdentityProjection.tickChanged]]) and the fill of the gaps the model found ([[ShadowLookupFill]]): each request pushes
+ * the run to `debounce.quiet` after it, never past `debounce.cap` after the first request it gathers (the read model's
+ * change debounce, `MovieChangeStream.Debounce`). What an event moved is acted on within the cap, a burst in one run,
+ * with no period between.
  *
- * A run that did not settle — refused, failed, a write declined, a film's TMDB details still missing — runs again after
+ * A run that did not settle (a projection refused, failed, a write declined, a film's TMDB details still missing) runs again after
  * a backoff (`retryAfter`, doubling to `retryAtMost`), which a settled one resets: there is no period to come back on.
  * [[retry]] asks the same of a run made elsewhere (the hourly reconcile).
  *
  * Requests arrive from the model's thread; `run` runs on `scheduler`'s.
  */
-final class ProjectionTrigger(run: () => Boolean, debounce: MovieChangeStream.Debounce, scheduler: ScheduledExecutorService,
-                              clock: Clock, retryAfter: FiniteDuration = ProjectionTrigger.RetryAfter,
-                              retryAtMost: FiniteDuration = ProjectionTrigger.RetryAtMost) {
+final class EventTrigger(run: () => Boolean, debounce: MovieChangeStream.Debounce, scheduler: ScheduledExecutorService,
+                              clock: Clock, retryAfter: FiniteDuration = EventTrigger.RetryAfter,
+                              retryAtMost: FiniteDuration = EventTrigger.RetryAtMost) {
   private var pending: Option[ScheduledFuture[?]] = None
   /** Each window's burst since the last run: its first request, and when it is due. */
   private val bursts  = scala.collection.mutable.Map.empty[MovieChangeStream.Debounce, (Long, Long)]
@@ -32,7 +32,7 @@ final class ProjectionTrigger(run: () => Boolean, debounce: MovieChangeStream.De
 
   /** Run within `window` of now: each window gathers its own burst — pushed `window.quiet` past its last request, never
    *  past `window.cap` after its first — and the run is due when the soonest is, so a long window never postpones a
-   *  short one (an agreement answer's, [[ProjectionTrigger.Answer]], beside a scrape's). */
+   *  short one (an agreement answer's, [[EventTrigger.Answer]], beside a scrape's). */
   def request(window: MovieChangeStream.Debounce): Unit = synchronized {
     val now   = clock.millis()
     val since = bursts.get(window).fold(now)(_._1)
@@ -64,7 +64,7 @@ final class ProjectionTrigger(run: () => Boolean, debounce: MovieChangeStream.De
   }
 }
 
-object ProjectionTrigger {
+object EventTrigger {
   /** An answer the identity can be updated by — the agreement's family answers: projected within seconds of it, a
    *  burst of them every few seconds at most. */
   val Answer: MovieChangeStream.Debounce = MovieChangeStream.Debounce(1.second, 5.seconds)

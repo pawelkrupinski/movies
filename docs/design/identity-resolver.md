@@ -2244,7 +2244,7 @@ exactly rather than hide it.
 ### 18.4 Projecting as the model takes the scrapes in (2026-10-04)
 
 The scoped projection still ran on the five-minute period, so a scrape reached its films up to five minutes later and
-each country's projection work landed in one burst. Now the identity model tells a `ProjectionTrigger` of every drain
+each country's projection work landed in one burst. Now the identity model tells a `EventTrigger` of every drain
 that moved a venue's listings or re-decided a family (`ModelBatch.moved`), and the trigger runs `tickChanged` once that
 burst is 30 s quiet, never more than 2 min after its first drain (the read model's change debounce,
 `MovieChangeStream.Debounce.Worker`). A run on scrapes:
@@ -2259,7 +2259,7 @@ burst is 30 s quiet, never more than 2 min after its first drain (the read model
 
 **Proof.** `ScopedProjectionEquivalenceSpec` projects its scoped world by `tickChanged` on about half its ticks (by
 `tick` otherwise, and whenever none has run yet); every store, FilmId map and metric still equals the whole world's.
-`IdentityListingIntakeProjectedSpec` holds `projectedChanged` to reading only the venues taken, and `ProjectionTriggerSpec`
+`IdentityListingIntakeProjectedSpec` holds `projectedChanged` to reading only the venues taken, and `EventTriggerSpec`
 the debounce.
 
 **No five-minute period (2026-10-04, later).** The periodic projection is gone: the clock runs only the whole corpus's
@@ -2267,7 +2267,7 @@ reconciliation — the boot's first projection one `identityProjectionInterval` 
 `IdentityProjection.ReconcileEvery` (an hour), which also reads the archives' stamps and records the slot fingerprints.
 Everything else runs on scrapes. What the period used to come back for, the trigger does: a projection that did not
 settle (`IdentityProjection.settled`: refused, failed, a write declined, a written film's TMDB details still missing) runs
-again after a backoff of 1 min doubling to 15 (`ProjectionTrigger.retry`), and one with nothing written to build on
+again after a backoff of 1 min doubling to 15 (`EventTrigger.retry`), and one with nothing written to build on
 projects the whole corpus. A stored film another writer changed is projected on that change too: the cache tells the trigger of every film a write other than the projection's own moved (`MovieCache.onChanged`), including another process's through the change stream, but never of the projection's writes or their echo.
 
 ## 19. The shadow run's paced live lookup fill

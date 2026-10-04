@@ -11,7 +11,7 @@ import scala.concurrent.duration._
  * Runs the worker's one periodic projection — the identity projection's reconciliation of the whole corpus
  * (`IdentityProjection.ReconcileEvery`), which also reads every archive's stamps and records the slot fingerprints. The
  * boot's first projection runs once on the trigger's scheduler (`ResolutionWiring`), never behind this one's claim; every
- * other projection runs as the identity model takes the worker's scrapes in (`ProjectionTrigger`).
+ * other projection runs as the identity model takes the worker's scrapes in (`EventTrigger`).
  *
  * Cluster-safe: a multi-machine worker gates each tick on a window occurrence claim ([[ScheduledRunStore]]) so one
  * machine projects per window.

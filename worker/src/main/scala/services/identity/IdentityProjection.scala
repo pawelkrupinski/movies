@@ -184,7 +184,7 @@ final class IdentityProjection(
   }
 
   /** Whether `tick` left nothing for another projection to do: not refused, every write taken, every written film's
-   *  TMDB details fetched. One that did not is tried again ([[ProjectionTrigger.retry]]) — no five-minute period does. */
+   *  TMDB details fetched. One that did not is tried again ([[EventTrigger.retry]]) — no five-minute period does. */
   def settled(tick: ProjectionTick): Boolean =
     tick.refused.isEmpty && tick.declined == 0 &&
       !tick.changed.exists(film => IdentityProjection.awaitsDetails(film.record))

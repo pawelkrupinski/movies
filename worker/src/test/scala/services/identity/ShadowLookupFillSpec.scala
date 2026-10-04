@@ -46,10 +46,11 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
   private def fill(store: TmdbStore, service: HttpFetch, rate: Int = 600, sleeps: mutable.Buffer[Long] = mutable.Buffer.empty,
                    rounds: mutable.Buffer[ShadowLookupRound] = mutable.Buffer.empty,
                    beforeRound: () => Unit = () => (), refreshes: () => Seq[CandidateQuery] = () => Nil,
-                   gaps: TmdbStore => AnswersChanged = modelGaps, gapMemory: Option[TmdbGapMemory] = None) =
+                   gaps: TmdbStore => AnswersChanged = modelGaps, gapMemory: Option[TmdbGapMemory] = None,
+                   fillClock: java.time.Clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC)) =
     new ShadowLookupFill(() => gaps(store), new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()),
       service, new TmdbNormalizer(store), IdentityShadowLookupRate(rate), IdentityShadowInterval(30.minutes), rounds += _,
-      DaemonExecutors.directExecutor(), sleeps += _, beforeRound, refreshes, gapMemory)
+      DaemonExecutors.directExecutor(), sleeps += _, beforeRound, refreshes, gapMemory, fillClock)
 
   /** What the identity model over the store's answers finds unanswered — what a round asks. */
   private def modelGaps(s: TmdbStore): AnswersChanged = {
@@ -102,6 +103,19 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
     service.requests.size shouldBe 30
     round.deferred should be > 0
     sleeps.toSeq shouldBe Seq.fill(29)(60000L)
+  }
+
+  it should "ask, of a round the model's gaps set off soon after the last, only what the rate allows since that one" in {
+    // Rounds run as a drain finds gaps (`EventTrigger`), not only once a window: each may ask the rate over the time
+    // since the last round, never a whole window again.
+    val clock   = new _root_.tools.MutableClock(TestWiring.FixedInstant)
+    val service = new Service
+    val f       = fill(store(), service, rate = 1, fillClock = clock)
+    f.round().asked shouldBe 30                                  // the first: a whole window
+    clock.advance(java.time.Duration.ofMinutes(5))
+    f.round().asked shouldBe 5                                   // 5 minutes on: 5 at 1 a minute
+    clock.advance(java.time.Duration.ofHours(2))
+    f.round().asked shouldBe 30                                  // never more than a window
   }
 
   it should "stop asking the paced service at its first overload, and run the next round at half the rate, doubling back once clean" in {

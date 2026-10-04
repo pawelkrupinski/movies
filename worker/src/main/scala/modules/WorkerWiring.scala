@@ -156,7 +156,7 @@ class WorkerWiring(
       settle     = WorkerWiring.IdentityModelSettle,
       scheduler  = identityModelScheduler,
       metrics    = workerMetrics.identityModel.forCountry(country.code),
-      batched    = batch => if (batch.moved) identityProjectionTrigger.request(),
+      batched    = batch => if (batch.moved) { identityProjectionTrigger.request(); identityFillTrigger.request() },
       reading    = () => tracked.fold("")(_.render),
       beforeDrain = () => venuePageIndex.settle(),
       // A new listing waits for its venue page, read into venue_pages by a ReadVenuePage task, so
@@ -262,7 +262,14 @@ class WorkerWiring(
       window      = identityShadowInterval,
       metrics     = workerMetrics.identityShadow.lookupsForCountry(country.code),
       executor    = shadowLookupExecutor,
-      sleep       = shadowLookupSleep)
+      sleep       = shadowLookupSleep,
+      clock       = clock)
+
+  /** Fills the model's gaps as a drain finds them, not only on the period below (which stays for what ages: refreshes
+   *  due, TMDB's changes, gaps remembered as unanswered). A round asks what the rate allows since the last. */
+  lazy val identityFillTrigger: services.identity.EventTrigger =
+    new services.identity.EventTrigger(() => { shadowLookupFill.start(); true }, services.movies.MovieChangeStream.Debounce.Worker,
+      identityProjectionTriggerScheduler, clock)
 
   def identityShadowInterval: settings.IdentityShadowInterval =
     configuration.identityShadowInterval(WorkerWiring.DefaultIdentityShadowInterval)
