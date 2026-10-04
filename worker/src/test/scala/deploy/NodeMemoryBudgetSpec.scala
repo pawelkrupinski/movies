@@ -232,7 +232,7 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
 
   /** Floors bought by a measured heap exhaustion, per tier+country. See the test
    *  below for what each one cost. */
-  private val HeapFloorsMib = Map(("worker", "us") -> 1280, ("web", "us") -> 768)
+  private val HeapFloorsMib = Map(("worker", "us") -> 1152, ("web", "us") -> 768)
 
   // The MIRROR of the test above, and the failure it missed. That one stops a heap
   // outgrowing its container; this one stops a heap the container has already paid
@@ -250,6 +250,10 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   // set fell from ~565 to ~350 MiB (booking URLs held split, showtime instants shared), a listing
   // render's allocation from ~320 MB to ~5 MB, and a drift reload no longer holds two corpora.
   // Below 768 is untested against a US evening peak.
+  // worker-us's floor went to 1152MiB on 2026-10-04: three hours of `-Xlog:gc` across 5 pods, a full
+  // identity re-resolve among them, put its live set after a full GC at median 449, max 508 MiB, once
+  // the identity projection stopped holding every archived showtime (8ecfe62ab). The 1024m it died on
+  // held a far larger corpus graph; it has not been tried since.
   // US carries ~5000 venues against Germany's ~1500, and one US "city" (California)
   // renders an 18.9MB page, which is why it is the country that runs out first.
   "the US deployments' heaps" should "claim the container limit they were already given" in {
