@@ -462,6 +462,10 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Sakr w Canaria - english subtitles"                   -> "Sakr w Canaria",
     "Fatherland (Ojczyzna) [eng subtitles only]"           -> "Fatherland (Ojczyzna)",
     "Perfect Days [english subtitles]"                     -> "Perfect Days",
+    // Kino TOMI (Bielsk Podlaski, 2026-09 capture): its ladies' strand under the
+    // venue's own name, and the Polish spelling of the EN-subtitle marker.
+    "TOMI dla Kobiet - Lalka"                              -> "Lalka",
+    "Lalka (z angielskimi napisami)"                       -> "Lalka",
     // Twenty-first wave (2026-08-23), from the convergence leg's TMDB-no-match list.
     // 'Absolwent - odrestaurowana wersja 4K' needs BOTH the 4K rule and the
     // adjective-first restoration rule; the pair is what takes it to a bare film.

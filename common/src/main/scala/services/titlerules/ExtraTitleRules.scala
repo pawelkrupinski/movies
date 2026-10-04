@@ -523,7 +523,7 @@ object ExtraTitleRules {
     searchStrip("xtra-lato-wakacje-klasyka",       """(?iu)^LATO\s*['’‘`]?\s*\d{2,4}\.?\s*Wakacje\s+z\s+Klasyką\s+Kina{{SEP}}""", "'LATO'26. Wakacje z Klasyką Kina - <film>' summer-classics strand (Casablanca, Amadeusz, Mulholland Drive, 2001: Odyseja kosmiczna, Amelia, Łowca androidów, Wielki błękit, Wielkie piękno, Piknik pod Wiszącą Skałą)"),
     searchStrip("xtra-wakacje-dla-dzieci",         """(?iu)^Wakacje\s+dla\s+dzieci{{SEP}}""",        "'Wakacje dla dzieci: <film>' kids-summer strand (Arco, Pucio, Basia mam swój świat, Kicia Kocia w podróży, Fleak. Futrzak i ja, Fantastyczny Angelo)"),
     searchStrip("xtra-lato-w-lunie",               """(?iu)^LATO\s+w\s+LUNIE{{SEP}}""",              "'LATO w LUNIE | <film>' Kino Luna summer strand (Drzewo magii, Chłopiec na krańcach świata, Willow i tajemniczy las, Ekipa zwierzaków, Superfutrzak i złośliwa wiewiórka)"),
-    searchStrip("xtra-kobiece-strands",            """(?iu)^(?:Kino\s+dla\s+Kobiet|Babski\s+(?:wieczór|czwartek)|Kobiecy\s+świat|Kobiece\s+Wieczory\s+w\s+Kino\s+Cafe|Wieczory\s+filmowe\s+na\s+boku){{SEP}}""", "ladies'-night strands (Kino dla Kobiet / Babski wieczór / Babski czwartek / Kobiecy świat / Kobiece Wieczory w Kino Cafe / Wieczory filmowe na boku) — film after the banner separator (Drugie życie, Zaproszenie, Czytając Lolitę w Teheranie, Zupa nic)"),
+    searchStrip("xtra-kobiece-strands",            """(?iu)^(?:(?:Kino|TOMI)\s+dla\s+Kobiet|Babski\s+(?:wieczór|czwartek)|Kobiecy\s+świat|Kobiece\s+Wieczory\s+w\s+Kino\s+Cafe|Wieczory\s+filmowe\s+na\s+boku){{SEP}}""", "ladies'-night strands (Kino dla Kobiet / TOMI dla Kobiet / Babski wieczór / Babski czwartek / Kobiecy świat / Kobiece Wieczory w Kino Cafe / Wieczory filmowe na boku) — film after the banner separator (Drugie życie, Zaproszenie, Czytając Lolitę w Teheranie, Zupa nic)"),
     searchStrip("xtra-klasyka-cycles",             """(?iu)^Klasyk[ai]\s+(?:Kina|na\s+fali|w\s+Kulturze|w\s+NCKF){{SEP}}""", "'Klasyka Kina / Klasyka na fali / Klasyka w Kulturze / Klasyka w NCKF: <film>' classics strands (Milczenie owiec, Lot nad kukułczym gniazdem, La Strada, Przekleństwa niewinności) — siblings of the existing 'Klasyk w kinie:' rule"),
     searchStrip("xtra-filmy-z-lektorem",           """(?iu)^FILMY\s+Z\s+LEKTOREM{{SEP}}""",          "'FILMY Z LEKTOREM - <film>' dubbed-screening strand (Poprzednie życie, Emilia Pérez)"),
     searchStrip("xtra-smiech-przez-lzy",           """(?iu)^ŚMIECH\s+PRZEZ\s+ŁZY{{SEP}}""",          "'ŚMIECH PRZEZ ŁZY: <film>' comedy strand (Chłopaki nie płaczą, Wesele)"),
@@ -660,6 +660,10 @@ object ExtraTitleRules {
     // separator + the exact 'subtitles' keyword so a real title can't be amputated.
     // (Sakr w Canaria → TMDB 1358036, Fatherland (Ojczyzna) → 1437696.)
     searchStrip("xtra-english-subtitles-suffix",    """(?iu)\s*[-–—\[(]\s*eng(?:lish)?\s+subtitles(?:\s+only)?\s*[\])]?\s*$""", "'<film> - english subtitles' / '<film> [eng subtitles only]' English-subtitled-screening marker — sibling of xtra-ukrainski-lang-suffix; query-only strip so the EN-subtitle screening keeps its own row but resolves the base film (Sakr w Canaria → TMDB 1358036, Fatherland (Ojczyzna) → 1437696)"),
+    // The same marker in Polish — '<film> (z angielskimi napisami)' (Kino TOMI) — which
+    // the paren format strip misses ("napisami" is not the "napisy" token). Same
+    // treatment: own row, query stripped to the base film.
+    searchStrip("xtra-angielskie-napisy-suffix",    """(?iu)\s*[-–—\[(]\s*z\s+angielskimi\s+napisami\s*[\])]?\s*$""", "'<film> (z angielskimi napisami)' Polish spelling of the English-subtitled-screening marker — sibling of xtra-english-subtitles-suffix (Kino TOMI: Lalka)"),
     // Twenty-second wave (2026-08-28) audit of the prod TMDB-no-match corpus, this
     // time corpus-wide rather than Kinoteka-only (the class of bug the
     // '25. rocznica premiery' / 'seans bez reklam' fixes closed for Kinoteka). Each
