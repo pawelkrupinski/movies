@@ -240,6 +240,20 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     q.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
   }
 
+  // A queued task nothing here handles (a type whose handler was deleted, or one wired only in
+  // another country) used to go back claimable at once: as the oldest row it was the next claim
+  // again, every claim, and starved the tasks queued behind it (PL's leftover ResolveTmdb, 22,570
+  // claims overnight). Handed back held off, the tasks behind it run.
+  it should "hold a task with no handler back, so the tasks queued behind it are claimed" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(McRating, "mc|x", submittedAt = t0)
+    q.enqueue(ImdbRating, "imdb|y", submittedAt = t0.plusSeconds(1))
+    val w = worker(q, Seq(new RecordingHandler(ImdbRating, HandlerOutcome.Done)))
+    w.claimAndRun("w0") shouldBe PollResult.Returned
+    w.claimAndRun("w0") shouldBe PollResult.Completed
+    w.claimAndRun("w0") shouldBe PollResult.Idle
+  }
+
   it should "be idle when the queue is empty" in {
     worker(new InMemoryTaskQueue, Seq.empty).claimAndRun("w0") shouldBe PollResult.Idle
   }

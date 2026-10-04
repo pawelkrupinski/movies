@@ -84,6 +84,27 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     queue.countByState() should not contain key ("not_a_real_state")
   }
 
+  // A row of a task type this build no longer has (retired with its handler while one was still
+  // queued) used to throw out of the decode: the claim answered None, the row stayed leased, was
+  // reaped back to waiting and claimed again every lease, for ever. It is dropped and the claim
+  // goes on to the next task.
+  it should "drop a row of an unknown task type and claim the next task instead" in {
+    val retired = s"it-retired-${System.nanoTime()}"
+    val doc = org.mongodb.scala.Document(
+      "_id" -> retired, "taskType" -> "RetiredSinceThisRowWasQueued", "dedupKey" -> s"retired|$retired",
+      "payload" -> org.mongodb.scala.Document(), "state" -> services.tasks.TaskState.Waiting, "active" -> true,
+      "submittedAt" -> new java.util.Date(t0.minusSeconds(86400L * 365).toEpochMilli), "attempts" -> 0)
+    Await.result(db.getCollection(collName).insertOne(doc).toFuture(), SpecTimeouts.Io)
+    val key = s"scrape|it-after-retired-${System.nanoTime()}"
+    queue.enqueue(TaskType.ScrapeCinema, key, submittedAt = t0.minusSeconds(86400L * 300)) shouldBe EnqueueResult.Added
+
+    val claimed = queue.claim("w-retired", 5.minutes)
+    claimed.map(_.dedupKey) shouldBe Some(key)
+    Await.result(db.getCollection(collName).countDocuments(
+      org.mongodb.scala.model.Filters.eq("_id", retired)).toFuture(), SpecTimeouts.Io) shouldBe 0L
+    claimed.foreach(t => queue.complete(t.id, "w-retired"))
+  }
+
   it should "claim the task once, carry its payload, and not hand it out twice" in {
     val key = s"imdb|it-claim-${System.nanoTime()}"
     queue.enqueue(TaskType.ImdbRating, key, Map("title" -> "Dune"), submittedAt = t0)

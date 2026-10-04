@@ -51,9 +51,6 @@ object RepositoryReadSwallows {
     ("common/src/main/scala/services/tasks/MongoBulkTaskResultStore.scala", "latest",
       "Try(Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds).flatMap(toResult).map(r => r.taskType -> r).toMap)") ->
       "each bulk job's last-outcome line beside the queue view: a failed read must not take the queue view down with it; logged at WARN",
-    ("common/src/main/scala/services/tasks/MongoTaskQueue.scala", "claim",
-      "Try {") ->
-      "None is an idle poll: the worker claims again on its next poll, and nothing is decided from it",
     ("web/src/main/scala/services/auth/MongoAuthExchangeCodeStore.scala", "remove",
       "Try(Await.result(c.findOneAndDelete(Filters.eq(\"_id\", code)).headOption(), timeout))") ->
       "a single-use code whose findOneAndDelete outcome is unknown: answered as unredeemable, the visitor signs in again; a retry could not be honoured safely anyway; logged at WARN",

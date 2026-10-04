@@ -14,7 +14,7 @@ import java.util.UUID
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 /**
  * Mongo-backed `TaskQueue`, collection `tasks`. Document shape:
@@ -152,14 +152,28 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
         Filters.or(
           Filters.exists("nextEligibleAt", false),
           Filters.lte("nextEligibleAt", new java.util.Date(now.toEpochMilli))))
-      Try {
-        Await.result(c.findOneAndUpdate(eligible, update, opts).headOption(), 10.seconds)
-          .map(toTask)
-      }.recover {
-        case exception: Throwable =>
-          logger.warn(s"TaskQueue.claim failed: ${exception.getMessage}")
-          None
-      }.getOrElse(None)
+      // A row whose type this build no longer knows (a retired task type still queued from before the
+      // deploy that deleted it) is DROPPED and the next one claimed: thrown out of the decode, it was left
+      // leased, reaped back to waiting and claimed again on every lease, for ever.
+      @annotation.tailrec
+      def claimKnown(dropped: Int): Option[Task] =
+        Try(Await.result(c.findOneAndUpdate(eligible, update, opts).headOption(), 10.seconds)) match {
+          case Failure(exception) =>
+            logger.warn(s"TaskQueue.claim failed: ${exception.getMessage}")
+            None
+          case Success(None) => None
+          case Success(Some(document)) => TaskType.byName(document.getString("taskType")) match {
+            case Some(taskType) => Some(toTask(document, taskType))
+            case None if dropped < MongoTaskQueue.MaxUnknownDropsPerClaim =>
+              logger.warn(s"TaskQueue.claim dropped task ${document.getString("_id")} of unknown type " +
+                s"${document.getString("taskType")} (${document.getString("dedupKey")}).")
+              Try(Await.result(c.deleteOne(Filters.and(Filters.eq("_id", document.getString("_id")),
+                Filters.eq("workerId", workerId))).toFuture(), 10.seconds))
+              claimKnown(dropped + 1)
+            case None => None
+          }
+        }
+      claimKnown(0)
   }
 
   // Finishing a task DELETES the document outright (no tombstone): the dedup index is
@@ -337,7 +351,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
     bd
   }
 
-  private def toTask(document: Document): Task = {
+  private def toTask(document: Document, taskType: TaskType): Task = {
     val payload = document.get("payload")
       .filter(_.isDocument)
       .map { v =>
@@ -347,8 +361,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       .getOrElse(Map.empty[String, String])
     Task(
       id       = document.getString("_id"),
-      taskType = TaskType.byName(document.getString("taskType")).getOrElse(
-        throw new IllegalStateException(s"Unknown taskType ${document.getString("taskType")}")),
+      taskType = taskType,
       dedupKey = document.getString("dedupKey"),
       payload  = payload,
       attempts = document.getInteger("attempts", 0)
@@ -361,4 +374,8 @@ object MongoTaskQueue {
    *  queue is recoverable bookkeeping, so the durability trade buys back the
    *  per-op cost that dominated the shared-cpu Mongo's load. See the class document. */
   val QueueWriteConcern: WriteConcern = WriteConcern.W1.withJournal(false)
+
+  /** How many unknown-type rows one claim drops before it gives up for this call — a bound, not a budget:
+   *  the next claim drops the rest. */
+  private val MaxUnknownDropsPerClaim = 100
 }

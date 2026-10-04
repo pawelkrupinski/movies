@@ -198,10 +198,11 @@ class TaskWorker(
 
   private def runHandler(task: Task, workerId: String): PollResult = byType.get(task.taskType) match {
     case None =>
-      // No handler wired (e.g. mid-deploy) — return it immediately (no backoff)
-      // so a node that has the handler can take it rather than tombstoning
-      // unfinished work.
-      queue.release(task.id, workerId, Some(s"no handler for ${task.taskType.name}"))
+      // No handler wired (e.g. mid-deploy) — return it, held off for `NoHandlerBackoff`, so a node
+      // that has the handler can take it rather than tombstoning unfinished work. Never claimable at
+      // once: as the oldest waiting row it would be every claim's next, and starve the queue.
+      queue.release(task.id, workerId, Some(s"no handler for ${task.taskType.name}"),
+        notBefore = Some(clock.instant().plusMillis(NoHandlerBackoff.toMillis)), refundAttempt = true)
       observer.onFinished(task, Outcome.NoHandler, 0L)
       PollResult.Returned
     case Some(h) =>
@@ -341,6 +342,9 @@ object TaskWorker {
     val shift  = math.min(math.max(attempts - 1, 0), 20)
     math.min(MaxBackoff.toMillis, 5000L * (1L << shift)).millis
   }
+
+  /** How long a task no handler here runs is held back before it is claimable again. */
+  val NoHandlerBackoff: FiniteDuration = 5.minutes
 
   /** The longest the pool ever holds a waiting task back — the backoff curve's cap, and the
    *  ceiling on a `Deferred`'s named instant too. Alerted on as WorkerTaskParkedTooLong. */
