@@ -81,4 +81,12 @@ class MovieCacheChangeListenerSpec extends AnyFlatSpec with Matchers {
     cache.get(filmKey) shouldBe None                                  // rolled back
     heard.toSeq.map(_.isDefined) shouldBe Seq(true, false)            // held, then gone again
   }
+
+  // A listener runs inside the write's own lock: one that throws must not fail a write already made.
+  it should "keep a write a resident listener fails on" in {
+    val w = new World
+    w.cache.onResident((_, _) => throw new IllegalStateException("listener bug"))
+    w.cache.putIfPresent(filmKey, _.copy(metascore = Some(55))) shouldBe true
+    w.resident.metascore shouldBe Some(55)
+  }
 }

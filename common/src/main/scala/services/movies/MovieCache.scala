@@ -290,7 +290,10 @@ class CaffeineMovieCache(
   private def announce(key: CacheKey, to: java.util.List[(CacheKey, Option[StoredMovieRecord]) => Unit] = residentListeners): Unit =
     if (!to.isEmpty) { positive.asMap().compute(key, (_, held) => {
       val film = Option(held).map(storedAt(key, _))
-      to.forEach(_(key, film))
+      // A listener that throws must not fail the write it is told of: the row is already held.
+      to.forEach(listener => try listener(key, film) catch {
+        case scala.util.control.NonFatal(e) => logger.warn(s"MovieCache: a resident listener failed on '${key.cleanTitle}': ${e.getMessage}")
+      })
       held
     }); () }
 
