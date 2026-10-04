@@ -29,10 +29,26 @@ import scala.concurrent.Await
  * because the operations under test are the ones that ignore names.
  */
 object IntegrationCorpusDatabase {
-  /** `<MONGODB_DB>_<suite>` — the configured database, suffixed per suite. Keeping the
-   *  configured name as the PREFIX means the `IntegrationMongo` throwaway guard and the
-   *  CI teardown still recognise it as a test database. */
-  def named(target: IntegrationMongoTarget, suite: String): String = s"${target.databasePrefix.value}_$suite"
+
+  /** This run's id: the JVM's pid, unique among the processes running on this machine at once —
+   *  and so among the runs sharing the one local `:28017` server. Constant for the JVM, so every
+   *  call for the same suite names the same database. */
+  private val RunId: String = ProcessHandle.current().pid().toString
+
+  /** Mongo refuses a longer database name, deep inside whatever first touches it. */
+  private val MaxDatabaseNameLength = 63
+
+  /** `<MONGODB_DB>_<suite>_<run>` — the configured database, suffixed per suite and per RUN. Keeping
+   *  the configured name as the PREFIX means the `IntegrationMongo` throwaway guard and the CI
+   *  teardown still recognise it as a test database. The run suffix is what keeps two runs apart
+   *  that were started with the same `MONGODB_DB` (two agents' itAll, or an itAll and a single spec
+   *  beside it): each one's `finally` used to drop the database the other was mid-test in. */
+  def named(target: IntegrationMongoTarget, suite: String): String = {
+    val name = s"${target.databasePrefix.value}_${suite}_$RunId"
+    require(name.length <= MaxDatabaseNameLength,
+      s"$name is ${name.length} characters, over Mongo's $MaxDatabaseNameLength — shorten the suite name or MONGODB_DB")
+    name
+  }
 
   /**
    * Run `body` against this suite's own corpus and DROP that corpus afterwards — dropped

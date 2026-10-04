@@ -63,6 +63,11 @@ class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers
 
   it should "keep the configured database as its prefix, so the throwaway guard still recognises it" in {
     val base = mongoTarget.databasePrefix.value
-    IntegrationCorpusDatabase.named(mongoTarget, "drop-probe") shouldBe s"${base}_drop-probe"
+    IntegrationCorpusDatabase.named(mongoTarget, "drop-probe") should startWith(s"${base}_drop-probe_")
+  }
+
+  it should "be this run's own, so a second run started with the same MONGODB_DB cannot drop it mid-test" in {
+    IntegrationCorpusDatabase.named(mongoTarget, "drop-probe") should endWith(s"_${ProcessHandle.current().pid()}")
+    IntegrationCorpusDatabase.named(mongoTarget, "drop-probe") shouldBe IntegrationCorpusDatabase.named(mongoTarget, "drop-probe")
   }
 }

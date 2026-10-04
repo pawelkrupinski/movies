@@ -17,16 +17,19 @@ import java.nio.file.{Files, Path, Paths}
  * rows, and when that purge landed between the hidden-films writes and their read-back
  * every write was a 200 and the row was gone (main run 36157984407, "flaky").
  *
- * Two rules, each naming file:line:
+ * Three rules, each naming file:line:
  *
  *  1. No it/ source opens the SHARED database: no `"MONGODB_DB"` read, no
  *     `MongoAddress.fromEnv` (which carries it), no literal `getDatabase("kinowo")`, and no fixed
  *     `"kinowo_…"` name (one with no `nanoTime`/`pid()` in it), which every run on the same
  *     server shares. Take a database of the
- *     spec's own from `IsolatedMongoDatabase` (unique per run) or
- *     `IntegrationCorpusDatabase` (`<MONGODB_DB>_<suite>`), and drop it afterwards.
+ *     spec's own from `IsolatedMongoDatabase` or `IntegrationCorpusDatabase`
+ *     (`<MONGODB_DB>_<suite>_<pid>`) — both unique per run — and drop it afterwards.
  *
- *  2. No delete by regex. In a database the spec owns, drop it; a pattern delete there is
+ *  2. No `getDatabase` by a literal name, whatever its prefix, unless something unique to the run
+ *     (`nanoTime`, `pid()`) is in it: two runs on one server would share it.
+ *
+ *  3. No delete by regex. In a database the spec owns, drop it; a pattern delete there is
  *     only allowed where the delete IS the scenario, and is allowlisted with that reason.
  */
 class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
@@ -39,6 +42,16 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
   private val SharedDatabaseAllowlist: Map[String, String] = Map(
     "worker/src/it/scala/IntegrationCorpusDatabaseIntegrationSpec.scala" ->
       "reads the base MONGODB_DB only to assert the per-suite names derive from it; opens no database by it")
+
+  /** file → why it may open a database by a literal name. */
+  private val LiteralDatabaseAllowlist: Map[String, String] = Map(
+    "worker/src/it/scala/ChangeStreamResumeTokenIntegrationSpec.scala" ->
+      "the literal is on a client pointed at an unreachable address: no server ever sees the name",
+    "worker/src/it/scala/FallbackStoreHydrateIntegrationSpec.scala" ->
+      "the literal is on a client pointed at an unreachable address: no server ever sees the name",
+    "worker/src/it/scala/ResolutionStoreClearIntegrationSpec.scala" ->
+      "the literal is on a client pointed at an unreachable address: no server ever sees the name",
+  )
 
   /** file → why a pattern delete is the scenario itself, in a database the spec owns. */
   private val RegexDeleteAllowlist: Map[String, String] = Map.empty
@@ -55,6 +68,9 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
   private val FixedName      = """(?:\bs)?"kinowo_""".r
   private val DatabaseWord   = """(?i)database|db\b|prefix""".r
   private val UniquePerRun   = """nanoTime|\bpid\(\)""".r
+  // A database opened by a literal name: plain ("x"), or interpolated with nothing unique to the run in
+  // it. `admin` is the server's own, never written by a spec.
+  private val LiteralDatabase = """getDatabase\(\s*(?:"(?!admin")|s")""".r
   private val Delete         = """\.delete(?:Many|One)\s*\(""".r
   private val PatternFilter  = """Filters\.regex\(|\$regex|BsonRegularExpression|Pattern\.compile""".r
 
@@ -65,6 +81,12 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
       case (line, index) if SharedDatabase.findFirstIn(code(line)).isDefined ||
           (FixedName.findFirstIn(code(line)).isDefined && DatabaseWord.findFirstIn(code(line)).isDefined &&
             UniquePerRun.findFirstIn(code(line)).isEmpty) =>
+        s"$path:${index + 1}: ${line.trim}"
+    }.toSeq
+
+  private def literalDatabaseLines(path: Path): Seq[String] =
+    read(path).linesIterator.zipWithIndex.collect {
+      case (line, index) if LiteralDatabase.findFirstIn(code(line)).isDefined && UniquePerRun.findFirstIn(code(line)).isEmpty =>
         s"$path:${index + 1}: ${line.trim}"
     }.toSeq
 
@@ -88,6 +110,16 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  they should "open no database by a name fixed across runs" in {
+    val offenders = files.filterNot(p => LiteralDatabaseAllowlist.contains(p.toString)).flatMap(literalDatabaseLines)
+    withClue(
+      "These it/ lines open a database whose name every run on the same server shares, so two runs drop each " +
+        "other's data. Take it from IsolatedMongoDatabase or IntegrationCorpusDatabase (both unique per run), or " +
+        "allowlist the file with a reason:\n" + offenders.mkString("\n") + "\n") {
+      offenders shouldBe empty
+    }
+  }
+
   they should "not delete by regex or prefix" in {
     val offenders = files.filterNot(p => RegexDeleteAllowlist.contains(p.toString)).flatMap(regexDeletes)
     withClue(
@@ -104,7 +136,8 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
         Files.exists(path) && still(path).nonEmpty
       }
     withClue("Allowlisted but no longer offending — drop the entry:\n") {
-      (stale(SharedDatabaseAllowlist, sharedDatabaseLines) ++ stale(RegexDeleteAllowlist, regexDeletes)) shouldBe empty
+      (stale(SharedDatabaseAllowlist, sharedDatabaseLines) ++ stale(RegexDeleteAllowlist, regexDeletes) ++
+        stale(LiteralDatabaseAllowlist, literalDatabaseLines)) shouldBe empty
     }
   }
 }
