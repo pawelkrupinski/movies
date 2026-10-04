@@ -236,12 +236,19 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
 
   /** A search or credit naming films: it files a hit where no record is held, and never renews a film it
    *  only named — it did not fetch the film's record, and renewing each named film once it was a day old
-   *  made every re-asked question ~20 film writes (DE's whole fill pace, for records that had not moved). */
+   *  made every re-asked question ~20 film writes (DE's whole fill pace, for records that had not moved).
+   *  A film named by several answers keeps the FIRST of their hits by [[hitOrder]], not the last filed: each
+   *  carries the popularity TMDB had when it was fetched, and the bucket the resolver reads must not depend
+   *  on which answer arrived last. */
   private def hitsSeen(hits: Seq[Hit]): Unit = {
-    val byId = hits.map(hit => hit.tmdbId.toString -> hit).toMap
+    val byId = hits.groupBy(_.tmdbId.toString).view.mapValues(_.minBy(hitOrder)).toMap
     updateAll(TmdbKind.Film, hits.map(_.tmdbId.toString), renew = false) { (id, before) =>
       val d = before.getOrElse(new BsonDocument())
-      if (Option(d.get("record")).exists(_.isDocument)) d else d.append("hit", hitDoc(byId(id)))
+      if (Option(d.get("record")).exists(_.isDocument)) d
+      else {
+        val held = Option(d.get("hit")).map(h => hitOf(id.toInt, h.asDocument))
+        d.append("hit", hitDoc((held.toSeq :+ byId(id)).minBy(hitOrder)))
+      }
     }
   }
 
@@ -307,6 +314,10 @@ object TmdbStore {
     hit.year.foreach(y => d.append("year", BsonInt32(y)))
     d
   }
+  /** Which of a film's hits it holds: the most popular bucket, then by title, original title and year — a
+   *  total order over what a hit document keeps, so the held hit is the same whatever order answers arrive in. */
+  private def hitOrder(hit: Hit): (Int, String, String, Int) =
+    (-PopularityBucket.of(hit.popularity), hit.title, hit.originalTitle.getOrElse(""), hit.year.getOrElse(0))
   def hitOf(id: Int, d: BsonDocument): Hit =
     Hit(id, d.getString("title").getValue, Option(d.get("originalTitle")).map(_.asString.getValue),
       Option(d.get("year")).map(_.asInt32.getValue), PopularityBucket.representative(d.getInt32("popularity").getValue))

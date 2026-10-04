@@ -108,6 +108,23 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.docs.get(TmdbKind.Film, Seq(film.toString))(film.toString) shouldBe before
   }
 
+  // Two searches naming one film carry the popularity TMDB had when each was fetched. The film holds ONE hit,
+  // so which bucket the resolver's `popularity.log2` reads must not depend on which search was filed last.
+  it should "hold the same hit for a film however the searches naming it arrive" in {
+    def search(popularity: Double) =
+      s"""{"results":[{"id":1018,"title":"Mulholland Dr.","original_title":"Mulholland Drive","release_date":"2001-06-06","popularity":$popularity}]}"""
+    def searchUrl(query: String) = s"https://api.themoviedb.org/3/search/movie?language=$language&include_adult=false&query=$query"
+    val answers = Seq("Mulholland" -> search(8.9), "Mulholland%20Drive" -> search(40.0))      // buckets 3 and 5
+    def read(order: Seq[(String, String)]) = {
+      val w = new World
+      order.foreach { case (query, body) => w.normalizer.filed("GET", searchUrl(query), Success(body)) }
+      Seq("Mulholland", "Mulholland Drive").map(q => w.lookups.candidates(CandidateQuery.Title(q)))
+    }
+    read(answers) shouldBe read(answers.reverse)
+    read(answers).head shouldBe
+      Answer.Known(Seq(Hit(film, "Mulholland Dr.", Some("Mulholland Drive"), Some(2001), PopularityBucket.representative(5))))
+  }
+
   "a 404" should "be read as the client reads it: a record's missing half, a person with no credits; a search's is no answer" in {
     val w = new World
     w.normalizer.filed("GET", url("credits,release_dates", language), Failure(new HttpStatusException(404, "GET", "…", None)))
