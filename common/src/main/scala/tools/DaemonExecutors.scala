@@ -37,13 +37,24 @@ object DaemonExecutors {
    *  (logback in prod) — and floods the logs with one stack trace per dangling
    *  continuation. For a thread-per-task executor a rejection can only mean
    *  "already shut down" (there's no bounded queue to overflow), so dropping it
-   *  once `isShutdown` holds is benign; any other rejection is re-thrown. */
+   *  once `isShutdown` holds is benign; any other rejection is re-thrown.
+   *
+   *  Dropped means CANCELLED when the task is a `Future` (a `submit` / `invokeAll` wraps every task
+   *  in one): left incomplete, its waiter — `submit(...).get()`, or an `invokeAll` (the identity
+   *  prefetch's) — waited forever on a task nothing would ever run. */
   private[tools] def dropRejectedAfterShutdown(es: ExecutorService): ExecutorService =
     new DelegatingExecutorService(es) {
       override def execute(command: Runnable): Unit =
         try es.execute(command)
-        catch { case _: RejectedExecutionException if es.isShutdown => () }
+        catch { case _: RejectedExecutionException if es.isShutdown => cancelUnrun(command) }
     }
+
+  /** Release whoever waits on `task`, which will never run: cancelled when it is a `Future`; a
+   *  bare `Runnable` has no waiter to release. */
+  private[tools] def cancelUnrun(task: Runnable): Unit = task match {
+    case future: java.util.concurrent.Future[?] => future.cancel(false); ()
+    case _                                      => ()
+  }
 
   /** Virtual-thread EC capped at `maxConcurrent` tasks running at once. Use
    *  when the upstream rate-limits or load-tests poorly past a small number
@@ -148,8 +159,12 @@ object DaemonExecutors {
 /** What a [[DaemonExecutors.boundedPool]] does with a task submitted while its queue is full. A
  *  pool already shut down drops it either way ([[DaemonExecutors.dropRejectedAfterShutdown]]). */
 enum WhenFull(val handler: RejectedExecutionHandler) {
-  /** The submitting thread runs it: the producer is slowed to the pool's pace, and order is not kept. */
-  case RunOnCaller extends WhenFull(new ThreadPoolExecutor.CallerRunsPolicy)
+  /** The submitting thread runs it: the producer is slowed to the pool's pace, and order is not kept.
+   *  Not `CallerRunsPolicy`, which DISCARDS a task once the pool is shut down — silently, so the drop
+   *  could not cancel it, and its waiter waited forever. */
+  case RunOnCaller extends WhenFull((task: Runnable, pool: ThreadPoolExecutor) =>
+    if (pool.isShutdown) throw new RejectedExecutionException("shut down")
+    else task.run())
   /** The submitting thread waits until the queue has room: order is kept, the producer blocks. */
   case WaitForRoom extends WhenFull((task: Runnable, pool: ThreadPoolExecutor) =>
     if (pool.isShutdown) throw new RejectedExecutionException("shut down")

@@ -34,10 +34,14 @@ final class ManagedResources(grace: FiniteDuration = ManagedResources.Grace, sto
   private val shut     = new ConcurrentLinkedDeque[Held]()
   @volatile private var closing = false
 
-  /** `executor`, shut (interrupting what runs, then waiting for what is left of the grace) by [[closeAll]]. */
+  /** `executor`, shut (interrupting what runs, then waiting for what is left of the grace) by [[closeAll]].
+   *  What it still held queued is cancelled, never run: left incomplete, a thread waiting on one of
+   *  those tasks (an `invokeAll`) waited forever. */
   def executor[E <: ExecutorService](name: String)(executor: E): E =
-    hold(Held(name, executor, left => { executor.shutdownNow(); executor.awaitTermination(left.toMillis, TimeUnit.MILLISECONDS); () },
-      () => executor.isTerminated), executor)
+    hold(Held(name, executor, left => {
+      executor.shutdownNow().forEach(DaemonExecutors.cancelUnrun)
+      executor.awaitTermination(left.toMillis, TimeUnit.MILLISECONDS); ()
+    }, () => executor.isTerminated), executor)
 
   /** `service`, stopped by [[closeAll]] — a reaper, census or cache that owns its own scheduler. */
   def stopping[A <: services.Stoppable](service: A): A =

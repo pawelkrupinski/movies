@@ -42,6 +42,41 @@ class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
     } finally { release.countDown(); pool.shutdownNow() }
   }
 
+  // A submission a shut-down pool will never run used to be DROPPED: `submit(...).get()` and
+  // `invokeAll` (the identity prefetch's) then waited on a future no one would ever complete. It
+  // is cancelled instead, so whoever waits on it is released at once.
+  "a submission to a shut-down pool" should "come back cancelled from a caller-runs pool, not hang its waiter" in {
+    val pool = DaemonExecutors.boundedPool("shut-caller-runs", threads = 1, queueCapacity = 1, WhenFull.RunOnCaller)
+    pool.shutdown()
+    val task = pool.submit(() => 1)
+    an[java.util.concurrent.CancellationException] should be thrownBy task.get(2, TimeUnit.SECONDS)
+  }
+
+  it should "come back cancelled from a wait-for-room pool" in {
+    val pool = DaemonExecutors.singleThreadExecutor("shut-wait-for-room", queueCapacity = 1)
+    pool.shutdown()
+    val task = pool.submit(() => 1)
+    an[java.util.concurrent.CancellationException] should be thrownBy task.get(2, TimeUnit.SECONDS)
+  }
+
+  it should "come back cancelled from a virtual-thread EC" in {
+    val pool = DaemonExecutors.virtualThreadEC("shut-virtual")
+    pool.shutdown()
+    val task = pool.submit(() => 1)
+    an[java.util.concurrent.CancellationException] should be thrownBy task.get(2, TimeUnit.SECONDS)
+  }
+
+  it should "release an invokeAll caller rather than leave it waiting forever" in {
+    val pool = DaemonExecutors.boundedPool("shut-invoke-all", threads = 1, queueCapacity = 1, WhenFull.RunOnCaller)
+    pool.shutdown()
+    val tasks = java.util.List.of[java.util.concurrent.Callable[Int]](() => 1, () => 2)
+    val done  = new CountDownLatch(1)
+    val caller = new Thread(() => { pool.invokeAll(tasks); done.countDown() })
+    caller.setDaemon(true)
+    caller.start()
+    try done.await(2, TimeUnit.SECONDS) shouldBe true finally caller.interrupt()
+  }
+
   "boundedEC" should "cap concurrency for a single EC" in {
     val peak = ExecutorProbes.peakConcurrency(10, IndexedSeq(DaemonExecutors.boundedEC("bounded", 3)))
     peak should be <= 3

@@ -27,6 +27,19 @@ class ManagedResourcesSpec extends AnyFlatSpec with Matchers {
     managed.unterminated shouldBe empty
   }
 
+  // `shutdownNow` hands back the tasks it pulled off the queue unrun; dropping that list left each
+  // one's `Future` forever incomplete, and a thread waiting on it (an `invokeAll`) waiting forever.
+  it should "cancel the tasks a closed executor never ran, releasing whoever waits on them" in {
+    val managed = new ManagedResources
+    val pool    = managed.executor("queued")(DaemonExecutors.boundedPool("managed-queued", threads = 1, queueCapacity = 4, WhenFull.RunOnCaller))
+    val running = new java.util.concurrent.CountDownLatch(1)
+    pool.execute(() => { running.countDown(); try Thread.sleep(60_000) catch { case _: InterruptedException => () } })
+    running.await(5, java.util.concurrent.TimeUnit.SECONDS) shouldBe true
+    val queued = pool.submit(() => 1)
+    managed.closeAll()
+    queued.isCancelled shouldBe true
+  }
+
   // The pod's stop budget is fixed (web: 30 s grace less a 15 s preStop sleep), so the grace is one
   // budget for the whole stop, not one per pool: N pools whose tasks ignore their interrupt used to
   // hold the stop N x grace, past the kubelet's SIGKILL and before Mongo was ever closed.
