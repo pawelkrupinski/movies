@@ -649,6 +649,33 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     projector.stop()
   }
 
+  // The REMOVAL half of the same blind spot, which no sweep heals: a film deleted while the boot reads ran is held,
+  // read again once they finish, found absent, and retired — its card and screenings leave the read model.
+  it should "retire a film the stream deleted while they ran, once they finish" in {
+    val record  = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+      Multikino -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00")))))
+    val deleted = new java.util.concurrent.atomic.AtomicBoolean(false)
+    lazy val repository: InMemoryMovieRepository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+        slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer) {
+      override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): tools.ScanOutcome = {
+        val complete = super.foreachRecordWithSlots(f)
+        if (deleted.compareAndSet(false, true)) repository.delete("Foo", Some(2024))
+        complete
+      }
+    }
+    val rm = new InMemoryReadModelRepository()
+    repository.upsert("Foo", Some(2024), record)
+    new ReadModelProjector(repository, rm, rm, clock = specClock).onMovieUpsert(repository.findAll().head) // the last process's card
+    rm.findAllScreenings() should not be empty
+    val projector = new ReadModelProjector(repository, rm, rm, scheduler = new CapturingScheduler, clock = specClock)
+    projector.prepare()
+
+    deleted.get shouldBe true
+    rm.findAllScreenings() shouldBe empty
+    rm.findAllMovies() shouldBe empty
+    projector.stop()
+  }
+
   // Every heal is a row the change-stream path failed to write, and on 2026-09-22 they ran
   // ~26 a day for days (a TMDB re-try making rows briefly unready) with nothing but a WARN line
   // to show for it. The count is what an alert can watch: each pass meters the rows it WROTE
