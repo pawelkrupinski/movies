@@ -56,7 +56,7 @@ class KinoWarsClient(http: HttpFetch, override val cinema: Cinema = KinoWars) ex
    *  page. None on a transient fetch failure so the task stays stale and retries;
    *  a durable 404/410 escapes (see [[DetailFetchOutcome]]). */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(html => parseDetail(Jsoup.parse(html, BaseUrl)))
+    DetailFetchOutcome.page(http, ref).map(html => parseDetail(Jsoup.parse(html, BaseUrl)))
 
   // The first page's failure propagates (a red scrape, never a white "0 films");
   // a later page failing does too — a half-read programme is not a scrape result.

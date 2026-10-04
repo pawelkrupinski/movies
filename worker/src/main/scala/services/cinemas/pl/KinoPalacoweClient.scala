@@ -165,7 +165,7 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
    *  film). An empty `FilmDetail` merges as a no-op, so keeping it costs nothing
    *  and stamps the film back onto the normal refresh window. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map { html =>
+    DetailFetchOutcome.page(http, ref).map { html =>
       // A page with no parseable meta block still LOADED, so it is an empty
       // detail rather than a failure — see the note above.
       parseFilmMeta(html).fold(FilmDetail()) { meta =>

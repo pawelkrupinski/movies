@@ -110,7 +110,7 @@ class RegalClient(
    *  durable 404/410 escapes so a film that is gone for good gets stamped
    *  instead of retried every tick. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(RegalParser.parseDetail)
+    DetailFetchOutcome.page(http, ref).map(RegalParser.parseDetail)
 
   /** The days to scrape, read off the batch's own index response rather than
    *  guessed as a fixed grid — one cheap (and batch-shared) call names precisely

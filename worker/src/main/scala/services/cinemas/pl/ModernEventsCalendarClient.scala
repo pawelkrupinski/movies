@@ -94,7 +94,7 @@ class ModernEventsCalendarClient(
   }
 
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(parseDetail)
+    DetailFetchOutcome.page(http, ref).map(parseDetail)
 }
 
 object ModernEventsCalendarClient {

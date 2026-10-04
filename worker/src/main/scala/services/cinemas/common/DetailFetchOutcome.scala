@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import tools.{AbsentReason, ReadOutcome}
+import tools.{AbsentReason, HttpFetch, HttpRead, ReadOutcome}
 
 import scala.util.{Failure, Success, Try}
 
@@ -55,6 +55,12 @@ object DetailFetchOutcome {
     case Failure(failure) if notFoundCode(failure).isDefined => throw failure
     case Failure(_)     => None
   }
+
+  /** A film's detail page read for [[DetailEnricher.fetchFilmDetail]]: `None` on a
+   *  transient failure (the task stays stale and retries), a durable 404/410
+   *  escaping so the film is stamped instead of retried every tick. A page that
+   *  loaded is a detail even when it parses to nothing — stamped, not retried. */
+  def page(http: HttpFetch, url: String): Option[String] = transientToNone(HttpRead.page(http, url))
 
   private def notFoundCode(failure: Throwable): Option[Int] = ReadOutcome.classify(failure) match {
     case Left(notFound: AbsentReason.NotFound) => Some(notFound.code)

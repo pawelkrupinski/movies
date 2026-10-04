@@ -60,7 +60,7 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None, ti
    *  after its run must be stamped, not retried every minute forever — see
    *  [[DetailFetchOutcome]]. */
   def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(HttpRead.page(detailFetch, ref)).map { html =>
+    DetailFetchOutcome.page(detailFetch, ref).map { html =>
       val detail = CinemaCityClient.parseDetails(html)
       FilmDetail(
         synopsis   = detail.synopsis,

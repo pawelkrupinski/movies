@@ -80,7 +80,7 @@ class KinomuzeumClient(http: HttpFetch, today: => LocalDate
    *  recording an empty result as fresh; a 404/410 escapes so a withdrawn event
    *  page is stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map { html =>
+    DetailFetchOutcome.page(http, ref).map { html =>
       val detail = KinomuzeumClient.parseDetail(html)
       FilmDetail(
         synopsis       = detail.synopsis,

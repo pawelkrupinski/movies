@@ -82,7 +82,7 @@ class KinoParadoxClient(http: HttpFetch, override val cinema: Cinema) extends Ci
    *  film). An empty `FilmDetail` merges as a no-op, so keeping it costs nothing
    *  and stamps the film back onto the normal refresh window. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(parseDetail)
+    DetailFetchOutcome.page(http, ref).map(parseDetail)
 }
 
 object KinoParadoxClient {

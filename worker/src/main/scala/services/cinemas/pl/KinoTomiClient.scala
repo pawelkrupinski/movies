@@ -49,10 +49,9 @@ class KinoTomiClient(http: HttpFetch, override val cinema: Cinema = KinoTomi) ex
 
   override val detailGroup: String = "kino-tomi"
 
-  /** A durable 404/410 escapes (see [[DetailFetchOutcome]]); a loaded page is a
-   *  detail even when it parses to nothing, so it is stamped, not retried. */
+  /** See [[DetailFetchOutcome.page]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(parseDetail)
+    DetailFetchOutcome.page(http, ref).map(parseDetail)
 }
 
 object KinoTomiClient {

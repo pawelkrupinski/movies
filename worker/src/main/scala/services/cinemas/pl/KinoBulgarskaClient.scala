@@ -75,7 +75,7 @@ class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate) extends CinemaSc
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map(html => FilmDetail(trailerUrl = parseTrailer(html)))
+    DetailFetchOutcome.page(http, ref).map(html => FilmDetail(trailerUrl = parseTrailer(html)))
 
   /** Trailer URL parsed from a Bulgarska film page. Returns the canonical
    *  `youtube.com/watch?v=ID` form when the iframe holds a YouTube video;

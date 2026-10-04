@@ -125,7 +125,7 @@ class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(HttpRead.page(http, ref)).map { html =>
+    DetailFetchOutcome.page(http, ref).map { html =>
       val m = parseDetail(html)
       FilmDetail(
         synopsis       = m.synopsis,
