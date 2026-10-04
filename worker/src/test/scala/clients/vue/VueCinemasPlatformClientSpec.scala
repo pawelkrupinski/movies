@@ -37,6 +37,14 @@ class VueCinemasPlatformClientSpec extends AnyFlatSpec with Matchers with Option
     films.map(_.cinema).toSet shouldBe Set(VueCinemasIslington)
   }
 
+  it should "drop an untitled film rather than fail the venue's whole listing" in {
+    // One malformed entry is unshowable; the other 36 films are not.
+    val result   = (play.api.libs.json.Json.parse(fixture) \ "result").as[Seq[play.api.libs.json.JsObject]]
+    val untitled = play.api.libs.json.Json.obj("result" -> ((result.head - "filmTitle") +: result.tail))
+    VueCinemasPlatformParser.parse(untitled.toString, VueCinemasIslington, MyVue).map(_.movie.title) shouldBe
+      films.tail.map(_.movie.title)
+  }
+
   it should "carry a film's title, runtime, director, cast, poster, synopsis and page" in {
     val odyssey = films.find(_.movie.title == "The Odyssey").value
     odyssey.movie.runtimeMinutes.value shouldBe 173

@@ -25,11 +25,15 @@ object VueCinemasPlatformParser {
   def parse(json: String, cinema: Cinema, baseUrl: String): Seq[CinemaMovie] = {
     val root = baseUrl.stripSuffix("/")
     (Json.parse(json) \ "result").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-      .map(parseFilm(_, cinema, root))
+      .flatMap(parseFilm(_, cinema, root))
   }
 
-  private def parseFilm(film: JsValue, cinema: Cinema, root: String): CinemaMovie = {
-    val title    = (film \ "filmTitle").as[String]
+  /** One film, or `None` for an entry with no title: unshowable, and no reason to
+   *  fail the venue's other films with it. */
+  private def parseFilm(film: JsValue, cinema: Cinema, root: String): Option[CinemaMovie] =
+    (film \ "filmTitle").asOpt[String].map(_.trim).filter(_.nonEmpty).map(titled(film, _, cinema, root))
+
+  private def titled(film: JsValue, title: String, cinema: Cinema, root: String): CinemaMovie = {
     val sessions = (film \ "showingGroups").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
       .flatMap(g => (g \ "sessions").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty))
     CinemaMovie(
