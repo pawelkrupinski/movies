@@ -1932,6 +1932,211 @@
           }
         }
       ]
+    },
+    {
+      "id": 35,
+      "type": "row",
+      "title": "Heap dumps and synthetic probes",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 77
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 36,
+      "type": "timeseries",
+      "title": "Heap dumps kept, per app-country (bytes)",
+      "description": "kinowo_heapdumps_bytes / kinowo_heapdumps_files, written by heap-dumps.sh on k3s-worker-1 for /var/lib/kinowo/heapdumps/<app>-<country>/, against kinowo_heapdumps_budget_bytes (the total cap the pruner holds them to). A step up is a JVM that died with a dump (alert: HeapDumpWritten); a total pinned at the budget means the pruner is deleting evidence as fast as it lands.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 78
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_heapdumps_bytes",
+          "legendFormat": "{{dir}} bytes",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "max by (host) (kinowo_heapdumps_budget_bytes)",
+          "legendFormat": "budget ({{host}})",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (host) (kinowo_heapdumps_files)",
+          "legendFormat": "files kept ({{host}})",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 37,
+      "type": "timeseries",
+      "title": "Hours since the newest crash heap dump, per app-country",
+      "description": "time() - kinowo_heapdumps_newest_timestamp_seconds: when a JVM last died WITH a dump (OOM or wedged watchdog; requested dumps are excluded). A line dropping to ~0 is a fresh death -- the same edge HeapDumpWritten fires on. Directories with no dump report 0 and are left out.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 78
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(time() - kinowo_heapdumps_newest_timestamp_seconds) / 3600 and kinowo_heapdumps_newest_timestamp_seconds > 0",
+          "legendFormat": "{{dir}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "type": "timeseries",
+      "title": "Minutes since the heap-dump pruner and the synthetic-probe discovery last succeeded",
+      "description": "kinowo_heapdumps_prune_last_success_timestamp_seconds: the pruner timer on k3s-worker-1 is alive (alert: HeapDumpBudgetStale at 2h) -- while it is stopped a new dump also goes unpublished. kinowo_synthetic_probe_discovery_last_success_timestamp_seconds: the probes last found a live film page for every country (alert at 15 min: ProbeDiscoveryStale); past that the probes are checking stale URLs.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 78
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "m",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "spanNulls": 300000,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(time() - kinowo_heapdumps_prune_last_success_timestamp_seconds) / 60",
+          "legendFormat": "heap-dump prune ({{host}})",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "(time() - kinowo_synthetic_probe_discovery_last_success_timestamp_seconds) / 60",
+          "legendFormat": "probe discovery ({{host}})",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
     }
   ]
 }

@@ -124,22 +124,70 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     // `services.metrics.UserStateWriteMetrics`.
     "kinowo_web_user_state_writes",
     // Whether `userStates` has its unique userId index — `UserStateIndexMetrics`.
-    "kinowo_web_user_state_userid_index_unique"
+    "kinowo_web_user_state_userid_index_unique",
+    // Heap one listing render allocated — `services.metrics.WebRenderMetrics`.
+    "kinowo_web_page_render_allocated_bytes"
   )
 
   /** `kinowo_*` families exported by the FLEET rather than by either application —
-   *  written by a shell script into node_exporter's textfile directory, so no
-   *  registry in this build can enumerate them. Listed here so the reverse guard
-   *  below does not read a perfectly live panel as dangling.
+   *  written by a shell script into node_exporter's textfile directory (the mongodump
+   *  timer, the heap-dump pruner, the synthetic-probe discovery), so no registry in
+   *  this build can enumerate them.
    *
-   *  Both come from `mongodumpScript` / `publishDumpMetrics` in
-   *  nix/modules/roles/mongodb.nix on mongo-1: the backup timer is the only thing that
-   *  knows a dump happened, and a dump that silently stopped is invisible everywhere
-   *  else. */
-  private val FleetExportedFamilies = Seq(
-    "kinowo_mongodump_last_success_timestamp_seconds",
-    "kinowo_mongodump_last_size_bytes"
-  )
+   *  Read from the `# TYPE kinowo_… <type>` header each script echoes, under infra/nix,
+   *  rather than listed: this used to be a hand-written pair of mongodump names, and the
+   *  five heap-dump families and the probe-discovery timestamp — every one of them an
+   *  alert input — were missing from it, charted nowhere, and invisible to both guards. */
+  private lazy val fleetFamilies: Seq[String] =
+    filesUnder(new java.io.File("infra/nix"))(f => f.getName.endsWith(".sh") || f.getName.endsWith(".nix"))
+      .flatMap(f => FleetTypeHeader.findAllMatchIn(RepoFile.read(f.getPath)).map(_.group(1)))
+      .distinct
+      .sorted
+
+  private val FleetTypeHeader = raw"# TYPE (kinowo_[a-z0-9_]+) ".r
+
+  /** Every file under `dir` that `keep` accepts, sorted by path. */
+  private def filesUnder(dir: java.io.File)(keep: java.io.File => Boolean): Seq[java.io.File] = {
+    def walk(d: java.io.File): Seq[java.io.File] =
+      Option(d.listFiles()).getOrElse(Array.empty[java.io.File]).toSeq.flatMap {
+        case sub if sub.isDirectory => walk(sub)
+        case f if keep(f)           => Seq(f)
+        case _                      => Nil
+      }
+    walk(dir).sortBy(_.getPath)
+  }
+
+  /** Every family the worker's main sources name as a literal `.name("kinowo_…")` on a
+   *  metric builder. Interpolated names (`s"${prefix}_audited"`) are not seen, so this is
+   *  a subset of what registers — enough to catch a class `WorkerMetrics` stopped wiring. */
+  private lazy val workerFamiliesNamedInSource: Seq[String] =
+    filesUnder(new java.io.File("worker/src/main/scala"))(_.getName.endsWith(".scala"))
+      .flatMap(f => BuilderName.findAllMatchIn(RepoFile.read(f.getPath)).map(_.group(1)))
+      .map(_.stripSuffix("_total")) // the client strips it too: the registry reports the base name
+      .distinct
+      .sorted
+
+  private val BuilderName = raw"""\.name\("(kinowo_[a-z0-9_]+)"\)""".r
+
+  /** Every alerting and recording rule's PromQL — Prometheus's rule files and Grafana's
+   *  managed alerts — without the comments and annotations that name metrics in prose
+   *  (including the deleted `kinowo_worker_throttled`, kept in a comment as history). */
+  private lazy val allAlertRuleText: String =
+    (RepoFile.listed("infra/nix/files/monitoring/rules")(_.getName.endsWith(".rules")).map(_.getPath) :+ AlertRule.File)
+      .flatMap(path => AlertRule.everyExpression(RepoFile.read(path)))
+      .mkString("\n")
+
+  private lazy val exportedFamilies: Seq[String] = (workerFamilies ++ WebExportedFamilies ++ fleetFamilies).distinct
+
+  /** The `kinowo_*` references in `text` that no exported family accounts for. A query
+   *  spells a family in several forms — `_total` on a counter, `_bucket`/`_sum`/`_count`
+   *  on a histogram, `_created` on either — so match on the BASE family the way
+   *  `chartedIn` does, from the other side. A reference ending in `_` is the literal head of
+   *  a `__name__=~"kinowo_uptime_recent_(failures|…)"` matcher, and stands for the families
+   *  it prefixes. */
+  private def danglingIn(text: String): Seq[String] =
+    MetricReference.findAllMatchIn(text).map(_.group(0)).toSeq.distinct.sorted
+      .filterNot(q => exportedFamilies.exists(f => q == f || q.startsWith(f + "_") || (q.endsWith("_") && f.startsWith(q))))
 
   /** Every `kinowo_worker_*` family the worker registers, base names, straight
    *  from the registry — NOT from the text exposition, which omits a family that
@@ -267,15 +315,9 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
    * orphaned queries.
    */
   "every kinowo_ metric a dashboard queries" should "actually be exported by something" in {
-    val exported = (workerFamilies ++ WebExportedFamilies ++ FleetExportedFamilies).distinct
-    val queried  = MetricReference.findAllMatchIn(allDashboardJson).map(_.group(0)).toSeq.distinct.sorted
+    MetricReference.findFirstIn(allDashboardJson) should not be empty // a broken regex must not pass vacuously
 
-    queried should not be empty // a broken regex must not pass vacuously
-
-    // A dashboard spells a family in several forms: `_total` on a counter,
-    // `_bucket`/`_sum`/`_count` on a histogram, `_created` on either. Match on the
-    // BASE family the way `chartedIn` does, from the other side.
-    val dangling = queried.filterNot(q => exported.exists(f => q == f || q.startsWith(f + "_")))
+    val dangling = danglingIn(allDashboardJson)
 
     withClue(
       s"queried by a panel or template variable but exported by nothing: ${dangling.mkString(", ")}. " +
@@ -284,6 +326,49 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
         "a dashboard that goes blank. Either restore the metric or repoint the query. "
     ) {
       dangling shouldBe empty
+    }
+  }
+
+  /**
+   * The same failure in an ALERT is worse than in a panel: a rule over a metric nothing
+   * exports evaluates to an empty vector, never fires, and reads in review as coverage.
+   * promtool cannot see it — its suites type their own input series — and the three dead
+   * Flux alerts of 2026-09-07 passed theirs for months. The worker deleted its old
+   * pipeline and its shadow run this week; a rule still watching a family either took
+   * with it would be silent here until someone asked Prometheus for a series count.
+   * (`absent(x)` of a dead family is not spared: it fires forever, which is a different
+   * kind of wrong.)
+   */
+  "every kinowo_ metric an alerting rule reads" should "actually be exported by something" in {
+    MetricReference.findFirstIn(allAlertRuleText) should not be empty // a broken read must not pass vacuously
+
+    val dangling = danglingIn(allAlertRuleText)
+
+    withClue(
+      s"read by an alerting rule but exported by nothing: ${dangling.mkString(", ")}. The rule evaluates " +
+        "to an empty vector and can never fire. Restore the metric, repoint the rule, or delete it (and " +
+        "add it to Grafana's deleteRules if it is Grafana-managed — provisioning never deletes). "
+    ) {
+      dangling shouldBe empty
+    }
+  }
+
+  "every fleet-exported metric family" should "be charted too" in {
+    fleetFamilies should contain ("kinowo_mongodump_last_success_timestamp_seconds") // the scan reaches the scripts
+    val orphans = fleetFamilies.filterNot(chartedIn)
+    withClue(s"written by a fleet script and drawn nowhere: ${orphans.mkString(", ")}. kinowo-fleet.json is the fleet's board. ") {
+      orphans shouldBe empty
+    }
+  }
+
+  /** The registry enumeration above is only as good as `WorkerMetrics.singleCountry`'s
+   *  wiring: a metric class it stops constructing drops out of [[workerFamilies]] and is
+   *  then neither required on a panel nor accepted by the reverse guards. */
+  "the worker registry enumeration" should "reach every family the worker's sources name" in {
+    workerFamiliesNamedInSource should not be empty // a broken scan must not pass vacuously
+    val unreached = workerFamiliesNamedInSource.filterNot(workerFamilies.contains)
+    withClue(s"named in worker/src/main but not registered by WorkerMetrics.singleCountry: ${unreached.mkString(", ")}. ") {
+      unreached shouldBe empty
     }
   }
 

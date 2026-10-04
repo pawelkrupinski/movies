@@ -45,4 +45,24 @@ object AlertRule {
       .toSeq
       .find(_.takeWhile(c => !c.isWhitespace) == refId)
       .flatMap("""(?m)^\s*expr:\s*'(.*)'\s*$""".r.findFirstMatchIn(_).map(_.group(1)))
+
+  /** Every `expr:` in a rule file of either kind — Prometheus's `*.rules` (folded `>-` / `|`
+   *  blocks, PromQL `#` comment lines dropped) or this Grafana file (single-quoted inline) —
+   *  as PromQL text, without the annotations and comments around it that name metrics in
+   *  prose. */
+  def everyExpression(ruleFile: String): Seq[String] = {
+    val lines = ruleFile.linesIterator.toVector
+    val Key   = """^(\s*)(?:- )?expr:\s*(.*)$""".r
+    lines.indices.flatMap { at =>
+      lines(at) match {
+        case Key(indent, value) if value.isEmpty || Set(">-", ">", "|", "|-").contains(value.trim) =>
+          Some(lines.drop(at + 1)
+            .takeWhile(l => l.trim.isEmpty || l.takeWhile(_ == ' ').length > indent.length)
+            .filterNot(_.trim.startsWith("#"))
+            .mkString("\n"))
+        case Key(_, value) => Some(value.trim.stripPrefix("'").stripSuffix("'").stripPrefix("\"").stripSuffix("\""))
+        case _             => None
+      }
+    }
+  }
 }
