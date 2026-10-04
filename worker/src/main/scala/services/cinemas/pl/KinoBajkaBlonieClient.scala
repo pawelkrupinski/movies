@@ -48,21 +48,22 @@ class KinoBajkaBlonieClient(
   override def sourceUrl: Option[String] = Some(HomeUrl)
 
   // The two listings propagate their failures (a red scrape, not a white one); a
-  // single film page that fails drops only that film, like every
-  // ParallelDetailFetch client.
+  // single film page or film-dates POST that fails drops only that film (and
+  // marks the listing incomplete) — but every one failing fails the scrape:
+  // they are the only source of showtimes. The two are read as separate rounds
+  // so a dateless announcement (a page with no film id, never POSTed) cannot
+  // stand in for the screening films whose dates all failed.
   def fetch(): Seq[CinemaMovie] = {
     val filmUrls = Seq(FilmsUrl, HomeUrl).map(HttpRead.page(http, _)).flatMap(filmLinks).distinct
-    val byUrl = ListingPages.readMore("kino-blonie", filmUrls, identity[String], timeout = 30.seconds) { url =>
-      Option(filmOf(url)).flatten
-    }.toMap
-    filmUrls.flatMap(byUrl.get).flatten.filter(_.showtimes.nonEmpty).sortBy(_.movie.title)
-  }
-
-  private def filmOf(url: String): Option[CinemaMovie] = {
-    val page = Jsoup.parse(HttpRead.page(http, url), url)
-    filmIdOf(page).flatMap { id =>
+    val filmIds = ListingPages.readEach("kino-blonie", filmUrls, identity[String], timeout = 30.seconds) { url =>
+      val page = Jsoup.parse(HttpRead.page(http, url), url)
+      filmIdOf(page).map(page -> _)
+    }.collect { case (url, Some(film)) => url -> film }.toMap
+    val dated = ListingPages.readEach("kino-blonie-dates", filmIds.keys.toSeq, identity[String], timeout = 30.seconds) { url =>
+      val (page, id) = filmIds(url)
       parseFilm(page, url, showtimesOf(HttpRead.postPage(http, AjaxUrl, datesBody(id, today), FormContentType)), cinema)
-    }
+    }.toMap
+    filmUrls.flatMap(dated.get).flatten.filter(_.showtimes.nonEmpty).sortBy(_.movie.title)
   }
 }
 
@@ -91,9 +92,12 @@ object KinoBajkaBlonieClient {
     Option(page.selectFirst("[data-cinema-film-dates][data-film-id]")).map(_.attr("data-film-id")).filter(_.nonEmpty)
 
   /** Showtimes from the film-dates answer: `{success, data: {html}}` whose html
-   *  holds one `article.film-showtime-day-card` per day. */
+   *  holds one `article.film-showtime-day-card` per day. An answer without
+   *  `data.html` — WordPress's bare `0` for an unknown action, a
+   *  `{"success":false}` — throws: it is a failed read, not a film with no dates. */
   def showtimesOf(json: String): Seq[LocalDateTime] = {
-    val html = (Json.parse(json) \ "data" \ "html").asOpt[String].getOrElse("")
+    val html = (Json.parse(json) \ "data" \ "html").asOpt[String].getOrElse(
+      throw new IllegalStateException(s"film-dates answer carries no data.html: ${json.take(200)}"))
     Jsoup.parse(html).select("article.film-showtime-day-card").asScala.toSeq.flatMap { card =>
       ScraperParse.parseDate(card.select(".film-showtime-day-card__date").text).toSeq.flatMap { d =>
         card.select("span.showtime-pill").asScala.toSeq.flatMap(p => ScraperParse.parseHHmm(p.text.trim)).map(LocalDateTime.of(d, _))

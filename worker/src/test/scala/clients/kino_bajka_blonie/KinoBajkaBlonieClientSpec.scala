@@ -77,4 +77,25 @@ class KinoBajkaBlonieClientSpec extends AnyFlatSpec with Matchers with OptionVal
     val client = new KinoBajkaBlonieClient(new FailingHttpFetch(503), KinoBajkaBlonie, today)
     a[HttpStatusException] should be thrownBy client.fetch()
   }
+
+  // The film pages and their film-dates POST are the ONLY source of showtimes,
+  // so every one of them failing is a broken scrape, not an empty programme —
+  // and an admin-ajax answer without its `data.html` (WordPress's bare "0", a
+  // `{"success":false}`) is a failed read, not a film with no dates.
+  private def withAjax(answer: String) = {
+    val replay = new FakeHttpFetch("kino-bajka-blonie")
+    new tools.HttpFetch {
+      def get(url: String): String = replay.get(url)
+      def post(url: String, body: String, contentType: String): String = answer
+    }
+  }
+
+  it should "fail the scrape when every film-dates POST answers WordPress's bare 0" in {
+    an[IllegalStateException] should be thrownBy new KinoBajkaBlonieClient(withAjax("0"), KinoBajkaBlonie, today).fetch()
+  }
+
+  it should "fail the scrape when every film-dates POST answers success:false" in {
+    an[IllegalStateException] should be thrownBy
+      new KinoBajkaBlonieClient(withAjax("""{"success":false}"""), KinoBajkaBlonie, today).fetch()
+  }
 }

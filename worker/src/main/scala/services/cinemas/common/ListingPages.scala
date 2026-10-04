@@ -27,9 +27,10 @@ object ListingPages {
   /** Each of `keys`' pages read side by side ([[ParallelDetailFetch]], a few at a time), under
    *  [[requireAnyReached]]: the reads that answered, in `keys` order. One that failed or timed
    *  out drops only itself — and makes the listing incomplete — unless every one did. */
-  def readEach[K, T](label: String, keys: Seq[K], urlOf: K => String)(read: String => T): Seq[(K, T)] = {
+  def readEach[K, T](label: String, keys: Seq[K], urlOf: K => String,
+                     timeout: FiniteDuration = PageTimeout)(read: String => T): Seq[(K, T)] = {
     val distinct = keys.distinct
-    val fetched  = ParallelDetailFetch.keyed(label, distinct, PageTimeout)(urlOf)(url => Try(read(url)))
+    val fetched  = ParallelDetailFetch.keyed(label, distinct, timeout)(urlOf)(url => Try(read(url)))
     val attempts = distinct.map(key => key -> fetched.getOrElse(key, Failure(new TimeoutException(s"$label: ${urlOf(key)} timed out"))))
     requireAnyReached(attempts.map(_._2))
     attempts.flatMap { case (key, attempt) => attempt.toOption.map(key -> _) }
