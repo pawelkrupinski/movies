@@ -23,7 +23,10 @@ import services.identity.{IdentityProjectionMetrics, Regroupings, ShadowRelation
  *  - `kinowo_worker_identity_projection_refusals_total{reason}` — projections refused: a family
  *    crossing, an unreadable FilmId map, a shrink past `ProjectionGuard`'s shares, a model not ready,
  *    or a projection that threw (`failed`);
- *  - `kinowo_worker_identity_projection_seconds` — how long the last projection took.
+ *  - `kinowo_worker_identity_projection_seconds` — how long the last projection took;
+ *  - `kinowo_worker_identity_projection_drift_total` — films an hourly projection of the whole corpus changed that the
+ *    scoped projections between (`ProjectionScope`: only the films their changes reach) would have left as they were.
+ *    Zero, always: anything else is a film a scope missed, which the whole projection has just put right.
  *
  * Nothing is seeded: a country not cut over exports no series.
  */
@@ -65,6 +68,12 @@ final class IdentityCutoverMetrics(registry: PrometheusRegistry) {
     .labelNames("country")
     .register(registry)
 
+  private val drift: Counter = Counter.builder()
+    .name("kinowo_worker_identity_projection_drift_total")
+    .help("Films a reconciling whole-corpus identity projection changed that the scoped projections before it would have left; 0 unless a scope missed one.")
+    .labelNames("country")
+    .register(registry)
+
   def forCountry(country: String): IdentityProjectionMetrics = new IdentityProjectionMetrics {
     def projected(filmCount: Int, listingCount: Int, moved: Regroupings, relations: Map[ShadowRelation, Int], took: Double): Unit = {
       films.labelValues(country, "projection").set(filmCount.toDouble)
@@ -75,5 +84,7 @@ final class IdentityCutoverMetrics(registry: PrometheusRegistry) {
       seconds.labelValues(country).set(took)
     }
     def refused(reason: IdentityProjectionMetrics.Refusal): Unit = refusals.labelValues(country, reason.label).inc()
+    // Touched at 0 too, so the series exists from the first reconciliation and a rate over it reads 0, not absent.
+    def drifted(films: Int): Unit = drift.labelValues(country).inc(films.toDouble)
   }
 }

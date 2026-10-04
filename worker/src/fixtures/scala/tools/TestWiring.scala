@@ -206,14 +206,14 @@ trait TestWiring extends WorkerWiring {
       catch { case e: Exception => failed(s"${scraper.cinema.displayName}: $e") }
     }
 
-  /** One identity projection of a cut-over country, then the enrichment it kicked (venue detail pages,
+  /** One identity projection of a cut-over country (of the corpus `whole`, or of what moved), then the enrichment it kicked (venue detail pages,
    *  IMDb-id recovery, ratings) worked to quiescence, as the detail reaper and the TaskWorker would. */
-  def projectIdentity(): services.identity.ProjectionTick = {
+  def projectIdentity(whole: Boolean = false): services.identity.ProjectionTick = {
     val projection = identityProjection
     // Each stage timed: a cut-over replay is this one call, and its log said only
     // how long the whole of it took, not whether the projection or the enrichment after it spent it.
     val scope = country.code
-    val tick  = PhaseTimer.timed(scope, "  identityTick")(projection.tick())
+    val tick  = PhaseTimer.timed(scope, "  identityTick")(projection.tick(whole))
     // The venue pages of the films it wrote, enriched as a cut-over worker's detail reaper does: the
     // model reads them from the slots and re-asks each page the enrichment announces, so the next
     // projection decides with them.

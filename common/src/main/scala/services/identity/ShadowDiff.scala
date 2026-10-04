@@ -17,6 +17,11 @@ import services.resolution.YearWindow
 /** A film today's pipeline made, as the shadow diff names it: its film id and TMDB id. */
 final case class PipelineFilmRef(id: String, tmdbId: Option[Int])
 
+object PipelineFilmRef {
+  /** The order a listing's films are picked in (`PipelineFilms.pick`: the smallest). */
+  given Ordering[PipelineFilmRef] = Ordering.by(r => (r.id, r.tmdbId.getOrElse(0)))
+}
+
 /** How one resolver cluster relates to the pipeline's films, over its listings the pipeline has
  *  placed on a film (a listing still in staging is on none, and is left out):
  *
@@ -59,20 +64,8 @@ object ShadowDiff {
   /** Every cluster of `resolution` with its relation, and every family whose clusters are not
    *  all identical to a pipeline film (or that holds a listing the pipeline has not placed). */
   def of(resolution: Resolution, pipelineOf: Map[ListingKey, PipelineFilmRef]): (Seq[ShadowCluster], Seq[ShadowFamily]) = {
-    val membersOf: Map[PipelineFilmRef, Set[ListingKey]] = pipelineOf.toSeq.groupMap(_._2)(_._1).view.mapValues(_.toSet).toMap
-    val clusters = resolution.decisions.map { d =>
-      val placed = d.members.filter(pipelineOf.contains)
-      val films  = placed.map(pipelineOf).distinct.sortBy(_.id)
-      val relation = films match {
-        case Seq()  => None
-        case Seq(p) =>
-          if (membersOf(p) != placed.toSet) Some(ShadowRelation.Split)
-          else if (p.tmdbId == d.film) Some(ShadowRelation.Identical)
-          else Some(ShadowRelation.Moved)
-        case _ => Some(ShadowRelation.Merged)
-      }
-      ShadowCluster(d, d.members.headOption.flatMap(resolution.familyOf.get).getOrElse(-1), relation, films)
-    }
+    val membersOf = membersOfFilms(pipelineOf)
+    val clusters = resolution.decisions.map(d => cluster(d, d.members.headOption.flatMap(resolution.familyOf.get).getOrElse(-1), pipelineOf, membersOf))
     val families = clusters.groupBy(_.family).toSeq.sortBy(_._1).flatMap { case (family, cs) =>
       val listings = cs.flatMap(_.decision.members)
       val unplaced = listings.filterNot(pipelineOf.contains).sorted
@@ -84,6 +77,32 @@ object ShadowDiff {
         relations = cs.flatMap(_.relation).groupMapReduce(identity)(_ => 1)(_ + _)))
     }
     (clusters, families)
+  }
+
+  /** `decisions` as clusters, each with its relation to the pipeline's films — what the canary counts. Every listing
+   *  `pipelineOf` places on one of the films the decisions' listings are on must be in it: a film's split is read off
+   *  all of its listings. */
+  def clustersOf(decisions: Seq[ResolverDecision], pipelineOf: Map[ListingKey, PipelineFilmRef]): Seq[ShadowCluster] = {
+    val membersOf = membersOfFilms(pipelineOf)
+    decisions.map(cluster(_, -1, pipelineOf, membersOf))
+  }
+
+  private def membersOfFilms(pipelineOf: Map[ListingKey, PipelineFilmRef]): Map[PipelineFilmRef, Set[ListingKey]] =
+    pipelineOf.toSeq.groupMap(_._2)(_._1).view.mapValues(_.toSet).toMap
+
+  private def cluster(d: ResolverDecision, family: Int, pipelineOf: Map[ListingKey, PipelineFilmRef],
+                      membersOf: Map[PipelineFilmRef, Set[ListingKey]]): ShadowCluster = {
+    val placed = d.members.filter(pipelineOf.contains)
+    val films  = placed.map(pipelineOf).distinct.sortBy(_.id)
+    val relation = films match {
+      case Seq()  => None
+      case Seq(p) =>
+        if (membersOf(p) != placed.toSet) Some(ShadowRelation.Split)
+        else if (p.tmdbId == d.film) Some(ShadowRelation.Identical)
+        else Some(ShadowRelation.Moved)
+      case _ => Some(ShadowRelation.Merged)
+    }
+    ShadowCluster(d, family, relation, films)
   }
 
   /** Clusters per relation, every relation present (zero when none) — what the gauge exports. */
@@ -103,19 +122,24 @@ object PipelineFilms {
   def assign[F](listings: Seq[Listing], films: Seq[(F, Seq[(String, String, SourceData)])],
                 normalizer: TitleNormalizer)(using Ordering[F]): Map[ListingKey, F] = {
     val bySlot = films.flatMap { case (f, slots) => slots.map { case (v, k, sd) => (v, k) -> (f, sd) } }.groupMap(_._1)(_._2)
-    listings.flatMap { l =>
-      bySlot.get((l.venue, normalizer.sanitize(l.cleanTitle))).flatMap {
-        case Seq((f, _)) => Some(f)
-        case several =>
-          val year = l.year.orElse(EmbeddedYear.of(l.rawTitle, l.cleanTitle))
-          val fits = several.filter { case (_, sd) =>
-            val slotYear = ScrapeListing.yearOf(sd)
-            (year.isEmpty || slotYear.isEmpty || math.abs(year.get - slotYear.get) <= YearWindow.ProductionToRelease) &&
-              ListingConstraints.venueCreditsApart(l.directors, sd.director, normalizer).isEmpty
-          }
-          (if (fits.nonEmpty) fits else several).map(_._1).minOption
-      }.map(l.key -> _)
-    }.toMap
+    listings.flatMap(l => bySlot.get(slotOf(l, normalizer)).flatMap(pick(l, _, normalizer)).map(l.key -> _)).toMap
+  }
+
+  /** The venue slot `listing` is on: its venue, and the slot key its title folds to. */
+  def slotOf(listing: Listing, normalizer: TitleNormalizer): (String, String) = (listing.venue, normalizer.sanitize(listing.cleanTitle))
+
+  /** The film `listing` is on among those holding a slot at [[slotOf]] it (`held`, never empty): the one film, or of
+   *  several the one whose slot's year and directors the listing's agree with, the smallest first. */
+  def pick[F](listing: Listing, held: Seq[(F, SourceData)], normalizer: TitleNormalizer)(using Ordering[F]): Option[F] = held match {
+    case Seq((f, _)) => Some(f)
+    case several =>
+      val year = listing.year.orElse(EmbeddedYear.of(listing.rawTitle, listing.cleanTitle))
+      val fits = several.filter { case (_, sd) =>
+        val slotYear = ScrapeListing.yearOf(sd)
+        (year.isEmpty || slotYear.isEmpty || math.abs(year.get - slotYear.get) <= YearWindow.ProductionToRelease) &&
+          ListingConstraints.venueCreditsApart(listing.directors, sd.director, normalizer).isEmpty
+      }
+      (if (fits.nonEmpty) fits else several).map(_._1).minOption
   }
 
   /** The venue slots of a stored film row. */
@@ -123,8 +147,6 @@ object PipelineFilms {
     row.record.data.toSeq.collect { case (cs: CinemaShowing, sd) => (cs.cinema.displayName, cs.titleKey, sd) }
 
   /** Each listing's film among the pipeline's stored rows. */
-  def of(listings: Seq[Listing], rows: Seq[StoredMovieRecord], normalizer: TitleNormalizer): Map[ListingKey, PipelineFilmRef] = {
-    given Ordering[PipelineFilmRef] = Ordering.by(r => (r.id, r.tmdbId.getOrElse(0)))
+  def of(listings: Seq[Listing], rows: Seq[StoredMovieRecord], normalizer: TitleNormalizer): Map[ListingKey, PipelineFilmRef] =
     assign(listings, rows.map(r => PipelineFilmRef(r.id.value, r.record.tmdbId) -> slotsOf(r)), normalizer)
-  }
 }

@@ -82,6 +82,8 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       published(p.w).map(_._1).toSet shouldBe venuesOf(p.w)
       p.tick.plan.get.films should not be empty
     }
+    // …and the scoped projections that settled it left nothing for one of the whole corpus to put right.
+    withClue(s"the whole projection after the scoped ones changed ${p.tick.written} and retired ${p.tick.retired}: ")(p.tick.wroteNothing shouldBe true)
 
   private def cutPass(country: Country, label: String, seed: Long, halfFirst: Boolean): Pass = {
     val store = storage(country, label)
@@ -97,12 +99,13 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   }
 
   /** Projections until one writes nothing — the rest production's projection interval reaches as the
-   *  venue pages a projection's enrichment fetched are taken in by the next — and that projection. */
+   *  venue pages a projection's enrichment fetched are taken in by the next — and then one of the whole corpus,
+   *  whose plan is every film: what every claim below reads. A scoped projection plans only what moved. */
   private def settled(w: ArchiveReplayWiring): ProjectionTick = {
     var tick = w.projectIdentity()
     var n    = 1
     while (!tick.wroteNothing && n < 5) { tick = w.projectIdentity(); n += 1 }
-    tick
+    w.identityProjection.tick(whole = true)
   }
 
   /** EVERY boot this spec asserts on — each country's three passes, each in its own database and

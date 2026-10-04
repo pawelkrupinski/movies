@@ -64,7 +64,12 @@ final class IdentityListingIntake(
    *  every five minutes — for the one venue in twelve that re-scrapes between projections. Read whole anyway every
    *  [[IdentityListingIntake.WholeReadEvery]] calls, and whenever a stamp or keyed read could not be completed: a
    *  partial read is not a smaller archive. */
-  def projected(live: Seq[Cinema]): Seq[ProjectedListing] = heldLock.synchronized {
+  def projected(live: Seq[Cinema]): Seq[ProjectedListing] = projectedByVenue(live).flatMap(_._2)
+
+  /** [[projected]] by venue, each venue's listing the SAME object as last time while the venue was not read again — how
+   *  the projection tells a venue that did not move from one that did without comparing their listings
+   *  (`LiveProjectionIndex`). */
+  def projectedByVenue(live: Seq[Cinema]): Seq[(Cinema, Seq[ProjectedListing])] = heldLock.synchronized {
     val wanted  = live.distinct.map(c => c.displayName -> c).toMap
     val written = dirty.synchronized { val names = dirty.toSet; dirty.clear(); names }
     val whole   = calls % IdentityListingIntake.WholeReadEvery == 0
@@ -73,7 +78,7 @@ final class IdentityListingIntake(
       films.map { case (cm, showtimes) => ProjectedListing.of(Listing.of(cinema, cm, normalizer), cm, showtimes) }
     val acceptedNow = heldAccepted.refresh(accepted, wanted, written, whole, project)
     val archivedNow = heldArchived.refresh(archive, wanted.filter { case (name, _) => !acceptedNow.contains(name) }, written, whole, project)
-    live.distinct.sortBy(_.displayName).flatMap(c => acceptedNow.get(c.displayName).orElse(archivedNow.get(c.displayName)).flatten.getOrElse(Nil))
+    live.distinct.sortBy(_.displayName).flatMap(c => acceptedNow.get(c.displayName).orElse(archivedNow.get(c.displayName)).flatten.map(c -> _))
   }
 
   // The projection's held listings, by venue name, one set per archive; venues written since the last read.

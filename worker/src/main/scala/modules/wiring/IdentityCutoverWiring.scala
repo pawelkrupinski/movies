@@ -41,7 +41,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
   // The projection reads the model's resolution.
   lazy val identityProjection: IdentityProjection =
     new IdentityProjection(
-      listings    = () => identityListingIntake.projected(cinemaScrapers.map(_.cinema)),
+      listings    = () => identityListingIntake.projectedByVenue(cinemaScrapers.map(_.cinema)),
       rows        = identityListingIntake.rowsOf,
       resolve     = IdentityProjection.modelled(identityModel, IdentityCutoverWiring.ModelTimeout),
       cache       = movieCache,

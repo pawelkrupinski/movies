@@ -2650,8 +2650,8 @@
     },
     {
       "id": 49,
-      "title": "Identity cutover — regroupings, refusals and projection seconds",
-      "description": "`kinowo_worker_identity_regroupings_total`: per projection, previous films merged into another, split over two or more, listings moved to another film id, fresh ids, retired ids. On an unchanged listing set merge/split/move stay at 0 (P2) — §10's churn acceptance for a cut-over country; fresh/retire follow the venues' programmes. `kinowo_worker_identity_projection_refusals_total`: projections refused (crossing, unreadablemap, shrink past ProjectionGuard's 2% of cards / 0.5% of showtimes, notready: the model not taken up, failed: the projection threw) — the stored films kept serving. `kinowo_worker_identity_projection_seconds`: the last projection's duration.",
+      "title": "Identity cutover — regroupings, refusals, drift and projection seconds",
+      "description": "`kinowo_worker_identity_regroupings_total`: per projection, previous films merged into another, split over two or more, listings moved to another film id, fresh ids, retired ids. On an unchanged listing set merge/split/move stay at 0 (P2) — §10's churn acceptance for a cut-over country; fresh/retire follow the venues' programmes. `kinowo_worker_identity_projection_refusals_total`: projections refused (crossing, unreadablemap, shrink past ProjectionGuard's 2% of cards / 0.5% of showtimes, notready: the model not taken up, failed: the projection threw) — the stored films kept serving. `kinowo_worker_identity_projection_seconds`: the last projection's duration — a scoped projection drafts only the films its changes reach (ProjectionScope), one of the whole corpus runs hourly. `kinowo_worker_identity_projection_drift_total`: films that hourly whole projection changed which the scoped ones before it would have left; 0, always — anything else is a film a scope missed, put right by the whole projection that counted it, and named in its log line (`identity projection drift`).",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -2714,6 +2714,15 @@
           },
           "expr": "max by (country) (kinowo_worker_identity_projection_seconds{country=~\"$country\"})",
           "legendFormat": "{{country}} projection s"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country) (increase(kinowo_worker_identity_projection_drift_total{country=~\"$country\"}[1h]))",
+          "legendFormat": "{{country}} drift /h"
         }
       ]
     },

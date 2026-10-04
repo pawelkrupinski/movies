@@ -34,6 +34,8 @@ final class CountingScreeningsRepository(underlying: ScreeningsRepository) exten
   val batchReadCalls   = new AtomicInteger(0)
   /** Whole-collection reads — what a scan must NEVER issue. */
   val findAllCalls     = new AtomicInteger(0)
+  /** Whole-FILM reads — every screening of one film: what a write of the film whole issues, a patch of it must not. */
+  val filmReadCalls    = new AtomicInteger(0)
   /** Every write of any shape that reached the store. */
   val writes           = new AtomicInteger(0)
   private def write[A](body: => A): A = { writes.incrementAndGet(); body }
@@ -44,8 +46,10 @@ final class CountingScreeningsRepository(underlying: ScreeningsRepository) exten
     write(underlying.replaceFilm(filmId, slots, stored))
   }
 
-  def findListedForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, ListedShowtimes]] =
+  def findListedForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, ListedShowtimes]] = {
+    filmReadCalls.incrementAndGet()
     underlying.findListedForFilmChecked(filmId)
+  }
   override def findForFilmsChecked(filmIds: Set[String]): tools.ReadOutcome[Map[String, Map[String, Seq[Showtime]]]] = {
     batchReadCalls.incrementAndGet()
     underlying.findForFilmsChecked(filmIds)
@@ -69,7 +73,7 @@ final class CountingScreeningsRepository(underlying: ScreeningsRepository) exten
     underlying.watchApplied(onChange, demand)
   override def close(): Unit = underlying.close()
 
-  def reset(): Unit = { replaceFilmCalls.set(0); batchReadCalls.set(0); findAllCalls.set(0); writes.set(0) }
+  def reset(): Unit = { replaceFilmCalls.set(0); batchReadCalls.set(0); findAllCalls.set(0); filmReadCalls.set(0); writes.set(0) }
 }
 
 /** The slots twin of [[CountingScreeningsRepository]]. */
@@ -77,11 +81,14 @@ final class CountingSlotsRepository(underlying: SlotsRepository) extends SlotsRe
   val replaceFilmCalls = new AtomicInteger(0)
   val batchReadCalls   = new AtomicInteger(0)
   val findAllCalls     = new AtomicInteger(0)
+  val filmReadCalls    = new AtomicInteger(0)
   val writes           = new AtomicInteger(0)
   private def write[A](body: => A): A = { writes.incrementAndGet(); body }
 
-  def findForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, SourceData]] =
+  def findForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, SourceData]] = {
+    filmReadCalls.incrementAndGet()
     underlying.findForFilmChecked(filmId)
+  }
   override def findForFilmsChecked(filmIds: Set[String]): tools.ReadOutcome[Map[String, Map[String, SourceData]]] = {
     batchReadCalls.incrementAndGet()
     underlying.findForFilmsChecked(filmIds)
@@ -108,5 +115,5 @@ final class CountingSlotsRepository(underlying: SlotsRepository) extends SlotsRe
     underlying.watchApplied(onChange, demand)
   override def close(): Unit                            = underlying.close()
 
-  def reset(): Unit = { replaceFilmCalls.set(0); batchReadCalls.set(0); findAllCalls.set(0); writes.set(0) }
+  def reset(): Unit = { replaceFilmCalls.set(0); batchReadCalls.set(0); findAllCalls.set(0); filmReadCalls.set(0); writes.set(0) }
 }

@@ -2193,6 +2193,52 @@ it, rollback, per-country blockers, the phase-6 deletion list) is
 Hardcoding added: none in the identity decision. `ProjectionGuard`'s 2% / 0.5% are §11's rollout
 thresholds, its grace the scrape guards' own constant.
 
+### 18.3 The scoped projection (2026-10-04)
+
+Every projection above re-derived the whole corpus — on worker-us ~10 CPU-s each five minutes (JFR, 2026-10-04:
+draft ~3.4 s, the writes' whole-film `screenings`/`movie_slots` reads ~2.2 s, their change-stream echo ~1.4 s) for the
+~200 venue rows and ~40 films a tick moves. A projection now drafts, compares and writes only the films its changes
+reach, and the result is the whole projection's, film for film:
+
+- **What moved** comes from `LiveProjectionIndex`, the index (`ProjectionIndex`: listings by key, each listing's previous
+  film, each film's listings, the clusters) kept between projections and moved only where its inputs moved — a venue
+  whose listing is another object (the intake keeps an unscraped venue's), a listing taken up or let go by the model, a
+  decision that is another object (the model keeps an unmoved family's), a stored film changed by another writer. What
+  it moved is the tick's change set; nothing is diffed whole. Its own writes are applied to it, so a film it wrote is
+  moved next time only if another writer moved it — or if the store, as written, does not put a written listing on the
+  film it was written into (below).
+- **The scope** (`ProjectionScope.close`) closes the changes over everything one film's draft reads of another's: a
+  listing's previous film, a film's listings, a cluster's listings (a cluster is every listing of its TMDB film), and —
+  after titling — every stored film under one of the scope's plain title keys, new, old or freed by a film another
+  writer deleted (the older film keeps `title|year`). Plus, every tick, the stored films a whole projection would
+  change whatever moved: one no listing is on, one whose TMDB details are missing.
+- **The draft** (`IdentityProjectionPlan.draftOf`) is the same code over the scope; `FilmShapes` keeps each film as last
+  drafted, so a film drafted again with the same listings rebuilds only its venues whose listings, previous films or
+  those films' slots there moved.
+- **The writes**: a kept film under its key is written as a patch of what moved (`MovieCache.patchProjected` →
+  `updateIfPresent`), never read back whole. The hourly projection of the whole corpus writes changed films whole.
+- **The reconciliation**: every 12th projection is of the whole corpus (`IdentityProjection.ScopedBetweenWhole`), and
+  counts every film it changed that the scope its changes gave it would have missed:
+  `kinowo_worker_identity_projection_drift_total{country}`, 0 always; anything else is named in the log
+  (`identity projection drift`).
+
+**Proof.** `ScopedProjectionEquivalenceSpec`: two worlds take the same scrapes, decisions, TMDB details and outside writes
+(ratings, a network slot, `detailPending`, a venue slot's year and director, TMDB's title, TMDB's details deleted, a stray
+film, a film deleted), restarts and shrink-guard refusals; one projects scopes, the other the whole corpus every tick.
+After every tick their stores (every field, every showtime), FilmId maps, announcements, refusals and reported metrics
+are equal, the kept index equals the index built afresh, and the whole world's drift is 0 — 6,000 runs of 24 ticks.
+Every coupling and change rule was dropped in turn (mutation runs); each drop fails the spec, and the couplings it could
+not fail were shown redundant and removed. `ProjectedPatchCheck` (in memory and on Mongo): a patch stores exactly what
+the whole write stores, and reads neither the film's screenings nor its slots.
+
+**Found on the way, both in the whole projection too.** `MovieRecord.prioritized` read equal-priority slots in the
+slot map's insertion order, so a film's year — and key — could flip with how its record was assembled (fixed: name
+order; 0 stored films re-keyed). And a slot built for a listing carries detail (a director) forward from its prior,
+which is part of the slot's own `ListingKey`: the next projection no longer finds the listing on the film it was
+written into, and its cluster gets a fresh film — every tick. Prod's steady `retired-by-overlap` removals are this; it
+is still to be fixed (the slot's listing key must not read carried fields), and the scoped projection reproduces it
+exactly rather than hide it.
+
 ---
 
 ## 19. The shadow run's paced live lookup fill

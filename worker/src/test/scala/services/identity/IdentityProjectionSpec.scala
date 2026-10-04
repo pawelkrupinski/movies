@@ -2,12 +2,11 @@ package services.identity
 
 import tools.SpecTimeouts
 
-import models.{Cinema, CinemaMovie, CinemaShowing, Country, Helios, KinoApollo, KinoMuza, Movie, Multikino, Rialto, Showtime}
+import models.{Cinema, CinemaMovie, CinemaShowing, Helios, KinoApollo, KinoMuza, Movie, Multikino, Rialto, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{CacheKey, CaffeineMovieCache, CinemaSlotBuilder, InMemoryMovieRepository, InMemoryScrapeGuardLedger,
-  ScreeningTokens, SingleCountryNormalizer, StringPool}
-import services.scrapes.{InMemoryScrapeArchiveRepository, ScrapeAttempt}
+import services.movies.{CacheKey, InMemoryMovieRepository, SingleCountryNormalizer}
+import services.scrapes.InMemoryScrapeArchiveRepository
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 
@@ -33,49 +32,23 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     Rialto     -> Seq(film(Rialto, "Obcy", Some(1979), 6)),
     KinoMuza   -> Seq(film(KinoMuza, "Diuna", Some(2021), 7, 8)))
 
-  private final class World(val repository: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = normalizer),
-                            venues: Seq[Cinema] = programme.keys.toSeq,
-                            listingsRead: () => Unit = () => (), announceFails: Boolean = false,
-                            val archive: InMemoryScrapeArchiveRepository = new InMemoryScrapeArchiveRepository,
-                            val accepted: InMemoryScrapeArchiveRepository = new InMemoryScrapeArchiveRepository,
-                            val filmIds: InMemoryFilmIdCounterStore = new InMemoryFilmIdCounterStore,
-                            val fingerprints: VenueSlotFingerprints = new InMemoryVenueSlotFingerprints,
-                            resolveOverride: Option[Seq[Listing] => Option[IdentityProjection.Resolved]] = None) {
-    /** This world's worker restarted: what Mongo holds kept, everything in memory (the cache, the intake's held
-     *  listings, the projection's slot memo) built afresh. */
-    def restarted: World = new World(repository, venues, listingsRead, announceFails, archive, accepted, filmIds, fingerprints, resolveOverride)
-    val refusals   = scala.collection.mutable.ListBuffer.empty[IdentityProjectionMetrics.Refusal]
-    val cache      = new CaffeineMovieCache(repository, normalizer = normalizer, clock = _root_.tools.SpecClock.Pinned)
-    val intake     = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
-      services.movies.ScrapeLandingMetrics.noop)
-    val announced  = scala.collection.mutable.ListBuffer.empty[CacheKey]
-    /** Every venue whose rows the projection read back, showtimes and all, to build its slots. */
-    val rowsRead   = scala.collection.mutable.ListBuffer.empty[Cinema]
-    val projection = new IdentityProjection(
-      listings = () => { listingsRead(); intake.projected(venues) }, rows = venues => { rowsRead ++= venues; intake.rowsOf(venues) },
-      resolve = resolveOverride.getOrElse(IdentityProjection.resolving(() => NoFilmLookups, new InMemoryPinStore, normalizer, IdentityCalibration.resolver)), cache = cache,
-      filmIds = filmIds, details = (_, _) => None, announce = (k, _) => { if (announceFails) throw new IllegalStateException(s"bus down for ${k.cleanTitle}"); announced += k; () }, normalizer = normalizer,
-      slots = new CinemaSlotBuilder(Country.Poland.language, new StringPool),
-      tokens = ScreeningTokens.of(Country.Poland), metrics = new IdentityProjectionMetrics {
-        def projected(films: Int, listings: Int, regroupings: Regroupings, canary: Map[ShadowRelation, Int], seconds: Double): Unit = ()
-        def refused(reason: IdentityProjectionMetrics.Refusal): Unit = { refusals += reason; () }
-      }, clock = clock, fingerprints = fingerprints)
-
-    def scrape(listings: Map[Cinema, Seq[CinemaMovie]]): Unit = listings.foreach { case (c, fs) =>
-      archive.record(ScrapeAttempt(c, Cinema.cityOf(c), clock.instant(), listingComplete = true, fs))
-      intake.recordCinemaScrape(c, fs)
-    }
-    /** Every (venue, showtime) the stored films hold, and each listing's film id. */
-    def showtimes: Set[(String, LocalDateTime)] = repository.findAll().flatMap(_.record.data.collect {
-      case (CinemaShowing(c, _), sd) => sd.showtimes.map(s => c.displayName -> s.dateTime)
-    }.flatten).toSet
-  }
+  private def World(repository: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = normalizer),
+                    venues: Seq[Cinema] = programme.keys.toSeq, listingsRead: () => Unit = () => (),
+                    announceFails: Boolean = false, whole: Boolean = false,
+                    archive: InMemoryScrapeArchiveRepository = new InMemoryScrapeArchiveRepository,
+                    accepted: InMemoryScrapeArchiveRepository = new InMemoryScrapeArchiveRepository,
+                    filmIds: InMemoryFilmIdCounterStore = new InMemoryFilmIdCounterStore,
+                    fingerprints: VenueSlotFingerprints = new InMemoryVenueSlotFingerprints,
+                    resolveOverride: Option[Seq[Listing] => Option[IdentityProjection.Resolved]] = None): ProjectionWorld =
+    new ProjectionWorld(repository, venues, clock, resolve = resolveOverride.fold(ProjectionWorld.unmatched)(resolve => read => resolve(read())),
+      listingsRead = listingsRead, announceFails = announceFails, archive = archive, accepted = accepted, filmIds = filmIds,
+      fingerprints = fingerprints, scopedBetweenWhole = if (whole) 0 else IdentityProjection.ScopedBetweenWhole)
 
   private val allShowtimes: Set[(String, LocalDateTime)] =
     programme.values.flatten.flatMap(cm => cm.showtimes.map(s => cm.cinema.displayName -> s.dateTime)).toSet
 
   "A cut-over country's first projection" should "store one film per title, every showtime on it, and announce each" in {
-    val w = new World
+    val w = World()
     w.scrape(programme)
     val tick = w.projection.tick()
     tick.refused shouldBe None
@@ -89,8 +62,8 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
 
   "A projection's failures" should "be logged WITH their stacks, the announce naming its film, and a failed projection counted" in {
     val name   = classOf[IdentityProjection].getName
-    val warned = (body: World => Unit) => {
-      val w = new World(announceFails = true)
+    val warned = (body: ProjectionWorld => Unit) => {
+      val w = World(announceFails = true)
       w.scrape(programme)
       tools.LogCapture.thisThread(name)(body(w)).filter(_.getLevel == ch.qos.logback.classic.Level.WARN)
     }
@@ -99,7 +72,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     announces.map(e => Option(e.getThrowableProxy).map(_.getMessage)).flatten.sorted shouldBe
       Seq("bus down for Diuna", "bus down for Lalka", "bus down for Obcy")
 
-    val down   = new World(listingsRead = () => throw new IllegalStateException("archive down"))
+    val down   = World(listingsRead = () => throw new IllegalStateException("archive down"))
     val failed = tools.LogCapture.thisThread(name)(down.projection.tickQuietly()).filter(_.getLevel == ch.qos.logback.classic.Level.WARN)
     failed.map(e => Option(e.getThrowableProxy).map(_.getMessage)) shouldBe Seq(Some("archive down"))
     down.refusals.toSeq shouldBe Seq(IdentityProjectionMetrics.Refusal.Failed) // and counted: the stored films keep serving
@@ -108,12 +81,12 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   // The two refusals a resolve itself can call for: a model not ready yet (a boot before its first build) and a
   // constraint edge crossing families. Either leaves every stored film serving, writes nothing and is counted.
   it should "refuse, writing nothing, while the identity model is not ready or a constraint crosses families" in {
-    val first = new World
+    val first = World()
     first.scrape(programme)
     first.projection.tick().refused shouldBe None
     val stored = first.repository.findAll().map(r => r.id -> r.record).toMap
 
-    val notReady = new World(first.repository, archive = first.archive, accepted = first.accepted, filmIds = first.filmIds,
+    val notReady = World(first.repository, archive = first.archive, accepted = first.accepted, filmIds = first.filmIds,
       resolveOverride = Some(_ => None))
     notReady.scrape(programme - KinoMuza)
     val waiting = notReady.projection.tick()
@@ -121,7 +94,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     waiting.written shouldBe 0
     notReady.refusals.toSeq shouldBe Seq(IdentityProjectionMetrics.Refusal.NotReady)
 
-    val crossing = new World(first.repository, archive = first.archive, accepted = first.accepted, filmIds = first.filmIds,
+    val crossing = World(first.repository, archive = first.archive, accepted = first.accepted, filmIds = first.filmIds,
       resolveOverride = Some(_ => throw new IdentityResolver.FamilyCrossing(2, "2 constraint edges cross a family")))
     crossing.scrape(programme - KinoMuza)
     crossing.projection.tick().refused shouldBe Some("2 constraint edges cross a family")
@@ -140,7 +113,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
       def update(add: Set[Long], remove: Set[Long]): Unit =
         if (down) throw new IllegalStateException("fingerprints down") else inner.update(add, remove)
     }
-    val w = new World(fingerprints = flaky)
+    val w = World(fingerprints = flaky)
     w.scrape(programme)
     w.projection.tick().refused shouldBe None
     w.repository.findAll().map(_.title).sorted shouldBe Seq("Diuna", "Lalka", "Obcy")
@@ -161,7 +134,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
         try { Thread.sleep(50); super.upsert(film, key, e) } finally { inFlight.decrementAndGet(); () }
       }
     }
-    val w = new World(slow)
+    val w = World(slow)
     w.scrape(programme)
     w.projection.tick().written shouldBe 3
     w.repository.findAll().map(_.title).sorted shouldBe Seq("Diuna", "Lalka", "Obcy")
@@ -170,7 +143,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   }
 
   "The films a projection writes side by side" should "be only those no other film holds or takes" in {
-    val w = new World
+    val w = World()
     w.scrape(programme)
     val first   = w.projection.tick().plan.get
     val stored  = w.repository.findAll()
@@ -185,10 +158,11 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   }
 
   "A projection" should "say how long each of its phases took and what it allocated" in {
-    val w = new World
+    val w = World()
     w.scrape(programme)
     val phases = w.projection.tick().phases
-    phases.map(_.name) shouldBe Seq("listings", "snapshot", "resolve", "seed", "draft", "fingerprints", "guard", "details", "finish", "compare", "writes")
+    phases.map(_.name) shouldBe Seq("listings", "snapshot", "resolve", "seed", "index", "draft", "details", "finish", "fingerprints", "guard",
+      "compare", "writes")
     phases.foreach(p => (p.seconds >= 0 && p.allocatedBytes >= 0) shouldBe true)
     phases.map(_.allocatedBytes).sum should be > 0L
   }
@@ -196,9 +170,10 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   // The first projection builds every slot over no stored film, and from then on only what moves is rebuilt. The
   // slots it wrote are the next projection's prior slots, which a slot carries detail forward from: built over
   // them, each comes out as it was written, so they are no reason to build it again — a US tick rebuilt 300–500
-  // slots a second time as "priors moved" for the ~200 whose rows had.
-  "A projection over unchanged listings" should "build no venue slot again, reusing the last projection's" in {
-    val w = new World
+  // slots a second time as "priors moved" for the ~200 whose rows had. These are projections of the whole corpus — a
+  // boot's, an hourly reconciliation's: every film drafted, its slots memoised.
+  "A projection of the whole corpus over unchanged listings" should "build no venue slot again, reusing the last projection's" in {
+    val w = World(whole = true)
     w.scrape(programme)
     val first = w.projection.tick()
     first.slotsReused shouldBe 0
@@ -210,7 +185,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "rebuild only the venue whose listing changed, and write that film with every showtime" in {
-    val w = new World
+    val w = World(whole = true)
     w.scrape(programme)
     val first = w.projection.tick()
     // Another showtime, and a synopsis — a field the slot carries forward from its prior slot.
@@ -232,7 +207,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   // A worker restarts on every deploy, and its memo with it: the first projection after a boot rebuilt every venue
   // slot of the country (a US boot: ~24 s, ~7.3 GB, against ~6 s, ~760 MB a steady tick).
   it should "build no venue slot again after a restart, when nothing moved while the worker was down" in {
-    val w = new World
+    val w = World(whole = true)
     w.scrape(programme)
     val first = w.projection.tick()
     w.projection.tick().slotsBuilt shouldBe 0
@@ -247,7 +222,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "rebuild after a restart only the venue whose listing changed while the worker was down" in {
-    val w = new World
+    val w = World(whole = true)
     w.scrape(programme)
     val first = w.projection.tick()
     w.projection.tick()
@@ -261,7 +236,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "rebuild after a restart a venue whose stored slot moved while the worker was down, though its listing did not" in {
-    val w = new World
+    val w = World(whole = true)
     w.scrape(programme)
     w.projection.tick(); w.projection.tick(); w.projection.tick()
     // Something else wrote the stored film's slot at one venue: what it holds is no longer what the listing builds.
@@ -277,7 +252,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "write in full a film whose stored showtimes went astray, though its slots came from the memo" in {
-    val w = new World
+    val w = World(whole = true)
     w.scrape(programme)
     w.projection.tick(); w.projection.tick()
     // The stored film loses its showtimes behind the projection's back; nothing it is built from moves.
@@ -296,7 +271,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   // scanned N times a tick — quadratic in the venues, and a US release shows at hundreds.
   it should "read a widely shown film's prior slots once a tick, not once per venue" in {
     val venues = Cinema.all.distinct.take(400)
-    val w      = new World(venues = venues)
+    val w      = World(venues = venues)
     w.scrape(venues.map(c => c -> Seq(film(c, "Diuna", Some(2021), 1, 2, 3))).toMap)
     w.projection.tick(); w.projection.tick()
     val tick  = w.projection.tick()
@@ -311,7 +286,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     // As production stores a film: its showtimes in `screenings`, its slots in `movie_slots`, the cache's stripped.
     val split  = new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository),
       slots = Some(new services.movies.InMemorySlotsRepository), normalizer = normalizer)
-    val w      = new World(split, venues = venues)
+    val w      = World(split, venues = venues)
     w.scrape(venues.map(c => c -> Seq(film(c, "Diuna", Some(2021), 1, 2, 3))).toMap)
     w.projection.tick(); w.projection.tick()
     w.scrape(Map(venues.head -> Seq(film(venues.head, "Diuna", Some(2021), 1, 2, 3, 4))))
@@ -326,10 +301,36 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
 
   // A US projection held every listing's showtimes (1.7M, ~560 MB live with their rows) and again in every film's
   // built slots, through the whole tick: 18 back-to-back full GCs a projection, on a heap of 853 MB.
+  "A scoped projection" should "draft no film when nothing moved since the last one wrote" in {
+    val w = World()
+    w.scrape(programme)
+    w.projection.tick().scoped shouldBe false
+    val again = w.projection.tick()
+    again.scoped shouldBe true
+    (again.slotsBuilt, again.slotsReused) shouldBe ((0, 0))
+    again.wroteNothing shouldBe true
+  }
+
+  it should "draft only the film whose listing changed, rebuilding only the venue that moved, and write it with every showtime" in {
+    val w = World()
+    w.scrape(programme)
+    w.projection.tick()
+    // Diuna drafted once over what the first projection stored (the first was over no stored film, so its venues'
+    // prior slots all moved with that projection's writes).
+    w.scrape(Map(Helios -> Seq(film(Helios, "Lalka", Some(2026), 2), film(Helios, "Diuna", Some(2021), 5, 6))))
+    w.projection.tick().written shouldBe 1
+    w.scrape(Map(KinoMuza -> Seq(film(KinoMuza, "Diuna", Some(2021), 7, 8, 9))))
+    val tick = w.projection.tick()
+    tick.scoped shouldBe true
+    (tick.slotsBuilt, tick.slotsReused) shouldBe ((1, 0))   // Kino Muza built; Helios kept as last drafted, not even looked up
+    tick.written shouldBe 1
+    w.showtimes shouldBe allShowtimes + (Helios.displayName -> start.plusHours(6)) + (KinoMuza.displayName -> start.plusHours(9))
+  }
+
   "A projection" should "hold no listing's showtimes, nor any in the films it plans, and read rows only for the venues it builds" in {
     // As production stores a film: its showtimes in `screenings`, its slots in `movie_slots`, the cache's stripped.
-    val w = new World(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository),
-      slots = Some(new services.movies.InMemorySlotsRepository), normalizer = normalizer))
+    val w = World(new InMemoryMovieRepository(screenings = Some(new services.movies.InMemoryScreeningsRepository),
+      slots = Some(new services.movies.InMemorySlotsRepository), normalizer = normalizer), whole = true)
     w.scrape(programme)
     val first = w.projection.tick()
     first.plan.get.films.flatMap(_.record.data.values).flatMap(_.showtimes) shouldBe empty
@@ -345,7 +346,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   }
 
   "A second projection over the same listings" should "write nothing (P2)" in {
-    val w = new World
+    val w = World()
     w.scrape(programme)
     w.projection.tick()
     val before = w.repository.findAll().map(r => (r.id, r.key(normalizer), r.record)).toSet
@@ -356,7 +357,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   }
 
   "A projection that would take a film off the site" should "be refused for the guard's grace, then written" in {
-    val w = new World
+    val w = World()
     w.scrape(programme)
     w.projection.tick()
     // Rialto and Multikino stop listing "Obcy": the film vanishes — a third of the site.
@@ -369,7 +370,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be written at once when the films leaving have no showtime still to come, as they are on no card" in {
-    val w = new World
+    val w = World()
     // "Obcy" screened yesterday (start − 40 h is before the clock) and is listed nowhere now.
     w.scrape(programme.map { case (c, fs) => c -> fs.map(f => if (f.movie.title == "Obcy") film(c, "Obcy", Some(1979), -40) else f) })
     w.projection.tick()
@@ -379,7 +380,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "name the films it would take off the site" in {
-    val w = new World
+    val w = World()
     w.scrape(programme)
     w.projection.tick()
     w.scrape(Map(Rialto -> Seq(film(Rialto, "Diuna", Some(2021), 9)), Multikino -> programme(Multikino).take(1)))

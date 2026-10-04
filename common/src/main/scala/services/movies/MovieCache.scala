@@ -129,6 +129,13 @@ trait MovieCache extends MovieCacheReader {
    *  still refuse a second holder (`WriteOutcome.IdentityHeld`). A write under a new key retitles
    *  the film: its old key leaves the cache with it. */
   private[services] def writeProjected(id: FilmId, key: CacheKey, e: MovieRecord): WriteOutcome
+  /** [[writeProjected]] of a film the projection rewrites under the id, key and TMDB id it is held under, as only what
+   *  differs from `before` — the record this cache holds for it, as the projection read it: the changed fields, venue
+   *  slot rows and screenings (`MovieRepository.updateIfPresent`), never the film whole, so a film at hundreds of
+   *  venues that moved at one is not read back and rewritten whole. Anything else — the row no longer resident as
+   *  `before`, another id, key or TMDB id, a patch that fails, a store without the showtimes and slots split — is
+   *  written whole, by [[writeProjected]]. */
+  private[services] def patchProjected(id: FilmId, key: CacheKey, before: MovieRecord, after: MovieRecord): WriteOutcome
   /** Remove film `id` — one the projection retired — with its side rows, from the store and the cache. */
   private[services] def retireProjected(id: FilmId): WriteOutcome
   private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean
@@ -444,6 +451,22 @@ class CaffeineMovieCache(
         outcome
       }
     }
+
+  private[services] def patchProjected(id: FilmId, key: CacheKey, before: MovieRecord, after: MovieRecord): WriteOutcome = {
+    // Only over the production storage split: a store holding showtimes inline in the record compares slots
+    // showtime-blind, so a patch would not see a slot whose showtimes alone moved. And never a film changing TMDB id:
+    // that write's order against the other films' is the unique index's, which the whole write is ordered by.
+    val patched = repository.hasScreenings && repository.hasSlots && before.tmdbId == after.tmdbId && withTitleLock(key.cleanTitle) {
+      corpusIndex.idOf(key).contains(id) && repository.writeFence.writing(id) {
+        // Resident as the projection read it: what the store holds, so the patch from it is the whole change.
+        (positive.getIfPresent(key) eq before) && {
+          val clean = withoutZeroRatings(after)
+          repository.updateIfPresent(id, key, before, clean) && { store(key, forCache(clean), id); touch(); true }
+        }
+      }
+    }
+    if (patched) WriteOutcome.Written else writeProjected(id, key, after)
+  }
 
   private[services] def retireProjected(id: FilmId): WriteOutcome = {
     val outcome = repository.delete(id)

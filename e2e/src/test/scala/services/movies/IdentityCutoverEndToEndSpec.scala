@@ -23,7 +23,9 @@ class IdentityCutoverEndToEndSpec extends AnyFlatSpec with Matchers {
     // fetched are what the next projection takes in; rest is a projection that writes nothing, and
     // it is the tick every claim below reads.
     val first = w.bootCutover()
-    val tick  = Iterator.continually(w.projectIdentity()).take(4).find(_.wroteNothing).getOrElse(first)
+    Iterator.continually(w.projectIdentity()).take(4).find(_.wroteNothing).getOrElse(first)
+    // One of the whole corpus over the settled store: its plan is every film (a scoped projection's, only what moved).
+    val tick  = w.identityProjection.tick(whole = true)
     tools.WholeReconcile(w.readModelProjector)
     w.webReadModel.reload()
     (w, tick)
@@ -58,12 +60,12 @@ class IdentityCutoverEndToEndSpec extends AnyFlatSpec with Matchers {
     val (w, tick) = booted
     // The first projection's films were enriched since (IMDb ids, ratings, an IMDb year that can move
     // a yearless film's key): the next projection takes that in without regrouping anything...
-    val settled = w.identityProjection.tick()
+    val settled = w.identityProjection.tick(whole = true)
     settled.plan.get.regroupings.isEmpty shouldBe true
     settled.plan.get.canary.getOrElse(services.identity.ShadowRelation.Identical, 0) shouldBe tick.plan.get.films.size
     settled.plan.get.films.map(_.id).toSet shouldBe tick.plan.get.films.map(_.id).toSet
     // ...and the one after it, over nothing new, writes nothing at all.
-    val again = w.identityProjection.tick()
+    val again = w.identityProjection.tick(whole = true)
     withClue(s"${again.written} written, ${again.retired} retired, ${again.plan.map(_.regroupings)}\n") {
       again.wroteNothing shouldBe true
     }
