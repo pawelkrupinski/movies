@@ -148,4 +148,14 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.equivalent(film("Die Unbeugsamen", 2021, "Torsten Körner"), film("Die Unbeugsamen – The Undefeated", 2021, "Torsten Körner")) shouldBe true
     Agreement.equivalent(klondike2022, klondike1932) shouldBe false
   }
+
+  "Two records of one film crediting its director in two transliterations" should "be the same film by title, year and running time" in {
+    // DE "Maria's Lovers" (fixture identity-unmatched): Filmweb's "Andriej Konczałowski", IMDb's "Andrei Konchalovsky"
+    val filmweb = film("Kochankowie Marii", 1984, "Andriej Konczałowski", 109).copy(originalTitle = Some("Maria's Lovers"))
+    val imdb    = film("Maria's Lovers", 1984, "Andrei Konchalovsky", 109)
+    Agreement.equivalent(filmweb, imdb) shouldBe true
+    Agreement.equivalent(filmweb, imdb.copy(runtime = Some(95))) shouldBe false
+    Agreement.equivalent(filmweb, imdb.copy(year = Some(1985))) shouldBe false
+    Agreement.equivalent(film("Klondike", 2022, "Phil Rosen", 100), klondike2022) shouldBe false
+  }
 }

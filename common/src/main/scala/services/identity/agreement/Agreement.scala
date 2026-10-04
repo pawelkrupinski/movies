@@ -213,18 +213,27 @@ object Agreement {
   def sameFilm(a: SourceRecord, b: SourceRecord): Boolean =
     a.crossIds.exists { case (database, id) => b.crossIds.get(database).contains(id) } || equivalent(a.film, b.film)
 
-  /** The same film by its facts, no cross-id linking them: years within one, no clash of Latin-script directors, and a
+  /** The same film by its facts, no cross-id linking them: years within one, no clash of Latin-script directors (one
+   *  respelled in the same year and running time is none), and a
    *  shared title — or, titled in two languages, the same director the same year and a shared word of four letters. */
   def equivalent(a: IdentityMeasures.Film, b: IdentityMeasures.Film): Boolean = {
     val yearsApart = a.year.zip(b.year).exists { case (x, y) => math.abs(x - y) > 1 }
     val (da, db)   = (a.directors.getOrElse(Nil), b.directors.getOrElse(Nil))
     val sameDirector = da.nonEmpty && db.nonEmpty && IdentityMeasures.directorRelation(da, db) == IdentityMeasures.Category("same_person")
-    val clash      = da.nonEmpty && db.nonEmpty && latin(da ++ db) && !sameDirector
+    // one person in two transliterations ("Andriej Konczałowski", "Andrei Konchalovsky") is no clash where the films
+    // share their year and running time
+    val respelled  = a.year.isDefined && a.year == b.year && a.runtime.zip(b.runtime).exists { case (x, y) => math.abs(x - y) <= 2 } &&
+      namePrefixes(da).intersect(namePrefixes(db)).nonEmpty
+    val clash      = da.nonEmpty && db.nonEmpty && latin(da ++ db) && !sameDirector && !respelled
     def titles(f: IdentityMeasures.Film) = f.titles.map(IdentityMeasures.key).filter(_.nonEmpty).toSet
     def words(f: IdentityMeasures.Film)  = f.titles.flatMap(TitleContainment.tokens).filter(_.length >= 4).toSet
     !yearsApart && !clash && ((titles(a) intersect titles(b)).nonEmpty ||
       (sameDirector && a.year.isDefined && a.year == b.year && (words(a) intersect words(b)).nonEmpty))
   }
+
+  /** Each name's words of four letters or more, folded to ASCII and cut to their first four. */
+  private def namePrefixes(names: Seq[String]): Set[String] =
+    names.flatMap(name => tools.TextNormalization.deburr(name).toLowerCase(java.util.Locale.ROOT).split("[^a-z]+")).filter(_.length >= 4).map(_.take(4)).toSet
 
   private def latin(names: Seq[String]): Boolean =
     names.forall(_.forall(c => !Character.isLetter(c) || Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN))
