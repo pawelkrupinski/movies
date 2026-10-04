@@ -61,6 +61,9 @@ class E2eShardCoverageSpec extends AnyFlatSpec with Matchers {
    *
    * @CountryScoped specs are neither — they belong to identity-model-convergence.yml,
    * which names each one in its own alias, and `e2eRest` excludes that tag too.
+   *
+   * A convergence sample alias may name a rest-shard spec narrowed to its country's recorded
+   * corpus (`-- -z recorded:<cc>`): the corpus-shape specs over the corpus only that leg restores.
    */
   it should "not name any spec that rides the rest shard" in {
     val ridingRest = specs.collect {
@@ -69,7 +72,8 @@ class E2eShardCoverageSpec extends AnyFlatSpec with Matchers {
     ridingRest should not be empty
     ridingRest.foreach { name =>
       withClue(s"$name rides e2eRest but an alias also runs it by name: ") {
-        buildSbt should not include s"e2e/Test/testOnly services.movies.$name"
+        buildSbt.linesIterator.filter(_.contains(s"e2e/Test/testOnly services.movies.$name"))
+          .filterNot(_.contains("-- -z recorded:")).toSeq shouldBe empty
       }
     }
   }

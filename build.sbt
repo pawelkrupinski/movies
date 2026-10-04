@@ -545,11 +545,18 @@ addCommandAlias("e2eRest",     "e2e/Test/testOnly * -- -l services.movies.Corpus
 // The FAST legs: the same claims over the ~100-film sample, run ahead of the full
 // matrix so a regression that costs every country its rating ladders is caught in
 // minutes rather than after the longest leg in the suite.
-addCommandAlias("convergencePolandSample",  "e2e/Test/testOnly services.movies.PolandSampleConvergenceSpec")
-addCommandAlias("convergenceGermanySample", "e2e/Test/testOnly services.movies.GermanySampleConvergenceSpec")
-addCommandAlias("convergenceUkSample",      "e2e/Test/testOnly services.movies.UnitedKingdomSampleConvergenceSpec")
-addCommandAlias("convergenceUsSample",      "e2e/Test/testOnly services.movies.UnitedStatesSampleConvergenceSpec")
-addCommandAlias("convergenceSpainSample",   "e2e/Test/testOnly services.movies.SpainSampleConvergenceSpec")
+//
+// Each sample leg also holds its country's RECORDED corpus — the one the leg has just restored or
+// recorded into test/resources/fixtures/corpus — to the corpus-shape specs (`CorpusShapeSpec`):
+// every cinema slot's field shapes and every listing's title search. `-z recorded:<cc>` selects that
+// country's tests alone, so the Polish fixture boot those specs also cover stays in `e2eRest`.
+def convergenceSample(spec: String, code: String): String = s"; e2e/Test/testOnly services.movies.$spec ; " +
+  s"e2e/Test/testOnly services.movies.CinemaSlotInvariantsSpec services.movies.SearchQueryMarkersSpec -- -z recorded:$code"
+addCommandAlias("convergencePolandSample",  convergenceSample("PolandSampleConvergenceSpec", "pl"))
+addCommandAlias("convergenceGermanySample", convergenceSample("GermanySampleConvergenceSpec", "de"))
+addCommandAlias("convergenceUkSample",      convergenceSample("UnitedKingdomSampleConvergenceSpec", "uk"))
+addCommandAlias("convergenceUsSample",      convergenceSample("UnitedStatesSampleConvergenceSpec", "us"))
+addCommandAlias("convergenceSpainSample",   convergenceSample("SpainSampleConvergenceSpec", "es"))
 addCommandAlias("convergencePoland",  "e2e/Test/testOnly services.movies.PolandConvergenceSpec")
 addCommandAlias("convergenceGermany", "e2e/Test/testOnly services.movies.GermanyConvergenceSpec")
 addCommandAlias("convergenceUk",      "e2e/Test/testOnly services.movies.UnitedKingdomConvergenceSpec")
