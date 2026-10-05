@@ -92,6 +92,13 @@ class MovieCacheChangeListenerSpec extends AnyFlatSpec with Matchers {
     w.cache.get(filmKey).get.data(source).cast shouldBe Seq("Bo Chan", "Ann Lee")
   }
 
+  "a projection's patch of a film whose slots the cache holds" should "keep the record's map, not a copy of it" in {
+    val w = new World
+    val before = w.resident
+    w.cache.patchProjected(id, filmKey, before, before.copy(metascore = Some(70))) shouldBe WriteOutcome.Written
+    assert(w.cache.get(filmKey).get.data eq before.data, "the map of held slots was copied")
+  }
+
   it should "tell of another process's change the change stream brings" in {
     val w = new World
     val stored = w.repository.findByIdChecked(id).answered.get

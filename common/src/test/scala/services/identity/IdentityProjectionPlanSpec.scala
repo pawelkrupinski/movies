@@ -100,6 +100,22 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     second.canary(ShadowRelation.Identical) shouldBe 2
   }
 
+  // The stored record's map is kept wherever a slot drafted is the very one it holds (the cache keeps the projection's lean
+  // slots): drafted anew, a wide film's map of thousands of slots was a copy each projection, kept until the next write —
+  // promoted to the old generation and left to die there.
+  "A film drafted again over its own lean slots" should "be drafted over the stored record's very map" in {
+    val r      = resolution(decision(Some(1), lalka*), decision(None, obcy*))
+    val memo   = new VenueSlotMemo(0L)
+    val first  = IdentityProjectionPlan.draft(lalka ++ obcy, r, Nil, FilmIdCounters.empty, normalizer, slots, tokens, at, rowsOf(lalka ++ obcy), memo)
+    memo.endTick()
+    val firstPlan = IdentityProjectionPlan.finish(first, normalizer, _ => false)
+    val stored = firstPlan.films.map(f => StoredMovieRecord(f.title, f.year, f.record, f.id, Some(f.key)))
+    val again  = IdentityProjectionPlan.draft(lalka ++ obcy, r, stored, counters(firstPlan), normalizer, slots, tokens, at, rowsOf(lalka ++ obcy), memo)
+    val byId   = stored.map(s => s.id -> s.record).toMap
+    again.drafts.size shouldBe 2
+    again.drafts.foreach(d => assert(d.record.data eq byId(d.inherited.get).data, s"${d.inherited}: the stored map was copied"))
+  }
+
   "A stored film" should "keep its legacy id, its ratings and its TMDB slot when the resolver keeps its listings on the same film" in {
     val legacy = StoredMovieRecord("Lalka", Some(2026), MovieRecord(tmdbId = Some(1), imdbRating = Some(7.1),
       data = Map(Tmdb -> SourceData(title = Some("Lalka")), slotOf(lalka.head))),

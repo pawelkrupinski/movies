@@ -468,8 +468,10 @@ class CaffeineMovieCache(
   /** [[forCache]] of `after` written over `before`, which the cache holds: a slot `after` holds as `before` does is
    *  kept as it is, not stripped and pooled again — on a film at thousands of venues, every write did that to all. */
   private def forCacheOver(before: MovieRecord, after: MovieRecord): MovieRecord =
-    after.copy(data = after.data.map { case (source, sd) =>
-      source -> (if (before.data.get(source).exists(_ eq sd)) sd else forCacheSlot(sd))
+    // Over `after`'s own map, moving only what it holds unstripped: a map rebuilt whole was a copy of a wide film's
+    // thousands of slots each write, kept until the next one — promoted, to die in the old generation.
+    after.copy(data = after.data.foldLeft(after.data) { case (data, (source, sd)) =>
+      if (before.data.get(source).exists(_ eq sd)) data else { val cached = forCacheSlot(sd); if (cached eq sd) data else data.updated(source, cached) }
     })
 
   private def persist(key: CacheKey, e: MovieRecord, id: FilmId): WriteOutcome = corpusIndex.idOf(key).filter(_ != id) match {

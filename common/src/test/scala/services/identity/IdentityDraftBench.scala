@@ -135,8 +135,13 @@ object IdentityDraftBench {
         f"draft ${draftS}%.2fs ${draftMB}%.0fMB, finish+compare ${restS}%.2fs ${restMB}%.0fMB; total ${indexS + scopeS + draftS + restS}%.2fs " +
         f"${indexMB + scopeMB + draftMB + restMB}%.0fMB; changed ${changed.size}; slots reused ${counts._1}, built ${counts._2} ${memo.lastMisses()}")
       // As the writes: only the changed films are stored again, every other keeps its record as it was.
-      stored   = stored -- plan.retired ++ changed.map(f =>
-        f.id -> StoredMovieRecord(f.title, f.year, services.movies.ShowtimesDigest.stripForCache(f.record), f.id, Some(f.key)))
+      // As the cache keeps them: a slot it holds already stays the object held, every other is stripped (`forCacheOver`).
+      stored   = stored -- plan.retired ++ changed.map { f =>
+        val held = stored.get(f.id).fold(Map.empty[models.Source, models.SourceData])(_.record.data)
+        val data = f.record.data.foldLeft(f.record.data) { case (data, (source, slot)) =>
+          if (held.get(source).exists(_ eq slot)) data else data.updated(source, services.movies.ShowtimesDigest.stripSlot(slot)) }
+        f.id -> StoredMovieRecord(f.title, f.year, f.record.copy(data = data), f.id, Some(f.key))
+      }
       counters = counters.appended(plan.counterAdditions).toOption.get
       val (_, writtenS, writtenMB) = timed(live.written(changed, plan.retired))
       println(f"  written ${writtenS}%.3fs ${writtenMB}%.0fMB")

@@ -240,7 +240,7 @@ object IdentityProjectionPlan {
     def slotsByVenueOf(id: String): Map[Cinema, Seq[(Source, SourceData)]] = slotsByFilm.getOrElseUpdate(id,
       storedById.get(id).fold(Map.empty[Cinema, Seq[(Source, SourceData)]])(_.record.data.toSeq.collect {
         case (showing: CinemaShowing, slot) => showing.cinema -> ((showing: Source) -> slot) }.groupMap(_._1)(_._2)))
-    def priorsOf(id: String): Map[Cinema, Int] = storedById.get(id).fold(Map.empty[Cinema, Int])(r => shapes.priorsOf(r.record))
+    def priorsOf(id: String): Map[Cinema, Int] = storedById.get(id).fold(Map.empty[Cinema, Int])(r => shapes.priorsOf(id, r.record))
     // One venue's listings on a film, and what its slots are built from.
     def previousAt(keys: Seq[ListingKey]): Seq[Option[String]] = keys.map(k => index.previousOf.get(k).map(_.id))
     def priorsAt(cinema: Cinema, previous: Seq[Option[String]]): Seq[Int] =
@@ -319,12 +319,16 @@ object IdentityProjectionPlan {
       val film     = filmOf(members)
       val anchor   = plan.titles.toSeq.sortBy { case (t, n) => (-n, t) }.headOption.map(_._1).getOrElse("")
       // Each venue's slots — of a film drafted again, the venues it rebuilt replace theirs — and the film's as a whole.
+      // A venue drafted again alike is the one kept, and a film drafted again alike at every venue keeps its venues' map.
+      val kept        = shapes.get(counter)
       val venueShapes = plan.groups.iterator.map {
         case (cinema, Left(venue))            => cinema -> venue
-        case (cinema, Right((group, previous, priors))) => cinema -> VenueShape(group.rows.map(_.listing.key), group.key, venueSlots(group.key), VenueShape.inputs(previous, priors))
+        case (cinema, Right((group, previous, priors))) => cinema -> FilmShape.reused(kept.flatMap(_.venues.get(cinema)),
+          VenueShape(group.rows.map(_.listing.key), group.key, venueSlots(group.key), VenueShape.inputs(previous, priors)))
       }.toMap
       val venueData = venueShapes.valuesIterator.flatMap(_.lean).toMap
-      shapes.put(counter, FilmShape(members, keys, plan.titles, venueShapes))
+      val alike     = kept.filter(k => k.venues.size == venueShapes.size && venueShapes.forall { case (c, v) => k.venues.get(c).exists(_ eq v) })
+      shapes.put(counter, FilmShape(members, keys, plan.titles, alike.fold(venueShapes)(_.venues)))
       val sameFilm = previous.exists(_.record.tmdbId == film)
       val base = previous.filter(_ => sameFilm).map(_.record).getOrElse(
         MovieRecord(retainedSynopses = previous.map(_.record.retainedSynopses).getOrElse(Map.empty)))
@@ -360,7 +364,11 @@ object IdentityProjectionPlan {
         // A chain's network detail slot is venue source data no listing is published at: kept from the
         // stored film whatever it is matched to, as its venue slots are rebuilt from theirs.
         // The venue slots first, and the rest over them: no venue slot is a non-venue source or a chain's network one.
-        data          = venueData ++ nonVenue ++ networks)
+        // Over the stored record's own map where a slot is the very one it holds (the cache keeps the projection's lean
+        // slots): a wide film written for a few venues built its whole map anew, kept until its next write — promoted
+        // and left to die old, every projection.
+        data          = previous.fold(venueData ++ nonVenue ++ networks)(p =>
+          FilmShapes.sharing(p.record.data, venueData ++ nonVenue ++ networks, _ eq _)))
       // Of a film drafted again, what may differ from the last draft's write: its non-venue sources, and the venues it
       // rebuilt — their slots as written then and as built now. Every other venue's slot is the one written.
       val touched = plan.was.map { was =>
@@ -489,7 +497,26 @@ private[identity] final case class FilmShape(members: Set[ListingKey], keys: Seq
    *  a shape kept for the next projection holds no key object the index has let go. */
   def over(now: Set[ListingKey], canonical: ListingKey => ListingKey): FilmShape =
     if (now eq members) this
-    else FilmShape(now, keys.map(canonical), titles, venues.map { case (cinema, venue) => cinema -> venue.copy(keys = venue.keys.map(canonical)) })
+    else {
+      // Only what holds another key object is copied: a film's listings read again are mostly the same objects, and a
+      // light projection put every film of its scope over its members anew — copying every venue of a wide film each
+      // time (worker-us: ~35k venue shapes a projection, each kept until the next, so promoted and left to die old).
+      val moved = venues.filter { case (_, venue) => venue.keys.exists(k => canonical(k) ne k) }
+      FilmShape(now, FilmShape.canonicalised(keys, canonical), titles,
+        if (moved.isEmpty) venues else venues ++ moved.map { case (cinema, venue) => cinema -> venue.copy(keys = venue.keys.map(canonical)) })
+    }
+}
+
+private[identity] object FilmShape {
+  /** `keys` as `canonical` holds them: `keys` itself when it holds each one already. */
+  def canonicalised(keys: Seq[ListingKey], canonical: ListingKey => ListingKey): Seq[ListingKey] =
+    if (keys.forall(k => canonical(k) eq k)) keys else keys.map(canonical)
+
+  /** `drafted` — a venue as this projection drafted it — or `kept`, the one the last projection drafted, when they are
+   *  alike: kept, so a venue drafted again the same is the object already held, not a copy promoted and left to die. */
+  def reused(kept: Option[VenueShape], drafted: VenueShape): VenueShape =
+    kept.filter(k => k.memoKey == drafted.memoKey && k.inputs == drafted.inputs && (k.lean eq drafted.lean) && k.keys == drafted.keys)
+      .getOrElse(drafted)
 }
 
 /**
@@ -506,16 +533,21 @@ final class FilmShapes private (keeping: Boolean) {
   private[identity] def get(counter: Long): Option[FilmShape] = if (keeping) kept.get(counter) else None
   private[identity] def put(counter: Long, shape: FilmShape): Unit = if (keeping) drafted(counter) = shape
 
-  // Each stored record's prior slots by venue, as the slot memo's key reads them: worked out once per record — a film
-  // stored the same is read the same — not once per draft of every film it lends a listing to.
-  private val priorsByRecord = new java.util.IdentityHashMap[MovieRecord, Map[Cinema, Int]]()
-  private val priorsUsed     = new java.util.IdentityHashMap[MovieRecord, Map[Cinema, Int]]()
+  // Each stored film's prior slots by venue, as the slot memo's key reads them: worked out once per record — a film
+  // stored the same is read the same — not once per draft of every film it lends a listing to. A film written again is
+  // read again, into the map it had wherever a venue reads the same: a wide film written for a few venues' showtimes
+  // rebuilt its whole map (thousands of venues), kept until the next projection — promoted, to die old, every time.
+  private var priorsHeld = Map.empty[String, (MovieRecord, Map[Cinema, Int])]
+  private val priorsUsed = scala.collection.mutable.HashMap.empty[String, (MovieRecord, Map[Cinema, Int])]
 
-  private[identity] def priorsOf(record: MovieRecord): Map[Cinema, Int] = {
-    val known = Option(priorsUsed.get(record)).orElse(Option(priorsByRecord.get(record))).getOrElse(
-      record.data.toSeq.collect { case (cs: CinemaShowing, slot) => cs.cinema -> ((cs: Source) -> slot) }
-        .groupMap(_._1)(_._2).map { case (cinema, slots) => cinema -> VenueSlotMemo.priorsAt(slots) })
-    priorsUsed.put(record, known)
+  private[identity] def priorsOf(id: String, record: MovieRecord): Map[Cinema, Int] = {
+    val was = priorsUsed.get(id).orElse(priorsHeld.get(id))
+    val known = was.filter(_._1 eq record).map(_._2).getOrElse {
+      val read = record.data.toSeq.collect { case (cs: CinemaShowing, slot) => cs.cinema -> ((cs: Source) -> slot) }
+        .groupMap(_._1)(_._2).map { case (cinema, slots) => cinema -> VenueSlotMemo.priorsAt(slots) }
+      was.fold(read) { case (_, held) => FilmShapes.sharing(held, read, _ == _) }
+    }
+    priorsUsed(id) = record -> known
     known
   }
 
@@ -530,10 +562,17 @@ final class FilmShapes private (keeping: Boolean) {
   def discard(): Unit = { drafted.clear(); endPriors() }
 
   // Only the records a projection read stay worked out: a record replaced is let go.
-  private def endPriors(): Unit = { priorsByRecord.clear(); priorsByRecord.putAll(priorsUsed); priorsUsed.clear() }
+  private def endPriors(): Unit = { priorsHeld = priorsUsed.toMap; priorsUsed.clear() }
 }
 
 object FilmShapes {
+  /** `now` as `held` with only what differs moved — a value `alike` the held one kept as held: `held` itself when nothing
+   *  differs, else a map sharing all but the moved entries with it. */
+  private[identity] def sharing[K, V](held: Map[K, V], now: Map[K, V], alike: (V, V) => Boolean): Map[K, V] = {
+    val kept = if (held.keysIterator.forall(now.contains)) held else held.filter { case (k, _) => now.contains(k) }
+    now.foldLeft(kept) { case (map, (k, v)) => if (map.get(k).exists(alike(_, v))) map else map.updated(k, v) }
+  }
+
   def apply(): FilmShapes = new FilmShapes(keeping = true)
   /** Shapes of nothing: every film drafted whole. */
   def none: FilmShapes = new FilmShapes(keeping = false)
