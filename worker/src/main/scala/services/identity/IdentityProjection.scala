@@ -160,6 +160,8 @@ final class IdentityProjection(
   private var live = new LiveProjectionIndex(normalizer)
   /** Each film as last drafted, so a scoped projection works out only the venues of a film that moved. */
   private var shapes = FilmShapes()
+  /** Each cluster's canary relation, so a scoped projection works out only the relations its scope can move. */
+  private val canaries = new CanaryTally
   /** The kept index over `counters`: what a spec holds to the index built afresh from the same corpus. */
   private[identity] def keptIndex(counters: FilmIdCounters): ProjectionIndex = synchronized(live.index(counters))
 
@@ -255,7 +257,7 @@ final class IdentityProjection(
               case shrink =>
                 if (shrink.isDefined) logger.warn(s"identity projection: ${shrink.get} — held ${ProjectionGuard.Grace} projections, now written")
                 consecutiveShrinks = 0
-                val canary    = if (scope.whole) draft.canary else IdentityProjectionPlan.canary(index)
+                val canary    = if (scope.whole) { canaries.reset(); draft.canary } else canaries.of(index, scope)
                 val films     = stored.size - scopeStored.size + plan.films.size
                 val tick      = write(resolution, detailed, plan, stored, listed, films, canary, started, phases, patch = !scope.whole,
                   movedElsewhere = changes.fold(Set.empty[String])(_.films))

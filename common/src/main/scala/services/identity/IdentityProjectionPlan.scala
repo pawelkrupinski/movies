@@ -384,21 +384,28 @@ object IdentityProjectionPlan {
   }
 
   /** The canary over every cluster of `index`: what a projection reports, whichever films it drafted. */
-  def canary(index: ProjectionIndex): Map[ShadowRelation, Int] = {
-    // `ShadowDiff.clustersOf`'s relation, read off the index: a film's listings are `listingsOf` it, so nothing is sorted
-    // into a decision or grouped by film again — on US that was ~100k keys sorted and grouped every five minutes.
+  def canary(index: ProjectionIndex): Map[ShadowRelation, Int] =
+    canaryCounts(index.clusters.valuesIterator.map(relationOf(index, _)._1))
+
+  /** `ShadowDiff.clustersOf`'s relation of `cluster`, read off the index: a film's listings are `listingsOf` it, so nothing
+   *  is sorted into a decision or grouped by film again — on US that was ~100k keys sorted and grouped every five minutes.
+   *  With it, the films it read: each stored film its members are on, and that film's listings as the index holds them. */
+  private[identity] def relationOf(index: ProjectionIndex, cluster: Cluster): (Option[ShadowRelation], Seq[(String, Set[ListingKey])]) = {
+    val placed = cluster.members.filter(index.previousOf.contains)
+    val films  = placed.iterator.map(index.previousOf).toSet
+    val read   = films.toSeq.map(f => f.id -> index.listingsOf.getOrElse(f.id, Set.empty))
+    val relation =
+      if (films.isEmpty) None
+      else if (films.sizeIs > 1) Some(ShadowRelation.Merged)
+      else if (index.listingsOf.getOrElse(films.head.id, Set.empty) != placed) Some(ShadowRelation.Split)
+      else if (films.head.tmdbId == cluster.film) Some(ShadowRelation.Identical)
+      else Some(ShadowRelation.Moved)
+    (relation, read)
+  }
+
+  private[identity] def canaryCounts(relations: Iterator[Option[ShadowRelation]]): Map[ShadowRelation, Int] = {
     val counts = scala.collection.mutable.HashMap.empty[ShadowRelation, Int]
-    index.clusters.valuesIterator.foreach { cluster =>
-      val placed = cluster.members.filter(index.previousOf.contains)
-      val films  = placed.iterator.map(index.previousOf).toSet
-      val relation =
-        if (films.isEmpty) None
-        else if (films.sizeIs > 1) Some(ShadowRelation.Merged)
-        else if (index.listingsOf.getOrElse(films.head.id, Set.empty) != placed) Some(ShadowRelation.Split)
-        else if (films.head.tmdbId == cluster.film) Some(ShadowRelation.Identical)
-        else Some(ShadowRelation.Moved)
-      relation.foreach(r => counts(r) = counts.getOrElse(r, 0) + 1)
-    }
+    relations.foreach(_.foreach(r => counts(r) = counts.getOrElse(r, 0) + 1))
     ShadowRelation.values.map(r => r -> counts.getOrElse(r, 0)).toMap
   }
 
@@ -517,4 +524,35 @@ object FilmShapes {
   def apply(): FilmShapes = new FilmShapes(keeping = true)
   /** Shapes of nothing: every film drafted whole. */
   def none: FilmShapes = new FilmShapes(keeping = false)
+}
+
+/**
+ * The canary over every cluster of the index ([[IdentityProjectionPlan.canary]]), kept from one projection to the next:
+ * a scoped projection works out again only the relations of its scope's clusters and of the last one's. A cluster's
+ * relation reads its members, their previous films and those films' listings, and a scope is closed over every one of
+ * them that moved ([[ProjectionScope.close]]); the last scope's clusters are read again because its writes — after its
+ * canary — may have put their listings on other films. Every other cluster's relation is the one it had: on worker-us,
+ * walking every cluster's members each tick was 6% of a light projection.
+ */
+final class CanaryTally {
+  private final case class Kept(relation: Option[ShadowRelation], films: Seq[(String, Set[ListingKey])])
+  private val relations = scala.collection.mutable.HashMap.empty[ClusterId, Kept]
+  private var last      = Set.empty[ClusterId]
+
+  /** The canary of `index`, a scoped projection of `scope` reading it. */
+  def of(index: ProjectionIndex, scope: ProjectionScope): Map[ShadowRelation, Int] = {
+    (scope.clusters.iterator ++ last.iterator).foreach(relations.remove)
+    // A listing that left a film moved it, though the scope reaches the listing's new film only: the film's listings,
+    // held as one set replaced on each change, are another object.
+    relations.filterInPlace((id, kept) => index.clusters.contains(id) &&
+      kept.films.forall { case (film, listings) => index.listingsOf.getOrElse(film, Set.empty) eq listings })
+    index.clusters.foreach { case (id, cluster) =>
+      if (!relations.contains(id)) relations(id) = { val (relation, films) = IdentityProjectionPlan.relationOf(index, cluster); Kept(relation, films) }
+    }
+    last = scope.clusters
+    IdentityProjectionPlan.canaryCounts(relations.valuesIterator.map(_.relation))
+  }
+
+  /** A projection of the whole corpus reported its own canary, and wrote any cluster's films: the next works out all. */
+  def reset(): Unit = { relations.clear(); last = Set.empty }
 }
