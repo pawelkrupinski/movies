@@ -85,4 +85,15 @@ class EventTriggerSpec extends AnyFlatSpec with Matchers {
     w.after(59); w.runs shouldBe 1
     w.after(1); w.runs shouldBe 2
   }
+
+  // KINOWO-31: a drain on a stopping worker asked its trigger for a run after the trigger's scheduler had shut
+  // down; the RejectedExecutionException reached the model's `safely`, which logged an error and rebuilt the
+  // whole model from its store on the way out.
+  it should "ask nothing of a scheduler that has shut down, its worker stopping" in {
+    val w = new World
+    w.trigger.request()
+    w.scheduler.shutdown()
+    noException should be thrownBy { w.trigger.request(); w.trigger.retry(); w.trigger.once(1.second)(()) }
+    w.runs shouldBe 0
+  }
 }

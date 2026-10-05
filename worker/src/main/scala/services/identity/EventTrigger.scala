@@ -3,7 +3,7 @@ package services.identity
 import services.movies.MovieChangeStream
 
 import java.time.Clock
-import java.util.concurrent.{ScheduledExecutorService, ScheduledFuture, TimeUnit}
+import java.util.concurrent.{RejectedExecutionException, ScheduledExecutorService, ScheduledFuture, TimeUnit}
 import scala.concurrent.duration._
 
 /**
@@ -49,14 +49,18 @@ final class EventTrigger(run: () => Boolean, debounce: MovieChangeStream.Debounc
 
   /** Run `body` once, `after` from now, on this trigger's scheduler — no claim, no window: a worker's first projection,
    *  which no other projection may wait behind ([[IdentityProjection.tickChanged]] waits for it). */
-  def once(after: FiniteDuration)(body: => Unit): Unit = {
-    scheduler.schedule((() => body): Runnable, after.toMillis, TimeUnit.MILLISECONDS); ()
-  }
+  def once(after: FiniteDuration)(body: => Unit): Unit = { submit(after.toMillis)(body); () }
 
   private def schedule(inMillis: Long): Unit = {
     pending.foreach(_.cancel(false))
-    pending = Some(scheduler.schedule((() => fire()): Runnable, math.max(0L, inMillis), TimeUnit.MILLISECONDS))
+    pending = submit(math.max(0L, inMillis))(fire())
   }
+
+  /** Nothing, once `scheduler` has shut down: the worker is stopping, and a drain's last batch asking for a run
+   *  must not throw into the model's `safely`, which would rebuild the whole model from its store on the way out. */
+  private def submit(inMillis: Long)(body: => Unit): Option[ScheduledFuture[?]] =
+    try Some(scheduler.schedule((() => body): Runnable, inMillis, TimeUnit.MILLISECONDS))
+    catch { case _: RejectedExecutionException if scheduler.isShutdown => None }
 
   private def fire(): Unit = {
     synchronized { pending = None; bursts.clear() }
