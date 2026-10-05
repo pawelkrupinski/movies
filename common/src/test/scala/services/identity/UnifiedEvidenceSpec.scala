@@ -113,6 +113,19 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     hybrid.decision(Map("family.imdb.took" -> 1.0)) should startWith("taken 99.3% ≥ 90.0%; guards passed: bill.several, bill.bothWorks")
   }
 
+  "the guards" should "veto a film the title does not name, and another edition than the title numbers" in {
+    // PL "Baczne oczka" filled with "Pucio kocha zwierzaki"; PL/UK "League of Legends Worlds 26" with the Worlds25 record
+    def only(title: String, record: IdentityMeasures.Film) = {
+      val listings = Seq(listing(KinoMuza, title))
+      contenders(ClusterEvidence(listings, ResolverDecision(listings.map(_.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)(),
+        Seq(IdentityResolver.NodeEvidence(listings.map(_.key), Seq(candidate(1, record, 0.1)), billsBothItsWorks = false)), Nil, Nil, _ => None, 2026)).head
+    }
+    val pucio  = only("Baczne oczka", IdentityMeasures.Film("Pucio kocha zwierzaki", year = Some(2026)))
+    vetoes(pucio.signals.getOrElse(_, 0.0)) shouldBe Seq("title.namesNone")
+    val worlds = only("League of Legends Worlds 26 | Finals in Cinema", IdentityMeasures.Film("League of Legends Worlds25 - Finals in Cinema", year = Some(2025)))
+    vetoes(worlds.signals.getOrElse(_, 0.0)) should contain("edition.apart")
+  }
+
   "the signal list" should "name every signal once, each with a direction" in {
     Names.distinct.size shouldBe Names.size
     RuleGroups.values.toSet.subsetOf(Names.toSet) shouldBe true

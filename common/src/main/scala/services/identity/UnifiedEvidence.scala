@@ -32,7 +32,8 @@ object UnifiedEvidence {
     Signal("family.turnedDown", "family-against", -1), Signal("family.dissent", "family-against", -1),
     Signal("listing.facts", "listing", 1), Signal("listing.runtime", "listing", 1), Signal("listing.contradicts", "listing", -1),
     Signal("venues.current", "venues", 1),
-    Signal("title.namesIt", "title", 1), Signal("title.anothersOwn", "title", -1),
+    Signal("title.namesIt", "title", 1), Signal("title.anothersOwn", "title", -1), Signal("title.namesNone", "title", -1),
+    Signal("edition.apart", "title", -1),
     Signal("bill.several", "bills", -1), Signal("bill.bothWorks", "bills", -1), Signal("stage.work", "bills", -1),
     Signal("poster.match", "poster", 1), Signal("poster.near", "poster", 1), Signal("poster.otherMatches", "poster", -1),
     Signal("agreement.quorum", "stage-verdicts", 1), Signal("poster.vote", "stage-verdicts", 1),
@@ -47,10 +48,11 @@ object UnifiedEvidence {
 
   /** The NON-COMPENSATORY guards: a contender one of these fires on is no film to take, whatever else speaks for it — the
    *  agreement stage's vetoes (several works billed, a double programme, a stage work, another film's own title, the
-   *  venue's year or director against it, a venue poster naming another candidate, a family turning it down). A film
+   *  venue's year or director against it, a venue poster naming another candidate, a family turning it down; and, as
+   *  the agreement requires of what it takes, a title naming the film, and no other edition than the title numbers). A film
    *  the model's own rules accepted ([[ModelRules]]) passed the model's guards instead ([[Acceptance]]), as today. */
   val Guards: Seq[String] = Seq("bill.several", "bill.bothWorks", "stage.work", "title.anothersOwn", "listing.contradicts", "poster.otherMatches",
-    "family.turnedDown")
+    "family.turnedDown", "title.namesNone", "edition.apart")
   val ModelRules: Seq[String] = Names.filter(_.startsWith("rule."))
 
   /** The guards `features` trips: none for a film the model's rules took. */
@@ -156,6 +158,7 @@ object UnifiedEvidence {
       val dissent = c.verdicts.count(v => v.pick.exists(pick => !contender.is(pick.record) && c.listings.nonEmpty &&
         c.listings.forall(Agreement.namesIt(_, Seq(pick.record.film)))))
       val votes  = Agreement.listingVotes(asStated, records)
+      val namesIt = c.listings.nonEmpty && c.listings.forall(Agreement.namesIt(_, records.map(_.film)))
       val nearest = contender.tmdb.toSeq.flatMap(id => c.posters.flatMap(_.get(id).flatten)).minOption
       val flags: Seq[(String, Boolean)] = Seq(
         // as the stage takes it: by the TMDB id the agreed record links (or IMDb's find of its IMDb id), else as IMDb's
@@ -175,7 +178,10 @@ object UnifiedEvidence {
         "listing.runtime"     -> votes(Agreement.ListingRuntime),
         "listing.contradicts" -> Agreement.contradictedByTheListing(c.listings, contender.record),
         "venues.current"      -> (venues >= Agreement.WidelyBilled && records.flatMap(_.film.year).maxOption.exists(_ >= c.thisYear - 1)),
-        "title.namesIt"       -> (c.listings.nonEmpty && c.listings.forall(Agreement.namesIt(_, records.map(_.film)))),
+        "title.namesIt"       -> namesIt,
+        "title.namesNone"     -> !namesIt,
+        // another edition than the title numbers ("League of Legends Worlds 26" against the Worlds25 record)
+        "edition.apart"       -> c.listings.exists(listing => PosterEvidence.editionsApart(listing, contender.record.film)),
         "title.anothersOwn"   -> Agreement.anothersOwnTitle(c.listings, records, c.verdicts),
         "bill.several"        -> severalBill,
         "bill.bothWorks"      -> bothWorks,

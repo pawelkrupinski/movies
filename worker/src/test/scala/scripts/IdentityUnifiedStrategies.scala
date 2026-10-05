@@ -152,6 +152,23 @@ object IdentityUnifiedStrategies {
     steps.foldLeft(Map.empty: Takes)((state, step) => apply(step, test, state))
   }.toMap
 
+  /** STABLE selection: the rules greedy selects on the whole rows that it also selects with every fold's venues held
+   *  out — a rule one fold's labels alone carry is no rule (held out, those made the wrong takes). In the whole rows'
+   *  order. */
+  def stableSteps(clusters: Seq[Cluster]): Seq[Step] = {
+    val perFold = (0 until Folds).map(fold => greedy(clusters.filterNot(_.head.fold == fold))._2.map(_.step).toSet)
+    perFold.zipWithIndex.foreach { case (steps, fold) => println(s"fold $fold selects: ${steps.map(_.name).toSeq.sorted.mkString(", ")}") }
+    greedy(clusters)._2.map(_.step).filter(step => perFold.forall(_(step)))
+  }
+
+  /** The stable rules, each fold's own taken by those it selects stably without it — held out twice over. */
+  def stableHeldOut(clusters: Seq[Cluster]): Takes = (0 until Folds).flatMap { fold =>
+    val (test, train) = clusters.partition(_.head.fold == fold)
+    stableSteps(train).foldLeft(Map.empty: Takes)((state, step) => apply(step, test, state))
+  }.toMap
+
+  def applyAll(steps: Seq[Step], clusters: Seq[Cluster]): Takes = steps.foldLeft(Map.empty: Takes)((state, step) => apply(step, clusters, state))
+
   // ── 3–7. scorers, held out by venue, gated by the precision cut ──────────────────────────
 
   /** A scorer trained on rows. */
@@ -249,12 +266,17 @@ object IdentityUnifiedStrategies {
     val opts     = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
     val rows     = read(opts.get("training").map(Paths.get(_)).getOrElse(IdentityUnifiedFit.Training))
     val clusters = rows.groupBy(_.cluster).toSeq.sortBy(_._1).map { case (id, rs) => Cluster(id, rs.sortBy(_.film)) }
-    val (greedyTakes, accepted, rejected, greedyReview) = greedy(clusters)
+    val (greedyTakes, accepted, rejected, _) = greedy(clusters)
+    val stable = stableSteps(clusters)
+    val stableTakes = applyAll(stable, clusters)
+    val greedyReview = changes(clusters, stableTakes, "stable greedy").filter(_.unlabelled)
     val scorers  = Seq(LikelihoodRatios, WeightedVote, Stacking, Priority, Trees)
     val gatedTakes = scorers.map(s => s -> gated(s, clusters))
     val results = Seq(measure("1. today's cascade", clusters, Map.empty, "yes (rule lines)"),
       measure("2. greedy forward selection (in sample)", clusters, greedyTakes, "yes (the accepted rules)"),
-      measure("2. greedy forward selection (held out)", clusters, greedyHeldOut(clusters), "yes (the accepted rules)")) ++
+      measure("2. greedy forward selection (held out)", clusters, greedyHeldOut(clusters), "yes (the accepted rules)"),
+      measure("2b. stable greedy (in sample)", clusters, applyAll(stable, clusters), "yes (the accepted rules)"),
+      measure("2b. stable greedy (held out)", clusters, stableHeldOut(clusters), "yes (the accepted rules)")) ++
       gatedTakes.zipWithIndex.map { case ((s, t), i) => measure(s"${i + 3}. ${s.name} + precision cut", clusters, t, s.explainable) }
 
     val b = new StringBuilder
@@ -264,6 +286,13 @@ object IdentityUnifiedStrategies {
     results.foreach(r => line(s"| ${r.name} | ${r.right} | ${r.wrong} | ${r.switched} | ${r.lost} | ${r.gained} | ${r.correctRight} / ${r.correctWrong} / ${r.correctUnlabelled} | ${r.explainable} |"))
     line("\nPer country (fills: gained listings, lost listings, labelled net):\n")
     results.foreach(r => line(s"- ${r.name}: " + r.perCountry.toSeq.sorted.map { case (cc, (g, l, n)) => s"$cc +$g −$l net $n" }.mkString(", ")))
+    line("\n## Greedy, held out: the wrong listings\n")
+    changes(clusters, greedyHeldOut(clusters), "greedy").filter(_.gainedWrong > 0).foreach(c =>
+      line(s"- ${c.cluster.head.country} ${c.cluster.head.rawTitle} ×${c.cluster.head.listings} → ${c.to.fold("none")(r => s"${r.film} ${r.filmTitle}")}"))
+    line(s"\n## Stable greedy: the rules every fold selects, in order\n\n${stable.map(s => s"- ${s.name}").mkString("\n")}")
+    line("\n## Stable greedy, held out: the wrong listings\n")
+    changes(clusters, stableHeldOut(clusters), "stable").filter(_.gainedWrong > 0).foreach(c =>
+      line(s"- ${c.cluster.head.country} ${c.cluster.head.rawTitle} ×${c.cluster.head.listings} → ${c.to.fold("none")(r => s"${r.film} ${r.filmTitle}")}"))
     line("\n## Greedy forward selection: accepted, in order\n")
     if (accepted.isEmpty) line("(none)")
     accepted.foreach(r => line(s"- ${r.step.name}: +${r.gain} labelled listings, 0 new wrong, ${r.unlabelled} unlabelled change(s) for review"))
@@ -275,10 +304,12 @@ object IdentityUnifiedStrategies {
     opts.get("report").foreach(path => Files.writeString(Paths.get(path), report))
     println(report)
 
-    // the unlabelled corrections of model takes, for review: the greedy steps' and every gated strategy's
-    val review: Seq[Change] = greedyReview ++ gatedTakes.flatMap { case (s, t) =>
-      changes(clusters, t, s.name).filter(c => c.role == "correct" && c.unlabelled) }
-    writeReview(opts.get("review").map(Paths.get(_)).getOrElse(ReviewFile), review)
+    // greedy's held-out wrong listings, named
+    val heldOutWrong = changes(clusters, greedyHeldOut(clusters), "greedy").filter(_.gainedWrong > 0)
+    println(heldOutWrong.map(c => s"held-out wrong: ${c.cluster.head.country} ${c.cluster.head.rawTitle} → ${c.to.map(r => s"${r.film} ${r.filmTitle}")}")
+      .mkString("\n"))
+    // the changes the adopted strategy (greedy) makes that no hand label judges, for review
+    writeReview(opts.get("review").map(Paths.get(_)).getOrElse(ReviewFile), greedyReview)
   }
 
   val ReviewFile: Path = Paths.get("test/resources/fixtures/identity-unmatched/review-candidates.tsv")
