@@ -9,6 +9,10 @@ import ShareCardTestKit.*
 import java.io.ByteArrayOutputStream
 import java.nio.file.{Files, Path}
 import java.nio.file.attribute.PosixFilePermissions
+import java.util.concurrent.{CountDownLatch, TimeUnit}
+import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent.duration.*
+import scala.util.Try
 
 /**
  * A poster must never cost the worker CONTAINER more memory than the vips child's cap: a
@@ -27,42 +31,48 @@ class PosterMemoryCapSpec extends AnyFlatSpec with Matchers {
     (script.toString, ran)
   }
 
-  /** A vips stand-in that marks it has started, then holds its gate until `release` exists (10s at most). */
-  private def blockingVips(): (String, Path, Path) = {
-    val started = Files.createTempFile("vips-started-", ".txt"); Files.delete(started)
-    val release = Files.createTempFile("vips-release-", ".txt"); Files.delete(release)
-    val script  = Files.createTempFile("blocking-vips-", ".sh")
-    Files.writeString(script, s"#!/bin/sh\ntouch '$started'\ni=0\nwhile [ ! -e '$release' ] && [ $$i -lt 100 ]; do sleep 0.1; i=$$((i+1)); done\nexit 1\n")
-    Files.setPosixFilePermissions(script, PosixFilePermissions.fromString("rwx------"))
-    (script.toString, started, release)
-  }
-
-  /** Runs `body` while a shrinker on `gate` is mid-shrink, holding it. */
+  /** Runs `body` while another shrink holds `gate`'s permit. The holder keeps it until `body` has
+   *  returned — never on a timer — so a shrink that wrongly queued behind it could only finish by
+   *  `body` giving up, not by the holder letting go in time. */
   private def whileShrinking(gate: tools.PosterDecodeGate)(body: => Unit): Unit = {
-    val (bin, started, release) = blockingVips()
-    val poster = Files.write(Files.createTempFile("poster-", ".jpg"), posterJpeg)
-    val holder = new Thread(() => { new VipsPosterShrinker(binary = Some(VipsPosterShrinker.Binary(bin)), gate = gate).coverSlot(poster); () })
+    val holding = new CountDownLatch(1); val release = new CountDownLatch(1)
+    val holder  = new Thread(() => gate.withPermit { holding.countDown(); release.await() })
     holder.start()
     try {
-      tools.Eventually.poll(pollMs = 10)(Files.exists(started)) shouldBe true
+      holding.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
       body
-    } finally { Files.createFile(release); holder.join(SpecTimeouts.Io.toMillis) }
+    } finally { release.countDown(); holder.join(SpecTimeouts.Io.toMillis) }
   }
 
-  private def shrinkWithin(shrinker: VipsPosterShrinker, millis: Long): Option[Either[String, (Int, Int)]] = {
+  /** A shrink of the kit's poster on a thread of its own. Not a shared pool: a pool other suites in
+   *  this JVM keep busy queues the shrink before it ever reaches the gate, and the wait below would
+   *  time the queue instead (CI, 2026-10-05: ExecutionContext.global saturated, `None` at 5 s). */
+  private def shrinking(shrinker: VipsPosterShrinker): Future[Either[String, (Int, Int)]] = {
     val poster = Files.write(Files.createTempFile("poster-", ".jpg"), posterJpeg)
-    val result = scala.concurrent.Future(shrinker.coverSlot(poster).map(i => (i.getWidth, i.getHeight)))(using scala.concurrent.ExecutionContext.global)
-    scala.util.Try(scala.concurrent.Await.result(result, scala.concurrent.duration.Duration(millis, "ms"))).toOption
+    val result = Promise[Either[String, (Int, Int)]]()
+    new Thread(() => { result.complete(Try(shrinker.coverSlot(poster).map(i => (i.getWidth, i.getHeight)))); () }).start()
+    result.future
   }
+
+  private def within[A](result: Future[A], wait: FiniteDuration): Option[A] =
+    Try(Await.result(result, wait)).toOption
 
   "A poster shrink" should "wait for another shrink on the same gate" in {
-    val gate = VipsPosterShrinker.newGate()
-    whileShrinking(gate)(shrinkWithin(new VipsPosterShrinker(binary = None, gate = gate), millis = 500) shouldBe None)
+    val gate   = VipsPosterShrinker.newGate()
+    val queued = Promise[Either[String, (Int, Int)]]()
+    whileShrinking(gate) {
+      queued.completeWith(shrinking(new VipsPosterShrinker(binary = None, gate = gate)))
+      within(queued.future, 500.millis) shouldBe None
+    }
+    // ... and run once that one lets the gate go.
+    within(queued.future, SpecTimeouts.Io) shouldBe Some(Right((420, 630)))
   }
 
   it should "not wait on a shrink behind another gate" in {
+    // The held gate is let go only after this returns, so the wait is a deadline for a decode
+    // that never queues — a shared gate would hold it the whole Io bound and fail.
     whileShrinking(VipsPosterShrinker.newGate())(
-      shrinkWithin(new VipsPosterShrinker(binary = None), millis = 5000) shouldBe Some(Right((420, 630))))
+      within(shrinking(new VipsPosterShrinker(binary = None)), SpecTimeouts.Io) shouldBe Some(Right((420, 630))))
   }
 
   "The JPEG header" should "say progressive, the dimensions and the coefficient buffer a decode will hold" in {
