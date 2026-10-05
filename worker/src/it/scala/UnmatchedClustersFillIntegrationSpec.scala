@@ -53,15 +53,20 @@ class UnmatchedClustersFillIntegrationSpec extends AnyFlatSpec with Matchers {
       val posterStore = new PosterAnswerStore(store, clock)
       val posters     = CachedPosters.of(configuration, country)
       val lookups     = new UnmatchedClusters.Replay(capture)
+      val catalogue   = new CatalogueFill(store, clock, cache)
       def agree() = UnmatchedClusters.agree(capture.decisions, capture.listings, lookups, families.map(f => f -> store.answers(f)).toMap,
         store.version, tmdbOf, services.movies.TitleNormalizer.forCountry(country), posterStore,
-        modules.wiring.IdentityCutoverWiring.identities(country.code))
+        modules.wiring.IdentityCutoverWiring.identities(country.code), catalogue.answers)
       var outcome = agree()
       var rounds  = 0
-      while ((outcome.stage.wanted.nonEmpty || outcome.stage.wantedPosters.nonEmpty) && rounds < 12) {
+      while ((outcome.stage.wanted.nonEmpty || outcome.stage.wantedPosters.nonEmpty || outcome.stage.wantedCatalogue.nonEmpty ||
+              outcome.stage.wantedFinds.nonEmpty) && rounds < 12) {
         rounds += 1
-        println(s"[${country.code}] fill round $rounds: ${outcome.stage.wanted.size} family question(s), ${outcome.stage.wantedPosters.size} poster(s)")
+        println(s"[${country.code}] fill round $rounds: ${outcome.stage.wanted.size} family question(s), ${outcome.stage.wantedPosters.size} poster(s), " +
+          s"${outcome.stage.wantedCatalogue.size} catalogue question(s), ${outcome.stage.wantedFinds.size} find(s)")
         posters.file(posterStore, outcome.stage.wantedPosters.toSeq)
+        catalogue.file(outcome.stage.wantedCatalogue)
+        outcome.stage.wantedFinds.foreach(tmdbOf)
         outcome.stage.wanted.toSeq.groupBy(_._1).toSeq.map { case (family, asks) =>
           java.util.concurrent.CompletableFuture.runAsync { () =>
             asks.map(_._2).grouped(4).foreach(_.map(question => java.util.concurrent.CompletableFuture.runAsync(() =>
@@ -77,6 +82,7 @@ class UnmatchedClustersFillIntegrationSpec extends AnyFlatSpec with Matchers {
       replayed.stage.wanted shouldBe empty
       replayed.stage.wantedFinds shouldBe empty
       replayed.stage.wantedPosters shouldBe empty
+      replayed.stage.wantedCatalogue shouldBe empty
       println(s"[${country.code}] filled after $rounds round(s): ${filed.size} family answers, ${finds.size} finds")
     }
   }

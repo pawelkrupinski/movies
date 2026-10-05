@@ -392,8 +392,9 @@ object HostPolicies {
     // task threads on its backlog, and the breaker's 60 s fast-fail windows deferring whole runs of questions at once.
     // Wikimedia asks a client to keep to serial requests and back off on 429; 2 req/s across the FLEET is that, paced
     // where every worker sees every other's slots (`FleetHostPace`, the fleet database). A question met by a full pace
-    // is deferred to its slot, not parked on a thread. KINOWO_WIKIDATA_FLEET_PACE_MS retunes it live.
-    HostPolicy(Set("www.wikidata.org"),
+    // is deferred to its slot, not parked on a thread. KINOWO_WIKIDATA_FLEET_PACE_MS retunes it live. Its SPARQL endpoint
+    // (the catalogue take's id mapping, one query a batch of ids) keeps the same pace, in its own host's slots.
+    HostPolicy(Set("www.wikidata.org", "query.wikidata.org"),
       fleetMinInterval = Some(Duration.ofMillis(500)),
       fleetPaceKnob    = Some(PaceKnob.WikidataFleet)),
   )

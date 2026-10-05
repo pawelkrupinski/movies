@@ -12,10 +12,12 @@ import services.identity.agreement.{AgreementStage, VoterFamily}
  *    answer, `verdicts` kept, those `agreed` on a film, and those whose agreed film a venue poster vetoed
  *    (`poster-vetoed`, `PosterEvidence.veto`);
  *  - `kinowo_worker_identity_agreement_taken{as}` — the decisions the last pass took, as a `tmdb` film or an IMDb
- *    `fallback` the families agreed on, a `poster` vote (`ResolverDecision.Basis.Poster`), or a `broadcast` the screening days
- *    named (`ResolverDecision.Basis.Broadcast`): the cards the stage identified;
+ *    `fallback` the families agreed on, a `poster` vote (`ResolverDecision.Basis.Poster`), a `broadcast` the screening days
+ *    named (`ResolverDecision.Basis.Broadcast`), a `filled` rule's film, or the `catalogue` film a listing's own catalogue id
+ *    names (`ResolverDecision.Basis.Catalogue`): the cards the stage identified;
  *  - `kinowo_worker_identity_agreement_open_questions{family}` — questions no answer is filed for yet, per family
- *    (`tmdb-find`: agreed IMDb ids TMDB was not asked about; `poster`: posters not hashed yet) — falling to zero is the
+ *    (`tmdb-find`: agreed IMDb ids TMDB was not asked about; `poster`: posters not hashed yet; `catalogue`: catalogue ids
+ *    not mapped and venue pages whose links are not read yet) — falling to zero is the
  *    backlog asked;
  *  - `kinowo_worker_identity_agreement_resolves_total` / `_seconds` — clusters the stage resolved again, and its last
  *    pass's wall time: what it costs a projection (a quiet tick resolves none);
@@ -62,12 +64,13 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
     .help("Agreement questions asked, by family and outcome: answered, nothing, fresh, deferred, failed.")
     .labelNames("country", "family", "outcome").register(registry)
 
-  private val families: Seq[String] = VoterFamily.values.toSeq.map(_.label) :+ AgreementQuestionMetrics.TmdbFind :+ AgreementQuestionMetrics.Poster
+  private val families: Seq[String] = VoterFamily.values.toSeq.map(_.label) :+ AgreementQuestionMetrics.TmdbFind :+ AgreementQuestionMetrics.Poster :+
+    AgreementQuestionMetrics.Catalogue
 
   /** The stage's series for `country`, every label touched at 0. */
   def stage(country: String): AgreementStage.Metrics = {
     Seq("waiting", "verdicts", "agreed", "poster-vetoed").foreach(clusters.labelValues(country, _))
-    Seq("tmdb", "fallback", "poster", "broadcast", "filled").foreach(taken.labelValues(country, _))
+    Seq("tmdb", "fallback", "poster", "broadcast", "filled", "catalogue").foreach(taken.labelValues(country, _))
     families.foreach(open.labelValues(country, _))
     resolves.labelValues(country); seconds.labelValues(country)
     applied => {
@@ -78,6 +81,8 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
       taken.labelValues(country, "poster").set(applied.takenPoster.toDouble)
       taken.labelValues(country, "broadcast").set(applied.takenBroadcast.toDouble)
       taken.labelValues(country, "filled").set(applied.takenFilled.toDouble)
+      taken.labelValues(country, "catalogue").set(applied.takenCatalogue.toDouble)
+      open.labelValues(country, AgreementQuestionMetrics.Catalogue).set(applied.catalogue.toDouble)
       open.labelValues(country, AgreementQuestionMetrics.Poster).set(applied.posters.toDouble)
       taken.labelValues(country, "tmdb").set(applied.takenTmdb.toDouble)
       taken.labelValues(country, "fallback").set(applied.takenFallback.toDouble)

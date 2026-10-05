@@ -64,7 +64,18 @@ class LetterboxdClientSpec extends AnyFlatSpec with Matchers {
     c.byTmdbId(27205) shouldBe Some(FilmIds(Some(27205), Some("tt1375666")))
   }
 
-  it should "return None when the film page 404s (unknown id)" in {
+  "bySlug" should "fetch the /film/{slug}/ page a venue links and read its ids" in {
+    val fixture = loadFixture(InceptionFixture)
+    val c = new LetterboxdClient(new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url == "https://letterboxd.com/film/inception/") fixture
+        else throw new RuntimeException(s"unexpected URL: $url")
+    })
+    c.bySlug("inception") shouldBe Some(FilmIds(Some(27205), Some("tt1375666")))
+    new LetterboxdClient(notFound).bySlug("no-such-film") shouldBe None
+  }
+
+  "byTmdbId" should "return None when the film page 404s (unknown id)" in {
     val c = new LetterboxdClient(notFound)
     c.byImdbId("tt0000000") shouldBe None
     c.byTmdbId(999999999) shouldBe None

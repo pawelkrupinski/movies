@@ -185,6 +185,12 @@ object FlicksClient {
    *  neither prunes the other's tail. */
   val MaxHorizonDays = ScrapeHorizon.MaxDays
 
+  /** A Flicks film page (`/movie/<slug>/`) links the film's Letterboxd and Rotten Tomatoes pages in its ratings block
+   *  (about 70% of pages, measured 2026-10-05) — exact ids the identity's catalogue take maps to TMDB. The scrape never
+   *  fetches the page: the agreement reads it for a cluster nothing else took. */
+  val CatalogueLinkPages: services.identity.CatalogueLinkPages =
+    services.identity.CatalogueLinkPages(FlicksMarket.all.map(_.host).toSet, Set("letterboxd", "rt"))
+
   private val DataDate = """data-date="(\d{4}-\d{2}-\d{2})"""".r
   // The venue programme page's day-tab container. Rendered on EVERY venue page,
   // including one with nothing on (verified 2026-07-27 across venues both with

@@ -71,18 +71,20 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
       val answers: Map[VoterFamily, FamilyAnswers] = families.map(f => f -> store.answers(f)).toMap
       val posterStore = new PosterAnswerStore(store, new MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))
       val posters     = CachedPosters.of(configuration, c.country)
+      val catalogue   = new CatalogueFill(store, new MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")), cache)
 
       // the records of the films the model leaned to and weighed best: what a take names, and what pooled facts read
       (decisions.flatMap(_.leaning.map(_.film)) ++ decisions.flatMap(_.trace.nodes.values.flatMap(_.candidate))).distinct.foreach(recording.film)
       var outcome = UnmatchedClusters.agree(decisions, subset, recording, answers, store.version, tmdbOf, c.normalizer, posterStore,
-        modules.wiring.IdentityCutoverWiring.identities(c.country.code))
+        modules.wiring.IdentityCutoverWiring.identities(c.country.code), catalogue.answers)
       var rounds  = 0
-      while ((outcome.stage.wanted.nonEmpty || outcome.stage.wantedPosters.nonEmpty) && rounds < 12) {
+      while ((outcome.stage.wanted.nonEmpty || outcome.stage.wantedPosters.nonEmpty || outcome.stage.wantedCatalogue.nonEmpty) && rounds < 12) {
         rounds += 1
         val open = outcome.stage.wanted.toSeq
         val unhashed = outcome.stage.wantedPosters.toSeq
         println(s"[${c.label}] capture round $rounds: ${open.size} open family question(s), ${unhashed.size} poster(s)")
         posters.file(posterStore, unhashed)
+        catalogue.file(outcome.stage.wantedCatalogue)
         open.groupBy(_._1).toSeq.map { case (family, asks) =>
           java.util.concurrent.CompletableFuture.runAsync { () =>
             asks.map(_._2).grouped(4).foreach(_.map(question => java.util.concurrent.CompletableFuture.runAsync(() =>
@@ -90,7 +92,7 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
           }
         }.foreach(_.join())
         outcome = UnmatchedClusters.agree(decisions, subset, recording, answers, store.version, tmdbOf, c.normalizer, posterStore,
-        modules.wiring.IdentityCutoverWiring.identities(c.country.code))
+        modules.wiring.IdentityCutoverWiring.identities(c.country.code), catalogue.answers)
       }
       val filed = docs.get(TmdbKind.Family, docs.fetchedBefore(TmdbKind.Family, Long.MaxValue).map(_._1))
       val capture = UnmatchedClusters.Capture(c.country, subset, decisions, recording.queries.asScala.toMap, recording.films.asScala.toMap,
@@ -102,6 +104,7 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
       val replayed = UnmatchedClusters.replay(UnmatchedClusters.read(written))
       replayed.stage.wanted shouldBe empty
       replayed.stage.wantedPosters shouldBe empty
+      replayed.stage.wantedCatalogue shouldBe empty
       UnmatchedClusters.takes(capture, replayed) shouldBe UnmatchedClusters.takes(capture, outcome)
       println(s"[${c.label}] captured ${subset.size} listings in ${decisions.size} clusters; ${capture.queries.size} queries, ${capture.films.size} films, " +
         s"${filed.size} family answers after $rounds round(s); takes ${UnmatchedClusters.takes(capture, outcome).size}")

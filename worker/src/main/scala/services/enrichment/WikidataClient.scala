@@ -163,6 +163,24 @@ class WikidataClient(http: HttpFetch) {
       }
     }
 
+  // ── As a catalogue mapping: the items stating another database's ids ───────────────────────────────────────
+
+  /** The items stating each of `values` under one of `properties` (a catalogue's own id: AlloCiné's P1265, Letterboxd's
+   *  P6127 …), with the TMDB movie id (P4947) and IMDb id (P345) each states — ONE query for the whole batch, against the
+   *  SPARQL endpoint: the Action API's statement search is one request an id. A value no item states is absent; an
+   *  item stating two TMDB or IMDb ids states neither. A failed read throws. */
+  def itemsStating(properties: Seq[String], values: Seq[String]): Map[String, Seq[WikidataClient.StatingItem]] =
+    if (values.isEmpty || properties.isEmpty) Map.empty
+    else {
+      val url = s"$SparqlBase?format=json&query=${quote(catalogueQuery(properties, values))}"
+      HttpRead.jsonObject(http, url, UserAgentHeader) { js =>
+        (js \ "results" \ "bindings").asOpt[Seq[JsObject]] match {
+          case Some(rows) => ReadOutcome.Answered(statingItems(rows))
+          case None       => ReadOutcome.unexpectedBody(url, "no results.bindings", js.toString.take(300))
+        }
+      }.required
+    }
+
   /** A country item's ISO code (P297), asked once per client: a country's claims are megabytes, and few countries recur. */
   private val isoCodes = new java.util.concurrent.ConcurrentHashMap[String, Option[String]]()
   private def isoOf(country: String): Option[String] =
@@ -212,6 +230,31 @@ class WikidataClient(http: HttpFetch) {
 
 object WikidataClient {
   private val ActionBase = "https://www.wikidata.org/w/api.php"
+  private val SparqlBase = "https://query.wikidata.org/sparql"
+
+  /** An item stating a catalogue id, the property it states it under, and the TMDB and IMDb ids it states. */
+  final case class StatingItem(item: String, property: String, tmdbId: Option[Int], imdbId: Option[String])
+
+  /** The SPARQL query [[WikidataClient.itemsStating]] asks: each value, the items stating it under any of the properties
+   *  (and which), and their TMDB and IMDb ids — in a stable order, so the same batch is the same request. */
+  def catalogueQuery(properties: Seq[String], values: Seq[String]): String = {
+    val quoted = values.distinct.sorted.map(v => "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"") + "\"").mkString(" ")
+    s"SELECT ?value ?property ?item ?tmdb ?imdb WHERE { VALUES ?value { $quoted } VALUES ?property { ${properties.sorted.map("wdt:" + _).mkString(" ")} } " +
+      s"?item ?property ?value . OPTIONAL { ?item wdt:$PTmdb ?tmdb } OPTIONAL { ?item wdt:$PImdb ?imdb } }"
+  }
+
+  /** The SPARQL result's rows as each value's items, one per item: the TMDB and IMDb ids an item states once each. */
+  private def statingItems(rows: Seq[JsObject]): Map[String, Seq[StatingItem]] = {
+    def field(row: JsObject, name: String) = (row \ name \ "value").asOpt[String]
+    def lastSegment(uri: String) = uri.substring(uri.lastIndexOf('/') + 1)
+    rows.flatMap(row => for { value <- field(row, "value"); item <- field(row, "item") } yield
+      (value, lastSegment(item), field(row, "property").fold("")(lastSegment), field(row, "tmdb"), field(row, "imdb")))
+      .groupBy(_._1).view.mapValues(_.groupBy(_._2).toSeq.sortBy(_._1).map { case (item, stated) =>
+        def sole(values: Seq[String]) = Option(values.distinct).filter(_.sizeIs == 1).flatMap(_.headOption)
+        StatingItem(item, stated.map(_._3).distinct.sorted.mkString("/"), sole(stated.flatMap(_._4)).flatMap(_.toIntOption),
+          sole(stated.flatMap(_._5)).filter(_.startsWith("tt")))
+      }).toMap
+  }
   private val YearTolerance = 1
 
   /**

@@ -72,8 +72,13 @@ object ResolverDecision {
      *  (`UnifiedRules`, e.g. the one guard-passing film billed widely as a current release) did — like [[Agreed]], only on
      *  the way to the projection. */
     case Filled
+    /** No TMDB rule, agreement, poster, broadcast or fill took a film, but a listing's own catalogue id — its venue's exact
+     *  naming of it in another database (`CatalogueSources`) — maps to one its year and director do not contradict
+     *  (`agreement.Catalogue`) — like [[Agreed]], only on the way to the projection. */
+    case Catalogue
 
-    def matched: Boolean = this == Pinned || this == OwnMatch || this == PooledMatch || this == Agreed || this == Poster || this == Broadcast || this == Filled
+    def matched: Boolean = this == Pinned || this == OwnMatch || this == PooledMatch || this == Agreed || this == Poster || this == Broadcast ||
+      this == Filled || this == Catalogue
   }
 
   def percent(p: Double): String = f"${p * 100}%.1f%%"

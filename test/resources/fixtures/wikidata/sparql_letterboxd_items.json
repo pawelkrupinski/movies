@@ -1,0 +1,37 @@
+{
+ "head": {
+  "vars": [
+   "value",
+   "property",
+   "item",
+   "tmdb",
+   "imdb"
+  ]
+ },
+ "results": {
+  "bindings": [
+   {
+    "value": {
+     "type": "literal",
+     "value": "empire-of-the-sun"
+    },
+    "property": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/prop/direct/P6127"
+    },
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q271281"
+    },
+    "tmdb": {
+     "type": "literal",
+     "value": "10110"
+    },
+    "imdb": {
+     "type": "literal",
+     "value": "tt0092965"
+    }
+   }
+  ]
+ }
+}

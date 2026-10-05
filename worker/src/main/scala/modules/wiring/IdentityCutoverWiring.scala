@@ -68,11 +68,22 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
         .fold[services.identity.Answer[Option[Int]]](services.identity.Answer.Unknown)(d =>
           services.identity.Answer.Known(services.identity.TmdbStore.intsOf(d.get("ids")).headOption)),
       stored = agreementVerdicts,
-      ask = open => services.identity.AgreementQuestions.enqueueOpen(taskQueue, open.questions, open.finds, clock, agreementQuestionMetrics, open.posters),
+      ask = open => services.identity.AgreementQuestions.enqueueOpen(taskQueue, open.questions, open.finds, clock, agreementQuestionMetrics, open.posters,
+        open.catalogue),
       metrics = workerMetrics.identityAgreement.stage(country.code), clock = clock, changes = familyAnswerStore,
-      posters = posterAnswerStore, tmdb = Some(storedLookups()), identities = IdentityCutoverWiring.identities(country.code))
+      posters = posterAnswerStore, tmdb = Some(storedLookups()), identities = IdentityCutoverWiring.identities(country.code),
+      catalogue = catalogueAnswerStore)
   /** The posters' hashes the agreement's poster evidence reads, filed among the families' answers. */
   lazy val posterAnswerStore: services.identity.PosterAnswerStore = new services.identity.PosterAnswerStore(familyAnswerStore, clock)
+  /** The venue film pages whose catalogue links the catalogue take reads, each through the fetch its client scrapes with. */
+  lazy val catalogueLinkReader: services.identity.CatalogueLinkReader = new services.identity.CatalogueLinkReader(Seq(
+    services.cinemas.common.FlicksClient.CatalogueLinkPages -> flicksFetch,
+    services.cinemas.pl.KinotekaClient.CatalogueLinkPages   -> httpFetch))
+  /** The catalogue ids' mappings and the venue pages' catalogue links, filed among the families' answers. */
+  lazy val catalogueAnswerStore: services.identity.CatalogueAnswerStore =
+    new services.identity.CatalogueAnswerStore(familyAnswerStore, clock, catalogueLinkReader.pages)
+  /** Maps a catalogue id to its film: Wikidata's statement of it, a Letterboxd slug by its own page else. */
+  lazy val catalogueMapping: services.identity.CatalogueMapping = new services.identity.WikidataCatalogueMapping(wikidataClient, letterboxdClient)
   /** Hashes a venue's or a TMDB film's poster: the image through the enrichment fetch chain (its pacing and breakers; a
    *  host blocking the worker through its scrapes' egress), cut to the card's slot under the process's decode gate. */
   lazy val posterHashing: services.identity.PosterHashing = new services.identity.PosterHashing(
@@ -99,6 +110,8 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
     new services.identity.AgreementFindHandler(imdbId => { tmdbClient.findByImdbId(imdbId); () },
       () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics),
     new services.identity.AgreementPosterHandler(posterAnswerStore, posterHashing,
+      () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics),
+    new services.identity.AgreementCatalogueHandler(catalogueAnswerStore, catalogueMapping, catalogueLinkReader,
       () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics))
   /** Projects what moved: as the identity model takes this worker's scrapes in, and as another writer moves a stored film
    *  (`MovieCache.onChanged`) — there is no period between. */

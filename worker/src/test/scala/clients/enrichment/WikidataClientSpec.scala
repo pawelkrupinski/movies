@@ -46,6 +46,24 @@ class WikidataClientSpec extends AnyFlatSpec with Matchers {
     WD.filmwebEntityId("https://www.filmweb.pl/film/SomeTitle") shouldBe None
   }
 
+  // ── itemsStating (SPARQL) ──────────────────────────────────────────────────
+
+  "itemsStating" should "map a batch of Webedia ids to the items stating them, with their TMDB and IMDb ids (recorded)" in {
+    // A real query.wikidata.org answer for four DE Webedia ids: "Maria's Lovers" (234), "Fantasy" (325279), "Mein neues altes
+    // Ich" (1000032825, an item TMDB links no id on) and "Die Unbeugsamen" (144766, on no item).
+    val client = wikidataStub(Map("query.wikidata.org/sparql" -> loadFixture("/fixtures/wikidata/sparql_webedia_items.json")))
+    client.itemsStating(Seq("P1265", "P8531"), Seq("325279", "234", "1000032825", "144766")) shouldBe Map(
+      "234"        -> Seq(WD.StatingItem("Q2706930", "P1265", Some(77985), Some("tt0087682"))),
+      "325279"     -> Seq(WD.StatingItem("Q135441923", "P1265", Some(1318829), Some("tt36112899"))),
+      "1000032825" -> Seq(WD.StatingItem("Q138644118", "P8531", None, None)))
+  }
+
+  it should "ask one SPARQL query naming every value and property, in a stable order" in {
+    WD.catalogueQuery(Seq("P8531", "P1265"), Seq("325279", "234")) shouldBe
+      "SELECT ?value ?property ?item ?tmdb ?imdb WHERE { VALUES ?value { \"234\" \"325279\" } VALUES ?property { wdt:P1265 wdt:P8531 } " +
+        "?item ?property ?value . OPTIONAL { ?item wdt:P4947 ?tmdb } OPTIONAL { ?item wdt:P345 ?imdb } }"
+  }
+
   // ── findImdbIdByFilmwebId ──────────────────────────────────────────────────
 
   "findImdbIdByFilmwebId" should "return the IMDb id when Wikidata has a P5032→P345 cross-reference" in {

@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CandidateQuery, DetailFacts, Evidence, FallbackIds, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver,
-  Listing, PosterAnswers, PosterEvidence, PosterHash, Resolution, ResolverDecision, StoredFamily}
+import services.identity.{Answer, CandidateQuery, CatalogueAnswers, CatalogueQuestion, DetailFacts, Evidence, FallbackIds, Hit, IdentityCalibration, IdentityLookups,
+  IdentityMeasures, IdentityResolver, Listing, PosterAnswers, PosterEvidence, PosterHash, Resolution, ResolverDecision, StoredFamily}
 import services.movies.{ListingKey, TitleNormalizer}
 
 import scala.collection.concurrent.TrieMap
@@ -36,13 +36,19 @@ import scala.collection.mutable
  *
  * A cluster neither took is read last by the days its venues screen it on ([[Broadcast]]): a stage relay screening on
  * the day one record of its work was broadcast is that production ([[ResolverDecision.Basis.Broadcast]]).
+ *
+ * A cluster nothing above took — no agreement, poster, broadcast or fill — takes the film its listings' own catalogue
+ * ids name ([[Catalogue]], [[ResolverDecision.Basis.Catalogue]]), read from `catalogue`: an id not mapped yet, or a venue
+ * page whose links are not read yet, is a gap the stage hands to `ask`, as a family's question is. Last, so an exact id
+ * never moves a film another rule took: where it names another, the projection keeps the take, for the measure to list.
  */
 final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: IdentityLookups, normalizer: TitleNormalizer,
                            calibration: IdentityCalibration, tmdbOf: String => Answer[Option[Int]], stored: AgreementVerdicts,
                            ask: AgreementStage.Open => Unit = _ => (), metrics: AgreementStage.Metrics = AgreementStage.Metrics.Silent,
                            clock: java.time.Clock, changes: AnswerChanges = AnswerChanges.Unknown, posters: PosterAnswers = PosterAnswers.Silent,
                            tmdb: Option[IdentityLookups] = None, identities: Seq[VoterFamily] = Nil,
-                           rules: services.identity.UnifiedRules = services.identity.UnifiedRules.resolver) {
+                           rules: services.identity.UnifiedRules = services.identity.UnifiedRules.resolver,
+                           catalogue: CatalogueAnswers = CatalogueAnswers.Silent) {
 
   /** What a stored verdict was decided under: the stage's code and the selected rules' version — a refit of the rules
    *  decides every verdict again, as a change of the code does. */
@@ -51,12 +57,16 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   @volatile private var gaps: Set[(VoterFamily, String)] = Set.empty
   @volatile private var finds: Set[String] = Set.empty
   @volatile private var posterGaps: Set[AgreementStage.PosterQuestion] = Set.empty
+  @volatile private var catalogueGaps: Set[CatalogueQuestion] = Set.empty
   /** The clusters' family questions no family has answered yet, as the last [[apply]] met them. */
   def wanted: Set[(VoterFamily, String)] = gaps
   /** The agreed IMDb ids TMDB was not asked about yet, as the last [[apply]] met them. */
   def wantedFinds: Set[String] = finds
   /** The posters not hashed yet that a cluster's take waits on, as the last [[apply]] met them. */
   def wantedPosters: Set[AgreementStage.PosterQuestion] = posterGaps
+  /** The catalogue ids not mapped yet, and the venue pages whose links are not read yet, that a cluster's take waits on,
+   *  as the last [[apply]] met them. */
+  def wantedCatalogue: Set[CatalogueQuestion] = catalogueGaps
 
   /** Each family's calibration: TMDB's, its search priors' spread scaled by the family's [[VoterFamily.priorSpread]]. */
   private val calibrations: Map[VoterFamily, IdentityCalibration] = families.keys.map(family => family -> calibration.withPriorSpread(family.priorSpread)).toMap
@@ -80,6 +90,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   private val handed      = mutable.Set.empty[(VoterFamily, String)]
   private val handedFinds = mutable.Set.empty[String]
   private val handedPosters = mutable.Set.empty[AgreementStage.PosterQuestion]
+  private val handedCatalogue = mutable.Set.empty[CatalogueQuestion]
   /** Each cluster's TMDB candidates, none denied, at its listings' digest: what its posters are compared against. */
   private val candidateFilms = TrieMap.empty[String, (Long, Seq[Int])]
   /** How many clusters the current [[apply]] asked the resolver about again — the stage's cost, for [[metrics]]. */
@@ -116,6 +127,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     val asked  = mutable.Set.empty[(VoterFamily, String)]
     val finding = mutable.Set.empty[String]
     val postersAsked = mutable.Set.empty[AgreementStage.PosterQuestion]
+    val catalogueAsked = mutable.Set.empty[CatalogueQuestion]
     val moved  = mutable.ArrayBuffer.empty[StoredVerdict]
     val seen   = mutable.Set.empty[String]
     var posterVetoed = 0
@@ -142,9 +154,11 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
             case AgreementStage.Take.Taken(agreed) => agreed
             case AgreementStage.Take.Pending       => decision
             case AgreementStage.Take.Vetoed        => posterVetoed += 1; voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings))
-                                                        .orElse(filledTake(decision, v, finding, distances)).getOrElse(decision)
+                                                        .orElse(filledTake(decision, v, finding, distances))
+                                                        .orElse(catalogued(decision, listings, asked, finding, catalogueAsked)).getOrElse(decision)
             case AgreementStage.Take.Untaken       => voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings))
-                                                        .orElse(filledTake(decision, v, finding, distances)).getOrElse(decision)
+                                                        .orElse(filledTake(decision, v, finding, distances))
+                                                        .orElse(catalogued(decision, listings, asked, finding, catalogueAsked)).getOrElse(decision)
           }
         }
         if (now eq decision) decision else Option(takenAs.get(decision)).filter(_ == now).getOrElse { takenAs.put(decision, now); now }
@@ -165,17 +179,19 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     gaps = asked.toSet
     finds = finding.toSet
     posterGaps = postersAsked.toSet
-    if (handedAt != version) { handed.clear(); handedFinds.clear(); handedPosters.clear(); handedAt = version }
-    val open = AgreementStage.Open(gaps -- handed, finds -- handedFinds, posterGaps -- handedPosters)
-    if (open.questions.nonEmpty || open.finds.nonEmpty || open.posters.nonEmpty) {
-      ask(open); handed ++= open.questions; handedFinds ++= open.finds; handedPosters ++= open.posters
+    catalogueGaps = catalogueAsked.toSet
+    if (handedAt != version) { handed.clear(); handedFinds.clear(); handedPosters.clear(); handedCatalogue.clear(); handedAt = version }
+    val open = AgreementStage.Open(gaps -- handed, finds -- handedFinds, posterGaps -- handedPosters, catalogueGaps -- handedCatalogue)
+    if (open.questions.nonEmpty || open.finds.nonEmpty || open.posters.nonEmpty || open.catalogue.nonEmpty) {
+      ask(open); handed ++= open.questions; handedFinds ++= open.finds; handedPosters ++= open.posters; handedCatalogue ++= open.catalogue
     }
     val agreedNow = decisions.filter(_.basis == ResolverDecision.Basis.Agreed)
     metrics.applied(AgreementStage.Applied(waiting = waiting.size, verdicts = held.size, agreed = held.valuesIterator.count(_.agreed.isDefined),
       takenTmdb = agreedNow.count(_.film.isDefined), takenFallback = agreedNow.count(_.fallback.isDefined),
       open = gaps.groupMapReduce(_._1)(_ => 1)(_ + _), finds = finds.size, resolves = resolves, seconds = started.seconds,
       takenPoster = decisions.count(_.basis == ResolverDecision.Basis.Poster), posterVetoed = posterVetoed, posters = posterGaps.size,
-      takenBroadcast = decisions.count(_.basis == ResolverDecision.Basis.Broadcast), takenFilled = decisions.count(_.basis == ResolverDecision.Basis.Filled)))
+      takenBroadcast = decisions.count(_.basis == ResolverDecision.Basis.Broadcast), takenFilled = decisions.count(_.basis == ResolverDecision.Basis.Filled),
+      takenCatalogue = decisions.count(_.basis == ResolverDecision.Basis.Catalogue), catalogue = catalogueGaps.size))
     resolution.copy(decisions = decisions)
   }
 
@@ -366,6 +382,20 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     (VoterFamily.Imdb +: identities).distinct.iterator.flatMap(family =>
       agreed.ids.get(family).orElse(agreed.crossId(family.database)).map(family.database -> _)).nextOption()
 
+  /** The decision with the film its listings' catalogue ids name taken ([[Catalogue.take]]) — none while a question it
+   *  needs is open, each noted to ask. */
+  private def catalogued(decision: ResolverDecision, listings: Seq[Listing], asked: mutable.Set[(VoterFamily, String)], finding: mutable.Set[String],
+                         catalogueAsked: mutable.Set[CatalogueQuestion]): Option[ResolverDecision] =
+    Catalogue.take(listings, catalogue, families, tmdbOf, catalogueAsked, asked, finding).toOption.flatten.map { taken =>
+      val explained = decision.explanation :+ taken.line
+      taken.film.fold(decision.copy(basis = ResolverDecision.Basis.Catalogue, explanation = explained,
+        fallback = taken.fallback.map { case (source, id) =>
+          // a film standing on Wikidata's item carries its title and year, that a link to its page is built of
+          val named = source != VoterFamily.Imdb.database
+          ResolverDecision.Fallback(source, id, 1.0, taken.title.filter(_ => named), taken.year.filter(_ => named)) })(decision.trace))(film =>
+        decision.copy(film = Some(film), basis = ResolverDecision.Basis.Catalogue, explanation = explained)(decision.trace))
+    }
+
   /** The decision with the one candidate the venue posters match taken ([[PosterEvidence.vote]]). */
   private def voted(decision: ResolverDecision, distances: Answer[Seq[Map[Int, Option[Int]]]]): Option[ResolverDecision] =
     distances.toOption.flatMap(PosterEvidence.vote).map { case (film, bits) =>
@@ -454,7 +484,8 @@ object AgreementStage {
 
   /** The questions an [[AgreementStage.apply]] met unanswered or stale, the agreed IMDb ids TMDB was not asked about, and
    *  the posters not hashed yet. */
-  final case class Open(questions: Set[(VoterFamily, String)], finds: Set[String], posters: Set[PosterQuestion] = Set.empty)
+  final case class Open(questions: Set[(VoterFamily, String)], finds: Set[String], posters: Set[PosterQuestion] = Set.empty,
+                        catalogue: Set[CatalogueQuestion] = Set.empty)
 
   /** What became of the film a cluster's families agree on: taken, pending an answer, vetoed by a venue poster, or none to take. */
   private enum Take {
@@ -494,10 +525,12 @@ object AgreementStage {
    *  kept and how many agreed, the decisions taken as a TMDB film or an IMDb fallback, the questions still open per family
    *  and TMDB finds, how many clusters it resolved again, and how long it took; and the venue posters' part: the decisions
    *  they took ([[ResolverDecision.Basis.Poster]]), the agreed films they vetoed, and the posters not hashed yet; and the
-   *  decisions the screening days took ([[ResolverDecision.Basis.Broadcast]]). */
+   *  decisions the screening days took ([[ResolverDecision.Basis.Broadcast]]), a fill rule took
+   *  ([[ResolverDecision.Basis.Filled]]) and the listings' catalogue ids took ([[ResolverDecision.Basis.Catalogue]]), with
+   *  the catalogue questions still open. */
   final case class Applied(waiting: Int, verdicts: Int, agreed: Int, takenTmdb: Int, takenFallback: Int, open: Map[VoterFamily, Int],
                            finds: Int, resolves: Int, seconds: Double, takenPoster: Int = 0, posterVetoed: Int = 0, posters: Int = 0,
-                           takenBroadcast: Int = 0, takenFilled: Int = 0)
+                           takenBroadcast: Int = 0, takenFilled: Int = 0, takenCatalogue: Int = 0, catalogue: Int = 0)
   trait Metrics { def applied(applied: Applied): Unit }
   object Metrics { val Silent: Metrics = _ => () }
 

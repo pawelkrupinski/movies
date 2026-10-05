@@ -27,10 +27,11 @@ object AgreementQuestions {
    *  at boot ahead of 36 scrape chunks, an hour's drain at the pool's pace). */
   val Behind: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(7, java.util.concurrent.TimeUnit.DAYS)
 
-  /** Every open question, find and poster, one task each — one already queued is not queued again — claimed after every
+  /** Every open question, find, poster and catalogue question, one task each (catalogue ids a batch each) — one already queued is not queued again — claimed after every
    *  other task ([[Behind]]). */
   def enqueueOpen(queue: TaskQueue, wanted: Set[(VoterFamily, String)], finds: Set[String], clock: Clock,
-                  metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent, posters: Set[PosterQuestion] = Set.empty): Unit = {
+                  metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent, posters: Set[PosterQuestion] = Set.empty,
+                  catalogue: Set[CatalogueQuestion] = Set.empty): Unit = {
     wanted.toSeq.sortBy { case (family, question) => (family.ordinal, question) }.foreach { case (family, question) =>
       metrics.enqueued(family.label, queue.enqueue(TaskType.AgreementQuestion, s"agreement|${family.label}|$question",
         Map(Family -> family.label, Question -> question), submittedAt = clock.instant(), claimAhead = -Behind) == EnqueueResult.Added)
@@ -46,6 +47,7 @@ object AgreementQuestions {
       metrics.enqueued(AgreementQuestionMetrics.Poster, queue.enqueue(TaskType.AgreementPoster, s"agreement-$id", payload,
         submittedAt = clock.instant(), claimAhead = -Behind) == EnqueueResult.Added)
     }
+    AgreementCatalogueQuestions.enqueue(queue, catalogue, clock, metrics)
   }
 
   /** The statuses that answer a question with nothing — a query the site refuses (Filmweb's 400 for an overlong title),
@@ -140,6 +142,8 @@ object AgreementQuestionMetrics {
   val TmdbFind = "tmdb-find"
   /** A poster hashed for the agreement's poster evidence. */
   val Poster = "poster"
+  /** A catalogue id batch mapped, or a venue page's catalogue links read, for the agreement's catalogue take. */
+  val Catalogue = "catalogue"
   val Silent: AgreementQuestionMetrics = new AgreementQuestionMetrics {
     def enqueued(family: String, added: Boolean): Unit = ()
     def asked(family: String, outcome: String): Unit = ()

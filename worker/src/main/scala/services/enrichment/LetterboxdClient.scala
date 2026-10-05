@@ -34,6 +34,11 @@ class LetterboxdClient(http: HttpFetch) {
   def byTmdbId(tmdbId: Int): Option[FilmIds] =
     fetchAndParse(s"$Site/tmdb/$tmdbId/")
 
+  /** Read the film page of a Letterboxd slug (`/film/<slug>/`, which its robots.txt allows) — the catalogue mapping's
+   *  fallback for a slug a venue page links that Wikidata states on no item. */
+  def bySlug(slug: String): Option[FilmIds] =
+    fetchAndParse(s"$Site/film/${slug.trim}/")
+
   /** `None` when Letterboxd knows no film by that id — a 404, or the 200 "TMDB Import
    *  Result" / "IMDb ID Not found" page its redirect endpoints serve for an unknown id.
    *  A read that failed, or a page that is neither a film nor that answer (a challenge),

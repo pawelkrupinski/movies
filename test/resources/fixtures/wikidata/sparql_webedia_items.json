@@ -1,0 +1,73 @@
+{
+ "head": {
+  "vars": [
+   "value",
+   "property",
+   "item",
+   "tmdb",
+   "imdb"
+  ]
+ },
+ "results": {
+  "bindings": [
+   {
+    "value": {
+     "type": "literal",
+     "value": "234"
+    },
+    "property": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/prop/direct/P1265"
+    },
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q2706930"
+    },
+    "tmdb": {
+     "type": "literal",
+     "value": "77985"
+    },
+    "imdb": {
+     "type": "literal",
+     "value": "tt0087682"
+    }
+   },
+   {
+    "value": {
+     "type": "literal",
+     "value": "325279"
+    },
+    "property": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/prop/direct/P1265"
+    },
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q135441923"
+    },
+    "tmdb": {
+     "type": "literal",
+     "value": "1318829"
+    },
+    "imdb": {
+     "type": "literal",
+     "value": "tt36112899"
+    }
+   },
+   {
+    "value": {
+     "type": "literal",
+     "value": "1000032825"
+    },
+    "property": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/prop/direct/P8531"
+    },
+    "item": {
+     "type": "uri",
+     "value": "http://www.wikidata.org/entity/Q138644118"
+    }
+   }
+  ]
+ }
+}

@@ -28,6 +28,10 @@ object UnmatchedClusters {
   val Directory: Path = Path.of("test", "resources", "fixtures", "identity-unmatched")
   def fixturePath(country: Country): Path = Directory.resolve(s"${country.code}.json.gz")
 
+  /** The venue film pages whose catalogue links the catalogue take reads, as the worker declares them. */
+  val CataloguePages: Seq[CatalogueLinkPages] =
+    Seq(services.cinemas.common.FlicksClient.CatalogueLinkPages, services.cinemas.pl.KinotekaClient.CatalogueLinkPages)
+
   /** A country's unmatched clusters — the model's decisions on them over the whole corpus, and their listings — and
    *  every answer the agreement stage read for them. The decisions are the whole corpus's, never a re-resolve of the
    *  clusters alone: alone, a cluster loses the neighbours that hold it apart from a namesake (a Met relay alone took
@@ -54,10 +58,10 @@ object UnmatchedClusters {
   /** The agreement stage over the model's decisions, as the worker runs it on the way to the projection. */
   def agree(decisions: Seq[ResolverDecision], listings: Seq[Listing], lookups: IdentityLookups, families: Map[VoterFamily, FamilyAnswers],
             version: Long, tmdbOf: String => Answer[Option[Int]], normalizer: TitleNormalizer, posters: PosterAnswers,
-            identities: Seq[VoterFamily]): Outcome = {
+            identities: Seq[VoterFamily], catalogue: CatalogueAnswers): Outcome = {
     val model = resolutionOf(decisions)
     val stage = new AgreementStage(families, lookups, normalizer, IdentityCalibration.resolver, tmdbOf, new InMemoryAgreementVerdicts,
-      clock = SpecClock.Pinned, posters = posters, tmdb = Some(lookups), identities = identities)
+      clock = SpecClock.Pinned, posters = posters, tmdb = Some(lookups), identities = identities, catalogue = catalogue)
     val byKey = listings.map(l => l.key -> l).toMap
     Outcome(model, stage.apply(model, byKey.get, version), stage)
   }
@@ -69,7 +73,8 @@ object UnmatchedClusters {
     val store = new FamilyAnswerStore(docs, SpecClock.Pinned)
     agree(capture.decisions, capture.listings, new Replay(capture), familiesOf(capture.country).map(f => f -> store.answers(f)).toMap, version = 1,
       imdb => capture.finds.get(imdb).fold[Answer[Option[Int]]](Answer.Unknown)(Answer.Known(_)), TitleNormalizer.forCountry(capture.country),
-      new PosterAnswerStore(store, SpecClock.Pinned), modules.wiring.IdentityCutoverWiring.identities(capture.country.code))
+      new PosterAnswerStore(store, SpecClock.Pinned), modules.wiring.IdentityCutoverWiring.identities(capture.country.code),
+      new CatalogueAnswerStore(store, SpecClock.Pinned, CataloguePages))
   }
 
   /** One listing's take: the film its cluster took (TMDB's, or a fallback film), the IMDb id it is known by, and the

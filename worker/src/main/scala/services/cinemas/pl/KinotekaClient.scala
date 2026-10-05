@@ -148,6 +148,11 @@ class KinotekaClient(http: HttpFetch, titles: TitleNormalizer
 
 object KinotekaClient {
 
+  /** A Kinoteka film page (`/film/<slug>/`) links the film's IMDb title on about 60% of pages (measured 2026-10-05) — an
+   *  exact id the identity's catalogue take maps to TMDB, read by the agreement for a cluster nothing else took. */
+  val CatalogueLinkPages: services.identity.CatalogueLinkPages =
+    services.identity.CatalogueLinkPages(Set("kinoteka.pl", "www.kinoteka.pl"), Set("imdb"))
+
   def parseDateTime(day: String, hour: String): Option[LocalDateTime] =
     ScraperParse.isoDateAtClock(day, hour)
 

@@ -103,18 +103,20 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
     // the venue and TMDB posters' hashes, of the images KINOWO_IDENTITY_POSTER_CACHE keeps, else downloaded
     val posterStore = new PosterAnswerStore(store, new tools.MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))
     val posters     = CachedPosters.of(configuration, c.country)
+    val catalogue   = new CatalogueFill(store, new tools.MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")), fetch)
     val stage = new AgreementStage(families.map(family => family -> store.answers(family)).toMap, lookups, c.normalizer,
       IdentityCalibration.resolver, tmdbOf = imdb => Answer.Known(Try(tmdb.findByImdbId(imdb).map(_.id)).toOption.flatten),
       stored = new services.identity.agreement.InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = posterStore, tmdb = Some(lookups),
-      identities = modules.wiring.IdentityCutoverWiring.identities(c.country.code))
+      identities = modules.wiring.IdentityCutoverWiring.identities(c.country.code), catalogue = catalogue.answers)
     val byKey = listings.map(l => l.key -> l).toMap
     var rounds = 0
     var taken  = stage.apply(resolution, byKey.get, store.version)
-    while ((stage.wanted.nonEmpty || stage.wantedPosters.nonEmpty) && rounds < 12) {
+    while ((stage.wanted.nonEmpty || stage.wantedPosters.nonEmpty || stage.wantedCatalogue.nonEmpty) && rounds < 12) {
       rounds += 1
       val open = stage.wanted.toSeq
       println(s"[${c.label}] agreement round $rounds: ${open.size} open question(s), ${stage.wantedPosters.size} poster(s)")
       posters.file(posterStore, stage.wantedPosters.toSeq)
+      catalogue.file(stage.wantedCatalogue)
       // each family's questions four at a time, as the experiment read the sites unblocked
       open.groupBy(_._1).toSeq.map { case (family, asks) =>
         java.util.concurrent.CompletableFuture.runAsync { () =>
@@ -124,7 +126,8 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
       }.foreach(_.join())
       taken = stage.apply(resolution, byKey.get, store.version)
     }
-    val lines = taken.decisions.filter(d => d.basis == ResolverDecision.Basis.Agreed || d.basis == ResolverDecision.Basis.Poster).flatMap { d =>
+    val lines = taken.decisions.filter(d => d.basis == ResolverDecision.Basis.Agreed || d.basis == ResolverDecision.Basis.Poster ||
+      d.basis == ResolverDecision.Basis.Catalogue).flatMap { d =>
       d.members.flatMap(byKey.get).map(l => Json.stringify(JsObject(Seq(
         "venue" -> JsString(l.key.venue), "rawTitle" -> JsString(l.key.rawTitle), "basis" -> JsString(d.basis.toString),
         "film" -> d.film.fold[play.api.libs.json.JsValue](JsNull)(JsNumber(_)),
@@ -133,8 +136,62 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
     }
     Files.writeString(dir.resolve(s"agreed-${c.country.code}.jsonl"), lines.mkString("", "\n", "\n"))
     println(s"[${c.label}] agreement: ${taken.decisions.count(_.basis == ResolverDecision.Basis.Agreed)} cluster(s) agreed, " +
-      s"${taken.decisions.count(_.basis == ResolverDecision.Basis.Poster)} taken by their poster after $rounds round(s); " +
+      s"${taken.decisions.count(_.basis == ResolverDecision.Basis.Poster)} taken by their poster, " +
+      s"${taken.decisions.count(_.basis == ResolverDecision.Basis.Catalogue)} by their catalogue ids after $rounds round(s); " +
       s"${stage.wanted.size} question(s), ${stage.wantedPosters.size} poster(s) still open")
+    // every listing's film after the stage — what a change compares against its base: a film switched, gained or lost
+    Files.writeString(dir.resolve(s"final-${c.country.code}.jsonl"), taken.decisions.flatMap { d =>
+      d.members.flatMap(byKey.get).map(l => Json.stringify(JsObject(Seq(
+        "venue" -> JsString(l.key.venue), "rawTitle" -> JsString(l.key.rawTitle), "key" -> JsString(ListingKey.serialised(l.key)),
+        "basis" -> JsString(d.basis.toString), "film" -> d.film.fold[play.api.libs.json.JsValue](JsNull)(JsNumber(_)),
+        "fallback" -> d.fallback.fold[play.api.libs.json.JsValue](JsNull)(f => JsString(s"${f.source}:${f.id}"))))))
+    }.sorted.mkString("", "\n", "\n"))
+    catalogueReport(c, taken, byKey, catalogue, imdb => Try(tmdb.findByImdbId(imdb).map(_.id)).toOption.flatten, dir)
+  }
+
+  /** What every cluster's catalogue ids name — the matched ones too — beside the film it took: `catalogue-<cc>.jsonl`, one
+   *  line a cluster carrying a mappable id, `verdict` `agrees`, `contradicts` (the exact id names another TMDB film: a
+   *  likely wrong match, to list, never to switch), `untaken` (no film either way) or `unmapped` (its ids map to none). */
+  private def catalogueReport(c: Corpus, taken: Resolution, byKey: Map[ListingKey, Listing], catalogue: CatalogueFill, find: String => Option[Int],
+                              dir: java.nio.file.Path): Unit = {
+    import services.identity.agreement.Catalogue
+    val clusters = taken.decisions.map(d => d -> d.members.flatMap(byKey.get)).filter(_._2.nonEmpty)
+    var rounds = 0
+    var open: Set[CatalogueQuestion] = Set.empty
+    while ({ open = clusters.flatMap { case (_, ls) => val asked = mutable.Set.empty[CatalogueQuestion]; Catalogue.named(ls, catalogue.answers, asked); asked }
+             .toSet; open.nonEmpty && rounds < 4 }) {
+      rounds += 1
+      println(s"[${c.label}] catalogue report round $rounds: ${open.size} question(s)")
+      catalogue.file(open)
+    }
+    val lines = clusters.flatMap { case (d, ls) =>
+      Catalogue.named(ls, catalogue.answers, mutable.Set.empty).toOption.flatten.map(Some(_)).map { named =>
+        val mapped = named.flatMap(n => n.tmdb.orElse(n.imdb.flatMap(find)))
+        val verdict = (d.film, named, mapped) match {
+          case (_, None, _)                          => "unmapped"
+          case (Some(film), _, Some(id)) if film == id => "agrees"
+          case (Some(_), _, Some(_))                 => "contradicts"
+          case (None, _, Some(_)) if d.basis == ResolverDecision.Basis.Catalogue => "taken"
+          case (None, _, Some(_))                    => "untaken"
+          case (_, _, None)                          => "no-tmdb"
+        }
+        Json.stringify(JsObject(Seq(
+          "verdict" -> JsString(verdict), "basis" -> JsString(d.basis.toString),
+          "film" -> d.film.fold[play.api.libs.json.JsValue](JsNull)(JsNumber(_)),
+          "filmTitle" -> d.film.flatMap(taken.films.get).fold[play.api.libs.json.JsValue](JsNull)(f => JsString(s"${f.title} (${f.year.getOrElse("?")})")),
+          "fallback" -> d.fallback.fold[play.api.libs.json.JsValue](JsNull)(f => JsString(s"${f.source}:${f.id}")),
+          "catalogue" -> mapped.fold[play.api.libs.json.JsValue](JsNull)(JsNumber(_)),
+          "id" -> named.fold[play.api.libs.json.JsValue](JsNull)(n => JsString(s"${n.id.source}:${n.id.id}")),
+          "linked" -> JsString(named.fold("")(n => if (n.linked) "page" else "listing")),
+          "item" -> named.flatMap(_.item).fold[play.api.libs.json.JsValue](JsNull)(JsString(_)),
+          "imdb" -> named.flatMap(_.imdb).fold[play.api.libs.json.JsValue](JsNull)(JsString(_)),
+          "via" -> named.fold[play.api.libs.json.JsValue](JsNull)(n => JsString(n.hit.via)),
+          "listings" -> JsNumber(ls.size),
+          "members" -> JsArray(ls.take(6).map(l => JsString(s"${l.key.venue} | ${l.key.rawTitle}"))))))
+      }
+    }
+    Files.writeString(dir.resolve(s"catalogue-${c.country.code}.jsonl"), lines.mkString("", "\n", "\n"))
+    println(s"[${c.label}] catalogue report: ${lines.size} cluster(s) with a mappable id after $rounds round(s)")
   }
 
   override protected def afterAll(): Unit = {
