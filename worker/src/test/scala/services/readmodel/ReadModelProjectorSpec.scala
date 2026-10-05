@@ -695,7 +695,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
 
     val study  = new BootCorpusStudy(titleNormalizer)
     val booted = new ReadModelProjector(repository, rm, rm, clock = specClock, bootStudy = Some(study))
-    study.bootCorpus(Some(repository.findAll()))
+    study.bootPage(repository.findAll())
+    study.bootReadEnded(services.movies.BootReadEnd.Whole)
     booted.prepare()
 
     scans.get() shouldBe 0
@@ -715,7 +716,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
     val study  = new BootCorpusStudy(titleNormalizer)
     val booted = new ReadModelProjector(repository, rm, rm, clock = specClock, bootStudy = Some(study))
-    study.bootCorpus(None)
+    study.bootReadEnded(services.movies.BootReadEnd.GaveUp)
     booted.prepare()
     scans.get() shouldBe 1
     rm.movieUpserts.map(_._id) shouldBe Seq("bar|2024")
@@ -723,6 +724,22 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     booted.onVenueSlots(services.movies.VenueSlots(FilmId("absent|2024"), Map.empty)) shouldBe
       services.movies.VenueVerdict.Declined(services.movies.ChangeStreamMetrics.VenueDecline.ProjectorRowUnprojected)
     booted.stop()
+  }
+
+  // The hydrate hands its read over a page at a time, as it reads it, and may read again after a read
+  // that failed part-way: only the pages of the read that completed are the corpus.
+  "the boot study" should "derive the pages of the read that completed, in order, and none of an abandoned one" in {
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
+    val Seq(first, second) = repository.findAll(): @unchecked
+    val study = new BootCorpusStudy(titleNormalizer)
+    study.bootPage(Seq(first))                                  // a read that failed after its first page
+    study.bootReadEnded(services.movies.BootReadEnd.Retrying)
+    study.bootPage(Seq(second))
+    study.bootPage(Seq(first))
+    study.bootReadEnded(services.movies.BootReadEnd.Whole)
+    study.take().map(_.map(_.id)) shouldBe Some(Seq(second.id, first.id))
   }
 
   // ~26 a day for days (a TMDB re-try making rows briefly unready) with nothing but a WARN line

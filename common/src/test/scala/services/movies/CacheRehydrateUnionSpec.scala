@@ -22,14 +22,6 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
   private def repositoryOf(rows: StoredMovieRecord*): MovieRepository =
     new StoredRowsRepository(rows.toSeq, titleNormalizer)
 
-  // The rehydrate under test runs synchronously at cache construction, under the
-  // rule set the cache HOLDS. Handing it the normalizer says so outright; this
-  // used to install the rules in a thread-local scope and rely on the cache
-  // reading whatever was ambient at the moment each key was built — which is
-  // exactly the coupling that made a rule set impossible to scope per country.
-  private def cacheUnder(rs: TitleRuleSet, rows: StoredMovieRecord*): CaffeineMovieCache =
-    new CaffeineMovieCache(repositoryOf(rows*), normalizer = new TitleNormalizer(rs), clock = _root_.tools.SpecClock.Pinned)
-
   private def row(title: String, cinema: Source): StoredMovieRecord =
     StoredMovieRecord.synthesised(title, Some(2025),
       MovieRecord(data = Map[Source, SourceData](
@@ -98,10 +90,90 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     repository.reads.get() shouldBe readsAtBoot
   }
 
-  /** Records what the boot hydrate hands the boot's other corpus readers. */
-  private final class RecordingBootReader extends BootCorpusReader {
+  /** Records what the boot hydrate hands the boot's other corpus readers: each read it ended, as the
+   *  pages it offered (`None` for a hydrate that gave up), and every call in order. */
+  private final class RecordingBootReader(log: scala.collection.mutable.ListBuffer[String] = scala.collection.mutable.ListBuffer.empty) extends BootCorpusReader {
     val offers = scala.collection.mutable.ListBuffer.empty[Option[Seq[StoredMovieRecord]]]
-    def bootCorpus(read: Option[Seq[StoredMovieRecord]]): Unit = offers += read
+    private val pages = scala.collection.mutable.ListBuffer.empty[StoredMovieRecord]
+    def bootPage(rows: Seq[StoredMovieRecord]): Unit = { log += s"page of ${rows.map(_.title).mkString(", ")}"; pages ++= rows }
+    def bootReadEnded(end: BootReadEnd): Unit = {
+      log += s"read ended: $end"
+      end match {
+        case BootReadEnd.Whole    => offers += Some(pages.toList)
+        case BootReadEnd.Retrying => ()
+        case BootReadEnd.GaveUp   => offers += None
+      }
+      pages.clear()
+    }
+  }
+
+  /** A store with showtimes in their own collection — so the cache keeps films without them, as the
+   *  worker's does — whose corpus read arrives a page per film, each page built fresh as the scan reaches
+   *  it (nothing here holds a page once it is handed over), with `between` run before each later page.
+   *  Collecting the whole read goes through the same pages, as `MongoMovieRepository.findAllChecked` does. */
+  private final class PagedRepository(page: Int => StoredMovieRecord, pages: Int, between: Int => Unit = _ => (),
+                                      normalizer: TitleNormalizer = titleNormalizer)
+      extends StoredRowsRepository((0 until pages).map(page), normalizer) {
+    override def hasScreenings: Boolean = true
+    override def foreachPage(onPage: Seq[StoredMovieRecord] => Unit): tools.ScanOutcome = {
+      (0 until pages).foreach { i => if (i > 0) between(i); onPage(Seq(page(i))) }
+      tools.ScanOutcome.complete
+    }
+    override def findAllChecked(): tools.ReadOutcome[Seq[StoredMovieRecord]] = {
+      val rows = Vector.newBuilder[StoredMovieRecord]
+      foreachPage(rows ++= _).collected(rows.result())
+    }
+  }
+
+  private def showingAt(title: String, cinema: Source, showtimes: Seq[models.Showtime]): StoredMovieRecord =
+    StoredMovieRecord.synthesised(title, Some(2025), MovieRecord(data = Map[Source, SourceData](
+      cinema -> SourceData(title = Some(title), rawTitle = Some(title), releaseYear = Some(2025), showtimes = showtimes))), titleNormalizer)
+
+  private def evening(day: Int, url: String): models.Showtime =
+    models.Showtime(java.time.LocalDateTime.of(2026, 10, day, 20, 0), Some(url))
+
+  // A boot held every film WITH its showtimes for the whole hydrate read and the boot readers' derivation
+  // after it — on worker-us 1.4M showtimes, long enough at boot that the old generation took them in, only
+  // to collect them again in the boot's first full collections (2026-10-05).
+  "the hydrate" should "let a page's showtimes go once the page is read, keeping its films without them" in {
+    val firstShowtimes = scala.collection.mutable.ListBuffer.empty[java.lang.ref.WeakReference[models.Showtime]]
+    var heldAtSecondPage = -1
+    def page(i: Int): StoredMovieRecord = {
+      val showtimes = (1 to 3).map(day => evening(day, s"https://book/$i/$day"))
+      if (i == 0) firstShowtimes ++= showtimes.map(new java.lang.ref.WeakReference(_))
+      showingAt(s"Film $i", Multikino, showtimes)
+    }
+    def collected(): Int = firstShowtimes.count(_.get() != null)
+    val repository = new PagedRepository(page, pages = 2, between = _ => {
+      Iterator.continually { System.gc(); collected() }.take(20).find(_ == 0)
+      heldAtSecondPage = collected()
+    })
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    heldAtSecondPage shouldBe 0
+    cache.entries should have size 2
+    val first = cache.entries.collectFirst { case (_, record) if record.cinemaData.values.exists(_.title.contains("Film 0")) => record }.get
+    first.cinemaData.values.map(ShowtimesDigest.slotShowtimeCount).toSeq shouldBe Seq(3)   // kept by count and digest
+    first.cinemaData.values.flatMap(_.showtimes) shouldBe empty
+  }
+
+  it should "hand each page to the boot readers as it is read, not once the read is over" in {
+    val log    = scala.collection.mutable.ListBuffer.empty[String]
+    val reader = new RecordingBootReader(log)
+    new CaffeineMovieCache(new PagedRepository(i => showingAt(s"Film $i", Multikino, Nil), pages = 2, between = i => log += s"reading page $i"),
+      normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned, bootReaders = Seq(reader))
+    log.toList shouldBe List("page of Film 0", "reading page 1", "page of Film 1", "read ended: Whole")
+  }
+
+  // Two documents a late merge-key rule collides are one film: the hydrate unions them, showtimes
+  // included, wherever the read put them. Streamed, it keeps each row without its showtimes, so it reads
+  // the two again whole to union them.
+  it should "union the showtimes of two documents a late rule collides, on different pages" in {
+    val rows = Vector(showingAt("Takie jest życie/Kino Cafe", Multikino, Seq(evening(1, "https://book/a"))),
+                      showingAt("Takie jest życie", Multikino, Seq(evening(2, "https://book/b"))))
+    val cache = new CaffeineMovieCache(new PagedRepository(rows, pages = 2), clock = _root_.tools.SpecClock.Pinned,
+      normalizer = new TitleNormalizer(TitleRuleSet(services.titlerules.TitleRules.all :+ kinoCafeRule)))
+    cache.entries should have size 1
+    cache.entries.head._2.cinemaData.values.map(ShowtimesDigest.slotShowtimeCount).toSeq shouldBe Seq(2)
   }
 
   // A boot read the whole corpus three times before (the hydrate, the projector's missing-card check,

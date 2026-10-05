@@ -393,20 +393,19 @@ class CaffeineMovieCache(
   bootHydrate()
 
   private def bootHydrate(): Unit = {
-    // The first complete, non-empty read goes to the boot readers once the cache holds it. An empty
-    // answer is not offered, so it cannot pass for the corpus: at boot it is as likely a Mongo that
-    // is not ready yet as an empty store, and the readers read again for themselves.
-    var offered = false
-    def offer(rows: Seq[StoredMovieRecord]): Unit = if (!offered && rows.nonEmpty) {
-      offered = true
-      bootReaders.foreach(_.bootCorpus(Some(rows)))
-    }
+    // Each read's pages go to the boot readers as they are read; the first complete, non-empty read is
+    // the corpus. An empty answer is not the corpus: at boot it is as likely a Mongo that is not ready
+    // yet as an empty store, so its pages are forgotten and the hydrate reads again.
+    val offer: Seq[StoredMovieRecord] => Unit = page => bootReaders.foreach(_.bootPage(page))
     var attempt = 0
-    while (rehydrateFrom(offer) == 0 && attempt < bootHydrateMaxAttempts.value) {
+    var read    = rehydrateFrom(offer)
+    while (read == 0 && attempt < bootHydrateMaxAttempts.value) {
+      bootReaders.foreach(_.bootReadEnded(BootReadEnd.Retrying))
       attempt += 1
       Thread.sleep(bootHydrateRetry.value.toMillis) // an interrupt (shutdown mid-boot) ends the construction
+      read = rehydrateFrom(offer)
     }
-    if (!offered) bootReaders.foreach(_.bootCorpus(None))
+    bootReaders.foreach(_.bootReadEnded(if (read > 0) BootReadEnd.Whole else BootReadEnd.GaveUp))
   }
 
   // Key by the title's OWN form — the same input the display vote
@@ -808,8 +807,15 @@ class CaffeineMovieCache(
    *  evicted: its missing films are not gone. The next backstop tick reads again. */
   def rehydrate(): Int = rehydrateFrom(_ => ())
 
-  /** [[rehydrate]], handing a complete read to `onRead` once the cache holds it. */
-  private def rehydrateFrom(onRead: Seq[StoredMovieRecord] => Unit): Int = {
+  /** [[rehydrate]], handing each page of its read to `onPage` as it is read.
+   *
+   *  Streamed, not collected: each page is stripped to what the cache keeps ([[forCache]]) as it
+   *  arrives and then dropped, so the read never holds the whole stitched corpus — every showtime
+   *  of every film — at once. Collected, it did, for the whole read and then for the boot readers'
+   *  derivation after it: long enough at boot that the corpus's showtimes were promoted into the old
+   *  generation only to die there (see [[BootCorpusReader]]). Nothing is put or evicted until the
+   *  read is complete. */
+  private def rehydrateFrom(onPage: Seq[StoredMovieRecord] => Unit): Int = {
     // Additive sync — never blank the cache mid-rehydrate. The backstop
     // tick (see `start()` below) runs while readers walk `snapshot()`;
     // an `invalidateAll()` window would briefly show them an empty corpus. Instead: put every Mongo row (cache's
@@ -822,21 +828,40 @@ class CaffeineMovieCache(
     // [[FilmWriteFence]]. Such a row is left as the write made it; its own change-stream event,
     // or the next backstop, reconciles it.
     val marks         = repository.writeFence.markAll()
-    val read          = repository.findAllChecked()
+    // Group by key BEFORE putting: a merge-key rule added after these documents were
+    // written (a new GlobalStructural strip) makes two stored titles collide on
+    // `CacheKey`, and a bare `put`-per-row is last-write-wins — it would silently
+    // drop one document's showtimes until the next scrape. Union the colliding rows
+    // instead, so the cache is lossless the moment the rule lands (the orphaned
+    // Mongo `_id` is reconciled by a later scrape / the reaper). Each row is kept as the cache keeps
+    // it; a key two rows share is read again whole below, since their union needs the showtimes.
+    val byKey = new java.util.LinkedHashMap[CacheKey, CaffeineMovieCache.HydratedRows]()
+    var rows  = 0
+    val scan  = repository.foreachPage { page =>
+      page.foreach { row =>
+        val held = CaffeineMovieCache.HydratedRows(row.id, forCache(row.record))
+        byKey.merge(row.cacheKey(normalizer), held, (first, next) => first.and(next.ids))
+        ()
+      }
+      rows += page.size
+      onPage(page)
+    }
+    val collided = byKey.asScala.collect { case (key, held) if held.ids.sizeIs > 1 => key -> held.ids }
+    val read     = if (!scan.isComplete) None else unionCollided(collided.toSeq)
     val tFindAllMs    = findingAll.millis
-    if (read.answered.isEmpty) {
-      logger.warn(s"MovieCache rehydrate: the corpus read ${read.explain} (in ${tFindAllMs}ms) — " +
-        "nothing put or evicted; the next tick reads again.")
+    if (read.isEmpty) {
+      logger.warn(s"MovieCache rehydrate: the corpus read ${if (scan.isComplete) "could not re-read the rows two documents share a key with" else scan.explain} " +
+        s"(in ${tFindAllMs}ms) — nothing put or evicted; the next tick reads again.")
       return 0
     }
-    val rows          = read.answered.get
+    read.foreach(_.foreach { case (key, record) => byKey.computeIfPresent(key, (_, held) => held.copy(record = record)); () })
     wholeCorpusRead = true
     // A failed read was turned away above. An ANSWERED empty corpus while the cache
     // holds rows would evict every one of them — a real Mongo wipe is a degenerate
     // manual operation, acceptable to handle only on a restart, so the cache is left
     // intact rather than trusted to that one answer.
     val cachedSize = positive.estimatedSize()
-    if (rows.isEmpty && cachedSize > 0) {
+    if (rows == 0 && cachedSize > 0) {
       logger.warn(s"MovieCache rehydrate: the corpus read answered empty while the cache holds $cachedSize row(s) — " +
                   "cache left intact.")
       return 0
@@ -846,40 +871,31 @@ class CaffeineMovieCache(
     // it explicitly so a Mongo timeout / disabled connection / projection bug
     // is obvious in the boot log instead of hiding behind a 200 response with
     // zero films on it. The rest of `rehydrate` is a no-op in this case
-    // (`put` over an empty Seq, `invalidate` over an empty set), so the
+    // (`put` over an empty map, `invalidate` over an empty set), so the
     // surrounding flow stays the same.
-    if (rows.isEmpty && cachedSize == 0) {
+    if (rows == 0 && cachedSize == 0) {
       logger.warn(s"MovieCache rehydrate: findAll() returned empty on a cold cache (findAll=${tFindAllMs}ms) — " +
                   "Mongo connection disabled, query timed out, or repository genuinely empty. " +
                   "Pages will render with no films until the next successful tick.")
     }
     val populating = tools.Stopwatch.start()
-    // Group by key BEFORE putting: a merge-key rule added after these documents were
-    // written (a new GlobalStructural strip) makes two stored titles collide on
-    // `CacheKey`, and a bare `put`-per-row is last-write-wins — it would silently
-    // drop one document's showtimes until the next scrape. Union the colliding rows
-    // instead, so the cache is lossless the moment the rule lands (the orphaned
-    // Mongo `_id` is reconciled by a later scrape / the reaper).
-    val byKey: Map[CacheKey, Seq[StoredMovieRecord]] =
-      rows.groupBy(_.cacheKey(normalizer))
     // Count what this backstop reload catches that the incremental change stream missed:
     // a put whose cached value DIFFERED (a missed upsert) and a key no longer in Mongo (a
     // missed delete). After resume tokens + delete-apply these should be ~0 in steady state
     // — the signal (kinowo_worker_cache_rehydrate_changes) that the rehydrate is redundant.
     var changed = 0
-    byKey.foreach { case (k, rs) =>
-      val record = MovieRecordMerge.unionAll(rs.map(_.record))
+    byKey.forEach { (k, held) =>
       // Several documents under one key are the same film twice; the lowest id is the
       // survivor, deterministically, and the others are reconciled below.
-      val survivor = rs.map(_.id).minBy(_.value)
+      val survivor = held.ids.minBy(_.value)
       repository.writeFence.ifUndisturbed(survivor.value, marks.of(survivor.value)) {
-        if (!Option(positive.getIfPresent(k)).exists(ShowtimesDigest.leanEqual(_, record))) changed += 1
-        store(k, forCache(record), survivor)
+        if (!Option(positive.getIfPresent(k)).exists(ShowtimesDigest.leanEqual(_, held.record))) changed += 1
+        store(k, held.record, survivor)
       }
     }
     // Only a key whose film nobody wrote since the snapshot: one this cache created or
     // retitled meanwhile is absent from the snapshot because it is NEWER, not gone.
-    val removed = positive.asMap().keySet().asScala.toSeq.filterNot(byKey.keySet.contains).filter { k =>
+    val removed = positive.asMap().keySet().asScala.toSeq.filterNot(byKey.containsKey).filter { k =>
       corpusIndex.idOf(k).fold { evict(k); true }(id => repository.writeFence.ifUndisturbed(id.value, marks.of(id.value))(evict(k)))
     }
     cacheMetrics.recordRehydrate(changed, removed.size)
@@ -889,12 +905,28 @@ class CaffeineMovieCache(
     // Hydrate is a PURE LOAD: it rebuilds the cache from Mongo and stops. Which listings are one
     // film is the identity projection's to decide, never the load's.
     val tPopulateMs = populating.millis
-    if (rows.nonEmpty)
-      logger.info(s"Hydrated ${rows.size} enrichment(s) from Mongo — findAll=${tFindAllMs}ms populate=${tPopulateMs}ms.")
+    if (rows > 0)
+      logger.info(s"Hydrated $rows enrichment(s) from Mongo — findAll=${tFindAllMs}ms populate=${tPopulateMs}ms.")
     touch()
-    onRead(rows)
-    rows.size
+    rows
   }
+
+  /** The union of each collided key's documents, read again whole — as the cache keeps it — or None
+   *  when one of them could not be read: a union of what could be read would drop the rest's
+   *  showtimes, the loss the union exists to prevent. A document deleted since the scan is no
+   *  longer part of the film. */
+  private def unionCollided(collided: Seq[(CacheKey, Seq[FilmId])]): Option[Seq[(CacheKey, MovieRecord)]] =
+    collided.foldLeft(Option(Vector.empty[(CacheKey, MovieRecord)])) { case (acc, (key, ids)) =>
+      acc.flatMap { done =>
+        val reads = ids.map(repository.findByIdChecked)
+        Option.when(reads.forall(read => read.answered.isDefined || read.isInstanceOf[tools.ReadOutcome.Absent])) {
+          reads.flatMap(_.answered).map(_.record) match {
+            case Seq()  => done
+            case whole  => done :+ (key -> forCache(MovieRecordMerge.unionAll(whole)))
+          }
+        }
+      }
+    }
 
   // ── Mongo → cache sync ─────────────────────────────────────────────────────
   //
@@ -1045,6 +1077,15 @@ class CaffeineMovieCache(
 }
 
 object CaffeineMovieCache {
+  /** The documents a rehydrate read under one key, and the record the cache keeps for them: the
+   *  first document's, until the documents' union replaces it (see `rehydrateFrom`). */
+  private final case class HydratedRows(ids: Seq[FilmId], record: MovieRecord) {
+    def and(more: Seq[FilmId]): HydratedRows = copy(ids = ids ++ more)
+  }
+  private object HydratedRows {
+    def apply(id: FilmId, record: MovieRecord): HydratedRows = HydratedRows(Seq(id), record)
+  }
+
   /** Whether pooling `slot` ([[StringPool.slot]] → `pooled`) changed none of its fields: every one the pool's already. */
   private[movies] def pooledAlike(pooled: SourceData, slot: SourceData): Boolean =
     (pooled.title eq slot.title) && (pooled.rawTitle eq slot.rawTitle) && (pooled.originalTitle eq slot.originalTitle) &&

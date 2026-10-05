@@ -144,6 +144,17 @@ trait MovieRepository {
    *  take at its word. The in-memory store cannot fail. */
   def findAllChecked(): tools.ReadOutcome[Seq[StoredMovieRecord]] = tools.ReadOutcome.Answered(findAll())
 
+  /** [[findAllChecked]] a page at a time: every row, fully stitched, handed to `onPage` as each
+   *  page is read, so a caller that keeps less than a row (the cache hydrate keeps rows without
+   *  their showtimes) never holds the whole stitched corpus. Same completeness contract as
+   *  [[foreachRecord]]: on `Incomplete` the pages delivered so far are not the corpus. The default
+   *  hands [[findAllChecked]]'s answer over as one page. */
+  def foreachPage(onPage: Seq[StoredMovieRecord] => Unit): tools.ScanOutcome = findAllChecked() match {
+    case tools.ReadOutcome.Answered(rows) => onPage(rows); tools.ScanOutcome.complete
+    case tools.ReadOutcome.Failed(cause)  => tools.ScanOutcome.Incomplete(cause.exception)
+    case absent                           => tools.ScanOutcome.of(whole = false, s"the corpus read was ${absent.explain}")
+  }
+
   /** The single row stored under this exact `_id` (the [[StoredMovieRecord.idOf]]
    *  form), or `None` when absent. Lets the dev `/debug` page render ONE row's
    *  heavy per-source breakdown lazily, on expand, instead of every row's
@@ -736,6 +747,12 @@ class MongoMovieRepository(
       val buf = Vector.newBuilder[StoredMovieRecord]
       scanStitched(batch => buf ++= batch).collected(buf.result())
     case None => tools.ReadOutcome.Answered(Seq.empty)
+  }
+
+  /** The stitched scan's own pages, as each is read — see the trait. */
+  override def foreachPage(onPage: Seq[StoredMovieRecord] => Unit): tools.ScanOutcome = coll match {
+    case Some(_) => scanStitched(onPage)
+    case None    => onPage(Seq.empty); tools.ScanOutcome.complete
   }
 
   /** The ONE stitched corpus scan — keyset-paged movies + showtimes re-injected from

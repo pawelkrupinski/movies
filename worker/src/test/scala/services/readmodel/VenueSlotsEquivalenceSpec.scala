@@ -151,7 +151,8 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
     val whole = projector(beforeRm)                          // a projector that keeps projecting whole
     whole.onMovieUpsert(row)
     val study  = new BootCorpusStudy(titleNormalizer)
-    study.bootCorpus(Some(Seq(row)))                         // the restarted worker's hydrate read, before any change
+    study.bootPage(Seq(row))                                 // the restarted worker's hydrate read, before any change
+    study.bootReadEnded(services.movies.BootReadEnd.Whole)
     val booted = projector(afterRm, Some(study))             // the restarted worker's
     def cinema = record.data.collectFirst { case (CinemaShowing(c, _), slot) if slot.showtimes.nonEmpty => c }.get
     def change(at: models.Cinema): VenueSlots = {
@@ -206,7 +207,7 @@ class VenueSlotsEquivalenceSpec extends AnyFlatSpec with Matchers {
     }.get
     import world.*
     val missing = new BootCorpusStudy(titleNormalizer)
-    missing.bootCorpus(None)
+    missing.bootReadEnded(services.movies.BootReadEnd.GaveUp)
     // Its own copy of the store as it stood at the boot, so the change below reaches it only through the venue path.
     val source = new InMemoryMovieRepository(Seq(("Foo", Some(2024), record)), normalizer = titleNormalizer)
     source.findAll().map(_.id) shouldBe Seq(row.id)
