@@ -290,7 +290,10 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       case Answer.Known(found) => if (PosterEvidence.veto(film, found).isEmpty) AgreementStage.Take.Taken(take) else AgreementStage.Take.Vetoed
       case Answer.Unknown      => AgreementStage.Take.Pending
     }
-    tmdb match {
+    // a film only review sites take — their pages name no film a card stands on, and match an event's namesake (DE "André
+    // Rieus Weihnachtskonzert 2026: Let it Snow": Metacritic's and RT's 2019 "Let It Snow", the model's best candidate)
+    if (!agreed.families.exists(_.namesFilms)) AgreementStage.Take.Untaken
+    else tmdb match {
       case Answer.Unknown =>
         imdb.foreach(finding += _)
         AgreementStage.Take.Pending

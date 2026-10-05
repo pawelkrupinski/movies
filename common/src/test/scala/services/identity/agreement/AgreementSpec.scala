@@ -156,6 +156,42 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(bare, Seq(took(VoterFamily.Wiki), took(VoterFamily.Filmweb), took(VoterFamily.RottenTomatoes), imdb)) should not be empty
   }
 
+  "A family leaning to the film the model votes for" should "complete the agreement through the model's record, as it links the two" in {
+    // PL "11. UFF - Demony" (fixture identity-unmatched): Filmweb takes Vorozhbit's "Demony" (2026); the model leans to
+    // TMDB's "Демони" (2027, alternatively "Demony") by her, and IMDb leans to "Demons" (2026), which TMDB's record
+    // names by its IMDb id though its English title is not Filmweb's
+    val filmweb = SourceRecord(film("Demony", 2026, "Natalya Vorozhbit", 110), Map("filmweb" -> "10131126"))
+    val tmdb    = SourceRecord(IdentityMeasures.Film("Демони", Some("Демони"), Seq("Demony", "Demons"), Some(2027), Some(110),
+      Some(Seq("Наталія Ворожбит")), None, None), Map("tmdb" -> "1085176", "imdb" -> "tt20149536"))
+    val imdb    = SourceRecord(film("Demons", 2026, "Natalya Vorozhbit", 110), Map("imdb" -> "tt20149536"))
+    val bare    = Seq(listing(KinoMuza, "Demony"))
+    val verdicts = Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Filmweb, "10131126", filmweb)),
+      FamilyVerdict(VoterFamily.Imdb, None, Seq(imdb), leaning = Some(imdb)))
+    val agreed = Agreement.agreed(bare, verdicts, modelVote = Some(tmdb))
+    agreed.map(a => (a.families, a.leaning, a.corroborated)) shouldBe Some((Set(VoterFamily.Filmweb), Set(VoterFamily.Imdb), Set(Agreement.ModelVote)))
+    // the film the model voted for is TMDB's: the agreement names it by its ids
+    agreed.map(a => (a.crossId("tmdb"), a.crossId("imdb"), a.crossId("filmweb"))) shouldBe Some((Some("1085176"), Some("tt20149536"), Some("10131126")))
+    Agreement.agreed(bare, verdicts) shouldBe None   // no record links IMDb's to Filmweb's
+  }
+
+  "A venue's catalogue naming the film a family took by its id" should "complete two takers' agreement" in {
+    // PL "Imago" (fixture identity-unmatched): the venue lists Filmweb's 872645, which Filmweb takes — Chajdas's 2023
+    // film, which Metacritic takes undated
+    val imago    = film("Imago", 2023, "Olga Chajdas", 113)
+    val verdicts = Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Filmweb, "872645", SourceRecord(imago, Map("filmweb" -> "872645")))),
+      FamilyVerdict.took(FamilyPick(VoterFamily.Metacritic, "imago", SourceRecord(imago.copy(year = None), Map("metacritic" -> "imago")))))
+    def catalogued(id: String) = Seq(listing(KinoMuza, "Imago", year = Some(2023)).copy(catalogueIds = Seq(services.identity.CatalogueId("filmweb", id))))
+    Agreement.agreed(catalogued("872645"), verdicts).map(_.corroborated) shouldBe Some(Set(Agreement.Catalogue))
+    Agreement.agreed(catalogued("999"), verdicts) shouldBe None
+    // IMDb weighed Zengotita's 2025 short, "Imago" in the original, beside Chajdas's own record, "Imago" in the original
+    // too: the title the venue bills is the agreed film's own, not only a translation another film's original shares
+    val short   = SourceRecord(film("Imago", 2025, "Ariel Zengotita", 13).copy(originalTitle = Some("Imago")), Map("imdb" -> "tt38781946"))
+    val chajdas = SourceRecord(imago.copy(originalTitle = Some("Imago")), Map("imdb" -> "tt14417122"))
+    val weighed = (records: Seq[SourceRecord]) => verdicts :+ FamilyVerdict(VoterFamily.Imdb, None, records)
+    Agreement.agreed(catalogued("872645"), weighed(Seq(short))) shouldBe None
+    Agreement.agreed(catalogued("872645"), weighed(Seq(short, chajdas))) should not be empty
+  }
+
   "The listing's own year and director, or the model leaning to the film," should "complete two takers' agreement" in {
     // DE "Die Story von Joanna" (fixture identity-unmatched): Wikidata and Filmweb take Damiano's 1975 film, which the venue
     // credits to him in 1975; US "AKW"-style: two takers and the TMDB film the model leans to, linked by its IMDb id

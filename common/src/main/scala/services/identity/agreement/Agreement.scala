@@ -14,18 +14,20 @@ import scala.collection.mutable
  * TMDB's calibration, its search priors' spread scaled by `priorSpread` (chosen per source by cross-validation, REPORT
  * §10: 19 right, 0 wrong, against 17 / 0 with TMDB's own spread).
  */
-enum VoterFamily(val label: String, val database: String, val priorSpread: Double, val searchesDirectors: Boolean, val latinTitlesOnly: Boolean) {
+enum VoterFamily(val label: String, val database: String, val priorSpread: Double, val searchesDirectors: Boolean, val latinTitlesOnly: Boolean,
+                 val namesFilms: Boolean = true) {
   /** IMDb's own title and name search, and its records (Cinemeta and OMDb mirror it). */
   case Imdb extends VoterFamily("imdb", "imdb", 1.5, searchesDirectors = true, latinTitlesOnly = false)
   /** Wikidata's film items, and the Wikipedia articles that name them. */
   case Wiki extends VoterFamily("wiki", "wikidata", 0.5, searchesDirectors = true, latinTitlesOnly = false)
   /** Filmweb's search and film records — a voter where it indexes the country's titles (PL, DE, ES). */
   case Filmweb extends VoterFamily("filmweb", "filmweb", 0.5, searchesDirectors = false, latinTitlesOnly = false)
-  case Metacritic extends VoterFamily("metacritic", "metacritic", 1.0, searchesDirectors = false, latinTitlesOnly = true)
-  case RottenTomatoes extends VoterFamily("rt", "rt", 1.5, searchesDirectors = false, latinTitlesOnly = true)
+  case Metacritic extends VoterFamily("metacritic", "metacritic", 1.0, searchesDirectors = false, latinTitlesOnly = true, namesFilms = false)
+  case RottenTomatoes extends VoterFamily("rt", "rt", 1.5, searchesDirectors = false, latinTitlesOnly = true, namesFilms = false)
 }
 // `database`: the name a record's cross-ids file the family's own ids under (`SourceRecord.crossIds`), and a fallback
-// film's source when the family's id is the one a film stands on (`AgreementStage.identities`).
+// film's source when the family's id is the one a film stands on (`AgreementStage.identities`). `namesFilms`: its record is
+// a film database's, not a review site's page — a film only review sites take is never taken (`AgreementStage`).
 // What each family is asked, measured on prod's 20,310 answers (2026-10-05, agreement-question-value.md): a director
 // search decided an agreed film on IMDb (10) and Wikidata (8), never on Filmweb, Metacritic or Rotten Tomatoes
 // (`searchesDirectors`); Rotten Tomatoes' and Metacritic's English searches answer nothing useful for a title with no
@@ -171,6 +173,10 @@ object Agreement {
    *  id or its record's facts ([[sameFilm]]), as one family's pick is to another's. PL "Siostry (1972)": IMDb and
    *  Filmweb take De Palma's "Sisters", which the model weighed best at 4.5%. */
   val ModelVote = "tmdb"
+  /** A listing's own catalogue naming a taker's film by that family's id (`CatalogueId`, source the family's
+   *  [[VoterFamily.database]]): the venue's identification of it. PL "Imago" lists Filmweb's 872645, Chajdas's 2023 film
+   *  Filmweb and Metacritic take. */
+  val Catalogue = "catalogue"
 
   /** The film `family` identifies `listings` as — the resolver itself over the family's answers, as the experiment ran
    *  it — or none, with every record it weighed; `Unknown` while a question it asked is not answered yet. */
@@ -247,10 +253,15 @@ object Agreement {
                         thisYear: Option[Int]): Supported = {
     val lead    = group.head
     val records = group.map(_.record)
-    val merged  = lead.record.copy(crossIds = records.flatMap(_.crossIds).toMap ++ lead.record.crossIds)
-    def isIt(record: SourceRecord) = records.exists(sameFilm(_, record))
+    val voted   = modelVote.filter(vote => records.exists(sameFilm(_, vote)))
+    // the takers' ids first, then those of the TMDB film the model votes for, which is the film they took
+    val merged  = lead.record.copy(crossIds = (voted.toSeq ++ records).flatMap(_.crossIds).toMap ++ lead.record.crossIds)
+    // the film through any record of it — the model's vote's too, which links a lean the takers' records name only in
+    // another language (PL "Demony": IMDb's "Demons", by the IMDb id TMDB's "Демони" carries beside Filmweb's title)
+    def isIt(record: SourceRecord) = (records ++ voted).exists(sameFilm(_, record))
     val leaning = verdicts.filter(verdict => verdict.pick.isEmpty && verdict.leaning.exists(isIt)).map(_.family).toSet
-    val corroborated = listingVotes(stated, records) ++ Set(ModelVote).filter(_ => modelVote.exists(isIt)) ++
+    val catalogued = listings.exists(_.catalogueIds.exists(id => group.exists(pick => pick.family.database == id.source && pick.id == id.id)))
+    val corroborated = listingVotes(stated, records) ++ Set(ModelVote).filter(_ => voted.nonEmpty) ++ Set(Catalogue).filter(_ => catalogued) ++
       Set(Venues).filter(_ => listings.map(_.venue).distinct.size >= WidelyBilled &&
         thisYear.exists(year => records.flatMap(_.film.year).maxOption.exists(_ >= year - 1)))
     // weighed and turned down for another film its evidence favours — weighed among films it favours none of is no
@@ -301,8 +312,11 @@ object Agreement {
   private def anothersOwnTitle(listings: Seq[Listing], records: Seq[SourceRecord], verdicts: Seq[FamilyVerdict]): Boolean = {
     val billed = listings.flatMap(l => Seq(l.title, l.cleanTitle)).map(IdentityMeasures.key).filter(_.nonEmpty).toSet
     def original(record: SourceRecord) = record.film.originalTitle.map(IdentityMeasures.key).filter(billed)
-    records.forall(original(_).isEmpty) &&
-      verdicts.flatMap(_.weighed).exists(weighed => original(weighed).nonEmpty && !records.exists(sameFilm(_, weighed)))
+    val weighed = verdicts.flatMap(_.weighed)
+    // any family's record of the film itself counts: Filmweb files no original title for a Polish film (PL "Imago":
+    // IMDb's record of Chajdas's film is "Imago" in the original, as is the 2025 short it weighed beside it)
+    val itsOwn = records ++ weighed.filter(record => records.exists(sameFilm(_, record)))
+    itsOwn.forall(original(_).isEmpty) && weighed.exists(record => original(record).nonEmpty && !records.exists(sameFilm(_, record)))
   }
 
   /** The picks as the films they name: a pick joins every film one of whose picks is the [[sameFilm]] — through ANY

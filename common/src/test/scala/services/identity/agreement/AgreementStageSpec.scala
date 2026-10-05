@@ -82,6 +82,26 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     taken.explanation.last should include ("corroborated by listing, runtime")
   }
 
+  it should "take no film only review sites take, though the model's vote completes them" in {
+    // DE "André Rieus Weihnachtskonzert 2026: Let it Snow" (fixture identity-unmatched): Metacritic and Rotten Tomatoes
+    // take the 2019 "Let It Snow", the model's best candidate — a review page names no film a card stands on
+    val reviews = Map(
+      VoterFamily.Metacritic     -> new HeldFamilyAnswers(VoterFamily.Metacritic, Map("klondike" -> SourceRecord(klondike, Map("metacritic" -> "klondike")))),
+      VoterFamily.RottenTomatoes -> new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map("klondike_2022" -> SourceRecord(klondike, Map("rt" -> "klondike_2022")))),
+      VoterFamily.Imdb           -> new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty))
+    val tmdb = new services.identity.IdentityLookups {
+      def hasDetail(listing: services.identity.Listing): Boolean = false
+      def detail(listing: services.identity.Listing) = Answer.Known(None)
+      def candidates(query: services.identity.CandidateQuery) = Answer.Known(Nil)
+      def film(tmdbId: Int) = Answer.Known(Option.when(tmdbId == 913760)(klondike))
+    }
+    val model = resolution.copy(decisions = resolution.decisions.updated(0, ResolverDecision(Seq(bare.key), None, 0.7,
+      ResolverDecision.Basis.BelowThreshold, Nil, candidate = Some(ResolverDecision.Leaning(913760, 0)))()))
+    val decided = new AgreementStage(reviews, tmdb, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+      clock = _root_.tools.SpecClock.Pinned, identities = Seq(VoterFamily.Wiki, VoterFamily.Filmweb)).apply(model, listingOf, version = 1).decisions.head
+    (decided.film, decided.fallback) shouldBe ((None, None))
+  }
+
   it should "hand back the same decision object while its verdict stands, so the projection redrafts it only when it moves" in {
     val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
