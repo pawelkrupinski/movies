@@ -173,6 +173,8 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
     storedById.foreach { case (id, was) =>
       now.get(id) match {
         case Some(is) if is eq was => ()
+        // The cache wraps the record it holds anew on every snapshot: the same record, the film held as it was.
+        case Some(is) if (is.record eq was.record) && sameFilm(is, was) => ()
         case Some(is) if sameFilm(is, was) => storedById = storedById.updated(id, is)
         case other =>
           films += id

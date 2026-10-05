@@ -184,4 +184,20 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
     (index.byKey.keysIterator ++ index.clusterOf.keysIterator ++ index.clusters.valuesIterator.flatMap(_.members) ++
       index.previousOf.keysIterator ++ index.listingsOf.valuesIterator.flatten).foreach(k => withClue(k)(k should be theSameInstanceAs own(k)))
   }
+
+  it should "keep its stored films as they are when the cache hands back the same records in new wrappers" in {
+    // `MovieCache.snapshot` wraps every record it holds anew on each call. Each film taken as the new wrapper rebuilt the
+    // whole id map every projection — a structure that lives until the next one, minutes on worker-us: promoted, each time.
+    val live    = new LiveProjectionIndex(normalizer)
+    val rows    = Seq(row(new Random(1), Multikino), row(new Random(2), Helios))
+    val read    = rows.map(cm => ProjectedListing.of(Listing.of(cm.cinema, cm, normalizer), cm))
+    val decided = read.map(l => ResolverDecision(Seq(l.listing.key), Some(1), 0.9, ResolverDecision.Basis.OwnMatch, Nil)())
+    val stored  = film(new Random(3), "f1", read)
+    val counters = FilmIdCounters.of(Seq(FilmIdCounter("f1", 1L))).toOption.get
+    live.update(read.groupBy(_.listing.venue).toSeq, read.map(_.listing.key), decided, Seq(stored))
+    val before  = live.index(counters).storedById
+    val changes = live.update(read.groupBy(_.listing.venue).toSeq, read.map(_.listing.key), decided, Seq(stored.copy()))
+    changes.films shouldBe empty
+    live.index(counters).storedById should be theSameInstanceAs before
+  }
 }
