@@ -316,6 +316,10 @@ final class ProcessConfiguration(val env: Env) {
    *  re-capture it. Never in CI. */
   def identityUnmatchedCapture: Option[IdentityUnmatchedCapture] =
     text("KINOWO_IDENTITY_UNMATCHED_CAPTURE").map(dir => IdentityUnmatchedCapture(Path.of(dir)))
+  /** `KINOWO_IDENTITY_UNMATCHED_FILL` — the unmatched-cluster fixture directory whose questions a change newly asks of the
+   *  same clusters `UnmatchedClustersFillIntegrationSpec` answers in place, the model's decisions kept. Never in CI. */
+  def identityUnmatchedFill: Option[IdentityUnmatchedCapture] =
+    text("KINOWO_IDENTITY_UNMATCHED_FILL").map(dir => IdentityUnmatchedCapture(Path.of(dir)))
   /** `KINOWO_IDENTITY_POSTER_CACHE` — posters and TMDB poster lists the unmatched-cluster capture hashes before fetching
    *  any live (and files what it fetched into), for the agreement's poster evidence. Never in CI. */
   def identityPosterCache: Option[IdentityPosterCache] = text("KINOWO_IDENTITY_POSTER_CACHE").map(dir => IdentityPosterCache(Path.of(dir)))
