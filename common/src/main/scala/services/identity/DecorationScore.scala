@@ -46,8 +46,7 @@ object DecorationScore {
   val Iterations = 50
   val Folds      = 5
 
-  /** The model `rows` fit: weights by Newton's method (L2-penalised logistic regression, a fixed number of steps —
-   *  a function of the rows alone), and the cut: the lowest probability above every held-out BAD candidate's, so no
+  /** The model `rows` fit: weights by [[LogisticFit]], and the cut: the lowest probability above every held-out BAD candidate's, so no
    *  held-out candidate with a wrong take or a moved match is accepted. */
   def fit(rows: Seq[Row], version: String): DecorationScore = {
     val sorted  = rows.sortBy(_.key)
@@ -65,49 +64,11 @@ object DecorationScore {
 
   private def foldOf(key: String): Int = Math.floorMod(scala.util.hashing.MurmurHash3.stringHash(key), Folds)
 
-  private def newton(rows: Seq[Row]): Seq[Double] = {
-    val n = Names.size
-    val xs = rows.map(_.features.vector.toArray).toArray
-    val ys = rows.map(row => if (row.good) 1.0 else 0.0).toArray
-    var w  = Array.fill(n)(0.0)
-    (1 to Iterations).foreach { _ =>
-      val grad = Array.tabulate(n)(j => if (j == 0) 0.0 else L2 * w(j))
-      val hess = Array.tabulate(n, n)((i, j) => if (i == j && i > 0) L2 else 0.0)
-      xs.indices.foreach { r =>
-        val p = sigmoid(dot(w.toSeq, xs(r).toSeq))
-        val s = p * (1 - p)
-        (0 until n).foreach { i =>
-          grad(i) += (p - ys(r)) * xs(r)(i)
-          (0 until n).foreach(j => hess(i)(j) += s * xs(r)(i) * xs(r)(j))
-        }
-      }
-      (0 until n).foreach(i => hess(i)(i) += 1e-9)
-      val step = solve(hess, grad)
-      w = Array.tabulate(n)(i => w(i) - step(i))
-    }
-    w.toSeq.map(x => math.rint(x * 1e6) / 1e6)
-  }
+  private def newton(rows: Seq[Row]): Seq[Double] =
+    LogisticFit.fit(rows.map(_.features.vector.toArray).toArray, rows.map(row => if (row.good) 1.0 else 0.0).toArray, L2, Iterations)
 
-  /** `a x = b` by Gaussian elimination with partial pivoting. */
-  private def solve(a0: Array[Array[Double]], b0: Array[Double]): Array[Double] = {
-    val n = b0.length
-    val a = a0.map(_.clone); val b = b0.clone
-    (0 until n).foreach { c =>
-      val p = (c until n).maxBy(r => math.abs(a(r)(c)))
-      val (ra, rb) = (a(c), b(c)); a(c) = a(p); b(c) = b(p); a(p) = ra; b(p) = rb
-      (c + 1 until n).foreach { r =>
-        val f = a(r)(c) / a(c)(c)
-        (c until n).foreach(k => a(r)(k) -= f * a(c)(k))
-        b(r) -= f * b(c)
-      }
-    }
-    val x = Array.fill(n)(0.0)
-    (n - 1 to 0 by -1).foreach(r => x(r) = (b(r) - (r + 1 until n).map(k => a(r)(k) * x(k)).sum) / a(r)(r))
-    x
-  }
-
-  private[identity] def sigmoid(z: Double): Double = 1.0 / (1.0 + math.exp(-z))
-  private[identity] def dot(w: Seq[Double], x: Seq[Double]): Double = w.lazyZip(x).map(_ * _).sum
+  private[identity] def sigmoid(z: Double): Double = LogisticFit.sigmoid(z)
+  private[identity] def dot(w: Seq[Double], x: Seq[Double]): Double = LogisticFit.dot(w.toIndexedSeq, x.toIndexedSeq)
 
   implicit val heldOutFormat: OFormat[HeldOut]       = Json.format[HeldOut]
   implicit val scoreFormat: OFormat[DecorationScore] = Json.format[DecorationScore]

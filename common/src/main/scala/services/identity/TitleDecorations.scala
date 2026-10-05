@@ -48,6 +48,11 @@ final case class TitleDecorations(prefixes: Set[Seq[String]], suffixes: Set[Seq[
       (fromFront ++ fromBack).map(TitleDecorations.trimmed).filter(_.nonEmpty)
     } ++ Option(withoutTail(title)).filter(_ != title)).distinct
 
+  /** These decorations without `withheld` edge runs (side, words) — what a hold-out measure of the detector resolves
+   *  with, to see whether it finds the learned decorations again. */
+  def without(withheld: Set[(String, Seq[String])]): TitleDecorations =
+    copy(prefixes = prefixes -- withheld.collect { case ("prefix", run) => run }, suffixes = suffixes -- withheld.collect { case ("suffix", run) => run })
+
   /** `title` with every learned event tail it bills last cut off, with its join: "Punku + spotkanie z reżyserem +
    *  PJM" → "Punku". What a talk or a signed screening follows is one work, not a double bill. */
   def withoutTail(title: String): String =

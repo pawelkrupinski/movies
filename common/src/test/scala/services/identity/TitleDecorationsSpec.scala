@@ -195,6 +195,12 @@ class TitleDecorationsSpec extends AnyFlatSpec with Matchers {
     TitleDecorations.aligned(clusters, TitleDecorations(Set.empty, Set(Seq("edukacja", "mlode", "horyzonty")))) shouldBe empty   // known already
   }
 
+  "Withholding decorations" should "drop exactly the named edge runs, each from its own side" in {
+    val d = TitleDecorations(Set(Seq("kino", "seniora"), Seq("dkf")), Set(Seq("2d", "pl"), Seq("dkf")))
+    d.without(Set("prefix" -> Seq("dkf"), "suffix" -> Seq("2d", "pl"))) shouldBe TitleDecorations(Set(Seq("kino", "seniora")), Set(Seq("dkf")))
+    d.without(Set.empty) shouldBe d
+  }
+
   "The resolver's artefact" should "load, and hold only what learning emits" in {
     val artefact = TitleDecorations.fromResource(TitleDecorations.ResourcePath).get
     artefact.decorations.foreach { d =>
