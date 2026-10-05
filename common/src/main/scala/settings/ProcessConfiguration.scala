@@ -311,6 +311,14 @@ final class ProcessConfiguration(val env: Env) {
    *  (`agreement.AgreementStage`), the families answered from this directory (`<host>/<sha256 of "METHOD url body">`, the
    *  signal-combination experiment's cache), else live — a measuring loop, never in CI. */
   def identityAgreementCache: Option[IdentityAgreementCache] = text("KINOWO_IDENTITY_AGREEMENT_CACHE").map(dir => IdentityAgreementCache(Path.of(dir)))
+  /** `KINOWO_IDENTITY_UNMATCHED_CAPTURE` — a directory the unmatched-cluster capture (`UnmatchedClustersCaptureIntegrationSpec`)
+   *  writes each country's fixture to (`<cc>.json.gz`): the checked-in `test/resources/fixtures/identity-unmatched` to
+   *  re-capture it. Never in CI. */
+  def identityUnmatchedCapture: Option[IdentityUnmatchedCapture] =
+    text("KINOWO_IDENTITY_UNMATCHED_CAPTURE").map(dir => IdentityUnmatchedCapture(Path.of(dir)))
+  /** `KINOWO_IDENTITY_FAMILY_SEED` — a directory of `<db>.jsonl` exports of prod's `identity_family_answers` (one EJSON
+   *  document a line) the unmatched-cluster capture files before asking the families anything. */
+  def identityFamilySeed: Option[IdentityFamilySeed] = text("KINOWO_IDENTITY_FAMILY_SEED").map(dir => IdentityFamilySeed(Path.of(dir)))
   /** `KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY` — a TMDB key with which the resolver-only replay
    *  (`IdentityResolveDumpIntegrationSpec`) answers what its recording cannot from TMDB and IMDb LIVE,
    *  instead of as gaps: the local loop for a change that asks new questions. Never in CI. */

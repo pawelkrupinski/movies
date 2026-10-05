@@ -169,6 +169,10 @@ final case class IdentityDump(value: Path) extends AnyVal
 /** `KINOWO_IDENTITY_AGREEMENT_CACHE` — the signal-combination experiment's answer cache the resolver-only replay reads
  *  other film database families from before asking them live. */
 final case class IdentityAgreementCache(value: Path) extends AnyVal
+/** `KINOWO_IDENTITY_UNMATCHED_CAPTURE` — where the unmatched-cluster capture writes each country's fixture. */
+final case class IdentityUnmatchedCapture(value: Path) extends AnyVal
+/** `KINOWO_IDENTITY_FAMILY_SEED` — prod's `identity_family_answers`, exported per country database, for the capture to file first. */
+final case class IdentityFamilySeed(value: Path) extends AnyVal
 /** `KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY` — a resolver-only replay asks TMDB and IMDb live for what its recording cannot answer. */
 final case class IdentityLiveGaps(tmdbKey: String) extends AnyVal
 final case class IdentityShadowPermutations(value: Int) extends AnyVal

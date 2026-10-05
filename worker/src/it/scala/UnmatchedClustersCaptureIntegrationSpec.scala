@@ -19,9 +19,9 @@ import scala.util.Try
  * (`KINOWO_IDENTITY_AGREEMENT_CACHE`), else live. A re-capture after a
  * change that asks new questions answers them the same way.
  *
- * Opt-in: runs when `KINOWO_IDENTITY_UNMATCHED_CAPTURE` is set (any value) beside the resolver-only replay's variables
- * (`KINOWO_IDENTITY_FULL`, `KINOWO_IDENTITY_CORPUS_DIR`, `KINOWO_FIXTURE_ROOT`, `KINOWO_IDENTITY_AGREEMENT_CACHE`).
- * Writes `test/resources/fixtures/identity-unmatched/<cc>.json.gz`.
+ * Opt-in: runs when `KINOWO_IDENTITY_UNMATCHED_CAPTURE` names the directory to write `<cc>.json.gz` to
+ * (`test/resources/fixtures/identity-unmatched` re-captures the checked-in fixture), beside the resolver-only replay's
+ * variables (`KINOWO_IDENTITY_FULL`, `KINOWO_IDENTITY_CORPUS_DIR`, `KINOWO_FIXTURE_ROOT`, `KINOWO_IDENTITY_AGREEMENT_CACHE`).
  */
 class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with IntegrationMongoSuite {
 
@@ -29,7 +29,7 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
 
   private val storages = mutable.ListBuffer.empty[ConvergenceStorage]
   private val corpora: Seq[Corpus] = for {
-    _      <- sys.env.get("KINOWO_IDENTITY_UNMATCHED_CAPTURE").toSeq
+    _      <- configuration.identityUnmatchedCapture.toSeq
     _      <- configuration.identityAgreementCache.toSeq
     dir    <- configuration.identityCorpusDirectory.toSeq
     corpus <- IdentityShadow.full(configuration.identityFullCorpora.value, dir.value, configuration.fixtureRoot, configuration.identityLiveGaps)
@@ -50,8 +50,8 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
       val cache     = new ExperimentCacheFetch(configuration.identityAgreementCache.get.value)
       val docs      = new InMemoryTmdbDocuments
       // prod's own family answers first (`KINOWO_IDENTITY_FAMILY_SEED`: `<db>.jsonl` exports of identity_family_answers), the rest filled
-      sys.env.get("KINOWO_IDENTITY_FAMILY_SEED").map(java.nio.file.Path.of(_)).foreach { dir =>
-        val file = dir.resolve(s"${if (c.country.code == "pl") "kinowo" else s"kinowo_${c.country.code}"}.jsonl")
+      configuration.identityFamilySeed.foreach { seed =>
+        val file = seed.value.resolve(s"${if (c.country.code == "pl") "kinowo" else s"kinowo_${c.country.code}"}.jsonl")
         if (java.nio.file.Files.exists(file)) docs.put(TmdbKind.Family, java.nio.file.Files.readAllLines(file).asScala.toSeq.filter(_.nonEmpty).map { line =>
           val d = org.bson.BsonDocument.parse(line)
           d.remove("_id").asString.getValue -> d
@@ -88,10 +88,11 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
       val filed = docs.get(TmdbKind.Family, docs.fetchedBefore(TmdbKind.Family, Long.MaxValue).map(_._1))
       val capture = UnmatchedClusters.Capture(c.country, subset, decisions, recording.queries.asScala.toMap, recording.films.asScala.toMap,
         recording.details.asScala.toMap, recording.withDetail.asScala.toSet, filed, finds.asScala.toMap)
-      UnmatchedClusters.write(UnmatchedClusters.fixturePath(c.country), capture)
+      val written = configuration.identityUnmatchedCapture.get.value.resolve(s"${c.country.code}.json.gz")
+      UnmatchedClusters.write(written, capture)
 
       // the capture must replay to exactly what was captured
-      val replayed = UnmatchedClusters.replay(UnmatchedClusters.read(UnmatchedClusters.fixturePath(c.country)))
+      val replayed = UnmatchedClusters.replay(UnmatchedClusters.read(written))
       replayed.stage.wanted shouldBe empty
       UnmatchedClusters.takes(capture, replayed) shouldBe UnmatchedClusters.takes(capture, outcome)
       println(s"[${c.label}] captured ${subset.size} listings in ${decisions.size} clusters; ${capture.queries.size} queries, ${capture.films.size} films, " +
