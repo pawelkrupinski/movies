@@ -49,8 +49,6 @@ final case class MongoOptional(value: Boolean) extends AnyVal
 final case class TmdbApiKey(value: String) extends AnyVal
 /** `OMDB_API_KEY`. */
 final case class OmdbApiKey(value: String) extends AnyVal
-/** `ANTHROPIC_API_KEY` — the language model the identity resolver asks about listings no rule took. */
-final case class AnthropicApiKey(value: String) extends AnyVal
 /** `ZYTE_API_KEY`. */
 final case class ZyteApiKey(value: String) extends AnyVal
 /** `KINOWO_PROXY_USER` — the residential egress's user. */

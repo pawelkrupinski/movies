@@ -25,7 +25,7 @@ object UnifiedEvidence {
   val Signals: Seq[Signal] = Seq(
     Signal("model.logit", "model", 1), Signal("model.unscored", "model", 0), Signal("model.deniedBySome", "model", -1),
     Signal("rule.title", "rules", 1), Signal("rule.director", "rules", 1), Signal("rule.calibrated", "rules", 1), Signal("rule.imdb", "rules", 1),
-    Signal("rule.stage", "rules", 1), Signal("rule.proposal", "rules", 1), Signal("rule.pooled", "rules", 1),
+    Signal("rule.stage", "rules", 1), Signal("rule.pooled", "rules", 1),
     Signal("model.lean", "model-vote", 1), Signal("model.best", "model-vote", 1),
     Signal("production.season", "productions", 1), Signal("production.house", "productions", 1)) ++
     familySignals("took") ++ familySignals("leans") ++ Seq(
@@ -64,8 +64,7 @@ object UnifiedEvidence {
     "exact-top-hit" -> "rule.title", "segment-top-hit" -> "rule.title", "sole-result" -> "rule.title", "sole-work" -> "rule.title",
     "dated-title" -> "rule.title", "directors-work" -> "rule.director", "directors-title" -> "rule.director",
     "favoured-calibrated" -> "rule.calibrated", "unrivalled-calibrated" -> "rule.calibrated", "imdb-suggested" -> "rule.imdb",
-    "house-production" -> "rule.stage", "stage-production" -> "rule.stage", "season-record" -> "rule.stage", "season-production" -> "rule.stage",
-    "model-proposed" -> "rule.proposal")
+    "house-production" -> "rule.stage", "stage-production" -> "rule.stage", "season-record" -> "rule.stage", "season-production" -> "rule.stage")
 
   /** The calibrated probability as a feature: its log-odds, clamped at ±9.2 (1e-4) and rounded to a quarter, so rows the
    *  fit reads fold into few distinct ones. */

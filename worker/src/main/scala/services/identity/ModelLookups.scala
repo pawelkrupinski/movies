@@ -27,7 +27,6 @@ final class VenueDetailLookups(enrichers: Seq[DetailEnricher], index: VenuePageI
 final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups) extends IdentityLookups {
   def hasDetail(listing: Listing): Boolean                  = stored.hasDetail(listing)
   def detail(listing: Listing): Answer[Option[DetailFacts]] = stored.detail(listing)
-  override def proposal(listing: Listing): Option[Proposal] = stored.proposal(listing)
 
   override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[Listing]): Unit =
     stored.prefetch(queries, films, details)

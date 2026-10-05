@@ -188,7 +188,6 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
       reads.byRule("accept:rule-1", 10)
       reads.byFilm(101, 10)
       reads.byBlocker("search:found-nothing", 10)
-      reads.unresolved(10, _ => true)
       reads.byTitle("film 2", 10)
       reads.ruleCounts()
       reads.blockers()
@@ -197,10 +196,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
       "identity_traces find filter{listing.rawTitle}" ->
         "the admin page's free-text title search, by hand: a case-insensitive substring match no index can serve",
       "identity_traces aggregate pipeline[{$unwind},{$group:{n:{$sum},_id}},{$sort:{n}}]" ->
-        "the admin page's every-rule count: a tally of the whole collection, by hand",
-      "identity_traces find filter{$and:[{blocker:{$exists}},{blocker:{$not}}]} sort{_id}" -> (
-        "ProposalFill's page of unresolved listings in _id order: the sparse blocker index holds only the unresolved, and " +
-        "the page's limit makes the sort a top-k (an _id-ordered partial index is not allowed on _id)")))
+        "the admin page's every-rule count: a tally of the whole collection, by hand"))
   }
 
   "the venue page store" should "read, write and scan pages by id" in {

@@ -155,7 +155,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   }
 
   private def derive(listing: Listing): Evidence =
-    Evidence.of(listing, if (lookups.hasDetail(listing)) lookups.detail(listing).toOption.flatten else None, decorations, lookups.proposal(listing))
+    Evidence.of(listing, if (lookups.hasDetail(listing)) lookups.detail(listing).toOption.flatten else None, decorations)
 
   /** Re-derive what the touched nodes, re-answered questions and re-recorded films reach; the keys
    *  whose facts moved. */

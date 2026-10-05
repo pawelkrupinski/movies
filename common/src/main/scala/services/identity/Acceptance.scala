@@ -70,8 +70,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private val aloneRules = Seq(Rule("sole-work", soleWorkWhy), Rule("favoured-calibrated", favouredCalibratedWhy), Rule("exact-top-hit", topHitWhy),
     Rule("segment-top-hit", segmentTopHitWhy), Rule("sole-result", soleResultWhy), Rule("imdb-suggested", imdbSuggestedWhy),
     Rule("directors-work", directorsWorkWhy), Rule("directors-title", directorsTitleWhy), Rule("dated-title", datedTitleWhy),
-    Rule("house-production", houseProductionWhy), Rule("stage-production", stageProductionWhy), Rule("season-record", seasonRecordWhy),
-    Rule("model-proposed", modelProposedWhy))
+    Rule("house-production", houseProductionWhy), Rule("stage-production", stageProductionWhy), Rule("season-record", seasonRecordWhy))
 
   /** What [[alone]] takes, with the rule that took it. A family's scope asks it once per node ([[FamilyScope.takenAlone]]). */
   def aloneNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
@@ -580,26 +579,6 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       _      <- needOf(!record.category("director").exists(Set("different", "different_script")), "it credits another director", record)
     } yield record -> record.probability
   }
-
-  /** The one eligible candidate a language model's PROPOSAL for the listing names ([[Proposal]]) — its own or
-   *  original title the proposed original title exactly, from within a year of the proposed year — when nothing the
-   *  venue published contradicts it and it credits no other director than the venue does. The last rule, for a
-   *  listing every rule from its own evidence refused: PL "Dokumentalna Kreska: Wyznania szwedzkiego mężczyzny" is
-   *  "Confessions of a Swedish Man" (2025), which no search of the Polish title finds. The proposal adds no weight to
-   *  any measure: the venue's own facts still decide against it. */
-  private def modelProposedWhy(ranked: Seq[Scored]): Verdict =
-    for {
-      any      <- ranked.headOption.toRight(Refused("no candidate"))
-      proposal <- any.listing.proposal.toRight(Refused("no model proposal"))
-      title    <- proposal.originalTitle.filter(_ => proposal.isFilm).toRight(Refused("the model proposed no film", None, proposal.category))
-      named     = IdentityMeasures.key(title)
-      film     <- one(eligibleOf(ranked).filter(scored => (Seq(scored.candidate.film.title) ++ scored.candidate.film.originalTitle)
-                    .exists(own => IdentityMeasures.key(own) == named) &&
-                    proposal.year.forall(year => scored.candidate.film.year.exists(own => math.abs(own - year) <= YearWindow.PublishedAdjacency))),
-                    "no candidate is the proposed film", "two candidates are the proposed film", s"proposed $title${proposal.year.fold("")(y => s" ($y)")}")
-      _        <- needOf(!contradicted(film), "a published fact contradicts it", film, contradiction(film))
-      _        <- needOf(!film.category("director").exists(Set("different", "different_script")), "it credits another director", film)
-    } yield film -> film.probability
 
   /** The EDITION of the accepted film that the listing's whole title names, when there is exactly
    *  one: a later record carrying the film's title under a qualifier (`IdentityMeasures.editionOf`

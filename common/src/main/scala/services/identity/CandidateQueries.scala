@@ -24,8 +24,6 @@ object CandidateQueries {
     val imdb      = Seq(e.title.trim).filter(_.nonEmpty).map(CandidateQuery.Imdb(_))
     // every title the listing is searched by, asked of IMDb in every language ([[CandidateQuery.ImdbTitled]])
     val titled    = IdentityMeasures.searchQueries(e.measured).map(CandidateQuery.ImdbTitled(_))
-    // a model's proposed original title is searched as one more title ([[Proposal]])
-    val proposed  = e.proposal.filter(_.isFilm).flatMap(_.originalTitle).map(_.trim).filter(_.nonEmpty).map(CandidateQuery.Title(_))
-    (titles ++ directors ++ imdb ++ titled ++ proposed).distinct.sorted
+    (titles ++ directors ++ imdb ++ titled).distinct.sorted
   }
 }

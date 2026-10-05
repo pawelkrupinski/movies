@@ -1,6 +1,6 @@
 package tools
 
-import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, Proposal, IdentityCalibration, IdentityLookups, IdentityMeasures,
+import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures,
   IdentityResolver, Listing, ObservationReads, TmdbIdentityLookups, TrackedLookups}
 import services.movies.TitleNormalizer
 
@@ -122,7 +122,6 @@ object IdentityLookupSweep {
       inner.prefetch(queries.filter(q => asks(Named.query(q))), films.filter(id => asks(Named.film(id))),
         pages.toSeq.distinctBy(l => (l.venue, l.page)).filter(l => asks(Named.detail(l))))
     override def prefetchAnswered(): Unit = inner.prefetchAnswered()
-    override def proposal(l: Listing): Option[Proposal] = inner.proposal(l)
     override def detail(l: Listing): Answer[Option[DetailFacts]] = {
       details += 1; named(Named.detail(l))(inner.detail(l))
     }

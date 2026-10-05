@@ -171,35 +171,12 @@ class WorkerWiring(
   /** The model's TMDB and IMDb answers from its normalized store, and venue details from venue_pages
    *  ([[venuePageIndex]]) — what the model reads first ([[cutoverLookups]]). */
   def storedLookups(reads: services.identity.ObservationReads = services.identity.ObservationReads.Untracked): services.identity.IdentityLookups =
-    new services.identity.StoredTmdbLookups(identityTmdbStore, country.language.toLanguageTag, new services.identity.VenueDetailLookups(detailEnrichers, venuePageIndex, reads), reads, Some(identityProposals))
+    new services.identity.StoredTmdbLookups(identityTmdbStore, country.language.toLanguageTag, new services.identity.VenueDetailLookups(detailEnrichers, venuePageIndex, reads), reads)
 
-  /** What a language model proposed listings no rule took are (`identity_proposals`), as the model reads them: a new
-   *  proposal re-resolves exactly the listings of its title. Read whether or not this worker asks the model. */
-  lazy val identityProposals: services.identity.ProposalIndex =
-    new services.identity.ProposalIndex(mongoConnection.database.fold[services.identity.ProposalStore](new services.identity.InMemoryProposalStore)(
-      new services.identity.MongoProposalStore(_)), changed = key => identityModel.observed(key))
-
-  /** Asks the model about the unresolved listings' titles each round (`ProposalFill`) — only with `ANTHROPIC_API_KEY`
-   *  set (`GatedIntegration.IdentityProposals`) and traces to read them from. */
-  lazy val identityProposalFill: Option[services.identity.ProposalFill] =
-    for { key <- configuration.anthropicApiKey; db <- mongoConnection.database }
-    yield new services.identity.ProposalFill(new services.identity.MongoIdentityTraceReads(db), identityProposals,
-      new services.identity.AnthropicProposer(key), clock)
-  /** A proposal round once a burst of the model's re-decided families has gone quiet — titles it left unresolved are asked
-   *  then, not on the hour — and one after boot for what earlier runs left. Each title is asked once (`ProposalFill`), so
-   *  the model's cost follows new titles, not rounds; the long debounce bounds the trace scans. On its own thread: a round
-   *  waits on the language model, which no projection may wait behind. */
-  lazy val identityProposalTrigger: Option[services.identity.EventTrigger] = identityProposalFill.map { fill =>
-    new services.identity.EventTrigger(() => { fill.round(); true }, WorkerWiring.ProposalDebounce, identityProposalScheduler, clock)
-  }
-  protected lazy val identityProposalScheduler: java.util.concurrent.ScheduledExecutorService =
-    managedResources.executor("identity proposals")(tools.DaemonExecutors.scheduler(s"identity-proposals-${country.code}"))
-
-  /** What a drain of the identity model sets off: the projection of what moved, the fill of the gaps it found, and — once
-   *  families were decided again, some perhaps left unresolved — a proposal round. Nothing of these runs on a period. */
+  /** What a drain of the identity model sets off: the projection of what moved and the fill of the gaps it found.
+   *  Neither runs on a period. */
   protected[modules] def onModelBatch(batch: services.identity.ModelBatch): Unit = if (batch.moved) {
     identityProjectionTrigger.request(); identityFillTrigger.request()
-    if (batch.familiesResolved > 0) identityProposalTrigger.foreach(_.request())
   }
 
   /** A cut-over model's lookups: [[storedLookups]] first, and a TMDB or IMDb question the store has no
@@ -493,9 +470,6 @@ class WorkerWiring(
     boot.step("closure schedule")(closureSchedule.start())
     boot.step("tmdb store sweep")(identityTmdbSweepSchedule.start())
     boot.step("orphan film-state sweep")(orphanFilmStateSweepSchedule.start())
-    boot.step("identity proposals")(identityProposalTrigger.zip(identityProposalFill).foreach { case (trigger, fill) =>
-      trigger.once(WorkerWiring.ProposalInitialDelay) { fill.round(); () }
-    })
     boot.step("omdb backfill")(omdbBackfillReaper.foreach(_.start()))
     boot.step("share cards")(shareCardReapers.foreach(_.start()))
     boot.step("facebook rescrapes")(startFacebookRescrapes())
@@ -584,11 +558,6 @@ object WorkerWiring {
   /** The closure sweep's cadence: its evidence moves in days (a gone venue is re-probed
    *  daily), so a daily verdict loses nothing. */
   val ClosureSweepInterval: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(24, "hours")
-  /** How long a proposal round waits for a burst of re-decided families to go quiet, and at most after its first. */
-  val ProposalDebounce: services.movies.MovieChangeStream.Debounce =
-    services.movies.MovieChangeStream.Debounce(scala.concurrent.duration.Duration(10, "minutes"), scala.concurrent.duration.Duration(30, "minutes"))
-  /** How long after boot the first proposal round runs, for what earlier runs left unresolved. */
-  val ProposalInitialDelay: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(20, "minutes")
   /** Well after boot, away from the other daily sweeps: it reads the whole of `movies`. */
   val OrphanSweepInitialDelay: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(3, "hours")
   /** Well after boot: the sweep keeps what the model reads, so it waits for the model's take-up. */

@@ -29,7 +29,6 @@ object IdentityMeasures {
                            year: Option[Int] = None, runtime: Option[Int] = None, directors: Seq[String] = Nil,
                            countries: Seq[String] = Nil, yearCredits: Option[Seq[String]] = None,
                            decorations: TitleDecorations = TitleDecorations.None, searchTitles: Seq[String] = Nil,
-                           proposal: Option[Proposal] = None,
                            /** The season a stage relay billing neither its season nor a year screens in
                             *  ([[services.identity.Listing.broadcastSeason]]): searched with its work, never measured. */
                            broadcastSeason: Option[Int] = None) {

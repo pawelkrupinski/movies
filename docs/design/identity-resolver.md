@@ -2379,7 +2379,7 @@ Calibrated = fitted from data today (`identity-weights.json`, §14). Feature = a
 | venues.corroborating | venues of the family billing it | `IdentityMeasures` | LLR per bin (monotone rising) | yes | `model.logit` |
 | isotonic map; showRatings cut 0.375; cannotLink cut 0.033 | log-odds → probability; accept / veto cuts | `IdentityCalibration` | learned | yes | `model.logit`, `model.deniedBySome` |
 | learned cannot-links (28), evidence class (1) | conjunctions vetoing / crediting a pair | `identity-weights.json` | learned | yes | `model.deniedBySome` (denied by every node: no contender) |
-| acceptance rules (13 alone, 3 pooled, season-production) | sole-work, exact/segment-top-hit, sole-result, dated-title; directors-work/-title; favoured/unrivalled-calibrated; imdb-suggested; house/stage-production, season-record; model-proposed | `Acceptance` | rule order; `LeanMargin` 2.0, `BilledRuntime` 15, `RuntimeContradiction` | no | `rule.title`, `rule.director`, `rule.calibrated`, `rule.imdb`, `rule.stage`, `rule.proposal`, `rule.pooled` |
+| acceptance rules (12 alone, 3 pooled, season-production) | sole-work, exact/segment-top-hit, sole-result, dated-title; directors-work/-title; favoured/unrivalled-calibrated; imdb-suggested; house/stage-production, season-record | `Acceptance` | rule order; `LeanMargin` 2.0, `BilledRuntime` 15, `RuntimeContradiction` | no | `rule.title`, `rule.director`, `rule.calibrated`, `rule.imdb`, `rule.stage`, `rule.pooled` |
 | season / house production | record names the listing's season / house production | `Scored` | pre-empts the rules | no | `production.season`, `production.house` |
 | double bill, both works | title bills two works its facts both fit | `Acceptance.billsBothItsWorks` | takes neither | no | `bill.bothWorks` |
 | model lean / best candidate | `ResolverDecision.leaning` (≥2× runner-up) / `candidate` | `ResolverDecisions` | the agreement's TMDB vote | no | `model.lean`, `model.best` |
@@ -2434,7 +2434,7 @@ Relearn: `CORPORA=… FIXTURES=… [FAMILY_SEED=…] [POSTER_CACHE=…] MONGODB_
 Held out: log-loss 0.012 (hand rows 0.124), accuracy 99.7% (hand 96.1%). Largest weights: rule.calibrated 7.1,
 rule.title 5.9, rule.imdb 5.6, rule.director 4.2, rule.stage 3.6, family.imdb.took 2.7, family.filmweb.took 2.5,
 production.season 2.4, poster.otherMatches −2.1, model.deniedBySome −1.5, poster.match and poster.vote 1.4 each,
-agreement.quorum 0.9. Held at 0 by their direction: rule.pooled, rule.proposal, family.turnedDown, family.dissent,
+agreement.quorum 0.9. Held at 0 by their direction: rule.pooled, family.turnedDown, family.dissent,
 listing.runtime, title.anothersOwn, stage.work. Ablation (hand log-loss): dropping the family takes 0.124 → 0.144, the
 model 0.136, the rules 0.133, the posters 0.127 (and 8 held-out wrong takes against 3); every other group ≤ 0.001.
 

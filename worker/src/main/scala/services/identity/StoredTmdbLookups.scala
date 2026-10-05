@@ -18,11 +18,8 @@ import scala.jdk.CollectionConverters._
  * document that changes re-asks exactly the questions that read it. A [[prefetch]] loads a slice's
  * documents in a few batched reads — questions, then the people and finds they name, then their films.
  */
-final class StoredTmdbLookups(store: TmdbStore, language: String, details: IdentityLookups, reads: ObservationReads,
-                              proposals: Option[ProposalIndex] = None)
+final class StoredTmdbLookups(store: TmdbStore, language: String, details: IdentityLookups, reads: ObservationReads)
     extends IdentityLookups {
-  /** A model's proposal for the listing's title, the read filed so a new one re-resolves it. */
-  override def proposal(listing: Listing): Option[Proposal] = proposals.flatMap(_.proposal(listing, reads))
   import StoredTmdbLookups._
 
   private val held = TmdbKind.values.map(_ -> new ConcurrentHashMap[String, Held]()).toMap

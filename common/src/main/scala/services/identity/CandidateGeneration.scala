@@ -17,7 +17,7 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
     if (!lookups.hasDetail(listing)) None
     else details.getOrElseUpdate((listing.venue, listing.page.getOrElse("")), lookups.detail(listing)).toOption.flatten
   lookups.prefetch(Nil, Nil, ordered.filter(listing => corpus.flatMap(_.evidenceOf(listing)).isEmpty && lookups.hasDetail(listing)))
-  val withEvidence = ordered.map(listing => listing -> corpus.flatMap(_.evidenceOf(listing)).getOrElse(Evidence.of(listing, detailOf(listing), decorations, lookups.proposal(listing))))
+  val withEvidence = ordered.map(listing => listing -> corpus.flatMap(_.evidenceOf(listing)).getOrElse(Evidence.of(listing, detailOf(listing), decorations)))
   // A pinned listing is a node of its own kind: identical evidence under different pins is not
   // one question any more.
   val nodes = withEvidence.groupBy { case (listing, evidence) => CandidateGeneration.nodeKey(listing, evidence, pins) }.values.toSeq

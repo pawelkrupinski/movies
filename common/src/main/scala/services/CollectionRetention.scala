@@ -64,9 +64,6 @@ object CollectionRetention {
     "identity_slot_fingerprints" -> Sweep("MongoVenueSlotFingerprints"),
     "identity_pins"           -> KeptForever("operator pins, removed by hand"),
     "identity_film_ids"       -> KeptForever("a film's id must never be reused, so its counter row outlives the film"),
-    "identity_proposals"      -> Unswept("one per title key a language model was asked about; a title no venue lists keeps it. " +
-      "The rule would be 'no listing of the taken-up model carries the key', but nothing yet says the model's listings " +
-      "are complete, and a wrong delete re-pays a language-model call for a title that comes back"),
     "tmdb_films"              -> Sweep("TmdbStoreSweep"),
     "tmdb_people"             -> Sweep("TmdbStoreSweep"),
     "tmdb_queries"            -> Sweep("TmdbStoreSweep"),
