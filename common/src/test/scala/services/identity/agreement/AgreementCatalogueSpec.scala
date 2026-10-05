@@ -3,8 +3,8 @@ package services.identity.agreement
 import models.{Kinoteka, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, FilmTable, IdentityCalibration, IdentityMeasures, Listing,
-  Resolution, ResolverDecision}
+import services.identity.{Answer, CandidateQuery, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, DetailFacts, FilmTable, Hit, IdentityCalibration,
+  IdentityLookups, IdentityMeasures, Listing, Resolution, ResolverDecision}
 import services.movies.SingleCountryNormalizer
 
 /** A listing's own catalogue id — the venue's exact naming of its film in another film database — on the agreement's way
@@ -40,9 +40,21 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
   private def resolutionOf(listing: Listing) = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.4, ResolverDecision.Basis.BelowThreshold, Nil)()),
     1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
 
-  private def stage(catalogue: CatalogueAnswers, fams: Map[VoterFamily, FamilyAnswers] = families(), tmdbOf: String => Answer[Option[Int]] = _ => Answer.Known(None),
-                    ask: AgreementStage.Open => Unit = _ => ()) =
-    new AgreementStage(fams, table, normalizer, IdentityCalibration.resolver, tmdbOf = tmdbOf, new InMemoryAgreementVerdicts,
+  /** TMDB's find of the IMDb ids these specs name. */
+  private val finds: String => Answer[Option[Int]] =
+    Map("tt36112899" -> 1318829, "tt0015175" -> 31506, "tt37150957" -> 1445025).get.andThen(Answer.Known(_))
+
+  /** The venue pages' facts, by page. */
+  private final class Paged(pages: Map[String, DetailFacts]) extends IdentityLookups {
+    def hasDetail(l: Listing): Boolean                           = l.page.exists(pages.contains)
+    def detail(l: Listing): Answer[Option[DetailFacts]]          = Answer.Known(l.page.flatMap(pages.get))
+    def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = Answer.Known(Nil)
+    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Known(None)
+  }
+
+  private def stage(catalogue: CatalogueAnswers, fams: Map[VoterFamily, FamilyAnswers] = families(), tmdbOf: String => Answer[Option[Int]] = finds,
+                    ask: AgreementStage.Open => Unit = _ => (), venues: IdentityLookups = table) =
+    new AgreementStage(fams, venues, normalizer, IdentityCalibration.resolver, tmdbOf = tmdbOf, new InMemoryAgreementVerdicts,
       ask = ask, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table), catalogue = catalogue)
 
   private def decided(stage: AgreementStage, l: Listing) = stage.apply(resolutionOf(l), Map(l.key -> l).get, version = 1).decisions.head
@@ -65,6 +77,29 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
     decided(stage(two, families(wiki = Map("Q135441923" -> fantasyItem, "Q1" -> fantasyItem))), listing(ids = Seq(fantasy, other))).film shouldBe None
     decided(stage(new HeldCatalogue(Map.empty, Map(fantasy -> Nil))), listing()).film shouldBe None
     decided(stage(new HeldCatalogue(Map.empty, Map(fantasy -> Seq(fantasyHit))), families(wiki = Map.empty)), listing()).film shouldBe None
+  }
+
+  it should "take the film TMDB's find names for the item's IMDb id, not a TMDB id Wikidata keeps for a record since deleted" in {
+    // DE "Dann passiert das Leben": Wikidata's P4947 is 1517080, which TMDB no longer has; TMDB finds tt37150957 as 1445025
+    val id   = CatalogueId("webedia", "1000007718")
+    val item = SourceRecord(IdentityMeasures.Film("Dann passiert das Leben", None, Nil, Some(2025), None, Some(Seq("Neele Vollmar")), None),
+      Map("wikidata" -> "Q135779106"))
+    val l = FilmTable.listing(Multikino, "Dann passiert das Leben", Some(2025)).copy(catalogueIds = Seq(id))
+    decided(stage(new HeldCatalogue(Map.empty, Map(id -> Seq(CatalogueHit(Some("Q135779106"), Some(1517080), Some("tt37150957"), "Wikidata P8531")))),
+      families(wiki = Map("Q135779106" -> item))), l).film shouldBe Some(1445025)
+  }
+
+  it should "take none when the venue's own page contradicts the record its link names, though the listing states nothing" in {
+    // PL Kinoteka "Czarne zombie": its page credits Bedward's 2026 "Black Zombie" and links Corman's 1963 "X" on IMDb
+    val page = "https://kinoteka.pl/film/czarne-zombie-splatfilmfest/"
+    val tt   = CatalogueId("imdb", "tt0057693")
+    val x    = SourceRecord(IdentityMeasures.Film("X: The Man with the X-Ray Eyes", None, Nil, Some(1963), None, Some(Seq("Roger Corman")), None))
+    val l    = FilmTable.listing(Kinoteka, "Czarne zombie | Splat!FilmFest").copy(page = Some(page))
+    val held = new HeldCatalogue(Map(page -> Seq(tt)), Map.empty)
+    val fams = families(imdb = Map("tt0057693" -> x))
+    val stated = new Paged(Map(page -> DetailFacts(Some(2026), Seq("Maya Annik Bedward"), Some(90), None)))
+    decided(stage(held, fams, tmdbOf = _ => Answer.Known(Some(32569)), venues = stated), l).film shouldBe None
+    decided(stage(held, fams, tmdbOf = _ => Answer.Known(Some(32569))), l).film shouldBe Some(32569)   // what a page stating nothing leaves
   }
 
   it should "take none for a listing billing several works, but name a film whatever a stage work its title spells" in {

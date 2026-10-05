@@ -386,7 +386,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  needs is open, each noted to ask. */
   private def catalogued(decision: ResolverDecision, listings: Seq[Listing], asked: mutable.Set[(VoterFamily, String)], finding: mutable.Set[String],
                          catalogueAsked: mutable.Set[CatalogueQuestion]): Option[ResolverDecision] =
-    Catalogue.take(listings, catalogue, families, tmdbOf, catalogueAsked, asked, finding).toOption.flatten.map { taken =>
+    Catalogue.take(listings, listings.map(asStated), catalogue, families, tmdbOf, catalogueAsked, asked, finding).toOption.flatten.map { taken =>
       val explained = decision.explanation :+ taken.line
       taken.film.fold(decision.copy(basis = ResolverDecision.Basis.Catalogue, explanation = explained,
         fallback = taken.fallback.map { case (source, id) =>

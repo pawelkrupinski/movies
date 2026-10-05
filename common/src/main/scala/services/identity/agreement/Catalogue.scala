@@ -14,7 +14,7 @@ import scala.collection.mutable
  * IMDb title — it completed one agreement (DE "Mein neues altes Ich", Wikidata's item); taken, it took that and DE "Die
  * Nibelungen - Teil 1: Siegfried" and "Camp der Verlorenen" too, none wrong. It is guarded only as an exact id must be:
  * every id the cluster carries names the same film (its item, TMDB and IMDb ids alike), the record of it — Wikidata's
- * item, or IMDb's title — exists and its year and director do not contradict a listing's own
+ * item, or IMDb's title — exists and its year and director do not contradict a listing's own, or its venue page's
  * ([[Agreement.contradictedByTheListing]]: a venue linking the wrong film; US "A Night at the Opera", the Marx Brothers'
  * by its Flicks page, is left as the venue credits Edmund Goulding), and no listing bills several works. A stage work's
  * title is no guard here, as it is for a search: an id names its record whatever the title ("Die Nibelungen" is Lang's
@@ -62,8 +62,10 @@ object Catalogue {
 
   /** What the cluster's catalogue ids name, to take: `Known(None)` for no take, `Unknown` while a question is open — each
    *  one noted, a catalogue question in `catalogueAsked`, a family's record in `familyAsked`, TMDB's find of an IMDb id
-   *  in `finding`. */
-  def take(listings: Seq[Listing], catalogue: CatalogueAnswers, families: Map[VoterFamily, FamilyAnswers], tmdbOf: String => Answer[Option[Int]],
+   *  in `finding`. `stated`: the listings with what their venue's own pages state — the year and director a record must
+   *  not contradict (PL Kinoteka's "Czarne zombie" page credits Bedward's 2026 film, and links Corman's 1963 one). */
+  def take(listings: Seq[Listing], stated: Seq[Listing], catalogue: CatalogueAnswers, families: Map[VoterFamily, FamilyAnswers],
+           tmdbOf: String => Answer[Option[Int]],
            catalogueAsked: mutable.Set[CatalogueQuestion], familyAsked: mutable.Set[(VoterFamily, String)], finding: mutable.Set[String]): Answer[Option[Taken]] =
     named(listings, catalogue, catalogueAsked) match {
       case Answer.Unknown => Answer.Unknown
@@ -76,12 +78,14 @@ object Catalogue {
         record.fold[Answer[Option[Taken]]](Answer.Known(None)) {
           case Answer.Unknown => Answer.Unknown
           case Answer.Known(None) => Answer.Known(None)   // no film item, no IMDb title: nothing a card can stand on
-          case Answer.Known(Some(facts)) if Agreement.contradictedByTheListing(listings, facts) => Answer.Known(None)
+          case Answer.Known(Some(facts)) if Agreement.contradictedByTheListing(stated, facts) => Answer.Known(None)
           case Answer.Known(Some(facts)) =>
             val imdb = film.imdb.orElse(facts.crossIds.get("imdb"))
-            val tmdb: Answer[Option[Int]] = film.tmdb.orElse(facts.crossIds.get("tmdb").flatMap(_.toIntOption)) match {
-              case Some(id) => Answer.Known(Some(id))
-              case None     => imdb.fold[Answer[Option[Int]]](Answer.Known(None))(tt => { val found = tmdbOf(tt); if (found == Answer.Unknown) finding += tt; found })
+            // TMDB's own find of the IMDb id first: Wikidata's TMDB id can name a record TMDB since deleted or merged (DE
+            // "Dann passiert das Leben": P4947 1517080, gone; TMDB finds its IMDb id as 1445025)
+            val tmdb: Answer[Option[Int]] = imdb match {
+              case Some(tt) => val found = tmdbOf(tt); if (found == Answer.Unknown) finding += tt; found
+              case None     => Answer.Known(film.tmdb.orElse(facts.crossIds.get("tmdb").flatMap(_.toIntOption)))
             }
             tmdb match {
               case Answer.Unknown => Answer.Unknown

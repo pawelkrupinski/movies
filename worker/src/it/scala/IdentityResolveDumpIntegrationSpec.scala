@@ -166,7 +166,7 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
     }
     val lines = clusters.flatMap { case (d, ls) =>
       Catalogue.named(ls, catalogue.answers, mutable.Set.empty).toOption.flatten.map(Some(_)).map { named =>
-        val mapped = named.flatMap(n => n.tmdb.orElse(n.imdb.flatMap(find)))
+        val mapped = named.flatMap(n => n.imdb.fold(n.tmdb)(find))
         val verdict = (d.film, named, mapped) match {
           case (_, None, _)                          => "unmapped"
           case (Some(film), _, Some(id)) if film == id => "agrees"
