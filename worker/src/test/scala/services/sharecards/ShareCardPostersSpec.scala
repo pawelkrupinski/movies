@@ -72,7 +72,7 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers {
   // worker in the it/ specs — queued behind ONE decode gate, where production has one per process.
   "Two rigs' shrinkers" should "each shrink behind their own decode gate" in {
     import scala.concurrent.{Await, Future, Promise}
-    import scala.concurrent.ExecutionContext.Implicits.global
+    given scala.concurrent.ExecutionContext = tools.DedicatedThreads
     val (busy, idle) = (new Rig(), new Rig())
     val file    = Files.write(Files.createTempFile("poster-", ".jpg"), posterJpeg)
     val holding = Promise[Unit](); val release = Promise[Unit]()

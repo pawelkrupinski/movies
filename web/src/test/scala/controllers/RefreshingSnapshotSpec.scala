@@ -18,7 +18,7 @@ import tools.{Eventually, MutableClock}
  */
 class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
 
-  private given ExecutionContext = ExecutionContext.global
+  private given ExecutionContext = tools.DedicatedThreads
 
   /** A read the spec can hold open, counting how often it ran and answering 1, 2, 3… */
   private final class GatedRead {
