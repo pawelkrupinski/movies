@@ -71,9 +71,10 @@ object ResolverDecision {
 
   def percent(p: Double): String = f"${p * 100}%.1f%%"
 
-  /** A film of a fallback source ([[FallbackIds.Source]]) a no-match takes: the source's name and its own id ("imdb",
-   *  "tt0064570"), and the probability its evidence gave it. */
-  final case class Fallback(source: String, id: String, probability: Double)
+  /** A film of a fallback source a no-match takes: the source's name and its own id ("imdb", "tt0064570"; the agreement's
+   *  "wikidata", "Q141180912" and "filmweb", "10105049"), the probability its evidence gave it, and the film's title and
+   *  year as the source files them — what a link to a page keyed by both (Filmweb's) is built of. */
+  final case class Fallback(source: String, id: String, probability: Double, title: Option[String] = None, year: Option[Int] = None)
   /** The film a no-match leans to, and IMDb's title number for it ([[IdentityMeasures.Film.imdbNumber]]). */
   final case class Leaning(film: Int, imdbNumber: Int)
 }

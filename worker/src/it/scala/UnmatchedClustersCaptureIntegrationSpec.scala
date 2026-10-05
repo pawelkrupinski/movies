@@ -74,7 +74,8 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
 
       // the records of the films the model leaned to and weighed best: what a take names, and what pooled facts read
       (decisions.flatMap(_.leaning.map(_.film)) ++ decisions.flatMap(_.trace.nodes.values.flatMap(_.candidate))).distinct.foreach(recording.film)
-      var outcome = UnmatchedClusters.agree(decisions, subset, recording, answers, store.version, tmdbOf, c.normalizer, posterStore)
+      var outcome = UnmatchedClusters.agree(decisions, subset, recording, answers, store.version, tmdbOf, c.normalizer, posterStore,
+        modules.wiring.IdentityCutoverWiring.identities(c.country.code))
       var rounds  = 0
       while ((outcome.stage.wanted.nonEmpty || outcome.stage.wantedPosters.nonEmpty) && rounds < 12) {
         rounds += 1
@@ -88,7 +89,8 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
               { Try(AgreementQuestions.file(store, family, sources(family), question)); () })).foreach(_.join()))
           }
         }.foreach(_.join())
-        outcome = UnmatchedClusters.agree(decisions, subset, recording, answers, store.version, tmdbOf, c.normalizer, posterStore)
+        outcome = UnmatchedClusters.agree(decisions, subset, recording, answers, store.version, tmdbOf, c.normalizer, posterStore,
+        modules.wiring.IdentityCutoverWiring.identities(c.country.code))
       }
       val filed = docs.get(TmdbKind.Family, docs.fetchedBefore(TmdbKind.Family, Long.MaxValue).map(_._1))
       val capture = UnmatchedClusters.Capture(c.country, subset, decisions, recording.queries.asScala.toMap, recording.films.asScala.toMap,

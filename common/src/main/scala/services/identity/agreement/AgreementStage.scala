@@ -14,7 +14,9 @@ import scala.collection.mutable
  * its order-independence stay as they are.
  *
  * An agreed film TMDB holds (its record links a TMDB id, or its IMDb id finds one: `tmdbOf`) is the cluster's film —
- * an ordinary TMDB match the projection fetches details for; one only other databases hold is its IMDb fallback.
+ * an ordinary TMDB match the projection fetches details for; one only other databases hold is its fallback film, by
+ * its IMDb id — else, where none links one, by the own id of the first of `identities` (the families the country lets a
+ * film stand on: Wikidata's, and Filmweb's in Poland alone) that names it ([[ResolverDecision.Fallback]]).
  * Every question a family could not answer yet is a gap — and so is an agreed IMDb id TMDB was not asked about yet:
  * the cluster stays as the model left it, and the stage hands the questions to `ask` (the queue) the moment it meets
  * them, with every stale answer it read — so a question is asked whenever an answer could be used: the projection runs
@@ -36,7 +38,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
                            calibration: IdentityCalibration, tmdbOf: String => Answer[Option[Int]], stored: AgreementVerdicts,
                            ask: AgreementStage.Open => Unit = _ => (), metrics: AgreementStage.Metrics = AgreementStage.Metrics.Silent,
                            clock: java.time.Clock, changes: AnswerChanges = AnswerChanges.Unknown, posters: PosterAnswers = PosterAnswers.Silent,
-                           tmdb: Option[IdentityLookups] = None) {
+                           tmdb: Option[IdentityLookups] = None, identities: Seq[VoterFamily] = Nil) {
 
   @volatile private var gaps: Set[(VoterFamily, String)] = Set.empty
   @volatile private var finds: Set[String] = Set.empty
@@ -294,10 +296,19 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         AgreementStage.Take.Pending
       case Answer.Known(Some(film)) => unlessVetoed(Some(film))(
         decision.copy(film = Some(film), basis = ResolverDecision.Basis.Agreed, explanation = decision.explanation :+ line, agreed = ids)(decision.trace))
-      case Answer.Known(None) => imdb.fold[AgreementStage.Take](AgreementStage.Take.Untaken)(id => unlessVetoed(None)(decision.copy(basis = ResolverDecision.Basis.Agreed,
-        explanation = decision.explanation :+ line, fallback = Some(ResolverDecision.Fallback("imdb", id, 1.0)), agreed = ids)(decision.trace)))
+      case Answer.Known(None) => identityOf(agreed).fold[AgreementStage.Take](AgreementStage.Take.Untaken) { case (source, id) =>
+        // a film standing on another database's id carries its title and year, that a link to its page is built of
+        val named = Option.when(source != VoterFamily.Imdb.database)(agreed.record.film)
+        unlessVetoed(None)(decision.copy(basis = ResolverDecision.Basis.Agreed, explanation = decision.explanation :+ line,
+          fallback = Some(ResolverDecision.Fallback(source, id, 1.0, named.map(_.title), named.flatMap(_.year))), agreed = ids)(decision.trace)) }
     }
   }
+
+  /** The id a film TMDB holds no record of stands on: its IMDb id, else the own id of the first of [[identities]] that
+   *  took it or whose id an agreeing record links — as `(source, id)`, the source a fallback film names. */
+  private def identityOf(agreed: AgreedFilm): Option[(String, String)] =
+    (VoterFamily.Imdb +: identities).distinct.iterator.flatMap(family =>
+      agreed.ids.get(family).orElse(agreed.crossId(family.database)).map(family.database -> _)).nextOption()
 
   /** The decision with the one candidate the venue posters match taken ([[PosterEvidence.vote]]). */
   private def voted(decision: ResolverDecision, distances: Answer[Seq[Map[Int, Option[Int]]]]): Option[ResolverDecision] =

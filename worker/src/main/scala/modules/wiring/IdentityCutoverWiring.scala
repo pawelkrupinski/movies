@@ -70,7 +70,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
       stored = agreementVerdicts,
       ask = open => services.identity.AgreementQuestions.enqueueOpen(taskQueue, open.questions, open.finds, clock, agreementQuestionMetrics, open.posters),
       metrics = workerMetrics.identityAgreement.stage(country.code), clock = clock, changes = familyAnswerStore,
-      posters = posterAnswerStore, tmdb = Some(storedLookups()))
+      posters = posterAnswerStore, tmdb = Some(storedLookups()), identities = IdentityCutoverWiring.identities(country.code))
   /** The posters' hashes the agreement's poster evidence reads, filed among the families' answers. */
   lazy val posterAnswerStore: services.identity.PosterAnswerStore = new services.identity.PosterAnswerStore(familyAnswerStore, clock)
   /** Hashes a venue's or a TMDB film's poster: the image through the enrichment fetch chain (its pacing and breakers; a
@@ -126,4 +126,10 @@ object IdentityCutoverWiring {
   val ModelTimeout: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, "minutes")
   /** The countries whose titles Filmweb indexes well enough to vote (signal-combination experiment §9). */
   val FilmwebVoting: Set[String] = Set("pl", "de", "es")
+  /** The families besides IMDb whose own id a film TMDB and IMDb hold no record of may stand on, in preference: Wikidata's
+   *  everywhere, Filmweb's in Poland alone — a Polish database, its records of other countries' releases no identity.
+   *  Replayed on the unmatched clusters (2026-10-05): DE "Jeder Acker, jede Fabrik" and "Chasing Hope – Der andere Blick"
+   *  (Wikidata), PL "Płazy. Pionierzy życia na lądzie" (Filmweb), none wrong. */
+  def identities(country: String): Seq[services.identity.agreement.VoterFamily] =
+    Seq(services.identity.agreement.VoterFamily.Wiki) ++ Option.when(country == "pl")(services.identity.agreement.VoterFamily.Filmweb)
 }

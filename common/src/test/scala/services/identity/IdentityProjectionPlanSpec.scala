@@ -199,6 +199,26 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     (gap.imdbId, gap.imdbRating) shouldBe ((Some("tt0064570"), Some(6.9)))
   }
 
+  /** PL "Płazy. Pionierzy życia na lądzie", DE "Jeder Acker, jede Fabrik": films neither TMDB nor IMDb holds, taken by
+   *  the agreement on Filmweb's or Wikidata's own id. The card links that record — its Filmweb page replacing the one a
+   *  title search guessed, with that page's rating and slot — and drops the guessed IMDb id, as an IMDb fallback does. */
+  it should "link the Filmweb page or Wikidata item a film standing on their id is, and no guessed IMDb id" in {
+    val guessed = StoredMovieRecord("Obcy", Some(1979), MovieRecord(imdbId = Some("tt0064570"), imdbRating = Some(6.9),
+      filmwebUrl = Some("https://www.filmweb.pl/film/Obcy-1979-1"), filmwebRating = Some(7.1), searchTitle = Some("Obcy"),
+      data = Map(Imdb -> SourceData(title = Some("Lalka")), Filmweb -> SourceData(title = Some("Obcy")), slotOf(obcy.head))),
+      FilmId("obcy|1979"), Some("obcy|1979"))
+    def drafted(fallback: ResolverDecision.Fallback) = IdentityProjectionPlan.draft(obcy, resolution(decision(None, obcy*).copy(fallback = Some(fallback))(
+      DecisionTrace.Empty)), Seq(guessed), FilmIdCounters.empty, normalizer, slots, tokens, at, rowsOf(obcy)).drafts.head.record
+    val filmweb = drafted(ResolverDecision.Fallback("filmweb", "10105049", 1.0, Some("Płazy. Pionierzy życia na lądzie"), Some(2023)))
+    (filmweb.filmwebUrl, filmweb.filmwebRating, filmweb.data.contains(Filmweb)) shouldBe
+      ((Some("https://www.filmweb.pl/film/P%C5%82azy.+Pionierzy+%C5%BCycia+na+l%C4%85dzie-2023-10105049"), None, false))
+    (filmweb.imdbId, filmweb.imdbRating, filmweb.data.contains(Imdb)) shouldBe ((None, None, false))
+    val same = drafted(ResolverDecision.Fallback("filmweb", "1", 1.0, Some("Obcy"), Some(1979)))   // the page it holds: kept, rated
+    (same.filmwebUrl, same.filmwebRating, same.data.contains(Filmweb)) shouldBe ((Some("https://www.filmweb.pl/film/Obcy-1979-1"), Some(7.1), true))
+    val wikidata = drafted(ResolverDecision.Fallback("wikidata", "Q141180912", 1.0))
+    (wikidata.wikidataId, wikidata.imdbId, wikidata.filmwebUrl) shouldBe ((Some("Q141180912"), None, Some("https://www.filmweb.pl/film/Obcy-1979-1")))
+  }
+
   "Two stored films the resolver joins" should "keep the OLDER id, retire the other and count one merge" in {
     val older = StoredMovieRecord("Lalka", Some(2026), MovieRecord(tmdbId = Some(1),
       data = Map(slotOf(lalka.head))),

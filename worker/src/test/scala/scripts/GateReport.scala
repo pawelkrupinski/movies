@@ -196,7 +196,7 @@ private final class GateReport(http: RealHttpFetch, filmweb: FilmwebClient, conf
         Try(filmweb.search(q)).getOrElse(Seq.empty).take(6).flatMap { hit =>
           for { i <- Try(filmweb.info(hit.id)).toOption.flatten } yield {
             val p = Try(filmweb.preview(hit.id)).toOption.flatten
-            Cand(s"fw${hit.id}", FilmwebClient.canonicalUrl(hit.id, hit.kind, i.title, i.year),
+            Cand(s"fw${hit.id}", models.FilmwebPages.url(hit.id, hit.kind, i.title, i.year),
               i.title, i.year, p.flatMap(_.plot).getOrElse(""), p.map(_.directors).getOrElse(Set.empty), Set.empty)
           }
         }

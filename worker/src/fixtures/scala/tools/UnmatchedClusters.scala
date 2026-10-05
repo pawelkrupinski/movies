@@ -53,10 +53,11 @@ object UnmatchedClusters {
 
   /** The agreement stage over the model's decisions, as the worker runs it on the way to the projection. */
   def agree(decisions: Seq[ResolverDecision], listings: Seq[Listing], lookups: IdentityLookups, families: Map[VoterFamily, FamilyAnswers],
-            version: Long, tmdbOf: String => Answer[Option[Int]], normalizer: TitleNormalizer, posters: PosterAnswers): Outcome = {
+            version: Long, tmdbOf: String => Answer[Option[Int]], normalizer: TitleNormalizer, posters: PosterAnswers,
+            identities: Seq[VoterFamily]): Outcome = {
     val model = resolutionOf(decisions)
     val stage = new AgreementStage(families, lookups, normalizer, IdentityCalibration.resolver, tmdbOf, new InMemoryAgreementVerdicts,
-      clock = SpecClock.Pinned, posters = posters, tmdb = Some(lookups))
+      clock = SpecClock.Pinned, posters = posters, tmdb = Some(lookups), identities = identities)
     val byKey = listings.map(l => l.key -> l).toMap
     Outcome(model, stage.apply(model, byKey.get, version), stage)
   }
@@ -68,16 +69,18 @@ object UnmatchedClusters {
     val store = new FamilyAnswerStore(docs, SpecClock.Pinned)
     agree(capture.decisions, capture.listings, new Replay(capture), familiesOf(capture.country).map(f => f -> store.answers(f)).toMap, version = 1,
       imdb => capture.finds.get(imdb).fold[Answer[Option[Int]]](Answer.Unknown)(Answer.Known(_)), TitleNormalizer.forCountry(capture.country),
-      new PosterAnswerStore(store, SpecClock.Pinned))
+      new PosterAnswerStore(store, SpecClock.Pinned), modules.wiring.IdentityCutoverWiring.identities(capture.country.code))
   }
 
-  /** One listing's take: the film its cluster took (TMDB's, or an IMDb fallback) and the IMDb id it is known by. */
+  /** One listing's take: the film its cluster took (TMDB's, or a fallback film), the IMDb id it is known by, and the
+   *  fallback film's id where another database's stands for it ("filmweb:10105049", "wikidata:Q141180912"). */
   final case class Take(country: String, venue: String, rawTitle: String, tmdb: Option[Int], imdb: Option[String], basis: String, title: String,
-                        agreed: Map[String, String] = Map.empty) {
-    /** Every id it is known by: TMDB's, IMDb's, and each agreeing family's own ("filmweb:880000", "wikidata:Q1"). */
-    def ids: Set[String] = tmdb.map(id => s"tmdb:$id").toSet ++ imdb.map(id => s"imdb:$id") ++
+                        agreed: Map[String, String] = Map.empty, standsOn: Option[String] = None) {
+    /** Every id it is known by: TMDB's, IMDb's, the one it stands on, and each agreeing family's own ("filmweb:880000",
+     *  "wikidata:Q1"). */
+    def ids: Set[String] = tmdb.map(id => s"tmdb:$id").toSet ++ imdb.map(id => s"imdb:$id") ++ standsOn ++
       agreed.map { case (family, id) => s"${if (family == "wiki") "wikidata" else family}:$id" }
-    def film: String = tmdb.fold(imdb.fold("")(id => s"imdb:$id"))(id => s"tmdb:$id")
+    def film: String = tmdb.fold(imdb.fold(standsOn.getOrElse(""))(id => s"imdb:$id"))(id => s"tmdb:$id")
   }
 
   private val NamedImdb = """ (tt\d+)$""".r.unanchored
@@ -91,7 +94,8 @@ object UnmatchedClusters {
         .orElse(record.filter(_.imdbNumber > 0).map(f => f"tt${f.imdbNumber}%07d"))
         .orElse(d.explanation.lastOption.collect { case NamedImdb(id) => id })
       val title = record.map(f => s"${f.title} (${f.year.getOrElse("?")})").getOrElse(d.explanation.lastOption.getOrElse(""))
-      d.members.flatMap(byKey.get).map(l => Take(capture.country.code, l.venue, l.rawTitle, d.film, imdb, d.basis.toString, title, d.agreed))
+      val standsOn = d.fallback.filter(_.source != "imdb").map(taken => s"${taken.source}:${taken.id}")
+      d.members.flatMap(byKey.get).map(l => Take(capture.country.code, l.venue, l.rawTitle, d.film, imdb, d.basis.toString, title, d.agreed, standsOn))
     }.sortBy(t => (t.country, t.venue, t.rawTitle))
   }
 

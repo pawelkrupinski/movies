@@ -109,7 +109,7 @@ class FilmwebClient(http: HttpFetch) {
           }
         }
       pickBest(candidates, query, year, directors, referenceSynopsis, aliases).map { c =>
-        val url = canonicalUrl(c.id, c.kind, c.title, c.year)
+        val url = models.FilmwebPages.url(c.id, c.kind, c.title, c.year)
         // Fall back to a winner-only /preview when director verification was
         // skipped (caller didn't supply directors) so the Filmweb slot carries
         // its full content (directors + genres + plot) — single extra round-trip,
@@ -202,8 +202,7 @@ class FilmwebClient(http: HttpFetch) {
       )
     }
 
-  private def idFromUrl(url: String): Option[Int] =
-    FilmwebClient.IdFromUrl.findFirstMatchIn(url).flatMap(_.group(1).toIntOption)
+  private def idFromUrl(url: String): Option[Int] = models.FilmwebPages.idOf(url)
 
   def parseSearch(body: String): Seq[SearchHit] = searchHitsOf(Json.parse(body))
 
@@ -405,10 +404,6 @@ object FilmwebClient {
   /** How far a candidate's year may sit from the caller's and still be the same
    *  film: Filmweb dates by Polish premiere, which can trail the origin year. */
   private val YearTolerance  = 1
-  // Canonical Filmweb URLs end in `-{id}` (optionally trailing slash):
-  //   https://www.filmweb.pl/film/Title+Words-2024-12345
-  //   https://www.filmweb.pl/film/Title-12345/
-  private val IdFromUrl      = "-(\\d+)/?$".r
 
   /** /info response — canonical title + optional originalTitle + year. */
   case class FilmInfo(title: String, originalTitle: Option[String], year: Option[Int])
@@ -464,17 +459,6 @@ object FilmwebClient {
   ) {
     /** Every title Filmweb knows this candidate by: its Polish title, then its original. */
     def titles: Seq[String] = title +: originalTitle.toSeq
-  }
-
-  /**
-   * Build the canonical page URL the way Filmweb encodes it. The site replaces
-   * spaces with `+` and percent-encodes everything else. `kind` picks the
-   * URL segment: `film` → `/film/`, `serial` → `/serial/`.
-   */
-  def canonicalUrl(id: Int, kind: String, title: String, year: Option[Int]): String = {
-    val slug = URLEncoder.encode(title, StandardCharsets.UTF_8).replace("%20", "+")
-    val y    = year.map(_.toString).getOrElse("")
-    s"https://www.filmweb.pl/$kind/$slug-$y-$id"
   }
 
   /** The year a canonical Filmweb URL names, when it carries one:

@@ -1,6 +1,6 @@
 package services.identity
 
-import models.{Cinema, CinemaMovie, CinemaShowing, Imdb, MovieRecord, Source, SourceData}
+import models.{Cinema, CinemaMovie, CinemaShowing, Filmweb, FilmwebPages, Imdb, MovieRecord, Source, SourceData}
 import services.movies.{CacheKey, CinemaSlotBuilder, FilmId, LeanRecords, ListingKey, ScreeningTokens,
   ShowtimesDigest, StoredMovieRecord, TitleNormalizer}
 import services.resolution.TmdbAttempt
@@ -334,9 +334,22 @@ object IdentityProjectionPlan {
       // former TMDB-less enrichments') is not the resolver's answer — PL "Lalka" (2026) held the 1968 film's, and its 6.9.
       // The rating and IMDb's slot go with an id that goes. A no-match reached before every question was answered is a
       // gap, not a verdict: the record keeps what it holds.
-      val imdb   = unmatchedOf.get(members).filterNot(_.unanswered).map { cluster =>
-        cluster.fallback.map(_.id).orElse(base.imdbId.filter(id => cluster.leaning.exists(_.imdbNumber == IdentityMeasures.imdbNumber(id)))) }
-      val held   = imdb.fold(base)(id => if (id == base.imdbId) base else base.copy(imdbId = id, imdbRating = None, data = base.data - Imdb))
+      // One standing on Filmweb's or Wikidata's own id (the agreement's, where no record links an IMDb id) links that
+      // record instead: its Filmweb page — replacing a page a title search guessed, with its rating and slot — or its
+      // Wikidata item.
+      val answered = unmatchedOf.get(members).filterNot(_.unanswered)
+      val imdb   = answered.map { cluster =>
+        cluster.fallback.filter(_.source == "imdb").map(_.id)
+          .orElse(base.imdbId.filter(id => cluster.leaning.exists(_.imdbNumber == IdentityMeasures.imdbNumber(id)))) }
+      val standsOn = answered.flatMap(_.fallback)
+      val linked = imdb.fold(base)(id => if (id == base.imdbId) base else base.copy(imdbId = id, imdbRating = None, data = base.data - Imdb))
+      val held   = standsOn.fold(linked) {
+        case ResolverDecision.Fallback("filmweb", id, _, title, year) if !linked.filmwebUrl.flatMap(FilmwebPages.idOf).map(_.toString).contains(id) =>
+          linked.copy(filmwebUrl = id.toIntOption.map(FilmwebPages.url(_, "film", title.getOrElse(anchor), year)), filmwebRating = None,
+            data = linked.data - Filmweb)
+        case ResolverDecision.Fallback("wikidata", id, _, _, _) => linked.copy(wikidataId = Some(id))
+        case _                                                  => linked
+      }
       val nonVenue = held.data.filter { case (source, _) => Source.cinemaOf(source).isEmpty }
       val networks = previous.fold(Map.empty[Source, SourceData])(_.record.data.filter { case (source, _) => Cinema.Networks.contains(source) })
       val previousNonVenue = previous.fold(Set.empty[Source])(_.record.data.keysIterator.filter(Source.cinemaOf(_).isEmpty).toSet)

@@ -105,7 +105,8 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
     val posters     = CachedPosters.of(configuration, c.country)
     val stage = new AgreementStage(families.map(family => family -> store.answers(family)).toMap, lookups, c.normalizer,
       IdentityCalibration.resolver, tmdbOf = imdb => Answer.Known(Try(tmdb.findByImdbId(imdb).map(_.id)).toOption.flatten),
-      stored = new services.identity.agreement.InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = posterStore, tmdb = Some(lookups))
+      stored = new services.identity.agreement.InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = posterStore, tmdb = Some(lookups),
+      identities = modules.wiring.IdentityCutoverWiring.identities(c.country.code))
     val byKey = listings.map(l => l.key -> l).toMap
     var rounds = 0
     var taken  = stage.apply(resolution, byKey.get, store.version)

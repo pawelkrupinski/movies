@@ -17,6 +17,8 @@ class ResolverDecisionBsonSpec extends AnyFlatSpec with Matchers {
     ResolverDecisionBson.decode(ResolverDecisionBson.encode(fallen)) shouldBe fallen
     val matched = ResolverDecision(Seq(snowLeopard), Some(996584), 0.9, ResolverDecision.Basis.OwnMatch, Nil)()
     ResolverDecisionBson.decode(ResolverDecisionBson.encode(matched)) shouldBe matched
+    val filmweb = fallen.copy(fallback = Some(ResolverDecision.Fallback("filmweb", "10105049", 1.0, Some("Płazy. Pionierzy życia na lądzie"), Some(2023))))(DecisionTrace.Empty)
+    ResolverDecisionBson.decode(ResolverDecisionBson.encode(filmweb)) shouldBe filmweb
   }
 
   it should "read back with each agreeing family's own id of its film" in {

@@ -128,6 +128,23 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     stage.apply(resolution, listingOf, version = 1).decisions.head.fallback shouldBe Some(ResolverDecision.Fallback("imdb", "tt16315948", 1.0))
   }
 
+  it should "take a film neither TMDB nor IMDb holds by the id of a family the country lets stand as its identity, Wikidata's first" in {
+    // Wikidata, Filmweb and RT agree on a film no record links an IMDb id to (DE "Jeder Acker, jede Fabrik", PL "Płazy")
+    val noImdb = Map(
+      VoterFamily.Imdb           -> new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty),
+      VoterFamily.Wiki           -> new HeldFamilyAnswers(VoterFamily.Wiki, Map("Q141180912" -> SourceRecord(klondike, Map("wikidata" -> "Q141180912")))),
+      VoterFamily.Filmweb        -> new HeldFamilyAnswers(VoterFamily.Filmweb, Map("10105049" -> SourceRecord(klondike, Map("filmweb" -> "10105049")))),
+      VoterFamily.RottenTomatoes -> new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map("klondike_2022" -> SourceRecord(klondike, Map("rt" -> "klondike_2022")))))
+    def taken(identities: Seq[VoterFamily]) =
+      new AgreementStage(noImdb, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+        clock = _root_.tools.SpecClock.Pinned, identities = identities).apply(resolution, listingOf, version = 1).decisions.head
+    // with the film's title and year, that a link to its page is built of
+    taken(Seq(VoterFamily.Wiki, VoterFamily.Filmweb)).fallback shouldBe Some(ResolverDecision.Fallback("wikidata", "Q141180912", 1.0, Some("Klondike"), Some(2022)))
+    taken(Seq(VoterFamily.Filmweb)).fallback shouldBe Some(ResolverDecision.Fallback("filmweb", "10105049", 1.0, Some("Klondike"), Some(2022)))
+    val none = taken(Nil)   // a country no family's own id stands in: the agreed film is not taken
+    (none.fallback, none.basis) shouldBe ((None, ResolverDecision.Basis.BelowThreshold))
+  }
+
   it should "keep the families' own ids with the decision, and its verdict across a restart without asking them again" in {
     val verdicts = new InMemoryAgreementVerdicts
     val first = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
