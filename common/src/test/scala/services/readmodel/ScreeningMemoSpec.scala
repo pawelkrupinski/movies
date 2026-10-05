@@ -109,6 +109,25 @@ class ScreeningMemoSpec extends AnyFlatSpec with Matchers {
   }
 
   // Each of the US's ~100k rows held its input hash as Some(Integer): 32 bytes beside its own 24 (dump 2026-10-04).
+  // A whole-film reprojection hands the memo every row of the card anew — ~3.9k a call on worker-us, 321 calls an hour —
+  // almost all as they were. Replaced whole, each card's rows lived until its next reprojection, minutes: promoted to the
+  // old generation every time, to die there.
+  it should "keep the rows a card is given again as they were, the very objects, and the card's rows whole when none moved" in {
+    val memo  = new ScreeningMemo
+    val ids   = (1 to 200).map(n => s"lalka|2026|poznan|Venue $n")
+    memo.update("lalka|2026", ids.zipWithIndex.map { case (id, n) => id -> written(n) }.toMap)
+    def byCard = { val f = classOf[ScreeningMemo].getDeclaredField("byCard"); f.setAccessible(true)
+      f.get(memo).asInstanceOf[scala.collection.mutable.HashMap[String, Map[String, WrittenScreening]]]("lalka|2026") }
+    val held  = byCard
+    memo.update("lalka|2026", ids.zipWithIndex.map { case (id, n) => id -> written(n) }.toMap)
+    assert(byCard eq held, "the card's rows were replaced though none moved")
+    memo.update("lalka|2026", ids.zipWithIndex.map { case (id, n) => id -> written(if (n == 7) 99 else n) }.toMap.removed(ids(3)))
+    memo.get("lalka|2026", ids(7)) shouldBe Some(written(99))
+    memo.get("lalka|2026", ids(3)) shouldBe None
+    memo.size("lalka|2026") shouldBe 199
+    ids.indices.filterNot(Set(3, 7)).foreach(n => assert(memo.get("lalka|2026", ids(n)).get eq held(s"poznan|Venue ${n + 1}"), ids(n)))
+  }
+
   "a written row" should "keep its input hash unboxed, and read back what it was given" in {
     classOf[WrittenScreening].getDeclaredFields.map(_.getType).filterNot(_.isPrimitive) shouldBe empty
     WrittenScreening(7, Some(9)).input shouldBe Some(9)
