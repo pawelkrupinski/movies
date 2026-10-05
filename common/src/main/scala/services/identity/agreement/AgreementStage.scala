@@ -250,7 +250,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   /** The decision with the agreed film taken — pending while TMDB was not asked about its IMDb id yet or the venue posters
    *  are not all hashed, and not taken when they VETO it ([[PosterEvidence.veto]]): a venue poster names another candidate. */
   private def taken(decision: ResolverDecision, agreed: AgreedFilm, finding: mutable.Set[String],
-                    distances: Option[Int] => Answer[Map[Int, Option[Int]]]): AgreementStage.Take = {
+                    distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]]): AgreementStage.Take = {
     val imdb = agreed.crossId("imdb")
     val tmdb: Answer[Option[Int]] = agreed.crossId("tmdb").flatMap(_.toIntOption) match {
       case Some(film) => Answer.Known(Some(film))
@@ -277,7 +277,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   }
 
   /** The decision with the one candidate the venue posters match taken ([[PosterEvidence.vote]]). */
-  private def voted(decision: ResolverDecision, distances: Answer[Map[Int, Option[Int]]]): Option[ResolverDecision] =
+  private def voted(decision: ResolverDecision, distances: Answer[Seq[Map[Int, Option[Int]]]]): Option[ResolverDecision] =
     distances.toOption.flatMap(PosterEvidence.vote).map { case (film, bits) =>
       val named = tmdb.flatMap(_.film(film).toOption.flatten).fold(s"tmdb $film")(f => s"'${f.title}'${f.year.fold("")(year => s" ($year)")}")
       decision.copy(film = Some(film), basis = ResolverDecision.Basis.Poster,
@@ -285,25 +285,29 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         decision.trace)
     }
 
-  /** The nearest each of the cluster's candidates (and `also`, the film the families agree on) comes to its venue
-   *  posters — empty where no listing shows one; `Unknown`, each poster not hashed yet noted in `asked`, while one is not. */
+  /** The nearest each of the cluster's candidates (and `also`, the film the families agree on) comes to each of its
+   *  venue posters — none where no listing shows one; `Unknown`, each poster not hashed yet noted in `asked`, while one
+   *  is not. A candidate numbering another edition than a listing showing a poster is not compared
+   *  ([[PosterEvidence.editionsApart]]). */
   private def posterDistances(id: String, digest: Long, listings: Seq[Listing], also: Option[Int],
-                              asked: mutable.Set[AgreementStage.PosterQuestion]): Answer[Map[Int, Option[Int]]] = {
+                              asked: mutable.Set[AgreementStage.PosterQuestion]): Answer[Seq[Map[Int, Option[Int]]]] = {
     val urls = PosterEvidence.urls(listings)
-    if (urls.isEmpty || tmdb.isEmpty) Answer.Known(Map.empty)
+    if (urls.isEmpty || tmdb.isEmpty) Answer.Known(Nil)
     else {
       val venue = urls.map(url => url -> posters.venue(url))
       venue.collect { case (url, Answer.Unknown) => asked += AgreementStage.PosterQuestion.Venue(url) }
       if (venue.exists(_._2 == Answer.Unknown)) Answer.Unknown
       else {
         val shown: Seq[PosterHash] = venue.flatMap(_._2.toOption.flatten)
-        if (shown.isEmpty) Answer.Known(Map.empty)
+        if (shown.isEmpty) Answer.Known(Nil)
         else {
-          val films  = (candidatesOf(id, digest, listings) ++ also.filterNot(FallbackIds.isFallback)).distinct
+          val showing = listings.filter(listing => PosterEvidence.shows(listing) && listing.poster.isDefined)
+          def apart(film: Int) = tmdb.flatMap(_.film(film).toOption.flatten).exists(record => showing.exists(PosterEvidence.editionsApart(_, record)))
+          val films  = (candidatesOf(id, digest, listings).filterNot(apart) ++ also.filterNot(FallbackIds.isFallback)).distinct
           val hashes = films.map(film => film -> posters.film(film))
           hashes.collect { case (film, Answer.Unknown) => asked += AgreementStage.PosterQuestion.Film(film) }
           if (hashes.exists(_._2 == Answer.Unknown)) Answer.Unknown
-          else Answer.Known(hashes.map { case (film, answer) => film -> PosterEvidence.nearest(shown, answer.toOption.getOrElse(Nil)) }.toMap)
+          else Answer.Known(shown.map(poster => hashes.map { case (film, answer) => film -> PosterEvidence.nearest(Seq(poster), answer.toOption.getOrElse(Nil)) }.toMap))
         }
       }
     }

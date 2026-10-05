@@ -45,7 +45,7 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
     (broken.size, wajda.size) shouldBe ((3, PosterEvidence.FilmPosters))
     PosterEvidence.nearest(venue, broken).get should be <= PosterEvidence.VetoMatchBits
     PosterEvidence.nearest(venue, wajda).get should be > PosterEvidence.VetoBits
-    PosterEvidence.veto(Some(95269), Map(95269 -> PosterEvidence.nearest(venue, wajda), 1483477 -> PosterEvidence.nearest(venue, broken)))
+    PosterEvidence.veto(Some(95269), Seq(Map(95269 -> PosterEvidence.nearest(venue, wajda), 1483477 -> PosterEvidence.nearest(venue, broken))))
       .map(_._1) shouldBe Some(1483477)
   }
 

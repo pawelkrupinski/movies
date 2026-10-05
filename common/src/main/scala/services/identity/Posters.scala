@@ -100,8 +100,13 @@ object PosterAnswers {
  *    right films' nearest TMDB poster is over 20 bits from the venue's (a still, a festival's artwork, a local poster
  *    TMDB does not keep), 7% over 28 — against 36% of wrong ones.
  *
- * A listing billing a stage work ([[agreement.Agreement.stagesAWork]]) or several works ([[agreement.Agreement.billsSeveral]])
- * shows no poster of the film: a relay's artwork is the house's season, a double bill's one of two films.
+ * Each venue poster speaks on its own (a cluster may join two venues' posters of two films — PL "Dyrygent": Kino
+ * Marzenie's is Wajda's, Patria's Provaznik's): one vetoes a film it names another candidate against, and a vote stands
+ * only when no poster vetoes it. A listing billing a stage work ([[agreement.Agreement.stagesAWork]]) or several works
+ * ([[agreement.Agreement.billsSeveral]]) shows no poster of the film: a relay's artwork is the house's season, a double
+ * bill's one of two films. Nor is a candidate numbering another edition than the listing ([[editionsApart]]) compared:
+ * a venue reuses last year's artwork for this year's event (PL Helios's "League of Legends Worlds 26" poster is its
+ * Worlds 25 file).
  */
 object PosterEvidence {
   /** A venue poster this near a candidate's is a vote for it. */
@@ -123,17 +128,33 @@ object PosterEvidence {
   def nearest(venue: Seq[PosterHash], film: Seq[PosterHash]): Option[Int] =
     venue.flatMap(v => film.map(v.distance)).minOption
 
-  /** Each candidate's nearest distance: the film `vote` takes, if one alone is within [[VoteBits]]. */
-  def vote(distances: Map[Int, Option[Int]]): Option[(Int, Int)] =
-    distances.toSeq.collect { case (film, Some(bits)) if bits <= VoteBits => film -> bits } match {
-      case Seq(only) => Some(only)
-      case _         => None
+  /** The film the venue posters vote for, with its distance: the one candidate any poster matches within [[VoteBits]],
+   *  no poster vetoing it. `posters`: each venue poster's nearest distance to each candidate. */
+  def vote(posters: Seq[Map[Int, Option[Int]]]): Option[(Int, Int)] =
+    posters.flatMap(_.collect { case (film, Some(bits)) if bits <= VoteBits => film -> bits }).groupMapReduce(_._1)(_._2)(math.min).toSeq match {
+      case Seq(only) if veto(Some(only._1), posters).isEmpty => Some(only)
+      case _                                                 => None
     }
 
-  /** The candidate whose poster vetoes the TMDB film `taken` (`None`: a film TMDB holds no record of), with its
-   *  distance: one within [[VetoMatchBits]] while `taken` stays beyond [[VetoBits]], or shows no poster at all. */
-  def veto(taken: Option[Int], distances: Map[Int, Option[Int]]): Option[(Int, Int)] =
-    Option.when(taken.flatMap(distances.get).flatten.forall(_ > VetoBits))(())
-      .flatMap(_ => distances.toSeq.collect { case (film, Some(bits)) if !taken.contains(film) && bits <= VetoMatchBits => film -> bits }
-        .sortBy(c => (c._2, c._1)).headOption)
+  /** The candidate a venue poster names against the TMDB film `taken` (`None`: a film TMDB holds no record of), with its
+   *  distance: one within [[VetoMatchBits]] of a poster `taken` stays beyond [[VetoBits]] of, or shows no poster at all. */
+  def veto(taken: Option[Int], posters: Seq[Map[Int, Option[Int]]]): Option[(Int, Int)] =
+    posters.flatMap { distances =>
+      Option.when(taken.flatMap(distances.get).flatten.forall(_ > VetoBits))(())
+        .flatMap(_ => distances.toSeq.collect { case (film, Some(bits)) if !taken.contains(film) && bits <= VetoMatchBits => film -> bits }
+          .sortBy(c => (c._2, c._1)).headOption)
+    }.sortBy(c => (c._2, c._1)).headOption
+
+  private val Digits = "\\d+".r
+  /** The numbers a title writes (a year as its last two digits, "2026" as 26; "Worlds25" as 25). */
+  private def numbersOf(title: String): Set[Int] =
+    Digits.findAllIn(title).map(_.toInt).map(n => if (n >= 1900 && n <= 2099) n % 100 else n).toSet
+
+  /** Do the listing's title and the film's number themselves apart — both carry a number, none in common: another
+   *  edition of an event, another instalment ("League of Legends Worlds 26" against "… Worlds25")? */
+  def editionsApart(listing: Listing, film: IdentityMeasures.Film): Boolean = {
+    val billed = numbersOf(listing.rawTitle) ++ numbersOf(listing.title)
+    val filed  = film.titles.flatMap(numbersOf).toSet
+    billed.nonEmpty && filed.nonEmpty && (billed intersect filed).isEmpty
+  }
 }

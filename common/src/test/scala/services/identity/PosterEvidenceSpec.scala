@@ -51,24 +51,45 @@ class PosterEvidenceSpec extends AnyFlatSpec with Matchers {
   }
 
   "the posters' vote" should "take the one candidate within the vote's bits" in {
-    PosterEvidence.vote(Map(1 -> Some(2), 2 -> Some(30), 3 -> None)) shouldBe Some(1 -> 2)
+    PosterEvidence.vote(Seq(Map(1 -> Some(2), 2 -> Some(30), 3 -> None))) shouldBe Some(1 -> 2)
   }
 
   it should "take none when two candidates are as near, or none is" in {
-    PosterEvidence.vote(Map(1 -> Some(2), 2 -> Some(4))) shouldBe None
-    PosterEvidence.vote(Map(1 -> Some(6), 2 -> Some(30))) shouldBe None
+    PosterEvidence.vote(Seq(Map(1 -> Some(2), 2 -> Some(4)))) shouldBe None
+    PosterEvidence.vote(Seq(Map(1 -> Some(6), 2 -> Some(30)))) shouldBe None
   }
 
-  "the posters' veto" should "refuse a film far from the venue's poster when it matches another candidate" in {
-    PosterEvidence.veto(Some(1), Map(1 -> Some(28), 2 -> Some(3))) shouldBe Some(2 -> 3)
-    PosterEvidence.veto(Some(1), Map(1 -> Some(30), 2 -> Some(PosterEvidence.VetoMatchBits))) shouldBe Some(2 -> PosterEvidence.VetoMatchBits)
-    PosterEvidence.veto(None, Map(2 -> Some(3))) shouldBe Some(2 -> 3)
-    PosterEvidence.veto(Some(1), Map(1 -> None, 2 -> Some(0))) shouldBe Some(2 -> 0)
+  it should "take none another venue's poster vetoes, nor when two venues' posters match two films" in {
+    PosterEvidence.vote(Seq(Map(1 -> Some(2), 2 -> Some(30)), Map(1 -> Some(30), 2 -> Some(6)))) shouldBe None
+    PosterEvidence.vote(Seq(Map(1 -> Some(2), 2 -> Some(30)), Map(1 -> Some(30), 2 -> Some(4)))) shouldBe None
+    PosterEvidence.vote(Seq(Map(1 -> Some(2), 2 -> Some(30)), Map(1 -> Some(4), 2 -> Some(30)))) shouldBe Some(1 -> 2)
+  }
+
+  "the posters' veto" should "refuse a film far from a venue's poster when it matches another candidate" in {
+    PosterEvidence.veto(Some(1), Seq(Map(1 -> Some(28), 2 -> Some(3)))) shouldBe Some(2 -> 3)
+    PosterEvidence.veto(Some(1), Seq(Map(1 -> Some(30), 2 -> Some(PosterEvidence.VetoMatchBits)))) shouldBe Some(2 -> PosterEvidence.VetoMatchBits)
+    PosterEvidence.veto(None, Seq(Map(2 -> Some(3)))) shouldBe Some(2 -> 3)
+    PosterEvidence.veto(Some(1), Seq(Map(1 -> None, 2 -> Some(0)))) shouldBe Some(2 -> 0)
+  }
+
+  it should "refuse a film one venue's poster names another candidate against, however near another venue's poster is" in {
+    // PL "Dyrygent": Kino Marzenie's poster is Wajda's (8 bits), Patria's Provaznik's (6 bits, Wajda's 30)
+    PosterEvidence.veto(Some(95269), Seq(Map(95269 -> Some(8), 1483477 -> Some(30)), Map(95269 -> Some(30), 1483477 -> Some(6)))) shouldBe
+      Some(1483477 -> 6)
   }
 
   it should "refuse nothing by distance alone, nor a film near the venue's poster" in {
-    PosterEvidence.veto(Some(1), Map(1 -> Some(32), 2 -> Some(PosterEvidence.VetoMatchBits + 2))) shouldBe None
-    PosterEvidence.veto(Some(1), Map(1 -> Some(PosterEvidence.VetoBits), 2 -> Some(2))) shouldBe None
+    PosterEvidence.veto(Some(1), Seq(Map(1 -> Some(32), 2 -> Some(PosterEvidence.VetoMatchBits + 2)))) shouldBe None
+    PosterEvidence.veto(Some(1), Seq(Map(1 -> Some(PosterEvidence.VetoBits), 2 -> Some(2)))) shouldBe None
+  }
+
+  "a candidate" should "number another edition than the listing only when both carry a number, none in common" in {
+    def film(title: String) = IdentityMeasures.Film(title)
+    val worlds = FilmTable.listing(Multikino, "League of Legends Worlds 26 | Finals in Cinema w Helios Sport")
+    PosterEvidence.editionsApart(worlds, film("League of Legends Worlds25 - Finals in Cinema")) shouldBe true
+    PosterEvidence.editionsApart(worlds, film("League of Legends Worlds 2026")) shouldBe false
+    PosterEvidence.editionsApart(FilmTable.listing(Multikino, "Mroki - Kino Konesera - 24. FFOL"), film("Mroki")) shouldBe false
+    PosterEvidence.editionsApart(FilmTable.listing(Multikino, "Pettersson und Findus Mitmachkino 2"), film("Lustiges Pettersson und Findus Mitmachkino 2")) shouldBe false
   }
 
   "a listing's poster" should "speak for its film, but not a stage relay's nor a double bill's" in {
