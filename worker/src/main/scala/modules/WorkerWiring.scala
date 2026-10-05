@@ -407,6 +407,8 @@ class WorkerWiring(
   // A finished share-card render re-projects its film, so `web_movies` points at the new card
   // (and a film the first-publish gate holds is published).
   eventBus.subscribe(shareCardFollowUp.onTaskFinished)
+  // The share-card backfill sweeps after a prune pass and drips its renders in as others finish.
+  eventBus.subscribe(services.sharecards.ShareCardBackfill.onTaskFinished(shareCardBackfill))
 
   // The boot work a worker's readiness waits on (`BootReadiness`): the projector's prepare and the
   // identity take-up, both off the boot thread. Settled when each has finished, whether or not it

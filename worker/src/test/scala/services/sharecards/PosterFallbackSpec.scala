@@ -41,8 +41,11 @@ class PosterFallbackSpec extends AnyFlatSpec with Matchers {
     fixed.readModel.upsertMovie(film().copy(shareCard = Some(noPoster)))
     fixed.readModel.upsertScreening(screening(film()._id))
     val backfill = new ShareCardBackfill(fixed.service, fixed.readModel, fixed.queue, fixed.metrics, fixed.clock)
-    backfill.tick() shouldBe 1
-    val task = drain(fixed.queue).head
+    ShareCardBackfill.onTaskFinished(backfill)(services.events.TaskFinished(services.tasks.TaskType.PruneShareCards, "share-card-budget",
+      Map(PruneShareCardsHandler.ModeKey -> PruneShareCardsHandler.Budget)))
+    val tasks = drain(fixed.queue)
+    tasks should have size 1
+    val task = tasks.head
     new RenderShareCardHandler(fixed.service).handle(task) shouldBe services.tasks.HandlerOutcome.Done
     fixed.service.existing(fixed.service.inputs(film())) shouldBe Some(fixed.service.inputs(film()).version(Some(film().posterUrl.get)))
     fixed.service.current(film()) should not be Some(noPoster)

@@ -218,8 +218,6 @@ final class ProcessConfiguration(val env: Env) {
 
   def shareCardStorageBudget(default: ShareCardStorageBudget): ShareCardStorageBudget =
     ShareCardStorageBudget(env.positiveLong("KINOWO_SHARE_CARD_BUDGET_MB", default.bytes / (1024 * 1024)) * 1024 * 1024)
-  def shareCardBackfillBatch(default: ShareCardBackfillBatch): ShareCardBackfillBatch =
-    ShareCardBackfillBatch(count("KINOWO_SHARE_CARD_BACKFILL_BATCH", default.value))
   def shareCardBackfillMaxBacklog(default: ShareCardBackfillMaxBacklog): ShareCardBackfillMaxBacklog =
     ShareCardBackfillMaxBacklog(count("KINOWO_SHARE_CARD_BACKFILL_MAX_BACKLOG", default.value))
   def posterDecodeMemoryCap(default: PosterDecodeMemoryCap): PosterDecodeMemoryCap =

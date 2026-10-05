@@ -11363,10 +11363,6 @@ services.sharecards.RescrapeTarget$Page$
 services.sharecards.ShareCardAudit$
 services.sharecards.ShareCardBackfill
 services.sharecards.ShareCardBackfill$
-services.sharecards.ShareCardBackfill$SweepInterval$
-services.sharecards.ShareCardBackfill$Swept
-services.sharecards.ShareCardBackfill$Swept$
-services.sharecards.ShareCardBackfillHandler
 services.sharecards.ShareCardFile$
 services.sharecards.ShareCardFingerprint
 services.sharecards.ShareCardFingerprint$
@@ -11570,7 +11566,6 @@ services.tasks.TaskType$ScrapeChunk$
 services.tasks.TaskType$ScrapeChunkReduce$
 services.tasks.TaskType$ScrapeCinema$
 services.tasks.TaskType$SettleNow$
-services.tasks.TaskType$ShareCardBackfill$
 services.tasks.TaskWorker
 services.tasks.TaskWorker$
 services.tasks.TaskWorker$IdleBackstop$
@@ -11687,7 +11682,6 @@ settings.SettleInterval
 settings.SettleInterval$
 settings.ShareCardAuditSample
 settings.ShareCardAuditSample$
-settings.ShareCardBackfillBatch$
 settings.ShareCardBackfillMaxBacklog$
 settings.ShareCardDirectoryTemplate$
 settings.ShareCardFirstHold$

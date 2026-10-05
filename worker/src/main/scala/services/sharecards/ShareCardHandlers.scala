@@ -19,12 +19,6 @@ class RenderShareCardHandler(service: ShareCardService, maxAttempts: Int = 3) ex
     }
 }
 
-/** `ShareCardBackfill`: one backfill tick. */
-class ShareCardBackfillHandler(backfill: ShareCardBackfill) extends TaskHandler {
-  val taskType: TaskType = TaskType.ShareCardBackfill
-  def handle(task: Task): HandlerOutcome = { backfill.tick(); HandlerOutcome.Done }
-}
-
 /** `PruneShareCards`: the daily prune, or (`mode=budget`) the budget alone. */
 class PruneShareCardsHandler(janitor: ShareCardJanitor) extends TaskHandler {
   val taskType: TaskType = TaskType.PruneShareCards

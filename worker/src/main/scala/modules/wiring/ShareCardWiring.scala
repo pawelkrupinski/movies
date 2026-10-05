@@ -1,6 +1,6 @@
 package modules.wiring
 
-import settings.{PosterDecodeMemoryCap, ShareCardBackfillBatch, ShareCardBackfillMaxBacklog, ShareCardStorageBudget}
+import settings.{PosterDecodeMemoryCap, ShareCardBackfillMaxBacklog, ShareCardStorageBudget}
 
 import modules.WorkerWiring
 import services.readmodel.ShareCardLedger
@@ -15,10 +15,10 @@ import scala.concurrent.duration.*
  *  (`KINOWO_SHARE_CARD_DIR`, default `/share-cards` — the pod's mount of the node's
  *  `/var/lib/kinowo/share-cards/<cc>`; a process running several countries sets it to
  *  `/share-cards/{cc}`), and the projection records each card's path and version on `web_movies`.
- *  Everything runs on the task queue — renders, the backfill, the prune and budget passes, the end
- *  of a first-publish hold — except the Facebook re-scrapes, which the whole fleet queues in its
- *  shared database and drains on one quota, each country on its own thread
- *  ([[FacebookRescrapeDrain]]). Without a writable directory the whole
+ *  Everything runs on the task queue — renders, the prune and budget passes, the end of a
+ *  first-publish hold, with the backfill riding their completions and the projection's — except
+ *  the Facebook re-scrapes, which the whole fleet queues in its shared database and drains on one
+ *  quota, each country on its own thread ([[FacebookRescrapeDrain]]). Without a writable directory the whole
  *  pipeline is off and the projection runs with [[ShareCardLedger.none]]. */
 trait ShareCardWiring { self: WorkerWiring =>
 
@@ -87,8 +87,9 @@ trait ShareCardWiring { self: WorkerWiring =>
   /** Closes the fleet database — only when this wiring opened it; the drain itself is a managed resource. */
   def closeFleetConnection(): Unit = facebookRescrapeStore.foreach(_ => fleetMongoConnection.close())
 
-  /** What the projection asks about share cards. */
-  lazy val shareCardLedger: ShareCardLedger = if (shareCardsEnabled) shareCardService else ShareCardLedger.none
+  /** What the projection asks about share cards — and tells the backfill which films are on screen. */
+  lazy val shareCardLedger: ShareCardLedger =
+    if (shareCardsEnabled) new BackfilledShareCardLedger(shareCardService, shareCardBackfill) else ShareCardLedger.none
 
   lazy val shareCardJanitor: ShareCardJanitor = new ShareCardJanitor(
     shareCardStore, readModelRepository, shareCardBudget, shareCardMetrics, clock,
@@ -96,7 +97,6 @@ trait ShareCardWiring { self: WorkerWiring =>
 
   lazy val shareCardBackfill: ShareCardBackfill =
     new ShareCardBackfill(shareCardService, readModelRepository, taskQueue, shareCardMetrics, clock,
-      batch      = configuration.shareCardBackfillBatch(ShareCardBackfillBatch(ShareCardBackfill.DefaultBatch)),
       maxBacklog = configuration.shareCardBackfillMaxBacklog(ShareCardBackfillMaxBacklog(ShareCardBackfill.DefaultMaxBacklog)))
 
   lazy val shareCardFollowUp: ShareCardFollowUp =
@@ -106,21 +106,17 @@ trait ShareCardWiring { self: WorkerWiring =>
     if (!shareCardsEnabled) Nil
     else Seq(
       new RenderShareCardHandler(shareCardService),
-      new ShareCardBackfillHandler(shareCardBackfill),
       new PruneShareCardsHandler(shareCardJanitor),
       new ReleaseShareCardHoldHandler(() => readModelProjector.releaseExpiredHolds()))
 
-  /** The recurring enqueues: a backfill tick every minute (first three minutes after boot), the
-   *  budget pass every ten, the full prune daily at 03:00 UTC (or five minutes after a boot that
-   *  finds that day's prune never ran). Each window is claimed, so one replica enqueues it. */
+  /** The recurring enqueues: the budget pass every ten minutes (first four after boot), the full
+   *  prune daily at 03:00 UTC (or five minutes after a boot that finds that day's prune never ran). Each window is claimed, so one replica enqueues it. */
   lazy val shareCardReapers: Seq[ClaimedEnqueueReaper] = managedResources.stoppingEach(
     if (!shareCardsEnabled) Nil
     else {
       def enqueue(taskType: TaskType, key: String, payload: Map[String, String] = Map.empty): () => Unit =
         () => { taskQueue.enqueue(taskType, key, payload, submittedAt = clock.instant()); () }
       Seq(
-        new ClaimedEnqueueReaper("share-card-backfill", enqueue(TaskType.ShareCardBackfill, "share-card-backfill"),
-          1.minute, 3.minutes, scheduledRunStore, clock),
         new ClaimedEnqueueReaper("share-card-budget",
           enqueue(TaskType.PruneShareCards, "share-card-budget", Map(PruneShareCardsHandler.ModeKey -> PruneShareCardsHandler.Budget)),
           10.minutes, 4.minutes, scheduledRunStore, clock),

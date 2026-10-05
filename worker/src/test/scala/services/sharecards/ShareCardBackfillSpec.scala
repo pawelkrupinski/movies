@@ -15,64 +15,110 @@ class ShareCardBackfillSpec extends AnyFlatSpec with Matchers {
       movie
     }
 
-  "The backfill" should "not end its sweep on an unread web_movies — the next tick sweeps again" in {
+  private def newSeries() = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
+
+  private def backfillOn(rig: Rig, series: ShareCardMetrics.Series = newSeries(), maxBacklog: Int = 30): ShareCardBackfill =
+    new ShareCardBackfill(rig.service, rig.readModel, rig.queue, series.forCountry("pl"), rig.clock,
+      maxBacklog = settings.ShareCardBackfillMaxBacklog(maxBacklog))
+
+  /** A `PruneShareCards` pass finished, as the task framework announces it. */
+  private def prunePass(backfill: ShareCardBackfill, mode: String = PruneShareCardsHandler.Budget): Unit =
+    ShareCardBackfill.onTaskFinished(backfill)(TaskFinished(TaskType.PruneShareCards, s"share-card-$mode", Map(PruneShareCardsHandler.ModeKey -> mode)))
+
+  /** Render every waiting card, announcing each finished render as the task framework does.
+   *  Returns the films rendered. */
+  private def renderWaiting(rig: Rig, backfill: ShareCardBackfill): Seq[String] =
+    drain(rig.queue).map { task =>
+      new RenderShareCardHandler(rig.service).handle(task)
+      ShareCardBackfill.onTaskFinished(backfill)(TaskFinished(task.taskType, task.dedupKey, task.payload))
+      task.payload("filmId")
+    }
+
+  private def waiting(rig: Rig): Int = rig.queue.waitingCount(TaskType.RenderShareCard)
+
+  "The backfill" should "sweep at the first prune pass after boot, and let a missing card in as each render finishes, never past the backlog cap" in {
+    val rig = new Rig
+    val films = seed(rig, 12)
+    rig.readModel.upsertMovie(film(id = "foffscreen"))                     // no screenings: no card
+    val series   = newSeries()
+    val backfill = backfillOn(rig, series, maxBacklog = 5)
+    prunePass(backfill)
+    waiting(rig) shouldBe 5
+    prunePass(backfill)                                                    // no second sweep; the cap holds
+    waiting(rig) shouldBe 5
+    val queued = drain(rig.queue)
+    queued.map(_.payload("reasons")).distinct shouldBe Seq(ShareCardReason.NewFilm)
+    queued.foreach(task => rig.queue.enqueue(task.taskType, task.dedupKey, task.payload, submittedAt = rig.clock.instant()))
+
+    val rendered = Iterator.continually(renderWaiting(rig, backfill)).takeWhile(_.nonEmpty).toSeq
+    rendered.map(_.size) shouldBe Seq(5, 5, 2)                             // each finished render made room for the next
+    rendered.flatten should contain theSameElementsAs films.map(_._id)
+    series.coverageFor("pl") shouldBe 1.0
+  }
+
+  it should "not end its sweep on an unread web_movies — the next prune pass sweeps again" in {
     val readModel = new services.readmodel.UnreadableReadModelRepository
     readModel.failingReads = false
     val rig = new Rig(readModel = readModel)
     seed(rig, 3)
     readModel.failingReads = true
     readModel.screeningsReadable = true               // only web_movies is unreadable
-    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, rig.metrics, rig.clock, batch = settings.ShareCardBackfillBatch(20), maxBacklog = settings.ShareCardBackfillMaxBacklog(30))
-    backfill.tick() shouldBe 0
+    val backfill = backfillOn(rig)
+    prunePass(backfill)
+    waiting(rig) shouldBe 0
 
     readModel.healReads()
-    backfill.tick() shouldBe 3                        // swept on the next tick, not a day later
+    prunePass(backfill)
+    waiting(rig) shouldBe 3                           // swept at the next pass, not a day later
   }
 
-  it should "feed missing cards into the queue in bounded batches, never past the backlog cap" in {
+  it should "sweep again after the daily prune, not after every budget pass" in {
     val rig = new Rig
-    seed(rig, 50)
-    rig.readModel.upsertMovie(film(id = "foffscreen"))                     // no screenings: no card
-    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, rig.metrics, rig.clock, batch = settings.ShareCardBackfillBatch(20), maxBacklog = settings.ShareCardBackfillMaxBacklog(30))
-    backfill.tick() shouldBe 20
-    backfill.tick() shouldBe 10                                             // 30 waiting: the cap
-    backfill.tick() shouldBe 0
-    val queued = drain(rig.queue)
-    queued.map(_.taskType).distinct shouldBe Seq(TaskType.RenderShareCard)
-    queued.map(_.payload("filmId")) should not contain "foffscreen"
-    queued.map(_.payload("reasons")).distinct shouldBe Seq(ShareCardReason.NewFilm)
-    backfill.tick() shouldBe 20                                             // queue drained: the next batch
+    seed(rig, 2).foreach(m => rig.service.render(rig.service.inputs(m), Seq(ShareCardReason.NewFilm)))
+    val series   = newSeries()
+    val backfill = backfillOn(rig, series)
+    prunePass(backfill)
+    series.coverageFor("pl") shouldBe 1.0
+
+    // On screen, but no projection told the backfill: only a sweep finds it.
+    val unseen = film(id = "funseen")
+    rig.readModel.upsertMovie(unseen); rig.readModel.upsertScreening(screening(unseen._id))
+    prunePass(backfill)
+    waiting(rig) shouldBe 0
+    prunePass(backfill, PruneShareCardsHandler.Daily)
+    drain(rig.queue).map(_.payload("filmId")) shouldBe Seq(unseen._id)
+    series.coverageFor("pl") shouldBe 2.0 / 3
   }
 
-  it should "skip films whose card landed meanwhile, and report coverage" in {
+  it should "count a newly projected film as missing its card until that card's render finishes" in {
     val rig = new Rig
-    val films = seed(rig, 4)
-    val series = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
-    val metrics = series.forCountry("pl")
-    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, metrics, rig.clock, batch = settings.ShareCardBackfillBatch(1), maxBacklog = settings.ShareCardBackfillMaxBacklog(10))
-    backfill.tick() shouldBe 1
-    films.take(2).foreach(m => rig.service.render(rig.service.inputs(m), Seq(ShareCardReason.Backfill)))
-    backfill.tick() shouldBe 1
-    drain(rig.queue).map(_.payload("filmId")) shouldBe Seq(films(0)._id, films(2)._id)
-    val snapshot = series.coverageFor("pl")
-    snapshot shouldBe 0.5
+    seed(rig, 2).foreach(m => rig.service.render(rig.service.inputs(m), Seq(ShareCardReason.NewFilm)))
+    val series   = newSeries()
+    val backfill = backfillOn(rig, series)
+    val ledger   = new BackfilledShareCardLedger(rig.service, backfill)
+    prunePass(backfill)
+
+    val arrived = film(id = "farrived")
+    ledger.onProjected(arrived, screened = true)                          // the projection asks for its render
+    series.coverageFor("pl") shouldBe 2.0 / 3
+    renderWaiting(rig, backfill) shouldBe Seq(arrived._id)
+    series.coverageFor("pl") shouldBe 1.0
   }
 
   it should "leave a film whose card was re-rendered since the sweep to the projection, and count it covered" in {
     val rig = new Rig
-    val films = seed(rig, 3)
-    val series = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
-    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, series.forCountry("pl"), rig.clock, batch = settings.ShareCardBackfillBatch(1), maxBacklog = settings.ShareCardBackfillMaxBacklog(10))
-    backfill.tick() shouldBe 1                                               // the sweep: all three missing
-    drain(rig.queue)
-    // The second film's rating moved after the sweep; the projection rendered its card for the
+    val films    = seed(rig, 3)
+    val series   = newSeries()
+    val backfill = backfillOn(rig, series, maxBacklog = 1)
+    val ledger   = new BackfilledShareCardLedger(rig.service, backfill)
+    prunePass(backfill)                                                   // the sweep: all three missing
+    drain(rig.queue).map(_.payload("filmId")) shouldBe Seq(films(0)._id)
+    // The second film's rating moved after the sweep, and the projection asked for its card for the
     // new inputs. The sweep's inputs for it are stale: rendering them would overwrite that card
     // with an older picture, under a URL whose version names the newer one.
     val moved = films(1).copy(ratings = films(1).ratings.copy(imdb = Some(8.4)))
-    rig.readModel.upsertMovie(moved)
-    rig.service.render(rig.service.inputs(moved), Seq(ShareCardReason.Ratings))
-    backfill.tick() shouldBe 1
-    backfill.tick() shouldBe 0
+    ledger.onProjected(moved, screened = true)
+    renderWaiting(rig, backfill) shouldBe Seq(moved._id)
     drain(rig.queue).map(_.payload("filmId")) shouldBe Seq(films(2)._id)
     series.coverageFor("pl") shouldBe 1.0 / 3
   }
@@ -80,21 +126,33 @@ class ShareCardBackfillSpec extends AnyFlatSpec with Matchers {
   // The sweep's film list is a day old by its end. A film that left the screens meanwhile has its
   // card deleted at once (the projection's retirement), so it read as a film on screen without a
   // card: every country's gauge sagged overnight by exactly the films whose run ended since the sweep.
-  it should "stop counting a film that left the read model since the sweep, but not one still on screen" in {
+  it should "stop counting a film the moment it leaves the screens" in {
     val rig = new Rig
     val films = seed(rig, 4)
-    films.foreach(m => rig.service.render(rig.service.inputs(m), Seq(ShareCardReason.NewFilm)))
-    val series = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
-    val backfill = new ShareCardBackfill(rig.service, rig.readModel, rig.queue, series.forCountry("pl"), rig.clock, batch = settings.ShareCardBackfillBatch(5), maxBacklog = settings.ShareCardBackfillMaxBacklog(10))
-    backfill.tick() shouldBe 0
-    series.coverageFor("pl") shouldBe 1.0
+    films.take(3).foreach(m => rig.service.render(rig.service.inputs(m), Seq(ShareCardReason.NewFilm)))
+    val series   = newSeries()
+    val backfill = backfillOn(rig, series, maxBacklog = 0)
+    val ledger   = new BackfilledShareCardLedger(rig.service, backfill)
+    prunePass(backfill)
+    series.coverageFor("pl") shouldBe 3.0 / 4
 
-    val retired = films(0)._id
-    rig.readModel.deleteMovie(retired); rig.readModel.deleteScreening(screening(retired)._id)
-    rig.store.deleteFilm(retired, olderThan = java.time.Instant.MAX)
-    rig.store.deleteFilm(films(1)._id, olderThan = java.time.Instant.MAX)   // still on screen: really missing
-    backfill.tick()
+    ledger.onRetired(films(0)._id)                                        // left the read model
     series.coverageFor("pl") shouldBe 2.0 / 3
+    ledger.onProjected(films(1), screened = false)                        // its last screening went
+    series.coverageFor("pl") shouldBe 1.0 / 2
+  }
+
+  it should "not bring back a film that left the screens while its sweep was reading" in {
+    var duringRead: () => Unit = () => ()
+    val readModel = new services.readmodel.InMemoryReadModelRepository {
+      override def findAllMoviesChecked(): tools.ReadOutcome[Seq[models.ResolvedMovie]] = { duringRead(); super.findAllMoviesChecked() }
+    }
+    val rig      = new Rig(readModel = readModel)
+    val films    = seed(rig, 2)
+    val backfill = backfillOn(rig)
+    duringRead = () => backfill.onRetired(films(0)._id)                   // retired after the read began
+    prunePass(backfill)
+    drain(rig.queue).map(_.payload("filmId")) shouldBe Seq(films(1)._id)
   }
 
   "A finished render" should "re-project its film, or end a first card's hold when no card could be made" in {

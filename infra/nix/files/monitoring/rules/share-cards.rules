@@ -124,16 +124,16 @@ groups:
             fresh backfill (a new template, a first deploy) refills from zero in under three hours
             (2026-09-24: pl, the slowest, in 2h20m), so the backfill is not keeping up or not
             running. Read `kinowo_worker_share_cards_render_total` by outcome: quiet means no
-            renders are being queued (is the ShareCardBackfill task running?); busy with `failed`
-            means ShareCardRendersFailing is the alert to read. An uncovered film's page names the
+            renders are being queued (do PruneShareCards passes finish? the backfill sweeps and
+            tops up after each); busy with `failed` means ShareCardRendersFailing is the alert to read. An uncovered film's page names the
             card drawn for its previous inputs, or the city's static card if it never had one
             (web ShareCardUrl), and link previews keep whichever they fetch.
 
       # THE GAUGE ABOVE IS GONE WHILE THE WORKER IS UP. Per country, not `absent()` over the whole
       # metric: one country's backfill not running must not hide behind the others' series. A
       # worker that is down is WorkerDown's (its `up` is 0, so it drops out here). One hour, as the
-      # other *MetricsAbsent rules: longer than a fleet rollout; the gauge is published within a
-      # couple of minutes of a boot (2026-09-24's restarts left 5-6 minute gaps).
+      # other *MetricsAbsent rules: longer than a fleet rollout; the gauge is published by the first
+      # PruneShareCards pass after a boot, the budget pass four to fourteen minutes in.
       - alert: ShareCardCoverageAbsent
         expr: >-
           max by (country) (last_over_time(up{job="kinowo-worker"}[10m]) == 1)
@@ -148,9 +148,9 @@ groups:
             The worker answers its scrape (`up`) but has published no
             `kinowo_worker_share_cards_coverage_ratio` for this country for an hour, so
             ShareCardCoverageLow cannot fire and a stalled card pipeline goes unseen. The
-            ShareCardBackfill tick publishes it every minute while the country has films on
-            screen; its absence means the tick is not running, or the gauge was unwired from the
-            worker's metrics. A worker that is DOWN is WorkerDown's to report, not this one's.
+            backfill publishes it from its first sweep, after the first PruneShareCards pass since
+            boot, and on every projection and finished render after; its absence means no prune
+            pass has finished since boot, or the gauge was unwired from the worker's metrics. A worker that is DOWN is WorkerDown's to report, not this one's.
 
       # RENDERS FAILING OUTRIGHT. `failed` is a card that could not be drawn even without its
       # poster -- a template, font or libvips fault, not an upstream (a dead poster is
