@@ -68,6 +68,21 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
   // THE SHARE CARD REACHES web_movies, and the janitor's projected read of it is faithful: the
   // card's path and version. Its own
   // database, dropped afterwards.
+  // The prune sweep holds every screening's ref for the length of a corpus scan — long enough to be promoted, and on
+  // worker-us its ~99k filmId strings, one per row for ~2.1k films, were the largest named holder of dead strings in the
+  // old generation (heap dump 2026-10-05). A film's rows share its one id string.
+  "findAllScreeningRefs" should "hand every row of a film the one filmId string" in {
+    tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "rm-refs-shared") { db =>
+      import models.CityScreening
+      val rm = new MongoReadModelRepository(Some(db), findAllBatchSize = 2)
+      Seq("a", "b", "c", "d", "e").foreach(v => rm.upsertScreening(CityScreening(_id = s"__it-rm-shared__|poznan|$v", filmId = "__it-rm-shared__",
+        city = "poznan", cinema = v, filmUrl = None, showtimes = Nil)))
+      val refs = rm.findAllScreeningRefsChecked().required.filter(_.filmId == "__it-rm-shared__")
+      refs.size shouldBe 5
+      refs.foreach(r => r.filmId should be theSameInstanceAs refs.head.filmId)
+    }
+  }
+
   "web_movies" should "carry a film's share card, and hand the janitor its projected refs" in {
     import services.readmodel.ShareCardRef
     val ownDb   = tools.IntegrationCorpusDatabase.named(mongoTarget, "readmodel-sharecards")

@@ -196,9 +196,15 @@ class MongoReadModelRepository(
   override def findAllMovieIdsChecked(): tools.ReadOutcome[Seq[String]] =
     pagedIdsChecked(movies, "ReadModelRepository.findAllMovieIds", Projections.include("_id"))(_.getString("_id").getValue)
 
-  override def findAllScreeningRefsChecked(): tools.ReadOutcome[Seq[ScreeningRef]] =
-    pagedIdsChecked(screenings, "ReadModelRepository.findAllScreeningRefs", Projections.include("_id", "filmId"))(d =>
-      ScreeningRef(d.getString("_id").getValue, d.getString("filmId").getValue))
+  override def findAllScreeningRefsChecked(): tools.ReadOutcome[Seq[ScreeningRef]] = {
+    // A film's rows share its one id string: the prune sweep holds every ref for the length of a corpus scan, long
+    // enough to be promoted, and worker-us's ~99k rows name ~2.1k films (heap dump 2026-10-05).
+    val films = new java.util.concurrent.ConcurrentHashMap[String, String]()
+    pagedIdsChecked(screenings, "ReadModelRepository.findAllScreeningRefs", Projections.include("_id", "filmId")) { d =>
+      val film = d.getString("filmId").getValue
+      ScreeningRef(d.getString("_id").getValue, Option(films.putIfAbsent(film, film)).getOrElse(film))
+    }
+  }
 
   override def findAllShareCardRefsChecked(): tools.ReadOutcome[Seq[ShareCardRef]] =
     pagedIdsChecked(movies, "ReadModelRepository.findAllShareCardRefs", Projections.include("_id", "shareCard"))(d =>
