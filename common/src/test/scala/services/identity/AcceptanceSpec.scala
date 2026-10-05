@@ -206,7 +206,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     acceptance.acceptedBy(ranked(Listing("Akademia Kina Polskiego: Drogówka"), film, other), 167179) should not be Some("dated-title")
   }
 
-  "a double bill" should "take neither film when its facts back both" in {
+  "a double programme of two whole works" should "take neither film, whatever its facts back" in {
     // UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna Harrison, Robin Shaw} ×133: each piece found
     // its own film first and both directors were credited — the two scored 91–93%, and popularity picked one.
     val bill  = Listing("We're Going on a Bear Hunt + The Tiger Who Came to Tea", directors = Seq("Joanna Harrison", "Robin Shaw"))
@@ -219,17 +219,17 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
         measures = sc.measures + ("venues.corroborating" -> IdentityMeasures.Number(if (tiger) 101 else 134)))
     }
       .sortBy(sc => (-sc.probability, sc.candidate.tmdbId))
-    acceptance.billsBothItsWorks(corroborated(ranked(bill, bear, tiger))) shouldBe true
+    acceptance.billsTwoWholeWorks(corroborated(ranked(bill, bear, tiger))) shouldBe true
     taken(corroborated(ranked(bill, bear, tiger))) shouldBe None
     acceptance.pooled(corroborated(ranked(bill, bear, tiger))) shouldBe None
     // its facts picking ONE of the two leave it a double programme: neither film (user rule)
-    acceptance.billsBothItsWorks(ranked(bill.copy(directors = Seq("Joanna Harrison")), bear, tiger)) shouldBe true
+    acceptance.billsTwoWholeWorks(ranked(bill.copy(directors = Seq("Joanna Harrison")), bear, tiger)) shouldBe true
     // a single film is no bill
-    acceptance.billsBothItsWorks(ranked(Listing("We're Going on a Bear Hunt"), bear)) shouldBe false
-    // a one-word "work" after the plus is a talk, not a bill: "La Perra | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE"
+    acceptance.billsTwoWholeWorks(ranked(Listing("We're Going on a Bear Hunt"), bear)) shouldBe false
+    // a talk after the plus is no second work: "La Perra | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE"
     val perra = (1550622, Film("La Perra", year = Some(2026)), Some(1))
     val talk  = (1195735, Film("Spotkanie", year = Some(1949)), Some(1))
-    acceptance.billsBothItsWorks(ranked(Listing("La Perra | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE"), perra, talk)) shouldBe false
+    acceptance.billsTwoWholeWorks(ranked(Listing("La Perra | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE"), perra, talk)) shouldBe false
   }
 
   "a listing dating its title" should "take the one record its title names exactly from that year, however the database ranks it" in {

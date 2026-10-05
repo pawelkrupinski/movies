@@ -2381,7 +2381,7 @@ Calibrated = fitted from data today (`identity-weights.json`, §14). Feature = a
 | learned cannot-links (28), evidence class (1) | conjunctions vetoing / crediting a pair | `identity-weights.json` | learned | yes | `model.deniedBySome` (denied by every node: no contender) |
 | acceptance rules (12 alone, 3 pooled, season-production) | sole-work, exact/segment-top-hit, sole-result, dated-title; directors-work/-title; favoured/unrivalled-calibrated; imdb-suggested; house/stage-production, season-record | `Acceptance` | rule order; `LeanMargin` 2.0, `BilledRuntime` 15, `RuntimeContradiction` | no | `rule.title`, `rule.director`, `rule.calibrated`, `rule.imdb`, `rule.stage`, `rule.pooled` |
 | season / house production | record names the listing's season / house production | `Scored` | pre-empts the rules | no | `production.season`, `production.house` |
-| double bill, both works | title bills two works its facts both fit | `Acceptance.billsBothItsWorks` | takes neither | no | `bill.bothWorks` |
+| double programme | a "+" joining two whole works, whatever a database holds (`IdentityMeasures.billsTwoWholeWorks`) | `Acceptance.billsTwoWholeWorks` | takes neither | no | — (the fill guards it as `bill.several`) |
 | model lean / best candidate | `ResolverDecision.leaning` (≥2× runner-up) / `candidate` | `ResolverDecisions` | the agreement's TMDB vote | no | `model.lean`, `model.best` |
 | family take (imdb, wiki, filmweb, metacritic, rt) | the resolver over the family's answers takes one film | `Agreement.verdict` | one vote each; `priorSpread` 1.5/0.5/0.5/1.0/1.5 (cross-validated) | spread only | `family.<f>.took` |
 | family lean | best undenied ≥ `LeanMargin` × runner-up | `Agreement.leaningOf` | completes a quorum | no | `family.<f>.leans` |
@@ -2520,3 +2520,23 @@ SEVENTEEN World Tour 'NEW_', TOMORROW X TOGETHER World Tour 'ACT : TOMORROW' and
 Kino Powiśle's Così fan tutte, a broadcast-join take the added answers reach). Held out twice (selection inside
 each fold) the procedure makes 1 wrong listing (PL "Zamki na piasku", by a rule an inner selection kept); the shipped
 rule alone makes none on any cluster.
+
+### 20.8 Removed after the agreement's leave-one-out ablation (2026-10-05)
+
+`scripts.IdentityAblation` (branch `measure/identity-ablation`, offline) replayed the unmatched-cluster fixture with
+each signal of the agreement stage switched off in turn. Three came out, each measured on its own commit by the ratchet
+(1,335 right / 0 wrong, unchanged), the stage's takes over the fixture, and the resolver's decisions over the five
+recorded corpora (`IdentityResolveDumpIntegrationSpec`, replay only), all identical:
+
+- **`Agreement.Takers`** (1): a film is weighed only as a group of families' picks, so it always has a taker; leans
+  and corroboration still never make an agreement alone.
+- **The older double-bill rule**: a title billing two works its facts both fit. The newer one — a "+" joining two
+  whole works is neither film (`billsTwoWholeWorks`) — refuses every bill it did (PL 25 and UK 227 listings refused
+  in the dump, before and after), and the fill's `bill.bothWorks` guard went with it: `bill.several` already refuses
+  any "+" bill a fill could take. The unified weights were refit without the signal; the selected rules are unchanged.
+
+Kept: the **poster veto**, and **the model's lean as TMDB's vote** (`ResolverDecision.leaning` before `candidate`).
+The ablation saw no film move without the lean, but one decision does: PL Kino Światowid's "AKW: Powoli", whose best
+candidate is another film (18,240 at 18.0%) while the model leans to "Powoli" (2023). With the lean Filmweb's take is
+agreed; without it the venue poster takes the same film — basis `Poster`, the agreed Filmweb id lost.
+

@@ -229,9 +229,8 @@ object IdentityResolver {
    *  — the model's side of the unified evidence model's signals ([[UnifiedEvidence]]). */
   final case class CandidateEvidence(tmdbId: Int, film: IdentityMeasures.Film, probability: Double, rank: Option[Int], denied: Boolean,
                                      titleNamesIt: Boolean, seasonProduction: Boolean, houseProduction: Boolean)
-  /** A node's listings, its candidates as its family scored them (best first), and whether it bills two works its facts
-   *  both fit ([[Acceptance.billsBothItsWorks]]). */
-  final case class NodeEvidence(keys: Seq[ListingKey], candidates: Seq[CandidateEvidence], billsBothItsWorks: Boolean)
+  /** A node's listings and its candidates as its family scored them (best first). */
+  final case class NodeEvidence(keys: Seq[ListingKey], candidates: Seq[CandidateEvidence])
 
   /** Every node holding a listing `focused` selects, its candidates scored as the resolve scores them. */
   def evidenceOf(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
@@ -243,7 +242,7 @@ object IdentityResolver {
     stages.generation.nodes.filter(_.listings.exists(focused)).map { node =>
       val scored = stages.families.scopeOf(node).of(node)
       NodeEvidence(node.listings.map(_.key), scored.map(s => CandidateEvidence(s.candidate.tmdbId, s.candidate.film, s.probability, s.rank, s.denied,
-        s.titleNamesIt, s.seasonProduction, s.houseProduction)), stages.acceptance.billsBothItsWorks(scored))
+        s.titleNamesIt, s.seasonProduction, s.houseProduction)))
     }
 
   /** A [[resolve]], and every node's candidates as that same resolve scored them ([[evidenceOf]], read only when asked):
@@ -390,7 +389,7 @@ object IdentityResolver {
       // A member billing two works is neither film, whichever film its cluster took or voted
       // ("We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna Harrison, Robin Shaw}, joined by its
       // title to the spelling crediting Harrison alone — itself a bill): it is decided apart, as no film.
-      val billing = members.filter(node => acceptance.billsBothItsWorks(scope.of(node))).map(_.id).toSet
+      val billing = members.filter(node => acceptance.billsTwoWholeWorks(scope.of(node))).map(_.id).toSet
       val decided = clusters.flatMap { cluster =>
         val (bills, rest) = cluster.partition(node => billing(node.id))
         if (bills.isEmpty || cluster.forall(node => filmOf(node.id).isEmpty))

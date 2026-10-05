@@ -34,7 +34,7 @@ object UnifiedEvidence {
     Signal("venues.current", "venues", 1),
     Signal("title.namesIt", "title", 1), Signal("title.anothersOwn", "title", -1), Signal("title.namesNone", "title", -1),
     Signal("edition.apart", "title", -1),
-    Signal("bill.several", "bills", -1), Signal("bill.bothWorks", "bills", -1), Signal("stage.work", "bills", -1),
+    Signal("bill.several", "bills", -1), Signal("stage.work", "bills", -1),
     Signal("poster.match", "poster", 1), Signal("poster.near", "poster", 1), Signal("poster.otherMatches", "poster", -1),
     Signal("agreement.quorum", "stage-verdicts", 1), Signal("poster.vote", "stage-verdicts", 1),
     Signal("broadcast.take", "stage-verdicts", 1), Signal("listing.catalogue", "listing", 1),
@@ -47,11 +47,11 @@ object UnifiedEvidence {
   val Names: Seq[String] = Signals.map(_.name)
 
   /** The NON-COMPENSATORY guards: a contender one of these fires on is no film to take, whatever else speaks for it — the
-   *  agreement stage's vetoes (several works billed, a double programme, a stage work, another film's own title, the
+   *  agreement stage's vetoes (several works billed, a stage work, another film's own title, the
    *  venue's year or director against it, a venue poster naming another candidate, a family turning it down; and, as
    *  the agreement requires of what it takes, a title naming the film, and no other edition than the title numbers). A film
    *  the model's own rules accepted ([[ModelRules]]) passed the model's guards instead ([[Acceptance]]), as today. */
-  val Guards: Seq[String] = Seq("bill.several", "bill.bothWorks", "stage.work", "title.anothersOwn", "listing.contradicts", "poster.otherMatches",
+  val Guards: Seq[String] = Seq("bill.several", "stage.work", "title.anothersOwn", "listing.contradicts", "poster.otherMatches",
     "family.turnedDown", "title.namesNone", "edition.apart")
   val ModelRules: Seq[String] = Names.filter(_.startsWith("rule."))
 
@@ -139,7 +139,6 @@ object UnifiedEvidence {
     val venues      = c.listings.map(_.venue).distinct.size
     val severalBill = c.listings.exists(Agreement.billsSeveral)
     val stageWork   = c.listings.exists(Agreement.stagesAWork)
-    val bothWorks   = c.nodes.exists(_.billsBothItsWorks)
     val traced      = c.decision.trace.nodes.values.toSeq
     built.toSeq.map { contender =>
       val records = contender.records.toSeq
@@ -182,7 +181,6 @@ object UnifiedEvidence {
         "edition.apart"       -> c.listings.exists(listing => PosterEvidence.editionsApart(listing, contender.record.film)),
         "title.anothersOwn"   -> Agreement.anothersOwnTitle(c.listings, records, c.verdicts),
         "bill.several"        -> severalBill,
-        "bill.bothWorks"      -> bothWorks,
         "stage.work"          -> stageWork,
         "poster.match"        -> nearest.exists(_ <= PosterEvidence.VoteBits),
         "poster.near"         -> nearest.exists(bits => bits > PosterEvidence.VoteBits && bits <= PosterEvidence.VetoMatchBits),

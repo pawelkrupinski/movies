@@ -63,7 +63,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** Why each rule a node may be taken by alone refused it: `(rule, the first condition that stopped it)`. */
   def refusals(ranked: Seq[Scored]): Seq[DecisionTrace.Refusal] =
-    if (billsBothItsWorks(ranked)) Seq(DecisionTrace.Refusal("alone", "bills two works"))
+    if (billsTwoWholeWorks(ranked)) Seq(DecisionTrace.Refusal("alone", "bills two works"))
     else aloneRules.flatMap(rule => rule.accepts(ranked).left.toOption.map(refused =>
       DecisionTrace.Refusal(rule.name, refused.why, refused.film, refused.detail)))
 
@@ -74,27 +74,19 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** What [[alone]] takes, with the rule that took it. A family's scope asks it once per node ([[FamilyScope.takenAlone]]). */
   def aloneNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
-    if (billsBothItsWorks(ranked)) None
+    if (billsTwoWholeWorks(ranked)) None
     else seasonProduction(ranked).map(_.map(_ -> "season-production")).getOrElse(firstOf(ranked, aloneRules))
       .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }
 
-  /** A DOUBLE BILL whose title names two eligible films, its facts ruling out neither — or two whole works
-   *  ([[IdentityMeasures.billsTwoWholeWorks]]), whatever is held of them: it is neither film.
-   *  UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna Harrison, Robin Shaw} ×133 credits
-   *  both films' directors, each piece found its own film first, and the two scored 91–93% — which one it
-   *  took was popularity's coin. A bill whose facts rule one out is neither film all the same (user rule: a
-   *  double programme matches neither); a film whose own whole title it is ("Romeo + Juliet") is no bill. */
-  def billsBothItsWorks(ranked: Seq[Scored]): Boolean = ranked.headOption.exists { any =>
-    val eligible = eligibleOf(ranked)
-    val works    = eligible.filter(c => c.titleNamesIt && !contradicted(c) && !c.category("director").contains("different"))
-      .map(c => IdentityMeasures.yearlessTokens(c.candidate.film.title)).distinct
-    // the billed second work is a whole film title, not a talk ("+ prelekcja", "+ spotkanie z reżyserem …")
-    val billed   = IdentityMeasures.billedSecondWork(any.listing)
-    IdentityMeasures.billsTwoWorks(any.listing) && !eligible.exists(_.category("title").contains("exact")) && (
-      // two words at least: one is many films' title ("+ SPOTKANIE" is a talk, though TMDB holds three "Spotkanie"s)
-      works.sizeIs >= 2 && billed.exists(work => work.sizeIs >= 2 && works.contains(work)) ||
-      // or two whole works, one of which no database holds (user rule: a double programme is neither film)
-      IdentityMeasures.billsTwoWholeWorks(any.listing))
+  /** A DOUBLE PROGRAMME: a "+" joining two whole works ([[IdentityMeasures.billsTwoWholeWorks]]), whatever is held
+   *  of them, is neither film (user rule) — UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna
+   *  Harrison, Robin Shaw} ×133, its two films scored 91–93% and popularity's coin picking one; PL Kino Pałacowe's
+   *  "Historia kina w Popielawach + Pruska kultura", a 1908 short TMDB does not hold. A talk joined to one film
+   *  ("+ spotkanie z reżyserem") is no second work, and a film whose own whole title it is ("Romeo + Juliet") is no
+   *  bill. */
+  def billsTwoWholeWorks(ranked: Seq[Scored]): Boolean = ranked.headOption.exists { any =>
+    IdentityMeasures.billsTwoWorks(any.listing) && !eligibleOf(ranked).exists(_.category("title").contains("exact")) &&
+      IdentityMeasures.billsTwoWholeWorks(any.listing)
   }
 
   /** A node accepts a film ON ITS OWN only when its own facts favour it over the runner-up: a
@@ -114,7 +106,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** [[pooled]], with the rule that accepted — for the decision's trace. */
   def pooledNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
-    if (billsBothItsWorks(ranked)) None
+    if (billsTwoWholeWorks(ranked)) None
     else seasonProduction(ranked).map(_.map(_ -> "season-production"))
       .getOrElse(firstOf(ranked, Seq(Rule("unrivalled-calibrated", unrivalledCalibratedWhy), Rule("exact-top-hit", topHitWhy), Rule("imdb-suggested", imdbSuggestedWhy))))
       .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }
@@ -335,7 +327,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  film, its 1965 namesake 3.3%; "Lalka" leans to the 2026 film at 68.1%, not the 1968 one the old pipeline rated
    *  it as; "Bolek i Lolek" (28.9% beside "Reksio" at 28.9%) and the 1986 and 2025 "Caravaggio" lean to neither. */
   def leaning(ranked: Seq[Scored]): Option[Scored] =
-    Option.when(ranked.headOption.forall(any => !IdentityMeasures.billsTwoWorks(any.listing)) && !billsBothItsWorks(ranked))(eligibleOf(ranked))
+    Option.when(ranked.headOption.forall(any => !IdentityMeasures.billsTwoWorks(any.listing)) && !billsTwoWholeWorks(ranked))(eligibleOf(ranked))
       .flatMap(eligible => eligible.headOption.filter(best => eligible.lift(1).forall(runnerUp =>
         best.probability >= Acceptance.LeanMargin * runnerUp.probability) && closerThan(best, eligible).isEmpty))
 

@@ -18,7 +18,7 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
   private val bare = Seq(listing(KinoMuza, "Klondike", year = Some(2022), director = Some("Maryna Er Gorbach")))
   private def candidate(id: Int, f: IdentityMeasures.Film, p: Double, denied: Boolean = false) =
     IdentityResolver.CandidateEvidence(id, f, p, Some(1), denied, titleNamesIt = true, seasonProduction = false, houseProduction = false)
-  private def node(candidates: IdentityResolver.CandidateEvidence*) = IdentityResolver.NodeEvidence(bare.map(_.key), candidates, billsBothItsWorks = false)
+  private def node(candidates: IdentityResolver.CandidateEvidence*) = IdentityResolver.NodeEvidence(bare.map(_.key), candidates)
   private val noMatch = ResolverDecision(bare.map(_.key), None, 0.4, ResolverDecision.Basis.BelowThreshold, Nil,
     leaning = Some(ResolverDecision.Leaning(913760, 16315948)), candidate = Some(ResolverDecision.Leaning(913760, 16315948)))()
   private def evidence(nodes: Seq[IdentityResolver.NodeEvidence], verdicts: Seq[FamilyVerdict] = Nil, posters: Seq[Map[Int, Option[Int]]] = Nil,
@@ -110,7 +110,7 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     hybrid.vetoes(contradicted) shouldBe Seq("listing.contradicts")
     hybrid.decision(contradicted) should startWith("vetoed by listing.contradicts; guards passed: bill.several")
     hybrid.vetoes(contradicted + ("rule.title" -> 1.0)) shouldBe empty
-    hybrid.decision(Map("family.imdb.took" -> 1.0)) should startWith("taken 99.3% ≥ 90.0%; guards passed: bill.several, bill.bothWorks")
+    hybrid.decision(Map("family.imdb.took" -> 1.0)) should startWith("taken 99.3% ≥ 90.0%; guards passed: bill.several, stage.work")
   }
 
   "the guards" should "veto a film the title does not name, and another edition than the title numbers" in {
@@ -118,7 +118,7 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     def only(title: String, record: IdentityMeasures.Film) = {
       val listings = Seq(listing(KinoMuza, title))
       contenders(ClusterEvidence(listings, ResolverDecision(listings.map(_.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)(),
-        Seq(IdentityResolver.NodeEvidence(listings.map(_.key), Seq(candidate(1, record, 0.1)), billsBothItsWorks = false)), Nil, Nil, _ => None, 2026)).head
+        Seq(IdentityResolver.NodeEvidence(listings.map(_.key), Seq(candidate(1, record, 0.1)))), Nil, Nil, _ => None, 2026)).head
     }
     val pucio  = only("Baczne oczka", IdentityMeasures.Film("Pucio kocha zwierzaki", year = Some(2026)))
     vetoes(pucio.signals.getOrElse(_, 0.0)) shouldBe Seq("title.namesNone")
