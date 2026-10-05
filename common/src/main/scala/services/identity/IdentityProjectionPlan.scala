@@ -327,8 +327,11 @@ object IdentityProjectionPlan {
           VenueShape(group.rows.map(_.listing.key), group.key, venueSlots(group.key), VenueShape.inputs(previous, priors)))
       }.toMap
       val venueData = venueShapes.valuesIterator.flatMap(_.lean).toMap
-      val alike     = kept.filter(k => k.venues.size == venueShapes.size && venueShapes.forall { case (c, v) => k.venues.get(c).exists(_ eq v) })
-      shapes.put(counter, FilmShape(members, keys, plan.titles, alike.fold(venueShapes)(_.venues)))
+      // Over the kept map: only a venue that is not the shape held is put in — a wide film moved at a few venues built its
+      // map of thousands anew each projection, kept until the next one (dead in the old generation, heap dump 2026-10-05).
+      // Its keys too, when they are the same listings in the same order.
+      shapes.put(counter, FilmShape(members, kept.map(_.keys).filter(k => (k eq keys) || k == keys).getOrElse(keys), plan.titles,
+        kept.fold(venueShapes)(k => FilmShapes.sharing(k.venues, venueShapes, _ eq _))))
       val sameFilm = previous.exists(_.record.tmdbId == film)
       val base = previous.filter(_ => sameFilm).map(_.record).getOrElse(
         MovieRecord(retainedSynopses = previous.map(_.record.retainedSynopses).getOrElse(Map.empty)))

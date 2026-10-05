@@ -116,6 +116,22 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     again.drafts.foreach(d => assert(d.record.data eq byId(d.inherited.get).data, s"${d.inherited}: the stored map was copied"))
   }
 
+  "A film drafted again whole with the listings it had" should "keep the shape's keys it held, not a sorted copy" in {
+    val r      = resolution(decision(Some(1), lalka*), decision(None, obcy*))
+    val memo   = new VenueSlotMemo(0L)
+    val shapes = FilmShapes()
+    def drafted(stored: Seq[StoredMovieRecord], counters: FilmIdCounters) = {
+      val index = IdentityProjectionPlan.index(lalka ++ obcy, r, stored, counters, normalizer)
+      val d = IdentityProjectionPlan.draftOf(index, index.everything, normalizer, slots, tokens, at, rowsOf(lalka ++ obcy), memo, shapes)
+      memo.endTick(); shapes.commit(whole = true); d
+    }
+    val first     = drafted(Nil, FilmIdCounters.empty)
+    val firstPlan = IdentityProjectionPlan.finish(first, normalizer, _ => false)
+    val held      = first.drafts.map(d => d.counter -> shapes.get(d.counter).get.keys).toMap
+    val stored    = firstPlan.films.map(f => StoredMovieRecord(f.title, f.year, f.record, f.id, Some(f.key)))
+    drafted(stored, counters(firstPlan)).drafts.foreach(d => assert(shapes.get(d.counter).get.keys eq held(d.counter), s"${d.counter}: keys copied"))
+  }
+
   "A stored film" should "keep its legacy id, its ratings and its TMDB slot when the resolver keeps its listings on the same film" in {
     val legacy = StoredMovieRecord("Lalka", Some(2026), MovieRecord(tmdbId = Some(1), imdbRating = Some(7.1),
       data = Map(Tmdb -> SourceData(title = Some("Lalka")), slotOf(lalka.head))),
