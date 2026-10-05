@@ -1267,6 +1267,30 @@
     "ageRating" : "6",
     "shareCardPending" : false
   }, {
+    "_id" : "f13d0c721ccd32f3~kinosensorycznewillowitajemniczylas",
+    "title" : "Kino sensoryczne:willow i tajemniczy las",
+    "originalTitle" : "Ein Mädchen namens Willow",
+    "posterUrl" : "https://img.helios.pl/pliki/film/willow-i-tajemniczy-las/willow-i-tajemniczy-las-plakat-745.jpg",
+    "fallbackPosterUrls" : [ "https://www.iluzjon.fn.org.pl/public/covers/movie-7838.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/screenshot-2026-05-11-at-12-06-58-willow-i-tajemniczy-las.png", "https://biletyna.pl/file/get/id/331519", "https://image.tmdb.org/t/p/w500/91o854WcptbixlbqybQTzz5BeIv.jpg" ],
+    "runtimeMinutes" : 100,
+    "releaseYear" : 2025,
+    "genres" : [ "Familijny", "Przygodowy", "Fantasy" ],
+    "countries" : [ "Niemcy", "Austria" ],
+    "directors" : [ "Mike Marzuk" ],
+    "cast" : [ "Ava Petsch", "Cora Trube", "Anna von Seld", "Mary Tölle", "Golo Euler" ],
+    "synopsis" : "Co Willow mogłaby zrobić z całym lasem? Właśnie to zadaje sobie pytanie, kiedy odziedzicza ten las po cioci Alwinie. To jednak nie wszystko – Alwina zostawiła jej również małą, krzywą chatkę i, co najważniejsze, swoje czary. Pytanie jednak pozostaje: czy Willow w ogóle przyjmie ten nieoczekiwany spadek, ze wszystkimi jego konsekwencjami?",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "imdbUrl" : "https://www.imdb.com/title/tt35300281/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Ein+M%C3%A4dchen+namens+Willow/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Ein+M%C3%A4dchen+namens+Willow",
+      "filmweb" : 5,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Willow+i+tajemniczy+las-2025-10073149"
+    },
+    "weightedRating" : 5,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
     "_id" : "f144117c5f2bf7d0",
     "title" : "Spa weekend",
     "posterUrl" : "https://medstore.cinemaone.pl/POLANDSPAWEEKENDPoster.jpg",
@@ -14531,23 +14555,6 @@
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
-    "_id" : "fa0c58c9b9dda82b",
-    "title" : "Kino sensoryczne:willow i tajemniczy las",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Kino+sensoryczne%3Awillow+i+tajemniczy+las/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kino+sensoryczne%3Awillow+i+tajemniczy+las",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kino+sensoryczne%3Awillow+i+tajemniczy+las"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { },
-    "shareCardPending" : false
-  }, {
     "_id" : "fa1480e0a6f4ccd4",
     "title" : "Stowarzyszenie Umarłych Poetów",
     "originalTitle" : "Dead Poets Society",
@@ -26572,6 +26579,17 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "P\u0000Kino ODEON\u0000WILLOW I TAJEMNICZY LAS\u0000" ]
+  }, {
+    "_id" : "f13d0c721ccd32f3~kinosensorycznewillowitajemniczylas|tarnow|Kino Millenium",
+    "filmId" : "f13d0c721ccd32f3~kinosensorycznewillowitajemniczylas",
+    "city" : "tarnow",
+    "cinema" : "Kino Millenium",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-20T16:30:00",
+      "bookingUrl" : "https://bilety.csm.tarnow.pl/Kino/Default.aspx?event_id=36080&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "P\u0000Kino Millenium\u0000KINO SENSORYCZNE:WILLOW I TAJEMNICZY LAS\u0000" ]
   }, {
     "_id" : "f144117c5f2bf7d0|trojmiasto|Cinema1",
     "filmId" : "f144117c5f2bf7d0",
@@ -121882,17 +121900,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino Paradox\u0000https://kinoparadox.pl/naekranie/super-wang-wang/\u0000Super Wang Wang" ]
-  }, {
-    "_id" : "fa0c58c9b9dda82b|tarnow|Kino Millenium",
-    "filmId" : "fa0c58c9b9dda82b",
-    "city" : "tarnow",
-    "cinema" : "Kino Millenium",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-20T16:30:00",
-      "bookingUrl" : "https://bilety.csm.tarnow.pl/Kino/Default.aspx?event_id=36080&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino Millenium\u0000KINO SENSORYCZNE:WILLOW I TAJEMNICZY LAS\u0000" ]
   }, {
     "_id" : "fa1480e0a6f4ccd4|krakow|Kino Pod Baranami",
     "filmId" : "fa1480e0a6f4ccd4",
