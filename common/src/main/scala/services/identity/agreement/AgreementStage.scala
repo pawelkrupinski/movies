@@ -95,7 +95,10 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   private val handedFinds = mutable.Set.empty[String]
   private val handedPosters = mutable.Set.empty[AgreementStage.PosterQuestion]
   private val handedCatalogue = mutable.Set.empty[CatalogueQuestion]
-  private val handedRecords = mutable.Set.empty[Int]
+  /** Each TMDB record handed to `ask` to read again for its day, with the version and instant it was handed at — asked
+   *  ONCE in the stage's life: a record still holding its year after the read was filed ([[AgreementStage.recordReadId]]),
+   *  or after [[AgreementStage.RecordWait]], is waited on no more. One entry per stage-work record, a few hundred. */
+  private val rereads = TrieMap.empty[Int, (Long, java.time.Instant)]
   /** Each cluster's TMDB candidates, none denied, at its listings' digest: what its posters are compared against. */
   private val candidateFilms = TrieMap.empty[String, (Long, Seq[Int])]
   /** How many clusters the current [[apply]] asked the resolver about again — the stage's cost, for [[metrics]]. */
@@ -156,13 +159,13 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
           v.agreed.fold[AgreementStage.Take](AgreementStage.Take.Untaken)(taken(decision, _, finding, distances)) match {
             // a screen adaptation agreed for a listing naming a stage work ([[Agreement.agreed]]) yields to the relay its
             // screening days name: PL Kino Amok's bare "Manon" on the Met's broadcast day is the Met's, not Clouzot's
-            case AgreementStage.Take.Taken(agreed) if listings.exists(Agreement.stagesAWork) => broadcast(decision, id, digest, listings, dating).getOrElse(agreed)
+            case AgreementStage.Take.Taken(agreed) if listings.exists(Agreement.stagesAWork) => broadcast(decision, id, digest, listings, dating, version).getOrElse(agreed)
             case AgreementStage.Take.Taken(agreed) => agreed
             case AgreementStage.Take.Pending       => decision
-            case AgreementStage.Take.Vetoed        => posterVetoed += 1; voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings, dating))
+            case AgreementStage.Take.Vetoed        => posterVetoed += 1; voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings, dating, version))
                                                         .orElse(filledTake(decision, v, finding, distances))
                                                         .orElse(catalogued(decision, listings, asked, finding, catalogueAsked)).getOrElse(decision)
-            case AgreementStage.Take.Untaken       => voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings, dating))
+            case AgreementStage.Take.Untaken       => voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings, dating, version))
                                                         .orElse(filledTake(decision, v, finding, distances))
                                                         .orElse(catalogued(decision, listings, asked, finding, catalogueAsked)).getOrElse(decision)
           }
@@ -187,12 +190,12 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     posterGaps = postersAsked.toSet
     catalogueGaps = catalogueAsked.toSet
     undated = dating.toSet
-    if (handedAt != version) { handed.clear(); handedFinds.clear(); handedPosters.clear(); handedCatalogue.clear(); handedRecords.clear(); handedAt = version }
+    if (handedAt != version) { handed.clear(); handedFinds.clear(); handedPosters.clear(); handedCatalogue.clear(); handedAt = version }
     val open = AgreementStage.Open(gaps -- handed, finds -- handedFinds, posterGaps -- handedPosters, catalogueGaps -- handedCatalogue,
-      undated -- handedRecords)
+      undated.filterNot(rereads.contains))
     if (open.questions.nonEmpty || open.finds.nonEmpty || open.posters.nonEmpty || open.catalogue.nonEmpty || open.records.nonEmpty) {
       ask(open); handed ++= open.questions; handedFinds ++= open.finds; handedPosters ++= open.posters; handedCatalogue ++= open.catalogue
-      handedRecords ++= open.records
+      open.records.foreach(film => rereads(film) = (version, clock.instant()))
     }
     val agreedNow = decisions.filter(_.basis == ResolverDecision.Basis.Agreed)
     metrics.applied(AgreementStage.Applied(waiting = waiting.size, verdicts = held.size, agreed = held.valuesIterator.count(_.agreed.isDefined),
@@ -418,18 +421,28 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  evidence reaches, none denied — none while one of their records is not known yet, nor while a record of the billed
    *  work states no day only because the store filed it with its year alone: that record is noted in `dating`, to be
    *  read again ([[wantedRecords]]). */
-  private def broadcast(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing], dating: mutable.Set[Int]): Option[ResolverDecision] =
+  private def broadcast(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing], dating: mutable.Set[Int],
+                        version: Long): Option[ResolverDecision] =
     tmdb.filter(_ => listings.exists(!_.screenings.isEmpty)).flatMap { lookups =>
       val records = candidatesOf(id, digest, listings).map(film => film -> lookups.film(film))
       Option.when(records.forall(_._2.isKnown))(records.flatMap { case (film, record) => record.toOption.flatten.map(film -> _) })
         .flatMap { known =>
           val measured = (listing: Listing) => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured
           // a record of the billed work holding only its year is read again before the day decides: it might be the one
-          Broadcast.takeOrWait(listings, measured, known)(film => !lookups.releaseDay(film).isKnown).left.map(dating ++= _).toOption.flatten
+          Broadcast.takeOrWait(listings, measured, known)(film => !lookups.releaseDay(film).isKnown && waitsOn(film, version))
+            .left.map(dating ++= _).toOption.flatten
         }
         .map(taken => decision.copy(film = Some(taken.film), basis = ResolverDecision.Basis.Broadcast,
           explanation = decision.explanation :+ taken.line)(decision.trace))
     }
+
+  /** Does the take still wait on a record's day: never asked for again, or asked and its read neither filed since
+   *  (`changes`; none it can tell of counts as filed) nor overdue? A record TMDB still dates by its year once read again
+   *  is taken as dating none: one read, never a loop. */
+  private def waitsOn(film: Int, version: Long): Boolean = rereads.get(film).forall { case (askedAt, since) =>
+    !changes.changedSince(askedAt).forall(_(AgreementStage.recordReadId(film))) &&
+      clock.instant().isBefore(since.plusMillis(AgreementStage.RecordWait.toMillis))
+  }
 
   /** The nearest each of the cluster's candidates (and `also`, the film the families agree on) comes to each of its
    *  venue posters — none where no listing shows one; `Unknown`, each poster not hashed yet noted in `asked`, while one
@@ -502,6 +515,11 @@ object AgreementStage {
    *  ([[wantedRecords]]). */
   final case class Open(questions: Set[(VoterFamily, String)], finds: Set[String], posters: Set[PosterQuestion] = Set.empty,
                         catalogue: Set[CatalogueQuestion] = Set.empty, records: Set[Int] = Set.empty)
+
+  /** What a TMDB record read again for its day is filed as among the answers' changes ([[AnswerChanges]]). */
+  def recordReadId(tmdbId: Int): String = s"tmdb|record|$tmdbId"
+  /** How long the broadcast take waits on a record's read at most — the agreement's tasks run after every other. */
+  val RecordWait: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(1, java.util.concurrent.TimeUnit.DAYS)
 
   /** What became of the film a cluster's families agree on: taken, pending an answer, vetoed by a venue poster, or none to take. */
   private enum Take {

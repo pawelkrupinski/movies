@@ -100,4 +100,28 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     (taken.film, taken.basis) shouldBe ((Some(metSamson.id), ResolverDecision.Basis.Broadcast))
     stage.wantedRecords shouldBe empty
   }
+
+  it should "be read again once only: a record TMDB still dates by its year is then taken as dating none" in {
+    val listing = screening("Samson i Dalila", "2026-12-05")
+    val stored  = new YearOnlyRecords(table, Set(metSamson.id))   // never gains its day
+    val filed   = scala.collection.mutable.Set.empty[String]
+    val asked   = scala.collection.mutable.Buffer.empty[AgreementStage.Open]
+    val stage   = new AgreementStage(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      new InMemoryAgreementVerdicts, ask = asked += _, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(stored),
+      changes = _ => Some(filed.toSet))
+    val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
+      1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    def apply(version: Long) = stage.apply(resolution, Map(listing.key -> listing).get, version).decisions.head
+    apply(1).film shouldBe None
+    // other answers filed meanwhile: still waiting on the read, and not asked twice
+    filed += "imdb|title|Samson i Dalila"
+    apply(2).film shouldBe None
+    stage.wantedRecords shouldBe Set(metSamson.id)
+    // the read filed, the record still year-only: waited on no more, and never asked again
+    filed += AgreementStage.recordReadId(metSamson.id)
+    apply(3).film shouldBe None
+    apply(4).film shouldBe None
+    stage.wantedRecords shouldBe empty
+    asked.flatMap(_.records) shouldBe Seq(metSamson.id)
+  }
 }

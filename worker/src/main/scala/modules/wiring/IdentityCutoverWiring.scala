@@ -108,7 +108,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
     new services.identity.AgreementQuestionHandler(familyAnswerStore, familySources,
       () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics),
     new services.identity.AgreementFindHandler(imdbId => { tmdbClient.findByImdbId(imdbId); () },
-      film => { tmdbClient.readRecordAgain(film); familyAnswerStore.noteFiled(s"tmdb|record|$film") },
+      film => { tmdbClient.readRecordAgain(film); familyAnswerStore.noteFiled(services.identity.agreement.AgreementStage.recordReadId(film)) },
       () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics),
     new services.identity.AgreementPosterHandler(posterAnswerStore, posterHashing,
       () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics),
