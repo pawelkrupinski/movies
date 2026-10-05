@@ -13,7 +13,10 @@
     "right" : 1327,
     "pinned.families.current.gainedListings" : 5,
     "pinned.families.current.gainedFilms" : 3,
-    "pinned.families.current.wrong" : 0
+    "pinned.families.current.wrong" : 0,
+    "pinned.family.filmweb.took&!model.unscored.gainedListings" : 4,
+    "pinned.family.filmweb.took&!model.unscored.gainedFilms" : 4,
+    "pinned.family.filmweb.took&!model.unscored.wrong" : 0
   },
-  "pinned" : [ "families.current" ]
+  "pinned" : [ "families.current", "family.filmweb.took&!model.unscored" ]
 }

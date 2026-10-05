@@ -2565,3 +2565,8 @@ filed each under retrieval, scoring, a guard, or the agreement. What it added, e
   ([[Broadcast]]) still wins over such an agreement: PL Kino Amok bills the Met's "Manon" bare, and Wikidata and Filmweb
   take Clouzot's (the ratchet's one wrong without that). "OPERA-COSI FAN TUTTE" bills a house: never Tinto Brass's.
   Ratchet: +2 listings, 2 films, 0 wrong.
+- **`family.filmweb.took&!model.unscored`, a second pinned fill** (from the search sweep, branch
+  `measure/identity-film-search`): the one guard-passing contender Filmweb takes that the model scored too — Filmweb
+  votes in Poland alone. PL "Bohater" (Farhadi's), "BEZ KOŃCA 2D PL LOLO", "NADZIEJA", "Wymarzony" (Herry's *Pupille*,
+  judged from the venue's page). `UnifiedRules.fires` reads a rule as `&`-joined terms, `!` an absence. Ratchet: +4
+  listings, 4 films, 0 wrong.

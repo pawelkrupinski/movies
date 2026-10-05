@@ -126,6 +126,14 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     vetoes(worlds.signals.getOrElse(_, 0.0)) should contain("edition.apart")
   }
 
+  "a pinned rule" should "fire on a conjunction of signals and absences" in {
+    val signals = Map("family.filmweb.took" -> 1.0, "model.logit" -> -3.5)
+    UnifiedRules.fires("family.filmweb.took&!model.unscored", signals.getOrElse(_, 0.0)) shouldBe true
+    UnifiedRules.fires("family.filmweb.took&!model.unscored", (signals + ("model.unscored" -> 1.0)).getOrElse(_, 0.0)) shouldBe false
+    UnifiedRules.fires("family.imdb.took", signals.getOrElse(_, 0.0)) shouldBe false
+    UnifiedRules.resolver.pinned should contain ("family.filmweb.took&!model.unscored")
+  }
+
   "the signal list" should "name every signal once, each with a direction" in {
     Names.distinct.size shouldBe Names.size
     RuleGroups.values.toSet.subsetOf(Names.toSet) shouldBe true

@@ -1,4 +1,5 @@
 country	venue	rawTitle	film	title
+pl	Bajka	BEZ KOŃCA 2D PL LOLO	tmdb:1596319	Bez końca (2026)
 pl	Cinema City Arkadia	SEVENTEEN WORLD TOUR 'NEW_'	imdb:tt46658626	filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 pl	Cinema City Bonarka	SEVENTEEN WORLD TOUR 'NEW_'	imdb:tt46658626	filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 pl	Cinema City Bydgoszcz	SEVENTEEN WORLD TOUR 'NEW_'	imdb:tt46658626	filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
@@ -23,11 +24,13 @@ pl	Kino Grajfka	Kafarnaum	tmdb:517814	Kafarnaum (2018)
 pl	Kino Grajfka	Klondike	tmdb:913760	Klondike (2022)
 pl	Kino Kadr (Tomaszowski Dom Kultury)	Lalka	tmdb:1321666	Lalka (2026)
 pl	Kino Kadr Staszów	Lalka	tmdb:1321666	Lalka (2026)
+pl	Kino Kameralne Cafe	Bohater	tmdb:672208	Bohater (2021)
 pl	Kino Kameralne Cafe	Everest: Druga strona	tmdb:1714568	Everest North (?)
 pl	Kino Kameralne Cafe	Siostry (1972)	tmdb:22307	Siostry (1973)
 pl	Kino Kika	DOBRY CHŁOPIEC	tmdb:1381027	filmweb, imdb, wiki agree on 'Heel' (2025) tt34381258
 pl	Kino Kolory	DKF: Wieloryb	tmdb:785084	imdb, filmweb, wiki leaning to it agree on 'The Whale' (2022) tt13833688
 pl	Kino Kultura	Pasażerka - premiera książki, pokaz filmu + dyskusja	tmdb:25939	Pasażerka (1963)
+pl	Kino Kultura Gołdap	NADZIEJA	tmdb:277730	Nadzieja (2007)
 pl	Kino MCKCziE Grybów	EVEREST: DRUGA STRONA	tmdb:1714568	Everest North (?)
 pl	Kino Nowe Horyzonty	Materiał się liczy	imdb:tt38599478	imdb, corroborated by listing, runtime agree on 'Make Materials Matter' (2025) tt38599478
 pl	Kino Opalenica	TAJNY AGENT	tmdb:1220564	Tajny agent (2025)
@@ -47,6 +50,7 @@ pl	Kino za Rogiem Brusy	Norymberga	tmdb:1214931	Norymberga (2025)
 pl	Kino za Rogiem Brusy	TAJNY AGENT - Klub Filmowy	tmdb:1220564	Tajny agent (2025)
 pl	Kino za Rogiem Cafe	Dobry chłopiec	tmdb:1381027	filmweb, imdb, wiki agree on 'Heel' (2025) tt34381258
 pl	Kino za Rogiem Cafe	Dobry chłopiec	tmdb:1381027	filmweb, imdb, wiki agree on 'Heel' (2025) tt34381258
+pl	Kino za Rogiem Cafe	Wymarzony	tmdb:489418	Wymarzony (2018)
 pl	Kino za Rogiem w Siedlcu	Dumna królewna	tmdb:1134680	Dumna królewna (2024)
 pl	Kino za Rogiem w Siedlcu	Norymberga	tmdb:1214931	Norymberga (2025)
 pl	Kino za Rogiem w Siedlcu	Potworna rodzinka	tmdb:454699	Potworna rodzinka (2017)
