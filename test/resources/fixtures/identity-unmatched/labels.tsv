@@ -365,7 +365,6 @@ pl	*	Binti Edukacja Młode Horyzonty	tmdb:855156	wrong	judged 10-05: biletyna's 
 pl	*	Bohater	tmdb:358996	wrong	hand label: Bohater (2015) Nikhil Advani
 pl	*	Częstochowa, lata 1793-1918 | Weekend seniora z kulturą 2026	tmdb:1627075	wrong	hand label: The Candy World Movie (2026) Sharnav Shan
 pl	*	Dni Kina Niemego - Portier z Hotelu Atlantic	tmdb:643	wrong	hand label: Pancernik Potiomkin (1925) Sergei Eisenstein
-pl	*	Dumna królewna	tmdb:41228	right	hand label: Dumna królewna (1952) Bořivoj Zeman
 pl	*	Fritzi – przyjaźń bez granic Edukacja Młode Horyzonty	tmdb:586943	right	hand label: Fritzi - przyjaźń bez granic (2019) Ralf Kukula; Matthias Bruhn
 pl	*	Johnny	tmdb:920220	right	hand label: Johnny (2022) Daniel Jaroszek
 pl	*	KLAPS! - Rozważna i romantyczna	tmdb:4584	right	hand label: Rozważna i romantyczna (1995) Ang Lee
@@ -486,7 +485,6 @@ pl	*	Dni Kina Niemego - Quo vadis?	rt:quo_vadis_2026	wrong	hand label: Quo Vadis
 pl	*	Dni Kina Niemego - Quo vadis?	wikidata:Q3285437	right	hand label: Quo Vadis? (1924) Gabriellino D'Annunzio; Georg Jacoby
 pl	*	Dobry chłopiec	filmweb:10058977	wrong	hand label: Dobry chłopiec (2023) Tom Stuart
 pl	*	Dobry chłopiec	tmdb:1128846	wrong	hand label: Dobry chłopiec (2023) Tom Stuart
-pl	*	Dumna królewna	imdb:tt0191383	right	hand label: The Proud Princess (1952) Bořivoj Zeman
 pl	*	Dyrygent	wikidata:Q64830434	wrong	hand label: Dyrygent (1926) Feliks Kuczkowski
 pl	*	Imago	imdb:tt14417122	right	hand label: Imago (2023) Olga Chajdas
 pl	*	Johnny	filmweb:625571	wrong	hand label: Kiedy dorosnę (2010) D. David Morin
@@ -705,3 +703,8 @@ uk	Showcase de Lux Bluewater	League Of Legends Worlds 26 - Finals In Cinema	tmdb
 uk	Showcase de Lux Nottingham	League Of Legends Worlds 26 - Finals In Cinema	tmdb:1552059	wrong	hand label: the 2026 League of Legends Worlds final, not the 2025 one's record
 uk	Vue Cinemas Birmingham	League of Legends Worlds 26 | Finals in Cinema	tmdb:1552059	wrong	hand label: the 2026 League of Legends Worlds final, not the 2025 one's record
 uk	Vue Cinemas Westfield Shepherd's Bush	League of Legends Worlds 26 | Finals in Cinema	tmdb:1552059	wrong	hand label: the 2026 League of Legends Worlds final, not the 2025 one's record
+pl	Kino za Rogiem w Siedlcu	Dumna królewna	tmdb:41228	wrong	judged 10-05: the venue's product page credits Radek Beran, Czechy, 2024, 80 min — the 2024 animated remake, not Zeman's 1952 film
+pl	Kino za Rogiem w Siedlcu	Dumna królewna	imdb:tt0191383	wrong	judged 10-05: Zeman's 1952 The Proud Princess; the venue's page credits Radek Beran (2024)
+pl	Kino za Rogiem w Siedlcu	Dumna królewna	tmdb:1134680	right	the venue's page: "Reżyseria: Radek Beran", Czechy, 2024, 80 min — The Proud Princess (2024), TMDB 80 min, Radek Beran / David Lisý
+pl	Kino za Rogiem w Siedlcu	Dumna królewna	imdb:tt10996076	right	The Proud Princess (2024) Radek Beran — TMDB 1134680's IMDb id
+pl	Kino za Rogiem w Siedlcu	Potworna rodzinka	tmdb:454699	right	the venue's page: "Reżyseria: Holger Tappe", Niemcy, Wielka Brytania, 2017, 89 min — Monster Family (2017)
