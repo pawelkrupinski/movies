@@ -1150,8 +1150,16 @@ object IdentityMeasures {
     val all   = TitleContainment.tokens(piece)
     val words = all.filter(_.length > 1)
     (words.exists(_.exists(_.isLetter)) || all.sizeIs >= 3) &&
-      !words.exists(w => DecorationSegments.EventWords(w) || services.movies.FormatTags.FormatToken.contains(w))
+      !words.exists(w => EventTailWords(w) || services.movies.FormatTags.FormatToken.contains(w))
   }
+  /** What a piece a bill joins after a film names when it names an event, not a work: a talk, a lecture, a workshop, a
+   *  quiz, a gala, an exhibition or its opening, a concert, a (poster) tour, a signing — PL, EN, DE, ES — beside the
+   *  segment model's event words. "OPĘTANIE + TRASA PLAKATOWA" (Światowid) is one film and a poster tour. */
+  private val EventTailWords: Set[String] = DecorationSegments.EventWords ++ Set(
+    "wstep", "wyklad", "warsztaty", "quiz", "gala", "wystawa", "wernisaz", "trasa", "debata", "podpisywanie", "autografy", "dyskusji",
+    "lecture", "workshop", "exhibition", "vernissage", "concert", "tour", "signing", "discussion", "debate",
+    "vortrag", "werkstatt", "ausstellung", "konzert", "tournee", "diskussion", "lesung",
+    "charla", "coloquio", "taller", "exposicion", "concierto", "gira", "encuentro", "presentacion")
   /** The works a DOUBLE BILL joins with a spaced "+" ("Basia. Humor w paski mam + Kocia Szajka"),
    *  each searched on its own: the database has no record of the bill, so without them the only
    *  candidates are what a credited director's filmography walks to. Searched, not shapes: a bill

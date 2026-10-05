@@ -933,6 +933,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // a second work titled in numbers is a work too: Pałacowe's "… | Zakazane piosenki + 2 x 2 = 4"
     IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("Od nowa | Zakazane piosenki + 2 x 2 = 4")) shouldBe true
     IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("Bez znieczulenia + Q&A")) shouldBe false
+    // Światowid: a poster tour is an event, not a second work
+    IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("OPĘTANIE + TRASA PLAKATOWA")) shouldBe false
   }
 
   "A double bill sharing its first work's search form" should "not join that work's bare listing when its second work is another listing's" in {
