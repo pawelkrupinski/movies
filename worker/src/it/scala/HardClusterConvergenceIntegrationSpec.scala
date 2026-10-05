@@ -30,8 +30,9 @@ import scala.util.{Random, Try}
  * Per country it asserts:
  *
  *   1. ORDER-INDEPENDENCE — three seeded arrival orders (cinemas shuffled, each cinema's films
- *      shuffled) and a SPLIT arrival (half the cinemas, projected, then the rest) come out as the
- *      same films: identity, title, year, tmdbId, imdbId, cinemas and the film's public address.
+ *      shuffled), a SPLIT arrival (half the cinemas, projected, then the rest) and an arrival whose
+ *      venue page writes each time out once (UNACKED) come out as the same films: identity, title,
+ *      year, tmdbId, imdbId, cinemas and the film's public address.
  *   2. THE RIGHT ANSWER — the films checked in for the clusters (`expected-hard-clusters-<cc>.txt`).
  *   3. NO CHURN — a further projection, and two identical rescrapes each projected, write nothing.
  *   4. AN OUTAGE IS NOT AN ANSWER — with TMDB failing half its requests, then back, the films come
@@ -96,14 +97,16 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
   private final class Pass(val label: String, val wiring: ArchiveReplayWiring, val scrapers: Seq[CinemaScraper])
 
   private def wiringFor(country: Country, label: String, wrap: HttpFetch => HttpFetch = identity,
-                        movableClock: Option[MutableClock] = None): (ArchiveReplayWiring, ConvergenceStorage) = {
+                        movableClock: Option[MutableClock] = None,
+                        venuePages: services.venuepages.VenuePageStore => services.venuepages.VenuePageStore = identity)
+      : (ArchiveReplayWiring, ConvergenceStorage) = {
     val storage = ConvergenceStorage.mongo(mongoTarget, s"hc-${country.code}-$label", TitleNormalizer.forCountry(country),
       services.movies.MovieChangeStream.Debounce.forCountry(country))
     storages.synchronized(storages += storage)
     val w = FetchReplayWiring(country, storage, CorpusFixture.read(HardClusters.corpusKey(country)), wrap(responses(country)),
       FixtureRoot, clock = movableClock.getOrElse(java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC)),
       // The outage pass refuses on purpose; its retries need not sleep through it.
-      retrySleep = if (movableClock.isDefined) (_: Long) => () else Thread.sleep, environment = configuration.env)
+      retrySleep = if (movableClock.isDefined) (_: Long) => () else Thread.sleep, environment = configuration.env, venuePages = venuePages)
     (w, storage)
   }
 
@@ -139,8 +142,9 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
     }.sortBy(f => (f.key, f.title))
   }
 
-  private def boot(country: Country, label: String, seed: Long, split: Boolean): (Pass, Seq[Film]) = {
-    val (w, _) = wiringFor(country, label)
+  private def boot(country: Country, label: String, seed: Long, split: Boolean,
+                   venuePages: services.venuepages.VenuePageStore => services.venuepages.VenuePageStore = identity): (Pass, Seq[Film]) = {
+    val (w, _) = wiringFor(country, label, venuePages = venuePages)
     val rnd = new Random(seed)
     val scrapers = arrivals(w, rnd)
     if (split) {
@@ -164,7 +168,10 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
     try {
       val jobs = countries.flatMap { c =>
         (0 until Permutations).map(i => c -> (() => boot(c, s"p$i", OrderSeed + i, split = false))) :+
-          (c -> (() => boot(c, "split", OrderSeed, split = true)))
+          (c -> (() => boot(c, "split", OrderSeed, split = true))) :+
+          // Every venue page's first write lands unacknowledged, as a loaded Mongo times one out: the
+          // page is read again and taken in, never decided without.
+          (c -> (() => boot(c, "unacked", OrderSeed, split = false, venuePages = new UnacknowledgedVenuePageWrites(_))))
       }
       val done = Await.result(Future.traverse(jobs) { case (c, job) => Future(c -> job()) }, SpecTimeouts.Run)
       done.groupMap(_._1)(_._2)

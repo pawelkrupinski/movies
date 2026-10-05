@@ -372,21 +372,25 @@ trait TestWiring extends WorkerWiring {
   private def enrichDetailsOnce(): Int = {
     val enqueued = detailReaper.tick()
     val workerId = "detail-sync"
-    Iterator.continually(taskQueue.claim(workerId, 5.minutes))
+    // A handler that asks for its task again (`Reschedule`: a page venue_pages did not take) has it queued for the
+    // next pass, as production's TaskWorker returns it to waiting — never worked again within this pass.
+    val again = Iterator.continually(taskQueue.claim(workerId, 5.minutes))
       .takeWhile(_.isDefined).flatten
-      .foreach { task =>
+      .flatMap { task =>
         // The page reads a cut-over model asked for its waiting listings run beside the film rows'.
-        if (task.taskType == TaskType.EnrichDetails)
-          try enrichDetailsHandler.handle(task) catch { case _: Exception => () }
-        else if (task.taskType == TaskType.ReadVenuePage)
-          try readVenuePageHandler.handle(task) catch { case _: Exception => () }
+        val outcome =
+          if (task.taskType == TaskType.EnrichDetails) scala.util.Try(enrichDetailsHandler.handle(task)).toOption
+          else if (task.taskType == TaskType.ReadVenuePage) scala.util.Try(readVenuePageHandler.handle(task)).toOption
+          else None
         taskQueue.complete(task.id, workerId)
-      }
+        outcome.collect { case _: services.tasks.HandlerOutcome.Reschedule => task }
+      }.toList
+    again.foreach(task => taskQueue.enqueue(task.taskType, task.dedupKey, task.payload, submittedAt = clock.instant()))
     // Every detail has merged; now announce the pages read, against a fully-settled cache.
     val ready = detailEventBuffer.toList
     detailEventBuffer.clear()
     ready.foreach(eventBus.publish)
-    enqueued
+    enqueued + again.size
   }
 
   /** Detail passes until they stop making progress — what production's reaper reaches over its

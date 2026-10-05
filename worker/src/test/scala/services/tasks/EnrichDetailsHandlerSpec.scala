@@ -73,6 +73,29 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     successes(uptime, EnrichmentService) shouldBe 1 // recorded under "<cinema>|enrichment"
   }
 
+  // The identity model reads a venue page only from venue_pages, and only once its read is announced: a page the
+  // store did not take (Mongo applied the write and its acknowledgement timed out, on a loaded server) stamped
+  // fresh was never read again, and its film was decided without the page's year and director for the whole
+  // due window — the hard-cluster convergence spec's "Lalka (ale to horror)" and "Ghost in the Shell" flakes.
+  it should "read again, and only then announce, a page venue_pages did not take" in {
+    val cache    = seededCache("Dune")
+    val fresh    = new InMemoryFreshnessStore
+    val bus      = new RecordingEventBus
+    val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail(director = Seq("Denis Villeneuve"))))
+    val h        = new EnrichDetailsHandler(Map("kino-apollo" -> enricher), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), bus,
+      dueWindow, clock = specClock, pages = new _root_.tools.UnacknowledgedVenuePageWrites(new InMemoryVenuePageStore), enrichmentLanguage = polish)
+    val task     = taskFor("kino-apollo", cache, "Dune", enricher)
+
+    h.handle(task) shouldBe a [Reschedule]
+    fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant()) shouldBe false
+    bus.published shouldBe empty
+
+    h.handle(task) shouldBe Done
+    fresh.isFresh(task.dedupKey, FreshnessKind.DetailEnrich, specClock.instant()) shouldBe true
+    bus.published shouldBe Seq(services.events.VenueDetailRead("kino-apollo", "http://ref"))
+    cache.get(cache.keyOf("Dune", None)).flatMap(_.cinemaData.get(KinoApollo)).map(_.director) shouldBe Some(Seq("Denis Villeneuve"))
+  }
+
   it should "merge detail into a decorated edition's EXISTING slot, not fabricate a base-title phantom slot" in {
     // A decorated edition ("Kino Konesera: Dune") folded onto the base "Dune" row:
     // the row is keyed by the base title, but its KinoApollo listing slot is keyed

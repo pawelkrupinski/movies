@@ -18,7 +18,8 @@ object ReadVenuePageTasks {
 }
 
 /** Reads one venue page into venue_pages (`VenuePageReader`) and records it on /uptime. A page that
- *  failed for now is left unread: the listing waiting for it is taken in at its wait's limit. */
+ *  failed for now is left unread: the listing waiting for it is taken in at its wait's limit. One the
+ *  store did not take is asked again. */
 final class ReadVenuePageHandler(enrichersByGroup: Map[String, DetailEnricher], reader: VenuePageReader, uptime: UptimeMonitor,
                                  freshness: services.freshness.FreshnessStore, clock: java.time.Clock)
     extends TaskHandler with Logging {
@@ -29,10 +30,17 @@ final class ReadVenuePageHandler(enrichersByGroup: Map[String, DetailEnricher], 
     val page = task.payload.getOrElse(EnrichDetailsTasks.RefKey, "")
     enrichersByGroup.get(task.payload.getOrElse(EnrichDetailsTasks.GroupKey, "")) match {
       case Some(enricher) if page.nonEmpty =>
-        DetailUptime.record(uptime, enricher, page, reader.read(enricher, page))
-        freshness.markFresh(EnrichDetailsTasks.pageAttempted(enricher.detailGroup, page), services.freshness.FreshnessKind.DetailEnrich, clock.instant())
-      case _                               => logger.warn(s"No detail enricher or page for task ${task.dedupKey}; dropping.")
+        val read = reader.read(enricher, page)
+        DetailUptime.record(uptime, enricher, page, read.outcome)
+        // Not tried until the store took it: no one asks for this page again, so the task does.
+        if (read.unfiled) HandlerOutcome.Reschedule(Some(s"venue_pages did not take ${task.dedupKey}"))
+        else {
+          freshness.markFresh(EnrichDetailsTasks.pageAttempted(enricher.detailGroup, page), services.freshness.FreshnessKind.DetailEnrich, clock.instant())
+          HandlerOutcome.Done
+        }
+      case _ =>
+        logger.warn(s"No detail enricher or page for task ${task.dedupKey}; dropping.")
+        HandlerOutcome.Done
     }
-    HandlerOutcome.Done
   }
 }

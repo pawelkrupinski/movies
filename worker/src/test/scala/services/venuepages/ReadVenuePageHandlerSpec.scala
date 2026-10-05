@@ -47,6 +47,22 @@ class ReadVenuePageHandlerSpec extends AnyFlatSpec with Matchers {
     uptime.history(UptimeMonitor.enrichmentService(KinoApollo.displayName)).map(_.failures).sum shouldBe 1
   }
 
+  it should "ask again for a page venue_pages did not take, neither stamping it tried nor announcing it" in {
+    val enricher  = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(Detail))
+    val freshness = new InMemoryFreshnessStore
+    val bus       = new RecordingEventBus
+    val handler   = new ReadVenuePageHandler(Map("kino-apollo" -> enricher),
+      new VenuePageReader(new _root_.tools.UnacknowledgedVenuePageWrites(new InMemoryVenuePageStore), freshness, e => bus.publish(e), clock),
+      new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), freshness, clock)
+
+    handler.handle(taskFor(enricher)) shouldBe a [HandlerOutcome.Reschedule]
+    freshness.lastFetchedAt(EnrichDetailsTasks.pageAttempted("kino-apollo", Page)) shouldBe None
+    bus.published shouldBe empty
+
+    handler.handle(taskFor(enricher)) shouldBe HandlerOutcome.Done
+    bus.published shouldBe Seq(VenueDetailRead("kino-apollo", Page))
+  }
+
   it should "stamp the page as tried, whatever the read said — a display-only venue's listing waits for no more" in {
     val enricher  = new FakeDetailEnricher(KinoApollo, "kino-apollo", None)
     val freshness = new InMemoryFreshnessStore

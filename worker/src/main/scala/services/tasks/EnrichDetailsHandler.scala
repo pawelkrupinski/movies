@@ -134,11 +134,15 @@ class EnrichDetailsHandler(
         // The page is read into venue_pages, stamped and announced there, and recorded on /uptime;
         // this handler lands it on the row.
         val prior   = pages.get(services.venuepages.VenuePageKey(enricher.detailGroup, ref)).map(_.outcome)
-        val outcome = reader.read(enricher, ref)
-        services.venuepages.DetailUptime.record(uptime, enricher, label, outcome)
-        outcome match {
+        val read    = reader.read(enricher, ref)
+        services.venuepages.DetailUptime.record(uptime, enricher, label, read.outcome)
+        read.outcome match {
           case DetailFetchOutcome.Failed =>
             Done // failed/absent — not marked fresh, the next scrape re-enqueues
+          case _ if read.unfiled =>
+            // Read and not filed: neither stamped nor announced, so asked again — never landed on the row as done
+            // while the identity model, which reads only venue_pages, decides the film without it.
+            Reschedule(Some(s"venue_pages did not take ${enricher.detailGroup}|$ref"))
           case DetailFetchOutcome.Gone(_) =>
             // The page is gone (404/410), not failing. Leaving it stale is a
             // livelock: with no stamp `DueWindow.isDue` is unconditionally true, so

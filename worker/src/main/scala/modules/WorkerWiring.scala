@@ -186,7 +186,9 @@ class WorkerWiring(
       new services.identity.TmdbIdentityLookups(tmdbClientOver(identityLookupFetch), new services.enrichment.ImdbClient(identityLookupFetch), Nil))
 
   /** `venue_pages`: every venue detail page read, written once by page (`VenuePageReader`). */
-  lazy val venuePageStore: services.venuepages.VenuePageStore =
+  lazy val venuePageStore: services.venuepages.VenuePageStore = newVenuePageStore
+  /** The store [[venuePageStore]] holds, built once. */
+  protected def newVenuePageStore: services.venuepages.VenuePageStore =
     mongoConnection.database.fold[services.venuepages.VenuePageStore](new services.venuepages.InMemoryVenuePageStore)(
       new services.venuepages.MongoVenuePageStore(_))
 
