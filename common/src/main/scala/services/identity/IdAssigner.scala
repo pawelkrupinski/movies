@@ -26,9 +26,31 @@ object IdAssigner {
 
   private[identity] enum TieBreak { case Canonical, InputOrder }
 
+  /** A read-only map over a hash table of listings' film ids: a change makes an ordinary map of the same entries. */
+  private[identity] final class ListingIds(table: java.util.HashMap[ListingKey, java.lang.Long])
+      extends scala.collection.immutable.AbstractMap[ListingKey, Long] {
+    def get(key: ListingKey): Option[Long] = { val id = table.get(key); if (id == null) None else Some(id.longValue) }
+    override def contains(key: ListingKey): Boolean = table.containsKey(key)
+    def iterator: Iterator[(ListingKey, Long)] = {
+      val entries = table.entrySet().iterator()
+      Iterator.continually(entries).takeWhile(_.hasNext).map(_.next()).map(e => e.getKey -> e.getValue.longValue)
+    }
+    override def size: Int      = table.size
+    override def knownSize: Int = table.size
+    def removed(key: ListingKey): Map[ListingKey, Long] = Map.from(iterator).removed(key)
+    def updated[V1 >: Long](key: ListingKey, value: V1): Map[ListingKey, V1] = Map.from(iterator).updated(key, value)
+  }
+
   final case class Assignment(ids: Seq[(Long, Set[ListingKey])], nextFresh: Long) {
     lazy val idOf: Map[Set[ListingKey], Long]   = ids.map(_.swap).toMap
-    lazy val idOfListing: Map[ListingKey, Long] = ids.flatMap { case (id, ls) => ls.map(_ -> id) }.toMap
+    /** Each listing's film id. Built every projection over ~100k listings on worker-us: as an immutable map, its build
+     *  resized and copied node arrays all the way up — dead `int[]`s and `Object[]`s in the old generation (heap dump
+     *  2026-10-05) — so it is a hash table sized for them up front, each film's id boxed once, read as a `Map`. */
+    lazy val idOfListing: Map[ListingKey, Long] = {
+      val table = new java.util.HashMap[ListingKey, java.lang.Long]((ids.iterator.map(_._2.size).sum * 4 / 3) + 1)
+      ids.foreach { case (id, ls) => val boxed = java.lang.Long.valueOf(id); ls.foreach(table.put(_, boxed)) }
+      new IdAssigner.ListingIds(table)
+    }
   }
 
   def fresh(next: Seq[Set[ListingKey]], start: Long = 1L): Assignment = assign(Seq.empty, next, start)

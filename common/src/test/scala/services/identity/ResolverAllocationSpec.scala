@@ -75,4 +75,17 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     bytesPerCall(() => weights.ownContributions(measures)) should be < 32.0
     bytesPerCall(() => weights.factsProbability(measures)) should be < 96.0
   }
+
+  "each listing's film id" should "be one hash table built to size, the same ids, with nothing copied as it grows" in {
+    import services.movies.ListingKey
+    val ids = (1L to 500L).map(id => id -> (1 to 40).map(i => ListingKey.Native(s"Venue $i", s"https://v/$id/$i", s"Film $id"): ListingKey).toSet)
+    val reference = ids.flatMap { case (id, ls) => ls.map(_ -> id) }.toMap
+    val built     = IdAssigner.Assignment(ids, 501L).idOfListing
+    built shouldBe reference
+    reference shouldBe built
+    built.get(ListingKey.Native("nowhere", "x", "y")) shouldBe None
+    built.count { case (l, id) => reference.get(l).exists(_ != id) } shouldBe 0
+    val (_, bytes) = tools.ThreadAllocation.of(IdAssigner.Assignment(ids, 501L).idOfListing.size)
+    withClue(s"$bytes bytes for 20,000 listings: ")(bytes should be < 1600000L)
+  }
 }
