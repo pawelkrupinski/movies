@@ -68,8 +68,12 @@ object ResolverDecision {
     /** No TMDB rule, family or poster took a film, but the cluster bills a stage work and screens on the day one record
      *  of it was broadcast (`agreement.Broadcast`) — like [[Agreed]], only on the way to the projection. */
     case Broadcast
+    /** No TMDB rule, agreement, poster or broadcast took a film, but a FILL rule the signal selection chose
+     *  (`UnifiedRules`, e.g. the one guard-passing film billed widely as a current release) did — like [[Agreed]], only on
+     *  the way to the projection. */
+    case Filled
 
-    def matched: Boolean = this == Pinned || this == OwnMatch || this == PooledMatch || this == Agreed || this == Poster || this == Broadcast
+    def matched: Boolean = this == Pinned || this == OwnMatch || this == PooledMatch || this == Agreed || this == Poster || this == Broadcast || this == Filled
   }
 
   def percent(p: Double): String = f"${p * 100}%.1f%%"

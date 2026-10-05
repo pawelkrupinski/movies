@@ -16,5 +16,7 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers {
     AgreementVerdicts.decode(AgreementVerdicts.encode(leaned)) shouldBe leaned
     val none = StoredVerdict("k", 42L, Map("imdb|title|Klondike" -> 7L), None)
     AgreementVerdicts.decode(AgreementVerdicts.encode(none)) shouldBe none
+    val filled = none.copy(filled = Some(StoredFill("venues.current", None, Some("tt46658626"), "filled by venues.current: …")))
+    AgreementVerdicts.decode(AgreementVerdicts.encode(filled)) shouldBe filled
   }
 }

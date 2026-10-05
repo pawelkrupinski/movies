@@ -2494,3 +2494,29 @@ CORRECTION (+5), `and.posterTakers`, `family.metacritic.leans`, `listing.catalog
 (+1 or +2 each). Every single-family take as a fill adds wrong films (IMDb 11, Wikidata 10); the guards as corrections
 of model takes drop right ones (stage work 936, several works 288). Held out, the same selection makes 3 wrong
 listings: the fill needs the hand review the file lists before it can be wired.
+
+### 20.7 Shipped: the selected fill rule (2026-10-05)
+
+Two more guards came out of greedy's held-out wrong takes: `title.namesNone` (the agreement's own requirement that the
+title name the film: PL "Baczne oczka" → "Pucio kocha zwierzaki") and `edition.apart` (`PosterEvidence.editionsApart`:
+"League of Legends Worlds 26" → the Worlds25 record). The rest came from rules one fold's labels alone carried, so the
+selection now keeps a rule only when greedy also selects it with every fold's venues held out (STABLE selection):
+`venues.current` as a FILL, nothing as a CORRECTION (`poster.otherMatches` was selected by 4 of 5 folds). Pinned in
+`common/src/main/resources/identity-unified-rules.json` (guards, fill and correct lists, measured numbers), written by
+`scripts.IdentityUnifiedStrategies`, refit by `identity-calibrate.sh --unified`, checked by `IdentityUnifiedFitSpec`.
+
+`AgreementStage` applies it last, after the agreement, the posters' vote and the broadcast join: for a cluster the
+families agree on nothing for, `UnifiedRules.filled` over `UnifiedEvidence.contenders` (the cluster's own TMDB candidates
+none denied, and the families' takes and leans) takes the one contender no guard trips that its rule's signal fires on —
+for `venues.current`, billed at ≥ 3 venues and released this year or last. Stored with the verdict (`StoredFill`), taken
+as `ResolverDecision.Basis.Filled` — a TMDB film, else IMDb's id once TMDB's `/find` is asked (a new question: the
+hermetic recordings need a fresh "Record scrape fixtures" run) — unless a venue poster names another candidate. The
+decision explains itself: `filled by venues.current: '<title>' <id> — guards passed: …; signals: …`. Verdicts carry the
+rules' version beside the code's: a refit decides them all again. Metric: `kinowo_worker_identity_agreement_taken{kind="filled"}`.
+
+Measured on the ratchet (main's capture, the answers the fill asks added): 1,334 right / 0 wrong listings against
+main's 444, none lost or switched; the gain (+889) is US 782, UK 67, DE 24, PL 16 — three films only IMDb holds:
+SEVENTEEN World Tour 'NEW_', TOMORROW X TOGETHER World Tour 'ACT : TOMORROW' and Pip and Posy and Friends (plus
+Kino Powiśle's Così fan tutte, a broadcast-join take the added answers reach). Held out twice (selection inside
+each fold) the procedure makes 1 wrong listing (PL "Zamki na piasku", by a rule an inner selection kept); the shipped
+rule alone makes none on any cluster.

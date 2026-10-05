@@ -715,3 +715,4 @@ uk	*	Royal Opera House: Carmen	tmdb:1151422	right	hand label: Royal Opera House:
 pl	Kino JDK	Teksańska masakra piłą mechaniczną	tmdb:632727	wrong	known wrong model take on the whole corpus (judged 2026-10-05): the 2022 film is not what JDK screens
 pl	*	Ktoś całkiem obcy	tmdb:7183	wrong	known wrong model take on the whole corpus (judged 2026-10-05)
 pl	Kino Kryterium	DKF: Ktoś całkiem obcy	tmdb:7183	wrong	known wrong model take on the whole corpus (judged 2026-10-05)
+pl	Kino Powiśle	OPERA-COSI FAN TUTTE	tmdb:1703620	right	judged 2026-10-05: Kino Powiśle relays the Met season (its OPERA-MANON, OPERA-OTELLO, OPERA-PARSIFAL are the Met 2026/27 records); the broadcast-date join takes the Met Così fan tutte

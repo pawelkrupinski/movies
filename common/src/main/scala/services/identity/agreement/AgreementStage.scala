@@ -41,7 +41,12 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
                            calibration: IdentityCalibration, tmdbOf: String => Answer[Option[Int]], stored: AgreementVerdicts,
                            ask: AgreementStage.Open => Unit = _ => (), metrics: AgreementStage.Metrics = AgreementStage.Metrics.Silent,
                            clock: java.time.Clock, changes: AnswerChanges = AnswerChanges.Unknown, posters: PosterAnswers = PosterAnswers.Silent,
-                           tmdb: Option[IdentityLookups] = None, identities: Seq[VoterFamily] = Nil) {
+                           tmdb: Option[IdentityLookups] = None, identities: Seq[VoterFamily] = Nil,
+                           rules: services.identity.UnifiedRules = services.identity.UnifiedRules.resolver) {
+
+  /** What a stored verdict was decided under: the stage's code and the selected rules' version — a refit of the rules
+   *  decides every verdict again, as a change of the code does. */
+  private val decidedUnder: String = s"${AgreementStage.RulesVersion}|${rules.version}"
 
   @volatile private var gaps: Set[(VoterFamily, String)] = Set.empty
   @volatile private var finds: Set[String] = Set.empty
@@ -104,7 +109,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   private def applied(resolution: Resolution, listingOf: ListingKey => Option[Listing], version: Long): Resolution = {
     if (loadedAt.isEmpty) {   // first pass: every verdict kept under these rules stands at this version
       loadedAt = Some(version)
-      held.valuesIterator.filter(_.rules == AgreementStage.RulesVersion).foreach(v => checked(v.id) = (v.listings, version))
+      held.valuesIterator.filter(_.rules == decidedUnder).foreach(v => checked(v.id) = (v.listings, version))
     }
     val started = tools.Stopwatch.start()
     resolves = 0
@@ -125,7 +130,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
           digested.put(decision, fresh); fresh
         }
         seen += id
-        val verdict = verdictOf(id, listings, digest, lean, version, asked, moved)
+        val verdict = verdictOf(decision, id, listings, digest, lean, version, asked, moved)
         // the venue posters' distances to the cluster's candidates and to the film the families agree on
         def distances(also: Option[Int]) = posterDistances(id, digest, listings, also, postersAsked)
         // the posters vote once the families reached a verdict that takes no film: none agreed, or a poster vetoed it
@@ -133,8 +138,10 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
           v.agreed.fold[AgreementStage.Take](AgreementStage.Take.Untaken)(taken(decision, _, finding, distances)) match {
             case AgreementStage.Take.Taken(agreed) => agreed
             case AgreementStage.Take.Pending       => decision
-            case AgreementStage.Take.Vetoed        => posterVetoed += 1; voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings)).getOrElse(decision)
-            case AgreementStage.Take.Untaken       => voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings)).getOrElse(decision)
+            case AgreementStage.Take.Vetoed        => posterVetoed += 1; voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings))
+                                                        .orElse(filledTake(decision, v, finding, distances)).getOrElse(decision)
+            case AgreementStage.Take.Untaken       => voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings))
+                                                        .orElse(filledTake(decision, v, finding, distances)).getOrElse(decision)
           }
         }
         if (now eq decision) decision else Option(takenAs.get(decision)).filter(_ == now).getOrElse { takenAs.put(decision, now); now }
@@ -165,7 +172,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       takenTmdb = agreedNow.count(_.film.isDefined), takenFallback = agreedNow.count(_.fallback.isDefined),
       open = gaps.groupMapReduce(_._1)(_ => 1)(_ + _), finds = finds.size, resolves = resolves, seconds = started.seconds,
       takenPoster = decisions.count(_.basis == ResolverDecision.Basis.Poster), posterVetoed = posterVetoed, posters = posterGaps.size,
-      takenBroadcast = decisions.count(_.basis == ResolverDecision.Basis.Broadcast)))
+      takenBroadcast = decisions.count(_.basis == ResolverDecision.Basis.Broadcast), takenFilled = decisions.count(_.basis == ResolverDecision.Basis.Filled)))
     resolution.copy(decisions = decisions)
   }
 
@@ -185,9 +192,9 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
 
   /** The cluster's verdict: the stored one while its listings and every answer it read stand, else the resolver's
    *  over the families' answers now — `None` while one of them is a gap. */
-  private def verdictOf(id: String, listings: Seq[Listing], digest: Long, lean: Option[SourceRecord], version: Long, asked: mutable.Set[(VoterFamily, String)],
-                        moved: mutable.ArrayBuffer[StoredVerdict]): Option[StoredVerdict] = {
-    held.get(id).filter(v => v.listings == digest && v.rules == AgreementStage.RulesVersion).filter { kept =>
+  private def verdictOf(decision: ResolverDecision, id: String, listings: Seq[Listing], digest: Long, lean: Option[SourceRecord], version: Long,
+                        asked: mutable.Set[(VoterFamily, String)], moved: mutable.ArrayBuffer[StoredVerdict]): Option[StoredVerdict] = {
+    held.get(id).filter(v => v.listings == digest && v.rules == decidedUnder).filter { kept =>
       checked.get(id).contains((digest, version)) || untouched(id, kept, digest, version) || {
         val stands = kept.reads.forall { case (question, answered) => read(question).exists(answer => AgreementStage.digest(Seq(answer.toString)) == answered) }
         // read again because an answer was filed: a stale one among its reads is asked again too — a quiet tick reads none
@@ -197,7 +204,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     }
     .orElse(waiting.get(id).filter(w => w.listings == digest && !due(w)) match {
       case Some(w) => asked ++= w.gaps; None   // its questions not all answered yet: a resolve now could reach no verdict
-      case None               => resolved(id, digest, listings, lean, version, asked, moved)
+      case None               => resolved(decision, id, digest, listings, lean, version, asked, moved)
     })
   }
 
@@ -211,8 +218,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
 
   /** The cluster's verdict, the resolver asked again over every family's answers now — `None`, and the cluster kept
    *  waiting on its questions, while one is a gap. */
-  private def resolved(id: String, digest: Long, listings: Seq[Listing], lean: Option[SourceRecord], version: Long, asked: mutable.Set[(VoterFamily, String)],
-                       moved: mutable.ArrayBuffer[StoredVerdict]): Option[StoredVerdict] = {
+  private def resolved(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing], lean: Option[SourceRecord], version: Long,
+                       asked: mutable.Set[(VoterFamily, String)], moved: mutable.ArrayBuffer[StoredVerdict]): Option[StoredVerdict] = {
     resolves += 1
     val reads = mutable.Map.empty[String, Long]
     val gaps  = mutable.Set.empty[(VoterFamily, String)]
@@ -224,8 +231,12 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     else {
       waiting -= id
       Some {
-        val verdict = StoredVerdict(id, digest, reads.toMap, Agreement.agreed(listings, verdicts.flatMap(_.toOption), lean,
-          Some(java.time.LocalDate.ofInstant(clock.instant(), java.time.ZoneOffset.UTC).getYear), listings.map(asStated)), AgreementStage.RulesVersion)
+        val thisYear = java.time.LocalDate.ofInstant(clock.instant(), java.time.ZoneOffset.UTC).getYear
+        val known    = verdicts.flatMap(_.toOption)
+        val stated   = listings.map(asStated)
+        val agreed   = Agreement.agreed(listings, known, lean, Some(thisYear), stated)
+        val verdict  = StoredVerdict(id, digest, reads.toMap, agreed, decidedUnder,
+          if (agreed.isDefined) None else filledOf(decision, listings, known, stated, thisYear))
         if (!held.get(id).contains(verdict)) moved += verdict
         checked(id) = (digest, version)
         verdict
@@ -242,6 +253,40 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       val stated = services.identity.Evidence.of(listing, Some(page))
       listing.copy(year = stated.year, directors = stated.directors, runtime = stated.runtime, originalTitle = stated.originalTitle,
         countries = stated.countries)
+    }
+
+  /** The film the first selected FILL rule takes for a cluster the families agreed on nothing for
+   *  ([[services.identity.UnifiedRules.filled]] over [[services.identity.UnifiedEvidence.contenders]]: the cluster's own
+   *  TMDB candidates, none denied, and the films the families took or lean to) — none while a TMDB answer the cluster's
+   *  candidates need is a gap. The venue posters' veto is read when it is taken ([[filledTake]]). */
+  private def filledOf(decision: ResolverDecision, listings: Seq[Listing], verdicts: Seq[FamilyVerdict], stated: Seq[Listing],
+                       thisYear: Int): Option[StoredFill] =
+    tmdb.filter(_ => rules.fill.nonEmpty).flatMap { lookups =>
+      val noting = new AgreementStage.UnknownNoting(lookups)
+      val nodes  = IdentityResolver.evidenceOf(listings, noting, normalizer, calibration)(_ => true)
+      Option.when(!noting.unknown) {
+        val evidence = services.identity.UnifiedEvidence.ClusterEvidence(listings, decision, nodes, verdicts, Nil, _ => None, thisYear, stated,
+          Some(listing => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured))
+        rules.filled(services.identity.UnifiedEvidence.contenders(evidence)).map { case (film, rule) =>
+          StoredFill(rule, film.tmdb, film.imdb, rules.explain(film, rule)) }
+      }.flatten
+    }
+
+  /** The decision with the film a fill rule took — pending while TMDB was not asked about its IMDb id yet or the venue
+   *  posters are not all hashed, and not taken when a venue poster names another candidate ([[PosterEvidence.veto]]). */
+  private def filledTake(decision: ResolverDecision, verdict: StoredVerdict, finding: mutable.Set[String],
+                         distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]]): Option[ResolverDecision] =
+    verdict.filled.flatMap { fill =>
+      val film: Answer[Option[Int]] = fill.tmdb.fold(fill.imdb.fold[Answer[Option[Int]]](Answer.Known(None))(tmdbOf))(id => Answer.Known(Some(id)))
+      film match {
+        case Answer.Unknown => fill.imdb.foreach(finding += _); None
+        case Answer.Known(tmdbFilm) => distances(tmdbFilm).toOption.filter(found => PosterEvidence.veto(tmdbFilm, found).isEmpty).flatMap { _ =>
+          val explained = decision.explanation :+ fill.line
+          tmdbFilm.map(id => decision.copy(film = Some(id), basis = ResolverDecision.Basis.Filled, explanation = explained)(decision.trace))
+            .orElse(fill.imdb.map(id => decision.copy(basis = ResolverDecision.Basis.Filled, explanation = explained,
+              fallback = Some(ResolverDecision.Fallback(VoterFamily.Imdb.database, id, 1.0)))(decision.trace)))
+        }
+      }
     }
 
   /** Has the family answered `question` since — any answer, fresh? Read per waiting cluster, per tick: an answer filed
@@ -423,7 +468,7 @@ object AgreementStage {
   }
 
   /** `inner`, noting whether any answer it gave was `Unknown`. */
-  private final class UnknownNoting(inner: IdentityLookups) extends IdentityLookups {
+  private[agreement] final class UnknownNoting(inner: IdentityLookups) extends IdentityLookups {
     @volatile var unknown = false
     private def noted[A](answer: Answer[A]): Answer[A] = { if (answer == Answer.Unknown) unknown = true; answer }
     def hasDetail(listing: Listing): Boolean                     = inner.hasDetail(listing)
@@ -449,7 +494,7 @@ object AgreementStage {
    *  decisions the screening days took ([[ResolverDecision.Basis.Broadcast]]). */
   final case class Applied(waiting: Int, verdicts: Int, agreed: Int, takenTmdb: Int, takenFallback: Int, open: Map[VoterFamily, Int],
                            finds: Int, resolves: Int, seconds: Double, takenPoster: Int = 0, posterVetoed: Int = 0, posters: Int = 0,
-                           takenBroadcast: Int = 0)
+                           takenBroadcast: Int = 0, takenFilled: Int = 0)
   trait Metrics { def applied(applied: Applied): Unit }
   object Metrics { val Silent: Metrics = _ => () }
 

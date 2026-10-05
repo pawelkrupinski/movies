@@ -27,6 +27,35 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     2, Map(bare.key -> 0, matched.key -> 1), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
   private def listingOf = Map(bare.key -> bare, matched.key -> matched).get
 
+  "an unmatched cluster no families agree on" should "take, by the selected fill rule, the one guard-passing film billed widely as a current release" in {
+    // US "SEVENTEEN World Tour 'NEW_'" ×391: IMDb alone holds the 2026 tour film, at venue after venue
+    val tour    = IdentityMeasures.Film("Seventeen World Tour (New_)", None, Nil, Some(2026), None, None, None, None)
+    val imdb    = Map(VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt46658626" -> SourceRecord(tour, Map("imdb" -> "tt46658626"))))) ++
+      Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
+    val nothing = new services.identity.IdentityLookups {
+      def hasDetail(listing: services.identity.Listing): Boolean = false
+      def detail(listing: services.identity.Listing) = Answer.Known(None)
+      def candidates(query: services.identity.CandidateQuery) = Answer.Known(Nil)
+      def film(tmdbId: Int) = Answer.Known(None)
+    }
+    def decided(title: String, venues: Seq[models.Cinema], rules: services.identity.UnifiedRules) = {
+      val listings = venues.map(venue => listing(venue, title))
+      val model = Resolution(Seq(ResolverDecision(listings.map(_.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil)()), listings.size,
+        listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+      new AgreementStage(imdb, nothing, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+        clock = _root_.tools.SpecClock.Pinned, tmdb = Some(nothing), rules = rules).apply(model, listings.map(l => l.key -> l).toMap.get, version = 1).decisions.head
+    }
+    val selected = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current"))
+    val wide     = Seq(KinoMuza, models.Multikino, models.KinoPalacowe)
+    val taken    = decided("SEVENTEEN World Tour 'NEW_'", wide, selected)
+    (taken.basis, taken.fallback.map(_.id)) shouldBe ((ResolverDecision.Basis.Filled, Some("tt46658626")))
+    taken.explanation.last should startWith ("filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed:")
+    // two venues are no wide billing; a title not naming the film trips a guard; no rule selected takes nothing
+    decided("SEVENTEEN World Tour 'NEW_'", wide.take(2), selected).basis shouldBe ResolverDecision.Basis.BelowThreshold
+    decided("Koncert", wide, selected).basis shouldBe ResolverDecision.Basis.BelowThreshold
+    decided("SEVENTEEN World Tour 'NEW_'", wide, selected.copy(fill = Nil)).basis shouldBe ResolverDecision.Basis.BelowThreshold
+  }
+
   "an unmatched cluster its families agree on" should "take the TMDB film the agreed IMDb id finds, and name the families" in {
     val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = imdb => Answer.Known(Option.when(imdb == "tt16315948")(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
@@ -198,7 +227,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     new AgreementStage(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
       clock = _root_.tools.SpecClock.Pinned).apply(resolution, listingOf, version = 0)
     asked should be > 0
-    verdicts.all().map(_.rules) shouldBe Seq(AgreementStage.RulesVersion)
+    verdicts.all().map(_.rules) shouldBe Seq(s"${AgreementStage.RulesVersion}|${services.identity.UnifiedRules.resolver.version}")
   }
 
   it should "decide again when an answer it read moved, and drop the verdict of a cluster no longer unmatched" in {

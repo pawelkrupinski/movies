@@ -67,7 +67,7 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
   /** The stage's series for `country`, every label touched at 0. */
   def stage(country: String): AgreementStage.Metrics = {
     Seq("waiting", "verdicts", "agreed", "poster-vetoed").foreach(clusters.labelValues(country, _))
-    Seq("tmdb", "fallback", "poster", "broadcast").foreach(taken.labelValues(country, _))
+    Seq("tmdb", "fallback", "poster", "broadcast", "filled").foreach(taken.labelValues(country, _))
     families.foreach(open.labelValues(country, _))
     resolves.labelValues(country); seconds.labelValues(country)
     applied => {
@@ -77,6 +77,7 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
       clusters.labelValues(country, "poster-vetoed").set(applied.posterVetoed.toDouble)
       taken.labelValues(country, "poster").set(applied.takenPoster.toDouble)
       taken.labelValues(country, "broadcast").set(applied.takenBroadcast.toDouble)
+      taken.labelValues(country, "filled").set(applied.takenFilled.toDouble)
       open.labelValues(country, AgreementQuestionMetrics.Poster).set(applied.posters.toDouble)
       taken.labelValues(country, "tmdb").set(applied.takenTmdb.toDouble)
       taken.labelValues(country, "fallback").set(applied.takenFallback.toDouble)

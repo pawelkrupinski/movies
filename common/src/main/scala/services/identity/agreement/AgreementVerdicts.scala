@@ -11,9 +11,15 @@ import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
 /** One cluster's agreement verdict as stored: the digest of its listings, every family question it read with the
- *  digest of the answer it got, and the film the families agreed on, if any — all the stage needs, after a restart or
- *  a new answer elsewhere, to tell whether the verdict still stands without asking the resolver again. */
-final case class StoredVerdict(id: String, listings: Long, reads: Map[String, Long], agreed: Option[AgreedFilm], rules: String = "")
+ *  digest of the answer it got, the film the families agreed on, if any, and else the film a selected FILL rule takes
+ *  ([[services.identity.UnifiedRules]]) — all the stage needs, after a restart or a new answer elsewhere, to tell
+ *  whether the verdict still stands without asking the resolver again. */
+final case class StoredVerdict(id: String, listings: Long, reads: Map[String, Long], agreed: Option[AgreedFilm], rules: String = "",
+                               filled: Option[StoredFill] = None)
+
+/** The film a fill rule takes for a cluster: the rule's signal, the film's TMDB id or IMDb id, and the explanation line
+ *  naming the rule, the guards it passed and the signals firing on the film. */
+final case class StoredFill(rule: String, tmdb: Option[Int], imdb: Option[String], line: String)
 
 /** The storage seam of the agreement's verdicts, as [[services.identity.IdentityModelStore]] is the model's. */
 trait AgreementVerdicts {
@@ -70,6 +76,12 @@ object AgreementVerdicts {
       film.record.film.year.foreach(year => d.append("year", BsonInt32(year)))
       d
     })
+    .append("filled", verdict.filled.fold[BsonValue](BsonNull()) { fill =>
+      val d = new BsonDocument("rule", BsonString(fill.rule)).append("line", BsonString(fill.line))
+      fill.tmdb.foreach(id => d.append("tmdb", BsonInt32(id)))
+      fill.imdb.foreach(id => d.append("imdb", BsonString(id)))
+      d
+    })
 
   def decode(d: BsonDocument): StoredVerdict = {
     val byLabel = VoterFamily.values.map(f => f.label -> f).toMap
@@ -82,6 +94,8 @@ object AgreementVerdicts {
           stringsOf(a.getDocument("ids")).flatMap { case (label, id) => byLabel.get(label).map(_ -> id) },
           Option(a.get("leaning")).filter(_.isArray).fold(Set.empty[VoterFamily])(_.asArray.getValues.asScala.flatMap(v => byLabel.get(v.asString.getValue)).toSet),
           Option(a.get("corroborated")).filter(_.isArray).fold(Set.empty[String])(_.asArray.getValues.asScala.map(_.asString.getValue).toSet))
-      }, Option(d.get("rules")).filter(_.isString).fold("")(_.asString.getValue))
+      }, Option(d.get("rules")).filter(_.isString).fold("")(_.asString.getValue),
+      Option(d.get("filled")).filter(_.isDocument).map(_.asDocument).map(f => StoredFill(f.getString("rule").getValue,
+        Option(f.get("tmdb")).map(_.asInt32.getValue), Option(f.get("imdb")).map(_.asString.getValue), f.getString("line").getValue)))
   }
 }
