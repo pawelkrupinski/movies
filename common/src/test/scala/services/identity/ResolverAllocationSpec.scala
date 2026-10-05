@@ -138,4 +138,14 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     val title = IdentityMeasures.titleRelation(listing, film)
     bytesPerCall(() => IdentityMeasures.listingFilmTitled(listing, film, Some(1), 2, 3, title).size.toDouble) should be < 2000.0   // was 3,600: the hash map, its nodes and an entry tuple each
   }
+
+  "a film's director credited by its house's name" should "be read from tokens worked out once per listing and film" in {
+    val met     = Listing("The Metropolitan Opera: Così fan tutte", year = Some(2026), directors = Seq("The Metropolitan Opera", "Phelim McDermott"))
+    val opera   = Film("The Metropolitan Opera: Così fan tutte", year = Some(2026), directors = Some(Seq("Phelim McDermott")))
+    val alone   = met.copy(directors = Seq("The Metropolitan Opera"))
+    IdentityMeasures.listingFilm(met, opera, Some(1), 0, 0)("director") shouldBe IdentityMeasures.Category("same_person")
+    IdentityMeasures.listingFilm(alone, opera, Some(1), 0, 0)("director") shouldBe IdentityMeasures.MissingListing
+    val title = IdentityMeasures.titleRelation(met, opera)
+    bytesPerCall(() => IdentityMeasures.listingFilmTitled(met, opera, Some(1), 0, 0, title).size.toDouble) should be < 6500.0   // was 8,469: every name and title tokenised per pair
+  }
 }

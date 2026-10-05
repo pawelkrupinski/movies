@@ -81,6 +81,8 @@ object IdentityMeasures {
     private[identity] lazy val directorCredits: IdentityMeasures.Credits   = new IdentityMeasures.Credits(directors)
     /** Its search titles' [[IdentityMeasures.key]]s, in order: worked out once, not per film it is weighed against. */
     private[identity] lazy val searchKeys: Seq[String] = searchTitles.map(IdentityMeasures.key)
+    /** Each credited director's name as title tokens, in order. */
+    private[identity] lazy val directorTokens: Seq[Seq[String]] = directors.map(TitleContainment.tokens)
     private[identity] lazy val creditsBesideYear: IdentityMeasures.Credits =
       if (yearCredits.isEmpty) directorCredits else new IdentityMeasures.Credits(creditedBesideYear)
     /** The original title, trimmed, as a comparison form, once per listing (`originalTitleRelation`). */
@@ -396,6 +398,8 @@ object IdentityMeasures {
     /** Its titles' [[IdentityMeasures.key]]s — worked out once, not per listing weighed against it ([[searchGroups]]): a
      *  film's alternative titles can run to dozens, keyed again for every listing of every family it is a candidate of. */
     private[identity] lazy val titleKeys: Set[String] = titles.map(IdentityMeasures.key).toSet
+    /** Its own title's and original title's tokens: what a director credited by a house name is read against. */
+    private[identity] lazy val ownTitleTokens: Seq[Seq[String]] = (Seq(title) ++ originalTitle).map(TitleContainment.tokens)
     /** The film's titles and their delimited pieces as yearless tokens, once per record (`billing`). */
     private[identity] lazy val billedTitles: Seq[Seq[String]] =
       titles.map(IdentityMeasures.yearlessTokens).filter(_.nonEmpty).distinct
@@ -604,12 +608,9 @@ object IdentityMeasures {
    *  own title, and none of the people the film credits? UK venues credit "The Metropolitan Opera" for its 2026/27
    *  "The Metropolitan Opera: Così fan tutte" ×97, which read as a different director than Phelim McDermott and
    *  vetoed the film. "Guillermo del Toro" of "Guillermo del Toro's Pinocchio" directed it, and stays a person. */
-  private def namesItsHouse(name: String, f: Film): Boolean = {
-    val words = services.movies.TitleContainment.tokens(name)
-    words.sizeIs >= 2 &&
-      (Seq(f.title) ++ f.originalTitle).exists(title => services.movies.TitleContainment.tokens(title).containsSlice(words)) &&
+  private def namesItsHouse(name: String, words: Seq[String], f: Film): Boolean =
+    words.sizeIs >= 2 && f.ownTitleTokens.exists(_.containsSlice(words)) &&
       !f.directorCredits.exists(credits => creditRelation(new Credits(Seq(name)), credits) == Category("same_person"))
-  }
 
   /** [[directorRelation]] over credits parsed once: a listing's and a record's directors meet every
    *  pair of a family's pool, and re-parsing both per pair allocated the names again each time. */
@@ -1453,7 +1454,9 @@ object IdentityMeasures {
     slots(5)  = filmMinus(f.year, l.titleYear)
     slots(6)  = filmMinus(f.year, l.seasonYear)
     slots(7)  = {
-                  val persons = l.directors.filterNot(namesItsHouse(_, f))
+                  // Each name's and title's tokens read once per listing and film, not per pair ([[Listing.directorTokens]]).
+                  val persons = if (l.directors.isEmpty) l.directors else
+                    l.directors.iterator.zip(l.directorTokens).collect { case (name, words) if !namesItsHouse(name, words, f) => name }.toSeq
                   f.directorCredits.fold[Measure](if (persons.exists(_.trim.nonEmpty)) MissingFilm else MissingListing)(
                     creditRelation(if (persons.size == l.directors.size) l.directorCredits else new Credits(persons), _))
                 }
