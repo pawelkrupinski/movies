@@ -2,13 +2,13 @@ package services.identity
 
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonInt64, BsonString}
+import org.bson.codecs.configuration.CodecRegistries
 import org.mongodb.scala.model.{Filters, Projections, ReplaceOneModel, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import services.movies.ListingKey
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
 
 /** One family of the incremental model as stored: what it decided, what it blocks under, what it
  *  asked and read, the node each listing was, and the digest of the corpus facts it read — all an
@@ -51,11 +51,12 @@ final class MongoIdentityModelStore(db: MongoDatabase) extends IdentityModelStor
   private lazy val collection: MongoCollection[Document] = db.getCollection[Document](FamiliesCollection)
   private lazy val meta: MongoCollection[Document]       = db.getCollection[Document](MetaCollection)
 
-  /** Each family decoded as its reply arrives, so the read holds the decoded families and one reply's
-   *  documents — not every raw document beside them: a raw family's BSON tree is ~2x its decoded form
-   *  (2,200 synthetic 17 KB families: a peak of 211 MB read whole, then decoded; 82 MB decoded as read). */
+  /** Each family read straight off its reply's bytes into the model's types ([[StoredFamilyCodec]]), as the reply
+   *  arrives: no BSON tree of the document is built. Decoded as one, a US take-up's ~2,100 families were ~400k maps
+   *  and ~1M key strings beside the decoded families, alive long enough at boot to be promoted and then dropped. */
   def families(): Seq[StoredFamily] =
-    Await.result(collection.find().batchSize(tools.MongoReplies.Families).map(d => decode(d.toBsonDocument)).toFuture(), Timeout)
+    Await.result(db.withCodecRegistry(CodecRegistries.fromRegistries(CodecRegistries.fromCodecs(StoredFamilyCodec), db.codecRegistry))
+      .getCollection[StoredFamily](FamiliesCollection).find().batchSize(tools.MongoReplies.Families).toFuture(), Timeout)
 
   private val documentsWritten = new java.util.concurrent.atomic.AtomicLong
   /** How many family documents this store has written — those whose content moved. */
@@ -104,11 +105,8 @@ object MongoIdentityModelStore {
   private val RulesDocument = "rules"
 
   private def strings(values: Iterable[String]) = BsonArray.fromIterable(values.toSeq.sorted.map(BsonString(_)))
-  private def readStrings(d: BsonDocument, name: String): Set[String] = d.getArray(name).getValues.asScala.map(_.asString.getValue).toSet
   private def ints(values: Iterable[Int]) = BsonArray.fromIterable(values.toSeq.sorted.map(BsonInt32(_)))
-  private def readInts(d: BsonDocument, name: String): Set[Int] = d.getArray(name).getValues.asScala.map(_.asInt32.getValue).toSet
   private def queries(values: Iterable[CandidateQuery]) = strings(values.map(_.sortKey))
-  private def readQueries(d: BsonDocument, name: String): Set[CandidateQuery] = readStrings(d, name).flatMap(CandidateQuery.fromSortKey)
 
   private[identity] def encode(stored: StoredFamily): BsonDocument = {
     val family = stored.family
@@ -128,23 +126,85 @@ object MongoIdentityModelStore {
       .append("digest", BsonInt64(stored.digest))
   }
 
-  private[identity] def decode(d: BsonDocument): StoredFamily = {
-    val reads = d.getDocument("reads")
+  private[identity] def decode(d: BsonDocument): StoredFamily = read(new org.bson.BsonDocumentReader(d))
+
+  /** A stored family, from the reply's bytes as the store reads it ([[BsonFields]]). */
+  private[identity] object StoredFamilyCodec extends org.bson.codecs.Codec[StoredFamily] {
+    private val documents = new org.bson.codecs.BsonDocumentCodec
+    def decode(reader: org.bson.BsonReader, context: org.bson.codecs.DecoderContext): StoredFamily = read(reader)
+    def encode(writer: org.bson.BsonWriter, family: StoredFamily, context: org.bson.codecs.EncoderContext): Unit =
+      documents.encode(writer, MongoIdentityModelStore.encode(family), context)
+    def getEncoderClass: Class[StoredFamily] = classOf[StoredFamily]
+  }
+
+  /** The family the reader is at, read field by field. */
+  private[identity] def read(reader: org.bson.BsonReader): StoredFamily = {
+    var id: String                              = null
+    var listings: Set[ListingKey]               = null
+    var decisions: Seq[ResolverDecision]        = null
+    var blockKeys: Set[String]                  = null
+    var queries: Set[CandidateQuery]            = null
+    var films: Set[Int]                         = null
+    var reads: CorpusContext.Reads              = null
+    var nodes: Vector[(ListingKey, String)]     = null
+    var digest: java.lang.Long                  = null
+    BsonFields.document(reader) {
+      case "_id"       => id = reader.readString()
+      case "listings"  => listings = { val all = Set.newBuilder[ListingKey]; BsonFields.array(reader)(all += ListingKeyBson.read(reader)); all.result() }
+      case "decisions" => decisions = { val all = Vector.newBuilder[ResolverDecision]; BsonFields.array(reader)(all += ResolverDecisionBson.read(reader)); all.result() }
+      case "blockKeys" => blockKeys = BsonFields.stringSet(reader)
+      case "queries"   => queries = readQueries(reader)
+      case "films"     => films = BsonFields.intSet(reader)
+      case "reads"     => reads = readReads(reader)
+      case "nodes"     => nodes = {
+        val all = Vector.newBuilder[(ListingKey, String)]
+        BsonFields.array(reader) {
+          var key: ListingKey = null
+          var node: String    = null
+          BsonFields.document(reader) {
+            case "listing" => key = ListingKeyBson.read(reader)
+            case "node"    => node = reader.readString()
+            case _         => reader.skipValue()
+          }
+          all += BsonFields.required(key, "listing") -> BsonFields.required(node, "node")
+        }
+        all.result()
+      }
+      case "digest"    => digest = reader.readInt64()
+      case _           => reader.skipValue()
+    }
     // One instance of each listing key and each node text per family: the `nodes` pairs repeat the
     // `listings` keys, and a node's text repeats for each of its listings — decoded as they stand,
     // every restore kept a second key and a node text per listing for the model's lifetime.
-    val listings = ListingKeyBson.decodeAll(d.getArray("listings")).toSet
-    val keyOf    = listings.iterator.map(key => key -> key).toMap
-    val texts    = scala.collection.mutable.HashMap.empty[String, String]
-    StoredFamily(d.getString("_id").getValue, IdentityResolver.RegionFamily(
-      listings,
-      d.getArray("decisions").getValues.asScala.toSeq.map(v => ResolverDecisionBson.decode(v.asDocument)),
-      readStrings(d, "blockKeys"), readQueries(d, "queries"), readInts(d, "films"),
-      CorpusContext.Reads(readStrings(reads, "titles"), readStrings(reads, "groups"), readStrings(reads, "segments"),
-        readStrings(reads, "banners"), readInts(reads, "films"), readQueries(reads, "queries")),
-      d.getArray("nodes").getValues.asScala.toSeq.map(_.asDocument).map(n =>
-        { val key = ListingKeyBson.decode(n.getDocument("listing")); keyOf.getOrElse(key, key) } ->
-          { val text = n.getString("node").getValue; texts.getOrElseUpdate(text, text) }).toMap),
-      d.getInt64("digest").getValue)
+    val held  = BsonFields.required(listings, "listings")
+    val keyOf = held.iterator.map(key => key -> key).toMap
+    val pairs = BsonFields.required(nodes, "nodes")
+    val texts = new java.util.HashMap[String, String](pairs.size * 2)
+    StoredFamily(BsonFields.required(id, "_id"), IdentityResolver.RegionFamily(
+      held, BsonFields.required(decisions, "decisions"), BsonFields.required(blockKeys, "blockKeys"),
+      BsonFields.required(queries, "queries"), BsonFields.required(films, "films"), BsonFields.required(reads, "reads"),
+      pairs.iterator.map { case (key, text) => keyOf.getOrElse(key, key) -> texts.computeIfAbsent(text, identity) }.toMap),
+      BsonFields.required(digest, "digest").longValue)
+  }
+
+  private def readQueries(reader: org.bson.BsonReader): Set[CandidateQuery] =
+    BsonFields.stringSet(reader).flatMap(CandidateQuery.fromSortKey)
+
+  private def readReads(reader: org.bson.BsonReader): CorpusContext.Reads = {
+    var titles, groups, segments, banners: Set[String] = null
+    var films: Set[Int]                                = null
+    var queries: Set[CandidateQuery]                   = null
+    BsonFields.document(reader) {
+      case "titles"   => titles = BsonFields.stringSet(reader)
+      case "groups"   => groups = BsonFields.stringSet(reader)
+      case "segments" => segments = BsonFields.stringSet(reader)
+      case "banners"  => banners = BsonFields.stringSet(reader)
+      case "films"    => films = BsonFields.intSet(reader)
+      case "queries"  => queries = readQueries(reader)
+      case _          => reader.skipValue()
+    }
+    CorpusContext.Reads(BsonFields.required(titles, "titles"), BsonFields.required(groups, "groups"),
+      BsonFields.required(segments, "segments"), BsonFields.required(banners, "banners"), BsonFields.required(films, "films"),
+      BsonFields.required(queries, "queries"))
   }
 }

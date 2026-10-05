@@ -28,27 +28,67 @@ object ResolverDecisionBson {
     .append("unanswered", BsonInt32(decision.unanswered))
     .append("agreed", new BsonDocument(decision.agreed.toSeq.sorted.map { case (family, id) => new org.bson.BsonElement(family, BsonString(id)) }.asJava))
 
-  def decode(d: BsonDocument): ResolverDecision = {
-    def strings(name: String) = d.getArray(name).getValues.asScala.toSeq.map(_.asString.getValue)
-    ResolverDecision(ListingKeyBson.decodeAll(d.getArray("members")), Option(d.get("film")).filter(_.isInt32).map(_.asInt32.getValue),
-      number(d, "confidence"), ResolverDecision.Basis.valueOf(d.getString("basis").getValue), strings("explanation"), strings("contradictions"),
-      Option(d.get("fallback")).filter(_.isDocument).map(_.asDocument).map(taken =>
-        ResolverDecision.Fallback(taken.getString("source").getValue, taken.getString("id").getValue, number(taken, "probability"),
-          Option(taken.get("title")).filter(_.isString).map(_.asString.getValue), Option(taken.get("year")).filter(_.isInt32).map(_.asInt32.getValue))),
-      leaningOf(d, "leaning"),
-      Option(d.get("unanswered")).filter(_.isInt32).fold(0)(_.asInt32.getValue),
-      Option(d.get("agreed")).filter(_.isDocument).fold(Map.empty[String, String])(_.asDocument.asScala.map { case (family, id) => family -> id.asString.getValue }.toMap),
-      leaningOf(d, "candidate"))()
+  def decode(d: BsonDocument): ResolverDecision = read(new org.bson.BsonDocumentReader(d))
+
+  /** The decision the reader is at, read field by field (see [[BsonFields]]). */
+  def read(reader: org.bson.BsonReader): ResolverDecision = {
+    import org.bson.BsonType
+    var members: Seq[services.movies.ListingKey]                = null
+    var film: Option[Int]                         = None
+    var confidence: java.lang.Double              = null
+    var basis: String                             = null
+    var explanation, contradictions: Seq[String]  = null
+    var fallback: Option[ResolverDecision.Fallback] = None
+    var leaning, candidate: Option[ResolverDecision.Leaning] = None
+    var unanswered                                = 0
+    var agreed                                    = Map.empty[String, String]
+    BsonFields.document(reader) {
+      case "members"        => members = { val all = Vector.newBuilder[services.movies.ListingKey]; BsonFields.array(reader)(all += ListingKeyBson.read(reader)); all.result() }
+      case "film"           => film = BsonFields.when(reader, BsonType.INT32)(reader.readInt32())
+      case "confidence"     => confidence = BsonFields.number(reader, "confidence")
+      case "basis"          => basis = reader.readString()
+      case "explanation"    => explanation = BsonFields.strings(reader)
+      case "contradictions" => contradictions = BsonFields.strings(reader)
+      case "fallback"       => fallback = BsonFields.when(reader, BsonType.DOCUMENT)(readFallback(reader))
+      case "leaning"        => leaning = BsonFields.when(reader, BsonType.DOCUMENT)(readLeaning(reader))
+      case "candidate"      => candidate = BsonFields.when(reader, BsonType.DOCUMENT)(readLeaning(reader))
+      case "unanswered"     => unanswered = BsonFields.when(reader, BsonType.INT32)(reader.readInt32()).getOrElse(0)
+      case "agreed"         => agreed = BsonFields.when(reader, BsonType.DOCUMENT) {
+                                 val all = Map.newBuilder[String, String]
+                                 BsonFields.document(reader)(family => all += family -> reader.readString())
+                                 all.result()
+                               }.getOrElse(Map.empty)
+      case _                => reader.skipValue()
+    }
+    ResolverDecision(BsonFields.required(members, "members"), film, BsonFields.required(confidence, "confidence").doubleValue,
+      ResolverDecision.Basis.valueOf(BsonFields.required(basis, "basis")), BsonFields.required(explanation, "explanation"),
+      BsonFields.required(contradictions, "contradictions"), fallback, leaning, unanswered, agreed, candidate)()
   }
 
-  /** A probability stored as any BSON number: a copier that round-trips through JavaScript numbers (mongosh, the local
-   *  mirror) writes a whole-number double such as 1.0 back as an Int32. */
-  private def number(d: BsonDocument, name: String): Double = d.get(name) match {
-    case v if v != null && v.isNumber => v.asNumber.doubleValue
-    case v => throw new org.bson.BsonInvalidOperationException(s"$name: expected a number, found ${Option(v).fold("nothing")(_.getBsonType.toString)}")
+  private def readFallback(reader: org.bson.BsonReader): ResolverDecision.Fallback = {
+    var source, id: String           = null
+    var probability: java.lang.Double = null
+    var title: Option[String]        = None
+    var year: Option[Int]            = None
+    BsonFields.document(reader) {
+      case "source"      => source = reader.readString()
+      case "id"          => id = reader.readString()
+      case "probability" => probability = BsonFields.number(reader, "probability")
+      case "title"       => title = BsonFields.when(reader, org.bson.BsonType.STRING)(reader.readString())
+      case "year"        => year = BsonFields.when(reader, org.bson.BsonType.INT32)(reader.readInt32())
+      case _             => reader.skipValue()
+    }
+    ResolverDecision.Fallback(BsonFields.required(source, "source"), BsonFields.required(id, "id"),
+      BsonFields.required(probability, "probability").doubleValue, title, year)
   }
 
-  private def leaningOf(d: BsonDocument, name: String): Option[ResolverDecision.Leaning] =
-    Option(d.get(name)).filter(_.isDocument).map(_.asDocument).map(lean =>
-      ResolverDecision.Leaning(lean.getInt32("film").getValue, lean.getInt32("imdbNumber").getValue))
+  private def readLeaning(reader: org.bson.BsonReader): ResolverDecision.Leaning = {
+    var film, imdbNumber: java.lang.Integer = null
+    BsonFields.document(reader) {
+      case "film"       => film = reader.readInt32()
+      case "imdbNumber" => imdbNumber = reader.readInt32()
+      case _            => reader.skipValue()
+    }
+    ResolverDecision.Leaning(BsonFields.required(film, "film").intValue, BsonFields.required(imdbNumber, "imdbNumber").intValue)
+  }
 }

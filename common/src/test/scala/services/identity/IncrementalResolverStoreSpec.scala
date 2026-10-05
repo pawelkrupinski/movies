@@ -182,6 +182,43 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
     store.families().foreach(family => MongoIdentityModelStore.decode(MongoIdentityModelStore.encode(family)) shouldBe family)
   }
 
+  /** `family` as it comes off the wire: its BSON bytes, with the content digest the store writes beside it. */
+  private def wire(family: StoredFamily): java.nio.ByteBuffer = {
+    val document = MongoIdentityModelStore.encode(family).append("content", org.bson.BsonInt64(42L))
+    java.nio.ByteBuffer.wrap(new org.bson.RawBsonDocument(document, new org.bson.codecs.BsonDocumentCodec).getByteBuffer.array)
+  }
+  private def readOff(bytes: java.nio.ByteBuffer): StoredFamily =
+    MongoIdentityModelStore.StoredFamilyCodec.decode(new org.bson.BsonBinaryReader(bytes.duplicate()), org.bson.codecs.DecoderContext.builder().build())
+
+  it should "read straight off its wire bytes as it was written" in {
+    val corpus = GeneratedIdentityCorpus.generate(11L, normalizer, films = 12, listings = 48)
+    val store  = new InMemoryIdentityModelStore
+    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store).seed(corpus.listings)
+    store.families().foreach(family => readOff(wire(family)) shouldBe family)
+  }
+
+  // A US take-up reads ~2,100 families. Decoded as a BSON tree first, each was a map per embedded document and a
+  // string per key, all dropped once the family was built from them — garbage the boot promoted (2026-10-05).
+  it should "read off the wire without building the BSON tree of its bytes" in {
+    val corpus   = GeneratedIdentityCorpus.generate(11L, normalizer, films = 12, listings = 48)
+    val store    = new InMemoryIdentityModelStore
+    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store).seed(corpus.listings)
+    val bytes    = store.families().map(wire)
+    val codec    = new org.bson.codecs.BsonDocumentCodec
+    val context  = org.bson.codecs.DecoderContext.builder().build()
+    def asTree(b: java.nio.ByteBuffer) = codec.decode(new org.bson.BsonBinaryReader(b.duplicate()), context)
+    def read()      = (1 to 50).foreach(_ => bytes.foreach(readOff))
+    def treeAlone() = (1 to 50).foreach(_ => bytes.foreach(asTree))
+    def viaTree()   = (1 to 50).foreach(_ => bytes.foreach(b => MongoIdentityModelStore.decode(asTree(b))))
+    read(); treeAlone(); viaTree()                                         // warm all three
+    val (_, reading) = tools.ThreadAllocation.of(read())
+    val (_, tree)    = tools.ThreadAllocation.of(treeAlone())
+    val (_, both)    = tools.ThreadAllocation.of(viaTree())
+    // Read straight off the bytes, nothing outlives its field: the tree's maps, and the key strings they hold, were the
+    // whole reply's until its families were built. Measured here as the allocation they cost (~25% of the read).
+    withClue(s"read $reading bytes; via the tree $both, the tree alone $tree: ")(reading.toDouble should be < both * 0.9)
+  }
+
   // A restore decodes every stored family: its listing keys were read twice (the `listings` array and
   // the `nodes` pairs) and each listing's node text on its own, so equal values were separate objects
   // for the model's lifetime — worker-us held the node texts ("It Follows\0It Follows\0…") once per

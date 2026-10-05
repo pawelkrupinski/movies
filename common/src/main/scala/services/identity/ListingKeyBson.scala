@@ -18,12 +18,24 @@ object ListingKeyBson {
         .append("directors", BsonArray.fromIterable(directors.map(BsonString(_))))
   }
 
-  def decode(d: BsonDocument): ListingKey = {
-    val venue = d.getString("venue").getValue
-    val raw   = d.getString("rawTitle").getValue
-    if (d.containsKey("page")) ListingKey.Native(venue, d.getString("page").getValue, raw)
-    else ListingKey.Published(venue, raw, Option(d.get("year")).filter(_.isInt32).map(_.asInt32.getValue),
-      d.getArray("directors").getValues.asScala.toSeq.map(_.asString.getValue))
+  def decode(d: BsonDocument): ListingKey = read(new org.bson.BsonDocumentReader(d))
+
+  /** The key the reader is at, read field by field (see [[BsonFields]]). */
+  def read(reader: org.bson.BsonReader): ListingKey = {
+    var venue, page, raw: String = null
+    var year: Option[Int]        = None
+    var directors: Seq[String]   = null
+    BsonFields.document(reader) {
+      case "venue"     => venue = reader.readString()
+      case "page"      => page = reader.readString()
+      case "rawTitle"  => raw = reader.readString()
+      case "year"      => year = BsonFields.when(reader, org.bson.BsonType.INT32)(reader.readInt32())
+      case "directors" => directors = BsonFields.strings(reader)
+      case _           => reader.skipValue()
+    }
+    BsonFields.required(venue, "venue"); BsonFields.required(raw, "rawTitle")
+    if (page != null) ListingKey.Native(venue, page, raw)
+    else ListingKey.Published(venue, raw, year, BsonFields.required(directors, "directors"))
   }
 
   def encodeAll(keys: Iterable[ListingKey]): BsonArray = BsonArray.fromIterable(keys.map(encode))
