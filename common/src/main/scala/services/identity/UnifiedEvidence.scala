@@ -38,7 +38,7 @@ object UnifiedEvidence {
     Signal("poster.match", "poster", 1), Signal("poster.near", "poster", 1), Signal("poster.otherMatches", "poster", -1),
     Signal("agreement.quorum", "stage-verdicts", 1), Signal("poster.vote", "stage-verdicts", 1),
     Signal("broadcast.take", "stage-verdicts", 1), Signal("listing.catalogue", "listing", 1),
-    // the COUNTS and conjunctions the agreement's thresholds read (Quorum, Takers, the rise per dissenting family) —
+    // the COUNTS and conjunctions the agreement's thresholds read (Quorum, the rise per dissenting family) —
     // what an additive score over per-family indicators cannot express
     Signal("count.takers", "counts", 1), Signal("count.leaning", "counts", 1), Signal("count.takersLessDissent", "counts", 1),
     Signal("count.takers2", "counts", 1), Signal("count.takers3", "counts", 1),

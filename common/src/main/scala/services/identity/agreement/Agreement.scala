@@ -149,11 +149,11 @@ object FamilyLookups {
 
 object Agreement {
 
-  /** How many families must agree: each taking the film, or leaning to it ([[leaningOf]]) beside at least [[Takers]]. */
+  /** How many families must agree: each taking the film, or leaning to it ([[leaningOf]]) beside one that takes it. A
+   *  film is weighed for agreement only as a group of families' picks ([[agreed]]), so it always has a taker: leans and
+   *  corroboration complete an agreement, never make one alone (PL "Pianista - Kino Konesera": IMDb takes "The
+   *  Pianist", Wikidata and Filmweb lean to it). */
   val Quorum = 3
-  /** How many of the agreeing families must take the film: leans complete an agreement, never make one alone (PL
-   *  "Pianista - Kino Konesera": IMDb takes "The Pianist", Wikidata and Filmweb lean to it). */
-  val Takers = 1
   /** The listing's own published year and director, crediting the film the takers took: a vote of the venue's own. */
   val ListingFacts = "listing"
   /** The listings' own running time — within [[RuntimeSlack]] minutes of a taker's record on every listing stating one —
@@ -211,7 +211,7 @@ object Agreement {
       case _                 => None
     }
 
-  /** The film the families' evidence, pooled, agrees on: ≥ [[Takers]] families take it (picks join, through any agreeing
+  /** The film the families' evidence, pooled, agrees on: one family or more takes it (picks join, through any agreeing
    *  record, by a shared cross-id, else by [[equivalent]] facts), and with the families leaning to it and what
    *  corroborates it ([[ListingFacts]], [[ListingRuntime]], [[ModelVote]], [[Venues]]) it holds ≥ [[Quorum]] — that plus one for each family
    *  taking another film the listing's title names, and one for each family that weighed it and turned it down
@@ -231,7 +231,8 @@ object Agreement {
     // a family taking a film the listing's title does not name is no evidence on the listing's (US "A Night at the
     // Opera": Wikidata's "The Old Maid", by the director the venue credits)
     val named = filmsOf(picks).filter(group => asStated.nonEmpty && asStated.forall(listing => namesIt(listing, group.map(_.record.film))))
-    named.filter(_.size >= Takers).map(group => supported(listings, asStated, group, verdicts, modelVote, thisYear)).sortBy(film => -film.support).headOption.flatMap { film =>
+    // each group is the picks of one film, so every film weighed has a taker: a lean or a corroboration alone makes none
+    named.map(group => supported(listings, asStated, group, verdicts, modelVote, thisYear)).sortBy(film => -film.support).headOption.flatMap { film =>
       val dissent = named.filterNot(_.exists(pick => film.agreed.families(pick.family))).map(_.size).sum
       Option.when(film.support >= Quorum + dissent + film.turnedDown && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
         !film.records.take(film.agreed.families.size).exists(contradictedByTheListing(listings, _)) &&
@@ -239,7 +240,7 @@ object Agreement {
     }
   }
 
-  /** A film ≥ [[Takers]] families took, as the evidence stands for it: the takers, the families leaning to it, what
+  /** A film one family or more took, as the evidence stands for it: the takers, the families leaning to it, what
    *  corroborates it, and how many families weighed it and turned it down ([[turnsDown]]). */
   private final case class Supported(agreed: AgreedFilm, records: Seq[SourceRecord], turnedDown: Int) {
     /** The records of it the takers took and the leaning families favour. */
