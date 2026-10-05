@@ -71,7 +71,10 @@ final class SideCollectionWatch[Dto: ClassTag](
       val position = resumeToken.openFrom()
       // Post-images arrive UNDECODED and are decoded below: decoded by the driver, one row the
       // codec refuses ended the cursor — see [[ChangeEventDecoder]].
-      val base       = collection.watch[BsonDocument]()
+      // A reply of at most `EventsPerReply` events: a row's event carries the whole row (a presale venue's showtimes run
+      // to ~65 KB), and a reply of a demand window's worth of them — the hourly reconcile's, a wide film's writes — was
+      // 4-16 MB, each a buffer the driver's pool made again a minute later and promoted (worker-us heap dump 2026-10-05).
+      val base       = collection.watch[BsonDocument]().batchSize(SideCollectionWatch.EventsPerReply)
       position match {
         // The saved position could not be read: retried on the backoff, never opened past it at now.
         case ChangeStreamResumeToken.Position.Deferred => reopen.failed()
@@ -148,4 +151,9 @@ final class SideCollectionWatch[Dto: ClassTag](
       Option(subRef.get()).foreach(_.unsubscribe())
     } }
   }
+}
+
+object SideCollectionWatch {
+  /** How many events one change-stream reply carries: ~64 KB of ordinary rows, ~2 MB of the widest presale's. */
+  val EventsPerReply: Int = 32
 }
