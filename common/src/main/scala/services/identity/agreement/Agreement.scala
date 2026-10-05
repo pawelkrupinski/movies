@@ -184,7 +184,8 @@ object Agreement {
               calibration: IdentityCalibration): Answer[FamilyVerdict] = {
     val lookups    = new FamilyLookups(answers, venues,
       listings.flatMap(l => Seq(l.title, l.rawTitle, l.cleanTitle) ++ l.originalTitle ++ l.searchTitle).distinct)
-    val resolution = IdentityResolver.resolve(listings, lookups, normalizer, calibration)
+    val scored     = IdentityResolver.resolveScored(listings, lookups, normalizer, calibration)
+    val resolution = scored.resolution
     if (resolution.unknownQueries > 0 || resolution.unknownFilms > 0) Answer.Unknown
     else resolution.decisions.flatMap(_.film).distinct match {
       case Seq(number) =>
@@ -192,7 +193,7 @@ object Agreement {
           yield FamilyVerdict(answers.family, Some(FamilyPick(answers.family, id, record)), lookups.weighed))
           .fold[Answer[FamilyVerdict]](Answer.Unknown)(Answer.Known(_))
       case _ => // none, or the family splits the cluster: no one film
-        Answer.Known(FamilyVerdict(answers.family, None, lookups.weighed, leaningOf(listings, lookups, answers, normalizer, calibration)))
+        Answer.Known(FamilyVerdict(answers.family, None, lookups.weighed, leaningOf(scored.evidence, lookups, answers)))
     }
   }
 
@@ -201,9 +202,8 @@ object Agreement {
    *  (`Acceptance.leaning`) over the family's search. Never a pick: leans complete a quorum beside a taker, and
    *  a lean to another film is what makes a family's having weighed the film turning it down (PL "Sukienka": RT weighed
    *  "The Dress" at 6.0%, its runner-up at 2.7%; Tempo's IMDb weighed "Tempo" at 2.9% under "Old" at 33.0%). */
-  private[agreement] def leaningOf(listings: Seq[Listing], lookups: FamilyLookups, answers: FamilyAnswers, normalizer: TitleNormalizer,
-                                   calibration: IdentityCalibration): Option[SourceRecord] =
-    IdentityResolver.candidatesOf(listings, lookups, normalizer, calibration)(_ => true).map { node =>
+  private def leaningOf(nodes: Seq[IdentityResolver.NodeEvidence], lookups: FamilyLookups, answers: FamilyAnswers): Option[SourceRecord] =
+    nodes.map { node =>
       val eligible = node.candidates.filterNot(_.denied).sortBy(-_.probability)
       eligible.headOption.filter(best => eligible.lift(1).forall(runnerUp => best.probability >= Acceptance.LeanMargin * runnerUp.probability)).map(_.tmdbId)
     }.distinct match {

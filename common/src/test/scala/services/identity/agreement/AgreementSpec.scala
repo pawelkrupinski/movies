@@ -319,6 +319,22 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     searched.toSeq shouldBe Seq("filmweb title Сталкер", "imdb director Andrzej Wajda", "imdb title Сталкер")
   }
 
+  "A family taking no film" should "be asked each question once: its lean is read off the resolve that took none, not a second one" in {
+    // replayed on the unmatched clusters (2026-10-05): the second resolve was 34–45% of each family's cost
+    val bare  = Seq(listing(KinoMuza, "Klondike"))
+    val held  = new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map("a" -> SourceRecord(klondike2022), "b" -> SourceRecord(klondike1932)))
+    val asked = scala.collection.mutable.ArrayBuffer.empty[String]
+    val counted = new FamilyAnswers {
+      val family: VoterFamily = held.family
+      def titled(text: String)     = { asked += s"title|$text"; held.titled(text) }
+      def directedBy(name: String) = { asked += s"director|$name"; held.directedBy(name) }
+      def record(id: String)       = held.record(id)
+    }
+    val verdict = Agreement.verdict(bare, counted, NoVenueDetails, normalizer, IdentityCalibration.resolver)
+    verdict.toOption.map(_.pick) shouldBe Some(None)
+    asked.groupBy(identity).collect { case (question, times) if times.size > 1 => question } shouldBe empty
+  }
+
   "A family whose questions are not answered yet" should "pick nothing yet — a gap, not a verdict" in {
     val bare = Seq(listing(KinoMuza, "Klondike"))
     Agreement.verdict(bare, new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty, unanswered = true), NoVenueDetails, normalizer, IdentityCalibration.resolver) shouldBe Answer.Unknown

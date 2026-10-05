@@ -236,13 +236,25 @@ object IdentityResolver {
   /** Every node holding a listing `focused` selects, its candidates scored as the resolve scores them. */
   def evidenceOf(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
                  calibration: IdentityCalibration = IdentityCalibration.resolver,
-                 decorations: TitleDecorations = TitleDecorations.resolver)(focused: Listing => Boolean): Seq[NodeEvidence] = {
-    val stages = new Stages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), decorations)
+                 decorations: TitleDecorations = TitleDecorations.resolver)(focused: Listing => Boolean): Seq[NodeEvidence] =
+    evidenceIn(new Stages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), decorations))(focused)
+
+  private def evidenceIn(stages: Stages)(focused: Listing => Boolean): Seq[NodeEvidence] =
     stages.generation.nodes.filter(_.listings.exists(focused)).map { node =>
       val scored = stages.families.scopeOf(node).of(node)
       NodeEvidence(node.listings.map(_.key), scored.map(s => CandidateEvidence(s.candidate.tmdbId, s.candidate.film, s.probability, s.rank, s.denied,
         s.titleNamesIt, s.seasonProduction, s.houseProduction)), stages.acceptance.billsBothItsWorks(scored))
     }
+
+  /** A [[resolve]], and every node's candidates as that same resolve scored them ([[evidenceOf]], read only when asked):
+   *  one pass for a caller wanting both — building the stages a second time was a whole second resolve. */
+  final class Scored private[IdentityResolver] (val resolution: Resolution, stages: Stages) {
+    lazy val evidence: Seq[NodeEvidence] = evidenceIn(stages)(_ => true)
+  }
+  def resolveScored(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+                    calibration: IdentityCalibration = IdentityCalibration.resolver): Scored = {
+    val stages = new Stages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), TitleDecorations.resolver)
+    new Scored(run(stages, Mutation.None), stages)
   }
 
   /** The corpus-wide facts a resolve of `listings` reads ([[CorpusContext]]): what one family,
