@@ -380,9 +380,15 @@ object Agreement {
     val own    = (Seq(listing.cleanTitle, listing.rawTitle, listing.title) ++ listing.originalTitle).map(IdentityMeasures.key).filter(_.nonEmpty).toSet
     val titles = films.flatMap(_.titles).distinct
     val raw    = TitleContainment.tokens(listing.rawTitle)
+    lazy val ownWords = (Seq(listing.cleanTitle, listing.rawTitle, listing.title) ++ listing.originalTitle).map(TitleContainment.tokens).toSet
     titles.map(IdentityMeasures.key).exists(own) ||
-      titles.exists(title => title.length >= 4 && { val words = TitleContainment.tokens(title); words.nonEmpty && raw.containsSlice(words) })
+      titles.exists(title => title.length >= 4 && { val words = TitleContainment.tokens(title); words.nonEmpty && raw.containsSlice(words) }) ||
+      // the film's title with a leading article the listing drops — two words after it at least (DE "Camp der
+      // Verlorenen", TMDB's "Das Camp der Verlorenen"; "Devil" is not "The Devil")
+      titles.exists { title => val words = TitleContainment.tokens(title); words.sizeIs >= 3 && LeadingArticles(words.head) && ownWords(words.tail) }
   }
+  /** Articles a title may lead with that a venue drops: English, German, French, Spanish, Italian. */
+  private val LeadingArticles = Set("the", "a", "an", "der", "die", "das", "le", "la", "les", "el", "los", "las", "il", "lo", "gli")
 
   /** Does the listing name a stage work ([[services.identity.StageWorks]]) — an opera or ballet a house's relay
    *  bills? The films its families find are the work's screen namesakes ("ReTransmisje Met: Così fan tutte" → Tinto

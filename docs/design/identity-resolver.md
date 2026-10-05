@@ -2552,3 +2552,6 @@ filed each under retrieval, scoring, a guard, or the agreement. What it added, e
   Hand-measured, not selected: its signal is no fitted feature, so the selection never weighs it; `rulesOf` carries
   it and its `pinned.*` measures across a refit. Taken as `Basis.Filled`, explained `filled by families.current: …`,
   counted by `kinowo_worker_identity_agreement_taken{kind="filled"}`. Ratchet: +5 listings, 3 films, 0 wrong.
+- **A title naming a film whose own title leads with an article the venue drops** (`Agreement.namesIt`): DE
+  "Camp der Verlorenen" names TMDB's "Das Camp der Verlorenen" (Sembène's *Camp de Thiaroye*), which `title.namesNone`
+  vetoed. Two words after the article at least. Ratchet: +1 listing, 1 film, 0 wrong.

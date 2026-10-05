@@ -354,4 +354,14 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.equivalent(filmweb, imdb.copy(year = Some(1985))) shouldBe false
     Agreement.equivalent(film("Klondike", 2022, "Phil Rosen", 100), klondike2022) shouldBe false
   }
+
+  "a listing's title" should "name a film whose title only adds a leading article, and no film by a bare article-led fragment" in {
+    // DE Zeughauskino "Camp der Verlorenen": TMDB titles Sembène's Camp de Thiaroye "Das Camp der Verlorenen"
+    val camp = film("Das Camp der Verlorenen", 1988, "Ousmane Sembène", 154)
+    Agreement.namesIt(listing(KinoMuza, "Camp der Verlorenen"), Seq(camp)) shouldBe true
+    Agreement.namesIt(listing(KinoMuza, "Night at the Opera"), Seq(film("A Night at the Opera", 1935, "Sam Wood"))) shouldBe true
+    // one word after the article is too few to be the film's own title ("Devil" is not "The Devil")
+    Agreement.namesIt(listing(KinoMuza, "Devil"), Seq(film("The Devil", 1908, "D. W. Griffith"))) shouldBe false
+    Agreement.namesIt(listing(KinoMuza, "Camp"), Seq(camp)) shouldBe false
+  }
 }
