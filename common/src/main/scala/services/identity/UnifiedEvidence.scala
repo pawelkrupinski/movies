@@ -38,6 +38,18 @@ object UnifiedEvidence {
     Signal("agreement.quorum", "stage-verdicts", 1), Signal("poster.vote", "stage-verdicts", 1))
   val Names: Seq[String] = Signals.map(_.name)
 
+  /** The NON-COMPENSATORY guards: a contender one of these fires on is no film to take, whatever else speaks for it — the
+   *  agreement stage's vetoes (several works billed, a double programme, a stage work, another film's own title, the
+   *  venue's year or director against it, a venue poster naming another candidate, a family turning it down). A film
+   *  the model's own rules accepted ([[ModelRules]]) passed the model's guards instead ([[Acceptance]]), as today. */
+  val Guards: Seq[String] = Seq("bill.several", "bill.bothWorks", "stage.work", "title.anothersOwn", "listing.contradicts", "poster.otherMatches",
+    "family.turnedDown")
+  val ModelRules: Seq[String] = Names.filter(_.startsWith("rule."))
+
+  /** The guards `features` trips: none for a film the model's rules took. */
+  def vetoes(features: String => Double): Seq[String] =
+    if (ModelRules.exists(features(_) > 0)) Nil else Guards.filter(features(_) != 0)
+
   /** The rule groups an acceptance rule's name falls in ([[Acceptance]]'s rules, by the name a trace gives them). */
   val RuleGroups: Map[String, String] = Map(
     "exact-top-hit" -> "rule.title", "segment-top-hit" -> "rule.title", "sole-result" -> "rule.title", "sole-work" -> "rule.title",
@@ -171,7 +183,7 @@ object UnifiedEvidence {
  */
 final case class UnifiedWeights(version: String, signals: Seq[String], weights: Seq[Double], cut: Double, l2: Double, folds: Int,
                                 rows: Int, heldOut: Map[String, Double] = Map.empty, ablation: Seq[UnifiedWeights.Ablation] = Nil,
-                                provenance: Map[String, String] = Map.empty) {
+                                provenance: Map[String, String] = Map.empty, guards: Seq[String] = Nil) {
   private lazy val bySignal: Map[String, Double] = signals.zip(weights.drop(1)).toMap
   /** Each signal's contribution to the log-odds, largest first: what a decision lists as its evidence. */
   def contributions(features: Map[String, Double]): Seq[(String, Double)] =
@@ -181,6 +193,21 @@ final case class UnifiedWeights(version: String, signals: Seq[String], weights: 
   /** `model.logit=2.25 +3.10 family.imdb.took=1 +1.42 …` */
   def explain(features: Map[String, Double]): String =
     contributions(features).map { case (name, c) => f"$name=${features(name)}%.2f ${if (c >= 0) "+" else ""}$c%.2f" }.mkString(" ")
+
+  /** The guards `features` trips ([[UnifiedEvidence.vetoes]], of this model's `guards`): a contender tripping one is
+   *  never taken, whatever it scores. */
+  def vetoes(features: Map[String, Double]): Seq[String] =
+    UnifiedEvidence.vetoes(name => features.getOrElse(name, 0.0)).filter(guards.contains)
+
+  /** A decision as it explains itself: the guards it passed (or tripped), its probability against the cut, and every
+   *  signal's weighted contribution — `taken 97.3% ≥ 95.0%; guards passed: bill.several, …; family.imdb.took=1.00 +2.74 …`. */
+  def decision(features: Map[String, Double]): String = {
+    val tripped = vetoes(features)
+    val p       = probability(features)
+    val verdict = if (tripped.nonEmpty) s"vetoed by ${tripped.mkString(", ")}" else if (p >= cut) f"taken ${p * 100}%.1f%% ≥ ${cut * 100}%.1f%%"
+                  else f"not taken ${p * 100}%.1f%% < ${cut * 100}%.1f%%"
+    s"$verdict; guards passed: ${guards.filterNot(tripped.contains).mkString(", ")}; ${explain(features)}"
+  }
 }
 
 object UnifiedWeights {
@@ -191,6 +218,8 @@ object UnifiedWeights {
   implicit val format: OFormat[UnifiedWeights]        = Json.using[Json.WithDefaultValues].format[UnifiedWeights]
 
   val ResourcePath = "identity-unified-weights.json"
+  /** The HYBRID: the guards hard, the fitted score in place of the thresholds among the contenders passing them. */
+  val HybridResourcePath = "identity-unified-hybrid-weights.json"
 
   def fromResource(path: String = ResourcePath): Option[UnifiedWeights] =
     Option(getClass.getClassLoader.getResourceAsStream(path)).map { in =>

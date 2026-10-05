@@ -12,7 +12,11 @@ import java.util.zip.GZIPInputStream
  * writes (the checked-in copy is [[Training]]), and measures it against today's stack — the model and the agreement
  * stage after it — on the same rows:
  *
- *   worker/Test/runMain scripts.IdentityUnifiedFit [--training <tsv.gz>] [--out <json>] [--report <md>] [--version <v>]
+ *   worker/Test/runMain scripts.IdentityUnifiedFit [--training <tsv.gz>] [--report <md>] [--version <v>]
+ *
+ * It writes two artefacts: the UNIFIED model ([[Artefact]], every signal compensatory) and the HYBRID
+ * ([[HybridArtefact]]): the non-compensatory guards ([[UnifiedEvidence.Guards]]) hard — a contender tripping one is
+ * never scored — and the fitted score in place of the hand-set thresholds among the contenders passing them.
  *
  * The fit: a logistic regression over every signal of [[UnifiedEvidence.Signals]], each weight held to its signal's
  * direction ([[LogisticFit.fitSigned]]), L2 [[L2]], on the labelled rows. Whole VENUES are held out ([[Folds]] folds by
@@ -25,6 +29,7 @@ object IdentityUnifiedFit {
 
   val Training: Path = Paths.get("test/resources/fixtures/identity-unified/training.tsv.gz")
   val Artefact: Path = Paths.get("common/src/main/resources", UnifiedWeights.ResourcePath)
+  val HybridArtefact: Path = Paths.get("common/src/main/resources", UnifiedWeights.HybridResourcePath)
   val L2    = 1.0
   val Folds = 5
 
@@ -40,13 +45,16 @@ object IdentityUnifiedFit {
   def main(args: Array[String]): Unit = {
     val opts     = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
     val training = opts.get("training").map(Paths.get(_)).getOrElse(Training)
-    val out      = opts.get("out").map(Paths.get(_)).getOrElse(Artefact)
     val rows     = read(training)
-    val fitted   = fit(rows, opts.getOrElse("version", versionOf(training)))
-    val ablation = ablate(rows, fitted)
-    val weights  = fitted.copy(ablation = ablation)
-    Files.writeString(out, Json.prettyPrint(Json.toJson(weights)) + "\n")
-    val report = Report.of(rows, weights)
+    val version  = opts.getOrElse("version", versionOf(training))
+    // the unified model (every signal compensatory) and the HYBRID (the guards hard, the score among what passes them)
+    val models = Seq(Artefact -> Nil, HybridArtefact -> UnifiedEvidence.Guards).map { case (path, guards) =>
+      val fitted  = fit(rows, version, guards)
+      val weights = fitted.copy(ablation = ablate(rows, fitted))
+      Files.writeString(path, Json.prettyPrint(Json.toJson(weights)) + "\n")
+      weights
+    }
+    val report = models.map(Report.of(rows, _)).mkString("\n") + Report.guarding(rows, models.head, models.last)
     opts.get("report").foreach(path => Files.writeString(Paths.get(path), report))
     println(report)
   }
@@ -70,6 +78,13 @@ object IdentityUnifiedFit {
   // ── fitting ───────────────────────────────────────────────────────────────────────────────
 
   private val signs: Seq[Int] = 0 +: UnifiedEvidence.Signals.map(_.direction)
+  private val column: Map[String, Int] = UnifiedEvidence.Names.zipWithIndex.toMap
+
+  /** The guards of `guards` a row trips ([[UnifiedEvidence.vetoes]]). */
+  def vetoes(row: Row, guards: Seq[String]): Seq[String] = UnifiedEvidence.vetoes(name => row.x(column(name))).filter(guards.contains)
+  /** The rows a model with `guards` scores at all: those tripping none. */
+  def passing(rows: Seq[Row], guards: Seq[String]): Seq[Row] = rows.filter(vetoes(_, guards).isEmpty)
+  private def keptOf(guards: Seq[String]): Set[String] = UnifiedEvidence.Names.toSet -- guards
 
   /** The weights the labelled `rows` fit — intercept first, then every signal, a dropped one (not in `kept`) at 0. Rows
    *  alike in label and features are folded into one with their count, in a fixed order. */
@@ -124,28 +139,32 @@ object IdentityUnifiedFit {
 
   private def rounded(x: Double) = math.rint(x * 1e6) / 1e6
 
-  /** The model: the weights all labelled rows fit, the cut and what the held-out folds measured. */
-  def fit(rows: Seq[Row], version: String): UnifiedWeights = {
-    val weights = weightsOf(rows)
-    val scored  = heldOut(rows)
+  /** The model: the weights all labelled rows passing `guards` fit (the guards themselves no feature: a row tripping one
+   *  is never scored), the cut and what the held-out folds measured. */
+  def fit(contenders: Seq[Row], version: String, guards: Seq[String] = Nil): UnifiedWeights = {
+    val rows    = passing(contenders, guards)
+    val weights = weightsOf(rows, keptOf(guards))
+    val scored  = heldOut(rows, keptOf(guards))
     val cut     = cutOf(scored)
     val (all, accuracy, n)     = metrics(scored)
     val (hand, handAccuracy, h) = metrics(scored.filter(_._1.hand))
     val (weak, weakAccuracy, _) = metrics(scored.filter(_._1.source == "weak"))
     UnifiedWeights(version, UnifiedEvidence.Names, weights, rounded(cut), L2, Folds, n,
       Map("logLoss" -> all, "accuracy" -> accuracy, "handLogLoss" -> hand, "handAccuracy" -> handAccuracy, "handRows" -> h.toDouble,
-        "weakLogLoss" -> weak, "weakAccuracy" -> weakAccuracy).view.mapValues(rounded).toMap)
+        "weakLogLoss" -> weak, "weakAccuracy" -> weakAccuracy).view.mapValues(rounded).toMap, guards = guards)
   }
 
   /** Each signal group dropped in turn, the model refitted and measured held out at the full model's cut. */
-  def ablate(rows: Seq[Row], full: UnifiedWeights): Seq[UnifiedWeights.Ablation] =
-    UnifiedEvidence.Signals.map(_.group).distinct.map { group =>
-      val kept   = UnifiedEvidence.Signals.filterNot(_.group == group).map(_.name).toSet
+  def ablate(all: Seq[Row], full: UnifiedWeights): Seq[UnifiedWeights.Ablation] = {
+    val rows = passing(all, full.guards)
+    UnifiedEvidence.Signals.filterNot(s => full.guards.contains(s.name)).map(_.group).distinct.map { group =>
+      val kept   = keptOf(full.guards) -- UnifiedEvidence.Signals.filter(_.group == group).map(_.name)
       val scored = heldOut(rows, kept)
       val takes  = Measure.takes(scored, full.cut)
       UnifiedWeights.Ablation(group, rounded(metrics(scored)._1), rounded(metrics(scored.filter(_._1.hand))._1),
         takes.map(_.right).sum, takes.map(_.wrong).sum)
     }
+  }
 
   // ── measuring against today's stack ────────────────────────────────────────────────────────
 
@@ -180,16 +199,19 @@ object IdentityUnifiedFit {
       val b = new StringBuilder
       def line(s: String) = b ++= s ++= "\n"
       val today   = rows.filter(_.today)
-      val inSample = rows.map(row => row -> probability(weights.weights, row))
-      val held    = heldOut(rows)
+      val scoredRows = passing(rows, weights.guards)
+      val inSample = scoredRows.map(row => row -> probability(weights.weights, row))
+      val held    = heldOut(scoredRows, keptOf(weights.guards))
       val unified = Measure.takes(inSample, weights.cut)
       val unifiedHeld = Measure.takes(held, weights.cut)
-      line(s"# Unified evidence model ${weights.version}")
+      line(s"# ${if (weights.guards.isEmpty) "Unified" else "Hybrid"} evidence model ${weights.version}")
+      if (weights.guards.nonEmpty) line(s"\nHard guards (a contender tripping one is never scored): ${weights.guards.mkString(", ")}; " +
+        s"${rows.size - scoredRows.size} of ${rows.size} contenders vetoed.")
       line(s"\n${rows.size} contender rows, ${rows.map(_.cluster).distinct.size} clusters; labelled ${weights.rows} " +
         s"(${rows.count(_.hand)} hand, ${rows.count(_.source == "weak")} weak). Cut ${f"${weights.cut}%.4f"}.")
       line("\n## Weights (sign-constrained; 0 = held at zero)\n\n| signal | group | direction | weight |\n|---|---|---|---|")
       line(f"| intercept | | | ${weights.weights.head}%.3f |")
-      UnifiedEvidence.Signals.zip(weights.weights.drop(1)).sortBy(s => -math.abs(s._2)).foreach { case (s, w) =>
+      UnifiedEvidence.Signals.zip(weights.weights.drop(1)).filterNot(s => weights.guards.contains(s._1.name)).sortBy(s => -math.abs(s._2)).foreach { case (s, w) =>
         line(f"| ${s.name} | ${s.group} | ${s.direction}%+d | $w%.3f |") }
       line("\n## Held out (whole venues)\n")
       weights.heldOut.toSeq.sortBy(_._1).foreach { case (k, v) => line(f"- $k: $v%.4f") }
@@ -235,6 +257,22 @@ object IdentityUnifiedFit {
       moved.filter { case (_, was, now) => was.isEmpty && now.isDefined }.foreach { case (r, _, now) =>
         line(s"- ${r.country} [${r.origin}] ${r.rawTitle} ×${r.listings}: ${film(now)} (right ${now.get.right}, wrong ${now.get.wrong})") }
       b.toString
+    }
+
+    /** The unified model's high-scoring held-out wrong takes: which guard trips each, and what the hybrid makes of it. */
+    def guarding(rows: Seq[Row], unified: UnifiedWeights, hybrid: UnifiedWeights): String = {
+      val todays = todaysOf(rows)
+      val hybridHeld = heldOut(passing(rows, hybrid.guards), keptOf(hybrid.guards))
+      val hybridTakes = Measure.takes(hybridHeld, hybrid.cut).map(r => r.cluster -> r.film).toSet
+      val hybridP = hybridHeld.map { case (r, p) => (r.cluster, r.film) -> p }.toMap
+      val wrong = best(heldOut(rows, keptOf(unified.guards))).filter { case (r, p) =>
+        p >= 0.9 && r.hand && r.label.contains(false) && !r.today && !todays.get(r.cluster).exists(_.film != r.film) }
+      ("\n## The unified model's held-out wrong takes >= 0.90, under the hybrid\n" +: wrong.sortBy(-_._2).map { case (r, p) =>
+        val tripped = vetoes(r, UnifiedEvidence.Guards)
+        val now = if (tripped.nonEmpty) s"vetoed by ${tripped.mkString(", ")}"
+          else hybridP.get((r.cluster, r.film)).fold("not scored")(q => f"scored $q%.4f, ${if (hybridTakes((r.cluster, r.film))) "TAKEN" else "not taken"}")
+        f"- ${r.country} ${r.rawTitle}: ${r.film} ${r.filmTitle} unified $p%.4f -> hybrid $now"
+      }).mkString("\n") + "\n"
     }
   }
 }

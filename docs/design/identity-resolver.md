@@ -2446,3 +2446,24 @@ US "MetOpera: Rigoletto" → the Royal Opera's), which the stack's conjunctions 
 guards) refuse and a sum of independent weights does not. Verdict: as one argmax-and-cut decision the unified model is
 not yet a replacement, and the agreement stage is redundant for nothing; phase 2 wires the learned weights in as
 explained, measured evidence beside the rules, retiring a rule only where its replacement keeps these numbers.
+
+### 20.5 The hybrid (phase 1b): guards hard, the score in place of the thresholds
+
+`UnifiedEvidence.Guards` — several works billed, a double programme, a stage work, another film's own title, the venue's
+year or director against it, a venue poster naming another candidate, a family turning it down — veto a contender
+before it is scored (a film the model's own rules took passed the model's guards instead, as today; the learned
+cannot-links already drop a film every node denies). The score (`identity-unified-hybrid-weights.json`, refitted on
+the 15,465 guard-passing rows, monotone, venues held out) replaces the hand-set thresholds among the rest. A decision
+explains itself as `UnifiedWeights.decision`: taken / vetoed by <guard> / not taken against the cut, the guards
+passed, and every signal's weighted contribution.
+
+Measured (2026-10-05): cut 0.992; 0 switched; the ratchet's fixture 27 right / 0 wrong against today's 416; the whole
+corpus loses 7,621 listings (UK 4,925, US 1,762, DE 435, PL 390, ES 109), gains none. Of the unified model's six
+held-out wrong takes ≥ 0.90, the guards veto three (PL "Manon", UK RBO "Tosca": stage work; PL "Obcy w domu": another's
+own title); three pass every guard and still score ≥ 0.95: PL "Zamki na piasku" → "Sandcastles" (1972) (IMDb and
+Filmweb take it, no TMDB record — today only `Quorum` 3 refuses it), PL "LALKA / DOLLY" → 2026 "Lalka" (IMDb takes
+it, two families take another film — today the quorum raised per dissenting family refuses it; the monotone fit holds
+`family.dissent` at 0, no data making it negative), DE "André Rieus Weihnachtskonzert 2026" → "Tage wie diese"
+(`agreement.quorum` fires on it in the dataset though the stage's replay takes nothing — a discrepancy to trace before
+phase 2). So the hybrid makes no hand-set constant redundant yet: `Quorum`, `Takers`, the per-dissent quorum rise,
+`WidelyBilled` and the poster bits all still refuse takes the fitted score would make.

@@ -93,6 +93,16 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     weights.explain(features) shouldBe "family.imdb.took=1.00 +2.00 model.logit=2.00 +1.00"
   }
 
+  "the hybrid" should "veto a contender a guard trips whatever it scores, unless the model's own rule took it, and explain both" in {
+    val hybrid = UnifiedWeights("h", Seq("family.imdb.took", "rule.title"), Seq(0.0, 5.0, 5.0), cut = 0.9, l2 = 1.0, folds = 5, rows = 1,
+      guards = UnifiedEvidence.Guards)
+    val contradicted = Map("family.imdb.took" -> 1.0, "listing.contradicts" -> 1.0)
+    hybrid.vetoes(contradicted) shouldBe Seq("listing.contradicts")
+    hybrid.decision(contradicted) should startWith("vetoed by listing.contradicts; guards passed: bill.several")
+    hybrid.vetoes(contradicted + ("rule.title" -> 1.0)) shouldBe empty
+    hybrid.decision(Map("family.imdb.took" -> 1.0)) should startWith("taken 99.3% ≥ 90.0%; guards passed: bill.several, bill.bothWorks")
+  }
+
   "the signal list" should "name every signal once, each with a direction" in {
     Names.distinct.size shouldBe Names.size
     RuleGroups.values.toSet.subsetOf(Names.toSet) shouldBe true
