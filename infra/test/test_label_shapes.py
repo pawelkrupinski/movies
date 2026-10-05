@@ -63,10 +63,6 @@ EVENT_ONLY_VALUES = {
     ("kinowo_worker_telegram_notifications_total", "job", "kinowo-worker"),
     ("kinowo_worker_telegram_notifications_total", "outcome", "sent"),
     ("kinowo_worker_telegram_notifications_total", "outcome", "failed"),
-    # NOT PUBLISHED YET: the identity agreement's series (IdentityAgreementMetrics, af3fb51da) reach the fleet with the
-    # first worker image built from it; `result` is the closed set the worker seeds at 0 (added, duplicate). Re-snapshot
-    # once it has run, then drop this.
-    ("kinowo_worker_identity_agreement_enqueued_total", "result", "added"),
 }
 
 

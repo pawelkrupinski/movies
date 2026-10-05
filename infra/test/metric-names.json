@@ -81,6 +81,6 @@
   "prometheus_tsdb_storage_blocks_bytes",
   "up"
  ],
- "taken": "2026-10-04",
+ "taken": "2026-10-05",
  "window_days": 14
 }
