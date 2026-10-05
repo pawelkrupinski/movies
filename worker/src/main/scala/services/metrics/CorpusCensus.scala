@@ -283,8 +283,12 @@ object FilmCensus {
     prior.filter(p => (p.bySource eq bySource) && p.ready == ready && p.anchor == anchor) match {
       case Some(p) => new FilmCensus(subsets, ready, bySource.size, bySource, p.cards, p.screenable, anchor)
       case None =>
-        val screening = bySource.valuesIterator.filter(_.starts.nonEmpty).toSeq
-        val cards     = anchor.fold(Seq.empty[Seq[SlotCensus]])(a => screening.filter(_.city.isDefined).groupBy(_.titleKey.getOrElse(a)).values.toSeq)
+        // Held as arrays, not lists: a wide film's part held a list cell per screening slot (24 bytes each), rebuilt on
+        // every change of the film — the largest named holder of dead list cells in worker-us's old generation (heap
+        // dump 2026-10-05: 9.1 MB).
+        val screening = bySource.valuesIterator.filter(_.starts.nonEmpty).to(scala.collection.immutable.ArraySeq)
+        val cards     = anchor.fold(Seq.empty[Seq[SlotCensus]])(a => screening.filter(_.city.isDefined).groupBy(_.titleKey.getOrElse(a))
+          .valuesIterator.to(scala.collection.immutable.ArraySeq))
         new FilmCensus(subsets, ready, bySource.size, bySource, cards, if (ready) Nil else screening, anchor)
     }
   }

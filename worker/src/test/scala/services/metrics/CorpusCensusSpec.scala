@@ -267,6 +267,22 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     (again.sameSlots(prior)) shouldBe true
   }
 
+  // A wide film's part is rebuilt on every change of the film, and held until the next: as lists, a cell of 24 bytes per
+  // screening slot — the largest named holder of dead list cells in worker-us's old generation (heap dump 2026-10-05).
+  it should "hold its title groups and screenable slots as arrays, the same slots" in {
+    val data = (0 until 40).map(i => (models.CinemaShowing.keyFor(KinoApollo, s"x$i", normalizer): Source) ->
+      SourceData(title = Some("x"), showtimes = Seq(Showtime(tomorrow, bookingUrl = None)))).toMap[Source, SourceData] ++
+      Map[Source, SourceData](Helios -> SourceData(title = Some("x"), showtimes = Seq(Showtime(tomorrow, bookingUrl = None))))
+    val readyPart  = FilmCensus.of(row("Wide", ready(Helios, 1, tomorrow).copy(data = data)), normalizer, None)
+    readyPart.cards.flatten.size shouldBe readyPart.cards.map(_.size).sum
+    readyPart.cards.flatten.size should be > 0
+    all(readyPart.cards) shouldBe a[scala.collection.immutable.ArraySeq[?]]
+    readyPart.cards shouldBe a[scala.collection.immutable.ArraySeq[?]]
+    val unresolved = FilmCensus.of(row("Wide", MovieRecord(data = data)), normalizer, None)
+    unresolved.screenable.size shouldBe data.size
+    unresolved.screenable shouldBe a[scala.collection.immutable.ArraySeq[?]]
+  }
+
   // ── A venue across a zone line from its city ─────────────────────────────────────────────────────
 
   // Key Twin Russell Springs keeps Central time inside Somerset, KY (Eastern). The web judges its showtimes started on
