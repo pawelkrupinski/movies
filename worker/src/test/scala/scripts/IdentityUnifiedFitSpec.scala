@@ -29,6 +29,14 @@ class IdentityUnifiedFitSpec extends AnyFlatSpec with Matchers {
     UnifiedEvidence.Signals.zip(shipped.weights.drop(1)).filter { case (signal, weight) => signal.direction * weight < 0 } shouldBe empty
   }
 
+  "the shipped identity rules" should "be the rules every fold selects from the checked-in rows" in {
+    val shipped  = services.identity.UnifiedRules.fromResource().getOrElse(fail("no identity-unified-rules.json"))
+    val clusters = read(Training).groupBy(_.cluster).toSeq.sortBy(_._1).map { case (id, rs) => IdentityUnifiedStrategies.Cluster(id, rs.sortBy(_.film)) }
+    val stable   = IdentityUnifiedStrategies.stableSteps(clusters)
+    (shipped.fill, shipped.correct, shipped.guards) shouldBe
+      ((stable.filter(_.role == "fill").map(_.signal), stable.filter(_.role == "correct").map(_.signal), UnifiedEvidence.Guards))
+  }
+
   private def row(cluster: String, film: String, today: Boolean = false, label: Option[Boolean] = None, source: String = "") =
     Row("pl", cluster, "corpus", "Kino", 1, "t", film, "", today, label, source, 0, 0, IndexedSeq.fill(UnifiedEvidence.Names.size)(0.0))
 

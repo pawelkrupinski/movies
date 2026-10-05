@@ -260,3 +260,42 @@ object UnifiedWeights {
       try Json.parse(in).as[UnifiedWeights] finally in.close()
     }
 }
+
+/**
+ * The identity rules the signal selection CHOSE (`scripts.IdentityUnifiedStrategies`: greedy forward selection over
+ * (signal, role) pairs, kept only where every fold with its venues held out selects it too), as DATA:
+ * `identity-unified-rules.json`, refit by `scripts/identity-calibrate.sh --unified`. A FILL rule takes, for a cluster the
+ * model and the agreement stage took nothing for, the one contender ([[UnifiedEvidence.contenders]]) its signal fires on
+ * that trips none of `guards`; a CORRECT rule would act on a film the model took — none is selected today.
+ */
+final case class UnifiedRules(version: String, guards: Seq[String], fill: Seq[String], correct: Seq[String] = Nil,
+                              measured: Map[String, Double] = Map.empty) {
+  /** Does the contender trip none of the guards? */
+  def passes(contender: UnifiedEvidence.Contender): Boolean =
+    UnifiedEvidence.vetoes(name => contender.signals.getOrElse(name, 0.0)).forall(guard => !guards.contains(guard))
+
+  /** The film the first fill rule takes, with the rule's signal: the one guard-passing contender it fires on. */
+  def filled(contenders: Seq[UnifiedEvidence.Contender]): Option[(UnifiedEvidence.Contender, String)] =
+    fill.iterator.flatMap { signal =>
+      contenders.filter(c => passes(c) && c.signals.getOrElse(signal, 0.0) > 0) match {
+        case Seq(one) => Some(one -> signal)
+        case _        => None
+      }
+    }.nextOption()
+
+  /** A fill as its decision explains it: the rule, the guards it passed, and every signal firing on the film. */
+  def explain(contender: UnifiedEvidence.Contender, rule: String): String =
+    s"filled by $rule: '${contender.title}' ${contender.film} — guards passed: ${guards.mkString(", ")}; signals: " +
+      contender.signals.toSeq.sortBy(_._1).map { case (name, x) => if (x == 1.0) name else f"$name=$x%.2f" }.mkString(", ")
+}
+
+object UnifiedRules {
+  implicit val format: OFormat[UnifiedRules] = Json.using[Json.WithDefaultValues].format[UnifiedRules]
+  val ResourcePath = "identity-unified-rules.json"
+  def fromResource(path: String = ResourcePath): Option[UnifiedRules] =
+    Option(getClass.getClassLoader.getResourceAsStream(path)).map { in =>
+      try Json.parse(in).as[UnifiedRules] finally in.close()
+    }
+  /** The rules on the classpath; none when the artefact is missing (a fill then takes nothing). */
+  lazy val resolver: UnifiedRules = fromResource().getOrElse(UnifiedRules("none", UnifiedEvidence.Guards, Nil))
+}

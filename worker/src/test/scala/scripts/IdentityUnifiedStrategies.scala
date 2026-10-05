@@ -301,6 +301,10 @@ object IdentityUnifiedStrategies {
       line(s"- ${r.step.name}: ${r.why}${if (r.unlabelled > 0) s"; ${r.unlabelled} unlabelled change(s)" else ""}"))
     line(s"\n(${rejected.count(_.why == "changes nothing")} (signal, role) pairs change nothing.)")
     val report = b.toString
+    // the stable rules, pinned for the agreement stage to apply
+    val shipped = rulesOf(stable, results.find(_.name.startsWith("2b. stable greedy (in sample)")), results.find(_.name.startsWith("2b. stable greedy (held out)")),
+      IdentityUnifiedFit.versionOf(opts.get("training").map(Paths.get(_)).getOrElse(IdentityUnifiedFit.Training)))
+    Files.writeString(opts.get("rules").map(Paths.get(_)).getOrElse(RulesArtefact), play.api.libs.json.Json.prettyPrint(play.api.libs.json.Json.toJson(shipped)) + "\n")
     opts.get("report").foreach(path => Files.writeString(Paths.get(path), report))
     println(report)
 
@@ -311,6 +315,14 @@ object IdentityUnifiedStrategies {
     // the changes the adopted strategy (greedy) makes that no hand label judges, for review
     writeReview(opts.get("review").map(Paths.get(_)).getOrElse(ReviewFile), greedyReview)
   }
+
+  val RulesArtefact: Path = Paths.get("common/src/main/resources", services.identity.UnifiedRules.ResourcePath)
+
+  /** The stable steps as the pinned artefact, with what they measured. */
+  def rulesOf(stable: Seq[Step], inSample: Option[Result], heldOut: Option[Result], version: String): services.identity.UnifiedRules =
+    services.identity.UnifiedRules(version, guards, stable.filter(_.role == "fill").map(_.signal), stable.filter(_.role == "correct").map(_.signal),
+      (inSample.toSeq.flatMap(r => Seq("right" -> r.right, "wrong" -> r.wrong, "gained" -> r.gained, "lost" -> r.lost, "switched" -> r.switched)) ++
+        heldOut.toSeq.flatMap(r => Seq("heldOutRight" -> r.right, "heldOutWrong" -> r.wrong))).map { case (k, v) => k -> v.toDouble }.toMap)
 
   val ReviewFile: Path = Paths.get("test/resources/fixtures/identity-unmatched/review-candidates.tsv")
 
