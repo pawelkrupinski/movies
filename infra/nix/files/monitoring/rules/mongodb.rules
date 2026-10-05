@@ -310,8 +310,8 @@ groups:
       # health" number, it is HOW LONG A WORKER OUTAGE THIS FLEET SURVIVES GRACEFULLY.
       #
       # THE WINDOW IS TIME, NOT SIZE, and that is why it is worth alerting on at all. The oplog is
-      # 1GB -- cut from 4GB when the volume was sized at Hetzner's 10GB minimum -- so the window is
-      # whatever 1GB of writes happens to be, which shrinks the moment write volume rises. A size
+      # 4GB (`oplogSizeMB` in hosts/mongo-1/default.nix), so the window is whatever 4GB of writes
+      # happens to be, which shrinks the moment write volume rises. A size
       # alert would say nothing; a time alert says the thing that matters.
       # -------------------------------------------------------------------------------------------
       - alert: MongodOplogWindowShort
@@ -322,11 +322,12 @@ groups:
         # comfortably outlast the longest planned interruption to a change-stream consumer, and the
         # longest one this fleet has is a worker redeploy or a mongo-1 reboot -- minutes. Four hours
         # is two orders of magnitude above that, which leaves room for an unplanned outage nobody is
-        # awake for, and is low enough that on a 1GB oplog against a ~70MB database it should never
-        # be approached in normal operation. IF IT FIRES IN THE FIRST MONTH, the write rate is
-        # higher than that assumption and the number to compare against is
+        # awake for, and is low enough that it should never be approached in normal operation. IF IT
+        # FIRES IN THE FIRST MONTH, the write rate is higher than that assumption and the number to compare against is
         # `db.getReplicationInfo().timeDiff` under normal load -- not this threshold lowered until
-        # it stops firing.
+        # it stops firing. IT FIRED ON 2026-10-03 (2.6h) and that was the write rate, as predicted:
+        # ~330k `identity_traces` rewrites an hour on US, every trace rewritten unchanged, until
+        # 56c3e317b wrote one only when it changed (window back to 14h by 10-05).
         for: 15m
         labels:
           severity: warning
