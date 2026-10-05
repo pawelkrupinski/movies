@@ -15,7 +15,7 @@ on:
 #
 # WHAT THAT COSTS NOW THAT THE k3s DEPLOY NO LONGER HAPPENS HERE AT ALL, stated
 # rather than left to be rediscovered: a superseding push cancels an in-flight
-# `record-web` / `record-worker` too, and no job-level `cancel-in-progress: false`
+# `publish-web` / `publish-worker` too, and no job-level `cancel-in-progress: false`
 # can refuse a workflow-level cancellation. It used to cancel an ssh call that was
 # WATCHING a rollout; there is no rollout here any more, so what it cancels is the
 # marker write — and that is survivable precisely because the gate MEASURES FROM
@@ -30,16 +30,17 @@ concurrency:
 
 # Pipeline shape:
 #
-#                                                             ┌─► kick-convergence
-#   ci (reusable workflow — lint, test, integration,          ├─► build-web ──► record-web
-#       ios/android local-server, page-tests) ─────────────── ─┴─► build-worker ──► record-worker
-#   gates (t=0: which tiers changed since their last deploy) ──┘  (both builds need it too)
+#   ci (reusable workflow — lint, test, integration, ──┬─► kick-convergence
+#       ios/android local-server, page-tests)           ├─► flake-ledger (only when ci failed)
+#                                                       ├─► publish-web
+#   gates (t=0: which tiers changed since their   ──────┴─► publish-worker
+#          last deploy; both publishes read it) ──► image-worker ──┘
 #
 # ONE WORKFLOW, because there used to be three: this file plus
 # `build-web-image.yaml` and `build-worker-image.yaml`, which built the GHCR
 # images the k3s cluster actually serves. They are folded in below; what had to
 # survive the fold is their DIFFERENT `on.push.paths` filters, which is why the
-# tiers are now gated per JOB — see the note over `build-web`.
+# tiers are now gated per JOB — see the note over `publish-web`.
 #
 # The whole build+test pipeline lives in ci.yml as a `workflow_call`
 # reusable workflow so it has exactly one definition; branch-ci.yml
@@ -65,15 +66,15 @@ jobs:
 
     # The images are BUILT WHILE ci RUNS and only PUBLISHED here. ci's `image-web` and this workflow's
     # `image-worker` build them from the dists ci's `e2e (corpus)` row staged, while ci's slowest rows
-    # still run, and push them under the commit SHA alone — a tag nothing deploys. `build-web` /
-    # `build-worker` below `needs: ci` (the worker's also `needs: image-worker`),
+    # still run, and push them under the commit SHA alone — a tag nothing deploys. `publish-web` /
+    # `publish-worker` below `needs: ci` (the worker's also `needs: image-worker`),
     # and for a tier whose paths changed give those bytes the tags that ship: a registry manifest copy
     # of seconds where they used to restage (~2 min of cold `sbt stage`) and build (~1.7 min) on the
     # post-ci critical path. (DeployImageReuseSpec)
     #
-    # Both images are built on every main push, including a tier whose paths did not change: building
-    # is not shipping. An unpublished SHA-tagged image costs registry space and builder time on runners
-    # ci's e2e rows have already given back, nothing else.
+    # The web image is built on every main push, even when its paths did not change: building is not
+    # shipping, and an unpublished SHA-tagged image costs registry space and a runner ci's e2e rows have
+    # already given back. The worker's is built only for a push that changed the worker (`image-worker`).
     # `free-runners` — the job that used to sit here, cancelling any in-flight
     # convergence run to take its runners back for the Fly deploy — was
     # retired 2026-09-08 alongside that workflow moving to `cancel-in-progress:
@@ -252,9 +253,9 @@ jobs:
 
     # ── The k3s tiers ────────────────────────────────────────────────────────────────────────────
     #
-    # These four jobs were two workflows of their own until they were folded in here
-    # (`build-web-image.yaml`, `build-worker-image.yaml`). They publish the images the CLUSTER runs,
-    # which is how production ships.
+    # One `publish-<tier>` job per tier publishes the image the CLUSTER runs, which is how production
+    # ships. They were two workflows of their own until they were folded in here
+    # (`build-web-image.yaml`, `build-worker-image.yaml`).
     #
     # WHAT THE FOLD HAD TO PRESERVE, and the single most important property of the whole file: the
     # two workflows carried DIFFERENT `on.push.paths` filters, and that difference is load-bearing.
@@ -263,51 +264,51 @@ jobs:
     # credit. That is the entire reason the worker's deploy is path-gated.
     #
     # `on.push.paths` is workflow-level, so one workflow cannot carry two filters. The gating is
-    # therefore per JOB: each tier hands its own path list to `.github/actions/changed-paths`, and
-    # everything downstream of that answer — the publish steps and the `record-*` markers — reads it.
+    # therefore per JOB: each tier hands its own path list to `.github/actions/changed-paths` in
+    # `gates`, and each `publish-<tier>` runs only on its own tier's answer.
     # `K8sTierPathGatingSpec` runs the real matcher over the real lists and asserts a web-only
     # change does not reach the worker. Keep the lists apart; a union quietly undoes all of this.
     #
     # ONE WIDENING THE FOLD COULD NOT AVOID: both lists name this file, because this file is now
-    # where both tiers' build steps live — so editing it redeploys BOTH tiers, where editing
-    # `build-web-image.yaml` used to leave the worker alone. A workflow edit restarting the worker
-    # is the same trade the old worker workflow made with its own filename; there is no sub-file
-    # granularity to be had.
+    # where both tiers' publish steps live — so editing it redeploys BOTH tiers. There is no
+    # sub-file granularity to be had.
     #
-    # BOTH TIERS `needs: ci`, which the standalone workflows did not. They deployed to the cluster
-    # the moment their image built, tests or no tests — a push that failed ci still rolled a broken
-    # web image onto kinowo.net. It also keeps the runner budget intact: ci's jobs are the only
-    # ones spoken for at t=0 now that `free-runners` is retired, and a job that waits for ci takes a
-    # slot ci has already given back (`CiRunnerBudgetSpec`).
-    build-web:
+    # BOTH TIERS `needs: ci`: a push that fails ci publishes nothing. It also keeps the runner budget
+    # intact — a job that waits for ci takes a slot ci has already given back (`CiRunnerBudgetSpec`).
+    #
+    # PUBLISH AND RECORD IN ONE JOB. The marker write used to be a `record-<tier>` job of its own,
+    # so the `contents: write` token never sat in a job that ran a Docker build of project code.
+    # The images are built elsewhere now (ci's `image-web`, `image-worker` below) and this job only
+    # copies registry tags with the runner's own docker CLI: no project code and no third-party
+    # action runs here, so the split bought nothing but a second job hop on every push.
+    publish-web:
         needs: [ci, gates]
+        if: needs.gates.outputs.web-changed == 'true'
         runs-on: ubuntu-latest
+        timeout-minutes: 10
 
         permissions:
-            contents: read
-            # The whole reason this needs no new credential: the built-in GITHUB_TOKEN can push to
-            # GHCR.
+            # Moving the `deployed-web` marker is a ref write.
+            contents: write
+            # The built-in GITHUB_TOKEN can push to GHCR; no new credential.
             packages: write
 
-        outputs:
-            changed: ${{ needs.gates.outputs.web-changed }}
+        # ONE AT A TIME, AND DO NOT CANCEL A RUNNING ONE. Two runs moving the same tag concurrently
+        # is last-write-wins, and the loser could be the newer commit — which would walk the marker
+        # BACKWARDS and re-ship work already covered.
+        concurrency:
+            group: publish-web
+            cancel-in-progress: false
 
         steps:
-            # No checkout: the tier's gate is `gates`', and publishing is a registry copy of the
-            # image ci built.
-            - uses: docker/login-action@v3
-              if: needs.gates.outputs.web-changed == 'true'
+            # Only so the local Grafana action below is on disk.
+            - uses: actions/checkout@v5
               with:
-                  registry: ghcr.io
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
-
-            - uses: docker/setup-buildx-action@v3
-              if: needs.gates.outputs.web-changed == 'true'
+                  sparse-checkout: .github
+                  sparse-checkout-cone-mode: false
 
             - name: Compute an orderable image tag
               id: tag
-              if: needs.gates.outputs.web-changed == 'true'
               # WHY A THIRD TAG EXISTS. Flux's image automation chooses "the newest image" by
               # SORTING tag names, and neither tag below can be sorted: a commit SHA has no order
               # at all, and `latest` is one moving name rather than a series. This adds a tag that
@@ -324,65 +325,37 @@ jobs:
                   echo "value=main-$(date -u +%Y%m%d%H%M%S)-${sha:0:7}" >> "$GITHUB_OUTPUT"
 
             - name: Publish the image ci built under the tags that ship it
-              if: needs.gates.outputs.web-changed == 'true'
               # ci's `image-web` job built this commit's image while the rest of ci ran, and pushed it
               # under its SHA tag ONLY — a tag nothing deploys. This job runs only once ci is green, and
               # gives those same bytes the two names that ship: `main-<utc>-<sha7>`, the one Flux's image
               # automation sorts and DEPLOYS, and `latest`, so a hand-applied manifest resolves to
               # something (never deploy `latest`: a restart under it can come back on another build). A
-              # manifest copy in the registry — seconds — instead of the ~1.7 min build it replaces on
-              # the post-ci critical path. The SHA tag stays the provenance tag.
+              # manifest copy in the registry — seconds. The SHA tag stays the provenance tag.
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   set -euo pipefail
+                  echo "$GH_TOKEN" | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
                   docker buildx imagetools create \
                       -t ghcr.io/${{ github.repository_owner }}/movies-web:${{ steps.tag.outputs.value }} \
                       -t ghcr.io/${{ github.repository_owner }}/movies-web:latest \
                       ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}
 
-    record-web:
-        # A JOB OF ITS OWN RATHER THAN A STEP INSIDE `build-web`, and the reason is the TOKEN.
-        # Moving the marker is a ref write; `build-web` runs a Docker build (the Dockerfile and the
-        # staged app it trains an AOT cache with), which is arbitrary project code. Keeping the
-        # write-capable token in a job that does nothing but call `gh api` is the difference
-        # between a build that could push to this repository and one that could not.
-        needs: build-web
-        runs-on: ubuntu-latest
-
-        # Moving the `deployed-web` marker below is a ref write, and the only one this job makes.
-        permissions:
-            contents: write
-
-        # The web tier's gate, at job level: `build-web` published the answer as an output, so a
-        # push that changed nothing web-shaped since the last marker move skips this entirely. A
-        # cancelled or skipped run leaves the change inside the interval and the next push covers
-        # it — the property that keeps a superseding push from losing work it cancelled mid-flight.
-        #
-        # PUSHES TO main ONLY. A workflow_dispatch on a branch should be able to BUILD an image
-        # without claiming one was published for production.
-        if: needs.build-web.outputs.changed == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-        # ONE AT A TIME, AND DO NOT CANCEL A RUNNING ONE. Two runs moving the same tag concurrently
-        # is last-write-wins, and the loser could be the newer commit — which would walk the marker
-        # BACKWARDS and re-ship work already covered.
-        concurrency:
-            group: record-web-marker
-            cancel-in-progress: false
-
-        steps:
             - name: Record that an image exists for this commit
-              # ⚠️ THIS MARKER NO LONGER MEANS "WHAT IS LIVE", AND THAT IS THE POINT OF THE CHANGE
-              # THAT RENAMED THIS JOB. It used to move only after `rollout status` returned, because
-              # CI did the rolling, over an ssh forced command carrying an image reference. CI does
-              # not deploy any more: image-automation commits the winning tag into
-              # movies-gitops/web/base/all.yaml and kustomize-controller applies it. What this
-              # records is "an image for this commit was built and pushed", which is exactly the
-              # question the path gate above asks and nothing more.
+              # PUSHES TO main ONLY. A workflow_dispatch on a branch may publish an image without
+              # claiming one was published for production.
               #
-              # WHAT IS LIVE IS NOW READ FROM GIT. The `image:` line in that manifest IS the
-              # deployed tag, and `git log` on the file is the deploy history. Whether the cluster
-              # has caught up is Flux's business, and it is ALERTED ON rather than inferred from a
-              # green CI run — nix/files/monitoring/rules/flux.rules, which exists precisely so
-              # that retiring this ssh step did not trade a loud failure for a silent one.
+              # ⚠️ THIS MARKER DOES NOT MEAN "WHAT IS LIVE". CI does not deploy: image-automation
+              # commits the winning tag into movies-gitops/web/base/all.yaml and kustomize-controller
+              # applies it. What this records is "an image for this commit was published", which is
+              # exactly the question the tier gate asks and nothing more — and only after the publish
+              # step succeeded, so the base never advances past a commit no image exists for. A
+              # cancelled run leaves the change inside the interval and the next push covers it.
+              #
+              # WHAT IS LIVE IS READ FROM GIT. The `image:` line in that manifest IS the deployed tag,
+              # and whether the cluster has caught up is ALERTED ON by Flux's rules
+              # (nix/files/monitoring/rules/flux.rules) rather than inferred from a green run.
+              if: github.ref == 'refs/heads/main' && github.event_name == 'push'
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
@@ -394,19 +367,11 @@ jobs:
                       "/repos/${{ github.repository }}/git/refs" \
                       -f ref=refs/tags/deployed-web -f sha='${{ github.sha }}'
 
-            # Only a checkout so the local composite action below is on disk —
-            # `gh api` above needs no working tree.
-            - uses: actions/checkout@v5
-              with:
-                  sparse-checkout: .github
-                  sparse-checkout-cone-mode: false
-
-            # An image existing for this commit is the closest thing CI has to a
-            # "web tier shipped" event now that Flux, not CI, does the rolling —
-            # see the note above. Marking it here, rather than waiting for Flux to
-            # actually converge, trades a few minutes of lag for a marker that
-            # still exists at all.
+            # An image existing for this commit is the closest thing CI has to a "web tier shipped"
+            # event now that Flux, not CI, does the rolling. Marking it here, rather than waiting for
+            # Flux to actually converge, trades a few minutes of lag for a marker that exists at all.
             - name: Mark deploy in Grafana
+              if: github.ref == 'refs/heads/main' && github.event_name == 'push'
               uses: ./.github/actions/mark-grafana-deploy
               with:
                   tier: web
@@ -415,16 +380,16 @@ jobs:
                   sha: ${{ github.sha }}
                   commit-message: ${{ github.event.head_commit.message }}
 
-    # THE WORKER IMAGE, BUILT AND AOT-TRAINED WHILE ci RUNS — and OUTSIDE ci, so `build-web` (which
-    # `needs: ci`) never waits for the ~5 min training: only `build-worker` needs this job. It takes
+    # THE WORKER IMAGE, BUILT AND AOT-TRAINED WHILE ci RUNS — and OUTSIDE ci, so `publish-web` (which
+    # `needs: ci`) never waits for the ~5 min training: only `publish-worker` needs this job. It takes
     # the slot `gates` gives back seconds in (CiRunnerBudgetSpec counts only jobs without `needs`),
     # then waits for the dist ci's `e2e (corpus)` row uploads to this same run — `needs: ci` would
     # also wait for every other ci row. SAFETY: it pushes this commit's SHA tag ONLY. Nothing deploys
-    # a SHA tag; `build-worker` gives these bytes the tags that ship (`main-<utc>-<sha7>`, `latest`)
+    # a SHA tag; `publish-worker` gives these bytes the tags that ship (`main-<utc>-<sha7>`, `latest`)
     # only once ci is green and the tier's paths changed (DeployImageReuseSpec).
-    # Only when the worker's paths changed: `build-worker` publishes nothing otherwise, and an image
+    # Only when the worker's paths changed: `publish-worker` publishes nothing otherwise, and an image
     # built for nobody held a runner for its wait and ~5 min build on every web-only push. Skipped
-    # here, `build-worker` and `record-worker` skip with it — nothing ships, as before.
+    # here, `publish-worker` skips with it — nothing ships, as before.
     image-worker:
         needs: gates
         if: needs.gates.outputs.worker-changed == 'true'
@@ -477,32 +442,35 @@ jobs:
                   cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/movies-worker:latest
                   cache-to: type=inline
 
-    build-worker:
+
+    publish-worker:
         needs: [ci, gates, image-worker]
+        if: needs.gates.outputs.worker-changed == 'true'
         runs-on: ubuntu-latest
+        timeout-minutes: 10
 
         permissions:
-            contents: read
-            # The whole reason this needs no new credential.
+            # Moving the `deployed-worker` marker is a ref write.
+            contents: write
+            # The built-in GITHUB_TOKEN can push to GHCR; no new credential.
             packages: write
 
-        outputs:
-            changed: ${{ needs.gates.outputs.worker-changed }}
+        # ONE AT A TIME, AND DO NOT CANCEL A RUNNING ONE. Two runs moving the same tag concurrently
+        # is last-write-wins, and the loser could be the newer commit — which would walk the marker
+        # BACKWARDS and re-ship work already covered.
+        concurrency:
+            group: publish-worker
+            cancel-in-progress: false
 
         steps:
-            - uses: docker/login-action@v3
-              if: needs.gates.outputs.worker-changed == 'true'
+            # Only so the local Grafana action below is on disk.
+            - uses: actions/checkout@v5
               with:
-                  registry: ghcr.io
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
-
-            - uses: docker/setup-buildx-action@v3
-              if: needs.gates.outputs.worker-changed == 'true'
+                  sparse-checkout: .github
+                  sparse-checkout-cone-mode: false
 
             - name: Compute an orderable image tag
               id: tag
-              if: needs.gates.outputs.worker-changed == 'true'
               # WHY A THIRD TAG EXISTS. Flux's image automation chooses "the newest image" by
               # SORTING tag names, and neither tag below can be sorted: a commit SHA has no order
               # at all, and `latest` is one moving name rather than a series. This adds a tag that
@@ -519,58 +487,37 @@ jobs:
                   echo "value=main-$(date -u +%Y%m%d%H%M%S)-${sha:0:7}" >> "$GITHUB_OUTPUT"
 
             - name: Publish the image ci built under the tags that ship it
-              if: needs.gates.outputs.worker-changed == 'true'
               # `image-worker` above built this commit's image while ci ran, and pushed it
               # under its SHA tag ONLY — a tag nothing deploys. This job runs only once ci is green, and
               # gives those same bytes the two names that ship: `main-<utc>-<sha7>`, the one Flux's image
               # automation sorts and DEPLOYS, and `latest`, so a hand-applied manifest resolves to
               # something (never deploy `latest`: a restart under it can come back on another build). A
-              # manifest copy in the registry — seconds — instead of the ~1.7 min build it replaces on
-              # the post-ci critical path. The SHA tag stays the provenance tag.
+              # manifest copy in the registry — seconds. The SHA tag stays the provenance tag.
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   set -euo pipefail
+                  echo "$GH_TOKEN" | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
                   docker buildx imagetools create \
                       -t ghcr.io/${{ github.repository_owner }}/movies-worker:${{ steps.tag.outputs.value }} \
                       -t ghcr.io/${{ github.repository_owner }}/movies-worker:latest \
                       ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}
 
-    record-worker:
-        # A JOB OF ITS OWN RATHER THAN A STEP INSIDE `build-worker`, for the token: `build-worker`
-        # runs a Docker build that executes project code, and this holds a ref-write token.
-        # Keeping them apart is the difference between a build that could push to this
-        # repository and one that could not.
-        needs: build-worker
-        runs-on: ubuntu-latest
-
-        # Moving the `deployed-worker` marker below is a ref write, and the only one this job makes.
-        permissions:
-            contents: write
-
-        # THE GATE THAT MATTERS, AND IT STILL MATTERS. A restarted worker cold-boots into a scrape
-        # storm, so the tier is rebuilt only when its own inputs moved — never because the web tier
-        # did. What changed is only what the marker MEANS: it is the last commit an image was built
-        # for, so a worker change whose run was cancelled is still inside the interval at the next
-        # push and takes exactly one restart when it lands.
-        #
-        # PUSHES TO main ONLY. A workflow_dispatch on a branch should be able to BUILD an image
-        # without claiming one was published for production.
-        if: needs.build-worker.outputs.changed == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-        # ONE AT A TIME, AND DO NOT CANCEL A RUNNING ONE. Concurrent moves of the same tag are
-        # last-write-wins, and the loser could be the newer commit — walking the marker backwards
-        # and re-shipping work already covered.
-        concurrency:
-            group: record-worker-marker
-            cancel-in-progress: false
-
-        steps:
             - name: Record that an image exists for this commit
-              # ⚠️ THIS MARKER NO LONGER MEANS "WHAT IS LIVE" — see the note on `record-web`. CI no
-              # longer rolls anything: image-automation commits the winning tag into
-              # movies-gitops/worker/base/all.yaml and kustomize-controller applies it. Whether
-              # the cluster has caught up is Flux's business and is alerted on directly, rather
-              # than inferred from a green run here.
-              # would diff from a commit production never ran.
+              # PUSHES TO main ONLY. A workflow_dispatch on a branch may publish an image without
+              # claiming one was published for production.
+              #
+              # ⚠️ THIS MARKER DOES NOT MEAN "WHAT IS LIVE". CI does not deploy: image-automation
+              # commits the winning tag into movies-gitops/worker/base/all.yaml and kustomize-controller
+              # applies it. What this records is "an image for this commit was published", which is
+              # exactly the question the tier gate asks and nothing more — and only after the publish
+              # step succeeded, so the base never advances past a commit no image exists for. A
+              # cancelled run leaves the change inside the interval and the next push covers it.
+              #
+              # WHAT IS LIVE IS READ FROM GIT. The `image:` line in that manifest IS the deployed tag,
+              # and whether the cluster has caught up is ALERTED ON by Flux's rules
+              # (nix/files/monitoring/rules/flux.rules) rather than inferred from a green run.
+              if: github.ref == 'refs/heads/main' && github.event_name == 'push'
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
@@ -582,17 +529,11 @@ jobs:
                       "/repos/${{ github.repository }}/git/refs" \
                       -f ref=refs/tags/deployed-worker -f sha='${{ github.sha }}'
 
-            # Only a checkout so the local composite action below is on disk —
-            # `gh api` above needs no working tree.
-            - uses: actions/checkout@v5
-              with:
-                  sparse-checkout: .github
-                  sparse-checkout-cone-mode: false
-
-            # An image existing for this commit is the closest thing CI has to a
-            # "worker tier shipped" event now that Flux, not CI, does the rolling —
-            # see the note on `record-web`.
+            # An image existing for this commit is the closest thing CI has to a "worker tier shipped"
+            # event now that Flux, not CI, does the rolling. Marking it here, rather than waiting for
+            # Flux to actually converge, trades a few minutes of lag for a marker that exists at all.
             - name: Mark deploy in Grafana
+              if: github.ref == 'refs/heads/main' && github.event_name == 'push'
               uses: ./.github/actions/mark-grafana-deploy
               with:
                   tier: worker

@@ -67,8 +67,8 @@ convergence band. There is no second place to remember for any of them.
    Re-check machine state a few minutes after any future stop.
 
 2. **Re-enable its deploy legs.** ⚠️ **Superseded.** There are no Fly deploy legs
-   any more: both tiers ship to k3s from `.github/workflows/main.yml`'s `build-web` /
-   `build-worker` jobs, and nothing in CI deploys to Fly. Nothing needs re-enabling
+   any more: both tiers ship to k3s from `.github/workflows/main.yml`'s `publish-web` /
+   `publish-worker` jobs, and nothing in CI deploys to Fly. Nothing needs re-enabling
    here for a country to come back.
 
 3. **Give the country its `webUrl` back** (the table above):

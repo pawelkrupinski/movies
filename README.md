@@ -139,7 +139,7 @@ declared under [`infra/`](./infra); the Kubernetes manifests live in a
 separate repository (`movies-gitops`, fetched by `infra/bin/fetch-gitops`).
 
 Every push to `main` builds and pushes the two images to GHCR
-(`.github/workflows/main.yml`, jobs `build-web` / `build-worker`), each
+(`.github/workflows/main.yml`, jobs `publish-web` / `publish-worker`), each
 path-gated so a web-only push does not restart the workers. **Flux's
 image automation rolls them out** — CI does not deploy to the cluster.
 

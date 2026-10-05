@@ -690,7 +690,7 @@ jobs:
     # staged, which is ready minutes before the slowest ci row finishes, so it rides runners the e2e rows
     # have just given back (no slot at t=0 — CiRunnerBudgetSpec counts only jobs without `needs`).
     # SAFETY: it pushes this commit's SHA tag ONLY. Nothing deploys a SHA tag; main.yml's
-    # `build-web` gives these bytes the tags that ship (`main-<utc>-<sha7>`, `latest`) only once
+    # `publish-web` gives these bytes the tags that ship (`main-<utc>-<sha7>`, `latest`) only once
     # ci is green and the tier's paths changed (DeployImageReuseSpec). Never on a PR run.
     image-web:
         needs: e2e

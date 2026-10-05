@@ -39,7 +39,7 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
   private def job(name: String): String = RepoFile.block(mainYml, name)
 
   /** The `patterns:` block a tier's gate (in `gates`, step `changed-<tier>`) hands to the
-   *  `changed-paths` action. The gates run at t=0 so the Fly release need not wait for `build-web`. */
+   *  `changed-paths` action. The gates run at t=0 so each tier's publish starts the moment ci is green. */
   private def filterSet(tier: String): Vector[String] = {
     val lines = job("gates").linesIterator.toVector
     val step  = lines.indexWhere(_.trim == s"id: changed-$tier")
@@ -219,8 +219,8 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
         gate should include(s"base: $${{ steps.base-$tier.outputs.base }}"))
       withClue(s"the $tier gate asks for the wrong tier's marker: ")(
         gate should include(s"tier: $tier"))
-      withClue(s"build-$tier publishes on a gate other than its own: ")(
-        job(s"build-$tier") should include(s"needs.gates.outputs.$tier-changed"))
+      withClue(s"publish-$tier publishes on a gate other than its own: ")(
+        job(s"publish-$tier") should include(s"if: needs.gates.outputs.$tier-changed == 'true'"))
     }
     gate should include("uses: ./.github/actions/deployed-base")
   }
@@ -233,19 +233,21 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
     // AND PUSHED for this commit, which is exactly what the gate above asks.
     //
     // The load-bearing half survives the change unaltered: the marker must move
-    // only on success, and only from a job that needed the build. A marker moved
-    // regardless — `if: always()`, or in a job that did not need `build-$tier` —
+    // only on success, and only after the step that published the image. A marker moved
+    // regardless — `if: always()`, or ahead of the publish —
     // would advance the base past a commit no image exists for, and the next push
     // would diff from it and skip work that was never shipped. That is the
     // 2026-08-31 shape: merged, stale, and nothing red.
     Seq("web", "worker").foreach { tier =>
-      val record = job(s"record-$tier")
-      withClue(s"record-$tier never moves its marker, so the base can never advance: ")(
-        record should include(s"refs/tags/deployed-$tier"))
-      withClue(s"record-$tier moves its marker even when the build failed: ")(
-        record should not include "if: always()")
-      withClue(s"record-$tier would move its marker on a branch or a dispatch: ")(
-        record should include("github.ref == 'refs/heads/main' && github.event_name == 'push'"))
+      val publish = job(s"publish-$tier")
+      withClue(s"publish-$tier never moves its marker, so the base can never advance: ")(
+        publish should include(s"refs/tags/deployed-$tier"))
+      withClue(s"publish-$tier moves its marker even when the publish failed: ")(
+        publish should not include "always()")
+      withClue(s"publish-$tier moves its marker before the image is published: ")(
+        publish.indexOf("docker buildx imagetools create") should be < publish.indexOf(s"refs/tags/deployed-$tier"))
+      withClue(s"publish-$tier would move its marker on a branch or a dispatch: ")(
+        publish should include("github.ref == 'refs/heads/main' && github.event_name == 'push'"))
     }
   }
 
@@ -281,26 +283,21 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * Building and RECORDING stay separate jobs, and the reason outlived the deploy
-   * they were split for. `build-$tier` runs sbt and a Docker build — arbitrary
-   * project code — while `record-$tier` holds a `contents: write` token. Folding
-   * the marker step into the build would hand that token to the build, which is
-   * the difference between a build that could push to this repository and one
-   * that could not. The `needs:` also still means a failed build cannot advance
-   * the marker past a commit no image exists for.
+   * Publishing and RECORDING share one job, which holds a `contents: write` token —
+   * safe only while nothing in it can run code this repository did not vet. The
+   * marker used to move from a `record-$tier` job of its own because `build-$tier`
+   * ran sbt and a Docker build; the images are built elsewhere now and this job only
+   * copies registry tags. A third-party action (docker/login-action et al.) or a
+   * build creeping back in would put the ref-write token beside it again.
    */
-  "each tier" should "record from a job that needs its build" in {
-    job("record-web") should include("needs: build-web")
-    job("record-worker") should include("needs: build-worker")
-  }
-
-  /**
-   * …and each job reads ITS OWN tier's answer. Crossing these over is the other
-   * one-word edit that reinstates the bug.
-   */
-  it should "gate its marker on its own tier's changed-paths answer" in {
-    job("record-web") should include("needs.build-web.outputs.changed == 'true'")
-    job("record-worker") should include("needs.build-worker.outputs.changed == 'true'")
+  "each tier" should "publish and record from a job that runs no build and no third-party action" in {
+    Seq("web", "worker").foreach { tier =>
+      val uses = job(s"publish-$tier").linesIterator.map(_.trim.stripPrefix("- ")).filter(_.startsWith("uses:")).toSeq
+      withClue(s"publish-$tier runs an action beside its ref-write token: ")(
+        uses.filterNot(u => u == "uses: actions/checkout@v5" || u.startsWith("uses: ./.github/actions/")) shouldBe empty)
+      withClue(s"publish-$tier builds again: ")(job(s"publish-$tier") should not include "sbt")
+    }
+    mainYml should not include "\n    record-"
   }
 
   /**
@@ -315,8 +312,8 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
    * them.
    */
   it should "move its marker on a concurrency lane of its own" in {
-    job("record-web") should include("group: record-web-marker")
-    job("record-worker") should include("group: record-worker-marker")
+    job("publish-web") should include("group: publish-web\n")
+    job("publish-worker") should include("group: publish-worker\n")
   }
 
   /**
@@ -332,10 +329,10 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
    */
   it should "push all three tags, so a build can be traced and deployed" in {
     Seq("web", "worker").foreach { tier =>
-      val build = job(s"build-$tier")
+      val build = job(s"publish-$tier")
       build should include(s"movies-$tier:$${{ github.sha }}")
       build should include(s"movies-$tier:latest")
-      withClue(s"build-$tier pushes no sortable tag, so nothing would ever deploy: ") {
+      withClue(s"publish-$tier pushes no sortable tag, so nothing would ever deploy: ") {
         build should include(s"movies-$tier:$${{ steps.tag.outputs.value }}")
       }
       withClue(s"$tier's manifest is pinned to a moving tag: ") {
@@ -351,12 +348,12 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
    * deploy waits for. It is also what keeps them off the t=0 runner budget
    * (CiRunnerBudgetSpec), so dropping the `needs:` breaks two things at once.
    */
-  "neither k3s build" should "start before ci is green" in {
-    job("build-web") should include("needs: [ci, gates]")
-    job("build-worker") should include("needs: [ci, gates, image-worker]")
+  "neither k3s publish" should "start before ci is green" in {
+    job("publish-web") should include("needs: [ci, gates]")
+    job("publish-worker") should include("needs: [ci, gates, image-worker]")
   }
 
-  /** The worker image is built only for a push that changes the worker: `build-worker` would
+  /** The worker image is built only for a push that changes the worker: `publish-worker` would
    *  publish nothing else, and the build held a runner for minutes beside ci on every push. */
   "the worker image build" should "run only when the worker's paths changed" in {
     job("image-worker") should include("if: needs.gates.outputs.worker-changed == 'true'")

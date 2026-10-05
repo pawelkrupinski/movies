@@ -7,8 +7,8 @@ import org.scalatest.matchers.should.Matchers
  * Guards the split between BUILDING the container images and PUBLISHING them.
  *
  * ci builds both images from the dists its `e2e (corpus)` row staged, and pushes
- * them under the commit SHA alone — a tag nothing deploys. main.yml's `build-web`
- * / `build-worker` give those bytes the tags Flux ships only once ci is green, so
+ * them under the commit SHA alone — a tag nothing deploys. main.yml's `publish-web`
+ * / `publish-worker` give those bytes the tags Flux ships only once ci is green, so
  * the early build never reaches a machine untested.
  *
  * It used to be a third copy: a Fly `deploy` leg released the same image to the
@@ -17,12 +17,12 @@ import org.scalatest.matchers.should.Matchers
  */
 class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   private lazy val mainYml    = RepoFile.read(".github/workflows/main.yml")
-  private lazy val buildWeb    = RepoFile.block(mainYml, "build-web")
-  private lazy val buildWorker = RepoFile.block(mainYml, "build-worker")
+  private lazy val publishWeb    = RepoFile.block(mainYml, "publish-web")
+  private lazy val publishWorker = RepoFile.block(mainYml, "publish-worker")
   private lazy val ciYml       = RepoFile.read(".github/workflows/ci.yml")
 
   /** Where each tier's image job lives: the web's in ci, the worker's in main.yml — outside ci, so
-   *  `build-web`, which `needs: ci`, never waits for the worker's AOT training. */
+   *  `publish-web`, which `needs: ci`, never waits for the worker's AOT training. */
   private def imageJob(tier: String): String =
     if (tier == "web") RepoFile.block(ciYml, "image-web") else RepoFile.block(mainYml, "image-worker")
 
@@ -39,8 +39,8 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "release a tag those builds actually push" in {
-    buildWeb    should include("ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}")
-    buildWorker should include("ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}")
+    publishWeb    should include("ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}")
+    publishWorker should include("ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}")
   }
 
   /**
@@ -49,34 +49,32 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
    * artifact would not restart it into a cold freshness re-hydrate plus a scrape
    * boot storm. It existed for the FLY worker deploy, which is gone: the worker is
    * a k3s pod now, and what restarts it is Flux picking up an image tag — and
-   * `build-worker` is already path-gated, so a push that leaves the tier alone
+   * `publish-worker` is already path-gated, so a push that leaves the tier alone
    * builds no image for Flux to pick up. Baking a hash nothing reads back is the
    * kind of thing that survives for years; assert it is gone from both the build and
    * the image, since either half left behind is dead weight that reads as live wiring.
    */
   it should "not bake a worker input hash nothing reads back any more" in {
-    buildWorker should not include "WORKER_INPUT_HASH"
+    publishWorker should not include "WORKER_INPUT_HASH"
     RepoFile.read("Dockerfile") should not include "WORKER_INPUT_HASH"
   }
 
   /**
-   * `record-web`/`record-worker` are the closest CI gets to "this tier shipped a
+   * `publish-web`/`publish-worker` are the closest CI gets to "this tier shipped a
    * new image" — CI does not roll the cluster itself — so the Grafana deploy
    * marker rides there. Found 2026-09-15 when a dashboard showed no deploy lines
    * at all: the marker then rode only the Fly redirect host's release, an app
    * nobody watched.
    */
-  it should "mark web and worker deploys from record-web/record-worker" in {
+  it should "mark web and worker deploys from publish-web/publish-worker" in {
     mainYml should not include "annotate:"
-    val recordWeb    = RepoFile.block(mainYml, "record-web")
-    val recordWorker = RepoFile.block(mainYml, "record-worker")
-    recordWeb    should include("Mark deploy in Grafana")
-    recordWorker should include("Mark deploy in Grafana")
+    publishWeb    should include("Mark deploy in Grafana")
+    publishWorker should include("Mark deploy in Grafana")
     // Both need the composite action on disk, which needs a checkout — the
     // `gh api` ref-write step above them needs no working tree at all, so
     // without this a spec-less regression could drop the checkout silently.
-    recordWeb    should include("actions/checkout")
-    recordWorker should include("actions/checkout")
+    publishWeb    should include("actions/checkout")
+    publishWorker should include("actions/checkout")
   }
 
   /**
@@ -111,7 +109,7 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
 
   /**
    * The images are BUILT inside ci, from the dists its `e2e (corpus)` row staged, while ci's slowest
-   * rows still run; main.yml's `build-web` / `build-worker` only PUBLISH them once ci is green.
+   * rows still run; main.yml's `publish-web` / `publish-worker` only PUBLISH them once ci is green.
    * Restaging in main.yml was ~2 min of cold `sbt stage`, and building there ~1.7 min more, both on
    * the post-ci critical path. The upload and the download move together: an upload nothing downloads
    * is a GB of storage per run nobody complains about, and a download with no upload fails the build.
@@ -119,7 +117,7 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   it should "build both images while ci runs, from the dists ci staged, and only publish them after it" in {
     // On the COMMANDS: the steps' own comments name what they replaced.
     def commands(block: String) = block.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
-    for ((tier, publish) <- Seq("web" -> buildWeb, "worker" -> buildWorker)) {
+    for ((tier, publish) <- Seq("web" -> publishWeb, "worker" -> publishWorker)) {
       withClue(s"$tier: ") {
         val image = imageJob(tier)
         ciYml should include(s"name: stage-$tier")
@@ -141,11 +139,11 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   /**
    * THE SAFETY OF BUILDING EARLY. ci's image jobs run before ci is green, so they may push the one
    * tag nothing deploys — the commit SHA — and nothing else: Flux deploys `main-<utc>-<sha7>`, and a
-   * hand-applied manifest resolves `latest`. Those two are attached only by main.yml's `build-*`,
+   * hand-applied manifest resolves `latest`. Those two are attached only by main.yml's `publish-*`,
    * which `needs: ci`; and never on a PR run.
    */
   it should "push only the SHA tag before ci is green, and ship tags only after it" in {
-    for ((tier, publish) <- Seq("web" -> buildWeb, "worker" -> buildWorker)) {
+    for ((tier, publish) <- Seq("web" -> publishWeb, "worker" -> publishWorker)) {
       withClue(s"$tier: ") {
         val image = imageJob(tier)
         val tags = image.linesIterator.map(_.trim).filter(_.startsWith("tags:")).toSeq
@@ -161,10 +159,10 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   }
 
   /** THE WEB DEPLOY NEVER WAITS FOR THE WORKER'S IMAGE: it is built beside ci, not inside it, so
-   *  `ci` — and `build-web`, which `needs: ci` — closes on the tests alone. */
+   *  `ci` — and `publish-web`, which `needs: ci` — closes on the tests alone. */
   it should "keep the worker's image build out of everything the web deploy waits for" in {
     ciYml should not include "\n    image-worker:"
-    buildWeb should include("needs: [ci, gates]")
+    publishWeb should include("needs: [ci, gates]")
     imageJob("worker") should include("needs: gates")
   }
 }
