@@ -54,7 +54,8 @@ class UnmatchedClustersFillIntegrationSpec extends AnyFlatSpec with Matchers {
       val posters     = CachedPosters.of(configuration, country)
       val lookups     = new UnmatchedClusters.Replay(capture)
       def agree() = UnmatchedClusters.agree(capture.decisions, capture.listings, lookups, families.map(f => f -> store.answers(f)).toMap,
-        store.version, tmdbOf, services.movies.TitleNormalizer.forCountry(country), posterStore)
+        store.version, tmdbOf, services.movies.TitleNormalizer.forCountry(country), posterStore,
+        modules.wiring.IdentityCutoverWiring.identities(country.code))
       var outcome = agree()
       var rounds  = 0
       while ((outcome.stage.wanted.nonEmpty || outcome.stage.wantedPosters.nonEmpty) && rounds < 12) {
