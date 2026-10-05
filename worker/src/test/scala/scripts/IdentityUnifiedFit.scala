@@ -84,14 +84,15 @@ object IdentityUnifiedFit {
   def vetoes(row: Row, guards: Seq[String]): Seq[String] = UnifiedEvidence.vetoes(name => row.x(column(name))).filter(guards.contains)
   /** The rows a model with `guards` scores at all: those tripping none. */
   def passing(rows: Seq[Row], guards: Seq[String]): Seq[Row] = rows.filter(vetoes(_, guards).isEmpty)
-  private def keptOf(guards: Seq[String]): Set[String] = UnifiedEvidence.Names.toSet -- guards
+  def keptOf(guards: Seq[String]): Set[String] = UnifiedEvidence.Names.toSet -- guards
 
   /** The weights the labelled `rows` fit — intercept first, then every signal, a dropped one (not in `kept`) at 0. Rows
-   *  alike in label and features are folded into one with their count, in a fixed order. */
-  def weightsOf(rows: Seq[Row], kept: Set[String] = UnifiedEvidence.Names.toSet): Seq[Double] = {
+   *  alike in label and features are folded into one with their count, in a fixed order; a hand-labelled row counts
+   *  `handWeight` times. */
+  def weightsOf(rows: Seq[Row], kept: Set[String] = UnifiedEvidence.Names.toSet, handWeight: Double = 1.0): Seq[Double] = {
     val columns = 0 +: UnifiedEvidence.Names.zipWithIndex.collect { case (name, i) if kept(name) => i + 1 }
-    val folded  = rows.flatMap(row => row.label.map(y => (if (y) 1.0 else 0.0, columns.drop(1).map(i => row.x(i - 1)))))
-      .groupMapReduce(identity)(_ => 1.0)(_ + _).toSeq.sortBy { case ((y, x), _) => (y, x.mkString(",")) }
+    val folded  = rows.flatMap(row => row.label.map(y => ((if (y) 1.0 else 0.0, columns.drop(1).map(i => row.x(i - 1))), if (row.hand) handWeight else 1.0)))
+      .groupMapReduce(_._1)(_._2)(_ + _).toSeq.sortBy { case ((y, x), _) => (y, x.mkString(",")) }
     val fitted = LogisticFit.fitSigned(folded.map { case ((_, x), _) => (1.0 +: x).toArray }.toArray, folded.map(_._1._1).toArray,
       folded.map(_._2).toArray, columns.map(signs), L2)
     val full = Array.fill(UnifiedEvidence.Names.size + 1)(0.0)
@@ -103,9 +104,9 @@ object IdentityUnifiedFit {
     LogisticFit.sigmoid(weights.head + row.x.indices.map(i => weights(i + 1) * row.x(i)).sum)
 
   /** Every row's probability by the model fitted without its fold's venues. */
-  def heldOut(rows: Seq[Row], kept: Set[String] = UnifiedEvidence.Names.toSet): Seq[(Row, Double)] =
+  def heldOut(rows: Seq[Row], kept: Set[String] = UnifiedEvidence.Names.toSet, handWeight: Double = 1.0): Seq[(Row, Double)] =
     (0 until Folds).flatMap { fold =>
-      val weights = weightsOf(rows.filter(_.fold != fold), kept)
+      val weights = weightsOf(rows.filter(_.fold != fold), kept, handWeight)
       rows.filter(_.fold == fold).map(row => row -> probability(weights, row))
     }
 
@@ -116,7 +117,7 @@ object IdentityUnifiedFit {
   /** A held-out take that must not be taken: a NEW wrong one — a hand label calls it wrong and today's stack does not
    *  take it already (a wrong take inherited from today is listed, not a reason to take nothing) — or one moving a film
    *  today's stack shows. */
-  private def bad(take: Row, todays: Map[String, Row]): Boolean =
+  def bad(take: Row, todays: Map[String, Row]): Boolean =
     (take.hand && take.label.contains(false) && !take.today) || todays.get(take.cluster).exists(_.film != take.film)
 
   /** The cut: the lowest held-out best probability above every bad take's. */

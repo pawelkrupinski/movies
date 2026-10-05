@@ -1,92 +1,104 @@
 {
-  "version" : "unified-0773e56c",
-  "signals" : [ "model.logit", "model.unscored", "model.deniedBySome", "rule.title", "rule.director", "rule.calibrated", "rule.imdb", "rule.stage", "rule.proposal", "rule.pooled", "model.lean", "model.best", "production.season", "production.house", "family.imdb.took", "family.wiki.took", "family.filmweb.took", "family.metacritic.took", "family.rt.took", "family.imdb.leans", "family.wiki.leans", "family.filmweb.leans", "family.metacritic.leans", "family.rt.leans", "family.turnedDown", "family.dissent", "listing.facts", "listing.runtime", "listing.contradicts", "venues.current", "title.namesIt", "title.anothersOwn", "bill.several", "bill.bothWorks", "stage.work", "poster.match", "poster.near", "poster.otherMatches", "agreement.quorum", "poster.vote" ],
-  "weights" : [ -3.48124, 0.66771, 0.88515, -1.486776, 5.742617, 4.105584, 6.892487, 5.55566, 3.50702, 0, 0, 1.336936, 0.891532, 2.111491, 0.750551, 2.869327, 0.683582, 2.522606, 0.674005, 0.354685, 1.324818, 0.708269, 0.754502, 0.563117, 1.028762, 0, 0, 0.370105, 0.225483, 0, 1.239104, 1.355683, 0, 0, 0, 0, 1.062409, 0.219876, 0, 0.774805, 1.062409 ],
-  "cut" : 0.99236,
+  "version" : "unified-3cc9c2d6",
+  "signals" : [ "model.logit", "model.unscored", "model.deniedBySome", "rule.title", "rule.director", "rule.calibrated", "rule.imdb", "rule.stage", "rule.proposal", "rule.pooled", "model.lean", "model.best", "production.season", "production.house", "family.imdb.took", "family.wiki.took", "family.filmweb.took", "family.metacritic.took", "family.rt.took", "family.imdb.leans", "family.wiki.leans", "family.filmweb.leans", "family.metacritic.leans", "family.rt.leans", "family.turnedDown", "family.dissent", "listing.facts", "listing.runtime", "listing.contradicts", "venues.current", "title.namesIt", "title.anothersOwn", "bill.several", "bill.bothWorks", "stage.work", "poster.match", "poster.near", "poster.otherMatches", "agreement.quorum", "poster.vote", "count.takers", "count.leaning", "count.takersLessDissent", "count.takers2", "count.takers3", "and.takersNoDissent", "and.factsTakers", "and.posterTakers", "and.leanTakers" ],
+  "weights" : [ -3.444129, 0.688115, 0.530406, -1.509264, 5.845662, 4.202123, 6.986465, 5.667292, 3.470467, 0, 0, 1.297963, 0.627148, 2.14961, 0.726141, 1.627594, 0, 1.644519, 0, 0, 0.599055, 0.077894, 0.003451, 0.175966, 0.397155, 0, 0, 0.342896, 0.170912, 0, 1.205434, 1.190411, 0, 0, 0, 0, 0.842614, 0.201386, 0, 0.863808, 0.842614, 1.261761, 1.253521, 0.160513, 0, 0.047882, 0, 0.400093, 0.268958, 0 ],
+  "cut" : 0.995189,
   "l2" : 1,
   "folds" : 5,
   "rows" : 14673,
   "heldOut" : {
-    "logLoss" : 0.014345,
-    "accuracy" : 0.996933,
+    "logLoss" : 0.013823,
+    "accuracy" : 0.996865,
     "weakAccuracy" : 0.998941,
-    "weakLogLoss" : 0.006494,
-    "handLogLoss" : 0.230599,
+    "weakLogLoss" : 0.006308,
+    "handLogLoss" : 0.220826,
     "handRows" : 514,
-    "handAccuracy" : 0.941634
+    "handAccuracy" : 0.939689
   },
   "ablation" : [ {
     "group" : "model",
-    "logLoss" : 0.015755,
-    "handLogLoss" : 0.255531,
-    "right" : 1036,
-    "wrong" : 8
+    "logLoss" : 0.015169,
+    "handLogLoss" : 0.245553,
+    "right" : 1043,
+    "wrong" : 9
   }, {
     "group" : "rules",
-    "logLoss" : 0.045884,
-    "handLogLoss" : 0.232986,
-    "right" : 1390,
+    "logLoss" : 0.045794,
+    "handLogLoss" : 0.229735,
+    "right" : 1219,
     "wrong" : 7
   }, {
     "group" : "model-vote",
-    "logLoss" : 0.014659,
-    "handLogLoss" : 0.234983,
-    "right" : 1031,
-    "wrong" : 7
+    "logLoss" : 0.014133,
+    "handLogLoss" : 0.227292,
+    "right" : 1038,
+    "wrong" : 4
   }, {
     "group" : "productions",
-    "logLoss" : 0.014473,
-    "handLogLoss" : 0.229667,
-    "right" : 1034,
-    "wrong" : 6
+    "logLoss" : 0.013981,
+    "handLogLoss" : 0.220498,
+    "right" : 1039,
+    "wrong" : 3
   }, {
     "group" : "family-took",
-    "logLoss" : 0.016599,
-    "handLogLoss" : 0.282213,
-    "right" : 1194,
-    "wrong" : 6
+    "logLoss" : 0.014004,
+    "handLogLoss" : 0.225086,
+    "right" : 1211,
+    "wrong" : 3
   }, {
     "group" : "family-leans",
-    "logLoss" : 0.01467,
-    "handLogLoss" : 0.23758,
-    "right" : 1033,
-    "wrong" : 7
+    "logLoss" : 0.013787,
+    "handLogLoss" : 0.219623,
+    "right" : 1039,
+    "wrong" : 2
   }, {
     "group" : "family-against",
-    "logLoss" : 0.014345,
-    "handLogLoss" : 0.230599,
-    "right" : 1034,
-    "wrong" : 6
+    "logLoss" : 0.013823,
+    "handLogLoss" : 0.220826,
+    "right" : 1039,
+    "wrong" : 2
   }, {
     "group" : "listing",
-    "logLoss" : 0.014278,
-    "handLogLoss" : 0.228842,
-    "right" : 1033,
-    "wrong" : 7
+    "logLoss" : 0.013772,
+    "handLogLoss" : 0.2195,
+    "right" : 1039,
+    "wrong" : 3
   }, {
     "group" : "venues",
-    "logLoss" : 0.014628,
-    "handLogLoss" : 0.233126,
-    "right" : 1034,
-    "wrong" : 8
+    "logLoss" : 0.014047,
+    "handLogLoss" : 0.222276,
+    "right" : 1039,
+    "wrong" : 4
   }, {
     "group" : "title",
-    "logLoss" : 0.014326,
-    "handLogLoss" : 0.225168,
-    "right" : 1037,
-    "wrong" : 6
+    "logLoss" : 0.013693,
+    "handLogLoss" : 0.213346,
+    "right" : 1039,
+    "wrong" : 3
   }, {
     "group" : "poster",
-    "logLoss" : 0.014354,
-    "handLogLoss" : 0.230601,
-    "right" : 1034,
-    "wrong" : 6
+    "logLoss" : 0.013815,
+    "handLogLoss" : 0.22049,
+    "right" : 1039,
+    "wrong" : 2
   }, {
     "group" : "stage-verdicts",
-    "logLoss" : 0.014281,
-    "handLogLoss" : 0.228413,
-    "right" : 1030,
-    "wrong" : 7
+    "logLoss" : 0.013861,
+    "handLogLoss" : 0.222007,
+    "right" : 1038,
+    "wrong" : 4
+  }, {
+    "group" : "counts",
+    "logLoss" : 0.014264,
+    "handLogLoss" : 0.228975,
+    "right" : 1036,
+    "wrong" : 3
+  }, {
+    "group" : "conjunctions",
+    "logLoss" : 0.01382,
+    "handLogLoss" : 0.220754,
+    "right" : 1038,
+    "wrong" : 4
   } ],
   "provenance" : { },
   "guards" : [ "bill.several", "bill.bothWorks", "stage.work", "title.anothersOwn", "listing.contradicts", "poster.otherMatches", "family.turnedDown" ]
