@@ -49,6 +49,32 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
       .map(_._1) shouldBe Some(1483477)
   }
 
+  // prod 2026-10-05: TMDB films since deleted answered /images with 404 and their tasks were asked again 11 times
+  "a film TMDB no longer has" should "have no posters, not a failure asked again" in {
+    val gone = new PosterHashing(new Recorded(), new VipsPosterShrinker(binary = None),
+      id => throw new tools.HttpStatusException(404, "GET", s"https://api.themoviedb.org/3/movie/$id/images", None), "pl")
+    gone.film(1575247) shouldBe Nil
+    val store = new PosterAnswerStore(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock)
+    new AgreementPosterHandler(store, gone, () => (), clock)
+      .handle(Task("t1", TaskType.AgreementPoster, "agreement-poster|film|1575247", Map("filmPoster" -> "1575247"), 1)) shouldBe HandlerOutcome.Done
+    store.film(1575247) shouldBe Answer.Known(Nil)
+    val down = new PosterHashing(new Recorded(), new VipsPosterShrinker(binary = None),
+      id => throw new tools.HttpStatusException(503, "GET", s"https://api.themoviedb.org/3/movie/$id/images", None), "pl")
+    a[tools.HttpStatusException] should be thrownBy down.film(1)
+  }
+
+  // prod 2026-10-05: OCK's "…/event//Vincent. Legenda oceanu PLAKAT_M.jpg" — raw spaces no fetch takes, so "network",
+  // asked again 11 times
+  "a venue's poster" should "be fetched by its link escaped, as a card serves it" in {
+    val asked    = new java.util.concurrent.ConcurrentLinkedQueue[String]
+    val download = new PosterDownload {
+      def fetch(url: String): Either[String, Path] = { asked.add(url); Left(PosterFailure.Http4xx) }
+    }
+    new PosterHashing(download, new VipsPosterShrinker(binary = None), _ => Nil, "pl")
+      .venue("https://ock.systembiletowy.pl/uploads/event//Vincent. Legenda oceanu PLAKAT_M.jpg") shouldBe None
+    asked.toArray.toSeq shouldBe Seq("https://ock.systembiletowy.pl/uploads/event//Vincent.%20Legenda%20oceanu%20PLAKAT_M.jpg")
+  }
+
   "a film's posters" should "be its country's language first, then English, then none, by votes" in {
     def image(path: String, language: Option[String], votes: Int) = clients.TmdbClient.PosterImage(path, language, 0.667, 0, 0, votes)
     PosterHashing.chosen(Seq(image("/none", None, 9), image("/en", Some("en"), 1), image("/pl-low", Some("pl"), 0), image("/pl", Some("pl"), 3),

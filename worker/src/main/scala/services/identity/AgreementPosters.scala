@@ -62,14 +62,18 @@ object PosterAnswerStore {
  * by votes, at TMDB's 185-wide print.
  *
  * A poster the origin refuses, or no decoder can read, is no poster (`Right(None)`); a failure that may pass — a timeout,
- * a 5xx, the network — THROWS, for the queue to ask again on its backoff.
+ * a 5xx, the network — THROWS, for the queue to ask again on its backoff. A venue's link is fetched escaped as a card
+ * serves it ([[services.movies.SlotFields.url]]: a raw space no fetch takes is no network failure), and a film TMDB
+ * answers durably gone ([[tools.HttpStatusException.isDurable]]) has no posters.
  */
 final class PosterHashing(download: PosterDownload, shrinker: PosterShrinker, images: Int => Seq[clients.TmdbClient.PosterImage], language: String) {
 
-  def venue(url: String): Option[PosterHash] = hash(url)
+  def venue(url: String): Option[PosterHash] = services.movies.SlotFields.url(url).flatMap(hash)
 
-  def film(tmdbId: Int): Seq[PosterHash] =
-    PosterHashing.chosen(images(tmdbId), language).flatMap(path => hash(s"${clients.TmdbClient.PosterHashBase}$path"))
+  def film(tmdbId: Int): Seq[PosterHash] = {
+    val posters = try images(tmdbId) catch { case e: tools.HttpStatusException if tools.HttpStatusException.isDurable(e.code) => Nil }
+    PosterHashing.chosen(posters, language).flatMap(path => hash(s"${clients.TmdbClient.PosterHashBase}$path"))
+  }
 
   private def hash(url: String): Option[PosterHash] = download.fetch(url) match {
     case Left(reason) if PosterHashing.Passing(reason) => throw new java.io.IOException(s"poster $url: $reason")
