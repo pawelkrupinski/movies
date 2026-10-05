@@ -17,6 +17,11 @@ import scala.collection.mutable
  * ([[IdentityProjectionPlan.oneByKey]], [[IdentityProjectionPlan.ownerOf]], [[PipelineFilms.pick]],
  * [[IdentityProjectionPlan.clusterOf]]). `ScopedProjectionEquivalenceSpec` checks the two equal after every tick.
  *
+ * What it knows per listing key — the listing published under it, its previous film, its cluster, the decision naming
+ * it, the stored films whose slot it is — is ONE [[LiveProjectionIndex.Entry]] in one map: a map per field kept a hash
+ * node (and, for the immutable ones, a share of a trie) per key in each, ~11 MB of worker-us's ~90k listings. The
+ * index's per-key maps are views of it, as of the last [[update]] or [[written]].
+ *
  * Single-threaded: the projection's tick holds it.
  */
 final class LiveProjectionIndex(normalizer: TitleNormalizer) {
@@ -25,33 +30,79 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
   // Listings: each venue's listing as last read (the object, to tell it unmoved) — one listing per key at it is worked
   // out again only for a venue an update reads by key (a key's venue is its own, `ListingKey.venue`).
   private val venueListings = mutable.HashMap.empty[String, Seq[ProjectedListing]]
-  private var byKey         = Map.empty[ListingKey, ProjectedListing]
-  // The published listings at each venue slot (a listing's own is `PipelineFilms.slotOf` it): whose previous film a
-  // slot moves.
-  private val keysAtSlot    = mutable.HashMap.empty[(String, String), Set[ListingKey]]
+  // Per listing key, everything the index knows of it (an entry goes once it holds nothing), under the published
+  // listing's own key object when there is one.
+  private val entries       = mutable.HashMap.empty[ListingKey, LiveProjectionIndex.Entry]
+  private var published, placed, clustered = 0   // how many entries hold a listing, a previous film, a cluster
 
-  // Stored films: each one's venue slots and the listing keys its slots are, indexed both ways — by where each slot is
-  // and its source only: a slot's data is read off the stored record as it is now, so a record read again is not kept.
+  // Each venue slot (a listing's own is `PipelineFilms.slotOf` it): the published listings at it — whose previous film a
+  // slot moves — and the stored films with a slot there, by where it is and its source only: a slot's data is read off
+  // the stored record as it is now, so a record read again is not kept.
+  private val slots         = mutable.HashMap.empty[(String, String), LiveProjectionIndex.Slot]
+
   private var storedById    = Map.empty[String, StoredMovieRecord]
-  private val filmsAtSlot   = mutable.HashMap.empty[(String, String), Map[String, (PipelineFilmRef, Source)]]
-  private val ownersOfKey   = mutable.HashMap.empty[ListingKey, Set[PipelineFilmRef]]
-
-  private var previousOf    = Map.empty[ListingKey, PipelineFilmRef]
   private var listingsOf    = Map.empty[String, Set[ListingKey]]
 
   // Decisions, by identity: the model hands back an unmoved family's own objects.
   private val decisions     = new java.util.IdentityHashMap[ResolverDecision, ClusterId]()
   private val decisionsOf   = mutable.HashMap.empty[ClusterId, List[ResolverDecision]]
-  private val decisionOf    = mutable.HashMap.empty[ListingKey, ResolverDecision]
   private var clusters      = Map.empty[ClusterId, Cluster]
-  private var clusterOf     = Map.empty[ListingKey, ClusterId]
 
-  /** The index as it stands, over `counters`. */
+  import LiveProjectionIndex.{Entry, Slot}
+
+  private def listingAt(k: ListingKey): Option[ProjectedListing] = entries.get(k).flatMap(e => Option(e.listing))
+  private def isPublished(k: ListingKey): Boolean = entries.get(k).exists(_.listing != null)
+  private def previousAt(k: ListingKey): Option[PipelineFilmRef] = entries.get(k).flatMap(e => Option(e.previous))
+  private def entry(k: ListingKey): Entry = entries.getOrElseUpdate(k, new Entry(k))
+  private def tidy(e: Entry): Unit = if (e.holdsNothing) entries.remove(e.key)
+
+  /** Publish `l` under its key, the entry re-filed under the listing's own key object. */
+  private def publish(l: ProjectedListing): Unit = {
+    val k = l.listing.key
+    val e = entries.get(k) match {
+      case Some(e) if e.key ne k => entries.remove(k); e.key = k; entries(k) = e; e
+      case Some(e)               => e
+      case None                  => val e = new Entry(k); entries(k) = e; e
+    }
+    if (e.listing == null) published += 1
+    e.listing = l
+  }
+  private def unpublish(k: ListingKey): Unit = entries.get(k).filter(_.listing != null).foreach { e =>
+    e.listing = null; published -= 1; tidy(e)
+  }
+  private def place(k: ListingKey, ref: PipelineFilmRef): Unit = { val e = entry(k); if (e.previous == null) placed += 1; e.previous = ref }
+  private def unplace(k: ListingKey): Unit = entries.get(k).filter(_.previous != null).foreach { e =>
+    e.previous = null; placed -= 1; tidy(e)
+  }
+  private def cluster(k: ListingKey, id: ClusterId): Unit = { val e = entry(k); if (e.cluster == null) clustered += 1; e.cluster = id }
+  private def uncluster(k: ListingKey): Unit = entries.get(k).filter(_.cluster != null).foreach { e =>
+    e.cluster = null; clustered -= 1; tidy(e)
+  }
+  private def slotAt(at: (String, String)): Slot = slots.getOrElseUpdate(at, new Slot)
+  private def tidySlot(at: (String, String)): Unit = slots.get(at).filter(_.holdsNothing).foreach(_ => slots.remove(at))
+
+  /** One field of every entry as a map, as the entries stand. */
+  private final class FieldView[V <: AnyRef](field: Entry => V, count: () => Int) extends scala.collection.immutable.AbstractMap[ListingKey, V] {
+    def get(key: ListingKey): Option[V] = entries.get(key).flatMap(e => Option(field(e)))
+    override def contains(key: ListingKey): Boolean = entries.get(key).exists(field(_) != null)
+    def iterator: Iterator[(ListingKey, V)] = entries.valuesIterator.filter(field(_) != null).map(e => e.key -> field(e))
+    override def size: Int = count()
+    override def knownSize: Int = count()
+    override def isEmpty: Boolean = count() == 0
+    def removed(key: ListingKey): Map[ListingKey, V] = Map.from(iterator).removed(key)
+    def updated[V1 >: V](key: ListingKey, value: V1): Map[ListingKey, V1] = Map.from(iterator).updated(key, value)
+  }
+  private val byKeyView      = new FieldView(_.listing, () => published)
+  private val previousOfView = new FieldView(_.previous, () => placed)
+  private val clusterOfView  = new FieldView(_.cluster, () => clustered)
+
+  /** The index as it stands, over `counters`: its listings, previous films and listings' clusters are views of this
+   *  index, which read what the next [[update]] or [[written]] moves — a projection's, read before the two. */
   def index(counters: FilmIdCounters): ProjectionIndex = {
     val unmapped  = listingsOf.iterator.collect { case (id, ls) if counters.counterOf(id).isEmpty => IdSeeding.Film(id, ls) }.toSeq
     val covered   = if (unmapped.isEmpty) counters else counters.covering(unmapped)
-    ProjectionIndex(byKey, storedById, previousOf, listingsOf, covered, covered.entries.filterNot(e => counters.counterOf(e.filmId).isDefined),
-      clusters, clusterOf)
+    ProjectionIndex(byKeyView, storedById, previousOfView, listingsOf, covered, covered.entries.filterNot(e => counters.counterOf(e.filmId).isDefined),
+      clusters, clusterOfView)
   }
 
   /** Move the index to what these inputs say, and say what moved. */
@@ -68,7 +119,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
         val now = oneByKey(listings)
         was.foreach { case (k, l) => if (!now.get(k).exists(n => (n eq l) || n == l)) keys += k }
         // An unmoved listing read again is a new object of the same value: index that one, so the old read is not kept.
-        now.foreach { case (k, n) => byKey.get(k).foreach(l => if ((l ne n) && l == n) rekey(l, n)) }
+        now.foreach { case (k, n) => listingAt(k).foreach(l => if ((l ne n) && l == n) rekey(l, n)) }
         venueListings(venue) = listings
         byKeyAt(venue) = now
       }
@@ -79,22 +130,23 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
       byKeyAt.remove(venue)
     }
     // …and a listing new to its venue, or one the model took up or let go: published, held and indexed must agree.
-    venueListings.valuesIterator.foreach(_.foreach { l => val k = l.listing.key; if (held(k) != byKey.contains(k)) keys += k })
-    val published = mutable.HashSet.empty[ListingKey]   // whose entry in `byKey` moved
+    venueListings.valuesIterator.foreach(_.foreach { l => val k = l.listing.key; if (held(k) != isPublished(k)) keys += k })
+    val republished = mutable.HashSet.empty[ListingKey]   // whose published listing moved
     keys.foreach { k =>
       val listing = (if (venueListings.contains(k.venue)) at(k.venue).get(k) else None).filter(_ => held(k))
-      if (listing != byKey.get(k)) {
-        published += k
-        byKey.get(k).foreach { was =>
-          val slot = PipelineFilms.slotOf(was.listing, normalizer)
-          keysAtSlot.updateWith(slot)(_.map(_ - k).filter(_.nonEmpty))
+      val was = listingAt(k)
+      if (listing != was) {
+        republished += k
+        was.foreach { old =>
+          val at = PipelineFilms.slotOf(old.listing, normalizer)
+          slots.get(at).foreach { slot => slot.keys -= k; tidySlot(at) }
         }
         listing match {
           case Some(l) =>
-            byKey = byKey.updated(k, l)
-            val slot = PipelineFilms.slotOf(l.listing, normalizer)
-            keysAtSlot(slot) = keysAtSlot.getOrElse(slot, Set.empty) + k
-          case None => byKey = byKey - k
+            publish(l)
+            val slot = slotAt(PipelineFilms.slotOf(l.listing, normalizer))
+            slot.keys += k
+          case None => unpublish(k)
         }
       }
     }
@@ -118,7 +170,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
     now.foreach { case (id, is) => if (!storedById.contains(id)) restore(is, reslot) }
 
     // 3. Previous films: of every listing whose publication, slot or film moved.
-    val moved = repoint(published.iterator ++ reslot.iterator)
+    val moved = repoint(republished.iterator ++ reslot.iterator)
 
     // 4. Clusters: of every decision that is another object, and of every listing whose publication moved.
     val current = new java.util.IdentityHashMap[ResolverDecision, java.lang.Boolean](resolved.size * 2)
@@ -130,7 +182,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
       val id = decisions.remove(d)
       touched += id
       decisionsOf(id) = decisionsOf.getOrElse(id, Nil).filterNot(_ eq d)
-      d.members.foreach(k => if (decisionOf.get(k).exists(_ eq d)) decisionOf.remove(k))
+      d.members.foreach(k => entries.get(k).filter(_.decision eq d).foreach { e => e.decision = null; tidy(e) })
     }
     resolved.foreach { d =>
       if (!decisions.containsKey(d)) {
@@ -138,26 +190,26 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
         decisions.put(d, id)
         touched += id
         decisionsOf(id) = d :: decisionsOf.getOrElse(id, Nil)
-        d.members.foreach(k => decisionOf(canonical(k)) = d)
+        d.members.foreach(k => entry(canonical(k)).decision = d)
       }
     }
-    published.foreach(k => decisionOf.get(k).foreach(d => touched += decisions.get(d)))
+    republished.foreach(k => entries.get(k).flatMap(e => Option(e.decision)).foreach(d => touched += decisions.get(d)))
     val regrouped = mutable.HashSet.empty[ListingKey]
     touched.foreach { id =>
       val was  = clusters.get(id)
-      val next = clusterFor(id, decisionsOf.getOrElse(id, Nil), byKey.contains).map(c => c.copy(members = c.members.map(canonical)))
+      val next = clusterFor(id, decisionsOf.getOrElse(id, Nil), isPublished).map(c => c.copy(members = c.members.map(canonical)))
       if (next != was) {
         // A listing that left the cluster is gone, or in a cluster that moved too: the clusters partition.
-        was.foreach(_.members.foreach(k => if (clusterOf.get(k).contains(id)) clusterOf = clusterOf - k))
+        was.foreach(_.members.foreach(k => if (entries.get(k).exists(_.cluster == id)) uncluster(k)))
         next match {
-          case Some(c) => clusters = clusters.updated(id, c); regrouped ++= c.members; c.members.foreach(k => clusterOf = clusterOf.updated(k, id))
+          case Some(c) => clusters = clusters.updated(id, c); regrouped ++= c.members; c.members.foreach(cluster(_, id))
           case None    => clusters = clusters - id
         }
       }
       if (decisionsOf.get(id).exists(_.isEmpty)) decisionsOf.remove(id)
     }
 
-    val changed = ProjectionScope.Changes((published ++ moved ++ regrouped ++ afterWrites).toSet, films.toSet, freed.toSet)
+    val changed = ProjectionScope.Changes((republished ++ moved ++ regrouped ++ afterWrites).toSet, films.toSet, freed.toSet)
     afterWrites.clear()
     changed
   }
@@ -175,7 +227,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
     // film — and drafts its cluster again.
     val writtenInto = films.iterator.flatMap(f => f.members.iterator.map(_ -> f.id.value)).toMap
     val moved       = repoint(reslot.iterator)
-    def placedAsWritten(k: ListingKey): Boolean = writtenInto.get(k).exists(id => previousOf.get(k).exists(_.id == id))
+    def placedAsWritten(k: ListingKey): Boolean = writtenInto.get(k).exists(id => previousAt(k).exists(_.id == id))
     afterWrites ++= moved.filterNot(placedAsWritten)
     afterWrites ++= writtenInto.keysIterator.filterNot(placedAsWritten)
     ()
@@ -183,27 +235,20 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
 
   /** `k` as the listing published under it holds it: one key object per listing, not one per map that names it — a stored
    *  slot's and a decision's are read anew from the store (worker-us held ~4.8 per listing). */
-  private def canonical(k: ListingKey): ListingKey = byKey.get(k).fold(k)(_.listing.key)
+  private def canonical(k: ListingKey): ListingKey = listingAt(k).fold(k)(_.listing.key)
 
-  /** Index `now` — an equal listing, another object — in place of `was`, under ITS key: every map holding the key holds the
-   *  new object (a map keeps the key object it was first given), so a listing read again, or taken as the identity
-   *  model's object, leaves no older key behind it (worker-us grew to ~2.6 key objects per listing). */
+  /** Index `now` — an equal listing, another object — in place of `was`, under ITS key: the entry and every set holding
+   *  the key hold the new object (a map or set keeps the key object it was first given), so a listing read again, or
+   *  taken as the identity model's object, leaves no older key behind it (worker-us grew to ~2.6 key objects per listing). */
   private def rekey(was: ProjectedListing, now: ProjectedListing): Unit = {
-    val k     = now.listing.key
-    byKey     = (byKey - k).updated(k, now)
+    val k = now.listing.key
+    publish(now)
     if (k ne was.listing.key) {
-      previousOf.get(k).foreach { ref =>
-        previousOf = (previousOf - k).updated(k, ref)
-        listingsOf = listingsOf.updatedWith(ref.id)(_.map(_ - k + k))
-      }
-      val slot = PipelineFilms.slotOf(now.listing, normalizer)
-      keysAtSlot.get(slot).filter(_.contains(k)).foreach(keys => keysAtSlot(slot) = keys - k + k)
-      clusterOf.get(k).foreach { id =>
-        clusterOf = (clusterOf - k).updated(k, id)
+      previousAt(k).foreach(ref => listingsOf = listingsOf.updatedWith(ref.id)(_.map(_ - k + k)))
+      slots.get(PipelineFilms.slotOf(now.listing, normalizer)).filter(_.keys.contains(k)).foreach(slot => slot.keys = slot.keys - k + k)
+      entries.get(k).flatMap(e => Option(e.cluster)).foreach { id =>
         clusters.get(id).foreach(c => clusters = clusters.updated(id, c.copy(members = c.members - k + k)))
       }
-      decisionOf.remove(k).foreach(decisionOf(k) = _)
-      ownersOfKey.remove(k).foreach(ownersOfKey(k) = _)
     }
   }
 
@@ -215,18 +260,19 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
   private def repoint(keys: Iterator[ListingKey]): mutable.HashSet[ListingKey] = {
     val moved = mutable.HashSet.empty[ListingKey]
     keys.foreach { k =>
-      val next = byKey.get(k).flatMap { l =>
-        ownersOfKey.get(k).flatMap(ownerOf).orElse(
-          filmsAtSlot.get(PipelineFilms.slotOf(l.listing, normalizer)).flatMap(at => PipelineFilms.pick(l.listing, at.values.toSeq.flatMap { case (ref, source) =>
-            storedById.get(ref.id).flatMap(_.record.data.get(source)).map(ref -> _) }, normalizer)))
+      val next = entries.get(k).filter(_.listing != null).flatMap { e =>
+        val l = e.listing
+        Option.when(e.owners.nonEmpty)(e.owners).flatMap(ownerOf).orElse(
+          slots.get(PipelineFilms.slotOf(l.listing, normalizer)).filter(_.films.nonEmpty).flatMap(at => PipelineFilms.pick(l.listing,
+            at.films.values.toSeq.flatMap { case (ref, source) => storedById.get(ref.id).flatMap(_.record.data.get(source)).map(ref -> _) }, normalizer)))
       }
-      val was = previousOf.get(k)
+      val was = previousAt(k)
       if (next != was) {
         moved += k
         was.foreach(r => listingsOf = listingsOf.updatedWith(r.id)(_.map(_ - k).filter(_.nonEmpty)))
         next match {
-          case Some(r) => previousOf = previousOf.updated(k, r); listingsOf = listingsOf.updated(r.id, listingsOf.getOrElse(r.id, Set.empty) + k)
-          case None    => previousOf = previousOf - k
+          case Some(r) => place(k, r); listingsOf = listingsOf.updated(r.id, listingsOf.getOrElse(r.id, Set.empty) + k)
+          case None    => unplace(k)
         }
       }
     }
@@ -253,8 +299,8 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
     storedById.get(id).map(layoutOf).foreach(_.foreach { case (at, key) =>
       // What it moves by leaving is a listing it was on (above): another film's listing at its slot was not picked
       // over it, and stays picked without it.
-      at.foreach(at => filmsAtSlot.updateWith(at)(_.map(_ - id).filter(_.nonEmpty)))
-      key.foreach(k => ownersOfKey.updateWith(k)(_.map(_.filterNot(_.id == id)).filter(_.nonEmpty)))
+      at.foreach(at => slots.get(at).foreach { slot => slot.films -= id; tidySlot(at) })
+      key.foreach(k => entries.get(k).foreach { e => e.owners = e.owners.filterNot(_.id == id); tidy(e) })
     })
     storedById = storedById - id
   }
@@ -279,15 +325,37 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
     val ref   = PipelineFilmRef(id, r.record.tmdbId)
     slots.foreach { case (source, slot) =>
       slot.at.foreach { at =>
-        filmsAtSlot(at) = filmsAtSlot.getOrElse(at, Map.empty).updated(id, ref -> source)
-        reslot ++= keysAtSlot.getOrElse(at, Set.empty)
+        val slot = slotAt(at)
+        slot.films = slot.films.updated(id, ref -> source)
+        reslot ++= slot.keys
       }
       // The listing the slot is — at the slot's own title almost always (re-pointed above), but a slot folded under
       // another title than its listing's is reached only here.
       slot.key.map(canonical).foreach { k =>
-        ownersOfKey(k) = ownersOfKey.getOrElse(k, Set.empty).filterNot(_.id == id) + ref
+        val e = entry(k)
+        e.owners = e.owners.filterNot(_.id == id) + ref
         reslot += k
       }
     }
+  }
+}
+
+private object LiveProjectionIndex {
+  /** What the index knows of one listing key: the listing published under it, its previous film, its cluster and the
+   *  decision naming it (each null for none), and the stored films whose slot it is. */
+  private final class Entry(var key: ListingKey) {
+    var listing: ProjectedListing   = null
+    var previous: PipelineFilmRef   = null
+    var cluster: ClusterId          = null
+    var decision: ResolverDecision  = null
+    var owners: Set[PipelineFilmRef] = Set.empty
+    def holdsNothing: Boolean = listing == null && previous == null && cluster == null && decision == null && owners.isEmpty
+  }
+
+  /** One venue slot: the published listings at it, and the stored films with a slot there (by id: the film and its source). */
+  private final class Slot {
+    var keys: Set[ListingKey]                         = Set.empty
+    var films: Map[String, (PipelineFilmRef, Source)] = Map.empty
+    def holdsNothing: Boolean = keys.isEmpty && films.isEmpty
   }
 }
