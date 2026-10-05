@@ -49,6 +49,11 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(Seq(series), all.map(f => FamilyVerdict.took(FamilyPick(f.family, "1", SourceRecord(film("Znachor", 1937, "Michał Waszyński")))))) shouldBe None
     val bill = listing(KinoMuza, "Znachor + Pan Tadeusz")
     Agreement.billsSeveral(bill) shouldBe true
+    // an event a "+" joins to the film is no second work: PL "11. UFF - Gala otwarcia + Demony", a discussion after a screening
+    Agreement.billsSeveral(listing(KinoMuza, "11. UFF - Gala otwarcia + Demony")) shouldBe false
+    Agreement.billsSeveral(listing(KinoMuza, "Pasażerka - premiera książki, pokaz filmu + dyskusja")) shouldBe false
+    Agreement.billsSeveral(listing(KinoMuza, "Toddler Club: Zog + The Snail & the Whale")) shouldBe true
+    Agreement.billsSeveral(listing(KinoMuza, "MOBILE SUIT GUNDAM HATHAWAY DOUBLE BILL")) shouldBe true
     Agreement.agreed(Seq(bill), all.map(f => FamilyVerdict.took(FamilyPick(f.family, "1", SourceRecord(film("Znachor", 1937, "Michał Waszyński")))))) shouldBe None
   }
 

@@ -400,9 +400,12 @@ object Agreement {
       titles.map(title => IdentityMeasures.Listing(title, Some(listing.rawTitle).filter(_ != title))).exists(IdentityMeasures.stageWorks(_).nonEmpty)
   }
 
-  private val Bill   = """(?i)\s\+\s|double bill|double feature|podw[oó]jny seans|zestaw""".r
+  private val Bill   = """(?i)double bill|double feature|podw[oó]jny seans|zestaw""".r
   private val Quoted = """[„"“][^"”„]+["”]""".r
-  /** Does the listing bill several works — a "+", a double bill or a set, or two quoted titles? */
+  /** Does the listing bill several works — a "+" joining two whole works ([[IdentityMeasures.billsTwoWholeWorks]]: an
+   *  event joined to the film, "11. UFF - Gala otwarcia + Demony", "… pokaz filmu + dyskusja", is none), a double bill
+   *  or a set, or two quoted titles? */
   def billsSeveral(listing: Listing): Boolean =
-    Bill.findFirstIn(listing.rawTitle).isDefined || Quoted.findAllIn(listing.rawTitle).size >= 2
+    Bill.findFirstIn(listing.rawTitle).isDefined || Quoted.findAllIn(listing.rawTitle).size >= 2 ||
+      IdentityMeasures.billsTwoWholeWorks(services.identity.Evidence.of(listing, None).measured)
 }

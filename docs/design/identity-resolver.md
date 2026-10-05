@@ -2555,3 +2555,6 @@ filed each under retrieval, scoring, a guard, or the agreement. What it added, e
 - **A title naming a film whose own title leads with an article the venue drops** (`Agreement.namesIt`): DE
   "Camp der Verlorenen" names TMDB's "Das Camp der Verlorenen" (Sembène's *Camp de Thiaroye*), which `title.namesNone`
   vetoed. Two words after the article at least. Ratchet: +1 listing, 1 film, 0 wrong.
+- **An event a "+" joins to the film is no second work** (`Agreement.billsSeveral` reads `billsTwoWholeWorks`, the
+  model's own rule, in place of any spaced "+"): PL "11. UFF - Gala otwarcia + Demony", which IMDb and Filmweb take.
+  Ratchet: +1 listing, 1 film, 0 wrong (the venue posters the newly open clusters show filed by the fill spec).
