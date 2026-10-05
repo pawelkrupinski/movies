@@ -647,7 +647,7 @@ object IdentityMeasures {
   /** The pieces more banner separators leave, beside the ones `SearchTitles` splits: a slash with a
    *  space on either side ("MISTYCZKA /film polski/", "Róża / Spotkanie Filozoficzne"), a dash with a
    *  space on one side ("Fregata dla seniorów- 500 Mil"), a code of up to three letters before a colon
-   *  with no space ("MS:HOT SPOT"), what follows a banner's dash, a square-bracketed format and a title
+   *  with no space ("MS:HOT SPOT"), a square-bracketed format and a title
    *  quoted at the head of its billing (`quotesOne`: none where a title quotes two). A slash or colon inside
    *  a word is the title's own ("Face/Off", "AC/DC"). Here, not in `SearchTitles`, which the old pipeline also reads. */
   private def delimitedPieces(title: String, quotesOne: Boolean): Seq[String] = {
@@ -655,14 +655,10 @@ object IdentityMeasures {
       if (separator.findFirstIn(title).isDefined) separator.split(title).toSeq.map(_.trim) else Nil)
     val coded   = CodeBeforeColon.findFirstMatchIn(title).map(m => title.substring(m.end)).toSeq
     val undated = ScreeningYearSuffix.findFirstMatchIn(title).map(_.group(1)).toSeq
-    val banner  = AfterFirstDash.findFirstMatchIn(title).map(_.group(1)).toSeq
     val format  = TrailingSquareBracket.findFirstMatchIn(title).map(_.group(1)).toSeq
     val quoted  = (if (quotesOne && Quoted.findAllMatchIn(title).size == 1) LeadingQuoted.findFirstMatchIn(title).map(_.group(1)) else None).toSeq
-    (slashed ++ coded ++ undated ++ banner ++ format ++ quoted).map(_.trim).filter(_.exists(_.isLetter)).filter(_ != title.trim)
+    (slashed ++ coded ++ undated ++ format ++ quoted).map(_.trim).filter(_.exists(_.isLetter)).filter(_ != title.trim)
   }
-  /** What follows a title's FIRST spaced dash when another follows it ("Rialto DOCumentalnie - Lech Janerka – śpij, śpij
-   *  inteligencie"): `SearchTitles` splits at every dash, and the film's own dash went with the banner's. */
-  private val AfterFirstDash = """^.*?\p{L}.*?\s[-–—]\s(.*\S\s[-–—]\s.*)$""".r
   /** A format or version tag in square brackets after the title ("Vivaldi i ja [2D LEKTOR]"); a round bracket is
    *  `SearchTitles`'s. */
   private val TrailingSquareBracket = """^(.*\p{L}.*?)\s*\[[^\]\[]*\]$""".r
