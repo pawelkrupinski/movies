@@ -128,8 +128,16 @@ object IdentityUnifiedDataset {
         if (verdicts.nonEmpty) count("with-families")
         val distances = posterDistances(listings, nodes, verdicts)
         if (distances.nonEmpty) count("with-posters")
+        // the listings as their venues' pages state them, and as the model measures them — what the stage reads
+        def page(x: Listing) = if (venues.hasDetail(x)) venues.detail(x).toOption.flatten else None
+        val stated = listings.map { x =>
+          page(x).fold(x) { detail =>
+            val e = Evidence.of(x, Some(detail))
+            x.copy(year = e.year, directors = e.directors, runtime = e.runtime, originalTitle = e.originalTitle, countries = e.countries)
+          }
+        }
         val contenders = UnifiedEvidence.contenders(UnifiedEvidence.ClusterEvidence(listings, model, nodes, verdicts, distances,
-          imdb => finds.get(imdb).flatten, thisYear))
+          imdb => finds.get(imdb).flatten, thisYear, stated, Some(x => Evidence.of(x, page(x)).measured)))
         val taken = today.film.map(id => s"tmdb:$id").orElse(today.fallback.filter(_.source == "imdb").map(f => s"imdb:${f.id}")).getOrElse("")
         val judged = contenders.map { k =>
           val verdict = listings.map(x => UnmatchedClusters.verdict(UnmatchedClusters.Take(code, x.venue, x.rawTitle, k.tmdb, k.imdb, "", k.title, k.familyIds), labels))

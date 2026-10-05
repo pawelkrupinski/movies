@@ -1,7 +1,7 @@
 package services.identity
 
 import play.api.libs.json.{Json, OFormat}
-import services.identity.agreement.{Agreement, AgreementStage, FamilyPick, FamilyVerdict, SourceRecord, VoterFamily}
+import services.identity.agreement.{Agreement, AgreementStage, Broadcast, FamilyPick, FamilyVerdict, SourceRecord, VoterFamily}
 
 /**
  * The UNIFIED evidence model's signals: every signal the resolver's model and the agreement stage after it read about
@@ -36,6 +36,7 @@ object UnifiedEvidence {
     Signal("bill.several", "bills", -1), Signal("bill.bothWorks", "bills", -1), Signal("stage.work", "bills", -1),
     Signal("poster.match", "poster", 1), Signal("poster.near", "poster", 1), Signal("poster.otherMatches", "poster", -1),
     Signal("agreement.quorum", "stage-verdicts", 1), Signal("poster.vote", "stage-verdicts", 1),
+    Signal("broadcast.take", "stage-verdicts", 1), Signal("listing.catalogue", "listing", 1),
     // the COUNTS and conjunctions the agreement's thresholds read (Quorum, Takers, the rise per dissenting family) —
     // what an additive score over per-family indicators cannot express
     Signal("count.takers", "counts", 1), Signal("count.leaning", "counts", 1), Signal("count.takersLessDissent", "counts", 1),
@@ -76,7 +77,7 @@ object UnifiedEvidence {
    *  (empty where none), the TMDB film an IMDb id finds, and the year it is now. */
   final case class ClusterEvidence(listings: Seq[Listing], decision: ResolverDecision, nodes: Seq[IdentityResolver.NodeEvidence],
                                    verdicts: Seq[FamilyVerdict], posters: Seq[Map[Int, Option[Int]]], tmdbOf: String => Option[Int],
-                                   thisYear: Int)
+                                   thisYear: Int, stated: Seq[Listing] = Nil, measured: Option[Listing => IdentityMeasures.Listing] = None)
 
   /** One film the evidence reaches: `tmdb:<id>` or, a film only other databases hold, `imdb:<tt>`; its title, each family
    *  that took it with its own id of it (`"rt" -> "dune_2021"`, an id only, never read as evidence), and every signal that
@@ -124,7 +125,13 @@ object UnifiedEvidence {
     // the agreement's own verdict and the posters' vote, as the stage reaches them: signals beside the evidence they rest on
     val modelVote = c.decision.leaning.orElse(c.decision.candidate).map(lean =>
       scored.get(lean.film).map(cs => tmdbRecord(lean.film, cs.head.film)).getOrElse(AgreementStage.leanRecord(lean)))
-    val agreed    = if (c.decision.film.isDefined) None else Agreement.agreed(c.listings, c.verdicts, modelVote, Some(c.thisYear))
+    // as the stage reads it: the listings as their venues' own pages state them, and a film only review sites take is none
+    val agreed    = (if (c.decision.film.isDefined) None else Agreement.agreed(c.listings, c.verdicts, modelVote, Some(c.thisYear), c.stated))
+      .filter(_.families.exists(_.namesFilms))
+    val asStated  = if (c.stated.nonEmpty) c.stated else c.listings
+    // the stage relay's broadcast date: the one record of the cluster's undenied candidates its screening days name
+    val broadcastTake = c.measured.filter(_ => c.listings.exists(!_.screenings.isEmpty)).flatMap(measured =>
+      Broadcast.take(c.listings, measured, eligible.map { case (id, candidates) => id -> candidates.head.film })).map(_.film)
     val posterVote = PosterEvidence.vote(c.posters).map(_._1)
     val agreedImdb = agreed.flatMap(_.crossId("imdb"))
     val agreedTmdb = agreed.flatMap(film => film.crossId("tmdb").flatMap(_.toIntOption).orElse(agreedImdb.flatMap(c.tmdbOf)))
@@ -148,13 +155,16 @@ object UnifiedEvidence {
         v.leaning.exists(lean => !contender.is(lean) && !Agreement.contradictedByTheListing(c.listings, lean)))
       val dissent = c.verdicts.count(v => v.pick.exists(pick => !contender.is(pick.record) && c.listings.nonEmpty &&
         c.listings.forall(Agreement.namesIt(_, Seq(pick.record.film)))))
-      val votes  = Agreement.listingVotes(c.listings, records)
+      val votes  = Agreement.listingVotes(asStated, records)
       val nearest = contender.tmdb.toSeq.flatMap(id => c.posters.flatMap(_.get(id).flatten)).minOption
       val flags: Seq[(String, Boolean)] = Seq(
         // as the stage takes it: by the TMDB id the agreed record links (or IMDb's find of its IMDb id), else as IMDb's
         // film — an agreed record linking neither is taken as nothing (DE "André Rieus Weihnachtskonzert 2026")
         "agreement.quorum"    -> (agreedTmdb.exists(contender.tmdb.contains) || (agreedTmdb.isEmpty && agreedImdb.exists(contender.imdb.contains))),
         "poster.vote"         -> posterVote.exists(contender.tmdb.contains),
+        "broadcast.take"      -> broadcastTake.exists(contender.tmdb.contains),
+        "listing.catalogue"   -> c.listings.exists(_.catalogueIds.exists(id => c.verdicts.exists(v =>
+          v.family.database == id.source && v.pick.exists(pick => pick.id == id.id && contender.is(pick.record))))),
         "model.unscored"      -> open.isEmpty,
         "model.deniedBySome"  -> own.exists(_.denied),
         "model.lean"          -> contender.tmdb.exists(id => c.decision.leaning.exists(_.film == id)),

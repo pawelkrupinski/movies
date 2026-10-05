@@ -1,104 +1,104 @@
 {
-  "version" : "unified-3cc9c2d6",
-  "signals" : [ "model.logit", "model.unscored", "model.deniedBySome", "rule.title", "rule.director", "rule.calibrated", "rule.imdb", "rule.stage", "rule.proposal", "rule.pooled", "model.lean", "model.best", "production.season", "production.house", "family.imdb.took", "family.wiki.took", "family.filmweb.took", "family.metacritic.took", "family.rt.took", "family.imdb.leans", "family.wiki.leans", "family.filmweb.leans", "family.metacritic.leans", "family.rt.leans", "family.turnedDown", "family.dissent", "listing.facts", "listing.runtime", "listing.contradicts", "venues.current", "title.namesIt", "title.anothersOwn", "bill.several", "bill.bothWorks", "stage.work", "poster.match", "poster.near", "poster.otherMatches", "agreement.quorum", "poster.vote", "count.takers", "count.leaning", "count.takersLessDissent", "count.takers2", "count.takers3", "and.takersNoDissent", "and.factsTakers", "and.posterTakers", "and.leanTakers" ],
-  "weights" : [ -3.444129, 0.688115, 0.530406, -1.509264, 5.845662, 4.202123, 6.986465, 5.667292, 3.470467, 0, 0, 1.297963, 0.627148, 2.14961, 0.726141, 1.627594, 0, 1.644519, 0, 0, 0.599055, 0.077894, 0.003451, 0.175966, 0.397155, 0, 0, 0.342896, 0.170912, 0, 1.205434, 1.190411, 0, 0, 0, 0, 0.842614, 0.201386, 0, 0.863808, 0.842614, 1.261761, 1.253521, 0.160513, 0, 0.047882, 0, 0.400093, 0.268958, 0 ],
-  "cut" : 0.995189,
+  "version" : "unified-0f58e0c6",
+  "signals" : [ "model.logit", "model.unscored", "model.deniedBySome", "rule.title", "rule.director", "rule.calibrated", "rule.imdb", "rule.stage", "rule.proposal", "rule.pooled", "model.lean", "model.best", "production.season", "production.house", "family.imdb.took", "family.wiki.took", "family.filmweb.took", "family.metacritic.took", "family.rt.took", "family.imdb.leans", "family.wiki.leans", "family.filmweb.leans", "family.metacritic.leans", "family.rt.leans", "family.turnedDown", "family.dissent", "listing.facts", "listing.runtime", "listing.contradicts", "venues.current", "title.namesIt", "title.anothersOwn", "bill.several", "bill.bothWorks", "stage.work", "poster.match", "poster.near", "poster.otherMatches", "agreement.quorum", "poster.vote", "broadcast.take", "listing.catalogue", "count.takers", "count.leaning", "count.takersLessDissent", "count.takers2", "count.takers3", "and.takersNoDissent", "and.factsTakers", "and.posterTakers", "and.leanTakers" ],
+  "weights" : [ -3.683513, 0.670926, 0.231892, -1.420377, 5.857075, 4.120884, 6.903966, 5.661909, 3.409313, 0, 0, 0.995844, 0.553281, 2.095305, 0.717659, 1.460329, 0, 1.815698, 0, 0, 0.77638, 0.072762, 0.020727, 0.146081, 0.356806, 0, 0, 0.751536, 0.266046, 0, 1.269095, 1.456941, 0, 0, 0, 0, 0.84913, 0.170178, 0, 1.178873, 0.84913, 0.886733, 0.46512, 1.216871, 1.372756, 0, 0, 0.080534, 0, 0, 0.344619, 0 ],
+  "cut" : 0.991322,
   "l2" : 1,
   "folds" : 5,
-  "rows" : 14673,
+  "rows" : 14472,
   "heldOut" : {
-    "logLoss" : 0.013823,
-    "accuracy" : 0.996865,
-    "weakAccuracy" : 0.998941,
-    "weakLogLoss" : 0.006308,
-    "handLogLoss" : 0.220826,
-    "handRows" : 514,
-    "handAccuracy" : 0.939689
+    "logLoss" : 0.012903,
+    "accuracy" : 0.997236,
+    "weakAccuracy" : 0.998928,
+    "weakLogLoss" : 0.006317,
+    "handLogLoss" : 0.203248,
+    "handRows" : 484,
+    "handAccuracy" : 0.948347
   },
   "ablation" : [ {
     "group" : "model",
-    "logLoss" : 0.015169,
-    "handLogLoss" : 0.245553,
-    "right" : 1043,
-    "wrong" : 9
+    "logLoss" : 0.013698,
+    "handLogLoss" : 0.214461,
+    "right" : 1049,
+    "wrong" : 8
   }, {
     "group" : "rules",
-    "logLoss" : 0.045794,
-    "handLogLoss" : 0.229735,
-    "right" : 1219,
+    "logLoss" : 0.043948,
+    "handLogLoss" : 0.211933,
+    "right" : 1223,
     "wrong" : 7
   }, {
     "group" : "model-vote",
-    "logLoss" : 0.014133,
-    "handLogLoss" : 0.227292,
-    "right" : 1038,
-    "wrong" : 4
+    "logLoss" : 0.013059,
+    "handLogLoss" : 0.20566,
+    "right" : 1042,
+    "wrong" : 8
   }, {
     "group" : "productions",
-    "logLoss" : 0.013981,
-    "handLogLoss" : 0.220498,
-    "right" : 1039,
-    "wrong" : 3
+    "logLoss" : 0.013074,
+    "handLogLoss" : 0.203018,
+    "right" : 1042,
+    "wrong" : 8
   }, {
     "group" : "family-took",
-    "logLoss" : 0.014004,
-    "handLogLoss" : 0.225086,
-    "right" : 1211,
-    "wrong" : 3
+    "logLoss" : 0.013139,
+    "handLogLoss" : 0.209428,
+    "right" : 1214,
+    "wrong" : 8
   }, {
     "group" : "family-leans",
-    "logLoss" : 0.013787,
-    "handLogLoss" : 0.219623,
-    "right" : 1039,
-    "wrong" : 2
+    "logLoss" : 0.012879,
+    "handLogLoss" : 0.20239,
+    "right" : 1042,
+    "wrong" : 8
   }, {
     "group" : "family-against",
-    "logLoss" : 0.013823,
-    "handLogLoss" : 0.220826,
-    "right" : 1039,
-    "wrong" : 2
+    "logLoss" : 0.012903,
+    "handLogLoss" : 0.203248,
+    "right" : 1042,
+    "wrong" : 7
   }, {
     "group" : "listing",
-    "logLoss" : 0.013772,
-    "handLogLoss" : 0.2195,
-    "right" : 1039,
-    "wrong" : 3
+    "logLoss" : 0.012941,
+    "handLogLoss" : 0.20483,
+    "right" : 1043,
+    "wrong" : 8
   }, {
     "group" : "venues",
-    "logLoss" : 0.014047,
-    "handLogLoss" : 0.222276,
-    "right" : 1039,
-    "wrong" : 4
+    "logLoss" : 0.013184,
+    "handLogLoss" : 0.206264,
+    "right" : 1043,
+    "wrong" : 9
   }, {
     "group" : "title",
-    "logLoss" : 0.013693,
-    "handLogLoss" : 0.213346,
-    "right" : 1039,
-    "wrong" : 3
+    "logLoss" : 0.01294,
+    "handLogLoss" : 0.200903,
+    "right" : 1042,
+    "wrong" : 9
   }, {
     "group" : "poster",
-    "logLoss" : 0.013815,
-    "handLogLoss" : 0.22049,
-    "right" : 1039,
-    "wrong" : 2
+    "logLoss" : 0.012889,
+    "handLogLoss" : 0.202732,
+    "right" : 1041,
+    "wrong" : 8
   }, {
     "group" : "stage-verdicts",
-    "logLoss" : 0.013861,
-    "handLogLoss" : 0.222007,
-    "right" : 1038,
-    "wrong" : 4
+    "logLoss" : 0.012999,
+    "handLogLoss" : 0.206852,
+    "right" : 1042,
+    "wrong" : 9
   }, {
     "group" : "counts",
-    "logLoss" : 0.014264,
-    "handLogLoss" : 0.228975,
-    "right" : 1036,
-    "wrong" : 3
+    "logLoss" : 0.013377,
+    "handLogLoss" : 0.212455,
+    "right" : 1041,
+    "wrong" : 7
   }, {
     "group" : "conjunctions",
-    "logLoss" : 0.01382,
-    "handLogLoss" : 0.220754,
-    "right" : 1038,
-    "wrong" : 4
+    "logLoss" : 0.012835,
+    "handLogLoss" : 0.200956,
+    "right" : 1042,
+    "wrong" : 7
   } ],
   "provenance" : { },
   "guards" : [ "bill.several", "bill.bothWorks", "stage.work", "title.anothersOwn", "listing.contradicts", "poster.otherMatches", "family.turnedDown" ]

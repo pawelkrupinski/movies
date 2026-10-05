@@ -62,12 +62,14 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     contenders(evidence(Seq(node(candidate(913760, klondike2022, 0.30))), three)).head.signals.get("agreement.quorum") shouldBe Some(1.0)
   }
 
-  it should "carry no agreement verdict on a TMDB candidate the agreed film names by no id, as the stage then takes nothing" in {
-    // DE "André Rieus Weihnachtskonzert 2026": RT, Metacritic and Filmweb agree on a record linking no id; the model's
-    // lean completes it by facts, but the stage has no TMDB or IMDb id to take, so it takes nothing
-    val record = SourceRecord(klondike2022.copy(imdbNumber = 0))
-    val three  = Seq(VoterFamily.RottenTomatoes, VoterFamily.Metacritic, VoterFamily.Filmweb).map(took(_, record))
-    contenders(evidence(Seq(node(candidate(913760, klondike2022, 0.30))), three)).head.signals.get("agreement.quorum") shouldBe None
+  it should "carry no agreement verdict where only review sites take the film, as the stage then takes nothing" in {
+    // DE "André Rieus Weihnachtskonzert 2026": Metacritic and RT take a namesake the model's lean completes to a quorum;
+    // their pages name no film a card stands on, so the stage takes nothing
+    val record  = SourceRecord(klondike2022.copy(imdbNumber = 0))
+    val reviews = Seq(VoterFamily.RottenTomatoes, VoterFamily.Metacritic).map(took(_, record))
+    contenders(evidence(Seq(node(candidate(913760, klondike2022, 0.30))), reviews)).head.signals.get("agreement.quorum") shouldBe None
+    val withFilmweb = reviews :+ took(VoterFamily.Filmweb, record)
+    contenders(evidence(Seq(node(candidate(913760, klondike2022, 0.30))), withFilmweb)).head.signals.get("agreement.quorum") shouldBe Some(1.0)
   }
 
   it should "read a family that weighed the film and leaned to another as turning it down" in {
