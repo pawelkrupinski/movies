@@ -194,6 +194,39 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(Seq(relay), Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(f => FamilyVerdict.took(FamilyPick(f, "1", SourceRecord(brass))))) shouldBe None
   }
 
+  "A family's questions" should "fetch a hit's record only if its search ranked it first or its title shares a word, and at most six" in {
+    val asked = scala.collection.mutable.ArrayBuffer.empty[String]
+    val hits  = Seq(SourceHit("a", "Something Else", None, None), SourceHit("b", "Klondike Gold", None, None),
+      SourceHit("c", "Unrelated", None, None), SourceHit("d", "", None, None)) ++
+      (1 to 6).map(i => SourceHit(s"k$i", s"Klondike $i", None, None))
+    val family = new FamilyAnswers {
+      val family: VoterFamily = VoterFamily.Imdb
+      def titled(text: String)     = Answer.Known(hits)
+      def directedBy(name: String) = Answer.Known(Nil)
+      def record(id: String)       = { asked += id; Answer.Known(None) }
+    }
+    val lookups = new FamilyLookups(family, NoVenueDetails, Seq("Klondike"))
+    val numbered = lookups.candidates(services.identity.CandidateQuery.Title("Klondike")).toOption.get
+    numbered.foreach(hit => lookups.film(hit.tmdbId))
+    asked.toSeq shouldBe Seq("a", "b", "d", "k1", "k2")   // first (any title), a shared word, no title to judge; then the cap of 6
+  }
+
+  it should "search no director on a family whose director searches never decided a take, nor a non-Latin title on an English-only one" in {
+    val searched = scala.collection.mutable.ArrayBuffer.empty[String]
+    def counting(of: VoterFamily) = new FamilyLookups(new FamilyAnswers {
+      val family: VoterFamily = of
+      def titled(text: String)     = { searched += s"${of.label} title $text"; Answer.Known(Nil) }
+      def directedBy(name: String) = { searched += s"${of.label} director $name"; Answer.Known(Nil) }
+      def record(id: String)       = Answer.Known(None)
+    }, NoVenueDetails)
+    Seq(VoterFamily.RottenTomatoes, VoterFamily.Metacritic, VoterFamily.Filmweb, VoterFamily.Imdb).foreach { family =>
+      val lookups = counting(family)
+      lookups.candidates(services.identity.CandidateQuery.Director("Andrzej Wajda"))
+      lookups.candidates(services.identity.CandidateQuery.Title("Сталкер"))
+    }
+    searched.toSeq shouldBe Seq("filmweb title Сталкер", "imdb director Andrzej Wajda", "imdb title Сталкер")
+  }
+
   "A family whose questions are not answered yet" should "pick nothing yet — a gap, not a verdict" in {
     val bare = Seq(listing(KinoMuza, "Klondike"))
     Agreement.verdict(bare, new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty, unanswered = true), NoVenueDetails, normalizer, IdentityCalibration.resolver) shouldBe Answer.Unknown

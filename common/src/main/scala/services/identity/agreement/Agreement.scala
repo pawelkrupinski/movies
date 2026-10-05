@@ -14,16 +14,20 @@ import scala.collection.mutable
  * TMDB's calibration, its search priors' spread scaled by `priorSpread` (chosen per source by cross-validation, REPORT
  * §10: 19 right, 0 wrong, against 17 / 0 with TMDB's own spread).
  */
-enum VoterFamily(val label: String, val priorSpread: Double) {
+enum VoterFamily(val label: String, val priorSpread: Double, val searchesDirectors: Boolean, val latinTitlesOnly: Boolean) {
   /** IMDb's own title and name search, and its records (Cinemeta and OMDb mirror it). */
-  case Imdb extends VoterFamily("imdb", 1.5)
+  case Imdb extends VoterFamily("imdb", 1.5, searchesDirectors = true, latinTitlesOnly = false)
   /** Wikidata's film items, and the Wikipedia articles that name them. */
-  case Wiki extends VoterFamily("wiki", 0.5)
+  case Wiki extends VoterFamily("wiki", 0.5, searchesDirectors = true, latinTitlesOnly = false)
   /** Filmweb's search and film records — a voter where it indexes the country's titles (PL, DE, ES). */
-  case Filmweb extends VoterFamily("filmweb", 0.5)
-  case Metacritic extends VoterFamily("metacritic", 1.0)
-  case RottenTomatoes extends VoterFamily("rt", 1.5)
+  case Filmweb extends VoterFamily("filmweb", 0.5, searchesDirectors = false, latinTitlesOnly = false)
+  case Metacritic extends VoterFamily("metacritic", 1.0, searchesDirectors = false, latinTitlesOnly = true)
+  case RottenTomatoes extends VoterFamily("rt", 1.5, searchesDirectors = false, latinTitlesOnly = true)
 }
+// What each family is asked, measured on prod's 20,310 answers (2026-10-05, agreement-question-value.md): a director
+// search decided an agreed film on IMDb (10) and Wikidata (8), never on Filmweb, Metacritic or Rotten Tomatoes
+// (`searchesDirectors`); Rotten Tomatoes' and Metacritic's English searches answer nothing useful for a title with no
+// Latin-script word (`latinTitlesOnly`).
 
 /** One film a family's search names: the family's own id for it, and its title and year as the search gave them. */
 final case class SourceHit(id: String, title: String, originalTitle: Option[String], year: Option[Int])
@@ -69,9 +73,12 @@ final case class AgreedFilm(families: Set[VoterFamily], record: SourceRecord, id
 /** A family's answers as the resolver's lookups — the family as the film database, as TMDB is to the model. Its ids
  *  are numbered as this resolve meets them (it asks its questions in one sorted order), so the resolve is a function of
  *  the answers; the venues' own detail pages come from `venues`. */
-final class FamilyLookups(answers: FamilyAnswers, venues: IdentityLookups) extends IdentityLookups {
+final class FamilyLookups(answers: FamilyAnswers, venues: IdentityLookups, listingTitles: Seq[String] = Nil) extends IdentityLookups {
   private val numbers = mutable.LinkedHashMap.empty[String, Int]
   private val named   = mutable.HashMap.empty[Int, SourceHit]
+  /** Each numbered film's best place in a search that named it: what [[fetched]] reads. */
+  private val bestRank = mutable.HashMap.empty[Int, Int]
+  private val listingTokens: Set[String] = listingTitles.flatMap(TitleContainment.tokens).toSet
   private val read    = mutable.LinkedHashMap.empty[String, SourceRecord]
   /** Every film's record this resolve read, in the order it read them. */
   def weighed: Seq[SourceRecord] = read.values.toSeq
@@ -86,12 +93,32 @@ final class FamilyLookups(answers: FamilyAnswers, venues: IdentityLookups) exten
   override def hasDetail(listing: Listing): Boolean                  = venues.hasDetail(listing)
   override def detail(listing: Listing): Answer[Option[DetailFacts]] = venues.detail(listing)
   override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = query match {
-    case CandidateQuery.Title(text)    => answers.titled(text).mapKnown(_.map(hitOf))
-    case CandidateQuery.Director(name) => answers.directedBy(name).mapKnown(_.map(hitOf))
+    case CandidateQuery.Title(text) if answers.family.latinTitlesOnly && !FamilyLookups.hasLatinWord(text) => Answer.Known(Nil)
+    case CandidateQuery.Title(text)    => answers.titled(text).mapKnown(ranked)
+    case CandidateQuery.Director(_) if !answers.family.searchesDirectors => Answer.Known(Nil)
+    case CandidateQuery.Director(name) => answers.directedBy(name).mapKnown(ranked)
     case _                             => Answer.Known(Nil)
   }
+  private def ranked(hits: Seq[SourceHit]): Seq[Hit] = hits.zipWithIndex.map { case (hit, rank) =>
+    val numbered = hitOf(hit)
+    bestRank.updateWith(numbered.tmdbId)(was => Some(was.fold(rank)(_ min rank)))
+    numbered
+  }
+
+  /** Is a numbered film's record worth asking for? Its search ranked it first, or its title shares a word with the
+   *  listing's, or the search gave no title to judge it by — and in any case within the first [[FamilyLookups.Records]]
+   *  a search returned. A hit failing that is read as no record (`film` is `None`): its question is never asked.
+   *  Replayed on prod's answers (2026-10-05): ~29% fewer questions, 45% fewer record fetches, no agreed film lost —
+   *  the first hit kept whatever its title (it rescues translated titles), the cap at 6 (4 lost one). */
+  private def fetched(number: Int, hit: SourceHit): Boolean = bestRank.get(number).forall { rank =>
+    rank < FamilyLookups.Records && (rank == 0 || {
+      val titles = (Seq(hit.title) ++ hit.originalTitle).filter(_.nonEmpty)
+      titles.isEmpty || titles.exists(title => TitleContainment.tokens(title).exists(listingTokens))
+    })
+  }
+
   override def film(number: Int): Answer[Option[IdentityMeasures.Film]] =
-    named.get(number).fold[Answer[Option[IdentityMeasures.Film]]](Answer.Known(None)) { hit =>
+    named.get(number).filter(fetched(number, _)).fold[Answer[Option[IdentityMeasures.Film]]](Answer.Known(None)) { hit =>
       val answer = answers.record(hit.id)
       answer.toOption.flatten.foreach(record => read(hit.id) = record)
       answer.mapKnown(_.map(_.film))
@@ -101,6 +128,14 @@ final class FamilyLookups(answers: FamilyAnswers, venues: IdentityLookups) exten
     case Answer.Known(value) => Answer.Known(f(value))
     case Answer.Unknown      => Answer.Unknown
   }
+}
+
+object FamilyLookups {
+  /** How many of a search's films are read at most. */
+  val Records = 6
+  /** Does `text` carry a word in Latin script? */
+  def hasLatinWord(text: String): Boolean =
+    text.exists(c => Character.isLetter(c) && Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN)
 }
 
 object Agreement {
@@ -124,7 +159,8 @@ object Agreement {
    *  it — or none, with every record it weighed; `Unknown` while a question it asked is not answered yet. */
   def verdict(listings: Seq[Listing], answers: FamilyAnswers, venues: IdentityLookups, normalizer: TitleNormalizer,
               calibration: IdentityCalibration): Answer[FamilyVerdict] = {
-    val lookups    = new FamilyLookups(answers, venues)
+    val lookups    = new FamilyLookups(answers, venues,
+      listings.flatMap(l => Seq(l.title, l.rawTitle, l.cleanTitle) ++ l.originalTitle ++ l.searchTitle).distinct)
     val resolution = IdentityResolver.resolve(listings, lookups, normalizer, calibration)
     if (resolution.unknownQueries > 0 || resolution.unknownFilms > 0) Answer.Unknown
     else resolution.decisions.flatMap(_.film).distinct match {
