@@ -172,13 +172,15 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
     model.familiesResolved should be <= (whole.families * 2)
   }
 
-  "the incremental resolver's resolution" should "carry the whole resolve's decisions, families and decided films" in {
+  "the incremental resolver's resolution" should "carry the whole resolve's decisions and decided films, and leave its families to the model" in {
     val corpus = GeneratedIdentityCorpus.generate(3L, normalizer, films = 12, listings = 48)
     val model  = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None)
     model.seed(corpus.listings)
     val whole  = IdentityResolver.resolveWith(corpus.listings, corpus.lookups, normalizer, calibration, IdentityResolver.Mutation.None)
-    ResolutionSignature.of(model.resolution) shouldBe ResolutionSignature.of(whole)
+    ResolutionSignature.of(model.resolution.decisions, model.familyOf) shouldBe ResolutionSignature.of(whole)
     model.resolution.films shouldBe whole.films
+    // Built for every projection, which reads decisions alone: a map of every listing's family is not built for it.
+    model.resolution.familyOf shouldBe empty
   }
 
   "the incremental resolver's gaps" should "name what the lookups cannot answer yet, and only what the source never answers once the fill ran dry" in {

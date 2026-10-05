@@ -140,12 +140,13 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     update(arrived.flatMap(listing => familyOf(listing.key)).toSet, arrived.map(_.key).toSet, moved)
   }
 
-  /** The model as a [[Resolution]] — what the shadow diff and the projection read: its decisions,
-   *  its families, and the records of the films it decided. It counts no edges or lookups: those
-   *  are a whole resolve's. */
+  /** The model as a [[Resolution]] — what the projection reads: its decisions and the records of the films it decided.
+   *  It carries no families (an empty `familyOf`: read [[familyOf]] on the model's thread) and counts no edges or
+   *  lookups, which are a whole resolve's. Every projection reads one, and a map of every listing's family was a third
+   *  of worker-us's model thread (2026-10-05) for a reader that never looked at it. */
   def resolution: Resolution = {
     val decided = decisions
-    Resolution(decided, corpus.nodeCount, familyOf, Nil, Nil, 0, 0, 0, 0, 0,
+    Resolution(decided, corpus.nodeCount, Map.empty, Nil, Nil, 0, 0, 0, 0, 0,
       decided.flatMap(_.film).distinct.flatMap(id => corpus.candidate(id).map(id -> _.film)).toMap)
   }
 

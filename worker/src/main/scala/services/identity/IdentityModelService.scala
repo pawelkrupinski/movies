@@ -127,6 +127,13 @@ final class IdentityModelService(
     model.map(snapshotOf)
   }
 
+  /** Each listing's family, the model brought up to now as [[current]] brings it — which a snapshot's resolution does
+   *  not carry. `None` as [[current]]'s. */
+  def familyOf(timeout: FiniteDuration): Option[Map[services.movies.ListingKey, Int]] = onModel(timeout) {
+    model.foreach(_ => safely("catch up") { drain(); () })
+    model.map(_.familyOf)
+  }
+
   /** The model caught up with what queued, if it has been taken up — never a take-up: what the
    *  fill reads, which must not wait on one. */
   def peek(timeout: FiniteDuration): Option[ModelSnapshot] = onModel(timeout) {
