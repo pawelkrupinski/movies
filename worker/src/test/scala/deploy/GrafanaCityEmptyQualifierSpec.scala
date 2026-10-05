@@ -127,11 +127,11 @@ class GrafanaCityEmptyQualifierSpec extends AnyFlatSpec with Matchers {
    *  found by its zero-check anywhere in the file, so a second copy of it would be caught. */
   private lazy val cityEmptyExpressions: Seq[String] =
     AlertRule.expressionsIn(RepoFile.read(AlertRule.File))
-      .filter(_.contains("""kinowo_web_movies_served{scope="all"} == 0"""))
+      .filter(_.contains("""kinowo_web_movies_served{scope="all"}[10m]) == 0"""))
 
   "the alert rules" should "still have exactly one query A for the city-empty alert" in {
     withClue(
-      s"expected exactly one `expr:` containing kinowo_web_movies_served{scope=\"all\"} == 0 in " +
+      s"expected exactly one `expr:` containing kinowo_web_movies_served{scope=\"all\"}[10m]) == 0 in " +
         s"${AlertRule.File} (query A of kinowo-movies-served-city-empty); found ${cityEmptyExpressions.size}. " +
         "If the rule was rewritten, update this spec's filter to find its query A again."
     ) {
