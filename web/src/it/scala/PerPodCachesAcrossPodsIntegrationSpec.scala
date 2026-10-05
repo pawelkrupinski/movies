@@ -1,6 +1,7 @@
 package integration
 
 import tools.SpecTimeouts
+import com.github.benmanes.caffeine.cache.Ticker
 import models.{CityScreening, ResolvedMovie, ResolvedRatings, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -39,10 +40,11 @@ class PerPodCachesAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers wi
   /** Two pods with their change-time caches started, a user whose first write went through pod
    *  A, and the `Last-Modified` A answered it with — once A's own cache holds it, so the fast
    *  path is what answers from here on. */
-  private def withWarmCache(suite: String, cacheTtl: FiniteDuration)(body: (UserStatePod, UserStatePod, String, String) => Unit): Unit =
+  private def withWarmCache(suite: String, cacheTtl: FiniteDuration, ticker: Ticker = Ticker.systemTicker())(
+      body: (UserStatePod, UserStatePod, String, String) => Unit): Unit =
     ConcurrentInstances.withInstances(mongoTarget, suite) { instances =>
       val users = new InMemoryUserRepository
-      val Seq(a, b) = instances.map(instance => new UserStatePod(instance.database, users, clock, cacheTtl = cacheTtl))
+      val Seq(a, b) = instances.map(instance => new UserStatePod(instance.database, users, clock, cacheTtl = cacheTtl, cacheTicker = ticker))
       try {
         Seq(a, b).foreach(_.changeTimes.start())
         val userId = UserStatePod.signIn(users, "cached")
@@ -66,16 +68,21 @@ class PerPodCachesAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers wi
       }, timeoutMs = StreamBoundMs, pollMs = 50)
     }
 
-  it should "stop answering 304 for another pod's write within its TTL even when its stream stalls silently" in
-    withWarmCache("change-time-cache-stalled", 1.second) { (a, b, userId, lastModified) =>
+  // The TTL is aged by hand. On wall time, a 1-second TTL raced the setup itself: a spec thread stalled past it
+  // (a GC pause, a loaded machine — itAll) between the stream's delivery and the poll for it expired the entry
+  // before the poll ever saw it, and no later event put it back ("None was not defined" in the setup).
+  it should "stop answering 304 for another pod's write within its TTL even when its stream stalls silently" in {
+    val ttlClock = new tools.MutableClock(Instant.EPOCH)
+    withWarmCache("change-time-cache-stalled", 1.second, ttlClock.ticker) { (a, b, userId, lastModified) =>
       a.changeTimes.stop()   // the cursor stops delivering and nothing says so: no disconnect, no clear
       status(b.hide(userId, "Hidden on B")) shouldBe OK
-      eventually({
-        val (code, body) = hiddenAfter(a, userId, lastModified)
-        code shouldBe OK
-        body should include ("Hidden on B")
-      }, timeoutMs = 1000 + 2000, pollMs = 50)
+      hiddenAfter(a, userId, lastModified)._1 shouldBe NOT_MODIFIED   // within the TTL: the stall's bounded staleness
+      ttlClock.advanceMillis(1001)
+      val (code, body) = hiddenAfter(a, userId, lastModified)
+      code shouldBe OK
+      body should include ("Hidden on B")
     }
+  }
 
   private val ratings = ResolvedRatings(None, None, None, "", None, "", None, "")
   private val film    = ResolvedMovie("f-two-pods", "Diuna", None, None, Nil, None, Some(2021), Nil, Nil, Nil, Nil, None, Nil, ratings, 0.0)

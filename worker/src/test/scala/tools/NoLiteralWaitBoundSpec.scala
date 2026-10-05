@@ -54,8 +54,6 @@ class NoLiteralWaitBoundSpec extends AnyFlatSpec with Matchers {
         "is the thing raced (and the elapsed time is bounded from above at 10 s)"),
     ("web/src/page/scala/tools/CdpDriver.scala", "process.waitFor(3, TimeUnit.SECONDS)") ->
       "a graceful-exit grace before destroyForcibly: a longer bound would only delay tearing down a hung Chrome, never pass anything",
-    ("web/src/it/scala/PerPodCachesAcrossPodsIntegrationSpec.scala", "timeoutMs = 1000 + 2000") ->
-      "a max-duration assertion: a stalled stream's change must surface within the 1 s TTL (+2 s slack) — the TTL path is what is proven",
     ("web/src/page/scala/views/PageJsBehaviourSpec.scala", "timeoutMs = 150") ->
       "a max-duration assertion: the hide's request must fire within 150 ms, well under the retired 400 ms debounce",
   )

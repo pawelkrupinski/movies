@@ -25,11 +25,13 @@ final class UserStatePod(
   clock:         Clock,
   writeOutcomes: UserStateWriteOutcomes = UserStateWriteOutcomes.none,
   indexHealth:   UserStateIndexHealth   = UserStateIndexHealth.none,
-  cacheTtl:      scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, "minutes")
+  cacheTtl:      scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, "minutes"),
+  // What the change-time cache ages its entries on: wall time, unless a spec moves it by hand.
+  cacheTicker:   com.github.benmanes.caffeine.cache.Ticker = com.github.benmanes.caffeine.cache.Ticker.systemTicker()
 ) extends AutoCloseable {
   val states     = new MongoUserStateRepository(database = Some(db), clock = _root_.tools.SpecClock.Pinned,
     writeOutcomes = writeOutcomes, indexHealth = indexHealth)
-  val changeTimes = new CaffeineUserChangeTimeCache(states, entryTtl = cacheTtl)
+  val changeTimes = new CaffeineUserChangeTimeCache(states, entryTtl = cacheTtl, ticker = cacheTicker)
   val controller: UserStateController = UserStatePod.controller(states, users, changeTimes, clock)
 
   import UserStatePod.session
