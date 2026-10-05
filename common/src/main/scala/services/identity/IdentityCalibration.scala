@@ -32,18 +32,36 @@ final case class IdentityCalibration(version: String,
                                      provenance: Map[String, String] = Map.empty) {
   import IdentityCalibration.*
 
-  private def model(scope: String): ScopeModel =
-    scopes.getOrElse(scope, throw new NoSuchElementException(s"identity-weights.json has no scope '$scope'"))
+  private def model(scope: String): ScopeModel = {
+    val m = scopes.getOrElse(scope, null)   // no closure over `scope` per call: every score asks
+    if (m == null) throw new NoSuchElementException(s"identity-weights.json has no scope '$scope'")
+    m
+  }
 
   /** Each signal's contribution (its log-likelihood ratio) to the log-odds. */
   def contributions(scope: String, measures: Map[String, Measure]): Seq[(String, Double)] = {
     val m = model(scope)
-    m.bySignalName.map { case (name, w) => name -> w.weight(measures.get(name)) }
+    m.bySignalName.map { case (name, w) => name -> w.weightOf(measures.getOrElse(name, null)) }
   }
 
   /** The naive-Bayes log-odds that the pair is one film: the prior plus every signal's weight. */
   def logOdds(scope: String, measures: Map[String, Measure]): Double =
-    model(scope).prior + contributions(scope, measures).map(_._2).sum
+    model(scope).prior + contributionSum(scope, measures)
+
+  /** The sum of [[contributions]]' weights, added in the same order as `.map(_._2).sum` adds them (the first, then each
+   *  next) — with no tuple, option or box per signal: the resolver scores every candidate pair through it. */
+  def contributionSum(scope: String, measures: Map[String, Measure]): Double = {
+    val m = model(scope)
+    val names   = m.signalNames
+    val weights = m.signalWeights
+    if (names.isEmpty) 0.0
+    else {
+      var sum = weights(0).weightOf(measures.getOrElse(names(0), null))
+      var i   = 1
+      while (i < names.length) { sum += weights(i).weightOf(measures.getOrElse(names(i), null)); i += 1 }
+      sum
+    }
+  }
 
   /** The calibrated probability that the pair is one film. */
   def probability(scope: String, measures: Map[String, Measure]): Double =
@@ -126,11 +144,32 @@ object IdentityCalibration {
                                  missing: Map[String, Double] = Map.empty,
                                  counts: Map[String, Seq[Int]] = Map.empty,
                                  neutral: Map[String, String] = Map.empty) {
-    def weight(m: Option[Measure]): Double = m match {
-      case Some(Category(v)) => categories.getOrElse(v, 0.0)
-      case Some(Number(x))   => bins.find(_.contains(x)).map(_.weight).getOrElse(0.0)
-      case Some(Missing(s))  => missing.getOrElse(s, 0.0)
-      case None              => 0.0
+    def weight(m: Option[Measure]): Double = weightOf(m.orNull)
+
+    /** [[weight]] of a measure or none (null), reading the weights without an option or box per call. */
+    def weightOf(m: Measure): Double = m match {
+      case Category(v) => SignalWeights.weightIn(byCategory, v)
+      case Number(x)   =>
+        var i = 0
+        while (i < binArray.length && !binArray(i).contains(x)) i += 1
+        if (i < binArray.length) binArray(i).weight else 0.0
+      case Missing(s)  => SignalWeights.weightIn(byMissing, s)
+      case null        => 0.0
+    }
+    private lazy val byCategory = SignalWeights.javaMap(categories)
+    private lazy val byMissing  = SignalWeights.javaMap(missing)
+    private lazy val binArray   = bins.toArray
+  }
+
+  object SignalWeights {
+    private[IdentityCalibration] def javaMap(weights: Map[String, Double]): java.util.HashMap[String, java.lang.Double] = {
+      val map = new java.util.HashMap[String, java.lang.Double](weights.size * 2)
+      weights.foreach { case (k, v) => map.put(k, v) }
+      map
+    }
+    private[IdentityCalibration] def weightIn(weights: java.util.HashMap[String, java.lang.Double], key: String): Double = {
+      val w = weights.get(key)
+      if (w == null) 0.0 else w.doubleValue
     }
   }
 
@@ -159,6 +198,9 @@ object IdentityCalibration {
     /** The signals in name order, sorted once: every scoring sums its contributions in this order
      *  (`logOdds`), and sorting them per call was ~2–5% of a re-resolve (JFR, 2026-09-29). */
     lazy val bySignalName: Seq[(String, SignalWeights)] = signals.toSeq.sortBy(_._1)
+    /** [[bySignalName]] as two arrays, read by index where a score is summed. */
+    lazy val signalNames: Array[String]          = bySignalName.map(_._1).toArray
+    lazy val signalWeights: Array[SignalWeights] = bySignalName.map(_._2).toArray
   }
 
   /** One condition of a learned cannot-link: the signal's category is one of `in`, or its number

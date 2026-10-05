@@ -152,7 +152,7 @@ object ListingConstraints {
                          probability: Double): Option[CannotLink] = {
     import services.identity.IdentityMeasures.{ListingFilm, comparedFacts, comparesAFact}
     // The cut on a probability the compared facts do not pull down is the title's verdict alone.
-    lazy val factsAgree = calibration.contributions(ListingFilm, comparedFacts(ListingFilm, measures)).map(_._2).sum >= 0
+    lazy val factsAgree = calibration.contributionSum(ListingFilm, comparedFacts(ListingFilm, measures)) >= 0
     if (!comparesAFact(ListingFilm, measures)) None
     else calibration.cannotLink(ListingFilm, measures).map(r => CannotLink.Learned(r.name))
       .orElse(Option.when(!factsAgree && calibration.forbidsLink(ListingFilm, probability))(CannotLink.Learned(s"$ListingFilm probability below the cannot-link cut")))
@@ -172,7 +172,7 @@ object ListingConstraints {
                             measures: Map[String, services.identity.IdentityMeasures.Measure]): Option[CannotLink] = {
     import services.identity.IdentityMeasures.{Category, ContainingRelations, ListingListing, comparedFacts}
     val onlyNamesDiffer = measures.get("title").exists { case Category(c) => ContainingRelations(c); case _ => false } &&
-      calibration.contributions(ListingListing, comparedFacts(ListingListing, measures)).map(_._2).sum >= 0
+      calibration.contributionSum(ListingListing, comparedFacts(ListingListing, measures)) >= 0
     if (onlyNamesDiffer) None
     else learnedOnFacts(calibration, ListingListing, measures, calibration.probability(ListingListing, measures))
   }
