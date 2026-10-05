@@ -73,7 +73,8 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   /** The listings the model holds at `venue`: what a venue's next scrape is diffed against. */
   def heldAt(venue: String): Set[ListingKey] = atVenue.getOrElse(venue, Set.empty)
   /** Every listing the model holds. */
-  def listings: Seq[Listing] = byKey.valuesIterator.flatMap(k => Option(k.listing)).toSeq
+  // An array, not a list: every projection reads it (~100k on worker-us), and a cell per listing was ~2.4 MB a projection.
+  def listings: Seq[Listing] = byKey.valuesIterator.flatMap(k => Option(k.listing)).to(scala.collection.immutable.ArraySeq)
   def answersChanged(changed: AnswersChanged): Unit    = batch(Nil, Nil, changed)
 
   /** Several events at once — scrapes and answers that landed together — resolving a family they
