@@ -9853,7 +9853,7 @@ countries:         Japonia, USA
 posterUrl:         https://img.helios.pl/pliki/film/toy-story-5/toy-story-5-plakat-191.jpg
 synopsis.length:   380
 cast:              Tom Hanks, Tim Allen, Blake Clark, Joan Cusack, Ernie Hudson, Tony Hale
-director:          Andrew Stanton
+director:          Andrew Stanton, McKenna Harris
 tmdbId:            1084244
 imdbId:            tt29355505
 originalTitle:     Toy Story 5
@@ -10016,7 +10016,7 @@ countries:         Japonia, USA
 posterUrl:         https://img.helios.pl/pliki/film/toy-story-5/toy-story-5-plakat-191.jpg
 synopsis.length:   147
 cast:              Tom Hanks, Tim Allen, Blake Clark, Joan Cusack, Ernie Hudson, Tony Hale
-director:          Andrew Stanton
+director:          Andrew Stanton, McKenna Harris
 tmdbId:            1084244
 imdbId:            tt29355505
 originalTitle:     Toy Story 5

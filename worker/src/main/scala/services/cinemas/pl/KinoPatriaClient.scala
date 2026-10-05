@@ -104,6 +104,26 @@ object KinoPatriaClient {
     byTitle
   }
 
+  /** A film as its item shows it: the title and showtimes its section gives, and the credits and running time every
+   *  item carries — `amy-movie-field-amy_director`/`_actor` (one link a name) and `amy-movie-field-duration`
+   *  ("01 godzin 46 minut"). The item's synopsis is cut short ("…"), so it is left to the enrichment. */
+  private def filmOf(item: org.jsoup.nodes.Element, title: String, cinema: Cinema, posterUrl: Option[String], filmUrl: Option[String],
+                     showtimes: Seq[Showtime]): CinemaMovie = {
+    def names(field: String) = item.select(s"div.amy-movie-field-$field div.amy-movie-custom-field-content a").asScala.toSeq
+      .map(_.text.trim).filter(_.nonEmpty)
+    CinemaMovie(
+      movie     = Movie(title, runtimeMinutes = Option(item.selectFirst(".amy-movie-field-duration"))
+        .flatMap(duration => ScraperParse.hoursMinutesRuntime(duration.text))),
+      cinema    = cinema,
+      posterUrl = posterUrl,
+      filmUrl   = filmUrl,
+      synopsis  = None,
+      cast      = names("amy_actor"),
+      director  = names("amy_director"),
+      showtimes = showtimes.sortBy(_.dateTime)
+    )
+  }
+
   // ── Daily section ─────────────────────────────────────────────────────────
 
   /** Parse the `amy-movie-showtimews-daily-1` block.
@@ -158,18 +178,7 @@ object KinoPatriaClient {
           t <- times
         } yield Showtime(LocalDateTime.of(d, t), bookingUrl = None)
 
-        title.filter(_ => showtimes.nonEmpty).map { t =>
-          CinemaMovie(
-            movie     = Movie(t),
-            cinema    = cinema,
-            posterUrl = posterUrl,
-            filmUrl   = filmUrl,
-            synopsis  = None,
-            cast      = Seq.empty,
-            director  = Seq.empty,
-            showtimes = showtimes.sortBy(_.dateTime)
-          )
-        }
+        title.filter(_ => showtimes.nonEmpty).map(filmOf(item, _, cinema, posterUrl, filmUrl, showtimes))
       }
     }
 
@@ -211,18 +220,7 @@ object KinoPatriaClient {
           } yield Showtime(LocalDateTime.of(d, t), bookingUrl = None)
         }
 
-        title.filter(_ => showtimes.nonEmpty).map { t =>
-          CinemaMovie(
-            movie     = Movie(t),
-            cinema    = cinema,
-            posterUrl = posterUrl,
-            filmUrl   = filmUrl,
-            synopsis  = None,
-            cast      = Seq.empty,
-            director  = Seq.empty,
-            showtimes = showtimes.sortBy(_.dateTime)
-          )
-        }
+        title.filter(_ => showtimes.nonEmpty).map(filmOf(item, _, cinema, posterUrl, filmUrl, showtimes))
       }
     }
 }

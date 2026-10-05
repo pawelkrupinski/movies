@@ -8,7 +8,6 @@ pl	Kino Kultura	Replika 51. FPFF w Gdyni: Kalafior przeznaczenia + spotkanie z r
 pl	Kino Millenium	KINO NA NIEDZIELE:CAMINO DLA OPORNYCH	tmdb:1404604	right	recall target: Compostelle (2026)
 pl	Kino PCKul	My Fair Lady	tmdb:11113	right	recall target: My Fair Lady (1964)
 pl	Kino Parczew	Vincent.legenda oceanu	tmdb:677558	right	recall target: The Last Whale Singer (2026)
-pl	2D	Kino Zmysłów: Vincent. Legenda oceanu	tmdb:Dubbing	right	recall target: Kino Wielicka Mediateka
 pl	Kino CK Lublin	Lalka	tmdb:1321666	right	recall target: The Doll (2026)
 pl	Kino Powiśle	OPERA-DZIEWCZYNA Z DZIKIEGO ZACHODU	tmdb:1703629	right	recall target: The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 pl	Kino Powiśle	OPERA-MANON	tmdb:1703631	right	recall target: The Metropolitan Opera 2026/27: Manon (2027)
@@ -642,8 +641,6 @@ uk	*	It (1990)	rt:stephen_kings_it	right	hand label:
 uk	*	NT Live: A Midsummer Night's Dream	rt:twelfth-night1987	wrong	hand label: Twelfth Night
 us	*	It (1990)	rt:stephen_kings_it	right	hand label: 
 us	*	Volcanoes 3D	rt:serengeti_2022	wrong	hand label: Serengeti
-pl	*	Dyrygent	tmdb:95269	right	judged 10-05: Wajda's The Conductor (1980), touring in the 2026 Wajda centenary retrospective (re-wizje); TMDB rank 1, no other Dyrygent film
-pl	*	DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO	tmdb:95269	right	judged 10-05: the same Wajda film, screened with a live concert
 pl	Kino Goplana	Sukienka	tmdb:737496	right	judged 10-05: the venue's repertoire bills it at 30 min (12 Oct 18:30, before Światłoczuła) — Łysiak's 2020 short The Dress
 pl	*	Fallen Angels by Noël Coward	tmdb:1702350	right	judged 10-05: the 2026 filmed Broadway production of Coward's play (IMDb tt42921285, Scott Ellis; capture Annette Jolles) that Multikino screens, not a screen adaptation
 us	*	Met Opera 2026-27: Così fan tutte	tmdb:1703620	right	hand label: The Metropolitan Opera: Così fan tutte (2026) Phelim McDermott — TMDB's US title names no season
@@ -654,3 +651,8 @@ pl	*	Balet z Opery Paryskiej 2026-2027: Jezioro łabędzie	tmdb:1702782	wrong	mu
 us	*	Opéra National de Paris: La fanciulla del West	tmdb:1703629	wrong	must not: The Metropolitan Opera 2026/27: La Fanciulla del West, another house's season — TMDB holds no Paris record
 us	*	MetOpera: Carmen (2009)	tmdb:980603	wrong	must not: CARMEN (2009) Opéra Comique, another house's 2009 staging
 us	*	MetOpera: Carmen (2009)	tmdb:1143037	wrong	must not: The Metropolitan Opera: Carmen (2024) Carrie Cracknell, a later production
+pl	Patria	Dyrygent	tmdb:95269	wrong	judged 10-05: Patria's page credits Ondřej Provazník (1h46, premiere 07.10) — Broken Voices (2025), not Wajda's 1980 film
+pl	Patria	Dyrygent	tmdb:1483477	right	Patria's page: "Reżyser: Ondřej Provazník" — Broken Voices (2025)
+pl	Kozienicki Dom Kultury	Dyrygent	tmdb:95269	wrong	judged 10-05: Filmweb's Kozienice showtimes link Dyrygent-2025-10085635 — Broken Voices
+pl	Kozienicki Dom Kultury	Dyrygent	tmdb:1483477	right	Filmweb's Kozienice showtimes: Dyrygent-2025-10085635 — Broken Voices (2025)
+pl	Kino Marzenie	DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO	tmdb:95269	right	judged 10-05: the venue's synopsis (Marta, the conductor John Lasocki) is Wajda's 1980 film

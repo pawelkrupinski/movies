@@ -69,6 +69,22 @@ class KinoPatriaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     film.showtimes.flatMap(_.bookingUrl) shouldBe empty
   }
 
+  // The identity resolver reads these: without them PL "Dyrygent" (2026-10, Provazník's) agreed to Wajda's 1980 film
+  it should "read each film's director, cast and running time off its item, in both sections" in {
+    val backrooms = movies.find(_.movie.title == "Backrooms. Bez wyjścia").value
+    backrooms.director shouldBe Seq("Kane Parsons")
+    backrooms.cast shouldBe Seq("Chiwetel Ejiofor", "Renate Reinsve", "Mark Duplass", "Finn Bennett")
+    backrooms.movie.runtimeMinutes shouldBe Some(105)
+    val toyStory = movies.find(_.movie.title == "Toy Story 5").value
+    toyStory.director shouldBe Seq("Andrew Stanton", "McKenna Harris")
+    toyStory.cast shouldBe empty
+    toyStory.movie.runtimeMinutes shouldBe Some(102)
+    val ojczyzna = movies.find(_.movie.title == "Ojczyzna").value   // the weekly grid
+    ojczyzna.director shouldBe Seq("Paweł Pawlikowski")
+    ojczyzna.cast should contain("Sandra Hüller")
+    ojczyzna.movie.runtimeMinutes shouldBe Some(82)
+  }
+
   it should "carry a filmUrl for each movie" in {
     all(movies.flatMap(_.filmUrl)) should startWith("https://kinopatria.com/")
   }
