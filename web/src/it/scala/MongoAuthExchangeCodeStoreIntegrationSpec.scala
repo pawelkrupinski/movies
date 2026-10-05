@@ -12,8 +12,8 @@ import services.auth.{MongoAuthExchangeCodeStore, PendingExchangeCode}
 import tools.{Eventually, IsolatedMongoDatabase, MongoTtlSpecClock}
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Await, Promise}
+import scala.util.Try
 
 /** The handoff code's browser binding survives the real store: the kinowo.net
  *  pod mints, the showtimes.cc pod redeems, and all they share is this
@@ -68,17 +68,21 @@ class MongoAuthExchangeCodeStoreIntegrationSpec extends AnyFlatSpec with Matcher
     // Let go only once the redeem is in flight on the server and has waited on the
     // held document for longer than the redirect budget — read off the server
     // rather than slept for, so a stalled machine cannot release before the redeem
-    // is even issued and turn this into a plain fast-path redeem.
-    val release = Future {
+    // is even issued and turn this into a plain fast-path redeem. On a thread of its
+    // own, not ExecutionContext.global: other suites in the `itAll` JVM keep that
+    // pool busy, a queued release never lets go, and the redeem then outlasts its
+    // own 60s budget waiting on a transaction nobody is left to abort.
+    val release = Promise[Boolean]()
+    new Thread(() => { release.complete(Try {
       val outwaitedBudget = Eventually.poll()(
         redeemWaitingMicros(slow.code).exists(_ > MongoAuthExchangeCodeStore.Timeout.toMicros))
       Await.result(ToSingleObservableUnit(session.abortTransaction()).toFuture(), SpecTimeouts.Io)
       outwaitedBudget
-    }
+    }); ()}, "auth-code-release").start()
     try store.remove(slow.code).value shouldBe slow
     finally session.close()
     withClue("the redeem was never seen waiting on the held document past the budget: ") {
-      Await.result(release, SpecTimeouts.Io) shouldBe true
+      Await.result(release.future, SpecTimeouts.Io) shouldBe true
     }
   }
 
