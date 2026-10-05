@@ -35,7 +35,13 @@ object UnifiedEvidence {
     Signal("title.namesIt", "title", 1), Signal("title.anothersOwn", "title", -1),
     Signal("bill.several", "bills", -1), Signal("bill.bothWorks", "bills", -1), Signal("stage.work", "bills", -1),
     Signal("poster.match", "poster", 1), Signal("poster.near", "poster", 1), Signal("poster.otherMatches", "poster", -1),
-    Signal("agreement.quorum", "stage-verdicts", 1), Signal("poster.vote", "stage-verdicts", 1))
+    Signal("agreement.quorum", "stage-verdicts", 1), Signal("poster.vote", "stage-verdicts", 1),
+    // the COUNTS and conjunctions the agreement's thresholds read (Quorum, Takers, the rise per dissenting family) —
+    // what an additive score over per-family indicators cannot express
+    Signal("count.takers", "counts", 1), Signal("count.leaning", "counts", 1), Signal("count.takersLessDissent", "counts", 1),
+    Signal("count.takers2", "counts", 1), Signal("count.takers3", "counts", 1),
+    Signal("and.takersNoDissent", "conjunctions", 1), Signal("and.factsTakers", "conjunctions", 1),
+    Signal("and.posterTakers", "conjunctions", 1), Signal("and.leanTakers", "conjunctions", 1))
   val Names: Seq[String] = Signals.map(_.name)
 
   /** The NON-COMPENSATORY guards: a contender one of these fires on is no film to take, whatever else speaks for it — the
@@ -120,6 +126,8 @@ object UnifiedEvidence {
       scored.get(lean.film).map(cs => tmdbRecord(lean.film, cs.head.film)).getOrElse(AgreementStage.leanRecord(lean)))
     val agreed    = if (c.decision.film.isDefined) None else Agreement.agreed(c.listings, c.verdicts, modelVote, Some(c.thisYear))
     val posterVote = PosterEvidence.vote(c.posters).map(_._1)
+    val agreedImdb = agreed.flatMap(_.crossId("imdb"))
+    val agreedTmdb = agreed.flatMap(film => film.crossId("tmdb").flatMap(_.toIntOption).orElse(agreedImdb.flatMap(c.tmdbOf)))
     val venues      = c.listings.map(_.venue).distinct.size
     val severalBill = c.listings.exists(Agreement.billsSeveral)
     val stageWork   = c.listings.exists(Agreement.stagesAWork)
@@ -143,7 +151,9 @@ object UnifiedEvidence {
       val votes  = Agreement.listingVotes(c.listings, records)
       val nearest = contender.tmdb.toSeq.flatMap(id => c.posters.flatMap(_.get(id).flatten)).minOption
       val flags: Seq[(String, Boolean)] = Seq(
-        "agreement.quorum"    -> agreed.exists(film => contender.is(film.record) || film.crossId("tmdb").flatMap(_.toIntOption).exists(contender.tmdb.contains)),
+        // as the stage takes it: by the TMDB id the agreed record links (or IMDb's find of its IMDb id), else as IMDb's
+        // film — an agreed record linking neither is taken as nothing (DE "André Rieus Weihnachtskonzert 2026")
+        "agreement.quorum"    -> (agreedTmdb.exists(contender.tmdb.contains) || (agreedTmdb.isEmpty && agreedImdb.exists(contender.imdb.contains))),
         "poster.vote"         -> posterVote.exists(contender.tmdb.contains),
         "model.unscored"      -> open.isEmpty,
         "model.deniedBySome"  -> own.exists(_.denied),
@@ -165,7 +175,15 @@ object UnifiedEvidence {
         "poster.otherMatches" -> (c.posters.nonEmpty && PosterEvidence.veto(contender.tmdb, c.posters).isDefined)) ++
         rules.distinct.map(_ -> true) ++
         VoterFamily.values.toSeq.flatMap(f => Seq(s"family.${f.label}.took" -> took(f), s"family.${f.label}.leans" -> leans(f)))
-      val signals = flags.collect { case (name, true) => name -> 1.0 }.toMap ++
+      val takers  = VoterFamily.values.count(took).toDouble
+      val leaning = VoterFamily.values.count(leans).toDouble
+      def and(on: Boolean) = if (on) takers else 0.0
+      val counts = Seq("count.takers" -> takers, "count.leaning" -> leaning, "count.takersLessDissent" -> math.max(0.0, takers - dissent),
+        "count.takers2" -> (if (takers >= 2) 1.0 else 0.0), "count.takers3" -> (if (takers >= 3) 1.0 else 0.0),
+        "and.takersNoDissent" -> and(dissent == 0), "and.factsTakers" -> and(votes(Agreement.ListingFacts)),
+        "and.posterTakers" -> and(nearest.exists(_ <= PosterEvidence.VoteBits)),
+        "and.leanTakers" -> and(contender.tmdb.exists(id => c.decision.leaning.exists(_.film == id)))).filter(_._2 != 0.0)
+      val signals = counts.toMap ++ flags.collect { case (name, true) => name -> 1.0 }.toMap ++
         open.map(_.probability).maxOption.map(p => "model.logit" -> logit(p)).filter(_._2 != 0.0) ++
         Seq("family.turnedDown" -> turnedDown.toDouble, "family.dissent" -> dissent.toDouble).filter(_._2 != 0.0)
       val film  = contender.record.film

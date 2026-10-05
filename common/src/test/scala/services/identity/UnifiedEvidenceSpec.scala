@@ -62,6 +62,14 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     contenders(evidence(Seq(node(candidate(913760, klondike2022, 0.30))), three)).head.signals.get("agreement.quorum") shouldBe Some(1.0)
   }
 
+  it should "carry no agreement verdict on a TMDB candidate the agreed film names by no id, as the stage then takes nothing" in {
+    // DE "André Rieus Weihnachtskonzert 2026": RT, Metacritic and Filmweb agree on a record linking no id; the model's
+    // lean completes it by facts, but the stage has no TMDB or IMDb id to take, so it takes nothing
+    val record = SourceRecord(klondike2022.copy(imdbNumber = 0))
+    val three  = Seq(VoterFamily.RottenTomatoes, VoterFamily.Metacritic, VoterFamily.Filmweb).map(took(_, record))
+    contenders(evidence(Seq(node(candidate(913760, klondike2022, 0.30))), three)).head.signals.get("agreement.quorum") shouldBe None
+  }
+
   it should "read a family that weighed the film and leaned to another as turning it down" in {
     // a lean the listing's own facts rule out is no turning down (its director is not the venue's): this one credits nobody
     val old  = SourceRecord(film("Old", 2022, "M. Night Shyamalan").copy(directors = None))
