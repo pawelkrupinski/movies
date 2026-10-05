@@ -77,9 +77,17 @@ object TextNormalization {
    * `ss` turned `kino-wei-haus` into `kino-weisshaus`. A caller needing a wider
    * fold does it locally (see `CinemaCorroboration.nameTokens`).
    */
+  private def isAscii(s: String): Boolean = {
+    var i = 0
+    while (i < s.length && s.charAt(i) < 0x80) i += 1
+    i == s.length
+  }
+
   def deburr(s: String): String =
     // ASCII has nothing to decompose, no combining mark and no `ł`: most titles skip the normalizer.
-    if (s.chars().allMatch(_ < 0x80)) s
+    // Read char by char: `chars().allMatch` built a stream, its spliterator and sink per call, and the resolver folds
+    // titles per compared pair (worker-pl's identity model, JFR 2026-10-05).
+    if (isAscii(s)) s
     else CombiningMarks.matcher(Normalizer.normalize(s, Normalizer.Form.NFD)).replaceAll("")
       .replace('ł', 'l').replace('Ł', 'l')
 

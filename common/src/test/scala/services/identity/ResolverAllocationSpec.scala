@@ -88,4 +88,16 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     val (_, bytes) = tools.ThreadAllocation.of(IdAssigner.Assignment(ids, 501L).idOfListing.size)
     withClue(s"$bytes bytes for 20,000 listings: ")(bytes should be < 1600000L)
   }
+
+  "an accent fold of a title already ASCII" should "be the title itself, asked without a stream per call" in {
+    import tools.TextNormalization.deburr
+    deburr("The Brutalist") should be theSameInstanceAs "The Brutalist"
+    deburr("Łódź Żółć") shouldBe "lodz Zolc"
+    deburr("Amélie") shouldBe "Amelie"
+    deburr("") shouldBe ""
+    deburr("\u007f") shouldBe "\u007f"
+    deburr("\u0080x") shouldBe "\u0080x"
+    val ascii = "Kino na leżakach".filter(_ < 0x80)
+    bytesPerCall(() => deburr(ascii).length.toDouble) should be < 8.0
+  }
 }
