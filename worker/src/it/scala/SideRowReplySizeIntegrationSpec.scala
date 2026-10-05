@@ -76,4 +76,28 @@ class SideRowReplySizeIntegrationSpec extends AnyFlatSpec with Matchers with too
       replies.of("movie_slots") should (be > 0L and be <= MaxReply)
     } finally { Await.result(db.drop().toFuture(), SpecTimeouts.Io); client.close() }
   }
+
+  "a presale's wide rows" should "come back in replies of half a megabyte at most, once their store knows the film" in {
+    val replies = new Replies
+    val client  = MongoClient(MongoClientSettings.builder().applyConnectionString(new ConnectionString(mongoTarget.uri.value))
+      .codecRegistry(MongoClient.DEFAULT_CODEC_REGISTRY).addCommandListener(replies).build())
+    val db = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, "presale-replies"))
+    try {
+      val screenings = new MongoScreeningsRepository(Some(db))
+      val start      = java.time.LocalDateTime.parse("2031-12-17T10:00")
+      // ~55 KB a row, as the widest US presale's venues: 500 showtimes each.
+      val listed = (1 to 400).map { v =>
+        s"Venue $v Cinema 24\u241fpresale" -> ListedShowtimes((1 to 500).map(n => Showtime(start.plusMinutes(n * 15L + v),
+          bookingUrl = Some(s"https://tickets.example.com/venue-$v/$n"))), None)
+      }.toMap
+      screenings.replaceFilm("presale|2031", listed)
+      replies.reset()
+      screenings.findListedForFilmChecked("presale|2031").answered.map(_.size) shouldBe Some(listed.size)
+      screenings.findForFilmsChecked(Set("presale|2031")).answered.map(_.values.map(_.size).sum) shouldBe Some(listed.size)
+      screenings.findAtCinemasChecked("presale|2031", (1 to 400).map(v => s"Venue $v Cinema 24").toSet).answered.map(_.size) shouldBe Some(listed.size)
+      info(s"largest presale reply: ${replies.of("screenings")} B")
+      replies.of("screenings") should (be > 0L and be <= 512L * 1024)
+    } finally { Await.result(db.drop().toFuture(), SpecTimeouts.Io); client.close() }
+  }
 }
+

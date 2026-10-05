@@ -180,6 +180,20 @@ class InMemoryScreeningsRepository(clock: () => java.time.Instant = () => java.t
 }
 
 object ScreeningsRepository {
+  /** What one reply of a film's rows should hold at most, as estimated from its showtimes: 256 KB keeps the US mirror's
+   *  every per-film reply under 1 MB (the widest presale's 4 MB at 150 rows) for a third more replies in all. */
+  private val ReplyBudgetBytes = 256 * 1024
+  /** A row's bytes besides its showtimes, and each showtime's (the US mirror: 171 MB over 99k rows, 1.39M showtimes). */
+  private val RowBytes = 200
+  private val ShowtimeBytes = 110
+  /** The films a store remembers the rows of; past it, it forgets them all and learns again. */
+  private[movies] val FilmsKnownAtMost = 20000
+
+  /** How many of a film's rows one reply asks for, given its rows' average showtimes (none known: the default). */
+  private[movies] def rowsPerReply(showtimesPerRow: Option[Int]): Int = showtimesPerRow.fold(tools.MongoReplies.Screenings) { n =>
+    math.max(16, math.min(tools.MongoReplies.Screenings, ReplyBudgetBytes / (RowBytes + ShowtimeBytes * n)))
+  }
+
   /** The showtimes collection — see [[services.DebugMirror]] for why the name is
    *  a constant rather than an inline literal. */
   val Collection = "screenings"
@@ -291,9 +305,21 @@ class MongoScreeningsRepository(
   /** One `_id` range per venue, so only those venues' rows are read and decoded. */
   override def findAtCinemasChecked(filmId: String, cinemas: Set[String]): tools.ReadOutcome[Map[String, Seq[Showtime]]] =
     coll.fold[tools.ReadOutcome[Map[String, Seq[Showtime]]]](tools.ReadOutcome.Answered(Map.empty)) { c =>
-      SlotKeyed.logged(tools.MongoRead(30.seconds)(c.find(SlotKeyed.atCinemasFilter(filmId, cinemas)).batchSize(tools.MongoReplies.Screenings).toFuture())
+      SlotKeyed.logged(tools.MongoRead(30.seconds)(c.find(SlotKeyed.atCinemasFilter(filmId, cinemas)).batchSize(rowsPerReply(Seq(filmId))).toFuture())
         .map(_.map(d => d.slotKey -> d.listed.showtimes).toMap), s"ScreeningsRepository.findAtCinemas($filmId)", logger.warn(_))
     }
+
+  // Each film's rows' showtimes, on average, as this store last read or wrote them: what a read of the film asks for in
+  // one reply ([[ScreeningsRepository.rowsPerReply]]). A presale's rows run to ~65 KB, an ordinary film's to ~2 KB: at
+  // one row count for both, the widest film's replies were 2-8 MB on worker-us (rows up to 65 KB at 150 a reply), each a
+  // read buffer the driver's pool made again a minute later and promoted. A film it has not seen reads 150.
+  private val showtimesPerRow = new java.util.concurrent.ConcurrentHashMap[String, Integer]()
+  private def learn(filmId: String, rows: Iterable[Seq[Showtime]]): Unit = if (rows.nonEmpty) {
+    if (showtimesPerRow.size >= ScreeningsRepository.FilmsKnownAtMost) showtimesPerRow.clear()
+    showtimesPerRow.put(filmId, rows.iterator.map(_.size).sum / rows.size); ()
+  }
+  private def rowsPerReply(filmIds: Iterable[String]): Int =
+    ScreeningsRepository.rowsPerReply(filmIds.iterator.flatMap(id => Option(showtimesPerRow.get(id))).map(_.intValue).maxOption)
 
   // No collection wired at all reports COMPLETE, not failed — there is simply nothing to
   // read, which is not the same as having failed to read it. Matches
@@ -302,16 +328,17 @@ class MongoScreeningsRepository(
   // "defer" would have deferred forever against a Mongo-less stack.
   def findListedForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, ListedShowtimes]] =
     coll.fold[tools.ReadOutcome[Map[String, ListedShowtimes]]](tools.ReadOutcome.Answered(Map.empty)) { c =>
-      SlotKeyed.logged(tools.MongoRead(30.seconds)(c.find(Filters.eq("filmId", filmId)).batchSize(tools.MongoReplies.Screenings).toFuture())
-        .map(_.map(d => d.slotKey -> d.listed).toMap), s"ScreeningsRepository.findForFilm($filmId)", logger.warn(_))
+      SlotKeyed.logged(tools.MongoRead(30.seconds)(c.find(Filters.eq("filmId", filmId)).batchSize(rowsPerReply(Seq(filmId))).toFuture())
+        .map { rows => learn(filmId, rows.map(_.listed.showtimes)); rows.map(d => d.slotKey -> d.listed).toMap },
+        s"ScreeningsRepository.findForFilm($filmId)", logger.warn(_))
     }
 
   /** ONE `filmId $in [...]` query, served by the `filmId` index. */
   override def findForFilmsChecked(filmIds: Set[String]): tools.ReadOutcome[Map[String, Map[String, Seq[Showtime]]]] =
     coll.fold[tools.ReadOutcome[Map[String, Map[String, Seq[Showtime]]]]](tools.ReadOutcome.Answered(Map.empty)) { c =>
       SlotKeyed.rowsForFilmsChecked(filmIds, "ScreeningsRepository", logger.warn(_))(ids =>
-        c.find(Filters.in("filmId", ids*)).batchSize(tools.MongoReplies.Screenings).toFuture())
-        .map(_.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap)
+        c.find(Filters.in("filmId", ids*)).batchSize(rowsPerReply(ids)).toFuture())
+        .map(_.groupBy(_.filmId).map { case (film, rows) => learn(film, rows.map(_.showtimes)); film -> rows.map(d => d.slotKey -> d.showtimes).toMap })
     }
 
   /** Every film's screenings, keyset-paged by `_id` (via [[KeysetScan]]) rather than pulled
@@ -368,6 +395,7 @@ class MongoScreeningsRepository(
       // The DELETE vector is unaffected: it is derived from `slots.keySet` (what the film
       // should end up with), never from the subset being written, so a row that is correct and
       // therefore skipped is still a row this call keeps.
+      learn(filmId, slots.values.map(_.showtimes))
       val (current, readComplete) = stored.map(_ -> true).getOrElse(SlotKeyed.rowsOrNone(findListedForFilmChecked(filmId)))
       val changed = ScreeningsSplit.changedSlots(current, readComplete,
         roster.writable(ScreeningsRepository.Collection, filmId, current, slots))
