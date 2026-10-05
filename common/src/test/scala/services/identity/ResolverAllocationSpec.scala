@@ -62,4 +62,17 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     val (base, whole) = (tokens("Diuna"), tokens("Kino na leżakach: Diuna"))
     bytesPerCall(() => if (isTokenRun(base, whole)) 1.0 else 0.0) should be < 8.0
   }
+
+  "a candidate's own evidence" should "be summed without a tuple or box per signal, to the same sums" in {
+    val weights = new EvidenceWeights(model)
+    val own     = model.contributions(ListingFilm, measures).collect { case (name, weight) if !weights.Priors(name) => weight }.sum
+    weights.ownContributions(measures) shouldBe own
+    val veto    = model.contributions(ListingFilm, measures).collect { case (name, weight) if !weights.Priors(name) && weight >= 0 => weight }.sum
+    model.contributionSumWhere(ListingFilm, measures, (name, weight) => !weights.Priors(name) && weight >= 0) shouldBe veto
+    model.contributionSumWhere(ListingFilm, measures, (name, _) => name == "nothing") shouldBe 0.0
+    val lent    = model.contributions(ListingFilm, measures).map { case (name, w) => if (weights.Priors(name)) math.max(0.0, w) else w }.sum
+    model.contributionSumWhere(ListingFilm, measures, (_, _) => true, (name, w) => if (weights.Priors(name)) math.max(0.0, w) else w) shouldBe lent
+    bytesPerCall(() => weights.ownContributions(measures)) should be < 32.0
+    bytesPerCall(() => weights.factsProbability(measures)) should be < 96.0
+  }
 }

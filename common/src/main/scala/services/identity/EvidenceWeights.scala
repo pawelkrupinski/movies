@@ -12,13 +12,13 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
 
   /** What the listing's own facts contribute to the calibrated score of `measures`. */
   def ownContributions(measures: Map[String, Measure]): Double =
-    calibration.contributions(ListingFilm, measures).collect { case (name, weight) if !Priors(name) => weight }.sum
+    calibration.contributionSumWhere(ListingFilm, measures, (name, _) => !Priors(name))
 
   def own(scored: Scored): Double = ownContributions(scored.measures)
 
   /** What the listing's published FACTS alone contribute: its own evidence without the title relation. */
   def facts(scored: Scored): Double =
-    own(scored) - calibration.contributions(ListingFilm, scored.measures).collect { case ("title", weight) => weight }.sum
+    own(scored) - calibration.contributionSumWhere(ListingFilm, scored.measures, (name, _) => name == "title")
 
   /** The calibrated probability on the listing's own facts alone — what a cannot-link reads. A
    *  film the listing's facts do not contradict is never vetoed merely for ranking second in
@@ -32,8 +32,8 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
       case IdentityMeasures.Category(relation) => IdentityMeasures.ContainingRelations(relation)
       case _                                   => false
     }
-    val veto = calibration.contributions(ListingFilm, measures).collect {
-      case (name, weight) if !Priors(name) && !((IdentityMeasures.AgreesOnly(name) || (name == "title" && contains)) && weight < 0) => weight }.sum
+    val veto = calibration.contributionSumWhere(ListingFilm, measures, (name, weight) =>
+      !Priors(name) && !((IdentityMeasures.AgreesOnly(name) || (name == "title" && contains)) && weight < 0))
     calibration.scopes(ListingFilm).calibration(calibration.scopes(ListingFilm).prior + veto)
   }
 
@@ -92,7 +92,8 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
         eligible.exists(rival => (rival ne best) && own(rival) >= own(best))) best.probability
     else {
       val scope = calibration.scopes(ListingFilm)
-      val lent  = calibration.contributions(ListingFilm, best.measures).map { case (name, weight) => if (Priors(name)) math.max(0.0, weight) else weight }.sum
+      val lent  = calibration.contributionSumWhere(ListingFilm, best.measures, (_, _) => true,
+        (name, weight) => if (Priors(name)) math.max(0.0, weight) else weight)
       math.max(best.probability, scope.calibration(scope.prior + lent))
     }
 

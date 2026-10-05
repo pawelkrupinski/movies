@@ -63,6 +63,28 @@ final case class IdentityCalibration(version: String,
     }
   }
 
+  /** `contributions(scope, measures).collect { case (name, weight) if counts(name, weight) => worth(name, weight) }.sum`,
+   *  added in the same order, with no tuple, option or box per signal (the evidence weights read it per candidate). */
+  def contributionSumWhere(scope: String, measures: Map[String, Measure], counts: IdentityCalibration.Weighed,
+                           worth: IdentityCalibration.Worth = IdentityCalibration.Worth.Itself): Double = {
+    val m = model(scope)
+    val names   = m.signalNames
+    val weights = m.signalWeights
+    var sum   = 0.0
+    var first = true
+    var i     = 0
+    while (i < names.length) {
+      val name   = names(i)
+      val weight = weights(i).weightOf(measures.getOrElse(name, null))
+      if (counts(name, weight)) {
+        val w = worth(name, weight)
+        if (first) { sum = w; first = false } else sum += w
+      }
+      i += 1
+    }
+    sum
+  }
+
   /** The calibrated probability that the pair is one film. */
   def probability(scope: String, measures: Map[String, Measure]): Double =
     model(scope).calibration.apply(logOdds(scope, measures))
@@ -161,6 +183,13 @@ object IdentityCalibration {
     private lazy val byMissing  = SignalWeights.javaMap(missing)
     private lazy val binArray   = bins.toArray
   }
+
+  /** Whether a signal's weight counts toward a sum ([[IdentityCalibration.contributionSumWhere]]): a SAM, so a weight is
+   *  never boxed to ask. */
+  trait Weighed { def apply(name: String, weight: Double): Boolean }
+  /** What a counted signal adds. */
+  trait Worth { def apply(name: String, weight: Double): Double }
+  object Worth { val Itself: Worth = (_, weight) => weight }
 
   object SignalWeights {
     private[IdentityCalibration] def javaMap(weights: Map[String, Double]): java.util.HashMap[String, java.lang.Double] = {
