@@ -1443,26 +1443,27 @@ object IdentityMeasures {
    *  by a caller that relates the listing to the film anyway (`FamilyScope.score`). */
   def listingFilmTitled(l: Listing, f: Film, searchRank: Option[Int], rivals: Int, corroboratingVenues: Int,
                         title: Category): Map[String, Measure] = {
-    screeningYearAbsent(l, f, title, Map(
-      "title"          -> title,
-      "numeral"        -> numeralRelation(l, f),
-      "originalTitle"  -> ownOriginalTitle(l, f, title),
-      "year.delta"     -> delta(l.year, f.year),
-      "year.distance"  -> absDelta(l.year, f.year),
-      "titleYear.delta" -> filmMinus(f.year, l.titleYear),
-      "season.delta"   -> filmMinus(f.year, l.seasonYear),
-      "director"       -> {
-                            val persons = l.directors.filterNot(namesItsHouse(_, f))
-                            f.directorCredits.fold[Measure](if (persons.exists(_.trim.nonEmpty)) MissingFilm else MissingListing)(
-                              creditRelation(if (persons.size == l.directors.size) l.directorCredits else new Credits(persons), _))
-                          },
-      "runtime.delta"  -> absDelta(l.statedRuntime, f.runtime.filter(_ > 0)),
-      "country"        -> countryRelation(l.countries, f.countries),
-      "search.rank"    -> searchRank.fold[Measure](Missing("not-returned"))(r => Number(r.toDouble)),
-      "popularity.log2" -> f.popularity.fold[Measure](MissingFilm)(p => Number(PopularityBucket.of(p).toDouble)),
-      "rivals"         -> Number(rivals.toDouble),
-      "venues.corroborating" -> Number(corroboratingVenues.toDouble)
-    ))
+    // Each measure in its slot ([[ListingFilmMeasures]]), worked out in the order the map's entries were.
+    val slots = new Array[Measure](ListingFilmMeasures.Keys.length)
+    slots(0)  = title
+    slots(1)  = numeralRelation(l, f)
+    slots(2)  = ownOriginalTitle(l, f, title)
+    slots(3)  = delta(l.year, f.year)
+    slots(4)  = absDelta(l.year, f.year)
+    slots(5)  = filmMinus(f.year, l.titleYear)
+    slots(6)  = filmMinus(f.year, l.seasonYear)
+    slots(7)  = {
+                  val persons = l.directors.filterNot(namesItsHouse(_, f))
+                  f.directorCredits.fold[Measure](if (persons.exists(_.trim.nonEmpty)) MissingFilm else MissingListing)(
+                    creditRelation(if (persons.size == l.directors.size) l.directorCredits else new Credits(persons), _))
+                }
+    slots(8)  = absDelta(l.statedRuntime, f.runtime.filter(_ > 0))
+    slots(9)  = countryRelation(l.countries, f.countries)
+    slots(10) = searchRank.fold[Measure](Missing("not-returned"))(r => Number(r.toDouble))
+    slots(11) = f.popularity.fold[Measure](MissingFilm)(p => Number(PopularityBucket.of(p).toDouble))
+    slots(12) = Number(rivals.toDouble)
+    slots(13) = Number(corroboratingVenues.toDouble)
+    screeningYearAbsent(l, f, title, new ListingFilmMeasures(slots))
   }
 
   /** `m` with the published year absent when it dates a screening ([[PublishedYear]]): when the
@@ -1535,4 +1536,39 @@ object IdentityMeasures {
       "chainId"       -> sharedChainId.fold[Measure](Missing("no-shared-namespace"))(s => Category(if (s) "same" else "different"))
     )
   }
+}
+
+/**
+ * A listing's measures against a film ([[IdentityMeasures.listingFilmTitled]]) as a map of its fixed keys, each value in a
+ * slot of one array: built for every listing/film pair the resolver weighs, the 14-entry `HashMap` and its entries' tuples
+ * were among worker-pl's identity model's largest allocations (JFR 2026-10-05). A map like any other to read, compare and
+ * hash; a change to one of its keys is another such map, any other change an ordinary one.
+ */
+final class ListingFilmMeasures private[identity] (private val slots: Array[IdentityMeasures.Measure])
+    extends scala.collection.immutable.AbstractMap[String, IdentityMeasures.Measure] {
+  import ListingFilmMeasures.{Keys, slotOf}
+
+  def get(key: String): Option[IdentityMeasures.Measure] = { val i = slotOf(key); if (i < 0) None else Some(slots(i)) }
+  override def getOrElse[V1 >: IdentityMeasures.Measure](key: String, default: => V1): V1 = { val i = slotOf(key); if (i < 0) default else slots(i) }
+  override def contains(key: String): Boolean = slotOf(key) >= 0
+  override def apply(key: String): IdentityMeasures.Measure = { val i = slotOf(key); if (i < 0) default(key) else slots(i) }
+  def iterator: Iterator[(String, IdentityMeasures.Measure)] = Keys.indices.iterator.map(i => Keys(i) -> slots(i))
+  override def size: Int      = Keys.length
+  override def knownSize: Int = Keys.length
+  override def isEmpty: Boolean = false
+
+  def updated[V1 >: IdentityMeasures.Measure](key: String, value: V1): Map[String, V1] = (slotOf(key), value) match {
+    case (i, m: IdentityMeasures.Measure) if i >= 0 => val next = slots.clone(); next(i) = m; new ListingFilmMeasures(next)
+    case _                                         => scala.collection.immutable.HashMap.from[String, V1](this).updated(key, value)
+  }
+  def removed(key: String): Map[String, IdentityMeasures.Measure] =
+    if (slotOf(key) < 0) this else scala.collection.immutable.HashMap.from(this).removed(key)
+}
+
+object ListingFilmMeasures {
+  /** The keys, by slot. */
+  val Keys: IndexedSeq[String] = IndexedSeq("title", "numeral", "originalTitle", "year.delta", "year.distance", "titleYear.delta",
+    "season.delta", "director", "runtime.delta", "country", "search.rank", "popularity.log2", "rivals", "venues.corroborating")
+  private val Slots = { val m = new java.util.HashMap[String, Integer](Keys.length * 2); Keys.zipWithIndex.foreach { case (k, i) => m.put(k, i) }; m }
+  private def slotOf(key: String): Int = { val i = Slots.get(key); if (i == null) -1 else i.intValue }
 }

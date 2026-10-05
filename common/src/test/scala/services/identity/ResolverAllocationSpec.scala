@@ -111,4 +111,31 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     Seq(asked -> many, asked -> film, listing -> many).foreach { case (l, f) => IdentityMeasures.searchGroups(l, f) shouldBe reference(l, f) }
     bytesPerCall(() => IdentityMeasures.searchGroups(asked, many).size.toDouble) should be < 512.0   // was 11,344
   }
+
+  "a listing's measures against a film" should "be the map they were, held in slots, without a hash map and tuples per pair" in {
+    import scala.collection.immutable.HashMap
+    val pairs = Seq(listing -> film, listing.copy(year = None, directors = Nil) -> film.copy(directors = None, popularity = Some(12.0)),
+      Listing("Diuna: Część druga", year = Some(2024)) -> Film("Dune: Part Two", originalTitle = Some("Dune: Part Two"), year = Some(2024)),
+      Listing("Gone With The Wind (2026)") -> Film("Gone with the Wind", year = Some(1939), directors = Some(Seq("Victor Fleming"))))
+    pairs.foreach { case (l, f) =>
+      val m   = IdentityMeasures.listingFilm(l, f, searchRank = Some(2), rivals = 1, corroboratingVenues = 4)
+      val ref = HashMap.from(m.iterator)
+      m shouldBe ref
+      ref shouldBe m
+      m.hashCode shouldBe ref.hashCode
+      m.keySet shouldBe ref.keySet
+      ref.keysIterator.foreach(k => (m.get(k), m.getOrElse(k, null), m(k), m.contains(k)) shouldBe ((ref.get(k), ref(k), ref(k), true)))
+      m.get("nothing") shouldBe None
+      m.getOrElse("nothing", null) shouldBe null
+      (m + ("director" -> IdentityMeasures.Category("same_person"))) shouldBe (ref + ("director" -> IdentityMeasures.Category("same_person")))
+      (m + ("other" -> IdentityMeasures.Category("x"))) shouldBe (ref + ("other" -> IdentityMeasures.Category("x")))
+      (m ++ IdentityMeasures.PublishedYear.map(_ -> IdentityMeasures.MissingListing)) shouldBe (ref ++ IdentityMeasures.PublishedYear.map(_ -> IdentityMeasures.MissingListing))
+      m.removed("rivals") shouldBe ref.removed("rivals")
+      m.filterNot(_._1 == "year.delta") shouldBe ref.filterNot(_._1 == "year.delta")
+      IdentityMeasures.comparedFacts(ListingFilm, m) shouldBe IdentityMeasures.comparedFacts(ListingFilm, ref)
+      model.probability(ListingFilm, m) shouldBe model.probability(ListingFilm, ref)
+    }
+    val title = IdentityMeasures.titleRelation(listing, film)
+    bytesPerCall(() => IdentityMeasures.listingFilmTitled(listing, film, Some(1), 2, 3, title).size.toDouble) should be < 2000.0   // was 3,600: the hash map, its nodes and an entry tuple each
+  }
 }
