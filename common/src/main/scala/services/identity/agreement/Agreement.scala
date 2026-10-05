@@ -280,7 +280,7 @@ object Agreement {
    *  Joanna", Damiano's in 1975 by the venue's own page, is the 1975 film Wikidata and Filmweb took); with
    *  [[ListingRuntime]] beside it when the running times agree too, and then a record dating the film nowhere is credited
    *  by its director and running time (DE "Pettersson und Findus Mitmachkino 2"). */
-  private def listingVotes(listings: Seq[Listing], records: Seq[SourceRecord]): Set[String] = {
+  private[identity] def listingVotes(listings: Seq[Listing], records: Seq[SourceRecord]): Set[String] = {
     val runs  = runsAsTheListing(listings, records)
     val dated = listings.filter(listing => listing.year.isDefined && listing.directors.nonEmpty)
     def credits(listing: Listing) = records.exists { record =>
@@ -299,7 +299,7 @@ object Agreement {
 
   /** Does a listing's own year (more than one apart) or director (another person in the same script, sharing no name's
    *  stem — "Marc Donskoi" is "Mark Donskoy") rule the film out? */
-  private def contradictedByTheListing(listings: Seq[Listing], record: SourceRecord): Boolean = listings.exists { listing =>
+  private[identity] def contradictedByTheListing(listings: Seq[Listing], record: SourceRecord): Boolean = listings.exists { listing =>
     record.film.year.zip(listing.year).exists { case (a, b) => math.abs(a - b) > 1 } ||
       record.film.directors.exists(directors => directors.nonEmpty && listing.directors.nonEmpty &&
         IdentityMeasures.directorRelation(listing.directors, directors) == IdentityMeasures.Category("different") &&
@@ -309,7 +309,7 @@ object Agreement {
   /** Is the listing's title another film's ORIGINAL title — one a family weighed — while it is none of the agreed film's
    *  records' original titles, only a translation they file? Then the venue may well bill that film by its own name:
    *  PL "Obcy w domu" is "Hider in the House" (1989) in Polish, and the 1986 Polish film IMDb weighed beside it. */
-  private def anothersOwnTitle(listings: Seq[Listing], records: Seq[SourceRecord], verdicts: Seq[FamilyVerdict]): Boolean = {
+  private[identity] def anothersOwnTitle(listings: Seq[Listing], records: Seq[SourceRecord], verdicts: Seq[FamilyVerdict]): Boolean = {
     val billed = listings.flatMap(l => Seq(l.title, l.cleanTitle)).map(IdentityMeasures.key).filter(_.nonEmpty).toSet
     def original(record: SourceRecord) = record.film.originalTitle.map(IdentityMeasures.key).filter(billed)
     val weighed = verdicts.flatMap(_.weighed)
