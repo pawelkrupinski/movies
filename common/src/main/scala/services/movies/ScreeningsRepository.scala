@@ -291,7 +291,7 @@ class MongoScreeningsRepository(
   /** One `_id` range per venue, so only those venues' rows are read and decoded. */
   override def findAtCinemasChecked(filmId: String, cinemas: Set[String]): tools.ReadOutcome[Map[String, Seq[Showtime]]] =
     coll.fold[tools.ReadOutcome[Map[String, Seq[Showtime]]]](tools.ReadOutcome.Answered(Map.empty)) { c =>
-      SlotKeyed.logged(tools.MongoRead(30.seconds)(c.find(SlotKeyed.atCinemasFilter(filmId, cinemas)).batchSize(tools.MongoReplies.Default).toFuture())
+      SlotKeyed.logged(tools.MongoRead(30.seconds)(c.find(SlotKeyed.atCinemasFilter(filmId, cinemas)).batchSize(tools.MongoReplies.Screenings).toFuture())
         .map(_.map(d => d.slotKey -> d.listed.showtimes).toMap), s"ScreeningsRepository.findAtCinemas($filmId)", logger.warn(_))
     }
 
@@ -302,7 +302,7 @@ class MongoScreeningsRepository(
   // "defer" would have deferred forever against a Mongo-less stack.
   def findListedForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, ListedShowtimes]] =
     coll.fold[tools.ReadOutcome[Map[String, ListedShowtimes]]](tools.ReadOutcome.Answered(Map.empty)) { c =>
-      SlotKeyed.logged(tools.MongoRead(30.seconds)(c.find(Filters.eq("filmId", filmId)).batchSize(tools.MongoReplies.Default).toFuture())
+      SlotKeyed.logged(tools.MongoRead(30.seconds)(c.find(Filters.eq("filmId", filmId)).batchSize(tools.MongoReplies.Screenings).toFuture())
         .map(_.map(d => d.slotKey -> d.listed).toMap), s"ScreeningsRepository.findForFilm($filmId)", logger.warn(_))
     }
 
@@ -310,7 +310,7 @@ class MongoScreeningsRepository(
   override def findForFilmsChecked(filmIds: Set[String]): tools.ReadOutcome[Map[String, Map[String, Seq[Showtime]]]] =
     coll.fold[tools.ReadOutcome[Map[String, Map[String, Seq[Showtime]]]]](tools.ReadOutcome.Answered(Map.empty)) { c =>
       SlotKeyed.rowsForFilmsChecked(filmIds, "ScreeningsRepository", logger.warn(_))(ids =>
-        c.find(Filters.in("filmId", ids*)).batchSize(tools.MongoReplies.Default).toFuture())
+        c.find(Filters.in("filmId", ids*)).batchSize(tools.MongoReplies.Screenings).toFuture())
         .map(_.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap)
     }
 
@@ -329,7 +329,7 @@ class MongoScreeningsRepository(
       keyOf          = _._id,
       fetchPage      = (afterId, limit) => {
         val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
-        Await.result(c.find(filter).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
+        Await.result(c.find(filter).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Screenings).toFuture(), 60.seconds)
       },
       onIncomplete   = exception =>
         logger.warn(s"ScreeningsRepository.findAll keyset scan failed after retries: " +
