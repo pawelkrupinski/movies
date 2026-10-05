@@ -451,6 +451,20 @@ class CaffeineMovieCache(
     if (CaffeineMovieCache.pooledAlike(pooled, lean)) lean else pooled
   }
 
+  /** [[forCache]] of `read`, a change-stream read of a film the cache holds as `held`: each slot that reads as the held
+   *  one ([[keptSlot]]) is the held object, and a read alike in every field and slot is `held` itself. */
+  private def forCacheKeeping(held: MovieRecord, read: MovieRecord): MovieRecord = {
+    val data = read.data.map { case (source, sd) => source -> keptSlot(held.data.get(source), forCacheSlot(sd)) }
+    val same = data.size == held.data.size && data.forall { case (source, sd) => held.data.get(source).exists(_ eq sd) } &&
+      read.copy(data = Map.empty) == held.copy(data = Map.empty)
+    if (same) held else read.copy(data = data)
+  }
+
+  /** `read` — a slot as the cache keeps it — or the slot held at its source when that one reads the same: equal fields,
+   *  showtimes by digest, and the cast in the same order (equality reads it as a set; the store keeps the order). */
+  private def keptSlot(held: Option[SourceData], read: SourceData): SourceData =
+    held.filter(h => LeanRecords.slotsEqual(h, read) && h.cast == read.cast).getOrElse(read)
+
   /** [[forCache]] of `after` written over `before`, which the cache holds: a slot `after` holds as `before` does is
    *  kept as it is, not stripped and pooled again — on a film at thousands of venues, every write did that to all. */
   private def forCacheOver(before: MovieRecord, after: MovieRecord): MovieRecord =
@@ -929,9 +943,12 @@ class CaffeineMovieCache(
       // A retitle arriving from another writer: the id's previous key entry is stale.
       corpusIndex.keyOf(r.id).filter(_ != key).foreach(evict)
       val held   = get(key)
-      val cached = forCache(r.record)
-      store(key, cached, r.id)
-      // The echo of a write this cache made holds what it holds already: not another writer's change.
+      val cached = held.fold(forCache(r.record))(forCacheKeeping(_, r.record))
+      // The echo of a write this cache made reads back what it holds already — kept as the very object, not replaced by
+      // a copy that every reader then compares slot by slot and that lives, until the film's next write, long enough to
+      // be promoted (worker-us).
+      if (!(held.exists(_ eq cached) && corpusIndex.idOf(key).contains(r.id))) store(key, cached, r.id)
+      // ...and it is not another writer's change.
       if (!held.exists(LeanRecords.equal(_, cached))) changed(r.id)
     }
     if (applied) touch()
@@ -959,10 +976,14 @@ class CaffeineMovieCache(
           // one-venue change to a wide film stripped thousands of slots — 4% of the US worker's CPU
           // (JFR 2026-10-01). The slot set is unchanged (checked above).
           val applied = repository.writeFence.ifUndisturbed(venues.filmId.value, mark) {
-            val slots   = venues.atCinemas.valuesIterator.flatten.map { case (source, slot) => source -> forCacheSlot(slot) }.toSeq
-            store(key, resident.copy(data = resident.data ++ slots), venues.filmId)
-            if (!slots.forall { case (source, slot) => resident.data.get(source).exists(LeanRecords.slotsEqual(_, slot)) })
-              changed(venues.filmId)
+            val slots   = venues.atCinemas.valuesIterator.flatten.map { case (source, slot) =>
+              source -> keptSlot(resident.data.get(source), forCacheSlot(slot)) }.toSeq
+            // Venues read back as the row holds them (the echo of this cache's own write) leave the row as it is.
+            if (!slots.forall { case (source, slot) => resident.data.get(source).exists(_ eq slot) }) {
+              store(key, resident.copy(data = resident.data ++ slots), venues.filmId)
+              if (!slots.forall { case (source, slot) => resident.data.get(source).exists(LeanRecords.slotsEqual(_, slot)) })
+                changed(venues.filmId)
+            }
           }
           if (applied) touch()
           VenueVerdict.Applied

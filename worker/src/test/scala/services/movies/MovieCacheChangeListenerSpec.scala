@@ -44,6 +44,54 @@ class MovieCacheChangeListenerSpec extends AnyFlatSpec with Matchers {
     w.changed shouldBe empty
   }
 
+  // The echo of a write is read back as new objects of the same content. Stored, it replaced the record the projection
+  // left (its lean slots, which the next projection compares by `eq`) with a copy every reader then compared slot by slot,
+  // and each copy lived until the film's next write: on worker-us, minutes — long enough to be promoted, and die in the old
+  // generation.
+  "a change-stream read of what the cache holds already" should "leave the held record as it is, the very object" in {
+    val w = new World
+    val before = w.resident
+    w.cache.patchProjected(id, filmKey, before, before.copy(data = before.data + slot(Multikino, 0, 5))) shouldBe WriteOutcome.Written
+    val held = w.cache.get(filmKey).get
+    w.cache.applyUpsert(w.repository.findByIdChecked(id).answered.get, FilmWriteFence.Unfenced)
+    w.cache.get(filmKey).get should be theSameInstanceAs held
+  }
+
+  it should "leave it as it is when the read is of some venues alone" in {
+    val w = new World
+    val before = w.resident
+    w.cache.patchProjected(id, filmKey, before, before.copy(data = before.data + slot(Multikino, 0, 5))) shouldBe WriteOutcome.Written
+    val held   = w.cache.get(filmKey).get
+    val stored = w.repository.findByIdChecked(id).answered.get.record
+    val venues = VenueSlots(id, Map(Multikino -> stored.data.toSeq.collect { case (s @ CinemaShowing(Multikino, _), sd) => s -> sd }))
+    w.cache.applyVenueSlots(venues, FilmWriteFence.Unfenced) shouldBe VenueVerdict.Applied
+    w.cache.get(filmKey).get should be theSameInstanceAs held
+    w.changed shouldBe empty
+  }
+
+  it should "keep, of a film another writer moved, every slot it did not move as the held object" in {
+    val w = new World
+    val held   = w.cache.get(filmKey).get
+    val stored = w.repository.findByIdChecked(id).answered.get
+    w.cache.applyUpsert(stored.copy(record = stored.record.copy(metascore = Some(61))), FilmWriteFence.Unfenced)
+    val now = w.cache.get(filmKey).get
+    now.metascore shouldBe Some(61)
+    now.data.keySet shouldBe held.data.keySet
+    now.data.foreach { case (source, sd) => sd should be theSameInstanceAs held.data(source) }
+    w.changed.toSeq shouldBe Seq(id)
+  }
+
+  it should "take a slot whose cast another writer only reordered: the read's order is what the store holds" in {
+    val w = new World
+    val (source, sd) = slot(Helios, 3)
+    val cast = sd.copy(cast = Seq("Ann Lee", "Bo Chan"))
+    w.cache.patchProjected(id, filmKey, w.resident, w.resident.copy(data = w.resident.data + (source -> cast))) shouldBe WriteOutcome.Written
+    val stored = w.repository.findByIdChecked(id).answered.get
+    val reordered = stored.record.data(source).copy(cast = Seq("Bo Chan", "Ann Lee"))
+    w.cache.applyUpsert(stored.copy(record = stored.record.copy(data = stored.record.data + (source -> reordered))), FilmWriteFence.Unfenced)
+    w.cache.get(filmKey).get.data(source).cast shouldBe Seq("Bo Chan", "Ann Lee")
+  }
+
   it should "tell of another process's change the change stream brings" in {
     val w = new World
     val stored = w.repository.findByIdChecked(id).answered.get
