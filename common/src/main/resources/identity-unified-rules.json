@@ -10,6 +10,10 @@
     "gained" : 889,
     "heldOutWrong" : 1,
     "heldOutRight" : 1332,
-    "right" : 1327
-  }
+    "right" : 1327,
+    "pinned.families.current.gainedListings" : 5,
+    "pinned.families.current.gainedFilms" : 3,
+    "pinned.families.current.wrong" : 0
+  },
+  "pinned" : [ "families.current" ]
 }

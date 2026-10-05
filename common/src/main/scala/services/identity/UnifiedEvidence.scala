@@ -46,6 +46,13 @@ object UnifiedEvidence {
     Signal("and.posterTakers", "conjunctions", 1), Signal("and.leanTakers", "conjunctions", 1))
   val Names: Seq[String] = Signals.map(_.name)
 
+  /** The signals only a PINNED rule reads ([[UnifiedRules.pinned]]): carried by every contender beside [[Signals]], never a
+   *  fitted feature — the rows `scripts.IdentityUnifiedFit` reads hold [[Names]] alone.
+   *  `families.current`: two families take the film, one of them a film database's, released this year or last — the
+   *  families' counterpart of `venues.current` (PL "TAJNY AGENT": IMDb and Filmweb take Mendonça Filho's 2025 film,
+   *  Wikidata the 1936 namesake). */
+  val PinnedSignals: Seq[String] = Seq("families.current")
+
   /** The NON-COMPENSATORY guards: a contender one of these fires on is no film to take, whatever else speaks for it — the
    *  agreement stage's vetoes (several works billed, a stage work, another film's own title, the
    *  venue's year or director against it, a venue poster naming another candidate, a family turning it down; and, as
@@ -190,11 +197,15 @@ object UnifiedEvidence {
       val takers  = VoterFamily.values.count(took).toDouble
       val leaning = VoterFamily.values.count(leans).toDouble
       def and(on: Boolean) = if (on) takers else 0.0
+      // [[PinnedSignals]]' families.current
+      val familiesCurrent = takers >= 2 && VoterFamily.values.exists(f => f.namesFilms && took(f)) &&
+        records.flatMap(_.film.year).maxOption.exists(_ >= c.thisYear - 1)
       val counts = Seq("count.takers" -> takers, "count.leaning" -> leaning, "count.takersLessDissent" -> math.max(0.0, takers - dissent),
         "count.takers2" -> (if (takers >= 2) 1.0 else 0.0), "count.takers3" -> (if (takers >= 3) 1.0 else 0.0),
         "and.takersNoDissent" -> and(dissent == 0), "and.factsTakers" -> and(votes(Agreement.ListingFacts)),
         "and.posterTakers" -> and(nearest.exists(_ <= PosterEvidence.VoteBits)),
-        "and.leanTakers" -> and(contender.tmdb.exists(id => c.decision.leaning.exists(_.film == id)))).filter(_._2 != 0.0)
+        "and.leanTakers" -> and(contender.tmdb.exists(id => c.decision.leaning.exists(_.film == id))),
+        "families.current" -> (if (familiesCurrent) 1.0 else 0.0)).filter(_._2 != 0.0)
       val signals = counts.toMap ++ flags.collect { case (name, true) => name -> 1.0 }.toMap ++
         open.map(_.probability).maxOption.map(p => "model.logit" -> logit(p)).filter(_._2 != 0.0) ++
         Seq("family.turnedDown" -> turnedDown.toDouble, "family.dissent" -> dissent.toDouble).filter(_._2 != 0.0)
@@ -265,15 +276,15 @@ object UnifiedWeights {
  * that trips none of `guards`; a CORRECT rule would act on a film the model took — none is selected today.
  */
 final case class UnifiedRules(version: String, guards: Seq[String], fill: Seq[String], correct: Seq[String] = Nil,
-                              measured: Map[String, Double] = Map.empty) {
+                              measured: Map[String, Double] = Map.empty, pinned: Seq[String] = Nil) {
   /** Does the contender trip none of the guards? */
   def passes(contender: UnifiedEvidence.Contender): Boolean =
     UnifiedEvidence.vetoes(name => contender.signals.getOrElse(name, 0.0)).forall(guard => !guards.contains(guard))
 
   /** The film the first fill rule takes, with the rule's signal: the one guard-passing contender it fires on. */
   def filled(contenders: Seq[UnifiedEvidence.Contender]): Option[(UnifiedEvidence.Contender, String)] =
-    fill.iterator.flatMap { signal =>
-      contenders.filter(c => passes(c) && c.signals.getOrElse(signal, 0.0) > 0) match {
+    (fill ++ pinned).iterator.flatMap { signal =>
+      contenders.filter(c => passes(c) && UnifiedRules.fires(signal, name => c.signals.getOrElse(name, 0.0))) match {
         case Seq(one) => Some(one -> signal)
         case _        => None
       }
@@ -287,6 +298,10 @@ final case class UnifiedRules(version: String, guards: Seq[String], fill: Seq[St
 
 object UnifiedRules {
   implicit val format: OFormat[UnifiedRules] = Json.using[Json.WithDefaultValues].format[UnifiedRules]
+  /** Does the rule `signal` fire on a contender's `features`: every `&`-joined term does — a signal above 0, or, written
+   *  `!signal`, one that is 0 ("family.filmweb.took&!model.unscored"). */
+  def fires(signal: String, features: String => Double): Boolean =
+    signal.split('&').forall(term => if (term.startsWith("!")) features(term.drop(1)) == 0.0 else features(term) > 0.0)
   val ResourcePath = "identity-unified-rules.json"
   def fromResource(path: String = ResourcePath): Option[UnifiedRules] =
     Option(getClass.getClassLoader.getResourceAsStream(path)).map { in =>

@@ -318,11 +318,16 @@ object IdentityUnifiedStrategies {
 
   val RulesArtefact: Path = Paths.get("common/src/main/resources", services.identity.UnifiedRules.ResourcePath)
 
-  /** The stable steps as the pinned artefact, with what they measured. */
-  def rulesOf(stable: Seq[Step], inSample: Option[Result], heldOut: Option[Result], version: String): services.identity.UnifiedRules =
+  /** The stable steps as the pinned artefact, with what they measured — the hand-pinned rules ([[services.identity.UnifiedRules.pinned]])
+   *  and their measures carried over from the shipped artefact, which no selection makes. */
+  def rulesOf(stable: Seq[Step], inSample: Option[Result], heldOut: Option[Result], version: String): services.identity.UnifiedRules = {
+    val shipped = services.identity.UnifiedRules.fromResource()
     services.identity.UnifiedRules(version, guards, stable.filter(_.role == "fill").map(_.signal), stable.filter(_.role == "correct").map(_.signal),
       (inSample.toSeq.flatMap(r => Seq("right" -> r.right, "wrong" -> r.wrong, "gained" -> r.gained, "lost" -> r.lost, "switched" -> r.switched)) ++
-        heldOut.toSeq.flatMap(r => Seq("heldOutRight" -> r.right, "heldOutWrong" -> r.wrong))).map { case (k, v) => k -> v.toDouble }.toMap)
+        heldOut.toSeq.flatMap(r => Seq("heldOutRight" -> r.right, "heldOutWrong" -> r.wrong))).map { case (k, v) => k -> v.toDouble }.toMap ++
+        shipped.toSeq.flatMap(_.measured.filter(_._1.startsWith("pinned."))),
+      shipped.toSeq.flatMap(_.pinned))
+  }
 
   val ReviewFile: Path = Paths.get("test/resources/fixtures/identity-unmatched/review-candidates.tsv")
 

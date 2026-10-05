@@ -2540,3 +2540,15 @@ The ablation saw no film move without the lean, but one decision does: PL Kino �
 candidate is another film (18,240 at 18.0%) while the model leans to "Powoli" (2023). With the lean Filmweb's take is
 agreed; without it the venue poster takes the same film — basis `Poster`, the agreed Filmweb id lost.
 
+
+### 20.9 Pinned fills, and what the unmatched clusters' triage added (2026-10-05)
+
+A triage of every labelled-right TMDB film the ratchet left untaken (`UnmatchedTriageProbe`, opt-in `KINOWO_TRIAGE=1`)
+filed each under retrieval, scoring, a guard, or the agreement. What it added, each measured on the ratchet:
+
+- **`families.current`, a PINNED fill** (`UnifiedRules.pinned`, `UnifiedEvidence.PinnedSignals`): two families take
+  the film, one of them a film database's, released this year or last — the families' counterpart of `venues.current`
+  for a film one venue bills (PL "TAJNY AGENT", "Everest: Druga strona", "Kino Zmysłów: Vincent. Legenda oceanu").
+  Hand-measured, not selected: its signal is no fitted feature, so the selection never weighs it; `rulesOf` carries
+  it and its `pinned.*` measures across a refit. Taken as `Basis.Filled`, explained `filled by families.current: …`,
+  counted by `kinowo_worker_identity_agreement_taken{kind="filled"}`. Ratchet: +5 listings, 3 films, 0 wrong.

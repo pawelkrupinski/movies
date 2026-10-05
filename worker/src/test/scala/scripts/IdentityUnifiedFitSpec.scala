@@ -35,6 +35,9 @@ class IdentityUnifiedFitSpec extends AnyFlatSpec with Matchers {
     val stable   = IdentityUnifiedStrategies.stableSteps(clusters)
     (shipped.fill, shipped.correct, shipped.guards) shouldBe
       ((stable.filter(_.role == "fill").map(_.signal), stable.filter(_.role == "correct").map(_.signal), UnifiedEvidence.Guards))
+    // the hand-pinned rules read only signals a contender carries, each measured beside them
+    shipped.pinned.flatMap(_.split('&')).map(_.stripPrefix("!")).filterNot((UnifiedEvidence.Names ++ UnifiedEvidence.PinnedSignals).contains) shouldBe empty
+    shipped.pinned.filterNot(rule => shipped.measured.contains(s"pinned.$rule.wrong")) shouldBe empty
   }
 
   /** The same fit up to floating-point rounding. A near-separable signal drives its weight to ~1e12, where

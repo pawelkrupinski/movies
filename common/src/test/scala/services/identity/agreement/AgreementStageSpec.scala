@@ -56,6 +56,29 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     decided("SEVENTEEN World Tour 'NEW_'", wide, selected.copy(fill = Nil)).basis shouldBe ResolverDecision.Basis.BelowThreshold
   }
 
+  it should "take, by the pinned families.current rule, a current release two families take at one venue" in {
+    // PL "TAJNY AGENT" (fixture identity-unmatched): IMDb and Filmweb take Mendonça Filho's 2025 film; one venue bills it
+    val agent    = IdentityMeasures.Film("Tajny agent", None, Seq("The Secret Agent"), Some(2025), Some(158), Some(Seq("Kleber Mendonça Filho")), None, None)
+    def families(year: Int) = Map(
+      VoterFamily.Imdb    -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt27847051" -> SourceRecord(agent.copy(year = Some(year)), Map("imdb" -> "tt27847051")))),
+      VoterFamily.Filmweb -> new HeldFamilyAnswers(VoterFamily.Filmweb, Map("10063391" -> SourceRecord(agent.copy(year = Some(year))))),
+      VoterFamily.Wiki    -> new HeldFamilyAnswers(VoterFamily.Wiki, Map.empty))
+    val one   = listing(KinoMuza, "TAJNY AGENT")
+    val model = Resolution(Seq(ResolverDecision(Seq(one.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil)()), 1, Map(one.key -> 0),
+      Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    def decided(year: Int, rules: services.identity.UnifiedRules) =
+      new AgreementStage(families(year), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(1220564)),
+        new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(NoVenueDetails), rules = rules)
+        .apply(model, Map(one.key -> one).get, version = 1).decisions.head
+    val shipped = services.identity.UnifiedRules.resolver
+    val taken   = decided(2025, shipped)
+    (taken.basis, taken.film) shouldBe ((ResolverDecision.Basis.Filled, Some(1220564)))
+    taken.explanation.last should startWith ("filled by families.current: 'Tajny agent (2025)'")
+    // an older film two families take is no current release; without the pinned rule nothing takes it
+    decided(2019, shipped).basis shouldBe ResolverDecision.Basis.BelowThreshold
+    decided(2025, shipped.copy(pinned = Nil)).basis shouldBe ResolverDecision.Basis.BelowThreshold
+  }
+
   "an unmatched cluster its families agree on" should "take the TMDB film the agreed IMDb id finds, and name the families" in {
     val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = imdb => Answer.Known(Option.when(imdb == "tt16315948")(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
