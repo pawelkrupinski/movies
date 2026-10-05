@@ -196,9 +196,8 @@ object CorpusCensus {
     tally(parts.iterator, static, cities, clock)
   }
 
-  /** One city's window on a tick: a start after `upcomingAfter` is upcoming ([[Showtime.isUpcoming]]); one in
-   *  `[tomorrowFrom, tomorrowUntil)` is on the city's local tomorrow. All in [[ShowtimesDigest.startMinute]]s. */
-  private final case class Window(upcomingAfter: Int, tomorrowFrom: Int, tomorrowUntil: Int)
+  /** One city's local tomorrow on a tick: a start in `[tomorrowFrom, tomorrowUntil)`, in [[ShowtimesDigest.startMinute]]s. */
+  private final case class Window(tomorrowFrom: Int, tomorrowUntil: Int)
 
   /** The minute after which a start at `now` (venue-local) is still upcoming: a showtime is until [[Showtime.Grace]]
    *  past its start. Exact for starts on the minute, which every showtime a venue lists is. */
@@ -210,7 +209,7 @@ object CorpusCensus {
     val windows    = cities.map { c =>
       val now      = venueClock.nowIn(c)
       val tomorrow = now.toLocalDate.plusDays(1)
-      c.slug -> Window(upcomingAfter(now), ShowtimesDigest.startMinute(tomorrow.atStartOfDay),
+      c.slug -> Window(ShowtimesDigest.startMinute(tomorrow.atStartOfDay),
         ShowtimesDigest.startMinute(tomorrow.plusDays(1).atStartOfDay))
     }.toMap
     val zoneCutoffs = scala.collection.mutable.HashMap.empty[ZoneId, Int]
@@ -226,7 +225,9 @@ object CorpusCensus {
         val cardCities = scala.collection.mutable.HashMap.empty[String, (Boolean, Boolean)]
         card.foreach { slot =>
           slot.city.flatMap(slug => windows.get(slug).map(slug -> _)).foreach { case (slug, window) =>
-            val ahead = slot.startsAfter(window.upcomingAfter)
+            // Started on the venue's own clock, as the web cuts it (`StartedShowtimeCut`): a US city's venues across a
+            // zone line keep their own. Tomorrow stays the city's day, as the web's tomorrow page reads it.
+            val ahead = slot.startsAfter(zoneCutoff(slot.zone))
             upcoming(slug) += ahead
             val (anyAhead, anyTomorrow) = cardCities.getOrElse(slug, (false, false))
             cardCities(slug) = (anyAhead || ahead > 0, anyTomorrow || slot.startsWithin(window.tomorrowFrom, window.tomorrowUntil))

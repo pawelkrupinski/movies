@@ -251,4 +251,20 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     (next.partAt(KinoApollo).get eq prior.partAt(KinoApollo).get) shouldBe false
     next.cards.flatten.size shouldBe 1
   }
+
+  // ── A venue across a zone line from its city ─────────────────────────────────────────────────────
+
+  // Key Twin Russell Springs keeps Central time inside Somerset, KY (Eastern). The web judges its showtimes started on
+  // the venue's clock (`StartedShowtimeCut`); on the city's clock the census dropped a 20:30 show at 19:45 venue time
+  // and, for the hour until the web dropped it too, ReadModelServingDiffersFromCorpus paged every US evening.
+  it should "judge a venue across a zone line from its city on the venue's own clock, as the web does" in {
+    val venue    = models.UsRoster.byDisplayName("Key Twin Russell Springs")
+    val city     = City.forCinema(venue).get
+    val cityTime = LocalDateTime.parse("2026-06-10T21:15")   // EDT; 20:15 CDT at the venue
+    val at       = java.time.Clock.fixed(cityTime.atZone(city.zoneId).toInstant, java.time.ZoneOffset.UTC)
+    val late     = CorpusMetricsFixtures.ready(venue, 1, LocalDateTime.parse("2026-06-10T20:30"))   // in 15 min, venue time
+    val read     = CorpusMetricsFixtures.reading(Seq(row("Late Show", late)), at)
+    read.served.get((city.slug, WorkerSourceFilmsMetrics.Scope.All)) shouldBe Some(1)
+    read.showtimes.get(city.slug) shouldBe Some(1)
+  }
 }
