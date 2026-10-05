@@ -39,4 +39,15 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
       withClue(s"$scope: ")(bytesPerCall(model.contributionSum(scope, m)) should be < 32.0)
     }
   }
+
+  "the constraint solver's join check" should "ask its cannot-links without an option per call, to the same answer" in {
+    val cannot = scala.collection.mutable.HashMap(1 -> scala.collection.mutable.Set(2, 3), 2 -> scala.collection.mutable.Set(1))
+    val film   = scala.collection.mutable.HashMap(4 -> 10, 5 -> 11, 6 -> 10)
+    ConstraintSolver.forbids(cannot, film, 1, 2) shouldBe true
+    ConstraintSolver.forbids(cannot, film, 1, 4) shouldBe false
+    ConstraintSolver.forbids(cannot, film, 4, 5) shouldBe true
+    ConstraintSolver.forbids(cannot, film, 4, 6) shouldBe false
+    ConstraintSolver.forbids(cannot, film, 7, 8) shouldBe false
+    bytesPerCall(if (ConstraintSolver.forbids(cannot, film, 1, 4)) 1.0 else 0.0) should be < 24.0   // was 48: a Some, its closure
+  }
 }

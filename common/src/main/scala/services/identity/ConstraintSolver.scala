@@ -42,6 +42,14 @@ object ConstraintSolver {
               (implicit ord: Ordering[K]): Seq[Seq[K]] =
     solveAs(nodes, constraints, Presentation.Canonical, films)
 
+  /** Whether roots `ra` and `rb` may not join: a cannot-link between them, or two films. Read without an option per
+   *  call — the solver asks it of every candidate union, and `get(..).exists` built a `Some` each time. */
+  private[identity] def forbids(cannot: scala.collection.mutable.HashMap[Int, scala.collection.mutable.Set[Int]],
+                                film: scala.collection.mutable.HashMap[Int, Int], ra: Int, rb: Int): Boolean = {
+    val apart = cannot.getOrElse(ra, null)
+    (apart != null && apart.contains(rb)) || (film.contains(ra) && film.contains(rb) && film(ra) != film(rb))
+  }
+
   private[identity] def solveAs[K](nodes: Seq[K], constraints: Seq[Constraint[K]], presentation: Presentation,
                                    films: Map[K, Int] = Map.empty[K, Int])
                                   (implicit ord: Ordering[K]): Seq[Seq[K]] = {
@@ -60,8 +68,7 @@ object ConstraintSolver {
     }
     // Each ROOT's film, maintained through every union.
     val film = scala.collection.mutable.HashMap.from(sortedNodes.indices.flatMap(i => films.get(sortedNodes(i)).map(i -> _)))
-    def forbidden(ra: Int, rb: Int): Boolean =
-      cannot.get(ra).exists(_.contains(rb)) || (film.contains(ra) && film.contains(rb) && film(ra) != film(rb))
+    def forbidden(ra: Int, rb: Int): Boolean = ConstraintSolver.forbids(cannot, film, ra, rb)
     def union(ra: Int, rb: Int): Unit = {
       // The smaller rank survives: a choice by the node's place in the total order.
       val (keep, gone) = if (ra < rb) (ra, rb) else (rb, ra)
