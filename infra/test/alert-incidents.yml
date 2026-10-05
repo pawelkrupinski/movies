@@ -264,3 +264,14 @@ incidents:
     end: 2026-09-29T18:20:00Z
     grace: 0m
     expect_firing: [HeapDumpWritten]
+
+  - id: worker-dedup-table-oom-storm-2026-10-02
+    description: >-
+      3f4bf656a held every unmatched listing's scored candidates; the uk and de heaps thrashed at
+      their caps and the String Deduplication table (native, outside -Xmx) grew to 500-765 MB until
+      the memory cgroup killed the workers, crash-looping four countries until 161fbc450 at 02:55Z.
+      JvmStringDedupTableLarge, written for this, must fire in it.
+    source: kinowo_worker_native_memory_bytes{category="String Deduplication"} uk 627m at 23:27Z; ALERTS{alertname="K3sContainerOOMKilled"} 10-02 22:30Z..10-03 02:50Z; commits 3f4bf656a, 161fbc450
+    start: 2026-10-02T22:20:00Z
+    end: 2026-10-03T03:00:00Z
+    expect_firing: [JvmStringDedupTableLarge]

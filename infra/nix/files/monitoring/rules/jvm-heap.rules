@@ -178,6 +178,39 @@ groups:
             against the same cgroup -- check `kinowo_worker_share_cards_render_total` for a render
             burst. Raising the limit only buys time if the growth is unbounded.
 
+      # THE STRING DEDUPLICATION TABLE IS NATIVE MEMORY WITH NO CAP. `-XX:+UseStringDeduplication`
+      # (infra/jvm/worker.options) keeps its table OUTSIDE -Xmx, and it grows with what the collector
+      # visits: a heap thrashing at its cap visits everything, over and over. On 2026-10-02 22:20Z a
+      # change that held every unmatched listing's scored candidates (3f4bf656a, fixed by
+      # 161fbc450) pinned the uk and de heaps at their caps; the table grew 55 MB -> 627 MB on uk,
+      # ~550 MB on de and us, and the memory-cgroup kills that followed crash-looped four workers
+      # for four and a half hours. JvmResidentNearContainerLimit saw it only on de and pl -- most
+      # boots went from quiet to killed inside its 30-minute line -- and HeapDumpWritten only
+      # after the fact. This table was the one number that climbed on EVERY worker, minutes ahead.
+      #
+      # 150 MB, HELD FIVE MINUTES. Measured 2026-10-05 over the week: p99 per country 5-30 MB, the
+      # largest outside the storm ~50 MB, and 300-765 MB inside it (worker-us reached 518 MB in
+      # its 09-30 kills too). `last_over_time` bridges a restart, which re-seeds the table at 0
+      # and clears this honestly.
+      - alert: JvmStringDedupTableLarge
+        expr: >-
+          max by (country) (last_over_time(kinowo_worker_native_memory_bytes{category="String Deduplication"}[10m]))
+            > 150 * 1024 * 1024
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "worker-{{ $labels.country }}'s String Deduplication table is {{ $value | humanize1024 }}B of native memory"
+          description: >-
+            The JVM's String Deduplication table lives outside -Xmx with no cap, and it grows when
+            the collector keeps visiting a full heap -- so this is a heap thrashing at its cap,
+            spending native memory the pod's limit does not budget for. The cgroup OOM kill is
+            usually minutes away. Look at the heap first: `jvm_memory_pool_used_bytes` for the
+            tenured pool against its max, and the VITALS lines in the worker's log ("String
+            Deduplication=" among the top native categories). The 2026-10-02 storm was a change
+            that retained a scored candidate set per unmatched listing (3f4bf656a). Raising the
+            limit only buys time: find what fills the heap.
+
       # A JVM WROTE A HEAP DUMP, i.e. it died of (or was about to die of) heap exhaustion and left
       # the evidence on k3s-worker-1. `ExitOnOutOfMemoryError` makes a heap OOM a clean exit and a
       # quiet restart, so without this the dump is the only trace -- and the budget keeps just the

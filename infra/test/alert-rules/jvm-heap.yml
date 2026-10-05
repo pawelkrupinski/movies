@@ -286,3 +286,34 @@ tests:
       - eval_time: 2h
         alertname: HeapDumpBudgetStale
         exp_alerts: []
+
+  # THE STRING DEDUPLICATION TABLE: uk on 2026-10-02, 55 MB climbing to 627 MB as its heap thrashed.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_native_memory_bytes{instance="worker-uk:9000",job="kinowo-worker",country="uk",category="String Deduplication"}'
+        values: '55000000+20000000x30'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: JvmStringDedupTableLarge
+        exp_alerts: []
+      # Over 150 MB from minute 5; held five minutes.
+      - eval_time: 11m
+        alertname: JvmStringDedupTableLarge
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: uk
+            exp_annotations:
+              summary: "worker-uk's String Deduplication table is 262.3MiB of native memory"
+              description: "The JVM's String Deduplication table lives outside -Xmx with no cap, and it grows when the collector keeps visiting a full heap -- so this is a heap thrashing at its cap, spending native memory the pod's limit does not budget for. The cgroup OOM kill is usually minutes away. Look at the heap first: `jvm_memory_pool_used_bytes` for the tenured pool against its max, and the VITALS lines in the worker's log (\"String Deduplication=\" among the top native categories). The 2026-10-02 storm was a change that retained a scored candidate set per unmatched listing (3f4bf656a). Raising the limit only buys time: find what fills the heap."
+
+  # A HEALTHY worker stays silent: the week's largest reading outside the storm was ~50 MB.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_native_memory_bytes{instance="worker-us:9000",job="kinowo-worker",country="us",category="String Deduplication"}'
+        values: '30000000 50000000 20000000+0x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: JvmStringDedupTableLarge
+        exp_alerts: []
+
