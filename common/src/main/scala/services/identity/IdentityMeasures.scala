@@ -545,6 +545,7 @@ object IdentityMeasures {
    *  (an ICU transliterator is not documented as safe to share). */
   private val toLatin = ThreadLocal.withInitial(() => com.ibm.icu.text.Transliterator.getInstance("Any-Latin; Latin-ASCII"))
   private def latinized(name: String): String = toLatin.get.transliterate(name)
+  private[identity] def isAscii(s: String): Boolean = { var i = 0; while (i < s.length && s.charAt(i) < 0x80) i += 1; i == s.length }
 
   /** Credit lists as the director relation compares them, each written form found once. */
   final class Credits(raw: Iterable[String]) {
@@ -552,7 +553,9 @@ object IdentityMeasures {
     lazy val keys: Set[String]              = names.map(services.movies.PersonKey.of).filter(_.nonEmpty).toSet
     lazy val words: Seq[Seq[String]]        = names.map(TitleContainment.tokens).filter(_.nonEmpty)
     lazy val isLatin: Boolean               = latin(names)
-    lazy val inLatin: Credits               = new Credits(names.map(latinized))
+    // ASCII names are their own Latin form ("Any-Latin; Latin-ASCII" leaves them as they are): no transliteration —
+    // ICU's, per name, was ~150 MB of a PL hard-cluster run's resolve allocation, most of it on the Latin side.
+    lazy val inLatin: Credits               = if (names.forall(IdentityMeasures.isAscii)) this else new Credits(names.map(latinized))
     def isEmpty: Boolean = keys.isEmpty
 
     /** Some credit names the same person as some credit of `other`: the same words in any order

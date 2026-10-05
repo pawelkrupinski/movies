@@ -148,4 +148,16 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     val title = IdentityMeasures.titleRelation(met, opera)
     bytesPerCall(() => IdentityMeasures.listingFilmTitled(met, opera, Some(1), 0, 0, title).size.toDouble) should be < 6500.0   // was 8,469: every name and title tokenised per pair
   }
+
+  "a credit in Latin letters weighed against one in another script" should "be read as it is, not transliterated" in {
+    val bi    = Film("Kaili Blues", year = Some(2015), directors = Some(Seq("毕赣")))
+    val names = Seq("Bi Gan", "Mikhail Ivanov", "Pedro Almodóvar", "Ivanov, Petrov", "Иван Петров", "")
+    names.foreach { name =>
+      val credits = new IdentityMeasures.Credits(Seq(name))
+      credits.inLatin.names shouldBe credits.names.map(n => com.ibm.icu.text.Transliterator.getInstance("Any-Latin; Latin-ASCII").transliterate(n))
+    }
+    IdentityMeasures.listingFilm(Listing("Kaili Blues", directors = Seq("Bi Gan")), bi, Some(1), 0, 0)("director") shouldBe
+      IdentityMeasures.Category("same_person")
+    bytesPerCall(() => new IdentityMeasures.Credits(Seq("Mikhail Ivanov")).inLatin.names.size.toDouble) should be < 512.0
+  }
 }
