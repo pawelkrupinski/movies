@@ -1813,6 +1813,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.titleRelations shouldBe 1
   }
 
+  "Two spellings of one title crediting different people" should "stay together when both credits name the one film" in {
+    // PL "Vincent. Legenda oceanu" {Reza Memari} beside {Pavel Hrubos; Steven Majaury}: a co-director TMDB does not
+    // credit. Every whole-corpus cluster crediting two different people is one film (§20.10: a house, a conductor or
+    // choreographer, a lecturer, a co-director) — different credits alone are no cannot-link.
+    val films = Seq(F(677558, "Vincent. Legenda oceanu", 2026, "Reza Memari", 91, 5))
+    val memari = listing(Multikino, "Vincent. Legenda oceanu", None, Some("Reza Memari"), Some(91))
+    val hrubos = listing(Helios, "Vincent. Legenda oceanu", None, Some("Pavel Hrubos"), Some(91))
+    val r = shipped(Seq(memari, hrubos), films)
+    withClue(r.decisionOf(memari.key).render)(together(r, memari, hrubos) shouldBe true)
+  }
+
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {
     weights.version shouldBe "test-fixture-2"
     IdentityCalibration.resolver.scopes.keySet shouldBe weights.scopes.keySet

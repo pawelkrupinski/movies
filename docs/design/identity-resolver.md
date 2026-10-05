@@ -2579,3 +2579,49 @@ filed each under retrieval, scoring, a guard, or the agreement. What it added, e
 - **`Acceptance.LeanMargin` 2 → 1.25** (from the search sweep): a no-match leans to its best film at 1.25 times the
   runner-up's probability, the model's and each family's alike. Ratchet: +6 listings (DE "Mein neues altes Ich", IMDb's
   lean completing Wikidata's take), 0 wrong; the model's leans moved over the whole corpus are the dump's.
+
+### 20.10 Mixed clusters and fact contradictions: measured, nothing to ship (2026-10-05)
+
+The triage's two remaining classes, measured before any rule was written:
+
+- **Mixed clusters** (listings of different films joined into one cluster). Every whole-corpus cluster (the five recorded
+  corpora, the resolver alone) whose members' own facts conflict — two members crediting different people
+  (`directorRelation` = `different`), or stating years more than one apart — is ONE film: 25 clusters credit two
+  people (UK/US Met and Royal Ballet relays crediting the house, the conductor or the choreographer beside the stage
+  director ×19; "Vincent. Legenda oceanu", "Tedi i magiczna lampa", "Dracula" (1931), "Back to the Beginning: Ozzy's
+  Final Bow" (UK, US): a co-director or a respelling; "Pasażer Andrzej Munk": the lecturer), 15 state years apart
+  (a re-release's or restoration's year beside the film's). A cannot-link on different credited directors would split all 25 wrongly.
+  In the unmatched clusters' fixture the one conflict is PL "Dyrygent" (Patria's Provazník, Kino Marzenie's Wajda,
+  Kozienice bare): its capture's corpus recorded Patria's listing before its scraper read the director, and its facts
+  were written onto the captured listings afterwards. On those facts the resolver already keeps the two apart (the
+  learned listing-listing cannot-link) and takes each its own director's film — Patria and Kozienice Broken Voices
+  (1483477), Marzenie Wajda's 1980 film: 3 listings, 2 films right, as own matches (`MixedClustersSpec`). US
+  "MetOpera: Carmen (2009)" ×514 is no mixed cluster: one title, one Flicks catalogue id and 240′ at every venue.
+- **Guard denials from bad source data.** What each source states of the contested fact, for every labelled film a
+  runtime, year or director contradiction denies (Menopause Mystery, the one TMDB-side error — 90′ against the
+  venues' 77′ and IMDb's 75′ — is taken since `LeanMargin` 1.25):
+
+  | film | the venue | TMDB | the families | the wrong fact |
+  |---|---|---|---|---|
+  | PL The Last Laugh (1924) | 73′ | 90′ | IMDb 90′, Wikidata 101′, Filmweb 88′ | none: a silent film's running time is its projection speed's |
+  | PL Quo Vadis? (1924) | 94′ | 137′ | IMDb, Wikidata 90′ | TMDB's |
+  | PL Without Anesthesia (Elbląg) | 101′ | 131′ | IMDb 131′, Wikidata 110′, Filmweb 125′ | the venue's |
+  | PL Vincent. Legenda oceanu (Parczew) | 9′ | 91′ | IMDb 91′ | the venue's (a typo) |
+  | UK NT Live: A Streetcar Named Desire | 200′ | 174′ | IMDb 180′ | none: the venue's is the screening's, intervals in |
+  | US MetOpera: Carmen (2009) ×514 | 240′ | 166′ | — | none: the relay's, intermissions in |
+  | DE Queen: Hungarian Rhapsody | 115′ | 91′ | IMDb, Wikidata 90′, RT 97′ | the venue's (the event's) |
+  | DE Nine to Five (1980) | 2025 | 1980 | IMDb, Metacritic, Filmweb 1980 | the venue's |
+  | US A Night at the Opera (1935) | Edmund Goulding | Sam Wood | IMDb credits both, Wikidata and RT Sam Wood | TMDB's (incomplete) |
+  | DE Das doppelte Lottchen (2007) | Michael Schaack | Toby Genkel | Wikidata, Filmweb Genkel | TMDB's (Schaack co-directed) |
+
+  A consensus where a contradiction counts only if the venue's value is not backed by the majority of the sources
+  stating the fact (TMDB the outlier) reaches two denied candidates over the whole fixture: Quo Vadis? (1924), right,
+  and NT Live's "A Midsummer Night's Dream" against "Straight Line Crazy", wrong — and takes neither: no family takes
+  Quo Vadis? (Wikidata and Filmweb lean to it), and no title names Straight Line Crazy. Crediting a director any source
+  credits frees A Night at the Opera, which two families take — short of the quorum, with nothing else voting. Where
+  the venue's fact is the wrong one, every source of the candidate agrees against the venue — exactly as they do when
+  the venue is right and the candidate is another film (DE "Der kleine Maulwurf", the venues' 1968 Miler against IMDb's
+  and Wikidata's 2011 compilation), so no consensus over the candidate's sources tells the two apart. Not shipped: 0
+  films gained. Not measured yet: a running time compared only for films after the silent era (it frees The Last Laugh
+  and Quo Vadis? for the families' own resolves, which then ask TMDB films the fixture does not hold — a re-capture
+  first), and a relay's billed running time read as the screening's (Carmen ×514, Streetcar).
