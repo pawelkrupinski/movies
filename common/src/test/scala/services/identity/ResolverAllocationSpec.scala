@@ -100,4 +100,15 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     val ascii = "Kino na leżakach".filter(_ < 0x80)
     bytesPerCall(() => deburr(ascii).length.toDouble) should be < 8.0
   }
+
+  "a listing's search groups against a film" should "key each title once, not per pair, to the same groups" in {
+    val many  = film.copy(alternativeTitles = (1 to 30).map(i => s"Samson und Dalila Fassung $i") :+ "Samson i Dalila")
+    val asked = listing.copy(searchTitles = Seq("Samson i Dalila", "Samson et Dalila", "Opera"))
+    def reference(l: Listing, f: Film) = {
+      val titles = (f.title +: (f.originalTitle.toSeq ++ f.alternativeTitles)).map(IdentityMeasures.key).toSet
+      l.searchTitles.map(IdentityMeasures.key).filter(titles).distinct
+    }
+    Seq(asked -> many, asked -> film, listing -> many).foreach { case (l, f) => IdentityMeasures.searchGroups(l, f) shouldBe reference(l, f) }
+    bytesPerCall(() => IdentityMeasures.searchGroups(asked, many).size.toDouble) should be < 512.0   // was 11,344
+  }
 }

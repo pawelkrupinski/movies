@@ -79,6 +79,8 @@ object IdentityMeasures {
     private[identity] lazy val numberedShapes: Seq[IdentityMeasures.Numbered] = shapes.map(IdentityMeasures.numbered)
     /** The directors, and those credited beside the year, parsed once per listing (`directorRelation`). */
     private[identity] lazy val directorCredits: IdentityMeasures.Credits   = new IdentityMeasures.Credits(directors)
+    /** Its search titles' [[IdentityMeasures.key]]s, in order: worked out once, not per film it is weighed against. */
+    private[identity] lazy val searchKeys: Seq[String] = searchTitles.map(IdentityMeasures.key)
     private[identity] lazy val creditsBesideYear: IdentityMeasures.Credits =
       if (yearCredits.isEmpty) directorCredits else new IdentityMeasures.Credits(creditedBesideYear)
     /** The original title, trimmed, as a comparison form, once per listing (`originalTitleRelation`). */
@@ -391,6 +393,9 @@ object IdentityMeasures {
                         released: Option[java.time.LocalDate] = None) {
     /** Its title, original title and alternative titles, in that order: every derived form below reads these. */
     private[identity] def titles: Seq[String] = Seq(title) ++ originalTitle ++ alternativeTitles
+    /** Its titles' [[IdentityMeasures.key]]s — worked out once, not per listing weighed against it ([[searchGroups]]): a
+     *  film's alternative titles can run to dozens, keyed again for every listing of every family it is a candidate of. */
+    private[identity] lazy val titleKeys: Set[String] = titles.map(IdentityMeasures.key).toSet
     /** The film's titles and their delimited pieces as yearless tokens, once per record (`billing`). */
     private[identity] lazy val billedTitles: Seq[Seq[String]] =
       titles.map(IdentityMeasures.yearlessTokens).filter(_.nonEmpty).distinct
@@ -1338,8 +1343,8 @@ object IdentityMeasures {
    *  "Róża" other venues list with Schleinzer and 2026 (as the old pipeline folded rows by their search
    *  key), but "ANDRÉ RIEU - NIECH ŻYJE MAASTRICHT!", searched as "André Rieu", is no concert's title. */
   def searchGroups(l: Listing, f: Film): Seq[String] = {
-    val titles = (f.title +: (f.originalTitle.toSeq ++ f.alternativeTitles)).map(key).toSet
-    l.searchTitles.map(key).filter(titles).distinct
+    val titles = f.titleKeys
+    l.searchKeys.filter(titles).distinct
   }
   /** Every group [[searchGroups]] can name for `l`, whatever the film — what a family's resolve may read. */
   def searchGroupsAny(l: Listing): Seq[String] = l.searchTitles.map(key).filter(_.nonEmpty).distinct
