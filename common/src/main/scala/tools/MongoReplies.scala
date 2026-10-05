@@ -24,6 +24,11 @@ object MongoReplies {
   val Films: Int = 50
   /** Identity families (`identity_model_families`): a region's decisions, tens of KB. */
   val Families: Int = 50
-  /** Scrape archive rows (`cinema_scrapes`): one whole venue scrape, ~170 KB. */
+  /** Scrape archive rows (`cinema_scrapes`) without their showtimes: ~14 KB each on worker-us, up to ~120 KB. */
   val ScrapeArchive: Int = 8
+  /** Scrape archive rows with every showtime: ~41 KB each on worker-us, up to ~250 KB a large multiplex (800 KB the
+   *  largest). Eight made 1-2 MB replies on every projection that rebuilt a big chain's slots, each a buffer the
+   *  driver's pool made again a minute later and promoted (worker-us heap dump 2026-10-05); four keep the US mirror's
+   *  every reply under 1 MB. */
+  val ScrapeArchiveWithShowtimes: Int = 4
 }

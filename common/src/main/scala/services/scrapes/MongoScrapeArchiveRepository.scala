@@ -401,7 +401,7 @@ class MongoScrapeArchiveRepository(
           (if (lean) c.withCodecRegistry(ScrapeArchiveCodecs.leanRegistry).find(Filters.in("_id", page*))
             .projection(Projections.exclude("films.showtimes"))
           else c.find(Filters.in("_id", page*))).sort(org.mongodb.scala.model.Sorts.ascending("_id"))
-            .batchSize(tools.MongoReplies.ScrapeArchive).toFuture(),
+            .batchSize(if (lean) tools.MongoReplies.ScrapeArchive else tools.MongoReplies.ScrapeArchiveWithShowtimes).toFuture(),
           60.seconds),
         onIncomplete   = failed
       )(consume))
