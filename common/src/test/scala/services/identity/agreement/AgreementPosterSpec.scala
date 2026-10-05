@@ -83,6 +83,12 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
         .apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 1).decisions.head
     val vetoed = decidedWith(Map(1001 -> Seq(near(2)), 1002 -> Seq(PosterHash(-1L))))
     (vetoed.film, vetoed.basis) shouldBe ((Some(1001), ResolverDecision.Basis.Poster))   // vetoed, and the poster's own vote takes the 2026 film
+    val passes = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Applied]
+    new AgreementStage(silentFamilies ++ agreeing, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      new InMemoryAgreementVerdicts, metrics = passes += _, clock = _root_.tools.SpecClock.Pinned,
+      posters = new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(near(2)), 1002 -> Seq(PosterHash(-1L)))), tmdb = Some(table))
+      .apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 1)
+    (passes.last.posterVetoed, passes.last.takenPoster, passes.last.takenTmdb) shouldBe ((1, 1, 0))
     val agreed = decidedWith(Map(1001 -> Seq(PosterHash(0L)), 1002 -> Seq(PosterHash(-1L))))
     (agreed.film, agreed.basis) shouldBe ((Some(1002), ResolverDecision.Basis.Agreed))   // a poster matching no candidate vetoes nothing
   }

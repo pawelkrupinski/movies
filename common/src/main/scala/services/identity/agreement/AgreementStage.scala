@@ -108,6 +108,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     val postersAsked = mutable.Set.empty[AgreementStage.PosterQuestion]
     val moved  = mutable.ArrayBuffer.empty[StoredVerdict]
     val seen   = mutable.Set.empty[String]
+    var posterVetoed = 0
     val decisions = resolution.decisions.map { decision =>
       if (decision.film.isDefined || decision.unanswered > 0 || decision.fallback.isDefined || decision.members.isEmpty) decision
       else {
@@ -124,10 +125,11 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         def distances(also: Option[Int]) = posterDistances(id, digest, listings, also, postersAsked)
         // the posters vote once the families reached a verdict that takes no film: none agreed, or a poster vetoed it
         val now = verdict.fold(decision) { v =>
-          v.agreed.fold[AgreementStage.Take](AgreementStage.Take.Vetoed)(taken(decision, _, finding, distances)) match {
+          v.agreed.fold[AgreementStage.Take](AgreementStage.Take.Untaken)(taken(decision, _, finding, distances)) match {
             case AgreementStage.Take.Taken(agreed) => agreed
             case AgreementStage.Take.Pending       => decision
-            case AgreementStage.Take.Vetoed        => voted(decision, distances(None)).getOrElse(decision)
+            case AgreementStage.Take.Vetoed        => posterVetoed += 1; voted(decision, distances(None)).getOrElse(decision)
+            case AgreementStage.Take.Untaken       => voted(decision, distances(None)).getOrElse(decision)
           }
         }
         if (now eq decision) decision else Option(takenAs.get(decision)).filter(_ == now).getOrElse { takenAs.put(decision, now); now }
@@ -156,7 +158,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     val agreedNow = decisions.filter(_.basis == ResolverDecision.Basis.Agreed)
     metrics.applied(AgreementStage.Applied(waiting = waiting.size, verdicts = held.size, agreed = held.valuesIterator.count(_.agreed.isDefined),
       takenTmdb = agreedNow.count(_.film.isDefined), takenFallback = agreedNow.count(_.fallback.isDefined),
-      open = gaps.groupMapReduce(_._1)(_ => 1)(_ + _), finds = finds.size, resolves = resolves, seconds = started.seconds))
+      open = gaps.groupMapReduce(_._1)(_ => 1)(_ + _), finds = finds.size, resolves = resolves, seconds = started.seconds,
+      takenPoster = decisions.count(_.basis == ResolverDecision.Basis.Poster), posterVetoed = posterVetoed, posters = posterGaps.size))
     resolution.copy(decisions = decisions)
   }
 
@@ -280,7 +283,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         AgreementStage.Take.Pending
       case Answer.Known(Some(film)) => unlessVetoed(Some(film))(
         decision.copy(film = Some(film), basis = ResolverDecision.Basis.Agreed, explanation = decision.explanation :+ line, agreed = ids)(decision.trace))
-      case Answer.Known(None) => imdb.fold[AgreementStage.Take](AgreementStage.Take.Vetoed)(id => unlessVetoed(None)(decision.copy(basis = ResolverDecision.Basis.Agreed,
+      case Answer.Known(None) => imdb.fold[AgreementStage.Take](AgreementStage.Take.Untaken)(id => unlessVetoed(None)(decision.copy(basis = ResolverDecision.Basis.Agreed,
         explanation = decision.explanation :+ line, fallback = Some(ResolverDecision.Fallback("imdb", id, 1.0)), agreed = ids)(decision.trace)))
     }
   }
@@ -364,11 +367,12 @@ object AgreementStage {
    *  the posters not hashed yet. */
   final case class Open(questions: Set[(VoterFamily, String)], finds: Set[String], posters: Set[PosterQuestion] = Set.empty)
 
-  /** What became of the film a cluster's families agree on: taken, pending an answer, or not taken (vetoed, or nothing to take). */
+  /** What became of the film a cluster's families agree on: taken, pending an answer, vetoed by a venue poster, or none to take. */
   private enum Take {
     case Taken(decision: ResolverDecision)
     case Pending
     case Vetoed
+    case Untaken
   }
 
   /** A poster to hash: a venue's, by its URL, or a TMDB film's. */
@@ -399,9 +403,10 @@ object AgreementStage {
 
   /** What one [[AgreementStage.apply]] that read anything came to: the clusters waiting on a family's answer, the verdicts
    *  kept and how many agreed, the decisions taken as a TMDB film or an IMDb fallback, the questions still open per family
-   *  and TMDB finds, how many clusters it resolved again, and how long it took. */
+   *  and TMDB finds, how many clusters it resolved again, and how long it took; and the venue posters' part: the decisions
+   *  they took ([[ResolverDecision.Basis.Poster]]), the agreed films they vetoed, and the posters not hashed yet. */
   final case class Applied(waiting: Int, verdicts: Int, agreed: Int, takenTmdb: Int, takenFallback: Int, open: Map[VoterFamily, Int],
-                           finds: Int, resolves: Int, seconds: Double)
+                           finds: Int, resolves: Int, seconds: Double, takenPoster: Int = 0, posterVetoed: Int = 0, posters: Int = 0)
   trait Metrics { def applied(applied: Applied): Unit }
   object Metrics { val Silent: Metrics = _ => () }
 

@@ -19,13 +19,19 @@ class IdentityAgreementMetricsSpec extends AnyFlatSpec with Matchers {
     sample(text, "kinowo_worker_identity_agreement_clusters", """country="pl",state="waiting"""") shouldBe Some(0.0)
     sample(text, "kinowo_worker_identity_agreement_open_questions", """country="pl",family="tmdb-find"""") shouldBe Some(0.0)
     sample(text, "kinowo_worker_identity_agreement_answers_total", """country="pl",family="rt",outcome="failed"""") shouldBe Some(0.0)
+    sample(text, "kinowo_worker_identity_agreement_clusters", """country="pl",state="poster-vetoed"""") shouldBe Some(0.0)
+    sample(text, "kinowo_worker_identity_agreement_taken", """as="poster",country="pl"""")
+      .orElse(sample(text, "kinowo_worker_identity_agreement_taken", """country="pl",as="poster"""")) shouldBe Some(0.0)
+    sample(text, "kinowo_worker_identity_agreement_open_questions", """country="pl",family="poster"""") shouldBe Some(0.0)
+    sample(text, "kinowo_worker_identity_agreement_answers_total", """country="pl",family="poster",outcome="answered"""") shouldBe Some(0.0)
   }
 
   it should "carry the stage's last pass and each question's outcome" in {
     val registry = new PrometheusRegistry()
     val metrics  = new IdentityAgreementMetrics(registry)
     metrics.stage("pl").applied(AgreementStage.Applied(waiting = 40, verdicts = 12, agreed = 5, takenTmdb = 4, takenFallback = 1,
-      open = Map(VoterFamily.Imdb -> 30, VoterFamily.RottenTomatoes -> 7), finds = 2, resolves = 9, seconds = 0.5))
+      open = Map(VoterFamily.Imdb -> 30, VoterFamily.RottenTomatoes -> 7), finds = 2, resolves = 9, seconds = 0.5,
+      takenPoster = 3, posterVetoed = 2, posters = 11))
     val questions = metrics.questions("pl")
     questions.enqueued("imdb", added = true); questions.enqueued("imdb", added = false)
     questions.asked("rt", AgreementQuestionMetrics.Answered); questions.asked("rt", AgreementQuestionMetrics.Nothing)
@@ -37,6 +43,10 @@ class IdentityAgreementMetricsSpec extends AnyFlatSpec with Matchers {
     sample(text, "kinowo_worker_identity_agreement_open_questions", """country="pl",family="wiki"""") shouldBe Some(0.0)
     sample(text, "kinowo_worker_identity_agreement_open_questions", """country="pl",family="tmdb-find"""") shouldBe Some(2.0)
     sample(text, "kinowo_worker_identity_agreement_resolves_total", """country="pl"""") shouldBe Some(9.0)
+    sample(text, "kinowo_worker_identity_agreement_taken", """as="poster",country="pl"""")
+      .orElse(sample(text, "kinowo_worker_identity_agreement_taken", """country="pl",as="poster"""")) shouldBe Some(3.0)
+    sample(text, "kinowo_worker_identity_agreement_clusters", """country="pl",state="poster-vetoed"""") shouldBe Some(2.0)
+    sample(text, "kinowo_worker_identity_agreement_open_questions", """country="pl",family="poster"""") shouldBe Some(11.0)
     sample(text, "kinowo_worker_identity_agreement_enqueued_total", """country="pl",family="imdb",result="duplicate"""") shouldBe Some(1.0)
     sample(text, "kinowo_worker_identity_agreement_answers_total", """country="pl",family="rt",outcome="nothing"""") shouldBe Some(1.0)
   }
