@@ -1,7 +1,7 @@
 package clients.kino_grajfka
 
 import org.scalatest.OptionValues
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FilmPages}
 import models.KinoGrajfka
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
@@ -18,7 +18,8 @@ import java.time.LocalDateTime
  *  Fetch URL:   https://kino.chck.pl/repertuar/ */
 class KinoGrajfkaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private val movies = new KinoGrajfkaClient(new FakeHttpFetch("kino-grajfka"), KinoGrajfka).fetch()
+  private val client = new KinoGrajfkaClient(new FakeHttpFetch("kino-grajfka"), KinoGrajfka)
+  private val movies = client.fetch()
 
   "KinoGrajfkaClient" should "return a non-empty, single-cinema film list" in {
     movies should not be empty
@@ -34,6 +35,19 @@ class KinoGrajfkaClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   it should "keep only the START time from an HH:MM – HH:MM range: Kafarnaum at 18:00, not 20:00" in {
     val film = movies.find(_.movie.title == "Kafarnaum").value
     film.showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.of(2026, 10, 9, 18, 0))
+  }
+
+  // The identity resolver reads these off the detail page's credits line, "Kafarnaum reż. Nadine Labaki, Liban, USA, 2018".
+  // Recorded 2026-10-05 from https://kino.chck.pl/repertuar/kafarnaum/ and /koszmarek/
+  it should "read the director, countries and year off the detail page's credits line" in {
+    val kafarnaum = FilmPages.detailOf(client, "https://kino.chck.pl/repertuar/kafarnaum/")
+    kafarnaum.director shouldBe Seq("Nadine Labaki")
+    kafarnaum.countries shouldBe Seq("Liban", "USA")
+    kafarnaum.releaseYear shouldBe Some(2018)
+    val koszmarek = FilmPages.detailOf(client, "https://kino.chck.pl/repertuar/koszmarek/")
+    koszmarek.director shouldBe Seq("Steve Hudson", "Toby Genkel")
+    koszmarek.countries shouldBe empty   // the catalogue's "Koprodukcja" names no country
+    koszmarek.releaseYear shouldBe Some(2025)
   }
 
   it should "carry the venue's own detail-page link as filmUrl" in {

@@ -2,7 +2,7 @@ package clients.kino_zorza
 
 import models.KinoZorza
 import org.scalatest.OptionValues
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FilmPages}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.KinoZorzaClient
@@ -33,6 +33,21 @@ class KinoZorzaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   it should "give every film at least one showtime" in {
     val movies = fetched
     all(movies.map(_.showtimes)) should not be empty
+  }
+
+  // The identity resolver reads these: without the director "KLAPS! - Rozważna i romantyczna" read as Ang Lee's 1995 film.
+  // Recorded 2026-10-05 from https://www.kinozorza.pl/film/klaps---rozwazna-i-romantyczna-napisy-2d and /film/lalka-polski-2d
+  it should "read each film page's director, countries, running time and premiere year" in {
+    val sense = FilmPages.detailOf(client, "https://www.kinozorza.pl/film/klaps---rozwazna-i-romantyczna-napisy-2d")
+    sense.director shouldBe Seq("Georgia Oakley")
+    sense.countries shouldBe Seq("USA")
+    sense.runtimeMinutes shouldBe None
+    sense.releaseYear shouldBe None
+    val lalka = FilmPages.detailOf(client, "https://www.kinozorza.pl/film/lalka-polski-2d")
+    lalka.director shouldBe Seq("Maciej Kawalski")
+    lalka.countries shouldBe Seq("Polska")
+    lalka.runtimeMinutes shouldBe Some(162)
+    lalka.releaseYear shouldBe Some(2026)
   }
 
   it should "pin a concrete screening: Ojczyzna on 2026-06-07 at 12:30" in {

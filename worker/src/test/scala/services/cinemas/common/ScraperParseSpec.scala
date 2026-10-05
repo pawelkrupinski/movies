@@ -226,6 +226,32 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.cssUrl("color: red") shouldBe None
   }
 
+  "hoursMinutesRuntime" should "read the Polish spellings and the short 1h 50m one" in {
+    ScraperParse.hoursMinutesRuntime("1 godz. 37 min.") shouldBe Some(97)
+    ScraperParse.hoursMinutesRuntime("95 min") shouldBe Some(95)
+    ScraperParse.hoursMinutesRuntime("1h 50m") shouldBe Some(110)
+    ScraperParse.hoursMinutesRuntime("2h 42m") shouldBe Some(162)
+    ScraperParse.hoursMinutesRuntime("Marzec") shouldBe None
+  }
+
+  "strongLabeledFields" should "map each <strong>label:</strong> to the text right after it, first value winning" in {
+    val html = Jsoup.parse("<div><p><strong>reżyseria: </strong>Georgia Oakley<br/><strong>Produkcja:</strong> USA<br/>" +
+      "<strong>reżyseria:</strong> Someone Else<br/><strong>pusta:</strong><em>x</em></p></div>").selectFirst("div")
+    ScraperParse.strongLabeledFields(html) shouldBe Map("reżyseria" -> "Georgia Oakley", "produkcja" -> "USA")
+  }
+
+  "kinoZaRogiemTerms" should "read the network catalogue's director, country and year terms, under either director slug" in {
+    val credits = Jsoup.parse("""<b>Koszmarek reż. <a href="https://kinozarogiem.pl/re_yseria/steve-hudson/">Steve Hudson</a>,
+      <a href="https://kinozarogiem.pl/re_zyseria/toby-genkel/">Toby Genkel</a>,
+      <a href="https://kinozarogiem.pl/produkcja/koprodukcja/">Koprodukcja</a>,
+      <a href="https://kinozarogiem.pl/produkcja/czechy/">Czechy</a>,
+      <a href="https://kinozarogiem.pl/rok_produkcji_filmu/2024/">2024</a></b>""").body
+    val terms = ScraperParse.kinoZaRogiemTerms(credits)
+    terms.director shouldBe Seq("Steve Hudson", "Toby Genkel")
+    terms.countries shouldBe Seq("Czechy")
+    terms.releaseYear shouldBe Some(2024)
+  }
+
   "ddField" should "return the <dd> after the matching <dt> (case-insensitive label)" in {
     val document = Jsoup.parse(
       "<dl><dt>Rok produkcji</dt><dd>2024</dd><dt>Reżyseria</dt><dd>Jan Kowalski</dd></dl>"

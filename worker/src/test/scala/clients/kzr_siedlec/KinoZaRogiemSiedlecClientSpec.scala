@@ -1,7 +1,7 @@
 package clients.kzr_siedlec
 
 import org.scalatest.OptionValues
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FilmPages}
 import org.scalatest.matchers.should.Matchers
 import models.KinoZaRogiemSiedlec
 import org.scalatest.flatspec.AnyFlatSpec
@@ -21,8 +21,8 @@ import java.time.{LocalDate, LocalDateTime}
  *  real dated text schedule (see the 2026-09-23 coverage sweep notes). */
 class KinoZaRogiemSiedlecClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private val movies =
-    new KinoZaRogiemSiedlecClient(new FakeHttpFetch("kzr-siedlec"), today = LocalDate.of(2026, 9, 23)).fetch()
+  private val client = new KinoZaRogiemSiedlecClient(new FakeHttpFetch("kzr-siedlec"), today = LocalDate.of(2026, 9, 23))
+  private val movies = client.fetch()
 
   "KinoZaRogiemSiedlecClient" should "return a non-empty, single-cinema film list" in {
     movies should not be empty
@@ -50,6 +50,16 @@ class KinoZaRogiemSiedlecClientSpec extends AnyFlatSpec with Matchers with Optio
     // merged by title) — a client that stopped at page 1 would miss every
     // film only listed on page 2.
     movies.map(_.movie.title) should contain("Zwierzaki na zakręcie")
+  }
+
+  // The identity resolver reads these: without them a bare "Dumna królewna" was Zeman's 1952 film to every catalogue.
+  // Recorded 2026-10-05 from https://goksiedlec.pl/bilet/dumna-krolewna-19-pazdziernika-poniedzialek-godz-1500/
+  it should "read the product page's catalogue facts: Radek Beran's 2024 Czech Dumna królewna, 80 min" in {
+    val detail = FilmPages.detailOf(client, "https://goksiedlec.pl/bilet/dumna-krolewna-19-pazdziernika-poniedzialek-godz-1500/")
+    detail.director shouldBe Seq("Radek Beran")
+    detail.releaseYear shouldBe Some(2024)
+    detail.countries shouldBe Seq("Czechy")
+    detail.runtimeMinutes shouldBe Some(80)
   }
 
   it should "resolve a poster from the lazy-loaded `data-src`, not the placeholder `src`" in {

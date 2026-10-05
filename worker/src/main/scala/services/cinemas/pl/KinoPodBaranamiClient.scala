@@ -2,13 +2,11 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import org.jsoup.nodes.{Element, TextNode}
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime}
-import java.util.Locale
 import scala.jdk.CollectionConverters._
 
 /**
@@ -179,8 +177,6 @@ object KinoPodBaranamiClient {
     slots.toSeq
   }
 
-  private val YearPat = """(?:19|20)\d{2}""".r
-
   /** Parse a `film.php?film_id=…` detail page into a [[FilmDetail]]. The static
    *  film facts sit in `<strong>label:</strong> value<br>` pairs inside
    *  `div.indent`; the synopsis prose is the `<p>` after the film `<table>`; the
@@ -189,12 +185,12 @@ object KinoPodBaranamiClient {
    *  live listing. */
   private[cinemas] def parseDetail(html: String): FilmDetail = {
     val doc    = Jsoup.parse(html)
-    val fields = Option(doc.selectFirst("div.indent")).map(labeledFields).getOrElse(Map.empty)
+    val fields = Option(doc.selectFirst("div.indent")).map(ScraperParse.strongLabeledFields).getOrElse(Map.empty)
     def people(label: String): Seq[String] =
       fields.get(label).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
     val runtime = fields.get("czas trwania").flatMap(v => """(\d+)""".r.findFirstIn(v)).map(_.toInt).filter(_ > 0)
     val (countries, prodYear) = fields.get("produkcja").map(ScraperParse.productionMeta).getOrElse((Seq.empty, None))
-    val premieraYear = fields.get("premiera").flatMap(v => YearPat.findFirstIn(v)).map(_.toInt)
+    val premieraYear = fields.get("premiera").flatMap(ScraperParse.yearIn)
     val synopsis = Option(doc.selectFirst("div#column_wide div.bot > p"))
       .map(p => ScraperParse.cleanSynopsis(p, "div")).filter(_.length > 20)
     val poster = Option(doc.selectFirst("td[width=130] a[href]")).map(_.attr("href").trim)
@@ -209,22 +205,5 @@ object KinoPodBaranamiClient {
       countries      = countries,
       posterUrl      = poster
     )
-  }
-
-  /** Map the `<strong>label:</strong> value<br>` metadata pairs inside `container`
-   *  to `label -> value` — label lower-cased, whitespace-collapsed, trailing colon
-   *  stripped; value read from the text node right after each `<strong>`. First
-   *  value wins per label. */
-  private def labeledFields(container: Element): Map[String, String] = {
-    val out = scala.collection.mutable.LinkedHashMap.empty[String, String]
-    container.select("strong").asScala.foreach { s =>
-      val label = s.text.trim.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ").stripSuffix(":").trim
-      val value = s.nextSibling() match {
-        case tn: TextNode => tn.text.replaceAll("\\s+", " ").trim
-        case _            => ""
-      }
-      if (label.nonEmpty && value.nonEmpty && !out.contains(label)) out(label) = value
-    }
-    out.toMap
   }
 }

@@ -1,6 +1,6 @@
 package services.cinemas.pl
 
-import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScraperParse, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
@@ -39,11 +39,22 @@ import scala.util.Try
  * booking/film URL surfaced instead. The poster thumbnail is a themed
  * 380x228 banner crop, not the film's real poster, so `posterUrl` is left
  * `None` too — central enrichment fills it from TMDB.
+ *
+ * The detail page opens on the film's credits, a bold line published from the
+ * Kino za Rogiem network's catalogue: "Kafarnaum reż. Nadine Labaki, Liban, USA,
+ * 2018" — the director and countries linked as kinozarogiem.pl terms, the year
+ * plain text after them. Read as the deferred detail ([[fetchFilmDetail]]).
  */
 class KinoGrajfkaClient(
   http:                HttpFetch,
   override val cinema: Cinema
-) extends CinemaScraper {
+) extends CinemaScraper with DetailEnricher {
+
+  override val detailGroup: String = "kino-grajfka"
+
+  /** The detail page's credits line; None on a transient failure, a durable 404/410 escaping. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    DetailFetchOutcome.page(http, ref).map(KinoGrajfkaClient.parseDetail)
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoGrajfkaClient.RepertoireUrl)
   override def sourceUrl: Option[String] = Some(KinoGrajfkaClient.RepertoireUrl)
@@ -56,6 +67,17 @@ object KinoGrajfkaClient {
 
   val BaseUrl       = "https://kino.chck.pl"
   val RepertoireUrl = s"$BaseUrl/repertuar/"
+
+  private val Directed = "reż."
+
+  /** The credits line atop the description (`#cm_description`'s first bold run): its linked terms, and the
+   *  year its line prints after the director's "reż." — the catalogue links no year term here. */
+  private[cinemas] def parseDetail(html: String): FilmDetail =
+    Option(Jsoup.parse(html, BaseUrl).selectFirst("#cm_description b")).filter(_.text.contains(Directed)).fold(FilmDetail()) { credits =>
+      val terms = ScraperParse.kinoZaRogiemTerms(credits)
+      val year  = ScraperParse.linesOf(credits).find(_.contains(Directed)).map(line => line.substring(line.indexOf(Directed))).flatMap(ScraperParse.yearIn)
+      terms.copy(releaseYear = terms.releaseYear.orElse(year))
+    }
 
   private case class RawSlot(title: String, dateTime: LocalDateTime, filmUrl: Option[String])
 

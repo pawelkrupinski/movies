@@ -2,7 +2,7 @@ package services.cinemas.common
 
 import java.util.Locale
 
-import org.jsoup.nodes.{Document, Element}
+import org.jsoup.nodes.{Document, Element, TextNode}
 import services.movies.FormatTags
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, MonthDay, Period}
@@ -281,11 +281,11 @@ private[cinemas] object ScraperParse {
   def extractFormatTags(raw: String): (String, List[String]) = FormatTags.extractFormatTags(raw)
   def formatTokensIn(text: String): List[String] = FormatTags.formatTokensIn(text)
 
-  private val RuntimeHours   = """(?i)(\d+)\s*godz""".r
-  private val RuntimeMinutes = """(?i)(\d+)\s*min""".r
+  private val RuntimeHours   = """(?i)(\d+)\s*(?:godz|h\b)""".r
+  private val RuntimeMinutes = """(?i)(\d+)\s*m(?:in|\b)""".r
 
   /** A runtime spelled in hours and minutes — "1 godz. 53 min", "3 godz 03 min",
-   *  "95 min", "ok. 85 MIN" — in minutes; `None` when neither part is present. */
+   *  "95 min", "ok. 85 MIN", "1h 50m" — in minutes; `None` when neither part is present. */
   def hoursMinutesRuntime(s: String): Option[Int] = {
     val hours   = RuntimeHours.findFirstMatchIn(s).map(_.group(1).toInt).getOrElse(0)
     val minutes = RuntimeMinutes.findFirstMatchIn(s).map(_.group(1).toInt).getOrElse(0)
@@ -305,7 +305,41 @@ private[cinemas] object ScraperParse {
     (countries, year)
   }
 
-  private val FilmwebSlugYear = """filmweb\.pl/film/.+-((?:19|20)\d{2})-\d+/?$""".r
+  /** The first four-digit year in `s` — a premiere date's ("24 marca 1980"), a credits line's ("…, USA, 2018"). */
+  def yearIn(s: String): Option[Int] = FourDigitYear.findFirstIn(s).map(_.toInt)
+
+  /** A venue's `<strong>label:</strong> value<br>` film facts, as `label -> value`: the label lower-cased,
+   *  whitespace-collapsed, its colon stripped; the value the text node right after the `<strong>`. The first
+   *  value wins per label; a label with no text after it is left out. */
+  def strongLabeledFields(container: Element): Map[String, String] = {
+    val out = scala.collection.mutable.LinkedHashMap.empty[String, String]
+    container.select("strong").asScala.foreach { strong =>
+      val label = strong.text.trim.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ").stripSuffix(":").trim
+      val value = strong.nextSibling() match {
+        case text: TextNode => text.text.replaceAll("\\s+", " ").trim
+        case _              => ""
+      }
+      if (label.nonEmpty && value.nonEmpty && !out.contains(label)) out(label) = value
+    }
+    out.toMap
+  }
+
+  /** The facts a page published from the Kino za Rogiem network's shared film catalogue (kinozarogiem.pl —
+   *  GOK Siedlec's and Chorzów's Kino Grajfka's both are) links as that catalogue's WordPress terms, within
+   *  `root`: `re_yseria` (and its later twin `re_zyseria`, which some directors are filed under) → the
+   *  directors, `produkcja` → the production countries (less the catalogue's "Koprodukcja", which names
+   *  none), `rok_produkcji_filmu` → the production year. */
+  def kinoZaRogiemTerms(root: Element): FilmDetail = {
+    def terms(taxonomies: String*) =
+      root.select(taxonomies.map(taxonomy => s"a[href*=/$taxonomy/]").mkString(", ")).asScala.toSeq
+        .map(_.text.trim).filter(_.nonEmpty).distinct
+    FilmDetail(
+      director    = terms("re_yseria", "re_zyseria"),
+      countries   = terms("produkcja").filterNot(_.equalsIgnoreCase("Koprodukcja")),
+      releaseYear = terms("rok_produkcji_filmu").flatMap(yearIn).headOption)
+  }
+
+  private val FilmwebSlugYear ="""filmweb\.pl/film/.+-((?:19|20)\d{2})-\d+/?$""".r
 
   /** The production year a Filmweb film link's slug carries —
    *  `filmweb.pl/film/Mistyczka-2026-10125135` → 2026. Venues that link a title

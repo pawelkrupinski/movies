@@ -1,7 +1,7 @@
 package clients.kino_marzenie
 
 import org.scalatest.OptionValues
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FilmPages}
 import models.KinoMarzenie
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
@@ -65,6 +65,18 @@ class KinoMarzenieClientSpec extends AnyFlatSpec with Matchers with OptionValues
     val film = movies.find(_.movie.title == "MARSUPILAMI").value
     film.showtimes.map(_.dateTime) should not contain LocalDateTime.of(2026, 9, 23, 0, 0)
     film.showtimes.map(_.dateTime.toLocalDate) should not contain LocalDate.of(2026, 9, 23)
+  }
+
+  // The identity resolver reads these: without the director this "DYRYGENT" stood beside every other "Dyrygent".
+  // Recorded 2026-10-05 from https://www.kinomarzenie.pl/repertuar/1027,dyrygent-polaczony-z-koncertem-muzyki-na-zywo
+  it should "read the film page's facts: Wajda's Dyrygent, premiere 24 March 1980, 97 min, Polska" in {
+    val client = new KinoMarzenieClient(new FakeHttpFetch("kino-marzenie"), KinoMarzenie, today = LocalDate.of(2026, 9, 23))
+    val detail = FilmPages.detailOf(client, "https://www.kinomarzenie.pl/repertuar/1027,dyrygent-polaczony-z-koncertem-muzyki-na-zywo")
+    detail.director shouldBe Seq("Andrzej Wajda")
+    detail.cast shouldBe Seq("John Gielgud", "Krystyna Janda", "Andrzej Seweryn", "Marek Dąbrowski")
+    detail.releaseYear shouldBe Some(1980)
+    detail.runtimeMinutes shouldBe Some(97)
+    detail.countries shouldBe Seq("Polska")
   }
 
   it should "expose the film's own detail page as filmUrl" in {

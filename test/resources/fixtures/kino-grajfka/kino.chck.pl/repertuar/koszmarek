@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pl-PL">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="profile" href="http://gmpg.org/xfn/11">
+<link rel="shortcut icon" href="https://kino.chck.pl/wp-content/uploads/2016/10/favicon.png"><title>Koszmarek &#8211; Kino Grajfka | Chorzowskie Centrum Kultury</title>
+<link rel='dns-prefetch' href='//fonts.googleapis.com' />
+<link rel='dns-prefetch' href='//s.w.org' />
+		<script type="text/javascript">
+			window._wpemojiSettings = {"baseUrl":"https:\/\/s.w.org\/images\/core\/emoji\/2\/72x72\/","ext":".png","svgUrl":"https:\/\/s.w.org\/images\/core\/emoji\/2\/svg\/","svgExt":".svg","source":{"concatemoji":"https:\/\/kino.chck.pl\/wp-includes\/js\/wp-emoji-release.min.js"}};
+			!function(e,o,t){var a,n,r;function i(e){var t=o.createElement("script");t.src=e,t.type="text/javascript",o.getElementsByTagName("head")[0].appendChild(t)}for(r=Array("simple","flag","unicode8","diversity","unicode9"),t.supports={everything:!0,everythingExceptFlag:!0},n=0;n<r.length;n++)t.supports[r[n]]=function(e){var t,a,n=o.createElement("canvas"),r=n.getContext&&n.getContext("2d"),i=String.fromCharCode;if(!r||!r.fillText)return!1;switch(r.textBaseline="top",r.font="600 32px Arial",e){case"flag":return(r.fillText(i(55356,56806,55356,56826),0,0),n.toDataURL().length<3e3)?!1:(r.clearRect(0,0,n.width,n.height),r.fillText(i(55356,57331,65039,8205,55356,57096),0,0),a=n.toDataURL(),r.clearRect(0,0,n.width,n.height),r.fillText(i(55356,57331,55356,57096),0,0),a!==n.toDataURL());case"diversity":return r.fillText(i(55356,57221),0,0),a=(t=r.getImageData(16,16,1,1).data)[0]+","+t[1]+","+t[2]+","+t[3],r.fillText(i(55356,57221,55356,57343),0,0),a!=(t=r.getImageData(16,16,1,1).data)[0]+","+t[1]+","+t[2]+","+t[3];case"simple":return r.fillText(i(55357,56835),0,0),0!==r.getImageData(16,16,1,1).data[0];case"unicode8":return r.fillText(i(55356,57135),0,0),0!==r.getImageData(16,16,1,1).data[0];case"unicode9":return r.fillText(i(55358,56631),0,0),0!==r.getImageData(16,16,1,1).data[0]}return!1}(r[n]),t.supports.everything=t.supports.everything&&t.supports[r[n]],"flag"!==r[n]&&(t.supports.everythingExceptFlag=t.supports.everythingExceptFlag&&t.supports[r[n]]);t.supports.everythingExceptFlag=t.supports.everythingExceptFlag&&!t.supports.flag,t.DOMReady=!1,t.readyCallback=function(){t.DOMReady=!0},t.supports.everything||(a=function(){t.readyCallback()},o.addEventListener?(o.addEventListener("DOMContentLoaded",a,!1),e.addEventListener("load",a,!1)):(e.attachEvent("onload",a),o.attachEvent("onreadystatechange",function(){"complete"===o.readyState&&t.readyCallback()})),(a=t.source||{}).concatemoji?i(a.concatemoji):a.wpemoji&&a.twemoji&&(i(a.twemoji),i(a.wpemoji)))}(window,document,window._wpemojiSettings);
+		</script>
+		<style type="text/css">
+img.wp-smiley,
+img.emoji {
+	display: inline !important;
+	border: none !important;
+	box-shadow: none !important;
+	height: 1em !important;
+	width: 1em !important;
+	margin: 0 .07em !important;
+	vertical-align: -0.1em !important;
+	background: none !important;
+	padding: 0 !important;
+}
+</style>
+<link rel='stylesheet' id='sitelinx-accessibility-lite-css'  href='https://kino.chck.pl/wp-content/plugins/sitelinx-accessibility-lite/assets/css/sitelinx-accessibility-lite.css' type='text/css' media='all' />
+<link rel='stylesheet' id='wise-style-css'  href='https://kino.chck.pl/wp-content/themes/wise-church/style.css' type='text/css' media='all' />
+<link rel='stylesheet' id='wise-google-fonts-css'  href='https://fonts.googleapis.com/css?family=Roboto%3A400%2C500%2C700%7COpen+Sans%3A400%2C400italic%7CUbuntu%3A400%2C500%7COpen+Sans%3A400%2C400italic%7COpen+Sans%3A600%2C600italic%7CRaleway%3A400' type='text/css' media='all' />
+<link rel='stylesheet' id='font-awesome-css'  href='https://kino.chck.pl/wp-content/themes/wise-church/fonts/font-awesome/css/font-awesome.min.css' type='text/css' media='all' />
+<link rel='stylesheet' id='tab-css'  href='https://kino.chck.pl/wp-content/themes/wise-church/css/tab.css' type='text/css' media='all' />
+<link rel='stylesheet' id='owl-carousel-css'  href='https://kino.chck.pl/wp-content/themes/wise-church/css/owl.carousel.css' type='text/css' media='all' />
+<link rel='stylesheet' id='wise-layout-style-css'  href='https://kino.chck.pl/wp-content/themes/wise-church/css/two-column.css' type='text/css' media='all' />
+<link rel='stylesheet' id='animate-css'  href='https://kino.chck.pl/wp-content/themes/wise-church/css/animate.css' type='text/css' media='all' />
+<link rel='stylesheet' id='wise-church-css'  href='https://kino.chck.pl/wp-content/themes/wise-church/css/wise-church-theme.css' type='text/css' media='all' />
+<link rel='stylesheet' id='flipclock-css'  href='https://kino.chck.pl/wp-content/themes/wise-church/css/flipclock.css' type='text/css' media='all' />
+<link rel='stylesheet' id='flowplayer-css'  href='https://kino.chck.pl/wp-content/themes/wise-church/media/skin/functional.css' type='text/css' media='all' />
+<link rel='stylesheet' id='wise-pre-colors-css'  href='https://kino.chck.pl/wp-content/themes/wise-church/css/pre-colors/color-neonpurple.css' type='text/css' media='all' />
+<link rel='stylesheet' id='wise-boxlayout-css'  href='https://kino.chck.pl/wp-content/themes/wise-church/css/box-layout.css' type='text/css' media='all' />
+<link rel='stylesheet' id='wise-preloader-css'  href='https://kino.chck.pl/wp-content/themes/wise-church/css/preloader.css' type='text/css' media='all' />
+<link rel='stylesheet' id='wise-prettyPhoto-css-css'  href='https://kino.chck.pl/wp-content/themes/wise-church/css/prettyPhoto.min.css' type='text/css' media='all' />
+<script type='text/javascript' src='https://kino.chck.pl/wp-includes/js/jquery/jquery.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-includes/js/jquery/jquery-migrate.min.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-content/plugins/sitelinx-accessibility-lite/assets/js/sitelinx-accessibility-lite.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-content/plugins/sitelinx-accessibility-lite/assets/js/jscolor.js'></script>
+<link rel='https://api.w.org/' href='https://kino.chck.pl/wp-json/' />
+<link rel="canonical" href="https://kino.chck.pl/repertuar/koszmarek/" />
+<link rel="alternate" type="application/json+oembed" href="https://kino.chck.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fkino.chck.pl%2Frepertuar%2Fkoszmarek%2F" />
+<link rel="alternate" type="text/xml+oembed" href="https://kino.chck.pl/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fkino.chck.pl%2Frepertuar%2Fkoszmarek%2F&#038;format=xml" />
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>	<style type="text/css">
+				
+				
+					@media screen and (min-width: 437px) {
+				body {
+					background: url(https://kino.chck.pl/wp-content/uploads/2016/10/background_grajfka4.jpg) no-repeat center center fixed; 
+					-webkit-background-size: cover;
+					-moz-background-size: cover;
+					-o-background-size: cover;
+					background-size: cover;
+				}
+			}
+				
+	</style>
+	<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-86422139-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+</head>
+
+<body class="single single-ctc_event postid-10027 acl-sitelinx">
+		<div id="wiseload">
+									<div id="stats" class="animated bounce infinite" style="background: url('https://kino.chck.pl/wp-content/uploads/2016/10/pregrajfka.png') no-repeat center; "></div>
+					</div>
+	<div id="page" class="hfeed site">
+	<a class="skip-link screen-reader-text" href="#content">Skip to content</a>
+			<div class="headhesive">
+			<div class="headhesive-box centre">
+				<div class="headhesive-one">
+					<a href="https://kino.chck.pl/">
+											<img src="https://kino.chck.pl/wp-content/uploads/2016/09/headhesive_grajfka-1.png" alt="Kino Grajfka | Chorzowskie Centrum Kultury">
+										</a>
+					
+					<div class="headhesive-menu"><div class="menu-grajkfa_menu-container"><ul id="primary-menu-headhesive" class="menu"><li class="mobile-tag-line"><a href=""></a></li><li id="menu-item-426" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-426"><a href="https://kino.chck.pl/repertuar">Repertuar</a></li>
+<li id="menu-item-640" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-640"><a href="https://kino.chck.pl/635-2/">Cykle i wydarzenia</a>
+<ul class="sub-menu">
+	<li id="menu-item-2463" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2463"><a href="https://kino.chck.pl/ludzie-z-grajfka/">Ludzie z Grajfką</a></li>
+	<li id="menu-item-945" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-945"><a href="https://kino.chck.pl/dla-seniora/">Dla Seniora</a></li>
+	<li id="menu-item-812" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-812"><a href="https://kino.chck.pl/kino-na-lezakach-2/">Kino na leżakach</a></li>
+	<li id="menu-item-430" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-430"><a href="https://kino.chck.pl/interakcja/">InterAkcja</a></li>
+	<li id="menu-item-432" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-432"><a href="https://kino.chck.pl/smyk/">SMYK</a></li>
+	<li id="menu-item-431" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-431"><a href="https://kino.chck.pl/klasa-w-kinie-wpis/">Klasa w kinie</a></li>
+	<li id="menu-item-429" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-429"><a href="https://kino.chck.pl/klub-filmowy-grajfka/">Klub Filmowy Grajfka</a></li>
+	<li id="menu-item-446" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-446"><a href="https://kino.chck.pl/kino-pl/">Kino PL</a></li>
+	<li id="menu-item-809" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-809"><a href="https://kino.chck.pl/kino-dociekliwe/">Kino DOCiekliwe</a></li>
+</ul>
+</li>
+<li id="menu-item-2054" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-2054"><a href="https://kino.chck.pl/mediateka/">Mediateka</a>
+<ul class="sub-menu">
+	<li id="menu-item-2248" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-has-children menu-item-2248"><a href="https://kino.chck.pl/zajecia-w-mediatece/">Zajęcia cykliczne</a>
+	<ul class="sub-menu">
+		<li id="menu-item-2631" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2631"><a href="https://kino.chck.pl/bajkowe-pogotowie/">Bajkowe Pogotowie</a></li>
+		<li id="menu-item-2630" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2630"><a href="https://kino.chck.pl/kino-i-czyli-czytanie-swiata/">Kino i… czyli czytanie świata</a></li>
+		<li id="menu-item-2629" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2629"><a href="https://kino.chck.pl/multimedialne-podrozowanie-po-kulturach-swiata-dla-najmlodszych/">Multimedialne podróże po kulturach świata</a></li>
+		<li id="menu-item-2628" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2628"><a href="https://kino.chck.pl/to-zmienilo-swiat-2/">TO zmieniło świat</a></li>
+	</ul>
+</li>
+	<li id="menu-item-2244" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-has-children menu-item-2244"><a href="https://kino.chck.pl/wydarzenia/">Projekty / Mediateka</a>
+	<ul class="sub-menu">
+		<li id="menu-item-3874" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-3874"><a href="https://kino.chck.pl/wszystko-movie-adaptacja-w-sztuce-warsztaty/">Wszystko Movie. Adaptacja w sztuce – warsztaty</a></li>
+		<li id="menu-item-2616" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2616"><a href="https://kino.chck.pl/okiem-mlodych-filmowe-portrety-ludzi-z-grajfka/">Okiem młodych. Filmowe portrety ludzi z Grajfką</a></li>
+		<li id="menu-item-2615" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2615"><a href="https://kino.chck.pl/filmowe-dzieciaki/">Filmowe dzieciaki</a></li>
+		<li id="menu-item-2696" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2696"><a href="https://kino.chck.pl/zostan-youtuberem-warsztaty-chck-sdk/">Zostań Youtuberem! – warsztaty ChCK / SDK</a></li>
+	</ul>
+</li>
+	<li id="menu-item-2510" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-has-children menu-item-2510"><a href="https://kino.chck.pl/wydarzenia-2/">Wydarzenia</a>
+	<ul class="sub-menu">
+		<li id="menu-item-6758" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-6758"><a href="https://kino.chck.pl/spotkanie-autorskie-i-promocja-ksiazki-anety-lapskiej-soboty-365-dni-motywacji-matki-biegaczki/">SPOTKANIE AUTORSKIE I PROMOCJA KSIĄŻKI ANETY ŁAPSKIEJ – SOBOTY „365 DNI MOTYWACJI MATKI BIEGACZKI”</a></li>
+		<li id="menu-item-2518" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2518"><a href="https://kino.chck.pl/wizyta-tworcow-z-daejecon-w-korei-poludniowej/">Wizyta twórców z DAEJECON w Korei Południowej</a></li>
+		<li id="menu-item-2521" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2521"><a href="https://kino.chck.pl/wyklad-wizualna-percepcja-na-podstawie-filmu-i-obrazow-oraz-najnowsze-technologie-cyfrowe-augmented-reality-i-virtual-reality/">Wykład – Wizualna percepcja na podstawie filmu i obrazów oraz najnowsze technologie cyfrowe Augmented Reality i Virtual Reality</a></li>
+	</ul>
+</li>
+</ul>
+</li>
+<li id="menu-item-392" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-392"><a href="https://kino.chck.pl/oferta-wynajmu/">Oferta wynajmu</a></li>
+<li id="menu-item-450" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-450"><a href="https://kino.chck.pl/o-kinie/">O kinie</a></li>
+<li id="menu-item-391" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-391"><a href="https://kino.chck.pl/kontakt/">Kontakt</a></li>
+<li id="menu-item-9475" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-9475"><a href="https://kino.chck.pl/deklaracja-dostepnosci/">Deklaracja dostępności</a></li>
+<li class="res-close"><a href="#res-nav">Close Menu <i class="fa fa-times"></i></a></li></ul></div></div>
+						
+						<div class="headhesive-tag-lines"><a href=""></a></div>
+									</div>			
+				
+									<div class="headhesive-social"><a href="#share-top">Przejdź<i class="fa fa-caret-down"></i></a></div>
+									<div class="search-iconhead"><a href="#search-conthead"><i class="fa fa-search"></i></a></div>
+					<div class="search-formhead" id="search-conthead"><form role="search" method="get" class="search-form" action="https://kino.chck.pl/">
+    <label>
+        <span class="screen-reader-text">Search for:</span>
+        <input type="search" class="search-field"
+            placeholder="Czego szukasz?"
+            value="" name="s"
+            title="Search for:">
+    </label>
+    <input type="submit" class="search-submit"
+        value="Search">
+</form></div>
+						<div class="social-like-wrapper">
+			<div class="social-like-headhesive" id="share-top">
+			  <ul class="social-links-headhesive clear">
+			  
+				<li><a href="https://www.facebook.com/KinoGrajfka/" target="_blank"><i class="fa fa-facebook" aria-hidden="true"></i></a></li><li><a href="https://www.youtube.com/channel/UCDR5y6GLZLmq1EtHez7KPHw" target="_blank"><i class="fa fa-youtube" aria-hidden="true"></i></a></li>
+			  </ul>
+			</div><!--End Social Links Headhesive-->
+		</div><!--End Social Like Wrapper Headhesive-->			</div>
+		</div><!-- End Headhesive -->
+		
+		
+	<div class="header-wrapper">
+					<div class="header-login-wrapper">
+				<div class="header-login">
+					
+										
+										
+										
+					<div class="login-top">						
+																							</div>
+					
+				</div>
+			</div>
+				
+			<header id="masthead" class="site-header">
+				<div class="site-branding">
+					<h1 class="site-title">
+						<a href="https://kino.chck.pl/" rel="home">
+													<img src="https://kino.chck.pl/wp-content/uploads/2016/09/logo_home_head.png" alt="Kino Grajfka | Chorzowskie Centrum Kultury">
+												</a>
+					</h1>
+				</div><!-- End Site Branding -->
+				<div class="block-1">
+					<!-- Custom Header Tag Lines -->
+					<div class='tag-lines'>
+											</div>
+							<div class="social-top">
+		  <ul class="social-links-top clear">
+			
+			<li><a href="https://www.facebook.com/KinoGrajfka/" target="_blank"><i class="fa fa-facebook" aria-hidden="true"></i></a></li><li><a href="https://www.youtube.com/channel/UCDR5y6GLZLmq1EtHez7KPHw" target="_blank"><i class="fa fa-youtube" aria-hidden="true"></i></a></li>
+		  </ul>
+		</div><!-- End Social-Top -->				</div><!-- End Block-1 -->
+				<div class="block-2">
+					<div class="navigation-top">
+						<div class="res-button"><a href="#res-nav"></a></div>
+						<nav id="site-navigation" class="main-navigation"><div class="menu-grajkfa_menu-container"><ul id="primary-menu" class="menu"><li class="mobile-tag-line"><a href=""></a></li><li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-426"><a href="https://kino.chck.pl/repertuar">Repertuar</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-640"><a href="https://kino.chck.pl/635-2/">Cykle i wydarzenia</a>
+<ul class="sub-menu">
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2463"><a href="https://kino.chck.pl/ludzie-z-grajfka/">Ludzie z Grajfką</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-945"><a href="https://kino.chck.pl/dla-seniora/">Dla Seniora</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-812"><a href="https://kino.chck.pl/kino-na-lezakach-2/">Kino na leżakach</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-430"><a href="https://kino.chck.pl/interakcja/">InterAkcja</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-432"><a href="https://kino.chck.pl/smyk/">SMYK</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-431"><a href="https://kino.chck.pl/klasa-w-kinie-wpis/">Klasa w kinie</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-429"><a href="https://kino.chck.pl/klub-filmowy-grajfka/">Klub Filmowy Grajfka</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-446"><a href="https://kino.chck.pl/kino-pl/">Kino PL</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-809"><a href="https://kino.chck.pl/kino-dociekliwe/">Kino DOCiekliwe</a></li>
+</ul>
+</li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-2054"><a href="https://kino.chck.pl/mediateka/">Mediateka</a>
+<ul class="sub-menu">
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-has-children menu-item-2248"><a href="https://kino.chck.pl/zajecia-w-mediatece/">Zajęcia cykliczne</a>
+	<ul class="sub-menu">
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2631"><a href="https://kino.chck.pl/bajkowe-pogotowie/">Bajkowe Pogotowie</a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2630"><a href="https://kino.chck.pl/kino-i-czyli-czytanie-swiata/">Kino i… czyli czytanie świata</a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2629"><a href="https://kino.chck.pl/multimedialne-podrozowanie-po-kulturach-swiata-dla-najmlodszych/">Multimedialne podróże po kulturach świata</a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2628"><a href="https://kino.chck.pl/to-zmienilo-swiat-2/">TO zmieniło świat</a></li>
+	</ul>
+</li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-has-children menu-item-2244"><a href="https://kino.chck.pl/wydarzenia/">Projekty / Mediateka</a>
+	<ul class="sub-menu">
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-3874"><a href="https://kino.chck.pl/wszystko-movie-adaptacja-w-sztuce-warsztaty/">Wszystko Movie. Adaptacja w sztuce – warsztaty</a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2616"><a href="https://kino.chck.pl/okiem-mlodych-filmowe-portrety-ludzi-z-grajfka/">Okiem młodych. Filmowe portrety ludzi z Grajfką</a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2615"><a href="https://kino.chck.pl/filmowe-dzieciaki/">Filmowe dzieciaki</a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2696"><a href="https://kino.chck.pl/zostan-youtuberem-warsztaty-chck-sdk/">Zostań Youtuberem! – warsztaty ChCK / SDK</a></li>
+	</ul>
+</li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-has-children menu-item-2510"><a href="https://kino.chck.pl/wydarzenia-2/">Wydarzenia</a>
+	<ul class="sub-menu">
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-6758"><a href="https://kino.chck.pl/spotkanie-autorskie-i-promocja-ksiazki-anety-lapskiej-soboty-365-dni-motywacji-matki-biegaczki/">SPOTKANIE AUTORSKIE I PROMOCJA KSIĄŻKI ANETY ŁAPSKIEJ – SOBOTY „365 DNI MOTYWACJI MATKI BIEGACZKI”</a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2518"><a href="https://kino.chck.pl/wizyta-tworcow-z-daejecon-w-korei-poludniowej/">Wizyta twórców z DAEJECON w Korei Południowej</a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2521"><a href="https://kino.chck.pl/wyklad-wizualna-percepcja-na-podstawie-filmu-i-obrazow-oraz-najnowsze-technologie-cyfrowe-augmented-reality-i-virtual-reality/">Wykład – Wizualna percepcja na podstawie filmu i obrazów oraz najnowsze technologie cyfrowe Augmented Reality i Virtual Reality</a></li>
+	</ul>
+</li>
+</ul>
+</li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-392"><a href="https://kino.chck.pl/oferta-wynajmu/">Oferta wynajmu</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-450"><a href="https://kino.chck.pl/o-kinie/">O kinie</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-391"><a href="https://kino.chck.pl/kontakt/">Kontakt</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-9475"><a href="https://kino.chck.pl/deklaracja-dostepnosci/">Deklaracja dostępności</a></li>
+<li class="res-close"><a href="#res-nav">Close Menu <i class="fa fa-times"></i></a></li></ul></div></nav><!-- End Site Navigation -->
+					</div>
+					<div class="search-top"><a href="#search-cont"><i class='fa fa-search'></i></a></div>
+				</div><!-- End Block-2 -->
+			</header><!-- End Header -->
+	</div>
+		
+	<div id="search-cont" class="search-form-wrapper centre">
+		<div class="search-top-close animated rotateIn"></div>
+		<div class="search-form-top centre animated fadeIn">
+			<form role="search" method="get" class="search-form" action="https://kino.chck.pl/">
+    <label>
+        <span class="screen-reader-text">Search for:</span>
+        <input type="search" class="search-field"
+            placeholder="Czego szukasz?"
+            value="" name="s"
+            title="Search for:">
+    </label>
+    <input type="submit" class="search-submit"
+        value="Search">
+</form>		</div>				
+	</div><!-- End Search Form -->
+	
+	<div id="res-nav" class="response-nav"><div class="menu-grajkfa_menu-container"><ul id="primary-menu-mobile" class="menu"><li class="mobile-tag-line"><a href=""></a></li><li class="menu-item menu-item-type-custom menu-item-object-custom menu-item-426"><a href="https://kino.chck.pl/repertuar">Repertuar</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-640"><a href="https://kino.chck.pl/635-2/">Cykle i wydarzenia</a>
+<ul class="sub-menu">
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2463"><a href="https://kino.chck.pl/ludzie-z-grajfka/">Ludzie z Grajfką</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-945"><a href="https://kino.chck.pl/dla-seniora/">Dla Seniora</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-812"><a href="https://kino.chck.pl/kino-na-lezakach-2/">Kino na leżakach</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-430"><a href="https://kino.chck.pl/interakcja/">InterAkcja</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-432"><a href="https://kino.chck.pl/smyk/">SMYK</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-431"><a href="https://kino.chck.pl/klasa-w-kinie-wpis/">Klasa w kinie</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-429"><a href="https://kino.chck.pl/klub-filmowy-grajfka/">Klub Filmowy Grajfka</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-446"><a href="https://kino.chck.pl/kino-pl/">Kino PL</a></li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-809"><a href="https://kino.chck.pl/kino-dociekliwe/">Kino DOCiekliwe</a></li>
+</ul>
+</li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-has-children menu-item-2054"><a href="https://kino.chck.pl/mediateka/">Mediateka</a>
+<ul class="sub-menu">
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-has-children menu-item-2248"><a href="https://kino.chck.pl/zajecia-w-mediatece/">Zajęcia cykliczne</a>
+	<ul class="sub-menu">
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2631"><a href="https://kino.chck.pl/bajkowe-pogotowie/">Bajkowe Pogotowie</a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2630"><a href="https://kino.chck.pl/kino-i-czyli-czytanie-swiata/">Kino i… czyli czytanie świata</a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2629"><a href="https://kino.chck.pl/multimedialne-podrozowanie-po-kulturach-swiata-dla-najmlodszych/">Multimedialne podróże po kulturach świata</a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2628"><a href="https://kino.chck.pl/to-zmienilo-swiat-2/">TO zmieniło świat</a></li>
+	</ul>
+</li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-has-children menu-item-2244"><a href="https://kino.chck.pl/wydarzenia/">Projekty / Mediateka</a>
+	<ul class="sub-menu">
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-3874"><a href="https://kino.chck.pl/wszystko-movie-adaptacja-w-sztuce-warsztaty/">Wszystko Movie. Adaptacja w sztuce – warsztaty</a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2616"><a href="https://kino.chck.pl/okiem-mlodych-filmowe-portrety-ludzi-z-grajfka/">Okiem młodych. Filmowe portrety ludzi z Grajfką</a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2615"><a href="https://kino.chck.pl/filmowe-dzieciaki/">Filmowe dzieciaki</a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2696"><a href="https://kino.chck.pl/zostan-youtuberem-warsztaty-chck-sdk/">Zostań Youtuberem! – warsztaty ChCK / SDK</a></li>
+	</ul>
+</li>
+	<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-has-children menu-item-2510"><a href="https://kino.chck.pl/wydarzenia-2/">Wydarzenia</a>
+	<ul class="sub-menu">
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-6758"><a href="https://kino.chck.pl/spotkanie-autorskie-i-promocja-ksiazki-anety-lapskiej-soboty-365-dni-motywacji-matki-biegaczki/">SPOTKANIE AUTORSKIE I PROMOCJA KSIĄŻKI ANETY ŁAPSKIEJ – SOBOTY „365 DNI MOTYWACJI MATKI BIEGACZKI”</a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2518"><a href="https://kino.chck.pl/wizyta-tworcow-z-daejecon-w-korei-poludniowej/">Wizyta twórców z DAEJECON w Korei Południowej</a></li>
+		<li class="menu-item menu-item-type-post_type menu-item-object-post menu-item-2521"><a href="https://kino.chck.pl/wyklad-wizualna-percepcja-na-podstawie-filmu-i-obrazow-oraz-najnowsze-technologie-cyfrowe-augmented-reality-i-virtual-reality/">Wykład – Wizualna percepcja na podstawie filmu i obrazów oraz najnowsze technologie cyfrowe Augmented Reality i Virtual Reality</a></li>
+	</ul>
+</li>
+</ul>
+</li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-392"><a href="https://kino.chck.pl/oferta-wynajmu/">Oferta wynajmu</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-450"><a href="https://kino.chck.pl/o-kinie/">O kinie</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-391"><a href="https://kino.chck.pl/kontakt/">Kontakt</a></li>
+<li class="menu-item menu-item-type-post_type menu-item-object-page menu-item-9475"><a href="https://kino.chck.pl/deklaracja-dostepnosci/">Deklaracja dostępności</a></li>
+<li class="res-close"><a href="#res-nav">Close Menu <i class="fa fa-times"></i></a></li></ul></div></div><!-- End Responsive Navigation -->
+						
+	<div id="contents" class="site-content">
+<div class="content-wrapper-outer">
+	<div class="content-wrapper" data-sticky_parent>
+	
+		<div id="primary" class="content-area">
+						<main id="main" class="site-main ">
+
+				
+<article id="wise-ctc-single-events" class="ctc-single-area post-10027 ctc_event type-ctc_event status-publish has-post-thumbnail hentry ctc_event_category-smyk">
+	<header class="entry-header">
+		<div class="top-meta">
+			<!---->
+		</div><!-- End of .top-meta -->
+		
+		<h2 class="entry-title">Koszmarek</h2>		<div class="entry-meta">
+		<span class="wise-ctc-meta ctc-date">20 października 2026</span><span class="wise-ctc-meta ctc-time">17:00 &ndash; 19:00</span><br><span class="wise-ctc-meta ctc-event-category"><a href="https://kino.chck.pl/event-category/smyk/" rel="tag">SMYK - Strefa Młodych Kinomanów</a></span>		</div>
+		
+		<div class="single-post-thumb"><img width="730" height="438" src="https://kino.chck.pl/wp-content/uploads/2026/09/119-730x438.png" class="attachment-wise-post-thumb size-wise-post-thumb wp-post-image" alt="119" srcset="https://kino.chck.pl/wp-content/uploads/2026/09/119-730x438.png 730w, https://kino.chck.pl/wp-content/uploads/2026/09/119-230x138.png 230w, https://kino.chck.pl/wp-content/uploads/2026/09/119-380x228.png 380w, https://kino.chck.pl/wp-content/uploads/2026/09/119-88x53.png 88w" sizes="(max-width: 730px) 100vw, 730px" /></div>
+			</header><!-- End of .entry-header -->
+	
+	<div class="entry-content">
+					<div class="tab-sermon">
+				<!--<ul class="nav nav-pills ctc-sermon-tab">-->
+					<!--<li class="active"><a data-toggle="tab" href="#cm_description"></a></li>-->
+					<!--<li><a data-toggle="tab" href="#cm_map"></a></li>-->
+				<!--</ul>-->
+
+				<div class="tab-content">
+					<div id="cm_description" class="tab-pane fade in active">
+						<p><b>Koszmarek reż. <a href="https://kinozarogiem.pl/re_yseria/steve-hudson/" rel="tag">Steve Hudson</a>, <span class="wp-block-post-terms__separator"></span><a href="https://kinozarogiem.pl/re_zyseria/toby-genkel/" rel="tag">Toby Genkel</a>, <a href="https://kinozarogiem.pl/produkcja/koprodukcja/"rel="tag">Koprodukcja</a>, 2025<br />
+<a href="https://kinozarogiem.pl/kategorie_filmow/fabularny-animowany/" rel="tag">Fabularny animowany</a>, <a href="https://kinozarogiem.pl/gatunek/film-dla-dzieci/" rel="tag">Film dla dzieci</a><br />
+</b></p>
+<p>Koszmarek jest jednym z wielu potworków stworzonych przez zwariowanego profesora w mrocznym zamczysku na szczycie wielkiej góry. Robi co może, by chronić swych przyjaciół przed mieszkańcami pobliskiego miasteczka. Gdy w okolicy pojawia się podupadający cyrk z ekscentrycznym dyrektorem na czele, Koszmarek po raz pierwszy w życiu stanie oko w oko z człowiekiem. Choć dyrektor chce zrobić z Koszmarka gwiazdę, ten zamiast straszyć ludzi za pieniądze, próbuje się z nimi zaprzyjaźnić. Czy uda mu się udowodnić, że nie taki potwór straszny, jak go malują? Razem z dziewczynką o imieniu Arabella wcieli w życie szalony plan, który postawi na głowie życie i mieszkańców zamku, i obywateli miasteczka.</p>
+<p>Bilet w cenie 10 zł<br />
+<a href="https://bilety.chck.pl/index.php/kup-bilet/koszmarek-2026-10-20-17-00" target="_self"><img class="alignnone wp-image-773 size-full" src="http://kino.chck.pl/wp-content/uploads/2016/11/kp1.png" alt="Kup bilet" width="140" height="50" /></a></p>
+<p>Zobacz zwiastun:<br />
+<iframe width="560" height="315" src="https://www.youtube.com/embed/BS07wbxxP_E?si=MFT-RogykrV2ADXq" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></p>
+					</div>
+					<!--<div id="cm_map" class="tab-pane fade">
+											</div>-->
+			</div>
+				
+		
+			</div><!-- End of .entry-content -->
+
+	<footer class="entry-footer clear">
+			
+	</footer><!-- End of .entry-footer -->
+	
+		
+				<nav class="navigation post-navigation">
+				<div class="post-nav-wrapper">
+					<h2 class="screen-reader-text">Post navigation</h2>
+					<div class="nav-links">
+						<div class="nav-previous"><div class="nav-indicator">Poprzednie</div><h4><a href="https://kino.chck.pl/repertuar/noca-w-nowym-jorku/" rel="prev">Nocą w Nowym Jorku</a></h4></div><div class="nav-next"><div class="nav-indicator">Następne</div><h4><a href="https://kino.chck.pl/repertuar/piknik-pod-wiszaca-skala/" rel="next">Piknik pod Wiszącą Skałą</a></h4></div>					</div><!-- .nav-links -->
+				</div>
+			</nav><!-- .navigation -->
+				
+	<h2 class="page-title">Sprawdź cały repertuar</h2><div class="index-wrapper-outer"><div id="comp4" class="col-4">			<div class="comp-grid-3 related-proper">
+				
+	<article class="post-10001 ctc_event type-ctc_event status-publish has-post-thumbnail hentry ctc_event_category-smyk">
+
+		<div class="home-index-thumb zero"><span class="index-cat ctc-alignleft-side"><span class="ctc-num-date">06</span><br>paź<span class="ctc-num-year">2026</span></span><a href="https://kino.chck.pl/repertuar/zwierzaki-na-zakrecie/ "><img width="730" height="438" src="https://kino.chck.pl/wp-content/uploads/2026/09/111-730x438.png" class="attachment-wise-post-thumb size-wise-post-thumb wp-post-image" alt="111" srcset="https://kino.chck.pl/wp-content/uploads/2026/09/111-730x438.png 730w, https://kino.chck.pl/wp-content/uploads/2026/09/111-230x138.png 230w, https://kino.chck.pl/wp-content/uploads/2026/09/111-380x228.png 380w, https://kino.chck.pl/wp-content/uploads/2026/09/111-88x53.png 88w" sizes="(max-width: 730px) 100vw, 730px" /></a></div>	
+		
+		<div class="title-content-index zero">
+			<header class="entry-header-index">
+				
+				<h3 class="entry-title-index"><a href="https://kino.chck.pl/repertuar/zwierzaki-na-zakrecie/" rel="bookmark">Zwierzaki na zakręcie</a></h3>				
+				<div class="entry-meta-index">
+					<span class="wise-ctc-meta ctc-time">17:00 &ndash; 19:00</span><br>				</div>
+			</header><!-- .entry-header -->
+
+		</div><!-- title-content-index -->
+	</article><!-- #post-## -->			</div>
+					<div class="comp-grid-3 related-proper">
+				
+	<article class="post-10004 ctc_event type-ctc_event status-publish has-post-thumbnail hentry ctc_event_category-polska-oczami-wajdy">
+
+		<div class="home-index-thumb zero"><span class="index-cat ctc-alignleft-side"><span class="ctc-num-date">08</span><br>paź<span class="ctc-num-year">2026</span></span><a href="https://kino.chck.pl/repertuar/polowanie-na-muchy/ "><img width="730" height="438" src="https://kino.chck.pl/wp-content/uploads/2026/09/MINIATURKI-CHCK-1-730x438.png" class="attachment-wise-post-thumb size-wise-post-thumb wp-post-image" alt="MINIATURKI CHCK (1)" srcset="https://kino.chck.pl/wp-content/uploads/2026/09/MINIATURKI-CHCK-1-730x438.png 730w, https://kino.chck.pl/wp-content/uploads/2026/09/MINIATURKI-CHCK-1-230x138.png 230w, https://kino.chck.pl/wp-content/uploads/2026/09/MINIATURKI-CHCK-1-380x228.png 380w, https://kino.chck.pl/wp-content/uploads/2026/09/MINIATURKI-CHCK-1-88x53.png 88w" sizes="(max-width: 730px) 100vw, 730px" /></a></div>	
+		
+		<div class="title-content-index zero">
+			<header class="entry-header-index">
+				
+				<h3 class="entry-title-index"><a href="https://kino.chck.pl/repertuar/polowanie-na-muchy/" rel="bookmark">Polowanie na muchy</a></h3>				
+				<div class="entry-meta-index">
+					<span class="wise-ctc-meta ctc-time">18:00 &ndash; 20:00</span><br>				</div>
+			</header><!-- .entry-header -->
+
+		</div><!-- title-content-index -->
+	</article><!-- #post-## -->			</div>
+					<div class="comp-grid-3 related-proper">
+				
+	<article class="post-10008 ctc_event type-ctc_event status-publish has-post-thumbnail hentry ctc_event_category-oblicza-azji">
+
+		<div class="home-index-thumb zero"><span class="index-cat ctc-alignleft-side"><span class="ctc-num-date">09</span><br>paź<span class="ctc-num-year">2026</span></span><a href="https://kino.chck.pl/repertuar/kafarnaum/ "><img width="730" height="438" src="https://kino.chck.pl/wp-content/uploads/2026/09/113-730x438.png" class="attachment-wise-post-thumb size-wise-post-thumb wp-post-image" alt="113" srcset="https://kino.chck.pl/wp-content/uploads/2026/09/113-730x438.png 730w, https://kino.chck.pl/wp-content/uploads/2026/09/113-230x138.png 230w, https://kino.chck.pl/wp-content/uploads/2026/09/113-380x228.png 380w, https://kino.chck.pl/wp-content/uploads/2026/09/113-88x53.png 88w" sizes="(max-width: 730px) 100vw, 730px" /></a></div>	
+		
+		<div class="title-content-index zero">
+			<header class="entry-header-index">
+				
+				<h3 class="entry-title-index"><a href="https://kino.chck.pl/repertuar/kafarnaum/" rel="bookmark">Kafarnaum</a></h3>				
+				<div class="entry-meta-index">
+					<span class="wise-ctc-meta ctc-time">18:00 &ndash; 20:00</span><br>				</div>
+			</header><!-- .entry-header -->
+
+		</div><!-- title-content-index -->
+	</article><!-- #post-## -->			</div>
+		</div></div>	
+</article><!-- End of #post-## -->
+
+
+				
+			</main><!-- End of #main -->
+		</div><!-- End of #primary -->
+
+		<div class="sidebar-wrapper-outer">
+	<div id="sidebarevent" class="widget-area-right">
+		<aside id="search-3" class="widget widget_search"><form role="search" method="get" class="search-form" action="https://kino.chck.pl/">
+    <label>
+        <span class="screen-reader-text">Search for:</span>
+        <input type="search" class="search-field"
+            placeholder="Czego szukasz?"
+            value="" name="s"
+            title="Search for:">
+    </label>
+    <input type="submit" class="search-submit"
+        value="Search">
+</form></aside><aside id="ctc_events_widget-2" class="widget widget_ctc_events_widget"><div class="widget-title"><h2>Kolejne wydarzenia</h2></div><div class="custom-posts"><ul><li><a href="https://kino.chck.pl/repertuar/zwierzaki-na-zakrecie/ "> <span class="alignleft-side"><img width="88" height="53" src="https://kino.chck.pl/wp-content/uploads/2026/09/111-88x53.png" class="attachment-wise-side-thumb size-wise-side-thumb wp-post-image" alt="111" srcset="https://kino.chck.pl/wp-content/uploads/2026/09/111-88x53.png 88w, https://kino.chck.pl/wp-content/uploads/2026/09/111-730x438.png 730w, https://kino.chck.pl/wp-content/uploads/2026/09/111-230x138.png 230w, https://kino.chck.pl/wp-content/uploads/2026/09/111-380x228.png 380w" sizes="(max-width: 88px) 100vw, 88px" /></span><div class="url-popular"><h4>Zwierzaki na zakręcie</h4><span class="entry-meta-popular"><span class="posted-on">6 października 2026</span></span></div></a></li><li><a href="https://kino.chck.pl/repertuar/polowanie-na-muchy/ "> <span class="alignleft-side"><img width="88" height="53" src="https://kino.chck.pl/wp-content/uploads/2026/09/MINIATURKI-CHCK-1-88x53.png" class="attachment-wise-side-thumb size-wise-side-thumb wp-post-image" alt="MINIATURKI CHCK (1)" srcset="https://kino.chck.pl/wp-content/uploads/2026/09/MINIATURKI-CHCK-1-88x53.png 88w, https://kino.chck.pl/wp-content/uploads/2026/09/MINIATURKI-CHCK-1-730x438.png 730w, https://kino.chck.pl/wp-content/uploads/2026/09/MINIATURKI-CHCK-1-230x138.png 230w, https://kino.chck.pl/wp-content/uploads/2026/09/MINIATURKI-CHCK-1-380x228.png 380w" sizes="(max-width: 88px) 100vw, 88px" /></span><div class="url-popular"><h4>Polowanie na muchy</h4><span class="entry-meta-popular"><span class="posted-on">8 października 2026</span></span></div></a></li><li><a href="https://kino.chck.pl/repertuar/kafarnaum/ "> <span class="alignleft-side"><img width="88" height="53" src="https://kino.chck.pl/wp-content/uploads/2026/09/113-88x53.png" class="attachment-wise-side-thumb size-wise-side-thumb wp-post-image" alt="113" srcset="https://kino.chck.pl/wp-content/uploads/2026/09/113-88x53.png 88w, https://kino.chck.pl/wp-content/uploads/2026/09/113-730x438.png 730w, https://kino.chck.pl/wp-content/uploads/2026/09/113-230x138.png 230w, https://kino.chck.pl/wp-content/uploads/2026/09/113-380x228.png 380w" sizes="(max-width: 88px) 100vw, 88px" /></span><div class="url-popular"><h4>Kafarnaum</h4><span class="entry-meta-popular"><span class="posted-on">9 października 2026</span></span></div></a></li><li><a href="https://kino.chck.pl/repertuar/looney-tunes-porky-i-daffy-ratuja-swiat/ "> <span class="alignleft-side"><img width="88" height="53" src="https://kino.chck.pl/wp-content/uploads/2026/09/114-88x53.png" class="attachment-wise-side-thumb size-wise-side-thumb wp-post-image" alt="114" srcset="https://kino.chck.pl/wp-content/uploads/2026/09/114-88x53.png 88w, https://kino.chck.pl/wp-content/uploads/2026/09/114-730x438.png 730w, https://kino.chck.pl/wp-content/uploads/2026/09/114-230x138.png 230w, https://kino.chck.pl/wp-content/uploads/2026/09/114-380x228.png 380w" sizes="(max-width: 88px) 100vw, 88px" /></span><div class="url-popular"><h4>Looney Tunes. Porky i Daffy ratują świat</h4><span class="entry-meta-popular"><span class="posted-on">10 października 2026</span></span></div></a></li><li><a href="https://kino.chck.pl/repertuar/ballerina-z-uniwersum-johna-wicka/ "> <span class="alignleft-side"><img width="88" height="53" src="https://kino.chck.pl/wp-content/uploads/2026/09/115-88x53.png" class="attachment-wise-side-thumb size-wise-side-thumb wp-post-image" alt="115" srcset="https://kino.chck.pl/wp-content/uploads/2026/09/115-88x53.png 88w, https://kino.chck.pl/wp-content/uploads/2026/09/115-730x438.png 730w, https://kino.chck.pl/wp-content/uploads/2026/09/115-230x138.png 230w, https://kino.chck.pl/wp-content/uploads/2026/09/115-380x228.png 380w" sizes="(max-width: 88px) 100vw, 88px" /></span><div class="url-popular"><h4>Ballerina. Z uniwersum Johna Wicka</h4><span class="entry-meta-popular"><span class="posted-on">10 października 2026</span></span></div></a></li><li><a href="https://kino.chck.pl/repertuar/pewnego-razu-w-paryzu/ "> <span class="alignleft-side"><img width="88" height="53" src="https://kino.chck.pl/wp-content/uploads/2026/09/116-88x53.png" class="attachment-wise-side-thumb size-wise-side-thumb wp-post-image" alt="116" srcset="https://kino.chck.pl/wp-content/uploads/2026/09/116-88x53.png 88w, https://kino.chck.pl/wp-content/uploads/2026/09/116-730x438.png 730w, https://kino.chck.pl/wp-content/uploads/2026/09/116-230x138.png 230w, https://kino.chck.pl/wp-content/uploads/2026/09/116-380x228.png 380w" sizes="(max-width: 88px) 100vw, 88px" /></span><div class="url-popular"><h4>Pewnego razu w Paryżu</h4><span class="entry-meta-popular"><span class="posted-on">15 października 2026</span></span></div></a></li><li><a href="https://kino.chck.pl/repertuar/noca-w-nowym-jorku/ "> <span class="alignleft-side"><img width="88" height="53" src="https://kino.chck.pl/wp-content/uploads/2026/09/117-88x53.png" class="attachment-wise-side-thumb size-wise-side-thumb wp-post-image" alt="117" srcset="https://kino.chck.pl/wp-content/uploads/2026/09/117-88x53.png 88w, https://kino.chck.pl/wp-content/uploads/2026/09/117-730x438.png 730w, https://kino.chck.pl/wp-content/uploads/2026/09/117-230x138.png 230w, https://kino.chck.pl/wp-content/uploads/2026/09/117-380x228.png 380w" sizes="(max-width: 88px) 100vw, 88px" /></span><div class="url-popular"><h4>Nocą w Nowym Jorku</h4><span class="entry-meta-popular"><span class="posted-on">16 października 2026</span></span></div></a></li></ul></div><!-- End Recent Sermons --></aside><aside id="archives-3" class="widget widget_archive"><div class="widget-title"><h2>Archiwa</h2></div>		<label class="screen-reader-text" for="archives-dropdown-3">Archiwa</label>
+		<select id="archives-dropdown-3" name="archive-dropdown" onchange='document.location.href=this.options[this.selectedIndex].value;'>
+			
+			<option value="">Wybierz miesiąc</option>
+				<option value='https://kino.chck.pl/2026/10/'> październik 2026 </option>
+	<option value='https://kino.chck.pl/2026/08/'> sierpień 2026 </option>
+	<option value='https://kino.chck.pl/2026/04/'> kwiecień 2026 </option>
+	<option value='https://kino.chck.pl/2026/02/'> luty 2026 </option>
+	<option value='https://kino.chck.pl/2025/11/'> listopad 2025 </option>
+	<option value='https://kino.chck.pl/2025/07/'> lipiec 2025 </option>
+	<option value='https://kino.chck.pl/2025/04/'> kwiecień 2025 </option>
+	<option value='https://kino.chck.pl/2025/03/'> marzec 2025 </option>
+	<option value='https://kino.chck.pl/2025/02/'> luty 2025 </option>
+	<option value='https://kino.chck.pl/2024/12/'> grudzień 2024 </option>
+	<option value='https://kino.chck.pl/2024/11/'> listopad 2024 </option>
+	<option value='https://kino.chck.pl/2024/05/'> maj 2024 </option>
+	<option value='https://kino.chck.pl/2024/04/'> kwiecień 2024 </option>
+	<option value='https://kino.chck.pl/2024/03/'> marzec 2024 </option>
+	<option value='https://kino.chck.pl/2023/10/'> październik 2023 </option>
+	<option value='https://kino.chck.pl/2023/08/'> sierpień 2023 </option>
+	<option value='https://kino.chck.pl/2023/06/'> czerwiec 2023 </option>
+	<option value='https://kino.chck.pl/2023/05/'> maj 2023 </option>
+	<option value='https://kino.chck.pl/2023/04/'> kwiecień 2023 </option>
+	<option value='https://kino.chck.pl/2023/02/'> luty 2023 </option>
+	<option value='https://kino.chck.pl/2022/12/'> grudzień 2022 </option>
+	<option value='https://kino.chck.pl/2022/11/'> listopad 2022 </option>
+	<option value='https://kino.chck.pl/2022/10/'> październik 2022 </option>
+	<option value='https://kino.chck.pl/2022/09/'> wrzesień 2022 </option>
+	<option value='https://kino.chck.pl/2022/08/'> sierpień 2022 </option>
+	<option value='https://kino.chck.pl/2022/06/'> czerwiec 2022 </option>
+	<option value='https://kino.chck.pl/2022/05/'> maj 2022 </option>
+	<option value='https://kino.chck.pl/2022/04/'> kwiecień 2022 </option>
+	<option value='https://kino.chck.pl/2022/03/'> marzec 2022 </option>
+	<option value='https://kino.chck.pl/2020/10/'> październik 2020 </option>
+	<option value='https://kino.chck.pl/2020/09/'> wrzesień 2020 </option>
+	<option value='https://kino.chck.pl/2020/07/'> lipiec 2020 </option>
+	<option value='https://kino.chck.pl/2020/06/'> czerwiec 2020 </option>
+	<option value='https://kino.chck.pl/2020/05/'> maj 2020 </option>
+	<option value='https://kino.chck.pl/2020/04/'> kwiecień 2020 </option>
+	<option value='https://kino.chck.pl/2020/03/'> marzec 2020 </option>
+	<option value='https://kino.chck.pl/2020/02/'> luty 2020 </option>
+	<option value='https://kino.chck.pl/2020/01/'> styczeń 2020 </option>
+	<option value='https://kino.chck.pl/2019/12/'> grudzień 2019 </option>
+	<option value='https://kino.chck.pl/2019/11/'> listopad 2019 </option>
+	<option value='https://kino.chck.pl/2019/09/'> wrzesień 2019 </option>
+	<option value='https://kino.chck.pl/2019/07/'> lipiec 2019 </option>
+	<option value='https://kino.chck.pl/2019/06/'> czerwiec 2019 </option>
+	<option value='https://kino.chck.pl/2019/05/'> maj 2019 </option>
+	<option value='https://kino.chck.pl/2019/04/'> kwiecień 2019 </option>
+	<option value='https://kino.chck.pl/2019/03/'> marzec 2019 </option>
+	<option value='https://kino.chck.pl/2019/02/'> luty 2019 </option>
+	<option value='https://kino.chck.pl/2019/01/'> styczeń 2019 </option>
+	<option value='https://kino.chck.pl/2018/12/'> grudzień 2018 </option>
+	<option value='https://kino.chck.pl/2018/11/'> listopad 2018 </option>
+	<option value='https://kino.chck.pl/2018/10/'> październik 2018 </option>
+	<option value='https://kino.chck.pl/2018/09/'> wrzesień 2018 </option>
+	<option value='https://kino.chck.pl/2018/08/'> sierpień 2018 </option>
+	<option value='https://kino.chck.pl/2018/07/'> lipiec 2018 </option>
+	<option value='https://kino.chck.pl/2018/06/'> czerwiec 2018 </option>
+	<option value='https://kino.chck.pl/2018/05/'> maj 2018 </option>
+	<option value='https://kino.chck.pl/2018/04/'> kwiecień 2018 </option>
+	<option value='https://kino.chck.pl/2018/03/'> marzec 2018 </option>
+	<option value='https://kino.chck.pl/2018/02/'> luty 2018 </option>
+	<option value='https://kino.chck.pl/2017/07/'> lipiec 2017 </option>
+	<option value='https://kino.chck.pl/2017/03/'> marzec 2017 </option>
+	<option value='https://kino.chck.pl/2017/01/'> styczeń 2017 </option>
+	<option value='https://kino.chck.pl/2016/11/'> listopad 2016 </option>
+	<option value='https://kino.chck.pl/2016/10/'> październik 2016 </option>
+	<option value='https://kino.chck.pl/2016/09/'> wrzesień 2016 </option>
+
+		</select>
+		</aside>	</div><!-- End of #sidebarevent -->
+</div>
+		
+	</div><!-- End of #content-wrapper -->
+</div><!-- End of #content-wrapper-outer -->
+</div><!-- End of #content -->
+	<div class="footer-wrapper-outer">
+		<div class="footer-wrapper clear">
+							<div class="footer-side">
+					<div id="supplementary">
+	<div id="footer-widgets" class="footer-widgets widget-area clear">
+		<aside id="sitelinks_widget-2" class="widget widget_sitelinks_widget"><div class="site-links"><div class="menu-footer-menu-container"><ul id="menu-footer-menu" class="td"><li id="menu-item-685" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-685"><a href="http://kino.chck.pl/repertuar">Repertuar</a></li>
+<li id="menu-item-603" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-603"><a href="https://kino.chck.pl/kino-pl/">Kino PL</a></li>
+<li id="menu-item-604" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-604"><a href="https://kino.chck.pl/klub-filmowy-grajfka/">Klub Filmowy Grajfka</a></li>
+<li id="menu-item-605" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-605"><a href="https://kino.chck.pl/interakcja/">InterAkcja</a></li>
+<li id="menu-item-606" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-606"><a href="https://kino.chck.pl/klasa-w-kinie-wpis/">Klasa w kinie</a></li>
+<li id="menu-item-607" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-607"><a href="https://kino.chck.pl/smyk/">SMYK</a></li>
+<li id="menu-item-808" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-808"><a href="https://kino.chck.pl/kino-dociekliwe/">Kino DOCiekliwe</a></li>
+<li id="menu-item-813" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-813"><a href="https://kino.chck.pl/kino-na-lezakach-2/">Kino na leżakach</a></li>
+<li id="menu-item-944" class="menu-item menu-item-type-post_type menu-item-object-post menu-item-944"><a href="https://kino.chck.pl/dla-seniora/">Dla Seniora</a></li>
+</ul></div><div class="menu-footer-menu2-container"><ul id="menu-footer-menu2" class="td"><li id="menu-item-610" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-610"><a href="https://kino.chck.pl/oferta-wynajmu/">Oferta wynajmu</a></li>
+<li id="menu-item-608" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-608"><a href="https://kino.chck.pl/o-kinie/">O kinie</a></li>
+<li id="menu-item-609" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-609"><a href="https://kino.chck.pl/kontakt/">Kontakt</a></li>
+</ul></div></div></aside><aside id="w_script_widget-2" class="widget widget_w_script_widget"><a href="http://www.kinozarogiem.pl" target="_blank"><img src="http://kino.chck.pl/wp-content/themes/wise-church/img/f_kino_za_rogiem.png"></a><br /><a href="http://www.mkidn.gov.pl" target="_blank">
+<img src="http://kino.chck.pl/wp-content/themes/wise-church/img/f_dofinansowanie_mkidn.png"></a></aside><aside id="about_widget-2" class="widget widget_about_widget"><div class="about-logo"><a href="http://www.chck.pl" target="_blank"><img src="http://kino.chck.pl/wp-content/themes/wise-church/img/loga1.png" alt="Koszmarek"></a></div><div class="about-text"><p><strong>Adres</strong>: ul. Henryka Sienkiewicza 3<br><strong>Email</strong>: <a href="mailto:grajfka@chck.pl">grajfka@chck.pl</a><br><strong>Telefon</strong>: 32 349 78 71/63</p></div><ul class="social-links-footer"><li><a href="https://www.facebook.com/KinoGrajfka/" target="_blank"><i class="fa fa-facebook"></i></a></li><li><a href="https://www.youtube.com/channel/UCDR5y6GLZLmq1EtHez7KPHw" target="_blank"><i class="fa fa-youtube"></i></a></li></ul></aside>	</div>
+</div><!-- End of Footer Widgets -->				</div>
+					
+				<footer id="colophon" class="site-footer">
+				
+										
+											<div class="site-info">
+													<div class="img-footer">
+							<a href="https://kino.chck.pl/">
+															<img src="https://kino.chck.pl/wp-content/uploads/2016/10/footer_grajfka1.png" alt="Kino Grajfka | Chorzowskie Centrum Kultury">
+														</a>
+							</div>
+													<div class="text-footer">Kino Grajfka | Chorzowskie Centrum Kultury&nbsp;Powered by <a href="http://www.probewise.com">Probewise</a>.</div>
+						</div><!-- End of .site-info -->
+									
+				</footer><!-- End of #colophon -->
+		</div><!-- End of .footer wrapper -->
+	</div><!-- End of .footer-wrapper-outer -->
+
+	<a href="#0" class="cd-top"><img src="https://kino.chck.pl/wp-content/themes/wise-church/img/arrowtop.png" alt="arrow"></a>
+</div><!-- End of .#page -->
+				<script type="text/javascript">
+										jQuery(document).ready(function($){
+						var clock;
+						var dateNow = new Date( "October 05, 2026 09:47:47" );
+						var dateSet = new Date( "" );	
+						var timer = ( dateSet / 1000 ) - ( dateNow / 1000 );
+
+						if( dateNow < dateSet  ) {
+							clock = $('.live-time').FlipClock( timer, {
+								clockFace: 'DailyCounter',
+								countdown: true,
+								autoStart: true
+							});
+						} else {
+							clock = $('.live-time').FlipClock( dateNow, {
+								clockFace: 'DailyCounter',
+								countdown: true,
+								autoStart: true
+							});
+						}
+					});
+				</script>
+					<script type="text/javascript">
+				jQuery(document).ready(function($){
+					"use strict";
+					function onScrollInit(a,b){a.each(function(){var a=$(this),c=a.attr("data-wise-animation"),d=a.attr("data-wise-animation-delay");a.css({"-webkit-animation-delay":d,"-moz-animation-delay":d,"animation-delay":d});var e=b?b:a;e.waypoint(function(){a.addClass("animated").toggleClass(c),this.destroy()},{offset:"100%"})})}
+					
+										
+										
+										
+										
+										
+										
+										
+										
+										
+										
+														}); // End jQuery
+			</script>
+	<button type="button" id="sitelinx-toggle-toolbar" class="normal toolbar-right" style="top: 200px;right: 1px;background-color: #0a76be !important;border-radius: 2px !important;"><img src="https://kino.chck.pl/wp-content/plugins/sitelinx-accessibility-lite/assets/img/wheelchair.png" alt="Accessibility Icon" style="background-color: #0a76be;border-radius: 2px !important;"></button><div id="sitelinx-black-screen"></div>	    <div id="sitelinx-toolbar" class="sitelinx-toolbar sitelinx-toolbar-skin-1 toolbar-right" aria-hidden="true">
+	    	<button id="sitelinx-close-toolbar">
+	    		<span class="sr-only">Close the accessibility toolbar</span>
+	    		<span class="sitelinx-close-icon" aria-hidden="true"></span>
+	    	</button>
+            <div class="sitelinx-toolbar-heading">
+				<div class="toolbar-heading-text">Accessibility Bar</div>
+            </div>
+	    	<ul class="sitelinx-main-nav" style="padding-left:30px;">
+		    	<li><ul class="ul-sub"><li><p id="sitelinx_disable_animation" tabindex="-1" aria-label="sitelinx-label-general"><i class="material-icons" aria-hidden="true">visibility_off</i><span>Disable flashes</span></p></li><li><p id="sitelinx_headings_mark" tabindex="-1" aria-label="sitelinx-label-general"><i class="material-icons" aria-hidden="true">title</i><span>Mark headings</span></p></li><li><p id="sitelinx_background_color" tabindex="-1" aria-label="sitelinx-label-general"><i class="material-icons" aria-hidden="true">settings</i><span>Background Color</span></p><p class="sitelinx_background_color" style="display: none;"><input data-jscolor="{onInput:'updateBackgroundColor(this)'}" value="66ccff"></p></li></ul></li><li class="sitelinx-li-zoom"><ul class="ul-sub"><li><p id="sitelinx_screen_down" tabindex="-1" aria-label="sitelinx-label-resolution"><i class="material-icons" aria-hidden="true">zoom_out</i><span>Zoom out</span></p></li><li><p id="sitelinx_screen_up" tabindex="-1" aria-label="sitelinx-label-resolution"><i class="material-icons" aria-hidden="true">zoom_in</i><span>Zoom in</span></p></li></ul></li><li class="sitelinx-li-fonts"><ul class="ul-sub"><li><p id="sitelinx_fontsize_down" tabindex="-1" aria-label="sitelinx-label-fonts"><i class="material-icons" aria-hidden="true">remove_circle_outline</i><span>Decrease font</span></p></li><li><p id="sitelinx_fontsize_up" tabindex="-1" aria-label="sitelinx-label-fonts"><i class="material-icons" aria-hidden="true">add_circle_outline</i><span>Increase font</span></p></li></ul><ul class="ul-sub"><li><p id="sitelinx_readable_font" tabindex="-1" aria-label="sitelinx-label-fonts"><i class="material-icons" aria-hidden="true">spellcheck</i><span>Readable font</span></p></li></ul></li><li class="sitelinx-li-contrast"><ul class="ul-sub"><li><p id="sitelinx_contrast_bright" tabindex="-1" aria-label="sitelinx-label-contrast"><i class="material-icons" aria-hidden="true">brightness_high</i><span>Bright contrast</span></p></li><li><p id="sitelinx_contrast_dark" tabindex="-1" aria-label="sitelinx-label-contrast"><i class="material-icons" aria-hidden="true">brightness_low</i><span>Dark contrast</span></p></li></ul></li><li><ul class="ul-sub "><li><p id="sitelinx_links_underline" tabindex="-1" aria-label="sitelinx-label-links"><i class="material-icons" aria-hidden="true">format_underlined</i><span>Underline links</span></p></li><li><p id="sitelinx_links_mark" tabindex="-1" aria-label="sitelinx-label-links"><i class="material-icons" aria-hidden="true">font_download</i><span>Mark links</span></p></li></ul></li><li class="sitelinx-li-reset"><ul class="ul-sub ul-general"><li><p id="sitelinx-reset" tabindex="-1" title="Reset all options"><span class="sr-only">Reset all options</span><i class="material-icons" aria-hidden="true">cached</i></p></li><li class="sitelinx-logolight"><a href="https://sitelinx.us" rel="noreferrer noopener" target="_blank"><img class="hover-off" src="https://kino.chck.pl/wp-content/plugins/sitelinx-accessibility-lite/assets/img/accessibility-light-logolight80.png" alt="Accessibility Light" height="21" width="80"></a></li></ul></li>	    	</ul>
+	    </div>
+		<p class="demo_store" style="display:none;">To jest wersja demonstracyjna sklepu do celów testowych&mdash; Zamówienia nie będą realizowane.</p><script type='text/javascript' src='https://kino.chck.pl/wp-content/themes/wise-church/js/headhesive.min.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-content/themes/wise-church/js/superfish.min.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-content/themes/wise-church/js/tab.min.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-content/themes/wise-church/js/sticky-kit.min.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-content/themes/wise-church/js/owl.carousel.min.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-includes/js/imagesloaded.min.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-includes/js/masonry.min.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-content/themes/wise-church/js/wise-masonry.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-content/themes/wise-church/js/retina.min.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-content/themes/wise-church/js/alert.min.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-content/themes/wise-church/js/smooth-scroll.min.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-content/themes/wise-church/js/all-settings.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-content/themes/wise-church/js/toggle.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-content/themes/wise-church/js/flipclock.min.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-content/themes/wise-church/media/flowplayer.min.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-content/themes/wise-church/js/jquery.waypoints.min.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-content/themes/wise-church/js/jquery.prettyPhoto.min.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-content/themes/wise-church/js/jquery.prettyPhoto.init.min.js'></script>
+<script type='text/javascript' src='https://kino.chck.pl/wp-includes/js/wp-embed.min.js'></script>
+</body>
+</html>

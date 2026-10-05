@@ -5,7 +5,7 @@ import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -29,14 +29,26 @@ import scala.jdk.CollectionConverters._
  * `/bilet/<slug>/` page (WooCommerce cart/checkout), which doubles as the
  * `filmUrl`. The poster is served lazy-loaded — the real URL is the `<img>`'s
  * `data-src`, not its placeholder `src`.
+ *
+ * The product page is also the film's page: its description is the Kino za
+ * Rogiem network's catalogue entry (kinozarogiem.pl terms — "Rok produkcji",
+ * "Produkcja", "Reżyseria" — and a "Czas trwania (min.)" row), read as the
+ * deferred detail ([[fetchFilmDetail]]). Without it a bare "Dumna królewna"
+ * was the 1952 Zeman film to every catalogue; the venue's is Radek Beran's 2024 one.
  */
 class KinoZaRogiemSiedlecClient(
   http:             HttpFetch,
   override val cinema: Cinema = KinoZaRogiemSiedlec,
   today:            => LocalDate
-) extends CinemaScraper {
+) extends CinemaScraper with DetailEnricher {
 
   import KinoZaRogiemSiedlecClient._
+
+  override val detailGroup: String = "kzr-siedlec"
+
+  /** The product page's catalogue facts; None on a transient failure, a durable 404/410 escaping. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    DetailFetchOutcome.page(http, ref).map(parseDetail)
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl)
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
@@ -92,6 +104,16 @@ object KinoZaRogiemSiedlecClient {
         else loop(page + 1, html :: acc)
       }
     loop(1, Nil).reverse
+  }
+
+  /** The catalogue entry in the product's description tab: its linked terms, and the running time the
+   *  `taxonomy-czas_trwania` row prints bare ("80"), in minutes. */
+  private[cinemas] def parseDetail(html: String): FilmDetail = {
+    val description = Option(Jsoup.parse(html, BaseUrl).selectFirst("#tab-description"))
+    description.fold(FilmDetail()) { root =>
+      ScraperParse.kinoZaRogiemTerms(root).copy(runtimeMinutes =
+        Option(root.selectFirst("div.taxonomy-czas_trwania")).flatMap(_.ownText.trim.toIntOption).filter(_ > 0))
+    }
   }
 
   private[cinemas] def parsePage(html: String, today: LocalDate): Seq[RawSlot] =

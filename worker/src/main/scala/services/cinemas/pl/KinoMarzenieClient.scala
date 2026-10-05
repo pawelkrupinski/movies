@@ -3,10 +3,11 @@ package services.cinemas.pl
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScraperParse, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
 import java.time.LocalDate
+import java.util.Locale
 import scala.jdk.CollectionConverters._
 
 /**
@@ -39,15 +40,28 @@ import scala.jdk.CollectionConverters._
  * `category_id=8` already scopes the feed to films, so unlike the venues that
  * share their ticketing surface with concerts/theatre, no [[OnlyMovieEventsFilter]]
  * is needed here.
+ *
+ * The film's own page (`/repertuar/<id>,<slug>`) lists its facts as
+ * `li > span.color-3 "label:"` + value span — "reżyseria", "obsada", "czas
+ * trwania" ("1 godz. 37 min."), "produkcja", "premiera" ("24 marca 1980", the
+ * year read) — read as the deferred detail ([[fetchFilmDetail]]). Without the
+ * director, "DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO" stood beside every
+ * other "Dyrygent"; its page credits Andrzej Wajda, 1980.
  */
 class KinoMarzenieClient(
   http:        HttpFetch,
   override val cinema: Cinema = KinoMarzenie,
   today:       => LocalDate,
   windowDays:  Int = 14
-) extends CinemaScraper {
+) extends CinemaScraper with DetailEnricher {
 
   import KinoMarzenieClient._
+
+  override val detailGroup: String = "kino-marzenie"
+
+  /** The film page's facts; None on a transient failure, a durable 404/410 escaping. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    DetailFetchOutcome.page(http, ref).map(parseDetail)
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
@@ -82,6 +96,21 @@ object KinoMarzenieClient {
 
   private[cinemas] def eventsUrl(date: LocalDate): String =
     s"$BaseUrl/embed/events?start_date=$date&end_date=$date&category_id=$EventsCategoryId"
+
+  /** The film page's `li > span.color-3 "label:"` + value-span facts. */
+  private[cinemas] def parseDetail(html: String): FilmDetail = {
+    val fields = Jsoup.parse(html, BaseUrl).select("ul.list-unstyled li").asScala.toSeq.flatMap { item =>
+      Option(item.selectFirst("span.color-3")).flatMap(label => Option(label.nextElementSibling).map(value =>
+        label.text.trim.stripSuffix(":").trim.toLowerCase(Locale.ROOT) -> value.text.trim))
+    }.toMap
+    def names(label: String) = fields.get(label).toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty)
+    FilmDetail(
+      director       = names("reżyseria"),
+      cast           = names("obsada"),
+      countries      = names("produkcja"),
+      runtimeMinutes = fields.get("czas trwania").flatMap(ScraperParse.hoursMinutesRuntime),
+      releaseYear    = fields.get("premiera").flatMap(ScraperParse.yearIn))
+  }
 
   private case class RawSlot(title: String, genres: Seq[String], poster: Option[String],
                               filmUrl: Option[String], showtime: Showtime)

@@ -5,7 +5,7 @@ import org.jsoup.nodes.{Document, Element}
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -32,14 +32,27 @@ import scala.jdk.CollectionConverters._
  *
  * The year is inferred: if the page's `DD.MM` date falls before `today`, the
  * date belongs to next year — this handles the January page-turn correctly.
+ *
+ * Each film's `/film/<slug>` page states its facts as `<strong>label:</strong>
+ * value<br>` pairs under `div#movie-details` — "reżyseria", "produkcja",
+ * "czas trwania" ("1h 50m"), "premiera" ("30 września 2026", the year read) —
+ * read as the deferred detail ([[fetchFilmDetail]]). Without the director,
+ * "KLAPS! - Rozważna i romantyczna" read as Ang Lee's 1995 film; its page
+ * credits Georgia Oakley, the 2026 one.
  */
 class KinoZorzaClient(
   http:             HttpFetch,
   override val cinema: Cinema = KinoZorza,
   today:            => LocalDate
-) extends CinemaScraper {
+) extends CinemaScraper with DetailEnricher {
 
   import KinoZorzaClient._
+
+  override val detailGroup: String = "kino-zorza"
+
+  /** The film page's facts; None on a transient failure, a durable 404/410 escaping. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    DetailFetchOutcome.page(http, ref).map(parseDetail)
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
@@ -80,6 +93,17 @@ object KinoZorzaClient {
 
   /** The three hall columns, in document order. */
   private val Halls = IndexedSeq("Sala widowiskowa", "Sala czerwona", "Sala niebieska")
+
+  /** The film page's `<strong>label:</strong> value` facts under `div#movie-details`. */
+  private[cinemas] def parseDetail(html: String): FilmDetail = {
+    val fields = Option(Jsoup.parse(html, BaseUrl).selectFirst("div#movie-details")).map(ScraperParse.strongLabeledFields).getOrElse(Map.empty)
+    def names(label: String) = fields.get(label).toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty)
+    FilmDetail(
+      director       = names("reżyseria"),
+      countries      = names("produkcja"),
+      runtimeMinutes = fields.get("czas trwania").flatMap(ScraperParse.hoursMinutesRuntime),
+      releaseYear    = fields.get("premiera").flatMap(ScraperParse.yearIn))
+  }
 
   private[cinemas] case class RawSlot(title: String, filmUrl: String, dateTime: LocalDateTime, hall: String)
 
