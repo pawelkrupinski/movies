@@ -613,7 +613,7 @@ private[identity] object Acceptance {
 
   /** How many times its runner-up's probability the film a no-match leans to holds ([[Acceptance.leaning]]): a tie
    *  between namesakes is no lean. */
-  val LeanMargin = 2.0
+  val LeanMargin = 1.25
   /** A candidate as a refusal names it: "1365683 Primavera (2025)". */
   def named(scored: Scored): String =
     s"${scored.candidate.tmdbId} ${scored.candidate.film.title}${scored.candidate.film.year.fold("")(year => s" ($year)")}"

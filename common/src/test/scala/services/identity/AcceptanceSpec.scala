@@ -381,4 +381,12 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
       directors = Some(Seq("Marcin Wasilewski", "Łukasz Kacprowicz", "Ignas Meilūnas"))), None)
     taken(ranked(listing, humor, radze)) should not be Some(1370603)
   }
+
+  "a no-match's lean" should "name its best film at 1.25 times the runner-up's probability, and none nearer than that" in {
+    // the search sweep (measure/identity-film-search): a lean at 1.25× completes agreements 2× left without one
+    val listing = Listing("Bohater")
+    def scored(id: Int, p: Double) = Scored(Candidate(id, Film("Bohater", year = Some(2000 + id % 100))), p, Map.empty, denial = None, listing, Some(1))
+    acceptance.leaning(Seq(scored(672208, 0.30), scored(425751, 0.20))).map(_.candidate.tmdbId) shouldBe Some(672208)
+    acceptance.leaning(Seq(scored(672208, 0.30), scored(425751, 0.25))) shouldBe None
+  }
 }

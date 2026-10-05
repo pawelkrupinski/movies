@@ -2576,3 +2576,6 @@ filed each under retrieval, scoring, a guard, or the agreement. What it added, e
   sentence's stop with a subtitle after it ("FRIDA KAHLO. IKONICZNA ARTYSTKA"). Ratchet (the families' new questions
   filled; the captured model decisions unchanged): +1 listing (Frida Kahlo), 0 wrong; the model's side is the
   whole-corpus dump's.
+- **`Acceptance.LeanMargin` 2 → 1.25** (from the search sweep): a no-match leans to its best film at 1.25 times the
+  runner-up's probability, the model's and each family's alike. Ratchet: +6 listings (DE "Mein neues altes Ich", IMDb's
+  lean completing Wikidata's take), 0 wrong; the model's leans moved over the whole corpus are the dump's.
