@@ -34,7 +34,10 @@ private[identity] final class SortedLongMap[V <: AnyRef] private (keys: Array[Lo
 
   /** This map without the keys `removed` holds, and with `added` over it (an added key is kept whether or not removed). A
    *  key added with the value held — the same object, or an equal one — is no change; a merge of none is this map. */
-  def merged(added: scala.collection.Map[Long, V], removed: Long => Boolean = _ => false): SortedLongMap[V] = {
+  def merged(added: scala.collection.Map[Long, V], removed: Long => Boolean = _ => false): SortedLongMap[V] =
+    if (size == 0 && overlay.isEmpty) SortedLongMap.of(added) else mergedOver(added, removed)
+
+  private def mergedOver(added: scala.collection.Map[Long, V], removed: Long => Boolean): SortedLongMap[V] = {
     var next  = overlay
     var count = size
     added.foreachEntry { (k, v) =>
@@ -56,6 +59,25 @@ private[identity] final class SortedLongMap[V <: AnyRef] private (keys: Array[Lo
 
 private[identity] object SortedLongMap {
   def empty[V <: AnyRef]: SortedLongMap[V] = new SortedLongMap[V](Array.emptyLongArray, Array.emptyObjectArray, LongMap.empty, 0)
+
+  /** `entries` as arrays, built straight from them: what [[SortedLongMap.merged]] of an empty map is. Folded through the
+   *  overlay instead, a whole-corpus projection's memo (~100k entries on worker-us, twice) built an immutable `LongMap` an
+   *  entry at a time — ~100 MB of path copies at every boot's first projection, beside the boot's other work — only to
+   *  copy it into these arrays. A null value is no entry, as in a merge. */
+  private[identity] def of[V <: AnyRef](entries: scala.collection.Map[Long, V]): SortedLongMap[V] = {
+    val keys = new Array[Long](entries.size)
+    var n    = 0
+    entries.foreachEntry((k, v) => if (v != null) { keys(n) = k; n += 1 })
+    if (n == 0) empty
+    else {
+      val sorted = if (n == keys.length) keys else java.util.Arrays.copyOf(keys, n)
+      java.util.Arrays.sort(sorted)
+      val values = new Array[AnyRef](n)
+      var i = 0
+      while (i < n) { values(i) = entries(sorted(i)); i += 1 }
+      new SortedLongMap[V](sorted, values, LongMap.empty, n)
+    }
+  }
 
   /** How many changes a map of `base` entries holds beside its arrays before it builds them again: an 8th of them, so its
    *  arrays are built again once every ~30 light projections on worker-us, not every one. */

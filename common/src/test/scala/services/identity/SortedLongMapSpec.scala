@@ -33,6 +33,19 @@ class SortedLongMapSpec extends AnyFlatSpec with Matchers {
     map.merged(Map.empty[Long, String], k => k > 5000) should be theSameInstanceAs map
   }
 
+  // A whole-corpus projection rebuilds the venue slot memo from empty (~100k entries on worker-us, twice): folded through
+  // the overlay an entry at a time, every boot's first projection made ~100 MB of `LongMap` path copies to build two maps.
+  it should "be built from empty straight into its arrays" in {
+    val entries = scala.collection.mutable.LongMap.from((1L to 200000L).map(k => (k * 7919L) % 1000003L -> s"v$k"))
+    val (built, allocated) = tools.ThreadAllocation.of(SortedLongMap.empty[String].merged(entries))
+    built.size shouldBe entries.size
+    entries.forall { case (k, v) => built.get(k).contains(v) } shouldBe true
+    built.valuesIterator.toSet shouldBe entries.values.toSet
+    withClue(s"allocated $allocated bytes: ")(allocated should be < 12000000L)
+    SortedLongMap.empty[String].merged(Map(1L -> null, 2L -> "two")).size shouldBe 1
+    SortedLongMap.empty[String].merged(Map.empty[Long, String]).size shouldBe 0
+  }
+
   it should "take a few changes into a large map without copying it" in {
     val large = SortedLongMap.empty[String].merged((1L to 200000L).map(k => k * 7 -> s"v$k").toMap)
     val added = (1L to 30000L).map(k => k * 7 -> large.get(k * 7).get).toMap ++ (1L to 100L).map(k => (k * 7 + 1) -> s"new$k")
