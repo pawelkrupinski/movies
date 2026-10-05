@@ -1,6 +1,6 @@
 package services.identity
 
-import models.Source
+import models.{Source, SourceData}
 import services.movies.{LeanRecords, ListingKey, StoredMovieRecord, TitleNormalizer}
 
 import scala.collection.mutable
@@ -34,6 +34,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
   // listing's own key object when there is one.
   private val entries       = mutable.HashMap.empty[ListingKey, LiveProjectionIndex.Entry]
   private var published, placed, clustered = 0   // how many entries hold a listing, a previous film, a cluster
+  private var heldMark = 0                         // the updates so far: an entry's `heldAt` is the last that held it
 
   // Each venue slot (a listing's own is `PipelineFilms.slotOf` it): the published listings at it — whose previous film a
   // slot moves — and the stored films with a slot there, by where it is and its source only: a slot's data is read off
@@ -105,10 +106,22 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
       clusters, clusterOfView)
   }
 
-  /** Move the index to what these inputs say, and say what moved. */
-  def update(venues: Seq[(String, Seq[ProjectedListing])], held: ListingKey => Boolean, resolved: Seq[ResolverDecision],
+  /** Move the index to what these inputs say, and say what moved. `held`: the keys of the listings the model holds. */
+  def update(venues: Seq[(String, Seq[ProjectedListing])], held: Iterable[ListingKey], resolved: Seq[ResolverDecision],
              stored: Seq[StoredMovieRecord]): ProjectionScope.Changes = {
     val keys = mutable.HashSet.empty[ListingKey]   // whose published listing (or whether it is published) moved
+    // 0. Held: a listing the model took up that is not published, or let go that is — published, held and indexed must
+    // agree. Each entry marks the update it was last held at, so neither side is walked against the other as a set.
+    heldMark += 1
+    val heldUnindexed = mutable.HashSet.empty[ListingKey]
+    held.foreach { k =>
+      entries.get(k) match {
+        case Some(e) => e.heldAt = heldMark; if (e.listing == null) keys += k
+        case None    => heldUnindexed += k; keys += k
+      }
+    }
+    entries.valuesIterator.foreach(e => if (e.listing != null && e.heldAt != heldMark) keys += e.key)
+    def isHeld(k: ListingKey): Boolean = entries.get(k).exists(_.heldAt == heldMark) || heldUnindexed(k)
     val byKeyAt = mutable.HashMap.empty[String, Map[ListingKey, ProjectedListing]]
     def at(venue: String): Map[ListingKey, ProjectedListing] = byKeyAt.getOrElseUpdate(venue, oneByKey(venueListings.getOrElse(venue, Nil)))
     // 1. Listings: a venue whose listing is another object, or gone.
@@ -118,6 +131,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
         val was = at(venue)
         val now = oneByKey(listings)
         was.foreach { case (k, l) => if (!now.get(k).exists(n => (n eq l) || n == l)) keys += k }
+        now.keysIterator.foreach(k => if (!was.contains(k)) keys += k)   // new to its venue
         // An unmoved listing read again is a new object of the same value: index that one, so the old read is not kept.
         now.foreach { case (k, n) => listingAt(k).foreach(l => if ((l ne n) && l == n) rekey(l, n)) }
         venueListings(venue) = listings
@@ -129,11 +143,9 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
       venueListings.remove(venue)
       byKeyAt.remove(venue)
     }
-    // …and a listing new to its venue, or one the model took up or let go: published, held and indexed must agree.
-    venueListings.valuesIterator.foreach(_.foreach { l => val k = l.listing.key; if (held(k) != isPublished(k)) keys += k })
     val republished = mutable.HashSet.empty[ListingKey]   // whose published listing moved
     keys.foreach { k =>
-      val listing = (if (venueListings.contains(k.venue)) at(k.venue).get(k) else None).filter(_ => held(k))
+      val listing = (if (venueListings.contains(k.venue)) at(k.venue).get(k) else None).filter(_ => isHeld(k))
       val was = listingAt(k)
       if (listing != was) {
         republished += k
@@ -144,6 +156,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
         listing match {
           case Some(l) =>
             publish(l)
+            entries(k).heldAt = heldMark
             val slot = slotAt(PipelineFilms.slotOf(l.listing, normalizer))
             slot.keys += k
           case None => unpublish(k)
@@ -219,7 +232,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
   def written(films: Seq[ProjectedFilm], retired: Seq[services.movies.FilmId]): Unit = {
     val reslot = mutable.HashSet.empty[ListingKey]
     retired.foreach(id => unstore(id.value, reslot))
-    films.foreach(f => restore(StoredMovieRecord(f.title, f.year, f.record, f.id, Some(f.key)), reslot))
+    films.foreach(f => restore(StoredMovieRecord(f.title, f.year, f.record, f.id, Some(f.key)), reslot, f.touched))
     // A listing the store, as written, puts on the film it was written into is where the writes meant it to be. Any other
     // listing they moved, and any written into a film the store does not put it on, is moved for the next projection: a
     // written slot is not always the slot of the listing it was built from (a director carried forward from its prior is
@@ -281,8 +294,8 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
 
   /** Whether every venue slot of `is` reads to a listing's pick ([[PipelineFilms.pick]]: the slot's year, as its
    *  titles may carry it, and its directors) as the same slot of `was` does. */
-  private def pickedAlike(was: StoredMovieRecord, is: StoredMovieRecord): Boolean =
-    (was.record eq is.record) || is.record.data.forall {
+  private def pickedAlike(was: StoredMovieRecord, is: StoredMovieRecord, at: Option[Set[Source]]): Boolean =
+    (was.record eq is.record) || sourcesOf(is, at).forall {
       case (source: models.CinemaShowing, sd) => was.record.data.get(source).exists(w =>
         (w eq sd) || (w.releaseYear == sd.releaseYear && w.rawTitle == sd.rawTitle && w.title == sd.title && w.director == sd.director))
       case _ => true
@@ -296,7 +309,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
   private def unstore(id: String, reslot: mutable.HashSet[ListingKey]): Unit = {
     storedById.get(id).foreach(r => reslot ++= listingsOf.getOrElse(r.id.value, Set.empty))
     // Each slot of the film as stored: where it is and the listing it is — worked out from the record, not kept beside it.
-    storedById.get(id).map(layoutOf).foreach(_.foreach { case (at, key) =>
+    storedById.get(id).map(layoutOf(_)).foreach(_.foreach { case (at, key) =>
       // What it moves by leaving is a listing it was on (above): another film's listing at its slot was not picked
       // over it, and stays picked without it.
       at.foreach(at => slots.get(at).foreach { slot => slot.films -= id; tidySlot(at) })
@@ -305,21 +318,26 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
     storedById = storedById - id
   }
 
-  private def layoutOf(r: StoredMovieRecord): Seq[(Option[(String, String)], Option[ListingKey])] =
-    r.record.data.toSeq.map { case (source, sd) => val slot = IdentityProjectionPlan.slotOf(source, sd); slot.at -> slot.key }
+  private def layoutOf(r: StoredMovieRecord, at: Option[Set[Source]] = None): Seq[(Option[(String, String)], Option[ListingKey])] =
+    sourcesOf(r, at).toSeq.map { case (source, sd) => val slot = IdentityProjectionPlan.slotOf(source, sd); slot.at -> slot.key }
 
-  private def restore(r: StoredMovieRecord, reslot: mutable.HashSet[ListingKey]): Unit = {
+  /** `r`'s slots, or only those at `at`'s sources. */
+  private def sourcesOf(r: StoredMovieRecord, at: Option[Set[Source]]): Iterator[(Source, SourceData)] =
+    at.fold(r.record.data.iterator)(_.iterator.flatMap(s => r.record.data.get(s).map(s -> _)))
+
+  private def restore(r: StoredMovieRecord, reslot: mutable.HashSet[ListingKey], touched: Option[Set[Source]] = None): Unit = {
     val id     = r.id.value
-    val slots  = r.record.data.toSeq.map { case (source, sd) => source -> IdentityProjectionPlan.slotOf(source, sd) }
-    val layout = slots.map { case (_, slot) => slot.at -> slot.key }
     // The same film at the same slots, each read the same by a listing's pick: no listing's previous film can move, so
     // only the record is replaced — most films written are written for their showtimes, and the wide ones (thousands of
-    // slots) re-pointed every listing at every slot of theirs for nothing.
-    if (storedById.get(id).exists(was => was.record.tmdbId == r.record.tmdbId && pickedAlike(was, r)) &&
-        storedById.get(id).exists(was => layoutOf(was).toSet == layout.toSet)) {
+    // slots) re-pointed every listing at every slot of theirs for nothing. Of a film written as patched from its last
+    // draft, only the `touched` sources can differ from the record held (the written one, as nothing else wrote it since:
+    // [[ProjectedFilm.touched]]), and only they are compared — the same on them, the same everywhere.
+    if (storedById.get(id).exists(was => was.record.tmdbId == r.record.tmdbId && pickedAlike(was, r, touched)) &&
+        storedById.get(id).exists(was => layoutOf(was, touched).toSet == layoutOf(r, touched).toSet)) {
       storedById = storedById.updated(id, r)
       return
     }
+    val slots  = r.record.data.toSeq.map { case (source, sd) => source -> IdentityProjectionPlan.slotOf(source, sd) }
     unstore(id, reslot)
     storedById = storedById.updated(id, r)
     val ref   = PipelineFilmRef(id, r.record.tmdbId)
@@ -349,6 +367,7 @@ private object LiveProjectionIndex {
     var cluster: ClusterId          = null
     var decision: ResolverDecision  = null
     var owners: Set[PipelineFilmRef] = Set.empty
+    var heldAt: Int                  = -1   // the last update whose model held the key: a mark, not something it holds
     def holdsNothing: Boolean = listing == null && previous == null && cluster == null && decision == null && owners.isEmpty
   }
 

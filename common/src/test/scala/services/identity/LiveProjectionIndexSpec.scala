@@ -77,7 +77,7 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
         }
         val held    = (k: ListingKey) => !unheld(k)
         val counters = FilmIdCounters.of(stored.keys.toSeq.sorted.zipWithIndex.map { case (id, i) => FilmIdCounter(id, i + 1L) }).toOption.get
-        live.update(objects.toSeq, held, decisions.values.toSeq, stored.values.toSeq)
+        live.update(objects.toSeq, objects.values.flatten.map(_.listing.key).filter(held), decisions.values.toSeq, stored.values.toSeq)
         // Now and then a projection writes: a stored film as written, one retired.
         if (rng.nextInt(3) == 0 && stored.nonEmpty) {
           val id      = stored.keys.toSeq.sorted.head
@@ -111,10 +111,10 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
     def read()  = rows.map(cm => ProjectedListing.of(Listing.of(cm.cinema, cm, normalizer), cm))
     val first   = read()
     val decided = first.map(l => ResolverDecision(Seq(l.listing.key), Some(1), 0.9, ResolverDecision.Basis.OwnMatch, Nil)())
-    live.update(Seq(Multikino.displayName -> first), _ => true, decided, Nil)
+    live.update(Seq(Multikino.displayName -> first), first.map(_.listing.key), decided, Nil)
     val again   = read()
     again shouldBe first
-    val changes = live.update(Seq(Multikino.displayName -> again), _ => true, decided, Nil)
+    val changes = live.update(Seq(Multikino.displayName -> again), again.map(_.listing.key), decided, Nil)
     changes.listings shouldBe empty
     val byKey   = live.index(FilmIdCounters.empty).byKey
     again.foreach(l => withClue(l.listing.rawTitle)(byKey(l.listing.key) should be theSameInstanceAs l))
@@ -132,7 +132,7 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
     }
     val decided = read.map(l => ResolverDecision(Seq(copy(l.listing.key)), Some(1), 0.9, ResolverDecision.Basis.OwnMatch, Nil)())
     val stored  = Seq(film(new Random(3), "f1", read))
-    live.update(read.groupBy(_.listing.venue).toSeq, _ => true, decided, stored)
+    live.update(read.groupBy(_.listing.venue).toSeq, read.map(_.listing.key), decided, stored)
     val index   = live.index(FilmIdCounters.of(Seq(FilmIdCounter("f1", 1L))).toOption.get)
     val own     = read.map(l => l.listing.key -> l.listing.key).toMap
     index.clusterOf.keySet should not be empty
@@ -155,12 +155,12 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
     val decided  = Seq(ResolverDecision(read.map(_.listing.key), None, 0.9, ResolverDecision.Basis.OwnMatch, Nil)())
     val counters = FilmIdCounters.of(Seq(FilmIdCounter("f1", 1L), FilmIdCounter("f2", 2L))).toOption.get
     var stored   = Map("f1" -> film("f1", 2026, "Maciej Kawalski"), "f2" -> film("f2", 1968, "Wojciech Has"))
-    live.update(Seq(Multikino.displayName -> read), _ => true, decided, stored.values.toSeq)
+    live.update(Seq(Multikino.displayName -> read), read.map(_.listing.key), decided, stored.values.toSeq)
     live.index(counters).previousOf(read.head.listing.key).id shouldBe "f2"
     val rewritten = film("f2", 2025, "Wojciech Has")
     stored += "f2" -> rewritten
     live.written(Seq(ProjectedFilm(rewritten.id, 2, rewritten.title, rewritten.year, rewritten.key(normalizer), rewritten.record, Nil)), Nil)
-    live.update(Seq(Multikino.displayName -> read), _ => true, decided, stored.values.toSeq)
+    live.update(Seq(Multikino.displayName -> read), read.map(_.listing.key), decided, stored.values.toSeq)
     val built = IdentityProjectionPlan.index(read, Resolution(decided, 0, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map.empty), stored.values.toSeq,
       counters, normalizer)
     built.previousOf(read.head.listing.key).id shouldBe "f1"
@@ -176,9 +176,9 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
     val first = read()
     val decided = first.map(l => ResolverDecision(Seq(l.listing.key), Some(1), 0.9, ResolverDecision.Basis.OwnMatch, Nil)())
     val stored  = Seq(film(new Random(3), "f1", first))
-    live.update(Seq(Multikino.displayName -> first), _ => true, decided, stored)
+    live.update(Seq(Multikino.displayName -> first), first.map(_.listing.key), decided, stored)
     val again = read()
-    live.update(Seq(Multikino.displayName -> again), _ => true, decided, stored)
+    live.update(Seq(Multikino.displayName -> again), again.map(_.listing.key), decided, stored)
     val index = live.index(FilmIdCounters.of(Seq(FilmIdCounter("f1", 1L))).toOption.get)
     val own   = again.map(l => l.listing.key -> l.listing.key).toMap
     (index.byKey.keysIterator ++ index.clusterOf.keysIterator ++ index.clusters.valuesIterator.flatMap(_.members) ++

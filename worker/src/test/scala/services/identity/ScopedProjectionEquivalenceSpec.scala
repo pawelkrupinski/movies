@@ -109,7 +109,8 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
     val kept     = w.projection.keptIndex(counters)
     val listings = w.intake.projected(venues)
     val resolved = s.resolve(() => listings.map(_.listing)).get
-    val built    = IdentityProjectionPlan.index(listings.filter(l => resolved.listings(l.listing.key)), resolved.resolution,
+    val held     = resolved.listings.toSet
+    val built    = IdentityProjectionPlan.index(listings.filter(l => held(l.listing.key)), resolved.resolution,
       w.cache.snapshot(), counters, normalizer)
     withClue("the kept index's listings: ")(kept.byKey shouldBe built.byKey)
     withClue("the kept index's stored films: ")(kept.storedById.keySet shouldBe built.storedById.keySet)

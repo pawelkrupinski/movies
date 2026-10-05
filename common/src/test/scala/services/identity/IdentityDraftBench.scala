@@ -93,7 +93,7 @@ object IdentityDraftBench {
         val l = Listing.of(k._2, cm(k._2, k._1, tick), normalizer)
         modelled += l.key -> l
       }
-      val held = (_: services.movies.ListingKey) => true
+      val held = modelled.keys
       val ((index, changes), indexS, indexMB) = timed {
         val changes = live.update(byVenue(), held, resolution.decisions, stored.values.toSeq)
         (live.index(counters), changes)

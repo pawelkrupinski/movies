@@ -458,7 +458,7 @@ object IdentityProjection {
   }
 
   /** A resolution, the listings it decided, and the model's objects of them (none for a resolve of the listings read). */
-  final case class Resolved(resolution: Resolution, listings: Set[ListingKey], modelled: Seq[Listing] = Nil)
+  final case class Resolved(resolution: Resolution, listings: Iterable[ListingKey], modelled: Seq[Listing] = Nil)
 
   /** A WHOLE resolve of the listings a projection reads — the projection before the incremental
    *  model, and the reference the specs hold it to. */
@@ -471,5 +471,5 @@ object IdentityProjection {
 
   /** The incremental model, brought up to now on its own thread — no resolve here. */
   def modelled(model: IdentityModelService, timeout: FiniteDuration): (() => Seq[Listing]) => Option[Resolved] = _ =>
-    model.current(timeout).map(snapshot => Resolved(snapshot.resolution, snapshot.listings.map(_.key).toSet, snapshot.listings))
+    model.current(timeout).map(snapshot => Resolved(snapshot.resolution, snapshot.listings.view.map(_.key), snapshot.listings))
 }
