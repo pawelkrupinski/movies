@@ -633,10 +633,12 @@ object IdentityMeasures {
     // pieces are all held already — in the order a round over every shape would add them (by splitter, then shape).
     val held     = scala.collection.mutable.LinkedHashSet.empty[String]
     var frontier = titles.map(_.trim).filter(_.nonEmpty).distinct
+    // a title quoting two works bills both: none of its spellings is cut to one quoted title
+    val quotesOne = !frontier.exists(title => Quoted.findAllMatchIn(title).size >= 2)
     held ++= frontier
     while (frontier.nonEmpty) {
       frontier = (frontier.flatMap(SearchTitles.candidates(_, None)) ++ frontier.flatMap(decorations.strip) ++ frontier.flatMap(beforeItsYear) ++
-        frontier.flatMap(delimitedPieces)).map(_.trim).filter(shape => shape.nonEmpty && !held(shape)).distinct
+        frontier.flatMap(delimitedPieces(_, quotesOne))).map(_.trim).filter(shape => shape.nonEmpty && !held(shape)).distinct
       held ++= frontier
     }
     held.toSeq
@@ -644,16 +646,31 @@ object IdentityMeasures {
 
   /** The pieces more banner separators leave, beside the ones `SearchTitles` splits: a slash with a
    *  space on either side ("MISTYCZKA /film polski/", "Róża / Spotkanie Filozoficzne"), a dash with a
-   *  space on one side ("Fregata dla seniorów- 500 Mil") and a code of up to
-   *  three letters before a colon with no space ("MS:HOT SPOT"). A slash or colon inside a word is the
-   *  title's own ("Face/Off", "AC/DC"). Here, not in `SearchTitles`, which the old pipeline also reads. */
-  private def delimitedPieces(title: String): Seq[String] = {
+   *  space on one side ("Fregata dla seniorów- 500 Mil"), a code of up to three letters before a colon
+   *  with no space ("MS:HOT SPOT"), what follows a banner's dash, a square-bracketed format and a title
+   *  quoted at the head of its billing (`quotesOne`: none where a title quotes two). A slash or colon inside
+   *  a word is the title's own ("Face/Off", "AC/DC"). Here, not in `SearchTitles`, which the old pipeline also reads. */
+  private def delimitedPieces(title: String, quotesOne: Boolean): Seq[String] = {
     val slashed = Seq(SpacedSlash, HalfSpacedDash).flatMap(separator =>
       if (separator.findFirstIn(title).isDefined) separator.split(title).toSeq.map(_.trim) else Nil)
     val coded   = CodeBeforeColon.findFirstMatchIn(title).map(m => title.substring(m.end)).toSeq
     val undated = ScreeningYearSuffix.findFirstMatchIn(title).map(_.group(1)).toSeq
-    (slashed ++ coded ++ undated).map(_.trim).filter(_.exists(_.isLetter)).filter(_ != title.trim)
+    val banner  = AfterFirstDash.findFirstMatchIn(title).map(_.group(1)).toSeq
+    val format  = TrailingSquareBracket.findFirstMatchIn(title).map(_.group(1)).toSeq
+    val quoted  = (if (quotesOne && Quoted.findAllMatchIn(title).size == 1) LeadingQuoted.findFirstMatchIn(title).map(_.group(1)) else None).toSeq
+    (slashed ++ coded ++ undated ++ banner ++ format ++ quoted).map(_.trim).filter(_.exists(_.isLetter)).filter(_ != title.trim)
   }
+  /** What follows a title's FIRST spaced dash when another follows it ("Rialto DOCumentalnie - Lech Janerka – śpij, śpij
+   *  inteligencie"): `SearchTitles` splits at every dash, and the film's own dash went with the banner's. */
+  private val AfterFirstDash = """^.*?\p{L}.*?\s[-–—]\s(.*\S\s[-–—]\s.*)$""".r
+  /** A format or version tag in square brackets after the title ("Vivaldi i ja [2D LEKTOR]"); a round bracket is
+   *  `SearchTitles`'s. */
+  private val TrailingSquareBracket = """^(.*\p{L}.*?)\s*\[[^\]\[]*\]$""".r
+  /** A title quoted at the head of a programme's billing ("„Baranek Shaun i kudłata bestia” Rodzinne Poranki Filmowe"),
+   *  the title's only quotes: two quoted titles bill two works, and a quote further in names what a talk, a concert or a
+   *  show is about ('Wojciech Cejrowski i „Prawo Dżungli”', 'ZADUSZKI JAZZOWE GABA JANUSZ "NIEOBECNI"'). */
+  private val Quoted        = """[„"“«][^"”„“«»]*["”“»]""".r
+  private val LeadingQuoted = """^\s*[„"“«]([^"”„“«»]*\p{L}[^"”„“«»]*)["”“»]""".r
   private val SpacedSlash     = """\s+/\s*|\s*/\s+""".r
   /** A dash with a space on ONE side ("Fregata dla seniorów- 500 Mil"); both sides is `SearchTitles`'s. */
   private val HalfSpacedDash  = """(?<=\S)[-–—]\s+|\s+[-–—](?=\S)""".r

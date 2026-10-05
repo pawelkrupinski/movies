@@ -453,6 +453,23 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.titleShapes(Listing("Star Wars:Episode I")) shouldNot contain ("Episode I")
   }
 
+  they should "take a programme's one quoted title, a square-bracketed format and a banner's first dash off" in {
+    // Kino Świt: "„Baranek Shaun i kudłata bestia” Rodzinne Poranki Filmowe"
+    IdentityMeasures.titleShapes(Listing("„Baranek Shaun i kudłata bestia” Rodzinne Poranki Filmowe")) should contain ("Baranek Shaun i kudłata bestia")
+    // two quoted titles bill two works; a quote further in names what a talk or a concert is about
+    IdentityMeasures.titleShapes(Listing("„Bestia”, reż. Aleksander Hertz, „Cud nad Wisłą”")) shouldNot contain ("Bestia")
+    IdentityMeasures.titleShapes(Listing("Wojciech Cejrowski i „Prawo Dżungli”")) shouldNot contain ("Prawo Dżungli")
+    // Kinematograf's lecture bills two quoted films; its cut title quotes one, its raw title both
+    IdentityMeasures.titleShapes(Listing("Wykład: „Bestia”", rawTitle = Some("Wykład: „Bestia”, reż. Aleksander Hertz, „Cud nad Wisłą”"))) shouldNot
+      contain ("Bestia")
+    // Bałtyk: "Weekend Seniora z Kulturą: Vivaldi i ja [2D LEKTOR]"
+    IdentityMeasures.titleShapes(Listing("Weekend Seniora z Kulturą: Vivaldi i ja [2D LEKTOR]")) should contain ("Vivaldi i ja")
+    IdentityMeasures.titleShapes(Listing("[REC]")) shouldBe Seq("[REC]")
+    // Kinoteatr Rialto: the film's own dash went with the banner's, "Lech Janerka – śpij, śpij inteligencie"
+    IdentityMeasures.titleShapes(Listing("Rialto DOCumentalnie - Lech Janerka – śpij, śpij inteligencie")) should contain (
+      "Lech Janerka – śpij, śpij inteligencie")
+  }
+
   "a listing's comparable facts" should "be every measure but the title relation, the ranking priors and the pooled count" in {
     IdentityMeasures.FactMeasures shouldBe Set("originalTitle", "year.delta", "year.distance", "titleYear.delta", "season.delta",
       "director", "runtime.delta", "country")
