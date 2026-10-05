@@ -2467,3 +2467,30 @@ it, two families take another film — today the quorum raised per dissenting fa
 (`agreement.quorum` fires on it in the dataset though the stage's replay takes nothing — a discrepancy to trace before
 phase 2). So the hybrid makes no hand-set constant redundant yet: `Quorum`, `Takers`, the per-dissent quorum rise,
 `WidelyBilled` and the poster bits all still refuse takes the fitted score would make.
+
+### 20.6 Combining the signals: strategies compared (phase 1c, on main 7383c96f8's agreement)
+
+`scripts.IdentityUnifiedStrategies` runs every strategy on the same rows and bar (the ratchet's fixture by hand label;
+the corpus switched / lost / gained against today; corrections of MODEL takes judged by hand labels only, the
+unlabelled written to `test/resources/fixtures/identity-unmatched/review-candidates.tsv` for review). The rows now carry
+the combined batch's signals too (`broadcast.take`, `listing.catalogue`, the venue-page facts in `listing.facts`, review
+sites alone no agreement). Measured 2026-10-05 (the dataset's fixture counts 438 right today; the ratchet spec 444 — six
+listings whose take is no contender of the dataset):
+
+| strategy | ratchet right | wrong | switched | lost | gained | corrections right / wrong / unlabelled |
+|---|---|---|---|---|---|---|
+| today's cascade | 438 | 0 | 0 | 0 | 0 | 0 / 0 / 0 |
+| greedy forward selection, in sample | 1,346 | 0 | 0 | 0 | 921 | 2 / 0 / 0 |
+| greedy forward selection, held out by venue | 1,349 | 3 | 0 | 0 | 929 | 2 / 0 / 0 |
+| likelihood ratios + precision cut | 205 | 0 | 0 | 748 | 1 | 0 / 0 / 0 |
+| weighted majority vote + cut | 21 | 0 | 0 | 932 | 1 | 0 / 0 / 0 |
+| stacking (monotone logistic, hand ×30) + cut | 1,262 | 24 | 6 | 122 | 1,038 | 1 / 0 / 611 |
+| priority with vetoes + cut | 388 | 0 | 0 | 564 | 0 | 1 / 0 / 0 |
+| boosted trees depth 3 + cut | 11 | 0 | 0 | 942 | 1 | 0 / 0 / 0 |
+
+Greedy accepted, in order: `venues.current` as a FILL (the one guard-passing contender billed at ≥3 venues, released
+this year or last: +903 labelled listings — the K-pop tours IMDb alone holds, ×391 each in the US), `poster.match` as a
+CORRECTION (+5), `and.posterTakers`, `family.metacritic.leans`, `listing.catalogue`, `model.deniedBySome` as fills
+(+1 or +2 each). Every single-family take as a fill adds wrong films (IMDb 11, Wikidata 10); the guards as corrections
+of model takes drop right ones (stage work 936, several works 288). Held out, the same selection makes 3 wrong
+listings: the fill needs the hand review the file lists before it can be wired.
