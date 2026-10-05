@@ -486,6 +486,18 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.titleShapes(Listing("[REC]")) shouldBe Seq("[REC]")
   }
 
+  they should "take the title an upper-case banner runs into with a colon, one quoted at the tail after a banner, and a sentence-stopped head" in {
+    // Kino Millenium "KINO NA NIEDZIELE:CAMINO DLA OPORNYCH": a programme's banner, no space after its colon
+    IdentityMeasures.titleShapes(Listing("KINO NA NIEDZIELE:CAMINO DLA OPORNYCH")) should contain ("CAMINO DLA OPORNYCH")
+    IdentityMeasures.titleShapes(Listing("Star Wars:Episode I")) shouldNot contain ("Episode I")
+    // Kino w Ratuszu 'Kino Kobiet - KLAPS! "Jak żyć żeby nie zwariować"': the one quoted title ends the billing, after its banner
+    IdentityMeasures.titleShapes(Listing("Kino Kobiet - KLAPS! \"Jak żyć żeby nie zwariować\"")) should contain ("Jak żyć żeby nie zwariować")
+    IdentityMeasures.titleShapes(Listing("ZADUSZKI JAZZOWE GABA JANUSZ \"NIEOBECNI\"")) shouldNot contain ("NIEOBECNI")
+    // Kino Rialto "FRIDA KAHLO. IKONICZNA ARTYSTKA": a title of two words or more before a sentence's stop, a subtitle after it
+    IdentityMeasures.titleShapes(Listing("FRIDA KAHLO. IKONICZNA ARTYSTKA")) should contain ("FRIDA KAHLO")
+    IdentityMeasures.titleShapes(Listing("Vincent. Legenda oceanu")) shouldNot contain ("Vincent")
+  }
+
   "a listing's comparable facts" should "be every measure but the title relation, the ranking priors and the pooled count" in {
     IdentityMeasures.FactMeasures shouldBe Set("originalTitle", "year.delta", "year.distance", "titleYear.delta", "season.delta",
       "director", "runtime.delta", "country")

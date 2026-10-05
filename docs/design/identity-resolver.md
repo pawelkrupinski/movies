@@ -2570,3 +2570,9 @@ filed each under retrieval, scoring, a guard, or the agreement. What it added, e
   votes in Poland alone. PL "Bohater" (Farhadi's), "BEZ KOŃCA 2D PL LOLO", "NADZIEJA", "Wymarzony" (Herry's *Pupille*,
   judged from the venue's page). `UnifiedRules.fires` reads a rule as `&`-joined terms, `!` an absence. Ratchet: +4
   listings, 4 films, 0 wrong.
+- **Three more title shapes** (`IdentityMeasures.delimitedPieces`): what an upper-case banner of two words or more runs
+  into with an unspaced colon ("KINO NA NIEDZIELE:CAMINO DLA OPORNYCH"), the one quoted title ending a billing after a
+  banner's stop ('Kino Kobiet - KLAPS! "Jak żyć żeby nie zwariować"'), and a plain title of two words or more before a
+  sentence's stop with a subtitle after it ("FRIDA KAHLO. IKONICZNA ARTYSTKA"). Ratchet (the families' new questions
+  filled; the captured model decisions unchanged): +1 listing (Frida Kahlo), 0 wrong; the model's side is the
+  whole-corpus dump's.
