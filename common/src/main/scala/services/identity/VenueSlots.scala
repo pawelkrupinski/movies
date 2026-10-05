@@ -27,15 +27,18 @@ import services.movies.{CinemaSlotBuilder, ListingKey, MovieRecordMerge, ScrapeL
  * fingerprints otherwise, and is built.
  */
 class VenueSlotMemo(environment: Long = 0L) {
-  private var previous = scala.collection.mutable.HashMap.empty[VenueSlotMemo.Key, VenueSlotMemo.Entry]
-  private var current  = scala.collection.mutable.HashMap.empty[VenueSlotMemo.Key, VenueSlotMemo.Entry]
+  // Kept between projections by each key's 64 bits ([[VenueSlotMemo.Key.id]]), not the key, in sorted arrays: a key
+  // object, a hash node and a share of the table per entry were ~10 MB of worker-us's ~110k, and the key's own fields
+  // are 32-bit hashes of what they name. What a projection uses is gathered beside them, and merged in once it closes.
+  private var previous = SortedLongMap.empty[VenueSlotMemo.Entry]
+  private var current  = scala.collection.mutable.LongMap.empty[VenueSlotMemo.Entry]
   private var recorded = Set.empty[Long]
   private var hits     = 0
   private var builds   = 0
   // Why a build was needed, for the projection's log: the same venue's same listings with other rows, with other
-  // prior slots, or listings the last projection did not have at the venue at all.
-  private var seenBefore = scala.collection.mutable.HashMap.empty[(String, Int), VenueSlotMemo.Key]
-  private var seenNow    = scala.collection.mutable.HashMap.empty[(String, Int), VenueSlotMemo.Key]
+  // prior slots, or listings the last projection did not have at the venue at all — by the venue's listings ([[Key.listings]]).
+  private var seenBefore = SortedLongMap.empty[VenueSlotMemo.Key]
+  private var seenNow    = scala.collection.mutable.LongMap.empty[VenueSlotMemo.Key]
   private var missRows, missPriors, missNew = 0
 
   /** The fingerprints a previous run of the worker kept, for this memo's first projection to reuse stored slots by —
@@ -50,13 +53,13 @@ class VenueSlotMemo(environment: Long = 0L) {
    *  for the next. */
   private[identity] def lookup(key: VenueSlotMemo.Key, stored: => Option[Seq[(Source, SourceData)]] = None): Option[Seq[(Source, SourceData)]] =
     synchronized {
-      seenNow((key.venue, key.keys)) = key
-      previous.get(key).orElse(Option.when(recorded.nonEmpty)(stored).flatten.map(_.map { case (source, slot) =>
+      seenNow(key.listings) = key
+      previous.get(key.id).orElse(Option.when(recorded.nonEmpty)(stored).flatten.map(_.map { case (source, slot) =>
         source -> ShowtimesDigest.stripSlot(slot) }).map(lean => VenueSlotMemo.Entry(lean, fingerprint(key, lean)))
         .filter(entry => recorded(entry.fingerprint))) match {
-        case Some(entry) => current(key) = entry; hits += 1; Some(entry.lean)
+        case Some(entry) => current(key.id) = entry; hits += 1; Some(entry.lean)
         case None =>
-          seenBefore.get((key.venue, key.keys)) match {
+          seenBefore.get(key.listings) match {
             case Some(before) if before.rows != key.rows => missRows += 1
             case Some(_)                                 => missPriors += 1
             case None                                    => missNew += 1
@@ -71,9 +74,9 @@ class VenueSlotMemo(environment: Long = 0L) {
   private[identity] def store(key: VenueSlotMemo.Key, lean: Seq[(Source, SourceData)], keep: Boolean,
                               writtenAs: Option[Long] = None): Unit = synchronized {
     if (keep) {
-      current(key) = VenueSlotMemo.Entry(lean, fingerprint(key, lean))
+      current(key.id) = VenueSlotMemo.Entry(lean, fingerprint(key, lean))
       val after = writtenAs.fold(key)(VenueSlotMemo.written(key, lean, _))
-      if (after != key) current(after) = VenueSlotMemo.Entry(lean, fingerprint(after, lean))
+      if (after != key) current(after.id) = VenueSlotMemo.Entry(lean, fingerprint(after, lean))
     }
     builds += 1
   }
@@ -85,19 +88,17 @@ class VenueSlotMemo(environment: Long = 0L) {
    *  dropping only the slots of a venue's listings it built anew from other rows. */
   def endTick(retainUnseen: Boolean = false): (Int, Int) = synchronized {
     if (retainUnseen) {
-      seenNow.foreach { case (listings, key) =>
-        seenBefore.get(listings).filter(_ != key).foreach(previous.remove)
-        seenBefore(listings) = key
-      }
-      previous ++= current
-      current.clear()
-      seenNow.clear()
+      val moved = scala.collection.mutable.HashSet.empty[Long]
+      seenNow.foreach { case (listings, key) => seenBefore.get(listings).filter(_ != key).foreach(moved += _.id) }
+      previous = previous.merged(current, moved)
+      seenBefore = seenBefore.merged(seenNow)
     } else {
-      val used = current
-      current = previous; current.clear(); previous = used
-      val seen = seenNow
-      seenNow = seenBefore; seenNow.clear(); seenBefore = seen
+      previous = SortedLongMap.empty.merged(current)
+      seenBefore = SortedLongMap.empty.merged(seenNow)
     }
+    // Afresh, not cleared: a cleared map keeps its table, sized for what the projection used, idle until the next.
+    current = scala.collection.mutable.LongMap.empty
+    seenNow = scala.collection.mutable.LongMap.empty
     recorded = Set.empty
     val counts = (hits, builds)
     hits = 0; builds = 0
@@ -120,7 +121,12 @@ object VenueSlotMemo {
   /** What one venue's slots on a film are built from: the venue, its rows (content and listing keys),
    *  each row's previous film and the detail fields of the slots those films held at the venue — every input of
    *  `ScrapeListing.prepare` and `CinemaSlotBuilder.build` that is not fixed for the worker. */
-  final case class Key(venue: String, rows: Int, keys: Int, priors: Int, size: Int)
+  final case class Key(venue: String, rows: Int, keys: Int, priors: Int, size: Int) {
+    /** The memo's 64 bits of this key: what it keeps a venue's slots under. */
+    def id: Long = ContentHash.of(this)
+    /** The memo's 64 bits of the venue's listings this key is of, whatever their rows and priors. */
+    def listings: Long = ContentHash.of((venue, keys))
+  }
 
   /** The key of one film's `rows` at `venue`: their content and listing keys, the prior slots their previous films hold
    *  there (`priors`), and each row's film by its counter (`films`) — a film keeps its counter for good and has it from
