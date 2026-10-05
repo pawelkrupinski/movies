@@ -835,7 +835,7 @@ groups:
           severity: critical
         annotations:
           summary: '{{ $labels.city }} is serving ZERO films (it was active in the last 24h)'
-          description: 'kinowo_web_movies_served{city="{{ $labels.city }}",scope="all"} has been 0 for 5m despite peaking at >=4 films in the last 24h, WHILE the corpus side for this same city (kinowo_worker_movies_served) reads {{ $values.B.Value }} — nonzero, which is the only case this alert now fires for (see the comment above this rule). The corpus has films for this city that the site is not serving: this is cause (1), a read-model defect (see reference_web_movies_required_ratings_outage and docs/read-model-convergence.md) — check web logs for "findAllMovies failed" / "Missing field" first, then kinowo_worker_readmodel_films_pruned_total{city="{{ $labels.city }}"} by reason for a prune that should not have happened.'
+          description: 'kinowo_web_movies_served{city="{{ $labels.city }}",scope="all"} has been 0 for 15m despite peaking at >=4 films in the last 24h, WHILE the corpus side for this same city (kinowo_worker_movies_served) reads {{ $values.B.Value }} — nonzero, which is the only case this alert now fires for (see the comment above this rule). The corpus has films for this city that the site is not serving: this is cause (1), a read-model defect (see reference_web_movies_required_ratings_outage and docs/read-model-convergence.md) — check web logs for "findAllMovies failed" / "Missing field" first, then kinowo_worker_readmodel_films_pruned_total{city="{{ $labels.city }}"} by reason for a prune that should not have happened.'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -843,7 +843,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
-              expr: '(kinowo_web_movies_served{scope="all"} == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) > 0)'
+              expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) > 0)'
               instant: true
               range: false
               intervalMs: 1000

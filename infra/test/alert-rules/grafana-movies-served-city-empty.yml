@@ -39,13 +39,13 @@ tests:
     promql_expr_test:
       # THE EXPRESSION, PINNED VERBATIM FROM alert-rules.yaml (test_alert_rule_coverage.py checks
       # a suite contains it character-for-character).
-      - expr: '(kinowo_web_movies_served{scope="all"} == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) > 0)'
+      - expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) > 0)'
         eval_time: 1550m
         exp_samples:
           # ONLY "hadbug" — a listed sample and nothing else, so if "wentdark" ever reappeared
           # (the pre-2026-09-13 behaviour, or a future regression that drops the `and on (city)`
           # clause) this test fails on the extra, unlisted series.
-          - labels: 'kinowo_web_movies_served{scope="all",city="hadbug",country="pl"}'
+          - labels: '{scope="all",city="hadbug",country="pl"}'
             value: 0
 
   # ── A SERVING CITY AND A CITY THAT NEVER WAS ACTIVE ARE BOTH SILENT ─────────────────────────────
@@ -62,6 +62,29 @@ tests:
       - series: 'kinowo_worker_movies_served{scope="all",city="tiny",country="pl"}'
         values: '2x156'
     promql_expr_test:
-      - expr: '(kinowo_web_movies_served{scope="all"} == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) > 0)'
+      - expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) > 0)'
         eval_time: 1550m
+        exp_samples: []
+
+  # ── THE CORPUS COUNT LAGGING THE WEB'S BY A TICK ────────────────────────────────────────────────
+  # us/havre on 2026-10-02: its one venue lists a week at a time, so every Thursday evening its
+  # last show lapses and the city goes dark until Friday's week is up -- cause (2). The web saw 0
+  # at 01:45Z, the worker's census (then a 15-minute rescan, now a 5-minute tick) only at 01:59Z,
+  # and in between the two sides disagreed for longer than the rule's `for: 5m`: a critical page
+  # for a city with nothing to show. The web must be dark for ten minutes -- longer than a census
+  # tick -- before the corpus is asked, and by then the corpus has caught up.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_movies_served{scope="all",city="havre",country="us"}'
+        values: '4x1440 0x30'
+      - series: 'kinowo_worker_movies_served{scope="all",city="havre",country="us"}'
+        values: '4x1445 0x25'
+    promql_expr_test:
+      # Two minutes after the web went dark, the corpus still reading 4: silent.
+      - expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) > 0)'
+        eval_time: 1443m
+        exp_samples: []
+      # Ten minutes on, the corpus has caught up and reads 0 as well: still silent.
+      - expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) > 0)'
+        eval_time: 1455m
         exp_samples: []
