@@ -15,6 +15,10 @@ object TmdbJson {
 
   def releaseYear(film: JsValue): Option[Int] = releaseYear((film \ "release_date").asOpt[String])
 
+  /** The day of a TMDB `release_date` ("2019-05-01"), or `None` when it is missing or no whole date. */
+  def releaseDate(film: JsValue): Option[java.time.LocalDate] =
+    (film \ "release_date").asOpt[String].filter(_.length >= 10).flatMap(d => Try(java.time.LocalDate.parse(d.take(10))).toOption)
+
   /** The crew holding one of `jobs`: each caller names its own, since a co-director counts for some. */
   def crewWith(crew: Seq[JsValue], jobs: Set[String]): Seq[JsValue] =
     crew.filter(c => (c \ "job").asOpt[String].exists(jobs.contains))

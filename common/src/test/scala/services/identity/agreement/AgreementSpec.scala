@@ -249,6 +249,9 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val relay = listing(KinoMuza, "ReTransmisje Met: Na żywo w HD - Così fan tutte")
     Agreement.stagesAWork(relay) shouldBe true
     Agreement.stagesAWork(listing(KinoMuza, "Klondike")) shouldBe false
+    // the work run into a house's word (PL Kino Powiśle) or after its composer (DE) is staged as well
+    Agreement.stagesAWork(listing(KinoMuza, "OPERA-COSI FAN TUTTE")) shouldBe true
+    Agreement.stagesAWork(listing(KinoMuza, "Met Opera 2026/27: Wolfgang Amadeus Mozart COSÌ FAN TUTTE")) shouldBe true
     val brass = film("Così fan tutte", 1992, "Tinto Brass")
     Agreement.agreed(Seq(relay), Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(f => FamilyVerdict.took(FamilyPick(f, "1", SourceRecord(brass))))) shouldBe None
   }

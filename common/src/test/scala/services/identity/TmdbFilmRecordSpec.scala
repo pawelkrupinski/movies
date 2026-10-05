@@ -25,4 +25,10 @@ class TmdbFilmRecordSpec extends AnyFlatSpec with Matchers {
     val (film, _) = TmdbFilmRecord.parse(Seq(recorded("movie-1702350-credits-en.json"))).get
     film.directors.get should contain allOf ("Annette Jolles", "Scott Ellis")
   }
+
+  it should "carry the day it was released, a broadcast's air date" in {
+    val (film, _) = TmdbFilmRecord.parse(Seq(recorded("movie-1702350-credits-en.json"))).get
+    film.released shouldBe Some(java.time.LocalDate.of(2026, 10, 22))
+    film.year shouldBe Some(2026)
+  }
 }

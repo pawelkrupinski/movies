@@ -40,7 +40,8 @@ object TmdbFilmRecord {
         directors         = Option.when(hasCrew)(directors),
         countries         = Option.when(countries.nonEmpty)(countries),
         popularity        = main.flatMap(d => (d \ "popularity").asOpt[Double]).headOption,
-        imdbNumber        = imdbId.fold(0)(IdentityMeasures.imdbNumber)) -> imdbId)
+        imdbNumber        = imdbId.fold(0)(IdentityMeasures.imdbNumber),
+        released          = clients.TmdbJson.releaseDate(localized)) -> imdbId)
     }
   }
 

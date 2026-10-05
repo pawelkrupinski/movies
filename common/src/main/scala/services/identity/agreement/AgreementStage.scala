@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CandidateQuery, DetailFacts, FallbackIds, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver,
+import services.identity.{Answer, CandidateQuery, DetailFacts, Evidence, FallbackIds, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver,
   Listing, PosterAnswers, PosterEvidence, PosterHash, Resolution, ResolverDecision, StoredFamily}
 import services.movies.{ListingKey, TitleNormalizer}
 
@@ -33,6 +33,9 @@ import scala.collection.mutable
  * matches another candidate and not it (the VETO), and a cluster nothing took takes the one candidate a venue poster
  * matches (the VOTE, [[ResolverDecision.Basis.Poster]]). A poster not hashed yet is a gap like a family's question:
  * the cluster waits as the model left it, and the poster is handed to `ask`. `version` must count the posters filed too.
+ *
+ * A cluster neither took is read last by the days its venues screen it on ([[Broadcast]]): a stage relay screening on
+ * the day one record of its work was broadcast is that production ([[ResolverDecision.Basis.Broadcast]]).
  */
 final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: IdentityLookups, normalizer: TitleNormalizer,
                            calibration: IdentityCalibration, tmdbOf: String => Answer[Option[Int]], stored: AgreementVerdicts,
@@ -130,8 +133,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
           v.agreed.fold[AgreementStage.Take](AgreementStage.Take.Untaken)(taken(decision, _, finding, distances)) match {
             case AgreementStage.Take.Taken(agreed) => agreed
             case AgreementStage.Take.Pending       => decision
-            case AgreementStage.Take.Vetoed        => posterVetoed += 1; voted(decision, distances(None)).getOrElse(decision)
-            case AgreementStage.Take.Untaken       => voted(decision, distances(None)).getOrElse(decision)
+            case AgreementStage.Take.Vetoed        => posterVetoed += 1; voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings)).getOrElse(decision)
+            case AgreementStage.Take.Untaken       => voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings)).getOrElse(decision)
           }
         }
         if (now eq decision) decision else Option(takenAs.get(decision)).filter(_ == now).getOrElse { takenAs.put(decision, now); now }
@@ -161,7 +164,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     metrics.applied(AgreementStage.Applied(waiting = waiting.size, verdicts = held.size, agreed = held.valuesIterator.count(_.agreed.isDefined),
       takenTmdb = agreedNow.count(_.film.isDefined), takenFallback = agreedNow.count(_.fallback.isDefined),
       open = gaps.groupMapReduce(_._1)(_ => 1)(_ + _), finds = finds.size, resolves = resolves, seconds = started.seconds,
-      takenPoster = decisions.count(_.basis == ResolverDecision.Basis.Poster), posterVetoed = posterVetoed, posters = posterGaps.size))
+      takenPoster = decisions.count(_.basis == ResolverDecision.Basis.Poster), posterVetoed = posterVetoed, posters = posterGaps.size,
+      takenBroadcast = decisions.count(_.basis == ResolverDecision.Basis.Broadcast)))
     resolution.copy(decisions = decisions)
   }
 
@@ -176,7 +180,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
 
   /** The listings as published, and the venue detail page the picks read of each. */
   private def digestOf(listings: Seq[Listing]): Long =
-    AgreementStage.digest(listings.map(l => l.sortKey + (if (venues.hasDetail(l)) "\u0001" + venues.detail(l) else "")))
+    AgreementStage.digest(listings.map(l => l.sortKey + l.broadcastSeason.fold("")(season => s"\u0002$season") +
+      (if (venues.hasDetail(l)) "\u0001" + venues.detail(l) else "")))
 
   /** The cluster's verdict: the stored one while its listings and every answer it read stand, else the resolver's
    *  over the families' answers now — `None` while one of them is a gap. */
@@ -322,6 +327,17 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         decision.trace)
     }
 
+  /** The decision with the one record the cluster's screening days name taken ([[Broadcast]]): of the TMDB films its own
+   *  evidence reaches, none denied — none while one of their records is not known yet. */
+  private def broadcast(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing]): Option[ResolverDecision] =
+    tmdb.filter(_ => listings.exists(!_.screenings.isEmpty)).flatMap { lookups =>
+      val records = candidatesOf(id, digest, listings).map(film => film -> lookups.film(film))
+      Option.when(records.forall(_._2.isKnown))(records.flatMap { case (film, record) => record.toOption.flatten.map(film -> _) })
+        .flatMap(known => Broadcast.take(listings, listing => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured, known))
+        .map(taken => decision.copy(film = Some(taken.film), basis = ResolverDecision.Basis.Broadcast,
+          explanation = decision.explanation :+ taken.line)(decision.trace))
+    }
+
   /** The nearest each of the cluster's candidates (and `also`, the film the families agree on) comes to each of its
    *  venue posters — none where no listing shows one; `Unknown`, each poster not hashed yet noted in `asked`, while one
    *  is not. A candidate numbering another edition than a listing showing a poster is not compared
@@ -429,9 +445,11 @@ object AgreementStage {
   /** What one [[AgreementStage.apply]] that read anything came to: the clusters waiting on a family's answer, the verdicts
    *  kept and how many agreed, the decisions taken as a TMDB film or an IMDb fallback, the questions still open per family
    *  and TMDB finds, how many clusters it resolved again, and how long it took; and the venue posters' part: the decisions
-   *  they took ([[ResolverDecision.Basis.Poster]]), the agreed films they vetoed, and the posters not hashed yet. */
+   *  they took ([[ResolverDecision.Basis.Poster]]), the agreed films they vetoed, and the posters not hashed yet; and the
+   *  decisions the screening days took ([[ResolverDecision.Basis.Broadcast]]). */
   final case class Applied(waiting: Int, verdicts: Int, agreed: Int, takenTmdb: Int, takenFallback: Int, open: Map[VoterFamily, Int],
-                           finds: Int, resolves: Int, seconds: Double, takenPoster: Int = 0, posterVetoed: Int = 0, posters: Int = 0)
+                           finds: Int, resolves: Int, seconds: Double, takenPoster: Int = 0, posterVetoed: Int = 0, posters: Int = 0,
+                           takenBroadcast: Int = 0)
   trait Metrics { def applied(applied: Applied): Unit }
   object Metrics { val Silent: Metrics = _ => () }
 

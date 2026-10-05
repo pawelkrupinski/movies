@@ -89,14 +89,15 @@ final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tool
 }
 
 object TmdbNormalizer {
-  /** A `/movie/{id}` body cut to what `TmdbFilmRecord.parse` reads — title, original title, year,
+  /** A `/movie/{id}` body cut to what `TmdbFilmRecord.parse` reads — title, original title, release day,
    *  runtime, IMDb id, popularity (as its bucket), countries, alternative titles and the directors
    *  among the crew — keeping the shape it reads them in (a `credits` block stays a `credits` block:
    *  its presence is what marks the localized response, and "directors known"). */
   def minimal(body: JsValue): JsValue = {
     val keep = Seq("title", "original_title", "runtime", "imdb_id", "origin_country")
       .flatMap(k => (body \ k).toOption.map(k -> _))
-    val date = (body \ "release_date").asOpt[String].map(d => "release_date" -> Json.toJson(d.take(4)))
+    // the whole day: a broadcast airs on it ([[services.identity.agreement.Broadcast]])
+    val date = (body \ "release_date").asOpt[String].map(d => "release_date" -> Json.toJson(d.take(10)))
     val popularity = (body \ "popularity").asOpt[Double].map(p => "popularity" -> Json.toJson(PopularityBucket.representative(PopularityBucket.of(p))))
     val countries = (body \ "production_countries").asOpt[Seq[JsValue]].map(cs =>
       "production_countries" -> JsArray(cs.flatMap(c => (c \ "iso_3166_1").asOpt[String]).map(iso => Json.obj("iso_3166_1" -> iso))))

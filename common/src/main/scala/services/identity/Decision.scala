@@ -65,8 +65,11 @@ object ResolverDecision {
     /** No TMDB rule took a film and no families agreed on one, but a venue poster matches one of the cluster's candidates
      *  alone (`PosterEvidence.vote`) — like [[Agreed]], only on the way to the projection. */
     case Poster
+    /** No TMDB rule, family or poster took a film, but the cluster bills a stage work and screens on the day one record
+     *  of it was broadcast (`agreement.Broadcast`) — like [[Agreed]], only on the way to the projection. */
+    case Broadcast
 
-    def matched: Boolean = this == Pinned || this == OwnMatch || this == PooledMatch || this == Agreed || this == Poster
+    def matched: Boolean = this == Pinned || this == OwnMatch || this == PooledMatch || this == Agreed || this == Poster || this == Broadcast
   }
 
   def percent(p: Double): String = f"${p * 100}%.1f%%"

@@ -370,9 +370,12 @@ object Agreement {
   /** Does the listing name a stage work ([[services.identity.StageWorks]]) — an opera or ballet a house's relay
    *  bills? The films its families find are the work's screen namesakes ("ReTransmisje Met: Così fan tutte" → Tinto
    *  Brass's 1992 "Così fan tutte", replay 2026-10-04), never the relay, whose record TMDB alone keeps. */
-  def stagesAWork(listing: Listing): Boolean =
-    (Seq(listing.title, listing.cleanTitle).distinct.map(title => IdentityMeasures.Listing(title, Some(listing.rawTitle).filter(_ != title))))
-      .exists(IdentityMeasures.stageWorks(_).nonEmpty)
+  def stagesAWork(listing: Listing): Boolean = {
+    val titles = Seq(listing.title, listing.cleanTitle, listing.rawTitle).distinct
+    // the work billed within a piece too: run into a house's word ("OPERA-COSI FAN TUTTE"), after its composer
+    IdentityMeasures.stageWorksBilled(titles, IdentityMeasures.seasonYear(titles).isDefined).nonEmpty ||
+      titles.map(title => IdentityMeasures.Listing(title, Some(listing.rawTitle).filter(_ != title))).exists(IdentityMeasures.stageWorks(_).nonEmpty)
+  }
 
   private val Bill   = """(?i)\s\+\s|double bill|double feature|podw[oó]jny seans|zestaw""".r
   private val Quoted = """[„"“][^"”„]+["”]""".r

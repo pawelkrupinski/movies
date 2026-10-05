@@ -30,7 +30,7 @@ final class FilmTable(films: Seq[FilmTable.F], normalizer: TitleNormalizer) exte
     Answer.Known(found.map(f =>
       IdentityMeasures.Film(f.title, None, f.alternatives ++ (if (f.imdbOnly) f.imdbTitles else Nil), Some(f.year), Some(f.runtime).filter(_ > 0),
         Some(Seq(f.director).filter(_.nonEmpty)), Some(f.countries).filter(_.nonEmpty), if (f.imdbOnly) None else Some(f.popularity),
-        imdbNumber = f.id)))
+        imdbNumber = f.id, released = f.released)))
   }
 }
 
@@ -39,10 +39,12 @@ object FilmTable {
    *  IMDb id IMDb lists under its title). `directorAliases`: the other names TMDB's person search finds its
    *  director by — a Latin spelling of one its credits write in another script. `imdbTitles`: the titles IMDb lists it
  *  under besides its own (its AKAs), which IMDb's suggestions match a query against. `imdbOnly`: a film TMDB holds no
- *  record of — only the IMDb-titled question answers it, under its fallback id ([[FallbackIds]]). */
+ *  record of — only the IMDb-titled question answers it, under its fallback id ([[FallbackIds]]). `released`: the day TMDB
+ *  dates its release, a broadcast's air date. */
   final case class F(id: Int, title: String, year: Int, director: String, runtime: Int, popularity: Double = 10.0,
                      alternatives: Seq[String] = Nil, searched: Boolean = true, countries: Seq[String] = Nil,
-                     directorAliases: Seq[String] = Nil, imdbTitles: Seq[String] = Nil, imdbOnly: Boolean = false)
+                     directorAliases: Seq[String] = Nil, imdbTitles: Seq[String] = Nil, imdbOnly: Boolean = false,
+                     released: Option[java.time.LocalDate] = None)
 
   /** A listing publishing only its title and what it is given, keyed as a page-less venue keys it. */
   def listing(venue: Cinema, title: String, year: Option[Int] = None, director: Option[String] = None,

@@ -37,14 +37,34 @@ final case class Listing(
    *  stages after it do ([[PosterEvidence]]), from the listings as published — and a listing the model holds equal to
    *  the one published is not resolved again, so a venue re-cutting a poster URL (a CDN token, a resize) re-resolves
    *  nothing. */
-  poster:        Option[String] = None
+  poster:        Option[String] = None,
+  /** The days the venue screens it. OUTSIDE the listing's equality and hash, as the poster is: a venue adding a
+   *  showtime re-resolves nothing. Only the season they place a stage relay in ([[broadcastSeason]]) is the model's;
+   *  the days themselves are read after it, by the broadcast take ([[agreement.Broadcast]]). */
+  screenings:    ScreeningDays = ScreeningDays.None
 ) {
   def venue: String = key.venue
+
+  /** The season a stage work billed with neither its season nor a year is broadcast in: the one its first screening
+   *  falls in ([[ScreeningDays.season]]). A relay airs on its house's published dates — the Met's "Samson et Dalila"
+   *  on 5 December 2026 — so a PL "Samson i Dalila" screening that day is the 2026/27 season's, whatever its title
+   *  leaves out. `None` for anything else: a film's run moving past July re-resolves nothing. */
+  lazy val broadcastSeason: Option[Int] =
+    // a credited director or a running time already names the staging: UK "Royal Shakespeare Company: Macbeth" {Polly
+    // Findlay} is her RSC Live record, US "Royal Opera House: Otello" [190′] the ROH's 2017 one, which the season's Met
+    // records of the work would only stand beside
+    if (screenings.isEmpty || year.isDefined || directors.nonEmpty || runtime.isDefined) None
+    else {
+      val titles = Seq(title, rawTitle)
+      Option.when(IdentityMeasures.seasonYear(titles).isEmpty && IdentityMeasures.titleYearOf(titles).isEmpty &&
+        IdentityMeasures.stageWorksBilled(titles, seasonNamed = false).nonEmpty)(()).flatMap(_ => screenings.season)
+    }
 
   override def equals(other: Any): Boolean = other match {
     case that: Listing => (this eq that) || (key == that.key && rawTitle == that.rawTitle && title == that.title && cleanTitle == that.cleanTitle &&
       year == that.year && directors == that.directors && runtime == that.runtime && page == that.page && originalTitle == that.originalTitle &&
-      countries == that.countries && catalogueIds == that.catalogueIds && searchTitle == that.searchTitle && cinema == that.cinema)
+      countries == that.countries && catalogueIds == that.catalogueIds && searchTitle == that.searchTitle && cinema == that.cinema &&
+      broadcastSeason == that.broadcastSeason)
     case _ => false
   }
   override def hashCode: Int = {
@@ -54,13 +74,44 @@ final case class Listing(
     var h = 0x4c697374
     var i = 0
     while (i < fields.length) { h = mix(h, fields(i)); i += 1 }
-    finalizeHash(mixLast(h, searchTitle.##), fields.length + 1)
+    h = mix(h, searchTitle.##)
+    finalizeHash(mixLast(h, broadcastSeason.##), fields.length + 2)
   }
 
   /** A TOTAL order over listings, as text: the key first, then every published field, so two
    *  different listings never tie and a set of listings has exactly one sorted presentation. Built on
    *  demand, never kept: [[Listing.ordering]] compares the same fields without it. */
   def sortKey: String = Listing.SortFields.map(_(this)).mkString("\u0000")
+}
+
+/** The days a listing screens on, each once, in order — held as epoch days: a corpus holds a listing per film and
+ *  venue, and most screen on a handful of days. */
+final class ScreeningDays private (private val epochDays: Array[Int]) {
+  def isEmpty: Boolean = epochDays.isEmpty
+  def days: Seq[java.time.LocalDate] = epochDays.toSeq.map(day => java.time.LocalDate.ofEpochDay(day.toLong))
+  def contains(day: java.time.LocalDate): Boolean = java.util.Arrays.binarySearch(epochDays, day.toEpochDay.toInt) >= 0
+  def first: Option[java.time.LocalDate] = epochDays.headOption.map(day => java.time.LocalDate.ofEpochDay(day.toLong))
+  def last: Option[java.time.LocalDate]  = epochDays.lastOption.map(day => java.time.LocalDate.ofEpochDay(day.toLong))
+  /** The performing season the first day falls in, by the year it opens: a season runs from July to June, so
+   *  January 2027 is the 2026/27 season's, as August 2026 is. */
+  def season: Option[Int] = first.map(day => if (day.getMonthValue >= ScreeningDays.SeasonOpens) day.getYear else day.getYear - 1)
+  /** `other`'s days beside these. */
+  def ++(other: ScreeningDays): ScreeningDays =
+    if (other.isEmpty) this else if (isEmpty) other else new ScreeningDays((epochDays ++ other.epochDays).distinct.sorted)
+  override def equals(other: Any): Boolean = other match {
+    case that: ScreeningDays => java.util.Arrays.equals(epochDays, that.epochDays)
+    case _ => false
+  }
+  override def hashCode: Int = java.util.Arrays.hashCode(epochDays)
+  override def toString: String = days.mkString("ScreeningDays(", ", ", ")")
+}
+
+object ScreeningDays {
+  val None: ScreeningDays = new ScreeningDays(Array.emptyIntArray)
+  /** The month a performing season opens in. */
+  val SeasonOpens = 7
+  def of(days: Iterable[java.time.LocalDate]): ScreeningDays =
+    if (days.isEmpty) None else new ScreeningDays(days.iterator.map(_.toEpochDay.toInt).toArray.distinct.sorted)
 }
 
 /** A film's id in a cinema chain's own catalogue (`CinemaMovie.externalIds`: Gatsby's "boxoffice",
@@ -97,7 +148,8 @@ object Listing {
     countries     = cm.movie.countries.map(_.trim).filter(_.nonEmpty).distinct.sorted,
     catalogueIds  = CatalogueId.of(cm),
     searchTitle   = Some(normalizer.apiQuery(cm.movie.title).trim).filter(q => q.nonEmpty && q != cm.movie.title.trim),
-    poster        = cm.posterUrl.map(_.trim).filter(_.nonEmpty))
+    poster        = cm.posterUrl.map(_.trim).filter(_.nonEmpty),
+    screenings    = ScreeningDays.of(cm.showtimes.map(_.dateTime.toLocalDate)))
 
   /** The people one director credit names — the listing's own, or its detail page's: PL venues join two in one ("Arash T. Riahi & Verena Soltiz", "Joel Crawford
    *  i Januel Mercado", "Natasha Merkulova, Aleksey Chupov"), which searched as one person found no film. Split only
@@ -169,23 +221,26 @@ object Proposal {
 final case class Evidence(title: String, cleanTitle: String, rawTitle: String, year: Option[Int], directors: Seq[String],
                           runtime: Option[Int], originalTitle: Option[String], countries: Seq[String] = Nil,
                           decorations: TitleDecorations = TitleDecorations.None, searchTitle: Option[String] = None,
-                          proposal: Option[Proposal] = None) {
+                          proposal: Option[Proposal] = None,
+                          /** The season a stage relay billing neither its season nor a year screens in ([[Listing.broadcastSeason]]):
+                           *  what its title is searched with, never a fact it states. */
+                          broadcastSeason: Option[Int] = None) {
   lazy val key: String =
     Seq(title, cleanTitle, rawTitle, year.fold("")(_.toString), directors.sorted.mkString(","),
       runtime.fold("")(_.toString), originalTitle.getOrElse(""), countries.sorted.mkString(",")).mkString("\u0000") +
-      proposal.fold("")(p => "\u0000" + p.key)
+      proposal.fold("")(p => "\u0000" + p.key) + broadcastSeason.fold("")(season => s"\u0000broadcast:$season")
 
   /** The evidence as the calibrated measures read a listing, its title shapes undecorated by the
    *  resolve's learned `decorations` (the same for every listing of a resolve, so not in [[key]]). */
   lazy val measured: IdentityMeasures.Listing =
     IdentityMeasures.Listing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries,
-      decorations = decorations, searchTitles = searchTitle.toSeq, proposal = proposal)
+      decorations = decorations, searchTitles = searchTitle.toSeq, proposal = proposal, broadcastSeason = broadcastSeason)
 
   /** [[measured]] with the title shapes the venue's own delimiters leave, no learned decoration nor search title
    *  stripped: what relates two LISTINGS (their families, title must-links and listing-listing
    *  measures). A learned decoration names a FILM to search for and relate to; it never links a
    *  "Horror Season 2026 Dracula" to every other venue's bare "Dracula". */
-  lazy val published: IdentityMeasures.Listing = measured.copy(decorations = TitleDecorations.None, searchTitles = Nil)
+  lazy val published: IdentityMeasures.Listing = measured.copy(decorations = TitleDecorations.None, searchTitles = Nil, broadcastSeason = None)
 
   /** The year this listing states: its own field, else the one its title brackets. */
   def statedYear: Option[Int] = measured.statedYear
@@ -205,7 +260,9 @@ object Evidence {
     countries     = (if (listing.countries.nonEmpty) listing.countries else detail.map(_.countries).getOrElse(Nil)).distinct.sorted,
     decorations   = decorations,
     searchTitle   = listing.searchTitle,
-    proposal      = proposal)
+    proposal      = proposal,
+    // a year the detail page states dates the relay as a year the venue's own field does
+    broadcastSeason = listing.broadcastSeason.filter(_ => detail.flatMap(_.year).isEmpty))
 }
 
 /** One film a lookup NAMED: a search result or a filmography credit. Only what the list itself

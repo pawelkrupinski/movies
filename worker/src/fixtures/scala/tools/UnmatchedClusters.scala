@@ -208,6 +208,7 @@ object UnmatchedClusters {
       .append("directors", strings(l.directors)).append("countries", strings(l.countries))
       .append("catalogueIds", array(l.catalogueIds.map(c => new BsonDocument("source", new BsonString(c.source)).append("id", new BsonString(c.id)))))
     putInt(d, "year", l.year); putInt(d, "runtime", l.runtime); put(d, "page", l.page); put(d, "originalTitle", l.originalTitle)
+    if (!l.screenings.isEmpty) d.append("screenings", strings(l.screenings.days.map(_.toString)))
     put(d, "searchTitle", l.searchTitle); put(d, "poster", l.poster)
   }
   private def listingOf(d: BsonDocument): Listing = {
@@ -217,7 +218,7 @@ object UnmatchedClusters {
       d.getString("title").getValue, d.getString("cleanTitle").getValue, optInt(d, "year"), stringsOf(d, "directors"), optInt(d, "runtime"),
       opt(d, "page"), opt(d, "originalTitle"), stringsOf(d, "countries"),
       d.getArray("catalogueIds").getValues.asScala.toSeq.map(_.asDocument).map(c => CatalogueId(c.getString("source").getValue, c.getString("id").getValue)),
-      opt(d, "searchTitle"), opt(d, "poster"))
+      opt(d, "searchTitle"), opt(d, "poster"), ScreeningDays.of(stringsOf(d, "screenings").map(java.time.LocalDate.parse)))
   }
   private def queryDoc(q: CandidateQuery): BsonDocument = q match {
     case CandidateQuery.Title(text)       => new BsonDocument("title", new BsonString(text))

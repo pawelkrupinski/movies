@@ -286,6 +286,11 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       _     <- needOf(sole.titleNamesIt || wordsOfIts(sole), "the title does not name its search's only film", sole,
                  s"title=${sole.category("title").getOrElse("absent")}")
       _     <- needOf(!contradicted(sole), "a published fact contradicts it", sole, contradiction(sole))
+      // a director the venue credits is the listing's own fact: a search's only film directed by another, that the title
+      // names only in part, is no answer (PL "Carmen" [2026] {Richard Eyre} and "Carmen: Salzburger Festspiele 2026") —
+      // a film carrying the very title still is (Kino Parczew's "Tedi i magiczna lampa" credits its co-directors)
+      _     <- needOf(!sole.category("director").contains("different") || sole.category("title").exists(IdentityMeasures.Rivalling),
+                 "it credits another director", sole)
       _     <- need(!IdentityMeasures.billsTwoWorks(any.listing), "a double bill")
       _     <- needOf(sole.category("title").exists(IdentityMeasures.Rivalling) || wordsOfIts(sole) ||
                    IdentityMeasures.standsForTheWhole(any.listing, sole.candidate.film),

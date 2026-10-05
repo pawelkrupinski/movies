@@ -29,7 +29,10 @@ object IdentityMeasures {
                            year: Option[Int] = None, runtime: Option[Int] = None, directors: Seq[String] = Nil,
                            countries: Seq[String] = Nil, yearCredits: Option[Seq[String]] = None,
                            decorations: TitleDecorations = TitleDecorations.None, searchTitles: Seq[String] = Nil,
-                           proposal: Option[Proposal] = None) {
+                           proposal: Option[Proposal] = None,
+                           /** The season a stage relay billing neither its season nor a year screens in
+                            *  ([[services.identity.Listing.broadcastSeason]]): searched with its work, never measured. */
+                           broadcastSeason: Option[Int] = None) {
     private def titles: Seq[String] = rawTitle.toSeq :+ title
     /** The directors credited beside the published `year` — one listing's own, unless a pooled
      *  read took its year and its credits from different listings (`yearCredits`). */
@@ -37,7 +40,7 @@ object IdentityMeasures {
     /** The season the title names ("2026/27"), by its first year. */
     lazy val seasonYear: Option[Int] = IdentityMeasures.seasonYear(titles)
     /** A year the venue put in its title as a delimited annotation ("(2026)"), outside any season. */
-    lazy val titleYear: Option[Int] = EmbeddedYear.ofAll(titles.map(IdentityMeasures.withoutSeasons), Int.MaxValue)
+    lazy val titleYear: Option[Int] = IdentityMeasures.titleYearOf(titles)
     /** The venue's own year: its field, else the one its title brackets. */
     def statedYear: Option[Int] = year.orElse(titleYear)
     /** A running time the venue put in its title as a bracketed annotation ("(97’)", "[97 min]"). */
@@ -384,7 +387,9 @@ object IdentityMeasures {
                         countries: Option[Seq[String]] = None, popularity: Option[Double] = None,
                         /** IMDb's title number for the film (tt0064570 → 64570, [[IdentityMeasures.imdbNumber]]), 0 when
                          *  TMDB names none: an Int, not the id, so a model of every candidate's record carries no string. */
-                        imdbNumber: Int = 0) {
+                        imdbNumber: Int = 0,
+                        /** The day TMDB dates its release: a broadcast's air date ([[agreement.Broadcast]]). */
+                        released: Option[java.time.LocalDate] = None) {
     /** Its title, original title and alternative titles, in that order: every derived form below reads these. */
     private[identity] def titles: Seq[String] = Seq(title) ++ originalTitle ++ alternativeTitles
     /** The film's titles and their delimited pieces as yearless tokens, once per record (`billing`). */
@@ -1167,6 +1172,26 @@ object IdentityMeasures {
   private def billedWorks(l: Listing): Seq[String] =
     (Seq(l.title) ++ l.rawTitle).map(t => BillJoin.split(l.decorations.withoutTail(t)).toSeq.map(_.trim).filter(_.nonEmpty)).filter(_.sizeIs > 1).flatten
 
+  /** A year titles put in as a delimited annotation ("(2026)"), outside any season. */
+  def titleYearOf(titles: Seq[String]): Option[Int] = EmbeddedYear.ofAll(titles.map(withoutSeasons), Int.MaxValue)
+
+  /** The stage works ([[StageWorks]]) the titles BILL: a piece naming one whole, or ending in one's name — after its
+   *  composer (DE "Met Opera 2026/27: Camille Saint-Saëns SAMSON ET DALILA") or a house's word run on ("OPERA-MAKBET") —
+   *  or, in a title naming its season (`seasonNamed`), opening with one before a venue's tag ("SAMSON I DALILA-
+   *  RETRANSMISJA"). Never a work a title only opens with otherwise: "Manon des sources" is no broadcast of "Manon". */
+  def stageWorksBilled(titles: Seq[String], seasonNamed: Boolean): Set[String] =
+    titles.flatMap(t => pieces(t) :+ t).flatMap(billedIn(_, seasonNamed)).toSet
+
+  /** A title's delimited pieces, its seasons and bracketed years out. */
+  private[identity] def pieces(title: String): Seq[String] = PieceBreak.split(withoutYears(title)).toSeq.map(_.trim).filter(_.nonEmpty)
+
+  /** The stage works one title piece bills ([[stageWorksBilled]]). */
+  private[identity] def billedIn(piece: String, seasonNamed: Boolean): Set[String] = {
+    val tokens = services.movies.TitleContainment.tokens(piece).toIndexedSeq
+    val runs   = tokens.indices.map(tokens.drop) ++ (if (seasonNamed) (1 until tokens.size).map(tokens.take) else Nil)
+    runs.flatMap(run => StageWorks.resolver.named(run.mkString)).toSet
+  }
+
   /** The stage works ([[StageWorks]]) a listing's title pieces name, in whatever language. */
   def stageWorks(l: Listing): Set[String] =
     (Seq(l.title) ++ l.rawTitle).flatMap(t => PieceBreak.split(withoutYears(t)).toSeq :+ t).map(key).filter(_.nonEmpty)
@@ -1179,7 +1204,8 @@ object IdentityMeasures {
    *  the work alone ranks it below every namesake film. */
   private def stageWorkQueries(l: Listing): Seq[String] =
     if (l.seasonYear.isDefined) Nil
-    else l.year.toSeq.flatMap(year => stageWorks(l).toSeq.sorted.flatMap(StageWorks.resolver.searchName).map(name => s"$name $year"))
+    else l.year.orElse(l.broadcastSeason).toSeq.flatMap(year =>
+      stageWorksBilled(l.rawTitle.toSeq :+ l.title, seasonNamed = false).toSeq.sorted.flatMap(StageWorks.resolver.searchNames).map(name => s"$name $year"))
 
   /** Do the two titles' banners — their pieces naming no work — share a word ([[bannersMeet]])? */
   def bannersMeetOf(l: Listing, f: Film): Boolean = bannersMeet(l.title +: l.rawTitle.toSeq, f.titles)
@@ -1194,8 +1220,10 @@ object IdentityMeasures {
       val works = shapes(seasonTitles).filter(t => seasonYear(Seq(t)).isEmpty).map(withoutYears(_).trim).filter(_.nonEmpty).distinct
       // a work named in another language than the record's is asked for by its search name too ("The Nutcracker 2026")
       // — including one named before a translated subtitle ("Cosi fan tutte. Tak czynią wszystkie"), as the match reads it
-      val translated = works.flatMap(work => (StageWorks.resolver.named(key(work)) ++ StageWorks.resolver.named(key(SentenceStop.split(work, 2).head)))
-        .toSeq.sorted.flatMap(StageWorks.resolver.searchName))
+      // — and by every other name of the work it is filed under, a house's own ("Samson et Dalila 2026"), the work billed
+      // within the piece too ("Camille Saint-Saëns SAMSON ET DALILA")
+      val translated = works.flatMap(work => (StageWorks.resolver.named(key(work)) ++ StageWorks.resolver.named(key(SentenceStop.split(work, 2).head)) ++
+        stageWorksBilled(Seq(work), seasonNamed = true).toSeq).toSeq.sorted.distinct.flatMap(StageWorks.resolver.searchNames))
       (works ++ translated).distinct.map(work => s"$work $season")
     }
 

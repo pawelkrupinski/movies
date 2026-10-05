@@ -81,6 +81,13 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.changed shouldBe Seq(TmdbStore.keyOf(TmdbKind.Film, film.toString))
   }
 
+  it should "keep the day the film was released, not only its year: a broadcast's air date" in {
+    val w = new World
+    w.normalizer.filed("GET", url("credits,release_dates", language), Success(local()))
+    w.normalizer.filed("GET", url("alternative_titles", "en-US"), Success(english))
+    w.lookups.film(film).toOption.flatten.flatMap(_.released) shouldBe Some(java.time.LocalDate.of(2001, 6, 6))
+  }
+
   "a search's hit" should "stand in for a film until its record arrives, then give way to it" in {
     val w = new World
     val search = """{"results":[{"id":1018,"title":"Mulholland Dr.","original_title":"Mulholland Drive","release_date":"2001-06-06","popularity":8.9}]}"""

@@ -32,6 +32,23 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(ls.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(ls.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(558130)))
   }
 
+  "A listing crediting another director than its search's only film" should "not take that film" in {
+    // PL Kino Nowe Horyzonty's "Carmen" [2026] {Richard Eyre}: a search for the opera's name and the year returned only
+    // "Carmen: Salzburger Festspiele 2026", whose director is not Eyre — the sole result took it at 99.4% all the same.
+    val films = Seq(F(1740965, "Carmen: Salzburger Festspiele 2026", 2026, "Gabriela Carrizo", 0, 1))
+    val l = listing(Multikino, "Carmen", Some(2026), Some("Richard Eyre"))
+    val d = shipped(Seq(l), films).decisionOf(l.key)
+    withClue(d.render)(d.film shouldBe None)
+  }
+
+  it should "still take the one film carrying its very title" in {
+    // PL Kino Parczew's "Tedi i magiczna lampa" {Josep Gatell, Manuel Bugue}: TMDB credits Enrique Gato
+    val films = Seq(F(1187326, "Tedi i magiczna lampa", 2026, "Enrique Gato", 0, 5))
+    val l = listing(Multikino, "Tedi i magiczna lampa", director = Some("Josep Gatell"))
+    val d = shipped(Seq(l), films).decisionOf(l.key)
+    withClue(d.render)(d.film shouldBe Some(1187326))
+  }
+
   "A listing that publishes only a film's work, without its subtitle" should "take the film when its director and year are the film's" in {
     // ES, three venues' "Leonas" (2026, Juan Manuel Cotelo, 94 min) is "Leonas, el instinto más
     // salvaje": the calibration read the bare title as a fragment of the record's.

@@ -99,6 +99,25 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.searchQueries(cleaned).filter(_.endsWith(" 2026")) shouldBe Seq("Manon 2026")
   }
 
+  it should "be searched by every name of its work, whatever language the venue names it in" in {
+    // TMDB titles the Met's record "The Metropolitan Opera 2026/27: Samson et Dalila": neither "Samson i dalila 2026"
+    // nor the English "Samson and Delilah 2026" finds it
+    IdentityMeasures.searchQueries(Listing("Samson i dalila | metropolitan opera: live in hd 2026/27")) should contain ("Samson et Dalila 2026")
+    // the work named within a piece: after its composer (DE), before the venue's tag (PL)
+    IdentityMeasures.searchQueries(Listing("Met Opera 2026/27: Camille Saint-Saëns SAMSON ET DALILA")) should contain ("Samson et Dalila 2026")
+    IdentityMeasures.searchQueries(Listing("OPERA 2026/2027 - SAMSON I DALILA- RETRANSMISJA")) should contain ("Samson et Dalila 2026")
+  }
+
+  "a stage work billed with neither its season nor a year" should "be searched by its work's names and the season it is broadcast in" in {
+    // PL Kino Amok's "Samson i Dalila", Kino Powiśle's "OPERA-MAKBET - retransmisja", screening in the 2026/27 season
+    IdentityMeasures.searchQueries(Listing("Samson i Dalila", broadcastSeason = Some(2026))) should contain allOf ("Samson et Dalila 2026", "Samson and Delilah 2026")
+    IdentityMeasures.searchQueries(Listing("Opera-makbet - retransmisja", broadcastSeason = Some(2026))) should contain ("Macbeth 2026")
+    // with no broadcast season, no season is searched
+    IdentityMeasures.searchQueries(Listing("Samson i Dalila")).exists(_.endsWith(" 2026")) shouldBe false
+    // a work only contained mid-title, or opening a title naming no season, is no stage work billed: "Manon des sources"
+    IdentityMeasures.searchQueries(Listing("Manon des sources", broadcastSeason = Some(2026))).exists(_.endsWith(" 2026")) shouldBe false
+  }
+
   "a double bill" should "search each work on its own" in {
     // PL Kinoteka's "Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi": TMDB finds
     // no record by the whole bill, so the one its first work names was never a candidate, and the
