@@ -255,9 +255,11 @@ object CorpusCensus {
  *  `screenable`, for `unresolved_with_showtimes`. A venue slot with no showtime start is in neither: it screens nothing. */
 final class FilmCensus private (val subsets: Int, val ready: Boolean, val cinemaSlots: Int,
                                 private val bySource: Map[Source, SlotCensus], val cards: Seq[Seq[SlotCensus]],
-                                val screenable: Seq[SlotCensus]) {
+                                val screenable: Seq[SlotCensus], private val anchor: Option[String]) {
   /** The part of the slot at `source`, if the film holds one there. */
   private[metrics] def partAt(source: Source): Option[SlotCensus] = bySource.get(source)
+  /** Whether this part holds `other`'s very map of slot parts. */
+  private[metrics] def sameSlots(other: FilmCensus): Boolean = bySource eq other.bySource
 }
 
 object FilmCensus {
@@ -267,20 +269,24 @@ object FilmCensus {
     val record   = stored.record
     val subsets  = CorpusCensus.StaticSubsets.indices.foldLeft(0)((bits, i) =>
       if (CorpusCensus.StaticSubsets(i)._2(record)) bits | (1 << i) else bits)
-    val bySource = record.data.iterator.flatMap { case (source, slot) =>
-      Source.cinemaOf(source).map { cinema =>
-        source -> prior.flatMap(_.bySource.get(source)).filter(_.slot eq slot).getOrElse(SlotCensus(slot, cinema, normalizer))
-      }
-    }.toMap
-    val screening = bySource.valuesIterator.filter(_.starts.nonEmpty).toSeq
-    val ready     = record.readyToProject
-    val cards     =
-      if (!ready) Nil
-      else {
-        val anchor = ReadModelProjection.anchorKeyOf(stored.asReadBack(normalizer), normalizer)
-        screening.filter(_.city.isDefined).groupBy(_.titleKey.getOrElse(anchor)).values.toSeq
-      }
-    new FilmCensus(subsets, ready, bySource.size, bySource, cards, if (ready) Nil else screening)
+    // Over the prior part's own map: only a slot that is not the object it held is derived again and put in, and a film
+    // whose slots all are keeps the map, its title groups and its screenable slots — derived anew on every change of a
+    // film, they were kept until its next one, so promoted and left to die old.
+    val held     = prior.fold(Map.empty[Source, SlotCensus])(_.bySource)
+    val cinemas  = record.data.iterator.collect { case (source, slot) if Source.cinemaOf(source).isDefined => source -> slot }.toSeq
+    val gone     = held.keysIterator.filterNot(record.data.contains).toSeq
+    val bySource = cinemas.foldLeft(if (gone.isEmpty) held else held -- gone) { case (map, (source, slot)) =>
+      if (map.get(source).exists(_.slot eq slot)) map else map.updated(source, SlotCensus(slot, Source.cinemaOf(source).get, normalizer))
+    }
+    val ready    = record.readyToProject
+    val anchor   = Option.when(ready)(ReadModelProjection.anchorKeyOf(stored.asReadBack(normalizer), normalizer))
+    prior.filter(p => (p.bySource eq bySource) && p.ready == ready && p.anchor == anchor) match {
+      case Some(p) => new FilmCensus(subsets, ready, bySource.size, bySource, p.cards, p.screenable, anchor)
+      case None =>
+        val screening = bySource.valuesIterator.filter(_.starts.nonEmpty).toSeq
+        val cards     = anchor.fold(Seq.empty[Seq[SlotCensus]])(a => screening.filter(_.city.isDefined).groupBy(_.titleKey.getOrElse(a)).values.toSeq)
+        new FilmCensus(subsets, ready, bySource.size, bySource, cards, if (ready) Nil else screening, anchor)
+    }
   }
 }
 

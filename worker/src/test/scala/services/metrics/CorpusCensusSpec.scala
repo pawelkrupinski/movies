@@ -252,6 +252,21 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     next.cards.flatten.size shouldBe 1
   }
 
+  // A film the cache wraps anew with the slots it held — an echo, a write elsewhere on the record — derived its part's
+  // maps and title groups whole again, each kept until the film's next change: promoted and left to die old (worker-us
+  // heap dump 2026-10-05: census parts were the largest named holder of dead map nodes and lists).
+  it should "keep its slots' map and title groups, the very objects, when no slot moved" in {
+    val record = ready(Helios, 1, tomorrow).copy(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("x"), showtimes = Seq(Showtime(tomorrow, bookingUrl = None))),
+      KinoApollo -> SourceData(title = Some("x"), showtimes = Seq(Showtime(tomorrow, bookingUrl = None)))))
+    val stored = row("Kept", record)
+    val prior  = FilmCensus.of(stored, normalizer, None)
+    val again  = FilmCensus.of(stored.copy(record = record.copy(metascore = Some(70))), normalizer, Some(prior))
+    prior.cards.flatten.size shouldBe 2
+    (again.cards eq prior.cards) shouldBe true
+    (again.sameSlots(prior)) shouldBe true
+  }
+
   // ── A venue across a zone line from its city ─────────────────────────────────────────────────────
 
   // Key Twin Russell Springs keeps Central time inside Somerset, KY (Eastern). The web judges its showtimes started on
