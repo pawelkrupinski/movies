@@ -211,14 +211,16 @@ object IdentityMeasures {
    *  listing puts on the work, spelt as the record spells it or learned to be it (`Houses.same`)?
    *  "NT Live: The Misanthrope" and "National Theatre Live: The Misanthrope" do — by any of the
    *  record's titles, its "National Theatre at Home" alternative aside ([[billings]]); a record titled
-   *  the work alone ("The Misanthrope") bills no house at all. Never for a listing naming a season:
-   *  a season names its production (`namesSeasonProduction`), and a season-free record is not a
-   *  "MetOpera 2025-26" listing's. A season's record is a season-free listing's only when the
+   *  the work alone ("The Misanthrope") bills no house at all. A listing naming a season takes only a
+   *  record naming none — one naming a season is `namesSeasonProduction`'s to read — whose year the
+   *  season spans (`ListingConstraints.seasonsApart` denies the rest): TMDB's US title of the Met's
+   *  2026 Così is "The Metropolitan Opera: Così fan tutte", which US "Met Opera 2026-27: Così fan
+   *  tutte" ×356 is. A season's record is a season-free listing's only when the
    *  listing's banner spells the house ([[spellsItsHouse]]): TMDB filing the Paris Opera's works only
    *  under the Met's 2026/27 records teaches the Paris banner to be the Met. And not a banner numbering its edition otherwise than the record's: a
    *  house's name carries no number ("League of Legends Worlds 26" is not "… Worlds25"). */
   def billsUnderItsHouse(listing: Listing, film: Film, houses: Houses): Boolean =
-    listing.seasonYear.isEmpty &&
+    (listing.seasonYear.isEmpty || filmSeason(film).isEmpty) &&
       billings(listing, film).exists(billed => houses.same(billed) && numbersIn(billed.listingHouse) == numbersIn(billed.filmHouse) &&
         (filmSeason(film).isEmpty || spellsItsHouse(billed)))
   /** Does the listing's banner SPELL the record's house — two of its words or more ("Royal Ballet and

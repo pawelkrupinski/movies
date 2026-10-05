@@ -148,6 +148,26 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "take its house's record of the work dated in its season, when TMDB's title of it names no season" in {
+    // US Flicks' "Met Opera 2026-27: Così fan tutte" {The Metropolitan Opera} ×356 (recording 37216285654): TMDB's
+    // US title of the Met's 2026 Così is "The Metropolitan Opera: Così fan tutte" (1703620, twelfth in the search),
+    // naming no season, so no season production was found; Royal Ballet & Opera's 2026/27 Così ranks first and is
+    // another house's. The banner is the Met's by the season records of its other works.
+    val films = Seq(F(1703620, "The Metropolitan Opera: Così fan tutte", 2026, "Phelim McDermott", 0, 1),
+      F(1702775, "Royal Ballet & Opera 2026/27: Così fan tutte", 2027, "", 0, 20),
+      F(455831, "The Metropolitan Opera: Così fan tutte", 2018, "Phelim McDermott", 200, 3),
+      F(551689, "Così fan tutte", 1989, "Peter Sellars", 240, 8),
+      F(1703629, "The Metropolitan Opera 2026/27: La Fanciulla del West", 2027, "", 0, 2),
+      F(1703622, "The Metropolitan Opera 2026/27: Macbeth", 2026, "", 0, 2))
+    val cosi   = listing(Multikino, "Met Opera 2026-27: Così fan tutte", None, Some("The Metropolitan Opera"))
+    val others = Seq(listing(Multikino, "Met Opera 2026-27: La Fanciulla del West"), listing(Multikino, "Met Opera 2026-27: Macbeth"))
+    val r = shipped(cosi +: others, films)
+    withClue((cosi +: others).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(cosi.key).film shouldBe Some(1703620)
+      others.map(l => r.decisionOf(l.key).film) shouldBe Seq(Some(1703629), Some(1703622))
+    }
+  }
+
   it should "not take a sequel whose title runs on from a film the listing names exactly" in {
     val films = Seq(F(346364, "It", 2017, "Andy Muschietti", 135, 60), F(474350, "It: Chapter Two", 2019, "Andy Muschietti", 169, 50))
     val l = listing(Multikino, "It")

@@ -341,8 +341,11 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // A record of one SEASON's broadcast names its production by the season, which the listing does not.
     IdentityMeasures.billsUnderItsHouse(Listing("Opéra National de Paris: La fanciulla del West"),
       Film("The Metropolitan Opera 2026/27: La Fanciulla del West"), houses) shouldBe false
-    // ... nor, the other way round, a record naming no season for a listing that names one.
+    // A listing naming a season takes its house's record naming none (seasonsApart bounds its year), but never one
+    // naming a season: that is the season rule's to read.
     IdentityMeasures.billsUnderItsHouse(Listing("MetOpera 2025-26: La Sonnambula"), Film("The Metropolitan Opera: La Sonnambula"),
+      Houses(Map("metopera" -> "themetropolitanopera"))) shouldBe true
+    IdentityMeasures.billsUnderItsHouse(Listing("MetOpera 2025-26: La Sonnambula"), Film("The Metropolitan Opera 2024/25: La Sonnambula"),
       Houses(Map("metopera" -> "themetropolitanopera"))) shouldBe false
     // A banner numbering its edition otherwise than the record's is another edition.
     IdentityMeasures.billsUnderItsHouse(Listing("League of Legends Worlds 26 | Finals in Cinema"),
