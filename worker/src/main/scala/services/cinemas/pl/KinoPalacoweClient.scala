@@ -231,7 +231,10 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
 
     if (filmUrl.isEmpty || ticketType != 2) None
     else {
-      val rawTitle  = (entry \ "title").asOpt[String].getOrElse("")
+      // what follows the pipe is a cycle ("Słodkie życie | Federico Fellini: ciao a tutti!") or, under a lecture series'
+      // banner, the FILM ("Akademia Polskiego Filmu: Gatunki międzywojnia: Melodramat | Znachor"): the card keeps the
+      // head, the raw title all of it, for the resolver to read
+      val rawTitle  = (entry \ "title").asOpt[String].getOrElse("").trim
       val baseTitle = rawTitle.split(" \\| ").head.trim
       val title     = KinoPalacoweClient.cleanTitle(baseTitle, titles)
       val startDate = (entry \ "start_date").asOpt[String]
@@ -254,7 +257,7 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
                         .orElse(lead.flatMap(runtimeFromProse))
         ScreeningEntry(
           movieTitle     = title,
-          rawTitle       = baseTitle,
+          rawTitle       = rawTitle,
           dateTime       = dateTime,
           posterUrl      = photoPath.map(path => if (path.startsWith("http")) path else s"$BaseUrl$path"),
           filmUrl        = filmUrl,

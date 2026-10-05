@@ -3499,7 +3499,7 @@ showings:
 
 === K-popowe łowczynie demonów ===
 displayTitle:      K-popowe łowczynie demonów
-cinemaTitles:      K- POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW: KARAOKE | K-Popowe Łowczynie Demonów | K-Popowe Łowczynie Demonów (seans z napisami karaoke) | K-popowe Łowczynie Demonów: Karaoke | K-popowe Łowczynie demonów | K-popowe łowczynie demonów | K-popowe łowczynie demonów | w wersji karaoke | K-popowe łowczynie demonów: Karaoke | K-popowe łowczynie demonów: karaoke
+cinemaTitles:      K- POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW: KARAOKE | K-Popowe Łowczynie Demonów | K-Popowe Łowczynie Demonów (seans z napisami karaoke) | K-popowe Łowczynie Demonów: Karaoke | K-popowe Łowczynie Demonów: Karaoke na żywo przed seansem | K-popowe Łowczynie demonów | K-popowe łowczynie demonów | K-popowe łowczynie demonów | w wersji karaoke | K-popowe łowczynie demonów: Karaoke | K-popowe łowczynie demonów: karaoke
 runtimeMinutes:    96
 releaseYear:       2025
 countries:         USA, Kanada
@@ -3634,7 +3634,7 @@ showings:
 
 === K-popowe Łowczynie Demonów: Karaoke ===
 displayTitle:      K-popowe Łowczynie Demonów: Karaoke
-cinemaTitles:      K- POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW: KARAOKE | K-Popowe Łowczynie Demonów | K-Popowe Łowczynie Demonów (seans z napisami karaoke) | K-popowe Łowczynie Demonów: Karaoke | K-popowe Łowczynie demonów | K-popowe łowczynie demonów | K-popowe łowczynie demonów | w wersji karaoke | K-popowe łowczynie demonów: Karaoke | K-popowe łowczynie demonów: karaoke
+cinemaTitles:      K- POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW | K-POPOWE ŁOWCZYNIE DEMONÓW: KARAOKE | K-Popowe Łowczynie Demonów | K-Popowe Łowczynie Demonów (seans z napisami karaoke) | K-popowe Łowczynie Demonów: Karaoke | K-popowe Łowczynie Demonów: Karaoke na żywo przed seansem | K-popowe Łowczynie demonów | K-popowe łowczynie demonów | K-popowe łowczynie demonów | w wersji karaoke | K-popowe łowczynie demonów: Karaoke | K-popowe łowczynie demonów: karaoke
 runtimeMinutes:    96
 releaseYear:       2025
 countries:         USA, Kanada
@@ -5490,7 +5490,7 @@ showings:
 
 === Monterey Pop ===
 displayTitle:      Monterey Pop
-cinemaTitles:      Klasyka w kinie Atlantic: Monterey Pop | MONTEREY POP | Monterey Pop | Monterey Pop | DKF
+cinemaTitles:      "Monterey Pop" z prelekcją Piotra Metza | Klasyka w kinie Atlantic: Monterey Pop | MONTEREY POP | Monterey Pop | Monterey Pop | DKF
 runtimeMinutes:    78
 releaseYear:       1968
 countries:         USA
@@ -5519,6 +5519,7 @@ cinemaScrapes:
   Kino Apollo / Monterey Pop / —
   Kino Atlantic / Klasyka w kinie Atlantic: Monterey Pop / 1968
   Kino Awangarda 2 / Monterey Pop / —
+  Kino Kultura / "Monterey Pop" z prelekcją Piotra Metza / —
   Kino Pionier 1907 / MONTEREY POP / 1968
   Kino Rialto / MONTEREY POP / 1968
   KinoPort / Monterey Pop / 1968

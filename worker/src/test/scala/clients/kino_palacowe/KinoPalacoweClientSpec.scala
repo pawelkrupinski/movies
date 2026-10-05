@@ -47,6 +47,11 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
     )
   }
 
+  it should "keep what the venue bills after its title's pipe as the raw title" in {
+    // the cycle after the pipe here; for an "Akademia Polskiego Filmu: Gatunki międzywojnia: Melodramat | Znachor" the FILM
+    results.find(_.movie.title == "Słodkie życie").flatMap(_.movie.rawTitle) shouldBe Some("Słodkie życie | Federico Fellini: ciao a tutti!")
+  }
+
   // ── Runtime (all movies) ──────────────────────────────────────────────────
 
   it should "return correct runtime for every movie" in {
