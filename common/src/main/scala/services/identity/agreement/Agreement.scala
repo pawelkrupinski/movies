@@ -147,6 +147,14 @@ object Agreement {
   val Takers = 1
   /** The listing's own published year and director, crediting the film the takers took: a vote of the venue's own. */
   val ListingFacts = "listing"
+  /** The listings' own running time — within [[RuntimeSlack]] minutes of a taker's record on every listing stating one —
+   *  beside their crediting the film ([[ListingFacts]]): the venue's second vote, so one family's take its year,
+   *  director and running time all credit is agreed. Replayed on the unmatched clusters (2026-10-05): DE "Pettersson und
+   *  Findus Mitmachkino 2" (IMDb alone, its record undated: the three directors and 59 minutes the venues bill) right,
+   *  none wrong. Never a vote alone — IMDb's take of a K-pop tour film its venues bill at its running time, with no
+   *  director, is left to the rules for event films. */
+  val ListingRuntime = "runtime"
+  val RuntimeSlack = 5
   /** At least [[WidelyBilled]] venues billing the cluster's title, and the film released this year or last: a current
    *  release, not a one-off event an older namesake fits. */
   val Venues = "venues"
@@ -190,7 +198,7 @@ object Agreement {
 
   /** The film the families' evidence, pooled, agrees on: ≥ [[Takers]] families take it (picks join, through any agreeing
    *  record, by a shared cross-id, else by [[equivalent]] facts), and with the families leaning to it and what
-   *  corroborates it ([[ListingFacts]], [[ModelLean]], [[Venues]]) it holds ≥ [[Quorum]] — that plus one for each family
+   *  corroborates it ([[ListingFacts]], [[ListingRuntime]], [[ModelLean]], [[Venues]]) it holds ≥ [[Quorum]] — that plus one for each family
    *  taking another film the listing's title names. No listing's own year or director rules out a taker's record
    *  (DE "Der kleine Maulwurf", the venues' 1968 Miler, not IMDb's and Wikidata's 2011 compilation); no family weighed
    *  it and took none leaning to another; the listing's title
@@ -230,7 +238,7 @@ object Agreement {
     val merged  = lead.record.copy(crossIds = records.flatMap(_.crossIds).toMap ++ lead.record.crossIds)
     def isIt(record: SourceRecord) = records.exists(sameFilm(_, record))
     val leaning = verdicts.filter(verdict => verdict.pick.isEmpty && verdict.leaning.exists(isIt)).map(_.family).toSet
-    val corroborated = Set(ListingFacts).filter(_ => creditedByTheListing(listings, records)) ++ Set(ModelLean).filter(_ => modelLean.exists(isIt)) ++
+    val corroborated = listingVotes(listings, records) ++ Set(ModelLean).filter(_ => modelLean.exists(isIt)) ++
       Set(Venues).filter(_ => listings.map(_.venue).distinct.size >= WidelyBilled &&
         thisYear.exists(year => records.flatMap(_.film.year).maxOption.exists(_ >= year - 1)))
     // weighed and turned down for another film its evidence favours — weighed among films it favours none of is no
@@ -244,17 +252,26 @@ object Agreement {
       turnedDown)
   }
 
-  /** Do the listings credit the film themselves: every listing publishing a year and a director credits one of the
-   *  takers' records — the same person directing, within a year — and one does? DE "Die Story von Joanna", Damiano's
-   *  in 1975 by the venue's own page, is the 1975 film Wikidata and Filmweb took. */
-  private def creditedByTheListing(listings: Seq[Listing], records: Seq[SourceRecord]): Boolean = {
+  /** What the listings' own facts vote for the takers' records: [[ListingFacts]] when every listing publishing a year
+   *  and a director credits one of them — the same person directing, within a year — and one does (DE "Die Story von
+   *  Joanna", Damiano's in 1975 by the venue's own page, is the 1975 film Wikidata and Filmweb took); with
+   *  [[ListingRuntime]] beside it when the running times agree too, and then a record dating the film nowhere is credited
+   *  by its director and running time (DE "Pettersson und Findus Mitmachkino 2"). */
+  private def listingVotes(listings: Seq[Listing], records: Seq[SourceRecord]): Set[String] = {
+    val runs  = runsAsTheListing(listings, records)
     val dated = listings.filter(listing => listing.year.isDefined && listing.directors.nonEmpty)
     def credits(listing: Listing) = records.exists { record =>
-      record.film.year.zip(listing.year).exists { case (a, b) => math.abs(a - b) <= 1 } &&
+      (record.film.year.zip(listing.year).exists { case (a, b) => math.abs(a - b) <= 1 } || (runs && record.film.year.isEmpty)) &&
         record.film.directors.exists(directors => directors.nonEmpty &&
           IdentityMeasures.directorRelation(listing.directors, directors) == IdentityMeasures.Category("same_person"))
     }
-    dated.nonEmpty && dated.forall(credits)
+    if (dated.isEmpty || !dated.forall(credits)) Set.empty else Set(ListingFacts) ++ Option.when(runs)(ListingRuntime)
+  }
+
+  /** Does every listing stating a running time run within [[RuntimeSlack]] minutes of a record's, and one state it? */
+  private def runsAsTheListing(listings: Seq[Listing], records: Seq[SourceRecord]): Boolean = {
+    val timed = listings.filter(_.runtime.isDefined)
+    timed.nonEmpty && timed.forall(listing => records.exists(_.film.runtime.zip(listing.runtime).exists { case (a, b) => math.abs(a - b) <= RuntimeSlack }))
   }
 
   /** Does a listing's own year (more than one apart) or director (another person in the same script, sharing no name's

@@ -172,6 +172,29 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna")), two, modelLean = Some(lean.copy(crossIds = Map("imdb" -> "tt0000001")))) shouldBe None
   }
 
+  "The listing's own year, director and running time" should "complete one taker's agreement, as two votes of the venue's own" in {
+    // DE "Pettersson und Findus Mitmachkino 2" (fixture identity-unmatched): IMDb alone takes it, its record dating it
+    // nowhere; the venues credit its three directors and its 59 minutes
+    val mitmachkino = SourceRecord(IdentityMeasures.Film("Pettersson und Findus Mitmachkino 2", None, Nil, None, Some(59), Some(Seq("Dirk Hampel")),
+      None, None), Map("imdb" -> "tt41600591"))
+    val imdb = Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Imdb, "tt41600591", mitmachkino)))
+    def billed(year: Option[Int] = Some(2024), director: Option[String] = Some("Dirk Hampel"), runtime: Option[Int] = Some(59)) =
+      Seq(listing(KinoMuza, "Pettersson und Findus Mitmachkino 2", year, director, runtime))
+    Agreement.agreed(billed(), imdb).map(_.corroborated) shouldBe Some(Set(Agreement.ListingFacts, Agreement.ListingRuntime))
+    Agreement.agreed(billed(runtime = Some(75)), imdb) shouldBe None
+    Agreement.agreed(billed(runtime = None), imdb) shouldBe None
+    Agreement.agreed(billed(director = Some("Jess Franco")), imdb) shouldBe None
+    Agreement.agreed(billed(director = None), imdb) shouldBe None
+    // a record dating the film ten years before the venue does is not it; one within a year is
+    val dated = (year: Int) => Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Imdb, "tt41600591",
+      mitmachkino.copy(film = mitmachkino.film.copy(year = Some(year))))))
+    Agreement.agreed(billed(), dated(2014)) shouldBe None
+    Agreement.agreed(billed(), dated(2023)).map(_.corroborated) shouldBe Some(Set(Agreement.ListingFacts, Agreement.ListingRuntime))
+    // the running time alone is no vote: it counts only beside the venue's crediting the director
+    val widely = Seq(models.KinoMuza, models.KinoApollo, models.Rialto).map(listing(_, "Pettersson und Findus Mitmachkino 2", runtime = Some(59)))
+    Agreement.agreed(widely, dated(2026), thisYear = Some(2026)) shouldBe None
+  }
+
   "Venues billing the title widely" should "complete two takers' agreement on a current film, unless a listing's facts rule it out" in {
     // UK/US "Festive Fun with Peppa Cinema Experience" (fixture identity-unmatched): IMDb and RT take the 2026 event film,
     // billed by over a hundred venues each; a one-venue "Zamki na piasku" has only its two takers

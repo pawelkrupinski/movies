@@ -3,15 +3,15 @@ pl	GOK Promyk	Norymberga	tmdb:1214931	filmweb, imdb, wiki, corroborated by venue
 pl	Kasyno Oficerskie	Pianista - Kino Konesera	tmdb:423	imdb, filmweb, wiki leaning to it agree on 'The Pianist' (2002) tt0253474
 pl	Kino Goplana	Sukienka	tmdb:737496	Sukienka (2020)
 pl	Kino Grajfka	Klondike	tmdb:913760	Klondike (2022)
-pl	Kino Kika	DOBRY CHŁOPIEC	tmdb:1381027	filmweb, wiki, imdb leaning to it agree on 'Dobry chłopiec' (2025) tt34381258
+pl	Kino Kika	DOBRY CHŁOPIEC	tmdb:1381027	filmweb, imdb, wiki agree on 'Heel' (2025) tt34381258
 pl	Kino Kolory	DKF: Wieloryb	tmdb:785084	imdb, filmweb, wiki leaning to it agree on 'The Whale' (2022) tt13833688
 pl	Kino Sokół	SKRZYŻOWANIE - 50 na 51 - spotkanie z Janem Englertem	tmdb:1207497	Skrzyżowanie (2025)
 pl	Kino Sokół Nisko	Lalka	tmdb:1321666	Lalka (2026)
 pl	Kino Spektrum	Akademia Polskiego Filmu: Znachor (1937) | Gatunki międzywojnia II: melodramat	tmdb:293920	imdb, filmweb, wiki leaning to it agree on 'Znachor' (1937) tt0031008
 pl	Kino Starówka	WAJDA: re-wizje: BEZ ZNIECZULENIA | 15+	tmdb:42199	Bez znieczulenia (1978)
 pl	Kino za Rogiem Brusy	Norymberga	tmdb:1214931	filmweb, imdb, wiki, corroborated by venues agree on 'Nuremberg' (2025) tt29567915
-pl	Kino za Rogiem Cafe	Dobry chłopiec	tmdb:1381027	filmweb, wiki, imdb leaning to it agree on 'Dobry chłopiec' (2025) tt34381258
-pl	Kino za Rogiem Cafe	Dobry chłopiec	tmdb:1381027	filmweb, wiki, imdb leaning to it agree on 'Dobry chłopiec' (2025) tt34381258
+pl	Kino za Rogiem Cafe	Dobry chłopiec	tmdb:1381027	filmweb, imdb, wiki agree on 'Heel' (2025) tt34381258
+pl	Kino za Rogiem Cafe	Dobry chłopiec	tmdb:1381027	filmweb, imdb, wiki agree on 'Heel' (2025) tt34381258
 pl	Kino za Rogiem w Siedlcu	Norymberga	tmdb:1214931	filmweb, imdb, wiki, corroborated by venues agree on 'Nuremberg' (2025) tt29567915
 pl	Kino Światowid Elbląg	AKW: Blisko	tmdb:901563	Blisko (2022)
 pl	Kino Światowid Elbląg	AKW: Powoli	tmdb:1058642	Powoli (2023)
@@ -194,14 +194,21 @@ uk	Vue Cinemas York	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imd
 uk	Vue Edinburgh Ocean Terminal	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 uk	Vue Edinburgh Omni Centre	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 de	Acud Kino	Die Unbeugsamen	tmdb:317055	Непокорённые (1945)
+de	Apollo Hannover	Pettersson und Findus Mitmachkino 2	imdb:tt41600591	imdb, corroborated by listing, runtime agree on 'Pettersson und Findus Mitmachkino 2' tt41600591
+de	Burgtheater Ratzeburg	Pettersson und Findus Mitmachkino 2	imdb:tt41600591	imdb, corroborated by listing, runtime agree on 'Pettersson und Findus Mitmachkino 2' tt41600591
 de	Cine K Oldenburg	Fantasy	tmdb:1318829	Fantasy (2026)
-de	Cinema Quadrat e.V.	Ghost School	tmdb:1516456	filmweb, imdb, rt, wiki, corroborated by listing agree on 'Ghost School' (2025) tt37547768
+de	Cinema Quadrat e.V.	Ghost School	tmdb:1516456	filmweb, imdb, rt, wiki, corroborated by listing, runtime agree on 'Ghost School' (2025) tt37547768
 de	Cineplex Marburg	Kleine Geheimnisse	tmdb:47387	Familienausflug mit kleinen Geheimnissen (2002)
+de	Filmtheater Schauburg	Pettersson und Findus Mitmachkino 2	imdb:tt41600591	imdb, corroborated by listing, runtime agree on 'Pettersson und Findus Mitmachkino 2' tt41600591
 de	Forum 2 - Kulturverein Olympiadorf e.V.	Die Unbeugsamen	tmdb:317055	Непокорённые (1945)
 de	Kino Cafe Trauma	Command Performance	tmdb:23404	Command Performance (2009)
 de	Kino im Druckluft	Maria's Lovers	tmdb:77985	Maria's Lovers (1984)
-de	Kommunales Kino Pforzheim	Mittwoch	imdb:tt0276336	filmweb, imdb, corroborated by listing agree on 'Mittwoch' (2000) tt0276336
+de	Kommunales Kino Esslingen	Pettersson und Findus Mitmachkino 2	imdb:tt41600591	imdb, corroborated by listing, runtime agree on 'Pettersson und Findus Mitmachkino 2' tt41600591
+de	Kommunales Kino Pforzheim	Mittwoch	imdb:tt0276336	filmweb, imdb, corroborated by listing, runtime agree on 'Mittwoch' (2000) tt0276336
+de	Kronenlichtspiele	Pettersson und Findus Mitmachkino 2	imdb:tt41600591	imdb, corroborated by listing, runtime agree on 'Pettersson und Findus Mitmachkino 2' tt41600591
 de	Moviemento	Die Story von Joanna	tmdb:333621	filmweb, wiki, corroborated by listing agree on 'Die Story von Joanna' (1975) tt0073750
+de	Museum-Lichtspiele München	Pettersson und Findus Mitmachkino 2	imdb:tt41600591	imdb, corroborated by listing, runtime agree on 'Pettersson und Findus Mitmachkino 2' tt41600591
+de	Woki	Pettersson und Findus Mitmachkino 2	imdb:tt41600591	imdb, corroborated by listing, runtime agree on 'Pettersson und Findus Mitmachkino 2' tt41600591
 us	Alamo Drafthouse Cedars Dallas	Spider Baby	tmdb:28504	Spider Baby (1967)
 us	Alamo Drafthouse Indianapolis	Scrooge	tmdb:13765	Scrooge (1970)
 us	Alamo Drafthouse Indianapolis	Student Bodies	tmdb:21515	Student Bodies (1981)
