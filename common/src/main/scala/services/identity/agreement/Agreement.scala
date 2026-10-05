@@ -236,7 +236,7 @@ object Agreement {
       val dissent = named.filterNot(_.exists(pick => film.agreed.families(pick.family))).map(_.size).sum
       Option.when(film.support >= Quorum + dissent + film.turnedDown && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
         !film.records.take(film.agreed.families.size).exists(contradictedByTheListing(listings, _)) &&
-        listings.forall(listing => !billsSeveral(listing) && !stagesAWork(listing)))(film.agreed)
+        listings.forall(listing => !billsSeveral(listing) && (!stagesAWork(listing) || screenAdaptation(listings, film.agreed))))(film.agreed)
     }
   }
 
@@ -398,6 +398,24 @@ object Agreement {
     // the work billed within a piece too: run into a house's word ("OPERA-COSI FAN TUTTE"), after its composer
     IdentityMeasures.stageWorksBilled(titles, IdentityMeasures.seasonYear(titles).isDefined).nonEmpty ||
       titles.map(title => IdentityMeasures.Listing(title, Some(listing.rawTitle).filter(_ != title))).exists(IdentityMeasures.stageWorks(_).nonEmpty)
+  }
+
+  /** May a listing naming a stage work show the agreed film, a SCREEN ADAPTATION of it, after all? No listing bills a
+   *  house or a season ([[billsAHouse]]), TMDB's own evidence weighs the film best ([[ModelVote]]: the model's lean or
+   *  best candidate is it) and its record is no house's season production. US "MOTHER!": Wikidata takes Aronofsky's
+   *  film, Metacritic leans to it and so does the model — "Mother" is also an opera's name. "OPERA-COSI FAN TUTTE" and
+   *  "ReTransmisje Met: … Così fan tutte" bill a house, so Tinto Brass's film stays no relay's. */
+  private def screenAdaptation(listings: Seq[Listing], film: AgreedFilm): Boolean =
+    film.corroborated(ModelVote) && !listings.exists(billsAHouse) && IdentityMeasures.filmSeason(film.record.film).isEmpty
+
+  /** Words a billing names a stage house, a relay or a stage show by. */
+  private val HouseWords = Set("opera", "opery", "oper", "operze", "met", "metropolitan", "ballet", "balet", "baletu", "bolshoi", "bolszoj",
+    "royal", "teatr", "teatru", "theatre", "theater", "nt", "live", "retransmisja", "retransmisje", "transmisja", "relay", "season", "sezon",
+    "musical", "stage", "scena", "rbo", "roh", "hd", "glyndebourne", "scala", "staatsoper")
+  /** Does the listing bill a house, a relay or a season ("OPERA-MAKBET - retransmisja", "Met Opera 2026/27: …")? */
+  def billsAHouse(listing: Listing): Boolean = {
+    val titles = Seq(listing.title, listing.cleanTitle, listing.rawTitle).distinct
+    IdentityMeasures.seasonYear(titles).isDefined || titles.exists(title => TitleContainment.tokens(title).exists(HouseWords))
   }
 
   private val Bill   = """(?i)double bill|double feature|podw[oó]jny seans|zestaw""".r

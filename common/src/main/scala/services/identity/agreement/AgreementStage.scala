@@ -136,6 +136,9 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         // the posters vote once the families reached a verdict that takes no film: none agreed, or a poster vetoed it
         val now = verdict.fold(decision) { v =>
           v.agreed.fold[AgreementStage.Take](AgreementStage.Take.Untaken)(taken(decision, _, finding, distances)) match {
+            // a screen adaptation agreed for a listing naming a stage work ([[Agreement.agreed]]) yields to the relay its
+            // screening days name: PL Kino Amok's bare "Manon" on the Met's broadcast day is the Met's, not Clouzot's
+            case AgreementStage.Take.Taken(agreed) if listings.exists(Agreement.stagesAWork) => broadcast(decision, id, digest, listings).getOrElse(agreed)
             case AgreementStage.Take.Taken(agreed) => agreed
             case AgreementStage.Take.Pending       => decision
             case AgreementStage.Take.Vetoed        => posterVetoed += 1; voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings))

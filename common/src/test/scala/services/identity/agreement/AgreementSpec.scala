@@ -291,6 +291,28 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(Seq(relay), Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(f => FamilyVerdict.took(FamilyPick(f, "1", SourceRecord(brass))))) shouldBe None
   }
 
+  it should "agree on a screen adaptation when no listing bills a house and TMDB's own evidence weighs the film best" in {
+    // US "MOTHER!" (fixture identity-unmatched): Wikidata takes Aronofsky's film, Metacritic leans to it, and the model's
+    // best candidate is it; "Mother" is also an opera's name, but nothing in the billing names a house or a season
+    val mother = SourceRecord(film("mother!", 2017, "Darren Aronofsky", 121), Map("imdb" -> "tt5109784", "tmdb" -> "381283"))
+    val voters = Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Wiki, "Q1", mother)),
+      FamilyVerdict(VoterFamily.Metacritic, None, Seq(mother), leaning = Some(mother)))
+    val bare   = listing(KinoMuza, "MOTHER!")
+    Agreement.stagesAWork(bare) shouldBe true
+    Agreement.agreed(Seq(bare), voters, modelVote = Some(mother)).map(_.record.film.title) shouldBe Some("mother!")
+    // without the model's vote the families alone take no stage work's namesake; a house billed keeps it a relay
+    Agreement.agreed(Seq(bare), voters) shouldBe None
+    val brass  = SourceRecord(film("Così fan tutte", 1992, "Tinto Brass"), Map("tmdb" -> "45"))
+    val takers = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(f => FamilyVerdict.took(FamilyPick(f, "1", brass)))
+    Agreement.agreed(Seq(listing(KinoMuza, "OPERA-COSI FAN TUTTE")), takers, modelVote = Some(brass)) shouldBe None
+    Agreement.agreed(Seq(listing(KinoMuza, "ReTransmisje Met: Na żywo w HD - Così fan tutte")), takers, modelVote = Some(brass)) shouldBe None
+    Agreement.agreed(Seq(listing(KinoMuza, "Così fan tutte")), takers, modelVote = Some(brass)) should not be empty
+    // a house's season record is the relay itself, never a screen adaptation
+    val season = SourceRecord(film("The Metropolitan Opera 2026/27: Così fan tutte", 2026, "Phelim McDermott"), Map("tmdb" -> "1703620"))
+    Agreement.agreed(Seq(listing(KinoMuza, "Così fan tutte")), Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb)
+      .map(f => FamilyVerdict.took(FamilyPick(f, "1", season))), modelVote = Some(season)) shouldBe None
+  }
+
   "A family's questions" should "fetch a hit's record only if its search ranked it first or its title shares a word, and at most six" in {
     val asked = scala.collection.mutable.ArrayBuffer.empty[String]
     val hits  = Seq(SourceHit("a", "Something Else", None, None), SourceHit("b", "Klondike Gold", None, None),

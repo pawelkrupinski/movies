@@ -2558,3 +2558,10 @@ filed each under retrieval, scoring, a guard, or the agreement. What it added, e
 - **An event a "+" joins to the film is no second work** (`Agreement.billsSeveral` reads `billsTwoWholeWorks`, the
   model's own rule, in place of any spaced "+"): PL "11. UFF - Gala otwarcia + Demony", which IMDb and Filmweb take.
   Ratchet: +1 listing, 1 film, 0 wrong (the venue posters the newly open clusters show filed by the fill spec).
+- **A screen adaptation of a stage work** (`Agreement.screenAdaptation`): a listing naming a stage work vetoed every
+  agreement (`stagesAWork`), its screen namesakes included. It no longer does when no listing bills a house, a relay or
+  a season (`billsAHouse`), the model's own lean or best candidate is the agreed film (`ModelVote`) and its record is no
+  season production — US "MOTHER!", PL "Pasażerka - … pokaz filmu + dyskusja". A relay the cluster's screening days name
+  ([[Broadcast]]) still wins over such an agreement: PL Kino Amok bills the Met's "Manon" bare, and Wikidata and Filmweb
+  take Clouzot's (the ratchet's one wrong without that). "OPERA-COSI FAN TUTTE" bills a house: never Tinto Brass's.
+  Ratchet: +2 listings, 2 films, 0 wrong.
