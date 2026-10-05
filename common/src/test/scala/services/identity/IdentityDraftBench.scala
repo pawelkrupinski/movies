@@ -11,7 +11,10 @@ import java.time.{Instant, LocalDateTime}
 object IdentityDraftBench {
   // `sbt "common/Test/runMain services.identity.IdentityDraftBench 8 300 <dir> [adopt]"` projects 8 ticks, re-reading 300 venues
   // a tick, scopes after the first as production does, and writes class histograms of the state kept between ticks to
-  // <dir> (optional); a trailing `whole` projects the whole corpus every tick.
+  // <dir> (optional); a trailing `whole` projects the whole corpus every tick. `shifts=N` moves N rows a tick (200);
+  // `churn=N` runs N young collections of garbage after each tick, as the ~2 minutes between two of worker-us's light
+  // projections do, and prints what each tick left promoted to the old generation — run it with production's collector
+  // and heap (`-XX:+UseSerialGC -Xms1152m -Xmx1152m`).
   private val normalizer = SingleCountryNormalizer.titleNormalizer
   private val slots      = new CinemaSlotBuilder(Country.Poland.language, new StringPool)
   private val tokens     = ScreeningTokens.of(Country.Poland)
@@ -87,8 +90,22 @@ object IdentityDraftBench {
       moved = Set.empty
       venueSeqs.toSeq
     }
+    val shifts   = args.collectFirst { case s"shifts=$n" => n.toInt }.getOrElse(200)
+    val churnGcs = args.collectFirst { case s"churn=$n" => n.toInt }
+    import scala.jdk.CollectionConverters.*
+    val beans   = java.lang.management.ManagementFactory.getGarbageCollectorMXBeans.asScala.filter(_.getName == "Copy")
+    def youngCollections(): Long = beans.map(_.getCollectionCount).sum
+    val tenured = java.lang.management.ManagementFactory.getMemoryPoolMXBeans.asScala.find(_.getName == "Tenured Gen").orNull
+    var tenuredBefore = Option(tenured).fold(0L)(_.getUsage.getUsed)
+    var sink: Array[Byte] = null
+    // The heap, unreachable objects included, before any collection: what the ticks since the last full collection
+    // promoted and left to die in the old generation is the difference of two of these, by class.
+    def heapNow(name: String): Unit = args.lift(2).filterNot(a => a == "whole" || a == "adopt" || a == "decoded" || a == "-" || a.contains("=")).foreach { dir =>
+      new ProcessBuilder("jcmd", ProcessHandle.current.pid.toString, "GC.class_histogram", "-all")
+        .redirectOutput(new java.io.File(s"$dir/$name.txt")).start().waitFor(); ()
+    }
     (1 to ticks).foreach { tick =>
-      if (tick > 2) rng.shuffle(rows.keys.toSeq).take(200).foreach { k =>
+      if (tick > 2) rng.shuffle(rows.keys.toSeq).take(shifts).foreach { k =>
         shift(k) = tick; moved += k._2
         val l = Listing.of(k._2, cm(k._2, k._1, tick), normalizer)
         modelled += l.key -> l
@@ -125,12 +142,21 @@ object IdentityDraftBench {
       println(f"  written ${writtenS}%.3fs ${writtenMB}%.0fMB")
       shapes.commit(whole = scope.whole)
       lastOk   = true
+      churnGcs.foreach { gcs =>
+        val until = youngCollections() + gcs
+        while (youngCollections() < until) sink = new Array[Byte](4096)
+        val now = tenured.getUsage.getUsed
+        println(f"  promoted ${(now - tenuredBefore) / 1e6}%.1f MB")
+        tenuredBefore = now
+        if (tick == 3) heapNow("afterTick3")
+      }
     }
+    if (churnGcs.isDefined) heapNow("afterTicks")
     // Retained heap: what each piece of kept state holds beyond the listings, rows and stored records the
     // worker keeps anyway (those stay reachable below).
     def used(): Long = { (1 to 4).foreach { _ => System.gc(); Thread.sleep(200) }; val r = Runtime.getRuntime; r.totalMemory - r.freeMemory }
     val all = used()
-    def histogram(name: String): Unit = args.lift(2).filterNot(a => a == "whole" || a == "adopt" || a == "decoded" || a == "-").foreach { dir =>
+    def histogram(name: String): Unit = args.lift(2).filterNot(a => a == "whole" || a == "adopt" || a == "decoded" || a == "-" || a.contains("=")).foreach { dir =>
       val out = new ProcessBuilder("jcmd", ProcessHandle.current.pid.toString, "GC.class_histogram").redirectOutput(new java.io.File(s"$dir/$name.txt")).start()
       out.waitFor(); ()
     }
