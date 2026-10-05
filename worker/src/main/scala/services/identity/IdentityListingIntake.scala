@@ -2,7 +2,7 @@ package services.identity
 
 import models.{Cinema, CinemaMovie, VenueClock}
 import services.movies.{ListingKey, ScrapeGuardLedger, ScrapeGuardState, ListingIntakeMetrics, ScrapeSink, TitleNormalizer}
-import services.scrapes.{ScrapeArchiveRepository, ScrapeAttempt}
+import services.scrapes.{LeanListing, ScrapeArchiveRepository, ScrapeAttempt}
 
 import java.time.Clock
 import scala.util.{Failure, Success, Try}
@@ -52,7 +52,25 @@ final class IdentityListingIntake(
 
   /** [[listings]] without a showtime (each film's `Nil`): what the identity model takes up, which reads none. Left on
    *  the server, they were ~11 CPU-s of a US boot's take-up decoding them (`ShowtimeCodec.read`, JFR). */
-  def identities(live: Seq[Cinema]): Seq[(Cinema, Seq[CinemaMovie])] = read(live, lean = true)
+  def identities(live: Seq[Cinema]): Seq[(Cinema, Seq[CinemaMovie])] = {
+    // The boot's take-up reads, row for row, what the projection's first read would read whole: until the projection
+    // has read for itself, the rows are kept for it too ([[Held.seed]]), and its first read is by stamp, re-reading
+    // only what moved since. Read twice, the boot decoded the archives twice within seconds (worker-us: ~100k
+    // listings each time, beside the model's take-up).
+    val boot = heldLock.synchronized(calls == 0)
+    val (accepted, archived) = (Vector.newBuilder[LeanListing], Vector.newBuilder[LeanListing])
+    val listings = read(live, lean = true, onAccepted = if (boot) accepted += _ else _ => (), onArchived = if (boot) archived += _ else _ => ())
+    if (boot) heldLock.synchronized {
+      if (calls == 0 && listings.nonEmpty) {
+        def project(rows: Seq[LeanListing]) = rows.map(row => row.cinema -> (row.at, row.films.map {
+          case (cm, showtimes) => ProjectedListing.of(Listing.of(row.cinema, cm, normalizer), cm, showtimes) }))
+        heldAccepted.seed(project(accepted.result()))
+        heldArchived.seed(project(archived.result()))
+        calls = 1
+      }
+    }
+    listings
+  }
 
   /** [[listings]] as the projection holds them: each listing without its row or showtimes, only their digests
    *  ([[ProjectedListing]]), each venue's rows reduced as its page is read.
@@ -122,11 +140,12 @@ final class IdentityListingIntake(
   def rowsOf(venues: Set[Cinema]): Map[Cinema, Seq[CinemaMovie]] = listings(venues.toSeq).toMap
 
   /** Each venue of `live` publishing something, with its listing: its accepted one, else the archive's; `lean`: without showtimes. */
-  private def read(live: Seq[Cinema], lean: Boolean): Seq[(Cinema, Seq[CinemaMovie])] = {
+  private def read(live: Seq[Cinema], lean: Boolean, onAccepted: LeanListing => Unit = _ => (),
+                   onArchived: LeanListing => Unit = _ => ()): Seq[(Cinema, Seq[CinemaMovie])] = {
     val wanted          = live.toSet
     val values          = new ListingValuePool
-    val acceptedByVenue = IdentityListingIntake.lastListings(accepted, wanted, values, lean)
-    val archivedByVenue = IdentityListingIntake.lastListings(archive, c => wanted(c) && !acceptedByVenue.contains(c), values, lean)
+    val acceptedByVenue = IdentityListingIntake.lastListings(accepted, wanted, values, lean, onAccepted)
+    val archivedByVenue = IdentityListingIntake.lastListings(archive, c => wanted(c) && !acceptedByVenue.contains(c), values, lean, onArchived)
     live.distinct.sortBy(_.displayName).flatMap(c => acceptedByVenue.get(c).orElse(archivedByVenue.get(c)).flatten.map(c -> _))
   }
 
@@ -214,6 +233,11 @@ object IdentityListingIntake {
       entries.map { case (name, entry) => name -> entry.listings }
     }
 
+    /** Hold `rows` — each venue read whole, with its row's stamp and its listings — as a whole read would have. */
+    def seed(rows: Seq[(Cinema, (java.time.Instant, Seq[ProjectedListing]))]): Unit =
+      entries = rows.iterator.map { case (cinema, (at, listings)) =>
+        cinema.displayName -> Entry(cinema, Some(at), Option.when(listings.nonEmpty)(listings)) }.toMap
+
     /** Each held venue with the model's object for a listing it holds the same; a venue with none to take is kept as is. */
     def adopt(modelled: Map[ListingKey, Listing]): Unit =
       entries = entries ++ entries.iterator.filterNot(_._2.adopted).map { case (name, entry) =>
@@ -243,11 +267,18 @@ object IdentityListingIntake {
   /** Each `keep` venue's last successful listing in `repository`, scanned a page at a time, its values held
    *  in `values` (`None`: it listed nothing) — `lean`, without showtimes; empty when the scan could not complete. */
   private def lastListings(repository: ScrapeArchiveRepository, keep: Cinema => Boolean, values: ListingValuePool,
-                           lean: Boolean): Map[Cinema, Option[Seq[CinemaMovie]]] = {
+                           lean: Boolean, onRow: LeanListing => Unit): Map[Cinema, Option[Seq[CinemaMovie]]] = {
     val byVenue = Map.newBuilder[Cinema, Option[Seq[CinemaMovie]]]
-    def add(cinema: Cinema, films: Seq[CinemaMovie]): Unit = byVenue += cinema -> Option.when(films.nonEmpty)(films.map(values.film))
+    def add(cinema: Cinema, films: Seq[CinemaMovie]): Seq[CinemaMovie] = {
+      val pooled = films.map(values.film)
+      byVenue += cinema -> Option.when(films.nonEmpty)(pooled)
+      pooled
+    }
     val complete =
-      if (lean) repository.scanLean(keep)(_.foreach(row => add(row.cinema, row.films.map(_._1))))
+      if (lean) repository.scanLean(keep)(_.foreach { row =>
+        val pooled = add(row.cinema, row.films.map(_._1))
+        onRow(LeanListing(row.cinema, row.at, pooled.zip(row.films.map(_._2))))
+      })
       else repository.scanVenues(keep)(_.foreach(row => row.lastSuccess.foreach(s => add(row.cinema, s.films))))
     if (complete.isComplete) byVenue.result() else Map.empty
   }

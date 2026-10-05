@@ -62,6 +62,28 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     w.project() shouldBe ((w.whole, 1))                        // Helios, and Helios alone
   }
 
+  // A boot's take-up reads every venue's listing (`identities`) seconds before the first projection reads them whole:
+  // the same rows decoded twice (worker-us: ~100k listings each time). The take-up's read is the projection's first.
+  it should "take its first read from the model's take-up, reading again only what moved since" in {
+    val w = new World
+    w.archive.store(Multikino, clock.instant(), film(Multikino, "Lalka", 0, 1))
+    w.archive.store(Helios, clock.instant(), film(Helios, "Diuna", 2))
+    w.accepted.store(KinoApollo, clock.instant(), film(KinoApollo, "Obcy", 3))
+    w.intake.identities(live).map(_._1).toSet shouldBe Set(Multikino, Helios, KinoApollo)
+    w.project() shouldBe ((w.whole, 0))                        // nothing moved since the take-up: no row read
+    w.archive.store(Helios, clock.instant().plusSeconds(60), film(Helios, "Diuna", 2, 4))
+    w.project() shouldBe ((w.whole, 1))                        // Helios, and Helios alone
+  }
+
+  it should "keep its own read when the model is taken up again later" in {
+    val w = new World
+    w.archive.store(Multikino, clock.instant(), film(Multikino, "Lalka", 0, 1))
+    w.project() shouldBe ((w.whole, 1))
+    w.archive.store(Multikino, clock.instant().plusSeconds(60), film(Multikino, "Lalka", 0, 1, 2))
+    w.intake.identities(live)                                  // a rebuild's take-up: not the projection's read
+    w.project() shouldBe ((w.whole, 1))                        // the projection's stamp still sees Multikino moved
+  }
+
   it should "see an accepted listing filed at the same instant as the one it holds" in {
     val w = new World
     w.archive.store(Multikino, clock.instant(), film(Multikino, "Lalka", 0, 1))
