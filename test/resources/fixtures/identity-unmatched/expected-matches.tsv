@@ -1,39 +1,47 @@
 country	venue	rawTitle	film	title
-pl	GOK Promyk	Norymberga	tmdb:1214931	filmweb, imdb, wiki, corroborated by venues agree on 'Nuremberg' (2025) tt29567915
-pl	Kasyno Oficerskie	Pianista - Kino Konesera	tmdb:423	imdb, filmweb, wiki leaning to it agree on 'The Pianist' (2002) tt0253474
+pl	GOK Promyk	Norymberga	tmdb:1214931	Norymberga (2025)
+pl	Helios Solaris	Mroki - Kino Konesera - 24. FFOL	tmdb:1710676	Mroki (2026)
+pl	Kasyno Oficerskie	Pianista - Kino Konesera	tmdb:423	Pianista (2002)
+pl	Kino CKiB Nowa Sarzyna	Lalka	tmdb:1321666	Lalka (2026)
 pl	Kino Goplana	Sukienka	tmdb:737496	Sukienka (2020)
 pl	Kino Grajfka	Klondike	tmdb:913760	Klondike (2022)
+pl	Kino Kadr (Tomaszowski Dom Kultury)	Lalka	tmdb:1321666	Lalka (2026)
+pl	Kino Kadr Staszów	Lalka	tmdb:1321666	Lalka (2026)
 pl	Kino Kika	DOBRY CHŁOPIEC	tmdb:1381027	filmweb, imdb, wiki agree on 'Heel' (2025) tt34381258
 pl	Kino Kolory	DKF: Wieloryb	tmdb:785084	imdb, filmweb, wiki leaning to it agree on 'The Whale' (2022) tt13833688
 pl	Kino Sokół	SKRZYŻOWANIE - 50 na 51 - spotkanie z Janem Englertem	tmdb:1207497	Skrzyżowanie (2025)
 pl	Kino Sokół Nisko	Lalka	tmdb:1321666	Lalka (2026)
-pl	Kino Spektrum	Akademia Polskiego Filmu: Znachor (1937) | Gatunki międzywojnia II: melodramat	tmdb:293920	imdb, filmweb, wiki leaning to it agree on 'Znachor' (1937) tt0031008
+pl	Kino Spektrum	Akademia Polskiego Filmu: Znachor (1937) | Gatunki międzywojnia II: melodramat	tmdb:293920	Znachor (1937)
 pl	Kino Starówka	WAJDA: re-wizje: BEZ ZNIECZULENIA | 15+	tmdb:42199	Bez znieczulenia (1978)
-pl	Kino za Rogiem Brusy	Norymberga	tmdb:1214931	filmweb, imdb, wiki, corroborated by venues agree on 'Nuremberg' (2025) tt29567915
+pl	Kino za Rogiem Brusy	Norymberga	tmdb:1214931	Norymberga (2025)
 pl	Kino za Rogiem Cafe	Dobry chłopiec	tmdb:1381027	filmweb, imdb, wiki agree on 'Heel' (2025) tt34381258
 pl	Kino za Rogiem Cafe	Dobry chłopiec	tmdb:1381027	filmweb, imdb, wiki agree on 'Heel' (2025) tt34381258
-pl	Kino za Rogiem w Siedlcu	Norymberga	tmdb:1214931	filmweb, imdb, wiki, corroborated by venues agree on 'Nuremberg' (2025) tt29567915
+pl	Kino za Rogiem w Siedlcu	Norymberga	tmdb:1214931	Norymberga (2025)
 pl	Kino Światowid Elbląg	AKW: Blisko	tmdb:901563	Blisko (2022)
 pl	Kino Światowid Elbląg	AKW: Powoli	tmdb:1058642	Powoli (2023)
 pl	Kino Żak	Filmowa Bryza czyli Pomorze w Kadrze: Ostatni dzień lata	tmdb:227245	Ostatni dzień lata (1958)
 pl	Kinoteka	Ghost in the shell	tmdb:9323	Ghost in the Shell (1995)
-pl	Multikino Bydgoszcz	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
-pl	Multikino Gdańsk	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
-pl	Multikino Katowice	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
-pl	Multikino Kielce	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
-pl	Multikino Kraków	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
-pl	Multikino Lublin	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
-pl	Multikino Młociny	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
-pl	Multikino Olsztyn	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
-pl	Multikino Pasaż Grunwaldzki	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
-pl	Multikino Rzeszów	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
-pl	Multikino Stary Browar	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
-pl	Multikino Szczecin	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
-pl	Multikino Tychy	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
-pl	Multikino Zabrze	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
-pl	Multikino Złote Tarasy	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
-pl	Multikino Łódź	Fallen Angels by Noël Coward	tmdb:1702350	imdb, rt, corroborated by venues agree on 'Fallen Angels' (2026) tt42921285
+pl	Multikino Bydgoszcz	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Angels (2026)
+pl	Multikino Gdańsk	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Angels (2026)
+pl	Multikino Katowice	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Angels (2026)
+pl	Multikino Kielce	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Angels (2026)
+pl	Multikino Kraków	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Angels (2026)
+pl	Multikino Lublin	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Angels (2026)
+pl	Multikino Młociny	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Angels (2026)
+pl	Multikino Olsztyn	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Angels (2026)
+pl	Multikino Pasaż Grunwaldzki	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Angels (2026)
+pl	Multikino Rzeszów	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Angels (2026)
+pl	Multikino Stary Browar	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Angels (2026)
+pl	Multikino Szczecin	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Angels (2026)
+pl	Multikino Tychy	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Angels (2026)
+pl	Multikino Zabrze	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Angels (2026)
+pl	Multikino Złote Tarasy	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Angels (2026)
+pl	Multikino Łódź	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Angels (2026)
+pl	Terminal Kultury Gocław	Binti Edukacja Młode Horyzonty	tmdb:577285	Binti (2019)
+pl	Terminal Kultury Gocław	Fritzi – przyjaźń bez granic Edukacja Młode Horyzonty	tmdb:586943	Fritzi - przyjaźń bez granic (2019)
 uk	Depot Lewes	EXHIBITION ON SCREEN: Caravaggio	tmdb:1496903	rt, wiki, imdb leaning to it agree on 'Caravaggio' (2025) tt38351366
+uk	Depot Lewes	NT Live: All My Sons (2026)	tmdb:1620001	National Theatre Live: All My Sons (2026)
+uk	IMAX at Glasgow Science Centre	Ocean Odyssey	tmdb:987793	Ocean Odyssey (2021)
 uk	Lumiere Romford	Once Upon A Time in America	tmdb:311	Once Upon a Time in America (1984)
 uk	Odeon Birmingham New Street	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 uk	Odeon Cabot Circus	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
@@ -194,26 +202,35 @@ uk	Vue Cinemas York	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imd
 uk	Vue Edinburgh Ocean Terminal	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 uk	Vue Edinburgh Omni Centre	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 de	Acud Kino	Die Unbeugsamen	tmdb:317055	Непокорённые (1945)
-de	Apollo Hannover	Pettersson und Findus Mitmachkino 2	imdb:tt41600591	imdb, corroborated by listing, runtime agree on 'Pettersson und Findus Mitmachkino 2' tt41600591
-de	Burgtheater Ratzeburg	Pettersson und Findus Mitmachkino 2	imdb:tt41600591	imdb, corroborated by listing, runtime agree on 'Pettersson und Findus Mitmachkino 2' tt41600591
+de	Apollo Hannover	Pettersson und Findus Mitmachkino 2	tmdb:1624916	Lustiges Pettersson und Findus Mitmachkino 2 (2026)
+de	Burgtheater Ratzeburg	Pettersson und Findus Mitmachkino 2	tmdb:1624916	Lustiges Pettersson und Findus Mitmachkino 2 (2026)
 de	Cine K Oldenburg	Fantasy	tmdb:1318829	Fantasy (2026)
-de	Cinema Quadrat e.V.	Ghost School	tmdb:1516456	filmweb, imdb, rt, wiki, corroborated by listing, runtime agree on 'Ghost School' (2025) tt37547768
+de	Cinema Quadrat e.V.	Ghost School	tmdb:1516456	گوسٹ اسکول (2026)
 de	Cineplex Marburg	Kleine Geheimnisse	tmdb:47387	Familienausflug mit kleinen Geheimnissen (2002)
-de	Filmtheater Schauburg	Pettersson und Findus Mitmachkino 2	imdb:tt41600591	imdb, corroborated by listing, runtime agree on 'Pettersson und Findus Mitmachkino 2' tt41600591
+de	Filmtheater Schauburg	Pettersson und Findus Mitmachkino 2	tmdb:1624916	Lustiges Pettersson und Findus Mitmachkino 2 (2026)
 de	Forum 2 - Kulturverein Olympiadorf e.V.	Die Unbeugsamen	tmdb:317055	Непокорённые (1945)
 de	Kino Cafe Trauma	Command Performance	tmdb:23404	Command Performance (2009)
 de	Kino im Druckluft	Maria's Lovers	tmdb:77985	Maria's Lovers (1984)
-de	Kommunales Kino Esslingen	Pettersson und Findus Mitmachkino 2	imdb:tt41600591	imdb, corroborated by listing, runtime agree on 'Pettersson und Findus Mitmachkino 2' tt41600591
+de	Kommunales Kino Esslingen	Pettersson und Findus Mitmachkino 2	tmdb:1624916	Lustiges Pettersson und Findus Mitmachkino 2 (2026)
 de	Kommunales Kino Pforzheim	Mittwoch	imdb:tt0276336	filmweb, imdb, corroborated by listing, runtime agree on 'Mittwoch' (2000) tt0276336
-de	Kronenlichtspiele	Pettersson und Findus Mitmachkino 2	imdb:tt41600591	imdb, corroborated by listing, runtime agree on 'Pettersson und Findus Mitmachkino 2' tt41600591
+de	Kronenlichtspiele	Pettersson und Findus Mitmachkino 2	tmdb:1624916	Lustiges Pettersson und Findus Mitmachkino 2 (2026)
 de	Moviemento	Die Story von Joanna	tmdb:333621	filmweb, wiki, corroborated by listing agree on 'Die Story von Joanna' (1975) tt0073750
-de	Museum-Lichtspiele München	Pettersson und Findus Mitmachkino 2	imdb:tt41600591	imdb, corroborated by listing, runtime agree on 'Pettersson und Findus Mitmachkino 2' tt41600591
-de	Woki	Pettersson und Findus Mitmachkino 2	imdb:tt41600591	imdb, corroborated by listing, runtime agree on 'Pettersson und Findus Mitmachkino 2' tt41600591
+de	Museum-Lichtspiele München	Pettersson und Findus Mitmachkino 2	tmdb:1624916	Lustiges Pettersson und Findus Mitmachkino 2 (2026)
+de	Woki	Pettersson und Findus Mitmachkino 2	tmdb:1624916	Lustiges Pettersson und Findus Mitmachkino 2 (2026)
+us	Alamo Drafthouse Brooklyn	The City of The Dead	tmdb:39890	The City of the Dead (1960)
+us	Alamo Drafthouse Cedars Dallas	A Prayer for the Dying	tmdb:1241046	A Prayer for the Dying (2026)
 us	Alamo Drafthouse Cedars Dallas	Spider Baby	tmdb:28504	Spider Baby (1967)
+us	Alamo Drafthouse Downtown LA	A Prayer for the Dying	tmdb:1241046	A Prayer for the Dying (2026)
+us	Alamo Drafthouse Downtown LA	The Scout	tmdb:1403519	The Scout (2026)
 us	Alamo Drafthouse Indianapolis	Scrooge	tmdb:13765	Scrooge (1970)
 us	Alamo Drafthouse Indianapolis	Student Bodies	tmdb:21515	Student Bodies (1981)
-us	Alamo Drafthouse Indianapolis	THE BRIDE OF FRANKENSTEIN	tmdb:229	imdb, metacritic, rt, wiki agree on 'Bride of Frankenstein' (1935) tt0026138
+us	Alamo Drafthouse Indianapolis	THE BRIDE OF FRANKENSTEIN	tmdb:229	Bride of Frankenstein (1935)
+us	Alamo Drafthouse Lower Manhattan	A Prayer for the Dying	tmdb:1241046	A Prayer for the Dying (2026)
+us	Alamo Drafthouse Raleigh	A Prayer for the Dying	tmdb:1241046	A Prayer for the Dying (2026)
 us	Alamo Drafthouse Raleigh	Spider Baby	tmdb:28504	Spider Baby (1967)
+us	Alamo Drafthouse Sloans Lake	A Prayer for the Dying	tmdb:1241046	A Prayer for the Dying (2026)
+us	Alamo Drafthouse South Lamar	A Prayer for the Dying	tmdb:1241046	A Prayer for the Dying (2026)
+us	Alamo Drafthouse Wrigleyville	A Prayer for the Dying	tmdb:1241046	A Prayer for the Dying (2026)
 us	Alamo Drafthouse Wrigleyville	Lady Frankenstein	tmdb:3122	Lady Frankenstein (1971)
 us	Century Corpus Christi 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 us	Cinemark Allen 16	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
@@ -316,10 +333,15 @@ us	Cinemark West Plano 20	Festive Fun with Peppa Cinema Experience	imdb:tt466660
 us	Cinemark West Springfield 15	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 us	Cinemark Western Hills 14	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 us	Cinemark Willowbrook Mall	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Enzian Theater	Exhibition on Screen: Rembrandt	tmdb:527092	Rembrandt: From the National Gallery, London and Rijksmuseum, Amsterdam (2018)
+us	Fleet Science Center IMAX	Volcanoes 3D	tmdb:556541	Volcanoes: The Fires of Creation (2018)
 us	Galaxy Theatres Gig Harbour	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 us	Galaxy Theatres Green Valley	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 us	Galaxy Theatres Riverbank	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	Glenwood Arts Theater	Exhibition on Screen: John Singer Sargent	tmdb:1220518	John Singer Sargent: Fashion and Swagger (2024)
 us	Harkins Gateway Pavilions 18	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+us	OMNIMAX Theatre – Robert D. Lindner Family	Volcanoes 3D	tmdb:556541	Volcanoes: The Fires of Creation (2018)
+us	Putnam Museum & Science Center	Penguin Island	tmdb:1678907	Penguin Island (2026)
 us	Regal Arnot Mall Horseheads	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 us	Regal Avalon Alpharetta	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 us	Regal Barkley Village Bellingham	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063

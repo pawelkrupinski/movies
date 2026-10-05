@@ -101,12 +101,12 @@ uk	Brewery Arts Centre Kendal	Funny Girl - The Musical	imdb:tt37775809	right	rec
 uk	IMAX at Glasgow Science Centre	Ocean Odyssey	imdb:tt14727208	right	recall target: Ocean Odyssey
 uk	Lumiere Romford	Once Upon A Time in America	imdb:tt0087843	right	recall target: Once Upon A Time in America
 us	Fleet Science Center IMAX	Volcanoes 3D	imdb:tt6164238	right	recall target: Volcanoes
-us	Alamo Drafthouse Downtown LA	The Scout	imdb:tt0111094	right	recall target: The Scout
+us	Alamo Drafthouse Downtown LA	The Scout	imdb:tt0111094	wrong	judged 10-05: drafthouse.com's schedule bills it first-run, "a day in the life of a location scout for a TV show" — Paula Gonzalez-Nasser's 2026 film, whose TMDB poster the venue's matches at 2 bits
 us	Alamo Drafthouse Indianapolis	MOTHER!	imdb:tt5109784	right	recall target: Mother!
 us	Lakewood Ranch Cinemas 6	A Night at the Opera	imdb:tt0026778	right	recall target: A Night at the Opera
 us	Enzian Theater	Exhibition on Screen: Rembrandt	imdb:tt6449472	right	recall target: Rembrandt
 us	Alamo Drafthouse Stone Oak	Last Shot	imdb:tt7641334	right	recall target: Last Shot
-us	Alamo Drafthouse Lower Manhattan	A Prayer for the Dying	imdb:tt0093771	right	recall target: A Prayer for the Dying
+us	Alamo Drafthouse Lower Manhattan	A Prayer for the Dying	imdb:tt0093771	wrong	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
 pl	Kino CKiB Nowa Sarzyna	Lalka	imdb:tt0064570	wrong	must not: the 2026 film; 1968 film's id carried
 pl	Kino CK Lublin	Lalka	imdb:tt0064570	wrong	must not: the 2026 film; 1968 film's id carried
 pl	Kino Kadr Staszów	Lalka	imdb:tt0064570	wrong	must not: the 2026 film; 1968 film's id carried
@@ -316,8 +316,8 @@ uk	*	We’re Going On A Bear Hunt + The Tiger Who Came To Tea	tmdb:644120	wrong	
 us	*	A Night at the Opera	filmweb:31509	right	hand label: Noc w operze (1935) Sam Wood; Edmund Goulding
 us	*	A Night at the Opera	tmdb:37719	right	hand label: A Night at the Opera (1935) Sam Wood; Edmund Goulding
 us	*	A Night at the Opera	tmdb:44919	wrong	hand label: The Old Maid (1939) Edmund Goulding
-us	*	A Prayer for the Dying	filmweb:7794	right	hand label: Modlitwa za konających (1987) Mike Hodges
-us	*	A Prayer for the Dying	metacritic:a-prayer-for-the-dying	wrong	hand label: A Prayer for the Dying (2026) Dara Van Dusen
+us	*	A Prayer for the Dying	filmweb:7794	wrong	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
+us	*	A Prayer for the Dying	metacritic:a-prayer-for-the-dying	right	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
 us	*	DEVO: RESTORATIONS AND REVELATIONS - Collected Film Works 1976-1984	filmweb:1214	wrong	hand label: Indiana Jones i Świątynia Zagłady (1984) Steven Spielberg
 us	*	Exhibition on Screen: John Singer Sargent	rt:exhibition_on_screen_john_singer_sargent_fashion_and_swagger	right	hand label: Exhibition on Screen: John Singer Sargent - Fashion & Swagger (2024) David Bickerstaff
 us	*	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	right	hand label: Festive Fun with Peppa Cinema Experience (2026)
@@ -345,7 +345,7 @@ us	*	TOMORROW X TOGETHER World Tour 'ACT : TOMORROW'	tmdb:1688795	right	hand lab
 us	*	The City of The Dead	filmweb:36590	right	hand label: Miasto umarłych (1960) John Llewellyn Moxey
 us	*	The City of The Dead	rt:the_city_of_the_dead	wrong	hand label: The City of the Dead () Sérgio Tréfaut
 us	*	The City of The Dead	tmdb:39890	right	hand label: Horror Hotel (1960) John Llewellyn Moxey
-us	*	The Scout	metacritic:the-scout	wrong	hand label: The Scout (2026) Paula González-Nasser
+us	*	The Scout	metacritic:the-scout	right	judged 10-05: drafthouse.com's schedule bills it first-run, "a day in the life of a location scout for a TV show" — Paula Gonzalez-Nasser's 2026 film, whose TMDB poster the venue's matches at 2 bits
 us	*	Volcanoes 3D	filmweb:213781	wrong	hand label: Volcanoes (1955)
 us	*	Volcanoes 3D	tmdb:1028378	wrong	hand label: Serengeti (2022) Michael Dalton-Smith
 de	*	Chasing Hope – Der andere Blick	wikidata:Q141603679	right	hand label: Chasing Hope – Der andere Blick (2026) Sandra Kaudelka
@@ -361,7 +361,7 @@ es	*	Carmen (OPERA LIVE)	tmdb:450170	wrong	hand label: Carmen (1921) Ernesto Vol
 pl	*	11. UFF - Dowżenko. Pierwsze spojrzenie	tmdb:1483101	right	hand label: Dowżenko. Pierwsze spojrzenie (2026) Konstantin Konovalov
 pl	*	Akademia Polskiego Filmu: W kręgu kina "społecznie użytecznego"	tmdb:409746	right	hand label: Strachy (1938) Eugeniusz Cękalski
 pl	*	Akademia Polskiego Filmu: Zimowy zmierzch + Harmonia | Wiatr odnowy - kino epoki Października	tmdb:259998	right	hand label: Zimowy zmierzch (1957) Stanisław Lenartowicz
-pl	*	Binti Edukacja Młode Horyzonty	tmdb:855156	right	hand label: Binti (2021) Seko Shamte
+pl	*	Binti Edukacja Młode Horyzonty	tmdb:855156	wrong	judged 10-05: biletyna's page (the venue's) is the Belgian Binti — a teenage immigrant in Belgium who dreams of vlogging — Frederike Migom's 2019 film, whose TMDB poster the venue's matches at 4 bits
 pl	*	Bohater	tmdb:358996	wrong	hand label: Bohater (2015) Nikhil Advani
 pl	*	Częstochowa, lata 1793-1918 | Weekend seniora z kulturą 2026	tmdb:1627075	wrong	hand label: The Candy World Movie (2026) Sharnav Shan
 pl	*	Dni Kina Niemego - Portier z Hotelu Atlantic	tmdb:643	wrong	hand label: Pancernik Potiomkin (1925) Sergei Eisenstein
@@ -412,7 +412,7 @@ pl	*	Lalka	tmdb:1321666	right	hand label: Lalka (2026) Maciej Kawalski
 pl	*	Materiał się liczy	tmdb:1560938	right	hand label: Søren Pihlmann: Make Materials Matter (2025)
 pl	*	SKRZYŻOWANIE - 50 na 51 - spotkanie z Janem Englertem	tmdb:1207497	right	hand label: Skrzyżowanie (2025) Dominika Montean-Pańków
 uk	*	MetOpera 2025-26: La Sonnambula	tmdb:1482799	right	hand label: The Metropolitan Opera: La Sonnambula (2025) Rolando Villazón
-us	*	A Prayer for the Dying	tmdb:1241046	wrong	hand label: A Prayer for the Dying (2026) Dara Van Dusen
+us	*	A Prayer for the Dying	tmdb:1241046	right	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
 us	*	Exhibition on Screen: John Singer Sargent	tmdb:1220518	right	hand label: John Singer Sargent: Fashion and Swagger (2024) David Bickerstaff
 us	*	MetOpera: Medea (2022–23)	tmdb:1601989	wrong	hand label: Medea (2025) Mario Martone; Barbara Napolitano
 us	*	SEVENTEEN World Tour 'NEW_'	tmdb:1443823	wrong	hand label: SEVENTEEN WORLD TOUR [RIGHT HERE] IN CINEMAS (2025) Yoon Dong Oh
@@ -423,7 +423,7 @@ de	*	Die Nibelungen - Teil 1: Siegfried	tmdb:31506	right	hand label: Lang 1924
 de	*	Macbeth	rt:macbeth_2005	right	hand label: Macbeth () Mark Brozel
 de	*	Macbeth	tmdb:591293	right	hand label: ShakespeaRe-Told: Macbeth (2005) Mark Brozel
 pl	*	AKW: Blisko	rt:milosc_jest_blisko	wrong	hand label: Milość jest blisko () Radoslaw Dunaszewski
-pl	*	Binti Edukacja Młode Horyzonty	rt:binti_2021	right	hand label: Binti (2021) Seko Shamte
+pl	*	Binti Edukacja Młode Horyzonty	rt:binti_2021	wrong	judged 10-05: biletyna's page (the venue's) is the Belgian Binti — a teenage immigrant in Belgium who dreams of vlogging — Frederike Migom's 2019 film, whose TMDB poster the venue's matches at 4 bits
 pl	*	Kino Zmysłów: Vincent. Legenda oceanu | 2D | Dubbing	tmdb:677558	right	hand label: The Last Whale Singer (2026) Reza Memari; Steven Majaury; Pavel Hrubos
 pl	*	Klondike	rt:klondike_2022	right	hand label: Klondike (2023) Maryna Er Gorbach
 pl	*	LALKA / DOLLY	rt:lalka_1969	wrong	hand label: Lalka () Lola Doillon
@@ -565,12 +565,12 @@ uk	*	Toddler Club: Tabby McTat + Room on the Broom	imdb:tt21051566	wrong	hand la
 us	*	A Night at the Opera	cinemeta:tt0026778	right	hand label: A Night at the Opera (1935)
 us	*	A Night at the Opera	wikidata:Q2547032	wrong	hand label: The Old Maid (1939) Edmund Goulding
 us	*	A Night at the Opera	wikipedia:Q2547032	wrong	hand label: The Old Maid (1939) Edmund Goulding
-us	*	A Prayer for the Dying	cinemeta:tt0093771	right	hand label: A Prayer for the Dying (1987)
-us	*	A Prayer for the Dying	filmweb:10113419	wrong	hand label: Modlitwa za umierających (2026) Dara van Dusen
-us	*	A Prayer for the Dying	imdb:tt0093771	right	hand label: A Prayer for the Dying (1987) Mike Hodges
-us	*	A Prayer for the Dying	rt:a_prayer_for_the_dying	right	hand label: A Prayer for the Dying (1987) Mike Hodges
-us	*	A Prayer for the Dying	wikidata:Q130259598	wrong	hand label: A Prayer for the Dying (2026)
-us	*	A Prayer for the Dying	wikipedia:Q130259598	wrong	hand label: A Prayer for the Dying (2026)
+us	*	A Prayer for the Dying	cinemeta:tt0093771	wrong	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
+us	*	A Prayer for the Dying	filmweb:10113419	right	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
+us	*	A Prayer for the Dying	imdb:tt0093771	wrong	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
+us	*	A Prayer for the Dying	rt:a_prayer_for_the_dying	wrong	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
+us	*	A Prayer for the Dying	wikidata:Q130259598	right	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
+us	*	A Prayer for the Dying	wikipedia:Q130259598	right	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
 us	*	Exhibition on Screen: Rembrandt	imdb:tt6449472	right	hand label: Exhibition on Screen: Rembrandt (2018)
 us	*	Exhibition on Screen: Rembrandt	rt:rembrandt-1999	wrong	hand label: Rembrandt (1999) Charles Matton
 us	*	Exhibition on Screen: Rembrandt	tmdb:208028	wrong	hand label: Exhibition (2014) Joanna Hogg
@@ -599,8 +599,8 @@ us	*	THE BRIDE OF FRANKENSTEIN	filmweb:615902	wrong	hand label: The Bride of Fra
 us	*	The City of The Dead	cinemeta:tt0053719	right	hand label: The City of the Dead (1960) John Llewellyn Moxey
 us	*	The City of The Dead	wikidata:Q194106	right	hand label: The City of the Dead (1960) John Llewellyn Moxey
 us	*	The Scout	cinemeta:tt0099392	wrong	hand label: The Scout (1989)
-us	*	The Scout	imdb:tt0111094	right	hand label: The Scout (1994) Michael Ritchie
-us	*	The Scout	rt:scout	right	hand label: The Scout (1994) Michael Ritchie
+us	*	The Scout	imdb:tt0111094	wrong	judged 10-05: drafthouse.com's schedule bills it first-run, "a day in the life of a location scout for a TV show" — Paula Gonzalez-Nasser's 2026 film, whose TMDB poster the venue's matches at 2 bits
+us	*	The Scout	rt:scout	wrong	judged 10-05: drafthouse.com's schedule bills it first-run, "a day in the life of a location scout for a TV show" — Paula Gonzalez-Nasser's 2026 film, whose TMDB poster the venue's matches at 2 bits
 us	*	The Scout	wikidata:Q1196825	wrong	hand label: The Scout (1983) Konrad Petzold; Jamyanguyn Buntar
 us	*	Volcanoes 3D	rt:volcanoes_the_fires_of_creation	right	hand label: Volcanoes: The Fires of Creation () Michael Dalton-Smith
 de	*	Command Performance	imdb:tt1210801	right	hand label: Command Performance (2009) Dolph Lundgren
@@ -613,7 +613,7 @@ pl	*	Lalka Dolly (Napisy)	imdb:tt0064570	wrong	hand label: Lalka (1968) Wojciech
 pl	*	Obcy w domu	imdb:tt0097503	wrong	hand label: Hider in the House (1989) Matthew Patrick
 us	*	Lady Frankenstein	imdb:tt0067321	right	hand label: Lady Frankenstein (1971) Mel Welles; Aureliano Luppi
 us	*	Student Bodies	imdb:tt0083133	right	hand label: Student Bodies (1981) Mickey Rose; Michael Ritchie
-us	*	The Scout	rt:the_scout_2025	wrong	hand label: The Scout (2026) Paula González-Nasser
+us	*	The Scout	rt:the_scout_2025	right	judged 10-05: drafthouse.com's schedule bills it first-run, "a day in the life of a location scout for a TV show" — Paula Gonzalez-Nasser's 2026 film, whose TMDB poster the venue's matches at 2 bits
 pl	*	AKW: Powoli	wikipedia:Q459057	wrong	hand label: Monster (2003) Patty Jenkins
 pl	*	Akademia Polskiego Filmu: Przygoda na Mariensztacie + Kierunek - Nowa Huta! | Socrealizm po polsku	cinemeta:tt27369017	wrong	hand label: Hope (2026) Na Hong-jin
 pl	*	Akademia Polskiego Filmu: Znachor (1937) | Gatunki międzywojnia II: melodramat	filmweb:36236	right	hand label: Znachor (1937) Michał Waszyński
@@ -657,3 +657,11 @@ pl	Patria	Dyrygent	tmdb:1483477	right	Patria's page: "Reżyser: Ondřej Provazn�
 pl	Kozienicki Dom Kultury	Dyrygent	tmdb:95269	wrong	judged 10-05: Filmweb's Kozienice showtimes link Dyrygent-2025-10085635 — Broken Voices
 pl	Kozienicki Dom Kultury	Dyrygent	tmdb:1483477	right	Filmweb's Kozienice showtimes: Dyrygent-2025-10085635 — Broken Voices (2025)
 pl	Kino Marzenie	DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO	tmdb:95269	right	judged 10-05: the venue's synopsis (Marta, the conductor John Lasocki) is Wajda's 1980 film
+us	*	A Prayer for the Dying	imdb:tt31183803	right	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
+us	*	The Scout	tmdb:1403519	right	judged 10-05: drafthouse.com's schedule bills it first-run, "a day in the life of a location scout for a TV show" — Paula Gonzalez-Nasser's 2026 film, whose TMDB poster the venue's matches at 2 bits
+us	*	The Scout	imdb:tt36590599	right	judged 10-05: drafthouse.com's schedule bills it first-run, "a day in the life of a location scout for a TV show" — Paula Gonzalez-Nasser's 2026 film, whose TMDB poster the venue's matches at 2 bits
+pl	*	Binti Edukacja Młode Horyzonty	tmdb:577285	right	judged 10-05: biletyna's page (the venue's) is the Belgian Binti — a teenage immigrant in Belgium who dreams of vlogging — Frederike Migom's 2019 film, whose TMDB poster the venue's matches at 4 bits
+pl	*	Binti Edukacja Młode Horyzonty	imdb:tt6922062	right	judged 10-05: biletyna's page (the venue's) is the Belgian Binti — a teenage immigrant in Belgium who dreams of vlogging — Frederike Migom's 2019 film, whose TMDB poster the venue's matches at 4 bits
+de	*	Pettersson und Findus Mitmachkino 2	tmdb:1624916	right	judged 10-05: TMDB's Lustiges Pettersson und Findus Mitmachkino 2 (2026) credits the same three directors as the IMDb title (tt41600591, which TMDB does not link); the venue's poster matches it at 0 bits
+pl	*	Mroki - Kino Konesera - 24. FFOL	tmdb:1710676	right	judged 10-05: TMDB's Mroki (2026, Bartosz Szyszko), the only 2026 "Mroki", whose poster the venue's matches at 0 bits
+us	OMNIMAX Theatre – Robert D. Lindner Family	Volcanoes 3D	tmdb:556541	right	judged 10-05: the IMAX dome film Fleet Science Center's same title is (recall target), its poster matching the venue's
