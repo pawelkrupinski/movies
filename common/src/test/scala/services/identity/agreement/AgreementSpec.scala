@@ -81,6 +81,8 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
   }
 
   "A family that weighed the film the others agree on and took none, leaning to another" should "turn the agreement down" in {
+    // PL "Okładka „Tempo”" (fixture identity-unmatched): a Finnish stage piece at a mime festival; Filmweb, RT and
+    // Wikidata take Styles' 2003 "Tempo" on the title alone, IMDb weighed it and leans to "Old" ("Tempo" in Brazil)
     val tempo   = film("Tempo", 2003, "Eric Styles")
     val old     = SourceRecord(film("Old", 2021, "M. Night Shyamalan"), Map("imdb" -> "tt10954652"))
     val dance   = Seq(listing(KinoMuza, "Okładka „Tempo”"))
@@ -89,6 +91,34 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(dance, takers) should not be empty
     Agreement.agreed(dance, takers :+ FamilyVerdict(VoterFamily.Imdb, None, weighed, leaning = Some(old))) shouldBe None
     Agreement.agreed(dance, takers :+ FamilyVerdict(VoterFamily.Imdb, None, Seq(SourceRecord(klondike1932)), leaning = Some(SourceRecord(klondike1932)))) should not be empty
+  }
+
+  it should "count as one family dissenting, which a wider agreement outweighs" in {
+    // a turn-down is one family's evidence against the film, as a family taking another is — not a veto
+    val tempo   = SourceRecord(film("Tempo", 2003, "Eric Styles"), Map("imdb" -> "tt0307553"))
+    val old     = SourceRecord(film("Old", 2021, "M. Night Shyamalan"), Map("imdb" -> "tt10954652"))
+    val bare    = Seq(listing(KinoMuza, "Tempo"))
+    val takers  = Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes, VoterFamily.Metacritic)
+      .map(f => FamilyVerdict.took(FamilyPick(f, "1", tempo)))
+    val imdb    = FamilyVerdict(VoterFamily.Imdb, None, Seq(tempo, old), leaning = Some(old))
+    Agreement.agreed(bare, takers :+ imdb) should not be empty
+    Agreement.agreed(bare, takers.take(3) :+ imdb) shouldBe None
+  }
+
+  it should "not turn it down for an edition of the film itself" in {
+    // UK "Ken Russell's The Devils presented by Deeper Into Movies" (fixture identity-unmatched): IMDb and Wikidata take
+    // the 1971 film, Metacritic leans to it; RT weighed it and leans to its own undated "Director's Cut" page — the same
+    // work, no other film
+    val devils   = SourceRecord(film("The Devils", 1971, "Ken Russell", 111), Map("imdb" -> "tt0066993"))
+    val cut      = SourceRecord(IdentityMeasures.Film("Ken Russell's The Devils: The Director's Cut", directors = Some(Seq("Ken Russell"))),
+      Map("rt" -> "ken_russells_the_devils"))
+    val billed   = Seq(listing(KinoMuza, "Ken Russell's The Devils presented by Deeper Into Movies", director = Some("Ken Russell")))
+    val agreeing = Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Imdb, "tt0066993", devils)), FamilyVerdict.took(FamilyPick(VoterFamily.Wiki, "Q655996", devils)),
+      FamilyVerdict(VoterFamily.Metacritic, None, Seq(devils), leaning = Some(devils)))
+    Agreement.agreed(billed, agreeing :+ FamilyVerdict(VoterFamily.RottenTomatoes, None, Seq(devils, cut), leaning = Some(cut))) should not be empty
+    // a record crediting no director is no edition known to be the film's, and turns it down
+    val undirected = SourceRecord(IdentityMeasures.Film("Ken Russell's The Devils: The Director's Cut"))
+    Agreement.agreed(billed, agreeing :+ FamilyVerdict(VoterFamily.RottenTomatoes, None, Seq(devils, undirected), leaning = Some(undirected))) shouldBe None
   }
 
   it should "not turn it down when the listing's own year or director contradicts the film it leans to" in {

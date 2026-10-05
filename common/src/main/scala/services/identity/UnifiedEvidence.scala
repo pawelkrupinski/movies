@@ -153,8 +153,7 @@ object UnifiedEvidence {
       }
       def took(family: VoterFamily) = c.verdicts.exists(v => v.family == family && v.pick.exists(pick => contender.is(pick.record)))
       def leans(family: VoterFamily) = c.verdicts.exists(v => v.family == family && v.pick.isEmpty && v.leaning.exists(contender.is))
-      val turnedDown = c.verdicts.count(v => v.pick.isEmpty && v.weighed.exists(contender.is) &&
-        v.leaning.exists(lean => !contender.is(lean) && !Agreement.contradictedByTheListing(c.listings, lean)))
+      val turnedDown = c.verdicts.count(Agreement.turnsDown(_, c.listings, records, contender.is))
       val dissent = c.verdicts.count(v => v.pick.exists(pick => !contender.is(pick.record) && c.listings.nonEmpty &&
         c.listings.forall(Agreement.namesIt(_, Seq(pick.record.film)))))
       val votes  = Agreement.listingVotes(asStated, records)

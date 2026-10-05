@@ -78,7 +78,6 @@ us	AMC 19th St. East 6	MetOpera: Carmen (2009)	tmdb:248042	right	recall target: 
 pl	Kinoteatr Rialto	Wielka Sztuka w Kinoteatrze Rialto - Frida: Viva la Vida	imdb:tt11312156	right	recall target: Frida: Viva la Vida
 pl	Janosik	edukacja MH: Johnny	imdb:tt15538570	right	recall target: Johnny
 pl	Kino Grajfka	Klondike	imdb:tt16315948	right	recall target: Klondike
-pl	Kino Alternatywy	Okładka „Tempo”	imdb:tt0307553	right	recall target: Tempo
 pl	Kino Alternatywy	Okładka „Short Stories”	imdb:tt2192582	right	recall target: Short Stories
 pl	Kino Kultura Gołdap	NADZIEJA	imdb:tt0847750	right	recall target: Nadzieja
 pl	Kino Kameralne Cafe	Siostry (1972)	imdb:tt0070698	right	recall target: Siostry (1972)
@@ -524,7 +523,6 @@ pl	*	Okładka „Short Stories”	cinemeta:tt0368269	wrong	hand label: Short Sto
 pl	*	Okładka „Short Stories”	filmweb:674921	right	hand label: Opowieści (2012) Mikhail Segal
 pl	*	Okładka „Short Stories”	rt:rasskazy_2012	right	hand label: Short Stories (2012) Mikhail Segal
 pl	*	Okładka „Short Stories”	wikidata:Q20078052	wrong	hand label: Short Stories (1970) Davyd Cherkaskyi
-pl	*	Okładka „Tempo”	cinemeta:tt0307553	right	hand label: Tempo (2003)
 pl	*	Retrospektywa Krzysztofa Kiwerskiego	tmdb:689023	wrong	hand label: Awaria (1975) Krzysztof Kiwerski
 pl	*	Silent Night	cinemeta:tt0117745	wrong	hand label: Silent Night (1996)
 pl	*	Silent Night	imdb:tt0338434	wrong	hand label: Silent Night (2002) Rodney Gibbons
@@ -716,3 +714,8 @@ pl	Kino JDK	Teksańska masakra piłą mechaniczną	tmdb:632727	wrong	known wrong
 pl	*	Ktoś całkiem obcy	tmdb:7183	wrong	known wrong model take on the whole corpus (judged 2026-10-05)
 pl	Kino Kryterium	DKF: Ktoś całkiem obcy	tmdb:7183	wrong	known wrong model take on the whole corpus (judged 2026-10-05)
 pl	Kino Powiśle	OPERA-COSI FAN TUTTE	tmdb:1703620	right	judged 2026-10-05: Kino Powiśle relays the Met season (its OPERA-MANON, OPERA-OTELLO, OPERA-PARSIFAL are the Met 2026/27 records); the broadcast-date join takes the Met Così fan tutte
+pl	*	Okładka „Tempo”	tmdb:49060	wrong	judged 10-05: the venue's page (alternatywy.art/tempo-finlandia-rezyseria-kalle-nio-choreografia-fernando-melo-26-miedzynarodowy-festiwal-sztuki-mimu) is "Tempo", a Finnish stage piece — Kalle Nio directing, Fernando Melo's choreography — at the 26th International Mime Art Festival: no film, not Eric Styles' 2003 "Tempo"
+pl	*	Okładka „Tempo”	imdb:tt0307553	wrong	judged 10-05: the venue's page (alternatywy.art/tempo-finlandia-rezyseria-kalle-nio-choreografia-fernando-melo-26-miedzynarodowy-festiwal-sztuki-mimu) is "Tempo", a Finnish stage piece — Kalle Nio directing, Fernando Melo's choreography — at the 26th International Mime Art Festival: no film, not Eric Styles' 2003 "Tempo"
+pl	*	Okładka „Tempo”	cinemeta:tt0307553	wrong	judged 10-05: the venue's page (alternatywy.art/tempo-finlandia-rezyseria-kalle-nio-choreografia-fernando-melo-26-miedzynarodowy-festiwal-sztuki-mimu) is "Tempo", a Finnish stage piece — Kalle Nio directing, Fernando Melo's choreography — at the 26th International Mime Art Festival: no film, not Eric Styles' 2003 "Tempo"
+pl	*	Okładka „Tempo”	filmweb:97663	wrong	judged 10-05: the venue's page (alternatywy.art/tempo-finlandia-rezyseria-kalle-nio-choreografia-fernando-melo-26-miedzynarodowy-festiwal-sztuki-mimu) is "Tempo", a Finnish stage piece — Kalle Nio directing, Fernando Melo's choreography — at the 26th International Mime Art Festival: no film, not Eric Styles' 2003 "Tempo"
+pl	*	Okładka „Tempo”	rt:tempo	wrong	judged 10-05: the venue's page (alternatywy.art/tempo-finlandia-rezyseria-kalle-nio-choreografia-fernando-melo-26-miedzynarodowy-festiwal-sztuki-mimu) is "Tempo", a Finnish stage piece — Kalle Nio directing, Fernando Melo's choreography — at the 26th International Mime Art Festival: no film, not Eric Styles' 2003 "Tempo"

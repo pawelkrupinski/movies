@@ -214,15 +214,14 @@ object Agreement {
   /** The film the families' evidence, pooled, agrees on: ≥ [[Takers]] families take it (picks join, through any agreeing
    *  record, by a shared cross-id, else by [[equivalent]] facts), and with the families leaning to it and what
    *  corroborates it ([[ListingFacts]], [[ListingRuntime]], [[ModelVote]], [[Venues]]) it holds ≥ [[Quorum]] — that plus one for each family
-   *  taking another film the listing's title names. No listing's own year or director rules out a taker's record
-   *  (DE "Der kleine Maulwurf", the venues' 1968 Miler, not IMDb's and Wikidata's 2011 compilation); no family weighed
-   *  it and took none leaning to another; the listing's title
+   *  taking another film the listing's title names, and one for each family that weighed it and turned it down
+   *  ([[turnsDown]]: PL "Okładka „Tempo”", a Finnish stage piece, is not "Tempo" (2003), which Filmweb, RT and Wikidata
+   *  take and IMDb weighed and turned down for "Old"). No listing's own year or director rules out a taker's record
+   *  (DE "Der kleine Maulwurf", the venues' 1968 Miler, not IMDb's and Wikidata's 2011 compilation); the listing's title
    *  names it ([[namesIt]]) — and, where leans or corroboration complete the quorum, is no other film's own
    *  ([[anothersOwnTitle]]); the listing bills one work ([[billsSeveral]]) and no stage work ([[stagesAWork]]). The
    *  experiment's one wrong without the title guard: "Akademia Polskiego Filmu: Kino żydowskie w Polsce" → "Znachor"
-   *  (1937), whose year and director fit a series' episode; the replay's without the weighed one: "Okładka „Tempo”", a
-   *  Finnish dance film, → "Tempo" (2003), which IMDb's search found, weighed and turned down for "Old" while Filmweb,
-   *  RT and Wikidata took it. */
+   *  (1937), whose year and director fit a series' episode. */
   def agreed(listings: Seq[Listing], verdicts: Seq[FamilyVerdict], modelVote: Option[SourceRecord] = None,
              thisYear: Option[Int] = None, stated: Seq[Listing] = Nil): Option[AgreedFilm] = {
     // what the venues' own pages add to the listings votes and names films; it never rules one out — a page's year is
@@ -234,15 +233,15 @@ object Agreement {
     val named = filmsOf(picks).filter(group => asStated.nonEmpty && asStated.forall(listing => namesIt(listing, group.map(_.record.film))))
     named.filter(_.size >= Takers).map(group => supported(listings, asStated, group, verdicts, modelVote, thisYear)).sortBy(film => -film.support).headOption.flatMap { film =>
       val dissent = named.filterNot(_.exists(pick => film.agreed.families(pick.family))).map(_.size).sum
-      Option.when(film.support >= Quorum + dissent && !film.turnedDown && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
+      Option.when(film.support >= Quorum + dissent + film.turnedDown && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
         !film.records.take(film.agreed.families.size).exists(contradictedByTheListing(listings, _)) &&
         listings.forall(listing => !billsSeveral(listing) && !stagesAWork(listing)))(film.agreed)
     }
   }
 
   /** A film ≥ [[Takers]] families took, as the evidence stands for it: the takers, the families leaning to it, what
-   *  corroborates it, and whether a family weighed it and turned it down. */
-  private final case class Supported(agreed: AgreedFilm, records: Seq[SourceRecord], turnedDown: Boolean) {
+   *  corroborates it, and how many families weighed it and turned it down ([[turnsDown]]). */
+  private final case class Supported(agreed: AgreedFilm, records: Seq[SourceRecord], turnedDown: Int) {
     /** The records of it the takers took and the leaning families favour. */
     val support: Int = agreed.families.size + agreed.leaning.size + agreed.corroborated.size
     /** Short of [[Quorum]] takers, completed by leans or corroboration. */
@@ -264,15 +263,32 @@ object Agreement {
     val corroborated = listingVotes(stated, records) ++ Set(ModelVote).filter(_ => voted.nonEmpty) ++ Set(Catalogue).filter(_ => catalogued) ++
       Set(Venues).filter(_ => listings.map(_.venue).distinct.size >= WidelyBilled &&
         thisYear.exists(year => records.flatMap(_.film.year).maxOption.exists(_ >= year - 1)))
-    // weighed and turned down for another film its evidence favours — weighed among films it favours none of is no
-    // evidence against this one (US "Spider Baby": Metacritic's best a Spider-Man film at 5.3%, its next 3.0%)
-    // — nor for one the listing's own year or director rules out (DE "Überleben", Danial Miller's in 2020 by the venue:
-    // Filmweb leaning to the 2022 "Survive")
-    val turnedDown = verdicts.exists(verdict => verdict.pick.isEmpty && verdict.weighed.exists(isIt) &&
-      verdict.leaning.exists(lean => !isIt(lean) && !contradictedByTheListing(listings, lean)))
+    val turnedDown = verdicts.count(turnsDown(_, listings, records, isIt))
     val leant = verdicts.filter(verdict => verdict.pick.isEmpty).flatMap(_.leaning).filter(isIt)
     Supported(AgreedFilm(group.map(_.family).toSet, merged, group.map(pick => pick.family -> pick.id).toMap, leaning, corroborated), records ++ leant,
       turnedDown)
+  }
+
+  /** Did `verdict` weigh the film (`isIt`, its takers' `records`) and turn it down — take none, its evidence leaning to
+   *  another film? One family's dissent, as a family taking another film is ([[agreed]]): weighed among films it favours
+   *  none of is no evidence against this one (US "Spider Baby": Metacritic's best a Spider-Man film at 5.3%, its next
+   *  3.0%); nor is a lean to a film the listing's own year or director rules out (DE "Überleben", Danial Miller's in
+   *  2020 by the venue: Filmweb leaning to the 2022 "Survive"), or to an edition of the film itself (UK "Ken Russell's
+   *  The Devils presented by Deeper Into Movies": RT leaning to its own undated "Ken Russell's The Devils: The
+   *  Director's Cut" page). */
+  private[identity] def turnsDown(verdict: FamilyVerdict, listings: Seq[Listing], records: Seq[SourceRecord], isIt: SourceRecord => Boolean): Boolean =
+    verdict.pick.isEmpty && verdict.weighed.exists(isIt) && verdict.leaning.exists(lean =>
+      !isIt(lean) && !contradictedByTheListing(listings, lean) && !records.exists(editionOf(lean, _)))
+
+  /** Is `edition` a record of `work` under a qualifier: the same director's, dated no earlier (or undated), its title
+   *  carrying one of the work's (four letters at least) as a token run — "Ken Russell's The Devils: The Director's Cut"
+   *  of "The Devils"? */
+  private def editionOf(edition: SourceRecord, work: SourceRecord): Boolean = {
+    val (byEdition, byWork) = (edition.film.directors.getOrElse(Nil), work.film.directors.getOrElse(Nil))
+    val carried = TitleContainment.tokens(edition.film.title)
+    byEdition.nonEmpty && byWork.nonEmpty && IdentityMeasures.directorRelation(byEdition, byWork) == IdentityMeasures.Category("same_person") &&
+      edition.film.year.forall(year => work.film.year.forall(_ <= year)) &&
+      work.film.titles.exists(title => title.length >= 4 && { val words = TitleContainment.tokens(title); words.nonEmpty && carried.containsSlice(words) })
   }
 
   /** What the listings' own facts vote for the takers' records: [[ListingFacts]] when every listing publishing a year
