@@ -13,7 +13,7 @@ trait MetricsWiring { self: Wiring =>
 
   // Exposes the in-app /uptime health (Mongo `uptimeBuckets`) as Prometheus
   // gauges for the self-hosted Grafana — host metrics alone can't see a service
-  // failing silently behind a fallback (the residential proxy → Zyte case).
+  // failing silently behind a fallback (the residential proxy → direct case).
   // Samples per-city served-film counts every minute (all future / showing
   // tomorrow), appended to /metrics for Grafana to graph + alert on swings.
   // A web deployment serves exactly one country; tag its /metrics with that

@@ -44,7 +44,7 @@ on:
         # enrich as they run and publish the recorded tree themselves, with no
         # third-party calls beyond what they were making regardless. What only this job
         # produces is the scrape HTML under `fixtures/today/`, consumed by the local
-        # stack and RecorderZyteCaptureSpec — and that changes far more slowly than
+        # stack and RecorderChainCaptureSpec — and that changes far more slowly than
         # nightly. Nightly also spent ~90 minutes a day of live-upstream budget, and
         # collided at 23:01 with the scrape recorder.
         - cron: '1 23 * * 0'   # Sundays, 00:01 Warsaw (CET) / 01:01 (CEST)
@@ -102,10 +102,9 @@ jobs:
             #
             # Secrets are the keyed upstreams the recorder hits — TMDB (enrichment)
             # and the Decodo residential proxy the Multikino/biletyna scrapes egress
-            # through, with Zyte as the proxy's paid fallback exactly as in
-            # production: the recorder never builds a Zyte leg without the proxy
-            # ahead of it (RecordAllDataToFixture.paidEgressChain;
-            # PaidEgressWorkflowSpec). IMDb/Filmweb/RT/Metacritic are keyless.
+            # through, direct behind it exactly as in production. No Zyte key: no
+            # CI step is handed one (PaidEgressWorkflowSpec). IMDb/Filmweb/RT/
+            # Metacritic are keyless.
             # MONGODB_* are passed for parity with ci.yml even though the recorder
             # uses an in-memory repo and writes no Mongo.
             - name: Record the country's fixture corpus
@@ -113,7 +112,6 @@ jobs:
               env:
                   KINOWO_PROXY_USER: ${{ secrets.KINOWO_PROXY_USER }}
                   KINOWO_PROXY_PASS: ${{ secrets.KINOWO_PROXY_PASS }}
-                  ZYTE_API_KEY: ${{ secrets.ZYTE_API_KEY }}
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:  ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:   ${{ secrets.MONGODB_DB }}

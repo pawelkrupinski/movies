@@ -9652,8 +9652,6 @@ services.cinemas.common.ScrapeOutcomeListener
 services.cinemas.common.ScrapeOutcomeListener$
 services.cinemas.common.ScraperParse
 services.cinemas.common.ScraperParse$
-services.cinemas.common.SharedZyteSession
-services.cinemas.common.SharedZyteSession$
 services.cinemas.common.SlotsToMovies
 services.cinemas.common.SlotsToMovies$
 services.cinemas.common.SourceFallbackScraper
@@ -11709,7 +11707,6 @@ settings.WorkerCountries$
 settings.WorkerPoolSize$
 settings.ZyteApiKey
 settings.ZyteApiKey$
-settings.ZyteSessionTtl$
 sun.awt.AWTAccessor
 sun.awt.AWTAccessor$ICC_ProfileAccessor
 sun.awt.AWTAccessor$ToolkitAccessor

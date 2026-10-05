@@ -78,24 +78,22 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
   override lazy val httpFetch = new RecordingHttpFetch(captureDate, new RealHttpFetch())
 
   // Multikino and Kino Kameralne (biletyna) sit behind a WAF that blocks a datacenter IP,
-  // so production fetches them residential-proxy first (Decodo), Zyte only behind it, direct
-  // last. The recorder builds the same chain over the PROCESS's credentials — the wiring's
-  // own configuration is empty and `TestWiring` refuses paid egress — and never a Zyte leg
-  // without Decodo ahead of it: Zyte is billed per request and is Decodo's fallback, never a
-  // primary (see [[EgressWiring.paidEgressChain]]).
+  // so production fetches them residential-proxy first (Decodo), direct behind it. The
+  // recorder builds the same chain over the PROCESS's credentials — the wiring's own
+  // configuration is empty and `TestWiring` refuses paid egress (see
+  // [[EgressWiring.paidEgressChain]]).
   //
-  // The paid legs fetch through their OWN clients, so a recorder wired as the chain's inner
-  // `direct` would never see a proxy- or Zyte-served response and the corpus would silently
+  // The proxy leg fetches through its OWN clients, so a recorder wired as the chain's inner
+  // `direct` would never see a proxy-served response and the corpus would silently
   // lack every `www.multikino.pl` / biletyna fixture. So the WHOLE chain is wrapped in
   // recording, capturing the response keyed by the target URL whichever leg served it.
-  // Guarded by `RecorderZyteCaptureSpec`.
+  // Guarded by `RecorderChainCaptureSpec`.
   private lazy val processProxyShards: Option[IndexedSeq[HttpFetch]] =
     modules.wiring.EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(configuration), tlsContext)
   override lazy val multikinoFetch: HttpFetch =
-    new RecordingHttpFetch(captureDate, EgressWiring.multikinoChain(configuration, processProxyShards, new RealHttpFetch(), clock))
+    new RecordingHttpFetch(captureDate, EgressWiring.multikinoChain(processProxyShards, new RealHttpFetch(), clock))
   override lazy val biletynaFetch: HttpFetch =
-    new RecordingHttpFetch(captureDate, EgressWiring.paidEgressChain(processProxyShards,
-      EgressWiring.zyteOver(configuration, None, clock), new RealHttpFetch(), clock))
+    new RecordingHttpFetch(captureDate, EgressWiring.paidEgressChain(processProxyShards, new RealHttpFetch(), clock))
 
   // TestWiring stubs the TMDB key to "test-api-key" (fine for replay, where the
   // fixture filename strips api_key). But RECORDING fires the real request, so

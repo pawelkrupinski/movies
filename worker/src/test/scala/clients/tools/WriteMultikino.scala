@@ -14,9 +14,9 @@ object WriteMultikino {
     tools.ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
     val process = _root_.settings.ProcessConfiguration.resolve()
     val shards  = modules.wiring.EgressWiring.residentialShards(tools.ResidentialProxy.fromConfiguration(process), tools.TlsTrust.newContext())
-    // Recording OUTSIDE the chain, so a proxy- or Zyte-served body is captured too; Zyte only
-    // behind the proxy, as in production (modules.wiring.EgressWiring.paidEgressChain).
-    val fetch  = new RecordingHttpFetch("multikino", modules.wiring.EgressWiring.multikinoChain(process, shards, new RealHttpFetch(), java.time.Clock.systemUTC()))
+    // Recording OUTSIDE the chain, so a proxy-served body is captured too, as in production
+    // (modules.wiring.EgressWiring.paidEgressChain).
+    val fetch  = new RecordingHttpFetch("multikino", modules.wiring.EgressWiring.multikinoChain(shards, new RealHttpFetch(), java.time.Clock.systemUTC()))
     val client = new MultikinoClient(fetch, titles = titleNormalizer)
     client.fetch().foreach(m => println(s"${m.movie.title} (${m.showtimes.size} showtimes)"))
   }

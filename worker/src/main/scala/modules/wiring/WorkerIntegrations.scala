@@ -11,8 +11,8 @@ import settings.{GatedIntegration, ProcessConfiguration}
  *
  *   - tmdb               no TMDB resolution: newcomers stay unresolved and never reach the site
  *   - omdb               no OMDb rating tier or backfill
- *   - residential_proxy  no Decodo egress: Cloudflare-fronted chains fall to Zyte or fail
- *   - zyte               no paid fallback behind the proxy
+ *   - residential_proxy  no Decodo egress: Cloudflare-fronted chains fall to direct and mostly fail
+ *   - zyte               no Kino Kryterium scrape (its origin refuses the proxy too) and no Odeon token
  *   - sentry             errors go nowhere but the log (logback's appender reads SENTRY_DSN)
  *   - facebook_rescrape  a changed share card is never re-scraped, so shared links keep the old image
  *

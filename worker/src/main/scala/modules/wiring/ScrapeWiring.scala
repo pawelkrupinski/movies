@@ -27,7 +27,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   // The per-city scraper graph lives in CinemaScraperCatalog (Mongo-free, so a
   // diagnostic like tools.FilmwebDiff can build the real scrapers without the
   // worker's write machinery). WorkerWiring supplies the seams it varies —
-  // `httpFetch`, the Zyte-routed `multikinoFetch` / `biletynaFetch`, and Helios's REST date — and
+  // `httpFetch`, the proxy-routed `multikinoFetch` / `biletynaFetch`, and Helios's REST date — and
   // wraps each raw scraper in RetryingCinemaScraper (retry) + UptimeRecordingScraper
   // (record the outcome) for production ticks.
   lazy val cinemaScraperCatalog = new CinemaScraperCatalog(

@@ -26,9 +26,6 @@
 #   KINOWO_PROXY_USER   REQUIRED — the Decodo residential-proxy credentials the
 #   KINOWO_PROXY_PASS   Multikino / biletyna scrapes egress through (their WAF
 #                       blocks a datacenter IP, a GitHub runner's included).
-#   ZYTE_API_KEY        optional — the paid fallback BEHIND the proxy, as in
-#                       production. Never a leg of its own: without the proxy
-#                       credentials the recorder builds no Zyte leg at all.
 # All are auto-loaded from .env.local locally; the script exits 1 if a required
 # one is still missing rather than recording a silently-partial corpus.
 #
@@ -62,7 +59,6 @@ if [ -f "$REPO_ROOT/.env.local" ]; then
     [ -n "${TMDB_API_KEY:-}" ] || load_env_key TMDB_API_KEY
     [ -n "${KINOWO_PROXY_USER:-}" ] || load_env_key KINOWO_PROXY_USER
     [ -n "${KINOWO_PROXY_PASS:-}" ] || load_env_key KINOWO_PROXY_PASS
-    [ -n "${ZYTE_API_KEY:-}" ] || load_env_key ZYTE_API_KEY
 fi
 
 # Without TMDB_API_KEY the whole enrichment cascade (TMDB → IMDb → MC → RT →

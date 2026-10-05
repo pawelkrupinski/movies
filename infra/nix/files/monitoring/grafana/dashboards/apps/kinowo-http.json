@@ -936,7 +936,7 @@
     {
       "type": "timeseries",
       "title": "Paid egress (Zyte / Decodo) \u2014 requests by provider and outcome",
-      "description": "Every request the workers sent through a PAID egress provider, by provider and outcome (kinowo_worker_paid_egress_total). Zyte is billed per request and should be near zero -- it is the fallback behind Decodo -- so any sustained Zyte line is money; a Zyte line that is all http_401 is Odeon's 2026-09 missing-Authorization bug. Breaker fast-fails are not counted: they send nothing.",
+      "description": "Every request the workers sent through a PAID egress provider, by provider and outcome (kinowo_worker_paid_egress_total). Zyte is billed per request and carries only Kino Kryterium's scrapes and Odeon's twice-daily token harvest, so it should stay a thin line; a Zyte line that is all http_401 is a refused key. Breaker fast-fails are not counted: they send nothing.",
       "id": 17,
       "datasource": {
         "type": "prometheus",
@@ -1249,7 +1249,7 @@
       "id": 22,
       "type": "timeseries",
       "title": "Circuit breakers \u2014 hosts open now, by leg",
-      "description": "kinowo_worker_http_breaker_open_hosts: hosts whose per-host breaker is OPEN (every call fast-fails). decodo = the residential-proxy leg failing for those destinations (calls fall straight through to Zyte); scrape = cinema sites down; enrich = metadata/rating APIs (TMDB, IMDb, \u2026) down.",
+      "description": "kinowo_worker_http_breaker_open_hosts: hosts whose per-host breaker is OPEN (every call fast-fails). decodo = the residential-proxy leg failing for those destinations (calls fall straight through to direct); scrape = cinema sites down; enrich = metadata/rating APIs (TMDB, IMDb, \u2026) down.",
       "datasource": {
         "type": "prometheus",
         "uid": "local-prometheus"

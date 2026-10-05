@@ -150,7 +150,7 @@ class EgressPosterDownload(http: tools.HttpFetch, maxBytes: Long = PosterPipelin
 
 /** [[PosterDownload]] for a PAID route that remembers each failed poster for a while and answers
  *  it from the memory, without the request: a Multikino poster that 403s through the residential
- *  proxy falls back to Zyte, billed per request, and the daily posterless backfill asked for the
+ *  proxy fell back to Zyte (then the proxy's paid fallback, billed per request), and the daily posterless backfill asked for the
  *  same dead poster every day. A refusal (4xx) is remembered for [[RememberedFailurePosterDownload.RefusedFor]],
  *  any other failure for [[RememberedFailurePosterDownload.FailedFor]]; a success forgets it.
  *

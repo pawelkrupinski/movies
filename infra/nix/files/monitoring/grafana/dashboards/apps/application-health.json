@@ -557,7 +557,7 @@
         {
           "id": 10,
           "title": "Residential proxy — fetches served vs failed (web tier · all countries, recent 30 min)",
-          "description": "The Decodo residential-proxy leg of the cinema scrape, surfaced from the in-app /uptime health (Mongo) via web's /metrics scrape. A flip from all-green 'served by proxy' to all-red 'failed → Zyte fallback' is a silent cost regression — scraping keeps working via Zyte, so no cinema bar goes red. Drives the 'Residential proxy failing' alert.",
+          "description": "The Decodo residential-proxy leg of the cinema scrape, surfaced from the in-app /uptime health (Mongo) via web's /metrics scrape. A flip from all-green 'served by proxy' to all-red 'failed → direct fallback' means the Cloudflare-fronted venues are falling to a direct fetch their origins usually refuse — they ride their per-venue fallbacks or go red. Drives the 'Residential proxy failing' alert.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -594,7 +594,7 @@
             {
               "refId": "B",
               "expr": "sum(kinowo_uptime_recent_failures{service=\"Residential proxy\"})",
-              "legendFormat": "failed → Zyte fallback",
+              "legendFormat": "failed → direct fallback",
               "datasource": {
                 "type": "prometheus",
                 "uid": "local-prometheus"

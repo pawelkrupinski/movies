@@ -21,7 +21,7 @@ import java.time.LocalDate
  * came, and still comes, from flicks.us.
  *
  * Re-wire it the moment a US egress exists — that is the ONLY thing missing.
- * Routing it through `zyteFetch` the way [[RegalClient]] does is NOT the answer:
+ * Routing it through `zyteFetch` the way [[RegalClient]] once was is NOT the answer:
  * Regal batches ~80 venues per request (~555 calls per sweep), while AMC's GraphQL
  * takes a single `date` and would bill ~47k Zyte requests per sweep.
  *

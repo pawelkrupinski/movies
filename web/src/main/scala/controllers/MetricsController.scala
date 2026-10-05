@@ -13,9 +13,9 @@ import services.metrics.WebJvmMetrics
  *
  * The in-app /uptime health lives in Mongo (`uptimeBuckets`), invisible to
  * Fly's host-only metrics — so a service that fails silently never alerts. The
- * residential proxy is the canonical case: when it rolls every request to the
- * Zyte fallback, every cinema bar stays green and only the "Residential proxy"
- * row goes red, which nobody is watching (and the Zyte bill quietly climbs).
+ * residential proxy is the canonical case: when it fails, the UK chain venues
+ * ride their per-venue flicks fallbacks and stay green, and only the pooled
+ * "Residential proxy" row goes red, which nobody is watching.
  * Surfacing the recent per-service success/failure counts as gauges lets
  * Grafana alert on it like any host metric.
  *

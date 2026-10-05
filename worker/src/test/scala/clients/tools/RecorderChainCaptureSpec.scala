@@ -11,77 +11,73 @@ import java.nio.file.Files
 /**
  * Guards `RecordAllDataToFixture`'s capture of the paid-egress cinemas (Multikino,
  * Kino Kameralne / biletyna). Those sit behind a WAF that blocks our datacenter
- * IP, so they're fetched through a residential proxy → Zyte → `direct` chain whose
- * paid legs tunnel through their OWN clients. A `RecordingHttpFetch` wired as the
- * chain's inner `direct` fallback therefore never sees a Zyte-served response —
+ * IP, so they're fetched through a residential proxy → `direct` chain whose
+ * proxy leg tunnels through its OWN clients. A `RecordingHttpFetch` wired as the
+ * chain's inner `direct` fallback therefore never sees a proxy-served response —
  * the scrape succeeds but the corpus silently lacks every `www.multikino.pl`
  * fixture. The recorder fixes this by wrapping the WHOLE chain in recording.
  *
- * Both halves are pinned here with a hermetic stand-in for the Zyte leg (a
- * fetch that returns a body without delegating to `direct`, exactly like
- * `ZyteFetch` when it serves) — no network, no `ZYTE_API_KEY` needed.
+ * Both halves are pinned here with a hermetic stand-in for the proxy leg (a
+ * fetch that returns a body without delegating to `direct`) — no network, no
+ * proxy credentials needed.
  */
-class RecorderZyteCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class RecorderChainCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
-  private val temporaryRoot = new File("test/resources/fixtures/recorder-zyte-capture-spec")
+  private val temporaryRoot = new File("test/resources/fixtures/recorder-chain-capture-spec")
   // The recorder script's wiring, built for this spec — forcing its lazy fetches builds the chains only
   // (no Mongo, no network, no `run()`) — over an empty configuration, so nothing the process sets reaches it.
   private lazy val recordingWiring = new RecordAllDataToFixture(new _root_.settings.ProcessConfiguration(_root_.tools.Env.of()))
   private val MultikinoFilmsUrl =
     "https://www.multikino.pl/api/microservice/showings/cinemas/0011/films"
 
-  /** Stand-in for the Zyte leg: serves `body` for any URL without consulting a
-   *  fallback — the same shape as a real `ZyteFetch` that succeeds. */
-  private def zyteServing(body: String): HttpFetch = new GetOnlyHttpFetch {
+  /** Stand-in for the proxy leg: serves `body` for any URL without consulting a
+   *  fallback — the same shape as a proxy tunnel that succeeds. */
+  private def proxyServing(body: String): HttpFetch = new GetOnlyHttpFetch {
     override def get(url: String): String = body
   }
 
   private def filmsFixture(directory: String): File =
-    new File(s"test/resources/fixtures/recorder-zyte-capture-spec/$directory/" +
+    new File(s"test/resources/fixtures/recorder-chain-capture-spec/$directory/" +
       "www.multikino.pl/api/microservice/showings/cinemas/0011/films")
 
   "Recording wired as the chain's inner `direct` fallback (the old wiring)" should
-    "miss a Zyte-served response — the bug this fix closes" in {
+    "miss a proxy-served response — the bug this fix closes" in {
     val recorderAsDirect = new RecordingHttpFetch(
-      "recorder-zyte-capture-spec/inner-direct", zyteServing("unused"))
-    // Zyte serves first, so the `direct` recorder is never consulted.
+      "recorder-chain-capture-spec/inner-direct", proxyServing("unused"))
+    // The proxy serves first, so the `direct` recorder is never consulted.
     val chain = new FallbackHttpFetch(Seq(
-      "zyte"   -> zyteServing("films-json-from-zyte"),
+      "proxy"  -> proxyServing("films-json-from-proxy"),
       "direct" -> recorderAsDirect))
 
-    chain.get(MultikinoFilmsUrl) shouldBe "films-json-from-zyte"
+    chain.get(MultikinoFilmsUrl) shouldBe "films-json-from-proxy"
     filmsFixture("inner-direct").exists shouldBe false
   }
 
   "Recording wrapped around the whole chain (the new wiring)" should
-    "capture the Zyte-served response keyed by the target URL" in {
+    "capture the proxy-served response keyed by the target URL" in {
     val chain: HttpFetch = new FallbackHttpFetch(Seq(
-      "zyte"   -> zyteServing("films-json-from-zyte"),
-      "direct" -> zyteServing("unused")))
+      "proxy"  -> proxyServing("films-json-from-proxy"),
+      "direct" -> proxyServing("unused")))
     // Compiles only because RecordingHttpFetch's delegate was widened from
     // RealHttpFetch to HttpFetch — the change that lets the recorder wrap the
-    // Zyte chain at all.
-    val recorder = new RecordingHttpFetch("recorder-zyte-capture-spec/outer", chain)
+    // proxy chain at all.
+    val recorder = new RecordingHttpFetch("recorder-chain-capture-spec/outer", chain)
 
-    recorder.get(MultikinoFilmsUrl) shouldBe "films-json-from-zyte"
+    recorder.get(MultikinoFilmsUrl) shouldBe "films-json-from-proxy"
     val f = filmsFixture("outer")
     f.exists shouldBe true
-    new String(Files.readAllBytes(f.toPath), "UTF-8") shouldBe "films-json-from-zyte"
+    new String(Files.readAllBytes(f.toPath), "UTF-8") shouldBe "films-json-from-proxy"
   }
 
   "The recorder's wiring" should
     "wrap the Multikino and biletyna chains in recording from the OUTSIDE" in {
     // The actual fix: these must be RecordingHttpFetch (recording the whole
-    // Zyte chain), not a bare FallbackHttpFetch with recording buried inside as
+    // proxy chain), not a bare FallbackHttpFetch with recording buried inside as
     // `direct`. Forcing these lazy vals builds the chains only — no Mongo, no
     // network, no `main()`.
     recordingWiring.multikinoFetch shouldBe a[RecordingHttpFetch]
     recordingWiring.biletynaFetch  shouldBe a[RecordingHttpFetch]
   }
-
-  // Zyte is billed per request and is the residential proxy's fallback, never a primary. The
-  // recorder used to build Zyte → direct with no proxy at all, so every Multikino / biletyna
-  // request of a daily recording was a paid Zyte call.
 
   /** A leg that counts what reaches it and serves `body`, or fails like a dead tunnel. */
   private final class Leg(body: Option[String]) extends GetOnlyHttpFetch {
@@ -92,26 +88,24 @@ class RecorderZyteCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndAf
     }
   }
 
-  "The recorder's paid-egress chain" should "build no Zyte leg when there is no residential proxy" in {
-    val zyte   = new Leg(Some("from-zyte"))
+  "The recorder's paid-egress chain" should "be `direct` alone when there is no residential proxy" in {
     val direct = new Leg(Some("from-direct"))
-    modules.wiring.EgressWiring.paidEgressChain(None, _ => zyte, direct, _root_.tools.SpecClock.Pinned).get(MultikinoFilmsUrl) shouldBe "from-direct"
-    zyte.calls.get shouldBe 0
+    modules.wiring.EgressWiring.paidEgressChain(None, direct, _root_.tools.SpecClock.Pinned) should be theSameInstanceAs direct
   }
 
-  it should "ask the proxy first and leave Zyte unasked when the proxy answers" in {
-    val proxy = new Leg(Some("from-proxy"))
-    val zyte  = new Leg(Some("from-zyte"))
-    modules.wiring.EgressWiring.paidEgressChain(Some(IndexedSeq(proxy)), _ => zyte, new Leg(Some("from-direct")), _root_.tools.SpecClock.Pinned)
+  it should "ask the proxy first and leave `direct` unasked when the proxy answers" in {
+    val proxy  = new Leg(Some("from-proxy"))
+    val direct = new Leg(Some("from-direct"))
+    modules.wiring.EgressWiring.paidEgressChain(Some(IndexedSeq(proxy)), direct, _root_.tools.SpecClock.Pinned)
       .get(MultikinoFilmsUrl) shouldBe "from-proxy"
-    zyte.calls.get shouldBe 0
+    direct.calls.get shouldBe 0
   }
 
-  it should "fall back to Zyte only behind a proxy that failed" in {
-    val zyte = new Leg(Some("from-zyte"))
-    modules.wiring.EgressWiring.paidEgressChain(Some(IndexedSeq(new Leg(None))), _ => zyte, new Leg(Some("from-direct")), _root_.tools.SpecClock.Pinned)
-      .get(MultikinoFilmsUrl) shouldBe "from-zyte"
-    zyte.calls.get shouldBe 1
+  it should "fall straight back to `direct` behind a proxy that failed" in {
+    val direct = new Leg(Some("from-direct"))
+    modules.wiring.EgressWiring.paidEgressChain(Some(IndexedSeq(new Leg(None))), direct, _root_.tools.SpecClock.Pinned)
+      .get(MultikinoFilmsUrl) shouldBe "from-direct"
+    direct.calls.get shouldBe 1
   }
 
   "The recorder's capture directory" should

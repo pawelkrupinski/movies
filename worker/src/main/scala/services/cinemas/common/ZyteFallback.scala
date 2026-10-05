@@ -3,24 +3,14 @@ package services.cinemas.common
 import tools.{CountingHttpFetch, FallbackHttpFetch, HttpFetch, HttpOutcomeRecorder}
 
 import java.net.http.HttpClient
-import java.time.{Clock, Duration}
+import java.time.Duration
 
 /**
- * Builds the `HttpFetch` for a cinema whose site WAF blocks our datacenter IP:
- * Zyte (residential ASN) primary → `direct` fallback. Zyte is included only
- * when `ZYTE_API_KEY` is set, so local dev and the fixture-replay test wiring
- * — neither of which carries the key — collapse the chain to `direct` alone.
- *
- * `cookieSource` is threaded straight to [[ZyteFetch]]: `Some(homepage)` for
- * upstreams with a session-cookie wall (Multikino), `None` for stateless pages
- * (biletyna). Extracted from Multikino's own fetch chain once a second caller
- * (Kino Kameralne) needed the same chain.
- *
- * The key (`ZYTE_API_KEY`) and the session TTL come from the configuration the caller
- * hands in — the composition root's in production, one over a fixed `Env.of(…)` in a
- * spec, so both branches are testable even where CI sets the key.
- *
- * `clock` is the composition root's: the cookie-walled session's TTL is judged on it.
+ * Builds the `HttpFetch` for a cinema whose origin firewall blocks both our
+ * datacenter IP and the Decodo proxy: Zyte (residential ASN) primary → `direct`
+ * fallback. Zyte is included only when there is an API key, so local dev and
+ * the fixture-replay test wiring — neither of which carries the key — collapse
+ * the chain to `direct` alone.
  *
  * `zyteHttp` is the JDK client the Zyte API calls go through — built by the
  * composition root ([[newHttpClient]]) and handed in, by name, so it is only built
@@ -29,30 +19,12 @@ import java.time.{Clock, Duration}
 object ZyteFallback {
 
   def fetchFor(
-    direct:       HttpFetch,
-    zyteHttp:     => HttpClient,
-    configuration: settings.ProcessConfiguration,
-    clock:        Clock,
-    cookieSource: Option[String] = None,
-    meter:        HttpOutcomeRecorder = HttpOutcomeRecorder.noop
+    direct:  HttpFetch,
+    zyteHttp: => HttpClient,
+    apiKey:  Option[settings.ZyteApiKey],
+    meter:   HttpOutcomeRecorder = HttpOutcomeRecorder.noop
   ): HttpFetch =
-    fetchFor(direct, zyteHttp, configuration.zyteApiKey, configuration, cookieSource, meter, clock)
-
-  /** [[fetchFor]] with the key handed in rather than read off `configuration` — for a
-   *  composition root that decides for itself whether it has a paid Zyte leg at all
-   *  (`EgressWiring.zyteApiKey`; every test wiring answers None). */
-  def fetchFor(
-    direct:        HttpFetch,
-    zyteHttp:      => HttpClient,
-    apiKey:        Option[settings.ZyteApiKey],
-    configuration: settings.ProcessConfiguration,
-    cookieSource:  Option[String],
-    meter:         HttpOutcomeRecorder,
-    clock:         Clock
-  ): HttpFetch =
-    chain(apiKey.map(key =>
-      new ZyteFetch(new ZyteClient(zyteHttp, key), cookieSource, clock,
-        configuration.zyteSessionTtl(settings.ZyteSessionTtl(ZyteFetch.DefaultSessionTtl)))), direct, meter)
+    chain(apiKey.map(key => new ZyteFetch(new ZyteClient(zyteHttp, key))), direct, meter)
 
   /** Zyte (when there is a Zyte leg) → `direct`, with every Zyte attempt's
    *  outcome going to `meter` — the paid-egress counter; `direct` is free and is

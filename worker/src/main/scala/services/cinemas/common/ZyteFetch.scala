@@ -1,59 +1,23 @@
 package services.cinemas.common
 
-import settings.ZyteSessionTtl
-
 import tools.GetOnlyHttpFetch
-
-import java.time.Clock
-import scala.concurrent.duration._
 
 /**
  * Thin `HttpFetch` shim that routes GETs through `ZyteClient` so the caller
- * never has to know which proxy sits behind the `HttpFetch` it was given.
- *
- * `cookieSource` picks the fetch shape:
- *   - `Some(homepage)` → a [[SharedZyteSession]] — warm a session from the
- *     homepage once and reuse it across fetches, for upstreams with a
- *     session-cookie wall (Multikino). One `ZyteFetch` is shared across all the
- *     cinema clients, so the whole fleet shares one warmed session.
- *   - `None` → a single `get`, for stateless pages that only need Zyte's
- *     residential egress to clear a datacenter-IP block (biletyna).
+ * never has to know which proxy sits behind the `HttpFetch` it was given. One
+ * stateless extract call per fetch — for a page that only needs Zyte's
+ * residential egress to clear an IP block (Kino Kryterium's ck105 portal).
  */
-class ZyteFetch(
-  client:       ZyteClient,
-  cookieSource: Option[String],
-  // What the shared session's TTL is judged on: the composition root's clock.
-  clock:        Clock,
-  sessionTtl:   ZyteSessionTtl = ZyteSessionTtl(ZyteFetch.DefaultSessionTtl)
-) extends GetOnlyHttpFetch {
-  private val session: Option[SharedZyteSession] =
-    cookieSource.map(src => new SharedZyteSession(client, src, sessionTtl.value, clock))
-
-  override def get(url: String): String =
-    session.fold(client.get(url))(_.get(url))
+class ZyteFetch(client: ZyteClient) extends GetOnlyHttpFetch {
+  override def get(url: String): String = client.get(url)
 
   /** The upstream's exact bytes — the inherited `get(url).getBytes(UTF_8)` would
    *  already have decoded a single-byte page as UTF-8 and mangled it. */
-  override def getBytes(url: String): Array[Byte] =
-    session.fold(client.getBytes(url))(_.getBytes(url))
+  override def getBytes(url: String): Array[Byte] = client.getBytes(url)
 
   /** Headers must reach the upstream — inheriting `HttpFetch`'s default
-   *  (`get(url, headers) = get(url)`) silently dropped them, so Odeon's Zyte
-   *  fallback went out without its `Authorization: Bearer` and paid for a 401.
-   *  The warmed-session path carries only cookies; rather than drop a header
-   *  there, it refuses, and the fallback chain moves on. */
+   *  (`get(url, headers) = get(url)`) silently dropped them, so a header-
+   *  authenticated origin went out without its `Authorization` and paid for a 401. */
   override def get(url: String, headers: Map[String, String]): String =
-    if (headers.isEmpty) get(url)
-    else if (session.isEmpty) client.get(url, headers)
-    else throw new UnsupportedOperationException(s"ZyteFetch: the warmed-session path cannot carry request headers ($url)")
-}
-
-object ZyteFetch {
-  /** How long a warmed Zyte session is reused before re-warming. Kept under a
-   *  Zyte session's server-side lifetime so reuse usually hits a live session;
-   *  if it's stale the fetch's 401 triggers a re-warm + retry anyway, so this is
-   *  a cost knob, not a correctness one. Tunable via KINOWO_ZYTE_SESSION_TTL_SECONDS
-   *  (resolved by `settings.ProcessConfiguration.zyteSessionTtl`). */
-  val DefaultSessionTtl: FiniteDuration = 480.seconds
-
+    if (headers.isEmpty) get(url) else client.get(url, headers)
 }

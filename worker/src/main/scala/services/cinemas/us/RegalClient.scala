@@ -55,9 +55,9 @@ import java.time.format.DateTimeFormatter
  * Regal's origin is Cloudflare-gated. Verified 2026-08-30, every path (even
  * `/robots.txt`) answers 403 to: plain curl, curl with a full browser header
  * set, the Decodo residential proxy on three ports, AND the JVM `HttpClient`
- * this worker fetches with. Only Zyte's network gets through, so
- * `WorkerWiring` routes this client through the Zyte seam rather than the
- * `flicksFetch` residential proxy the UK chains use.
+ * this worker fetches with. Only Zyte's network gets through, which is why it
+ * was once routed through the Zyte seam rather than the `flicksFetch`
+ * residential proxy the UK chains use (see the ⚠ above).
  */
 class RegalClient(
   http:        HttpFetch,

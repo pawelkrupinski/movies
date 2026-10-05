@@ -43,7 +43,7 @@ import scala.util.Try
  * Filmweb, which had silently gone empty or stale for them.
  *
  * biletyna.pl 403s our datacenter IP (Cloudflare waiting-room), so the catalog
- * routes these through the `bnFetch` seam — Zyte's residential egress in
+ * routes these through the `bnFetch` seam — the residential proxy in
  * production, the fixture fake in tests.
  *
  * @parameter http    HTTP client (the biletyna fetch seam in production).

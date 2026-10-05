@@ -9,11 +9,9 @@ import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 /**
- * Unit tests for ZyteClient's pure response-parsing primitives. The
- * over-the-wire `warm` / `fetchWithSession` calls are exercised against a
- * real key out of band; here we just pin the bits that decode the response —
- * so a future Zyte API change (different field name, body not base64) breaks
- * here loudly rather than silently emptying the Multikino cinema slot.
+ * Unit tests for ZyteClient's pure request/response primitives — so a future
+ * Zyte API change (different field name, body not base64) breaks here loudly
+ * rather than silently emptying Kino Kryterium's cinema slot.
  */
 class ZyteClientSpec extends AnyFlatSpec with Matchers {
 
@@ -118,28 +116,23 @@ class ZyteClientSpec extends AnyFlatSpec with Matchers {
       "Zyte response missing httpResponseBody for x"
   }
 
-  "requestBody" should "OMIT the session field on the stateless get path (None)" in {
+  "requestBody" should "never carry a session field" in {
     // Regression: a stray per-call session id pinned a sticky Zyte egress IP that
     // bilety.ck105.koszalin.pl banned (520 /download/website-ban) → Kino Kryterium
-    // showed a permanent white /uptime bar. The cookie-less get path must send no
-    // session so Zyte picks a fresh IP each call.
-    val body = ZyteClient.requestBody("https://bilety.ck105.koszalin.pl/MSI/mvc/pl", None)
+    // showed a permanent white /uptime bar. A request must send no session so Zyte
+    // picks a fresh IP each call.
+    val body = ZyteClient.requestBody("https://bilety.ck105.koszalin.pl/MSI/mvc/pl")
     body should include(""""url":"https://bilety.ck105.koszalin.pl/MSI/mvc/pl"""")
     body should include(""""httpResponseBody":true""")
     body should not include "session"
   }
 
-  it should "INCLUDE the session id on the cookie-carryover path (Some) — Multikino needs it" in {
-    val body = ZyteClient.requestBody("https://multikino.pl/api/x", Some("sess-123"))
-    body should include(""""session":{"id":"sess-123"}""")
-  }
-
   it should "pass request headers as Zyte's customHttpRequestHeaders, and omit the field when there are none" in {
     val body = play.api.libs.json.Json.parse(
-      ZyteClient.requestBody("https://vwc.odeon.co.uk/x", None, Map("Authorization" -> "Bearer t0k")))
+      ZyteClient.requestBody("https://example.pl/x", Map("Authorization" -> "Bearer t0k")))
     (body \ "customHttpRequestHeaders").as[Seq[Map[String, String]]] shouldBe
       Seq(Map("name" -> "Authorization", "value" -> "Bearer t0k"))
-    ZyteClient.requestBody("https://vwc.odeon.co.uk/x", None) should not include "customHttpRequestHeaders"
+    ZyteClient.requestBody("https://example.pl/x") should not include "customHttpRequestHeaders"
   }
 
   "bodyBytesOrThrow" should "return the upstream bytes exactly, not a UTF-8 round-trip of them" in {

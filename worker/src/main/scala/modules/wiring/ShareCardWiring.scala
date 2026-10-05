@@ -33,7 +33,7 @@ trait ShareCardWiring { self: WorkerWiring =>
 
   /** Posters download directly, except a Cloudflare-blocked site's, which go through the egress
    *  its scrapes use: Multikino 403s the worker's IP on every poster as on its pages. That route
-   *  is PAID (the proxy, Zyte behind it), so a poster that fails on it is remembered rather than
+   *  is PAID (the proxy), so a poster that fails on it is remembered rather than
    *  asked for again by every render and every daily backfill. */
   private lazy val posterDownload: PosterDownload = PosterDownload.routed(new HttpPosterDownload(tls = tlsContext), posterEgressRoutes)
 

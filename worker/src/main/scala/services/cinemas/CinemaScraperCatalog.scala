@@ -23,7 +23,7 @@ import scala.concurrent.duration._
  * Takes the seams the worker (and its fixture-replay test wiring) vary:
  *   - `http`     — the shared `HttpFetch` every cinema fetches through.
  *   - `mkFetch`  — Multikino's fetch path, passed by `WorkerWiring` (production
- *                  routes it residential proxy → Zyte → direct; the fixture
+ *                  routes it residential proxy → direct; the fixture
  *                  wiring overrides it back to `http`). A diagnostic uses the
  *                  secondary constructor below, which builds the same chain over
  *                  the proxy shards it is handed.
@@ -33,9 +33,8 @@ import scala.concurrent.duration._
  *                  bilety.ck105.koszalin.pl times out the connection from Fly and
  *                  from every Decodo IP, but Zyte's true-residential network gets
  *                  through. `WorkerWiring` routes it through Zyte; the diagnostic
- *                  ctor puts the proxy ahead of Zyte (Zyte is only ever the
- *                  proxy's fallback outside the worker), and the fixture wiring
- *                  overrides it back to `http`.
+ *                  ctor gives it the proxy → `http` route instead (it never builds
+ *                  a Zyte leg), and the fixture wiring overrides it back to `http`.
  *   - `flicksFetch` — Decodo residential egress for www.flicks.co.uk, which
  *                  Cloudflare 403s from our Fly datacenter IP. Flicks is the
  *                  ONLY UK source, so this seam carries all ~843 UK venues; a
@@ -103,10 +102,10 @@ class CinemaScraperCatalog(
   private val UnitedKingdom: ZoneId = TimeZones.UnitedKingdom
 
   /** The diagnostic ctor's body, with its one paid route built once: biletyna's pages and the
-   *  venues behind `zyteFetch` share it, as the worker's `biletynaFetch` sits on its `zyteFetch`. */
+   *  venue behind `zyteFetch` share it. */
   private def this(http: HttpFetch, venueClock: VenueClock, clock: Clock, titles: TitleNormalizer,
-                   configuration: settings.ProcessConfiguration, proxyShards: Option[IndexedSeq[HttpFetch]], paidRoute: HttpFetch) =
-    this(http, modules.wiring.EgressWiring.multikinoChain(configuration, proxyShards, http, clock), paidRoute,
+                   proxyShards: Option[IndexedSeq[HttpFetch]], paidRoute: HttpFetch) =
+    this(http, modules.wiring.EgressWiring.multikinoChain(proxyShards, http, clock), paidRoute,
       venueClock, (_, h, ttl) => new CachingDetailFetch(h, ttl),
       zyteFetch = paidRoute,
       // The UK routes stay on `http`: Decodo's IPs are Polish, and a diagnostic runs Poland.
@@ -116,19 +115,17 @@ class CinemaScraperCatalog(
       titles = titles)
 
   /** Diagnostic ctor (`FilmwebDiff`, `RosterAudit`, specs): every paid route — Multikino's API,
-   *  biletyna's venue pages, the venues behind `zyteFetch` — is the residential proxy over
-   *  `proxyShards` first, Zyte over `configuration`'s key behind it, then `http`; with no
-   *  shards it is `http` ALONE, since Zyte is only ever the proxy's fallback
-   *  ([[modules.wiring.EgressWiring.paidEgressChain]]). `WorkerWiring` uses the primary ctor
-   *  to inject its own routes. `configuration` is the caller's: a tool's `main` passes the
-   *  process's, a spec none. `clock` is what a Zyte session's TTL is judged on — the run's
-   *  own, which a venue clock pinned to a day for the plan's sake is not. */
+   *  biletyna's venue pages, the venue behind `zyteFetch` — is the residential proxy over
+   *  `proxyShards` first, then `http`; with no shards it is `http` ALONE
+   *  ([[modules.wiring.EgressWiring.paidEgressChain]]). A diagnostic never builds a Zyte leg.
+   *  `WorkerWiring` uses the primary ctor to inject its own routes. `clock` is what the proxy
+   *  leg's circuit breaker is judged on — the run's own, which a venue clock pinned to a day
+   *  for the plan's sake is not. */
   def this(http: HttpFetch, venueClock: VenueClock, clock: Clock,
            titles: TitleNormalizer = TitleNormalizer.forCountry(Country.default),
-           configuration: settings.ProcessConfiguration = new settings.ProcessConfiguration(tools.Env.of()),
            proxyShards: Option[IndexedSeq[HttpFetch]] = None) =
-    this(http, venueClock, clock, titles, configuration, proxyShards,
-      modules.wiring.EgressWiring.paidEgressChain(proxyShards, modules.wiring.EgressWiring.zyteOver(configuration, None, clock), http, clock))
+    this(http, venueClock, clock, titles, proxyShards,
+      modules.wiring.EgressWiring.paidEgressChain(proxyShards, http, clock))
 
   // Per-film detail bodies are static between passes and IDENTICAL across a
   // chain's locations, so each chain shares ONE CachingDetailFetch: a film's
@@ -238,8 +235,8 @@ class CinemaScraperCatalog(
   }
 
   // biletyna.pl venue pages (plus Końskie's two below). biletyna.pl 403s our datacenter IP (Cloudflare
-  // waiting-room), so every one routes through `bnFetch` — Zyte's residential
-  // egress in prod, the fixture fake in tests.
+  // waiting-room), so every one routes through `bnFetch` — the residential
+  // proxy in prod, the fixture fake in tests.
   private val biletynaPages: Map[Cinema, String] = Map(
     KinoMCKTkacz -> "https://biletyna.pl/Tomaszow-Mazowiecki/Miejskie-Centrum-Kultury-Filia-Tkacz",
     KinoMDKOpoczno -> "https://biletyna.pl/Opoczno/Miejski-Dom-Kultury-im-Tadeusza-Sygietynskiego",
@@ -552,7 +549,7 @@ class CinemaScraperCatalog(
     helios(HeliosNuxt.Riviera),
     new KinoSpektrumClient(http, KinoSpektrum),
     // biletyna.pl 403s our datacenter IP, so route through `bnFetch` — the
-    // residential proxy (Zyte behind it) in production, the fixture fake in
+    // residential proxy in production, the fixture fake in
     // tests. See EgressWiring.biletynaFetch.
     biletyna(KinoKameralne),
     new KinoIkmClient(http, KinoIkm, today),
@@ -622,7 +619,7 @@ class CinemaScraperCatalog(
     multikino("0029", MultikinoKielce),
     // iframe639.biletyna.pl 403s our Fly datacenter IP (Cloudflare) on the
     // per-film /artist/view/id detail pages, so route through the biletyna seam
-    // (residential proxy → Zyte) like every other biletyna venue — else the
+    // (residential proxy → direct) like every other biletyna venue — else the
     // deferred detail enrichment fetches all 403 and the enrichment bar goes red.
     new KinoFenomenClient(bnFetch, KinoFenomen),
     new KinoMoskwaClient(http, KinoMoskwa, today),

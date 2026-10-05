@@ -38,7 +38,7 @@ Live at **<https://kinowo.net>**.
 | Frontend    | Twirl templates + vanilla JS                |
 | Database    | MongoDB (official Scala driver 5)           |
 | Cache       | Caffeine (in-process, write-through to Mongo) |
-| Scraping    | jsoup, with Zyte proxy for bot-blocked sources |
+| Scraping    | jsoup, with a Decodo residential proxy for bot-blocked sources (Zyte for the one the proxy cannot reach) |
 | DI          | Compile-time (Play `BuiltInComponents`, `modules.AppLoader`) |
 | Build       | sbt 1.12, JDK 27 → Java 21 bytecode         |
 | iOS         | SwiftUI                                     |

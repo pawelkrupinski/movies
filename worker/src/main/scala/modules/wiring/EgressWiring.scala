@@ -7,9 +7,9 @@ import services.cinemas.uk.OdeonAuthHarvester
 import services.metrics.PaidEgressMetrics
 import tools.{CountingHttpFetch, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HttpFetch, HttpOutcomeRecorder, RealHttpFetch, ResidentialProxy, SessionWarmingHttpFetch, StickyShardHttpFetch}
 
-/** Cinema-site egress routes: the residential-proxy and Zyte chains the
- *  Cloudflare-blocked venues scrape through, each a seam the fixture wirings
- *  collapse back onto `httpFetch`. */
+/** Cinema-site egress routes: the residential-proxy chains the Cloudflare-blocked
+ *  venues scrape through (plus the one Zyte route for a venue the proxy cannot
+ *  reach), each a seam the fixture wirings collapse back onto `httpFetch`. */
 trait EgressWiring { self: WorkerWiring =>
   import EgressWiring.ResidentialProxyService
 
@@ -17,11 +17,11 @@ trait EgressWiring { self: WorkerWiring =>
   // that Cloudflare-block our Fly datacenter IP. Non-secret host+ports come from
   // the committed residential-proxy.properties; the KINOWO_PROXY_USER/PASS secrets
   // come from Env (env -> .env.local). Set only when both are present — absent in
-  // local/test, where the chain collapses to the existing Zyte/direct path. See
-  // the `reference_decodo_isp_proxy` memory.
+  // local/test, where the chain collapses to the direct path. See the
+  // `reference_decodo_isp_proxy` memory.
   // One RealHttpFetch per Decodo pool IP (each pinned, own cookie jar), built
   // once and shared by the proxied clients; None where the KINOWO_PROXY_* secrets
-  // aren't set (local/CI/fixture-replay → Zyte/direct). Sharing the shards means
+  // aren't set (local/CI/fixture-replay → direct). Sharing the shards means
   // each IP warms its Multikino session at most once and reuses it across the
   // venues routed there.
   private lazy val proxyShards: Option[IndexedSeq[HttpFetch]] = residentialProxyShards
@@ -31,8 +31,9 @@ trait EgressWiring { self: WorkerWiring =>
   protected def residentialProxyShards: Option[IndexedSeq[HttpFetch]] =
     EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(configuration), tlsContext)
 
-  // Proxy primary → existing chain (Zyte then direct) as fallback, so a proxy IP
-  // that's ever unreachable/burned silently rolls over and scraping never breaks.
+  // Proxy primary → `fallback` (direct), so a proxy IP that's ever unreachable/burned
+  // rolls over to the direct fetch rather than failing outright. There is no paid
+  // leg behind the proxy any more: Zyte was dropped as its fallback on 2026-10-05.
   //
   // StickyShardHttpFetch fans each client's venues across all the pool IPs, keyed
   // by venue URL so a given venue always egresses via the same IP while different
@@ -75,18 +76,16 @@ trait EgressWiring { self: WorkerWiring =>
     proxyShards.fold(fallback)(EgressWiring.proxyPrimary(_, fallback, clock, warmUrl, keyOf, decodoMeter, recordProxyOutcome, decodoBreakerMeter))
 
   // Meter the residential-proxy leg to /uptime: a green "Residential proxy" bar
-  // means the proxy served, a red one means it failed and we fell back to Zyte
-  // (so red-bar frequency = how often Zyte is still used). Aggregated across all
-  // proxied cinemas into one row. Only the outer chain's "proxy" leg is metered;
-  // the inner Zyte/direct chain runs with the default no-op.
+  // means the proxy served, a red one means it failed and we fell back to direct
+  // (which, for a Cloudflare-blocked origin, usually fails too). Aggregated across
+  // all proxied cinemas into one row. Only the "proxy" leg is metered.
   private def recordProxyOutcome(backend: String, error: Option[String]): Unit =
     if (backend == "proxy") error match {
       case None        => uptimeMonitor.recordSuccess(ResidentialProxyService)
       case Some(label) => uptimeMonitor.recordFailure(ResidentialProxyService, label)
     }
 
-  // Each paid leg's per-request outcome, for `PaidEgressFailing` — the Zyte leg
-  // was metered nowhere before Odeon's paid 401s (see PaidEgressMetrics).
+  // Each paid leg's per-request outcome, for `PaidEgressFailing` (see PaidEgressMetrics).
   private lazy val zyteMeter: HttpOutcomeRecorder =
     workerMetrics.paidEgress.recorderFor(country.code, PaidEgressMetrics.Provider.Zyte)
   private lazy val decodoMeter: HttpOutcomeRecorder =
@@ -94,60 +93,44 @@ trait EgressWiring { self: WorkerWiring =>
   private lazy val decodoBreakerMeter: tools.CircuitBreakerMeter =
     workerMetrics.httpBreakers.meterFor(country.code, services.metrics.HttpBreakerMetrics.Leg.Decodo)
 
-  // The one JDK client every Zyte chain this wiring composes calls the Zyte API through.
-  // Lazy, and handed on by name, so a wiring without ZYTE_API_KEY never builds it.
+  // The one JDK client the Zyte route below calls the Zyte API through. Lazy, and
+  // handed on by name, so a wiring without ZYTE_API_KEY never builds it.
   lazy val zyteHttpClient: java.net.http.HttpClient = ZyteFallback.newHttpClient()
 
-  /** The key every paid Zyte leg below is built with — None means this wiring has no Zyte
-   *  leg anywhere (the chains collapse to proxy → direct, the Odeon harvester mints no
+  /** The key the paid Zyte uses below are built with — None means this wiring has no
+   *  Zyte leg anywhere (`zyteFetch` collapses to direct, the Odeon harvester mints no
    *  token). A seam so the test wirings can refuse Zyte whatever environment they are
    *  handed: `TestWiring` answers None. */
   protected def zyteApiKey: Option[settings.ZyteApiKey] = configuration.zyteApiKey
 
-  /** Zyte (when [[zyteApiKey]] is set) → `direct`: the paid leg every Zyte route below builds. */
-  private def zyteThenDirect(direct: HttpFetch, cookieSource: Option[String] = None): HttpFetch =
-    ZyteFallback.fetchFor(direct, zyteHttpClient, zyteApiKey, configuration, cookieSource, zyteMeter, clock)
-
-  lazy val multikinoFetch: HttpFetch =
-    proxyPrimary(zyteThenDirect(httpFetch, Some(MultikinoClient.HomeUrl)), warmUrl = Some(MultikinoClient.HomeUrl))
+  lazy val multikinoFetch: HttpFetch = proxyPrimary(httpFetch, warmUrl = Some(MultikinoClient.HomeUrl))
   // The same route for Multikino's share-card POSTERS, but NOT metered to the "Residential proxy"
-  // /uptime row: that row says how often the SCRAPES fall back to Zyte, and a poster the origin
+  // /uptime row: that row says how often the SCRAPES fall off the proxy, and a poster the origin
   // refuses through the proxy is not the proxy failing. Its own breaker too, so poster failures
   // never open the scrapes'. The paid-egress counters still see it: it is paid for.
-  lazy val multikinoPosterFetch: HttpFetch = {
-    val fallback = zyteThenDirect(httpFetch, Some(MultikinoClient.HomeUrl))
-    proxyShards.fold(fallback)(EgressWiring.proxyPrimary(_, fallback, clock, Some(MultikinoClient.HomeUrl), meter = decodoMeter,
+  lazy val multikinoPosterFetch: HttpFetch =
+    proxyShards.fold(httpFetch)(EgressWiring.proxyPrimary(_, httpFetch, clock, Some(MultikinoClient.HomeUrl), meter = decodoMeter,
       breakerMeter = decodoBreakerMeter))
-  }
-  // Zyte residential egress → direct fallback (Zyte only when ZYTE_API_KEY is set).
-  lazy val zyteFetch: HttpFetch = zyteThenDirect(httpFetch)
-  // biletyna.pl 403s our datacenter IP; residential proxy primary, Zyte fallback.
-  lazy val biletynaFetch: HttpFetch = proxyPrimary(zyteFetch)
+  // Zyte residential egress → direct fallback (Zyte only when ZYTE_API_KEY is set), for
+  // the one venue whose origin blocks the Decodo proxy too (see CinemaScraperCatalog).
+  // Never a fallback behind the proxy — see feedback_zyte_is_decodo_fallback_only.
+  lazy val zyteFetch: HttpFetch = ZyteFallback.fetchFor(httpFetch, zyteHttpClient, zyteApiKey, zyteMeter)
+  // biletyna.pl 403s our datacenter IP; residential proxy primary, direct fallback.
+  lazy val biletynaFetch: HttpFetch = proxyPrimary(httpFetch)
   // www.flicks.co.uk 403s our datacenter IP behind Cloudflare (verified 2026-07-26
   // from kinowo-worker-uk: the identical GET returns 403 from Fly, 200 from a
   // residential IP; every Decodo pool IP returns 200 too). Flicks is the ONLY UK
   // source (and, via flicksUs, the AMC/Regal/Malco fallback for the US), so the
-  // block took all ~843 UK venues red at once.
-  //
-  // Residential proxy primary, Zyte fallback (added 2026-09-10, after the Decodo
-  // account itself started 503ing every tunnel — `ProxyProbe` reproduced it from a
-  // clean non-worker egress against api.ipify.org/Multikino/biletyna, so it is not
-  // an IP-reputation block the direct leg would clear). Before this, the fallback
-  // was plain `direct`, which is USELESS here: direct is the exact block the proxy
-  // exists to clear, so a Decodo-side outage left Cineworld/Flicks/AMC/Regal/Malco
-  // with no working path at all (8+ retries on a single UK Cineworld Leeds date
-  // chunk). Zyte is billed per request, so this must stay BEHIND the proxy, never
-  // primary — see feedback_zyte_is_decodo_fallback_only — and the
-  // `kinowo-residential-proxy-failing` alert (now ResidentialProxyFallingBackToZyte,
-  // routed to email) is what says whether that's actually happening.
-  lazy val flicksFetch: HttpFetch = proxyPrimary(zyteFetch)
+  // block took all ~843 UK venues red at once. Residential proxy primary; the direct
+  // fallback is the very block the proxy exists to clear, so a Decodo-side outage
+  // leaves these venues without a working path until it recovers.
+  lazy val flicksFetch: HttpFetch = proxyPrimary(httpFetch)
 
   // Vue/CinemaxX films API is Cloudflare-403'd from our Fly IP (like flicks) AND
   // token-gated, so it egresses residential AND host-sticky (one IP+cookie for the
   // token POST + films GET — see proxyPrimary/keyOf) and falls back to direct if
   // the proxy is down. Cineworld reuses flicksFetch (GET-only, no cookie, so
-  // per-venue stickiness is fine), Zyte fallback included. Showcase/Everyman still
-  // reach their origins directly.
+  // per-venue stickiness is fine). Showcase/Everyman still reach their origins directly.
   lazy val vueFetch: HttpFetch = proxyPrimary(httpFetch, keyOf = StickyShardHttpFetch.hostOnly)
 
   // vwc.odeon.co.uk — Odeon's Vista ocapi backend — is Cloudflare-403'd too. It was
@@ -160,12 +143,7 @@ trait EgressWiring { self: WorkerWiring =>
   // Per-venue (default host+path) stickiness, not host-only: Odeon carries its auth
   // in a header, not a cookie, so nothing has to share an IP, and the per-date
   // showtimes paths spread the sweep across the pool.
-  //
-  // Falls back to Zyte, not direct (changed 2026-09-10 alongside flicksFetch, same
-  // Decodo-account-wide 503 outage — see the comment there). Odeon Middlesbrough hit
-  // the identical "proxy: Tunnel failed, got: 503 / fallback: HTTP 403" loop with a
-  // bare direct fallback, because direct is Cloudflare-blocked here too.
-  lazy val odeonFetch: HttpFetch = proxyPrimary(zyteFetch)
+  lazy val odeonFetch: HttpFetch = proxyPrimary(httpFetch)
 
   // Harvests Odeon's ~12h Vista JWT via Zyte browserHtml (the estate-wide token
   // lives in the Cloudflare-gated www page; the ocapi DATA host is open). Lazy TTL
@@ -176,23 +154,14 @@ trait EgressWiring { self: WorkerWiring =>
 }
 
 object EgressWiring {
-  /** The residential proxy first, `zyteOver(direct)` behind it — and with no proxy, `direct`
-   *  ALONE: Zyte is the proxy's paid fallback, so a tool run without Decodo credentials never
-   *  builds a Zyte leg, whatever ZYTE_API_KEY says. */
-  def paidEgressChain(proxyShards: Option[IndexedSeq[HttpFetch]], zyteOver: HttpFetch => HttpFetch, direct: HttpFetch,
+  /** The residential proxy first, `direct` behind it — and with no proxy, `direct` alone. */
+  def paidEgressChain(proxyShards: Option[IndexedSeq[HttpFetch]], direct: HttpFetch,
                       clock: java.time.Clock, warmUrl: Option[String] = None): HttpFetch =
-    proxyShards.fold(direct)(proxyPrimary(_, zyteOver(direct), clock, warmUrl))
+    proxyShards.fold(direct)(proxyPrimary(_, direct, clock, warmUrl))
 
-  /** Zyte over `configuration`'s key (cookie-walled on `cookieSource`) → `direct`: the leg
-   *  [[paidEgressChain]] puts behind the proxy. */
-  def zyteOver(configuration: settings.ProcessConfiguration, cookieSource: Option[String], clock: java.time.Clock)(direct: HttpFetch): HttpFetch =
-    ZyteFallback.fetchFor(direct, ZyteFallback.newHttpClient(), configuration.zyteApiKey, configuration, cookieSource,
-      HttpOutcomeRecorder.noop, clock)
-
-  /** Multikino's chain for a recording or diagnostic tool: proxy (warmed on the homepage) → Zyte → `direct`. */
-  def multikinoChain(configuration: settings.ProcessConfiguration, proxyShards: Option[IndexedSeq[HttpFetch]],
-                     direct: HttpFetch, clock: java.time.Clock): HttpFetch =
-    paidEgressChain(proxyShards, zyteOver(configuration, Some(MultikinoClient.HomeUrl), clock), direct, clock, Some(MultikinoClient.HomeUrl))
+  /** Multikino's chain for a recording or diagnostic tool: proxy (warmed on the homepage) → `direct`. */
+  def multikinoChain(proxyShards: Option[IndexedSeq[HttpFetch]], direct: HttpFetch, clock: java.time.Clock): HttpFetch =
+    paidEgressChain(proxyShards, direct, clock, Some(MultikinoClient.HomeUrl))
 
   /** The /uptime row the residential-proxy leg is metered under. */
   private val ResidentialProxyService = "Residential proxy"

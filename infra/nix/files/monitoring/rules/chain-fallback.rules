@@ -29,13 +29,13 @@
 # swing to 100% on ordinary background flakiness, and this is the class of alert meant to page on a
 # fleet-wide break, not a handful of unlucky venues.
 #
-# THE THRESHOLD AND WINDOW. `> 0.5` mirrors `ResidentialProxyFallingBackToZyte`'s own ratio
+# THE THRESHOLD AND WINDOW. `> 0.5` mirrors `ResidentialProxyFailing`'s own ratio
 # threshold -- over half a chain's venues down is unambiguously a chain-wide problem, not noise.
 # `for: 1h` is deliberately generous against a brief synchronized blip (a proxy hiccup or a shared
 # upstream having one bad minute could plausibly flip several venues of the same client onto
 # fallback within the same probe cycle) while still comfortably same-day: the actual incident was
 # 87/87 sustained continuously for over 24 HOURS, so even a full hour of required persistence would
-# have caught it with room to spare. Warning, not critical, matching `ResidentialProxyFallingBackToZyte`
+# have caught it with room to spare. Warning, not critical, matching `ResidentialProxyFailing`
 # -- the fallback chain means scraping itself does not break and no cinema goes fully dark, so this
 # is a coverage-quality regression rather than an outage; it still routes to `telegram-and-email`
 # (see alertmanager.yaml's `ChainFallbackSaturated` matcher) because "silent, sustained, fleet-wide"

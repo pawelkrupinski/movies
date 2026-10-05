@@ -468,7 +468,8 @@ groups:
             The worker started without the `{{ $labels.integration }}` integration because its
             secret is missing, and carried on degraded rather than failing: no TMDB resolution
             (newcomers never reach the site), no OMDb tier, no residential proxy (Cloudflare-fronted
-            chains fall to Zyte or fail), no Zyte fallback, no Sentry, or no Facebook re-scrape of a
+            chains fall to direct and mostly fail), no Zyte route for the one venue that needs it
+            or Odeon token, no Sentry, or no Facebook re-scrape of a
             changed share card. The worker's boot log names the key: `kubectl -n kinowo logs
             deploy/worker-{{ $labels.country }} | grep 'is OFF: missing'`. The secrets are in
             `worker-secrets` (the Facebook pair in `web-secrets`), managed outside movies-gitops.

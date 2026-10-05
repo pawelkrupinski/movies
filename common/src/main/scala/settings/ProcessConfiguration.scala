@@ -188,7 +188,6 @@ final class ProcessConfiguration(val env: Env) {
     OmdbBackfillInterval(seconds("KINOWO_OMDB_BACKFILL_INTERVAL_SECONDS", default.value))
   def filmwebDropThreshold(default: FilmwebDropThreshold): FilmwebDropThreshold =
     FilmwebDropThreshold(count("KINOWO_FILMWEB_DROP_THRESHOLD", default.value))
-  def zyteSessionTtl(default: ZyteSessionTtl): ZyteSessionTtl = ZyteSessionTtl(seconds("KINOWO_ZYTE_SESSION_TTL_SECONDS", default.value))
 
   def cacheRehydrateInterval(default: CacheRehydrateInterval): CacheRehydrateInterval =
     CacheRehydrateInterval(seconds("KINOWO_CACHE_REHYDRATE_SECONDS", default.value))

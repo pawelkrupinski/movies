@@ -42,8 +42,8 @@ class PosterEgressSpec extends AnyFlatSpec with Matchers {
     via(_ => poster) shouldBe Left(PosterFailure.TooLarge)
   }
 
-  // A PAID route pays for every failure too: a Multikino poster that 403s through the proxy falls
-  // back to Zyte, and the daily posterless backfill asked for it again every day. A failure on
+  // A PAID route pays for every failure too: a Multikino poster that 403s through the proxy used
+  // to fall back to Zyte, and the daily posterless backfill asked for it again every day. A failure on
   // that route is remembered — a refusal (4xx) for two weeks, anything else for three days —
   // and answered from the memory until then, without the request. The memory is files in the
   // share-card directory, so a restart (a deploy a day) does not forget it.

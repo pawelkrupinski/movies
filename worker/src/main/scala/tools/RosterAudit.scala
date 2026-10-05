@@ -42,7 +42,7 @@ object RosterAudit {
     IssuerCertificateFetching.Enabled.applyToJvm()
     val process = settings.ProcessConfiguration.resolve()
     val http    = new RealHttpFetch()
-    val catalog = new CinemaScraperCatalog(http, models.VenueClock.system, clock, configuration = process)
+    val catalog = new CinemaScraperCatalog(http, models.VenueClock.system, clock)
     val venues  = RosterSourceReader.venuesOf(Country.Poland.cities, slug => catalog.byCity.getOrElse(slug, Nil))
     println(s"RosterAudit: ${venues.size} Polish venue source pages to read")
 

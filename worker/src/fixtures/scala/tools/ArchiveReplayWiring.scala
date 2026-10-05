@@ -102,7 +102,7 @@ class ArchiveReplayWiring(
   override lazy val httpFetch: HttpFetch =
     ArchiveReplayWiring.recordedChain(fixtureDirectory, fixtureRoot, enrichmentCache,
       live(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape)), "detail-fixtures", "detail-live")
-  // Every cinema-egress route (Multikino, biletyna, Zyte, Flicks, Vue, Odeon) is this chain
+  // Every cinema-egress route (Multikino, biletyna, ck105's Zyte, Flicks, Vue, Odeon) is this chain
   // too, with no override of its own: `TestWiring` refuses their paid legs, and a route with
   // neither a proxy nor a Zyte leg IS its direct leg.
 
@@ -133,7 +133,7 @@ class ArchiveReplayWiring(
    *    on every call — so a fully recorded corpus still paid a disk write per URL per
    *    pass, and the order-independence test runs four enrichment sweeps over the same
    *    films. Only a live fetch has anything new to record. (`RecordingHttpFetch`'s own
-   *    doc argues for wrapping a whole chain, but that is about the Zyte-routed SCRAPE
+   *    doc argues for wrapping a whole chain, but that is about the proxy-routed SCRAPE
    *    chain, where an inner leg fetches through its own client and would otherwise
    *    bypass the recorder. There is no such leg here.)
    */

@@ -391,7 +391,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
 
   // ── Paid egress ────────────────────────────────────────────────────────────────────────
   //
-  // Zyte is billed per request and is the Decodo proxy's fallback only. A test wiring is
+  // Zyte is billed per request. A test wiring is
   // handed the process's Env (for MONGODB_URI and TMDB's key), and that Env is CI's secrets or
   // a developer's `.env.local` — so a ZYTE_API_KEY in it built a live, Zyte-FIRST leg into the
   // wiring's Multikino poster route and armed the Odeon harvester, and proxy credentials in it
@@ -431,6 +431,44 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
 
   it should "mint no Odeon token, which only Zyte's browser fetch can harvest" in {
     new PaidKeyedWiring(new CountingLeaf).odeonAuthHarvester.token() shouldBe None
+  }
+
+  /** The production egress shape — a residential proxy AND a Zyte key — over a proxy that fails
+   *  every call, with the Zyte API stood in for by a client that counts what is sent through it.
+   *  (The client itself is built regardless: the scraper catalogue holds ck105's Zyte route.) */
+  private final class ProxiedAndZyteKeyedWiring(direct: HttpFetch)
+      extends ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage, fixtureTree,
+        settings.FixtureRoot.RepositoryRelative) {
+    override protected def realHttpLeaf: HttpFetch = direct
+    override protected def residentialProxyShards: Option[IndexedSeq[HttpFetch]] =
+      Some(IndexedSeq(new GetOnlyHttpFetch {
+        override def get(url: String): String = throw new java.io.IOException("proxy: Tunnel failed, got: 503")
+      }))
+    override protected def zyteApiKey: Option[settings.ZyteApiKey] = Some(settings.ZyteApiKey("paid-key"))
+    override lazy val zyteHttpClient: clients.zyte.RefusingHttpClient = new clients.zyte.RefusingHttpClient
+  }
+
+  // Zyte is no longer the residential proxy's fallback (dropped 2026-10-05): a proxied route
+  // whose proxy fails goes straight to its direct leg, even with a Zyte key configured.
+  paidRoutes.filterNot(_._1.startsWith("ck105")).foreach { case (route, fetchOf) =>
+    "a proxied route whose proxy fails" should s"fall to direct with no Zyte leg behind the proxy ($route)" in {
+      val direct = new CountingLeaf
+      val wiring = new ProxiedAndZyteKeyedWiring(direct)
+
+      scala.util.Try(fetchOf(wiring).get("https://biletyna.test/venue"))
+
+      withClue("nothing may be sent to Zyte: ") { wiring.zyteHttpClient.sends.get shouldBe 0 }
+      withClue("the route answers from its direct leg: ") { direct.calls shouldBe 1 }
+    }
+  }
+
+  // The positive control: the one route still on Zyte does reach it, so a zero above is real.
+  "ck105's route" should "still ask Zyte first when a key is configured" in {
+    val direct = new CountingLeaf
+    val wiring = new ProxiedAndZyteKeyedWiring(direct)
+    scala.util.Try(wiring.zyteFetch.get("https://bilety.ck105.koszalin.test/repertuar"))
+    wiring.zyteHttpClient.sends.get shouldBe 1
+    direct.calls shouldBe 1
   }
 
   "a test wiring handed the residential-proxy credentials" should "build no proxy leg" in {

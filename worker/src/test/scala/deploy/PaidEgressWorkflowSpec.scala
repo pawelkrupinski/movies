@@ -4,14 +4,14 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * Where CI may hand out the Zyte key.
+ * Where CI may hand out the Zyte key: nowhere.
  *
- * Zyte is billed per request and is the Decodo residential proxy's FALLBACK, never a leg of
- * its own (the `feedback_zyte_is_decodo_fallback_only` rule). A test run answers from fixtures
- * and must not reach it at all; the one recorder that may (`RecordAllDataToFixture`) builds a
- * Zyte leg only behind the proxy, so its step must carry the proxy credentials beside the key.
- * The unit, integration, e2e and order-independence runs used to be handed `ZYTE_API_KEY`
- * "for parity" — every one of them a hermetic run with no use for it but to spend it.
+ * Zyte is billed per request, and since 2026-10-05 only the worker uses it — for the one
+ * venue the Decodo proxy cannot reach (Kino Kryterium) and Odeon's token harvest. No CI
+ * tool builds a Zyte leg any more (the recorder and the diagnostics go proxy → direct), and
+ * a test run answers from fixtures, so a `ZYTE_API_KEY` in a workflow could only be spent
+ * by accident. The unit, integration, e2e and order-independence runs used to be handed it
+ * "for parity", and the recorder and FilmwebDiff behind the proxy.
  */
 class PaidEgressWorkflowSpec extends AnyFlatSpec with Matchers {
 
@@ -32,31 +32,18 @@ class PaidEgressWorkflowSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  private lazy val zyteSites: Seq[(String, Seq[String])] =
-    RepoFile.ciFiles().flatMap(path => zyteEnvBlocks(RepoFile.read(path)).map(path -> _))
-
-  "every CI step handed the Zyte key" should "carry the residential-proxy credentials beside it" in {
-    withClue("the sweep must see the recorder's key, or it would pass over nothing: ") {
-      zyteSites.map(_._1) should contain allOf(".github/workflows/country-fixture-artifact.yml",
-        ".github/workflows/filmweb-diff.yml")
+  "no CI workflow" should "be handed the Zyte key" in {
+    val files = RepoFile.ciFiles()
+    withClue("the sweep must see the workflows, or it would pass over nothing: ") {
+      files should contain allOf(".github/workflows/country-fixture-artifact.yml", ".github/workflows/filmweb-diff.yml")
     }
-    zyteSites.foreach { case (path, env) =>
-      withClue(s"$path hands out ZYTE_API_KEY without Decodo ahead of it (env: ${env.mkString(", ")}): ") {
-        env.exists(_.startsWith("KINOWO_PROXY_USER:")) shouldBe true
-        env.exists(_.startsWith("KINOWO_PROXY_PASS:")) shouldBe true
-      }
-    }
-  }
-
-  "a test run" should "never be handed the Zyte key" in {
-    Seq(".github/workflows/ci.yml", ".github/workflows/order-independence.yml")
-      .foreach(path => withClue(s"$path: ")(zyteEnvBlocks(RepoFile.read(path)) shouldBe empty))
+    files.foreach(path => withClue(s"$path: ")(zyteEnvBlocks(RepoFile.read(path)) shouldBe empty))
   }
 
   "the fixture recorder's script" should "require the proxy credentials, not the Zyte key" in {
     val script = RepoFile.read(".github/scripts/record-country-fixture.sh")
     script should include("""missing="$missing KINOWO_PROXY_USER"""")
     script should include("""missing="$missing KINOWO_PROXY_PASS"""")
-    script should not include """missing="$missing ZYTE_API_KEY""""
+    script should not include "ZYTE_API_KEY"
   }
 }

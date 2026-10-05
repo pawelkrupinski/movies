@@ -12,7 +12,7 @@ import java.util.Properties
  *     never land in the repo.
  *
  * Returns a [[RealHttpFetch.ProxyConfig]] only when ALL four are present, so the
- * proxy stays disabled — and the worker falls back to Zyte/direct — wherever the
+ * proxy stays disabled — and the worker falls back to direct — wherever the
  * credentials aren't set: local dev without `.env.local`, CI, fixture replay.
  * See the `reference_decodo_isp_proxy` memory.
  */
@@ -20,7 +20,7 @@ object ResidentialProxy {
   private val PropertiesResource = "/residential-proxy.properties"
 
   /** The configured proxy, or None when host/ports (file) or user/pass (env) are
-   *  absent — in which case the caller keeps the Zyte/direct egress. */
+   *  absent — in which case the caller keeps the direct egress. */
   def fromConfiguration(configuration: settings.ProcessConfiguration): Option[RealHttpFetch.ProxyConfig] =
     fromConfig(loadProperties(PropertiesResource), configuration.proxyUser, configuration.proxyPassword)
 

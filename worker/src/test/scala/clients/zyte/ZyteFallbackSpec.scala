@@ -9,7 +9,7 @@ import scala.collection.mutable
 import services.cinemas.common.ZyteFallback
 
 /**
- * `ZyteFallback.fetchFor` composes the proxy chain at the composition root.
+ * `ZyteFallback.fetchFor` composes the Zyte → direct chain at the composition root.
  * The key is injected (not read from the ambient env) so both branches are
  * deterministic regardless of whether CI has `ZYTE_API_KEY` set.
  *
@@ -25,26 +25,26 @@ class ZyteFallbackSpec extends AnyFlatSpec with Matchers {
   private def unbuilt: HttpClient = fail("the Zyte client was built for a chain with no Zyte leg")
 
   "fetchFor without a Zyte key" should "return direct unchanged — no proxy in front" in {
-    ZyteFallback.fetchFor(direct, unbuilt, new _root_.settings.ProcessConfiguration(_root_.tools.Env.of()), tools.SpecClock.Pinned) should be theSameInstanceAs direct
+    ZyteFallback.fetchFor(direct, unbuilt, None) should be theSameInstanceAs direct
   }
 
   it should "treat a blank key as no key" in {
-    ZyteFallback.fetchFor(direct, unbuilt, new _root_.settings.ProcessConfiguration(_root_.tools.Env.of("ZYTE_API_KEY" -> "")), tools.SpecClock.Pinned) should be theSameInstanceAs direct
+    ZyteFallback.fetchFor(direct, unbuilt, new _root_.settings.ProcessConfiguration(_root_.tools.Env.of("ZYTE_API_KEY" -> "")).zyteApiKey) should be theSameInstanceAs direct
   }
 
   "fetchFor with a Zyte key" should "front direct with a Zyte fallback chain" in {
-    ZyteFallback.fetchFor(direct, new RefusingHttpClient, new _root_.settings.ProcessConfiguration(_root_.tools.Env.of("ZYTE_API_KEY" -> "test-key")), tools.SpecClock.Pinned) shouldBe a[FallbackHttpFetch]
+    ZyteFallback.fetchFor(direct, new RefusingHttpClient, Some(_root_.settings.ZyteApiKey("test-key"))) shouldBe a[FallbackHttpFetch]
   }
 
   it should "call the Zyte API through the client it was handed" in {
     val client = new RefusingHttpClient
-    val chain  = ZyteFallback.fetchFor(direct, client, new _root_.settings.ProcessConfiguration(_root_.tools.Env.of("ZYTE_API_KEY" -> "test-key")), tools.SpecClock.Pinned)
+    val chain  = ZyteFallback.fetchFor(direct, client, Some(_root_.settings.ZyteApiKey("test-key")))
     chain.get("https://www.biletyna.pl/a") shouldBe "direct-body"
     chain.get("https://www.biletyna.pl/b") shouldBe "direct-body"
     client.sends.get() shouldBe 2
   }
 
-  // Odeon's Zyte fallback paid for a 401 on every request for as long as its
+  // Odeon's old Zyte fallback paid for a 401 on every request for as long as its
   // Authorization header was being dropped, and nothing counted it: the Zyte leg
   // was metered nowhere. The meter sees every Zyte attempt — and ONLY Zyte's, not
   // the free direct leg behind it.
@@ -68,8 +68,8 @@ class ZyteFallbackSpec extends AnyFlatSpec with Matchers {
     outcomes.toList shouldBe List(HttpOutcome.Success)
   }
 
-  // The inner half of Odeon's chain: an origin 404 relayed by Zyte must not be buried
-  // under the direct leg's Cloudflare 403 (see EgressWiringSpec's proxyPrimary case).
+  // An origin 404 relayed by Zyte must not be buried under the direct leg's firewall
+  // refusal (see EgressWiringSpec's proxyPrimary case).
   it should "end on the origin's not-found relayed by Zyte rather than trying the blocked direct leg" in {
     var directCalls = 0
     val blockedDirect = new GetOnlyHttpFetch {

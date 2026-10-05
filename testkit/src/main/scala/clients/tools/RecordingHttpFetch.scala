@@ -22,11 +22,11 @@ import java.nio.file.Files
  *  the imdbId, so one file per id is what we want.
  *
  *  The delegate is any `HttpFetch`, not just `RealHttpFetch`: a
- *  Zyte-routed chain (`ZyteFallback.fetchFor`)
- *  is an `HttpFetch` whose Zyte leg fetches through its own client, bypassing
+ *  residential-proxy chain (`EgressWiring.paidEgressChain`)
+ *  is an `HttpFetch` whose proxy leg fetches through its own client, bypassing
  *  the recorder when recording sits *inside* the chain as the direct fallback.
  *  Wrapping the whole chain instead records the response keyed by the request
- *  (target) URL regardless of which leg served it. See `RecorderZyteCaptureSpec`.
+ *  (target) URL regardless of which leg served it. See `RecorderChainCaptureSpec`.
  */
 /** @param foldYear fold `year`/`primary_release_year` out of the fixture key. The
  *        default matches the cinema corpus, where the year varies with scrape

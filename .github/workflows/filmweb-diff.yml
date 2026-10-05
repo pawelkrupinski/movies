@@ -42,9 +42,8 @@ jobs:
 
             # Compare 3 days ahead. Multikino / biletyna / ck105 refuse a datacenter
             # runner, so — as in the worker — they go through the Decodo residential
-            # proxy first, with Zyte (billed per request) only as its fallback
-            # (PaidEgressWorkflowSpec: the Zyte key only ever sits beside the proxy
-            # credentials). `continue-on-error` is a belt-and-braces guard on top of
+            # proxy first, direct behind it (no Zyte key: PaidEgressWorkflowSpec).
+            # `continue-on-error` is a belt-and-braces guard on top of
             # the tool's own always-exit-0 behaviour, so a transient network wobble
             # still lets the artifact upload below run.
             - name: Run FilmwebDiff
@@ -53,7 +52,6 @@ jobs:
               env:
                   KINOWO_PROXY_USER: ${{ secrets.KINOWO_PROXY_USER }}
                   KINOWO_PROXY_PASS: ${{ secrets.KINOWO_PROXY_PASS }}
-                  ZYTE_API_KEY: ${{ secrets.ZYTE_API_KEY }}
 
             # Upload the human-readable report, the CSV summary, AND the
             # deterministic JSON (per-film discrepancies; diffs cleanly across

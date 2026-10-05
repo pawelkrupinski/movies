@@ -13,7 +13,7 @@ import scala.jdk.CollectionConverters._
  *
  *  - `kinowo_worker_http_breaker_open_hosts` — hosts skipped outright right now. A non-zero
  *    `decodo` is the residential proxy failing for those destinations (every call falls straight
- *    through to Zyte); a climbing `scrape` / `enrich` is cinema sites / metadata APIs down.
+ *    through to direct); a climbing `scrape` / `enrich` is cinema sites / metadata APIs down.
  *  - `kinowo_worker_http_breaker_opens_total` — each closed → open transition.
  *
  * Until these existed an open breaker was a log line only ("Circuit OPEN for …"): a Decodo outage

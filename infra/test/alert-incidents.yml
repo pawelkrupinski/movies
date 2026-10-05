@@ -48,11 +48,11 @@ incidents:
 
   - id: decodo-503-cascade-2026-09-10
     description: >-
-      Decodo's residential tunnel answered 503 and PL fetches fell back to Zyte.
-    source: memory project_decodo_tunnel_503_cascade_2026_09_10; ALERTS ResidentialProxyFallingBackToZyte{country="pl"} 10:40..11:10Z
+      Decodo's residential tunnel answered 503 and PL fetches fell off the proxy.
+    source: memory project_decodo_tunnel_503_cascade_2026_09_10; ALERTS ResidentialProxyFallingBackToZyte{country="pl"} 10:40..11:10Z (the rule's former name)
     start: 2026-09-10T07:40:00Z
     end: 2026-09-10T11:10:00Z
-    expect_firing: [ResidentialProxyFallingBackToZyte]
+    expect_firing: [ResidentialProxyFailing]
 
   - id: kino-aurum-invisible-films-2026-09-09
     description: >-

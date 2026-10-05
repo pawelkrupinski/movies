@@ -546,7 +546,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // the "30-minute" window really held 15 to 30 minutes of data, and every quarter
   // hour it lost half its history at once. During the Decodo outage that dropped
   // UK's worst quarter (697 failures, 0 successes) at 20:15:30Z, the proxy ratio
-  // fell from 0.74 to 0.42 for one scrape, and ResidentialProxyFallingBackToZyte
+  // fell from 0.74 to 0.42 for one scrape, and ResidentialProxyFailing
   // RESOLVED for UK and US mid-outage, then re-fired 15 minutes later.
   it should "count the bucket the cutoff falls inside, so the window never shrinks below its span" in {
     val monitor = new UptimeMonitor(clock = specClock)

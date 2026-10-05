@@ -27,7 +27,7 @@ import scala.util.matching.Regex
  * plain HTTP. The token is global to the
  * estate (one page covers all 102 venues) and lasts ~12h.
  *
- * Lazy TTL cache, mirroring [[services.cinemas.common.SharedZyteSession]]: `token()`
+ * Lazy TTL cache: `token()`
  * serves the cached JWT until it is within `refreshMargin` of its own `exp`, then
  * re-harvests once under the lock. So one background scrape ~every 10h pays the
  * ~20s browser fetch; the rest read the cache. A harvest failure yields `None`, and

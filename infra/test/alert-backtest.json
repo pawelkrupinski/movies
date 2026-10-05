@@ -1114,7 +1114,7 @@
       "series_episodes": 0,
       "status": "quiet"
     },
-    "ResidentialProxyFallingBackToZyte": {
+    "ResidentialProxyFailing": {
       "episodes": 3,
       "file": "residential-proxy.rules",
       "firing_fraction": 0.0082,
@@ -1678,7 +1678,7 @@
     },
     {
       "firing": {
-        "ResidentialProxyFallingBackToZyte": "2026-09-10T07:55:00Z"
+        "ResidentialProxyFailing": "2026-09-10T07:55:00Z"
       },
       "id": "decodo-503-cascade-2026-09-10",
       "quiet": {}

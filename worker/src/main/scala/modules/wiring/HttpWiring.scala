@@ -85,7 +85,7 @@ trait HttpWiring { self: WorkerWiring =>
 
   // Cinema-site HTTP — every listing scrape, chunk scrape and per-film detail
   // fetch. The `scrape` phase; dominates volume and is what the scrape-health panel
-  // isolates. The catalog + Multikino/biletyna/Zyte proxy chains + detail cache all
+  // isolates. The catalog + Multikino/biletyna proxy chains, ck105's Zyte route + detail cache all
   // draw from this fetch, so they all tally under `scrape`.
   lazy val httpFetch: HttpFetch =
     phaseFetch(WorkerHttpMetrics.Phase.Scrape)

@@ -290,7 +290,7 @@ class UptimeMonitor(
    *  instant its start slipped past, so the window held 15 to 30 minutes and lost
    *  half its history at every quarter hour: during the 2026-09-24 Decodo outage
    *  that alone took UK's proxy failure ratio from 0.74 to 0.42 for one scrape and
-   *  resolved ResidentialProxyFallingBackToZyte mid-outage for UK and US.
+   *  resolved ResidentialProxyFailing mid-outage for UK and US.
    *
    *  It exists because the obvious spelling (`services.map(s => s -> history(s))`)
    *  is the /uptime OOM again, on a hot path: `history` materialises all 96 of a

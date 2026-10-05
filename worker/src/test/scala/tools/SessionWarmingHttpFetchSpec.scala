@@ -49,7 +49,7 @@ class SessionWarmingHttpFetchSpec extends AnyFlatSpec with Matchers {
     f.calls.toList shouldBe List(Api, Home, Api)
   }
 
-  it should "propagate the failure when the retry also fails (→ FallbackHttpFetch rolls to Zyte)" in {
+  it should "propagate the failure when the retry also fails (→ FallbackHttpFetch rolls to direct)" in {
     val f = new FakeFetch(Map(
       Api  -> q(Left(new RuntimeException("401 #1")), Left(new RuntimeException("401 #2"))),
       Home -> q(Right("<html/>"))))

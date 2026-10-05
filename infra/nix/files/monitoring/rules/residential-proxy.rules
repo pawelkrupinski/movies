@@ -1,13 +1,13 @@
 ---
-# IS THE DECODO RESIDENTIAL PROXY ACTUALLY SERVING, OR IS ZYTE QUIETLY PICKING UP THE BILL?
+# IS THE DECODO RESIDENTIAL PROXY ACTUALLY SERVING?
 #
-# `flicksFetch`, `odeonFetch`, `biletynaFetch` and `multikinoFetch` all route residential-proxy
-# primary, Zyte (then direct) fallback (worker/src/main/scala/modules/wiring/EgressWiring.scala).
-# When Decodo serves, every cinema bar on /uptime stays green and nothing costs anything beyond the
-# proxy's flat ~$2/mo. When it doesn't, scraping still (mostly) works -- that's the whole point of
-# the fallback -- so nothing user-facing breaks, no cinema goes dark, and the only trace is the
-# per-request Zyte bill climbing and the "Residential proxy" /uptime row going red. That is
-# precisely the shape that goes unnoticed: nothing pages on its own, because nothing is DOWN.
+# `flicksFetch`, `odeonFetch`, `vueFetch`, `biletynaFetch` and `multikinoFetch` all route
+# residential-proxy primary, direct fallback (worker/src/main/scala/modules/wiring/EgressWiring.scala).
+# Until 2026-10-05 a paid Zyte leg sat between the two and absorbed a Decodo outage silently, at a
+# per-request bill; it was dropped. Now a failing proxy rolls over to `direct` -- which, for the
+# Cloudflare-blocked origins the proxy exists to clear, usually fails too -- so the venues behind it
+# ride their per-venue fallbacks (flicks for the UK chains) or go red. Pooled across every proxied
+# venue, the "Residential proxy" /uptime row is the one signal that names the proxy as the cause.
 #
 # PORTED FROM GRAFANA (`kinowo-residential-proxy-failing` in alerting/alert-rules.yaml, retired
 # there with a tombstone) on 2026-09-10, not written fresh. Grafana's own contact points route
@@ -20,7 +20,7 @@
 #
 # THE 2026-09-10 INCIDENT THIS WOULD HAVE CAUGHT. The Decodo account started 503ing every CONNECT
 # tunnel account-wide (confirmed via `scripts.ProxyProbe` against api.ipify.org, Multikino AND
-# biletyna -- not one cinema, not one port). PL's proxied clients already had a Zyte leg behind the
+# biletyna -- not one cinema, not one port). PL's proxied clients then had a Zyte leg behind the
 # proxy and stayed invisibly green while quietly billing Zyte. UK's `flicksFetch`/`odeonFetch` did
 # NOT (fixed the same day, alongside this rule) -- their fallback was bare `direct`, which is
 # USELESS against a Decodo outage because direct is the exact Cloudflare block the proxy exists to
@@ -41,12 +41,12 @@
 # THE THRESHOLD AND WINDOW ARE UNCHANGED FROM THE GRAFANA RULE: over half the residential-proxy
 # fetches in the last 30 min failing, sustained 15m. `clamp_min` keeps a quiet country (proxy
 # disabled, or simply no proxied traffic in the window) from dividing by zero; an absent series
-# yields no data -> no alarm, same as before. Warning, not critical: the fallback chain means
-# scraping itself does not break, so this is a cost + capability regression, not an outage.
+# yields no data -> no alarm, same as before. Warning, not critical: the UK chains keep their
+# per-venue flicks fallback, so a proxy outage degrades rather than blanks a country.
 groups:
   - name: residential-proxy
     rules:
-      - alert: ResidentialProxyFallingBackToZyte
+      - alert: ResidentialProxyFailing
         expr: >-
           (
             sum by (country) (kinowo_uptime_recent_failures{service="Residential proxy"})
@@ -61,24 +61,24 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "{{ $labels.country }}'s Decodo residential proxy is mostly failing — falling back to Zyte"
+          summary: "{{ $labels.country }}'s Decodo residential proxy is mostly failing"
           description: >-
             Over half of {{ $labels.country }}'s residential-proxy fetches in the last 30 min failed
             (kinowo_uptime_recent_failures vs _recent_successes, service "Residential proxy").
-            Scraping still works via the Zyte/direct fallback behind it, so no cinema is down — but
-            the flat-fee Decodo proxy is not serving and the per-request Zyte egress is back in use.
+            The proxied venues are falling back to a direct fetch, which their Cloudflare-fronted
+            origins usually refuse, so they are riding their per-venue fallbacks or going red.
             Check the "Residential proxy" row on that country's /uptime for the error text (a
             per-IP "Limit: 3" auth cap, 401/407, or a burned IP is one cinema/port; an account-wide
             "Tunnel failed, got: 503" across every port, reproducible locally with
             `KINOWO_PROXY_USER=… KINOWO_PROXY_PASS=… sbt 'worker/Test/runMain scripts.ProxyProbe'`,
             is the whole account -- check the Decodo dashboard for plan/billing/quota before
             chasing worker code, same as the 2026-06-16 "Limit: 3" incident). See
-            reference_decodo_isp_proxy and reference_zyte_is_decodo_fallback_only.
+            reference_decodo_isp_proxy.
 
       # ---------------------------------------------------------------------------------------
       # PAID EGRESS THAT RETURNS NOTHING. The rule above asks whether Decodo is serving; this one
-      # asks, per provider, whether the requests we PAY for are answering at all. Odeon's Zyte
-      # fallback sent every request without its Authorization header, so every one came back 401
+      # asks, per provider, whether the requests we PAY for are answering at all. Odeon's former
+      # Zyte fallback sent every request without its Authorization header, so every one came back 401
       # -- paid for, useless, and invisible: the Zyte leg had no meter, and the /uptime
       # "Residential proxy" row pools every venue, so one always-failing client hides behind the
       # others' successes. `kinowo_worker_paid_egress_total` meters each provider's leg directly.
@@ -86,9 +86,9 @@ groups:
       # A 404 or 410 is the ORIGIN answering through a working provider, so it is not a failure
       # here. The 10-request floor keeps a quiet worker's two stray timeouts from reading as a
       # provider that is down, and an IDLE provider (seeded at zero, never used -- Zyte, most of
-      # the time, since it is only a fallback) divides 0/0 into NaN and stays silent: "while it
-      # is being used" is part of the question. A one-hour window because the fallback is used
-      # in bursts, one scrape cycle at a time; `for: 30m` on top so one bad burst is not enough.
+      # the time, outside the countries whose venues use it) divides 0/0 into NaN and stays silent:
+      # "while it is being used" is part of the question. A one-hour window because paid egress is
+      # used in bursts, one scrape cycle at a time; `for: 30m` on top so one bad burst is not enough.
       # ---------------------------------------------------------------------------------------
       - alert: PaidEgressFailing
         expr: >-

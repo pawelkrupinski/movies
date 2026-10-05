@@ -22,7 +22,7 @@ class ResidentialProxySpec extends AnyFlatSpec with Matchers {
     cfg.map(_.user)  shouldBe Some(settings.ProxyUser("u"))
   }
 
-  it should "be None when the secret credentials are absent (proxy disabled → Zyte/direct)" in {
+  it should "be None when the secret credentials are absent (proxy disabled → direct)" in {
     ResidentialProxy.fromConfig(props("isp.decodo.com", "10001"), None, Some(settings.ProxyPassword("p")))      shouldBe None
     ResidentialProxy.fromConfig(props("isp.decodo.com", "10001"), Some(settings.ProxyUser("u")), None)      shouldBe None
     // A blank credential is no credential: the resolver never yields one.

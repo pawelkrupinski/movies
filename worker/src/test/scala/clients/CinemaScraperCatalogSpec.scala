@@ -23,7 +23,7 @@ import scala.concurrent.duration._
  * blocks our Fly datacenter IP, so they must fetch through their own injected
  * seam — NOT the shared `http` — or the live scrape regresses:
  *   - biletyna.pl 403s our IP (Cloudflare waiting-room) → Kino Kameralne /
- *     ADA Kino Studyjne fetch through `bnFetch` (Zyte in prod, fixture fake here).
+ *     ADA Kino Studyjne fetch through `bnFetch` (the residential proxy in prod, fixture fake here).
  *   - bilety.ck105.koszalin.pl (Kino Kryterium) times out our IP AND every Decodo
  *     proxy IP at the TCP layer → fetches through `zyteFetch` (Zyte's
  *     true-residential network in prod, the one egress that reaches it).
@@ -33,8 +33,7 @@ import scala.concurrent.duration._
  *     to Hetzner changed the egress IP) → all 102 Odeon venues fetch through
  *     `odeonFetch`.
  * Each seam's fixture-less `http` makes a leaked fetch throw / come back empty,
- * so a refactor that re-buries the fetch on `http` is caught here. (CI also sets
- * ZYTE_API_KEY, so a leak onto `http` would route biletyna through real Zyte.)
+ * so a refactor that re-buries the fetch on `http` is caught here.
  */
 class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValues {
 

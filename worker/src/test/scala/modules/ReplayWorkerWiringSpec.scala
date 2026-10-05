@@ -7,7 +7,7 @@ import tools.HttpFetch
 /**
  * The replay wiring must reach the network through NONE of production's fetch seams: it is what the
  * image build runs to train the JVM's AOT cache, and what `sbt localStack` runs on a laptop. A seam
- * it leaves alone keeps production's chain — the enrichment phase fetch, the Zyte fallback, the
+ * it leaves alone keeps production's chain — the enrichment phase fetch, ck105's Zyte route, the
  * residential proxy — and that chain goes to the live site.
  *
  * Asked of the class, not an instance: the wiring builds its Mongo repository eagerly, so an instance

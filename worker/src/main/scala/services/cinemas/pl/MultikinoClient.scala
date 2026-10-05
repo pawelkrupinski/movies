@@ -10,11 +10,10 @@ import services.movies.TitleNormalizer
  * JSON to [[MultikinoParser]]. The HTTP path is wired at the composition
  * root (`EgressWiring.multikinoFetch`) as a fallback chain:
  *
- *   residential proxy → Zyte (if `ZYTE_API_KEY` set) → `direct`
+ *   residential proxy → `direct`
  *
- * Each link tries the next on any exception, so Zyte going down rolls over to
- * `direct` without code changes. In production Zyte is REQUIRED, not an
- * optimisation: Multikino sits behind Cloudflare and 403s our Fly datacenter IP
+ * The proxy leg falls through to `direct` on any exception. In production the
+ * proxy is REQUIRED, not an optimisation: Multikino sits behind Cloudflare and 403s our Fly datacenter IP
  * on the homepage itself — proven 2026-06-15, the `direct` leg never even
  * reaches the API, so it's a last-resort that only succeeds from a
  * residential/dev IP. (See the `reference_multikino_fly_ip_cloudflare_block`
@@ -23,9 +22,8 @@ import services.movies.TitleNormalizer
  * Session-handling retry stays in the client: optimistic API call, homepage
  * warm-up on failure, retry. That recovers the 401-without-session-cookie the
  * API returns on a cold connection — which is the second wall, *behind* the IP
- * block. With Zyte in front the first call already succeeds (it does its own
- * cookie carryover, shared across cinemas — see [[services.cinemas.common.ZyteFallback]]) so the retry
- * rarely fires.
+ * block. The proxy leg warms each pool IP's session on the homepage
+ * (`SessionWarmingHttpFetch`) and reuses it, so the retry rarely fires.
  */
 class MultikinoClient(
   http:              HttpFetch,

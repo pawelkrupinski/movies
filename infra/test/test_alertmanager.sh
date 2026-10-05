@@ -197,10 +197,10 @@ route_is telegram-and-email alertname=ReadModelServingShortOfCorpus severity=war
 route_is telegram-and-email alertname=ReadModelServedGaugesAbsent severity=warning
 
 # PORTED FROM GRAFANA on 2026-09-10 (Grafana's own contact points are Telegram-only, so the rule
-# could not reach email there) for the same silent-but-costly reason as the two families above: the
-# proxy->Zyte->direct fallback chain means scraping does not break when Decodo degrades, so nothing
-# 500s and the only trace is a climbing Zyte bill and an /uptime row nobody is watching closely.
-route_is telegram-and-email alertname=ResidentialProxyFallingBackToZyte severity=warning country=uk
+# could not reach email there) for the same silent reason as the two families above: the per-venue
+# fallbacks behind the proxied chains mean nothing 500s when Decodo degrades, and the only trace is
+# a pooled /uptime row nobody is watching closely.
+route_is telegram-and-email alertname=ResidentialProxyFailing severity=warning country=uk
 
 # ADDED AFTER 2026-09-17: all 87 UK Cineworld venues broke at once and every one failed over to its
 # per-venue Flicks fallback individually, so no cinema bar went red and nothing paged for a day --
@@ -208,9 +208,9 @@ route_is telegram-and-email alertname=ResidentialProxyFallingBackToZyte severity
 # chain-fallback.rules.
 route_is telegram-and-email alertname=ChainFallbackSaturated severity=warning country=uk
 
-# ADDED 2026-09-23: Odeon's Zyte fallback paid for a 401 on every request and nothing said so.
-# Paid egress returning nothing is the same "silent, sustained, costs money" shape as the proxy
-# falling back to Zyte above, so it earns the same mailbox. See residential-proxy.rules.
+# ADDED 2026-09-23: Odeon's then Zyte fallback paid for a 401 on every request and nothing said so.
+# Paid egress returning nothing is the same "silent, sustained" shape as the proxy failing above,
+# so it earns the same mailbox. See residential-proxy.rules.
 route_is telegram-and-email alertname=PaidEgressFailing severity=warning country=uk
 # A heap dump is written once per death and rotated away by the budget after three, so it is worth
 # the mailbox: a chat message scrolled past is a dump nobody copied off the node.

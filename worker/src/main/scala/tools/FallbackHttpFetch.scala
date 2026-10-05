@@ -13,7 +13,7 @@ import scala.collection.mutable
  * failure is one `endsChain` names as the origin's own answer, which is
  * rethrown as-is without trying the rest.
  *
- * Used by the egress compositions (residential proxy → Zyte → direct). None of the backends know about each other — each is
+ * Used by the egress compositions (residential proxy → direct, Zyte → direct). None of the backends know about each other — each is
  * just an `HttpFetch`.
  *
  * Single-backend lists are a degenerate case: prefer just using that
@@ -26,13 +26,13 @@ class FallbackHttpFetch(
   // Fired per backend attempt with (name, error): None on success, Some(message)
   // on failure. Lets a caller meter which leg served vs fell through — the worker
   // records the "proxy" leg's outcome to the UptimeMonitor so /uptime shows when
-  // the residential proxy served vs fell back to Zyte. Must not throw (guarded).
+  // the residential proxy served vs fell back to direct. Must not throw (guarded).
   onOutcome: (String, Option[String]) => Unit = FallbackHttpFetch.NoOutcome,
   // A leg failure that is the ORIGIN's own answer, which no other leg can improve on,
   // so the chain stops there and rethrows it. Off by default: a chain whose legs are
   // different SOURCES (a recorded-fixture layer in front of a live one) must go on
   // past a leg's "not found". A chain whose legs are different ROUTES to one origin
-  // (proxy → Zyte → direct) passes [[FallbackHttpFetch.OriginAnswered]].
+  // (proxy → direct) passes [[FallbackHttpFetch.OriginAnswered]].
   endsChain: Throwable => Boolean = FallbackHttpFetch.NeverEnds,
   // How the "all backends failed" warning is deduplicated: a URL failing the same way on
   // every ask is warned once (then periodically), not once per ask — see RepeatedFailureLog.

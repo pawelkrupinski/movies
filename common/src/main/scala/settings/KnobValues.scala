@@ -51,8 +51,6 @@ final case class SettleInterval(value: FiniteDuration) extends AnyVal
 final case class OmdbBackfillInterval(value: FiniteDuration) extends AnyVal
 /** `KINOWO_FILMWEB_DROP_THRESHOLD` — consecutive drops before the Filmweb alert fires. */
 final case class FilmwebDropThreshold(value: Int) extends AnyVal
-/** `KINOWO_ZYTE_SESSION_TTL_SECONDS`. */
-final case class ZyteSessionTtl(value: FiniteDuration) extends AnyVal
 
 // ── Caches and the read model ──────────────────────────────────────────────────
 /** `KINOWO_CACHE_REHYDRATE_SECONDS` — the movie cache's backstop rehydrate. */
