@@ -146,9 +146,10 @@ object PosterEvidence {
     }.sortBy(c => (c._2, c._1)).headOption
 
   private val Digits = "\\d+".r
-  /** The numbers a title writes (a year as its last two digits, "2026" as 26; "Worlds25" as 25). */
+  /** The numbers a title writes (a year as its last two digits, "2026" as 26; "Worlds25" as 25) — one too long for an
+   *  int numbers no edition ("Pi 3.14159265358"). */
   private def numbersOf(title: String): Set[Int] =
-    Digits.findAllIn(title).map(_.toInt).map(n => if (n >= 1900 && n <= 2099) n % 100 else n).toSet
+    Digits.findAllIn(title).flatMap(_.toIntOption).map(n => if (n >= 1900 && n <= 2099) n % 100 else n).toSet
 
   /** Do the listing's title and the film's number themselves apart — both carry a number, none in common: another
    *  edition of an event, another instalment ("League of Legends Worlds 26" against "… Worlds25")? */

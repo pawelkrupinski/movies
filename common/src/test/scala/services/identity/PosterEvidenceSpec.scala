@@ -92,6 +92,13 @@ class PosterEvidenceSpec extends AnyFlatSpec with Matchers {
     PosterEvidence.editionsApart(FilmTable.listing(Multikino, "Pettersson und Findus Mitmachkino 2"), film("Lustiges Pettersson und Findus Mitmachkino 2")) shouldBe false
   }
 
+  it should "read a number too long for an edition as none, never fail on it" in {
+    // PL Kino Amok's "Requiem dla snu": a TMDB candidate titled with π's digits failed the whole agreement pass
+    val requiem = FilmTable.listing(Multikino, "Requiem dla snu 2")
+    PosterEvidence.editionsApart(requiem, IdentityMeasures.Film("Pi 3.14159265358")) shouldBe true
+    PosterEvidence.editionsApart(requiem, IdentityMeasures.Film("14159265358")) shouldBe false
+  }
+
   "a listing's poster" should "speak for its film, but not a stage relay's nor a double bill's" in {
     def billed(title: String) = FilmTable.listing(Multikino, title).copy(poster = Some(s"https://posters/$title.jpg"))
     PosterEvidence.urls(Seq(billed("Lalka"), billed("The Royal Ballet: The Nutcracker"), billed("Psychoza + Ptaki"))) shouldBe
