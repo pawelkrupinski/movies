@@ -134,7 +134,8 @@ object IdentityCalibration {
 
   /** A number's bin, inclusive at both ends; an open end is `None`. */
   final case class Bin(atLeast: Option[Double], atMost: Option[Double], weight: Double, positives: Int, negatives: Int) {
-    def contains(x: Double): Boolean = atLeast.forall(x >= _) && atMost.forall(x <= _)
+    // Read without a closure over `x` per bound: every numeric measure of every scored pair asks.
+    def contains(x: Double): Boolean = (atLeast.isEmpty || x >= atLeast.get) && (atMost.isEmpty || x <= atMost.get)
   }
 
   /** One signal's weights. `neutral` names missing sides deliberately weighted 0 (with why). */

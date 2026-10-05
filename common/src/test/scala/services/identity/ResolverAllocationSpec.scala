@@ -14,14 +14,15 @@ import services.identity.IdentityMeasures.{Film, Listing, ListingFilm, ListingLi
 class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
   private val model = IdentityCalibration.resolver
 
-  /** Bytes `body` allocates per call on this thread, after warming it up — its answer read as a primitive, never boxed.
-   *  Each allocating form measured tens to thousands of bytes; the bound leaves the JIT a few. */
+  /** Bytes `body` allocates per call on this thread — its answer read as a primitive, never boxed — over its first
+   *  calls, before the optimising compiler can scalar-replace what it allocates: in the resolver, called through deep
+   *  megamorphic paths, it never does (the allocations stood in production's JFR). Once to load what it reads lazily. */
   private def bytesPerCall(body: java.util.function.DoubleSupplier): Double = {
     var sink = 0.0
-    var i = 0; while (i < 200000) { sink += body.getAsDouble; i += 1 }
-    val (_, bytes) = tools.ThreadAllocation.of { var j = 0; while (j < 10000) { sink += body.getAsDouble; j += 1 } }
+    sink += body.getAsDouble
+    val (_, bytes) = tools.ThreadAllocation.of { var j = 0; while (j < 2000) { sink += body.getAsDouble; j += 1 } }
     if (sink.isNaN) fail("unreachable")
-    bytes / 10000.0
+    bytes / 2000.0
   }
 
   private val listing = Listing("Samson i Dalila", year = Some(2026), directors = Seq("Darko Tresnjak"), runtime = Some(180))
