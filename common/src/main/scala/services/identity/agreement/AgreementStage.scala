@@ -161,7 +161,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     else {
       waiting -= id
       Some {
-        val verdict = StoredVerdict(id, digest, reads.toMap, Agreement.agreed(listings, verdicts.flatMap(_.toOption), lean))
+        val verdict = StoredVerdict(id, digest, reads.toMap, Agreement.agreed(listings, verdicts.flatMap(_.toOption), lean,
+          Some(java.time.LocalDate.ofInstant(clock.instant(), java.time.ZoneOffset.UTC).getYear)))
         if (!held.get(id).contains(verdict)) moved += verdict
         checked(id) = (digest, version)
         verdict
