@@ -273,8 +273,7 @@ object IdentityProjectionPlan {
           val dirtyVenues = dirtyAt.getOrElse(counter, Set.empty).map(byKey(_).listing.cinema)
           val groups = was.venues.toSeq.sortBy(_._1.displayName).map { case (cinema, venue) =>
             // Moved: one of its listings did, or which film one is on, or the slots those films hold at the venue.
-            lazy val previous = previousAt(venue.keys)
-            val moved = dirtyVenues(cinema) || previous != venue.previous || priorsAt(cinema, previous) != venue.priors
+            val moved = dirtyVenues(cinema) || { val previous = previousAt(venue.keys); VenueShape.inputs(previous, priorsAt(cinema, previous)) != venue.inputs }
             if (!moved) cinema -> Left(venue)
             else cinema -> Right(groupOf(cinema, venue.keys.map(byKey), counter))
           }
@@ -319,18 +318,13 @@ object IdentityProjectionPlan {
       val previous = previousIdOf(counter).flatMap(storedById.get)
       val film     = filmOf(members)
       val anchor   = plan.titles.toSeq.sortBy { case (t, n) => (-n, t) }.headOption.map(_._1).getOrElse("")
-      // Each venue's slots, and the film's as a whole: of a film drafted again, the venues it rebuilt replace theirs.
+      // Each venue's slots — of a film drafted again, the venues it rebuilt replace theirs — and the film's as a whole.
       val venueShapes = plan.groups.iterator.map {
         case (cinema, Left(venue))            => cinema -> venue
-        case (cinema, Right((group, previous, priors))) => cinema -> VenueShape(group.rows.map(_.listing.key), group.key, venueSlots(group.key), previous, priors)
+        case (cinema, Right((group, previous, priors))) => cinema -> VenueShape(group.rows.map(_.listing.key), group.key, venueSlots(group.key), VenueShape.inputs(previous, priors))
       }.toMap
-      val venueData = plan.was.fold(venueShapes.valuesIterator.flatMap(_.lean).toMap) { was =>
-        plan.groups.foldLeft(was.venueData) {
-          case (data, (cinema, Right(_))) => data -- was.venues(cinema).lean.map(_._1) ++ venueShapes(cinema).lean
-          case (data, _)                  => data
-        }
-      }
-      shapes.put(counter, FilmShape(members, keys, plan.titles, venueShapes, venueData))
+      val venueData = venueShapes.valuesIterator.flatMap(_.lean).toMap
+      shapes.put(counter, FilmShape(members, keys, plan.titles, venueShapes))
       val sameFilm = previous.exists(_.record.tmdbId == film)
       val base = previous.filter(_ => sameFilm).map(_.record).getOrElse(
         MovieRecord(retainedSynopses = previous.map(_.record.retainedSynopses).getOrElse(Map.empty)))
@@ -461,22 +455,28 @@ object IdentityProjectionPlan {
 }
 
 /** One venue of a drafted film: its listings' keys (not the listings — a venue read again holds new ones, and the old
- *  are let go), its memo key, the slots built for it, the film each of its listings was on, and what those films' slots
- *  at the venue were (their priors) — the venue is reused while each listing is on the same film and those slots are
- *  unmoved. */
+ *  are let go), its memo key, the slots built for it, and a digest of the film each of its listings was on and of what
+ *  those films' slots at the venue were (their priors, [[VenueShape.inputs]]) — the venue is reused while each listing
+ *  is on the same film and those slots are unmoved. The digest, not the two lists: kept for every venue of every film,
+ *  the lists, their ids' options and boxed priors were ~6 MB of worker-us's ~100k venue shapes. */
 private[identity] final case class VenueShape(keys: Seq[ListingKey], memoKey: VenueSlotMemo.Key, lean: Seq[(Source, SourceData)],
-                                              previous: Seq[Option[String]], priors: Seq[Int])
+                                              inputs: Long)
+
+private[identity] object VenueShape {
+  /** What a venue's slots are reused by besides its listings: each listing's previous film and those films' priors at
+   *  the venue — 64 bits of them, a finer key than the memo's own (`VenueSlotMemo.keyOf` hashes the same to 32). */
+  def inputs(previous: Seq[Option[String]], priors: Seq[Int]): Long = ContentHash.of((previous, priors))
+}
 
 /** A drafted film: the listings it was drafted with (and in key order), how many carry each clean title (its anchor),
- *  each venue, and its venue slots as one map. */
+ *  and each venue. Its venue slots as one map are worked out again per draft, not kept beside the venues' own. */
 private[identity] final case class FilmShape(members: Set[ListingKey], keys: Seq[ListingKey], titles: Map[String, Int],
-                                             venues: Map[Cinema, VenueShape], venueData: Map[Source, SourceData]) {
+                                             venues: Map[Cinema, VenueShape]) {
   /** This shape over `now`, its members as other key objects (listings read again): each key as `canonical` holds it, so
    *  a shape kept for the next projection holds no key object the index has let go. */
   def over(now: Set[ListingKey], canonical: ListingKey => ListingKey): FilmShape =
     if (now eq members) this
-    else FilmShape(now, keys.map(canonical), titles, venues.map { case (cinema, venue) => cinema -> venue.copy(keys = venue.keys.map(canonical)) },
-      venueData)
+    else FilmShape(now, keys.map(canonical), titles, venues.map { case (cinema, venue) => cinema -> venue.copy(keys = venue.keys.map(canonical)) })
 }
 
 /**
