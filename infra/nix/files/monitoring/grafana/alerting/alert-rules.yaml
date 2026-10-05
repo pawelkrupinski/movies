@@ -62,7 +62,6 @@ apiVersion: 1
 #   - residential-proxy / enrichment-source failing -> a silently-degrading upstream
 #   - movies-served swing / city empty              -> the read model going thin or blank
 #   - showtime-volume collapsed                     -> a scrape that stopped landing
-#   - worker task-age / queue-backlog               -> the 2026-06-23 backlog spiral
 #
 # noDataState is OK almost everywhere (a quiet hobby app legitimately has no series for minutes),
 # EXCEPT `kinowo-web-serving-down`, where missing data IS the alarm.
@@ -127,6 +126,8 @@ deleteRules:
     uid: kinowo-residential-proxy-failing
   - orgId: 1
     uid: kinowo-worker-crash-looping
+  - orgId: 1
+    uid: kinowo-worker-task-age-high
 
 groups:
   # ================================================================================================
@@ -1057,144 +1058,29 @@ groups:
               refId: C
 
   # ================================================================================================
-  # WHAT IS LEFT OF THIS GROUP, and why it is called `worker-queue`.
-  #
-  # It was `worker-throttle`, and it was a CONTROL LOOP. `kinowo-worker-credit-low` fired on the
-  # worker's Fly shared-CPU credit balance and routed, by a `notify: worker-throttle` label, to a
-  # webhook contact point that POSTed to `kinowo-worker.internal:9000/throttle` over 6PN; the
-  # worker flipped a gate and every reaper backed off enqueue until credit rebuilt. The threshold
-  # lived out here so the worker only had to receive firing/resolved. `kinowo-worker-throttled`
-  # was the human-facing half, paging Telegram whenever the worker was actually backing off.
-  #
-  # BOTH ARE RETIRED, and so is everything they talked to: the 2026-08-29 audit dropped the control
-  # rule once this fleet had no 6PN peer to reach the webhook through, and 2026-09-04 deleted the
-  # worker's whole throttle path — gate, endpoint, watchdog, `kinowo_worker_throttled` gauge and
-  # the per-reaper enqueue caps — because shared-CPU credit is a Fly billing concept with no
-  # counterpart on a dedicated box, and nothing had driven it since the org's tokens were revoked.
-  #
-  # THE SURVIVOR WAS NEVER PART OF THAT. `kinowo-worker-task-age-high` reads the application's own
-  # queue and says the pipeline is struggling, which is worth knowing now that nothing eases it off
-  # automatically. Hence the name. Its companion `kinowo-worker-queue-backlog` was retired on
-  # 2026-09-05 -- it alerted on queue DEPTH, which has no healthy level on a 5,000-venue roster, so
-  # it fired continuously; the slope and claim-rate rules that replace it live in
+  # THE `worker-queue` GROUP IS GONE. Every rule it held is retired, and the queue is watched from
+  # Prometheus: `WorkerQueueHeadOld`, `WorkerQueueGrowingUnbounded` and `WorkerQueueStalled` in
   # nix/files/monitoring/rules/worker-pipeline.rules.
-  #
-  # THE 30s `interval` IS A LEFTOVER of the control loop, which wanted to react quickly. Two queue
-  # gauges would be perfectly happy at 1m. Harmless, and not worth an edit on its own.
   # ================================================================================================
-  - orgId: 1
-    name: worker-queue
-    folder: Kinowo Alerts
-    interval: 30s
-    rules:
-      # ================================================================================
-      # RETIRED RULE kinowo-worker-credit-low -- dropped at the post-migration audit,
-      # 2026-08-29. "Worker credit low (drive backoff)".
-      #
-      # THIS RULE WAS NEVER A PAGE -- it was a CONTROL LOOP. It fired on kinowo-worker's Fly
-      # CPU-credit balance falling under 6000, and the `notify: worker-throttle` label routed
-      # it to a webhook contact point that POSTed to
-      # http://kinowo-worker.internal:9000/throttle over Fly 6PN, which flipped
-      # ExternalThrottleGate on and made the reapers back off until credit rebuilt. The
-      # threshold lived out here precisely so the worker only had to receive firing/resolved.
-      #
-      # THE WEBHOOK IT DROVE DOES NOT EXIST ON THIS HOST. monitoring-1 is not a Fly 6PN peer
-      # -- no host on this fleet is any more -- so the three `WorkerThrottle*` contact
-      # points were deliberately not carried across, and grafana-contactpoints.yaml says so in
-      # its own header. With no receiver named `worker-throttle`, this rule falls through to
-      # the root policy and arrives on TELEGRAM instead: a critical-looking page about a
-      # shared-CPU credit balance, every hour, that nobody can act on and that no longer
-      # throttles anything. A control signal delivered to a human is not a quieter version of
-      # a control loop; it is noise plus a broken control loop.
-      #
-      # WHAT IS LOST: the worker's external credit-based backoff. When this was written the
-      # in-process half still ran and `kinowo_worker_throttled` still reported it; on 2026-09-04
-      # both went too, so there is no backoff of any kind left to restore. Reinstating one means
-      # choosing a signal that exists on a dedicated box -- the pod's own cgroup CPU-throttle
-      # counter is the obvious candidate -- not resurrecting this rule.
-      # ================================================================================
 
-      # RETIRED RULE kinowo-worker-throttled -- deleted with the worker's throttle path,
-      # 2026-09-04. It paged Telegram whenever `kinowo_worker_throttled` sat at 1, i.e.
-      # whenever the reapers were backing off.
-      #
-      # THE WHOLE MECHANISM IS GONE, not just this view of it. The signal that drove the
-      # backoff was Fly's shared-CPU credit balance, read by an in-process poller and
-      # backstopped by a webhook to the worker over 6PN; credit is a Fly billing concept
-      # with no counterpart on a dedicated box, and nothing had set the signal since the
-      # org's tokens were revoked. The gauge, the gate, the `/throttle` endpoint and the
-      # per-reaper enqueue caps went together. `kinowo-worker-task-age-high` below, and
-      # `WorkerQueueGrowingUnbounded` / `WorkerQueueStalled` in worker-pipeline.rules, are what
-      # still say the pipeline is struggling.
+  # RETIRED RULE kinowo-worker-task-age-high -- 2026-10-05. "Worker task queue head-of-line age
+  # high": `max by (country) (kinowo_worker_queue_oldest_waiting_age_seconds) > 600` for 5m.
+  #
+  # IT PAGED THE SAME INCIDENTS TWICE, AND DEPLOYS ON ITS OWN. `WorkerQueueHeadOld` reads the same
+  # gauge per task type, calibrated over 30 days to two hours held half an hour. In the 10-03/04 PL
+  # backlog (a ResolveTmdb row with no handler re-claimed twice a second) both fired; on 10-04
+  # 21:15Z a rollout queued ~4,500 tasks that drained by themselves within the hour, and only this
+  # one paged -- re-sending through every Grafana restart for a day. Ten minutes is shorter than a
+  # deploy's own backlog, so it could not tell a struggling pipeline from a busy one.
 
-      # ---- Task-queue head-of-line starvation ------------------------------------
-      # The EARLIEST symptom of a throttle/backlog spiral. During the 2026-06-23
-      # episode the oldest waiting task aged to ~29min while credit drained for two
-      # HOURS before anyone looked — this gauge crossing 10min would have paged at
-      # ~04:00, long before the floor at 05:00. `for: 5m` so a brief reaper pause
-      # doesn't message. Human Telegram heads-up (no `notify` label → default
-      # receiver), not the /throttle control webhook.
-      #
-      # `max BY (country)`, not a bare `max()` — fixed 2026-09-10. The metric
-      # already carries a `country` label (one series per country's worker), so a
-      # bare `max()` collapsed all five into one anonymous instance: the 2026-09-10
-      # Decodo-outage page said only "> 10min" with no way to tell from the
-      # notification alone that it was uk (2610s and climbing) and briefly us
-      # (465s, already recovering) rather than, say, a single country's reaper
-      # wedged. Grouping makes this a per-country multi-instance alert like every
-      # other rule in this file that reads a country-labelled gauge.
-      #
-      # The GAUGE was re-based 2026-09-24 (the rule is unchanged). Every episode
-      # between 09-18 and 09-22 (uk ScrapeChunk up to 1601s, es ResolveTmdb up to
-      # 6239s) was ONE task retrying against a permanent failure — Odeon chunks whose
-      # origin 404 the fallback chain masked, a ResolveTmdb whose re-key tripped a
-      # `require` — while the pool sat idle (worked_on 0-3 of 4). The gauge aged tasks
-      # from `submittedAt`, so a task parked in backoff read as starvation. It now
-      # counts only claimable tasks, from when each became claimable.
-      - uid: kinowo-worker-task-age-high
-        title: Worker task queue head-of-line age high
-        condition: C
-        for: 5m
-        noDataState: OK
-        execErrState: OK
-        annotations:
-          summary: '{{ $labels.country }} worker: oldest waiting task > 10min — the queue is not draining'
-          description: '{{ $labels.country }}''s kinowo_worker_queue_oldest_waiting_age_seconds > 600 for 5m: a CLAIMABLE task has waited over ten minutes for a worker (the gauge counts from when a task became claimable and skips tasks parked in retry backoff, so one task retrying against a failing upstream no longer trips this — that reads on WorkerTasksFailingRepeatedly and the exhausted/rescheduled finish counters), so the worker pool is not keeping up (a CPU-credit throttle spiral, a wedged reaper, a slow-host backlog, or an egress path — e.g. the Decodo proxy — failing broadly enough to starve every task type sharing the pool). The earliest signal of the sustained-throttle failure mode.'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 300, to: 0 }
-            datasourceUid: local-prometheus
-            model:
-              datasource: { type: prometheus, uid: local-prometheus }
-              editorMode: code
-              expr: 'max by (country) (kinowo_worker_queue_oldest_waiting_age_seconds{app="kinowo-worker"})'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: gt, params: [600] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+  # RETIRED RULE kinowo-worker-queue-backlog -- 2026-09-05. `kinowo_worker_queue_depth{state=
+  # "waiting"} > 150 for 10m`: a LEVEL on a number with no healthy level (US median 450, above the
+  # line 98.1% of the day). Replaced by `WorkerQueueGrowingUnbounded` and `WorkerQueueStalled`.
 
-      # RETIRED RULE kinowo-worker-queue-backlog -- replaced 2026-09-05 by
-      # `WorkerQueueGrowingUnbounded` and `WorkerQueueStalled` in
-      # nix/files/monitoring/rules/worker-pipeline.rules. It read
-      # `kinowo_worker_queue_depth{state="waiting"} > 150 for 10m`, which is a LEVEL on a number
-      # that has no healthy level: measured over the 24h before removal, the US worker's median
-      # waiting depth was 450 and it sat above the threshold 98.1% of the day. It was firing
-      # continuously, and had been for as long as the US roster had been that size. The
-      # replacements ask the two questions a depth cannot -- is the queue running away (a slope
-      # held for a full hour), and is anything being claimed at all (no task started in five
-      # minutes with work waiting).
+  # RETIRED RULE kinowo-worker-credit-low -- 2026-08-29. A CONTROL LOOP, never a page: it fired on
+  # the worker's Fly shared-CPU credit and drove a webhook that throttled the reapers over 6PN. No
+  # host here is a 6PN peer, so it would have reached Telegram as noise nobody could act on.
+
+  # RETIRED RULE kinowo-worker-throttled -- 2026-09-04, with the worker's whole throttle path
+  # (gate, `/throttle` endpoint, `kinowo_worker_throttled` gauge, per-reaper enqueue caps): Fly
+  # CPU credit has no counterpart on a dedicated box.

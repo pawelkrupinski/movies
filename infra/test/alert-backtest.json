@@ -1646,19 +1646,6 @@
       "peak_series": 0,
       "series_episodes": 0,
       "status": "ok"
-    },
-    "kinowo-worker-task-age-high": {
-      "episodes": 8,
-      "file": "alert-rules.yaml",
-      "firing_fraction": 0.0067,
-      "for": "5m",
-      "longest_episode": [
-        "2026-09-21T15:22:00Z",
-        "2026-09-21T16:51:00Z"
-      ],
-      "peak_series": 1,
-      "series_episodes": 8,
-      "status": "ok"
     }
   },
   "budget": {

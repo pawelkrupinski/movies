@@ -101,21 +101,3 @@ tests:
             value: 5.056179775280899
           - labels: '{country="de"}'
             value: 4.044943820224719
-
-  # ── kinowo-worker-task-age-high (head-of-line wait > 600s) ───────────────────────────────────
-  # The PL queue's oldest waiting task is 20 minutes old; the US queue's is 90 seconds, a queue
-  # that is long but moving.
-  - interval: 1m
-    input_series:
-      - series: 'kinowo_worker_queue_oldest_waiting_age_seconds{app="kinowo-worker",country="pl",job="kinowo-worker"}'
-        values: '1200x10'
-      - series: 'kinowo_worker_queue_oldest_waiting_age_seconds{app="kinowo-worker",country="us",job="kinowo-worker"}'
-        values: '90x10'
-    promql_expr_test:
-      - expr: 'max by (country) (kinowo_worker_queue_oldest_waiting_age_seconds{app="kinowo-worker"})'
-        eval_time: 5m
-        exp_samples:
-          - labels: '{country="pl"}'
-            value: 1200
-          - labels: '{country="us"}'
-            value: 90
