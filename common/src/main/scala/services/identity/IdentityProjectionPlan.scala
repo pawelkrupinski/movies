@@ -75,8 +75,9 @@ final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], v
       }.toSet
     }
     val built = scala.collection.mutable.HashMap.empty[(Long, Cinema), Seq[(Source, SourceData)]]
-    // Each venue's films that differ there, so a batch of venues visits only those, each venue's rows grouped once.
-    val filmsAt = wanted.flatMap { case (film, differing) => differing.map(_ -> film) }.groupMap(_._1)(_._2)
+    // Each venue's films that differ there, so a batch of venues visits only those, each venue's rows grouped once. Never
+    // a set of the films: a film hashes its whole record, a wide release's thousands of slots.
+    val filmsAt = wanted.flatMap { case (film, differing) => differing.iterator.map(_ -> film) }.groupMap(_._1)(_._2)
     filmsAt.keys.toSeq.sortBy(_.displayName).grouped(IdentityProjectionPlan.RowBatch).foreach { batch =>
       val rows = rowsOf(batch.toSet)
       batch.foreach { cinema =>
