@@ -164,6 +164,37 @@ class TitleDecorationsSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.titleGroups(IdentityMeasures.Listing("Kino Seniora: Mistyczka", decorations = d)) shouldBe Seq("kinoseniora" + "mistyczka")
   }
 
+  "Proposing candidates" should "offer a banner around films no other listing bills, which learning cannot see" in {
+    val programme = Seq("Kino X" -> "Binti Edukacja Młode Horyzonty", "Kino X" -> "Fritzi – przyjaźń bez granic Edukacja Młode Horyzonty",
+      "Kino X" -> "Lydia i Władca Burz Edukacja Młode Horyzonty", "Kino Y" -> "Bez końca 2D PL LOLO", "Kino Y" -> "Ministranci 2D PL LOLO",
+      "Kino Y" -> "Chopin 2D PL LOLO", "Kino Z" -> "Love Actually", "Kino Z" -> "Love Story", "Kino Z" -> "Love Me Tender")
+    val records = Seq("Binti", "Love Actually", "Love Story", "Love Me Tender")
+    TitleDecorations.learn(programme, records) shouldBe empty   // no remainder is another listing's whole title
+    val proposed = TitleDecorations.candidates(programme, records, TitleDecorations.None).map(d => (d.side, d.decoration))
+    proposed should contain allOf (("suffix", "edukacja mlode horyzonty"), ("suffix", "2d pl lolo"), ("suffix", "lolo"))
+    proposed should not contain (("prefix", "love"))           // a record title carries it: the film's word
+  }
+
+  it should "propose neither a run seen around fewer than three films nor a decoration already known" in {
+    val few = Seq("A" -> "Binti Seans Specjalny", "A" -> "Johnny Seans Specjalny")
+    TitleDecorations.candidates(few, Nil, TitleDecorations.None) shouldBe empty
+    val three = few :+ ("A" -> "Fritzi Seans Specjalny")
+    TitleDecorations.candidates(three, Nil, TitleDecorations.None).map(_.decoration) should contain("seans specjalny")
+    TitleDecorations.candidates(three, Nil, TitleDecorations(Set.empty, Set(Seq("seans", "specjalny")))).map(_.decoration) should not contain "seans specjalny"
+  }
+
+  "Aligning one film's titles" should "take the run one venue adds around titles another bills plain, film after film" in {
+    val clusters = Seq(
+      Seq("Kino X" -> "Fritzi – przyjaźń bez granic Edukacja Młode Horyzonty", "Kino Y" -> "Fritzi - przyjaźń bez granic"),
+      Seq("Kino X" -> "Binti Edukacja Młode Horyzonty", "Kino Z" -> "Binti"),
+      Seq("Kino X" -> "Akademia Polskiego Filmu: Strachy", "Kino Y" -> "Strachy"),       // one film only: not yet a decoration
+      Seq("Kino W" -> "Hamnet", "Kino V" -> "Hamnet 2D napisy"))
+    TitleDecorations.aligned(clusters, TitleDecorations.None).map(d => (d.side, d.decoration, d.films)) shouldBe
+      Seq(("suffix", "edukacja mlode horyzonty", 2))
+    TitleDecorations.aligned(clusters, TitleDecorations.None, minFilms = 1).map(_.decoration) should contain allOf ("akademia polskiego filmu", "2d napisy")
+    TitleDecorations.aligned(clusters, TitleDecorations(Set.empty, Set(Seq("edukacja", "mlode", "horyzonty")))) shouldBe empty   // known already
+  }
+
   "The resolver's artefact" should "load, and hold only what learning emits" in {
     val artefact = TitleDecorations.fromResource(TitleDecorations.ResourcePath).get
     artefact.decorations.foreach { d =>

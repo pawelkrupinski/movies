@@ -1,0 +1,14 @@
+{
+  "version" : "decoration-score-f1d835db",
+  "features" : [ "intercept", "log1p(aligned)", "log1p(recurring)", "log1p(venues)", "prefix", "tokens", "formatShare", "innerResolved", "matchedShare" ],
+  "weights" : [ -6.406377, -0.019845, 0.460723, -0.641059, -1.075123, 0.796071, -0.026434, -0.045368, -0.866779 ],
+  "cut" : 1,
+  "folds" : 5,
+  "trainingRows" : 433,
+  "heldOut" : {
+    "accepted" : 0,
+    "acceptedGood" : 0,
+    "good" : 3,
+    "acceptedBad" : 0
+  }
+}

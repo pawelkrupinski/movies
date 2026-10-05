@@ -1,0 +1,434 @@
+key	aligned	recurring	venues	prefix	tokens	formatShare	innerResolved	matchedShare	good	bad
+prefix:10 na	0	8	1	true	2	0.0000	0.0000	1.0000	false	false
+prefix:10 na 10	0	8	1	true	3	0.0000	0.0000	1.0000	false	false
+prefix:10 na 10 przeglad	0	8	1	true	4	0.0000	0.0000	1.0000	false	false
+prefix:10 na 10 przeglad filmow	0	8	1	true	5	0.0000	0.0000	1.0000	false	false
+prefix:11 uff	0	18	1	true	2	0.0000	0.0526	0.4737	false	false
+prefix:11 uff gala	0	2	1	true	3	0.0000	0.0000	0.0000	false	false
+prefix:19 fga	0	10	1	true	2	0.0000	0.0000	0.4000	false	false
+prefix:19 fga blok	0	2	1	true	3	0.0000	0.0000	0.0000	false	false
+prefix:19 fga blok filmowy	0	2	1	true	4	0.0000	0.0000	0.0000	false	false
+prefix:20 urodziny	0	3	1	true	2	0.0000	0.0000	1.0000	false	false
+prefix:20 urodziny kina	0	3	1	true	3	0.0000	0.0000	1.0000	false	false
+prefix:20 urodziny kina kinematograf	0	3	1	true	4	0.0000	0.0000	1.0000	false	false
+prefix:24 festiwal	0	8	1	true	2	0.0000	0.0000	0.1250	false	true
+prefix:24 festiwal terra	0	8	1	true	3	0.0000	0.0000	0.1250	false	true
+prefix:4dx	0	9	34	true	1	1.0000	0.0000	1.0000	false	false
+prefix:a festival 2026	0	2	1	true	3	0.0000	0.0000	0.0000	false	false
+prefix:after dark	4	0	1	true	2	0.0000	1.0000	1.0000	false	false
+prefix:akademia kina	0	25	1	true	2	0.0000	0.0000	0.9600	false	false
+prefix:akademia kina polskiego	0	12	1	true	3	0.0000	0.0000	0.9167	false	false
+prefix:akademia polskiego	0	30	4	true	2	0.0000	0.0000	0.2903	false	false
+prefix:akademia polskiego filmu	0	22	4	true	3	0.0000	0.0000	0.2903	false	false
+prefix:akademia polskiego filmu gatunki	0	3	1	true	4	0.0000	0.0000	0.6667	false	false
+prefix:akademia polskiego filmu gatunki miedzywojnia	0	3	1	true	5	0.0000	0.0000	0.6667	false	false
+prefix:akademia polskiego filmu wyklad	0	3	1	true	4	0.0000	0.0000	0.6667	false	false
+prefix:akademia polskiego filmu wyklad dr	0	2	1	true	5	0.0000	0.0000	0.5000	false	false
+prefix:akw	0	2	1	true	1	0.0000	0.0000	0.0000	false	false
+prefix:andre rieu niech zyje maastricht	0	5	68	true	5	0.0000	0.0000	0.9853	false	false
+prefix:ars independent	0	20	2	true	2	0.0000	0.0000	0.3182	false	false
+prefix:ars independent festival	0	20	2	true	3	0.0000	0.0000	0.3182	false	false
+prefix:ars independent festival konkurs	0	10	1	true	4	0.0000	0.0000	0.0909	false	false
+prefix:ars independent festival konkurs czarny	0	10	1	true	5	0.0000	0.0000	0.0909	false	false
+prefix:ars independent festival paul	0	4	1	true	4	0.0000	0.0000	1.0000	false	false
+prefix:ars independent festival paul verhoeven	0	4	1	true	5	0.0000	0.0000	1.0000	false	false
+prefix:auta 20	0	2	8	true	2	0.0000	0.0000	1.0000	false	false
+prefix:avengers koniec gry wersja rozszerzona	0	2	14	true	5	0.0000	0.0000	1.0000	false	false
+prefix:azjatycka	0	4	2	true	1	0.0000	0.0000	0.7500	false	false
+prefix:azjatycka noc	0	4	2	true	2	0.0000	0.0000	0.7500	false	false
+prefix:azjatycka noc grozy	0	4	2	true	3	0.0000	0.2500	0.7500	false	false
+prefix:bajeczne	0	8	1	true	1	0.0000	0.0000	0.3750	false	false
+prefix:bajeczne soboty	0	8	1	true	2	0.0000	0.1250	0.3750	false	false
+prefix:bajeczne soboty kicia	0	3	1	true	3	0.0000	0.0000	1.0000	false	false
+prefix:bajeczne soboty kicia kocia	0	3	1	true	4	0.0000	0.0000	1.0000	false	false
+prefix:bajeczne soboty kicia kocia w	0	2	1	true	5	0.0000	0.0000	1.0000	false	false
+prefix:balet z	0	4	16	true	2	0.0000	0.0000	0.0000	false	false
+prefix:balet z opery	0	4	16	true	3	0.0000	0.0000	0.0000	false	false
+prefix:balet z opery paryskiej	0	4	16	true	4	0.0000	0.0000	0.0000	false	false
+prefix:balet z opery paryskiej 2026	0	4	16	true	5	0.0000	0.0000	0.0000	false	false
+prefix:bca	0	3	1	true	1	0.0000	0.0000	0.0000	false	false
+prefix:bca flash	0	3	1	true	2	0.0000	0.0000	0.0000	false	false
+prefix:bca flash improwizuje	0	3	1	true	3	0.0000	0.0000	0.0000	false	false
+prefix:bca flash improwizuje w	0	3	1	true	4	0.0000	0.0000	0.0000	false	false
+prefix:bca flash improwizuje w kinotece	0	3	1	true	5	0.0000	0.0000	0.0000	false	false
+prefix:best of ladek	0	3	16	true	3	0.0000	0.0000	0.0000	false	false
+prefix:best of ladek zestaw	0	2	2	true	4	0.0000	0.0000	0.0000	false	false
+prefix:bts arirang	0	2	68	true	2	0.0000	0.0000	1.0000	false	false
+prefix:bts arirang in	0	2	68	true	3	0.0000	0.0000	1.0000	false	false
+prefix:camino dla opornych	0	3	6	true	3	0.0000	0.0000	1.0000	false	false
+prefix:chemik	4	0	1	true	1	0.0000	0.8000	0.8000	false	true
+prefix:cykl	0	10	2	true	1	0.0000	0.0000	1.0000	false	true
+prefix:cykl ale	0	8	1	true	2	0.0000	0.0000	1.0000	false	true
+prefix:cykl ale kino o	0	2	1	true	4	0.0000	0.0000	1.0000	false	false
+prefix:cykl ale kino o czym	0	2	1	true	5	0.0000	0.0000	1.0000	false	false
+prefix:czas ktory nie nadszedl kino	0	2	2	true	5	0.0000	0.0000	1.0000	false	false
+prefix:de gaulle part	0	3	89	true	3	0.0000	0.0000	1.0000	false	false
+prefix:dismember	0	23	25	true	1	0.0000	0.0000	0.0400	false	true
+prefix:dismember the	0	23	25	true	2	0.0000	0.0000	0.0400	false	true
+prefix:dismember the alamo	0	23	25	true	3	0.0000	0.0000	0.0400	false	true
+prefix:dkf kropka	0	2	1	true	2	0.0000	0.0000	1.0000	false	false
+prefix:dni kina	0	5	1	true	2	0.0000	0.0000	0.0000	false	false
+prefix:dni kina niemego	0	5	1	true	3	0.0000	0.0000	0.0000	false	false
+prefix:dyskusyjny	0	3	3	true	1	0.0000	0.0000	1.0000	false	false
+prefix:dyskusyjny klub	0	3	3	true	2	0.0000	0.0000	1.0000	false	false
+prefix:edukacja mlode horyzonty	0	3	1	true	3	0.0000	0.0000	0.0000	false	false
+prefix:edukacja mlode horyzonty karnet	0	3	1	true	4	0.0000	0.0000	0.0000	false	false
+prefix:edukacja mlode horyzonty karnet dla	0	3	1	true	5	0.0000	0.0000	0.0000	false	false
+prefix:egon schiele poza tabu	0	2	2	true	4	0.0000	0.0000	1.0000	false	false
+prefix:film	12	0	1	true	1	0.0000	0.8571	0.5455	false	true
+prefix:filmowe	0	8	5	true	1	0.0000	0.0000	0.5556	false	false
+prefix:filmowe popoludnie	0	4	1	true	2	0.0000	0.0000	0.0000	false	false
+prefix:filmowe popoludnie dla	0	4	1	true	3	0.0000	0.0000	0.0000	false	false
+prefix:filmowe popoludnie dla dzieci	0	4	1	true	4	0.0000	0.0000	0.0000	false	false
+prefix:filmowy klub	0	9	3	true	2	0.0000	0.0000	1.0000	false	true
+prefix:filmowy klub seniora i	0	3	1	true	4	0.0000	0.0000	1.0000	false	true
+prefix:filmowy wieczor	0	2	2	true	2	0.0000	0.0000	0.5000	false	true
+prefix:filmy	0	5	4	true	1	0.0000	0.0000	0.5000	false	false
+prefix:filmy animowane	0	2	1	true	2	0.0000	0.0000	0.0000	false	false
+prefix:filmy animowane dla	0	2	1	true	3	0.0000	0.0000	0.0000	false	false
+prefix:filmy animowane dla dzieci	0	2	1	true	4	0.0000	0.0000	0.0000	false	false
+prefix:filmy animowane dla dzieci ze	0	2	1	true	5	0.0000	0.0000	0.0000	false	false
+prefix:filmy z	0	2	1	true	2	0.0000	0.0000	1.0000	false	false
+prefix:filmy z lektorem	0	2	1	true	3	0.0000	0.0000	1.0000	false	false
+prefix:fonomo	0	5	1	true	1	0.0000	0.0000	1.0000	false	true
+prefix:fonomo 26	0	5	1	true	2	0.0000	0.0000	1.0000	false	true
+prefix:froggy kontra kosmiczne slimaki	0	2	53	true	4	0.0000	0.0000	1.0000	false	false
+prefix:gdynia filmowa	0	5	1	true	2	0.0000	0.0000	0.6000	false	false
+prefix:gdynia filmowa 2026	0	5	1	true	3	0.0000	0.0000	0.6000	false	false
+prefix:gorzkie swieta kino	0	2	2	true	3	0.0000	0.0000	1.0000	false	false
+prefix:halloween w	0	3	1	true	2	0.0000	0.0000	1.0000	false	false
+prefix:her docs	0	3	2	true	2	0.0000	0.0000	0.3333	false	false
+prefix:horror season	0	8	83	true	2	0.0000	0.0000	1.0000	false	false
+prefix:horror season 2026 the	0	3	82	true	4	0.0000	0.0000	1.0000	false	false
+prefix:jacek	0	2	2	true	1	0.0000	0.0000	0.0000	false	false
+prefix:kim jest julian	0	2	51	true	3	0.0000	0.0000	1.0000	false	false
+prefix:kino bez	0	7	3	true	2	0.0000	0.0000	1.0000	false	true
+prefix:kino bez barier	0	7	3	true	3	0.0000	0.0000	1.0000	false	true
+prefix:kino bez barier w	0	2	2	true	4	0.0000	0.0000	1.0000	false	true
+prefix:kino dla	0	4	4	true	2	0.0000	0.0000	1.0000	false	true
+prefix:kino w	0	2	1	true	2	0.0000	0.0000	1.0000	false	false
+prefix:kino w terminalu	0	2	1	true	3	0.0000	0.0000	1.0000	false	false
+prefix:klasyka	0	13	5	true	1	0.0000	0.0000	0.3077	false	true
+prefix:klasyka sfr	0	8	1	true	2	0.0000	0.0000	0.0000	false	true
+prefix:klasyka sfr vol	0	8	1	true	3	0.0000	0.0000	0.0000	false	true
+prefix:kobiece	0	2	2	true	1	0.0000	0.0000	1.0000	false	true
+prefix:ksiega pustyni 2d	0	2	4	true	3	0.3333	0.0000	1.0000	false	false
+prefix:kupilem motocykl ktory jest wampirem	0	2	5	true	5	0.0000	0.0000	1.0000	false	false
+prefix:lalka 2d	0	3	13	true	2	0.5000	0.0000	1.0000	false	true
+prefix:lalka 2d pl	0	2	2	true	3	0.3333	0.0000	1.0000	false	true
+prefix:lalka film	0	2	3	true	2	0.0000	0.0000	1.0000	false	true
+prefix:lalka kino	0	2	2	true	2	0.0000	0.0000	1.0000	false	true
+prefix:lalka premiera	0	2	2	true	2	0.0000	0.0000	1.0000	false	true
+prefix:latin film	0	4	1	true	2	0.0000	0.0000	1.0000	false	false
+prefix:lekcje	0	2	1	true	1	0.0000	0.0000	1.0000	false	false
+prefix:lekcje filmowe	0	2	1	true	2	0.0000	0.0000	1.0000	false	false
+prefix:luna i rozgadana swinka 2d	0	3	13	true	5	0.2000	0.0000	1.0000	false	false
+prefix:maraton horrorow	0	2	1	true	2	0.0000	0.0000	0.0000	false	false
+prefix:maraton horrorow giewont	0	2	1	true	3	0.0000	0.0000	0.0000	false	false
+prefix:marsupilami 2d	0	3	5	true	2	0.5000	0.0000	1.0000	false	false
+prefix:met opera 2026	0	11	1096	true	3	0.0000	0.0000	0.9995	false	false
+prefix:met opera live im	0	4	165	true	4	0.0000	0.0000	1.0000	false	false
+prefix:metopera	0	10	548	true	1	0.0000	0.0000	0.4870	false	true
+prefix:metopera carmen	0	2	517	true	2	0.0000	0.0000	0.0000	false	false
+prefix:miedzynarodowy	0	2	3	true	1	0.0000	0.0000	0.0000	false	true
+prefix:misiowe	0	4	1	true	1	0.0000	0.0000	0.0000	false	false
+prefix:misiowe poranki	0	4	1	true	2	0.0000	0.0000	0.0000	false	false
+prefix:mistyczka 2d	0	3	5	true	2	0.5000	0.0000	1.0000	false	false
+prefix:mistyczka 2d pl	0	2	2	true	3	0.3333	0.0000	1.0000	false	false
+prefix:mistyczka film	0	2	2	true	2	0.0000	0.0000	1.0000	false	false
+prefix:modowy	0	2	1	true	1	0.0000	0.0000	1.0000	false	false
+prefix:modowy klub	0	2	1	true	2	0.0000	0.0000	1.0000	false	false
+prefix:modowy klub filmowy	0	2	1	true	3	0.0000	0.0000	1.0000	false	false
+prefix:ms	2	0	1	true	1	0.0000	0.6667	1.0000	false	false
+prefix:niebo nad normandia 2d	0	2	3	true	4	0.2500	0.0000	1.0000	false	false
+prefix:niech zyje maastricht	0	2	2	true	3	0.0000	0.0000	0.0000	false	false
+prefix:niech zyje maastricht nowy	0	2	2	true	4	0.0000	0.0000	0.0000	false	false
+prefix:nosferatu symfonia grozy z	0	2	2	true	4	0.0000	0.0000	1.0000	false	false
+prefix:nt live	2	0	16	true	2	0.0000	0.1667	0.9849	false	false
+prefix:obcy napisy	0	2	2	true	2	0.5000	0.0000	1.0000	false	false
+prefix:odeon pride	0	3	13	true	2	0.0000	0.0000	1.0000	false	false
+prefix:odeon pride nights	0	3	13	true	3	0.0000	0.3333	1.0000	false	false
+prefix:pani domu	0	2	1	true	2	0.0000	0.0000	0.0000	false	false
+prefix:pani domu jest	0	2	1	true	3	0.0000	0.0000	0.0000	false	false
+prefix:pani domu jest tylko	0	2	1	true	4	0.0000	0.0000	0.0000	false	false
+prefix:pani domu jest tylko jedna	0	2	1	true	5	0.0000	0.0000	0.0000	false	false
+prefix:piesni lasu	0	2	2	true	2	0.0000	0.0000	1.0000	false	false
+prefix:piesni lasu pokaz	0	2	2	true	3	0.0000	0.0000	1.0000	false	false
+prefix:podrecznik	0	2	21	true	1	0.0000	0.0000	1.0000	false	false
+prefix:podrecznik dla	0	2	21	true	2	0.0000	0.0000	1.0000	false	false
+prefix:podrecznik dla superbohaterow	0	2	2	true	3	0.0000	0.0000	1.0000	false	false
+prefix:podrecznik dla superbohaterow 2d	0	2	2	true	4	0.2500	0.0000	1.0000	false	false
+prefix:pora dla	0	5	2	true	2	0.0000	0.0000	1.0000	false	true
+prefix:poranek dla	0	3	1	true	2	0.0000	0.0000	1.0000	false	false
+prefix:powiedz mi co czujesz kino	0	2	2	true	5	0.0000	0.0000	1.0000	false	false
+prefix:rbo cinema	0	11	535	true	2	0.0000	0.0000	0.9776	false	false
+prefix:rbo cinema season	0	11	535	true	3	0.0000	0.0000	0.9776	false	false
+prefix:rbo cinema season 2026	0	11	535	true	4	0.0000	0.0000	0.9776	false	false
+prefix:relaxed	0	2	11	true	1	0.0000	0.0000	1.0000	false	false
+prefix:replika 51	0	2	1	true	2	0.0000	0.0000	0.5000	false	false
+prefix:replika 51 fpff	0	2	1	true	3	0.0000	0.0000	0.5000	false	false
+prefix:replika 51 fpff w	0	2	1	true	4	0.0000	0.0000	0.5000	false	false
+prefix:replika 51 fpff w gdyni	0	2	1	true	5	0.0000	0.0000	0.5000	false	false
+prefix:resident evil 2d	0	2	4	true	3	0.3333	0.0000	1.0000	false	false
+prefix:retrospektywa	0	2	1	true	1	0.0000	0.0000	0.0000	false	false
+prefix:rialto	0	2	1	true	1	0.0000	0.0000	0.5000	false	false
+prefix:rialto documentalnie	0	2	1	true	2	0.0000	0.5000	0.5000	false	false
+prefix:rodzina w	0	5	1	true	2	0.0000	0.0000	0.8000	false	false
+prefix:rok z	0	3	1	true	2	0.0000	0.0000	1.0000	false	false
+prefix:rok z marilyn	0	3	1	true	3	0.0000	0.0000	1.0000	false	false
+prefix:rok z marilyn monroe	0	3	1	true	4	0.0000	0.0000	1.0000	false	false
+prefix:royal ballet and	0	11	143	true	3	0.0000	0.0000	0.8066	false	false
+prefix:royal ballet and opera	0	11	143	true	4	0.0000	0.0000	0.8066	false	false
+prefix:royal ballet and opera sezon	0	6	16	true	5	0.0000	0.0000	1.0000	false	false
+prefix:rozwazna i romantyczna kino	0	2	1	true	4	0.0000	0.0000	1.0000	false	false
+prefix:scena dla	0	2	1	true	2	0.0000	0.0000	1.0000	false	false
+prefix:secret screening	0	7	88	true	2	0.0000	0.0000	0.0000	false	false
+prefix:secret screening 2nd	0	2	88	true	3	0.0000	0.0000	0.0000	false	false
+prefix:seksmisja po	0	2	3	true	2	0.0000	0.0000	1.0000	false	false
+prefix:showcase blok	0	3	1	true	2	0.0000	0.0000	0.0000	false	false
+prefix:special event	2	0	1	true	2	0.0000	0.6667	1.0000	false	false
+prefix:splat	0	6	6	true	1	0.0000	0.0000	1.0000	false	true
+prefix:splat filmfest	0	3	6	true	2	0.0000	0.1111	1.0000	false	true
+prefix:splat filmfest on	0	3	5	true	3	0.0000	0.0000	1.0000	false	true
+prefix:splat filmfest on tour	0	3	5	true	4	0.0000	0.1667	1.0000	false	true
+prefix:supermocni 2d	0	2	3	true	2	0.5000	0.0000	1.0000	false	false
+prefix:sztuka na	0	3	2	true	2	0.0000	0.0000	0.6667	false	false
+prefix:sztuka na ekranie	0	3	2	true	3	0.0000	0.3333	0.6667	false	false
+prefix:tedi i magiczna lampa 2d	0	3	10	true	5	0.2000	0.0000	1.0000	false	false
+prefix:the metropolitan opera silent	0	2	20	true	4	0.0000	0.0000	1.0000	false	false
+prefix:throwback	3	0	44	true	1	0.0000	0.4286	1.0000	false	false
+prefix:throwback the	0	2	44	true	2	0.0000	0.0000	1.0000	false	false
+prefix:toddler	0	8	42	true	1	0.0000	0.0000	0.3791	false	false
+prefix:tony kino	0	2	49	true	2	0.0000	0.0000	1.0000	false	false
+prefix:trojkacik	0	2	1	true	1	0.0000	0.0000	0.0000	false	false
+prefix:trojkacik czyli	0	2	1	true	2	0.0000	0.0000	0.0000	false	false
+prefix:trojkacik czyli trzech	0	2	1	true	3	0.0000	0.0000	0.0000	false	false
+prefix:trojkacik czyli trzech na	0	2	1	true	4	0.0000	0.0000	0.0000	false	false
+prefix:trojkacik czyli trzech na probe	0	2	1	true	5	0.0000	0.0000	0.0000	false	false
+prefix:twierdza	5	0	1	true	1	0.0000	1.0000	1.0000	false	true
+prefix:vincent legenda oceanu	0	9	25	true	3	0.0000	0.0000	1.0000	false	false
+prefix:vincent legenda oceanu 2d	0	2	4	true	4	0.2500	0.0000	1.0000	false	false
+prefix:vincent legenda oceanu kino	0	2	2	true	4	0.0000	0.0000	1.0000	false	false
+prefix:w sercu dziczy 2d napisy	0	2	2	true	5	0.4000	0.0000	1.0000	false	false
+prefix:wajda	2	0	1	true	1	0.0000	0.1667	0.8947	false	true
+prefix:wajda re	0	3	15	true	2	0.0000	0.0000	0.8667	false	true
+prefix:wajda re wizje bez znieczulenia	0	4	5	true	5	0.0000	0.0000	0.8000	false	true
+prefix:weekend seniora	0	3	2	true	2	0.0000	0.0000	0.6667	false	true
+prefix:weekend seniora z	0	3	2	true	3	0.0000	0.0000	0.6667	false	true
+prefix:wielka sztuka	0	5	1	true	2	0.0000	0.0000	0.4000	false	false
+prefix:wielka sztuka w	0	5	1	true	3	0.0000	0.0000	0.4000	false	false
+prefix:wielka sztuka w kinoteatrze	0	5	1	true	4	0.0000	0.0000	0.4000	false	false
+prefix:wtorek	0	2	1	true	1	0.0000	0.0000	1.0000	false	true
+prefix:wtorek z	0	2	1	true	2	0.0000	0.0000	1.0000	false	false
+prefix:wtorek z klasyka	0	2	1	true	3	0.0000	0.3333	1.0000	false	false
+prefix:wtorki	0	3	1	true	1	0.0000	0.0000	1.0000	false	true
+prefix:wtorki dla	0	3	1	true	2	0.0000	0.0000	1.0000	false	true
+prefix:wtorki dla seniora	0	3	1	true	3	0.0000	0.0000	1.0000	false	true
+prefix:zapomniana wyspa 2d	0	3	10	true	3	0.3333	0.0000	1.0000	false	false
+prefix:zestaw filmow	0	2	2	true	2	0.0000	0.0000	0.0000	false	false
+suffix:10 klasyka filmowa	0	3	3	false	3	0.0000	0.0000	1.0000	false	false
+suffix:2026 encore	0	2	17	false	2	0.0000	0.0000	1.0000	false	false
+suffix:24 ffol	0	7	1	false	2	0.0000	0.1429	0.8571	false	false
+suffix:35mm	4	0	1	false	1	1.0000	0.6667	1.0000	false	false
+suffix:53 miedzynarodowy festiwal pianistow jazzowych	0	4	1	false	5	0.0000	0.0000	0.0000	false	true
+suffix:ad cc	0	2	1	false	2	0.0000	0.0000	1.0000	false	true
+suffix:ad cc pjm	0	5	1	false	3	0.0000	0.0000	1.0000	false	true
+suffix:af	4	0	4	false	1	0.0000	1.0000	1.0000	false	true
+suffix:andre rieu niech zyje maastricht	0	2	2	false	5	0.0000	0.0000	0.5000	false	false
+suffix:andrzeja wajdy	0	2	2	false	2	0.0000	0.0000	1.0000	false	false
+suffix:another story her docs	0	2	1	false	4	0.0000	0.0000	0.0000	false	false
+suffix:antoine lanciaux	0	2	2	false	2	0.0000	0.0000	1.0000	false	false
+suffix:bez reklam	0	4	1	false	2	0.0000	0.0000	1.0000	false	false
+suffix:blasku musicali	0	3	1	false	2	0.0000	0.0000	1.0000	false	false
+suffix:budowa powojennej kinematografii	0	2	2	false	3	0.0000	0.0000	0.5000	false	false
+suffix:camino dla opornych	0	3	3	false	3	0.0000	0.0000	0.6667	false	false
+suffix:cc pjm	0	5	1	false	2	0.0000	0.0000	1.0000	false	true
+suffix:cie nie oszuka	0	5	1	false	3	0.0000	0.0000	0.6000	false	false
+suffix:cykl filmowe sekrety	0	2	1	false	3	0.0000	0.0000	0.5000	false	false
+suffix:dkf megaron	0	8	1	false	2	0.0000	0.0000	1.0000	false	false
+suffix:dkf reksio nasze kino	0	2	1	false	4	0.0000	0.0000	1.0000	false	false
+suffix:dla dzieci	0	3	3	false	2	0.0000	0.0000	0.3333	false	true
+suffix:dla rodzica	0	2	1	false	2	0.0000	0.0000	1.0000	false	false
+suffix:dla seniora	0	3	1	false	2	0.0000	0.0000	1.0000	false	true
+suffix:docs	0	5	1	false	1	0.0000	0.0000	0.4000	false	false
+suffix:dostepne	0	2	1	false	1	0.0000	0.0000	1.0000	false	false
+suffix:dub 7	0	2	1	false	2	0.5000	0.0000	1.0000	false	false
+suffix:dub sps	0	2	1	false	2	0.5000	0.0000	1.0000	false	true
+suffix:dubb	0	6	2	false	1	1.0000	0.0000	1.0000	false	false
+suffix:dubbing	10	0	10	false	1	1.0000	0.3571	0.9870	false	false
+suffix:dubbing dys nhef	0	3	1	false	3	0.3333	0.0000	1.0000	false	false
+suffix:dubbing dys uip	0	2	1	false	3	0.3333	0.0000	1.0000	false	false
+suffix:dyskomfortu seans bez reklam	0	3	1	false	4	0.0000	0.0000	1.0000	false	false
+suffix:dyskusja	0	2	2	false	1	0.0000	0.0000	0.5000	false	true
+suffix:encore 2026	0	4	33	false	2	0.0000	0.0000	1.0000	false	false
+suffix:encore 2027	0	5	7	false	2	0.0000	0.0000	1.0000	false	false
+suffix:epoki pazdziernika	0	2	2	false	2	0.0000	0.0000	0.0000	false	false
+suffix:extended edition	3	0	6	false	2	0.0000	1.0000	1.0000	false	false
+suffix:fan event	0	2	12	false	2	0.0000	0.0000	1.0000	false	false
+suffix:festiwal pianistow jazzowych	0	4	1	false	3	0.0000	0.0000	0.0000	false	true
+suffix:festiwal wapi 2026	0	5	1	false	3	0.0000	0.0000	1.0000	false	true
+suffix:ffol	0	7	1	false	1	0.0000	0.0000	0.8571	false	false
+suffix:film konkursowy	0	3	1	false	2	0.0000	0.0000	0.3333	false	false
+suffix:film polski	4	0	2	false	2	0.0000	1.0000	1.0000	false	true
+suffix:filmem wyklad prof marka hendrykowskiego	0	5	1	false	5	0.0000	0.0000	1.0000	false	false
+suffix:filmfest	0	61	1	false	1	0.0000	0.0000	0.9672	false	true
+suffix:filmfest on tour	0	3	1	false	3	0.0000	0.0000	1.0000	false	true
+suffix:filmowe	0	2	2	false	1	0.0000	0.0000	0.0000	false	false
+suffix:filmowe sekrety	0	2	1	false	2	0.0000	0.0000	0.5000	false	false
+suffix:filmowy walbrzych spotkanie	0	4	1	false	3	0.0000	0.0000	1.0000	false	false
+suffix:filmu lalka	0	2	2	false	2	0.0000	0.0000	1.0000	false	true
+suffix:filozoficzne	0	2	2	false	1	0.0000	0.0000	1.0000	false	false
+suffix:fmz	0	3	1	false	1	0.0000	0.0000	0.0000	false	false
+suffix:friendly screening	0	7	16	false	2	0.0000	0.0000	1.0000	false	false
+suffix:hd 2026 27	0	4	1	false	3	0.0000	0.0000	0.2500	true	false
+suffix:hdd	0	5	52	false	1	0.0000	0.0000	0.5992	false	false
+suffix:helios	0	2	49	false	1	0.0000	0.0000	1.0000	false	true
+suffix:helios na scenie	0	8	52	false	3	0.0000	0.0000	1.0000	false	false
+suffix:helios replay	0	9	49	false	2	0.0000	0.0000	1.0000	false	false
+suffix:helios sport	0	2	14	false	2	0.0000	0.0000	0.0000	false	false
+suffix:hendrykowskiego	0	5	1	false	1	0.0000	0.0000	1.0000	false	false
+suffix:her docs	0	5	1	false	2	0.0000	0.0000	0.4000	false	false
+suffix:herbatce	0	3	1	false	1	0.0000	0.0000	1.0000	false	true
+suffix:hindi	5	0	45	false	1	0.0000	0.6000	1.0000	false	false
+suffix:horyzonty seanse hdd	0	4	52	false	3	0.0000	0.0000	0.7512	false	false
+suffix:i sp	0	2	1	false	2	0.0000	0.0000	0.0000	false	false
+suffix:i sztuki	0	4	1	false	2	0.0000	0.0000	0.5000	false	false
+suffix:i zlosliwa wiewiorka	0	2	4	false	3	0.0000	0.0000	1.0000	false	true
+suffix:ii sp	0	2	1	false	2	0.0000	0.0000	0.0000	false	false
+suffix:im kino manon	0	2	63	false	3	0.0000	0.0000	1.0000	false	false
+suffix:in hd 2026 27	0	4	1	false	4	0.0000	0.0000	0.2500	true	false
+suffix:jazzowych	0	4	1	false	1	0.0000	0.0000	0.0000	false	true
+suffix:jest kobieta w blasku musicali	0	3	1	false	5	0.0000	0.0000	1.0000	false	false
+suffix:jozefa van wissema na zywo	0	2	1	false	5	0.0000	0.0000	1.0000	false	false
+suffix:jubileusz	0	2	3	false	1	0.0000	0.0000	0.0000	false	false
+suffix:kadrze	0	3	2	false	1	0.0000	0.0000	1.0000	false	false
+suffix:kanary	0	3	1	false	1	0.0000	0.0000	1.0000	false	false
+suffix:kina krajow portugalskojezycznych mare	0	3	1	false	4	0.0000	0.0000	0.6667	false	false
+suffix:kina niemego	0	2	2	false	2	0.0000	0.0000	0.5000	false	false
+suffix:kina spolecznie uzytecznego	0	2	2	false	3	0.0000	0.0000	0.0000	false	false
+suffix:kinematografii	0	2	2	false	1	0.0000	0.0000	0.5000	false	false
+suffix:kino dyskomfortu seans bez reklam	0	3	1	false	5	0.0000	0.0000	1.0000	false	false
+suffix:kino epoki pazdziernika	0	2	2	false	3	0.0000	0.0000	0.0000	false	false
+suffix:kino manon	0	2	63	false	2	0.0000	0.0000	1.0000	false	false
+suffix:kino po sasiedzku	0	4	1	false	3	0.0000	0.0000	1.0000	false	false
+suffix:kino swiat	0	3	1	false	2	0.0000	0.3333	1.0000	false	true
+suffix:klasyka filmowa	0	4	4	false	2	0.0000	0.0000	1.0000	false	false
+suffix:kobiet czas ktory nie nadszedl	0	3	3	false	5	0.0000	0.0000	1.0000	false	false
+suffix:kobieta w blasku musicali	0	3	1	false	4	0.0000	0.0000	1.0000	false	false
+suffix:konesera	0	9	52	false	1	0.0000	0.0000	0.9949	false	true
+suffix:konesera 24 ffol	0	7	1	false	3	0.0000	0.0000	0.8571	false	false
+suffix:konkursowy	0	3	1	false	1	0.0000	0.0000	0.3333	false	false
+suffix:krajow portugalskojezycznych mare	0	3	1	false	3	0.0000	0.0000	0.6667	false	false
+suffix:krajowa	0	2	1	false	1	0.0000	0.5000	1.0000	false	true
+suffix:kregu kina spolecznie uzytecznego	0	2	2	false	4	0.0000	0.0000	0.0000	false	false
+suffix:kultura 2026	0	4	1	false	2	0.0000	0.0000	0.7500	false	true
+suffix:kultury helios	0	2	49	false	2	0.0000	0.0000	1.0000	false	true
+suffix:kultury i sztuki	0	4	1	false	3	0.0000	0.0000	0.5000	false	false
+suffix:kupilem motocykl ktory jest wampirem	0	2	4	false	5	0.0000	0.0000	1.0000	false	false
+suffix:lanciaux	0	2	2	false	1	0.0000	0.0000	1.0000	false	false
+suffix:lektor	4	0	8	false	1	1.0000	1.0000	1.0000	false	false
+suffix:live in hd 2026 27	0	4	1	false	5	0.0000	0.0000	0.2500	true	false
+suffix:live viewing	2	0	143	false	2	0.0000	0.5000	1.0000	false	false
+suffix:malayalam	2	0	15	false	1	0.0000	1.0000	1.0000	false	false
+suffix:marka hendrykowskiego	0	5	1	false	2	0.0000	0.0000	1.0000	false	false
+suffix:megaron	0	8	1	false	1	0.0000	0.0000	1.0000	false	false
+suffix:miedzynarodowy festiwal pianistow jazzowych	0	4	1	false	4	0.0000	0.0000	0.0000	false	true
+suffix:mlode horyzonty seanse hdd	0	4	52	false	4	0.0000	0.0000	0.7512	false	false
+suffix:musicali	0	3	1	false	1	0.0000	0.0000	1.0000	false	false
+suffix:muzyka na zywo	0	3	2	false	3	0.0000	0.0000	1.0000	false	true
+suffix:na kanary	0	3	1	false	2	0.0000	0.0000	1.0000	false	false
+suffix:na scenie	0	8	52	false	2	0.0000	0.0000	1.0000	false	false
+suffix:najgorszych	0	2	2	false	1	0.0000	0.0000	0.5000	false	false
+suffix:najlepsze z najgorszych	0	2	2	false	3	0.0000	0.5000	0.5000	false	false
+suffix:napisami	0	2	3	false	1	0.0000	0.0000	1.0000	false	true
+suffix:nhef	0	3	1	false	1	0.0000	0.0000	1.0000	false	false
+suffix:nie oszuka	0	5	1	false	2	0.0000	0.0000	0.6000	false	false
+suffix:nie zaznaja spokoju	0	2	5	false	3	0.0000	0.0000	1.0000	false	false
+suffix:niemego	0	2	2	false	1	0.0000	0.0000	0.5000	false	false
+suffix:nowa budowa powojennej kinematografii	0	2	2	false	4	0.0000	0.0000	0.5000	false	false
+suffix:odnowy kino epoki pazdziernika	0	2	2	false	4	0.0000	0.0000	0.0000	false	false
+suffix:on tour	3	0	1	false	2	0.0000	0.7500	1.0000	false	true
+suffix:oszuka	0	5	1	false	1	0.0000	0.0000	0.6000	false	false
+suffix:pantomimy	0	2	1	false	1	0.0000	0.0000	0.0000	false	false
+suffix:person q a	0	2	6	false	3	0.0000	0.0000	1.0000	false	false
+suffix:pianistow jazzowych	0	4	1	false	2	0.0000	0.0000	0.0000	false	true
+suffix:pl	4	0	5	false	1	0.0000	0.2857	1.0000	false	true
+suffix:pl 12	0	2	1	false	2	0.0000	0.5000	1.0000	false	false
+suffix:po sasiedzku	0	4	1	false	2	0.0000	0.0000	1.0000	false	false
+suffix:poczatki polskiego kina	0	2	2	false	3	0.0000	0.0000	0.5000	false	false
+suffix:pokaz filmu lalka	0	2	2	false	3	0.0000	0.0000	1.0000	false	true
+suffix:pokaz z prelekcja	0	3	3	false	3	0.0000	0.0000	1.0000	false	false
+suffix:polsce	0	2	2	false	1	0.0000	0.0000	0.0000	false	false
+suffix:poniedzialek	0	2	1	false	1	0.0000	0.0000	1.0000	false	true
+suffix:portugalskojezycznych mare	0	3	1	false	2	0.0000	0.0000	0.6667	false	false
+suffix:poszukiwania kina niemego	0	2	2	false	3	0.0000	0.0000	0.5000	false	false
+suffix:powojennej kinematografii	0	2	2	false	2	0.0000	0.0000	0.5000	false	false
+suffix:premiera	6	0	8	false	1	0.0000	0.5455	0.9412	false	true
+suffix:premiery	0	2	2	false	1	0.0000	0.0000	1.0000	false	false
+suffix:prof marka hendrykowskiego	0	5	1	false	3	0.0000	0.0000	1.0000	false	false
+suffix:przedpremierowy	0	5	3	false	1	0.0000	0.0000	1.0000	false	false
+suffix:przemyslu filmowego	0	2	2	false	2	0.0000	0.0000	0.0000	false	false
+suffix:przy herbatce	0	3	1	false	2	0.0000	0.0000	1.0000	false	true
+suffix:ptakow rez antoine lanciaux	0	2	2	false	4	0.0000	0.0000	1.0000	false	false
+suffix:re release	4	0	17	false	2	0.0000	0.8000	1.0000	false	false
+suffix:reklam	0	4	1	false	1	0.0000	0.0000	1.0000	false	false
+suffix:reksio nasze kino	0	2	1	false	3	0.0000	0.0000	1.0000	false	false
+suffix:retransmisja	0	4	2	false	1	0.0000	0.0000	0.5000	false	false
+suffix:rez antoine lanciaux	0	2	2	false	3	0.0000	0.0000	1.0000	false	false
+suffix:rezyserem	0	4	3	false	1	0.0000	0.0000	0.5000	false	true
+suffix:rocznica w helios replay	0	2	19	false	4	0.0000	0.0000	1.0000	false	false
+suffix:rodzica	0	2	1	false	1	0.0000	0.0000	1.0000	false	false
+suffix:sasiedzku	0	4	1	false	1	0.0000	0.0000	1.0000	false	false
+suffix:scenie	0	8	52	false	1	0.0000	0.0000	1.0000	false	false
+suffix:seans bez reklam	0	4	1	false	3	0.0000	0.2500	1.0000	false	false
+suffix:seans z prelekcja	0	4	1	false	3	0.0000	0.2500	1.0000	false	true
+suffix:seanse hdd	0	4	52	false	2	0.0000	0.0000	0.7512	false	false
+suffix:sebastiana smolinskiego	0	2	1	false	2	0.0000	0.0000	1.0000	false	false
+suffix:seniora	0	6	4	false	1	0.0000	0.0000	1.0000	false	true
+suffix:seniora czas ktory nie nadszedl	0	2	2	false	5	0.0000	0.0000	1.0000	false	false
+suffix:seniora lalka	0	3	6	false	2	0.0000	0.0000	1.0000	false	true
+suffix:seniora primetime	0	2	2	false	2	0.0000	0.0000	1.0000	false	false
+suffix:seniora rozwazna i romantyczna	0	2	2	false	4	0.0000	0.0000	1.0000	false	false
+suffix:seniora z kultura 2026	0	4	1	false	4	0.0000	0.0000	0.7500	false	true
+suffix:smolinskiego	0	2	1	false	1	0.0000	0.0000	1.0000	false	false
+suffix:socrealizmu	0	2	2	false	1	0.0000	0.0000	0.5000	false	false
+suffix:spiewajacych ptakow rez antoine lanciaux	0	2	2	false	5	0.0000	0.0000	1.0000	false	false
+suffix:splat filmfest on tour	0	3	1	false	4	0.0000	0.3333	1.0000	false	true
+suffix:spolecznie uzytecznego	0	2	2	false	2	0.0000	0.0000	0.0000	false	false
+suffix:spotkanie z rezyserem	0	3	2	false	3	0.0000	0.3333	0.6667	false	true
+suffix:story her docs	0	2	1	false	3	0.0000	0.0000	0.0000	false	false
+suffix:sztuka cie nie oszuka	0	5	1	false	4	0.0000	0.0000	0.6000	false	false
+suffix:sztuka w kadrze	0	2	1	false	3	0.0000	0.5000	1.0000	false	false
+suffix:sztuki	0	4	1	false	1	0.0000	0.0000	0.5000	false	false
+suffix:tauron mlode horyzonty seanse hdd	0	4	52	false	5	0.0000	0.0000	0.7512	false	false
+suffix:telugu	3	0	30	false	1	0.0000	0.8000	1.0000	false	false
+suffix:the imax experience	2	0	26	false	3	0.3333	1.0000	1.0000	false	false
+suffix:tylko sztuka cie nie oszuka	0	5	1	false	5	0.0000	0.0000	0.6000	false	false
+suffix:uip	0	3	1	false	1	0.0000	0.0000	1.0000	false	false
+suffix:uroczysty jubileusz	0	2	3	false	2	0.0000	0.0000	0.0000	false	false
+suffix:urzedowska pokaz filmu lalka	0	2	2	false	4	0.0000	0.0000	1.0000	false	true
+suffix:uzytecznego	0	2	2	false	1	0.0000	0.0000	0.0000	false	false
+suffix:v festiwal wapi 2026	0	5	1	false	4	0.0000	0.0000	1.0000	false	true
+suffix:van wissema na zywo	0	2	1	false	4	0.0000	0.0000	1.0000	false	false
+suffix:viewing	2	0	8	false	1	0.0000	0.5000	1.0000	false	false
+suffix:vincent legenda oceanu	0	8	9	false	3	0.0000	0.0000	0.8889	false	false
+suffix:vivaldi i ja	0	2	2	false	3	0.0000	0.0000	1.0000	false	false
+suffix:w blasku musicali	0	3	1	false	3	0.0000	0.0000	1.0000	false	false
+suffix:w dkf megaron	0	8	1	false	3	0.0000	0.0000	1.0000	false	false
+suffix:w helios sport	0	2	14	false	3	0.0000	0.0000	0.0000	false	false
+suffix:w kadrze	0	3	2	false	2	0.0000	0.0000	1.0000	false	false
+suffix:w polsce	0	2	2	false	2	0.0000	0.0000	0.0000	false	false
+suffix:walbrzych spotkanie	0	4	1	false	2	0.0000	0.0000	1.0000	false	false
+suffix:wapi 2026	0	5	1	false	2	0.0000	0.0000	1.0000	false	true
+suffix:wiewiorka	0	2	4	false	1	0.0000	0.0000	1.0000	false	true
+suffix:wissema na zywo	0	2	1	false	3	0.0000	0.0000	1.0000	false	false
+suffix:wyklad prof marka hendrykowskiego	0	5	1	false	4	0.0000	0.0000	1.0000	false	false
+suffix:z kultura 2026	0	4	1	false	3	0.0000	0.0000	0.7500	false	true
+suffix:z muzyka na zywo	0	2	2	false	4	0.0000	0.0000	1.0000	false	true
+suffix:z najgorszych	0	2	2	false	2	0.0000	0.0000	0.5000	false	false
+suffix:z prelekcja	0	7	4	false	2	0.0000	0.0000	1.0000	false	true
+suffix:z rezyserem	0	4	3	false	2	0.0000	0.0000	0.5000	false	true
+suffix:zaznaja spokoju	0	2	5	false	2	0.0000	0.0000	1.0000	false	false
+suffix:zlosliwa wiewiorka	0	2	4	false	2	0.0000	0.0000	1.0000	false	true
+suffix:zlote gody	0	2	1	false	2	0.0000	0.5000	1.0000	false	false
+suffix:zydowskie w polsce	0	2	2	false	3	0.0000	0.0000	0.0000	false	false

@@ -495,6 +495,21 @@ title's group beside the listing's own, in the resolver and the calibration alik
 "Mistyczka 2D PL" is a bare "Mistyczka", and without them it would take the more popular namesake.
 No word list: a new venue's decoration is learned by the next refit.
 
+**Candidate decorations, measured.** What the learner cannot see — a programme banner around films no other
+listing bills ("Binti Edukacja Młode Horyzonty"), a run a record title also carries ("lektor", "dubbing") — the
+detector `integration.IdentityDecorationCandidates` proposes from two signals, `TitleDecorations.candidates`
+(an edge run recurring around ≥ 2–3 inner titles, the inner titles need not be billed elsewhere) and
+`TitleDecorations.aligned` (a run one venue adds to a film another venue bills plain, within the model's own
+clusters), then MEASURES them on the recorded full corpora: every country resolved with the candidates beside the
+learned decorations, each moved listing put down to the candidates its title carries and judged by the ratchet's
+`labels.tsv` (a double programme taking a film counts wrong), a candidate with a wrong take or a moved match dropped,
+rounds until none is. Only a candidate with a right take and nothing wrong or moved, scoring at least the fitted
+`identity-decoration-score.json` cut (a logistic regression over the candidates' corpus features, refit by
+`scripts.IdentityDecorationScoreFit` from the measured `training.tsv`; cut where no held-out bad candidate passes),
+is merged into `identity-decorations.json` (`--write`). First run (2026-10-05, 433 candidates): one right take — the
+Met's "… | metropolitan opera: live in hd 2026/27" suffix, a stage relay — against 28 wrong takes ("Dismember the
+Alamo" → "The Alamo", "Klasyka SFR vol.2" → "Kill Bill 2") and 27 moved matches; the shipped cut admits nothing yet.
+
 **Titles venues publish for a record.** TMDB titles some records in one language only: André Rieu's
 2026 Maastricht concert is "André Rieu's 2026 Summer Concert: Viva Maastricht!" in the PL locale
 too, so every "Andre Rieu. Niech żyje Maastricht!" relates to it by a few shared words (`overlap`,

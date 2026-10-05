@@ -71,8 +71,9 @@ object TitleDecorations {
 
   /** One learned decoration and where it was learned: the remainders it was seen around (up to
    *  [[ProvenanceExamples]], sorted), how many there are, and how many venues and listing titles
-   *  carry it. */
-  final case class Learned(side: String, decoration: String, films: Int, venues: Int, titles: Int, examples: Seq[String])
+   *  carry it — and, for one the detector kept (`integration.IdentityDecorationCandidates`), what its measure found. */
+  final case class Learned(side: String, decoration: String, films: Int, venues: Int, titles: Int, examples: Seq[String],
+                           measured: Option[String] = scala.None)
   val ProvenanceExamples = 5
 
   /** The artefact `scripts.IdentityDecorationsLearn` writes: the decorations with provenance. */
@@ -150,6 +151,66 @@ object TitleDecorations {
     }
     (edges ++ billed).sortBy(d => (-d.films, d.side, d.decoration))
   }
+
+  /** CANDIDATE decorations — what [[learn]] cannot see yet: an edge run of up to [[CandidateRun]] words recurring around
+   *  at least `minRemainders` different remainders ([[distinctFilms]]) where the remainders need NOT be another
+   *  listing's whole title. A programme banner's films often play nowhere else ("Edukacja Młode Horyzonty" around
+   *  "Binti", "Fritzi – przyjaźń bez granic"), and a venue's own format tag around films that venue alone bills
+   *  ("2D PL LOLO"). No record title may carry the run (as [[learn]]), and `known` decorations are not proposed again.
+   *  Never decorations by themselves: each is MEASURED (`scripts.IdentityDecorationCandidates`) and only those whose
+   *  stripping takes more listings right and none wrong are kept. Strongest first, as [[learn]] orders. */
+  def candidates(listings: Iterable[(String, String)], recordTitles: Iterable[String], known: TitleDecorations,
+                 minRemainders: Int = MinCandidateRemainders): Seq[Learned] = {
+    val seen = scala.collection.mutable.HashMap.empty[(String, Seq[String]), Map[Seq[String], Set[String]]]
+    listings.iterator.map { case (venue, title) => TitleContainment.tokens(title) -> venue }.filter(_._1.sizeIs > 1).distinct.foreach { case (tokens, venue) =>
+      (1 to math.min(CandidateRun, tokens.size - 1)).foreach { k =>
+        Seq("prefix" -> (tokens.take(k), tokens.drop(k)), "suffix" -> (tokens.takeRight(k), tokens.dropRight(k))).foreach { case (side, (run, rest)) =>
+          seen.updateWith((side, run))(m => Some(m.getOrElse(Map.empty).updatedWith(rest)(v => Some(v.getOrElse(Set.empty) + venue))))
+        }
+      }
+    }
+    val knownRuns = Map("prefix" -> known.prefixes, "suffix" -> known.suffixes)
+    val recurring = seen.iterator.filter { case ((side, run), byRest) => byRest.sizeIs >= minRemainders && !knownRuns(side)(run) && run.exists(_.exists(_.isLetter)) }
+      .map { case (key, byRest) => key -> (byRest, distinctFilms(byRest.keySet)) }.filter(_._2._2.sizeIs >= minRemainders).toSeq
+    val inRecords = carried(recordTitles, recurring.map(_._1._2).toSet)
+    recurring.collect { case ((side, run), (byRest, films)) if !inRecords(run) =>
+      Learned(side, run.mkString(" "), films.size, byRest.values.flatten.toSet.size, byRest.size, films.toSeq.map(_.mkString(" ")).sorted.take(ProvenanceExamples))
+    }.sortBy(d => (-d.films, d.side, d.decoration))
+  }
+  /** CANDIDATE decorations learned SUPERVISED, from listings the model already holds to be one film: within each of
+   *  `clusters` (each listing's venue and title), a title that is another member's title plus an edge run ("Fritzi –
+   *  przyjaźń bez granic Edukacja Młode Horyzonty" beside "Fritzi – przyjaźń bez granic") shows that run decorating
+   *  the film. Runs seen so around at least `minFilms` different inner titles and not `known`, strongest first. Unlike
+   *  [[learn]] and [[candidates]], a run a record title carries is proposed too: the model already holds both titles one
+   *  film, so the run decorates these films whatever other films it names — "lektor", "dubbing", "pl", which films are
+   *  titled too, and which every learned run so far was blocked on. The measure decides. A run INSIDE a title (an
+   *  infix) is not stripped by [[strip]], so it is not proposed. */
+  def aligned(clusters: Iterable[Seq[(String, String)]], known: TitleDecorations, minFilms: Int = MinFilms): Seq[Learned] = {
+    val seen = scala.collection.mutable.HashMap.empty[(String, Seq[String]), Map[Seq[String], Set[String]]]
+    clusters.foreach { members =>
+      val titled = members.map { case (venue, title) => TitleContainment.tokens(title) -> venue }.filter(_._1.nonEmpty).distinct
+      val plain  = titled.map(_._1).toSet
+      titled.foreach { case (tokens, venue) =>
+        (1 until tokens.size).foreach { k =>
+          Seq("prefix" -> (tokens.take(k), tokens.drop(k)), "suffix" -> (tokens.takeRight(k), tokens.dropRight(k))).foreach { case (side, (run, rest)) =>
+            if (plain(rest) && k <= CandidateRun)
+              seen.updateWith((side, run))(m => Some(m.getOrElse(Map.empty).updatedWith(rest)(v => Some(v.getOrElse(Set.empty) + venue))))
+          }
+        }
+      }
+    }
+    val knownRuns = Map("prefix" -> known.prefixes, "suffix" -> known.suffixes)
+    val recurring = seen.toSeq.filter { case ((side, run), _) => !knownRuns(side)(run) && run.exists(_.exists(_.isLetter)) }
+      .map { case (key, byRest) => key -> (byRest, distinctFilms(byRest.keySet)) }.filter(_._2._2.sizeIs >= minFilms)
+    recurring.map { case ((side, run), (byRest, films)) =>
+      Learned(side, run.mkString(" "), films.size, byRest.values.flatten.toSet.size, byRest.size, films.toSeq.map(_.mkString(" ")).sorted.take(ProvenanceExamples))
+    }.sortBy(d => (-d.films, d.side, d.decoration))
+  }
+
+  /** The longest candidate run proposed: "weekend seniora z kultura" is four words. */
+  val CandidateRun = 5
+  /** "Recurs around many inner titles": three different remainders. */
+  val MinCandidateRemainders = 3
 
   /** An EVENT TAIL: a run of up to [[TailRun]] words that STARTS what titles bill last after a spaced "+", behind at
    *  least [[MinFilms]] different works, each another listing's whole title — "spotkanie z" after "Punku" and "Kalafior
