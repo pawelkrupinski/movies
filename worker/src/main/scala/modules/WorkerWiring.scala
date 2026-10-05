@@ -140,9 +140,7 @@ class WorkerWiring(
         val lookupsNow = new TrackedLookups(cutoverLookups(identityReads), identityReads, Some(identityPrefetchPool))
         tracked = Some(lookupsNow)
         new IncrementalResolver(lookupsNow, titleNormalizer, IdentityCalibration.resolver, pins,
-          // Its families read as raw documents: decoded as trees, a US take-up's ~400k embedded documents were promoted
-          // beside the boot's other reads, then dropped (`tools.RawDocuments`).
-          store = mongoConnection.database.fold[IdentityModelStore](new InMemoryIdentityModelStore)(db => new MongoIdentityModelStore(tools.RawDocuments.over(db))),
+          store = mongoConnection.database.fold[IdentityModelStore](new InMemoryIdentityModelStore)(new MongoIdentityModelStore(_)),
           rules = IncrementalResolver.rulesVersion(IdentityRules.codeVersion, IdentityCalibration.resolver, TitleDecorations.resolver, pins),
           traces = identityTraces)
       },
