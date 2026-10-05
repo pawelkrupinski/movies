@@ -22,4 +22,42 @@ class SortedLongMapSpec extends AnyFlatSpec with Matchers {
     map.get(Long.MinValue) shouldBe None
     SortedLongMap.empty[String].merged(Map(Long.MinValue -> "min", Long.MaxValue -> "max")).get(Long.MaxValue) shouldBe Some("max")
   }
+
+  // The venue slot memo merges, every light projection, the tens of thousands of entries it looked up — almost all the very
+  // ones it holds — and a few it built, into ~200k. Copied whole each time, its arrays (~2.4 MB a projection on worker-us)
+  // lived until the next projection: promoted to the old generation every time, to die there (JFR OldObjectSample,
+  // 2026-10-05: dead VenueSlotMemo.endTick arrays aged 2-8 min).
+  it should "be itself when merged with only what it holds" in {
+    val map = SortedLongMap.empty[String].merged((1L to 1000L).map(k => k -> s"v$k").toMap)
+    map.merged(Map(5L -> map.get(5L).get, 6L -> new String("v6"))) should be theSameInstanceAs map
+    map.merged(Map.empty[Long, String], k => k > 5000) should be theSameInstanceAs map
+  }
+
+  it should "take a few changes into a large map without copying it" in {
+    val large = SortedLongMap.empty[String].merged((1L to 200000L).map(k => k * 7 -> s"v$k").toMap)
+    val added = (1L to 30000L).map(k => k * 7 -> large.get(k * 7).get).toMap ++ (1L to 100L).map(k => (k * 7 + 1) -> s"new$k")
+    val (merged, allocated) = tools.ThreadAllocation.of(large.merged(added, _ == 700000L))
+    merged.size shouldBe 200000 + 100 - 1
+    merged.get(700000L) shouldBe None
+    merged.get(8L) shouldBe Some("new1")
+    merged.get(21L) shouldBe Some("v3")
+    withClue(s"allocated $allocated bytes: ")(allocated should be < 1000000L)
+  }
+
+  it should "answer as the map it was merged from across many merges, its changes folded into its arrays as they pile up" in {
+    val rng   = new Random(11)
+    var model = (1L to 5000L).map(k => k -> s"v$k").toMap
+    var map   = SortedLongMap.empty[String].merged(model)
+    (1 to 300).foreach { round =>
+      val added   = Seq.fill(rng.nextInt(40))((rng.nextInt(7000) + 1).toLong -> s"r$round-${rng.nextInt(3)}").toMap
+      val removed = Set.fill(rng.nextInt(10))((rng.nextInt(7000) + 1).toLong)
+      model = (model -- removed) ++ added
+      map   = map.merged(added, removed)
+      withClue(s"round $round: ") {
+        map.size shouldBe model.size
+        (0L to 7001L by 13).foreach(k => map.get(k) shouldBe model.get(k))
+      }
+    }
+    map.valuesIterator.toSeq should contain theSameElementsAs model.values
+  }
 }
