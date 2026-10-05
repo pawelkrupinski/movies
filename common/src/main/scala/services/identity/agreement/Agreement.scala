@@ -216,12 +216,15 @@ object Agreement {
    *  Finnish dance film, → "Tempo" (2003), which IMDb's search found, weighed and turned down for "Old" while Filmweb,
    *  RT and Wikidata took it. */
   def agreed(listings: Seq[Listing], verdicts: Seq[FamilyVerdict], modelVote: Option[SourceRecord] = None,
-             thisYear: Option[Int] = None): Option[AgreedFilm] = {
+             thisYear: Option[Int] = None, stated: Seq[Listing] = Nil): Option[AgreedFilm] = {
+    // what the venues' own pages add to the listings votes and names films; it never rules one out — a page's year is
+    // often its re-release's (PL Kinoteka "Ghost in the shell": 2026 on the page of the 1995 film)
+    val asStated = if (stated.nonEmpty) stated else listings
     val picks = verdicts.flatMap(_.pick).sortBy(_.family.ordinal)
     // a family taking a film the listing's title does not name is no evidence on the listing's (US "A Night at the
     // Opera": Wikidata's "The Old Maid", by the director the venue credits)
-    val named = filmsOf(picks).filter(group => listings.nonEmpty && listings.forall(listing => namesIt(listing, group.map(_.record.film))))
-    named.filter(_.size >= Takers).map(group => supported(listings, group, verdicts, modelVote, thisYear)).sortBy(film => -film.support).headOption.flatMap { film =>
+    val named = filmsOf(picks).filter(group => asStated.nonEmpty && asStated.forall(listing => namesIt(listing, group.map(_.record.film))))
+    named.filter(_.size >= Takers).map(group => supported(listings, asStated, group, verdicts, modelVote, thisYear)).sortBy(film => -film.support).headOption.flatMap { film =>
       val dissent = named.filterNot(_.exists(pick => film.agreed.families(pick.family))).map(_.size).sum
       Option.when(film.support >= Quorum + dissent && !film.turnedDown && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
         !film.records.take(film.agreed.families.size).exists(contradictedByTheListing(listings, _)) &&
@@ -238,14 +241,14 @@ object Agreement {
     def completed: Boolean = agreed.families.size < Quorum
   }
 
-  private def supported(listings: Seq[Listing], group: Seq[FamilyPick], verdicts: Seq[FamilyVerdict], modelVote: Option[SourceRecord],
+  private def supported(listings: Seq[Listing], stated: Seq[Listing], group: Seq[FamilyPick], verdicts: Seq[FamilyVerdict], modelVote: Option[SourceRecord],
                         thisYear: Option[Int]): Supported = {
     val lead    = group.head
     val records = group.map(_.record)
     val merged  = lead.record.copy(crossIds = records.flatMap(_.crossIds).toMap ++ lead.record.crossIds)
     def isIt(record: SourceRecord) = records.exists(sameFilm(_, record))
     val leaning = verdicts.filter(verdict => verdict.pick.isEmpty && verdict.leaning.exists(isIt)).map(_.family).toSet
-    val corroborated = listingVotes(listings, records) ++ Set(ModelVote).filter(_ => modelVote.exists(isIt)) ++
+    val corroborated = listingVotes(stated, records) ++ Set(ModelVote).filter(_ => modelVote.exists(isIt)) ++
       Set(Venues).filter(_ => listings.map(_.venue).distinct.size >= WidelyBilled &&
         thisYear.exists(year => records.flatMap(_.film.year).maxOption.exists(_ >= year - 1)))
     // weighed and turned down for another film its evidence favours — weighed among films it favours none of is no

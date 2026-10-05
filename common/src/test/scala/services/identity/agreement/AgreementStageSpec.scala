@@ -59,6 +59,29 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     taken.explanation.last should include ("corroborated by tmdb")
   }
 
+  it should "read the year, director and running time the venue's own page states as the listing's facts, as the model does" in {
+    // PL "The Taxidermist | Splat!FilmFest": IMDb alone takes it; the venue's page, not its listing, credits Paulo Nascimento, 99 min
+    val undated = listing(KinoMuza, "Klondike")
+    val alone   = Map(VoterFamily.Imdb -> agreeing()(VoterFamily.Imdb)) ++
+      Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
+    def page(facts: Option[services.identity.DetailFacts]) = new services.identity.IdentityLookups {
+      def hasDetail(listing: services.identity.Listing): Boolean = facts.isDefined
+      def detail(listing: services.identity.Listing) = Answer.Known(facts)
+      def candidates(query: services.identity.CandidateQuery) = Answer.Known(Nil)
+      def film(tmdbId: Int) = Answer.Known(None)
+    }
+    def decided(facts: Option[services.identity.DetailFacts]) = {
+      val model = Resolution(Seq(ResolverDecision(Seq(undated.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil)()), 1,
+        Map(undated.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+      new AgreementStage(alone, page(facts), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+        new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned).apply(model, Map(undated.key -> undated).get, version = 1).decisions.head
+    }
+    decided(None).film shouldBe None
+    val taken = decided(Some(services.identity.DetailFacts(Some(2022), Seq("Maryna Er Gorbach"), Some(100), None)))
+    (taken.film, taken.basis) shouldBe ((Some(913760), ResolverDecision.Basis.Agreed))
+    taken.explanation.last should include ("corroborated by listing, runtime")
+  }
+
   it should "hand back the same decision object while its verdict stands, so the projection redrafts it only when it moves" in {
     val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
