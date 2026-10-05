@@ -24,7 +24,7 @@ import scala.jdk.CollectionConverters._
  * The clusters the model leaves unmatched are the unmatched-cluster fixture's (`UnmatchedClusters`: their decisions,
  * the families' answers and the posters' hashes as captured, the agreement stage's takes on them by `replay`); the
  * rest are the whole corpus's resolve. Every family's verdict is the resolver over its answers as the stage asks it —
- * the fixture's, beside prod's filed answers (`KINOWO_IDENTITY_FAMILY_SEED`) — and the posters are hashed from
+ * the fixture's, beside prod's filed answers (`KINOWO_IDENTITY_FAMILY_SEED`, with the model takes' answers and IMDb finds `ModelTakeAnswersFill` adds) — and the posters are hashed from
  * `KINOWO_IDENTITY_POSTER_CACHE` alone: nothing is asked of a family or a poster host here, a question no answer holds is
  * a missing signal. Labels, per contender:
  *
@@ -96,7 +96,10 @@ object IdentityUnifiedDataset {
     val answers: Seq[(VoterFamily, FamilyAnswers)] = UnmatchedClusters.familiesOf(c.country).map(f => f -> store.answers(f))
     val posterStore = new PosterAnswerStore(store, tools.SpecClock.Pinned)
     val posters = configuration.identityPosterCache.map(cache => new CachedPosters(cache.value, live = None, c.country.language.getLanguage, offline = true))
-    val finds   = capture.fold(Map.empty[String, Option[Int]])(_.finds)
+    // the IMDb ids a family took, on TMDB: the capture's, and those `ModelTakeAnswersFill` found for the model's takes
+    val seedFinds = configuration.identityFamilySeed.map(_.value.resolve(s"finds-$code.tsv")).filter(Files.exists(_)).toSeq
+      .flatMap(f => Files.readAllLines(f).asScala.filter(_.nonEmpty).map(_.split('\t')).map(a => a(0) -> a.lift(1).flatMap(_.toIntOption)))
+    val finds   = seedFinds.toMap ++ capture.fold(Map.empty[String, Option[Int]])(_.finds)
     val thisYear = java.time.LocalDate.ofInstant(tools.SpecClock.Pinned.instant(), java.time.ZoneOffset.UTC).getYear
 
     // the fixture's clusters, as the agreement stage took them; the rest of the corpus as the model decided
