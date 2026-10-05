@@ -31,6 +31,7 @@ class UnmatchedClustersRatchetSpec extends AnyFlatSpec with Matchers {
       outcome.model.unknownFilms shouldBe 0
       outcome.stage.wanted shouldBe empty
       outcome.stage.wantedFinds shouldBe empty
+      outcome.stage.wantedPosters shouldBe empty
     }
     UnmatchedClusters.takes(capture, outcome)
   }

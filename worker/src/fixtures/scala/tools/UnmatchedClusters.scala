@@ -15,8 +15,9 @@ import scala.jdk.CollectionConverters._
 
 /**
  * The clusters the identity model leaves UNMATCHED on a recorded full corpus, captured with every answer the resolver
- * and the agreement stage read for them — TMDB's (candidate searches, film records, venue detail pages, IMDb-id finds)
- * and the other film database families' (`identity_family_answers` documents, as [[FamilyAnswerStore]] files them) —
+ * and the agreement stage read for them — TMDB's (candidate searches, film records, venue detail pages, IMDb-id finds),
+ * the other film database families' (`identity_family_answers` documents, as [[FamilyAnswerStore]] files them) and the
+ * venue and TMDB posters' hashes (filed beside them by [[PosterAnswerStore]]) —
  * so the resolver plus the agreement over them is a pure function of one checked-in file per country
  * (`test/resources/fixtures/identity-unmatched/<cc>.json.gz`). `UnmatchedClustersCaptureIntegrationSpec`
  * records it from the recorded corpora and the signal-combination experiment's answer cache (real answers, never
@@ -52,10 +53,10 @@ object UnmatchedClusters {
 
   /** The agreement stage over the model's decisions, as the worker runs it on the way to the projection. */
   def agree(decisions: Seq[ResolverDecision], listings: Seq[Listing], lookups: IdentityLookups, families: Map[VoterFamily, FamilyAnswers],
-            version: Long, tmdbOf: String => Answer[Option[Int]], normalizer: TitleNormalizer): Outcome = {
+            version: Long, tmdbOf: String => Answer[Option[Int]], normalizer: TitleNormalizer, posters: PosterAnswers): Outcome = {
     val model = resolutionOf(decisions)
     val stage = new AgreementStage(families, lookups, normalizer, IdentityCalibration.resolver, tmdbOf, new InMemoryAgreementVerdicts,
-      clock = SpecClock.Pinned)
+      clock = SpecClock.Pinned, posters = posters, tmdb = Some(lookups))
     val byKey = listings.map(l => l.key -> l).toMap
     Outcome(model, stage.apply(model, byKey.get, version), stage)
   }
@@ -66,7 +67,8 @@ object UnmatchedClusters {
     docs.put(TmdbKind.Family, capture.families.toSeq)
     val store = new FamilyAnswerStore(docs, SpecClock.Pinned)
     agree(capture.decisions, capture.listings, new Replay(capture), familiesOf(capture.country).map(f => f -> store.answers(f)).toMap, version = 1,
-      imdb => capture.finds.get(imdb).fold[Answer[Option[Int]]](Answer.Unknown)(Answer.Known(_)), TitleNormalizer.forCountry(capture.country))
+      imdb => capture.finds.get(imdb).fold[Answer[Option[Int]]](Answer.Unknown)(Answer.Known(_)), TitleNormalizer.forCountry(capture.country),
+      new PosterAnswerStore(store, SpecClock.Pinned))
   }
 
   /** One listing's take: the film its cluster took (TMDB's, or an IMDb fallback) and the IMDb id it is known by. */
@@ -202,7 +204,7 @@ object UnmatchedClusters {
       .append("directors", strings(l.directors)).append("countries", strings(l.countries))
       .append("catalogueIds", array(l.catalogueIds.map(c => new BsonDocument("source", new BsonString(c.source)).append("id", new BsonString(c.id)))))
     putInt(d, "year", l.year); putInt(d, "runtime", l.runtime); put(d, "page", l.page); put(d, "originalTitle", l.originalTitle)
-    put(d, "searchTitle", l.searchTitle)
+    put(d, "searchTitle", l.searchTitle); put(d, "poster", l.poster)
   }
   private def listingOf(d: BsonDocument): Listing = {
     val name   = d.getString("cinema").getValue
@@ -211,7 +213,7 @@ object UnmatchedClusters {
       d.getString("title").getValue, d.getString("cleanTitle").getValue, optInt(d, "year"), stringsOf(d, "directors"), optInt(d, "runtime"),
       opt(d, "page"), opt(d, "originalTitle"), stringsOf(d, "countries"),
       d.getArray("catalogueIds").getValues.asScala.toSeq.map(_.asDocument).map(c => CatalogueId(c.getString("source").getValue, c.getString("id").getValue)),
-      opt(d, "searchTitle"))
+      opt(d, "searchTitle"), opt(d, "poster"))
   }
   private def queryDoc(q: CandidateQuery): BsonDocument = q match {
     case CandidateQuery.Title(text)       => new BsonDocument("title", new BsonString(text))

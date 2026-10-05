@@ -68,8 +68,16 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
         .fold[services.identity.Answer[Option[Int]]](services.identity.Answer.Unknown)(d =>
           services.identity.Answer.Known(services.identity.TmdbStore.intsOf(d.get("ids")).headOption)),
       stored = agreementVerdicts,
-      ask = open => services.identity.AgreementQuestions.enqueueOpen(taskQueue, open.questions, open.finds, clock, agreementQuestionMetrics),
-      metrics = workerMetrics.identityAgreement.stage(country.code), clock = clock, changes = familyAnswerStore)
+      ask = open => services.identity.AgreementQuestions.enqueueOpen(taskQueue, open.questions, open.finds, clock, agreementQuestionMetrics, open.posters),
+      metrics = workerMetrics.identityAgreement.stage(country.code), clock = clock, changes = familyAnswerStore,
+      posters = posterAnswerStore, tmdb = Some(storedLookups()))
+  /** The posters' hashes the agreement's poster evidence reads, filed among the families' answers. */
+  lazy val posterAnswerStore: services.identity.PosterAnswerStore = new services.identity.PosterAnswerStore(familyAnswerStore, clock)
+  /** Hashes a venue's or a TMDB film's poster: the image through the enrichment fetch chain (its pacing and breakers; a
+   *  host blocking the worker through its scrapes' egress), cut to the card's slot under the process's decode gate. */
+  lazy val posterHashing: services.identity.PosterHashing = new services.identity.PosterHashing(
+    services.sharecards.PosterDownload.routed(new services.sharecards.EgressPosterDownload(enrichmentFetch), posterEgressRoutes),
+    posterShrinker, tmdbId => tmdbClient.posters(tmdbId, also = Seq("en")), country.language.getLanguage)
   /** How the agreement's questions are enqueued and asked, per family and outcome. */
   lazy val agreementQuestionMetrics: services.identity.AgreementQuestionMetrics = workerMetrics.identityAgreement.questions(country.code)
   /** The agreement's verdicts (`identity_agreements`), kept as the model's families are. */
@@ -89,6 +97,8 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
     new services.identity.AgreementQuestionHandler(familyAnswerStore, familySources,
       () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics),
     new services.identity.AgreementFindHandler(imdbId => { tmdbClient.findByImdbId(imdbId); () },
+      () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics),
+    new services.identity.AgreementPosterHandler(posterAnswerStore, posterHashing,
       () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics))
   /** Projects what moved: as the identity model takes this worker's scrapes in, and as another writer moves a stored film
    *  (`MovieCache.onChanged`) — there is no period between. */

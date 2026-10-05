@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, IdentityCalibration, IdentityLookups, Listing, Resolution, ResolverDecision, StoredFamily}
+import services.identity.{Answer, CandidateQuery, DetailFacts, FallbackIds, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver,
+  Listing, PosterAnswers, PosterEvidence, PosterHash, Resolution, ResolverDecision, StoredFamily}
 import services.movies.{ListingKey, TitleNormalizer}
 
 import scala.collection.concurrent.TrieMap
@@ -24,18 +25,28 @@ import scala.collection.mutable
  * across restarts too, while none of those moved, and the resolver is asked again only for a cluster whose own listings,
  * lean or answers did. `version` (how many answers the
  * families filed) spares re-reading a standing verdict's answers while nothing was filed at all.
+ *
+ * The cluster's venue POSTERS ([[PosterEvidence]]) are read last, against the TMDB films the cluster's own evidence
+ * reaches (`tmdb`'s candidates, none of them denied): a film the families agree on is not taken when a venue poster
+ * matches another candidate and not it (the VETO), and a cluster nothing took takes the one candidate a venue poster
+ * matches (the VOTE, [[ResolverDecision.Basis.Poster]]). A poster not hashed yet is a gap like a family's question:
+ * the cluster waits as the model left it, and the poster is handed to `ask`. `version` must count the posters filed too.
  */
 final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: IdentityLookups, normalizer: TitleNormalizer,
                            calibration: IdentityCalibration, tmdbOf: String => Answer[Option[Int]], stored: AgreementVerdicts,
                            ask: AgreementStage.Open => Unit = _ => (), metrics: AgreementStage.Metrics = AgreementStage.Metrics.Silent,
-                           clock: java.time.Clock, changes: AnswerChanges = AnswerChanges.Unknown) {
+                           clock: java.time.Clock, changes: AnswerChanges = AnswerChanges.Unknown, posters: PosterAnswers = PosterAnswers.Silent,
+                           tmdb: Option[IdentityLookups] = None) {
 
   @volatile private var gaps: Set[(VoterFamily, String)] = Set.empty
   @volatile private var finds: Set[String] = Set.empty
+  @volatile private var posterGaps: Set[AgreementStage.PosterQuestion] = Set.empty
   /** The clusters' family questions no family has answered yet, as the last [[apply]] met them. */
   def wanted: Set[(VoterFamily, String)] = gaps
   /** The agreed IMDb ids TMDB was not asked about yet, as the last [[apply]] met them. */
   def wantedFinds: Set[String] = finds
+  /** The posters not hashed yet that a cluster's take waits on, as the last [[apply]] met them. */
+  def wantedPosters: Set[AgreementStage.PosterQuestion] = posterGaps
 
   /** Each family's calibration: TMDB's, its search priors' spread scaled by the family's [[VoterFamily.priorSpread]]. */
   private val calibrations: Map[VoterFamily, IdentityCalibration] = families.keys.map(family => family -> calibration.withPriorSpread(family.priorSpread)).toMap
@@ -58,6 +69,9 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   /** The questions handed to `ask` since the families' answers last moved: a tick that filed nothing hands nothing. */
   private val handed      = mutable.Set.empty[(VoterFamily, String)]
   private val handedFinds = mutable.Set.empty[String]
+  private val handedPosters = mutable.Set.empty[AgreementStage.PosterQuestion]
+  /** Each cluster's TMDB candidates, none denied, at its listings' digest: what its posters are compared against. */
+  private val candidateFilms = TrieMap.empty[String, (Long, Seq[Int])]
   /** How many clusters the current [[apply]] asked the resolver about again — the stage's cost, for [[metrics]]. */
   private var resolves    = 0
   private var handedAt    = -1L
@@ -91,6 +105,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     resolves = 0
     val asked  = mutable.Set.empty[(VoterFamily, String)]
     val finding = mutable.Set.empty[String]
+    val postersAsked = mutable.Set.empty[AgreementStage.PosterQuestion]
     val moved  = mutable.ArrayBuffer.empty[StoredVerdict]
     val seen   = mutable.Set.empty[String]
     val decisions = resolution.decisions.map { decision =>
@@ -99,18 +114,28 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         val AgreementStage.Digested(id, listings, digest, lean) = Option(digested.get(decision)).getOrElse {
           val listings = decision.members.flatMap(listingOf).sortBy(_.key)(using ListingKey.ordering)
           val fresh    = AgreementStage.Digested(StoredFamily.idOf(decision.members), listings,
-            AgreementStage.digest(Seq(digestOf(listings).toString, decision.leaning.toString)), decision.leaning.map(AgreementStage.leanRecord))
+            AgreementStage.digest(Seq(digestOf(listings).toString, decision.leaning.toString, PosterEvidence.urls(listings).mkString("\u0001"))),
+            decision.leaning.map(AgreementStage.leanRecord))
           digested.put(decision, fresh); fresh
         }
         seen += id
-        verdictOf(id, listings, digest, lean, version, asked, moved).flatMap(_.agreed).fold(decision) { agreed =>
-          val now = taken(decision, agreed, finding)
-          Option(takenAs.get(decision)).filter(_ == now).getOrElse { takenAs.put(decision, now); now }
+        val verdict = verdictOf(id, listings, digest, lean, version, asked, moved)
+        // the venue posters' distances to the cluster's candidates and to the film the families agree on
+        def distances(also: Option[Int]) = posterDistances(id, digest, listings, also, postersAsked)
+        // the posters vote once the families reached a verdict that takes no film: none agreed, or a poster vetoed it
+        val now = verdict.fold(decision) { v =>
+          v.agreed.fold[AgreementStage.Take](AgreementStage.Take.Vetoed)(taken(decision, _, finding, distances)) match {
+            case AgreementStage.Take.Taken(agreed) => agreed
+            case AgreementStage.Take.Pending       => decision
+            case AgreementStage.Take.Vetoed        => voted(decision, distances(None)).getOrElse(decision)
+          }
         }
+        if (now eq decision) decision else Option(takenAs.get(decision)).filter(_ == now).getOrElse { takenAs.put(decision, now); now }
       }
     }
     val removed = held.keySet.toSet -- seen
     waiting --= waiting.keySet.toSet -- seen
+    candidateFilms --= candidateFilms.keySet.toSet -- seen
     if (removed.nonEmpty || moved.nonEmpty) {
       stored.replace(removed, moved.toSeq)
       held --= removed; checked --= removed
@@ -122,9 +147,12 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     digested.keySet.retainAll(current)
     gaps = asked.toSet
     finds = finding.toSet
-    if (handedAt != version) { handed.clear(); handedFinds.clear(); handedAt = version }
-    val open = AgreementStage.Open(gaps -- handed, finds -- handedFinds)
-    if (open.questions.nonEmpty || open.finds.nonEmpty) { ask(open); handed ++= open.questions; handedFinds ++= open.finds }
+    posterGaps = postersAsked.toSet
+    if (handedAt != version) { handed.clear(); handedFinds.clear(); handedPosters.clear(); handedAt = version }
+    val open = AgreementStage.Open(gaps -- handed, finds -- handedFinds, posterGaps -- handedPosters)
+    if (open.questions.nonEmpty || open.finds.nonEmpty || open.posters.nonEmpty) {
+      ask(open); handed ++= open.questions; handedFinds ++= open.finds; handedPosters ++= open.posters
+    }
     val agreedNow = decisions.filter(_.basis == ResolverDecision.Basis.Agreed)
     metrics.applied(AgreementStage.Applied(waiting = waiting.size, verdicts = held.size, agreed = held.valuesIterator.count(_.agreed.isDefined),
       takenTmdb = agreedNow.count(_.film.isDefined), takenFallback = agreedNow.count(_.fallback.isDefined),
@@ -219,7 +247,10 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     case _ => None
   }
 
-  private def taken(decision: ResolverDecision, agreed: AgreedFilm, finding: mutable.Set[String]): ResolverDecision = {
+  /** The decision with the agreed film taken — pending while TMDB was not asked about its IMDb id yet or the venue posters
+   *  are not all hashed, and not taken when they VETO it ([[PosterEvidence.veto]]): a venue poster names another candidate. */
+  private def taken(decision: ResolverDecision, agreed: AgreedFilm, finding: mutable.Set[String],
+                    distances: Option[Int] => Answer[Map[Int, Option[Int]]]): AgreementStage.Take = {
     val imdb = agreed.crossId("imdb")
     val tmdb: Answer[Option[Int]] = agreed.crossId("tmdb").flatMap(_.toIntOption) match {
       case Some(film) => Answer.Known(Some(film))
@@ -230,16 +261,67 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     val line = s"${agreed.families.toSeq.map(_.label).sorted.mkString(", ")}$leaning agree on '${agreed.record.film.title}'" +
       agreed.record.film.year.fold("")(year => s" ($year)") + imdb.fold("")(id => s" $id")
     val ids  = agreed.ids.map { case (family, id) => family.label -> id }
+    def unlessVetoed(film: Option[Int])(take: => ResolverDecision): AgreementStage.Take = distances(film) match {
+      case Answer.Known(found) => if (PosterEvidence.veto(film, found).isEmpty) AgreementStage.Take.Taken(take) else AgreementStage.Take.Vetoed
+      case Answer.Unknown      => AgreementStage.Take.Pending
+    }
     tmdb match {
       case Answer.Unknown =>
         imdb.foreach(finding += _)
-        decision
-      case Answer.Known(Some(film)) =>
-        decision.copy(film = Some(film), basis = ResolverDecision.Basis.Agreed, explanation = decision.explanation :+ line, agreed = ids)(decision.trace)
-      case Answer.Known(None) => imdb.fold(decision)(id => decision.copy(basis = ResolverDecision.Basis.Agreed, explanation = decision.explanation :+ line,
-        fallback = Some(ResolverDecision.Fallback("imdb", id, 1.0)), agreed = ids)(decision.trace))
+        AgreementStage.Take.Pending
+      case Answer.Known(Some(film)) => unlessVetoed(Some(film))(
+        decision.copy(film = Some(film), basis = ResolverDecision.Basis.Agreed, explanation = decision.explanation :+ line, agreed = ids)(decision.trace))
+      case Answer.Known(None) => imdb.fold[AgreementStage.Take](AgreementStage.Take.Vetoed)(id => unlessVetoed(None)(decision.copy(basis = ResolverDecision.Basis.Agreed,
+        explanation = decision.explanation :+ line, fallback = Some(ResolverDecision.Fallback("imdb", id, 1.0)), agreed = ids)(decision.trace)))
     }
   }
+
+  /** The decision with the one candidate the venue posters match taken ([[PosterEvidence.vote]]). */
+  private def voted(decision: ResolverDecision, distances: Answer[Map[Int, Option[Int]]]): Option[ResolverDecision] =
+    distances.toOption.flatMap(PosterEvidence.vote).map { case (film, bits) =>
+      val named = tmdb.flatMap(_.film(film).toOption.flatten).fold(s"tmdb $film")(f => s"'${f.title}'${f.year.fold("")(year => s" ($year)")}")
+      decision.copy(film = Some(film), basis = ResolverDecision.Basis.Poster,
+        explanation = decision.explanation :+ s"the venue's poster matches $named ($bits bits), no other candidate's within ${PosterEvidence.VoteBits}")(
+        decision.trace)
+    }
+
+  /** The nearest each of the cluster's candidates (and `also`, the film the families agree on) comes to its venue
+   *  posters — empty where no listing shows one; `Unknown`, each poster not hashed yet noted in `asked`, while one is not. */
+  private def posterDistances(id: String, digest: Long, listings: Seq[Listing], also: Option[Int],
+                              asked: mutable.Set[AgreementStage.PosterQuestion]): Answer[Map[Int, Option[Int]]] = {
+    val urls = PosterEvidence.urls(listings)
+    if (urls.isEmpty || tmdb.isEmpty) Answer.Known(Map.empty)
+    else {
+      val venue = urls.map(url => url -> posters.venue(url))
+      venue.collect { case (url, Answer.Unknown) => asked += AgreementStage.PosterQuestion.Venue(url) }
+      if (venue.exists(_._2 == Answer.Unknown)) Answer.Unknown
+      else {
+        val shown: Seq[PosterHash] = venue.flatMap(_._2.toOption.flatten)
+        if (shown.isEmpty) Answer.Known(Map.empty)
+        else {
+          val films  = (candidatesOf(id, digest, listings) ++ also.filterNot(FallbackIds.isFallback)).distinct
+          val hashes = films.map(film => film -> posters.film(film))
+          hashes.collect { case (film, Answer.Unknown) => asked += AgreementStage.PosterQuestion.Film(film) }
+          if (hashes.exists(_._2 == Answer.Unknown)) Answer.Unknown
+          else Answer.Known(hashes.map { case (film, answer) => film -> PosterEvidence.nearest(shown, answer.toOption.getOrElse(Nil)) }.toMap)
+        }
+      }
+    }
+  }
+
+  /** The TMDB films the cluster's own evidence reaches, none denied — read once per listings' digest; none while a TMDB
+   *  question of theirs has no answer. */
+  private def candidatesOf(id: String, digest: Long, listings: Seq[Listing]): Seq[Int] =
+    candidateFilms.get(id).filter(_._1 == digest).map(_._2).getOrElse {
+      val films = tmdb.fold(Seq.empty[Int]) { lookups =>
+        val noting = new AgreementStage.UnknownNoting(lookups)
+        val found  = IdentityResolver.candidatesOf(listings, noting, normalizer, calibration)(_ => true)
+          .flatMap(_.candidates.filterNot(_.denied).map(_.tmdbId)).filterNot(FallbackIds.isFallback).distinct.sorted
+        if (noting.unknown) Nil else found
+      }
+      candidateFilms(id) = (digest, films)
+      films
+    }
 
   /** A family's answers that note every question still a gap, and the digest of every answer read. */
   private final class Recording(answers: FamilyAnswers, asked: mutable.Set[(VoterFamily, String)], reads: mutable.Map[String, Long]) extends FamilyAnswers {
@@ -265,8 +347,34 @@ object AgreementStage {
     (scala.util.hashing.MurmurHash3.stringHash(text, 0x2f1d7a3b).toLong << 32) | (scala.util.hashing.MurmurHash3.stringHash(text, 0x6c8e9cf5).toLong & 0xffffffffL)
   }
 
-  /** The questions an [[AgreementStage.apply]] met unanswered or stale, and the agreed IMDb ids TMDB was not asked about. */
-  final case class Open(questions: Set[(VoterFamily, String)], finds: Set[String])
+  /** The questions an [[AgreementStage.apply]] met unanswered or stale, the agreed IMDb ids TMDB was not asked about, and
+   *  the posters not hashed yet. */
+  final case class Open(questions: Set[(VoterFamily, String)], finds: Set[String], posters: Set[PosterQuestion] = Set.empty)
+
+  /** What became of the film a cluster's families agree on: taken, pending an answer, or not taken (vetoed, or nothing to take). */
+  private enum Take {
+    case Taken(decision: ResolverDecision)
+    case Pending
+    case Vetoed
+  }
+
+  /** A poster to hash: a venue's, by its URL, or a TMDB film's. */
+  enum PosterQuestion {
+    case Venue(url: String)
+    case Film(tmdbId: Int)
+  }
+
+  /** `inner`, noting whether any answer it gave was `Unknown`. */
+  private final class UnknownNoting(inner: IdentityLookups) extends IdentityLookups {
+    @volatile var unknown = false
+    private def noted[A](answer: Answer[A]): Answer[A] = { if (answer == Answer.Unknown) unknown = true; answer }
+    def hasDetail(listing: Listing): Boolean                     = inner.hasDetail(listing)
+    def detail(listing: Listing): Answer[Option[DetailFacts]]    = noted(inner.detail(listing))
+    override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[Listing]): Unit = inner.prefetch(queries, films, details)
+    override def prefetchAnswered(): Unit                        = inner.prefetchAnswered()
+    def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = noted(inner.candidates(query))
+    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = noted(inner.film(tmdbId))
+  }
 
   /** A model decision's cluster id, its listings sorted, their digest with the film it leans to, and that film. */
   private final case class Digested(id: String, listings: Seq[Listing], digest: Long, lean: Option[SourceRecord])

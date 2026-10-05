@@ -100,16 +100,20 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
       new FilmwebFamily(new services.enrichment.FilmwebClient(fetch)), new RottenTomatoesFamily(new services.enrichment.RottenTomatoesClient(fetch)),
       new MetacriticFamily(new services.enrichment.MetacriticClient(fetch))).filter(source => families.contains(source.family)).map(s => s.family -> s).toMap
     val tmdb  = new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language, retrySleep = (_: Long) => ())
+    // the venue and TMDB posters' hashes, of the images KINOWO_IDENTITY_POSTER_CACHE keeps, else downloaded
+    val posterStore = new PosterAnswerStore(store, new tools.MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))
+    val posters     = CachedPosters.of(configuration, c.country)
     val stage = new AgreementStage(families.map(family => family -> store.answers(family)).toMap, lookups, c.normalizer,
       IdentityCalibration.resolver, tmdbOf = imdb => Answer.Known(Try(tmdb.findByImdbId(imdb).map(_.id)).toOption.flatten),
-      stored = new services.identity.agreement.InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
+      stored = new services.identity.agreement.InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = posterStore, tmdb = Some(lookups))
     val byKey = listings.map(l => l.key -> l).toMap
     var rounds = 0
     var taken  = stage.apply(resolution, byKey.get, store.version)
-    while (stage.wanted.nonEmpty && rounds < 12) {
+    while ((stage.wanted.nonEmpty || stage.wantedPosters.nonEmpty) && rounds < 12) {
       rounds += 1
       val open = stage.wanted.toSeq
-      println(s"[${c.label}] agreement round $rounds: ${open.size} open question(s)")
+      println(s"[${c.label}] agreement round $rounds: ${open.size} open question(s), ${stage.wantedPosters.size} poster(s)")
+      posters.file(posterStore, stage.wantedPosters.toSeq)
       // each family's questions four at a time, as the experiment read the sites unblocked
       open.groupBy(_._1).toSeq.map { case (family, asks) =>
         java.util.concurrent.CompletableFuture.runAsync { () =>
@@ -119,16 +123,17 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
       }.foreach(_.join())
       taken = stage.apply(resolution, byKey.get, store.version)
     }
-    val lines = taken.decisions.filter(_.basis == ResolverDecision.Basis.Agreed).flatMap { d =>
+    val lines = taken.decisions.filter(d => d.basis == ResolverDecision.Basis.Agreed || d.basis == ResolverDecision.Basis.Poster).flatMap { d =>
       d.members.flatMap(byKey.get).map(l => Json.stringify(JsObject(Seq(
-        "venue" -> JsString(l.key.venue), "rawTitle" -> JsString(l.key.rawTitle),
+        "venue" -> JsString(l.key.venue), "rawTitle" -> JsString(l.key.rawTitle), "basis" -> JsString(d.basis.toString),
         "film" -> d.film.fold[play.api.libs.json.JsValue](JsNull)(JsNumber(_)),
         "fallback" -> d.fallback.fold[play.api.libs.json.JsValue](JsNull)(f => JsString(f.id)),
         "agreement" -> JsString(d.explanation.lastOption.getOrElse(""))))))
     }
     Files.writeString(dir.resolve(s"agreed-${c.country.code}.jsonl"), lines.mkString("", "\n", "\n"))
-    println(s"[${c.label}] agreement: ${taken.decisions.count(_.basis == ResolverDecision.Basis.Agreed)} cluster(s) taken after $rounds round(s); " +
-      s"${stage.wanted.size} question(s) still open")
+    println(s"[${c.label}] agreement: ${taken.decisions.count(_.basis == ResolverDecision.Basis.Agreed)} cluster(s) agreed, " +
+      s"${taken.decisions.count(_.basis == ResolverDecision.Basis.Poster)} taken by their poster after $rounds round(s); " +
+      s"${stage.wanted.size} question(s), ${stage.wantedPosters.size} poster(s) still open")
   }
 
   override protected def afterAll(): Unit = {

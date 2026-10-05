@@ -173,6 +173,9 @@ final case class IdentityAgreementCache(value: Path) extends AnyVal
 final case class IdentityUnmatchedCapture(value: Path) extends AnyVal
 /** `KINOWO_IDENTITY_FAMILY_SEED` — prod's `identity_family_answers`, exported per country database, for the capture to file first. */
 final case class IdentityFamilySeed(value: Path) extends AnyVal
+/** `KINOWO_IDENTITY_POSTER_CACHE` — posters already downloaded (`img/<sha1 of the URL>`, an `.err` beside a failed one) and
+ *  TMDB films' poster lists (`tmdb/<id>.json`), which the unmatched-cluster capture hashes before fetching anything. */
+final case class IdentityPosterCache(value: Path) extends AnyVal
 /** `KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY` — a resolver-only replay asks TMDB and IMDb live for what its recording cannot answer. */
 final case class IdentityLiveGaps(tmdbKey: String) extends AnyVal
 final case class IdentityShadowPermutations(value: Int) extends AnyVal

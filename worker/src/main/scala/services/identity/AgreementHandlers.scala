@@ -1,6 +1,7 @@
 package services.identity
 
 import play.api.Logging
+import services.identity.agreement.AgreementStage.PosterQuestion
 import services.identity.agreement.VoterFamily
 import services.tasks.HandlerOutcome.{Deferred, Done, Reschedule, Skipped}
 import services.tasks.{EnqueueResult, HandlerOutcome, Task, TaskHandler, TaskQueue, TaskType}
@@ -18,16 +19,18 @@ object AgreementQuestions {
   private val Family   = "family"
   private val Question = "question"
   private val ImdbId   = "imdbId"
+  private val VenuePoster = "venuePoster"
+  private val FilmPoster  = "filmPoster"
 
   /** How far behind every other task an agreement question is claimed: the pipeline's own work — scrapes, ratings, share
    *  cards — always first, the agreement's backlog on what the pool has spare (prod PL 2026-10-04: 5,864 questions queued
    *  at boot ahead of 36 scrape chunks, an hour's drain at the pool's pace). */
   val Behind: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(7, java.util.concurrent.TimeUnit.DAYS)
 
-  /** Every open question and find, one task each — one already queued is not queued again — claimed after every other
-   *  task ([[Behind]]). */
+  /** Every open question, find and poster, one task each — one already queued is not queued again — claimed after every
+   *  other task ([[Behind]]). */
   def enqueueOpen(queue: TaskQueue, wanted: Set[(VoterFamily, String)], finds: Set[String], clock: Clock,
-                  metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent): Unit = {
+                  metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent, posters: Set[PosterQuestion] = Set.empty): Unit = {
     wanted.toSeq.sortBy { case (family, question) => (family.ordinal, question) }.foreach { case (family, question) =>
       metrics.enqueued(family.label, queue.enqueue(TaskType.AgreementQuestion, s"agreement|${family.label}|$question",
         Map(Family -> family.label, Question -> question), submittedAt = clock.instant(), claimAhead = -Behind) == EnqueueResult.Added)
@@ -35,6 +38,14 @@ object AgreementQuestions {
     finds.toSeq.sorted.foreach(imdbId =>
       metrics.enqueued(AgreementQuestionMetrics.TmdbFind, queue.enqueue(TaskType.AgreementFind, s"agreement-find|$imdbId",
         Map(ImdbId -> imdbId), submittedAt = clock.instant(), claimAhead = -Behind) == EnqueueResult.Added))
+    posters.toSeq.map(question => question -> PosterAnswerStore.idOf(question)).sortBy(_._2).foreach { case (question, id) =>
+      val payload = question match {
+        case PosterQuestion.Venue(url)   => Map(VenuePoster -> url)
+        case PosterQuestion.Film(tmdbId) => Map(FilmPoster -> tmdbId.toString)
+      }
+      metrics.enqueued(AgreementQuestionMetrics.Poster, queue.enqueue(TaskType.AgreementPoster, s"agreement-$id", payload,
+        submittedAt = clock.instant(), claimAhead = -Behind) == EnqueueResult.Added)
+    }
   }
 
   /** The statuses that answer a question with nothing — a query the site refuses (Filmweb's 400 for an overlong title),
@@ -68,6 +79,8 @@ object AgreementQuestions {
   def familyOf(task: Task): Option[VoterFamily] = task.payload.get(Family).flatMap(label => VoterFamily.values.find(_.label == label))
   def questionOf(task: Task): Option[String]    = task.payload.get(Question)
   def imdbIdOf(task: Task): Option[String]      = task.payload.get(ImdbId)
+  def posterOf(task: Task): Option[PosterQuestion] =
+    task.payload.get(VenuePoster).map(PosterQuestion.Venue(_)).orElse(task.payload.get(FilmPoster).flatMap(_.toIntOption).map(PosterQuestion.Film(_)))
 }
 
 /** One family question: asked of the family's live source and filed — skipped when the store already holds a fresh
@@ -125,6 +138,8 @@ object AgreementQuestionMetrics {
   val Answered = "answered"; val Nothing = "nothing"; val Fresh = "fresh"; val Deferred = "deferred"; val Failed = "failed"
   val Outcomes: Seq[String] = Seq(Answered, Nothing, Fresh, Deferred, Failed)
   val TmdbFind = "tmdb-find"
+  /** A poster hashed for the agreement's poster evidence. */
+  val Poster = "poster"
   val Silent: AgreementQuestionMetrics = new AgreementQuestionMetrics {
     def enqueued(family: String, added: Boolean): Unit = ()
     def asked(family: String, outcome: String): Unit = ()

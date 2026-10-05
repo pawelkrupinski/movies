@@ -1,0 +1,139 @@
+package services.identity
+
+import java.awt.image.BufferedImage
+
+/**
+ * A poster's perceptual hash (pHash, 63 bits): the signs of the lowest 8×8 DCT frequencies of its 32×32 grey image,
+ * DC term dropped, against their median. Two prints of one poster — another size, another JPEG quality, a venue's
+ * crop — differ in a few bits; two different posters in ~32. Measured on prod's venue posters against up to 8 of each
+ * candidate's TMDB posters (2026-10-05, 1,852 right and 1,992 wrong pairs): a right film's nearest poster sits a median
+ * 6 bits away, a wrong one's 28, and 5 of 1,697 wrong pairs came within 8.
+ */
+final case class PosterHash(bits: Long) {
+  def distance(other: PosterHash): Int = java.lang.Long.bitCount(bits ^ other.bits)
+}
+
+object PosterHash {
+  private val Side = 32
+  private val Low  = 8
+
+  /** The DCT-II basis, orthonormal: `C(k)(i)`. */
+  private val Basis: Array[Array[Double]] = Array.tabulate(Side, Side) { (k, i) =>
+    math.cos(math.Pi * k * (2 * i + 1) / (2.0 * Side)) * (if (k == 0) math.sqrt(1.0 / Side) else math.sqrt(2.0 / Side))
+  }
+
+  /** `image`'s hash: grey by luma, a landscape image centre-cut to a 2:3 portrait first (a venue's banner of the
+   *  poster), area-averaged down to 32×32. */
+  def of(image: BufferedImage): PosterHash = {
+    val (w, h) = (image.getWidth, image.getHeight)
+    val (x0, cut) = if (w > h) { val portrait = math.max(1, h * 2 / 3); ((w - portrait) / 2, portrait) } else (0, w)
+    val grey = Array.ofDim[Double](h, cut)
+    val row  = new Array[Int](cut)
+    for (y <- 0 until h) {
+      image.getRGB(x0, y, cut, 1, row, 0, cut)
+      var x = 0
+      while (x < cut) {
+        val p = row(x)
+        grey(y)(x) = 0.299 * ((p >> 16) & 0xff) + 0.587 * ((p >> 8) & 0xff) + 0.114 * (p & 0xff)
+        x += 1
+      }
+    }
+    ofGrey(areaAverage(grey, cut, h))
+  }
+
+  /** `grey` (`h` rows of `w`) area-averaged to [[Side]]×[[Side]]: each target cell the mean of the source area it
+   *  covers, fractional edges weighed by their share. */
+  private def areaAverage(grey: Array[Array[Double]], w: Int, h: Int): Array[Array[Double]] = {
+    def spans(n: Int): Array[Seq[(Int, Double)]] = Array.tabulate(Side) { t =>
+      val (from, to) = (t.toDouble * n / Side, (t + 1).toDouble * n / Side)
+      (from.toInt until math.min(n, math.ceil(to).toInt)).map(i => i -> (math.min(to, i + 1.0) - math.max(from, i.toDouble))).filter(_._2 > 0)
+    }
+    val (xs, ys) = (spans(w), spans(h))
+    Array.tabulate(Side, Side) { (ty, tx) =>
+      var sum = 0.0; var weight = 0.0
+      for ((y, wy) <- ys(ty); (x, wx) <- xs(tx)) { sum += grey(y)(x) * wy * wx; weight += wy * wx }
+      sum / weight
+    }
+  }
+
+  /** The hash of a 32×32 grey image. */
+  private[identity] def ofGrey(a: Array[Array[Double]]): PosterHash = {
+    // C · A · Cᵀ, only its first 8 rows and columns
+    val rows = Array.tabulate(Low, Side)((k, j) => (0 until Side).map(i => Basis(k)(i) * a(i)(j)).sum)
+    val low  = Array.tabulate(Low, Low)((k, l) => (0 until Side).map(j => rows(k)(j) * Basis(l)(j)).sum).flatten.drop(1)
+    val median = low.sorted.apply(low.length / 2)
+    PosterHash(low.zipWithIndex.foldLeft(0L) { case (bits, (v, i)) => if (v > median) bits | (1L << i) else bits })
+  }
+}
+
+/** What the posters are, as filed: `Unknown` while one is not hashed yet — a gap the poster fill asks, never "no poster".
+ *  A venue poster that could not be read is `Known(None)`; a film TMDB keeps no poster of is `Known(Nil)`. */
+trait PosterAnswers {
+  /** The hash of the image at a venue's poster `url`. */
+  def venue(url: String): Answer[Option[PosterHash]]
+  /** The hashes of TMDB's posters of `tmdbId` ([[PosterEvidence.FilmPosters]] of them at most). */
+  def film(tmdbId: Int): Answer[Seq[PosterHash]]
+}
+
+object PosterAnswers {
+  /** No poster anywhere: no evidence, and no gap. */
+  val Silent: PosterAnswers = new PosterAnswers {
+    def venue(url: String): Answer[Option[PosterHash]] = Answer.Known(None)
+    def film(tmdbId: Int): Answer[Seq[PosterHash]]     = Answer.Known(Nil)
+  }
+}
+
+/**
+ * What a cluster's venue posters say about its candidate films — a bounded guard beside the calibrated model, which
+ * has no poster signal (posters are fetched after the model, for the clusters it leaves unmatched):
+ *
+ *  - a VOTE: the one candidate a venue poster matches within [[VoteBits]], no other candidate within as near, is the
+ *    cluster's film. Measured with this hash on hand-labelled unmatched listings over the resolver's own candidates
+ *    (2026-10-05): at 4 bits 19 right, the wrongs a stage relay (a house reusing last season's artwork for this
+ *    season's Nutcracker) and a namesake TMDB filed with the older film's artwork; at 6 bits a short its feature's
+ *    poster matched;
+ *  - a VETO: a film the agreement would take is not taken when a venue poster matches ANOTHER candidate within
+ *    [[VetoMatchBits]] and this film's posters stay beyond [[VetoBits]] — the poster names another film. Measured on the
+ *    same pairs, it fired on 1,106 wrong films and 7 "right" ones, each of those a TMDB duplicate, a stage relay or a
+ *    film the label itself had wrong (PL "Dyrygent" at Patria, whose poster is Provazník's 2025 film, not Wajda's);
+ *    within 4 bits it fired on 899 and the same right ones less "Dyrygent". A veto by distance alone is none: 23% of
+ *    right films' nearest TMDB poster is over 20 bits from the venue's (a still, a festival's artwork, a local poster
+ *    TMDB does not keep), 7% over 28 — against 36% of wrong ones.
+ *
+ * A listing billing a stage work ([[agreement.Agreement.stagesAWork]]) or several works ([[agreement.Agreement.billsSeveral]])
+ * shows no poster of the film: a relay's artwork is the house's season, a double bill's one of two films.
+ */
+object PosterEvidence {
+  /** A venue poster this near a candidate's is a vote for it. */
+  val VoteBits = 4
+  /** A venue poster this near another candidate's names that film, against the film being taken. */
+  val VetoMatchBits = 8
+  /** A film whose posters come no nearer than this to a venue poster another candidate matches is vetoed. */
+  val VetoBits = 10
+  /** How many of a film's TMDB posters are hashed: its own language's, then English, then language-neutral, by votes. */
+  val FilmPosters = 8
+
+  /** Does `listing`'s poster speak for its film? */
+  def shows(listing: Listing): Boolean = !agreement.Agreement.stagesAWork(listing) && !agreement.Agreement.billsSeveral(listing)
+
+  /** The posters `listings` show, by URL. */
+  def urls(listings: Seq[Listing]): Seq[String] = listings.filter(shows).flatMap(_.poster).distinct.sorted
+
+  /** The nearest any of `film`'s posters comes to any of `venue`, if both hold one. */
+  def nearest(venue: Seq[PosterHash], film: Seq[PosterHash]): Option[Int] =
+    venue.flatMap(v => film.map(v.distance)).minOption
+
+  /** Each candidate's nearest distance: the film `vote` takes, if one alone is within [[VoteBits]]. */
+  def vote(distances: Map[Int, Option[Int]]): Option[(Int, Int)] =
+    distances.toSeq.collect { case (film, Some(bits)) if bits <= VoteBits => film -> bits } match {
+      case Seq(only) => Some(only)
+      case _         => None
+    }
+
+  /** The candidate whose poster vetoes the TMDB film `taken` (`None`: a film TMDB holds no record of), with its
+   *  distance: one within [[VetoMatchBits]] while `taken` stays beyond [[VetoBits]], or shows no poster at all. */
+  def veto(taken: Option[Int], distances: Map[Int, Option[Int]]): Option[(Int, Int)] =
+    Option.when(taken.flatMap(distances.get).flatten.forall(_ > VetoBits))(())
+      .flatMap(_ => distances.toSeq.collect { case (film, Some(bits)) if !taken.contains(film) && bits <= VetoMatchBits => film -> bits }
+        .sortBy(c => (c._2, c._1)).headOption)
+}

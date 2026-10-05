@@ -32,9 +32,30 @@ final case class Listing(
   /** The title as the venue's rules ask external lookups for it (`TitleNormalizer.apiQuery`: programme
    *  prefixes, accessibility tags, "+ event" suffixes and premiere words off), when that differs from
    *  `title` — what the old pipeline searched. The card keeps the venue's own title. */
-  searchTitle:   Option[String] = None
+  searchTitle:   Option[String] = None,
+  /** The venue's poster URL. OUTSIDE the listing's equality and hash (below): the model never reads it — only the
+   *  stages after it do ([[PosterEvidence]]), from the listings as published — and a listing the model holds equal to
+   *  the one published is not resolved again, so a venue re-cutting a poster URL (a CDN token, a resize) re-resolves
+   *  nothing. */
+  poster:        Option[String] = None
 ) {
   def venue: String = key.venue
+
+  override def equals(other: Any): Boolean = other match {
+    case that: Listing => (this eq that) || (key == that.key && rawTitle == that.rawTitle && title == that.title && cleanTitle == that.cleanTitle &&
+      year == that.year && directors == that.directors && runtime == that.runtime && page == that.page && originalTitle == that.originalTitle &&
+      countries == that.countries && catalogueIds == that.catalogueIds && searchTitle == that.searchTitle && cinema == that.cinema)
+    case _ => false
+  }
+  override def hashCode: Int = {
+    import scala.util.hashing.MurmurHash3.{finalizeHash, mix, mixLast}
+    val fields = Array(cinema.##, key.##, rawTitle.##, title.##, cleanTitle.##, year.##, directors.##, runtime.##, page.##, originalTitle.##,
+      countries.##, catalogueIds.##)
+    var h = 0x4c697374
+    var i = 0
+    while (i < fields.length) { h = mix(h, fields(i)); i += 1 }
+    finalizeHash(mixLast(h, searchTitle.##), fields.length + 1)
+  }
 
   /** A TOTAL order over listings, as text: the key first, then every published field, so two
    *  different listings never tie and a set of listings has exactly one sorted presentation. Built on
@@ -75,7 +96,8 @@ object Listing {
     originalTitle = cm.movie.originalTitle.map(_.trim).filter(_.nonEmpty),
     countries     = cm.movie.countries.map(_.trim).filter(_.nonEmpty).distinct.sorted,
     catalogueIds  = CatalogueId.of(cm),
-    searchTitle   = Some(normalizer.apiQuery(cm.movie.title).trim).filter(q => q.nonEmpty && q != cm.movie.title.trim))
+    searchTitle   = Some(normalizer.apiQuery(cm.movie.title).trim).filter(q => q.nonEmpty && q != cm.movie.title.trim),
+    poster        = cm.posterUrl.map(_.trim).filter(_.nonEmpty))
 
   /** The people one director credit names — the listing's own, or its detail page's: PL venues join two in one ("Arash T. Riahi & Verena Soltiz", "Joel Crawford
    *  i Januel Mercado", "Natasha Merkulova, Aleksey Chupov"), which searched as one person found no film. Split only

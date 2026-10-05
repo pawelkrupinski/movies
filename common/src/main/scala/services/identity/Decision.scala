@@ -58,8 +58,11 @@ object ResolverDecision {
     /** No TMDB rule took a film, but ≥3 other film database families each identified the same one
      *  (`agreement.AgreementStage`) — never decided by the model, only on the way to the projection. */
     case Agreed
+    /** No TMDB rule took a film and no families agreed on one, but a venue poster matches one of the cluster's candidates
+     *  alone (`PosterEvidence.vote`) — like [[Agreed]], only on the way to the projection. */
+    case Poster
 
-    def matched: Boolean = this == Pinned || this == OwnMatch || this == PooledMatch || this == Agreed
+    def matched: Boolean = this == Pinned || this == OwnMatch || this == PooledMatch || this == Agreed || this == Poster
   }
 
   def percent(p: Double): String = f"${p * 100}%.1f%%"

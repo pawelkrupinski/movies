@@ -55,8 +55,10 @@ final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock) extends service
     document(id).fold[Answer[Seq[SourceHit]]](Answer.Unknown)(d => Answer.Known(hitsOf(d)))
   // Read as an answer: kept by the worker's document cache (`CachedTmdbDocuments`) until a filing replaces it — a whole-
   // document `get` asks Mongo each time, and the stage checks each waiting cluster's questions on every projection.
-  private def document(id: String): Option[BsonDocument] = docs.answers(TmdbKind.Family, Seq(id)).get(id)
-  private def put(id: String, d: BsonDocument): Unit = {
+  private[identity] def document(id: String): Option[BsonDocument] = docs.answers(TmdbKind.Family, Seq(id)).get(id)
+  /** Files `d` under `id`, stamped and counted as every answer is: what [[PosterAnswerStore]] files the posters' hashes by,
+   *  so one version and one [[changedSince]] cover everything the agreement reads. */
+  private[identity] def put(id: String, d: BsonDocument): Unit = {
     docs.put(TmdbKind.Family, Seq(id -> d.append(TmdbStore.FetchedAt, BsonInt64(clock.millis()))))
     changes.put(filed.incrementAndGet(), id)
     while (changes.size > FamilyAnswerStore.ChangesKept) changes.pollFirstEntry()

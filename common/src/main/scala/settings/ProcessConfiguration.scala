@@ -316,6 +316,9 @@ final class ProcessConfiguration(val env: Env) {
    *  re-capture it. Never in CI. */
   def identityUnmatchedCapture: Option[IdentityUnmatchedCapture] =
     text("KINOWO_IDENTITY_UNMATCHED_CAPTURE").map(dir => IdentityUnmatchedCapture(Path.of(dir)))
+  /** `KINOWO_IDENTITY_POSTER_CACHE` — posters and TMDB poster lists the unmatched-cluster capture hashes before fetching
+   *  any live (and files what it fetched into), for the agreement's poster evidence. Never in CI. */
+  def identityPosterCache: Option[IdentityPosterCache] = text("KINOWO_IDENTITY_POSTER_CACHE").map(dir => IdentityPosterCache(Path.of(dir)))
   /** `KINOWO_IDENTITY_FAMILY_SEED` — a directory of `<db>.jsonl` exports of prod's `identity_family_answers` (one EJSON
    *  document a line) the unmatched-cluster capture files before asking the families anything. */
   def identityFamilySeed: Option[IdentityFamilySeed] = text("KINOWO_IDENTITY_FAMILY_SEED").map(dir => IdentityFamilySeed(Path.of(dir)))

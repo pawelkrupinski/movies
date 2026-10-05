@@ -373,10 +373,13 @@ class TmdbClient(
    *  `poster_path`, which is whatever TMDB flags primary regardless of shape.
    *
    *  `include_image_language=<lang>,null` restricts the response to the
-   *  deployment language's artwork plus language-neutral. THROWS when the call fails;
-   *  [[fullDetails]] then falls back to `poster_path`, by its own explicit choice. */
-  def posters(tmdbId: Int): Seq[TmdbClient.PosterImage] = authHeader.map { auth =>
-    val body = httpGet(s"$ApiBase/movie/$tmdbId/images?include_image_language=$imageLanguages${apiKeyParameter("&")}", auth)
+   *  deployment language's artwork plus language-neutral — `also` adds other languages' (the
+   *  identity's poster evidence reads English artwork too: a venue bills the international poster as
+   *  often as its own country's). THROWS when the call fails; [[fullDetails]] then falls back to
+   *  `poster_path`, by its own explicit choice. */
+  def posters(tmdbId: Int, also: Seq[String] = Nil): Seq[TmdbClient.PosterImage] = authHeader.map { auth =>
+    val languages = if (also.isEmpty) imageLanguages else (language.getLanguage +: also :+ "null").distinct.mkString(",")
+    val body = httpGet(s"$ApiBase/movie/$tmdbId/images?include_image_language=$languages${apiKeyParameter("&")}", auth)
     TmdbClient.parsePosters(body)
   }.getOrElse(Seq.empty)
 
@@ -547,6 +550,8 @@ object TmdbClient {
   // cards (next step up is "original" which can be 2000+ px and isn't worth
   // the bytes). Matches the size Multikino's own posters ship at.
   private val PosterBase = "https://image.tmdb.org/t/p/w500"
+  /** TMDB's CDN at the small size the identity's poster hashes read (a hash is of a 32×32 grey image). */
+  val PosterHashBase = "https://image.tmdb.org/t/p/w185"
   // Top-N cast cap for `fullDetails.cast`. TMDB's `cast` is the whole role
   // list; keeping the top 5 matches the length cinemas typically ship.
   private val MaxCastNames = 5
@@ -686,7 +691,8 @@ object TmdbClient {
     language:    Option[String],
     aspectRatio: Double,
     voteAverage: Double,
-    width:       Int
+    width:       Int,
+    voteCount:   Int = 0
   )
 
   private[clients] def parsePosters(body: String): Seq[PosterImage] =
@@ -698,7 +704,8 @@ object TmdbClient {
             language    = (js \ "iso_639_1").asOpt[String].filter(_.nonEmpty),
             aspectRatio = (js \ "aspect_ratio").asOpt[Double].getOrElse(0.0),
             voteAverage = (js \ "vote_average").asOpt[Double].getOrElse(0.0),
-            width       = (js \ "width").asOpt[Int].getOrElse(0)
+            width       = (js \ "width").asOpt[Int].getOrElse(0),
+            voteCount   = (js \ "vote_count").asOpt[Int].getOrElse(0)
           )
         }
       }

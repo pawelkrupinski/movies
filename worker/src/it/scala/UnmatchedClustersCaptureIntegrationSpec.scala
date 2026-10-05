@@ -16,7 +16,8 @@ import scala.util.Try
  * the model's decisions on them, and every answer the agreement stage read for them — TMDB's from
  * the recording (its gaps asked live with `KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY`), the families' from the
  * prod's filed answers (`KINOWO_IDENTITY_FAMILY_SEED`), else the signal-combination experiment's answer cache
- * (`KINOWO_IDENTITY_AGREEMENT_CACHE`), else live. A re-capture after a
+ * (`KINOWO_IDENTITY_AGREEMENT_CACHE`), else live; and the venue and TMDB posters' hashes, of the images in
+ * `KINOWO_IDENTITY_POSTER_CACHE` else downloaded live ([[CachedPosters]]). A re-capture after a
  * change that asks new questions answers them the same way.
  *
  * Opt-in: runs when `KINOWO_IDENTITY_UNMATCHED_CAPTURE` names the directory to write `<cc>.json.gz` to
@@ -68,22 +69,26 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
       val tmdbOf: String => Answer[Option[Int]] = imdb => Try(tmdb.findByImdbId(imdb).map(_.id)).toOption
         .fold[Answer[Option[Int]]](Answer.Unknown) { found => finds.put(imdb, found); Answer.Known(found) }
       val answers: Map[VoterFamily, FamilyAnswers] = families.map(f => f -> store.answers(f)).toMap
+      val posterStore = new PosterAnswerStore(store, new MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))
+      val posters     = CachedPosters.of(configuration, c.country)
 
       // the records of the films the model leaned to and weighed best: what a take names, and what pooled facts read
       (decisions.flatMap(_.leaning.map(_.film)) ++ decisions.flatMap(_.trace.nodes.values.flatMap(_.candidate))).distinct.foreach(recording.film)
-      var outcome = UnmatchedClusters.agree(decisions, subset, recording, answers, store.version, tmdbOf, c.normalizer)
+      var outcome = UnmatchedClusters.agree(decisions, subset, recording, answers, store.version, tmdbOf, c.normalizer, posterStore)
       var rounds  = 0
-      while (outcome.stage.wanted.nonEmpty && rounds < 12) {
+      while ((outcome.stage.wanted.nonEmpty || outcome.stage.wantedPosters.nonEmpty) && rounds < 12) {
         rounds += 1
         val open = outcome.stage.wanted.toSeq
-        println(s"[${c.label}] capture round $rounds: ${open.size} open family question(s)")
+        val unhashed = outcome.stage.wantedPosters.toSeq
+        println(s"[${c.label}] capture round $rounds: ${open.size} open family question(s), ${unhashed.size} poster(s)")
+        posters.file(posterStore, unhashed)
         open.groupBy(_._1).toSeq.map { case (family, asks) =>
           java.util.concurrent.CompletableFuture.runAsync { () =>
             asks.map(_._2).grouped(4).foreach(_.map(question => java.util.concurrent.CompletableFuture.runAsync(() =>
               { Try(AgreementQuestions.file(store, family, sources(family), question)); () })).foreach(_.join()))
           }
         }.foreach(_.join())
-        outcome = UnmatchedClusters.agree(decisions, subset, recording, answers, store.version, tmdbOf, c.normalizer)
+        outcome = UnmatchedClusters.agree(decisions, subset, recording, answers, store.version, tmdbOf, c.normalizer, posterStore)
       }
       val filed = docs.get(TmdbKind.Family, docs.fetchedBefore(TmdbKind.Family, Long.MaxValue).map(_._1))
       val capture = UnmatchedClusters.Capture(c.country, subset, decisions, recording.queries.asScala.toMap, recording.films.asScala.toMap,
@@ -94,6 +99,7 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
       // the capture must replay to exactly what was captured
       val replayed = UnmatchedClusters.replay(UnmatchedClusters.read(written))
       replayed.stage.wanted shouldBe empty
+      replayed.stage.wantedPosters shouldBe empty
       UnmatchedClusters.takes(capture, replayed) shouldBe UnmatchedClusters.takes(capture, outcome)
       println(s"[${c.label}] captured ${subset.size} listings in ${decisions.size} clusters; ${capture.queries.size} queries, ${capture.films.size} films, " +
         s"${filed.size} family answers after $rounds round(s); takes ${UnmatchedClusters.takes(capture, outcome).size}")

@@ -35,9 +35,12 @@ trait ShareCardWiring { self: WorkerWiring =>
    *  its scrapes use: Multikino 403s the worker's IP on every poster as on its pages. That route
    *  is PAID (the proxy, Zyte behind it), so a poster that fails on it is remembered rather than
    *  asked for again by every render and every daily backfill. */
-  private lazy val posterDownload: PosterDownload = PosterDownload.routed(new HttpPosterDownload(tls = tlsContext), Map(
+  private lazy val posterDownload: PosterDownload = PosterDownload.routed(new HttpPosterDownload(tls = tlsContext), posterEgressRoutes)
+
+  /** The poster hosts that block the worker's IP, each by the egress its scrapes use — for every poster download. */
+  lazy val posterEgressRoutes: Map[String, PosterDownload] = Map(
     java.net.URI.create(services.cinemas.pl.MultikinoClient.HomeUrl).getHost ->
-      new RememberedFailurePosterDownload(new EgressPosterDownload(multikinoPosterFetch), shareCardStore.failedPosters, clock)))
+      new RememberedFailurePosterDownload(new EgressPosterDownload(multikinoPosterFetch), shareCardStore.failedPosters, clock))
 
   /** Shrinks each poster to the card's slot — through the process's one gate, shared with every
    *  other country's renders. */

@@ -61,13 +61,15 @@ object TaskType {
    *  IMDb id (`services.identity.AgreementQuestions`). */
   case object AgreementQuestion     extends TaskType { val name = "AgreementQuestion"     }
   case object AgreementFind         extends TaskType { val name = "AgreementFind"         }
+  /** A venue's or a TMDB film's poster to hash for the agreement's poster evidence (`services.identity.AgreementPosterHandler`). */
+  case object AgreementPoster       extends TaskType { val name = "AgreementPoster"       }
 
   val all: Seq[TaskType] =
     Seq(ScrapeCinema, EnrichDetails, ReadVenuePage, ResolveImdbId, ImdbRating, FilmwebRating, RtRating, McRating,
         RefreshAllImdb, RefreshAllFilmweb, RefreshAllMetacritic, RefreshAllRt, RefreshAllOmdb, SettleNow,
         ScrapeChunk, ScrapeChunkReduce,
         RenderShareCard, ShareCardBackfill, PruneShareCards, ReleaseShareCardHold,
-        AuditReadModelContent, AuditShareCards, AgreementQuestion, AgreementFind)
+        AuditReadModelContent, AuditShareCards, AgreementQuestion, AgreementFind, AgreementPoster)
 
   def byName(s: String): Option[TaskType] = all.find(_.name == s)
 }
