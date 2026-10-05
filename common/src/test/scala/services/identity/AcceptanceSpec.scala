@@ -222,8 +222,8 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     acceptance.billsBothItsWorks(corroborated(ranked(bill, bear, tiger))) shouldBe true
     taken(corroborated(ranked(bill, bear, tiger))) shouldBe None
     acceptance.pooled(corroborated(ranked(bill, bear, tiger))) shouldBe None
-    // its facts picking ONE of the two still take it
-    acceptance.billsBothItsWorks(ranked(bill.copy(directors = Seq("Joanna Harrison")), bear, tiger)) shouldBe false
+    // its facts picking ONE of the two leave it a double programme: neither film (user rule)
+    acceptance.billsBothItsWorks(ranked(bill.copy(directors = Seq("Joanna Harrison")), bear, tiger)) shouldBe true
     // a single film is no bill
     acceptance.billsBothItsWorks(ranked(Listing("We're Going on a Bear Hunt"), bear)) shouldBe false
     // a one-word "work" after the plus is a talk, not a bill: "La Perra | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE"

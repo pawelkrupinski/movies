@@ -63,7 +63,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** Why each rule a node may be taken by alone refused it: `(rule, the first condition that stopped it)`. */
   def refusals(ranked: Seq[Scored]): Seq[DecisionTrace.Refusal] =
-    if (billsBothItsWorks(ranked)) Seq(DecisionTrace.Refusal("alone", "bills two works its facts both fit"))
+    if (billsBothItsWorks(ranked)) Seq(DecisionTrace.Refusal("alone", "bills two works"))
     else aloneRules.flatMap(rule => rule.accepts(ranked).left.toOption.map(refused =>
       DecisionTrace.Refusal(rule.name, refused.why, refused.film, refused.detail)))
 
@@ -79,20 +79,23 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     else seasonProduction(ranked).map(_.map(_ -> "season-production")).getOrElse(firstOf(ranked, aloneRules))
       .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }
 
-  /** A DOUBLE BILL whose title names two eligible films, its facts ruling out neither: it is neither film.
+  /** A DOUBLE BILL whose title names two eligible films, its facts ruling out neither — or two whole works
+   *  ([[IdentityMeasures.billsTwoWholeWorks]]), whatever is held of them: it is neither film.
    *  UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna Harrison, Robin Shaw} ×133 credits
    *  both films' directors, each piece found its own film first, and the two scored 91–93% — which one it
-   *  took was popularity's coin. A bill whose facts rule one out still takes the other, and a film whose
-   *  own whole title it is ("Romeo + Juliet") is no bill. */
+   *  took was popularity's coin. A bill whose facts rule one out is neither film all the same (user rule: a
+   *  double programme matches neither); a film whose own whole title it is ("Romeo + Juliet") is no bill. */
   def billsBothItsWorks(ranked: Seq[Scored]): Boolean = ranked.headOption.exists { any =>
     val eligible = eligibleOf(ranked)
     val works    = eligible.filter(c => c.titleNamesIt && !contradicted(c) && !c.category("director").contains("different"))
       .map(c => IdentityMeasures.yearlessTokens(c.candidate.film.title)).distinct
     // the billed second work is a whole film title, not a talk ("+ prelekcja", "+ spotkanie z reżyserem …")
     val billed   = IdentityMeasures.billedSecondWork(any.listing)
-    IdentityMeasures.billsTwoWorks(any.listing) && !eligible.exists(_.category("title").contains("exact")) &&
+    IdentityMeasures.billsTwoWorks(any.listing) && !eligible.exists(_.category("title").contains("exact")) && (
       // two words at least: one is many films' title ("+ SPOTKANIE" is a talk, though TMDB holds three "Spotkanie"s)
-      works.sizeIs >= 2 && billed.exists(work => work.sizeIs >= 2 && works.contains(work))
+      works.sizeIs >= 2 && billed.exists(work => work.sizeIs >= 2 && works.contains(work)) ||
+      // or two whole works, one of which no database holds (user rule: a double programme is neither film)
+      IdentityMeasures.billsTwoWholeWorks(any.listing))
   }
 
   /** A node accepts a film ON ITS OWN only when its own facts favour it over the runner-up: a

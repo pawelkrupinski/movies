@@ -354,19 +354,20 @@ object IdentityResolver {
 
       val clusterIndex = clusters.zipWithIndex.flatMap { case (cluster, index) => cluster.map(_.id -> index) }.toMap
       val violations   = familyEdges.count(edge => !edge.must && clusterIndex(edge.a) == clusterIndex(edge.b))
-      // A member billing two works its own facts both fit is neither film, whichever film its cluster took
+      // A member billing two works is neither film, whichever film its cluster took or voted
       // ("We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna Harrison, Robin Shaw}, joined by its
-      // title to the spelling crediting Harrison alone): it is decided apart, as no film.
+      // title to the spelling crediting Harrison alone — itself a bill): it is decided apart, as no film.
       val billing = members.filter(node => acceptance.billsBothItsWorks(scope.of(node))).map(_.id).toSet
       val decided = clusters.flatMap { cluster =>
         val (bills, rest) = cluster.partition(node => billing(node.id))
-        if (bills.isEmpty || rest.isEmpty || cluster.forall(node => filmOf(node.id).isEmpty))
+        if (bills.isEmpty || cluster.forall(node => filmOf(node.id).isEmpty))
           Seq(decisions.of(cluster, scope, filmOf, accepted, voted, familyEdges, clusterIndex, familyTaken))
         else {
+          // a cluster of bills alone takes no film its vote reaches either
           val neither = decisions.of(bills, scope, _ => None, Map.empty, Map.empty, familyEdges, clusterIndex, Map.empty)
-          Seq(decisions.of(rest, scope, filmOf, accepted, voted, familyEdges, clusterIndex, familyTaken),
-            neither.copy(explanation = "bills two works its own facts both fit: neither film" +: neither.explanation)(
-              neither.trace.copy(vetoed = Some(DecisionTrace.Veto("bills both works", None)))))
+          Option.when(rest.nonEmpty)(decisions.of(rest, scope, filmOf, accepted, voted, familyEdges, clusterIndex, familyTaken)).toSeq :+
+            neither.copy(explanation = "bills two works: neither film" +: neither.explanation)(
+              neither.trace.copy(vetoed = Some(DecisionTrace.Veto("bills both works", None))))
         }
       }
       (familyEdges, decided, violations)

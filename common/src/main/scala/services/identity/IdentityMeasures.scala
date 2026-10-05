@@ -1137,6 +1137,21 @@ object IdentityMeasures {
   /** Does the listing bill two works with a spaced "+" — a double bill, whose facts are one of its films'? Not when
    *  what it bills last is a learned event tail ([[TitleDecorations.withoutTail]]): "Punku + spotkanie z reżyserem". */
   def billsTwoWorks(l: Listing): Boolean = (Seq(l.title) ++ l.rawTitle).exists(t => BillJoin.findFirstIn(l.decorations.withoutTail(t)).isDefined)
+  /** Does the listing bill two WHOLE WORKS — two of the pieces its spaced "+" joins naming no event, whatever a database
+   *  holds of either? A talk, a screening note or a format joined to one film ("+ prelekcja", "+ spotkanie z reżyserem",
+   *  "+ napisy EN", a bracketed "(AD + CC + PJM)") is no second work. PL Kino Pałacowe "… | Historia kina w Popielawach +
+   *  Pruska kultura" bills a 1908 short TMDB does not hold: no candidate stood for it, yet the bill is neither film. */
+  def billsTwoWholeWorks(l: Listing): Boolean =
+    (Seq(l.title) ++ l.rawTitle).exists(t => BillJoin.split(l.decorations.withoutTail(Bracketed.replaceAllIn(t, " ").trim)).count(namesAWork) >= 2)
+  private val Bracketed = """\([^()]*\)|\[[^\[\]]*\]""".r
+  private def namesAWork(piece: String): Boolean = {
+    // a one-letter word names nothing: "Q&A" is no work, and the "a" of "We're Going on a Bear Hunt" no event; a title
+    // of numbers is one ("2 x 2 = 4", billed after "Zakazane piosenki")
+    val all   = TitleContainment.tokens(piece)
+    val words = all.filter(_.length > 1)
+    (words.exists(_.exists(_.isLetter)) || all.sizeIs >= 3) &&
+      !words.exists(w => DecorationSegments.EventWords(w) || services.movies.FormatTags.FormatToken.contains(w))
+  }
   /** The works a DOUBLE BILL joins with a spaced "+" ("Basia. Humor w paski mam + Kocia Szajka"),
    *  each searched on its own: the database has no record of the bill, so without them the only
    *  candidates are what a credited director's filmography walks to. Searched, not shapes: a bill

@@ -707,6 +707,32 @@
     },
     "shareCardPending" : false
   }, {
+    "_id" : "f0b12a6119e0afd3",
+    "title" : "Ostatni etap",
+    "posterUrl" : "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/plak1at_8067756_1.8.jpg_x_standa.jpg",
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/swromcGry9Vb40cAUZZ2lrt76YZ.jpg", "https://m.media-amazon.com/images/M/MV5BMTY2ZmQ5NmYtYTY3Ny00MjU4LWE5OWItMzQ0MTJjMGM1MjY2XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 104,
+    "releaseYear" : 1948,
+    "genres" : [ "Dramat" ],
+    "countries" : [ "Polska" ],
+    "directors" : [ "Wanda Jakubowska" ],
+    "cast" : [ "Wanda Bartówna", "Huguette Faget", "Татьяна Гурецкая", "Antonina Gordon-Górecka", "Мария Виноградова" ],
+    "synopsis" : "Polska podczas II wojny światowej. Martha Weiss, Żydówka, przybywa wraz z rodziną do obozu zagłady w Auschwitz. Zostaje przydzielona do roli tłumacza, ale jej bliscy nie mają tyle szczęścia.",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "imdb" : 7.2,
+      "imdbUrl" : "https://www.imdb.com/title/tt0040674/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Ostatni+etap/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_last_stage",
+      "filmweb" : 6.8,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Ostatni+etap-1947-31020"
+    },
+    "weightedRating" : 7,
+    "synopsisByCity" : {
+      "wroclaw" : "Film w reżyserii Wandy Jakubowskiej zapisał się w historii światowego kina jako pierwszy film fabularny o obozie koncentracyjnym, dodatkowo zrealizowany na terenie byłego obozu Auschwitz-Birkenau. Film zdobył Kryształowy Glob – Grand Prix na Międzynarodowym Festiwalu Filmowym w Mariańskich Łaźniach (1948), Nagrodę Światowej Rady Pokoju (1950), był rekomendowany przez ONZ do pokazów w kręgach dyplomatycznych i trafił do dystrybucji w kilkudziesięciu krajach na całym świecie. Film stał się ikonograficznym punktem odniesienia dla wszystkich kolejnych filmów o obozach koncentracyjnych i ustalił pozycję reżyserki w światowej historii kina.\n\nW szpitalu obozu koncentracyjnego Auschwitz-Birkenau zawiązuje się międzynarodowy kobiecy ruch oporu. Więźniarki próbują ratować życie, ale też wpływać na los wszystkich ofiar nazizmu. Jedna z nich zdoła uciec, ale stanie za to pod szubienicą.\n\nDo Auschwitz-Birkenau trafia z łapanki Polka, Helena (Wanda Bartówna). Kobieta jest w ciąży i rodzi w tzw. rewirze, czyli obozowym szpitalu. O życie jej dziecka próbują zawalczyć lekarki i pielęgniarki, również więźniarki. Jednak lekarz SS morduje niemowlę, a Helena, po chwili załamania, dołącza do szpitalnej komórki kobiecego ruchu oporu. Grupa ma charakter międzynarodowy. Przewodzą jej charyzmatyczne liderki: lekarka Eugenia ze Związku Radzieckiego (Tatiana Górecka) i niemiecka pielęgniarka Anna (Antonina Gordon-Górecka). W grupie współpracują: pielęgniarka Nadia (Maria Winogradowa), francuska łączniczka Michele (Hugette Faget), jugosłowiańska partyzantka Dessa (Alina Janowska) i inne. Po nocnym transporcie z Warszawy dołącza do nich Marta, polska Żydówka (Barbara Drapińska). W czasie wizyty międzynarodowej komisji Eugenia próbuje zdemaskować ludobójcze praktyki SS, za co zostaje poddana torturom i zamordowana. Anna odkrywa handel środkami medycznymi między kapo, za co trafia do bunkra. Marta, obozowa tłumaczka wraz z działaczem z męskiego obozu wynosi poza teren Auschwitz dokumentację nazistowskich zbrodni. Pojmana, staje pod szubienicą. Na niebie pojawiają się samoloty aliantów. Marta apeluje: „Nie pozwólcie, by Auschwitz się powtórzył” i umiera na rękach Heleny, matki Polki."
+    },
+    "shareCardPending" : false
+  }, {
     "_id" : "f0b2571ab90bf065",
     "title" : "Wszystko zostanie w rodzinie",
     "posterUrl" : "https://biletyna.pl/file/get/id/367410",
@@ -4415,6 +4441,24 @@
     "ageRating" : "12",
     "shareCardPending" : false
   }, {
+    "_id" : "f34748480aa4fd15",
+    "title" : "Akademia Kina Polskiego: Ostatni etap (1948) + Przy torze kolejowym (1963)",
+    "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/fe4.png",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Akademia+Kina+Polskiego%3A+Ostatni+etap+%281948%29+%2B+Przy+torze+kolejowym+%281963%29/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Akademia+Kina+Polskiego%3A+Ostatni+etap+%281948%29+%2B+Przy+torze+kolejowym+%281963%29",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Akademia+Kina+Polskiego%3A+Ostatni+etap+%281948%29+%2B+Przy+torze+kolejowym+%281963%29"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
     "_id" : "f3477f1529beba5e",
     "title" : "Latać każdy może",
     "posterUrl" : "https://biletyna.pl/file/get/id/367184",
@@ -6005,57 +6049,6 @@
       "warszawa" : "Słynny film z 1995 roku to opowieść o 24 godzinach z życia Araba Saida, Żyda Vince’a i czarnoskórego Huberta podczas których ważą się losy młodych ludzi. To moment decydujący po burzliwej nocy podczas której policja zraniła młodego Araba a jeden z funkcjonariuszy zgubił… broń.\nCharakter tego głośnego obrazu, który krytyka uznała za “film dekady” tworzy paradokumentalny styl i niezapomniana ścieżka dźwiękowa. W jednej z głównych ról wystąpiła przyszła gwiazda francuskiego kina - Vincent Cassel.\n“Nienawiść” przyniosła 28-letniemu reżyserowi nagrodę za reżyserię na Międzynarodowym Festiwalu Filmowym w Cannes, trzy Cezary (w tym za najlepszy film roku) a także nagrodę Europejskiej Akademii Filmowej dla najlepszego młodego europejskiego filmu roku."
     },
     "ageRating" : "18",
-    "shareCardPending" : false
-  }, {
-    "_id" : "f49b6f32d3c24015",
-    "title" : "Akademia Kina Polskiego: Ostatni etap (1948) + Przy torze kolejowym (1963)",
-    "originalTitle" : "Ostatni etap",
-    "posterUrl" : "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/plak1at_8067756_1.8.jpg_x_standa.jpg",
-    "fallbackPosterUrls" : [ "https://ec1lodz.pl/fileadmin/user_upload/fe4.png", "https://image.tmdb.org/t/p/w500/swromcGry9Vb40cAUZZ2lrt76YZ.jpg", "https://m.media-amazon.com/images/M/MV5BMTY2ZmQ5NmYtYTY3Ny00MjU4LWE5OWItMzQ0MTJjMGM1MjY2XkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 104,
-    "releaseYear" : 1948,
-    "genres" : [ "Dramat" ],
-    "countries" : [ "Polska" ],
-    "directors" : [ "Wanda Jakubowska" ],
-    "cast" : [ "Wanda Bartówna", "Huguette Faget", "Татьяна Гурецкая", "Antonina Gordon-Górecka", "Мария Виноградова" ],
-    "synopsis" : "Polska podczas II wojny światowej. Martha Weiss, Żydówka, przybywa wraz z rodziną do obozu zagłady w Auschwitz. Zostaje przydzielona do roli tłumacza, ale jej bliscy nie mają tyle szczęścia.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 7.2,
-      "imdbUrl" : "https://www.imdb.com/title/tt0040674/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Ostatni+etap/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_last_stage",
-      "filmweb" : 6.8,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Ostatni+etap-1947-31020"
-    },
-    "weightedRating" : 7,
-    "synopsisByCity" : { },
-    "shareCardPending" : false
-  }, {
-    "_id" : "f49b6f32d3c24015~ostatnietap",
-    "title" : "Ostatni etap",
-    "posterUrl" : "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/AKADEMIA_KINA_POLSKIEGO_2026/OSTATNI_ETAP/plak1at_8067756_1.8.jpg_x_standa.jpg",
-    "fallbackPosterUrls" : [ "https://ec1lodz.pl/fileadmin/user_upload/fe4.png", "https://image.tmdb.org/t/p/w500/swromcGry9Vb40cAUZZ2lrt76YZ.jpg", "https://m.media-amazon.com/images/M/MV5BMTY2ZmQ5NmYtYTY3Ny00MjU4LWE5OWItMzQ0MTJjMGM1MjY2XkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 104,
-    "releaseYear" : 1948,
-    "genres" : [ "Dramat" ],
-    "countries" : [ "Polska" ],
-    "directors" : [ "Wanda Jakubowska" ],
-    "cast" : [ "Wanda Bartówna", "Huguette Faget", "Татьяна Гурецкая", "Antonina Gordon-Górecka", "Мария Виноградова" ],
-    "synopsis" : "Polska podczas II wojny światowej. Martha Weiss, Żydówka, przybywa wraz z rodziną do obozu zagłady w Auschwitz. Zostaje przydzielona do roli tłumacza, ale jej bliscy nie mają tyle szczęścia.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 7.2,
-      "imdbUrl" : "https://www.imdb.com/title/tt0040674/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Ostatni+etap/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_last_stage",
-      "filmweb" : 6.8,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Ostatni+etap-1947-31020"
-    },
-    "weightedRating" : 7,
-    "synopsisByCity" : {
-      "wroclaw" : "Film w reżyserii Wandy Jakubowskiej zapisał się w historii światowego kina jako pierwszy film fabularny o obozie koncentracyjnym, dodatkowo zrealizowany na terenie byłego obozu Auschwitz-Birkenau. Film zdobył Kryształowy Glob – Grand Prix na Międzynarodowym Festiwalu Filmowym w Mariańskich Łaźniach (1948), Nagrodę Światowej Rady Pokoju (1950), był rekomendowany przez ONZ do pokazów w kręgach dyplomatycznych i trafił do dystrybucji w kilkudziesięciu krajach na całym świecie. Film stał się ikonograficznym punktem odniesienia dla wszystkich kolejnych filmów o obozach koncentracyjnych i ustalił pozycję reżyserki w światowej historii kina.\n\nW szpitalu obozu koncentracyjnego Auschwitz-Birkenau zawiązuje się międzynarodowy kobiecy ruch oporu. Więźniarki próbują ratować życie, ale też wpływać na los wszystkich ofiar nazizmu. Jedna z nich zdoła uciec, ale stanie za to pod szubienicą.\n\nDo Auschwitz-Birkenau trafia z łapanki Polka, Helena (Wanda Bartówna). Kobieta jest w ciąży i rodzi w tzw. rewirze, czyli obozowym szpitalu. O życie jej dziecka próbują zawalczyć lekarki i pielęgniarki, również więźniarki. Jednak lekarz SS morduje niemowlę, a Helena, po chwili załamania, dołącza do szpitalnej komórki kobiecego ruchu oporu. Grupa ma charakter międzynarodowy. Przewodzą jej charyzmatyczne liderki: lekarka Eugenia ze Związku Radzieckiego (Tatiana Górecka) i niemiecka pielęgniarka Anna (Antonina Gordon-Górecka). W grupie współpracują: pielęgniarka Nadia (Maria Winogradowa), francuska łączniczka Michele (Hugette Faget), jugosłowiańska partyzantka Dessa (Alina Janowska) i inne. Po nocnym transporcie z Warszawy dołącza do nich Marta, polska Żydówka (Barbara Drapińska). W czasie wizyty międzynarodowej komisji Eugenia próbuje zdemaskować ludobójcze praktyki SS, za co zostaje poddana torturom i zamordowana. Anna odkrywa handel środkami medycznymi między kapo, za co trafia do bunkra. Marta, obozowa tłumaczka wraz z działaczem z męskiego obozu wynosi poza teren Auschwitz dokumentację nazistowskich zbrodni. Pojmana, staje pod szubienicą. Na niebie pojawiają się samoloty aliantów. Marta apeluje: „Nie pozwólcie, by Auschwitz się powtórzył” i umiera na rękach Heleny, matki Polki."
-    },
     "shareCardPending" : false
   }, {
     "_id" : "f49cd7df35f499bf",
@@ -25158,6 +25151,18 @@
     } ],
     "listingKeys" : [ "N\u0000Kino CK Lublin\u0000https://ck-lublin.bilety24.pl/wydarzenie/?id=156310\u0000Oni" ]
   }, {
+    "_id" : "f0b12a6119e0afd3|wroclaw|Kino Nowe Horyzonty",
+    "filmId" : "f0b12a6119e0afd3",
+    "city" : "wroclaw",
+    "cinema" : "Kino Nowe Horyzonty",
+    "filmUrl" : "https://www.kinonh.pl/op.s?id=22161",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-10T17:00:00",
+      "bookingUrl" : "https://www.kinonh.pl/bilet.s?eventId=189468&forwardback=https://www.kinonh.pl/program.s",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Nowe Horyzonty\u0000https://www.kinonh.pl/op.s?id=22161\u0000Ostatni etap" ]
+  }, {
     "_id" : "f0b2571ab90bf065|tczew|Żuławski Ośrodek Kultury",
     "filmId" : "f0b2571ab90bf065",
     "city" : "tczew",
@@ -42730,6 +42735,19 @@
     } ],
     "listingKeys" : [ "N\u0000Kino Piast\u0000https://kino-piast.bilety24.pl/wydarzenie/?id=156166\u0000Pan Nikt kontra Putin|Dkf" ]
   }, {
+    "_id" : "f34748480aa4fd15|lodz|Kino NCKF EC1",
+    "filmId" : "f34748480aa4fd15",
+    "city" : "lodz",
+    "cinema" : "Kino NCKF EC1",
+    "filmUrl" : "https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-polskiego-ostatni-etap-1948-przy-torze-kolejowym-1963",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-09T17:00:00",
+      "bookingUrl" : "https://bilety.ec1lodz.pl/rezerwacja/termin.html?d=5&idl=31&target=Lz9fZ2w9MSoxMDdiampxKl9nY2xfYXUqTVRFek1UazVNemN5TkM0eE56WXdNelF4TURnNQ==&date_termin=2026-06-09",
+      "room" : "Odeon",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino NCKF EC1\u0000https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-polskiego-ostatni-etap-1948-przy-torze-kolejowym-1963\u0000Akademia Kina Polskiego: Ostatni etap (1948) + Przy torze kolejowym (1963)" ]
+  }, {
     "_id" : "f3477f1529beba5e|tczew|Żuławski Ośrodek Kultury",
     "filmId" : "f3477f1529beba5e",
     "city" : "tczew",
@@ -54265,31 +54283,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kinoteka\u0000https://kinoteka.pl/film/nienawisc/\u0000Nienawiść" ]
-  }, {
-    "_id" : "f49b6f32d3c24015|lodz|Kino NCKF EC1",
-    "filmId" : "f49b6f32d3c24015",
-    "city" : "lodz",
-    "cinema" : "Kino NCKF EC1",
-    "filmUrl" : "https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-polskiego-ostatni-etap-1948-przy-torze-kolejowym-1963",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-09T17:00:00",
-      "bookingUrl" : "https://bilety.ec1lodz.pl/rezerwacja/termin.html?d=5&idl=31&target=Lz9fZ2w9MSoxMDdiampxKl9nY2xfYXUqTVRFek1UazVNemN5TkM0eE56WXdNelF4TURnNQ==&date_termin=2026-06-09",
-      "room" : "Odeon",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino NCKF EC1\u0000https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-polskiego-ostatni-etap-1948-przy-torze-kolejowym-1963\u0000Akademia Kina Polskiego: Ostatni etap (1948) + Przy torze kolejowym (1963)" ]
-  }, {
-    "_id" : "f49b6f32d3c24015~ostatnietap|wroclaw|Kino Nowe Horyzonty",
-    "filmId" : "f49b6f32d3c24015~ostatnietap",
-    "city" : "wroclaw",
-    "cinema" : "Kino Nowe Horyzonty",
-    "filmUrl" : "https://www.kinonh.pl/op.s?id=22161",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-10T17:00:00",
-      "bookingUrl" : "https://www.kinonh.pl/bilet.s?eventId=189468&forwardback=https://www.kinonh.pl/program.s",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Nowe Horyzonty\u0000https://www.kinonh.pl/op.s?id=22161\u0000Ostatni etap" ]
   }, {
     "_id" : "f49cd7df35f499bf|poznan|Kino Pałacowe",
     "filmId" : "f49cd7df35f499bf",

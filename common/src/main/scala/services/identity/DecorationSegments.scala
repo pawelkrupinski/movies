@@ -92,7 +92,9 @@ object DecorationSegments {
 
   private val Year        = """(19|20)\d\d""".r
   private val Roman       = Set("ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "vol", "cz", "czesc", "part", "teil", "parte", "set")
-  private val EventWords  = Set("spotkanie", "prelekcja", "prelekcja", "pokaz", "specjalny", "q", "a", "qa", "premiera", "przedpremiera", "konkurs",
+  /** Words naming an event around a screening, not a work: also what tells a talk a double bill joins ("+ prelekcja")
+   *  from a second film ([[IdentityMeasures.billsTwoWholeWorks]]). */
+  private[identity] val EventWords = Set("spotkanie", "prelekcja", "pokaz", "wstep", "wyklad", "warsztaty", "quiz", "gala", "specjalny", "q", "a", "qa", "premiera", "przedpremiera", "konkurs",
     "dyskusja", "rozmowa", "seans", "screening", "event", "special", "preview", "live", "talk", "intro", "introduced", "gesprach", "vorpremiere",
     "festiwal", "festival", "retransmisja", "koncert", "karnet", "maraton", "marathon")
   private val EditionWords = Set("cut", "remaster", "remastered", "restored", "restoration", "4k", "rerelease", "re", "release", "anniversary",

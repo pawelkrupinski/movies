@@ -178,11 +178,11 @@ pl	*	Akademia Kina Polskiego: Epitrafium dla Barbary Radziwiłłówny (1982)	fil
 pl	*	Akademia Polskiego Filmu: Dybuk + Droga młodych | Kino żydowskie w Polsce	imdb:tt11036312	wrong	hand label: Dybuk (2019) Santiago J. Zafra
 pl	*	Akademia Polskiego Filmu: Gatunki międzywojnia: Melodramat	tmdb:293920	right	hand label: Znachor (1937) Michal Waszynski
 pl	*	Akademia Polskiego Filmu: Kino żydowskie w Polsce	tmdb:293920	wrong	hand label: Znachor (1937) Michal Waszynski
-pl	*	Akademia Polskiego Filmu: W kręgu kina "społecznie użytecznego"	filmweb:34212	right	hand label: Strachy (1938) Eugeniusz Cękalski; Karol Szołowski
-pl	*	Akademia Polskiego Filmu: Wobec Zagłady	filmweb:31020	right	hand label: Ostatni etap (1947) Wanda Jakubowska
+pl	*	Akademia Polskiego Filmu: W kręgu kina "społecznie użytecznego"	filmweb:34212	wrong	judged 10-05: a double programme: its page bills "Strachy + W kopalni węgla" matches neither film (user rule) — was: hand label: Strachy (1938) Eugeniusz Cękalski; Karol Szołowski
+pl	*	Akademia Polskiego Filmu: Wobec Zagłady	filmweb:31020	wrong	judged 10-05: a double programme: its page bills "Ostatni etap + Majdanek – cmentarzysko Europy" matches neither film (user rule) — was: hand label: Ostatni etap (1947) Wanda Jakubowska
 pl	*	Akademia Polskiego Filmu: Znachor (1937) | Gatunki międzywojnia II: melodramat	tmdb:293920	right	hand label: Znachor (1937)
-pl	*	Akademia Polskiego Filmu: wykład dr. Łukasza Biskupskiego: „Bestia”, reż. Aleksander Hertz (1917), „Cud nad Wisłą”, reż. Ryszard Bolesławski (1921)	filmweb:36151	right	hand label: Bestia (1917) Aleksander Hertz
-pl	*	Akademia Polskiego Filmu: wykład dr. Łukasza Biskupskiego: „Bestia”, reż. Aleksander Hertz (1917), „Cud nad Wisłą”, reż. Ryszard Bolesławski (1921)	tmdb:319754	right	hand label: The Polish Dancer (1917) Aleksander Hertz
+pl	*	Akademia Polskiego Filmu: wykład dr. Łukasza Biskupskiego: „Bestia”, reż. Aleksander Hertz (1917), „Cud nad Wisłą”, reż. Ryszard Bolesławski (1921)	filmweb:36151	wrong	judged 10-05: a double programme (Bestia + Cud nad Wisłą) matches neither film (user rule) — was: hand label: Bestia (1917) Aleksander Hertz
+pl	*	Akademia Polskiego Filmu: wykład dr. Łukasza Biskupskiego: „Bestia”, reż. Aleksander Hertz (1917), „Cud nad Wisłą”, reż. Ryszard Bolesławski (1921)	tmdb:319754	wrong	judged 10-05: a double programme (Bestia + Cud nad Wisłą) matches neither film (user rule) — was: hand label: The Polish Dancer (1917) Aleksander Hertz
 pl	*	Audiencja | Kinoteka Kultury i Sztuki	tmdb:209149	right	hand label: The Audience (2013) Stephen Daldry; Robin Lough
 pl	*	Audiencja | Kinoteka Kultury i Sztuki	tmdb:786422	wrong	hand label: The Audience (2020)
 pl	*	Audiencja | Kinoteka Kultury i Sztuki	tmdb:81775	wrong	hand label: The Audience () Marco Ferreri
@@ -268,7 +268,7 @@ pl	*	Samson i dalila | metropolitan opera: live in hd 2026/27	filmweb:10114411	w
 pl	*	Samson i dalila | metropolitan opera: live in hd 2026/27	imdb:tt43746565	right	hand label: The Metropolitan Opera: Samson et Dalila (2026) Darko Tresnjak
 pl	*	Siostry (1972)	filmweb:9559	right	hand label: Siostry (1972) Brian De Palma
 pl	*	Siostry (1972)	tmdb:22307	right	hand label: Sisters (1972) Brian De Palma
-pl	*	Słonik w lesie + Tańczący przyjaciel | Młode Horyzonty	filmweb:10087705	right	hand label: Słonik w lesie (2025) Meikeminne Clinckspoor
+pl	*	Słonik w lesie + Tańczący przyjaciel | Młode Horyzonty	filmweb:10087705	wrong	judged 10-05: a double programme (Słonik w lesie + Tańczący przyjaciel) matches neither film (user rule) — was: hand label: Słonik w lesie (2025) Meikeminne Clinckspoor
 pl	*	TAJNY AGENT	filmweb:10075964	right	hand label: Tajny agent (2025) Kleber Mendonça Filho
 pl	*	The Taxidermist | Splat!FilmFest	imdb:tt40381362	right	hand label: The Taxidermist () Paulo Nascimento
 pl	*	Weekend Seniora z Kulturą: Vivaldi i ja [2D LEKTOR] (seans z audiodeskrypcją)	tmdb:1365683	right	hand label: Primavera (2025) Damiano Michieletto
@@ -359,8 +359,8 @@ de	*	Mein neues altes Ich - Eine Reise in das Mysterium der Menopause	wikipedia:
 de	*	Überleben	imdb:tt11041046	wrong	hand label: Survive ()
 es	*	Carmen (OPERA LIVE)	tmdb:450170	wrong	hand label: Carmen (1921) Ernesto Vollrath
 pl	*	11. UFF - Dowżenko. Pierwsze spojrzenie	tmdb:1483101	right	hand label: Dowżenko. Pierwsze spojrzenie (2026) Konstantin Konovalov
-pl	*	Akademia Polskiego Filmu: W kręgu kina "społecznie użytecznego"	tmdb:409746	right	hand label: Strachy (1938) Eugeniusz Cękalski
-pl	*	Akademia Polskiego Filmu: Zimowy zmierzch + Harmonia | Wiatr odnowy - kino epoki Października	tmdb:259998	right	hand label: Zimowy zmierzch (1957) Stanisław Lenartowicz
+pl	*	Akademia Polskiego Filmu: W kręgu kina "społecznie użytecznego"	tmdb:409746	wrong	judged 10-05: a double programme: its page bills "Strachy + W kopalni węgla" matches neither film (user rule) — was: hand label: Strachy (1938) Eugeniusz Cękalski
+pl	*	Akademia Polskiego Filmu: Zimowy zmierzch + Harmonia | Wiatr odnowy - kino epoki Października	tmdb:259998	wrong	judged 10-05: a double programme (Zimowy zmierzch + Harmonia) matches neither film (user rule) — was: hand label: Zimowy zmierzch (1957) Stanisław Lenartowicz
 pl	*	Binti Edukacja Młode Horyzonty	tmdb:855156	wrong	judged 10-05: biletyna's page (the venue's) is the Belgian Binti — a teenage immigrant in Belgium who dreams of vlogging — Frederike Migom's 2019 film, whose TMDB poster the venue's matches at 4 bits
 pl	*	Bohater	tmdb:358996	wrong	hand label: Bohater (2015) Nikhil Advani
 pl	*	Częstochowa, lata 1793-1918 | Weekend seniora z kulturą 2026	tmdb:1627075	wrong	hand label: The Candy World Movie (2026) Sharnav Shan
@@ -469,9 +469,9 @@ pl	*	11. UFF - Rzadko budzę się śniąc	metacritic:the-history-of-concrete	wro
 pl	*	11. UFF - Zmęczeni	metacritic:unabomber	wrong	hand label: Unabomber (2026) Janus Metz
 pl	*	11. UFF - Zmęczeni	rt:turning_point_generation_9_11	wrong	hand label: Turning Point: Generation 9/11 (2026)
 pl	*	Akademia Polskiego Filmu: Bestia + Cud nad Wisłą | Budowa przemysłu filmowego	wikidata:Q3157001	wrong	hand label: Bestia (1999) Suneel Darshan
-pl	*	Akademia Polskiego Filmu: W kręgu kina "społecznie użytecznego"	imdb:tt0286163	right	hand label: Strachy (1938) Eugeniusz Cekalski; Karol Szolowski
-pl	*	Akademia Polskiego Filmu: W kręgu kina "społecznie użytecznego"	letterboxd:strachy	right	hand label: Strachy (1938) Eugeniusz Cekalski; Karol Szolowski
-pl	*	Akademia Polskiego Filmu: Wobec Zagłady	imdb:tt0040674	right	hand label: The Last Stage (1948) Wanda Jakubowska
+pl	*	Akademia Polskiego Filmu: W kręgu kina "społecznie użytecznego"	imdb:tt0286163	wrong	judged 10-05: a double programme: its page bills "Strachy + W kopalni węgla" matches neither film (user rule) — was: hand label: Strachy (1938) Eugeniusz Cekalski; Karol Szolowski
+pl	*	Akademia Polskiego Filmu: W kręgu kina "społecznie użytecznego"	letterboxd:strachy	wrong	judged 10-05: a double programme: its page bills "Strachy + W kopalni węgla" matches neither film (user rule) — was: hand label: Strachy (1938) Eugeniusz Cekalski; Karol Szolowski
+pl	*	Akademia Polskiego Filmu: Wobec Zagłady	imdb:tt0040674	wrong	judged 10-05: a double programme: its page bills "Ostatni etap + Majdanek – cmentarzysko Europy" matches neither film (user rule) — was: hand label: The Last Stage (1948) Wanda Jakubowska
 pl	*	BCA Flash improwizuje w Kinotece | Grudzień	tmdb:1423191	wrong	hand label: Resident Evil (2026) Zach Cregger
 pl	*	Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi	imdb:tt10845876	wrong	hand label: Ryjówka przeznaczenia (2026) Marcin Wasilewski
 pl	*	Basia. Humor w paski mam + Kocia Szajka. Tajemnica zniknięcia śledzi	letterboxd:basia-radze-sobie	wrong	hand label: Basia. Radzę sobie! (2025) Marcin Wasilewski; Łukasz Kacprowicz; Ignas Meilūnas
@@ -545,8 +545,8 @@ pl	*	Wymarzony	filmweb:646546	wrong	hand label: Wymarzony (2013) Kat Coiro
 pl	*	Wymarzony	imdb:tt0112899	wrong	hand label: Dream Man (1995) René Bonnière
 pl	*	Zaczarowany flet	cinemeta:tt43746565	wrong	hand label: The Metropolitan Opera: Samson et Dalila (2026)
 pl	*	Zamki na piasku	filmweb:111854	wrong	hand label: Zamki na piasku (1972) Ted Post
-pl	*	Zestaw filmów krótkometrażowych Maré V: Powiew zza progu + Przemebluję kuchnię	letterboxd:um-sopro-no-quintal	right	hand label: Um Sopro no Quintal (2021) Gretel Marín
-pl	*	Zestaw filmów krótkometrażowych Maré V: Powiew zza progu + Przemebluję kuchnię	tmdb:997355	right	hand label: Um Sopro no Quintal (2021) Gretel Marín
+pl	*	Zestaw filmów krótkometrażowych Maré V: Powiew zza progu + Przemebluję kuchnię	letterboxd:um-sopro-no-quintal	wrong	judged 10-05: a set of two shorts matches neither film (user rule) — was: hand label: Um Sopro no Quintal (2021) Gretel Marín
+pl	*	Zestaw filmów krótkometrażowych Maré V: Powiew zza progu + Przemebluję kuchnię	tmdb:997355	wrong	judged 10-05: a set of two shorts matches neither film (user rule) — was: hand label: Um Sopro no Quintal (2021) Gretel Marín
 pl	*	edukacja MH: Johnny	filmweb:625571	wrong	hand label: Kiedy dorosnę (2010) D. David Morin
 pl	*	„Foragers” + „Kobiety z Gazy”	cinemeta:tt3819668	wrong	hand label: Dragon Ball Z: Resurrection 'F' (2015) Tadayoshi Yamamuro
 pl	*	„Foragers” + „Kobiety z Gazy”	filmweb:645104	wrong	hand label: Tam, gdzie rosną grzyby (2012) Jason Cortlund; Julia Halperin
@@ -708,3 +708,5 @@ pl	Kino za Rogiem w Siedlcu	Dumna królewna	imdb:tt0191383	wrong	judged 10-05: Z
 pl	Kino za Rogiem w Siedlcu	Dumna królewna	tmdb:1134680	right	the venue's page: "Reżyseria: Radek Beran", Czechy, 2024, 80 min — The Proud Princess (2024), TMDB 80 min, Radek Beran / David Lisý
 pl	Kino za Rogiem w Siedlcu	Dumna królewna	imdb:tt10996076	right	The Proud Princess (2024) Radek Beran — TMDB 1134680's IMDb id
 pl	Kino za Rogiem w Siedlcu	Potworna rodzinka	tmdb:454699	right	the venue's page: "Reżyseria: Holger Tappe", Niemcy, Wielka Brytania, 2017, 89 min — Monster Family (2017)
+pl	*	Akademia Polskiego Filmu: Historia kina w Popielawach + Pruska kultura | (Wyobrażone) początki polskiego kina	tmdb:157320	wrong	judged 10-05 (user report): a double programme (Historia kina w Popielawach + Pruska kultura) matches neither film
+pl	*	Akademia Polskiego Filmu: (Wyobrażone) początki polskiego kina | Historia kina w Popielawach + Pruska kultura	tmdb:157320	wrong	judged 10-05 (user report): a double programme (Historia kina w Popielawach + Pruska kultura) matches neither film

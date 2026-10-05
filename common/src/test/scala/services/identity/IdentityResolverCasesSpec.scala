@@ -899,7 +899,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       Map("director" -> Category("same_person"))
   }
 
-  "A double bill crediting both its works' directors" should "be neither film, though its title joins it to a spelling whose facts pick one" in {
+  "A double bill crediting both its works' directors" should "be neither film, as is the same bill crediting one" in {
     // UK, 2026-10-02: "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna Harrison, Robin Shaw} ×133 was
     // joined by its title to the same bill crediting Harrison alone — which IS Bear Hunt — and took that film.
     val films = Seq(F(431591, "We're Going on a Bear Hunt", 2016, "Joanna Harrison", 32), F(644120, "The Tiger Who Came to Tea", 2019, "Robin Shaw", 24))
@@ -907,10 +907,32 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val one   = Seq(Multikino, KinoMikro).map(v => listing(v, "We're Going on a Bear Hunt + The Tiger Who Came to Tea", director = Some("Joanna Harrison")))
     val r = shipped(both ++ one, films)
     withClue((both ++ one).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
-      one.map(l => r.decisionOf(l.key).film) shouldBe Seq(Some(431591), Some(431591))
+      // crediting one work's director leaves it a double programme: neither film either (user rule)
+      one.map(l => r.decisionOf(l.key).film) shouldBe Seq(None, None)
       both.map(l => r.decisionOf(l.key).film) shouldBe Seq(None, None)
-      r.decisionOf(both.head.key).trace.rulesOf(both.head.key) should contain ("veto:bills-both-works")
     }
+  }
+
+  "A double bill one of whose works no database holds" should "be neither film, while a film billed with a talk stays that film" in {
+    // PL Kino Pałacowe, 2026-10-05: "Akademia Polskiego Filmu: (Wyobrażone) początki polskiego kina | Historia kina w
+    // Popielawach + Pruska kultura" took the 1998 "Historia kina w Popielawach": TMDB holds no "Pruska kultura" (a
+    // 1908 short), so the bill's second work was never a candidate and nothing vetoed the first. User rule: neither.
+    val films = Seq(F(157320, "Historia kina w Popielawach", 1998, "Jan Jakub Kolski", 98, 2),
+      F(42199, "Bez znieczulenia", 1978, "Andrzej Wajda", 131, 3))
+    // its page credits the first work's director and year; Kinematograf bills that film alone, by the same facts
+    val bill  = listing(Rialto, "Akademia Polskiego Filmu: (Wyobrażone) początki polskiego kina | Historia kina w Popielawach + Pruska kultura",
+      Some(1998), Some("Jan Jakub Kolski"))
+    val alone = listing(KinoMikro, "Akademia Polskiego Filmu: „Historia kina w Popielawach”", Some(1998), Some("Jan Jakub Kolski"))
+    val talks = Seq(alone, listing(Multikino, "Wajda. Bez znieczulenia + prelekcja"), listing(KinoApollo, "Bez znieczulenia + spotkanie z Andrzejem Wajdą"),
+      listing(Helios, "Kino bez barier: Bez znieczulenia (AD + CC + PJM)"))
+    val r = shipped(bill +: talks, films)
+    withClue((bill +: talks).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(bill.key).film shouldBe None
+      talks.map(l => r.decisionOf(l.key).film) shouldBe Some(157320) +: Seq.fill(3)(Some(42199))
+    }
+    // a second work titled in numbers is a work too: Pałacowe's "… | Zakazane piosenki + 2 x 2 = 4"
+    IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("Od nowa | Zakazane piosenki + 2 x 2 = 4")) shouldBe true
+    IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("Bez znieczulenia + Q&A")) shouldBe false
   }
 
   "A double bill sharing its first work's search form" should "not join that work's bare listing when its second work is another listing's" in {
@@ -1028,12 +1050,12 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
-  it should "still take the one film the facts of such a title fit" in {
-    // The same title credited to one film's director at its runtime: the facts pick that film.
+  it should "take neither film though the facts of such a title fit one" in {
+    // The same title credited to one film's director at its runtime: still a double programme, so neither film (user rule).
     val films = Seq(F(28118, "The Gruffalo", 2009, "Max Lang", 27, 8), F(81684, "The Gruffalo's Child", 2011, "Johannes Weiland", 27, 6))
     val one   = listing(KinoApollo, "The Gruffalo + The Gruffalo's Child", Some(2011), Some("Johannes Weiland"), Some(27))
     val d = shipped(Seq(one), films).decisionOf(one.key)
-    withClue(d.render)(d.film shouldBe Some(81684))
+    withClue(d.render)(d.film shouldBe None)
   }
 
   it should "still take a film whose own title joins two others' ('Romeo + Juliet', 'Fast & Furious')" in {
