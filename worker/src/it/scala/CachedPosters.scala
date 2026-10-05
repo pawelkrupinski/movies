@@ -12,9 +12,10 @@ import java.nio.file.{Files, Path, StandardCopyOption}
  * Posters for the unmatched-cluster capture's poster evidence, from a cache of real downloads (`KINOWO_IDENTITY_POSTER_CACHE`:
  * `img/<sha1 of the URL>`, an `img/<sha1>.err` for one that failed for good; `tmdb/<id>.json`, a film's TMDB poster list
  * as `{"posters": [{"p": path, "l": language|null, "v": votes}]}`), else fetched live and filed into it — so a re-capture
- * asks nothing twice. Real images only: what the capture files is their hashes.
+ * asks nothing twice. Real images only: what the capture files is their hashes. `offline`: the cache alone — an image it
+ * does not keep is no poster, never fetched (`integration.IdentityUnifiedDataset` reads posters so).
  */
-final class CachedPosters(dir: Path, live: Option[TmdbClient], language: String) {
+final class CachedPosters(dir: Path, live: Option[TmdbClient], language: String, offline: Boolean = false) {
   private val images = dir.resolve("img")
   private val films  = dir.resolve("tmdb")
   private val fetch  = new HttpPosterDownload()
@@ -29,7 +30,7 @@ final class CachedPosters(dir: Path, live: Option[TmdbClient], language: String)
       val err  = images.resolve(sha1(url) + ".err")
       def copy(from: Path) = { val to = Files.createTempFile("poster-", ".img"); Files.copy(from, to, StandardCopyOption.REPLACE_EXISTING); to }
       if (Files.exists(kept)) Right(copy(kept))
-      else if (Files.exists(err)) Left(PosterFailure.Http4xx)
+      else if (Files.exists(err) || offline) Left(PosterFailure.Http4xx)
       else CachedPosters.this.fetch.fetch(url) match {
         case Right(file) => Files.createDirectories(images); Files.copy(file, kept, StandardCopyOption.REPLACE_EXISTING); Right(file)
         case Left(reason) =>

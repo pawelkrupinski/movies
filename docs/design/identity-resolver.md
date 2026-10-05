@@ -2356,3 +2356,93 @@ person search, 5 details. And what the pipeline persists is not the answers: `re
 hint → id, the film rows keep parsed TMDB slots; only `detailCache-*` keeps raw bodies, and the
 pipeline's own detail refresh re-observes those within a cycle. Seeding TMDB observations from
 parsed slots would file bodies no service sent. The fill is what closes the gap.
+
+## 20. The unified evidence model (phase 1, 2026-10-05: inventory, dataset, fit, measure)
+
+Goal: every signal the resolver's model and the agreement stage after it read becomes a FEATURE of one learned model,
+weighed by data, not by hand-set constants (`services.identity.UnifiedEvidence`, `UnifiedWeights`). Phase 1 changes no
+production decision; it measures.
+
+### 20.1 Inventory
+
+Calibrated = fitted from data today (`identity-weights.json`, §14). Feature = a column of the unified model (§20.2).
+
+| signal | definition | where | weight / threshold today | calibrated? | unified feature |
+|---|---|---|---|---|---|
+| title | listing title vs record title relation (exact/original/alternative/segment/fragment/overlap/none) | `IdentityMeasures` | LLR per category | yes | `model.logit` |
+| originalTitle | listing's original title vs record | `IdentityMeasures` | LLR per category | yes | `model.logit` |
+| year.delta, titleYear.delta, season.delta | published / title / season year vs record | `IdentityMeasures` | LLR per bin | yes | `model.logit` |
+| director | credited director relation (same_person/different/missing) | `IdentityMeasures` | LLR per category | yes | `model.logit` |
+| runtime.delta | minutes apart | `IdentityMeasures` | LLR per bin (monotone falling) | yes | `model.logit` |
+| country | listing vs record country | `IdentityMeasures` | LLR | yes | `model.logit` |
+| search.rank, rivals, popularity.log2 | where/among what the search returned the film | `IdentityMeasures` (priors) | LLR per bin; spread ×`priorSpread` per family | yes | `model.logit` |
+| venues.corroborating | venues of the family billing it | `IdentityMeasures` | LLR per bin (monotone rising) | yes | `model.logit` |
+| isotonic map; showRatings cut 0.375; cannotLink cut 0.033 | log-odds → probability; accept / veto cuts | `IdentityCalibration` | learned | yes | `model.logit`, `model.deniedBySome` |
+| learned cannot-links (28), evidence class (1) | conjunctions vetoing / crediting a pair | `identity-weights.json` | learned | yes | `model.deniedBySome` (denied by every node: no contender) |
+| acceptance rules (13 alone, 3 pooled, season-production) | sole-work, exact/segment-top-hit, sole-result, dated-title; directors-work/-title; favoured/unrivalled-calibrated; imdb-suggested; house/stage-production, season-record; model-proposed | `Acceptance` | rule order; `LeanMargin` 2.0, `BilledRuntime` 15, `RuntimeContradiction` | no | `rule.title`, `rule.director`, `rule.calibrated`, `rule.imdb`, `rule.stage`, `rule.proposal`, `rule.pooled` |
+| season / house production | record names the listing's season / house production | `Scored` | pre-empts the rules | no | `production.season`, `production.house` |
+| double bill, both works | title bills two works its facts both fit | `Acceptance.billsBothItsWorks` | takes neither | no | `bill.bothWorks` |
+| model lean / best candidate | `ResolverDecision.leaning` (≥2× runner-up) / `candidate` | `ResolverDecisions` | the agreement's TMDB vote | no | `model.lean`, `model.best` |
+| family take (imdb, wiki, filmweb, metacritic, rt) | the resolver over the family's answers takes one film | `Agreement.verdict` | one vote each; `priorSpread` 1.5/0.5/0.5/1.0/1.5 (cross-validated) | spread only | `family.<f>.took` |
+| family lean | best undenied ≥ `LeanMargin` × runner-up | `Agreement.leaningOf` | completes a quorum | no | `family.<f>.leans` |
+| quorum / takers | ≥3 supporting incl. ≥1 taker, +1 per dissenting family | `Agreement.agreed` | `Quorum` 3, `Takers` 1 | no | `agreement.quorum` (the rule's own verdict) |
+| turned down | a family weighed it and leaned to another it does not contradict | `Agreement.supported` | veto | no | `family.turnedDown` |
+| dissent | a family took another film the title names | `Agreement.agreed` | raises the quorum | no | `family.dissent` |
+| listing facts | every dated, credited listing credits the record (same director, year ±1) | `Agreement.listingVotes` | +1 vote | no | `listing.facts` |
+| listing runtime | every timed listing within `RuntimeSlack` 5 min | `Agreement.listingVotes` | +1 vote beside the facts | no | `listing.runtime` |
+| contradicted by the listing | year >1 apart, or another Latin-script director | `Agreement.contradictedByTheListing` | veto | no | `listing.contradicts` |
+| venues (wide billing) | ≥`WidelyBilled` 3 venues, the film this year or last | `Agreement.supported` | +1 vote | no | `venues.current` |
+| title names it | the title is, or carries whole (≥4 letters), a record title | `Agreement.namesIt` | required | no | `title.namesIt` |
+| another's own title | the title is another weighed film's original title, a translation of the agreed one | `Agreement.anothersOwnTitle` | veto when completed | no | `title.anothersOwn` |
+| bills several / stage work | "+", double bill, two quoted titles / an opera or ballet (`StageWorks`) | `Agreement.billsSeveral`, `stagesAWork` | veto | no | `bill.several`, `stage.work` |
+| poster vote | the one candidate a venue poster matches within `VoteBits` 4, none vetoing | `PosterEvidence.vote` | takes the film | no | `poster.vote`, `poster.match` |
+| poster near | nearest 5..`VetoMatchBits` 8 bits | `PosterEvidence` | — | no | `poster.near` |
+| poster veto | another candidate ≤8 bits while this one >`VetoBits` 10 | `PosterEvidence.veto` | veto | no | `poster.otherMatches` |
+| editions apart | listing and record number different editions | `PosterEvidence.editionsApart` | not compared | no | (input filter) |
+| family question policy | first hit or a shared word, ≤`Records` 6; director searches IMDb/Wikidata only; Latin-only titles for RT/MC | `FamilyLookups` | — | no | (what is asked, not evidence) |
+| same film across families | shared cross-id, else `equivalent` facts (year ±1, runtime ±2, director, shared title) | `Agreement.sameFilm` | — | no | (joins contenders) |
+| learned decorations, decoration score, segment / token models | strip venue banners and formats from titles | `TitleDecorations`, `DecorationScore`, `DecorationSegments`, `DecorationTokens` | learned | yes | upstream: search titles and the title relation |
+| constraint edges | must-links by tier (pinned, film, sanitised title, search form, segment, catalogue id); cannot-links | `ConstraintEdges`, `ConstraintSolver` | tiers | cannot-links yes | upstream: the clusters |
+| pins, fact (title) rules | curation; normaliser rules | `PinConstraints`, `TitleNormalizer` | hard | no | hard constraints, never weighed |
+| pending (combined branch, not on main 2026-10-05) | relays' broadcast date, programme banners, venue-page facts, catalogue-id votes, Filmweb/Wikidata identities, double programmes | agreement | — | no | phase 2 |
+
+Family ids (RT and Metacritic slugs, Filmweb ids) only IDENTIFY a family's film; no feature reads a URL slug.
+
+### 20.2 Dataset
+
+`integration.IdentityUnifiedDataset` (`def main`, a fixed pool of `--threads` cluster workers): for every cluster of the
+recorded full corpora — the unmatched ones as the unmatched-cluster fixture holds them, with the agreement stage's
+takes by `UnmatchedClusters.replay` — every CONTENDER (a TMDB candidate some node did not deny, or a film a family took
+or leans to, joined across families and to TMDB by ids, else by facts) with every signal above. Offline: the families'
+answers come from the fixture and prod's export (`KINOWO_IDENTITY_FAMILY_SEED`), posters from
+`KINOWO_IDENTITY_POSTER_CACHE` only — nothing new is asked. Labels: HAND (`identity-unmatched/labels.tsv`, judged per
+listing as the ratchet judges a take; the known wrong model takes, Teksańska masakra at JDK and Ktoś całkiem obcy, are
+added there) and WEAK (the model's take on a matched cluster, its other contenders negative; left out where a venue
+poster or a family names another film). The rows are checked in at
+`test/resources/fixtures/identity-unified/training.tsv.gz` (25,251 contenders, 6,756 clusters; 1,551 hand, 22,661 weak).
+
+### 20.3 Fit
+
+`scripts.IdentityUnifiedFit`: an L2 (1.0) logistic regression, each weight held to its signal's direction
+(`LogisticFit.fitSigned`, an active set, deterministic); five folds by VENUE; the cut is the lowest held-out best
+contender above every held-out new-wrong take (by hand label) and every take moving today's film. Pinned in
+`common/src/main/resources/identity-unified-weights.json`; `IdentityUnifiedFitSpec` refits it from the checked-in rows.
+Relearn: `CORPORA=… FIXTURES=… [FAMILY_SEED=…] [POSTER_CACHE=…] MONGODB_URI=<throwaway> scripts/identity-calibrate.sh --unified`.
+
+### 20.4 Measured (2026-10-05, weights `unified-0773e56c`)
+
+Held out: log-loss 0.012 (hand rows 0.124), accuracy 99.7% (hand 96.1%). Largest weights: rule.calibrated 7.1,
+rule.title 5.9, rule.imdb 5.6, rule.director 4.2, rule.stage 3.6, family.imdb.took 2.7, family.filmweb.took 2.5,
+production.season 2.4, poster.otherMatches −2.1, model.deniedBySome −1.5, poster.match and poster.vote 1.4 each,
+agreement.quorum 0.9. Held at 0 by their direction: rule.pooled, rule.proposal, family.turnedDown, family.dissent,
+listing.runtime, title.anothersOwn, stage.work. Ablation (hand log-loss): dropping the family takes 0.124 → 0.144, the
+model 0.136, the rules 0.133, the posters 0.127 (and 8 held-out wrong takes against 3); every other group ≤ 0.001.
+
+Against today's stack: 0 switched listings; the ratchet's fixture 38 right / 0 wrong against today's 416 / 0; the whole
+corpus loses 7,501 listings (UK 4,896, US 1,717, DE 432, PL 346, ES 110) and gains none. The cut (0.991) stands above
+seven hand-wrong takes the linear model scores ≥ 0.93 (PL "Zamki na piasku" → 1972 "Sandcastles", "LALKA / DOLLY" →
+2026 "Lalka", "Manon" → 1949, "Obcy w domu"; UK RBO "Tosca" → the 2025/26 record; DE André Rieu → "Tage wie diese";
+US "MetOpera: Rigoletto" → the Royal Opera's), which the stack's conjunctions (quorum AND no turn-down AND the title
+guards) refuse and a sum of independent weights does not. Verdict: as one argmax-and-cut decision the unified model is
+not yet a replacement, and the agreement stage is redundant for nothing; phase 2 wires the learned weights in as
+explained, measured evidence beside the rules, retiring a rule only where its replacement keeps these numbers.

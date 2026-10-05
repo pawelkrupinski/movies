@@ -32,6 +32,19 @@ cd "$(dirname "$0")/.."
 
 : "${CORPORA:?set CORPORA to the dir of cinema-scrapes-<cc>.json.gz}"
 : "${FIXTURES:?set FIXTURES to the dir of enrichment-<cc>/ trees}"
+# --unified re-emits the unified evidence model's rows (§20: integration.IdentityUnifiedDataset over the recorded corpora,
+# the unmatched-cluster fixture and its labels, offline — FAMILY_SEED and POSTER_CACHE optional, MONGODB_URI a throwaway)
+# into test/resources/fixtures/identity-unified/training.tsv.gz, then refits identity-unified-weights.json from them
+# (scripts.IdentityUnifiedFit), its report in $REPORT/unified-report.md.
+if [[ "${1:-}" == "--unified" ]]; then
+  REPORT="${REPORT:-target/identity-calibration}"
+  mkdir -p "$REPORT/unified"
+  env KINOWO_IDENTITY_FULL="${COUNTRIES:-pl,uk,de,es,us}" KINOWO_IDENTITY_CORPUS_DIR="$CORPORA" KINOWO_FIXTURE_ROOT="$FIXTURES" \
+    ${FAMILY_SEED:+KINOWO_IDENTITY_FAMILY_SEED=$FAMILY_SEED} ${POSTER_CACHE:+KINOWO_IDENTITY_POSTER_CACHE=$POSTER_CACHE} \
+    sbt -J-Xmx12g -batch "worker/IntegrationTest/runMain integration.IdentityUnifiedDataset --out $REPORT/unified"
+  cp "$REPORT/unified/training.tsv.gz" test/resources/fixtures/identity-unified/training.tsv.gz
+  exec sbt -J-Xmx8g -J-Duser.language=en -J-Duser.country=US -batch "worker/Test/runMain scripts.IdentityUnifiedFit --report $REPORT/unified-report.md"
+fi
 if [[ "${1:-}" == "--decorations-only" ]]; then
   exec sbt -J-Xmx12g -J-Duser.language=en -J-Duser.country=US -batch "worker/Test/runMain scripts.IdentityDecorationsLearn --corpora $CORPORA --fixtures $FIXTURES --version ${VERSION:-decorations-$(date -u +%Y-%m-%d)}"
 fi
