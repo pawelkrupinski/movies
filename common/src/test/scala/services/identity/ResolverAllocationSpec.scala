@@ -160,4 +160,20 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
       IdentityMeasures.Category("same_person")
     bytesPerCall(() => new IdentityMeasures.Credits(Seq("Mikhail Ivanov")).inLatin.names.size.toDouble) should be < 512.0
   }
+
+  "two titles one typo apart" should "be told without a vector of their differing words per pair, to the same answer" in {
+    import services.movies.TitleContainment.tokens
+    def reference(a: Seq[String], b: Seq[String]): Boolean = a.size >= 2 && a.size == b.size && a != b && {
+      val differing = a.indices.filter(i => a(i) != b(i))
+      differing.sizeIs == 1 && IdentityMeasures.oneTypoApart(Seq("x", a(differing.head)), Seq("x", b(differing.head)))
+    }
+    val titles = Seq("Mission Impossible", "Mision Impossible", "Mission Impossibile", "Scary Movie 3", "Scary Movie 4", "Hunt Club", "Hurt Club",
+      "Lalka", "Lalkar", "Mission Impossible II", "Mission Impossible III", "Kaili Blues", "Kaila Blues", "Another Round", "Anothre Rounds")
+    for (a <- titles; b <- titles) withClue(s"$a / $b: ")(IdentityMeasures.oneTypoApart(tokens(a), tokens(b)) shouldBe reference(tokens(a), tokens(b)))
+    IdentityMeasures.oneTypoApart(tokens("Kaili Blues"), tokens("Kaila Blues")) shouldBe true
+    IdentityMeasures.oneTypoApart(tokens("Scary Movie 3"), tokens("Scary Movie 4")) shouldBe false
+    IdentityMeasures.oneTypoApart(tokens("Another Round"), tokens("Anothre Rounds")) shouldBe false
+    val (a, b) = (tokens("The Lord of the Rings Return of the King"), tokens("The Lord of the Rings Return of the Kings"))
+    bytesPerCall(() => if (IdentityMeasures.oneTypoApart(a, b)) 1.0 else 0.0) should be < 64.0
+  }
 }

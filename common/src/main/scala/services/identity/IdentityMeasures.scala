@@ -704,9 +704,12 @@ object IdentityMeasures {
   private[identity] def oneTypoApart(a: Seq[String], b: Seq[String]): Boolean =
     // Two words at least: a one-word title a letter from another is another film ("Lalka"/"Lalkar").
     a.size >= 2 && a.size == b.size && a != b && {
-      val differing = a.indices.filter(i => a(i) != b(i))
-      differing.sizeIs == 1 && {
-        val (x, y) = (a(differing.head), b(differing.head))
+      // The one index the two differ at, or -1 for more than one: counted in place, not as a vector of them per pair.
+      val differing = { var at = -1; var i = 0; var n = 0
+        while (i < a.size && n < 2) { if (a(i) != b(i)) { at = i; n += 1 }; i += 1 }
+        if (n == 1) at else -1 }
+      differing >= 0 && {
+        val (x, y) = (a(differing), b(differing))
         x.length >= 5 && y.length >= 5 && !Seq(x, y).exists(w => w.exists(_.isDigit) || RomanNumeral.pattern.matcher(w).matches()) &&
           editDistanceOne(x, y)
       }
