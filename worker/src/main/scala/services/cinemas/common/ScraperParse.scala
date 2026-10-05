@@ -247,11 +247,14 @@ private[cinemas] object ScraperParse {
   /** Text of the `<dd>` immediately after the `<dt>` whose text contains
     * `label` (case-insensitive), searched within `dtSelector`. Trimmed; empty
     * → `None`. The Drupal-style cinema sites render film metadata as such
-    * definition lists. */
+    * definition lists. An empty `<dt>` between the label and its value is
+    * passed over: NoveKino never closes its label (`<dt>Reżyseria<dt><dd>…`),
+    * which parses as a second, empty `<dt>`. */
   def ddField(document: Document, label: String, dtSelector: String = "dt"): Option[String] =
     document.select(dtSelector).asScala
       .find(_.text.toLowerCase(Locale.ROOT).contains(label))
-      .flatMap(dt => Option(dt.nextElementSibling))
+      .flatMap(dt => Iterator.iterate(dt.nextElementSibling)(_.nextElementSibling).takeWhile(_ != null)
+        .find(sibling => !(sibling.tagName == "dt" && sibling.text.trim.isEmpty)))
       .filter(_.tagName == "dd")
       .map(_.text.trim)
       .filter(_.nonEmpty)

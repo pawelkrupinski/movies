@@ -48,6 +48,11 @@ class NoveKinoClientSpec extends AnyFlatSpec with Matchers {
     d.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=CdoTYdt4GQE")
   }
 
+  it should "read the director off the film page's 'Reżyseria' row, whose <dt> the page never closes" in {
+    // `<dt>Reżyseria<dt><dd>David Frankel</dd>`: jsoup reads an empty second <dt> between the label and its value
+    detailFor("Diabeł ubiera się u Prady 2").director shouldBe Seq("David Frankel")
+  }
+
   it should "read the runtime off the film page's 'Czas trwania' row, and none where the page omits it" in {
     // The same film's two presentation pages: the subtitled one (id=19692) lists
     // "Czas trwania: 120 minut"; the dubbed one (id=19185) has no such row.
