@@ -2543,7 +2543,7 @@ agreed; without it the venue poster takes the same film — basis `Poster`, the 
 
 ### 20.9 Pinned fills, and what the unmatched clusters' triage added (2026-10-05)
 
-A triage of every labelled-right TMDB film the ratchet left untaken (`UnmatchedTriageProbe`, opt-in `KINOWO_TRIAGE=1`)
+A triage of every labelled-right TMDB film the ratchet left untaken (an offline probe over the fixture, not kept)
 filed each under retrieval, scoring, a guard, or the agreement. What it added, each measured on the ratchet:
 
 - **`families.current`, a PINNED fill** (`UnifiedRules.pinned`, `UnifiedEvidence.PinnedSignals`): two families take
