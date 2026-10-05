@@ -2570,12 +2570,12 @@ filed each under retrieval, scoring, a guard, or the agreement. What it added, e
   votes in Poland alone. PL "Bohater" (Farhadi's), "BEZ KOŃCA 2D PL LOLO", "NADZIEJA", "Wymarzony" (Herry's *Pupille*,
   judged from the venue's page). `UnifiedRules.fires` reads a rule as `&`-joined terms, `!` an absence. Ratchet: +4
   listings, 4 films, 0 wrong.
-- **Three more title shapes** (`IdentityMeasures.delimitedPieces`): what an upper-case banner of two words or more runs
-  into with an unspaced colon ("KINO NA NIEDZIELE:CAMINO DLA OPORNYCH"), the one quoted title ending a billing after a
-  banner's stop ('Kino Kobiet - KLAPS! "Jak żyć żeby nie zwariować"'), and a plain title of two words or more before a
-  sentence's stop with a subtitle after it ("FRIDA KAHLO. IKONICZNA ARTYSTKA"). Ratchet (the families' new questions
-  filled; the captured model decisions unchanged): +1 listing (Frida Kahlo), 0 wrong; the model's side is the
-  whole-corpus dump's.
+- **Two more title shapes** (`IdentityMeasures.delimitedPieces`): what an upper-case banner of two words or more runs
+  into with an unspaced colon ("KINO NA NIEDZIELE:CAMINO DLA OPORNYCH"), and the one quoted title ending a billing
+  after a banner's stop ('Kino Kobiet - KLAPS! "Jak żyć żeby nie zwariować"'). The whole-corpus dump takes both films
+  (Compostelle, "Jak żyć, żeby nie zwariować"). A third, a title's head before a sentence's stop ("FRIDA KAHLO.
+  IKONICZNA ARTYSTKA"), was measured and dropped: it gained Frida Kahlo but switched the sequel "Szkoła magicznych
+  zwierząt. Tajemnica szkolnego podwórka" to the first film and lost "Avengers: Koniec Gry. Dogrywka".
 - **`Acceptance.LeanMargin` 2 → 1.25** (from the search sweep): a no-match leans to its best film at 1.25 times the
   runner-up's probability, the model's and each family's alike. Ratchet: +6 listings (DE "Mein neues altes Ich", IMDb's
   lean completing Wikidata's take), 0 wrong; the model's leans moved over the whole corpus are the dump's.

@@ -654,10 +654,11 @@ object IdentityMeasures {
    *  with no space ("MS:HOT SPOT"), a square-bracketed format and a title
    *  quoted at the head of its billing (`quotesOne`: none where a title quotes two), or at its tail after a banner's
    *  stop ('Kino Kobiet - KLAPS! "Jak żyć żeby nie zwariować"'); what an upper-case banner of two words or more runs
-   *  into with an unspaced colon ("KINO NA NIEDZIELE:CAMINO DLA OPORNYCH"), and a plain title of two words or more
-   *  before a sentence's stop, a subtitle of two or more after it ("FRIDA KAHLO. IKONICZNA ARTYSTKA"). A slash or colon
-   *  inside a word is the title's own ("Face/Off", "AC/DC", "Star Wars:Episode I"). Here, not in `SearchTitles`, which
-   *  the old pipeline also reads. */
+   *  into with an unspaced colon ("KINO NA NIEDZIELE:CAMINO DLA OPORNYCH"). A slash or colon inside a word is the
+   *  title's own ("Face/Off", "AC/DC", "Star Wars:Episode I"); so is a sentence's stop: "Szkoła magicznych zwierząt.
+   *  Tajemnica szkolnego podwórka" is the sequel, and its head the first film (whole-corpus dump, 2026-10-05: the
+   *  head cut switched it and lost "Avengers: Koniec Gry. Dogrywka"). Here, not in `SearchTitles`, which the old
+   *  pipeline also reads. */
   private def delimitedPieces(title: String, quotesOne: Boolean): Seq[String] = {
     val slashed = Seq(SpacedSlash, HalfSpacedDash).flatMap(separator =>
       if (separator.findFirstIn(title).isDefined) separator.split(title).toSeq.map(_.trim) else Nil)
@@ -667,8 +668,7 @@ object IdentityMeasures {
     val quoted  = (if (quotesOne && Quoted.findAllMatchIn(title).size == 1)
       LeadingQuoted.findFirstMatchIn(title).orElse(TrailingQuoted.findFirstMatchIn(title)).map(_.group(1)) else None).toSeq
     val banner  = BannerBeforeColon.findFirstMatchIn(title).map(m => title.substring(m.end)).toSeq
-    val head    = SentenceHead.findFirstMatchIn(title).map(_.group(1)).toSeq
-    (slashed ++ coded ++ undated ++ format ++ quoted ++ banner ++ head).map(_.trim).filter(_.exists(_.isLetter)).filter(_ != title.trim)
+    (slashed ++ coded ++ undated ++ format ++ quoted ++ banner).map(_.trim).filter(_.exists(_.isLetter)).filter(_ != title.trim)
   }
   /** A format or version tag in square brackets after the title ("Vivaldi i ja [2D LEKTOR]"); a round bracket is
    *  `SearchTitles`'s. */
@@ -684,7 +684,6 @@ object IdentityMeasures {
   private val CodeBeforeColon = """^\p{L}{1,3}:(?=\S)""".r
   private val TrailingQuoted  = """[:!\-–—]\s*[„"“«]([^"”„“«»]*\p{L}[^"”„“«»]*)["”“»]\s*$""".r
   private val BannerBeforeColon = """^[\p{Lu}\d]+(?:\s+[\p{Lu}\d]+)+:(?=\p{L})""".r
-  private val SentenceHead    = """^([^.:|\-–—\s]+(?:\s+[^.:|\-–—\s]+)+)\.\s+\p{L}[^.\s]*\s+\S""".r
   /** A screening year after a title, unbracketed ("Ma to sens 2026"): 2020–2039 only, so a title that IS a
    *  number ("2046", "Blade Runner 2049") keeps it. A shape, never the old pipeline's lookup query. */
   private val ScreeningYearSuffix = """^(.*\p{L}.*?)\s+20[23]\d$""".r
