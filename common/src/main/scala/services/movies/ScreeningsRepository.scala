@@ -314,10 +314,15 @@ class MongoScreeningsRepository(
   // one row count for both, the widest film's replies were 2-8 MB on worker-us (rows up to 65 KB at 150 a reply), each a
   // read buffer the driver's pool made again a minute later and promoted. A film it has not seen reads 150.
   private val showtimesPerRow = new java.util.concurrent.ConcurrentHashMap[String, Integer]()
+  // A film left with no rows — replaced with none or deleted — is forgotten, so the map holds only films that have rows;
+  // `FilmsKnownAtMost` bounds it besides.
   private def learn(filmId: String, rows: Iterable[Seq[Showtime]]): Unit = if (rows.nonEmpty) {
     if (showtimesPerRow.size >= ScreeningsRepository.FilmsKnownAtMost) showtimesPerRow.clear()
     showtimesPerRow.put(filmId, rows.iterator.map(_.size).sum / rows.size); ()
   }
+  private def forget(filmIds: Iterable[String]): Unit = filmIds.foreach(showtimesPerRow.remove)
+  /** Whether this store holds a row-size estimate for `filmId` (what the specs check is let go). */
+  private[services] def knowsRowsOf(filmId: String): Boolean = showtimesPerRow.containsKey(filmId)
   private def rowsPerReply(filmIds: Iterable[String]): Int =
     ScreeningsRepository.rowsPerReply(filmIds.iterator.flatMap(id => Option(showtimesPerRow.get(id))).map(_.intValue).maxOption)
 
@@ -395,8 +400,9 @@ class MongoScreeningsRepository(
       // The DELETE vector is unaffected: it is derived from `slots.keySet` (what the film
       // should end up with), never from the subset being written, so a row that is correct and
       // therefore skipped is still a row this call keeps.
-      learn(filmId, slots.values.map(_.showtimes))
       val (current, readComplete) = stored.map(_ -> true).getOrElse(SlotKeyed.rowsOrNone(findListedForFilmChecked(filmId)))
+      // The rows as they will stand, after the read of those they replace.
+      if (slots.isEmpty) forget(Seq(filmId)) else learn(filmId, slots.values.map(_.showtimes))
       val changed = ScreeningsSplit.changedSlots(current, readComplete,
         roster.writable(ScreeningsRepository.Collection, filmId, current, slots))
       // The SKIP is counted here and the WRITE is counted after the bulkWrite returns, which is
@@ -472,6 +478,7 @@ class MongoScreeningsRepository(
 
   def deleteFilm(filmId: String): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
     write("deleteFilm", s"ScreeningsRepository.deleteFilm($filmId)") {
+      forget(Seq(filmId))
       val deleted = Await.result(c.deleteMany(Filters.eq("filmId", filmId)).toFuture(), 10.seconds).getDeletedCount
       if (deleted > 0)
         RemovalAudit.screeningsCleared("screenings.deleteFilm", filmId, deleted.toInt, whole = true, reason = "film-deleted")
@@ -497,8 +504,10 @@ class MongoScreeningsRepository(
   def deleteRows(ids: Set[String]): Long =
     coll.fold(0L)(SlotKeyed.deleteRows(_, ids, ScreeningsRepository.Collection, writeMetrics, logger))
 
-  def deleteFilms(filmIds: Set[String]): Long =
+  def deleteFilms(filmIds: Set[String]): Long = {
+    forget(filmIds)
     coll.fold(0L)(SlotKeyed.deleteFilms(_, filmIds, ScreeningsRepository.Collection, writeMetrics, logger))
+  }
 
   private def upsertOne(c: MongoCollection[StoredScreeningsDto], filmId: String, slotKey: String, row: ListedShowtimes): Unit = {
     val dto = StoredScreeningsDto.of(filmId, slotKey, row, Instant.now())

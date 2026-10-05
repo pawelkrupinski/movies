@@ -99,5 +99,18 @@ class SideRowReplySizeIntegrationSpec extends AnyFlatSpec with Matchers with too
       replies.of("screenings") should (be > 0L and be <= 512L * 1024)
     } finally { Await.result(db.drop().toFuture(), SpecTimeouts.Io); client.close() }
   }
+
+  "a film's row-size estimate" should "be let go once the film has no rows left" in {
+    tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "rowsize-forget") { db =>
+      val screenings = new MongoScreeningsRepository(Some(db))
+      val rows = Map("Venue 1 Cinema\u241ffilm" -> ListedShowtimes(Seq(Showtime(java.time.LocalDateTime.parse("2031-06-12T10:00"), None)), None))
+      Seq("deleted", "emptied", "pruned").foreach(film => screenings.replaceFilm(film, rows))
+      Seq("deleted", "emptied", "pruned").foreach(film => withClue(film)(screenings.knowsRowsOf(film) shouldBe true))
+      screenings.deleteFilm("deleted")
+      screenings.replaceFilm("emptied", Map.empty)
+      screenings.deleteFilms(Set("pruned"))
+      Seq("deleted", "emptied", "pruned").foreach(film => withClue(film)(screenings.knowsRowsOf(film) shouldBe false))
+    }
+  }
 }
 
