@@ -98,7 +98,25 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     } }
     val restarted = new AgreementStage(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
     restarted.apply(resolution, listingOf, version = 0).decisions.head.film shouldBe Some(913760)
-    asked shouldBe verdicts.all().head.reads.size   // each answer it read re-read once to see it stands, no resolve
+    asked shouldBe 0   // its families' answers cannot have moved while it was down: no answer read again, no resolve
+  }
+
+  it should "decide again a verdict stored under other rules" in {
+    val verdicts = new InMemoryAgreementVerdicts
+    new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
+      clock = _root_.tools.SpecClock.Pinned).apply(resolution, listingOf, version = 1)
+    verdicts.replace(Set.empty, verdicts.all().map(_.copy(rules = "an older build")))
+    var asked = 0
+    val counting = agreeing().map { case (family, answers) => family -> new FamilyAnswers {
+      val family: VoterFamily = answers.family
+      def titled(text: String)     = { asked += 1; answers.titled(text) }
+      def directedBy(name: String) = { asked += 1; answers.directedBy(name) }
+      def record(id: String)       = { asked += 1; answers.record(id) }
+    } }
+    new AgreementStage(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
+      clock = _root_.tools.SpecClock.Pinned).apply(resolution, listingOf, version = 0)
+    asked should be > 0
+    verdicts.all().map(_.rules) shouldBe Seq(AgreementStage.RulesVersion)
   }
 
   it should "decide again when an answer it read moved, and drop the verdict of a cluster no longer unmatched" in {
@@ -106,8 +124,15 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
       .apply(resolution, listingOf, version = 1)
     val dissent = agreeing() ++ Seq(VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
-    val again = new AgreementStage(dissent, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
-    again.apply(resolution, listingOf, version = 1).decisions.head shouldBe resolution.decisions.head
+    // Filmweb's and RT's answers refiled after the restart (version 1 → 2): only a verdict that read them is decided again.
+    val refiled = new AnswerChanges {
+      def changedSince(version: Long): Option[Set[String]] =
+        Some(if (version < 2) verdicts.all().head.reads.keySet.filter(q => q.startsWith("filmweb|") || q.startsWith("rt|")) else Set.empty)
+    }
+    val again = new AgreementStage(dissent, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
+      clock = _root_.tools.SpecClock.Pinned, changes = refiled)
+    again.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)   // the restart trusts what it kept
+    again.apply(resolution, listingOf, version = 2).decisions.head shouldBe resolution.decisions.head
     verdicts.all().map(_.agreed) shouldBe Seq(None)
     val matchedNow = resolution.copy(decisions = resolution.decisions.map(_.copy(film = Some(1))(services.identity.DecisionTrace.Empty)))
     again.apply(matchedNow, listingOf, version = 2)

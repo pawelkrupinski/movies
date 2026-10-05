@@ -16,12 +16,20 @@ import scala.jdk.CollectionConverters._
  * read meanwhile. One document per question, under `<family>|title|<text>`, `<family>|director|<name>` and
  * `<family>|record|<id>`.
  */
-final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock) {
+final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock) extends services.identity.agreement.AnswerChanges {
   import FamilyAnswerStore._
 
   private val filed = new java.util.concurrent.atomic.AtomicLong()
   /** How many answers this store filed since it was made: a reader's verdicts over them hold while it does not move. */
   def version: Long = filed.get
+
+  /** Each filing's question id, by the version it made — what [[changedSince]] answers from; the oldest dropped past
+   *  [[FamilyAnswerStore.ChangesKept]], a version before them then unknown. */
+  private val changes = new java.util.concurrent.ConcurrentSkipListMap[Long, String]()
+  /** The questions filed after `version`, or `None` once filings that old are no longer kept. */
+  def changedSince(version: Long): Option[Set[String]] =
+    Option.when(changes.isEmpty || version >= changes.firstKey - 1 || version >= filed.get)(
+      changes.tailMap(version, false).values.asScala.toSet)
 
   /** `family`'s answers, as the agreement reads them. */
   def answers(of: VoterFamily): FamilyAnswers = new FamilyAnswers {
@@ -50,7 +58,9 @@ final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock) {
   private def document(id: String): Option[BsonDocument] = docs.answers(TmdbKind.Family, Seq(id)).get(id)
   private def put(id: String, d: BsonDocument): Unit = {
     docs.put(TmdbKind.Family, Seq(id -> d.append(TmdbStore.FetchedAt, BsonInt64(clock.millis()))))
-    filed.incrementAndGet(); ()
+    changes.put(filed.incrementAndGet(), id)
+    while (changes.size > FamilyAnswerStore.ChangesKept) changes.pollFirstEntry()
+    ()
   }
 }
 
@@ -60,6 +70,8 @@ object FamilyAnswerStore {
   val SearchAge: FiniteDuration = 90.days
   /** How long a film's record is read before the fill asks again: a released film's facts do not move. */
   val RecordAge: FiniteDuration = 365.days
+  /** How many filings [[FamilyAnswerStore.changedSince]] can name: a burst past it re-reads the verdicts' answers. */
+  val ChangesKept = 100000
 
   def titleId(family: VoterFamily, text: String): String    = s"${family.label}|title|$text"
   def directorId(family: VoterFamily, name: String): String = s"${family.label}|director|$name"

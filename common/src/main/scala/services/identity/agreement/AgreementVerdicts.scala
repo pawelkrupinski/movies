@@ -13,7 +13,7 @@ import scala.jdk.CollectionConverters._
 /** One cluster's agreement verdict as stored: the digest of its listings, every family question it read with the
  *  digest of the answer it got, and the film the families agreed on, if any — all the stage needs, after a restart or
  *  a new answer elsewhere, to tell whether the verdict still stands without asking the resolver again. */
-final case class StoredVerdict(id: String, listings: Long, reads: Map[String, Long], agreed: Option[AgreedFilm])
+final case class StoredVerdict(id: String, listings: Long, reads: Map[String, Long], agreed: Option[AgreedFilm], rules: String = "")
 
 /** The storage seam of the agreement's verdicts, as [[services.identity.IdentityModelStore]] is the model's. */
 trait AgreementVerdicts {
@@ -58,6 +58,7 @@ object AgreementVerdicts {
   def encode(verdict: StoredVerdict): BsonDocument = new BsonDocument()
     .append("_id", BsonString(verdict.id))
     .append("listings", BsonInt64(verdict.listings))
+    .append("rules", BsonString(verdict.rules))
     .append("reads", new BsonDocument(verdict.reads.toSeq.sorted.map { case (q, digest) => new org.bson.BsonElement(q, BsonInt64(digest)) }.asJava))
     .append("agreed", verdict.agreed.fold[BsonValue](BsonNull()) { film =>
       val d = new BsonDocument("families", BsonArray.fromIterable(film.families.toSeq.map(_.label).sorted.map(BsonString(_))))
@@ -81,6 +82,6 @@ object AgreementVerdicts {
           stringsOf(a.getDocument("ids")).flatMap { case (label, id) => byLabel.get(label).map(_ -> id) },
           Option(a.get("leaning")).filter(_.isArray).fold(Set.empty[VoterFamily])(_.asArray.getValues.asScala.flatMap(v => byLabel.get(v.asString.getValue)).toSet),
           Option(a.get("corroborated")).filter(_.isArray).fold(Set.empty[String])(_.asArray.getValues.asScala.map(_.asString.getValue).toSet))
-      })
+      }, Option(d.get("rules")).filter(_.isString).fold("")(_.asString.getValue))
   }
 }

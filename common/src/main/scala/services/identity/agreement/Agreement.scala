@@ -48,6 +48,11 @@ trait FamilyAnswers {
   def fresh(question: String): Boolean = true
 }
 
+/** Which family answers were filed since a version of them (`<family>|<kind>|<text>`, as a verdict's reads name them):
+ *  `None` when that is not known — the stage then reads a verdict's answers again to tell. */
+trait AnswerChanges { def changedSince(version: Long): Option[Set[String]] }
+object AnswerChanges { val Unknown: AnswerChanges = _ => None }
+
 /** A family's identification of a cluster: its own id and record of the film it took, when it took one. */
 final case class FamilyPick(family: VoterFamily, id: String, record: SourceRecord)
 

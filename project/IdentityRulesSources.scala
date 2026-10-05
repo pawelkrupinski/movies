@@ -18,6 +18,11 @@ object IdentityRulesSources {
     "scala/services/identity/IncrementalResolver.scala",
     "scala/services/identity/IdentityModelStore.scala")
 
+  /** The agreement stage (`AgreementStage.RulesVersion`): its rules and all they reach — the resolver its families run,
+   *  the agreement's guards — so a deploy that changes any of them decides every stored verdict again, and one that
+   *  changes none keeps them across the restart. */
+  val AgreementRoots: Set[String] = Set("scala/services/identity/agreement/AgreementStage.scala")
+
   /** What builds the identity projection's venue slots (`VenueSlotMemo.codeVersion`): `VenueSlots.scala`, which holds
    *  the slot memo, its key and the venue build, and what it calls to build a slot — the slot builder and the landing's
    *  same-title fold, with all they reach. Not the projection plan: it held them until 2026-10-04, and every change to

@@ -28,7 +28,7 @@ import scala.collection.mutable
 final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: IdentityLookups, normalizer: TitleNormalizer,
                            calibration: IdentityCalibration, tmdbOf: String => Answer[Option[Int]], stored: AgreementVerdicts,
                            ask: AgreementStage.Open => Unit = _ => (), metrics: AgreementStage.Metrics = AgreementStage.Metrics.Silent,
-                           clock: java.time.Clock) {
+                           clock: java.time.Clock, changes: AnswerChanges = AnswerChanges.Unknown) {
 
   @volatile private var gaps: Set[(VoterFamily, String)] = Set.empty
   @volatile private var finds: Set[String] = Set.empty
@@ -40,6 +40,10 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   /** Each family's calibration: TMDB's, its search priors' spread scaled by the family's [[VoterFamily.priorSpread]]. */
   private val calibrations: Map[VoterFamily, IdentityCalibration] = families.keys.map(family => family -> calibration.withPriorSpread(family.priorSpread)).toMap
   private lazy val held: TrieMap[String, StoredVerdict] = TrieMap.from(stored.all().map(v => v.id -> v))
+  /** The `version` the stored verdicts were loaded at: what this worker's families answered cannot have moved while it
+   *  was down — it alone files them — so a verdict kept under these rules, its listings as they were, stands then without
+   *  a single answer read again (prod PL 2026-10-05: re-reading every verdict's answers at boot was a 40 s, 514 MB pass). */
+  private var loadedAt: Option[Long] = None
   /** Each model decision the stage took, with what it took it as: handed back as that same object while neither moved,
    *  so the projection, which diffs decisions by identity, redrafts an agreed cluster only when its verdict moved. */
   private val takenAs = new java.util.IdentityHashMap[ResolverDecision, ResolverDecision]()
@@ -79,6 +83,10 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   }
 
   private def applied(resolution: Resolution, listingOf: ListingKey => Option[Listing], version: Long): Resolution = {
+    if (loadedAt.isEmpty) {   // first pass: every verdict kept under these rules stands at this version
+      loadedAt = Some(version)
+      held.valuesIterator.filter(_.rules == AgreementStage.RulesVersion).foreach(v => checked(v.id) = (v.listings, version))
+    }
     val started = tools.Stopwatch.start()
     resolves = 0
     val asked  = mutable.Set.empty[(VoterFamily, String)]
@@ -132,8 +140,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  over the families' answers now — `None` while one of them is a gap. */
   private def verdictOf(id: String, listings: Seq[Listing], digest: Long, lean: Option[SourceRecord], version: Long, asked: mutable.Set[(VoterFamily, String)],
                         moved: mutable.ArrayBuffer[StoredVerdict]): Option[StoredVerdict] = {
-    held.get(id).filter(_.listings == digest).filter { kept =>
-      checked.get(id).contains((digest, version)) || {
+    held.get(id).filter(v => v.listings == digest && v.rules == AgreementStage.RulesVersion).filter { kept =>
+      checked.get(id).contains((digest, version)) || untouched(id, kept, digest, version) || {
         val stands = kept.reads.forall { case (question, answered) => read(question).exists(answer => AgreementStage.digest(Seq(answer.toString)) == answered) }
         // read again because an answer was filed: a stale one among its reads is asked again too — a quiet tick reads none
         if (stands) { checked(id) = (digest, version); asked ++= kept.reads.keys.flatMap(staleOf) }
@@ -145,6 +153,14 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       case None               => resolved(id, digest, listings, lean, version, asked, moved)
     })
   }
+
+  /** Does a kept verdict still stand at `version` without reading its answers — checked at an earlier version, none of
+   *  the answers it read filed again since ([[AnswerChanges]])? A filing elsewhere re-reads no other verdict. */
+  private def untouched(id: String, kept: StoredVerdict, digest: Long, version: Long): Boolean =
+    checked.get(id).collect { case (listed, at) if listed == digest => at }
+      .flatMap(changes.changedSince).exists(refiled => !kept.reads.keysIterator.exists(refiled)) && {
+      checked(id) = (digest, version); true
+    }
 
   /** The cluster's verdict, the resolver asked again over every family's answers now — `None`, and the cluster kept
    *  waiting on its questions, while one is a gap. */
@@ -162,7 +178,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       waiting -= id
       Some {
         val verdict = StoredVerdict(id, digest, reads.toMap, Agreement.agreed(listings, verdicts.flatMap(_.toOption), lean,
-          Some(java.time.LocalDate.ofInstant(clock.instant(), java.time.ZoneOffset.UTC).getYear)))
+          Some(java.time.LocalDate.ofInstant(clock.instant(), java.time.ZoneOffset.UTC).getYear)), AgreementStage.RulesVersion)
         if (!held.get(id).contains(verdict)) moved += verdict
         checked(id) = (digest, version)
         verdict
@@ -271,4 +287,11 @@ object AgreementStage {
   private final case class Waiting(listings: Long, gaps: Set[(VoterFamily, String)], since: java.time.Instant)
   /** How long a cluster with some of its questions answered waits for the rest before it is resolved on what came. */
   val PartialAfter: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, java.util.concurrent.TimeUnit.MINUTES)
+
+  /** The rules the stage decides by: a digest of its code and all it reaches (`agreement-rules-version.txt`, generated by
+   *  `build.sbt` from `IdentityRulesSources.AgreementRoots`). A stored verdict decided under others is decided again. */
+  lazy val RulesVersion: String =
+    Option(getClass.getResourceAsStream("/agreement-rules-version.txt")).fold("unknown") { stream =>
+      try new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).trim finally stream.close()
+    }
 }

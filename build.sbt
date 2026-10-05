@@ -159,7 +159,8 @@ lazy val common = (project in file("common"))
       val main     = baseDirectory.value / "src" / "main"
       val analysis = (Compile / compile).value
       Seq(("identity-rules", IdentityRulesSources.Roots, Set.empty[String]),
-          ("venue-slot", IdentityRulesSources.VenueSlotRoots, IdentityRulesSources.VenueSlotLeaves)).flatMap { case (name, roots, leaves) =>
+          ("venue-slot", IdentityRulesSources.VenueSlotRoots, IdentityRulesSources.VenueSlotLeaves),
+          ("agreement-rules", IdentityRulesSources.AgreementRoots, Set.empty[String])).flatMap { case (name, roots, leaves) =>
         val sources  = IdentityRulesSources.of(analysis, roots, leaves)
         val resources = IdentityRulesSources.resources(main, sources.filterNot(leaves))
         val paths    = sources ++ resources
