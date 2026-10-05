@@ -14,7 +14,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.mongodb.scala.{Document, MongoClient, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
-import services.movies.{ChangeStreamMetrics, MongoMovieRepository, StoredMovieRecord, FilmId}
+import services.movies.{ChangeStreamLiveness, ChangeStreamMetrics, MongoMovieRepository, StoredMovieRecord, FilmId}
 import tools.Eventually
 import tools.Eventually.awaitStreamLive
 
@@ -47,6 +47,16 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
    *  that specific burst. */
   private def settleUntil(target: Int, budgetMs: Long = SpecTimeouts.Settle.toMillis)(accounted: => Int): Unit =
     Eventually.poll(budgetMs, pollMs = 50)(accounted >= target)
+
+  /** Keep making `change(pass)` writes until `repo`'s cursor on `collection` has DELIVERED
+   *  one. Each collection has its OWN cursor, opened asynchronously beside the others, so an
+   *  event arriving on the `movies` cursor proves nothing about the `movie_slots` or
+   *  `screenings` one: a side-collection write issued before ITS cursor reached the server is
+   *  never delivered, and the latch waiting on it can only time out. `change` must write to
+   *  `collection` (and differently each pass). */
+  private def awaitCursorLive(repo: MongoMovieRepository, collection: String)(change: Int => Unit): org.scalatest.Assertion =
+    awaitStreamLive(s"a warm-up write on the $collection cursor",
+      Eventually.poll(SpecTimeouts.Pace.toMillis)(repo.changeStreamLiveness.lastDelivered(collection).isDefined))(change)
 
   override protected def afterAll(): Unit = try repository.close() finally try isolatedSpecDb.drop() finally super.afterAll()
 
@@ -1549,17 +1559,15 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
       val fanouts = new java.util.concurrent.atomic.AtomicInteger(0)
       val got     = new CountDownLatch(1)
-      val gotWarm = new CountDownLatch(1)
-      val handle  = split.watchChanges(r => r.id.value match {
-        case `id`     => { fanouts.incrementAndGet(); got.countDown() }
-        case `warmId` => gotWarm.countDown()
-        case _        => ()
-      }, _ => ())
+      val handle  = split.watchChanges(r => if (r.id.value == id) { fanouts.incrementAndGet(); got.countDown() }, _ => ())
       try {
         // Warm on a SEPARATE film, because `fanouts` must count only this film's own
-        // change -- counting exactly one is the whole assertion below.
-        awaitStreamLive("a warm-up upsert", gotWarm.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { pass =>
-          split.upsert(warmTitle, year, MovieRecord(imdbId = Some(f"tt904$pass%05d")))
+        // change -- counting exactly one is the whole assertion below. And warm the
+        // `movie_slots` cursor, the one the change below rides: a warm-up that only
+        // reached `movies` left this write racing its cursor's open (a Main CI flake).
+        awaitCursorLive(split, ChangeStreamLiveness.Slots) { pass =>
+          split.upsert(warmTitle, year, MovieRecord(imdbId = Some(f"tt904$pass%05d"),
+            data = Map[Source, SourceData](Multikino -> SourceData(title = Some(s"Warm $pass")))))
         }
         // metadata only: no showtime change, and `movies` no longer stores the slot
         val after = base.copy(data = Map[Source, SourceData](Multikino -> slot.copy(posterUrl = Some("https://poster/f2.png"))))
@@ -1638,16 +1646,14 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
       val fanouts = new AtomicInteger(0)
       val got     = new CountDownLatch(1)
-      val gotWarm = new CountDownLatch(1)
-      val handle  = split.watchChanges(r => r.id.value match {
-        case `id`     => { fanouts.incrementAndGet(); got.countDown() }
-        case `warmId` => gotWarm.countDown()
-        case _        => ()
-      }, _ => ())
+      val handle  = split.watchChanges(r => if (r.id.value == id) { fanouts.incrementAndGet(); got.countDown() }, _ => ())
       try {
-        // Warm on a SEPARATE film: `fanouts` counting exactly one is the assertion.
-        awaitStreamLive("a warm-up upsert", gotWarm.await(SpecTimeouts.Pace.toMillis, TimeUnit.MILLISECONDS)) { pass =>
-          split.upsert(warmTitle, year, MovieRecord(imdbId = Some(f"tt905$pass%05d")))
+        // Warm on a SEPARATE film: `fanouts` counting exactly one is the assertion. Warm the
+        // `screenings` cursor, the one the change below rides, not just `movies`.
+        awaitCursorLive(split, ChangeStreamLiveness.Screenings) { pass =>
+          split.upsert(warmTitle, year, MovieRecord(imdbId = Some(f"tt905$pass%05d"),
+            data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Warm"),
+              showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 9, 0, 0).plusMinutes(pass.toLong), None))))))
         }
         // the 14:00 screening has passed — the scrape returns only the 20:00 one
         val after = base.copy(data = Map[Source, SourceData](Multikino -> slot.copy(showtimes = Seq(late))))
