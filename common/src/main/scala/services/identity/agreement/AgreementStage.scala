@@ -20,10 +20,10 @@ import scala.collection.mutable
  * them, with every stale answer it read — so a question is asked whenever an answer could be used: the projection runs
  * whenever the listings' facts move, and again once an answer it asked for is filed.
  *
- * Each cluster's verdict is kept in `stored` ([[AgreementVerdicts]]) with the digest of its listings and the film the model
- * leans to (which may complete an agreement), and of every answer it read, as the model keeps its families: it stands,
+ * Each cluster's verdict is kept in `stored` ([[AgreementVerdicts]]) with the digest of its listings and TMDB's own vote (the film the model
+ * leans to, else the best candidate it weighed — which may complete an agreement), and of every answer it read, as the model keeps its families: it stands,
  * across restarts too, while none of those moved, and the resolver is asked again only for a cluster whose own listings,
- * lean or answers did. `version` (how many answers the
+ * vote or answers did. `version` (how many answers the
  * families filed) spares re-reading a standing verdict's answers while nothing was filed at all.
  *
  * The cluster's venue POSTERS ([[PosterEvidence]]) are read last, against the TMDB films the cluster's own evidence
@@ -114,8 +114,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         val AgreementStage.Digested(id, listings, digest, lean) = Option(digested.get(decision)).getOrElse {
           val listings = decision.members.flatMap(listingOf).sortBy(_.key)(using ListingKey.ordering)
           val fresh    = AgreementStage.Digested(StoredFamily.idOf(decision.members), listings,
-            AgreementStage.digest(Seq(digestOf(listings).toString, decision.leaning.toString, PosterEvidence.urls(listings).mkString("\u0001"))),
-            decision.leaning.map(AgreementStage.leanRecord))
+            AgreementStage.digest(Seq(digestOf(listings).toString, decision.leaning.toString, decision.candidate.toString,
+              PosterEvidence.urls(listings).mkString("\u0001"))), voteOf(decision))
           digested.put(decision, fresh); fresh
         }
         seen += id
@@ -159,6 +159,15 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       open = gaps.groupMapReduce(_._1)(_ => 1)(_ + _), finds = finds.size, resolves = resolves, seconds = started.seconds))
     resolution.copy(decisions = decisions)
   }
+
+  /** TMDB's own vote on a no-match: the film it leans to, else the best-ranked candidate it weighed — its record as the
+   *  model read it, so it links to a family's pick by facts as well as by ids. */
+  private def voteOf(decision: ResolverDecision): Option[SourceRecord] =
+    decision.leaning.orElse(decision.candidate).map { vote =>
+      val ids = AgreementStage.leanRecord(vote)
+      venues.film(vote.film).toOption.flatten.fold(ids)(film => SourceRecord(film,
+        ids.crossIds ++ Option.when(film.imdbNumber > 0)("imdb" -> f"tt${film.imdbNumber}%07d")))
+    }
 
   /** The listings as published, and the venue detail page the picks read of each. */
   private def digestOf(listings: Seq[Listing]): Long =
@@ -380,12 +389,13 @@ object AgreementStage {
     def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = noted(inner.film(tmdbId))
   }
 
-  /** A model decision's cluster id, its listings sorted, their digest with the film it leans to, and that film. */
+  /** A model decision's cluster id, its listings sorted, their digest with TMDB's vote on it, and that vote's record. */
   private final case class Digested(id: String, listings: Seq[Listing], digest: Long, lean: Option[SourceRecord])
 
   /** The TMDB film a no-match leans to, as the agreement links it: by its TMDB and IMDb ids alone. */
   def leanRecord(lean: ResolverDecision.Leaning): SourceRecord =
-    SourceRecord(services.identity.IdentityMeasures.Film(""), Map("tmdb" -> lean.film.toString, "imdb" -> f"tt${lean.imdbNumber}%07d"))
+    SourceRecord(services.identity.IdentityMeasures.Film(""), Map("tmdb" -> lean.film.toString) ++
+      Option.when(lean.imdbNumber > 0)("imdb" -> f"tt${lean.imdbNumber}%07d"))
 
   /** What one [[AgreementStage.apply]] that read anything came to: the clusters waiting on a family's answer, the verdicts
    *  kept and how many agreed, the decisions taken as a TMDB film or an IMDb fallback, the questions still open per family

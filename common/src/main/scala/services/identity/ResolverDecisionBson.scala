@@ -19,6 +19,8 @@ object ResolverDecisionBson {
       new BsonDocument("source", BsonString(taken.source)).append("id", BsonString(taken.id)).append("probability", BsonDouble(taken.probability))))
     .append("leaning", decision.leaning.fold[BsonValue](BsonNull())(lean =>
       new BsonDocument("film", BsonInt32(lean.film)).append("imdbNumber", BsonInt32(lean.imdbNumber))))
+    .append("candidate", decision.candidate.fold[BsonValue](BsonNull())(best =>
+      new BsonDocument("film", BsonInt32(best.film)).append("imdbNumber", BsonInt32(best.imdbNumber))))
     .append("unanswered", BsonInt32(decision.unanswered))
     .append("agreed", new BsonDocument(decision.agreed.toSeq.sorted.map { case (family, id) => new org.bson.BsonElement(family, BsonString(id)) }.asJava))
 
@@ -28,9 +30,13 @@ object ResolverDecisionBson {
       d.getDouble("confidence").getValue, ResolverDecision.Basis.valueOf(d.getString("basis").getValue), strings("explanation"), strings("contradictions"),
       Option(d.get("fallback")).filter(_.isDocument).map(_.asDocument).map(taken =>
         ResolverDecision.Fallback(taken.getString("source").getValue, taken.getString("id").getValue, taken.getDouble("probability").getValue)),
-      Option(d.get("leaning")).filter(_.isDocument).map(_.asDocument).map(lean =>
-        ResolverDecision.Leaning(lean.getInt32("film").getValue, lean.getInt32("imdbNumber").getValue)),
+      leaningOf(d, "leaning"),
       Option(d.get("unanswered")).filter(_.isInt32).fold(0)(_.asInt32.getValue),
-      Option(d.get("agreed")).filter(_.isDocument).fold(Map.empty[String, String])(_.asDocument.asScala.map { case (family, id) => family -> id.asString.getValue }.toMap))()
+      Option(d.get("agreed")).filter(_.isDocument).fold(Map.empty[String, String])(_.asDocument.asScala.map { case (family, id) => family -> id.asString.getValue }.toMap),
+      leaningOf(d, "candidate"))()
   }
+
+  private def leaningOf(d: BsonDocument, name: String): Option[ResolverDecision.Leaning] =
+    Option(d.get(name)).filter(_.isDocument).map(_.asDocument).map(lean =>
+      ResolverDecision.Leaning(lean.getInt32("film").getValue, lean.getInt32("imdbNumber").getValue))
 }

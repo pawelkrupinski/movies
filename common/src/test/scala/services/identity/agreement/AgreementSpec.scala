@@ -167,9 +167,9 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
       .map(_.corroborated) shouldBe Some(Set(Agreement.ListingFacts))
     Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna", year = Some(1975), director = Some("Jess Franco"))), two) shouldBe None
     val lean = SourceRecord(IdentityMeasures.Film("", None, Nil, None, None, None, None, None), Map("tmdb" -> "40023", "imdb" -> "tt0073750"))
-    Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna")), two, modelLean = Some(lean)).map(_.corroborated) shouldBe
-      Some(Set(Agreement.ModelLean))
-    Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna")), two, modelLean = Some(lean.copy(crossIds = Map("imdb" -> "tt0000001")))) shouldBe None
+    Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna")), two, modelVote = Some(lean)).map(_.corroborated) shouldBe
+      Some(Set(Agreement.ModelVote))
+    Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna")), two, modelVote = Some(lean.copy(crossIds = Map("imdb" -> "tt0000001")))) shouldBe None
   }
 
   "The listing's own year, director and running time" should "complete one taker's agreement, as two votes of the venue's own" in {

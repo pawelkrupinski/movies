@@ -37,6 +37,28 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     decided.decisions(1) shouldBe resolution.decisions(1)
   }
 
+  it should "count the model's own best TMDB candidate as a voter beside two families, by its record's facts" in {
+    // IMDb and Wikidata take "Klondike"; the model weighed TMDB's 913760 best, below every rule's cut (no lean, no IMDb id)
+    val two = agreeing().view.filterKeys(Set(VoterFamily.Imdb, VoterFamily.Wiki)).toMap ++ Map(
+      VoterFamily.Filmweb -> new HeldFamilyAnswers(VoterFamily.Filmweb, Map.empty), VoterFamily.RottenTomatoes -> new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map.empty))
+    val tmdb = new services.identity.IdentityLookups {
+      def hasDetail(listing: services.identity.Listing): Boolean = false
+      def detail(listing: services.identity.Listing) = Answer.Known(None)
+      def candidates(query: services.identity.CandidateQuery) = Answer.Known(Nil)
+      def film(tmdbId: Int) = Answer.Known(Option.when(tmdbId == 913760)(klondike))
+    }
+    def decided(candidate: Option[ResolverDecision.Leaning]) = {
+      val model = resolution.copy(decisions = resolution.decisions.updated(0,
+        ResolverDecision(Seq(bare.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil, candidate = candidate)()))
+      new AgreementStage(two, tmdb, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), new InMemoryAgreementVerdicts,
+        clock = _root_.tools.SpecClock.Pinned).apply(model, listingOf, version = 1).decisions.head
+    }
+    decided(None).film shouldBe None
+    val taken = decided(Some(ResolverDecision.Leaning(913760, 0)))
+    (taken.film, taken.basis) shouldBe ((Some(913760), ResolverDecision.Basis.Agreed))
+    taken.explanation.last should include ("corroborated by tmdb")
+  }
+
   it should "hand back the same decision object while its verdict stands, so the projection redrafts it only when it moves" in {
     val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
       new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)

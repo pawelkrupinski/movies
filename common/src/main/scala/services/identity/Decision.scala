@@ -21,6 +21,9 @@ import services.movies.ListingKey
  *    ([[Acceptance.leaning]]) — never a match, only what a no-match's card may keep an earlier answer's IMDb id of.
  *  - `unanswered`, how many of the cluster's candidate queries had no answer yet: a no-match with one is a gap, not a
  *    verdict on the film a card holds.
+ *  - `candidate`, for no match, the best-ranked TMDB film its pooled evidence weighed and no member denies, with IMDb's
+ *    number for it (0 when TMDB links none) — the film TMDB would have said, below every rule's cut: one more voter the
+ *    agreement stage (`agreement.AgreementStage`) counts beside the other families, never a match on its own.
  *  - `agreed`, for a [[ResolverDecision.Basis.Agreed]] film, each agreeing family's own id of it (`"rt" -> "dune_2021"`):
  *    the signals the agreement rests on, kept with the decision as every other measure's evidence is.
  */
@@ -28,7 +31,8 @@ final case class ResolverDecision(members: Seq[ListingKey], film: Option[Int], c
                                   basis: ResolverDecision.Basis, explanation: Seq[String],
                                   contradictions: Seq[String] = Nil, fallback: Option[ResolverDecision.Fallback] = None,
                                   leaning: Option[ResolverDecision.Leaning] = None,
-                                  unanswered: Int = 0, agreed: Map[String, String] = Map.empty)(
+                                  unanswered: Int = 0, agreed: Map[String, String] = Map.empty,
+                                  candidate: Option[ResolverDecision.Leaning] = None)(
                                   val trace: DecisionTrace = DecisionTrace.Empty) {
   lazy val listings: Set[ListingKey] = members.toSet
   def tmdbId: Option[Int]            = film
