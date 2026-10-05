@@ -11,14 +11,15 @@ import java.time.Clock
 
 /**
  * The agreement's questions as QUEUE TASKS: what the other film database families have not answered yet for the
- * clusters the model left unmatched (`agreement.AgreementStage.wanted`), and TMDB's `find` of an agreed IMDb id
- * (`wantedFinds`) — enqueued by the stage the moment it meets them ([[AgreementQuestions.enqueueOpen]]), each asked on
+ * clusters the model left unmatched (`agreement.AgreementStage.wanted`), TMDB's `find` of an agreed IMDb id
+ * (`wantedFinds`), and a TMDB record to read again for its release day (`wantedRecords`) — enqueued by the stage the moment it meets them ([[AgreementQuestions.enqueueOpen]]), each asked on
  * the task pool with every other lookup's retries, backoff, breaker and metrics.
  */
 object AgreementQuestions {
   private val Family   = "family"
   private val Question = "question"
   private val ImdbId   = "imdbId"
+  private val TmdbRecord = "tmdbRecord"
   private val VenuePoster = "venuePoster"
   private val FilmPoster  = "filmPoster"
 
@@ -27,11 +28,11 @@ object AgreementQuestions {
    *  at boot ahead of 36 scrape chunks, an hour's drain at the pool's pace). */
   val Behind: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(7, java.util.concurrent.TimeUnit.DAYS)
 
-  /** Every open question, find, poster and catalogue question, one task each (catalogue ids a batch each) — one already queued is not queued again — claimed after every
-   *  other task ([[Behind]]). */
+  /** Every open question, find, poster, catalogue question and record, one task each (catalogue ids a batch each) — one
+   *  already queued is not queued again — claimed after every other task ([[Behind]]). */
   def enqueueOpen(queue: TaskQueue, wanted: Set[(VoterFamily, String)], finds: Set[String], clock: Clock,
                   metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent, posters: Set[PosterQuestion] = Set.empty,
-                  catalogue: Set[CatalogueQuestion] = Set.empty): Unit = {
+                  catalogue: Set[CatalogueQuestion] = Set.empty, records: Set[Int] = Set.empty): Unit = {
     wanted.toSeq.sortBy { case (family, question) => (family.ordinal, question) }.foreach { case (family, question) =>
       metrics.enqueued(family.label, queue.enqueue(TaskType.AgreementQuestion, s"agreement|${family.label}|$question",
         Map(Family -> family.label, Question -> question), submittedAt = clock.instant(), claimAhead = -Behind) == EnqueueResult.Added)
@@ -39,6 +40,10 @@ object AgreementQuestions {
     finds.toSeq.sorted.foreach(imdbId =>
       metrics.enqueued(AgreementQuestionMetrics.TmdbFind, queue.enqueue(TaskType.AgreementFind, s"agreement-find|$imdbId",
         Map(ImdbId -> imdbId), submittedAt = clock.instant(), claimAhead = -Behind) == EnqueueResult.Added))
+    // a TMDB question as a find is: one task type, so a worker that predates records skips the task rather than failing it
+    records.toSeq.sorted.foreach(tmdbId =>
+      metrics.enqueued(AgreementQuestionMetrics.TmdbRecord, queue.enqueue(TaskType.AgreementFind, s"agreement-record|$tmdbId",
+        Map(TmdbRecord -> tmdbId.toString), submittedAt = clock.instant(), claimAhead = -Behind) == EnqueueResult.Added))
     posters.toSeq.map(question => question -> PosterAnswerStore.idOf(question)).sortBy(_._2).foreach { case (question, id) =>
       val payload = question match {
         case PosterQuestion.Venue(url)   => Map(VenuePoster -> url)
@@ -81,6 +86,7 @@ object AgreementQuestions {
   def familyOf(task: Task): Option[VoterFamily] = task.payload.get(Family).flatMap(label => VoterFamily.values.find(_.label == label))
   def questionOf(task: Task): Option[String]    = task.payload.get(Question)
   def imdbIdOf(task: Task): Option[String]      = task.payload.get(ImdbId)
+  def tmdbRecordOf(task: Task): Option[Int]     = task.payload.get(TmdbRecord).flatMap(_.toIntOption)
   def posterOf(task: Task): Option[PosterQuestion] =
     task.payload.get(VenuePoster).map(PosterQuestion.Venue(_)).orElse(task.payload.get(FilmPoster).flatMap(_.toIntOption).map(PosterQuestion.Film(_)))
 }
@@ -109,16 +115,21 @@ final class AgreementQuestionHandler(store: FamilyAnswerStore, sources: Map[Vote
   }
 }
 
-/** TMDB's `find` of an agreed IMDb id: asked through the TMDB client, whose answer the TMDB store files as it files
- *  every TMDB answer — and, once asked, a projection asked for. */
-final class AgreementFindHandler(find: String => Unit, filed: () => Unit, clock: Clock,
+/** TMDB's `find` of an agreed IMDb id, or its record of a film read again (`reread`): asked through the TMDB client,
+ *  whose answer the TMDB store files as it files every TMDB answer — and, once asked, a projection asked for. */
+final class AgreementFindHandler(find: String => Unit, reread: Int => Unit, filed: () => Unit, clock: Clock,
                                  metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent) extends TaskHandler {
   val taskType: TaskType = TaskType.AgreementFind
 
-  def handle(task: Task): HandlerOutcome = AgreementQuestions.imdbIdOf(task).fold[HandlerOutcome](Skipped) { imdbId =>
-    val outcome = try { find(imdbId); filed(); Done }
-    catch { case scala.util.control.NonFatal(e) => AgreementQuestions.failed(e, s"TMDB find '$imdbId'", clock) }
-    metrics.asked(AgreementQuestionMetrics.TmdbFind, outcome match {
+  def handle(task: Task): HandlerOutcome =
+    AgreementQuestions.imdbIdOf(task).map(imdbId => asked(AgreementQuestionMetrics.TmdbFind, s"TMDB find '$imdbId'")(find(imdbId)))
+      .orElse(AgreementQuestions.tmdbRecordOf(task).map(film => asked(AgreementQuestionMetrics.TmdbRecord, s"TMDB record $film")(reread(film))))
+      .getOrElse(Skipped)
+
+  private def asked(label: String, what: String)(ask: => Unit): HandlerOutcome = {
+    val outcome = try { ask; filed(); Done }
+    catch { case scala.util.control.NonFatal(e) => AgreementQuestions.failed(e, what, clock) }
+    metrics.asked(label, outcome match {
       case Done          => AgreementQuestionMetrics.Answered
       case _: Deferred   => AgreementQuestionMetrics.Deferred
       case _             => AgreementQuestionMetrics.Failed
@@ -130,7 +141,8 @@ final class AgreementFindHandler(find: String => Unit, filed: () => Unit, clock:
 /** Where the agreement's questions report: each one enqueued (`added`, or already queued), and each one asked, by how it
  *  came out — [[Answered]], [[Nothing]] there (a refused query, a missing page: filed as no film), [[Fresh]] (an answer
  *  already filed: skipped), [[Deferred]] (the host's breaker open) or [[Failed]] (asked again on the queue's backoff). A
- *  family is its label (`imdb`, `rt` …), TMDB's find of an agreed IMDb id [[TmdbFind]]. */
+ *  family is its label (`imdb`, `rt` …), TMDB's find of an agreed IMDb id [[TmdbFind]], a TMDB record read again for its
+ *  release day [[TmdbRecord]]. */
 trait AgreementQuestionMetrics {
   def enqueued(family: String, added: Boolean): Unit
   def asked(family: String, outcome: String): Unit
@@ -140,6 +152,7 @@ object AgreementQuestionMetrics {
   val Answered = "answered"; val Nothing = "nothing"; val Fresh = "fresh"; val Deferred = "deferred"; val Failed = "failed"
   val Outcomes: Seq[String] = Seq(Answered, Nothing, Fresh, Deferred, Failed)
   val TmdbFind = "tmdb-find"
+  val TmdbRecord = "tmdb-record"
   /** A poster hashed for the agreement's poster evidence. */
   val Poster = "poster"
   /** A catalogue id batch mapped, or a venue page's catalogue links read, for the agreement's catalogue take. */

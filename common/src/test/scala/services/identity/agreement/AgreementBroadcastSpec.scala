@@ -3,7 +3,8 @@ package services.identity.agreement
 import models.{KinoMuza, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, FilmTable, IdentityCalibration, Listing, Resolution, ResolverDecision, ScreeningDays}
+import services.identity.{Answer, CandidateQuery, DetailFacts, FilmTable, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, Listing, Resolution,
+  ResolverDecision, ScreeningDays}
 import services.movies.SingleCountryNormalizer
 
 import java.time.LocalDate
@@ -65,5 +66,38 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     val dated = FilmTable.listing(KinoMuza, "Samson i Dalila", year = Some(1949)).copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 12, 5))))
     decided(dated).basis should not be ResolverDecision.Basis.Broadcast
     decided(screening("Lalka", "2026-12-05")).film shouldBe None
+  }
+
+  /** `table` as a store holding `undated`'s records as they were filed before records kept the whole day: their year
+   *  alone, their day `Unknown` until [[reread]]. */
+  private final class YearOnlyRecords(table: FilmTable, undated: Set[Int]) extends IdentityLookups {
+    private val stale = scala.collection.mutable.Set.from(undated)
+    def reread(id: Int): Unit = { stale -= id; () }
+    def hasDetail(listing: Listing): Boolean                  = table.hasDetail(listing)
+    def detail(listing: Listing): Answer[Option[DetailFacts]] = table.detail(listing)
+    def candidates(query: CandidateQuery): Answer[Seq[Hit]]   = table.candidates(query)
+    def film(id: Int): Answer[Option[IdentityMeasures.Film]]  =
+      if (stale(id)) table.film(id) match { case Answer.Known(f) => Answer.Known(f.map(_.copy(released = None))); case other => other } else table.film(id)
+    override def releaseDay(id: Int): Answer[Option[LocalDate]] = if (stale(id)) Answer.Unknown else super.releaseDay(id)
+  }
+
+  "a stored record of the billed work holding only its year" should "be read again before the day decides, and then taken" in {
+    // prod 2026-10-05: 88% of the season relays' stored records predate the whole day (PL "Samson i Dalila" never fired)
+    val listing = screening("Samson i Dalila", "2026-12-05")
+    val stored  = new YearOnlyRecords(table, Set(metSamson.id, metMacbeth.id))
+    val asked   = scala.collection.mutable.Buffer.empty[AgreementStage.Open]
+    val stage   = new AgreementStage(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      new InMemoryAgreementVerdicts, ask = asked += _, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(stored))
+    val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
+      1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    // the Met's record states no day: no take yet — it is asked again, and only it (Macbeth bills another work)
+    stage.apply(resolution, Map(listing.key -> listing).get, version = 1).decisions.head.film shouldBe None
+    stage.wantedRecords shouldBe Set(metSamson.id)
+    asked.flatMap(_.records) shouldBe Seq(metSamson.id)
+    // read again, it states its day, and the screening day takes it
+    stored.reread(metSamson.id)
+    val taken = stage.apply(resolution, Map(listing.key -> listing).get, version = 2).decisions.head
+    (taken.film, taken.basis) shouldBe ((Some(metSamson.id), ResolverDecision.Basis.Broadcast))
+    stage.wantedRecords shouldBe empty
   }
 }

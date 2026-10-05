@@ -64,8 +64,8 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
     .help("Agreement questions asked, by family and outcome: answered, nothing, fresh, deferred, failed.")
     .labelNames("country", "family", "outcome").register(registry)
 
-  private val families: Seq[String] = VoterFamily.values.toSeq.map(_.label) :+ AgreementQuestionMetrics.TmdbFind :+ AgreementQuestionMetrics.Poster :+
-    AgreementQuestionMetrics.Catalogue
+  private val families: Seq[String] = VoterFamily.values.toSeq.map(_.label) :+ AgreementQuestionMetrics.TmdbFind :+ AgreementQuestionMetrics.TmdbRecord :+
+    AgreementQuestionMetrics.Poster :+ AgreementQuestionMetrics.Catalogue
 
   /** The stage's series for `country`, every label touched at 0. */
   def stage(country: String): AgreementStage.Metrics = {
@@ -88,6 +88,7 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
       taken.labelValues(country, "fallback").set(applied.takenFallback.toDouble)
       VoterFamily.values.foreach(f => open.labelValues(country, f.label).set(applied.open.getOrElse(f, 0).toDouble))
       open.labelValues(country, AgreementQuestionMetrics.TmdbFind).set(applied.finds.toDouble)
+      open.labelValues(country, AgreementQuestionMetrics.TmdbRecord).set(applied.undated.toDouble)
       resolves.labelValues(country).inc(applied.resolves.toDouble)
       seconds.labelValues(country).set(applied.seconds)
     }

@@ -69,7 +69,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
           services.identity.Answer.Known(services.identity.TmdbStore.intsOf(d.get("ids")).headOption)),
       stored = agreementVerdicts,
       ask = open => services.identity.AgreementQuestions.enqueueOpen(taskQueue, open.questions, open.finds, clock, agreementQuestionMetrics, open.posters,
-        open.catalogue),
+        open.catalogue, open.records),
       metrics = workerMetrics.identityAgreement.stage(country.code), clock = clock, changes = familyAnswerStore,
       posters = posterAnswerStore, tmdb = Some(storedLookups()), identities = IdentityCutoverWiring.identities(country.code),
       catalogue = catalogueAnswerStore)
@@ -108,6 +108,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
     new services.identity.AgreementQuestionHandler(familyAnswerStore, familySources,
       () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics),
     new services.identity.AgreementFindHandler(imdbId => { tmdbClient.findByImdbId(imdbId); () },
+      film => { tmdbClient.readRecordAgain(film); familyAnswerStore.noteFiled(s"tmdb|record|$film") },
       () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics),
     new services.identity.AgreementPosterHandler(posterAnswerStore, posterHashing,
       () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics),

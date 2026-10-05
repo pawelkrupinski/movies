@@ -94,8 +94,26 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
 
   "a find's handler" should "ask TMDB about the agreed IMDb id and ask for a projection" in {
     val found = new java.util.concurrent.ConcurrentLinkedQueue[String]; val projections = new AtomicInteger
-    new AgreementFindHandler(id => { found.add(id); () }, () => { projections.incrementAndGet(); () }, clock)
+    new AgreementFindHandler(id => { found.add(id); () }, _ => fail("no record asked"), () => { projections.incrementAndGet(); () }, clock)
       .handle(Task("t2", TaskType.AgreementFind, "agreement-find|tt16315948", Map("imdbId" -> "tt16315948"), 1)) shouldBe HandlerOutcome.Done
     (found.toArray.toSeq, projections.get) shouldBe ((Seq("tt16315948"), 1))
+  }
+
+  "a record the broadcast take waits on" should "be queued once, read again through TMDB, and ask for a projection" in {
+    val queue = new InMemoryTaskQueue
+    val enqueues = scala.collection.mutable.Buffer.empty[(String, Boolean)]
+    val metrics = new AgreementQuestionMetrics {
+      def enqueued(family: String, added: Boolean): Unit = { enqueues += family -> added; () }
+      def asked(family: String, outcome: String): Unit   = { enqueues += family -> (outcome == AgreementQuestionMetrics.Answered); () }
+    }
+    AgreementQuestions.enqueueOpen(queue, Set.empty, Set.empty, clock, metrics, records = Set(1703624))
+    AgreementQuestions.enqueueOpen(queue, Set.empty, Set.empty, clock, metrics, records = Set(1703624))
+    queue.monitor().counts.values.sum shouldBe 1
+    val task = Task("t3", TaskType.AgreementFind, "agreement-record|1703624", Map("tmdbRecord" -> "1703624"), 1)
+    val reread = scala.collection.mutable.Buffer.empty[Int]; val projections = new AtomicInteger
+    new AgreementFindHandler(_ => fail("no find asked"), film => { reread += film; () }, () => { projections.incrementAndGet(); () }, clock, metrics)
+      .handle(task) shouldBe HandlerOutcome.Done
+    (reread.toSeq, projections.get) shouldBe ((Seq(1703624), 1))
+    enqueues.toSeq shouldBe Seq("tmdb-record" -> true, "tmdb-record" -> false, "tmdb-record" -> true)
   }
 }

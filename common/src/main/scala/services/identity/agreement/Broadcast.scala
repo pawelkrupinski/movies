@@ -27,22 +27,41 @@ object Broadcast {
    *  listing billing the record's house or its season — the one broadcast within [[EncoreDays]] before one. Every record
    *  must bill a stage work each listing bills, and no fact a listing states may stand against it: its year, its
    *  director, its season, or a banner spelling another house. `None`: no such record, or two. */
-  def take(listings: Seq[Listing], measured: Listing => IdentityMeasures.Listing, records: Seq[(Int, Film)]): Option[Taken] = {
-    val days    = listings.map(_.screenings).foldLeft(ScreeningDays.None)(_ ++ _)
-    val billing = listings.map(listing => Billing.of(listing, measured(listing)))
-    if (days.isEmpty || billing.isEmpty || billing.exists(_.works.isEmpty)) None
+  def take(listings: Seq[Listing], measured: Listing => IdentityMeasures.Listing, records: Seq[(Int, Film)]): Option[Taken] =
+    billed(listings, measured).flatMap(chosen(_, _, records))
+
+  /** [[take]], unless a record it would weigh but for its day — every listing's billing fits it, and it states no release
+   *  day — has a day not known yet (`undated`: a stored record filed when records kept only TMDB's year): `Left` those
+   *  records, which the take waits for, since any one might be the production broadcast on the cluster's day. */
+  def takeOrWait(listings: Seq[Listing], measured: Listing => IdentityMeasures.Listing, records: Seq[(Int, Film)])(
+      undated: Int => Boolean): Either[Seq[Int], Option[Taken]] =
+    billed(listings, measured).fold[Either[Seq[Int], Option[Taken]]](Right(None)) { (days, billing) =>
+      val waits = records.collect { case (id, film) if film.released.isEmpty && billing.forall(_.fits(film)) && undated(id) => id }.distinct
+      if (waits.nonEmpty) Left(waits) else Right(chosen(days, billing, records))
+    }
+
+  private def chosen(days: ScreeningDays, billing: Seq[Billing], records: Seq[(Int, Film)]): Option[Taken] = {
+    val fitting = records.filter { case (_, film) => film.released.isDefined && billing.forall(_.fits(film)) }.distinctBy(_._1)
+    val onDay   = fitting.filter { case (_, film) => film.released.exists(days.contains) }
+    def encore(film: Film) = film.released.exists(aired => days.days.exists(day => !day.isBefore(aired) && !day.isAfter(aired.plusDays(EncoreDays))))
+    val chosen = onDay match {
+      case Seq(one) => Some(one -> "on the day")
+      case Seq()    => Option.when(billing.forall(_.marked))(fitting.filter { case (_, film) => encore(film) }).collect { case Seq(one) => one -> "after the day" }
+      case _        => None
+    }
+    chosen.map { case ((id, film), when) =>
+      Taken(id, s"screens $when '${film.title}'${film.year.fold("")(year => s" ($year)")} was broadcast, ${film.released.get}")
+    }
+  }
+
+  /** The days the cluster screens on and what each of its listings bills — `None` when it screens on none, or a listing
+   *  bills no stage work. */
+  private def billed(listings: Seq[Listing], measured: Listing => IdentityMeasures.Listing): Option[(ScreeningDays, Seq[Billing])] = {
+    val days = listings.map(_.screenings).foldLeft(ScreeningDays.None)(_ ++ _)
+    if (days.isEmpty || listings.isEmpty) None
     else {
-      val fitting = records.filter { case (_, film) => film.released.isDefined && billing.forall(_.fits(film)) }.distinctBy(_._1)
-      val onDay   = fitting.filter { case (_, film) => film.released.exists(days.contains) }
-      def encore(film: Film) = film.released.exists(aired => days.days.exists(day => !day.isBefore(aired) && !day.isAfter(aired.plusDays(EncoreDays))))
-      val chosen = onDay match {
-        case Seq(one) => Some(one -> "on the day")
-        case Seq()    => Option.when(billing.forall(_.marked))(fitting.filter { case (_, film) => encore(film) }).collect { case Seq(one) => one -> "after the day" }
-        case _        => None
-      }
-      chosen.map { case ((id, film), when) =>
-        Taken(id, s"screens $when '${film.title}'${film.year.fold("")(year => s" ($year)")} was broadcast, ${film.released.get}")
-      }
+      val billing = listings.map(listing => Billing.of(listing, measured(listing)))
+      Option.when(!billing.exists(_.works.isEmpty))(days -> billing)
     }
   }
 

@@ -251,6 +251,42 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     Seq("local", "english").flatMap(partial => Option(answer.get(partial))).flatMap(_.asDocument.keySet.asScala).toSet shouldBe Set("imdb_id")
   }
 
+  /** The Met's "Samson et Dalila" relay as TMDB's localized record states it (recorded 2026-10-05:
+   *  `/3/movie/1703624?language=pl-PL&append_to_response=credits,release_dates`), broadcast 5 December 2026. */
+  private final class MetSamsonFetch extends tools.HttpFetch {
+    val asked = mutable.ArrayBuffer.empty[String]
+    override def get(url: String): String = {
+      asked += url
+      if (url.contains("/movie/1703624?language=pl-PL&append_to_response=credits,release_dates"))
+        scala.io.Source.fromResource("fixtures/tmdb/movie_1703624_met_samson_pl.json")(using scala.io.Codec.UTF8).mkString
+      else throw new HttpStatusException(404, "GET", url, None)
+    }
+    override def post(url: String, body: String, contentType: String): String = throw new HttpStatusException(404, "POST", url, None)
+  }
+
+  // prod 2026-10-05: 17,431 of PL's 18,562 film records were filed when the store cut a release date to its year, so the
+  // broadcast take never read a stage relay's day. TMDB never dates a record by its year alone: such a record's day is
+  // unknown — a gap the agreement asks TMDB again for — not "no day".
+  "a film's record filed with its release year alone" should "have no day known, until TMDB's record read again files the day" in {
+    val w   = new World
+    val met = 1703624
+    val recorded = scala.io.Source.fromResource("fixtures/tmdb/movie_1703624_met_samson_pl.json")(using scala.io.Codec.UTF8).mkString
+    val yearOnly = minimalOf(recorded).as[play.api.libs.json.JsObject] + ("release_date" -> play.api.libs.json.JsString("2026"))
+    w.store.filmPartial(met, TmdbStore.Partial.Local, yearOnly)
+    w.store.filmPartial(met, TmdbStore.Partial.English, minimalOf(s"""{"id":$met,"title":"The Metropolitan Opera 2026/27: Samson et Dalila","release_date":"2026-12-05","alternative_titles":{"titles":[]}}"""))
+    w.lookups.film(met).toOption.flatten.map(_.year) shouldBe Some(Some(2026))
+    w.lookups.releaseDay(met) shouldBe Answer.Unknown
+    val fetch = new MetSamsonFetch
+    new TmdbClient(new NormalizingHttpFetch(fetch, w.normalizer), apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => (),
+      language = java.util.Locale.forLanguageTag(language)).readRecordAgain(met)
+    fetch.asked should have size 1   // the localized record alone: no poster, no English partial
+    w.lookups.releaseDay(met) shouldBe Answer.Known(Some(java.time.LocalDate.of(2026, 12, 5)))
+    w.changed should contain (TmdbStore.keyOf(TmdbKind.Film, met.toString))
+    // a record TMDB itself dates by no day is known to have none
+    w.store.filmPartial(met, TmdbStore.Partial.Local, minimalOf(recorded).as[play.api.libs.json.JsObject] + ("release_date" -> play.api.libs.json.JsString("")))
+    w.lookups.releaseDay(met) shouldBe Answer.Known(None)
+  }
+
   // A record filed before records carried IMDb's number holds none; the answer still names it, off the partials'
   // `imdb_id` — the number a no-match's lean is compared with a card's carried IMDb id by.
   "a film's record filed without its IMDb number" should "still answer with the number its responses name" in {

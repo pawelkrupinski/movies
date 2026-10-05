@@ -351,4 +351,11 @@ trait IdentityLookups {
   def candidates(query: CandidateQuery): Answer[Seq[Hit]]
   /** A film's own record (`TmdbFilmRecord`). */
   def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]
+  /** The day a film was released, as its record states it: `Unknown` while the record is unknown — or, in a store, while
+   *  it was filed before records kept the whole day and holds only the year TMDB dated it in
+   *  ([[agreement.Broadcast]] reads the day; nothing else does). */
+  def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]] = film(tmdbId) match {
+    case Answer.Known(record) => Answer.Known(record.flatMap(_.released))
+    case Answer.Unknown       => Answer.Unknown
+  }
 }

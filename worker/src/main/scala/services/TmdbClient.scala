@@ -227,6 +227,11 @@ class TmdbClient(
       .map(url => bodies.parse(orEmptyWhenUnknown(httpGet(url, auth))))).map(_._1)
   }
 
+  /** Asks TMDB for the film's localized record again ([[fullDetails]]' request, no poster call): what the identity
+   *  store files as the record's localized response — a record filed with only its release year gains its day
+   *  (`services.identity.agreement.AgreementStage.wantedRecords`). A 404 is TMDB's answer; any other failure THROWS. */
+  def readRecordAgain(tmdbId: Int): Unit = authHeader.foreach(auth => orEmptyWhenUnknown(httpGet(fullDetailsUrl(tmdbId), auth)))
+
   def details(tmdbId: Int): Option[TmdbClient.Details] = authHeader.flatMap { auth =>
     Try(httpGet(detailsUrl(tmdbId), auth))
       .toOption.map { body =>

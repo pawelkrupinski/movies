@@ -99,6 +99,18 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
       case None              => Answer.Unknown
     }
 
+  /** The record's release day — `Unknown` while the localized response it was parsed from holds only a year: filed before
+   *  records kept the whole day (`TmdbNormalizer.minimal` cut it to the year), the record states no day though TMDB does,
+   *  and reading it again (`agreement.AgreementStage.wantedRecords`) files the day. */
+  override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]] = film(tmdbId) match {
+    // the whole document, read only for a record stating no day: an answer reads no partial's date, and the answer cache
+    // holding one per film would cost every film its bytes for the few stage relays that read it
+    case Answer.Known(Some(record)) if record.released.isEmpty && store.get(TmdbKind.Film, Seq(tmdbId.toString)).get(tmdbId.toString).exists(yearOnly) =>
+      Answer.Unknown
+    case Answer.Known(record) => Answer.Known(record.flatMap(_.released))
+    case Answer.Unknown       => Answer.Unknown
+  }
+
   /** `film` with the IMDb number its responses name: a record filed before the record carried one holds none, while
    *  the responses it was parsed from ([[TmdbStore.Partial]]) still hold TMDB's `imdb_id`. */
   private def withImdbNumber(film: IdentityMeasures.Film, d: BsonDocument): IdentityMeasures.Film =
@@ -149,6 +161,12 @@ object StoredTmdbLookups {
     TmdbStore.personSearchId(CandidateQuery.personName(name))
 
   private def intsOf(d: BsonDocument, field: String = "ids"): Seq[Int] = TmdbStore.intsOf(d.get(field))
+
+  /** Does the film's localized response date it by its year alone ("2026")? TMDB never answers so — it states a whole
+   *  day or none — so only the store's cut before records kept the day does. */
+  private def yearOnly(film: BsonDocument): Boolean =
+    Option(film.get(TmdbStore.Partial.Local.field)).filter(_.isDocument).flatMap(local => Option(local.asDocument.get("release_date")))
+      .exists(date => date.isString && date.asString.getValue.length == 4)
 
   /** The `tt` ids IMDb suggests for `title` — `ImdbClient.suggestedIds`' own reading. */
   private def suggestionIds(d: BsonDocument, title: String): Seq[String] =
