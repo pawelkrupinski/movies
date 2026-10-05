@@ -39,6 +39,8 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     bookingUrl = Some(s"https://book/$film/$n"))
 
   /** Documents Mongo returned, per collection, from `find` and `getMore`. */
+  private val SlotsLag = 150L
+
   private final class Returned extends CommandListener {
     private val collectionOf = new ConcurrentHashMap[Int, String]()
     val byCollection = new ConcurrentHashMap[String, AtomicLong]()
@@ -48,6 +50,10 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
       case _         => ()
     }
     override def commandSucceeded(event: CommandSucceededEvent): Unit = Option(collectionOf.remove(event.getRequestId)).foreach { collection =>
+      // A stitched scan reads a page's `movie_slots` on a thread of its own while it reads the page's `screenings` (see
+      // `MongoMovieRepository.scanStitched`): a page's slots come in last here, as they can on a busy machine — where a
+      // boot judged done by its screenings alone was measured before its last slots page was counted (3400 of 3600).
+      if (collection == "movie_slots") Thread.sleep(SlotsLag)
       val cursor = event.getResponse.getDocument("cursor", new BsonDocument())
       val batch  = if (cursor.containsKey("firstBatch")) cursor.getArray("firstBatch") else cursor.getArray("nextBatch", new org.bson.BsonArray())
       byCollection.computeIfAbsent(collection, _ => new AtomicLong()).addAndGet(batch.size().toLong); ()
@@ -111,8 +117,10 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     boot(db, handOver = true)               // warm the JVM, so neither measured boot pays for it
     returned.reset()
     val (slots, screenings) = (Films * cinemas.size, Films * cinemas.size)
-    // Until the projector's learning read, off the boot thread, has read the screenings too.
-    val before = boot(db, handOver = false, done = () => returned.of("screenings") >= 2L * screenings)
+    // Until the projector's learning read, off the boot thread, has read its last page — slots and screenings both: the
+    // two are read side by side, so either can come in last.
+    val before = boot(db, handOver = false, done = () =>
+      returned.of("movies") >= 3L * Films && returned.of("movie_slots") >= 3L * slots && returned.of("screenings") >= 2L * screenings)
     val readBefore = (returned.of("movies"), returned.of("movie_slots"), returned.of("screenings"))
     info(s"before: ${before}ms, returned ${returned.summary}")
 
