@@ -21,7 +21,9 @@ class MongoIdentityModelStoreIntegrationSpec extends AnyFlatSpec with Matchers w
     val key = ListingKey.Published(s"Venue $n", s"Film $n", Some(2000 + n % 20), Seq(s"Director $n"))
     StoredFamily(StoredFamily.idOf(Seq(key)), IdentityResolver.RegionFamily(
       listings  = Set(key),
-      decisions = Nil,
+      decisions = Seq(ResolverDecision(Seq(key), Some(n), 0.9, ResolverDecision.Basis.OwnMatch, Seq(s"why $n"),
+        fallback = Some(ResolverDecision.Fallback("imdb", s"tt$n", 0.5, Some(s"Film $n"), Some(2000))),
+        leaning = Some(ResolverDecision.Leaning(n, n)), agreed = Map("other" -> s"id $n"))()),
       blockKeys = Set(s"film $n"),
       queries   = Set.empty,
       films     = Set(n),
@@ -29,7 +31,7 @@ class MongoIdentityModelStoreIntegrationSpec extends AnyFlatSpec with Matchers w
       nodeKeys  = Map(key -> s"node-$n")), digest = n.toLong)
   }
 
-  private def withStore(label: String)(body: (MongoIdentityModelStore, () => Seq[String]) => Unit): Unit = {
+  private def withStore(label: String, raw: Boolean = false)(body: (MongoIdentityModelStore, () => Seq[String]) => Unit): Unit = {
     val commands = new java.util.concurrent.ConcurrentLinkedQueue[String]()
     val client = MongoClient(MongoClientSettings.builder()
       .applyConnectionString(new ConnectionString(mongoTarget.uri.value))
@@ -38,7 +40,7 @@ class MongoIdentityModelStoreIntegrationSpec extends AnyFlatSpec with Matchers w
         override def commandStarted(event: CommandStartedEvent): Unit = { commands.add(event.getCommandName); () }
       }).build())
     val db = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, label))
-    try body(new MongoIdentityModelStore(db), () => commands.asScala.toSeq)
+    try body(new MongoIdentityModelStore(if (raw) tools.RawDocuments.over(db) else db), () => commands.asScala.toSeq)
     finally { Await.result(db.drop().toFuture(), SpecTimeouts.Io); client.close() }
   }
 
@@ -49,6 +51,16 @@ class MongoIdentityModelStoreIntegrationSpec extends AnyFlatSpec with Matchers w
     val again = family(2).copy(digest = 99L)
     store.replace(Set(first.head.id), Seq(again))
     store.families().sortBy(_.id) shouldBe (first.drop(2) :+ again).sortBy(_.id)
+  }
+
+  // The worker reads its families as raw documents (`tools.RawDocuments`): decoded as trees, their ~400k embedded
+  // documents were promoted at every US boot's take-up only to be dropped. Read so, they decode to the same families.
+  it should "read back the very families it keeps when its documents are read raw" in withStore("model-store-raw", raw = true) { (store, _) =>
+    val kept = (1 to 5).map(family)
+    store.replace(Set.empty, kept)
+    store.families().sortBy(_.id) shouldBe kept.sortBy(_.id)
+    store.replace(Set(kept.head.id), Nil)
+    store.families().sortBy(_.id) shouldBe kept.tail.sortBy(_.id)
   }
 
   it should "write a take-up's families in one round trip, not one per family" in withStore("model-store-bulk") { (store, commands) =>
