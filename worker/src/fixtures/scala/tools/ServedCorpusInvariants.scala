@@ -74,18 +74,21 @@ object ServedCorpusInvariants {
     def film(id: String): String = label.getOrElse(id, s"<no stored film $id>")
 
     // (cinema display name, slot key) -> the stored films holding that slot.
-    // Each with the year its slot records: one venue can list one title as two films ("Belle
-    // (2013)" beside "Belle (2021)", Ang Lee's and Georgia Oakley's "Sinn und Sinnlichkeit"),
-    // one slot on each film, told apart by the year — the rule the landing itself uses.
-    val holders: Map[(String, String), Seq[(String, Option[Int])]] = records.flatMap { r =>
+    // Each with the page and year its slot records: one venue can list one title as two films ("Belle
+    // (2013)" beside "Belle (2021)", Ang Lee's and Georgia Oakley's "Sinn und Sinnlichkeit", Kino
+    // Iluzjon's two "Lalka" pages), one slot on each film, told apart by the page the venue printed —
+    // else by the year, the rule the landing itself uses.
+    val holders: Map[(String, String), Seq[(String, Option[String], Option[Int])]] = records.flatMap { r =>
       r.record.data.iterator.collect { case (CinemaShowing(c, key), sd) =>
-        (c.displayName, key) -> (r.id.value, ScrapeListing.yearOf(sd))
+        (c.displayName, key) -> (r.id.value, sd.filmUrl, ScrapeListing.yearOf(sd))
       }
     }.groupMap(_._1)(_._2)
     def holdersOf(cinema: String, key: String, cm: CinemaMovie): Seq[String] = {
       val all = holders.getOrElse((cinema, key), Nil)
-      val own = all.filter(_._2 == ScrapeListing.yearOf(cm))
-      (if (all.map(_._1).distinct.sizeIs > 1 && own.nonEmpty) own else all).map(_._1).distinct
+      def narrowed(by: Seq[(String, Option[String], Option[Int])]) =
+        if (all.map(_._1).distinct.sizeIs > 1 && by.nonEmpty) by else all
+      val byPage = cm.filmUrl.filter(_.trim.nonEmpty).fold(Seq.empty)(page => all.filter(_._2.contains(page)))
+      (if (byPage.nonEmpty) narrowed(byPage) else narrowed(all.filter(_._3 == ScrapeListing.yearOf(cm)))).map(_._1).distinct
     }
 
     // What the read model serves, per (base film id, cinema).

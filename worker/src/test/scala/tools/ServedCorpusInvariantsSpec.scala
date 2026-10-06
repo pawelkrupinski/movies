@@ -111,6 +111,22 @@ class ServedCorpusInvariantsSpec extends AnyFlatSpec with Matchers {
     ServedCorpusInvariants.wrongMerges(Seq(garland), titleNormalizer).map(_._1) shouldBe Seq("astarisborn|2018")
   }
 
+  // Kino Iluzjon, recorded PL corpus 2026-10-05: two "Lalka" pages, no year on either listing — the years are the
+  // pages' (Has 1968, Kawalski 2026), so only the page tells which film holds which listing.
+  "one title a venue lists under two pages, on two films" should "home each listing on the film holding its page" in {
+    val (pageHas, pageKawalski) = ("https://iluzjon/2457", "https://iluzjon/7917")
+    def paged(title: String, page: String, at: LocalDateTime) = Helios -> CinemaMovie(Movie(title), Helios, None, Some(page),
+      None, Nil, Nil, Seq(Showtime(at, bookingUrl = None)))
+    def holding(id: String, year: Int, page: String, at: LocalDateTime) = StoredMovieRecord("Lalka", Some(year),
+      MovieRecord(tmdbId = Some(year), data = Map[Source, SourceData](CinemaShowing.keyFor(Helios, "Lalka", titleNormalizer) ->
+        SourceData(title = Some("Lalka"), releaseYear = Some(year), filmUrl = Some(page), showtimes = Seq(Showtime(at, None))))),
+      FilmId(id))
+    check(listings = Seq(paged("Lalka", pageHas, Nine), paged("Lalka", pageKawalski, Seven)),
+      records = Seq(holding("f1", 1968, pageHas, Nine), holding("f2", 2026, pageKawalski, Seven)),
+      cards = Seq(card("f1"), card("f2")),
+      served = Seq(screening("f1", Helios, Nine), screening("f2", Helios, Seven))) shouldBe empty
+  }
+
   "showtimes before `from`" should "count on neither side" in {
     // A failed venue keeps its old slot, yesterday's 19:00 included; that is not an invented showtime.
     check(listings = Seq(listing(Helios, "Diuna", Nine), listing(Helios, "Lalka", Nine)),

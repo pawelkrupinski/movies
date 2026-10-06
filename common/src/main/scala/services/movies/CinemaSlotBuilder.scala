@@ -31,8 +31,12 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
   def build(
     cm:            CinemaMovie,
     displayTitle:  String,
-    priorSlot:     Option[SourceData]
+    builtOver:     Option[SourceData]
   ): SourceData = {
+    // A slot another page of the venue's wrote is another listing's: Kino Iluzjon's two "Lalka" pages (Has 1968,
+    // Kawalski 2026) share one slot key, and the 2026 film's slot, built over the 1968 one, took its year and
+    // director (2026-10-05). Nothing of it is this listing's to carry.
+    val priorSlot = builtOver.filterNot(prior => otherPage(prior.filmUrl, cm.filmUrl))
     // The venue's page for the film: what a link it printed relative to its own site resolves against.
     val filmPage = SlotFields.url(cm.filmUrl, None)
     // A listing with no page is keyed by its year and directors (`ListingKey.Published`): a year or director carried
@@ -101,6 +105,15 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
       // fields above, so a tick that lacks it doesn't wipe a value the detail merge added.
       ageRating      = stringPool.canonical(cm.ageRating).orElse(priorSlot.flatMap(_.ageRating))
     )
+  }
+
+  /** Whether a slot of page `prior` is another listing's than one of page `page`: both pages published, and not one. */
+  private def otherPage(prior: Option[String], page: Option[String]): Boolean = {
+    def published(url: Option[String]) = url.map(_.trim).filter(_.nonEmpty)
+    (published(prior), published(page)) match {
+      case (Some(a), Some(b)) => a != b
+      case _                  => false
+    }
   }
 
   /** Cast/crew names as the display layer needs them, for the two casings a

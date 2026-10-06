@@ -42,6 +42,19 @@ class CinemaSlotBuilderCarrySpec extends AnyFlatSpec with Matchers {
     (slot.releaseYear, slot.director) shouldBe ((Some(2026), Seq("Maciej Kawalski")))
     ListingKey.ofSlot(KinoApollo, slot) shouldBe ListingKey.of(KinoApollo, paged)
   }
+
+  // Kino Iluzjon lists two "Lalka"s under two pages (Has 1968 at /2457, Kawalski 2026 at /7917, recorded PL corpus
+  // 2026-10-05). Built over the slot the other page's enrichment wrote, the 2026 film's slot took Has and 1968 — a
+  // venue slot whose year and director both deny its film.
+  it should "carry nothing from a slot another page of the venue's wrote" in {
+    val has     = prior.copy(releaseYear = Some(1968), director = Seq("Wojciech Jerzy Has"), synopsis = Some("Wokulski"),
+      filmUrl = Some("https://www.iluzjon.fn.org.pl/filmy/info/2457/lalka.html"))
+    val kawalski = CinemaMovie(Movie("Lalka"), KinoApollo, None, Some("https://www.iluzjon.fn.org.pl/filmy/info/7917/lalka.html"),
+      None, Nil, Nil, Nil)
+    val slot = slots.build(kawalski, "Lalka", Some(has))
+    (slot.releaseYear, slot.director, slot.synopsis) shouldBe ((None, Nil, None))
+    slots.build(kawalski, "Lalka", Some(has.copy(filmUrl = kawalski.filmUrl))).releaseYear shouldBe Some(1968)
+  }
 }
 
 class CinemaSlotBuilderFieldsSpec extends AnyFlatSpec with Matchers {
