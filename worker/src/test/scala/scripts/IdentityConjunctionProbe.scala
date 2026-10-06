@@ -19,11 +19,10 @@ object IdentityConjunctionProbe {
   /** The replay's allocation and time over every capture: `--alloc <runs>`. */
   private def allocation(runs: Int): Unit = {
     val captures = models.Country.all.filter(c => Files.exists(UnmatchedClusters.fixturePath(c))).map(c => UnmatchedClusters.read(UnmatchedClusters.fixturePath(c)))
-    val threads  = java.lang.management.ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
     def once(): (Long, Long) = {
-      val (a, t) = (threads.getCurrentThreadAllocatedBytes, System.nanoTime())
-      captures.foreach(UnmatchedClusters.replay(_))
-      (threads.getCurrentThreadAllocatedBytes - a, System.nanoTime() - t)
+      val t = System.nanoTime()
+      val (_, allocated) = tools.ThreadAllocation.of(captures.foreach(UnmatchedClusters.replay(_)))
+      (allocated, System.nanoTime() - t)
     }
     (1 to 3).foreach(_ => once())
     val measured = (1 to runs).map(_ => once())
