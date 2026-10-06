@@ -1,9 +1,8 @@
 package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
-import play.api.libs.json.Json
 import models._
-import tools.{HttpFetch, HttpRead}
+import tools.{HttpFetch, HttpRead, ReadOutcome}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies, VenueCredits}
@@ -58,17 +57,20 @@ class KinoKreskaClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(s"$BaseUrl/kino-kreska")
 
-  def fetch(): Seq[CinemaMovie] = {
-    // A failed POST or an unparseable answer propagates: swallowed into "" it read as a
-    // venue with no screenings — a white scrape instead of a red one.
-    val json = HttpRead.postPage(http, TermsUrl, PostBody, "application/x-www-form-urlencoded")
-    if (json.isEmpty) return Seq.empty
-
-    val itemsHtml = (Json.parse(json) \ "items").asOpt[String].getOrElse("")
-    if (itemsHtml.isEmpty) return Seq.empty
-
-    parse(itemsHtml, cinema)
-  }
+  /** A failed POST — a status, a refused redirect, a timeout — or an answer that is not
+   *  the endpoint's envelope propagates: read as "" it was a venue with no screenings, a
+   *  white scrape instead of a red one. Only the envelope's own empty answer (`status: 0`,
+   *  no `items`, `allItemsAmount: 0`) is a week with nothing scheduled. */
+  def fetch(): Seq[CinemaMovie] =
+    HttpRead.postJsonObject(http, TermsUrl, PostBody, "application/x-www-form-urlencoded") { envelope =>
+      def unexpected(why: String) = ReadOutcome.unexpectedBody(TermsUrl, why, envelope.toString)
+      val total = (envelope \ "allItemsAmount").asOpt[Int]
+      ((envelope \ "status").asOpt[Int], (envelope \ "items").asOpt[String].map(_.trim)) match {
+        case (Some(0), Some(""))   => if (total.contains(0)) ReadOutcome.Answered(Seq.empty) else unexpected(s"no items for $total events")
+        case (Some(0), Some(html)) => ReadOutcome.Answered(parse(html, cinema))
+        case (status, items)       => unexpected(s"not the listing envelope (status $status, items ${items.isDefined})")
+      }
+    }.required
 }
 
 object KinoKreskaClient {

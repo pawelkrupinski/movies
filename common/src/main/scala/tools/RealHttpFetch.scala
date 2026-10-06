@@ -48,7 +48,9 @@ class RealHttpFetch(
   private def buildClient(connectTimeout: Duration): HttpClient = {
     val builder = HttpClient.newBuilder()
       .version(HttpClient.Version.HTTP_1_1)
-      .followRedirects(HttpClient.Redirect.NORMAL)
+      // Redirects are followed by `send`/`sendAsync` below, through RedirectGuard: the
+      // JDK's NORMAL rules, minus any hop onto a local address.
+      .followRedirects(HttpClient.Redirect.NEVER)
       .connectTimeout(connectTimeout)
       // Trust the JDK defaults PLUS the Certum root that OpenJDK's cacerts omits,
       // so the Certum-rooted cinema sites (Kinomuzeum/artmuseum.pl, Kino
@@ -89,25 +91,25 @@ class RealHttpFetch(
    *  right charset itself. See [[HttpFetch.getBytes]] — only the charset-quirky
    *  scrapers (Kino Charlie) use this; everyone else gets the UTF-8 `get`. */
   override def getBytes(url: String): Array[Byte] = {
-    val response = clientFor(url).send(buildRequest(url, Map.empty), HttpResponse.BodyHandlers.ofByteArray())
+    val response = send(buildRequest(url, Map.empty))
     val code = response.statusCode()
     if (code >= 200 && code < 300) Gunzip.decode(response.body())
     else throw new HttpStatusException(code, "GET", url, retryAfterOf(response))
   }
 
   override def get(url: String, headers: Map[String, String]): String =
-    checkStatus("GET", url, sendLogged("GET", url, clientFor(url).send(buildRequest(url, headers), HttpResponse.BodyHandlers.ofByteArray())))
+    checkStatus("GET", url, sendLogged("GET", url, send(buildRequest(url, headers))))
 
   /** GET, also reporting the URL the redirects ended on — for a caller that
    *  must know whether the address it holds is the one the upstream serves (the
    *  roster audit's stale-slug check). Same status handling as `get`. */
   def getPage(url: String): FetchedPage = {
-    val response = sendLogged("GET", url, clientFor(url).send(buildRequest(url), HttpResponse.BodyHandlers.ofByteArray()))
+    val response = sendLogged("GET", url, send(buildRequest(url)))
     FetchedPage(response.uri().toString, checkStatus("GET", url, response))
   }
 
   override def getAsync(url: String): CompletableFuture[String] =
-    clientFor(url).sendAsync(buildRequest(url), HttpResponse.BodyHandlers.ofByteArray())
+    sendAsync(buildRequest(url), hops = 0)
       .handle[String] { (response, throwable) =>
         if (throwable != null) {
           logFailure("GET", url, unwrap(throwable))
@@ -117,7 +119,27 @@ class RealHttpFetch(
       }
 
   override def post(url: String, body: String, contentType: String = "application/json"): String =
-    checkStatus("POST", url, sendLogged("POST", url, clientFor(url).send(postRequest(url, body, contentType), HttpResponse.BodyHandlers.ofByteArray())))
+    checkStatus("POST", url, sendLogged("POST", url, send(postRequest(url, body, contentType))))
+
+  /** Send `request`, following its redirects through [[RedirectGuard]]; each hop goes
+   *  out on the client whose connect budget its own host's policy names. */
+  @scala.annotation.tailrec
+  private def send(request: HttpRequest, hops: Int = 0): HttpResponse[Array[Byte]] = {
+    val response = clientFor(request.uri().toString).send(request, HttpResponse.BodyHandlers.ofByteArray())
+    RedirectGuard.next(request, response, hops) match {
+      case Some(next) => send(next, hops + 1)
+      case None       => response
+    }
+  }
+
+  private def sendAsync(request: HttpRequest, hops: Int): CompletableFuture[HttpResponse[Array[Byte]]] =
+    clientFor(request.uri().toString).sendAsync(request, HttpResponse.BodyHandlers.ofByteArray())
+      .thenCompose { response =>
+        RedirectGuard.next(request, response, hops) match {
+          case Some(next) => sendAsync(next, hops + 1)
+          case None       => CompletableFuture.completedFuture(response)
+        }
+      }
 
   /** Package-private so the spec can assert what actually goes on the wire — the
    *  header a host policy demands is only observable on the built request. */

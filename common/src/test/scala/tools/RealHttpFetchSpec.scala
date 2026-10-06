@@ -135,6 +135,8 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
   // The roster audit tells a bilety24 organiser address we wire from the one
   // bilety24 now 301s it to; that needs the final URL, which `get` drops.
 
+  private val landed = new java.util.concurrent.atomic.AtomicInteger(0)
+
   private def withServer(test: String => Unit): Unit = {
     val server = com.sun.net.httpserver.HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
     def respond(code: Int, headers: (String, String)*)(body: String)(exchange: com.sun.net.httpserver.HttpExchange): Unit = {
@@ -148,6 +150,15 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
     server.createContext("/organizator/old-slug-477", e => respond(301, "Location" -> s"$base/organizator/new-slug-477")("")(e))
     server.createContext("/organizator/new-slug-477", e => respond(200)("<h1>Kino Baszta</h1>")(e))
     server.createContext("/gone", e => respond(404)("")(e))
+    // A redirect that moves the request onto ANOTHER local address — the shape of the
+    // sfr.pl answer that 301'd Kino Kreska's listing POST to 127.0.0.1. `localhost` is
+    // a different host from the 127.0.0.1 the request was sent to, so the hop moves it.
+    server.createContext("/moved-to-localhost", e =>
+      respond(301, "Location" -> s"http://localhost:${server.getAddress.getPort}/landed")("")(e))
+    server.createContext("/landed", e => { landed.incrementAndGet(); respond(200)("landed")(e) })
+    // 301/302 turn a POST into a GET, as browsers (and the JDK's own redirect filter) do.
+    server.createContext("/form", e => respond(302, "Location" -> "/method")("")(e))
+    server.createContext("/method", e => respond(200)(e.getRequestMethod)(e))
     server.start()
     try test(base) finally server.stop(0)
   }
@@ -161,5 +172,50 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
   it should "fail a non-2xx the way get does" in withServer { base =>
     val thrown = the [HttpStatusException] thrownBy new RealHttpFetch().getPage(s"$base/gone")
     thrown.code shouldBe 404
+  }
+
+  // ── Redirects onto a local address are refused, never followed ─────────────
+  // sfr.pl has been reported answering Kino Kreska's listing POST with `301 Location:
+  // 127.0.0.1`. Following it sends the request to whatever listens on the worker's
+  // own loopback; refusing it fails the read with the reason in the message, which
+  // is what reaches the scrape's error on /uptime.
+
+  "a redirect onto a local address" should "be refused before anything is sent there" in withServer { base =>
+    landed.set(0)
+    val thrown = the [RefusedRedirectException] thrownBy
+      new RealHttpFetch().post(s"$base/moved-to-localhost", "a=1", "application/x-www-form-urlencoded")
+    thrown.getMessage should include ("301")
+    thrown.getMessage should include ("localhost")
+    landed.get shouldBe 0
+  }
+
+  it should "be refused on the GET and async paths too" in withServer { base =>
+    landed.set(0)
+    a [RefusedRedirectException] should be thrownBy new RealHttpFetch().get(s"$base/moved-to-localhost")
+    a [RefusedRedirectException] should be thrownBy new RealHttpFetch().getPage(s"$base/moved-to-localhost")
+    val async = the [java.util.concurrent.ExecutionException] thrownBy
+      new RealHttpFetch().getAsync(s"$base/moved-to-localhost").get()
+    async.getCause shouldBe a [RefusedRedirectException]
+    landed.get shouldBe 0
+  }
+
+  "a redirect" should "turn a POST into a GET on a 302, resolving a relative Location" in withServer { base =>
+    new RealHttpFetch().post(s"$base/form", "a=1", "application/x-www-form-urlencoded") shouldBe "GET"
+  }
+
+  "RedirectGuard.refusal" should "refuse a hop onto a loopback, wildcard or private address" in {
+    def refusal(to: String) =
+      RedirectGuard.refusal(URI.create("https://www.sfr.pl/heroapp/terms/rest/load"), URI.create(to))
+    Seq("http://127.0.0.1/heroapp/terms/rest/load", "https://localhost/x", "http://[::1]/x", "http://0.0.0.0/x",
+        "http://10.20.0.11:9428/x", "http://192.168.1.1/x", "http://169.254.169.254/latest/meta-data",
+        "http://app.localhost/x")
+      .foreach(to => withClue(to)(refusal(to)) shouldBe defined)
+  }
+
+  it should "let a hop between public hosts, or within one local host, through" in {
+    RedirectGuard.refusal(URI.create("http://sfr.pl/x"), URI.create("https://www.sfr.pl/x")) shouldBe None
+    RedirectGuard.refusal(URI.create("http://127.0.0.1:9000/a"), URI.create("http://127.0.0.1:9000/b")) shouldBe None
+    // A host NAME is never resolved: only a literal address or a localhost name is judged.
+    RedirectGuard.refusal(URI.create("https://www.sfr.pl/x"), URI.create("https://bilety.sfr.pl/x")) shouldBe None
   }
 }
