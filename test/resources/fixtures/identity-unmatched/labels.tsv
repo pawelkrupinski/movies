@@ -7,7 +7,7 @@ pl	Kino Kultura	Pasażerka - premiera książki, pokaz filmu + dyskusja	tmdb:259
 pl	Kino Kultura	Replika 51. FPFF w Gdyni: Kalafior przeznaczenia + spotkanie z reżyserką	tmdb:1571792	right	recall target: The Cauliflower of Destiny (2026)
 pl	Kino Millenium	KINO NA NIEDZIELE:CAMINO DLA OPORNYCH	tmdb:1404604	right	recall target: Compostelle (2026)
 pl	Kino PCKul	My Fair Lady	tmdb:11113	wrong	review page: not a film (event); was: recall target: My Fair Lady (1964)
-pl	Kino Parczew	Vincent.legenda oceanu	tmdb:677558	right	recall target: The Last Whale Singer (2026)
+pl	Kino Parczew	Vincent.legenda oceanu	tmdb:677558	right	recall target: The Last Whale Singer (2026); judged 10-06: kinoparczew.pl/filmy/vincent-legenda-oceanu reads "Reżyseria: Pavel Hrubas,Steven Majaury Kraj produkcji: Kanada Niemcy Czechy ... Nastoletni Vincent musi kontynuować misję swojego ojca, legendarnego Magicznego Wieloryba"; TMDB 677558 credits Reza Memari (Director), Steven Majaury and Pavel Hrubos (Co-Director) — the same film, imdb tt13518550
 pl	Kino CK Lublin	Lalka	tmdb:1321666	right	recall target: The Doll (2026)
 pl	Kino Powiśle	OPERA-DZIEWCZYNA Z DZIKIEGO ZACHODU	tmdb:1703629	right	recall target: The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 pl	Kino Powiśle	OPERA-MANON	tmdb:1703631	right	recall target: The Metropolitan Opera 2026/27: Manon (2027)
@@ -84,7 +84,7 @@ pl	Kino Kameralne Cafe	Siostry (1972)	imdb:tt0070698	right	recall target: Siostr
 pl	Dyskusyjny Klub Filmowy Politechnika	Imago	imdb:tt14417122	right	recall target: Imago
 pl	Kino Rialto	FRIDA KAHLO. IKONICZNA ARTYSTKA	imdb:tt13011980	right	recall target: Frida kahlo. Ikoniczna artystka
 pl	Kino Kultura	Replika 51. FPFF w Gdyni: Kalafior przeznaczenia + spotkanie z reżyserką	imdb:tt43699368	right	recall target: Replika 51. FPFF w Gdyni: Kalafior przez
-pl	Kino Parczew	Vincent.legenda oceanu	imdb:tt13518550	right	recall target: Vincent. legenda oceanu
+pl	Kino Parczew	Vincent.legenda oceanu	imdb:tt13518550	right	recall target: Vincent. legenda oceanu; judged 10-06: kinoparczew.pl/filmy/vincent-legenda-oceanu reads "Reżyseria: Pavel Hrubas,Steven Majaury Kraj produkcji: Kanada Niemcy Czechy ... Nastoletni Vincent musi kontynuować misję swojego ojca, legendarnego Magicznego Wieloryba"; TMDB 677558 credits Reza Memari (Director), Steven Majaury and Pavel Hrubos (Co-Director) — the same film, imdb tt13518550
 de	Cinema Quadrat e.V.	Ghost School	imdb:tt37547768	right	recall target: Ghost School
 de	Kinozentrum Frauentor	Snow Leopard	imdb:tt13920372	right	recall target: Snow Leopard
 de	Tivoli-Filmtheater	Hungarian Rhapsody: Queen - Live In Budapest	imdb:tt8378126	right	recall target: Hungarian Rhapsody: Queen - Live In Buda
@@ -387,7 +387,8 @@ pl	*	TAJNY AGENT	tmdb:12684	wrong	hand label: Tajny agent (1936) Alfred Hitchcoc
 pl	*	TAJNY AGENT - Klub Filmowy	tmdb:1220564	right	hand label: Tajny agent (2025) Kleber Mendonça Filho
 pl	*	TAJNY AGENT - Klub Filmowy	tmdb:12684	wrong	hand label: Tajny agent (1936) Alfred Hitchcock
 pl	*	WAJDA: re-wizje: BEZ ZNIECZULENIA | 15+	tmdb:42199	right	hand label: Bez znieczulenia (1978) Andrzej Wajda
-pl	*	WAJDA: re-wizje: Bez znieczulenia	tmdb:42199	right	hand label: Bez znieczulenia (1978) Andrzej Wajda
+pl	*	WAJDA: re-wizje: Bez znieczulenia	tmdb:42199	right	judged 10-06: kino.swiatowid.elblag.pl/repertuar/895 is headed "WAJDA: re-wizje: Bez znieczulenia" but its body ("101 min ... Krajobraz po bitwie jest jednym z najbardziej gorzkich filmów Wajdy ... Produkcja: Polska 1970 Obsada: Daniel Olbrychski, Stanisława Celińska") is a verbatim copy of its own earlier page /repertuar/874 "WAJDA: re-wizje: Krajobraz po bitwie" (same text, 101 min); the SKS cycle's October slot is Bez znieczulenia (Kino Starówka lists "WAJDA: re-wizje: BEZ ZNIECZULENIA" 13.10) — the title is right, the text is stale
+pl	Kino Światowid Elbląg	WAJDA: re-wizje: Bez znieczulenia	tmdb:149136	wrong	judged 10-06: Krajobraz po bitwie had its own page /repertuar/874 at this venue; /repertuar/895 reuses that text under the Bez znieczulenia title (see the 42199 row)
 pl	*	Wielka Sztuka w Kinoteatrze Rialto - Frida: Viva la Vida	tmdb:1212009	wrong	hand label: Viva La Vida (2024) Han Yan
 pl	*	edukacja MH: Johnny	tmdb:920220	right	hand label: Johnny (2022) Daniel Jaroszek
 uk	*	Agbara Nla: The Return	wikidata:Q141637007	right	hand label: Agbara Nla: The Return ()
@@ -648,11 +649,12 @@ pl	*	Balet z Opery Paryskiej 2026-2027: Jezioro łabędzie	tmdb:1702782	wrong	mu
 us	*	Opéra National de Paris: La fanciulla del West	tmdb:1703629	wrong	must not: The Metropolitan Opera 2026/27: La Fanciulla del West, another house's season — TMDB holds no Paris record
 us	*	MetOpera: Carmen (2009)	tmdb:980603	wrong	must not: CARMEN (2009) Opéra Comique, another house's 2009 staging
 us	*	MetOpera: Carmen (2009)	tmdb:1143037	wrong	must not: The Metropolitan Opera: Carmen (2024) Carrie Cracknell, a later production
-pl	Patria	Dyrygent	tmdb:95269	wrong	judged 10-05: Patria's page credits Ondřej Provazník (1h46, premiere 07.10) — Broken Voices (2025), not Wajda's 1980 film
-pl	Patria	Dyrygent	tmdb:1483477	right	Patria's page: "Reżyser: Ondřej Provazník" — Broken Voices (2025)
-pl	Kozienicki Dom Kultury	Dyrygent	tmdb:95269	wrong	judged 10-05: Filmweb's Kozienice showtimes link Dyrygent-2025-10085635 — Broken Voices
-pl	Kozienicki Dom Kultury	Dyrygent	tmdb:1483477	right	Filmweb's Kozienice showtimes: Dyrygent-2025-10085635 — Broken Voices (2025)
-pl	Kino Marzenie	DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO	tmdb:95269	right	judged 10-05: the venue's synopsis (Marta, the conductor John Lasocki) is Wajda's 1980 film
+pl	Patria	Dyrygent	tmdb:95269	wrong	judged 10-06: https://kinopatria.com/film/dyrygent/ reads "Dyrygent 01 godzin 46 minut Reżyser: Ondřej Provazník Premiera: 07.10", poster 8232401 = Filmweb Dyrygent-2025-10085635 (TMDB 1483477, imdb tt28149522, orig. Sbormistr/Broken Voices) — not Wajda 1980
+pl	Patria	Dyrygent	tmdb:1483477	right	judged 10-06: https://kinopatria.com/film/dyrygent/ reads "Dyrygent 01 godzin 46 minut Reżyser: Ondřej Provazník Premiera: 07.10", poster 8232401 = Filmweb Dyrygent-2025-10085635 (TMDB 1483477, imdb tt28149522, orig. Sbormistr/Broken Voices)
+pl	Kozienicki Dom Kultury	Dyrygent	tmdb:95269	wrong	judged 10-06: filmweb.pl/showtimes/Kozienice/Kozienicki+Dom+Kultury-1913 links "film/Dyrygent-2025-10085635" (Sbormistr/Broken Voices, TMDB 1483477, imdb tt28149522) — not Wajda 1980
+pl	Kozienicki Dom Kultury	Dyrygent	tmdb:1483477	right	judged 10-06: filmweb.pl/showtimes/Kozienice/Kozienicki+Dom+Kultury-1913 links "film/Dyrygent-2025-10085635" (Sbormistr/Broken Voices, TMDB 1483477, imdb tt28149522)
+pl	Kino Marzenie	DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO	tmdb:95269	right	judged 10-06: kinomarzenie.pl/repertuar/1027 reads "Marta to młoda skrzypaczka, która poznaje w Nowym Jorku słynnego dyrygenta Johna Lasockiego ... premiera: 24 marca 1980 ... obsada: John Gielgud, Krystyna Janda, Andrzej Seweryn ... reżyseria: Andrzej Wajda" — Wajda 1980
+pl	Kino Marzenie	DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO	tmdb:1483477	wrong	judged 10-06: the venue page credits Wajda, 1980, Gielgud/Janda/Seweryn — not Provazník's 2025 Sbormistr
 us	*	A Prayer for the Dying	imdb:tt31183803	right	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
 us	*	The Scout	tmdb:1403519	right	judged 10-05: drafthouse.com's schedule bills it first-run, "a day in the life of a location scout for a TV show" — Paula Gonzalez-Nasser's 2026 film, whose TMDB poster the venue's matches at 2 bits
 us	*	The Scout	imdb:tt36590599	right	judged 10-05: drafthouse.com's schedule bills it first-run, "a day in the life of a location scout for a TV show" — Paula Gonzalez-Nasser's 2026 film, whose TMDB poster the venue's matches at 2 bits
@@ -755,7 +757,6 @@ uk	*	It (1990)	tmdb:278996	wrong	matchable page: not a film: And the Sea Will Te
 us	*	It (1990)	tmdb:278996	wrong	matchable page: not a film: And the Sea Will Tell (1991)
 pl	*	FRANZ KAFKA	tmdb:1157322	right	matchable page: hand label (model leaned tmdb:120275 Franz Kafka (1992))
 pl	*	FRANZ KAFKA	tmdb:120275	wrong	matchable page: must not: Franz Kafka (1992) Piotr Dumała
-pl	*	DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO	tmdb:95269	right	matchable page: confirmed: The Conductor (1980)
 de	*	Queen	imdb:tt8378126	wrong	review page: the labelled film is wrong
 pl	*	Dni Kina Niemego - Quo vadis?	tmdb:114166	right	judged 10-06 by the venue's page: Guazzoni's 1912 Quo Vadis? (94 min, 4K restoration, live piano)
 us	*	Triple Feature: Lord of the Rings	tmdb:122	wrong	judged 10-06: multi-film bill: flicks.us bills "all three movies playing back to back" (726 min) — not The Return of the King alone
