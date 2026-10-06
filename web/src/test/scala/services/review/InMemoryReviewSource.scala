@@ -50,6 +50,17 @@ object ReviewFixtures {
   val matchedDecision = ResolverDecision(Seq(Matched), Some(913760), 0.62, ResolverDecision.Basis.OwnMatch, Seq(
     "Kino Bajka \"Klondike\": own match 913760 at 62.0% by favoured-calibrated (title exact)"))()
 
+  /** Prod's "Odblask | UFF" at Kino Amondo: the resolver vetoed the festival-tag film "Uff" and stored 16878 as its candidate. */
+  val Odblask = ListingKey.Native("Kino Amondo", "https://kinoamondo.pl/film/odblask-uff", "Odblask | UFF")
+  val odblaskDecision = ResolverDecision(Seq(Odblask), None, 0.71, ResolverDecision.Basis.Vetoed, Seq(
+    "best vetoed candidate 850957 at 28.9%, denied: its title names it only by a programme tag billed beside many titles, " +
+      "(title=overlap(-3.95) search.rank=1(+3.48) rivals=0(+1.53))",
+    "node N Kino Amondo"), candidate = Some(ResolverDecision.Leaning(16878, 0)))()
+  val odblask = FilmCard(16878, None, Some("Odblask"), None, None, Nil, None, None, None)
+  val uff     = FilmCard(850957, None, Some("Uff"), None, Some(2021), Nil, None, None, None)
+  def odblaskSource: InMemoryReviewSource =
+    new InMemoryReviewSource(Seq(odblaskDecision), filmsHeld = Map(odblask.tmdb -> odblask, uff.tmdb -> uff))
+
   val kafka = FilmCard(1157322, Some("tt22963134"), Some("Franz"), Some("Franz"), Some(2025), Seq("Agnieszka Holland"), Some(127),
     Some("https://image.tmdb.org/t/p/w185/kafka.jpg"), Some("Kafka's life."))
   val macbeth = FilmCard(1703622, None, Some("Royal Ballet and Opera: Macbeth"), None, Some(2026), Seq("Phyllida Lloyd"), Some(180), None, None)

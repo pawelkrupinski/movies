@@ -8,7 +8,9 @@ import java.time.Instant
 
 /** A film the resolver weighed for a cluster: its probability where the explanation states one, and
  *  whether a member's own evidence denied it (and why). */
-final case class ReviewCandidate(film: Int, probability: Option[Double], vetoed: Boolean = false, denial: Option[String] = None)
+final case class ReviewCandidate(film: Int, probability: Option[Double], vetoed: Boolean = false, denial: Option[String] = None) {
+  def survives: Boolean = !vetoed && denial.isEmpty
+}
 
 /**
  * One cluster of the identity model (`identity_model_families.decisions[]`) as the review pages read it.
@@ -21,12 +23,17 @@ final case class ReviewCluster(country: Country, members: Seq[ListingKey], film:
   lazy val reviewMembers: Seq[ReviewMember] = members.map(ReviewMember.of)
   lazy val id: String = ReviewClusterId.of(reviewMembers)
   def title: String = members.headOption.fold("")(_.rawTitle)
+  /** The best candidate the resolver weighed, vetoed or not: what the queue and the matchable page sort by. */
   def best: Option[ReviewCandidate] = candidates.headOption
   /** The best candidate's probability, 0 when none is stated. */
   def bestProbability: Double = best.flatMap(_.probability).getOrElse(0.0)
   def unmatched: Boolean = film.isEmpty && !fallback
-  /** The film the card puts forward: the match, else the best candidate. */
-  def shown: Option[Int] = film.orElse(best.map(_.film))
+  /** The best candidate no veto denied — never a vetoed film, which the resolver does not suggest. */
+  def lead: Option[ReviewCandidate] = candidates.find(_.survives)
+  /** The candidates a member's own evidence denied, best first. */
+  def vetoedCandidates: Seq[ReviewCandidate] = candidates.filterNot(_.survives)
+  /** The film the card puts forward: the match, else the best candidate that survived its vetoes. */
+  def shown: Option[Int] = film.orElse(lead.map(_.film))
 }
 
 object ReviewCluster {

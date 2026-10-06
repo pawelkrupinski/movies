@@ -24,6 +24,27 @@ class ReviewClusterSpec extends AnyFlatSpec with Matchers {
     ReviewCluster.of(Country.Poland, matchedDecision).candidates shouldBe empty   // the match is not its own candidate
   }
 
+  it should "lead with the best candidate no veto denied, never the vetoed one, and keep the vetoed apart with their reasons" in {
+    val odblask = ReviewCluster.of(Country.Poland, odblaskDecision)
+    odblask.lead.map(_.film) shouldBe Some(16878)
+    odblask.shown shouldBe Some(16878)
+    odblask.vetoedCandidates shouldBe Seq(ReviewCandidate(850957, Some(0.289), vetoed = true,
+      Some("its title names it only by a programme tag billed beside many titles")))
+    val card = ReviewCards.build(odblaskSource, Seq(odblask -> None), Nil, new ReviewAnswers.Index(Nil)).head
+    card.shown shouldBe Some(16878)
+    card.otherCandidates.map(_.film) should not contain 850957
+    card.vetoedCandidates.map(_.film) shouldBe Seq(850957)
+    (card.payload(ReviewPage.Queue) \ "shown" \ "ref").as[String] shouldBe "tmdb:16878"
+  }
+
+  it should "put no film forward when every candidate it weighed was vetoed" in {
+    val macbeth = ReviewCluster.of(Country.Poland, vetoedDecision)
+    macbeth.lead shouldBe None
+    macbeth.shown shouldBe None
+    macbeth.vetoedCandidates.map(_.film) shouldBe Seq(1703622)
+    macbeth.best.map(_.film) shouldBe Some(1703622)   // still what the queue and the matchable page sort by
+  }
+
   it should "keep a stable id however its members are ordered" in {
     val a = heldDecision.copy(members = Seq(Held, Matched))(services.identity.DecisionTrace.Empty)
     val b = heldDecision.copy(members = Seq(Matched, Held))(services.identity.DecisionTrace.Empty)

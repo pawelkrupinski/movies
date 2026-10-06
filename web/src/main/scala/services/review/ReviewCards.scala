@@ -32,7 +32,7 @@ final case class MemberView(key: ListingKey, slot: Option[SlotFacts], page: Opti
   def synopsis: Option[String] = slot.flatMap(_.facts.synopsis).orElse(page.flatMap(_.synopsis))
 }
 
-/** A cluster as a review card renders it. `shown` is the film put forward (the match or best candidate);
+/** A cluster as a review card renders it. `shown` is the film put forward (the match or best surviving candidate);
  *  `updatedAt` the recently-matched page's stand-in for when it was decided. */
 final case class ReviewCard(cluster: ReviewCluster, members: Seq[MemberView], films: Map[Int, FilmCard],
                             labels: Seq[LabelRow], answer: Option[ReviewAnswer], updatedAt: Option[Instant]) {
@@ -42,8 +42,10 @@ final case class ReviewCard(cluster: ReviewCluster, members: Seq[MemberView], fi
   /** Where the venues' own facts contradict the film the card puts forward. */
   def disagreements: Seq[Disagreement] = shown.toSeq.flatMap(film => FactCheck.disagreements(reviewMembers, filmFacts(film)))
 
-  /** The candidates the card lists below the film it puts forward. */
-  def otherCandidates: Seq[ReviewCandidate] = cluster.candidates.filterNot(c => shown.contains(c.film))
+  /** The candidates that survived their vetoes the card lists below the film it puts forward. */
+  def otherCandidates: Seq[ReviewCandidate] = cluster.candidates.filter(_.survives).filterNot(c => shown.contains(c.film))
+  /** The vetoed candidates, folded apart on the card: still answerable, never put forward. */
+  def vetoedCandidates: Seq[ReviewCandidate] = cluster.vetoedCandidates
 
   /** The venues' posters, each once — a venue's own before a feed catalogue's copy: the card shows the first that loads. */
   def posters: Seq[String]     = members.sortBy(_.factsFromCatalogue).flatMap(_.poster).distinct

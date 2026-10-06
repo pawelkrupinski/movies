@@ -63,6 +63,10 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
   }
 
+  /** Prod's "Odblask | UFF": the resolver vetoed "Uff" and stored 16878 as the candidate that survived. */
+  private val odblask = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
+    Map(Country.Poland -> ReviewFixtures.odblaskSource), new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
+
   /** A cluster of 46 cinemas, every one crediting a director the film it leans to doesn't have. */
   private val crowded = {
     val keys = (1 to 46).map(i => services.movies.ListingKey.Published(f"Cinema $i%02d", "Kandydaci śmierci", None, Seq("Richard Jones")))
@@ -103,6 +107,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
         case "/de/review"               => contentAsString(german.queue(Some("de"), 60, false)(FakeRequest()))
         case "/listed/review"           => contentAsString(listed.queue(Some("pl"), 60, false)(FakeRequest()))
         case "/crowded/review"          => contentAsString(crowded.queue(Some("pl"), 60, false)(FakeRequest()))
+        case "/odblask/review"          => contentAsString(odblask.queue(Some("pl"), 60, false)(FakeRequest()))
         case why if why.startsWith("/debug/review/why?") =>
           val query = java.net.URI.create(why).getRawQuery.split("&").map(_.split("=", 2)).collect { case Array(k, v) =>
             k -> java.net.URLDecoder.decode(v, StandardCharsets.UTF_8) }.toMap
@@ -290,6 +295,45 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       page.eval("document.getElementById('export-labels').click()")
       page.waitFor("document.getElementById('export-summary').textContent.indexOf('added') >= 0")
       LabelsTsv.read(labels).map(r => (r.rawTitle, r.film, r.verdict)) shouldBe Seq(("FRANZ KAFKA", "tmdb:1157322", "wrong"))
+    }
+  }
+
+  "a card whose best candidate was vetoed" should "lead with the candidate that survived, the vetoed one folded into a closed list it can still be picked from" in {
+    chrome match {
+      case None => cancel("Chrome not installed — skipping /debug/review page test")
+      case Some(c) => c.openPage(server.baseUrl + "/odblask/review") { page =>
+        val odblask = card("Odblask | UFF")
+        page.evalString(s"$odblask.querySelector('.lead .t b').textContent") shouldBe "Odblask"
+        page.evalString(s"$odblask.querySelector('.lead').innerText") should not include "Uff"
+        page.evalInt(s"$odblask.querySelectorAll('.head .conf').length") shouldBe 0   // 16878's probability is not stated
+        val vetoed = s"$odblask.querySelector('details.vetoed')"
+        page.evalBool(s"$vetoed.open") shouldBe false
+        page.evalString(s"$vetoed.querySelector('summary').textContent") shouldBe "Vetoed candidates (1)"
+        page.evalBool(s"$vetoed.querySelector('.cand.vetoed').checkVisibility()") shouldBe false
+        page.evalString(s"$odblask.innerText") should not include "Uff"   // nothing of the vetoed film shows until opened
+        page.eval(s"$vetoed.open = true")
+        page.evalString(s"$vetoed.querySelector('.cand.vetoed .t b').textContent") shouldBe "Uff"
+        page.evalString(s"$vetoed.querySelector('.pct').textContent") shouldBe "28.9%"
+        page.evalString(s"$vetoed.querySelector('.denial').textContent") shouldBe
+          "denied: its title names it only by a programme tag billed beside many titles"
+        page.evalString(s"getComputedStyle($vetoed.querySelector('.denial')).color") shouldBe
+          page.evalString("(function () { var p = document.createElement('span'); p.style.color = 'var(--bad)'; document.body.appendChild(p);" +
+            " var c = getComputedStyle(p).color; p.remove(); return c; })()")
+        page.evalString(s"$vetoed.querySelector('button[data-verdict=film]').getAttribute('data-ref')") shouldBe "tmdb:850957"
+        // the full reasoning keeps the veto line
+        page.evalString(s"$odblask.querySelector('details.why').textContent") should include ("best vetoed candidate 850957 at 28.9%")
+      }
+    }
+  }
+
+  "a card every candidate of which was vetoed" should "put no film forward and say so" in {
+    onQueue { page =>
+      val macbeth = card("Macbeth")
+      page.evalString(s"$macbeth.querySelector('.lead').innerText") should include ("No candidate survived its vetoes")
+      page.evalInt(s"$macbeth.querySelectorAll('.lead .cand, .lead button').length") shouldBe 0
+      page.evalInt(s"$macbeth.querySelectorAll('.head .conf').length") shouldBe 0
+      page.evalBool(s"$macbeth.querySelector('details.vetoed').open") shouldBe false
+      page.evalString(s"$macbeth.querySelector('details.vetoed .cand .t b').textContent") shouldBe "Royal Ballet and Opera: Macbeth"
     }
   }
 

@@ -4,7 +4,8 @@
 @isOn(card: ReviewCard, verdict: String) = @{ card.answer.exists(_.verdict.code == verdict) }
 @isPicked(card: ReviewCard, tmdb: Int) = @{ card.answer.exists(a => a.verdict == ReviewVerdict.Film && a.ref.contains(FilmRef.tmdb(tmdb))) }
 @pickedOwn(card: ReviewCard) = @{
-  card.answer.filter(_.verdict == ReviewVerdict.Film).flatMap(_.ref).filterNot(r => card.otherCandidates.exists(c => r == FilmRef.tmdb(c.film)))
+  card.answer.filter(_.verdict == ReviewVerdict.Film).flatMap(_.ref)
+    .filterNot(r => (card.otherCandidates ++ card.vetoedCandidates).exists(c => r == FilmRef.tmdb(c.film)))
 }
 @poster(src: Option[String], who: String) = {@src match {
   case Some(p) => {<img class="poster" src="@p" alt="@who poster" loading="lazy" referrerpolicy="no-referrer">}
@@ -32,6 +33,12 @@
       @for(o <- known.flatMap(_.overview)){<div class="ov">@o</div>}
     </div>
   }
+}
+@candidateRow(card: ReviewCard, cand: ReviewCandidate) = {
+  <div class="cand@if(isPicked(card, cand.film)){ picked}@if(!cand.survives){ vetoed}" data-ref="tmdb:@cand.film">
+    @filmBody(card, cand.film, Some(cand))
+    <button type="button" class="btn yes@if(isPicked(card, cand.film)){ on}" data-verdict="film" data-ref="tmdb:@cand.film">This film</button>
+  </div>
 }
 @venueLink(m: MemberView) = {@m.pageUrl match {
   case Some(url) => {<a href="@url" target="_blank" rel="noopener">@m.venue</a>}
@@ -144,6 +151,13 @@
     .lead .cand { border: 0; padding: 0; }
     .lead .kind { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); margin-bottom: 4px; }
     .lead .rb { display: flex; gap: 8px; margin-top: 8px; }
+    details.vetoed { font-size: .85rem; }
+    details.vetoed > summary { cursor: pointer; color: var(--muted); }
+    details.vetoed .cands { margin-top: 6px; }
+    .cand.vetoed { background: var(--bg); }
+    .cand.vetoed .t, .cand.vetoed .t b { color: var(--muted); }
+    .cand.vetoed .poster { opacity: .6; }
+    .cand.vetoed .denial { color: var(--bad); }
     .btn.on.right { background: var(--ok); border-color: var(--ok); color: var(--surface); }
     .btn.on.wrong { background: var(--bad); border-color: var(--bad); color: var(--surface); }
     dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: 2px 10px; margin: 6px 0; font-size: .82rem; }
@@ -232,7 +246,7 @@
         @if(c.film.isDefined) {
           <span class="conf" title="match confidence">@pct(c.confidence)</span>
         } else {
-          @for(p <- c.best.flatMap(_.probability)){<span class="conf" title="best candidate">@pct(p)</span>}
+          @for(p <- c.lead.flatMap(_.probability)){<span class="conf" title="best candidate">@pct(p)</span>}
         }
       </div>
       @for(l <- card.labels) {
@@ -263,11 +277,17 @@
       @for(tmdb <- card.shown) {
         <div class="lead">
           <div class="kind">@if(c.film.isDefined){Matched by @c.basis} else {The model leaned to · @c.basis}@for(at <- card.updatedAt){ · <span title="the latest movie_slots.updatedAt of a member: a proxy for the decision time">@at.toString.take(16).replace("T", " ") UTC</span>}</div>
-          <div class="cand">@filmBody(card, tmdb, if (c.film.isDefined) None else c.best)</div>
+          <div class="cand">@filmBody(card, tmdb, if (c.film.isDefined) None else c.lead)</div>
           <div class="rb">
             <button type="button" class="btn yes right@if(isOn(card, "right")){ on}" data-verdict="right">Right film</button>
             <button type="button" class="btn none wrong@if(isOn(card, "wrong")){ on}" data-verdict="wrong">Wrong film</button>
           </div>
+        </div>
+      }
+      @if(card.shown.isEmpty && card.vetoedCandidates.nonEmpty) {
+        <div class="lead none-survived">
+          <div class="kind">The model leaned to · @c.basis</div>
+          <div class="s">No candidate survived its vetoes</div>
         </div>
       }
       <details class="why"><summary>Why the resolver decided this</summary><ul>
@@ -281,13 +301,13 @@
       @if(card.otherCandidates.nonEmpty) {
         @if(card.shown.isDefined){<div class="s">Other candidates</div>}
         <div class="cands">
-          @for(cand <- card.otherCandidates) {
-            <div class="cand@if(isPicked(card, cand.film)){ picked}" data-ref="tmdb:@cand.film">
-              @filmBody(card, cand.film, Some(cand))
-              <button type="button" class="btn yes@if(isPicked(card, cand.film)){ on}" data-verdict="film" data-ref="tmdb:@cand.film">This film</button>
-            </div>
-          }
+          @for(cand <- card.otherCandidates){@candidateRow(card, cand)}
         </div>
+      }
+      @if(card.vetoedCandidates.nonEmpty) {
+        <details class="vetoed"><summary>Vetoed candidates (@card.vetoedCandidates.size)</summary>
+          <div class="cands">@for(cand <- card.vetoedCandidates){@candidateRow(card, cand)}</div>
+        </details>
       }
       <div class="picked-own"@if(pickedOwn(card).isEmpty){ hidden}>Your answer: @pickedOwn(card) match {
         case Some(r) => {<a href="@r.url.getOrElse("#")" target="_blank" rel="noopener">@r.render</a>}
