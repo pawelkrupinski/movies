@@ -91,7 +91,7 @@ final class MongoReviewSource(db: MongoDatabase) extends ReviewSource {
         val b = d.toBsonDocument
         for { venue <- string(b, "_id"); raw <- string(b, "raw") if byVenue.get(venue).exists(_.contains(raw)) } yield
           (venue, raw) -> ListingFeed(
-            doc(b, "externalIds").toSeq.flatMap(_.asScala.toSeq.collect { case (k, v) if v.isString => k -> v.asString.getValue }).sorted,
+            ListingFeed.catalogueIdsOf(b.get("externalIds")),
             Option(b.get("screenings")).filter(_.isInt32).fold(0)(_.asInt32.getValue),
             instant(b, "first").map(localTime), instant(b, "last").map(localTime))
       }.toMap

@@ -82,6 +82,7 @@
     h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #778; margin: .2rem 0; }
     .member { border-left: 2px solid #2a2a3e; padding-left: .5rem; margin-bottom: .5rem; }
     .member .src { font: 11px monospace; color: #667; }
+    .member .src.catalogue { color: #c9a050; }
     dl.facts { display: grid; grid-template-columns: auto 1fr; gap: 0 .6rem; margin: .1rem 0 .3rem; font-size: 12px; }
     dl.facts dt { color: #778; }
     dl.facts dd { margin: 0; }
@@ -174,11 +175,16 @@
                 case services.movies.ListingKey.Published(_, _, y, d) if y.isDefined || d.nonEmpty => {<div class="src">listing key: @y.getOrElse("") @d.mkString(", ")</div>}
                 case _ => {}
               }
-              @for(s <- m.slot if !s.facts.isEmpty){<div class="src">venue listing</div>@facts(s.facts)}
+              @for(s <- m.slot if !s.facts.isEmpty) {
+                @if(m.factsFromCatalogue) {
+                  <div class="src catalogue">catalogue's facts, copied by the feed (@m.feed.map(_.catalogue).filter(_.nonEmpty).orElse(m.pageUrl).getOrElse("feed")) — not the venue's</div>
+                } else {<div class="src">venue listing</div>}
+                @facts(s.facts)
+              }
               @for(p <- m.page if !p.isEmpty){<div class="src">venue film page</div>@facts(p)}
               @for(f <- m.feed) {
                 <div class="src">screenings: @f.screenings@for(a <- f.first; b <- f.last){ · @a → @b}</div>
-                @if(f.catalogueIds.nonEmpty){<div class="src">feed catalogue ids (not the venue's facts): @f.catalogue</div>}
+                @if(f.catalogueIds.nonEmpty){<div class="src">feed catalogue ids: @f.catalogue</div>}
               }
             </div>
           }

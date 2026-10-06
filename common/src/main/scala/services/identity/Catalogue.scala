@@ -30,8 +30,11 @@ object CatalogueSources {
   val FeedPages: Seq[String]     = Seq("https://www.kinoprogramm.com/", "https://kinoprogramm.com/")
 
   /** Are `listing`'s facts a feed catalogue's claim rather than its venue's ([[FeedIds]], [[FeedPages]])? */
-  def feedStated(listing: Listing): Boolean =
-    listing.catalogueIds.exists(id => FeedIds(id.source)) || listing.page.exists(page => FeedPages.exists(page.startsWith))
+  def feedStated(listing: Listing): Boolean = feedStated(listing.catalogueIds, listing.page)
+
+  /** [[feedStated]] for a listing held as its catalogue ids and page alone (the review pages' stored listing). */
+  def feedStated(catalogueIds: Seq[CatalogueId], page: Option[String]): Boolean =
+    catalogueIds.exists(id => FeedIds(id.source)) || page.exists(page => FeedPages.exists(page.startsWith))
 
   /** Every catalogue Wikidata maps, by source. */
   val ByWikidata: Map[String, Mapped] = Seq(Webedia, Letterboxd, RottenTomatoes).map(m => m.source -> m).toMap

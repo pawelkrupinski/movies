@@ -77,7 +77,7 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
     source.slots(Seq(ListingKey.serialised(Held))).values.map(_.facts.synopsis) shouldBe Seq(Some("Biografia Kafki."))
     source.updatedSince(now.minusSeconds(5400)).keySet shouldBe Set(ListingKey.serialised(Matched))
     source.feeds(Seq("Kino Opalenica" -> "FRANZ KAFKA")) shouldBe
-      Map(("Kino Opalenica", "FRANZ KAFKA") -> ListingFeed(Seq("bilety24" -> "165208"), 1, Some("2026-10-10 18:00"), Some("2026-10-10 18:00")))
+      Map(("Kino Opalenica", "FRANZ KAFKA") -> ListingFeed(Seq(services.identity.CatalogueId("bilety24", "165208")), 1, Some("2026-10-10 18:00"), Some("2026-10-10 18:00")))
     source.venuePages(Seq(Held.nativeId)).values.map(_.runtime) shouldBe Seq(Some(127))
     source.films(Seq(1157322, 42)) shouldBe Map(1157322 ->
       FilmCard(1157322, Some("tt22963134"), Some("Franz"), None, Some(2025), Seq("Agnieszka Holland"), None, None, None))

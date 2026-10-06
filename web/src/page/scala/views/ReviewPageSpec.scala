@@ -33,6 +33,11 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
   private val controller = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
     Map(Country.Poland -> ReviewFixtures.source(now)), answers, labels, Clock.fixed(now, ZoneOffset.UTC))
 
+  /** The pages over the REAL prod sample ([[ProdReviewSample]]), every country at once. */
+  private val sample = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
+    ProdReviewSample.Databases.map { case (db, country) => country -> (ProdReviewSample.source(db): ReviewSource) },
+    new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(ProdReviewSample.newestSlot.plusSeconds(3600), ZoneOffset.UTC))
+
   private def post(exchange: HttpExchange): Boolean = {
     val path = exchange.getRequestURI.getPath
     lazy val body = Json.parse(new String(exchange.getRequestBody.readAllBytes(), StandardCharsets.UTF_8))
@@ -56,7 +61,12 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
   override def beforeAll(): Unit = {
     chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
     if (chrome.nonEmpty) server = new TestHttpServer(
-      { case "/debug/review?country=pl" => contentAsString(controller.queue(Some("pl"), 60, false)(FakeRequest())) },
+      {
+        case "/debug/review?country=pl" => contentAsString(controller.queue(Some("pl"), 60, false)(FakeRequest()))
+        case "/sample/review"           => contentAsString(sample.queue(Some("all"), 200, false)(FakeRequest()))
+        case "/sample/review/matchable" => contentAsString(sample.matchable(Some("all"), 0.0, None, 200, false)(FakeRequest()))
+        case "/sample/review/recent"    => contentAsString(sample.recent(Some("all"), 24 * 365, 200, false)(FakeRequest()))
+      },
       dynamicRoute = post)
   }
 
@@ -113,6 +123,31 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       page.eval("document.getElementById('export-labels').click()")
       page.waitFor("document.getElementById('export-summary').textContent.indexOf('added') >= 0")
       LabelsTsv.read(labels).map(r => (r.rawTitle, r.film, r.verdict)) shouldBe Seq(("FRANZ KAFKA", "tmdb:1157322", "wrong"))
+    }
+  }
+
+  "every review page over the real prod sample" should "render its cards whole, each with a payload its buttons can post" in {
+    chrome match {
+      case None => cancel("Chrome not installed — skipping /debug/review page test")
+      case Some(c) =>
+        Seq("/sample/review" -> 15, "/sample/review/matchable" -> 15, "/sample/review/recent" -> 1).foreach { case (path, atLeast) =>
+          c.openPage(server.baseUrl + path) { page =>
+            withClue(path) {
+              page.evalInt("document.querySelectorAll('.card').length") should be >= atLeast
+              page.evalInt("document.querySelectorAll('.notice').length") shouldBe 0
+              // every card's payload parses and names its cluster, title and members
+              page.evalBool("""Array.prototype.every.call(document.querySelectorAll('.card'), function (c) {
+                var p = JSON.parse(c.getAttribute('data-card'));
+                return p.clusterId === c.getAttribute('data-cluster') && p.members.length > 0 && typeof p.title === 'string';
+              })""") shouldBe true
+            }
+          }
+        }
+        c.openPage(server.baseUrl + "/sample/review/matchable") { page =>
+          page.evalString("document.querySelector('.controls').textContent") should include ("Vetoed")
+          page.eval("document.querySelector('.card button[data-verdict=wrong]').click()")
+          page.waitFor("document.querySelector('.card').getAttribute('data-answered') === 'wrong'")
+        }
     }
   }
 }

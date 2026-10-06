@@ -55,6 +55,6 @@ object ReviewFixtures {
         poster = Some("https://bilety24/kafka.jpg"), synopsis = Some("Biografia Kafki.")), now.minusSeconds(7200)),
       Matched -> SlotFacts(VenueFacts(title = Some("Klondike"), year = Some(2022)), now.minusSeconds(3600))),
     pagesHeld = Map(Held.nativeId -> VenueFacts(runtime = Some(127), cast = Seq("Idan Weiss"))),
-    feedsHeld = Map(("Kino Opalenica", "FRANZ KAFKA") -> ListingFeed(Seq("bilety24" -> "165208"), 1, Some("2026-10-10 18:00"), Some("2026-10-10 18:00"))),
+    feedsHeld = Map(("Kino Opalenica", "FRANZ KAFKA") -> ListingFeed(Seq(services.identity.CatalogueId("bilety24", "165208")), 1, Some("2026-10-10 18:00"), Some("2026-10-10 18:00"))),
     filmsHeld = Map(kafka.tmdb -> kafka, macbeth.tmdb -> macbeth, klondike.tmdb -> klondike))
 }

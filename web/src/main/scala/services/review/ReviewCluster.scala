@@ -13,7 +13,7 @@ final case class ReviewCandidate(film: Int, probability: Option[Double], vetoed:
 /**
  * One cluster of the identity model (`identity_model_families.decisions[]`) as the review pages read it.
  * `candidates` are the films the decision names, best first: the best rejected or vetoed candidate of
- * its pooled scoring, the members' own matches, and the `candidate` / `leaning` it stored.
+ * its pooled scoring, the members' own matches and their pooled vote, and the `candidate` / `leaning` it stored.
  */
 final case class ReviewCluster(country: Country, members: Seq[ListingKey], film: Option[Int], confidence: Double,
                                basis: ResolverDecision.Basis, explanation: Seq[String], fallback: Boolean,
@@ -33,12 +33,18 @@ object ReviewCluster {
   // ResolverDecisions writes: "best vetoed candidate 1703622 at 62.5%, denied: <why>, (<measures>)"
   //                       and "best rejected candidate 677558 at 86.4% (<measures>)"
   private val Best = """best (vetoed|rejected) candidate (\d+) at ([\d.]+)%(?:, denied: (.*?),)? \(""".r.unanchored
-  private val Own  = """own match (\d+) at ([\d.]+)%""".r.unanchored
+  private val Own    = """own match (\d+) at ([\d.]+)%""".r.unanchored
+  // "pooled evidence of 3 node(s) → 677558 at 86.4%"
+  private val Pooled = """pooled evidence of \d+ node\(s\) → (\d+) at ([\d.]+)%""".r.unanchored
+  private def fraction(pct: String): Option[Double] = pct.toDoubleOption.map(p => (BigDecimal(p) / 100).toDouble)
 
   def of(country: Country, decision: ResolverDecision): ReviewCluster = {
     val best = decision.explanation.collectFirst { case Best(kind, film, pct, denial) =>
-      ReviewCandidate(film.toInt, pct.toDoubleOption.map(p => (BigDecimal(p) / 100).toDouble), vetoed = kind == "vetoed", Option(denial)) }
-    val own = decision.explanation.collect { case Own(film, pct) => ReviewCandidate(film.toInt, pct.toDoubleOption.map(p => (BigDecimal(p) / 100).toDouble)) }
+      ReviewCandidate(film.toInt, fraction(pct), vetoed = kind == "vetoed", Option(denial)) }
+    val own = decision.explanation.collect {
+      case Own(film, pct)    => ReviewCandidate(film.toInt, fraction(pct))
+      case Pooled(film, pct) => ReviewCandidate(film.toInt, fraction(pct))
+    }
     val stored = (decision.candidate.toSeq ++ decision.leaning.toSeq).map(lean => ReviewCandidate(lean.film, None))
     val candidates = (best.toSeq ++ own.sortBy(-_.probability.getOrElse(0.0)) ++ stored)
       .filterNot(c => decision.film.contains(c.film)).distinctBy(_.film)
