@@ -23,7 +23,7 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     CinemaMovie(Movie(title), cinema, None, None, None, Nil, Nil, hours.map(h => Showtime(start.plusHours(h.toLong), None)))
 
   /** An in-memory archive that counts the rows its keyed reads hand over, with their showtimes and without. */
-  private final class Counting extends ForwardingScrapeArchive(new InMemoryScrapeArchiveRepository) {
+  private class Counting extends ForwardingScrapeArchive(new InMemoryScrapeArchiveRepository) {
     var wholeRowsRead, leanRowsRead = 0
     def rowsRead: Int = wholeRowsRead + leanRowsRead
     override def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome =
@@ -65,6 +65,26 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
       samson.broadcastSeason shouldBe Some(2026)
       listings.find(_.title == "Lalka").get.screenings.isEmpty shouldBe true
     }
+  }
+
+  it should "read again a venue whose relay's days it could not read, however still its row, and give the days then" in {
+    var failing = true
+    val accepted = new Counting
+    val archive = new Counting {
+      override def scanLean(keep: Cinema => Boolean)(consume: Seq[LeanListing] => Unit): tools.ScanOutcome =
+        super.scanLean(keep)(rows => consume(if (!failing) rows else rows.map(row => row.copy(films = row.films.map { case (cm, digest) =>
+          (if (LeanListing.billsStageWork(cm)) cm.copy(showtimes = LeanListing.unread) else cm) -> digest }))))
+    }
+    val intake = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
+      services.movies.ListingIntakeMetrics.noop)
+    archive.store(Multikino, clock.instant(), film(Multikino, "OPERA-SAMSON I DALILA", 0), film(Multikino, "Lalka", 0))
+    def samson = intake.projected(live).map(_.listing).find(_.title.toUpperCase.contains("SAMSON")).get
+    samson.screenings.isUnknown shouldBe true          // read, its days unknown — not "screens on none"
+    failing = false
+    samson.screenings.days shouldBe Seq(start.toLocalDate)   // the row never moved, yet read again
+    val reads = archive.rowsRead
+    samson.screenings.days shouldBe Seq(start.toLocalDate)
+    archive.rowsRead shouldBe reads                     // known now: held, not read again
   }
 
   "the projection's listing read" should "read again only the venues whose listing moved, and give what a whole read gives" in {

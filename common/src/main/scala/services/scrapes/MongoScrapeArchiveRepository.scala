@@ -177,7 +177,9 @@ class MongoScrapeArchiveRepository(
   sharedDb:   Option[MongoDatabase],
   // `cinema_scrapes`, unless the same rules keep another venue-keyed listing set (the identity
   // projection's accepted listings, `IdentityListingIntake.Collection`).
-  collection: String = ScrapeArchiveRepository.Collection
+  collection: String = ScrapeArchiveRepository.Collection,
+  // Called once per lean page whose stage relays' days could not be read (`screeningDays`).
+  daysUnread: () => Unit = () => ()
 ) extends ScrapeArchiveRepository with Logging {
 
   private lazy val coll: Option[MongoCollection[StoredScrapeDto]] = sharedDb.map { db =>
@@ -357,10 +359,24 @@ class MongoScrapeArchiveRepository(
         LeanListing(row.cinema, s.at, s.films.zip(dto.films.getOrElse(Nil)).map { case (film, stored) => film -> stored.showtimesDigest.get }))))
       val staged = rows.flatMap(row => row.films.iterator.zipWithIndex.collect {
         case ((film, _), index) if stageTitles(film) => (row.cinema.displayName, index, film.movie.rawTitle.getOrElse(film.movie.title)) })
-      val days = if (staged.isEmpty) Map.empty[(String, Int), (Int, Seq[java.time.LocalDate])] else screeningDays(staged)
-      consume(if (days.isEmpty) rows else rows.map(row => row.copy(films = row.films.zipWithIndex.map { case ((film, digest), index) =>
-        // the days of the very showtimes the digest was read with: a row re-scraped between the two reads keeps none
-        days.get(row.cinema.displayName -> index).filter(_._1 == digest).fold(film)(read => film.copy(showtimes = LeanListing.days(read._2))) -> digest
+      // a failed read of the days is no days: each relay's are UNKNOWN, which its next read asks again
+      val days = if (staged.isEmpty) Some(Map.empty[(String, Int), (Int, Seq[java.time.LocalDate])])
+        else Try(screeningDays(staged)) match {
+          case Success(read) => Some(read)
+          case Failure(e) =>
+            logger.warn(s"ScrapeArchiveRepository.scanLean: the days of ${staged.size} stage relays could not be read — unknown " +
+              s"until the next read: ${e.getClass.getSimpleName}: ${e.getMessage}")
+            daysUnread()
+            None
+        }
+      val wanted = staged.iterator.map { case (venue, index, _) => venue -> index }.toSet
+      consume(if (wanted.isEmpty) rows else rows.map(row => row.copy(films = row.films.zipWithIndex.map { case ((film, digest), index) =>
+        val key = row.cinema.displayName -> index
+        if (!wanted(key)) film -> digest
+        else days.fold(film.copy(showtimes = LeanListing.unread)) { read =>
+          // the days of the very showtimes the digest was read with: a row re-scraped between the two reads keeps none
+          read.get(key).filter(_._1 == digest).fold(film)(dated => film.copy(showtimes = LeanListing.days(dated._2)))
+        } -> digest
       })))
     }
     val whole = undigested.result()
@@ -369,9 +385,8 @@ class MongoScrapeArchiveRepository(
 
   /** The days each of `films` — a venue, the film's place in its row and its raw title — screens on, with its showtimes'
    *  digest, by venue and place: the server reads them for those films alone (a US page of venues listing a Met relay
-   *  holds ~500k showtimes, a few hundred of them the relays'). A failed read THROWS, failing the scan: no days is no
-   *  season, which the model would read as the listing changed. */
-  private def screeningDays(films: Seq[(String, Int, String)]): Map[(String, Int), (Int, Seq[java.time.LocalDate])] =
+   *  holds ~500k showtimes, a few hundred of them the relays'). A failed read THROWS. */
+  protected def screeningDays(films: Seq[(String, Int, String)]): Map[(String, Int), (Int, Seq[java.time.LocalDate])] =
     coll.fold(Map.empty[(String, Int), (Int, Seq[java.time.LocalDate])]) { c =>
       import org.bson.BsonArray
       val wanted = films.map { case (venue, index, _) => venue -> index }.toSet

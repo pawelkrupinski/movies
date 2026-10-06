@@ -3039,7 +3039,7 @@
     {
       "id": 59,
       "title": "Identity agreement — clusters and films taken",
-      "description": "The agreement stage (`agreement.AgreementStage`): clusters TMDB matched to nothing, asked of IMDb, Wikidata, Metacritic, Rotten Tomatoes and (PL/DE/ES) Filmweb, each resolving them over its own answers. `kinowo_worker_identity_agreement_clusters`: after the stage's last pass, clusters `waiting` on a family's answer, `verdicts` kept, and those `agreed` on a film (≥3 families, none dissenting), and `poster-vetoed`: agreed films a venue poster named another candidate against. `kinowo_worker_identity_agreement_taken`: decisions the last pass took — as a `tmdb` film (its IMDb id found one there) or an IMDb `fallback` the families agreed on, or a `poster` vote (a venue poster matching one candidate alone) — the cards the stage identified. Waiting falls as the questions are answered; a rise in agreed with no rise in taken is a TMDB find still unasked.",
+      "description": "The agreement stage (`agreement.AgreementStage`): clusters TMDB matched to nothing, asked of IMDb, Wikidata, Metacritic, Rotten Tomatoes and (PL/DE/ES) Filmweb, each resolving them over its own answers. `kinowo_worker_identity_agreement_clusters`: after the stage's last pass, clusters `waiting` on a family's answer, `verdicts` kept, and those `agreed` on a film (≥3 families, none dissenting), and `poster-vetoed`: agreed films a venue poster named another candidate against. `kinowo_worker_identity_agreement_taken`: decisions the last pass took — as a `tmdb` film (its IMDb id found one there) or an IMDb `fallback` the families agreed on, or a `poster` vote (a venue poster matching one candidate alone) — the cards the stage identified. `kinowo_worker_identity_relay_days_unread_total{archive}` per hour: lean listing reads whose stage relays' screening days could not be read — those relays' days unknown, the broadcast take waiting, until the next read. Waiting falls as the questions are answered; a rise in agreed with no rise in taken is a TMDB find still unasked.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -3093,6 +3093,15 @@
           },
           "expr": "sum by (country, as) (kinowo_worker_identity_agreement_taken{country=~\"$country\"})",
           "legendFormat": "{{country}} taken as {{as}}"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, archive) (increase(kinowo_worker_identity_relay_days_unread_total{country=~\"$country\"}[1h]))",
+          "legendFormat": "{{country}} relay days unread ({{archive}}) /h"
         }
       ]
     },

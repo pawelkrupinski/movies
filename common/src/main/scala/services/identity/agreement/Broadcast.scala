@@ -32,10 +32,12 @@ object Broadcast {
 
   /** [[take]], unless a record it would weigh but for its day — every listing's billing fits it, and it states no release
    *  day — has a day not known yet (`undated`: a stored record filed when records kept only TMDB's year): `Left` those
-   *  records, which the take waits for, since any one might be the production broadcast on the cluster's day. */
+   *  records, which the take waits for, since any one might be the production broadcast on the cluster's day. A cluster
+   *  one of whose listings' days could not be read ([[ScreeningDays.Unknown]]) waits too, asking no record: `Left` none. */
   def takeOrWait(listings: Seq[Listing], measured: Listing => IdentityMeasures.Listing, records: Seq[(Int, Film)])(
       undated: Int => Boolean): Either[Seq[Int], Option[Taken]] =
-    billed(listings, measured).fold[Either[Seq[Int], Option[Taken]]](Right(None)) { (days, billing) =>
+    if (listings.exists(_.screenings.isUnknown)) Left(Nil)
+    else billed(listings, measured).fold[Either[Seq[Int], Option[Taken]]](Right(None)) { (days, billing) =>
       val waits = records.collect { case (id, film) if film.released.isEmpty && billing.forall(_.fits(film)) && undated(id) => id }.distinct
       if (waits.nonEmpty) Left(waits) else Right(chosen(days, billing, records))
     }

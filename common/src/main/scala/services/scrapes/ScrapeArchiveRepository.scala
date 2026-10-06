@@ -65,6 +65,10 @@ object LeanListing {
       known.computeIfAbsent((film.movie.title, film.movie.rawTitle), _ => java.lang.Boolean.valueOf(billsStageWork(film))).booleanValue
   }
 
+  /** A stage-work film's days a lean read could not read: one showtime on [[services.identity.ScreeningDays.UnreadDay]],
+   *  which its listing reads as days unknown ([[services.identity.ScreeningDays.Unknown]]) — never as none. */
+  val unread: Seq[models.Showtime] = Seq(models.Showtime(services.identity.ScreeningDays.UnreadDay.atStartOfDay, None))
+
   /** One bare showtime (no URL, room or format) at the start of each of `screened`'s days, in order. */
   def days(screened: Iterable[java.time.LocalDate]): Seq[models.Showtime] =
     screened.toSeq.distinct.sorted.map(day => models.Showtime(day.atStartOfDay, None))

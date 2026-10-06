@@ -296,7 +296,8 @@ trait ScrapeWiring { self: WorkerWiring =>
 
   /** Every cinema's last consolidated scrape, kept for replay/repopulate. One row
    *  per cinema in THIS country's database, replaced on each successful scrape. */
-  lazy val scrapeArchive: ScrapeArchiveRepository = new MongoScrapeArchiveRepository(mongoConnection.database)
+  lazy val scrapeArchive: ScrapeArchiveRepository = new MongoScrapeArchiveRepository(mongoConnection.database,
+    daysUnread = workerMetrics.identityAgreement.daysUnread(country.code, "archive"))
 
   // ONE policy across every scrape path (plain, chunked plan, chunked reduce) so a
   // venue's failure streak is counted once and every terminal outcome advances the

@@ -85,33 +85,45 @@ final case class Listing(
 }
 
 /** The days a listing screens on, each once, in order — held as epoch days: a corpus holds a listing per film and
- *  venue, and most screen on a handful of days. */
+ *  venue, and most screen on a handful of days. Or [[ScreeningDays.Unknown]]: a read of them that failed — no day,
+ *  but never "screens on none" (a failed read is not data): the broadcast take waits on it. */
 final class ScreeningDays private (private val epochDays: Array[Int]) {
+  /** No day, and known to be none. */
   def isEmpty: Boolean = epochDays.isEmpty
-  def days: Seq[java.time.LocalDate] = epochDays.toSeq.map(day => java.time.LocalDate.ofEpochDay(day.toLong))
-  def contains(day: java.time.LocalDate): Boolean = java.util.Arrays.binarySearch(epochDays, day.toEpochDay.toInt) >= 0
-  def first: Option[java.time.LocalDate] = epochDays.headOption.map(day => java.time.LocalDate.ofEpochDay(day.toLong))
-  def last: Option[java.time.LocalDate]  = epochDays.lastOption.map(day => java.time.LocalDate.ofEpochDay(day.toLong))
+  /** The days could not be read. */
+  def isUnknown: Boolean = this eq ScreeningDays.Unknown
+  def days: Seq[java.time.LocalDate] = if (isUnknown) Nil else epochDays.toSeq.map(day => java.time.LocalDate.ofEpochDay(day.toLong))
+  def contains(day: java.time.LocalDate): Boolean = !isUnknown && java.util.Arrays.binarySearch(epochDays, day.toEpochDay.toInt) >= 0
+  def first: Option[java.time.LocalDate] = days.headOption
+  def last: Option[java.time.LocalDate]  = days.lastOption
   /** The performing season the first day falls in, by the year it opens: a season runs from July to June, so
    *  January 2027 is the 2026/27 season's, as August 2026 is. */
   def season: Option[Int] = first.map(day => if (day.getMonthValue >= ScreeningDays.SeasonOpens) day.getYear else day.getYear - 1)
-  /** `other`'s days beside these. */
+  /** `other`'s days beside these — unknown when either is. */
   def ++(other: ScreeningDays): ScreeningDays =
-    if (other.isEmpty) this else if (isEmpty) other else new ScreeningDays((epochDays ++ other.epochDays).distinct.sorted)
+    if (isUnknown || other.isUnknown) ScreeningDays.Unknown
+    else if (other.isEmpty) this else if (isEmpty) other else new ScreeningDays((epochDays ++ other.epochDays).distinct.sorted)
   override def equals(other: Any): Boolean = other match {
     case that: ScreeningDays => java.util.Arrays.equals(epochDays, that.epochDays)
     case _ => false
   }
   override def hashCode: Int = java.util.Arrays.hashCode(epochDays)
-  override def toString: String = days.mkString("ScreeningDays(", ", ", ")")
+  override def toString: String = if (isUnknown) "ScreeningDays(unknown)" else days.mkString("ScreeningDays(", ", ", ")")
 }
 
 object ScreeningDays {
   val None: ScreeningDays = new ScreeningDays(Array.emptyIntArray)
+  /** The day standing for "not read" where days travel as showtimes (`services.scrapes.LeanListing.unread`): no venue
+   *  screens in year 1. */
+  val UnreadDay: java.time.LocalDate = java.time.LocalDate.of(1, 1, 1)
+  /** Days that could not be read. */
+  val Unknown: ScreeningDays = new ScreeningDays(Array(UnreadDay.toEpochDay.toInt))
   /** The month a performing season opens in. */
   val SeasonOpens = 7
   def of(days: Iterable[java.time.LocalDate]): ScreeningDays =
-    if (days.isEmpty) None else new ScreeningDays(days.iterator.map(_.toEpochDay.toInt).toArray.distinct.sorted)
+    if (days.isEmpty) None
+    else if (days.exists(_ == UnreadDay)) Unknown
+    else new ScreeningDays(days.iterator.map(_.toEpochDay.toInt).toArray.distinct.sorted)
 }
 
 /** A film's id in a cinema chain's own catalogue (`CinemaMovie.externalIds`: Gatsby's "boxoffice",

@@ -18,7 +18,8 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
 
   /** Each venue's accepted listing (`identity_listings`). */
   lazy val acceptedListings: ScrapeArchiveRepository =
-    new MongoScrapeArchiveRepository(mongoConnection.database, IdentityListingIntake.Collection)
+    new MongoScrapeArchiveRepository(mongoConnection.database, IdentityListingIntake.Collection,
+      daysUnread = workerMetrics.identityAgreement.daysUnread(country.code, "accepted"))
 
   /** The persisted FilmId map (`identity_film_ids`), in memory without a database. */
   lazy val filmIdCounterStore: FilmIdCounterStore =

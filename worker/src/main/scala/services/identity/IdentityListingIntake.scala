@@ -208,7 +208,7 @@ object IdentityListingIntake {
         case Read.Changed =>
           // Only what this intake knows moved: what it took a scrape of, a venue now another roster object, one it
           // holds nothing of (a venue the archive has no row of is never fetched, `scanLean` reading by id).
-          val keep = entries.filter { case (name, entry) => wanted.get(name).exists(_ eq entry.cinema) && !written(name) }
+          val keep = entries.filter { case (name, entry) => wanted.get(name).exists(_ eq entry.cinema) && !written(name) && !unread(entry) }
           (keep, (c: Cinema) => current(c) && !keep.contains(c.displayName))
         case Read.Stamped =>
           val stamps = repository.contentStamps()
@@ -217,7 +217,7 @@ object IdentityListingIntake {
           else {
             val present = stamps.collect { case (name, services.scrapes.ContentStamp(Some(at), _)) if wanted.contains(name) => name -> at }
             val keep = entries.filter { case (name, entry) =>
-              present.get(name).exists(at => entry.stamp.contains(at)) && (entry.cinema eq wanted(name)) && !written(name)
+              present.get(name).exists(at => entry.stamp.contains(at)) && (entry.cinema eq wanted(name)) && !written(name) && !unread(entry)
             }
             (keep, (c: Cinema) => present.contains(c.displayName) && !keep.contains(c.displayName) && current(c))
           }
@@ -232,6 +232,9 @@ object IdentityListingIntake {
       entries = if (complete.isComplete) keep ++ fresh.result() else Map.empty
       entries.map { case (name, entry) => name -> entry.listings }
     }
+
+    /** Does a venue hold a stage relay whose days its read could not read? It is read again, however still its row. */
+    private def unread(entry: Entry): Boolean = entry.listings.exists(_.exists(_.listing.screenings.isUnknown))
 
     /** Hold `rows` — each venue read whole, with its row's stamp and its listings — as a whole read would have. */
     def seed(rows: Seq[(Cinema, (java.time.Instant, Seq[ProjectedListing]))]): Unit =
@@ -254,9 +257,12 @@ object IdentityListingIntake {
       entries.valuesIterator.filterNot(_.adopted).flatMap(_.listings.iterator.flatten.map(_.listing.key))
   }
 
-  /** The model's object for `listing` when it holds one the same, else `listing`. */
+  /** The model's object for `listing` when it holds one the same, else `listing` — but never over the days this read
+   *  gave a stage relay ([[services.scrapes.LeanListing.leanFilm]]): they are outside a listing's equality, and the
+   *  model's may be older, or unknown where this read knows them. (Another film's lean read gives no days at all.) */
   private def modelledAs(modelled: Map[ListingKey, Listing], listing: Listing): Listing =
-    modelled.get(listing.key).filter(_ == listing).getOrElse(listing)
+    modelled.get(listing.key).filter(held => held == listing && (listing.screenings.isEmpty || held.screenings == listing.screenings))
+      .getOrElse(listing)
 
   /** How a projection read takes the archives: whole, by their rows' stamps, or only what this intake took since. */
   private[identity] enum Read { case Whole, Stamped, Changed }

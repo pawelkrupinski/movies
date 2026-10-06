@@ -141,6 +141,29 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
     } finally purge()
   }
 
+  it should "scan lean whole when the relays' days cannot be read, their days unknown and counted, then read them next" in {
+    var failing = true
+    var unread  = 0
+    val repository = new MongoScrapeArchiveRepository(Some(db), daysUnread = () => unread += 1) {
+      override protected def screeningDays(films: Seq[(String, Int, String)]) =
+        if (failing) throw new RuntimeException("injected: the days' aggregate timed out") else super.screeningDays(films)
+    }
+    val relay = minimal.copy(movie = Movie("OPERA-SAMSON I DALILA"), showtimes = Seq(Showtime(LocalDateTime.of(2026, 12, 5, 18, 0), None)))
+    def scanned() = {
+      val lean = Seq.newBuilder[services.scrapes.LeanListing]
+      repository.scanLean(_ == Multikino)(lean ++= _).isComplete shouldBe true
+      lean.result().flatMap(_.films).map(_._1)
+    }
+    try {
+      repository.record(scraped(Noon, Seq(fullyPopulated, relay)))
+      scanned().map(_.showtimes) shouldBe Seq(Nil, services.scrapes.LeanListing.unread)
+      unread shouldBe 1
+      failing = false
+      scanned().map(_.showtimes.map(_.dateTime.toLocalDate)) shouldBe Seq(Nil, Seq(java.time.LocalDate.of(2026, 12, 5)))
+      unread shouldBe 1
+    } finally purge()
+  }
+
   it should "scan whole a listing stored before its films carried a showtimes digest" in {
     val repository = new MongoScrapeArchiveRepository(Some(db))
     try {

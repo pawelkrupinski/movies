@@ -101,7 +101,23 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     stage.wantedRecords shouldBe empty
   }
 
-  it should "be read again once only: a record TMDB still dates by its year is then taken as dating none" in {
+  "a stage relay whose days could not be read" should "wait, asking nothing, and be taken once a read gives its days" in {
+    val unread  = FilmTable.listing(Multikino, "Samson i Dalila").copy(screenings = ScreeningDays.Unknown)
+    val asked   = scala.collection.mutable.Buffer.empty[AgreementStage.Open]
+    val stage   = new AgreementStage(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      new InMemoryAgreementVerdicts, ask = asked += _, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table))
+    def decided(listing: Listing, version: Long) = stage.apply(Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1,
+      ResolverDecision.Basis.BelowThreshold, Nil)()), 1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty),
+      Map(listing.key -> listing).get, version).decisions.head
+    decided(unread, 1).film shouldBe None
+    (stage.wantedRecords, asked.flatMap(_.records)) shouldBe ((Set.empty, Nil))
+    decided(unread.copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 12, 5)))), 2).film shouldBe Some(metSamson.id)
+    // unknown days are no days and no season, but never "screens on none"
+    (ScreeningDays.Unknown.isEmpty, ScreeningDays.Unknown.days, unread.broadcastSeason) shouldBe ((false, Nil, None))
+    (ScreeningDays.Unknown ++ ScreeningDays.of(Seq(LocalDate.of(2026, 12, 5)))).isUnknown shouldBe true
+  }
+
+  "a stored record of the billed work holding only its year" should "be read again once only: a record TMDB still dates by its year is then taken as dating none" in {
     val listing = screening("Samson i Dalila", "2026-12-05")
     val stored  = new YearOnlyRecords(table, Set(metSamson.id))   // never gains its day
     val filed   = scala.collection.mutable.Set.empty[String]

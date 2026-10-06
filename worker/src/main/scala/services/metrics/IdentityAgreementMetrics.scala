@@ -49,6 +49,17 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
     .help("Clusters the agreement stage resolved again over the families' answers; a quiet projection resolves none.")
     .labelNames("country").register(registry)
 
+  private val daysUnreadTotal: Counter = Counter.builder()
+    .name("kinowo_worker_identity_relay_days_unread_total")
+    .help("Lean listing reads whose stage relays' screening days could not be read: those relays' days are unknown, and the broadcast take waits, until a next read.")
+    .labelNames("country", "archive").register(registry)
+
+  /** Counts, for `country`'s `archive` (`accepted` or `archive`), a lean read whose stage relays' days were not read. */
+  def daysUnread(country: String, archive: String): () => Unit = {
+    val series = daysUnreadTotal.labelValues(country, archive)
+    () => series.inc()
+  }
+
   private val seconds: Gauge = Gauge.builder()
     .name("kinowo_worker_identity_agreement_seconds")
     .help("Wall-clock seconds the agreement stage's last pass that read anything took.")
