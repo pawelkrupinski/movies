@@ -127,6 +127,22 @@ class IdentityCalibrateSpec extends AnyFlatSpec with Matchers {
     runtime.sliding(2).foreach { case Seq(a, b) => b should be <= a; case _ => }
   }
 
+  it should "fit a signed runtime rising to 0 and falling past it, each side on its own counts" in {
+    // The listing-film runtime is the venue's minutes less the record's: a venue billing 20 more is often the film with
+    // an interval, one billing 20 less another cut — the two sides weigh apart, each never above a smaller gap.
+    val t = IdentityCalibrate.fitSignal("runtime.delta",
+      numbers("runtime.delta", -40, 3, 60) ++ numbers("runtime.delta", -20, 2, 200) ++ numbers("runtime.delta", 0, 800, 40) ++
+        numbers("runtime.delta", 20, 30, 120) ++ numbers("runtime.delta", 40, 2, 300), _ => Set.empty).weights
+    def w(x: Double) = t.weight(Some(IdentityMeasures.Number(x)))
+    withClue(t.bins.mkString("\n")) {
+      w(-40) should be <= w(-20)
+      w(-20) should be < w(0)
+      w(20) should be < w(0)
+      w(40) should be < w(20)
+      w(20) should be > w(-20)
+    }
+  }
+
   it should "leave a numeric signal with no stated direction to the data" in {
     // A year difference is signed: evidence peaks at 0 and falls both ways.
     val ws = IdentityCalibrate.fitSignal("year.delta",
@@ -135,5 +151,15 @@ class IdentityCalibrateSpec extends AnyFlatSpec with Matchers {
     ws should have size 3
     ws(1) should be > ws(0)
     ws(1) should be > ws(2)
+  }
+
+  "a cannot-link on a signed measure" should "be searched on each side of 0 at its own distance" in {
+    // Venues billing 40 minutes LESS than the record are other films; 40 minutes MORE is the film with an interval.
+    def rows(value: Double, same: Int, different: Int) = numbers("runtime.delta", value, same, different)
+    val all = rows(0, 200, 50) ++ rows(40, 20, 10) ++ rows(-40, 0, 300)
+    val rules = IdentityCalibrate.deriveRules("listing-film", all, Nil, Seq("runtime.delta"), None).map(_._1)
+    rules should contain(Seq(IdentityCalibrate.Atom("runtime.delta", atMost = Some(-40))))
+    rules.flatten.filter(_.atLeast.isDefined) shouldBe empty
+    IdentityCalibrate.Atom("runtime.delta", atMost = Some(-40)).render shouldBe "runtime.delta <= -40"
   }
 }

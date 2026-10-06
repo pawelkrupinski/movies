@@ -20,6 +20,8 @@
 #
 # The report formats numbers in the JVM locale: the command pins it to en-US ("0.97", not "0,97").
 #
+# --refit-signal <signal> refits one listing-film table (and the cannot-links reading it) in place; see below.
+#
 # --decorations-only relearns identity-decorations.json alone (CORPORA and FIXTURES only; PROD is not read)
 # without refitting the weights (scripts.IdentityDecorationsLearn).
 #
@@ -49,6 +51,11 @@ if [[ "${1:-}" == "--decorations-only" ]]; then
   exec sbt -J-Xmx12g -J-Duser.language=en -J-Duser.country=US -batch "worker/Test/runMain scripts.IdentityDecorationsLearn --corpora $CORPORA --fixtures $FIXTURES --version ${VERSION:-decorations-$(date -u +%Y-%m-%d)}"
 fi
 : "${PROD:?set PROD to the dir of the production snapshot (prod-<db>.jsonl)}"
+# --refit-signal <listing-film signal> refits that one table, and the cannot-links reading it, in the shipped
+# artefact (scripts.IdentityCalibrate.refitSignal): every other weight, rule, the calibration map and the cut stay.
+if [[ "${1:-}" == "--refit-signal" ]]; then
+  exec sbt -J-Xmx12g -J-Duser.language=en -J-Duser.country=US -batch "worker/Test/runMain scripts.IdentityCalibrate --refit-signal ${2:?signal} --corpora $CORPORA --fixtures $FIXTURES --prod $PROD ${COUNTRIES:+--countries $COUNTRIES} ${WEIGHTS:+--weights $WEIGHTS}"
+fi
 REPORT="${REPORT:-target/identity-calibration}"
 EPSILON="${EPSILON:-certified}"
 VERSION="${VERSION:-calibration-$(date -u +%Y-%m-%d)}"

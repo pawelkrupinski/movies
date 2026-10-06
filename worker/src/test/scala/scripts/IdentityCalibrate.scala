@@ -82,7 +82,9 @@ object IdentityCalibrate {
       // report lists side by side — evaluation only, never an input to a weight.
       cases        = path("cases"),
       decorationsOut = path("decorations").getOrElse(IdentityDecorationsLearn.Artefact))
-    run(cfg)
+    // `--refit-signal <listing-film signal>`: that one table, and the cannot-links reading it, refitted in place
+    // ([[refitSignal]]) — the rest of the artefact, its calibration map and its cut, as they are.
+    opts.get("refit-signal").fold(run(cfg))(refitSignal(cfg, _))
   }
 
   // ── labels ────────────────────────────────────────────────────────────────────────────
@@ -422,8 +424,15 @@ object IdentityCalibrate {
    *  pool-adjacent-violators, as [[inOrder]] fits categories: while a bin's ratio runs against the
    *  direction from its neighbour's, the two are one bin over both ranges from their summed counts. */
   def monotone(bins: Seq[(Double, Double, Int, Int)], direction: IdentityMeasures.EvidenceDirection,
-               ratio: (Int, Int) => Double): Seq[(Double, Double, Int, Int)] = {
-    val rising = direction == IdentityMeasures.EvidenceDirection.Rising
+               ratio: (Int, Int) => Double): Seq[(Double, Double, Int, Int)] = direction match {
+    // Peaked: rising through the bins reaching 0, falling over those past it — each side pooled on its own counts.
+    case IdentityMeasures.EvidenceDirection.Peaked =>
+      val (upTo, past) = bins.sortBy(_._1).partition(_._1 <= 0)
+      monotone(upTo, IdentityMeasures.EvidenceDirection.Rising, ratio) ++ monotone(past, IdentityMeasures.EvidenceDirection.Falling, ratio)
+    case _ => pooled(bins, direction == IdentityMeasures.EvidenceDirection.Rising, ratio)
+  }
+
+  private def pooled(bins: Seq[(Double, Double, Int, Int)], rising: Boolean, ratio: (Int, Int) => Double): Seq[(Double, Double, Int, Int)] = {
     val pooled = mutable.ArrayBuffer.empty[(Double, Double, Int, Int)]
     def violated = pooled.size > 1 && {
       val a = pooled(pooled.size - 2); val b = pooled.last
@@ -489,15 +498,22 @@ object IdentityCalibrate {
 
   // ── cannot-link rules ────────────────────────────────────────────────────────────────
 
-  /** One atom of a rule: a category set, or a number at least a threshold. */
-  final case class Atom(signal: String, in: Seq[String] = Nil, atLeast: Option[Double] = None) {
-    def holds(m: Map[String, Measure]): Boolean = m.get(signal) match {
-      case Some(Category(v)) => in.contains(v)
-      case Some(Number(x))   => in.isEmpty && atLeast.exists(x >= _)
-      case _                 => false
-    }
-    def condition: Condition = Condition(signal, in, atLeast, None)
-    def render: String = if (in.nonEmpty) s"$signal in {${in.mkString(",")}}" else f"$signal >= ${atLeast.get}%.0f"
+  /** One atom of a rule: a category set, or a number at least a threshold — or, on a signed measure's
+   *  negative side, at most one. */
+  final case class Atom(signal: String, in: Seq[String] = Nil, atLeast: Option[Double] = None, atMost: Option[Double] = None) {
+    def holds(m: Map[String, Measure]): Boolean = condition.holds(m)
+    def condition: Condition = Condition(signal, in, atLeast, atMost)
+    def render: String =
+      if (in.nonEmpty) s"$signal in {${in.mkString(",")}}"
+      else atLeast.fold(f"$signal <= ${atMost.get}%.0f")(least => f"$signal >= $least%.0f")
+  }
+
+  /** A numeric rule atom's free threshold: `signal` at least `t`, or — `below` — at most `-t`, so
+   *  a signed measure (the listing-film runtime, the venue's minutes less the record's) is vetoed on
+   *  each side at its own distance from 0. Every threshold searched is positive either way. */
+  final case class NumericSide(signal: String, below: Boolean) {
+    def atom(t: Double): Atom = if (below) Atom(signal, atMost = Some(-t)) else Atom(signal, atLeast = Some(t))
+    def distance(x: Double): Double = if (below) -x else x
   }
 
   final case class RuleStats(fp: Int, pos: Int, tn: Int, neg: Int, z: Double = 1.6448536269514722) {
@@ -533,15 +549,18 @@ object IdentityCalibrate {
   /** Search conjunctions of one or two atoms for the rules whose false-veto upper bound stays
    *  under `epsilon`, each at the threshold that vetoes the most different-film pairs. */
   def deriveRules(scope: String, rows: Seq[Row], categorical: Seq[Atom], numeric: Seq[String], epsilon: Option[Double]): Seq[(Seq[Atom], RuleStats)] = {
-    def thresholds(signal: String): Seq[Double] =
-      rows.iterator.flatMap(r => number(r.measures.get(signal))).filter(x => x > 0 && x <= 120).toSeq.distinct.sorted
-    val numAtoms: Map[String, Seq[Double]] = numeric.map(s => s -> thresholds(s)).toMap
-    val shapes: Seq[(Seq[Atom], Option[String], Option[String])] =
+    def thresholds(side: NumericSide): Seq[Double] =
+      rows.iterator.flatMap(r => number(r.measures.get(side.signal))).map(side.distance).filter(x => x > 0 && x <= 120).toSeq.distinct.sorted
+    // Each side a measure takes values on: an unsigned one only ever its upper side.
+    val numAtoms: Map[NumericSide, Seq[Double]] =
+      numeric.flatMap(s => Seq(NumericSide(s, below = false), NumericSide(s, below = true))).map(s => s -> thresholds(s)).filter(_._2.nonEmpty).toMap
+    val sides = numeric.flatMap(s => Seq(NumericSide(s, below = false), NumericSide(s, below = true))).filter(numAtoms.contains)
+    val shapes: Seq[(Seq[Atom], Option[NumericSide], Option[NumericSide])] =
       categorical.map(a => (Seq(a), None, None)) ++
-        numeric.map(s => (Nil, Some(s), None)) ++
+        sides.map(s => (Nil, Some(s), None)) ++
         (for (a <- categorical; b <- categorical if a.signal < b.signal) yield (Seq(a, b), None, None)) ++
-        (for (a <- categorical; s <- numeric if corroboratorOf(a.signal).isEmpty || corroboratorOf(a.signal) != corroboratorOf(s)) yield (Seq(a), Some(s), None)) ++
-        (for (s <- numeric; t <- numeric if s < t && corroboratorOf(s) != corroboratorOf(t)) yield (Nil, Some(s), Some(t)))
+        (for (a <- categorical; s <- sides if corroboratorOf(a.signal).isEmpty || corroboratorOf(a.signal) != corroboratorOf(s.signal)) yield (Seq(a), Some(s), None)) ++
+        (for (s <- sides; t <- sides if s.signal < t.signal && corroboratorOf(s.signal) != corroboratorOf(t.signal)) yield (Nil, Some(s), Some(t)))
     // Every shape is a hypothesis: bound each at a Bonferroni-corrected confidence, so the best of
     // many searched shapes does not pass on luck (the winner's curse).
     val z = normalQuantile(1 - 0.05 / shapes.size)
@@ -549,7 +568,7 @@ object IdentityCalibrate {
     // Certified (default): the rule fired on no same-film unit. With an explicit epsilon: its
     // Bonferroni-corrected upper bound is under it.
     def passes(st: RuleStats): Boolean = epsilon.fold(st.fp == 0)(st.upper <= _)
-    def best(fixed: Seq[Atom], free: Option[String]): Option[(Seq[Atom], RuleStats)] = free match {
+    def best(fixed: Seq[Atom], free: Option[NumericSide]): Option[(Seq[Atom], RuleStats)] = free match {
       case None =>
         val st = ruleStats(fixed, rows).copy(z = z); Option.when(passes(st) && st.significant)(fixed -> st)
       case Some(sig) =>
@@ -558,7 +577,7 @@ object IdentityCalibrate {
         var lo = 0; var hi = ts.size - 1; var found: Option[(Seq[Atom], RuleStats)] = None
         while (lo <= hi) {
           val mid = (lo + hi) / 2
-          val atoms = fixed :+ Atom(sig, atLeast = Some(ts(mid)))
+          val atoms = fixed :+ sig.atom(ts(mid))
           val st = ruleStats(atoms, rows).copy(z = z)
           if (passes(st)) { if (st.significant) found = Some(atoms -> st); hi = mid - 1 } else lo = mid + 1
         }
@@ -569,7 +588,7 @@ object IdentityCalibrate {
       case (fixed, Some(s), None)    => best(fixed, Some(s))
       case (fixed, Some(s), Some(t)) =>
         // Two free numbers: scan the first, binary-search the second.
-        numAtoms(s).flatMap(v => best(fixed :+ Atom(s, atLeast = Some(v)), Some(t))).maxByOption(_._2.tn)
+        numAtoms(s).flatMap(v => best(fixed :+ s.atom(v), Some(t))).maxByOption(_._2.tn)
     }.map { case (atoms, st) => atoms.sortBy(_.signal) -> st }.distinctBy(_._1)
   }
 
@@ -604,6 +623,19 @@ object IdentityCalibrate {
     kept.toSeq
   }
 
+  /** The cannot-link rules `rows` certify ([[deriveRules]], [[selectRules]] on the fitting splits), those `reads` keeps
+   *  only, each with its fitting and held-out stats. */
+  def learnRules(scope: String, rows: Int => Seq[Row], categorical: Seq[Atom], numeric: Seq[String], epsilon: Option[Double],
+                 reads: Seq[Atom] => Boolean = _ => true): Seq[(CannotLinkRule, Seq[Atom], RuleStats, RuleStats)] = {
+    val fitRows = ruleRows(rows).filter(_.split != "test")
+    val testRows = ruleRows(rows).filter(_.split == "test")
+    selectRules(deriveRules(scope, fitRows, categorical, numeric, epsilon).filter(c => reads(c._1)), fitRows).map { case (atoms, st) =>
+      val ts = ruleStats(atoms, testRows)
+      (CannotLinkRule(atoms.map(_.render).mkString(" AND "), scope, atoms.map(_.condition), ts.falseVeto, ts.tn, st.upper, ts.trueVeto,
+        ts.pos, ts.neg, "derived"), atoms, st, ts)
+    }
+  }
+
   // ── today's vetoes, re-expressed as signal predicates ───────────────────────────────
 
   private def cat(m: Map[String, Measure], s: String) = category(m.get(s))
@@ -616,12 +648,12 @@ object IdentityCalibrate {
   /** `MixedFilmDetector.listingDeniesFilm` (the DecorationVeto / ListingDeniesFilm veto). */
   def listingDeniesFilm(m: Map[String, Measure]): Boolean =
     cat(m, "director").exists(Set("different", "shared_name", "incomparable")) &&
-      (num(m, "runtime.delta").exists(_ > 2) || num(m, "year.distance").exists(_ > 5))
+      (IdentityMeasures.runtimeGap(m).exists(_ > 2) || num(m, "year.distance").exists(_ > 5))
 
   /** `MixedFilmDetector.wouldAddASecondFilm` (OriginalTitleNamesAnotherFilm). */
   def originalTitleNamesAnotherFilm(m: Map[String, Measure]): Boolean =
     cat(m, "originalTitle").contains("disjoint") && !cat(m, "director").contains("same_person") &&
-      (num(m, "runtime.delta") match {
+      (IdentityMeasures.runtimeGap(m) match {
         case Some(d) => d > 2
         case None    => num(m, "year.distance").orElse(num(m, "year.delta").map(math.abs)).exists(_ > 1)
       })
@@ -659,6 +691,13 @@ object IdentityCalibrate {
     "runtime.delta", "country", "search.rank", "popularity.log2", "rivals", "venues.corroborating")
   val LlSignals: Seq[String] = Seq("title", "originalTitle", "year.delta", "titleYear.delta", "season.delta", "director",
     "runtime.delta", "venue", "chainId")
+  /** The atoms the cannot-link rules are searched over, per scope. */
+  val LfCatAtoms: Seq[Atom] = Seq(Atom("director", Seq("different")), Atom("originalTitle", Seq("disjoint")), Atom("title", Seq("none")),
+    Atom("title", Seq("none", "overlap")), Atom("country", Seq("mismatch")))
+  val LlCatAtoms: Seq[Atom] = Seq(Atom("director", Seq("different")), Atom("originalTitle", Seq("disjoint")), Atom("title", Seq("none")),
+    Atom("title", Seq("none", "overlap")), Atom("venue", Seq("same")), Atom("chainId", Seq("different")))
+  val LfRuleNumbers: Seq[String] = Seq("year.distance", "runtime.delta")
+  val LlRuleNumbers: Seq[String] = Seq("year.delta", "runtime.delta")
   /** Measures a pair carries that no table weighs, and why. */
   val Unweighted: Map[String, String] = Map(
     "year.distance" -> "the unsigned twin of year.delta, which carries the weight; the cannot-link rules read the distance")
@@ -668,15 +707,15 @@ object IdentityCalibrate {
     if (h < 5) "train" else if (h < 7) "calibration" else "test"
   }
 
-  def run(cfg: Config): Unit = {
-    Files.createDirectories(cfg.reportDir)
+  /** The corpora's listings, their pairs and their labels, as every fit reads them. */
+  final case class Prepared(data: Seq[CountryData], obsAll: Map[Int, Obs], familyOf: Map[Int, String], split: Map[Int, String],
+                            evidence: Map[Int, Evidence], lfRows: Int => Seq[Row], llRows: Int => Seq[Row])
+
+  /** Loads every country of `cfg` with the title shapes `decorations` reads, and labels its pairs. */
+  def prepare(cfg: Config, decorations: TitleDecorations): Prepared = {
     val countries = Country.all.filter(c => cfg.countries.contains(c.code))
     var next = 0
-    // The venue decorations first (`IdentityDecorationsLearn`): the title shapes every pair below is
-    // measured on read them, as the resolver's do.
-    val decorations = IdentityDecorationsLearn.learn(cfg.corpora, cfg.fixtures, cfg.hardClusters, cfg.version)
-    IdentityDecorationsLearn.write(decorations, cfg.decorationsOut)
-    val data = countries.map { c => val d = load(cfg, c, next, decorations.decorationsOf); next += d.obs.size; d }
+    val data = countries.map { c => val d = load(cfg, c, next, decorations); next += d.obs.size; d }
     val obsAll: Map[Int, Obs] = data.flatMap(_.obs).map(o => o.idx -> o).toMap
     val evidence0: Map[Int, Evidence] = data.flatMap(_.evidence).toMap
 
@@ -722,9 +761,52 @@ object IdentityCalibrate {
       Row(split(p.a), familyOf(p.a), familyOf(p.a) + "|" + familyOf(p.b), obsAll(p.a).country, p.measures, excluded =>
         for (a <- ea if a.positive(excluded, k); b <- eb if b.positive(excluded, k)) yield a.tmdbId == b.tmdbId)
     }
-    // Rule labels: one corroborator left is enough (weaker labels can only OVERSTATE a rule's
-    // false vetoes, so the bound errs toward keeping a veto out).
-    def ruleRows(rows: Int => Seq[Row]): Seq[Row] = rows(1)
+    Prepared(data, obsAll, familyOf, split, evidence, lfRows, llRows)
+  }
+
+  /** `cfg.weightsOut` with ONE listing-film signal's table refitted from the corpora's labels exactly as [[run]] fits
+   *  it (train split, labels without its own corroborator, under its [[IdentityMeasures.NumericDirection]]), and —
+   *  when the cannot-link rules search it ([[LfRuleNumbers]]) — the listing-film rules reading it re-derived and
+   *  re-selected among themselves, replacing the ones that read it. Every other table, rule, the isotonic map and the
+   *  thresholds stay as they are: the full relearn moves the certified cut, and a measure whose DEFINITION changed
+   *  (the runtime turned signed) needs its own table refitted without moving anything else. The title shapes read the
+   *  shipped decorations ([[TitleDecorations.resolver]]), as the resolver's do. */
+  def refitSignal(cfg: Config, signal: String): Unit = {
+    val model = Json.parse(Files.readString(cfg.weightsOut)).as[IdentityCalibration]
+    val scope = IdentityMeasures.ListingFilm
+    require(LfSignals.contains(signal), s"$signal is not a listing-film signal (${LfSignals.mkString(", ")})")
+    val prepared = prepare(cfg, TitleDecorations.resolver)
+    val table = fitSignal(signal, prepared.lfRows(2).filter(_.split == "train"), corroboratorOf(_).toSet)
+    val rules = Option.when(LfRuleNumbers.contains(signal))(
+      learnRules(scope, prepared.lfRows, LfCatAtoms, LfRuleNumbers, cfg.epsilon, reads = _.exists(_.signal == signal)))
+    val listingFilm = model.scopes(scope)
+    val refitted = model.copy(
+      version = if (model.version.endsWith(s"-$signal")) model.version else s"${model.version}-$signal",
+      scopes = model.scopes.updated(scope, listingFilm.copy(signals = listingFilm.signals.updated(signal, table.weights))),
+      cannotLinks = rules.fold(model.cannotLinks)(learned =>
+        model.cannotLinks.filterNot(rule => rule.scope == scope && rule.all.exists(_.signal == signal)) ++ learned.map(_._1)),
+      provenance = model.provenance + (s"refit:$signal" ->
+        s"scripts.IdentityCalibrate --refit-signal $signal over ${cfg.corpora.getFileName} and production ${cfg.prod.fold("not used")(_.getFileName.toString)}"))
+    Files.writeString(cfg.weightsOut, Json.prettyPrint(Json.toJson(refitted)) + "\n")
+    println(s"$signal (${table.positives} same / ${table.negatives} different units):")
+    table.weights.bins.foreach(bin => println(f"  ${bin.atLeast.fold("-inf")(_.toString)}..${bin.atMost.fold("inf")(_.toString)}: ${bin.weight}%+.3f (${bin.positives} / ${bin.negatives})"))
+    table.weights.missing.foreach { case (side, weight) => println(f"  missing:$side: $weight%+.3f") }
+    rules.foreach(_.foreach { case (rule, _, st, ts) =>
+      println(f"  cannot-link ${rule.name}: fit ${st.fp}/${st.pos} false, ${st.tn}/${st.neg} true; held out ${ts.fp}/${ts.pos} false, ${ts.tn}/${ts.neg} true") })
+    println(s"refitted $signal: ${cfg.weightsOut}")
+  }
+
+  /** Rule labels: one corroborator left is enough (weaker labels can only OVERSTATE a rule's
+   *  false vetoes, so the bound errs toward keeping a veto out). */
+  def ruleRows(rows: Int => Seq[Row]): Seq[Row] = rows(1)
+
+  def run(cfg: Config): Unit = {
+    Files.createDirectories(cfg.reportDir)
+    // The venue decorations first (`IdentityDecorationsLearn`): the title shapes every pair below is
+    // measured on read them, as the resolver's do.
+    val decorations = IdentityDecorationsLearn.learn(cfg.corpora, cfg.fixtures, cfg.hardClusters, cfg.version)
+    IdentityDecorationsLearn.write(decorations, cfg.decorationsOut)
+    val Prepared(data, obsAll, familyOf, split, evidence, lfRows, llRows) = prepare(cfg, decorations.decorationsOf)
 
     val lf2 = lfRows(2); val ll2 = llRows(2)
     val lfNb = fit(IdentityMeasures.ListingFilm, LfSignals, lf2)
@@ -979,29 +1061,20 @@ object IdentityCalibrate {
     def derive(scope: String, rows: Int => Seq[Row], categorical: Seq[Atom], numeric: Seq[String],
                existingPreds: Seq[(String, Map[String, Measure] => Boolean, Set[String])]): Seq[CannotLinkRule] = {
       val fitRows = ruleRows(rows).filter(_.split != "test")
-      val testRows = ruleRows(rows).filter(_.split == "test")
-      val candidates = deriveRules(scope, fitRows, categorical, numeric, cfg.epsilon)
-      val kept = selectRules(candidates, fitRows)
       line(s"### Derived cannot-link rules ($scope)")
       line()
       line("| rule | fit: false veto (Bonferroni bound) | fit: true veto | held out: false veto | held out: true veto | covered by today's vetoes |")
       line("|---|---|---|---|---|---|")
-      kept.map { case (atoms, st) =>
-        val ts = ruleStats(atoms, testRows)
+      learnRules(scope, rows, categorical, numeric, cfg.epsilon).map { case (rule, atoms, st, ts) =>
         val negs = fitRows.filter(r => r.label(Set.empty).contains(false) && atoms.forall(_.holds(r.measures)))
         val covered = negs.count(r => existingPreds.exists(_._2(r.measures)))
-        val name = atoms.map(_.render).mkString(" AND ")
-        line(f"| $name | ${st.fp}/${st.pos} (${100 * st.upper}%.3f%%) | ${st.tn}/${st.neg} (${100 * st.trueVeto}%.2f%%) | ${ts.fp}/${ts.pos} (${100 * ts.falseVeto}%.3f%%) | ${ts.tn}/${ts.neg} (${100 * ts.trueVeto}%.2f%%) | $covered of ${negs.size} |")
-        CannotLinkRule(name, scope, atoms.map(_.condition), ts.falseVeto, ts.tn, st.upper, ts.trueVeto, ts.pos, ts.neg, "derived")
+        line(f"| ${rule.name} | ${st.fp}/${st.pos} (${100 * st.upper}%.3f%%) | ${st.tn}/${st.neg} (${100 * st.trueVeto}%.2f%%) | ${ts.fp}/${ts.pos} (${100 * ts.falseVeto}%.3f%%) | ${ts.tn}/${ts.neg} (${100 * ts.trueVeto}%.2f%%) | $covered of ${negs.size} |")
+        rule
       }
     }
-    val lfCatAtoms = Seq(Atom("director", Seq("different")), Atom("originalTitle", Seq("disjoint")), Atom("title", Seq("none")),
-      Atom("title", Seq("none", "overlap")), Atom("country", Seq("mismatch")))
-    val llCatAtoms = Seq(Atom("director", Seq("different")), Atom("originalTitle", Seq("disjoint")), Atom("title", Seq("none")),
-      Atom("title", Seq("none", "overlap")), Atom("venue", Seq("same")), Atom("chainId", Seq("different")))
-    val lfRules = derive(IdentityMeasures.ListingFilm, lfRows, lfCatAtoms, Seq("year.distance", "runtime.delta"), ExistingLf)
+    val lfRules = derive(IdentityMeasures.ListingFilm, lfRows, LfCatAtoms, LfRuleNumbers, ExistingLf)
     line()
-    val llRules = derive(IdentityMeasures.ListingListing, llRows, llCatAtoms, Seq("year.delta", "runtime.delta"), ExistingLl)
+    val llRules = derive(IdentityMeasures.ListingListing, llRows, LlCatAtoms, LlRuleNumbers, ExistingLl)
     line()
 
     // ── sensitivity: a stricter corroboration bar ──

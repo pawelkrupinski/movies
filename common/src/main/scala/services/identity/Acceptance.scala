@@ -417,7 +417,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** A published year more than one off, or a runtime 30 minutes or more off: the listing's own facts against it. */
   def contradicted(scored: Scored): Boolean =
-    scored.number("year.distance").exists(_ > YearWindow.PublishedAdjacency) || scored.number("runtime.delta").exists(_ >= IdentityMeasures.RuntimeContradiction)
+    scored.number("year.distance").exists(_ > YearWindow.PublishedAdjacency) || IdentityMeasures.runtimeContradicts(scored.measures)
 
   /** The film whose WORK the listing's whole title is, when TMDB ranks it first, it is the only such
    *  candidate, and no other candidate is one the title names — the rest only a director's
@@ -465,7 +465,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     def bills(scored: Scored) = IdentityMeasures.billings(scored.listing, scored.candidate.film).nonEmpty
     lazy val billedAlike = eligibleOf(ranked).count(scored => bills(scored) && !scored.category("director").contains("different"))
     def billedWork(scored: Scored) = IdentityMeasures.sameDirector(scored.measures) && bills(scored) && billedAlike == 1 &&
-      scored.number("runtime.delta").exists(_ <= BilledRuntime)
+      IdentityMeasures.runtimeGap(scored.measures).exists(_ <= BilledRuntime)
     val found = eligibleOf(ranked).filter(scored => IdentityMeasures.sameDirector(scored.measures) &&
       (IdentityMeasures.sharesWork(scored.listing, scored.candidate.film) || bareWork(scored) || billedWork(scored)) && !contradicted(scored))
     one(withoutHollow(found), "no film of its credited director shares its work", "two films of its director share its work", credited(ranked)).map(f => f -> f.probability)

@@ -1387,8 +1387,13 @@ object IdentityMeasures {
   /** Minutes off at which a listing's stated runtime is its own fact against the film, not a
    *  venue's rounding or trailers. */
   val RuntimeContradiction: Int = 30
-  def runtimeContradicts(m: Map[String, Measure]): Boolean =
-    m.get("runtime.delta").exists { case Number(d) => d >= RuntimeContradiction; case _ => false }
+  def runtimeContradicts(m: Map[String, Measure]): Boolean = runtimeGap(m).exists(_ >= RuntimeContradiction)
+  /** How many minutes a listing's stated runtime is off its film's, either way: the size of the
+   *  listing-film `runtime.delta`, which is SIGNED — the venue's minutes less the record's — so its
+   *  table can weigh a venue billing more (an interval, an introduction, a short before the feature)
+   *  apart from one billing less. The hand-written rules that read a runtime gap read its size. */
+  def runtimeGap(m: Map[String, Measure]): Option[Double] =
+    m.get("runtime.delta").collect { case Number(d) => math.abs(d) }
   def sameDirector(m: Map[String, Measure]): Boolean = m.get("director").contains(Category("same_person"))
   /** Does the listing's original title only repeat its own title — the whole of it (a venue
    *  filling the field with the display title, "Cellar Door x ThoughtBubble Presents: Terminator 2:
@@ -1417,13 +1422,17 @@ object IdentityMeasures {
    *  film can only back it more, a lower search rank and a smaller runtime gap only name it more
    *  closely. The calibration fits their bins under this direction (`IdentityCalibrate.monotone`) —
    *  a DIRECTION, never a weight — so a thin bin (0 same-film and 4 different-film units at 153-155
-   *  venues) cannot weigh more evidence below less. Signed measures (a year's difference peaks at 0)
-   *  and ones with no direction of their own are left to the data. */
-  enum EvidenceDirection { case Rising, Falling }
+   *  venues) cannot weigh more evidence below less. A `Peaked` measure is signed and names the film
+   *  most closely at 0: rising up to it, falling past it, each side fitted on its own counts — the
+   *  listing-film runtime (the venue's minutes less the record's), where a venue billing 20 minutes
+   *  more is often the film with an interval or an introduction and one billing 20 less another cut.
+   *  Other signed measures (a year's difference) and ones with no direction of their own are left to
+   *  the data. */
+  enum EvidenceDirection { case Rising, Falling, Peaked }
   val NumericDirection: Map[String, EvidenceDirection] = Map(
     "venues.corroborating" -> EvidenceDirection.Rising,
     "search.rank"          -> EvidenceDirection.Falling,
-    "runtime.delta"        -> EvidenceDirection.Falling)
+    "runtime.delta"        -> EvidenceDirection.Peaked)
 
   /** Title relations that name a film: the listing's title is (a spelling of) the film's. */
   val NamingRelations: Set[String] = Set("exact", "original", "alternative", "segment", "decorated")
