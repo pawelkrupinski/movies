@@ -43,6 +43,34 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     html should not include "Klondike"                                      // matched: not in the queue
   }
 
+  it should "badge an unmatched card with its best candidate's probability, the no-match confidence named in the fold-out" in {
+    val html = contentAsString(controller(Mode.Dev).queue(Some("pl"), 60, false)(FakeRequest()))
+    html should include("""<span class="conf">best 86.4%</span>""")
+    html should not include "no match 14.0%"
+    html should include("<li>no-match confidence 14.0%</li>")
+    // a cluster with no candidate has no probability to badge
+    html should not include "best 0.0%"
+  }
+
+  it should "describe a candidate the corpus lacks from the resolver's own TMDB record, the corpus's poster kept when it has one" in {
+    def queueOver(films: Map[Int, FilmCard], records: Map[Int, FilmCard]) = contentAsString(new ReviewController(
+      Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(Seq(heldDecision),
+        filmsHeld = films, recordsHeld = records)), new ReviewAnswers(new InMemoryReviewAnswerStore),
+      Files.createTempFile("labels", ".tsv"), clock).queue(Some("pl"), 60, false)(FakeRequest()))
+    val record = FilmCard(kafka.tmdb, Some("tt22963134"), Some("Franz (TMDB)"), Some("Franz"), Some(2025), Seq("Agnieszka Holland"), Some(127), None, None)
+
+    val recordOnly = queueOver(Map.empty, Map(kafka.tmdb -> record))
+    recordOnly should include("<b>Franz (TMDB)</b>")
+    recordOnly should include("2025 · Agnieszka Holland · 127 min")
+    recordOnly should include("no TMDB poster")
+    recordOnly should not include "not in this country&#x27;s corpus"
+
+    val both = queueOver(Map(kafka.tmdb -> kafka), Map(kafka.tmdb -> record))
+    both should include("<b>Franz (TMDB)</b>")
+    both should include("""src="https://image.tmdb.org/t/p/w185/kafka.jpg"""")
+    both should include("Kafka&#x27;s life.")
+  }
+
   "the matchable page" should "show the basis and the veto's reason, filterable by basis" in {
     val c = controller(Mode.Dev)
     val all = contentAsString(c.matchable(Some("pl"), 0.5, None, 60, false)(FakeRequest()))

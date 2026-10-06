@@ -24,7 +24,7 @@
         @for(i <- known.flatMap(_.imdb)){ · <a href="https://www.imdb.com/title/@i/" target="_blank" rel="noopener">IMDb</a>}
       </div>
       @for(c <- candidate; d <- c.denial){<div class="denial">denied: @d</div>}
-      @if(known.isEmpty){<div class="s">not in this country's corpus</div>}
+      @if(known.isEmpty){<div class="s">neither the corpus nor the resolver's TMDB store holds this film</div>}
       @for(o <- known.flatMap(_.overview)){<div class="ov">@o</div>}
     </div>
   }
@@ -219,7 +219,11 @@
              data-answered="@card.answer.fold("")(_.verdict.code)" data-was-answered="@card.answer.isDefined">
       <div class="head">
         <div class="raw"><span class="tag">@c.country.code.toUpperCase</span><span class="raw-title">@c.title</span></div>
-        <span class="conf">@if(c.film.isDefined){match} else {no match} @pct(c.confidence)</span>
+        @if(c.film.isDefined) {
+          <span class="conf">match @pct(c.confidence)</span>
+        } else {
+          @for(p <- c.best.flatMap(_.probability)){<span class="conf">best @pct(p)</span>}
+        }
       </div>
       <div class="meta">
         <span class="tag basis-@c.basis">@c.basis</span>@c.members.size listing(s)
@@ -263,9 +267,10 @@
           </div>
         </div>
       }
-      @if(c.explanation.nonEmpty) {
-        <details class="why"><summary>Why the resolver decided this</summary><ul>@for(w <- c.explanation){<li>@w</li>}</ul></details>
-      }
+      <details class="why"><summary>Why the resolver decided this</summary><ul>
+        <li>@if(c.film.isDefined){match confidence} else {no-match confidence} @pct(c.confidence)</li>
+        @for(w <- c.explanation){<li>@w</li>}
+      </ul></details>
       @if(card.otherCandidates.nonEmpty) {
         @if(card.shown.isDefined){<div class="s">Other candidates</div>}
         <div class="cands">

@@ -28,13 +28,14 @@
 // The identity review pages (`/debug/review*`) read the model's decisions
 // (`identity_model_families`), each listing's venue facts (`movie_slots`, the venue's
 // own film page in `venue_pages`, its feed's catalogue ids and screenings in
-// `identity_listings`) and the films' records (`movies`, `web_movies`).
+// `identity_listings`) and the films' records (`movies`, `web_movies`, and the resolver's
+// own TMDB records in `tmdb_films` for the candidates the corpus lacks).
 const MIRRORED_COLLECTIONS = [
   "movies", "screenings", "movie_slots",
   "enrichment_attempts", "rating_cadence",
   "web_movies", "web_screenings",
   "cinema_scrapes",
-  "identity_model_families", "identity_listings", "venue_pages",
+  "identity_model_families", "identity_listings", "venue_pages", "tmdb_films",
 ];
 
 // Prod's per-country databases sit side by side on the ONE local mirror

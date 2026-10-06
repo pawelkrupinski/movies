@@ -28,8 +28,9 @@ source of truth for both halves:
   `cinema_scrapes`, for replays) — exactly what a `/debug` load reads — and, for
   the identity review pages (`/debug/review`, `/debug/review/matchable`,
   `/debug/review/recent`), `identity_model_families` (the model's decisions),
-  `identity_listings` (each venue's last scrape: catalogue ids, screenings) and
-  `venue_pages` (each listing's own film page). A running mirror picks a newly
+  `identity_listings` (each venue's last scrape: catalogue ids, screenings),
+  `venue_pages` (each listing's own film page) and `tmdb_films` (the resolver's
+  own TMDB record of each candidate film). A running mirror picks a newly
   listed collection up by itself: the tailers restart on the changed list and the
   staleness audit re-seeds a database missing one. A collection this list
   omits reads as permanently **empty**, not slowly-from-prod: the `/debug`

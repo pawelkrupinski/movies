@@ -109,7 +109,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       page.evalString("document.querySelector('.filters button[aria-pressed=true]').textContent") shouldBe "To review"
       val kafka = card("FRANZ KAFKA")
       page.evalString(s"$kafka.querySelector('.tag').textContent") shouldBe "PL"
-      page.evalString(s"$kafka.querySelector('.conf').textContent") should include ("14.0%")
+      page.evalString(s"$kafka.querySelector('.conf').textContent") shouldBe "best 86.4%"
       // the venue's poster beside what it says, its synopsis, and its cinema linked
       // its poster URL answers nothing here, so the "no poster" placeholder takes its place
       page.waitFor(s"!!$kafka.querySelector('.listing .poster.empty')")

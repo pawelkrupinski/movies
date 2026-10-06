@@ -14,7 +14,9 @@ final class InMemoryReviewSource(
   feedsHeld:     Map[(String, String), ListingFeed] = Map.empty,
   filmsHeld:     Map[Int, FilmCard] = Map.empty,
   linksHeld:     Seq[Set[FilmRef]] = Nil,
+  recordsHeld:   Map[Int, FilmCard] = Map.empty,
 ) extends ReviewSource {
+  def filmRecords(tmdbIds: Seq[Int]): Map[Int, FilmCard] = recordsHeld.filter(e => tmdbIds.contains(e._1))
   def decisions(unmatchedOnly: Boolean): Seq[ResolverDecision] =
     if (unmatchedOnly) decisionsHeld.filter(_.film.isEmpty) else decisionsHeld
   def slots(listingKeys: Seq[String]): Map[String, SlotFacts] =

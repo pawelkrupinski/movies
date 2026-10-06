@@ -115,6 +115,12 @@ final class MongoReviewSource(db: MongoDatabase) extends ReviewSource {
     }.filter(_.sizeIs > 1)
   }
 
+  def filmRecords(tmdbIds: Seq[Int]): Map[Int, FilmCard] =
+    tmdbIds.distinct.map(_.toString).grouped(500).flatMap { ids =>
+      await(collection(TmdbFilmsCollection).find(Filters.in("_id", ids*)).projection(Projections.include("record", "hit"))
+        .batchSize(tools.MongoReplies.Default).toFuture()).flatMap(d => filmRecord(d.toBsonDocument))
+    }.toMap
+
   def films(tmdbIds: Seq[Int]): Map[Int, FilmCard] = {
     val ids = tmdbIds.distinct
     if (ids.isEmpty) Map.empty
@@ -147,8 +153,20 @@ final class MongoReviewSource(db: MongoDatabase) extends ReviewSource {
 object MongoReviewSource {
   val VenuePagesCollection = services.DebugMirror.VenuePages
   val ListingsCollection   = services.DebugMirror.IdentityListings
+  val TmdbFilmsCollection  = services.DebugMirror.TmdbFilms
   val MoviesCollection     = services.movies.MovieRepository.Collection
   val WebMoviesCollection  = services.readmodel.MongoReadModelRepository.MoviesCollection
+
+
+  /** A `tmdb_films` document as a film card: its parsed `record` (worker `IdentityAnswerBson.film`), else the search
+   *  `hit` that stands in until the record is fetched. `None` when neither carries a title. */
+  private[review] def filmRecord(d: BsonDocument): Option[(Int, FilmCard)] =
+    for {
+      tmdb  <- Option(d.get("_id")).map(idText).flatMap(_.toIntOption)
+      film  <- doc(d, "record").orElse(doc(d, "hit"))
+      title <- string(film, "title")
+    } yield tmdb -> FilmCard(tmdb, int(film, "imdbNumber").filter(_ > 0).map(n => f"tt$n%07d"), Some(title),
+      string(film, "originalTitle"), int(film, "year"), strings(film, "directors"), int(film, "runtime"), None, None)
 
   private def idText(v: BsonValue): String = if (v.isString) v.asString.getValue else if (v.isObjectId) v.asObjectId.getValue.toHexString else v.toString
   private def string(d: BsonDocument, name: String): Option[String] =

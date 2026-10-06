@@ -39,6 +39,8 @@ object DebugMirror {
   val VenuePages       = "venue_pages"
   /** Each venue's last scrape as the identity intake holds it (worker `IdentityListingIntake`). */
   val IdentityListings = "identity_listings"
+  /** The worker's normalized TMDB store of films (worker `TmdbKind.Film`), one document per TMDB id. */
+  val TmdbFilms        = "tmdb_films"
 
   val Collections: Set[String] = Set(
     // The corpus table: the film rows, their showtimes, and their per-cinema slots.
@@ -60,9 +62,11 @@ object DebugMirror {
     ScrapeArchiveRepository.Collection,
     // The identity review pages (web `/debug/review*`): the model's decisions, and beside
     // `movie_slots` / `movies` / `web_movies` above, each listing's own film page and its
-    // venue's last scrape (catalogue ids, screenings).
+    // venue's last scrape (catalogue ids, screenings), and the resolver's own TMDB record of each
+    // candidate film (worker `TmdbKind.Film`), for the candidates the corpus lacks.
     services.identity.MongoIdentityModelStore.FamiliesCollection,
     VenuePages,
-    IdentityListings
+    IdentityListings,
+    TmdbFilms
   )
 }

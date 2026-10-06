@@ -107,7 +107,8 @@ object ReviewCards {
     val slots  = source.slots(keys.map(ListingKey.serialised))
     val pages  = source.venuePages(keys.collect { case ListingKey.Native(_, page, _) => page })
     val feeds  = source.feeds(keys.map(k => k.venue -> k.rawTitle))
-    val films  = source.films(clusters.flatMap { case (c, _) => c.film.toSeq ++ c.candidates.map(_.film) })
+    val ids    = clusters.flatMap { case (c, _) => c.film.toSeq ++ c.candidates.map(_.film) }.distinct
+    val films  = withRecords(source.films(ids), source.filmRecords(ids))
     clusters.map { case (cluster, at) =>
       val members = cluster.members.map(k => MemberView(k, slots.get(ListingKey.serialised(k)),
         k match { case ListingKey.Native(_, page, _) => pages.get(page); case _ => None }, feeds.get(k.venue -> k.rawTitle)))
@@ -117,4 +118,15 @@ object ReviewCards {
       ReviewCard(cluster, members, films, overlay, answers.answerFor(cluster.id, cluster.reviewMembers), at)
     }
   }
+
+  /** Each film as the resolver weighed it — its stored TMDB record's title, year, directors and running time — with the
+   *  corpus's poster and overview (never a live TMDB call); the corpus's facts only where no record states them. */
+  private[review] def withRecords(corpus: Map[Int, FilmCard], records: Map[Int, FilmCard]): Map[Int, FilmCard] =
+    (corpus.keySet ++ records.keySet).toSeq.flatMap { tmdb =>
+      ((records.get(tmdb), corpus.get(tmdb)) match {
+        case (Some(r), Some(c)) => Some(FilmCard(tmdb, c.imdb.orElse(r.imdb), r.title.orElse(c.title), r.originalTitle.orElse(c.originalTitle),
+          r.year.orElse(c.year), if (r.directors.nonEmpty) r.directors else c.directors, r.runtime.orElse(c.runtime), c.poster, c.overview))
+        case (r, c) => r.orElse(c)
+      }).map(tmdb -> _)
+    }.toMap
 }
