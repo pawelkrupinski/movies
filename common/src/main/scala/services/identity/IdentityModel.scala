@@ -179,10 +179,13 @@ object Listing {
     screenings    = ScreeningDays.of(cm.showtimes.map(_.dateTime.toLocalDate)),
     names         = venueNames(cm))
 
-  /** What `cm`'s own synopsis and cast field name — none where a feed copied them from its catalogue entry. */
-  private def venueNames(cm: CinemaMovie): VenueNames =
-    if ((cm.synopsis.isEmpty && cm.cast.isEmpty) || CatalogueSources.feedStated(CatalogueId.of(cm), cm.filmUrl.map(_.trim))) VenueNames.None
-    else VenueNames.of(cm.synopsis, cm.cast)
+  /** What `cm`'s own synopsis and cast field name — its matching-only excerpt where the venue cut the synopsis (MSI) — none
+   *  where a feed copied them from its catalogue entry. */
+  private def venueNames(cm: CinemaMovie): VenueNames = {
+    val text = cm.synopsis.orElse(cm.synopsisExcerpt)
+    if ((text.isEmpty && cm.cast.isEmpty) || CatalogueSources.feedStated(CatalogueId.of(cm), cm.filmUrl.map(_.trim))) VenueNames.None
+    else VenueNames.of(text, cm.cast)
+  }
 
   /** The people one director credit names — the listing's own, or its detail page's: PL venues join two in one ("Arash T. Riahi & Verena Soltiz", "Joel Crawford
    *  i Januel Mercado", "Natasha Merkulova, Aleksey Chupov"), which searched as one person found no film. Split only

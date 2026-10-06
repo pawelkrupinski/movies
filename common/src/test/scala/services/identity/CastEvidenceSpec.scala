@@ -99,4 +99,12 @@ class CastEvidenceSpec extends AnyFlatSpec with Matchers {
     // only the runs of capitalised words: the names, "Lalka", "Bolesława Prusa" — not every pair of the prose
     venue.size should be <= 8
   }
+
+  // MSI cuts a long description at ~300 characters and the page keeps none of it: the cut text still names the cast.
+  it should "be read from a venue's matching-only synopsis excerpt when it shows no synopsis" in {
+    val cm = models.CinemaMovie(models.Movie("Lalka"), models.KinoMuza, None, None, None, Nil, Nil, Nil,
+      synopsisExcerpt = Some("Marcin Dorociński, Kamila Urzędowska i Marek Kondrat w ekranizacji powieści Bolesława Prusa"))
+    val listing = Listing.of(models.KinoMuza, cm, services.movies.SingleCountryNormalizer.titleNormalizer)
+    listing.names.names("Kamila Urzędowska") shouldBe true
+  }
 }
