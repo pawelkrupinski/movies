@@ -38,12 +38,36 @@ case class SuccessfulScrape(
 }
 
 /** A venue's last successful listing without its showtimes: each film with none (`Nil`), beside the digest of the
- *  ones it has (`showtimes.##`) — enough to tell they moved, nothing to build a screening from. */
+ *  ones it has (`showtimes.##`) — enough to tell they moved, nothing to build a screening from. A film billing a stage
+ *  work keeps the DAYS it screens on, one bare showtime each ([[LeanListing.leanFilm]]): what places a relay in its
+ *  season and on its broadcast day (`services.identity.Listing.broadcastSeason`, `agreement.Broadcast`). */
 final case class LeanListing(cinema: Cinema, at: Instant, films: Seq[(CinemaMovie, Int)])
 
 object LeanListing {
   def of(row: ArchivedScrape): Option[LeanListing] =
-    row.lastSuccess.map(s => LeanListing(row.cinema, s.at, s.films.map(f => f.copy(showtimes = Nil) -> f.showtimes.##)))
+    row.lastSuccess.map(s => LeanListing(row.cinema, s.at, s.films.map(f => leanFilm(f) -> f.showtimes.##)))
+
+  /** `film` as a lean read gives it: with no showtimes, or — billing a stage work — one per day it screens on. */
+  def leanFilm(film: CinemaMovie): CinemaMovie =
+    film.copy(showtimes = if (billsStageWork(film)) days(film.showtimes.map(_.dateTime.toLocalDate)) else Nil)
+
+  /** Does `film`'s title bill a stage work — the films a lean read keeps the days of? */
+  def billsStageWork(film: CinemaMovie): Boolean = {
+    val raw = film.movie.rawTitle.getOrElse(film.movie.title)
+    services.identity.IdentityMeasures.billsStageWork(Seq(film.movie.title, raw).distinct, raw)
+  }
+
+  /** [[billsStageWork]] remembered by title for one read: a country's films repeat few titles (US 2026-10-06: 98,638
+   *  films, 2,181 titles), and read for each film a whole lean read allocated 584 MB. Held by its read alone. */
+  final class StageTitles {
+    private val known = new java.util.HashMap[(String, Option[String]), java.lang.Boolean]()
+    def apply(film: CinemaMovie): Boolean =
+      known.computeIfAbsent((film.movie.title, film.movie.rawTitle), _ => java.lang.Boolean.valueOf(billsStageWork(film))).booleanValue
+  }
+
+  /** One bare showtime (no URL, room or format) at the start of each of `screened`'s days, in order. */
+  def days(screened: Iterable[java.time.LocalDate]): Seq[models.Showtime] =
+    screened.toSeq.distinct.sorted.map(day => models.Showtime(day.atStartOfDay, None))
 }
 
 /** A scrape attempt that produced nothing — empty or thrown. Carries no content

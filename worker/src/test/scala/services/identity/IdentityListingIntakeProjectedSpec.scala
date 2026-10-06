@@ -51,6 +51,22 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
       intake.listings(live).flatMap { case (c, films) => films.map(cm => ProjectedListing.of(Listing.of(c, cm, normalizer), cm)) }
   }
 
+  // prod 2026-10-06: every listing the model and the projection held came from a lean read, which leaves the showtimes on
+  // the server — so no listing screened on any day, no stage relay was given its season, and the broadcast take never
+  // ran (`taken{as="broadcast"}` 0 in every country). A film billing a stage work keeps the days it screens on.
+  "a lean read" should "give a film billing a stage work the days it screens on, and every other film none" in {
+    val w = new World
+    w.archive.store(Multikino, clock.instant(), film(Multikino, "OPERA-SAMSON I DALILA", 0, 1, 26), film(Multikino, "Lalka", 0, 1))
+    val modelled = Listing.all(w.intake.identities(live), normalizer)
+    val projected = w.project()._1.map(_.listing)
+    Seq(modelled, projected).foreach { listings =>
+      val samson = listings.find(_.title.toUpperCase.contains("SAMSON")).get
+      samson.screenings.days shouldBe Seq(start.toLocalDate, start.toLocalDate.plusDays(1))
+      samson.broadcastSeason shouldBe Some(2026)
+      listings.find(_.title == "Lalka").get.screenings.isEmpty shouldBe true
+    }
+  }
+
   "the projection's listing read" should "read again only the venues whose listing moved, and give what a whole read gives" in {
     val w = new World
     w.archive.store(Multikino, clock.instant(), film(Multikino, "Lalka", 0, 1))

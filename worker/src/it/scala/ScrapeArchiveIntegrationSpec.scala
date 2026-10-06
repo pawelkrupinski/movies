@@ -124,6 +124,23 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
     } finally purge()
   }
 
+  // prod 2026-10-06: the lean read left every showtime on the server, so no stage relay screened on any day and the
+  // broadcast take never ran. A film billing a stage work keeps its days, read from the server for it alone.
+  it should "scan lean a film billing a stage work with the days it screens on, and no other film's" in {
+    val repository = new MongoScrapeArchiveRepository(Some(db))
+    val relay = minimal.copy(movie = Movie("OPERA-SAMSON I DALILA"), showtimes = Seq(
+      Showtime(LocalDateTime.of(2026, 12, 5, 18, 0), Some("https://example.org/a")), Showtime(LocalDateTime.of(2026, 12, 5, 21, 0), None),
+      Showtime(LocalDateTime.of(2026, 12, 26, 18, 0), None)))
+    try {
+      repository.record(scraped(Noon, Seq(fullyPopulated, relay, minimal)))
+      val lean = Seq.newBuilder[services.scrapes.LeanListing]
+      repository.scanLean(_ == Multikino)(lean ++= _).isComplete shouldBe true
+      lean.result().flatMap(_.films) shouldBe Seq(fullyPopulated, relay, minimal).map(f => services.scrapes.LeanListing.leanFilm(f) -> f.showtimes.##)
+      lean.result().flatMap(_.films).map(_._1.showtimes.map(_.dateTime.toLocalDate)) shouldBe
+        Seq(Nil, Seq(java.time.LocalDate.of(2026, 12, 5), java.time.LocalDate.of(2026, 12, 26)), Nil)
+    } finally purge()
+  }
+
   it should "scan whole a listing stored before its films carried a showtimes digest" in {
     val repository = new MongoScrapeArchiveRepository(Some(db))
     try {

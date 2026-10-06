@@ -344,19 +344,58 @@ class MongoScrapeArchiveRepository(
     scanRows(keep, lean = false)(page => consume(page.flatMap(StoredScrapeDto.toDomain)))
 
   /** [[scanVenues]] with `films.showtimes` left on the server and in the reader: each film's showtimes digest is read
-   *  instead, as it was written. A venue holding a film written before the digest existed is read again whole once
-   *  the lean scan is done — a row's next scrape writes it with one. */
+   *  instead, as it was written — and of a film billing a stage work, the days it screens on ([[LeanListing.leanFilm]]),
+   *  asked of the server for those films alone ([[screeningDays]]). A venue holding a film written before the digest
+   *  existed is read again whole once the lean scan is done — a row's next scrape writes it with one. */
   override def scanLean(keep: Cinema => Boolean)(consume: Seq[LeanListing] => Unit): tools.ScanOutcome = {
     val undigested = Set.newBuilder[String]
+    val stageTitles = new LeanListing.StageTitles
     val lean = scanRows(keep, lean = true) { page =>
       val (digested, older) = page.partition(_.films.getOrElse(Nil).forall(_.showtimesDigest.isDefined))
       undigested ++= older.map(_._id)
-      consume(digested.flatMap(dto => StoredScrapeDto.toDomain(dto).flatMap(row => row.lastSuccess.map(s =>
-        LeanListing(row.cinema, s.at, s.films.zip(dto.films.getOrElse(Nil)).map { case (film, stored) => film -> stored.showtimesDigest.get })))))
+      val rows = digested.flatMap(dto => StoredScrapeDto.toDomain(dto).flatMap(row => row.lastSuccess.map(s =>
+        LeanListing(row.cinema, s.at, s.films.zip(dto.films.getOrElse(Nil)).map { case (film, stored) => film -> stored.showtimesDigest.get }))))
+      val staged = rows.flatMap(row => row.films.iterator.zipWithIndex.collect {
+        case ((film, _), index) if stageTitles(film) => (row.cinema.displayName, index, film.movie.rawTitle.getOrElse(film.movie.title)) })
+      val days = if (staged.isEmpty) Map.empty[(String, Int), (Int, Seq[java.time.LocalDate])] else screeningDays(staged)
+      consume(if (days.isEmpty) rows else rows.map(row => row.copy(films = row.films.zipWithIndex.map { case ((film, digest), index) =>
+        // the days of the very showtimes the digest was read with: a row re-scraped between the two reads keeps none
+        days.get(row.cinema.displayName -> index).filter(_._1 == digest).fold(film)(read => film.copy(showtimes = LeanListing.days(read._2))) -> digest
+      })))
     }
     val whole = undigested.result()
     if (whole.isEmpty) lean else lean.andThen(scanVenues(c => whole(c.displayName))(page => consume(page.flatMap(LeanListing.of))))
   }
+
+  /** The days each of `films` — a venue, the film's place in its row and its raw title — screens on, with its showtimes'
+   *  digest, by venue and place: the server reads them for those films alone (a US page of venues listing a Met relay
+   *  holds ~500k showtimes, a few hundred of them the relays'). A failed read THROWS, failing the scan: no days is no
+   *  season, which the model would read as the listing changed. */
+  private def screeningDays(films: Seq[(String, Int, String)]): Map[(String, Int), (Int, Seq[java.time.LocalDate])] =
+    coll.fold(Map.empty[(String, Int), (Int, Seq[java.time.LocalDate])]) { c =>
+      import org.bson.BsonArray
+      val wanted = films.map { case (venue, index, _) => venue -> index }.toSet
+      val titles = new BsonArray(films.map(_._3).distinct.map(t => BsonString(t): org.bson.BsonValue).asJava)
+      val pick   = BsonDocument.parse(
+        """{"$project": {"f": {"$filter": {"input": {"$map": {"input": {"$range": [0, {"$size": {"$ifNull": ["$films", []]}}]}, "as": "i",
+          |  "in": {"$let": {"vars": {"f": {"$arrayElemAt": ["$films", "$$i"]}}, "in": {"i": "$$i",
+          |    "t": {"$ifNull": ["$$f.movie.rawTitle", "$$f.movie.title"]}, "g": "$$f.showtimesDigest", "d": "$$f.showtimes.dateTime"}}}}},
+          |  "cond": {"$in": ["$$this.t", []]}}}}}""".stripMargin)
+      pick.getDocument("$project").getDocument("f").getDocument("$filter").getDocument("cond").getArray("$in").set(1, titles)
+      val matched = new BsonDocument("$match", new BsonDocument("_id", new BsonDocument("$in",
+        new BsonArray(films.map(_._1).distinct.map(v => BsonString(v): org.bson.BsonValue).asJava))))
+      val docs = Await.result(c.withDocumentClass[BsonDocument]().aggregate[BsonDocument](Seq(matched, pick))
+        .batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
+      docs.iterator.flatMap { d =>
+          val venue = d.getString("_id").getValue
+          d.getArray("f").getValues.asScala.iterator.map(_.asDocument).collect {
+            case f if wanted(venue -> f.getInt32("i").getValue) && f.isInt32("g") =>
+              val days = Option(f.get("d")).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala).filter(_.isDateTime)
+                .map(at => Instant.ofEpochMilli(at.asDateTime.getValue).atZone(java.time.ZoneOffset.UTC).toLocalDate)
+              (venue, f.getInt32("i").getValue) -> (f.getInt32("g").getValue, days)
+          }
+        }.toMap
+    }
 
   /** The stored rows of the venues `keep` admits, a page at a time; `lean`: without their films' showtimes. */
   private def scanRows(keep: Cinema => Boolean, lean: Boolean)(consume: Seq[StoredScrapeDto] => Unit): tools.ScanOutcome =

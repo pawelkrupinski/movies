@@ -1180,6 +1180,12 @@ object IdentityMeasures {
   /** A year titles put in as a delimited annotation ("(2026)"), outside any season. */
   def titleYearOf(titles: Seq[String]): Option[Int] = EmbeddedYear.ofAll(titles.map(withoutSeasons), Int.MaxValue)
 
+  /** Do `titles` (a listing's, `rawTitle` the venue's own) bill a stage work — the work named whole, or within a piece:
+   *  run into a house's word ("OPERA-COSI FAN TUTTE"), after its composer? */
+  def billsStageWork(titles: Seq[String], rawTitle: String): Boolean =
+    stageWorksBilled(titles, seasonYear(titles).isDefined).nonEmpty ||
+      titles.map(title => Listing(title, Some(rawTitle).filter(_ != title))).exists(stageWorks(_).nonEmpty)
+
   /** The stage works ([[StageWorks]]) the titles BILL: a piece naming one whole, or ending in one's name — after its
    *  composer (DE "Met Opera 2026/27: Camille Saint-Saëns SAMSON ET DALILA") or a house's word run on ("OPERA-MAKBET") —
    *  or, in a title naming its season (`seasonNamed`), opening with one before a venue's tag ("SAMSON I DALILA-
