@@ -42,19 +42,7 @@ class CspFilter @Inject() (implicit
   executionContext: ExecutionContext,
 ) extends Filter {
 
-  private val csp: String = Seq(
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://*.sentry-cdn.com https://www.googletagmanager.com https://www.google-analytics.com",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https:",
-    "font-src 'self' data:",
-    "connect-src 'self' https://*.sentry.io https://*.google-analytics.com https://*.googletagmanager.com",
-    "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'none'",
-  ).mkString("; ")
+  private val csp: String = CspFilter.Default
 
   override def apply(next: RequestHeader => Future[Result])(rh: RequestHeader): Future[Result] =
     next(rh).map { result =>
@@ -79,4 +67,35 @@ class CspFilter @Inject() (implicit
         "Permissions-Policy"     -> "camera=(), microphone=(), geolocation=(self), interest-cohort=()",
       )
     }(using executionContext)
+}
+
+object CspFilter {
+  /** Where the Google Fonts stylesheet is served from, and where the font files it names are. */
+  private val GoogleFontsStyles = "https://fonts.googleapis.com"
+  private val GoogleFontsFiles  = "https://fonts.gstatic.com"
+
+  private def policy(googleFonts: Boolean): String = {
+    val styles = if (googleFonts) s" $GoogleFontsStyles" else ""
+    val fonts  = if (googleFonts) s" $GoogleFontsFiles" else ""
+    Seq(
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' https://*.sentry-cdn.com https://www.googletagmanager.com https://www.google-analytics.com",
+      s"style-src 'self' 'unsafe-inline'$styles",
+      "img-src 'self' data: https:",
+      s"font-src 'self' data:$fonts",
+      "connect-src 'self' https://*.sentry.io https://*.google-analytics.com https://*.googletagmanager.com",
+      "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+    ).mkString("; ")
+  }
+
+  /** Every page of the public site. */
+  val Default: String = policy(googleFonts = false)
+
+  /** The dev-only review pages (`/debug/review*`), which set the published review pages' Google fonts: the
+   *  site's policy plus the two Google Fonts hosts. A controller's own CSP wins over [[Default]]. */
+  val WithGoogleFonts: String = policy(googleFonts = true)
 }

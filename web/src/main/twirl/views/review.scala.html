@@ -40,7 +40,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>@view.page.title · Review</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Archivo:wght@@500;700&family=IBM+Plex+Sans:wght@@400;500;600&family=IBM+Plex+Mono:wght@@400;500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@@500;700&family=IBM+Plex+Sans:wght@@400;500;600&family=IBM+Plex+Mono:wght@@400;500&display=swap">
   <style>
     /* The published review pages' design: one column of cards under a sticky progress strip. */
     :root {
@@ -84,8 +84,8 @@
     .filters button { font: 500 .8rem var(--body); border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
     .filters button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
     .summary { color: var(--muted); font-size: .85rem; margin-top: 8px; }
-    .notice, .empty { margin: 16px 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--muted); }
-    .notice { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+    .notice { margin: 16px 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--muted); }
+    .notice.warn { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
     .list { display: grid; gap: 14px; margin-top: 16px; }
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
     .card.done { opacity: .62; }
@@ -174,7 +174,7 @@
     case ReviewPage.Matchable => {Unmatched clusters whose best candidate the resolver itself rated at the threshold or above — held below the line, or vetoed by a guard. Each card shows what the venue says, the film the model leaned to, and why it held back. Confirm or reject it, or give the right film; answers become labels, never hand matches.}
     case ReviewPage.Recent => {Clusters matched to a film lately, least confident first. Each card shows what the venue says, the film it was matched to, the rule that took it and why. Mark each match right or wrong, or give the right film; answers become labels the rules are graded against.}
   }</p>
-  @for(n <- view.notices){<div class="notice">@n</div>}
+  @for(n <- view.notices){<div class="notice warn">@n</div>}
   <div class="controls">
     @for(min <- view.controls.min) {
       <form method="get" action="@controllers.ReviewView.pathOf(view.page)">
@@ -304,7 +304,7 @@
     }
   }
   </div>
-  <div class="empty" id="empty" hidden></div>
+  <div class="notice" id="empty" hidden></div>
 </div>
 <script>
   (function () {

@@ -257,7 +257,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
           c.openPage(server.baseUrl + path) { page =>
             withClue(path) {
               page.evalInt("document.querySelectorAll('.card').length") should be >= atLeast
-              page.evalInt("document.querySelectorAll('.notice').length") shouldBe 0
+              page.evalInt("document.querySelectorAll('.notice.warn').length") shouldBe 0
               // every card's payload parses and names its cluster, title and members
               page.evalBool("""Array.prototype.every.call(document.querySelectorAll('.card'), function (c) {
                 var p = JSON.parse(c.getAttribute('data-card'));

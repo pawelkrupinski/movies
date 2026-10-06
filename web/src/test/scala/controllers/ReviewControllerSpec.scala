@@ -43,6 +43,11 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     html should not include "Klondike"                                      // matched: not in the queue
   }
 
+  it should "send the policy that lets it load the published review pages' Google fonts" in {
+    val result = controller(Mode.Dev).queue(Some("pl"), 60, false)(FakeRequest())
+    headers(result).get("Content-Security-Policy") shouldBe Some(modules.CspFilter.WithGoogleFonts)
+  }
+
   it should "badge an unmatched card with its best candidate's probability, the no-match confidence named in the fold-out" in {
     val html = contentAsString(controller(Mode.Dev).queue(Some("pl"), 60, false)(FakeRequest()))
     html should include("""<span class="conf">best 86.4%</span>""")

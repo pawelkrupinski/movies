@@ -58,7 +58,7 @@ class ReviewController(cc: ControllerComponents,
     val answered = selected.count { case (c, _) => index.answerFor(c.id, c.reviewMembers).isDefined }
     val view     = ReviewView(page, country.getOrElse("all"), cards.sortBy(card => order(card.cluster.id)), total = open.size,
       answeredHidden = selected.size - open.size, answered, showAnswered, limit, controls, errors ++ labelsError ++ notices)
-    Ok(views.html.review(view))
+    Ok(views.html.review(view)).withHeaders("Content-Security-Policy" -> modules.CspFilter.WithGoogleFonts)
   }
 
   def queue(country: Option[String], limit: Int, answered: Boolean): Action[AnyContent] = Action {

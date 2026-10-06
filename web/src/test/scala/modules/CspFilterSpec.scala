@@ -54,6 +54,14 @@ class CspFilterSpec extends AnyFlatSpec with Matchers {
     csp should include("img-src 'self' data: https:")
   }
 
+  it should "keep Google Fonts off the public site, and allow them only in the review pages' policy" in {
+    val csp = run().header.headers("Content-Security-Policy")
+    csp should not include "fonts.googleapis.com"
+    csp should not include "fonts.gstatic.com"
+    CspFilter.WithGoogleFonts should include("style-src 'self' 'unsafe-inline' https://fonts.googleapis.com")
+    CspFilter.WithGoogleFonts should include("font-src 'self' data: https://fonts.gstatic.com")
+  }
+
   it should "set X-Content-Type-Options, Referrer-Policy and Permissions-Policy" in {
     val h = run().header.headers
     h.get("X-Content-Type-Options") shouldBe Some("nosniff")
