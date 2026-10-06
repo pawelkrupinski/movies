@@ -188,4 +188,24 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     listings shouldBe a[scala.collection.immutable.ArraySeq[?]]
     listings.map(_.key).toSet shouldBe corpus.listings.map(_.key).toSet
   }
+
+  "a rival fitting a listing's facts better" should "be judged by sums in place, to the same answer" in {
+    val weights = new EvidenceWeights(model)
+    val lynch   = Listing("Mulholland Drive", year = Some(2001), directors = Seq("David Lynch"), runtime = Some(147))
+    def scored(film: Film) = { val m = IdentityMeasures.listingFilm(lynch, film, Some(1), 1, 0)
+      Scored(Candidate(film.hashCode, film), model.probability(ListingFilm, m), m, denial = None, lynch, Some(1)) }
+    val top    = scored(Film("Mulholland Drive", year = Some(2001), directors = None, runtime = None))
+    val rivals = Seq(scored(Film("Mulholland Drive", year = Some(2001), directors = Some(Seq("David Lynch")), runtime = Some(146))),
+      scored(Film("Mulholland Dr.", year = Some(1999), directors = Some(Seq("Someone Else")))), top)
+    def reference(rival: Scored): Boolean =
+      if (rival.titleNamesIt) weights.own(rival) > weights.own(top)
+      else {
+        val unanswered = top.measures.collect { case (name, IdentityMeasures.MissingFilm) => name }.toSet
+        def answered(s: Scored) = weights.ownContributions(s.measures.filterNot { case (name, _) => unanswered(name) })
+        answered(rival) > answered(top)
+      }
+    rivals.foreach(r => weights.fitsBetter(r, top) shouldBe reference(r))
+    val rival = rivals(1)
+    bytesPerCall(() => if (weights.fitsBetter(rival, top)) 1.0 else 0.0) should be < 1000.0   // was 10,412
+  }
 }

@@ -1562,6 +1562,8 @@ final class ListingFilmMeasures private[identity] (private val slots: Array[Iden
   override def contains(key: String): Boolean = slotOf(key) >= 0
   override def apply(key: String): IdentityMeasures.Measure = { val i = slotOf(key); if (i < 0) default(key) else slots(i) }
   def iterator: Iterator[(String, IdentityMeasures.Measure)] = Keys.indices.iterator.map(i => Keys(i) -> slots(i))
+  override def keysIterator: Iterator[String]                    = Keys.iterator
+  override def valuesIterator: Iterator[IdentityMeasures.Measure] = slots.iterator
   override def size: Int      = Keys.length
   override def knownSize: Int = Keys.length
   override def isEmpty: Boolean = false
