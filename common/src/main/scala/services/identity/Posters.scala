@@ -73,6 +73,9 @@ trait PosterAnswers {
   def venue(url: String): Answer[Option[PosterHash]]
   /** The hashes of TMDB's posters of `tmdbId` ([[PosterEvidence.FilmPosters]] of them at most). */
   def film(tmdbId: Int): Answer[Seq[PosterHash]]
+  /** Was `question`'s poster GIVEN UP on — filed as none because its fetch kept failing, not because there is none? It
+   *  is no evidence either way: what it might have vetoed is read without it. */
+  def unread(question: agreement.AgreementStage.PosterQuestion): Boolean = false
 }
 
 object PosterAnswers {

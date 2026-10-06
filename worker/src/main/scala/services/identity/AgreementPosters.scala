@@ -35,9 +35,18 @@ final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends 
     answers.put(idOf(question), new BsonDocument("hashes", if (hashes.isEmpty) BsonNull() else BsonArray.fromIterable(hashes.map(h => BsonInt64(h.bits)))))
   }
 
-  /** Is the question's answer missing, or older than [[Age]]? */
+  /** `question`'s poster GIVEN UP on: its fetch failed every attempt the queue allowed it ([[GiveUpAttempts]]), so it is
+   *  filed as no poster and marked [[Unread]] — no evidence either way ([[PosterAnswers.unread]]), never a gap waited on
+   *  for ever. */
+  def giveUp(question: PosterQuestion): Unit =
+    answers.put(idOf(question), new BsonDocument("hashes", BsonNull()).append(Unread, org.bson.BsonBoolean.TRUE))
+
+  override def unread(question: PosterQuestion): Boolean = document(idOf(question)).exists(d => d.getBoolean(Unread, org.bson.BsonBoolean.FALSE).getValue)
+
+  /** Is the question's answer missing, or older than [[Age]] — [[UnreadAge]] for one given up on? */
   def wanted(question: PosterQuestion): Boolean = document(idOf(question)).forall { d =>
-    Option(d.get(TmdbStore.FetchedAt)).filter(_.isInt64).forall(at => clock.millis() - at.asInt64.getValue > Age.toMillis)
+    val age = if (d.getBoolean(Unread, org.bson.BsonBoolean.FALSE).getValue) UnreadAge else Age
+    Option(d.get(TmdbStore.FetchedAt)).filter(_.isInt64).forall(at => clock.millis() - at.asInt64.getValue > age.toMillis)
   }
 
   private def document(id: String): Option[BsonDocument] = answers.document(id)
@@ -46,6 +55,12 @@ final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends 
 object PosterAnswerStore {
   /** How long a hash is read before the fill hashes the poster again. */
   val Age: FiniteDuration = 365.days
+  /** How long a poster given up on is read as unread before the fill tries it again. */
+  val UnreadAge: FiniteDuration = 7.days
+  /** The attempt on which a poster whose fetch keeps failing is given up on: about an hour and a half of the queue's
+   *  backoff (Kino Kryterium's posters, 2026-10-06: ten attempts between 14:55 and 16:09). */
+  val GiveUpAttempts = 8
+  private val Unread = "unread"
 
   private def hashesOf(d: BsonDocument): Seq[PosterHash] =
     Option(d.get("hashes")).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala.map(v => PosterHash(v.asInt64.getValue)))
@@ -121,7 +136,11 @@ final class AgreementPosterHandler(store: PosterAnswerStore, hashing: PosterHash
         case _: HandlerOutcome.Deferred => AgreementQuestionMetrics.Deferred
         case _                      => AgreementQuestionMetrics.Failed
       })
-      outcome
+      outcome match {
+        // its last attempt failed too: given up on, read as unread rather than waited on for ever
+        case _: HandlerOutcome.Reschedule if task.attempts >= PosterAnswerStore.GiveUpAttempts => store.giveUp(question); filed(); Done
+        case other => other
+      }
     }
   }
 }

@@ -139,6 +139,66 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
       clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()), correctionsPerApply = 0)).basis shouldBe ResolverDecision.Basis.OwnMatch
   }
 
+  // prod PL 2026-10-06: Kino Kryterium's poster host times out the worker, so its poster was never hashed and the
+  // correction of "Ktoś całkiem obcy" waited on it for ever. A poster given up on is no evidence: the rest is read
+  // as for a take a poster questions, and decides only what it decides without the poster.
+  private val givenUp = new HeldPosters(Map(venuePoster -> None), Map(1001 -> Seq(far), 1002 -> Seq(near(3))),
+    Set(AgreementStage.PosterQuestion.Venue(venuePoster)))
+  private def listedBy(record: SourceRecord) = silent + (VoterFamily.Filmweb ->
+    new HeldFamilyAnswers(VoterFamily.Filmweb, Map("1174" -> record), programmes = Map(listing.venue -> Seq(Showing("1174", ScreeningDays.of(Seq(day)))))))
+  private val hasOnFilmweb = SourceRecord(IdentityMeasures.Film("Lalka", None, Nil, Some(1968), None, Some(Seq("Wojciech Has"))))
+
+  "a model take whose venue poster was given up on" should "be read without it: withdrawn on its venues' programme, waiting on nothing" in {
+    val rybkowski = SourceRecord(IdentityMeasures.Film("Lalka", None, Nil, Some(1968), None, Some(Seq("Jan Rybkowski"))))
+    val s = stage(listedBy(rybkowski), givenUp, listedOn = Some(VoterFamily.Filmweb))
+    val taken = decided(s)
+    (taken.basis, taken.film) shouldBe ((ResolverDecision.Basis.Withdrawn, None))
+    s.wantedPosters shouldBe empty
+  }
+
+  it should "switch where its programme and the families name one film, the poster counted for nothing" in {
+    val families = listedBy(hasOnFilmweb) ++ Seq(VoterFamily.Imdb, VoterFamily.Wiki).map(family => family -> new HeldFamilyAnswers(family, Map("x" -> has)))
+    val taken = decided(stage(families, givenUp, listedOn = Some(VoterFamily.Filmweb)))
+    (taken.basis, taken.film) shouldBe ((ResolverDecision.Basis.Corrected, Some(1002)))
+    taken.explanation.last should (startWith ("corrected from 'Lalka' (2026) by families and filmweb — ") and not include ("poster:"))
+  }
+
+  it should "stand where the poster would have been the deciding evidence: the families alone correct nothing" in {
+    decided(stage(takingHas, givenUp)).basis shouldBe ResolverDecision.Basis.OwnMatch
+  }
+
+  // prod US 2026-10-06: Oriental Theatre Milwaukee's "NT Live: All My Sons" — Milwaukee Film bills the National
+  // Theatre's 2026 van Hove relay on 10–11 October, but Flicks links the listing to its 2019 Old Vic page, so it states
+  // 2019 and Herrin, and the model took the 2019 record: broadcast seven years before the screenings, while TMDB dates
+  // the 2026 record of the same title six months before them.
+  private val oldVic  = FilmTable.F(568683, "National Theatre Live: All My Sons", 2019, "Jeremy Herrin", 162,
+    alternatives = Seq("NT Live: All My Sons"), released = Some(java.time.LocalDate.parse("2019-05-14")))
+  private val vanHove = FilmTable.F(1620001, "National Theatre Live: All My Sons", 2026, "Ivo van Hove", 172,
+    alternatives = Seq("NT Live: All My Sons"), released = Some(java.time.LocalDate.parse("2026-04-16")))
+  private def relayTake(title: String = "NT Live: All My Sons", on: Seq[String] = Seq("2026-10-10", "2026-10-11"),
+                        records: Seq[FilmTable.F] = Seq(oldVic, vanHove)) = {
+    val relay = FilmTable.listing(Multikino, title, year = Some(2019), director = Some("Jeremy Herrin"))
+      .copy(screenings = ScreeningDays.of(on.map(java.time.LocalDate.parse)))
+    val taken = Resolution(Seq(ResolverDecision(Seq(relay.key), Some(568683), 0.39, ResolverDecision.Basis.OwnMatch, Seq("own match 568683"))()),
+      1, Map(relay.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    stage(silent, PosterAnswers.Silent, new FilmTable(records, normalizer)).apply(taken, Map(relay.key -> relay).get, 1).decisions.head
+  }
+
+  "a stage relay's take" should "be withdrawn when TMDB dates it years before the screenings and a record of its title months before them" in {
+    val taken = relayTake()
+    (taken.basis, taken.film) shouldBe ((ResolverDecision.Basis.Withdrawn, None))
+    taken.explanation.last shouldBe "withdrawn 'National Theatre Live: All My Sons' (2019) — relay: it screens from 2026-10-10, " +
+      "over a year after its record was broadcast (2019-05-14), and 'National Theatre Live: All My Sons' (2026) was broadcast 2026-04-16"
+  }
+
+  it should "stand as an encore with no newer record of its title, in its own broadcast's run, or as its title dates it" in {
+    relayTake(records = Seq(oldVic)).basis shouldBe ResolverDecision.Basis.OwnMatch
+    relayTake(on = Seq("2019-06-01")).basis shouldBe ResolverDecision.Basis.OwnMatch
+    relayTake(title = "NT Live: All My Sons (2019)").basis shouldBe ResolverDecision.Basis.OwnMatch
+    // a film billing no house is no relay
+    relayTake(title = "All My Sons").basis shouldBe ResolverDecision.Basis.OwnMatch
+  }
+
   "Correction.decide" should "withdraw on the programme alone, switch only where two kinds name one film apart from the take" in {
     import Correction.{Against, Outcome}
     val apart = (_: Int) => Some(false)

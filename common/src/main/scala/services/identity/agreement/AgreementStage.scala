@@ -344,19 +344,30 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     def recordOf(id: Int, film: IdentityMeasures.Film) =
       SourceRecord(film, Map("tmdb" -> id.toString) ++ Option.when(film.imdbNumber > 0)("imdb" -> f"tt${film.imdbNumber}%07d"))
     def title(id: Int) = named(id).fold(s"tmdb $id")(f => s"'${f.title}'${f.year.fold("")(y => s" ($y)")}")
-    val outcome = named(model).flatMap { film =>
+    // a relay screening years after its record's broadcast, months after a newer record of its title: no production
+    // the take can be, whatever else is read
+    def superseded(film: IdentityMeasures.Film) =
+      Broadcast.superseded(listings, film, titledFilms(listings).filter(_ != model).flatMap(id => named(id).map(id -> _)))
+        .map(why => Correction.Outcome(None, s"withdrawn ${title(model)} — relay: $why"))
+    val outcome = named(model).flatMap(film => superseded(film).orElse {
       val modelRecord = recordOf(model, film)
       // (a) a venue poster matching another candidate, not the taken film
-      val vetoed = correctionPosters(digested, model, reads, posterQs, reading).toOption.flatten
+      val posters = correctionPosters(digested, model, reads, posterQs, reading)
+      val vetoed  = posters.toOption.flatten
+      // a venue poster given up on (its fetch kept failing) is no evidence: the take is read as one a poster questions,
+      // and corrected only where the rest decides it without the poster
+      val unread  = posters != Answer.Unknown && vetoed.isEmpty &&
+        PosterEvidence.urls(listings).exists(url => reading.posters.unread(AgreementStage.PosterQuestion.Venue(url)))
+      val questioned = vetoed.isDefined || unread
       // (e) the venues' own programmes on `listedOn`'s site, asked only of a take a poster questions: a few venues' a day
-      val listed = reading.programmes.filter(_ => vetoed.isDefined).fold[Answer[Option[SourceRecord]]](Answer.Known(None))(answers =>
+      val listed = reading.programmes.filter(_ => questioned).fold[Answer[Option[SourceRecord]]](Answer.Known(None))(answers =>
         VenueListings.listed(listings, new Recording(answers, gaps, reads)))
       val programme = listed.toOption.flatten.filter(record => !Agreement.sameFilm(record, modelRecord) && Correction.contradicts(record.film, film))
       // (b) the families, asked only of a take another kind of evidence questions
       // the TMDB films the take's evidence reaches besides it: what a family's or the programme's record is matched to
       lazy val reached = (vetoed.map(_._1).toSeq ++ candidatesOf(digested.id, digested.digest, listings)).distinct.filter(_ != model)
       val records = (id: Int) => named(id).map(recordOf(id, _))
-      val against = if (programme.isEmpty && vetoed.isEmpty) None
+      val against = if (programme.isEmpty && !questioned) None
         // beside the programmes, the family whose site lists them is no second kind of evidence: its take is not counted
         else familiesAgainst(listings, model, modelRecord, reached, records, programme.flatMap(_ => listedOn), reads, gaps, finding).toOption.flatten
       val evidence = programme.toSeq.map { record =>
@@ -369,7 +380,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       } ++ against.toSeq.map { case (other, says) => Correction.Against(Correction.Families, Some(other), says.replace(s"tmdb $other", title(other))) }
       val sharesDirector = (other: Int) => named(other).flatMap(o => Correction.shareDirector(o.directors.getOrElse(Nil), film.directors.getOrElse(Nil)))
       Correction.decide(title(model), evidence, sharesDirector)
-    }
+    })
     val waits = Option.when(gaps.nonEmpty || posterQs.nonEmpty || finding.nonEmpty)(AgreementStage.CorrectionWaits(gaps.toSet, finding.toSet, posterQs.toSet))
     val read  = (reads.keysIterator ++ gaps.iterator.map { case (family, question) => s"${family.label}|$question" } ++
       posterQs.iterator.map(PosterAnswers.idOf)).map(id => AgreementStage.digest(Seq(id))).toArray.distinct.sorted
@@ -883,6 +894,7 @@ object AgreementStage {
     val posters: PosterAnswers = new PosterAnswers {
       def venue(url: String): Answer[Option[PosterHash]] = venues.getOrElseUpdate(url, hashes.venue(url))
       def film(tmdbId: Int): Answer[Seq[PosterHash]]     = films.getOrElseUpdate(tmdbId, hashes.film(tmdbId))
+      override def unread(question: PosterQuestion): Boolean = hashes.unread(question)
     }
     val programmes: Option[FamilyAnswers] = family.map { answers =>
       val showings = mutable.HashMap.empty[String, Answer[Seq[Showing]]]

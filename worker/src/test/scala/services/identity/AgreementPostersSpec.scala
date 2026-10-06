@@ -136,5 +136,22 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
     store.venue(patria) shouldBe Answer.Unknown
     new AgreementPosterHandler(store, hashing(new Recorded(Some(PosterFailure.Http4xx))), () => (), clock).handle(task) shouldBe HandlerOutcome.Done
     store.venue(patria) shouldBe Answer.Known(None)
+    store.unread(PosterQuestion.Venue(patria)) shouldBe false
+  }
+
+  // prod PL 2026-10-06: Kino Kryterium's poster host times out the worker, so 17 of its posters were asked again 10
+  // times and more, and the correction waiting on one never decided
+  it should "be given up on once its fetch has failed every attempt the queue allows it, filed as unread" in {
+    val store    = new PosterAnswerStore(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock)
+    val timeouts = new AgreementPosterHandler(store, hashing(new Recorded(Some(PosterFailure.Timeout))), () => (), clock)
+    def attempt(n: Int) = timeouts.handle(Task("t1", TaskType.AgreementPoster, s"agreement-poster|venue|$patria", Map("venuePoster" -> patria), n))
+    attempt(PosterAnswerStore.GiveUpAttempts - 1) shouldBe a[HandlerOutcome.Reschedule]
+    store.venue(patria) shouldBe Answer.Unknown
+    attempt(PosterAnswerStore.GiveUpAttempts) shouldBe HandlerOutcome.Done
+    (store.venue(patria), store.unread(PosterQuestion.Venue(patria))) shouldBe ((Answer.Known(None), true))
+    // hashed again sooner than a read poster: the host may answer again
+    store.wanted(PosterQuestion.Venue(patria)) shouldBe false
+    clock.advanceSeconds(PosterAnswerStore.UnreadAge.toSeconds + 1)
+    store.wanted(PosterQuestion.Venue(patria)) shouldBe true
   }
 }

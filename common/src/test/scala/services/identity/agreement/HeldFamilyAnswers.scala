@@ -18,10 +18,13 @@ final class HeldFamilyAnswers(val family: VoterFamily, records: Map[String, Sour
     if (unanswered) Answer.Unknown else programmes.get(venue).fold[Answer[Seq[Showing]]](Answer.Unknown)(Answer.Known(_))
 }
 
-/** The posters' hashes held: a venue poster or a film not held is not hashed yet. */
-final class HeldPosters(venues: Map[String, Option[PosterHash]], films: Map[Int, Seq[PosterHash]]) extends PosterAnswers {
+/** The posters' hashes held: a venue poster or a film not held is not hashed yet; one `unreadable` was given up on (filed
+ *  as no poster after its fetch kept failing). */
+final class HeldPosters(venues: Map[String, Option[PosterHash]], films: Map[Int, Seq[PosterHash]],
+                        unreadable: Set[AgreementStage.PosterQuestion] = Set.empty) extends PosterAnswers {
   def venue(url: String): Answer[Option[PosterHash]] = venues.get(url).fold[Answer[Option[PosterHash]]](Answer.Unknown)(Answer.Known(_))
   def film(tmdbId: Int): Answer[Seq[PosterHash]]     = films.get(tmdbId).fold[Answer[Seq[PosterHash]]](Answer.Unknown)(Answer.Known(_))
+  override def unread(question: AgreementStage.PosterQuestion): Boolean = unreadable(question)
 }
 
 /** No venue detail page anywhere: the families' answers are all a resolve reads. */

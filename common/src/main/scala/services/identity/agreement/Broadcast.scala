@@ -50,6 +50,33 @@ object Broadcast {
       }
     }
 
+  /** How long a relay's encores run after TMDB dates its broadcast. */
+  val RelayRunDays = 365
+
+  /** Why a relay's take is not the production its venues screen, if it is not: every listing bills a house or a relay
+   *  ([[Agreement.billsAHouse]]) and no title dates the record's year, TMDB dates the taken record's broadcast more than
+   *  [[RelayRunDays]] before the first screening, and it dates a later record carrying the very same title within that
+   *  run before it. US Oriental Theatre Milwaukee's "NT Live: All My Sons" (10–11 October 2026), which Flicks links to its 2019
+   *  Old Vic page, is the National Theatre's 2026 broadcast (16 April 2026), not 2019's (14 May 2019). An encore of an
+   *  old production with no newer record of its title stands. `others`: the other records the cluster's titles find,
+   *  read only once the rest holds. */
+  def superseded(listings: Seq[Listing], taken: Film, others: => Seq[(Int, Film)]): Option[String] = {
+    val days = listings.map(_.screenings).foldLeft(ScreeningDays.None)(_ ++ _)
+    val run  = (day: java.time.LocalDate) => day.minusDays(RelayRunDays.toLong)
+    for {
+      first <- days.first.filter(_ => listings.nonEmpty && !days.isUnknown)
+      last  <- days.last
+      aired <- taken.released.filter(_.isBefore(run(first)))
+      if listings.forall(listing => Agreement.billsAHouse(listing) &&
+        IdentityMeasures.titleYearOf(Seq(listing.title, listing.rawTitle).distinct).forall(year => !taken.year.contains(year)))
+      (_, newer) <- others.filter { case (_, film) =>
+                      IdentityMeasures.key(film.title) == IdentityMeasures.key(taken.title) &&
+                        film.released.exists(day => day.isAfter(aired) && !day.isBefore(run(first)) && !day.isAfter(last))
+                    }.sortBy { case (id, film) => (film.released.map(_.toEpochDay).getOrElse(0L), id) }.lastOption
+    } yield s"it screens from $first, over a year after its record was broadcast ($aired), and '${newer.title}'" +
+      s"${newer.year.fold("")(year => s" ($year)")} was broadcast ${newer.released.get}"
+  }
+
   private def chosen(days: ScreeningDays, billing: Seq[Billing], records: Seq[(Int, Film)], productions: Seq[Film]): Option[Taken] = {
     val fitting = records.filter { case (_, film) => film.released.isDefined && billing.forall(_.fits(film, productions)) }.distinctBy(_._1)
     val onDay   = fitting.filter { case (_, film) => film.released.exists(days.contains) }

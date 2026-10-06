@@ -2733,8 +2733,21 @@ first apply with no verdict stored.
 **Prod, 2026-10-06.** Teksańska masakra is corrected live (1974). "Ktoś całkiem obcy" was not: its correction waited
 for ever on Kino Kryterium's poster, which `bilety.ck105.koszalin.pl` times out from the worker's IP as it does its
 pages (17 poster tasks, `network`/`timeout`, ≥10 attempts each). Its posters now go through the venue's Zyte route
-(`ShareCardWiring.posterEgressRoutes`), as its scrapes do. A correction still waits on any poster question that never
-answers; a cap on that wait is not built.
+(`ShareCardWiring.posterEgressRoutes`), as its scrapes do. And no correction waits on a poster for ever any more: a
+poster whose fetch fails on the queue's `PosterAnswerStore.GiveUpAttempts`th attempt is GIVEN UP on — filed as no poster,
+marked unread, tried again after `UnreadAge`. An unread venue poster is no evidence. The take is read as one a poster
+questions (the programmes, the families), and is corrected only where that evidence decides it without the poster.
+Families alone never do.
+
+**A superseded relay (`Broadcast.superseded`).** US Oriental Theatre Milwaukee's "NT Live: All My Sons" (10–11 October
+2026) is the National Theatre's 2026 van Hove broadcast on Milwaukee Film's own page. Flicks links it to its 2019 Old
+Vic page, so the listing states 2019 and Herrin, and the model took the 2019 record. A relay's take is WITHDRAWN when
+all of these hold:
+- every listing bills a house or relay, and no title dates the record's year;
+- TMDB dates the record's broadcast more than a year (`RelayRunDays`) before the first screening;
+- TMDB dates a later record with the very same title within that year.
+
+An encore of an old production with no newer record of its title stands.
 
 **Matched takes against the hand labels.** The ratchet replays only the clusters the model leaves unmatched, so a wrong
 film the model takes outright never reached it. `MatchedTakesLabelSpec` judges every take of the unified rows
