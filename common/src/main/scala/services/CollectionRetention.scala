@@ -79,6 +79,8 @@ object CollectionRetention {
     "scrape_costs"            -> KeptForever("one per venue, its runs capped server-side ($slice)"),
     "omdb_attempts"           -> Ttl("at"),
     "venue_closures"          -> KeptForever("one per venue, cleared by the closure sweep"),
+    "review_answers"          -> KeptForever("the dev-only identity review pages' answers, on the LOCAL mirror instance only " +
+      "(never prod): the record labels.tsv is exported from, and a history the reviewer keeps building on"),
     "venue_pages"             -> Unswept("one per venue detail page ever read; a gone page is flagged, never deleted. The rule would be 'no " +
       "current listing names (its group, page)', but listings name pages through each cinema's enricher group and no " +
       "complete read of them exists yet to sweep against"),

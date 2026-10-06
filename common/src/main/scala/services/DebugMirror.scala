@@ -35,6 +35,11 @@ import services.scrapes.ScrapeArchiveRepository
  * strand the work locally rather than make a page fast.
  */
 object DebugMirror {
+  /** The venue film pages the worker's `VenuePageStore` keeps — named here because the reader is web's. */
+  val VenuePages       = "venue_pages"
+  /** Each venue's last scrape as the identity intake holds it (worker `IdentityListingIntake`). */
+  val IdentityListings = "identity_listings"
+
   val Collections: Set[String] = Set(
     // The corpus table: the film rows, their showtimes, and their per-cinema slots.
     MovieRepository.Collection,
@@ -52,6 +57,12 @@ object DebugMirror {
     // merge touched it — and fetching that over the tunnel is the latency this
     // mirror exists to remove. Mirroring it also means a local replay has a
     // corpus to replay without re-scraping.
-    ScrapeArchiveRepository.Collection
+    ScrapeArchiveRepository.Collection,
+    // The identity review pages (web `/debug/review*`): the model's decisions, and beside
+    // `movie_slots` / `movies` / `web_movies` above, each listing's own film page and its
+    // venue's last scrape (catalogue ids, screenings).
+    services.identity.MongoIdentityModelStore.FamiliesCollection,
+    VenuePages,
+    IdentityListings
   )
 }

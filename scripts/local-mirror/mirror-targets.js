@@ -24,11 +24,17 @@
 // A collection added here is MISSING from every existing mirror until it is
 // re-seeded — which is why staleness.js treats "prod has documents, the mirror
 // has none of that collection" as stale, so the next cycle heals it by itself.
+//
+// The identity review pages (`/debug/review*`) read the model's decisions
+// (`identity_model_families`), each listing's venue facts (`movie_slots`, the venue's
+// own film page in `venue_pages`, its feed's catalogue ids and screenings in
+// `identity_listings`) and the films' records (`movies`, `web_movies`).
 const MIRRORED_COLLECTIONS = [
   "movies", "screenings", "movie_slots",
   "enrichment_attempts", "rating_cadence",
   "web_movies", "web_screenings",
   "cinema_scrapes",
+  "identity_model_families", "identity_listings", "venue_pages",
 ];
 
 // Prod's per-country databases sit side by side on the ONE local mirror

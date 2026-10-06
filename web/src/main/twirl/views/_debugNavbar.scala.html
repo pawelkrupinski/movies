@@ -12,6 +12,7 @@
   <a href="@routes.DebugController.debug()"           class="@if(active == "corpus"){is-active}">Korpus</a>
   <a href="@routes.DebugController.debugReadModel()" class="@if(active == "readmodel"){is-active}">Read cache</a>
   <a href="@routes.DebugController.cadence()"   class="@if(active == "cadence"){is-active}">Cadence</a>
+  <a href="@routes.ReviewController.queue()">Review</a>
   <a href="@routes.MovieController.index(city.slug)"     class="debug-nav-out">Filmy ↗</a>
 
   @* How old the data on this page is. Every debug view reads the local

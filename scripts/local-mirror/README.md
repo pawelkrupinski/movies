@@ -25,7 +25,13 @@ source of truth for both halves:
 
 - **Collections:** `movies`, `screenings`, `movie_slots`,
   `enrichment_attempts`, `rating_cadence`, `web_movies`, `web_screenings` (plus
-  `cinema_scrapes`, for replays) — exactly what a `/debug` load reads. A collection this list
+  `cinema_scrapes`, for replays) — exactly what a `/debug` load reads — and, for
+  the identity review pages (`/debug/review`, `/debug/review/matchable`,
+  `/debug/review/recent`), `identity_model_families` (the model's decisions),
+  `identity_listings` (each venue's last scrape: catalogue ids, screenings) and
+  `venue_pages` (each listing's own film page). A running mirror picks a newly
+  listed collection up by itself: the tailers restart on the changed list and the
+  staleness audit re-seeds a database missing one. A collection this list
   omits reads as permanently **empty**, not slowly-from-prod: the `/debug`
   country stacks read the mirror unconditionally. `MongoConnectionSpec` fails
   if the app reads one the list omits, diffing it against
@@ -133,6 +139,23 @@ projector and the Filmweb-fallback watcher both
 get the change streams they need. `/debug` keeps reading the prod-synced
 `kinowo_prod_mirror` (via `MONGODB_MOVIES_MIRROR_URI`); the rest of the local
 site serves from whatever the local worker projects into `kinowo_local`.
+
+## Review answers (`review_local.review_answers`)
+
+The review pages' answers (Right / Wrong / Other film / None of these / Not a
+film / Double bill / Undo) are written to the SAME local instance, in a database
+of their own — `review_local`, collection `review_answers` — so a re-seed, which
+drops and refills only the mirrored collections of the `*_prod_mirror`
+databases, never touches them, and they never reach prod. One document per
+answer; nothing is rewritten (an Undo is a newer answer). From a terminal:
+
+```
+sbt "web/runMain services.review.ReviewLabelsCli import <all-answers.json>"   # the hand-built pages' answers, once
+sbt "web/runMain services.review.ReviewLabelsCli export"                      # → test/resources/fixtures/identity-unmatched/labels.tsv
+```
+
+`export` is the pages' "Export to labels.tsv" button; `GET /debug/review/answers`
+lists the whole history as JSON.
 
 ## How the mirror stays in sync
 

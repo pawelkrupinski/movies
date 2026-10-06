@@ -1,0 +1,246 @@
+@import services.review._
+@(view: controllers.ReviewView)
+@pct(p: Double) = @{ f"${p * 100}%.1f%%" }
+@facts(f: VenueFacts) = {
+  <dl class="facts">
+    @for(t <- f.title){<dt>title</dt><dd>@t</dd>}
+    @for(t <- f.originalTitle){<dt>original</dt><dd>@t</dd>}
+    @for(y <- f.year){<dt>year</dt><dd class="f-year">@y</dd>}
+    @if(f.directors.nonEmpty){<dt>directors</dt><dd class="f-directors">@f.directors.mkString(", ")</dd>}
+    @for(r <- f.runtime){<dt>runtime</dt><dd>@r min</dd>}
+    @if(f.countries.nonEmpty){<dt>countries</dt><dd>@f.countries.mkString(", ")</dd>}
+    @if(f.cast.nonEmpty){<dt>cast</dt><dd>@f.cast.take(8).mkString(", ")@if(f.cast.size > 8){ …}</dd>}
+  </dl>
+}
+@film(card: ReviewCard, tmdb: Int, candidate: Option[ReviewCandidate], matched: Boolean) = {
+  @defining(card.films.get(tmdb)) { known =>
+  <div class="film@if(matched){ is-matched}" data-ref="tmdb:@tmdb">
+    @for(p <- known.flatMap(_.poster)){<img class="poster" src="@p" alt="" loading="lazy" referrerpolicy="no-referrer">}
+    <div class="film-body">
+      <div class="film-title">
+        @if(matched){<span class="tag">matched</span>}
+        @known.flatMap(_.title).getOrElse(s"tmdb $tmdb")@for(y <- known.flatMap(_.year)){ (@y)}
+        @for(c <- candidate; p <- c.probability){<span class="pct">@pct(p)</span>}
+        @for(c <- candidate if c.vetoed){<span class="tag veto">vetoed</span>}
+      </div>
+      @for(c <- candidate; d <- c.denial){<div class="denial">denied: @d</div>}
+      @for(k <- known) {
+        @for(o <- k.originalTitle if !k.title.contains(o)){<div class="dim">@o</div>}
+        <div class="dim">@k.directors.mkString(", ")@for(r <- k.runtime){ · @r min}</div>
+        @for(o <- k.overview){<p class="overview">@o</p>}
+      }
+      @if(known.isEmpty){<div class="dim">not in this country's corpus</div>}
+      <div class="links">
+        <a href="https://www.themoviedb.org/movie/@tmdb" target="_blank" rel="noopener">TMDB</a>
+        @for(i <- known.flatMap(_.imdb)){<a href="https://www.imdb.com/title/@i/" target="_blank" rel="noopener">IMDb</a>}
+        @if(!matched){<button type="button" class="act" data-verdict="film" data-ref="tmdb:@tmdb">This film</button>}
+      </div>
+    </div>
+  </div>
+  }
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review · @view.page.title</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font: 13px/1.45 system-ui, sans-serif; background: #0d0d0d; color: #ccc; margin: 0; padding: 1rem; }
+    a { color: #7ab8ff; }
+    nav.review-nav { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; margin-bottom: .6rem; font: 12px monospace; }
+    nav.review-nav a { color: #99b; background: #1a1a2e; border: 1px solid #2a2a3e; padding: .25rem .7rem; border-radius: 3px; text-decoration: none; }
+    nav.review-nav a.is-active { color: #aad4ff; border-color: #3a3a6e; background: #252540; }
+    nav.review-nav .spacer { flex: 1; }
+    select, input, button { font: inherit; background: #15151f; color: #ddd; border: 1px solid #2a2a3e; border-radius: 3px; padding: .2rem .45rem; }
+    button { cursor: pointer; }
+    button:hover { background: #252540; }
+    h1 { font-size: 15px; color: #aad4ff; margin: .2rem 0; }
+    .summary { color: #889; margin-bottom: .6rem; }
+    .notice { background: #3a2a10; color: #ffcf80; padding: .3rem .6rem; border-radius: 3px; margin: .3rem 0; }
+    .controls { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin: .4rem 0 .8rem; }
+    .controls a.is-active { font-weight: bold; color: #ffd479; }
+    #export-summary { white-space: pre-wrap; background: #101018; padding: .5rem; border-radius: 3px; }
+    #export-summary:empty { display: none; }
+    .card { border: 1px solid #22223a; border-radius: 6px; background: #101018; margin-bottom: 1rem; padding: .7rem; }
+    .card[hidden] { display: none; }
+    .card.is-answered { border-color: #2f5a2f; }
+    .card-head { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; }
+    .raw-title { font-size: 15px; color: #fff; font-weight: 600; }
+    .tag { font: 11px monospace; background: #252540; border-radius: 3px; padding: 0 .35rem; color: #aab; }
+    .tag.veto { background: #5a1f1f; color: #ffb0b0; }
+    .tag.basis-Vetoed { background: #5a1f1f; color: #ffb0b0; }
+    .tag.basis-BelowThreshold { background: #4a4010; color: #ffe08a; }
+    .pct { font: 11px monospace; color: #ffd479; margin-left: .3rem; }
+    .warning { background: #4a1414; color: #ffb4b4; padding: .25rem .5rem; border-radius: 3px; margin: .3rem 0; }
+    .label-row { color: #b0e0b0; font-size: 12px; }
+    .label-row.wrong { color: #e0b0b0; }
+    .answered { color: #9fd89f; margin: .3rem 0; }
+    .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .8rem; margin-top: .5rem; }
+    @@media (max-width: 800px) { .cols { grid-template-columns: 1fr; } }
+    h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #778; margin: .2rem 0; }
+    .member { border-left: 2px solid #2a2a3e; padding-left: .5rem; margin-bottom: .5rem; }
+    .member .src { font: 11px monospace; color: #667; }
+    dl.facts { display: grid; grid-template-columns: auto 1fr; gap: 0 .6rem; margin: .1rem 0 .3rem; font-size: 12px; }
+    dl.facts dt { color: #778; }
+    dl.facts dd { margin: 0; }
+    .venue-media { display: flex; gap: .6rem; }
+    .poster { width: 80px; height: auto; border-radius: 3px; flex: none; align-self: flex-start; }
+    .synopsis, .overview { font-size: 12px; color: #aab; max-height: 9em; overflow: auto; margin: .2rem 0; white-space: pre-wrap; }
+    .film { display: flex; gap: .6rem; padding: .4rem 0; border-bottom: 1px solid #1a1a2a; }
+    .film.is-matched .film-title { color: #9fd89f; }
+    .film-title { color: #eee; font-weight: 600; }
+    .denial { color: #ffb0b0; font-size: 12px; }
+    .dim { color: #889; font-size: 12px; }
+    .links { display: flex; gap: .5rem; align-items: center; margin-top: .2rem; }
+    details.why { margin-top: .4rem; }
+    details.why pre { white-space: pre-wrap; font: 11px/1.4 monospace; color: #aab; margin: .3rem 0; }
+    .actions { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; margin-top: .6rem; }
+    .actions input.other { min-width: 18rem; }
+    .status { font-size: 12px; color: #9fd89f; }
+    .status.is-error { color: #ff9090; }
+  </style>
+</head>
+<body>
+  <nav class="review-nav">
+    @for(p <- ReviewPage.values) {
+      <a href="@{controllers.ReviewView.pathOf(p)}?country=@view.country" class="@if(p == view.page){is-active}">@p.title</a>
+    }
+    <a href="/debug">Korpus</a>
+    <span class="spacer"></span>
+    <select aria-label="Country" onchange="location.href=this.value">
+      @for(c <- "all" +: models.Country.all.map(_.code)) {
+        <option value="@view.link("country" -> Some(c))"@if(c == view.country){ selected}>@c</option>
+      }
+    </select>
+    <button type="button" id="export-labels">Export to labels.tsv</button>
+  </nav>
+  <h1>@view.page.title</h1>
+  @for(n <- view.notices){<div class="notice">@n</div>}
+  <div class="summary">
+    @view.cards.size shown of @view.total@if(view.answeredHidden > 0){ · @view.answeredHidden answered hidden (<a href="@view.link("answered" -> Some("true"))">show</a>)}
+    @if(view.showAnswered){ · <a href="@view.link("answered" -> None)">hide answered</a>}
+    @if(view.total > view.cards.size){ · <a href="@view.link("limit" -> Some((view.limit * 2).toString))">show more</a>}
+  </div>
+  <div class="controls">
+    @for(min <- view.controls.min) {
+      <form method="get" action="@controllers.ReviewView.pathOf(view.page)">
+        <input type="hidden" name="country" value="@view.country">
+        @for(b <- view.controls.basis){<input type="hidden" name="basis" value="@b">}
+        best candidate ≥ <input name="min" size="4" value="@min"> <button>apply</button>
+      </form>
+      <a href="@view.link("basis" -> None)" class="@if(view.controls.basis.isEmpty){is-active}">every basis</a>
+      @for((basis, n) <- view.controls.byBasis) {
+        <a href="@view.link("basis" -> Some(basis.toString))" class="@if(view.controls.basis.contains(basis)){is-active}">@basis (@n)</a>
+      }
+    }
+    @for(hours <- view.controls.hours) {
+      <form method="get" action="@controllers.ReviewView.pathOf(view.page)">
+        <input type="hidden" name="country" value="@view.country">
+        matched in the last <input name="hours" size="4" value="@hours"> hours <button>apply</button>
+      </form>
+      <span class="dim">— by the members' <code>movie_slots.updatedAt</code>: the model stores no decision time, so a re-scrape also counts.</span>
+    }
+  </div>
+  <pre id="export-summary"></pre>
+
+  @for(card <- view.cards) {
+    @defining(card.cluster) { c =>
+    <article class="card@if(card.answer.isDefined){ is-answered}" data-cluster="@c.id" data-card="@card.payload(view.page).toString">
+      <div class="card-head">
+        <span class="raw-title">@c.title</span>
+        <span class="tag">@c.country.code</span>
+        <span class="tag basis-@c.basis">@c.basis</span>
+        <span class="tag">@if(c.film.isDefined){match} else {no match} @pct(c.confidence)</span>
+        @for(at <- card.updatedAt){<span class="tag" title="latest movie_slots.updatedAt of a member — a proxy for the decision time">slot written @at.toString.take(16).replace("T", " ")</span>}
+        <span class="dim">@c.members.size listing(s)</span>
+      </div>
+      @for(w <- card.warnings){<div class="warning">⚠ @w</div>}
+      @for(l <- card.labels) {
+        <div class="label-row @l.verdict">labelled @l.verdict: @l.film @if(l.venue != "*"){(@l.venue)} — @l.note</div>
+      }
+      <div class="answered">@for(a <- card.answer) {answered <b>@a.verdict.label</b>@for(r <- a.ref){ @r.render} by @a.who at @a.at.toString.take(16).replace("T", " ")@for(w <- a.warnings){<div class="warning">⚠ @w</div>}}</div>
+      <div class="cols">
+        <section>
+          <h3>The venues' own listings</h3>
+          @for(m <- card.members) {
+            <div class="member">
+              <div>@m.pageUrl match {
+                case Some(url) => {<a href="@url" target="_blank" rel="noopener">@m.venue</a>}
+                case None => {@m.venue <span class="dim">(no page)</span>}
+              }@if(m.key.rawTitle != c.title){ — <span class="dim">@m.key.rawTitle</span>}</div>
+              @m.key match {
+                case services.movies.ListingKey.Published(_, _, y, d) if y.isDefined || d.nonEmpty => {<div class="src">listing key: @y.getOrElse("") @d.mkString(", ")</div>}
+                case _ => {}
+              }
+              @for(s <- m.slot if !s.facts.isEmpty){<div class="src">venue listing</div>@facts(s.facts)}
+              @for(p <- m.page if !p.isEmpty){<div class="src">venue film page</div>@facts(p)}
+              @for(f <- m.feed) {
+                <div class="src">screenings: @f.screenings@for(a <- f.first; b <- f.last){ · @a → @b}</div>
+                @if(f.catalogueIds.nonEmpty){<div class="src">feed catalogue ids (not the venue's facts): @f.catalogue</div>}
+              }
+            </div>
+          }
+          @defining((card.members.flatMap(_.poster).headOption, card.members.flatMap(_.synopsis).headOption)) { case (poster, synopsis) =>
+            <div class="venue-media">
+              @for(p <- poster){<img class="poster" src="@p" alt="" loading="lazy" referrerpolicy="no-referrer">}
+              @for(s <- synopsis){<div class="synopsis">@s</div>}
+            </div>
+          }
+        </section>
+        <section>
+          <h3>@if(c.film.isDefined){Matched film and other candidates} else {Candidates}</h3>
+          @for(f <- c.film){@film(card, f, None, matched = true)}
+          @for(cand <- c.candidates){@film(card, cand.film, Some(cand), matched = false)}
+          @if(c.film.isEmpty && c.candidates.isEmpty){<div class="dim">no candidate</div>}
+        </section>
+      </div>
+      <details class="why"><summary>Why (resolver explanation)</summary><pre>@c.explanation.mkString("\n")</pre></details>
+      <div class="actions">
+        <button type="button" class="act" data-verdict="right">Right</button>
+        <button type="button" class="act" data-verdict="wrong">Wrong</button>
+        <input type="text" class="other" placeholder="Other film: TMDB / IMDb / Filmweb / Wikidata / RT / Letterboxd link">
+        <button type="button" class="act" data-verdict="film" data-other="1">Other film</button>
+        <button type="button" class="act" data-verdict="none">None of these</button>
+        <button type="button" class="act" data-verdict="event">Not a film</button>
+        <button type="button" class="act" data-verdict="bill">Double bill</button>
+        <button type="button" class="act" data-verdict="undo">Undo</button>
+        <span class="status"></span>
+      </div>
+    </article>
+    }
+  }
+  <script>
+    (function () {
+      var keepAnswered = @view.showAnswered;
+      function post(url, body) {
+        return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+          .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); });
+      }
+      document.addEventListener('click', function (e) {
+        var b = e.target.closest('button.act');
+        if (!b) return;
+        var card = b.closest('.card');
+        var status = card.querySelector('.status');
+        var body = { card: JSON.parse(card.getAttribute('data-card')), verdict: b.getAttribute('data-verdict') };
+        if (b.getAttribute('data-ref')) body.ref = b.getAttribute('data-ref');
+        if (b.getAttribute('data-other')) body.ref = card.querySelector('input.other').value;
+        status.classList.remove('is-error');
+        post('/debug/review/answer', body).then(function (j) {
+          var undone = j.verdict === 'undo';
+          card.setAttribute('data-answered', undone ? '' : j.verdict);
+          card.classList.toggle('is-answered', !undone);
+          status.textContent = (undone ? 'undone' : 'saved: ' + b.textContent) + (j.warnings.length ? ' — ⚠ ' + j.warnings.join('; ') : '');
+          if (!undone && !keepAnswered && !j.warnings.length) setTimeout(function () { card.hidden = true; }, 600);
+        }).catch(function (err) { status.classList.add('is-error'); status.textContent = String(err.message || err); });
+      });
+      document.getElementById('export-labels').addEventListener('click', function () {
+        var out = document.getElementById('export-summary');
+        post('/debug/review/export', {}).then(function (j) { out.textContent = j.path + '\n' + j.summary; })
+          .catch(function (err) { out.textContent = 'export failed: ' + (err.message || err); });
+      });
+    })();
+  </script>
+</body>
+</html>

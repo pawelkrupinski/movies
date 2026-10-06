@@ -1,0 +1,148 @@
+package controllers
+
+import models.Country
+import play.api.Mode
+import play.api.libs.json.{JsValue, Json}
+import play.api.mvc._
+import services.identity.ResolverDecision
+import services.review._
+
+import java.nio.file.Path
+import java.time.{Clock, Instant}
+import scala.util.{Failure, Success, Try}
+
+/**
+ * The dev-only identity review pages (`/debug/review*`): the clusters the resolver left unmatched, those
+ * it rated matchable and still left, and those it matched lately — each a card with the venues' own
+ * facts, the films it weighed, its explanation, and the answer buttons. Answers go to the local
+ * `review_answers` store and from there into `labels.tsv`.
+ *
+ * Every read is of the LOCAL read-mirror (`sources`, built by the wiring from
+ * `MONGODB_MOVIES_MIRROR_URI` alone); with no mirror configured the pages say so and list nothing.
+ * Production 404s every route here, like the rest of `/debug`.
+ */
+class ReviewController(cc: ControllerComponents,
+                       environment: Mode,
+                       sources: Map[Country, ReviewSource],
+                       answers: ReviewAnswers,
+                       labelsPath: Path,
+                       clock: Clock,
+                       // Why the pages may be empty or answers not kept, for the banner (no mirror, answers in memory).
+                       notices: Seq[String] = Nil) extends AbstractController(cc) {
+
+  private def devOnly(result: => Result): Result = DevMode.gate(environment)(result)
+
+  private def countriesOf(code: Option[String]): Seq[Country] =
+    code.filterNot(_ == "all").flatMap(Country.byCode).fold(Country.all.filter(sources.contains))(c => Seq(c).filter(sources.contains))
+
+  /** Each selected country's clusters, a failed read reported rather than shown as no clusters. */
+  private def clustersOf(countries: Seq[Country], unmatchedOnly: Boolean): (Seq[ReviewCluster], Seq[String]) = {
+    val read = countries.map(c => c -> Try(sources(c).decisions(unmatchedOnly).map(ReviewCluster.of(c, _))))
+    (read.collect { case (_, Success(cs)) => cs }.flatten,
+      read.collect { case (c, Failure(e)) => s"${c.code}: could not read identity_model_families (${e.getMessage})" })
+  }
+
+  private def render(page: ReviewPage, country: Option[String], selected: Seq[(ReviewCluster, Option[Instant])], limit: Int,
+                     showAnswered: Boolean, errors: Seq[String], controls: ReviewView.Controls): Result = {
+    val index    = new ReviewAnswers.Index(answers.current())
+    val open     = if (showAnswered) selected else selected.filter { case (c, _) => index.answerFor(c.id, c.reviewMembers).isEmpty }
+    val shown    = open.take(limit)
+    // A labels file that cannot be read is said so on the page, never shown as "no labels".
+    val (labels, labelsError) = Try(LabelsTsv.read(labelsPath)) match {
+      case Success(rows) => (rows, None)
+      case Failure(e)    => (Nil, Some(s"could not read $labelsPath: ${e.getMessage}"))
+    }
+    val cards    = shown.groupBy(_._1.country).toSeq.flatMap { case (c, cs) =>
+      ReviewCards.build(sources(c), cs, labels, index) }
+    val order    = shown.map(_._1.id).zipWithIndex.toMap
+    val view     = ReviewView(page, country.getOrElse("all"), cards.sortBy(card => order(card.cluster.id)), total = open.size,
+      answeredHidden = selected.size - open.size, showAnswered, limit, controls, errors ++ labelsError ++ notices)
+    Ok(views.html.review(view))
+  }
+
+  def queue(country: Option[String], limit: Int, answered: Boolean): Action[AnyContent] = Action {
+    devOnly {
+      val (clusters, errors) = clustersOf(countriesOf(country), unmatchedOnly = true)
+      render(ReviewPage.Queue, country, ReviewSelection.queue(clusters).map(_ -> None), limit, answered, errors, ReviewView.Controls())
+    }
+  }
+
+  def matchable(country: Option[String], min: Double, basis: Option[String], limit: Int, answered: Boolean): Action[AnyContent] = Action {
+    devOnly {
+      val (clusters, errors) = clustersOf(countriesOf(country), unmatchedOnly = true)
+      val chosen = basis.flatMap(b => ResolverDecision.Basis.values.find(_.toString == b))
+      render(ReviewPage.Matchable, country, ReviewSelection.matchable(clusters, min, chosen).map(_ -> None), limit, answered, errors,
+        ReviewView.Controls(min = Some(min), basis = chosen, byBasis = ReviewSelection.matchableByBasis(clusters, min)))
+    }
+  }
+
+  def recent(country: Option[String], hours: Int, limit: Int, answered: Boolean): Action[AnyContent] = Action {
+    devOnly {
+      val countries = countriesOf(country)
+      val since     = clock.instant().minusSeconds(hours.toLong * 3600)
+      val (clusters, errors) = clustersOf(countries, unmatchedOnly = false)
+      val updated   = countries.flatMap(c => Try(sources(c).updatedSince(since)).toOption).flatten.toMap
+      render(ReviewPage.Recent, country, ReviewSelection.recent(clusters, updated, since).map { case (c, at) => c -> Some(at) },
+        limit, answered, errors, ReviewView.Controls(hours = Some(hours)))
+    }
+  }
+
+  /** Records one answer; answers with the warnings the venues' own facts raise against it. */
+  def answer(): Action[JsValue] = Action(parse.tolerantJson) { request =>
+    devOnly {
+      AnswerRequest.parse(request.body, request.session.get("userId").getOrElse("dev"), clock.instant()) match {
+        case Left(why)     => BadRequest(Json.obj("error" -> why))
+        case Right(answer) =>
+          answers.record(answer)
+          Ok(Json.obj("ok" -> true, "verdict" -> answer.verdict.code, "warnings" -> answer.warnings))
+      }
+    }
+  }
+
+  /** Writes every current answer into the checkout's `labels.tsv`. */
+  def exportLabels(): Action[AnyContent] = Action {
+    devOnly {
+      val summary = LabelsExport.exportTo(labelsPath, answers.current())
+      Ok(Json.obj("summary" -> summary.render, "added" -> summary.added, "flipped" -> summary.flipped,
+        "unchanged" -> summary.unchanged, "warnings" -> summary.warnings, "path" -> labelsPath.toString))
+    }
+  }
+
+  /** Every answer ever given, oldest first — the store as data. */
+  def history(): Action[AnyContent] = Action {
+    devOnly {
+      Ok(Json.toJson(answers.history().map(a => Json.obj("clusterId" -> a.clusterId, "country" -> a.country,
+        "page" -> a.page.code, "verdict" -> a.verdict.code, "ref" -> a.ref.map(_.render), "shown" -> a.shown.map(_.ref.render),
+        "title" -> a.title, "who" -> a.who, "at" -> a.at.toString, "warnings" -> a.warnings, "legacyId" -> a.legacyId))))
+    }
+  }
+}
+
+object ReviewController {
+  val DefaultLimit = 60
+}
+
+/** Everything `review.scala.html` renders. */
+final case class ReviewView(page: ReviewPage, country: String, cards: Seq[ReviewCard], total: Int, answeredHidden: Int,
+                            showAnswered: Boolean, limit: Int, controls: ReviewView.Controls, notices: Seq[String]) {
+  /** This page's URL with one query parameter changed. */
+  def link(changes: (String, Option[String])*): String = {
+    val base = Seq("country" -> Some(country), "limit" -> Option.when(limit != ReviewController.DefaultLimit)(limit.toString),
+      "answered" -> Option.when(showAnswered)("true"), "min" -> controls.min.map(_.toString),
+      "basis" -> controls.basis.map(_.toString), "hours" -> controls.hours.map(_.toString))
+    val merged = changes.foldLeft(base.toMap)((m, c) => m + c)
+    val query  = base.map(_._1).flatMap(k => merged.get(k).flatten.map(v => s"$k=${java.net.URLEncoder.encode(v, "UTF-8")}"))
+    ReviewView.pathOf(page) + (if (query.isEmpty) "" else query.mkString("?", "&", ""))
+  }
+}
+
+object ReviewView {
+  final case class Controls(min: Option[Double] = None, basis: Option[ResolverDecision.Basis] = None,
+                            byBasis: Seq[(ResolverDecision.Basis, Int)] = Nil, hours: Option[Int] = None)
+
+  def pathOf(page: ReviewPage): String = page match {
+    case ReviewPage.Queue     => "/debug/review"
+    case ReviewPage.Matchable => "/debug/review/matchable"
+    case ReviewPage.Recent    => "/debug/review/recent"
+  }
+}

@@ -1,0 +1,4106 @@
+[
+ {
+  "page": "review",
+  "itemId": "a24338fce5ec314e",
+  "verdict": "event",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:06:47.975Z",
+  "country": "pl",
+  "title": "ARS INDEPENDENT FESTIVAL: Konkurs Czarny koń animacji - Set 2",
+  "members": [
+   {
+    "venue": "Kino Światowid",
+    "page": "https://www.bilety24.pl/kino/1503-ars-independent-festival-konkurs-czarny-kon-animacji-set-2-164473?id=987251"
+   }
+  ],
+  "venueSynopsis": "**KONKURS CZARNY KOŃ ANIMACJI**\nJak matka, która nie może powiedzieć (na głos), które dziecko jest jej ulubionym, jak co roku, oddaję w Państwa ręce decyzję o tym, kto opuści Katowice ze statuetką Czarnego Konia Animacji. Tegoroczny zestaw na pewno wywoła dużo dyskusji i rozmów - nie pozostawi nikogo obojętnym. Jestem świadoma, że to bardzo ogólny opis, ale animacje powinno się oglądać, a nie tylko o nich czytać. Do zobaczenia!\n**Kuratorka: Gabriela Palicka**\n**Komisja selekcyjna: Paulina Pikiewicz, Polina Shaptala, Jacek Wandzel, Paweł Trzepizur**\n\n**SET 2**\n**ND | 04.10.26 | 16:00 | KINO ŚWIATOWID**\n**Q&A z twórcami prowadzi Gaba Palicka**\n**SB | 10.10.26 | 15:00 | KINO ŚWIATOWID**\n**Q&A z",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 71183,
+    "title": "People : Jet Set 2",
+    "original": "People : Jet Set 2",
+    "year": 2004,
+    "directors": [
+     "Fabien Onteniente"
+    ],
+    "runtime": 87,
+    "pct": 5.1,
+    "overview": null,
+    "imdb": "tt0381487"
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "458ee358a5f7de86",
+  "verdict": "film",
+  "ref": "tmdb:1703622",
+  "tmdb": 1703622,
+  "at": "2026-10-06T07:00:05.853Z",
+  "country": "uk",
+  "title": "RBO Cinema Season 2026-27: Macbeth",
+  "members": [
+   {
+    "venue": "Act One Cinema Acton",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-macbeth/"
+   },
+   {
+    "venue": "Astoria Cinema Ayr",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-macbeth/"
+   },
+   {
+    "venue": "Embassy Cinema Ilfracombe",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-macbeth/"
+   },
+   {
+    "venue": "Kings Cinema Kingsbridge",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-macbeth/"
+   },
+   {
+    "venue": "Merlin Capitol Bodmin",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-macbeth/"
+   },
+   {
+    "venue": "Merlin Cinema Thurso",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-macbeth/"
+   },
+   {
+    "venue": "Merlin Regal Cinema Redruth",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-macbeth/"
+   },
+   {
+    "venue": "Merlin Savoy Penzance",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-macbeth/"
+   },
+   {
+    "venue": "Merlin Scala Prestatyn",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-macbeth/"
+   },
+   {
+    "venue": "Merlin Studio Coleford",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-macbeth/"
+   }
+  ],
+  "venueSynopsis": "Two of opera's most extraordinary artists return to The Met: Live in HD for Verdi's thrilling take on the immortal Shakespearean tale of the scheming couple determined to seize power at any cost. Baritone Quinn Kelsey is the Scottish king haunted by the ghosts of his murderous ascent to the throne, opposite soprano Lise Davidsen as the power-mad Lady Macbeth, whose ruinous ambition damns them both. Met Music Director Yannick Nézet-Séguin takes the podium for a penetrating production by Louisa Proske. Rounding out the all-star cast are tenor Freddie De Tommaso as Macduff and bass-baritone Ryan Speedo Green as Banquo.",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1703622,
+    "title": "The Metropolitan Opera 2026/27: Macbeth",
+    "original": "The Metropolitan Opera 2026/27: Macbeth",
+    "year": 2026,
+    "directors": [],
+    "runtime": null,
+    "pct": 52.3,
+    "overview": null,
+    "imdb": null
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "c4164788b2fd1ab3",
+  "verdict": "bill",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:03:42.714Z",
+  "country": "pl",
+  "title": "Akademia Polskiego Filmu: Piętro wyżej + reklama zapalaczy | Gatunki międzywojnia I: Komedia",
+  "members": [
+   {
+    "venue": "Kino Spektrum",
+    "page": null
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1724300,
+    "title": "Komedia",
+    "original": "Komedia",
+    "year": null,
+    "directors": [],
+    "runtime": null,
+    "pct": 6.3,
+    "overview": null,
+    "imdb": null
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "749ec3fc758a4ad5",
+  "verdict": "event",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:04:59.212Z",
+  "country": "pl",
+  "title": "Disco mck",
+  "members": [
+   {
+    "venue": "Kino Kalejdoskop",
+    "page": null
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1555331,
+    "title": "D.I.S.C.O.",
+    "original": "D.I.S.C.O.",
+    "year": 2026,
+    "directors": [
+     "Ömer Faruk Sorak"
+    ],
+    "runtime": 102,
+    "pct": 5.9,
+    "overview": null,
+    "imdb": "tt39105882"
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "348d0cf2835e118b",
+  "verdict": "bill",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:03:29.566Z",
+  "country": "pl",
+  "title": "Akademia Polskiego Filmu: Wiatr odnowy – kino epoki Października",
+  "members": [
+   {
+    "venue": "Kino Pałacowe",
+    "page": "http://kinopalacowe.pl/filmy/15121-akademia-polskiego-filmu-wiatr-odnowy-kino-epoki-p/"
+   }
+  ],
+  "venueSynopsis": "Wykład: prof. dr hab. Piotr Zwierzchowski + projekcja filmu: Zimowy zmierzch (87') Lata pięćdziesiąte. Małe...",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 259998,
+    "title": "Zimowy zmierzch",
+    "original": "Zimowy zmierzch",
+    "year": 1957,
+    "directors": [
+     "Stanisław Lenartowicz"
+    ],
+    "runtime": 94,
+    "pct": 7.0,
+    "overview": "Film opowiada o życiu prowincjonalnego miasteczka. Wydarzeniem w  miasteczku stał się przyjazd z wojska Józka Rumszy, syna starego kolejarza. Chłopak, mimo przyrzeczenia danego miejscowej dziewczynie, nie ożenił się z nią, lecz przywiózł z sobą inną żonę. Zdawało się, że w miasteczku zawrze, było to przecież naruszenie niepisanych praw obyczajowych. Mieszkańcy jednak, nie zdobyli się na żaden gest potępienia. Jedynie ojciec i zawiedziona dziewczyna próbowali się buntować.",
+    "imdb": "tt0051224"
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "b432fae3432c2ff3",
+  "verdict": "none",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:08:03.983Z",
+  "country": "pl",
+  "title": "Filmowe popołudnie dla dzieci: Robaczki",
+  "members": [
+   {
+    "venue": "Kino Kosmos",
+    "page": "https://www.bilety24.pl/kino/1501-filmowe-popoludnie-dla-dzieci-robaczki-165556?id=993817"
+   }
+  ],
+  "venueSynopsis": "**FILMOWE POPOŁUDNIE DLA DZIECI | Kino Kosmos | w każdą niedzielę | godz. 14:00**\n\nIdealna propozycja na pierwszą w życiu wizytę w kinie!\nNa najmłodszych widzów (dzieci od 3. roku życia) co niedzielę czekają m.in. Reksio, Bolek i Lolek, a także pozostali bohaterowie kultowych animacji ze Studia Filmów Rysunkowych. Podczas seansu światła nie gasną całkowicie, a dźwięk jest lekko przyciszony. Wszystko po to, by zapewnić dziecku pokaz przyjazny sensorycznie. W wybrane niedziele seanse połączone są z warsztatami lub zabawami ruchowymi.\n\nTwoje dziecko będzie pierwszy raz w kinie? Zgłoście się do kasy po **pamiątkowy dyplom!**\n\nW repertuarze animacje ze Studia Filmów Rysunkowych: Przygody Błękitne",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 140870,
+    "title": "Robaczki z Zaginionej Doliny",
+    "original": "Minuscule - La Vallée des fourmis perdues",
+    "year": 2013,
+    "directors": [
+     "Hélène Giraud",
+     "Thomas Szabo"
+    ],
+    "runtime": 89,
+    "pct": 7.4,
+    "overview": "W malowniczych okolicznościach przyrody, wśród pozostałości po niedzielnym pikniku, wybucha wojna mrówek. Pracowite Czarne rywalizują z plemieniem Czerwonych o wielki skarb ? pudełko pełne kostek cukru. Nieoczekiwanie, w ich zmagania o pyszne słodkości miesza się niesforna mała biedronka, która zgubiła rodziców. Waleczny robaczek przyłącza się do Czarnych i wspólnie z nimi broni skarbu przed czerwonymi łakomczuchami. To zaledwie początek niezwykłych przygód małej biedronki i jej przyjaciół w bajecznie kolorowej Zaginionej Dolinie.",
+    "imdb": "tt2368672"
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "2176097d4c180092",
+  "verdict": "film",
+  "ref": "tmdb:1703629",
+  "tmdb": 1703629,
+  "at": "2026-10-06T07:00:11.365Z",
+  "country": "uk",
+  "title": "RBO Cinema Season 2026-27: La Fanciulla Del West",
+  "members": [
+   {
+    "venue": "Act One Cinema Acton",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-la-fanciulla-del-west/"
+   },
+   {
+    "venue": "Aldeburgh Cinema",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-la-fanciulla-del-west/"
+   },
+   {
+    "venue": "Arts Picturehouse Cambridge",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-la-fanciulla-del-west/"
+   },
+   {
+    "venue": "Astoria Cinema Ayr",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-la-fanciulla-del-west/"
+   },
+   {
+    "venue": "Broadway Cinema Nottingham",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-la-fanciulla-del-west/"
+   },
+   {
+    "venue": "City Screen Picturehouse York",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-la-fanciulla-del-west/"
+   },
+   {
+    "venue": "Embassy Cinema Ilfracombe",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-la-fanciulla-del-west/"
+   },
+   {
+    "venue": "Forum Cinema Hexham",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-la-fanciulla-del-west/"
+   },
+   {
+    "venue": "Kavanagh Cinema Herne Bay",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-la-fanciulla-del-west/"
+   },
+   {
+    "venue": "Kinema in the Woods",
+    "page": "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-la-fanciulla-del-west/"
+   }
+  ],
+  "venueSynopsis": "Puccini’s exhilarating drama of the Wild West returns in a new staging by Richard Jones, marking the company’s first new production of La Fanciulla del West",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1703629,
+    "title": "The Metropolitan Opera 2026/27: La Fanciulla del West",
+    "original": "The Metropolitan Opera 2026/27: La Fanciulla del West",
+    "year": 2027,
+    "directors": [],
+    "runtime": null,
+    "pct": 52.3,
+    "overview": null,
+    "imdb": null
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "44387485410e3be1",
+  "verdict": "bill",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:03:36.978Z",
+  "country": "pl",
+  "title": "Basia. Humor w paski mam + Kocia Szajka - Festiwal TAURON Młode Horyzonty. Seanse HDD",
+  "members": [
+   {
+    "venue": "Helios Aleja Bielany",
+    "page": "https://helios.pl/wroclaw/kino-helios-aleja-bielany/wydarzenie/basia-humor-w-paski-mam-kocia-szajka-festiwal-tauron-mlode-horyzonty-seanse-hdd-2762"
+   },
+   {
+    "venue": "Helios Alfa",
+    "page": "https://helios.pl/bialystok/kino-helios-alfa/wydarzenie/basia-humor-w-paski-mam-kocia-szajka-festiwal-tauron-mlode-horyzonty-seanse-hdd-2762"
+   },
+   {
+    "venue": "Helios Bełchatów",
+    "page": "https://helios.pl/belchatow/kino-helios/wydarzenie/basia-humor-w-paski-mam-kocia-szajka-festiwal-tauron-mlode-horyzonty-seanse-hdd-2762"
+   },
+   {
+    "venue": "Helios Biała",
+    "page": "https://helios.pl/bialystok/kino-helios-biala/wydarzenie/basia-humor-w-paski-mam-kocia-szajka-festiwal-tauron-mlode-horyzonty-seanse-hdd-2762"
+   },
+   {
+    "venue": "Helios Bielsko-Biała",
+    "page": "https://helios.pl/bielsko-biala/kino-helios/wydarzenie/basia-humor-w-paski-mam-kocia-szajka-festiwal-tauron-mlode-horyzonty-seanse-hdd-2762"
+   },
+   {
+    "venue": "Helios Blue City",
+    "page": "https://helios.pl/warszawa/kino-helios-blue-city/wydarzenie/basia-humor-w-paski-mam-kocia-szajka-festiwal-tauron-mlode-horyzonty-seanse-hdd-2762"
+   },
+   {
+    "venue": "Helios Bydgoszcz",
+    "page": "https://helios.pl/bydgoszcz/kino-helios/wydarzenie/basia-humor-w-paski-mam-kocia-szajka-festiwal-tauron-mlode-horyzonty-seanse-hdd-2762"
+   },
+   {
+    "venue": "Helios Dąbrowa Górnicza",
+    "page": "https://helios.pl/dabrowa-gornicza/kino-helios/wydarzenie/basia-humor-w-paski-mam-kocia-szajka-festiwal-tauron-mlode-horyzonty-seanse-hdd-2762"
+   },
+   {
+    "venue": "Helios Forum",
+    "page": "https://helios.pl/gdansk/kino-helios-forum/wydarzenie/basia-humor-w-paski-mam-kocia-szajka-festiwal-tauron-mlode-horyzonty-seanse-hdd-2762"
+   },
+   {
+    "venue": "Helios Gniezno",
+    "page": "https://helios.pl/gniezno/kino-helios/wydarzenie/basia-humor-w-paski-mam-kocia-szajka-festiwal-tauron-mlode-horyzonty-seanse-hdd-2762"
+   }
+  ],
+  "venueSynopsis": "Sprawdź dostępne seanse w kinie Helios i zarezerwuj swój bilet na \"Basia. Humor w paski mam + Kocia Szajka - Festiwal TAURON Młode Horyzonty. Seanse HDD\" już dziś!",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1747514,
+    "title": "Basia. Humor w paski mam",
+    "original": "Basia. Humor w paski mam",
+    "year": null,
+    "directors": [],
+    "runtime": null,
+    "pct": 6.3,
+    "overview": null,
+    "imdb": null
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "469ca945dec6b816",
+  "verdict": "none",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T06:51:05.845Z",
+  "country": "pl",
+  "title": "Akademia Polskiego Filmu: Budowa przemysłu filmowego",
+  "members": [
+   {
+    "venue": "Kino Pałacowe",
+    "page": "http://kinopalacowe.pl/filmy/15097-akademia-polskiego-filmu-budowa-przemysu-filmowego/"
+   }
+  ],
+  "venueSynopsis": "Wykład (45'): prof. dr hab. Małgorzata Hendrykowska + projekcje filmów: Bestia (67') Film opowiada tragiczną historię...",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 395021,
+    "title": "Arabella",
+    "original": "Arabella",
+    "year": 1917,
+    "directors": [
+     "Aleksander Hertz"
+    ],
+    "runtime": null,
+    "pct": 48.1,
+    "overview": null,
+    "imdb": "tt0219512"
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "190aa59bd6decbca",
+  "verdict": "none",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:07:20.786Z",
+  "country": "pl",
+  "title": "Bolek i Lolek - zestaw IV",
+  "members": [
+   {
+    "venue": "Kino Pod Baranami",
+    "page": "https://kinopodbaranami.pl/film.php?film_id=13034"
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1167324,
+    "title": "Bolek i Lolek",
+    "original": "Bolek i Lolek",
+    "year": 1936,
+    "directors": [
+     "Michał Waszyński"
+    ],
+    "runtime": null,
+    "pct": 28.9,
+    "overview": "Czeladnik ślusarski, Bolek, wdaje się w bójkę broniąc swej znajomej zaczepianej przez dwóch podejrzanych osobników. Ucieka przed policją i znajduje schronienie w obcym domu, w którym zgromadzeni na przyjęciu goście biorą go za Lolka, zamożnego, lecz głupkowatego młodzieńca. Werwa i energia mniemanego Lolka, sprawia miłą niespodziankę amerykańskiemu przemysłowcowi, który miał zawrzeć spółkę z ojcem głuptaska. Bolek - Lolek zdobywa świetne stanowisko i zawiera znajomość z córką Amerykanina.",
+    "imdb": "tt0027378"
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "5ad9be4e5bd941cb",
+  "verdict": "film",
+  "ref": "tmdb:396227",
+  "tmdb": 396227,
+  "at": "2026-10-06T06:55:45.797Z",
+  "country": "us",
+  "title": "NT Live: Hamlet",
+  "members": [
+   {
+    "venue": "Amherst Cinema (Amherst) (Massachusetts)",
+    "page": "https://www.flicks.us/movie/nt-live-hamlet/"
+   },
+   {
+    "venue": "Burns Court Cinemas Sarasota",
+    "page": "https://www.flicks.us/movie/nt-live-hamlet/"
+   },
+   {
+    "venue": "Cinemapolis Ithaca",
+    "page": "https://www.flicks.us/movie/nt-live-hamlet/"
+   },
+   {
+    "venue": "Film Streams' Ruth Sokolof Theater",
+    "page": "https://www.flicks.us/movie/nt-live-hamlet/"
+   }
+  ],
+  "venueSynopsis": "Find where to watch NT Live: Hamlet in US cinemas + release dates, reviews and trailers. From the National Theatre",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 436484,
+    "title": "National Theatre Live: Hamlet",
+    "original": "National Theatre Live: Hamlet",
+    "year": 2010,
+    "directors": [
+     "Robin Lough",
+     "Nicholas Hytner"
+    ],
+    "runtime": 210,
+    "pct": 37.1,
+    "overview": "A 2010 broadcast of Hamlet returns to cinemas as part of the NT's 50th anniversary celebrations.  Following his celebrated performances at the National Theatre in Burnt by the Sun, The Revenger's Tragedy, Philistines and The Man of Mode, Rory Kinnear plays Hamlet in a dynamic new production of Shakespeare’s complex and profound play about the human condition, directed by Nicholas Hytner.  He is joined by Clare Higgins (Gertrude), Patrick Malahide (Claudius), David Calder (Polonius), James Laurenson (Ghost/Player King) and Ruth Negga (Ophelia).",
+    "imdb": "tt1795370"
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "0d497e2d1f00e4e7",
+  "verdict": "none",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:05:50.971Z",
+  "country": "pl",
+  "title": "24. Festiwal TERRA - MOŻESZ - 391 DNI Z POLSKI DO AUSTRALII",
+  "members": [
+   {
+    "venue": "Kino Wisła",
+    "page": "https://www.novekino.pl/kina/wisla/film.php?id=20336"
+   }
+  ],
+  "venueSynopsis": "**MOŻESZ – 391 DNI Z POLSKI DO AUSTRALII**\n\nWyprawa, która rzuca wyzwanie definicji sprawności i indywidualizmu w podróży. „Możesz” to trwająca dwa i pół roku relacja z drogi między Polską a Australią, pokonana 30-letnim Defenderem przystosowanym do prowadzenia za pomocą rąk. To historia o tym, jak postępująca choroba, zamiast zamknąć horyzont, zmieniła sposób jego doświadczania. O tym, że kiedy ciało przestaje być idealnym narzędziem mobilności, zaczyna się głębszy dialog z drugim człowiekiem. Trasa wiodła przez pustynie Azji Centralnej, dżungle i przełęcze Himalajów powyżej 5240 m n.p.m., w temperaturach od -28°C do +46°C. Wszystko to realizowane było w rytmie wyznaczonym przez regularne p",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 20780,
+    "title": "Nie możesz popędzać miłości",
+    "original": "You Can't Hurry Love",
+    "year": 1988,
+    "directors": [
+     "Richard Martini"
+    ],
+    "runtime": 92,
+    "pct": 5.1,
+    "overview": "Peter Newcomb po tym jak zostawiła go dziewczyna opuszcza rodzinne miasto i udaje się do L.A., gdzie chce rozpocząć karierę w branży reklamowej, a przy okazji znaleźć kobietę swego życia. Oba marzenia okazują się niezwykle trudne do realizacji, ale po serii mniej lub bardziej udanych miłosnych podbojów Peter trafia na kobietę, której szukał.",
+    "imdb": "tt0096483"
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "3c9422ad2c93f260",
+  "verdict": "film",
+  "ref": "tmdb:1141491",
+  "tmdb": 1141491,
+  "at": "2026-10-06T06:57:00.903Z",
+  "country": "pl",
+  "title": "ARS INDEPENDENT FESTIVAL: Konkurs Czarny Koń Filmu : REDUTA",
+  "members": [
+   {
+    "venue": "Kino Światowid",
+    "page": "https://www.bilety24.pl/kino/1503-ars-independent-festival-konkurs-czarny-kon-filmu-reduta-164539?id=987261"
+   }
+  ],
+  "venueSynopsis": "**KONKURS CZARNY KOŃ FILMU**\n\n**REDUTA | REDOUBT reż. John Skoog | Dania, Finlandia, Holandia, Polska, Szwajcaria, Szwecja, Wielka Brytania 2025 | 81 min**\n\n**PT | 09.10.26 | 20:00 | KINO ŚWIATOWID**\n**wstęp przed filmem Mateusz Demski**\nW szczytowym okresie zimnej wojny rolnik Karl-Göran Persson zaczyna wzmacniać swój dom. Zbiera złom i wbudowuje go w ściany, aby zbudować fortecę, która ma chronić jego samego i jego sąsiadów. Jego wysiłki budzą zdziwienie u wszystkich oprócz dzieci. Wraz z postępem prac narasta konflikt z mieszkańcami wsi. Wielkie kino drobnych gestów i pięknych obrazów z Denisem Lavantem w głównej roli. Intrygujące i medytacyjne.\n[seans z napisami rozszerzonymi - dla osób ",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1141491,
+    "title": "Reduta",
+    "original": "VÄRN",
+    "year": 2026,
+    "directors": [
+     "John Skoog"
+    ],
+    "runtime": 85,
+    "pct": 28.9,
+    "overview": "W obawie przed nadciągającą wojną farmer Karl-Göran Persson zamienia swój dom w fortecę. Dla mieszkańców wioski to tylko dziwaczna obsesja, którą traktują z pobłażaniem – przynajmniej na początku. Jednak, gdy z czasem mury budowli rosną, to konflikt Karla-Görana z wioską niebezpiecznie eskaluje.",
+    "imdb": "tt35456230"
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "9bcc1f918355a728",
+  "verdict": "film",
+  "ref": "tmdb:6114",
+  "tmdb": 6114,
+  "at": "2026-10-06T07:07:38.414Z",
+  "country": "es",
+  "title": "Drácula. 30 Aniversario",
+  "members": [
+   {
+    "venue": "Cines Bulevar",
+    "page": null
+   },
+   {
+    "venue": "Multicines Avenida",
+    "page": null
+   }
+  ],
+  "venueSynopsis": "Del director ganador del Oscar Francis Ford Coppola llega esta versión de la escalofriante obra sobre el seductor príncipe de Transilvania (Gary Oldman) que viaja desde Europa del Este hasta el Londres del siglo XIX en busca de amor humano. Tras siglos de soledad en su ruinoso castillo, el gusto de Drácula por la humanidad se ha transformado en deseo, sacándolo de su reclusión. Cuando el carismático Drácula conoce a Mina (Winona Ryder), una joven que parece la reencarnación de su amor perdido, ambos se embarcan en un viaje de pasión romántico y horror. Utilizando grandes efectos especiales y el considerable talento de su reparto, Coppola ha orquestado una presentación fresca y provocativa de",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 6114,
+    "title": "Drácula de Bram Stoker",
+    "original": "Bram Stoker's Dracula",
+    "year": 1992,
+    "directors": [
+     "Francis Ford Coppola"
+    ],
+    "runtime": 128,
+    "pct": 8.1,
+    "overview": "Antes de convertirse en vampiro, el conde Drácula era el príncipe Vlad, quien tras conocer la muerte de su prometida, vendió su alma al diablo. Cuatro siglos después, en Londres, encuentra a Mina, reencarnación de su amor perdido.",
+    "imdb": "tt0103874"
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "e0f1053078e17bef",
+  "verdict": "event",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:06:49.470Z",
+  "country": "pl",
+  "title": "ARS INDEPENDENT FESTIVAL: Konkurs Czarny Koń Wideoklipu- Set 2",
+  "members": [
+   {
+    "venue": "Kino Światowid",
+    "page": "https://www.bilety24.pl/kino/1503-ars-independent-festival-konkurs-czarny-kon-wideoklipu-set-2-164486?id=987454"
+   }
+  ],
+  "venueSynopsis": "**KONKURS CZARNY KOŃ WIDEOKLIPU**\nZ melanżu pociętych dźwięków i wyplutych kadrów wyłania się jeden jedyny Czarny Koń Wideoklipu. Konkurs wideoklipów to najbardziej chaotyczny i przez to najbardziej zaskakujący z konkursów. Mnogość spojrzeń i tematów, którymi będziemy raczyć widza w Piątym Domu przyprawi o ekstatyczny ból głowy niejednego festiwalowicza. Podczas tegorocznego Ars Independent Festival zaprezentujemy wybrane przez grono selekcjonerów najciekawsze niezależne klipy z roku obecnego i poprzedniego. Przed Wami otworzą się wrota, które otwiera wiele kluczy interpretacyjnych. Każdy pasuje i żaden nie jest lepszy od innego.\n**Kurator: Michał Banko**\n**Komisja selekcyjna: Patryk Chromik",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 71183,
+    "title": "People : Jet Set 2",
+    "original": "People : Jet Set 2",
+    "year": 2004,
+    "directors": [
+     "Fabien Onteniente"
+    ],
+    "runtime": 87,
+    "pct": 5.1,
+    "overview": null,
+    "imdb": "tt0381487"
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "85d3372925349302",
+  "verdict": "none",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:00:28.074Z",
+  "country": "pl",
+  "title": "Akademia Polskiego Filmu – Wajda. Reżyser obrazu Przestrzeń i Architektura – Człowiek wobec materii świata.",
+  "members": [
+   {
+    "venue": "Kino Agrafka",
+    "page": "https://kinoagrafka.pl/konwicki26.php"
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 29933,
+    "title": "Kanał",
+    "original": "Kanał",
+    "year": 1957,
+    "directors": [
+     "Andrzej Wajda"
+    ],
+    "runtime": 95,
+    "pct": 24.1,
+    "overview": "Powstanie Warszawskie. Tragiczne losy żołnierzy oddziału AK, którzy z pozycji na Mokotowie usiłują przedostać się kanałami do walczącego jeszcze Śródmieścia. Wszystkich czeka śmierć. Dowódca \"Zadra\" wraca do kanału, bo oszukany przez tchórzliwego \"Kulę\" zostawił za sobą swój oddział. \"Mądry\" załamuje się, wychodzi przez właz i zostaje rozstrzelany przez Niemców. Halinka popełnia samobójstwo, \"Smukły\" ginie rozbrajając granaty. Ciężko ranny \"Korab\" i \"Stokrotka\" docierają resztkami sił do Wisły, ale drogę zagradza im zamykająca kanał żelazna krata.",
+    "imdb": "tt0050585"
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "27d42b0855d23ad4",
+  "verdict": "none",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:04:46.251Z",
+  "country": "pl",
+  "title": "Bhutan - Trails of Happiness",
+  "members": [
+   {
+    "venue": "Kinoteatr Słonko",
+    "page": "https://www.bilety24.pl/kino/478-bhutan-trails-of-happiness-165502?id=994022"
+   }
+  ],
+  "venueSynopsis": "Oszałamiające górskie trasy rowerowe Bhutanu i jego kultura widziane oczami dwóch nietuzinkowych postaci: Toma Öhlera, światowej klasy ridera mtb z Austrii, i Tandina Wanga - pioniera mtb w Bhutanie. Ich przygoda połączy pokonywanie wymagających górskich tras z odkryciami kulturowymi. Zaczynają w stolicy kraju, skąd wyruszają znanym szlakiem Madman Trail. Wije się on przez mgliste lasy i kolorowe wioski, a kończy w słynnym klasztorze buddyjskim Tygrysie Gniazdo.",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 962468,
+    "title": "Bhutan",
+    "original": "Bhutan",
+    "year": 1928,
+    "directors": [
+     "F.M. Bailey"
+    ],
+    "runtime": 14,
+    "pct": 6.1,
+    "overview": null,
+    "imdb": null
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "88860d18a2767144",
+  "verdict": "bill",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T06:55:37.037Z",
+  "country": "uk",
+  "title": "MOBILE SUIT GUNDAM HATHAWAY DOUBLE BILL",
+  "members": [
+   {
+    "venue": "Odeon Birmingham New Street",
+    "page": "https://www.odeon.co.uk/films/mobile-suit-gundam-hathaway-double-bill/HO00009547/?siteId=017"
+   },
+   {
+    "venue": "Odeon Cabot Circus",
+    "page": "https://www.odeon.co.uk/films/mobile-suit-gundam-hathaway-double-bill/HO00009547/?siteId=315"
+   },
+   {
+    "venue": "Odeon Cinema Bath",
+    "page": "https://www.odeon.co.uk/films/mobile-suit-gundam-hathaway-double-bill/HO00009547/?siteId=355"
+   },
+   {
+    "venue": "Odeon Cinema Belfast",
+    "page": "https://www.odeon.co.uk/films/mobile-suit-gundam-hathaway-double-bill/HO00009547/?siteId=600"
+   },
+   {
+    "venue": "Odeon Cinema Bournemouth BH2",
+    "page": "https://www.odeon.co.uk/films/mobile-suit-gundam-hathaway-double-bill/HO00009547/?siteId=854"
+   },
+   {
+    "venue": "Odeon Cinema Braehead",
+    "page": "https://www.odeon.co.uk/films/mobile-suit-gundam-hathaway-double-bill/HO00009547/?siteId=615"
+   },
+   {
+    "venue": "Odeon Cinema Brighton",
+    "page": "https://www.odeon.co.uk/films/mobile-suit-gundam-hathaway-double-bill/HO00009547/?siteId=824"
+   },
+   {
+    "venue": "Odeon Cinema Cardiff",
+    "page": "https://www.odeon.co.uk/films/mobile-suit-gundam-hathaway-double-bill/HO00009547/?siteId=954"
+   },
+   {
+    "venue": "Odeon Cinema Coventry",
+    "page": "https://www.odeon.co.uk/films/mobile-suit-gundam-hathaway-double-bill/HO00009547/?siteId=040"
+   },
+   {
+    "venue": "Odeon Cinema Greenwich",
+    "page": "https://www.odeon.co.uk/films/mobile-suit-gundam-hathaway-double-bill/HO00009547/?siteId=963"
+   }
+  ],
+  "venueSynopsis": "For ONE DAY ONLY, experience a special double bill of MOBILE SUIT GUNDAM HATHAWAY and MOBILE SUIT GUNDAM HATHAWAY The Sorcery of Nymph Circe, exclusively at ODEON.\n\nMOBILE SUIT GUNDAM HATHAWAY\nThe year is U.C. 0105, twelve years after Char’s Rebellion. The anti-government organization \"Mafty,\" led by someone called \"Mafty Navue Erin,\" has taken a stand against the corrupt leadership of the Earth Federation. As Mafty carries out terror attacks and assassinates government officials, it gains support from the angry populace.\nMafty's leader is actually Hathaway Noa, the son of war hero Bright Noa. Inspired by the ideals of Amuro Ray and Char Aznable, Hathaway plans to follow in their footsteps a",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 685274,
+    "title": "Mobile Suit Gundam Hathaway",
+    "original": "機動戦士ガンダム 閃光のハサウェイ",
+    "year": 2021,
+    "directors": [
+     "Shukou Murase"
+    ],
+    "runtime": 96,
+    "pct": 43.1,
+    "overview": "Twelve years after Char's rebellion, Hathaway Noa leads an insurgency against Earth Federation, but meeting an enemy officer and a mysterious woman alters his fate.",
+    "imdb": "tt13288678"
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "03fca4624a4203b3",
+  "verdict": "event",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:02:04.958Z",
+  "country": "pl",
+  "title": "Okładka Odcienie",
+  "members": [
+   {
+    "venue": "Kino Alternatywy",
+    "page": "https://alternatywy.art/odcienie-spotkanie-z-osobowoscia-ze-swiata-kultury-lub-sportu-5/"
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 927547,
+    "title": "Wszystkie odcienie światła",
+    "original": "പ്രഭയായ് നിനച്ചതെല്ലാം",
+    "year": 2024,
+    "directors": [
+     "Payal Kapadia"
+    ],
+    "runtime": 100,
+    "pct": 7.4,
+    "overview": "Podróż Prabhy, pielęgniarki z Bombaju, która wplątała się w zaaranżowane małżeństwo z mężczyzną, który wyjechał za granicę. Anu, jej młoda współlokatorka, szuka miejsca, w którym będzie mogła w końcu kochać się ze swoim chłopakiem. Obie kobiety jadą do nadmorskiego miasteczka. Tam mistyczny las deszczowy stanie się miejscem, w którym spełnią się ich marzenia i pragnienia.",
+    "imdb": "tt32086077"
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "024807ea38e70e85",
+  "verdict": "none",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:09:54.898Z",
+  "country": "uk",
+  "title": "Toddler Club: Disney Junior Cinema Club 2026",
+  "members": [
+   {
+    "venue": "Everyman Brentford",
+    "page": "https://www.everymancinema.com/film-listing/1000052174-toddler-club-disney-junior-cinema-club-2026"
+   },
+   {
+    "venue": "Everyman Bury St Edmunds",
+    "page": "https://www.everymancinema.com/film-listing/1000052174-toddler-club-disney-junior-cinema-club-2026"
+   },
+   {
+    "venue": "Everyman Cheltenham",
+    "page": "https://www.everymancinema.com/film-listing/1000052174-toddler-club-disney-junior-cinema-club-2026"
+   },
+   {
+    "venue": "Everyman Cinema Altrincham",
+    "page": "https://www.everymancinema.com/film-listing/1000052174-toddler-club-disney-junior-cinema-club-2026"
+   },
+   {
+    "venue": "Everyman Cinema Barnet",
+    "page": "https://www.everymancinema.com/film-listing/1000052174-toddler-club-disney-junior-cinema-club-2026"
+   },
+   {
+    "venue": "Everyman Cinema Bristol",
+    "page": "https://www.everymancinema.com/film-listing/1000052174-toddler-club-disney-junior-cinema-club-2026"
+   },
+   {
+    "venue": "Everyman Cinema Cambridge",
+    "page": "https://www.everymancinema.com/film-listing/1000052174-toddler-club-disney-junior-cinema-club-2026"
+   },
+   {
+    "venue": "Everyman Cinema Canary Wharf",
+    "page": "https://www.everymancinema.com/film-listing/1000052174-toddler-club-disney-junior-cinema-club-2026"
+   },
+   {
+    "venue": "Everyman Cinema Chelmsford",
+    "page": "https://www.everymancinema.com/film-listing/1000052174-toddler-club-disney-junior-cinema-club-2026"
+   },
+   {
+    "venue": "Everyman Cinema Clitheroe",
+    "page": "https://www.everymancinema.com/film-listing/1000052174-toddler-club-disney-junior-cinema-club-2026"
+   }
+  ],
+  "venueSynopsis": "Packed with fun for preschoolers and their grown-ups, this interactive big-screen experience brings together some favourite Disney Junior stories from Mickey Mouse Clubhouse+, Minnie's Bow-Toons: Pet Hotel, Marvel's Iron Man and His Awesome Friends, Sofia the First: Royal Magic and Toy Story Toons, in a fun-filled extravaganza! Expect sing-alongs, dance moments, exciting games and magical surprises, where audience participation is a must.\n\nJoin us every Friday or Saturday for toddler-friendly cinema screenings. From ages 1 to 5, share your childhood favourites and the best new family film releases with your pre-schoolers, and we’ll bring you a warm drink and a slice of cake or a small popcor",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1371912,
+    "title": "Disney Junior Cinema Club",
+    "original": "Disney Junior Cinema Club",
+    "year": 2024,
+    "directors": [],
+    "runtime": 51,
+    "pct": 3.4,
+    "overview": "On the big screen, Mickey Mouse as the animated host leads you and your little ones, through shows, songs and games over the course of 50 minutes.",
+    "imdb": null
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "128650c84c33a403",
+  "verdict": "film",
+  "ref": "tmdb:1461058",
+  "tmdb": 1461058,
+  "at": "2026-10-06T07:06:33.699Z",
+  "country": "pl",
+  "title": "19. FGA: Wspinaczka",
+  "members": [
+   {
+    "venue": "Janosik",
+    "page": "https://www.bilety24.pl/kino/1500-19-fga-wspinaczka-164646?id=991062"
+   }
+  ],
+  "venueSynopsis": "Profesjonalna wspinaczka Emily Harrington zdobyła Everest, ośmiotysięczniki i zdominowała cykl zawodów, ale jej największe wyzwanie wykracza poza sferę fizyczną. Aby utrwalić swoje dziedzictwo w zdominowanym przez mężczyzn świecie elitarnej wspinaczki skałkowej, postanawia w ciągu 24 godzin, definiując swoją karierę, wejść na El Capitan w Yosemite.\n\nRozdarta między pogonią za osobistymi ambicjami a tykającym zegarem biologicznym, Emily, po niemal śmiertelnym upadku, musi rozważyć, co jest gotowa zaryzykować. Film „Girl Climber”, będący w równym stopniu wciągającą historią o przetrwaniu, co intymnym portretem, nie tylko opowiada o biciu rekordów, ale także o przełamywaniu barier. W legendarny",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 489471,
+    "title": "Dawn Wall: Wspinaczka po rekord",
+    "original": "The Dawn Wall",
+    "year": 2017,
+    "directors": [
+     "Josh Lowell",
+     "Peter Mortimer"
+    ],
+    "runtime": 101,
+    "pct": 5.1,
+    "overview": "W Parku Narodowym Yosemite w Kalifornii znajduje się granitowy monolit El Capitan, marzenie wielu wspinaczy. Amerykańscy wspinacze Tommy Caldwell i Kevin Jorgeson postanowili po raz pierwszy w historii pokonać tę trudną trasę skalną bez lin i pomocniczego sprzętu. Film dokumentuje ich 19-dniowy wyczyn, pokazując przygotowania, poszczególne etapy i prywatne życie wspinaczy. Wspinają się za pomocą uchwytów i przyczółków nie grubszych niż karta kredytowa, a w nocy śpią w przymocowanych do skały hamakach. Film ujawnia trudne doświadczenia życiowe Caldwella, których kulminacją był projekt wspinaczk",
+    "imdb": "tt7286916"
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "82f87b3656b273b0",
+  "verdict": "none",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T06:58:26.961Z",
+  "country": "pl",
+  "title": "24. Festiwal TERRA - JAPONIA - DWIE DEKADY PÓŹNIEJ",
+  "members": [
+   {
+    "venue": "Kino Wisła",
+    "page": "https://www.novekino.pl/kina/wisla/film.php?id=20333"
+   }
+  ],
+  "venueSynopsis": "**JAPONIA. DWIE DEKADY PÓŹNIEJ**\n\nNiezwykła podróż przez Japonię z perspektywy 20 lat – od pierwszej wyprawy po kolejne powroty do kraju Kwitnącej Wiśni. Dawne wspomnienia i fotografie spotkają się ze współczesnymi obrazami, tworząc opowieść o miejscach, ludziach, emocjach i zmianach, które przyniosły dwie dekady.\n\nOd tropikalnych plaż Okinawy, przez wulkaniczne krajobrazy Kiusiu, historyczną Hiroszimę, świątynie Kioto i Nary, górskie szlaki Alp Japońskich i zbocza Fuji, aż po tętniące życiem Tokio i dzikie Hokkaido – przemierzymy Japonię od południa po północ.\n\nFotografie sprzed 20 lat zestawimy z obrazami współczesnej Japonii. Muzyka, filmy i oryginalne nagrania dźwiękowe pozwolą nie tylko",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1045986,
+    "title": "Japonia",
+    "original": "Japonia",
+    "year": 1997,
+    "directors": [
+     "Paweł Łoziński"
+    ],
+    "runtime": 29,
+    "pct": 9.8,
+    "overview": null,
+    "imdb": null
+   }
+  ]
+ },
+ {
+  "page": "review",
+  "itemId": "94f575a06cf991cd",
+  "verdict": "film",
+  "ref": "tmdb:1321666",
+  "tmdb": 1321666,
+  "at": "2026-10-06T06:56:48.913Z",
+  "country": "pl",
+  "title": "Lalka PREMIERA",
+  "members": [
+   {
+    "venue": "Kino MOK Międzyrzecz",
+    "page": "https://mokmiedzyrzecz.pl/wydarzenie/lalka-premiera/2026-10-17/"
+   }
+  ],
+  "venueSynopsis": "Napędzany ambicją Stanisław dąży do awansu społecznego, a jego obsesyjne zauroczenie Izabelą staje się bramą do świata, który chce zdobyć. Izabela próbuje",
+  "labelledFilm": null,
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1309396,
+    "title": "Lalka",
+    "original": "La Poupée",
+    "year": 2026,
+    "directors": [
+     "Sophie Beaulieu"
+    ],
+    "runtime": 80,
+    "pct": 47.3,
+    "overview": "Rémi nigdy nie pogodził się z ostatnim rozstaniem. Od tamtej pory jest w związku z lalką – to prostsze. Ma na imię Audrey. W dniu, w którym Patricia, nowa koleżanka, pojawia się w firmie Rémiego, Audrey w tajemniczy sposób ożywa.",
+    "imdb": "tt36749000"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "a3d2a998c98ae2c6",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:45:05.319Z",
+  "country": "uk",
+  "title": "NT Live: A Streetcar Named Desire",
+  "members": [
+   {
+    "venue": "Prince Charles London",
+    "page": "https://www.flicks.co.uk/movie/nt-live-a-streetcar-named-desire/",
+    "venueFacts": {
+     "runtime": 200,
+     "catalogueIds": [
+      {
+       "source": "flicks",
+       "id": "7842"
+      }
+     ],
+     "screenings": {
+      "first": "2026-11-20",
+      "last": "2026-11-20",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Find where to watch NT Live: A Streetcar Named Desire in UK cinemas + release dates, reviews and trailers. From the National Theatre",
+  "labelledFilm": {
+   "ref": "tmdb:291289",
+   "note": "recall target: National Theatre Live: A Streetcar Named Desire (2014)",
+   "tmdb": 291289,
+   "title": "National Theatre Live: A Streetcar Named Desire",
+   "localTitle": "National Theatre Live: A Streetcar Named Desire",
+   "original": "National Theatre Live: A Streetcar Named Desire",
+   "year": "2014",
+   "directors": [
+    "Nick Wickham",
+    "Benedict Andrews"
+   ],
+   "runtime": 174,
+   "overview": "As Blanche’s fragile world crumbles, she turns to her sister Stella for solace – but her downward spiral brings her face to face with the brutal, unforgiving Stanley Kowalski.",
+   "imdb": "tt4020156"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 291289,
+    "title": "National Theatre Live: A Streetcar Named Desire",
+    "original": "National Theatre Live: A Streetcar Named Desire",
+    "year": "2014",
+    "directors": [
+     "Nick Wickham",
+     "Benedict Andrews"
+    ],
+    "runtime": 174,
+    "pct": 3.1,
+    "localTitle": "National Theatre Live: A Streetcar Named Desire",
+    "overview": "As Blanche’s fragile world crumbles, she turns to her sister Stella for solace – but her downward spiral brings her face to face with the brutal, unforgiving Stanley Kowalski.",
+    "imdb": "tt4020156"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "474d53dee2107e49",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:33:49.851Z",
+  "country": "pl",
+  "title": "Lydia i Władca Burz Edukacja Młode Horyzonty",
+  "members": [
+   {
+    "venue": "Terminal Kultury Gocław",
+    "page": "https://biletyna.pl/film/Lydia-i-Wladca-Burz?eid=707359#opis",
+    "venueFacts": {
+     "screenings": {
+      "first": "2027-04-06",
+      "last": "2027-04-06",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Lydia i Władca Burz Edukacja Młode Horyzonty - Bilety na film ✔️. Kup Bilet Online już teraz na biletyna.pl ➤ Sprawdź nasze bilety!",
+  "labelledFilm": {
+   "ref": "tmdb:1594694",
+   "note": "recall target: Lydia and the Mist Rider (2026)",
+   "tmdb": 1594694,
+   "title": "Lydia and the Mist Rider",
+   "localTitle": "Lydia et le vaisseau des tempêtes",
+   "original": "Lydia et le vaisseau des tempêtes",
+   "year": "2026",
+   "directors": [
+    "Nancy Florence Savard",
+    "Emilie Rosas"
+   ],
+   "runtime": 80,
+   "overview": "When her older brother Thaddeus is mysteriously kidnapped by the Spellbinder, 11-year-old Lydia sets off to find him in the Misty Sea. Picked up by the crew of a flying ship, the Dolphin, Lydia becomes the apprentice of Ambrosia, a Stargazer. Ambrosia is trying to find other children who have disappeared, including her own son. Determined to solve the mystery, Lydia must learn stargazing magic and ready herself to confront the Spellbinder.",
+   "imdb": "tt39196986"
+  },
+  "matchedFilm": null,
+  "modelCandidates": []
+ },
+ {
+  "page": "matchable",
+  "itemId": "0749805af9368c82",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:56:28.640Z",
+  "country": "pl",
+  "title": "Kino Kobiet - KLAPS! \"Jak żyć żeby nie zwariować\"",
+  "members": [
+   {
+    "venue": "Kino w Ratuszu",
+    "page": null,
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-23",
+      "last": "2026-10-23",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": {
+   "ref": "tmdb:1489938",
+   "note": "recall target: Jak żyć, żeby nie zwariować (2026)",
+   "tmdb": 1489938,
+   "title": "Jak żyć, żeby nie zwariować",
+   "localTitle": "Jak żyć, żeby nie zwariować",
+   "original": "Jak żyć, żeby nie zwariować",
+   "year": "2026",
+   "directors": [
+    "Tomasz Konecki",
+    "Iwona Ogonowska-Konecka"
+   ],
+   "runtime": 0,
+   "overview": "Bohaterką filmu jest Anka – czterdziestoletnia matka dwójki dzieci, która po rozwodzie stara się odnaleźć siebie na nowo, balansując między rodziną, karierą i… sceną stand-upu.",
+   "imdb": null
+  },
+  "matchedFilm": null,
+  "modelCandidates": []
+ },
+ {
+  "page": "matchable",
+  "itemId": "9d8acbbbd96991d3",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:32:01.006Z",
+  "country": "uk",
+  "title": "Paddington Bear: Winter Warmers",
+  "members": [
+   {
+    "venue": "Showcase Bristol Avonmeads",
+    "page": "https://www.showcasecinemas.co.uk/movies/1000034083-paddington-bear-winter-warmers",
+    "venueFacts": {
+     "runtime": 43,
+     "catalogueIds": [
+      {
+       "source": "boxoffice",
+       "id": "1000034083"
+      }
+     ],
+     "screenings": {
+      "first": "2026-11-06",
+      "last": "2026-11-19",
+      "count": 14
+     }
+    }
+   },
+   {
+    "venue": "Showcase Cinema Cardiff",
+    "page": "https://www.showcasecinemas.co.uk/movies/1000034083-paddington-bear-winter-warmers",
+    "venueFacts": {
+     "runtime": 43,
+     "catalogueIds": [
+      {
+       "source": "boxoffice",
+       "id": "1000034083"
+      }
+     ],
+     "screenings": {
+      "first": "2026-11-06",
+      "last": "2026-11-12",
+      "count": 7
+     }
+    }
+   },
+   {
+    "venue": "Showcase Cinema de Lux Derby",
+    "page": "https://www.showcasecinemas.co.uk/movies/1000034083-paddington-bear-winter-warmers",
+    "venueFacts": {
+     "runtime": 43,
+     "catalogueIds": [
+      {
+       "source": "boxoffice",
+       "id": "1000034083"
+      }
+     ],
+     "screenings": {
+      "first": "2026-11-06",
+      "last": "2026-11-19",
+      "count": 14
+     }
+    }
+   },
+   {
+    "venue": "Showcase Cinema de Lux Teesside",
+    "page": "https://www.showcasecinemas.co.uk/movies/1000034083-paddington-bear-winter-warmers",
+    "venueFacts": {
+     "runtime": 43,
+     "catalogueIds": [
+      {
+       "source": "boxoffice",
+       "id": "1000034083"
+      }
+     ],
+     "screenings": {
+      "first": "2026-11-06",
+      "last": "2026-11-18",
+      "count": 10
+     }
+    }
+   },
+   {
+    "venue": "Showcase de Lux Bluewater",
+    "page": "https://www.showcasecinemas.co.uk/movies/1000034083-paddington-bear-winter-warmers",
+    "venueFacts": {
+     "runtime": 43,
+     "catalogueIds": [
+      {
+       "source": "boxoffice",
+       "id": "1000034083"
+      }
+     ],
+     "screenings": {
+      "first": "2026-11-06",
+      "last": "2026-11-19",
+      "count": 14
+     }
+    }
+   },
+   {
+    "venue": "Showcase de Lux Leeds",
+    "page": "https://www.showcasecinemas.co.uk/movies/1000034083-paddington-bear-winter-warmers",
+    "venueFacts": {
+     "runtime": 43,
+     "catalogueIds": [
+      {
+       "source": "boxoffice",
+       "id": "1000034083"
+      }
+     ],
+     "screenings": {
+      "first": "2026-11-06",
+      "last": "2026-11-19",
+      "count": 14
+     }
+    }
+   },
+   {
+    "venue": "Showcase de Lux Leicester",
+    "page": "https://www.showcasecinemas.co.uk/movies/1000034083-paddington-bear-winter-warmers",
+    "venueFacts": {
+     "runtime": 43,
+     "catalogueIds": [
+      {
+       "source": "boxoffice",
+       "id": "1000034083"
+      }
+     ],
+     "screenings": {
+      "first": "2026-11-06",
+      "last": "2026-11-19",
+      "count": 14
+     }
+    }
+   },
+   {
+    "venue": "Showcase de Lux Nottingham",
+    "page": "https://www.showcasecinemas.co.uk/movies/1000034083-paddington-bear-winter-warmers",
+    "venueFacts": {
+     "runtime": 43,
+     "catalogueIds": [
+      {
+       "source": "boxoffice",
+       "id": "1000034083"
+      }
+     ],
+     "screenings": {
+      "first": "2026-11-06",
+      "last": "2026-11-19",
+      "count": 14
+     }
+    }
+   },
+   {
+    "venue": "Showcase de Lux Paisley",
+    "page": "https://www.showcasecinemas.co.uk/movies/1000034083-paddington-bear-winter-warmers",
+    "venueFacts": {
+     "runtime": 43,
+     "catalogueIds": [
+      {
+       "source": "boxoffice",
+       "id": "1000034083"
+      }
+     ],
+     "screenings": {
+      "first": "2026-11-06",
+      "last": "2026-11-19",
+      "count": 14
+     }
+    }
+   },
+   {
+    "venue": "Showcase de Lux Peterborough",
+    "page": "https://www.showcasecinemas.co.uk/movies/1000034083-paddington-bear-winter-warmers",
+    "venueFacts": {
+     "runtime": 43,
+     "catalogueIds": [
+      {
+       "source": "boxoffice",
+       "id": "1000034083"
+      }
+     ],
+     "screenings": {
+      "first": "2026-11-06",
+      "last": "2026-11-19",
+      "count": 14
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Browse showtimes and purchase your tickets online for Paddington Bear: Winter Warmers at Showcase Cinemas - UK",
+  "labelledFilm": {
+   "ref": "imdb:tt39048323",
+   "note": "hand label: Paddington: Winter Warmers (2025)",
+   "imdb": "tt39048323",
+   "title": "imdb:tt39048323"
+  },
+  "matchedFilm": null,
+  "modelCandidates": []
+ },
+ {
+  "page": "matchable",
+  "itemId": "dbb16ec7c792cad7",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:33:59.185Z",
+  "country": "pl",
+  "title": "11. UFF - Dowżenko. Pierwsze spojrzenie",
+  "members": [
+   {
+    "venue": "Kino Atlantic",
+    "page": "https://www.novekino.pl/kina/atlantic/film.php?id=20364",
+    "venueFacts": {
+     "countries": [
+      "Rumunia",
+      "Słowacja",
+      "Ukraina"
+     ],
+     "directors": [
+      "Kostiantyn Konovalov"
+     ],
+     "year": 2025,
+     "runtime": 100,
+     "screenings": {
+      "first": "2026-11-07",
+      "last": "2026-11-07",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Lato 1926 roku. Początkujący reżyser Ołeksandr Dowżenko przybywa do Odessy. Miasto odradza się po zniszczeniach wojennych. Kiedy zaś kierownik wytwórni próbuje wymusić na Dowżence realizację propagandowego...",
+  "labelledFilm": {
+   "ref": "tmdb:1483101",
+   "note": "hand label: Dowżenko. Pierwsze spojrzenie (2026) Konstantin Konovalov",
+   "tmdb": 1483101,
+   "title": "Dovzhenko. First Sight",
+   "localTitle": "Довженко. Перший погляд",
+   "original": "Довженко. Перший погляд",
+   "year": "2026",
+   "directors": [
+    "Kostiantyn Konovalov"
+   ],
+   "runtime": 0,
+   "overview": "Ukrainian Odesa, 1926: a city recovering from the war, a city where jazz sounds and cinema is born. Young artist Sashko Dovzhenko seeks freedom in art - and stumbles upon a system that does not forgive dreams. His first film may be his last. And he does not yet know that soon his name will be known to the whole world.",
+   "imdb": "tt37599515"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 128250,
+    "title": "When I Saw You",
+    "original": "لما شفتك",
+    "year": "2014",
+    "directors": [
+     "Annemarie Jacir"
+    ],
+    "runtime": 93,
+    "pct": 0.8,
+    "localTitle": "لما شفتك",
+    "overview": "Tarek and his mother Ghaydaa number among the tens of thousands of refugees crossing the border from Palestine, having been separated from Tarek's father amidst the chaos of the Six Day War.  They ultimately settle at the Harir refugee camp, a makeshift home for a new generation displaced by conflict.  Tarek dreams of being reunited with his father, and struggles to adapt to a new life far away from all he previously knew.",
+    "imdb": "tt2369543"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "71fbbcab16e805b9",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:24:45.444Z",
+  "country": "pl",
+  "title": "Kacper i Emma – najlepsi przyjaciele Edukacja Młode Horyzonty",
+  "members": [
+   {
+    "venue": "Terminal Kultury Gocław",
+    "page": "https://biletyna.pl/film/Kacper-i-Emma-najlepsi-przyjaciele-4?eid=699854#opis",
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-09",
+      "last": "2026-10-09",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Kacper i Emma – najlepsi przyjaciele Edukacja Młode Horyzonty - Bilety na film ✔️. Kup Bilet Online już teraz na biletyna.pl ➤ Sprawdź nasze bilety!",
+  "labelledFilm": {
+   "ref": "tmdb:171658",
+   "note": "recall target: Casper and Emma: Best Friends (2013)",
+   "tmdb": 171658,
+   "title": "Casper and Emma: Best Friends",
+   "localTitle": "Kacper i Emma: Najlepsi przyjaciele",
+   "original": "Karsten og Petra blir bestevenner",
+   "year": "2013",
+   "directors": [
+    "Arne Lindtner Næss"
+   ],
+   "runtime": 74,
+   "overview": "Casper is reluctant to start at a new daycare, but when he arrives he meets Emma who has a stuffed animal that can come to life. From that day Casper and Emma are best friends.",
+   "imdb": "tt2581664"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 171658,
+    "title": "Casper and Emma: Best Friends",
+    "original": "Karsten og Petra blir bestevenner",
+    "year": "2013",
+    "directors": [
+     "Arne Lindtner Næss"
+    ],
+    "runtime": 74,
+    "pct": 28.9,
+    "localTitle": "Kacper i Emma: Najlepsi przyjaciele",
+    "overview": "Casper is reluctant to start at a new daycare, but when he arrives he meets Emma who has a stuffed animal that can come to life. From that day Casper and Emma are best friends.",
+    "imdb": "tt2581664"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "8e4733faf5d94e8f",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:21:53.427Z",
+  "country": "pl",
+  "title": "Vincent.legenda oceanu",
+  "members": [
+   {
+    "venue": "Kino Parczew",
+    "page": "https://kinoparczew.pl/filmy/vincent-legenda-oceanu/",
+    "venueFacts": {
+     "runtime": 9,
+     "directors": [
+      "Pavel Hrubas",
+      "Steven Majaury"
+     ],
+     "countries": [
+      "Czechy",
+      "Kanada",
+      "Niemcy"
+     ],
+     "screenings": {
+      "first": "2026-10-09",
+      "last": "2026-10-15",
+      "count": 7
+     }
+    }
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": {
+   "ref": "imdb:tt13518550",
+   "note": "recall target: Vincent. legenda oceanu",
+   "tmdb": 677558,
+   "title": "The Last Whale Singer",
+   "localTitle": "The Last Whale Singer",
+   "original": "The Last Whale Singer",
+   "year": "2026",
+   "directors": [
+    "Reza Memari"
+   ],
+   "runtime": 91,
+   "overview": "When a monstrous creature escapes from a melting iceberg, a self-doubting teenage humpback whale must face his greatest fears and dive into the darkest depths with his friends, to discover the mystical song that can save the oceans from destruction.",
+   "imdb": "tt13518550"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 677558,
+    "title": "The Last Whale Singer",
+    "original": "The Last Whale Singer",
+    "year": "2026",
+    "directors": [
+     "Reza Memari"
+    ],
+    "runtime": 91,
+    "pct": 58.7,
+    "localTitle": "The Last Whale Singer",
+    "overview": "When a monstrous creature escapes from a melting iceberg, a self-doubting teenage humpback whale must face his greatest fears and dive into the darkest depths with his friends, to discover the mystical song that can save the oceans from destruction.",
+    "imdb": "tt13518550"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "84d14dcb134ccf27",
+  "verdict": "event",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:37:17.296Z",
+  "country": "pl",
+  "title": "My Fair Lady",
+  "members": [
+   {
+    "venue": "Kino PCKul",
+    "page": null,
+    "venueFacts": {
+     "runtime": 120,
+     "screenings": {
+      "first": "2027-05-21",
+      "last": "2027-05-21",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": {
+   "ref": "tmdb:11113",
+   "note": "recall target: My Fair Lady (1964)",
+   "tmdb": 11113,
+   "title": "My Fair Lady",
+   "localTitle": "My Fair Lady",
+   "original": "My Fair Lady",
+   "year": "1964",
+   "directors": [
+    "George Cukor"
+   ],
+   "runtime": 175,
+   "overview": "Ekscentryczny profesor fonetyki, profesor Higgins, zakłada się, że z prostej dziewczyny sprzedającej kwiaty, Elizy Doolittle, zrobi damę przez nauczenie jej dobrego mówienia i manier. Po serii zabawnych porażek udaje mu się to i Eliza zaczyna być podziwiana jako prawdziwa lady. Wynika to oczywiście z jej własnego czaru, którego tylko Higgins zdaje się nie zauważać. Dopiero, gdy pojawia się groźba małżeństwa z dandysem Freddym, profesor uświadamia sobie, że to właśnie Eliza jest kobietą jego życia.",
+   "imdb": "tt0058385"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 11113,
+    "title": "My Fair Lady",
+    "original": "My Fair Lady",
+    "year": "1964",
+    "directors": [
+     "George Cukor"
+    ],
+    "runtime": 175,
+    "pct": 6.5,
+    "localTitle": "My Fair Lady",
+    "overview": "Ekscentryczny profesor fonetyki, profesor Higgins, zakłada się, że z prostej dziewczyny sprzedającej kwiaty, Elizy Doolittle, zrobi damę przez nauczenie jej dobrego mówienia i manier. Po serii zabawnych porażek udaje mu się to i Eliza zaczyna być podziwiana jako prawdziwa lady. Wynika to oczywiście z jej własnego czaru, którego tylko Higgins zdaje się nie zauważać. Dopiero, gdy pojawia się groźba małżeństwa z dandysem Freddym, profesor uświadamia sobie, że to właśnie Eliza jest kobietą jego życia.",
+    "imdb": "tt0058385"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "0ac855734a0846c4",
+  "verdict": "event",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:27:31.166Z",
+  "country": "pl",
+  "title": "Dni Kina Niemego - Quo vadis?",
+  "members": [
+   {
+    "venue": "Kinoteatr Rialto",
+    "page": "https://kinoteatrrialto.bilety24.pl/wydarzenie/?id=164701",
+    "venueFacts": {
+     "runtime": 94,
+     "screenings": {
+      "first": "2026-11-15",
+      "last": "2026-11-15",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Dojazd Kino Teatr Rialtoul. Św. Jana 24, 40-012 Katowice",
+  "labelledFilm": {
+   "ref": "wikidata:Q3285437",
+   "note": "hand label: Quo Vadis? (1924) Gabriellino D'Annunzio; Georg Jacoby",
+   "title": "wikidata:Q3285437"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 114166,
+    "title": "Quo Vadis?",
+    "original": "Quo Vadis?",
+    "year": "1913",
+    "directors": [
+     "Enrico Guazzoni"
+    ],
+    "runtime": 94,
+    "pct": 3.9,
+    "localTitle": "Quo Vadis?",
+    "overview": "During the latter years of the reign of the tyrannical Roman emperor Nero, Marcus Vinicius, one of Nero's officers, falls in love with a young Christian named Lygia, attempting to enslave her. Lygia's protector, the noble and  burly Ursus, works to save her from Vinicius' clutches. Pursuing Lygia, Vinicius finds himself at a catacomb prayer meeting led by the apostle Peter and finds his conscience stirring-- just as Nero orders Rome burned. A landmark in epic film, Enrico Guazzoni’s grand-scale masterpiece laid the foundations for what colossal Italian spectacles would become. The film had tre",
+    "imdb": "tt0002445"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "2045c65682e9adff",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:56:38.522Z",
+  "country": "pl",
+  "title": "KINO NA NIEDZIELE:CAMINO DLA OPORNYCH",
+  "members": [
+   {
+    "venue": "Kino Millenium",
+    "page": null,
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-11",
+      "last": "2026-10-11",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": {
+   "ref": "tmdb:1404604",
+   "note": "recall target: Compostelle (2026)",
+   "tmdb": 1404604,
+   "title": "Compostelle",
+   "localTitle": "Compostelle",
+   "original": "Compostelle",
+   "year": "2026",
+   "directors": [
+    "Yann Samuell"
+   ],
+   "runtime": 113,
+   "overview": "Fred i Adam nie znają się. Jednak dzięki znajomości wyruszają razem na pielgrzymkę do Santiago de Compostela. Ona szuka ukojenia w przeszłości, on próbuje ukierunkować swój gniew i poczucie opuszczenia. Z biegiem kilometrów, pośród konfrontacji i chwil wytchnienia, rodzi się krucha więź. W obliczu trudności, każde z nich odkrywa w sobie niespodziewaną siłę.",
+   "imdb": "tt39814688"
+  },
+  "matchedFilm": null,
+  "modelCandidates": []
+ },
+ {
+  "page": "matchable",
+  "itemId": "0482e5e57cb4a6bb",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:56:15.418Z",
+  "country": "pl",
+  "title": "FRIDA KAHLO. IKONICZNA ARTYSTKA",
+  "members": [
+   {
+    "venue": "Kino Rialto",
+    "page": "https://www.kinorialto.poznan.pl/wydarzenie/?id=164227",
+    "venueFacts": {
+     "year": 2020,
+     "countries": [
+      "Wielka Brytania"
+     ],
+     "screenings": {
+      "first": "2026-11-07",
+      "last": "2026-11-07",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "\"Frida Kahlo. Ikoniczna artystka\" reżyseria: Ali Ray Wielka Brytania 2020 Dzieła inspirowane meksykańską i indiańską sztuką ludową, łączące...",
+  "labelledFilm": {
+   "ref": "imdb:tt13011980",
+   "note": "recall target: Frida kahlo. Ikoniczna artystka",
+   "tmdb": 607710,
+   "title": "Frida Kahlo",
+   "localTitle": "Frida Kahlo",
+   "original": "Frida Kahlo",
+   "year": "2020",
+   "directors": [
+    "Ali Ray"
+   ],
+   "runtime": 90,
+   "overview": "She was a prolific self-portraitist, using the canvas as a mirror through all stages of her turbulent and, at times, tragic life. This highly engaging film takes us on a journey through the life of one of the most prevalent female icons: Frida Kahlo. Displaying a treasure trove of colour and a feast of vibrancy on screen, this personal and intimate film offers privileged access to her works and highlights the source of her feverish creativity, her resilience and her unmatched lust for life, men, women, politics and her cultural heritage.",
+   "imdb": "tt13011980"
+  },
+  "matchedFilm": null,
+  "modelCandidates": []
+ },
+ {
+  "page": "matchable",
+  "itemId": "bd9beca3ee960eff",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:31:54.233Z",
+  "country": "pl",
+  "title": "„Baranek Shaun i kudłata bestia” Rodzinne Poranki Filmowe",
+  "members": [
+   {
+    "venue": "Kino Świt",
+    "page": "https://dkswit.com.pl/wydarzenia/baranek-shaun-i-kudlata-bestia/",
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-17",
+      "last": "2026-10-17",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": {
+   "ref": "tmdb:1477104",
+   "note": "recall target: Shaun the Sheep: The Beast of Mossy Bottom (2026)",
+   "tmdb": 1477104,
+   "title": "Shaun the Sheep: The Beast of Mossy Bottom",
+   "localTitle": "Baranek Shaun i kudłata bestia",
+   "original": "Shaun the Sheep: The Beast of Mossy Bottom",
+   "year": "2026",
+   "directors": [
+    "Steve Cox",
+    "Matthew Walker"
+   ],
+   "runtime": 81,
+   "overview": "W tej przezabawnej kinowej przygodzie najsłynniejszy baranek świata zamienia się w… szalonego naukowca. Co może pójść nie tak? W wieczór Halloween na farmie Mossy Bottom ekscytacja przeradza się w przerażenie, gdy niezdarny Farmer niszczy pole dyniowe. Shaun próbuje naprawić to za pomocą eksperymentów naukowych, ale sytuacja wymyka się spod kontroli, gdy w lesie pojawia się dzika bestia...",
+   "imdb": "tt36841161"
+  },
+  "matchedFilm": null,
+  "modelCandidates": []
+ },
+ {
+  "page": "matchable",
+  "itemId": "6e718b7416749e3f",
+  "verdict": "wrong",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:34:22.022Z",
+  "country": "de",
+  "title": "Queen",
+  "members": [
+   {
+    "venue": "Planken Lichtspiele Mannheim",
+    "page": null,
+    "venueFacts": {
+     "year": 2020,
+     "catalogueIds": [
+      {
+       "source": "webedia",
+       "id": "279943"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-07",
+      "last": "2026-10-07",
+      "count": 1
+     }
+    }
+   },
+   {
+    "venue": "Tivoli-Filmtheater",
+    "page": "https://www.kinoprogramm.com/kino/achern/tivoli-kommunales-kino/hungarian-rhapsody:-queen-live-in-budapest-256559",
+    "venueFacts": {
+     "runtime": 115,
+     "screenings": {
+      "first": "2026-10-07",
+      "last": "2026-10-07",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Aktuelle Spielzeiten für Hungarian Rhapsody: Queen - Live In Budapest im TIVOLI - Kommunales Kino in Achern: Vorstellungstage, Uhrzeiten und Filminformationen…",
+  "labelledFilm": {
+   "ref": "imdb:tt8378126",
+   "note": "recall target: Hungarian Rhapsody: Queen - Live In Buda",
+   "tmdb": 519465,
+   "title": "Queen of Hearts",
+   "localTitle": "Königin",
+   "original": "Dronningen",
+   "year": "2019",
+   "directors": [
+    "May el-Toukhy"
+   ],
+   "runtime": 127,
+   "overview": "Die erfolgreiche Rechtsanwältin Anne lebt ein perfektes Leben. Gemeinsam mit ihrem Mann Peter, einem erfolgreichen Arzt, und ihren beiden Töchtern wohnt sie in einem wunderschönen Haus. Als Peter eines Tages beschließt, seinen 16-jährigen Sohn Gustav bei sich aufzunehmen, der bislang bei seiner Ex-Frau lebte, will Anne dem rebellischen Teenager ein liebevolles Zuhause bieten. Doch schon bald empfindet sie mehr für Gustav als nur mütterliche Gefühle. Was als spielerischer Flirt beginnt, wird schon bald zu einer leidenschaftlichen Beziehung, die droht, alles zu zerstören, was Anne und Peter sich",
+   "imdb": "tt8378126"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 519465,
+    "title": "Queen of Hearts",
+    "original": "Dronningen",
+    "year": "2019",
+    "directors": [
+     "May el-Toukhy"
+    ],
+    "runtime": 127,
+    "pct": 2.6,
+    "localTitle": "Königin",
+    "overview": "Die erfolgreiche Rechtsanwältin Anne lebt ein perfektes Leben. Gemeinsam mit ihrem Mann Peter, einem erfolgreichen Arzt, und ihren beiden Töchtern wohnt sie in einem wunderschönen Haus. Als Peter eines Tages beschließt, seinen 16-jährigen Sohn Gustav bei sich aufzunehmen, der bislang bei seiner Ex-Frau lebte, will Anne dem rebellischen Teenager ein liebevolles Zuhause bieten. Doch schon bald empfindet sie mehr für Gustav als nur mütterliche Gefühle. Was als spielerischer Flirt beginnt, wird schon bald zu einer leidenschaftlichen Beziehung, die droht, alles zu zerstören, was Anne und Peter sich",
+    "imdb": "tt8378126"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "73735e93109c69d1",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:20:11.684Z",
+  "country": "pl",
+  "title": "Lalka",
+  "members": [
+   {
+    "venue": "Kino CK Lublin",
+    "page": "https://ck-lublin.bilety24.pl/wydarzenie/?id=162455",
+    "venueFacts": {
+     "runtime": 151,
+     "screenings": {
+      "first": "2026-10-03",
+      "last": "2026-10-21",
+      "count": 18
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Miłość, która nie zna granic i ambicja, która nie zna ceny. „Lalka” powraca jako wielka filmowa opowieść o pragnieniach, rozczarowaniach i wyborach, które definiują ludzkie życie. Marcin Dorociński, Kamila Urzędowska i Marek Kondrat spotykają się na wielkim ekranie w najbardziej wyczekiwanej premierze roku – epickiej ekranizacji kultowej powieści Bolesława Prusa. (Od lat 12 · 151 min)",
+  "labelledFilm": {
+   "ref": "tmdb:1321666",
+   "note": "recall target: The Doll (2026)",
+   "tmdb": 1321666,
+   "title": "The Doll",
+   "localTitle": "Lalka",
+   "original": "Lalka",
+   "year": "2026",
+   "directors": [
+    "Maciej Kawalski"
+   ],
+   "runtime": 162,
+   "overview": "Warszawa końca XIX wieku. Serce Stanisława Wokulskiego owładnięte jest szaloną miłością do Izabeli Łęckiej. Dzięki fortunie zdobytej na wojnie, powraca do kraju i postanawia wejść do świata wyższych sfer, aby zdobyć rękę ukochanej. Wkracza w labirynt arystokratycznych salonów, gdzie każdy gest może być początkiem intrygi, a każde słowo – zapowiedzią zdrady. Stający na jego drodze rywale, niespodziewane sojusze i dramatyczne wybory wystawią na próbę jego marzenia i wiarę w ludzi.",
+   "imdb": "tt37082105"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1321666,
+    "title": "The Doll",
+    "original": "Lalka",
+    "year": "2026",
+    "directors": [
+     "Maciej Kawalski"
+    ],
+    "runtime": 162,
+    "pct": 62.5,
+    "localTitle": "Lalka",
+    "overview": "Warszawa końca XIX wieku. Serce Stanisława Wokulskiego owładnięte jest szaloną miłością do Izabeli Łęckiej. Dzięki fortunie zdobytej na wojnie, powraca do kraju i postanawia wejść do świata wyższych sfer, aby zdobyć rękę ukochanej. Wkracza w labirynt arystokratycznych salonów, gdzie każdy gest może być początkiem intrygi, a każde słowo – zapowiedzią zdrady. Stający na jego drodze rywale, niespodziewane sojusze i dramatyczne wybory wystawią na próbę jego marzenia i wiarę w ludzi.",
+    "imdb": "tt37082105"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "019a5fac0e1b9b95",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:56:34.614Z",
+  "country": "pl",
+  "title": "André Rieu: Niech żyje Maastricht. Letni koncert 2026",
+  "members": [
+   {
+    "venue": "Kino 1410",
+    "page": null,
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-07",
+      "last": "2026-10-21",
+      "count": 2
+     }
+    }
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": {
+   "ref": "tmdb:1702801",
+   "note": "recall target: André Rieu's 2026 Summer Concert: Viva Maastricht! (2026)",
+   "tmdb": 1702801,
+   "title": "André Rieu's 2026 Summer Concert: Viva Maastricht!",
+   "localTitle": "André Rieu's 2026 Summer Concert: Viva Maastricht!",
+   "original": "André Rieu's 2026 Summer Concert: Viva Maastricht!",
+   "year": "2026",
+   "directors": [],
+   "runtime": 0,
+   "overview": "",
+   "imdb": "tt43384010"
+  },
+  "matchedFilm": null,
+  "modelCandidates": []
+ },
+ {
+  "page": "matchable",
+  "itemId": "27829f709795ef57",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:42:27.724Z",
+  "country": "us",
+  "title": "Ringu: VHS Version",
+  "members": [
+   {
+    "venue": "Alamo Drafthouse South Lamar",
+    "page": "https://drafthouse.com/show/ringu-vhs-version",
+    "venueFacts": {
+     "catalogueIds": [
+      {
+       "source": "alamo",
+       "id": "ringu-vhs-version"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-13",
+      "last": "2026-10-13",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Alamo Drafthouse Cinema — food and drinks, reserved seating, and the best movies. Find showtimes and buy tickets.",
+  "labelledFilm": {
+   "ref": "tmdb:2671",
+   "note": "recall target: Ring (1998)",
+   "tmdb": 2671,
+   "title": "Ring",
+   "localTitle": "Ring",
+   "original": "リング",
+   "year": "1998",
+   "directors": [
+    "Hideo Nakata"
+   ],
+   "runtime": 96,
+   "overview": "A mysterious video has been linked to a number of deaths, and when an inquisitive journalist finds the tape and views it herself, she sets in motion a chain of events that puts her own life in danger.",
+   "imdb": "tt0178868"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 49805,
+    "title": "The Browning Version",
+    "original": "The Browning Version",
+    "year": "1994",
+    "directors": [
+     "Mike Figgis"
+    ],
+    "runtime": 97,
+    "pct": 3.1,
+    "localTitle": "The Browning Version",
+    "overview": "Andrew Crocker-Harris is an embittered and disliked teacher of Greek and Latin at a British prep school. After nearly 20 years of service, he is being forced to retire for 'health reasons', and perhaps may not even be given a pension. The boys regard him as a Hitler, with some justification. His unfaithful wife Laura tries to hurt him in any way she can. Andrew must come to terms with his failed life and at least regain his own self-esteem.",
+    "imdb": "tt0109340"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "c2593bdbdc0a9c77",
+  "verdict": "event",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:38:20.842Z",
+  "country": "uk",
+  "title": "It (1990)",
+  "members": [
+   {
+    "venue": "Cultplex Manchester",
+    "page": "https://www.flicks.co.uk/movie/it-1990/",
+    "venueFacts": {
+     "runtime": 168,
+     "directors": [
+      "Tommy Lee Wallace"
+     ],
+     "catalogueIds": [
+      {
+       "source": "flicks",
+       "id": "12900"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-04",
+      "last": "2026-10-04",
+      "count": 1
+     }
+    }
+   },
+   {
+    "venue": "Tyneside Newcastle",
+    "page": "https://www.flicks.co.uk/movie/it-1990/",
+    "venueFacts": {
+     "runtime": 168,
+     "directors": [
+      "Tommy Lee Wallace"
+     ],
+     "catalogueIds": [
+      {
+       "source": "flicks",
+       "id": "12900"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-26",
+      "last": "2026-10-26",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Find where to watch It (1990) in UK cinemas + release dates, reviews and trailers. Mini-series based on the Stephen King novel about an evil entity that poses as child-killing clown Pennywise (Tim Curry).",
+  "labelledFilm": {
+   "ref": "rt:stephen_kings_it",
+   "note": "hand label: ",
+   "title": "rt:stephen_kings_it"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 278996,
+    "title": "And the Sea Will Tell",
+    "original": "And the Sea Will Tell",
+    "year": "1991",
+    "directors": [
+     "Tommy Lee Wallace"
+    ],
+    "runtime": 179,
+    "pct": 3.4,
+    "localTitle": "And the Sea Will Tell",
+    "overview": "A wealthy couple (James Brolin and Deidre Hall) are killed on their yacht off the coast of a secluded South American island called Palmyra. The suspects are a hippyish pair (Hart Bochner and Rachel Ward) whom the rich folks had befriended. It’s fairly clear that the hippies were involved in the crime: The question is, did the man do it while the girl looked on helplessly, or was she a willing accomplice?",
+    "imdb": "tt0101345"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "5ad9be4e5bd941cb",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:23:38.844Z",
+  "country": "us",
+  "title": "NT Live: Hamlet",
+  "members": [
+   {
+    "venue": "Amherst Cinema (Amherst) (Massachusetts)",
+    "page": "https://www.flicks.us/movie/nt-live-hamlet/",
+    "venueFacts": {
+     "runtime": 204,
+     "catalogueIds": [
+      {
+       "source": "flicks",
+       "id": "3058"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-03",
+      "last": "2026-10-03",
+      "count": 1
+     }
+    }
+   },
+   {
+    "venue": "Burns Court Cinemas Sarasota",
+    "page": "https://www.flicks.us/movie/nt-live-hamlet/",
+    "venueFacts": {
+     "runtime": 204,
+     "catalogueIds": [
+      {
+       "source": "flicks",
+       "id": "3058"
+      }
+     ],
+     "screenings": {
+      "first": "2026-11-24",
+      "last": "2026-11-24",
+      "count": 1
+     }
+    }
+   },
+   {
+    "venue": "Cinemapolis Ithaca",
+    "page": "https://www.flicks.us/movie/nt-live-hamlet/",
+    "venueFacts": {
+     "runtime": 204,
+     "catalogueIds": [
+      {
+       "source": "flicks",
+       "id": "3058"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-08",
+      "last": "2026-10-10",
+      "count": 2
+     }
+    }
+   },
+   {
+    "venue": "Film Streams' Ruth Sokolof Theater",
+    "page": "https://www.flicks.us/movie/nt-live-hamlet/",
+    "venueFacts": {
+     "runtime": 204,
+     "catalogueIds": [
+      {
+       "source": "flicks",
+       "id": "3058"
+      }
+     ],
+     "screenings": {
+      "first": "2026-11-28",
+      "last": "2026-12-02",
+      "count": 2
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Find where to watch NT Live: Hamlet in US cinemas + release dates, reviews and trailers. From the National Theatre",
+  "labelledFilm": {
+   "ref": "tmdb:396227",
+   "note": "review page: hand label (model leaned tmdb:436484 National Theatre Live: Hamlet (2010))",
+   "tmdb": 396227,
+   "title": "National Theatre Live: Hamlet",
+   "localTitle": "National Theatre Live: Hamlet",
+   "original": "National Theatre Live: Hamlet",
+   "year": "2015",
+   "directors": [
+    "Robin Lough",
+    "Lyndsey Turner"
+   ],
+   "runtime": 217,
+   "overview": "As a country arms itself for war, a family tears itself apart. Forced to avenge his father's death but paralyzed by the task ahead, Hamlet rages against the impossibility of his predicament, threatening both his sanity and the security of the state.",
+   "imdb": "tt4476736"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 436484,
+    "title": "National Theatre Live: Hamlet",
+    "original": "National Theatre Live: Hamlet",
+    "year": "2010",
+    "directors": [
+     "Nicholas Hytner",
+     "Robin Lough"
+    ],
+    "runtime": 210,
+    "pct": 37.1,
+    "localTitle": "National Theatre Live: Hamlet",
+    "overview": "A 2010 broadcast of Hamlet returns to cinemas as part of the NT's 50th anniversary celebrations.  Following his celebrated performances at the National Theatre in Burnt by the Sun, The Revenger's Tragedy, Philistines and The Man of Mode, Rory Kinnear plays Hamlet in a dynamic new production of Shakespeare’s complex and profound play about the human condition, directed by Nicholas Hytner.  He is joined by Clare Higgins (Gertrude), Patrick Malahide (Claudius), David Calder (Polonius), James Laurenson (Ghost/Player King) and Ruth Negga (Ophelia).",
+    "imdb": "tt1795370"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "6ee751a4a102855c",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:24:59.926Z",
+  "country": "de",
+  "title": "Macbeth",
+  "members": [
+   {
+    "venue": "Kino am Tegernsee",
+    "page": null,
+    "venueFacts": {
+     "year": 2005,
+     "directors": [
+      "Mark Brozel"
+     ],
+     "catalogueIds": [
+      {
+       "source": "webedia",
+       "id": "133310"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-17",
+      "last": "2026-10-17",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": {
+   "ref": "tmdb:591293",
+   "note": "hand label: ShakespeaRe-Told: Macbeth (2005) Mark Brozel",
+   "tmdb": 591293,
+   "title": "ShakespeaRe-Told: Macbeth",
+   "localTitle": "ShakespeaRe-Told: Macbeth",
+   "original": "ShakespeaRe-Told: Macbeth",
+   "year": "2005",
+   "directors": [
+    "Mark Brozel"
+   ],
+   "runtime": 90,
+   "overview": "A chef and his restaurant-hostess wife resort to murder to take ownership of a high-class Glaswegian restaurant.",
+   "imdb": "tt0453514"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 438101,
+    "title": "The Walk",
+    "original": "The Walk",
+    "year": "2005",
+    "directors": [
+     "Mark Brozel"
+    ],
+    "runtime": 120,
+    "pct": 6.6,
+    "localTitle": "The Walk",
+    "overview": "Charity walkers raising funds for cancer research by crossing the Sahara Desert argue and squabble over their relationships in the past. However when one of their number gets lost each walker begins to put their life in perspective and make decisions on where their real priorities lie.",
+    "imdb": "tt0436884"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "ea3720348941f9e8",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:21:57.366Z",
+  "country": "pl",
+  "title": "WAJDA: re-wizje: Bez znieczulenia",
+  "members": [
+   {
+    "venue": "Kino Światowid Elbląg",
+    "page": "http://kino.swiatowid.elblag.pl/repertuar/895,wajda-re-wizje-bez-znieczulenia",
+    "venueFacts": {
+     "runtime": 101,
+     "screenings": {
+      "first": "2026-10-15",
+      "last": "2026-10-15",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": {
+   "ref": "tmdb:42199",
+   "note": "recall target: Without Anesthesia (1978)",
+   "tmdb": 42199,
+   "title": "Without Anesthesia",
+   "localTitle": "Bez znieczulenia",
+   "original": "Bez znieczulenia",
+   "year": "1978",
+   "directors": [
+    "Andrzej Wajda"
+   ],
+   "runtime": 131,
+   "overview": "Po powrocie z zagranicy znany dziennikarz dowiaduje się, że żona bierze z nim rozwód. Ponieważ nie zna przyczyn decyzji małżonki, nie może się z tym pogodzić. Dodatkowo zaczyna popadać w coraz większe kłopoty zawodowe. Jego wystąpienie telewizyjne i publikacje prasowe nie zyskują uznania. Na uniwersytecie zawieszono wykłady, które prowadził. Planowany od dłuższego czasu wyjazd za granicę zostaje niespodziewanie odwołany. Podczas rozprawy rozwodowej żona zaczyna obciążać męża, składając fałszywe zeznania.",
+   "imdb": "tt0078857"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 42199,
+    "title": "Without Anesthesia",
+    "original": "Bez znieczulenia",
+    "year": "1978",
+    "directors": [
+     "Andrzej Wajda"
+    ],
+    "runtime": 131,
+    "pct": 56.2,
+    "localTitle": "Bez znieczulenia",
+    "overview": "Po powrocie z zagranicy znany dziennikarz dowiaduje się, że żona bierze z nim rozwód. Ponieważ nie zna przyczyn decyzji małżonki, nie może się z tym pogodzić. Dodatkowo zaczyna popadać w coraz większe kłopoty zawodowe. Jego wystąpienie telewizyjne i publikacje prasowe nie zyskują uznania. Na uniwersytecie zawieszono wykłady, które prowadził. Planowany od dłuższego czasu wyjazd za granicę zostaje niespodziewanie odwołany. Podczas rozprawy rozwodowej żona zaczyna obciążać męża, składając fałszywe zeznania.",
+    "imdb": "tt0078857"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "b317fb06e4c14ab6",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:45:26.930Z",
+  "country": "de",
+  "title": "Überleben",
+  "members": [
+   {
+    "venue": "Zebra",
+    "page": null,
+    "venueFacts": {
+     "originalTitle": "Survive",
+     "year": 2020,
+     "directors": [
+      "Danial Miller"
+     ],
+     "catalogueIds": [
+      {
+       "source": "webedia",
+       "id": "285601"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-20",
+      "last": "2026-10-20",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": {
+   "ref": "imdb:tt11465950",
+   "note": "hand label: Survive (2020) Danial Miller",
+   "imdb": "tt11465950",
+   "title": "imdb:tt11465950"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1132079,
+    "title": "Survive",
+    "original": "Survive",
+    "year": "2022",
+    "directors": [
+     "Mark Pellington"
+    ],
+    "runtime": 108,
+    "pct": 3.1,
+    "localTitle": "Survive",
+    "overview": "Als ihr Flugzeug auf einem abgelegenen schneebedeckten Berg abstürzt, müssen Jane und Paul als einzige Überlebende um ihr Leben kämpfen. Gemeinsam begeben sie sich auf eine erschütternde Reise aus der Wildnis.",
+    "imdb": "tt17080412"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "c4a94d97bfdc1f74",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:28:17.521Z",
+  "country": "pl",
+  "title": "Audiencja | Kinoteka Kultury i Sztuki",
+  "members": [
+   {
+    "venue": "Kinoteka",
+    "page": "https://kinoteka.pl/film/audiencja-kinoteka-kultury-i-sztuki/",
+    "venueFacts": {
+     "directors": [
+      "Stephen Daldry"
+     ],
+     "countries": [
+      "Wielka Brytania"
+     ],
+     "runtime": 180,
+     "originalTitle": "The Audience",
+     "screenings": {
+      "first": "2026-10-24",
+      "last": "2026-12-28",
+      "count": 2
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Kino Kinoteka – sprawdź nasz repertuar i wybierz Audiencja | Kinoteka Kultury i Sztuki na kolejny seans. Zarezerwuj bilety online i ciesz się wyjątkowym kinem",
+  "labelledFilm": {
+   "ref": "tmdb:209149",
+   "note": "hand label: The Audience (2013) Stephen Daldry; Robin Lough",
+   "tmdb": 209149,
+   "title": "National Theatre Live: The Audience",
+   "localTitle": "National Theatre Live: The Audience",
+   "original": "National Theatre Live: The Audience",
+   "year": "2013",
+   "directors": [
+    "Robin Lough"
+   ],
+   "runtime": 142,
+   "overview": "For sixty years, Elizabeth II has met each of her twelve Prime Ministers in a weekly audience at Buckingham Palace, a meeting like no other in British public life, it is private.",
+   "imdb": "tt3154822"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 209149,
+    "title": "National Theatre Live: The Audience",
+    "original": "National Theatre Live: The Audience",
+    "year": "2013",
+    "directors": [
+     "Robin Lough"
+    ],
+    "runtime": 142,
+    "pct": 18.4,
+    "localTitle": "National Theatre Live: The Audience",
+    "overview": "For sixty years, Elizabeth II has met each of her twelve Prime Ministers in a weekly audience at Buckingham Palace, a meeting like no other in British public life, it is private.",
+    "imdb": "tt3154822"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "97ebb53d97ec949e",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:34:40.905Z",
+  "country": "de",
+  "title": "André Rieus Weihnachtskonzert 2026: Let it Snow",
+  "members": [
+   {
+    "venue": "Filmpalast Cine-World",
+    "page": "https://www.kinoprogramm.com/kino/lingen/filmpalast-cineworld/andré-rieus-weihnachtskonzert-2026:-let-it-snow-419955",
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-12-06",
+      "last": "2026-12-06",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": {
+   "ref": "imdb:tt43693579",
+   "note": "hand label: André Rieu's 2026 Christmas Concert: Let It Snow (2026)",
+   "imdb": "tt43693579",
+   "title": "imdb:tt43693579"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 295151,
+    "title": "Let It Snow",
+    "original": "Let It Snow",
+    "year": "2019",
+    "directors": [
+     "Luke Snellin"
+    ],
+    "runtime": 90,
+    "pct": 7.4,
+    "localTitle": "Tage wie diese",
+    "overview": "Heiligabend in der fiktiven amerikanischen Kleinstadt Gracetown: Ein Schneesturm fegt durch die Straßen und bringt bei ein paar Schülern in Sachen Freundschaft, Liebe und Zukunft Einiges ins Rollen.",
+    "imdb": "tt1950235"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "d86626c112c42def",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:22:37.391Z",
+  "country": "pl",
+  "title": "Silent Night",
+  "members": [
+   {
+    "venue": "Kino Amok",
+    "page": null,
+    "venueFacts": {
+     "screenings": {
+      "first": "2027-03-20",
+      "last": "2027-03-20",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": {
+   "ref": "tmdb:1707867",
+   "note": "recall target: The Metropolitan Opera 2026/27: Silent Night (2027)",
+   "tmdb": 1707867,
+   "title": "The Metropolitan Opera 2026/27: Silent Night",
+   "localTitle": "The Metropolitan Opera 2026/27: Silent Night",
+   "original": "The Metropolitan Opera 2026/27: Silent Night",
+   "year": "2027",
+   "directors": [],
+   "runtime": 180,
+   "overview": "Following his smash-hit company debut with The Hours, composer Kevin Puts returns to the Met with his Pulitzer Prize–winning first opera, inspired by the true events.",
+   "imdb": null
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 891699,
+    "title": "Silent Night",
+    "original": "Silent Night",
+    "year": "2023",
+    "directors": [
+     "吴宇森"
+    ],
+    "runtime": 104,
+    "pct": 54.2,
+    "localTitle": "Wśród nocnej ciszy",
+    "overview": "Udręczony ojciec jest świadkiem śmierci swojego synka, który w Wigilię Bożego Narodzenia wpadł w krzyżowy ogień gangu. Dochodząc do siebie po ranie, która kosztowała go utratę głosu, dokonuje zemsty za swoją życiową misję i rozpoczyna karzący program treningowy, aby pomścić śmierć syna.",
+    "imdb": "tt15799866"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "3c9422ad2c93f260",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:24:24.498Z",
+  "country": "pl",
+  "title": "ARS INDEPENDENT FESTIVAL: Konkurs Czarny Koń Filmu : REDUTA",
+  "members": [
+   {
+    "venue": "Kino Światowid",
+    "page": "https://www.bilety24.pl/kino/1503-ars-independent-festival-konkurs-czarny-kon-filmu-reduta-164539?id=987261",
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-09",
+      "last": "2026-10-09",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "ARS INDEPENDENT FESTIVAL: Konkurs Czarny Koń Filmu : REDUTA, Katowice, 09.10.2026 20:00. Kup bilety w serwisie B24",
+  "labelledFilm": {
+   "ref": "tmdb:1141491",
+   "note": "review page: confirmed",
+   "tmdb": 1141491,
+   "title": "Redoubt",
+   "localTitle": "Reduta",
+   "original": "VÄRN",
+   "year": "2026",
+   "directors": [
+    "John Skoog"
+   ],
+   "runtime": 85,
+   "overview": "W obawie przed nadciągającą wojną farmer Karl-Göran Persson zamienia swój dom w fortecę. Dla mieszkańców wioski to tylko dziwaczna obsesja, którą traktują z pobłażaniem – przynajmniej na początku. Jednak, gdy z czasem mury budowli rosną, to konflikt Karla-Görana z wioską niebezpiecznie eskaluje.",
+   "imdb": "tt35456230"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1141491,
+    "title": "Redoubt",
+    "original": "VÄRN",
+    "year": "2026",
+    "directors": [
+     "John Skoog"
+    ],
+    "runtime": 85,
+    "pct": 28.9,
+    "localTitle": "Reduta",
+    "overview": "W obawie przed nadciągającą wojną farmer Karl-Göran Persson zamienia swój dom w fortecę. Dla mieszkańców wioski to tylko dziwaczna obsesja, którą traktują z pobłażaniem – przynajmniej na początku. Jednak, gdy z czasem mury budowli rosną, to konflikt Karla-Görana z wioską niebezpiecznie eskaluje.",
+    "imdb": "tt35456230"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "87abd1fb97b30e6f",
+  "verdict": "wrong",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:41:36.811Z",
+  "country": "uk",
+  "title": "MetOpera: Samson et Dalila",
+  "members": [
+   {
+    "venue": "Luxe Wisbech",
+    "page": "https://www.flicks.co.uk/movie/met-opera-samson-et-dalila/",
+    "venueFacts": {
+     "runtime": 184,
+     "catalogueIds": [
+      {
+       "source": "flicks",
+       "id": "12419"
+      }
+     ],
+     "screenings": {
+      "first": "2026-12-08",
+      "last": "2026-12-08",
+      "count": 1
+     }
+    }
+   },
+   {
+    "venue": "Plaza Cinema Dorchester",
+    "page": "https://www.flicks.co.uk/movie/met-opera-samson-et-dalila/",
+    "venueFacts": {
+     "runtime": 184,
+     "catalogueIds": [
+      {
+       "source": "flicks",
+       "id": "12419"
+      }
+     ],
+     "screenings": {
+      "first": "2026-12-08",
+      "last": "2026-12-08",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Find where to watch MetOpera: Samson et Dalila in UK cinemas + release dates, reviews and trailers. Saint-Saëns’s biblical epic from the Metropolitan Opera",
+  "labelledFilm": {
+   "ref": "rt:the_metropolitan_opera_samson_et_dalila",
+   "note": "hand label: The Metropolitan Opera: Samson et Dalila (2026) Darko Tresnjak",
+   "title": "rt:the_metropolitan_opera_samson_et_dalila"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1243986,
+    "title": "Samson Et Dalila",
+    "original": "Samson Et Dalila",
+    "year": "2024",
+    "directors": [
+     "Richard Jones"
+    ],
+    "runtime": null,
+    "pct": 3.2,
+    "localTitle": "Samson Et Dalila",
+    "overview": "Pious restraint comes face to face with sensuous hedonism in Camille Saint-Saëns’s grand-opera retelling of the Bible story of Samson and Delilah. Multi-Olivier Award winning director Richard Jones returns to The Royal Opera to stage this spectacular fin-de-siècle masterpiece, not performed at Covent Garden since 2004. Elina Garanca stars as the Philistine Dalila, SeokJong Baek as the inspiring Jewish hero Samson and Antonio Pappano conducts the full forces of the Orchestra of the Royal Opera House. With superb singing in solos and duets of great intimacy and fervour, gorgeous music with thril"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "9bcc1f918355a728",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:33:18.158Z",
+  "country": "es",
+  "title": "Drácula. 30 Aniversario",
+  "members": [
+   {
+    "venue": "Cines Bulevar",
+    "page": null,
+    "venueFacts": {
+     "originalTitle": "Bram Stoker's Dracula 30th Anniversary",
+     "year": 2022,
+     "runtime": 136,
+     "directors": [
+      "Francis Ford Coppola"
+     ],
+     "catalogueIds": [
+      {
+       "source": "webedia",
+       "id": "307799"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-29",
+      "last": "2026-10-29",
+      "count": 1
+     }
+    }
+   },
+   {
+    "venue": "Multicines Avenida",
+    "page": null,
+    "venueFacts": {
+     "originalTitle": "Bram Stoker's Dracula 30th Anniversary",
+     "year": 2022,
+     "runtime": 136,
+     "directors": [
+      "Francis Ford Coppola"
+     ],
+     "catalogueIds": [
+      {
+       "source": "webedia",
+       "id": "307799"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-29",
+      "last": "2026-10-29",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": {
+   "ref": "tmdb:6114",
+   "note": "review page: confirmed",
+   "tmdb": 6114,
+   "title": "Bram Stoker's Dracula",
+   "localTitle": "Drácula de Bram Stoker",
+   "original": "Bram Stoker's Dracula",
+   "year": "1992",
+   "directors": [
+    "Francis Ford Coppola"
+   ],
+   "runtime": 128,
+   "overview": "Antes de convertirse en vampiro, el conde Drácula era el príncipe Vlad, quien tras conocer la muerte de su prometida, vendió su alma al diablo. Cuatro siglos después, en Londres, encuentra a Mina, reencarnación de su amor perdido.",
+   "imdb": "tt0103874"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 6114,
+    "title": "Bram Stoker's Dracula",
+    "original": "Bram Stoker's Dracula",
+    "year": "1992",
+    "directors": [
+     "Francis Ford Coppola"
+    ],
+    "runtime": 128,
+    "pct": 8.1,
+    "localTitle": "Drácula de Bram Stoker",
+    "overview": "Antes de convertirse en vampiro, el conde Drácula era el príncipe Vlad, quien tras conocer la muerte de su prometida, vendió su alma al diablo. Cuatro siglos después, en Londres, encuentra a Mina, reencarnación de su amor perdido.",
+    "imdb": "tt0103874"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "711a766fe0d92115",
+  "verdict": "wrong",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:26:53.637Z",
+  "country": "pl",
+  "title": "Obcy w domu",
+  "members": [
+   {
+    "venue": "Kino U-jazdowski",
+    "page": "https://u-jazdowski.pl/kino/repertuar/pokaz-shortow",
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-09-29",
+      "last": "2026-09-29",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Program\r\n\r\n   MIX, reż. Klaudia Szott, 2026, 24",
+  "labelledFilm": {
+   "ref": "tmdb:923171",
+   "note": "hand label: Obcy w domu (1986)",
+   "tmdb": 923171,
+   "title": "Obcy w domu",
+   "localTitle": "Obcy w domu",
+   "original": "Obcy w domu",
+   "year": "1986",
+   "directors": [],
+   "runtime": 72,
+   "overview": "A job seeker comes to the farm. The hosts, Fred and his wife, allow him to stay. Jan is a secretive man and is hard hit by fate. She has a grudge against women and is reserved towards the hostess. Working together slowly fosters understanding.",
+   "imdb": "tt7605088"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 923171,
+    "title": "Obcy w domu",
+    "original": "Obcy w domu",
+    "year": "1986",
+    "directors": [],
+    "runtime": 72,
+    "pct": 4.6,
+    "localTitle": "Obcy w domu",
+    "overview": "A job seeker comes to the farm. The hosts, Fred and his wife, allow him to stay. Jan is a secretive man and is hard hit by fate. She has a grudge against women and is reserved towards the hostess. Working together slowly fosters understanding.",
+    "imdb": "tt7605088"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "d14594da84c06612",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:20:29.963Z",
+  "country": "pl",
+  "title": "Akademia Polskiego Filmu: Gatunki międzywojnia: Melodramat",
+  "members": [
+   {
+    "venue": "Kino Pałacowe",
+    "page": "http://kinopalacowe.pl/filmy/15108-akademia-polskiego-filmu-gatunki-miedzywojnia-melo/",
+    "venueFacts": {
+     "directors": [
+      "Michał Waszyński"
+     ],
+     "countries": [
+      "Polska"
+     ],
+     "year": 1937,
+     "runtime": 100,
+     "screenings": {
+      "first": "2026-11-09",
+      "last": "2026-11-09",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Wykład: dr hab. Marek Kaźmierczak   Znachor (100') Zrealizowany w 1937 roku „Znachor\" w dużej mierze był efektem...",
+  "labelledFilm": {
+   "ref": "tmdb:293920",
+   "note": "hand label: Znachor (1937) Michal Waszynski",
+   "tmdb": 293920,
+   "title": "The Quack",
+   "localTitle": "Znachor",
+   "original": "Znachor",
+   "year": "1937",
+   "directors": [
+    "Michał Waszyński"
+   ],
+   "runtime": 100,
+   "overview": "Opuszczony przez żonę Beatę i siedmioletnią córeczkę Marysię, znany chirurg, profesor Wilczur, trafia do podrzędnego szynku, gdzie zostaje ograbiony i pobity, na skutek czego traci pamięć... Po kilkunastu latach włóczęgi zamieszkuje na wsi u młynarza; zyskuje sławę jako znakomity znachor...",
+   "imdb": "tt0031008"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 104748,
+    "title": "The Dybbuk",
+    "original": "דער דיבוק",
+    "year": "1937",
+    "directors": [
+     "Michał Waszyński"
+    ],
+    "runtime": 100,
+    "pct": 62.5,
+    "localTitle": "Dybuk",
+    "overview": "Dwaj młodzi przyjaciele, Nissen i Sender, ślubują sobie, że jeśli ich dzieci będą odmiennej płci, połączy je węzeł małżeński. Senderowi rodzi się córka Lea, a Nissenowi syn Chonen. Przy porodzie umiera matka Lei, a powracajcy z podróży Nissen ginie w nurtach rzeki…\r Lokacje: Kazimierz Dolny nad Wisłą.",
+    "imdb": "tt0030092"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "a1cac56133266a7d",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:45:34.627Z",
+  "country": "pl",
+  "title": "Pociąg \"Czerwona Ruta\"",
+  "members": [
+   {
+    "venue": "Kino Kameralne Cafe",
+    "page": "https://biletyna.pl/film/Pociag-Czerwona-Ruta?eid=707611#opis",
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-08",
+      "last": "2026-10-08",
+      "count": 1
+     }
+    }
+   },
+   {
+    "venue": "Kino Kijów",
+    "page": null,
+    "venueFacts": {
+     "screenings": {
+      "first": "2027-02-20",
+      "last": "2027-02-20",
+      "count": 1
+     }
+    }
+   },
+   {
+    "venue": "Kino Kosmos",
+    "page": "https://www.bilety24.pl/kino/1501-pociag-czerwona-ruta-162647?id=990436",
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-04",
+      "last": "2026-10-04",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Pociąg \"Czerwona Ruta\" - Bilety na film ✔️. Kup Bilet Online już teraz na biletyna.pl ➤ Sprawdź nasze bilety!",
+  "labelledFilm": {
+   "ref": "tmdb:1479369",
+   "note": "recall target: Red Rue Express (2026)",
+   "tmdb": 1479369,
+   "title": "Red Rue Express",
+   "localTitle": "Потяг «Червона Рута»",
+   "original": "Потяг «Червона Рута»",
+   "year": "2026",
+   "directors": [
+    "Олексій Єсаков"
+   ],
+   "runtime": 0,
+   "overview": "A romantic comedy that modernizes and reimagines one of the most famous and vivid Ukrainian national symbols, Chervona Ruta, and turns it into a new cultural phenomenon.",
+   "imdb": "tt37595822"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1479369,
+    "title": "Red Rue Express",
+    "original": "Потяг «Червона Рута»",
+    "year": "2026",
+    "directors": [
+     "Олексій Єсаков"
+    ],
+    "runtime": null,
+    "pct": 3.0,
+    "localTitle": "Потяг «Червона Рута»",
+    "overview": "A romantic comedy that modernizes and reimagines one of the most famous and vivid Ukrainian national symbols, Chervona Ruta, and turns it into a new cultural phenomenon.",
+    "imdb": "tt37595822"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "b01e21e01fccf575",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:31:31.123Z",
+  "country": "pl",
+  "title": "Weekend Seniora z Kulturą: Vivaldi i ja [2D LEKTOR] (seans z audiodeskrypcją)",
+  "members": [
+   {
+    "venue": "Bałtyk",
+    "page": "https://www.bilety24.pl/kino/1499-weekend-seniora-z-kultura-vivaldi-i-ja-z-audiodeskrypcja--165298?id=992486",
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-03",
+      "last": "2026-10-03",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Weekend Seniora z Kulturą: Vivaldi i ja [2D LEKTOR] (seans z audiodeskrypcją), Racibórz, 03.10.2026 15:00. Kup bilety w serwisie B24",
+  "labelledFilm": {
+   "ref": "tmdb:1365683",
+   "note": "hand label: Primavera (2025) Damiano Michieletto",
+   "tmdb": 1365683,
+   "title": "Primavera",
+   "localTitle": "Primavera",
+   "original": "Primavera",
+   "year": "2025",
+   "directors": [
+    "Damiano Michieletto"
+   ],
+   "runtime": 110,
+   "overview": "Wenecja XVIII wieku. Cecilia, 20-letnia wirtuozka skrzypiec, mieszka w sierocińcu Pieta. Pomimo swojego talentu, Cecilia wie, że małżeństwo jest dla niej jedyną ucieczką. Spotyka Antonia Vivaldiego, genialnego i ambitnego kompozytora, który zostaje jej nowym nauczycielem gry na skrzypcach.",
+   "imdb": "tt33586629"
+  },
+  "matchedFilm": null,
+  "modelCandidates": []
+ },
+ {
+  "page": "matchable",
+  "itemId": "bdf35d45b5d22986",
+  "verdict": "wrong",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:25:43.576Z",
+  "country": "uk",
+  "title": "Funny Girl - The Musical",
+  "members": [
+   {
+    "venue": "Brewery Arts Centre Kendal",
+    "page": "https://www.flicks.co.uk/movie/funny-girl-the-musical/",
+    "venueFacts": {
+     "runtime": 164,
+     "directors": [
+      "Michael Mayer"
+     ],
+     "catalogueIds": [
+      {
+       "source": "flicks",
+       "id": "12850"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-13",
+      "last": "2026-10-13",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Find where to watch Funny Girl - The Musical in UK cinemas + release dates, reviews and trailers. Stage musical following the life and career of a Broadway star, starring Sheridan Smith, filmed live at London",
+  "labelledFilm": {
+   "ref": "imdb:tt37775809",
+   "note": "recall target: Funny Girl - The Musical",
+   "tmdb": 1579941,
+   "title": "The Musical",
+   "localTitle": "The Musical",
+   "original": "The Musical",
+   "year": "2026",
+   "directors": [
+    "Giselle Bonilla"
+   ],
+   "runtime": 84,
+   "overview": "Doug, a frustrated playwright and middle school theater teacher, learns his ex is dating his nemesis, the school principal. To get revenge and cost him a Blue Ribbon Award, Doug secretly stages the most inappropriate play imaginable.",
+   "imdb": "tt37775809"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1287155,
+    "title": "The Metropolitan Opera: Grounded",
+    "original": "Jeanine Tesori: Grounded",
+    "year": "2024",
+    "directors": [
+     "Michael Mayer",
+     "Yannick Nézet-Séguin"
+    ],
+    "runtime": 165,
+    "pct": 25.3,
+    "localTitle": "The Metropolitan Opera: Grounded",
+    "overview": "Two-time Tony Award–winning composer Jeanine Tesori’s powerful new opera Grounded, commissioned by the Met and based on librettist George Brant’s acclaimed play, wrestles with the ethical quandaries and psychological toll of 21st-century warfare."
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "2ea619c774fabd7b",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:26:05.518Z",
+  "country": "pl",
+  "title": "DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO",
+  "members": [
+   {
+    "venue": "Kino Marzenie",
+    "page": "https://www.kinomarzenie.pl/repertuar/1027,dyrygent-polaczony-z-koncertem-muzyki-na-zywo",
+    "venueFacts": {
+     "year": 1980,
+     "runtime": 97,
+     "directors": [
+      "Andrzej Wajda"
+     ],
+     "countries": [
+      "Polska"
+     ],
+     "screenings": {
+      "first": "2026-10-08",
+      "last": "2026-10-08",
+      "count": 1
+     }
+    }
+   },
+   {
+    "venue": "Kozienicki Dom Kultury",
+    "page": null,
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-07",
+      "last": "2026-10-07",
+      "count": 1
+     }
+    }
+   },
+   {
+    "venue": "Patria",
+    "page": "https://kinopatria.com/film/dyrygent/",
+    "venueFacts": {
+     "runtime": 106,
+     "directors": [
+      "Ondřej Provazník"
+     ],
+     "screenings": {
+      "first": "2026-10-07",
+      "last": "2026-10-07",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Marta spotyka w USA sławnego dyrygenta - dawną miłość jej matki. Udają się do Polski, aby wykonać V Symfonię Beethovena.",
+  "labelledFilm": {
+   "ref": "tmdb:95269",
+   "note": "judged 10-05: the venue's synopsis (Marta, the conductor John Lasocki) is Wajda's 1980 film",
+   "tmdb": 95269,
+   "title": "The Conductor",
+   "localTitle": "Dyrygent",
+   "original": "Dyrygent",
+   "year": "1980",
+   "directors": [
+    "Andrzej Wajda"
+   ],
+   "runtime": 102,
+   "overview": "Młoda skrzypaczka Marta będąc na stypendium w Nowym Jorku poznaje słynnego dyrygenta Johna Lasockiego, którego łączyła przed laty wielka miłość z jej matką. Pod wpływem tego spotkania w Lasockim odżywają wspomnienia dawnego uczucia. Postanawia przyjechać do Polski, by w rodzinnym mieście Marty poprowadzić wykonanie V symfonii Beethovena. Mąż Marty - Adam będący dyrygentem owej orkiestry początkowo widzi w wizycie wielkiego mistrza szansę dla siebie, ale dostrzegając fascynację, jaką Lasocki budzi w Marcie, zaczyna być zazdrosny.",
+   "imdb": "tt0079090"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 95269,
+    "title": "The Conductor",
+    "original": "Dyrygent",
+    "year": "1980",
+    "directors": [
+     "Andrzej Wajda"
+    ],
+    "runtime": 102,
+    "pct": 18.4,
+    "localTitle": "Dyrygent",
+    "overview": "Młoda skrzypaczka Marta będąc na stypendium w Nowym Jorku poznaje słynnego dyrygenta Johna Lasockiego, którego łączyła przed laty wielka miłość z jej matką. Pod wpływem tego spotkania w Lasockim odżywają wspomnienia dawnego uczucia. Postanawia przyjechać do Polski, by w rodzinnym mieście Marty poprowadzić wykonanie V symfonii Beethovena. Mąż Marty - Adam będący dyrygentem owej orkiestry początkowo widzi w wizycie wielkiego mistrza szansę dla siebie, ale dostrzegając fascynację, jaką Lasocki budzi w Marcie, zaczyna być zazdrosny.",
+    "imdb": "tt0079090"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "264b97b4a316f659",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:30:45.516Z",
+  "country": "pl",
+  "title": "edukacja MH: Johnny",
+  "members": [
+   {
+    "venue": "Janosik",
+    "page": "https://www.bilety24.pl/kino/1500-edukacja-mh-johnny--163914?id=984001",
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-05",
+      "last": "2026-10-09",
+      "count": 2
+     }
+    }
+   },
+   {
+    "venue": "Kino Goplana",
+    "page": null,
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-09",
+      "last": "2026-10-09",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "edukacja MH: Johnny , Żywiec, 05.10.2026 09:00. Kup bilety w serwisie B24",
+  "labelledFilm": {
+   "ref": "imdb:tt15538570",
+   "note": "recall target: Johnny",
+   "tmdb": 920220,
+   "title": "Johnny",
+   "localTitle": "Johnny",
+   "original": "Johnny",
+   "year": "2022",
+   "directors": [
+    "Daniel Jaroszek"
+   ],
+   "runtime": 120,
+   "overview": "Skazany na prace społeczne w hospicjum młody przestępca zaprzyjaźnia się z pełnym empatii księdzem, który całkowicie zmienia jego życie.",
+   "imdb": "tt15538570"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 9486,
+    "title": "Johnny English",
+    "original": "Johnny English",
+    "year": "2003",
+    "directors": [
+     "Peter Howitt"
+    ],
+    "runtime": 88,
+    "pct": 9.1,
+    "localTitle": "Johnny English",
+    "overview": "Służby specjalne odkrywają plan zuchwałej kradzieży królewskich klejnotów z londyńskiej Tower. Niestety akcja ratowania klejnotów kończy się śmiercią najlepszych agentów. Misja wykrycia groźnego międzynarodowego spisku powierzona zostaje więc Johny'emu Englishowi (w tej roli oczywiście Atkinson) - biurowemu pracownikowi służb specjalnych. Według przełożonych to idealny kandydat na superszpiega, gdyż nie zna strachu, bo o pracy agenta nie ma pojęcia. Głównym przeciwnikiem \"Bonda z przypadku\" jest francuski rekin biznesu Pascal Sauvage, knujący przeciwko Zjednoczonemu Królestwu intrygę. Role te ",
+    "imdb": "tt0274166"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "54db3d68e38702ef",
+  "verdict": "film",
+  "ref": "tmdb:1157322",
+  "tmdb": 1157322,
+  "at": "2026-10-06T07:26:54.530Z",
+  "country": "pl",
+  "title": "FRANZ KAFKA",
+  "members": [
+   {
+    "venue": "Kino Opalenica",
+    "page": "https://www.bilety24.pl/kino/967-franz-kafka-165208?id=992041",
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-10",
+      "last": "2026-10-10",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "FRANZ KAFKA, Opalenica, 10.10.2026 20:00. Kup bilety w serwisie B24",
+  "labelledFilm": {
+   "ref": "filmweb:10008278",
+   "note": "hand label: Franz Kafka (2025) Agnieszka Holland",
+   "title": "filmweb:10008278"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 120275,
+    "title": "Franz Kafka",
+    "original": "Franz Kafka",
+    "year": "1992",
+    "directors": [
+     "Piotr Dumała"
+    ],
+    "runtime": 16,
+    "pct": 18.4,
+    "localTitle": "Franz Kafka",
+    "overview": "A fantasy biography of Franz Kafka, bringing to life the writer's diaries and photographs.",
+    "imdb": "tt0432858"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "118aabbf609a1252",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:35:18.819Z",
+  "country": "us",
+  "title": "Reel Rock 19",
+  "members": [
+   {
+    "venue": "Sky Cinemas Santa Fe",
+    "page": "https://www.flicks.us/movie/reel-rock-19/",
+    "venueFacts": {
+     "runtime": 100,
+     "catalogueIds": [
+      {
+       "source": "flicks",
+       "id": "24788"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-28",
+      "last": "2026-10-28",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Find where to watch Reel Rock 19 in US cinemas + release dates, reviews and trailers. A collection of climbing films presented by The North Face curated to deliver \"a joyful dose of inspiration, heart, and humour.",
+  "labelledFilm": {
+   "ref": "tmdb:1451675",
+   "note": "recall target: Reel Rock 19 (2025)",
+   "tmdb": 1451675,
+   "title": "Reel Rock 19",
+   "localTitle": "Reel Rock 19",
+   "original": "Reel Rock 19",
+   "year": "2025",
+   "directors": [],
+   "runtime": 138,
+   "overview": "Reel Rock 19 showcases three world-premiere climbing films spanning disciplines, characters, and continents: a heartfelt story of second chances in love and climbing on Squamish’s legendary Cobra Crack; an outrageous 18-day big wall epic on Patagonia’s towering Torre Central; and the pursuit of a lifelong dream—a 5.15 first ascent—made possible by an unlikely partnership.",
+   "imdb": "tt36735682"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1451675,
+    "title": "Reel Rock 19",
+    "original": "Reel Rock 19",
+    "year": "2025",
+    "directors": [],
+    "runtime": 138,
+    "pct": 5.2,
+    "localTitle": "Reel Rock 19",
+    "overview": "Reel Rock 19 showcases three world-premiere climbing films spanning disciplines, characters, and continents: a heartfelt story of second chances in love and climbing on Squamish’s legendary Cobra Crack; an outrageous 18-day big wall epic on Patagonia’s towering Torre Central; and the pursuit of a lifelong dream—a 5.15 first ascent—made possible by an unlikely partnership.",
+    "imdb": "tt36735682"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "ab015d84d7fc2f8f",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:33:07.093Z",
+  "country": "pl",
+  "title": "Rialto DOCumentalnie - Lech Janerka – śpij, śpij inteligencie + spotkanie z Lechem Janerką oraz Grzegorzem Brzozowiczem",
+  "members": [
+   {
+    "venue": "Kinoteatr Rialto",
+    "page": "https://kinoteatrrialto.bilety24.pl/wydarzenie/?id=160396",
+    "venueFacts": {
+     "runtime": 80,
+     "screenings": {
+      "first": "2026-10-17",
+      "last": "2026-10-17",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Dojazd Kino Teatr Rialtoul. Św. Jana 24, 40-012 Katowice",
+  "labelledFilm": {
+   "ref": "tmdb:1675929",
+   "note": "recall target: Lech Janerka. Sleep On, Intellectual (2026)",
+   "tmdb": 1675929,
+   "title": "Lech Janerka. Sleep On, Intellectual",
+   "localTitle": "Lech Janerka - śpij, śpij inteligencie",
+   "original": "Lech Janerka - śpij, śpij inteligencie",
+   "year": "2026",
+   "directors": [
+    "Grzegorz Brzozowicz"
+   ],
+   "runtime": 87,
+   "overview": "Pierwszy film dokumentalny poświęcony legendzie polskiej sceny muzycznej. Łączy wspomnienia bohatera, archiwalne koncerty, w tym zespołu Klaus Mitffoch, oraz bogate materiały ukazujące 70 lat polskiej rzeczywistości. To portret artysty, który niczego nie musi, a wszystko mówi przez swoją twórczość. Opowieść podróżuje między jawą a marzeniami, bo kluczowym słowem w tekstach Janerki jest „sen”.",
+   "imdb": null
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1675929,
+    "title": "Lech Janerka. Sleep On, Intellectual",
+    "original": "Lech Janerka - śpij, śpij inteligencie",
+    "year": "2026",
+    "directors": [
+     "Grzegorz Brzozowicz"
+    ],
+    "runtime": 87,
+    "pct": 3.1,
+    "localTitle": "Lech Janerka - śpij, śpij inteligencie",
+    "overview": "Pierwszy film dokumentalny poświęcony legendzie polskiej sceny muzycznej. Łączy wspomnienia bohatera, archiwalne koncerty, w tym zespołu Klaus Mitffoch, oraz bogate materiały ukazujące 70 lat polskiej rzeczywistości. To portret artysty, który niczego nie musi, a wszystko mówi przez swoją twórczość. Opowieść podróżuje między jawą a marzeniami, bo kluczowym słowem w tekstach Janerki jest „sen”."
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "d6d8725a613f822e",
+  "verdict": "film",
+  "ref": "tmdb:1309083",
+  "tmdb": 1309083,
+  "at": "2026-10-06T07:19:05.764Z",
+  "country": "pl",
+  "title": "LALKA / DOLLY",
+  "members": [
+   {
+    "venue": "Kino ChDK",
+    "page": null,
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-31",
+      "last": "2026-10-31",
+      "count": 1
+     }
+    }
+   },
+   {
+    "venue": "Kino Echo",
+    "page": "https://www.bilety24.pl/kino/1159-lalka-dolly--165801?id=995695",
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-03",
+      "last": "2026-10-08",
+      "count": 6
+     }
+    }
+   },
+   {
+    "venue": "Kino Opolanka",
+    "page": null,
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-16",
+      "last": "2026-10-18",
+      "count": 3
+     }
+    }
+   },
+   {
+    "venue": "Kino ŚDK",
+    "page": null,
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-13",
+      "last": "2026-10-15",
+      "count": 3
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Lalka (Dolly), Jarocin, 03.10.2026 20:00. Kup bilety w serwisie B24",
+  "labelledFilm": {
+   "ref": "rt:dolly",
+   "note": "hand label: Dolly (2026) Rod Blackhurst",
+   "title": "rt:dolly"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1321666,
+    "title": "The Doll",
+    "original": "Lalka",
+    "year": "2026",
+    "directors": [
+     "Maciej Kawalski"
+    ],
+    "runtime": 162,
+    "pct": 87.4,
+    "localTitle": "Lalka",
+    "overview": "Warszawa końca XIX wieku. Serce Stanisława Wokulskiego owładnięte jest szaloną miłością do Izabeli Łęckiej. Dzięki fortunie zdobytej na wojnie, powraca do kraju i postanawia wejść do świata wyższych sfer, aby zdobyć rękę ukochanej. Wkracza w labirynt arystokratycznych salonów, gdzie każdy gest może być początkiem intrygi, a każde słowo – zapowiedzią zdrady. Stający na jego drodze rywale, niespodziewane sojusze i dramatyczne wybory wystawią na próbę jego marzenia i wiarę w ludzi.",
+    "imdb": "tt37082105"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "abb460a7709a3d29",
+  "verdict": "event",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:38:13.563Z",
+  "country": "us",
+  "title": "It (1990)",
+  "members": [
+   {
+    "venue": "4 Star Theatre San Francisco",
+    "page": "https://www.flicks.us/movie/it-1990/",
+    "venueFacts": {
+     "runtime": 168,
+     "directors": [
+      "Tommy Lee Wallace"
+     ],
+     "catalogueIds": [
+      {
+       "source": "flicks",
+       "id": "12900"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-30",
+      "last": "2026-10-30",
+      "count": 1
+     }
+    }
+   },
+   {
+    "venue": "Rooftop Cinema Crossroads Kansas City",
+    "page": "https://www.flicks.us/movie/it-1990/",
+    "venueFacts": {
+     "runtime": 168,
+     "directors": [
+      "Tommy Lee Wallace"
+     ],
+     "catalogueIds": [
+      {
+       "source": "flicks",
+       "id": "12900"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-17",
+      "last": "2026-10-17",
+      "count": 1
+     }
+    }
+   },
+   {
+    "venue": "Rooftop Cinema Ft Worth",
+    "page": "https://www.flicks.us/movie/it-1990/",
+    "venueFacts": {
+     "runtime": 168,
+     "directors": [
+      "Tommy Lee Wallace"
+     ],
+     "catalogueIds": [
+      {
+       "source": "flicks",
+       "id": "12900"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-21",
+      "last": "2026-10-21",
+      "count": 1
+     }
+    }
+   },
+   {
+    "venue": "Rooftop Cinema Los Angeles",
+    "page": "https://www.flicks.us/movie/it-1990/",
+    "venueFacts": {
+     "runtime": 168,
+     "directors": [
+      "Tommy Lee Wallace"
+     ],
+     "catalogueIds": [
+      {
+       "source": "flicks",
+       "id": "12900"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-24",
+      "last": "2026-10-24",
+      "count": 1
+     }
+    }
+   },
+   {
+    "venue": "Rooftop Cinema New York",
+    "page": "https://www.flicks.us/movie/it-1990/",
+    "venueFacts": {
+     "runtime": 168,
+     "directors": [
+      "Tommy Lee Wallace"
+     ],
+     "catalogueIds": [
+      {
+       "source": "flicks",
+       "id": "12900"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-21",
+      "last": "2026-10-21",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Find where to watch It (1990) in US cinemas + release dates, reviews and trailers. Mini-series based on the Stephen King novel about an evil entity that poses as child-killing clown Pennywise (Tim Curry).",
+  "labelledFilm": {
+   "ref": "rt:stephen_kings_it",
+   "note": "hand label: ",
+   "title": "rt:stephen_kings_it"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 278996,
+    "title": "And the Sea Will Tell",
+    "original": "And the Sea Will Tell",
+    "year": "1991",
+    "directors": [
+     "Tommy Lee Wallace"
+    ],
+    "runtime": 179,
+    "pct": 3.4,
+    "localTitle": "And the Sea Will Tell",
+    "overview": "A wealthy couple (James Brolin and Deidre Hall) are killed on their yacht off the coast of a secluded South American island called Palmyra. The suspects are a hippyish pair (Hart Bochner and Rachel Ward) whom the rich folks had befriended. It’s fairly clear that the hippies were involved in the crime: The question is, did the man do it while the girl looked on helplessly, or was she a willing accomplice?",
+    "imdb": "tt0101345"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "a2103f143a54469f",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:29:22.829Z",
+  "country": "pl",
+  "title": "Niebezpieczne związki | Kinoteka Kultury i Sztuki",
+  "members": [
+   {
+    "venue": "Kinoteka",
+    "page": "https://kinoteka.pl/film/niebezpieczne-zwiazki-kinoteka-kultury-i-sztuki/",
+    "venueFacts": {
+     "directors": [
+      "Marianne Elliott"
+     ],
+     "countries": [
+      "Wielka Brytania"
+     ],
+     "runtime": 180,
+     "originalTitle": "Les Liaisons Dangereuses",
+     "screenings": {
+      "first": "2026-10-25",
+      "last": "2026-10-25",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Kino Kinoteka – sprawdź nasz repertuar i wybierz Niebezpieczne związki | Kinoteka Kultury i Sztuki na kolejny seans. Zarezerwuj bilety online i ciesz się",
+  "labelledFilm": {
+   "ref": "imdb:tt40258746",
+   "note": "hand label: National Theatre Live: Les Liaisons Dangereuses (2026) Marianne Elliott",
+   "tmdb": 1598667,
+   "title": "National Theatre Live: Les Liaisons Dangereuses",
+   "localTitle": "National Theatre Live: Les Liaisons Dangereuses",
+   "original": "National Theatre Live: Les Liaisons Dangereuses",
+   "year": "2026",
+   "directors": [
+    "Marianne Elliott"
+   ],
+   "runtime": 179,
+   "overview": "A new staging of Christopher Hampton's celebrated adaptation of the classic novel, where among the glittering salons of the super-rich, one misstep can mean ruin. Marquise de Merteuil is a master in the art of survival. Alongside the magnetic Vicomte de Valmont, they turn seduction into strategy and weaponise desire. But when their alliance collapses into rivalry, the battle between them threatens to destroy everyone in their path. Filmed live at the National Theatre, Marianne Elliott directs this thrilling game of love, lies, and social warfare.",
+   "imdb": "tt40258746"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 257425,
+    "title": "National Theatre Live: War Horse",
+    "original": "National Theatre Live: War Horse",
+    "year": "2014",
+    "directors": [
+     "Tim Van Someren",
+     "Marianne Elliott"
+    ],
+    "runtime": 180,
+    "pct": 12.7,
+    "localTitle": "National Theatre Live: War Horse",
+    "overview": "Based on Michael Morpurgo's novel and adapted for the stage by Nick Stafford, War Horse takes audiences on an extraordinary journey from the fields of rural Devon to the trenches of First World War France.  War Horse received its world premiere on October 9, 2007 at the National Theatre in London, UK where it played for two seasons before opening at the New London Theatre in London, UK in March 2009, and was later made into a 2011 movie. Since then, the stage play has been seen in over 100 cities in 15 countries, including productions on Broadway, in Toronto, Berlin, and Australia, with tourin",
+    "imdb": "tt3313072"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "128650c84c33a403",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:35:22.082Z",
+  "country": "pl",
+  "title": "19. FGA: Wspinaczka",
+  "members": [
+   {
+    "venue": "Janosik",
+    "page": "https://www.bilety24.pl/kino/1500-19-fga-wspinaczka-164646?id=991062",
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-24",
+      "last": "2026-10-24",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "19. FGA: Wspinaczka, Żywiec, 24.10.2026 18:00. Kup bilety w serwisie B24",
+  "labelledFilm": {
+   "ref": "tmdb:1461058",
+   "note": "review page: hand label (model leaned tmdb:489471 Dawn Wall: Wspinaczka po rekord (2017))",
+   "tmdb": 1461058,
+   "title": "Girl Climber",
+   "localTitle": "Girl Climber",
+   "original": "Girl Climber",
+   "year": "2025",
+   "directors": [
+    "Jon Glassberg"
+   ],
+   "runtime": 83,
+   "overview": "Professional climber Emily Harrington has summited Everest, 8000-meter peaks, and dominated the competition circuit but, her greatest challenge extends beyond the physical. To cement her legacy in the male dominated world of elite rock climbing, she sets her sights on a career-defining 24-hour ascent of Yosemite's El Capitan. Caught between the pursuit of personal ambition and the ticking biological clock of life, a near-fatal fall forces Emily to reckon with what she's willing to risk. Equal parts gripping survival story and intimate portrait, Girl Climber isn't just about breaking records, i",
+   "imdb": "tt36437006"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 489471,
+    "title": "The Dawn Wall",
+    "original": "The Dawn Wall",
+    "year": "2017",
+    "directors": [
+     "Peter Mortimer",
+     "Josh Lowell"
+    ],
+    "runtime": 101,
+    "pct": 5.1,
+    "localTitle": "Dawn Wall: Wspinaczka po rekord",
+    "overview": "W Parku Narodowym Yosemite w Kalifornii znajduje się granitowy monolit El Capitan, marzenie wielu wspinaczy. Amerykańscy wspinacze Tommy Caldwell i Kevin Jorgeson postanowili po raz pierwszy w historii pokonać tę trudną trasę skalną bez lin i pomocniczego sprzętu. Film dokumentuje ich 19-dniowy wyczyn, pokazując przygotowania, poszczególne etapy i prywatne życie wspinaczy. Wspinają się za pomocą uchwytów i przyczółków nie grubszych niż karta kredytowa, a w nocy śpią w przymocowanych do skały hamakach. Film ujawnia trudne doświadczenia życiowe Caldwella, których kulminacją był projekt wspinaczk",
+    "imdb": "tt7286916"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "4ce964d33cd78c62",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:24:46.058Z",
+  "country": "de",
+  "title": "To The Bone",
+  "members": [
+   {
+    "venue": "Roxy Kino Kitzingen",
+    "page": "https://www.dasroxy.de/movie.php?3663627816-To_The_Bone",
+    "venueFacts": {
+     "year": 2017,
+     "runtime": 107,
+     "directors": [
+      "Marti Noxon"
+     ],
+     "cast": [
+      "Lily Collins",
+      "Keanu Reeves",
+      "Carrie Preston",
+      "Lili Taylor",
+      "Alex Sharp"
+     ],
+     "screenings": {
+      "first": "2026-10-28",
+      "last": "2026-10-28",
+      "count": 1
+     }
+    },
+    "catalogueFacts": {
+     "year": 2014,
+     "runtime": 8,
+     "directors": [
+      "Erin Li"
+     ],
+     "catalogueIds": [
+      {
+       "source": "webedia",
+       "id": "227420"
+      }
+     ]
+    }
+   }
+  ],
+  "venueSynopsis": "Ellen (Lily Collins) hat „Kalorien-Asperger“ … Nachdem von Ellen fast nichts mehr übrig ist, wird sie zu einer ungewöhnlichen Therapie geschickt: in eine Wohngruppe unter Aufsicht des Psychologen Dr. William Beckham (Keanu Reeves) … Regie: Marti Noxon · Jahr: 2017 · Länge: 1:47 Std. · ab 16 · OmU",
+  "labelledFilm": {
+   "ref": "imdb:tt5541240",
+   "note": "judged 10-06 by the venue's own page: Marti Noxon's 2017 feature. Filmstarts' feed links the screening to 227420, Erin Li's 2014 8-minute short, by mistake.",
+   "tmdb": 401104,
+   "title": "To the Bone",
+   "localTitle": "To the Bone",
+   "original": "To the Bone",
+   "year": "2017",
+   "directors": [
+    "Marti Noxon"
+   ],
+   "runtime": 106,
+   "overview": "Die 20-jährige Ellen will nach vier gescheiterten Anläufen in unterschiedlichen Einrichtungen in einem letzten verzweifelten Versuch ihre Magersucht überwinden, indem sie sich in Los Angeles selbst einer Hilfsgruppe anschließt. Dort betreut Dr. William Beckham die größtenteils weiblichen Patienten mit unkonventionellen Methoden und versucht, sie durch das Auf und Ab der manchmal lustigen und manchmal qualvollen Erfahrungen wieder eine Antwort auf die Frage finden zu lassen, ob das Leben wirklich lebenswert ist.",
+   "imdb": "tt5541240"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 900665,
+    "title": "Kepler X-47",
+    "original": "Kepler X-47",
+    "year": "2014",
+    "directors": [
+     "Erin Li"
+    ],
+    "runtime": 13,
+    "pct": 8.2,
+    "localTitle": "Kepler X-47",
+    "overview": "Eine Frau hat Schwierigkeiten, sich an ihr neues Leben in einem menschlichen Zoo auf einem fremden Planeten zu gewöhnen.",
+    "imdb": "tt3249100"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "94f575a06cf991cd",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:23:34.615Z",
+  "country": "pl",
+  "title": "Lalka PREMIERA",
+  "members": [
+   {
+    "venue": "Kino MOK Międzyrzecz",
+    "page": "https://mokmiedzyrzecz.pl/wydarzenie/lalka-premiera/2026-10-17/"
+   }
+  ],
+  "venueSynopsis": "Napędzany ambicją Stanisław dąży do awansu społecznego, a jego obsesyjne zauroczenie Izabelą staje się bramą do świata, który chce zdobyć. Izabela próbuje wymknąć się ciasnym ramom arystokratycznego porządku i określić swoje miejsce w przeobrażającym się świecie. Ogarniające ich uczucie rozpięte jest między przepaścią klasową, obsesją, pragnieniem wolności i uwodzącą potęgą bogactwa. Współczesna reinterpretacja polskiej klasyki",
+  "labelledFilm": {
+   "ref": "tmdb:1321666",
+   "note": "review page: hand label (model leaned tmdb:1309396 Lalka (2026))",
+   "tmdb": 1321666,
+   "title": "The Doll",
+   "localTitle": "Lalka",
+   "original": "Lalka",
+   "year": "2026",
+   "directors": [
+    "Maciej Kawalski"
+   ],
+   "runtime": 162,
+   "overview": "Warszawa końca XIX wieku. Serce Stanisława Wokulskiego owładnięte jest szaloną miłością do Izabeli Łęckiej. Dzięki fortunie zdobytej na wojnie, powraca do kraju i postanawia wejść do świata wyższych sfer, aby zdobyć rękę ukochanej. Wkracza w labirynt arystokratycznych salonów, gdzie każdy gest może być początkiem intrygi, a każde słowo – zapowiedzią zdrady. Stający na jego drodze rywale, niespodziewane sojusze i dramatyczne wybory wystawią na próbę jego marzenia i wiarę w ludzi.",
+   "imdb": "tt37082105"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 1309396,
+    "title": "The Doll",
+    "original": "La Poupée",
+    "year": "2026",
+    "directors": [
+     "Sophie Beaulieu"
+    ],
+    "runtime": 80,
+    "pct": 47.3,
+    "localTitle": "Lalka",
+    "overview": "Rémi nigdy nie pogodził się z ostatnim rozstaniem. Od tamtej pory jest w związku z lalką – to prostsze. Ma na imię Audrey. W dniu, w którym Patricia, nowa koleżanka, pojawia się w firmie Rémiego, Audrey w tajemniczy sposób ożywa.",
+    "imdb": "tt36749000"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "d72af983fa2c40e7",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:25:54.234Z",
+  "country": "us",
+  "title": "A Night at the Opera",
+  "members": [
+   {
+    "venue": "Lakewood Ranch Cinemas 6",
+    "page": "https://www.flicks.us/movie/a-night-at-the-opera/",
+    "venueFacts": {
+     "runtime": 96,
+     "directors": [
+      "Edmund Goulding"
+     ],
+     "catalogueIds": [
+      {
+       "source": "flicks",
+       "id": "21959"
+      }
+     ],
+     "screenings": {
+      "first": "2026-10-12",
+      "last": "2026-10-12",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Find where to watch A Night at the Opera in US cinemas + release dates, reviews and trailers. The Marx Brothers take on high society and the opera world to bring two lovers together in this classic comedy.",
+  "labelledFilm": {
+   "ref": "imdb:tt0026778",
+   "note": "recall target: A Night at the Opera",
+   "tmdb": 37719,
+   "title": "A Night at the Opera",
+   "localTitle": "A Night at the Opera",
+   "original": "A Night at the Opera",
+   "year": "1935",
+   "directors": [
+    "Sam Wood"
+   ],
+   "runtime": 91,
+   "overview": "The Marx Brothers take on high society and the opera world to bring two lovers together. A sly business manager and two wacky friends of two opera singers help them achieve success while humiliating their stuffy and snobbish enemies.",
+   "imdb": "tt0026778"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 44919,
+    "title": "The Old Maid",
+    "original": "The Old Maid",
+    "year": "1939",
+    "directors": [
+     "Edmund Goulding"
+    ],
+    "runtime": 95,
+    "pct": 5.5,
+    "localTitle": "The Old Maid",
+    "overview": "The lives of two cousins are complicated by the return of an ex-boyfriend and an illegitimate child.",
+    "imdb": "tt0031750"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "06d5e159727077c3",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:56:21.264Z",
+  "country": "pl",
+  "title": "RETRANSMISJA ANDRE RIEU. NIECH ŻYJE MAASTRICHT",
+  "members": [
+   {
+    "venue": "Kino Powiśle",
+    "page": null,
+    "venueFacts": {
+     "screenings": {
+      "first": "2026-10-04",
+      "last": "2026-10-20",
+      "count": 2
+     }
+    }
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": {
+   "ref": "tmdb:1702801",
+   "note": "recall target: André Rieu's 2026 Summer Concert: Viva Maastricht! (2026)",
+   "tmdb": 1702801,
+   "title": "André Rieu's 2026 Summer Concert: Viva Maastricht!",
+   "localTitle": "André Rieu's 2026 Summer Concert: Viva Maastricht!",
+   "original": "André Rieu's 2026 Summer Concert: Viva Maastricht!",
+   "year": "2026",
+   "directors": [],
+   "runtime": 0,
+   "overview": "",
+   "imdb": "tt43384010"
+  },
+  "matchedFilm": null,
+  "modelCandidates": []
+ },
+ {
+  "page": "matchable",
+  "itemId": "fc698e649554df79",
+  "verdict": "event",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:30:33.046Z",
+  "country": "pl",
+  "title": "Dni Kina Niemego - Portier z Hotelu Atlantic",
+  "members": [
+   {
+    "venue": "Kinoteatr Rialto",
+    "page": "https://kinoteatrrialto.bilety24.pl/wydarzenie/?id=164704",
+    "venueFacts": {
+     "runtime": 73,
+     "screenings": {
+      "first": "2026-11-20",
+      "last": "2026-11-20",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Dojazd Kino Teatr Rialtoul. Św. Jana 24, 40-012 Katowice",
+  "labelledFilm": {
+   "ref": "tmdb:5991",
+   "note": "recall target: The Last Laugh (1924)",
+   "tmdb": 5991,
+   "title": "The Last Laugh",
+   "localTitle": "Portier z hotelu Atlantic",
+   "original": "Der letzte Mann",
+   "year": "1924",
+   "directors": [
+    "F. W. Murnau"
+   ],
+   "runtime": 90,
+   "overview": "Bohater (Emil Jannings) dosłownie żyje swą pracą portiera w eleganckim hotelu i z dumą obnosi zdobną liberię. Jednak wkrótce zauważony będzie jego zaawansowany wiek i postępujące zniedołężnienie. Zostaje pozbawiony dotychczasowej funkcji oraz należnego stroju i zmuszony do pracy w hotelowej toalecie. I wówczas przeżycia starego, zdegradowanego i poniżonego człowieka sięgają rangi prawdziwej tragedii.",
+   "imdb": "tt0015064"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 5991,
+    "title": "The Last Laugh",
+    "original": "Der letzte Mann",
+    "year": "1924",
+    "directors": [
+     "F. W. Murnau"
+    ],
+    "runtime": 90,
+    "pct": 9.8,
+    "localTitle": "Portier z hotelu Atlantic",
+    "overview": "Bohater (Emil Jannings) dosłownie żyje swą pracą portiera w eleganckim hotelu i z dumą obnosi zdobną liberię. Jednak wkrótce zauważony będzie jego zaawansowany wiek i postępujące zniedołężnienie. Zostaje pozbawiony dotychczasowej funkcji oraz należnego stroju i zmuszony do pracy w hotelowej toalecie. I wówczas przeżycia starego, zdegradowanego i poniżonego człowieka sięgają rangi prawdziwej tragedii.",
+    "imdb": "tt0015064"
+   }
+  ]
+ },
+ {
+  "page": "matchable",
+  "itemId": "3a8d9015290cf02e",
+  "verdict": "right",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T07:29:11.855Z",
+  "country": "pl",
+  "title": "Wielka Sztuka w Kinoteatrze Rialto - Frida: Viva la Vida",
+  "members": [
+   {
+    "venue": "Kinoteatr Rialto",
+    "page": "https://kinoteatrrialto.bilety24.pl/wydarzenie/?id=108908",
+    "venueFacts": {
+     "runtime": 97,
+     "screenings": {
+      "first": "2026-11-08",
+      "last": "2026-11-08",
+      "count": 1
+     }
+    }
+   }
+  ],
+  "venueSynopsis": "Dojazd Kino Teatr Rialtoul. Św. Jana 24, 40-012 Katowice",
+  "labelledFilm": {
+   "ref": "imdb:tt11312156",
+   "note": "recall target: Frida: Viva la Vida",
+   "tmdb": 649244,
+   "title": "Frida. Viva la Vida",
+   "localTitle": "Frida. Viva la Vida",
+   "original": "Frida. Viva la Vida",
+   "year": "2019",
+   "directors": [
+    "Giovanni Troilo"
+   ],
+   "runtime": 90,
+   "overview": "The two sides of Frida Kahlo's spirit: on one side the revolutionary, pioneering artist of contemporary feminism and on the other, the human being, victim of her tortured body and a tormented relationship.",
+   "imdb": "tt11312156"
+  },
+  "matchedFilm": null,
+  "modelCandidates": [
+   {
+    "tmdb": 649244,
+    "title": "Frida. Viva la Vida",
+    "original": "Frida. Viva la Vida",
+    "year": "2019",
+    "directors": [
+     "Giovanni Troilo"
+    ],
+    "runtime": 90,
+    "pct": 14.9,
+    "localTitle": "Frida. Viva la Vida",
+    "overview": "The two sides of Frida Kahlo's spirit: on one side the revolutionary, pioneering artist of contemporary feminism and on the other, the human being, victim of her tortured body and a tormented relationship.",
+    "imdb": "tt11312156"
+   }
+  ]
+ },
+ {
+  "page": "recent",
+  "itemId": "67a6f0aebd11b498",
+  "verdict": "bill",
+  "ref": null,
+  "tmdb": null,
+  "at": "2026-10-06T08:13:19.514Z",
+  "country": "us",
+  "title": "Triple Feature: Lord of the Rings",
+  "members": [
+   {
+    "venue": "Frida Cinema Santa Ana",
+    "page": "https://www.flicks.us/movie/triple-feature-lord-of-the-rings/",
+    "venueFacts": {
+     "runtime": 726,
+     "directors": [
+      "Peter Jackson"
+     ],
+     "cast": [
+      "Elijah Wood",
+      "Viggo Mortensen",
+      "Ian McKellen",
+      "Sean Astin",
+      "Cate Blanchett",
+      "Sean Bean",
+      "Orlando Bloom",
+      "Billy Boyd",
+      "Ian Holm",
+      "Miranda Otto",
+      "Liv Tyler",
+      "Andy Serkis",
+      "Karl Urban",
+      "Hugo Weaving"
+     ],
+     "screenings": {
+      "first": "2026-11-28 12:00:00",
+      "last": "2026-11-28 12:00:00",
+      "count": 1
+     },
+     "catalogueIds": {
+      "flicks": "11993"
+     }
+    }
+   }
+  ],
+  "venueSynopsis": null,
+  "labelledFilm": null,
+  "matchedFilm": {
+   "tmdb": 122,
+   "imdb": "tt0167260",
+   "title": "The Lord of the Rings: The Return of the King",
+   "original": "The Lord of the Rings: The Return of the King",
+   "year": "2003",
+   "directors": [
+    "Peter Jackson"
+   ],
+   "runtime": 201,
+   "localTitle": "The Lord of the Rings: The Return of the King",
+   "overview": "As armies mass for a final battle that will decide the fate of the world--and powerful, ancient forces of Light and Dark compete to determine the outcome--one member of the Fellowship of the Ring is revealed as the noble heir to the throne of the Kings of Men. Yet, the sole hope for triumph over evil lies with a brave hobbit, Frodo, who, accompanied by his loyal friend Sam and the hideous, wretched Gollum, ventures deep into the very dark heart of Mordor on his seemingly impossible quest to destroy the Ring of Power.​"
+  },
+  "modelCandidates": []
+ }
+]

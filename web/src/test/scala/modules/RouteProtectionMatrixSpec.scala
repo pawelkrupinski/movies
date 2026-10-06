@@ -84,6 +84,8 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     ("POST",   "/admin/config/reset")                    -> Protection(Auth.Admin,    Csrf.CrossSiteFilter),
     ("POST",   "/admin/identity/pins")                   -> Protection(Auth.Admin,    Csrf.CrossSiteFilter),
     ("POST",   "/admin/identity/pins/remove")            -> Protection(Auth.Admin,    Csrf.CrossSiteFilter),
+    ("POST",   "/debug/review/answer")                   -> Protection(Auth.DevOnly,  Csrf.CrossSiteFilter),
+    ("POST",   "/debug/review/export")                   -> Protection(Auth.DevOnly,  Csrf.CrossSiteFilter),
   )
 
   /** Every GET that changes a visitor's session, and what keeps another site's page
@@ -152,8 +154,9 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val facebook    = new FacebookDataDeletionController(cc, models.Country.Poland, None, users, null)
     val envConfig   = new EnvConfigController(cc, adminAction, null)
     val identity    = new IdentityAdminController(cc, adminAction, users, null, null)
+    val review      = new ReviewController(cc, Mode.Prod, Map.empty, null, java.nio.file.Paths.get("labels.tsv"), _root_.tools.SpecClock.Pinned)
     new router.Routes(Components.httpErrorHandler, null, null, null, null, null, debug, null, auth, userState,
-      null, null, uptime, tasks, null, null, facebook, envConfig, identity, null)
+      null, null, uptime, tasks, null, null, facebook, envConfig, identity, review, null)
   }
 
   /** `(verb, path as the routes file spells it)` for every route the router serves. */
