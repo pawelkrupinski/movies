@@ -392,7 +392,21 @@ object IdentityMeasures {
                          *  TMDB names none: an Int, not the id, so a model of every candidate's record carries no string. */
                         imdbNumber: Int = 0,
                         /** The day TMDB dates its release: a broadcast's air date ([[agreement.Broadcast]]). */
-                        released: Option[java.time.LocalDate] = None) {
+                        released: Option[java.time.LocalDate] = None,
+                        /** The countries TMDB dates a release of it in, their ISO-3166-1 codes run together in order
+                         *  ("ATDEPL", [[TmdbFilmRecord.releaseCountries]]); `None` when its release dates were not fetched. One
+                         *  string, not a set: every candidate of every family holds it, and a veto asks one country of it. */
+                        releaseCountries: Option[String] = None) {
+    /** Does TMDB date a release of the film in `country` (ISO-3166-1)? `None` when its release dates are unknown. */
+    def releasedIn(country: String): Option[Boolean] = Option.when(releaseCountries.isDefined)(knownReleasedIn(country, dated = true))
+    /** Are the film's release dates known, and does TMDB date (`dated`) — or not date — a release in `country`? What
+     *  [[releasedIn]] answers, read by the resolver per candidate without an option. */
+    private[identity] def knownReleasedIn(country: String, dated: Boolean): Boolean = releaseCountries.isDefined && {
+      val codes = releaseCountries.get
+      var i = 0
+      while (i + 1 < codes.length && !codes.regionMatches(i, country, 0, 2)) i += 2
+      (i + 1 < codes.length) == dated
+    }
     /** Its title, original title and alternative titles, in that order: every derived form below reads these. */
     private[identity] def titles: Seq[String] = Seq(title) ++ originalTitle ++ alternativeTitles
     /** Its titles' [[IdentityMeasures.key]]s — worked out once, not per listing weighed against it ([[searchGroups]]): a

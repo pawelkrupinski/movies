@@ -11,7 +11,8 @@ private[identity] final case class Scored(candidate: Candidate, probability: Dou
                                           listing: IdentityMeasures.Listing, rank: Option[Int],
                                           seasonProduction: Boolean = false, deniedByPin: Boolean = false,
                                           houseProduction: Boolean = false, imdb: Option[Scored.ImdbPlace] = None,
-                                          suggestedOnly: Boolean = false, soleResult: Boolean = false, imdbTitled: Set[String] = Set.empty) {
+                                          suggestedOnly: Boolean = false, soleResult: Boolean = false, imdbTitled: Set[String] = Set.empty,
+                                          vetoedRivals: Int = 0) {
   /** Is the film ruled out for this listing — `denial` says why. */
   def denied: Boolean = denial.isDefined
   /** Denied by the probability cut alone — no learned rule, no pin: the weakest denial, the listing's title and few facts
@@ -23,6 +24,8 @@ private[identity] final case class Scored(candidate: Candidate, probability: Dou
   def titleNamesIt: Boolean = category("title").exists(IdentityMeasures.NamingRelations)
   // `suggestedOnly`: only IMDb's suggestions reached the film, under a title the listing does not carry
   // (IMDb matched another-language title of it) — a candidate for `Acceptance.imdbSuggested` alone.
+  // `vetoedRivals`: how many of the namesakes its `rivals` measure counts the release veto took away ([[ReleaseVeto]]) —
+  // still counted in its calibrated probability, never in the evidence class it is accepted by (`Acceptance.classAccepted`).
   // `imdbTitled`: the listing's search titles IMDb lists the film under, in some language (an AKA: "Camino dla
   // opornych" is IMDb's Polish title of "Compostelle") — `Acceptance.imdbSuggested`'s titled rung.
 }

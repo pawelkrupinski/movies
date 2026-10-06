@@ -41,9 +41,21 @@ object TmdbFilmRecord {
         countries         = Option.when(countries.nonEmpty)(countries),
         popularity        = main.flatMap(d => (d \ "popularity").asOpt[Double]).headOption,
         imdbNumber        = imdbId.fold(0)(IdentityMeasures.imdbNumber),
-        released          = clients.TmdbJson.releaseDate(localized)) -> imdbId)
+        released          = clients.TmdbJson.releaseDate(localized),
+        releaseCountries  = main.flatMap(d => (d \ "release_dates").toOption.map(releaseCountries)
+          .orElse((d \ ReleaseCountries).asOpt[String])).headOption) -> imdbId)
     }
   }
+
+  /** The field a cut-down record (`TmdbNormalizer.minimal`) keeps of TMDB's `release_dates` block: [[releaseCountries]]. */
+  val ReleaseCountries = "release_countries"
+
+  /** The countries a `release_dates` block dates a release in, any kind of release, their ISO-3166-1 codes in order and
+   *  run together ("ATDEPL"): all the release veto reads of the block (`IdentityMeasures.Film.releasedIn`), never the dates. */
+  def releaseCountries(block: JsValue): String =
+    (block \ "results").asOpt[Seq[JsValue]].getOrElse(Nil)
+      .filter(result => (result \ "release_dates").asOpt[Seq[JsValue]].exists(_.nonEmpty))
+      .flatMap(result => (result \ "iso_3166_1").asOpt[String]).filter(_.length == 2).distinct.sorted.mkString
 
   /** The crew jobs a film's record reads as its directors — and so the jobs the normalized store's
    *  cut-down responses keep (`TmdbNormalizer.minimal`): the two must name the same crew. Co-directors

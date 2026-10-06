@@ -90,8 +90,8 @@ final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tool
 
 object TmdbNormalizer {
   /** A `/movie/{id}` body cut to what `TmdbFilmRecord.parse` reads — title, original title, release day,
-   *  runtime, IMDb id, popularity (as its bucket), countries, alternative titles and the directors
-   *  among the crew — keeping the shape it reads them in (a `credits` block stays a `credits` block:
+   *  runtime, IMDb id, popularity (as its bucket), countries, alternative titles, the directors
+   *  among the crew and which countries date a release of it — keeping the shape it reads them in (a `credits` block stays a `credits` block:
    *  its presence is what marks the localized response, and "directors known"). */
   def minimal(body: JsValue): JsValue = {
     val keep = Seq("title", "original_title", "runtime", "imdb_id", "origin_country")
@@ -107,7 +107,9 @@ object TmdbNormalizer {
       .flatMap(c => for { job <- (c \ "job").asOpt[String]; name <- (c \ "name").asOpt[String] } yield Json.obj("job" -> job, "name" -> name)))
     val credits = (body \ "credits").toOption.map(c => "credits" -> Json.obj("crew" -> directors((c \ "crew").asOpt[Seq[JsValue]].getOrElse(Nil))))
     val crew    = (body \ "crew").asOpt[Seq[JsValue]].map(c => "crew" -> directors(c))
-    JsObject(keep ++ date ++ popularity ++ countries ++ alternatives ++ credits ++ crew)
+    // which countries date a release, never the dates: the release veto's one question (`Film.releasedIn`)
+    val released = (body \ "release_dates").toOption.map(block => TmdbFilmRecord.ReleaseCountries -> Json.toJson(TmdbFilmRecord.releaseCountries(block)))
+    JsObject(keep ++ date ++ popularity ++ countries ++ alternatives ++ credits ++ crew ++ released)
   }
 }
 

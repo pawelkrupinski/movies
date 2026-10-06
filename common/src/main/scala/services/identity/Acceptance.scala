@@ -49,9 +49,10 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     ranked.headOption.map(_.listing.directors).filter(_.nonEmpty).fold("the listing credits no director")(names => s"credits ${names.mkString(", ")}")
   private def firstHit(ranked: Seq[Scored]): String = ranked.find(_.rank.contains(1)).fold("its search returned nothing")(hit => s"first hit ${Acceptance.named(hit)}")
   private def cut(probability: Double) = f"${probability * 100}%.1f%% < ${calibration.ratingCut * 100}%.1f%%"
-  /** `scored` at what its evidence CLASS measured (`IdentityCalibration.classProbability`), lending and never withdrawing. */
+  /** `scored` at what its evidence CLASS measured (`IdentityCalibration.classProbability`), lending and never withdrawing —
+   *  its class read with the namesakes the release veto took away counted as no rivals ([[ReleaseVeto.unvetoed]]). */
   private def classAccepted(scored: Scored, measures: Map[String, IdentityMeasures.Measure]): Verdict =
-    calibration.classProbability(ListingFilm, measures).toRight(Refused("no evidence class measured for it", Some(scored.candidate.tmdbId)))
+    calibration.classProbability(ListingFilm, ReleaseVeto.unvetoed(scored, measures)).toRight(Refused("no evidence class measured for it", Some(scored.candidate.tmdbId)))
       .flatMap { classProbability =>
         val lent = math.max(scored.probability, classProbability)
         Either.cond(calibration.showsRatings(lent), scored -> lent, Refused("below the rating cut", Some(scored.candidate.tmdbId), cut(lent)))
@@ -122,11 +123,14 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       .getOrElse(eligibleOf(ranked).find(_.candidate.tmdbId == film).fold(0.0)(_.probability))
 
   /** Why an own match's confidence stands above its calibrated probability: its exact top hit's
-   *  class, or the ranking priors lending ([[EvidenceWeights.priorsLent]]). */
+   *  class, or the ranking priors lending ([[EvidenceWeights.priorsLent]]) — naming each rival the release veto took
+   *  out of the class it was accepted by ([[ReleaseVeto]]). */
   def liftedBy(ranked: Seq[Scored], scored: Scored, confidence: Double): String =
     if (confidence <= scored.probability) ""
-    else if (topHit(ranked).exists(_._1.candidate.tmdbId == scored.candidate.tmdbId)) " as its exact top hit"
-    else " with the ranking priors lending, never withdrawing"
+    else (if (topHit(ranked).exists(_._1.candidate.tmdbId == scored.candidate.tmdbId)) " as its exact top hit"
+      else " with the ranking priors lending, never withdrawing") +
+      (if (scored.vetoedRivals == 0) "" else ranked.flatMap(rival => rival.denial.filter(ReleaseVeto.vetoes)
+        .map(why => s"rival ${rival.candidate.tmdbId} $why")).mkString(" (", "; ", ")"))
 
   // ── the rules ──────────────────────────────────────────────────────────────────────────
 

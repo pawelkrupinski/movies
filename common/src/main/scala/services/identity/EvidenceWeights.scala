@@ -20,6 +20,12 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
   def facts(scored: Scored): Double =
     own(scored) - calibration.contributionSumWhere(ListingFilm, scored.measures, (name, _) => name == "title")
 
+  /** Does anything the listing PUBLISHED — a fact, not its title nor the database's ranking — weigh FOR the film?
+   *  What the release veto never overrules ([[ReleaseVeto]]). */
+  def factsSupport(scored: Scored): Boolean =
+    calibration.contributions(ListingFilm, scored.measures).exists { case (name, weight) =>
+      weight > 0 && !Priors(name) && name != "title" && !scored.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing]) }
+
   /** The calibrated probability on the listing's own facts alone — what a cannot-link reads. A
    *  film the listing's facts do not contradict is never vetoed merely for ranking second in
    *  TMDB's search or for having same-titled rivals: that is ambiguity, not evidence of a

@@ -1363,6 +1363,42 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     film(listing(Rialto, "Godzilla vs. Megalon", runtime = Some(120)), Seq(megalon, remake), rivals = 2.5) should not be Some(39264)
   }
 
+  "A bare title whose namesake TMDB dates no release of in the venue's country" should
+    "take the namesake released there as its exact top hit, the other no rival" in {
+    // PL Kino Kameralne Cafe's bare "Obcy w domu" ×1: TMDB's first hit is the 1986 Polish film, released in Poland;
+    // a 1989 US film of that title, never released there, rivalled it and held the top-hit class off.
+    val released = F(923171, "Obcy w domu", 1986, "", 0, 3, releaseCountries = Some("PL"))
+    val namesake = F(56669, "Obcy w domu", 1989, "", 0, 1, releaseCountries = Some("CAUS"))
+    val bare = listing(Rialto, "Obcy w domu")
+    val d = IdentityResolver.resolve(Seq(bare), new FilmTable(Seq(released, namesake), normalizer), normalizer, withTopHitClass(0.5)).decisionOf(bare.key)
+    withClue(d.render) {
+      d.film shouldBe Some(923171)
+      // the explanation names the rival the veto took out, and why
+      d.render should include ("as its exact top hit (rival 56669 vetoed: not released in PL, as namesake 923171 is)")
+    }
+  }
+
+  it should "veto nothing the listing's own facts back, nor on release dates TMDB was not asked for, nor when no namesake is released there" in {
+    val released = F(923171, "Obcy w domu", 1986, "", 0, 3, releaseCountries = Some("PL"))
+    val namesake = F(56669, "Obcy w domu", 1989, "", 0, 1, releaseCountries = Some("CAUS"))
+    def film(l: Listing, films: Seq[F]) =
+      IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, withTopHitClass(0.5)).decisionOf(l.key).film
+    // The year the venue states is the unreleased namesake's: it is not vetoed, and stays a rival.
+    film(listing(Rialto, "Obcy w domu", year = Some(1989)), Seq(released, namesake)) should not be Some(923171)
+    // A namesake whose release dates are unknown vetoes nothing.
+    film(listing(Rialto, "Obcy w domu"), Seq(released, namesake.copy(releaseCountries = None))) shouldBe None
+    // Neither is released in the venue's country: nothing to tell them apart by.
+    film(listing(Rialto, "Obcy w domu"), Seq(released.copy(releaseCountries = Some("DE")), namesake)) shouldBe None
+    // A title naming its film only by a piece beside a banner is no namesake's: the veto stays out of it, and the
+    // listing is decided as if TMDB had dated no release at all.
+    val banner = listing(Rialto, "Kino Nocne: Obcy w domu")
+    val vetoFree = IdentityResolver.resolve(Seq(banner), new FilmTable(Seq(released, namesake).map(_.copy(releaseCountries = None)), normalizer),
+      normalizer, withTopHitClass(0.5)).decisionOf(banner.key)
+    val withDates = IdentityResolver.resolve(Seq(banner), new FilmTable(Seq(released, namesake), normalizer), normalizer, withTopHitClass(0.5))
+      .decisionOf(banner.key)
+    withClue(withDates.render)((withDates.film, withDates.render.contains("vetoed")) shouldBe ((vetoFree.film, false)))
+  }
+
   it should "still leave a broadcast's bare listing off the old film its title-linked sibling's season denies" in {
     val films  = Seq(F(29993, "Samson i Dalila", 1949, "Cecil B. DeMille", 131, 20))
     val season = listing(Multikino, "Samson i dalila | metropolitan opera: live in hd 2026/27")

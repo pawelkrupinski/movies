@@ -318,6 +318,24 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.lookups.film(film).toOption.flatten.map(_.imdbNumber) shouldBe Some(166924)
   }
 
+  // The release veto asks one question of a film's release dates: does TMDB date a release of it in the venue's country?
+  // The store files the answer to that alone — the countries, never the dates — off the localized response it already reads.
+  "a film's record filed from its localized response" should "know which countries TMDB dates a release of it in" in {
+    val w    = new World
+    val film = 56669   // "Obcy w domu" (1989), pl-PL `…?append_to_response=credits,release_dates`
+    val recorded = scala.io.Source.fromResource("fixtures/tmdb/movie-56669-credits-pl.json")(using scala.io.Codec.UTF8).mkString
+    val filed = minimalOf(recorded)
+    (filed \ TmdbFilmRecord.ReleaseCountries).asOpt[String] shouldBe Some("FRGBJPUS")
+    (filed \ "release_dates").toOption shouldBe None
+    w.store.filmPartial(film, TmdbStore.Partial.Local, filed)
+    w.store.filmPartial(film, TmdbStore.Partial.English, minimalOf(s"""{"id":$film,"title":"Hider in the House","release_date":"1989-05-13","alternative_titles":{"titles":[]}}"""))
+    val record = w.lookups.film(film).toOption.flatten.get
+    record.releasedIn("US") shouldBe Some(true)
+    record.releasedIn("PL") shouldBe Some(false)
+    // a record whose release dates TMDB was not asked for knows nothing of them
+    TmdbFilmRecord.parse(Seq(play.api.libs.json.Json.parse(s"""{"id":$film,"title":"Obcy w domu","credits":{"crew":[]}}"""))).get._1.releasedIn("PL") shouldBe None
+  }
+
   /** `docs`, with `onGet` run before each whole-document read — the read every write's compare makes. */
   private def readingThrough(docs: TmdbDocuments)(onGet: TmdbKind => Unit): TmdbDocuments = new TmdbDocuments {
     def get(kind: TmdbKind, ids: Seq[String]) = { onGet(kind); docs.get(kind, ids) }

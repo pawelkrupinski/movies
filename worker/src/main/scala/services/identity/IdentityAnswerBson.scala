@@ -18,6 +18,7 @@ object IdentityAnswerBson {
     f.popularity.foreach(p => d.append("popularity", BsonDouble(p)))
     if (f.imdbNumber > 0) d.append("imdbNumber", BsonInt32(f.imdbNumber))
     f.released.foreach(day => d.append("released", BsonString(day.toString)))
+    f.releaseCountries.foreach(codes => d.append("releaseCountries", BsonString(codes)))
     d
   }
 
@@ -25,7 +26,7 @@ object IdentityAnswerBson {
     IdentityMeasures.Film(d.getString("title").getValue, string(d, "originalTitle"), stringsOf(d.get("alternativeTitles")),
       int(d, "year"), int(d, "runtime"), Option(d.get("directors")).map(stringsOf), Option(d.get("countries")).map(stringsOf),
       Option(d.get("popularity")).map(_.asDouble.getValue), int(d, "imdbNumber").getOrElse(0),
-      string(d, "released").flatMap(day => scala.util.Try(java.time.LocalDate.parse(day)).toOption))
+      string(d, "released").flatMap(day => scala.util.Try(java.time.LocalDate.parse(day)).toOption), string(d, "releaseCountries"))
   }
 
   private def strings(values: Seq[String]): BsonArray = BsonArray.fromIterable(values.map(BsonString(_)))

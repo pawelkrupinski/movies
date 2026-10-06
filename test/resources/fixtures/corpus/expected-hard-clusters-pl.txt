@@ -15,7 +15,7 @@ niebonadnormandia|2026	Niebo nad Normandią (2026) tmdb=1318413 imdb=tt32547691 
 niesamowiteprzygodyskarpetek4dorobotyfestiwaltauronmlodehoryzontyseansehdd|2026	Niesamowite przygody skarpetek 4. Do roboty! - Festiwal TAURON Młode Horyzonty. Seanse HDD (2026) tmdb=1735319 imdb=— address=niesamowite-przygody-skarpetek-4-do-roboty-festiwal-tauron-mlode-horyzonty-seanse-hdd cinemas=[Helios Aleja Bielany, Helios Alfa, Helios Bełchatów, Helios Biała, Helios Bielsko-Biała, Helios Blue City]
 niesamowiteprzygodyskarpetek|2025	Niesamowite przygody skarpetek (2025) tmdb=1447108 imdb=tt36979669 address=niesamowite-przygody-skarpetek cinemas=[Cinema1, Helios Siedlce]
 obcykryminalfrancja15latn|	OBCY-kryminał/Francja/15lat N (—) tmdb=— imdb=— address=obcy-kryminal-francja-15lat-n cinemas=[Kino MCSW Elektrownia]
-obcywdomu|	Obcy w domu (—) tmdb=— imdb=— address=obcy-w-domu cinemas=[Kino U-jazdowski]
+obcywdomu|1986	Obcy w domu (1986) tmdb=923171 imdb=— address=obcy-w-domu cinemas=[Kino U-jazdowski]
 obcy|2025	Obcy (2025) tmdb=1429348 imdb=tt36243564 address=obcy cinemas=[Bałtyk, Bieszczadzki Dom Kultury, Centrum 3D, Cinema City, Cinema City Arkadia, Kino Kinematograf, Kino Kryterium, Kino Muzeum, Kino Pod Baranami, Kino Sfinks, Nasze Kino, Pionier]
 od0210lalka|	Od 02.10 ! lalka (—) tmdb=— imdb=— address=od-02-10-lalka cinemas=[Cyfrowe Kino]
 opera20262027samsonidalilaretransmisja|	Opera 2026/2027 - samson i dalila- retransmisja (—) tmdb=— imdb=— address=opera-2026-2027-samson-i-dalila-retransmisja cinemas=[Kino Kijów]
