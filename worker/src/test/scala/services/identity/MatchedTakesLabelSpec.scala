@@ -16,15 +16,17 @@ import tools.UnmatchedClusters.Take
  * the cluster's venue and most common raw title. The rows hold the MODEL's take, before the agreement stage reads it
  * again (`agreement.Correction`), and as the code stood when they were emitted (`integration.IdentityUnifiedDataset`).
  * So a wrong take fails unless it is listed below as one a later stage or a later change no longer serves — each with
- * the spec that proves it — or, named OPEN, a wrong take prod still serves that no fix took at 0 lost (one, 2026-10-06).
+ * the spec that proves it. None is listed as standing: a wrong take is fixed, or its label is.
  */
 class MatchedTakesLabelSpec extends AnyFlatSpec with Matchers {
 
   private val labels = UnmatchedClusters.readLabels(UnmatchedClusters.Directory.resolve("labels.tsv"))
   private val rows   = IdentityUnifiedFit.read(IdentityUnifiedFit.Training)
 
-  /** The model's takes in the recorded rows a label judges wrong, (country, raw title, taken film) → why they stand: prod no
-   *  longer serves them, the labels cannot tell two listings apart, or an OPEN finding. */
+  private lazy val multiFilmBill =
+    "matched to no film since 4456afbbc (MultiFilmBill): a word bills several films — struck once the rows are re-emitted"
+
+  /** The model's wrong takes in the recorded rows that prod no longer serves, (country, raw title, taken film) → why. */
   private val noLongerServed: Map[(String, String, String), String] = Map(
     ("pl", "Teksańska masakra piłą mechaniczną", "tmdb:632727") ->
       "corrected to the 1974 film by the venue poster and the families (AgreementCorrectionSpec; live in prod 2026-10-06)",
@@ -33,16 +35,16 @@ class MatchedTakesLabelSpec extends AnyFlatSpec with Matchers {
         "(AgreementCorrectionSpec, AgreementPostersSpec, ArchiveReplayEnrichmentWiringSpec)"),
     ("us", "NT Live: All My Sons", "tmdb:568683") ->
       "withdrawn as a superseded relay: TMDB dates it 2019, the screenings and the 2026 record of its title 2026 (AgreementCorrectionSpec)",
-    ("pl", "Manon", "tmdb:132332") ->
-      ("corrected to the Met's 2026/27 relay its 3 April 2027 screening names, as an agreed take yields to it " +
-        "(AgreementBroadcastSpec; re-capture 2026-10-06)"),
-    ("pl", "Lalka", "tmdb:81315") ->
-      ("Kino Iluzjon bills two \"Lalka\" listings, its page 2457 Has's 1968 film (1968, Wojciech Jerzy Has), its page 7917 " +
-        "Kawalski's 2026 one: the labels, keyed by venue and title, cannot tell the two apart — the take is right (re-capture 2026-10-06)"),
-    ("us", "NT Live: Hamlet", "tmdb:396227") ->
-      ("OPEN (re-capture 2026-10-06, served in prod): Burns Court Sarasota bills the 2026 Abeysekera broadcast; its listing " +
-        "now clusters with venues whose 2015 relay the review page labels right, so the superseded-relay withdrawal (which " +
-        "reads every listing of the cluster) keeps it — a cluster split, not fixed here"))
+    ("uk", "CBeebies Panto 2026: Treasure Island", "tmdb:6646") ->
+      ("unmatched in prod (BelowThreshold, 2026-10-06; read-only check of kinowo_uk identity_model_families): the title bills " +
+        "2026, which `edition.apart` holds apart from the 1950 record — struck once the rows are re-emitted"),
+    ("uk", "Unrestricted View Horror Film Festival 2026: Opening Night", "tmdb:311764") ->
+      ("matched to no film since ListingShape.programmeSlotOf: a festival's programme slot names no film, an event " +
+        "(IdentityResolverCasesSpec, NonFilmEventsSpec) — struck once the rows are re-emitted"),
+    ("pl", "Maraton Horrorów", "tmdb:1193501") -> multiFilmBill,
+    ("uk", "The Dark Knight Trilogy", "tmdb:155") -> multiFilmBill,
+    ("uk", "Triple Feature: Lord of the Rings", "tmdb:122") -> multiFilmBill,
+    ("us", "Triple Feature: Lord of the Rings", "tmdb:122") -> multiFilmBill)
 
   private def take(row: IdentityUnifiedFit.Row): Take = Take(row.country, row.venue, row.rawTitle,
     row.film.stripPrefix("tmdb:").toIntOption.filter(_ => row.film.startsWith("tmdb:")),

@@ -3004,7 +3004,12 @@ showed, each checked on prod (read-only) and fixed at the root with a failing te
 | US Burns Court "NT Live: Hamlet" → 2015 (Sarasota bills the 2026 broadcast) | served | **OPEN**: the listing now clusters with venues whose 2015 relay is right, so the superseded-relay withdrawal (all listings) keeps it |
 | DE Studio-Kino "Till Eulenspiegel" (recall target 1975) | — | label corrected: the venue and its Filmstarts id 228585 bill Theede's 2014 film |
 | PL "Everest: Druga strona" → 1603262 (old expected: 1714568 "Everest North") | — | both TMDB records are the film (IMDb's tt38691481 is *Everest: The Other Side*): both labelled right |
-| PL Kino Iluzjon "Lalka" → Has 1968 | — | right (its page 2457); its two "Lalka" listings share venue and title, which a label cannot tell apart (`MatchedTakesLabelSpec`) |
+| PL Kino Iluzjon "Lalka" → Has 1968 | — | right (its page 2457); its two "Lalka" listings share venue and title, which a label cannot tell apart |
+
+The model's own matched takes were graded by `MatchedTakesLabelSpec`'s check over unified rows re-emitted from the
+re-capture (`integration.IdentityUnifiedDataset`): the five labelled-wrong takes above (Fallen Angels' row aside, already
+moved). The checked-in rows are NOT replaced: `IdentityUnifiedFitSpec` holds the shipped fill rules and weights to them, so
+new rows ask a unified refit, its own measured change (follow-up).
 
 Losses the re-capture exposed in code, fixed the same way: the broadcast join read Flicks' catalogue page (an old
 season's page: UK "MetOpera: La Fanciulla del West" ×9, "Samson et Dalila" ×2, "Royal Opera House: Carmen" ×13) as the

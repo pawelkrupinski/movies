@@ -1307,6 +1307,23 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(d.render)(d.film shouldBe None)
   }
 
+  it should "keep Patria's Provazník apart from Kino Marzenie's Wajda under one title" in {
+    // PL "Dyrygent" (moved here from MixedClustersSpec, whose capture no longer holds the cluster: the 2026-10-06
+    // re-capture's model takes it): Patria's page credits Ondřej Provazník (106′: his 2025 "Broken Voices"), Kino
+    // Marzenie's "DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO" Andrzej Wajda (1980, 97′); the title and its segment
+    // join them, the listings' own facts keep them apart, each part taking its own director's film
+    val films = Seq(F(95269, "Dyrygent", 1980, "Andrzej Wajda", 102, 1.3, alternatives = Seq("The Conductor")),
+      F(1483477, "Dyrygent", 2025, "Ondřej Provazník", 104, 2.5, alternatives = Seq("Broken Voices")))
+    val patria   = listing(Multikino, "Dyrygent", None, Some("Ondřej Provazník"), Some(106))
+    val marzenie = listing(Helios, "DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO", Some(1980), Some("Andrzej Wajda"), Some(97))
+    val r = IdentityResolver.resolve(Seq(patria, marzenie), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
+    withClue(Seq(patria, marzenie).map(l => r.decisionOf(l.key).render).mkString("\n")) {
+      together(r, patria, marzenie) shouldBe false
+      r.decisionOf(patria.key).film shouldBe Some(1483477)
+      r.decisionOf(marzenie.key).film shouldBe Some(95269)
+    }
+  }
+
   it should "not take by pooled evidence a film the title names only within another candidate's longer title" in {
     // PL Terminal Kultury Gocław (re-capture 2026-10-06, served in prod): "Kacper i Emma – najlepsi przyjaciele Edukacja
     // Młode Horyzonty" is the 2013 "Kacper i Emma: Najlepsi przyjaciele"; the pooled evidence took the 2026 short

@@ -193,7 +193,9 @@ class IdentityRefitSpec extends AnyFlatSpec with Matchers {
     // the control is the ratchet's own replay of the captured decisions, untouched by a change that moves nothing
     control.captures.head.decisions shouldBe replay.capture.decisions
     measureOn(Seq(replay), control, shipped).flatMap(_.takes) shouldBe control.takes
-    val taken = control.takes.find(_.tmdb.isDefined).get
-    labelledUnits(replay.capture, Seq(Label("de", "*", taken.rawTitle, taken.film, right = true, "")), shipped) should not be empty
+    // a take labelled right is a unit the refit measures — one whose film the model's own evidence reaches (a film
+    // only a family or the fill takes is no candidate of a node)
+    control.takes.filter(_.tmdb.isDefined).exists(taken =>
+      labelledUnits(replay.capture, Seq(Label("de", "*", taken.rawTitle, taken.film, right = true, "")), shipped).nonEmpty) shouldBe true
   }
 }
