@@ -55,8 +55,9 @@ class ReviewController(cc: ControllerComponents,
     val cards    = shown.groupBy(_._1.country).toSeq.flatMap { case (c, cs) =>
       ReviewCards.build(sources(c), cs, labels, index) }
     val order    = shown.map(_._1.id).zipWithIndex.toMap
+    val answered = selected.count { case (c, _) => index.answerFor(c.id, c.reviewMembers).isDefined }
     val view     = ReviewView(page, country.getOrElse("all"), cards.sortBy(card => order(card.cluster.id)), total = open.size,
-      answeredHidden = selected.size - open.size, showAnswered, limit, controls, errors ++ labelsError ++ notices)
+      answeredHidden = selected.size - open.size, answered, showAnswered, limit, controls, errors ++ labelsError ++ notices)
     Ok(views.html.review(view))
   }
 
@@ -87,14 +88,15 @@ class ReviewController(cc: ControllerComponents,
     }
   }
 
-  /** Records one answer; answers with the warnings the venues' own facts raise against it. */
+  /** Records one answer; answers with the warnings the venues' own facts raise against it, and the film it named. */
   def answer(): Action[JsValue] = Action(parse.tolerantJson) { request =>
     devOnly {
       AnswerRequest.parse(request.body, request.session.get("userId").getOrElse("dev"), clock.instant()) match {
         case Left(why)     => BadRequest(Json.obj("error" -> why))
         case Right(answer) =>
           answers.record(answer)
-          Ok(Json.obj("ok" -> true, "verdict" -> answer.verdict.code, "warnings" -> answer.warnings))
+          Ok(Json.obj("ok" -> true, "verdict" -> answer.verdict.code, "warnings" -> answer.warnings,
+            "ref" -> answer.ref.map(_.render), "url" -> answer.ref.flatMap(_.url)))
       }
     }
   }
@@ -125,7 +127,8 @@ object ReviewController {
 
 /** Everything `review.scala.html` renders. */
 final case class ReviewView(page: ReviewPage, country: String, cards: Seq[ReviewCard], total: Int, answeredHidden: Int,
-                            showAnswered: Boolean, limit: Int, controls: ReviewView.Controls, notices: Seq[String]) {
+                            // every listed cluster with an answer, hidden or not — the progress bar's numerator
+                            answered: Int, showAnswered: Boolean, limit: Int, controls: ReviewView.Controls, notices: Seq[String]) {
   /** This page's URL with one query parameter changed. */
   def link(changes: (String, Option[String])*): String = {
     val base = Seq("country" -> Some(country), "limit" -> Option.when(limit != ReviewController.DefaultLimit)(limit.toString),

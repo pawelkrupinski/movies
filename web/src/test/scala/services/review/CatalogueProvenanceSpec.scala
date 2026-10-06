@@ -32,4 +32,21 @@ class CatalogueProvenanceSpec extends AnyFlatSpec with Matchers {
     FactCheck.warnings(Seq(own.member), film) should not be empty
     MemberView(ListingKey.Native("Kino", "https://www.kinoprogramm.com/kinofilm/x-1", "X"), slot, None, None).factsFromCatalogue shouldBe true
   }
+
+  "a card's facts" should "merge what the venues say, the catalogue's copied claims in a block of their own" in {
+    val fed = MemberView(ListingKey.Published("Planken Lichtspiele Mannheim", "Queen", Some(2020), Nil),
+      Some(SlotFacts(VenueFacts(year = Some(2020), directors = Seq("Someone"), runtime = Some(99)), java.time.Instant.EPOCH)), None,
+      Some(ListingFeed(Seq(CatalogueId("webedia", "279943")), 2, Some("2026-10-07 18:00"), Some("2026-10-07 20:00"))))
+    val own = MemberView(ListingKey.Native("Kino Muza", "https://muza/queen", "Queen"),
+      Some(SlotFacts(VenueFacts(originalTitle = Some("Dronningen"), cast = (1 to 9).map(i => s"Actor $i")), java.time.Instant.EPOCH)),
+      Some(VenueFacts(year = Some(2019), directors = Seq("May el-Toukhy"), runtime = Some(127), countries = Seq("DK"))),
+      Some(ListingFeed(Seq(CatalogueId("bilety24", "1")), 3, Some("2026-10-06 18:00"), Some("2026-10-09 18:00"))))
+    val card = ReviewCard(ReviewCluster(models.Country.Germany, Seq(fed.key, own.key), None, 0.2,
+      services.identity.ResolverDecision.Basis.BelowThreshold, Nil, fallback = false, Nil), Seq(fed, own), Map.empty, Nil, None, None)
+    card.venueSays shouldBe Seq("Original title" -> "Dronningen", "Year" -> "2019", "Director" -> "May el-Toukhy",
+      "Cast" -> "Actor 1, Actor 2, Actor 3, Actor 4, Actor 5, Actor 6, Actor 7, Actor 8 …", "Runtime" -> "127 min",
+      "Country" -> "DK", "Catalogue ids" -> "bilety24=1", "Screenings" -> "5 · 2026-10-06 18:00 → 2026-10-09 18:00")
+    card.catalogueSays shouldBe Seq("Year" -> "2020", "Director" -> "Someone", "Runtime" -> "99 min", "Catalogue ids" -> "webedia=279943")
+    ReviewCard(card.cluster, Seq(own), Map.empty, Nil, None, None).catalogueSays shouldBe empty
+  }
 }
