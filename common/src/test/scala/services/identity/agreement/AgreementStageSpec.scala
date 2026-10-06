@@ -58,6 +58,38 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     decided("SEVENTEEN World Tour 'NEW_'", wide, selected.copy(fill = Nil)).basis shouldBe ResolverDecision.Basis.BelowThreshold
   }
 
+  // US "A Prayer for the Dying" ×7 (re-capture 2026-10-06): Metacritic and RT agree on the 2026 film, but a film only review
+  // sites agree on is taken as nothing — and that agreement kept the fill from being read at all
+  it should "fill a cluster whose only agreement is review sites', which the stage does not take" in {
+    val tour    = IdentityMeasures.Film("Seventeen World Tour (New_)", None, Nil, Some(2026), None, None, None, None)
+    val record  = SourceRecord(tour, Map("imdb" -> "tt46658626"))
+    val reviews = Map(
+      VoterFamily.Metacritic     -> new HeldFamilyAnswers(VoterFamily.Metacritic, Map("seventeen-world-tour-new" -> record)),
+      VoterFamily.RottenTomatoes -> new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map("seventeen_world_tour_new" -> record)),
+      VoterFamily.Imdb           -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt46658626" -> record))) ++
+      Seq(VoterFamily.Wiki, VoterFamily.Filmweb).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
+    val nothing = new services.identity.IdentityLookups {
+      def hasDetail(listing: services.identity.Listing): Boolean = false
+      def detail(listing: services.identity.Listing) = Answer.Known(None)
+      def candidates(query: services.identity.CandidateQuery) = Answer.Known(Nil)
+      def film(tmdbId: Int) = Answer.Known(None)
+    }
+    val listings = Seq(KinoMuza, models.Multikino, models.KinoPalacowe).map(venue => listing(venue, "SEVENTEEN World Tour 'NEW_'"))
+    val model = Resolution(Seq(ResolverDecision(listings.map(_.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil)()), listings.size,
+      listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    def decided(families: Map[VoterFamily, FamilyAnswers]) =
+      new AgreementStage(families, nothing, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+        clock = _root_.tools.SpecClock.Pinned, tmdb = Some(nothing),
+        rules = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current")))
+        .apply(model, listings.map(l => l.key -> l).toMap.get, version = 1).decisions.head
+    // IMDb's take and the review sites' agree: the stage takes the agreement
+    decided(reviews).basis shouldBe ResolverDecision.Basis.Agreed
+    // IMDb only leaning, the review sites' agreement stands alone: the fill reads the cluster
+    val leaning = reviews.updated(VoterFamily.Imdb, new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty))
+    val filled  = decided(leaning)
+    (filled.basis, filled.fallback.map(_.id)) shouldBe ((ResolverDecision.Basis.Filled, Some("tt46658626")))
+  }
+
   it should "take, by the pinned families.current rule, a current release two families take at one venue" in {
     // PL "TAJNY AGENT" (fixture identity-unmatched): IMDb and Filmweb take Mendonça Filho's 2025 film; one venue bills it
     val agent    = IdentityMeasures.Film("Tajny agent", None, Seq("The Secret Agent"), Some(2025), Some(158), Some(Seq("Kleber Mendonça Filho")), None, None)

@@ -544,7 +544,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         val stated   = listings.map(asStated)
         val agreed   = Agreement.agreed(listings, known, lean, Some(thisYear), stated)
         val verdict  = StoredVerdict(id, digest, reads.toMap, agreed, decidedUnder,
-          if (agreed.isDefined) None else filledOf(decision, listings, known, stated, thisYear))
+          // an agreement only review sites make is taken as nothing ([[taken]]): the fill reads the cluster as one none agreed on
+          if (agreed.exists(_.families.exists(_.namesFilms))) None else filledOf(decision, listings, known, stated, thisYear))
         if (!held.get(id).contains(verdict)) moved += verdict
         checked(id) = (digest, version)
         verdict
