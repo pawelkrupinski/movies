@@ -2969,6 +2969,75 @@ Taxidermist | Splat!FilmFest" keeps `letterboxd:13-souls` labelled right beside 
 two disagree, and the cluster's take (IMDb tt40381362, "The Taxidermist", Paulo Nascimento) is labelled right; one of
 them needs the user's judgement.
 
+### 20.16 The re-capture, and the rules every review answer now grades (2026-10-07)
+
+**The capture.** §20.14 item 5's recipe over recording 37407719592 (the nightly "Record scrape fixtures" run of
+2026-10-06; no dispatch needed), with the TMDB key's single `.env.local` line for the live gaps. The first capture read
+none of the venue pages the recorded tree lacks, and one unread page holds its whole cluster's fill (US "SEVENTEEN World
+Tour 'NEW_'": 1 of 392), so the capture now reads them live — the page and every API gap ending in its slug (Alamo's
+`…/presentation/<slug>`) — and a second run answers them from `target/identity-live-gaps`. The capture now carries
+release dates (`releases`, `releaseCountries` on ~99% of films), venue synopses and casts, and the runtimes per
+translation ("cuts").
+
+| | PL | UK | DE | ES | US |
+|---|---|---|---|---|---|
+| listings / clusters, old capture | 666 / 374 | 1,081 / 47 | 91 / 43 | 10 / 3 | 1,783 / 60 |
+| listings / clusters, re-capture | 558 / 328 | 1,132 / 55 | 86 / 42 | 8 / 2 | 809 / 46 |
+
+US halves because the model itself now takes SEVENTEEN, TOMORROW X TOGETHER and HYBE (its IMDb-only fallbacks) once
+their pages are read. One capture cycle (capture 3–4 min, fill 25 s, ratchet 15 s, whole-corpus dump 7 min) runs in
+about 11 minutes once the pages are stored.
+
+**Re-baseline.** The ratchet replays only the clusters the model leaves unmatched, so 1,172 of the old 1,460 right lines
+left it: every one was checked against the whole-corpus final decisions (`IdentityResolveDumpIntegrationSpec`) — 1,155
+are still taken right (by the model, its fallback or the stage), 16 left the corpus, and one is lost: US "Exhibition on
+Screen: Rembrandt" (Enzian), whose Flicks page now states 2014, 100′, UK/NL against the labelled 2018 record (needs the
+user's judgement). New ratchet: **534 right / 0 wrong** (de 44, pl 73, uk 412, us 5). The wrong takes the new data
+showed, each checked on prod (read-only) and fixed at the root with a failing test first, or its label corrected:
+
+| finding | prod | resolution |
+|---|---|---|
+| PL Multikino ×16 "Fallen Angels by Noël Coward" → Dhont's *Coward* (Tchórz) | served | an author's credit closing a title names no film; no learned decoration cuts into it (`IdentityMeasures.creditedWork`) |
+| PL Kino Amok "Manon" (3 Apr 2027, the Met's day) → Clouzot 1949 | served | a model take of a screen adaptation yields to the relay its day names (`AgreementStage.correctionOf`'s `relayed`); a house's production taken never does (UK Met Così ×151 kept) |
+| PL Kino Kinematograf's lecture „Bestia” (1917) + „Cud nad Wisłą” (1921) → *Bestia* | served | a raw title quoting two dated works bills several (`ListingShape.quotesSeveralDated`); quotes alone lost the Wajda retrospective „10 na 10” |
+| PL "Kacper i Emma – najlepsi przyjaciele…" → the 2026 short *Najlepsi przyjaciele* | served | the pooled rule refuses a film named only within another candidate's longer title (`Agreement.namedWithinAnother`); in every calibrated rule it lost *Frida: Viva la Vida* |
+| US Burns Court "NT Live: Hamlet" → 2015 (Sarasota bills the 2026 broadcast) | served | **OPEN**: the listing now clusters with venues whose 2015 relay is right, so the superseded-relay withdrawal (all listings) keeps it |
+| DE Studio-Kino "Till Eulenspiegel" (recall target 1975) | — | label corrected: the venue and its Filmstarts id 228585 bill Theede's 2014 film |
+| PL "Everest: Druga strona" → 1603262 (old expected: 1714568 "Everest North") | — | both TMDB records are the film (IMDb's tt38691481 is *Everest: The Other Side*): both labelled right |
+| PL Kino Iluzjon "Lalka" → Has 1968 | — | right (its page 2457); its two "Lalka" listings share venue and title, which a label cannot tell apart (`MatchedTakesLabelSpec`) |
+
+Losses the re-capture exposed in code, fixed the same way: the broadcast join read Flicks' catalogue page (an old
+season's page: UK "MetOpera: La Fanciulla del West" ×9, "Samson et Dalila" ×2, "Royal Opera House: Carmen" ×13) as the
+venue's year, denying the broadcast's record before its day was read — its year is now the catalogue's claim
+(`Broadcast.Billing.stated`) and the relay's candidates are read without the page (`AgreementStage.uncatalogued`), which
+also takes "Royal Ballet: Swan Lake" ×23; and an agreement only review sites make kept the fill from being read (US "A
+Prayer for the Dying" ×7, PL "LALKA / DOLLY" ×4).
+
+**The review answers (`review page:`, 89).** Wrong answers: 57 refused, 6 not in the corpus, **0 taken**. Right answers:
+19 taken, 4 not in the corpus (Hard Boiled at Münster, Діґґер, Moon: Panda i ja - AF, Wielicka's decorated Vincent), 3
+untaken. Rules tried on the gradeable ones (bar: ≥1 right gained, 0 wrong, nothing lost — ratchet and whole corpus):
+
+| rule | right gained | wrong | lost | verdict |
+|---|---|---|---|---|
+| a director's surname heading the title credits him (`IdentityMeasures.creditedByTitle`: "Konwicki Salto") | +1 (Salto 1965) | 0 | 0 | **kept** |
+| an anniversary re-release: its original title searched without the anniversary, its year the anniversary's (`anniversaryYear`: "Drácula. 30 Aniversario", 2022 → 1992) | +2 | 0 | 0 | **kept** |
+| a film named only within a longer candidate title, refused in every calibrated rule | +0 (withdraws 1 wrong) | 0 | 1 (*Frida: Viva la Vida*) | rejected; pooled rule only **kept** (withdraws 1 wrong, loses 0) |
+| two quoted works (any) bill several | +0 (withdraws 1 wrong) | 0 | 8 (the „10 na 10” Wajda retrospective, „POPtok”: *Inni*) | rejected; two **dated** quoted works **kept** |
+
+Not built: "19. FGA: Wspinaczka" (§20.14: retrieval), "11. UFF - Teatr weteranów" (TMDB holds only "Театр ветеранів"; a
+title transliteration was measured and rejected in §20.14), "BAMSE - MALUTKA PRZYGODA WIELKIEGO MISIA" (Cinema1 states 2026
+against the PL 2024 release: `year.delta`=2, −4.90; the refit's relearn below did not move it). F1, F3 and F4 block none of
+these gains and stay as they are. Whole corpus against the batch16 code on the same recording: 74 listings moved — 55 from no film to the right one,
+17 from a wrong film to the right one, 2 from a wrong film to none — and nothing else.
+
+**Refit** (`scripts.IdentityRefit --apply --relearn year.delta,titleYear.delta,runtime.delta`): nothing kept — every
+proposal lost right takes or took a wrong one (the cannot-link cut down: 85 lost; `runtime.delta` relearned: 16 lost;
+`titleYear.delta`: 1 wrong).
+
+Allocation per replay of every capture (`IdentityConjunctionProbe --alloc 5`): 3,514 MB against 3,390 MB for the batch16
+code on the same capture (+3.7%: the relays' catalogue-blind candidate read, the review-only clusters' fills, the model
+takes' relay check); no map is held past a call.
+
 ## 21. The rules, consolidated (2026-10-06)
 
 Every rule is inventoried in [identity-resolver-rules-inventory.md](identity-resolver-rules-inventory.md): where it
