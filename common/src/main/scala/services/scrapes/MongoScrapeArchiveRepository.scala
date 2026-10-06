@@ -36,6 +36,8 @@ case class ArchivedFilmDto(
   externalIds: Map[String, String],
   trailerUrl:  Option[String],
   ageRating:   Option[String],
+  // The listing's matching-only cut synopsis (`CinemaMovie.synopsisExcerpt`); absent on a film archived before it.
+  synopsisExcerpt: Option[String] = None,
   // `showtimes.##`, written with them: what a reader that wants the film without its showtimes — the identity
   // model's take-up, the projection's listing read — tells a change in them by, leaving them on the server. Absent
   // on a film written before it existed, whose reader reads the showtimes instead.
@@ -99,7 +101,7 @@ object StoredScrapeDto {
 
   def toFilmDto(f: CinemaMovie): ArchivedFilmDto =
     ArchivedFilmDto(f.movie, f.posterUrl, f.filmUrl, f.synopsis, f.cast, f.director,
-      f.showtimes, f.externalIds, f.trailerUrl, f.ageRating, Some(f.showtimes.##))
+      f.showtimes, f.externalIds, f.trailerUrl, f.ageRating, f.synopsisExcerpt, Some(f.showtimes.##))
 
   def fromSuccess(cinema: Cinema, city: Option[String], scrape: SuccessfulScrape): StoredScrapeDto =
     StoredScrapeDto(
@@ -126,7 +128,7 @@ object StoredScrapeDto {
           listingComplete = dto.listingComplete.getOrElse(true),
           films           = dto.films.getOrElse(Seq.empty).map(f => CinemaMovie(
             f.movie, cinema, f.posterUrl, f.filmUrl, f.synopsis, f.cast, f.director,
-            f.showtimes, f.externalIds, f.trailerUrl, f.ageRating))
+            f.showtimes, f.externalIds, f.trailerUrl, f.ageRating, f.synopsisExcerpt))
         )),
         lastBarren  = dto.lastBarren.flatMap(_.toDomain)
       )

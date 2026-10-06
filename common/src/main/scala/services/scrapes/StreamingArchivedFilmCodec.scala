@@ -38,6 +38,7 @@ private[scrapes] final class StreamingArchivedFilmCodec(movies: Codec[Movie], wi
     w.writeEndDocument()
     v.trailerUrl.foreach(w.writeString("trailerUrl", _))
     v.ageRating.foreach(w.writeString("ageRating", _))
+    v.synopsisExcerpt.foreach(w.writeString("synopsisExcerpt", _))
     v.showtimesDigest.foreach(w.writeInt32("showtimesDigest", _))
     w.writeEndDocument()
   }
@@ -51,7 +52,7 @@ private[scrapes] final class StreamingArchivedFilmCodec(movies: Codec[Movie], wi
   override def decode(r: BsonReader, c: DecoderContext): ArchivedFilmDto = {
     var movie: Movie                      = null
     var posterUrl, filmUrl, synopsis      = Option.empty[String]
-    var trailerUrl, ageRating             = Option.empty[String]
+    var trailerUrl, ageRating, excerpt    = Option.empty[String]
     var cast, director: Seq[String]       = null
     var externalIds: Map[String, String]  = null
     var urlPrefix: String                 = null
@@ -82,6 +83,7 @@ private[scrapes] final class StreamingArchivedFilmCodec(movies: Codec[Movie], wi
           externalIds = ids.result()
         case "trailerUrl"  => trailerUrl = BsonReads.optionalString(r)
         case "ageRating"   => ageRating = BsonReads.optionalString(r)
+        case "synopsisExcerpt" => excerpt = BsonReads.optionalString(r)
         case "showtimesDigest" => showtimesDigest = if (r.getCurrentBsonType == BsonType.NULL) { r.readNull(); None } else Some(r.readInt32())
         case _             => r.skipValue()
       }
@@ -90,6 +92,6 @@ private[scrapes] final class StreamingArchivedFilmCodec(movies: Codec[Movie], wi
     if (movie == null || cast == null || director == null || showtimes == null || externalIds == null)
       throw new org.bson.codecs.configuration.CodecConfigurationException("ArchivedFilmDto: a required field is missing")
     ArchivedFilmDto(movie, posterUrl, filmUrl, synopsis, cast, director,
-      ShowtimeCodec.completed(showtimes, urlPrefix), externalIds, trailerUrl, ageRating, showtimesDigest)
+      ShowtimeCodec.completed(showtimes, urlPrefix), externalIds, trailerUrl, ageRating, excerpt, showtimesDigest)
   }
 }

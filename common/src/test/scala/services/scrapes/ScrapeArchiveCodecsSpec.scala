@@ -42,7 +42,7 @@ class ScrapeArchiveCodecsSpec extends AnyFlatSpec with Matchers {
     // Every field of a film set, nulls where a stored optional may hold one, and an unknown field.
     s"""{ "_id": "Helios", "films": [{ "movie": { "title": "Lalka", "runtimeMinutes": 120 }, "posterUrl": "https://p/1", "filmUrl": null,
        |  "synopsis": "S", "cast": ["A", "B"], "director": ["D"], "showtimes": [{ "dateTime": $at }], "externalIds": { "tmdb": "1", "imdb": "tt1" },
-       |  "trailerUrl": "https://t/1", "ageRating": "12", "retired": 1 }] }""".stripMargin,
+       |  "trailerUrl": "https://t/1", "ageRating": "12", "synopsisExcerpt": "E", "retired": 1 }] }""".stripMargin,
     // A film missing a required field: the macro fails the whole row, and so must the streamed read.
     s"""{ "_id": "Helios", "films": [{ "movie": { "title": "Lalka" }, "cast": [], "showtimes": [], "externalIds": {} }] }""",
     s"""{ "_id": "Helios", "films": [{ "movie": { "title": "Lalka" }, "cast": [], "director": [], "externalIds": {} }] }""")
@@ -70,6 +70,24 @@ class ScrapeArchiveCodecsSpec extends AnyFlatSpec with Matchers {
       }
       written(ScrapeArchiveCodecs.registry.get(classOf[StoredScrapeDto])) shouldBe written(macroRegistry.get(classOf[StoredScrapeDto]))
     }
+  }
+
+  // The venue's cut synopsis, kept for matching only: carried through the archive with the rest of the listing, and
+  // absent — read back as no excerpt — on every film archived before the field existed.
+  it should "carry a listing's synopsis excerpt through the archive, and read an older film's as none" in {
+    val dateTime = java.time.LocalDateTime.of(2026, 12, 17, 13, 0)
+    val listing  = models.CinemaMovie(models.Movie("Lalka"), models.KinoMOKMiedzyrzecz, None, None, None, Nil, Nil,
+      Seq(Showtime(dateTime, None)), synopsisExcerpt = Some("Z Kamilą Urzędowską, gdzie pośród"))
+    val scrape   = SuccessfulScrape(java.time.Instant.parse("2026-12-17T13:00:00Z"), listingComplete = true, Seq(listing))
+    val codec    = ScrapeArchiveCodecs.registry.get(classOf[StoredScrapeDto])
+    val out      = new BsonDocument()
+    codec.encode(new BsonDocumentWriter(out), StoredScrapeDto.fromSuccess(listing.cinema, None, scrape), EncoderContext.builder().build())
+    out.getArray("films").get(0).asDocument.getString("synopsisExcerpt").getValue shouldBe "Z Kamilą Urzędowską, gdzie pośród"
+    val read = StoredScrapeDto.toDomain(codec.decode(new BsonDocumentReader(out), DecoderContext.builder().build()))
+    read.flatMap(_.lastSuccess).map(_.films) shouldBe Some(Seq(listing))
+
+    val older = s"""{ "_id": "${listing.cinema.displayName}", "scrapedAt": $at, "films": [${film()}] }"""
+    StoredScrapeDto.toDomain(both(older)._2.get).flatMap(_.lastSuccess).map(_.films.map(_.synopsisExcerpt)) shouldBe Some(Seq(None))
   }
 
   it should "read a film's booking URLs split at the film's prefix, before or after its showtimes" in {

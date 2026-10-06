@@ -386,6 +386,15 @@ class MsiClientSpec
     lalka.synopsis shouldBe None
   }
 
+  // A cut Description still names the film's people in its first ~300 characters — evidence the identity
+  // resolver reads — so it is kept apart from the synopsis, for matching only, without the cut's "...".
+  it should "keep a cut Description as the matching-only excerpt, and a whole one only as the synopsis" in {
+    val excerpt = miedzyrzeczFilm("lalka").synopsisExcerpt.value
+    excerpt should startWith("Dzieło Bolesława Prusa od blisko 140 lat")
+    excerpt should endWith("gdzie pośród")
+    miedzyrzeczFilm("500 mil").synopsisExcerpt shouldBe None
+  }
+
   it should "give no poster to an event whose PosterId is 0" in {
     miedzyrzeczFilm("pani domu").posterUrl shouldBe None
   }

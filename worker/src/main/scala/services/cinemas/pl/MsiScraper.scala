@@ -144,10 +144,11 @@ private[cinemas] object MsiScraper {
                                        originalTitle: Option[String] = None,
                                        runtimeMinutes: Option[Int] = None,
                                        posterUrl: Option[String] = None,
-                                       synopsis: Option[String] = None) {
+                                       synopsis: Option[String] = None,
+                                       synopsisExcerpt: Option[String] = None) {
     def nonEmpty: Boolean =
       director.nonEmpty || releaseYear.isDefined || originalTitle.isDefined || runtimeMinutes.isDefined ||
-        posterUrl.isDefined || synopsis.isDefined
+        posterUrl.isDefined || synopsis.isDefined || synopsisExcerpt.isDefined
   }
 
   private[cinemas] case class RawSlot(title: String, rawTitle: String, dateTime: LocalDateTime,
@@ -155,7 +156,7 @@ private[cinemas] object MsiScraper {
                                       meta: FilmMeta = FilmMeta())
 
   /** Map every `RepertoireEvents` entry's name → the metadata it carries: the
-   *  poster its `PosterId` names, plus what its `Description` yields (synopsis,
+   *  poster its `PosterId` names, plus what its `Description` yields (synopsis or, cut short, its excerpt,
    *  director, release year, original title, runtime). Entries that yield nothing
    *  are omitted. The name is matched against the rendered block's
    *  (Jsoup-decoded) title attr; `baseUrl` makes the poster absolute. */
@@ -170,7 +171,8 @@ private[cinemas] object MsiScraper {
                    route <- imageRoute
                    id    <- JsPosterIdPat.findFirstMatchIn(block).map(_.group(1).toInt) if id > 0
                  } yield new java.net.URI(baseUrl).resolve(s"$route?id=$id&mode=thumb").toString
-        meta  = parseDescriptionMeta(desc).copy(posterUrl = poster, synopsis = descriptionSynopsis(desc))
+        meta  = parseDescriptionMeta(desc).copy(posterUrl = poster, synopsis = descriptionSynopsis(desc),
+                                                synopsisExcerpt = descriptionExcerpt(desc))
         if meta.nonEmpty
       } yield name -> meta
     }.toMap
@@ -183,8 +185,20 @@ private[cinemas] object MsiScraper {
    *  would otherwise outrank a complete TMDB one on display (Kino Łuków's cut
    *  blurbs are dropped for the same reason). */
   private[cinemas] def descriptionSynopsis(description: String): Option[String] =
+    descriptionText(description).filter(TruncatedPat.findFirstIn(_).isEmpty)
+
+  /** A Description the portal cut short, as the listing's matching-only excerpt (`CinemaMovie.synopsisExcerpt`):
+   *  never displayed, but the people its first ~300 characters name are still identity evidence. The cut's
+   *  ellipsis is dropped; None for a whole Description, which is the synopsis instead. */
+  private[cinemas] def descriptionExcerpt(description: String): Option[String] =
+    descriptionText(description).filter(TruncatedPat.findFirstIn(_).isDefined)
+      .map(TruncatedPat.replaceFirstIn(_, "").trim).filter(_.nonEmpty)
+
+  /** Each `<br><br>`-separated block as a paragraph (joined by a blank line, the convention the detail view
+   *  renders), markup and entities flattened; None when that leaves nothing. */
+  private def descriptionText(description: String): Option[String] =
     Some(ParagraphBreakPat.split(description).map(tools.TextNormalization.stripHtml).filter(_.nonEmpty).mkString("\n\n"))
-      .filter(s => s.nonEmpty && TruncatedPat.findFirstIn(s).isEmpty)
+      .filter(_.nonEmpty)
 
   /** All structured metadata mined from a Description: director, release year,
    *  and original title (when the production line carries one). */
@@ -347,6 +361,7 @@ private[cinemas] object MsiScraper {
           posterUrl = metas.flatMap(_.posterUrl).headOption,
           filmUrl   = None,
           synopsis  = metas.flatMap(_.synopsis).headOption,
+          synopsisExcerpt = metas.flatMap(_.synopsisExcerpt).headOption,
           cast      = Seq.empty,
           director  = metas.map(_.director).find(_.nonEmpty).getOrElse(Seq.empty),
           showtimes = showtimes

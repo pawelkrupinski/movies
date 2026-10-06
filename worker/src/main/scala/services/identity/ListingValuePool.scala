@@ -38,7 +38,8 @@ private[identity] final class ListingValuePool {
     showtimes   = cm.showtimes.map(showtime),
     externalIds = if (cm.externalIds.isEmpty) cm.externalIds else held(ids, cm.externalIds),
     trailerUrl  = text(cm.trailerUrl),
-    ageRating   = text(cm.ageRating))
+    ageRating   = text(cm.ageRating),
+    synopsisExcerpt = text(cm.synopsisExcerpt))
 
   private def showtime(s: Showtime): Showtime = {
     val at     = held(instants, s.dateTime)

@@ -118,4 +118,16 @@ class MsiScraperDirectorSpec extends AnyFlatSpec with Matchers {
     MsiScraper.descriptionSynopsis("Opowieść urwana w pół…") shouldBe None
     MsiScraper.descriptionSynopsis("") shouldBe None
   }
+
+  "MsiScraper.descriptionExcerpt" should "keep a Description the portal cut short, without the cut's ellipsis" in {
+    MsiScraper.descriptionExcerpt("Dzieło Bolesława Prusa<br><br>z Kamilą Urzędowską, gdzie pośród...") shouldBe
+      Some("Dzieło Bolesława Prusa\n\nz Kamilą Urzędowską, gdzie pośród")
+    MsiScraper.descriptionExcerpt("Opowieść urwana w pół…") shouldBe Some("Opowieść urwana w pół")
+  }
+
+  it should "keep nothing for a whole Description, which is the synopsis, or an empty one" in {
+    MsiScraper.descriptionExcerpt("Carag wygląda jak zwykły nastolatek.") shouldBe None
+    MsiScraper.descriptionExcerpt("") shouldBe None
+    MsiScraper.descriptionExcerpt("...") shouldBe None
+  }
 }
