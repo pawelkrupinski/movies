@@ -186,7 +186,62 @@ a_seed_clears_the_watch() {
   else fail "$what (the seed left a watch entry that will re-seed again)"; fi
 }
 
+# ── Both copy paths keep every number's exact BSON type ──────────────────────
+# mongosh decodes a BSON double to a plain JS number, and writes a whole-number
+# JS number back as Int32 — so a seed or a tail that round-trips a document
+# through JS turns prod's `confidence: 1.0` (double) into `1` (int). The prod
+# codecs other mirror readers use (web's movieRepo, /debug) then refuse it:
+# "Value expected to be of type DOUBLE is of unexpected type INT32". Each field
+# below is one type the mirror must not change, nested ones included.
+NUMBERS_DOC="{d: Double(1.0), i: Int32(7), l: Long(5), dec: Decimal128('1.5'), nested: [{c: Double(2.0)}]}"
+EXPECTED_TYPES='double,int,long,decimal,double'
+
+mirrored_types() {
+  mir "$GHOST_COLL" ".aggregate([{\$match:{_id:'$1'}},{\$project:{_id:0,t:[
+    {\$type:'\$d'},{\$type:'\$i'},{\$type:'\$l'},{\$type:'\$dec'},{\$type:{\$arrayElemAt:['\$nested.c',0]}}]}}])
+    .toArray().map(r => r.t.join(',')).join('')" | tr -d '[:space:]'
+}
+
+keeps_number_types() {
+  local what_seed="a seed keeps every number's BSON type"
+  local what_tail="a tailed insert and update keep every number's BSON type"
+  reset_dbs
+  src "$GHOST_COLL" ".insertOne(Object.assign({_id:'seeded'}, $NUMBERS_DOC))" >/dev/null
+  run_script "$HERE/mirror-targets.js" "$HERE/seed.js"
+  local got
+  got="$(mirrored_types seeded)"
+  if [ "$got" = "$EXPECTED_TYPES" ]; then pass "$what_seed"
+  else fail "$what_seed (expected $EXPECTED_TYPES, got ${got:-nothing})"; fi
+
+  src "$GHOST_COLL" ".insertOne(Object.assign({_id:'inserted'}, $NUMBERS_DOC))" >/dev/null
+  src "$GHOST_COLL" ".insertOne({_id:'updated'})" >/dev/null
+  src "$GHOST_COLL" ".updateOne({_id:'updated'}, {\$set: $NUMBERS_DOC})" >/dev/null
+  run_script "$HERE/mirror-targets.js" "$HERE/stream-start.js" "$HERE/tail.js" &
+  local tailpid=$!
+  sleep 5
+  kill "$tailpid" 2>/dev/null; wait "$tailpid" 2>/dev/null
+  local inserted updated
+  inserted="$(mirrored_types inserted)"
+  updated="$(mirrored_types updated)"
+  if [ "$inserted" = "$EXPECTED_TYPES" ] && [ "$updated" = "$EXPECTED_TYPES" ]; then pass "$what_tail"
+  else fail "$what_tail (expected $EXPECTED_TYPES, got insert ${inserted:-nothing} / update ${updated:-nothing})"; fi
+}
+
+# The README's one-off "re-seed every mirror" lever plants the torn-seed mark
+# rather than stopping the service: the running daemon's own audit then re-seeds
+# each database on its next pass. That only works while the gate reads the mark.
+a_planted_seed_mark_re_seeds() {
+  local what="a planted torn-seed mark makes an otherwise healthy mirror re-seed"
+  healthy_pair
+  m "db.getSiblingDB('$MIRROR_DB').getCollection('__mirror_state').updateOne(
+       {_id:'$SRC_DB:seed'}, {\$set:{incomplete:true}}, {upsert:true})" >/dev/null
+  if [ "$(staleness_verdict)" = "3" ]; then pass "$what"
+  else fail "$what (the gate ignored the mark — the README's re-seed lever is dead)"; fi
+}
+
 seed_tail_gap
+keeps_number_types
+a_planted_seed_mark_re_seeds
 leaves_a_clean_mirror_alone
 tolerates_a_first_sighting
 detects_a_standing_ghost

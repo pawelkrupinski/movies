@@ -31,7 +31,10 @@ const pipeline = [{ $match: { "ns.coll": { $in: MIRRORED_COLLECTIONS } } }];
 // there is one, otherwise the operation time the seed captured before it began
 // copying, otherwise now. Keeping it there keeps it assertable without a Mongo.
 const start = streamStartFor(saved);
-const opts = Object.assign({ fullDocument: "updateLookup" }, start.opts);
+// promoteValues:false keeps the post-image's numbers as BSON wrappers (Double,
+// Int32, Long) so replaceOne writes them back with their prod types — decoded to
+// JS numbers, a whole double would land as Int32 and a Long as Int32 or double.
+const opts = Object.assign({ fullDocument: "updateLookup", promoteValues: false }, start.opts);
 print(`[tail] ${SRC_DB}: ${start.how}`);
 
 print(`[tail] ${SRC_DB}: watching ${MIRRORED_COLLECTIONS.join(", ")}…`);

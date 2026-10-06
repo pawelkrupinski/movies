@@ -40,7 +40,11 @@ MIRRORED_COLLECTIONS.forEach(name => {
   const dst = dstDb.getCollection(name);
   dst.drop();
   let batch = [], n = 0;
-  src.find().forEach(d => {
+  // promoteValues:false keeps every number as its BSON wrapper (Double, Int32,
+  // Long) instead of decoding it to a JS number — which insertMany would write
+  // back as Int32 when whole (prod's `confidence: 1.0` → `1`) or as a double
+  // when large, and the prod codecs the mirror's readers use reject both.
+  src.find({}, {}, { promoteValues: false }).forEach(d => {
     batch.push(d);
     if (batch.length >= 200) { dst.insertMany(batch, { ordered: false }); n += batch.length; batch = []; }
   });

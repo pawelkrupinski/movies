@@ -169,6 +169,39 @@ and `mirror.sh` does a full re-seed.
 - The initial seed is a zlib-compressed cursor copy over the tunnel (~50s for
   ~1300 docs); the continuous tailer is incremental and cheap.
 
+### Number types are copied exactly
+
+mongosh decodes a BSON double to a plain JS number and writes a whole one back
+as **Int32**, so a copy that round-trips documents through JS turns prod's
+`confidence: 1.0` into `1` (and a Long into an Int32 or a double). The prod
+codecs the mirror's readers use (web's movieRepo, `/debug`, the review pages)
+then fail with "Value expected to be of type DOUBLE is of unexpected type
+INT32". Both copy paths therefore read with `promoteValues: false` — `seed.js`
+on its `find()`, `tail.js` on its `watch()` — which keeps every number as its
+BSON wrapper (`Double`, `Int32`, `Long`; `Decimal128` was never promoted) and
+writes it back unchanged. `mirror-sync-spec.sh` asserts each field's `$type`
+after a seed and after a tailed insert and update.
+
+A mirror seeded before that fix still holds Int32-mangled documents — the tailer
+only rewrites the ones prod touches. To re-seed every mirrored database once,
+plant the torn-seed mark the staleness gate already reads; the running service
+re-seeds each database on its next audit (within minutes), with no restart:
+
+```
+mongosh "mongodb://127.0.0.1:28017/?directConnection=true" --quiet --eval '
+  db.adminCommand({ listDatabases: 1, nameOnly: true }).databases
+    .map(d => d.name).filter(n => n.endsWith("_prod_mirror"))
+    .forEach(n => {
+      const src = n.slice(0, -"_prod_mirror".length);
+      db.getSiblingDB(n).__mirror_state.updateOne(
+        { _id: src + ":seed" }, { $set: { incomplete: true } }, { upsert: true });
+      print("re-seed queued: " + n);
+    })'
+```
+
+Without the service running, `scripts/local-mirror/mirror.sh --reseed` does the
+same in the foreground.
+
 ### The seed → tail handover — why "start from now" loses writes
 
 A seed copies the mirrored collections **one at a time** and only then hands
