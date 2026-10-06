@@ -354,4 +354,59 @@ class MsiClientSpec
     leczyca.find(_.movie.title == "Zapopmniana wyspa").value.showtimes.map(_.format).distinct shouldBe Seq(List("2D", "DUB"))
     leczyca.find(_.movie.title == "Lalka").value.showtimes.map(_.format).distinct shouldBe Seq(List("2D"))
   }
+
+  // Every MSI month page embeds a `RepertoireEvents` array whose entries carry a
+  // `PosterId` (served by the portal's own `ImageData.ashx`) and a `Description`
+  // — the poster and synopsis identity resolution votes on. The scraper used to
+  // mine only the director/year/runtime out of the Description and emitted no
+  // poster and no synopsis. MSI has no per-film page (the "Więcej" link opens a
+  // modal fed by a session-bound AJAX POST), so `filmUrl` stays None.
+  private lazy val miedzyrzecz =
+    new MsiClient(new FakeHttpFetch("kino-mok-miedzyrzecz"), "https://bilety.mokmiedzyrzecz.pl",
+      KinoMOKMiedzyrzecz, today = LocalDate.of(2026, 9, 23)).fetch()
+
+  private def miedzyrzeczFilm(prefix: String): CinemaMovie =
+    miedzyrzecz.find(_.movie.title.toLowerCase.startsWith(prefix)).value
+
+  "MsiClient (poster + synopsis)" should "lift the poster and the full Description off the month page" in {
+    val fiveHundredMiles = miedzyrzeczFilm("500 mil")
+    fiveHundredMiles.posterUrl.value shouldBe "https://bilety.mokmiedzyrzecz.pl/MSI/ImageData.ashx?id=138&mode=thumb"
+    fiveHundredMiles.synopsis.value shouldBe
+      "Dwaj bracia uciekają z domu w Anglii, by dotrzeć do swojego dawno niewidzianego dziadka mieszkającego na zachodnim wybrzeżu Irlandii."
+    fiveHundredMiles.filmUrl shouldBe None
+  }
+
+  // The month page cuts a long Description at ~300 characters and appends
+  // "..." — a half-sentence that, being the cinema's own blurb, would outrank
+  // TMDB's whole one on display. Dropped, like Kino Łuków's cut blurbs; the
+  // poster stays.
+  it should "drop a Description the portal cut short, keeping the poster" in {
+    val lalka = miedzyrzeczFilm("lalka")
+    lalka.posterUrl.value shouldBe "https://bilety.mokmiedzyrzecz.pl/MSI/ImageData.ashx?id=129&mode=thumb"
+    lalka.synopsis shouldBe None
+  }
+
+  it should "give no poster to an event whose PosterId is 0" in {
+    miedzyrzeczFilm("pani domu").posterUrl shouldBe None
+  }
+
+  // The "media object" skin (bilety.sapik.pl) renders no poster <img> per film —
+  // only the modal's Handlebars template names the `ImageData.ashx` route — so
+  // the poster is built from the entry's PosterId, not read off the markup.
+  it should "build the poster from PosterId on a skin that renders no poster img" in {
+    val psiPatrol = new MsiClient(new FakeHttpFetch("kino-wolnosc-szczecinek"), "https://bilety.sapik.pl",
+      KinoWolnoscSzczecinek, today = LocalDate.of(2026, 9, 23)).fetch()
+      .find(_.movie.title.toLowerCase.contains("psi patrol i dinozaury")).value
+    psiPatrol.posterUrl.value shouldBe "https://bilety.sapik.pl/MSI/ImageData.ashx?id=1104&mode=thumb"
+    psiPatrol.synopsis.value should startWith("Podczas burzy statek Psiego Patrolu")
+  }
+
+  // A non-default route prefix (Kino Millenium Tarnów serves /Kino/mvc/pl) serves
+  // its images under the same prefix — read off the page, not assumed to be /MSI/.
+  it should "serve the poster under the portal's own route prefix" in {
+    val movies = new MsiClient(new FakeHttpFetch("08-06-2026"), "https://bilety.csm.tarnow.pl",
+      KinoMillenium, today = LocalDate.of(2026, 6, 8), mvcPath = "/Kino/mvc/pl").fetch()
+    movies.flatMap(_.posterUrl) should not be empty
+    all(movies.flatMap(_.posterUrl)) should startWith("https://bilety.csm.tarnow.pl/Kino/ImageData.ashx?id=")
+  }
 }

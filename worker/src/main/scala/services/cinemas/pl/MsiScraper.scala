@@ -67,13 +67,31 @@ private[cinemas] object MsiScraper {
   // The MSI page also embeds full film metadata in a `var RepertoireEvents = [
   // {…} ]` JS array (one flat object per screening) that Jsoup doesn't surface.
   // Each object carries a `Name` (identical to the rendered block's `title`
-  // attribute) and a free-text `Description`. There is no dedicated year /
-  // original-title field — that metadata, like the director, lives inside the
-  // Description prose. We mine all of it out of there and join it back to the
+  // attribute), a `PosterId` and a free-text `Description`. There is no dedicated
+  // year / original-title field — that metadata, like the director, lives inside
+  // the Description prose. We mine all of it out of there and join it back to the
   // rendered blocks by name.
-  private val JsObjectPat = """(?s)\{[^{}]*\}""".r
-  private val JsNamePat   = """'Name'\s*:\s*'((?:[^'\\]|\\.)*)'""".r
-  private val JsDescPat   = """'Description'\s*:\s*'((?:[^'\\]|\\.)*)'""".r
+  //
+  // The array is the only per-film source the portal offers without a session:
+  // MSI has no per-film page (the "Więcej" link opens a modal filled by a POST to
+  // `ajax.aspx/GetEventDetails`, which answers only inside an ASP.NET session),
+  // so a listing carries no `filmUrl`.
+  private val JsObjectPat   = """(?s)\{[^{}]*\}""".r
+  private val JsNamePat     = """'Name'\s*:\s*'((?:[^'\\]|\\.)*)'""".r
+  private val JsDescPat     = """'Description'\s*:\s*'((?:[^'\\]|\\.)*)'""".r
+  private val JsPosterIdPat = """'PosterId'\s*:\s*'?(\d+)""".r
+
+  // The portal's poster route as its own markup spells it: `/MSI/ImageData.ashx`
+  // on most installs, but under the month page's own prefix elsewhere (`/Kino/…`
+  // at Tarnów, `/Rezerwacja/…` at Brzesko, lower-case `/msi/…`). Every skin
+  // carries at least the details modal's Handlebars template
+  // (`src="/MSI/ImageData.ashx?id={{PosterId}}…"`), including the two that render
+  // no per-film <img> at all — so the route is read off the page, not assumed.
+  private val ImageRoutePat = """src="([^"?]*/ImageData\.ashx)\?""".r
+
+  // The month page cuts a long Description at ~300 characters and appends "...".
+  private val TruncatedPat      = """(?:\.\.\.|…)\s*$""".r
+  private val ParagraphBreakPat = """(?i)(?:\s*<br\s*/?>\s*){2,}""".r
   // Director line of a Description, anchored at the start of a `<br>`-delimited
   // segment so a mid-sentence mention can't match. Accepts the label variants
   // the portals actually emit: `REŻYSERIA:`, `REŻYSERIA ` (no colon) and the
@@ -124,28 +142,49 @@ private[cinemas] object MsiScraper {
   private[cinemas] case class FilmMeta(director: Seq[String] = Seq.empty,
                                        releaseYear: Option[Int] = None,
                                        originalTitle: Option[String] = None,
-                                       runtimeMinutes: Option[Int] = None) {
+                                       runtimeMinutes: Option[Int] = None,
+                                       posterUrl: Option[String] = None,
+                                       synopsis: Option[String] = None) {
     def nonEmpty: Boolean =
-      director.nonEmpty || releaseYear.isDefined || originalTitle.isDefined || runtimeMinutes.isDefined
+      director.nonEmpty || releaseYear.isDefined || originalTitle.isDefined || runtimeMinutes.isDefined ||
+        posterUrl.isDefined || synopsis.isDefined
   }
 
   private[cinemas] case class RawSlot(title: String, rawTitle: String, dateTime: LocalDateTime,
                                       booking: Option[String], format: List[String],
                                       meta: FilmMeta = FilmMeta())
 
-  /** Map every `RepertoireEvents` entry's name → the metadata mined from its
-   *  `Description` (director, release year, original title). Entries whose
-   *  Description yields nothing are omitted. The name is matched against the
-   *  rendered block's (Jsoup-decoded) title attr. */
-  private[cinemas] def metaByName(html: String): Map[String, FilmMeta] =
+  /** Map every `RepertoireEvents` entry's name → the metadata it carries: the
+   *  poster its `PosterId` names, plus what its `Description` yields (synopsis,
+   *  director, release year, original title, runtime). Entries that yield nothing
+   *  are omitted. The name is matched against the rendered block's
+   *  (Jsoup-decoded) title attr; `baseUrl` makes the poster absolute. */
+  private[cinemas] def metaByName(html: String, baseUrl: String): Map[String, FilmMeta] = {
+    val imageRoute = ImageRoutePat.findFirstMatchIn(html).map(_.group(1))
     JsObjectPat.findAllMatchIn(html).flatMap { obj =>
       val block = obj.matched
       for {
         name <- JsNamePat.findFirstMatchIn(block).map(m => unescapeJs(m.group(1)))
-        desc <- JsDescPat.findFirstMatchIn(block).map(m => unescapeJs(m.group(1)))
-        meta = parseDescriptionMeta(desc) if meta.nonEmpty
+        desc  = JsDescPat.findFirstMatchIn(block).map(m => unescapeJs(m.group(1))).getOrElse("")
+        poster = for {
+                   route <- imageRoute
+                   id    <- JsPosterIdPat.findFirstMatchIn(block).map(_.group(1).toInt) if id > 0
+                 } yield new java.net.URI(baseUrl).resolve(s"$route?id=$id&mode=thumb").toString
+        meta  = parseDescriptionMeta(desc).copy(posterUrl = poster, synopsis = descriptionSynopsis(desc))
+        if meta.nonEmpty
       } yield name -> meta
     }.toMap
+  }
+
+  /** The Description as a synopsis: each `<br><br>`-separated block becomes a
+   *  paragraph (joined by a blank line, the convention the detail view renders),
+   *  markup and entities flattened. None when empty, or when the portal cut it
+   *  short with a trailing "..." — a half-sentence blurb, being the cinema's own,
+   *  would otherwise outrank a complete TMDB one on display (Kino Łuków's cut
+   *  blurbs are dropped for the same reason). */
+  private[cinemas] def descriptionSynopsis(description: String): Option[String] =
+    Some(ParagraphBreakPat.split(description).map(tools.TextNormalization.stripHtml).filter(_.nonEmpty).mkString("\n\n"))
+      .filter(s => s.nonEmpty && TruncatedPat.findFirstIn(s).isEmpty)
 
   /** All structured metadata mined from a Description: director, release year,
    *  and original title (when the production line carries one). */
@@ -208,8 +247,8 @@ private[cinemas] object MsiScraper {
    * @parameter html       Raw HTML of the month page.
    * @parameter yearMonth  The calendar month this page was fetched for — used to
    *                   supply the year component missing from event-anchor text.
-   * @parameter baseUrl    Base URL of the MSI host (used only with `attr("abs:href")`
-   *                   expansion by Jsoup to produce absolute booking URLs).
+   * @parameter baseUrl    Base URL of the MSI host — resolves the booking links
+   *                   (Jsoup's `attr("abs:href")`) and the poster URLs absolute.
    * @parameter cleanTitle Per-cinema title normalisation: returns the cleaned title
    *                   plus the screening-format display tokens (2D/NAP/DUB/…)
    *                   the MSI title buried in its text.
@@ -217,7 +256,7 @@ private[cinemas] object MsiScraper {
   def parseMonthWithYear(html: String, yearMonth: YearMonth, baseUrl: String,
                          cleanTitle: String => (String, List[String])): Seq[RawSlot] = {
     val document = Jsoup.parse(html, baseUrl)
-    val metaByName0 = metaByName(html)
+    val metaByName0 = metaByName(html, baseUrl)
 
     /** One pass over a skin's film blocks: for each block, read its raw title and
      *  desktop showtime anchors, clean the title, and emit a `RawSlot` per anchor.
@@ -305,9 +344,9 @@ private[cinemas] object MsiScraper {
             rawTitle      = group.map(_.rawTitle).headOption
           ),
           cinema    = cinema,
-          posterUrl = None,
+          posterUrl = metas.flatMap(_.posterUrl).headOption,
           filmUrl   = None,
-          synopsis  = None,
+          synopsis  = metas.flatMap(_.synopsis).headOption,
           cast      = Seq.empty,
           director  = metas.map(_.director).find(_.nonEmpty).getOrElse(Seq.empty),
           showtimes = showtimes

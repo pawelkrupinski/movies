@@ -106,4 +106,16 @@ class MsiScraperDirectorSpec extends AnyFlatSpec with Matchers {
       "Witajcie moi drodzy! Nazywam się Alicja...<br>"
     ) shouldBe ((None, None))
   }
+
+  "MsiScraper.descriptionSynopsis" should "turn each <br><br> block into a paragraph and a lone <br> into a space" in {
+    MsiScraper.descriptionSynopsis(
+      "Zmiennokształtni (Niemcy 2024, 99 min.) familijny<br>reż. Damian John Harper<br><br>Carag wygląda jak zwykły nastolatek &quot;Lis&quot;."
+    ) shouldBe Some("Zmiennokształtni (Niemcy 2024, 99 min.) familijny reż. Damian John Harper\n\nCarag wygląda jak zwykły nastolatek \"Lis\".")
+  }
+
+  it should "drop a Description the portal cut short, and an empty one" in {
+    MsiScraper.descriptionSynopsis("Dzieło Bolesława Prusa od blisko 140 lat rozpala emocje, gdzie pośród...") shouldBe None
+    MsiScraper.descriptionSynopsis("Opowieść urwana w pół…") shouldBe None
+    MsiScraper.descriptionSynopsis("") shouldBe None
+  }
 }
