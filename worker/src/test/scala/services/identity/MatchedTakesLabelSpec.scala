@@ -35,6 +35,9 @@ class MatchedTakesLabelSpec extends AnyFlatSpec with Matchers {
         "(AgreementCorrectionSpec, AgreementPostersSpec, ArchiveReplayEnrichmentWiringSpec)"),
     ("us", "NT Live: All My Sons", "tmdb:568683") ->
       "withdrawn as a superseded relay: TMDB dates it 2019, the screenings and the 2026 record of its title 2026 (AgreementCorrectionSpec)",
+    ("uk", "CBeebies Panto 2026: Treasure Island", "tmdb:6646") ->
+      ("unmatched in prod (BelowThreshold, 2026-10-06; read-only check of kinowo_uk identity_model_families): the title bills " +
+        "2026, which `edition.apart` holds apart from the 1950 record — struck once the rows are re-emitted"),
     ("pl", "Maraton Horrorów", "tmdb:1193501") -> multiFilmBill,
     ("uk", "The Dark Knight Trilogy", "tmdb:155") -> multiFilmBill,
     ("uk", "Triple Feature: Lord of the Rings", "tmdb:122") -> multiFilmBill,
