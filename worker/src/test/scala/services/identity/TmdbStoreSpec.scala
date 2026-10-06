@@ -251,6 +251,23 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     Seq("local", "english").flatMap(partial => Option(answer.get(partial))).flatMap(_.asDocument.keySet.asScala).toSet shouldBe Set("imdb_id")
   }
 
+  // A family weighs each of its listings against the films a prefetch holds: decoded afresh for each, every copy worked
+  // its titles, tokens and credits out again (worker-pl's identity model, JFR 2026-10-05).
+  "a film the prefetch holds" should "be one record object for the prefetch, the same record, and let go with it" in {
+    val w = new World
+    val observed = new NormalizingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true), w.normalizer)
+    new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()).identityRecord(film) shouldBe defined
+    val lookups = w.lookups
+    lookups.prefetch(Nil, Seq(film), Nil)
+    val first = lookups.film(film).toOption.flatten.get
+    lookups.film(film).toOption.flatten.get should be theSameInstanceAs first
+    first shouldBe w.lookups.film(film).toOption.flatten.get
+    val (_, bytes) = tools.ThreadAllocation.of((1 to 100).foreach(_ => lookups.film(film)))
+    withClue(s"$bytes bytes for 100 asks: ")(bytes should be < 100000L)   // was 239,216: a record decoded per ask
+    lookups.prefetchAnswered()
+    lookups.film(film).toOption.flatten.get should not be theSameInstanceAs(first)
+  }
+
   /** The Met's "Samson et Dalila" relay as TMDB's localized record states it (recorded 2026-10-05:
    *  `/3/movie/1703624?language=pl-PL&append_to_response=credits,release_dates`), broadcast 5 December 2026. */
   private final class MetSamsonFetch extends tools.HttpFetch {

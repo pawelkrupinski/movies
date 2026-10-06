@@ -26,6 +26,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
 
   override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], pages: Iterable[Listing]): Unit = {
     held.values.foreach(_.clear())
+    this.films.clear()
     val asked = queries.toSeq
     load(TmdbKind.Query, asked.flatMap(questionIds))
     // What the questions name: each person search's people, each IMDb title's finds.
@@ -52,7 +53,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
   // The documents a prefetch read stay only while its own asks are answered: held until the next
   // prefetch, a slice's searches and every film they name sat in the heap through the slice's build
   // and the resolves after it, and UK's take-up spent 72% of its time in full GCs.
-  override def prefetchAnswered(): Unit = { held.values.foreach(_.clear()); details.prefetchAnswered() }
+  override def prefetchAnswered(): Unit = { held.values.foreach(_.clear()); films.clear(); details.prefetchAnswered() }
 
   /** How many documents the last prefetch still holds. */
   private[identity] def heldDocuments: Int = held.values.map(_.size).sum
@@ -94,10 +95,23 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
 
   def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
     if (FallbackIds.isFallback(tmdbId)) fallbackFilm(tmdbId)
-    else document(TmdbKind.Film, tmdbId.toString).flatMap(d => Option(d.get("record")).map(d -> _)) match {
+    else Option(held(TmdbKind.Film).get(tmdbId.toString)) match {
+      // One record object per film a prefetch holds: decoded again for every listing a family weighs against it, each
+      // copy worked its titles, tokens and credits out afresh (worker-pl's identity model, JFR 2026-10-05). The document is
+      // the prefetch's, unchanged until the next one, so its record is too.
+      case Some(prefetched) =>
+        reads.read(TmdbStore.keyOf(TmdbKind.Film, tmdbId.toString))
+        films.computeIfAbsent(tmdbId, _ => filmOf(prefetched.document))
+      case None => filmOf(document(TmdbKind.Film, tmdbId.toString))
+    }
+
+  private def filmOf(doc: Option[BsonDocument]): Answer[Option[IdentityMeasures.Film]] =
+    doc.flatMap(d => Option(d.get("record")).map(d -> _)) match {
       case Some((d, record)) => Answer.Known(IdentityAnswerBson.filmOf(record).map(withImdbNumber(_, d)))
       case None              => Answer.Unknown
     }
+  // The films decoded from the documents the current prefetch holds; let go with them.
+  private val films = new ConcurrentHashMap[Int, Answer[Option[IdentityMeasures.Film]]]()
 
   /** The record's release day — `Unknown` while the localized response it was parsed from holds only a year: filed before
    *  records kept the whole day (`TmdbNormalizer.minimal` cut it to the year), the record states no day though TMDB does,
