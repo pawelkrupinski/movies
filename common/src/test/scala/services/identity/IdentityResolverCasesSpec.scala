@@ -1101,6 +1101,11 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val tagged = Seq("Alim | UFF", "Atlantyda | UFF", "Odblask | UFF").map(listing(models.KinoAmondo, _))
     val r = shipped(tagged, films)
     tagged.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film should not be Some(850957)))
+    // the work beside the tag is searched by its own piece already: what TMDB answers "Odblask", "Atlantyda" and "Alim"
+    // with is what the festival's films can be found by — the tag's own search ("UFF") only adds the namesake it denies
+    Seq("Alim", "Atlantyda", "Odblask").zip(tagged).foreach { case (work, l) =>
+      IdentityMeasures.searchQueries(Evidence.of(l, None).measured) should contain (work)
+    }
   }
 
   it should "still name the film billed whole, or beside a tag the venues bill around many films" in {

@@ -6,8 +6,8 @@ import scala.io.Source
  *  its source): TMDB keeps ONE record per film at its theatrical runtime — "The Return of the King" at 201 minutes,
  *  none for the 263-minute extended edition; "Apocalypse Now" at 147, none for the Final Cut (183) or Redux (202) —
  *  and no source we read names a cut's runtime machine-readably for every film. A listing stating a cut's runtime
- *  runs as the film: the runtime comparison reads the film's runtime NEAREST the listing's
- *  ([[nearestRuntime]]), its theatrical one or a cut's.
+ *  runs as the film: the runtime comparison reads the film's runtime NEAREST the listing's, its theatrical one or a
+ *  cut's ([[IdentityMeasures.listingFilm]]'s `runtime.delta`, and the agreement's running-time vote).
  *
  *  Keyed by the film's IMDb number ([[IdentityMeasures.Film.imdbNumber]]), which a TMDB record and an IMDb or Wikidata
  *  record of the film all carry; the table's tmdbId column is for the reader. */
@@ -33,24 +33,4 @@ object FilmCuts {
 
   /** The cuts the table names of the film IMDb numbers `imdbNumber` (0: none). */
   def of(imdbNumber: Int): Seq[Cut] = if (imdbNumber == 0) Nil else table.getOrElse(imdbNumber, Nil)
-
-  /** The film's running time nearest a listing's `stated` one: its own (theatrical) runtime or a cut's. `None` when the
-   *  film states none. */
-  def nearestRuntime(stated: Option[Int], film: IdentityMeasures.Film): Option[Int] =
-    nearestRuntime(stated, film.runtime, film.imdbNumber)
-
-  /** [[nearestRuntime]] of a record whose IMDb number is a cross-id beside it (a family's `SourceRecord`), not its own. */
-  def nearestRuntime(stated: Option[Int], runtime: Option[Int], imdbNumber: Int): Option[Int] = {
-    val own = runtime.filter(_ > 0)
-    stated.fold(own) { minutes =>
-      val cuts = of(imdbNumber)
-      if (cuts.isEmpty) own else (own.toSeq ++ cuts.map(_.runtime)).minByOption(candidate => math.abs(candidate - minutes))
-    }
-  }
-
-  /** The cut a listing running `stated` minutes bills: one the table names nearer its runtime than the film's own. */
-  def billedCut(stated: Int, film: IdentityMeasures.Film): Option[Cut] = {
-    val ownGap = film.runtime.filter(_ > 0).fold(Int.MaxValue)(runtime => math.abs(runtime - stated))
-    of(film.imdbNumber).filter(cut => math.abs(cut.runtime - stated) < ownGap).minByOption(cut => math.abs(cut.runtime - stated))
-  }
 }

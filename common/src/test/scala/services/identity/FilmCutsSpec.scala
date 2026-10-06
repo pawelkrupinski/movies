@@ -22,13 +22,6 @@ class FilmCutsSpec extends AnyFlatSpec with Matchers {
     delta(117, bladeRunner) shouldBe Number(0)
   }
 
-  it should "name the cut it ran as" in {
-    FilmCuts.billedCut(263, returnOfTheKing).map(_.label) shouldBe Some("Extended Edition")
-    FilmCuts.billedCut(202, apocalypseNow).map(_.label) shouldBe Some("Redux")
-    FilmCuts.billedCut(183, apocalypseNow).map(_.label) shouldBe Some("Final Cut")
-    FilmCuts.billedCut(201, returnOfTheKing) shouldBe None
-  }
-
   "a runtime no cut runs" should "still be the gap to the nearest of the film's runtimes" in {
     delta(150, returnOfTheKing) shouldBe Number(51)
     delta(240, returnOfTheKing) shouldBe Number(23)
