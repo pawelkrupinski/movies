@@ -13,19 +13,21 @@ class HostPacingSpec extends AnyFlatSpec with Matchers {
   private def throttled(code: Int) = new HttpStatusException(code, "GET", "https://api.themoviedb.org/3/x", None)
 
   "A host's reads" should "never run more at once than its limit" in {
-    val pacing  = new HostPacing(budget = 3, sleep = _ => ())
-    val now     = new AtomicInteger
-    val peak    = new AtomicInteger
-    val pool    = Executors.newFixedThreadPool(12)
-    val started = new CountDownLatch(1)
-    (1 to 60).foreach(_ => pool.submit(new Runnable {
-      def run(): Unit = { started.await(); pacing("https://api.themoviedb.org/3/x") {
-        val n = now.incrementAndGet(); peak.accumulateAndGet(n, math.max); Thread.sleep(2); now.decrementAndGet()
-      } }
+    val pacing = new HostPacing(budget = 3, sleep = _ => ())
+    val inside = new AtomicInteger
+    val peak   = new AtomicInteger
+    val gate   = new CountDownLatch(1)
+    val pool   = Executors.newFixedThreadPool(8)
+    (1 to 8).foreach(_ => pool.submit(new Runnable {
+      def run(): Unit = pacing("https://api.themoviedb.org/3/x") {
+        peak.accumulateAndGet(inside.incrementAndGet(), math.max); gate.await(); inside.decrementAndGet()
+      }
     }))
-    started.countDown(); pool.shutdown(); pool.awaitTermination(30, TimeUnit.SECONDS) shouldBe true
-    peak.get should be <= 3
-    peak.get should be >= 2
+    // three reads are held inside; the other five wait at the host's door until the gate opens
+    Eventually.eventually(inside.get shouldBe 3)
+    gate.countDown(); pool.shutdown()
+    pool.awaitTermination(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
+    peak.get shouldBe 3
   }
 
   it should "halve the host's limit on a 429 or a 503, never below one, and retry after a growing back-off" in {

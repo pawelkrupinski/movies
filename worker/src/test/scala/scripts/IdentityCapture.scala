@@ -32,6 +32,11 @@ object IdentityCapture {
   /** The prod Mongo the family answers are exported from (read-only): set by the shell script, after its tunnel. */
   val FamilyUri = "KINOWO_IDENTITY_FAMILY_URI"
 
+  /** Every variable the run reads from its environment, each defaulted where unset ([[environment]]). */
+  val Variables: Seq[String] = Seq("KINOWO_IDENTITY_UNMATCHED_CAPTURE", "KINOWO_IDENTITY_CORPUS_DIR", "KINOWO_FIXTURE_ROOT",
+    "KINOWO_IDENTITY_AGREEMENT_CACHE", "KINOWO_IDENTITY_FAMILY_SEED", "KINOWO_IDENTITY_POSTER_CACHE",
+    "KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY", "MONGODB_URI", FamilyUri, "KINOWO_IDENTITY_CAPTURE_WORK")
+
   /** The local, THROWAWAY Mongo the capture's pipeline seeds (the it/ one). */
   val LocalMongo = "mongodb://127.0.0.1:28017/?directConnection=true"
 
@@ -496,7 +501,9 @@ object IdentityCapture {
       System.err.println(s"[identity-capture] $error"); sys.exit(2)
     case Right(options) =>
       val repo    = Path.of("").toAbsolutePath
-      val env     = sys.env
+      // the exported environment alone, never .env.local: its MONGODB_URI is prod's, and the capture's Mongo is a throwaway
+      val configuration = settings.ProcessConfiguration.resolveExported()
+      val env     = Variables.flatMap(name => configuration.env.get(name).map(name -> _)).toMap
       val layout  = Layout(repo, env.get("KINOWO_IDENTITY_CAPTURE_WORK").map(Path.of(_).toAbsolutePath).getOrElse(repo.resolve("target/identity-capture")))
       val effects = if (options.dryRun) new DryRun(println) else new Live(repo, env)
       if (!options.dryRun && !env.contains("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY")) {
@@ -508,7 +515,7 @@ object IdentityCapture {
         case os: com.sun.management.OperatingSystemMXBean => os.getTotalMemorySize >> 30
         case _                                            => ReservedGb + heapGigabytes(options.heap)
       }
-      val ok = Try(capture(options, env, layout, effects, System.getProperty("java.class.path"), jvmopts, decisionCode(repo), memoryGb,
+      val ok = Try(capture(options, env, layout, effects, java.lang.management.ManagementFactory.getRuntimeMXBean.getClassPath, jvmopts, decisionCode(repo), memoryGb,
         line => synchronized(println(line))))
       ok.failed.foreach(e => System.err.println(s"[identity-capture] ${e.getMessage}"))
       sys.exit(if (ok.getOrElse(false)) 0 else 1)

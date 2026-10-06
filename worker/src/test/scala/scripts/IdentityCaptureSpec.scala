@@ -65,6 +65,7 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
     val now = new java.util.concurrent.atomic.AtomicInteger
     val peak = new java.util.concurrent.atomic.AtomicInteger
     val started = java.util.Collections.synchronizedList(new java.util.ArrayList[String])
+    val pair = new java.util.concurrent.CyclicBarrier(2)
     val effects = new Effects {
       def newestRecording(): Option[String] = fail("the caller's corpus needs no lookup")
       def fetchCorpus(run: String, cc: String, layout: Layout): Long = fail("the caller's corpus is not fetched")
@@ -72,7 +73,9 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
       def exportFamilies(db: String, into: Path): Long = fail("the caller's seed needs no export")
       def run(job: Job): Seq[String] = {
         started.add(job.cc); peak.accumulateAndGet(now.incrementAndGet(), math.max)
-        Thread.sleep(60); now.decrementAndGet()
+        // two JVMs at once or none: each waits for a partner, which a run one at a time never sends
+        pair.await(tools.SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
+        now.decrementAndGet()
         Seq(s"[full-${job.cc}] captured 10 listings in 5 clusters")
       }
     }
