@@ -195,6 +195,17 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
 
   // ── artefact currency ──
 
+  "The newest recording" should "be the latest created of the successful runs, whatever order GitHub lists them in" in {
+    // `gh run list --status success --limit 1` named 2026-09-25's run while 2026-10-06's was the newest (run
+    // 37407719592): GitHub's status-filtered listing of a few runs is not in creation order
+    newestRun(Seq(
+      "36083059428\t2026-09-25T01:40:41Z",
+      "37407359627\t2026-10-06T03:05:51Z",
+      "37407719592\t2026-10-06T03:10:23Z",
+      "37254406785\t2026-10-05T02:11:28Z")) shouldBe Some("37407719592")
+    newestRun(Nil) shouldBe None
+  }
+
   "A country's recording" should "be fetched when nothing is there yet" in {
     currency(present = None, newest = Some("37")) shouldBe Fetch("37", "nothing downloaded yet")
   }

@@ -222,6 +222,13 @@ object IdentityCapture {
   /** Nothing here, and nothing to fetch it from. */
   final case class Missing(why: String) extends Currency
 
+  /** The newest of `runs` (`<id>\t<createdAt>`, as [[Live.newestRecording]] lists them): the latest created — never the
+   *  first listed: GitHub's status-filtered listing of a few runs is not in creation order (`--limit 1` named 2026-09-25's
+   *  run on 2026-10-07, the newest being 2026-10-06's). */
+  def newestRun(runs: Seq[String]): Option[String] =
+    runs.map(_.split('\t')).collect { case Array(id, created) => id -> java.time.Instant.parse(created.trim) }
+      .maxByOption(_._2).map(_._1)
+
   /** What to do about a country's corpus and tree: `present` is the run they were downloaded from, `newest` the newest
    *  successful recording (`None`: not looked up — a dry run never touches the network). */
   def currency(present: Option[String], newest: Option[String]): Currency = (present, newest) match {
@@ -322,8 +329,8 @@ object IdentityCapture {
       if (!Files.exists(dir)) 0L else Using(Files.walk(dir))(_.iterator.asScala.filter(Files.isRegularFile(_)).map(Files.size).sum)
 
     def newestRecording(): Option[String] =
-      Some(gh("run", "list", "--workflow", "Record scrape fixtures", "--status", "success", "--limit", "1",
-        "--json", "databaseId", "--jq", ".[0].databaseId")).filter(_.nonEmpty)
+      newestRun(gh("run", "list", "--workflow", "Record scrape fixtures", "--status", "success", "--limit", "100",
+        "--json", "databaseId,createdAt", "--jq", ".[] | \"\\(.databaseId)\\t\\(.createdAt)\"").linesIterator.toSeq)
 
     def fetchCorpus(run: String, cc: String, layout: Layout): Long = {
       val stage = layout.work.resolve(s"download-$cc")
