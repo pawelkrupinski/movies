@@ -527,7 +527,10 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
       "https://www.iluzjon.fn.org.pl/public/images/no-photo.jpg",
       "https://kinomuranow.pl/sites/default/files/share/kino_share.png",
       "https://bilety.pckul.pl/images/pck2/favicon.png",
-      "/images/og-image.jpg"
+      "/images/og-image.jpg",
+      // bilety24's stand-ins for an event its venue gave no image
+      "https://image.bilety24.pl/not-found",
+      "https://image.bilety24.pl/original/dealer-default/1410/.png"
     ).foreach(url => withClue(url)(ScraperParse.ogImage(withOgImage(url)) shouldBe None))
   }
 

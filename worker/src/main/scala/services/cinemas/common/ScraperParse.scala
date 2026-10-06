@@ -239,6 +239,14 @@ private[cinemas] object ScraperParse {
     clone.text().split('\u0001').iterator.map(_.trim).filter(_.nonEmpty).toSeq
   }
 
+  /** [[linesOf]], also breaking at the end of every paragraph, list item and
+    * division — a venue's free-text box mixes `<br>`-joined runs with `<p>`s. */
+  def blockLinesOf(el: Element): Seq[String] = {
+    val clone = el.clone()
+    clone.select("p, li, div").asScala.foreach(_.appendElement("br"))
+    linesOf(clone)
+  }
+
   /** The URL inside a CSS `url(...)` value, unwrapping `'`, `"` or `&quot;`
     * quoting. `None` when `s` holds no `url(...)`. */
   def cssUrl(s: String): Option[String] =
@@ -264,18 +272,20 @@ private[cinemas] object ScraperParse {
     * BOK's `logo-bok_…jpg`, the bilety24 venue sites' `PAN-BILET_…svg`, Kino Muranów's
     * `kino_share.png` — and a logo taken as a film's poster is worse than none: it feeds the
     * identity's poster vote and veto. Judged by the file NAME only (a path segment such as
-    * bilety24's `dealer-default/` says nothing), as whole words, so "plakat-bez-logotypow" stays. */
+    * bilety24's `dealer-default/` says nothing), as whole words, so "plakat-bez-logotypow" stays.
+    * bilety24's stand-in for a venue that uploaded no image — `image.bilety24.pl/not-found`, or a
+    * file with no name (`…/1410/.png`) — is no poster either. */
   def ogImage(document: Document): Option[String] =
     Option(document.selectFirst("meta[property=og:image]")).map(_.attr("content").trim).filter(_.nonEmpty)
       .filterNot(isSiteDefaultImage)
 
   private val SiteDefaultImageWords =
-    Seq("logo", "opengraph", "favicon", "placeholder", "zaslepka", "share", "og-image", "no-photo", "nophoto", "page-thumbnail")
+    Seq("logo", "opengraph", "favicon", "placeholder", "zaslepka", "share", "og-image", "no-photo", "nophoto", "page-thumbnail", "not-found")
 
   private def isSiteDefaultImage(url: String): Boolean = {
     val file = url.takeWhile(c => c != '?' && c != '#').split('/').lastOption.getOrElse("").toLowerCase(Locale.ROOT)
     val words = "-" + file.replaceAll("[^a-z]+", "-") + "-"
-    file.endsWith(".svg") || SiteDefaultImageWords.exists(word => words.contains(s"-$word-"))
+    file.endsWith(".svg") || file.startsWith(".") || SiteDefaultImageWords.exists(word => words.contains(s"-$word-"))
   }
 
   /**

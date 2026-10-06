@@ -6,7 +6,7 @@ import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.nodes.Document
 import services.movies.TitleNormalizer
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies, VenueCredits}
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
@@ -29,16 +29,14 @@ import scala.jdk.CollectionConverters._
  * link and as the film's detail `filmUrl`, and group by title.
  *
  * The listing carries no film identity beyond the title, so we fetch each film's
- * event page for DISPLAY enrichment ([[fetchFilmDetail]]) via [[DetailEnricher]].
- * Those pages turn out to expose ONLY a synopsis (`div.description`) and an
- * `og:image` poster — there is NO structured `Reżyseria` / `Rok` / `Obsada`
- * block on bilety24 (verified against real Backrooms / Toy Story 5 pages: the
- * `h1.header-b24` block is followed by the synopsis and nothing else; the
- * country/year/runtime strings elsewhere on the page belong to the "Inne
- * wydarzenia w pobliżu" recommendation cards, not the main film). So the detail
- * supplies no TMDB-identity hint and `defersTmdbResolution` is FALSE — the row
- * resolves immediately from the bare title and the synopsis/poster merge in
- * asynchronously when the `EnrichDetails` task lands.
+ * event page ([[fetchFilmDetail]]) via [[DetailEnricher]]. bilety24 has no
+ * structured film block: each venue types what it likes into the page's one
+ * description box (`div.description`). Some state the film's facts there —
+ * "reżyseria: … / występują: …", "Kraj i rok produkcji: USA 2026", one
+ * "reż. … | Francja, Włochy 2026 | 145 min" credit line — and most only paste a
+ * synopsis; [[VenueCredits]] reads whichever is there. Those are the venue's own
+ * statements, so the page is waited for before the listing resolves
+ * (`defersTmdbResolution`, the default).
  *
  * One instance per venue, captured by its `organizerUrl` + `cinema`, so adding
  * a bilety24-hosted cinema is a catalog line, not a new client (OCP).
@@ -63,15 +61,9 @@ class Bilety24OrganizerClient(http: HttpFetch, organizerUrl: String, override va
   // that one cinema's slot — a phantom "Janosik" on films Janosik never showed.
   override val detailGroup: String = s"bilety24-organizer-${cinema.slug}"
 
-  // The detail is purely display enrichment (synopsis + poster); the listing
-  // already carries the only identity the page has (the title), so the row
-  // resolves from the listing and the detail merges in asynchronously.
-  override def defersTmdbResolution: Boolean = false
-
-  /** Deferred per-film detail off the `/kino/<slug>` event page — synopsis and
-   *  poster only (bilety24 exposes no structured year/director/cast). None on a
-   *  fetch failure so the task stays stale and retries rather than recording an
-   *  empty result as fresh.
+  /** Deferred per-film detail off the `/kino/<slug>` event page — the venue's
+   *  stated film facts, synopsis and poster. None on a fetch failure so the task
+   *  stays stale and retries rather than recording an empty result as fresh.
    *
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
@@ -174,17 +166,17 @@ object Bilety24OrganizerClient {
 
   // ── Per-film event page (deferred display enrichment) ───────────────────────
 
-  /** Parse a `/kino/<slug>` event page. The main film block is `h1.header-b24`
-    * followed by `div.description` (the synopsis) and an `og:image` poster; the
-    * page carries no structured year/director/cast. The description block also
-    * holds a "czytaj więcej" toggle and a boilerplate "Bezpieczne zakupy…"
-    * refund-policy paragraph (wrapped in `<em>`/`<p>`), so we drop the anchors
-    * and those trailing blocks and clean the prose the same way
-    * [[Bilety24Client]] does. */
+  /** Parse a `/kino/<slug>` event page: `h1.header-b24` followed by
+    * `div.description`, the venue's free text, and an `og:image` poster. The
+    * description also holds a "czytaj więcej" toggle and a boilerplate
+    * "Bezpieczne zakupy…" refund-policy paragraph (wrapped in `<em>`/`<p>`), so the
+    * synopsis drops the anchors and those trailing blocks and cleans the prose the
+    * same way [[Bilety24Client]] does; the film facts are read off its lines
+    * ([[VenueCredits]]). */
   private[cinemas] def parseDetail(document: Document): FilmDetail = {
-    val synopsis = Option(document.selectFirst("div.description"))
-      .map(ScraperParse.cleanSynopsis(_, "a", "p", "em")).filter(_.length > 20)
-    val poster = ScraperParse.ogImage(document)
-    FilmDetail(synopsis = synopsis, posterUrl = poster)
+    val description = Option(document.selectFirst("div.description"))
+    val synopsis = description.map(ScraperParse.cleanSynopsis(_, "a", "p", "em")).filter(_.length > 20)
+    val credits  = description.map(d => VenueCredits.parse(ScraperParse.blockLinesOf(d))).getOrElse(FilmDetail())
+    credits.copy(synopsis = synopsis, posterUrl = ScraperParse.ogImage(document))
   }
 }

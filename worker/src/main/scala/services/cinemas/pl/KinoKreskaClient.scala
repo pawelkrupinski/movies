@@ -5,7 +5,8 @@ import play.api.libs.json.Json
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import org.jsoup.nodes.Document
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies, VenueCredits}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -32,14 +33,27 @@ import scala.util.Try
  *
  * Previously served from Filmweb; migrated when Filmweb stopped carrying the
  * venue's repertoire reliably.
+ *
+ * Each tile links the film's `/wydarzenie/<id>/<slug>` page, whose `div.std-text`
+ * states what the venue knows of the film — a "reż. Natxo Leuza, Hiszpania 2025,
+ * 85'" credit line or a "kraj, rok: … / Reżyseria: … / Obsada: … / Czas trwania:
+ * 93’" block — above the synopsis. That page is the deferred detail
+ * ([[DetailEnricher]], read by [[VenueCredits]]); its facts are the venue's own, so
+ * the listing waits for it (`defersTmdbResolution`, the default). The page's
+ * `og:image` is the site's default cover; the event's own image is its poster.
  */
 class KinoKreskaClient(
   http:  HttpFetch,
   override val cinema: Cinema,
   today: => LocalDate
-) extends CinemaScraper {
+) extends CinemaScraper with DetailEnricher {
 
   import KinoKreskaClient._
+
+  override val detailGroup: String = "kino-kreska"
+
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    DetailFetchOutcome.page(http, ref).map(html => parseDetail(Jsoup.parse(html, BaseUrl)))
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(s"$BaseUrl/kino-kreska")
@@ -104,4 +118,21 @@ object KinoKreskaClient {
       )
     }
   }
+
+  /** A `/wydarzenie/<id>/<slug>` page: the venue's credits and synopsis in `div.std-text`
+   *  (its "ZOBACZ ZWIASTUN" trailer link dropped), the event's own image beside them. */
+  private[cinemas] def parseDetail(document: Document): FilmDetail = {
+    val lines = Option(document.selectFirst("div.std-text")).toSeq.flatMap { text =>
+      val kept = text.clone()
+      kept.select("a").remove()
+      ScraperParse.blockLinesOf(kept)
+    }
+    val prose = lines.filterNot(line => VenueCredits.statesFacts(line) || LabelLine.matches(line) || line == "ZOBACZ ZWIASTUN")
+    VenueCredits.parse(lines).copy(
+      synopsis  = Some(prose.mkString("\n\n")).filter(_.length > 20),
+      posterUrl = Option(document.selectFirst("img.sticky-image__image")).map(_.attr("abs:src")).filter(_.nonEmpty))
+  }
+
+  /** "Gatunek: dramat", "kategoria wiekowa: 16+" — a short labelled line, never the synopsis. */
+  private val LabelLine = """^[\p{L} ,.]{2,30}:\s*\S.{0,80}$""".r
 }

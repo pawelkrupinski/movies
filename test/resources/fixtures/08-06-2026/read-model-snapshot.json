@@ -15897,9 +15897,9 @@
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 80,
     "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
+    "countries" : [ "Szwajcaria" ],
+    "directors" : [ "Bastien Genoux" ],
+    "cast" : [ "Beatrice Cordua" ],
     "trailerUrls" : [ ],
     "ratings" : {
       "metacriticUrl" : "https://www.metacritic.com/search/32.+Mfsp+A+Part+-+Trixie/?category=2",

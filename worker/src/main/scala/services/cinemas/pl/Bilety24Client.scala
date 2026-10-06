@@ -7,7 +7,7 @@ import services.movies.TitleNormalizer
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, FilmDetail, VenueCredits}
 
 import scala.jdk.CollectionConverters._
 
@@ -97,8 +97,10 @@ object Bilety24Client {
     // `p.read-more` placeholder, and—on cycle/concert events—organiser links
     // (Instagram/Facebook handles, "Więcej: www…"). Drop the anchors and the
     // placeholder and strip any plain-text URLs left behind.
-    val synopsis = Option(document.selectFirst("div.title-description-content"))
-      .map(ScraperParse.cleanSynopsis(_, "a", "p.read-more")).filter(_.length > 20)
+    val description = Option(document.selectFirst("div.title-description-content"))
+    val synopsis = description.map(ScraperParse.cleanSynopsis(_, "a", "p.read-more")).filter(_.length > 20)
+    // What the venue typed of the film into the same box ("Reżyseria: …", "Czas trwania: 45 minut").
+    val credits  = description.map(d => VenueCredits.parse(ScraperParse.blockLinesOf(d))).getOrElse(FilmDetail())
     // Some b24-image slots are generic SVG placeholders ("PAN-BILET…svg"); take
     // the first real raster image, else fall back to the og:image poster.
     val poster   = document.select("img.b24-image").asScala.toSeq.map(_.attr("src"))
@@ -108,13 +110,14 @@ object Bilety24Client {
     for {
       t <- title if slots.nonEmpty
     } yield CinemaMovie(
-      movie     = Movie(title = t, runtimeMinutes = runtime, releaseYear = None, genres = genres),
+      movie     = Movie(title = t, runtimeMinutes = runtime.orElse(credits.runtimeMinutes), releaseYear = credits.releaseYear,
+                        countries = credits.countries, genres = genres, originalTitle = credits.originalTitle),
       cinema    = cinema,
       posterUrl = poster,
       filmUrl   = Some(s"$baseUrl/wydarzenie/?id=$eventId"),
       synopsis  = synopsis,
-      cast      = Seq.empty,
-      director  = Seq.empty,
+      cast      = credits.cast,
+      director  = credits.director,
       showtimes = slots
     )
   }

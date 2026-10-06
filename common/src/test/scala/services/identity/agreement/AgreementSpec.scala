@@ -154,6 +154,9 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(Seq(stated), three :+ leaning) shouldBe None
     // kinoprogramm.com's film page, which its feed serves as every venue's, states its catalogue's facts too
     stated.copy(page = Some("https://www.kinoprogramm.com/kinofilm/to-the-bone-1")).factsFromCatalogue shouldBe true
+    // a ticketing platform's event page is the venue's own: each venue types its own facts there
+    stated.copy(page = Some("https://www.bilety24.pl/kino/776-crash-pokaz-w-dkf-megaron--164901?id=991024")).factsFromCatalogue shouldBe false
+    stated.copy(page = Some("https://www.sfr.pl/wydarzenie/1159/roza")).factsFromCatalogue shouldBe false
   }
 
   it should "not turn it down when its evidence leans to no film at all" in {
