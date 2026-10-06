@@ -29,7 +29,6 @@ pl	Kinoteatr Rialto	Wielka Sztuka w Kinoteatrze Rialto - Frida: Viva la Vida	tmd
 pl	Kinoteka Kultury i Sztuki	Audiencja	tmdb:Kinoteka	right	recall target: 209149
 pl	Splat!FilmFest	Krew za krew	tmdb:Kinoteka	right	recall target: 1421155
 pl	Kinoteka	Niebezpieczne związki | Kinoteka Kultury i Sztuki	tmdb:1598667	right	matchable page: confirmed: National Theatre Live: Les Liaisons Dangereuses (2026)
-pl	Splat!FilmFest	The Taxidermist	tmdb:Kinoteka	right	recall target: 1686904
 pl	Terminal Kultury Gocław	Kacper i Emma – najlepsi przyjaciele Edukacja Młode Horyzonty	tmdb:171658	right	recall target: Casper and Emma: Best Friends (2013)
 pl	Terminal Kultury Gocław	Lydia i Władca Burz Edukacja Młode Horyzonty	tmdb:1594694	right	recall target: Lydia and the Mist Rider (2026)
 pl	GOK Promyk	Norymberga	tmdb:1214931	right	recall target: Nuremberg (2025)
@@ -269,7 +268,6 @@ pl	*	Siostry (1972)	filmweb:9559	right	hand label: Siostry (1972) Brian De Palma
 pl	*	Siostry (1972)	tmdb:22307	right	hand label: Sisters (1972) Brian De Palma
 pl	*	Słonik w lesie + Tańczący przyjaciel | Młode Horyzonty	filmweb:10087705	wrong	judged 10-05: a double programme (Słonik w lesie + Tańczący przyjaciel) matches neither film (user rule) — was: hand label: Słonik w lesie (2025) Meikeminne Clinckspoor
 pl	*	TAJNY AGENT	filmweb:10075964	right	hand label: Tajny agent (2025) Kleber Mendonça Filho
-pl	*	The Taxidermist | Splat!FilmFest	imdb:tt40381362	right	hand label: The Taxidermist () Paulo Nascimento
 pl	*	Weekend Seniora z Kulturą: Vivaldi i ja [2D LEKTOR] (seans z audiodeskrypcją)	tmdb:1365683	right	hand label: Primavera (2025) Damiano Michieletto
 pl	*	Wielka Sztuka w Kinoteatrze Rialto - Frida: Viva la Vida	tmdb:649244	right	hand label: Frida. Viva la Vida (2019) Giovanni Troilo
 pl	*	Wishbone ash – road warriors	filmweb:875866	wrong	hand label: Road Warriors (1995) Andy Cadiff
@@ -536,8 +534,6 @@ pl	*	TAJNY AGENT	cinemeta:tt13679280	wrong	hand label: Tajný agent (2020)
 pl	*	TAJNY AGENT	wikidata:Q101245192	wrong	hand label: Agent kret (2020) Maite Alberdi
 pl	*	TAJNY AGENT - Klub Filmowy	cinemeta:tt13679280	wrong	hand label: Tajný agent (2020)
 pl	*	TAJNY AGENT - Klub Filmowy	wikidata:Q101245192	wrong	hand label: Agent kret (2020) Maite Alberdi
-pl	*	The Taxidermist | Splat!FilmFest	letterboxd:13-souls	right	hand label: 13 Souls (2026) Paulo Nascimento
-pl	*	The Taxidermist | Splat!FilmFest	tmdb:1686904	wrong	review page: wrong: 13 Souls (2026) (was: right: hand label: 13 Souls (2026) Paulo Nascimento)
 pl	*	Twórcy	filmweb:10093972	wrong	hand label: Twórcy (2023) Madeleine Homan
 pl	*	Twórcy	imdb:tt1724975	wrong	hand label: The Creators (2012) Laura Gamse; Jacques de Villiers
 pl	*	Wymarzony	filmweb:646546	wrong	hand label: Wymarzony (2013) Kat Coiro
