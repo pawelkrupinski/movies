@@ -65,4 +65,18 @@ class ConvergenceRunnerMemorySpec extends AnyFlatSpec with Matchers {
     val invocations = """sbt -J-Xmx\$\{\{ inputs\.heap \}\}""".r.findAllIn(leg).size
     invocations should be >= 2
   }
+
+  it should "fit each row's RAM-backed Mongo beside its own heap, the cache and the overhead" in {
+    // tmpfs pages are memory, so a row that holds Mongo's data in RAM spends its size from the same 16g.
+    val rows = callers.flatMap(RepoFile.matrixRows)
+    val held = rows.filter(_.contains("mongoTmpfs"))
+    held should not be empty
+    held.foreach { row =>
+      val heap  = row("heap").stripSuffix("g").toInt
+      val tmpfs = row("mongoTmpfs").stripSuffix("g").toInt
+      withClue(s"${row("country")}: heap ${heap}g + tmpfs ${tmpfs}g + WiredTiger ${wiredTigerGb.max}g + ${OverheadGb}g overhead must fit ${RunnerGb}g:\n") {
+        heap + tmpfs + wiredTigerGb.max + OverheadGb should be <= RunnerGb
+      }
+    }
+  }
 }

@@ -19,6 +19,11 @@
 # app makes is `w: majority`, so on a database that dies with the runner it is a disk sync per write
 # bought for nothing: ~7 ms a write against ~0.2 ms, measured on a single-node set. A convergence leg
 # makes hundreds of thousands of them (the US take-up alone ~160,000).
+#
+# MONGO_TMPFS=<size> (e.g. 6g) puts the data directory on a RAM-backed tmpfs of at most that size.
+# A convergence leg's replays write hundreds of thousands of documents into databases that die with
+# the runner, and on disk they kept 1.3 of the runner's 4 cores in iowait (run 37513892540); a leg
+# holds 1.1-1.5 GB there. Only where the box has the room: a 10g-heap leg does not.
 set -uo pipefail
 
 timeout_seconds="${MONGO_START_TIMEOUT_SECONDS:-180}"
@@ -43,7 +48,9 @@ wait_for() {
 is_up()      { mongosh_eval 'db.runCommand({ping:1})' >/dev/null 2>&1; }
 is_primary() { mongosh_eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; }
 
-docker run -d --name mongo -p 27017:27017 mongo:8.3.11 --replSet rs0 "$@" || exit 1
+storage=()
+[ -n "${MONGO_TMPFS:-}" ] && storage=(--tmpfs "/data/db:rw,size=${MONGO_TMPFS}")
+docker run -d --name mongo -p 27017:27017 ${storage[@]+"${storage[@]}"} mongo:8.3.11 --replSet rs0 "$@" || exit 1
 wait_for "reachable" is_up || exit 1
 mongosh_eval "rs.initiate({_id:\"rs0\",writeConcernMajorityJournalDefault:$majority_journal,members:[{_id:0,host:\"127.0.0.1:27017\"}]})" || exit 1
 wait_for "PRIMARY" is_primary || exit 1

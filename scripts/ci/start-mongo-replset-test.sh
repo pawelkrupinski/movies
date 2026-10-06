@@ -43,6 +43,9 @@ check "extra mongod args reach docker run" "1" \
 check "majority writes wait for the journal by default" "1" "$(grep -c 'writeConcernMajorityJournalDefault:true' "$STUB_LOG")"
 check "...and only for the journal when asked not to" "1" \
   "$(MONGO_MAJORITY_JOURNAL=false start healthy >/dev/null; grep -c 'writeConcernMajorityJournalDefault:false' "$STUB_LOG")"
+check "the data directory is on disk by default" "0" "$(start healthy >/dev/null; grep -c -- '--tmpfs' "$STUB_LOG")"
+check "...and on a RAM-backed tmpfs of the size asked for" "1" \
+  "$(MONGO_TMPFS=6g start healthy >/dev/null; grep -c -- '^run -d --name mongo -p 27017:27017 --tmpfs /data/db:rw,size=6g mongo:' "$STUB_LOG")"
 check "a mongod that never answers fails, bounded, instead of waiting forever" "1" "$(start down)"
 check "...and says why" "1" "$(grep -c 'did not become reachable' "$stub_dir/out")"
 check "a mongod that never becomes PRIMARY fails too" "1" "$(start secondary)"

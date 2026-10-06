@@ -70,10 +70,10 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  job: 155, suite: 120, sampleSuite: 20, heap: 4g }
-                    - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, job: 155, suite: 120, sampleSuite: 20, heap: 4g, order: convergenceGermanyOrder, orderJob: 155, orderSuite: 120 }
-                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 155, suite: 120, sampleSuite: 20, heap: 4g }
-                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 155, suite: 120, sampleSuite: 20, heap: 4g }
+                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  job: 155, suite: 120, sampleSuite: 20, heap: 4g, mongoTmpfs: 6g }
+                    - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, job: 155, suite: 120, sampleSuite: 20, heap: 4g, mongoTmpfs: 6g, order: convergenceGermanyOrder, orderJob: 155, orderSuite: 120 }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 155, suite: 120, sampleSuite: 20, heap: 4g, mongoTmpfs: 6g }
+                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 155, suite: 120, sampleSuite: 20, heap: 4g, mongoTmpfs: 6g }
                     - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 350, suite: 315, sampleSuite: 20, heap: 10g, order: convergenceUsOrder, orderJob: 350, orderSuite: 315, sampleRow: true }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
@@ -94,6 +94,9 @@ jobs:
             order-suite-timeout-minutes:   ${{ matrix.orderSuite || 120 }}
             sample-row:                    ${{ matrix.sampleRow == true }}
             heap:                          ${{ matrix.heap }}
+            # RAM-backed Mongo where the heap leaves the room: 4g + mongod's 2g cache + at most 6g of data
+            # on a 16 GB runner. Not the United States (10g heap).
+            mongo-tmpfs:                   ${{ matrix.mongoTmpfs || '' }}
             # Replay the pinned pair and nothing else: the verdict a bisect can trust.
             mode:                          hermetic
             profile:                       ${{ inputs.profile == true }}

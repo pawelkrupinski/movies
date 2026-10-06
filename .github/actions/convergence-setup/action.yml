@@ -26,6 +26,12 @@ inputs:
     description: The `Record scrape fixtures` run whose corpus to restore (a recording leg's own recorder run).
     required: false
     default: ''
+  mongo-tmpfs:
+    description: >-
+      Hold MongoDB's data on a RAM-backed tmpfs of at most this size (e.g. `6g`); empty keeps it on
+      disk. Only for a leg whose heap leaves the room (scripts/ci/start-mongo-replset.sh).
+    required: false
+    default: ''
   hermetic-pair:
     description: >-
       `<corpus run> <recorded at> <tree asset>` — a pair a red leg already resolved, so the
@@ -88,6 +94,7 @@ runs:
       shell: bash
       env:
           MONGO_MAJORITY_JOURNAL: 'false'
+          MONGO_TMPFS: ${{ inputs.mongo-tmpfs }}
       run: '"$GITHUB_WORKSPACE"/scripts/ci/in-background.sh start mongo-start "$GITHUB_WORKSPACE"/scripts/ci/start-mongo-replset.sh --wiredTigerCacheSizeGB 2'
 
     # A RECORDING leg's tunnel to prod Mongo relays through `socat`, which the runner image lacks:

@@ -184,6 +184,13 @@ on:
                 required: false
                 type: boolean
                 default: false
+            # MongoDB's data in RAM: see `convergence-setup`'s input of the same name. Per country because
+            # the room is: the United States' 10g heap leaves none.
+            mongo-tmpfs:
+                description: Hold MongoDB's data on a RAM-backed tmpfs of at most this size; empty keeps it on disk.
+                required: false
+                type: string
+                default: ''
             # A JFR CPU profile of the suite, uploaded as `convergence-profile-<code>-<phase>`: where a
             # leg's CPU goes, for whoever is making the lane faster. Off on every dispatch Main makes.
             profile:
@@ -308,6 +315,7 @@ jobs:
                   token:         ${{ secrets.GITHUB_TOKEN }}
                   mode:          ${{ inputs.mode }}
                   corpus-run:    ${{ inputs.corpus-run }}
+                  mongo-tmpfs:   ${{ inputs.mongo-tmpfs }}
 
             # A RECORDING leg records its own country's corpus FIRST, in this job — the sample
             # and the suite below then replay what it wrote to test/resources/fixtures/corpus.
