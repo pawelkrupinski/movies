@@ -651,6 +651,17 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val lines = leg.linesIterator.toVector
     val runs  = lines.indices.filter(i => lines(i).trim.startsWith("sbt -J-Xmx"))
     runs should not be empty
-    all(runs.map(i => lines(i - 1))) should include ("scripts/ci/cpu-sampler.sh 15 &")
+    // The `run:` block holding each sbt line, up to that line.
+    val blocks = runs.map(i => lines.slice(lines.lastIndexWhere(_.trim == "run: |", i), i).mkString("\n"))
+    all(blocks) should include ("scripts/ci/cpu-sampler.sh 15 &")
+  }
+
+  "a profiled dispatch" should "record a JFR profile of the suite and upload it, and only when asked" in {
+    caller should include ("profile:                       ${{ inputs.profile == true }}")
+    leg should include ("if [ \"${{ inputs.profile }}\" = true ]; then")
+    leg should include ("-J-XX:StartFlightRecording=filename=convergence.jfr")
+    leg should include ("if: always() && inputs.profile && matrix.phase != 'sample'")
+    // Main's kick passes no inputs, so every push-dispatched run stays unprofiled.
+    RepoFile.read(".github/workflows/main.yml") should not include ("-f profile")
   }
 }

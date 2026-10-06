@@ -184,6 +184,13 @@ on:
                 required: false
                 type: boolean
                 default: false
+            # A JFR CPU profile of the suite, uploaded as `convergence-profile-<code>-<phase>`: where a
+            # leg's CPU goes, for whoever is making the lane faster. Off on every dispatch Main makes.
+            profile:
+                description: Record a JFR profile of the suite step and upload it.
+                required: false
+                type: boolean
+                default: false
             corpus-run:
                 description: >-
                     The `Record scrape fixtures` run whose corpus a RECORDING leg replays — the
@@ -548,7 +555,13 @@ jobs:
                   rm -rf target/test-reports/unit
                   # The runner's whole CPU beside the phase log's JVM-only number (cpu-sampler.sh).
                   scripts/ci/cpu-sampler.sh 15 & sampler=$!; trap 'kill "$sampler"' EXIT
-                  sbt -J-Xmx${{ inputs.heap }} ${{ matrix.phase == 'convergence' && inputs.command || inputs.order-command }} 2>&1 | tee convergence.log
+                  profile=()
+                  if [ "${{ inputs.profile }}" = true ]; then
+                      profile=("-J-XX:StartFlightRecording=filename=convergence.jfr,settings=profile,dumponexit=true")
+                  fi
+                  sbt -J-Xmx${{ inputs.heap }} "${profile[@]}" ${{ matrix.phase == 'convergence' && inputs.command || inputs.order-command }} 2>&1 | tee convergence.log
+                  # What the leg left in Mongo: the size a RAM-backed mongod would have to hold.
+                  docker exec mongo du -sh /data/db || true
               env:
                   # The spec builds this country's TitleNormalizer itself; naming the
                   # country here too means anything that reads the environment
@@ -612,6 +625,15 @@ jobs:
                   # Absent, the suite runs in memory and says which it chose — a suite that
                   # can silently fall back is one that quietly stops testing what it claims.
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
+
+            - name: Upload the suite's CPU profile
+              if: always() && inputs.profile && matrix.phase != 'sample'
+              uses: actions/upload-artifact@v6
+              with:
+                  name: convergence-profile-${{ inputs.code }}-${{ matrix.phase }}
+                  path: convergence.jfr
+                  if-no-files-found: warn
+                  retention-days: 7
 
             # `include_passed: true` — these tests are the report. A convergence leg that
             # PASSES is the interesting case: the run's whole value is the numbers it
