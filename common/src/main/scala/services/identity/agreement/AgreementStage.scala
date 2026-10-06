@@ -361,12 +361,13 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       Broadcast.superseded(listings, listing => Evidence.of(listing, None).measured, film, titledFilms(listings).filter(_ != model).flatMap(id => named(id).map(id -> _)))
         .map(why => Correction.Outcome(None, s"withdrawn ${title(model)} — relay: $why"))
     // a listing billing a stage work on the day one record of it was broadcast is that record ([[Broadcast.take]]): a
-    // model take of another film yields to it, as an agreed one does (PL Kino Amok's bare "Manon" on the Met's day)
-    def relayed = Option.when(listings.exists(ListingShape.stagesAWork)) {
+    // model take of a screen adaptation yields to it, as an agreed one does (PL Kino Amok's bare "Manon" on the Met's
+    // day) — a house's production taken is the model's reading of the relay, never corrected here
+    def relayed(film: IdentityMeasures.Film) = Option.when(listings.exists(ListingShape.stagesAWork) && !Broadcast.billsAProduction(film.title)) {
       val known = (model +: candidatesOf(digested.id, digested.digest, listings)).distinct.flatMap(id => named(id).map(id -> _))
       Broadcast.take(listings, listing => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured, known)
     }.flatten.filter(_.film != model).map(taken => Correction.Outcome(Some(taken.film), s"corrected from ${title(model)} — ${taken.line}"))
-    val outcome = named(model).flatMap(film => superseded(film).orElse(relayed).orElse {
+    val outcome = named(model).flatMap(film => superseded(film).orElse(relayed(film)).orElse {
       val modelRecord = recordOf(model, film)
       // (a) a venue poster matching another candidate, not the taken film
       val posters = correctionPosters(digested, model, reads, posterQs, reading)

@@ -164,6 +164,9 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     val dated = FilmTable.listing(KinoMuza, "Samson i Dalila", year = Some(1949)).copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 12, 5))))
     corrected(dated, film1949.id).basis shouldBe ResolverDecision.Basis.OwnMatch
     corrected(screening("Samson i Dalila", "2026-12-05"), metSamson.id).basis shouldBe ResolverDecision.Basis.OwnMatch
+    // a house's production taken is no screen adaptation to correct: UK "Met Opera 2026-27: Così fan tutte" ×151, the Met's
+    // record, stands though one venue's day is another house's broadcast
+    corrected(screening("Samson i Dalila", "2026-12-05"), rboSamson.id).basis shouldBe ResolverDecision.Basis.OwnMatch
   }
 
   /** `table` as a store holding `undated`'s records as they were filed before records kept the whole day: their year
