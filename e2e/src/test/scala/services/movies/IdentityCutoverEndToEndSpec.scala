@@ -23,7 +23,7 @@ class IdentityCutoverEndToEndSpec extends AnyFlatSpec with Matchers {
     // fetched are what the next projection takes in; rest is a projection that writes nothing, and
     // it is the tick every claim below reads.
     val first = w.bootCutover()
-    Iterator.continually(w.projectIdentity()).take(4).find(_.wroteNothing).getOrElse(first)
+    Iterator.continually(w.projectIdentity()).take(4).find(_.atRest).getOrElse(first)
     // One of the whole corpus over the settled store: its plan is every film (a scoped projection's, only what moved).
     val tick  = w.identityProjection.tick(whole = true)
     tools.WholeReconcile(w.readModelProjector)

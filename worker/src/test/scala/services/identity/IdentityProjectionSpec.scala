@@ -92,6 +92,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     val waiting = notReady.projection.tick()
     waiting.refused shouldBe Some("the identity model is not ready")
     waiting.written shouldBe 0
+    waiting.atRest shouldBe false // wrote nothing, yet every film is still to project
     notReady.refusals.toSeq shouldBe Seq(IdentityProjectionMetrics.Refusal.NotReady)
 
     val crossing = World(first.repository, archive = first.archive, accepted = first.accepted, filmIds = first.filmIds,

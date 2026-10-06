@@ -125,7 +125,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
   /** Projections until one writes nothing — the rest production's projection interval reaches, as the
    *  venue pages and ids a projection's enrichment fetched are taken in by the next — then the read model. */
   private def settle(w: ArchiveReplayWiring): Unit = {
-    Iterator.continually(w.projectIdentity()).take(SettleProjections).find(_.wroteNothing)
+    Iterator.continually(w.projectIdentity()).take(SettleProjections).find(_.atRest)
     // The read model every claim reads, from a whole sweep: passes boot side by side against one
     // local Mongo, where a side read or a read-model write can time out.
     WholeReconcile(w.readModelProjector)

@@ -21,6 +21,9 @@ final case class ProjectionTick(resolution: Option[Resolution], plan: Option[Pro
                                 slotsReused: Int = 0, slotsBuilt: Int = 0, slotMisses: (Int, Int, Int) = (0, 0, 0),
                                 scoped: Boolean = false, changed: Seq[ProjectedFilm] = Nil) {
   def wroteNothing: Boolean = written == 0 && retired == 0
+  /** Whether projecting again would find nothing to do: it was taken, and wrote nothing. A refused one wrote nothing
+   *  too, but a model not ready yet (a boot whose resolve ran past its budget) has every film still to write. */
+  def atRest: Boolean = refused.isEmpty && wroteNothing
 }
 
 /** One step of a projection: how long it took and what it allocated on the projecting thread (the

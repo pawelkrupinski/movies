@@ -104,7 +104,7 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   private def settled(w: ArchiveReplayWiring): ProjectionTick = {
     var tick = w.projectIdentity()
     var n    = 1
-    while (!tick.wroteNothing && n < 5) { tick = w.projectIdentity(); n += 1 }
+    while (!tick.atRest && n < 5) { tick = w.projectIdentity(); n += 1 }
     w.identityProjection.tick(whole = true)
   }
 

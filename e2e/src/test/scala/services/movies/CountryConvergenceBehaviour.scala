@@ -627,7 +627,7 @@ abstract class CountryConvergenceBehaviour(
       (if (unresolved.isEmpty) "" else s"; first ${shown.size}: ${shown.mkString(" | ")}")
   }
 
-  /** Boot the corpus to the steady state production reaches — projections until one writes
+  /** Boot the corpus to the steady state production reaches — projections until one is taken and writes
    *  nothing — and get it into the read model. */
   private def bootSettled(w: ArchiveReplayWiring): Unit = {
       step("bootCutover")(w.bootCutover())
@@ -636,7 +636,7 @@ abstract class CountryConvergenceBehaviour(
       // pipeline boot's conclude pass completes rows its settle made. The boot settles to that steady
       // state, bounded, and says how long it took: a model that never gets there fails the claims.
       val further = step("settleCutover")(Iterator.continually(w.projectIdentity()).take(CutoverSettleProjections)
-        .indexWhere(_.wroteNothing))
+        .indexWhere(_.atRest))
       info(s"${country.displayName}: identity projection at rest after " +
         (if (further < 0) s"MORE than ${CutoverSettleProjections + 1} projections" else s"${further + 2} projection(s)"))
       step("project")(tools.WholeReconcile(w.readModelProjector))
