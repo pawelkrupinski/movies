@@ -266,6 +266,27 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(widely, dated(2026), thisYear = Some(2026)) shouldBe None
   }
 
+  "The listing's own year and running time" should "credit one taker's record that names no director, as the venue's two votes" in {
+    // PL "Reporterzy wolności - film i spotkanie z twórcami" (fixture identity-unmatched): Filmweb alone takes its 2025
+    // record of 49 minutes, crediting nobody; the venue's page states 2025 and 49 minutes
+    val reporterzy = SourceRecord(IdentityMeasures.Film("Reporterzy wolności", None, Nil, Some(2025), Some(49), None, None, None),
+      Map("filmweb" -> "10131183"))
+    val filmweb = Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Filmweb, "10131183", reporterzy)))
+    def billed(year: Option[Int] = Some(2025), director: Option[String] = Some("Krzysztof Ridan"), runtime: Option[Int] = Some(49)) =
+      Seq(listing(KinoMuza, "Reporterzy wolności - film i spotkanie z twórcami", year, director, runtime))
+    Agreement.agreed(billed(), filmweb).map(_.corroborated) shouldBe Some(Set(Agreement.ListingFacts, Agreement.ListingRuntime))
+    Agreement.agreed(billed(director = None), filmweb).map(_.corroborated) shouldBe Some(Set(Agreement.ListingFacts, Agreement.ListingRuntime))
+    // both must agree, the year exactly: a year apart is the slack a crediting director earns
+    Agreement.agreed(billed(year = Some(2024)), filmweb) shouldBe None
+    Agreement.agreed(billed(runtime = Some(60)), filmweb) shouldBe None
+    Agreement.agreed(billed(runtime = None), filmweb) shouldBe None
+    Agreement.agreed(billed(year = None), filmweb) shouldBe None
+    // a record that names its director is credited by the director, never by the year and running time instead
+    val directed = Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Filmweb, "10131183",
+      reporterzy.copy(film = reporterzy.film.copy(directors = Some(Seq("Jess Franco")))))))
+    Agreement.agreed(billed(director = None), directed) shouldBe None
+  }
+
   "Venues billing the title widely" should "complete two takers' agreement on a current film, unless a listing's facts rule it out" in {
     // UK/US "Festive Fun with Peppa Cinema Experience" (fixture identity-unmatched): IMDb and RT take the 2026 event film,
     // billed by over a hundred venues each; a one-venue "Zamki na piasku" has only its two takers

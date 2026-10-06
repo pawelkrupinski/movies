@@ -302,15 +302,22 @@ object Agreement {
    *  and a director credits one of them — the same person directing, within a year — and one does (DE "Die Story von
    *  Joanna", Damiano's in 1975 by the venue's own page, is the 1975 film Wikidata and Filmweb took); with
    *  [[ListingRuntime]] beside it when the running times agree too, and then a record dating the film nowhere is credited
-   *  by its director and running time (DE "Pettersson und Findus Mitmachkino 2"). */
+   *  by its director and running time (DE "Pettersson und Findus Mitmachkino 2"). Takers' records that credit NO director
+   *  are credited instead by every dated listing's year — exactly, the slack being a matching director's — beside the
+   *  running times agreeing: both votes or neither. Replayed on the unmatched clusters (2026-10-06): PL "Reporterzy
+   *  wolności - film i spotkanie z twórcami" and "HER Docs - To nie jest świat dla ludzi z menopauzą", Filmweb's
+   *  director-less records of the year and length the venue's page states, right; none wrong. */
   private[identity] def listingVotes(listings: Seq[Listing], records: Seq[SourceRecord]): Set[String] = {
-    val runs  = runsAsTheListing(listings, records)
-    val dated = listings.filter(listing => listing.year.isDefined && listing.directors.nonEmpty)
-    def credits(listing: Listing) = records.exists { record =>
-      (record.film.year.zip(listing.year).exists { case (a, b) => math.abs(a - b) <= 1 } || (runs && record.film.year.isEmpty)) &&
-        record.film.directors.exists(directors => directors.nonEmpty &&
-          IdentityMeasures.directorRelation(listing.directors, directors) == IdentityMeasures.Category("same_person"))
-    }
+    val runs       = runsAsTheListing(listings, records)
+    val undirected = runs && records.forall(_.film.directors.forall(_.isEmpty))
+    val dated      = listings.filter(listing => listing.year.isDefined && (listing.directors.nonEmpty || undirected))
+    def credits(listing: Listing) =
+      if (undirected) records.exists(_.film.year.exists(listing.year.contains))
+      else records.exists { record =>
+        (record.film.year.zip(listing.year).exists { case (a, b) => math.abs(a - b) <= 1 } || (runs && record.film.year.isEmpty)) &&
+          record.film.directors.exists(directors => directors.nonEmpty &&
+            IdentityMeasures.directorRelation(listing.directors, directors) == IdentityMeasures.Category("same_person"))
+      }
     if (dated.isEmpty || !dated.forall(credits)) Set.empty else Set(ListingFacts) ++ Option.when(runs)(ListingRuntime)
   }
 
