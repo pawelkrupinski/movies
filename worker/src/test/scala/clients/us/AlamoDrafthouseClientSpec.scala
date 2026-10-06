@@ -217,11 +217,41 @@ class AlamoDrafthouseClientSpec extends AnyFlatSpec with Matchers with OptionVal
     spyKids.ageRating.value shouldBe "PG"
   }
 
-  it should "give every listing of the recorded venue the show's facts" in {
+  "a re-release's date" should "state no year, so it can never deny the film it re-releases" in {
+    // `nationalReleaseDateUtc` is the US date the show OPENS, so a first-run
+    // re-release reads as this year's: "Avengers Endgame: Encore" 2026-09-25 (the
+    // film is 2019), "Ken Russell's The Devils" 2026-10-16 (1971). A 2026 stated
+    // year would deny the original by its year distance; no year leaves it to the
+    // title, the runtime and the rest.
+    val client = clientOn(new FakeHttpFetch("alamo-drafthouse"))
+    val encore = client.fetchFilmDetail(ShowPage + "avengers-endgame-encore").value
+    encore.releaseYear shouldBe None
+    encore.runtimeMinutes.value shouldBe 183
+    client.fetchFilmDetail(ShowPage + "ken-russells-the-devils").value.releaseYear shouldBe None
+
+    val listing = Listing.of(Lakeline,
+      CinemaMovie(models.Movie(title = "Avengers Endgame: Encore"), Lakeline, None, Some(ShowPage + "avengers-endgame-encore"), None, Nil, Nil, Nil),
+      TitleNormalizer.forCountry(models.Country.UnitedStates))
+    new VenueDetails(Seq(client), TmdbIdentityLookups.NoGaps).detail(listing).toOption.flatten.value.year shouldBe None
+  }
+
+  it should "still date a repertory show by the film's own release, and a new film by its opening" in {
+    // A repertory booking carries the ORIGINAL release (measured 2026-10-06: 47 of
+    // 56 repertory shows matched TMDB's year, the rest were TMDB namesakes), so an
+    // old date is the film's and stays; so does a new film's recent one.
+    val client = clientOn(new FakeHttpFetch("alamo-drafthouse"))
+    client.fetchFilmDetail(ShowPage + "spy-kids").value.releaseYear.value shouldBe 2001
+    client.fetchFilmDetail(ShowPage + "last-shot").value.releaseYear.value shouldBe 2026
+    // Alamo's placeholder for "no date" is 1900-01-01; it is no year.
+    AlamoDrafthouseParser.releaseYear(Some("1900-01-01"), "Mystery Transmission", None, Today) shouldBe None
+  }
+
+  "a show's detail" should "give every listing of the recorded venue the show's facts" in {
     val client  = clientOn(new FakeHttpFetch("alamo-drafthouse"))
     val details = films.map(f => client.fetchFilmDetail(f.filmUrl.value).value)
     details.size shouldBe 48
-    details.count(_.releaseYear.isDefined) shouldBe 48
+    // all but the two re-releases the venue books: the Endgame encore and Queen Budapest
+    details.count(_.releaseYear.isDefined) shouldBe 46
     details.count(_.runtimeMinutes.isDefined) shouldBe 46
     details.count(_.director.nonEmpty) shouldBe 15
     details.count(_.synopsis.isDefined) shouldBe 48

@@ -114,7 +114,7 @@ class AlamoDrafthouseClient(
   /** The listing's `filmUrl` (`/show/<show slug>`) names the show; the endpoint
    *  answers to that slug. A show it doesn't know is a 404, let escape as gone. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.page(detailHttp, presentationUrl(showSlugOf(ref))).map(AlamoDrafthouseParser.parseDetail)
+    DetailFetchOutcome.page(detailHttp, presentationUrl(showSlugOf(ref))).map(AlamoDrafthouseParser.parseDetail(_, today))
 }
 
 object AlamoDrafthouseClient {

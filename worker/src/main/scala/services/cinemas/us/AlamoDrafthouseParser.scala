@@ -122,8 +122,7 @@ object AlamoDrafthouseParser {
    *  is the venue payload's `show` with the film's facts added:
    *
    *    runtimeMinutes          → runtime (absent on ~4% of shows, e.g. an unreleased one)
-   *    nationalReleaseDateUtc  → its year: the ORIGINAL release for repertory
-   *                              ("halloween-1978" → 1978-10-27), the US release for a new film
+   *    nationalReleaseDateUtc  → its year, unless it dates a re-release ([[releaseYear]])
    *    directors[] / actors[]  → plain name strings (credited on ~27% of shows)
    *    description             → HTML paragraphs, read as text
    *    posterImages[] / trailer.videoUri / certification / genres[]
@@ -135,7 +134,7 @@ object AlamoDrafthouseParser {
    *
    *  A body that parses but names no show is an empty detail, not a failure: the
    *  page loaded. A body that is not JSON throws. */
-  def parseDetail(json: String): FilmDetail = {
+  def parseDetail(json: String, today: LocalDate): FilmDetail = {
     val show = Json.parse(json) \ "data" \ "presentation" \ "show"
     def text(field: String): Option[String] = (show \ field).asOpt[String].map(_.trim).filter(_.nonEmpty)
     def names(field: String): Seq[String] =
@@ -145,7 +144,7 @@ object AlamoDrafthouseParser {
       cast           = names("actors"),
       director       = names("directors"),
       runtimeMinutes = (show \ "runtimeMinutes").asOpt[Int].filter(_ > 0),
-      releaseYear    = text("nationalReleaseDateUtc").flatMap(d => Try(LocalDate.parse(d.take(10)).getYear).toOption),
+      releaseYear    = releaseYear(text("nationalReleaseDateUtc"), text("title").getOrElse(""), text("headline"), today),
       genres         = names("genres"),
       posterUrl      = (show \ "posterImages").asOpt[Seq[JsValue]].getOrElse(Nil)
         .headOption.flatMap(i => (i \ "uri").asOpt[String]).map(_.trim).filter(_.nonEmpty),
@@ -153,6 +152,39 @@ object AlamoDrafthouseParser {
       ageRating      = certificate(text("certification"))
     )
   }
+
+  /** The year a show's `nationalReleaseDateUtc` states about the FILM, or none.
+   *
+   *  The date is the day the show opens in US release, which is two different
+   *  things. A repertory booking keeps the film's ORIGINAL release ("halloween-1978"
+   *  → 1978-10-27); measured 2026-10-06 over 107 shows at six venues, 47 of 56
+   *  repertory dates matched TMDB's year and every other was a TMDB namesake or a
+   *  show TMDB lacks. A distributor's re-release, though, is booked as a new
+   *  release and dated by its re-opening: "Avengers Endgame: Encore" 2026-09-25,
+   *  "Ken Russell's The Devils" 2026-10-16, "Queen Budapest" (1986), "Pan Labyrinth
+   *  20th Anniversary" — 4 of 49 first-run shows. Stated as the year, that would
+   *  deny the film it re-releases by its year distance.
+   *
+   *  Nothing in the payload flags those four (each is `first-run`, like a new
+   *  film); their own billing does — the title or tagline says encore, anniversary,
+   *  restored, remastered, re-release or "revisit". So a RECENT date (within
+   *  [[RecentYears]] of the scrape) billed that way states no year; an older date
+   *  is the film's own whatever the billing, and 1900-01-01 is Alamo's "no date". */
+  def releaseYear(date: Option[String], title: String, headline: Option[String], today: LocalDate): Option[Int] =
+    date.flatMap(d => Try(LocalDate.parse(d.take(10))).toOption)
+      .filter(_.getYear > NoDateYear)
+      .filterNot(d => !d.isBefore(today.minusYears(RecentYears)) && ReReleaseBilling.findFirstIn(title + " " + headline.getOrElse("")).isDefined)
+      .map(_.getYear)
+
+  /** How far back an opening date can be a re-release's rather than the film's own. */
+  private val RecentYears = 2L
+  /** Alamo dates a show it has no date for 1900-01-01. */
+  private val NoDateYear = 1900
+  /** Billing words that mark a show as a re-release of an older film. Measured on the
+   *  107 shows: they marked the four re-releases and one new film whose title
+   *  happens to contain "Restoration" (which then merely loses its year). */
+  private val ReReleaseBilling =
+    """(?i)\b(?:encore|anniversary|restor(?:ed|ation)|remaster(?:ed)?|re-?release|revisit|returns? to (?:the big screen|theaters))\b""".r
 
   /** The MPAA certificate, when the field really holds one.
    *
