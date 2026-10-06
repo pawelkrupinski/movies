@@ -6,7 +6,7 @@ pl	Kino Kameralne Cafe	Bohater	tmdb:672208	right	recall target: A Hero (2021)
 pl	Kino Kultura	Pasażerka - premiera książki, pokaz filmu + dyskusja	tmdb:25939	right	recall target: Passenger (1963)
 pl	Kino Kultura	Replika 51. FPFF w Gdyni: Kalafior przeznaczenia + spotkanie z reżyserką	tmdb:1571792	right	recall target: The Cauliflower of Destiny (2026)
 pl	Kino Millenium	KINO NA NIEDZIELE:CAMINO DLA OPORNYCH	tmdb:1404604	right	recall target: Compostelle (2026)
-pl	Kino PCKul	My Fair Lady	tmdb:11113	right	recall target: My Fair Lady (1964)
+pl	Kino PCKul	My Fair Lady	tmdb:11113	wrong	review page: not a film (event); was: recall target: My Fair Lady (1964)
 pl	Kino Parczew	Vincent.legenda oceanu	tmdb:677558	right	recall target: The Last Whale Singer (2026)
 pl	Kino CK Lublin	Lalka	tmdb:1321666	right	recall target: The Doll (2026)
 pl	Kino Powiśle	OPERA-DZIEWCZYNA Z DZIKIEGO ZACHODU	tmdb:1703629	right	recall target: The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
@@ -290,7 +290,7 @@ uk	*	Ken Russell's The Devils presented by Deeper Into Movies	tmdb:31767	right	h
 uk	*	MetOpera 2025-26: La Sonnambula	imdb:tt37814715	wrong	hand label: La sonnambula by Vincenzo Bellini at the Gran Teatre del Liceu, Barcelona (2025) Pietro D'Agostino
 uk	*	MetOpera 2025-26: La Sonnambula	rt:the_metropolitan_opera_la_sonnambula	right	hand label: The Metropolitan Opera: La Sonnambula (2025)
 uk	*	MetOpera: La Fanciulla del West	rt:the_metropolitan_opera_la_fanciulla_del_west	right	hand label: The Metropolitan Opera: La Fanciulla del West (2027) Richard Jones
-uk	*	MetOpera: Samson et Dalila	rt:the_metropolitan_opera_samson_et_dalila	right	hand label: The Metropolitan Opera: Samson et Dalila (2026) Darko Tresnjak
+uk	*	MetOpera: Samson et Dalila	rt:the_metropolitan_opera_samson_et_dalila	wrong	review page: the labelled film is wrong; was: hand label: The Metropolitan Opera: Samson et Dalila (2026) Darko Tresnjak
 uk	*	NT Live: A Streetcar Named Desire	tmdb:702	wrong	hand label: A Streetcar Named Desire (1951) Elia Kazan
 uk	*	NT Live: All My Sons (2026)	tmdb:1620001	right	hand label: All My Sons (2026) Ivo van Hove
 uk	*	NT Live: The Misanthrope	tmdb:1693710	right	hand label: National Theatre Live: The Misanthrope (2026) Christine Lalla; Indhu Rubasingham
@@ -481,7 +481,7 @@ pl	*	DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO	wikidata:Q64830434	wrong
 pl	*	Dni Kina Niemego - Quo vadis?	filmweb:860980	wrong	hand label: Quo Vadis? (2004)
 pl	*	Dni Kina Niemego - Quo vadis?	imdb:tt0015253	right	hand label: Quo Vadis? (1924) Gabriellino D'Annunzio; Georg Jacoby
 pl	*	Dni Kina Niemego - Quo vadis?	rt:quo_vadis_2026	wrong	hand label: Quo Vadis (2026) Anira Wojan; Sukankan Roy
-pl	*	Dni Kina Niemego - Quo vadis?	wikidata:Q3285437	right	hand label: Quo Vadis? (1924) Gabriellino D'Annunzio; Georg Jacoby
+pl	*	Dni Kina Niemego - Quo vadis?	wikidata:Q3285437	wrong	review page: not a film (event); was: hand label: Quo Vadis? (1924) Gabriellino D'Annunzio; Georg Jacoby
 pl	*	Dobry chłopiec	filmweb:10058977	wrong	hand label: Dobry chłopiec (2023) Tom Stuart
 pl	*	Dobry chłopiec	tmdb:1128846	wrong	hand label: Dobry chłopiec (2023) Tom Stuart
 pl	*	Dyrygent	wikidata:Q64830434	wrong	hand label: Dyrygent (1926) Feliks Kuczkowski
@@ -504,7 +504,7 @@ pl	*	Lalka Dolly (Napisy)	cinemeta:tt0064570	wrong	hand label: Lalka (1968)
 pl	*	My Fair Lady	cinemeta:tt0058385	right	hand label: My Fair Lady (1964)
 pl	*	My Fair Lady	filmweb:487823	wrong	hand label: My Fair Lady (2018)
 pl	*	My Fair Lady	imdb:tt10214520	wrong	hand label: My Fair Lady (2019) Razvan Dinca
-pl	*	My Fair Lady	tmdb:11113	right	hand label: My Fair Lady (1964) George Cukor
+pl	*	My Fair Lady	tmdb:11113	wrong	review page: not a film (event); was: hand label: My Fair Lady (1964) George Cukor
 pl	*	NADZIEJA	cinemeta:tt0847750	right	hand label: Nadzieja (2007)
 pl	*	NADZIEJA	filmweb:118419	wrong	hand label: Nadzieja (1997) Goldie Hawn
 pl	*	NADZIEJA	wikidata:Q11788952	right	hand label: Nadzieja (2007) Stanislaw Mucha
@@ -756,3 +756,4 @@ us	*	It (1990)	tmdb:278996	wrong	matchable page: not a film: And the Sea Will Te
 pl	*	FRANZ KAFKA	tmdb:1157322	right	matchable page: hand label (model leaned tmdb:120275 Franz Kafka (1992))
 pl	*	FRANZ KAFKA	tmdb:120275	wrong	matchable page: must not: Franz Kafka (1992) Piotr Dumała
 pl	*	DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO	tmdb:95269	right	matchable page: confirmed: The Conductor (1980)
+de	*	Queen	imdb:tt8378126	wrong	review page: the labelled film is wrong
