@@ -97,7 +97,8 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
   def denies(node: EvidenceNode, film: Int): Boolean =
     scopeOf(node).of(node).find(_.candidate.tmdbId == film).fold(pins.deniedFilms(node.listings.head.key)(film) || {
       candidateOf(film).exists { candidate =>
-        evidenceDenies(node.evidence.measured, candidate.film, IdentityMeasures.listingFilm(node.evidence.measured, candidate.film, None, 0, 0, houses, scopeOf(node).qualifiers))
+        evidenceDenies(node.evidence.measured, candidate.film, IdentityMeasures.listingFilm(node.evidence.measured, candidate.film, None, 0, 0, houses, scopeOf(node).qualifiers,
+          scopeOf(node).countryOf(node)))
       }
     })(_.denied)
 }

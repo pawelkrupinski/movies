@@ -58,7 +58,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       val rivals   = close - (if (rivalling(candidate.tmdbId)) 1 else 0)
       val measures = IdentityMeasures.creditedBySearch(IdentityMeasures.listingFilmTitled(listing, candidate.film, ranks.get(candidate.tmdbId), rivals,
         backing.corroborating((groups ++ IdentityMeasures.searchGroups(listing, candidate.film)).distinct, candidate.film, venue),
-        relationOf(candidate.tmdbId)), directedBy(candidate.tmdbId))
+        relationOf(candidate.tmdbId), country), directedBy(candidate.tmdbId))
       val probability = calibration.probability(ListingFilm, measures)
       val byNode = deniedByNode(candidate.tmdbId)
       Scored(candidate, probability, measures, byNode.orElse(evidenceDenial(listing, candidate.film, measures)), listing, ranks.get(candidate.tmdbId),
@@ -129,7 +129,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   }
 
   /** The country (ISO-3166-1) of `node`'s venue — what [[ReleaseVeto]] asks a namesake's releases of. */
-  private def countryOf(node: EvidenceNode): Option[String] =
+  private[identity] def countryOf(node: EvidenceNode): Option[String] =
     models.City.forCinema(node.listings.head.cinema).map(_.country.language.getCountry).filter(_.nonEmpty)
 
   /** Why `node` rules `id` out before its evidence is scored: a pin, or a title naming it only by the venue's own name

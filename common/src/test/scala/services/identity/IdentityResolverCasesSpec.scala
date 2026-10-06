@@ -1938,6 +1938,47 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(r.decisionOf(memari.key).render)(together(r, memari, hrubos) shouldBe true)
   }
 
+  // TMDB keeps ONE record of a film and its editions and re-releases, dating each as a release of it: "Apocalypse Now",
+  // 28, is 1979 and 147 minutes, and its release_dates hold GB's 2019 "Final Cut" and 2001 "Redux" (recorded 2026-10-06,
+  // /3/movie/28?language=en-GB&append_to_response=credits,release_dates).
+  private lazy val apocalypseReleases =
+    TmdbFilmRecord.releases((play.api.libs.json.Json.parse(java.nio.file.Files.readString(
+      java.nio.file.Paths.get("test/resources/fixtures/tmdb/movie_28_gb.json"))) \ "release_dates").get)
+
+  "A listing of an edition" should "take its film's one record through the edition's release, however much longer it runs" in {
+    // Prince Charles (Flicks) bills "Apocalypse Now" in 2019, Coppola, 183 minutes: the 2019 Final Cut. The model denied 28 by
+    // "Learned(runtime.delta >= 7 AND year.distance >= 4)" — 2019 read against 1979 alone, 183 against 147.
+    val films = Seq(F(28, "Apocalypse Now", 1979, "Francis Ford Coppola", 147, 30.0, releases = Some(apocalypseReleases)))
+    val finalCut = listing(models.PrinceCharlesLondon, "Apocalypse Now", Some(2019), Some("Francis Ford Coppola"), Some(183))
+    val r = shipped(Seq(finalCut), films)
+    withClue(r.decisionOf(finalCut.key).render)(r.decisionOf(finalCut.key).film shouldBe Some(28))
+  }
+
+  it should "take its film's record when its title bills the edition and runs longer than every runtime TMDB states" in {
+    // TMDB holds no record of "The Return of the King"'s extended edition: 122 states the 201-minute theatrical cut.
+    val films = Seq(F(122, "The Lord of the Rings: The Return of the King", 2003, "Peter Jackson", 201, 40.0))
+    val extended = listing(models.PrinceCharlesLondon, "The Lord of the Rings: The Return of the King (Extended Edition)", Some(2003),
+      Some("Peter Jackson"), Some(263))
+    val r = shipped(Seq(extended), films)
+    withClue(r.decisionOf(extended.key).render)(r.decisionOf(extended.key).film shouldBe Some(122))
+  }
+
+  "A remake" should "stay apart from the original, though the original was re-released the year the remake came out" in {
+    // Argento's 1977 "Suspiria", re-released in GB in 2018 — the year of Guadagnino's remake.
+    val films = Seq(
+      F(11906, "Suspiria", 1977, "Dario Argento", 98, 20.0, releases = Some("GB1977-GB2018-IT1977-")),
+      F(361292, "Suspiria", 2018, "Luca Guadagnino", 152, 25.0, releases = Some("GB2018-IT2018-US2018-")))
+    val remake   = listing(models.PrinceCharlesLondon, "Suspiria", Some(2018), Some("Luca Guadagnino"), Some(152))
+    val undated  = listing(models.PrinceCharlesLondon, "Suspiria", Some(2018), None, Some(152))
+    val original = listing(models.PrinceCharlesLondon, "Suspiria", Some(1977), Some("Dario Argento"), Some(98))
+    val r = shipped(Seq(remake, undated, original), films)
+    withClue(Seq(remake, undated, original).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(remake.key).film shouldBe Some(361292)
+      r.decisionOf(undated.key).film shouldBe Some(361292)
+      r.decisionOf(original.key).film shouldBe Some(11906)
+    }
+  }
+
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {
     weights.version shouldBe "test-fixture-2"
     IdentityCalibration.resolver.scopes.keySet shouldBe weights.scopes.keySet

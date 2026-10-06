@@ -3097,7 +3097,7 @@ showings:
 
 === Giulietta i duchy ===
 displayTitle:      Giulietta i duchy
-cinemaTitles:      FEDERICO FELLINI: Ciao a tutti! - Giulietta i duchy | FEDERICO FELLINI: ciao a tutti! - Giulietta i duchy (1965) | Federico Fellini: GIULIETTA I DUCHY | Federico Fellini: ciao a tutti! – Giulietta i duchy | Giulietta i duchy | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti!
+cinemaTitles:      FEDERICO FELLINI: Ciao a tutti! - Giulietta i duchy | FEDERICO FELLINI: ciao a tutti! - Giulietta i duchy (1965) | Federico Fellini: GIULIETTA I DUCHY | Federico Fellini: ciao a tutti! – Giulietta i duchy | GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego | Giulietta i duchy | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti!
 runtimeMinutes:    139
 releaseYear:       1965
 countries:         Włochy, Francja
@@ -3123,6 +3123,7 @@ cinemaScrapes:
   Kino Muza / Giulietta i duchy / 1965
   Kino Pałacowe / Giulietta i duchy / 1965
   Kino Pionier 1907 / Federico Fellini: GIULIETTA I DUCHY / 1965
+  Kino Rialto / GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego / 1965
   Kino Spektrum / Giulietta i duchy | FEDERICO FELLINI: ciao a tutti! / —
   Kino Wisła / FEDERICO FELLINI: ciao a tutti! - Giulietta i duchy (1965) / 1965
   Kino za Rogiem Cafe / Giulietta i duchy / —
@@ -3134,28 +3135,37 @@ showings:
 
 === Giulietta I Duchy | przed filmem wykład prof. Marka Hendrykowskiego ===
 displayTitle:      Giulietta I Duchy | przed filmem wykład prof. Marka Hendrykowskiego
-cinemaTitles:      GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego
-runtimeMinutes:    148
+cinemaTitles:      FEDERICO FELLINI: Ciao a tutti! - Giulietta i duchy | FEDERICO FELLINI: ciao a tutti! - Giulietta i duchy (1965) | Federico Fellini: GIULIETTA I DUCHY | Federico Fellini: ciao a tutti! – Giulietta i duchy | GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego | Giulietta i duchy | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti!
+runtimeMinutes:    139
 releaseYear:       1965
-countries:         Francja, Włochy
-posterUrl:         https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/giulietta-i-duchy-plakat.jpg
+countries:         Włochy, Francja
+posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/csm_Giulietta_Poster_45456e2738-566x800.jpg
 synopsis.length:   1007
-cast:              —
+cast:              Giulietta Masina, Mario Pisu, Sandra Milo, Valentina Cortese, Caterina Boratto, Lou Gilbert, Sylva Koscina
 director:          Federico Fellini
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
+tmdbId:            19120
+imdbId:            tt0059229
+originalTitle:     Giulietta degli spiriti
+imdbRating:        7.4
+metascore:         84
+rottenTomatoes:    79
 filmwebRating:     7.4
-metacriticUrl:     —
-rottenTomatoesUrl: —
+metacriticUrl:     https://www.metacritic.com/movie/juliet-of-the-spirits
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/juliet_of_the_spirits
 filmwebUrl:        https://www.filmweb.pl/film/Giulietta+i+duchy-1965-30829
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=157280
 cinemaScrapes:
+  Kino Kinematograf / Federico Fellini: ciao a tutti! – Giulietta i duchy / 1965
+  Kino Muza / Giulietta i duchy / 1965
+  Kino Pałacowe / Giulietta i duchy / 1965
+  Kino Pionier 1907 / Federico Fellini: GIULIETTA I DUCHY / 1965
   Kino Rialto / GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego / 1965
+  Kino Spektrum / Giulietta i duchy | FEDERICO FELLINI: ciao a tutti! / —
+  Kino Wisła / FEDERICO FELLINI: ciao a tutti! - Giulietta i duchy (1965) / 1965
+  Kino za Rogiem Cafe / Giulietta i duchy / —
+  Kinoteatr Rialto / FEDERICO FELLINI: Ciao a tutti! - Giulietta i duchy / —
+  Kinoteka / Giulietta i duchy | FEDERICO FELLINI: ciao a tutti / —
 showings:
   2026-06-17  Kino Rialto                   18:00
 

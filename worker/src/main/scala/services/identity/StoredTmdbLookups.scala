@@ -107,7 +107,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
 
   private def filmOf(doc: Option[BsonDocument]): Answer[Option[IdentityMeasures.Film]] =
     doc.flatMap(d => Option(d.get("record")).map(d -> _)) match {
-      case Some((d, record)) => Answer.Known(IdentityAnswerBson.filmOf(record).map(withImdbNumber(_, d)))
+      case Some((d, record)) => Answer.Known(IdentityAnswerBson.filmOf(record).map(film => withRuntimes(withImdbNumber(film, d), d)))
       case None              => Answer.Unknown
     }
   // The films decoded from the documents the current prefetch holds; let go with them.
@@ -144,6 +144,15 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
     else TmdbStore.Partial.values.iterator.flatMap(partial => Option(d.get(partial.field)).filter(_.isDocument))
       .flatMap(response => Option(response.asDocument.get("imdb_id")).filter(_.isString).map(_.asString.getValue))
       .map(IdentityMeasures.imdbNumber).find(_ > 0).fold(film)(number => film.copy(imdbNumber = number))
+
+  /** The film with every runtime its partial responses state ([[TmdbFilmRecord.runtimes]]), the record's own first: a record
+   *  filed before records carried the other translation's runtime has only the localized one. */
+  private def withRuntimes(film: IdentityMeasures.Film, d: BsonDocument): IdentityMeasures.Film = {
+    val stated = TmdbStore.Partial.values.toSeq.flatMap(partial => Option(d.get(partial.field)).filter(_.isDocument))
+      .flatMap(response => Option(response.asDocument.get("runtime")).filter(_.isInt32).map(_.asInt32.getValue))
+    val runtimes = TmdbFilmRecord.runtimes(film.runtimes ++ stated)
+    if (runtimes == film.runtimes) film else film.copy(runtime = runtimes.headOption, alternativeRuntimes = runtimes.drop(1))
+  }
 
   /** A fallback source's film: IMDb's record of the title, as `ImdbClient.identityRecord` read it. */
   private def fallbackFilm(id: Int): Answer[Option[IdentityMeasures.Film]] =

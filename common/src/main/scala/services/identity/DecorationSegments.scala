@@ -97,7 +97,16 @@ object DecorationSegments {
     "dyskusja", "rozmowa", "seans", "screening", "event", "special", "preview", "live", "talk", "intro", "introduced", "gesprach", "vorpremiere",
     "festiwal", "festival", "retransmisja", "koncert", "karnet", "maraton", "marathon")
   private val EditionWords = Set("cut", "remaster", "remastered", "restored", "restoration", "4k", "rerelease", "re", "release", "anniversary",
-    "aniversario", "rocznica", "edition", "extended", "director", "directors", "wersja", "rozszerzona", "jubileusz")
+    "aniversario", "rocznica", "edition", "extended", "director", "directors", "wersja", "rozszerzona", "jubileusz", "uncut", "redux")
+
+  /** Does a listing billed under `titles` name an EDITION of the film titled `filmTitles` — a word of [[EditionWords]]
+   *  ("Extended Edition", "Director's Cut", "Redux") its titles carry and the film's do not? TMDB keeps one record for a
+   *  film and its cuts, so an edition can run longer than every runtime the record states (`IdentityMeasures`' runtime
+   *  delta reads it). */
+  def billsAnEdition(titles: Seq[String], filmTitles: Seq[String]): Boolean = {
+    val filmWords = filmTitles.iterator.flatMap(TitleContainment.tokens).toSet
+    titles.iterator.flatMap(TitleContainment.tokens).exists(word => EditionWords(word) && !filmWords(word))
+  }
   private val PlaceWords  = Set("sala", "zl", "pln", "eur", "gbp", "usd", "bilet", "bilety", "dzieci", "kids", "seniora", "senior", "familie", "family")
   private val Stopwords   = Set("i", "w", "z", "na", "do", "the", "a", "of", "and", "in", "der", "die", "das", "und", "el", "la", "los", "las", "de", "y")
 

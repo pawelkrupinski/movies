@@ -1,0 +1,591 @@
+{
+ "adult": false,
+ "backdrop_path": "/xlDUjb0Q5Dv6jPQRF5VE4IMjIy.jpg",
+ "belongs_to_collection": null,
+ "budget": 30000000,
+ "genres": [
+  {
+   "id": 18,
+   "name": "Dramat"
+  },
+  {
+   "id": 80,
+   "name": "Kryminał"
+  }
+ ],
+ "homepage": "",
+ "id": 311,
+ "imdb_id": "tt0087843",
+ "origin_country": [
+  "US"
+ ],
+ "original_language": "en",
+ "original_title": "Once Upon a Time in America",
+ "overview": "Lata 20. i 30. XX wieku. David i Max razem dorastali w żydowskim getcie w Nowym Jorku. Byli członkami gangu młodzieżowego, żyli z drobnych oszustw. Po latach przyjaciele kierują własną grupą przestępczą, mają wspólne fundusze, nad którymi pieczę sprawuje ich kompan Moe. Robią wielkie pieniądze na nielegalnym handlu alkoholem. Wraz z nadejściem końca prohibicji w 1933 roku gang przeżywa kryzys finansowy. Zgrana niegdyś paczka powoli się rozpada.",
+ "popularity": 23.1178,
+ "poster_path": "/6Q9YO69pt9oxe1ygeMd2F4gjaGv.jpg",
+ "production_companies": [
+  {
+   "id": 10214,
+   "logo_path": null,
+   "name": "Embassy International Pictures",
+   "origin_country": "US"
+  },
+  {
+   "id": 1256,
+   "logo_path": "/7uiQEAkpcngVIBiQEkok4G93G5E.png",
+   "name": "PSO",
+   "origin_country": "US"
+  },
+  {
+   "id": 7965,
+   "logo_path": "/eZ6DeFO1mhHtzxB1aACcEzKqQ7L.png",
+   "name": "The Ladd Company",
+   "origin_country": "US"
+  },
+  {
+   "id": 218,
+   "logo_path": null,
+   "name": "Rafran Cinematografica",
+   "origin_country": "IT"
+  }
+ ],
+ "production_countries": [
+  {
+   "iso_3166_1": "IT",
+   "name": "Italy"
+  },
+  {
+   "iso_3166_1": "US",
+   "name": "United States of America"
+  }
+ ],
+ "release_date": "1984-05-23",
+ "revenue": 5500000,
+ "runtime": 229,
+ "softcore": false,
+ "spoken_languages": [
+  {
+   "english_name": "English",
+   "iso_639_1": "en",
+   "name": "English"
+  },
+  {
+   "english_name": "French",
+   "iso_639_1": "fr",
+   "name": "Français"
+  },
+  {
+   "english_name": "Hebrew",
+   "iso_639_1": "he",
+   "name": "עִבְרִית"
+  },
+  {
+   "english_name": "Italian",
+   "iso_639_1": "it",
+   "name": "Italiano"
+  },
+  {
+   "english_name": "Yiddish",
+   "iso_639_1": "yi",
+   "name": ""
+  }
+ ],
+ "status": "Released",
+ "tagline": "Zbrodnia, namiętność i żądza władzy.",
+ "title": "Dawno temu w Ameryce",
+ "video": false,
+ "vote_average": 8.4,
+ "vote_count": 6246,
+ "release_dates": {
+  "results": [
+   {
+    "iso_3166_1": "DE",
+    "release_dates": [
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "West Germany",
+      "release_date": "1984-10-12T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "East Germany",
+      "release_date": "1986-06-13T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "12",
+      "descriptors": [],
+      "iso_639_1": "de",
+      "note": "Arte•tv",
+      "release_date": "2026-06-08T00:00:00.000Z",
+      "type": 4
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1991-03-02T00:00:00.000Z",
+      "type": 6
+     },
+     {
+      "certification": "12",
+      "descriptors": [],
+      "iso_639_1": "de",
+      "note": "Arte",
+      "release_date": "2026-06-08T00:00:00.000Z",
+      "type": 6
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "GB",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Edinburgh International Film Festival",
+      "release_date": "1984-08-18T00:00:00.000Z",
+      "type": 1
+     },
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1984-10-05T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "VHS",
+      "release_date": "1986-06-03T00:00:00.000Z",
+      "type": 5
+     },
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "DVD",
+      "release_date": "2003-06-23T00:00:00.000Z",
+      "type": 5
+     },
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Blu-ray",
+      "release_date": "2011-02-07T00:00:00.000Z",
+      "type": 5
+     },
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Extended Director’s Cut (Blu-ray)",
+      "release_date": "2014-10-20T00:00:00.000Z",
+      "type": 5
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "PL",
+    "release_dates": [
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1986-12-08T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "US",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "New York Film Festival",
+      "release_date": "1984-10-12T00:00:00.000Z",
+      "type": 1
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "New York Film Festival",
+      "release_date": "2014-09-27T00:00:00.000Z",
+      "type": 1
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "New York City, New York (Uncut Version)",
+      "release_date": "1984-10-14T00:00:00.000Z",
+      "type": 2
+     },
+     {
+      "certification": "R",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Los Angeles, California",
+      "release_date": "1992-10-23T00:00:00.000Z",
+      "type": 2
+     },
+     {
+      "certification": "R",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "New York City, New York (Director's Cut)",
+      "release_date": "2012-11-23T00:00:00.000Z",
+      "type": 2
+     },
+     {
+      "certification": "R",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1984-06-01T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1985-08-01T00:00:00.000Z",
+      "type": 6
+     }
+    ]
+   }
+  ]
+ },
+ "credits": {
+  "cast": [
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 380,
+    "known_for_department": "Acting",
+    "name": "Robert De Niro",
+    "original_name": "Robert De Niro",
+    "popularity": 6.7414,
+    "profile_path": "/cT8htcckIuyI1Lqwt1CvD02ynTh.jpg",
+    "cast_id": 3,
+    "character": "Noodles",
+    "credit_id": "52fe4236c3a36847f800c749",
+    "order": 0
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 4512,
+    "known_for_department": "Acting",
+    "name": "James Woods",
+    "original_name": "James Woods",
+    "popularity": 3.4237,
+    "profile_path": "/tLH7mpH4KqkWL5VgjueTbewGsfK.jpg",
+    "cast_id": 4,
+    "character": "Max",
+    "credit_id": "52fe4236c3a36847f800c74d",
+    "order": 1
+   },
+   {
+    "adult": false,
+    "gender": 1,
+    "id": 4513,
+    "known_for_department": "Acting",
+    "name": "Elizabeth McGovern",
+    "original_name": "Elizabeth McGovern",
+    "popularity": 3.1764,
+    "profile_path": "/ihYdCKyr3JPz74tPuvkn1WSNh9b.jpg",
+    "cast_id": 5,
+    "character": "Deborah",
+    "credit_id": "52fe4236c3a36847f800c751",
+    "order": 2
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 4517,
+    "known_for_department": "Acting",
+    "name": "Joe Pesci",
+    "original_name": "Joe Pesci",
+    "popularity": 4.4824,
+    "profile_path": "/pEHQoL8yOndOq59iXlgsOpUTcTk.jpg",
+    "cast_id": 9,
+    "character": "Frankie",
+    "credit_id": "52fe4236c3a36847f800c761",
+    "order": 3
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 4521,
+    "known_for_department": "Acting",
+    "name": "Burt Young",
+    "original_name": "Burt Young",
+    "popularity": 1.7438,
+    "profile_path": "/6QWnsSbjYog0D6hkPhg7Frty54D.jpg",
+    "cast_id": 12,
+    "character": "Joe",
+    "credit_id": "52fe4236c3a36847f800c76d",
+    "order": 4
+   },
+   {
+    "adult": false,
+    "gender": 1,
+    "id": 4514,
+    "known_for_department": "Acting",
+    "name": "Tuesday Weld",
+    "original_name": "Tuesday Weld",
+    "popularity": 2.0039,
+    "profile_path": "/yp9Ng5tjVhhws17CgVqWWEEbqrb.jpg",
+    "cast_id": 6,
+    "character": "Carol",
+    "credit_id": "52fe4236c3a36847f800c755",
+    "order": 5
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 4515,
+    "known_for_department": "Acting",
+    "name": "Treat Williams",
+    "original_name": "Treat Williams",
+    "popularity": 2.7018,
+    "profile_path": "/jbRMOU2K7ePg7Zs59nfgEYLeD1e.jpg",
+    "cast_id": 7,
+    "character": "Jimmy O'Donnell",
+    "credit_id": "52fe4236c3a36847f800c759",
+    "order": 6
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 1004,
+    "known_for_department": "Acting",
+    "name": "Danny Aiello",
+    "original_name": "Danny Aiello",
+    "popularity": 1.9621,
+    "profile_path": "/2WiZ8SkiFU355GUT2QuSPlenrfM.jpg",
+    "cast_id": 47,
+    "character": "Police Chief Aiello",
+    "credit_id": "52fe4236c3a36847f800c809",
+    "order": 7
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 3174,
+    "known_for_department": "Acting",
+    "name": "Richard Bright",
+    "original_name": "Richard Bright",
+    "popularity": 1.3784,
+    "profile_path": "/potMaJ2u5PRjXZb7qF9lSW1ldNZ.jpg",
+    "cast_id": 72,
+    "character": "Chicken Joe",
+    "credit_id": "543d0e8cc3a36815ea0015f6",
+    "order": 8
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 4516,
+    "known_for_department": "Acting",
+    "name": "James Hayden",
+    "original_name": "James Hayden",
+    "popularity": 0.6851,
+    "profile_path": "/A0l96u277mqrr7diMb9Xbj0idyp.jpg",
+    "cast_id": 8,
+    "character": "Patsy",
+    "credit_id": "52fe4236c3a36847f800c75d",
+    "order": 9
+   }
+  ],
+  "crew": [
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 4385,
+    "known_for_department": "Directing",
+    "name": "Sergio Leone",
+    "original_name": "Sergio Leone",
+    "popularity": 2.284,
+    "profile_path": "/2576qoW8l9Z1nKGM10ar60aIwUu.jpg",
+    "credit_id": "52fe4236c3a36847f800c845",
+    "department": "Writing",
+    "job": "Screenplay"
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 4667,
+    "known_for_department": "Editing",
+    "name": "Franco Arcalli",
+    "original_name": "Franco Arcalli",
+    "popularity": 0.9606,
+    "profile_path": "/lr6YUIOqMDlReirZSLQLxyOSotD.jpg",
+    "credit_id": "52fe4236c3a36847f800c839",
+    "department": "Writing",
+    "job": "Screenplay"
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 4664,
+    "known_for_department": "Writing",
+    "name": "Leonardo Benvenuti",
+    "original_name": "Leonardo Benvenuti",
+    "popularity": 1.3017,
+    "profile_path": "/7H0n2KmSwq6Zsut5rZtv8Wob3I8.jpg",
+    "credit_id": "52fe4236c3a36847f800c827",
+    "department": "Writing",
+    "job": "Screenplay"
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 32048,
+    "known_for_department": "Writing",
+    "name": "Enrico Medioli",
+    "original_name": "Enrico Medioli",
+    "popularity": 0.8309,
+    "profile_path": null,
+    "credit_id": "52fe4236c3a36847f800c833",
+    "department": "Writing",
+    "job": "Screenplay"
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 4385,
+    "known_for_department": "Directing",
+    "name": "Sergio Leone",
+    "original_name": "Sergio Leone",
+    "popularity": 2.284,
+    "profile_path": "/2576qoW8l9Z1nKGM10ar60aIwUu.jpg",
+    "credit_id": "52fe4236c3a36847f800c745",
+    "department": "Directing",
+    "job": "Director"
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 69973,
+    "known_for_department": "Writing",
+    "name": "Piero De Bernardi",
+    "original_name": "Piero De Bernardi",
+    "popularity": 0.8582,
+    "profile_path": null,
+    "credit_id": "52fe4236c3a36847f800c82d",
+    "department": "Writing",
+    "job": "Screenplay"
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 4668,
+    "known_for_department": "Writing",
+    "name": "Franco Ferrini",
+    "original_name": "Franco Ferrini",
+    "popularity": 1.0923,
+    "profile_path": "/7dd4eQdAD3Gd52jeEeW1TonotZi.jpg",
+    "credit_id": "52fe4236c3a36847f800c83f",
+    "department": "Writing",
+    "job": "Screenplay"
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 1344882,
+    "known_for_department": "Writing",
+    "name": "Harry Grey",
+    "original_name": "Harry Grey",
+    "popularity": 0.6167,
+    "profile_path": null,
+    "credit_id": "53ce3f650e0a265e01005f95",
+    "department": "Writing",
+    "job": "Novel"
+   },
+   {
+    "adult": false,
+    "gender": 0,
+    "id": 1849054,
+    "known_for_department": "Directing",
+    "name": "Luca Morsella",
+    "original_name": "Luca Morsella",
+    "popularity": 0.2997,
+    "profile_path": null,
+    "credit_id": "5e49c3799b861600166278f5",
+    "department": "Directing",
+    "job": "Assistant Director"
+   },
+   {
+    "adult": false,
+    "gender": 0,
+    "id": 2540948,
+    "known_for_department": "Directing",
+    "name": "Amy Wells",
+    "original_name": "Amy Wells",
+    "popularity": 0.311,
+    "profile_path": null,
+    "credit_id": "5e49c3ba2d93750015a8b1a3",
+    "department": "Directing",
+    "job": "Assistant Director"
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 552365,
+    "known_for_department": "Acting",
+    "name": "Philippe Landoulsi",
+    "original_name": "Philippe Landoulsi",
+    "popularity": 0.5768,
+    "profile_path": null,
+    "credit_id": "5e49c36b676ce2001500987c",
+    "department": "Directing",
+    "job": "Assistant Director"
+   },
+   {
+    "adult": false,
+    "gender": 0,
+    "id": 1520164,
+    "known_for_department": "Production",
+    "name": "Dennis T. Benatar",
+    "original_name": "Dennis T. Benatar",
+    "popularity": 0.5359,
+    "profile_path": "/7dCISCuyOdSbNOhXSKu7iuEiGTh.jpg",
+    "credit_id": "5e49c35b2d93750013a8fcfe",
+    "department": "Directing",
+    "job": "Assistant Director"
+   },
+   {
+    "adult": false,
+    "gender": 0,
+    "id": 2197377,
+    "known_for_department": "Directing",
+    "name": "Fabrizio Sergenti Castellani",
+    "original_name": "Fabrizio Sergenti Castellani",
+    "popularity": 0.4558,
+    "profile_path": null,
+    "credit_id": "5e49c3891e92250018c2e18d",
+    "department": "Directing",
+    "job": "First Assistant Director"
+   }
+  ]
+ }
+}

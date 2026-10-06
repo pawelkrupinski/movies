@@ -15,9 +15,9 @@ import scala.jdk.CollectionConverters._
 enum TmdbKind(val collection: String, val answerFields: Option[Seq[String]]) {
   /** A film: its record's two partial responses, the record parsed from them, and its hit fields. An
    *  answer reads the record or the hit, and of the partials (~650 of ~1,000 bytes on UK, the write path's,
-   *  which re-parses the record when one changes) only the IMDb id: a record filed before records carried
-   *  its number has none ([[StoredTmdbLookups]] takes it from here). */
-  case Film   extends TmdbKind("tmdb_films", Some(Seq("record", "hit", "local.imdb_id", "english.imdb_id")))
+   *  which re-parses the record when one changes) only the IMDb id and the runtime: a record filed before records carried
+   *  its number, or its other translation's runtime, has none ([[StoredTmdbLookups]] takes them from here). */
+  case Film   extends TmdbKind("tmdb_films", Some(Seq("record", "hit", "local.imdb_id", "english.imdb_id", "local.runtime", "english.runtime")))
   /** A person: the films they are credited as directing and as writing. */
   case Person extends TmdbKind("tmdb_people", None)
   /** A question: a title search's or person search's ranked ids, a find's films, IMDb's suggestions. */

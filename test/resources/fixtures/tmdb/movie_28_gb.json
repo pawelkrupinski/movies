@@ -1,0 +1,1562 @@
+{
+ "adult": false,
+ "backdrop_path": "/49fzLedFVKgGgFChLMuulDJBY1c.jpg",
+ "belongs_to_collection": null,
+ "budget": 31500000,
+ "genres": [
+  {
+   "id": 18,
+   "name": "Drama"
+  },
+  {
+   "id": 10752,
+   "name": "War"
+  }
+ ],
+ "homepage": "http://www.apocalypsenow.com",
+ "id": 28,
+ "imdb_id": "tt0078788",
+ "origin_country": [
+  "US"
+ ],
+ "original_language": "en",
+ "original_title": "Apocalypse Now",
+ "overview": "At the height of the Vietnam war, Captain Benjamin Willard is sent on a dangerous mission that, officially, \"does not exist, nor will it ever exist.\" His goal is to locate - and eliminate - a mysterious Green Beret Colonel named Walter Kurtz, who has been leading his personal army on illegal guerrilla missions into enemy territory.",
+ "popularity": 22.7919,
+ "poster_path": "/gQB8Y5RCMkv2zwzFHbUJX3kAhvA.jpg",
+ "production_companies": [
+  {
+   "id": 70,
+   "logo_path": "/ueaENQkPcy8rlr5fGZVBXKOhlBh.png",
+   "name": "American Zoetrope",
+   "origin_country": "US"
+  }
+ ],
+ "production_countries": [
+  {
+   "iso_3166_1": "US",
+   "name": "United States of America"
+  }
+ ],
+ "release_date": "1979-05-19",
+ "revenue": 150000000,
+ "runtime": 147,
+ "softcore": false,
+ "spoken_languages": [
+  {
+   "english_name": "Khmer",
+   "iso_639_1": "km",
+   "name": ""
+  },
+  {
+   "english_name": "English",
+   "iso_639_1": "en",
+   "name": "English"
+  },
+  {
+   "english_name": "French",
+   "iso_639_1": "fr",
+   "name": "Français"
+  },
+  {
+   "english_name": "Vietnamese",
+   "iso_639_1": "vi",
+   "name": "Tiếng Việt"
+  }
+ ],
+ "status": "Released",
+ "tagline": "This is the end...",
+ "title": "Apocalypse Now",
+ "video": false,
+ "vote_average": 8.3,
+ "vote_count": 9425,
+ "credits": {
+  "cast": [
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 8349,
+    "known_for_department": "Acting",
+    "name": "Martin Sheen",
+    "original_name": "Martin Sheen",
+    "popularity": 3.7138,
+    "profile_path": "/m2Y3Q0uyuW6htrn2W9UWCWMkpZu.jpg",
+    "cast_id": 29,
+    "character": "Captain Benjamin Willard",
+    "credit_id": "52fe4210c3a36847f800135b",
+    "order": 0
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 3084,
+    "known_for_department": "Acting",
+    "name": "Marlon Brando",
+    "original_name": "Marlon Brando",
+    "popularity": 3.4163,
+    "profile_path": "/fuTEPMsBtV1zE98ujPONbKiYDc2.jpg",
+    "cast_id": 30,
+    "character": "Colonel Walter Kurtz",
+    "credit_id": "52fe4210c3a36847f800135f",
+    "order": 1
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 8351,
+    "known_for_department": "Acting",
+    "name": "Frederic Forrest",
+    "original_name": "Frederic Forrest",
+    "popularity": 1.4738,
+    "profile_path": "/daSNber2lZjvxrlOR3WcEX0CFZM.jpg",
+    "cast_id": 34,
+    "character": "Jay 'Chef' Hicks",
+    "credit_id": "52fe4210c3a36847f800136f",
+    "order": 2
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 8354,
+    "known_for_department": "Acting",
+    "name": "Albert Hall",
+    "original_name": "Albert Hall",
+    "popularity": 1.1207,
+    "profile_path": "/jvcOpEO0vSNy3KaDkhIldI1CoaU.jpg",
+    "cast_id": 35,
+    "character": "Chief Phillips",
+    "credit_id": "52fe4210c3a36847f8001373",
+    "order": 3
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 2975,
+    "known_for_department": "Acting",
+    "name": "Laurence Fishburne",
+    "original_name": "Laurence Fishburne",
+    "popularity": 4.1584,
+    "profile_path": "/2GbXERENPpl5MmlqOLlPVaVtifD.jpg",
+    "cast_id": 32,
+    "character": "Tyrone 'Clean' Miller",
+    "credit_id": "52fe4210c3a36847f8001367",
+    "order": 4
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 8350,
+    "known_for_department": "Acting",
+    "name": "Sam Bottoms",
+    "original_name": "Sam Bottoms",
+    "popularity": 1.3773,
+    "profile_path": "/82ACmkTCHtKAuw42Jwx4JbjuVw0.jpg",
+    "cast_id": 33,
+    "character": "Lance B. Johnson",
+    "credit_id": "52fe4210c3a36847f800136b",
+    "order": 5
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 3087,
+    "known_for_department": "Acting",
+    "name": "Robert Duvall",
+    "original_name": "Robert Duvall",
+    "popularity": 3.4149,
+    "profile_path": "/3tcKxC5Sc3DJ6XPDKKC2EAomEWn.jpg",
+    "cast_id": 31,
+    "character": "Lieutenant Colonel Bill Kilgore",
+    "credit_id": "52fe4210c3a36847f8001363",
+    "order": 6
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 3173,
+    "known_for_department": "Acting",
+    "name": "G.D. Spradlin",
+    "original_name": "G.D. Spradlin",
+    "popularity": 1.4315,
+    "profile_path": "/pWNa9H3ABB3Ug9CwTfVNtHsCFjV.jpg",
+    "cast_id": 39,
+    "character": "General Corman",
+    "credit_id": "52fe4210c3a36847f800137f",
+    "order": 7
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 3,
+    "known_for_department": "Acting",
+    "name": "Harrison Ford",
+    "original_name": "Harrison Ford",
+    "popularity": 7.1156,
+    "profile_path": "/pjBMJVPpcZK23Vt1nzr1zEBTWrP.jpg",
+    "cast_id": 36,
+    "character": "Colonel",
+    "credit_id": "52fe4210c3a36847f8001377",
+    "order": 8
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 8346,
+    "known_for_department": "Directing",
+    "name": "Jerry Ziesmer",
+    "original_name": "Jerry Ziesmer",
+    "popularity": 0.8038,
+    "profile_path": null,
+    "cast_id": 40,
+    "character": "Jerry, Civilian",
+    "credit_id": "52fe4210c3a36847f8001383",
+    "order": 9
+   }
+  ],
+  "crew": [
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 1776,
+    "known_for_department": "Directing",
+    "name": "Francis Ford Coppola",
+    "original_name": "Francis Ford Coppola",
+    "popularity": 2.7457,
+    "profile_path": "/3Pblihd6KjXliie9vj4iQJwbNPU.jpg",
+    "credit_id": "52fe4210c3a36847f80012c7",
+    "department": "Directing",
+    "job": "Director"
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 8346,
+    "known_for_department": "Directing",
+    "name": "Jerry Ziesmer",
+    "original_name": "Jerry Ziesmer",
+    "popularity": 0.8038,
+    "profile_path": null,
+    "credit_id": "570d2ad092514139930000f0",
+    "department": "Directing",
+    "job": "Assistant Director"
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 8328,
+    "known_for_department": "Writing",
+    "name": "John Milius",
+    "original_name": "John Milius",
+    "popularity": 1.3606,
+    "profile_path": "/5e9PS8MtgEqpSAeqgUp7gaVU0gU.jpg",
+    "credit_id": "5c93b2de9251412b4b78c312",
+    "department": "Writing",
+    "job": "Writer"
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 1776,
+    "known_for_department": "Directing",
+    "name": "Francis Ford Coppola",
+    "original_name": "Francis Ford Coppola",
+    "popularity": 2.7457,
+    "profile_path": "/3Pblihd6KjXliie9vj4iQJwbNPU.jpg",
+    "credit_id": "5c93b2e89251412b4e78ad66",
+    "department": "Writing",
+    "job": "Writer"
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 511,
+    "known_for_department": "Production",
+    "name": "Larry Franco",
+    "original_name": "Larry Franco",
+    "popularity": 1.2272,
+    "profile_path": "/s4lknJYgrQ2b62IX0hC1wkvOs2u.jpg",
+    "credit_id": "68b8ba9421a023df8a9bf37e",
+    "department": "Directing",
+    "job": "Second Assistant Director"
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 1625347,
+    "known_for_department": "Directing",
+    "name": "Tony Brandt",
+    "original_name": "Tony Brandt",
+    "popularity": 0.5573,
+    "profile_path": null,
+    "credit_id": "68c071f6a6058281d71f5cca",
+    "department": "Directing",
+    "job": "Third Assistant Director"
+   },
+   {
+    "adult": false,
+    "gender": 0,
+    "id": 1442518,
+    "known_for_department": "Directing",
+    "name": "Ray Quiroz",
+    "original_name": "Ray Quiroz",
+    "popularity": 0.5018,
+    "profile_path": null,
+    "credit_id": "68c0dbca041d1ddf9306ac4a",
+    "department": "Directing",
+    "job": "Script Supervisor"
+   },
+   {
+    "adult": false,
+    "gender": 1,
+    "id": 1511672,
+    "known_for_department": "Directing",
+    "name": "Nancy Hopton",
+    "original_name": "Nancy Hopton",
+    "popularity": 0.5124,
+    "profile_path": null,
+    "credit_id": "68c0dbd674c5e036819c1f15",
+    "department": "Directing",
+    "job": "Script Supervisor"
+   },
+   {
+    "adult": false,
+    "gender": 2,
+    "id": 8327,
+    "known_for_department": "Writing",
+    "name": "Joseph Conrad",
+    "original_name": "Joseph Conrad",
+    "popularity": 1.2522,
+    "profile_path": "/7dmPuMaghnQZYLoKWdrBPJFTL7c.jpg",
+    "credit_id": "6a46951cd9ce471646472950",
+    "department": "Writing",
+    "job": "Novel"
+   }
+  ]
+ },
+ "release_dates": {
+  "results": [
+   {
+    "iso_3166_1": "AE",
+    "release_dates": [
+     {
+      "certification": "15+ ",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Blu-ray",
+      "release_date": "2019-08-26T00:00:00.000Z",
+      "type": 5
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "AR",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Mar del Plata Film Festival (Redux)",
+      "release_date": "2002-03-12T00:00:00.000Z",
+      "type": 1
+     },
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1980-04-03T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "+16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2002-03-28T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "AU",
+    "release_dates": [
+     {
+      "certification": "R 18+",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-11-15T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "R 18+",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Re-release",
+      "release_date": "1983-10-27T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "MA 15+",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2001-11-15T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "BE",
+    "release_dates": [
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-12-13T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "12",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2001-06-20T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "BR",
+    "release_dates": [
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-12-16T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "2009-10-29T00:00:00.000Z",
+      "type": 5
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "CA",
+    "release_dates": [
+     {
+      "certification": "R",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-08-15T00:00:00.000Z",
+      "type": 2
+     },
+     {
+      "certification": "18A",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2001-08-10T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "CH",
+    "release_dates": [
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "de",
+      "note": "Redux",
+      "release_date": "2001-05-31T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "fr",
+      "note": "Redux",
+      "release_date": "2001-05-23T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "CN",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Beijing International Film Festival",
+      "release_date": "2020-08-22T00:00:00.000Z",
+      "type": 1
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Beijing International Film Festival",
+      "release_date": "2026-04-18T00:00:00.000Z",
+      "type": 1
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-05-19T00:00:00.000Z",
+      "type": 2
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "CO",
+    "release_dates": [
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-12-25T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "CZ",
+    "release_dates": [
+     {
+      "certification": "18+",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Febio Film Festival  (Redux)",
+      "release_date": "2003-01-01T00:00:00.000Z",
+      "type": 1
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "2022-07-28T00:00:00.000Z",
+      "type": 2
+     },
+     {
+      "certification": "15+",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1996-02-15T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "15+",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2003-07-17T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "DE",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Mannheim-Heidelberg International Filmfestival",
+      "release_date": "1979-10-01T00:00:00.000Z",
+      "type": 1
+     },
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "West Germany",
+      "release_date": "1979-10-04T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Munich Film Festival (Final Cut)",
+      "release_date": "2019-07-04T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2001-10-18T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "DK",
+    "release_dates": [
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-10-26T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2001-09-07T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Final Cut",
+      "release_date": "2019-11-28T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "EG",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "DVD",
+      "release_date": "2021-06-18T00:00:00.000Z",
+      "type": 5
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "ES",
+    "release_dates": [
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-11-07T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2002-09-20T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Final Cut",
+      "release_date": "2020-07-03T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "FI",
+    "release_dates": [
+     {
+      "certification": "K-16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-12-14T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "K-16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Final Cut",
+      "release_date": "2019-12-11T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "K-16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2001-10-05T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "FR",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Cannes Film Festival (Redux)",
+      "release_date": "2001-05-11T00:00:00.000Z",
+      "type": 1
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Cannes Film Festival",
+      "release_date": "1979-05-19T00:00:00.000Z",
+      "type": 1
+     },
+     {
+      "certification": "TP",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-09-26T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Final Cut",
+      "release_date": "2019-08-21T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "12",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Blu-ray",
+      "release_date": "2011-04-27T00:00:00.000Z",
+      "type": 5
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "ARTE (Final Cut)",
+      "release_date": "2021-11-07T00:00:00.000Z",
+      "type": 6
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "fr",
+      "note": "(hommage à Robert Duval : 05/01/1931 - 15/02/2026) Canal+ Grand Écran",
+      "release_date": "2026-02-19T00:00:00.000Z",
+      "type": 6
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "fr",
+      "note": "Canal+ Grand Écran (Apocalypse Now Final Cut)",
+      "release_date": "2026-05-02T00:00:00.000Z",
+      "type": 6
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "GB",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-12-18T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Re-release",
+      "release_date": "1995-04-03T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2001-11-23T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Re-release",
+      "release_date": "2011-05-27T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Final Cut",
+      "release_date": "2019-08-13T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Final cut / Redux / Theatrical cut - 4k Ultra HD Blu-ray / Blu-ray / DVD",
+      "release_date": "2019-09-30T00:00:00.000Z",
+      "type": 5
+     },
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux DVD",
+      "release_date": "2002-04-22T00:00:00.000Z",
+      "type": 5
+     },
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "DVD",
+      "release_date": "2000-11-06T00:00:00.000Z",
+      "type": 5
+     },
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Theatrical / Redux Blu-ray",
+      "release_date": "2011-06-13T00:00:00.000Z",
+      "type": 5
+     },
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "VHS",
+      "release_date": "1994-01-24T00:00:00.000Z",
+      "type": 5
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "GR",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Athens Film Festival (Final Cut)",
+      "release_date": "2019-09-29T00:00:00.000Z",
+      "type": 1
+     },
+     {
+      "certification": "K-17 ",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-11-01T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2001-10-26T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "HK",
+    "release_dates": [
+     {
+      "certification": "IIB ",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1980-03-27T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "HU",
+    "release_dates": [
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1980-04-24T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2003-08-14T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "IE",
+    "release_dates": [
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-12-21T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Final Cut",
+      "release_date": "2019-08-13T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "IL",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2001-10-04T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "IS",
+    "release_dates": [
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1981-07-08T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2002-05-17T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "IT",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Final Cut 4K ",
+      "release_date": "2019-06-28T00:00:00.000Z",
+      "type": 2
+     },
+     {
+      "certification": "VM14",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-12-18T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Re-release",
+      "release_date": "1982-08-19T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "T",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2001-11-23T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "JP",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Tokyo International Film Festival (Redux)",
+      "release_date": "2001-10-29T00:00:00.000Z",
+      "type": 1
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1980-02-23T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "KR",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Banned (original rating)",
+      "release_date": "1988-06-04T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2001-08-31T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2018-01-24T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Final Cut",
+      "release_date": "2020-11-26T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "LT",
+    "release_dates": [
+     {
+      "certification": "N-16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Re-release",
+      "release_date": "2018-05-15T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "MX",
+    "release_dates": [
+     {
+      "certification": "C",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1980-03-20T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "B15 ",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Re-release",
+      "release_date": "2015-08-15T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "NL",
+    "release_dates": [
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2001-10-18T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-11-01T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "DVD",
+      "release_date": "2009-09-10T00:00:00.000Z",
+      "type": 5
+     },
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Blu-ray",
+      "release_date": "2011-06-13T00:00:00.000Z",
+      "type": 5
+     },
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Veronica",
+      "release_date": "2003-09-27T00:00:00.000Z",
+      "type": 6
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "NO",
+    "release_dates": [
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Bergen International Film Festival (Redux)",
+      "release_date": "2001-10-19T00:00:00.000Z",
+      "type": 1
+     },
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-12-19T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Final Cut",
+      "release_date": "2019-12-06T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2001-10-26T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "NZ",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "New Zealand International Film Festival (Final Cut)",
+      "release_date": "2019-07-20T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "R18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Original",
+      "release_date": "1979-11-15T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "PE",
+    "release_dates": [
+     {
+      "certification": "18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1980-12-01T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2002-01-17T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "PH",
+    "release_dates": [
+     {
+      "certification": "R-18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1980-04-08T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "PL",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Director's Cut",
+      "release_date": "2024-08-23T00:00:00.000Z",
+      "type": 2
+     },
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2003-07-11T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "PT",
+    "release_dates": [
+     {
+      "certification": "M/18",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1980-03-21T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "RS",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Belgrade Film Festival (Redux)",
+      "release_date": "2002-02-02T00:00:00.000Z",
+      "type": 1
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "RU",
+    "release_dates": [
+     {
+      "certification": "18+",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2019-04-11T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "18+",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "2025-02-05T00:00:00.000Z",
+      "type": 4
+     },
+     {
+      "certification": "18+",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2003-07-17T00:00:00.000Z",
+      "type": 5
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "SE",
+    "release_dates": [
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-10-26T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2001-08-31T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Final Cut",
+      "release_date": "2019-11-29T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "DVD",
+      "release_date": "2000-11-24T00:00:00.000Z",
+      "type": 5
+     },
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "DVD  (Redux)",
+      "release_date": "2002-03-20T00:00:00.000Z",
+      "type": 5
+     },
+     {
+      "certification": "15",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Blu-ray",
+      "release_date": "2011-06-22T00:00:00.000Z",
+      "type": 5
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "SU",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Moscow Film Festival",
+      "release_date": "1979-08-24T00:00:00.000Z",
+      "type": 1
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "TH",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1980-08-08T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "TR",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Final Cut",
+      "release_date": "2019-12-27T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "18+",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2008-08-08T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Final Cut",
+      "release_date": "2020-10-02T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "TW",
+    "release_dates": [
+     {
+      "certification": "R-18 ",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "2019-05-11T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "UA",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Kyiv Critics Week (Final Cut)",
+      "release_date": "2019-10-30T00:00:00.000Z",
+      "type": 1
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "US",
+    "release_dates": [
+     {
+      "certification": "R",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-08-15T00:00:00.000Z",
+      "type": 2
+     },
+     {
+      "certification": "R",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2001-03-08T00:00:00.000Z",
+      "type": 2
+     },
+     {
+      "certification": "R",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "limited expansion",
+      "release_date": "1979-10-03T00:00:00.000Z",
+      "type": 2
+     },
+     {
+      "certification": "R",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Re-release",
+      "release_date": "1987-08-28T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "R",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Re-release",
+      "release_date": "2019-08-15T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "R",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1979-10-10T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "R",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Blu-ray (Final Cut)",
+      "release_date": "2019-08-27T00:00:00.000Z",
+      "type": 5
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "UY",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "",
+      "release_date": "1980-09-19T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2002-04-12T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   },
+   {
+    "iso_3166_1": "ZA",
+    "release_dates": [
+     {
+      "certification": "",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Johannesburg",
+      "release_date": "1980-03-19T00:00:00.000Z",
+      "type": 3
+     },
+     {
+      "certification": "16",
+      "descriptors": [],
+      "iso_639_1": "",
+      "note": "Redux",
+      "release_date": "2003-04-11T00:00:00.000Z",
+      "type": 3
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -236,7 +236,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   /** A film document carries the two partial responses its record was parsed from beside the
    *  record: ~650 of ~1,000 bytes that no answer reads. A take-up fetched and decoded them for every
    *  film it named — UK's store batches took 12.4 s of a 21 s context. Answers read only what they use. */
-  "the model's lookups" should "read a film's answer fields, of its partial responses only the IMDb id" in {
+  "the model's lookups" should "read a film's answer fields, of its partial responses only the IMDb id and the runtime" in {
     val w = new World
     val observed = new NormalizingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true), w.normalizer)
     new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()).identityRecord(film) shouldBe defined
@@ -248,7 +248,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     lookups.film(film).toOption.flatten shouldBe defined
     wholeFilmReads.get shouldBe 0
     val answer = w.docs.answers(TmdbKind.Film, Seq(film.toString))(film.toString)
-    Seq("local", "english").flatMap(partial => Option(answer.get(partial))).flatMap(_.asDocument.keySet.asScala).toSet shouldBe Set("imdb_id")
+    Seq("local", "english").flatMap(partial => Option(answer.get(partial))).flatMap(_.asDocument.keySet.asScala).toSet shouldBe Set("imdb_id", "runtime")
   }
 
   // A family weighs each of its listings against the films a prefetch holds: decoded afresh for each, every copy worked
@@ -316,6 +316,21 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.docs.put(TmdbKind.Film, Seq(film.toString -> filed))
     w.docs.get(TmdbKind.Film, Seq(film.toString))(film.toString).getDocument("record").containsKey("imdbNumber") shouldBe false
     w.lookups.film(film).toOption.flatten.map(_.imdbNumber) shouldBe Some(166924)
+  }
+
+  // "Once Upon a Time in America": TMDB states 229 minutes in pl-PL, 139 (the US theatrical cut) in en-US. A listing running as
+  // either cut runs as the film, so the answer carries both — also for a record filed before records carried the other.
+  "a film's record" should "answer every runtime its translations state, also when filed before records carried them" in {
+    val w = new World
+    val onceUpon = 311
+    def recorded(name: String) = scala.io.Source.fromResource(s"fixtures/tmdb/$name")(using scala.io.Codec.UTF8).mkString
+    w.store.filmPartial(onceUpon, TmdbStore.Partial.Local, minimalOf(recorded("movie_311_pl.json")))
+    w.store.filmPartial(onceUpon, TmdbStore.Partial.English, minimalOf(recorded("movie_311_en.json")))
+    w.lookups.film(onceUpon).toOption.flatten.map(_.runtimes) shouldBe Some(Seq(229, 139))
+    val filed = w.docs.get(TmdbKind.Film, Seq(onceUpon.toString))(onceUpon.toString)
+    filed.getDocument("record").remove("alternativeRuntimes")
+    w.docs.put(TmdbKind.Film, Seq(onceUpon.toString -> filed))
+    w.lookups.film(onceUpon).toOption.flatten.map(_.runtimes) shouldBe Some(Seq(229, 139))
   }
 
   // The release veto asks one question of a film's release dates: does TMDB date a release of it in the venue's country?

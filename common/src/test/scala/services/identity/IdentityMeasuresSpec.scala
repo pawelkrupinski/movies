@@ -538,6 +538,26 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       Listing("Lalka", directors = Seq("Wojciech Has")))) shouldBe true
   }
 
+  "an edition's runtime" should "be neutral when longer than every runtime TMDB states, and still count when shorter" in {
+    // TMDB keeps no record of "The Return of the King"'s extended edition (searches for it find nothing): its one record,
+    // 122, states the 201-minute theatrical cut in en, pl and de, while the extended cut runs 263.
+    val film = Film("The Lord of the Rings: The Return of the King", year = Some(2003), runtime = Some(201))
+    val extended = "The Lord of the Rings: The Return of the King (Extended Edition)"
+    val longer = measures(Listing(extended, runtime = Some(263)), film)
+    longer("runtime.delta") shouldBe Missing("listing")
+    IdentityMeasures.runtimeContradicts(longer) shouldBe false
+    // An edition never makes a film shorter.
+    val shorter = measures(Listing(extended, runtime = Some(120)), film)
+    shorter("runtime.delta") shouldBe Number(81)
+    IdentityMeasures.runtimeContradicts(shorter) shouldBe true
+    // No edition billed: 62 minutes longer is another film's runtime.
+    val plain = measures(Listing("The Lord of the Rings: The Return of the King", runtime = Some(263)), film)
+    plain("runtime.delta") shouldBe Number(62)
+    IdentityMeasures.runtimeContradicts(plain) shouldBe true
+    // Nor is a word the film's own title carries an edition: "The Final Cut" is the film, not a cut of it.
+    measures(Listing("The Final Cut", runtime = Some(150)), Film("The Final Cut", runtime = Some(95)))("runtime.delta") shouldBe Number(55)
+  }
+
   "a runtime a title brackets with a minute mark" should "be the listing's runtime when it publishes none" in {
     // KinoPort prints the running time into the title: "DZIADKU WIEJEMY (97’)".
     val film = Film("Dziadku, wiejemy!", year = Some(2025), runtime = Some(97))

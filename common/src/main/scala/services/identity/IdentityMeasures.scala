@@ -398,7 +398,34 @@ object IdentityMeasures {
                         /** The countries TMDB dates a release of it in, their ISO-3166-1 codes run together in order
                          *  ("ATDEPL", [[TmdbFilmRecord.releaseCountries]]); `None` when its release dates were not fetched. One
                          *  string, not a set: every candidate of every family holds it, and a veto asks one country of it. */
-                        releaseCountries: Option[String] = None) {
+                        releaseCountries: Option[String] = None,
+                        /** The running times TMDB states for the film besides [[runtime]]: the other translations' it was fetched
+                         *  in. TMDB keeps a runtime per translation — "Once Upon a Time in America" runs 229 minutes in pl-PL and
+                         *  de-DE, 139 (the US theatrical cut) in en-US — and a venue screening either cut screens the film. */
+                        alternativeRuntimes: Seq[Int] = Nil,
+                        /** The cinema releases TMDB dates — premieres, re-releases, editions — run together
+                         *  ([[TmdbFilmRecord.releases]]); `None` when its release dates were not fetched. One string, as
+                         *  [[releaseCountries]] is. */
+                        releases: Option[String] = None) {
+    /** Every running time TMDB states for the film, [[runtime]] first: what a listing's runtime is compared with. */
+    def runtimes: Seq[Int] = (runtime.toSeq ++ alternativeRuntimes).filter(_ > 0)
+    /** The cinema releases TMDB dates in `country` (the venue's, ISO-3166-1) — or in any country when it dates none there,
+     *  or no country is given: a venue screens its own country's release of the film. */
+    private[identity] def releasesIn(country: Option[String]): Seq[TmdbFilmRecord.Release] = releases.fold(Seq.empty[TmdbFilmRecord.Release]) { codes =>
+      val all  = TmdbFilmRecord.Release.all(codes)
+      val here = country.fold(Seq.empty[TmdbFilmRecord.Release])(c => all.filter(_.country == c))
+      if (here.nonEmpty) here else all
+    }
+    /** The year of the film's — its original [[year]], or a dated cinema release's ([[releasesIn]]): a re-release's, an
+     *  edition's — closest to `stated`, the original on a tie. "Apocalypse Now" billed 2019 is TMDB's 1979 record, through
+     *  its 2019 Final Cut release. */
+    private[identity] def closestYear(stated: Int, country: Option[String]): Option[Int] =
+      year.map(original => releasesIn(country).iterator.map(_.year).foldLeft(original)((best, y) =>
+        if (math.abs(stated - y) < math.abs(stated - best)) y else best))
+    /** Is `stated` the year of a release of the film whose note names an EDITION ("Final Cut", "Redux") — and not its
+     *  original year: a listing of that year screens the edition, which can run longer than any runtime TMDB states. */
+    private[identity] def editionYear(stated: Int, country: Option[String]): Boolean =
+      !year.contains(stated) && releasesIn(country).exists(release => release.edition && release.year == stated)
     /** Does TMDB date a release of the film in `country` (ISO-3166-1)? `None` when its release dates are unknown. */
     def releasedIn(country: String): Option[Boolean] = Option.when(releaseCountries.isDefined)(knownReleasedIn(country, dated = true))
     /** Are the film's release dates known, and does TMDB date (`dated`) — or not date — a release in `country`? What
@@ -1132,6 +1159,32 @@ object IdentityMeasures {
     case (Some(l), Some(f)) => Number((f - l).toDouble)
   }
 
+  /** The listing's `runtime.delta` against the film: how many minutes its stated runtime is off the CLOSEST of the runtimes
+   *  TMDB states for the film in any language it was fetched in ([[Film.runtimes]]) — a listing running as any translation's
+   *  cut runs as the film. A listing billing an EDITION ([[DecorationSegments.billsAnEdition]]: "… (Extended Edition)",
+   *  "Director's Cut", "Redux") that runs LONGER than every one of them states nothing for or against it: TMDB keeps no
+   *  record of an extended cut apart from its film's ("The Return of the King" is 201 minutes in every language, its
+   *  extended edition 263), so the longer cut is neutral. A shorter one still counts: an edition never makes a film shorter. */
+  private def runtimeDelta(l: Listing, f: Film, country: Option[String]): Measure = l.statedRuntime match {
+    case None => MissingListing
+    case Some(stated) =>
+      // walked in place, not as a collection: every listing is measured against every candidate
+      var off = Int.MaxValue
+      var longest = 0
+      def against(runtime: Int): Unit = if (runtime > 0) { off = math.min(off, math.abs(stated - runtime)); longest = math.max(longest, runtime) }
+      f.runtime.foreach(against)
+      if (f.alternativeRuntimes.nonEmpty) f.alternativeRuntimes.foreach(against)
+      if (longest == 0) MissingFilm
+      else if (stated > longest && billsAnEdition(l, f, country)) MissingListing
+      else Number(off.toDouble)
+  }
+
+  /** Does the listing bill an edition of the film: by its title ([[DecorationSegments.billsAnEdition]]), or by its year, one
+   *  TMDB dates a release of the film's edition in ([[Film.editionYear]]: Prince Charles's "Apocalypse Now", 2019, is
+   *  its 2019 Final Cut)? */
+  private def billsAnEdition(l: Listing, f: Film, country: Option[String]): Boolean =
+    DecorationSegments.billsAnEdition(Seq(l.title) ++ l.rawTitle, f.titles) || l.year.exists(f.editionYear(_, country))
+
   private def absDelta(a: Option[Int], b: Option[Int]): Measure = delta(a, b) match {
     case Number(d) => Number(math.abs(d))
     case other     => other
@@ -1483,20 +1536,23 @@ object IdentityMeasures {
    * @param qualifiers the title pieces learned to be qualifiers, not works ([[Qualifiers.learn]])
    */
   def listingFilm(l: Listing, f: Film, searchRank: Option[Int], rivals: Int, corroboratingVenues: Int,
-                  houses: Houses = Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown): Map[String, Measure] =
-    listingFilmTitled(l, f, searchRank, rivals, corroboratingVenues, titleRelation(l, f, houses, qualifiers))
+                  houses: Houses = Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown, country: Option[String] = None): Map[String, Measure] =
+    listingFilmTitled(l, f, searchRank, rivals, corroboratingVenues, titleRelation(l, f, houses, qualifiers), country)
 
   /** [[listingFilm]] with the title relation already read — `titleRelation(l, f, houses, qualifiers)` —
-   *  by a caller that relates the listing to the film anyway (`FamilyScope.score`). */
+   *  by a caller that relates the listing to the film anyway (`FamilyScope.score`). `country`: the venue's (ISO-3166-1),
+   *  whose cinema releases of the film its year is read against first ([[Film.closestYear]]). */
   def listingFilmTitled(l: Listing, f: Film, searchRank: Option[Int], rivals: Int, corroboratingVenues: Int,
-                        title: Category): Map[String, Measure] = {
+                        title: Category, country: Option[String] = None): Map[String, Measure] = {
     // Each measure in its slot ([[ListingFilmMeasures]]), worked out in the order the map's entries were.
     val slots = new Array[Measure](ListingFilmMeasures.Keys.length)
     slots(0)  = title
     slots(1)  = numeralRelation(l, f)
     slots(2)  = ownOriginalTitle(l, f, title)
-    slots(3)  = delta(l.year, f.year)
-    slots(4)  = absDelta(l.year, f.year)
+    // the listing's year against the film's closest release year: its original, a re-release's, an edition's
+    val released = if (f.releases.isEmpty || l.year.isEmpty) f.year else f.closestYear(l.year.get, country)
+    slots(3)  = delta(l.year, released)
+    slots(4)  = absDelta(l.year, released)
     slots(5)  = filmMinus(f.year, l.titleYear)
     slots(6)  = filmMinus(f.year, l.seasonYear)
     slots(7)  = {
@@ -1506,7 +1562,7 @@ object IdentityMeasures {
                   f.directorCredits.fold[Measure](if (persons.exists(_.trim.nonEmpty)) MissingFilm else MissingListing)(
                     creditRelation(if (persons.size == l.directors.size) l.directorCredits else new Credits(persons), _))
                 }
-    slots(8)  = absDelta(l.statedRuntime, f.runtime.filter(_ > 0))
+    slots(8)  = runtimeDelta(l, f, country)
     slots(9)  = countryRelation(l.countries, f.countries)
     slots(10) = searchRank.fold[Measure](Missing("not-returned"))(r => Number(r.toDouble))
     slots(11) = f.popularity.fold[Measure](MissingFilm)(p => Number(PopularityBucket.of(p).toDouble))

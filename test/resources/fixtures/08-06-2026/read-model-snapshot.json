@@ -6422,31 +6422,6 @@
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
-    "_id" : "f4bd30abc3d9c3af",
-    "title" : "Upadłe anioły",
-    "originalTitle" : "Fallen Angels",
-    "posterUrl" : "https://medstore.kinoteka.pl/WKW4KPosterFallenRGB.jpg",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 96,
-    "releaseYear" : 2026,
-    "genres" : [ "Dramat", "Kryminał" ],
-    "countries" : [ "Hongkong" ],
-    "directors" : [ "Wong Kar Wai" ],
-    "cast" : [ ],
-    "synopsis" : "Losy pięciu samotnych ludzi krzyżują się ze sobą w ciemnych ulicach Hongkongu.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metascore" : 71,
-      "metacriticUrl" : "https://www.metacritic.com/movie/fallen-angels",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Upad%C5%82e+anio%C5%82y",
-      "filmwebUrl" : "https://www.filmweb.pl/film/Upad%C5%82e+anio%C5%82y-1995-615"
-    },
-    "weightedRating" : 7.1,
-    "synopsisByCity" : {
-      "warszawa" : "Płatny zabójca Wong Chi-ming dostaje instrukcje co do miejsca następnej akcji od sprawdzonej partnerki. Choć nigdy się nie spotkali, działają w idealnej synchronii. Dla kobiety bycie cieniem nonszalanckiego gangstera staje się jednak impulsem do coraz dalej posuniętych fantazji. Ich historia przeplata się z poszarpaną trajektorią losów niemego Ho Chi-mo, który włamuje się nocami do małych sklepików, by sprzedawać z nich towar. Mieszkający z ojcem mężczyzna nieustannie wpada na Charlie, opłakującą złamane serce i pomstującą na niewiernego chłopaka.\n\nFabuła filmu powstała jako jeden z elementów barwnej układanki “Chungking Expressu”, rozrastając się jednak w zupełnie inny, jeszcze bardziej halucynacyjny i ekstrawagancki projekt. Groteska, absurd, brutalność i nieodzowna wongkarwaiowska samotność mają tu bardziej mroczne oblicze, pozostając wciąż imponującym wizualnym spektaklem."
-    },
-    "shareCardPending" : false
-  }, {
     "_id" : "f4bdc7195a5aff10",
     "title" : "Ojczyzna | Pokaz przedpremierowy",
     "fallbackPosterUrls" : [ ],
@@ -6971,7 +6946,7 @@
     "title" : "Giulietta i duchy",
     "originalTitle" : "Giulietta degli spiriti",
     "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/05/csm_Giulietta_Poster_45456e2738-566x800.jpg",
-    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/Giulietta_degli_2.jpg", "https://medstore.kinoteka.pl/Plakatblack(4).png", "https://www.novekino.pl/multimedia/federico_fellini_ciao_a_tutti_giulietta_i_duchy/plakat.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/16x9-plansza-1024x576.jpg", "https://bilety.kinospektrum.pl/uploads/event//1777976817.jpg", "https://image.tmdb.org/t/p/w500/vzEEzP0rhRfDlNcjpopNGybsM1K.jpg", "https://m.media-amazon.com/images/M/MV5BN2VjNzQ4MmMtNzRmMC00MzhlLWJjZjEtOGEyY2NkMDc5YTg1XkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/Giulietta_degli_2.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/giulietta-i-duchy-plakat.jpg", "https://medstore.kinoteka.pl/Plakatblack(4).png", "https://www.novekino.pl/multimedia/federico_fellini_ciao_a_tutti_giulietta_i_duchy/plakat.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/16x9-plansza-1024x576.jpg", "https://bilety.kinospektrum.pl/uploads/event//1777976817.jpg", "https://image.tmdb.org/t/p/w500/vzEEzP0rhRfDlNcjpopNGybsM1K.jpg", "https://m.media-amazon.com/images/M/MV5BN2VjNzQ4MmMtNzRmMC00MzhlLWJjZjEtOGEyY2NkMDc5YTg1XkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 139,
     "releaseYear" : 1965,
     "genres" : [ "Komedia", "Dramat", "Fantasy" ],
@@ -6995,6 +6970,35 @@
       "poznan" : "Pierwszy pełnometrażowy kolorowy film Federica Felliniego i zarazem jedno z jego najbardziej osobistych spotkań z kobiecą psyche. Grana przez Giuliettę Masinę tytułowa protagonistka żyje w pozornie uporządkowanym świecie mieszczańskiego małżeństwa, lecz pod powierzchnią eleganckiego domu i towarzyskich rytuałów narasta w kobiecie niepokój. Podejrzenie zdrady męża staje się dla Giulietty początkiem podróży w głąb siebie – w przestrzeń wspomnień, intymnych fantazji, lęków i pragnień, których nie da się już dłużej uciszyć. Tam, gdzie wcześniejszy Fellini często opowiadał o mężczyznach uciekających przed dorosłością, tutaj przygląda się kobiecie, która musi odnaleźć własny głos w świecie zbudowanym z cudzych oczekiwań.\n\nMożna wręcz interpretować jako kobiecy odpowiednik „Osiem i pół” (1963). Zamiast kryzysu artysty mamy kryzys małżeństwa, zamiast twórczej niemocy – duchowe przebudzenie kogoś, kto właściwie od urodzenia uczony był posłuszeństwa. Film bywa kapryśny, zmysłowy, chwilami przesadny, ale właśnie w tej barwnej przesadzie kryje się jego największa siła.",
       "warszawa" : "„Giulietta i duchy” to pierwszy pełnometrażowy kolorowy film Federica Felliniego i zarazem jedno z jego najbardziej osobistych spotkań z kobiecą psyche. Grana przez Giuliettę Masinę tytułowa protagonistka żyje w pozornie uporządkowanym świecie mieszczańskiego małżeństwa, lecz pod powierzchnią eleganckiego domu i towarzyskich rytuałów narasta w kobiecie niepokój. Podejrzenie zdrady męża staje się dla Giulietty początkiem podróży w głąb siebie - w przestrzeń wspomnień, intymnych fantazji, lęków i pragnień, których nie da się już dłużej uciszyć. Tam, gdzie wcześniejszy Fellini często opowiadał o mężczyznach uciekających przed dorosłością, tutaj przygląda się kobiecie, która musi odnaleźć własny głos w świecie zbudowanym z cudzych oczekiwań.\n\n„Giulietta i duchy” można wręcz interpretować jako kobiecy odpowiednik „Osiem i pół” (1963). Zamiast kryzysu artysty mamy kryzys małżeństwa, zamiast twórczej niemocy - duchowe przebudzenie kogoś, kto właściwie od urodzenia uczony był posłuszeństwa. Film bywa kapryśny, zmysłowy, chwilami przesadny, ale właśnie w tej barwnej przesadzie kryje się jego największa siła.\n\nOrganizator: Stowarzyszenie Kin Studyjnych\nAutor plakatu: Plakiat - Maks Bereski\nZwiastun przeglądu: Ivan Krupenikov\nSłowo wstępu i opisy filmów: Diana Dąbrowska\nPartnerzy Główni: Włoski Instytut Kultury w Warszawie i Włoski Instytut Kultury w Krakowie\nPartnerzy: Sikulagente, Italia by Natalia, Kierunek Włochy, Accademia Włoskiego Kina, MEK, Wydawnictwo Czarne\nPartnerzy medialni: Filmweb, Pełna sala, Spoiler Master, Filmawka, Kultura Wokół Nas, Gazzetta Italia",
       "katowice" : "„Giulietta i duchy” to pierwszy pełnometrażowy kolorowy film Federica Felliniego i zarazem jedno z jego najbardziej osobistych spotkań z kobiecą psyche. Grana przez Giuliettę Masinę tytułowa protagonistka żyje w pozornie uporządkowanym świecie mieszczańskiego małżeństwa, lecz pod powierzchnią eleganckiego domu i towarzyskich rytuałów narasta w kobiecie niepokój. Podejrzenie zdrady męża staje się dla Giulietty początkiem podróży w głąb siebie - w przestrzeń wspomnień, intymnych fantazji, lęków i pragnień, których nie da się już dłużej uciszyć. Tam, gdzie wcześniejszy Fellini często opowiadał o mężczyznach uciekających przed dorosłością, tutaj przygląda się kobiecie, która musi odnaleźć własny głos w świecie zbudowanym z cudzych oczekiwań.\n\n„Giulietta i duchy” można wręcz interpretować jako kobiecy odpowiednik „Osiem i pół” (1963). Zamiast kryzysu artysty mamy kryzys małżeństwa, zamiast twórczej niemocy - duchowe przebudzenie kogoś, kto właściwie od urodzenia uczony był posłuszeństwa. Film bywa kapryśny, zmysłowy, chwilami przesadny, ale właśnie w tej barwnej przesadzie kryje się jego największa siła."
+    },
+    "shareCardPending" : false
+  }, {
+    "_id" : "f5094887e20dcd9f~giuliettaiduchyprzedfilmemwykladprofmarkahendrykowskiego",
+    "title" : "Giulietta I Duchy | przed filmem wykład prof. Marka Hendrykowskiego",
+    "originalTitle" : "Giulietta degli spiriti",
+    "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/05/csm_Giulietta_Poster_45456e2738-566x800.jpg",
+    "fallbackPosterUrls" : [ "https://kinopalacowe.pl/media/gallery/lg/Giulietta_degli_2.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/giulietta-i-duchy-plakat.jpg", "https://medstore.kinoteka.pl/Plakatblack(4).png", "https://www.novekino.pl/multimedia/federico_fellini_ciao_a_tutti_giulietta_i_duchy/plakat.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/16x9-plansza-1024x576.jpg", "https://bilety.kinospektrum.pl/uploads/event//1777976817.jpg", "https://image.tmdb.org/t/p/w500/vzEEzP0rhRfDlNcjpopNGybsM1K.jpg", "https://m.media-amazon.com/images/M/MV5BN2VjNzQ4MmMtNzRmMC00MzhlLWJjZjEtOGEyY2NkMDc5YTg1XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 139,
+    "releaseYear" : 1965,
+    "genres" : [ "Komedia", "Dramat", "Fantasy" ],
+    "countries" : [ "Włochy", "Francja" ],
+    "directors" : [ "Federico Fellini" ],
+    "cast" : [ "Giulietta Masina", "Mario Pisu", "Sandra Milo", "Valentina Cortese", "Caterina Boratto", "Lou Gilbert", "Sylva Koscina" ],
+    "synopsis" : "Giulietta Boldrini (Giulietta Masina) jest bogatą mieszczanką, która jednak nie potrafi czerpać zadowolenia ze swej pozycji życiowej. Czuje się osamotniona i zaniedbywana przez swojego męża. Podejrzewa go o romans z inną kobietą. Szuka wyjaśnienia swoich podejrzeń wobec niego, uczestnicząc w seansach okultystycznych. Obsesje stają się coraz bardziej natarczywe. Kobieta ma wizje, w których jeszcze raz przeżywa sytuacje ze swojego dzieciństwa i młodości.",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "imdb" : 7.4,
+      "imdbUrl" : "https://www.imdb.com/title/tt0059229/",
+      "metascore" : 84,
+      "metacriticUrl" : "https://www.metacritic.com/movie/juliet-of-the-spirits",
+      "rottenTomatoes" : 79,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/juliet_of_the_spirits",
+      "filmweb" : 7.4,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Giulietta+i+duchy-1965-30829"
+    },
+    "weightedRating" : 7.775,
+    "synopsisByCity" : {
+      "poznan" : "Tytuł oryginalny: Giulietta degli spiriti\nReżyseria: Federico Fellini\nScenariusz: Federico Fellini, Tullio Pinelli, Ennio Flaiano, Brunello Rondi\nObsada: Giulietta Masina, Mario Pisu, Sandra Milo, Valentina Cortese, Caterina Boratto, Lou Gilbert, Sylva Koscina\nMuzyka: Nino Rota\nProdukcja: Włochy, Francja, 1965\nCzas trwania: 139’\nNagrody: Oscary (nominacje) - Najlepsza scenografia - filmy kolorowe Piero Gherardi, Najlepsze kostiumy - filmy kolorowe Piero Gherardi, Złoty Glob - Najlepszy film zagraniczny, David di Donatello - Najlepsza aktorka pierwszoplanowa Giulietta Masina\nOrganizator: Stowarzyszenie Kin Studyjnych\nZwiastun przeglądu: Ivan Krupenikov\nSłowo wstępu i opisy filmów: Diana Dąbrowska\nPartnerzy Główni: Włoski Instytut Kultury w Warszawie i Włoski Instytut Kultury w Krakowie\nPartnerzy: Sikulagente, Italia by Natalia, Kierunek Włochy, Accademia Włoskiego Kina, MEK, Wydawnictwo Czarne\nPartnerzy medialni: Filmweb, Pełna sala, Spoiler Master, Filmawka, Kultura Wokół Nas, Gazzetta Italia"
     },
     "shareCardPending" : false
   }, {
@@ -7141,31 +7145,6 @@
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
-    "shareCardPending" : false
-  }, {
-    "_id" : "f52070023252e2ad",
-    "title" : "Giulietta I Duchy | przed filmem wykład prof. Marka Hendrykowskiego",
-    "originalTitle" : "Giulietta degli spiriti",
-    "posterUrl" : "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/giulietta-i-duchy-plakat.jpg",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 148,
-    "releaseYear" : 1965,
-    "genres" : [ "Dramat" ],
-    "countries" : [ "Francja", "Włochy" ],
-    "directors" : [ "Federico Fellini" ],
-    "cast" : [ ],
-    "synopsis" : "Pomimo życia w dostatku Giulietta jest nieszczęśliwa. Podejrzewa męża o zdradę, a wkrótce zaczynają ją nawiedzać tajemnicze wizje.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Giulietta+I+Duchy+%7C+przed+filmem+wyk%C5%82ad+prof.+Marka+Hendrykowskiego/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Giulietta+I+Duchy+%7C+przed+filmem+wyk%C5%82ad+prof.+Marka+Hendrykowskiego",
-      "filmweb" : 7.4,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Giulietta+i+duchy-1965-30829"
-    },
-    "weightedRating" : 7.4,
-    "synopsisByCity" : {
-      "poznan" : "Tytuł oryginalny: Giulietta degli spiriti\nReżyseria: Federico Fellini\nScenariusz: Federico Fellini, Tullio Pinelli, Ennio Flaiano, Brunello Rondi\nObsada: Giulietta Masina, Mario Pisu, Sandra Milo, Valentina Cortese, Caterina Boratto, Lou Gilbert, Sylva Koscina\nMuzyka: Nino Rota\nProdukcja: Włochy, Francja, 1965\nCzas trwania: 139’\nNagrody: Oscary (nominacje) - Najlepsza scenografia - filmy kolorowe Piero Gherardi, Najlepsze kostiumy - filmy kolorowe Piero Gherardi, Złoty Glob - Najlepszy film zagraniczny, David di Donatello - Najlepsza aktorka pierwszoplanowa Giulietta Masina\nOrganizator: Stowarzyszenie Kin Studyjnych\nZwiastun przeglądu: Ivan Krupenikov\nSłowo wstępu i opisy filmów: Diana Dąbrowska\nPartnerzy Główni: Włoski Instytut Kultury w Warszawie i Włoski Instytut Kultury w Krakowie\nPartnerzy: Sikulagente, Italia by Natalia, Kierunek Włochy, Accademia Włoskiego Kina, MEK, Wydawnictwo Czarne\nPartnerzy medialni: Filmweb, Pełna sala, Spoiler Master, Filmawka, Kultura Wokół Nas, Gazzetta Italia"
-    },
     "shareCardPending" : false
   }, {
     "_id" : "f5277803f6038ea8",
@@ -7342,12 +7321,12 @@
     "_id" : "f5370cb93c99d570",
     "title" : "Happy Together",
     "originalTitle" : "春光乍洩",
-    "posterUrl" : "https://image.tmdb.org/t/p/w500/A1a68WODMP8x585Kuamluk1D8GD.jpg",
-    "fallbackPosterUrls" : [ ],
+    "posterUrl" : "https://medstore.kinoteka.pl/WKW4KPosterHappyRGB.jpg",
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/A1a68WODMP8x585Kuamluk1D8GD.jpg" ],
     "runtimeMinutes" : 96,
     "releaseYear" : 1997,
     "genres" : [ "Dramat", "Romans" ],
-    "countries" : [ "Hongkong", "Korea Południowa", "Japonia" ],
+    "countries" : [ "Korea Południowa", "Japonia", "Hongkong" ],
     "directors" : [ "Wong Kar Wai" ],
     "cast" : [ "張國榮", "梁朝偉", "張震", "Gregory Dayton" ],
     "synopsis" : "Dwaj młodzi kochankowie Ho i Lai w poszukiwaniu lepszego życia wyjeżdżają z Hongkongu do Argentyny. Wkrótce dochodzi między nimi do sprzeczki. Mężczyźni rozstają się. Lai zatrudnia się jako portier w tango barze w Buenos Aires. Odkłada pieniądze na samolot do domu. Do jego mieszkania przychodzi pobity jego były partne",
@@ -7360,7 +7339,9 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Happy+Together-1997-870"
     },
     "weightedRating" : 7,
-    "synopsisByCity" : { },
+    "synopsisByCity" : {
+      "warszawa" : "Namiętność i chorobliwa zazdrość, potrzeba ekscytacji i stabilności, rozstania i powroty. Ho Po-wing i Lai Yiu-fai wyjeżdżają do Buenos Aires, by tchnąć nowe życie w swój niespokojny związek. Kochanków łączy więź mocna i destrukcyjna zarazem, emocji nie sposób pozostawić za sobą na drugim kontynencie. Pod deszczowymi chmurami i w palącym słońcu Argentyny, w pełnych napięcia rytmach tanga, mężczyźni odnajdą się i zagubią po raz kolejny.\n\nMistrzowski melodramat z największymi gwiazdami hongkońskiego kina - Leslie Cheungiem i Tonym Leungiem. Choć kamera Christophera Doyle’a łapie w obiektyw znacznie więcej przestrzeni niż zwykle, uczuciowa pułapka, w jakiej tkwią bohaterowie, pozostaje źródłem bólu, z którego nie potrafią zrezygnować. Jedna z najbardziej poruszających historii miłosnych w dziejach kina - i jedna z najważniejszych fabuł dla społeczności LGBTIQ w Hongkongu."
+    },
     "shareCardPending" : false
   }, {
     "_id" : "f53cbc35ae9905ef",
@@ -8752,31 +8733,6 @@
     "weightedRating" : 7.05,
     "synopsisByCity" : {
       "warszawa" : "**„Dobry chłopiec\" to nowy międzynarodowy film Jana Komasy, reżysera, którego „Boże Ciało\" było nominowane do Oscara, a „Miasto 44\" zdobyło szerokie uznanie. Film miał światową premierę na 50. Międzynarodowym Festiwalu Filmowym w Toronto, gdzie trafił do sekcji Centrepiece - miejsca w programie festiwalu, prezentujące najlepsze współczesne kino z całego świata.**\n\nDziewiętnastoletni Tommy wiedzie beztroskie życie na skraju prawa. Pewnej nocy zostaje uprowadzony przez nieznajomego mężczyznę. Budzi się uwięziony w piwnicy odosobnionego domu, gdzie tajemnicze małżeństwo próbuje uczynić z niego „dobrego chłopca\": poprzez książki, maniery i wymuszoną resocjalizację. Najnowszy film Jana Komasy to **mroczne studium wolności, kontroli i syndromu sztokholmskiego**. Czy da się kogoś zmienić wbrew jego woli i co naprawdę znaczy być wolnym?"
-    },
-    "shareCardPending" : false
-  }, {
-    "_id" : "f68b3d9ef6c98104",
-    "title" : "Happy Together",
-    "originalTitle" : "Chun gwong cha sit",
-    "posterUrl" : "https://medstore.kinoteka.pl/WKW4KPosterHappyRGB.jpg",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 96,
-    "releaseYear" : 2026,
-    "genres" : [ "Romans", "Dramat" ],
-    "countries" : [ "Korea Południowa", "Japonia", "Hongkong" ],
-    "directors" : [ "Wong Kar Wai" ],
-    "cast" : [ ],
-    "synopsis" : "Ho chce odnowić związek ze swoim byłym partnerem.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metascore" : 70,
-      "metacriticUrl" : "https://www.metacritic.com/movie/happy-together",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Happy+Together",
-      "filmwebUrl" : "https://www.filmweb.pl/film/Happy+Together-1997-870"
-    },
-    "weightedRating" : 7,
-    "synopsisByCity" : {
-      "warszawa" : "Namiętność i chorobliwa zazdrość, potrzeba ekscytacji i stabilności, rozstania i powroty. Ho Po-wing i Lai Yiu-fai wyjeżdżają do Buenos Aires, by tchnąć nowe życie w swój niespokojny związek. Kochanków łączy więź mocna i destrukcyjna zarazem, emocji nie sposób pozostawić za sobą na drugim kontynencie. Pod deszczowymi chmurami i w palącym słońcu Argentyny, w pełnych napięcia rytmach tanga, mężczyźni odnajdą się i zagubią po raz kolejny.\n\nMistrzowski melodramat z największymi gwiazdami hongkońskiego kina - Leslie Cheungiem i Tonym Leungiem. Choć kamera Christophera Doyle’a łapie w obiektyw znacznie więcej przestrzeni niż zwykle, uczuciowa pułapka, w jakiej tkwią bohaterowie, pozostaje źródłem bólu, z którego nie potrafią zrezygnować. Jedna z najbardziej poruszających historii miłosnych w dziejach kina - i jedna z najważniejszych fabuł dla społeczności LGBTIQ w Hongkongu."
     },
     "shareCardPending" : false
   }, {
@@ -16525,7 +16481,7 @@
     "title" : "Upadłe anioły",
     "originalTitle" : "墮落天使",
     "posterUrl" : "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/upadle_anioly_2.jpg?itok=BKD1gzVq",
-    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/t8NTnNLYRdkKzMEPJLvKHYuXqPI.jpg", "https://m.media-amazon.com/images/M/MV5BMWI3MDk4N2ItNzU2NS00Zjc5LWIxMDYtMGNmZmM2YzMzMDk3XkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://medstore.kinoteka.pl/WKW4KPosterFallenRGB.jpg", "https://image.tmdb.org/t/p/w500/t8NTnNLYRdkKzMEPJLvKHYuXqPI.jpg", "https://m.media-amazon.com/images/M/MV5BMWI3MDk4N2ItNzU2NS00Zjc5LWIxMDYtMGNmZmM2YzMzMDk3XkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 99,
     "releaseYear" : 1995,
     "genres" : [ "Akcja", "Romans", "Kryminał" ],
@@ -16544,7 +16500,7 @@
     },
     "weightedRating" : 7.3,
     "synopsisByCity" : {
-      "warszawa" : "Fabuła filmu powstała jako jeden z elementów barwnej układanki “Chungking Expressu”, rozrastając się jednak w zupełnie inny, jeszcze bardziej halucynacyjny i ekstrawagancki projekt. Groteska, absurd, brutalność i nieodzowna wongkarwaiowska samotność mają tu bardziej mroczne oblicze, pozostając wciąż imponującym wizualnym spektaklem."
+      "warszawa" : "Płatny zabójca Wong Chi-ming dostaje instrukcje co do miejsca następnej akcji od sprawdzonej partnerki. Choć nigdy się nie spotkali, działają w idealnej synchronii. Dla kobiety bycie cieniem nonszalanckiego gangstera staje się jednak impulsem do coraz dalej posuniętych fantazji. Ich historia przeplata się z poszarpaną trajektorią losów niemego Ho Chi-mo, który włamuje się nocami do małych sklepików, by sprzedawać z nich towar. Mieszkający z ojcem mężczyzna nieustannie wpada na Charlie, opłakującą złamane serce i pomstującą na niewiernego chłopaka.\n\nFabuła filmu powstała jako jeden z elementów barwnej układanki “Chungking Expressu”, rozrastając się jednak w zupełnie inny, jeszcze bardziej halucynacyjny i ekstrawagancki projekt. Groteska, absurd, brutalność i nieodzowna wongkarwaiowska samotność mają tu bardziej mroczne oblicze, pozostając wciąż imponującym wizualnym spektaklem."
     },
     "shareCardPending" : false
   }, {
@@ -57294,18 +57250,6 @@
     } ],
     "listingKeys" : [ "N\u0000Kino Pod Baranami\u0000https://kinopodbaranami.pl/film.php?film_id=12816\u0000Krótka historia o miłości" ]
   }, {
-    "_id" : "f4bd30abc3d9c3af|warszawa|Kinoteka",
-    "filmId" : "f4bd30abc3d9c3af",
-    "city" : "warszawa",
-    "cinema" : "Kinoteka",
-    "filmUrl" : "https://kinoteka.pl/film/upadle-anioly/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-08T20:00:00",
-      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=8abc33ac-4d9d-495c-9220-d7b515c94e1c&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kinoteka\u0000https://kinoteka.pl/film/upadle-anioly/\u0000Upadłe anioły" ]
-  }, {
     "_id" : "f4bdc7195a5aff10|legnica|Kino Piast",
     "filmId" : "f4bdc7195a5aff10",
     "city" : "legnica",
@@ -58208,6 +58152,18 @@
     } ],
     "listingKeys" : [ "N\u0000Kinoteka\u0000https://kinoteka.pl/film/giulietta-i-duchy-federico-fellini-ciao-a-tutti/\u0000Giulietta i duchy | FEDERICO FELLINI: ciao a tutti" ]
   }, {
+    "_id" : "f5094887e20dcd9f~giuliettaiduchyprzedfilmemwykladprofmarkahendrykowskiego|poznan|Kino Rialto",
+    "filmId" : "f5094887e20dcd9f~giuliettaiduchyprzedfilmemwykladprofmarkahendrykowskiego",
+    "city" : "poznan",
+    "cinema" : "Kino Rialto",
+    "filmUrl" : "https://www.kinorialto.poznan.pl/wydarzenie/?id=157280",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-17T18:00:00",
+      "bookingUrl" : "https://www.kinorialto.poznan.pl/b24-do-miejsc-numerowanych-i-nienumerowanych/?id=936125",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Rialto\u0000https://www.kinorialto.poznan.pl/wydarzenie/?id=157280\u0000GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego" ]
+  }, {
     "_id" : "f50d5f16b96d69e1|lublin|Kino Bajka",
     "filmId" : "f50d5f16b96d69e1",
     "city" : "lublin",
@@ -58337,18 +58293,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino Pod Baranami\u0000https://kinopodbaranami.pl/film.php?film_id=12822\u0000Jeden szkolny rok" ]
-  }, {
-    "_id" : "f52070023252e2ad|poznan|Kino Rialto",
-    "filmId" : "f52070023252e2ad",
-    "city" : "poznan",
-    "cinema" : "Kino Rialto",
-    "filmUrl" : "https://www.kinorialto.poznan.pl/wydarzenie/?id=157280",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-17T18:00:00",
-      "bookingUrl" : "https://www.kinorialto.poznan.pl/b24-do-miejsc-numerowanych-i-nienumerowanych/?id=936125",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Rialto\u0000https://www.kinorialto.poznan.pl/wydarzenie/?id=157280\u0000GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego" ]
   }, {
     "_id" : "f5277803f6038ea8|warszawa|Kinoteka",
     "filmId" : "f5277803f6038ea8",
@@ -73922,6 +73866,18 @@
     } ],
     "listingKeys" : [ "N\u0000KinoPort\u0000https://gcsw.pl/2026/07/22/repertuar-kinoport-gdansk/\u0000Happy Together" ]
   }, {
+    "_id" : "f5370cb93c99d570|warszawa|Kinoteka",
+    "filmId" : "f5370cb93c99d570",
+    "city" : "warszawa",
+    "cinema" : "Kinoteka",
+    "filmUrl" : "https://kinoteka.pl/film/happy-together/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-15T20:00:00",
+      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=325f8743-e8a3-4ba6-886a-cb252125b0a0&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kinoteka\u0000https://kinoteka.pl/film/happy-together/\u0000Happy Together" ]
+  }, {
     "_id" : "f53cbc35ae9905ef|kedzierzyn-kozle|Helios Kędzierzyn-Koźle",
     "filmId" : "f53cbc35ae9905ef",
     "city" : "kedzierzyn-kozle",
@@ -82163,18 +82119,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino Cytadela\u0000https://muzhp.pl/kino-film/dobry-chlopiec\u0000Dobry chłopiec" ]
-  }, {
-    "_id" : "f68b3d9ef6c98104|warszawa|Kinoteka",
-    "filmId" : "f68b3d9ef6c98104",
-    "city" : "warszawa",
-    "cinema" : "Kinoteka",
-    "filmUrl" : "https://kinoteka.pl/film/happy-together/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-15T20:00:00",
-      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=325f8743-e8a3-4ba6-886a-cb252125b0a0&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kinoteka\u0000https://kinoteka.pl/film/happy-together/\u0000Happy Together" ]
   }, {
     "_id" : "f68bfb789c69d9ed|poznan|Kino Muza",
     "filmId" : "f68bfb789c69d9ed",
@@ -147742,6 +147686,18 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino Muranów\u0000https://kinomuranow.pl/film/upadle-anioly-0\u0000Upadłe anioły" ]
+  }, {
+    "_id" : "fb59d92daddb60c3|warszawa|Kinoteka",
+    "filmId" : "fb59d92daddb60c3",
+    "city" : "warszawa",
+    "cinema" : "Kinoteka",
+    "filmUrl" : "https://kinoteka.pl/film/upadle-anioly/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-08T20:00:00",
+      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=8abc33ac-4d9d-495c-9220-d7b515c94e1c&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kinoteka\u0000https://kinoteka.pl/film/upadle-anioly/\u0000Upadłe anioły" ]
   }, {
     "_id" : "fb5dea33d1b91c19|warszawa|Helios Blue City",
     "filmId" : "fb5dea33d1b91c19",

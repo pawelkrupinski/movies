@@ -91,6 +91,21 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
     svc.withFilmDetails(MovieRecord(), 1018).flatMap(_.imdbId) shouldBe Some("tt0166924")
   }
 
+  // TMDB keeps a runtime per translation: "Once Upon a Time in America" is 229 minutes in pl-PL — the cut Polish cinemas
+  // screen — and 139 (the US theatrical cut) in en-US. A Polish deployment's TMDB slot shows its own market's.
+  it should "carry the runtime of the deployment language's translation, not English's" in {
+    def recorded(name: String) = scala.io.Source.fromResource(s"fixtures/tmdb/$name")(using scala.io.Codec.UTF8).mkString
+    val fetch = tools.RoutingHttpFetch.getOnly(Map(
+      "/movie/311/external_ids"     -> """{"imdb_id":"tt0087843"}""",
+      "/movie/311/images"           -> """{"posters":[]}""",
+      "/movie/311?language=pl-PL"   -> recorded("movie_311_pl.json"),
+      "/movie/311?language=en-US"   -> recorded("movie_311_en.json")))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val svc = new MovieService(cache, new InProcessEventBus(),
+      new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("test-key")), retrySleep = _ => ()), clock = _root_.tools.SpecClock.Pinned)
+    svc.withFilmDetails(MovieRecord(), 311).flatMap(_.runtimeMinutes) shouldBe Some(229)
+  }
+
   private val pradyEnrichment = MovieRecord(
     imdbId        = Some("tt33612209"),
     imdbRating    = Some(6.7),

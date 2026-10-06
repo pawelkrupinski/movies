@@ -339,10 +339,11 @@ object Agreement {
     if (own.nonEmpty || fed.isEmpty) own else if (listingVotes(fed, records).nonEmpty) Set(FeedFacts) else Set.empty
   }
 
-  /** Does every listing stating a running time run within [[RuntimeSlack]] minutes of a record's, and one state it? */
+  /** Does every listing stating a running time run within [[RuntimeSlack]] minutes of a record's — any of the runtimes it
+   *  states, one per translation fetched ([[IdentityMeasures.Film.runtimes]]) — and one state it? */
   private def runsAsTheListing(listings: Seq[Listing], records: Seq[SourceRecord]): Boolean = {
     val timed = listings.filter(_.runtime.isDefined)
-    timed.nonEmpty && timed.forall(listing => records.exists(_.film.runtime.zip(listing.runtime).exists { case (a, b) => math.abs(a - b) <= RuntimeSlack }))
+    timed.nonEmpty && timed.forall(listing => records.exists(_.film.runtimes.exists(a => listing.runtime.exists(b => math.abs(a - b) <= RuntimeSlack))))
   }
 
   /** Does a listing's own year (more than one apart) or director (another person in the same script, sharing no name's
