@@ -505,7 +505,7 @@ pl	*	Lalka	wikipedia:Q139380938	right	hand label: Lalka (2026) Maciej Kawalski
 pl	*	Lalka (DOLLY)	cinemeta:tt0064570	wrong	hand label: Lalka (1968)
 pl	*	Lalka (Dolly)	cinemeta:tt0064570	wrong	hand label: Lalka (1968)
 pl	*	Lalka Dolly (Napisy)	cinemeta:tt0064570	wrong	hand label: Lalka (1968)
-pl	*	My Fair Lady	cinemeta:tt0058385	right	hand label: My Fair Lady (1964)
+pl	*	My Fair Lady	cinemeta:tt0058385	wrong	review page: not a film (event), the 1964 film in this database too; was: hand label: My Fair Lady (1964)
 pl	*	My Fair Lady	filmweb:487823	wrong	hand label: My Fair Lady (2018)
 pl	*	My Fair Lady	imdb:tt10214520	wrong	hand label: My Fair Lady (2019) Razvan Dinca
 pl	*	My Fair Lady	tmdb:11113	wrong	review page: not a film (event); was: hand label: My Fair Lady (1964) George Cukor
@@ -626,9 +626,9 @@ pl	*	Lalka (Dolly)	rt:dolly	right	hand label: Dolly (2026) Rod Blackhurst
 pl	*	Lalka Dolly (Napisy)	filmweb:10057628	wrong	hand label: Lalka (2026) Maciej Kawalski
 pl	*	Lalka Dolly (Napisy)	rt:dolly	right	hand label: Dolly (2026) Rod Blackhurst
 pl	*	Misiowe Poranki: PODWODNY ŚWIAT PEŁEN PRZYGÓD	cinemeta:tt37458112	wrong	hand label: D54 (2026)
-pl	*	My Fair Lady	rt:my_fair_lady	right	hand label: My Fair Lady (1964) George Cukor
-pl	*	My Fair Lady	wikidata:Q201215	right	hand label: My Fair Lady (1964) George Cukor
-pl	*	My Fair Lady	wikipedia:Q201215	right	hand label: My Fair Lady (1964) George Cukor
+pl	*	My Fair Lady	rt:my_fair_lady	wrong	review page: not a film (event), the 1964 film in this database too; was: hand label: My Fair Lady (1964) George Cukor
+pl	*	My Fair Lady	wikidata:Q201215	wrong	review page: not a film (event), the 1964 film in this database too; was: hand label: My Fair Lady (1964) George Cukor
+pl	*	My Fair Lady	wikipedia:Q201215	wrong	review page: not a film (event), the 1964 film in this database too; was: hand label: My Fair Lady (1964) George Cukor
 pl	*	TAJNY AGENT	imdb:tt27847051	right	hand label: The Secret Agent (2025) Kleber Mendonça Filho
 pl	*	TAJNY AGENT - Klub Filmowy	imdb:tt27847051	right	hand label: The Secret Agent (2025) Kleber Mendonça Filho
 pl	*	Wielka Sztuka w Kinoteatrze Rialto - Frida: Viva la Vida	rt:frida_viva_la_vida	right	hand label: Frida. Viva la Vida (2019) Gianni Troilo
