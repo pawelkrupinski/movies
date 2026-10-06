@@ -132,28 +132,32 @@ object IdentityShadow {
     val Retries = 6
     val BackOff: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.DurationInt(5).seconds
     val Store: Path = java.nio.file.Paths.get("target", "identity-live-gaps")
-    /** How many venue pages [[readPages]] reads at a time per host. */
-    val ReadAheadPerHost = 4
     private[integration] def fileOf(id: String): Path =
       Store.resolve(java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(id.getBytes("UTF-8"))))
 
-    /** Reads the venue `pages` the store does not hold yet, live, [[ReadAheadPerHost]] at a time per host, and keeps each for a
-     *  later run's [[LiveGapLeaf]] to answer: a capture's listings whose page the recorded tree lacks, which leave their
-     *  whole cluster unread (a fill waits on every listing's page — US "SEVENTEEN World Tour 'NEW_'": one page of 392).
-     *  How many it read; a page that fails stays a gap. */
-    def readPages(pages: Seq[String]): Int = {
-      val real  = new RealHttpFetch()
+    /** Reads the venue `pages` the store does not hold yet, live, and keeps each for a later run's [[LiveGapLeaf]] to
+     *  answer: a capture's listings whose page the recorded tree lacks, which leave their whole cluster unread (a fill
+     *  waits on every listing's page — US "SEVENTEEN World Tour 'NEW_'": one page of 392). Paced like every live read of
+     *  the capture (`pacing`: this run's share of `KINOWO_IDENTITY_LIVE_PER_HOST`, a 429 or 503 retried). How many it
+     *  read; a page that fails stays a gap. */
+    def readPages(pages: Seq[String],
+                  pacing: tools.HostPacing = new tools.HostPacing(settings.ProcessConfiguration.resolve().identityLivePerHost.value, Retries, BackOff.toMillis),
+                  real: HttpFetch = new RealHttpFetch()): Int = {
       val fresh = pages.distinct.filterNot(url => Files.exists(fileOf(s"GET $url")))
       val read  = new java.util.concurrent.atomic.AtomicInteger()
-      fresh.groupBy(url => java.net.URI.create(url).getHost).values.toSeq.map { urls =>
-        java.util.concurrent.CompletableFuture.runAsync { () =>
-          urls.grouped(ReadAheadPerHost).foreach(_.map(url => java.util.concurrent.CompletableFuture.runAsync { () =>
-            scala.util.Try(real.get(url)).foreach { body =>
-              tools.AtomicFiles.writeString(fileOf(s"GET $url"), body); read.incrementAndGet()
+      val pool  = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()
+      try {
+        fresh.groupBy(url => Option(java.net.URI.create(url).getHost).getOrElse(url)).toSeq.flatMap { case (host, urls) =>
+          val queue = new java.util.concurrent.ConcurrentLinkedQueue[String](urls.asJava)
+          Seq.fill(pacing.limitOf(host))(java.util.concurrent.CompletableFuture.runAsync({ () =>
+            Iterator.continually(Option(queue.poll())).takeWhile(_.isDefined).flatten.foreach { url =>
+              scala.util.Try(pacing(url)(real.get(url))).foreach { body =>
+                tools.AtomicFiles.writeString(fileOf(s"GET $url"), body); read.incrementAndGet()
+              }
             }
-          }).foreach(_.join()))
-        }
-      }.foreach(_.join())
+          }: Runnable, pool))
+        }.foreach(_.join())
+      } finally pool.shutdown()
       read.get()
     }
   }
