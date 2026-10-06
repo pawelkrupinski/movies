@@ -53,22 +53,37 @@ object Broadcast {
   /** How long a relay's encores run after TMDB dates its broadcast. */
   val RelayRunDays = 365
 
-  /** Why a relay's take is not the production its venues screen, if it is not: every listing bills a house or a relay
-   *  ([[Agreement.billsAHouse]]) and no title dates the record's year, TMDB dates the taken record's broadcast more than
-   *  [[RelayRunDays]] before the first screening, and it dates a later record carrying the very same title within that
-   *  run before it. US Oriental Theatre Milwaukee's "NT Live: All My Sons" (10–11 October 2026), which Flicks links to its 2019
-   *  Old Vic page, is the National Theatre's 2026 broadcast (16 April 2026), not 2019's (14 May 2019). An encore of an
-   *  old production with no newer record of its title stands. `others`: the other records the cluster's titles find,
-   *  read only once the rest holds. */
-  def superseded(listings: Seq[Listing], taken: Film, others: => Seq[(Int, Film)]): Option[String] = {
+  /** Why a relay's take is not the production its venues screen, if it is not. All of these must hold:
+   *  - every listing is a house's RELAY of the record: it bills a house ([[Agreement.billsAHouse]]) and puts a banner on
+   *    the work the record also bills under one ([[IdentityMeasures.billing]]: "NT Live: Hamlet", "National Theatre
+   *    Live: Hamlet") — not a film whose own title holds a house's word (US "Stage Fright", Hitchcock's 1950 film);
+   *  - nothing the venue states itself ties it to the record: no title dates the record's year, and no listing whose
+   *    facts are its own, not a listings site's catalogue entry ([[services.identity.CatalogueSources]]: Flicks' film
+   *    page, which links a new relay to an old production's page), states the record's year or director;
+   *  - TMDB dates the record's broadcast more than [[RelayRunDays]] before the first screening, and a later record carrying
+   *    the very same title within that run before it.
+   *
+   *  Measured on prod 2026-10-06 (every relay take of the five countries): it withdraws US "NT Live: All My Sons" at
+   *  Oriental Theatre Milwaukee (Milwaukee Film bills the 2026 van Hove broadcast; Flicks links its 2019 page) and US
+   *  "NT Live: Hamlet" (Burns Court bills the 2026 Abeysekera broadcast; Flicks links Cumberbatch's 2015 page), and
+   *  keeps "Stage Fright" (Camelot Theatres' Hitchcock retrospective) and "Phantom of the Opera (1943)". `measured`:
+   *  the listing as the model reads it; `others`: the other records the cluster's titles find, read only once the rest
+   *  holds. */
+  def superseded(listings: Seq[Listing], measured: Listing => IdentityMeasures.Listing, taken: Film,
+                 others: => Seq[(Int, Film)]): Option[String] = {
     val days = listings.map(_.screenings).foldLeft(ScreeningDays.None)(_ ++ _)
     val run  = (day: java.time.LocalDate) => day.minusDays(RelayRunDays.toLong)
+    def ownFacts(listing: Listing) = !listing.factsFromCatalogue && !listing.page.exists(services.identity.CatalogueSources.catalogueEntry)
+    def tiedToTaken(listing: Listing) =
+      IdentityMeasures.titleYearOf(Seq(listing.title, listing.rawTitle).distinct).exists(taken.year.contains) ||
+        ownFacts(listing) && (listing.year.exists(taken.year.contains) || listing.directors.nonEmpty && taken.directors.exists(_.nonEmpty) &&
+          IdentityMeasures.directorRelation(listing.directors, taken.directors.get) == Category("same_person"))
     for {
       first <- days.first.filter(_ => listings.nonEmpty && !days.isUnknown)
       last  <- days.last
       aired <- taken.released.filter(_.isBefore(run(first)))
-      if listings.forall(listing => Agreement.billsAHouse(listing) &&
-        IdentityMeasures.titleYearOf(Seq(listing.title, listing.rawTitle).distinct).forall(year => !taken.year.contains(year)))
+      if listings.forall(listing => Agreement.billsAHouse(listing) && IdentityMeasures.billing(measured(listing), taken).isDefined &&
+        !tiedToTaken(listing))
       (_, newer) <- others.filter { case (_, film) =>
                       IdentityMeasures.key(film.title) == IdentityMeasures.key(taken.title) &&
                         film.released.exists(day => day.isAfter(aired) && !day.isBefore(run(first)) && !day.isAfter(last))

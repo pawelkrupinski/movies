@@ -175,11 +175,13 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     alternatives = Seq("NT Live: All My Sons"), released = Some(java.time.LocalDate.parse("2019-05-14")))
   private val vanHove = FilmTable.F(1620001, "National Theatre Live: All My Sons", 2026, "Ivo van Hove", 172,
     alternatives = Seq("NT Live: All My Sons"), released = Some(java.time.LocalDate.parse("2026-04-16")))
+  private val flicksPage = Some("https://www.flicks.us/movie/nt-live-all-my-sons/")
   private def relayTake(title: String = "NT Live: All My Sons", on: Seq[String] = Seq("2026-10-10", "2026-10-11"),
-                        records: Seq[FilmTable.F] = Seq(oldVic, vanHove)) = {
-    val relay = FilmTable.listing(Multikino, title, year = Some(2019), director = Some("Jeremy Herrin"))
-      .copy(screenings = ScreeningDays.of(on.map(java.time.LocalDate.parse)))
-    val taken = Resolution(Seq(ResolverDecision(Seq(relay.key), Some(568683), 0.39, ResolverDecision.Basis.OwnMatch, Seq("own match 568683"))()),
+                        records: Seq[FilmTable.F] = Seq(oldVic, vanHove), page: Option[String] = flicksPage,
+                        film: Int = oldVic.id, director: Option[String] = Some("Jeremy Herrin"), year: Option[Int] = Some(2019)) = {
+    val relay = FilmTable.listing(Multikino, title, year = year, director = director)
+      .copy(screenings = ScreeningDays.of(on.map(java.time.LocalDate.parse)), page = page)
+    val taken = Resolution(Seq(ResolverDecision(Seq(relay.key), Some(film), 0.39, ResolverDecision.Basis.OwnMatch, Seq(s"own match $film"))()),
       1, Map(relay.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     stage(silent, PosterAnswers.Silent, new FilmTable(records, normalizer)).apply(taken, Map(relay.key -> relay).get, 1).decisions.head
   }
@@ -197,6 +199,34 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     relayTake(title = "NT Live: All My Sons (2019)").basis shouldBe ResolverDecision.Basis.OwnMatch
     // a film billing no house is no relay
     relayTake(title = "All My Sons").basis shouldBe ResolverDecision.Basis.OwnMatch
+  }
+
+  // prod US 2026-10-06, Burns Court Cinemas Sarasota: "NT Live: Hamlet" opens 24 November 2026 as the National Theatre's
+  // 2026 Abeysekera broadcast on the venue's own page; Flicks links it to Cumberbatch's 2015 page
+  it should "be withdrawn for Cumberbatch's 2015 Hamlet a venue screens as the 2026 broadcast" in {
+    val cumberbatch = FilmTable.F(396227, "National Theatre Live: Hamlet", 2015, "Lyndsey Turner", 204,
+      alternatives = Seq("NT Live: Hamlet"), released = Some(java.time.LocalDate.parse("2015-10-15")))
+    val abeysekera  = FilmTable.F(1507580, "National Theatre Live: Hamlet", 2026, "Robert Hastie", 178,
+      alternatives = Seq("NT Live: Hamlet"), released = Some(java.time.LocalDate.parse("2026-01-22")))
+    relayTake(title = "NT Live: Hamlet", on = Seq("2026-11-24", "2026-11-28", "2026-12-02"), records = Seq(cumberbatch, abeysekera),
+      film = cumberbatch.id, director = None, year = Some(2015), page = Some("https://www.flicks.us/movie/nt-live-hamlet/")).basis shouldBe
+      ResolverDecision.Basis.Withdrawn
+  }
+
+  it should "stand where the venue's own facts, not a listings site's catalogue entry, name the record's year or director" in {
+    relayTake(page = None).basis shouldBe ResolverDecision.Basis.OwnMatch
+    relayTake(page = None, year = None).basis shouldBe ResolverDecision.Basis.OwnMatch
+    relayTake(page = None, year = None, director = None).basis shouldBe ResolverDecision.Basis.Withdrawn
+  }
+
+  // prod US 2026-10-06: Camelot Theatres Palm Springs' Hitchcock retrospective shows "Stage Fright" (1950) on 13 November;
+  // TMDB dates another "Stage Fright" in April 2026. "Stage" is a house's word, but the title bills no house's relay.
+  "a film whose title holds a house's word" should "never be read as a superseded relay" in {
+    val hitchcock = FilmTable.F(1978, "Stage Fright", 1950, "Alfred Hitchcock", 110, released = Some(java.time.LocalDate.parse("1950-02-23")))
+    val gofnung   = FilmTable.F(1673983, "Stage Fright", 2026, "Dean Gofnung", 90, released = Some(java.time.LocalDate.parse("2026-04-17")))
+    relayTake(title = "Stage Fright", on = Seq("2026-11-13"), records = Seq(hitchcock, gofnung), film = hitchcock.id,
+      director = Some("Alfred Hitchcock"), year = Some(1950), page = Some("https://www.flicks.us/movie/stage-fright/")).basis shouldBe
+      ResolverDecision.Basis.OwnMatch
   }
 
   "Correction.decide" should "withdraw on the programme alone, switch only where two kinds name one film apart from the take" in {

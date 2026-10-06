@@ -347,7 +347,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     // a relay screening years after its record's broadcast, months after a newer record of its title: no production
     // the take can be, whatever else is read
     def superseded(film: IdentityMeasures.Film) =
-      Broadcast.superseded(listings, film, titledFilms(listings).filter(_ != model).flatMap(id => named(id).map(id -> _)))
+      Broadcast.superseded(listings, listing => Evidence.of(listing, None).measured, film, titledFilms(listings).filter(_ != model).flatMap(id => named(id).map(id -> _)))
         .map(why => Correction.Outcome(None, s"withdrawn ${title(model)} — relay: $why"))
     val outcome = named(model).flatMap(film => superseded(film).orElse {
       val modelRecord = recordOf(model, film)

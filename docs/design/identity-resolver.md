@@ -2743,11 +2743,28 @@ Families alone never do.
 2026) is the National Theatre's 2026 van Hove broadcast on Milwaukee Film's own page. Flicks links it to its 2019 Old
 Vic page, so the listing states 2019 and Herrin, and the model took the 2019 record. A relay's take is WITHDRAWN when
 all of these hold:
-- every listing bills a house or relay, and no title dates the record's year;
+- every listing bills a house's relay of the record: a house word, and a banner on the work the record also bills
+  under one (`IdentityMeasures.billing`);
+- nothing the venue states itself ties it to the record. No title dates the record's year. No listing whose facts are
+  its own, rather than a listings site's catalogue entry (Flicks' film page), states the record's year or director;
 - TMDB dates the record's broadcast more than a year (`RelayRunDays`) before the first screening;
 - TMDB dates a later record with the very same title within that year.
 
 An encore of an old production with no newer record of its title stands.
+
+Measured on prod, every relay-worded take of the five countries (112), with TMDB's dates and searches:
+
+| | wrong take withdrawn | right take withdrawn | kept |
+|---|---|---|---|
+| first rule | 2 | 1 | 109 |
+| narrowed rule | 2 | 0 | 110 |
+
+- The two wrong takes withdrawn: US "NT Live: All My Sons" (Oriental) and US "NT Live: Hamlet". Burns Court's own page
+  bills the 2026 Abeysekera broadcast; Flicks links it to Cumberbatch's 2015 page.
+- The right take the first rule withdrew: US "Stage Fright", Hitchcock's 1950 film, in Camelot Theatres' retrospective.
+  Its title holds the house word "stage" but bills no relay.
+- Kept by its title year: "Phantom of the Opera (1943)".
+- No case was ambiguous.
 
 **Matched takes against the hand labels.** The ratchet replays only the clusters the model leaves unmatched, so a wrong
 film the model takes outright never reached it. `MatchedTakesLabelSpec` judges every take of the unified rows
