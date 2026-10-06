@@ -2896,22 +2896,21 @@ the stage, cannot be graded until the fixture is re-captured (below).
    `denies-film` and `different-films` keep them apart. `MixedClustersSpec` now also pins Kozienice. A re-capture would
    NOT raise the ratchet by these 3: the fixture captures only clusters the model leaves UNMATCHED, so they would leave
    it as model takes, graded by the whole-corpus snapshot (`expected-schedules.txt`) instead.
-5. **Stale fixture: how to re-capture (not dispatched).** No workflow writes `identity-unmatched/*.json.gz`. The capture
-   is the opt-in `UnmatchedClustersCaptureIntegrationSpec`, run locally over a recorded corpus:
-   1. `gh workflow run "Record scrape fixtures" --ref main` (with `identity-lookups` true, the default) records each
-      country's corpus and identity lookups from prod. Fetch them with `gh run download <run> --name
-      scrape-fixtures-<cc>` and the enrichment trees as `.github/scripts/restore-enrichment-tree.sh` restores them.
-   2. Optionally, a read-only export of prod's `identity_family_answers` per database (`kinowo.jsonl`,
-      `kinowo_<cc>.jsonl`) through the prod tunnel, for `KINOWO_IDENTITY_FAMILY_SEED`.
-   3. Run:
-      `KINOWO_IDENTITY_UNMATCHED_CAPTURE=test/resources/fixtures/identity-unmatched KINOWO_IDENTITY_FULL=pl,uk,de,es,us
-      KINOWO_IDENTITY_CORPUS_DIR=<corpora> KINOWO_FIXTURE_ROOT=<trees> KINOWO_IDENTITY_AGREEMENT_CACHE=<answer cache>
-      KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY=<TMDB key, from the secrets vault, never .env.local>
-      [KINOWO_IDENTITY_FAMILY_SEED=<dir>] [KINOWO_IDENTITY_POSTER_CACHE=<dir>]
-      sbt -J-Xmx12g "worker/IntegrationTest/testOnly integration.UnmatchedClustersCaptureIntegrationSpec"`.
-      It needs the it/ local Mongo, with its own `MONGODB_DB`.
-   4. Then run the ratchet: every new take has to be judged into `labels.tsv`, and `expected-matches.tsv` re-baselined
-      (takes the model now makes leave the fixture, as with Dyrygent).
+5. **Re-capturing the fixture: one command.** `scripts/identity-capture.sh [--dry-run] [--heap 12g] [cc...]`
+   (`scripts.IdentityCapture`, unit-tested by `IdentityCaptureSpec`) does what were four hand steps:
+   1. fetches the newest successful "Record scrape fixtures" run's corpora (`scrape-fixtures-<cc>`) and the enrichment
+      trees recorded with them (`enrichment-<cc>-<run>.tar.*` on the `convergence-fixtures` release) into
+      `target/identity-capture` (`KINOWO_IDENTITY_CAPTURE_WORK`), skipping a country already holding that run's;
+   2. exports prod's `identity_family_answers` (`kinowo`, `kinowo_<cc>`) read-only over the prod tunnel
+      (`scripts/local-mirror/prod-tunnel.sh`) for `KINOWO_IDENTITY_FAMILY_SEED`;
+   3. runs each country's `UnmatchedClustersCaptureIntegrationSpec` in a JVM of its own (`--heap`, default 12g) against
+      the it/ Mongo (`127.0.0.1:28017`) in a database of its own, every variable defaulted (one you set is kept) and the
+      TMDB key read from the secrets vault, never `.env.local`;
+   4. prints each phase's time and throughput.
+
+   `--dry-run` prints the plan (downloads, exports, each JVM's command and variables) and touches neither prod nor the
+   network. Then run the ratchet: every new take has to be judged into `labels.tsv`, and `expected-matches.tsv`
+   re-baselined (takes the model now makes leave the fixture, as with Dyrygent).
 
 ### 20.15 The local review app's 60 answers: labels, and the rules they suggested (2026-10-06)
 
