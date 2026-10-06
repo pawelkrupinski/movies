@@ -3,14 +3,22 @@
 # Re-capture the unmatched-cluster fixture (test/resources/fixtures/identity-unmatched/<cc>.json.gz)
 # in one command — docs/design/identity-resolver.md §20.14 item 5.
 #
-#   scripts/identity-capture.sh [--dry-run] [--heap 12g] [cc...]
+#   scripts/identity-capture.sh [--dry-run] [--capture|--fill] [--heap 12g] [cc...]
 #
 #   cc...       countries to capture (default: us de uk pl es, run largest first)
+#   --capture   capture every country named, whatever its fixture's inputs
+#   --fill      fill every country named (its <cc>.json.gz must exist)
 #   --heap      each country's JVM heap (default 12g)
 #   --dry-run   print the plan — what it would download, export and run, with every variable — and
 #               touch neither prod nor the network
 #
-# What it does (scripts.IdentityCapture, worker/src/test/scala/scripts, does the work):
+# CAPTURE OR FILL, per country, said and logged: a FILL (UnmatchedClustersFillIntegrationSpec, minutes)
+# answers only the questions a change newly asks of the fixture's clusters; a CAPTURE resolves the
+# whole corpus again. It fills when <cc>.json.gz exists and its decisions are unchanged under the
+# current code — <cc>.inputs, stamped by each capture, names the same recording and the same hash of
+# the code deciding them (scripts.IdentityCapture.DecisionInputs) — and captures otherwise.
+#
+# What a capture does (scripts.IdentityCapture, worker/src/test/scala/scripts, does the work):
 #   1. fetches the newest successful "Record scrape fixtures" run's corpora (artifact
 #      scrape-fixtures-<cc>) and the enrichment trees recorded with them (release convergence-fixtures,
 #      enrichment-<cc>-<run>.tar.*) into $KINOWO_IDENTITY_CAPTURE_WORK (default target/identity-capture),
@@ -31,10 +39,12 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 dry=false
+fill_only=false
 for arg in "$@"; do
     case "$arg" in
         --dry-run) dry=true ;;
-        -h|--help) sed -n '3,30p' "$0"; exit 0 ;;
+        --fill) fill_only=true ;;
+        -h|--help) sed -n '3,37p' "$0"; exit 0 ;;
     esac
 done
 
@@ -54,7 +64,8 @@ if ! $dry; then
         fi
         export KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY
     fi
-    if [ -z "${KINOWO_IDENTITY_FAMILY_URI:-}" ] && [ -z "${KINOWO_IDENTITY_FAMILY_SEED:-}" ]; then
+    # A fill reads no family answers from prod; the tunnel is for a capture's export only.
+    if ! $fill_only && [ -z "${KINOWO_IDENTITY_FAMILY_URI:-}" ] && [ -z "${KINOWO_IDENTITY_FAMILY_SEED:-}" ]; then
         # shellcheck source=scripts/local-mirror/prod-tunnel.sh
         . scripts/local-mirror/prod-tunnel.sh
         # .env.local lives in the main checkout; a worktree has none of its own

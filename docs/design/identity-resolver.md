@@ -2908,6 +2908,13 @@ the stage, cannot be graded until the fixture is re-captured (below).
       TMDB key read from the secrets vault, never `.env.local`;
    4. prints each phase's time and throughput.
 
+   Capture or fill is decided per country, and said: it FILLS (`UnmatchedClustersFillIntegrationSpec`, which only answers
+   the questions a change newly asks of the fixture's clusters: minutes, no download, no prod read) when `<cc>.json.gz`
+   exists and its decisions are unchanged under the current code — `<cc>.inputs`, stamped by every capture, names the
+   same recording and the same hash of the code that decides them (`IdentityCapture.DecisionInputs`: the resolver, its
+   calibration, the title rules, the TMDB lookups and the corpus replay, not the agreement stage) — and CAPTURES
+   otherwise. `--capture` / `--fill` override it.
+
    `--dry-run` prints the plan (downloads, exports, each JVM's command and variables) and touches neither prod nor the
    network. Then run the ratchet: every new take has to be judged into `labels.tsv`, and `expected-matches.tsv`
    re-baselined (takes the model now makes leave the fixture, as with Dyrygent).

@@ -30,6 +30,82 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
     parse(Seq("--fast")).left.toOption.get should include("--fast")
   }
 
+  they should "force a capture or a fill, never both" in {
+    parse(Seq("--capture", "pl")).toOption.get.forced shouldBe Some(Mode.Capture)
+    parse(Seq("--fill")).toOption.get.forced shouldBe Some(Mode.Fill)
+    parse(Nil).toOption.get.forced shouldBe None
+    parse(Seq("--capture", "--fill")).isLeft shouldBe true
+  }
+
+  // ── capture or fill ──
+
+  private val now = Inputs("37", "abc")
+
+  "A country" should "fill when its fixture's inputs are unchanged: the same recording, the same resolver code" in {
+    choose("pl", fixture = true, stamped = Some(now), current = Some(now), forced = None) shouldBe
+      Choice("pl", Mode.Fill, "the fixture's decisions are current: recording 37, resolver code abc")
+  }
+
+  it should "capture when it has no fixture yet" in {
+    choose("pl", fixture = false, stamped = None, current = Some(now), forced = None).mode shouldBe Mode.Capture
+  }
+
+  it should "capture when the fixture's inputs were never stamped" in {
+    choose("pl", fixture = true, stamped = None, current = Some(now), forced = None) shouldBe
+      Choice("pl", Mode.Capture, "pl.inputs is missing: the fixture's inputs are unknown")
+  }
+
+  it should "capture when a newer recording moved the corpus" in {
+    choose("pl", fixture = true, stamped = Some(Inputs("36", "abc")), current = Some(now), forced = None) shouldBe
+      Choice("pl", Mode.Capture, "the corpus moved: captured from recording 36, now 37")
+  }
+
+  it should "capture when the code deciding the model's decisions changed" in {
+    choose("pl", fixture = true, stamped = Some(Inputs("37", "old")), current = Some(now), forced = None) shouldBe
+      Choice("pl", Mode.Capture, "the resolver's code changed since the capture (old → abc)")
+  }
+
+  it should "capture when no recording is at hand to compare with" in {
+    choose("pl", fixture = true, stamped = Some(now), current = None, forced = None).mode shouldBe Mode.Capture
+  }
+
+  it should "do what it was told, and refuse to fill a fixture that is not there" in {
+    choose("pl", fixture = true, stamped = Some(now), current = Some(now), forced = Some(Mode.Capture)) shouldBe
+      Choice("pl", Mode.Capture, "--capture given")
+    choose("pl", fixture = true, stamped = None, current = Some(now), forced = Some(Mode.Fill)) shouldBe
+      Choice("pl", Mode.Fill, "--fill given")
+    an[IllegalArgumentException] should be thrownBy choose("pl", fixture = false, stamped = None, current = Some(now), forced = Some(Mode.Fill))
+  }
+
+  "A fixture's inputs" should "round-trip through their stamp file" in {
+    Inputs.parse(Inputs("37", "abc").render) shouldBe Some(Inputs("37", "abc"))
+    Inputs.parse("garbage") shouldBe None
+  }
+
+  "The code deciding the model's decisions" should "be the resolver and what feeds it, never the agreement stage" in {
+    isDecisionInput("common/src/main/scala/services/identity/IdentityResolver.scala") shouldBe true
+    isDecisionInput("common/src/main/resources/identity-weights.json") shouldBe true
+    isDecisionInput("common/src/main/scala/services/titlerules/ExtraTitleRules.scala") shouldBe true
+    isDecisionInput("worker/src/it/scala/IdentityShadow.scala") shouldBe true
+    isDecisionInput("common/src/main/scala/services/identity/agreement/AgreementStage.scala") shouldBe false
+    isDecisionInput("web/src/main/scala/controllers/MovieController.scala") shouldBe false
+  }
+
+  "A fill" should "hand its JVM the fixture to fill, the country, and the live answers' sources" in {
+    val env = fillEnvironment("de", Map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k", FamilyUri -> "mongodb://prod"), layout)
+    env shouldBe Map(
+      "KINOWO_IDENTITY_UNMATCHED_FILL"     -> "/repo/test/resources/fixtures/identity-unmatched",
+      "KINOWO_IDENTITY_FULL"               -> "de",
+      "KINOWO_IDENTITY_AGREEMENT_CACHE"    -> "/repo/target/identity-capture/agreement-cache",
+      "KINOWO_IDENTITY_POSTER_CACHE"       -> "/repo/target/identity-capture/posters",
+      "KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k")
+  }
+
+  it should "count as done only when its spec said it filled" in {
+    succeeded("de", Mode.Fill, Seq("[de] filled after 2 round(s): 40 family answers, 3 finds")) shouldBe true
+    succeeded("de", Mode.Fill, Seq("[full-de] captured 1 listings")) shouldBe false
+  }
+
   // ── the environment each country's JVM is handed ──
 
   "A country's environment" should "default every variable the capture reads, and give the country its own Mongo database" in {
@@ -89,9 +165,9 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "count as done only when its spec said it captured" in {
-    succeeded("uk", Seq("noise", "[full-uk] captured 812 listings in 640 clusters; 5 queries")) shouldBe true
-    succeeded("uk", Seq("[full-pl] captured 812 listings")) shouldBe false
-    succeeded("uk", Seq("Run completed", "All tests passed.")) shouldBe false
+    succeeded("uk", Mode.Capture, Seq("noise", "[full-uk] captured 812 listings in 640 clusters; 5 queries")) shouldBe true
+    succeeded("uk", Mode.Capture, Seq("[full-pl] captured 812 listings")) shouldBe false
+    succeeded("uk", Mode.Capture, Seq("Run completed", "All tests passed.")) shouldBe false
   }
 
   it should "report the listings it captured" in {

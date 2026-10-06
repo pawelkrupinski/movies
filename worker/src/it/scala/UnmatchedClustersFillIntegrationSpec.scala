@@ -18,7 +18,8 @@ import scala.util.Try
  * decisions and the answers captured stay as they are: a change to those is a re-capture
  * (`UnmatchedClustersCaptureIntegrationSpec`).
  *
- * Opt-in: runs when `KINOWO_IDENTITY_UNMATCHED_FILL` names the fixture directory, with `KINOWO_IDENTITY_AGREEMENT_CACHE`
+ * Opt-in: runs when `KINOWO_IDENTITY_UNMATCHED_FILL` names the fixture directory (each country there, or only those
+ * `KINOWO_IDENTITY_FULL` names), with `KINOWO_IDENTITY_AGREEMENT_CACHE`
  * and `KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY` (the finds, and TMDB's answers) set.
  */
 class UnmatchedClustersFillIntegrationSpec extends AnyFlatSpec with Matchers {
@@ -28,6 +29,8 @@ class UnmatchedClustersFillIntegrationSpec extends AnyFlatSpec with Matchers {
     dir     <- configuration.identityUnmatchedFill.toSeq
     _       <- configuration.identityAgreementCache.toSeq
     country <- models.Country.all
+    // one country's JVM fills one fixture (`scripts/identity-capture.sh` runs them side by side)
+    if configuration.identityFullCorpora.value.isEmpty || configuration.identityFullCorpora.value.contains(country)
     path     = dir.value.resolve(s"${country.code}.json.gz")
     if java.nio.file.Files.exists(path)
   } yield country -> path

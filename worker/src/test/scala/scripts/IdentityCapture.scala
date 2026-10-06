@@ -51,19 +51,92 @@ object IdentityCapture {
 
   // ── arguments ────────────────────────────────────────────────────────────────────────────
 
-  final case class Options(countries: Seq[String] = Countries, dryRun: Boolean = false, heap: String = "12g")
+  final case class Options(countries: Seq[String] = Countries, dryRun: Boolean = false, heap: String = "12g", forced: Option[Mode] = None)
 
   def parse(args: Seq[String]): Either[String, Options] = {
     @scala.annotation.tailrec def go(rest: List[String], o: Options, named: List[String]): Either[String, Options] = rest match {
       case Nil                     => Right(if (named.isEmpty) o else o.copy(countries = Countries.filter(named.contains)))
       case "--dry-run" :: tail     => go(tail, o.copy(dryRun = true), named)
       case "--heap" :: heap :: tail => go(tail, o.copy(heap = heap), named)
+      case ("--capture" | "--fill") :: _ if o.forced.isDefined => Left("--capture and --fill: one or the other")
+      case "--capture" :: tail     => go(tail, o.copy(forced = Some(Mode.Capture)), named)
+      case "--fill" :: tail        => go(tail, o.copy(forced = Some(Mode.Fill)), named)
       case flag :: _ if flag.startsWith("-") => Left(s"unknown option $flag")
       case cc :: tail =>
         val code = cc.toLowerCase(java.util.Locale.ROOT)
         if (Countries.contains(code)) go(tail, o, code :: named) else Left(s"no recorded corpus for country '$cc' (one of ${Countries.mkString(", ")})")
     }
     go(args.toList, Options(), Nil)
+  }
+
+  // ── capture or fill ──────────────────────────────────────────────────────────────────────
+
+  /** A CAPTURE resolves the whole corpus again and records the clusters left unmatched and every answer read for them
+   *  (`UnmatchedClustersCaptureIntegrationSpec`: hours, prod's family answers, the recording). A FILL keeps the
+   *  fixture's clusters and decisions and only answers the questions a change newly asks of them
+   *  (`UnmatchedClustersFillIntegrationSpec`: minutes). */
+  enum Mode { case Capture, Fill }
+
+  /** What a fixture's decisions are a function of: the recording whose corpus was resolved, and the code that decides
+   *  them ([[isDecisionInput]]), hashed. Stamped beside the fixture as `<cc>.inputs` by every capture. */
+  final case class Inputs(corpusRun: String, code: String) {
+    def render: String = s"recording\t$corpusRun\ncode\t$code\n"
+  }
+  object Inputs {
+    def parse(text: String): Option[Inputs] = {
+      val fields = text.linesIterator.map(_.split("\t", 2)).collect { case Array(k, v) => k -> v.trim }.toMap
+      for (run <- fields.get("recording"); code <- fields.get("code")) yield Inputs(run, code)
+    }
+  }
+
+  final case class Choice(cc: String, mode: Mode, why: String)
+
+  /** Fill when the fixture exists and its decisions are unchanged under the current code — the same recording, the same
+   *  decision code — else capture; `forced` (`--capture` / `--fill`) overrides, but a fill needs a fixture to fill. */
+  def choose(cc: String, fixture: Boolean, stamped: Option[Inputs], current: Option[Inputs], forced: Option[Mode]): Choice =
+    forced match {
+      case Some(Mode.Fill) if !fixture => throw new IllegalArgumentException(s"--fill: $cc has no $cc.json.gz to fill — capture it first")
+      case Some(mode)                  => Choice(cc, mode, s"--${mode.toString.toLowerCase(java.util.Locale.ROOT)} given")
+      case None if !fixture            => Choice(cc, Mode.Capture, s"no $cc.json.gz yet")
+      case None => (stamped, current) match {
+        case (None, _) => Choice(cc, Mode.Capture, s"$cc.inputs is missing: the fixture's inputs are unknown")
+        case (_, None) => Choice(cc, Mode.Capture, "no recording at hand to compare the fixture's with")
+        case (Some(was), Some(now)) if was.corpusRun != now.corpusRun =>
+          Choice(cc, Mode.Capture, s"the corpus moved: captured from recording ${was.corpusRun}, now ${now.corpusRun}")
+        case (Some(was), Some(now)) if was.code != now.code =>
+          Choice(cc, Mode.Capture, s"the resolver's code changed since the capture (${was.code} → ${now.code})")
+        case (_, Some(now)) =>
+          Choice(cc, Mode.Fill, s"the fixture's decisions are current: recording ${now.corpusRun}, resolver code ${now.code}")
+      }
+    }
+
+  /** The code a capture's DECISIONS are a function of: the resolver and its calibration, the title rules and
+   *  normaliser that key its listings, its TMDB lookups, and the corpus replay that feeds it — never the agreement stage,
+   *  whose new questions a fill answers. A change elsewhere that moves a decision anyway is what `--capture` is for. */
+  val DecisionInputs: Seq[String] = Seq(
+    "common/src/main/scala/services/identity/", "common/src/main/resources/identity-", "common/src/main/scala/services/titlerules/",
+    "common/src/main/scala/services/movies/TitleNormalizer.scala", "worker/src/main/scala/services/identity/TmdbIdentityLookups.scala",
+    "worker/src/main/scala/services/TmdbClient.scala", "worker/src/it/scala/IdentityShadow.scala")
+  val NotDecisionInputs: Seq[String] = Seq("common/src/main/scala/services/identity/agreement/")
+
+  def isDecisionInput(path: String): Boolean = DecisionInputs.exists(path.startsWith) && !NotDecisionInputs.exists(path.startsWith)
+
+  /** The decision code's hash in the working tree: git blob ids (`git hash-object`) of every [[isDecisionInput]] file,
+   *  tracked or not, so the committed and the edited tree hash alike for the same bytes. Twelve hex digits. */
+  def decisionCode(repo: Path): String = {
+    def git(input: Option[String], args: String*): String = {
+      val p = new ProcessBuilder(("git" +: args)*).directory(repo.toFile).start()
+      input.foreach { text => p.getOutputStream.write(text.getBytes(StandardCharsets.UTF_8)) }
+      p.getOutputStream.close()
+      val out = new String(p.getInputStream.readAllBytes(), StandardCharsets.UTF_8)
+      if (p.waitFor() != 0) sys.error(s"git ${args.mkString(" ")} failed")
+      out
+    }
+    val paths = git(None, "ls-files", "-z", "-co", "--exclude-standard").split('\u0000').toSeq
+      .filter(p => p.nonEmpty && isDecisionInput(p) && Files.isRegularFile(repo.resolve(p))).sorted
+    val blobs = git(Some(paths.mkString("\n") + "\n"), "hash-object", "--stdin-paths").linesIterator.toSeq
+    val digest = java.security.MessageDigest.getInstance("SHA-256").digest(blobs.zip(paths).map((b, p) => s"$b $p\n").mkString.getBytes(StandardCharsets.UTF_8))
+    java.util.HexFormat.of().formatHex(digest).take(12)
   }
 
   // ── the environment each country's JVM is handed ─────────────────────────────────────────
@@ -84,6 +157,15 @@ object IdentityCapture {
       env.get("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY").map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> _) +
       ("KINOWO_IDENTITY_FULL" -> cc) + ("MONGODB_DB" -> s"kinowo_capture_$cc")
   }
+
+  /** A fill's variables: the fixture directory to fill, the country, and where its live answers come from and are kept. */
+  def fillEnvironment(cc: String, env: Map[String, String], layout: Layout): Map[String, String] =
+    Map(
+      "KINOWO_IDENTITY_UNMATCHED_FILL"  -> env.getOrElse("KINOWO_IDENTITY_UNMATCHED_CAPTURE", layout.fixtures.toString),
+      "KINOWO_IDENTITY_AGREEMENT_CACHE" -> env.getOrElse("KINOWO_IDENTITY_AGREEMENT_CACHE", layout.agreementCache.toString),
+      "KINOWO_IDENTITY_POSTER_CACHE"    -> env.getOrElse("KINOWO_IDENTITY_POSTER_CACHE", layout.posters.toString),
+      "KINOWO_IDENTITY_FULL"            -> cc) ++
+      env.get("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY").map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> _)
 
   /** Whether the corpora are this script's to fetch: not when the caller named a directory of their own. */
   def managedCorpus(env: Map[String, String]): Boolean = !env.contains("KINOWO_IDENTITY_CORPUS_DIR")
@@ -119,7 +201,10 @@ object IdentityCapture {
 
   /** A country's JVM did its job when its spec printed what it captured — not merely when ScalaTest ran: a suite
    *  CANCELLED for a missing variable is no failure to ScalaTest. */
-  def succeeded(cc: String, log: Seq[String]): Boolean = log.exists(_.contains(s"[full-$cc] captured "))
+  def succeeded(cc: String, mode: Mode, log: Seq[String]): Boolean = mode match {
+    case Mode.Capture => log.exists(_.contains(s"[full-$cc] captured "))
+    case Mode.Fill    => log.exists(_.contains(s"[$cc] filled after "))
+  }
 
   private val Captured = """\] captured (\d+) listings""".r.unanchored
   def capturedListings(log: Seq[String]): Option[Int] = log.collectFirst { case Captured(n) => n.toInt }
@@ -263,9 +348,13 @@ object IdentityCapture {
   /** The family-answer export's database for a country (`kinowo` is Poland's). */
   def database(cc: String): String = if (cc == "pl") "kinowo" else s"kinowo_$cc"
 
-  /** The run, over `effects`: true when every country captured. */
+  /** The spec a fill runs. */
+  val FillSpec = "integration.UnmatchedClustersFillIntegrationSpec"
+
+  /** The run, over `effects`: each country's choice made and said, the recording and the family answers fetched for the
+   *  captures alone (a fill reads neither), then each country's JVM. True when every country did its job. */
   def capture(options: Options, env: Map[String, String], layout: Layout, effects: Effects, classpath: String,
-              jvmopts: Seq[String], out: String => Unit): Boolean = {
+              jvmopts: Seq[String], code: String, out: String => Unit): Boolean = {
     val started = System.nanoTime()
     val phases  = Seq.newBuilder[Phase]
     def timed[A](name: String)(body: => A)(amount: A => Option[(Double, String)]): A = {
@@ -275,44 +364,67 @@ object IdentityCapture {
     val cs = options.countries
     out(s"[identity-capture] countries ${cs.mkString(" ")}; work in ${layout.work}${if (options.dryRun) "; DRY RUN" else ""}")
 
-    // 1. the recording: corpus and tree per country, fetched only when not already the newest
-    if (managedCorpus(env) || managedTree(env)) {
-      val newest = timed("look up the newest recording")(effects.newestRecording())(_ => None)
-      cs.foreach { cc =>
-        val present = Some(layout.recorded(cc)).filter(Files.exists(_)).map(Files.readString(_).trim).filter(_.nonEmpty)
-        currency(present, newest) match {
-          case Keep(run, why) => out(s"[identity-capture] $cc: keeping recording $run — $why")
-          case Missing(why)   => out(s"[identity-capture] $cc: $why")
-          case Fetch(run, why) =>
-            out(s"[identity-capture] $cc: fetching recording $run — $why")
-            if (managedCorpus(env)) timed(s"download corpus $cc")(effects.fetchCorpus(run, cc, layout))(b => Some(b / 1e6 -> "MB"))
-            if (managedTree(env)) timed(s"download tree $cc")(effects.fetchTree(run, cc, layout))(b => Some(b / 1e6 -> "MB"))
-            if (!options.dryRun) { Files.createDirectories(layout.work); Files.writeString(layout.recorded(cc), run) }
-        }
-      }
+    // 1. which recording each country's corpus would be, and with it capture or fill
+    val newest = if (managedCorpus(env) || managedTree(env)) timed("look up the newest recording")(effects.newestRecording())(_ => None) else None
+    val fixtures = Path.of(env.getOrElse("KINOWO_IDENTITY_UNMATCHED_CAPTURE", layout.fixtures.toString))
+    val plans = cs.map { cc =>
+      val present  = Some(layout.recorded(cc)).filter(Files.exists(_)).map(Files.readString(_).trim).filter(_.nonEmpty)
+      val recorded = if (managedCorpus(env)) currency(present, newest) else Keep(ownCorpus(env, cc).getOrElse(""), "the caller's own corpus")
+      val run      = recorded match { case Fetch(r, _) => Some(r); case Keep(r, _) => Some(r).filter(_.nonEmpty); case Missing(_) => None }
+      val stamped  = Some(fixtures.resolve(s"$cc.inputs")).filter(Files.exists(_)).flatMap(p => Inputs.parse(Files.readString(p)))
+      val choice   = choose(cc, Files.exists(fixtures.resolve(s"$cc.json.gz")), stamped, run.map(Inputs(_, code)), options.forced)
+      out(s"[identity-capture] $cc: ${choice.mode.toString.toUpperCase(java.util.Locale.ROOT)} — ${choice.why}")
+      (choice, recorded, run)
+    }
+    val captures = plans.collect { case (Choice(cc, Mode.Capture, _), recorded, _) => cc -> recorded }
+
+    // 2. the recording, for the captures: corpus and tree, fetched only when not already the newest
+    captures.foreach {
+      case (cc, Keep(run, why)) if run.nonEmpty => out(s"[identity-capture] $cc: keeping recording $run — $why")
+      case (cc, Keep(_, why))                   => out(s"[identity-capture] $cc: $why")
+      case (cc, Missing(why))                   => out(s"[identity-capture] $cc: $why")
+      case (cc, Fetch(run, why)) =>
+        out(s"[identity-capture] $cc: fetching recording $run — $why")
+        if (managedCorpus(env)) timed(s"download corpus $cc")(effects.fetchCorpus(run, cc, layout))(b => Some(b / 1e6 -> "MB"))
+        if (managedTree(env)) timed(s"download tree $cc")(effects.fetchTree(run, cc, layout))(b => Some(b / 1e6 -> "MB"))
+        if (!options.dryRun) { Files.createDirectories(layout.work); Files.writeString(layout.recorded(cc), run) }
     }
 
-    // 2. prod's family answers, read-only, unless the caller handed a seed of their own
+    // 3. prod's family answers, read-only, for the captures, unless the caller handed a seed of their own
     if (!env.contains("KINOWO_IDENTITY_FAMILY_SEED"))
-      cs.map(database).distinct.foreach { db =>
+      captures.map((cc, _) => database(cc)).distinct.foreach { db =>
         timed(s"export $db family answers")(effects.exportFamilies(db, layout.families))(n => Some(n.toDouble -> "docs"))
       }
 
-    // 3. one JVM per country
-    val results = cs.map { cc =>
-      val job = Job(cc, Seq("java") ++ jvmOptions(jvmopts, options.heap) ++ Seq("-cp", classpath, "org.scalatest.tools.Runner", "-oDW", "-s", CaptureSpec),
-        environment(cc, env, layout), layout.logs.resolve(s"$cc.log"))
-      out(s"[identity-capture] $cc: capture (log ${job.log})")
-      val log = timed(s"capture $cc")(effects.run(job))(l => capturedListings(l).map(_.toDouble -> "listings"))
-      val ok  = options.dryRun || succeeded(cc, log)
-      if (!ok) out(s"[identity-capture] $cc: FAILED — the spec printed no capture; see ${job.log}")
-      else log.filter(_.contains("[full-")).foreach(l => out(s"  $l"))
+    // 4. one JVM per country
+    val jvm = Seq("java") ++ jvmOptions(jvmopts, options.heap) ++ Seq("-cp", classpath, "org.scalatest.tools.Runner", "-oDW", "-s")
+    val results = plans.map { case (Choice(cc, mode, _), _, run) =>
+      val job = mode match {
+        case Mode.Capture => Job(cc, jvm :+ CaptureSpec, environment(cc, env, layout), layout.logs.resolve(s"$cc-capture.log"))
+        case Mode.Fill    => Job(cc, jvm :+ FillSpec, fillEnvironment(cc, env, layout), layout.logs.resolve(s"$cc-fill.log"))
+      }
+      val verb = mode.toString.toLowerCase(java.util.Locale.ROOT)
+      out(s"[identity-capture] $cc: $verb (log ${job.log})")
+      val log = timed(s"$verb $cc")(effects.run(job))(l => capturedListings(l).map(_.toDouble -> "listings"))
+      val ok  = options.dryRun || succeeded(cc, mode, log)
+      if (!ok) out(s"[identity-capture] $cc: FAILED — the spec printed no $verb; see ${job.log}")
+      else {
+        log.filter(l => l.contains(s"[full-$cc]") || l.contains(s"[$cc]")).foreach(l => out(s"  $l"))
+        // a capture's decisions are now those of this recording under this code: what the next run compares with
+        if (mode == Mode.Capture && !options.dryRun) run.foreach(r => Files.writeString(fixtures.resolve(s"$cc.inputs"), Inputs(r, code).render))
+      }
       ok
     }
 
     if (!options.dryRun) out(report(phases.result(), (System.nanoTime() - started) / 1e9))
     results.forall(identity)
   }
+
+  /** The caller's own corpus (`KINOWO_IDENTITY_CORPUS_DIR`), named by its content's hash for the fixture's stamp. */
+  private def ownCorpus(env: Map[String, String], cc: String): Option[String] =
+    env.get("KINOWO_IDENTITY_CORPUS_DIR").map(Path.of(_).resolve(s"cinema-scrapes-$cc.json.gz")).filter(Files.exists(_)).map { file =>
+      "corpus " + java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(file))).take(12)
+    }
 
   def main(args: Array[String]): Unit = parse(args.toSeq) match {
     case Left(error) =>
@@ -327,7 +439,8 @@ object IdentityCapture {
         sys.exit(2)
       }
       val jvmopts = Try(Files.readAllLines(repo.resolve(".jvmopts")).asScala.toSeq).getOrElse(Nil)
-      val ok = capture(options, env, layout, effects, System.getProperty("java.class.path"), jvmopts, println)
-      sys.exit(if (ok) 0 else 1)
+      val ok = Try(capture(options, env, layout, effects, System.getProperty("java.class.path"), jvmopts, decisionCode(repo), println))
+      ok.failed.foreach(e => System.err.println(s"[identity-capture] ${e.getMessage}"))
+      sys.exit(if (ok.getOrElse(false)) 0 else 1)
   }
 }
