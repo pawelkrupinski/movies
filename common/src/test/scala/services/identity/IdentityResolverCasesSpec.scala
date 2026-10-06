@@ -1307,6 +1307,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(d.render)(d.film shouldBe None)
   }
 
+  it should "not take by pooled evidence a film the title names only within another candidate's longer title" in {
+    // PL Terminal Kultury Gocław (re-capture 2026-10-06, served in prod): "Kacper i Emma – najlepsi przyjaciele Edukacja
+    // Młode Horyzonty" is the 2013 "Kacper i Emma: Najlepsi przyjaciele"; the pooled evidence took the 2026 short
+    // "Najlepsi przyjaciele", which the billing names only as part of the 2013 film's title
+    val films = Seq(F(1694947, "Najlepsi przyjaciele", 2026, "Roman Kraiński", 14, 2.5), F(171658, "Kacper i Emma: Najlepsi przyjaciele", 2013,
+      "Arne Lindtner Næss", 74, 0.8))
+    val l = listing(Multikino, "Kacper i Emma – najlepsi przyjaciele Edukacja Młode Horyzonty")
+    val d = IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+    withClue(d.render)(d.film should not be Some(1694947))
+  }
+
   it should "not take one of two works a lecture's billing quotes" in {
     // PL Kino Kinematograf (re-capture 2026-10-06, served in prod): a lecture billing „Bestia” (Hertz, 1917) and „Cud nad
     // Wisłą” (Bolesławski, 1921) — two quoted works, a programme, not the 1917 film the model took (labelled wrong)

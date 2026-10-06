@@ -412,7 +412,19 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
                  val apart  = IdentityMeasures.namedApart(best.listing, best.candidate.film, rival.candidate.film)
                  (alike && facts(rival) > facts(best)) || (apart && facts(rival) >= facts(best))
                }), "a film the title names alike fits its facts better", best)
+      _     <- noneOf(Option.when(namedWithinAnother(best, eligibleOf(ranked)))(best), "the title names it only within another candidate's longer title", best)
     } yield taken
+
+  /** Does the venue's billing name `best` only WITHIN another eligible candidate's longer title — the agreement's same
+   *  concept ([[agreement.Agreement.namedWithinAnother]]), read where pooled evidence alone would take it? PL "Kacper i
+   *  Emma – najlepsi przyjaciele Edukacja Młode Horyzonty" names the 2026 short "Najlepsi przyjaciele" only as part of
+   *  the 2013 "Kacper i Emma: Najlepsi przyjaciele". */
+  private def namedWithinAnother(best: Scored, eligible: Seq[Scored]): Boolean = eligible.sizeIs > 1 && {
+    val billed = services.movies.TitleContainment.tokens(best.listing.rawTitle.getOrElse(best.listing.title))
+    def spans(film: IdentityMeasures.Film) =
+      film.titles.map(services.movies.TitleContainment.tokens).filter(words => words.nonEmpty && billed.containsSlice(words)).distinct
+    agreement.Agreement.namedWithinAnother(spans(best.candidate.film), eligible.filterNot(_ eq best).map(other => spans(other.candidate.film)))
+  }
 
   /** The eligible candidate whose record names the listing's SEASON PRODUCTION — the season and
    *  the work its title names. `None`: no candidate does. `Some(Some(x))`: `x` is the listing's
