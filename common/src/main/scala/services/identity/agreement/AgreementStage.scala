@@ -790,9 +790,9 @@ object AgreementStage {
     def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = noted(inner.film(tmdbId))
   }
 
-  /** A model take's correction ([[Correction]]): its listings' digest and the `version` it was read (or last found
-   *  standing) at, the digests of the answers it read — a filing of one decides it again — what it came to, and the
-   *  questions it waits on. */
+  /* A model take's correction (Correction) is stored as its listings' digest and the `version` it was read (or last
+   * found standing) at, the digests of the answers it read — a filing of one decides it again — what it came to, and
+   * the questions it waits on. */
   /** A model take's correction's id among the stored verdicts. */
   def correctionId(cluster: String): String = s"correction|$cluster"
   /** How many model takes one apply reads the evidence of afresh: a take not read yet beyond them stands as the model
