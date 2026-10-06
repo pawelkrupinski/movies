@@ -2975,7 +2975,9 @@ same concept. The consolidation kept every DECISION (proof below) and gave each 
   votes and contradictions, `Agreement.equivalent`, the broadcast join's fit and credits, `Broadcast.superseded`,
   `Correction`, `PosterEvidence.editionsApart`, the acceptance rules' title-year checks and the measures.
 - **A listing's shape** — `ListingShape`: a stage relay (`stagesAWork`, `billsAHouse`, `relays`), a bill of several works
-  (`billsSeveral`, `billsSeveralBeside`), and whose facts it carries (`venueStated`). Read per call, never held per
+  (`billsSeveral`, `billsSeveralBeside`), a festival's programme slot billed in place of a film (`programmeSlotOf`:
+  "…Horror Film Festival 2026: Opening Night" — an event, and `CandidateScoring.namesOnlyAProgrammeSlot` denies the
+  films that only share the slot's name), and whose facts it carries (`venueStated`). Read per call, never held per
   listing (the worker's heap carries every listing). `NonFilmEvents` (an event no database holds) reads `relays`;
   `PosterEvidence.shows` reads the relay and bill predicates; the catalogue take, the fill's guards and the refit tools
   read the rest. `Broadcast.billsAProduction` reads a family HIT's title, not a listing.

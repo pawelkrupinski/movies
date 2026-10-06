@@ -1108,7 +1108,23 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "still name the film billed whole, or beside a tag the venues bill around many films" in {
+  "A festival's programme slot" should "name no film, whatever film carries the slot's name" in {
+    // UK Everyman Screen on the Green Islington bills "Unrestricted View Horror Film Festival 2026: Opening Night" — the
+    // festival's opening night, an event; the recording pooled it to the 2016 "Opening Night" (38.9%), prod weighed it at
+    // 28.9%. The slot names Cassavetes' 1977 film as well: neither is the listing's.
+    val films = Seq(F(311764, "Opening Night", 2016, "Isaac Rentz", 85, 12), F(33665, "Opening Night", 1977, "John Cassavetes", 144, 10))
+    val slot  = listing(models.EverymanCinemaIslington, "Unrestricted View Horror Film Festival 2026: Opening Night")
+    val bare  = listing(models.EverymanCinemaIslington, "Opening Night", Some(1977), Some("John Cassavetes"))
+    val table = new FilmTable(films, normalizer)
+    def denied(l: Listing) = IdentityResolver.candidatesOf(Seq(l), table, normalizer, IdentityCalibration.resolver)(_ => true)
+      .flatMap(_.candidates).filter(_.denied).map(_.tmdbId).toSet
+    denied(slot) shouldBe Set(311764, 33665)
+    withClue(shipped(Seq(slot), films).decisionOf(slot.key).render)(shipped(Seq(slot), films).decisionOf(slot.key).film shouldBe None)
+    // the film itself, billed by its own title, is still the film
+    denied(bare) should not contain 33665
+  }
+
+  "A capitalised tag a venue bills beside many different titles" should "still name the film billed whole, or beside a tag the venues bill around many films" in {
     // a piece in capitals billed ONCE is a title piece like any other ("MAX | Pokaz specjalny" is Max), and a work in
     // capitals billed under banners that recur themselves is the work ("UFF | Kino Seniora" beside "Lalka | Kino
     // Seniora", "Vinci | Kino Seniora", …)

@@ -66,6 +66,17 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
     }
   }
 
+  /** Does `node`'s title name the film only by the PROGRAMME SLOT it bills under a festival's banner
+   *  ([[ListingShape.programmeSlotOf]])? UK "Unrestricted View Horror Film Festival 2026: Opening Night" names the 2016
+   *  "Opening Night" (and Cassavetes' 1977 one) by its slot alone: the festival's opening night, an event. */
+  def namesOnlyAProgrammeSlot(node: EvidenceNode, candidate: Candidate): Boolean = {
+    val listing = node.evidence.published
+    ListingShape.programmeSlotOf(listing.rawTitle.getOrElse(listing.title)).exists { slot =>
+      val pieces = namingPieces(node, candidate)
+      pieces.nonEmpty && pieces.forall(_ == services.movies.TitleContainment.tokens(slot).toSeq)
+    }
+  }
+
   // Once per (node, film) and per venue for THIS resolve, dropped with it: every node meets every
   // candidate of its family's pool here and in the constraint edges (`ConstraintEdges.namesBeside`).
   private val piecesOf = mutable.HashMap.empty[(String, Int), Set[Seq[String]]]

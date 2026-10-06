@@ -28,7 +28,8 @@ class NonFilmEventsSpec extends AnyFlatSpec with Matchers {
       "12. Splat!FilmFest | Karnet"                 -> "pass",
       "Keine Vorstellung(en)"                       -> "no screening",
       "Dziś nie gramy, wybierz inną datę."          -> "no screening",
-      "Screen Hire - 2 Hours"                       -> "no screening"
+      "Screen Hire - 2 Hours"                       -> "no screening",
+      "Unrestricted View Horror Film Festival 2026: Opening Night" -> "programme slot"
     ).foreach { case (title, why) => withClue(title) { NonFilmEvents.of(titled(title)) shouldBe Some(why) } }
   }
 

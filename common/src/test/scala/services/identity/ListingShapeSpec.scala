@@ -21,6 +21,20 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     ListingShape.venueStated(own.copy(page = Some("https://kinomuza.pl/film/all-my-sons"))) shouldBe true
   }
 
+  "a programme slot" should "be a festival's or season's banner and a slot of its programme, nothing else" in {
+    ListingShape.programmeSlotOf("Unrestricted View Horror Film Festival 2026: Opening Night") shouldBe Some("Opening Night")
+    ListingShape.programmeSlotOf("Festiwal Filmowy Kino Lato 2026: Gala otwarcia") shouldBe Some("Gala otwarcia")
+    ListingShape.programmeSlotOf("Fantasy Filmfest 2026 - Überraschungsfilm") shouldBe Some("Überraschungsfilm")
+    ListingShape.programmeSlotOf("Semana de Cine Fantástico | Sesión inaugural") shouldBe Some("Sesión inaugural")
+    // a film's own title beside the slot is that film's screening
+    ListingShape.programmeSlotOf("Ars Independent Festival 2026: Gala otwarcia + \"Czarna godzina\"") shouldBe None
+    // the bare slot is a film's title (Cassavetes' Opening Night), and a date is no festival's banner
+    ListingShape.programmeSlotOf("Opening Night") shouldBe None
+    ListingShape.programmeSlotOf("Secret Screening - 5th October") shouldBe None
+    // a work under a festival's banner is the work
+    ListingShape.programmeSlotOf("Splat!FilmFest: The Taxidermist") shouldBe None
+  }
+
   "a relay" should "be told by its stage work, its house or season, or a concert film's venue" in {
     ListingShape.stagesAWork(listing(KinoMuza, "OPERA-COSI FAN TUTTE")) shouldBe true
     ListingShape.billsAHouse(listing(KinoMuza, "OPERA-MAKBET - retransmisja")) shouldBe true

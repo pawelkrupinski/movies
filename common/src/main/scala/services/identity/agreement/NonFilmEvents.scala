@@ -66,5 +66,6 @@ object NonFilmEvents {
       else Markers.collectFirst { case (reason, marker) if marker.findFirstIn(title).isDefined => reason }
         .filter(reason => reason == "no screening" || reason == "pass" || FilmAttached.findFirstIn(title).isEmpty)
         .orElse(Option.when(NonMovieEventClassifier.isPerformance(raw) && FilmAttached.findFirstIn(title).isEmpty)("live event"))
+        .orElse(ListingShape.programmeSlotOf(raw).map(_ => "programme slot"))
     }
 }

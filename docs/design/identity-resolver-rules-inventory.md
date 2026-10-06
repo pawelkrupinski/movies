@@ -277,3 +277,39 @@ corpora (5 resolves), and the identity/hard-cluster integration specs (1,210 res
 
 CPU: the resolve-perf work of 09-29/30 put the resolver's cost in scoring and title relations, not in the loops; the
 loops' own overhead is the confirming `grow` round (grouping, `takenAlone` memo reads, sibling denials).
+
+## 5. Findings: two copies disagreeing (kept as they were; pending tests in `IdentityRuleFindingsSpec`)
+
+- **F1 — a credit in another script.** The agreement's listing contradiction (`Agreement.contradicts`) reads only names
+  in one script as other people; a correction's (`Correction.contradicts`, `shareDirector`) reads `different_script`
+  too. Now one function with the difference named (`FactRelations.otherPeople(…, acrossScripts)`). Decision needed:
+  should a venue's Latin credit against a record's Cyrillic one rule an agreed film out?
+- **F2 — spelling a house.** `Broadcast.Billing.spells` accepts a banner that is a subset of the house's words ("Opera"
+  of "The Metropolitan Opera"), `IdentityMeasures.spellsItsHouse` only two shared words. Not a bug: the resolver's
+  rule takes a season record on the banner alone, where a subset would teach the Paris Opera's banner to be the Met;
+  the broadcast join has the screening day beside it. Kept apart on purpose.
+- **F3 — leading articles.** `IdentityMeasures`' article-less exact title knows "the", "a", "an"; `Agreement.namesIt`
+  knows fifteen in five languages. Unifying is a resolver change, to measure on the ratchet and the full corpora.
+- **F4 — the broadcast join twice.** The stage takes by `Broadcast.takeOrWait` (a credited production; waiting on
+  undated records), the fill's `broadcast.take` signal by `Broadcast.take` (neither).
+- **F5 — the fill's poster guard.** `AgreementStage.filledOf` builds the fill's evidence with no posters, so
+  `poster.otherMatches` never rules a contender out before a rule picks; `filledTake` vetoes the picked film after and
+  then takes nothing, where the offline fit picked the next contender. Fewer takes than measured, never a wrong one.
+
+## 6. What the consolidation did (branch commits)
+
+| phase | commit | what |
+|---|---|---|
+| 0 | `984f4857b`, `8815a78d5` | the equivalence harness (`scripts.IdentityEquivalence`); this inventory |
+| 1 | `c7d29bcb3` | `FactRelations`: one year / director comparison for 7 copies; Acceptance's local `sameDirector` and twice-built titled-top-hit measures |
+| 2 | `defd77079` | `Families.grow` stops when its films merge no family; `CaptureReplay.spliced` by union-find |
+| 3 | `68a43ae29` | `ListingShape`: stage relay, house, several works, whose facts — out of Agreement, NonFilmEvents, Broadcast |
+| 4 | `8efc54c13` | the agreement stage's fall-through takes as an ordered registry; the rules table (§21.2) held to the code by a spec |
+| 5 | `309f7c85e` | dead `FilmCuts` helpers; the UFF tag's works pinned as searched by their own pieces |
+| 6 | the slot commit | a festival's programme slot ("…Film Festival 2026: Opening Night") is an event and names no film; findings F1–F5 pending |
+
+Deferred: unifying the edition detectors (§3 (a) 5: their semantics differ — a family record's edition, a title's
+qualifier, a poster's number — so one would change decisions), `UnifiedEvidence` re-reading the agreement's concepts
+as signals (§3 (a) 12: a fill-model redesign, not a refactor), the one-off parameters (§3 (d): left for the refit),
+`ConstraintSolver`'s cannot-set merge (small-to-large saves only the `++=`, the back-reference loop stays), the
+`catalogue`-after-`fill` order (no capture cluster has both; kept, now named in the registry).

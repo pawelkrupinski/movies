@@ -69,6 +69,32 @@ object ListingShape {
     SetOfWorks.findFirstIn(listing.rawTitle).isDefined || Quoted.findAllIn(listing.rawTitle).size >= 2 ||
       IdentityMeasures.billsTwoWholeWorks(Evidence.of(listing, None).measured)
 
+  // ── a programme slot ───────────────────────────────────────────────────────────────────────
+
+  /** A programme SLOT a festival or season bills by its place in the programme rather than by a film's title. */
+  private val ProgrammeSlot = ("""(?iu)(?:opening|closing)\s+(?:night|gala|film)|gala|shorts?\s+programme|shorts?\s+program|""" +
+    """secret\s+screening|surprise\s+(?:film|screening)|mystery\s+(?:film|screening)|""" +
+    """gala\s+(?:otwarcia|zamknięcia)|(?:film|pokaz)\s+(?:otwarcia|zamknięcia|niespodzianka)|seans\s+niespodzianka|""" +
+    """eröffnungs(?:film|gala|abend)|abschluss(?:film|gala|abend)|überraschungs(?:film|vorstellung)|""" +
+    """sesión\s+(?:inaugural|de\s+clausura)|gala\s+(?:inaugural|de\s+inauguración|de\s+clausura)|película\s+sorpresa""").r
+  /** A banner naming a festival, a season, a series or an edition — what a slot is billed under. */
+  private val ProgrammeBanner =
+    """(?iu)(?<!\p{L})(?:festival|festivals|fest|festiwal\p{L}*|filmfest\p{L}*|festspiele|season|sezon\p{L}*|series|ciclo|muestra|semana|week|tydzień|edition|edycja|edycji)(?!\p{L})""".r
+
+  /** The PROGRAMME SLOT the listing bills in place of a film — a festival's or season's banner and a slot of its programme,
+   *  and nothing else: UK "Unrestricted View Horror Film Festival 2026: Opening Night" is the festival's opening night,
+   *  not the 2016 "Opening Night" its search ranks first. A slot billed with a film's own title beside it ("Ars Independent
+   *  Festival 2026: Gala otwarcia + „Czarna godzina”") is that film's screening; a bare slot ("Opening Night", Cassavetes'
+   *  film) bills no banner. `None` unless every other piece of the title is such a banner. */
+  def programmeSlotOf(rawTitle: String): Option[String] =
+    // no banner, no slot: read for every node of every resolve, so the title is split only when one is billed
+    if (!ProgrammeBanner.pattern.matcher(rawTitle).find()) None
+    else {
+      val pieces = IdentityMeasures.pieces(rawTitle)
+      pieces.find(piece => ProgrammeSlot.pattern.matcher(piece).matches()).filter(slot =>
+        pieces.sizeIs >= 2 && pieces.forall(piece => (piece eq slot) || ProgrammeBanner.pattern.matcher(piece).find()))
+    }
+
   // ── whose facts ────────────────────────────────────────────────────────────────────────────
 
   /** Are the listing's facts all its VENUE's own — no feed catalogue's ([[CatalogueSources.feedStated]]), and no
