@@ -36,8 +36,30 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val minions = slots.find(_.slug == "minions-3").value
     minions.title shouldBe "Minions & Monsters"       // jsoup decodes the &amp;
     minions.runtimeMinutes.value shouldBe 90           // "90 mins"
-    minions.director.value shouldBe "Pierre Coffin"
+    minions.directors shouldBe Seq("Pierre Coffin")
     minions.contentId.value shouldBe "25079"
+  }
+
+  /** A real US fragment (Lakewood Ranch Cinemas 6, 2026-10-12, captured 2026-10-06 from
+   *  https://www.flicks.us/cinema/sessions/lakewood-ranch-cinemas-6/2026-10-12/). Its card for
+   *  "A Night at the Opera" renders ONE director in `.cinema__director span` — Edmund Goulding, who
+   *  is uncredited — while the button's `data-eventjson` names both: "edmund goulding,sam wood".
+   *  Keeping only the card's name matched the listing to Goulding's "The Old Maid" (1939) and left
+   *  the right film (Sam Wood, 1935) unmatched. */
+  private val lakewoodRanch = FlicksClient.parseDay(
+    FixtureFile.read("test/resources/fixtures/flicks/www.flicks.us/cinema/sessions/lakewood-ranch-cinemas-6/2026-10-12.html"),
+    LocalDate.of(2026, 10, 12), FlicksMarket.UnitedStates)
+
+  it should "keep EVERY director the event blob names, in page order, not just the card's first" in {
+    val opera = lakewoodRanch.find(_.slug == "a-night-at-the-opera").value
+    opera.directors shouldBe Seq("Edmund Goulding", "Sam Wood")
+  }
+
+  it should "keep the card's own spelling of a director the blob lowercases" in {
+    // The card renders the name cased by Flicks itself; the blob's lowercase copy only adds names.
+    slots.find(_.slug == "minions-3").value.directors shouldBe Seq("Pierre Coffin")
+    // Toy Story 5's card shows Andrew Stanton alone; the blob adds his co-director, capitalised.
+    slots.find(_.slug == "toy-story-5").value.directors shouldBe Seq("Andrew Stanton", "McKenna Harris")
   }
 
   it should "carry the BBFC age rating off the card's .cinema__movie-classification element" in {
@@ -291,7 +313,7 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val odyssey = unbookable.find(_.slug == "the-odyssey-2026").value
     odyssey.title shouldBe "The Odyssey"
     odyssey.runtimeMinutes.value shouldBe 172
-    odyssey.director.value shouldBe "Christopher Nolan"
+    odyssey.directors shouldBe Seq("Christopher Nolan")
     odyssey.ageRating.value shouldBe "15"
   }
 

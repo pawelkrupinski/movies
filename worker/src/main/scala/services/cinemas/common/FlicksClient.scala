@@ -26,7 +26,7 @@ import scala.util.Try
  *   GET <market base>/cinema/sessions/<slug>/<YYYY-MM-DD>/
  *     → an HTML fragment of `<article class="cinema-times__article">` per film:
  *        `h3.cinema-times__movie-title`, a `/movie/<slug>/` link, the runtime
- *        (`.cinema__movie-duration` "90 mins"), the director
+ *        (`.cinema__movie-duration` "90 mins"), the FIRST director only
  *        (`.cinema__director span`), and a `ul.times-calendar-times` of session
  *        buttons — carrying the 24h time in `data-optlabel` (falling back to the
  *        visible "h:mm am/pm") and a premium/format label (IMAX, LuxeSuite,
@@ -39,10 +39,13 @@ import scala.util.Try
  * One instance serves one venue — its Flicks `cinemaSlug` + the [[Cinema]] it
  * feeds, mirroring [[FilmwebShowtimesClient]]. One AJAX call per day. Each
  * session button carries a `data-eventjson` blob from which we lift the film's
- * numeric Flicks id (`content_id`, an `externalId`), its `content_cast`
- * (comma-separated, and LOWERCASED by Flicks — see `PersonName`) and
+ * numeric Flicks id (`content_id`, an `externalId`), its `content_cast` and
+ * `content_director` (comma-separated, and LOWERCASED by Flicks — see `PersonName`;
+ * the card shows only the first director, the blob all of them) and
  * `content_genre` (comma-separated); the film card also
- * carries a `/trailer/` link. TMDB still enriches synopsis/year downstream.
+ * carries a `/trailer/` link. The fragment carries no year, country or original
+ * title — those are only on the `/movie/<slug>/` page, which this client does not
+ * fetch — so TMDB still enriches synopsis/year downstream.
  */
 class FlicksClient(
   http:       HttpFetch,
@@ -159,7 +162,7 @@ class FlicksClient(
           filmUrl     = Some(s"$baseUrl/movie/${head.slug}/"),
           synopsis    = None,
           cast        = head.cast,
-          director    = head.director.toSeq,
+          director    = head.directors,
           showtimes   = showtimes,
           externalIds = head.contentId.map("flicks" -> _).toMap,
           trailerUrl  = head.trailerUrl,
@@ -235,14 +238,25 @@ object FlicksClient {
   private val OptTimePat = raw"""${ScraperParse.ClockParts}:\d{2}""".r
   private val AmPmPat    = raw"""(?i)${ScraperParse.ClockParts}\s*(am|pm)""".r
   // Keys lifted from a session button's `data-eventjson` blob (jsoup returns it
-  // entity-decoded, so we match against real quotes). `content_cast` and
-  // `content_genre` are comma-separated lists; `content_awards` has no model
+  // entity-decoded, so we match against real quotes). `content_cast`,
+  // `content_genre` and `content_director` are comma-separated lists; `content_awards` has no model
   // home and is ignored. The age rating (`content_rating` in the blob) is read
   // instead off the film card's `.cinema__movie-classification` element, where
   // it renders cleanly as the BBFC label.
   private val ContentId    = """"content_id"\s*:\s*"(\d+)"""".r
   private val ContentCast  = """"content_cast"\s*:\s*"([^"]*)"""".r
   private val ContentGenre = """"content_genre"\s*:\s*"([^"]*)"""".r
+  private val ContentDirector = """"content_director"\s*:\s*"([^"]*)"""".r
+
+  /** A film's directors: EVERY name the blob's comma-separated `content_director` lists, in its
+   *  order — the card's `.cinema__director span` renders only the first ("A Night at the Opera":
+   *  card "Edmund Goulding", blob "edmund goulding,sam wood"), and matching on that uncredited first
+   *  name alone picked Goulding's "The Old Maid". The blob lowercases names, so a name the card
+   *  renders keeps the card's own spelling and the rest are capitalised; a card with no blob keeps
+   *  its one name. */
+  private[common] def directorsOf(card: Option[String], blob: Seq[String]): Seq[String] =
+    if (blob.isEmpty) card.toSeq
+    else blob.map(name => card.filter(_.equalsIgnoreCase(name)).getOrElse(PersonName.capitalized(name))).distinct
 
   /** Split one of the comma-separated `data-eventjson` list values into trimmed,
    *  non-blank entries (`"a, b ,"` → `List("a", "b")`). */
@@ -256,7 +270,7 @@ object FlicksClient {
     title:          String,
     runtimeMinutes: Option[Int],
     posterUrl:      Option[String],
-    director:       Option[String],
+    directors:      Seq[String],
     contentId:      Option[String],
     cast:           Seq[String],
     genres:         Seq[String],
@@ -285,12 +299,14 @@ object FlicksClient {
           // on every request: kept, every scrape rewrote the slot for nothing. It is no poster.
           val poster    = Option(article.selectFirst(".cinema-times__image img")).map(_.attr("src"))
             .filter(src => src.nonEmpty && !src.contains(PlaceholderPoster))
-          val director  = Option(article.selectFirst(".cinema__director span")).map(_.text.trim).filter(_.nonEmpty)
           // Every session button in a film's card carries the same `data-eventjson`
-          // blob; read the first non-empty one once and lift id/cast/genre from it.
+          // blob; read the first non-empty one once and lift id/cast/genre/director from it.
           val eventJson = article.select(".times-calendar-times__button").asScala.iterator
             .map(_.attr("data-eventjson")).find(_.nonEmpty).getOrElse("")
           val contentId = ContentId.findFirstMatchIn(eventJson).map(_.group(1))
+          val directors = directorsOf(
+            Option(article.selectFirst(".cinema__director span")).map(_.text.trim).filter(_.nonEmpty),
+            ContentDirector.findFirstMatchIn(eventJson).map(_.group(1)).map(commaList).getOrElse(Nil))
           // Flicks lowercases every cast name in the blob ("christoph waltz"), so
           // the list is capitalised HERE rather than left for the write boundary:
           // this client's output is also what the scrape archive and the fixture
@@ -316,7 +332,7 @@ object FlicksClient {
               val booking = button.map(_.attr("href")).filter(_.nonEmpty)
               val label   = Option(li.selectFirst("span.times-calendar-times__el__label span"))
                 .map(_.text.trim).filter(_.nonEmpty)
-              RawFlicksSlot(sl, t, runtime, poster, director, contentId, cast, genres, trailer,
+              RawFlicksSlot(sl, t, runtime, poster, directors, contentId, cast, genres, trailer,
                 ageRating, LocalDateTime.of(date, time), booking, label.toList)
             }
           }
@@ -393,7 +409,7 @@ object FlicksClient {
 
   /** What [[parseChunkPage]] makes of a day page — pinned against the recorded pages by
    *  `FlicksPageParserVersionSpec`, which fails when the parse changes and this does not. */
-  val PageParserVersion = 1
+  val PageParserVersion = 2
 
   /** The code a day page's parse runs through beyond this file — the encoder of its slice, the name
    *  helper, the models it builds — whose change the recorded pages may not exercise. */

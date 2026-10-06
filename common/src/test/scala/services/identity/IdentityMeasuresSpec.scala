@@ -554,6 +554,14 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       sameVenue = false, sharedChainId = None)("runtime.delta") shouldBe Number(0)
   }
 
+  "a listing naming several directors" should "be the same person as a film crediting any ONE of them" in {
+    // Flicks lists "A Night at the Opera" as Edmund Goulding (uncredited) and Sam Wood; TMDB credits
+    // only Sam Wood. One person in common is a match — not first-only, not all-must-match.
+    IdentityMeasures.directorRelation(Seq("Edmund Goulding", "Sam Wood"), Seq("Sam Wood")) shouldBe Category("same_person")
+    IdentityMeasures.directorRelation(Seq("Sam Wood"), Seq("Edmund Goulding", "Sam Wood")) shouldBe Category("same_person")
+    PinnedGateMeasures.directorRelation(Seq("Edmund Goulding", "Sam Wood"), Seq("Sam Wood")) shouldBe Category("same_person")
+  }
+
   "a director credited in another script" should "be compared in Latin letters, not read as incomparable" in {
     // TMDB credits a film's director in the deployment language's name for them, which is often
     // the native one ("毕赣", "Яков Протазанов"); the venue prints the Latin spelling.

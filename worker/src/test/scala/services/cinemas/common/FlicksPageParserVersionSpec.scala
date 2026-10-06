@@ -9,7 +9,9 @@ import org.scalatest.matchers.should.Matchers
  *  This pins the parse of every recorded day page to its version: change the parse, and it fails until
  *  the version is bumped and the new digest pinned. */
 class FlicksPageParserVersionSpec extends AnyFlatSpec with Matchers {
-  private val Pinned = Map(1 -> "b7037ba9eff854a83f3e3e084b0bef85bd63a88339d538cb79c1bba9204c0885")
+  private val Pinned = Map(
+    1 -> "b7037ba9eff854a83f3e3e084b0bef85bd63a88339d538cb79c1bba9204c0885",
+    2 -> "f758df7a8a279b0ed0dea347771ccf350250e9d9a9f5514ada34cfe2e5dbafd0") // every content_director name, not the card's first
 
   private val days = java.nio.file.Files.walk(java.nio.file.Paths.get("test/resources/fixtures/flicks/www.flicks.co.uk/cinema/sessions"))
     .filter(_.toString.endsWith(".html")).toArray.map(_.toString).toSeq.sorted
