@@ -88,12 +88,12 @@ pl	Kino Parczew	Vincent.legenda oceanu	imdb:tt13518550	right	recall target: Vinc
 de	Cinema Quadrat e.V.	Ghost School	imdb:tt37547768	right	recall target: Ghost School
 de	Kinozentrum Frauentor	Snow Leopard	imdb:tt13920372	right	recall target: Snow Leopard
 de	Tivoli-Filmtheater	Hungarian Rhapsody: Queen - Live In Budapest	imdb:tt8378126	right	recall target: Hungarian Rhapsody: Queen - Live In Buda
-de	Murnau-Filmtheater	James Bond vs. Spectre - Ein Blick hinter die Kulissen	imdb:tt2379713	wrong	judged 10-06: Filmstarts 284013 (the venue's catalogue id) is a 23-minute 2015 German short by Christian Danner and Danny Morgenstern about a fan racing to publish a Bond book, not Spectre; was recall target: James Bond vs. Spectre - Ein Blick hinte
-de	Roxy Kino Kitzingen	To The Bone	imdb:tt5541240	wrong	judged 10-06: Filmstarts 227420 (the venue's catalogue id) is Erin Li's 8-minute 2014 Spanish-language short, not Marti Noxon's 2017 feature; was recall target: To The Bone
+de	Murnau-Filmtheater	James Bond vs. Spectre - Ein Blick hinter die Kulissen	imdb:tt2379713	right	recall target: James Bond vs. Spectre - Ein Blick hinte
+de	Roxy Kino Kitzingen	To The Bone	imdb:tt5541240	right	judged 10-06 by the venue's own page (dasroxy.de movie.php?3663627816): Marti Noxon's 2017 feature, Lily Collins, 1:47; Filmstarts' feed links the screening to its 227420, Erin Li's 2014 short, by mistake
 de	Studio-Kino	Till Eulenspiegel	imdb:tt0072294	right	recall target: Till Eulenspiegel
 de	CasaBlanca Art House	World Champion	imdb:tt13930782	wrong	judged 10-05: the venue bills Moonika Siimets, 2009, 36 min — not Yankovskiy's 2021 feature
 de	CasaBlanca Art House	World Champion	imdb:tt1943754	right	judged 10-05: Siimets' short Maailmameister (2009), as the venue's year, director and running time credit it
-de	Schlosstheater Münster	Das doppelte Lottchen	imdb:tt0042409	wrong	judged 10-06: Filmstarts 127792 (the venue's catalogue id) is the 2007 animated film (Michael Schaack, Warner), not the 1950 one; was recall target: Das doppelte Lottchen
+de	Schlosstheater Münster	Das doppelte Lottchen	imdb:tt0042409	right	recall target: Das doppelte Lottchen
 de	Kino in der Lagerhalle	Don Quichotte	imdb:tt0406716	right	recall target: Don Quichotte
 uk	Depot Lewes	NT Live: All My Sons (2026)	imdb:tt39544163	right	recall target: NT Live: All My Sons (2026)
 uk	Brewery Arts Centre Kendal	Funny Girl - The Musical	imdb:tt37775809	right	recall target: Funny Girl - The Musical
