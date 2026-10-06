@@ -99,6 +99,7 @@ landing.level.pl.region=voivodeship
 
 # ── Poster / detail labels ──────────────────────────────────────────────────
 poster.missing=No poster
+poster.close=Close poster
 detail.synopsis=Synopsis
 detail.director=Director
 detail.cast=Cast

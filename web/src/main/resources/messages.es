@@ -99,6 +99,7 @@ landing.level.pl.region=voivodato
 
 # ── Poster / detail labels ──────────────────────────────────────────────────
 poster.missing=Sin cartel
+poster.close=Cerrar cartel
 detail.synopsis=Sinopsis
 detail.director=Director
 detail.cast=Reparto

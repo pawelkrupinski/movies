@@ -2761,6 +2761,41 @@
     });
   });
 
+  // ── Full-screen poster (detail page) ──────────────────────────────────────
+  //
+  // A click on the detail-page poster opens `#poster-lightbox`
+  // (`_filmDetailContent`); a click anywhere on it — the ✕ or the backdrop or
+  // the image itself — and Escape close it. Delegated, so it needs no boot
+  // hook. The shown URL is the poster's `currentSrc`: the one that actually
+  // loaded, fallback included. Page scroll is locked while it is open so a
+  // swipe on a phone doesn't scroll the page underneath.
+
+  function openPosterLightbox(poster) {
+    const box = document.getElementById('poster-lightbox');
+    if (!box) return;
+    box.querySelector('img').src = poster.currentSrc || poster.src;
+    box.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    box.querySelector('.poster-lightbox-close').focus();
+  }
+
+  function closePosterLightbox() {
+    const box = document.getElementById('poster-lightbox');
+    if (!box || box.hidden) return;
+    box.hidden = true;
+    document.documentElement.style.overflow = '';
+  }
+
+  document.addEventListener('click', e => {
+    if (!(e.target instanceof Element)) return;
+    if (e.target.closest('#poster-lightbox')) { closePosterLightbox(); return; }
+    const poster = e.target.closest('.poster-img');
+    if (poster) openPosterLightbox(poster);
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closePosterLightbox();
+  });
+
   // ── Init ──────────────────────────────────────────────────────────────────
 
   // Re-inits everything tied to the grid DOM: the DOM index, the Filtry cinema

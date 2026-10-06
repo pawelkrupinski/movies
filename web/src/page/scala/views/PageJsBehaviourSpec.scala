@@ -2439,6 +2439,41 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // The back arrow names the city whose repertoire it returns to ("‹ Poznań"),
   // not a generic "Filmy". Opened directly (no referrer), so this is the SSR
   // label the inline rewrite leaves alone.
+  // A click on the detail poster shows it full-screen; the ✕, a click
+  // anywhere on the overlay, and Escape each close it again.
+  "the /movie poster" should "open full-screen on click and close on ✕, backdrop click, or Escape" in {
+    onPath(filmTarget) { page =>
+      val open = "!document.getElementById('poster-lightbox').hidden"
+      def openIt(): Unit = {
+        page.eval("document.querySelector('.poster-img').click()")
+        page.evalBool(open) shouldBe true
+      }
+      page.evalBool(open) shouldBe false
+
+      openIt()
+      page.evalBool(
+        "(function(){ var r = document.querySelector('#poster-lightbox img').getBoundingClientRect();" +
+        "return r.width > 0 && r.height > 0 && " +
+        "(r.width >= innerWidth - 1 || r.height >= innerHeight - 1); })()"
+      ) shouldBe true
+      page.evalString("document.querySelector('#poster-lightbox img').src") shouldBe
+        page.evalString("document.querySelector('.poster-img').currentSrc")
+      page.evalString("document.documentElement.style.overflow") shouldBe "hidden"
+
+      page.eval("document.querySelector('.poster-lightbox-close').click()")
+      page.evalBool(open) shouldBe false
+      page.evalString("document.documentElement.style.overflow") shouldBe ""
+
+      openIt()
+      page.eval("document.getElementById('poster-lightbox').click()")
+      page.evalBool(open) shouldBe false
+
+      openIt()
+      page.eval("document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}))")
+      page.evalBool(open) shouldBe false
+    }
+  }
+
   "the /movie back link" should "read the city's own name" in {
     onPath(filmTarget) { page =>
       page.evalString("document.getElementById('back-link-label').textContent") shouldBe

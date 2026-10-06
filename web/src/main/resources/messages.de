@@ -99,6 +99,7 @@ landing.level.pl.region=Woiwodschaft
 
 # ── Poster / detail labels ──────────────────────────────────────────────────
 poster.missing=Kein Poster
+poster.close=Poster schließen
 detail.synopsis=Handlung
 detail.director=Regie
 detail.cast=Besetzung

@@ -119,6 +119,7 @@ landing.level.pl.region=województwo
 
 # ── Poster / detail labels ──────────────────────────────────────────────────
 poster.missing=Brak plakatu
+poster.close=Zamknij plakat
 detail.synopsis=Opis
 detail.director=Reżyseria
 detail.cast=Obsada

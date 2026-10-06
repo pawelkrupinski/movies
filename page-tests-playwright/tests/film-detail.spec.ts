@@ -91,6 +91,35 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
     expect(await page.locator('#trailer-iframe').getAttribute('src')).toBe('');
   });
 
+  test('clicking the poster opens it full-screen; ✕ or a click anywhere closes it', async ({ page }) => {
+    await gotoFirstFilm(page);
+
+    const poster   = page.locator('.poster-img');
+    const lightbox = page.locator('#poster-lightbox');
+    if (await poster.count() === 0) {
+      test.info().annotations.push({ type: 'note', description: 'No poster on this film' });
+      return;
+    }
+    await expect(lightbox).toBeHidden();
+
+    await poster.click();
+    await expect(lightbox).toBeVisible();
+    // The overlay covers the whole viewport, phone or desktop alike.
+    const viewport = page.viewportSize()!;
+    const box = (await lightbox.boundingBox())!;
+    expect(box.width).toBeGreaterThanOrEqual(viewport.width - 1);
+    expect(box.height).toBeGreaterThanOrEqual(viewport.height - 1);
+
+    await page.locator('.poster-lightbox-close').click();
+    await expect(lightbox).toBeHidden();
+
+    await poster.click();
+    await expect(lightbox).toBeVisible();
+    // A click on the backdrop corner, well away from the ✕ and the image.
+    await lightbox.click({ position: { x: 5, y: box.height - 5 } });
+    await expect(lightbox).toBeHidden();
+  });
+
   test('the ← back link navigates to the page the user came from', async ({ page }) => {
     await gotoFirstFilm(page);
     await page.locator('a.back-link').click();

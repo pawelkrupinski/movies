@@ -17,6 +17,16 @@
            eagerly; the fallback chain and its onerror live in `_moviePoster`. *@
         @_moviePoster(film.movie, film.posterHref, film.fallbackPosterHrefs, aboveTheFold = true)
       </div>
+      @* Full-screen view of the poster, opened by a click on it and closed
+         by the ✕ or a click anywhere (shared.js `openPosterLightbox`). The
+         `<img>` src is filled on open from whichever URL the poster actually
+         loaded, so a fallback that rescued it is the one shown here too. *@
+      @if(film.posterHref.nonEmpty) {
+        <div id="poster-lightbox" class="poster-lightbox" hidden>
+          <button type="button" class="poster-lightbox-close" aria-label="@messages("poster.close")" data-i18n-attr="aria-label:poster.close">&#10005;</button>
+          <img alt="@film.movie.title">
+        </div>
+      }
     </div>
 
     <div class="col">

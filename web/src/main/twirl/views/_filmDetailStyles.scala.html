@@ -29,7 +29,41 @@
       max-width: 300px;
       border-radius: 12px;
       display: block;
+      cursor: zoom-in;
     }
+    /* Full-screen poster: the image fits the viewport whole (contain), on
+       a dim backdrop that — like the ✕ — closes it on click. */
+    .poster-lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: rgba(0, 0, 0, .92);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: zoom-out;
+    }
+    .poster-lightbox[hidden] { display: none; }
+    .poster-lightbox img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .poster-lightbox-close {
+      position: absolute;
+      top: .75rem;
+      right: .75rem;
+      width: 2.75rem;
+      height: 2.75rem;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .15);
+      color: #fff;
+      font-size: 1.25rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .poster-lightbox-close:hover { background: rgba(255, 255, 255, .3); }
     .no-poster {
       width: 100%;
       max-width: 300px;
