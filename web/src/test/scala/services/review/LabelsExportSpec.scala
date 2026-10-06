@@ -28,11 +28,18 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers {
       }
   }
 
-  it should "label a correction right for the new film and wrong for the one shown" in {
-    LabelsExport.rowsOf(answer(ReviewVerdict.Film, shown = Some(dawnWall), ref = Some(FilmRef("filmweb", "10008278"))))
+  it should "label a correction right for the new film and wrong for the one shown, when that is provably another film" in {
+    LabelsExport.rowsOf(answer(ReviewVerdict.Film, shown = Some(dawnWall), ref = Some(FilmRef.tmdb(1461058))))
       .map(r => (r.film, r.verdict, r.note)) shouldBe Seq(
-        ("filmweb:10008278", "right", "review page: hand label: filmweb:10008278"),
+        ("tmdb:1461058", "right", "review page: hand label: tmdb:1461058"),
         ("tmdb:489471", "wrong", "review page: must not: Dawn Wall (2017)"))
+    // another database's id the corpus links to a DIFFERENT film than the one shown
+    val links = FilmIdentity.of(Seq(Set(FilmRef.tmdb(1461058), FilmRef("filmweb", "10008278"))))
+    LabelsExport.rowsOf(answer(ReviewVerdict.Film, shown = Some(dawnWall), ref = Some(FilmRef("filmweb", "10008278"))), links)
+      .map(r => (r.film, r.verdict)) shouldBe Seq("filmweb:10008278" -> "right", "tmdb:489471" -> "wrong")
+    // another database's id nothing links: whether it is the same film cannot be told, so the shown film keeps its rows
+    LabelsExport.rowsOf(answer(ReviewVerdict.Film, shown = Some(dawnWall), ref = Some(FilmRef("filmweb", "10008278"))))
+      .map(r => (r.film, r.verdict)) shouldBe Seq("filmweb:10008278" -> "right")
     // "This film" on the film the card already showed is one right row, not right AND wrong
     LabelsExport.rowsOf(answer(ReviewVerdict.Film, ref = Some(kafka.ref))).map(_.verdict) shouldBe Seq("right")
   }
@@ -70,6 +77,39 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers {
     val (added, addSummary) = LabelsExport.merge(existing, Seq(answer(ReviewVerdict.Wrong, shown = Some(dawnWall))))
     added shouldBe existing :+ LabelRow("pl", "Kino Opalenica", "FRANZ KAFKA", "tmdb:489471", "wrong", "review page: wrong: Dawn Wall (2017)")
     addSummary.added shouldBe 1
+  }
+
+  it should "never flip a right row for a correction naming the same film in another database" in {
+    // the two flips a dry run of the 71 imported answers made: each answer names the labelled film by its TMDB id
+    val existing = Seq(
+      LabelRow("pl", "*", "FRANZ KAFKA", "filmweb:10008278", "right", "hand label: Franz Kafka (2025) Agnieszka Holland"),
+      LabelRow("pl", "*", "LALKA / DOLLY", "rt:dolly", "right", "hand label: Dolly"))
+    def correction(raw: String, labelled: FilmRef, chosen: FilmRef) = {
+      val members = Seq(ReviewMember("Kino Opalenica", raw, Some("https://b24/" + raw)))
+      ReviewAnswer(ReviewClusterId.of(members), "pl", ReviewPage.Matchable, ReviewVerdict.Film, Some(chosen), Some(FilmFacts(labelled)),
+        raw, members, "dev", at)
+    }
+    val answers = Seq(correction("FRANZ KAFKA", FilmRef("filmweb", "10008278"), FilmRef.tmdb(1157322)),
+      correction("LALKA / DOLLY", FilmRef("rt", "dolly"), FilmRef.tmdb(1309083)))
+    val linked = FilmIdentity.of(Seq(Set(FilmRef.tmdb(1157322), FilmRef("filmweb", "10008278")), Set(FilmRef.tmdb(1309083), FilmRef("rt", "dolly"))))
+    Seq(FilmIdentity.Unlinked, linked).foreach { identity =>
+      val (rows, summary) = LabelsExport.merge(existing, answers, identity)
+      summary.flipped shouldBe 0
+      rows.take(2) shouldBe existing
+      rows.drop(2).map(r => (r.rawTitle, r.film, r.verdict)) shouldBe
+        Seq(("FRANZ KAFKA", "tmdb:1157322", "right"), ("LALKA / DOLLY", "tmdb:1309083", "right"))
+    }
+  }
+
+  "two refs" should "be provably different films only by the same database's other id, or a link to another film" in {
+    val linked = FilmIdentity.of(Seq(Set(FilmRef.tmdb(1), FilmRef("imdb", "tt1")), Set(FilmRef.tmdb(2), FilmRef("rt", "two"))))
+    linked.provablyDifferent(FilmRef.tmdb(1), FilmRef.tmdb(2)) shouldBe true
+    linked.provablyDifferent(FilmRef.tmdb(1), FilmRef.tmdb(1)) shouldBe false
+    linked.provablyDifferent(FilmRef("imdb", "tt1"), FilmRef.tmdb(1)) shouldBe false
+    linked.provablyDifferent(FilmRef("imdb", "tt1"), FilmRef.tmdb(2)) shouldBe true      // tt1 is tmdb 1
+    linked.provablyDifferent(FilmRef("imdb", "tt1"), FilmRef("rt", "two")) shouldBe true  // tt1 is tmdb 1, rt two is tmdb 2
+    linked.provablyDifferent(FilmRef("imdb", "tt9"), FilmRef.tmdb(2)) shouldBe false     // tt9: nothing known
+    FilmIdentity.Unlinked.provablyDifferent(FilmRef("imdb", "tt1"), FilmRef.tmdb(2)) shouldBe false
   }
 
   it should "carry the answers' contradiction warnings into the summary" in {

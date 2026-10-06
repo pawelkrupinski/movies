@@ -98,6 +98,23 @@ final class MongoReviewSource(db: MongoDatabase) extends ReviewSource {
     }
   }
 
+  def filmLinks(refs: Seq[FilmRef]): Seq[Set[FilmRef]] = {
+    def ids(source: String) = refs.filter(_.source == source).map(_.id).distinct
+    // a site's id is the tail of the URL the record stores ("…/film/Franz+Kafka-2025-10008278", "…/m/dolly")
+    def urlEndingIn(field: String, source: String, prefix: String) = ids(source).map(id =>
+      Filters.regex(field, s"$prefix${java.util.regex.Pattern.quote(id)}/?$$"))
+    val clauses = ids("tmdb").flatMap(_.toIntOption).map(Filters.eq("tmdbId", _)) ++ ids("imdb").map(Filters.eq("imdbId", _)) ++
+      urlEndingIn("filmwebUrl", "filmweb", "-") ++ urlEndingIn("rottenTomatoesUrl", "rt", "/m/") ++
+      urlEndingIn("metacriticUrl", "metacritic", "/movie/")
+    if (clauses.isEmpty) Nil
+    else await(collection(MoviesCollection).find(Filters.or(clauses*))
+      .projection(Projections.include("tmdbId", "imdbId", "filmwebUrl", "rottenTomatoesUrl", "metacriticUrl"))
+      .batchSize(tools.MongoReplies.Default).toFuture()).map(_.toBsonDocument).map { b =>
+      (int(b, "tmdbId").map(FilmRef.tmdb).toSeq ++ string(b, "imdbId").flatMap(FilmRef.parse) ++
+        Seq("filmwebUrl", "rottenTomatoesUrl", "metacriticUrl").flatMap(string(b, _)).flatMap(FilmRef.parse)).toSet
+    }.filter(_.sizeIs > 1)
+  }
+
   def films(tmdbIds: Seq[Int]): Map[Int, FilmCard] = {
     val ids = tmdbIds.distinct
     if (ids.isEmpty) Map.empty

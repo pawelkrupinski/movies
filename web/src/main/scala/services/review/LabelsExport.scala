@@ -45,7 +45,8 @@ object LabelsTsv {
  * Review answers as `labels.tsv` rows, merged into the rows the file already holds.
  *
  *  - right / wrong: that verdict for the film the card showed;
- *  - another film: right for it, and wrong for the film the card showed;
+ *  - another film: right for it, and wrong for the film the card showed when that is provably another film
+ *    ([[FilmIdentity]]) — a correction naming the shown film by another database's id rules nothing out;
  *  - none of these / not a film / double bill: wrong for the film the card showed;
  *  - one row per distinct raw title of the cluster, under its venue when one venue bills it, `*` otherwise.
  *
@@ -61,7 +62,7 @@ object LabelsExport {
         (unexportable.map("not exported: " + _) ++ warnings.map("WARNING: " + _))).mkString("\n")
   }
 
-  def rowsOf(answer: ReviewAnswer): Seq[LabelRow] = {
+  def rowsOf(answer: ReviewAnswer, identity: FilmIdentity = FilmIdentity.Unlinked): Seq[LabelRow] = {
     def rows(film: FilmFacts, right: Boolean, note: String): Seq[LabelRow] =
       answer.members.groupBy(_.rawTitle).toSeq.sortBy(_._1).map { case (raw, members) =>
         val venues = members.map(_.venue).distinct
@@ -79,16 +80,18 @@ object LabelsExport {
         answer.ref.toSeq.flatMap { ref =>
           val chosen = shown.find(_.ref == ref).getOrElse(FilmFacts(ref))
           rows(chosen, right = true, s"hand label: ${chosen.describe}") ++
-            shown.filterNot(_.ref == ref).flatMap(f => rows(f, right = false, s"must not: ${f.describe}"))
+            // the film shown is ruled out only when it is PROVABLY another film: the same film often goes by another
+            // database's id on the label the answer corrects (filmweb:10008278 and tmdb:1157322 are one Franz)
+            shown.filter(f => identity.provablyDifferent(f.ref, ref)).flatMap(f => rows(f, right = false, s"must not: ${f.describe}"))
         }
       case ReviewVerdict.Undo        => Nil
     }
   }
 
-  def merge(existing: Seq[LabelRow], answers: Seq[ReviewAnswer]): (Seq[LabelRow], Summary) = {
+  def merge(existing: Seq[LabelRow], answers: Seq[ReviewAnswer], identity: FilmIdentity = FilmIdentity.Unlinked): (Seq[LabelRow], Summary) = {
     val rows = scala.collection.mutable.ArrayBuffer.from(existing)
     var added, flipped, unchanged = 0
-    answers.flatMap(rowsOf).foreach { row =>
+    answers.flatMap(rowsOf(_, identity)).foreach { row =>
       rows.indexWhere(_.sameJudgement(row)) match {
         case -1 => rows += row; added += 1
         case i if rows(i).verdict == row.verdict => unchanged += 1
@@ -98,15 +101,15 @@ object LabelsExport {
           flipped += 1
       }
     }
-    val unexportable = answers.filter(a => rowsOf(a).isEmpty)
+    val unexportable = answers.filter(a => rowsOf(a, identity).isEmpty)
       .map(a => s"${a.country} ${a.title}: ${a.verdict.label} with no film to label")
     val warnings = answers.flatMap(a => a.warnings.map(w => s"${a.country} ${a.title}: $w"))
     (rows.toSeq, Summary(added, flipped, unchanged, unexportable, warnings))
   }
 
   /** Merge `answers` into the file at `path` and write it back. */
-  def exportTo(path: Path, answers: Seq[ReviewAnswer]): Summary = {
-    val (rows, summary) = merge(LabelsTsv.read(path), answers)
+  def exportTo(path: Path, answers: Seq[ReviewAnswer], identity: FilmIdentity = FilmIdentity.Unlinked): Summary = {
+    val (rows, summary) = merge(LabelsTsv.read(path), answers, identity)
     LabelsTsv.write(path, rows)
     summary
   }

@@ -13,6 +13,7 @@ final class InMemoryReviewSource(
   pagesHeld:     Map[String, VenueFacts] = Map.empty,
   feedsHeld:     Map[(String, String), ListingFeed] = Map.empty,
   filmsHeld:     Map[Int, FilmCard] = Map.empty,
+  linksHeld:     Seq[Set[FilmRef]] = Nil,
 ) extends ReviewSource {
   def decisions(unmatchedOnly: Boolean): Seq[ResolverDecision] =
     if (unmatchedOnly) decisionsHeld.filter(_.film.isEmpty) else decisionsHeld
@@ -23,6 +24,7 @@ final class InMemoryReviewSource(
   def venuePages(urls: Seq[String]): Map[String, VenueFacts] = pagesHeld.filter(e => urls.contains(e._1))
   def feeds(listings: Seq[(String, String)]): Map[(String, String), ListingFeed] = feedsHeld.filter(e => listings.contains(e._1))
   def films(tmdbIds: Seq[Int]): Map[Int, FilmCard] = filmsHeld.filter(e => tmdbIds.contains(e._1))
+  def filmLinks(refs: Seq[FilmRef]): Seq[Set[FilmRef]] = linksHeld.filter(_.exists(refs.contains))
 }
 
 /** A small corpus the review specs share: an unmatched PL cluster held just below the line, a vetoed one,

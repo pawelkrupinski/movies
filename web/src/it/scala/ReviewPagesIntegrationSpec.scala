@@ -59,7 +59,8 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
         .append("updatedAt", BsonDateTime(now.toEpochMilli))
         .append("slot", new BsonDocument("title", BsonString("Franz")).append("releaseYear", BsonInt32(2025))
           .append("director", BsonArray.fromIterable(Seq(BsonString("Agnieszka Holland"))))))
-    insert("movies", new BsonDocument("_id", BsonString("m3")).append("tmdbId", BsonInt32(1157322)).append("imdbId", BsonString("tt22963134")))
+    insert("movies", new BsonDocument("_id", BsonString("m3")).append("tmdbId", BsonInt32(1157322)).append("imdbId", BsonString("tt22963134"))
+      .append("filmwebUrl", BsonString("https://www.filmweb.pl/film/Franz+Kafka-2025-10008278")))
     insert("identity_listings", new BsonDocument("_id", BsonString("Kino Opalenica")).append("films", BsonArray.fromIterable(Seq(
       new BsonDocument("movie", new BsonDocument("title", BsonString("Franz Kafka")).append("rawTitle", BsonString("FRANZ KAFKA")))
         .append("externalIds", new BsonDocument("bilety24", BsonString("165208")))
@@ -81,6 +82,14 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
     source.venuePages(Seq(Held.nativeId)).values.map(_.runtime) shouldBe Seq(Some(127))
     source.films(Seq(1157322, 42)) shouldBe Map(1157322 ->
       FilmCard(1157322, Some("tt22963134"), Some("Franz"), None, Some(2025), Seq("Agnieszka Holland"), None, None, None))
+  }
+
+  "the corpus's film links" should "tie a Filmweb id to the TMDB and IMDb ids of the same record" in {
+    val franz = Set(FilmRef.tmdb(1157322), FilmRef("imdb", "tt22963134"), FilmRef("filmweb", "10008278"))
+    source.filmLinks(Seq(FilmRef("filmweb", "10008278"))) shouldBe Seq(franz)
+    source.filmLinks(Seq(FilmRef.tmdb(1157322), FilmRef("rt", "dolly"))) shouldBe Seq(franz)
+    source.filmLinks(Seq(FilmRef("filmweb", "8278"))) shouldBe empty      // a suffix of the id is not the id
+    FilmIdentity.of(source.filmLinks(Seq(FilmRef("filmweb", "10008278")))).provablyDifferent(FilmRef("filmweb", "10008278"), FilmRef.tmdb(2)) shouldBe true
   }
 
   "an answered cluster" should "leave the queue, and stay out for a fresh store reading the history back" in {

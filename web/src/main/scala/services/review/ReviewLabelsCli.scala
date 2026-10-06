@@ -25,12 +25,14 @@ object ReviewLabelsCli {
     val client = MongoConnection.sharedClientFor(mirror.asMongoUri, Some(MongoConnection.ServerSelectionTimeout(MongoConnection.LocalMirrorTimeout)))
     try {
       val answers = new ReviewAnswers(new MongoReviewAnswerStore(client.getDatabase(MongoReviewAnswerStore.Database)))
-      println(run(answers, args.toList))
+      val sources: Map[models.Country, ReviewSource] = models.Country.all.map(c =>
+        c -> (new MongoReviewSource(client.getDatabase(MongoConnection.mirrorDbFor(c.mongoDb))): ReviewSource)).toMap
+      println(run(answers, args.toList, sources))
     } finally client.close()
   }
 
   /** One command against `answers`, its report as text. */
-  def run(answers: ReviewAnswers, args: List[String]): String = args match {
+  def run(answers: ReviewAnswers, args: List[String], sources: Map[models.Country, ReviewSource] = Map.empty): String = args match {
     case "import" :: path :: Nil =>
       val parsed = ReviewImport.parse(new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8))
       val added  = answers.importAll(parsed)
@@ -38,7 +40,8 @@ object ReviewLabelsCli {
         parsed.flatMap(a => a.warnings.map(w => s"WARNING: ${a.country} ${a.title}: $w"))).mkString("\n")
     case "export" :: rest =>
       val path = rest.headOption.map(Paths.get(_)).getOrElse(LabelsTsv.locate())
-      s"$path\n" + LabelsExport.exportTo(path, answers.current()).render
+      val current = answers.current()
+      s"$path\n" + LabelsExport.exportTo(path, current, FilmIdentity.linking(current, sources)).render
     case _ =>
       "usage: ReviewLabelsCli import <answers.json> | export [labels.tsv]"
   }

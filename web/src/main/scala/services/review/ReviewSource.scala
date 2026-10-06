@@ -70,6 +70,8 @@ trait ReviewSource {
   def feeds(listings: Seq[(String, String)]): Map[(String, String), ListingFeed]
   /** The corpus's record of each of these TMDB films that it holds. */
   def films(tmdbIds: Seq[Int]): Map[Int, FilmCard]
+  /** For each corpus record naming one of `refs` (by its TMDB, IMDb, Filmweb, RT or Metacritic id), every ref it names. */
+  def filmLinks(refs: Seq[FilmRef]): Seq[Set[FilmRef]]
 }
 
 object ReviewSource {
@@ -81,5 +83,6 @@ object ReviewSource {
     def venuePages(urls: Seq[String]): Map[String, VenueFacts] = Map.empty
     def feeds(listings: Seq[(String, String)]): Map[(String, String), ListingFeed] = Map.empty
     def films(tmdbIds: Seq[Int]): Map[Int, FilmCard] = Map.empty
+    def filmLinks(refs: Seq[FilmRef]): Seq[Set[FilmRef]] = Nil
   }
 }
