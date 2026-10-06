@@ -41,7 +41,7 @@ class MongoTmdbDocumentsIntegrationSpec extends services.identity.TmdbDocumentRe
       import scala.jdk.CollectionConverters._
       val projection = finds.asScala.toSeq.map(_.getDocument("projection", new org.bson.BsonDocument()))
       projection should have size 1
-      projection.head.keySet.asScala.toSet shouldBe Set("record", "hit", "local.imdb_id", "english.imdb_id")
+      projection.head.keySet.asScala.toSet shouldBe Set("record", "hit", "local.imdb_id", "english.imdb_id", "local.runtime", "english.runtime")
     } finally watched.close()
   }
 
