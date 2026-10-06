@@ -38,6 +38,9 @@ class MatchedTakesLabelSpec extends AnyFlatSpec with Matchers {
     ("uk", "CBeebies Panto 2026: Treasure Island", "tmdb:6646") ->
       ("unmatched in prod (BelowThreshold, 2026-10-06; read-only check of kinowo_uk identity_model_families): the title bills " +
         "2026, which `edition.apart` holds apart from the 1950 record — struck once the rows are re-emitted"),
+    ("uk", "Unrestricted View Horror Film Festival 2026: Opening Night", "tmdb:311764") ->
+      ("unmatched in prod (BelowThreshold at 28.9%, 2026-10-06; read-only check of kinowo_uk identity_model_families): a " +
+        "festival's opening night, not the 2016 film — struck once the rows are re-emitted"),
     ("pl", "Maraton Horrorów", "tmdb:1193501") -> multiFilmBill,
     ("uk", "The Dark Knight Trilogy", "tmdb:155") -> multiFilmBill,
     ("uk", "Triple Feature: Lord of the Rings", "tmdb:122") -> multiFilmBill,
