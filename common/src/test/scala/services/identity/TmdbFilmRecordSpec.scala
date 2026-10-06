@@ -78,9 +78,11 @@ class TmdbFilmRecordSpec extends AnyFlatSpec with Matchers {
     def measured(year: Int, minutes: Int, country: Option[String] = Some("GB")) = IdentityMeasures.listingFilm(
       IdentityMeasures.Listing("Apocalypse Now", year = Some(year), runtime = Some(minutes)),
       apocalypseNow, None, 0, 0, country = country)
-    // Prince Charles's 2019 Final Cut, 183 minutes: the 2019 release, and an edition's runtime longer than 147 is neutral.
+    // Prince Charles's 2019 Final Cut, 183 minutes: the 2019 release, and the cut table's 183-minute Final Cut ([[FilmCuts]]).
     measured(2019, 183)("year.distance") shouldBe IdentityMeasures.Number(0)
-    measured(2019, 183)("runtime.delta") shouldBe IdentityMeasures.Missing("listing")
+    measured(2019, 183)("runtime.delta") shouldBe IdentityMeasures.Number(0)
+    // A cut the table doesn't know, longer than every runtime, billed in an edition's year: neutral, never against.
+    measured(2019, 240)("runtime.delta") shouldBe IdentityMeasures.Missing("listing")
     // The original's year reads the original; a year no release of the venue's country dates reads the closest.
     measured(1979, 147)("year.distance") shouldBe IdentityMeasures.Number(0)
     measured(2017, 147)("year.distance") shouldBe IdentityMeasures.Number(2)
