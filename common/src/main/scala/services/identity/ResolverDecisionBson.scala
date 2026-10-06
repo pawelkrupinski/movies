@@ -31,14 +31,21 @@ object ResolverDecisionBson {
   def decode(d: BsonDocument): ResolverDecision = {
     def strings(name: String) = d.getArray(name).getValues.asScala.toSeq.map(_.asString.getValue)
     ResolverDecision(ListingKeyBson.decodeAll(d.getArray("members")), Option(d.get("film")).filter(_.isInt32).map(_.asInt32.getValue),
-      d.getDouble("confidence").getValue, ResolverDecision.Basis.valueOf(d.getString("basis").getValue), strings("explanation"), strings("contradictions"),
+      number(d, "confidence"), ResolverDecision.Basis.valueOf(d.getString("basis").getValue), strings("explanation"), strings("contradictions"),
       Option(d.get("fallback")).filter(_.isDocument).map(_.asDocument).map(taken =>
-        ResolverDecision.Fallback(taken.getString("source").getValue, taken.getString("id").getValue, taken.getDouble("probability").getValue,
+        ResolverDecision.Fallback(taken.getString("source").getValue, taken.getString("id").getValue, number(taken, "probability"),
           Option(taken.get("title")).filter(_.isString).map(_.asString.getValue), Option(taken.get("year")).filter(_.isInt32).map(_.asInt32.getValue))),
       leaningOf(d, "leaning"),
       Option(d.get("unanswered")).filter(_.isInt32).fold(0)(_.asInt32.getValue),
       Option(d.get("agreed")).filter(_.isDocument).fold(Map.empty[String, String])(_.asDocument.asScala.map { case (family, id) => family -> id.asString.getValue }.toMap),
       leaningOf(d, "candidate"))()
+  }
+
+  /** A probability stored as any BSON number: a copier that round-trips through JavaScript numbers (mongosh, the local
+   *  mirror) writes a whole-number double such as 1.0 back as an Int32. */
+  private def number(d: BsonDocument, name: String): Double = d.get(name) match {
+    case v if v != null && v.isNumber => v.asNumber.doubleValue
+    case v => throw new org.bson.BsonInvalidOperationException(s"$name: expected a number, found ${Option(v).fold("nothing")(_.getBsonType.toString)}")
   }
 
   private def leaningOf(d: BsonDocument, name: String): Option[ResolverDecision.Leaning] =

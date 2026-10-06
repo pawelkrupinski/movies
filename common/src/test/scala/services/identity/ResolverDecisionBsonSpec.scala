@@ -26,4 +26,13 @@ class ResolverDecisionBsonSpec extends AnyFlatSpec with Matchers {
       agreed = Map("imdb" -> "tt13920372", "metacritic" -> "snow-leopard", "rt" -> "snow_leopard_2023"))()
     ResolverDecisionBson.decode(ResolverDecisionBson.encode(agreed)) shouldBe agreed
   }
+
+  it should "read a whole-number confidence and fallback probability stored as an integer, as a copier like mongosh writes 1.0" in {
+    val decided = ResolverDecision(Seq(snowLeopard), None, 1.0, ResolverDecision.Basis.BelowThreshold, Nil,
+      fallback = Some(ResolverDecision.Fallback("imdb", "tt13920372", 1.0)))()
+    val stored = ResolverDecisionBson.encode(decided)
+    stored.put("confidence", org.mongodb.scala.bson.BsonInt32(1))
+    stored.getDocument("fallback").put("probability", org.mongodb.scala.bson.BsonInt32(1))
+    ResolverDecisionBson.decode(stored) shouldBe decided
+  }
 }
