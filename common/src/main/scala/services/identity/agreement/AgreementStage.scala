@@ -526,13 +526,15 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
 
   /** The listing with the year, directors, running time, original title and countries its venue's own page states where
    *  the listing does not ([[services.identity.Evidence.of]], as the model reads it): what the agreement's listing votes
-   *  and title check read, never what rules a film out ([[Agreement.agreed]]). PL "The Taxidermist | Splat!FilmFest" bills no director; its page credits Paulo Nascimento. */
+   *  and title check read, never what rules a film out ([[Agreement.agreed]]). PL "The Taxidermist | Splat!FilmFest" bills no director; its page credits Paulo Nascimento.
+   *  Marked as holding its page's facts (`pageFacts`), which are a catalogue's claim where the page is a listings site's
+   *  catalogue entry ([[services.identity.CatalogueSources.catalogueEntry]]: Flicks). */
   private def asStated(listing: Listing): Listing =
     if (!venues.hasDetail(listing)) listing
     else venues.detail(listing).toOption.flatten.fold(listing) { page =>
       val stated = services.identity.Evidence.of(listing, Some(page))
       listing.copy(year = stated.year, directors = stated.directors, runtime = stated.runtime, originalTitle = stated.originalTitle,
-        countries = stated.countries)
+        countries = stated.countries, pageFacts = true)
     }
 
   /** The film the first selected FILL rule takes for a cluster the families agreed on nothing for

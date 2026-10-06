@@ -47,6 +47,10 @@ final case class Listing(
    *  describes the catalogue's entry. OUTSIDE the listing's equality and hash, as the poster is: the model never reads
    *  it, only the agreement stage's fill after it. */
   names:         VenueNames = VenueNames.None
+  /** Do its facts include what its page states — the listing as the agreement reads it, its page's facts merged in where
+   *  it states none (`AgreementStage.asStated`)? OUTSIDE equality and hash: only the agreement builds such a listing, and
+   *  only to tell whose claim the merged facts are ([[factsFromCatalogue]]). */
+  pageFacts:     Boolean = false
 ) {
   def venue: String = key.venue
 
@@ -54,7 +58,7 @@ final case class Listing(
    *  linked the screening to its entry, rather than its venue's own statement ([[CatalogueSources.feedStated]])? They are
    *  evidence FOR that entry's film, never proof that the entry is the venue's film: they never confirm the feed's own
    *  catalogue id, nor rule out another film outright. */
-  def factsFromCatalogue: Boolean = CatalogueSources.feedStated(this)
+  def factsFromCatalogue: Boolean = CatalogueSources.feedStated(this) || (pageFacts && page.exists(CatalogueSources.catalogueEntry))
 
   /** The season a stage work billed with neither its season nor a year is broadcast in: the one its first screening
    *  falls in ([[ScreeningDays.season]]). A relay airs on its house's published dates — the Met's "Samson et Dalila"

@@ -29,6 +29,16 @@ object CatalogueSources {
   val FeedIds: Set[String]       = Set(Webedia.source)
   val FeedPages: Seq[String]     = Seq("https://www.kinoprogramm.com/", "https://kinoprogramm.com/")
 
+  /** Film pages that are a listings site's own CATALOGUE ENTRY rather than the venue's: Flicks lists every UK and US venue's
+   *  programme for it, and every venue's listing links the same `/movie/<slug>/` page. The facts read off that page
+   *  (`FlicksFilmPage`: year, directors, countries) are Flicks' claim of which film the entry is — one mislinked entry
+   *  would otherwise veto the right film at every venue showing it. The day listing's own card (its directors, its
+   *  running time) stays the venue's: only the page's facts are the catalogue's ([[Listing.pageFacts]]). */
+  val CatalogueEntryPages: Seq[String] = Seq("https://www.flicks.co.uk/movie/", "https://www.flicks.us/movie/")
+
+  /** Is `page` a listings site's catalogue entry ([[CatalogueEntryPages]])? */
+  def catalogueEntry(page: String): Boolean = CatalogueEntryPages.exists(page.startsWith)
+
   /** Are `listing`'s facts a feed catalogue's claim rather than its venue's ([[FeedIds]], [[FeedPages]])? */
   def feedStated(listing: Listing): Boolean = feedStated(listing.catalogueIds, listing.page)
 

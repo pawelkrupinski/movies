@@ -211,6 +211,25 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     taken.explanation.last should include ("corroborated by listing, runtime")
   }
 
+  it should "read a listings site's catalogue page as the catalogue's claim, not the venue's word" in {
+    // A Flicks /movie/<slug>/ page is Flicks' own entry for the film, the one every UK and US venue's listing links: the
+    // year and director it states are that entry's, so they corroborate as a feed's facts do, never as the venue's own
+    val flicks  = listing(KinoMuza, "Klondike").copy(page = Some("https://www.flicks.co.uk/movie/klondike/"))
+    val alone   = Map(VoterFamily.Imdb -> agreeing()(VoterFamily.Imdb)) ++
+      Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
+    val page = new services.identity.IdentityLookups {
+      def hasDetail(listing: services.identity.Listing): Boolean = true
+      def detail(listing: services.identity.Listing) = Answer.Known(Some(services.identity.DetailFacts(Some(2022), Seq("Maryna Er Gorbach"), Some(100), None)))
+      def candidates(query: services.identity.CandidateQuery) = Answer.Known(Nil)
+      def film(tmdbId: Int) = Answer.Known(None)
+    }
+    val model = Resolution(Seq(ResolverDecision(Seq(flicks.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil)()), 1,
+      Map(flicks.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val taken = new AgreementStage(alone, page, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)),
+      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned).apply(model, Map(flicks.key -> flicks).get, version = 1).decisions.head
+    taken.explanation.mkString("\n") should not include "corroborated by listing"
+  }
+
   it should "take no film only review sites take, though the model's vote completes them" in {
     // DE "André Rieus Weihnachtskonzert 2026: Let it Snow" (fixture identity-unmatched): Metacritic and Rotten Tomatoes
     // take the 2019 "Let It Snow", the model's best candidate — a review page names no film a card stands on
