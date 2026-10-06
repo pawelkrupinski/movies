@@ -60,6 +60,9 @@ object IdentityMeasures {
     private[identity] lazy val ownForms: Seq[IdentityMeasures.TitleForm] = (Seq(title) ++ rawTitle).map(IdentityMeasures.TitleForm(_))
     /** The own forms' non-empty keys, once per listing: every pool candidate's `titleRelation` asks. */
     private[identity] lazy val ownKeys: Set[String] = ownForms.map(_.key).filter(_.nonEmpty).toSet
+    /** How many years an anniversary the title or original title bills celebrates ("30th Anniversary"), once per listing. */
+    private[identity] lazy val anniversary: Option[Int] = (Seq(title) ++ rawTitle ++ originalTitle).iterator
+      .flatMap(t => IdentityMeasures.AnniversaryYears.findFirstMatchIn(t)).map(_.group(1).toInt).nextOption()
     /** The title's words, once per listing: a director's surname heading it is read against every candidate. */
     private[identity] lazy val titleWords: Seq[String] = ownForms.head.words
     private[identity] lazy val shapeKeys: Seq[String] = shapes.map(IdentityMeasures.key)
@@ -1607,14 +1610,10 @@ object IdentityMeasures {
    *  Aniversario" (original title "Bram Stoker's Dracula 30th Anniversary"), dated 2022, is Coppola's 1992 film — its
    *  year that many years before the stated one, within a year. Any other year stays the listing's fact. */
   private def anniversaryYear(l: Listing, f: Film, m: Map[String, Measure]): Map[String, Measure] =
-    (for {
-      stated <- l.year
-      film   <- f.year
-      years  <- (Seq(l.title) ++ l.rawTitle ++ l.originalTitle).iterator.flatMap(t => AnniversaryYears.findFirstMatchIn(t)).map(_.group(1).toInt).nextOption()
-      if FactRelations.yearsNear(stated - years, film)
-    } yield m ++ PublishedYear.map(_ -> MissingListing)).getOrElse(m)
+    if (l.anniversary.isEmpty || l.year.isEmpty || f.year.isEmpty || !FactRelations.yearsNear(l.year.get - l.anniversary.get, f.year.get)) m
+    else m ++ PublishedYear.map(_ -> MissingListing)
   /** "30th Anniversary", "30 Aniversario": how many years a re-release celebrates. */
-  private val AnniversaryYears = """(?i)\b(\d{1,3})(?:st|nd|rd|th)?\.?\s+(?:anniversary|aniversario)\b""".r
+  private[identity] val AnniversaryYears = """(?i)\b(\d{1,3})(?:st|nd|rd|th)?\.?\s+(?:anniversary|aniversario)\b""".r
 
   /** `m` with the published year absent when it dates a screening ([[PublishedYear]]): when the
    *  listing's title is the film's title ([[TitledRelations]]) and the same director is credited, a year
