@@ -167,6 +167,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     val changedAt  = mutable.Map.empty[Long, Option[java.util.Set[java.lang.Long]]]
     val reading    = new AgreementStage.Read(posters, listedOn.flatMap(families.get))
     var budget     = correctionsPerApply
+    val asks       = AgreementStage.Asks(asked, finding, catalogueAsked, dating, version)
     val decisions = resolution.decisions.map { decision =>
       if (correctable(decision) && eventOf(decision, listingOf).isEmpty) {
         val key = AgreementStage.correctionId(StoredFamily.idOf(decision.members))
@@ -190,15 +191,12 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
               v.agreed.fold[AgreementStage.Take](AgreementStage.Take.Untaken)(taken(decision, _, finding, distances)) match {
                 // a screen adaptation agreed for a listing naming a stage work ([[Agreement.agreed]]) yields to the relay its
                 // screening days name: PL Kino Amok's bare "Manon" on the Met's broadcast day is the Met's, not Clouzot's
-                case AgreementStage.Take.Taken(agreed) if listings.exists(ListingShape.stagesAWork) => broadcast(decision, id, digest, listings, dating, version, asked).getOrElse(agreed)
+                case AgreementStage.Take.Taken(agreed) if listings.exists(ListingShape.stagesAWork) =>
+                  takeOf(AgreementStage.BroadcastTake, AgreementStage.Unagreed(decision, id, digest, listings, v, distances), asks).getOrElse(agreed)
                 case AgreementStage.Take.Taken(agreed) => agreed
                 case AgreementStage.Take.Pending       => decision
-                case AgreementStage.Take.Vetoed        => posterVetoed += 1; voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings, dating, version, asked))
-                                                            .orElse(filledTake(decision, v, finding, distances))
-                                                            .orElse(catalogued(decision, listings, asked, finding, catalogueAsked)).getOrElse(decision)
-                case AgreementStage.Take.Untaken       => voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings, dating, version, asked))
-                                                            .orElse(filledTake(decision, v, finding, distances))
-                                                            .orElse(catalogued(decision, listings, asked, finding, catalogueAsked)).getOrElse(decision)
+                case AgreementStage.Take.Vetoed        => posterVetoed += 1; fellThrough(AgreementStage.Unagreed(decision, id, digest, listings, v, distances), asks)
+                case AgreementStage.Take.Untaken       => fellThrough(AgreementStage.Unagreed(decision, id, digest, listings, v, distances), asks)
               }
             }
         }
@@ -247,6 +245,19 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       events = decisions.count(_.basis == ResolverDecision.Basis.Event)))
     resolution.copy(decisions = decisions)
   }
+
+  /** The takes a cluster the families' agreement took no film for is read by, by name — in [[AgreementStage.FallThrough]]'s
+   *  order, the first to take one deciding: each reads its own evidence and notes in `asks` every question it waits on. */
+  private val takes: Map[String, (AgreementStage.Unagreed, AgreementStage.Asks) => Option[ResolverDecision]] = Map(
+    AgreementStage.PosterVoteTake -> ((u, _) => voted(u.decision, u.distances(None))),
+    AgreementStage.BroadcastTake  -> ((u, asks) => broadcast(u.decision, u.id, u.digest, u.listings, asks.dating, asks.version, asks.asked)),
+    AgreementStage.FillTake       -> ((u, asks) => filledTake(u.decision, u.verdict, asks.finding, u.distances)),
+    AgreementStage.CatalogueTake  -> ((u, asks) => catalogued(u.decision, u.listings, asks.asked, asks.finding, asks.catalogue)))
+  private def takeOf(rule: String, untaken: AgreementStage.Unagreed, asks: AgreementStage.Asks): Option[ResolverDecision] = takes(rule)(untaken, asks)
+  private val fallThrough = AgreementStage.FallThrough.map(takes)
+  /** The first of [[AgreementStage.FallThrough]] to take a film for the cluster, else the cluster as the model left it. */
+  private def fellThrough(untaken: AgreementStage.Unagreed, asks: AgreementStage.Asks): ResolverDecision =
+    fallThrough.iterator.flatMap(_(untaken, asks)).nextOption().getOrElse(untaken.decision)
 
   /** Why the decision's cluster is an event no film database holds, or `None` — read once per decision object. */
   private def eventOf(decision: ResolverDecision, listingOf: ListingKey => Option[Listing]): Option[String] =
@@ -844,6 +855,32 @@ object AgreementStage {
   def recordReadId(tmdbId: Int): String = s"tmdb|record|$tmdbId"
   /** How long the broadcast take waits on a record's read at most — the agreement's tasks run after every other. */
   val RecordWait: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(1, java.util.concurrent.TimeUnit.DAYS)
+
+  /** The takes a cluster the families agreed on no film for (or one a venue poster vetoed) is read by, IN ORDER: the
+   *  first to take a film decides, and none after it is read (nor asks a question). The order is behaviour:
+   *  - [[PosterVoteTake]]: the one candidate a venue poster matches within [[PosterEvidence.VoteBits]], none vetoing it;
+   *  - [[BroadcastTake]]: the one record of the billed stage work broadcast on a screening day ([[agreement.Broadcast]]);
+   *  - [[FillTake]]: the first selected unified fill rule's film ([[services.identity.UnifiedRules.filled]]), unless a venue
+   *    poster vetoes it;
+   *  - [[CatalogueTake]]: the film the listings' own catalogue ids name ([[agreement.Catalogue]]). Last though an exact id:
+   *    where it names another film than a take above, the projection keeps that take, for the measure to list.
+   *  A film the families agree on for a listing billing a stage work yields to [[BroadcastTake]] first (PL Kino Amok's bare
+   *  "Manon" on the Met's broadcast day is the Met's, not Clouzot's). `identity-resolver.md` §21 lists this order; a spec
+   *  holds the two together. */
+  val PosterVoteTake = "poster-vote"
+  val BroadcastTake  = "broadcast"
+  val FillTake       = "fill"
+  val CatalogueTake  = "catalogue"
+  val FallThrough: Seq[String] = Seq(PosterVoteTake, BroadcastTake, FillTake, CatalogueTake)
+
+  /** A model no-match the families' agreement took no film for, as the takes read it: its cluster id, listings and their
+   *  digest, the families' verdict, and its venue posters' distances to its candidates (and to `also`). */
+  private final case class Unagreed(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing], verdict: StoredVerdict,
+                                   distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]])
+  /** Where one apply's takes note what they wait on: the families' questions, the IMDb ids TMDB was not asked about, the
+   *  catalogue questions and the records to read again for their day — and the families' `version`. */
+  private final case class Asks(asked: mutable.Set[(VoterFamily, String)], finding: mutable.Set[String], catalogue: mutable.Set[CatalogueQuestion],
+                                dating: mutable.Set[Int], version: Long)
 
   /** What became of the film a cluster's families agree on: taken, pending an answer, vetoed by a venue poster, or none to take. */
   private enum Take {

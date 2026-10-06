@@ -73,6 +73,15 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     Rule("directors-work", directorsWorkWhy), Rule("directors-title", directorsTitleWhy), Rule("dated-title", datedTitleWhy),
     Rule("house-production", houseProductionWhy), Rule("stage-production", stageProductionWhy), Rule("season-record", seasonRecordWhy))
 
+  private val pooledRules = Seq(Rule("unrivalled-calibrated", unrivalledCalibratedWhy), Rule("exact-top-hit", topHitWhy),
+    Rule("imdb-suggested", imdbSuggestedWhy))
+
+  /** The rules a node is taken by alone, and a cluster by its pooled evidence, by name in the order they are tried — each
+   *  after `season-production`, which pre-empts them: what `identity-resolver.md` §21 lists, a spec holding the two
+   *  together. */
+  private[identity] def aloneOrder: Seq[String]  = "season-production" +: aloneRules.map(_.name)
+  private[identity] def pooledOrder: Seq[String] = "season-production" +: pooledRules.map(_.name)
+
   /** What [[alone]] takes, with the rule that took it. A family's scope asks it once per node ([[FamilyScope.takenAlone]]). */
   def aloneNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
     if (billsSeveralWorks(ranked)) None
@@ -137,7 +146,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   def pooledNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
     if (billsSeveralWorks(ranked)) None
     else seasonProduction(ranked).map(_.map(_ -> "season-production"))
-      .getOrElse(firstOf(ranked, Seq(Rule("unrivalled-calibrated", unrivalledCalibratedWhy), Rule("exact-top-hit", topHitWhy), Rule("imdb-suggested", imdbSuggestedWhy))))
+      .getOrElse(firstOf(ranked, pooledRules))
       .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }.filter(takesNoBill(ranked))
 
   /** The probability that `film` is the listing's film — the decision's confidence, on the scale

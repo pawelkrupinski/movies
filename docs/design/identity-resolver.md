@@ -2960,3 +2960,76 @@ Together: ratchet **1,390 → 1,460 right listings, 0 wrong, 0 lost**; common id
 Taxidermist | Splat!FilmFest" keeps `letterboxd:13-souls` labelled right beside the new wrong *13 Souls* TMDB row — the
 two disagree, and the cluster's take (IMDb tt40381362, "The Taxidermist", Paulo Nascimento) is labelled right; one of
 them needs the user's judgement.
+
+## 21. The rules, consolidated (2026-10-06)
+
+Every rule is inventoried in [identity-resolver-rules-inventory.md](identity-resolver-rules-inventory.md): where it
+lives, what it reads, what pins it, how often it fires on the five recorded corpora, and which other rule implements the
+same concept. The consolidation kept every DECISION (proof below) and gave each concept one place.
+
+### 21.1 One place per concept
+
+- **Facts** — `FactRelations`: two years are near within `YearWindow.PublishedAdjacency` and apart only when both are
+  stated; two credits are the same person, another person (same script), or other PEOPLE sharing no name's stem
+  (`acrossScripts`: the agreement's listing contradiction reads one script, a correction any). Read by the agreement's
+  votes and contradictions, `Agreement.equivalent`, the broadcast join's fit and credits, `Broadcast.superseded`,
+  `Correction`, `PosterEvidence.editionsApart`, the acceptance rules' title-year checks and the measures.
+- **A listing's shape** — `ListingShape`: a stage relay (`stagesAWork`, `billsAHouse`, `relays`), a bill of several works
+  (`billsSeveral`, `billsSeveralBeside`), and whose facts it carries (`venueStated`). Read per call, never held per
+  listing (the worker's heap carries every listing). `NonFilmEvents` (an event no database holds) reads `relays`;
+  `PosterEvidence.shows` reads the relay and bill predicates; the catalogue take, the fill's guards and the refit tools
+  read the rest. `Broadcast.billsAProduction` reads a family HIT's title, not a listing.
+- **Catalogue provenance** — `CatalogueSources` (which ids and pages are a feed's or a listings site's catalogue),
+  `Listing.factsFromCatalogue` (facts copied from one), `ListingShape.venueStated` (no catalogue page linked at all).
+
+### 21.2 The rule registries, in order
+
+Each stage tries its rules in a fixed order, and the order is behaviour: the first to take decides. The orders live in
+code as registries (`Acceptance.aloneOrder` / `pooledOrder`, `AgreementStage.FallThrough`); `IdentityRulesDocSpec`
+fails when this table and the code disagree.
+
+| stage | # | rule | takes when |
+|---|---|---|---|
+| alone | 1 | season-production | the title names a season and one record is its production (pre-empts the rest) |
+| alone | 2 | sole-work | the title is one first-ranked film's work, no other the title names |
+| alone | 3 | favoured-calibrated | the calibration accepts it and its facts favour it over the runner-up |
+| alone | 4 | exact-top-hit | an exact title that is its search's first hit, nothing against it |
+| alone | 5 | segment-top-hit | a piece of the title names the first hit and stands for the whole |
+| alone | 6 | sole-result | the only film a title search returns, the title naming it |
+| alone | 7 | imdb-suggested | IMDb's suggestion for the title, by its year, director or as the only one |
+| alone | 8 | directors-work | the credited director's film sharing the title's work |
+| alone | 9 | directors-title | the credited director's film of the exact title |
+| alone | 10 | dated-title | the film of the title from the year the title dates |
+| alone | 11 | house-production | the record billing the work under the listing's house |
+| alone | 12 | stage-production | the season record of the stage work from the listing's year |
+| alone | 13 | season-record | the one season record carrying the title |
+| pooled | 1 | season-production | as alone, over the cluster's pooled evidence |
+| pooled | 2 | unrivalled-calibrated | the calibration accepts it and no namesake out-fits it |
+| pooled | 3 | exact-top-hit | as alone |
+| pooled | 4 | imdb-suggested | as alone |
+| agreement | 1 | poster-vote | one candidate a venue poster matches within 4 bits, none vetoing it |
+| agreement | 2 | broadcast | the one record of the billed stage work broadcast on a screening day |
+| agreement | 3 | fill | the first selected unified fill rule's film, unless a venue poster vetoes it |
+| agreement | 4 | catalogue | the film the listings' own catalogue ids name |
+
+Around them: `billsSeveralWorks` gates every acceptance rule, `editionNamed` and `takesNoBill` filter what they take; in
+the agreement stage an event (`NonFilmEvents`) is asked nothing, the families' agreed film is taken before the table's
+rules (and yields to `broadcast` for a listing billing a stage work), and a model take is read for correction in its
+own fixed order — a superseded relay, the venue posters, the venues' programmes (only once a poster questions it), the
+families (only then), `Correction.decide`.
+
+### 21.3 Loops
+
+Measured over the five captures (6,005 resolves), the full corpora and the hard clusters: `Families.grow` always ends
+in two rounds, the second confirming; it now stops after one when the films taken merge no family (6,004 of the
+captures' 6,005 resolves). `IncrementalResolver.update` takes at most 2 rounds, `IdentityMeasures.shapes` at most 6
+(p99 3) — both already worklists over finite sets. The refit's `CaptureReplay.spliced` is one union-find pass. Every
+other loop is a single pass, a union-find, or capped (§4 of the inventory).
+
+### 21.4 The equivalence proof
+
+`scripts.IdentityEquivalence <dir>` writes every cluster's decision over the five captures — the agreement over the
+captured no-matches, and the resolver over the captures' listings with the agreement over that — with its members,
+film, basis, fallback, agreeing families, lean, confidence, full explanation and every trace rule and candidate denial,
+and each replay's thread allocation; `IdentityResolveDumpIntegrationSpec` writes every listing's decision over the
+five full corpora. Each consolidation step's two runs were byte-identical to the baseline's.
