@@ -259,6 +259,25 @@ private[cinemas] object ScraperParse {
       .map(_.text.trim)
       .filter(_.nonEmpty)
 
+  /** The page's `og:image`, unless it has the shape of a SITE-WIDE default rather than this film's
+    * poster. Many venues set one og:image on every page — Kinoteka's `kinoteka-opengraph.png`,
+    * BOK's `logo-bok_…jpg`, the bilety24 venue sites' `PAN-BILET_…svg`, Kino Muranów's
+    * `kino_share.png` — and a logo taken as a film's poster is worse than none: it feeds the
+    * identity's poster vote and veto. Judged by the file NAME only (a path segment such as
+    * bilety24's `dealer-default/` says nothing), as whole words, so "plakat-bez-logotypow" stays. */
+  def ogImage(document: Document): Option[String] =
+    Option(document.selectFirst("meta[property=og:image]")).map(_.attr("content").trim).filter(_.nonEmpty)
+      .filterNot(isSiteDefaultImage)
+
+  private val SiteDefaultImageWords =
+    Seq("logo", "opengraph", "favicon", "placeholder", "zaslepka", "share", "og-image", "no-photo", "nophoto", "page-thumbnail")
+
+  private def isSiteDefaultImage(url: String): Boolean = {
+    val file = url.takeWhile(c => c != '?' && c != '#').split('/').lastOption.getOrElse("").toLowerCase(Locale.ROOT)
+    val words = "-" + file.replaceAll("[^a-z]+", "-") + "-"
+    file.endsWith(".svg") || SiteDefaultImageWords.exists(word => words.contains(s"-$word-"))
+  }
+
   /**
    * Convert an ALL-CAPS title to sentence case for the MSI scrapers (Cinema1,
    * Kino Zamek, Kino Kijów, …) whose portals serve ALL-CAPS titles. The casing

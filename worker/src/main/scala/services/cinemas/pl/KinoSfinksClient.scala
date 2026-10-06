@@ -204,7 +204,7 @@ object KinoSfinksClient {
     val countries = splitList(prod.map(p => YearTokenPat.replaceAllIn(p, "").trim))
     val runtime   = fieldValue(document, "czas_trwania")
       .flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)).filter(n => n >= 30 && n <= 300)
-    val poster    = Option(document.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty)
+    val poster    = ScraperParse.ogImage(document)
     FilmDetail(
       cast           = splitList(fieldValue(document, "obsada_wykonawcy")),
       director       = splitList(fieldValue(document, "rezyseria")),

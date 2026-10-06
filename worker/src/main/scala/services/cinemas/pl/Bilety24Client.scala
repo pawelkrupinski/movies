@@ -103,7 +103,7 @@ object Bilety24Client {
     // the first real raster image, else fall back to the og:image poster.
     val poster   = document.select("img.b24-image").asScala.toSeq.map(_.attr("src"))
                      .find(s => s.nonEmpty && !s.toLowerCase(Locale.ROOT).endsWith(".svg"))
-                     .orElse(Option(document.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty))
+                     .orElse(ScraperParse.ogImage(document))
 
     for {
       t <- title if slots.nonEmpty

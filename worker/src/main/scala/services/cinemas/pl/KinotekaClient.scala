@@ -6,7 +6,7 @@ import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{AgeRating, ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 import services.movies.TitleNormalizer
 
 import java.time.LocalDateTime
@@ -17,7 +17,7 @@ import scala.jdk.CollectionConverters._
  * links to `?date=YYYY-MM-DD`. Each film article carries genres + a row of
  * screening anchors (each with an absolute `data-day`, time and buy link). The
  * `/film/<slug>/` detail page adds runtime / director / countries / year /
- * original title / synopsis. Dates come from the page's own nav, so the replay
+ * original title / synopsis / cast / age rating. Dates come from the page's own nav, so the replay
  * is deterministic. The parsed `year` ("Data premiery") is trusted only on a
  * bare-title page — a decorated one (retrospective/dub/anniversary banner)
  * reports THIS SCREENING's date, not the underlying film's production year
@@ -120,7 +120,8 @@ class KinotekaClient(http: HttpFetch, titles: TitleNormalizer
         countries      = detail.countries,
         genres         = Seq.empty, // genres come from the listing page, not the detail page
         posterUrl      = detail.poster,
-        trailerUrl     = detail.trailer
+        trailerUrl     = detail.trailer,
+        ageRating      = detail.ageRating
       )
     }
 
@@ -159,8 +160,7 @@ object KinotekaClient {
   final case class Detail(runtime: Option[Int], year: Option[Int], originalTitle: Option[String],
                           countries: Seq[String], director: Seq[String], cast: Seq[String],
                           synopsis: Option[String], poster: Option[String], trailer: Option[String],
-                          heading: Option[String])
-  object Detail { val empty: Detail = Detail(None, None, None, Seq.empty, Seq.empty, Seq.empty, None, None, None, None) }
+                          heading: Option[String], ageRating: Option[String])
 
   private def dd(document: org.jsoup.nodes.Document, label: String): Option[String] =
     ScraperParse.ddField(document, label, "dl.p-movie-details__general-info dt")
@@ -189,9 +189,11 @@ object KinotekaClient {
                         .orElse(Option(document.selectFirst("meta[property=og:description]")).map(_.attr("content").trim)).filter(_.length > 20),
       // The hero poster is a `<picture class="p-movie-details__hero-poster">`
       // (not a `<div>`) wrapping the real film `<img>`; match by class on any
-      // element so we don't fall through to the generic site og:image logo.
+      // element. Every Kinoteka page's og:image is the site-wide `kinoteka-opengraph.png` logo, which
+      // the shared `ogImage` guard rejects — a page without a hero has no poster rather than the logo.
       poster        = Option(document.selectFirst(".p-movie-details__hero-poster img[src]")).map(_.attr("src")).filter(_.nonEmpty)
-                        .orElse(Option(document.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty)),
+                        .orElse(ScraperParse.ogImage(document)),
+      ageRating     = AgeRating.normalize(dd(document, "rekomendacja wiekowa")),
       // The trailer is a YouTube `/embed/` iframe in the content figure; skip
       // the GTM/analytics iframes by taking the first src that canonicalises.
       trailer       = document.select("iframe[src]").asScala.iterator.map(_.attr("src")).filter(_.nonEmpty)

@@ -4,7 +4,7 @@ import java.util.Locale
 
 import models._
 import org.jsoup.Jsoup
-import org.jsoup.nodes.{Document, Element}
+import org.jsoup.nodes.Element
 import play.api.libs.json.{JsArray, Json}
 import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
@@ -142,7 +142,7 @@ object KinoRemusClient {
                          .flatMap(p => ScraperParse.hoursMinutesRuntime(p.text)),
       genres         = header.toSeq.flatMap(_.group(1).split(",")).map(_.trim).filter(_.nonEmpty),
       ageRating      = AgeRating.normalize(header.map(_.group(2))),
-      posterUrl      = ogImage(doc)
+      posterUrl      = ScraperParse.ogImage(doc)
     )
   }
 
@@ -154,7 +154,4 @@ object KinoRemusClient {
       val own = p.text.trim
       own.isEmpty || own.startsWith("Bilety do nabycia") || ScraperParse.isAllBold(p)
     }
-
-  private def ogImage(doc: Document): Option[String] =
-    Option(doc.selectFirst("meta[property=og:image]")).map(_.attr("content").trim).filter(_.nonEmpty)
 }

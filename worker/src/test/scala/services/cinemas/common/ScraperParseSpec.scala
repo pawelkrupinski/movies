@@ -511,4 +511,40 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     out should startWith ("A")
     out should endWith ("B.")
   }
+
+  // og:image values the recorded fixture corpus actually carries: site-wide defaults (a venue's
+  // logo, its share card, the ticketing platform's svg) that sit on EVERY film page, and real
+  // per-film posters — one under bilety24's `dealer-default/` path, which is not a default image.
+  private def withOgImage(url: String) = Jsoup.parse(s"""<head><meta property="og:image" content="$url"></head>""")
+
+  "ogImage" should "reject a site-wide logo / opengraph / share-card / placeholder default" in {
+    Seq(
+      "https://kinoteka.pl/wp-content/uploads/2024/04/kinoteka-opengraph.png",
+      "https://bok.waw.pl/upload/thumb/2022/01/logo-bok_auto_640x640.jpg",
+      "https://www.charlie.pl/pliki/Kino_CHARLIE_logo_kina.jpg",
+      "https://image.bilety24.pl/original/dealer-default/892/kino-orzel-logo2.jpg",
+      "https://ck-lublin.bilety24.pl/wp-content/uploads/2023/12/PAN-BILET_warsztaty_svg.svg",
+      "https://www.iluzjon.fn.org.pl/public/images/no-photo.jpg",
+      "https://kinomuranow.pl/sites/default/files/share/kino_share.png",
+      "https://bilety.pckul.pl/images/pck2/favicon.png",
+      "/images/og-image.jpg"
+    ).foreach(url => withClue(url)(ScraperParse.ogImage(withOgImage(url)) shouldBe None))
+  }
+
+  it should "keep a real per-film poster, under a `dealer-default/` path or with a 'logotypow' word" in {
+    Seq(
+      "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/ojczyzna-plakat.jpg",
+      "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/niesamowite-przygody-skarpetek-3-ale-kosmos-plakat-bez-logotypow.png",
+      "https://kinopalacowe.pl//media/gallery/md/Milczaca_przyjacioka_plakat_PL_LQ_QdioOiK.jpg"
+    ).foreach(url => withClue(url)(ScraperParse.ogImage(withOgImage(url)) shouldBe Some(url)))
+  }
+
+  it should "reject the site-wide Kinoteka og:image on a recorded film page" in {
+    val html = clients.tools.FixtureFile.read("test/resources/fixtures/kinoteka/kinoteka.pl/film/audiencja-kinoteka-kultury-i-sztuki")
+    ScraperParse.ogImage(Jsoup.parse(html)) shouldBe None
+  }
+
+  it should "return None when the page has no og:image" in {
+    ScraperParse.ogImage(Jsoup.parse("<head></head>")) shouldBe None
+  }
 }

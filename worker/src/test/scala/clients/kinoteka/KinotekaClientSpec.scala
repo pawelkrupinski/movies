@@ -71,6 +71,32 @@ class KinotekaClientSpec extends AnyFlatSpec with Matchers {
     detailFor("Zawodowcy").posterUrl shouldBe Some("https://medstore.kinoteka.pl/image001(1).jpg")
   }
 
+  // Recorded 2026-10-06 from https://kinoteka.pl/film/audiencja-kinoteka-kultury-i-sztuki/ — an NT Live
+  // stage work whose og:image (like every Kinoteka page's) is the site-wide kinoteka-opengraph.png logo.
+  private val AudiencjaUrl = "https://kinoteka.pl/film/audiencja-kinoteka-kultury-i-sztuki/"
+  private lazy val audiencjaHtml =
+    clients.tools.FixtureFile.read("test/resources/fixtures/kinoteka/kinoteka.pl/film/audiencja-kinoteka-kultury-i-sztuki")
+
+  it should "read every identity field off the labelled details block, age rating included" in {
+    val d = client.fetchFilmDetail(AudiencjaUrl).getOrElse(fail("no detail for the Audiencja fixture"))
+    d.originalTitle  shouldBe Some("The Audience")
+    d.director       shouldBe Seq("Stephen Daldry")
+    d.cast           shouldBe Seq("Helen Mirren", "Paul Ritter", "Haydn Gwynne")
+    d.countries      shouldBe Seq("Wielka Brytania")
+    d.runtimeMinutes shouldBe Some(180)
+    d.ageRating      shouldBe Some("16+")
+    d.synopsis.getOrElse("") should include ("Helen Mirren")
+    d.posterUrl.getOrElse("") should include ("/kinoteka-responsive/")
+  }
+
+  // The site-wide og:image is the Kinoteka logo: a film page whose hero poster is missing has NO
+  // poster, never the logo — a wrong poster misleads the identity's poster vote and veto.
+  it should "never fall back to the site-wide og:image logo when the hero poster is missing" in {
+    val document = org.jsoup.Jsoup.parse(audiencjaHtml)
+    document.select(".p-movie-details__hero-poster").remove()
+    KinotekaClient.parseDetail(document.outerHtml).poster shouldBe None
+  }
+
   it should "read the cast list and the YouTube trailer off the detail page" in {
     val d = detailFor("Zawodowcy")
     d.cast       shouldBe Seq("Henry Cavill", "Rosamund Pike", "Jake Gyllenhaal")

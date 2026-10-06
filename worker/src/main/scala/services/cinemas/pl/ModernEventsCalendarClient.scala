@@ -212,7 +212,7 @@ object ModernEventsCalendarClient {
       releaseYear    = production.flatMap(_._2),
       countries      = production.toSeq.flatMap(_._1),
       genres         = field("gatunek").toSeq.flatMap(listOf),
-      posterUrl      = meta(document, "og:image"),
+      posterUrl      = ScraperParse.ogImage(document),
       trailerUrl     = body.flatMap(trailerIn)
     )
   }

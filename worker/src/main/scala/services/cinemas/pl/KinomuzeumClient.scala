@@ -143,7 +143,7 @@ object KinomuzeumClient {
       synopsis  = Option(document.selectFirst("div.block-element.text .description")).map(ScraperParse.blockText(_).trim)
                     .orElse(Option(document.selectFirst("meta[property=og:description]")).map(_.attr("content").trim))
                     .filter(_.length > 20),
-      poster    = Option(document.selectFirst("meta[property=og:image]")).map(_.attr("content")).filter(_.nonEmpty)
+      poster    = ScraperParse.ogImage(document)
     )
   }
 }

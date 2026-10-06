@@ -184,8 +184,7 @@ object Bilety24OrganizerClient {
   private[cinemas] def parseDetail(document: Document): FilmDetail = {
     val synopsis = Option(document.selectFirst("div.description"))
       .map(ScraperParse.cleanSynopsis(_, "a", "p", "em")).filter(_.length > 20)
-    val poster = Option(document.selectFirst("meta[property=og:image]"))
-      .map(_.attr("content")).filter(_.nonEmpty)
+    val poster = ScraperParse.ogImage(document)
     FilmDetail(synopsis = synopsis, posterUrl = poster)
   }
 }
