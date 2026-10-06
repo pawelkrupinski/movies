@@ -54,8 +54,11 @@ object UnifiedEvidence {
    *  `family.facts`: a film database's family takes the film AND the venue's own year and director credit it
    *  (`listing.facts`) — two independent sources naming one film, where either alone is a weak signal: a single family's
    *  take as a fill adds wrong films (§20.6), and a venue's facts alone name no film (PL "11. UFF - Dowżenko. Pierwsze
-   *  spojrzenie": Wikidata takes Konovalov's 2026 film, the festival dates and credits it; docs/design/identity-resolver.md §20.12). */
-  val PinnedSignals: Seq[String] = Seq("families.current", "family.facts")
+   *  spojrzenie": Wikidata takes Konovalov's 2026 film, the festival dates and credits it; docs/design/identity-resolver.md §20.12).
+   *  `cast.venue`: the venue's own synopsis and cast field name two whole names of the film's top-billed TMDB cast, and
+   *  none of any other candidate's ([[CastEvidence]]; its value, how many) — PL Kino CK Lublin's "Lalka" names
+   *  Dorociński, Urzędowska and Kondrat of Kawalski's 2026 film. */
+  val PinnedSignals: Seq[String] = Seq("families.current", "family.facts", "cast.venue")
 
   /** The NON-COMPENSATORY guards: a contender one of these fires on is no film to take, whatever else speaks for it — the
    *  agreement stage's vetoes (several works billed, a stage work, another film's own title, the
@@ -89,13 +92,14 @@ object UnifiedEvidence {
    *  (empty where none), the TMDB film an IMDb id finds, and the year it is now. */
   final case class ClusterEvidence(listings: Seq[Listing], decision: ResolverDecision, nodes: Seq[IdentityResolver.NodeEvidence],
                                    verdicts: Seq[FamilyVerdict], posters: Seq[Map[Int, Option[Int]]], tmdbOf: String => Option[Int],
-                                   thisYear: Int, stated: Seq[Listing] = Nil, measured: Option[Listing => IdentityMeasures.Listing] = None)
+                                   thisYear: Int, stated: Seq[Listing] = Nil, measured: Option[Listing => IdentityMeasures.Listing] = None,
+                                   venueNames: VenueNames = VenueNames.None, cast: Int => Option[Seq[String]] = _ => None)
 
   /** One film the evidence reaches: `tmdb:<id>` or, a film only other databases hold, `imdb:<tt>`; its title, each family
-   *  that took it with its own id of it (`"rt" -> "dune_2021"`, an id only, never read as evidence), and every signal that
-   *  is not 0. */
+   *  that took it with its own id of it (`"rt" -> "dune_2021"`, an id only, never read as evidence), every signal that
+   *  is not 0, and the names of its cast the venue's own text names (`cast.venue`'s). */
   final case class Contender(film: String, tmdb: Option[Int], imdb: Option[String], title: String, familyIds: Map[String, String],
-                             signals: Map[String, Double])
+                             signals: Map[String, Double], castNamed: Seq[String] = Nil)
 
   private final class Building(val tmdb: Option[Int], val imdb: Option[String], val record: SourceRecord) {
     val records = scala.collection.mutable.ArrayBuffer(record)
@@ -150,6 +154,13 @@ object UnifiedEvidence {
     val venues      = c.listings.map(_.venue).distinct.size
     val stageWork   = c.listings.exists(Agreement.stagesAWork)
     val traced      = c.decision.trace.nodes.values.toSeq
+    // [[PinnedSignals]]' cast.venue: the one contender the venue's own text names two of the top-billed cast of, the cast
+    // of no other contender — nor of a candidate the model denied — named at all ([[CastEvidence]]); a contender no TMDB
+    // record holds has no cast known, and leaves it unread
+    val castTake = if (c.venueNames.isEmpty) None else {
+      val denied = scored.keys.filterNot(id => eligible.exists(_._1 == id)).toSeq.sorted.map(id => Option.empty[Building] -> c.cast(id))
+      CastEvidence.take(c.venueNames, built.toSeq.map(b => Option(b) -> b.tmdb.flatMap(c.cast)) ++ denied).collect { case (Some(b), named) => b -> named }
+    }
     // each candidate's titles as runs of the billing, found once for every contender's `title.anothersOwn`
     lazy val candidateSpans = built.toSeq.map(b => Agreement.billedSpans(c.listings, b.records.toSeq.map(_.film)))
     built.toSeq.map { contender =>
@@ -209,17 +220,20 @@ object UnifiedEvidence {
       val databaseTook    = VoterFamily.values.exists(f => f.namesFilms && took(f))
       val familiesCurrent = takers >= 2 && databaseTook && records.flatMap(_.film.year).maxOption.exists(_ >= c.thisYear - 1)
       val familyFacts     = databaseTook && votes(Agreement.ListingFacts)
+      val castNamed       = castTake.collect { case (b, named) if b eq contender => named }.getOrElse(Nil)
       val counts = Seq("count.takers" -> takers, "count.leaning" -> leaning, "count.takersLessDissent" -> math.max(0.0, takers - dissent),
         "count.takers2" -> (if (takers >= 2) 1.0 else 0.0), "count.takers3" -> (if (takers >= 3) 1.0 else 0.0),
         "and.takersNoDissent" -> and(dissent == 0), "and.factsTakers" -> and(votes(Agreement.ListingFacts)),
         "and.posterTakers" -> and(nearest.exists(_ <= PosterEvidence.VoteBits)),
         "and.leanTakers" -> and(contender.tmdb.exists(id => c.decision.leaning.exists(_.film == id))),
-        "families.current" -> (if (familiesCurrent) 1.0 else 0.0), "family.facts" -> (if (familyFacts) 1.0 else 0.0)).filter(_._2 != 0.0)
+        "families.current" -> (if (familiesCurrent) 1.0 else 0.0), "family.facts" -> (if (familyFacts) 1.0 else 0.0),
+        "cast.venue" -> castNamed.size.toDouble).filter(_._2 != 0.0)
       val signals = counts.toMap ++ flags.collect { case (name, true) => name -> 1.0 }.toMap ++
         open.map(_.probability).maxOption.map(p => "model.logit" -> logit(p)).filter(_._2 != 0.0) ++
         Seq("family.turnedDown" -> turnedDown.toDouble, "family.dissent" -> dissent.toDouble).filter(_._2 != 0.0)
       val film  = contender.record.film
-      Contender(contender.film, contender.tmdb, contender.imdb, s"${film.title}${film.year.fold("")(y => s" ($y)")}", contender.ids.toMap, signals)
+      Contender(contender.film, contender.tmdb, contender.imdb, s"${film.title}${film.year.fold("")(y => s" ($y)")}", contender.ids.toMap, signals,
+        castNamed)
     }.sortBy(_.film)
   }
 }
@@ -302,7 +316,8 @@ final case class UnifiedRules(version: String, guards: Seq[String], fill: Seq[St
   /** A fill as its decision explains it: the rule, the guards it passed, and every signal firing on the film. */
   def explain(contender: UnifiedEvidence.Contender, rule: String): String =
     s"filled by $rule: '${contender.title}' ${contender.film} — guards passed: ${guards.mkString(", ")}; signals: " +
-      contender.signals.toSeq.sortBy(_._1).map { case (name, x) => if (x == 1.0) name else f"$name=$x%.2f" }.mkString(", ")
+      contender.signals.toSeq.sortBy(_._1).map { case (name, x) => if (x == 1.0) name else f"$name=$x%.2f" }.mkString(", ") +
+      (if (contender.castNamed.isEmpty) "" else s"; the venue's own text names its cast ${contender.castNamed.mkString(", ")}")
 }
 
 object UnifiedRules {

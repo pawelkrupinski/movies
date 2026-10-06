@@ -107,6 +107,55 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     decided(credited, shipped.copy(pinned = shipped.pinned.filterNot(_ == "family.facts"))).basis shouldBe ResolverDecision.Basis.BelowThreshold
   }
 
+  it should "take, by the pinned cast.venue rule, the one candidate two of whose top-billed cast the venue's own text names" in {
+    // PL Kino CK Lublin "Lalka" (fixture identity-unmatched; its own page, ck-lublin.bilety24.pl/wydarzenie/?id=162455): the
+    // model weighs Kawalski's 2026 film and Has's 1968 one alike; the page names Dorociński, Urzędowska and Kondrat
+    import services.identity.{CandidateQuery, DetailFacts, Hit, IdentityLookups, Listing, VenueNames}
+    val ckLublin = "Miłość, która nie zna granic i ambicja, która nie zna ceny. „Lalka” powraca jako wielka filmowa opowieść. " +
+      "Marcin Dorociński, Kamila Urzędowska i Marek Kondrat spotykają się na wielkim ekranie w ekranizacji powieści Bolesława Prusa."
+    val records = Map(
+      1321666 -> IdentityMeasures.Film("Lalka", Some("Lalka"), Seq("The Doll"), Some(2026), Some(151), Some(Seq("Maciej Kawalski")), None, None),
+      81315   -> IdentityMeasures.Film("Lalka", Some("Lalka"), Seq("The Doll"), Some(1968), Some(159), Some(Seq("Wojciech Has")), None, None))
+    val casts = Map(
+      1321666 -> Seq("Marcin Dorociński", "Kamila Urzędowska", "Marek Kondrat", "Andrzej Seweryn", "Krystyna Janda", "Maria Dębska"),
+      81315   -> Seq("Mariusz Dmochowski", "Beata Tyszkiewicz", "Tadeusz Fijewski", "Kalina Jędrusik", "Tadeusz Kondrat"))
+    def tmdb(page: Option[String], castOf: Int => Option[Seq[String]]) = new IdentityLookups {
+      def hasDetail(listing: Listing): Boolean = page.isDefined
+      def detail(listing: Listing) = Answer.Known(page.map(text => DetailFacts(None, Nil, None, None, synopsis = Some(text))))
+      def candidates(query: CandidateQuery) = query match {
+        case CandidateQuery.Title(title) if title.equalsIgnoreCase("Lalka") =>
+          Answer.Known(Seq(Hit(1321666, "Lalka", Some("Lalka"), Some(2026), 20.0), Hit(81315, "Lalka", Some("Lalka"), Some(1968), 3.0)))
+        case _ => Answer.Known(Nil)
+      }
+      def film(tmdbId: Int) = Answer.Known(records.get(tmdbId))
+      override def cast(tmdbId: Int) = Answer.Known(castOf(tmdbId))
+    }
+    val families = Seq(VoterFamily.Imdb, VoterFamily.Wiki).map(family => family -> new HeldFamilyAnswers(family, Map.empty)).toMap
+    def decided(one: Listing, lookups: IdentityLookups, rules: services.identity.UnifiedRules = services.identity.UnifiedRules.resolver) = {
+      val model = Resolution(Seq(ResolverDecision(Seq(one.key), None, 0.3, ResolverDecision.Basis.BelowThreshold, Nil)()), 1, Map(one.key -> 0),
+        Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+      new AgreementStage(families, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+        clock = _root_.tools.SpecClock.Pinned, tmdb = Some(lookups), rules = rules).apply(model, Map(one.key -> one).get, version = 1).decisions.head
+    }
+    val bare   = listing(KinoMuza, "Lalka")
+    val stated = bare.copy(names = VenueNames.of(Seq(ckLublin)))
+    val known  = tmdb(None, casts.get)
+    val taken  = decided(stated, known)
+    (taken.basis, taken.film) shouldBe ((ResolverDecision.Basis.Filled, Some(1321666)))
+    taken.explanation.last should (startWith ("filled by cast.venue: 'Lalka (2026)' tmdb:1321666") and
+      endWith ("the venue's own text names its cast Marcin Dorociński, Kamila Urzędowska, Marek Kondrat"))
+    // the venue's detail page names them as well as its listing does
+    decided(bare, tmdb(Some(ckLublin), casts.get)).film shouldBe Some(1321666)
+    // no text, one name, a rival's cast not known, a feed catalogue's text, the rule unpinned: nothing taken
+    decided(bare, known).basis shouldBe ResolverDecision.Basis.BelowThreshold
+    decided(bare.copy(names = VenueNames.of(Seq("Gra Marcin Dorociński."))), known).basis shouldBe ResolverDecision.Basis.BelowThreshold
+    decided(stated, tmdb(None, id => casts.get(id).filter(_ => id == 1321666))).basis shouldBe ResolverDecision.Basis.BelowThreshold
+    decided(stated.copy(catalogueIds = Seq(services.identity.CatalogueId("webedia", "1"))), tmdb(Some(ckLublin), casts.get)).basis shouldBe
+      ResolverDecision.Basis.BelowThreshold
+    val shipped = services.identity.UnifiedRules.resolver
+    decided(stated, known, shipped.copy(pinned = shipped.pinned.filterNot(_ == "cast.venue"))).basis shouldBe ResolverDecision.Basis.BelowThreshold
+  }
+
   "an unmatched cluster its families agree on" should "take the TMDB film the agreed IMDb id finds, and name the families" in {
     val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = imdb => Answer.Known(Option.when(imdb == "tt16315948")(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)

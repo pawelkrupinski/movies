@@ -227,6 +227,12 @@ class TmdbClient(
       .map(url => bodies.parse(orEmptyWhenUnknown(httpGet(url, auth))))).map(_._1)
   }
 
+  /** The film's top-billed cast off its localized record ([[fullDetails]]' request, as [[identityRecord]] reads it): what
+   *  the identity store files of it, and the cast evidence reads (`services.identity.CastEvidence`). */
+  def identityCast(tmdbId: Int): Option[Seq[String]] = authHeader.flatMap { auth =>
+    services.identity.TmdbFilmRecord.cast(Seq(bodies.parse(orEmptyWhenUnknown(httpGet(fullDetailsUrl(tmdbId), auth)))))
+  }
+
   /** Asks TMDB for the film's localized record again ([[fullDetails]]' request, no poster call): what the identity
    *  store files as the record's localized response — a record filed with only its release year gains its day
    *  (`services.identity.agreement.AgreementStage.wantedRecords`). A 404 is TMDB's answer; any other failure THROWS. */

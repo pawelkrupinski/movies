@@ -41,7 +41,12 @@ final case class Listing(
   /** The days the venue screens it. OUTSIDE the listing's equality and hash, as the poster is: a venue adding a
    *  showtime re-resolves nothing. Only the season they place a stage relay in ([[broadcastSeason]]) is the model's;
    *  the days themselves are read after it, by the broadcast take ([[agreement.Broadcast]]). */
-  screenings:    ScreeningDays = ScreeningDays.None
+  screenings:    ScreeningDays = ScreeningDays.None,
+  /** The people the venue's own synopsis and cast field name ([[VenueNames]]): what the cast evidence reads
+   *  ([[CastEvidence]]) — none for a listing whose facts a feed catalogue states ([[factsFromCatalogue]]), whose text
+   *  describes the catalogue's entry. OUTSIDE the listing's equality and hash, as the poster is: the model never reads
+   *  it, only the agreement stage's fill after it. */
+  names:         VenueNames = VenueNames.None
 ) {
   def venue: String = key.venue
 
@@ -167,7 +172,13 @@ object Listing {
     catalogueIds  = CatalogueId.of(cm),
     searchTitle   = Some(normalizer.apiQuery(cm.movie.title).trim).filter(q => q.nonEmpty && q != cm.movie.title.trim),
     poster        = cm.posterUrl.map(_.trim).filter(_.nonEmpty),
-    screenings    = ScreeningDays.of(cm.showtimes.map(_.dateTime.toLocalDate)))
+    screenings    = ScreeningDays.of(cm.showtimes.map(_.dateTime.toLocalDate)),
+    names         = venueNames(cm))
+
+  /** What `cm`'s own synopsis and cast field name — none where a feed copied them from its catalogue entry. */
+  private def venueNames(cm: CinemaMovie): VenueNames =
+    if ((cm.synopsis.isEmpty && cm.cast.isEmpty) || CatalogueSources.feedStated(CatalogueId.of(cm), cm.filmUrl.map(_.trim))) VenueNames.None
+    else VenueNames.of(cm.synopsis, cm.cast)
 
   /** The people one director credit names — the listing's own, or its detail page's: PL venues join two in one ("Arash T. Riahi & Verena Soltiz", "Joel Crawford
    *  i Januel Mercado", "Natasha Merkulova, Aleksey Chupov"), which searched as one person found no film. Split only
@@ -212,9 +223,14 @@ object Listing {
   def distinct(listings: Seq[Listing]): Seq[Listing] = listings.sorted.distinctBy(_.key)
 }
 
-/** What a venue's own detail page adds to its listing: only the identity fields. */
+/** What a venue's own detail page adds to its listing: the identity fields the model reads, and the page's synopsis and
+ *  cast, which only the cast evidence reads ([[names]]) — the page's own strings, as the venue page index holds them,
+ *  never copied. */
 final case class DetailFacts(year: Option[Int], directors: Seq[String], runtime: Option[Int], originalTitle: Option[String],
-                             countries: Seq[String] = Nil)
+                             countries: Seq[String] = Nil, synopsis: Option[String] = None, cast: Seq[String] = Nil) {
+  /** The people the page's synopsis and cast name: worked out when the cast evidence asks, never held. */
+  def names: VenueNames = if (synopsis.isEmpty && cast.isEmpty) VenueNames.None else VenueNames.of(synopsis, cast)
+}
 
 /** A listing's evidence once its own detail page is merged in — listing values win, the page
  *  fills gaps. VENUE-FREE on purpose: two venues publishing the same evidence are asking the same
@@ -376,4 +392,9 @@ trait IdentityLookups {
     case Answer.Known(record) => Answer.Known(record.flatMap(_.released))
     case Answer.Unknown       => Answer.Unknown
   }
+  /** A film's top-billed cast as TMDB credits it ([[TmdbFilmRecord.cast]]): what the cast evidence reads
+   *  ([[CastEvidence]]), never the model. Read apart from its record ([[film]]), as the release day is: every candidate
+   *  of every family holds a record, and only an unmatched cluster's fill reads a cast. `Known(None)` where the source
+   *  does not know it — a record filed before records kept the cast — which the evidence reads as nothing to go on. */
+  def cast(tmdbId: Int): Answer[Option[Seq[String]]] = Answer.Known(None)
 }

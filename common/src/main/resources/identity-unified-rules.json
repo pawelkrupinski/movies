@@ -28,7 +28,10 @@
     "pinned.count.takers2&venues.current.wrong" : 0,
     "pinned.model.lean&count.leaning&title.namesIt.gainedListings" : 2,
     "pinned.model.lean&count.leaning&title.namesIt.gainedFilms" : 2,
-    "pinned.model.lean&count.leaning&title.namesIt.wrong" : 0
+    "pinned.model.lean&count.leaning&title.namesIt.wrong" : 0,
+    "pinned.cast.venue.gainedListings" : 0,
+    "pinned.cast.venue.gainedFilms" : 0,
+    "pinned.cast.venue.wrong" : 0
   },
-  "pinned" : [ "families.current", "family.filmweb.took&!model.unscored", "family.facts", "and.leanTakers&!family.dissent", "count.takers2&venues.current", "model.lean&count.leaning&title.namesIt" ]
+  "pinned" : [ "families.current", "family.filmweb.took&!model.unscored", "family.facts", "and.leanTakers&!family.dissent", "count.takers2&venues.current", "model.lean&count.leaning&title.namesIt", "cast.venue" ]
 }

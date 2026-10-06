@@ -336,6 +336,26 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     TmdbFilmRecord.parse(Seq(play.api.libs.json.Json.parse(s"""{"id":$film,"title":"Obcy w domu","credits":{"crew":[]}}"""))).get._1.releasedIn("PL") shouldBe None
   }
 
+  // The cast evidence (`CastEvidence`) reads a candidate's top-billed cast: the store keeps its names, in billing order,
+  // off the localized response it already files — and a response filed before it did knows none, rather than "no cast".
+  "a film's record filed from its localized response" should "keep its top-billed cast, and know none where it was filed without" in {
+    val w    = new World
+    val film = 56669   // "Obcy w domu" (1989): 24 credited, Gary Busey billed first
+    val recorded = scala.io.Source.fromResource("fixtures/tmdb/movie-56669-credits-pl.json")(using scala.io.Codec.UTF8).mkString
+    val filed = minimalOf(recorded)
+    w.store.filmPartial(film, TmdbStore.Partial.Local, filed)
+    w.store.filmPartial(film, TmdbStore.Partial.English, minimalOf(s"""{"id":$film,"title":"Hider in the House","release_date":"1989-05-13","alternative_titles":{"titles":[]}}"""))
+    w.lookups.cast(film) shouldBe Answer.Known(Some(Seq("Gary Busey", "Mimi Rogers", "Michael McKean", "Candace Hutson", "Kurt Christopher Kinder",
+      "Elizabeth Ruscio", "Bruce Glover", "Leonard Termo", "Peter Henry Schroeder", "Chuck Lafont")))
+    // names only: the store files no character, profile or credit id of them
+    (filed \ "credits" \ "cast").as[Seq[play.api.libs.json.JsObject]].map(_.keys) should contain only Set("name")
+    // filed as the store cut it before it kept the cast: the cast is not known
+    val castless = filed.as[play.api.libs.json.JsObject] + ("credits" -> play.api.libs.json.Json.obj("crew" -> (filed \ "credits" \ "crew").get))
+    w.store.filmPartial(film, TmdbStore.Partial.Local, castless)
+    w.lookups.cast(film) shouldBe Answer.Known(None)
+    w.lookups.cast(film + 1) shouldBe Answer.Unknown
+  }
+
   /** `docs`, with `onGet` run before each whole-document read — the read every write's compare makes. */
   private def readingThrough(docs: TmdbDocuments)(onGet: TmdbKind => Unit): TmdbDocuments = new TmdbDocuments {
     def get(kind: TmdbKind, ids: Seq[String]) = { onGet(kind); docs.get(kind, ids) }

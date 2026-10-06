@@ -125,6 +125,18 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
     case Answer.Unknown       => Answer.Unknown
   }
 
+  /** The film's top-billed cast, off its localized response's `credits` block as the store filed it — read from the
+   *  whole document (an answer reads no partial), never kept on the record ([[IdentityLookups.cast]]): `Known(None)` for a
+   *  response filed before the store kept the cast, and `Unknown` while the store holds no document of the film. Read
+   *  only by the agreement stage's fill, for an unmatched cluster's candidates. */
+  override def cast(tmdbId: Int): Answer[Option[Seq[String]]] =
+    if (FallbackIds.isFallback(tmdbId)) Answer.Known(None)
+    else store.get(TmdbKind.Film, Seq(tmdbId.toString)).get(tmdbId.toString) match {
+      case Some(d) => Answer.Known(Option(d.get(TmdbStore.Partial.Local.field)).filter(_.isDocument)
+        .flatMap(local => TmdbFilmRecord.cast(Seq(TmdbStore.jsonOf(local)))))
+      case None    => Answer.Unknown
+    }
+
   /** `film` with the IMDb number its responses name: a record filed before the record carried one holds none, while
    *  the responses it was parsed from ([[TmdbStore.Partial]]) still hold TMDB's `imdb_id`. */
   private def withImdbNumber(film: IdentityMeasures.Film, d: BsonDocument): IdentityMeasures.Film =

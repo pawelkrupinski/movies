@@ -42,4 +42,8 @@ final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups) e
     case Answer.Unknown => live.film(tmdbId)
     case known          => known
   }
+  override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = stored.cast(tmdbId) match {
+    case Answer.Unknown => live.cast(tmdbId)
+    case known          => known
+  }
 }

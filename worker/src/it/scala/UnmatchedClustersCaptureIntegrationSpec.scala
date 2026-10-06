@@ -99,7 +99,7 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
       }
       val filed = docs.get(TmdbKind.Family, docs.fetchedBefore(TmdbKind.Family, Long.MaxValue).map(_._1))
       val capture = UnmatchedClusters.Capture(c.country, subset, decisions, recording.queries.asScala.toMap, recording.films.asScala.toMap,
-        recording.details.asScala.toMap, recording.withDetail.asScala.toSet, filed, finds.asScala.toMap)
+        recording.details.asScala.toMap, recording.withDetail.asScala.toSet, filed, finds.asScala.toMap, recording.casts.asScala.toMap)
       val written = configuration.identityUnmatchedCapture.get.value.resolve(s"${c.country.code}.json.gz")
       UnmatchedClusters.write(written, capture)
 

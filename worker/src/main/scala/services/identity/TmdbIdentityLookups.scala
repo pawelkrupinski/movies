@@ -72,6 +72,9 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: S
   override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
     if (FallbackIds.isFallback(tmdbId)) FallbackIds.imdbId(tmdbId).fold[Answer[Option[IdentityMeasures.Film]]](Answer.Known(None))(tt => answered(imdb.identityRecord(tt)))
     else answered(tmdb.identityRecord(tmdbId))
+
+  override def cast(tmdbId: Int): Answer[Option[Seq[String]]] =
+    if (FallbackIds.isFallback(tmdbId)) Answer.Known(None) else answered(tmdb.identityCast(tmdbId))
 }
 
 object TmdbIdentityLookups {
@@ -126,7 +129,7 @@ final class VenueDetails(enrichers: Seq[DetailEnricher], gaps: TmdbIdentityLooku
   def detail(listing: Listing): Answer[Option[DetailFacts]] =
     (listing.page, enricherOf.get(listing.cinema)) match {
       case (Some(page), Some(e)) => gaps.answered(e.fetchFilmDetail(page).map(d =>
-        DetailFacts(d.releaseYear, d.director.map(_.trim).filter(_.nonEmpty), d.runtimeMinutes, d.originalTitle, d.countries)))
+        DetailFacts(d.releaseYear, d.director.map(_.trim).filter(_.nonEmpty), d.runtimeMinutes, d.originalTitle, d.countries, d.synopsis, d.cast)))
       case _                     => Answer.Known(None)
     }
 }

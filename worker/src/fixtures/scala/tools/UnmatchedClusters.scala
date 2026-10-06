@@ -38,7 +38,10 @@ object UnmatchedClusters {
    *  the Royal Opera's record of the same opera). */
   final case class Capture(country: Country, listings: Seq[Listing], decisions: Seq[ResolverDecision], queries: Map[CandidateQuery, Seq[Hit]],
                            films: Map[Int, Option[IdentityMeasures.Film]], details: Map[String, Option[DetailFacts]],
-                           withDetail: Set[String], families: Map[String, BsonDocument], finds: Map[String, Option[Int]])
+                           withDetail: Set[String], families: Map[String, BsonDocument], finds: Map[String, Option[Int]],
+                           /** Each candidate's top-billed cast the fill read ([[IdentityLookups.cast]]): none in a capture
+                            *  recorded before the cast evidence, whose replay knows no cast. */
+                           casts: Map[Int, Option[Seq[String]]] = Map.empty)
 
   // ── what the agreement makes of the clusters ─────────────────────────────────────────────
 
@@ -151,6 +154,7 @@ object UnmatchedClusters {
     val films      = new ConcurrentHashMap[Int, Option[IdentityMeasures.Film]]()
     val details    = new ConcurrentHashMap[String, Option[DetailFacts]]()
     val withDetail = ConcurrentHashMap.newKeySet[String]()
+    val casts      = new ConcurrentHashMap[Int, Option[Seq[String]]]()
     override def hasDetail(listing: Listing): Boolean = {
       val has = inner.hasDetail(listing)
       if (has) withDetail.add(ListingKey.serialised(listing.key))
@@ -161,6 +165,7 @@ object UnmatchedClusters {
     override def detail(listing: Listing): Answer[Option[DetailFacts]] = noted(inner.detail(listing))(details.put(ListingKey.serialised(listing.key), _))
     override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = noted(inner.candidates(query))(queries.put(query, _))
     override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = noted(inner.film(tmdbId))(films.put(tmdbId, _))
+    override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = noted(inner.cast(tmdbId))(casts.put(tmdbId, _))
     private def noted[A](answer: Answer[A])(keep: A => Any): Answer[A] = { answer.toOption.foreach(keep); answer }
   }
 
@@ -175,6 +180,8 @@ object UnmatchedClusters {
     override def detail(listing: Listing): Answer[Option[DetailFacts]] = known(capture.details.get(ListingKey.serialised(listing.key)))(())
     override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = known(capture.queries.get(query))(queries.add(query))
     override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = known(capture.films.get(tmdbId))(films.add(tmdbId))
+    // a cast the capture did not record is not known — what the cast evidence reads as nothing to go on, never a gap
+    override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = Answer.Known(capture.casts.get(tmdbId).flatten)
     private def known[A](held: Option[A])(missing: => Any): Answer[A] = held.fold[Answer[A]] { missing; Answer.Unknown }(Answer.Known(_))
   }
 
@@ -190,6 +197,7 @@ object UnmatchedClusters {
       .append("withDetail", array(capture.withDetail.toSeq.sorted.map(new BsonString(_))))
       .append("families", array(capture.families.toSeq.sortBy(_._1).map { case (id, doc) => new BsonDocument("_id", new BsonString(id)).append("doc", doc) }))
       .append("finds", array(capture.finds.toSeq.sortBy(_._1).map { case (imdb, tmdb) => new BsonDocument("imdb", new BsonString(imdb)).append("tmdb", tmdb.fold[BsonValue](new BsonNull)(new BsonInt32(_))) }))
+      .append("casts", array(capture.casts.toSeq.sortBy(_._1).map { case (id, cast) => new BsonDocument("id", new BsonInt32(id)).append("cast", cast.fold[BsonValue](new BsonNull)(strings)) }))
     Files.createDirectories(path.getParent)
     val out = new GZIPOutputStream(Files.newOutputStream(path))
     try out.write(d.toJson(JsonWriterSettings.builder().outputMode(JsonMode.RELAXED).build()).getBytes(StandardCharsets.UTF_8)) finally out.close()
@@ -208,7 +216,8 @@ object UnmatchedClusters {
       docs("details").map(x => x.getString("key").getValue -> Option(x.get("detail")).filterNot(_.isNull).map(v => detailOf(v.asDocument))).toMap,
       d.getArray("withDetail").getValues.asScala.map(_.asString.getValue).toSet,
       docs("families").map(f => f.getString("_id").getValue -> f.getDocument("doc")).toMap,
-      docs("finds").map(f => f.getString("imdb").getValue -> Option(f.get("tmdb")).filterNot(_.isNull).map(_.asNumber.intValue)).toMap)
+      docs("finds").map(f => f.getString("imdb").getValue -> Option(f.get("tmdb")).filterNot(_.isNull).map(_.asNumber.intValue)).toMap,
+      (if (d.containsKey("casts")) docs("casts") else Nil).map(f => f.getInt32("id").getValue -> Option(f.get("cast")).filterNot(_.isNull).map(_ => stringsOf(f, "cast"))).toMap)
   }
 
   private def array(values: Seq[BsonValue]): BsonArray = new BsonArray(values.asJava)
@@ -227,6 +236,7 @@ object UnmatchedClusters {
       .append("catalogueIds", array(l.catalogueIds.map(c => new BsonDocument("source", new BsonString(c.source)).append("id", new BsonString(c.id)))))
     putInt(d, "year", l.year); putInt(d, "runtime", l.runtime); put(d, "page", l.page); put(d, "originalTitle", l.originalTitle)
     if (!l.screenings.isEmpty) d.append("screenings", strings(l.screenings.days.map(_.toString)))
+    if (!l.names.isEmpty) d.append("names", array(l.names.hashes.map(new BsonInt32(_))))
     put(d, "searchTitle", l.searchTitle); put(d, "poster", l.poster)
   }
   private def listingOf(d: BsonDocument): Listing = {
@@ -236,7 +246,8 @@ object UnmatchedClusters {
       d.getString("title").getValue, d.getString("cleanTitle").getValue, optInt(d, "year"), stringsOf(d, "directors"), optInt(d, "runtime"),
       opt(d, "page"), opt(d, "originalTitle"), stringsOf(d, "countries"),
       d.getArray("catalogueIds").getValues.asScala.toSeq.map(_.asDocument).map(c => CatalogueId(c.getString("source").getValue, c.getString("id").getValue)),
-      opt(d, "searchTitle"), opt(d, "poster"), ScreeningDays.of(stringsOf(d, "screenings").map(java.time.LocalDate.parse)))
+      opt(d, "searchTitle"), opt(d, "poster"), ScreeningDays.of(stringsOf(d, "screenings").map(java.time.LocalDate.parse)),
+      VenueNames.ofHashes(Option(d.get("names")).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asNumber.intValue))))
   }
   private def queryDoc(q: CandidateQuery): BsonDocument = q match {
     case CandidateQuery.Title(text)       => new BsonDocument("title", new BsonString(text))
@@ -256,8 +267,10 @@ object UnmatchedClusters {
     Hit(d.getInt32("id").getValue, d.getString("title").getValue, opt(d, "originalTitle"), optInt(d, "year"), d.getNumber("popularity").doubleValue)
   private def detailDoc(f: DetailFacts): BsonDocument = {
     val d = new BsonDocument("directors", strings(f.directors)).append("countries", strings(f.countries))
-    putInt(d, "year", f.year); putInt(d, "runtime", f.runtime); put(d, "originalTitle", f.originalTitle)
+    if (f.cast.nonEmpty) d.append("cast", strings(f.cast))
+    putInt(d, "year", f.year); putInt(d, "runtime", f.runtime); put(d, "originalTitle", f.originalTitle); put(d, "synopsis", f.synopsis)
   }
   private def detailOf(d: BsonDocument): DetailFacts =
-    DetailFacts(optInt(d, "year"), stringsOf(d, "directors"), optInt(d, "runtime"), opt(d, "originalTitle"), stringsOf(d, "countries"))
+    DetailFacts(optInt(d, "year"), stringsOf(d, "directors"), optInt(d, "runtime"), opt(d, "originalTitle"), stringsOf(d, "countries"),
+      opt(d, "synopsis"), stringsOf(d, "cast"))
 }

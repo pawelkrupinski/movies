@@ -197,7 +197,7 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
     reads.asking(ObservationReads.Question.Detail(listing.key))(lookups.detail(listing)) shouldBe Answer.Unknown
     world.store(Group, Page, VenuePage.Read(Full)); world.index.settle()
     reads.asking(ObservationReads.Question.Detail(listing.key))(lookups.detail(listing)) shouldBe
-      Answer.Known(Some(DetailFacts(Some(2021), Seq("Denis Villeneuve"), Some(155), Some("Dune"), Seq("US"))))
+      Answer.Known(Some(DetailFacts(Some(2021), Seq("Denis Villeneuve"), Some(155), Some("Dune"), Seq("US"), Some("Sand."))))
     reads.changedBy(Seq(VenuePageIndex.keyOf(Group, Page))).details shouldBe Set(listing.key)
   }
 }

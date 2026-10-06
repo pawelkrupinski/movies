@@ -47,6 +47,19 @@ object TmdbFilmRecord {
     }
   }
 
+  /** The film's top-billed cast, the first [[TopBilled]] names in TMDB's billing order, from the localized response's
+   *  `credits` block — `None` when no answer holds a cast: not fetched, or cut away by a store filing records before they
+   *  kept it (`TmdbNormalizer.minimal`). An empty one is TMDB crediting nobody. */
+  def cast(answers: Seq[JsValue]): Option[Seq[String]] = {
+    val docs = answers.map(js => (js \ "text").asOpt[String].flatMap(t => Try(Json.parse(t)).toOption).getOrElse(js))
+    docs.flatMap(d => (d \ "credits" \ "cast").asOpt[Seq[JsValue]]).headOption.map(cast =>
+      cast.sortBy(c => (c \ "order").asOpt[Int].getOrElse(Int.MaxValue)).flatMap(c => (c \ "name").asOpt[String]).map(_.trim).filter(_.nonEmpty)
+        .take(TopBilled))
+  }
+
+  /** How many of a film's cast count as its top-billed: as many as the offline measure read (2026-10-06). */
+  val TopBilled = 10
+
   /** The field a cut-down record (`TmdbNormalizer.minimal`) keeps of TMDB's `release_dates` block: [[releaseCountries]]. */
   val ReleaseCountries = "release_countries"
 

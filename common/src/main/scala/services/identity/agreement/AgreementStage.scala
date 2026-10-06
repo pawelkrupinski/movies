@@ -464,9 +464,10 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         ids.crossIds ++ Option.when(film.imdbNumber > 0)("imdb" -> f"tt${film.imdbNumber}%07d")))
     }
 
-  /** The listings as published, and the venue detail page the picks read of each. */
+  /** The listings as published, the people their own text names, and the venue detail page the picks read of each. */
   private def digestOf(listings: Seq[Listing]): Long =
     AgreementStage.digest(listings.map(l => l.sortKey + l.broadcastSeason.fold("")(season => s"\u0002$season") +
+      (if (l.names.isEmpty) "" else s"\u0003${l.names.##}") +
       (if (venues.hasDetail(l)) "\u0001" + venues.detail(l) else "")))
 
   /** The cluster's verdict: the stored one while its listings and every answer it read stand, else the resolver's
@@ -545,10 +546,19 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       val nodes  = IdentityResolver.evidenceOf(listings, noting, normalizer, calibration)(_ => true)
       Option.when(!noting.unknown) {
         val evidence = services.identity.UnifiedEvidence.ClusterEvidence(listings, decision, nodes, verdicts, Nil, _ => None, thisYear, stated,
-          Some(listing => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured))
+          Some(listing => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured), venueNames(listings),
+          film => lookups.cast(film).toOption.flatten)
         rules.filled(services.identity.UnifiedEvidence.contenders(evidence)).map { case (film, rule) =>
           StoredFill(rule, film.tmdb, film.imdb, rules.explain(film, rule)) }
       }.flatten
+    }
+
+  /** The people the listings' VENUES name — each listing's own synopsis and cast, and its venue's detail page's — that the
+   *  cast evidence reads ([[services.identity.CastEvidence]]): none of a listing whose facts a feed catalogue states, whose
+   *  text describes the catalogue's own entry, maybe another film than the venue's. */
+  private def venueNames(listings: Seq[Listing]): services.identity.VenueNames =
+    listings.filterNot(_.factsFromCatalogue).foldLeft(services.identity.VenueNames.None) { (named, listing) =>
+      named ++ listing.names ++ venues.detail(listing).toOption.flatten.fold(services.identity.VenueNames.None)(_.names)
     }
 
   /** The decision with the film a fill rule took — pending while TMDB was not asked about its IMDb id yet or the venue
@@ -824,6 +834,8 @@ object AgreementStage {
     override def prefetchAnswered(): Unit                        = inner.prefetchAnswered()
     def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = noted(inner.candidates(query))
     def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = noted(inner.film(tmdbId))
+    // a cast not known leaves the cast evidence unread, never the fill waiting
+    override def cast(tmdbId: Int): Answer[Option[Seq[String]]]  = inner.cast(tmdbId)
   }
 
   /* A model take's correction (Correction) is stored as its listings' digest and the `version` it was read (or last
