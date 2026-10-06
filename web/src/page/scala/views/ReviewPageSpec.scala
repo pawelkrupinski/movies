@@ -131,7 +131,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       page.evalString("document.querySelector('.filters button[aria-pressed=true]').textContent") shouldBe "To review"
       val kafka = card("FRANZ KAFKA")
       page.evalString(s"$kafka.querySelector('.tag').textContent") shouldBe "PL"
-      page.evalString(s"$kafka.querySelector('.conf').textContent") shouldBe "best 86.4%"
+      page.evalString(s"$kafka.querySelector('.conf').textContent") shouldBe "86.4%"
       // the venue's poster beside what it says, its synopsis, and its cinema linked
       // its poster URL answers nothing here, so the "no poster" placeholder takes its place
       page.waitFor(s"!!$kafka.querySelector('.listing .poster.empty')")
@@ -139,7 +139,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       page.evalString(s"$kafka.querySelector('.listing dl.facts').textContent") should (include ("Year2025") and include ("Runtime127 min") and
         include ("Catalogue idsbilety24=165208") and include ("Screenings1 · 2026-10-10 18:00"))
       page.evalString(s"$kafka.querySelector('.syn').textContent") shouldBe "Biografia Kafki."
-      page.evalString(s"$kafka.querySelector('.venues a').getAttribute('href')") shouldBe ReviewFixtures.Held.nativeId
+      page.evalString(s"$kafka.querySelector('.listing .meta a').getAttribute('href')") shouldBe ReviewFixtures.Held.nativeId
       // the film the model leaned to, with Right / Wrong; the rest of its candidates below, each with "This film"
       page.evalString(s"$kafka.querySelector('.lead .t b').textContent") shouldBe "Franz"
       page.evalString(s"$kafka.querySelector('.lead .pct').textContent") shouldBe "86.4%"
@@ -195,7 +195,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       case None => cancel("Chrome not installed — skipping /debug/review page test")
       case Some(c) => c.openPage(server.baseUrl + "/debug/review/recent?country=pl") { page =>
         val klondike = card("Klondike")
-        page.evalString(s"$klondike.querySelector('.lead .kind').textContent") shouldBe "Matched by OwnMatch"
+        page.evalString(s"$klondike.querySelector('.lead .kind').textContent") shouldBe "Matched by OwnMatch · 2026-10-06 09:00 UTC"
         page.eval(s"$klondike.querySelector('.lead button[data-verdict=right]').click()")
         page.waitFor(s"$klondike.getAttribute('data-answered') === 'right'")
         page.evalBool(s"$klondike.querySelector('.lead button[data-verdict=right]').classList.contains('on')") shouldBe true

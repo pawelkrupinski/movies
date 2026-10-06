@@ -98,16 +98,13 @@
     .conf { font-family: var(--mono); font-size: .8rem; font-variant-numeric: tabular-nums; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
     .meta { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
     .tag { font-family: var(--mono); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; margin-right: 6px; }
-    .tag.veto, .tag.basis-Vetoed { border-color: var(--bad); color: var(--bad); }
-    .tag.basis-BelowThreshold { border-color: var(--warn); color: var(--warn); }
+    .tag.veto { border-color: var(--bad); color: var(--bad); }
     details.checks { font-size: .8rem; color: var(--warn); }
     details.checks summary { cursor: pointer; }
     details.checks li { font-family: var(--mono); overflow-wrap: anywhere; }
     details.checks details.venues summary { font-size: .8rem; }
     .label-row { font-size: .85rem; color: var(--ok); overflow-wrap: anywhere; }
     .label-row.wrong { color: var(--bad); }
-    .answered { font-size: .85rem; color: var(--ok); }
-    .answered:empty { display: none; }
     .cands { display: grid; gap: 8px; }
     .listing { display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: start; min-width: 0; }
     .listing > div { min-width: 0; }
@@ -227,28 +224,22 @@
       <div class="head">
         <div class="raw"><span class="tag">@c.country.code.toUpperCase(java.util.Locale.ROOT)</span><span class="raw-title">@c.title</span></div>
         @if(c.film.isDefined) {
-          <span class="conf">match @pct(c.confidence)</span>
+          <span class="conf" title="match confidence">@pct(c.confidence)</span>
         } else {
-          @for(p <- c.best.flatMap(_.probability)){<span class="conf">best @pct(p)</span>}
+          @for(p <- c.best.flatMap(_.probability)){<span class="conf" title="best candidate">@pct(p)</span>}
         }
-      </div>
-      <div class="meta">
-        <span class="tag basis-@c.basis">@c.basis</span>@c.members.size listing(s)
-        @for(at <- card.updatedAt){ · <span title="latest movie_slots.updatedAt of a member — a proxy for the decision time">slot written @at.toString.take(16).replace("T", " ")</span>}
       </div>
       @for(l <- card.labels) {
         <div class="label-row @l.verdict">labelled @l.verdict: @l.film @if(l.venue != "*"){(@l.venue)} — @l.note</div>
       }
-      <div class="answered">@for(a <- card.answer) {answered <b>@a.verdict.label</b>@for(r <- a.ref){ @r.render} by @a.who at @a.at.toString.take(16).replace("T", " ")}</div>
-
       <div class="listing">
         @venuePoster(card.posters)
         <div>
           @if(card.members.size <= 3) {
-            <div class="meta venues">@for((m, i) <- card.members.zipWithIndex){@if(i > 0){ · }@venueLink(m)@if(m.key.rawTitle != c.title){ <span class="s">(@m.key.rawTitle)</span>}}</div>
+            <div class="meta">@for((m, i) <- card.members.zipWithIndex){@if(i > 0){ · }@venueLink(m)}</div>
           } else {
             <details class="venues"><summary>@card.members.size cinemas</summary><ul>
-              @for(m <- card.members){<li>@venueLink(m)@if(m.key.rawTitle != c.title){ <span class="s">(@m.key.rawTitle)</span>}</li>}
+              @for(m <- card.members){<li>@venueLink(m)</li>}
             </ul></details>
           }
           @if(card.venueSays.nonEmpty){@factRows(card.venueSays, "")} else {<div class="s muted">The venue gives no film details.</div>}
@@ -265,7 +256,7 @@
 
       @for(tmdb <- card.shown) {
         <div class="lead">
-          <div class="kind">@if(c.film.isDefined){Matched by @c.basis} else {The model leaned to · @c.basis}</div>
+          <div class="kind">@if(c.film.isDefined){Matched by @c.basis} else {The model leaned to · @c.basis}@for(at <- card.updatedAt){ · <span title="the latest movie_slots.updatedAt of a member: a proxy for the decision time">@at.toString.take(16).replace("T", " ") UTC</span>}</div>
           <div class="cand">@filmBody(card, tmdb, if (c.film.isDefined) None else c.best)</div>
           <div class="rb">
             <button type="button" class="btn yes right@if(isOn(card, "right")){ on}" data-verdict="right">Right film</button>
@@ -288,7 +279,6 @@
           }
         </div>
       }
-      @if(card.shown.isEmpty){<div class="s muted">No candidate.</div>}
       <div class="picked-own"@if(pickedOwn(card).isEmpty){ hidden}>Your answer: @pickedOwn(card) match {
         case Some(r) => {<a href="@r.url.getOrElse("#")" target="_blank" rel="noopener">@r.render</a>}
         case None    => {<a href="#" target="_blank" rel="noopener"></a>}

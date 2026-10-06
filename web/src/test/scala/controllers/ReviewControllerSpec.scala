@@ -50,7 +50,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "badge an unmatched card with its best candidate's probability, the no-match confidence named in the fold-out" in {
     val html = contentAsString(controller(Mode.Dev).queue(Some("pl"), 60, false)(FakeRequest()))
-    html should include("""<span class="conf">best 86.4%</span>""")
+    html should include("""<span class="conf" title="best candidate">86.4%</span>""")
     html should not include "no match 14.0%"
     html should include("<li>no-match confidence 14.0%</li>")
     // a cluster with no candidate has no probability to badge
@@ -90,7 +90,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
   "the recently matched page" should "list the clusters matched in the window, by the slot write time" in {
     val html = contentAsString(controller(Mode.Dev).recent(Some("pl"), 48, 60, false)(FakeRequest()))
     html should include("Klondike")
-    html should include("slot written 2026-10-06 09:00")
+    html should include("2026-10-06 09:00 UTC")
     contentAsString(controller(Mode.Dev).recent(Some("pl"), 0, 60, false)(FakeRequest())) should not include "Klondike"
   }
 
@@ -102,7 +102,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
       new ReviewAnswers.Index(Nil)).head.payload(ReviewPage.Queue)
     status(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "right")))) shouldBe OK
     contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest())) should not include "FRANZ KAFKA"
-    contentAsString(c.queue(Some("pl"), 60, true)(FakeRequest())) should include("answered <b>Right</b>")
+    contentAsString(c.queue(Some("pl"), 60, true)(FakeRequest())) should include("""class="btn yes right on" data-verdict="right">Right film""")
 
     val exported = contentAsJson(c.exportLabels()(FakeRequest()))
     (exported \ "added").as[Int] shouldBe 1
