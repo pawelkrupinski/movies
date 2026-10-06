@@ -3,8 +3,9 @@ package services.cinemas.common
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
+import play.api.Logging
 import services.cinemas.pl.NonMovieEventClassifier
-import tools.{HttpFetch, HttpRead}
+import tools.{HttpFetch, HttpRead, ReadOutcome}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import scala.jdk.CollectionConverters._
@@ -23,17 +24,28 @@ import scala.util.Try
  * version holding `span.kino-week-time` times. `?datum=YYYY-MM-DD` serves the 7
  * days from that date, so the whole horizon is walked a week at a time until
  * [[ScrapeHorizon.MaxEmptyWeeks]] blank weeks in a row — never a fixed window.
+ * The grid also carries each film's poster and trailer.
  *
- * The page carries no booking link, auditorium or original title; the fallback
- * serves what the page has, and TMDB enriches the rest downstream.
+ * Each film's synopsis, director, cast, year and countries live on its catalogue
+ * page (`/kinofilm/<slug>-<film id>`), fetched once per film through `filmPages` —
+ * the composition root's cross-venue detail cache, since the page is the same for
+ * every venue showing the film. Those are kinoprogramm's CATALOGUE facts, not the
+ * venue's: the venue-film page (`/kino/<town>/<venue>/<slug>-<film id>`) shows the
+ * same synopsis and poster for every venue. A catalogue page that cannot be read
+ * leaves the film with the grid's fields alone — the showtimes are what the
+ * fallback exists for.
+ *
+ * Neither page carries a booking link, auditorium or original title.
  */
 class KinoprogrammClient(
   http: HttpFetch,
   path: String,                 // the venue page's path, e.g. "/kino/hannover/kino-am-raschplatz-60676"
   override val cinema: Cinema,
   /** The day the horizon is measured from, asked per scrape — today in Germany. */
-  today: => LocalDate
-) extends CinemaScraper {
+  today: => LocalDate,
+  /** Where film catalogue pages are read — a cache shared across venues in production. */
+  filmPages: HttpFetch
+) extends CinemaScraper with Logging {
   import KinoprogrammClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
@@ -57,8 +69,21 @@ class KinoprogrammClient(
     // "CineSneak"), where Filmstarts gives the slot no film at all: it names nothing a card
     // could resolve. Only the non-film classifier's mystery markers apply — its Polish stage
     // vocabulary would drop "Die Tribute von Panem".
-    toMovies(films.result().filterNot(film => NonMovieEventClassifier.isMysteryScreening(film.title)), cinema, sourceUrl)
+    val listed = films.result().filterNot(film => NonMovieEventClassifier.isMysteryScreening(film.title))
+    toMovies(listed, cinema, sourceUrl, filmDetail)
   }
+
+  /** The film's catalogue page, parsed; an empty detail when it cannot be read. */
+  private def filmDetail(filmPath: String): FilmDetail =
+    catalogueUrl(filmPath).fold(FilmDetail()) { url =>
+      HttpRead.html(filmPages, url, FilmPageMarker)(body => ReadOutcome.Answered(parseFilmPage(body))) match {
+        case ReadOutcome.Answered(detail) => detail
+        case ReadOutcome.Absent(_)        => FilmDetail()
+        case failed: ReadOutcome.Failed   =>
+          logger.warn(s"kinoprogramm.com film page $url unreadable, serving the grid's fields alone: ${failed.explain}")
+          FilmDetail()
+      }
+    }
 
   private def weekUrl(weekStart: LocalDate): String = s"$BaseUrl$path?datum=$weekStart"
 }
@@ -74,6 +99,8 @@ object KinoprogrammClient {
     runtimeMinutes: Option[Int],
     genres:         Seq[String],
     ageRating:      Option[String],
+    posterUrl:      Option[String],
+    trailerUrl:     Option[String],
     showtimes:      Seq[Showtime]
   )
 
@@ -116,10 +143,15 @@ object KinoprogrammClient {
         genres         = parts.headOption.filterNot(p => Fsk.findFirstIn(p).isDefined || Runtime.findFirstIn(p).isDefined)
                            .toSeq.flatMap(_.split(',').map(_.trim).filter(_.nonEmpty)),
         ageRating      = Fsk.findFirstMatchIn(meta).map(m => s"FSK ${m.group(1)}").flatMap(AgeRating.normalize(_)),
+        posterUrl      = absoluteAttr(article.selectFirst(".kino-week-poster img[src]"), "src"),
+        trailerUrl     = absoluteAttr(article.selectFirst("[data-video]"), "data-video"),
         showtimes      = article.select("section[data-kino-week-day]").asScala.toSeq.flatMap(parseDay)
       )
     }
   }
+
+  private def absoluteAttr(element: Element, attr: String): Option[String] =
+    Option(element).map(_.absUrl(attr)).filter(_.nonEmpty)
 
   private def parseDay(day: Element): Seq[Showtime] =
     Try(LocalDate.parse(day.attr("data-kino-week-day"))).toOption.toSeq.flatMap { date =>
@@ -133,22 +165,64 @@ object KinoprogrammClient {
   private def parseTime(text: String): Option[LocalTime] =
     Time.findFirstMatchIn(text).flatMap(m => ScraperParse.clockAt(m, 1))
 
+  // ── The film's catalogue page ────────────────────────────────────────────
+
+  /** Only the catalogue page has the credits list; a venue-film page or an error page does not. */
+  private val FilmPageMarker = HttpRead.PageMarker("data-film-details")
+
+  /** The film id closes both the venue-film path and the catalogue path, behind the same
+   *  slug: `/kino/berlin/<venue>/spiderman:-brand-new-day-406580` is the venue's page for
+   *  `/kinofilm/spiderman:-brand-new-day-406580`. A slug keeps its accents
+   *  ("andré-rieus-…"), percent-encoded here so the request line is ASCII. */
+  def catalogueUrl(filmPath: String): Option[String] =
+    filmPath.split('/').lastOption.filter(_.matches(""".+-\d+""")).map(slug =>
+      new java.net.URI("https", java.net.URI.create(BaseUrl).getHost, s"/kinofilm/$slug", null).toASCIIString)
+
+  /** "USA • 2026", "Deutschland, Österreich • 2025": the production countries, then the year. */
+  private val CountriesAndYear = """^(.*?)\s*•\s*((?:19|20)\d{2})$""".r
+  /** The distributor credit the catalogue closes a synopsis with — attribution, not story. */
+  private val SourceCredit     = """\s*\(Quelle:[^)]*\)\s*$""".r
+
+  /** The facts a catalogue page states: the synopsis, the credits list (`Regie`,
+   *  `Darsteller`) and the "countries • year" chip. Fields the page lacks stay empty. */
+  def parseFilmPage(html: String): FilmDetail = {
+    val doc     = Jsoup.parse(html, BaseUrl)
+    val credits = doc.select("[data-film-details] dt").asScala.toSeq.flatMap { dt =>
+      Option(dt.nextElementSibling).filter(_.tagName == "dd").map(dd => dt.text.trim -> names(dd.text))
+    }.toMap
+    val chip = doc.select("h1 ~ div span").asScala.toSeq.flatMap(span => CountriesAndYear.findFirstMatchIn(span.text.trim)).headOption.map(m => (m.group(1), m.group(2)))
+    val synopsis = Option(doc.selectFirst("[data-film-details] ~ p")).map(p => SourceCredit.replaceFirstIn(p.text, "").trim).filter(_.nonEmpty)
+    FilmDetail(
+      synopsis    = synopsis,
+      director    = credits.getOrElse("Regie", Seq.empty),
+      cast        = credits.getOrElse("Darsteller", Seq.empty),
+      releaseYear = chip.map(_._2.toInt),
+      countries   = chip.toSeq.flatMap { case (c, _) => names(c) }
+    )
+  }
+
+  private def names(text: String): Seq[String] = text.split(',').map(_.trim).filter(_.nonEmpty).toSeq
+
   /** Merge a venue's films across the weeks walked: one `CinemaMovie` per film —
    *  keyed by the film's own page, since two films can share a title — showtimes
-   *  de-duplicated and in time order. */
-  private[common] def toMovies(films: Seq[Film], cinema: Cinema, venueUrl: Option[String]): Seq[CinemaMovie] =
+   *  de-duplicated and in time order, and the film's catalogue facts read once. */
+  private[common] def toMovies(films: Seq[Film], cinema: Cinema, venueUrl: Option[String],
+                               detailOf: String => FilmDetail): Seq[CinemaMovie] =
     films.groupBy(film => film.filmPath.getOrElse(film.title)).toSeq.map { case (_, same) =>
-      val first = same.head
+      val first  = same.head
+      val detail = first.filmPath.fold(FilmDetail())(detailOf)
       CinemaMovie(
         movie       = Movie(first.title, runtimeMinutes = same.flatMap(_.runtimeMinutes).headOption,
+                            releaseYear = detail.releaseYear, countries = detail.countries,
                             genres = same.flatMap(_.genres).distinct),
         cinema      = cinema,
-        posterUrl   = None,
+        posterUrl   = same.flatMap(_.posterUrl).headOption,
         filmUrl     = first.filmPath.map(BaseUrl + _).orElse(venueUrl),
-        synopsis    = None,
-        cast        = Seq.empty,
-        director    = Seq.empty,
+        synopsis    = detail.synopsis,
+        cast        = detail.cast,
+        director    = detail.director,
         showtimes   = same.flatMap(_.showtimes).distinctBy(s => (s.dateTime, s.format)).sortBy(_.dateTime),
+        trailerUrl  = same.flatMap(_.trailerUrl).headOption,
         ageRating   = same.flatMap(_.ageRating).headOption
       )
     }.sortBy(_.movie.title)

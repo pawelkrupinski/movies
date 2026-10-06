@@ -1,0 +1,159 @@
+<!doctype html>
+<html class="dark" lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#061522">
+    <script>
+        // Setzt das gespeicherte Farbschema vor dem Laden des Stylesheets, damit die Seite nicht sichtbar umspringt.
+        (function () {
+            let theme = 'dark';
+            try {
+                if (window.localStorage.getItem('kinoprogramm-theme') === 'light') {
+                    theme = 'light';
+                }
+            } catch (error) {
+                theme = 'dark';
+            }
+            document.documentElement.classList.toggle('dark', theme === 'dark');
+            document.documentElement.style.colorScheme = theme;
+            const themeColor = document.querySelector('meta[name="theme-color"]');
+            if (themeColor) {
+                themeColor.content = theme === 'dark' ? '#061522' : '#eef3f7';
+            }
+        }());
+    </script>
+    <title>Disney Channel Mitmachkino September 2026: Kinoprogramm…</title>
+    <meta name="description" content="Disney Channel Mitmachkino September 2026 im Kino: Finde aktuelle Spielzeiten in deiner Stadt, Trailer, Handlung, FSK, Besetzung und weitere Filminformationen.">
+    <meta name="keywords" content="Kinoprogramm Disney Channel Mitmachkino September 2026, Spielzeiten Disney Channel Mitmachkino September 2026, Trailer Disney Channel Mitmachkino September 2026">
+    <meta name="robots" content="index,follow">
+    <link rel="canonical" href="https://www.kinoprogramm.com/kinofilm/disney-channel-mitmachkino-september-2026-420067">            <meta property="og:type" content="website"><meta property="og:locale" content="de_DE"><meta property="og:site_name" content="Kinoprogramm.com"><meta property="og:title" content="Disney Channel Mitmachkino September 2026: Kinoprogramm…"><meta property="og:description" content="Disney Channel Mitmachkino September 2026 im Kino: Finde aktuelle Spielzeiten in deiner Stadt, Trailer, Handlung, FSK, Besetzung und weitere Filminformationen."><meta property="og:url" content="https://www.kinoprogramm.com/kinofilm/disney-channel-mitmachkino-september-2026-420067"><meta property="og:image" content="https://www.kinoprogramm.com/media/images/poster/p420067_630.jpg"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Disney Channel Mitmachkino September 2026: Kinoprogramm…"><meta name="twitter:description" content="Disney Channel Mitmachkino September 2026 im Kino: Finde aktuelle Spielzeiten in deiner Stadt, Trailer, Handlung, FSK, Besetzung und weitere Filminformationen."><meta name="twitter:image" content="https://www.kinoprogramm.com/media/images/poster/p420067_630.jpg">    <script type="application/ld+json">{"@context":"https://schema.org","@type":"ItemPage","@id":"https://www.kinoprogramm.com/kinofilm/disney-channel-mitmachkino-september-2026-420067#webpage","url":"https://www.kinoprogramm.com/kinofilm/disney-channel-mitmachkino-september-2026-420067","name":"Disney Channel Mitmachkino September 2026: Kinoprogramm…","description":"Disney Channel Mitmachkino September 2026 im Kino: Finde aktuelle Spielzeiten in deiner Stadt, Trailer, Handlung, FSK, Besetzung und weitere Filminformationen.","inLanguage":"de-DE","isPartOf":{"@type":"WebSite","@id":"https://www.kinoprogramm.com/#website","name":"Kinoprogramm.com","url":"https://www.kinoprogramm.com/"}}</script>    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="stylesheet" href="/lib/assets/css/modern.min.css?v=4">
+    <link rel="stylesheet" href="/lib/assets/css/custom-select.css?v=4">
+    <link rel="stylesheet" href="/lib/assets/css/ufo-cursor.css?v=4">
+    <style>:root { --container-content: 1400px; }</style>
+</head>
+<body class="m-0 overflow-x-hidden bg-deep bg-page font-sans text-[18px] leading-[1.45] text-content max-xl:text-base max-sm:text-[15px] [&_a:focus-visible]:outline [&_a:focus-visible]:outline-2 [&_a:focus-visible]:outline-offset-4 [&_a:focus-visible]:outline-content [&_button]:transition-all [&_button]:duration-200 [&_button]:ease-out [&_button:focus-visible]:outline [&_button:focus-visible]:outline-2 [&_button:focus-visible]:outline-offset-4 [&_button:focus-visible]:outline-content">
+    <header class="relative z-20 h-24 border-b border-line bg-deep/95 lg:h-26 max-sm:h-18">
+        <div class="h-full w-full px-4 sm:px-6 xl:px-12">
+        <div class="mx-auto grid h-full max-w-content grid-cols-[auto_minmax(0,1fr)_auto] items-center max-lg:grid-cols-[1fr_auto]">
+            <a class="inline-flex w-max items-baseline font-brand text-[35px] tracking-[-.7px] max-sm:text-[22px] max-[400px]:text-[19px]" href="/" aria-label="kinoprogramm.com Startseite">
+                <span class="text-content">kinoprogramm</span><em class="not-italic text-accent">.com</em>
+            </a>
+            <nav class="flex h-full min-w-0 items-center justify-self-center gap-10 whitespace-nowrap text-base font-semibold uppercase tracking-[.03em] max-xl:gap-6 max-[1160px]:gap-3! max-lg:hidden" aria-label="Hauptnavigation">
+                <a class="relative flex h-full items-center after:absolute after:-bottom-px after:left-1/2 after:h-1 after:w-0 after:-translate-x-1/2 after:rounded-t-full after:bg-[linear-gradient(90deg,#dd102b,#ffbe68_48%,#ffefbb_50%,#ffbe68_52%,#dd102b)] after:shadow-navGlow after:transition-all hover:after:w-18 data-[active=true]:after:w-18" data-active="false" href="/">Startseite</a>
+                <a class="relative flex h-full items-center after:absolute after:-bottom-px after:left-1/2 after:h-1 after:w-0 after:-translate-x-1/2 after:rounded-t-full after:bg-[linear-gradient(90deg,#dd102b,#ffbe68_48%,#ffefbb_50%,#ffbe68_52%,#dd102b)] after:shadow-navGlow after:transition-all hover:after:w-18 data-[active=true]:after:w-18" data-active="false" href="/kino/">Kinoprogramm</a>
+                <a class="relative flex h-full items-center after:absolute after:-bottom-px after:left-1/2 after:h-1 after:w-0 after:-translate-x-1/2 after:rounded-t-full after:bg-[linear-gradient(90deg,#dd102b,#ffbe68_48%,#ffefbb_50%,#ffbe68_52%,#dd102b)] after:shadow-navGlow after:transition-all hover:after:w-18 data-[active=true]:after:w-18" data-active="true" href="/kinofilm/">Im Kino</a>
+                <a class="relative flex h-full items-center after:absolute after:-bottom-px after:left-1/2 after:h-1 after:w-0 after:-translate-x-1/2 after:rounded-t-full after:bg-[linear-gradient(90deg,#dd102b,#ffbe68_48%,#ffefbb_50%,#ffbe68_52%,#dd102b)] after:shadow-navGlow after:transition-all hover:after:w-18 data-[active=true]:after:w-18" data-active="false" href="/wieder-im-kino/">Wieder im Kino</a>
+                <a class="relative flex h-full items-center after:absolute after:-bottom-px after:left-1/2 after:h-1 after:w-0 after:-translate-x-1/2 after:rounded-t-full after:bg-[linear-gradient(90deg,#dd102b,#ffbe68_48%,#ffefbb_50%,#ffbe68_52%,#dd102b)] after:shadow-navGlow after:transition-all hover:after:w-18 data-[active=true]:after:w-18" data-active="false" href="/kinofilm/vorschau/">Kinovorschau</a>
+                <a class="relative flex h-full items-center after:absolute after:-bottom-px after:left-1/2 after:h-1 after:w-0 after:-translate-x-1/2 after:rounded-t-full after:bg-[linear-gradient(90deg,#dd102b,#ffbe68_48%,#ffefbb_50%,#ffbe68_52%,#dd102b)] after:shadow-navGlow after:transition-all hover:after:w-18 data-[active=true]:after:w-18" data-active="false" href="/trailer/">Trailer</a>
+            </nav>
+            <div class="flex justify-self-end gap-3 max-sm:gap-1.5">
+                <button class="cursor-pointer grid size-[52px] place-items-center rounded-full border border-line bg-cinema/70 text-content transition-colors! hover:border-accent hover:bg-accent/10 hover:text-accent max-sm:size-[38px] max-[400px]:size-9" type="button" data-search-toggle aria-controls="modern-search" aria-expanded="false" aria-label="Suche öffnen">
+                    <svg class="size-7 fill-none stroke-current stroke-[1.8] max-sm:size-6" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16.5 16.5 4 4"></path></svg>
+                </button>
+                <button class="grid size-[52px] cursor-pointer place-items-center rounded-full border border-line bg-cinema/70 text-content transition-colors! hover:border-accent hover:bg-accent/10 hover:text-accent max-sm:size-[38px] max-[400px]:size-9" type="button" data-theme-toggle aria-label="Hellen Modus aktivieren" aria-pressed="false" title="Hellen Modus aktivieren">
+                    <svg class="size-7 fill-none stroke-current stroke-[1.8] max-sm:size-6" data-theme-icon-dark viewBox="0 0 24 24" aria-hidden="true"><path d="M20.4 15.2A8.5 8.5 0 0 1 8.8 3.6 8.5 8.5 0 1 0 20.4 15.2Z"></path></svg>
+                    <svg class="size-7 fill-none stroke-current stroke-[1.8] max-sm:size-6" hidden data-theme-icon-light viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+                </button>
+                <button class="hidden size-[52px] cursor-pointer place-items-center rounded-full border border-line bg-cinema/70 text-content hover:scale-105 hover:border-accent hover:bg-accent/10 hover:text-accent hover:shadow-redSoft max-lg:grid max-sm:size-[38px] max-[400px]:size-9" type="button" data-menu-toggle aria-controls="mobile-menu" aria-expanded="false" aria-label="Menü öffnen">
+                    <svg class="size-7 fill-none stroke-current stroke-[1.8] max-sm:size-6" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+                </button>
+            </div>
+        </div>
+        </div>
+        <nav id="mobile-menu" class="absolute inset-x-0 top-24 border-b border-line bg-cinema px-6 pb-7 pt-4 text-center text-base lg:hidden max-sm:top-18 [&_a]:mx-auto [&_a]:block [&_a]:max-w-md [&_a]:border-b [&_a]:border-line [&_a]:px-2.5 [&_a]:py-3.5 [&_a]:font-semibold [&_a]:uppercase" aria-label="Mobile Navigation" hidden>
+            <a href="/">Startseite</a><a href="/kino/">Kinoprogramm</a><a href="/kinofilm/">Im Kino</a><a href="/wieder-im-kino/">Wieder im Kino</a><a href="/kinofilm/vorschau/">Kinovorschau</a><a href="/trailer/">Trailer</a>
+        </nav>
+    </header>
+
+    <section id="modern-search" class="absolute inset-x-4 top-24 z-10 mx-auto w-auto max-w-4xl animate-search-panel-in rounded-b-2xl border-x border-b border-line bg-cinema/95 px-6 py-6 shadow-panel backdrop-blur-md motion-reduce:animate-none lg:top-26 max-sm:inset-x-0 max-sm:top-18 max-sm:rounded-none max-sm:px-4 max-sm:py-5" aria-label="Kinoprogramm durchsuchen" hidden>
+        <div class="mb-4 flex items-center justify-between"><h2 class="m-0 text-xl font-semibold uppercase max-sm:text-base">Stadt, Kino oder Film suchen</h2><button class="cursor-pointer text-3xl leading-none text-slate-400 transition-colors hover:text-accent" type="button" data-search-close aria-label="Suche schließen">×</button></div>
+        <form class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_150px] gap-3 max-lg:grid-cols-2 max-md:grid-cols-1" data-modern-search>
+            <label class="block min-w-0"><span class="sr-only">Stadt oder Postleitzahl</span><input class="form-control h-12 w-full rounded-full border border-line bg-deep/70 px-5 text-sm text-content outline-none placeholder:text-faint focus:border-accent" name="suchfeld_stadt" type="text" maxlength="100" placeholder="Stadt oder Postleitzahl"></label>
+            <label class="block min-w-0"><span class="sr-only">Kinoname</span><input class="form-control h-12 w-full rounded-full border border-line bg-deep/70 px-5 text-sm text-content outline-none placeholder:text-faint focus:border-accent" name="suchfeld_kino" type="text" maxlength="100" value="Kino: Alle" placeholder="Kino: Alle" autocomplete="off"><input name="suchfeld_kino_id" type="hidden" value=""></label>
+            <label class="block min-w-0"><span class="sr-only">Filmname</span><input class="form-control h-12 w-full rounded-full border border-line bg-deep/70 px-5 text-sm text-content outline-none placeholder:text-faint focus:border-accent" name="suchfeld_film" type="text" maxlength="100" placeholder="Filmname"></label>
+            <button class="h-12 cursor-pointer rounded-full bg-linear-to-b from-red-500 to-accentDark px-6 text-sm font-semibold uppercase text-white transition hover:brightness-110" type="submit">Suchen</button>
+            <p class="col-span-full m-0 min-h-5 text-xs text-slate-400 max-md:col-span-1" data-search-message aria-live="polite"></p>
+        </form>
+    </section>
+
+<main id="main-content" class="pb-16 pt-10 max-sm:pb-12 max-sm:pt-7" data-modern-film-detail>
+    <div class="w-full px-4 sm:px-6 xl:px-12">
+        <div class="mx-auto max-w-content">
+            <nav class="mb-6 flex flex-wrap items-center gap-2 text-sm text-slate-400 max-sm:mb-4 max-sm:text-xs" aria-label="Breadcrumb">
+                <a class="transition-colors hover:text-accent" href="/">Startseite</a>
+                <span aria-hidden="true">›</span>
+                <a class="transition-colors hover:text-accent" href="/kinofilm/">Im Kino</a>
+                <span aria-hidden="true">›</span>
+                <span class="text-slate-200" aria-current="page">Disney Channel Mitmachkino September 2026</span>
+            </nav>
+
+            <article class="overflow-hidden rounded-xl border border-line/80 bg-deep/45 shadow-panel" data-film-summary>
+                <div class="grid grid-cols-[clamp(270px,25vw,390px)_minmax(0,1fr)] items-stretch max-md:grid-cols-[230px_minmax(0,1fr)] max-sm:grid-cols-1">
+                    <div class="bg-cinema p-5 max-md:p-4 max-sm:p-4">
+                        <div class="relative overflow-hidden rounded-lg">
+                            <img class="aspect-2/3 h-auto w-full object-cover" src="/media/images/poster/p420067_630.jpg" alt="Filmplakat Disney Channel Mitmachkino September 2026">
+                            <div class="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-linear-to-t from-deep to-transparent sm:hidden"></div>
+                        </div>
+                    </div>
+
+                    <div class="flex min-w-0 flex-col px-[clamp(24px,4vw,64px)] py-[clamp(28px,4vw,58px)]">
+                                                <h1 class="mb-0 mt-2 max-w-5xl font-display text-[clamp(38px,4.5vw,70px)] font-normal leading-[1.03] tracking-tight">Disney Channel Mitmachkino September 2026</h1>
+                                                
+                        <div class="mt-6 flex flex-wrap gap-2.5 text-sm">
+                            <span class="inline-flex items-center gap-2 rounded-full border border-line bg-panel/55 px-4 py-2 text-slate-200"><svg class="size-4 fill-none stroke-current stroke-[1.7] text-slate-400" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M8 3v4M16 3v4M3 10h18"></path></svg>Kinostart 12.09.2026</span>                                                                                                            </div>
+
+                        <dl class="mt-7 grid max-w-4xl grid-cols-2 gap-x-10 gap-y-5 border-t border-line/70 pt-6 max-lg:grid-cols-1" data-film-details>
+                                                                                                                                        </dl>
+
+                        <p class="mb-0 mt-7 max-w-4xl text-[15px] leading-7 text-slate-300">Kino bedeutet Licht aus, Ruhe und Stillsitzen? Nicht beim Disney Channel Mitmach-Kino! Hier wird das Kinoerlebnis speziell für Vorschulkinder neu gedacht: Eine Stunde lang dürfen Kinder mitsingen, mittanzen, mitraten, mitklatschen und aktiv mitmachen - ganz ohne &quot;Pssst!&quot;. So wird der Kinobesuch zu einem fröhlichen Gemeinschaftserlebnis für die ganze Familie. Auf der großen Leinwand führt Micky Maus als animierter Gastgeber die Kinobesucher durch das kunterbunte Programm, das gezielt auf die Bedürfnisse und Aufmerksamkeitsspanne der kleinsten Zuschauer im Vorschulalter ausgerichtet ist und ca. 60 Minuten kindgerechtes Mitmach-Kino bietet: Mitfiebern: Für Spannung sorgen tolle Geschichten von Marvel Iron Man und seine fantastischen Freunde, MagiCampers und der zauberhaften neuen Vorschul-Serie Sofia die Erste: Königliche Zauberschule. Dazu gibt es mit lustigen Kurzgeschichten mit beliebten Disney Charakteren wie Stitch, Winnie Puuh, Minnie und Cars viel zu lachen. Mittanzen: Fröhliche Musikvideos bringen Schwung in den Kinosaal - hier darf nach Herzenslust getanzt und gesungen werden. Mitraten: Bei kleinen Ratespielen rund um die Disney Channel Vorschul-Serien können die kleinen Besucher ihr Rätseltalent unter Beweis stellen.</p>
+                        <div class="mt-8 flex flex-wrap gap-3">
+                            <a class="inline-flex h-12 items-center justify-center gap-3 rounded-md bg-linear-to-b from-red-500 to-accentDark px-6 text-sm font-semibold text-white shadow-redSoft transition-colors hover:from-red-400 hover:to-accent" href="#film-cities"><svg class="size-5 fill-none stroke-current stroke-[1.8]" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>Kinoprogramm finden</a>
+                                                    </div>
+                    </div>
+                </div>
+            </article>
+
+            <section class="mt-8 scroll-mt-28 rounded-xl border border-line/80 bg-panel/55 p-8 shadow-panel max-sm:p-5" id="film-cities" aria-labelledby="film-city-search-title" data-film-city-search>
+                <div class="grid grid-cols-[minmax(0,1fr)_minmax(460px,.9fr)] items-end gap-8 max-lg:grid-cols-1">
+                    <div><p class="m-0 text-sm font-semibold uppercase tracking-[.12em] text-accent">Vorführzeiten in deiner Nähe</p><h2 class="mb-0 mt-2 font-display text-[clamp(30px,3.2vw,46px)] font-normal leading-tight" id="film-city-search-title">Kinoprogramm für Disney Channel Mitmachkino September 2026</h2><p class="mb-0 mt-3 max-w-2xl text-sm leading-6 text-slate-400">Wähle deine Stadt und finde Kinos mit passenden Vorstellungen.</p></div>
+                    <form class="grid grid-cols-[minmax(0,1fr)_150px] gap-3 max-sm:grid-cols-1" data-modern-search>
+                        <label class="block min-w-0"><span class="sr-only">Stadt oder Postleitzahl</span><span class="relative block"><svg class="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 fill-none stroke-slate-400 stroke-[1.8]" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg><input class="form-control h-12 w-full rounded-full border border-line bg-deep/70 pl-12 pr-5 text-sm text-content outline-none placeholder:text-faint focus:border-accent" name="suchfeld_stadt" type="text" maxlength="100" placeholder="Stadt oder Postleitzahl"></span></label>
+                        <input name="suchfeld_film" value="Disney Channel Mitmachkino September 2026" type="hidden">
+                        <button class="h-12 cursor-pointer rounded-full bg-linear-to-b from-red-500 to-accentDark px-6 text-sm font-semibold uppercase text-white transition-colors hover:from-red-400 hover:to-accent" type="submit">Suchen</button>
+                        <p class="col-span-full m-0 min-h-5 text-xs text-slate-400 max-sm:col-span-1" data-search-message aria-live="polite"></p>
+                    </form>
+                </div>
+            </section>
+
+            <section class="mt-8 rounded-xl border border-line/80 bg-deep/35 p-8 shadow-panel max-sm:p-5" aria-labelledby="film-city-directory-title" data-film-city-directory>
+                <h2 class="m-0 font-display text-[clamp(28px,3vw,42px)] font-normal leading-tight" id="film-city-directory-title">Disney Channel Mitmachkino September 2026 läuft in diesen Städten</h2>
+                                    <div class="mt-6 rounded-lg border border-line bg-panel/35 px-5 py-6 text-sm text-slate-400">Für diesen Film sind aktuell noch keine zukünftigen Vorstellungen hinterlegt.</div>
+                            </section>
+        </div>
+    </div>
+</main>
+
+
+    <footer class="min-h-[304px] bg-footer px-0 pb-5 pt-9">
+        <div class="w-full px-4 sm:px-6 xl:px-12">
+        <div class="mx-auto grid max-w-content grid-cols-[2.2fr_1fr_1fr_1.15fr] gap-20 max-lg:grid-cols-[1.6fr_1fr_1fr] max-lg:gap-11 max-sm:grid-cols-2 max-sm:gap-x-5 max-sm:gap-y-8 [&_nav]:flex [&_nav]:flex-col [&_nav]:items-start [&_nav]:pt-2 [&_nav_h2]:mb-3.5 [&_nav_h2]:text-[13px] [&_nav_h2]:font-medium [&_nav_h2]:uppercase [&_nav_h2]:text-slate-400 [&_nav_a]:my-1 [&_nav_a]:text-sm [&_nav_a]:text-slate-300 [&_nav_a]:transition [&_nav_a:hover]:translate-x-1 [&_nav_a:hover]:text-accent">
+            <div class="max-w-[350px] max-sm:col-span-full"><a class="inline-flex w-max items-baseline font-brand text-[31px]" href="/"><span class="text-content">kinoprogramm</span><em class="not-italic text-accent">.com</em></a><p class="mb-4 mt-6 text-sm leading-5 text-slate-400">Dein Guide für Filme, Kinos und Trailer. Finde heraus, was läuft und was du nicht verpassen darfst.</p><div class="flex gap-3 text-slate-500" aria-label="Social Media – Links folgen"><a class="grid size-9 place-items-center rounded-full border border-line transition-colors duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent hover:shadow-redSoft" href="#" aria-label="Facebook"><svg class="size-[18px] fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.7 21v-8h2.8l.4-3.2h-3.2V7.7c0-.9.3-1.6 1.7-1.6H17V3.2c-.3 0-1.3-.2-2.5-.2-2.5 0-4.2 1.5-4.2 4.4v2.4H7.5V13h2.8v8h3.4Z"></path></svg></a><a class="grid size-9 place-items-center rounded-full border border-line transition-colors duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent hover:shadow-redSoft" href="#" aria-label="Instagram"><svg class="size-[18px] fill-none stroke-current stroke-[1.8]" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.5" cy="6.7" r="1" class="fill-current stroke-none"></circle></svg></a><a class="grid size-9 place-items-center rounded-full border border-line transition-colors duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent hover:shadow-redSoft" href="#" aria-label="X"><svg class="size-4 fill-current" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 3H22l-6.8 7.8L23 21h-6.1l-4.8-6.2L6.7 21H3.6l7-8L3 3h6.3l4.3 5.7L18.9 3Zm-1.1 16h1.7L8.3 4.9H6.5L17.8 19Z"></path></svg></a><a class="grid size-9 place-items-center rounded-full border border-line transition-colors duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent hover:shadow-redSoft" href="#" aria-label="YouTube"><svg class="size-5 fill-none stroke-current stroke-[1.7]" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="5.5" width="19" height="13" rx="4"></rect><path class="fill-current stroke-none" d="m10 9 5 3-5 3V9Z"></path></svg></a></div></div>
+            <nav aria-label="Entdecken"><h2>Entdecken</h2><a href="/">Startseite</a><a href="/kino/">Kinoprogramm</a><a href="/kinos/">Kinos</a><a href="/kinofilm/">Im Kino</a><a href="/wieder-im-kino/">Wieder im Kino</a><a href="/kinofilm/vorschau/">Kinovorschau</a><a href="/trailer/">Trailer</a></nav>
+            <nav aria-label="Service"><h2>Service</h2><a href="/kino/#cinema-search">Suche</a><a href="/genre/">Genres</a><a href="/#newsletter">Newsletter</a></nav>
+            <nav class="max-lg:col-start-2 max-sm:col-auto" aria-label="Rechtliches"><h2>Rechtliches</h2><a href="/datenschutzerklaerung">Datenschutz</a><a href="/impressum">Impressum</a><a href="javascript:void(0);" data-cc="c-settings" aria-haspopup="dialog">Cookie-Einstellungen</a></nav>
+        </div>
+        </div>
+        <p class="mb-0 mt-6 text-center text-[13px] text-slate-600">© 2026 kinoprogramm.com – Alle Rechte vorbehalten.</p>
+    </footer>
+
+    <script src="/lib/assets/js/vendor/autocomplete.min.js"></script>
+    <script src="/lib/assets/js/cookieconsent.js"></script>
+    <script src="/lib/assets/js/modern.min.js?v=4"></script>
+    <script src="/lib/assets/js/cinema-search.js?v=4"></script>
+    <script src="/lib/assets/js/revival-search.js?v=4"></script>
+    <script src="/lib/assets/js/custom-select.js?v=4"></script>
+    </body>
+</html>

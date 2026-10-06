@@ -2449,6 +2449,14 @@ class CinemaScraperCatalog(
    *  harvested into the roster (`data/germany/kinoprogramm.json`). */
   val kinoprogrammFallbackPaths: Map[Cinema, String] = models.GermanRoster.kinoprogrammPathByCinema
 
+  /** Where every kinoprogramm.com fallback reads its films' catalogue pages: one page per
+   *  FILM, the same for every venue showing it, so one cache serves them all. Without it a
+   *  whole-Filmstarts outage would fetch every listed film's page at each of 1,500 venues,
+   *  where the cache asks each film once per sweep. The TTL stays under the 6h
+   *  `DetailEnrich` window every chain cache keeps to, and outlasts one outage sweep. */
+  val kinoprogrammFilmTtl:   FiniteDuration = 5.hours
+  val kinoprogrammFilmPages: HttpFetch      = chainDetailCache("kinoprogramm", http, kinoprogrammFilmTtl)
+
   /** Union of every cinema scraper's HTTP hosts. `MonitoringHttpFetch`
    *  suppresses per-host uptime rows for these — each cinema's health is
    *  already tracked under its `displayName` by `UptimeRecordingScraper`, so a

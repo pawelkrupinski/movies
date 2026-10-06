@@ -206,7 +206,7 @@ trait ScrapeWiring { self: WorkerWiring =>
     }.orElse(kinoprogrammFallbackPaths.get(cinema).map { path =>
       FallbackPlan("Kinoprogramm", () => Some(path),
         () => Some(new KinoprogrammClient(httpFetch, path, cinema,
-          today = venueClock.today(KinoprogrammClient.Zone))),
+          today = venueClock.today(KinoprogrammClient.Zone), filmPages = cinemaScraperCatalog.kinoprogrammFilmPages)),
         FallbackAfter.FailedRuns(KinoprogrammFailedRuns))
     }).orElse(Option.when(eligible && filmwebEnabled)(
       FallbackPlan("Filmweb", () => filmwebFallbackIds.get(cinema).map(_.toString), () => filmwebFallbackFor(cinema), sixHours)))
