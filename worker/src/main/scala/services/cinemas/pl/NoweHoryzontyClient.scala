@@ -219,8 +219,9 @@ object NoweHoryzontyClient {
       .map(_.split("(?i)kategoria").head.trim).filter(_.nonEmpty)
     val genres  = genreRaw.toSeq.flatMap(_.split("[,/]").map(_.trim).filter(_.nonEmpty))
                     .map(tools.TextNormalization.titleCaseIfAllLower)
+    // One link holds every director: "," between names, ";" between an anthology's segments.
     val director = Option(document.selectFirst("h4:contains(reż.) a")).map(_.text.trim)
-                    .filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+                    .filter(_.nonEmpty).toSeq.flatMap(_.split("[,;]").map(_.trim).filter(_.nonEmpty))
     val original = Option(document.selectFirst("h4.tytulorg")).map(_.text.trim).filter(_.nonEmpty)
     val synopsis = Option(document.selectFirst("div.txt.wciecia.opisf")).map(synopsisProse).filter(_.length > 20)
     val poster   = Option(document.selectFirst("div.plakat img[src]")).map(_.attr("src"))

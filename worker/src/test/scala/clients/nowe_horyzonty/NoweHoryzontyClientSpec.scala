@@ -62,6 +62,15 @@ class NoweHoryzontyClientSpec extends AnyFlatSpec with Matchers {
     d.synopsis.getOrElse("").length should be > 30
   }
 
+  // The "reż." link of an anthology groups its directors with ";" between the segments and ","
+  // within them ("Elżbieta Wąsik, Paweł Wendorff; Jarosław Szyszko, …"). Splitting on "," alone
+  // fused "Paweł Wendorff; Jarosław Szyszko" into one person nobody credits.
+  it should "split a detail page's director credit on ';' as well as ','" in {
+    val html = clients.tools.FixtureFile.read("test/resources/fixtures/nowe-horyzonty/www.kinonh.pl/op.s.b03a4a51")
+    NoweHoryzontyClient.parseDetail(html).director shouldBe Seq(
+      "Elżbieta Wąsik", "Paweł Wendorff", "Jarosław Szyszko", "Barbara Koniecka", "Mateusz Kmieć", "Natalia Bartska-Kmieć")
+  }
+
   // Regression: `selectFirst("div.txt.wciecia.opisf p")` grabbed only the FIRST
   // `<p>` of a multi-paragraph synopsis, truncating ~half the film's plot (23 of
   // 43 op.s pages carry 2+ Polish paragraphs). The whole synopsis must survive,
