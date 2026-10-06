@@ -97,6 +97,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  "The Dark Knight Trilogy", "Maraton Horrorów") — unless an eligible film's own title carries that word ("Marathon
    *  Man"), and then only that film may be taken ([[takesNoBill]]). */
   def billsSeveralWorks(ranked: Seq[Scored]): Boolean = ranked.headOption.exists { any =>
+    any.listing.rawTitle.exists(ListingShape.quotesSeveralDated) ||
     (IdentityMeasures.billsTwoWorks(any.listing) && !eligibleOf(ranked).exists(_.category("title").contains("exact")) &&
       IdentityMeasures.billsTwoWholeWorks(any.listing)) ||
       markerOf(ranked).exists(marker => !eligibleOf(ranked).exists(scored => MultiFilmBill.namedBy(marker, scored.candidate.film)) &&

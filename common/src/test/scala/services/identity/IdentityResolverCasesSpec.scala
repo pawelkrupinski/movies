@@ -1307,6 +1307,24 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(d.render)(d.film shouldBe None)
   }
 
+  it should "not take one of two works a lecture's billing quotes" in {
+    // PL Kino Kinematograf (re-capture 2026-10-06, served in prod): a lecture billing „Bestia” (Hertz, 1917) and „Cud nad
+    // Wisłą” (Bolesławski, 1921) — two quoted works, a programme, not the 1917 film the model took (labelled wrong)
+    val films = Seq(F(319754, "Bestia", 1917, "Aleksander Hertz", 0, 1))
+    // the country's title rules leave the first work's quote, its year and director: the venue's raw title still quotes both
+    val raw = "Akademia Polskiego Filmu: wykład dr. Łukasza Biskupskiego: „Bestia”, reż. Aleksander Hertz (1917), " +
+      "„Cud nad Wisłą”, reż. Ryszard Bolesławski (1921)"
+    val cleaned = "Akademia Polskiego Filmu: wykład dr. Łukasza Biskupskiego: „Bestia”"
+    val lecture = listing(Multikino, cleaned, Some(1917), Some("Aleksander Hertz")).copy(rawTitle = raw)
+    val d = IdentityResolver.resolve(Seq(lecture), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(lecture.key)
+    withClue(d.render)(d.film shouldBe None)
+    // one quoted work is that work
+    val one = listing(Multikino, cleaned, Some(1917), Some("Aleksander Hertz")).copy(rawTitle = "Akademia Polskiego Filmu: „Bestia”, reż. Aleksander Hertz (1917)")
+    IdentityResolver.resolve(Seq(one), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(one.key).film shouldBe Some(319754)
+    // a quoted programme beside one dated work bills that work (PL Wajda retrospective „10 na 10”: „Pan Tadeusz” (1999))
+    ListingShape.quotesSeveralDated("„10 na 10”. Przegląd filmów Andrzeja Wajdy: „Pan Tadeusz” (1999)") shouldBe false
+  }
+
   it should "still take the same director's film of the listing's year when both are there" in {
     val films = Seq(F(10234, "Funny Games", 1997, "Michael Haneke", 108, 8), F(8461, "Funny Games", 2007, "Michael Haneke", 111, 9))
     val dated = listing(Multikino, "Funny Games", Some(2007), Some("Michael Haneke"), Some(111))

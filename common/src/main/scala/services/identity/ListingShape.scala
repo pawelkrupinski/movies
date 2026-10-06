@@ -65,8 +65,16 @@ object ListingShape {
     MultiFilmBill.billsBeside(titlesOf(listing), film) || billsSeveralBySigns(listing)
 
   private def titlesOf(listing: Listing): Seq[String] = Seq(listing.rawTitle, listing.title).distinct
+  /** Does the venue's own title quote two works or more ("…: „Bestia”, reż. Hertz (1917), „Cud nad Wisłą”, …")? Read
+   *  off the raw title: a country's title rules may cut the billing down to its first quote. */
+  def quotesSeveral(rawTitle: String): Boolean = Quoted.findAllIn(rawTitle).size >= 2
+  /** [[quotesSeveral]] where two of the quoted works are dated ("(1917)", "(1921)"): a programme of DATED works — a
+   *  quote naming a programme beside one dated work ('„10 na 10”. Przegląd filmów Andrzeja Wajdy: „Pan Tadeusz”
+   *  (1999)') bills that work. */
+  def quotesSeveralDated(rawTitle: String): Boolean = quotesSeveral(rawTitle) && DatedWork.findAllIn(rawTitle).size >= 2
+  private val DatedWork = """\((?:18|19|20)\d\d\)""".r
   private def billsSeveralBySigns(listing: Listing): Boolean =
-    SetOfWorks.findFirstIn(listing.rawTitle).isDefined || Quoted.findAllIn(listing.rawTitle).size >= 2 ||
+    SetOfWorks.findFirstIn(listing.rawTitle).isDefined || quotesSeveral(listing.rawTitle) ||
       IdentityMeasures.billsTwoWholeWorks(Evidence.of(listing, None).measured)
 
   // ── a programme slot ───────────────────────────────────────────────────────────────────────
