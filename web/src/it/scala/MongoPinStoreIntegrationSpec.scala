@@ -5,6 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{MongoPinStore, PinClaim, Pins}
 import services.movies.ListingKey
+import org.mongodb.scala.SingleObservableFuture
 import tools.IsolatedMongoDatabase
 
 import java.time.{Clock, Instant, ZoneOffset}
@@ -14,6 +15,9 @@ import java.time.{Clock, Instant, ZoneOffset}
 class MongoPinStoreIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
   private val isolated = IsolatedMongoDatabase.open(mongoTarget, "identity-pins")
+  // Prod's collection already exists; creating it here, under the spec's own I/O timeout, keeps a fresh database's
+  // first-write collection creation (seconds under a loaded machine) out of the store's 10s request budget.
+  scala.concurrent.Await.result(isolated.database.createCollection(MongoPinStore.Collection).toFuture(), tools.SpecTimeouts.Io)
   private val pins     = new Pins(new MongoPinStore(Some(isolated.database)),
     Clock.fixed(Instant.parse("2026-09-26T12:00:00Z"), ZoneOffset.UTC))
 
