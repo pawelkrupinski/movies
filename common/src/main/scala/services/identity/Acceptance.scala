@@ -64,7 +64,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** Why each rule a node may be taken by alone refused it: `(rule, the first condition that stopped it)`. */
   def refusals(ranked: Seq[Scored]): Seq[DecisionTrace.Refusal] =
-    if (billsTwoWholeWorks(ranked)) Seq(DecisionTrace.Refusal("alone", "bills two works"))
+    if (billsSeveralWorks(ranked)) Seq(DecisionTrace.Refusal("alone", "bills several works"))
     else aloneRules.flatMap(rule => rule.accepts(ranked).left.toOption.map(refused =>
       DecisionTrace.Refusal(rule.name, refused.why, refused.film, refused.detail)))
 
@@ -75,20 +75,31 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** What [[alone]] takes, with the rule that took it. A family's scope asks it once per node ([[FamilyScope.takenAlone]]). */
   def aloneNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
-    if (billsTwoWholeWorks(ranked)) None
+    if (billsSeveralWorks(ranked)) None
     else seasonProduction(ranked).map(_.map(_ -> "season-production")).getOrElse(firstOf(ranked, aloneRules))
-      .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }
+      .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }.filter(takesNoBill(ranked))
 
   /** A DOUBLE PROGRAMME: a "+" joining two whole works ([[IdentityMeasures.billsTwoWholeWorks]]), whatever is held
    *  of them, is neither film (user rule) — UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna
    *  Harrison, Robin Shaw} ×133, its two films scored 91–93% and popularity's coin picking one; PL Kino Pałacowe's
    *  "Historia kina w Popielawach + Pruska kultura", a 1908 short TMDB does not hold. A talk joined to one film
    *  ("+ spotkanie z reżyserem") is no second work, and a film whose own whole title it is ("Romeo + Juliet") is no
-   *  bill. */
-  def billsTwoWholeWorks(ranked: Seq[Scored]): Boolean = ranked.headOption.exists { any =>
-    IdentityMeasures.billsTwoWorks(any.listing) && !eligibleOf(ranked).exists(_.category("title").contains("exact")) &&
-      IdentityMeasures.billsTwoWholeWorks(any.listing)
+   *  bill. So is a programme a word bills as several films ([[MultiFilmBill]]: "Triple Feature: Lord of the Rings",
+   *  "The Dark Knight Trilogy", "Maraton Horrorów") — unless an eligible film's own title carries that word ("Marathon
+   *  Man"), and then only that film may be taken ([[takesNoBill]]). */
+  def billsSeveralWorks(ranked: Seq[Scored]): Boolean = ranked.headOption.exists { any =>
+    (IdentityMeasures.billsTwoWorks(any.listing) && !eligibleOf(ranked).exists(_.category("title").contains("exact")) &&
+      IdentityMeasures.billsTwoWholeWorks(any.listing)) ||
+      markerOf(ranked).exists(marker => !eligibleOf(ranked).exists(scored => MultiFilmBill.namedBy(marker, scored.candidate.film)))
   }
+
+  /** The word the ranked listing bills several films by, if any ([[MultiFilmBill.marker]]). */
+  private def markerOf(ranked: Seq[Scored]): Option[String] =
+    ranked.headOption.flatMap(_.listing.billMarker)
+
+  /** Is `taken` no film of a programme the listing bills by a word — the word its own title's, if the listing has one? */
+  private def takesNoBill(ranked: Seq[Scored])(taken: (Accepted, String)): Boolean =
+    markerOf(ranked).forall(marker => MultiFilmBill.namedBy(marker, taken._1._1.candidate.film))
 
   /** A node accepts a film ON ITS OWN only when its own facts favour it over the runner-up: a
    *  bare "Lalka" beside two 2026 "Lalka"s, told apart only by TMDB's popularity ranking, is not
@@ -107,10 +118,10 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** [[pooled]], with the rule that accepted — for the decision's trace. */
   def pooledNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
-    if (billsTwoWholeWorks(ranked)) None
+    if (billsSeveralWorks(ranked)) None
     else seasonProduction(ranked).map(_.map(_ -> "season-production"))
       .getOrElse(firstOf(ranked, Seq(Rule("unrivalled-calibrated", unrivalledCalibratedWhy), Rule("exact-top-hit", topHitWhy), Rule("imdb-suggested", imdbSuggestedWhy))))
-      .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }
+      .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }.filter(takesNoBill(ranked))
 
   /** The probability that `film` is the listing's film — the decision's confidence, on the scale
    *  the rating gate reads: the calibrated one (rivals are in it, the `rivals` measure), its
@@ -331,7 +342,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  film, its 1965 namesake 3.3%; "Lalka" leans to the 2026 film at 68.1%, not the 1968 one the old pipeline rated
    *  it as; "Bolek i Lolek" (28.9% beside "Reksio" at 28.9%) and the 1986 and 2025 "Caravaggio" lean to neither. */
   def leaning(ranked: Seq[Scored]): Option[Scored] =
-    Option.when(ranked.headOption.forall(any => !IdentityMeasures.billsTwoWorks(any.listing)) && !billsTwoWholeWorks(ranked))(eligibleOf(ranked))
+    Option.when(ranked.headOption.forall(any => !IdentityMeasures.billsTwoWorks(any.listing)) && !billsSeveralWorks(ranked))(eligibleOf(ranked))
       .flatMap(eligible => eligible.headOption.filter(best => eligible.lift(1).forall(runnerUp =>
         best.probability >= Acceptance.LeanMargin * runnerUp.probability) && closerThan(best, eligible).isEmpty))
 

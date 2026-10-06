@@ -249,7 +249,7 @@ object Agreement {
       val catalogueDissent = if (taken.exists(contradictedByTheCatalogue(listings, _))) 1 else 0
       Option.when(film.support >= Quorum + dissent + film.turnedDown + catalogueDissent && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
         !taken.exists(contradictedByTheListing(listings, _)) &&
-        listings.forall(listing => !billsSeveral(listing) && (!stagesAWork(listing) || screenAdaptation(listings, film.agreed))))(film.agreed)
+        listings.forall(listing => !billsSeveralBeside(listing, film.agreed.record.film) && (!stagesAWork(listing) || screenAdaptation(listings, film.agreed))))(film.agreed)
     }
   }
 
@@ -496,12 +496,23 @@ object Agreement {
     IdentityMeasures.seasonYear(titles).isDefined || titles.exists(title => TitleContainment.tokens(title).exists(HouseWords))
   }
 
-  private val Bill   = """(?i)double bill|double feature|podw[oó]jny seans|zestaw""".r
   private val Quoted = """[„"“][^"”„]+["”]""".r
+  /** A set ("zestaw") — of a series' episodes, often one compilation record the model may still take ([[services.identity.MultiFilmBill]]
+   *  leaves it out), but no family's agreement, poster or catalogue id stands for one of its pieces. */
+  private val SetOfWorks = """(?i)\bzestaw\b""".r
   /** Does the listing bill several works — a "+" joining two whole works ([[IdentityMeasures.billsTwoWholeWorks]]: an
-   *  event joined to the film, "11. UFF - Gala otwarcia + Demony", "… pokaz filmu + dyskusja", is none), a double bill
-   *  or a set, or two quoted titles? */
+   *  event joined to the film, "11. UFF - Gala otwarcia + Demony", "… pokaz filmu + dyskusja", is none), a word billing
+   *  a programme of films ([[services.identity.MultiFilmBill]]: a double bill, a trilogy, a marathon, a block of
+   *  shorts), a set, or two quoted titles? Read where no film is in hand: a film whose own title carries the word is let
+   *  through only by [[billsSeveralBeside]]. */
   def billsSeveral(listing: Listing): Boolean =
-    Bill.findFirstIn(listing.rawTitle).isDefined || Quoted.findAllIn(listing.rawTitle).size >= 2 ||
-      IdentityMeasures.billsTwoWholeWorks(services.identity.Evidence.of(listing, None).measured)
+    services.identity.MultiFilmBill.marker(titlesOf(listing)).isDefined || billsSeveralBySigns(listing)
+
+  /** [[billsSeveral]] for `film`: a programme word its own title carries ("Marathon Man") bills no other. */
+  def billsSeveralBeside(listing: Listing, film: IdentityMeasures.Film): Boolean =
+    services.identity.MultiFilmBill.billsBeside(titlesOf(listing), film) || billsSeveralBySigns(listing)
+
+  private def titlesOf(listing: Listing): Seq[String] = Seq(listing.rawTitle, listing.title).distinct
+  private def billsSeveralBySigns(listing: Listing): Boolean =
+    SetOfWorks.findFirstIn(listing.rawTitle).isDefined || Quoted.findAllIn(listing.rawTitle).size >= 2 || IdentityMeasures.billsTwoWholeWorks(services.identity.Evidence.of(listing, None).measured)
 }

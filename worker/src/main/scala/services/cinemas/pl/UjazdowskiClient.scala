@@ -85,7 +85,7 @@ class UjazdowskiClient(
         val meta = UjazdowskiClient.parseMeta(primary.meta.getOrElse(""))
         Some(CinemaMovie(
           movie     = Movie(title = primary.title, runtimeMinutes = meta.runtime, releaseYear = meta.year,
-                            countries = meta.countries),
+                            countries = meta.countries, rawTitle = UjazdowskiClient.programmeHeading(primary.title, primary.meta)),
           cinema    = cinema,
           posterUrl = group.flatMap(_.poster).headOption,
           filmUrl   = Some(detailUrl),
@@ -101,7 +101,9 @@ class UjazdowskiClient(
   /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
    *  movie's film-page URL. Only the synopsis + bracketed original title come
    *  from the detail page (the meta line on the listing supplies everything
-   *  else). None on fetch failure so the task stays stale and is retried.
+   *  else) — and, for a programme of several films ([[UjazdowskiClient.programmeOf]]),
+   *  their directors, the card crediting none. None on fetch failure so the task
+   *  stays stale and is retried.
    *
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
@@ -112,7 +114,8 @@ class UjazdowskiClient(
         // it so the synopsis stays prose-only. cleanSynopsis also keeps the
         // <p>/<br> paragraph structure (ScraperParse.blockText).
         synopsis      = Option(document.selectFirst("div.body.max-w")).map(ScraperParse.cleanSynopsis(_)).filter(_.length > 20),
-        originalTitle = UjazdowskiClient.originalTitleOf(document)
+        originalTitle = UjazdowskiClient.originalTitleOf(document),
+        director      = UjazdowskiClient.programmeOf(document).map(_.director).distinct
       )
     }
 
@@ -147,6 +150,28 @@ object UjazdowskiClient {
       .flatMap(s => OrigTitlePat.findFirstMatchIn(s).map(_.group(1).trim)).filter(_.nonEmpty)
 
   final case class Meta(director: Seq[String], countries: Seq[String], year: Option[Int], runtime: Option[Int])
+
+  /** One film of a programme page's "Program" list. */
+  final case class ProgrammeFilm(title: String, director: String, year: Int, runtime: Int)
+
+  // "MIX, reż. Klaudia Szott, 2026, 24'" — a programme entry's title, director, year and running time
+  private val ProgrammeEntryPat = """^(.+?),\s*reż\.\s*(.+?),\s*((?:19|20)\d{2}),\s*(\d+)['’]""".r
+
+  /** The films a page's "Program" list bills, when it bills two or more — a block of shorts ("Obcy w domu":
+   *  MIX, Kontrewers, Dziwnie być człowiekiem); empty for a film's own page. */
+  def programmeOf(document: org.jsoup.nodes.Document): Seq[ProgrammeFilm] = {
+    val films = document.select("div.event-info li p").asScala.toSeq.map(_.text.trim).collect {
+      case ProgrammeEntryPat(title, director, year, runtime) => ProgrammeFilm(title.trim, director.trim, year.toInt, runtime.toInt)
+    }
+    if (films.sizeIs >= 2) films else Nil
+  }
+
+  /** The card's whole heading — its name and the subtitle under it — when the subtitle bills a programme of films
+   *  rather than a film's credits ("Obcy w domu | Blok filmów krótkometrażowych"): the listing's raw title, where the
+   *  identity's multi-film bill guard ([[services.identity.MultiFilmBill]]) reads it. `None` for a film's card. */
+  def programmeHeading(title: String, meta: Option[String]): Option[String] =
+    meta.filter(line => MetaPat.findFirstIn(line).isEmpty).map(line => s"$title | $line")
+      .filter(heading => services.identity.MultiFilmBill.marker(Seq(heading)).isDefined)
 
   def parseMeta(s: String): Meta =
     MetaPat.findFirstMatchIn(s) match {

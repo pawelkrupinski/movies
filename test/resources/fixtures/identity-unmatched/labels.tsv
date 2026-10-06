@@ -758,3 +758,9 @@ pl	*	FRANZ KAFKA	tmdb:120275	wrong	matchable page: must not: Franz Kafka (1992) 
 pl	*	DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO	tmdb:95269	right	matchable page: confirmed: The Conductor (1980)
 de	*	Queen	imdb:tt8378126	wrong	review page: the labelled film is wrong
 pl	*	Dni Kina Niemego - Quo vadis?	tmdb:114166	right	judged 10-06 by the venue's page: Guazzoni's 1912 Quo Vadis? (94 min, 4K restoration, live piano)
+us	*	Triple Feature: Lord of the Rings	tmdb:122	wrong	judged 10-06: multi-film bill: flicks.us bills "all three movies playing back to back" (726 min) — not The Return of the King alone
+uk	*	Triple Feature: Lord of the Rings	tmdb:122	wrong	judged 10-06: multi-film bill: flicks.co.uk bills "all three movies playing back to back" (726 min) — not The Return of the King alone
+uk	*	The Dark Knight Trilogy	tmdb:155	wrong	judged 10-06: multi-film bill: Showcase bills Nolan's three Batman films as one event — not The Dark Knight alone
+pl	*	Maraton Horrorów	tmdb:1193501	wrong	judged 10-06: multi-film bill: bilety24 (Wałcz, Brusy) bills three horrors a night (Beware Boiúna, Coś za mną chodzi, …) — none of them Whistle
+pl	*	MARATON HORRORÓW	tmdb:1193501	wrong	judged 10-06: multi-film bill: biletyna (Kinoteatr Rondo) bills Witajcie w Hope, Eliminacja and Beware Boiúna — not Whistle
+pl	*	Maraton horrorów	tmdb:1193501	wrong	judged 10-06: multi-film bill: a horror marathon of several films — not Whistle alone

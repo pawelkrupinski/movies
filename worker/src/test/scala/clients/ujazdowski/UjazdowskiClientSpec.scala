@@ -1,7 +1,7 @@
 package clients.ujazdowski
 
 import org.scalatest.matchers.should.Matchers
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FixtureFile}
 import org.scalatest.flatspec.AnyFlatSpec
 import models.{Showtime, Ujazdowski}
 import services.cinemas.pl.UjazdowskiClient
@@ -121,5 +121,51 @@ class UjazdowskiClientSpec extends AnyFlatSpec with Matchers {
     // The listing, then exactly the blank-day probes that end the walk — the
     // nav's one day is shared with the walk's first, so it is fetched once.
     asked.count(_.contains("week.ajax")) shouldBe ScrapeHorizon.MaxEmptyDays
+  }
+
+  // ── A block of shorts, billed under one name ─────────────────────────────
+  //
+  // Recorded 2026-10-06: the 29 Sep 2026 day card for /kino/repertuar/pokaz-shortow titles it "Obcy w domu" and
+  // subtitles it "Blok filmów krótkometrażowych"; its page's "Program" lists three shorts (MIX, Kontrewers, Dziwnie
+  // być człowiekiem). Identity had only the name to go on, and the labels deny its 1986 namesake: the card's own
+  // subtitle rides in the listing's raw title, where the multi-film bill guard reads it, so it matches no film.
+
+  private val programmeDay = LocalDate.of(2026, 9, 29)
+  private def programmeFixture(name: String) = FixtureFile.read(s"test/resources/fixtures/ujazdowski-programme/$name")
+  private val warsaw = java.time.ZoneId.of("Europe/Warsaw")
+  private val programmeHttp = new tools.GetOnlyHttpFetch {
+    def get(url: String): String =
+      if (url.endsWith("/pokaz-shortow")) programmeFixture("pokaz-shortow.html")
+      else if (!url.contains("week.ajax")) s"""<a href="?ut=${programmeDay.atStartOfDay(warsaw).toEpochSecond}">dziś</a>"""
+      else {
+        val ut  = """ut=(\d+)""".r.findFirstMatchIn(url).map(_.group(1).toLong).getOrElse(0L)
+        val day = java.time.Instant.ofEpochSecond(ut).atZone(warsaw).toLocalDate
+        if (day == programmeDay) programmeFixture("week.ajax-2026-09-29.html") else "<html></html>"
+      }
+  }
+
+  "A block of shorts" should "keep its name on the card and carry its programme subtitle in the raw title" in {
+    val Seq(block) = new UjazdowskiClient(programmeHttp, programmeDay).fetch()
+    block.movie.title shouldBe "Obcy w domu"
+    block.movie.rawTitle shouldBe Some("Obcy w domu | Blok filmów krótkometrażowych")
+    services.identity.MultiFilmBill.marker(block.movie.rawTitle.toSeq) shouldBe defined
+    // no film's facts are read off the subtitle
+    block.movie.releaseYear shouldBe None
+    block.director shouldBe empty
+  }
+
+  it should "be read as a programme off its own page's list of films" in {
+    val document = org.jsoup.Jsoup.parse(programmeFixture("pokaz-shortow.html"))
+    UjazdowskiClient.programmeOf(document).map(_.title) shouldBe Seq("MIX", "Kontrewers", "Dziwnie być człowiekiem")
+    UjazdowskiClient.programmeOf(document).map(_.director) shouldBe Seq("Klaudia Szott", "Zuza Banasińska", "Jan Grabowski")
+    // the detail credits the programme's directors, the card crediting none
+    new UjazdowskiClient(programmeHttp, programmeDay).fetchFilmDetail("https://u-jazdowski.pl/kino/repertuar/pokaz-shortow")
+      .map(_.director) shouldBe Some(Seq("Klaudia Szott", "Zuza Banasińska", "Jan Grabowski"))
+    // a film's own page lists no programme
+    UjazdowskiClient.programmeOf(org.jsoup.Jsoup.parse(FixtureFile.read("test/resources/fixtures/ujazdowski/u-jazdowski.pl/kino/repertuar/erupcja"))) shouldBe empty
+  }
+
+  it should "leave a film's card as it was" in {
+    byTitle("Erupcja").movie.rawTitle shouldBe None
   }
 }

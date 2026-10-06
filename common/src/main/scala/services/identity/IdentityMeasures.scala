@@ -38,6 +38,8 @@ object IdentityMeasures {
     def creditedBesideYear: Seq[String] = yearCredits.getOrElse(directors)
     /** The season the title names ("2026/27"), by its first year. */
     lazy val seasonYear: Option[Int] = IdentityMeasures.seasonYear(titles)
+    /** The word the title bills several films by ([[MultiFilmBill.marker]]), once per listing: every rule asks. */
+    private[identity] lazy val billMarker: Option[String] = MultiFilmBill.marker(titles)
     /** A year the venue put in its title as a delimited annotation ("(2026)"), outside any season. */
     lazy val titleYear: Option[Int] = IdentityMeasures.titleYearOf(titles)
     /** The venue's own year: its field, else the one its title brackets. */

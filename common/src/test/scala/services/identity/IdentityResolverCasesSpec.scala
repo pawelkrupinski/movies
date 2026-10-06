@@ -975,6 +975,33 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("Punku + spotkanie z reżyserem - Kino Kultura")) shouldBe false
   }
 
+  "A listing billing several films by a word that says so" should "be none of them, while a film whose own title carries the word stays that film" in {
+    // prod, 2026-10-06: US Frida Cinema's "Triple Feature: Lord of the Rings" (all three films back to back) took "The
+    // Return of the King" pooled at 61.2%; UK Showcase's "The Dark Knight Trilogy" {Christopher Nolan} took "The Dark
+    // Knight" beside its bare listings; PL "Maraton Horrorów" (three horrors, none of them "Whistle") took "Whistle", a
+    // venue having filed the film under the marathon's name.
+    val films = Seq(F(122, "The Lord of the Rings: The Return of the King", 2003, "Peter Jackson", 201, 48),
+      F(120, "The Lord of the Rings: The Fellowship of the Ring", 2001, "Peter Jackson", 179, 40),
+      F(155, "The Dark Knight", 2008, "Christopher Nolan", 152, 48),
+      F(1193501, "Whistle", 2026, "Corin Hardy", 100, 12, alternatives = Seq("Maraton horrorów")),
+      F(10518, "Marathon Man", 1976, "John Schlesinger", 125, 15), F(27318, "Trilogy of Terror", 1975, "Dan Curtis", 72, 8))
+    val bills = Seq(listing(Rialto, "Triple Feature: Lord of the Rings", director = Some("Peter Jackson")),
+      listing(Multikino, "The Dark Knight Trilogy", director = Some("Christopher Nolan")), listing(KinoMikro, "Maraton Horrorów"))
+    val dark  = Seq(KinoApollo, Helios).map(listing(_, "The Dark Knight", Some(2008), Some("Christopher Nolan"), Some(152)))
+    val whistle = listing(KinoMuza, "Maraton horrorów", Some(2026), Some("Corin Hardy"))
+    val own   = Seq(listing(Kinoteka, "Marathon Man", Some(1976)), listing(KinoOaza, "Trilogy of Terror", Some(1975)))
+    val all   = bills ++ dark ++ own
+    val r = shipped(all, films)
+    withClue(all.map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      bills.map(l => r.decisionOf(l.key).film) shouldBe Seq(None, None, None)
+      dark.map(l => r.decisionOf(l.key).film) shouldBe Seq(Some(155), Some(155))
+      own.map(l => r.decisionOf(l.key).film) shouldBe Seq(Some(10518), Some(27318))
+    }
+    // a venue billing the film under the marathon's name, crediting its director, still bills a marathon: none
+    val withFilm = shipped(Seq(bills(2), whistle), films)
+    withClue(withFilm.decisionOf(whistle.key).render)(Seq(bills(2), whistle).map(l => withFilm.decisionOf(l.key).film) shouldBe Seq(None, None))
+  }
+
   "A double bill sharing its first work's search form" should "not join that work's bare listing when its second work is another listing's" in {
     // UK, 2026-10-01: "Toddler Club: Tabby McTat + Room on the Broom" {Various Directors} searches as "Tabby McTat";
     // joined to the bare "Tabby McTat" ×23, its directors vetoed the film for all of them. A bill whose second
