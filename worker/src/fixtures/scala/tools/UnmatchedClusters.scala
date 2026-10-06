@@ -65,9 +65,10 @@ object UnmatchedClusters {
   /** The agreement stage over the model's decisions, as the worker runs it on the way to the projection. */
   def agree(decisions: Seq[ResolverDecision], listings: Seq[Listing], lookups: IdentityLookups, families: Map[VoterFamily, FamilyAnswers],
             version: Long, tmdbOf: String => Answer[Option[Int]], normalizer: TitleNormalizer, posters: PosterAnswers,
-            identities: Seq[VoterFamily], catalogue: CatalogueAnswers, listedOn: Option[VoterFamily] = None): Outcome = {
+            identities: Seq[VoterFamily], catalogue: CatalogueAnswers, listedOn: Option[VoterFamily] = None,
+            calibration: IdentityCalibration = IdentityCalibration.resolver): Outcome = {
     val model = resolutionOf(decisions)
-    val stage = new AgreementStage(families, lookups, normalizer, IdentityCalibration.resolver, tmdbOf, new InMemoryAgreementVerdicts,
+    val stage = new AgreementStage(families, lookups, normalizer, calibration, tmdbOf, new InMemoryAgreementVerdicts,
       clock = SpecClock.Pinned, posters = posters, tmdb = Some(lookups), identities = identities, catalogue = catalogue, listedOn = listedOn)
     val byKey = listings.map(l => l.key -> l).toMap
     Outcome(model, stage.apply(model, byKey.get, version), stage)
@@ -75,10 +76,12 @@ object UnmatchedClusters {
 
   /** The capture replayed: `Unknown` for anything it does not hold — a stale fixture, re-captured, never guessed. Over
    *  `decisions` (the capture's, else a part of them), each family's and the posters' answers read through `families` and
-   *  `posters` — what a measure of the stage's questions wraps them in — and normalised by `normalizer` (the country's
-   *  title rules, else a candidate rule set a measure of it resolves with). */
+   *  `posters` — what a measure of the stage's questions wraps them in — normalised by `normalizer` (the country's
+   *  title rules, else a candidate rule set a measure of it resolves with), and weighed by `calibration` (the shipped
+   *  artefact, else a refit's proposal — `scripts.IdentityRefit`). */
   def replay(capture: Capture, decisions: Seq[ResolverDecision] = Nil, families: FamilyAnswers => FamilyAnswers = identity,
-             posters: PosterAnswers => PosterAnswers = identity, normalizer: Option[TitleNormalizer] = None): Outcome = {
+             posters: PosterAnswers => PosterAnswers = identity, normalizer: Option[TitleNormalizer] = None,
+             calibration: IdentityCalibration = IdentityCalibration.resolver): Outcome = {
     val docs = new InMemoryTmdbDocuments
     docs.put(TmdbKind.Family, capture.families.toSeq)
     val store = new FamilyAnswerStore(docs, SpecClock.Pinned)
@@ -87,7 +90,7 @@ object UnmatchedClusters {
       familiesOf(capture.country).map(f => f -> families(store.answers(f))).toMap, version = 1,
       imdb => capture.finds.get(imdb).fold[Answer[Option[Int]]](Answer.Unknown)(Answer.Known(_)), normalizer.getOrElse(TitleNormalizer.forCountry(capture.country)),
       posters(new PosterAnswerStore(store, SpecClock.Pinned)), modules.wiring.IdentityCutoverWiring.identities(capture.country.code),
-      new CatalogueAnswerStore(store, SpecClock.Pinned, CataloguePages), modules.wiring.IdentityCutoverWiring.listedOn(capture.country.code))
+      new CatalogueAnswerStore(store, SpecClock.Pinned, CataloguePages), modules.wiring.IdentityCutoverWiring.listedOn(capture.country.code), calibration)
       .copy(unanswered = lookups.unanswered, missingQueries = lookups.queries.asScala.toSet, missingFilms = lookups.films.asScala.toSet.map(_.toInt))
   }
 

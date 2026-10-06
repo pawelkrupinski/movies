@@ -1073,6 +1073,7 @@ reproducible script. Nothing in it is hand-tuned; §14.7 lists the constants tha
 | `common/src/main/resources/identity-film-cuts.tsv` | hand-kept cuts of a film billed at their own runtime (`FilmCuts`): `tmdbId`, `imdbId`, cut label, minutes, source URL. TMDB keeps one record per film at its theatrical runtime (RotK 201, none for the 263-minute extended edition; Apocalypse Now 147, none for the Final Cut 183 or Redux 202), and no source states every cut's runtime machine-readably (IMDb GraphQL `runtimes` labels some by disc edition but misses Blade Runner's cuts and forbids commercial use; Wikidata P2047/P518 is uneven), so `runtime.delta` and the agreement's listing-runtime vote read the film runtime NEAREST the listing's, theatrical or a listed cut's. Add a row per cut a source states (IMDb's /technical runtimes, Wikidata P2047, Wikipedia), keyed by the IMDb id the record carries; a row moves the rules version |
 | `services.identity.IdentityCalibration` | loads the artefact and evaluates it: `logOdds`, `probability`, `explain`, `showsRatings`, `forbidsLink`, `cannotLink` (a generic evaluator of the rules as data) |
 | `scripts/identity-calibrate.sh` → `worker/Test/runMain scripts.IdentityCalibrate` | regenerates all of the above, the report below, and the healing lists |
+| `scripts/identity-calibrate.sh --refit` → `worker/Test/runMain scripts.IdentityRefit` | the weekly rule refit (§14.10, `identity-refit.yml`): re-tunes the cuts, the learned cannot-links' bounds and the listing-film weights of `identity-weights.json` on the unmatched-cluster ratchet, gated, one PR per run |
 | `IdentityCalibrationSpec` | the artefact loads, is internally sound, and puts the historical cases on the right side |
 
 Regenerate (≈ 7–20 min, 12 GB heap):
@@ -1642,6 +1643,57 @@ Bare-listing home (must-link): of 460191 labelled exact-title pairs where a side
   - venues.corroborating[0.5..1.5]: k=2 +1.17, k=3 -2.73 (221 units)
 
 Contradicted production filings: 1471 listings on 59 tmdbIds (`contradicted-prod-resolutions.tsv`); 59 imdb / rating-page cross-check mismatches (`prod-cross-check-mismatches.tsv`).
+
+### 14.10 The weekly rule refit (approach B)
+
+Status: 2026-10-06. Learning from the reviews means RE-TUNING the numbers the existing rules read — never a new rule,
+never a new feature, never a model in the resolver's place. `scripts.IdentityRefit`, run every Thursday by
+`.github/workflows/identity-refit.yml` (and by hand: `scripts/identity-calibrate.sh --refit`, `RELEARN=<signal,…>`),
+proposes bounded steps of every parameter `identity-weights.json` holds for the resolver and keeps those the ratchet
+proves:
+
+- **What moves**, one step per parameter per run: the listing-film acceptance cut (`showRatings`) and each scope's
+  cannot-link cut (at most ±0.05 and a quarter of the cut); each learned cannot-link's numeric bound ("runtime.delta >= 7
+  AND year.distance >= 4" → "… >= 5": a tenth of the bound, at least 1, never across 0 — its name follows); and each
+  listing-film signal's weights, refitted by the calibration's own fit (`IdentityCalibrate.inOrder`, `monotone`, `llr`,
+  so categories keep their evidence order and directed numbers their direction) from the counts the artefact holds plus
+  the labelled units the captures measure — every candidate of a labelled listing's node, the film a right label names
+  same, any other different — then moved at most 0.5 log-odds in any cell (a share of a monotone refit stays monotone).
+  A table whose counts do not give its weights back is not refitted. The isotonic map, the prior and the pinned rating
+  gate's artefact (`identity-weights-gate.json`) are never touched.
+- **Ground truth**: `labels.tsv` and `expected-matches.tsv` of the unmatched-cluster fixture. The review page's answers
+  live in the laptop's local review store (`review_local.review_answers`); they reach the refit once
+  `ReviewLabelsCli export` has written them into `labels.tsv` and that is committed. A report's "Takes to judge" lists
+  the unjudged takes that alone held a proposal back — judged, the next run measures them.
+- **The measure** is the ratchet's (`UnmatchedClustersRatchetSpec`): the control is the captured decisions themselves,
+  the agreement replayed (1390 right, 0 wrong, 0 unjudged today). Under a proposal every capture is resolved again
+  under it and under the control; every cluster the two resolves decide differently (film, basis, fallback, lean —
+  never a confidence or an explanation) is spliced over the captured decisions, closed over the clusters sharing a
+  listing (`CaptureReplay.spliced`), and the agreement replayed under the proposal. Each listing whose take moved is
+  judged as `DecorationDiscovery.judge` judges it.
+- **The gate**, all required: 0 wrong, 0 unjudged, 0 switched; no right take and no line of `expected-matches.tsv`
+  lost; no TMDB question unanswered beyond the control's (asked live in CI); at least 3 labelled films of the FITTING
+  fold newly right. Labels are grouped by film (murmur3 of the label's film, 5 folds); fold 0 is held out — a weight
+  refit never counts its units, its gains are reported apart and never count as support. Kept steps apply greedily,
+  the most supported first, each next one measured on top of those before it, at most 5 per run.
+- **Then CI** runs the identity specs, the ratchet, the hard clusters (`HardClusterConvergenceIntegrationSpec`, whose
+  checked-in films must not move) and regenerates the whole-corpus snapshots, appending every film block
+  `expected-schedules.txt` moved to the PR body; a red check opens no PR, nothing kept opens none.
+- **Relearn after an input change.** The units are measured by today's code over today's captures, so a change to a
+  measure's inputs — the per-translation runtimes and the cinema release years of `0ad5c2b1a` — is learned from the
+  units as they now measure. Its stored counts were measured on the old inputs: dispatch the job with `relearn:
+  year.delta,titleYear.delta,runtime.delta` once the captures carry the films' `releases`, and those tables are refitted
+  from the fresh units alone, still a capped step under the same gate, week by week.
+
+First dry run (2026-10-06, `origin/main`'s labels with that day's review answers; 766 labels, 1389 expected takes,
+1062 labelled units of which 48 same-film, 276 held out): 58 proposals, 12 moving any take, **nothing kept**. Lowering
+the acceptance cut to 0.32 took 1 right but 10 wrong and switched 20 (the Met's "Manon" to the 1949 film); refitting
+the title table took 1 right but switched 5 (three "Lalka (Dolly)" listings to the other 2026 Lalka) and took 1 wrong; every
+loosened cannot-link bound or cut lost right takes ("Mein neues altes Ich", "Die Unbeugsamen") and none gained one.
+The positive control — the shipped artefact mistuned (acceptance cut +0.05, a bound 2 → 1) — proposes the way back
+as its best steps (+16 right over 9 fitting and 3 held-out films; +7 right) and holds them on what it names: one
+labelled-wrong take ("Pasażerka - premiera książki, pokaz filmu + dyskusja" → the 1963 film) and three unjudged UFF
+festival films.
 
 ---
 

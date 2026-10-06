@@ -1,0 +1,215 @@
+name: Identity rule refit
+
+# Weekly re-tune of the numbers the identity resolver's EXISTING rules read from
+# common/src/main/resources/identity-weights.json — the acceptance cut, each scope's
+# cannot-link cut, the learned cannot-links' numeric bounds and the listing-film signals'
+# weights — on the unmatched-cluster ratchet's ground truth (labels.tsv, which carries the
+# review answers once `ReviewLabelsCli export` has written them there and they are committed,
+# and expected-matches.tsv). No new rule, no new feature: approach B, proposed for review in ONE PR.
+#
+# `scripts.IdentityRefit` (worker/src/test/scala/scripts) measures every bounded step of every
+# parameter as the ratchet measures: the five captures (test/resources/fixtures/identity-unmatched/
+# <cc>.json.gz) re-resolved under it and under the control, the agreement replayed, TMDB gaps
+# asked live with TMDB_API_KEY. A step is kept only with 0 wrong, 0 unjudged, 0 switched, no
+# right or expected take lost, and >= 3 labelled films of the fitting fold newly right; films
+# in the held-out fold are never counted by a weight refit and are reported apart. Kept steps
+# are applied greedily and written into identity-weights.json; the job then runs the checks a
+# calibration change answers to — the identity specs, the ratchet, the hard clusters (real
+# pipeline, throwaway Mongo) and the whole-corpus snapshots, regenerated so the PR names every
+# film that moved — and a red one opens no PR. Nothing kept ⇒ no diff ⇒ no PR (the measure
+# still lands in the summary).
+#
+# `relearn` (dispatch only): listing-film signals whose INPUTS changed (a film's releases, its
+# runtimes per translation) refitted from the units the captures measure today alone, their
+# stored counts dropped — the relearn such a change asks for, still under the same gate.
+#
+# Secrets: TMDB_API_KEY and SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY, as decoration-discovery.yml.
+# This bot's PR is the second sanctioned exception to "no PRs": land it by fast-forwarding main
+# after review.
+
+on:
+    workflow_dispatch:
+        inputs:
+            relearn:
+                description: 'Listing-film signals to relearn from fresh units alone (comma-separated), e.g. year.delta,runtime.delta'
+                required: false
+                default: ''
+
+    # Thursday 05:00 UTC — its own slot, clear of Tuesday's decoration discovery.
+    schedule:
+        - cron: '0 5 * * 4'
+
+concurrency:
+    group: identity-refit
+    cancel-in-progress: false
+
+permissions:
+    contents: write
+    pull-requests: write
+
+jobs:
+    refit:
+        runs-on: ubuntu-latest
+        timeout-minutes: 150
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: Check the TMDB key is set
+              env:
+                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+              run: scripts/ci/preflight.sh TMDB_API_KEY
+
+            - uses: ./.github/actions/setup-jdk
+              with:
+                  distribution: temurin
+                  java-version: 27
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+
+            - uses: ./.github/actions/sbt-target-cache
+              with:
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}
+                  restore-keys: |
+                      sbt-target-${{ runner.os }}-
+
+            # Guard the tool itself before trusting its proposals.
+            - name: Unit-test the refit
+              run: sbt "worker/testOnly scripts.IdentityRefitSpec"
+
+            - name: Measure every step and write the kept ones
+              timeout-minutes: 75
+              env:
+                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+                  RELEARN: ${{ github.event.inputs.relearn }}
+              run: |
+                  set -o pipefail
+                  sbt -J-Xmx12g "worker/Test/runMain scripts.IdentityRefit --apply --report identity-refit-report.md ${RELEARN:+--relearn $RELEARN}" 2>&1 | tee refit.log
+                  cat identity-refit-report.md >> "$GITHUB_STEP_SUMMARY"
+
+            - name: Check for kept changes
+              id: changed
+              run: |
+                  if git diff --quiet -- common/src/main/resources/identity-weights.json; then
+                      echo "kept=false" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "kept=true" >> "$GITHUB_OUTPUT"
+                  fi
+
+            # The checks a calibration change answers to. A red one fails the job: no PR.
+            - name: Identity specs and the unmatched-cluster ratchet
+              if: steps.changed.outputs.kept == 'true'
+              run: |
+                  sbt "common/testOnly services.identity.*" \
+                      "worker/testOnly services.identity.* scripts.IdentityCalibrateSpec scripts.IdentityRefitSpec"
+
+            - name: Start MongoDB (single-node replica set, for the hard clusters)
+              if: steps.changed.outputs.kept == 'true'
+              run: scripts/ci/start-mongo-replset.sh
+              env:
+                  MONGO_MAJORITY_JOURNAL: 'false'
+
+            # The real pipeline over the hard clusters: their checked-in films must not move.
+            - name: Hard clusters
+              if: steps.changed.outputs.kept == 'true'
+              timeout-minutes: 30
+              env:
+                  MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true
+                  MONGODB_DB: kinowo
+              run: sbt "worker/IntegrationTest/testOnly integration.HardClusterConvergenceIntegrationSpec"
+
+            # A calibration change can move the whole corpus's films: regenerate the whole-corpus
+            # assertion and the read model (delete, write, re-run to prove it stable — the
+            # regenerate-snapshots skill), and list every film block that moved in the PR body.
+            - name: Regenerate the whole-corpus snapshots
+              if: steps.changed.outputs.kept == 'true'
+              timeout-minutes: 40
+              env:
+                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+              run: |
+                  rm -f test/resources/fixtures/08-06-2026/expected-schedules.txt test/resources/fixtures/08-06-2026/read-model-snapshot.json
+                  sbt "e2e/Test/testOnly services.movies.FilmScheduleEndToEndSpec" || true
+                  sbt "e2e/Test/testOnly services.movies.FilmScheduleEndToEndSpec"
+                  {
+                      echo
+                      echo "### Films the whole-corpus read model moved (expected-schedules.txt)"
+                      echo
+                      if git diff --quiet -- test/resources/fixtures/08-06-2026/expected-schedules.txt; then
+                          echo "None."
+                      else
+                          echo '```diff'
+                          git diff -U0 -- test/resources/fixtures/08-06-2026/expected-schedules.txt | grep -E '^[-+][^-+]' | head -400
+                          echo '```'
+                      fi
+                  } >> identity-refit-report.md
+
+            - uses: browser-actions/setup-chrome@v1
+              if: steps.changed.outputs.kept == 'true'
+              id: setup-chrome
+              with:
+                  chrome-version: stable
+
+            - name: Regenerate the page snapshots
+              if: steps.changed.outputs.kept == 'true'
+              timeout-minutes: 30
+              env:
+                  CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
+              run: |
+                  rm -f test/resources/fixtures/08-06-2026/expected-index.html test/resources/fixtures/08-06-2026/expected-wroclaw-index.html \
+                      test/resources/fixtures/08-06-2026/expected-warszawa-index.html
+                  sbt "web/PageTest/testOnly views.PageSnapshotSpec" || true
+                  sbt "web/PageTest/testOnly views.PageSnapshotSpec"
+
+            - uses: actions/upload-artifact@v6
+              if: always()
+              with:
+                  name: identity-refit
+                  path: |
+                      identity-refit-report.md
+                      refit.log
+                  retention-days: 14
+
+            # A fresh branch off main every run, never a force-push over a stale one --
+            # see .github/actions/drop-bot-branch.
+            - uses: actions/create-github-app-token@v3
+              if: steps.changed.outputs.kept == 'true'
+              id: app-token
+              with:
+                  app-id: ${{ secrets.SYNC_PR_APP_ID }}
+                  private-key: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
+
+            - uses: ./.github/actions/drop-bot-branch
+              if: steps.changed.outputs.kept == 'true'
+              with:
+                  branch: chore/identity-refit
+                  token: ${{ steps.app-token.outputs.token }}
+
+            - name: Open the refit PR
+              if: steps.changed.outputs.kept == 'true'
+              uses: peter-evans/create-pull-request@v6
+              with:
+                  token: ${{ steps.app-token.outputs.token }}
+                  branch: chore/identity-refit
+                  delete-branch: true
+                  add-paths: |
+                      common/src/main/resources/identity-weights.json
+                      test/resources/fixtures/08-06-2026/*
+                  commit-message: 'Re-tune the identity rules the weekly refit measured: right takes gained, none wrong, switched or lost'
+                  title: 'Identity refit: re-tuned weights and thresholds'
+                  body-path: identity-refit-report.md
+
+    # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
+    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    report:
+        needs: refit
+        if: always() && !cancelled() && github.event_name == 'schedule'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}

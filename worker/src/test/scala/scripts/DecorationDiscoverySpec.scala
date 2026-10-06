@@ -94,7 +94,7 @@ class DecorationDiscoverySpec extends AnyFlatSpec with Matchers {
 
   "The unmatched clusters' fixture" should "measure a proposal that touches no listing as nothing" in {
     val capture = tools.UnmatchedClusters.read(tools.UnmatchedClusters.fixturePath(models.Country.Spain))
-    val bench   = new Bench(capture, Nil, live = None)
+    val bench   = new Bench(new CaptureReplay(capture, None), Nil)
     val p = ruleFor(Candidate("prefix", Seq("zzz", "qqq"), 3, 1, Nil), Seq("Zzz Qqq: Film")).get
     bench.evaluate(p) shouldBe None
     bench.lexicon should not be empty

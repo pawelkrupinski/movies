@@ -9,9 +9,7 @@ import tools.UnmatchedClusters
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
-import java.util.concurrent.ConcurrentHashMap
 import java.util.regex.Pattern
-import scala.jdk.CollectionConverters._
 
 /**
  * The weekly DECORATION DISCOVERY (`.github/workflows/decoration-discovery.yml`): mines the listing titles the
@@ -148,12 +146,11 @@ object DecorationDiscovery {
   // ── measuring ─────────────────────────────────────────────────────────────────────────────
 
   /** One country's capture, its baseline replay, and the TMDB answers asked live beyond it (shared by proposals). */
-  final class Bench(capture: UnmatchedClusters.Capture, labels: Seq[UnmatchedClusters.Label], live: Option[IdentityLookups]) {
+  final class Bench(replays: CaptureReplay, labels: Seq[UnmatchedClusters.Label]) {
+    private val capture       = replays.capture
     val country: Country      = capture.country
-    val normalizer            = TitleNormalizer.forCountry(country)
+    val normalizer            = replays.normalizer
     private val byKey         = capture.listings.map(l => l.key -> l).toMap
-    private val queries       = new ConcurrentHashMap[CandidateQuery, Seq[Hit]](capture.queries.asJava)
-    private val films         = new ConcurrentHashMap[Int, Option[IdentityMeasures.Film]](capture.films.asJava)
     val baseline: Seq[UnmatchedClusters.Take] = UnmatchedClusters.takes(capture, UnmatchedClusters.replay(capture))
 
     /** The listings no take covers: what mining reads, as (venue, title, the title searched). */
@@ -173,31 +170,8 @@ object DecorationDiscovery {
       Option.when(q != l.searchTitle)(l.key -> l.copy(searchTitle = q))
     }.toMap
 
-    private def answered: UnmatchedClusters.Capture = capture.copy(queries = queries.asScala.toMap, films = films.asScala.toMap)
-
-    /** The touched clusters resolved again over `listings` under `n`, the rest as captured; the agreement replayed. */
-    private def replay(listings: Seq[Listing], touched: Set[ResolverDecision], n: TitleNormalizer): (Seq[UnmatchedClusters.Take], Int) = {
-      var rounds = 0
-      var result = (Seq.empty[UnmatchedClusters.Take], Int.MaxValue)
-      var done   = false
-      while (!done) {
-        val cap      = answered.copy(listings = listings)
-        val lookups  = new UnmatchedClusters.Replay(cap)
-        val keys     = touched.flatMap(_.members)
-        val resolved = IdentityResolver.resolve(listings.filter(l => keys(l.key)), lookups, n)
-        val outcome  = UnmatchedClusters.replay(cap, capture.decisions.filterNot(touched) ++ resolved.decisions, normalizer = Some(n))
-        val missingQ = lookups.queries.asScala.toSet ++ outcome.missingQueries
-        val missingF = lookups.films.asScala.toSet.map(_.toInt) ++ outcome.missingFilms
-        result = (UnmatchedClusters.takes(cap, outcome), missingQ.size + missingF.size)
-        rounds += 1
-        done = result._2 == 0 || live.isEmpty || rounds > 4
-        live.filterNot(_ => done).foreach { tmdb =>
-          missingQ.toSeq.foreach(q => tmdb.candidates(q).toOption.foreach(queries.put(q, _)))
-          missingF.toSeq.foreach(id => tmdb.film(id).toOption.foreach(films.put(id, _)))
-        }
-      }
-      result
-    }
+    private def replay(listings: Seq[Listing], touched: Set[ResolverDecision], n: TitleNormalizer): (Seq[UnmatchedClusters.Take], Int) =
+      replays.replay(listings, touched, n)
 
     /** `proposal` measured alone against the control: `None` when it changes no listing's search title here. */
     def evaluate(proposal: Proposal): Option[Evaluation] = {
@@ -284,14 +258,8 @@ object DecorationDiscovery {
     val limit  = opts.get("limit").map(_.toInt).getOrElse(60)
     val min    = opts.get("min-remainders").map(_.toInt).getOrElse(TitleDecorations.MinCandidateRemainders)
     val labels = UnmatchedClusters.readLabels(UnmatchedClusters.Directory.resolve("labels.tsv"))
-    val configuration = settings.ProcessConfiguration.resolve()
-    val captures = Country.all.map(UnmatchedClusters.fixturePath).filter(Files.exists(_)).map(UnmatchedClusters.read)
-    val benches = captures.map { capture =>
-      val live = configuration.tmdbApiKey.map(key => new TmdbIdentityLookups(new clients.TmdbClient(new tools.RealHttpFetch(), apiKey = Some(key),
-        language = capture.country.language, retrySleep = (_: Long) => ()), new services.enrichment.ImdbClient(new tools.RealHttpFetch()), Nil))
-      new Bench(capture, labels, live)
-    }
-    println(s"TMDB gaps: ${if (configuration.tmdbApiKey.isDefined) "asked live" else "NOT asked (no TMDB_API_KEY) — a proposal asking one is unmeasured"}")
+    val benches = CaptureReplay.all().map(new Bench(_, labels))
+    println(s"TMDB gaps: ${if (CaptureReplay.asksLive) "asked live" else "NOT asked (no TMDB_API_KEY) — a proposal asking one is unmeasured"}")
     val lexicon  = benches.flatMap(_.lexicon).distinct
     val titles   = benches.flatMap(_.unmatched)
     val every    = TitleRules.all ++ ExtraTitleRules.all
