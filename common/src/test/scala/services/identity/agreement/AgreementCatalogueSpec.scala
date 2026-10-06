@@ -13,7 +13,11 @@ import services.movies.SingleCountryNormalizer
  *  asked for. */
 class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
   private val normalizer = SingleCountryNormalizer.titleNormalizer
-  private val table      = new FilmTable(Nil, normalizer)
+  /** TMDB's search, each title's most popular hit the film these specs' catalogue ids name. */
+  private val table      = new FilmTable(Seq(
+    FilmTable.F(1318829, "Fantasy", 2025, "Kukla Kesterović", 99),
+    FilmTable.F(31506, "Die Nibelungen - Teil 1: Siegfried", 1924, "Fritz Lang", 143, popularity = 2.31),
+    FilmTable.F(1445025, "Dann passiert das Leben", 2025, "Neele Vollmar", 100)), normalizer)
 
   private val fantasy = CatalogueId("webedia", "325279")
   /** Wikidata's record of the 2025 "Fantasy", by its item. */
@@ -66,9 +70,48 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
     d.explanation.last shouldBe "catalogue id webedia:325279 → TMDB 1318829 via Wikidata P1265 (Q135441923) 'Fantasy' (2025)"
   }
 
-  it should "take none when the listing's own year or director contradicts the record it maps to" in {
-    decided(stage(new HeldCatalogue(Map.empty, Map(fantasy -> Seq(fantasyHit)))), listing(year = Some(2019))).film shouldBe None
-    decided(stage(new HeldCatalogue(Map.empty, Map(fantasy -> Seq(fantasyHit)))), listing(director = Some("Wes Anderson"))).film shouldBe None
+  it should "take none when the venue's own year or director contradicts the record it maps to" in {
+    // a Letterboxd id, as a venue's own film page links it: the venue states the year and director beside it
+    val linked = CatalogueId("letterboxd", "fantasy-2025")
+    val held   = new HeldCatalogue(Map.empty, Map(linked -> Seq(fantasyHit)))
+    decided(stage(held), listing(ids = Seq(linked))).film shouldBe Some(1318829)
+    decided(stage(held), listing(year = Some(2019), ids = Seq(linked))).film shouldBe None
+    decided(stage(held), listing(director = Some("Wes Anderson"), ids = Seq(linked))).film shouldBe None
+  }
+
+  "a feed's catalogue id" should "take none on the facts the feed copied from its own entry, when the title picks another film" in {
+    // DE Roxy Kitzingen "To The Bone": Filmstarts' feed links 227420, Erin Li's 2014 short, and copies its year, director
+    // and 8 minutes onto the listing; the venue's own page bills Noxon's 2017 feature, which TMDB's search of the title
+    // picks. The copied facts agree with the short's record — they were copied from it — and confirm nothing.
+    val bone  = CatalogueId("webedia", "227420")
+    val short = SourceRecord(IdentityMeasures.Film("To the Bone", None, Nil, Some(2014), Some(8), Some(Seq("Erin Li")), None),
+      Map("wikidata" -> "Q1", "tmdb" -> "900665", "imdb" -> "tt3249100"))
+    val held  = new HeldCatalogue(Map.empty, Map(bone -> Seq(CatalogueHit(Some("Q1"), Some(900665), Some("tt3249100"), "Wikidata P8531"))))
+    val l     = FilmTable.listing(Multikino, "To The Bone", Some(2014), Some("Erin Li"), Some(8)).copy(catalogueIds = Seq(bone))
+    val tmdb  = new FilmTable(Seq(FilmTable.F(424, "To the Bone", 2017, "Marti Noxon", 107, popularity = 5.06),
+      FilmTable.F(900665, "To the Bone", 2014, "Erin Li", 8, popularity = 0.3)), normalizer)
+    def bones(film: Int) = new AgreementStage(families(wiki = Map("Q1" -> short)), table, normalizer, IdentityCalibration.resolver,
+      tmdbOf = Map("tt3249100" -> film).get.andThen(Answer.Known(_)), new InMemoryAgreementVerdicts,
+      clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb), catalogue = held)
+    val d = decided(bones(900665), l)
+    withClue(s"${d.basis} ${d.explanation}")(d.film shouldBe None)
+    // the title's own pick, though, is corroborated by TMDB's search of it, which no feed's facts enter
+    decided(bones(424), l).film shouldBe Some(424)
+  }
+
+  it should "take the film a venue's own facts credit, though no title search picks it" in {
+    val held = new HeldCatalogue(Map.empty, Map(fantasy -> Seq(fantasyHit)))
+    val none = new FilmTable(Nil, normalizer)
+    def taken(listings: Seq[Listing]) = {
+      val s = new AgreementStage(families(), none, normalizer, IdentityCalibration.resolver, tmdbOf = finds, new InMemoryAgreementVerdicts,
+        clock = _root_.tools.SpecClock.Pinned, tmdb = Some(none), catalogue = held)
+      val resolution = Resolution(Seq(ResolverDecision(listings.map(_.key), None, 0.4, ResolverDecision.Basis.BelowThreshold, Nil)()),
+        listings.size, listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+      s.apply(resolution, listings.map(l => l.key -> l).toMap.get, version = 1).decisions.head.film
+    }
+    val fed = listing(director = Some("Kukla Kesting"))
+    taken(Seq(fed)) shouldBe None
+    taken(Seq(fed, FilmTable.listing(Kinoteka, "Fantasy", Some(2025), Some("Kukla Kesting")))) shouldBe Some(1318829)
   }
 
   it should "take none when its ids name two films, or the id maps to no film item" in {
@@ -137,12 +180,16 @@ class AgreementCatalogueSpec extends AnyFlatSpec with Matchers {
     d.explanation.last shouldBe "catalogue id imdb:tt40381362 (linked from the venue's page) → TMDB 1686904 via TMDB's find 'The Taxidermist' (2025)"
   }
 
-  "a catalogue film TMDB holds no record of" should "stand on its Wikidata item" in {
-    val mein = CatalogueId("webedia", "1000032825")
-    val item = SourceRecord(IdentityMeasures.Film("Mein neues altes Ich", None, Nil, Some(2025), None, None, None), Map("wikidata" -> "Q138644118"))
-    val l    = FilmTable.listing(Multikino, "Mein neues altes Ich", Some(2025)).copy(catalogueIds = Seq(mein))
-    val d    = decided(stage(new HeldCatalogue(Map.empty, Map(mein -> Seq(CatalogueHit(Some("Q138644118"), None, None, "Wikidata P8531")))),
-      families(wiki = Map("Q138644118" -> item))), l)
+  "a catalogue film TMDB holds no record of" should "stand on its Wikidata item — a feed's only where a venue's own facts credit it" in {
+    val linked = CatalogueId("letterboxd", "mein-neues-altes-ich")
+    val fed    = CatalogueId("webedia", "1000032825")
+    val item   = SourceRecord(IdentityMeasures.Film("Mein neues altes Ich", None, Nil, Some(2025), None, None, None), Map("wikidata" -> "Q138644118"))
+    val hit    = Seq(CatalogueHit(Some("Q138644118"), None, None, "Wikidata P8531"))
+    def taken(id: CatalogueId) = decided(stage(new HeldCatalogue(Map.empty, Map(id -> hit)), families(wiki = Map("Q138644118" -> item))),
+      FilmTable.listing(Multikino, "Mein neues altes Ich", Some(2025)).copy(catalogueIds = Seq(id)))
+    val d = taken(linked)
     (d.film, d.basis, d.fallback.map(f => (f.source, f.id))) shouldBe ((None, ResolverDecision.Basis.Catalogue, Some(("wikidata", "Q138644118"))))
+    // no TMDB film for a title search to pick, no venue stating a fact: nothing but the feed's own word
+    taken(fed).fallback shouldBe None
   }
 }

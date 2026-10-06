@@ -73,9 +73,18 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
     }
   }
 
+  /** What one catalogue id binds `node` by: the id itself — a chain's own catalogue lists one film under one id — but a
+   *  feed's ([[CatalogueSources.FeedIds]]) only beside the node's title: an aggregator links screenings to its entries
+   *  and can link two venues' different films to one (Filmstarts' placeholder 51988 "Film Program"), so its id joins
+   *  only listings whose titles already agree. */
+  def catalogueKey(id: CatalogueId, node: EvidenceNode): String =
+    if (CatalogueSources.FeedIds(id.source)) s"${id.key}\u0000${sanitized(node.evidence.cleanTitle)}" else id.key
+
+  private def catalogueKeys(node: EvidenceNode): Seq[String] = node.listings.flatMap(_.catalogueIds).distinct.map(catalogueKey(_, node))
+
   private def sharesCatalogueId(first: EvidenceNode, second: EvidenceNode): Boolean = {
-    val ids = first.listings.flatMap(_.catalogueIds).toSet
-    ids.nonEmpty && second.listings.exists(_.catalogueIds.exists(ids))
+    val keys = catalogueKeys(first)
+    keys.nonEmpty && catalogueKeys(second).exists(keys.contains)
   }
 
   /** The edges between `members`, each node's film (accepted or voted) given by `filmOf`. */
@@ -85,7 +94,7 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
       val (firstFilm, secondFilm) = (filmOf(first.id), filmOf(second.id))
       val sameFilm = firstFilm.isDefined && firstFilm == secondFilm
       def edge(must: Boolean, tier: Int, reason: String) = ResolverEdge(first.id, second.id, must, tier, reason)
-      // One chain's one catalogue id is one film: the facts each venue publishes of it (a bare
+      // One chain's one catalogue id is one film (a feed's, under one title: `catalogueKey`): the facts each venue publishes of it (a bare
       // re-release dated by its title, "9 to 5 (2026)") never keep its listings apart, as a pin's
       // group is never kept apart. The cluster's pooled evidence then names the film.
       val cannots = if (sameFilm || sharesCatalogueId(first, second)) Nil else Seq(
@@ -97,7 +106,8 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
       val originals = (firstEvidence.originalTitle.map(sanitized) ++ secondEvidence.originalTitle.map(sanitized)).filter(_.nonEmpty).toSet
       val musts = Seq(
         Option.when(sameFilm)((1, "same-film")),
-        // One chain lists them under one catalogue id: its one film, whatever each venue calls it.
+        // One chain lists them under one catalogue id: its one film, whatever each venue calls it (a feed's id, only
+        // where their titles agree: `catalogueKey`).
         Option.when(sharesCatalogueId(first, second))((2, "same-catalogue-id")),
         Option.when(titleX.nonEmpty && titleX == sanitized(secondEvidence.cleanTitle))((2, "same-title")),
         // Unless the form is only what the two titles share BESIDE the films they name: a

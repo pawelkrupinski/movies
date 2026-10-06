@@ -348,7 +348,7 @@ object IdentityResolver {
     // its pooled evidence. Showcase's "9 to 5 (2026)" credits Colin Higgins at two venues; its two
     // bare venues, dated only by the re-release, had taken a two-minute 2026 short.
     val contested: Set[String] =
-      nodes.flatMap(node => node.listings.flatMap(_.catalogueIds).distinct.map(_ -> node.id)).groupMap(_._1)(_._2).values
+      nodes.flatMap(node => node.listings.flatMap(_.catalogueIds).distinct.map(id => edges.catalogueKey(id, node) -> node.id)).groupMap(_._1)(_._2).values
         .flatMap(ids => if (ids.distinct.flatMap(ownFilms.get).distinct.sizeIs > 1) ids else Nil).toSet
     val acceptedAll: Map[String, Int] = ownFilms.filterNot { case (id, _) => contested(id) } ++ families.pinnedFilm
     // Round A's edges over EVERY pair of nodes sharing a block key, then the family check: an

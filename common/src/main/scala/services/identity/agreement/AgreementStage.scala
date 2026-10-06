@@ -647,7 +647,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  needs is open, each noted to ask. */
   private def catalogued(decision: ResolverDecision, listings: Seq[Listing], asked: mutable.Set[(VoterFamily, String)], finding: mutable.Set[String],
                          catalogueAsked: mutable.Set[CatalogueQuestion]): Option[ResolverDecision] =
-    Catalogue.take(listings, listings.map(asStated), catalogue, families, tmdbOf, catalogueAsked, asked, finding).toOption.flatten.map { taken =>
+    Catalogue.take(listings, listings.map(asStated), catalogue, families, tmdbOf, () => titlePicks(listings), catalogueAsked, asked, finding)
+      .toOption.flatten.map { taken =>
       val explained = decision.explanation :+ taken.line
       taken.film.fold(decision.copy(basis = ResolverDecision.Basis.Catalogue, explanation = explained,
         fallback = taken.fallback.map { case (source, id) =>
@@ -748,6 +749,19 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       val found = queries.map(lookups.candidates)
       if (found.contains(Answer.Unknown)) Nil
       else found.flatMap(_.toOption.getOrElse(Nil)).map(_.tmdbId).filterNot(FallbackIds.isFallback).distinct.sorted
+    }
+
+  /** The films the listings' own titles pick — as published, as the venue's rules clean them, as they are searched — each
+   *  title search's most popular hit, a tie picking none: TMDB's evidence of the title alone, which no feed's facts
+   *  enter ([[Catalogue.take]]). An answer not held picks nothing. */
+  private def titlePicks(listings: Seq[Listing]): Set[Int] =
+    tmdb.fold(Set.empty[Int]) { lookups =>
+      listings.flatMap(listing => Seq(listing.title, listing.cleanTitle) ++ listing.searchTitle).map(_.trim).filter(_.nonEmpty).distinct.flatMap { text =>
+        lookups.candidates(CandidateQuery.Title(text)).toOption.flatMap { hits =>
+          val named = hits.filterNot(hit => FallbackIds.isFallback(hit.tmdbId))
+          named.maxByOption(_.popularity).filter(best => !named.exists(hit => hit.tmdbId != best.tmdbId && hit.popularity == best.popularity)).map(_.tmdbId)
+        }
+      }.toSet
     }
 
   /** A family's answers that note every question still a gap, and the digest of every answer read. */

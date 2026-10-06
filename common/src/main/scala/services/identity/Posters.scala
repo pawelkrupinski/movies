@@ -124,8 +124,11 @@ object PosterEvidence {
   /** How many of a film's TMDB posters are hashed: its own language's, then English, then language-neutral, by votes. */
   val FilmPosters = 8
 
-  /** Does `listing`'s poster speak for its film? */
-  def shows(listing: Listing): Boolean = !agreement.Agreement.stagesAWork(listing) && !agreement.Agreement.billsSeveral(listing)
+  /** Does `listing`'s poster speak for its film? Not a feed catalogue's ([[Listing.factsFromCatalogue]]): it is the poster
+   *  of the entry the feed linked, which votes for that entry whether or not it is the venue's film (DE "To The Bone":
+   *  Filmstarts' poster of Erin Li's 2014 short). */
+  def shows(listing: Listing): Boolean =
+    !listing.factsFromCatalogue && !agreement.Agreement.stagesAWork(listing) && !agreement.Agreement.billsSeveral(listing)
 
   /** The posters `listings` show, by URL. */
   def urls(listings: Seq[Listing]): Seq[String] = listings.filter(shows).flatMap(_.poster).distinct.sorted

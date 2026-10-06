@@ -45,6 +45,12 @@ final case class Listing(
 ) {
   def venue: String = key.venue
 
+  /** Are its year, directors, running time and poster an aggregator catalogue's claim, copied by the showtimes feed that
+   *  linked the screening to its entry, rather than its venue's own statement ([[CatalogueSources.feedStated]])? They are
+   *  evidence FOR that entry's film, never proof that the entry is the venue's film: they never confirm the feed's own
+   *  catalogue id, nor rule out another film outright. */
+  def factsFromCatalogue: Boolean = CatalogueSources.feedStated(this)
+
   /** The season a stage work billed with neither its season nor a year is broadcast in: the one its first screening
    *  falls in ([[ScreeningDays.season]]). A relay airs on its house's published dates — the Met's "Samson et Dalila"
    *  on 5 December 2026 — so a PL "Samson i Dalila" screening that day is the 2026/27 season's, whatever its title

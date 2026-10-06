@@ -20,6 +20,19 @@ object CatalogueSources {
   /** A Rotten Tomatoes film slug (P1258, "m/<slug>"), which a Flicks film page links. */
   val RottenTomatoes: Mapped = Mapped("rt", Seq("P1258"), "m/" + _)
 
+  /** The catalogues an aggregator's showtimes FEED links a venue's screening to: Webedia's (Filmstarts in Germany,
+   *  SensaCine in Spain), by the id the feed attaches; kinoprogramm.com's, by the catalogue page it serves as the
+   *  listing's own (`/kinofilm/<slug>-<id>`). The feed copies its entry's title, year, directors, running time and
+   *  poster onto the listing, so they are that CATALOGUE's claim, not the venue's: the feed can link the wrong entry —
+   *  DE Roxy Kitzingen's "To The Bone", Noxon's 2017 feature on the venue's own page, linked to Filmstarts' 227420, Erin
+   *  Li's 2014 short, with the short's year, director and 8 minutes — and its facts then only repeat the wrong entry. */
+  val FeedIds: Set[String]       = Set(Webedia.source)
+  val FeedPages: Seq[String]     = Seq("https://www.kinoprogramm.com/", "https://kinoprogramm.com/")
+
+  /** Are `listing`'s facts a feed catalogue's claim rather than its venue's ([[FeedIds]], [[FeedPages]])? */
+  def feedStated(listing: Listing): Boolean =
+    listing.catalogueIds.exists(id => FeedIds(id.source)) || listing.page.exists(page => FeedPages.exists(page.startsWith))
+
   /** Every catalogue Wikidata maps, by source. */
   val ByWikidata: Map[String, Mapped] = Seq(Webedia, Letterboxd, RottenTomatoes).map(m => m.source -> m).toMap
 

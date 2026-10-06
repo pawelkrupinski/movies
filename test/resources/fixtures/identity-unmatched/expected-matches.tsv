@@ -381,7 +381,6 @@ de	CinemaxX Raschplatz	SEVENTEEN World Tour 'New_'	imdb:tt46658626	filled by ven
 de	Cinemaxx Liederhalle Stuttgart	SEVENTEEN World Tour 'New_'	imdb:tt46658626	filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 de	Cineplex Bruchsal	Mein neues altes Ich - Eine Reise in das Mysterium der Menopause	wikidata:Q138644118	wiki, imdb leaning to it, corroborated by venues agree on 'Mein neues altes Ich' (2026)
 de	Cineplex Marburg	Kleine Geheimnisse	tmdb:47387	Familienausflug mit kleinen Geheimnissen (2002)
-de	Delphi 1+2	Jeder Acker, jede Fabrik	wikidata:Q141180912	wiki, corroborated by listing, runtime agree on 'Jeder Acker, jede Fabrik' (2026)
 de	Filmpalast Kassel	SEVENTEEN World Tour 'New_'	imdb:tt46658626	filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 de	Filmtheater Schauburg	Pettersson und Findus Mitmachkino 2	tmdb:1624916	Lustiges Pettersson und Findus Mitmachkino 2 (2026)
 de	Forum 2 - Kulturverein Olympiadorf e.V.	Die Unbeugsamen	tmdb:317055	Непокорённые (1945)
@@ -391,11 +390,9 @@ de	Kino Steinfurt	Mein neues altes Ich - Eine Reise in das Mysterium der Menopau
 de	Kino im Druckluft	Maria's Lovers	tmdb:77985	Maria's Lovers (1984)
 de	Kleines Theater Schillerstraße	Mein neues altes Ich - Eine Reise in das Mysterium der Menopause	wikidata:Q138644118	wiki, imdb leaning to it, corroborated by venues agree on 'Mein neues altes Ich' (2026)
 de	Kommunales Kino Esslingen	Pettersson und Findus Mitmachkino 2	tmdb:1624916	Lustiges Pettersson und Findus Mitmachkino 2 (2026)
-de	Kommunales Kino Pforzheim	Mittwoch	imdb:tt0276336	filmweb, imdb, corroborated by listing, runtime agree on 'Mittwoch' (2000) tt0276336
+de	Kommunales Kino Pforzheim	Mittwoch	imdb:tt0276336	filmweb, imdb, corroborated by feed agree on 'Mittwoch' (2000) tt0276336
 de	Kronenlichtspiele	Pettersson und Findus Mitmachkino 2	tmdb:1624916	Lustiges Pettersson und Findus Mitmachkino 2 (2026)
-de	Lumière	Jeder Acker, jede Fabrik	wikidata:Q141180912	wiki, corroborated by listing, runtime agree on 'Jeder Acker, jede Fabrik' (2026)
-de	Monopol	Chasing Hope – Der andere Blick	wikidata:Q141603679	wiki, corroborated by listing, runtime agree on 'Chasing Hope – Der andere Blick' (2026)
-de	Moviemento	Die Story von Joanna	tmdb:333621	filmweb, wiki, corroborated by listing agree on 'Die Story von Joanna' (1975) tt0073750
+de	Moviemento	Die Story von Joanna	tmdb:333621	filmweb, wiki, corroborated by feed agree on 'Die Story von Joanna' (1975) tt0073750
 de	Museum-Lichtspiele München	Pettersson und Findus Mitmachkino 2	tmdb:1624916	Lustiges Pettersson und Findus Mitmachkino 2 (2026)
 de	Olympia Hirschberg	Mein neues altes Ich - Eine Reise in das Mysterium der Menopause	wikidata:Q138644118	wiki, imdb leaning to it, corroborated by venues agree on 'Mein neues altes Ich' (2026)
 de	Rex Wuppertal	Die Nibelungen - Teil 1: Siegfried	tmdb:31506	Die Nibelungen: Siegfried (1924)
@@ -1384,4 +1381,4 @@ us	Regal Winter Park Village	Festive Fun with Peppa Cinema Experience	imdb:tt466
 us	Robinson Robinson Township	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 us	Robinson Robinson Township	SEVENTEEN World Tour 'NEW_'	imdb:tt46658626	filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 us	Robinson Robinson Township	TOMORROW X TOGETHER World Tour 'ACT : TOMORROW'	imdb:tt46658752	filled by venues.current: 'Tomorrow X Together World Tour 'Act: Tomorrow' (2026)' imdb:tt46658752 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
-es	Cinebaix	La leyenda del innombrable	imdb:tt1549862	filmweb, imdb, wiki, corroborated by listing agree on 'La llegenda de l'innombrable' (2010) tt1549862
+es	Cinebaix	La leyenda del innombrable	imdb:tt1549862	filmweb, imdb, wiki, corroborated by feed agree on 'La llegenda de l'innombrable' (2010) tt1549862

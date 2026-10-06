@@ -138,6 +138,24 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(Seq(listing(KinoMuza, "Survive")), takers :+ filmweb) shouldBe None
   }
 
+  it should "count a feed catalogue's contradicting facts as one vote against the film, a venue's as a veto" in {
+    // DE Roxy Kitzingen "To The Bone": Filmstarts' feed copies Erin Li's 2014 short's year and director onto a screening
+    // the venue's own page bills as Noxon's 2017 feature — the catalogue's claim, weighed, not the venue's word
+    val feature  = SourceRecord(film("To the Bone", 2017, "Marti Noxon", 107), Map("imdb" -> "tt5541240"))
+    val fed      = listing(KinoMuza, "To The Bone", year = Some(2014), director = Some("Erin Li"))
+      .copy(catalogueIds = Seq(services.identity.CatalogueId("webedia", "227420")))
+    fed.factsFromCatalogue shouldBe true
+    val three    = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.RottenTomatoes).map(f => FamilyVerdict.took(FamilyPick(f, "1", feature)))
+    val leaning  = FamilyVerdict(VoterFamily.Metacritic, None, Seq(feature), leaning = Some(feature))
+    Agreement.agreed(Seq(fed), three) shouldBe None
+    Agreement.agreed(Seq(fed), three :+ leaning).map(_.record) shouldBe Some(feature)
+    val stated   = fed.copy(catalogueIds = Nil)
+    stated.factsFromCatalogue shouldBe false
+    Agreement.agreed(Seq(stated), three :+ leaning) shouldBe None
+    // kinoprogramm.com's film page, which its feed serves as every venue's, states its catalogue's facts too
+    stated.copy(page = Some("https://www.kinoprogramm.com/kinofilm/to-the-bone-1")).factsFromCatalogue shouldBe true
+  }
+
   it should "not turn it down when its evidence leans to no film at all" in {
     // US "Spider Baby" (fixture identity-unmatched): Metacritic weighed Hill's film among Spider-Man films, 5.3% the best,
     // 3.0% the next — no film its evidence favours, so no evidence against the one three families took

@@ -139,6 +139,21 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     shipped(Seq(credited, other), films).decisionOf(other.key).film shouldBe None
   }
 
+  "Listings a feed links to one catalogue entry" should "be one film only where their titles agree: an aggregator can mislink" in {
+    // A Webedia id is the feed's link of a screening to its entry, not the venue's naming of its film: Filmstarts files
+    // seven venues' different programmes under one placeholder (51988, "Film Program"). Unlike a chain's own id, it never
+    // carries a title no search reaches onto the film another venue's credits name.
+    val films = Seq(F(1417, "Pan's Labyrinth", 2006, "Guillermo del Toro", 119), F(399055, "The Shape of Water", 2017, "Guillermo del Toro", 123))
+    val fed      = Seq(CatalogueId("webedia", "10442"))
+    val credited = listing(Multikino, "Pan's Labyrinth", director = Some("Guillermo del Toro"), runtime = Some(119)).copy(catalogueIds = fed)
+    val spanish  = listing(Helios, "El laberinto del fauno").copy(catalogueIds = fed)
+    val r = shipped(Seq(credited, spanish), films)
+    withClue(Seq(credited, spanish).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(spanish.key).film shouldBe None
+      r.decisionOf(credited.key).film shouldBe Some(1417)
+    }
+  }
+
   it should "keep a re-release's bare listings on the film their credited siblings name, not a namesake of the re-release year" in {
     // US Showcase "9 to 5 (2026)" (boxoffice 1000052877): two venues credit Colin Higgins, two publish
     // only the title, whose "(2026)" dated them onto a two-minute 2026 short about a dachshund.

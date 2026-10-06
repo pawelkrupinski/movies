@@ -165,7 +165,8 @@ object UnifiedEvidence {
       val turnedDown = c.verdicts.count(Agreement.turnsDown(_, c.listings, records, contender.is))
       val dissent = c.verdicts.count(v => v.pick.exists(pick => !contender.is(pick.record) && c.listings.nonEmpty &&
         c.listings.forall(Agreement.namesIt(_, Seq(pick.record.film)))))
-      val votes  = Agreement.listingVotes(asStated, records)
+      // the venues' own facts: a feed's copied from its catalogue entry are one vote of the agreement's, no listing's ([[Agreement.factVotes]])
+      val votes  = Agreement.factVotes(asStated, records)
       val namesIt = c.listings.nonEmpty && c.listings.forall(Agreement.namesIt(_, records.map(_.film)))
       val nearest = contender.tmdb.toSeq.flatMap(id => c.posters.flatMap(_.get(id).flatten)).minOption
       val flags: Seq[(String, Boolean)] = Seq(
@@ -184,7 +185,7 @@ object UnifiedEvidence {
         "production.house"    -> open.exists(_.houseProduction),
         "listing.facts"       -> votes(Agreement.ListingFacts),
         "listing.runtime"     -> votes(Agreement.ListingRuntime),
-        "listing.contradicts" -> Agreement.contradictedByTheListing(c.listings, contender.record),
+        "listing.contradicts" -> Agreement.contradictedByAnyListing(c.listings, contender.record),
         "venues.current"      -> (venues >= Agreement.WidelyBilled && records.flatMap(_.film.year).maxOption.exists(_ >= c.thisYear - 1)),
         "title.namesIt"       -> namesIt,
         "title.namesNone"     -> !namesIt,

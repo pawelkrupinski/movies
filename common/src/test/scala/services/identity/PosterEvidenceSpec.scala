@@ -104,5 +104,7 @@ class PosterEvidenceSpec extends AnyFlatSpec with Matchers {
     PosterEvidence.urls(Seq(billed("Lalka"), billed("The Royal Ballet: The Nutcracker"), billed("Psychoza + Ptaki"))) shouldBe
       Seq("https://posters/Lalka.jpg")
     PosterEvidence.urls(Seq(FilmTable.listing(KinoMuza, "Lalka"))) shouldBe empty
+    // nor a feed catalogue's: the poster of the entry Filmstarts linked the screening to, right or wrong (DE "To The Bone")
+    PosterEvidence.urls(Seq(billed("To The Bone").copy(catalogueIds = Seq(CatalogueId("webedia", "227420"))))) shouldBe empty
   }
 }

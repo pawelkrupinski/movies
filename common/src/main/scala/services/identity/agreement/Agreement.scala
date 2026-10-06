@@ -170,6 +170,9 @@ object Agreement {
    *  director, is left to the rules for event films. */
   val ListingRuntime = "runtime"
   val RuntimeSlack = 5
+  /** The facts a feed copied from its catalogue's entry crediting the takers' records — one vote, however many of them
+   *  agree ([[factVotes]]). */
+  val FeedFacts = "feed"
   /** At least [[WidelyBilled]] venues billing the cluster's title, and the film released this year or last: a current
    *  release, not a one-off event an older namesake fits. */
   val Venues = "venues"
@@ -240,8 +243,12 @@ object Agreement {
     // each group is the picks of one film, so every film weighed has a taker: a lean or a corroboration alone makes none
     named.map(group => supported(listings, asStated, group, verdicts, modelVote, thisYear)).sortBy(film => -film.support).headOption.flatMap { film =>
       val dissent = named.filterNot(_.exists(pick => film.agreed.families(pick.family))).map(_.size).sum
-      Option.when(film.support >= Quorum + dissent + film.turnedDown && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
-        !film.records.take(film.agreed.families.size).exists(contradictedByTheListing(listings, _)) &&
+      val taken = film.records.take(film.agreed.families.size)
+      // a feed catalogue's facts ruling the film out are its claim, one vote against it, not a veto (DE "To The Bone":
+      // Filmstarts' feed credits Erin Li's 2014 short to a venue billing Noxon's 2017 feature)
+      val catalogueDissent = if (taken.exists(contradictedByTheCatalogue(listings, _))) 1 else 0
+      Option.when(film.support >= Quorum + dissent + film.turnedDown + catalogueDissent && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
+        !taken.exists(contradictedByTheListing(listings, _)) &&
         listings.forall(listing => !billsSeveral(listing) && (!stagesAWork(listing) || screenAdaptation(listings, film.agreed))))(film.agreed)
     }
   }
@@ -267,7 +274,7 @@ object Agreement {
     def isIt(record: SourceRecord) = (records ++ voted).exists(sameFilm(_, record))
     val leaning = verdicts.filter(verdict => verdict.pick.isEmpty && verdict.leaning.exists(isIt)).map(_.family).toSet
     val catalogued = listings.exists(_.catalogueIds.exists(id => group.exists(pick => pick.family.database == id.source && pick.id == id.id)))
-    val corroborated = listingVotes(stated, records) ++ Set(ModelVote).filter(_ => voted.nonEmpty) ++ Set(Catalogue).filter(_ => catalogued) ++
+    val corroborated = factVotes(stated, records) ++ Set(ModelVote).filter(_ => voted.nonEmpty) ++ Set(Catalogue).filter(_ => catalogued) ++
       Set(Venues).filter(_ => listings.map(_.venue).distinct.size >= WidelyBilled &&
         thisYear.exists(year => records.flatMap(_.film.year).maxOption.exists(_ >= year - 1)))
     val turnedDown = verdicts.count(turnsDown(_, listings, records, isIt))
@@ -285,7 +292,7 @@ object Agreement {
    *  Director's Cut" page). */
   private[identity] def turnsDown(verdict: FamilyVerdict, listings: Seq[Listing], records: Seq[SourceRecord], isIt: SourceRecord => Boolean): Boolean =
     verdict.pick.isEmpty && verdict.weighed.exists(isIt) && verdict.leaning.exists(lean =>
-      !isIt(lean) && !contradictedByTheListing(listings, lean) && !records.exists(editionOf(lean, _)))
+      !isIt(lean) && !contradictedByAnyListing(listings, lean) && !records.exists(editionOf(lean, _)))
 
   /** Is `edition` a record of `work` under a qualifier: the same director's, dated no earlier (or undated), its title
    *  carrying one of the work's (four letters at least) as a token run — "Ken Russell's The Devils: The Director's Cut"
@@ -321,6 +328,17 @@ object Agreement {
     if (dated.isEmpty || !dated.forall(credits)) Set.empty else Set(ListingFacts) ++ Option.when(runs)(ListingRuntime)
   }
 
+  /** What the listings' facts vote for the takers' records: the venues' own ([[listingVotes]] over the listings whose
+   *  venue states them), else — where no venue's facts vote — ONE vote, [[FeedFacts]], when the facts a feed copied from
+   *  its catalogue's entry credit them: year, director and running time are then all that entry's one claim of which film
+   *  it is, which a family finding the entry's own record only repeats (DE "To The Bone": Wikidata's record of Erin Li's
+   *  2014 short, the one Filmstarts' feed copied its facts from). */
+  private[identity] def factVotes(listings: Seq[Listing], records: Seq[SourceRecord]): Set[String] = {
+    val (fed, venues) = listings.partition(_.factsFromCatalogue)
+    val own = listingVotes(venues, records)
+    if (own.nonEmpty || fed.isEmpty) own else if (listingVotes(fed, records).nonEmpty) Set(FeedFacts) else Set.empty
+  }
+
   /** Does every listing stating a running time run within [[RuntimeSlack]] minutes of a record's, and one state it? */
   private def runsAsTheListing(listings: Seq[Listing], records: Seq[SourceRecord]): Boolean = {
     val timed = listings.filter(_.runtime.isDefined)
@@ -328,13 +346,27 @@ object Agreement {
   }
 
   /** Does a listing's own year (more than one apart) or director (another person in the same script, sharing no name's
-   *  stem — "Marc Donskoi" is "Mark Donskoy") rule the film out? */
-  private[identity] def contradictedByTheListing(listings: Seq[Listing], record: SourceRecord): Boolean = listings.exists { listing =>
+   *  stem — "Marc Donskoi" is "Mark Donskoy") rule the film out — a listing whose VENUE states them? A feed catalogue's
+   *  facts ([[Listing.factsFromCatalogue]]) are no venue's statement: they rule nothing out on their own
+   *  ([[contradictedByTheCatalogue]]). */
+  private[identity] def contradictedByTheListing(listings: Seq[Listing], record: SourceRecord): Boolean =
+    listings.exists(listing => !listing.factsFromCatalogue && contradicts(listing, record))
+
+  /** Do the facts a feed copied from its catalogue's entry onto a listing contradict the film, as a venue's would
+   *  ([[contradictedByTheListing]])? The catalogue's claim: evidence for its entry's film, weighed, never a veto. */
+  private[identity] def contradictedByTheCatalogue(listings: Seq[Listing], record: SourceRecord): Boolean =
+    listings.exists(listing => listing.factsFromCatalogue && contradicts(listing, record))
+
+  /** Does any listing's year or director contradict the film, whoever states it: what a lean must not be to dissent, and
+   *  what a fill rule's guard reads — rules that weigh nothing against it. */
+  private[identity] def contradictedByAnyListing(listings: Seq[Listing], record: SourceRecord): Boolean =
+    listings.exists(contradicts(_, record))
+
+  private def contradicts(listing: Listing, record: SourceRecord): Boolean =
     record.film.year.zip(listing.year).exists { case (a, b) => math.abs(a - b) > 1 } ||
       record.film.directors.exists(directors => directors.nonEmpty && listing.directors.nonEmpty &&
         IdentityMeasures.directorRelation(listing.directors, directors) == IdentityMeasures.Category("different") &&
         namePrefixes(listing.directors).intersect(namePrefixes(directors)).isEmpty)
-  }
 
   /** Is the listing's title another film's ORIGINAL title — one a family weighed — while it is none of the agreed film's
    *  records' original titles, only a translation they file? Then the venue may well bill that film by its own name:
