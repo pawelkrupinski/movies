@@ -56,9 +56,10 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     val groups    = IdentityMeasures.titleGroups(listing)
     val measured = reachable.map { candidate =>
       val rivals   = close - (if (rivalling(candidate.tmdbId)) 1 else 0)
-      val measures = IdentityMeasures.creditedBySearch(IdentityMeasures.listingFilmTitled(listing, candidate.film, ranks.get(candidate.tmdbId), rivals,
-        backing.corroborating((groups ++ IdentityMeasures.searchGroups(listing, candidate.film)).distinct, candidate.film, venue),
-        relationOf(candidate.tmdbId), country), directedBy(candidate.tmdbId))
+      val measures = IdentityMeasures.creditedByTitle(listing, candidate.film, IdentityMeasures.creditedBySearch(
+        IdentityMeasures.listingFilmTitled(listing, candidate.film, ranks.get(candidate.tmdbId), rivals,
+          backing.corroborating((groups ++ IdentityMeasures.searchGroups(listing, candidate.film)).distinct, candidate.film, venue),
+          relationOf(candidate.tmdbId), country), directedBy(candidate.tmdbId)))
       val probability = calibration.probability(ListingFilm, measures)
       val byNode = deniedByNode(candidate.tmdbId)
       Scored(candidate, probability, measures, byNode.orElse(evidenceDenial(listing, candidate.film, measures)), listing, ranks.get(candidate.tmdbId),

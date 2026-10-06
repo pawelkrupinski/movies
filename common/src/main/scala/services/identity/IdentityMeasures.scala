@@ -60,6 +60,8 @@ object IdentityMeasures {
     private[identity] lazy val ownForms: Seq[IdentityMeasures.TitleForm] = (Seq(title) ++ rawTitle).map(IdentityMeasures.TitleForm(_))
     /** The own forms' non-empty keys, once per listing: every pool candidate's `titleRelation` asks. */
     private[identity] lazy val ownKeys: Set[String] = ownForms.map(_.key).filter(_.nonEmpty).toSet
+    /** The title's words, once per listing: a director's surname heading it is read against every candidate. */
+    private[identity] lazy val titleWords: Seq[String] = ownForms.head.words
     private[identity] lazy val shapeKeys: Seq[String] = shapes.map(IdentityMeasures.key)
     private[identity] lazy val shapeWords: Seq[Seq[String]] = shapes.map(IdentityMeasures.words)
     /** The shapes only the learned decorations leave, once per listing (usually none): a relation's scoring reads them
@@ -655,6 +657,21 @@ object IdentityMeasures {
       measures + ("director" -> Category("same_person"))
     else measures
 
+  /** `measures`, the director read as credited when the listing credits nobody but its title heads the film's title with
+   *  the surname of one of its directors ("Konwicki Salto", "Konwicki: Salto" — PL Kino Fenix's retrospective of
+   *  Tadeusz Konwicki): the rest of the title must be one of the film's titles whole, and the surname five letters at
+   *  least. */
+  def creditedByTitle(l: Listing, f: Film, measures: Map[String, Measure]): Map[String, Measure] =
+    if (!measures.get("director").contains(MissingListing) || l.directors.nonEmpty) measures
+    else {
+      val words = l.titleWords
+      val named = words.sizeIs >= 2 && words.head.length >= 5 && f.directors.exists(_.exists { director =>
+        val surname = IdentityMeasures.words(director).lastOption
+        surname.exists(s => s.length >= 5 && s == words.head) && f.titleKeys.contains(words.tail.mkString)
+      })
+      if (named) measures + ("director" -> Category("same_person")) else measures
+    }
+
   /** Is a listing's credited "director" the film's HOUSE — a name two words or more long that runs inside the film's
    *  own title, and none of the people the film credits? UK venues credit "The Metropolitan Opera" for its 2026/27
    *  "The Metropolitan Opera: Così fan tutte" ×97, which read as a different director than Phelim McDermott and
@@ -1214,9 +1231,10 @@ object IdentityMeasures {
   /** The title without an anniversary it dates ("… 20th Anniversary") and a director's possessive
    *  credit before it ("Guillermo del Toro's …"): the work a re-release bills under both, which no
    *  piece of the title is. A credit is a name of two words or more, so "Schindler's List" keeps its own. */
-  private def uncredited(l: Listing): Seq[String] = {
-    val undated = AnniversarySuffix.replaceFirstIn(l.title.trim, "").trim
-    Seq(undated, PossessiveCredit.replaceFirstIn(undated, "").trim).filter(q => q.nonEmpty && q != l.title.trim)
+  private def uncredited(l: Listing): Seq[String] = (Seq(l.title) ++ l.originalTitle).flatMap { title =>
+    // the original title too: ES "Drácula. 30 Aniversario" is "Bram Stoker's Dracula 30th Anniversary" in it
+    val undated = AnniversarySuffix.replaceFirstIn(title.trim, "").trim
+    Seq(undated, PossessiveCredit.replaceFirstIn(undated, "").trim).filter(q => q.nonEmpty && q != title.trim)
   }
   private val AnniversarySuffix = """(?i)\s*[-–—:]?\s*\(?\d{1,3}(?:st|nd|rd|th)\s+anniversary\)?\s*$""".r
   private val PossessiveCredit  = """^\p{Lu}[\p{L}.-]*(?:\s+[\p{L}.-]+){1,3}['’]s\s+(?=\S)""".r
@@ -1582,8 +1600,21 @@ object IdentityMeasures {
     slots(11) = f.popularity.fold[Measure](MissingFilm)(p => Number(PopularityBucket.of(p).toDouble))
     slots(12) = Number(rivals.toDouble)
     slots(13) = Number(corroboratingVenues.toDouble)
-    screeningYearAbsent(l, f, title, new ListingFilmMeasures(slots))
+    anniversaryYear(l, f, screeningYearAbsent(l, f, title, new ListingFilmMeasures(slots)))
   }
+
+  /** `m` with the published year absent when it is the year of an ANNIVERSARY the title bills: ES "Drácula. 30
+   *  Aniversario" (original title "Bram Stoker's Dracula 30th Anniversary"), dated 2022, is Coppola's 1992 film — its
+   *  year that many years before the stated one, within a year. Any other year stays the listing's fact. */
+  private def anniversaryYear(l: Listing, f: Film, m: Map[String, Measure]): Map[String, Measure] =
+    (for {
+      stated <- l.year
+      film   <- f.year
+      years  <- (Seq(l.title) ++ l.rawTitle ++ l.originalTitle).iterator.flatMap(t => AnniversaryYears.findFirstMatchIn(t)).map(_.group(1).toInt).nextOption()
+      if FactRelations.yearsNear(stated - years, film)
+    } yield m ++ PublishedYear.map(_ -> MissingListing)).getOrElse(m)
+  /** "30th Anniversary", "30 Aniversario": how many years a re-release celebrates. */
+  private val AnniversaryYears = """(?i)\b(\d{1,3})(?:st|nd|rd|th)?\.?\s+(?:anniversary|aniversario)\b""".r
 
   /** `m` with the published year absent when it dates a screening ([[PublishedYear]]): when the
    *  listing's title is the film's title ([[TitledRelations]]) and the same director is credited, a year

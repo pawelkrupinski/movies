@@ -37,6 +37,38 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.searchQueries(Listing("Żyć by tańczyć")) shouldBe Seq("Żyć by tańczyć")
   }
 
+  // PL Kino Fenix's Konwicki retrospective (review answer): "Konwicki Salto", "Konwicki Ostatni dzień lata" — the
+  // director's surname heads each title, and no field credits him
+  "a director's surname heading a title" should "credit the film's director whose surname it is, when the rest names the film" in {
+    val salto = Film("Salto", directors = Some(Seq("Tadeusz Konwicki")))
+    def director(title: String, f: Film) = IdentityMeasures.creditedByTitle(Listing(title), f, measures(Listing(title), f))("director")
+    director("Konwicki Salto", salto) shouldBe Category("same_person")
+    director("Konwicki: Salto", salto) shouldBe Category("same_person")
+    // another director, a rest naming another film, a credit the listing states, a title that is the film's own: untouched
+    director("Konwicki Salto", salto.copy(directors = Some(Seq("Jan Kowalski")))) shouldBe Missing("listing")
+    director("Konwicki Salto Mortale", salto) shouldBe Missing("listing")
+    director("Salto", salto) shouldBe Missing("listing")
+    val credited = Listing("Konwicki Salto", directors = Seq("Jan Kowalski"))
+    IdentityMeasures.creditedByTitle(credited, salto, measures(credited, salto))("director") should not be Category("same_person")
+  }
+
+  // ES Cines Bulevar's "Drácula. 30 Aniversario" (review answer: Coppola's 1992 film), its original title "Bram Stoker's
+  // Dracula 30th Anniversary": the anniversary and the possessive credit are searched without in the original title too
+  "an anniversary re-release's original title" should "be searched without its anniversary" in {
+    IdentityMeasures.searchQueries(Listing("Drácula. 30 Aniversario", originalTitle = Some("Bram Stoker's Dracula 30th Anniversary"))) should
+      contain ("Bram Stoker's Dracula")
+  }
+
+  it should "read the year it states as the anniversary's: the film's year that many years before, no other film's" in {
+    val dracula = Film("Bram Stoker's Dracula", year = Some(1992))
+    val billed  = Listing("Drácula. 30 Aniversario", year = Some(2022), originalTitle = Some("Bram Stoker's Dracula 30th Anniversary"))
+    measures(billed, dracula)("year.delta") shouldBe Missing("listing")
+    measures(Listing("Dracula 30th Anniversary", year = Some(2022)), dracula)("year.delta") shouldBe Missing("listing")
+    // a year that is not the anniversary's stays the listing's fact
+    measures(billed, dracula.copy(year = Some(2010)))("year.delta") shouldBe Number(12)
+    measures(Listing("Dracula", year = Some(2022)), dracula)("year.delta") shouldBe Number(30)
+  }
+
   "a season a broadcast names" should "be read as its own measure, in every spelling, and never as a bracketed year" in {
     val film = Film("Samson et Dalila", year = Some(1949))
     Seq("Samson i dalila | metropolitan opera: live in hd 2026/27", "OPERA 2026/2027 - SAMSON I DALILA- RETRANSMISJA",
