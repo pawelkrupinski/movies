@@ -2735,3 +2735,78 @@ identity unit suites and `FilmScheduleEndToEndSpec` unmoved (no snapshot shifted
 the resolver reads, and no whole-corpus decision moved). Allocation per replay of every capture (`--alloc 10`):
 3,160 MB against main's 3,151 MB (+0.3%, the per-cluster title runs the `title.anothersOwn` extension tokenises once a
 contender); no map is held past a cluster.
+
+### 20.14 The last labelled-but-unresolved classes: root causes, and why none is fixable at 0 wrong (2026-10-06)
+
+The ratchet (`UnmatchedClustersRatchetSpec`) stood at 1,390 right / 0 wrong. Each class below was read off the fixture
+with the contender probe (`scripts.IdentityConjunctionProbe`, plus a throwaway per-cluster dump of the families'
+verdicts, every contender's signals and a re-resolve of the captured listings). The bar was the same as before: a
+general mechanism, ≥1 right gained, 0 wrong. **No production change shipped: ratchet 1,390 → 1,390 right, 0 wrong;
+allocation unchanged** (`--alloc 5`: 3,197 MB median per replay of every capture, heap after GC 360 MB, against main's
+3,197 MB, measured with `ThreadAllocation`). One constraint applies to every retrieval fix: the ratchet replays the
+CAPTURED model decisions, and its `Replay` fails on any TMDB question the capture does not hold (`unanswered`). A new
+search, in the resolver (`IdentityResolver.candidatesOf`, which the stage also calls at `AgreementStage.scala:733`) or in
+the stage, cannot be graded until the fixture is re-captured (below).
+
+1. **Programme prefixes whose film TMDB's search misses.** The prefix is no cause: "19. FGA:" is stripped into
+   `searchTitle`, and "edukacja MH: Johnny"'s segment "Johnny" is searched too. The cause is TMDB's yearless pl-PL
+   search (`TmdbClient.searchAsRanked`, `worker/.../TmdbClient.scala:114`; one page, TMDB's order). Per film:
+   - *Johnny* (2022, tmdb 920220): not on the first page of 20 "Johnny" hits (Johnny English ×3, five other
+     "Johnny"s). The venue states no year, the film's original language IS Polish, IMDb's suggestions for "Johnny" omit
+     tt15538570. Retrieval is nonetheless solved downstream: Wikidata takes Q117428966, whose cross-ids name tmdb 920220,
+     so the agreement holds it as a contender. Two things then block it: Filmweb only LEANS (two Filmweb "Johnny"s:
+     2022 and *Petite nature* 2021), and `title.anothersOwn` fires (`Agreement.anothersOwnTitle`, `Agreement.scala:374`).
+     The guard fires because Filmweb's *Kiedy dorosnę* (2010) has the original title "Johnny" and the film's own records
+     carry none (Filmweb leaves out a Polish film's original title). Narrowing that guard gains nothing: the one rule
+     shape that would then take it, one family's take + another's lean with no dissent, also takes the labelled-WRONG
+     *Sonbahar* for "Filmowe popołudnie dla dzieci: Jesień".
+   - *Wspinaczka* (*Girl Climber*, tmdb 1461058): TMDB holds no Polish title for it, so "Wspinaczka" returns 4 other
+     films. IMDb's suggestions list 7 others. Filmweb's search lists it 2nd of 8 "Wspinaczka"s and leans to the 2017
+     one. Searching TMDB by Filmweb's original titles would retrieve it, but no venue fact (no year, director or runtime)
+     picks it from 8 namesakes, and the families do not pick it. Unfixable.
+   - *Mam rzekę we krwi* (Filmweb 10118870, *I Follow Rivers*, Barbora Hollan): TMDB's pl-PL search is empty, and IMDb
+     suggests *In My Blood It Runs* (wrong). Filmweb TAKES it, alone. TMDB does hold it under the original title (its
+     public search: *I Follow Rivers* 2025, id 1647235), so this one IS a retrieval gap. The general fix would search
+     TMDB by the original title of a film-database family's pick when TMDB knows the film under no title the venue bills.
+     The model would then score the record, and the pinned `family.filmweb.took&!model.unscored` fill could take it: at
+     most +1 listing. Not built, because it asks TMDB searches the capture does not hold. Measure it after a re-capture
+     (item 5), with `UnmatchedClustersFillIntegrationSpec` asking the new searches live.
+2. **"NT Live: Hamlet" (US ×4) → 396227 (2015).** The guard is `stage.work` (`Agreement.stagesAWork`, `Agreement.scala:478`;
+   `UnifiedEvidence.scala:199`): `identity-stage-works.tsv:342` lists Q631016, Ambroise Thomas's opera *Hamlet*. Narrowing
+   the guard to keep plays out frees nothing, because 396227 has no signal to take it on. Its only signal is IMDb's
+   suggestion order (IMDb leans; one family). The model's best is the labelled-wrong 2010 production (436484, 37.1%:
+   TMDB rank 1). Both records share title, alternative titles and house, and a third production exists (IMDb
+   tt37511206, 2026, 180′). The venue states only a running time, 204′, which sits nearer the WRONG one (210′ against
+   217′). No general rule tells the productions apart. The guard also does real work: it keeps Olivier's and Branagh's
+   *Hamlet*, which the families weigh, off the relay. Kept.
+3. **"Pociąg "Czerwona Ruta"" (PL) → 1479369 (TMDB "Потяг «Червона Рута»").** The film is already the cluster's sole
+   TMDB candidate (the model's best, via IMDb's suggestion; `venues.current`; IMDb leans). It is vetoed by
+   `title.namesNone` (`UnifiedEvidence.scala:192`), and the model scores `title=none`. A transliteration-aware title
+   comparison was measured offline over all five captures, with Ukrainian and Russian romanised in Polish, English and
+   German conventions and every TMDB hit's Cyrillic title compared against every listing. It names no right film this
+   one lacks. "Pociąg" is a TRANSLATION of "Потяг", not a transliteration ("Potiah"), so at best 2 of 3 words agree. The
+   7 clusters it does match are films already named by a Latin title (Pianista, Blisko, Rembrandt, Hamlet ×3) and one
+   labelled-WRONG film: FRANZ KAFKA → Dumała's 1992 *Франц Кафка*. Even with the guard lifted, no fill takes a film that
+   no family takes (§20.12: "the one contender left … AND a family's lean" adds wrong takes). Not built.
+4. **"Dyrygent" cluster join.** The capture's corpus joined Kino Marzenie (Wajda, 1980), Patria (Provazník) and
+   Kozienice (bare) into one cluster. Today's resolver over the captured listings splits them: Marzenie → 95269, and
+   Patria + Kozienice → 1483477. That is 3 listings and 2 films, all right, as OwnMatches; the learned cannot-link,
+   `denies-film` and `different-films` keep them apart. `MixedClustersSpec` now also pins Kozienice. A re-capture would
+   NOT raise the ratchet by these 3: the fixture captures only clusters the model leaves UNMATCHED, so they would leave
+   it as model takes, graded by the whole-corpus snapshot (`expected-schedules.txt`) instead.
+5. **Stale fixture: how to re-capture (not dispatched).** No workflow writes `identity-unmatched/*.json.gz`. The capture
+   is the opt-in `UnmatchedClustersCaptureIntegrationSpec`, run locally over a recorded corpus:
+   1. `gh workflow run "Record scrape fixtures" --ref main` (with `identity-lookups` true, the default) records each
+      country's corpus and identity lookups from prod. Fetch them with `gh run download <run> --name
+      scrape-fixtures-<cc>` and the enrichment trees as `.github/scripts/restore-enrichment-tree.sh` restores them.
+   2. Optionally, a read-only export of prod's `identity_family_answers` per database (`kinowo.jsonl`,
+      `kinowo_<cc>.jsonl`) through the prod tunnel, for `KINOWO_IDENTITY_FAMILY_SEED`.
+   3. Run:
+      `KINOWO_IDENTITY_UNMATCHED_CAPTURE=test/resources/fixtures/identity-unmatched KINOWO_IDENTITY_FULL=pl,uk,de,es,us
+      KINOWO_IDENTITY_CORPUS_DIR=<corpora> KINOWO_FIXTURE_ROOT=<trees> KINOWO_IDENTITY_AGREEMENT_CACHE=<answer cache>
+      KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY=<TMDB key, from the secrets vault, never .env.local>
+      [KINOWO_IDENTITY_FAMILY_SEED=<dir>] [KINOWO_IDENTITY_POSTER_CACHE=<dir>]
+      sbt -J-Xmx12g "worker/IntegrationTest/testOnly integration.UnmatchedClustersCaptureIntegrationSpec"`.
+      It needs the it/ local Mongo, with its own `MONGODB_DB`.
+   4. Then run the ratchet: every new take has to be judged into `labels.tsv`, and `expected-matches.tsv` re-baselined
+      (takes the model now makes leave the fixture, as with Dyrygent).

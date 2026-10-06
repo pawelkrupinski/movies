@@ -28,11 +28,14 @@ class MixedClustersSpec extends AnyFlatSpec with Matchers {
     val (listings, r) = resolved(pl)(_.rawTitle.toLowerCase.startsWith("dyrygent"))
     val Seq(patria)   = listings.filter(_.venue == "Patria")
     val Seq(marzenie) = listings.filter(_.venue == "Kino Marzenie")
+    val Seq(kozienice) = listings.filter(_.venue == "Kozienicki Dom Kultury")
     withClue(listings.map(l => s"${l.venue}: ${r.decisionOf(l.key).render}").mkString("\n")) {
       listings.map(_.venue).toSet shouldBe Set("Patria", "Kozienicki Dom Kultury", "Kino Marzenie")
       (r.decisionOf(patria.key) eq r.decisionOf(marzenie.key)) shouldBe false
       r.decisionOf(patria.key).film shouldBe Some(1483477)
       r.decisionOf(marzenie.key).film shouldBe Some(95269)
+      // the bare title joins the listing whose facts it does not contradict: Filmweb's Kozienice programme links Broken Voices
+      r.decisionOf(kozienice.key) shouldBe r.decisionOf(patria.key)
     }
   }
 }
