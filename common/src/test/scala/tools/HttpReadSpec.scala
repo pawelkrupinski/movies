@@ -107,6 +107,22 @@ class HttpReadSpec extends AnyFlatSpec with Matchers {
     ChallengePage.detect(page) shouldBe None
   }
 
+  // Every proxied read is searched twice — by `FallbackHttpFetch` choosing a route, then by the
+  // `HttpRead` helper parsing it — and the bodies are whole rating pages: the two searches were 7% of a
+  // convergence leg's CPU (run 37517196329).
+  it should "search a body it has already found clear on this thread only once" in {
+    val page = new String(s"<html><body>${"<div>Diuna</div>" * 300}</body></html>")
+    val before = ChallengePage.scansOnThisThread
+    ChallengePage.detect(page) shouldBe None
+    ChallengePage.detect(page) shouldBe None
+    ChallengePage.scansOnThisThread - before shouldBe 1
+    // an equal body that is another String is searched again, and a challenge still is one
+    ChallengePage.detect(new String(page)) shouldBe None
+    ChallengePage.scansOnThisThread - before shouldBe 2
+    ChallengePage.detect(IncapsulaBlock) shouldBe Some("Incapsula")
+    ChallengePage.detect(IncapsulaBlock) shouldBe Some("Incapsula")
+  }
+
   it should "recognise Incapsula's block page and its bare JS challenge" in {
     ChallengePage.detect(IncapsulaBlock) shouldBe Some("Incapsula")
     ChallengePage.detect(IncapsulaJsChallenge) shouldBe Some("Incapsula")

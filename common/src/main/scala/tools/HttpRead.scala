@@ -191,7 +191,29 @@ object ChallengePage {
 
   private def contains(marker: String): String => Boolean = _.contains(marker)
 
-  /** The vendor whose challenge this body is, if it is one. */
-  def detect(body: String): Option[String] =
-    Signatures.collectFirst { case (matches, vendor) if matches(body) => vendor }
+  /** The vendor whose challenge this body is, if it is one.
+   *
+   *  A body this thread has just found clear is not searched again: a proxied read is searched by
+   *  `FallbackHttpFetch` choosing its route and again by the `HttpRead` helper parsing it, the same
+   *  String both times, and over whole rating pages the second search was half of 7% of a
+   *  convergence leg's CPU (run 37517196329). Held weakly, so a thread never keeps a page alive. */
+  def detect(body: String): Option[String] = {
+    val seen = lastClear.get()
+    if (seen.body.get() eq body) None
+    else {
+      seen.scans += 1
+      val vendor = Signatures.collectFirst { case (matches, v) if matches(body) => v }
+      if (vendor.isEmpty) seen.body = new java.lang.ref.WeakReference(body)
+      vendor
+    }
+  }
+
+  private final class LastClear {
+    var body: java.lang.ref.WeakReference[String] = new java.lang.ref.WeakReference(null)
+    var scans = 0L
+  }
+  private val lastClear = ThreadLocal.withInitial(() => new LastClear)
+
+  /** How many bodies this thread has searched in full — what the spec reads the memo by. */
+  private[tools] def scansOnThisThread: Long = lastClear.get().scans
 }
