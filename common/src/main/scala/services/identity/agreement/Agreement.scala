@@ -426,8 +426,12 @@ object Agreement {
     val titles = films.flatMap(_.titles).distinct
     val raw    = TitleContainment.tokens(listing.rawTitle)
     lazy val ownWords = (Seq(listing.cleanTitle, listing.rawTitle, listing.title) ++ listing.originalTitle).map(TitleContainment.tokens).toSet
+    // the words the normalised title keeps: a film named only by what it drops is named by a decoration ("Lalka
+    // PREMIERA", cleaned "Lalka", names no "Premiera")
+    lazy val kept = (listing.cleanTitle +: listing.originalTitle.toSeq).flatMap(TitleContainment.tokens).toSet
     titles.map(IdentityMeasures.key).exists(own) ||
-      titles.exists(title => title.length >= 4 && { val words = TitleContainment.tokens(title); words.nonEmpty && raw.containsSlice(words) }) ||
+      titles.exists(title => title.length >= 4 && { val words = TitleContainment.tokens(title)
+        words.nonEmpty && raw.containsSlice(words) && (kept.isEmpty || words.exists(kept)) }) ||
       // the film's title with a leading article the listing drops — two words after it at least (DE "Camp der
       // Verlorenen", TMDB's "Das Camp der Verlorenen"; "Devil" is not "The Devil")
       titles.exists { title => val words = TitleContainment.tokens(title); words.sizeIs >= 3 && LeadingArticles(words.head) && ownWords(words.tail) } ||
@@ -443,6 +447,28 @@ object Agreement {
     own.sizeIs >= 2 && own.size == its.size && own.zip(its).forall { case (o, t) => t.nonEmpty && t.mkString.length >= 4 && o.containsSlice(t) } &&
       own.zip(its).exists { case (o, t) => o == t }
   }
+  /** Is the film named only WITHIN another candidate's title the listings bill whole — every run of the billing its
+   *  titles are, a strictly longer run of one of `others`' titles (one only a leading article longer is the same name)?
+   *  PL "Kacper i Emma – najlepsi przyjaciele …" names the 2026 "Najlepsi przyjaciele" only as part of the 2013
+   *  "Kacper i Emma: Najlepsi przyjaciele". `others`: every candidate's films, this one's among them. */
+  def namedWithinAnother(listings: Seq[Listing], films: Seq[IdentityMeasures.Film], others: Seq[Seq[IdentityMeasures.Film]]): Boolean =
+    namedWithinAnother(billedSpans(listings, films), others.map(billedSpans(listings, _)))
+
+  /** The runs of every listing's billing the films' titles are (each as its words). */
+  def billedSpans(listings: Seq[Listing], films: Seq[IdentityMeasures.Film]): Seq[Seq[String]] = {
+    val billed = listings.map(l => TitleContainment.tokens(l.rawTitle))
+    if (billed.isEmpty) Nil
+    else films.flatMap(_.titles).map(TitleContainment.tokens).filter(words => words.nonEmpty && billed.forall(_.containsSlice(words))).distinct
+  }
+
+  /** [[namedWithinAnother]] over spans [[billedSpans]] found: `own` the film's, `others` every candidate's. */
+  def namedWithinAnother(own: Seq[Seq[String]], others: Seq[Seq[Seq[String]]]): Boolean =
+    own.nonEmpty && others.exists { other =>
+      val longer = other.filter(words => !own.contains(words))
+      own.forall(span => longer.exists(words => words.sizeIs > span.size && words.containsSlice(span) &&
+        !(LeadingArticles(words.head) && words.tail == span)))
+    }
+
   /** Articles a title may lead with that a venue drops: English, German, French, Spanish, Italian. */
   private val LeadingArticles = Set("the", "a", "an", "der", "die", "das", "le", "la", "les", "el", "los", "las", "il", "lo", "gli")
 

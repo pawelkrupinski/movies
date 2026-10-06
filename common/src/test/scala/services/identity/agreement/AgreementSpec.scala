@@ -431,6 +431,30 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.namesIt(listing(KinoMuza, "Camp"), Seq(camp)) shouldBe false
   }
 
+  it should "name no film by the decoration its normalised title drops" in {
+    // PL Kino MOK Międzyrzecz "Lalka PREMIERA" (cleaned "Lalka"): the premiere names no "Premiera" (1976)
+    val premiere = listing(KinoMuza, "Lalka PREMIERA").copy(title = "Lalka premiera", cleanTitle = "Lalka")
+    Agreement.namesIt(premiere, Seq(film("Premiera", 1976, "Jerzy Hoffman"))) shouldBe false
+    Agreement.namesIt(premiere, Seq(film("Lalka", 2026, "Maciej Kawalski"))) shouldBe true
+    // a programme prefix the cleaned title keeps still names its film
+    Agreement.namesIt(listing(KinoMuza, "WAJDA: re-wizje: Bez znieczulenia"), Seq(film("Bez znieczulenia", 1978, "Andrzej Wajda"))) shouldBe true
+  }
+
+  it should "name a film's title only as part of another candidate's title it bills whole" in {
+    // PL "Kacper i Emma – najlepsi przyjaciele Edukacja Młode Horyzonty": the 2026 "Najlepsi przyjaciele" is named only
+    // within the 2013 "Kacper i Emma: Najlepsi przyjaciele" the venue bills (review page: the 2013 film)
+    val kacper = listing(KinoMuza, "Kacper i Emma – najlepsi przyjaciele Edukacja Młode Horyzonty")
+    val friends = film("Najlepsi przyjaciele", 2026, "X")
+    val casper  = film("Kacper i Emma: Najlepsi przyjaciele", 2013, "Arne Lindtner Næss")
+    Agreement.namedWithinAnother(Seq(kacper), Seq(friends), Seq(Seq(casper), Seq(friends))) shouldBe true
+    Agreement.namedWithinAnother(Seq(kacper), Seq(casper), Seq(Seq(casper), Seq(friends))) shouldBe false
+    Agreement.namedWithinAnother(Seq(kacper), Seq(friends), Seq(Seq(friends))) shouldBe false
+    // a title only an article longer is the same name: US "THE BRIDE OF FRANKENSTEIN" names Whale's "Bride of Frankenstein"
+    val bride = listing(KinoMuza, "THE BRIDE OF FRANKENSTEIN")
+    val whale = film("Bride of Frankenstein", 1935, "James Whale")
+    Agreement.namedWithinAnother(Seq(bride), Seq(whale), Seq(Seq(whale), Seq(film("The Bride of Frankenstein", 2026, "X")))) shouldBe false
+  }
+
   it should "name a film piece by piece, each of the film's pieces a run of the listing's at its place and one of them whole" in {
     // UK Showcase's "Paddington Bear: Winter Warmers" ×12, IMDb's "Paddington: Winter Warmers" (2025)
     val warmers = film("Paddington: Winter Warmers", 2025, "")

@@ -92,6 +92,18 @@ class PosterEvidenceSpec extends AnyFlatSpec with Matchers {
     PosterEvidence.editionsApart(FilmTable.listing(Multikino, "Pettersson und Findus Mitmachkino 2"), film("Lustiges Pettersson und Findus Mitmachkino 2")) shouldBe false
   }
 
+  it should "date another edition than a year the listing bills, where the film's own title numbers none" in {
+    // UK "Toddler Club: Disney Junior Cinema Club 2026" is not TMDB's 2024 "Disney Junior Cinema Club"
+    val club = FilmTable.listing(Multikino, "Toddler Club: Disney Junior Cinema Club 2026")
+    PosterEvidence.editionsApart(club, IdentityMeasures.Film("Disney Junior Cinema Club", year = Some(2024))) shouldBe true
+    PosterEvidence.editionsApart(club, IdentityMeasures.Film("Disney Junior Cinema Club", year = Some(2025))) shouldBe false
+    PosterEvidence.editionsApart(club, IdentityMeasures.Film("Disney Junior Cinema Club")) shouldBe false
+    // a re-release billed by its original year is that film
+    PosterEvidence.editionsApart(FilmTable.listing(Multikino, "Siostry (1972)"), IdentityMeasures.Film("Siostry", year = Some(1972))) shouldBe false
+    PosterEvidence.editionsApart(FilmTable.listing(Multikino, "Siostry (1972)"), IdentityMeasures.Film("Siostry", year = Some(2005))) shouldBe true
+    PosterEvidence.editionsApart(FilmTable.listing(Multikino, "Siostry"), IdentityMeasures.Film("Siostry", year = Some(2005))) shouldBe false
+  }
+
   it should "read a number too long for an edition as none, never fail on it" in {
     // PL Kino Amok's "Requiem dla snu": a TMDB candidate titled with π's digits failed the whole agreement pass
     val requiem = FilmTable.listing(Multikino, "Requiem dla snu 2")

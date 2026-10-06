@@ -151,6 +151,8 @@ object UnifiedEvidence {
     val severalBill = c.listings.exists(Agreement.billsSeveral)
     val stageWork   = c.listings.exists(Agreement.stagesAWork)
     val traced      = c.decision.trace.nodes.values.toSeq
+    // each candidate's titles as runs of the billing, found once for every contender's `title.anothersOwn`
+    lazy val candidateSpans = built.toSeq.map(b => Agreement.billedSpans(c.listings, b.records.toSeq.map(_.film)))
     built.toSeq.map { contender =>
       val records = contender.records.toSeq
       val own     = contender.tmdb.flatMap(scored.get).getOrElse(Nil)
@@ -191,7 +193,9 @@ object UnifiedEvidence {
         "title.namesNone"     -> !namesIt,
         // another edition than the title numbers ("League of Legends Worlds 26" against the Worlds25 record)
         "edition.apart"       -> c.listings.exists(listing => PosterEvidence.editionsApart(listing, contender.record.film)),
-        "title.anothersOwn"   -> Agreement.anothersOwnTitle(c.listings, records, c.verdicts),
+        // another film's own title billed, or the film named only within another candidate's title billed whole
+        "title.anothersOwn"   -> (Agreement.anothersOwnTitle(c.listings, records, c.verdicts) ||
+          Agreement.namedWithinAnother(Agreement.billedSpans(c.listings, records.map(_.film)), candidateSpans)),
         "bill.several"        -> severalBill,
         "stage.work"          -> stageWork,
         "poster.match"        -> nearest.exists(_ <= PosterEvidence.VoteBits),

@@ -28,7 +28,7 @@ pl	Kinoteatr Rialto	Rialto DOCumentalnie - Lech Janerka – śpij, śpij intelig
 pl	Kinoteatr Rialto	Wielka Sztuka w Kinoteatrze Rialto - Frida: Viva la Vida	tmdb:649244	right	recall target: Frida. Viva la Vida (2019)
 pl	Kinoteka Kultury i Sztuki	Audiencja	tmdb:Kinoteka	right	recall target: 209149
 pl	Splat!FilmFest	Krew za krew	tmdb:Kinoteka	right	recall target: 1421155
-pl	Kinoteka Kultury i Sztuki	Niebezpieczne związki	tmdb:Kinoteka	right	recall target: 1598667
+pl	Kinoteka	Niebezpieczne związki | Kinoteka Kultury i Sztuki	tmdb:1598667	right	matchable page: confirmed: National Theatre Live: Les Liaisons Dangereuses (2026)
 pl	Splat!FilmFest	The Taxidermist	tmdb:Kinoteka	right	recall target: 1686904
 pl	Terminal Kultury Gocław	Kacper i Emma – najlepsi przyjaciele Edukacja Młode Horyzonty	tmdb:171658	right	recall target: Casper and Emma: Best Friends (2013)
 pl	Terminal Kultury Gocław	Lydia i Władca Burz Edukacja Młode Horyzonty	tmdb:1594694	right	recall target: Lydia and the Mist Rider (2026)
@@ -41,7 +41,7 @@ pl	Kino Kameralne Cafe	Siostry (1972)	tmdb:22307	right	recall target: Sisters (1
 pl	Kino Kameralne Cafe	Pociąg "Czerwona Ruta"	tmdb:1479369	right	recall target: Red Rue Express (2026)
 pl	Kino Kijów	Pociąg Czerwona Ruta	tmdb:1479369	right	recall target: Red Rue Express (2026)
 pl	Kinoteka	Ghost in the shell	tmdb:9323	right	recall target: Ghost in the Shell (1995)
-pl	Kinoteatr Rialto	Dni Kina Niemego - Portier z Hotelu Atlantic	tmdb:5991	right	recall target: The Last Laugh (1924)
+pl	Kinoteatr Rialto	Dni Kina Niemego - Portier z Hotelu Atlantic	tmdb:5991	wrong	matchable page: not a film (was recall target: The Last Laugh (1924))
 pl	Grudzień	BCA Flash improwizuje w Kinotece	tmdb:Kinoteka	right	recall target: 1480407
 pl	Kino Amok	Manon	tmdb:1703631	right	recall target: The Metropolitan Opera 2026/27: Manon (2027)
 pl	Kino Zorza	KLAPS! - Rozważna i romantyczna	tmdb:1503762	right	recall target: Sense and Sensibility (2026)
@@ -96,7 +96,7 @@ de	CasaBlanca Art House	World Champion	imdb:tt1943754	right	judged 10-05: Siimet
 de	Schlosstheater Münster	Das doppelte Lottchen	imdb:tt0042409	right	recall target: Das doppelte Lottchen
 de	Kino in der Lagerhalle	Don Quichotte	imdb:tt0406716	right	recall target: Don Quichotte
 uk	Depot Lewes	NT Live: All My Sons (2026)	imdb:tt39544163	right	recall target: NT Live: All My Sons (2026)
-uk	Brewery Arts Centre Kendal	Funny Girl - The Musical	imdb:tt37775809	right	recall target: Funny Girl - The Musical
+uk	Brewery Arts Centre Kendal	Funny Girl - The Musical	imdb:tt37775809	wrong	matchable page: wrong: The Musical (2026) Giselle Bonilla, the id TMDB files tt37775809 under
 uk	IMAX at Glasgow Science Centre	Ocean Odyssey	imdb:tt14727208	right	recall target: Ocean Odyssey
 uk	Lumiere Romford	Once Upon A Time in America	imdb:tt0087843	right	recall target: Once Upon A Time in America
 us	Fleet Science Center IMAX	Volcanoes 3D	imdb:tt6164238	right	recall target: Volcanoes
@@ -393,10 +393,10 @@ pl	*	edukacja MH: Johnny	tmdb:920220	right	hand label: Johnny (2022) Daniel Jaro
 uk	*	Agbara Nla: The Return	wikidata:Q141637007	right	hand label: Agbara Nla: The Return ()
 uk	*	Agbara Nla: The Return	wikipedia:Q141637007	right	hand label: Agbara Nla: The Return ()
 uk	*	EXHIBITION ON SCREEN: Caravaggio	tmdb:1496903	right	hand label: Caravaggio (2025)
-uk	*	It (1990)	imdb:tt0099864	right	judged 10-06: the 1990 miniseries (Flicks: Tommy Lee Wallace, 168 min); TMDB holds it only as TV 19614 and its movie 982512 is gone (404), so its id is IMDb's
+uk	*	It (1990)	imdb:tt0099864	wrong	matchable page: not a film: the 1990 TV miniseries
 uk	*	MetOpera: Samson et Dalila	wikidata:Q123303374	wrong	hand label: Samson Et Dalila (1981) John Vernon
 uk	*	Royal Opera House: Carmen	tmdb:450170	wrong	hand label: Carmen (1921) Ernesto Vollrath
-us	*	It (1990)	imdb:tt0099864	right	judged 10-06: the 1990 miniseries (Flicks: Tommy Lee Wallace, 168 min); TMDB holds it only as TV 19614 and its movie 982512 is gone (404), so its id is IMDb's
+us	*	It (1990)	imdb:tt0099864	wrong	matchable page: not a film: the 1990 TV miniseries
 us	*	MOTHER!	tmdb:381283	right	hand label: Mother! (2017) Darren Aronofsky
 us	*	Penguin Island	imdb:tt1729625	wrong	hand label: Penguin Island (2010) Simon Target
 de	*	André Rieus Weihnachtskonzert 2026: Let it Snow	tmdb:295151	wrong	hand label: Tage wie diese (2019) Luke Snellin
@@ -634,9 +634,9 @@ pl	*	Wrocławski Klub Ojca - DIY zabawki z drewna z recyklingu	cinemeta:tt081671
 uk	*	Toddler Club: Pip and Posy and Friends	imdb:tt38369557	right	hand label: Pip And Posy And Friends (2025)
 de	*	Fantasy	rt:fantasy_2025	right	hand label: 
 pl	*	Samson i Dalila	rt:the_metropolitan_opera_samson_et_dalila	right	hand label: 
-uk	*	It (1990)	rt:stephen_kings_it	right	hand label: 
+uk	*	It (1990)	rt:stephen_kings_it	wrong	matchable page: not a film: the 1990 TV miniseries
 uk	*	NT Live: A Midsummer Night's Dream	rt:twelfth-night1987	wrong	hand label: Twelfth Night
-us	*	It (1990)	rt:stephen_kings_it	right	hand label: 
+us	*	It (1990)	rt:stephen_kings_it	wrong	matchable page: not a film: the 1990 TV miniseries
 us	*	Volcanoes 3D	rt:serengeti_2022	wrong	hand label: Serengeti
 pl	Kino Goplana	Sukienka	tmdb:737496	right	judged 10-05: the venue's repertoire bills it at 30 min (12 Oct 18:30, before Światłoczuła) — Łysiak's 2020 short The Dress
 pl	*	Fallen Angels by Noël Coward	tmdb:1702350	right	judged 10-05: the 2026 filmed Broadway production of Coward's play (IMDb tt42921285, Scott Ellis; capture Annette Jolles) that Multikino screens, not a screen adaptation
@@ -750,3 +750,9 @@ pl	Kino Światowid	ARS INDEPENDENT FESTIVAL: Konkurs Czarny koń animacji - Set 
 pl	Kino Kosmos	Filmowe popołudnie dla dzieci: Robaczki	tmdb:140870	wrong	review page: none of the candidates: Robaczki z Zaginionej Doliny (2013)
 pl	Kino Spektrum	Akademia Polskiego Filmu: Piętro wyżej + reklama zapalaczy | Gatunki międzywojnia I: Komedia	tmdb:1724300	wrong	review page: double bill matches neither: Komedia (None)
 pl	Kino Światowid	ARS INDEPENDENT FESTIVAL: Konkurs Czarny Koń Wideoklipu- Set 2	tmdb:71183	wrong	review page: not a film: People : Jet Set 2 (2004)
+uk	*	Funny Girl - The Musical	tmdb:1579941	wrong	matchable page: wrong: The Musical (2026) Giselle Bonilla
+uk	*	It (1990)	tmdb:278996	wrong	matchable page: not a film: And the Sea Will Tell (1991)
+us	*	It (1990)	tmdb:278996	wrong	matchable page: not a film: And the Sea Will Tell (1991)
+pl	*	FRANZ KAFKA	tmdb:1157322	right	matchable page: hand label (model leaned tmdb:120275 Franz Kafka (1992))
+pl	*	FRANZ KAFKA	tmdb:120275	wrong	matchable page: must not: Franz Kafka (1992) Piotr Dumała
+pl	*	DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO	tmdb:95269	right	matchable page: confirmed: The Conductor (1980)

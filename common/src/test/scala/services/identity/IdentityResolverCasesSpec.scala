@@ -967,6 +967,12 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("Bez znieczulenia + Q&A")) shouldBe false
     // Światowid: a poster tour is an event, not a second work
     IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("OPĘTANIE + TRASA PLAKATOWA")) shouldBe false
+    // the programme a bill's last work runs into is the bill's, not that work's: Helios's "Basia. Humor w paski mam +
+    // Kocia Szajka - Festiwal TAURON Młode Horyzonty. Seanse HDD" bills two films (review page: matches neither)
+    IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("Basia. Humor w paski mam + Kocia Szajka - Festiwal TAURON Młode Horyzonty. Seanse HDD")) shouldBe true
+    IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("11. UFF - Gala otwarcia + Demony")) shouldBe false
+    IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("Pasażerka - premiera książki, pokaz filmu + dyskusja")) shouldBe false
+    IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("Punku + spotkanie z reżyserem - Kino Kultura")) shouldBe false
   }
 
   "A double bill sharing its first work's search form" should "not join that work's bare listing when its second work is another listing's" in {

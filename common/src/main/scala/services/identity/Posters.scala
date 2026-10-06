@@ -161,10 +161,20 @@ object PosterEvidence {
     Digits.findAllIn(title).flatMap(_.toIntOption).map(n => if (n >= 1900 && n <= 2099) n % 100 else n).toSet
 
   /** Do the listing's title and the film's number themselves apart — both carry a number, none in common: another
-   *  edition of an event, another instalment ("League of Legends Worlds 26" against "… Worlds25")? */
+   *  edition of an event, another instalment ("League of Legends Worlds 26" against "… Worlds25")? Where the film's
+   *  titles number nothing, a year the listing bills dates it instead: a film released more than a year from every
+   *  year billed is another edition ("Disney Junior Cinema Club 2026" against TMDB's 2024 one) or another film of the
+   *  name ("Siostry (1972)" against the 2005 "Siostry"). */
   def editionsApart(listing: Listing, film: IdentityMeasures.Film): Boolean = {
-    val billed = numbersOf(listing.rawTitle) ++ numbersOf(listing.title)
-    val filed  = film.titles.flatMap(numbersOf).toSet
-    billed.nonEmpty && filed.nonEmpty && (billed intersect filed).isEmpty
+    val filed = film.titles.flatMap(numbersOf).toSet
+    if (filed.nonEmpty) {
+      val billed = numbersOf(listing.rawTitle) ++ numbersOf(listing.title)
+      billed.nonEmpty && (billed intersect filed).isEmpty
+    } else film.year.exists { released =>
+      val billed = yearsOf(listing.rawTitle) ++ yearsOf(listing.title)
+      billed.nonEmpty && billed.forall(year => math.abs(year - released) > 1)
+    }
   }
+  private val Year = """(?<!\d)(?:19|20)\d\d(?!\d)""".r
+  private def yearsOf(title: String): Set[Int] = Year.findAllIn(title).map(_.toInt).toSet
 }

@@ -1180,8 +1180,14 @@ object IdentityMeasures {
    *  "+ napisy EN", a bracketed "(AD + CC + PJM)") is no second work. PL Kino Pałacowe "… | Historia kina w Popielawach +
    *  Pruska kultura" bills a 1908 short TMDB does not hold: no candidate stood for it, yet the bill is neither film. */
   def billsTwoWholeWorks(l: Listing): Boolean =
-    (Seq(l.title) ++ l.rawTitle).exists(t => BillJoin.split(l.decorations.withoutTail(Bracketed.replaceAllIn(t, " ").trim)).count(namesAWork) >= 2)
-  private val Bracketed = """\([^()]*\)|\[[^\[\]]*\]""".r
+    (Seq(l.title) ++ l.rawTitle).exists { t =>
+      val pieces = BillJoin.split(l.decorations.withoutTail(Bracketed.replaceAllIn(t, " ").trim)).toSeq
+      // the programme the last work runs into after a spaced dash is the bill's ("… + Kocia Szajka - Festiwal TAURON
+      // Młode Horyzonty"): the work is what precedes it
+      (pieces.init :+ ProgrammeDash.pattern.split(pieces.last, 2).head).count(namesAWork) >= 2
+    }
+  private val Bracketed     = """\([^()]*\)|\[[^\[\]]*\]""".r
+  private val ProgrammeDash = """\s[-–—]\s""".r
   private def namesAWork(piece: String): Boolean = {
     // a one-letter word names nothing: "Q&A" is no work, and the "a" of "We're Going on a Bear Hunt" no event; a title
     // of numbers is one ("2 x 2 = 4", billed after "Zakazane piosenki")

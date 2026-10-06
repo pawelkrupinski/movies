@@ -2698,3 +2698,40 @@ already. Not measurable offline: the synopsis, Trakt and Filmweb-programme conju
 Trakt is not on main, and no programme is captured for an unmatched cluster), and "unreleased AND not released in the
 country", which can only veto fewer namesakes than the shipped release veto. `family.facts` costs nothing measurable: the
 replay of every capture allocates 3,109–3,124 MB against main's 3,112 MB, the heap after it 344–358 MB against 344 MB.
+
+### 20.13 The review pages' 46 marks: labels, and the rules they suggested (2026-10-06)
+
+The two review pages (the model's candidates for unmatched clusters; the labelled films the ratchet can match) gave 46
+marks. Folded into `labels.tsv` ("review page: …" / "matchable page: …"): the 21 review answers were there already;
+"It (1990)" (UK, US) and "Dni Kina Niemego - Portier z Hotelu Atlantic" are events, so their labelled films (the 1990
+miniseries' IMDb and RT ids, The Last Laugh) became WRONG; "Funny Girl - The Musical"'s tt37775809 is TMDB's 2026
+"The Musical", wrong; "FRANZ KAFKA" is Holland's 2025 *Franz* (tmdb 1157322), not Dumała's 1992 short; the Kinoteka
+"Niebezpieczne związki" recall row, malformed since it was written, now names tmdb 1598667. The two RBO-season rows
+(Macbeth, La Fanciulla del West as the Met's records) wait on RBO = Met being confirmed.
+
+Each mark's WHY, from the contender probe (`scripts.IdentityConjunctionProbe`): most "none"/"event"/"bill" marks were
+no takes already (their candidates under the cut); the misses are retrieval (TMDB's "Johnny" and "Wspinaczka" result
+pages hold neither the 2022 *Johnny* nor *Girl Climber* — the programme prefix IS stripped, the search is asked), the
+venue page's synopsis (Kawalski's *Lalka* behind "Lalka PREMIERA", *Znachor* behind "…Gatunki międzywojnia: Melodramat":
+the fixture holds no synopsis), or a guard the right film rightly trips (FRANZ KAFKA's 2025 film: `title.anothersOwn`,
+`family.turnedDown`; NT Live Hamlet 2015: `stage.work`, only IMDb leaning). The ratchet bar: ≥1 right gained, 0 wrong,
+no right take moved; a guard is kept at 0 gain when it guards labelled-wrong contenders and no right one.
+
+| rule | right gained | wrong | moved | contenders newly guarded | verdict |
+|---|---|---|---|---|---|
+| `edition.apart`: a year the title bills > 1 from the release of a film whose title numbers nothing ("Disney Junior Cinema Club 2026" ≠ 2024, "Siostry (1972)" ≠ 2005) | 0 | 0 | 0 | 18 wrong (11 guard-free), 62 unjudged, 0 right | **kept** (guard) |
+| `bill.several`: the programme a "+" bill's last work runs into after a spaced dash is the bill's ("Basia… + Kocia Szajka - Festiwal TAURON…") | 0 | 0 | 0 (whole corpus: e2e unmoved) | 1 wrong ×51 listings, 0 right | **kept** (guard) |
+| `title.namesIt`: no film named only by words the normalised title drops ("Lalka PREMIERA" ≠ *Premiera* 1976) | 0 | 0 | 0 | 3 wrong, 0 right | **kept** (guard) |
+| `title.anothersOwn` += named only within another candidate's longer billed title ("Kacper i Emma – najlepsi przyjaciele" ≠ the 2026 *Najlepsi przyjaciele*; an article longer is the same name) | 0 | 0 | 0 | 21 wrong (7 guard-free), 3 unjudged, 0 right | **kept** (guard) |
+| fill `and.leanTakers&!family.dissent`: a family takes the model's lean, none takes another | +1 listing (US "Reel Rock 19") | 0 | 0 | – | **kept** (pinned) |
+| fill `count.takers2&venues.current`: two families (review sites count) take a current film ≥3 venues bill | +4 listings, 1 film ("LALKA / DOLLY" → *Dolly* 2026) | 0 | 0 | – | **kept** (pinned) |
+| fill `model.lean&count.leaning&title.namesIt`: the model's lean, a family leaning too, the title naming it | +2 listings, 2 films (Kino CK Lublin "Lalka", "…Konkurs Czarny Koń Filmu : REDUTA") | 0 | 0 | – | **kept** (pinned); two weak signals — its only wrong contender (DE André Rieu → *Tage wie diese*) is now held by the year guard |
+| a subtitle the film lacks ("Bhutan - Trails of Happiness" ≠ *Bhutan* 1928): the film one dash/colon piece, a later piece unexplained | – | – | – | 2 wrong, but 4 RIGHT (Mroki / Pianista "- Kino Konesera", "SKRZYŻOWANIE - 50 na 51 - spotkanie…", "The Taxidermist \| Splat!FilmFest") | rejected: the cleaned title keeps those programme tails, so nothing tells them from a subtitle |
+| prefix programmes ("edukacja MH:", "19. FGA:", "WAJDA: re-wizje:") | – | – | – | – | nothing to build: already stripped and searched; the misses are TMDB's result pages |
+| "zestaw" / "DOUBLE BILL" / "Konkurs … Set 2" | – | – | – | – | already `bill.several` (`Agreement.Bill`) or under the cut |
+
+Together: the ratchet 1,386 → 1,393 right listings (1,385 → 1,392 expected lines), 0 wrong, 0 lost; the agreement and
+identity unit suites and `FilmScheduleEndToEndSpec` unmoved (no snapshot shifted — the `bill.several` change is the one
+the resolver reads, and no whole-corpus decision moved). Allocation per replay of every capture (`--alloc 10`):
+3,160 MB against main's 3,151 MB (+0.3%, the per-cluster title runs the `title.anothersOwn` extension tokenises once a
+contender); no map is held past a cluster.

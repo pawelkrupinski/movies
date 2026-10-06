@@ -22,7 +22,10 @@ pl	Kino Atlantic	11. UFF - Dowżenko. Pierwsze spojrzenie	tmdb:1483101	Довж�
 pl	Kino Atlantic	11. UFF - Gala otwarcia + Demony	tmdb:1085176	Демони (2027)
 pl	Kino Atlantic	11. UFF - Nasz dom płonie	tmdb:1342394	Наш дім у вогні (2025)
 pl	Kino Atlantic	HER Docs - To nie jest świat dla ludzi z menopauzą	tmdb:1627786	Mysteriet om Menopausen (2026)
+pl	Kino CK Lublin	Lalka	tmdb:1321666	Lalka (2026)
 pl	Kino CKiB Nowa Sarzyna	Lalka	tmdb:1321666	Lalka (2026)
+pl	Kino ChDK	LALKA / DOLLY	tmdb:1309083	Dolly (2026)
+pl	Kino Echo	Lalka (Dolly)	tmdb:1309083	Dolly (2026)
 pl	Kino Goplana	Sukienka	tmdb:737496	Sukienka (2020)
 pl	Kino Grajfka	Kafarnaum	tmdb:517814	Kafarnaum (2018)
 pl	Kino Grajfka	Klondike	tmdb:913760	Klondike (2022)
@@ -39,6 +42,7 @@ pl	Kino MCKCziE Grybów	EVEREST: DRUGA STRONA	tmdb:1714568	Everest North (?)
 pl	Kino Millenium	KINO NA NIEDZIELE:CAMINO DLA OPORNYCH	tmdb:1404604	Compostelle (2026)
 pl	Kino Nowe Horyzonty	Materiał się liczy	imdb:tt38599478	imdb, corroborated by listing, runtime agree on 'Make Materials Matter' (2025) tt38599478
 pl	Kino Opalenica	TAJNY AGENT	tmdb:1220564	Tajny agent (2025)
+pl	Kino Opolanka	Lalka (DOLLY)	tmdb:1309083	Dolly (2026)
 pl	Kino Powiśle	OPERA-COSI FAN TUTTE	tmdb:1703620	The Metropolitan Opera: Così fan tutte (2026)
 pl	Kino Powiśle	OPERA-DZIEWCZYNA Z DZIKIEGO ZACHODU	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 pl	Kino Powiśle	OPERA-MANON	tmdb:1703631	The Metropolitan Opera 2026/27: Manon (2027)
@@ -56,11 +60,12 @@ pl	Kino w Ratuszu	Kino Kobiet - KLAPS! "Jak żyć żeby nie zwariować"	tmdb:148
 pl	Kino za Rogiem Brusy	Norymberga	tmdb:1214931	Norymberga (2025)
 pl	Kino za Rogiem Brusy	TAJNY AGENT - Klub Filmowy	tmdb:1220564	Tajny agent (2025)
 pl	Kino za Rogiem Cafe	Dobry chłopiec	tmdb:1381027	filmweb, imdb, wiki agree on 'Heel' (2025) tt34381258
-pl	Kino za Rogiem Cafe	Dobry chłopiec	tmdb:1381027	filmweb, imdb, wiki agree on 'Heel' (2025) tt34381258
 pl	Kino za Rogiem Cafe	Wymarzony	tmdb:489418	Wymarzony (2018)
 pl	Kino za Rogiem w Siedlcu	Dumna królewna	tmdb:1134680	Dumna królewna (2024)
 pl	Kino za Rogiem w Siedlcu	Norymberga	tmdb:1214931	Norymberga (2025)
 pl	Kino za Rogiem w Siedlcu	Potworna rodzinka	tmdb:454699	Potworna rodzinka (2017)
+pl	Kino ŚDK	Lalka Dolly (Napisy)	tmdb:1309083	Dolly (2026)
+pl	Kino Światowid	ARS INDEPENDENT FESTIVAL: Konkurs Czarny Koń Filmu : REDUTA	tmdb:1141491	Reduta (2026)
 pl	Kino Światowid Elbląg	AKW: Blisko	tmdb:901563	Blisko (2022)
 pl	Kino Światowid Elbląg	AKW: Powoli	tmdb:1058642	Powoli (2023)
 pl	Kino Światowid Elbląg	The Metropolitan Opera: Cosi Fan Tutte	tmdb:1703620	The Metropolitan Opera: Così fan tutte (2026)
@@ -1381,4 +1386,5 @@ us	Regal Winter Park Village	Festive Fun with Peppa Cinema Experience	imdb:tt466
 us	Robinson Robinson Township	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 us	Robinson Robinson Township	SEVENTEEN World Tour 'NEW_'	imdb:tt46658626	filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 us	Robinson Robinson Township	TOMORROW X TOGETHER World Tour 'ACT : TOMORROW'	imdb:tt46658752	filled by venues.current: 'Tomorrow X Together World Tour 'Act: Tomorrow' (2026)' imdb:tt46658752 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
+us	Sky Cinemas Santa Fe	Reel Rock 19	tmdb:1451675	Reel Rock 19 (2025)
 es	Cinebaix	La leyenda del innombrable	imdb:tt1549862	filmweb, imdb, wiki, corroborated by feed agree on 'La llegenda de l'innombrable' (2010) tt1549862

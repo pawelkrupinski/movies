@@ -19,7 +19,16 @@
     "pinned.family.filmweb.took&!model.unscored.wrong" : 0,
     "pinned.family.facts.gainedListings" : 1,
     "pinned.family.facts.gainedFilms" : 1,
-    "pinned.family.facts.wrong" : 0
+    "pinned.family.facts.wrong" : 0,
+    "pinned.and.leanTakers&!family.dissent.gainedListings" : 1,
+    "pinned.and.leanTakers&!family.dissent.gainedFilms" : 1,
+    "pinned.and.leanTakers&!family.dissent.wrong" : 0,
+    "pinned.count.takers2&venues.current.gainedListings" : 4,
+    "pinned.count.takers2&venues.current.gainedFilms" : 1,
+    "pinned.count.takers2&venues.current.wrong" : 0,
+    "pinned.model.lean&count.leaning&title.namesIt.gainedListings" : 2,
+    "pinned.model.lean&count.leaning&title.namesIt.gainedFilms" : 2,
+    "pinned.model.lean&count.leaning&title.namesIt.wrong" : 0
   },
-  "pinned" : [ "families.current", "family.filmweb.took&!model.unscored", "family.facts" ]
+  "pinned" : [ "families.current", "family.filmweb.took&!model.unscored", "family.facts", "and.leanTakers&!family.dissent", "count.takers2&venues.current", "model.lean&count.leaning&title.namesIt" ]
 }
