@@ -4,6 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.nio.file.Path
+import scala.jdk.CollectionConverters._
 
 /** `scripts/identity-capture.sh`'s decisions: what it reads from its arguments and the environment, what each country's
  *  JVM is handed, when a recording's corpus and tree are fetched again, and what it reports. */
@@ -35,6 +36,55 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
     parse(Seq("--fill")).toOption.get.forced shouldBe Some(Mode.Fill)
     parse(Nil).toOption.get.forced shouldBe None
     parse(Seq("--capture", "--fill")).isLeft shouldBe true
+  }
+
+  they should "run two countries side by side unless told otherwise" in {
+    parse(Nil).toOption.get.parallel shouldBe 2
+    parse(Seq("--parallel", "3")).toOption.get.parallel shouldBe 3
+    parse(Seq("--parallel", "0")).isLeft shouldBe true
+  }
+
+  // ── countries side by side ──
+
+  "The countries side by side" should "be as many as asked, as memory holds and as there are countries" in {
+    budget(requested = 2, countries = 5, heap = "12g", memoryGb = 36) shouldBe Budget(parallel = 2, perHost = 2)
+    budget(requested = 3, countries = 5, heap = "12g", memoryGb = 36) shouldBe Budget(parallel = 2, perHost = 2)
+    budget(requested = 2, countries = 5, heap = "12g", memoryGb = 16) shouldBe Budget(parallel = 1, perHost = 4)
+    budget(requested = 4, countries = 1, heap = "8g", memoryGb = 64) shouldBe Budget(parallel = 1, perHost = 4)
+    budget(requested = 2, countries = 5, heap = "12g", memoryGb = 8) shouldBe Budget(parallel = 1, perHost = 4)
+  }
+
+  "A heap" should "read in gigabytes, as the JVM spells it" in {
+    heapGigabytes("12g") shouldBe 12
+    heapGigabytes("12G") shouldBe 12
+    heapGigabytes("8192m") shouldBe 8
+  }
+
+  "The run" should "start the largest countries first and never hold more JVMs than its budget" in {
+    val dir = java.nio.file.Files.createTempDirectory("identity-capture-spec")
+    val now = new java.util.concurrent.atomic.AtomicInteger
+    val peak = new java.util.concurrent.atomic.AtomicInteger
+    val started = java.util.Collections.synchronizedList(new java.util.ArrayList[String])
+    val effects = new Effects {
+      def newestRecording(): Option[String] = fail("the caller's corpus needs no lookup")
+      def fetchCorpus(run: String, cc: String, layout: Layout): Long = fail("the caller's corpus is not fetched")
+      def fetchTree(run: String, cc: String, layout: Layout): Long = fail("the caller's tree is not fetched")
+      def exportFamilies(db: String, into: Path): Long = fail("the caller's seed needs no export")
+      def run(job: Job): Seq[String] = {
+        started.add(job.cc); peak.accumulateAndGet(now.incrementAndGet(), math.max)
+        Thread.sleep(60); now.decrementAndGet()
+        Seq(s"[full-${job.cc}] captured 10 listings in 5 clusters")
+      }
+    }
+    val env = Map("KINOWO_IDENTITY_CORPUS_DIR" -> dir.toString, "KINOWO_FIXTURE_ROOT" -> dir.toString,
+      "KINOWO_IDENTITY_FAMILY_SEED" -> dir.toString, "KINOWO_IDENTITY_UNMATCHED_CAPTURE" -> dir.toString)
+    val lines = Seq.newBuilder[String]
+    val ok = capture(parse(Seq("pl", "es", "us", "uk")).toOption.get, env, Layout(dir, dir), effects, "cp", Nil, "abc", memoryGb = 64,
+      out = line => lines.synchronized { lines += line; () })
+    ok shouldBe true
+    peak.get shouldBe 2
+    started.asScala.take(2).toSet shouldBe Set("us", "uk")
+    lines.result().mkString("\n") should include("2 side by side")
   }
 
   // ── capture or fill ──
@@ -92,13 +142,14 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
   }
 
   "A fill" should "hand its JVM the fixture to fill, the country, and the live answers' sources" in {
-    val env = fillEnvironment("de", Map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k", FamilyUri -> "mongodb://prod"), layout)
+    val env = fillEnvironment("de", Map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k", FamilyUri -> "mongodb://prod"), layout, perHost = 2)
     env shouldBe Map(
       "KINOWO_IDENTITY_UNMATCHED_FILL"     -> "/repo/test/resources/fixtures/identity-unmatched",
       "KINOWO_IDENTITY_FULL"               -> "de",
       "KINOWO_IDENTITY_AGREEMENT_CACHE"    -> "/repo/target/identity-capture/agreement-cache",
       "KINOWO_IDENTITY_POSTER_CACHE"       -> "/repo/target/identity-capture/posters",
-      "KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k")
+      "KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k",
+      "KINOWO_IDENTITY_LIVE_PER_HOST"      -> "2")
   }
 
   it should "count as done only when its spec said it filled" in {
@@ -109,7 +160,7 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
   // ── the environment each country's JVM is handed ──
 
   "A country's environment" should "default every variable the capture reads, and give the country its own Mongo database" in {
-    val env = environment("uk", Map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k"), layout)
+    val env = environment("uk", Map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k"), layout, perHost = 2)
     env shouldBe Map(
       "KINOWO_IDENTITY_UNMATCHED_CAPTURE" -> "/repo/test/resources/fixtures/identity-unmatched",
       "KINOWO_IDENTITY_FULL"              -> "uk",
@@ -120,12 +171,13 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
       "KINOWO_IDENTITY_POSTER_CACHE"      -> "/repo/target/identity-capture/posters",
       "KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k",
       "MONGODB_URI"                       -> "mongodb://127.0.0.1:28017/?directConnection=true",
-      "MONGODB_DB"                        -> "kinowo_capture_uk")
+      "MONGODB_DB"                        -> "kinowo_capture_uk",
+      "KINOWO_IDENTITY_LIVE_PER_HOST"     -> "2")
   }
 
   it should "keep a variable the caller set, and never hand the family export's prod URI to the capture" in {
     val env = environment("pl", Map("KINOWO_IDENTITY_CORPUS_DIR" -> "/mine", "MONGODB_URI" -> "mongodb://127.0.0.1:27017/",
-      FamilyUri -> "mongodb://prod", "KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k"), layout)
+      FamilyUri -> "mongodb://prod", "KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k"), layout, perHost = 4)
     env("KINOWO_IDENTITY_CORPUS_DIR") shouldBe "/mine"
     env("MONGODB_URI") shouldBe "mongodb://127.0.0.1:27017/"
     env.values.toSeq should not contain "mongodb://prod"

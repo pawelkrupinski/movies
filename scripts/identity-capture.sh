@@ -3,11 +3,13 @@
 # Re-capture the unmatched-cluster fixture (test/resources/fixtures/identity-unmatched/<cc>.json.gz)
 # in one command — docs/design/identity-resolver.md §20.14 item 5.
 #
-#   scripts/identity-capture.sh [--dry-run] [--capture|--fill] [--heap 12g] [cc...]
+#   scripts/identity-capture.sh [--dry-run] [--capture|--fill] [--parallel 2] [--heap 12g] [cc...]
 #
 #   cc...       countries to capture (default: us de uk pl es, run largest first)
 #   --capture   capture every country named, whatever its fixture's inputs
 #   --fill      fill every country named (its <cc>.json.gz must exist)
+#   --parallel  countries run side by side, one JVM each (default 2; fewer when memory holds fewer
+#               12g heaps beside 4 GB for the rest), sharing 4 live reads per host between them
 #   --heap      each country's JVM heap (default 12g)
 #   --dry-run   print the plan — what it would download, export and run, with every variable — and
 #               touch neither prod nor the network
@@ -44,7 +46,7 @@ for arg in "$@"; do
     case "$arg" in
         --dry-run) dry=true ;;
         --fill) fill_only=true ;;
-        -h|--help) sed -n '3,37p' "$0"; exit 0 ;;
+        -h|--help) sed -n '3,39p' "$0"; exit 0 ;;
     esac
 done
 

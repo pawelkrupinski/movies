@@ -326,6 +326,8 @@ final class ProcessConfiguration(val env: Env) {
    *  (`IdentityResolveDumpIntegrationSpec`) answers what its recording cannot from TMDB and IMDb LIVE,
    *  instead of as gaps: the local loop for a change that asks new questions. Never in CI. */
   def identityLiveGaps: Option[IdentityLiveGaps] = text("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY").map(IdentityLiveGaps(_))
+  /** `KINOWO_IDENTITY_LIVE_PER_HOST` — a capture's live reads at once per host. */
+  def identityLivePerHost: IdentityLivePerHost = IdentityLivePerHost(count("KINOWO_IDENTITY_LIVE_PER_HOST", 4))
   /** `KINOWO_IDENTITY_SEED_FILMS` — a directory of `films-<cc>.json`, today's films as sets of listing
    *  keys (`scripts.ListingKeyBackfill --export`), that the ID-seeding review assigns ids from. */
   def identitySeedFilms: Option[IdentitySeedFilms] =

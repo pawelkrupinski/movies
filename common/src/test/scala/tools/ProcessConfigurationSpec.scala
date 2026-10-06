@@ -98,6 +98,11 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
     resolvedFrom().identityPipelineBootOnly shouldBe IdentityPipelineBootOnly(false)
   }
 
+  it should "give a capture's live reads four at a time per host, unless the parallel runs split it" in {
+    resolvedFrom().identityLivePerHost shouldBe IdentityLivePerHost(4)
+    resolvedFrom("KINOWO_IDENTITY_LIVE_PER_HOST" -> "2").identityLivePerHost shouldBe IdentityLivePerHost(2)
+  }
+
   it should "read a tuning knob, falling back to the caller's default for an unusable value" in {
     resolvedFrom("KINOWO_SCRAPE_TASKS_PER_VENUE" -> "3").scrapeTasksPerVenue(ScrapeTasksPerVenue(1)) shouldBe ScrapeTasksPerVenue(3)
     resolvedFrom("KINOWO_SCRAPE_TASKS_PER_VENUE" -> "0").scrapeTasksPerVenue(ScrapeTasksPerVenue(1)) shouldBe ScrapeTasksPerVenue(1)

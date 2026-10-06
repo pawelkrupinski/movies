@@ -103,33 +103,22 @@ object IdentityShadow {
 
   /** A gap TMDB or IMDb can answer, answered LIVE, the stub key swapped for a real one; anything else, and a live
    *  failure, is still the gap. For the local resolver-only loop only (`settings.IdentityLiveGaps`): at most
-   *  [[LiveGapLeaf.PerHost]] requests at a time per host, a 429 or 503 retried after a back-off, and every answer kept
-   *  on disk ([[LiveGapLeaf.Store]]) so a re-run after a rule change asks nothing it asked before. */
-  final class LiveGapLeaf(key: settings.IdentityLiveGaps, gap: GapLeaf) extends HttpFetch {
+   *  `perHost` requests at a time per host ([[tools.HostPacing]]: halved on a 429 or 503, retried after a back-off), and
+   *  every answer kept on disk ([[LiveGapLeaf.Store]]) so a re-run after a rule change asks nothing it asked before. */
+  final class LiveGapLeaf(key: settings.IdentityLiveGaps, gap: GapLeaf,
+                          perHost: settings.IdentityLivePerHost = settings.ProcessConfiguration.resolve().identityLivePerHost) extends HttpFetch {
     import LiveGapLeaf._
-    private val real = new RealHttpFetch()
-    private val slots = new java.util.concurrent.ConcurrentHashMap[String, java.util.concurrent.Semaphore]()
+    private val real   = new RealHttpFetch()
+    private val pacing = new tools.HostPacing(perHost.value, Retries, BackOff.toMillis)
     private def answerable(url: String) = url.contains("themoviedb.org") || url.contains("imdb.com")
     private def keyed(url: String) = url.replace(s"api_key=$StubTmdbKey", s"api_key=${key.tmdbKey}")
     private def stored(id: String)(read: => String): String = {
       val file = Store.resolve(java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(id.getBytes("UTF-8"))))
       if (Files.exists(file)) Files.readString(file)
-      else { val answer = read; Files.createDirectories(Store); Files.writeString(file, answer); answer }
-    }
-    private def paced(url: String)(read: => String): String = {
-      val host = java.net.URI.create(url).getHost
-      val slot = slots.computeIfAbsent(host, _ => new java.util.concurrent.Semaphore(PerHost))
-      @scala.annotation.tailrec def attempt(n: Int): String =
-        scala.util.Try { slot.acquire(); try read finally slot.release() } match {
-          case scala.util.Success(answer) => answer
-          case scala.util.Failure(e: HttpStatusException) if (e.code == 429 || e.code == 503) && n < Retries =>
-            Thread.sleep(BackOff.toMillis * (n + 1)); attempt(n + 1)
-          case scala.util.Failure(e) => throw e
-        }
-      attempt(0)
+      else { val answer = read; tools.AtomicFiles.writeString(file, answer); answer }
     }
     private def tried(url: String, id: => String, read: => String, orGap: => String): String =
-      if (!answerable(url)) orGap else scala.util.Try(stored(id)(paced(url)(read))).getOrElse(orGap)
+      if (!answerable(url)) orGap else scala.util.Try(stored(id)(pacing(url)(read))).getOrElse(orGap)
     override def get(url: String): String = tried(url, s"GET $url", real.get(keyed(url)), gap.get(url))
     override def get(url: String, headers: Map[String, String]): String =
       tried(url, s"GET $url", real.get(keyed(url), headers), gap.get(url, headers))
@@ -139,7 +128,6 @@ object IdentityShadow {
   }
 
   object LiveGapLeaf {
-    val PerHost = 4
     val Retries = 6
     val BackOff: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.DurationInt(5).seconds
     val Store: Path = java.nio.file.Paths.get("target", "identity-live-gaps")

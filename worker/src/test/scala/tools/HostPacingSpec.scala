@@ -1,0 +1,62 @@
+package tools
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+
+import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
+import java.util.concurrent.{CountDownLatch, Executors, TimeUnit}
+
+/** The per-host pacing of a capture's live reads: never more at once than the host's limit, the limit halved on every
+ *  429 or 503, and a share of one budget per run when runs go side by side. */
+class HostPacingSpec extends AnyFlatSpec with Matchers {
+
+  private def throttled(code: Int) = new HttpStatusException(code, "GET", "https://api.themoviedb.org/3/x", None)
+
+  "A host's reads" should "never run more at once than its limit" in {
+    val pacing  = new HostPacing(budget = 3, sleep = _ => ())
+    val now     = new AtomicInteger
+    val peak    = new AtomicInteger
+    val pool    = Executors.newFixedThreadPool(12)
+    val started = new CountDownLatch(1)
+    (1 to 60).foreach(_ => pool.submit(new Runnable {
+      def run(): Unit = { started.await(); pacing("https://api.themoviedb.org/3/x") {
+        val n = now.incrementAndGet(); peak.accumulateAndGet(n, math.max); Thread.sleep(2); now.decrementAndGet()
+      } }
+    }))
+    started.countDown(); pool.shutdown(); pool.awaitTermination(30, TimeUnit.SECONDS) shouldBe true
+    peak.get should be <= 3
+    peak.get should be >= 2
+  }
+
+  it should "halve the host's limit on a 429 or a 503, never below one, and retry after a growing back-off" in {
+    val slept  = new AtomicLong
+    val pacing = new HostPacing(budget = 8, retries = 6, backOffMillis = 100, sleep = ms => { slept.addAndGet(ms); () })
+    val calls  = new AtomicInteger
+    pacing("https://www.imdb.com/a") { if (calls.incrementAndGet() <= 2) throw throttled(if (calls.get == 1) 429 else 503) else "ok" } shouldBe "ok"
+    pacing.limitOf("www.imdb.com") shouldBe 2
+    slept.get shouldBe 100 + 200
+    (1 to 5).foreach { _ =>
+      val n = new AtomicInteger
+      pacing("https://www.imdb.com/b") { if (n.incrementAndGet() == 1) throw throttled(429) else "ok" }
+    }
+    pacing.limitOf("www.imdb.com") shouldBe 1
+    pacing.limitOf("api.themoviedb.org") shouldBe 8
+  }
+
+  it should "give up after its retries, and pass any other failure straight on" in {
+    val pacing = new HostPacing(budget = 4, retries = 2, sleep = _ => ())
+    val calls  = new AtomicInteger
+    an[HttpStatusException] should be thrownBy pacing("https://x.org/") { calls.incrementAndGet(); throw throttled(429) }
+    calls.get shouldBe 3
+    val once = new AtomicInteger
+    an[IllegalStateException] should be thrownBy pacing("https://y.org/") { once.incrementAndGet(); throw new IllegalStateException("boom") }
+    once.get shouldBe 1
+  }
+
+  "Runs side by side" should "split one host budget between them, each keeping at least one" in {
+    HostPacing.share(4, runs = 1) shouldBe 4
+    HostPacing.share(4, runs = 2) shouldBe 2
+    HostPacing.share(4, runs = 3) shouldBe 1
+    HostPacing.share(4, runs = 8) shouldBe 1
+  }
+}

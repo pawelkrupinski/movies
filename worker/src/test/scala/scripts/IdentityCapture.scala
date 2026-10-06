@@ -51,13 +51,48 @@ object IdentityCapture {
 
   // ── arguments ────────────────────────────────────────────────────────────────────────────
 
-  final case class Options(countries: Seq[String] = Countries, dryRun: Boolean = false, heap: String = "12g", forced: Option[Mode] = None)
+  final case class Options(countries: Seq[String] = Countries, dryRun: Boolean = false, heap: String = "12g", forced: Option[Mode] = None, parallel: Int = 2)
+
+  // ── countries side by side ───────────────────────────────────────────────────────────────
+
+  /** How many countries' JVMs run at once, and each one's share of a host's live reads. */
+  final case class Budget(parallel: Int, perHost: Int)
+
+  /** Memory kept for everything but the captures' heaps: the machine, the it/ Mongo, this JVM. */
+  val ReservedGb = 4L
+  /** One capture's live reads at once per host — what `LiveGapLeaf` and `ExperimentCacheFetch` always allowed one run. */
+  val PerHostTotal = 4
+
+  /** As many JVMs as asked, as there are countries, and as fit in memory beside [[ReservedGb]] — at least one. One
+   *  JVM per country, never countries sharing one: a whole-corpus resolve holds its country resident (`IdentityShadow
+   *  .sideBySide`'s own warning), each capture's lookups count their recording's gaps on one counter per corpus, and a
+   *  JVM's `ExitOnOutOfMemoryError` then takes down one country, not two. They share the machine's hosts instead, so
+   *  each takes its [[tools.HostPacing.share]] of one budget. */
+  def budget(requested: Int, countries: Int, heap: String, memoryGb: Long): Budget = {
+    val fits     = ((memoryGb - ReservedGb) / math.max(1L, heapGigabytes(heap))).toInt
+    val parallel = math.max(1, Seq(requested, countries, fits).min)
+    Budget(parallel, tools.HostPacing.share(PerHostTotal, parallel))
+  }
+
+  /** A JVM heap (`12g`, `8192m`) in whole gigabytes, rounded up. */
+  def heapGigabytes(heap: String): Long = {
+    val n = heap.dropRight(1).toLong
+    heap.last.toLower match {
+      case 'g' => n
+      case 'm' => (n + 1023) / 1024
+      case 'k' => (n + 1024L * 1024 - 1) / (1024L * 1024)
+      case _   => (heap.toLong + (1L << 30) - 1) >> 30
+    }
+  }
 
   def parse(args: Seq[String]): Either[String, Options] = {
     @scala.annotation.tailrec def go(rest: List[String], o: Options, named: List[String]): Either[String, Options] = rest match {
       case Nil                     => Right(if (named.isEmpty) o else o.copy(countries = Countries.filter(named.contains)))
       case "--dry-run" :: tail     => go(tail, o.copy(dryRun = true), named)
-      case "--heap" :: heap :: tail => go(tail, o.copy(heap = heap), named)
+      case "--heap" :: heap :: tail if Try(heapGigabytes(heap)).isSuccess => go(tail, o.copy(heap = heap), named)
+      case "--parallel" :: n :: tail if n.toIntOption.exists(_ >= 1) => go(tail, o.copy(parallel = n.toInt), named)
+      case "--parallel" :: _       => Left("--parallel wants a count of 1 or more")
+      case "--heap" :: _           => Left("--heap wants a heap such as 12g")
       case ("--capture" | "--fill") :: _ if o.forced.isDefined => Left("--capture and --fill: one or the other")
       case "--capture" :: tail     => go(tail, o.copy(forced = Some(Mode.Capture)), named)
       case "--fill" :: tail        => go(tail, o.copy(forced = Some(Mode.Fill)), named)
@@ -142,9 +177,9 @@ object IdentityCapture {
   // ── the environment each country's JVM is handed ─────────────────────────────────────────
 
   /** Every variable the capture spec reads, each the caller's own where set, else this layout's — and the country's own
-   *  `MONGODB_DB`, so two captures never seed one database. The family export's prod URI is never passed on: the
-   *  capture reads the export, not prod. */
-  def environment(cc: String, env: Map[String, String], layout: Layout): Map[String, String] = {
+   *  `MONGODB_DB`, so two captures never seed one database, and its share of the live reads per host ([[budget]]). The
+   *  family export's prod URI is never passed on: the capture reads the export, not prod. */
+  def environment(cc: String, env: Map[String, String], layout: Layout, perHost: Int): Map[String, String] = {
     val defaults = Map(
       "KINOWO_IDENTITY_UNMATCHED_CAPTURE" -> layout.fixtures.toString,
       "KINOWO_IDENTITY_CORPUS_DIR"        -> layout.corpusDir.toString,
@@ -155,16 +190,16 @@ object IdentityCapture {
       "MONGODB_URI"                       -> LocalMongo)
     defaults.map { case (name, default) => name -> env.getOrElse(name, default) } ++
       env.get("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY").map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> _) +
-      ("KINOWO_IDENTITY_FULL" -> cc) + ("MONGODB_DB" -> s"kinowo_capture_$cc")
+      ("KINOWO_IDENTITY_FULL" -> cc) + ("MONGODB_DB" -> s"kinowo_capture_$cc") + ("KINOWO_IDENTITY_LIVE_PER_HOST" -> perHost.toString)
   }
 
   /** A fill's variables: the fixture directory to fill, the country, and where its live answers come from and are kept. */
-  def fillEnvironment(cc: String, env: Map[String, String], layout: Layout): Map[String, String] =
+  def fillEnvironment(cc: String, env: Map[String, String], layout: Layout, perHost: Int): Map[String, String] =
     Map(
       "KINOWO_IDENTITY_UNMATCHED_FILL"  -> env.getOrElse("KINOWO_IDENTITY_UNMATCHED_CAPTURE", layout.fixtures.toString),
       "KINOWO_IDENTITY_AGREEMENT_CACHE" -> env.getOrElse("KINOWO_IDENTITY_AGREEMENT_CACHE", layout.agreementCache.toString),
       "KINOWO_IDENTITY_POSTER_CACHE"    -> env.getOrElse("KINOWO_IDENTITY_POSTER_CACHE", layout.posters.toString),
-      "KINOWO_IDENTITY_FULL"            -> cc) ++
+      "KINOWO_IDENTITY_FULL"            -> cc, "KINOWO_IDENTITY_LIVE_PER_HOST" -> perHost.toString) ++
       env.get("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY").map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> _)
 
   /** Whether the corpora are this script's to fetch: not when the caller named a directory of their own. */
@@ -333,8 +368,24 @@ object IdentityCapture {
       Files.createDirectories(job.log.getParent)
       val pb = new ProcessBuilder(job.command*).directory(repo.toFile).redirectErrorStream(true).redirectOutput(job.log.toFile)
       pb.environment().putAll(job.env.asJava)
-      pb.start().waitFor()
+      val child = pb.start()
+      child.waitFor()
+      dropDatabasesOf(child.pid(), job.env.get("MONGODB_URI"))
       Files.readAllLines(job.log, StandardCharsets.UTF_8).asScala.toSeq
+    }
+
+    /** The it/ Mongo databases a country's JVM opened (each named for its pid, `RunScopedDatabaseName`), dropped once it
+     *  ended — the suite drops its own, so this is for a JVM that died before it could. */
+    private def dropDatabasesOf(pid: Long, uri: Option[String]): Unit = uri.foreach { u =>
+      val _ = Try {
+        val client = org.mongodb.scala.MongoClient(u)
+        try {
+          val wait  = scala.concurrent.duration.Duration(1, "minute")
+          val names = scala.concurrent.Await.result(client.listDatabaseNames().toFuture(), wait)
+          names.filter(n => tools.RunScopedDatabaseName.owner(n).contains(pid))
+            .foreach(n => scala.concurrent.Await.result(client.getDatabase(n).drop().toFuture(), wait))
+        } finally client.close()
+      }
     }
   }
 
@@ -354,12 +405,12 @@ object IdentityCapture {
   /** The run, over `effects`: each country's choice made and said, the recording and the family answers fetched for the
    *  captures alone (a fill reads neither), then each country's JVM. True when every country did its job. */
   def capture(options: Options, env: Map[String, String], layout: Layout, effects: Effects, classpath: String,
-              jvmopts: Seq[String], code: String, out: String => Unit): Boolean = {
+              jvmopts: Seq[String], code: String, memoryGb: Long, out: String => Unit): Boolean = {
     val started = System.nanoTime()
     val phases  = Seq.newBuilder[Phase]
     def timed[A](name: String)(body: => A)(amount: A => Option[(Double, String)]): A = {
       val t0 = System.nanoTime(); val a = body
-      phases += Phase(name, (System.nanoTime() - t0) / 1e9, amount(a)); a
+      phases.synchronized { phases += Phase(name, (System.nanoTime() - t0) / 1e9, amount(a)) }; a
     }
     val cs = options.countries
     out(s"[identity-capture] countries ${cs.mkString(" ")}; work in ${layout.work}${if (options.dryRun) "; DRY RUN" else ""}")
@@ -396,15 +447,20 @@ object IdentityCapture {
         timed(s"export $db family answers")(effects.exportFamilies(db, layout.families))(n => Some(n.toDouble -> "docs"))
       }
 
-    // 4. one JVM per country
+    // 4. one JVM per country, the largest first, as many side by side as the budget holds
+    val plan = budget(options.parallel, plans.size, options.heap, memoryGb)
+    out(s"[identity-capture] ${plan.parallel} side by side (${options.heap} heap each, $memoryGb GB here); " +
+      s"${plan.perHost} live read(s) at once per host each")
     val jvm = Seq("java") ++ jvmOptions(jvmopts, options.heap) ++ Seq("-cp", classpath, "org.scalatest.tools.Runner", "-oDW", "-s")
-    val results = plans.map { case (Choice(cc, mode, _), _, run) =>
+    def one(choice: Choice, run: Option[String]): (Boolean, Double) = {
+      val Choice(cc, mode, _) = choice
       val job = mode match {
-        case Mode.Capture => Job(cc, jvm :+ CaptureSpec, environment(cc, env, layout), layout.logs.resolve(s"$cc-capture.log"))
-        case Mode.Fill    => Job(cc, jvm :+ FillSpec, fillEnvironment(cc, env, layout), layout.logs.resolve(s"$cc-fill.log"))
+        case Mode.Capture => Job(cc, jvm :+ CaptureSpec, environment(cc, env, layout, plan.perHost), layout.logs.resolve(s"$cc-capture.log"))
+        case Mode.Fill    => Job(cc, jvm :+ FillSpec, fillEnvironment(cc, env, layout, plan.perHost), layout.logs.resolve(s"$cc-fill.log"))
       }
       val verb = mode.toString.toLowerCase(java.util.Locale.ROOT)
       out(s"[identity-capture] $cc: $verb (log ${job.log})")
+      val t0  = System.nanoTime()
       val log = timed(s"$verb $cc")(effects.run(job))(l => capturedListings(l).map(_.toDouble -> "listings"))
       val ok  = options.dryRun || succeeded(cc, mode, log)
       if (!ok) out(s"[identity-capture] $cc: FAILED — the spec printed no $verb; see ${job.log}")
@@ -413,11 +469,20 @@ object IdentityCapture {
         // a capture's decisions are now those of this recording under this code: what the next run compares with
         if (mode == Mode.Capture && !options.dryRun) run.foreach(r => Files.writeString(fixtures.resolve(s"$cc.inputs"), Inputs(r, code).render))
       }
-      ok
+      (ok, (System.nanoTime() - t0) / 1e9)
     }
+    val countriesStarted = System.nanoTime()
+    val pool = java.util.concurrent.Executors.newFixedThreadPool(plan.parallel)
+    val results = try plans.map { case (choice, _, run) => pool.submit(() => one(choice, run)) }.map(_.get) finally pool.shutdown()
+    val countriesWall = (System.nanoTime() - countriesStarted) / 1e9
 
-    if (!options.dryRun) out(report(phases.result(), (System.nanoTime() - started) / 1e9))
-    results.forall(identity)
+    if (!options.dryRun) {
+      out(report(phases.synchronized(phases.result()), (System.nanoTime() - started) / 1e9))
+      val summed = results.map(_._2).sum
+      out("  %s of country time in %s, %d side by side: %.1fx".formatLocal(java.util.Locale.ROOT, duration(summed), duration(countriesWall),
+        plan.parallel, summed / math.max(1e-9, countriesWall)))
+    }
+    results.forall(_._1)
   }
 
   /** The caller's own corpus (`KINOWO_IDENTITY_CORPUS_DIR`), named by its content's hash for the fixture's stamp. */
@@ -439,7 +504,12 @@ object IdentityCapture {
         sys.exit(2)
       }
       val jvmopts = Try(Files.readAllLines(repo.resolve(".jvmopts")).asScala.toSeq).getOrElse(Nil)
-      val ok = Try(capture(options, env, layout, effects, System.getProperty("java.class.path"), jvmopts, decisionCode(repo), println))
+      val memoryGb = java.lang.management.ManagementFactory.getOperatingSystemMXBean match {
+        case os: com.sun.management.OperatingSystemMXBean => os.getTotalMemorySize >> 30
+        case _                                            => ReservedGb + heapGigabytes(options.heap)
+      }
+      val ok = Try(capture(options, env, layout, effects, System.getProperty("java.class.path"), jvmopts, decisionCode(repo), memoryGb,
+        line => synchronized(println(line))))
       ok.failed.foreach(e => System.err.println(s"[identity-capture] ${e.getMessage}"))
       sys.exit(if (ok.getOrElse(false)) 0 else 1)
   }

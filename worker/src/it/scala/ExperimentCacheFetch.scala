@@ -5,13 +5,14 @@ import tools.{HttpFetch, HttpStatusException, RealHttpFetch}
 import java.nio.file.{Files, Path}
 
 /** The signal-combination experiment's answers (`<cache>/<host>/<sha256 of "METHOD url body">`, `{status, body}`), else a
- *  live read — kept on disk under `target/agreement-live` so a re-run asks nothing twice, at most [[PerHost]] at a time per
- *  host, a 429 or 503 retried after a back-off. For the resolver-only replay's agreement measure only. */
-final class ExperimentCacheFetch(cache: Path) extends HttpFetch {
-  private val real  = new RealHttpFetch()
-  private val slots = new java.util.concurrent.ConcurrentHashMap[String, java.util.concurrent.Semaphore]()
-  private val Live  = java.nio.file.Paths.get("target", "agreement-live")
-  private val PerHost = 4
+ *  live read — kept on disk under `target/agreement-live` so a re-run asks nothing twice, at most `perHost` at a time per
+ *  host ([[tools.HostPacing]]: halved on a 429 or 503, retried after a back-off). For the resolver-only replay's
+ *  agreement measure and the unmatched-cluster capture only. */
+final class ExperimentCacheFetch(cache: Path,
+                                 perHost: settings.IdentityLivePerHost = settings.ProcessConfiguration.resolve().identityLivePerHost) extends HttpFetch {
+  private val real   = new RealHttpFetch()
+  private val pacing = new tools.HostPacing(perHost.value, retries = 5)
+  private val Live   = java.nio.file.Paths.get("target", "agreement-live")
 
   private def hex(id: String) = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(id.getBytes("UTF-8")))
   private def answer(method: String, url: String, body: String)(read: => String): String = {
@@ -29,15 +30,8 @@ final class ExperimentCacheFetch(cache: Path) extends HttpFetch {
       }
     } else if (Files.exists(live)) Files.readString(live)
     else {
-      val slot = slots.computeIfAbsent(host, _ => new java.util.concurrent.Semaphore(PerHost))
-      @scala.annotation.tailrec def attempt(n: Int): String =
-        scala.util.Try { slot.acquire(); try read finally slot.release() } match {
-          case scala.util.Success(text) => text
-          case scala.util.Failure(e: HttpStatusException) if (e.code == 429 || e.code == 503) && n < 5 => Thread.sleep(5000L * (n + 1)); attempt(n + 1)
-          case scala.util.Failure(e) => throw e
-        }
-      val text = attempt(0)
-      Files.createDirectories(Live); Files.writeString(live, text); text
+      val text = pacing(url)(read)
+      tools.AtomicFiles.writeString(live, text); text
     }
   }
   override def get(url: String): String = answer("GET", url, "")(real.get(url))

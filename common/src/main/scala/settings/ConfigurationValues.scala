@@ -176,6 +176,9 @@ final case class IdentityFamilySeed(value: Path) extends AnyVal
 final case class IdentityPosterCache(value: Path) extends AnyVal
 /** `KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY` — a resolver-only replay asks TMDB and IMDb live for what its recording cannot answer. */
 final case class IdentityLiveGaps(tmdbKey: String) extends AnyVal
+/** `KINOWO_IDENTITY_LIVE_PER_HOST` — how many live reads a capture runs at once per host (default 4); `scripts/identity-capture.sh`
+ *  splits one budget between the countries it runs side by side, and each run halves its own on a 429 or 503. */
+final case class IdentityLivePerHost(value: Int) extends AnyVal
 final case class IdentityShadowPermutations(value: Int) extends AnyVal
 /** `KINOWO_IDENTITY_PIPELINE_CACHE` — where the identity shadow run keeps each corpus's booted
  *  pipeline answers, so resolver variants measure against one boot. */

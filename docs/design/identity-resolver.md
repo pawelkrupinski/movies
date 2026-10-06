@@ -2905,7 +2905,11 @@ the stage, cannot be graded until the fixture is re-captured (below).
       (`scripts/local-mirror/prod-tunnel.sh`) for `KINOWO_IDENTITY_FAMILY_SEED`;
    3. runs each country's `UnmatchedClustersCaptureIntegrationSpec` in a JVM of its own (`--heap`, default 12g) against
       the it/ Mongo (`127.0.0.1:28017`) in a database of its own, every variable defaulted (one you set is kept) and the
-      TMDB key read from the secrets vault, never `.env.local`;
+      TMDB key read from the secrets vault, never `.env.local`. `--parallel N` (default 2) runs that many countries side
+      by side, largest first, as many as memory holds beside 4 GB; one JVM each, never countries sharing one (a
+      whole-corpus resolve holds its country resident, and an OOM then takes one country down, not two). They split one
+      budget of 4 live reads per host (`KINOWO_IDENTITY_LIVE_PER_HOST`, `tools.HostPacing`), each halving its own on a
+      429 or 503;
    4. prints each phase's time and throughput.
 
    Capture or fill is decided per country, and said: it FILLS (`UnmatchedClustersFillIntegrationSpec`, which only answers
