@@ -32,6 +32,22 @@ case class FilmDetail(
   // whose language is already per-screening on the listing.
   format:         List[String]   = Nil
 ) {
+  /** These fields as a cinema slot holds them — the rules the listing's own fields land by (`SlotFields`), so a page's
+   *  "Niderlandy", "Biograficzny/Muzyczny" or relative poster never sits beside the listing's "Holandia".
+   *  `enrichmentLanguage` is the language the country's corpus names countries in (`CountryNames.canonical`). */
+  def landed(enrichmentLanguage: java.util.Locale): FilmDetail =
+    copy(
+      countries  = services.movies.SlotFields.countries(countries, enrichmentLanguage),
+      genres     = services.movies.SlotFields.genres(genres),
+      posterUrl  = services.movies.SlotFields.url(posterUrl, None),
+      trailerUrl = services.movies.SlotFields.url(trailerUrl, None))
+
+  /** The page-owned fields (those [[changedSince]] compares) as a slot of nothing else: what a venue slot built from the
+   *  page's listing carries where the listing states none (`services.movies.VenuePageFacts`). */
+  def pageFields: SourceData =
+    SourceData(synopsis = synopsis, cast = cast, director = director, runtimeMinutes = runtimeMinutes, releaseYear = releaseYear,
+      originalTitle = originalTitle, countries = countries, genres = genres, ageRating = ageRating)
+
   /** Fill gaps in an existing cinema `SourceData` slot from these detail fields,
    *  preserving the slot's showtimes/title/filmUrl. Treats the listing/bare
    *  values as authoritative — a present listing value is never replaced by a

@@ -1,8 +1,9 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie, CinemaShowing, Source, SourceData}
-import services.movies.{CinemaSlotBuilder, ListingKey, MovieRecordMerge, ScrapeListing, ScreeningTokens, ShowtimesDigest, StoredMovieRecord,
-  TitleNormalizer}
+import services.movies.{CinemaSlotBuilder, ListingConstraints, ListingKey, MovieRecordMerge, ScrapeListing, ScreeningTokens, ShowtimesDigest, StoredMovieRecord,
+  TitleNormalizer, VenuePageFacts}
+import services.resolution.YearWindow
 
 // Everything a venue slot is built and fingerprinted by, and nothing else: this file is what the venue slot code version
 // digests (`IdentityRulesSources.VenueSlotRoots`), so a change to the rest of the projection keeps every recorded slot.
@@ -120,8 +121,9 @@ class VenueSlotMemo(environment: Long = 0L) {
 object VenueSlotMemo {
   /** What one venue's slots on a film are built from: the venue, its rows (content and listing keys),
    *  each row's previous film and the detail fields of the slots those films held at the venue — every input of
-   *  `ScrapeListing.prepare` and `CinemaSlotBuilder.build` that is not fixed for the worker. */
-  final case class Key(venue: String, rows: Int, keys: Int, priors: Int, size: Int) {
+   *  `ScrapeListing.prepare` and `CinemaSlotBuilder.build` that is not fixed for the worker — the reads of the
+   *  listings' pages included (`pages`, [[services.movies.VenuePageFacts.digest]]). */
+  final case class Key(venue: String, rows: Int, keys: Int, priors: Int, size: Int, pages: Int = 0) {
     /** The memo's 64 bits of this key: what it keeps a venue's slots under. */
     def id: Long = ContentHash.of(this)
     /** The memo's 64 bits of the venue's listings this key is of, whatever their rows and priors. */
@@ -131,8 +133,8 @@ object VenueSlotMemo {
   /** The key of one film's `rows` at `venue`: their content and listing keys, the prior slots their previous films hold
    *  there (`priors`), and each row's film by its counter (`films`) — a film keeps its counter for good and has it from
    *  its first draft, so the key a slot has once written is worked out from it ([[written]]). */
-  def keyOf(venue: String, rows: Seq[ProjectedListing], priors: Seq[Int], films: Seq[Option[Long]]): Key =
-    Key(venue, rows.map(r => (r.row, r.showtimes)).##, rows.map(_.listing.key).##, (priors, films).##, rows.size)
+  def keyOf(venue: String, rows: Seq[ProjectedListing], priors: Seq[Int], films: Seq[Option[Long]], pages: Int): Key =
+    Key(venue, rows.map(r => (r.row, r.showtimes)).##, rows.map(_.listing.key).##, (priors, films).##, rows.size, pages)
 
   /** Slots the memo holds, and their fingerprint. */
   private final case class Entry(lean: Seq[(Source, SourceData)], fingerprint: Long)
@@ -216,8 +218,10 @@ private[identity] object VenueSlots {
                          storedById: Map[String, StoredMovieRecord], normalizer: TitleNormalizer, slots: CinemaSlotBuilder,
                          tokens: ScreeningTokens): Seq[(Source, SourceData)] = {
     val rows     = keys.flatMap(key => byKey.get(key).map(merged(cinema, _, normalizer)))
-    val prepared = ScrapeListing.prepare(cinema, rows, normalizer, tokens)
-    prepared.movies.groupBy(cm => CinemaShowing.keyFor(cinema, prepared.cleaned(cm), normalizer)).toSeq
+    val apart    = filmPages(cinema, rows, normalizer, slots.pages)
+    val pageOf: CinemaMovie => Option[String] = cm => cm.filmUrl.map(_.trim).filter(apart)
+    val prepared = ScrapeListing.prepare(cinema, rows, normalizer, tokens, pageOf)
+    prepared.movies.groupBy(cm => slotKey(cinema, prepared.cleaned(cm), pageOf(cm), normalizer)).toSeq
       .sortBy(_._1.titleKey).map { case (source, group) =>
         val representative =
           if (group.sizeIs == 1) group.head
@@ -226,5 +230,35 @@ private[identity] object VenueSlots {
           .flatMap(_.record.data.get(source))
         (source: Source) -> slots.build(representative, prepared.cleaned(representative), prior)
       }
+  }
+
+  /** Of `rows` (one film's at `cinema`), the pages that must each keep a slot of their own: those of one title whose
+   *  reads name two films — years a production-to-release gap apart, or credits naming no one in common. Kino Iluzjon
+   *  prints Has's 1968 "Lalka" and Kawalski's 2026 one under one title and two pages; drafted onto one film, they were
+   *  one slot, the representative's detail on both. A venue that prints one film under a page per date (Kino Nowe
+   *  Horyzonty's "Lalka" at `op.s?id=22790` and `id=23157`, 25 such titles in PL on 2026-10-06) reads one film from each
+   *  and keeps its one slot: the exception moves no other key. */
+  private[identity] def filmPages(cinema: Cinema, rows: Seq[CinemaMovie], normalizer: TitleNormalizer,
+                                  pages: VenuePageFacts): Set[String] = {
+    def page(cm: CinemaMovie) = cm.filmUrl.map(_.trim).filter(_.nonEmpty)
+    def twoFilms(a: SourceData, b: SourceData) =
+      a.releaseYear.zip(b.releaseYear).exists { case (x, y) => (x - y).abs > YearWindow.ProductionToRelease } ||
+        ListingConstraints.venueCreditsApart(a.director, b.director, normalizer).isDefined
+    rows.groupBy(cm => ScrapeListing.slotKey(cinema, cm.movie.title, normalizer)).valuesIterator.flatMap { ofTitle =>
+      val paged = ofTitle.flatMap(page).distinct
+      if (paged.sizeIs < 2) Nil
+      else {
+        val reads = paged.flatMap(pages.of(cinema, _))
+        if (reads.combinations(2).exists(pair => twoFilms(pair.head, pair.last))) paged else Nil
+      }
+    }.toSet
+  }
+
+  /** The slot a listing under `title` lands in: the venue's one slot for the title, or — for a page [[filmPages]] keeps
+   *  apart — the page's own, its key the title's marked with the page's hash (the same in every JVM): a wire key is a
+   *  Mongo field name, which a url's dots would split. */
+  private[identity] def slotKey(cinema: Cinema, title: String, page: Option[String], normalizer: TitleNormalizer): CinemaShowing = {
+    val key = CinemaShowing.keyFor(cinema, title, normalizer)
+    page.fold(key)(p => key.copy(titleKey = s"${key.titleKey}#${Integer.toHexString(p.hashCode)}"))
   }
 }

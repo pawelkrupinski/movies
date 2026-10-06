@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie, CinemaShowing, Country, MovieRecord}
-import services.movies.{CacheKey, CaffeineMovieCache, CinemaSlotBuilder, InMemoryMovieRepository, InMemoryScrapeGuardLedger,
+import services.movies.{CacheKey, CaffeineMovieCache, CinemaSlotBuilder, InMemoryScrapeGuardLedger,
   ScreeningTokens, SingleCountryNormalizer, StringPool}
 import services.scrapes.{InMemoryScrapeArchiveRepository, ScrapeAttempt}
 
@@ -11,7 +11,7 @@ import java.time.{Clock, LocalDateTime}
  *  in-memory store, intake and FilmId map. The resolver is the whole one over lookups that know no film (every
  *  cluster concluded unmatched) unless `resolve` says otherwise, and `details` answers the projection's TMDB fetches. */
 private[identity] final class ProjectionWorld(
-  val repository:    InMemoryMovieRepository,
+  val repository:    services.movies.MovieRepository,
   venues:            Seq[Cinema],
   clock:             Clock,
   resolve:           (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = ProjectionWorld.unmatched,
@@ -22,14 +22,15 @@ private[identity] final class ProjectionWorld(
   val accepted:      InMemoryScrapeArchiveRepository = new InMemoryScrapeArchiveRepository,
   val filmIds:       InMemoryFilmIdCounterStore = new InMemoryFilmIdCounterStore,
   val fingerprints:  VenueSlotFingerprints = new InMemoryVenueSlotFingerprints,
-  scopedBetweenWhole: Int = IdentityProjection.ScopedBetweenWhole) {
+  scopedBetweenWhole: Int = IdentityProjection.ScopedBetweenWhole,
+  slots:             CinemaSlotBuilder = new CinemaSlotBuilder(Country.Poland.language, new StringPool)) {
   import ProjectionWorld.normalizer
 
   /** This world's worker restarted: what Mongo holds kept, everything in memory (the cache, the intake's held
    *  listings, the projection's slot memo and what it last read) built afresh. */
   def restarted: ProjectionWorld =
     new ProjectionWorld(repository, venues, clock, resolve, details, listingsRead, announceFails, archive, accepted, filmIds, fingerprints,
-      scopedBetweenWhole)
+      scopedBetweenWhole, slots)
 
   val refusals   = scala.collection.mutable.ListBuffer.empty[IdentityProjectionMetrics.Refusal]
   val drifts     = scala.collection.mutable.ListBuffer.empty[Int]
@@ -47,7 +48,7 @@ private[identity] final class ProjectionWorld(
     changedListings = Some(() => { listingsRead(); intake.projectedChanged(venues) }),
     resolve = resolve, cache = cache, filmIds = filmIds, details = details,
     announce = (k, _) => { if (announceFails) throw new IllegalStateException(s"bus down for ${k.cleanTitle}"); announced += k; () },
-    normalizer = normalizer, slots = new CinemaSlotBuilder(Country.Poland.language, new StringPool),
+    normalizer = normalizer, slots = slots,
     tokens = ScreeningTokens.of(Country.Poland), metrics = new IdentityProjectionMetrics {
       def projected(films: Int, listings: Int, regroupings: Regroupings, canary: Map[ShadowRelation, Int], seconds: Double): Unit =
         reported = Some(films -> canary)

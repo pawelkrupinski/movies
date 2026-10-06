@@ -245,6 +245,8 @@ object IdentityProjectionPlan {
     def previousAt(keys: Seq[ListingKey]): Seq[Option[String]] = keys.map(k => index.previousOf.get(k).map(_.id))
     def priorsAt(cinema: Cinema, previous: Seq[Option[String]]): Seq[Int] =
       previous.flatten.distinct.sorted.map(id => priorsOf(id).getOrElse(cinema, 0))
+    // What the venue's pages for these listings said when last read: a slot carries its page-written detail from them.
+    def pagesAt(cinema: Cinema, keys: Seq[ListingKey]): Int = slots.pages.digest(cinema, keys)
     def groupOf(cinema: Cinema, ofVenue: Seq[ProjectedListing], counter: Long): (VenueGroup, Seq[Option[String]], Seq[Int]) = {
       // The prior slots any of these rows' previous films held at the venue: a superset of the one each built
       // slot carries forward, so a change to any of them is a change to the key — and which film each row is on,
@@ -255,7 +257,8 @@ object IdentityProjectionPlan {
       val priors   = priorsAt(cinema, previous)
       // Each row's film by its counter, which a film keeps for good and has from its first draft: what the key of a
       // slot once written is worked out from ([[VenueSlotMemo.written]]), a film new to the store included.
-      (VenueGroup(cinema, ofVenue, VenueSlotMemo.keyOf(cinema.displayName, ofVenue, priors, previous.map(_.flatMap(covered.counterOf))),
+      (VenueGroup(cinema, ofVenue, VenueSlotMemo.keyOf(cinema.displayName, ofVenue, priors, previous.map(_.flatMap(covered.counterOf)),
+        pagesAt(cinema, ofVenue.map(_.listing.key))),
         counter), previous, priors)
     }
     // A film drafted again with the listings it was last drafted with is drafted again only where it moved: a venue one of
@@ -272,8 +275,10 @@ object IdentityProjectionPlan {
         case Some(was) =>
           val dirtyVenues = dirtyAt.getOrElse(counter, Set.empty).map(byKey(_).listing.cinema)
           val groups = was.venues.toSeq.sortBy(_._1.displayName).map { case (cinema, venue) =>
-            // Moved: one of its listings did, or which film one is on, or the slots those films hold at the venue.
-            val moved = dirtyVenues(cinema) || { val previous = previousAt(venue.keys); VenueShape.inputs(previous, priorsAt(cinema, previous)) != venue.inputs }
+            // Moved: one of its listings did, or which film one is on, or the slots those films hold at the venue, or
+            // what one's page said.
+            val moved = dirtyVenues(cinema) || { val previous = previousAt(venue.keys)
+              VenueShape.inputs(previous, priorsAt(cinema, previous), pagesAt(cinema, venue.keys)) != venue.inputs }
             if (!moved) cinema -> Left(venue)
             else cinema -> Right(groupOf(cinema, venue.keys.map(byKey), counter))
           }
@@ -324,7 +329,7 @@ object IdentityProjectionPlan {
       val venueShapes = plan.groups.iterator.map {
         case (cinema, Left(venue))            => cinema -> venue
         case (cinema, Right((group, previous, priors))) => cinema -> FilmShape.reused(kept.flatMap(_.venues.get(cinema)),
-          VenueShape(group.rows.map(_.listing.key), group.key, venueSlots(group.key), VenueShape.inputs(previous, priors)))
+          VenueShape(group.rows.map(_.listing.key), group.key, venueSlots(group.key), VenueShape.inputs(previous, priors, group.key.pages)))
       }.toMap
       val venueData = venueShapes.valuesIterator.flatMap(_.lean).toMap
       // Over the kept map: only a venue that is not the shape held is put in — a wide film moved at a few venues built its
@@ -489,7 +494,7 @@ private[identity] final case class VenueShape(keys: Seq[ListingKey], memoKey: Ve
 private[identity] object VenueShape {
   /** What a venue's slots are reused by besides its listings: each listing's previous film and those films' priors at
    *  the venue — 64 bits of them, a finer key than the memo's own (`VenueSlotMemo.keyOf` hashes the same to 32). */
-  def inputs(previous: Seq[Option[String]], priors: Seq[Int]): Long = ContentHash.of((previous, priors))
+  def inputs(previous: Seq[Option[String]], priors: Seq[Int], pages: Int): Long = ContentHash.of((previous, priors, pages))
 }
 
 /** A drafted film: the listings it was drafted with (and in key order), how many carry each clean title (its anchor),

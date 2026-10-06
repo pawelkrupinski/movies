@@ -12,7 +12,8 @@ import tools.{PersonName, TextNormalization}
  * are canonicalised into (`CountryNames.canonical`); `stringPool` is where the strings a slot
  * repeats across venues are interned.
  */
-final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: StringPool) {
+final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: StringPool,
+                              val pages: VenuePageFacts = VenuePageFacts.none) {
 
   /** Build one cinema's `SourceData` slot for a scraped film, by the same rules for every
    *  path that builds one:
@@ -20,7 +21,8 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
    *      `posterUrl`/`synopsis`/`trailerUrl` AND the detail fields
    *      (cast/director/runtime/originalTitle/countries/genres) as None/empty on
    *      the listing tick — keep whatever the detail refresher already wrote
-   *      (`priorSlot` carry-forward); else a listing tick WIPES the enrichment;
+   *      (`priorSlot` carry-forward); else a listing tick WIPES the enrichment. Where the listing's page has
+   *      been read (`pages`), a field the page states is carried from that read, not from the slot built over;
    *    - year fallback: keep the prior slot's year when the listing carries none — a tick that
    *      drops it (Helios' REST year flakes), or a venue page's year the detail enrichment wrote
    *      — treating a missing year as loss, not a change; a listing with no page keeps neither its
@@ -44,13 +46,21 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
     // that listing — whose film the next projection then puts this one's slot on, a fresh film every projection
     // (2026-10-04). Carried only where a page keys the listing, as the detail enrichment that writes them needs one.
     val carryKeyed = cm.filmUrl.exists(_.trim.nonEmpty)
+    // What the listing's own page states, as venue_pages last read it: what the detail enrichment wrote onto the slot,
+    // so it, not the slot built over, is what a field the listing leaves out is carried from. A slot that once took
+    // another page's year, director, cast and runtime under this page's url (Kino Iluzjon's 1968 "Lalka", written
+    // before the guard above) carried them as its own until a field the page states disagreed — now never past a read.
+    val page    = cm.filmUrl.map(_.trim).filter(_.nonEmpty).flatMap(pages.of(cm.cinema, _))
+    def carriedOpt[A](field: SourceData => Option[A]): Option[A] = page.flatMap(field).orElse(priorSlot.flatMap(field))
+    def carriedSeq[A](field: SourceData => Seq[A]): Seq[A] =
+      page.map(field).filter(_.nonEmpty).orElse(priorSlot.map(field)).getOrElse(Seq.empty)
     SourceData(
       title          = stringPool.canonicalSome(displayTitle),
       // Verbatim upstream title, kept so the merge key is re-derivable when the
       // per-cinema rules change. A rule-driven client carries the pre-strip
       // string in `movie.rawTitle`; others leave it None and `title` is raw.
       rawTitle       = stringPool.canonical(cm.movie.rawTitle.orElse(Some(cm.movie.title))),
-      originalTitle  = cm.movie.originalTitle.orElse(priorSlot.flatMap(_.originalTitle)),
+      originalTitle  = cm.movie.originalTitle.orElse(carriedOpt(_.originalTitle)),
       // Collapse a blurb the cinema CMS pasted N× into one description field
       // (Bilety24's Kino Piast shipped the "Ojczyzna" synopsis 9× glued together)
       // at the ingestion boundary, so we never store the duplicate — not just hide
@@ -59,7 +69,7 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
       // String instead of N byte-identical copies (see `stringPool`). Same applies to the
       // cast/director/country/genre fields below — only the FRESH branch needs interning;
       // the prior-slot carry-forward already holds interned instances.
-      synopsis       = stringPool.canonical(cm.synopsis.map(tools.SynopsisMarkdown.collapseRepeats)).orElse(priorSlot.flatMap(_.synopsis)),
+      synopsis       = stringPool.canonical(cm.synopsis.map(tools.SynopsisMarkdown.collapseRepeats)).orElse(carriedOpt(_.synopsis)),
       // Detail fields (cast/director/runtime/originalTitle/countries/genres) are
       // filled by the deferred EnrichDetails merge; a listing-only cinema's re-scrape
       // carries none of them. Carry the prior slot's values forward when the fresh
@@ -68,15 +78,15 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
       // the row + doubling its change-stream writes). A listing that DOES carry the
       // field still wins, matching FilmDetail.mergeInto's "fill only if empty" rule.
       cast           = if (cm.cast.nonEmpty) displayNames(cm.cast)
-                       else priorSlot.map(_.cast).getOrElse(Seq.empty),
+                       else carriedSeq(_.cast),
       director       = if (cm.director.nonEmpty) displayNames(cm.director)
-                       else priorSlot.filter(_ => carryKeyed).map(_.director).getOrElse(Seq.empty),
-      runtimeMinutes = StringPool.small(cm.movie.runtimeMinutes.filter(FilmRuntime.plausible)).orElse(priorSlot.flatMap(_.runtimeMinutes)),
-      releaseYear    = StringPool.small(cm.movie.releaseYear.orElse(priorSlot.filter(_ => carryKeyed).flatMap(_.releaseYear))),
+                       else if (carryKeyed) carriedSeq(_.director) else Seq.empty,
+      runtimeMinutes = StringPool.small(cm.movie.runtimeMinutes.filter(FilmRuntime.plausible)).orElse(carriedOpt(_.runtimeMinutes)),
+      releaseYear    = StringPool.small(cm.movie.releaseYear.orElse(if (carryKeyed) carriedOpt(_.releaseYear) else None)),
       countries      = { val cs = stringPool.canonicalAll(SlotFields.countries(cm.movie.countries, enrichmentLanguage))
-                         if (cs.nonEmpty) cs else priorSlot.map(_.countries).getOrElse(Seq.empty) },
+                         if (cs.nonEmpty) cs else carriedSeq(_.countries) },
       genres         = { val gs = stringPool.canonicalAll(SlotFields.genres(cm.movie.genres))
-                         if (gs.nonEmpty) gs else priorSlot.map(_.genres).getOrElse(Seq.empty) },
+                         if (gs.nonEmpty) gs else carriedSeq(_.genres) },
       // Interned like the fields above, and for the same reason: a film's poster,
       // film page and trailer are ONE url repeated across every cinema showing it.
       // Highest-yield strings in the corpus by some margin — the 2026-07-27 UK heap
@@ -103,7 +113,7 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
       showtimes      = MovieRecordMerge.sortShowtimes(SlotFields.showtimes(cm.showtimes, filmPage)),
       // Carry the certificate forward on a listing-only re-scrape, like the detail
       // fields above, so a tick that lacks it doesn't wipe a value the detail merge added.
-      ageRating      = stringPool.canonical(cm.ageRating).orElse(priorSlot.flatMap(_.ageRating))
+      ageRating      = stringPool.canonical(cm.ageRating).orElse(carriedOpt(_.ageRating))
     )
   }
 

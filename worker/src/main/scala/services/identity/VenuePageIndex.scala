@@ -104,3 +104,17 @@ final class VenuePageDetailEnricher(underlying: DetailEnricher, index: VenuePage
     }
   }
 }
+
+/**
+ * venue_pages as a venue slot is built from it ([[services.movies.VenuePageFacts]]): the index's answer for the listing's
+ * page, landed as the detail enrichment lands it on the slot (`FilmDetail.landed`) — never fetched, and only for a venue
+ * whose detail lands on its own slot (a chain's lands on its network source, which no listing builds).
+ */
+final class IndexedVenuePageFacts(enrichers: Seq[DetailEnricher], index: VenuePageIndex, enrichmentLanguage: java.util.Locale)
+    extends services.movies.VenuePageFacts {
+  private val ownSlot: Map[models.Cinema, DetailEnricher] =
+    enrichers.iterator.filter(e => e.detailTarget == e.cinema).map(e => e.cinema -> e).toMap
+
+  def of(cinema: models.Cinema, page: String): Option[models.SourceData] =
+    ownSlot.get(cinema).flatMap(index.answer(_, page)).flatten.map(_.landed(enrichmentLanguage).pageFields)
+}

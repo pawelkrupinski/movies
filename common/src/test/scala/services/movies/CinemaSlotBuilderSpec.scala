@@ -55,6 +55,26 @@ class CinemaSlotBuilderCarrySpec extends AnyFlatSpec with Matchers {
     (slot.releaseYear, slot.director, slot.synopsis) shouldBe ((None, Nil, None))
     slots.build(kawalski, "Lalka", Some(has.copy(filmUrl = kawalski.filmUrl))).releaseYear shouldBe Some(1968)
   }
+
+  // What Kino Iluzjon's 1968 "Lalka" slot held on prod (2026-10-06), written before the guard above: page /2457's url and
+  // poster, every other detail page /7917's (2026, Kawalski, Dorociński, 162 min). Its url is its own page's, so the
+  // guard carries all of it — until the page's own read says otherwise.
+  it should "take a paged listing's carried detail from its page's read wherever the slot it is built over disagrees" in {
+    val page     = "https://www.iluzjon.fn.org.pl/filmy/info/2457/lalka.html"
+    val polluted = prior.copy(filmUrl = Some(page), runtimeMinutes = Some(162), cast = Seq("Marcin Dorociński"),
+      posterUrl = Some("https://www.iluzjon.fn.org.pl/lalka.jpg"), genres = Seq("Dramat"))
+    val read     = models.SourceData(releaseYear = Some(1968), director = Seq("Wojciech Jerzy Has"), runtimeMinutes = Some(159),
+      cast = Seq("Mariusz Dmochowski"), synopsis = Some("Wokulski"))
+    val facts: VenuePageFacts = (cinema, p) => Option.when(cinema == KinoApollo && p == page)(read)
+    val built    = new CinemaSlotBuilder(Country.Poland.language, new StringPool, facts)
+    val has      = CinemaMovie(Movie("Lalka"), KinoApollo, None, Some(page), None, Nil, Nil, Nil)
+    val slot     = built.build(has, "Lalka", Some(polluted))
+    (slot.releaseYear, slot.director, slot.runtimeMinutes, slot.cast, slot.synopsis) shouldBe
+      ((Some(1968), Seq("Wojciech Jerzy Has"), Some(159), Seq("Mariusz Dmochowski"), Some("Wokulski")))
+    (slot.posterUrl, slot.genres) shouldBe ((polluted.posterUrl, Seq("Dramat")))   // what the page does not state is carried
+    built.build(has.copy(director = Seq("W. J. Has")), "Lalka", Some(polluted)).director shouldBe Seq("W. J. Has") // the listing's own wins
+    slots.build(has, "Lalka", Some(polluted)).releaseYear shouldBe Some(2026)    // no read: carried, as before
+  }
 }
 
 class CinemaSlotBuilderFieldsSpec extends AnyFlatSpec with Matchers {

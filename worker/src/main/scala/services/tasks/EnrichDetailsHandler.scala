@@ -4,7 +4,7 @@ import services.events.EventBus
 import models.{CinemaShowing, Source, SourceData}
 import services.freshness.{FreshnessKind, FreshnessStore}
 import play.api.Logging
-import services.movies.{CacheKey, MovieCache, SlotFields}
+import services.movies.{CacheKey, MovieCache}
 import services.UptimeMonitor
 import services.cinemas.common.{DetailEnricher, DetailFetchOutcome, FilmDetail}
 import services.venuepages.VenuePage
@@ -107,15 +107,8 @@ class EnrichDetailsHandler(
 
   private val normalizer: services.movies.TitleNormalizer = cache.normalizer
 
-  /** A detail page's fields as a cinema slot holds them — the rules the listing's own fields land
-   *  by (`SlotFields`), so a page's "Niderlandy", "Biograficzny/Muzyczny" or relative poster never
-   *  sits beside the listing's "Holandia". */
-  private def landed(detail: FilmDetail): FilmDetail =
-    detail.copy(
-      countries  = SlotFields.countries(detail.countries, enrichmentLanguage),
-      genres     = SlotFields.genres(detail.genres),
-      posterUrl  = SlotFields.url(detail.posterUrl, None),
-      trailerUrl = SlotFields.url(detail.trailerUrl, None))
+  /** A detail page's fields as a cinema slot holds them (`FilmDetail.landed`). */
+  private def landed(detail: FilmDetail): FilmDetail = detail.landed(enrichmentLanguage)
   import HandlerOutcome._
 
   override val taskType: TaskType = TaskType.EnrichDetails

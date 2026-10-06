@@ -32,7 +32,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     Rialto     -> Seq(film(Rialto, "Obcy", Some(1979), 6)),
     KinoMuza   -> Seq(film(KinoMuza, "Diuna", Some(2021), 7, 8)))
 
-  private def World(repository: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = normalizer),
+  private def World(repository: services.movies.MovieRepository = new InMemoryMovieRepository(normalizer = normalizer),
                     venues: Seq[Cinema] = programme.keys.toSeq, listingsRead: () => Unit = () => (),
                     announceFails: Boolean = false, whole: Boolean = false,
                     archive: InMemoryScrapeArchiveRepository = new InMemoryScrapeArchiveRepository,

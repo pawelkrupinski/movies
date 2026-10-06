@@ -15,7 +15,7 @@ object ScrapeListing {
   final case class Prepared(movies: Seq[CinemaMovie], cleaned: CinemaMovie => String)
 
   def prepare(cinema: Cinema, movies: Seq[CinemaMovie], normalizer: TitleNormalizer,
-              screeningTokens: ScreeningTokens): Prepared = {
+              screeningTokens: ScreeningTokens, pageApart: CinemaMovie => Option[String] = _ => None): Prepared = {
     // Per-cinema title cleanup, rule-driven and keyed by the cinema. A migrated
     // client already applies these rules to `title` (carrying the pre-strip string in
     // `rawTitle`), so this re-application is idempotent insurance; a client that
@@ -59,8 +59,9 @@ object ScrapeListing {
     // beside "Planet of the Apes (2001)" (Burton): each pair cleans to one title, and unioned
     // into one slot one film was served the other's showtimes. `filmsOf` keeps them apart.
     val deduped: Seq[CinemaMovie] =
-      formatted.groupBy(cm => normalizer.sanitize(cleaned(cm))).toSeq
-        .sortBy { case (k, _) => k }
+      // …nor rows of two pages the venue's reads say are two films (`pageApart`: `VenueSlots.filmPages`).
+      formatted.groupBy(cm => (normalizer.sanitize(cleaned(cm)), pageApart(cm))).toSeq
+        .sortBy { case ((k, page), _) => (k, page.getOrElse("")) }
         .flatMap { case (_, group) => filmsOf(group, normalizer) }
         .map { group =>
           if (group.lengthCompare(1) == 0) group.head

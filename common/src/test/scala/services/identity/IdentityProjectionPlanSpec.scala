@@ -55,7 +55,7 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     film.copy(record = film.record.copy(data = film.record.data + (Tmdb -> SourceData(title = Some(title), releaseYear = Some(year)))))
 
   private def plan(listings: Seq[ProjectedListing], r: Resolution, stored: Seq[StoredMovieRecord] = Nil,
-                   counters: FilmIdCounters = FilmIdCounters.empty): ProjectionPlan = {
+                   counters: FilmIdCounters = FilmIdCounters.empty, slots: CinemaSlotBuilder = slots): ProjectionPlan = {
     val d = IdentityProjectionPlan.draft(listings, r, stored, counters, normalizer, slots, tokens, at, rowsOf(listings))
     val p = IdentityProjectionPlan.finish(d, normalizer, id => stored.exists(_.id == id))
     p.copy(films = d.complete(p.films, id => stored.find(_.id == id).map(_.record)))
@@ -292,6 +292,64 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     val p = plan(a ++ b, resolution(decision(None, a*), decision(None, b*)))
     p.films.map(_.key).toSet shouldBe Set("lalka|2026", s"lalka~${p.films.map(_.counter).max}|2026")
     p.films.find(_.key == "lalka|2026").get.members.toSet shouldBe a.map(_.listing.key).toSet
+  }
+
+  // Kino Iluzjon prints two "Lalka"s under two pages, one key's worth of title (Has 1968 at /2457, Kawalski 2026 at /7917).
+  // Before the build was guarded, the 1968 film's slot was built over the 2026 one's and kept its year, director and
+  // runtime under its own page's url (prod, 2026-10-06) — carried on as the page's own ever since.
+  private val hasPage      = "https://www.iluzjon.fn.org.pl/filmy/info/2457/lalka.html"
+  private val kawalskiPage = "https://www.iluzjon.fn.org.pl/filmy/info/7917/lalka.html"
+  private val hasRead      = SourceData(releaseYear = Some(1968), director = Seq("Wojciech Jerzy Has"), runtimeMinutes = Some(159))
+  private val kawalskiRead = SourceData(releaseYear = Some(2026), director = Seq("Maciej Kawalski"), runtimeMinutes = Some(162))
+  private def readingPages(reads: String => Option[SourceData]): CinemaSlotBuilder =
+    new CinemaSlotBuilder(Country.Poland.language, new StringPool, (cinema, page) => if (cinema == KinoApollo) reads(page) else None)
+  private val bothRead = readingPages(Map(hasPage -> hasRead, kawalskiPage -> kawalskiRead).get)
+  private def detailOf(slot: SourceData) = (slot.filmUrl, slot.releaseYear, slot.director, slot.runtimeMinutes)
+
+  "A venue's two films under one title" should "each hold their own page's detail, a slot polluted by the other's healed" in {
+    val has      = row(KinoApollo, "Lalka", page = Some(hasPage))
+    val kawalski = row(KinoApollo, "Lalka", page = Some(kawalskiPage), hours = Seq(3))
+    val polluted = slotOf(has) match { case (source, slot) => source -> slot.copy(releaseYear = Some(2026),
+      director = Seq("Maciej Kawalski"), runtimeMinutes = Some(162)) }
+    val stored   = StoredMovieRecord("Lalka", Some(1968), MovieRecord(tmdbId = Some(1968), data = Map(polluted)), FilmId("f-has"), Some("lalka|1968"))
+    val p = plan(Seq(has, kawalski), resolution(decision(Some(1968), has), decision(Some(2026), kawalski)), Seq(stored), slots = bothRead)
+    def venueSlotsOf(film: Int) = p.films.find(_.record.tmdbId.contains(film)).get.record.data.collect {
+      case (CinemaShowing(KinoApollo, _), slot) => detailOf(slot) }
+    venueSlotsOf(1968) shouldBe Seq((Some(hasPage), Some(1968), Seq("Wojciech Jerzy Has"), Some(159)))
+    venueSlotsOf(2026) shouldBe Seq((Some(kawalskiPage), Some(2026), Seq("Maciej Kawalski"), Some(162)))
+  }
+
+  // A venue that prints one film under a page per date (Kino Nowe Horyzonty's "Lalka" at op.s?id=22790 and id=23157)
+  // keeps it one slot: only pages whose reads name two films are told apart, so no other slot's key moves.
+  it should "keep two slots, each its own page's, when one film is drafted with both — and one slot for one film's two pages" in {
+    val has      = row(KinoApollo, "Lalka", page = Some(hasPage))
+    val kawalski = row(KinoApollo, "Lalka", page = Some(kawalskiPage), hours = Seq(3))
+    val folded   = plan(Seq(has, kawalski), resolution(decision(Some(2026), has, kawalski)), slots = bothRead)
+    val atVenue  = folded.films.head.record.data.toSeq.collect { case (s @ CinemaShowing(KinoApollo, _), slot) => s -> slot }
+    atVenue.map(s => detailOf(s._2)) should contain theSameElementsAs Seq(
+      (Some(hasPage), Some(1968), Seq("Wojciech Jerzy Has"), Some(159)), (Some(kawalskiPage), Some(2026), Seq("Maciej Kawalski"), Some(162)))
+    atVenue.map(_._2.showtimes.size).sum shouldBe 3
+
+    val oneFilm = plan(Seq(has, kawalski), resolution(decision(Some(2026), has, kawalski)),
+      slots = readingPages(Map(hasPage -> kawalskiRead, kawalskiPage -> kawalskiRead).get))
+    oneFilm.films.head.record.data.keySet shouldBe Set(CinemaShowing.keyFor(KinoApollo, "Lalka", normalizer))
+  }
+
+  // A page read lands in venue_pages and the slot memo's key reads it: no listing moved, yet the slot is built anew.
+  "A venue slot" should "be built again when its page's read moves, its listings unmoved" in {
+    val has   = row(KinoApollo, "Lalka", page = Some(hasPage))
+    val reads = scala.collection.mutable.Map.empty[String, SourceData]
+    val built = readingPages(reads.get)
+    val memo  = new VenueSlotMemo(0L)
+    val r     = resolution(decision(Some(1968), has))
+    def yearDrafted = {
+      val d = IdentityProjectionPlan.draft(Seq(has), r, Nil, FilmIdCounters.empty, normalizer, built, tokens, at, rowsOf(Seq(has)), memo)
+      memo.endTick()
+      d.drafts.head.record.data.values.flatMap(_.releaseYear).toSeq
+    }
+    yearDrafted shouldBe Nil
+    reads(hasPage) = hasRead
+    yearDrafted shouldBe Seq(1968)
   }
 
   "A venue printing one listing twice" should "keep both rows' showtimes on the film (P4)" in {

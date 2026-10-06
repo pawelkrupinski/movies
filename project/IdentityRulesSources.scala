@@ -35,7 +35,8 @@ object IdentityRulesSources {
     "scala/services/movies/MovieRecordMerge.scala",
     "scala/services/movies/ShowtimesDigest.scala",
     "scala/services/movies/ListingKey.scala",
-    "scala/services/movies/ScreeningTokens.scala")
+    "scala/services/movies/ScreeningTokens.scala",
+    "scala/services/movies/VenuePageFacts.scala")
 
   /** Of what the venue slot code reaches, the sources digested as text but not followed, nor the resources only they
    *  name read: each reaches the whole
