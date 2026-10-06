@@ -46,7 +46,7 @@ final case class Listing(
    *  ([[CastEvidence]]) — none for a listing whose facts a feed catalogue states ([[factsFromCatalogue]]), whose text
    *  describes the catalogue's entry. OUTSIDE the listing's equality and hash, as the poster is: the model never reads
    *  it, only the agreement stage's fill after it. */
-  names:         VenueNames = VenueNames.None
+  names:         VenueNames = VenueNames.None,
   /** Do its facts include what its page states — the listing as the agreement reads it, its page's facts merged in where
    *  it states none (`AgreementStage.asStated`)? OUTSIDE equality and hash: only the agreement builds such a listing, and
    *  only to tell whose claim the merged facts are ([[factsFromCatalogue]]). */
