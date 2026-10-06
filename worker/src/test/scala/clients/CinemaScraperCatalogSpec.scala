@@ -780,6 +780,23 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     built.cinemaCityDetailTtl shouldBe 2.hours
   }
 
+  it should "read a film's Flicks page once for every venue of its market, through the Flicks egress and the shared detail cache" in {
+    val egressReads = scala.collection.mutable.Buffer.empty[String]
+    val egress      = new clients.tools.ScriptedByUrlHttpFetch(url => { egressReads += url; "<html></html>" })
+    val caches      = scala.collection.mutable.Map.empty[String, HttpFetch]
+    val built = new CinemaScraperCatalog(
+      http, mkFetch = http, bnFetch = http, venueClock = models.VenueClock.fixedOn(LocalDate.of(2026, 6, 6)),
+      chainDetailCache = (chain, h, ttl) => { caches(chain) = h; new CachingDetailFetch(h, ttl) },
+      zyteFetch = http, flicksFetch = egress, vueFetch = http, odeonFetch = http, odeonAuthToken = () => None, titles = titleNormalizer)
+    val ukVenues = built.all.collect { case f: FlicksClient if f.detailGroup == FlicksClient.detailGroupOf(FlicksMarket.UnitedKingdom) => f }
+    ukVenues.size should be > 1
+    caches.get("flicks") shouldBe Some(egress)
+    built.flicksFilmPages should not be egress
+    val page = "https://www.flicks.co.uk/movie/minions-3/"
+    ukVenues.take(2).foreach(_.fetchFilmDetail(page) should not be empty)
+    egressReads.toSeq shouldBe Seq(page)
+  }
+
   it should "expose only bare lower-case hosts (no scheme, port or path)" in {
     catalog(biletyna = "kino-kameralne").scrapeHosts.foreach { h =>
       withClue(s"malformed host: '$h'") {
@@ -841,12 +858,15 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // group therefore collapse to whichever the map kept last, and every other venue's
   // film detail lands on that one cinema's slot: every bilety24-hosted film grew a
   // phantom "Janosik" (Żywiec) cinema, in some arrival orders and not others — found by
-  // HardClusterConvergenceIntegrationSpec as a Bałtyk (Rybnik) listing.
+  // HardClusterConvergenceIntegrationSpec as a Bałtyk (Rybnik) listing. A group whose
+  // page is the same at every venue (`pagesSharedAcrossVenues`, Flicks' market-wide one)
+  // is the exception the handler is built for: its read lands on every slot naming the
+  // page, never on the held enricher's own venue (EnrichDetailsHandlerSpec).
   it should "never let two detail enrichers that write to different targets share a detail group" in {
     import services.cinemas.common.DetailEnricher
     val clashes = catalog().all.collect { case de: DetailEnricher => de }
       .groupBy(_.detailGroup).toSeq.sortBy(_._1)
-      .collect { case (group, enrichers) if enrichers.map(_.detailTarget).distinct.size > 1 =>
+      .collect { case (group, enrichers) if enrichers.map(_.detailTarget).distinct.size > 1 && !enrichers.forall(_.pagesSharedAcrossVenues) =>
         s"$group -> ${enrichers.map(_.detailTarget.displayName).distinct.sorted.take(4).mkString(", ")}" }
     clashes shouldBe empty
   }

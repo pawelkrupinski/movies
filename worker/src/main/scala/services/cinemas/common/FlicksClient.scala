@@ -43,19 +43,31 @@ import scala.util.Try
  * `content_director` (comma-separated, and LOWERCASED by Flicks — see `PersonName`;
  * the card shows only the first director, the blob all of them) and
  * `content_genre` (comma-separated); the film card also
- * carries a `/trailer/` link. The fragment carries no year, country or original
- * title — those are only on the `/movie/<slug>/` page, which this client does not
- * fetch — so TMDB still enriches synopsis/year downstream.
+ * carries a `/trailer/` link.
+ *
+ * The fragment carries no year, country or synopsis — those are only on the film's
+ * `/movie/<slug>/` page ([[FlicksFilmPage]]), read as this client's deferred
+ * [[DetailEnricher]] detail. That page is the same at every venue Flicks lists the
+ * film at, so the detail group spans the MARKET (`flicks|UK`, `flicks|US`), not the
+ * venue: one `EnrichDetails` task per film per market, its read landing on every
+ * venue slot that names the page (`pagesSharedAcrossVenues`). The fetch itself goes
+ * through `detailHttp`, the catalogue's shared Mongo `detail_cache` (chain
+ * `flicks`, keyed by the page URL — market host + slug, since Flicks reuses slugs
+ * across its ccTLDs), so a fallback client or a second worker asking within the TTL
+ * is answered from the cache.
  */
 class FlicksClient(
   http:       HttpFetch,
   cinemaSlug: String,
   override val cinema: Cinema,
   market:     FlicksMarket,
+  // The film pages' fetch: the catalogue's shared detail cache, so a film's page is fetched once
+  // per TTL for the whole market, whichever venue (or fallback) asks.
+  detailHttp: HttpFetch,
   // The VENUE's calendar day, asked per plan — see `forVenue`: a worker in Europe planning
   // US venues must not start from a date those venues have not reached.
   today:      => LocalDate
-) extends PagedChunkScraper {
+) extends PagedChunkScraper with DetailEnricher {
 
   import FlicksClient._
 
@@ -144,6 +156,19 @@ class FlicksClient(
       .filter(_.showtimes.nonEmpty)
       .sortBy(_.movie.title)
 
+  // ── deferred detail: the film page's year, runtime, directors, countries, cast, synopsis ──
+
+  /** One group per MARKET: a film page is the same page at every venue of it (see the class doc). */
+  override val detailGroup: String = detailGroupOf(market)
+  override def pagesSharedAcrossVenues: Boolean = true
+  /** One /uptime row for the market's film pages, not one per venue. */
+  override def enrichmentServiceOverride: Option[String] = Some(s"Flicks ${market.label} Enrichment")
+
+  /** `ref` is the listing's `filmUrl`, the film page itself. A page Flicks no longer has is a 404, let
+   *  escape as gone. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    DetailFetchOutcome.page(detailHttp, ref).map(FlicksFilmPage.parse(_, slugOf(ref), today))
+
   /** Build one film row per stable `/movie/<slug>` from a day's session slots,
    *  showtimes deduped by (time, booking) and time-ordered. */
   private def moviesFor(slots: Seq[RawFlicksSlot]): Seq[CinemaMovie] =
@@ -177,9 +202,19 @@ object FlicksClient {
   /** A venue's client, planning from the venue's OWN calendar day (its city's zone) per
    *  scrape — the catalogue's primary and a chain venue's fallback both build it here, so
    *  neither can fall back to the market-wide zone a multi-zone country gets wrong. */
-  def forVenue(http: HttpFetch, cinemaSlug: String, cinema: Cinema, market: FlicksMarket,
+  def forVenue(http: HttpFetch, detailHttp: HttpFetch, cinemaSlug: String, cinema: Cinema, market: FlicksMarket,
                venueClock: VenueClock): FlicksClient =
-    new FlicksClient(http, cinemaSlug, cinema, market, today = venueClock.todayAt(cinema, market.zoneId))
+    new FlicksClient(http, cinemaSlug, cinema, market, detailHttp, today = venueClock.todayAt(cinema, market.zoneId))
+
+  /** The detail group of `market`'s film pages: every venue of the market shares it. */
+  def detailGroupOf(market: FlicksMarket): String = s"flicks|${market.label}"
+
+  /** How long the shared detail cache keeps a film page: inside the `DetailEnrich` refresh window, like
+   *  every chain's (`CinemaScraperCatalogSpec`). */
+  val DetailTtl: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.DurationInt(2).hours
+
+  /** The slug off a film page URL (`https://www.flicks.us/movie/<slug>/`). */
+  def slugOf(filmUrl: String): String = SlugPat.findFirstMatchIn(filmUrl).fold("")(_.group(1))
 
   /** The shared scrape horizon — see [[services.cinemas.common.ScrapeHorizon]]. Flicks
    *  advertises a venue's whole booking horizon as day tabs and we fetch every advertised
@@ -189,8 +224,8 @@ object FlicksClient {
   val MaxHorizonDays = ScrapeHorizon.MaxDays
 
   /** A Flicks film page (`/movie/<slug>/`) links the film's Letterboxd and Rotten Tomatoes pages in its ratings block
-   *  (about 70% of pages, measured 2026-10-05) — exact ids the identity's catalogue take maps to TMDB. The scrape never
-   *  fetches the page: the agreement reads it for a cluster nothing else took. */
+   *  (about 70% of pages, measured 2026-10-05) — exact ids the identity's catalogue take maps to TMDB. Those links are
+   *  not detail fields: the agreement reads them for a cluster nothing else took, apart from the detail read. */
   val CatalogueLinkPages: services.identity.CatalogueLinkPages =
     services.identity.CatalogueLinkPages(FlicksMarket.all.map(_.host).toSet, Set("letterboxd", "rt"))
 
@@ -421,7 +456,7 @@ object FlicksClient {
   lazy val PageParser: String = s"$PageParserVersion:${tools.Digest.classesHex(ParseClasses)}"
 
   /** The path of the image Flicks shows for a film it has no poster for. */
-  private val PlaceholderPoster = "/images/others/not_available/"
+  private[common] val PlaceholderPoster = "/images/others/not_available/"
   private val ArticleOpen   = "<article"
   private val SvgOpen       = "<svg"
   private val SvgClose      = "</svg>"

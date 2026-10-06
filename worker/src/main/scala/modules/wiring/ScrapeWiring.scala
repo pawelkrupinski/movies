@@ -202,7 +202,7 @@ trait ScrapeWiring { self: WorkerWiring =>
     flicksFallbackSlugs.get(cinema).map { case ChainFlicksFallback.FlicksFallback(market, slug) =>
       // The market comes from the map, not a constant: a US chain venue's fallback
       // lives on flicks.us, and looking it up on flicks.co.uk would just 404.
-      FallbackPlan("Flicks", () => Some(slug), () => Some(FlicksClient.forVenue(flicksFetch, slug, cinema, market, venueClock)), sixHours)
+      FallbackPlan("Flicks", () => Some(slug), () => Some(FlicksClient.forVenue(flicksFetch, cinemaScraperCatalog.flicksFilmPages, slug, cinema, market, venueClock)), sixHours)
     }.orElse(kinoprogrammFallbackPaths.get(cinema).map { path =>
       FallbackPlan("Kinoprogramm", () => Some(path),
         () => Some(new KinoprogrammClient(httpFetch, path, cinema,

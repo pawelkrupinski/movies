@@ -214,6 +214,31 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     uptime.services should not contain UptimeMonitor.enrichmentService(CinemaCityPoznanPlaza.displayName)
   }
 
+  it should "land a market-wide group's page on every venue slot naming that page, and on no other venue" in {
+    // A listings site's film page is the same page at every venue it lists: one group for the whole market, so
+    // the handler holds ONE of its enrichers — here a venue that does not even show the film.
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    def bareAt(venue: models.Cinema, page: String) = CinemaMovie(Movie("Dune"), venue, posterUrl = None,
+      filmUrl = Some(page), synopsis = None, cast = Seq.empty, director = Seq.empty,
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book"))))
+    services.movies.ListingSeed.land(cache, KinoApollo, Seq(bareAt(KinoApollo, "http://ref")))
+    services.movies.ListingSeed.land(cache, models.OdeonNorwich, Seq(bareAt(models.OdeonNorwich, "http://ref")))
+    services.movies.ListingSeed.land(cache, CinemaCityKinepolis, Seq(bareAt(CinemaCityKinepolis, "http://another-page")))
+
+    val enricher = new FakeDetailEnricher(models.BarnCinemaDartingtonArtCentre, "flicks|uk",
+      Some(FilmDetail(director = Seq("Denis Villeneuve"), releaseYear = Some(2021))), sharedPages = true)
+    new EnrichDetailsHandler(Map("flicks|uk" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned),
+      noBus, dueWindow, clock = specClock, enrichmentLanguage = polish).handle(taskFor("flicks|uk", cache, "Dune", enricher)) shouldBe Done
+
+    val record = cache.get(cache.keyOf("Dune", None)).get
+    record.cinemaData.get(KinoApollo).map(_.director)                   shouldBe Some(Seq("Denis Villeneuve"))
+    record.cinemaData.get(models.OdeonNorwich).map(_.director)          shouldBe Some(Seq("Denis Villeneuve"))
+    // Another page's slot is that page's to fill.
+    record.cinemaData.get(CinemaCityKinepolis).map(_.director)          shouldBe Some(Nil)
+    // The venue whose enricher read the page has no listing of the film: no phantom slot for it.
+    record.data.keys.exists(s => Source.cinemaOf(s).contains(models.BarnCinemaDartingtonArtCentre)) shouldBe false
+  }
+
   it should "skip without fetching when the detail is already fresh, recording no uptime" in {
     val cache    = seededCache("Dune")
     val fresh    = new InMemoryFreshnessStore

@@ -894,7 +894,13 @@ class CinemaScraperCatalog(
     flicksIn(FlicksMarket.UnitedStates, slug, cinema)
 
   private def flicksIn(market: FlicksMarket, slug: String, cinema: Cinema): FlicksClient =
-    FlicksClient.forVenue(flicksFetch, slug, cinema, market, venueClock)
+    FlicksClient.forVenue(flicksFetch, flicksFilmPages, slug, cinema, market, venueClock)
+
+  /** Where every Flicks client — each market's venues, and a chain venue's Flicks fallback — reads its films'
+   *  `/movie/<slug>/` pages: one page per FILM per market, the same at every venue listing it, so one cache keyed
+   *  by the page URL (market host + slug) serves them all, across worker servers. Through `flicksFetch`, the
+   *  residential egress the listings need too. */
+  val flicksFilmPages: HttpFetch = chainDetailCache("flicks", flicksFetch, FlicksClient.DetailTtl)
 
   // UK chain own-site clients — the catalogue PRIMARY for their venues, with
   // flicks.co.uk kept as the aggregator fallback (see [[ChainFlicksFallback]] +

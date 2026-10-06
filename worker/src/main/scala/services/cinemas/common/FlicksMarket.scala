@@ -31,6 +31,8 @@ import models.TimeZones
 sealed abstract class FlicksMarket(
   val baseUrl: String,
   val zoneId:  ZoneId,
+  /** The market's short name ("UK", "US"): its film pages' detail group and /uptime enrichment row. */
+  val label:   String,
 ) {
   /** The hostname this market is served from — the key the pace gate and the
    *  429 back-off bucket by, and the value a `HostPolicy` row must name. */
@@ -42,6 +44,7 @@ object FlicksMarket {
   case object UnitedKingdom extends FlicksMarket(
     baseUrl = "https://www.flicks.co.uk",
     zoneId  = TimeZones.UnitedKingdom,
+    label   = "UK",
   )
 
   /** The US market. The same site as the UK's, but SIX TIMES the corpus —
@@ -53,6 +56,7 @@ object FlicksMarket {
   case object UnitedStates extends FlicksMarket(
     baseUrl = "https://www.flicks.us",
     zoneId  = TimeZones.UsEastern,
+    label   = "US",
   )
 
   val all: Seq[FlicksMarket] = Seq(UnitedKingdom, UnitedStates)

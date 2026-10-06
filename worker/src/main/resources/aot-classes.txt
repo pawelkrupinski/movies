@@ -9599,6 +9599,10 @@ services.cinemas.common.FlicksClient$
 services.cinemas.common.FlicksClient$RangesReader
 services.cinemas.common.FlicksClient$RawFlicksSlot
 services.cinemas.common.FlicksClient$RawFlicksSlot$
+services.cinemas.common.FlicksFilmPage
+services.cinemas.common.FlicksFilmPage$
+services.cinemas.common.FlicksFilmPage$$anon$1
+services.cinemas.common.FlicksFilmPage$$anon$2
 services.cinemas.common.FlicksMarket
 services.cinemas.common.FlicksMarket$
 services.cinemas.common.FlicksMarket$UnitedKingdom$
@@ -9635,6 +9639,8 @@ services.cinemas.common.PreScrapedCinemaScraper
 services.cinemas.common.PreScrapedCinemaScraper$
 services.cinemas.common.PreScrapedCinemaScraper$Anonymous
 services.cinemas.common.PreScrapedCinemaScraper$Anonymous$
+services.cinemas.common.ReReleaseBilling
+services.cinemas.common.ReReleaseBilling$
 services.cinemas.common.RetryingCinemaScraper
 services.cinemas.common.RetryingCinemaScraper$
 services.cinemas.common.ScrapeCalendar

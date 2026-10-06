@@ -157,6 +157,10 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // a ticketing platform's event page is the venue's own: each venue types its own facts there
     stated.copy(page = Some("https://www.bilety24.pl/kino/776-crash-pokaz-w-dkf-megaron--164901?id=991024")).factsFromCatalogue shouldBe false
     stated.copy(page = Some("https://www.sfr.pl/wydarzenie/1159/roza")).factsFromCatalogue shouldBe false
+    // so is a listings site's film page that lists for the venue, as Flicks does every UK and US venue's: its id
+    // and page are the venue's listing, not a feed linking the screening to another catalogue's entry
+    stated.copy(page = Some("https://www.flicks.us/movie/a-night-at-the-opera/"),
+      catalogueIds = Seq(services.identity.CatalogueId("flicks", "21959"))).factsFromCatalogue shouldBe false
   }
 
   it should "not turn it down when its evidence leans to no film at all" in {

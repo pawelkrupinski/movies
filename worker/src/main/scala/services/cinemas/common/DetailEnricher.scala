@@ -163,6 +163,11 @@ trait DetailEnricher {
    *  listing already carries those hints and whose page is purely display enrichment (synopsis /
    *  poster / trailer): its listing waits only until the page has been tried. */
   def defersTmdbResolution: Boolean = true
+  /** Whether one page serves EVERY venue of the group: a listings site's film page (Flicks' `/movie/<slug>/`)
+   *  is the same page at each venue it lists, so the group spans a whole market and a page is read once for all
+   *  of them rather than once per venue. The enricher the handler holds is then any one of the group's, so its
+   *  read lands on every venue slot of the row that names the page — never on that enricher's own venue as such. */
+  def pagesSharedAcrossVenues: Boolean = false
   /** Fetch + parse one film's detail by the reference the listing scrape left on
    *  the movie (its `filmUrl`). None on failure/absence, so the task stays
    *  stale and is retried rather than recording an empty result as fresh.

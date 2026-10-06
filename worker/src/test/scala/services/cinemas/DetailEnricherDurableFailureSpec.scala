@@ -64,6 +64,8 @@ class DetailEnricherDurableFailureSpec extends AnyFlatSpec with Matchers {
     "Dcf"                -> new DcfClient(http),
     "Ekobilet"           -> new EkobiletClient(http, "slug", KinoApollo, today = _root_.tools.SpecClock.PinnedDay),
     "Falenica"           -> new FalenicaClient(http),
+    "Flicks"             -> services.cinemas.common.FlicksClient.forVenue(http, http, "slug", KinoApollo,
+                              services.cinemas.common.FlicksMarket.UnitedKingdom, models.VenueClock.fixedOn(_root_.tools.SpecClock.PinnedDay)),
     "Iluzjon"            -> new IluzjonClient(http, today = _root_.tools.SpecClock.PinnedDay),
     "KinoApollo"         -> new KinoApolloClient(http, titles = titleNormalizer),
     "KinoBulgarska"      -> new KinoBulgarskaClient(http, today = _root_.tools.SpecClock.PinnedDay),
@@ -161,6 +163,6 @@ class DetailEnricherDurableFailureSpec extends AnyFlatSpec with Matchers {
     // Guards the list above against a new deferred-detail client being added and
     // silently skipped here — the spec is only worth its runtime if it is complete.
     val covered = enrichers(new AlwaysFails(404)).size
-    covered shouldBe 26
+    covered shouldBe 27
   }
 }

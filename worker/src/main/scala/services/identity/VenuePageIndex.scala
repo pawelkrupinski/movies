@@ -95,6 +95,7 @@ final class VenuePageDetailEnricher(underlying: DetailEnricher, index: VenuePage
   override def detailTarget: models.Source                = underlying.detailTarget
   override def enrichmentServiceOverride: Option[String] = underlying.enrichmentServiceOverride
   override def defersTmdbResolution: Boolean              = underlying.defersTmdbResolution
+  override def pagesSharedAcrossVenues: Boolean           = underlying.pagesSharedAcrossVenues
 
   override def fetchFilmDetail(ref: String): Option[FilmDetail] = {
     val key = VenuePageIndex.keyOf(detailGroup, ref)

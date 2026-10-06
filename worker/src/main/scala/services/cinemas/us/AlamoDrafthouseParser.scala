@@ -5,7 +5,7 @@ import java.util.Locale
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import org.jsoup.Jsoup
 import play.api.libs.json._
-import services.cinemas.common.FilmDetail
+import services.cinemas.common.{FilmDetail, ReReleaseBilling}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.util.Try
@@ -160,31 +160,19 @@ object AlamoDrafthouseParser {
    *  → 1978-10-27); measured 2026-10-06 over 107 shows at six venues, 47 of 56
    *  repertory dates matched TMDB's year and every other was a TMDB namesake or a
    *  show TMDB lacks. A distributor's re-release, though, is booked as a new
-   *  release and dated by its re-opening: "Avengers Endgame: Encore" 2026-09-25,
-   *  "Ken Russell's The Devils" 2026-10-16, "Queen Budapest" (1986), "Pan Labyrinth
-   *  20th Anniversary" — 4 of 49 first-run shows. Stated as the year, that would
-   *  deny the film it re-releases by its year distance.
-   *
-   *  Nothing in the payload flags those four (each is `first-run`, like a new
-   *  film); their own billing does — the title or tagline says encore, anniversary,
-   *  restored, remastered, re-release or "revisit". So a RECENT date (within
-   *  [[RecentYears]] of the scrape) billed that way states no year; an older date
-   *  is the film's own whatever the billing, and 1900-01-01 is Alamo's "no date". */
+   *  release and dated by its re-opening — 4 of 49 first-run shows, none flagged in
+   *  the payload. A RECENT date billed as a re-release by the title or tagline
+   *  therefore states no year ([[services.cinemas.common.ReReleaseBilling]]); an
+   *  older date is the film's own whatever the billing, and 1900-01-01 is Alamo's
+   *  "no date". */
   def releaseYear(date: Option[String], title: String, headline: Option[String], today: LocalDate): Option[Int] =
     date.flatMap(d => Try(LocalDate.parse(d.take(10))).toOption)
       .filter(_.getYear > NoDateYear)
-      .filterNot(d => !d.isBefore(today.minusYears(RecentYears)) && ReReleaseBilling.findFirstIn(title + " " + headline.getOrElse("")).isDefined)
+      .filterNot(d => ReReleaseBilling.recent(d, today) && ReReleaseBilling.bills(title + " " + headline.getOrElse("")))
       .map(_.getYear)
 
-  /** How far back an opening date can be a re-release's rather than the film's own. */
-  private val RecentYears = 2L
   /** Alamo dates a show it has no date for 1900-01-01. */
   private val NoDateYear = 1900
-  /** Billing words that mark a show as a re-release of an older film. Measured on the
-   *  107 shows: they marked the four re-releases and one new film whose title
-   *  happens to contain "Restoration" (which then merely loses its year). */
-  private val ReReleaseBilling =
-    """(?i)\b(?:encore|anniversary|restor(?:ed|ation)|remaster(?:ed)?|re-?release|revisit|returns? to (?:the big screen|theaters))\b""".r
 
   /** The MPAA certificate, when the field really holds one.
    *

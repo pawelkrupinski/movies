@@ -190,6 +190,12 @@ class EnrichDetailsHandler(
             // DIFFERENT page is that page's to fill, not this one's.
             val targets: Seq[Source] =
               if (enricher.detailTarget != enricher.cinema) Seq(enricher.detailTarget)
+              // A market-wide page (`pagesSharedAcrossVenues`): the enricher held is any one of the group's,
+              // so the page lands on every slot of the row that names it, whichever venue's — and creates none.
+              else if (enricher.pagesSharedAcrossVenues)
+                cache.get(rowKey).toList.flatMap(_.data.collect {
+                  case (s, sd) if Source.cinemaOf(s).isDefined && DetailEnricher.nativeRefOf(sd).contains(ref) => s
+                })
               else {
                 val derived     = CinemaShowing.keyFor(enricher.cinema, title, cache.normalizer)
                 val venueSlots  = cache.get(rowKey).toList.flatMap(_.data.filter { case (s, _) => Source.cinemaOf(s).contains(enricher.cinema) })
