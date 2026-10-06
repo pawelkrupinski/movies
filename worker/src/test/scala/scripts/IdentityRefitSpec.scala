@@ -170,6 +170,19 @@ class IdentityRefitSpec extends AnyFlatSpec with Matchers {
     CaptureReplay.spliced(captured, was, now) should contain theSameElementsAs Seq(decision(Some(5), 4), decision(Some(1), 1, 2, 3))
   }
 
+  it should "replace whole every cluster a chain of shared listings reaches from a moved one, across the three partitions" in {
+    import services.identity.ResolverDecision
+    def key(n: Int) = services.movies.ListingKey.Native("Kino", s"https://kino.example/$n", s"Film $n")
+    def decision(film: Option[Int], members: Int*) = ResolverDecision(members.map(key), film, 0.9, ResolverDecision.Basis.values.head, Seq("why"))()
+    // listing 3 joins film 1 now; the capture held 3 beside 6, the control resolve 6 beside 7 and 8: one chain, every
+    // capture cluster on it replaced — and film 9's, which shares no listing with it, kept as captured
+    val captured = Seq(decision(Some(1), 1, 2), decision(None, 3, 6), decision(Some(7), 7, 8), decision(Some(9), 9))
+    val was      = Seq(decision(Some(1), 1, 2), decision(None, 3), decision(Some(7), 6, 7, 8), decision(Some(9), 9))
+    val now      = Seq(decision(Some(1), 1, 2, 3), decision(Some(7), 6, 7, 8), decision(Some(9), 9))
+    CaptureReplay.spliced(captured, was, now) should contain theSameElementsAs
+      Seq(decision(Some(9), 9), decision(Some(1), 1, 2, 3), decision(Some(7), 6, 7, 8))
+  }
+
   "A calibration" should "reach the captures' re-resolve: one accepting nothing takes fewer films than the shipped one" in {
     val replay  = new CaptureReplay(tools.UnmatchedClusters.read(tools.UnmatchedClusters.fixturePath(models.Country.Germany)), None)
     val nothing = CutChange("listing-film", "showRatings", shipped.ratingCut, 0.999999).applyTo(

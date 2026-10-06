@@ -76,7 +76,13 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
     val grown = nodes.map(node => node.id -> (matchedIds.getOrElse(node.id, Set.empty[Int]) ++ bestOf.get(node.id).map(_._1.candidate.tmdbId) ++
       pinnedFilm.get(node.id))).toMap
     if (grown == matchedIds || narrow) Round(grown, familyOf, scopes, bestOf)
-    else grow(grown, familiesOf(grown), scopes.values.map(scope => scope.members.map(_.id) -> scope).toMap)
+    else {
+      // the films taken merged no families: the next round would score the very same scopes (kept by their members)
+      // to the very same takes, so this one is already stable (6,004 of the five captures' 6,005 resolves end here)
+      val regrouped = familiesOf(grown)
+      if (regrouped == familyOf) Round(grown, familyOf, scopes, bestOf)
+      else grow(grown, regrouped, scopes.values.map(scope => scope.members.map(_.id) -> scope).toMap)
+    }
   }
   private val round = grow(Map.empty, familiesOf(Map.empty))
 

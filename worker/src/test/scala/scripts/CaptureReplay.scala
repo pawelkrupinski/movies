@@ -1,7 +1,7 @@
 package scripts
 
 import services.identity._
-import services.movies.TitleNormalizer
+import services.movies.{ListingKey, TitleNormalizer}
 import tools.UnmatchedClusters
 
 import java.util.concurrent.ConcurrentHashMap
@@ -89,19 +89,25 @@ object CaptureReplay {
 
   /** `base` with the clusters `now` decides otherwise than `was` replaced by `now`'s: the listings of every decision of
    *  `now` that `was` holds no equal of, closed over the clusters of all three partitions sharing a listing with them —
-   *  so a cluster `now` splits or joins is replaced whole — and every other decision of `base` kept as it was. */
+   *  so a cluster `now` splits or joins is replaced whole — and every other decision of `base` kept as it was. The
+   *  closure is the connected components of the three partitions' listings, joined by a cluster: one union-find pass,
+   *  where it was a repeat-until-stable scan of every decision per round. */
   def spliced(base: Seq[ResolverDecision], was: Seq[ResolverDecision], now: Seq[ResolverDecision]): Seq[ResolverDecision] = {
     val same    = was.map(outcome).toSet
-    var touched = now.filterNot(d => same(outcome(d))).flatMap(_.members).toSet
-    if (touched.isEmpty) base else {
-      val all = base ++ was ++ now
-      var grown = true
-      while (grown) {
-        val next = touched ++ all.filter(_.members.exists(touched)).flatMap(_.members)
-        grown = next.size > touched.size
-        touched = next
+    val changed = now.filterNot(d => same(outcome(d))).flatMap(_.members)
+    if (changed.isEmpty) base else {
+      val parent = scala.collection.mutable.HashMap.empty[ListingKey, ListingKey]
+      def find(key: ListingKey): ListingKey = {
+        var root = parent.getOrElseUpdate(key, key)
+        while (parent(root) != root) root = parent(root)
+        var at = key
+        while (parent(at) != root) { val next = parent(at); parent(at) = root; at = next }
+        root
       }
-      base.filterNot(_.members.exists(touched)) ++ now.filter(_.members.exists(touched))
+      (base ++ was ++ now).foreach(d => d.members.headOption.foreach(first => d.members.foreach(key => parent(find(key)) = find(first))))
+      val reached = changed.map(find).toSet
+      val touched = (d: ResolverDecision) => d.members.exists(key => reached(find(key)))
+      base.filterNot(touched) ++ now.filter(touched)
     }
   }
 
