@@ -97,43 +97,10 @@ class IdentityLookupSweepSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  "a leg" should "run the sweep when asked, or when it replays a tree marked with the lookups its recording asked — never on an older mark" in withTree { root =>
-    IdentityLookupSweep.runsIn(requested = false, hermetic = true, root) shouldBe false
-    IdentityLookupSweep.runsIn(requested = true, hermetic = false, root) shouldBe true
-    // A tree marked before the mark named its lookups cannot say which of today's it answers.
-    Seq(".identity-lookups", ".identity-lookups-v2").foreach(m => java.nio.file.Files.writeString(root.resolve(m), "old set\n"))
-    IdentityLookupSweep.runsIn(requested = false, hermetic = true, root) shouldBe false
-    IdentityLookupSweep.markRecorded(root, sweep(corpus)._3)
-    IdentityLookupSweep.runsIn(requested = false, hermetic = true, root) shouldBe true
-    // A RECORDING leg is never switched on by the mark: recording the sweep is asked for.
-    IdentityLookupSweep.runsIn(requested = false, hermetic = false, root) shouldBe false
-  }
-
-  it should "keep every lookup each recording leg over the same tree asked" in withTree { root =>
+  "a recording" should "keep every lookup each recording leg over the same tree asked" in withTree { root =>
     IdentityLookupSweep.markRecorded(root, Seq("film 1", "query b"))
     IdentityLookupSweep.markRecorded(root, Seq("film 2", "query b"))
     IdentityLookupSweep.recordedIn(root) shouldBe Some(Set("film 1", "film 2", "query b"))
-  }
-
-  // The hermetic legs went red on 2026-09-27 when the resolver learned season queries ("Manon 2026")
-  // its pinned tree had never been asked: a replay must issue no request its recording did not.
-  "a hermetic replay of a marked tree" should "ask only the lookups its recording asked, and count the resolver's newer ones unasked" in withTree { root =>
-    val (_, recordedAsked, recordedNames) = sweep(corpus)
-    IdentityLookupSweep.markRecorded(root, recordedNames)
-    // The resolver's query set moves after the recording: a listing now brings questions of its own.
-    val grown  = corpus.updated(Kinoteka, corpus(Kinoteka) :+ listing(Kinoteka, "RBO Cinema Season 2026-27: Manon"))
-    val listed = services.identity.Listing.corpus(grown, titleNormalizer)
-    val everything = new Recording
-    IdentityLookupSweep.run(listed, everything, titleNormalizer)
-    (everything.asked.toSet -- recordedAsked) should not be empty
-
-    val replay  = new Recording
-    val summary = IdentityLookupSweep.run(listed, replay, titleNormalizer, recorded = IdentityLookupSweep.recordedIn(root))
-    (replay.asked.toSet -- recordedAsked) shouldBe empty
-    // …and every lookup it WAS recorded with is still asked: the gate holds for those.
-    replay.asked.toSet shouldBe recordedAsked.toSet
-    summary.unrecorded should be > 0
-    summary.toString should include (s"${summary.unrecorded} lookup(s) the tree was recorded without")
   }
 
   // A recording leg's sweep met every lookup its tree lacked live and ONE AT A TIME: 274 s of the US
@@ -164,19 +131,5 @@ class IdentityLookupSweepSpec extends AnyFlatSpec with Matchers {
     val side   = new Recording
     IdentityLookupSweep.run(services.identity.Listing.corpus(shared, titleNormalizer), side, titleNormalizer, pool = Some(pool))
     side.asked.count(_ == s"detail ${page.get}") shouldBe 1
-  }
-
-  it should "prefetch nothing a hermetic replay's recording did not ask" in withTree { root =>
-    pooled { pool =>
-      val (_, recordedAsked, recordedNames) = sweep(corpus)
-      IdentityLookupSweep.markRecorded(root, recordedNames)
-      val grown  = corpus.updated(Kinoteka, corpus(Kinoteka) :+ listing(Kinoteka, "RBO Cinema Season 2026-27: Manon",
-        page = Some("https://kinoteka.pl/manon")))
-      val replay = new Recording
-      val summary = IdentityLookupSweep.run(services.identity.Listing.corpus(grown, titleNormalizer), replay, titleNormalizer,
-        recorded = IdentityLookupSweep.recordedIn(root), pool = Some(pool))
-      replay.asked.toSet shouldBe recordedAsked.toSet
-      summary.unrecorded should be > 0
-    }
   }
 }

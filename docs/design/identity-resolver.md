@@ -619,7 +619,7 @@ issues exactly the resolver's query set, with a memo-free `MovieService`:
 
 - In a **recording** leg, every miss is fetched live and written into `enrichment-<cc>`, which
   the leg then publishes and pins as the hermetic pair.
-- In a **hermetic** leg, a miss fails the leg by name, which makes the flag the coverage check.
+- In a **hermetic** leg asked for it, a miss fails the leg by name, which makes the flag the coverage check.
 
 Dispatch it (it records live, so it is not run from a laptop):
 
@@ -627,8 +627,8 @@ Dispatch it (it records live, so it is not run from a laptop):
 gh workflow run "Record scrape fixtures" --ref main -f identity-lookups=true
 ```
 
-The flag is on by default for a dispatch and always on for the nightly cron, and a hermetic leg
-replaying a tree recorded with it runs the sweep too (§9a). Once one run with it has pinned its
+The flag is on by default for a dispatch and always on for the nightly cron. The hermetic verdict
+legs do not run it (§9a). Once one run with it has pinned its
 pair, the phase-1 gate (`IdentityQueryCoverageIntegrationSpec`, §9a) should report 0 gaps on all
 five countries.
 
@@ -760,17 +760,12 @@ Cineworld from an IP it serves. No recording from a runner can close them.
   the 200 gaps plus 3 follow-ons (two TMDB person credits and one search, reachable only once a
   gap is answered), and the gate then read 6,242 / 6,242.
 - A recording that ran the sweep leaves `.identity-lookups-v3` at its tree's root, naming every
-  lookup it asked (the legs recording one tree add to it). A hermetic verdict leg replaying such a
-  tree runs the sweep too, and fails on any gap by name. So every verdict leg enforces the gate
-  from the first pinned recording on, and no leg is failed for replaying a tree recorded before
-  the sweep existed.
-- A hermetic leg asks only the lookups its tree's mark names. A question the resolver learned
-  after the recording (a new search shape, a season query) is answered unknown, never requested,
-  and counted as `unrecorded` in the leg's summary; the next recording asks and files it. Until
-  2026-09-27 the mark carried only a hand-bumped version, and the season queries of `0d76270a8`
-  failed every hermetic leg on a tree recorded the night before them. A tree carrying only the
-  older `-v2` or unversioned mark does not run the sweep. `KINOWO_IDENTITY_LOOKUPS=true` on a
-  hermetic leg still asks the whole set: that is the coverage check.
+  lookup it asked (the legs recording one tree add to it).
+- The hermetic verdict legs do not run the sweep (since 2026-10-06). Until then a hermetic leg
+  replaying a marked tree re-asked the lookups the mark named, to prove the tree still answered
+  them. No verdict of the leg rests on a lookup its boot and replays never ask, and every request
+  they DO make is still refused by name when the tree lacks it. So the replay bought nothing the
+  lane claims, for 60-90 s of every row. The gate is kept by the recordings, which run the sweep.
 - The hard-cluster responses are recorded from the trees (`scripts/hard-clusters.sh record`),
   and that record mode now asks the sweep's queries as well. Once a tree recorded with the sweep
   is pinned, one re-record closes hc-pl's 9.

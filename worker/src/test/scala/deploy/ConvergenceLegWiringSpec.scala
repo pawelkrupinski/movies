@@ -643,6 +643,17 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       """step("identityLookupSweep")(IdentityLookupSweep.over(""")
   }
 
+  /** A hermetic verdict leg re-ran the sweep whenever its tree carried a recording's mark: a second
+   *  whole-corpus resolve beside the boot, 60-90 s of every row (run 37522262304), proving the tree
+   *  answers lookups no claim of the leg rests on. It runs only when asked for now, and the identity
+   *  lane never asks; the recordings, which keep the tree complete, do. */
+  it should "run the identity lookup sweep only when asked for, never because the tree is marked" in {
+    RepoFile.read("e2e/src/test/scala/services/movies/CountryConvergenceBehaviour.scala") should include(
+      "Option.when(IdentityLookupSweep.enabledIn(configuration))")
+    RepoFile.read(".github/workflows/identity-model-convergence.yml") should not include "identity-lookups:"
+    RepoFile.read("worker/src/fixtures/scala/tools/IdentityLookupSweep.scala") should not include "def runsIn"
+  }
+
   /** Under `pipefail`, a `| head -N` that closes the pipe early fails the writer before it with
    *  SIGPIPE: Spain's green recording leg failed its findings step (exit 4) once its report passed
    *  150 lines (run 37096642753). The report must keep its first lines by READING to the end. */

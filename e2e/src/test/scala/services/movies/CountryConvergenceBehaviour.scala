@@ -407,28 +407,22 @@ abstract class CountryConvergenceBehaviour(
     info(s"${country.displayName}: storage — ${storage.describe}")
     info(s"${country.displayName}: $seeded cinemas replayed from cinema_scrapes, " +
          s"${w.archivedListings.values.map(_.size).sum} film listings")
-    // The identity resolver's per-listing query set (docs/design/identity-resolver.md §9): a
-    // RECORDING leg asked for it files every answer into the tree it then pins and marks the tree;
-    // a HERMETIC leg runs it whenever its tree carries that mark, and names each gap below — so
-    // every verdict leg enforces the phase-1 gate on a tree recorded with it, and neither a tree
-    // recorded before the sweep existed nor one recorded before the resolver's latest query change
-    // is failed for lacking what its recording was never asked.
+    // The identity resolver's per-listing query set (docs/design/identity-resolver.md §9), only when
+    // asked for (`KINOWO_IDENTITY_LOOKUPS`): a RECORDING leg files every answer into the tree it then
+    // pins and marks; a hermetic leg asked for it names each gap below. A hermetic verdict leg is not
+    // asked: the gaps it could name are lookups no claim of the leg rests on, and the boot and the
+    // replays still have every request THEY make refused by name (see `IdentityLookupSweep.RecordedMarker`).
     //
     // BESIDE the boot, not after it: the sweep reads the corpus's listings and asks the lookups,
     // never a row the boot writes, so nothing it does waits on the boot or moves it — and after the
     // boot it was 35 s of the US recording's critical path (run 37111868620), on the cores the
     // boot's Mongo-bound drains leave idle. Joined before the boot is declared complete.
     val treeRoot = java.nio.file.Paths.get(fixtureRoot.of(fixtureDirectory))
-    val sweepRequested = IdentityLookupSweep.enabledIn(configuration)
-    val sweep = Option.when(IdentityLookupSweep.runsIn(sweepRequested, missingFixtures.isDefined, treeRoot)) {
+    val sweep = Option.when(IdentityLookupSweep.enabledIn(configuration)) {
       val asked = scala.collection.mutable.ArrayBuffer.empty[String]
-      // Run because the tree is marked, a hermetic leg asks only what the tree's recording asked
-      // (`IdentityLookupSweep.RecordedMarker`), so a resolver query added since then is never a
-      // request of this leg. Asked for by name, it asks the whole set: that is the coverage check.
-      val recorded = if (sweepRequested || missingFixtures.isEmpty) None else IdentityLookupSweep.recordedIn(treeRoot)
       // Timed like every other phase: in a recording leg it is minutes of live lookups.
       asked -> Alongside.start(s"identity-sweep-${country.code}")(
-        step("identityLookupSweep")(IdentityLookupSweep.over(w, asked += _, recorded, IdentityLookupSweep.LookupThreads)))
+        step("identityLookupSweep")(IdentityLookupSweep.over(w, asked += _, IdentityLookupSweep.LookupThreads)))
     }
     bootSettled(w)
     // Every replayed venue must LAND: the claims below are all "nothing changed", which a

@@ -20,34 +20,23 @@ import services.movies.TitleNormalizer
 object IdentityLookupSweep {
 
   final case class Summary(listings: Int, details: Int, detailsUnanswered: Int, queries: Int, queriesUnanswered: Int,
-                           films: Int, filmsUnanswered: Int, unrecorded: Int = 0) {
+                           films: Int, filmsUnanswered: Int) {
     override def toString: String =
       s"$listings listing(s): $details detail page(s) ($detailsUnanswered unanswered), $queries candidate quer(ies) " +
-        s"($queriesUnanswered unanswered), $films film record(s) ($filmsUnanswered unanswered)" +
-        (if (unrecorded > 0) s"; $unrecorded lookup(s) the tree was recorded without, not asked — the resolver's " +
-          "query set moved since the recording, and the next recording files them" else "")
+        s"($queriesUnanswered unanswered), $films film record(s) ($filmsUnanswered unanswered)"
   }
 
   def enabledIn(configuration: settings.ProcessConfiguration): Boolean = configuration.identityLookupSweep.value
 
   /** Left at the root of a tree whose recording ran the sweep, holding the NAME of every lookup the
-   *  recording asked, one per line. A HERMETIC leg replaying the tree runs the sweep too, and fails
-   *  on any gap — which keeps the phase-1 gate enforced by every verdict leg without anyone turning
-   *  it on.
+   *  recording asked, one per line (the legs recording one tree add to it, [[markRecorded]]).
    *
-   *  The list is what versions the mark by the query set. A hermetic leg asks only the lookups it
-   *  names: a question the resolver has learned to ask since the recording (a new search shape, a
-   *  season query) is answered unknown and counted as `unrecorded`, never requested. So a change to
-   *  the resolver's queries can never turn a verdict leg red on a tree recorded before it, and never
-   *  makes the leg issue a request its recording did not — the next recording asks and files it.
-   *  Before the list (`-v2` and the unversioned `.identity-lookups`) the version was a number bumped
-   *  by hand, and a query-set change that forgot to bump it failed every hermetic leg until the
-   *  nightly recording caught up; a tree carrying only such a mark does not run the sweep. */
+   *  A HERMETIC verdict leg no longer replays it. It ran the whole query set again beside the boot
+   *  to prove the tree still answers lookups the boot and the replays never ask — which no verdict
+   *  of the leg rests on (a lookup they DO ask that the tree cannot answer is still refused by name)
+   *  — for 60-90 s of every row (run 37522262304). Full coverage of the query set is the recording's
+   *  job, and the nightly recording runs the sweep. */
   val RecordedMarker = ".identity-lookups-v3"
-
-  /** Whether a leg runs the sweep: when asked to, or when it replays a tree recorded with it. */
-  def runsIn(requested: Boolean, hermetic: Boolean, treeRoot: java.nio.file.Path): Boolean =
-    requested || (hermetic && java.nio.file.Files.exists(treeRoot.resolve(RecordedMarker)))
 
   /** The lookups `treeRoot`'s recording asked (its [[RecordedMarker]]), when it was recorded with the sweep. */
   def recordedIn(treeRoot: java.nio.file.Path): Option[Set[String]] = {
@@ -70,8 +59,7 @@ object IdentityLookupSweep {
   /** The sweep over a booted replay wiring: its archived listings, its venues' detail enrichers,
    *  its TMDB client and an IMDb suggestion client over the TMDB client's fetch, all fetching
    *  through the wiring's recording chain — which is what files the answers into the leg's tree.
-   *  `onLookup` hears each logical lookup's name as soon as the resolver has asked it. With
-   *  `recorded` (a hermetic replay of a marked tree), a lookup it does not name is not issued.
+   *  `onLookup` hears each logical lookup's name as soon as the resolver has asked it.
    *
    *  `threads` above one asks each of the resolver's read phases side by side (its `prefetch`), the
    *  way production's take-up does: a recording leg meets every lookup its tree lacks live, and one
@@ -80,13 +68,12 @@ object IdentityLookupSweep {
    *  thread (the default) keeps every request on the thread of the lookup that made it, issued
    *  right before `onLookup` names it — which is how `IdentityQueryCoverage.RequestLog` attributes
    *  requests to lookups. */
-  def over(w: ArchiveReplayWiring, onLookup: String => Unit = _ => (), recorded: Option[Set[String]] = None,
-           threads: Int = 1): Summary = {
+  def over(w: ArchiveReplayWiring, onLookup: String => Unit = _ => (), threads: Int = 1): Summary = {
     val normalizer = w.movieCache.normalizer
     val lookups    = new TmdbIdentityLookups(w.tmdbClient, new services.enrichment.ImdbClient(w.identityLookupFetch), w.detailEnrichers)
     val pool = Option.when(threads > 1)(java.util.concurrent.Executors.newFixedThreadPool(threads,
       Thread.ofPlatform().daemon().name(s"identity-sweep-${w.country.code}-", 0).factory()))
-    try run(Listing.corpus(w.archivedListings, normalizer), lookups, normalizer, onLookup, recorded = recorded, pool = pool)
+    try run(Listing.corpus(w.archivedListings, normalizer), lookups, normalizer, onLookup, pool = pool)
     finally pool.foreach(_.shutdownNow())
   }
 
@@ -94,33 +81,25 @@ object IdentityLookupSweep {
    *  against these services runs (`external-api-rate-limits`), under the live chain's host pacing. */
   val LookupThreads = 8
 
-  /** Issue the resolver's whole query set against `lookups` — or, with `recorded`, the part of it
-   *  those lookup names cover (the rest answered unknown and counted as `unrecorded`). */
+  /** Issue the resolver's whole query set against `lookups`. */
   def run(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
           onLookup: String => Unit = _ => (), calibration: IdentityCalibration = IdentityCalibration.resolver,
-          recorded: Option[Set[String]] = None, pool: Option[java.util.concurrent.ExecutorService] = None): Summary = {
-    val named = new Named(pool.fold(lookups)(threads => new TrackedLookups(lookups, ObservationReads.Untracked, Some(threads))), onLookup, recorded)
+          pool: Option[java.util.concurrent.ExecutorService] = None): Summary = {
+    val named = new Named(pool.fold(lookups)(threads => new TrackedLookups(lookups, ObservationReads.Untracked, Some(threads))), onLookup)
     val r = IdentityResolver.resolve(listings, named, normalizer, calibration)
-    Summary(listings.size, named.details, r.unknownDetails, r.queries.size, r.unknownQueries, r.filmLookups, r.unknownFilms,
-      named.unrecorded)
+    Summary(listings.size, named.details, r.unknownDetails, r.queries.size, r.unknownQueries, r.filmLookups, r.unknownFilms)
   }
 
-  /** `inner`, announcing each lookup by name once it returns — and, with `recorded`, answering a
-   *  lookup it does not name as unknown without asking `inner`. A resolve's [[IdentityLookups.prefetch]]
-   *  is passed on (to the pool [[run]] put under it), less what `recorded` leaves unasked and with a
-   *  detail page several listings share named once — the resolver reads such a page for the first
-   *  of them (`CandidateGeneration.detailOf`), which is the one kept. */
-  private final class Named(inner: IdentityLookups, onLookup: String => Unit, recorded: Option[Set[String]]) extends IdentityLookups {
-    var details    = 0
-    var unrecorded = 0
-    private def asks(name: String): Boolean = !recorded.exists(!_(name))
-    private def named[A](name: String)(answer: => Answer[A]): Answer[A] =
-      if (!asks(name)) { unrecorded += 1; Answer.Unknown }
-      else { val a = answer; onLookup(name); a }
+  /** `inner`, announcing each lookup by name once it returns. A resolve's [[IdentityLookups.prefetch]]
+   *  is passed on (to the pool [[run]] put under it) with a detail page several listings share named
+   *  once — the resolver reads such a page for the first of them (`CandidateGeneration.detailOf`),
+   *  which is the one kept. */
+  private final class Named(inner: IdentityLookups, onLookup: String => Unit) extends IdentityLookups {
+    var details = 0
+    private def named[A](name: String)(answer: => Answer[A]): Answer[A] = { val a = answer; onLookup(name); a }
     override def hasDetail(l: Listing): Boolean = inner.hasDetail(l)
     override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], pages: Iterable[Listing]): Unit =
-      inner.prefetch(queries.filter(q => asks(Named.query(q))), films.filter(id => asks(Named.film(id))),
-        pages.toSeq.distinctBy(l => (l.venue, l.page)).filter(l => asks(Named.detail(l))))
+      inner.prefetch(queries, films, pages.toSeq.distinctBy(l => (l.venue, l.page)))
     override def prefetchAnswered(): Unit = inner.prefetchAnswered()
     override def detail(l: Listing): Answer[Option[DetailFacts]] = {
       details += 1; named(Named.detail(l))(inner.detail(l))
