@@ -400,6 +400,8 @@ object IdentityMeasures {
     private[identity] lazy val titleKeys: Set[String] = titles.map(IdentityMeasures.key).toSet
     /** Its own title's and original title's tokens: what a director credited by a house name is read against. */
     private[identity] lazy val ownTitleTokens: Seq[Seq[String]] = (Seq(title) ++ originalTitle).map(TitleContainment.tokens)
+    /** Its own title's and original title's yearless tokens. */
+    private[identity] lazy val ownYearlessTitles: Seq[Seq[String]] = (Seq(title) ++ originalTitle).map(IdentityMeasures.yearlessTokens)
     /** The film's titles and their delimited pieces as yearless tokens, once per record (`billing`). */
     private[identity] lazy val billedTitles: Seq[Seq[String]] =
       titles.map(IdentityMeasures.yearlessTokens).filter(_.nonEmpty).distinct

@@ -494,13 +494,15 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  title decorated along one edge ("La Fanciulla del West Encore" of the Met's "… 2026/27: La
    *  Fanciulla del West")? Asked only beside a title year that agrees ([[datedTitleWhy]]). */
   private def namedButForItsYear(candidate: Scored): Boolean = {
-    val titles = (Seq(candidate.candidate.film.title) ++ candidate.candidate.film.originalTitle).map(IdentityMeasures.yearlessTokens)
+    // Each title's tokens as the listing and the film hold them, worked out once (`ownYearlessTitles`, `billedTitles`,
+    // `billedWorks`), not per candidate weighed: ~40 MB of a PL hard-cluster run's resolves (JFR 2026-10-06).
+    val titles = candidate.candidate.film.ownYearlessTitles
     // One word is many films' title — but not as a whole piece beside the year the listing dates it by, which the
     // rule requires: "Akademia Kina Polskiego: Drogówka (2012)" is Smarzowski's 2013 film.
     // A one-word title must be a whole delimited PIECE of the listing's ("…: Drogówka (2012)"), not its last word
     // ("Fanciulla Encore (2027)" is no "Encore").
-    lazy val pieces = IdentityMeasures.titleShapes(candidate.listing).map(IdentityMeasures.yearlessTokens).toSet
-    (Seq(candidate.listing.title) ++ candidate.listing.rawTitle).map(IdentityMeasures.yearlessTokens).exists(own => own.nonEmpty &&
+    lazy val pieces = candidate.listing.billedWorks   // the shapes' yearless tokens; a one-word title is never empty
+    candidate.listing.billedTitles.exists(own => own.nonEmpty &&
       titles.exists(title => title == own || (title.sizeIs >= 2 && services.movies.TitleContainment.isTokenRun(title, own)) ||
         (title.sizeIs == 1 && pieces(title))))
   }

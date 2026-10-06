@@ -208,4 +208,16 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     val rival = rivals(1)
     bytesPerCall(() => if (weights.fitsBetter(rival, top)) 1.0 else 0.0) should be < 1000.0   // was 10,412
   }
+
+  "a title dated by the year its film is from" should "be read off titles tokenised once per listing and film" in {
+    val acceptance = new Acceptance(model)
+    val dated  = Listing("Akademia Kina Polskiego: Drogówka (2012)")
+    val films  = Seq(167179 -> Film("Drogówka", year = Some(2013)), 900001 -> Film("Drogówka", year = Some(1978)))
+    val ranked = films.zipWithIndex.map { case ((id, film), i) =>
+      val m = IdentityMeasures.listingFilm(dated, film, Some(i + 1), 1, 0)
+      Scored(Candidate(id, film), model.probability(ListingFilm, m), m, denial = None, dated, Some(i + 1))
+    }.sortBy(s => (-s.probability, s.candidate.tmdbId))
+    acceptance.acceptedBy(ranked, 167179) shouldBe Some("dated-title")
+    bytesPerCall(() => acceptance.acceptedBy(ranked, 167179).size.toDouble) should be < 33000.0   // was 41,882: both films' and the listing's titles tokenised per call
+  }
 }
