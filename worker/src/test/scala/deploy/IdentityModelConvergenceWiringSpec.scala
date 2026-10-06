@@ -91,7 +91,7 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     val convergence = RepoFile.block(leg, "convergence")
     convergence should include("""inputs.sample-row && ',"sample"' || ''""")
     RepoFile.step(convergence, "Run the ${{ inputs.country }} sample ahead of the suite") should include(
-      "if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)\n")
+      "if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode == 'record')\n")
     Seq("Mark the tree before the sample records into it", "Pack the sample's recordings").foreach { name =>
       withClue(s"$name, in every mode's sample row: ")(RepoFile.step(convergence, name) should not include "inputs.mode == 'record'")
     }

@@ -551,8 +551,17 @@ addCommandAlias("e2eRest",     "e2e/Test/testOnly * -- -l services.movies.Corpus
 // recorded into test/resources/fixtures/corpus — to the corpus-shape specs (`CorpusShapeSpec`):
 // every cinema slot's field shapes and every listing's title search. `-z recorded:<cc>` selects that
 // country's tests alone, so the Polish fixture boot those specs also cover stays in `e2eRest`.
-def convergenceSample(spec: String, code: String): String = s"; e2e/Test/testOnly services.movies.$spec ; " +
+def corpusShape(code: String): String =
   s"e2e/Test/testOnly services.movies.CinemaSlotInvariantsSpec services.movies.SearchQueryMarkersSpec -- -z recorded:$code"
+def convergenceSample(spec: String, code: String): String = s"; e2e/Test/testOnly services.movies.$spec ; ${corpusShape(code)}"
+// A HERMETIC row with no sample row runs no sample (`country-convergence-leg.yml`): the sample corpus
+// is a slice of the full one, so beside the full suite it only failed faster, for ~2 minutes of every
+// row's wall time. Its corpus-shape specs are the part the suite does not cover, so the row runs them
+// ahead of its suite through these.
+addCommandAlias("corpusShapePoland",  corpusShape("pl"))
+addCommandAlias("corpusShapeGermany", corpusShape("de"))
+addCommandAlias("corpusShapeUk",      corpusShape("uk"))
+addCommandAlias("corpusShapeSpain",   corpusShape("es"))
 addCommandAlias("convergencePolandSample",  convergenceSample("PolandSampleConvergenceSpec", "pl"))
 addCommandAlias("convergenceGermanySample", convergenceSample("GermanySampleConvergenceSpec", "de"))
 addCommandAlias("convergenceUkSample",      convergenceSample("UnitedKingdomSampleConvergenceSpec", "uk"))

@@ -1,13 +1,12 @@
 #
-# ONE country's convergence leg: the fast sample gate, and the full run behind it.
+# ONE country's convergence leg: the full run, and in a recording the sample ahead of it.
 #
-# ONE job, always. The sample is the FIRST suite step of every row of the `convergence`
-# job, and the full suite is the step after it: a red sample fails its step, a failed step
-# ends the job, and the suite never starts — the gate a separate `sample` job used to be,
-# without that job's second checkout and setup (~1 minute on every leg's critical path,
-# and one more runner per country per push). A RECORDING is the one exception to the
-# gate, and only to its stopping power: there the sample carries `continue-on-error`, so
-# the whole corpus is recorded past a red sample (see the sample step below). A leg may also run
+# ONE job, always. In a RECORDING the sample is the first suite step of the `convergence`
+# row and the full suite the step after it, where it carries `continue-on-error`, so the
+# whole corpus is recorded past a red sample (see the sample step below). A HERMETIC
+# convergence row runs no sample: it replays a slice of the corpus its own suite replays
+# against the same pinned pair, so it only failed sooner, for ~2 minutes of the row's wall
+# time; the row runs the sample's corpus-shape specs ahead of its suite instead. A leg may also run
 # the sample as a `sample` row of its own (`sample-row`), beside the suite
 # rather than in front of it — the suite then runs ungated, and a red sample costs its runner, not
 # wall time.
@@ -57,6 +56,13 @@ on:
                 description: The sbt alias running this country's full convergence leg.
                 required: true
                 type: string
+            # Run ahead of the suite in a HERMETIC convergence row that runs no sample: the
+            # sample's corpus-shape specs, the one part of it the full suite does not cover.
+            shape-command:
+                description: The sbt alias running this country's corpus-shape specs (`corpusShape*`).
+                required: false
+                type: string
+                default: ''
             # THE BUDGETS ARE PER-COUNTRY because the legs are not the same size. They
             # default to what the three original countries have always run on, so a
             # caller that says nothing keeps today's behaviour exactly; the United
@@ -446,11 +452,16 @@ jobs:
               shell: bash
               run: touch "$RUNNER_TEMP/sample-stamp" && sleep 1
 
-            # THE GATE: this country's sample, first, ahead of the suite in every row.
+            # THE SAMPLE: this country's ~100-film slice, ahead of the suite — in a RECORDING, or in a
+            # `sample` row of its own.
             #
-            # HERMETIC legs: a red sample fails this step, which ends the job — the
-            # suite below is skipped, and only the `always()`/`failure()` steps after it run.
-            # That is the whole of the gate the separate `sample` job used to be.
+            # NOT in a hermetic convergence row. The sample replays a slice of the very corpus the
+            # suite replays, against the same pinned pair, so there it made no claim the suite
+            # does not make; it only failed sooner, and cost every row ~2 minutes of wall time
+            # before the suite started (105-150 s, run 37499106536) — the margin between the lane
+            # and its 9-minute target. That row runs the sample's corpus-shape specs instead, ahead
+            # of its suite (`shape-command`). The United States keeps its `sample` row, which
+            # costs it no wall time.
             #
             # A RECORDING runs it over the tree this job then records the whole corpus into —
             # the order the two jobs ran in, without the release in between: the sample records
@@ -474,7 +485,7 @@ jobs:
             # cold is a state this gate has to survive, not one to be timed out of. Every job
             # ceiling is sized over this step and the suite's together (ConvergenceLegWiringSpec,
             # HermeticConvergenceWiringSpec).
-            # It runs in exactly one row, in every mode: the sample row when there is one, else the
+            # It runs in at most one row: the sample row when there is one, else a recording's
             # convergence row — NEVER the order-independence row, where it sat in front of that row's
             # suite — the identity lane's critical path — for 97 s (run 37144949783). The row that
             # runs it speaks for it (its verdict, its ratchet); every other row runs ungated, which
@@ -482,7 +493,7 @@ jobs:
             # either way.
             - name: Run the ${{ inputs.country }} sample ahead of the suite
               id: sample
-              if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)
+              if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode == 'record')
               continue-on-error: ${{ inputs.mode == 'record' }}
               shell: bash
               timeout-minutes: ${{ inputs.sample-suite-timeout-minutes }}
@@ -567,7 +578,7 @@ jobs:
                   if [ "${{ inputs.profile }}" = true ]; then
                       profile=("-J-XX:StartFlightRecording=filename=convergence.jfr,settings=profile,dumponexit=true")
                   fi
-                  sbt -J-Xmx${{ inputs.heap }} "${profile[@]}" ${{ matrix.phase == 'convergence' && inputs.command || inputs.order-command }} 2>&1 | tee convergence.log
+                  sbt -J-Xmx${{ inputs.heap }} "${profile[@]}" ${{ matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode != 'record' && inputs.shape-command || '' }} ${{ matrix.phase == 'convergence' && inputs.command || inputs.order-command }} 2>&1 | tee convergence.log
                   # What the leg left in Mongo: the size a RAM-backed mongod would have to hold.
                   docker exec mongo du -sh /data/db || true
               env:

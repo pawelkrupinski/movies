@@ -60,7 +60,7 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   // what the restored tree lacks is fetched ONCE between them (SharedLiveAnswers), and its sample
   // — which gates nothing in a recording and whose recordings no row would publish — skipped.
   it should "replay a recording's order row gap-filled, without a sample of its own" in {
-    RepoFile.step(convergence, Sample) should include("if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)\n")
+    RepoFile.step(convergence, Sample) should include("if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode == 'record')\n")
     RepoFile.step(convergence, "Run the ${{ inputs.country }} ${{ matrix.phase }} suite") should include(
       "KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'record' && matrix.phase != 'convergence' }}")
   }

@@ -201,21 +201,38 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   /** The gate is the step ORDER inside one job: a failed step skips every later step that
    *  is not `always()`/`failure()`, so a red sample stops the suite exactly as a red sample
    *  JOB stopped the job behind it — provided the sample neither continues on error (only a
-   *  recording does, to record the whole corpus past it) nor is skipped in a row. */
-  "the single-country leg workflow" should "run its full suite behind its own sample, in the same job" in {
+   *  recording does, to record the whole corpus past it) nor is skipped in a row that records.
+   *  A HERMETIC convergence row runs no sample: it replays a slice of the corpus its suite
+   *  replays, so there it only failed sooner, for ~2 minutes of the row's wall time. */
+  "the single-country leg workflow" should "run a recording's full suite behind its own sample, in the same job" in {
     val convergence = RepoFile.block(leg, "convergence")
     val sample = RepoFile.step(convergence, SampleStep)
     RepoFile.positionOf(convergence, s"- name: $SampleStep") should be < RepoFile.positionOf(convergence, s"- name: $SuiteStep")
     sample should include("continue-on-error: ${{ inputs.mode == 'record' }}")
-    withClue("a convergence row whose sample is skipped runs its suite ungated — only a leg that asks for a " +
-             "`sample` row of its own (`sample-row`) may move the sample out of it: ") {
+    withClue("a recording's convergence row whose sample is skipped runs its suite ungated — only a leg that asks " +
+             "for a `sample` row of its own (`sample-row`) may move the sample out of it: ") {
       sample.linesIterator.map(_.trim).filter(_.startsWith("if:")).toSeq shouldBe
-        Seq("if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)")
+        Seq("if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode == 'record')")
     }
     withClue("the suite must not run past a failed sample — an `if:` without a status function keeps the " +
              "implicit success(), and this one only spares a recording's sample row: ") {
       RepoFile.step(convergence, SuiteStep).linesIterator.map(_.trim).filter(_.startsWith("if:")).toSeq shouldBe
         Seq("if: matrix.phase != 'sample'")
+    }
+  }
+
+  /** What a hermetic row keeps of the sample it no longer runs: the corpus-shape specs over the
+   *  recorded corpus (`CinemaSlotInvariantsSpec`, `SearchQueryMarkersSpec`), which the convergence
+   *  suite itself does not assert — first, ahead of the suite, in the suite's own sbt run. */
+  it should "run the sample's corpus-shape specs ahead of a hermetic row's suite, where no sample runs" in {
+    RepoFile.step(RepoFile.block(leg, "convergence"), SuiteStep) should include(
+      "${{ matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode != 'record' && inputs.shape-command || '' }} " +
+      "${{ matrix.phase == 'convergence' && inputs.command || inputs.order-command }}")
+    callers.foreach(_ should include("shape-command:  ${{ matrix.shape || '' }}"))
+    rows.filterNot(_.get("sampleRow").contains("true")).foreach { row =>
+      val shape = row.getOrElse("shape", fail(s"${row("country")} runs no sample in a hermetic row, and names no `shape` alias"))
+      build should include("addCommandAlias(\"" + shape + "\",")
+      build should include(s"""corpusShape("${row("code")}")""")
     }
   }
 
@@ -485,7 +502,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val block = RepoFile.block(leg, "convergence")
     block should include("fail-fast: false")
     RepoFile.step(block, SampleStep) should include(
-      "if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row)")
+      "if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode == 'record')")
   }
 
   /** ONE writer to the rolling release per leg.
