@@ -218,7 +218,7 @@
     <article class="card@if(card.answer.isDefined){ done}" data-cluster="@c.id" data-card="@card.payload(view.page).toString"
              data-answered="@card.answer.fold("")(_.verdict.code)" data-was-answered="@card.answer.isDefined">
       <div class="head">
-        <div class="raw"><span class="tag">@c.country.code.toUpperCase</span><span class="raw-title">@c.title</span></div>
+        <div class="raw"><span class="tag">@c.country.code.toUpperCase(java.util.Locale.ROOT)</span><span class="raw-title">@c.title</span></div>
         @if(c.film.isDefined) {
           <span class="conf">match @pct(c.confidence)</span>
         } else {
