@@ -4,6 +4,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity._
+import services.movies.ListingKey
 import services.identity.agreement.{FamilyAnswers, VoterFamily}
 import tools._
 
@@ -111,6 +112,16 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
       UnmatchedClusters.takes(capture, replayed) shouldBe UnmatchedClusters.takes(capture, outcome)
       println(s"[${c.label}] captured ${subset.size} listings in ${decisions.size} clusters; ${capture.queries.size} queries, ${capture.films.size} films, " +
         s"${filed.size} family answers after $rounds round(s); takes ${UnmatchedClusters.takes(capture, outcome).size}")
+      // the captured listings' venue pages the recorded tree lacks — the page, and every gap met that ends in its slug (a
+      // chain reading its show's detail off its API: Alamo Drafthouse's `…/presentation/<slug>`) — read live and kept, for
+      // the next run to answer
+      val unread = subset.filter(l => capture.withDetail(ListingKey.serialised(l.key)) && !capture.details.contains(ListingKey.serialised(l.key))).flatMap(_.page)
+      val slugs  = unread.map(_.trim.stripSuffix("/").split('/').last).filter(_.length >= 4).toSet
+      val gaps   = c.missedKeys().collect { case key if key.startsWith("GET ") => key.drop(4) }
+        .filter(url => slugs.exists(slug => url.stripSuffix("/").endsWith(s"/$slug")))
+      if (unread.nonEmpty && configuration.identityLiveGaps.isDefined)
+        println(s"[${c.label}] ${unread.size} listing(s) whose venue page the tree lacks: read ${IdentityShadow.LiveGapLeaf.readPages(unread ++ gaps)} " +
+          "page(s) live — capture again to read them")
     }
   }
 

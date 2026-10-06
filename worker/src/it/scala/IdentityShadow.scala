@@ -101,8 +101,9 @@ object IdentityShadow {
     override def post(url: String, body: String, contentType: String): String = { gap("POST", url); "{}" }
   }
 
-  /** A gap TMDB or IMDb can answer, answered LIVE, the stub key swapped for a real one; anything else, and a live
-   *  failure, is still the gap. For the local resolver-only loop only (`settings.IdentityLiveGaps`): at most
+  /** A gap TMDB or IMDb can answer, answered LIVE, the stub key swapped for a real one; a venue page the capture read
+   *  live before ([[LiveGapLeaf.readPages]]), answered as read; anything else, and a live failure, is still the gap. For
+   *  the local resolver-only loop and the capture only (`settings.IdentityLiveGaps`): at most
    *  `perHost` requests at a time per host ([[tools.HostPacing]]: halved on a 429 or 503, retried after a back-off), and
    *  every answer kept on disk ([[LiveGapLeaf.Store]]) so a re-run after a rule change asks nothing it asked before. */
   final class LiveGapLeaf(key: settings.IdentityLiveGaps, gap: GapLeaf,
@@ -113,12 +114,12 @@ object IdentityShadow {
     private def answerable(url: String) = url.contains("themoviedb.org") || url.contains("imdb.com")
     private def keyed(url: String) = url.replace(s"api_key=$StubTmdbKey", s"api_key=${key.tmdbKey}")
     private def stored(id: String)(read: => String): String = {
-      val file = Store.resolve(java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(id.getBytes("UTF-8"))))
+      val file = fileOf(id)
       if (Files.exists(file)) Files.readString(file)
       else { val answer = read; tools.AtomicFiles.writeString(file, answer); answer }
     }
     private def tried(url: String, id: => String, read: => String, orGap: => String): String =
-      if (!answerable(url)) orGap else scala.util.Try(stored(id)(pacing(url)(read))).getOrElse(orGap)
+      if (!answerable(url) && !Files.exists(fileOf(id))) orGap else scala.util.Try(stored(id)(pacing(url)(read))).getOrElse(orGap)
     override def get(url: String): String = tried(url, s"GET $url", real.get(keyed(url)), gap.get(url))
     override def get(url: String, headers: Map[String, String]): String =
       tried(url, s"GET $url", real.get(keyed(url), headers), gap.get(url, headers))
@@ -131,6 +132,30 @@ object IdentityShadow {
     val Retries = 6
     val BackOff: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.DurationInt(5).seconds
     val Store: Path = java.nio.file.Paths.get("target", "identity-live-gaps")
+    /** How many venue pages [[readPages]] reads at a time per host. */
+    val ReadAheadPerHost = 4
+    private[integration] def fileOf(id: String): Path =
+      Store.resolve(java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(id.getBytes("UTF-8"))))
+
+    /** Reads the venue `pages` the store does not hold yet, live, [[ReadAheadPerHost]] at a time per host, and keeps each for a
+     *  later run's [[LiveGapLeaf]] to answer: a capture's listings whose page the recorded tree lacks, which leave their
+     *  whole cluster unread (a fill waits on every listing's page — US "SEVENTEEN World Tour 'NEW_'": one page of 392).
+     *  How many it read; a page that fails stays a gap. */
+    def readPages(pages: Seq[String]): Int = {
+      val real  = new RealHttpFetch()
+      val fresh = pages.distinct.filterNot(url => Files.exists(fileOf(s"GET $url")))
+      val read  = new java.util.concurrent.atomic.AtomicInteger()
+      fresh.groupBy(url => java.net.URI.create(url).getHost).values.toSeq.map { urls =>
+        java.util.concurrent.CompletableFuture.runAsync { () =>
+          urls.grouped(ReadAheadPerHost).foreach(_.map(url => java.util.concurrent.CompletableFuture.runAsync { () =>
+            scala.util.Try(real.get(url)).foreach { body =>
+              tools.AtomicFiles.writeString(fileOf(s"GET $url"), body); read.incrementAndGet()
+            }
+          }).foreach(_.join()))
+        }
+      }.foreach(_.join())
+      read.get()
+    }
   }
 
   // ── today's pipeline ──────────────────────────────────────────────────────────────────
