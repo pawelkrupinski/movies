@@ -64,7 +64,7 @@ class ReviewClusterSpec extends AnyFlatSpec with Matchers {
     val wrong = kafka.copy(year = Some(1991), directors = Seq("Steven Soderbergh"))
     val agreeing = ReviewCards.build(ReviewFixtures.source(now), Seq(ReviewCluster.of(Country.Poland, heldDecision) -> None), Nil,
       new ReviewAnswers.Index(Nil)).head
-    agreeing.warnings shouldBe empty
+    agreeing.disagreements shouldBe empty
     FactCheck.warnings(agreeing.reviewMembers, wrong.facts) shouldBe Seq(
       "Kino Opalenica states FRANZ KAFKA is from 2025; Franz (1991) is from 1991",
       "Kino Opalenica credits Agnieszka Holland; Franz (1991) is directed by Steven Soderbergh")

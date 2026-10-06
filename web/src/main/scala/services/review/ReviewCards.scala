@@ -40,7 +40,7 @@ final case class ReviewCard(cluster: ReviewCluster, members: Seq[MemberView], fi
   def filmFacts(tmdb: Int): FilmFacts = films.get(tmdb).fold(FilmFacts(FilmRef.tmdb(tmdb)))(_.facts)
   def reviewMembers: Seq[ReviewMember] = members.map(_.member)
   /** Where the venues' own facts contradict the film the card puts forward. */
-  def warnings: Seq[String] = shown.toSeq.flatMap(film => FactCheck.warnings(reviewMembers, filmFacts(film)))
+  def disagreements: Seq[Disagreement] = shown.toSeq.flatMap(film => FactCheck.disagreements(reviewMembers, filmFacts(film)))
 
   /** The candidates the card lists below the film it puts forward. */
   def otherCandidates: Seq[ReviewCandidate] = cluster.candidates.filterNot(c => shown.contains(c.film))

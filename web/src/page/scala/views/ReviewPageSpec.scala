@@ -63,6 +63,16 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
   }
 
+  /** A cluster of 46 cinemas, every one crediting a director the film it leans to doesn't have. */
+  private val crowded = {
+    val keys = (1 to 46).map(i => services.movies.ListingKey.Published(f"Cinema $i%02d", "Kandydaci śmierci", None, Seq("Richard Jones")))
+    val film = FilmCard(1703629, None, Some("Kandydaci"), None, Some(2026), Seq("Maciej Kozłowski"), None, None, None)
+    new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
+      Seq(services.identity.ResolverDecision(keys, None, 0.3, services.identity.ResolverDecision.Basis.BelowThreshold,
+        Seq("best rejected candidate 1703629 at 52.3% (title overlap)"))()), filmsHeld = Map(film.tmdb -> film))),
+      new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
+  }
+
   private def post(exchange: HttpExchange): Boolean = {
     val path = exchange.getRequestURI.getPath
     lazy val body = Json.parse(new String(exchange.getRequestBody.readAllBytes(), StandardCharsets.UTF_8))
@@ -92,6 +102,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
         case "/debug/review/recent?country=pl" => contentAsString(controller.recent(Some("pl"), 48, 60, false)(FakeRequest()))
         case "/de/review"               => contentAsString(german.queue(Some("de"), 60, false)(FakeRequest()))
         case "/listed/review"           => contentAsString(listed.queue(Some("pl"), 60, false)(FakeRequest()))
+        case "/crowded/review"          => contentAsString(crowded.queue(Some("pl"), 60, false)(FakeRequest()))
         case "/sample/review"         => contentAsString(sample.queue(Some("all"), 200, false)(FakeRequest()))
         case "/sample/review/matchable" => contentAsString(sample.matchable(Some("all"), 0.0, None, 200, false)(FakeRequest()))
         case "/sample/review/recent"    => contentAsString(sample.recent(Some("all"), 24 * 365, 200, false)(FakeRequest()))
@@ -257,6 +268,28 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       page.eval("document.getElementById('export-labels').click()")
       page.waitFor("document.getElementById('export-summary').textContent.indexOf('added') >= 0")
       LabelsTsv.read(labels).map(r => (r.rawTitle, r.film, r.verdict)) shouldBe Seq(("FRANZ KAFKA", "tmdb:1157322", "wrong"))
+    }
+  }
+
+  "a card of 46 cinemas" should "fold its cinemas into one 'N cinemas' list, and its one grouped disagreement into a closed ⚠ at the bottom" in {
+    chrome match {
+      case None => cancel("Chrome not installed — skipping /debug/review page test")
+      case Some(c) => c.openPage(server.baseUrl + "/crowded/review") { page =>
+        val card = "document.querySelector('.card')"
+        page.evalString(s"$card.querySelector('.listing details.venues > summary').textContent") shouldBe "46 cinemas"
+        page.evalBool(s"$card.querySelector('.listing details.venues').open") shouldBe false
+        // nothing of the disagreement shows until the ⚠ is opened
+        page.evalString(s"$card.innerText") should not include "is directed by"
+        page.evalString(s"$card.lastElementChild.tagName + ' ' + $card.lastElementChild.className") shouldBe "DETAILS checks"
+        page.evalString(s"$card.querySelector('details.checks > summary').textContent") shouldBe "⚠ 1"
+        page.eval(s"$card.querySelector('details.checks').open = true")
+        page.evalInt(s"$card.querySelectorAll('details.checks > ul > li').length") shouldBe 1
+        page.evalString(s"$card.querySelector('details.checks').innerText") should include (
+          "46 cinemas credit Richard Jones; Kandydaci (2026) is directed by Maciej Kozłowski")
+        page.evalString(s"$card.querySelector('details.checks').innerText") should not include "Cinema 07"
+        page.eval(s"$card.querySelector('details.checks details.venues').open = true")
+        page.evalInt(s"$card.querySelectorAll('details.checks details.venues li').length") shouldBe 46
+      }
     }
   }
 

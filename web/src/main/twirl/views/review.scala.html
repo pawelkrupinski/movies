@@ -100,7 +100,10 @@
     .tag { font-family: var(--mono); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; margin-right: 6px; }
     .tag.veto, .tag.basis-Vetoed { border-color: var(--bad); color: var(--bad); }
     .tag.basis-BelowThreshold { border-color: var(--warn); color: var(--warn); }
-    .warning { font-size: .85rem; border: 1px solid var(--bad); background: var(--bad-soft); color: var(--bad); border-radius: 8px; padding: 6px 10px; overflow-wrap: anywhere; }
+    details.checks { font-size: .8rem; color: var(--warn); }
+    details.checks summary { cursor: pointer; }
+    details.checks li { font-family: var(--mono); overflow-wrap: anywhere; }
+    details.checks details.venues summary { font-size: .8rem; }
     .label-row { font-size: .85rem; color: var(--ok); overflow-wrap: anywhere; }
     .label-row.wrong { color: var(--bad); }
     .answered { font-size: .85rem; color: var(--ok); }
@@ -233,11 +236,10 @@
         <span class="tag basis-@c.basis">@c.basis</span>@c.members.size listing(s)
         @for(at <- card.updatedAt){ · <span title="latest movie_slots.updatedAt of a member — a proxy for the decision time">slot written @at.toString.take(16).replace("T", " ")</span>}
       </div>
-      @for(w <- card.warnings){<div class="warning">⚠ @w</div>}
       @for(l <- card.labels) {
         <div class="label-row @l.verdict">labelled @l.verdict: @l.film @if(l.venue != "*"){(@l.venue)} — @l.note</div>
       }
-      <div class="answered">@for(a <- card.answer) {answered <b>@a.verdict.label</b>@for(r <- a.ref){ @r.render} by @a.who at @a.at.toString.take(16).replace("T", " ")@for(w <- a.warnings){<div class="warning">⚠ @w</div>}}</div>
+      <div class="answered">@for(a <- card.answer) {answered <b>@a.verdict.label</b>@for(r <- a.ref){ @r.render} by @a.who at @a.at.toString.take(16).replace("T", " ")}</div>
 
       <div class="listing">
         @venuePoster(card.posters)
@@ -304,6 +306,13 @@
         <button type="button" class="btn" data-verdict="undo"@if(card.answer.isEmpty){ hidden}>Undo</button>
         <span class="status"></span>
       </div>
+      @if(card.disagreements.nonEmpty) {
+        <details class="checks" title="Where the venues' own facts disagree with the film put forward"><summary>⚠ @card.disagreements.size</summary><ul>
+          @for(d <- card.disagreements) {
+            <li>@d.render@if(d.venues.size > 1){<details class="venues"><summary>show cinemas</summary><ul>@for(v <- d.venues){<li>@v</li>}</ul></details>}</li>
+          }
+        </ul></details>
+      }
     </article>
     }
   }
