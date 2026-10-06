@@ -9,7 +9,7 @@ import scala.collection.mutable
  *  asked — all of them, up front, in sorted order, none conditional on another's answer — and
  *  every film any answer names looked up once. `ordered` is the listings in the order they are
  *  walked; `lazyLookups` is the teeth tests' `Mutation.LazyLookups`. */
-private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups: IdentityLookups, val normalizer: TitleNormalizer,
                                                   pins: PinConstraints, decorations: TitleDecorations, lazyLookups: Boolean,
                                                   corpus: Option[CorpusContext] = None) {
   val details = mutable.LinkedHashMap.empty[(String, String), Answer[Option[DetailFacts]]]

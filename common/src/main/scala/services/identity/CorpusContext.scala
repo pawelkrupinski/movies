@@ -36,6 +36,10 @@ private[identity] trait CorpusContext {
    *  piece of [[CorpusContext.BannerSpread]] whole titles or more ("Młode Horyzonty" ×48,
    *  "Splat!FilmFest" ×60)? A banner is no family key (`TitleLinks.titleKeys`). */
   final def bannerSegment(sanitised: String): Boolean = !wholeTitle(sanitised) && segmentSpread(sanitised) >= CorpusContext.BannerSpread
+  /** Does `sanitised` RECUR as a piece — no listing's whole title, and a piece of [[CorpusContext.TagSpread]] whole
+   *  titles or more? Too few to make it a banner by itself (a work billed under three programmes recurs so too); what
+   *  a programme tag must do beside the rest of a title (`CandidateScoring.namesOnlyATag`). */
+  final def recurringSegment(sanitised: String): Boolean = !wholeTitle(sanitised) && segmentSpread(sanitised) >= CorpusContext.TagSpread
   /** Every node carrying title key `key`, with the candidates its own evidence reached, in node order. */
   def reachedBy(key: String): Seq[(String, Set[Int])]
   /** The films `query`'s answer names, best first; `None` when the answer is not known. */
@@ -54,6 +58,7 @@ private[identity] trait CorpusContext {
     reads.groups.map(key => key -> titleGroup(key)).toMap,
     reads.segments.filter(wholeTitle),
     reads.segments.filter(bannerSegment),
+    reads.segments.filter(recurringSegment),
     reads.banners.flatMap(banner => houses.of.get(banner).map(banner -> _)).toMap,
     reads.films.flatMap(id => candidate(id).map(id -> _)).toMap,
     reads.queries.map(query => query -> ranked(query)).toMap)
@@ -113,6 +118,11 @@ private[identity] object CorpusContext {
    *  banner ([[CorpusContext.bannerSegment]]): PL's gluing programme and festival banners span 11–60
    *  titles, a work's spellings across banners a handful. */
   val BannerSpread = 8
+  /** A piece carried by this many distinct whole titles, and by none as its own whole title, RECURS
+   *  ([[CorpusContext.recurringSegment]]): "recurs around many inner titles", as a candidate decoration
+   *  must ([[TitleDecorations.MinCandidateRemainders]]) — PL Kino Amondo's "Alim | UFF", "Atlantyda | UFF",
+   *  "Odblask | UFF". */
+  val TagSpread: Int = TitleDecorations.MinCandidateRemainders
 
   /** A node's title pieces other than its whole title, sanitised: what [[CorpusContext.segmentSpread]] counts. */
   def piecesOf(node: EvidenceNode, sanitize: String => String): Set[String] = {
@@ -154,7 +164,8 @@ private[identity] object CorpusContext {
 
   /** The values a family read, as [[CorpusContext.slice]] cut them. */
   final case class Slice(reached: Map[String, Seq[(String, Set[Int])]], groups: Map[String, Seq[(String, IdentityMeasures.Listing)]],
-                         wholeTitles: Set[String], bannerSegments: Set[String], houses: Map[String, String], candidates: Map[Int, Candidate],
+                         wholeTitles: Set[String], bannerSegments: Set[String], recurringSegments: Set[String], houses: Map[String, String],
+                         candidates: Map[Int, Candidate],
                          answers: Map[CandidateQuery, Option[Seq[Int]]]) {
     /** 64 bits of the slice's content — what a stored family keeps to tell, after a restart, whether
      *  it still reads what it read ([[ContentHash]]). */

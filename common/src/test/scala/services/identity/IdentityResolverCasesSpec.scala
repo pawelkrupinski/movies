@@ -1065,6 +1065,36 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(shipped(Seq(dated), charlotte).decisionOf(dated.key).render)(shipped(Seq(dated), charlotte).decisionOf(dated.key).film shouldBe Some(844135))
   }
 
+  "A capitalised tag a venue bills beside many different titles" should "not name a film, whatever TMDB's ranking says" in {
+    // PL Kino Amondo bills the Ukrainian Film Festival's screenings "Alim | UFF", "Atlantyda | UFF", "Odblask | UFF": the
+    // festival's tag is a whole pipe-delimited piece, and "Uff" (2020) is an Indian film's title — TMDB's first hit for
+    // it, while the real films' own searches return several. The tag recurs beside three different titles, never alone.
+    val films = Seq(F(850957, "Uff", 2020, "Gehana Vasisth", 100, 12),
+      F(618245, "Atlantis", 2019, "Valentyn Vasyanovych", 106, 3, alternatives = Seq("Atlantyda")),
+      F(9701, "Atlantyda. Zaginiony ląd", 2001, "Gary Trousdale", 95, 30),
+      F(869621, "Reflection", 2021, "Valentyn Vasyanovych", 125, 2, alternatives = Seq("Odblask")),
+      F(9702, "Odblask księżyca", 1999, "Someone Else", 90, 20),
+      F(1048075, "Alim", 1926, "Heorhiy Tasin", 80, 1), F(9703, "Alim i jego osioł", 2010, "Another One", 88, 15))
+    val tagged = Seq("Alim | UFF", "Atlantyda | UFF", "Odblask | UFF").map(listing(models.KinoAmondo, _))
+    val r = shipped(tagged, films)
+    tagged.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film should not be Some(850957)))
+  }
+
+  it should "still name the film billed whole, or beside a tag the venues bill around many films" in {
+    // a piece in capitals billed ONCE is a title piece like any other ("MAX | Pokaz specjalny" is Max), and a work in
+    // capitals billed under banners that recur themselves is the work ("UFF | Kino Seniora" beside "Lalka | Kino
+    // Seniora", "Vinci | Kino Seniora", …)
+    val max    = listing(models.KinoAmondo, "MAX | Pokaz specjalny")
+    val d      = shipped(Seq(max), Seq(F(9801, "Max", 2002, "Menno Meyjes", 108, 12))).decisionOf(max.key)
+    withClue(d.render)(d.film shouldBe Some(9801))
+    val films  = Seq(F(850957, "Uff", 2020, "Gehana Vasisth", 100, 12))
+    val banners = Seq("Kino Seniora", "Klub Filmowy", "Tani Wtorek")
+    val others  = banners.flatMap(b => Seq("Lalka", "Vinci", "Chłopi").map(t => listing(models.KinoMuza, s"$t | $b")))
+    val worked  = banners.map(b => listing(models.KinoAmondo, s"UFF | $b"))
+    val r = shipped(others ++ worked, films)
+    worked.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(850957)))
+  }
+
   "A title naming two films by disjoint pieces" should "take neither on the title alone, nor its plain piece's film" in {
     // PL, Blackhurst's horror "Dolly" is distributed as "Lalka", as Kawalski's "Lalka" is.
     // "Lalka (Dolly)" names Kawalski's film by one word and Blackhurst's by the other; it publishes

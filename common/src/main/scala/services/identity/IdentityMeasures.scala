@@ -649,6 +649,13 @@ object IdentityMeasures {
    *  programme-banner segment (`SearchTitles.candidates`: `|`, ` - `, a first `: `, …). */
   def titleShapes(l: Listing): Seq[String] = l.shapes
 
+  /** The pieces of a title AS BILLED ([[shapes]]) that are written in capitals where the title is not — the case change
+   *  a venue's programme tag makes beside a work's own spelling ("Alim | UFF", "DKF: Lalka"). None in a title billed
+   *  all in capitals ("BEZ KOŃCA 2D PL LOLO"): its case says nothing. */
+  def capitalisedTags(billed: String): Seq[String] =
+    if (!billed.exists(_.isLower)) Nil
+    else shapes(Seq(billed)).filter(piece => piece != billed.trim && piece.exists(_.isLetter) && !piece.exists(_.isLower))
+
   private def shapesOf(l: Listing): Seq[String] = {
     shapes(Seq(l.title) ++ l.rawTitle ++ l.searchTitles ++ SearchTitles.candidates(l.title, l.originalTitle) ++
       l.rawTitle.toSeq.flatMap(SearchTitles.candidates(_, None)), l.decorations)

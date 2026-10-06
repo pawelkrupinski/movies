@@ -166,9 +166,11 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     val moved     = mutable.HashSet.empty[Int]
     val rebuilt   = touched ++ reasked.flatMap(askers.getOrElse(_, Set.empty))
     // 1. nodes: unhook the old, re-ask what was asked anew, hook the new — noting each touched piece's
-    // banner bit before, so a piece crossing `CorpusContext.BannerSpread` dirties the families reading it
-    val bannersBefore = mutable.HashMap.empty[String, Boolean]
-    def noteBefore(pieces: Set[String]): Unit = pieces.foreach(piece => bannersBefore.getOrElseUpdate(piece, bannerSegment(piece)))
+    // banner and recurring bits before, so a piece crossing `CorpusContext.BannerSpread` or `TagSpread` dirties the
+    // families reading it
+    val bannersBefore = mutable.HashMap.empty[String, (Boolean, Boolean)]
+    def bits(piece: String) = (bannerSegment(piece), recurringSegment(piece))
+    def noteBefore(pieces: Set[String]): Unit = pieces.foreach(piece => bannersBefore.getOrElseUpdate(piece, bits(piece)))
     rebuilt.foreach(key => nodes.remove(key).foreach(old => { noteBefore(old.pieces); films ++= unlink(key, old); titleKeys += old.titleKey; segments += old.whole }))
     val built = rebuilt.toSeq.flatMap(key => members.get(key).map(_.held).map { held =>
       val listed  = held.values.toSeq
@@ -272,7 +274,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     if (banners.nonEmpty) housesView = None
     groupView --= titleKeys
     reachedView --= titleKeys
-    segments ++= bannersBefore.collect { case (piece, before) if bannerSegment(piece) != before => piece }
+    segments ++= bannersBefore.collect { case (piece, before) if bits(piece) != before => piece }
     CorpusContext.Changed(titleKeys.toSet, segments.toSet, banners.toSet, moved.toSet)
   }
 

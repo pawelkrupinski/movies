@@ -47,6 +47,25 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
     pieces.nonEmpty && pieces.forall(piece => besideIt(piece) && node.listings.forall(listing => places(listing.cinema).exists(_.containsSlice(piece))))
   }
 
+  /** Does `node`'s title name the film only by a PROGRAMME TAG — a whole delimited piece billed in capitals beside a
+   *  rest that is not ([[IdentityMeasures.capitalisedTags]]), that RECURS across the corpus's titles
+   *  ([[CorpusContext.recurringSegment]]: no listing's whole title, a piece of three whole titles or more) while no
+   *  other piece of the title recurs? Learned by frequency, as a decoration is, not listed: PL Kino Amondo bills the
+   *  Ukrainian Film Festival "Alim | UFF", "Atlantyda | UFF", "Odblask | UFF", and "Uff" (2020) is an Indian film
+   *  TMDB ranks first for the tag. A work billed under recurring banners is the work ("UFF | Kino Seniora" beside
+   *  "Lalka | Kino Seniora" and more), and a tag billed once is a title piece like any other. */
+  def namesOnlyATag(node: EvidenceNode, candidate: Candidate): Boolean = {
+    val listing = node.evidence.published
+    val billed  = listing.rawTitle.getOrElse(listing.title)
+    val tags    = IdentityMeasures.capitalisedTags(billed).map(IdentityMeasures.key).toSet
+    tags.nonEmpty && {
+      val pieces = namingPieces(node, candidate).map(words => IdentityMeasures.key(words.mkString(" ")))
+      val (tagged, rest) = IdentityMeasures.shapes(Seq(billed)).partition(shape => tags(IdentityMeasures.key(shape)))
+      def recurs(piece: String) = generation.context.recurringSegment(generation.normalizer.sanitize(piece))
+      pieces.nonEmpty && pieces.forall(tags) && tagged.filter(tag => pieces(IdentityMeasures.key(tag))).forall(recurs) && !rest.exists(recurs)
+    }
+  }
+
   // Once per (node, film) and per venue for THIS resolve, dropped with it: every node meets every
   // candidate of its family's pool here and in the constraint edges (`ConstraintEdges.namesBeside`).
   private val piecesOf = mutable.HashMap.empty[(String, Int), Set[Seq[String]]]

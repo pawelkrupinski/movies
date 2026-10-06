@@ -10,7 +10,7 @@ class ContentHashSpec extends AnyFlatSpec with Matchers {
   private def film(title: String, directors: Seq[String]) =
     Candidate(7, IdentityMeasures.Film(title, year = Some(1968), directors = Some(directors), popularity = Some(3.5)))
   private def slice(candidates: Seq[(Int, Candidate)], answers: Seq[(CandidateQuery, Option[Seq[Int]])]) =
-    CorpusContext.Slice(Map.empty, Map.empty, Set("lalka"), Set.empty, Map("lalka" -> "has"), candidates.toMap, answers.toMap)
+    CorpusContext.Slice(Map.empty, Map.empty, Set("lalka"), Set.empty, Set.empty, Map("lalka" -> "has"), candidates.toMap, answers.toMap)
 
   private val lalka   = film("Lalka", Seq("Wojciech Has"))
   private val queries = Seq(CandidateQuery.Title("Lalka") -> Some(Seq(7, 9)), CandidateQuery.Director("Wojciech Has") -> None)

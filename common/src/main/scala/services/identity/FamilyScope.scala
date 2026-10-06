@@ -10,7 +10,7 @@ import scala.collection.mutable
  *  denials: what a cluster no TMDB film was taken for may fall back to. */
 private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring, acceptance: Acceptance,
                                           counted: () => Unit, related: () => Unit = () => (), fallback: Boolean = false) {
-  import scoring.{backing, calibration, evidenceDenial, houses, namesItsSeasonProduction, namesOnlyItsVenue, pins}
+  import scoring.{backing, calibration, evidenceDenial, houses, namesItsSeasonProduction, namesOnlyATag, namesOnlyItsVenue, pins}
   import scoring.generation.{candidateById, candidateOf, directed, fallbackOf, imdbOnly, imdbSuggested, imdbTitled, ownSearch, ownWalk, sharedOf, soleResults}
 
   val pool: Seq[Candidate] =
@@ -132,10 +132,12 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private def countryOf(node: EvidenceNode): Option[String] =
     models.City.forCinema(node.listings.head.cinema).map(_.country.language.getCountry).filter(_.nonEmpty)
 
-  /** Why `node` rules `id` out before its evidence is scored: a pin, or a title naming it only by the venue's own name. */
+  /** Why `node` rules `id` out before its evidence is scored: a pin, or a title naming it only by the venue's own name
+   *  or by a programme tag. */
   private def denialByNode(node: EvidenceNode, id: Int): Option[String] =
     Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
       .orElse(Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))
+      .orElse(Option.when(namesOnlyATag(node, candidateById(id)))("its title names it only by a programme tag billed beside many titles"))
 
   /** The cluster's members read as ONE listing: the title most of its listings carry (the
    *  smaller node on a tie), the year most of them publish (a title's bracket or season stays the lead title's own measure), every director and country, the
