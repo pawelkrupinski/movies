@@ -2729,6 +2729,19 @@ the five corpora's stages together, a restart over the stored verdicts): a cold 
 1.53 s / 570 MB without corrections (+2%), a warm one 150 MB against 138 MB; the heap held is the stored corrections
 alone. A first deploy's apply reads 200 takes a country afresh: 7.6 s CPU / 5.0 GB, against 3.8 GB for the stage's own
 first apply with no verdict stored.
+
+**Prod, 2026-10-06.** Teksańska masakra is corrected live (1974). "Ktoś całkiem obcy" was not: its correction waited
+for ever on Kino Kryterium's poster, which `bilety.ck105.koszalin.pl` times out from the worker's IP as it does its
+pages (17 poster tasks, `network`/`timeout`, ≥10 attempts each). Its posters now go through the venue's Zyte route
+(`ShareCardWiring.posterEgressRoutes`), as its scrapes do. A correction still waits on any poster question that never
+answers; a cap on that wait is not built.
+
+**Matched takes against the hand labels.** The ratchet replays only the clusters the model leaves unmatched, so a wrong
+film the model takes outright never reached it. `MatchedTakesLabelSpec` judges every take of the unified rows
+(`identity-unified/training.tsv.gz`, matched clusters included) by `labels.tsv`. A wrong take fails unless the spec lists
+it with the reason it still stands. The rows are recorded, so a resolver change is graded only once they are emitted
+again. A captured sample of matched clusters, replayed as the ratchet replays the unmatched ones, would grade the
+current code; it is not built.
 ### 20.12 Conjunctions of weak signals (2026-10-06)
 
 Signals that failed alone, combined so each one's failure mode is covered by another, measured on one bar: the ratchet

@@ -177,7 +177,7 @@ class CinemaScraperCatalog(
                               filmLabel:   Option[String] = None,
                               fetch:       HttpFetch      = http)
   private val msiVenues: Map[Cinema, MsiVenue] = Map(
-    KinoKryterium                -> MsiVenue("https://bilety.ck105.koszalin.pl", fetch = zyteFetch),
+    KinoKryterium                -> MsiVenue(CinemaScraperCatalog.KinoKryteriumUrl, fetch = zyteFetch),
     KinoMillenium                -> MsiVenue("https://bilety.csm.tarnow.pl", mvcPath = "/Kino/mvc/pl"),
     KinoKinomax                  -> MsiVenue("https://bilety.kinomax.info.pl"),
     KinoCentrumSkarzyskoKamienna -> MsiVenue("https://bilet-mck.skarzysko.pl"),
@@ -2476,4 +2476,10 @@ class CinemaScraperCatalog(
   val scrapeHosts: Set[String] = all.flatMap(_.scrapeHosts).toSet ++
     // A fallback feed is scraped for a venue too, but by no catalogue scraper.
     Option.when(kinoprogrammFallbackPaths.nonEmpty)(CinemaScraper.hostsOf(KinoprogrammClient.BaseUrl)).toSet.flatten
+}
+
+object CinemaScraperCatalog {
+  /** Kino Kryterium's MSI portal: it times out the worker's IP and every Decodo proxy IP, so its pages AND its posters
+   *  go through the Zyte route (`EgressWiring.zyteFetch`). */
+  val KinoKryteriumUrl = "https://bilety.ck105.koszalin.pl"
 }

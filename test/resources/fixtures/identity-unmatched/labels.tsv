@@ -132,7 +132,8 @@ de	*	Der kleine Maulwurf	tmdb:354209	wrong	hand label: Täältä tulee Myyrä (2
 de	*	Die Nibelungen - Teil 1: Siegfried	tmdb:5608	wrong	hand label: Die Nibelungen, Teil 1 - Siegfried (1966) Harald Reinl
 de	*	Die Sprengung	imdb:tt1816503	wrong	hand label: Der Lord von Finkenwärder (1964) Peter Hagen
 de	*	Die Story von Joanna	filmweb:631028	right	hand label: The Story of Joanna (1975) Gerard Damiano
-de	*	Die Unbeugsamen	filmweb:422551	right	hand label: Nepokoryonnye (1945) Mark Donskoy
+de	Acud Kino	Die Unbeugsamen	filmweb:422551	right	hand label: Nepokoryonnye (1945) Mark Donskoy; scoped 10-06 to the venues billing 1945/Donskoi: Free Cinema and Lichtenfels bill Körner's 2021 documentary
+de	Forum 2 - Kulturverein Olympiadorf e.V.	Die Unbeugsamen	filmweb:422551	right	hand label: Nepokoryonnye (1945) Mark Donskoy; scoped 10-06 to the venues billing 1945/Donskoi: Free Cinema and Lichtenfels bill Körner's 2021 documentary
 de	*	ENHYPEN World Tour 'Blood Saga'	imdb:tt46658854	right	hand label: ENHYPEN World Tour 'Blood Saga' (2026) Yunjeong Kim
 de	*	Fantasy	filmweb:10088643	right	hand label: Fantasy (2025) Kukla
 de	*	Fantasy	tmdb:1318829	right	hand label: Fantasy (2025) Kukla Kesherovic
@@ -414,7 +415,8 @@ us	*	Exhibition on Screen: John Singer Sargent	tmdb:1220518	right	hand label: Jo
 us	*	MetOpera: Medea (2022–23)	tmdb:1601989	wrong	hand label: Medea (2025) Mario Martone; Barbara Napolitano
 us	*	SEVENTEEN World Tour 'NEW_'	tmdb:1443823	wrong	hand label: SEVENTEEN WORLD TOUR [RIGHT HERE] IN CINEMAS (2025) Yoon Dong Oh
 uk	*	NT Live: A Midsummer Night's Dream	tmdb:467450	wrong	hand label: Timon of Athens 2012 (same director)
-de	*	Die Unbeugsamen	tmdb:317055	right	hand label: Nepokoryonnye 1945 Donskoy
+de	Acud Kino	Die Unbeugsamen	tmdb:317055	right	hand label: Nepokoryonnye 1945 Donskoy; scoped 10-06 to the venues billing 1945/Donskoi: Free Cinema and Lichtenfels bill Körner's 2021 documentary
+de	Forum 2 - Kulturverein Olympiadorf e.V.	Die Unbeugsamen	tmdb:317055	right	hand label: Nepokoryonnye 1945 Donskoy; scoped 10-06 to the venues billing 1945/Donskoi: Free Cinema and Lichtenfels bill Körner's 2021 documentary
 pl	*	AKW: Powoli	tmdb:18240	wrong	hand label: The Proposal
 de	*	Die Nibelungen - Teil 1: Siegfried	tmdb:31506	right	hand label: Lang 1924
 de	*	Macbeth	rt:macbeth_2005	right	hand label: Macbeth () Mark Brozel
@@ -442,9 +444,12 @@ de	*	Command Performance	wikidata:Q18914912	wrong	hand label: Command Performanc
 de	*	Das doppelte Lottchen	filmweb:411749	right	hand label: Mania czy Ania (2007) Toby Genkel
 de	*	Das doppelte Lottchen	imdb:tt0802982	right	hand label: Two Times Lotte (2007) Toby Genkel
 de	*	Die Nibelungen - Teil 1: Siegfried	wikidata:Q18051442	wrong	hand label: Die Nibelungen: Kriemhilds Rache (1924) Fritz Lang
-de	*	Die Unbeugsamen	imdb:tt0037941	right	hand label: The Taras Family (1945) Mark Donskoy
-de	*	Die Unbeugsamen	wikidata:Q4317333	right	hand label: Die Unbeugsamen (1945) Mark Donskoy
-de	*	Die Unbeugsamen	wikipedia:Q4317333	right	hand label: Die Unbeugsamen (1945) Mark Donskoy
+de	Acud Kino	Die Unbeugsamen	imdb:tt0037941	right	hand label: The Taras Family (1945) Mark Donskoy; scoped 10-06 to the venues billing 1945/Donskoi: Free Cinema and Lichtenfels bill Körner's 2021 documentary
+de	Forum 2 - Kulturverein Olympiadorf e.V.	Die Unbeugsamen	imdb:tt0037941	right	hand label: The Taras Family (1945) Mark Donskoy; scoped 10-06 to the venues billing 1945/Donskoi: Free Cinema and Lichtenfels bill Körner's 2021 documentary
+de	Acud Kino	Die Unbeugsamen	wikidata:Q4317333	right	hand label: Die Unbeugsamen (1945) Mark Donskoy; scoped 10-06 to the venues billing 1945/Donskoi: Free Cinema and Lichtenfels bill Körner's 2021 documentary
+de	Forum 2 - Kulturverein Olympiadorf e.V.	Die Unbeugsamen	wikidata:Q4317333	right	hand label: Die Unbeugsamen (1945) Mark Donskoy; scoped 10-06 to the venues billing 1945/Donskoi: Free Cinema and Lichtenfels bill Körner's 2021 documentary
+de	Acud Kino	Die Unbeugsamen	wikipedia:Q4317333	right	hand label: Die Unbeugsamen (1945) Mark Donskoy; scoped 10-06 to the venues billing 1945/Donskoi: Free Cinema and Lichtenfels bill Körner's 2021 documentary
+de	Forum 2 - Kulturverein Olympiadorf e.V.	Die Unbeugsamen	wikipedia:Q4317333	right	hand label: Die Unbeugsamen (1945) Mark Donskoy; scoped 10-06 to the venues billing 1945/Donskoi: Free Cinema and Lichtenfels bill Körner's 2021 documentary
 de	*	Ghost School	cinemeta:tt37547768	right	hand label: Ghost School (2025)
 de	*	James Bond vs. Spectre - Ein Blick hinter die Kulissen	filmweb:650970	wrong	hand label: St. Sebastian (2015) Danny DeVito
 de	*	Kleine Geheimnisse	letterboxd:some-secrets	right	hand label: Some Secrets (2002) Alice Nellis
@@ -807,3 +812,9 @@ pl	Janosik	edukacja MH: Johnny	tmdb:9486	wrong	review page: must not: Johnny Eng
 pl	*	League of Legends Worlds 26 | Finals in Cinema	tmdb:1552059	wrong	review page: wrong: League of Legends Worlds25 - Finals in Cinema (2025)
 pl	Kinoteka	55 rocznica premiery „Skrzypka na dachu”	tmdb:14811	right	review page: right: Skrzypek na dachu (1971)
 pl	*	The Taxidermist | Splat!FilmFest	imdb:tt40381362	right	hand label: The Taxidermist () Paulo Nascimento (kept: the current take must be judged; 13 Souls rows left out until the venue page settles them)
+de	Kino Free Cinema	Die Unbeugsamen	tmdb:679658	right	judged 10-06: the venue bills "Die Unbeugsamen" 2021, Torsten Körner — his documentary (TMDB 679658, IMDb tt11906472), not Donskoi's 1945 film
+de	Neue Filmbühne Lichtenfels	Die Unbeugsamen	tmdb:679658	right	judged 10-06: the venue bills "Die Unbeugsamen" 2021, Torsten Körner — his documentary (TMDB 679658, IMDb tt11906472), not Donskoi's 1945 film
+us	Oriental Theatre Milwaukee	NT Live: All My Sons	tmdb:568683	wrong	judged 10-06: Milwaukee Film's page (mkefilm.org/films/6a5a41a0fefb55f649a84678) bills NT Live: All My Sons 2026, Ivo van Hove, Bryan Cranston, Oct 10-11 12:00 at the Oriental; Flicks links the listing to its 2019 Old Vic page (Herrin, Sally Field), the feed's link wrong
+pl	*	Ktoś całkiem obcy	tmdb:1193128	right	judged 10-06: Kino Luna's synopsis (a Syrian doctor and her daughter flee Aleppo; a smuggler, a soldier, a poet) is I Was a Stranger (2025, Brandt Andersen); the venues' Filmweb programmes list 10048893, Kryterium's poster matches it
+pl	Kino Kryterium	DKF: Ktoś całkiem obcy	tmdb:1193128	right	judged 10-06: Kryterium's poster matches I Was a Stranger (2025, Brandt Andersen), the film Kino Seniora bills under this title
+pl	Kino JDK	Teksańska masakra piłą mechaniczną	tmdb:30497	right	judged 10-06: the venue poster is the 1974 Polish poster; IMDb, Wikidata and Filmweb take Hooper's 1974 film (prod corrects the take to it)

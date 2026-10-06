@@ -31,16 +31,21 @@ trait ShareCardWiring { self: WorkerWiring =>
 
   lazy val shareCardBudget: ShareCardStorageBudget = configuration.shareCardStorageBudget(ShareCardStorageBudget(1024L * 1024 * 1024))
 
-  /** Posters download directly, except a Cloudflare-blocked site's, which go through the egress
-   *  its scrapes use: Multikino 403s the worker's IP on every poster as on its pages. That route
-   *  is PAID (the proxy), so a poster that fails on it is remembered rather than
+  /** Posters download directly, except those of a site that blocks the worker's IP, which go through the
+   *  egress its scrapes use: Multikino 403s the worker's IP on every poster as on its pages (the proxy), Kino
+   *  Kryterium's portal times it out (Zyte). Those routes are PAID, so a poster that fails on one is remembered rather than
    *  asked for again by every render and every daily backfill. */
   private lazy val posterDownload: PosterDownload = PosterDownload.routed(new HttpPosterDownload(tls = tlsContext), posterEgressRoutes)
 
   /** The poster hosts that block the worker's IP, each by the egress its scrapes use — for every poster download. */
   lazy val posterEgressRoutes: Map[String, PosterDownload] = Map(
-    java.net.URI.create(services.cinemas.pl.MultikinoClient.HomeUrl).getHost ->
-      new RememberedFailurePosterDownload(new EgressPosterDownload(multikinoPosterFetch), shareCardStore.failedPosters, clock))
+    java.net.URI.create(services.cinemas.pl.MultikinoClient.HomeUrl).getHost -> remembered(multikinoPosterFetch),
+    // Kino Kryterium's posters time out the worker's IP as its pages do: direct, a poster question never answered
+    java.net.URI.create(services.cinemas.CinemaScraperCatalog.KinoKryteriumUrl).getHost -> remembered(zyteFetch))
+
+  /** A PAID poster route, a failure on it remembered rather than asked again by every render and backfill. */
+  private def remembered(egress: tools.HttpFetch): PosterDownload =
+    new RememberedFailurePosterDownload(new EgressPosterDownload(egress), shareCardStore.failedPosters, clock)
 
   /** Shrinks each poster to the card's slot — through the process's one gate, shared with every
    *  other country's renders. */

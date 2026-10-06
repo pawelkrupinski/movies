@@ -471,6 +471,24 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     direct.calls shouldBe 1
   }
 
+  // ck105 times out the worker's IP for its posters as for its pages: a poster fetched direct never
+  // answers, so the agreement's poster question for Kino Kryterium's take waited for ever and the
+  // model's wrong take ("Ktoś całkiem obcy" → the 2007 Perfect Stranger) was never read again.
+  "ck105's posters" should "go through the venue's Zyte route, as its scrapes do" in {
+    val direct = new CountingLeaf
+    val wiring = new ProxiedAndZyteKeyedWiring(direct)
+    val directPosters = new java.util.concurrent.atomic.AtomicInteger
+    val download = services.sharecards.PosterDownload.routed(
+      new services.sharecards.PosterDownload {
+        def fetch(url: String): Either[String, java.nio.file.Path] = { directPosters.incrementAndGet(); Left("direct") }
+      }, wiring.posterEgressRoutes)
+
+    download.fetch(s"${services.cinemas.CinemaScraperCatalog.KinoKryteriumUrl}/MSI/ImageData.ashx?id=2721&mode=thumb")
+
+    withClue("the poster is asked of Zyte first: ") { wiring.zyteHttpClient.sends.get shouldBe 1 }
+    withClue("never of the plain poster download: ") { directPosters.get shouldBe 0 }
+  }
+
   "a test wiring handed the residential-proxy credentials" should "build no proxy leg" in {
     new PaidKeyedWiring(new CountingLeaf, Seq("KINOWO_PROXY_USER" -> "user", "KINOWO_PROXY_PASS" -> "pass"))
       .proxyShardsBuilt shouldBe None
