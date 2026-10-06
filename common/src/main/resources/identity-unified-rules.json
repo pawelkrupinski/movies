@@ -16,7 +16,10 @@
     "pinned.families.current.wrong" : 0,
     "pinned.family.filmweb.took&!model.unscored.gainedListings" : 4,
     "pinned.family.filmweb.took&!model.unscored.gainedFilms" : 4,
-    "pinned.family.filmweb.took&!model.unscored.wrong" : 0
+    "pinned.family.filmweb.took&!model.unscored.wrong" : 0,
+    "pinned.family.facts.gainedListings" : 1,
+    "pinned.family.facts.gainedFilms" : 1,
+    "pinned.family.facts.wrong" : 0
   },
-  "pinned" : [ "families.current", "family.filmweb.took&!model.unscored" ]
+  "pinned" : [ "families.current", "family.filmweb.took&!model.unscored", "family.facts" ]
 }

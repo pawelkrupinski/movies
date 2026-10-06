@@ -2665,3 +2665,36 @@ the five corpora's stages together, a restart over the stored verdicts): a cold 
 1.53 s / 570 MB without corrections (+2%), a warm one 150 MB against 138 MB; the heap held is the stored corrections
 alone. A first deploy's apply reads 200 takes a country afresh: 7.6 s CPU / 5.0 GB, against 3.8 GB for the stage's own
 first apply with no verdict stored.
+### 20.12 Conjunctions of weak signals (2026-10-06)
+
+Signals that failed alone, combined so each one's failure mode is covered by another, measured on one bar: the ratchet
+(`UnmatchedClustersRatchetSpec`, 1,357 right / 0 wrong before), the resolver-only whole-corpus dump against main (the five
+recorded corpora, no live gaps) for a resolver change, films gained as distinct (country, labelled-right film) pairs.
+The screen is `scripts.IdentityConjunctionProbe` (`sbt "worker/Test/runMain scripts.IdentityConjunctionProbe <out.tsv>"`):
+every contender of every cluster the ratchet's replay leaves untaken, with its signals, poster distance, popularity,
+release, running time and labels; `--alloc <runs>` measures the replay's allocation.
+
+The ceiling first: 28 untaken clusters hold a labelled-right contender. A guard holds 22 of them (`title.namesNone` 11,
+`family.turnedDown` 7, `title.anothersOwn` 4, `stage.work` 4, `listing.contradicts` 3); 6 pass every guard.
+
+| combination | films gained | wrong | switched | verdict |
+|---|---|---|---|---|
+| a film-database family's take AND the venue's year and director (`family.facts`, a pinned fill) | +1 (PL "11. UFF - Dowżenko. Pierwsze spojrzenie") | 0 | 0 | **shipped** |
+| the same with `title.namesNone` lifted | +2 | 1 (PL "Akademia Polskiego Filmu: W kręgu kina społecznego" → Strachy 1938), 8 unjudged | – | no |
+| a family's take AND the model's lean | +1 | 1 (PL "FRANZ KAFKA" → the 1992 film; Holland's 2025 is labelled) | – | no |
+| a family's take AND the model's best candidate | +1 | 5 listings ("LALKA / DOLLY" → Lalka 2026, "Recepta na szczęście 2") | – | no |
+| two families AND the model's best | 0 | 1 (DE André Rieu → "Tage wie diese") | – | no |
+| a single family AND the nearest venue poster (≤ 8, ≤ 12 bits, nearest of the contenders ≤ 16) | 0 | 0 | – | nothing to gain: no right contender's poster is near |
+| families' takes less turn-downs and dissent ≥ 2 (a majority overriding `family.turnedDown`) | 0 | 2 (PL "Okładka „Tempo”", "Zamki na piasku") | – | no |
+| the one contender left when every rival trips a guard, AND a family's take / the title naming it | 0 | 2 / 4 | – | no |
+| two families' leans AND the venue's facts, or the model's lean | 0 | 0 | – | nothing to gain |
+| VETO a namesake that is a short (≤ 40′) AND less popular than a feature namesake beside it | 0 | 0 | 0, 1 right lost (PL Kino Goplana's "Sukienka", Łysiak's 2020 short) | no |
+| the same, popularity also < 1 | 0 | 0 | 0 (fires on 176 listings' candidates, moves no decision) | no gain |
+| the release veto's vetoed rivals also out of the calibrated score's `rivals` (not only the class) | 0 | 0 | 0 (12,361 confidences moved) | no gain |
+
+On the fixture's contenders the short-AND-obscure veto fires on 44 labelled-wrong films and no right one (a short alone
+vetoes 4 right films, low popularity alone 17, unreleased alone 39) — a sound veto, but the films it vetoes were losing
+already. Not measurable offline: the synopsis, Trakt and Filmweb-programme conjunctions (the fixture holds no synopsis,
+Trakt is not on main, and no programme is captured for an unmatched cluster), and "unreleased AND not released in the
+country", which can only veto fewer namesakes than the shipped release veto. `family.facts` costs nothing measurable: the
+replay of every capture allocates 3,109–3,124 MB against main's 3,112 MB, the heap after it 344–358 MB against 344 MB.

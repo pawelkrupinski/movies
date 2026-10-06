@@ -50,8 +50,12 @@ object UnifiedEvidence {
    *  fitted feature — the rows `scripts.IdentityUnifiedFit` reads hold [[Names]] alone.
    *  `families.current`: two families take the film, one of them a film database's, released this year or last — the
    *  families' counterpart of `venues.current` (PL "TAJNY AGENT": IMDb and Filmweb take Mendonça Filho's 2025 film,
-   *  Wikidata the 1936 namesake). */
-  val PinnedSignals: Seq[String] = Seq("families.current")
+   *  Wikidata the 1936 namesake).
+   *  `family.facts`: a film database's family takes the film AND the venue's own year and director credit it
+   *  (`listing.facts`) — two independent sources naming one film, where either alone is a weak signal: a single family's
+   *  take as a fill adds wrong films (§20.6), and a venue's facts alone name no film (PL "11. UFF - Dowżenko. Pierwsze
+   *  spojrzenie": Wikidata takes Konovalov's 2026 film, the festival dates and credits it; docs/design/identity-resolver.md §20.12). */
+  val PinnedSignals: Seq[String] = Seq("families.current", "family.facts")
 
   /** The NON-COMPENSATORY guards: a contender one of these fires on is no film to take, whatever else speaks for it — the
    *  agreement stage's vetoes (several works billed, a stage work, another film's own title, the
@@ -197,15 +201,16 @@ object UnifiedEvidence {
       val takers  = VoterFamily.values.count(took).toDouble
       val leaning = VoterFamily.values.count(leans).toDouble
       def and(on: Boolean) = if (on) takers else 0.0
-      // [[PinnedSignals]]' families.current
-      val familiesCurrent = takers >= 2 && VoterFamily.values.exists(f => f.namesFilms && took(f)) &&
-        records.flatMap(_.film.year).maxOption.exists(_ >= c.thisYear - 1)
+      // [[PinnedSignals]]' families.current and family.facts
+      val databaseTook    = VoterFamily.values.exists(f => f.namesFilms && took(f))
+      val familiesCurrent = takers >= 2 && databaseTook && records.flatMap(_.film.year).maxOption.exists(_ >= c.thisYear - 1)
+      val familyFacts     = databaseTook && votes(Agreement.ListingFacts)
       val counts = Seq("count.takers" -> takers, "count.leaning" -> leaning, "count.takersLessDissent" -> math.max(0.0, takers - dissent),
         "count.takers2" -> (if (takers >= 2) 1.0 else 0.0), "count.takers3" -> (if (takers >= 3) 1.0 else 0.0),
         "and.takersNoDissent" -> and(dissent == 0), "and.factsTakers" -> and(votes(Agreement.ListingFacts)),
         "and.posterTakers" -> and(nearest.exists(_ <= PosterEvidence.VoteBits)),
         "and.leanTakers" -> and(contender.tmdb.exists(id => c.decision.leaning.exists(_.film == id))),
-        "families.current" -> (if (familiesCurrent) 1.0 else 0.0)).filter(_._2 != 0.0)
+        "families.current" -> (if (familiesCurrent) 1.0 else 0.0), "family.facts" -> (if (familyFacts) 1.0 else 0.0)).filter(_._2 != 0.0)
       val signals = counts.toMap ++ flags.collect { case (name, true) => name -> 1.0 }.toMap ++
         open.map(_.probability).maxOption.map(p => "model.logit" -> logit(p)).filter(_._2 != 0.0) ++
         Seq("family.turnedDown" -> turnedDown.toDouble, "family.dissent" -> dissent.toDouble).filter(_._2 != 0.0)

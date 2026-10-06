@@ -81,6 +81,32 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     decided(2025, shipped.copy(pinned = Nil)).basis shouldBe ResolverDecision.Basis.BelowThreshold
   }
 
+  it should "take, by the pinned family.facts rule, the one film a film database takes that the venue's own year and director credit" in {
+    // PL "11. UFF - Dowżenko. Pierwsze spojrzenie" (fixture identity-unmatched): Wikidata alone takes Konovalov's 2026
+    // film; the festival's listing dates and credits it — two independent sources naming one film
+    val film  = IdentityMeasures.Film("Dowżenko. Pierwsze spojrzenie", None, Nil, Some(2026), Some(80), Some(Seq("Konstantin Konovalov")), None, None)
+    val families = Map(
+      VoterFamily.Wiki -> new HeldFamilyAnswers(VoterFamily.Wiki, Map("Q1" -> SourceRecord(film, Map("tmdb" -> "1483101")))),
+      VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty))
+    def decided(one: services.identity.Listing, rules: services.identity.UnifiedRules) = {
+      val model = Resolution(Seq(ResolverDecision(Seq(one.key), None, 0.14, ResolverDecision.Basis.BelowThreshold, Nil)()), 1, Map(one.key -> 0),
+        Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+      new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+        new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(NoVenueDetails), rules = rules)
+        .apply(model, Map(one.key -> one).get, version = 1).decisions.head
+    }
+    val credited = listing(KinoMuza, "Dowżenko. Pierwsze spojrzenie", year = Some(2026), director = Some("Konstantin Konovalov"))
+    val shipped  = services.identity.UnifiedRules.resolver
+    val taken    = decided(credited, shipped)
+    (taken.basis, taken.film) shouldBe ((ResolverDecision.Basis.Filled, Some(1483101)))
+    taken.explanation.last should startWith ("filled by family.facts: 'Dowżenko. Pierwsze spojrzenie (2026)'")
+    // a family's take alone, the venue crediting nobody or another person, takes nothing; nor does the rule unpinned
+    decided(listing(KinoMuza, "Dowżenko. Pierwsze spojrzenie", year = Some(2026)), shipped).basis shouldBe ResolverDecision.Basis.BelowThreshold
+    decided(listing(KinoMuza, "Dowżenko. Pierwsze spojrzenie", year = Some(2026), director = Some("Oleksandr Dovzhenko")), shipped).basis shouldBe
+      ResolverDecision.Basis.BelowThreshold
+    decided(credited, shipped.copy(pinned = shipped.pinned.filterNot(_ == "family.facts"))).basis shouldBe ResolverDecision.Basis.BelowThreshold
+  }
+
   "an unmatched cluster its families agree on" should "take the TMDB film the agreed IMDb id finds, and name the families" in {
     val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = imdb => Answer.Known(Option.when(imdb == "tt16315948")(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
