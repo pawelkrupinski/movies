@@ -1174,6 +1174,7 @@ object IdentityMeasures {
       def against(runtime: Int): Unit = if (runtime > 0) { off = math.min(off, math.abs(stated - runtime)); longest = math.max(longest, runtime) }
       f.runtime.foreach(against)
       if (f.alternativeRuntimes.nonEmpty) f.alternativeRuntimes.foreach(against)
+      FilmCuts.of(f.imdbNumber).foreach(cut => against(cut.runtime))  // a billed cut runs as the film ([[FilmCuts]])
       if (longest == 0) MissingFilm
       else if (stated > longest && billsAnEdition(l, f, country)) MissingListing
       else Number(off.toDouble)

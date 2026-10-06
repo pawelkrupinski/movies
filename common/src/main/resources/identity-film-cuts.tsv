@@ -1,0 +1,14 @@
+# The cuts of a film cinemas bill at their own running time — read by services.identity.FilmCuts. Hand-kept.
+# TMDB keeps ONE record per film at its theatrical runtime and names no cut's runtime; a listing billing a cut row
+# below at its minutes runs as the film. Columns, tab-separated:
+#   tmdbId	imdbId	cut label	minutes	source URL (where the cut's runtime is stated)
+# Add a row only for a cut a source states; one row per cut, not per release or disc. The film's theatrical
+# runtime is TMDB's and needs no row. Sources: IMDb's technical runtimes (labelled per edition) and Wikidata's
+# duration (P2047, qualified by "applies to part" P518).
+120	tt0120737	Extended Edition	228	https://www.imdb.com/title/tt0120737/technical/
+121	tt0167261	Extended Edition	235	https://www.imdb.com/title/tt0167261/technical/
+122	tt0167260	Extended Edition	263	https://www.imdb.com/title/tt0167260/technical/
+28	tt0078788	Final Cut	183	https://www.wikidata.org/wiki/Q182692#P2047
+28	tt0078788	Redux	202	https://www.wikidata.org/wiki/Q182692#P2047
+78	tt0083658	Director's Cut	116	https://en.wikipedia.org/wiki/Versions_of_Blade_Runner
+78	tt0083658	Final Cut	117	https://en.wikipedia.org/wiki/Versions_of_Blade_Runner

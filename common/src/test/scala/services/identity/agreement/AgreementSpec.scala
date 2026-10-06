@@ -296,6 +296,17 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(widely, dated(2026), thisYear = Some(2026)) shouldBe None
   }
 
+  "A listing billing a cut of the film" should "run as the record, at the cut's running time" in {
+    // TMDB and IMDb date "Apocalypse Now" at its 147 theatrical minutes; venues bill the Final Cut (183) and Redux (202)
+    val apocalypse = SourceRecord(IdentityMeasures.Film("Apocalypse Now", None, Nil, Some(1979), Some(147), Some(Seq("Francis Ford Coppola")),
+      None, None, imdbNumber = 78788), Map("imdb" -> "tt0078788"))
+    val imdb = Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Imdb, "tt0078788", apocalypse)))
+    def billed(runtime: Int) = Seq(listing(KinoMuza, "Apocalypse Now", Some(1979), Some("Francis Ford Coppola"), Some(runtime)))
+    Agreement.agreed(billed(183), imdb).map(_.corroborated) shouldBe Some(Set(Agreement.ListingFacts, Agreement.ListingRuntime))
+    Agreement.agreed(billed(202), imdb).map(_.corroborated) shouldBe Some(Set(Agreement.ListingFacts, Agreement.ListingRuntime))
+    Agreement.agreed(billed(170), imdb) shouldBe None
+  }
+
   "The listing's own year and running time" should "credit one taker's record that names no director, as the venue's two votes" in {
     // PL "Reporterzy wolności - film i spotkanie z twórcami" (fixture identity-unmatched): Filmweb alone takes its 2025
     // record of 49 minutes, crediting nobody; the venue's page states 2025 and 49 minutes

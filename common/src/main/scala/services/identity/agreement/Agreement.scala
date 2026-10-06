@@ -339,11 +339,17 @@ object Agreement {
     if (own.nonEmpty || fed.isEmpty) own else if (listingVotes(fed, records).nonEmpty) Set(FeedFacts) else Set.empty
   }
 
-  /** Does every listing stating a running time run within [[RuntimeSlack]] minutes of a record's — any of the runtimes it
-   *  states, one per translation fetched ([[IdentityMeasures.Film.runtimes]]) — and one state it? */
+  /** Every running time a record states — one per translation fetched ([[IdentityMeasures.Film.runtimes]]) — and its billed
+   *  cuts' ([[FilmCuts]]): the film's IMDb number is its own, else its IMDb cross-id. */
+  private def recordRuntimes(record: SourceRecord): Seq[Int] =
+    record.film.runtimes.toSeq ++ services.identity.FilmCuts.of(
+      if (record.film.imdbNumber != 0) record.film.imdbNumber else record.crossIds.get("imdb").fold(0)(IdentityMeasures.imdbNumber)).map(_.runtime)
+
+  /** Does every listing stating a running time run within [[RuntimeSlack]] minutes of one of a record's ([[recordRuntimes]])
+   *  — and one state it? */
   private def runsAsTheListing(listings: Seq[Listing], records: Seq[SourceRecord]): Boolean = {
     val timed = listings.filter(_.runtime.isDefined)
-    timed.nonEmpty && timed.forall(listing => records.exists(_.film.runtimes.exists(a => listing.runtime.exists(b => math.abs(a - b) <= RuntimeSlack))))
+    timed.nonEmpty && timed.forall(listing => records.exists(record => recordRuntimes(record).exists(a => listing.runtime.exists(b => math.abs(a - b) <= RuntimeSlack))))
   }
 
   /** Does a listing's own year (more than one apart) or director (another person in the same script, sharing no name's
