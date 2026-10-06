@@ -13,7 +13,7 @@ class OfflineWorkerWiring(c: Country) extends WorkerWiring(c, new SameThreadExec
     def get(url: String): String = throw new java.io.IOException(s"no network in this spec: $url")
     def post(url: String, body: String, contentType: String): String = get(url)
   }
-  override protected lazy val filmwebFallbackIds: Map[Cinema, Int] = Map.empty
+  override lazy val filmwebFallbackIds: Map[Cinema, Int] = Map.empty
 
   /** Build EVERY member the wiring declares — not a hand-kept list of the ones someone
    *  thought of, which a component added tomorrow would not be on — and name any that could

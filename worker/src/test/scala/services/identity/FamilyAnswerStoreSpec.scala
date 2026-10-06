@@ -2,7 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.agreement.{SourceHit, SourceRecord, VoterFamily}
+import services.identity.agreement.{Showing, SourceHit, SourceRecord, VoterFamily}
 import tools.MutableClock
 
 import java.time.Instant
@@ -41,5 +41,22 @@ class FamilyAnswerStoreSpec extends AnyFlatSpec with Matchers {
     store.answers(VoterFamily.Filmweb).titled("Klondike") shouldBe Answer.Known(Nil)
     store.wanted(FamilyAnswerStore.recordId(VoterFamily.Filmweb, "880000")) shouldBe false
     store.wanted(FamilyAnswerStore.titleId(VoterFamily.Filmweb, "never asked")) shouldBe true
+  }
+
+  "a venue's programme" should "be a gap until filed, then read back as filed, and be asked again the next day" in {
+    val (store, clock) = world()
+    val filmweb = store.answers(VoterFamily.Filmweb)
+    filmweb.showing("Kozienicki Dom Kultury") shouldBe Answer.Unknown
+    val programme = Seq(Showing("10085635", ScreeningDays.of(Seq(java.time.LocalDate.parse("2026-10-07")))),
+      Showing("10057628", ScreeningDays.of(Seq("2026-10-05", "2026-10-07").map(java.time.LocalDate.parse))))
+    store.fileShowing(VoterFamily.Filmweb, "Kozienicki Dom Kultury", programme)
+    store.fileShowing(VoterFamily.Filmweb, "Kino Nowe", Nil)
+    filmweb.showing("Kozienicki Dom Kultury") shouldBe Answer.Known(programme)
+    filmweb.showing("Kino Nowe") shouldBe Answer.Known(Nil)
+    val id = FamilyAnswerStore.showingId(VoterFamily.Filmweb, "Kozienicki Dom Kultury")
+    store.wanted(id) shouldBe false
+    clock.advanceMillis((FamilyAnswerStore.ShowingAge + 1.minute).toMillis)
+    store.wanted(id) shouldBe true
+    filmweb.showing("Kozienicki Dom Kultury") shouldBe Answer.Known(programme)
   }
 }

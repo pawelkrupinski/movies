@@ -44,7 +44,7 @@ object AgreementQuestions {
     records.toSeq.sorted.foreach(tmdbId =>
       metrics.enqueued(AgreementQuestionMetrics.TmdbRecord, queue.enqueue(TaskType.AgreementFind, s"agreement-record|$tmdbId",
         Map(TmdbRecord -> tmdbId.toString), submittedAt = clock.instant(), claimAhead = -Behind) == EnqueueResult.Added))
-    posters.toSeq.map(question => question -> PosterAnswerStore.idOf(question)).sortBy(_._2).foreach { case (question, id) =>
+    posters.toSeq.map(question => question -> PosterAnswers.idOf(question)).sortBy(_._2).foreach { case (question, id) =>
       val payload = question match {
         case PosterQuestion.Venue(url)   => Map(VenuePoster -> url)
         case PosterQuestion.Film(tmdbId) => Map(FilmPoster -> tmdbId.toString)
@@ -59,7 +59,8 @@ object AgreementQuestions {
    *  a page that is not there — filed as such. */
   val NothingThere: Set[Int] = Set(400, 404, 410)
 
-  /** `family`'s answer to `question` (`title|<text>`, `director|<name>`, `record|<id>`), asked of `source` and filed. */
+  /** `family`'s answer to `question` (`title|<text>`, `director|<name>`, `record|<id>`, `showing|<venue>`), asked of
+   *  `source` and filed. */
   def file(store: FamilyAnswerStore, family: VoterFamily, source: FamilySource, question: String): Unit = { fileAs(store, family, source, question); () }
 
   /** [[file]], saying whether the family answered or said there was nothing there. */
@@ -71,6 +72,7 @@ object AgreementQuestions {
       case Array("title", text)    => store.fileTitled(family, text, answer(source.titled(text), Nil))
       case Array("director", name) => store.fileDirected(family, name, answer(source.directedBy(name), Nil))
       case Array("record", id)     => store.fileRecord(family, id, answer(source.record(id), None))
+      case Array("showing", venue) => store.fileShowing(family, venue, answer(source.showing(venue), Nil))
       case _                       => throw new IllegalArgumentException(s"no such question: $question")
     }
     outcome

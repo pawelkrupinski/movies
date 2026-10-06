@@ -2,7 +2,7 @@ package services.identity
 
 import org.bson.{BsonDocument, BsonInt32, BsonInt64, BsonString}
 import org.mongodb.scala.bson.BsonArray
-import services.identity.agreement.{FamilyAnswers, SourceHit, SourceRecord, VoterFamily}
+import services.identity.agreement.{FamilyAnswers, Showing, SourceHit, SourceRecord, VoterFamily}
 
 import java.time.Clock
 import scala.concurrent.duration._
@@ -14,7 +14,8 @@ import scala.jdk.CollectionConverters._
  * the agreement fill asks, never "no film". Kept long: a search's films are asked again only after [[SearchAge]], a
  * record after [[RecordAge]] (a released film's year, credits and running time do not move), and the stale answer is
  * read meanwhile. One document per question, under `<family>|title|<text>`, `<family>|director|<name>` and
- * `<family>|record|<id>`.
+ * `<family>|record|<id>`; and a venue's programme on the family's site under `<family>|showing|<venue>`, asked again
+ * after [[ShowingAge]] — a programme moves daily.
  */
 final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock) extends services.identity.agreement.AnswerChanges {
   import FamilyAnswerStore._
@@ -42,17 +43,20 @@ final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock) extends service
     def directedBy(name: String): Answer[Seq[SourceHit]] = hits(directorId(family, name))
     def record(id: String): Answer[Option[SourceRecord]] =
       document(recordId(family, id)).fold[Answer[Option[SourceRecord]]](Answer.Unknown)(d => Answer.Known(recordOf(d)))
+    override def showing(venue: String): Answer[Seq[Showing]] =
+      document(showingId(family, venue)).fold[Answer[Seq[Showing]]](Answer.Unknown)(d => Answer.Known(showingsOf(d)))
     override def fresh(question: String): Boolean = !wanted(questionId(family, question))
   }
 
   def fileTitled(family: VoterFamily, text: String, found: Seq[SourceHit]): Unit     = put(titleId(family, text), hitsDoc(found))
   def fileDirected(family: VoterFamily, name: String, found: Seq[SourceHit]): Unit   = put(directorId(family, name), hitsDoc(found))
   def fileRecord(family: VoterFamily, id: String, found: Option[SourceRecord]): Unit = put(recordId(family, id), recordDoc(found))
+  def fileShowing(family: VoterFamily, venue: String, found: Seq[Showing]): Unit     = put(showingId(family, venue), showingsDoc(found))
 
-  /** Is the question's answer missing, or older than its kind keeps it ([[SearchAge]], [[RecordAge]])? */
+  /** Is the question's answer missing, or older than its kind keeps it ([[SearchAge]], [[RecordAge]], [[ShowingAge]])? */
   def wanted(id: String): Boolean = document(id).forall { d =>
     val age = Option(d.get(TmdbStore.FetchedAt)).filter(_.isInt64).map(at => clock.millis() - at.asInt64.getValue)
-    age.forall(_ > (if (id.contains("|record|")) RecordAge else SearchAge).toMillis)
+    age.forall(_ > (if (id.contains("|record|")) RecordAge else if (id.contains("|showing|")) ShowingAge else SearchAge).toMillis)
   }
 
   private def hits(id: String): Answer[Seq[SourceHit]] =
@@ -76,12 +80,15 @@ object FamilyAnswerStore {
   val SearchAge: FiniteDuration = 90.days
   /** How long a film's record is read before the fill asks again: a released film's facts do not move. */
   val RecordAge: FiniteDuration = 365.days
+  /** How long a venue's programme is read before the fill asks again: a day's, as the programme moves. */
+  val ShowingAge: FiniteDuration = 20.hours
   /** How many filings [[FamilyAnswerStore.changedSince]] can name: a burst past it re-reads the verdicts' answers. */
   val ChangesKept = 100000
 
   def titleId(family: VoterFamily, text: String): String    = s"${family.label}|title|$text"
   def directorId(family: VoterFamily, name: String): String = s"${family.label}|director|$name"
   def recordId(family: VoterFamily, id: String): String     = s"${family.label}|record|$id"
+  def showingId(family: VoterFamily, venue: String): String = s"${family.label}|showing|$venue"
   /** The document id of `question` as the agreement names it (`title|<text>`, `director|<name>`, `record|<id>`). */
   def questionId(family: VoterFamily, question: String): String = s"${family.label}|$question"
 
@@ -96,6 +103,15 @@ object FamilyAnswerStore {
     Option(d.get("hits")).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asDocument)).map { h =>
       SourceHit(h.getString("id").getValue, h.getString("title").getValue, Option(h.get("originalTitle")).map(_.asString.getValue),
         Option(h.get("year")).map(_.asInt32.getValue))
+    }
+
+  /** A programme as two parallel arrays — each film's id, and its days as epoch days — the fields the join reads. */
+  private def showingsDoc(found: Seq[Showing]): BsonDocument =
+    new BsonDocument("films", BsonArray.fromIterable(found.map(showing => BsonString(showing.film))))
+      .append("days", BsonArray.fromIterable(found.map(showing => BsonArray.fromIterable(showing.days.days.map(day => BsonInt32(day.toEpochDay.toInt))))))
+  private def showingsOf(d: BsonDocument): Seq[Showing] =
+    Option(d.get("films")).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala).zip(d.getArray("days").getValues.asScala).map { case (film, days) =>
+      Showing(film.asString.getValue, ScreeningDays.of(days.asArray.getValues.asScala.map(day => java.time.LocalDate.ofEpochDay(day.asInt32.getValue.toLong))))
     }
 
   private def recordDoc(found: Option[SourceRecord]): BsonDocument = found.fold(new BsonDocument("record", org.bson.BsonNull()))(r =>

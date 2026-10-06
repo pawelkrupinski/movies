@@ -81,6 +81,12 @@ object PosterAnswers {
     def venue(url: String): Answer[Option[PosterHash]] = Answer.Known(None)
     def film(tmdbId: Int): Answer[Seq[PosterHash]]     = Answer.Known(Nil)
   }
+
+  /** The id a poster's hashes are filed under among the families' answers: `poster|venue|<url>`, `poster|film|<tmdbId>`. */
+  def idOf(question: agreement.AgreementStage.PosterQuestion): String = question match {
+    case agreement.AgreementStage.PosterQuestion.Venue(url)   => s"poster|venue|$url"
+    case agreement.AgreementStage.PosterQuestion.Film(tmdbId) => s"poster|film|$tmdbId"
+  }
 }
 
 /**

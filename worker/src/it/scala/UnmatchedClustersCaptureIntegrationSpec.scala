@@ -62,7 +62,8 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
       val families  = UnmatchedClusters.familiesOf(c.country)
       val sources: Map[VoterFamily, FamilySource] = Seq(new ImdbFamily(new services.enrichment.ImdbClient(cache)),
         new WikiFamily(new services.enrichment.WikidataClient(cache), c.country.language.getLanguage),
-        new FilmwebFamily(new services.enrichment.FilmwebClient(cache)), new RottenTomatoesFamily(new services.enrichment.RottenTomatoesClient(cache)),
+        new FilmwebFamily(new services.enrichment.FilmwebClient(cache), services.cinemas.pl.FilmwebProgrammes.resolving(cache, () => new models.VenueClock(java.time.Clock.systemUTC()).todayInPoland).of),
+        new RottenTomatoesFamily(new services.enrichment.RottenTomatoesClient(cache)),
         new MetacriticFamily(new services.enrichment.MetacriticClient(cache))).filter(s => families.contains(s.family)).map(s => s.family -> s).toMap
       val tmdb  = new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language, retrySleep = (_: Long) => ())
       val finds = new java.util.concurrent.ConcurrentHashMap[String, Option[Int]]()
@@ -76,7 +77,8 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
       // the records of the films the model leaned to and weighed best: what a take names, and what pooled facts read
       (decisions.flatMap(_.leaning.map(_.film)) ++ decisions.flatMap(_.trace.nodes.values.flatMap(_.candidate))).distinct.foreach(recording.film)
       var outcome = UnmatchedClusters.agree(decisions, subset, recording, answers, store.version, tmdbOf, c.normalizer, posterStore,
-        modules.wiring.IdentityCutoverWiring.identities(c.country.code), catalogue.answers)
+        modules.wiring.IdentityCutoverWiring.identities(c.country.code), catalogue.answers,
+          modules.wiring.IdentityCutoverWiring.listedOn(c.country.code))
       var rounds  = 0
       while ((outcome.stage.wanted.nonEmpty || outcome.stage.wantedPosters.nonEmpty || outcome.stage.wantedCatalogue.nonEmpty) && rounds < 12) {
         rounds += 1
@@ -92,7 +94,8 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
           }
         }.foreach(_.join())
         outcome = UnmatchedClusters.agree(decisions, subset, recording, answers, store.version, tmdbOf, c.normalizer, posterStore,
-        modules.wiring.IdentityCutoverWiring.identities(c.country.code), catalogue.answers)
+        modules.wiring.IdentityCutoverWiring.identities(c.country.code), catalogue.answers,
+          modules.wiring.IdentityCutoverWiring.listedOn(c.country.code))
       }
       val filed = docs.get(TmdbKind.Family, docs.fetchedBefore(TmdbKind.Family, Long.MaxValue).map(_._1))
       val capture = UnmatchedClusters.Capture(c.country, subset, decisions, recording.queries.asScala.toMap, recording.films.asScala.toMap,

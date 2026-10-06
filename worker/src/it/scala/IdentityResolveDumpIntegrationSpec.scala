@@ -87,17 +87,20 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
   }
 
   /** The agreement stage over the resolution's no-matches, the families answered from the experiment's cache, else live —
-   *  asked until nothing is open — and every cluster it takes written to `agreed-<cc>.jsonl`. */
+   *  asked until nothing is open — and every cluster it takes (agreed, by a poster, a broadcast day or a fill rule) written
+   *  to `agreed-<cc>.jsonl`. */
   private def agreed(c: Corpus, w: ArchiveReplayWiring, lookups: IdentityLookups, listings: Seq[Listing], resolution: Resolution,
                      cache: settings.IdentityAgreementCache, dir: java.nio.file.Path): Unit = {
     import services.identity.agreement.{AgreementStage, VoterFamily}
     val fetch    = new ExperimentCacheFetch(cache.value)
-    val store    = new FamilyAnswerStore(new InMemoryTmdbDocuments, new tools.MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))
+    val answered = new InMemoryTmdbDocuments
+    val store    = new FamilyAnswerStore(answered, new tools.MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))
     val families = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Metacritic, VoterFamily.RottenTomatoes) ++
       Option.when(Set("pl", "de", "es")(c.country.code))(VoterFamily.Filmweb)
     val sources: Map[VoterFamily, FamilySource] = Seq(new ImdbFamily(new services.enrichment.ImdbClient(fetch)),
       new WikiFamily(new services.enrichment.WikidataClient(fetch), c.country.language.getLanguage),
-      new FilmwebFamily(new services.enrichment.FilmwebClient(fetch)), new RottenTomatoesFamily(new services.enrichment.RottenTomatoesClient(fetch)),
+      new FilmwebFamily(new services.enrichment.FilmwebClient(fetch), services.cinemas.pl.FilmwebProgrammes.resolving(fetch, () => new models.VenueClock(java.time.Clock.systemUTC()).todayInPoland).of),
+      new RottenTomatoesFamily(new services.enrichment.RottenTomatoesClient(fetch)),
       new MetacriticFamily(new services.enrichment.MetacriticClient(fetch))).filter(source => families.contains(source.family)).map(s => s.family -> s).toMap
     val tmdb  = new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language, retrySleep = (_: Long) => ())
     // the venue and TMDB posters' hashes, of the images KINOWO_IDENTITY_POSTER_CACHE keeps, else downloaded
@@ -107,7 +110,8 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
     val stage = new AgreementStage(families.map(family => family -> store.answers(family)).toMap, lookups, c.normalizer,
       IdentityCalibration.resolver, tmdbOf = imdb => Answer.Known(Try(tmdb.findByImdbId(imdb).map(_.id)).toOption.flatten),
       stored = new services.identity.agreement.InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = posterStore, tmdb = Some(lookups),
-      identities = modules.wiring.IdentityCutoverWiring.identities(c.country.code), catalogue = catalogue.answers)
+      identities = modules.wiring.IdentityCutoverWiring.identities(c.country.code), catalogue = catalogue.answers,
+      listedOn = modules.wiring.IdentityCutoverWiring.listedOn(c.country.code), correctionPostersAtOnce = Int.MaxValue)
     val byKey = listings.map(l => l.key -> l).toMap
     var rounds = 0
     var taken  = stage.apply(resolution, byKey.get, store.version)
@@ -126,8 +130,13 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
       }.foreach(_.join())
       taken = stage.apply(resolution, byKey.get, store.version)
     }
-    val lines = taken.decisions.filter(d => d.basis == ResolverDecision.Basis.Agreed || d.basis == ResolverDecision.Basis.Poster ||
-      d.basis == ResolverDecision.Basis.Catalogue).flatMap { d =>
+    // every answer the stage read, in the family seed's format: what `integration.ModelTakeCorrectionCost` measures over
+    Files.writeString(dir.resolve(s"answers-${c.country.code}.jsonl"), answered.get(TmdbKind.Family, answered.fetchedBefore(TmdbKind.Family, Long.MaxValue)
+      .map(_._1)).toSeq.sortBy(_._1).map { case (id, d) =>
+      val copy = d.clone(); copy.put("_id", new org.bson.BsonString(id)); copy.toJson }.mkString("", "\n", "\n"))
+    val taking = Set(ResolverDecision.Basis.Agreed, ResolverDecision.Basis.Poster, ResolverDecision.Basis.Broadcast, ResolverDecision.Basis.Filled,
+      ResolverDecision.Basis.Catalogue, ResolverDecision.Basis.Withdrawn, ResolverDecision.Basis.Corrected)
+    val lines = taken.decisions.filter(d => taking(d.basis)).flatMap { d =>
       d.members.flatMap(byKey.get).map(l => Json.stringify(JsObject(Seq(
         "venue" -> JsString(l.key.venue), "rawTitle" -> JsString(l.key.rawTitle), "basis" -> JsString(d.basis.toString),
         "film" -> d.film.fold[play.api.libs.json.JsValue](JsNull)(JsNumber(_)),
@@ -137,7 +146,11 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
     Files.writeString(dir.resolve(s"agreed-${c.country.code}.jsonl"), lines.mkString("", "\n", "\n"))
     println(s"[${c.label}] agreement: ${taken.decisions.count(_.basis == ResolverDecision.Basis.Agreed)} cluster(s) agreed, " +
       s"${taken.decisions.count(_.basis == ResolverDecision.Basis.Poster)} taken by their poster, " +
-      s"${taken.decisions.count(_.basis == ResolverDecision.Basis.Catalogue)} by their catalogue ids after $rounds round(s); " +
+      s"${taken.decisions.count(_.basis == ResolverDecision.Basis.Broadcast)} by their broadcast day, " +
+      s"${taken.decisions.count(_.basis == ResolverDecision.Basis.Filled)} by a fill rule, " +
+      s"${taken.decisions.count(_.basis == ResolverDecision.Basis.Catalogue)} by their catalogue ids; " +
+      s"${taken.decisions.count(_.basis == ResolverDecision.Basis.Withdrawn)} model take(s) withdrawn, " +
+      s"${taken.decisions.count(_.basis == ResolverDecision.Basis.Corrected)} corrected after $rounds round(s); " +
       s"${stage.wanted.size} question(s), ${stage.wantedPosters.size} poster(s) still open")
     // every listing's film after the stage — what a change compares against its base: a film switched, gained or lost
     Files.writeString(dir.resolve(s"final-${c.country.code}.jsonl"), taken.decisions.flatMap { d =>

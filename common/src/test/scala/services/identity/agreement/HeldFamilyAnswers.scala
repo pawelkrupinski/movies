@@ -1,10 +1,11 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityLookups, IdentityMeasures, Listing}
+import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityLookups, IdentityMeasures, Listing, PosterAnswers, PosterHash}
 
 /** A family answering from what it holds: every title search (by any of a record's titles) and record known, no person
- *  search — or, `unanswered`, nothing known yet. */
-final class HeldFamilyAnswers(val family: VoterFamily, records: Map[String, SourceRecord], unanswered: Boolean = false, stale: Boolean = false)
+ *  search, and the venues' `programmes` (a venue it holds none of not answered yet) — or, `unanswered`, nothing known yet. */
+final class HeldFamilyAnswers(val family: VoterFamily, records: Map[String, SourceRecord], unanswered: Boolean = false, stale: Boolean = false,
+                              programmes: Map[String, Seq[Showing]] = Map.empty)
     extends FamilyAnswers {
   override def fresh(question: String): Boolean = !stale && !unanswered
   def titled(text: String): Answer[Seq[SourceHit]] =
@@ -13,6 +14,14 @@ final class HeldFamilyAnswers(val family: VoterFamily, records: Map[String, Sour
       SourceHit(id, record.film.title, record.film.originalTitle, record.film.year) })
   def directedBy(name: String): Answer[Seq[SourceHit]] = if (unanswered) Answer.Unknown else Answer.Known(Nil)
   def record(id: String): Answer[Option[SourceRecord]] = if (unanswered) Answer.Unknown else Answer.Known(records.get(id))
+  override def showing(venue: String): Answer[Seq[Showing]] =
+    if (unanswered) Answer.Unknown else programmes.get(venue).fold[Answer[Seq[Showing]]](Answer.Unknown)(Answer.Known(_))
+}
+
+/** The posters' hashes held: a venue poster or a film not held is not hashed yet. */
+final class HeldPosters(venues: Map[String, Option[PosterHash]], films: Map[Int, Seq[PosterHash]]) extends PosterAnswers {
+  def venue(url: String): Answer[Option[PosterHash]] = venues.get(url).fold[Answer[Option[PosterHash]]](Answer.Unknown)(Answer.Known(_))
+  def film(tmdbId: Int): Answer[Seq[PosterHash]]     = films.get(tmdbId).fold[Answer[Seq[PosterHash]]](Answer.Unknown)(Answer.Known(_))
 }
 
 /** No venue detail page anywhere: the families' answers are all a resolve reads. */

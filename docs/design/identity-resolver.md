@@ -2625,3 +2625,39 @@ The triage's two remaining classes, measured before any rule was written:
   films gained. Not measured yet: a running time compared only for films after the silent era (it frees The Last Laugh
   and Quo Vadis? for the families' own resolves, which then ask TMDB films the fixture does not hold — a re-capture
   first), and a relay's billed running time read as the screening's (Carmen ×514, Streetcar).
+
+### 20.11 Correcting the model's own takes (2026-10-06)
+
+Nothing read the model's MATCHES again: the agreement stage asked its families and posters only of the clusters the
+model left unmatched. The model-take audit (`test/resources/fixtures/identity-unmatched/model-take-audit.tsv`, the five
+recorded corpora, 6,438 takes) measured each kind of evidence against them:
+
+| evidence against the take | takes it contradicts | the model wrong |
+|---|---|---|
+| a venue poster matches another candidate, not the take (`PosterEvidence.veto`) | 10 | 4, 1 unsure (the rest TMDB duplicates and re-release records, a festival's artwork) |
+| ≥2 families take another film, none the take's (a 150-take sample a country, all of ES) | 9 | 1 |
+| the venue's own year or director contradicts the take's record | 63 | 0 (production years, director aliases) |
+| an exact catalogue id names another TMDB film | 3 | 0 (the venue's link wrong each time) |
+| the venues' Filmweb programmes list another film under the title on its days (prod PL) | 2 | 2 |
+
+The stage now reads every model take (`OwnMatch`, `PooledMatch`) against them (`agreement.Correction`): its venue
+posters first against the take's own posters, the other films its listings' title searches find hashed only where none
+of the take's comes within `VetoBits` (64 poster questions handed at a time: a one-off backfill of every take's
+posters); once a poster vetoes the take, the families and — in Poland — the venues' Filmweb programmes
+(`VenueListings.listed`, `/api/v1/showtimes/cinema/<id>`, else the town's; half the cluster's listings at least named
+by one film, none by another). The take is WITHDRAWN (`Basis.Withdrawn`) when the programmes list a film whose year or
+director the take's record contradicts, or when the poster and more families than take the take's film name one film
+sharing no director with it; it is SWITCHED (`Basis.Corrected`) only where two kinds of evidence name the same TMDB film
+sharing no director with the take (Filmweb's own family pick is not counted beside its programmes). The correction is
+kept per cluster with the digests of the answers it read and decided again when one of them is filed again or the
+listings move. The programmes are no FILL for an unmatched cluster: the +1 film they gained there (Kino CK Lublin's
+"Lalka") did not pay for ~250–520 Filmweb requests a day; read only for a take a poster questions, they cost a few.
+
+Whole-corpus dump against main (the five corpora, every answer asked): 3 clusters (6 listings) switched, 0 withdrawn,
+each one the audit confirmed wrong — PL Kino JDK "Teksańska masakra piłą mechaniczną" → the 1974 film (poster + IMDb,
+Wikidata, Filmweb), PL "Ktoś całkiem obcy" (Kino Kryterium and Kino Seniora's Luna, Oaza, Sława) → *I Was a Stranger*
+(Filmweb's programmes + poster), US Alamo Drafthouse Indianapolis "The Vanishing" → Sluizer's 1988 film (poster +
+Wikidata); 0 right takes lost. Left standing: PL "Akademia Pana Kleksa - warsztaty i film" (IMDb takes the model's
+film), UK/US "Queen Rock Montreal" (re-release records sharing Saul Swimmer). Cost (`integration.ModelTakeCorrectionCost`,
+the five corpora's stages together): a warm apply as before (~0.1 s, ~150 MB), a cold one (boot) +~2.9 s CPU and
++~3.9 GB allocated, the stages holding +~3.9 MB.

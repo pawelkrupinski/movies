@@ -109,7 +109,10 @@ trait TestWiring extends WorkerWiring {
   // are still wrapped in SourceFallbackScraper, but with no id the fallback
   // short-circuits to the primary's real outcome — identical to pre-fallback
   // behaviour, so fixture snapshots are unaffected.
-  override protected lazy val filmwebFallbackIds: Map[Cinema, Int] = Map.empty
+  override lazy val filmwebFallbackIds: Map[Cinema, Int] = Map.empty
+  // Nor Filmweb's venue programmes, for the same reason: the agreement stage reads none (what corrects a model
+  // take by them, `agreement.Correction`, is the whole-corpus dump's to measure).
+  override lazy val filmwebProgrammes: Option[services.cinemas.pl.FilmwebProgrammes] = None
 
   // Inject a stub TMDB API key so the test doesn't depend on a `TMDB_API_KEY`
   // env var. `TmdbClient.search` short-circuits to `None` when the key is

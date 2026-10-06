@@ -22,6 +22,7 @@ import scala.jdk.CollectionConverters._
  */
 final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends PosterAnswers {
   import PosterAnswerStore._
+  import PosterAnswers.idOf
 
   def venue(url: String): Answer[Option[PosterHash]] =
     document(idOf(PosterQuestion.Venue(url))).fold[Answer[Option[PosterHash]]](Answer.Unknown)(d => Answer.Known(hashesOf(d).headOption))
@@ -45,11 +46,6 @@ final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends 
 object PosterAnswerStore {
   /** How long a hash is read before the fill hashes the poster again. */
   val Age: FiniteDuration = 365.days
-
-  def idOf(question: PosterQuestion): String = question match {
-    case PosterQuestion.Venue(url)    => s"poster|venue|$url"
-    case PosterQuestion.Film(tmdbId)  => s"poster|film|$tmdbId"
-  }
 
   private def hashesOf(d: BsonDocument): Seq[PosterHash] =
     Option(d.get("hashes")).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala.map(v => PosterHash(v.asInt64.getValue)))
@@ -119,7 +115,7 @@ final class AgreementPosterHandler(store: PosterAnswerStore, hashing: PosterHash
           case PosterQuestion.Film(tmdbId) => hashing.film(tmdbId)
         })
         filed(); Done
-      } catch { case scala.util.control.NonFatal(e) => AgreementQuestions.failed(e, s"poster ${PosterAnswerStore.idOf(question)}", clock) }
+      } catch { case scala.util.control.NonFatal(e) => AgreementQuestions.failed(e, s"poster ${PosterAnswers.idOf(question)}", clock) }
       metrics.asked(AgreementQuestionMetrics.Poster, outcome match {
         case Done                   => AgreementQuestionMetrics.Answered
         case _: HandlerOutcome.Deferred => AgreementQuestionMetrics.Deferred

@@ -41,6 +41,15 @@ import scala.collection.mutable
  * ids name ([[Catalogue]], [[ResolverDecision.Basis.Catalogue]]), read from `catalogue`: an id not mapped yet, or a venue
  * page whose links are not read yet, is a gap the stage hands to `ask`, as a family's question is. Last, so an exact id
  * never moves a film another rule took: where it names another, the projection keeps the take, for the measure to list.
+ *
+ * A film the MODEL took ([[ResolverDecision.Basis.OwnMatch]], [[ResolverDecision.Basis.PooledMatch]]) is read against the
+ * evidence that can contradict it ([[Correction]]): its venue posters — first against the taken film's own posters,
+ * the other candidates' hashed only where none of those comes within [[PosterEvidence.VetoBits]],
+ * `correctionPostersAtOnce` at a time ([[AgreementStage.CorrectionPostersAtOnce]]) — and, once a poster names another
+ * film, the families and the venues' programmes on `listedOn`'s site (Filmweb, in Poland: [[VenueListings]]), asked
+ * only of a take a poster questions. The take is withdrawn ([[ResolverDecision.Basis.Withdrawn]]) or switched
+ * ([[ResolverDecision.Basis.Corrected]]) as [[Correction.decide]] says, and decided again whenever an answer it read is
+ * filed again or its listings move.
  */
 final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: IdentityLookups, normalizer: TitleNormalizer,
                            calibration: IdentityCalibration, tmdbOf: String => Answer[Option[Int]], stored: AgreementVerdicts,
@@ -48,7 +57,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
                            clock: java.time.Clock, changes: AnswerChanges = AnswerChanges.Unknown, posters: PosterAnswers = PosterAnswers.Silent,
                            tmdb: Option[IdentityLookups] = None, identities: Seq[VoterFamily] = Nil,
                            rules: services.identity.UnifiedRules = services.identity.UnifiedRules.resolver,
-                           catalogue: CatalogueAnswers = CatalogueAnswers.Silent) {
+                           catalogue: CatalogueAnswers = CatalogueAnswers.Silent, listedOn: Option[VoterFamily] = None,
+                           correctionPostersAtOnce: Int = AgreementStage.CorrectionPostersAtOnce) {
 
   /** What a stored verdict was decided under: the stage's code and the selected rules' version — a refit of the rules
    *  decides every verdict again, as a change of the code does. */
@@ -101,6 +111,9 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   private val rereads = TrieMap.empty[Int, (Long, java.time.Instant)]
   /** Each cluster's TMDB candidates, none denied, at its listings' digest: what its posters are compared against. */
   private val candidateFilms = TrieMap.empty[String, (Long, Seq[Int])]
+  /** Each model take's correction, by cluster id ([[AgreementStage.Corrected]]): kept while its listings stand and no
+   *  answer it read is filed again — one small entry per take, its reads as 64-bit digests. */
+  private val corrections = TrieMap.empty[String, AgreementStage.Corrected]
   /** How many clusters the current [[apply]] asked the resolver about again — the stage's cost, for [[metrics]]. */
   private var resolves    = 0
   private var handedAt    = -1L
@@ -125,7 +138,12 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     !x.hasNext && !y.hasNext
   }
 
+  /** The posters' hashes and the venues' programmes as one [[apply]] reads them, each decoded once: the model's takes
+   *  read the same venue's programme for each of its listings, the same film's posters for each take it is a candidate of. */
+  private var reading = new AgreementStage.Read(posters, listedOn.flatMap(families.get))
+
   private def applied(resolution: Resolution, listingOf: ListingKey => Option[Listing], version: Long): Resolution = {
+    reading = new AgreementStage.Read(posters, listedOn.flatMap(families.get))
     if (loadedAt.isEmpty) {   // first pass: every verdict kept under these rules stands at this version
       loadedAt = Some(version)
       held.valuesIterator.filter(_.rules == decidedUnder).foreach(v => checked(v.id) = (v.listings, version))
@@ -140,16 +158,18 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     val moved  = mutable.ArrayBuffer.empty[StoredVerdict]
     val seen   = mutable.Set.empty[String]
     var posterVetoed = 0
+    val correctionPosters = mutable.Set.empty[AgreementStage.PosterQuestion]
+    val correcting = mutable.Set.empty[String]
+    val changedAt  = mutable.Map.empty[Long, Option[java.util.Set[java.lang.Long]]]
     val decisions = resolution.decisions.map { decision =>
-      if (decision.film.isDefined || decision.unanswered > 0 || decision.fallback.isDefined || decision.members.isEmpty) decision
+      if (correctable(decision)) {
+        val digest = digestedOf(decision, listingOf)
+        correcting += digest.id
+        corrected(decision, digest, version, asked, finding, correctionPosters, changedAt)
+      }
+      else if (decision.film.isDefined || decision.unanswered > 0 || decision.fallback.isDefined || decision.members.isEmpty) decision
       else {
-        val AgreementStage.Digested(id, listings, digest, lean) = Option(digested.get(decision)).getOrElse {
-          val listings = decision.members.flatMap(listingOf).sortBy(_.key)(using ListingKey.ordering)
-          val fresh    = AgreementStage.Digested(StoredFamily.idOf(decision.members), listings,
-            AgreementStage.digest(Seq(digestOf(listings).toString, decision.leaning.toString, decision.candidate.toString,
-              PosterEvidence.urls(listings).mkString("\u0001"))), voteOf(decision))
-          digested.put(decision, fresh); fresh
-        }
+        val AgreementStage.Digested(id, listings, digest, lean) = digestedOf(decision, listingOf)
         seen += id
         val verdict = verdictOf(decision, id, listings, digest, lean, version, asked, moved)
         // the venue posters' distances to the cluster's candidates and to the film the families agree on
@@ -175,7 +195,11 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     }
     val removed = held.keySet.toSet -- seen
     waiting --= waiting.keySet.toSet -- seen
-    candidateFilms --= candidateFilms.keySet.toSet -- seen
+    candidateFilms --= candidateFilms.keySet.toSet -- seen -- correcting -- correcting.map(_ + "|far")
+    corrections --= corrections.keySet.toSet -- correcting
+    // the posters a correction waits on, a few at a time: the backfill of every take's posters drains behind every other task
+    postersAsked ++= (if (correctionPosters.sizeIs <= correctionPostersAtOnce) correctionPosters
+      else correctionPosters.toSeq.sortBy(PosterAnswers.idOf).take(correctionPostersAtOnce))
     if (removed.nonEmpty || moved.nonEmpty) {
       stored.replace(removed, moved.toSeq)
       held --= removed; checked --= removed
@@ -203,8 +227,181 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       open = gaps.groupMapReduce(_._1)(_ => 1)(_ + _), finds = finds.size, resolves = resolves, seconds = started.seconds,
       takenPoster = decisions.count(_.basis == ResolverDecision.Basis.Poster), posterVetoed = posterVetoed, posters = posterGaps.size,
       takenBroadcast = decisions.count(_.basis == ResolverDecision.Basis.Broadcast), takenFilled = decisions.count(_.basis == ResolverDecision.Basis.Filled),
-      takenCatalogue = decisions.count(_.basis == ResolverDecision.Basis.Catalogue), catalogue = catalogueGaps.size, undated = undated.size))
+      takenCatalogue = decisions.count(_.basis == ResolverDecision.Basis.Catalogue), catalogue = catalogueGaps.size, undated = undated.size,
+      withdrawn = decisions.count(_.basis == ResolverDecision.Basis.Withdrawn), corrected = decisions.count(_.basis == ResolverDecision.Basis.Corrected),
+      correcting = correcting.size, correctionPosters = correctionPosters.size))
+    reading = new AgreementStage.Read(posters, listedOn.flatMap(families.get))   // nothing read is held past the apply
     resolution.copy(decisions = decisions)
+  }
+
+  /** The decision's cluster id, its listings sorted and their digest, kept while the model hands the same decision over. */
+  private def digestedOf(decision: ResolverDecision, listingOf: ListingKey => Option[Listing]): AgreementStage.Digested =
+    Option(digested.get(decision)).getOrElse {
+      val listings = decision.members.flatMap(listingOf).sortBy(_.key)(using ListingKey.ordering)
+      val fresh    = AgreementStage.Digested(StoredFamily.idOf(decision.members), listings,
+        AgreementStage.digest(Seq(digestOf(listings).toString, decision.leaning.toString, decision.candidate.toString,
+          PosterEvidence.urls(listings).mkString("\u0001"))), voteOf(decision))
+      digested.put(decision, fresh); fresh
+    }
+
+  /** A film the model took by its own rules — what [[Correction]] reads the evidence against. */
+  private def correctable(decision: ResolverDecision): Boolean =
+    decision.film.isDefined && decision.members.nonEmpty &&
+      (decision.basis == ResolverDecision.Basis.OwnMatch || decision.basis == ResolverDecision.Basis.PooledMatch)
+
+  /** The model's take, withdrawn or switched where the evidence against it says so ([[Correction.decide]]) — the kept
+   *  correction while its listings stand and none of the answers it read was filed again, else read anew. What it waits
+   *  on is noted to ask: the families' questions in `asked`, the IMDb ids in `finding`, the posters in `posters`. */
+  private def corrected(decision: ResolverDecision, digested: AgreementStage.Digested, version: Long, asked: mutable.Set[(VoterFamily, String)],
+                        finding: mutable.Set[String], posters: mutable.Set[AgreementStage.PosterQuestion],
+                        changedAt: mutable.Map[Long, Option[java.util.Set[java.lang.Long]]]): ResolverDecision = {
+    val kept = corrections.get(digested.id).filter(c => c.listings == digested.digest && (c.version == version || {
+      // stands when none of its reads was filed since: the filings' ids hashed once per version a correction was kept at
+      val refiled = changedAt.getOrElseUpdate(c.version, changes.changedSince(c.version).map { ids =>
+        val hashed = new java.util.HashSet[java.lang.Long](ids.size * 2)
+        ids.foreach(id => hashed.add(AgreementStage.digest(Seq(id))))
+        hashed
+      })
+      refiled.exists(filed => !c.reads.exists(read => filed.contains(read))) && !c.waits.exists(_.finds.nonEmpty)
+    }))
+    val now = kept.map { c => c.version = version; c }.getOrElse {
+      val fresh = correctionOf(decision, digested)
+      corrections(digested.id) = fresh
+      fresh.version = version
+      fresh
+    }
+    now.waits.foreach { w => asked ++= w.questions; finding ++= w.finds; posters ++= w.posters }
+    now.outcome.fold(decision) { outcome =>
+      val explained = decision.explanation :+ outcome.line
+      val taken = outcome.film.fold(decision.copy(film = None, basis = ResolverDecision.Basis.Withdrawn, explanation = explained)(decision.trace))(film =>
+        decision.copy(film = Some(film), basis = ResolverDecision.Basis.Corrected, explanation = explained)(decision.trace))
+      Option(takenAs.get(decision)).filter(_ == taken).getOrElse { takenAs.put(decision, taken); taken }
+    }
+  }
+
+  /** The evidence against the model's take read now: the venue posters and — once one names another film — the
+   *  venues' programmes and the families ([[Correction]]). A part still waiting on an answer decides nothing yet, but a
+   *  part known may: a programme's contradiction withdraws the take while the families wait. */
+  private def correctionOf(decision: ResolverDecision, digested: AgreementStage.Digested): AgreementStage.Corrected = {
+    val listings = digested.listings
+    val model    = decision.film.get
+    val reads    = mutable.Map.empty[String, Long]
+    val gaps     = mutable.Set.empty[(VoterFamily, String)]
+    val posterQs = mutable.Set.empty[AgreementStage.PosterQuestion]
+    val finding  = mutable.Set.empty[String]
+    def named(id: Int) = venues.film(id).toOption.flatten.orElse(tmdb.flatMap(_.film(id).toOption.flatten))
+    def recordOf(id: Int, film: IdentityMeasures.Film) =
+      SourceRecord(film, Map("tmdb" -> id.toString) ++ Option.when(film.imdbNumber > 0)("imdb" -> f"tt${film.imdbNumber}%07d"))
+    def title(id: Int) = named(id).fold(s"tmdb $id")(f => s"'${f.title}'${f.year.fold("")(y => s" ($y)")}")
+    val outcome = named(model).flatMap { film =>
+      val modelRecord = recordOf(model, film)
+      // (a) a venue poster matching another candidate, not the taken film
+      val vetoed = correctionPosters(digested, model, reads, posterQs).toOption.flatten
+      // (e) the venues' own programmes on `listedOn`'s site, asked only of a take a poster questions: a few venues' a day
+      val listed = reading.programmes.filter(_ => vetoed.isDefined).fold[Answer[Option[SourceRecord]]](Answer.Known(None))(answers =>
+        VenueListings.listed(listings, new Recording(answers, gaps, reads)))
+      val programme = listed.toOption.flatten.filter(record => !Agreement.sameFilm(record, modelRecord) && Correction.contradicts(record.film, film))
+      // (b) the families, asked only of a take another kind of evidence questions
+      // the TMDB films the take's evidence reaches besides it: what a family's or the programme's record is matched to
+      lazy val reached = (vetoed.map(_._1).toSeq ++ candidatesOf(digested.id, digested.digest, listings)).distinct.filter(_ != model)
+      val records = (id: Int) => named(id).map(recordOf(id, _))
+      val against = if (programme.isEmpty && vetoed.isEmpty) None
+        // beside the programmes, the family whose site lists them is no second kind of evidence: its take is not counted
+        else familiesAgainst(listings, model, modelRecord, reached, records, programme.flatMap(_ => listedOn), reads, gaps, finding).toOption.flatten
+      val evidence = programme.toSeq.map { record =>
+        // the TMDB film the programme's record is: one the other evidence or the cluster's own candidates reach
+        val same = (reached ++ against.map(_._1)).distinct.filter(id => records(id).exists(Agreement.sameFilm(record, _)))
+        Correction.Against(Correction.Filmweb, same.headOption.filter(_ => same.sizeIs == 1),
+          s"the venues' Filmweb programmes list '${record.film.title}'${record.film.year.fold("")(y => s" ($y)")} on their days")
+      } ++ vetoed.toSeq.map { case (other, bits) =>
+        Correction.Against(Correction.Poster, Some(other), s"a venue poster matches ${title(other)} ($bits bits), not the take")
+      } ++ against.toSeq.map { case (other, says) => Correction.Against(Correction.Families, Some(other), says.replace(s"tmdb $other", title(other))) }
+      val sharesDirector = (other: Int) => named(other).flatMap(o => Correction.shareDirector(o.directors.getOrElse(Nil), film.directors.getOrElse(Nil)))
+      Correction.decide(title(model), evidence, sharesDirector)
+    }
+    val waits = Option.when(gaps.nonEmpty || posterQs.nonEmpty || finding.nonEmpty)(AgreementStage.CorrectionWaits(gaps.toSet, finding.toSet, posterQs.toSet))
+    val read  = (reads.keysIterator ++ gaps.iterator.map { case (family, question) => s"${family.label}|$question" } ++
+      posterQs.iterator.map(PosterAnswers.idOf)).map(id => AgreementStage.digest(Seq(id))).toArray
+    new AgreementStage.Corrected(digested.digest, read, outcome, waits)
+  }
+
+  /** The candidate a venue poster matches against the model's take ([[PosterEvidence.veto]]) — read first against the
+   *  take's own posters: a venue poster within [[PosterEvidence.VetoBits]] of one of them vetoes nothing, so the other
+   *  candidates' posters are hashed only for a take none of them comes near. `Unknown` while a poster is not hashed. */
+  private def correctionPosters(digested: AgreementStage.Digested, model: Int, reads: mutable.Map[String, Long],
+                                asked: mutable.Set[AgreementStage.PosterQuestion]): Answer[Option[(Int, Int)]] = {
+    val urls = PosterEvidence.urls(digested.listings)
+    if (urls.isEmpty || tmdb.isEmpty) Answer.Known(None)
+    else {
+      def read[A](question: AgreementStage.PosterQuestion, answer: Answer[A]): Answer[A] = {
+        reads(PosterAnswers.idOf(question)) = 0L
+        if (answer == Answer.Unknown) asked += question
+        answer
+      }
+      val venue = urls.map(url => url -> read(AgreementStage.PosterQuestion.Venue(url), reading.posters.venue(url)))
+      val own   = read(AgreementStage.PosterQuestion.Film(model), reading.posters.film(model))
+      if (venue.exists(_._2 == Answer.Unknown) || own == Answer.Unknown) Answer.Unknown
+      else {
+        val held = own.toOption.getOrElse(Nil)
+        // the venue posters none of the take's own comes near: only they can name another film against it
+        val far  = venue.collect { case (url, Answer.Known(Some(poster))) if !PosterEvidence.nearest(Seq(poster), held).exists(_ <= PosterEvidence.VetoBits) => url }.toSet
+        if (far.isEmpty) Answer.Known(None)
+        else {
+          // the films one listing showing each such poster is searched by: a cluster billed at hundreds of venues is not
+          // searched again whole for the few posters that might veto its take
+          val showing = digested.listings.filter(listing => PosterEvidence.shows(listing) && listing.poster.exists(far)).distinctBy(_.poster)
+          val id      = s"${digested.id}|far"
+          titledFilms(id, digested.digest, showing).foreach(film => reads(PosterAnswers.idOf(AgreementStage.PosterQuestion.Film(film))) = 0L)
+          posterDistances(id, digested.digest, showing, Some(model), asked, titledFilms) match {
+            case Answer.Known(found) => Answer.Known(PosterEvidence.veto(Some(model), found))
+            case Answer.Unknown      => Answer.Unknown
+          }
+        }
+      }
+    }
+  }
+
+  /** The film more of the families take than take the model's, by its TMDB id — a pick's TMDB or IMDb id, else the one
+   *  film of `reached` its record is by its facts — with what they say, `uncounted`'s take aside; `Unknown` while a
+   *  family's question, or TMDB's find of a taken IMDb id, is not answered yet. */
+  private def familiesAgainst(listings: Seq[Listing], model: Int, modelRecord: SourceRecord, reached: => Seq[Int], records: Int => Option[SourceRecord],
+                              uncounted: Option[VoterFamily], reads: mutable.Map[String, Long], gaps: mutable.Set[(VoterFamily, String)],
+                              finding: mutable.Set[String]): Answer[Option[(Int, String)]] = {
+    val verdicts = families.toSeq.sortBy(_._1.ordinal).map { case (_, answers) =>
+      Agreement.verdict(listings, new Recording(answers, gaps, reads), venues, normalizer, calibrations(answers.family))
+    }
+    if (verdicts.contains(Answer.Unknown)) Answer.Unknown
+    else {
+      val mapped = verdicts.flatMap(_.toOption).flatMap(_.pick).filterNot(pick => uncounted.contains(pick.family)).map { pick =>
+        val id: Answer[Option[Int]] = pick.record.crossIds.get("tmdb").flatMap(_.toIntOption) match {
+          case Some(film) => Answer.Known(Some(film))
+          case None       => pick.record.crossIds.get("imdb").fold[Answer[Option[Int]]](Answer.Known(None)) { imdb =>
+            val found = tmdbOf(imdb)
+            if (found == Answer.Unknown) finding += imdb
+            found
+          }
+        }
+        // a record linking no TMDB film (Filmweb's) is the one film the take's evidence reaches that its facts are
+        pick -> (id match {
+          case Answer.Known(None) => Answer.Known(reached.filter(film => records(film).exists(Agreement.sameFilm(pick.record, _))) match {
+            case Seq(one) => Some(one)
+            case _        => None
+          })
+          case found => found
+        })
+      }
+      if (mapped.exists(_._2 == Answer.Unknown)) Answer.Unknown
+      else {
+        val forModel = mapped.collect { case (pick, id) if id.toOption.flatten.contains(model) || Agreement.sameFilm(pick.record, modelRecord) => pick.family }
+        val others   = mapped.collect { case (pick, Answer.Known(Some(id))) if id != model && !forModel.contains(pick.family) => id -> pick.family }
+          .groupMap(_._1)(_._2).toSeq.sortBy { case (id, takers) => (-takers.size, id) }
+        Answer.Known(others.headOption.filter { case (_, takers) => takers.size > forModel.size && !others.drop(1).exists(_._2.size == takers.size) }
+          .map { case (id, takers) =>
+            id -> (s"${takers.map(_.label).sorted.mkString(", ")} take tmdb $id" +
+              (if (forModel.isEmpty) ", none the take" else s", ${forModel.map(_.label).sorted.mkString(", ")} the take"))
+          })
+      }
+    }
   }
 
   /** TMDB's own vote on a no-match: the film it leans to, else the best-ranked candidate it weighed — its record as the
@@ -347,6 +544,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
           case "title"    => Some(answers.titled(text))
           case "director" => Some(answers.directedBy(text))
           case "record"   => Some(answers.record(text))
+          case "showing"  => Some(answers.showing(text))
           case _          => None
         }
       }
@@ -449,11 +647,12 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  is not. A candidate numbering another edition than a listing showing a poster is not compared
    *  ([[PosterEvidence.editionsApart]]). */
   private def posterDistances(id: String, digest: Long, listings: Seq[Listing], also: Option[Int],
-                              asked: mutable.Set[AgreementStage.PosterQuestion]): Answer[Seq[Map[Int, Option[Int]]]] = {
+                              asked: mutable.Set[AgreementStage.PosterQuestion],
+                              candidates: (String, Long, Seq[Listing]) => Seq[Int] = candidatesOf): Answer[Seq[Map[Int, Option[Int]]]] = {
     val urls = PosterEvidence.urls(listings)
     if (urls.isEmpty || tmdb.isEmpty) Answer.Known(Nil)
     else {
-      val venue = urls.map(url => url -> posters.venue(url))
+      val venue = urls.map(url => url -> reading.posters.venue(url))
       venue.collect { case (url, Answer.Unknown) => asked += AgreementStage.PosterQuestion.Venue(url) }
       if (venue.exists(_._2 == Answer.Unknown)) Answer.Unknown
       else {
@@ -462,8 +661,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         else {
           val showing = listings.filter(listing => PosterEvidence.shows(listing) && listing.poster.isDefined)
           def apart(film: Int) = tmdb.flatMap(_.film(film).toOption.flatten).exists(record => showing.exists(PosterEvidence.editionsApart(_, record)))
-          val films  = (candidatesOf(id, digest, listings).filterNot(apart) ++ also.filterNot(FallbackIds.isFallback)).distinct
-          val hashes = films.map(film => film -> posters.film(film))
+          val films  = (candidates(id, digest, listings).filterNot(apart) ++ also.filterNot(FallbackIds.isFallback)).distinct
+          val hashes = films.map(film => film -> reading.posters.film(film))
           hashes.collect { case (film, Answer.Unknown) => asked += AgreementStage.PosterQuestion.Film(film) }
           if (hashes.exists(_._2 == Answer.Unknown)) Answer.Unknown
           else Answer.Known(shown.map(poster => hashes.map { case (film, answer) => film -> PosterEvidence.nearest(Seq(poster), answer.toOption.getOrElse(Nil)) }.toMap))
@@ -486,6 +685,23 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       films
     }
 
+  /** The TMDB films the listings' own title searches find ([[services.identity.IdentityMeasures.searchQueries]], of TMDB
+   *  and IMDb's titled lists) — the candidates a poster may name against a model take, read off the answers the model
+   *  already holds without scoring them again: a resolver pass per take cost a cold projection 10 GB of allocation over
+   *  the five corpora (2026-10-06). Read once per listings' digest; none while one of the searches has no answer. */
+  private def titledFilms(id: String, digest: Long, listings: Seq[Listing]): Seq[Int] =
+    candidateFilms.get(id).filter(_._1 == digest).map(_._2).getOrElse {
+      val films = tmdb.fold(Seq.empty[Int]) { lookups =>
+        val queries = listings.flatMap(listing => services.identity.IdentityMeasures.searchQueries(Evidence.of(listing, None).measured)).distinct
+          .flatMap(text => Seq(CandidateQuery.Title(text), CandidateQuery.ImdbTitled(text)))
+        val found = queries.map(lookups.candidates)
+        if (found.contains(Answer.Unknown)) Nil
+        else found.flatMap(_.toOption.getOrElse(Nil)).map(_.tmdbId).filterNot(FallbackIds.isFallback).distinct.sorted
+      }
+      candidateFilms(id) = (digest, films)
+      films
+    }
+
   /** A family's answers that note every question still a gap, and the digest of every answer read. */
   private final class Recording(answers: FamilyAnswers, asked: mutable.Set[(VoterFamily, String)], reads: mutable.Map[String, Long]) extends FamilyAnswers {
     val family: VoterFamily = answers.family
@@ -500,6 +716,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     def titled(text: String): Answer[Seq[SourceHit]]     = noted(s"title|$text", answers.titled(text))
     def directedBy(name: String): Answer[Seq[SourceHit]] = noted(s"director|$name", answers.directedBy(name))
     def record(id: String): Answer[Option[SourceRecord]] = noted(s"record|$id", answers.record(id))
+    override def showing(venue: String): Answer[Seq[Showing]] = noted(s"showing|$venue", answers.showing(venue))
   }
 }
 
@@ -547,6 +764,40 @@ object AgreementStage {
     def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = noted(inner.film(tmdbId))
   }
 
+  /** A model take's correction ([[Correction]]): its listings' digest and the `version` it was read (or last found
+   *  standing) at, the digests of the answers it read — a filing of one decides it again — what it came to, and the
+   *  questions it waits on. */
+  private final class Corrected(val listings: Long, val reads: Array[Long], val outcome: Option[Correction.Outcome], val waits: Option[CorrectionWaits]) {
+    @volatile var version: Long = -1L
+  }
+  private final case class CorrectionWaits(questions: Set[(VoterFamily, String)], finds: Set[String], posters: Set[PosterQuestion])
+  /** How many of the posters the model takes' corrections wait on are handed to the queue at once: a one-off backfill of
+   *  every take's posters (17.6k over the five corpora, 2026-10-06) drained a few at a time behind every other task. */
+  val CorrectionPostersAtOnce = 64
+
+  /** `posters` and `programmes` (the family whose site lists the venues' programmes), each answer decoded once: an
+   *  apply's reads, dropped with it. */
+  private final class Read(hashes: PosterAnswers, family: Option[FamilyAnswers]) {
+    private val venues = mutable.HashMap.empty[String, Answer[Option[PosterHash]]]
+    private val films  = mutable.HashMap.empty[Int, Answer[Seq[PosterHash]]]
+    val posters: PosterAnswers = new PosterAnswers {
+      def venue(url: String): Answer[Option[PosterHash]] = venues.getOrElseUpdate(url, hashes.venue(url))
+      def film(tmdbId: Int): Answer[Seq[PosterHash]]     = films.getOrElseUpdate(tmdbId, hashes.film(tmdbId))
+    }
+    val programmes: Option[FamilyAnswers] = family.map { answers =>
+      val showings = mutable.HashMap.empty[String, Answer[Seq[Showing]]]
+      val records  = mutable.HashMap.empty[String, Answer[Option[SourceRecord]]]
+      new FamilyAnswers {
+        val family: VoterFamily = answers.family
+        def titled(text: String): Answer[Seq[SourceHit]]     = answers.titled(text)
+        def directedBy(name: String): Answer[Seq[SourceHit]] = answers.directedBy(name)
+        def record(id: String): Answer[Option[SourceRecord]] = records.getOrElseUpdate(id, answers.record(id))
+        override def showing(venue: String): Answer[Seq[Showing]] = showings.getOrElseUpdate(venue, answers.showing(venue))
+        override def fresh(question: String): Boolean = answers.fresh(question)
+      }
+    }
+  }
+
   /** A model decision's cluster id, its listings sorted, their digest with TMDB's vote on it, and that vote's record. */
   private final case class Digested(id: String, listings: Seq[Listing], digest: Long, lean: Option[SourceRecord])
 
@@ -564,7 +815,8 @@ object AgreementStage {
    *  the catalogue questions still open, and the TMDB records the broadcast take waits on to read again ([[wantedRecords]]). */
   final case class Applied(waiting: Int, verdicts: Int, agreed: Int, takenTmdb: Int, takenFallback: Int, open: Map[VoterFamily, Int],
                            finds: Int, resolves: Int, seconds: Double, takenPoster: Int = 0, posterVetoed: Int = 0, posters: Int = 0,
-                           takenBroadcast: Int = 0, takenFilled: Int = 0, takenCatalogue: Int = 0, catalogue: Int = 0, undated: Int = 0)
+                           takenBroadcast: Int = 0, takenFilled: Int = 0, takenCatalogue: Int = 0, catalogue: Int = 0, undated: Int = 0,
+                           withdrawn: Int = 0, corrected: Int = 0, correcting: Int = 0, correctionPosters: Int = 0)
   trait Metrics { def applied(applied: Applied): Unit }
   object Metrics { val Silent: Metrics = _ => () }
 

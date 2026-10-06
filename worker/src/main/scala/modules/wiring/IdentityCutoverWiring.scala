@@ -73,7 +73,8 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
         open.catalogue, open.records),
       metrics = workerMetrics.identityAgreement.stage(country.code), clock = clock, changes = familyAnswerStore,
       posters = posterAnswerStore, tmdb = Some(storedLookups()), identities = IdentityCutoverWiring.identities(country.code),
-      catalogue = catalogueAnswerStore)
+      catalogue = catalogueAnswerStore,
+      listedOn = filmwebProgrammes.flatMap(_ => IdentityCutoverWiring.listedOn(country.code)))
   /** The posters' hashes the agreement's poster evidence reads, filed among the families' answers. */
   lazy val posterAnswerStore: services.identity.PosterAnswerStore = new services.identity.PosterAnswerStore(familyAnswerStore, clock)
   /** The venue film pages whose catalogue links the catalogue take reads, each through the fetch its client scrapes with. */
@@ -99,10 +100,18 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
   /** The families' live sources the agreement fill asks. */
   lazy val familySources: Map[services.identity.agreement.VoterFamily, services.identity.FamilySource] = {
     val all: Seq[services.identity.FamilySource] = Seq(new services.identity.ImdbFamily(imdbClient),
-      new services.identity.WikiFamily(wikidataClient, country.language.getLanguage), new services.identity.FilmwebFamily(filmwebClient),
+      new services.identity.WikiFamily(wikidataClient, country.language.getLanguage),
+      new services.identity.FilmwebFamily(filmwebClient, venue => filmwebProgrammes.fold(Seq.empty[services.identity.agreement.Showing])(_.of(venue))),
       new services.identity.RottenTomatoesFamily(rottenTomatoesClient), new services.identity.MetacriticFamily(metacriticClient))
     all.filter(source => agreementFamilies.contains(source.family)).map(source => source.family -> source).toMap
   }
+  /** Each venue's programme on Filmweb — its own, else its town's — in Poland alone, where Filmweb lists programmes: what
+   *  the agreement joins the venues' listings to ([[services.identity.agreement.VenueListings]]). */
+  lazy val filmwebProgrammes: Option[services.cinemas.pl.FilmwebProgrammes] =
+    Option.when(IdentityCutoverWiring.listedOn(country.code).isDefined)(new services.cinemas.pl.FilmwebProgrammes(enrichmentFetch,
+      venue => filmwebFallbackIds.collectFirst { case (cinema, id) if cinema.displayName == venue => id },
+      services.cinemas.pl.FilmwebProgrammes.townsOf,
+      () => new models.VenueClock(clock).todayInPoland))
   /** The agreement's questions as queue tasks: each family question asked of its live source, and TMDB's find of an
    *  agreed IMDb id — each filed answer asking for a projection, which reads it. */
   lazy val agreementHandlers: Seq[services.tasks.TaskHandler] = Seq(
@@ -147,4 +156,8 @@ object IdentityCutoverWiring {
    *  (Wikidata), PL "Płazy. Pionierzy życia na lądzie" (Filmweb), none wrong. */
   def identities(country: String): Seq[services.identity.agreement.VoterFamily] =
     Seq(services.identity.agreement.VoterFamily.Wiki) ++ Option.when(country == "pl")(services.identity.agreement.VoterFamily.Filmweb)
+  /** The family whose site lists each venue's programme, that the agreement joins the venues' listings to: Filmweb, in
+   *  Poland alone (it lists no other country's cinemas). */
+  def listedOn(country: String): Option[services.identity.agreement.VoterFamily] =
+    Option.when(country == "pl")(services.identity.agreement.VoterFamily.Filmweb)
 }

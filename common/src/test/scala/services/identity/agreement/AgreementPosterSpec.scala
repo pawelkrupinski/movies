@@ -25,11 +25,6 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
   private def resolutionOf(listing: Listing) = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.4, ResolverDecision.Basis.BelowThreshold, Nil)()),
     1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
 
-  private final class HeldPosters(venues: Map[String, Option[PosterHash]], films: Map[Int, Seq[PosterHash]]) extends PosterAnswers {
-    def venue(url: String): Answer[Option[PosterHash]] = venues.get(url).fold[Answer[Option[PosterHash]]](Answer.Unknown)(Answer.Known(_))
-    def film(tmdbId: Int): Answer[Seq[PosterHash]]     = films.get(tmdbId).fold[Answer[Seq[PosterHash]]](Answer.Unknown)(Answer.Known(_))
-  }
-
   private def stage(posters: PosterAnswers, families: Map[VoterFamily, FamilyAnswers] = silentFamilies, ask: AgreementStage.Open => Unit = _ => ()) =
     new AgreementStage(families, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
       ask = ask, clock = _root_.tools.SpecClock.Pinned, posters = posters, tmdb = Some(table))

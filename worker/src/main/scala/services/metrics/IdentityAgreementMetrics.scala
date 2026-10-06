@@ -10,14 +10,17 @@ import services.identity.agreement.{AgreementStage, VoterFamily}
  * databases are asked about:
  *  - `kinowo_worker_identity_agreement_clusters{state}` — after the stage's last pass: clusters `waiting` on a family's
  *    answer, `verdicts` kept, those `agreed` on a film, and those whose agreed film a venue poster vetoed
- *    (`poster-vetoed`, `PosterEvidence.veto`);
+ *    (`poster-vetoed`, `PosterEvidence.veto`); and the model's own takes read against the evidence that can correct them
+ *    (`correcting`, `agreement.Correction`);
  *  - `kinowo_worker_identity_agreement_taken{as}` — the decisions the last pass took, as a `tmdb` film or an IMDb
  *    `fallback` the families agreed on, a `poster` vote (`ResolverDecision.Basis.Poster`), a `broadcast` the screening days
  *    named (`ResolverDecision.Basis.Broadcast`), a `filled` rule's film, or the `catalogue` film a listing's own catalogue id
- *    names (`ResolverDecision.Basis.Catalogue`): the cards the stage identified;
+ *    names (`ResolverDecision.Basis.Catalogue`): the cards the stage identified; and the model's takes it `withdrawn`
+ *    (`ResolverDecision.Basis.Withdrawn`) or `corrected` to another film (`ResolverDecision.Basis.Corrected`);
  *  - `kinowo_worker_identity_agreement_open_questions{family}` — questions no answer is filed for yet, per family
  *    (`tmdb-find`: agreed IMDb ids TMDB was not asked about; `poster`: posters not hashed yet; `catalogue`: catalogue ids
- *    not mapped and venue pages whose links are not read yet) — falling to zero is the
+ *    not mapped and venue pages whose links are not read yet; `correction-poster`: the posters the corrections wait on,
+ *    handed to the queue a few at a time) — falling to zero is the
  *    backlog asked;
  *  - `kinowo_worker_identity_agreement_resolves_total` / `_seconds` — clusters the stage resolved again, and its last
  *    pass's wall time: what it costs a projection (a quiet tick resolves none);
@@ -80,15 +83,19 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
 
   /** The stage's series for `country`, every label touched at 0. */
   def stage(country: String): AgreementStage.Metrics = {
-    Seq("waiting", "verdicts", "agreed", "poster-vetoed").foreach(clusters.labelValues(country, _))
-    Seq("tmdb", "fallback", "poster", "broadcast", "filled", "catalogue").foreach(taken.labelValues(country, _))
-    families.foreach(open.labelValues(country, _))
+    Seq("waiting", "verdicts", "agreed", "poster-vetoed", "correcting").foreach(clusters.labelValues(country, _))
+    Seq("tmdb", "fallback", "poster", "broadcast", "filled", "catalogue", "withdrawn", "corrected").foreach(taken.labelValues(country, _))
+    (families :+ CorrectionPoster).foreach(open.labelValues(country, _))
     resolves.labelValues(country); seconds.labelValues(country)
     applied => {
       clusters.labelValues(country, "waiting").set(applied.waiting.toDouble)
       clusters.labelValues(country, "verdicts").set(applied.verdicts.toDouble)
       clusters.labelValues(country, "agreed").set(applied.agreed.toDouble)
       clusters.labelValues(country, "poster-vetoed").set(applied.posterVetoed.toDouble)
+      clusters.labelValues(country, "correcting").set(applied.correcting.toDouble)
+      taken.labelValues(country, "withdrawn").set(applied.withdrawn.toDouble)
+      taken.labelValues(country, "corrected").set(applied.corrected.toDouble)
+      open.labelValues(country, CorrectionPoster).set(applied.correctionPosters.toDouble)
       taken.labelValues(country, "poster").set(applied.takenPoster.toDouble)
       taken.labelValues(country, "broadcast").set(applied.takenBroadcast.toDouble)
       taken.labelValues(country, "filled").set(applied.takenFilled.toDouble)
@@ -104,6 +111,9 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
       seconds.labelValues(country).set(applied.seconds)
     }
   }
+
+  /** The open series' label for the posters the model takes' corrections wait on. */
+  private val CorrectionPoster = "correction-poster"
 
   /** The questions' series for `country`, every label touched at 0. */
   def questions(country: String): AgreementQuestionMetrics = {

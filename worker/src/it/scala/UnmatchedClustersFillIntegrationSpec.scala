@@ -41,7 +41,8 @@ class UnmatchedClustersFillIntegrationSpec extends AnyFlatSpec with Matchers {
       val families = UnmatchedClusters.familiesOf(country)
       val sources: Map[VoterFamily, FamilySource] = Seq(new ImdbFamily(new services.enrichment.ImdbClient(cache)),
         new WikiFamily(new services.enrichment.WikidataClient(cache), country.language.getLanguage),
-        new FilmwebFamily(new services.enrichment.FilmwebClient(cache)), new RottenTomatoesFamily(new services.enrichment.RottenTomatoesClient(cache)),
+        new FilmwebFamily(new services.enrichment.FilmwebClient(cache), services.cinemas.pl.FilmwebProgrammes.resolving(cache, () => new models.VenueClock(java.time.Clock.systemUTC()).todayInPoland).of),
+        new RottenTomatoesFamily(new services.enrichment.RottenTomatoesClient(cache)),
         new MetacriticFamily(new services.enrichment.MetacriticClient(cache))).filter(s => families.contains(s.family)).map(s => s.family -> s).toMap
       val tmdb  = configuration.identityLiveGaps.map(key => new clients.TmdbClient(new RealHttpFetch(), apiKey = Some(settings.TmdbApiKey(key.tmdbKey)),
         language = country.language, retrySleep = (_: Long) => ()))
@@ -56,7 +57,8 @@ class UnmatchedClustersFillIntegrationSpec extends AnyFlatSpec with Matchers {
       val catalogue   = new CatalogueFill(store, clock, cache)
       def agree() = UnmatchedClusters.agree(capture.decisions, capture.listings, lookups, families.map(f => f -> store.answers(f)).toMap,
         store.version, tmdbOf, services.movies.TitleNormalizer.forCountry(country), posterStore,
-        modules.wiring.IdentityCutoverWiring.identities(country.code), catalogue.answers)
+        modules.wiring.IdentityCutoverWiring.identities(country.code), catalogue.answers,
+          modules.wiring.IdentityCutoverWiring.listedOn(country.code))
       var outcome = agree()
       var rounds  = 0
       while ((outcome.stage.wanted.nonEmpty || outcome.stage.wantedPosters.nonEmpty || outcome.stage.wantedCatalogue.nonEmpty ||

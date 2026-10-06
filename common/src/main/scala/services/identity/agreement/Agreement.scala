@@ -40,6 +40,9 @@ final case class SourceHit(id: String, title: String, originalTitle: Option[Stri
  *  (`"imdb" -> "tt0087843"`, `"tmdb" -> "311"`) — what links two families' films without comparing their facts. */
 final case class SourceRecord(film: IdentityMeasures.Film, crossIds: Map[String, String] = Map.empty)
 
+/** One film a venue's programme on a family's site screens — the family's own id for it — and the days it does. */
+final case class Showing(film: String, days: services.identity.ScreeningDays)
+
 /** What a family answers, from what it keeps: `Unknown` while a question is not answered yet — a gap, never "no film". */
 trait FamilyAnswers {
   def family: VoterFamily
@@ -47,8 +50,11 @@ trait FamilyAnswers {
   /** The films a person of this name directed; `Known(Nil)` for a family with no person search. */
   def directedBy(name: String): Answer[Seq[SourceHit]]
   def record(id: String): Answer[Option[SourceRecord]]
-  /** Is there an answer to `question` (`title|<text>`, `director|<name>`, `record|<id>`), and is it still fresh? A stale
-   *  one is read all the same, and asked again; a missing one is a gap. */
+  /** The films the family's site lists a venue screening ([[VenueListings]]): its own programme of the venue, else its
+   *  town's; `Known(Nil)` for a family that lists no programmes. */
+  def showing(venue: String): Answer[Seq[Showing]] = Answer.Known(Nil)
+  /** Is there an answer to `question` (`title|<text>`, `director|<name>`, `record|<id>`, `showing|<venue>`), and is it
+   *  still fresh? A stale one is read all the same, and asked again; a missing one is a gap. */
   def fresh(question: String): Boolean = true
 }
 
@@ -369,7 +375,7 @@ object Agreement {
   }
 
   /** Each name's words of four letters or more, folded to ASCII and cut to their first four. */
-  private def namePrefixes(names: Seq[String]): Set[String] =
+  private[agreement] def namePrefixes(names: Seq[String]): Set[String] =
     names.flatMap(name => tools.TextNormalization.deburr(name).toLowerCase(java.util.Locale.ROOT).split("[^a-z]+")).filter(_.length >= 4).map(_.take(4)).toSet
 
   private def latin(names: Seq[String]): Boolean =

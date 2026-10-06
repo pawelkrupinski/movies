@@ -9813,6 +9813,9 @@ services.cinemas.pl.FilmwebCinemaIdResolver$Resolution
 services.cinemas.pl.FilmwebCinemaIdResolver$Resolution$
 services.cinemas.pl.FilmwebCinemaIdResolver$Source
 services.cinemas.pl.FilmwebCinemaIdResolver$Unmatched$
+services.cinemas.pl.FilmwebProgrammes
+services.cinemas.pl.FilmwebProgrammes$
+services.cinemas.pl.FilmwebProgrammes$$anon$1
 services.cinemas.pl.FilmwebShowtimesClient
 services.cinemas.pl.FilmwebShowtimesClient$
 services.cinemas.pl.FilmwebShowtimesClient$$anon$1

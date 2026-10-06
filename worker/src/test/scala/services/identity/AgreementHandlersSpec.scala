@@ -53,6 +53,16 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
     (imdb.asked.get, projections.get) shouldBe ((1, 1))
   }
 
+  it should "file a venue's programme the family's site lists" in {
+    val store     = world()
+    val programme = Seq(services.identity.agreement.Showing("10085635", ScreeningDays.of(Seq(java.time.LocalDate.parse("2026-10-07")))))
+    val filmweb   = new FilmwebFamily(new services.enrichment.FilmwebClient(new clients.tools.FakeHttpFetch("filmweb-programmes", strict = true)),
+      venue => if (venue == "Kozienicki Dom Kultury") programme else Nil)
+    new AgreementQuestionHandler(store, Map(VoterFamily.Filmweb -> filmweb), () => (), clock)
+      .handle(task(VoterFamily.Filmweb, "showing|Kozienicki Dom Kultury")) shouldBe HandlerOutcome.Done
+    store.answers(VoterFamily.Filmweb).showing("Kozienicki Dom Kultury") shouldBe Answer.Known(programme)
+  }
+
   it should "file a query the site refuses or a page not there as no film" in {
     val store = world()
     val refusing = new Answering(VoterFamily.Filmweb, Some(new HttpStatusException(400, "GET", "https://www.filmweb.pl/api/v1/live/search", None)))

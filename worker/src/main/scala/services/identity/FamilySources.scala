@@ -1,7 +1,7 @@
 package services.identity
 
 import services.enrichment.{FilmwebClient, ImdbClient, MetacriticClient, RottenTomatoesClient, WikidataClient}
-import services.identity.agreement.{SourceHit, SourceRecord, VoterFamily}
+import services.identity.agreement.{Showing, SourceHit, SourceRecord, VoterFamily}
 
 /**
  * Another film database FAMILY asked live ([[VoterFamily]]): its title search's films, a credited person's films where
@@ -13,6 +13,8 @@ trait FamilySource {
   def titled(text: String): Seq[SourceHit]
   def directedBy(name: String): Seq[SourceHit]
   def record(id: String): Option[SourceRecord]
+  /** The films the family's site lists a venue screening, and on which days: none where it lists no programmes. */
+  def showing(venue: String): Seq[Showing] = Nil
 }
 
 object FamilySources {
@@ -29,9 +31,11 @@ final class ImdbFamily(imdb: ImdbClient) extends FamilySource {
   def record(id: String): Option[SourceRecord] = imdb.identityRecord(id).map(film => SourceRecord(film, Map("imdb" -> id)))
 }
 
-/** Filmweb's search (its own and other languages' titles) and its film records — films only, never a series. */
-final class FilmwebFamily(filmweb: FilmwebClient) extends FamilySource {
+/** Filmweb's search (its own and other languages' titles) and its film records — films only, never a series — and, in
+ *  Poland, each venue's programme there (`programmes`: [[services.cinemas.pl.FilmwebProgrammes]]). */
+final class FilmwebFamily(filmweb: FilmwebClient, programmes: String => Seq[Showing] = _ => Nil) extends FamilySource {
   val family: VoterFamily = VoterFamily.Filmweb
+  override def showing(venue: String): Seq[Showing] = programmes(venue)
   def titled(text: String): Seq[SourceHit] =
     filmweb.search(text).filter(_.kind == "film").take(FamilySources.SearchedFilms).map(hit => SourceHit(hit.id.toString, "", None, None))
   def directedBy(name: String): Seq[SourceHit] = Nil

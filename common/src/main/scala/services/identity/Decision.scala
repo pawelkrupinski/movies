@@ -76,9 +76,16 @@ object ResolverDecision {
      *  naming of it in another database (`CatalogueSources`) — maps to one its year and director do not contradict
      *  (`agreement.Catalogue`) — like [[Agreed]], only on the way to the projection. */
     case Catalogue
+    /** The model took a film, but the evidence the stage reads against a model take (`agreement.Correction`) — the
+     *  venues' Filmweb programmes, or the venue posters with the families — names another: the take is withdrawn and the
+     *  cluster left without a film, the evidence in the explanation. Only on the way to the projection. */
+    case Withdrawn
+    /** The model took a film, but two kinds of evidence against it or more name the same other film
+     *  (`agreement.Correction`): the cluster takes that one instead. Only on the way to the projection. */
+    case Corrected
 
     def matched: Boolean = this == Pinned || this == OwnMatch || this == PooledMatch || this == Agreed || this == Poster || this == Broadcast ||
-      this == Filled || this == Catalogue
+      this == Filled || this == Catalogue || this == Corrected
   }
 
   def percent(p: Double): String = f"${p * 100}%.1f%%"
