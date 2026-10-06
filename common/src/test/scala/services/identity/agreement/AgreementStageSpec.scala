@@ -52,7 +52,9 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     taken.explanation.last should startWith ("filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed:")
     // two venues are no wide billing; a title not naming the film trips a guard; no rule selected takes nothing
     decided("SEVENTEEN World Tour 'NEW_'", wide.take(2), selected).basis shouldBe ResolverDecision.Basis.BelowThreshold
-    decided("Koncert", wide, selected).basis shouldBe ResolverDecision.Basis.BelowThreshold
+    decided("Muzyka", wide, selected).basis shouldBe ResolverDecision.Basis.BelowThreshold
+    // an event no film database holds is asked nothing and taken as nothing ([[NonFilmEvents]])
+    decided("Koncert", wide, selected).basis shouldBe ResolverDecision.Basis.Event
     decided("SEVENTEEN World Tour 'NEW_'", wide, selected.copy(fill = Nil)).basis shouldBe ResolverDecision.Basis.BelowThreshold
   }
 

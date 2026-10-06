@@ -11,7 +11,8 @@ import services.identity.agreement.{AgreementStage, VoterFamily}
  *  - `kinowo_worker_identity_agreement_clusters{state}` — after the stage's last pass: clusters `waiting` on a family's
  *    answer, `verdicts` kept, those `agreed` on a film, and those whose agreed film a venue poster vetoed
  *    (`poster-vetoed`, `PosterEvidence.veto`); and the model's own takes read against the evidence that can correct them
- *    (`correcting`, `agreement.Correction`);
+ *    (`correcting`, `agreement.Correction`); and those no family is asked about: an `event`, not a film
+ *    (`ResolverDecision.Basis.Event`, `agreement.NonFilmEvents`);
  *  - `kinowo_worker_identity_agreement_taken{as}` — the decisions the last pass took, as a `tmdb` film or an IMDb
  *    `fallback` the families agreed on, a `poster` vote (`ResolverDecision.Basis.Poster`), a `broadcast` the screening days
  *    named (`ResolverDecision.Basis.Broadcast`), a `filled` rule's film, or the `catalogue` film a listing's own catalogue id
@@ -83,7 +84,7 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
 
   /** The stage's series for `country`, every label touched at 0. */
   def stage(country: String): AgreementStage.Metrics = {
-    Seq("waiting", "verdicts", "agreed", "poster-vetoed", "correcting").foreach(clusters.labelValues(country, _))
+    Seq("waiting", "verdicts", "agreed", "poster-vetoed", "correcting", "event").foreach(clusters.labelValues(country, _))
     Seq("tmdb", "fallback", "poster", "broadcast", "filled", "catalogue", "withdrawn", "corrected").foreach(taken.labelValues(country, _))
     (families :+ CorrectionPoster).foreach(open.labelValues(country, _))
     resolves.labelValues(country); seconds.labelValues(country)
@@ -96,6 +97,7 @@ final class IdentityAgreementMetrics(registry: PrometheusRegistry) {
       taken.labelValues(country, "withdrawn").set(applied.withdrawn.toDouble)
       taken.labelValues(country, "corrected").set(applied.corrected.toDouble)
       open.labelValues(country, CorrectionPoster).set(applied.correctionPosters.toDouble)
+      clusters.labelValues(country, "event").set(applied.events.toDouble)
       taken.labelValues(country, "poster").set(applied.takenPoster.toDouble)
       taken.labelValues(country, "broadcast").set(applied.takenBroadcast.toDouble)
       taken.labelValues(country, "filled").set(applied.takenFilled.toDouble)

@@ -52,6 +52,15 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     decided(stage(takingHas, hasPoster, table(hasDirector = "Maciej Kawalski"))).basis shouldBe ResolverDecision.Basis.OwnMatch
   }
 
+  it should "stand unread on a cluster that is an event, not a film: no poster hashed, no family asked" in {
+    val handed  = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Open]
+    val concert = listing.copy(rawTitle = "Koncert: Lalka", title = "Koncert: Lalka", cleanTitle = "Koncert: Lalka")
+    val s = new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      new InMemoryAgreementVerdicts, ask = handed += _, clock = _root_.tools.SpecClock.Pinned, posters = new HeldPosters(Map.empty, Map.empty), tmdb = Some(table()))
+    s.apply(model, Map(listing.key -> concert).get, 1).decisions.head.basis shouldBe ResolverDecision.Basis.OwnMatch
+    (s.wantedPosters, s.wanted, handed.toSeq) shouldBe ((Set.empty, Set.empty, Seq.empty))
+  }
+
   it should "read the other candidates' posters only when the take's own are far from the venue's, and ask the families only then" in {
     val handed  = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Open]
     // nothing hashed: the venue's poster and the take's are asked for, no other candidate's

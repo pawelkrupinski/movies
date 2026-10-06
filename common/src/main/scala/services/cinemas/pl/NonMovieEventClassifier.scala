@@ -206,14 +206,20 @@ object NonMovieEventClassifier {
    *  `OnlyMovieEventsFilter.venueEventMarkers` for how a client supplies them. */
   def isLiveEvent(title: String, venueMarkers: Seq[Regex] = Nil): Boolean = {
     val t = title.toLowerCase(Locale.ROOT)
-    if (isScreenedBroadcast(t)) false
-    else
+    isPerformance(title, venueMarkers) || (!isScreenedBroadcast(t) && (isStandaloneDiscussion(t) || isStandaloneWorkshop(t)))
+  }
+
+  /** [[isLiveEvent]] by what is PERFORMED alone — a concert, a stage play, a gala, a magic show, a voucher — without the
+   *  talks and workshops, which a venue bills as a film's companion under the film's own title as often as on their own
+   *  ("SKRZYŻOWANIE - 50 na 51 - spotkanie z Janem Englertem" is the film, its guest beside it). What the identity
+   *  model's non-film events read ([[services.identity.agreement.NonFilmEvents]]), where skipping a film costs its take. */
+  def isPerformance(title: String, venueMarkers: Seq[Regex] = Nil): Boolean = {
+    val t = title.toLowerCase(Locale.ROOT)
+    !isScreenedBroadcast(t) && (
       EventMarkers.exists(_.findFirstIn(t).isDefined) ||
       venueMarkers.exists(_.findFirstIn(t).isDefined) ||
       isStandaloneGala(t) ||
-      isStandaloneDiscussion(t) ||
-      isStandaloneWorkshop(t) ||
-      isMagicShow(title, t)
+      isMagicShow(title, t))
   }
 
   /** [[isLiveEvent]] on a whole listing: a listing that states a film's record —

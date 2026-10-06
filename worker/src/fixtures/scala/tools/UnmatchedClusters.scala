@@ -66,14 +66,18 @@ object UnmatchedClusters {
     Outcome(model, stage.apply(model, byKey.get, version), stage)
   }
 
-  /** The capture replayed: `Unknown` for anything it does not hold — a stale fixture, re-captured, never guessed. */
-  def replay(capture: Capture): Outcome = {
+  /** The capture replayed: `Unknown` for anything it does not hold — a stale fixture, re-captured, never guessed. Over
+   *  `decisions` (the capture's, else a part of them), each family's and the posters' answers read through `families` and
+   *  `posters` — what a measure of the stage's questions wraps them in. */
+  def replay(capture: Capture, decisions: Seq[ResolverDecision] = Nil, families: FamilyAnswers => FamilyAnswers = identity,
+             posters: PosterAnswers => PosterAnswers = identity): Outcome = {
     val docs = new InMemoryTmdbDocuments
     docs.put(TmdbKind.Family, capture.families.toSeq)
     val store = new FamilyAnswerStore(docs, SpecClock.Pinned)
-    agree(capture.decisions, capture.listings, new Replay(capture), familiesOf(capture.country).map(f => f -> store.answers(f)).toMap, version = 1,
+    agree(if (decisions.isEmpty) capture.decisions else decisions, capture.listings, new Replay(capture),
+      familiesOf(capture.country).map(f => f -> families(store.answers(f))).toMap, version = 1,
       imdb => capture.finds.get(imdb).fold[Answer[Option[Int]]](Answer.Unknown)(Answer.Known(_)), TitleNormalizer.forCountry(capture.country),
-      new PosterAnswerStore(store, SpecClock.Pinned), modules.wiring.IdentityCutoverWiring.identities(capture.country.code),
+      posters(new PosterAnswerStore(store, SpecClock.Pinned)), modules.wiring.IdentityCutoverWiring.identities(capture.country.code),
       new CatalogueAnswerStore(store, SpecClock.Pinned, CataloguePages), modules.wiring.IdentityCutoverWiring.listedOn(capture.country.code))
   }
 

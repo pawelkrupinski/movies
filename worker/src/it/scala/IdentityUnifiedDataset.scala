@@ -81,7 +81,7 @@ object IdentityUnifiedDataset {
     val nodeOf   = IdentityResolver.evidenceOf(l.listings, l.lookups, c.normalizer)(_ => true).flatMap(n => n.keys.map(_ -> n)).toMap
     val byKey    = l.listings.map(x => x.key -> x).toMap
     val capture  = Some(UnmatchedClusters.fixturePath(c.country)).filter(Files.exists(_)).map(UnmatchedClusters.read)
-    val outcome  = capture.map(UnmatchedClusters.replay)
+    val outcome  = capture.map(UnmatchedClusters.replay(_))
 
     // the families' answers: prod's filed ones, the fixture's beside them
     val docs = new InMemoryTmdbDocuments

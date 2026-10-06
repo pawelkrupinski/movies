@@ -83,6 +83,10 @@ object ResolverDecision {
     /** The model took a film, but two kinds of evidence against it or more name the same other film
      *  (`agreement.Correction`): the cluster takes that one instead. Only on the way to the projection. */
     case Corrected
+    /** Unmatched, and not a film at all: every listing of the cluster bills an event no film database holds — a concert,
+     *  a class, a marathon, a secret screening ([[agreement.NonFilmEvents]]) — so the agreement stage asked none of
+     *  them about it. Like [[Agreed]], only on the way to the projection; its card is shown as any no-match's is. */
+    case Event
 
     def matched: Boolean = this == Pinned || this == OwnMatch || this == PooledMatch || this == Agreed || this == Poster || this == Broadcast ||
       this == Filled || this == Catalogue || this == Corrected
