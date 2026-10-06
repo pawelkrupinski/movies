@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Acceptance, Answer, CandidateQuery, DetailFacts, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures, IdentityResolver,
-  Listing}
+import services.identity.{Acceptance, Answer, CandidateQuery, DetailFacts, FactRelations, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures,
+  IdentityResolver, Listing}
 import services.movies.{TitleContainment, TitleNormalizer}
 
 import scala.collection.mutable
@@ -300,7 +300,7 @@ object Agreement {
   private def editionOf(edition: SourceRecord, work: SourceRecord): Boolean = {
     val (byEdition, byWork) = (edition.film.directors.getOrElse(Nil), work.film.directors.getOrElse(Nil))
     val carried = TitleContainment.tokens(edition.film.title)
-    byEdition.nonEmpty && byWork.nonEmpty && IdentityMeasures.directorRelation(byEdition, byWork) == IdentityMeasures.Category("same_person") &&
+    FactRelations.samePerson(byEdition, byWork) &&
       edition.film.year.forall(year => work.film.year.forall(_ <= year)) &&
       work.film.titles.exists(title => title.length >= 4 && { val words = TitleContainment.tokens(title); words.nonEmpty && carried.containsSlice(words) })
   }
@@ -321,9 +321,8 @@ object Agreement {
     def credits(listing: Listing) =
       if (undirected) records.exists(_.film.year.exists(listing.year.contains))
       else records.exists { record =>
-        (record.film.year.zip(listing.year).exists { case (a, b) => math.abs(a - b) <= 1 } || (runs && record.film.year.isEmpty)) &&
-          record.film.directors.exists(directors => directors.nonEmpty &&
-            IdentityMeasures.directorRelation(listing.directors, directors) == IdentityMeasures.Category("same_person"))
+        (FactRelations.yearsAgree(record.film.year, listing.year) || (runs && record.film.year.isEmpty)) &&
+          FactRelations.samePerson(listing.directors, record.film.directors.getOrElse(Nil))
       }
     if (dated.isEmpty || !dated.forall(credits)) Set.empty else Set(ListingFacts) ++ Option.when(runs)(ListingRuntime)
   }
@@ -370,10 +369,8 @@ object Agreement {
     listings.exists(contradicts(_, record))
 
   private def contradicts(listing: Listing, record: SourceRecord): Boolean =
-    record.film.year.zip(listing.year).exists { case (a, b) => math.abs(a - b) > 1 } ||
-      record.film.directors.exists(directors => directors.nonEmpty && listing.directors.nonEmpty &&
-        IdentityMeasures.directorRelation(listing.directors, directors) == IdentityMeasures.Category("different") &&
-        namePrefixes(listing.directors).intersect(namePrefixes(directors)).isEmpty)
+    FactRelations.yearsApart(record.film.year, listing.year) ||
+      FactRelations.otherPeople(listing.directors, record.film.directors.getOrElse(Nil), acrossScripts = false)
 
   /** Is the listing's title another film's ORIGINAL title — one a family weighed — while it is none of the agreed film's
    *  records' original titles, only a translation they file? Then the venue may well bill that film by its own name:
@@ -406,23 +403,19 @@ object Agreement {
    *  respelled in the same year and running time is none), and a
    *  shared title — or, titled in two languages, the same director the same year and a shared word of four letters. */
   def equivalent(a: IdentityMeasures.Film, b: IdentityMeasures.Film): Boolean = {
-    val yearsApart = a.year.zip(b.year).exists { case (x, y) => math.abs(x - y) > 1 }
+    val yearsApart = FactRelations.yearsApart(a.year, b.year)
     val (da, db)   = (a.directors.getOrElse(Nil), b.directors.getOrElse(Nil))
-    val sameDirector = da.nonEmpty && db.nonEmpty && IdentityMeasures.directorRelation(da, db) == IdentityMeasures.Category("same_person")
+    val sameDirector = FactRelations.samePerson(da, db)
     // one person in two transliterations ("Andriej Konczałowski", "Andrei Konchalovsky") is no clash where the films
     // share their year and running time
     val respelled  = a.year.isDefined && a.year == b.year && a.runtime.zip(b.runtime).exists { case (x, y) => math.abs(x - y) <= 2 } &&
-      namePrefixes(da).intersect(namePrefixes(db)).nonEmpty
+      FactRelations.namePrefixes(da).intersect(FactRelations.namePrefixes(db)).nonEmpty
     val clash      = da.nonEmpty && db.nonEmpty && latin(da ++ db) && !sameDirector && !respelled
     def titles(f: IdentityMeasures.Film) = f.titles.map(IdentityMeasures.key).filter(_.nonEmpty).toSet
     def words(f: IdentityMeasures.Film)  = f.titles.flatMap(TitleContainment.tokens).filter(_.length >= 4).toSet
     !yearsApart && !clash && ((titles(a) intersect titles(b)).nonEmpty ||
       (sameDirector && a.year.isDefined && a.year == b.year && (words(a) intersect words(b)).nonEmpty))
   }
-
-  /** Each name's words of four letters or more, folded to ASCII and cut to their first four. */
-  private[agreement] def namePrefixes(names: Seq[String]): Set[String] =
-    names.flatMap(name => tools.TextNormalization.deburr(name).toLowerCase(java.util.Locale.ROOT).split("[^a-z]+")).filter(_.length >= 4).map(_.take(4)).toSet
 
   private def latin(names: Seq[String]): Boolean =
     names.forall(_.forall(c => !Character.isLetter(c) || Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN))

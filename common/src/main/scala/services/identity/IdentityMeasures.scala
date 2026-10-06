@@ -969,7 +969,7 @@ object IdentityMeasures {
     // A bill's title names two works: its facts may single out one, but the title is no record's own.
     val singled = listings.iterator.filter(l => l.directors.nonEmpty && l.statedYear.isDefined && BillJoin.findFirstIn(l.title).isEmpty).map { l =>
       val year = l.statedYear.get
-      val ids  = pool.collect { case (id, f) if f.year.exists(y => math.abs(y - year) <= 1) &&
+      val ids  = pool.collect { case (id, f) if f.year.exists(FactRelations.yearsNear(_, year)) &&
         f.directorCredits.exists(creditRelation(l.directorCredits, _) == Category("same_person")) => id }.distinct
       (key(l.title), l.title, ids, l.statedYear)
     }.filter(_._1.nonEmpty).toSeq
@@ -985,7 +985,7 @@ object IdentityMeasures {
           val spelling = ls.map(_._2).min
           val years    = ls.flatMap(_._4).distinct
           def relation(f: Film) = titleRelation(Listing(spelling), f).value
-          def ruledOut(f: Film) = f.year.exists(y => years.nonEmpty && years.forall(l => math.abs(l - y) > 1))
+          def ruledOut(f: Film) = f.year.exists(y => years.nonEmpty && years.forall(l => !FactRelations.yearsNear(l, y)))
           // A title that is a piece of the record's own ("BTS World Tour 'ARIRANG'" of its São Paulo concert
           // film) names the tour, not the record: only a title sharing no part of it, a translation, is learned.
           Option.when(pool.collectFirst { case (`id`, f) => !ContainingRelations(relation(f)) }.getOrElse(false) &&
@@ -1006,7 +1006,7 @@ object IdentityMeasures {
   private val WrittenYear = """(?<!\d)(?:18|19|20)\d{2}(?!\d)""".r
   private def yearAgrees(title: String, filmYear: Option[Int]): Boolean = {
     val written = WrittenYear.findAllIn(title).map(_.toInt).toSeq
-    written.isEmpty || filmYear.exists(y => written.exists(w => math.abs(w - y) <= YearWindow.PublishedAdjacency))
+    written.isEmpty || filmYear.exists(y => written.exists(FactRelations.yearsNear(_, y)))
   }
 
   /** The listing's own ORIGINAL title against every title of the other side: the same title, a
@@ -1230,7 +1230,7 @@ object IdentityMeasures {
       // a year the rest states is the record's: "Disney Junior Cinema Club 2026" is not the 2024 edition
       val years = rest.filter(_.matches("(?:19|20)\\d\\d")).map(_.toInt)
       !rest.exists(w => w.length > 1 && RomanNumeral.pattern.matcher(w).matches()) &&
-        (years.isEmpty || f.year.forall(y => years.exists(t => math.abs(t - y) <= YearWindow.PublishedAdjacency)))
+        (years.isEmpty || f.year.forall(y => years.exists(FactRelations.yearsNear(_, y))))
     }
   }
 
@@ -1362,7 +1362,7 @@ object IdentityMeasures {
    *  IV"), and no stage work broadcast as a non-season film (the Met's "Così fan tutte" is not Tinto Brass's). Which
    *  films stand beside it is the caller's to read: the ONE IMDb lists so, and none carrying the title already. */
   def takesImdbTitle(l: Listing, f: Film): Boolean = {
-    def near(year: Int) = f.year.forall(y => math.abs(y - year) <= services.resolution.YearWindow.PublishedAdjacency)
+    def near(year: Int) = f.year.forall(FactRelations.yearsNear(_, year))
     // nor a year or director the venue publishes against it: "Afrykanska Przygoda 3D IMAX" [2007] {Ben Stassen} is not
     // the 1954 film IMDb also calls "Afrykańska przygoda"
     yearsWritten(l).forall(near) && l.statedYear.forall(near) &&
@@ -1465,7 +1465,8 @@ object IdentityMeasures {
    *  apart from one billing less. The hand-written rules that read a runtime gap read its size. */
   def runtimeGap(m: Map[String, Measure]): Option[Double] =
     m.get("runtime.delta").collect { case Number(d) => math.abs(d) }
-  def sameDirector(m: Map[String, Measure]): Boolean = m.get("director").contains(Category("same_person"))
+  def sameDirector(m: Map[String, Measure]): Boolean = m.get("director").contains(SamePersonMeasure)
+  private val SamePersonMeasure = Category("same_person")
   /** Does the listing's original title only repeat its own title — the whole of it (a venue
    *  filling the field with the display title, "Cellar Door x ThoughtBubble Presents: Terminator 2:
    *  Judgment Day") or a run cut off one edge of it ("BTS World Tour 'ARIRANG' In Buenos Aires:
@@ -1519,7 +1520,7 @@ object IdentityMeasures {
     // A published year agrees or denies; a year in the title only agrees — a bracket is as often
     // a re-release's year as the film's.
     m.get("year.distance").foreach { case Number(d) => if (d <= YearWindow.PublishedAdjacency) agree += "year" else deny += "year"; case _ => }
-    m.get("titleYear.delta").foreach { case Number(d) if math.abs(d) <= YearWindow.PublishedAdjacency => agree += "year"; case _ => }
+    m.get("titleYear.delta").foreach { case Number(d) if FactRelations.nearDelta(d) => agree += "year"; case _ => }
     m.get("director").foreach { case Category(c) => if (c == "same_person") agree += "director" else if (c == "different") deny += "director"; case _ => }
     m.get("originalTitle").foreach { case Category(c) => if (c == "match") agree += "originalTitle" else if (c == "disjoint") deny += "originalTitle"; case _ => }
     (agree.result(), deny.result())

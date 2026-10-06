@@ -209,7 +209,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       _      <- need(!IdentityMeasures.billsTwoWorks(any.listing), "a double bill")
       _      <- needOf(IdentityMeasures.standsForTheWhole(any.listing, scored.candidate.film), "its piece cannot stand for the whole title", scored)
       // a year the title states is the record's: "Disney Junior Cinema Club 2026" is not the 2024 edition
-      _      <- needOf(scored.number("titleYear.delta").forall(delta => math.abs(delta) <= YearWindow.PublishedAdjacency), "the title dates another year",
+      _      <- needOf(scored.number("titleYear.delta").forall(FactRelations.nearDelta), "the title dates another year",
                   scored, scored.number("titleYear.delta").fold("")(delta => f"titleYear.delta=$delta%.0f"))
       // Read as the bare title its piece is: the banner beside it is no evidence against the film.
       bare    = scored.copy(measures = scored.measures + ("title" -> IdentityMeasures.Category("exact")))
@@ -232,7 +232,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def imdbSuggestedWhy(ranked: Seq[Scored]): Verdict = ranked.headOption.toRight(Refused("no candidate")).flatMap { any =>
     val eligible  = ranked.filterNot(_.denied)
     val suggested = eligible.filter(scored => scored.imdb.isDefined || scored.imdbTitled.nonEmpty)
-    def sameDirector(scored: Scored) = scored.category("director").contains("same_person")
+    def sameDirector(scored: Scored) = IdentityMeasures.sameDirector(scored.measures)
     // the film's own title or its original — not an alternative TMDB files it under ("Lumière" is not "Café Lumière")
     def exact(scored: Scored)        = scored.category("title").exists(Set("exact", "original"))
     def outranked(scored: Scored) = eligible.exists(rival => (rival ne scored) && rival.category("title").contains("exact") &&
@@ -268,8 +268,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       scored <- one(suggested.filter(rung), "no IMDb suggestion is taken by its year, its director or as the only one", "two IMDb suggestions qualify")
       _      <- noneOf(eligible.find(searchNamesAnother(scored, _)), "TMDB ranks another film the title names above it", scored)
       _      <- needOf(!otherInstalment(scored), "the title numbers another instalment", scored, s"numeral=${scored.category("numeral").getOrElse("")}")
-      titled  = scored.copy(measures = scored.measures ++ Map("title" -> IdentityMeasures.Category("exact"),
-                  "search.rank" -> IdentityMeasures.Number(1), "rivals" -> IdentityMeasures.Number(0)))
+      titled  = asItsTitlesTopHit(scored)
       _      <- needOf(!speaksAgainst(titled), "a published fact weighs against it", scored, against(titled).mkString(" "))
       _      <- noneOf(eligible.find(rival => (rival ne scored) && fitsBetter(rival, titled)), "a rival fits its facts better", scored)
       taken  <- classAccepted(scored, titled.measures)
@@ -324,8 +323,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
                  "the title names another film", sole)
       _     <- needOf(!sole.category("numeral").exists(IdentityMeasures.OtherInstalment), "the title numbers another instalment", sole,
                  s"numeral=${sole.category("numeral").getOrElse("")}")
-      titled = sole.copy(measures = sole.measures ++ Map("title" -> IdentityMeasures.Category("exact"),
-                 "search.rank" -> IdentityMeasures.Number(1), "rivals" -> IdentityMeasures.Number(0)))
+      titled = asItsTitlesTopHit(sole)
       taken <- classAccepted(sole, titled.measures.filterNot { case (name, _) => name == "runtime.delta" || name == "year.delta" })
     } yield taken
   }
@@ -443,6 +441,12 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def corroborated(scored: Scored): Boolean =
     IdentityMeasures.sameDirector(scored.measures) || scored.number("year.distance").contains(0.0)
 
+  /** The candidate read as its title's exact top hit, unrivalled — how a rule taking a film by another title (an IMDb
+   *  suggestion, a search's only result) has its own facts weighed, the title's evidence granted. */
+  private def asItsTitlesTopHit(scored: Scored): Scored = scored.copy(measures = scored.measures ++ TopHitMeasures)
+  private val TopHitMeasures = Map("title" -> IdentityMeasures.Category("exact"), "search.rank" -> IdentityMeasures.Number(1),
+    "rivals" -> IdentityMeasures.Number(0))
+
   /** A published year more than one off, or a runtime 30 minutes or more off: the listing's own facts against it. */
   def contradicted(scored: Scored): Boolean =
     scored.number("year.distance").exists(_ > YearWindow.PublishedAdjacency) || IdentityMeasures.runtimeContradicts(scored.measures)
@@ -517,7 +521,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  such records are no answer. */
   private def datedTitleWhy(ranked: Seq[Scored]): Verdict =
     one(eligibleOf(ranked).filter(candidate => namedButForItsYear(candidate) &&
-      candidate.number("titleYear.delta").exists(delta => math.abs(delta) <= YearWindow.PublishedAdjacency) && !contradicted(candidate) &&
+      candidate.number("titleYear.delta").exists(FactRelations.nearDelta) && !contradicted(candidate) &&
       !candidate.category("director").contains("different")),
       "no film of its title from the year its title dates", "two films of its title from that year",
       if (ranked.exists(_.number("titleYear.delta").isDefined)) "" else "the title dates no year").map(f => f -> f.probability)
@@ -557,7 +561,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       // nor one from another year than the title dates the production: US "MetOpera: Carmen (2009)" ×513 is Eyre's
       // 2009 staging, not the Met's 2024 record its house bills
       house <- { val billed = eligible.filter(candidate => candidate.houseProduction && !contradicted(candidate))
-                 one(billed.filter(_.number("titleYear.delta").forall(delta => math.abs(delta) <= YearWindow.PublishedAdjacency)),
+                 one(billed.filter(_.number("titleYear.delta").forall(FactRelations.nearDelta)),
                    if (billed.isEmpty) "no record bills its work under its house" else "its house's record is from another year than its title dates",
                    "two records bill its work under its house", billed.map(Acceptance.named).mkString("; ")) }
       _     <- noneOf(eligible.find(other => (other ne house) &&

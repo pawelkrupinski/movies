@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.IdentityMeasures
+import services.identity.{FactRelations, IdentityMeasures}
 
 /**
  * What the agreement stage makes of the evidence against a film the MODEL took ([[AgreementStage]]'s corrections): each
@@ -53,14 +53,12 @@ object Correction {
    *  one apart, or Latin-script directors who are other people, sharing no name's stem? A missing fact contradicts
    *  nothing: a title alone never does. */
   def contradicts(record: IdentityMeasures.Film, model: IdentityMeasures.Film): Boolean =
-    record.year.zip(model.year).exists { case (a, b) => math.abs(a - b) > 1 } || otherPeople(record.directors.getOrElse(Nil), model.directors.getOrElse(Nil))
+    FactRelations.yearsApart(record.year, model.year) ||
+      FactRelations.otherPeople(record.directors.getOrElse(Nil), model.directors.getOrElse(Nil), acrossScripts = true)
 
   /** Do two films' credited directors share one — the same person, or a shared name's stem ("Simona Risi", "Simona
    *  Lina Risi")? `None` where either credits none. */
   def shareDirector(a: Seq[String], b: Seq[String]): Option[Boolean] =
-    Option.when(a.nonEmpty && b.nonEmpty)(!otherPeople(a, b))
+    Option.when(a.nonEmpty && b.nonEmpty)(!FactRelations.otherPeople(a, b, acrossScripts = true))
 
-  private def otherPeople(a: Seq[String], b: Seq[String]): Boolean =
-    a.nonEmpty && b.nonEmpty && Set(IdentityMeasures.Category("different"), IdentityMeasures.Category("different_script"))(IdentityMeasures.directorRelation(a, b)) &&
-      Agreement.namePrefixes(a).intersect(Agreement.namePrefixes(b)).isEmpty
 }

@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, DecorationSegments, IdentityMeasures, Listing, ScreeningDays}
-import services.identity.IdentityMeasures.{Category, Film}
+import services.identity.{Answer, DecorationSegments, FactRelations, IdentityMeasures, Listing, ScreeningDays}
+import services.identity.IdentityMeasures.Film
 
 
 /**
@@ -76,8 +76,7 @@ object Broadcast {
     def ownFacts(listing: Listing) = !listing.factsFromCatalogue && !listing.page.exists(services.identity.CatalogueSources.catalogueEntry)
     def tiedToTaken(listing: Listing) =
       IdentityMeasures.titleYearOf(Seq(listing.title, listing.rawTitle).distinct).exists(taken.year.contains) ||
-        ownFacts(listing) && (listing.year.exists(taken.year.contains) || listing.directors.nonEmpty && taken.directors.exists(_.nonEmpty) &&
-          IdentityMeasures.directorRelation(listing.directors, taken.directors.get) == Category("same_person"))
+        ownFacts(listing) && (listing.year.exists(taken.year.contains) || FactRelations.samePerson(listing.directors, taken.directors.getOrElse(Nil)))
     for {
       first <- days.first.filter(_ => listings.nonEmpty && !days.isUnknown)
       last  <- days.last
@@ -135,9 +134,7 @@ object Broadcast {
     def fitsButTheHouse(film: Film): Boolean =
       IdentityMeasures.stageWorks(film).exists(works) &&
         season.forall(own => IdentityMeasures.filmSeason(film).forall(_ == own)) &&
-        listing.statedYear.forall(year => film.year.forall(filmYear => math.abs(filmYear - year) <= services.resolution.YearWindow.PublishedAdjacency)) &&
-        !(listing.directors.nonEmpty && film.directors.exists(_.nonEmpty) &&
-          IdentityMeasures.directorRelation(listing.directors, film.directors.get) == Category("different"))
+        !FactRelations.yearsApart(listing.statedYear, film.year) && !FactRelations.otherPerson(listing.directors, film.directors.getOrElse(Nil))
 
     /** Does a film database credit the record's production with the director the listing credits: one of `productions`
      *  billing the record's house (its banner spelling the record's) and one of the works both bill, within a year of
@@ -149,10 +146,9 @@ object Broadcast {
       val house = Billing.bannerOf(film.titles, _ => false)
       val work  = IdentityMeasures.stageWorks(film).intersect(works)
       house.nonEmpty && productions.exists { production =>
-        production.directors.exists(credited => credited.nonEmpty &&
-          IdentityMeasures.directorRelation(listing.directors, credited) == Category("same_person")) &&
+        FactRelations.samePerson(listing.directors, production.directors.getOrElse(Nil)) &&
           IdentityMeasures.stageWorks(production).exists(work) &&
-          production.year.zip(film.year).forall { case (a, b) => math.abs(a - b) <= 1 } &&
+          !FactRelations.yearsApart(production.year, film.year) &&
           { val own = Billing.bannerOf(production.titles, _ => false); own.nonEmpty && Billing.spells(own, house) }
       }
     }

@@ -175,7 +175,7 @@ object PosterEvidence {
       billed.nonEmpty && (billed intersect filed).isEmpty
     } else film.year.exists { released =>
       val billed = yearsOf(listing.rawTitle) ++ yearsOf(listing.title)
-      billed.nonEmpty && billed.forall(year => math.abs(year - released) > 1)
+      billed.nonEmpty && billed.forall(year => !FactRelations.yearsNear(year, released))
     }
   }
   private val Year = """(?<!\d)(?:19|20)\d\d(?!\d)""".r
