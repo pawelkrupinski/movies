@@ -24,7 +24,8 @@ name: Identity rule refit
 # stored counts dropped — the relearn such a change asks for, still under the same gate.
 #
 # Secrets: TMDB_API_KEY and SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY, as decoration-discovery.yml.
-# This bot's PR is the second sanctioned exception to "no PRs": land it by fast-forwarding main
+# This bot's PR is the second of three sanctioned exceptions to "no PRs" (with decoration-discovery.yml and
+# identity-capture.yml): land it by fast-forwarding main
 # after review.
 
 on:

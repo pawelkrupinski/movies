@@ -2920,7 +2920,10 @@ the stage, cannot be graded until the fixture is re-captured (below).
    otherwise. `--capture` / `--fill` override it.
 
    `--dry-run` prints the plan (downloads, exports, each JVM's command and variables) and touches neither prod nor the
-   network. Then run the ratchet: every new take has to be judged into `labels.tsv`, and `expected-matches.tsv`
+   network. Weekly, `.github/workflows/identity-capture.yml` runs the same command (Monday 07:00 UTC, after the Sunday
+   night recording, so its PR is reviewed before Thursday's refit), one runner per country, prod read over the
+   read-only CI tunnel, and opens ONE PR with the refreshed fixture, the ratchet's unjudged and wrong takes, and the
+   re-baselined `expected-matches.tsv` for review. Then run the ratchet: every new take has to be judged into `labels.tsv`, and `expected-matches.tsv`
    re-baselined (takes the model now makes leave the fixture, as with Dyrygent).
 
 ### 20.15 The local review app's 60 answers: labels, and the rules they suggested (2026-10-06)

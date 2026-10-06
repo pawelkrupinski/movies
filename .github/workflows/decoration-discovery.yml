@@ -7,7 +7,7 @@ name: Decoration discovery
 # `scripts.DecorationDiscovery` (worker/src/test/scala/scripts) mines the unmatched clusters'
 # fixture (test/resources/fixtures/identity-unmatched/<cc>.json.gz — a fresh capture needs the
 # recorded corpora, a Mongo and prod's family answers, so the bot reads the checked-in one,
-# re-captured by `UnmatchedClustersCaptureIntegrationSpec`), measures every proposal alone
+# re-captured weekly by identity-capture.yml), measures every proposal alone
 # against the fixture's replay — TMDB searches the capture lacks asked live with TMDB_API_KEY —
 # and keeps one only when it takes at least one listing right by labels.tsv, none wrong, switches
 # no existing take, and strips nothing a known film title starts (prefix) or ends (suffix) with.
@@ -19,7 +19,8 @@ name: Decoration discovery
 # Secrets: TMDB_API_KEY (the live gaps, as ci.yml's e2e uses it) and SYNC_PR_APP_ID +
 # SYNC_PR_APP_PRIVATE_KEY — the "Kinowo Sync Bot" App discover-cinemas.yml opens its PR with, so
 # Branch CI runs on it (a PR opened with GITHUB_TOKEN never fires `pull_request`). This bot's PR is
-# the one sanctioned exception to "no PRs": land it by fast-forwarding main after review.
+# the first of three sanctioned exceptions to "no PRs" (with identity-refit.yml and identity-capture.yml):
+# land it by fast-forwarding main after review.
 
 on:
     workflow_dispatch:

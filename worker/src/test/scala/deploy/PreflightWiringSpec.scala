@@ -30,7 +30,8 @@ class PreflightWiringSpec extends AnyFlatSpec with Matchers {
   private val Guarded = Map(
     ".github/workflows/android.yml" -> true,
     ".github/workflows/convergence-bisect.yml"     -> false,
-    ".github/workflows/record-scrape-fixtures.yml" -> false
+    ".github/workflows/record-scrape-fixtures.yml" -> false,
+    ".github/workflows/identity-capture.yml"       -> false
   )
 
   private def needs(job: String): Set[String] =

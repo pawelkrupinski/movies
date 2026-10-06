@@ -1,0 +1,261 @@
+name: Identity capture
+
+# Weekly RECAPTURE of the unmatched-cluster fixture (test/resources/fixtures/identity-unmatched/<cc>.json.gz)
+# that the ratchet (UnmatchedClustersRatchetSpec), the decoration discovery and the identity refit all
+# replay — proposed for hand review in ONE PR.
+#
+# Each country runs the same one command a laptop runs (scripts/identity-capture.sh, docs/design/
+# identity-resolver.md §20.14 item 5) on a runner of its own: the newest successful "Record scrape
+# fixtures" run's corpus and the enrichment tree recorded with it, prod's identity_family_answers
+# exported READ-ONLY over the CI tunnel (the forced-command `kinowo-ci-corpus` route the recording
+# reads its corpus through), then the capture — or, when <cc>.inputs says the fixture's decisions are
+# current, only a fill. One runner per country rather than `--parallel 2` on one: a runner holds one
+# 11 GB heap beside its Mongo, not two, and runners on separate addresses spread the live reads too.
+# The PR job puts the countries' fixtures back together, runs the ratchet over them and opens the PR
+# with what it says: the takes to judge into labels.tsv, any WRONG or lost take, and the candidate
+# expected-matches.tsv it re-baselined. A country that failed keeps its old fixture and says so.
+#
+# Monday 07:00 UTC: after the Sunday-night recording (23:31 UTC; its longest leg is capped at six
+# hours, so it is done by ~05:30) and clear of Monday's 05:00 roster audit and 06:00 cinema
+# discovery, so the PR has Monday to Wednesday for review before Thursday's 05:00 identity refit
+# re-tunes on the fixture.
+#
+# Secrets (all existing repo secrets): MONGO_CI_SSH_KEY + MONGO_CI_SSH_HOST_KEY (the tunnel, as
+# record-scrape-fixtures.yml), TMDB_API_KEY (the live gaps), SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY
+# (the "Kinowo Sync Bot" App, as decoration-discovery.yml, so Branch CI runs on the PR).
+# This bot's PR is the third of three sanctioned exceptions to "no PRs" (with decoration-discovery.yml and
+# identity-refit.yml): land it by fast-forwarding main after
+# review.
+
+on:
+    workflow_dispatch:
+
+    # Monday 07:00 UTC — see above.
+    schedule:
+        - cron: '0 7 * * 1'
+
+concurrency:
+    group: identity-capture
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    # Seconds, first: every secret the jobs below read is set. (PreflightWiringSpec)
+    preflight:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: scripts/ci
+                  sparse-checkout-cone-mode: false
+            - name: Secrets present
+              env:
+                  MONGO_CI_SSH_KEY: ${{ secrets.MONGO_CI_SSH_KEY }}
+                  MONGO_CI_SSH_HOST_KEY: ${{ secrets.MONGO_CI_SSH_HOST_KEY }}
+                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+                  SYNC_PR_APP_ID: ${{ secrets.SYNC_PR_APP_ID }}
+                  SYNC_PR_APP_PRIVATE_KEY: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
+              run: scripts/ci/preflight.sh MONGO_CI_SSH_KEY MONGO_CI_SSH_HOST_KEY TMDB_API_KEY SYNC_PR_APP_ID SYNC_PR_APP_PRIVATE_KEY
+
+    capture:
+        name: capture (${{ matrix.code }})
+        needs: preflight
+        runs-on: ubuntu-latest
+        timeout-minutes: 300
+        permissions:
+            contents: read
+            actions: read
+        strategy:
+            fail-fast: false
+            matrix:
+                # Largest first (scripts.IdentityCapture.Countries): queued in this order when runners are short.
+                code: [us, de, uk, pl, es]
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: ./.github/actions/setup-jdk
+              with:
+                  distribution: temurin
+                  java-version: 27
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+
+            - uses: ./.github/actions/sbt-target-cache
+              with:
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}
+                  restore-keys: |
+                      sbt-target-${{ runner.os }}-
+
+            - name: Start MongoDB (single-node replica set, the capture's throwaway pipeline database)
+              run: scripts/ci/start-mongo-replset.sh
+              env:
+                  MONGO_MAJORITY_JOURNAL: 'false'
+
+            # The CI end of the read-only route to prod Mongo; it exports KINOWO_CONVERGENCE_SCRAPES_URI.
+            - name: Tunnel to prod Mongo
+              timeout-minutes: 5
+              run: scripts/ci/wait-for-mongo-tunnel.sh 27018
+              env:
+                  MONGO_CI_SSH_KEY: ${{ secrets.MONGO_CI_SSH_KEY }}
+                  MONGO_CI_SSH_HOST_KEY: ${{ secrets.MONGO_CI_SSH_HOST_KEY }}
+
+            - name: Capture ${{ matrix.code }}
+              timeout-minutes: 280
+              env:
+                  CC: ${{ matrix.code }}
+                  GH_TOKEN: ${{ github.token }}
+                  KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY: ${{ secrets.TMDB_API_KEY }}
+                  MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
+              run: |
+                  set -o pipefail
+                  export KINOWO_IDENTITY_FAMILY_URI="$KINOWO_CONVERGENCE_SCRAPES_URI"
+                  scripts/identity-capture.sh --parallel 1 --heap 11g "$CC" 2>&1 | tee "identity-capture-$CC.txt"
+
+            - name: Close the tunnel to prod Mongo
+              if: always()
+              run: scripts/ci/close-mongo-tunnel.sh 27018
+
+            - uses: actions/upload-artifact@v6
+              if: always()
+              with:
+                  name: identity-capture-${{ matrix.code }}
+                  path: |
+                      test/resources/fixtures/identity-unmatched/${{ matrix.code }}.json.gz
+                      test/resources/fixtures/identity-unmatched/${{ matrix.code }}.inputs
+                      identity-capture-${{ matrix.code }}.txt
+                      target/identity-capture/logs/
+                  retention-days: 14
+
+    # ONE PR for the run: every country's refreshed fixture, and what the ratchet makes of them.
+    pull-request:
+        needs: [preflight, capture]
+        if: always() && !cancelled() && needs.preflight.result == 'success'
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        permissions:
+            contents: write
+            pull-requests: write
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: actions/download-artifact@v6
+              with:
+                  pattern: identity-capture-*
+                  path: captures
+
+            - name: Put the countries' fixtures back
+              run: |
+                  set -euo pipefail
+                  for dir in captures/identity-capture-*; do
+                      cc=${dir##*-}
+                      if [ -f "$dir/test/resources/fixtures/identity-unmatched/$cc.json.gz" ]; then
+                          cp "$dir/test/resources/fixtures/identity-unmatched/$cc".* test/resources/fixtures/identity-unmatched/
+                      fi
+                  done
+                  git status --short -- test/resources/fixtures/identity-unmatched/
+
+            - uses: ./.github/actions/setup-jdk
+              with:
+                  distribution: temurin
+                  java-version: 27
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+
+            - uses: ./.github/actions/sbt-target-cache
+              with:
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}
+                  restore-keys: |
+                      sbt-target-${{ runner.os }}-
+
+            # The ratchet is the review list, not a gate: a recapture is EXPECTED to make takes no label
+            # judges yet. Its findings go in the PR body; the candidate expected-matches.tsv it writes
+            # replaces the checked-in one for review.
+            - name: Run the ratchet over the recapture
+              run: |
+                  set -o pipefail
+                  sbt "worker/testOnly services.identity.UnmatchedClustersRatchetSpec" 2>&1 | tee ratchet.log || true
+                  if [ -f target/identity-unmatched/expected-matches.tsv ]; then
+                      cp target/identity-unmatched/expected-matches.tsv test/resources/fixtures/identity-unmatched/expected-matches.tsv
+                  fi
+
+            - name: Write the PR body
+              run: |
+                  set -euo pipefail
+                  {
+                      echo "The weekly recapture of the unmatched-cluster fixture ([identity-capture.yml](../blob/main/.github/workflows/identity-capture.yml), run ${GITHUB_RUN_ID})."
+                      echo
+                      echo "To land: judge every UNJUDGED take into \`labels.tsv\`, check \`expected-matches.tsv\`, then fast-forward main."
+                      echo
+                      echo "### Per country"
+                      echo
+                      echo '```'
+                      cat captures/identity-capture-*/identity-capture-*.txt 2>/dev/null \
+                          | grep -E '^\[identity-capture\] [a-z]{2}: (CAPTURE|FILL|FAILED)|captured [0-9]+ listings|filled after|^  [a-z ]+ +[0-9hms]+' || echo "no country reported"
+                      echo '```'
+                      echo
+                      echo "### The ratchet"
+                      echo
+                      echo '```'
+                      sed -E 's/^\[info\] ?//' ratchet.log \
+                          | grep -E 'right takes|WRONG takes|UNJUDGED takes|LOST|^ *[a-z]{2}[[:blank:]]|FAILED|lacks answers' | head -400 || true
+                      echo '```'
+                  } > identity-capture-report.md
+                  cat identity-capture-report.md >> "$GITHUB_STEP_SUMMARY"
+
+            - name: Check for a refreshed fixture
+              id: changed
+              run: |
+                  if git diff --quiet -- test/resources/fixtures/identity-unmatched/ && [ -z "$(git ls-files --others -- test/resources/fixtures/identity-unmatched/)" ]; then
+                      echo "changed=false" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "changed=true" >> "$GITHUB_OUTPUT"
+                  fi
+
+            # A fresh branch off main every run, never a force-push over a stale one --
+            # see .github/actions/drop-bot-branch.
+            - uses: actions/create-github-app-token@v3
+              if: steps.changed.outputs.changed == 'true'
+              id: app-token
+              with:
+                  app-id: ${{ secrets.SYNC_PR_APP_ID }}
+                  private-key: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
+
+            - uses: ./.github/actions/drop-bot-branch
+              if: steps.changed.outputs.changed == 'true'
+              with:
+                  branch: chore/identity-capture
+                  token: ${{ steps.app-token.outputs.token }}
+
+            - name: Open the recapture PR
+              if: steps.changed.outputs.changed == 'true'
+              uses: peter-evans/create-pull-request@v6
+              with:
+                  token: ${{ steps.app-token.outputs.token }}
+                  branch: chore/identity-capture
+                  delete-branch: true
+                  add-paths: |
+                      test/resources/fixtures/identity-unmatched/
+                  commit-message: 'Recapture the unmatched-cluster fixture from the newest recording, for the labels and expected matches to be judged'
+                  title: 'Identity capture: refreshed unmatched-cluster fixture'
+                  body-path: identity-capture-report.md
+
+    # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
+    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    report:
+        needs: [preflight, capture, pull-request]
+        if: always() && !cancelled() && github.event_name == 'schedule'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}
