@@ -10318,8 +10318,11 @@ services.cinemas.pl.SystemBiletowyClient$RawSlot$
 services.cinemas.pl.TeatrZiemiRybnickiejClient
 services.cinemas.pl.UjazdowskiClient
 services.cinemas.pl.UjazdowskiClient$
+services.cinemas.pl.UjazdowskiClient$$anon$1
 services.cinemas.pl.UjazdowskiClient$Meta
 services.cinemas.pl.UjazdowskiClient$Meta$
+services.cinemas.pl.UjazdowskiClient$ProgrammeFilm
+services.cinemas.pl.UjazdowskiClient$ProgrammeFilm$
 services.cinemas.pl.UjazdowskiClient$RawSlot
 services.cinemas.pl.UjazdowskiClient$RawSlot$
 services.cinemas.pl.VisualSoftPortal
