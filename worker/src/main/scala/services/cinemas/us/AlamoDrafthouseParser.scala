@@ -3,7 +3,9 @@ package services.cinemas.us
 import java.util.Locale
 
 import models.{Cinema, CinemaMovie, Movie, Showtime}
+import org.jsoup.Jsoup
 import play.api.libs.json._
+import services.cinemas.common.FilmDetail
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.util.Try
@@ -36,9 +38,9 @@ object AlamoDrafthouseParser {
 
   /** The film a presentation is OF — the film side of the join, identified by
    *  `show.slug` rather than by the presentation's own slug (see the class note).
-   *  Alamo's VENUE payload carries no runtime, synopsis, cast or director (those
-   *  live on the per-show detail endpoint, which is a separate fetch per film);
-   *  TMDB supplies them downstream, so this carries only what the payload has. */
+   *  Alamo's VENUE payload carries no runtime, year, synopsis, cast or director:
+   *  those live on the per-show endpoint [[parseDetail]] reads, a separate fetch
+   *  per film deferred to the client's detail enrichment. */
   case class Show(
     slug:          String,
     title:         String,
@@ -113,6 +115,44 @@ object AlamoDrafthouseParser {
           certification = certificate((p \ "show" \ "certification").asOpt[String])
         )
       }.toMap
+
+  /** One show's detail off `v2/schedule/presentation/<slug>` (see
+   *  [[AlamoDrafthouseClient.presentationUrl]]) — the endpoint the show page's
+   *  own JavaScript reads for what it displays under the title. `data.presentation.show`
+   *  is the venue payload's `show` with the film's facts added:
+   *
+   *    runtimeMinutes          → runtime (absent on ~4% of shows, e.g. an unreleased one)
+   *    nationalReleaseDateUtc  → its year: the ORIGINAL release for repertory
+   *                              ("halloween-1978" → 1978-10-27), the US release for a new film
+   *    directors[] / actors[]  → plain name strings (credited on ~27% of shows)
+   *    description             → HTML paragraphs, read as text
+   *    posterImages[] / trailer.videoUri / certification / genres[]
+   *
+   *  Not taken, for want of a slot: `languages[]`, `writers[]`, `producers[]`,
+   *  `distributors[]`, `productionCompanies[]`, `headline` (a tagline). `imdbId` is
+   *  a catalogue link, read by the identity model through
+   *  [[AlamoDrafthouseClient.CatalogueLinkPages]] rather than stored here.
+   *
+   *  A body that parses but names no show is an empty detail, not a failure: the
+   *  page loaded. A body that is not JSON throws. */
+  def parseDetail(json: String): FilmDetail = {
+    val show = Json.parse(json) \ "data" \ "presentation" \ "show"
+    def text(field: String): Option[String] = (show \ field).asOpt[String].map(_.trim).filter(_.nonEmpty)
+    def names(field: String): Seq[String] =
+      (show \ field).asOpt[Seq[String]].getOrElse(Nil).map(_.trim).filter(_.nonEmpty).distinct
+    FilmDetail(
+      synopsis       = text("description").map(html => Jsoup.parse(html).text().trim).filter(_.nonEmpty),
+      cast           = names("actors"),
+      director       = names("directors"),
+      runtimeMinutes = (show \ "runtimeMinutes").asOpt[Int].filter(_ > 0),
+      releaseYear    = text("nationalReleaseDateUtc").flatMap(d => Try(LocalDate.parse(d.take(10)).getYear).toOption),
+      genres         = names("genres"),
+      posterUrl      = (show \ "posterImages").asOpt[Seq[JsValue]].getOrElse(Nil)
+        .headOption.flatMap(i => (i \ "uri").asOpt[String]).map(_.trim).filter(_.nonEmpty),
+      trailerUrl     = (show \ "trailer" \ "videoUri").asOpt[String].map(_.trim).filter(_.nonEmpty),
+      ageRating      = certificate(text("certification"))
+    )
+  }
 
   /** The MPAA certificate, when the field really holds one.
    *
@@ -258,7 +298,8 @@ object AlamoDrafthouseParser {
       cinema      = cinema,
       posterUrl   = show.posterUrl,
       filmUrl     = Some(s"${AlamoDrafthouseClient.BaseUrl}/show/${show.slug}"),
-      synopsis    = None,   // not carried by the venue payload; TMDB supplies it
+      // Not carried by the venue payload: the show's own detail ([[parseDetail]]) fills them.
+      synopsis    = None,
       cast        = Seq.empty,
       director    = Seq.empty,
       showtimes   = showtimes,

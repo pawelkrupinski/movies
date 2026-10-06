@@ -81,7 +81,8 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
   /** The venue film pages whose catalogue links the catalogue take reads, each through the fetch its client scrapes with. */
   lazy val catalogueLinkReader: services.identity.CatalogueLinkReader = new services.identity.CatalogueLinkReader(Seq(
     services.cinemas.common.FlicksClient.CatalogueLinkPages -> flicksFetch,
-    services.cinemas.pl.KinotekaClient.CatalogueLinkPages   -> httpFetch))
+    services.cinemas.pl.KinotekaClient.CatalogueLinkPages   -> httpFetch,
+    services.cinemas.us.AlamoDrafthouseClient.CatalogueLinkPages -> cinemaScraperCatalog.alamoDetailHttp))
   /** The catalogue ids' mappings and the venue pages' catalogue links, filed among the families' answers. */
   lazy val catalogueAnswerStore: services.identity.CatalogueAnswerStore =
     new services.identity.CatalogueAnswerStore(familyAnswerStore, clock, catalogueLinkReader.pages)

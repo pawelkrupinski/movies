@@ -102,7 +102,7 @@ final class CatalogueLinkReader(readers: Seq[(CatalogueLinkPages, HttpFetch)]) {
   val pages: Seq[CatalogueLinkPages] = readers.map(_._1)
   def links(page: String): Seq[CatalogueId] =
     CatalogueLinks.pagesOf(page, pages).flatMap(declared => readers.find(_._1 == declared)).fold(Seq.empty[CatalogueId]) { case (declared, fetch) =>
-      try CatalogueLinks.of(HttpRead.page(fetch, page), declared.sources)
+      try CatalogueLinks.of(HttpRead.page(fetch, declared.readAt(page)), declared.sources)
       catch { case e: HttpStatusException if HttpStatusException.isDurable(e.code) => Nil }
     }
 }

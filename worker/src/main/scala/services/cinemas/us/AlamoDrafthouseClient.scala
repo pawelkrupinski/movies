@@ -1,10 +1,11 @@
 package services.cinemas.us
 
 import models.{Cinema, CinemaMovie}
-import services.cinemas.common.{CinemaScraper, ScrapeHorizon}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon}
 import tools.{HttpFetch, HttpRead}
 
 import java.time.LocalDate
+import scala.concurrent.duration._
 
 /**
  * Alamo Drafthouse — 40 US venues, served off the chain's own public JSON API
@@ -48,6 +49,14 @@ import java.time.LocalDate
  * revivals, one-off event screenings all live in that tail), so the check was
  * the precondition for this client existing rather than an afterthought.
  *
+ * THE FILM'S FACTS ARE A SECOND, DEFERRED READ. The venue payload names a film
+ * by title, poster and certificate only; its runtime, release year, director,
+ * cast and synopsis come from `v2/schedule/presentation/<show slug>` — what the
+ * show page renders from — fetched as this venue's [[DetailEnricher]] detail
+ * through the chain's shared detail cache, so a show playing at 30 venues costs
+ * one request per cache TTL, not 30. Without them a title-only listing cannot
+ * tell Andy Palmer's 2026 "Last Shot" from the 2020 film of that name.
+ *
  * One instance serves one venue — its Alamo `venueSlug` (e.g. "lakeline") plus
  * the [[Cinema]] it feeds, mirroring [[services.cinemas.common.FlicksClient]].
  * `docs/venue-maps/ALAMO-DRAFTHOUSE-VENUE-MAP.tsv` maps every API venue to its
@@ -55,13 +64,18 @@ import java.time.LocalDate
  */
 class AlamoDrafthouseClient(
   http:      HttpFetch,
+  // The per-show detail fetch: the chain's SHARED detail cache. The same film plays
+  // at most of the 40 venues and its show detail is identical at every one, so the
+  // cache — not the task scheduler — is what makes it one request per show per TTL
+  // fleet-wide rather than one per venue.
+  detailHttp: HttpFetch,
   venueSlug: String,
   override val cinema: Cinema,
   // The VENUE's calendar day, asked per scrape, for the far-date sanity bound. The US
   // spans six zones, so the catalog asks it in the venue's own rather than letting a
   // worker in Europe decide.
   today:     => LocalDate
-) extends CinemaScraper {
+) extends CinemaScraper with DetailEnricher {
 
   import AlamoDrafthouseClient._
 
@@ -89,6 +103,18 @@ class AlamoDrafthouseClient(
       cinema,
       notAfter = today.plusDays(MaxHorizonDays.toLong)
     )
+
+  // ── deferred detail: the show's runtime, year, director, cast, synopsis ──
+
+  /** PER VENUE, so the detail lands on this venue's own slot and counts as what
+   *  the venue states about its listing — Alamo is the programmer itself, not an
+   *  aggregator. The fetch is still once per show: `detailHttp` is chain-wide. */
+  override val detailGroup: String = s"alamo-drafthouse|$venueSlug"
+
+  /** The listing's `filmUrl` (`/show/<show slug>`) names the show; the endpoint
+   *  answers to that slug. A show it doesn't know is a 404, let escape as gone. */
+  override def fetchFilmDetail(ref: String): Option[FilmDetail] =
+    DetailFetchOutcome.page(detailHttp, presentationUrl(showSlugOf(ref))).map(AlamoDrafthouseParser.parseDetail)
 }
 
 object AlamoDrafthouseClient {
@@ -106,6 +132,27 @@ object AlamoDrafthouseClient {
    *  at scrape time: the slug↔`Cinema` pairing is wired statically in
    *  `CinemaScraperCatalog`. */
   def marketScheduleUrl(marketSlug: String): String = s"$BaseUrl/s/mother/v2/schedule/market/$marketSlug"
+
+  /** One show's detail — what `drafthouse.com/show/<slug>` displays once its
+   *  JavaScript loads (the page itself is a 4.5 KB shell). The site also asks it
+   *  market-scoped (`presentation/<market>/<slug>`); the show's facts are the same
+   *  unscoped, and one URL per show is what lets every venue share a cached body. */
+  def presentationUrl(showSlug: String): String = s"$BaseUrl/s/mother/v2/schedule/presentation/$showSlug"
+
+  /** The show slug off a listing's film page (`https://drafthouse.com/show/<slug>`). */
+  def showSlugOf(filmUrl: String): String = filmUrl.trim.stripSuffix("/").split('/').last
+
+  /** How long the chain's shared detail cache keeps a show's body: inside the
+   *  `DetailEnrich` refresh window, like every chain's (`CinemaScraperCatalogSpec`). */
+  val DetailTtl: FiniteDuration = 2.hours
+
+  /** A show's detail states the film's IMDb id on some shows (6 of 107 across six
+   *  venues, 2026-10-06) — the venue's own exact naming of the film, which the
+   *  identity's catalogue take maps to TMDB. The id sits in the JSON the show page
+   *  reads, not in the page's HTML, so the links are read off [[presentationUrl]]. */
+  val CatalogueLinkPages: services.identity.CatalogueLinkPages =
+    services.identity.CatalogueLinkPages(CinemaScraper.hostsOf(BaseUrl), Set("imdb"),
+      readAt = page => presentationUrl(showSlugOf(page)))
 
   /** The shared scrape horizon — see [[ScrapeHorizon]]. Here it bounds the
    *  PAYLOAD we keep rather than a request count (the whole programme arrives

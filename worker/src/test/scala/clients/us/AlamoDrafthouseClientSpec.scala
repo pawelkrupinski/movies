@@ -5,9 +5,11 @@ import models.{CinemaMovie, UsRoster}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.common.ScrapeHorizon
+import services.cinemas.common.{DetailFetchOutcome, ScrapeHorizon}
 import services.cinemas.us.{AlamoDrafthouseClient, AlamoDrafthouseParser}
-import tools.HttpFetch
+import services.identity.{CatalogueId, CatalogueLinkReader, Listing, TmdbIdentityLookups, VenueDetails}
+import services.movies.TitleNormalizer
+import tools.{HttpFetch, RoutingHttpFetch}
 
 import java.time.{LocalDate, LocalDateTime}
 
@@ -26,7 +28,7 @@ class AlamoDrafthouseClientSpec extends AnyFlatSpec with Matchers with OptionVal
   private val Lakeline = UsRoster.byDisplayName("Alamo Drafthouse Lakeline")
 
   private def clientOn(fixtures: HttpFetch, venueSlug: String = "lakeline") =
-    new AlamoDrafthouseClient(fixtures, venueSlug, Lakeline, today = Today)
+    new AlamoDrafthouseClient(fixtures, fixtures, venueSlug, Lakeline, today = Today)
 
   private val films: Seq[CinemaMovie] = clientOn(new FakeHttpFetch("alamo-drafthouse")).fetch()
 
@@ -180,6 +182,69 @@ class AlamoDrafthouseClientSpec extends AnyFlatSpec with Matchers with OptionVal
     // here it is an unrecorded fixture, which `FakeHttpFetch` raises the same way.
     a[java.io.FileNotFoundException] should be thrownBy
       clientOn(new FakeHttpFetch("alamo-drafthouse"), venueSlug = "no-such-venue").fetch()
+  }
+
+  // ── the show's own detail: what the venue payload leaves out ──────────────
+  //
+  // Replays `drafthouse.com/s/mother/v2/schedule/presentation/<show slug>`,
+  // recorded 2026-10-06 for every show of the Lakeline fixture plus Last Shot
+  // (`clients.tools.RecordUsChains` records them beside the venue).
+
+  private val ShowPage = "https://drafthouse.com/show/"
+
+  "a show's detail" should "read the runtime and release year the show page displays" in {
+    // Andy Palmer's 2026 "Last Shot" (tt15426712), not the 2020 film of the same
+    // name: the year and runtime are what let identity resolution tell them apart.
+    val lastShot = clientOn(new FakeHttpFetch("alamo-drafthouse")).fetchFilmDetail(ShowPage + "last-shot").value
+    lastShot.runtimeMinutes.value shouldBe 105
+    lastShot.releaseYear.value shouldBe 2026
+    lastShot.synopsis.value should startWith("12-year-old basketball prodigy Caden Issacs navigates")
+    lastShot.synopsis.value should not include "<p>"
+    lastShot.posterUrl.value should startWith("https://img-assets.drafthouse.com/images/shows/last-shot/poster-last_shot.jpg")
+    lastShot.trailerUrl.value shouldBe "https://www.youtube.com/watch?v=_TGoETRHtfA"
+    // Last Shot credits no one and carries no certificate yet: empty, not invented.
+    lastShot.director shouldBe empty
+    lastShot.cast shouldBe empty
+    lastShot.ageRating shouldBe None
+  }
+
+  it should "credit the director and cast where the show names them" in {
+    val spyKids = clientOn(new FakeHttpFetch("alamo-drafthouse")).fetchFilmDetail(ShowPage + "spy-kids").value
+    spyKids.director shouldBe Seq("Robert Rodriguez")
+    spyKids.cast should contain ("Antonio Banderas")
+    spyKids.releaseYear.value shouldBe 2001
+    spyKids.runtimeMinutes.value shouldBe 88
+    spyKids.ageRating.value shouldBe "PG"
+  }
+
+  it should "give every listing of the recorded venue the show's facts" in {
+    val client  = clientOn(new FakeHttpFetch("alamo-drafthouse"))
+    val details = films.map(f => client.fetchFilmDetail(f.filmUrl.value).value)
+    details.size shouldBe 48
+    details.count(_.releaseYear.isDefined) shouldBe 48
+    details.count(_.runtimeMinutes.isDefined) shouldBe 46
+    details.count(_.director.nonEmpty) shouldBe 15
+    details.count(_.synopsis.isDefined) shouldBe 48
+  }
+
+  it should "let a show the API does not know escape as gone, not retry it every tick" in {
+    val nothing = new RoutingHttpFetch(Nil, unroutedIsNotFound = true)
+    clientOn(nothing).fetchDetail(ShowPage + "no-such-show") shouldBe DetailFetchOutcome.Gone(404)
+  }
+
+  it should "be the VENUE's stated facts, read by identity through its own detail page" in {
+    val client  = clientOn(new FakeHttpFetch("alamo-drafthouse"))
+    val listing = Listing.of(Lakeline,
+      CinemaMovie(models.Movie(title = "Last Shot"), Lakeline, None, Some(ShowPage + "last-shot"), None, Nil, Nil, Nil),
+      TitleNormalizer.forCountry(models.Country.UnitedStates))
+    val facts = new VenueDetails(Seq(client), TmdbIdentityLookups.NoGaps).detail(listing)
+    facts.toOption.flatten.map(f => (f.year, f.runtime)) shouldBe Some((Some(2026), Some(105)))
+  }
+
+  "a show's IMDb id" should "be the venue's own catalogue link to the film" in {
+    val reader = new CatalogueLinkReader(Seq(AlamoDrafthouseClient.CatalogueLinkPages -> new FakeHttpFetch("alamo-drafthouse")))
+    reader.links(ShowPage + "spy-kids") shouldBe Seq(CatalogueId("imdb", "tt0227538"))
+    reader.links(ShowPage + "last-shot") shouldBe Nil
   }
 
   // ── the scraper's contract with the rest of the pipeline ──────────────────

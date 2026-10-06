@@ -1992,8 +1992,11 @@ class CinemaScraperCatalog(
   // Alamo reaches our datacenter egress directly (no Cloudflare challenge from it
   // on 2026-08-30), as do both Webedia hosts — so all three use `http`, not the
   // residential `flicksFetch` the Flicks leg needs.
+  /** Alamo's per-show detail, shared by all 40 venues: one show body per TTL, whichever venue asks first.
+   *  Public because the identity's catalogue-link reader reads the same bodies. */
+  val alamoDetailHttp: HttpFetch = chainDetailCache("alamo-drafthouse", http, AlamoDrafthouseClient.DetailTtl)
   private def alamo(venue: UsChainVenues.AlamoVenue, cinema: Cinema): AlamoDrafthouseClient =
-    new AlamoDrafthouseClient(http, venue.slug, cinema, today = venueClock.today(TimeZones.named(venue.zoneId)))
+    new AlamoDrafthouseClient(http, alamoDetailHttp, venue.slug, cinema, today = venueClock.today(TimeZones.named(venue.zoneId)))
   private def webedia(baseUrl: String, venue: UsChainVenues.WebediaVenue, cinema: Cinema): GatsbyBoxOfficeClient =
     new GatsbyBoxOfficeClient(http, baseUrl, venue.theaterId, cinema,
       timeZone = venue.zoneId, venuePath = Some(venue.venuePath), today = venueClock.today(TimeZones.named(venue.zoneId)),

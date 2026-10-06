@@ -30,10 +30,14 @@ object RecordUsChains {
       UsRoster.byDisplayName.getOrElse(name, sys.error(s"no US roster venue named '$name'"))
 
     // Alamo — Lakeline (Austin, 300 sessions over 44 days when captured).
-    val alamo = new AlamoDrafthouseClient(
-      new RecordingHttpFetch("alamo-drafthouse", new RealHttpFetch()),
+    // Every show's detail beside it, plus Last Shot (the 2026 film a same-titled 2020
+    // one shadows), which the venue did not list when captured.
+    val alamoFetch = new RecordingHttpFetch("alamo-drafthouse", new RealHttpFetch())
+    val alamo = new AlamoDrafthouseClient(alamoFetch, alamoFetch,
       "lakeline", cinema("Alamo Drafthouse Lakeline"), today = today)
-    report("Alamo Lakeline", alamo.fetch())
+    val alamoFilms = alamo.fetch()
+    report("Alamo Lakeline", alamoFilms)
+    (alamoFilms.flatMap(_.filmUrl) :+ s"${AlamoDrafthouseClient.BaseUrl}/show/last-shot").foreach(alamo.fetchFilmDetail)
 
     // Showcase US — Legacy Place (Dedham MA), the deepest-horizon venue of the 13.
     val showcase = new GatsbyBoxOfficeClient(

@@ -7,17 +7,19 @@ import scala.util.matching.Regex
 
 /** A venue client's film pages that link their film in other catalogues: the hosts its pages live on and the catalogues
  *  it links ([[CatalogueLinks.Patterns]]'s sources) — declared by the client that scrapes them (`FlicksClient`,
- *  `KinotekaClient`), read on the agreement's queue for a cluster nothing else took ([[CatalogueAnswerStore]]). */
-final case class CatalogueLinkPages(hosts: Set[String], sources: Set[String])
+ *  `KinotekaClient`, `AlamoDrafthouseClient`), read on the agreement's queue for a cluster nothing else took
+ *  ([[CatalogueAnswerStore]]). `readAt` is where a page's links are read: the page itself, or — for a page that is a
+ *  JavaScript shell (Alamo's `/show/<slug>`) — the JSON it renders from. */
+final case class CatalogueLinkPages(hosts: Set[String], sources: Set[String], readAt: String => String = identity)
 
 object CatalogueLinks {
 
   /** Each catalogue a page may link, by the link's shape: a Letterboxd film page, a Rotten Tomatoes movie page, an IMDb
-   *  title. */
+   *  title — as a link, or as the bare id a JSON `"imdbId"` field holds (Alamo states it either way). */
   val Patterns: Map[String, Regex] = Map(
     "letterboxd" -> """letterboxd\.com/film/([a-z0-9-]+)""".r,
     "rt"         -> """rottentomatoes\.com/m/([a-z0-9_-]+)""".r,
-    "imdb"       -> """imdb\.com/title/(tt\d+)""".r)
+    "imdb"       -> """(?:imdb\.com/title/|"imdbId"\s*:\s*")(tt\d+)""".r)
 
   /** The catalogue ids `html` links, of `sources`: a catalogue it links ONE film of — a page linking two (a double bill,
    *  a "see also") names none by it. */
