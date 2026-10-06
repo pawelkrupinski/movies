@@ -97,7 +97,7 @@ class ReviewDesignParitySpec extends AnyFlatSpec with Matchers with BeforeAndAft
   /** The elements both pages draw, each by the selector that finds its first instance in either. */
   private val Selectors = Seq("body", "h1", ".lede", ".count", ".filters button", ".filters button[aria-pressed=true]", ".card", ".raw",
     ".raw .tag", ".conf", ".card .meta", "dl.facts", "dl.facts dt", "dl.facts dd", ".syn", ".lead", ".lead .kind", ".cand .t b", ".cand .s",
-    ".lead .cand", ".pct", ".card .btn", ".card .btn.yes", ".own input", "details.why", "details.why summary", ".listing .poster")
+    ".lead .cand", ".pct", ".card .btn", ".card .btn.yes", ".own input", "details.why", "details.why summary", ".listing .poster.empty")
 
   private val Properties = Seq("fontFamily", "fontSize", "fontWeight", "lineHeight", "letterSpacing", "padding", "borderRadius",
     "color", "backgroundColor", "textTransform")
@@ -123,10 +123,8 @@ class ReviewDesignParitySpec extends AnyFlatSpec with Matchers with BeforeAndAft
   private val Families = Set("Archivo", "IBM Plex Sans", "IBM Plex Mono")
 
   private def shoot(page: CdpPage, name: String): Unit = {
-    val dir = Paths.get("web/target/review-screenshots")
-    Files.createDirectories(dir)
     page.awaitRenderedFrame()
-    Files.write(dir.resolve(s"$name.png"), java.util.Base64.getDecoder.decode(page.screenshot())): Unit
+    ReviewPageSpec.save(page, s"$name.png")
   }
 
   private val Viewports = Seq(("desktop", 1280, 900, false), ("mobile", 390, 844, true))

@@ -63,7 +63,7 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
       .append("filmwebUrl", BsonString("https://www.filmweb.pl/film/Franz+Kafka-2025-10008278")))
     insert("identity_listings", new BsonDocument("_id", BsonString("Kino Opalenica")).append("films", BsonArray.fromIterable(Seq(
       new BsonDocument("movie", new BsonDocument("title", BsonString("Franz Kafka")).append("rawTitle", BsonString("FRANZ KAFKA")))
-        .append("externalIds", new BsonDocument("bilety24", BsonString("165208")))
+        .append("externalIds", new BsonDocument("bilety24", BsonString("165208"))).append("posterUrl", BsonString("https://b24/kafka.jpg"))
         .append("showtimes", BsonArray.fromIterable(Seq(new BsonDocument("dateTime", BsonDateTime(Instant.parse("2026-10-10T18:00:00Z").toEpochMilli))))),
       new BsonDocument("movie", new BsonDocument("title", BsonString("Other"))).append("showtimes", BsonArray())))))
     insert("venue_pages", new BsonDocument("_id", BsonString("b24|" + Held.nativeId)).append("page", BsonString(Held.nativeId))
@@ -78,7 +78,8 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
     source.slots(Seq(ListingKey.serialised(Held))).values.map(_.facts.synopsis) shouldBe Seq(Some("Biografia Kafki."))
     source.updatedSince(now.minusSeconds(5400)).keySet shouldBe Set(ListingKey.serialised(Matched))
     source.feeds(Seq("Kino Opalenica" -> "FRANZ KAFKA")) shouldBe
-      Map(("Kino Opalenica", "FRANZ KAFKA") -> ListingFeed(Seq(services.identity.CatalogueId("bilety24", "165208")), 1, Some("2026-10-10 18:00"), Some("2026-10-10 18:00")))
+      Map(("Kino Opalenica", "FRANZ KAFKA") -> ListingFeed(Seq(services.identity.CatalogueId("bilety24", "165208")), 1, Some("2026-10-10 18:00"), Some("2026-10-10 18:00"),
+        Some("https://b24/kafka.jpg")))
     source.venuePages(Seq(Held.nativeId)).values.map(_.runtime) shouldBe Seq(Some(127))
     source.films(Seq(1157322, 42)) shouldBe Map(1157322 ->
       FilmCard(1157322, Some("tt22963134"), Some("Franz"), None, Some(2025), Seq("Agnieszka Holland"), None, None, None))

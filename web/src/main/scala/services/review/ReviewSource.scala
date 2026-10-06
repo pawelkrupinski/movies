@@ -15,8 +15,10 @@ final case class VenueFacts(title: Option[String] = None, originalTitle: Option[
 final case class SlotFacts(facts: VenueFacts, updatedAt: Instant)
 
 /** A listing as its venue's last scrape (`identity_listings`) holds it: the catalogue ids the venue's
- *  feed names it by (a chain's or aggregator's own id — NOT the venue's facts) and its screenings. */
-final case class ListingFeed(catalogueIds: Seq[services.identity.CatalogueId], screenings: Int, first: Option[String], last: Option[String]) {
+ *  feed names it by (a chain's or aggregator's own id — NOT the venue's facts), its screenings, and the poster the
+ *  scrape listed it with. */
+final case class ListingFeed(catalogueIds: Seq[services.identity.CatalogueId], screenings: Int, first: Option[String], last: Option[String],
+                             poster: Option[String] = None) {
   def catalogue: String = catalogueIds.map(id => s"${id.source}=${id.id}").mkString(", ")
 }
 

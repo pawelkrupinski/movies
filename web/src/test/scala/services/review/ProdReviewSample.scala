@@ -11,7 +11,9 @@ import scala.jdk.CollectionConverters._
 /**
  * A REAL sample of prod's review inputs, recorded 2026-10-06 (`resources/review/prod-review-sample.json`, Mongo
  * extended JSON): per country database, ~10 `identity_model_families` documents — unmatched (BelowThreshold, Vetoed,
- * NoCandidate) and matched — and the `movie_slots` rows of their members' pages. `venue_pages` came back empty.
+ * NoCandidate) and matched — and the `movie_slots` rows of their members' pages. `identity_listings` (the members'
+ * listings, one film per document) and `venue_pages` (the members' pages) were added from the local prod mirror the
+ * same day, for the venues' posters.
  */
 object ProdReviewSample {
   val Databases: Map[String, Country] = Map("kinowo" -> Country.Poland, "kinowo_uk" -> Country.UnitedKingdom,
@@ -43,6 +45,25 @@ object ProdReviewSample {
         at   <- Option(d.get("updatedAt")).filter(_.isDateTime).map(v => java.time.Instant.ofEpochMilli(v.asDateTime.getValue))
       } yield key -> SlotFacts(MongoReviewSource.facts(slot, poster = "posterUrl"), at)
     }.toMap
-    new InMemoryReviewSource(decisions.filter(_._1 == Databases(db)).map(_._2), slots)
+    val pages = documents(db, "venue_pages").flatMap { d =>
+      Option(d.get("page")).filter(_.isString).map(_.asString.getValue -> MongoReviewSource.facts(d, poster = "posterUrl"))
+    }.toMap
+    new InMemoryReviewSource(decisions.filter(_._1 == Databases(db)).map(_._2), slots, pagesHeld = pages, feedsHeld = feeds(db))
+  }
+
+  /** The members' listings as the venues' last scrapes (`identity_listings`, one film per document) hold them. */
+  private def feeds(db: String): Map[(String, String), ListingFeed] = {
+    def text(d: BsonDocument, name: String) = Option(d.get(name)).filter(_.isString).map(_.asString.getValue)
+    def local(v: org.bson.BsonValue) =
+      java.time.LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(v.asDateTime.getValue), java.time.ZoneOffset.UTC).toString.replace("T", " ")
+    documents(db, "identity_listings").flatMap { d =>
+      val film  = d.getDocument("films")
+      val movie = film.getDocument("movie")
+      val times = Option(film.get("showtimes")).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala)
+        .flatMap(s => Option(s.asDocument.get("dateTime")).filter(_.isDateTime)).map(local).sorted
+      for { venue <- text(d, "_id"); raw <- text(movie, "rawTitle").orElse(text(movie, "title")) }
+        yield (venue, raw) -> ListingFeed(ListingFeed.catalogueIdsOf(film.get("externalIds")), times.size, times.headOption, times.lastOption,
+          text(film, "posterUrl"))
+    }.toMap
   }
 }

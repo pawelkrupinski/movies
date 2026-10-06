@@ -83,6 +83,7 @@ final class MongoReviewSource(db: MongoDatabase) extends ReviewSource {
         Aggregates.project(Document(
           "raw" -> Document("$ifNull" -> org.mongodb.scala.bson.BsonArray("$films.movie.rawTitle", "$films.movie.title")),
           "externalIds" -> "$films.externalIds",
+          "poster" -> "$films.posterUrl",
           "screenings" -> Document("$size" -> Document("$ifNull" -> org.mongodb.scala.bson.BsonArray("$films.showtimes", org.mongodb.scala.bson.BsonArray()))),
           "first" -> Document("$min" -> "$films.showtimes.dateTime"),
           "last" -> Document("$max" -> "$films.showtimes.dateTime"))),
@@ -93,7 +94,7 @@ final class MongoReviewSource(db: MongoDatabase) extends ReviewSource {
           (venue, raw) -> ListingFeed(
             ListingFeed.catalogueIdsOf(b.get("externalIds")),
             Option(b.get("screenings")).filter(_.isInt32).fold(0)(_.asInt32.getValue),
-            instant(b, "first").map(localTime), instant(b, "last").map(localTime))
+            instant(b, "first").map(localTime), instant(b, "last").map(localTime), string(b, "poster"))
       }.toMap
     }
   }

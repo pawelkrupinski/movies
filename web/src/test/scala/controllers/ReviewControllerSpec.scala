@@ -34,7 +34,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     html should include("FRANZ KAFKA")
     html should include("""href="https://www.bilety24.pl/kino/967-franz-kafka-165208"""")
     html should include("Biografia Kafki.")                                 // the venue's synopsis
-    html should include("""<img class="poster" src="https://bilety24/kafka.jpg" alt="venue poster" loading="lazy"""")
+    html should include(s"""<img class="poster" src="${play.twirl.api.HtmlFormat.escape(tools.PosterProxy.proxy("https://bilety24/kafka.jpg"))}" alt="venue poster" loading="lazy"""")
     html should include("The venue gives no synopsis.")                     // Macbeth's venue gives none
     html should include("bilety24=165208")                                  // the feed's catalogue id, apart
     html should include("Kafka&#x27;s life.")                               // the candidate's overview

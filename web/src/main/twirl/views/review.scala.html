@@ -10,6 +10,10 @@
   case Some(p) => {<img class="poster" src="@p" alt="@who poster" loading="lazy" referrerpolicy="no-referrer">}
   case None    => {<div class="poster empty">no @who poster</div>}
 }}
+@* The venues' posters through the app's poster proxy (venue hosts block hot-linking or want a Referer), the first
+   that loads shown: the rest wait in `data-fallbacks` for the error handler below. *@
+@venuePoster(posters: Seq[String]) = {@if(posters.isEmpty) {<div class="poster empty">no venue poster</div>} else {@defining(posters.map(tools.PosterProxy.proxy)) { proxied =>
+  <img class="poster" src="@proxied.head" alt="venue poster" loading="lazy" referrerpolicy="no-referrer"@if(proxied.size > 1){ data-fallbacks="@proxied.tail.mkString("|")"}>}}}
 @factRows(rows: Seq[(String, String)], extra: String) = {<dl class="facts@extra">@for((name, value) <- rows){<dt>@name</dt><dd>@value</dd>}</dl>}
 @filmBody(card: ReviewCard, tmdb: Int, candidate: Option[ReviewCandidate]) = {
   @defining(card.films.get(tmdb)) { known =>
@@ -236,7 +240,7 @@
       <div class="answered">@for(a <- card.answer) {answered <b>@a.verdict.label</b>@for(r <- a.ref){ @r.render} by @a.who at @a.at.toString.take(16).replace("T", " ")@for(w <- a.warnings){<div class="warning">⚠ @w</div>}}</div>
 
       <div class="listing">
-        @poster(card.poster, "venue")
+        @venuePoster(card.posters)
         <div>
           @if(card.members.size <= 3) {
             <div class="meta venues">@for((m, i) <- card.members.zipWithIndex){@if(i > 0){ · }@venueLink(m)@if(m.key.rawTitle != c.title){ <span class="s">(@m.key.rawTitle)</span>}}</div>
@@ -443,10 +447,16 @@
       var ref = parseRef(e.target.value);
       form.querySelector('.hint').textContent = !e.target.value.trim() ? '' : ref ? 'Reads as ' + ref : 'Not a link or id I recognise.';
     });
-    // A poster that fails to load gives way to the "no poster" placeholder.
+    // A poster that fails to load gives way to the next it has, then to the "no poster" placeholder.
     document.addEventListener('error', function (e) {
       var img = e.target;
       if (!img.classList || !img.classList.contains('poster') || img.tagName !== 'IMG') return;
+      var rest = (img.getAttribute('data-fallbacks') || '').split('|').filter(Boolean);
+      if (rest.length) {
+        img.setAttribute('data-fallbacks', rest.slice(1).join('|'));
+        img.src = rest[0];
+        return;
+      }
       var empty = document.createElement('div');
       empty.className = 'poster empty';
       empty.textContent = 'no ' + (img.alt || 'poster').replace(/ poster$/, '') + ' poster';

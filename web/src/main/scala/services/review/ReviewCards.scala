@@ -25,7 +25,10 @@ final case class MemberView(key: ListingKey, slot: Option[SlotFacts], page: Opti
         directors = if (base.directors.nonEmpty) base.directors else own.map(_.directors).find(_.nonEmpty).getOrElse(Nil))
     }
   }
-  def poster: Option[String]   = slot.flatMap(_.facts.poster).orElse(page.flatMap(_.poster))
+  /** The venue's poster: its listing row's, else its last scrape's listing (`identity_listings`), else its own film page's —
+   *  never a site-wide default image ([[tools.SiteDefaultImage]]) taken for one. */
+  def poster: Option[String]   =
+    (slot.flatMap(_.facts.poster) ++ feed.flatMap(_.poster) ++ page.flatMap(_.poster)).find(p => !tools.SiteDefaultImage(p))
   def synopsis: Option[String] = slot.flatMap(_.facts.synopsis).orElse(page.flatMap(_.synopsis))
 }
 
@@ -42,8 +45,9 @@ final case class ReviewCard(cluster: ReviewCluster, members: Seq[MemberView], fi
   /** The candidates the card lists below the film it puts forward. */
   def otherCandidates: Seq[ReviewCandidate] = cluster.candidates.filterNot(c => shown.contains(c.film))
 
-  /** The venue's poster and synopsis: a venue's own before a feed catalogue's copy. */
-  def poster: Option[String]   = members.sortBy(_.factsFromCatalogue).flatMap(_.poster).headOption
+  /** The venues' posters, each once — a venue's own before a feed catalogue's copy: the card shows the first that loads. */
+  def posters: Seq[String]     = members.sortBy(_.factsFromCatalogue).flatMap(_.poster).distinct
+  /** The venue's synopsis: a venue's own before a feed catalogue's copy. */
   def synopsis: Option[String] = members.sortBy(_.factsFromCatalogue).flatMap(_.synopsis).headOption
 
   /** What the venues themselves say, merged across members — the first stated value per fact wins — with a

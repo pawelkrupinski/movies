@@ -53,6 +53,16 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
   }
 
+  /** A listing whose poster only its venue's last scrape (`identity_listings`) carries: no slot row, no venue page. */
+  private val listedPoster = "https://biletyna.pl/file/get/id/414402"
+  private val listed = {
+    val key = services.movies.ListingKey.Native("Bielański Ośrodek Kultury", "https://biletyna.pl/dla-dzieci/Podrozniczek?eid=701872", "Podróżniczek")
+    new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
+      Seq(services.identity.ResolverDecision(Seq(key), None, 0.9, services.identity.ResolverDecision.Basis.NoCandidate, Nil)()),
+      feedsHeld = Map((key.venue, key.rawTitle) -> ListingFeed(Nil, 1, None, None, Some(listedPoster))))),
+      new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
+  }
+
   private def post(exchange: HttpExchange): Boolean = {
     val path = exchange.getRequestURI.getPath
     lazy val body = Json.parse(new String(exchange.getRequestBody.readAllBytes(), StandardCharsets.UTF_8))
@@ -81,6 +91,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
         case "/debug/review?country=pl&answered=true" => contentAsString(controller.queue(Some("pl"), 60, true)(FakeRequest()))
         case "/debug/review/recent?country=pl" => contentAsString(controller.recent(Some("pl"), 48, 60, false)(FakeRequest()))
         case "/de/review"               => contentAsString(german.queue(Some("de"), 60, false)(FakeRequest()))
+        case "/listed/review"           => contentAsString(listed.queue(Some("pl"), 60, false)(FakeRequest()))
         case "/sample/review"         => contentAsString(sample.queue(Some("all"), 200, false)(FakeRequest()))
         case "/sample/review/matchable" => contentAsString(sample.matchable(Some("all"), 0.0, None, 200, false)(FakeRequest()))
         case "/sample/review/recent"    => contentAsString(sample.recent(Some("all"), 24 * 365, 200, false)(FakeRequest()))
@@ -246,6 +257,25 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       page.eval("document.getElementById('export-labels').click()")
       page.waitFor("document.getElementById('export-summary').textContent.indexOf('added') >= 0")
       LabelsTsv.read(labels).map(r => (r.rawTitle, r.film, r.verdict)) shouldBe Seq(("FRANZ KAFKA", "tmdb:1157322", "wrong"))
+    }
+  }
+
+  "a venue's poster" should "show from its scraped listing alone, fetched through the poster proxy" in {
+    chrome match {
+      case None => cancel("Chrome not installed — skipping /debug/review page test")
+      case Some(c) => c.openPage(server.baseUrl + "/listed/review") { page =>
+        // the proxy answers every poster with a 1×1 PNG: no network, and positive proof the browser asked IT
+        val png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        page.onEvent("Fetch.requestPaused") { p =>
+          page.send("Fetch.fulfillRequest", Json.obj("requestId" -> (p \ "requestId").as[String], "responseCode" -> 200,
+            "responseHeaders" -> Json.arr(Json.obj("name" -> "Content-Type", "value" -> "image/png")), "body" -> png))
+        }
+        page.send("Fetch.enable", Json.obj("patterns" -> Json.arr(Json.obj("urlPattern" -> s"https://${tools.PosterProxy.ProxyHost}/*"))))
+        page.reload()
+        page.waitFor("(function(){ var i = document.querySelector('.listing img.poster'); return !!i && i.complete && i.naturalWidth > 0; })()")
+        page.evalString("document.querySelector('.listing img.poster').src") shouldBe tools.PosterProxy.proxy(listedPoster)
+        page.evalString("document.querySelector('.listing img.poster').src") should startWith (s"https://${tools.PosterProxy.ProxyHost}/")
+      }
     }
   }
 
