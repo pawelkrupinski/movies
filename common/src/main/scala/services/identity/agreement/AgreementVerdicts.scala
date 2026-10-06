@@ -15,7 +15,14 @@ import scala.jdk.CollectionConverters._
  *  ([[services.identity.UnifiedRules]]) — all the stage needs, after a restart or a new answer elsewhere, to tell
  *  whether the verdict still stands without asking the resolver again. */
 final case class StoredVerdict(id: String, listings: Long, reads: Map[String, Long], agreed: Option[AgreedFilm], rules: String = "",
-                               filled: Option[StoredFill] = None)
+                               filled: Option[StoredFill] = None, correction: Option[StoredCorrection] = None)
+
+/** A model take's correction as stored ([[Correction]], under the id `correction|<cluster>`): the film it switched to
+ *  and the line explaining it — `line` none where the evidence corrects nothing — the 64-bit digests of the question ids
+ *  it read (a filing of one decides it again), and whether it was still waiting on an answer. */
+final case class StoredCorrection(film: Option[Int], line: Option[String], reads: scala.collection.immutable.ArraySeq[Long], waiting: Boolean) {
+  def outcome: Option[Correction.Outcome] = line.map(Correction.Outcome(film, _))
+}
 
 /** The film a fill rule takes for a cluster: the rule's signal, the film's TMDB id or IMDb id, and the explanation line
  *  naming the rule, the guards it passed and the signals firing on the film. */
@@ -76,6 +83,12 @@ object AgreementVerdicts {
       film.record.film.year.foreach(year => d.append("year", BsonInt32(year)))
       d
     })
+    .append("correction", verdict.correction.fold[BsonValue](BsonNull()) { c =>
+      val d = new BsonDocument("reads", BsonArray.fromIterable(c.reads.map(BsonInt64(_)))).append("waiting", org.bson.BsonBoolean.valueOf(c.waiting))
+      c.film.foreach(id => d.append("film", BsonInt32(id)))
+      c.line.foreach(line => d.append("line", BsonString(line)))
+      d
+    })
     .append("filled", verdict.filled.fold[BsonValue](BsonNull()) { fill =>
       val d = new BsonDocument("rule", BsonString(fill.rule)).append("line", BsonString(fill.line))
       fill.tmdb.foreach(id => d.append("tmdb", BsonInt32(id)))
@@ -96,6 +109,10 @@ object AgreementVerdicts {
           Option(a.get("corroborated")).filter(_.isArray).fold(Set.empty[String])(_.asArray.getValues.asScala.map(_.asString.getValue).toSet))
       }, Option(d.get("rules")).filter(_.isString).fold("")(_.asString.getValue),
       Option(d.get("filled")).filter(_.isDocument).map(_.asDocument).map(f => StoredFill(f.getString("rule").getValue,
-        Option(f.get("tmdb")).map(_.asInt32.getValue), Option(f.get("imdb")).map(_.asString.getValue), f.getString("line").getValue)))
+        Option(f.get("tmdb")).map(_.asInt32.getValue), Option(f.get("imdb")).map(_.asString.getValue), f.getString("line").getValue)),
+      Option(d.get("correction")).filter(_.isDocument).map(_.asDocument).map(c => StoredCorrection(Option(c.get("film")).map(_.asInt32.getValue),
+        Option(c.get("line")).map(_.asString.getValue),
+        scala.collection.immutable.ArraySeq.unsafeWrapArray(c.getArray("reads").getValues.asScala.map(_.asInt64.getValue).toArray),
+        c.getBoolean("waiting").getValue)))
   }
 }

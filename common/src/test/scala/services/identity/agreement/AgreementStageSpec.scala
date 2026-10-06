@@ -222,7 +222,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val first = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
     first.apply(resolution, listingOf, version = 1).decisions.head.agreed shouldBe
       Map("imdb" -> "tt16315948", "wiki" -> "Q1", "filmweb" -> "880000", "rt" -> "klondike_2022")
-    verdicts.all().map(_.agreed.map(_.families)) shouldBe Seq(Some(Set(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes)))
+    verdicts.all().filter(_.correction.isEmpty).map(_.agreed.map(_.families)) shouldBe Seq(Some(Set(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes)))
     var asked = 0
     val counting = agreeing().map { case (family, answers) => family -> new FamilyAnswers {
       val family: VoterFamily = answers.family
@@ -250,7 +250,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     new AgreementStage(counting, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
       clock = _root_.tools.SpecClock.Pinned).apply(resolution, listingOf, version = 0)
     asked should be > 0
-    verdicts.all().map(_.rules) shouldBe Seq(s"${AgreementStage.RulesVersion}|${services.identity.UnifiedRules.resolver.version}")
+    verdicts.all().filter(_.correction.isEmpty).map(_.rules) shouldBe Seq(s"${AgreementStage.RulesVersion}|${services.identity.UnifiedRules.resolver.version}")
   }
 
   it should "decide again when an answer it read moved, and drop the verdict of a cluster no longer unmatched" in {
@@ -261,16 +261,16 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     // Filmweb's and RT's answers refiled after the restart (version 1 → 2): only a verdict that read them is decided again.
     val refiled = new AnswerChanges {
       def changedSince(version: Long): Option[Set[String]] =
-        Some(if (version < 2) verdicts.all().head.reads.keySet.filter(q => q.startsWith("filmweb|") || q.startsWith("rt|")) else Set.empty)
+        Some(if (version < 2) verdicts.all().filter(_.correction.isEmpty).head.reads.keySet.filter(q => q.startsWith("filmweb|") || q.startsWith("rt|")) else Set.empty)
     }
     val again = new AgreementStage(dissent, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(913760)), verdicts,
       clock = _root_.tools.SpecClock.Pinned, changes = refiled)
     again.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)   // the restart trusts what it kept
     again.apply(resolution, listingOf, version = 2).decisions.head shouldBe resolution.decisions.head
-    verdicts.all().map(_.agreed) shouldBe Seq(None)
+    verdicts.all().filter(_.correction.isEmpty).map(_.agreed) shouldBe Seq(None)
     val matchedNow = resolution.copy(decisions = resolution.decisions.map(_.copy(film = Some(1))(services.identity.DecisionTrace.Empty)))
     again.apply(matchedNow, listingOf, version = 2)
-    verdicts.all() shouldBe empty
+    verdicts.all().filter(_.correction.isEmpty) shouldBe empty
   }
 
   it should "ask TMDB about the agreed IMDb id before taking it as a fallback" in {

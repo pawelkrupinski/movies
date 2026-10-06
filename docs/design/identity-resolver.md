@@ -2648,9 +2648,11 @@ posters); once a poster vetoes the take, the families and — in Poland — the 
 by one film, none by another). The take is WITHDRAWN (`Basis.Withdrawn`) when the programmes list a film whose year or
 director the take's record contradicts, or when the poster and more families than take the take's film name one film
 sharing no director with it; it is SWITCHED (`Basis.Corrected`) only where two kinds of evidence name the same TMDB film
-sharing no director with the take (Filmweb's own family pick is not counted beside its programmes). The correction is
-kept per cluster with the digests of the answers it read and decided again when one of them is filed again or the
-listings move. The programmes are no FILL for an unmatched cluster: the +1 film they gained there (Kino CK Lublin's
+sharing no director with the take (Filmweb's own family pick is not counted beside its programmes). Each correction is STORED with
+the agreement's verdicts (`identity_agreements`, `correction|<cluster>`: the film, the line, the 64-bit digests of the
+question ids it read, whether it waits), trusted at boot as a verdict is, and read again only when its take's listings
+move (a digest of their keys, posters and days, read without decoding an answer) or an answer it read is filed again;
+a take never read is read 200 an apply (`CorrectionsPerApply`), so a first deploy's backfill spreads over applies. The programmes are no FILL for an unmatched cluster: the +1 film they gained there (Kino CK Lublin's
 "Lalka") did not pay for ~250–520 Filmweb requests a day; read only for a take a poster questions, they cost a few.
 
 Whole-corpus dump against main (the five corpora, every answer asked): 3 clusters (6 listings) switched, 0 withdrawn,
@@ -2659,5 +2661,7 @@ Wikidata, Filmweb), PL "Ktoś całkiem obcy" (Kino Kryterium and Kino Seniora's 
 (Filmweb's programmes + poster), US Alamo Drafthouse Indianapolis "The Vanishing" → Sluizer's 1988 film (poster +
 Wikidata); 0 right takes lost. Left standing: PL "Akademia Pana Kleksa - warsztaty i film" (IMDb takes the model's
 film), UK/US "Queen Rock Montreal" (re-release records sharing Saul Swimmer). Cost (`integration.ModelTakeCorrectionCost`,
-the five corpora's stages together): a warm apply as before (~0.1 s, ~150 MB), a cold one (boot) +~2.9 s CPU and
-+~3.9 GB allocated, the stages holding +~3.9 MB.
+the five corpora's stages together, a restart over the stored verdicts): a cold apply 1.56 s CPU / 583 MB against
+1.53 s / 570 MB without corrections (+2%), a warm one 150 MB against 138 MB; the heap held is the stored corrections
+alone. A first deploy's apply reads 200 takes a country afresh: 7.6 s CPU / 5.0 GB, against 3.8 GB for the stage's own
+first apply with no verdict stored.

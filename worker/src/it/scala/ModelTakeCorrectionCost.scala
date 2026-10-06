@@ -1,7 +1,7 @@
 package integration
 
 import services.identity._
-import services.identity.agreement.{AgreementStage, InMemoryAgreementVerdicts}
+import services.identity.agreement.{AgreementStage, AgreementVerdicts, InMemoryAgreementVerdicts}
 import tools.{ConvergenceStorage, SpecClock, UnmatchedClusters}
 
 import java.nio.file.{Files, Paths}
@@ -12,9 +12,10 @@ import scala.jdk.CollectionConverters._
  * MEASUREMENT: what reading the model's takes against the evidence that can correct them (`agreement.Correction`) costs a
  * projection's agreement phase, over the whole recorded corpora — the stage applied to the model's resolution with its
  * takes read (as the worker runs it) and with them passed by (every model take handed over as a pin: the stage as it
- * was): CPU, bytes allocated and wall time of a cold apply (a fresh stage, as at boot) and of a warm one (the same stage,
- * one answer filed elsewhere), medians of 5 after a warm-up, and the heap the stages keep after an apply (used heap after
- * a full GC). The answers are those a whole-corpus dump filed (`answers-<cc>.jsonl`, `IdentityResolveDumpIntegrationSpec`).
+ * was): CPU, bytes allocated and wall time of a cold apply (a fresh stage over the verdicts a running worker kept, as at
+ * a restart), of a warm one (the same stage, one answer filed elsewhere) and of a first deploy's (no correction kept
+ * yet: one budget of takes read), medians of 5 after a warm-up, and the heap the stages keep after an apply (used heap
+ * after a full GC). The answers are those a whole-corpus dump filed (`answers-<cc>.jsonl`, `IdentityResolveDumpIntegrationSpec`).
  *
  *   KINOWO_IDENTITY_FULL=pl,uk,de,es,us KINOWO_IDENTITY_CORPUS_DIR=<dir> KINOWO_FIXTURE_ROOT=<dir> KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY=<key>
  *   MONGODB_URI=<throwaway> MONGODB_DB=<unique>
@@ -50,19 +51,30 @@ object ModelTakeCorrectionCost {
         println(s"[$code] ${resolution.decisions.count(_.film.isDefined)} takes, ${docs.size(TmdbKind.Family)} answers")
         (l, store, resolution, pinned, tmdbOf, byKey)
       }
-      def stageOf(i: Int) = {
+      def stageOf(i: Int, verdicts: AgreementVerdicts, perApply: Int = AgreementStage.CorrectionsPerApply) = {
         val (l, store, _, _, tmdbOf, _) = inputs(i)
         new AgreementStage(UnmatchedClusters.familiesOf(l.c.country).map(f => f -> store.answers(f)).toMap, l.lookups, l.c.normalizer,
-          IdentityCalibration.resolver, tmdbOf, new InMemoryAgreementVerdicts, clock = SpecClock.Pinned, changes = store,
+          IdentityCalibration.resolver, tmdbOf, verdicts, clock = SpecClock.Pinned, changes = store, correctionsPerApply = perApply,
           posters = new PosterAnswerStore(store, SpecClock.Pinned), tmdb = Some(l.lookups),
           identities = modules.wiring.IdentityCutoverWiring.identities(l.c.country.code),
           catalogue = new CatalogueAnswerStore(store, SpecClock.Pinned, UnmatchedClusters.CataloguePages),
           listedOn = modules.wiring.IdentityCutoverWiring.listedOn(l.c.country.code))
       }
       def resolutionOf(i: Int, correcting: Boolean) = if (correcting) inputs(i)._3 else inputs(i)._4
-      /** Fresh stages, one apply each at the store's version. */
+      /** Each country's verdicts as a running worker keeps them, every take read once: what a restart loads. */
+      val kept = Seq(false, true).map { correcting =>
+        correcting -> inputs.indices.map { i =>
+          val verdicts = new InMemoryAgreementVerdicts
+          stageOf(i, verdicts, Int.MaxValue).apply(resolutionOf(i, correcting), inputs(i)._6.get, inputs(i)._2.version)
+          verdicts
+        }
+      }.toMap
+      /** Fresh stages over the kept verdicts — a restart — one apply each at the store's version. */
       def cold(correcting: Boolean): Seq[AgreementStage] = inputs.indices.map { i =>
-        val stage = stageOf(i); stage.apply(resolutionOf(i, correcting), inputs(i)._6.get, inputs(i)._2.version); stage }
+        val stage = stageOf(i, kept(correcting)(i)); stage.apply(resolutionOf(i, correcting), inputs(i)._6.get, inputs(i)._2.version); stage }
+      /** The first apply of a worker that never kept a correction: the backfill's first budget of takes. */
+      def first(): Unit = inputs.indices.foreach { i =>
+        stageOf(i, new InMemoryAgreementVerdicts).apply(resolutionOf(i, true), inputs(i)._6.get, inputs(i)._2.version) }
       val os  = java.lang.management.ManagementFactory.getOperatingSystemMXBean.asInstanceOf[com.sun.management.OperatingSystemMXBean]
       val rt  = Runtime.getRuntime
       def used(): Long = { (1 to 3).foreach(_ => System.gc()); rt.totalMemory - rt.freeMemory }
@@ -74,7 +86,9 @@ object ModelTakeCorrectionCost {
         (os.getProcessCpuTime - c0, allocated, System.nanoTime() - w0)
       }
       def median(xs: Seq[Long]) = xs.sorted.apply(xs.size / 2)
-      (1 to 2).foreach(_ => { cold(true); cold(false) })   // warm up both, the finds asked
+      (1 to 2).foreach(_ => { cold(true); cold(false); first() })   // warm up both, the finds asked
+      val firsts = (1 to 5).map(_ => measured(first()))
+      println(f"cost\tfirst deploy\tcpu ${median(firsts.map(_._1)) / 1e6}%.0f ms alloc ${median(firsts.map(_._2)) / 1e6}%.1f MB wall ${median(firsts.map(_._3)) / 1e6}%.0f ms")
       Seq(false, true).foreach { correcting =>
         val colds = (1 to 5).map(_ => measured(cold(correcting)))
         val stages = cold(correcting)

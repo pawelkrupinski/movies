@@ -111,7 +111,7 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
       IdentityCalibration.resolver, tmdbOf = imdb => Answer.Known(Try(tmdb.findByImdbId(imdb).map(_.id)).toOption.flatten),
       stored = new services.identity.agreement.InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = posterStore, tmdb = Some(lookups),
       identities = modules.wiring.IdentityCutoverWiring.identities(c.country.code), catalogue = catalogue.answers,
-      listedOn = modules.wiring.IdentityCutoverWiring.listedOn(c.country.code), correctionPostersAtOnce = Int.MaxValue)
+      listedOn = modules.wiring.IdentityCutoverWiring.listedOn(c.country.code), correctionPostersAtOnce = Int.MaxValue, correctionsPerApply = Int.MaxValue)
     val byKey = listings.map(l => l.key -> l).toMap
     var rounds = 0
     var taken  = stage.apply(resolution, byKey.get, store.version)

@@ -19,4 +19,13 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers {
     val filled = none.copy(filled = Some(StoredFill("venues.current", None, Some("tt46658626"), "filled by venues.current: …")))
     AgreementVerdicts.decode(AgreementVerdicts.encode(filled)) shouldBe filled
   }
+
+  "a stored correction of a model take" should "read back with its film, its line, its reads' digests and whether it waits" in {
+    val reads     = scala.collection.immutable.ArraySeq(-5L, 3L, 9L)
+    val corrected = StoredVerdict(AgreementStage.correctionId("k"), 42L, Map.empty, None, "r",
+      correction = Some(StoredCorrection(Some(30497), Some("corrected from … by families and poster"), reads, waiting = false)))
+    AgreementVerdicts.decode(AgreementVerdicts.encode(corrected)) shouldBe corrected
+    val standing  = corrected.copy(correction = Some(StoredCorrection(None, None, reads, waiting = true)))
+    AgreementVerdicts.decode(AgreementVerdicts.encode(standing)) shouldBe standing
+  }
 }

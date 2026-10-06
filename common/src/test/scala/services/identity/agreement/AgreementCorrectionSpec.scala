@@ -112,6 +112,24 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     decided(s, version = 3) should be theSameInstanceAs second
   }
 
+  it should "be trusted as stored after a restart, reading no answer, and read afresh only a few takes an apply" in {
+    val verdicts = new InMemoryAgreementVerdicts
+    def stageOver(posters: PosterAnswers, perApply: Int = AgreementStage.CorrectionsPerApply) =
+      new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
+        clock = _root_.tools.SpecClock.Pinned, posters = posters, tmdb = Some(table()), correctionsPerApply = perApply)
+    decided(stageOver(hasPoster)).basis shouldBe ResolverDecision.Basis.Corrected
+    var read = 0
+    val counting = new PosterAnswers {
+      def venue(url: String): Answer[Option[PosterHash]] = { read += 1; hasPoster.venue(url) }
+      def film(tmdbId: Int): Answer[Seq[PosterHash]]     = { read += 1; hasPoster.film(tmdbId) }
+    }
+    decided(stageOver(counting)).basis shouldBe ResolverDecision.Basis.Corrected
+    read shouldBe 0
+    // a take never read stands as the model took it while the apply's budget is spent
+    decided(new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+      clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()), correctionsPerApply = 0)).basis shouldBe ResolverDecision.Basis.OwnMatch
+  }
+
   "Correction.decide" should "withdraw on the programme alone, switch only where two kinds name one film apart from the take" in {
     import Correction.{Against, Outcome}
     val apart = (_: Int) => Some(false)
