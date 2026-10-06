@@ -116,6 +116,12 @@ final class MongoReviewSource(db: MongoDatabase) extends ReviewSource {
     }.filter(_.sizeIs > 1)
   }
 
+  def traces(listingKeys: Seq[String]): Map[String, services.identity.ListingTrace] =
+    listingKeys.distinct.grouped(500).flatMap { keys =>
+      await(collection(TracesCollection).find(Filters.in("_id", keys*)).batchSize(tools.MongoReplies.Default).toFuture())
+        .map(d => idText(d.toBsonDocument.get("_id")) -> services.identity.MongoIdentityTraceStore.decode(d.toBsonDocument))
+    }.toMap
+
   def filmRecords(tmdbIds: Seq[Int]): Map[Int, FilmCard] =
     tmdbIds.distinct.map(_.toString).grouped(500).flatMap { ids =>
       await(collection(TmdbFilmsCollection).find(Filters.in("_id", ids*)).projection(Projections.include("record", "hit"))
@@ -155,6 +161,7 @@ object MongoReviewSource {
   val VenuePagesCollection = services.DebugMirror.VenuePages
   val ListingsCollection   = services.DebugMirror.IdentityListings
   val TmdbFilmsCollection  = services.DebugMirror.TmdbFilms
+  val TracesCollection     = services.identity.MongoIdentityTraceStore.Collection
   val MoviesCollection     = services.movies.MovieRepository.Collection
   val WebMoviesCollection  = services.readmodel.MongoReadModelRepository.MoviesCollection
 

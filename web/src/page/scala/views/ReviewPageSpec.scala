@@ -103,6 +103,10 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
         case "/de/review"               => contentAsString(german.queue(Some("de"), 60, false)(FakeRequest()))
         case "/listed/review"           => contentAsString(listed.queue(Some("pl"), 60, false)(FakeRequest()))
         case "/crowded/review"          => contentAsString(crowded.queue(Some("pl"), 60, false)(FakeRequest()))
+        case why if why.startsWith("/debug/review/why?") =>
+          val query = java.net.URI.create(why).getRawQuery.split("&").map(_.split("=", 2)).collect { case Array(k, v) =>
+            k -> java.net.URLDecoder.decode(v, StandardCharsets.UTF_8) }.toMap
+          contentAsString(sample.why(query("country"), query("cluster"))(FakeRequest()))
         case "/sample/review"         => contentAsString(sample.queue(Some("all"), 200, false)(FakeRequest()))
         case "/sample/review/matchable" => contentAsString(sample.matchable(Some("all"), 0.0, None, 200, false)(FakeRequest()))
         case "/sample/review/recent"    => contentAsString(sample.recent(Some("all"), 24 * 365, 200, false)(FakeRequest()))
@@ -289,6 +293,27 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
         page.evalString(s"$card.querySelector('details.checks').innerText") should not include "Cinema 07"
         page.eval(s"$card.querySelector('details.checks details.venues').open = true")
         page.evalInt(s"$card.querySelectorAll('details.checks details.venues li').length") shouldBe 46
+      }
+    }
+  }
+
+  "a card's Why" should "load its listings' whole traces when opened: every evidence line for and against, and the veto rule" in {
+    chrome match {
+      case None => cancel("Chrome not installed — skipping /debug/review page test")
+      case Some(c) => c.openPage(server.baseUrl + "/sample/review/matchable") { page =>
+        val trace = ProdReviewSample.traces("kinowo_uk").find(_.listing.rawTitle == "Rise Fly Fishing Film Tour").get
+        val fishing = card("Rise Fly Fishing Film Tour")
+        // nothing is read until it is opened
+        page.evalString(s"$fishing.querySelector('details.why .traces').innerHTML") shouldBe ""
+        page.eval(s"$fishing.querySelector('details.why').open = true")
+        page.waitFor(s"!!$fishing.querySelector('details.why .trace')")
+        val text = page.evalString(s"$fishing.querySelector('details.why').innerText")
+        for (line <- trace.evidence) text should include(line)
+        text should include("best denied: Learned(runtime.delta >= 11 AND title in {none,overlap})")
+        page.evalString(s"getComputedStyle($fishing.querySelector('details.why .for li')).color") shouldBe
+          page.evalString("getComputedStyle(document.documentElement).getPropertyValue('--ok').trim() && getComputedStyle(document.querySelector('.btn.yes')).color")
+        page.evalInt(s"$fishing.querySelectorAll('details.why .against li').length") should be > 0
+        page.evalBool(s"Array.prototype.some.call($fishing.querySelectorAll('details.why li.veto'), function (li) { return li.textContent.indexOf('best denied') >= 0; })") shouldBe true
       }
     }
   }

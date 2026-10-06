@@ -15,7 +15,10 @@ final class InMemoryReviewSource(
   filmsHeld:     Map[Int, FilmCard] = Map.empty,
   linksHeld:     Seq[Set[FilmRef]] = Nil,
   recordsHeld:   Map[Int, FilmCard] = Map.empty,
+  tracesHeld:    Seq[services.identity.ListingTrace] = Nil,
 ) extends ReviewSource {
+  def traces(listingKeys: Seq[String]): Map[String, services.identity.ListingTrace] =
+    tracesHeld.map(t => ListingKey.serialised(t.listing) -> t).toMap.filter(e => listingKeys.contains(e._1))
   def filmRecords(tmdbIds: Seq[Int]): Map[Int, FilmCard] = recordsHeld.filter(e => tmdbIds.contains(e._1))
   def decisions(unmatchedOnly: Boolean): Seq[ResolverDecision] =
     if (unmatchedOnly) decisionsHeld.filter(_.film.isEmpty) else decisionsHeld

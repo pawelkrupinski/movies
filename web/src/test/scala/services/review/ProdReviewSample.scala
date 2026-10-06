@@ -13,7 +13,7 @@ import scala.jdk.CollectionConverters._
  * extended JSON): per country database, ~10 `identity_model_families` documents — unmatched (BelowThreshold, Vetoed,
  * NoCandidate) and matched — and the `movie_slots` rows of their members' pages. `identity_listings` (the members'
  * listings, one film per document) and `venue_pages` (the members' pages) were added from the local prod mirror the
- * same day, for the venues' posters.
+ * same day, for the venues' posters, and the families' `identity_traces` (read-only from prod) for a card's "Why".
  */
 object ProdReviewSample {
   val Databases: Map[String, Country] = Map("kinowo" -> Country.Poland, "kinowo_uk" -> Country.UnitedKingdom,
@@ -48,8 +48,13 @@ object ProdReviewSample {
     val pages = documents(db, "venue_pages").flatMap { d =>
       Option(d.get("page")).filter(_.isString).map(_.asString.getValue -> MongoReviewSource.facts(d, poster = "posterUrl"))
     }.toMap
-    new InMemoryReviewSource(decisions.filter(_._1 == Databases(db)).map(_._2), slots, pagesHeld = pages, feedsHeld = feeds(db))
+    new InMemoryReviewSource(decisions.filter(_._1 == Databases(db)).map(_._2), slots, pagesHeld = pages, feedsHeld = feeds(db),
+      tracesHeld = traces(db))
   }
+
+  /** The members' traces (`identity_traces`), decoded as the store decodes them. */
+  def traces(db: String): Seq[services.identity.ListingTrace] =
+    documents(db, "identity_traces").map(services.identity.MongoIdentityTraceStore.decode)
 
   /** The members' listings as the venues' last scrapes (`identity_listings`, one film per document) hold them. */
   private def feeds(db: String): Map[(String, String), ListingFeed] = {

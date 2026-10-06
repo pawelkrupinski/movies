@@ -153,6 +153,12 @@
     details.why { font-size: .8rem; color: var(--muted); }
     details.why summary { cursor: pointer; }
     details.why li { font-family: var(--mono); overflow-wrap: anywhere; }
+    details.why .trace { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 6px; }
+    details.why .who { color: var(--fg); font-weight: 500; }
+    details.why ul { margin: 2px 0; }
+    details.why .for li, details.why li.for { color: var(--ok); }
+    details.why .against li, details.why li.against { color: var(--bad); }
+    details.why li.veto { color: var(--bad); background: var(--bad-soft); border-radius: 4px; padding: 0 4px; }
     @@media (prefers-reduced-motion: reduce) { .meter > i { transition: none; } }
     @@media (max-width: 480px) { .cand { grid-template-columns: 56px 1fr; } .cand > .btn { grid-column: 1 / -1; } }
   </style>
@@ -265,9 +271,13 @@
         </div>
       }
       <details class="why"><summary>Why the resolver decided this</summary><ul>
-        <li>@if(c.film.isDefined){match confidence} else {no-match confidence} @pct(c.confidence)</li>
-        @for(w <- c.explanation){<li>@w</li>}
-      </ul></details>
+        <li>@c.basis · @if(c.film.isDefined){match confidence} else {no-match confidence} @pct(c.confidence)</li>
+        @for(w <- c.explanation){<li@if(w.contains("denied") || w.contains("vetoed")){ class="veto"}>@w</li>}
+        @for(x <- c.reasons.contradictions){<li class="against">contradiction: @x</li>}
+        @for(f <- c.reasons.fallback){<li>fallback: @f.source:@f.id at @pct(f.probability)@for(t <- f.title){ · @t}@for(y <- f.year){ (@y)}</li>}
+        @for((family, id) <- c.reasons.agreed.toSeq.sorted){<li>agreement: @family named @id</li>}
+        @if(c.reasons.unanswered > 0){<li>@c.reasons.unanswered question(s) unanswered</li>}
+      </ul><div class="traces" data-src="/debug/review/why?country=@c.country.code&amp;cluster=@java.net.URLEncoder.encode(c.id, "UTF-8")"></div></details>
       @if(card.otherCandidates.nonEmpty) {
         @if(card.shown.isDefined){<div class="s">Other candidates</div>}
         <div class="cands">
@@ -446,6 +456,19 @@
       var ref = parseRef(e.target.value);
       form.querySelector('.hint').textContent = !e.target.value.trim() ? '' : ref ? 'Reads as ' + ref : 'Not a link or id I recognise.';
     });
+    // A card's full reasoning is read only when its "Why" is opened: the list stays one read of the decisions.
+    document.addEventListener('toggle', function (e) {
+      var why = e.target;
+      if (!why.matches || !why.matches('details.why') || !why.open) return;
+      var box = why.querySelector('.traces');
+      if (!box || box.getAttribute('data-loaded')) return;
+      box.setAttribute('data-loaded', '1');
+      box.textContent = 'loading the listings\u2019 traces\u2026';
+      fetch(box.getAttribute('data-src'))
+        .then(function (r) { return r.ok ? r.text() : r.text().then(function (t) { throw new Error(t || r.status); }); })
+        .then(function (html) { box.innerHTML = html; })
+        .catch(function (err) { box.textContent = 'could not load the traces: ' + (err.message || err); });
+    }, true);
     // A poster that fails to load gives way to the next it has, then to the "no poster" placeholder.
     document.addEventListener('error', function (e) {
       var img = e.target;

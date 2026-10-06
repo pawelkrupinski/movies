@@ -88,6 +88,24 @@ class ReviewController(cc: ControllerComponents,
     }
   }
 
+  /** One card's "Why" fold-out, read when it is opened: each member listing's trace — the evidence for and against
+   *  the film it weighed, every rule's refusal, the candidates it scored and what it searched. */
+  def why(country: String, cluster: String): Action[AnyContent] = Action {
+    devOnly {
+      Country.byCode(country).filter(sources.contains).flatMap { c =>
+        Try(sources(c).decisions(unmatchedOnly = false)).toOption.flatMap(_.iterator.map(ReviewCluster.of(c, _)).find(_.id == cluster))
+          .map(found => c -> found)
+      } match {
+        case None             => NotFound(s"no cluster $cluster in $country")
+        case Some((c, found)) =>
+          Try(sources(c).traces(found.members.map(services.movies.ListingKey.serialised))) match {
+            case Success(traces) => Ok(views.html.reviewWhy(found.members.map(k => k -> traces.get(services.movies.ListingKey.serialised(k)))))
+            case Failure(e)      => InternalServerError(s"could not read identity_traces: ${e.getMessage}")
+          }
+      }
+    }
+  }
+
   /** Records one answer; answers with the warnings the venues' own facts raise against it, and the film it named. */
   def answer(): Action[JsValue] = Action(parse.tolerantJson) { request =>
     devOnly {

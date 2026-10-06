@@ -1,0 +1,30 @@
+@import services.review.ListingReasons
+@(members: Seq[(services.movies.ListingKey, Option[services.identity.ListingTrace])])
+@* One card's "Why" fold-out body, fetched when it is opened: each member listing's trace, whole. *@
+@for((key, trace) <- members) {
+  <div class="trace">
+    <div class="who">@key.venue · @key.rawTitle</div>
+    @trace match {
+      case None => {<div class="s muted">no trace of this listing in identity_traces</div>}
+      case Some(t) => {
+        @defining(ListingReasons(t)) { r =>
+          <div class="s">@t.basis@for(f <- t.film){ → tmdb:@f}@for(b <- t.blocker){ · blocked by @b}</div>
+          @for(v <- t.vetoedBy){<ul><li class="veto">vetoed by @v</li></ul>}
+          @for(f <- t.weighedFilm) {
+            <div class="s">evidence against tmdb:@f</div>
+            @if(r.forIt.nonEmpty){<div class="s">for</div><ul class="for">@for(c <- r.forIt){<li>@c.text</li>}</ul>}
+            @if(r.against.nonEmpty){<div class="s">against</div><ul class="against">@for(c <- r.against){<li>@c.text</li>}</ul>}
+            @if(r.neutral.nonEmpty){<ul>@for(c <- r.neutral){<li>@c.text</li>}</ul>}
+          }
+          @if(t.candidates.nonEmpty){<div class="s">candidates scored</div><ul>@for(c <- t.candidates){<li>@c</li>}</ul>}
+          @if(r.rulesApplied.nonEmpty){<div class="s">rules</div><ul>@for(rule <- r.rulesApplied){<li@if(rule.startsWith("veto")){ class="veto"}>@rule</li>}</ul>}
+          @if(t.refusals.nonEmpty) {
+            <div class="s">refused by</div>
+            <ul class="refusals">@for(f <- t.refusals){<li@if(r.isVeto(f)){ class="veto"}>@f.rule: @f.why@for(film <- f.film){ (tmdb:@film)}@if(f.detail.nonEmpty){ — @f.detail}</li>}</ul>
+          }
+          @if(t.searched.nonEmpty){<div class="s">searched</div><ul>@for(s <- t.searched){<li>@s</li>}</ul>}
+        }
+      }
+    }
+  </div>
+}

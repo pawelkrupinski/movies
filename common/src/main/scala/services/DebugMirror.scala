@@ -63,10 +63,13 @@ object DebugMirror {
     // The identity review pages (web `/debug/review*`): the model's decisions, and beside
     // `movie_slots` / `movies` / `web_movies` above, each listing's own film page and its
     // venue's last scrape (catalogue ids, screenings), and the resolver's own TMDB record of each
-    // candidate film (worker `TmdbKind.Film`), for the candidates the corpus lacks.
+    // candidate film (worker `TmdbKind.Film`), for the candidates the corpus lacks; and each
+    // listing's trace (the evidence for and against the film it weighed, every rule's refusal),
+    // which a card's "Why" fold-out reads when it is opened. ~190 MB over the five countries (2026-10-06).
     services.identity.MongoIdentityModelStore.FamiliesCollection,
     VenuePages,
     IdentityListings,
-    TmdbFilms
+    TmdbFilms,
+    services.identity.MongoIdentityTraceStore.Collection
   )
 }

@@ -256,6 +256,7 @@ POST    /admin/identity/pins/remove      controllers.IdentityAdminController.rem
 GET     /debug/review                    controllers.ReviewController.queue(country: Option[String] ?= None, limit: Int ?= 60, answered: Boolean ?= false)
 GET     /debug/review/matchable          controllers.ReviewController.matchable(country: Option[String] ?= None, min: Double ?= 0.5, basis: Option[String] ?= None, limit: Int ?= 60, answered: Boolean ?= false)
 GET     /debug/review/recent             controllers.ReviewController.recent(country: Option[String] ?= None, hours: Int ?= 48, limit: Int ?= 60, answered: Boolean ?= false)
+GET     /debug/review/why                controllers.ReviewController.why(country: String, cluster: String)
 GET     /debug/review/answers            controllers.ReviewController.history()
 + nocsrf
 POST    /debug/review/answer             controllers.ReviewController.answer()

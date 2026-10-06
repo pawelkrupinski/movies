@@ -17,7 +17,7 @@ final case class ReviewCandidate(film: Int, probability: Option[Double], vetoed:
  */
 final case class ReviewCluster(country: Country, members: Seq[ListingKey], film: Option[Int], confidence: Double,
                                basis: ResolverDecision.Basis, explanation: Seq[String], fallback: Boolean,
-                               candidates: Seq[ReviewCandidate]) {
+                               candidates: Seq[ReviewCandidate], reasons: ReviewReasons = ReviewReasons()) {
   lazy val reviewMembers: Seq[ReviewMember] = members.map(ReviewMember.of)
   lazy val id: String = ReviewClusterId.of(reviewMembers)
   def title: String = members.headOption.fold("")(_.rawTitle)
@@ -49,7 +49,7 @@ object ReviewCluster {
     val candidates = (best.toSeq ++ own.sortBy(-_.probability.getOrElse(0.0)) ++ stored)
       .filterNot(c => decision.film.contains(c.film)).distinctBy(_.film)
     ReviewCluster(country, decision.members, decision.film, decision.confidence, decision.basis, decision.explanation,
-      decision.fallback.isDefined, candidates)
+      decision.fallback.isDefined, candidates, ReviewReasons.of(decision))
   }
 }
 

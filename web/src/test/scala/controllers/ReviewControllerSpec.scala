@@ -52,7 +52,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     val html = contentAsString(controller(Mode.Dev).queue(Some("pl"), 60, false)(FakeRequest()))
     html should include("""<span class="conf" title="best candidate">86.4%</span>""")
     html should not include "no match 14.0%"
-    html should include("<li>no-match confidence 14.0%</li>")
+    html should include("<li>BelowThreshold · no-match confidence 14.0%</li>")
     // a cluster with no candidate has no probability to badge
     html should not include "best 0.0%"
   }

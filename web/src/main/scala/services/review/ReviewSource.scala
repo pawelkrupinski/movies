@@ -78,6 +78,8 @@ trait ReviewSource {
   def filmRecords(tmdbIds: Seq[Int]): Map[Int, FilmCard]
   /** For each corpus record naming one of `refs` (by its TMDB, IMDb, Filmweb, RT or Metacritic id), every ref it names. */
   def filmLinks(refs: Seq[FilmRef]): Seq[Set[FilmRef]]
+  /** The resolver's trace of each of these listings (`identity_traces`, by [[services.movies.ListingKey.serialised]]). */
+  def traces(listingKeys: Seq[String]): Map[String, services.identity.ListingTrace]
 }
 
 object ReviewSource {
@@ -91,5 +93,6 @@ object ReviewSource {
     def films(tmdbIds: Seq[Int]): Map[Int, FilmCard] = Map.empty
     def filmRecords(tmdbIds: Seq[Int]): Map[Int, FilmCard] = Map.empty
     def filmLinks(refs: Seq[FilmRef]): Seq[Set[FilmRef]] = Nil
+    def traces(listingKeys: Seq[String]): Map[String, services.identity.ListingTrace] = Map.empty
   }
 }
