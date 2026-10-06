@@ -34,6 +34,8 @@ class UnmatchedClustersRatchetSpec extends AnyFlatSpec with Matchers {
       outcome.stage.wantedPosters shouldBe empty
       outcome.stage.wantedCatalogue shouldBe empty
       outcome.stage.wantedRecords shouldBe empty
+      // TMDB's answers the stage's own resolves ask — a fill rule's, a poster's candidates — that the capture never held
+      outcome.unanswered shouldBe empty
     }
     UnmatchedClusters.takes(capture, outcome)
   }

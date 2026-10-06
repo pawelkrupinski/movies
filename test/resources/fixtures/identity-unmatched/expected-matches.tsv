@@ -1,5 +1,6 @@
 country	venue	rawTitle	film	title
 pl	Bajka	BEZ KOŃCA 2D PL LOLO	tmdb:1596319	Bez końca (2026)
+pl	Bałtyk	Weekend Seniora z Kulturą: Vivaldi i ja [2D LEKTOR] (seans z audiodeskrypcją)	tmdb:1365683	Primavera (2025)
 pl	Cinema City Arkadia	SEVENTEEN WORLD TOUR 'NEW_'	imdb:tt46658626	filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 pl	Cinema City Bonarka	SEVENTEEN WORLD TOUR 'NEW_'	imdb:tt46658626	filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 pl	Cinema City Bydgoszcz	SEVENTEEN WORLD TOUR 'NEW_'	imdb:tt46658626	filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
@@ -18,7 +19,8 @@ pl	Kino Alternatywy	Okładka „Short Stories”	tmdb:160833	Opowieści (2012)
 pl	Kino Amok	Manon	tmdb:1703631	The Metropolitan Opera 2026/27: Manon (2027)
 pl	Kino Atlantic	11. UFF - Demony	tmdb:1085176	Демони (2027)
 pl	Kino Atlantic	11. UFF - Gala otwarcia + Demony	tmdb:1085176	Демони (2027)
-pl	Kino Atlantic	HER Docs - To nie jest świat dla ludzi z menopauzą	filmweb:10134515	filmweb, imdb leaning to it, corroborated by listing, runtime agree on 'To nie jest świat dla ludzi z menopauzą' (2026)
+pl	Kino Atlantic	11. UFF - Nasz dom płonie	tmdb:1342394	Наш дім у вогні (2025)
+pl	Kino Atlantic	HER Docs - To nie jest świat dla ludzi z menopauzą	tmdb:1627786	Mysteriet om Menopausen (2026)
 pl	Kino CKiB Nowa Sarzyna	Lalka	tmdb:1321666	Lalka (2026)
 pl	Kino Goplana	Sukienka	tmdb:737496	Sukienka (2020)
 pl	Kino Grajfka	Kafarnaum	tmdb:517814	Kafarnaum (2018)
@@ -33,6 +35,7 @@ pl	Kino Kolory	DKF: Wieloryb	tmdb:785084	imdb, filmweb, wiki leaning to it agree
 pl	Kino Kultura	Pasażerka - premiera książki, pokaz filmu + dyskusja	tmdb:25939	Pasażerka (1963)
 pl	Kino Kultura Gołdap	NADZIEJA	tmdb:277730	Nadzieja (2007)
 pl	Kino MCKCziE Grybów	EVEREST: DRUGA STRONA	tmdb:1714568	Everest North (?)
+pl	Kino Millenium	KINO NA NIEDZIELE:CAMINO DLA OPORNYCH	tmdb:1404604	Compostelle (2026)
 pl	Kino Nowe Horyzonty	Materiał się liczy	imdb:tt38599478	imdb, corroborated by listing, runtime agree on 'Make Materials Matter' (2025) tt38599478
 pl	Kino Opalenica	TAJNY AGENT	tmdb:1220564	Tajny agent (2025)
 pl	Kino Powiśle	OPERA-COSI FAN TUTTE	tmdb:1703620	The Metropolitan Opera: Così fan tutte (2026)
@@ -48,6 +51,7 @@ pl	Kino Spektrum	Akademia Polskiego Filmu: Znachor (1937) | Gatunki międzywojni
 pl	Kino Starówka	WAJDA: re-wizje: BEZ ZNIECZULENIA | 15+	tmdb:42199	Bez znieczulenia (1978)
 pl	Kino Wielicka Mediateka	Kino Zmysłów: Vincent. Legenda oceanu | 2D | Dubbing	tmdb:677558	The Last Whale Singer (2026)
 pl	Kino Zorza	KLAPS! - Rozważna i romantyczna	tmdb:1503762	Rozważna i romantyczna (2026)
+pl	Kino w Ratuszu	Kino Kobiet - KLAPS! "Jak żyć żeby nie zwariować"	tmdb:1489938	Jak żyć, żeby nie zwariować (2026)
 pl	Kino za Rogiem Brusy	Norymberga	tmdb:1214931	Norymberga (2025)
 pl	Kino za Rogiem Brusy	TAJNY AGENT - Klub Filmowy	tmdb:1220564	Tajny agent (2025)
 pl	Kino za Rogiem Cafe	Dobry chłopiec	tmdb:1381027	filmweb, imdb, wiki agree on 'Heel' (2025) tt34381258
@@ -59,6 +63,7 @@ pl	Kino za Rogiem w Siedlcu	Potworna rodzinka	tmdb:454699	Potworna rodzinka (201
 pl	Kino Światowid Elbląg	AKW: Blisko	tmdb:901563	Blisko (2022)
 pl	Kino Światowid Elbląg	AKW: Powoli	tmdb:1058642	Powoli (2023)
 pl	Kino Światowid Elbląg	The Metropolitan Opera: Cosi Fan Tutte	tmdb:1703620	The Metropolitan Opera: Così fan tutte (2026)
+pl	Kino Świt	„Baranek Shaun i kudłata bestia” Rodzinne Poranki Filmowe	tmdb:1477104	Baranek Shaun i kudłata bestia (2026)
 pl	Kino Żak	Filmowa Bryza czyli Pomorze w Kadrze: Ostatni dzień lata	tmdb:227245	Ostatni dzień lata (1958)
 pl	Kinoteka	Ghost in the shell	tmdb:9323	Ghost in the Shell (1995)
 pl	Kinoteka	Krew za krew | Splat!FilmFest	wikidata:Q139604007	rt, wiki, corroborated by listing agree on 'Ikatan Darah' (2025)
@@ -121,7 +126,9 @@ uk	Everyman Screen on the Green Islington	Ken Russell's The Devils presented by 
 uk	Flower Bowl Entertainment Centre Preston	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
 uk	Highland Cinema Fort William	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
 uk	IMAX at Glasgow Science Centre	Ocean Odyssey	tmdb:987793	Ocean Odyssey (2021)
+uk	Keswick Alhambra	MetOpera: La Fanciulla del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 uk	Lumiere Romford	Once Upon A Time in America	tmdb:311	Once Upon a Time in America (1984)
+uk	Luxe Wisbech	MetOpera: Samson et Dalila	tmdb:1703624	The Metropolitan Opera 2026/27: Samson et Dalila (2026)
 uk	Northern Light Sale	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
 uk	Number 30 Huntly	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
 uk	Odeon Birmingham New Street	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
@@ -213,16 +220,37 @@ uk	Odeon Luxe Sheffield	Agbara Nla: The Return	imdb:tt47091674	imdb, wiki, corro
 uk	Odeon Luxe Telford	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 uk	Odeon Middlesbrough	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 uk	Odeon Northampton	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Omniplex Birmingham	MetOpera: La Fanciulla del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Omniplex Clydebank (formerly Empire)	MetOpera: La Fanciulla del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Omniplex High Wycombe (formerly Empire)	MetOpera: La Fanciulla del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Omniplex Ipswich (formerly Empire)	MetOpera: La Fanciulla del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Omniplex Sunderland (formerly Empire)	MetOpera: La Fanciulla del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Omniplex Sutton (formerly Empire)	MetOpera: La Fanciulla del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Omniplex Wigan (formerly Empire)	MetOpera: La Fanciulla del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Plaza Cinema Dorchester	MetOpera: Samson et Dalila	tmdb:1703624	The Metropolitan Opera 2026/27: Samson et Dalila (2026)
 uk	Regal Melton Mowbray	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
 uk	Rex Wilmslow	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
 uk	Ritz Belper	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
 uk	Savoy Cinema Heaton Moor	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
+uk	Showcase Bristol Avonmeads	Paddington Bear: Winter Warmers	imdb:tt39048323	filled by venues.current: 'Paddington: Winter Warmers (2025)' imdb:tt39048323 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
+uk	Showcase Cinema Cardiff	Paddington Bear: Winter Warmers	imdb:tt39048323	filled by venues.current: 'Paddington: Winter Warmers (2025)' imdb:tt39048323 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
+uk	Showcase Cinema de Lux Derby	Paddington Bear: Winter Warmers	imdb:tt39048323	filled by venues.current: 'Paddington: Winter Warmers (2025)' imdb:tt39048323 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
+uk	Showcase Cinema de Lux Teesside	Paddington Bear: Winter Warmers	imdb:tt39048323	filled by venues.current: 'Paddington: Winter Warmers (2025)' imdb:tt39048323 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
+uk	Showcase de Lux Bluewater	Paddington Bear: Winter Warmers	imdb:tt39048323	filled by venues.current: 'Paddington: Winter Warmers (2025)' imdb:tt39048323 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 uk	Showcase de Lux Bluewater	SEVENTEEN WORLD TOUR 'NEW_'	imdb:tt46658626	filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
+uk	Showcase de Lux Leeds	Paddington Bear: Winter Warmers	imdb:tt39048323	filled by venues.current: 'Paddington: Winter Warmers (2025)' imdb:tt39048323 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
+uk	Showcase de Lux Leicester	Paddington Bear: Winter Warmers	imdb:tt39048323	filled by venues.current: 'Paddington: Winter Warmers (2025)' imdb:tt39048323 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 uk	Showcase de Lux Leicester	SEVENTEEN WORLD TOUR 'NEW_'	imdb:tt46658626	filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
+uk	Showcase de Lux Nottingham	Paddington Bear: Winter Warmers	imdb:tt39048323	filled by venues.current: 'Paddington: Winter Warmers (2025)' imdb:tt39048323 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 uk	Showcase de Lux Nottingham	SEVENTEEN WORLD TOUR 'NEW_'	imdb:tt46658626	filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
+uk	Showcase de Lux Paisley	Paddington Bear: Winter Warmers	imdb:tt39048323	filled by venues.current: 'Paddington: Winter Warmers (2025)' imdb:tt39048323 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
+uk	Showcase de Lux Peterborough	Paddington Bear: Winter Warmers	imdb:tt39048323	filled by venues.current: 'Paddington: Winter Warmers (2025)' imdb:tt39048323 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
+uk	Showcase de Lux Reading	Paddington Bear: Winter Warmers	imdb:tt39048323	filled by venues.current: 'Paddington: Winter Warmers (2025)' imdb:tt39048323 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 uk	Showcase de Lux Reading	SEVENTEEN WORLD TOUR 'NEW_'	imdb:tt46658626	filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
+uk	Showcase de Lux Southampton	Paddington Bear: Winter Warmers	imdb:tt39048323	filled by venues.current: 'Paddington: Winter Warmers (2025)' imdb:tt39048323 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 uk	Showroom Sheffield	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 uk	Storyhouse Chester	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Storyhouse Chester	MetOpera: La Fanciulla del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 uk	The Ashford Cinema (formerly Picturehouse)	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
 uk	The Montrose Playhouse	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
 uk	The Parade Cinema Marlborough	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)

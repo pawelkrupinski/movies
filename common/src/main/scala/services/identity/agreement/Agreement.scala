@@ -398,7 +398,18 @@ object Agreement {
       titles.exists(title => title.length >= 4 && { val words = TitleContainment.tokens(title); words.nonEmpty && raw.containsSlice(words) }) ||
       // the film's title with a leading article the listing drops — two words after it at least (DE "Camp der
       // Verlorenen", TMDB's "Das Camp der Verlorenen"; "Devil" is not "The Devil")
-      titles.exists { title => val words = TitleContainment.tokens(title); words.sizeIs >= 3 && LeadingArticles(words.head) && ownWords(words.tail) }
+      titles.exists { title => val words = TitleContainment.tokens(title); words.sizeIs >= 3 && LeadingArticles(words.head) && ownWords(words.tail) } ||
+      titles.exists(namedPieceByPiece(listing.rawTitle, _))
+  }
+
+  /** Does `billed` name `title` piece by piece — as many pieces, each of the title's a run of the billed one's words at
+   *  its place, four letters at least, and one of them the whole piece? UK "Paddington Bear: Winter Warmers" names IMDb's
+   *  "Paddington: Winter Warmers"; "It Follows: Chapter Two" names no "It: Chapter Two". */
+  private def namedPieceByPiece(billed: String, title: String): Boolean = {
+    val own   = IdentityMeasures.pieces(billed).map(TitleContainment.tokens)
+    val its   = IdentityMeasures.pieces(title).map(TitleContainment.tokens)
+    own.sizeIs >= 2 && own.size == its.size && own.zip(its).forall { case (o, t) => t.nonEmpty && t.mkString.length >= 4 && o.containsSlice(t) } &&
+      own.zip(its).exists { case (o, t) => o == t }
   }
   /** Articles a title may lead with that a venue drops: English, German, French, Spanish, Italian. */
   private val LeadingArticles = Set("the", "a", "an", "der", "die", "das", "le", "la", "les", "el", "los", "las", "il", "lo", "gli")

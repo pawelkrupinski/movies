@@ -412,4 +412,15 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.namesIt(listing(KinoMuza, "Devil"), Seq(film("The Devil", 1908, "D. W. Griffith"))) shouldBe false
     Agreement.namesIt(listing(KinoMuza, "Camp"), Seq(camp)) shouldBe false
   }
+
+  it should "name a film piece by piece, each of the film's pieces a run of the listing's at its place and one of them whole" in {
+    // UK Showcase's "Paddington Bear: Winter Warmers" ×12, IMDb's "Paddington: Winter Warmers" (2025)
+    val warmers = film("Paddington: Winter Warmers", 2025, "")
+    Agreement.namesIt(listing(KinoMuza, "Paddington Bear: Winter Warmers"), Seq(warmers)) shouldBe true
+    // a piece of three letters names nothing; no piece whole, no naming; pieces out of place, or more of them, neither
+    Agreement.namesIt(listing(KinoMuza, "It Follows: Chapter Two"), Seq(film("It: Chapter Two", 2019, "Andy Muschietti"))) shouldBe false
+    Agreement.namesIt(listing(KinoMuza, "Paddington Bear: Winter Warmers Live"), Seq(film("Paddington: Winter Specials", 2025, ""))) shouldBe false
+    Agreement.namesIt(listing(KinoMuza, "Winter Warmers: Paddington Bear"), Seq(warmers)) shouldBe false
+    Agreement.namesIt(listing(KinoMuza, "Paddington Bear: Winter Warmers: Live"), Seq(warmers)) shouldBe false
+  }
 }

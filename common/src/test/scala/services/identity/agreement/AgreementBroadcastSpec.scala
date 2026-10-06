@@ -54,6 +54,9 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     // …but none long after the broadcast, nor before it
     decided(screening("OPERA 2026/2027 - SAMSON I DALILA- RETRANSMISJA", "2027-06-26")).film shouldBe None
     decided(screening("OPERA 2026/2027 - SAMSON I DALILA- RETRANSMISJA", "2026-12-01")).film shouldBe None
+    // UK Flicks venues' encores three days on, the house run into one camel-cased word
+    decided(screening("MetOpera: La Fanciulla del West", "2027-01-26")).film shouldBe Some(metFanciulla.id)
+    decided(screening("MetOpera: Samson et Dalila", "2026-12-08")).film shouldBe Some(metSamson.id)
   }
 
   it should "take none for a title billing another house, though the work and day are the record's" in {

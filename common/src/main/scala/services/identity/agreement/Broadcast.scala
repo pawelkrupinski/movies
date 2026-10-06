@@ -84,17 +84,21 @@ object Broadcast {
   }
 
   private object Billing {
+    /** Where a lower-case letter runs into an upper-case one: the seam of a camel-cased word. */
+    private val CamelCase = """(?<=\p{Ll})(?=\p{Lu})""".r
+
     def of(listing: Listing, measured: IdentityMeasures.Listing): Billing = {
       val titles = Seq(listing.title, listing.rawTitle).distinct
       val named  = measured.seasonYear.isDefined
       Billing(IdentityMeasures.stageWorksBilled(titles, named), measured.seasonYear, bannerOf(titles, IdentityMeasures.billedIn(_, named).nonEmpty), measured)
     }
 
-    /** The words of the titles' pieces that bill no stage work (`billsWork`, else the work a whole piece names). */
+    /** The words of the titles' pieces that bill no stage work (`billsWork`, else the work a whole piece names), a word
+     *  run together in camel case read as its parts: UK Flicks' "MetOpera" is the Met's "Opera". */
     def bannerOf(titles: Seq[String], billsWork: String => Boolean): Set[String] =
       titles.flatMap(IdentityMeasures.pieces)
         .filterNot(piece => billsWork(piece) || services.identity.StageWorks.resolver.named(IdentityMeasures.key(piece)).nonEmpty)
-        .flatMap(services.movies.TitleContainment.tokens)
+        .flatMap(piece => services.movies.TitleContainment.tokens(CamelCase.replaceAllIn(piece, " ")))
         .filter(word => word.length >= 4 && !word.forall(_.isDigit) && !DecorationSegments.EventWords(word)).toSet
 
     /** Does a listing's banner spell the record's house: every word of it the house's (an abbreviation: "Opera" of "The

@@ -88,12 +88,12 @@ pl	Kino Parczew	Vincent.legenda oceanu	imdb:tt13518550	right	recall target: Vinc
 de	Cinema Quadrat e.V.	Ghost School	imdb:tt37547768	right	recall target: Ghost School
 de	Kinozentrum Frauentor	Snow Leopard	imdb:tt13920372	right	recall target: Snow Leopard
 de	Tivoli-Filmtheater	Hungarian Rhapsody: Queen - Live In Budapest	imdb:tt8378126	right	recall target: Hungarian Rhapsody: Queen - Live In Buda
-de	Murnau-Filmtheater	James Bond vs. Spectre - Ein Blick hinter die Kulissen	imdb:tt2379713	right	recall target: James Bond vs. Spectre - Ein Blick hinte
-de	Roxy Kino Kitzingen	To The Bone	imdb:tt5541240	right	recall target: To The Bone
+de	Murnau-Filmtheater	James Bond vs. Spectre - Ein Blick hinter die Kulissen	imdb:tt2379713	wrong	judged 10-06: Filmstarts 284013 (the venue's catalogue id) is a 23-minute 2015 German short by Christian Danner and Danny Morgenstern about a fan racing to publish a Bond book, not Spectre; was recall target: James Bond vs. Spectre - Ein Blick hinte
+de	Roxy Kino Kitzingen	To The Bone	imdb:tt5541240	wrong	judged 10-06: Filmstarts 227420 (the venue's catalogue id) is Erin Li's 8-minute 2014 Spanish-language short, not Marti Noxon's 2017 feature; was recall target: To The Bone
 de	Studio-Kino	Till Eulenspiegel	imdb:tt0072294	right	recall target: Till Eulenspiegel
 de	CasaBlanca Art House	World Champion	imdb:tt13930782	wrong	judged 10-05: the venue bills Moonika Siimets, 2009, 36 min — not Yankovskiy's 2021 feature
 de	CasaBlanca Art House	World Champion	imdb:tt1943754	right	judged 10-05: Siimets' short Maailmameister (2009), as the venue's year, director and running time credit it
-de	Schlosstheater Münster	Das doppelte Lottchen	imdb:tt0042409	right	recall target: Das doppelte Lottchen
+de	Schlosstheater Münster	Das doppelte Lottchen	imdb:tt0042409	wrong	judged 10-06: Filmstarts 127792 (the venue's catalogue id) is the 2007 animated film (Michael Schaack, Warner), not the 1950 one; was recall target: Das doppelte Lottchen
 de	Kino in der Lagerhalle	Don Quichotte	imdb:tt0406716	right	recall target: Don Quichotte
 uk	Depot Lewes	NT Live: All My Sons (2026)	imdb:tt39544163	right	recall target: NT Live: All My Sons (2026)
 uk	Brewery Arts Centre Kendal	Funny Girl - The Musical	imdb:tt37775809	right	recall target: Funny Girl - The Musical
@@ -104,7 +104,7 @@ us	Alamo Drafthouse Downtown LA	The Scout	imdb:tt0111094	wrong	judged 10-05: dra
 us	Alamo Drafthouse Indianapolis	MOTHER!	imdb:tt5109784	right	recall target: Mother!
 us	Lakewood Ranch Cinemas 6	A Night at the Opera	imdb:tt0026778	right	recall target: A Night at the Opera
 us	Enzian Theater	Exhibition on Screen: Rembrandt	imdb:tt6449472	right	recall target: Rembrandt
-us	Alamo Drafthouse Stone Oak	Last Shot	imdb:tt7641334	right	recall target: Last Shot
+us	Alamo Drafthouse Stone Oak	Last Shot	imdb:tt7641334	wrong	judged 10-06: Alamo's 6 Oct 2026 show is Andy Palmer's 2026 Last Shot (limited release 2 Oct 2026; Metacritic takes it), not the 2020 film; was recall target: Last Shot
 us	Alamo Drafthouse Lower Manhattan	A Prayer for the Dying	imdb:tt0093771	wrong	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
 pl	Kino CKiB Nowa Sarzyna	Lalka	imdb:tt0064570	wrong	must not: the 2026 film; 1968 film's id carried
 pl	Kino CK Lublin	Lalka	imdb:tt0064570	wrong	must not: the 2026 film; 1968 film's id carried
@@ -393,10 +393,10 @@ pl	*	edukacja MH: Johnny	tmdb:920220	right	hand label: Johnny (2022) Daniel Jaro
 uk	*	Agbara Nla: The Return	wikidata:Q141637007	right	hand label: Agbara Nla: The Return ()
 uk	*	Agbara Nla: The Return	wikipedia:Q141637007	right	hand label: Agbara Nla: The Return ()
 uk	*	EXHIBITION ON SCREEN: Caravaggio	tmdb:1496903	right	hand label: Caravaggio (2025)
-uk	*	It (1990)	tmdb:982512	right	hand label: It (1990) Tommy Lee Wallace
+uk	*	It (1990)	imdb:tt0099864	right	judged 10-06: the 1990 miniseries (Flicks: Tommy Lee Wallace, 168 min); TMDB holds it only as TV 19614 and its movie 982512 is gone (404), so its id is IMDb's
 uk	*	MetOpera: Samson et Dalila	wikidata:Q123303374	wrong	hand label: Samson Et Dalila (1981) John Vernon
 uk	*	Royal Opera House: Carmen	tmdb:450170	wrong	hand label: Carmen (1921) Ernesto Vollrath
-us	*	It (1990)	tmdb:982512	right	hand label: It (1990) Tommy Lee Wallace
+us	*	It (1990)	imdb:tt0099864	right	judged 10-06: the 1990 miniseries (Flicks: Tommy Lee Wallace, 168 min); TMDB holds it only as TV 19614 and its movie 982512 is gone (404), so its id is IMDb's
 us	*	MOTHER!	tmdb:381283	right	hand label: Mother! (2017) Darren Aronofsky
 us	*	Penguin Island	imdb:tt1729625	wrong	hand label: Penguin Island (2010) Simon Target
 de	*	André Rieus Weihnachtskonzert 2026: Let it Snow	tmdb:295151	wrong	hand label: Tage wie diese (2019) Luke Snellin
@@ -514,9 +514,9 @@ pl	*	Niebezpieczne związki | Kinoteka Kultury i Sztuki	tmdb:257425	wrong	hand l
 pl	*	Norymberga	wikidata:Q124393313	right	hand label: Norymberga (2025) James Vanderbilt
 pl	*	Norymberga	wikipedia:Q124393313	right	hand label: Norymberga (2025) James Vanderbilt
 pl	*	OPERA 2026/2027 - ZACZAROWANY FLET	cinemeta:tt43746565	wrong	hand label: The Metropolitan Opera: Samson et Dalila (2026)
-pl	*	Obcy w domu	cinemeta:tt7605088	right	hand label: Obcy w domu (1986)
+pl	*	Obcy w domu	cinemeta:tt7605088	wrong	judged 10-06: U-jazdowski's page (pokaz-shortow, 29 Sep 2026) bills a block of three 2025-26 shorts (MIX, Kontrewers, Dziwnie być człowiekiem) under this name: no film of it
 pl	*	Obcy w domu	filmweb:109199	wrong	hand label: Obcy w domu (1967) Pierre Rouve
-pl	*	Obcy w domu	tmdb:923171	right	hand label: Obcy w domu (1986)
+pl	*	Obcy w domu	tmdb:923171	wrong	judged 10-06: U-jazdowski's page (pokaz-shortow, 29 Sep 2026) bills a block of three 2025-26 shorts under this name, not Wortman's 1986 short
 pl	*	Obcy w domu	wikidata:Q1233370	wrong	hand label: Obcy w domu (1989) Matthew Patrick
 pl	*	Obcy w domu	wikipedia:Q1233370	wrong	hand label: Obcy w domu (1989) Matthew Patrick
 pl	*	Okładka „Short Stories”	cinemeta:tt0368269	wrong	hand label: Short Stories (1998)
@@ -720,3 +720,9 @@ pl	*	Okładka „Tempo”	cinemeta:tt0307553	wrong	judged 10-05: the venue's pag
 pl	*	Okładka „Tempo”	filmweb:97663	wrong	judged 10-05: the venue's page (alternatywy.art/tempo-finlandia-rezyseria-kalle-nio-choreografia-fernando-melo-26-miedzynarodowy-festiwal-sztuki-mimu) is "Tempo", a Finnish stage piece — Kalle Nio directing, Fernando Melo's choreography — at the 26th International Mime Art Festival: no film, not Eric Styles' 2003 "Tempo"
 pl	*	Okładka „Tempo”	rt:tempo	wrong	judged 10-05: the venue's page (alternatywy.art/tempo-finlandia-rezyseria-kalle-nio-choreografia-fernando-melo-26-miedzynarodowy-festiwal-sztuki-mimu) is "Tempo", a Finnish stage piece — Kalle Nio directing, Fernando Melo's choreography — at the 26th International Mime Art Festival: no film, not Eric Styles' 2003 "Tempo"
 pl	*	Wymarzony	tmdb:489418	right	judged 10-05: kzrcafe.pl/film/wymarzony/ credits Jeanne Herry, Belgium/France 2018 — Pupille (TMDB "Wymarzony")
+us	Alamo Drafthouse Stone Oak	Last Shot	imdb:tt15426712	right	judged 10-06: Andy Palmer's 2026 Last Shot, in limited release from 2 Oct 2026 (Metacritic's take; Alamo's page is script-only)
+uk	*	MetOpera: La Fanciulla del West	tmdb:1703629	right	judged 10-06: the Met's 2026/27 production, live 23 Jan 2027 (TMDB's release day), encored at these venues on 26 Jan
+uk	*	MetOpera: Samson et Dalila	tmdb:1703624	right	judged 10-06: the Met's 2026/27 production, live 5 Dec 2026 (TMDB's release day), encored at these venues on 8 Dec
+de	*	Met Opera 2026/27: Wolfgang Amadeus Mozart COSÌ FAN TUTTE	tmdb:1703620	right	judged 10-06: TMDB's 'The Metropolitan Opera: Così fan tutte', released 3 Oct 2026, the venue's day
+pl	*	HER Docs - To nie jest świat dla ludzi z menopauzą	tmdb:1627786	right	judged 10-06: TMDB's 'Mysteriet om Menopausen' (2026, tt40447259) is Filmweb's 10134515, whose original title it is
+pl	*	11. UFF - Nasz dom płonie	tmdb:1342394	right	judged 10-06: Ukrainian Film Festival's 'Our House Is on Fire' (Наш дім у вогні, 2025, tt31718689)

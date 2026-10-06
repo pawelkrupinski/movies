@@ -42,8 +42,10 @@ object UnmatchedClusters {
 
   // ── what the agreement makes of the clusters ─────────────────────────────────────────────
 
-  /** The model's no-match decisions, and what the agreement stage made of them. */
-  final case class Outcome(model: Resolution, agreed: Resolution, stage: AgreementStage)
+  /** The model's no-match decisions, and what the agreement stage made of them — and every TMDB question the stage asked
+   *  that the capture holds no answer to (`unanswered`: a fill rule's own resolve of a cluster asks searches the whole
+   *  corpus's never did, and finds no evidence where the fixture is stale). */
+  final case class Outcome(model: Resolution, agreed: Resolution, stage: AgreementStage, unanswered: Set[String] = Set.empty)
 
   /** The families each country asks, as the worker wires them (`IdentityCutoverWiring.agreementFamilies`). */
   def familiesOf(country: Country): Seq[VoterFamily] =
@@ -74,11 +76,13 @@ object UnmatchedClusters {
     val docs = new InMemoryTmdbDocuments
     docs.put(TmdbKind.Family, capture.families.toSeq)
     val store = new FamilyAnswerStore(docs, SpecClock.Pinned)
-    agree(if (decisions.isEmpty) capture.decisions else decisions, capture.listings, new Replay(capture),
+    val lookups = new Replay(capture)
+    agree(if (decisions.isEmpty) capture.decisions else decisions, capture.listings, lookups,
       familiesOf(capture.country).map(f => f -> families(store.answers(f))).toMap, version = 1,
       imdb => capture.finds.get(imdb).fold[Answer[Option[Int]]](Answer.Unknown)(Answer.Known(_)), TitleNormalizer.forCountry(capture.country),
       posters(new PosterAnswerStore(store, SpecClock.Pinned)), modules.wiring.IdentityCutoverWiring.identities(capture.country.code),
       new CatalogueAnswerStore(store, SpecClock.Pinned, CataloguePages), modules.wiring.IdentityCutoverWiring.listedOn(capture.country.code))
+      .copy(unanswered = lookups.unanswered)
   }
 
   /** One listing's take: the film its cluster took (TMDB's, or a fallback film), the IMDb id it is known by, and the
@@ -160,13 +164,18 @@ object UnmatchedClusters {
     private def noted[A](answer: Answer[A])(keep: A => Any): Answer[A] = { answer.toOption.foreach(keep); answer }
   }
 
-  /** The captured answers as the resolver's lookups. */
+  /** The captured answers as the resolver's lookups, every TMDB question it holds no answer to noted — `queries` and
+   *  `films`, named in `unanswered` — to be asked live (`UnmatchedClustersFillIntegrationSpec`). A venue page not read
+   *  is no TMDB question: only a re-capture reads it. */
   final class Replay(capture: Capture) extends IdentityLookups {
+    val queries = ConcurrentHashMap.newKeySet[CandidateQuery]()
+    val films   = ConcurrentHashMap.newKeySet[Int]()
+    def unanswered: Set[String] = queries.asScala.map(DecisionTrace.renderQuery).toSet ++ films.asScala.map(id => s"tmdb $id")
     override def hasDetail(listing: Listing): Boolean = capture.withDetail(ListingKey.serialised(listing.key))
-    override def detail(listing: Listing): Answer[Option[DetailFacts]] = known(capture.details.get(ListingKey.serialised(listing.key)))
-    override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = known(capture.queries.get(query))
-    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = known(capture.films.get(tmdbId))
-    private def known[A](held: Option[A]): Answer[A] = held.fold[Answer[A]](Answer.Unknown)(Answer.Known(_))
+    override def detail(listing: Listing): Answer[Option[DetailFacts]] = known(capture.details.get(ListingKey.serialised(listing.key)))(())
+    override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = known(capture.queries.get(query))(queries.add(query))
+    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = known(capture.films.get(tmdbId))(films.add(tmdbId))
+    private def known[A](held: Option[A])(missing: => Any): Answer[A] = held.fold[Answer[A]] { missing; Answer.Unknown }(Answer.Known(_))
   }
 
   // ── the file ─────────────────────────────────────────────────────────────────────────────
