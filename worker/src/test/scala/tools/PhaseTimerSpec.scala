@@ -54,4 +54,22 @@ class PhaseTimerSpec extends AnyFlatSpec with Matchers {
   "the CPU note" should "read in seconds to one place" in {
     PhaseTimer.cpuNote(12_345_000_000L) shouldBe ", cpu 12.3s"
   }
+
+  "a phase line" should "say how long the collectors ran across the phase, beside its CPU" in {
+    val out = new java.io.ByteArrayOutputStream()
+    Console.withOut(out) {
+      PhaseTimer.timed("xx", "churn") {
+        var kept = List.empty[Array[Byte]]
+        (1 to 2000).foreach { i => kept = new Array[Byte](256 * 1024) :: kept.take(8); if (i % 500 == 0) System.gc() }
+        kept.size
+      }
+    }
+    val gc = """, cpu [0-9.]+s, gc ([0-9.]+)s""".r.findFirstMatchIn(out.toString).map(_.group(1).toDouble)
+    withClue(s"no GC time in the phase line: ${out.toString}") { gc should not be empty }
+    gc.get should be > 0.0
+  }
+
+  "the GC note" should "read in seconds to one place" in {
+    PhaseTimer.gcNote(4_560L) shouldBe ", gc 4.6s"
+  }
 }

@@ -1,5 +1,7 @@
 package tools
 
+import scala.jdk.CollectionConverters._
+
 /**
  * Live phase timing for the long replay harnesses.
  *
@@ -25,9 +27,10 @@ object PhaseTimer {
   def timed[A](scope: String, label: String)(body: => A): A = {
     val started = System.nanoTime()
     val cpu     = processCpuNanos()
+    val gc      = collectorMillis()
     println(s"[$scope] $label …")
     val result = body
-    println(f"[$scope] $label done in ${elapsedSeconds(started)}%.1fs${cpuNote(processCpuNanos() - cpu)}${heapNote()}")
+    println(f"[$scope] $label done in ${elapsedSeconds(started)}%.1fs${cpuNote(processCpuNanos() - cpu)}${gcNote(collectorMillis() - gc)}${heapNote()}")
     result
   }
 
@@ -65,6 +68,15 @@ object PhaseTimer {
    *  one that is slow because it waits, and it is the number that holds still between a
    *  shared developer machine and a 4-core runner, which wall time does not. */
   private[tools] def cpuNote(cpuNanos: Long): String = f", cpu ${cpuNanos / 1e9}%.1fs"
+
+  /** How long the collectors ran across the phase, summed over every collector the JVM reports
+   *  (G1's concurrent cycles included, which run beside the application rather than pausing it).
+   *  Beside the CPU it says how much of a phase's work was the heap's rather than the pipeline's —
+   *  the question a phase sitting near its `-Xmx` raises and its heap note alone cannot answer. */
+  private[tools] def gcNote(collectorMillis: Long): String = f", gc ${collectorMillis / 1e3}%.1fs"
+
+  private def collectorMillis(): Long =
+    java.lang.management.ManagementFactory.getGarbageCollectorMXBeans.asScala.map(_.getCollectionTime.max(0L)).sum
 
   private def processCpuNanos(): Long = java.lang.management.ManagementFactory.getOperatingSystemMXBean match {
     case os: com.sun.management.OperatingSystemMXBean => os.getProcessCpuTime

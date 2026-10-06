@@ -645,4 +645,12 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     steps.headOption shouldBe Some("- name: Name the runner's CPU")
     setup should include("grep -m1 'model name' /proc/cpuinfo")
   }
+
+  "every sbt run of a leg" should "sample the runner's whole CPU beside it, so a phase's idle cores can be named" in {
+    // The phase log carries the JVM's CPU alone; mongod, I/O wait and an idle runner look the same there.
+    val lines = leg.linesIterator.toVector
+    val runs  = lines.indices.filter(i => lines(i).trim.startsWith("sbt -J-Xmx"))
+    runs should not be empty
+    all(runs.map(i => lines(i - 1))) should include ("scripts/ci/cpu-sampler.sh 15 &")
+  }
 }

@@ -473,6 +473,8 @@ jobs:
               timeout-minutes: ${{ inputs.sample-suite-timeout-minutes }}
               run: |
                   set -o pipefail
+                  # The runner's whole CPU beside the phase log's JVM-only number (cpu-sampler.sh).
+                  scripts/ci/cpu-sampler.sh 15 & sampler=$!; trap 'kill "$sampler"' EXIT
                   sbt -J-Xmx${{ inputs.heap }} ${{ inputs.sample-command }} 2>&1 | tee convergence-sample.log
               env:
                   KINOWO_COUNTRY:   ${{ inputs.code }}
@@ -544,6 +546,8 @@ jobs:
                   set -o pipefail
                   # The sample, above, wrote its JUnit XML here; the report below is this suite's.
                   rm -rf target/test-reports/unit
+                  # The runner's whole CPU beside the phase log's JVM-only number (cpu-sampler.sh).
+                  scripts/ci/cpu-sampler.sh 15 & sampler=$!; trap 'kill "$sampler"' EXIT
                   sbt -J-Xmx${{ inputs.heap }} ${{ matrix.phase == 'convergence' && inputs.command || inputs.order-command }} 2>&1 | tee convergence.log
               env:
                   # The spec builds this country's TitleNormalizer itself; naming the
