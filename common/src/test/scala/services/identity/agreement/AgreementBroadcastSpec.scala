@@ -65,6 +65,49 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     decided(screening("The Metropolitan Opera: La Fanciulla del West", "2027-01-23")).film shouldBe Some(metFanciulla.id)
   }
 
+  /** A film database holding the Met's productions under the house's own title, found by the work's name. */
+  private final class Productions(val family: VoterFamily, records: Map[String, SourceRecord]) extends FamilyAnswers {
+    def titled(text: String): Answer[Seq[SourceHit]] = Answer.Known(records.toSeq.sortBy(_._1).collect {
+      case (id, record) if IdentityMeasures.key(record.film.title).endsWith(IdentityMeasures.key(text)) =>
+        SourceHit(id, record.film.title, None, record.film.year) })
+    def directedBy(name: String): Answer[Seq[SourceHit]] = Answer.Known(Nil)
+    def record(id: String): Answer[Option[SourceRecord]] = Answer.Known(records.get(id))
+  }
+  private val rtProductions = Map(
+    "the_metropolitan_opera_la_fanciulla_del_west" -> SourceRecord(IdentityMeasures.Film("The Metropolitan Opera: La Fanciulla del West",
+      runtime = Some(195), directors = Some(Seq("Richard Jones")))),
+    "the_metropolitan_opera_macbeth" -> SourceRecord(IdentityMeasures.Film("The Metropolitan Opera: Macbeth", runtime = Some(209),
+      directors = Some(Seq("Louisa Proske")))),
+    "royal_opera_macbeth" -> SourceRecord(IdentityMeasures.Film("Royal Opera House: Macbeth", year = Some(2018), directors = Some(Seq("Phyllida Lloyd")))))
+  private def credited(listing: Listing, records: Map[String, SourceRecord] = rtProductions): ResolverDecision = {
+    val families = silentFamilies + (VoterFamily.RottenTomatoes -> new Productions(VoterFamily.RottenTomatoes, records))
+    val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
+      1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    new AgreementStage(families, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+      clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table)).apply(resolution, Map(listing.key -> listing).get, version = 1).decisions.head
+  }
+  private def rbo(work: String, director: Option[String], days: String*): Listing =
+    FilmTable.listing(Multikino, s"RBO Cinema Season 2026-27: $work", director = director).copy(screenings = ScreeningDays.of(days.map(LocalDate.parse)))
+
+  "a title billing another house" should "take the production a film database credits with the very director the venue credits" in {
+    // UK Flicks' "RBO Cinema Season 2026-27" relays the Met's 2026/27 productions (labels.tsv, the review page 10-06): the
+    // venues credit Richard Jones and Louisa Proske, who staged the Met's — the banner names a distributor, not the house
+    val fanciulla = credited(rbo("La Fanciulla Del West", Some("Richard Jones"), "2027-01-26"))
+    (fanciulla.film, fanciulla.basis) shouldBe ((Some(metFanciulla.id), ResolverDecision.Basis.Broadcast))
+    credited(rbo("Macbeth", Some("Louisa Proske"), "2026-10-20")).film shouldBe Some(metMacbeth.id)
+  }
+
+  it should "take none where the venue credits nobody, or another director, or only another house's production credits its director" in {
+    // the banner alone still names another house (US Regal's "Opéra National de Paris: La fanciulla del West" credits nobody)
+    credited(rbo("La Fanciulla Del West", None, "2027-01-26")).film shouldBe None
+    credited(rbo("Macbeth", Some("Phyllida Lloyd"), "2026-10-20")).film shouldBe None
+    // the credit must be the RECORD's house's production: a Royal Opera Macbeth crediting the venue's director is no Met's
+    credited(rbo("Macbeth", Some("Louisa Proske"), "2026-10-20"),
+      Map("royal_opera_macbeth" -> SourceRecord(IdentityMeasures.Film("Royal Opera House: Macbeth", directors = Some(Seq("Louisa Proske")))))).film shouldBe None
+    credited(FilmTable.listing(Multikino, "Opéra National de Paris: La fanciulla del West")
+      .copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2027, 1, 23))))).film shouldBe None
+  }
+
   it should "take none against a fact the listing states, nor for a title billing no stage work" in {
     val dated = FilmTable.listing(KinoMuza, "Samson i Dalila", year = Some(1949)).copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 12, 5))))
     decided(dated).basis should not be ResolverDecision.Basis.Broadcast

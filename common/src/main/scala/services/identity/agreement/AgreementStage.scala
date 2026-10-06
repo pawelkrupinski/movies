@@ -190,13 +190,13 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
               v.agreed.fold[AgreementStage.Take](AgreementStage.Take.Untaken)(taken(decision, _, finding, distances)) match {
                 // a screen adaptation agreed for a listing naming a stage work ([[Agreement.agreed]]) yields to the relay its
                 // screening days name: PL Kino Amok's bare "Manon" on the Met's broadcast day is the Met's, not Clouzot's
-                case AgreementStage.Take.Taken(agreed) if listings.exists(Agreement.stagesAWork) => broadcast(decision, id, digest, listings, dating, version).getOrElse(agreed)
+                case AgreementStage.Take.Taken(agreed) if listings.exists(Agreement.stagesAWork) => broadcast(decision, id, digest, listings, dating, version, asked).getOrElse(agreed)
                 case AgreementStage.Take.Taken(agreed) => agreed
                 case AgreementStage.Take.Pending       => decision
-                case AgreementStage.Take.Vetoed        => posterVetoed += 1; voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings, dating, version))
+                case AgreementStage.Take.Vetoed        => posterVetoed += 1; voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings, dating, version, asked))
                                                             .orElse(filledTake(decision, v, finding, distances))
                                                             .orElse(catalogued(decision, listings, asked, finding, catalogueAsked)).getOrElse(decision)
-                case AgreementStage.Take.Untaken       => voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings, dating, version))
+                case AgreementStage.Take.Untaken       => voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings, dating, version, asked))
                                                             .orElse(filledTake(decision, v, finding, distances))
                                                             .orElse(catalogued(decision, listings, asked, finding, catalogueAsked)).getOrElse(decision)
               }
@@ -684,19 +684,41 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  work states no day only because the store filed it with its year alone: that record is noted in `dating`, to be
    *  read again ([[wantedRecords]]). */
   private def broadcast(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing], dating: mutable.Set[Int],
-                        version: Long): Option[ResolverDecision] =
+                        version: Long, asked: mutable.Set[(VoterFamily, String)]): Option[ResolverDecision] =
     tmdb.filter(_ => listings.exists(!_.screenings.isEmpty)).flatMap { lookups =>
       val records = candidatesOf(id, digest, listings).map(film => film -> lookups.film(film))
       Option.when(records.forall(_._2.isKnown))(records.flatMap { case (film, record) => record.toOption.flatten.map(film -> _) })
         .flatMap { known =>
           val measured = (listing: Listing) => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured
           // a record of the billed work holding only its year is read again before the day decides: it might be the one
-          Broadcast.takeOrWait(listings, measured, known)(film => !lookups.releaseDay(film).isKnown && waitsOn(film, version))
+          Broadcast.takeOrWait(listings, measured, known, () => productionsOf(listings, measured, asked))(film =>
+            !lookups.releaseDay(film).isKnown && waitsOn(film, version))
             .left.map(dating ++= _).toOption.flatten
         }
         .map(taken => decision.copy(film = Some(taken.film), basis = ResolverDecision.Basis.Broadcast,
           explanation = decision.explanation :+ taken.line)(decision.trace))
     }
+
+  /** The house productions the families hold of the works the listings bill, as their searches by the listings' own
+   *  titles find them — each search's first [[FamilyLookups.Records]] hits whose title bills a house beside a work, their
+   *  records read — for the broadcast join's credit of a production ([[Broadcast]]); `Unknown`, each gap noted in
+   *  `asked`, while one is not answered. Read only for a relay whose banner spells another house than a record it fits. */
+  private def productionsOf(listings: Seq[Listing], measured: Listing => services.identity.IdentityMeasures.Listing,
+                            asked: mutable.Set[(VoterFamily, String)]): Answer[Seq[services.identity.IdentityMeasures.Film]] = {
+    val queries = listings.flatMap(listing => services.identity.IdentityMeasures.searchQueries(measured(listing))).distinct
+    var unknown = false
+    def noted[A](family: VoterFamily, question: String, answer: Answer[A]): Option[A] = {
+      if (answer == Answer.Unknown) { unknown = true; asked += family -> question }
+      answer.toOption
+    }
+    val found = families.toSeq.sortBy(_._1.ordinal).flatMap { case (family, answers) =>
+      queries.filterNot(text => family.latinTitlesOnly && !FamilyLookups.hasLatinWord(text)).flatMap { text =>
+        noted(family, s"title|$text", answers.titled(text)).toSeq.flatMap(_.take(FamilyLookups.Records))
+          .filter(hit => Broadcast.billsAHouse(hit.title)).map(family -> _.id)
+      }.distinct.flatMap { case (_, hit) => noted(family, s"record|$hit", answers.record(hit)).flatten.map(_.film) }
+    }
+    if (unknown) Answer.Unknown else Answer.Known(found)
+  }
 
   /** Does the take still wait on a record's day: never asked for again, or asked and its read neither filed since
    *  (`changes`; none it can tell of counts as filed) nor overdue? A record TMDB still dates by its year once read again

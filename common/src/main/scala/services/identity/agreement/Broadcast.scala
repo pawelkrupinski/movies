@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{DecorationSegments, IdentityMeasures, Listing, ScreeningDays}
+import services.identity.{Answer, DecorationSegments, IdentityMeasures, Listing, ScreeningDays}
 import services.identity.IdentityMeasures.{Category, Film}
 
 
@@ -28,22 +28,30 @@ object Broadcast {
    *  must bill a stage work each listing bills, and no fact a listing states may stand against it: its year, its
    *  director, its season, or a banner spelling another house. `None`: no such record, or two. */
   def take(listings: Seq[Listing], measured: Listing => IdentityMeasures.Listing, records: Seq[(Int, Film)]): Option[Taken] =
-    billed(listings, measured).flatMap(chosen(_, _, records))
+    billed(listings, measured).flatMap(chosen(_, _, records, Nil))
 
   /** [[take]], unless a record it would weigh but for its day — every listing's billing fits it, and it states no release
    *  day — has a day not known yet (`undated`: a stored record filed when records kept only TMDB's year): `Left` those
    *  records, which the take waits for, since any one might be the production broadcast on the cluster's day. A cluster
    *  one of whose listings' days could not be read ([[ScreeningDays.Unknown]]) waits too, asking no record: `Left` none. */
-  def takeOrWait(listings: Seq[Listing], measured: Listing => IdentityMeasures.Listing, records: Seq[(Int, Film)])(
+  def takeOrWait(listings: Seq[Listing], measured: Listing => IdentityMeasures.Listing, records: Seq[(Int, Film)],
+                 productions: () => Answer[Seq[Film]] = () => Answer.Known(Nil))(
       undated: Int => Boolean): Either[Seq[Int], Option[Taken]] =
     if (listings.exists(_.screenings.isUnknown)) Left(Nil)
     else billed(listings, measured).fold[Either[Seq[Int], Option[Taken]]](Right(None)) { (days, billing) =>
-      val waits = records.collect { case (id, film) if film.released.isEmpty && billing.forall(_.fits(film)) && undated(id) => id }.distinct
-      if (waits.nonEmpty) Left(waits) else Right(chosen(days, billing, records))
+      // the films databases' productions are read only for a record every listing's billing fits but by its banner
+      val credits = if (!records.exists { case (_, film) => billing.forall(_.fitsButTheHouse(film)) && !billing.forall(_.fits(film, Nil)) })
+        Answer.Known(Nil) else productions()
+      credits match {
+        case Answer.Unknown => Left(Nil)
+        case Answer.Known(credited) =>
+          val waits = records.collect { case (id, film) if film.released.isEmpty && billing.forall(_.fits(film, credited)) && undated(id) => id }.distinct
+          if (waits.nonEmpty) Left(waits) else Right(chosen(days, billing, records, credited))
+      }
     }
 
-  private def chosen(days: ScreeningDays, billing: Seq[Billing], records: Seq[(Int, Film)]): Option[Taken] = {
-    val fitting = records.filter { case (_, film) => film.released.isDefined && billing.forall(_.fits(film)) }.distinctBy(_._1)
+  private def chosen(days: ScreeningDays, billing: Seq[Billing], records: Seq[(Int, Film)], productions: Seq[Film]): Option[Taken] = {
+    val fitting = records.filter { case (_, film) => film.released.isDefined && billing.forall(_.fits(film, productions)) }.distinctBy(_._1)
     val onDay   = fitting.filter { case (_, film) => film.released.exists(days.contains) }
     def encore(film: Film) = film.released.exists(aired => days.days.exists(day => !day.isBefore(aired) && !day.isAfter(aired.plusDays(EncoreDays))))
     val chosen = onDay match {
@@ -55,6 +63,10 @@ object Broadcast {
       Taken(id, s"screens $when '${film.title}'${film.year.fold("")(year => s" ($year)")} was broadcast, ${film.released.get}")
     }
   }
+
+  /** Does a title bill a house's production: a stage work, and a banner beside it ("The Metropolitan Opera: Macbeth")? */
+  def billsAHouse(title: String): Boolean =
+    IdentityMeasures.stageWorksBilled(Seq(title), false).nonEmpty && Billing.bannerOf(Seq(title), IdentityMeasures.billedIn(_, false).nonEmpty).nonEmpty
 
   /** The days the cluster screens on and what each of its listings bills — `None` when it screens on none, or a listing
    *  bills no stage work. */
@@ -71,14 +83,37 @@ object Broadcast {
    *  no work, four letters or more, no number or event word ("live", "retransmisja") among them. */
   private final case class Billing(works: Set[String], season: Option[Int], banner: Set[String], listing: IdentityMeasures.Listing) {
     /** Does the listing name the production of a record: a record of one of its works, its season, a year and a director
-     *  its facts do not deny, and a house its banner spells? */
-    def fits(film: Film): Boolean =
+     *  its facts do not deny, and a house its banner spells — or, its banner spelling another, a production of the
+     *  record's house that one of `productions` (film databases' records) credits with the director the listing credits
+     *  ([[credits]])? */
+    def fits(film: Film, productions: Seq[Film]): Boolean =
+      fitsButTheHouse(film) && (banner.isEmpty || Billing.spells(banner, Billing.bannerOf(film.titles, _ => false)) || credits(film, productions))
+
+    /** [[fits]] on every count but the house the banner spells. */
+    def fitsButTheHouse(film: Film): Boolean =
       IdentityMeasures.stageWorks(film).exists(works) &&
         season.forall(own => IdentityMeasures.filmSeason(film).forall(_ == own)) &&
         listing.statedYear.forall(year => film.year.forall(filmYear => math.abs(filmYear - year) <= services.resolution.YearWindow.PublishedAdjacency)) &&
         !(listing.directors.nonEmpty && film.directors.exists(_.nonEmpty) &&
-          IdentityMeasures.directorRelation(listing.directors, film.directors.get) == Category("different")) &&
-        (banner.isEmpty || Billing.spells(banner, Billing.bannerOf(film.titles, _ => false)))
+          IdentityMeasures.directorRelation(listing.directors, film.directors.get) == Category("different"))
+
+    /** Does a film database credit the record's production with the director the listing credits: one of `productions`
+     *  billing the record's house (its banner spelling the record's) and one of the works both bill, within a year of
+     *  it where both are dated, and crediting the listing's director? The venue's own credit names the production where
+     *  its banner names another house: UK Flicks' "RBO Cinema Season 2026-27: La Fanciulla Del West" credits Richard
+     *  Jones, who staged the Met's — IMDb's and RT's records of it say so, TMDB's credits nobody. A listing crediting
+     *  nobody ("Opéra National de Paris: La fanciulla del West") is never one. */
+    def credits(film: Film, productions: Seq[Film]): Boolean = listing.directors.nonEmpty && {
+      val house = Billing.bannerOf(film.titles, _ => false)
+      val work  = IdentityMeasures.stageWorks(film).intersect(works)
+      house.nonEmpty && productions.exists { production =>
+        production.directors.exists(credited => credited.nonEmpty &&
+          IdentityMeasures.directorRelation(listing.directors, credited) == Category("same_person")) &&
+          IdentityMeasures.stageWorks(production).exists(work) &&
+          production.year.zip(film.year).forall { case (a, b) => math.abs(a - b) <= 1 } &&
+          { val own = Billing.bannerOf(production.titles, _ => false); own.nonEmpty && Billing.spells(own, house) }
+      }
+    }
     /** Does the title mark itself a relay of a house or a season — what an encore after the broadcast day needs? */
     def marked: Boolean = banner.nonEmpty || season.isDefined
   }

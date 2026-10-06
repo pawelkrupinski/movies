@@ -60,6 +60,7 @@ pl	Kino w Ratuszu	Kino Kobiet - KLAPS! "Jak żyć żeby nie zwariować"	tmdb:148
 pl	Kino za Rogiem Brusy	Norymberga	tmdb:1214931	Norymberga (2025)
 pl	Kino za Rogiem Brusy	TAJNY AGENT - Klub Filmowy	tmdb:1220564	Tajny agent (2025)
 pl	Kino za Rogiem Cafe	Dobry chłopiec	tmdb:1381027	filmweb, imdb, wiki agree on 'Heel' (2025) tt34381258
+pl	Kino za Rogiem Cafe	Dobry chłopiec	tmdb:1381027	filmweb, imdb, wiki agree on 'Heel' (2025) tt34381258
 pl	Kino za Rogiem Cafe	Wymarzony	tmdb:489418	Wymarzony (2018)
 pl	Kino za Rogiem w Siedlcu	Dumna królewna	tmdb:1134680	Dumna królewna (2024)
 pl	Kino za Rogiem w Siedlcu	Norymberga	tmdb:1214931	Norymberga (2025)
@@ -98,10 +99,20 @@ pl	Multikino Złote Tarasy	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Ang
 pl	Multikino Łódź	Fallen Angels by Noël Coward	tmdb:1702350	Fallen Angels (2026)
 pl	Terminal Kultury Gocław	Binti Edukacja Młode Horyzonty	tmdb:577285	Binti (2019)
 pl	Terminal Kultury Gocław	Fritzi – przyjaźń bez granic Edukacja Młode Horyzonty	tmdb:586943	Fritzi - przyjaźń bez granic (2019)
+uk	Act One Cinema Acton	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Act One Cinema Acton	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
+uk	Aldeburgh Cinema	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Arts Picturehouse Cambridge	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Astoria Cinema Ayr	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Astoria Cinema Ayr	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
+uk	Broadway Cinema Nottingham	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	City Screen Picturehouse York	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 uk	Cottage Road Cinema Leeds	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
 uk	Depot Lewes	EXHIBITION ON SCREEN: Caravaggio	tmdb:1496903	rt, wiki, imdb leaning to it agree on 'Caravaggio' (2025) tt38351366
 uk	Depot Lewes	NT Live: All My Sons (2026)	tmdb:1620001	National Theatre Live: All My Sons (2026)
 uk	Elite Cinema and Theatre Ashbourne	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
+uk	Embassy Cinema Ilfracombe	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Embassy Cinema Ilfracombe	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
 uk	Everyman Bath	Toddler Club: Pip and Posy and Friends	imdb:tt38369557	filled by venues.current: 'Pip And Posy And Friends (2025)' imdb:tt38369557 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 uk	Everyman Brentford	Toddler Club: Pip and Posy and Friends	imdb:tt38369557	filled by venues.current: 'Pip And Posy And Friends (2025)' imdb:tt38369557 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 uk	Everyman Bury St Edmunds	Toddler Club: Pip and Posy and Friends	imdb:tt38369557	filled by venues.current: 'Pip And Posy And Friends (2025)' imdb:tt38369557 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
@@ -130,11 +141,36 @@ uk	Everyman Cinema Winchester	Toddler Club: Pip and Posy and Friends	imdb:tt3836
 uk	Everyman Cinema Wokingham	Toddler Club: Pip and Posy and Friends	imdb:tt38369557	filled by venues.current: 'Pip And Posy And Friends (2025)' imdb:tt38369557 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 uk	Everyman Screen on the Green Islington	Ken Russell's The Devils presented by Deeper Into Movies	tmdb:31767	The Devils (1971)
 uk	Flower Bowl Entertainment Centre Preston	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
+uk	Forum Cinema Hexham	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 uk	Highland Cinema Fort William	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
 uk	IMAX at Glasgow Science Centre	Ocean Odyssey	tmdb:987793	Ocean Odyssey (2021)
+uk	Kavanagh Cinema Herne Bay	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 uk	Keswick Alhambra	MetOpera: La Fanciulla del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Kinema in the Woods	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Kings Cinema Kingsbridge	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Kings Cinema Kingsbridge	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
+uk	Little Theatre Picturehouse	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Lonsdale Alhambra Penrith	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 uk	Lumiere Romford	Once Upon A Time in America	tmdb:311	Once Upon a Time in America (1984)
 uk	Luxe Wisbech	MetOpera: Samson et Dalila	tmdb:1703624	The Metropolitan Opera 2026/27: Samson et Dalila (2026)
+uk	Merlin Capitol Bodmin	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Merlin Capitol Bodmin	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
+uk	Merlin Cinema Thurso	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Merlin Cinema Thurso	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
+uk	Merlin Regal Cinema Redruth	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Merlin Regal Cinema Redruth	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
+uk	Merlin Savoy Penzance	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Merlin Savoy Penzance	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
+uk	Merlin Scala Prestatyn	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Merlin Scala Prestatyn	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
+uk	Merlin Studio Coleford	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Merlin Studio Coleford	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
+uk	Merlin Wellesley Wellington	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Merlin Wellesley Wellington	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
+uk	New Carlton Okehampton	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	New Carlton Okehampton	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
+uk	New Central Cinema Torquay	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	New Central Cinema Torquay	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
 uk	Northern Light Sale	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
 uk	Number 30 Huntly	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
 uk	Odeon Birmingham New Street	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
@@ -226,6 +262,7 @@ uk	Odeon Luxe Sheffield	Agbara Nla: The Return	imdb:tt47091674	imdb, wiki, corro
 uk	Odeon Luxe Telford	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 uk	Odeon Middlesbrough	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 uk	Odeon Northampton	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
+uk	Olympic Cinema Barnes	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
 uk	Omniplex Birmingham	MetOpera: La Fanciulla del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 uk	Omniplex Clydebank (formerly Empire)	MetOpera: La Fanciulla del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 uk	Omniplex High Wycombe (formerly Empire)	MetOpera: La Fanciulla del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
@@ -233,11 +270,33 @@ uk	Omniplex Ipswich (formerly Empire)	MetOpera: La Fanciulla del West	tmdb:17036
 uk	Omniplex Sunderland (formerly Empire)	MetOpera: La Fanciulla del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 uk	Omniplex Sutton (formerly Empire)	MetOpera: La Fanciulla del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 uk	Omniplex Wigan (formerly Empire)	MetOpera: La Fanciulla del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Pavilion Cinema Galashiels	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Pavilion Cinema Galashiels	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
+uk	Phoenix Cinema Falmouth	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Phoenix Cinema Falmouth	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
+uk	Picturehouse Cinema City Norwich	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Picturehouse Exeter	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 uk	Plaza Cinema Dorchester	MetOpera: Samson et Dalila	tmdb:1703624	The Metropolitan Opera 2026/27: Samson et Dalila (2026)
+uk	Plaza Cinema Weston-super-Mare	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Plaza Cinema Weston-super-Mare	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
+uk	Regal Cinema Fordingbridge	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 uk	Regal Melton Mowbray	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
+uk	Regal Movieplex Cromer	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Regal Movieplex Cromer	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
+uk	Regal Picturehouse Henley	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Regal Stowmarket	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Regal Stowmarket	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
+uk	Regent Redcar	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Regent Redcar	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
 uk	Rex Wilmslow	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
 uk	Ritz Belper	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
+uk	Riverside Theatre Woodbridge	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Savoy Boston	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Savoy Cinema Catterick Garrison	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Savoy Cinema Corby	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 uk	Savoy Cinema Heaton Moor	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
+uk	Savoy Cinema Nottingham	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Savoy Worksop	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 uk	Showcase Bristol Avonmeads	Paddington Bear: Winter Warmers	imdb:tt39048323	filled by venues.current: 'Paddington: Winter Warmers (2025)' imdb:tt39048323 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 uk	Showcase Cinema Cardiff	Paddington Bear: Winter Warmers	imdb:tt39048323	filled by venues.current: 'Paddington: Winter Warmers (2025)' imdb:tt39048323 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
 uk	Showcase Cinema de Lux Derby	Paddington Bear: Winter Warmers	imdb:tt39048323	filled by venues.current: 'Paddington: Winter Warmers (2025)' imdb:tt39048323 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
@@ -257,9 +316,18 @@ uk	Showcase de Lux Southampton	Paddington Bear: Winter Warmers	imdb:tt39048323	f
 uk	Showroom Sheffield	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 uk	Storyhouse Chester	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 uk	Storyhouse Chester	MetOpera: La Fanciulla del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Studio Cinema Dunoon	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Studio Cinema Dunoon	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
 uk	The Ashford Cinema (formerly Picturehouse)	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
+uk	The Cameo, Picturehouse	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	The Flavel	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	The Forum Northallerton	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	The Forum Northallerton	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
 uk	The Montrose Playhouse	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
 uk	The Parade Cinema Marlborough	Royal Opera House: Carmen	tmdb:1151422	Royal Opera House: Carmen (2026)
+uk	Theatr Gwaun Fishguard	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Tivoli Tiverton	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Tivoli Tiverton	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
 uk	Vue Cinemas Accrington	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 uk	Vue Cinemas Altrincham	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 uk	Vue Cinemas Barrow	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
@@ -364,6 +432,9 @@ uk	Vue Cinemas York	Seventeen World Tour 'NEW_'	imdb:tt46658626	filled by venues
 uk	Vue Edinburgh Ocean Terminal	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 uk	Vue Edinburgh Omni Centre	Festive Fun with Peppa Cinema Experience	imdb:tt46666063	imdb, rt, corroborated by venues agree on 'Festive Fun with Peppa Cinema Experience' (2026) tt46666063
 uk	Vue Edinburgh Omni Centre	Seventeen World Tour 'NEW_'	imdb:tt46658626	filled by venues.current: 'Seventeen World Tour (New_) (2026)' imdb:tt46658626 — guards passed: bill.several, stage.work, title.anothersOwn, listing.contradicts, poster.otherMatches, family.turnedDown, title.namesNone, edition.apart; signals: and.takersNoDissent, count.takers, count.takersLessDissent, family.imdb.took, model.unscored, title.namesIt, venues.current
+uk	Waterfront Greenock	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
+uk	Waterfront Greenock	RBO Cinema Season 2026-27: Macbeth	tmdb:1703622	The Metropolitan Opera 2026/27: Macbeth (2026)
+uk	Windmill Littlehampton	RBO Cinema Season 2026-27: La Fanciulla Del West	tmdb:1703629	The Metropolitan Opera 2026/27: La Fanciulla del West (2027)
 de	Acud Kino	Die Unbeugsamen	tmdb:317055	Непокорённые (1945)
 de	Apollo Hannover	Pettersson und Findus Mitmachkino 2	tmdb:1624916	Lustiges Pettersson und Findus Mitmachkino 2 (2026)
 de	Audi Programmkino	Mein neues altes Ich - Eine Reise in das Mysterium der Menopause	wikidata:Q138644118	wiki, imdb leaning to it, corroborated by venues agree on 'Mein neues altes Ich' (2026)
