@@ -69,7 +69,8 @@ object IdentityMeasures {
     /** The title with a learned programme decoration stripped ("Horror Season 2026 …"), as words:
      *  what the venue's banner leaves of it. Empty when no learned decoration applies. */
     private[identity] lazy val undecoratedWords: Seq[Seq[String]] =
-      (Seq(title) ++ rawTitle).flatMap(decorations.strip).map(IdentityMeasures.words).filter(_.nonEmpty).distinct
+      (Seq(title) ++ rawTitle).map(t => IdentityMeasures.creditedWork(t).getOrElse(t)).flatMap(decorations.strip)
+        .map(IdentityMeasures.words).filter(_.nonEmpty).distinct
     /** The title and raw title, and the shapes, as yearless tokens (`billing`). */
     private[identity] lazy val billedTitles: Seq[Seq[String]] = (Seq(title) ++ rawTitle).map(IdentityMeasures.yearlessTokens).distinct
     private[identity] lazy val billedWorks: Set[Seq[String]] = shapes.map(IdentityMeasures.yearlessTokens).toSet.filter(_.nonEmpty)
@@ -687,7 +688,7 @@ object IdentityMeasures {
 
   private def shapesOf(l: Listing): Seq[String] = {
     shapes(Seq(l.title) ++ l.rawTitle ++ l.searchTitles ++ SearchTitles.candidates(l.title, l.originalTitle) ++
-      l.rawTitle.toSeq.flatMap(SearchTitles.candidates(_, None)), l.decorations)
+      l.rawTitle.toSeq.flatMap(SearchTitles.candidates(_, None)) ++ (Seq(l.title) ++ l.rawTitle).flatMap(creditedWork), l.decorations)
   }
 
   /** `titles` and every part a split leaves, each de-decorated in turn ("Throwback: Donnie Darko
@@ -704,7 +705,8 @@ object IdentityMeasures {
     val quotesOne = !frontier.exists(title => Quoted.findAllMatchIn(title).size >= 2)
     held ++= frontier
     while (frontier.nonEmpty) {
-      frontier = (frontier.flatMap(SearchTitles.candidates(_, None)) ++ frontier.flatMap(decorations.strip) ++ frontier.flatMap(beforeItsYear) ++
+      // a learned decoration never cuts into an author's credit: its name is no film's title ("… by Noël Coward")
+      frontier = (frontier.flatMap(SearchTitles.candidates(_, None)) ++ frontier.flatMap(t => decorations.strip(creditedWork(t).getOrElse(t))) ++ frontier.flatMap(beforeItsYear) ++
         frontier.flatMap(delimitedPieces(_, quotesOne))).map(_.trim).filter(shape => shape.nonEmpty && !held(shape)).distinct
       held ++= frontier
     }
@@ -868,7 +870,8 @@ object IdentityMeasures {
   private def containment(own: Seq[TitleForm], shapeKeys: Seq[String], others: Seq[TitleForm], alsoSegment: => Boolean = false,
                           shapeWords: Seq[Seq[String]] = Nil, undecorated: Seq[Seq[String]] = Nil): Option[Category] = {
     val otherKeys = others.map(_.key).filter(_.nonEmpty).toSet
-    val ow = own.map(_.words).filter(_.nonEmpty)
+    // a title closing on an author's credit is read without it: the author's name is no edge a film's title decorates
+    val ow = own.map(form => creditedWork(form.text).fold(form.words)(words)).filter(_.nonEmpty)
     val fw = others.map(_.words).filter(_.nonEmpty)
     // A shape one venue typo from the film's title is a segment too ("Pradhama Drishtiya Kuttakkar
     // (Malayalam)" of "Pradhama Drishtya Kuttakkar", `oneTypoApart`).
@@ -1217,6 +1220,13 @@ object IdentityMeasures {
   }
   private val AnniversarySuffix = """(?i)\s*[-–—:]?\s*\(?\d{1,3}(?:st|nd|rd|th)\s+anniversary\)?\s*$""".r
   private val PossessiveCredit  = """^\p{Lu}[\p{L}.-]*(?:\s+[\p{L}.-]+){1,3}['’]s\s+(?=\S)""".r
+  /** An author's credit closing a title: a lower-case "by" and a name of two to four capitalised words ("Fallen Angels by
+   *  Noël Coward", "Swan Lake by Matthew Bourne"). One word after it, or a word not capitalised, is the title's own:
+   *  "Stand by Me", "Death by Chocolate", Polish "Żyć by tańczyć". */
+  private val AuthorCredit = """\s+by\s+\p{Lu}[\p{L}.'’-]*(?:\s+\p{Lu}[\p{L}.'’-]*){1,3}\s*$""".r
+  /** `title` without the author's credit closing it, when it has one and a title is left. */
+  private[identity] def creditedWork(title: String): Option[String] =
+    AuthorCredit.findFirstMatchIn(title).map(m => title.take(m.start).trim).filter(_.exists(_.isLetter))
 
   private val BillJoin = """\s\+\s""".r
   /** May the piece of `l`'s title that names `f` stand for the whole, the rest a banner? Two words at least —

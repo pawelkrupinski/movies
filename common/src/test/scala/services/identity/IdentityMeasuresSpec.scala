@@ -19,6 +19,24 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     measures(Listing("Belle", year = Some(2013)), Film("Belle", year = Some(2013)))("titleYear.delta") shouldBe Missing("listing")
   }
 
+  // prod PL 2026-10-06: Multikino's "Fallen Angels by Noël Coward" (16 venues) — the filmed Broadway production of
+  // Coward's play — was taken as Dhont's 2026 "Coward" ("Tchórz"): the playwright's surname, an edge of the title, read
+  // as a film's title "decorated" by the rest, as decorated as "Fallen Angels" itself
+  "an author's credit after a work ('… by Noël Coward')" should "name no film, and leave the work it credits searched and named" in {
+    val credited = Listing("Fallen Angels by Noël Coward")
+    IdentityMeasures.titleRelation(credited, Film("Coward")).value shouldBe "overlap"
+    IdentityMeasures.titleRelation(credited, Film("Noël Coward")).value shouldBe "overlap"
+    IdentityMeasures.titleRelation(credited, Film("Fallen Angels")).value shouldBe "segment"
+    IdentityMeasures.searchQueries(credited) should contain ("Fallen Angels")
+    // the corpus's learned edge runs never cut into the credit: 16 Multikinos billing the title taught its head as a prefix
+    val decorated = credited.copy(decorations = TitleDecorations(Set(Seq("fallen", "angels", "by", "noel")), Set.empty))
+    IdentityMeasures.titleRelation(decorated, Film("Tchórz", originalTitle = Some("Coward"))).value shouldBe "overlap"
+    // a title whose own words hold "by" is no credit: one word after it, or none capitalised
+    IdentityMeasures.titleRelation(Listing("Stand by Me"), Film("Stand by Me")).value shouldBe "exact"
+    IdentityMeasures.titleRelation(Listing("Death by Chocolate"), Film("Chocolate")).value shouldBe "decorated"
+    IdentityMeasures.searchQueries(Listing("Żyć by tańczyć")) shouldBe Seq("Żyć by tańczyć")
+  }
+
   "a season a broadcast names" should "be read as its own measure, in every spelling, and never as a bracketed year" in {
     val film = Film("Samson et Dalila", year = Some(1949))
     Seq("Samson i dalila | metropolitan opera: live in hd 2026/27", "OPERA 2026/2027 - SAMSON I DALILA- RETRANSMISJA",
