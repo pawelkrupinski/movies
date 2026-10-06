@@ -360,7 +360,13 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     def superseded(film: IdentityMeasures.Film) =
       Broadcast.superseded(listings, listing => Evidence.of(listing, None).measured, film, titledFilms(listings).filter(_ != model).flatMap(id => named(id).map(id -> _)))
         .map(why => Correction.Outcome(None, s"withdrawn ${title(model)} — relay: $why"))
-    val outcome = named(model).flatMap(film => superseded(film).orElse {
+    // a listing billing a stage work on the day one record of it was broadcast is that record ([[Broadcast.take]]): a
+    // model take of another film yields to it, as an agreed one does (PL Kino Amok's bare "Manon" on the Met's day)
+    def relayed = Option.when(listings.exists(ListingShape.stagesAWork)) {
+      val known = (model +: candidatesOf(digested.id, digested.digest, listings)).distinct.flatMap(id => named(id).map(id -> _))
+      Broadcast.take(listings, listing => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured, known)
+    }.flatten.filter(_.film != model).map(taken => Correction.Outcome(Some(taken.film), s"corrected from ${title(model)} — ${taken.line}"))
+    val outcome = named(model).flatMap(film => superseded(film).orElse(relayed).orElse {
       val modelRecord = recordOf(model, film)
       // (a) a venue poster matching another candidate, not the taken film
       val posters = correctionPosters(digested, model, reads, posterQs, reading)
@@ -708,7 +714,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   private def broadcast(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing], dating: mutable.Set[Int],
                         version: Long, asked: mutable.Set[(VoterFamily, String)]): Option[ResolverDecision] =
     tmdb.filter(_ => listings.exists(!_.screenings.isEmpty)).flatMap { lookups =>
-      val records = candidatesOf(id, digest, listings).map(film => film -> lookups.film(film))
+      val records = (candidatesOf(id, digest, listings) ++ uncatalogued(listings, lookups)).distinct.map(film => film -> lookups.film(film))
       Option.when(records.forall(_._2.isKnown))(records.flatMap { case (film, record) => record.toOption.flatten.map(film -> _) })
         .flatMap { known =>
           val measured = (listing: Listing) => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured
@@ -719,6 +725,20 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         }
         .map(taken => decision.copy(film = Some(taken.film), basis = ResolverDecision.Basis.Broadcast,
           explanation = decision.explanation :+ taken.line)(decision.trace))
+    }
+
+  /** The candidates of a relay whose listings link a listings site's catalogue entry as their page, read as the venues
+   *  bill them — the entry's facts left out: Flicks links an encore to an old season's page, whose year denies the
+   *  broadcast's record before its day is read (UK "MetOpera: Samson et Dalila", 8 December 2026, linked to the
+   *  2018–19 page). None for a cluster whose listings bill no stage work or link no such page, nor while a search the
+   *  read asks has no answer. */
+  private def uncatalogued(listings: Seq[Listing], lookups: IdentityLookups): Seq[Int] =
+    if (!listings.exists(ListingShape.stagesAWork) || !listings.exists(_.page.exists(services.identity.CatalogueSources.catalogueEntry))) Nil
+    else {
+      val noting = new AgreementStage.UnknownNoting(new AgreementStage.CatalogueBlind(lookups))
+      val found  = IdentityResolver.candidatesOf(listings, noting, normalizer, calibration)(_ => true)
+        .flatMap(_.candidates.filterNot(_.denied).map(_.tmdbId)).filterNot(FallbackIds.isFallback).distinct.sorted
+      if (noting.unknown) Nil else found
     }
 
   /** The house productions the families hold of the works the listings bill, as their searches by the listings' own
@@ -894,6 +914,16 @@ object AgreementStage {
   enum PosterQuestion {
     case Venue(url: String)
     case Film(tmdbId: Int)
+  }
+
+  /** `inner`, a listings site's catalogue entry linked as a listing's page read as no page at all ([[uncatalogued]]). */
+  private[agreement] final class CatalogueBlind(inner: IdentityLookups) extends IdentityLookups {
+    private def entry(listing: Listing) = listing.page.exists(services.identity.CatalogueSources.catalogueEntry)
+    def hasDetail(listing: Listing): Boolean                     = !entry(listing) && inner.hasDetail(listing)
+    def detail(listing: Listing): Answer[Option[DetailFacts]]    = if (entry(listing)) Answer.Known(None) else inner.detail(listing)
+    def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = inner.candidates(query)
+    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = inner.film(tmdbId)
+    override def cast(tmdbId: Int): Answer[Option[Seq[String]]]  = inner.cast(tmdbId)
   }
 
   /** `inner`, noting whether any answer it gave was `Unknown`. */

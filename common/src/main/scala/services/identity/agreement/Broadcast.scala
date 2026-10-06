@@ -121,7 +121,8 @@ object Broadcast {
 
   /** What one listing bills: the stage works its title names, its season, and its BANNER — the words of its pieces naming
    *  no work, four letters or more, no number or event word ("live", "retransmisja") among them. */
-  private final case class Billing(works: Set[String], season: Option[Int], banner: Set[String], listing: IdentityMeasures.Listing) {
+  private final case class Billing(works: Set[String], season: Option[Int], banner: Set[String], listing: IdentityMeasures.Listing,
+                                    stated: IdentityMeasures.Listing) {
     /** Does the listing name the production of a record: a record of one of its works, its season, a year and a director
      *  its facts do not deny, and a house its banner spells — or, its banner spelling another, a production of the
      *  record's house that one of `productions` (film databases' records) credits with the director the listing credits
@@ -133,7 +134,7 @@ object Broadcast {
     def fitsButTheHouse(film: Film): Boolean =
       IdentityMeasures.stageWorks(film).exists(works) &&
         season.forall(own => IdentityMeasures.filmSeason(film).forall(_ == own)) &&
-        !FactRelations.yearsApart(listing.statedYear, film.year) && !FactRelations.otherPerson(listing.directors, film.directors.getOrElse(Nil))
+        !FactRelations.yearsApart(stated.statedYear, film.year) && !FactRelations.otherPerson(stated.directors, film.directors.getOrElse(Nil))
 
     /** Does a film database credit the record's production with the director the listing credits: one of `productions`
      *  billing the record's house (its banner spelling the record's) and one of the works both bill, within a year of
@@ -159,10 +160,15 @@ object Broadcast {
     /** Where a lower-case letter runs into an upper-case one: the seam of a camel-cased word. */
     private val CamelCase = """(?<=\p{Ll})(?=\p{Lu})""".r
 
+    /** `measured`'s facts are what a record's year and director are read against — but a listings site's catalogue entry
+     *  linked as the listing's page ([[ListingShape.venueStated]]: Flicks links an encore to an old season's page) states
+     *  the catalogue's claim, not the venue's: then only the listing's own facts are. */
     def of(listing: Listing, measured: IdentityMeasures.Listing): Billing = {
       val titles = Seq(listing.title, listing.rawTitle).distinct
       val named  = measured.seasonYear.isDefined
-      Billing(IdentityMeasures.stageWorksBilled(titles, named), measured.seasonYear, bannerOf(titles, IdentityMeasures.billedIn(_, named).nonEmpty), measured)
+      val stated = if (ListingShape.venueStated(listing)) measured else services.identity.Evidence.of(listing, None).measured
+      Billing(IdentityMeasures.stageWorksBilled(titles, named), measured.seasonYear, bannerOf(titles, IdentityMeasures.billedIn(_, named).nonEmpty), measured,
+        stated)
     }
 
     /** The words of the titles' pieces that bill no stage work (`billsWork`, else the work a whole piece names), a word

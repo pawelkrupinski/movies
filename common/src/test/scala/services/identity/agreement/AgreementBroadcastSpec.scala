@@ -114,6 +114,58 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     decided(screening("Lalka", "2026-12-05")).film shouldBe None
   }
 
+  /** `table`, with every listing's venue page stating `page`'s facts. */
+  private final class Paged(page: DetailFacts) extends IdentityLookups {
+    def hasDetail(listing: Listing): Boolean                  = listing.page.isDefined
+    def detail(listing: Listing): Answer[Option[DetailFacts]] = Answer.Known(listing.page.map(_ => page))
+    def candidates(query: CandidateQuery): Answer[Seq[Hit]]   = table.candidates(query)
+    def film(id: Int): Answer[Option[IdentityMeasures.Film]]  = table.film(id)
+  }
+  private def decidedPaged(listing: Listing, page: DetailFacts): ResolverDecision = {
+    val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
+      1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val lookups = new Paged(page)
+    new AgreementStage(silentFamilies, lookups, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+      clock = _root_.tools.SpecClock.Pinned, tmdb = Some(lookups)).apply(resolution, Map(listing.key -> listing).get, version = 1).decisions.head
+  }
+
+  // prod UK 2026-10-06 (the re-capture read Flicks' pages): Flicks links "MetOpera: Samson et Dalila" — the Met's encore on
+  // 8 December 2026 — to its 2018–19 season page, which states 2018. That is Flicks' catalogue claim, not the venue's: a
+  // year only a listings site's catalogue entry states stands against no broadcast record, as it rules out no film
+  "a relay whose listings site's catalogue entry states another year" should "still take the production broadcast on its day" in {
+    val stale = DetailFacts(Some(2018), Nil, Some(184), None, Seq("USA"))
+    val flicks = screening("MetOpera: Samson et Dalila", "2026-12-08").copy(page = Some("https://www.flicks.co.uk/movie/met-opera-samson-et-dalila/"))
+    decidedPaged(flicks, stale).film shouldBe Some(metSamson.id)
+    // the venue's own page stating it is the venue's fact: it stands against the record
+    decidedPaged(flicks.copy(page = Some("https://kino.example/samson")), stale).film shouldBe None
+  }
+
+  /** The model's own take of `film` for `listing`, read by the stage. */
+  private def corrected(listing: Listing, film: Int): ResolverDecision = {
+    val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), Some(film), 0.99, ResolverDecision.Basis.OwnMatch, Seq(s"own match $film"))()),
+      1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    new AgreementStage(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+      clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table)).apply(resolution, Map(listing.key -> listing).get, version = 1).decisions.head
+  }
+
+  // prod PL 2026-10-06: Kino Amok's bare "Manon" on 3 April 2027, the Met's broadcast day — the model took Clouzot's 1949
+  // film by IMDb's suggestion (the re-capture's release dates leave the Met's record no rival), as an agreed take of it
+  // would have yielded to the relay
+  "a model take for a stage work screening on a production's broadcast day" should "switch to that production" in {
+    val taken = corrected(screening("Samson i Dalila", "2026-12-05"), film1949.id)
+    (taken.film, taken.basis) shouldBe ((Some(metSamson.id), ResolverDecision.Basis.Corrected))
+    taken.explanation.last should startWith ("corrected from 'Samson and Delilah' (1949) — ")
+    taken.explanation.last should include ("2026-12-05")
+  }
+
+  it should "stand on another day, for a title billing no stage work, against a fact the listing states, or taking the production" in {
+    corrected(screening("Samson i Dalila", "2026-12-26"), film1949.id).basis shouldBe ResolverDecision.Basis.OwnMatch
+    corrected(screening("Lalka", "2026-12-05"), film1949.id).basis shouldBe ResolverDecision.Basis.OwnMatch
+    val dated = FilmTable.listing(KinoMuza, "Samson i Dalila", year = Some(1949)).copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 12, 5))))
+    corrected(dated, film1949.id).basis shouldBe ResolverDecision.Basis.OwnMatch
+    corrected(screening("Samson i Dalila", "2026-12-05"), metSamson.id).basis shouldBe ResolverDecision.Basis.OwnMatch
+  }
+
   /** `table` as a store holding `undated`'s records as they were filed before records kept the whole day: their year
    *  alone, their day `Unknown` until [[reread]]. */
   private final class YearOnlyRecords(table: FilmTable, undated: Set[Int]) extends IdentityLookups {
