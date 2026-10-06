@@ -1002,6 +1002,29 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(withFilm.decisionOf(whistle.key).render)(Seq(bills(2), whistle).map(l => withFilm.decisionOf(l.key).film) shouldBe Seq(None, None))
   }
 
+  "A marathon billing one title after a dash" should "be that title's film when no other film's title extends it, and none of a franchise's" in {
+    // the review page, 2026-10-06: PL "Inna Mamusia - maraton" is Inna mamusia (2026), a film no sequel extends; the
+    // corpus's "Piraci z Karaibów - maraton" and "Władca Pierścieni - maraton (wersja reżyserska)" bill a franchise's
+    // films — no film is titled "Piraci z Karaibów" alone, and Bakshi's 1978 "Władca Pierścieni" is extended by
+    // Jackson's three
+    val films = Seq(F(1400837, "Inna mamusia", 2026, "Kristoffer Rus", 92, 6),
+      F(22, "Piraci z Karaibów: Klątwa Czarnej Perły", 2003, "Gore Verbinski", 143, 30),
+      F(58, "Piraci z Karaibów: Skrzynia umarlaka", 2006, "Gore Verbinski", 151, 25),
+      F(123, "Władca Pierścieni", 1978, "Ralph Bakshi", 132, 8),
+      F(120, "Władca Pierścieni: Drużyna Pierścienia", 2001, "Peter Jackson", 179, 40))
+    val one = listing(KinoMuza, "Inna Mamusia - maraton")
+    val franchises = Seq(listing(Kinoteka, "Piraci z Karaibów - maraton"), listing(KinoOaza, "Władca Pierścieni - maraton (wersja reżyserska)"))
+    val r = shipped(one +: franchises, films)
+    withClue((one +: franchises).map(l => r.decisionOf(l.key).render).mkString("\n")) {
+      r.decisionOf(one.key).film shouldBe Some(1400837)
+      franchises.map(l => r.decisionOf(l.key).film) shouldBe Seq(None, None)
+    }
+    // a marathon heading the title bills several whatever follows ("Maraton Horrorów"), as does one beside a "+"
+    MultiFilmBill.billedOne(Seq("Maraton Horrorów")) shouldBe None
+    MultiFilmBill.billedOne(Seq("Shrek + Shrek 2 - maraton")) shouldBe None
+    MultiFilmBill.billedOne(Seq("Inna Mamusia - maraton")) shouldBe Some("Inna Mamusia")
+  }
+
   "A double bill sharing its first work's search form" should "not join that work's bare listing when its second work is another listing's" in {
     // UK, 2026-10-01: "Toddler Club: Tabby McTat + Room on the Broom" {Various Directors} searches as "Tabby McTat";
     // joined to the bare "Tabby McTat" ×23, its directors vetoed the film for all of them. A bill whose second

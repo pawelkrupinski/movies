@@ -53,6 +53,22 @@ object MultiFilmBill {
       }.map(_.matched)
     }.nextOption()
 
+  /** A spaced dash between a title and its annotation. */
+  private val DashPiece = """\s+[-\u2013\u2014]\s+""".r
+
+  /** The one title a programme word annotates after a dash — "Inna Mamusia - maraton" — when the word and nothing else
+   *  follows it, and the title joins no works by a "+": a marathon of one title, which is one film's unless another
+   *  film's title extends it (a franchise: "Piraci z Karaibów - maraton"), as [[Acceptance]] reads it beside its
+   *  candidates. A programme word heading the title ("Maraton Horrorów") names no title. */
+  def billedOne(titles: Seq[String]): Option[String] =
+    titles.iterator.flatMap { title =>
+      DashPiece.split(title.trim).toSeq match {
+        case Seq(head, tail) if !head.contains('+') && head.exists(_.isLetter) &&
+          Markers.exists(_.pattern.matcher(folded(tail)).matches()) => Some(head.trim)
+        case _ => None
+      }
+    }.nextOption()
+
   /** Does `film`'s own title, or its original title, carry `marker` — the film named by it, not a bill of others? */
   def namedBy(marker: String, film: IdentityMeasures.Film): Boolean =
     (film.title +: film.originalTitle.toSeq).exists(title => s" ${folded(title)} ".contains(s" $marker "))

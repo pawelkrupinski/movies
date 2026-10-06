@@ -40,6 +40,8 @@ object IdentityMeasures {
     lazy val seasonYear: Option[Int] = IdentityMeasures.seasonYear(titles)
     /** The word the title bills several films by ([[MultiFilmBill.marker]]), once per listing: every rule asks. */
     private[identity] lazy val billMarker: Option[String] = MultiFilmBill.marker(titles)
+    /** The one title a marathon billed after a dash names ([[MultiFilmBill.billedOne]]), once per listing. */
+    private[identity] lazy val billedOne: Option[String] = MultiFilmBill.billedOne(titles)
     /** A year the venue put in its title as a delimited annotation ("(2026)"), outside any season. */
     lazy val titleYear: Option[Int] = IdentityMeasures.titleYearOf(titles)
     /** The venue's own year: its field, else the one its title brackets. */

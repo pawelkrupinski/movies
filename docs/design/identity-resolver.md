@@ -2822,3 +2822,46 @@ the stage, cannot be graded until the fixture is re-captured (below).
       It needs the it/ local Mongo, with its own `MONGODB_DB`.
    4. Then run the ratchet: every new take has to be judged into `labels.tsv`, and `expected-matches.tsv` re-baselined
       (takes the model now makes leave the fixture, as with Dyrygent).
+
+### 20.15 The local review app's 60 answers: labels, and the rules they suggested (2026-10-06)
+
+The 60 answers given in the local review app (`/debug/review`) were folded into `labels.tsv` through `LabelsExport`'s own
+rules (a "film" answer rules out the shown film only where it is provably another — every pair here was two TMDB ids):
+**39 rows added, 1 flipped, 35 already there.** The flip is PL "The Taxidermist | Splat!FilmFest" → *13 Souls* (tmdb
+1686904), hand-labelled right before, now WRONG; the RBO season's Met records (*Macbeth* 1703622, *La Fanciulla del
+West* 1703629) are labelled RIGHT ×3, superseding §20.13's "wait on RBO = Met". Ratchet before any rule, labels folded:
+1,390 right / 0 wrong.
+
+WHY each was unmatched, read off the fixture (contender probe, a per-cluster dump of the model's and the agreement's
+decisions): of the 37 "right"/"film" answers, **20 are already taken right on the ratchet** (WAJDA: re-wizje, Lalka ×2,
+Once Upon A Time in America, Pettersson und Findus Mitmachkino 2, Volcanoes 3D, Binti, Mroki, Kino Zmysłów's Vincent,
+DOBRY CHŁOPIEC, Sukienka, DKF: Wieloryb, SKRZYŻOWANIE, Pianista, Maria's Lovers, Penguin Island, Ghost School and Krew
+za krew by a TMDB duplicate / Wikidata id labelled right): the review queue showed a state older than the code. **3
+clusters were the gradable gap** (the RBO season, below); "edukacja MH: Johnny" stays §20.14's `title.anothersOwn`.
+**13 are not in the fixture** (Digger, the four decorated Vincents, Inna Mamusia - maraton, Ice Cream Man 2D napisy,
+CBeebies Panto 2026: Treasure Island, GONE WITH THE WIND (2026), Konwicki Ostatni dzień lata, 55 rocznica premiery
+„Skrzypka na dachu”, the second RBO Macbeth cluster ×77) and need a re-capture (§20.14 item 5) to be graded. Every
+wrong/bill/event answer in the fixture stays refused (Ken Russell's The Devils takes *The Devils*, not *Altered States*;
+Fritzi takes its own film; LoL Worlds 26 PL/UK, Royal Ballet & Opera 2024-25: Romeo and Juliet and DE "To The Bone"
+take nothing).
+
+| rule | right gained | wrong | moved | verdict |
+|---|---|---|---|---|
+| **A relay's credited production** (`Broadcast.Billing.credits`): the broadcast join's banner check passes for a record of ANOTHER house when a film database's record of that house's production of the work (its title billing the house and the work, within a year) credits the director every listing credits — the families' answers for the listings' own searches (`AgreementStage.productionsOf`), read only for a record every listing fits but by its banner. UK Flicks' "RBO Cinema Season 2026-27" credits Richard Jones (IMDb's and RT's Met *Fanciulla*: Jones, 195′, as the venue) and Louisa Proske (RT's Met *Macbeth*); TMDB's records credit nobody | +70 listings, 2 films (Fanciulla ×46 on the Met's day and its encores, Macbeth ×24 three days after) | 0 | 0 (e2e unmoved) | **kept** |
+| the same reading the banner "RBO Cinema Season" as no house (dropping the banner check where a listing credits a director) | – | – | – | rejected unmeasured: a listing crediting any director would take another house's record ("ROH Live: Macbeth" crediting Phyllida Lloyd → the Met's); the credit must be the record's house's production's |
+| **A marathon of one title** (`MultiFilmBill.billedOne`, `Acceptance.billedAlone`): a programme word that is the whole piece after a spaced dash ("Inna Mamusia - maraton") no longer refuses the one eligible candidate titled exactly as the piece before it, when no eligible candidate's title extends that piece (a franchise) | 0 on the ratchet (not in the fixture); unit test: Inna mamusia taken, "Piraci z Karaibów - maraton" and "Władca Pierścieni - maraton (wersja reżyserska)" (both in the PL corpus) refused | 0 | 0 (e2e unmoved) | **kept** (gate: unit + e2e; needs a re-capture to grade) |
+| the same in the families' agreement (`Agreement.billsSeveral`) | – | – | – | rejected: without the candidate set it cannot see the franchise — "Władca Pierścieni - maraton" would agree on Bakshi's 1978 film |
+| a quote further into a billing as its title ("55 rocznica premiery „Skrzypka na dachu”") | – | – | – | rejected: §20.9 keeps such quotes out on purpose (a talk's or concert's subject: 'Wojciech Cejrowski i „Prawo Dżungli”'), and the quoted form is a genitive ("Skrzypka", the film "Skrzypek") TMDB's search would not find |
+| a bracketed current year as a re-release's ("GONE WITH THE WIND (2026)" → 1939) | – | – | – | rejected: the `edition.apart` guard refuses exactly this (§20.13), and a 2026 remake of the title would read the same |
+| a director's surname heading the title ("Konwicki Ostatni dzień lata") | – | – | – | not built: nothing but retrieval (a surname alone searches no person); needs a re-capture to measure |
+| the decorated Vincents ("/dubbing/", "\| 2D \| Dubbing", "\| 6+ \| PREMIERA!!!", "/ dubbing - Nasze Kino", "- seans") | – | – | – | nothing to build in the cleaner: every one already searches "Vincent. Legenda oceanu" as a piece; the miss is TMDB holding no Polish title for 677558, which the families' fill (`families.current`) already takes where Filmweb and IMDb do (Kino Zmysłów's) |
+| programme prefixes / suffixes (WAJDA: re-wizje:, Kino Konesera, DKF:, Edukacja Młode Horyzonty, Splat!FilmFest, 24. FFOL) | – | – | – | nothing to build: each fixture cluster is taken; the wrong ones (Fritzi, The Taxidermist → *13 Souls*) stay untaken |
+| UFF as a banner, per-language runtimes and editions (Once Upon A Time in America) | – | – | – | left to the branches fixing them |
+
+Together: ratchet **1,390 → 1,460 right listings, 0 wrong, 0 lost**; common identity (669) and worker identity/review
+(226) suites green; `FilmScheduleEndToEndSpec` unmoved (no snapshot shifted). Allocation per replay of every capture
+(`IdentityConjunctionProbe --alloc 5`, `ThreadAllocation`): 3,247 MB against 3,214 MB without these rules (+1.0%: the
+70 newly taken relays' broadcast joins and their productions' reads); no map is held past a cluster. Open: "The
+Taxidermist | Splat!FilmFest" keeps `letterboxd:13-souls` labelled right beside the new wrong *13 Souls* TMDB row — the
+two disagree, and the cluster's take (IMDb tt40381362, "The Taxidermist", Paulo Nascimento) is labelled right; one of
+them needs the user's judgement.

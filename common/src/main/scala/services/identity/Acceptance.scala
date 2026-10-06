@@ -90,8 +90,24 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   def billsSeveralWorks(ranked: Seq[Scored]): Boolean = ranked.headOption.exists { any =>
     (IdentityMeasures.billsTwoWorks(any.listing) && !eligibleOf(ranked).exists(_.category("title").contains("exact")) &&
       IdentityMeasures.billsTwoWholeWorks(any.listing)) ||
-      markerOf(ranked).exists(marker => !eligibleOf(ranked).exists(scored => MultiFilmBill.namedBy(marker, scored.candidate.film)))
+      markerOf(ranked).exists(marker => !eligibleOf(ranked).exists(scored => MultiFilmBill.namedBy(marker, scored.candidate.film)) &&
+        billedAlone(ranked).isEmpty)
   }
+
+  /** The one film a marathon billing one title names ([[MultiFilmBill.billedOne]]): the one eligible candidate titled
+   *  exactly so, when no eligible candidate's title extends it — PL "Inna Mamusia - maraton" is Inna mamusia (2026);
+   *  "Władca Pierścieni - maraton" bills Jackson's films, which extend Bakshi's "Władca Pierścieni". */
+  private def billedAlone(ranked: Seq[Scored]): Option[Int] =
+    ranked.headOption.flatMap(_.listing.billedOne).flatMap { title =>
+      val named    = IdentityMeasures.key(title)
+      val eligible = eligibleOf(ranked)
+      def keys(scored: Scored) = scored.candidate.film.titles.map(IdentityMeasures.key)
+      val extended = eligible.exists(scored => keys(scored).exists(key => key != named && key.startsWith(named)))
+      eligible.filter(scored => keys(scored).contains(named)).map(_.candidate.tmdbId).distinct match {
+        case Seq(one) if !extended && named.nonEmpty => Some(one)
+        case _                                       => None
+      }
+    }
 
   /** The word the ranked listing bills several films by, if any ([[MultiFilmBill.marker]]). */
   private def markerOf(ranked: Seq[Scored]): Option[String] =
@@ -99,7 +115,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** Is `taken` no film of a programme the listing bills by a word — the word its own title's, if the listing has one? */
   private def takesNoBill(ranked: Seq[Scored])(taken: (Accepted, String)): Boolean =
-    markerOf(ranked).forall(marker => MultiFilmBill.namedBy(marker, taken._1._1.candidate.film))
+    markerOf(ranked).forall(marker => MultiFilmBill.namedBy(marker, taken._1._1.candidate.film) ||
+      billedAlone(ranked).contains(taken._1._1.candidate.tmdbId))
 
   /** A node accepts a film ON ITS OWN only when its own facts favour it over the runner-up: a
    *  bare "Lalka" beside two 2026 "Lalka"s, told apart only by TMDB's popularity ranking, is not
