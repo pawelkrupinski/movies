@@ -792,6 +792,19 @@ object ExtraTitleRules {
     searchStrip("xtra-encore-suffix",              """(?i)(?<=\S)\s+encore(?=\s*(?:\(\d{4}\))?\s*$)""", "'<broadcast> ENCORE (2026)' encore-screening tag")
   )
 
+  /** One decoration the weekly discovery bot (`scripts.DecorationDiscovery`, `.github/workflows/decoration-discovery.yml`)
+   *  proposed: a search strip measured on the unmatched clusters' fixture — at least one listing taken right, none wrong,
+   *  no existing take switched, and no known film title starting (prefix) or ending (suffix) with what it strips — and the
+   *  venue titles it was measured on, each with the search title it now gives. `DiscoveredDecorationsSpec` holds every
+   *  rule to its examples and checks none of them comes out so without it. */
+  final case class Discovered(rule: TitleRule, examples: Seq[(String, String)])
+
+  /** The discovery bot's accepted proposals — search strips, query-only like [[searchStrips]], so a decorated
+   *  screening keeps its own row. The bot appends above the marker line; a human reviews each in its PR. */
+  val discovered: Seq[Discovered] = Seq(
+    // decoration-discovery: proposals are inserted above this line
+  )
+
   /** Canonical (merge-key) unifications. Unlike the strips above these run in
    *  `sanitize`, so they COLLAPSE spelling variants of one film into a single
    *  `movies` row. The GlobalStructural caveat in the header (decoration MERGES left
@@ -939,7 +952,7 @@ object ExtraTitleRules {
    *  [[beforeSlashBanners]], which must fold before the seed's slash strip. */
   val all: Seq[TitleRule] =
     beforePlusEvent.map(_.copy(order = 13)) ++ beforeSlashBanners.map(_.copy(order = 25)) ++
-    (programmePrefixes ++ searchStrips ++ canonical ++ perCinemaRules).zipWithIndex.map {
+    (programmePrefixes ++ searchStrips ++ discovered.map(_.rule) ++ canonical ++ perCinemaRules).zipWithIndex.map {
       case (r, i) => r.copy(order = 100 + i)
     }
 }

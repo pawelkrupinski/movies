@@ -47,8 +47,10 @@ object UnmatchedClusters {
 
   /** The model's no-match decisions, and what the agreement stage made of them — and every TMDB question the stage asked
    *  that the capture holds no answer to (`unanswered`: a fill rule's own resolve of a cluster asks searches the whole
-   *  corpus's never did, and finds no evidence where the fixture is stale). */
-  final case class Outcome(model: Resolution, agreed: Resolution, stage: AgreementStage, unanswered: Set[String] = Set.empty)
+   *  corpus's never did, and finds no evidence where the fixture is stale; `missingQueries` and `missingFilms` are those
+   *  questions as asked, for a measure to answer live). */
+  final case class Outcome(model: Resolution, agreed: Resolution, stage: AgreementStage, unanswered: Set[String] = Set.empty,
+                           missingQueries: Set[CandidateQuery] = Set.empty, missingFilms: Set[Int] = Set.empty)
 
   /** The families each country asks, as the worker wires them (`IdentityCutoverWiring.agreementFamilies`). */
   def familiesOf(country: Country): Seq[VoterFamily] =
@@ -73,19 +75,20 @@ object UnmatchedClusters {
 
   /** The capture replayed: `Unknown` for anything it does not hold — a stale fixture, re-captured, never guessed. Over
    *  `decisions` (the capture's, else a part of them), each family's and the posters' answers read through `families` and
-   *  `posters` — what a measure of the stage's questions wraps them in. */
+   *  `posters` — what a measure of the stage's questions wraps them in — and normalised by `normalizer` (the country's
+   *  title rules, else a candidate rule set a measure of it resolves with). */
   def replay(capture: Capture, decisions: Seq[ResolverDecision] = Nil, families: FamilyAnswers => FamilyAnswers = identity,
-             posters: PosterAnswers => PosterAnswers = identity): Outcome = {
+             posters: PosterAnswers => PosterAnswers = identity, normalizer: Option[TitleNormalizer] = None): Outcome = {
     val docs = new InMemoryTmdbDocuments
     docs.put(TmdbKind.Family, capture.families.toSeq)
     val store = new FamilyAnswerStore(docs, SpecClock.Pinned)
     val lookups = new Replay(capture)
     agree(if (decisions.isEmpty) capture.decisions else decisions, capture.listings, lookups,
       familiesOf(capture.country).map(f => f -> families(store.answers(f))).toMap, version = 1,
-      imdb => capture.finds.get(imdb).fold[Answer[Option[Int]]](Answer.Unknown)(Answer.Known(_)), TitleNormalizer.forCountry(capture.country),
+      imdb => capture.finds.get(imdb).fold[Answer[Option[Int]]](Answer.Unknown)(Answer.Known(_)), normalizer.getOrElse(TitleNormalizer.forCountry(capture.country)),
       posters(new PosterAnswerStore(store, SpecClock.Pinned)), modules.wiring.IdentityCutoverWiring.identities(capture.country.code),
       new CatalogueAnswerStore(store, SpecClock.Pinned, CataloguePages), modules.wiring.IdentityCutoverWiring.listedOn(capture.country.code))
-      .copy(unanswered = lookups.unanswered)
+      .copy(unanswered = lookups.unanswered, missingQueries = lookups.queries.asScala.toSet, missingFilms = lookups.films.asScala.toSet.map(_.toInt))
   }
 
   /** One listing's take: the film its cluster took (TMDB's, or a fallback film), the IMDb id it is known by, and the

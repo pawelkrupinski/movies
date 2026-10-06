@@ -1,0 +1,176 @@
+name: Decoration discovery
+
+# Weekly discovery of the DECORATIONS venues wrap film titles in — a programme banner
+# ("Edukacja Młode Horyzonty", "Kino Konesera: …"), a format or premiere tag — proposed as
+# search-strip title rules (`ExtraTitleRules.discovered`) for a human to review in ONE PR.
+#
+# `scripts.DecorationDiscovery` (worker/src/test/scala/scripts) mines the unmatched clusters'
+# fixture (test/resources/fixtures/identity-unmatched/<cc>.json.gz — a fresh capture needs the
+# recorded corpora, a Mongo and prod's family answers, so the bot reads the checked-in one,
+# re-captured by `UnmatchedClustersCaptureIntegrationSpec`), measures every proposal alone
+# against the fixture's replay — TMDB searches the capture lacks asked live with TMDB_API_KEY —
+# and keeps one only when it takes at least one listing right by labels.tsv, none wrong, switches
+# no existing take, and strips nothing a known film title starts (prefix) or ends (suffix) with.
+# A lost take is reported, not refused. The kept rules are written into ExtraTitleRules.scala;
+# the job then runs the checks a title-rule change needs — the rule specs, the unmatched-cluster
+# ratchet, and the whole-corpus snapshots, regenerated so the PR shows which films moved — and
+# a red one opens no PR. Nothing kept ⇒ no diff ⇒ no PR (the measure still lands in the summary).
+#
+# Secrets: TMDB_API_KEY (the live gaps, as ci.yml's e2e uses it) and SYNC_PR_APP_ID +
+# SYNC_PR_APP_PRIVATE_KEY — the "Kinowo Sync Bot" App discover-cinemas.yml opens its PR with, so
+# Branch CI runs on it (a PR opened with GITHUB_TOKEN never fires `pull_request`). This bot's PR is
+# the one sanctioned exception to "no PRs": land it by fast-forwarding main after review.
+
+on:
+    workflow_dispatch:
+
+    # Tuesday 05:00 UTC — its own slot, clear of Monday's cinema discovery and Friday's OG cards.
+    schedule:
+        - cron: '0 5 * * 2'
+
+concurrency:
+    group: decoration-discovery
+    cancel-in-progress: false
+
+permissions:
+    contents: write
+    pull-requests: write
+
+jobs:
+    discover:
+        runs-on: ubuntu-latest
+        timeout-minutes: 120
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: Check the TMDB key is set
+              env:
+                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+              run: scripts/ci/preflight.sh TMDB_API_KEY
+
+            - uses: ./.github/actions/setup-jdk
+              with:
+                  distribution: temurin
+                  java-version: 27
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+
+            - uses: ./.github/actions/sbt-target-cache
+              with:
+                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}
+                  restore-keys: |
+                      sbt-target-${{ runner.os }}-
+
+            # Guard the tool itself before trusting its proposals.
+            - name: Unit-test the discovery
+              run: sbt "worker/testOnly scripts.DecorationDiscoverySpec"
+
+            - name: Mine, measure, and write the kept rules
+              timeout-minutes: 60
+              env:
+                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+              run: |
+                  set -o pipefail
+                  sbt "worker/Test/runMain scripts.DecorationDiscovery --apply --report decoration-report.md" 2>&1 | tee discovery.log
+                  cat decoration-report.md >> "$GITHUB_STEP_SUMMARY"
+
+            - name: Check for kept rules
+              id: changed
+              run: |
+                  if git diff --quiet -- common/src/main/scala/services/titlerules/ExtraTitleRules.scala; then
+                      echo "kept=false" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "kept=true" >> "$GITHUB_OUTPUT"
+                  fi
+
+            # The checks a title-rule change answers to. A red one fails the job: no PR.
+            - name: Rule specs and the unmatched-cluster ratchet
+              if: steps.changed.outputs.kept == 'true'
+              run: |
+                  sbt "common/testOnly services.titlerules.*" \
+                      "worker/testOnly services.movies.ExtraTitleRulesSpec services.identity.UnmatchedClustersRatchetSpec services.identity.MixedClustersSpec"
+
+            # A search strip can move the whole corpus's films: regenerate the whole-corpus
+            # assertion and the read model (delete, write, re-run to prove it stable — the
+            # regenerate-snapshots skill), so the PR's diff names every film that moved.
+            - name: Regenerate the whole-corpus snapshots
+              if: steps.changed.outputs.kept == 'true'
+              timeout-minutes: 40
+              env:
+                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+              run: |
+                  rm -f test/resources/fixtures/08-06-2026/expected-schedules.txt test/resources/fixtures/08-06-2026/read-model-snapshot.json
+                  sbt "e2e/Test/testOnly services.movies.FilmScheduleEndToEndSpec" || true
+                  sbt "e2e/Test/testOnly services.movies.FilmScheduleEndToEndSpec"
+
+            - uses: browser-actions/setup-chrome@v1
+              if: steps.changed.outputs.kept == 'true'
+              id: setup-chrome
+              with:
+                  chrome-version: stable
+
+            - name: Regenerate the page snapshots
+              if: steps.changed.outputs.kept == 'true'
+              timeout-minutes: 30
+              env:
+                  CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
+              run: |
+                  rm -f test/resources/fixtures/08-06-2026/expected-index.html test/resources/fixtures/08-06-2026/expected-wroclaw-index.html \
+                      test/resources/fixtures/08-06-2026/expected-warszawa-index.html
+                  sbt "web/PageTest/testOnly views.PageSnapshotSpec" || true
+                  sbt "web/PageTest/testOnly views.PageSnapshotSpec"
+
+            - uses: actions/upload-artifact@v6
+              if: always()
+              with:
+                  name: decoration-discovery
+                  path: |
+                      decoration-report.md
+                      discovery.log
+                  retention-days: 14
+
+            # A fresh branch off main every run, never a force-push over a stale one --
+            # see .github/actions/drop-bot-branch.
+            - uses: actions/create-github-app-token@v3
+              if: steps.changed.outputs.kept == 'true'
+              id: app-token
+              with:
+                  app-id: ${{ secrets.SYNC_PR_APP_ID }}
+                  private-key: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
+
+            - uses: ./.github/actions/drop-bot-branch
+              if: steps.changed.outputs.kept == 'true'
+              with:
+                  branch: chore/decoration-discovery
+                  token: ${{ steps.app-token.outputs.token }}
+
+            - name: Open the discovery PR
+              if: steps.changed.outputs.kept == 'true'
+              uses: peter-evans/create-pull-request@v6
+              with:
+                  token: ${{ steps.app-token.outputs.token }}
+                  branch: chore/decoration-discovery
+                  delete-branch: true
+                  add-paths: |
+                      common/src/main/scala/services/titlerules/ExtraTitleRules.scala
+                      test/resources/fixtures/08-06-2026/*
+                  commit-message: 'Strip the venue decorations the weekly discovery measured: a right take each, none wrong or switched'
+                  title: 'Decoration discovery: new search-strip title rules'
+                  body-path: decoration-report.md
+
+    # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
+    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    report:
+        needs: discover
+        if: always() && !cancelled() && github.event_name == 'schedule'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}

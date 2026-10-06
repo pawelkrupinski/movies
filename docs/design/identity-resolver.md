@@ -510,6 +510,17 @@ is merged into `identity-decorations.json` (`--write`). First run (2026-10-05, 4
 Met's "… | metropolitan opera: live in hd 2026/27" suffix, a stage relay — against 28 wrong takes ("Dismember the
 Alamo" → "The Alamo", "Klasyka SFR vol.2" → "Kill Bill 2") and 27 moved matches; the shipped cut admits nothing yet.
 
+**Decorations as title rules, weekly.** `scripts.DecorationDiscovery` (run by `decoration-discovery.yml` every
+Tuesday) mines the same `TitleDecorations.candidates` from the unmatched clusters' fixture alone — the listings no
+take covers, as their search titles read — drops any run a known film title (the capture's TMDB records and search
+hits) starts with as a prefix or ends with as a suffix, and proposes each survivor as a SEARCH STRIP
+(`ExtraTitleRules.discovered`, query-only). Each is measured alone: the clusters its new search titles touch resolved
+again with it and without it, the agreement replayed over both, TMDB's missing answers asked live. Kept: a right take
+by `labels.tsv`, none wrong, no take switched to another film — a lost take is reported, not refused. The kept rules
+reach ONE PR with the evidence table (the one bot allowed to open a PR). First dry run (2026-10-06, 22 proposals after
+nested runs fold into their longest): nothing kept — 21 change no take, "53 Międzynarodowy Festiwal Pianistów
+Jazzowych" takes two wrong films.
+
 **Titles venues publish for a record.** TMDB titles some records in one language only: André Rieu's
 2026 Maastricht concert is "André Rieu's 2026 Summer Concert: Viva Maastricht!" in the PL locale
 too, so every "Andre Rieu. Niech żyje Maastricht!" relates to it by a few shared words (`overlap`,
