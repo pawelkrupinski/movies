@@ -39,7 +39,7 @@ class ReviewWhySpec extends AnyFlatSpec with Matchers {
   it should "say so of a cluster no country holds, and 404 in production" in {
     status(controller.why("uk", "no-such-cluster")(FakeRequest())) shouldBe NOT_FOUND
     status(new ReviewController(Helpers.stubControllerComponents(), Mode.Prod, Map(Country.Poland -> ReviewSource.empty),
-      new ReviewAnswers(new InMemoryReviewAnswerStore), Files.createTempFile("labels", ".tsv"), Clock.systemUTC())
+      new ReviewAnswers(new InMemoryReviewAnswerStore), Files.createTempFile("labels", ".tsv"), Clock.fixed(java.time.Instant.parse("2026-10-06T12:00:00Z"), java.time.ZoneOffset.UTC))
       .why("pl", vetoed.id)(FakeRequest())) shouldBe NOT_FOUND
   }
 
