@@ -1,7 +1,7 @@
 package services.identity.agreement
 
 import services.identity.{Acceptance, Answer, CandidateQuery, DetailFacts, FactRelations, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures,
-  IdentityResolver, Listing}
+  IdentityResolver, Listing, ListingShape}
 import services.movies.{TitleContainment, TitleNormalizer}
 
 import scala.collection.mutable
@@ -228,7 +228,7 @@ object Agreement {
    *  take and IMDb weighed and turned down for "Old"). No listing's own year or director rules out a taker's record
    *  (DE "Der kleine Maulwurf", the venues' 1968 Miler, not IMDb's and Wikidata's 2011 compilation); the listing's title
    *  names it ([[namesIt]]) — and, where leans or corroboration complete the quorum, is no other film's own
-   *  ([[anothersOwnTitle]]); the listing bills one work ([[billsSeveral]]) and no stage work ([[stagesAWork]]). The
+   *  ([[anothersOwnTitle]]); the listing bills one work ([[ListingShape.billsSeveral]]) and no stage work ([[ListingShape.stagesAWork]]). The
    *  experiment's one wrong without the title guard: "Akademia Polskiego Filmu: Kino żydowskie w Polsce" → "Znachor"
    *  (1937), whose year and director fit a series' episode. */
   def agreed(listings: Seq[Listing], verdicts: Seq[FamilyVerdict], modelVote: Option[SourceRecord] = None,
@@ -249,7 +249,8 @@ object Agreement {
       val catalogueDissent = if (taken.exists(contradictedByTheCatalogue(listings, _))) 1 else 0
       Option.when(film.support >= Quorum + dissent + film.turnedDown + catalogueDissent && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
         !taken.exists(contradictedByTheListing(listings, _)) &&
-        listings.forall(listing => !billsSeveralBeside(listing, film.agreed.record.film) && (!stagesAWork(listing) || screenAdaptation(listings, film.agreed))))(film.agreed)
+        listings.forall(listing => !ListingShape.billsSeveralBeside(listing, film.agreed.record.film) &&
+          (!ListingShape.stagesAWork(listing) || screenAdaptation(listings, film.agreed))))(film.agreed)
     }
   }
 
@@ -472,47 +473,11 @@ object Agreement {
   /** Articles a title may lead with that a venue drops: English, German, French, Spanish, Italian. */
   private val LeadingArticles = Set("the", "a", "an", "der", "die", "das", "le", "la", "les", "el", "los", "las", "il", "lo", "gli")
 
-  /** Does the listing name a stage work ([[services.identity.StageWorks]]) — an opera or ballet a house's relay
-   *  bills? The films its families find are the work's screen namesakes ("ReTransmisje Met: Così fan tutte" → Tinto
-   *  Brass's 1992 "Così fan tutte", replay 2026-10-04), never the relay, whose record TMDB alone keeps. */
-  def stagesAWork(listing: Listing): Boolean =
-    IdentityMeasures.billsStageWork(Seq(listing.title, listing.cleanTitle, listing.rawTitle).distinct, listing.rawTitle)
-
   /** May a listing naming a stage work show the agreed film, a SCREEN ADAPTATION of it, after all? No listing bills a
-   *  house or a season ([[billsAHouse]]), TMDB's own evidence weighs the film best ([[ModelVote]]: the model's lean or
-   *  best candidate is it) and its record is no house's season production. US "MOTHER!": Wikidata takes Aronofsky's
-   *  film, Metacritic leans to it and so does the model — "Mother" is also an opera's name. "OPERA-COSI FAN TUTTE" and
-   *  "ReTransmisje Met: … Così fan tutte" bill a house, so Tinto Brass's film stays no relay's. */
+   *  house or a season ([[ListingShape.billsAHouse]]), TMDB's own evidence weighs the film best ([[ModelVote]]: the model's
+   *  lean or best candidate is it) and its record is no house's season production. US "MOTHER!": Wikidata takes
+   *  Aronofsky's film, Metacritic leans to it and so does the model — "Mother" is also an opera's name.
+   *  "OPERA-COSI FAN TUTTE" and "ReTransmisje Met: … Così fan tutte" bill a house, so Tinto Brass's film stays no relay's. */
   private def screenAdaptation(listings: Seq[Listing], film: AgreedFilm): Boolean =
-    film.corroborated(ModelVote) && !listings.exists(billsAHouse) && IdentityMeasures.filmSeason(film.record.film).isEmpty
-
-  /** Words a billing names a stage house, a relay or a stage show by. */
-  private val HouseWords = Set("opera", "opery", "oper", "operze", "met", "metropolitan", "ballet", "balet", "baletu", "bolshoi", "bolszoj",
-    "royal", "teatr", "teatru", "theatre", "theater", "nt", "live", "retransmisja", "retransmisje", "transmisja", "relay", "season", "sezon",
-    "musical", "stage", "scena", "rbo", "roh", "hd", "glyndebourne", "scala", "staatsoper")
-  /** Does the listing bill a house, a relay or a season ("OPERA-MAKBET - retransmisja", "Met Opera 2026/27: …")? */
-  def billsAHouse(listing: Listing): Boolean = {
-    val titles = Seq(listing.title, listing.cleanTitle, listing.rawTitle).distinct
-    IdentityMeasures.seasonYear(titles).isDefined || titles.exists(title => TitleContainment.tokens(title).exists(HouseWords))
-  }
-
-  private val Quoted = """[„"“][^"”„]+["”]""".r
-  /** A set ("zestaw") — of a series' episodes, often one compilation record the model may still take ([[services.identity.MultiFilmBill]]
-   *  leaves it out), but no family's agreement, poster or catalogue id stands for one of its pieces. */
-  private val SetOfWorks = """(?i)\bzestaw\b""".r
-  /** Does the listing bill several works — a "+" joining two whole works ([[IdentityMeasures.billsTwoWholeWorks]]: an
-   *  event joined to the film, "11. UFF - Gala otwarcia + Demony", "… pokaz filmu + dyskusja", is none), a word billing
-   *  a programme of films ([[services.identity.MultiFilmBill]]: a double bill, a trilogy, a marathon, a block of
-   *  shorts), a set, or two quoted titles? Read where no film is in hand: a film whose own title carries the word is let
-   *  through only by [[billsSeveralBeside]]. */
-  def billsSeveral(listing: Listing): Boolean =
-    services.identity.MultiFilmBill.marker(titlesOf(listing)).isDefined || billsSeveralBySigns(listing)
-
-  /** [[billsSeveral]] for `film`: a programme word its own title carries ("Marathon Man") bills no other. */
-  def billsSeveralBeside(listing: Listing, film: IdentityMeasures.Film): Boolean =
-    services.identity.MultiFilmBill.billsBeside(titlesOf(listing), film) || billsSeveralBySigns(listing)
-
-  private def titlesOf(listing: Listing): Seq[String] = Seq(listing.rawTitle, listing.title).distinct
-  private def billsSeveralBySigns(listing: Listing): Boolean =
-    SetOfWorks.findFirstIn(listing.rawTitle).isDefined || Quoted.findAllIn(listing.rawTitle).size >= 2 || IdentityMeasures.billsTwoWholeWorks(services.identity.Evidence.of(listing, None).measured)
+    film.corroborated(ModelVote) && !listings.exists(ListingShape.billsAHouse) && IdentityMeasures.filmSeason(film.record.film).isEmpty
 }

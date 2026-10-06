@@ -332,7 +332,7 @@ object IdentityRefit {
     log(s"labelled units: ${units.size} (${units.count(_.same)} same film, ${units.count(u => heldOut(u.group))} held out)")
     val billsSeveral: ((String, String, String)) => Boolean = {
       val byListing = replays.flatMap(r => r.capture.listings.map(l => (r.capture.country.code, l.venue, l.rawTitle) -> l)).toMap
-      k => byListing.get(k).exists(l => agreement.Agreement.billsSeveral(l) ||
+      k => byListing.get(k).exists(l => ListingShape.billsSeveral(l) ||
         IdentityMeasures.billsTwoWorks(IdentityMeasures.Listing(l.title, Some(l.rawTitle), decorations = TitleDecorations.resolver)))
     }
     val pool = Executors.newFixedThreadPool(threads)

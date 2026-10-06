@@ -152,7 +152,7 @@ object UnifiedEvidence {
     val agreedImdb = agreed.flatMap(_.crossId("imdb"))
     val agreedTmdb = agreed.flatMap(film => film.crossId("tmdb").flatMap(_.toIntOption).orElse(agreedImdb.flatMap(c.tmdbOf)))
     val venues      = c.listings.map(_.venue).distinct.size
-    val stageWork   = c.listings.exists(Agreement.stagesAWork)
+    val stageWork   = c.listings.exists(ListingShape.stagesAWork)
     val traced      = c.decision.trace.nodes.values.toSeq
     // [[PinnedSignals]]' cast.venue: the one contender the venue's own text names two of the top-billed cast of, the cast
     // of no other contender — nor of a candidate the model denied — named at all ([[CastEvidence]]); a contender no TMDB
@@ -206,7 +206,7 @@ object UnifiedEvidence {
         // another film's own title billed, or the film named only within another candidate's title billed whole
         "title.anothersOwn"   -> (Agreement.anothersOwnTitle(c.listings, records, c.verdicts) ||
           Agreement.namedWithinAnother(Agreement.billedSpans(c.listings, records.map(_.film)), candidateSpans)),
-        "bill.several"        -> c.listings.exists(Agreement.billsSeveralBeside(_, contender.record.film)),
+        "bill.several"        -> c.listings.exists(ListingShape.billsSeveralBeside(_, contender.record.film)),
         "stage.work"          -> stageWork,
         "poster.match"        -> nearest.exists(_ <= PosterEvidence.VoteBits),
         "poster.near"         -> nearest.exists(bits => bits > PosterEvidence.VoteBits && bits <= PosterEvidence.VetoMatchBits),

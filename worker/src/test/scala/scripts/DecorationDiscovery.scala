@@ -2,7 +2,7 @@ package scripts
 
 import models.Country
 import services.identity._
-import services.identity.agreement.Agreement
+import services.identity.ListingShape
 import services.movies.{ListingKey, TitleContainment, TitleNormalizer}
 import services.titlerules.{ExtraTitleRules, RuleScope, TitleRule, TitleRuleSet, TitleRules}
 import tools.UnmatchedClusters
@@ -190,7 +190,7 @@ object DecorationDiscovery {
           val after   = is.get(k)
           val listing = billed.head
           judge(before, after.fold("")(_.film),
-            Agreement.billsSeveral(listing) || IdentityMeasures.billsTwoWorks(IdentityMeasures.Listing(listing.title, Some(listing.rawTitle), decorations = TitleDecorations.resolver)),
+            ListingShape.billsSeveral(listing) || IdentityMeasures.billsTwoWorks(IdentityMeasures.Listing(listing.title, Some(listing.rawTitle), decorations = TitleDecorations.resolver)),
             after.flatMap(UnmatchedClusters.verdict(_, labels)))
             .map(v => Change(country.code, venue, raw, was.get(k).fold("")(t => s"${t.film} ${t.title}"), after.fold("")(t => s"${t.film} ${t.title}"), v))
         }

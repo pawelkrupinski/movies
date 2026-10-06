@@ -3,7 +3,7 @@ package services.identity.agreement
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing}
+import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, ListingShape}
 import services.movies.SingleCountryNormalizer
 
 /** A cluster TMDB matched to nothing is identified by the film ≥3 film-database families each identify on their own —
@@ -48,12 +48,12 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val series  = listing(KinoMuza, "Akademia Polskiego Filmu: Kino żydowskie w Polsce")
     Agreement.agreed(Seq(series), all.map(f => FamilyVerdict.took(FamilyPick(f.family, "1", SourceRecord(film("Znachor", 1937, "Michał Waszyński")))))) shouldBe None
     val bill = listing(KinoMuza, "Znachor + Pan Tadeusz")
-    Agreement.billsSeveral(bill) shouldBe true
+    ListingShape.billsSeveral(bill) shouldBe true
     // an event a "+" joins to the film is no second work: PL "11. UFF - Gala otwarcia + Demony", a discussion after a screening
-    Agreement.billsSeveral(listing(KinoMuza, "11. UFF - Gala otwarcia + Demony")) shouldBe false
-    Agreement.billsSeveral(listing(KinoMuza, "Pasażerka - premiera książki, pokaz filmu + dyskusja")) shouldBe false
-    Agreement.billsSeveral(listing(KinoMuza, "Toddler Club: Zog + The Snail & the Whale")) shouldBe true
-    Agreement.billsSeveral(listing(KinoMuza, "MOBILE SUIT GUNDAM HATHAWAY DOUBLE BILL")) shouldBe true
+    ListingShape.billsSeveral(listing(KinoMuza, "11. UFF - Gala otwarcia + Demony")) shouldBe false
+    ListingShape.billsSeveral(listing(KinoMuza, "Pasażerka - premiera książki, pokaz filmu + dyskusja")) shouldBe false
+    ListingShape.billsSeveral(listing(KinoMuza, "Toddler Club: Zog + The Snail & the Whale")) shouldBe true
+    ListingShape.billsSeveral(listing(KinoMuza, "MOBILE SUIT GUNDAM HATHAWAY DOUBLE BILL")) shouldBe true
     Agreement.agreed(Seq(bill), all.map(f => FamilyVerdict.took(FamilyPick(f.family, "1", SourceRecord(film("Znachor", 1937, "Michał Waszyński")))))) shouldBe None
   }
 
@@ -344,11 +344,11 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
 
   "A listing naming a stage work" should "agree on none of its screen namesakes" in {
     val relay = listing(KinoMuza, "ReTransmisje Met: Na żywo w HD - Così fan tutte")
-    Agreement.stagesAWork(relay) shouldBe true
-    Agreement.stagesAWork(listing(KinoMuza, "Klondike")) shouldBe false
+    ListingShape.stagesAWork(relay) shouldBe true
+    ListingShape.stagesAWork(listing(KinoMuza, "Klondike")) shouldBe false
     // the work run into a house's word (PL Kino Powiśle) or after its composer (DE) is staged as well
-    Agreement.stagesAWork(listing(KinoMuza, "OPERA-COSI FAN TUTTE")) shouldBe true
-    Agreement.stagesAWork(listing(KinoMuza, "Met Opera 2026/27: Wolfgang Amadeus Mozart COSÌ FAN TUTTE")) shouldBe true
+    ListingShape.stagesAWork(listing(KinoMuza, "OPERA-COSI FAN TUTTE")) shouldBe true
+    ListingShape.stagesAWork(listing(KinoMuza, "Met Opera 2026/27: Wolfgang Amadeus Mozart COSÌ FAN TUTTE")) shouldBe true
     val brass = film("Così fan tutte", 1992, "Tinto Brass")
     Agreement.agreed(Seq(relay), Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(f => FamilyVerdict.took(FamilyPick(f, "1", SourceRecord(brass))))) shouldBe None
   }
@@ -360,7 +360,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val voters = Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Wiki, "Q1", mother)),
       FamilyVerdict(VoterFamily.Metacritic, None, Seq(mother), leaning = Some(mother)))
     val bare   = listing(KinoMuza, "MOTHER!")
-    Agreement.stagesAWork(bare) shouldBe true
+    ListingShape.stagesAWork(bare) shouldBe true
     Agreement.agreed(Seq(bare), voters, modelVote = Some(mother)).map(_.record.film.title) shouldBe Some("mother!")
     // without the model's vote the families alone take no stage work's namesake; a house billed keeps it a relay
     Agreement.agreed(Seq(bare), voters) shouldBe None

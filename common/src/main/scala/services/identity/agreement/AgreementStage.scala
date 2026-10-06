@@ -1,7 +1,7 @@
 package services.identity.agreement
 
 import services.identity.{Answer, CandidateQuery, CatalogueAnswers, CatalogueQuestion, DetailFacts, Evidence, FallbackIds, Hit, IdentityCalibration, IdentityLookups,
-  IdentityMeasures, IdentityResolver, Listing, PosterAnswers, PosterEvidence, PosterHash, Resolution, ResolverDecision, StoredFamily}
+  IdentityMeasures, IdentityResolver, Listing, ListingShape, PosterAnswers, PosterEvidence, PosterHash, Resolution, ResolverDecision, StoredFamily}
 import services.movies.{ListingKey, TitleNormalizer}
 
 import scala.collection.concurrent.TrieMap
@@ -190,7 +190,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
               v.agreed.fold[AgreementStage.Take](AgreementStage.Take.Untaken)(taken(decision, _, finding, distances)) match {
                 // a screen adaptation agreed for a listing naming a stage work ([[Agreement.agreed]]) yields to the relay its
                 // screening days name: PL Kino Amok's bare "Manon" on the Met's broadcast day is the Met's, not Clouzot's
-                case AgreementStage.Take.Taken(agreed) if listings.exists(Agreement.stagesAWork) => broadcast(decision, id, digest, listings, dating, version, asked).getOrElse(agreed)
+                case AgreementStage.Take.Taken(agreed) if listings.exists(ListingShape.stagesAWork) => broadcast(decision, id, digest, listings, dating, version, asked).getOrElse(agreed)
                 case AgreementStage.Take.Taken(agreed) => agreed
                 case AgreementStage.Take.Pending       => decision
                 case AgreementStage.Take.Vetoed        => posterVetoed += 1; voted(decision, distances(None)).orElse(broadcast(decision, id, digest, listings, dating, version, asked))
@@ -725,7 +725,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     val found = families.toSeq.sortBy(_._1.ordinal).flatMap { case (family, answers) =>
       queries.filterNot(text => family.latinTitlesOnly && !FamilyLookups.hasLatinWord(text)).flatMap { text =>
         noted(family, s"title|$text", answers.titled(text)).toSeq.flatMap(_.take(FamilyLookups.Records))
-          .filter(hit => Broadcast.billsAHouse(hit.title)).map(family -> _.id)
+          .filter(hit => Broadcast.billsAProduction(hit.title)).map(family -> _.id)
       }.distinct.flatMap { case (_, hit) => noted(family, s"record|$hit", answers.record(hit)).flatten.map(_.film) }
     }
     if (unknown) Answer.Unknown else Answer.Known(found)

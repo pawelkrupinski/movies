@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, CatalogueSources, Listing}
+import services.identity.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, CatalogueSources, Listing, ListingShape}
 
 import scala.collection.mutable
 
@@ -77,7 +77,7 @@ object Catalogue {
     else named(listings, catalogue, catalogueAsked) match {
       case Answer.Unknown => Answer.Unknown
       case Answer.Known(None) => Answer.Known(None)
-      case Answer.Known(Some(_)) if listings.exists(Agreement.billsSeveral) => Answer.Known(None)
+      case Answer.Known(Some(_)) if listings.exists(ListingShape.billsSeveral) => Answer.Known(None)
       case Answer.Known(Some(film)) =>
         // the record whose facts the listings must not contradict: Wikidata's item, else IMDb's title
         val record: Option[Answer[Option[SourceRecord]]] = film.item.flatMap(q => families.get(VoterFamily.Wiki).map(f => noted(f, q, familyAsked)))

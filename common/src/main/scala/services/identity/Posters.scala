@@ -111,8 +111,8 @@ object PosterAnswers {
  *
  * Each venue poster speaks on its own (a cluster may join two venues' posters of two films — PL "Dyrygent": Kino
  * Marzenie's is Wajda's, Patria's Provaznik's): one vetoes a film it names another candidate against, and a vote stands
- * only when no poster vetoes it. A listing billing a stage work ([[agreement.Agreement.stagesAWork]]) or several works
- * ([[agreement.Agreement.billsSeveral]]) shows no poster of the film: a relay's artwork is the house's season, a double
+ * only when no poster vetoes it. A listing billing a stage work ([[ListingShape.stagesAWork]]) or several works
+ * ([[ListingShape.billsSeveral]]) shows no poster of the film: a relay's artwork is the house's season, a double
  * bill's one of two films. Nor is a candidate numbering another edition than the listing ([[editionsApart]]) compared:
  * a venue reuses last year's artwork for this year's event (PL Helios's "League of Legends Worlds 26" poster is its
  * Worlds 25 file).
@@ -131,7 +131,7 @@ object PosterEvidence {
    *  of the entry the feed linked, which votes for that entry whether or not it is the venue's film (DE "To The Bone":
    *  Filmstarts' poster of Erin Li's 2014 short). */
   def shows(listing: Listing): Boolean =
-    !listing.factsFromCatalogue && !agreement.Agreement.stagesAWork(listing) && !agreement.Agreement.billsSeveral(listing)
+    !listing.factsFromCatalogue && !ListingShape.stagesAWork(listing) && !ListingShape.billsSeveral(listing)
 
   /** The posters `listings` show, by URL. */
   def urls(listings: Seq[Listing]): Seq[String] = listings.filter(shows).flatMap(_.poster).distinct.sorted

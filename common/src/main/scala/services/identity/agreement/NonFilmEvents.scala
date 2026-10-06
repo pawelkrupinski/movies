@@ -1,7 +1,7 @@
 package services.identity.agreement
 
 import services.cinemas.pl.NonMovieEventClassifier
-import services.identity.Listing
+import services.identity.{Listing, ListingShape}
 
 import java.util.Locale
 
@@ -46,16 +46,6 @@ object NonFilmEvents {
    *  numbered edition billing one of its films ("11. UFF - Teatr weteranów" is a documentary). */
   private val FilmAttached = """\+|\bpokaz\b|\bseans|\bfilm(?!ow)|^\d+\.\s""".r
 
-  /** A concert FILM, recorded where a cinema relays it from: event cinema TMDB may hold ("Hauser symfonicznie z Royal
-   *  Albert Hall"). */
-  private val ConcertFilm = """royal\s+albert\s+hall|\blive\s+(in|at)\b""".r
-
-  /** A relay of a stage work or a house's season ("Balet z Opery Paryskiej 2026-2027: Bajadera", "ReTransmisje Met: Na
-   *  żywo w HD - Così fan tutte"): cinema the broadcast take names, never an event however its vocabulary reads. */
-  private def relays(listing: Listing, title: String): Boolean =
-    NonMovieEventClassifier.isScreenedBroadcast(title) || ConcertFilm.findFirstIn(title).isDefined || Agreement.stagesAWork(listing) ||
-      services.identity.IdentityMeasures.seasonYear(Seq(listing.rawTitle)).isDefined
-
   /** Why `listings` (a cluster's) are an event no film database holds — the first listing's reason — or `None` unless
    *  every one of them is. */
   def of(listings: Seq[Listing]): Option[String] =
@@ -72,7 +62,7 @@ object NonFilmEvents {
     else {
       val raw   = listing.rawTitle.trim
       val title = raw.toLowerCase(Locale.ROOT)
-      if (relays(listing, title)) None
+      if (ListingShape.relays(listing, title)) None
       else Markers.collectFirst { case (reason, marker) if marker.findFirstIn(title).isDefined => reason }
         .filter(reason => reason == "no screening" || reason == "pass" || FilmAttached.findFirstIn(title).isEmpty)
         .orElse(Option.when(NonMovieEventClassifier.isPerformance(raw) && FilmAttached.findFirstIn(title).isEmpty)("live event"))

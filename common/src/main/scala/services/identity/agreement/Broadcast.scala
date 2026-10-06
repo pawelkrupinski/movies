@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Answer, DecorationSegments, FactRelations, IdentityMeasures, Listing, ScreeningDays}
+import services.identity.{Answer, DecorationSegments, FactRelations, IdentityMeasures, Listing, ListingShape, ScreeningDays}
 import services.identity.IdentityMeasures.Film
 
 
@@ -54,11 +54,11 @@ object Broadcast {
   val RelayRunDays = 365
 
   /** Why a relay's take is not the production its venues screen, if it is not. All of these must hold:
-   *  - every listing is a house's RELAY of the record: it bills a house ([[Agreement.billsAHouse]]) and puts a banner on
+   *  - every listing is a house's RELAY of the record: it bills a house ([[ListingShape.billsAHouse]]) and puts a banner on
    *    the work the record also bills under one ([[IdentityMeasures.billing]]: "NT Live: Hamlet", "National Theatre
    *    Live: Hamlet") — not a film whose own title holds a house's word (US "Stage Fright", Hitchcock's 1950 film);
    *  - nothing the venue states itself ties it to the record: no title dates the record's year, and no listing whose
-   *    facts are its own, not a listings site's catalogue entry ([[services.identity.CatalogueSources]]: Flicks' film
+   *    facts are its own, not a listings site's catalogue entry ([[ListingShape.venueStated]]: not Flicks' film
    *    page, which links a new relay to an old production's page), states the record's year or director;
    *  - TMDB dates the record's broadcast more than [[RelayRunDays]] before the first screening, and a later record carrying
    *    the very same title within that run before it.
@@ -73,15 +73,14 @@ object Broadcast {
                  others: => Seq[(Int, Film)]): Option[String] = {
     val days = listings.map(_.screenings).foldLeft(ScreeningDays.None)(_ ++ _)
     val run  = (day: java.time.LocalDate) => day.minusDays(RelayRunDays.toLong)
-    def ownFacts(listing: Listing) = !listing.factsFromCatalogue && !listing.page.exists(services.identity.CatalogueSources.catalogueEntry)
     def tiedToTaken(listing: Listing) =
       IdentityMeasures.titleYearOf(Seq(listing.title, listing.rawTitle).distinct).exists(taken.year.contains) ||
-        ownFacts(listing) && (listing.year.exists(taken.year.contains) || FactRelations.samePerson(listing.directors, taken.directors.getOrElse(Nil)))
+        ListingShape.venueStated(listing) && (listing.year.exists(taken.year.contains) || FactRelations.samePerson(listing.directors, taken.directors.getOrElse(Nil)))
     for {
       first <- days.first.filter(_ => listings.nonEmpty && !days.isUnknown)
       last  <- days.last
       aired <- taken.released.filter(_.isBefore(run(first)))
-      if listings.forall(listing => Agreement.billsAHouse(listing) && IdentityMeasures.billing(measured(listing), taken).isDefined &&
+      if listings.forall(listing => ListingShape.billsAHouse(listing) && IdentityMeasures.billing(measured(listing), taken).isDefined &&
         !tiedToTaken(listing))
       (_, newer) <- others.filter { case (_, film) =>
                       IdentityMeasures.key(film.title) == IdentityMeasures.key(taken.title) &&
@@ -106,7 +105,7 @@ object Broadcast {
   }
 
   /** Does a title bill a house's production: a stage work, and a banner beside it ("The Metropolitan Opera: Macbeth")? */
-  def billsAHouse(title: String): Boolean =
+  def billsAProduction(title: String): Boolean =
     IdentityMeasures.stageWorksBilled(Seq(title), false).nonEmpty && Billing.bannerOf(Seq(title), IdentityMeasures.billedIn(_, false).nonEmpty).nonEmpty
 
   /** The days the cluster screens on and what each of its listings bills — `None` when it screens on none, or a listing
