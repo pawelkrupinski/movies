@@ -224,6 +224,24 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     }
   }
 
+  it should "load the answered cards when the filter remembered from another review page asks for them, never an empty page" in {
+    onQueue { page =>
+      page.eval(s"${card("FRANZ KAFKA")}.querySelector('button[data-verdict=event]').click()")
+      page.waitFor(s"${card("FRANZ KAFKA")}.getAttribute('data-answered') === 'event'")
+      // "Answered" picked on another review page: one key for all three
+      page.eval("localStorage.setItem('review.filter', 'done')")
+      page.reload()
+      page.waitFor(s"location.search.indexOf('answered=true') >= 0 && document.readyState === 'complete' && !!${card("FRANZ KAFKA")}")
+      page.evalBool(s"${card("FRANZ KAFKA")}.hidden") shouldBe false
+      page.evalBool("document.getElementById('empty').hidden") shouldBe true
+      // the answers and the origin's storage outlive this test: undo the answer and leave the default filter behind
+      page.eval(s"${card("FRANZ KAFKA")}.querySelector('button[data-verdict=undo]').click()")
+      page.waitFor(s"${card("FRANZ KAFKA")}.getAttribute('data-answered') === ''")
+      answers.current() shouldBe empty
+      page.eval("localStorage.removeItem('review.filter')")
+    }
+  }
+
   it should "store a clicked answer, hide its card, and leave it out of the next load" in {
     onQueue { page =>
       page.evalInt("document.querySelectorAll('.card').length") shouldBe 3

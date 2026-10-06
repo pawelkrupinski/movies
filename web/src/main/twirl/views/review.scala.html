@@ -327,6 +327,12 @@
     try { filter = localStorage.getItem('review.filter') || 'open'; } catch (e) { /* storage blocked: the default filter */ }
     // "show answered" asks for the answered cards: don't hide them again behind "To review".
     if (bar.getAttribute('data-show-answered') === 'true' && filter === 'open') filter = 'all';
+    // A filter remembered from another review page that wants answered cards this page left out loads the page that
+    // lists them, as clicking it would — never an empty page.
+    if (filter !== 'open' && bar.getAttribute('data-show-answered') !== 'true' && Number(bar.getAttribute('data-hidden')) > 0) {
+      location.replace(bar.getAttribute('data-answered-link'));
+      return;
+    }
 
     function isAnswered(card) { return !!card.getAttribute('data-answered'); }
     function applyFilter(card) { card.hidden = !(filter === 'all' || (filter === 'open') === !isAnswered(card)); }
