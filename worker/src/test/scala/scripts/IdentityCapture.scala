@@ -260,8 +260,11 @@ object IdentityCapture {
     else Option.when(!succeeded(cc, mode, ran.log))(s"the spec printed no ${mode.toString.toLowerCase(java.util.Locale.ROOT)}")
 
   /** A capture that read venue pages the recorded tree lacks says so ("capture again"): the next run answers them from
-   *  the stored pages. The run captures such a country once more, and only once. */
+   *  the stored pages. The run captures such a country again, while each capture reads more, up to [[MaxCaptures]]. */
   def capturesAgain(log: Seq[String]): Boolean = log.exists(_.contains("capture again"))
+
+  /** How many captures a country runs at most, each answering the pages the one before read. */
+  val MaxCaptures = 4
 
   private val Captured = """\] captured (\d+) listings""".r.unanchored
   def capturedListings(log: Seq[String]): Option[Int] = log.collectFirst { case Captured(n) => n.toInt }
@@ -480,23 +483,27 @@ object IdentityCapture {
     def one(choice: Choice, run: Option[String]): (Boolean, Double) = {
       val Choice(cc, mode, _) = choice
       val verb = mode.toString.toLowerCase(java.util.Locale.ROOT)
-      def job(again: Boolean) = mode match {
+      def job(again: Boolean, n: Int) = mode match {
         case Mode.Capture => Job(cc, jvm :+ CaptureSpec, environment(cc, env, layout, plan.perHost),
-          layout.logs.resolve(if (again) s"$cc-capture-again.log" else s"$cc-capture.log"))
+          layout.logs.resolve(if (!again) s"$cc-capture.log" else if (n == 1) s"$cc-capture-again.log" else s"$cc-capture-again-$n.log"))
         case Mode.Fill    => Job(cc, jvm :+ FillSpec, fillEnvironment(cc, env, layout, plan.perHost), layout.logs.resolve(s"$cc-fill.log"))
       }
-      def attempt(again: Boolean): (Job, Ran) = {
-        val j = job(again)
-        out(s"[identity-capture] $cc: $verb${if (again) " again" else ""} (log ${j.log})")
-        j -> timed(s"$verb $cc${if (again) " again" else ""}")(effects.run(j))(r => capturedListings(r.log).map(_.toDouble -> "listings"))
+      def attempt(again: Boolean, n: Int): (Job, Ran) = {
+        val j      = job(again, n)
+        val suffix = if (!again) "" else if (n == 1) " again" else s" again ($n)"
+        out(s"[identity-capture] $cc: $verb$suffix (log ${j.log})")
+        j -> timed(s"$verb $cc$suffix")(effects.run(j))(r => capturedListings(r.log).map(_.toDouble -> "listings"))
       }
       val t0 = System.nanoTime()
-      val first = attempt(again = false)
-      val (last, ran) =
-        if (mode == Mode.Capture && !options.dryRun && failure(cc, mode, first._2).isEmpty && capturesAgain(first._2.log)) {
+      // a capture that read pages captures again to answer them; its answers can leave a new cluster whose page it then
+      // reads, so again while each one reads, up to `MaxCaptures`
+      @scala.annotation.tailrec def until(previous: (Job, Ran), n: Int): (Job, Ran) =
+        if (mode == Mode.Capture && !options.dryRun && n < MaxCaptures && failure(cc, mode, previous._2).isEmpty &&
+            capturesAgain(previous._2.log)) {
           out(s"[identity-capture] $cc: its capture read venue pages the tree lacks — capturing once more to answer them")
-          attempt(again = true)
-        } else first
+          until(attempt(again = true, n), n + 1)
+        } else previous
+      val (last, ran) = until(attempt(again = false, 1), 1)
       val failed = if (options.dryRun) None else failure(cc, mode, ran)
       failed.foreach(why => out(s"[identity-capture] $cc: FAILED — $why; see ${last.log}"))
       if (failed.isEmpty) {

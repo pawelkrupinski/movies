@@ -33,7 +33,7 @@
 #      it/ Mongo (127.0.0.1:28017) in a database of its own, every variable defaulted (a variable you
 #      set is kept), the TMDB key read from the Touch ID vault (`secrets get movies TMDB_API_KEY`)
 #      unless KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY is set; a country whose capture read venue pages live
-#      ("capture again") is captured once more, to answer them;
+#      ("capture again") is captured again to answer them, while each capture reads more (at most 4 captures);
 #   4. prints each phase's time and throughput, and exits non-zero, naming them, when any country's JVM
 #      failed, was killed or printed no capture.
 #

@@ -99,16 +99,18 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
     said should include("2 side by side")
   }
 
-  it should "capture a country once more when its capture read venue pages live and says to capture again — once" in {
-    val runs = new java.util.concurrent.ConcurrentHashMap[String, Integer]
-    val (ok, said) = runOf(Seq("uk", "de"), { job =>
-      runs.merge(job.cc, 1, (a, b) => a + b)
-      if (job.cc == "uk") captured("uk", "[full-uk] 4 listing(s) whose venue page the tree lacks: read 4 page(s) live — capture again to read them")
-      else captured(job.cc)
+  it should "capture again while each capture reads pages the last one's clusters newly ask, up to its bound" in {
+    // 2026-10-07: UK's second capture from an empty store met a new cluster whose page it read, and stopped there
+    val again = "[full-uk] read 1 of 1 venue page(s) the tree lacks live — capture again to read them"
+    val runs  = new java.util.concurrent.ConcurrentHashMap[String, Integer]
+    val (ok, said) = runOf(Seq("uk", "us"), { job =>
+      val n = runs.merge(job.cc, 1, (a, b) => a + b)
+      if (job.cc == "us" || n < 3) captured(job.cc, again.replace("full-uk", s"full-${job.cc}")) else captured(job.cc)
     })
     ok shouldBe true
-    runs.asScala.toMap shouldBe Map("uk" -> 2, "de" -> 1)
+    runs.asScala.toMap shouldBe Map("uk" -> 3, "us" -> 4)
     said should include("uk: its capture read venue pages the tree lacks — capturing once more")
+    said should include("us: capture again (2)")
   }
 
   it should "fail, naming the country, when a country's JVM fails or is killed" in {
