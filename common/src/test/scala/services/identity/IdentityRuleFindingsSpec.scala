@@ -4,9 +4,9 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * Where two copies of one concept DISAGREE, found while consolidating the rules (identity-resolver-rules-inventory.md
- * §3): behaviour is kept as it was, each written up here as a pending test until someone decides which copy is right.
- * Each states what the two copies do today; the pending body is the decision to take.
+ * Where two copies of one concept DISAGREED, found while consolidating the rules (identity-resolver-rules-inventory.md
+ * §3, §5): F1, F3 and F4 unified into one rule each, each graded on the unmatched-cluster ratchet; F5 kept, its reason
+ * stated (F2 is two concepts on purpose, inventory §5).
  */
 class IdentityRuleFindingsSpec extends AnyFlatSpec with Matchers {
 
@@ -59,10 +59,22 @@ class IdentityRuleFindingsSpec extends AnyFlatSpec with Matchers {
     signal(waiting) shouldBe None
   }
 
-  "F5: the unified fill's poster guard" should "rule a contender out before a fill rule picks, as the offline fit measured it" in {
-    // today: AgreementStage.filledOf builds the fill's evidence with no posters, so `poster.otherMatches` never guards a
-    // contender there; the veto is applied to the picked film after (filledTake), which then takes NOTHING where the fit
-    // would have picked the next contender. Fewer takes than measured, never a wrong one.
-    pending
+  "F5: the unified fill's poster guard" should "stay read after the fill picks: a vetoed pick takes nothing, never the next contender" in {
+    // KEPT, not unified (inventory §5 F5). The offline fit read `poster.otherMatches` as a guard BEFORE a rule picks, so a
+    // rule firing on two contenders, one a venue poster rules out, takes the other; the stage builds the fill's evidence
+    // with no posters (they are hashed only once the fall-through asks, after the verdict and its fill are stored) and
+    // vetoes the pick after ([[agreement.AgreementStage]]'s filledTake). Wiring them in changed no take on the ratchet's
+    // captures (the fill re-read with every poster-bearing cluster's posters: 40 clusters, 0 fills moved), and needs the
+    // stored verdict re-resolved when its posters land — so the stage keeps the read that only ever takes less.
+    val rules  = UnifiedRules("t", UnifiedEvidence.Guards, Seq("venues.current"))
+    def contender(tmdb: Int, signals: (String, Double)*) =
+      UnifiedEvidence.Contender(s"tmdb:$tmdb", Some(tmdb), None, s"film $tmdb", Map.empty, signals.toMap)
+    val other  = contender(1002, "venues.current" -> 1.0)
+    // as the fit read it: the poster guards 1001 out, the rule fires on 1002 alone
+    rules.filled(Seq(contender(1001, "venues.current" -> 1.0, "poster.otherMatches" -> 1.0), other)).map(_._1.tmdb) shouldBe Some(Some(1002))
+    // as the stage reads it, no poster known: the rule fires on two, and takes neither
+    rules.filled(Seq(contender(1001, "venues.current" -> 1.0), other)) shouldBe None
+    // …and a pick a venue poster matches another candidate than is vetoed after, the stage taking nothing for it
+    PosterEvidence.veto(Some(1001), Seq(Map(1001 -> Some(30), 1002 -> Some(2)))) shouldBe Some(1002 -> 2)
   }
 }

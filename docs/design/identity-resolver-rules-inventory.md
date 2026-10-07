@@ -219,7 +219,7 @@ catalogue match; `broadcast.take` via `Broadcast.take`). Rules: the fill `venues
 - Unreachable in production: the fill's `poster.vote`/`poster.match`/`poster.near`/`poster.otherMatches`/
   `and.posterTakers` and the IMDb-find join of a family pick (`AgreementStage.filledOf` builds the evidence with no
   posters and `tmdbOf = _ => None`); the `poster.otherMatches` guard is always false there (the veto is applied after,
-  in `filledTake`). `title.namesIt` and `title.namesNone` are exact complements.
+  in `filledTake`; kept on purpose, §5 F5). `title.namesIt` and `title.namesNone` are exact complements.
 - Offline only (not dead, not production): `UnifiedWeights`, `DecorationScore`/`DecorationTokens`/`DecorationSegments`
   fits (`DecorationScore.cut` = 1 accepts nothing).
 - Zero fires on the corpora, pinned by specs (kept): `cast.venue`, `same-catalogue-id`, contested catalogue ids, pins,
@@ -278,7 +278,7 @@ corpora (5 resolves), and the identity/hard-cluster integration specs (1,210 res
 CPU: the resolve-perf work of 09-29/30 put the resolver's cost in scoring and title relations, not in the loops; the
 loops' own overhead is the confirming `grow` round (grouping, `takenAlone` memo reads, sibling denials).
 
-## 5. Findings: two copies disagreeing (kept as they were; pending tests in `IdentityRuleFindingsSpec`)
+## 5. Findings: two copies disagreeing (F1, F3, F4 unified and F5 kept, each pinned in `IdentityRuleFindingsSpec`; F2 apart on purpose)
 
 - **F1 — a credit in another script. UNIFIED.** The agreement's listing contradiction (`Agreement.contradicts`) read
   only names in one script as other people; a correction's (`Correction.contradicts`, `shareDirector`) read
@@ -306,9 +306,18 @@ loops' own overhead is the confirming `grow` round (grouping, `takenAlone` memo 
   no record wait, as before — except that a cluster whose screening days could not be read is now no take there either
   (fewer switches, never a new one). No selected fill rule or guard reads `broadcast.take` (it is a fitted feature
   only), so no production take moves: ratchet 507 right / 0 wrong before and after; FilmScheduleEndToEndSpec unchanged.
-- **F5 — the fill's poster guard.** `AgreementStage.filledOf` builds the fill's evidence with no posters, so
-  `poster.otherMatches` never rules a contender out before a rule picks; `filledTake` vetoes the picked film after and
-  then takes nothing, where the offline fit picked the next contender. Fewer takes than measured, never a wrong one.
+- **F5 — the fill's poster guard. KEPT (investigated).** `AgreementStage.filledOf` builds the fill's evidence with
+  no posters, so `poster.otherMatches` never rules a contender out before a rule picks; `filledTake` vetoes the picked
+  film after and then takes nothing, where the offline fit picked the other contender (or, a rule firing on two, the
+  one the poster leaves). WHY prod never has them: the fill is computed with the verdict (`resolved`) and stored in it,
+  while a cluster's posters are asked only by the fall-through takes (`voted`, `filledTake`), which run after a verdict
+  exists — and a stored verdict is re-read only when a family answer it read is filed, never when its posters are
+  hashed. Measured: re-reading the fill at take time with the cluster's posters (every family verdict recomputed) moved
+  no fill on the ratchet's captures (40 poster-bearing clusters reached it, 0 fills changed; FilmScheduleEndToEndSpec's
+  corpus reaches it with none). Wiring it for real needs the stored verdict to carry its poster read (re-resolved when
+  the hashes land) or every untaken poster cluster's family verdicts recomputed per apply (the 2026-10-04 cost shape) —
+  for no measured take. Kept as the safer read (fewer takes than measured, never a wrong one); pinned by
+  `IdentityRuleFindingsSpec` F5.
 
 ## 6. What the consolidation did (branch commits)
 
@@ -321,6 +330,7 @@ loops' own overhead is the confirming `grow` round (grouping, `takenAlone` memo 
 | 4 | `8efc54c13` | the agreement stage's fall-through takes as an ordered registry; the rules table (§21.2) held to the code by a spec |
 | 5 | `309f7c85e` | dead `FilmCuts` helpers; the UFF tag's works pinned as searched by their own pieces |
 | 6 | the slot commit | a festival's programme slot ("…Film Festival 2026: Opening Night") is an event and names no film; findings F1–F5 pending |
+| 7 | the findings commits | F1 one director-contradiction reading across scripts, stems latinized; F3 one leading-article list; F4 one broadcast join; F5 kept, investigated (ratchet 507 right / 0 wrong throughout) |
 
 Deferred: unifying the edition detectors (§3 (a) 5: their semantics differ — a family record's edition, a title's
 qualifier, a poster's number — so one would change decisions), `UnifiedEvidence` re-reading the agreement's concepts
