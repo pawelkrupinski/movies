@@ -709,12 +709,8 @@ object IdentityMeasures {
   /** [[shapes]] of ONE title with no learned decorations, split once and remembered: the scorer asks it of
    *  the same billed titles for every candidate it weighs (`CandidateScoring.namesOnlyATag`, `Qualifiers.split`),
    *  ~6% of a US order-independence replay's CPU (run 37517196329). A pure function of the string; bounded. */
-  private[identity] def shapesOfTitle(title: String): Seq[String] = SingleTitleShapes.get(title, t => {
-    titleShapesSplit.incrementAndGet(); shapes(Seq(t))
-  })
+  private[identity] def shapesOfTitle(title: String): Seq[String] = SingleTitleShapes.get(title, t => shapes(Seq(t)))
   private val SingleTitleShapes = tools.BoundedCache.ofSize(100_000).build[String, Seq[String]]()
-  /** How many single titles [[shapesOfTitle]] has split rather than remembered — what the spec reads the memo by. */
-  private[identity] val titleShapesSplit = new java.util.concurrent.atomic.AtomicLong(0)
 
   private def shapesOf(l: Listing): Seq[String] = {
     shapes(Seq(l.title) ++ l.rawTitle ++ l.searchTitles ++ SearchTitles.candidates(l.title, l.originalTitle) ++

@@ -914,12 +914,13 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   // The scorer asks the shapes of one billed title again for every candidate it weighs
   // (`CandidateScoring.namesOnlyATag`, `Qualifiers.split`): ~6% of a US replay's CPU (run 37517196329).
   "a title's shapes" should "be split once and answered from memory after, the same as split afresh" in {
-    val title  = s"MISTYCZKA /film polski/ [2D LEKTOR] ${System.nanoTime()}"
-    val before = IdentityMeasures.titleShapesSplit.get()
-    val first  = IdentityMeasures.shapesOfTitle(title)
-    IdentityMeasures.shapesOfTitle(title) shouldBe first
+    // the very split answered again: a fresh split builds another Seq (a process-wide split counter read here raced every
+    // suite splitting titles in parallel)
+    val title = s"MISTYCZKA /film polski/ [2D LEKTOR] ${System.nanoTime()}"
+    val first = IdentityMeasures.shapesOfTitle(title)
     IdentityMeasures.capitalisedTags(title)
-    IdentityMeasures.titleShapesSplit.get() - before shouldBe 1
+    IdentityMeasures.shapesOfTitle(title) should be theSameInstanceAs first
+    IdentityMeasures.shapes(Seq(title)) should not be theSameInstanceAs(first)
     first shouldBe IdentityMeasures.shapes(Seq(title))
   }
 }
