@@ -44,7 +44,7 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
     val scraper = new SourceFallbackScraper(primary,
       fallback = () => Some(new Source(Fallback, listing)), fallbackName = "Filmweb", fallbackRef = () => Some("2180"),
       new UptimeMonitor(clock = DepthGuardTime.clock), new InMemoryFallbackStore, fallbackAfter = FallbackAfter.FailingFor(Duration.Zero))
-    new CinemaScrapeRunner(intake).run(scraper)
+    new CinemaScrapeRunner(intake, tools.SpecClock.Pinned).run(scraper)
     ledger.get(Multikino).flatMap(_.sourceKey)
   }
 
@@ -81,7 +81,7 @@ class FallbackServedSourceSpec extends AnyFlatSpec with Matchers {
       fallback = () => Some(new Source(Fallback, films("Film 1", "Fallback Only")(2))), fallbackName = "Filmweb",
       fallbackRef = () => Some("2180"), new UptimeMonitor(clock = DepthGuardTime.clock), new InMemoryFallbackStore,
       baseBackoff = Duration.Zero, fallbackAfter = FallbackAfter.FailingFor(Duration.Zero)) // re-probe the primary on the very next tick
-    val runner  = new CinemaScrapeRunner(intake)
+    val runner  = new CinemaScrapeRunner(intake, tools.SpecClock.Pinned)
     def stored(title: String): Int = intake.listingOf(Multikino).find(_.movie.title == title).map(_.showtimes.size).getOrElse(0)
     val board = (1 to 10).map(i => s"Film $i")
 

@@ -28,7 +28,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   // must come from the listing the runner fetched, not from what the sink wrote.
   private def freshRunner() = new CinemaScrapeRunner(new services.identity.IdentityListingIntake(
     new InMemoryScrapeArchiveRepository, new InMemoryScrapeArchiveRepository, new services.movies.InMemoryScrapeGuardLedger,
-    titleNormalizer, 3, specClock, services.movies.ListingIntakeMetrics.noop))
+    titleNormalizer, 3, specClock, services.movies.ListingIntakeMetrics.noop), specClock)
 
   private def task(c: Cinema) =
     Task("id", TaskType.ScrapeCinema, ScrapeCinemaHandler.dedupKey(c),
@@ -117,7 +117,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
       synopsis = None, cast = Nil, director = Nil, showtimes = Seq(Showtime(nowLocal.plusDays(2), None))))
     val intake = new services.identity.IdentityListingIntake(new InMemoryScrapeArchiveRepository, new InMemoryScrapeArchiveRepository,
       new services.movies.InMemoryScrapeGuardLedger, titleNormalizer, 3, fixedClock, services.movies.ListingIntakeMetrics.noop)
-    val runner = new CinemaScrapeRunner(intake)
+    val runner = new CinemaScrapeRunner(intake, specClock)
     val freshness    = new InMemoryFreshnessStore
     val venueCadence = new VenueCadenceStore(countryDefault = settings.ScrapeFreshness(14.hours))
     val dueWindow    = new DueWindow(venueCadence.periodFor, 14.hours)

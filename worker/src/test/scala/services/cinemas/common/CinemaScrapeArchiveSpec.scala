@@ -23,7 +23,7 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
       (0 until showtimes).map(i => Showtime(LocalDateTime.of(2026, 8, 1, 18, 0).plusHours(i), Some("https://book"))),
       ageRating = Some("15"))
 
-  private def runnerWith(archive: InMemoryScrapeArchiveRepository) = new CinemaScrapeRunner(DiscardingScrapeSink, archive)
+  private def runnerWith(archive: InMemoryScrapeArchiveRepository) = new CinemaScrapeRunner(DiscardingScrapeSink, tools.SpecClock.Pinned, archive)
 
   "CinemaScrapeRunner" should "archive a cinema's listing as the client produced it" in {
     val archive = new InMemoryScrapeArchiveRepository
@@ -34,6 +34,7 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
     stored.lastSuccess.map(_.showtimeCount) shouldBe Some(4)
     stored.city                             shouldBe Cinema.cityOf(Multikino)
     stored.outcome                          shouldBe ScrapeOutcome.Ok
+    stored.lastSuccess.map(_.at)            shouldBe Some(tools.SpecClock.Pinned.instant())
     // The whole payload, not just the showtimes — a replay has to reproduce the
     // detail fields the enrichment pipeline reads off a scrape.
     stored.films.head.synopsis  shouldBe Some("A blurb")
@@ -111,7 +112,7 @@ class CinemaScrapeArchiveSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still scrape normally when no archive is wired" in {
-    val runner = new CinemaScrapeRunner(DiscardingScrapeSink)
+    val runner = new CinemaScrapeRunner(DiscardingScrapeSink, tools.SpecClock.Pinned)
     runner.run(new StubCinemaScraper(Multikino, Seq(film(Multikino, "Dune")))) should have size 1
   }
 }

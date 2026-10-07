@@ -5,7 +5,7 @@ import play.api.Logging
 import services.movies.ScrapeSink
 import services.scrapes.{ScrapeArchiveRepository, ScrapeAttempt}
 
-import java.time.Instant
+import java.time.Clock
 
 /**
  * The per-cinema scrape core: fetch a cinema's current listings and hand them to the identity intake,
@@ -18,6 +18,8 @@ class CinemaScrapeRunner(
   // Where the scrape goes after it is archived: the identity intake, which takes the listing as the
   // venue's published one (docs/design/identity-resolver.md §8).
   sink:          ScrapeSink,
+  // Stamps each archived attempt.
+  clock:         Clock,
   // Keeps each cinema's last consolidated listing so it can be replayed later
   // (into a test, into an empty database) without re-scraping. Defaults to the
   // no-op store so specs and scripts that don't care needn't wire one.
@@ -65,7 +67,7 @@ class CinemaScrapeRunner(
     scrapeArchive.record(ScrapeAttempt(
       cinema           = scraper.cinema,
       city             = Cinema.cityOf(scraper.cinema),
-      at               = Instant.now(),
+      at               = clock.instant(),
       listingComplete  = listingComplete,
       films            = movies,
       error            = error,

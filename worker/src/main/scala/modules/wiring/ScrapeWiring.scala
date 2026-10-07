@@ -288,7 +288,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   // identity intake. The archive is wrapped to hand each landing to the content census, and to the
   // copied-feed detector (where one runs), and once more, outermost, to page for a gone venue nothing
   // else pages for.
-  lazy val cinemaScrapeRunner = new CinemaScrapeRunner(identityListingIntake,
+  lazy val cinemaScrapeRunner = new CinemaScrapeRunner(identityListingIntake, clock,
     new GoneVenueAlertingArchive(
       copiedFeedDetector.foldLeft(cinemaContentCensus.watching(scrapeArchive))(new services.cinemas.roster.CopiedFeedArchive(_, _)),
       venuesPagedElsewhere,

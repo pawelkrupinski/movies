@@ -57,7 +57,7 @@ class PartialReducePruneSpec extends AnyFlatSpec with Matchers {
   private def harness(scraper: FakeChunkedScraper): (IdentityListingIntake, ChunkScrapeHarness) = {
     val intake = new IdentityListingIntake(new InMemoryScrapeArchiveRepository, new InMemoryScrapeArchiveRepository,
       new InMemoryScrapeGuardLedger, titleNormalizer, 3, clock, ListingIntakeMetrics.noop)
-    val runner = new CinemaScrapeRunner(intake)
+    val runner = new CinemaScrapeRunner(intake, tools.SpecClock.Pinned)
     (intake, new ChunkScrapeHarness(scraper, s => { runner.run(s); () }, clock, staleAfter = stale))
   }
 

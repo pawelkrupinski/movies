@@ -28,7 +28,7 @@ class IdentityListingIntakeRunnerSpec extends AnyFlatSpec with Matchers {
     val ledger  = new InMemoryScrapeGuardLedger
     val intake  = new IdentityListingIntake(new InMemoryScrapeArchiveRepository, archive, ledger, titleNormalizer, 3,
       DepthGuardTime.clock, services.movies.ListingIntakeMetrics.noop)
-    val runner  = new CinemaScrapeRunner(intake, archive)
+    val runner  = new CinemaScrapeRunner(intake, tools.SpecClock.Pinned, archive)
     val board   = new Board(films(10))
     runner.run(board)
     board.listing = films(1) // 40 upcoming showtimes → 4, under the guard's floor

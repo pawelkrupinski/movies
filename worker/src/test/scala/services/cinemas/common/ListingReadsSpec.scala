@@ -80,7 +80,7 @@ class ListingReadsSpec extends AnyFlatSpec with Matchers {
 
   "CinemaScrapeRunner" should "land and archive a listing with a failed page as INCOMPLETE" in {
     val archive = new InMemoryScrapeArchiveRepository
-    val runner = new CinemaScrapeRunner(DiscardingScrapeSink, scrapeArchive = archive)
+    val runner = new CinemaScrapeRunner(DiscardingScrapeSink, tools.SpecClock.Pinned, scrapeArchive = archive)
     val dayTwoDown = new StubCinemaScraper(Multikino,
       ListingPages.readEach("spec", Seq("day-1", "day-2"), identity[String])(day =>
         if (day == "day-2") throw down else film("Dune")).map(_._2))
@@ -93,7 +93,7 @@ class ListingReadsSpec extends AnyFlatSpec with Matchers {
 
   it should "tell its completeness recorder why each landing was (in)complete" in {
     val told = scala.collection.mutable.ListBuffer.empty[(models.Cinema, ListingCompleteness)]
-    val runner = new CinemaScrapeRunner(DiscardingScrapeSink, completeness = (cinema, verdict) => { told += cinema -> verdict; () })
+    val runner = new CinemaScrapeRunner(DiscardingScrapeSink, tools.SpecClock.Pinned, completeness = (cinema, verdict) => { told += cinema -> verdict; () })
     runner.run(new StubCinemaScraper(Multikino, { ListingReads.pageFailed(down); Seq(film("Dune")) }))
     runner.run(new StubCinemaScraper(KinoMuza, Seq(film("Anora")), listingIsComplete = false))
     runner.run(new StubCinemaScraper(models.KinoApollo, Seq(film("Alien"))))
