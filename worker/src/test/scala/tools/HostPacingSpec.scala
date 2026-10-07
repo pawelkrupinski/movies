@@ -55,6 +55,21 @@ class HostPacingSpec extends AnyFlatSpec with Matchers {
     once.get shouldBe 1
   }
 
+  it should "fail a timed-out read at once, without the 429/503 retry, and free its slot" in {
+    val slept  = new AtomicLong
+    val pacing = new HostPacing(budget = 1, retries = 6, sleep = ms => { slept.addAndGet(ms); () })
+    val calls  = new AtomicInteger
+    a[java.net.http.HttpTimeoutException] should be thrownBy pacing("https://caching.graphql.imdb.com/") {
+      calls.incrementAndGet(); throw new java.net.http.HttpTimeoutException("no complete response within 35000ms")
+    }
+    calls.get shouldBe 1
+    slept.get shouldBe 0
+    pacing.limitOf("caching.graphql.imdb.com") shouldBe 1
+    // The host's one slot is free again: a read on another thread gets in rather than waiting forever.
+    val next = java.util.concurrent.CompletableFuture.supplyAsync(() => pacing("https://caching.graphql.imdb.com/")("ok"))
+    next.get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe "ok"
+  }
+
   "Runs side by side" should "split one host budget between them, each keeping at least one" in {
     HostPacing.share(4, runs = 1) shouldBe 4
     HostPacing.share(4, runs = 2) shouldBe 2
