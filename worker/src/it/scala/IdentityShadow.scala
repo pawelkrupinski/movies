@@ -135,6 +135,18 @@ object IdentityShadow {
     private[integration] def fileOf(id: String): Path =
       Store.resolve(java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(id.getBytes("UTF-8"))))
 
+    /** The gaps met (`missed`, each a requested URL) that hold one of `listings`' venue detail beside its page — a chain
+     *  reading its show's detail off its API: those ending in its page's slug (Alamo Drafthouse's `…/presentation/<slug>`),
+     *  and those naming one of its catalogue ids as an `ids=` parameter (the Gatsby box-office platform's
+     *  `…/movies?…&ids=<id>`, Cineworld's detail). */
+    def gapsOf(listings: Seq[services.identity.Listing], missed: Seq[String]): Seq[String] = {
+      val slugs = listings.flatMap(_.page).map(_.trim.stripSuffix("/").split('/').last).filter(_.length >= 4).toSet
+      val ids   = listings.flatMap(_.catalogueIds).map(_.id).filter(_.length >= 4).toSet
+      def namesAnId(url: String) = Option(java.net.URI.create(url).getRawQuery).toSeq.flatMap(_.split('&'))
+        .exists(p => p.startsWith("ids=") && ids(java.net.URLDecoder.decode(p.drop(4), java.nio.charset.StandardCharsets.UTF_8)))
+      missed.filter(url => slugs.exists(slug => url.stripSuffix("/").endsWith(s"/$slug")) || scala.util.Try(namesAnId(url)).getOrElse(false))
+    }
+
     /** Reads the venue `pages` the store does not hold yet, live, and keeps each for a later run's [[LiveGapLeaf]] to
      *  answer: a capture's listings whose page the recorded tree lacks, which leave their whole cluster unread (a fill
      *  waits on every listing's page — US "SEVENTEEN World Tour 'NEW_'": one page of 392). Paced like every live read of
