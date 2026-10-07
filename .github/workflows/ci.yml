@@ -181,6 +181,7 @@ jobs:
                       bash scripts/ci/cpu-sampler-test.sh
                       bash .github/scripts/restore-enrichment-tree-test.sh
                       bash .github/scripts/sample-recordings-test.sh
+                      bash .github/scripts/convergence-fill-test.sh
                       bash scripts/ci/close-mongo-tunnel-test.sh
                       bash scripts/ci/install-playwright-test.sh
                       bash scripts/ci/prune-actions-caches-test.sh

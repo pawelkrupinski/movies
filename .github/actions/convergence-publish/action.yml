@@ -52,6 +52,18 @@ inputs:
     description: The suite log, read for the boot-complete line.
     required: false
     default: convergence.log
+  refetch-list:
+    description: >-
+      A HERMETIC convergence row's list of the gaps its tree could not answer and a later leg can fetch
+      (`MissingFixtures.writeRefetches`) — published for the next leg's `fill` row. Empty publishes none.
+    required: false
+    default: ''
+  fill-archive:
+    description: >-
+      A `fill` row's packed fetches (`convergence-fill.sh pack`) — published beside the pinned pair for
+      every later hermetic leg to replay over it. Empty, or a path with no file, publishes none.
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -145,6 +157,54 @@ runs:
               "$RELEASE" delete-asset "$TAG" "$legacy" -y || true
           fi
 
+    # WHAT A HERMETIC LEG FOUND MISSING, AND WHAT A FILL FETCHED — the two halves of "every convergence
+    # build publishes the missing data it found" (docs/design/convergence-fixture-fill.md).
+    #
+    # The suite's refetch list goes up for the NEXT leg's `fill` row, which fetches it within its budget
+    # and publishes what it got as a fill of the pinned pair; every hermetic leg after that replays the
+    # pinned tree with the pair's fills laid over it (`convergence-setup`). Never the tree, never the
+    # pin: a verdict leg's own inputs stay what it resolved at setup, and the pinned pair stays the
+    # recorder's to replace.
+    #
+    # NEW NAMES, never `--clobber`: `<kind>-<code>-<corpus run>-<this run>`, so no reader meets an asset
+    # mid-replacement and the five countries' legs, publishing side by side, never write one name. Main
+    # only, like every write here (ConvergencePublishMainOnlySpec): a branch's gaps and fetches are a
+    # branch's.
+    - name: Publish the gaps this leg's tree could not answer
+      if: github.ref == 'refs/heads/main' && inputs.mode == 'hermetic' && inputs.refetch-list != '' && env.KINOWO_CONVERGENCE_PIN_CORPUS_RUN != ''
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+          LIST: ${{ inputs.refetch-list }}
+      run: |
+          set -uo pipefail
+          [ -f "$LIST" ] || { echo "no $LIST — the suite never reached its end"; exit 0; }
+          code="${{ inputs.code }}"
+          named="refetch-$code-$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-$GITHUB_RUN_ID.tsv"
+          mkdir -p refetch-upload && cp "$LIST" "refetch-upload/$named"
+          echo "$(grep -c . "$LIST" || true) fetchable gap(s) for the next leg's fill"
+          scripts/ci/gh-release.sh upload "$FIXTURE_RELEASE_TAG" "refetch-upload/$named" || exit 1
+          # Only the newest is read (convergence-fill.sh gaps); the one before it may be mid-read.
+          # allow-silenced: pruning old lists is housekeeping; one that fails to delete is pruned next time.
+          gh release view "$FIXTURE_RELEASE_TAG" --json assets \
+                  --jq ".assets[].name | select(test(\"^refetch-$code-$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-[0-9]+\\\\.tsv$\"))" \
+              | sort -t- -k4,4n | head -n -2 \
+              | while read -r stale; do scripts/ci/gh-release.sh delete-asset "$FIXTURE_RELEASE_TAG" "$stale" -y || true; done
+
+    - name: Publish what this leg's fill fetched
+      if: github.ref == 'refs/heads/main' && inputs.mode == 'hermetic' && inputs.fill-archive != '' && env.KINOWO_CONVERGENCE_PIN_CORPUS_RUN != ''
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+          ARCHIVE: ${{ inputs.fill-archive }}
+      run: |
+          set -uo pipefail
+          [ -f "$ARCHIVE" ] || { echo "the fill fetched nothing — nothing to publish"; exit 0; }
+          named="fill-${{ inputs.code }}-$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-$GITHUB_RUN_ID.tar.zst"
+          mkdir -p fill-upload && ln -f "$ARCHIVE" "fill-upload/$named"
+          scripts/ci/gh-release.sh upload "$FIXTURE_RELEASE_TAG" "fill-upload/$named" || exit 1
+          echo "published $named over pair $KINOWO_CONVERGENCE_PIN_CORPUS_RUN"
+
     # Which corpus this GREEN full leg replayed, as `corpus-green-<code>.txt` beside the
     # tree — `convergence-setup` reads it back so the next leg can diff its corpus against
     # the last one the pipeline converged on (`CorpusProvenance`). Main only, like the
@@ -205,3 +265,13 @@ runs:
                   --jq ".assets[] | select(.name | test(\"^enrichment-$code-[0-9]+\\\\.tar\\\\.(gz|zst)$\")) | [.createdAt, .name] | @tsv" \
               | sort -r | tail -n +6 | cut -f2 \
               | while read -r stale; do "$RELEASE" delete-asset "$FIXTURE_RELEASE_TAG" "$stale" -y || true; done
+          # ...and the fills and refetch lists of the pairs just pruned (convergence-fill.sh): they only
+          # mean anything over their own pair's tree.
+          # allow-silenced: as above.
+          names=$(gh release view "$FIXTURE_RELEASE_TAG" --json assets --jq '.assets[].name')
+          kept=$(grep -oE "^enrichment-$code-[0-9]+\\.tar\\.(gz|zst)$" <<< "$names" | grep -oE '[0-9]+' | sort -u)
+          grep -E "^(fill|refetch)-$code-[0-9]+-[0-9]+\\.(tar\\.zst|tsv)$" <<< "$names" \
+              | while read -r asset; do
+                    run=$(cut -d- -f3 <<< "$asset")
+                    grep -qxF "$run" <<< "$kept" || "$RELEASE" delete-asset "$FIXTURE_RELEASE_TAG" "$asset" -y || true
+                done

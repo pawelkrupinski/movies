@@ -1,0 +1,97 @@
+# THE FILL: what the last hermetic leg's tree could not answer, fetched now and published beside the
+# pinned pair, so a gap closes run over run instead of waiting for the next recording to pin a pair that
+# holds it (docs/design/convergence-fixture-fill.md). Run by `Identity model convergence`'s `fill` job,
+# one row per country, beside the legs.
+#
+# ON ITS OWN RUNNER, never inside a leg. The suite is CPU-bound and this network-bound, but a hermetic
+# suite must not share its process — or its runner's network — with live requests, and every suite row
+# is already at the lane's ~9-minute mark; this costs a runner, never wall time.
+#
+# It reads the PREVIOUS leg's refetch list (this run's suite is still running): the newest
+# `refetch-<code>-<corpus>-*.tsv` of the pinned pair, which a hermetic convergence row publishes
+# (`convergence-publish`). It fetches through the worker's own per-host pacing, 429 gate and breaker
+# (`HttpWiring.pacedWire`, `HostPolicies` — Flicks stays at its 200 ms), skips what an earlier fill
+# already holds, and stops starting requests `minutes` into the job. What it fetched goes up as
+# `fill-<code>-<corpus>-<run>.tar.zst` (main only): every hermetic leg set up after that replays it over
+# the pinned tree.
+#
+# WHAT THAT DOES TO A VERDICT. The next leg replays more than this one did — pages that were refusals now
+# answer, which is the change intended, and it can move that leg's coverage and films. Never mid-leg: a
+# leg names its fills once, at setup, and every row of it replays those (`hermetic-pair` carries them, so
+# a bisect of the leg replays them too). A gap that cannot be fetched without a credential (TMDB, OMDb), a
+# header or a body is never listed — those stay the recorder's.
+name: Fill a hermetic leg's gaps
+description: Fetch, within a budget, what the last hermetic leg's tree lacked, and publish it beside the pinned pair.
+
+inputs:
+  code:
+    description: The country's two-letter code (pl / de / uk / us / es).
+    required: true
+  token:
+    description: A token that can read runs and write this repo's releases.
+    required: true
+  minutes:
+    description: >-
+      Minutes from this action's start at which the fill stops starting requests. Its setup and compile come
+      out of them too; packing and publishing take about one more.
+    required: false
+    default: '7'
+
+runs:
+  using: composite
+  steps:
+    - name: Note when the fill's minutes run out
+      shell: bash
+      run: echo "FILL_UNTIL=$(( $(date +%s) + ${{ inputs.minutes }} * 60 ))" >> "$GITHUB_ENV"
+
+    # The pair's name and its fills, and a warm sbt — no MongoDB, corpus or tree.
+    - uses: ./.github/actions/convergence-setup
+      with:
+          code:   ${{ inputs.code }}
+          token:  ${{ inputs.token }}
+          mode:   hermetic
+          replay: 'false'
+
+    - name: Find the gaps the last leg listed
+      id: gaps
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+      run: |
+          set -uo pipefail
+          count=$(.github/scripts/convergence-fill.sh gaps "${{ inputs.code }}" "$KINOWO_CONVERGENCE_PIN_CORPUS_RUN" refetch.tsv)
+          echo "the last leg listed $count fetchable gap(s)"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+
+    # What earlier fills already hold, so nothing is asked twice.
+    - name: Restore the fills already published over the pair
+      if: steps.gaps.outputs.count > 0
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+      run: |
+          read -ra fills <<< "${KINOWO_CONVERGENCE_FILL_ASSETS:-}"
+          .github/scripts/convergence-fill.sh unpack "$RUNNER_TEMP/fill-held" "${fills[@]}"
+
+    - name: Fetch them until the fill's minutes run out
+      if: steps.gaps.outputs.count > 0
+      shell: bash
+      env:
+          KINOWO_COUNTRY:   ${{ inputs.code }}
+          KINOWO_COUNTRIES: ${{ inputs.code }}
+      run: |
+          sbt -J-Xmx2g "worker/Fixtures/runMain scripts.FillMissingFixtures ${{ inputs.code }} refetch.tsv $RUNNER_TEMP/fill-held/test/resources/fixtures $RUNNER_TEMP/fill-out/test/resources/fixtures $FILL_UNTIL"
+
+    # Whatever the fetch step did: a fill cut short still holds every page it wrote (one file per answer).
+    - name: Pack what the fill fetched
+      if: always() && steps.gaps.outputs.count > 0
+      shell: bash
+      run: .github/scripts/convergence-fill.sh pack "$RUNNER_TEMP/fill-out" "fill-upload-source/fill.tar.zst"
+
+    - uses: ./.github/actions/convergence-publish
+      if: always() && steps.gaps.outputs.count > 0
+      with:
+          code:         ${{ inputs.code }}
+          token:        ${{ inputs.token }}
+          mode:         hermetic
+          fill-archive: fill-upload-source/fill.tar.zst

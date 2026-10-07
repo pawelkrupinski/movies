@@ -34,10 +34,16 @@ inputs:
     default: ''
   hermetic-pair:
     description: >-
-      `<corpus run> <recorded at> <tree asset>` — a pair a red leg already resolved, so the
-      bisect replays the same one it did. Empty resolves the pinned pair afresh.
+      `<corpus run> <recorded at> <tree asset> [fill asset...]` — a pair a red leg already resolved, so
+      the bisect replays the same one it did, fills included. Empty resolves the pinned pair afresh.
     required: false
     default: ''
+  replay:
+    description: >-
+      'false' for a job that replays nothing — a leg's `fill` row, which needs the pair's name and a warm
+      sbt but no MongoDB, corpus or tree.
+    required: false
+    default: 'true'
 
 outputs:
   hermetic-pair:
@@ -91,6 +97,7 @@ runs:
     # below run meanwhile, and the last step of this action waits for it (and fails as it would have),
     # both through scripts/ci/in-background.sh.
     - name: Start MongoDB (single-node replica set, for change streams)
+      if: inputs.replay == 'true'
       shell: bash
       env:
           MONGO_MAJORITY_JOURNAL: 'false'
@@ -147,14 +154,22 @@ runs:
                   pair=$(head -1 "hermetic-marker/$marker")
               fi
           fi
-          read -r corpus recorded tree <<< "$pair"
+          read -r corpus recorded tree fills <<< "$pair"
           if [ -z "${tree:-}" ]; then
               echo "::error::No recorded pair pinned for ${{ inputs.code }} (release asset hermetic-${{ inputs.code }}.txt) — a hermetic leg replays nothing else. Record one: gh workflow run \"Record scrape fixtures\" --ref main"
               exit 1
           fi
-          echo "hermetic leg: corpus from recording run $corpus ($recorded), tree $tree"
+          # The FILLS earlier legs published over this tree (convergence-fill.sh, the leg's `fill` row):
+          # named here, once, so every row of the leg replays the same ones, and carried in the pair so a
+          # bisect replays them too.
+          if [ -z "$GIVEN" ]; then
+              fills=$(FIXTURE_RELEASE_TAG="$FIXTURE_RELEASE_TAG" "$GITHUB_WORKSPACE"/.github/scripts/convergence-fill.sh fills "${{ inputs.code }}" "$corpus")
+              pair="$corpus $recorded $tree${fills:+ $fills}"
+          fi
+          echo "hermetic leg: corpus from recording run $corpus ($recorded), tree $tree, fills: ${fills:-none}"
           echo "KINOWO_CONVERGENCE_PIN_CORPUS_RUN=$corpus" >> "$GITHUB_ENV"
           echo "KINOWO_CONVERGENCE_TREE_ASSET=$tree" >> "$GITHUB_ENV"
+          echo "KINOWO_CONVERGENCE_FILL_ASSETS=${fills:-}" >> "$GITHUB_ENV"
           echo "pair=$pair" >> "$GITHUB_OUTPUT"
 
     # The enrichment tree, fetched and unpacked in the BACKGROUND from here on — beside the
@@ -175,6 +190,7 @@ runs:
     # release asset is 2 GB per file, outside the Actions storage quota, comes off the CDN with
     # no tunnel in the path, and `--clobber` replaces it in place.
     - name: Fetch the enrichment tree in the background
+      if: inputs.replay == 'true'
       shell: bash
       env:
           GH_TOKEN: ${{ inputs.token }}
@@ -223,6 +239,9 @@ runs:
               sbt-target-convergence-${{ runner.os }}-
               sbt-target-e2e-${{ runner.os }}-
               sbt-target-${{ runner.os }}-
+          # A job that replays nothing compiles only the worker's fixtures, and must not become the
+          # key's entry ahead of the rows that compile the suites: whichever job saves a key first owns it.
+          restore-only: ${{ inputs.replay != 'true' }}
 
     # The scrape corpus, from the ARTIFACT of a `Record scrape fixtures` run (the
     # pinned one, else the newest) — not from the actions cache it also writes.
@@ -238,6 +257,7 @@ runs:
     # Same lesson as the enrichment trees a few steps below: an artifact has its
     # own retention and cannot be evicted to make room for a build cache.
     - name: Restore the recorded scrape corpus
+      if: inputs.replay == 'true'
       shell: bash
       # A recording leg falls through to bootstrapping; a replay leg's missing pin ENDS the leg.
       continue-on-error: ${{ inputs.mode == 'record' }}
@@ -293,6 +313,7 @@ runs:
     # sending the next person bisecting commits for a data change. Never fails the leg:
     # no marker yet, or an expired artifact, only makes the verdict less specific.
     - name: Restore the last green leg's corpus for the provenance diff
+      if: inputs.replay == 'true'
       shell: bash
       continue-on-error: true
       env:
@@ -317,6 +338,7 @@ runs:
           fi
 
     - name: Unpack whichever fixtures are present
+      if: inputs.replay == 'true'
       shell: bash
       env:
           MODE: ${{ inputs.mode }}
@@ -381,5 +403,6 @@ runs:
           fi
 
     - name: Wait for MongoDB, started in the background above
+      if: inputs.replay == 'true'
       shell: bash
       run: '"$GITHUB_WORKSPACE"/scripts/ci/in-background.sh wait mongo-start 240'

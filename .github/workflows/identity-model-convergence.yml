@@ -120,6 +120,37 @@ jobs:
         # TMDB_API_KEY / OMDB_API_KEY, and the GITHUB_TOKEN the setup action reads.
         secrets: inherit
 
+    # What each country's last leg found its tree lacking, fetched beside this run's legs and published for
+    # the legs after them (.github/actions/convergence-fill, docs/design/convergence-fixture-fill.md). A job
+    # of its own beside `leg`, never a step inside one: a hermetic suite touches no network, and the legs'
+    # rows are already at the lane's 9 minutes — this one stops fetching at its 7th and costs a runner, not
+    # wall time. No `needs: leg`: it reads the PREVIOUS run's list, and waiting would only add its minutes
+    # to the lane's. A failed fill is a gap left for the next one, never a red verdict: it gates nothing.
+    fill:
+        needs: preflight
+        name: fill (${{ matrix.code }})
+        strategy:
+            fail-fast: false
+            matrix:
+                code: [pl, de, uk, es, us]
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        continue-on-error: true
+        permissions:
+            contents: write
+            actions: read
+        env:
+            # The rolling release the trees and their fills live in (country-convergence-leg.yml declares
+            # the same for its jobs; a workflow's `env` does not reach a called one).
+            FIXTURE_RELEASE_TAG: convergence-fixtures
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/convergence-fill
+              with:
+                  code:    ${{ matrix.code }}
+                  token:   ${{ secrets.GITHUB_TOKEN }}
+                  minutes: 7
+
     # A red HERMETIC leg on main hands its range to `convergence-bisect.yml` — DISPATCHED, the one event
     # the GITHUB_TOKEN may raise: Main dispatched this run, so its completion starts no `workflow_run`.
     # A separate run rather than a reusable call, so the bisect holds none of this suite's lane. The leg

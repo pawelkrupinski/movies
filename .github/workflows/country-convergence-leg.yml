@@ -154,7 +154,10 @@ on:
             # replaced, so the leg replays ONLY the recorded pair — the corpus and the
             # enrichment tree `Record scrape fixtures` recorded together — and a request the
             # pair cannot answer fails the leg naming the missing fixture instead of filling
-            # it live. No expiry, no publish: a verdict leg never changes its own inputs.
+            # it live. No expiry, and no tree published: a verdict leg never changes its own inputs.
+            # It does publish what it found missing (`refetch-<code>-...tsv`), which the lane's `fill`
+            # job fetches and publishes as a fill of the pair — so LATER legs replay more, every row of
+            # one leg the same fills, named once at setup (docs/design/convergence-fixture-fill.md).
             # Live fills inside verdict legs were a flake source of their own — a UK boot
             # making 345 live fills of which 63 failed, Cinemeta 504s, Metacritic timeouts,
             # sample legs running into their 60-minute ceiling (runs 35870834558,
@@ -755,6 +758,8 @@ jobs:
                   green: ${{ steps.suite.outcome == 'success' }}
                   mode: ${{ inputs.mode }}
                   complete: ${{ inputs.mode == 'record' && steps.suite.outcome != 'cancelled' }}
+                  # A hermetic row's fetchable gaps, for the next leg's `fill` job (MissingFixtures.writeRefetches).
+                  refetch-list: ${{ inputs.mode == 'hermetic' && format('test/resources/fixtures/enrichment-{0}.refetch.tsv', inputs.code) || '' }}
 
             # A red HERMETIC leg on main asks `convergence-bisect.yml` which commit did it — with
             # the sample, which the bisect first checks reproduces the failure, unless it was

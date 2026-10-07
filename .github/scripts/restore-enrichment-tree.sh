@@ -60,3 +60,10 @@ fi
 ls -l "$archives/"
 "$here/unpack-fixture-archive.sh" "$tree" "$stage" || exit $?
 echo "restored $tree ($(du -h "$tree" | cut -f1))"
+
+# A HERMETIC leg's pair is the pinned tree AND the fills earlier legs published over it, oldest first
+# ("Resolve the recorded pair" names them in KINOWO_CONVERGENCE_FILL_ASSETS; convergence-fill.sh).
+if [ "$mode" != "record" ] && [ -n "${KINOWO_CONVERGENCE_FILL_ASSETS:-}" ]; then
+    read -ra fills <<< "$KINOWO_CONVERGENCE_FILL_ASSETS"
+    "$here/convergence-fill.sh" unpack "$stage" "${fills[@]}"
+fi

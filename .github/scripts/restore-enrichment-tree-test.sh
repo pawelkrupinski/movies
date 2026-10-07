@@ -22,7 +22,8 @@ cat > "$work/bin/gh" <<'STUB'
 if [ "$1 $2" = "release download" ]; then
   [ -z "${STUB_UNREACHABLE:-}" ] || { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
   [ -n "${STUB_ASSET:-}" ] || { echo "no assets match the file pattern" >&2; exit 1; }
-  while [ "$#" -gt 0 ]; do [ "$1" = "--dir" ] && dir="$2"; shift; done
+  while [ "$#" -gt 0 ]; do case "$1" in --dir) dir="$2" ;; --pattern) pattern="$2" ;; esac; shift; done
+  case "$pattern" in fill-*) cp "$STUB_FILL" "$dir/$pattern"; exit 0 ;; esac
   cp "$STUB_ASSET" "$dir/"
   exit 0
 fi
@@ -42,6 +43,17 @@ restore() {
 check "a release holding the tree stages it" "0" "$(restore pinned hermetic "$work/enrichment-uk.tar.zst")"
 check "...unpacked under its own paths, outside the workspace" "recorded" \
   "$(cat "$work/stage-pinned/test/resources/fixtures/enrichment-uk/api.themoviedb.org/search" 2>/dev/null)"
+# A fill earlier legs published over the pair: one page the pinned tree lacks.
+mkdir -p "$work/fill/test/resources/fixtures/enrichment-uk/www.flicks.co.uk"
+printf 'filled\n' > "$work/fill/test/resources/fixtures/enrichment-uk/www.flicks.co.uk/movie"
+( cd "$work/fill" && tar -cf - test | zstd -q -c > "$work/fill-uk-1-2.tar.zst" )
+status="$(STUB_FILL="$work/fill-uk-1-2.tar.zst" KINOWO_CONVERGENCE_FILL_ASSETS="fill-uk-1-2.tar.zst" \
+  restore filled hermetic "$work/enrichment-uk.tar.zst")"
+check "a hermetic leg's pair includes the fills published over its tree" "0:filled:recorded" \
+  "$status:$(cat "$work/stage-filled/test/resources/fixtures/enrichment-uk/www.flicks.co.uk/movie" 2>/dev/null):$(cat "$work/stage-filled/test/resources/fixtures/enrichment-uk/api.themoviedb.org/search" 2>/dev/null)"
+STUB_FILL="$work/fill-uk-1-2.tar.zst" KINOWO_CONVERGENCE_FILL_ASSETS="fill-uk-1-2.tar.zst" restore recording-fill record "$work/enrichment-uk.tar.zst" > /dev/null
+check "...and a recording's never does: it records them itself" "false" \
+  "$([ -e "$work/stage-recording-fill/test/resources/fixtures/enrichment-uk/www.flicks.co.uk/movie" ] && echo true || echo false)"
 check "a replay leg whose pinned tree is gone fails, distinctly" "3" "$(restore unpinned hermetic)"
 check "...and says why" "true" "$(grep -q 'a hermetic leg replays nothing else' "$work/out-unpinned" && echo true || echo false)"
 check "a recording with no tree anywhere goes on to fetch live" "0" "$(restore cold record)"
