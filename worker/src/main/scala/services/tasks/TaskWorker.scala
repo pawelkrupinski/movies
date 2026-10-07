@@ -147,10 +147,10 @@ class TaskWorker(
    *  of head-of-line age around the clock on worker-uk with three of four slots idle (2026-10-07).
    *  The ring runs on the reaper's thread; it only bumps the doorbell. */
   private def ringWhenClaimable(heldUntil: Option[Instant]): Unit =
-    heldUntil.map(until => java.time.Duration.between(clock.instant(), until).toMillis).filter(_ > 0) match {
+    untilClaimable(clock.instant(), heldUntil) match {
       // A push racing `stop()` meets a shut scheduler: nothing is left to wake then.
-      case Some(waitMillis) => Try(reaper.schedule((() => doorbell.ring()): Runnable, waitMillis, TimeUnit.MILLISECONDS)); ()
-      case None             => doorbell.ring()
+      case Some(wait) => Try(reaper.schedule((() => doorbell.ring()): Runnable, wait.toNanos, TimeUnit.NANOSECONDS)); ()
+      case None       => doorbell.ring()
     }
 
   /** One worker slot: claim a task, run it to completion, claim the next.
@@ -347,6 +347,12 @@ object TaskWorker {
   /** How long a stopping worker waits for its in-flight handlers before handing their tasks back itself — well inside
    *  the pod's 30 s termination grace, which the rest of the shutdown shares. */
   val StopGrace: FiniteDuration = 10.seconds
+
+  /** How long from `now` until a task held to `heldUntil` can be claimed, or None when it already can. Kept to the
+   *  nanosecond: a wait cut to whole milliseconds rings before a hold that splits one ends, and that ring's claim
+   *  finds nothing, parking the pool for the whole idle backstop. */
+  def untilClaimable(now: Instant, heldUntil: Option[Instant]): Option[FiniteDuration] =
+    heldUntil.map(until => java.time.Duration.between(now, until).toNanos).filter(_ > 0).map(_.nanos)
 
   /** How long a claimed task may run before its lease is taken back. */
   final case class ProcessingTimeout(value: FiniteDuration) extends AnyVal

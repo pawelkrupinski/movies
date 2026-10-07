@@ -164,6 +164,16 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     }
   }
 
+  "TaskWorker.untilClaimable" should "never ring before the hold ends, however the hold splits a millisecond" in {
+    // Cut to whole milliseconds, a hold ending at 500.95 ms rang at 500 ms: the claim found nothing yet,
+    // and the pool parked again for the whole idle backstop. Linux CI timers fire that early; macOS's don't.
+    val until = t0.plusMillis(500).plusNanos(950000)
+    TaskWorker.untilClaimable(t0, Some(until)).map(_.toNanos) shouldBe Some(500950000L)
+    TaskWorker.untilClaimable(t0, Some(t0))                  shouldBe None // already claimable: ring now
+    TaskWorker.untilClaimable(t0, Some(t0.minusSeconds(1)))  shouldBe None
+    TaskWorker.untilClaimable(t0, None)                      shouldBe None
+  }
+
   "TaskWorker.retryBackoffFor" should "ramp exponentially from 5s and cap at 30 minutes" in {
     TaskWorker.retryBackoffFor(1)   shouldBe 5.seconds
     TaskWorker.retryBackoffFor(2)   shouldBe 10.seconds
@@ -462,7 +472,8 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     w.start()
     try {
       eventually(timeout(SpecTimeouts.Settle), interval(Span(5, Millis)))(emptyClaims.get should be >= 1)
-      val heldUntil = clock.instant().plusMillis(500)
+      // A hold that ends between two milliseconds: a wait cut to whole milliseconds rings before it ends.
+      val heldUntil = clock.instant().plusMillis(500).plusNanos(950000)
       q.enqueue(ScrapeCinema, "scrape|held", submittedAt = clock.instant(), notBefore = Some(heldUntil))
       eventually(timeout(SpecTimeouts.Settle), interval(Span(20, Millis))) {
         q.countByState() shouldBe empty
