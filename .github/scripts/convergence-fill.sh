@@ -24,6 +24,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Every asset name in the release, one per line; nothing (and a warning) when it cannot be read.
 assets() {
+  # allow-silenced: a release that cannot be listed means no fills this time, said in the warning below.
   gh release view "$TAG" --json assets --jq '.assets[].name' 2>/dev/null ||
     echo "::warning::could not list release $TAG — no fills this time" >&2
 }
@@ -45,6 +46,7 @@ case "${1:-}" in
     downloads="$stage.fills"
     mkdir -p "$downloads" "$stage"
     for fill in "$@"; do
+      # allow-silenced: a fill that cannot be read is replayed without, and the warning below says so.
       if gh release download "$TAG" --pattern "$fill" --dir "$downloads" --clobber 2>/dev/null &&
          "$here/unpack-fixture-archive.sh" "$downloads/$fill" "$stage"; then
         echo "laid fill $fill over the tree"
@@ -57,6 +59,7 @@ case "${1:-}" in
     code="${2:?code}"; corpus="${3:?corpus run}"; out="${4:?out file}"
     newest=$(named refetch "$code" "$corpus" tsv | tail -1)
     : > "$out"
+    # allow-silenced: a list that cannot be read is no gaps this time — the next leg's fill reads it again.
     if [ -n "$newest" ] && gh release download "$TAG" --pattern "$newest" --output "$out" --clobber 2>/dev/null; then
       echo "::notice::$newest lists $(grep -c . "$out" || true) fetchable gap(s)" >&2
     fi
