@@ -225,10 +225,10 @@ class EnrichDetailsHandler(
             // Merge into the target slot(s), creating one if absent: a chain's network
             // source has no slot from a listing scrape, so it must be added here;
             // a 1:1 cinema's slot already exists, so this preserves its showtimes.
-            // `putIfPresent` is a no-op on a row that was re-keyed between enqueue and pickup.
-            cache.putIfPresent(rowKey, current =>
-              current.copy(data = targets.foldLeft(current.data)((d, tgt) =>
-                d + (tgt -> detail.mergeInto(changed.refreshInto(d.getOrElse(tgt, SourceData()), screeningTokens), screeningTokens)))))
+            // Only those slots are written, each from what it held (`putSlotsIfPresent`): a no-op on a row that was
+            // re-keyed between enqueue and pickup.
+            cache.putSlotsIfPresent(rowKey, targets)((_, held) =>
+              detail.mergeInto(changed.refreshInto(held.getOrElse(SourceData()), screeningTokens), screeningTokens))
             freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
             Done
         }

@@ -252,7 +252,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.start()
     try {
       val (staleRead, mark) = repository.reread(cache.idOf(key).get)
-      cache.putSlotIfPresent(key, Helios, SourceData(title = Some("Erupcja")))
+      cache.putSlotsIfPresent(key, Seq(Helios))((_, _) => SourceData(title = Some("Erupcja")))
       repository.deliver(staleRead, mark)
       cache.get(key).map(_.data.keySet) shouldBe Some(Set(Multikino, Helios))
     } finally cache.stop()

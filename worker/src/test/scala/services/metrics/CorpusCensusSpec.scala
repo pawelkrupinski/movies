@@ -81,7 +81,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
           record.data.keys.filter(Source.cinemaOf(_).isDefined).toSeq.sortBy(_.toString).headOption.fold("—") { source =>
             val moved = SourceData(title = record.data(source).title,
               showtimes = rng.shuffle(starts).take(rng.nextInt(4)).map(Showtime(_, bookingUrl = Some("https://book/moved"))))
-            cache.putSlotIfPresent(key, source, moved); s"landing at $source of ${key.cleanTitle}"
+            cache.putSlotsIfPresent(key, Seq(source))((_, _) => moved); s"landing at $source of ${key.cleanTitle}"
           }
         }
       case 2 => anyKey.fold("—") { key => cache.putIfPresent(key, _.copy(metascore = Some(50 + rng.nextInt(40)))); s"rating of ${key.cleanTitle}" }

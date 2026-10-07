@@ -159,6 +159,9 @@ trait MovieCache extends MovieCacheReader {
   /** Remove film `id` — one the projection retired — with its side rows, from the store and the cache. */
   private[services] def retireProjected(id: FilmId): WriteOutcome
   private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean
+  /** [[putIfPresent]] of an update to `sources`' slots alone, each set to `slotOf` what it held — in work independent of
+   *  the row's other slots. */
+  private[services] def putSlotsIfPresent(key: CacheKey, sources: Seq[Source])(slotOf: (Source, Option[SourceData]) => SourceData): Boolean
   /** Like [[get]], but falls back to a direct `movies` read when the cache doesn't
    *  hold `key`. The TMDB resolve's carry-forward reads this rather than the
    *  Caffeine-only `get`, so a cold / evicted / re-keyed entry can't make the
@@ -517,7 +520,7 @@ class CaffeineMovieCache(
   // persisting it would render a misleading "0/10" badge. Squash to None at
   // the single write boundary so neither Caffeine nor Mongo holds the
   // phantom score. Applied to every write (`persist` and `putIfPresent`, which
-  // `putSlotIfPresent` defers to for a row carrying one), so any future caller
+  // `putSlotsIfPresent` defers to for a row carrying one), so any future caller
   // automatically inherits the rule.
   private def withoutZeroRatings(e: MovieRecord): MovieRecord = e.copy(
     imdbRating     = e.imdbRating.filter(_ > 0.0),
@@ -679,43 +682,53 @@ class CaffeineMovieCache(
     } }
 
   /**
-   * [[putIfPresent]] of `_.copy(data = _.data + (source -> slot))` — the scrape landing's
-   * write — in work independent of how many OTHER slots the row carries.
+   * [[putIfPresent]] of an update to some of a row's slots — each of `sources` set to `slotOf` what it held — in work
+   * independent of how many OTHER slots the row carries: a venue page landing on the slots that name it (the detail
+   * handler), or one listing's slot.
    *
    * THE BUG THIS REPLACES. The landing wrote through `putIfPresent`, which re-indexes the
    * whole row, strips every slot and compares every slot: O(slots) per landing. A film
    * shown at N venues lands N times a tick, so that was O(N²) per film per tick — a re-scrape
    * of the US corpus took ~12x its first scrape, and prod paid it on every landing of a
-   * widely shown film. Here the no-op guard compares the ONE slot the write touches, the
-   * cache strips that slot alone, and the repository is handed the two records narrowed to it — every diff the repository
-   * makes is per source, so the narrowed pair yields exactly the patch the whole pair did.
+   * widely shown film. The detail handler paid the same on every page read — 40% of a US
+   * detail drain's CPU, its other claimants queued behind the title lock (JFR, 2026-10-07). Here the no-op guard
+   * compares only the slots the write touches, the cache strips those alone, and the repository is handed the two
+   * records narrowed to them — every diff the repository makes is per source, so the narrowed pair yields exactly the
+   * patch the whole pair did.
    *
-   * Identical results to `putIfPresent` by construction: the other slots and every
-   * top-level field are the resident row's own on both sides of the diff. A row carrying a
-   * zero rating, or a source that is not a cinema slot, takes `putIfPresent` itself —
-   * those are the writes that change more than the slot.
+   * Identical results to `putIfPresent` by construction — the store, the cache and the films announced changed: the
+   * other slots and every top-level field are the resident row's own on both sides of the diff. A row carrying a zero
+   * rating, or a source that is not a cinema slot, takes `putIfPresent` itself — those are the writes that change more
+   * than the slots.
    */
-  private[services] def putSlotIfPresent(key: CacheKey, source: Source, slot: SourceData): Boolean =
-    if (Source.cinemaOf(source).isEmpty || get(key).exists(carriesZeroRating))
-      putIfPresent(key, current => current.copy(data = current.data + (source -> slot)))
+  private[services] override def putSlotsIfPresent(key: CacheKey, sources: Seq[Source])(slotOf: (Source, Option[SourceData]) => SourceData): Boolean =
+    if (sources.exists(Source.cinemaOf(_).isEmpty) || get(key).exists(carriesZeroRating))
+      putIfPresent(key, current => current.copy(data = sources.foldLeft(current.data)((data, source) => data + (source -> slotOf(source, data.get(source))))))
     else withTitleLock(key.cleanTitle) { fencingResident(key) {
       val before  = new java.util.concurrent.atomic.AtomicReference[MovieRecord]()
-      val cached  = forCacheSlot(slot)
+      val moved   = new java.util.concurrent.atomic.AtomicReference[Map[Source, SourceData]](Map.empty)
       val updated = computeResident(key) { current =>
         before.set(current)
-        // The write guard, asked of the one slot: `leanEqual` of the whole pair is exactly
+        // The write guard, asked of each slot written: `leanEqual` of the whole pair is exactly
         // this, since nothing else differs between them.
-        if (current.data.get(source).exists(ShowtimesDigest.slotLeanEqual(_, slot))) current
-        else current.copy(data = current.data.updated(source, cached))
+        val written = sources.distinct.flatMap { source =>
+          val held = current.data.get(source)
+          val slot = slotOf(source, held)
+          Option.unless(held.exists(ShowtimesDigest.slotLeanEqual(_, slot)))(source -> slot)
+        }.toMap
+        moved.set(written)
+        if (written.isEmpty) current else current.copy(data = current.data ++ written.view.mapValues(forCacheSlot))
       }
       updated.fold(false) { updated =>
         val prior = before.get()
         if (updated eq prior) true
         else {
-          val id        = residentIdOf(key)
-          val priorSlot = prior.data.get(source)
-          def only(sd: Option[SourceData]) = prior.copy(data = sd.map(source -> _).toMap)
-          writeThrough(key, id, prior, updated, only(priorSlot), only(Some(slot)))
+          val id      = residentIdOf(key)
+          val written = moved.get()
+          def only(data: Map[Source, SourceData]) = prior.copy(data = data)
+          val wrote = writeThrough(key, id, prior, updated, only(prior.data.view.filterKeys(written.contains).toMap), only(written))
+          if (wrote) changed(id)
+          wrote
         }
       }
     } }
@@ -747,7 +760,7 @@ class CaffeineMovieCache(
     }
   }
 
-  /** The repository half of [[putIfPresent]] / [[putSlotIfPresent]]: write the `before` →
+  /** The repository half of [[putIfPresent]] / [[putSlotsIfPresent]]: write the `before` →
    *  `after` diff, and on failure put the resident `prior` back in place of `updated`. */
   private def writeThrough(key: CacheKey, id: FilmId, prior: MovieRecord, updated: MovieRecord,
                            before: MovieRecord, after: MovieRecord): Boolean = {
