@@ -93,4 +93,37 @@ class KinoIskraClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     marsupilami.showtimes shouldBe film("Marsupilami").showtimes
     marsupilami.movie.runtimeMinutes shouldBe None
   }
+
+  // A film whose TITLE is event vocabulary keeps itself only by its record's director and year: when that
+  // record fails to load the film is dropped as a live event, so the listing must not read as complete —
+  // a complete listing lets the cache prune the film until the next good scrape.
+  it should "leave the listing incomplete when a failed record drops a film whose title reads as an event" in {
+    val replay  = new FakeHttpFetch("kino-iskra")
+    val record  = KinoIskraClient.movieUrl(film("Odyseja").filmUrl.value.dropWhile(_ != '#').drop(1))
+    // the same film, billed under a title the classifier reads as a stage show
+    def billedAsEvent(down: Boolean) = new tools.HttpFetch {
+      def get(url: String): String =
+        if (url == KinoIskraClient.RepertoireUrl) replay.get(url).replace(">Odyseja<", ">Stand-up: Odyseja<")
+        else if (down && url == record) throw new HttpStatusException(503, "GET", url, None)
+        else replay.get(url)
+      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
+    }
+    val title = "Stand-up: Odyseja"
+    new KinoIskraClient(billedAsEvent(down = false), KinoIskra, today).fetch().map(_.movie.title) should contain(title)
+    val (partial, reads) = services.cinemas.common.ListingReads.during(new KinoIskraClient(billedAsEvent(down = true), KinoIskra, today).fetch())
+    partial.map(_.movie.title) should not contain title
+    reads.complete shouldBe false
+  }
+
+  it should "not count a failed record against the listing when it only leaves a film bare" in {
+    val replay  = new FakeHttpFetch("kino-iskra")
+    val record  = KinoIskraClient.movieUrl(film("Marsupilami").filmUrl.value.dropWhile(_ != '#').drop(1))
+    val oneDown = new tools.HttpFetch {
+      def get(url: String): String = if (url == record) throw new HttpStatusException(503, "GET", url, None) else replay.get(url)
+      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
+    }
+    // (the capture holds no record of the stand-up shows, which ARE dropped: their reads report, this one must not)
+    services.cinemas.common.ListingReads.during(new KinoIskraClient(oneDown, KinoIskra, today).fetch())._2.failed
+      .map(_.getMessage).filter(_.contains(record)) shouldBe empty
+  }
 }

@@ -6,13 +6,12 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.CountryNames
-import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse, SlotsToMovies}
-import tools.{HttpFetch, ParallelDetailFetch, HttpRead}
+import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages, ScraperParse, SlotsToMovies}
+import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime}
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
-import scala.util.Try
+import scala.util.Success
 
 /**
  * Kino Iskra (Augustów). The venue's own site replaced Filmweb as the source:
@@ -64,12 +63,15 @@ class KinoIskraClient(
   // metadata to what the listing already shows, so one that fails to load leaves
   // that film bare rather than failing the venue. Records load side by side.
   // Live events are dropped after the merge, so a film whose title is event
-  // vocabulary keeps itself by its record's director and year.
+  // vocabulary keeps itself by its record's director and year — and one dropped
+  // for want of a record that failed leaves the listing incomplete, so the cache
+  // does not prune it until a scrape that reads its record.
   def fetch(): Seq[CinemaMovie] = {
     val slots   = listing(HttpRead.page(http, RepertoireUrl), today)
-    val records = ParallelDetailFetch.keyed("kino-iskra", slots.map(_.movieId), 30.seconds)(movieUrl)(url =>
-      Try(record(HttpRead.page(http, url))).toOption).flatMap((id, r) => r.map(id -> _))
-    SlotsToMovies.fold(slots, _.title, _.showtime) { (title, group, showtimes) =>
+    val reads   = ListingPages.readEnrichment("kino-iskra", slots.map(_.movieId), movieUrl, maxConcurrent = 2)(url =>
+      record(HttpRead.page(http, url))).toMap
+    val records = reads.collect { case (id, Success(r)) => id -> r }
+    val films = SlotsToMovies.fold(slots, _.title, _.showtime) { (title, group, showtimes) =>
       val record = group.map(_.movieId).distinct.flatMap(records.get).foldLeft(Record())((known, next) => known.orElse(next))
       CinemaMovie(
         movie = Movie(
@@ -88,7 +90,11 @@ class KinoIskraClient(
         showtimes = showtimes,
         ageRating = record.ageRating
       )
-    }.filterNot(NonMovieEventClassifier.isLiveEvent)
+    }
+    val (events, kept) = films.partition(NonMovieEventClassifier.isLiveEvent)
+    val dropped = events.map(_.movie.title).toSet
+    ListingPages.reportFailed(slots.filter(s => dropped(s.title)).map(_.movieId).distinct.flatMap(reads.get))
+    kept
   }
 }
 
