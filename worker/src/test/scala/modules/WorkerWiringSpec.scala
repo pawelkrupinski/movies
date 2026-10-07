@@ -489,6 +489,44 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.stop()
   }
 
+  // The agreement's fill resolves a cluster alone, asking TMDB what the model's whole-corpus resolve never did: read from
+  // the store alone, those were gaps nothing asked, and the fill never took (PL "Lalka (Dolly)" ×5, right → unmatched).
+  "the agreement stage's fill" should "read TMDB as the model does: what the store lacks asked live" in {
+    import services.identity.agreement.VoterFamily
+    val requests = new java.util.concurrent.atomic.AtomicInteger()
+    val counting: HttpFetch = new HttpFetch {
+      override def get(url: String): String = { requests.incrementAndGet(); """{"results":[]}""" }
+      override def post(url: String, body: String, contentType: String): String = get(url)
+    }
+    val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4), tools.Env.of("TMDB_API_KEY" -> "test-key")) {
+      override lazy val enrichmentFetch: HttpFetch = counting
+    }
+    val venues   = Seq(models.KinoMuza, models.Multikino, models.KinoPalacowe)
+    val listings = venues.map(venue => services.identity.Listing(venue, services.movies.ListingKey.Published(venue.displayName, "Dolly", None, Nil),
+      "Dolly", "Dolly", "Dolly", None, Nil, None, None, None))
+    val model = services.identity.Resolution(Seq(services.identity.ResolverDecision(listings.map(_.key), None, 0.2,
+      services.identity.ResolverDecision.Basis.BelowThreshold, Nil)()), listings.size, listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val byKey = listings.map(l => l.key -> l).toMap
+    def apply() = wiring.agreementStage.apply(model, byKey.get, wiring.familyAnswerStore.version)
+    apply()
+    // every family answers that it knows no such film, so the families agree on nothing and the fill reads the cluster
+    var rounds = 0
+    while (wiring.agreementStage.wanted.nonEmpty && rounds < 5) {
+      rounds += 1
+      wiring.agreementStage.wanted.foreach { case (family: VoterFamily, question) => question.split("\\|", 2) match {
+        case Array("title", text)    => wiring.familyAnswerStore.fileTitled(family, text, Nil)
+        case Array("director", name) => wiring.familyAnswerStore.fileDirected(family, name, Nil)
+        case Array("record", id)     => wiring.familyAnswerStore.fileRecord(family, id, None)
+        case Array("showing", venue) => wiring.familyAnswerStore.fileShowing(family, venue, Nil)
+        case _                       => fail(s"unknown question $question")
+      } }
+      apply()
+    }
+    wiring.agreementStage.wanted shouldBe empty
+    requests.get should be > 0
+    wiring.stop()
+  }
+
   // The model asks live only what its store lacks: an answer it holds — a search that found nothing
   // before TMDB had the film, a record TMDB has since changed — is renewed only by the fill's refreshes
   // and change sweep, on a schedule of their own.

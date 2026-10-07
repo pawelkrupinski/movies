@@ -73,7 +73,10 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
       ask = open => services.identity.AgreementQuestions.enqueueOpen(taskQueue, open.questions, open.finds, clock, agreementQuestionMetrics, open.posters,
         open.catalogue, open.records),
       metrics = workerMetrics.identityAgreement.stage(country.code), clock = clock, changes = familyAnswerStore,
-      posters = posterAnswerStore, tmdb = Some(storedLookups()), identities = IdentityCutoverWiring.identities(country.code),
+      posters = posterAnswerStore,
+      // the fill's resolve of a cluster alone asks what the model's whole-corpus resolve never did: read as the model
+      // reads (the store, else live), never from the store alone, where those questions were gaps nothing asked
+      tmdb = Some(cutoverLookups()), identities = IdentityCutoverWiring.identities(country.code),
       catalogue = catalogueAnswerStore,
       listedOn = filmwebProgrammes.flatMap(_ => IdentityCutoverWiring.listedOn(country.code)))
   /** The posters' hashes the agreement's poster evidence reads, filed among the families' answers. */

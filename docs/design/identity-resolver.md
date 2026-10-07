@@ -2236,7 +2236,11 @@ it, rollback, per-country blockers, the phase-6 deletion list) is
 - **Lookups.** `StoredFirstLookups` (`WorkerWiring.cutoverLookups`): the shadow's `StoredTmdbLookups`
   first, and a TMDB or IMDb question the store cannot answer asked live by `TmdbIdentityLookups` through
   `identityLookupFetch`, which files the answer into the store. (Built as `CutoverIdentityLookups` over the
-  observation store; replaced 2026-09-30.)
+  observation store; replaced 2026-09-30.) The agreement stage's fill reads through the same lookups: its resolve
+  of a cluster alone asks searches the whole-corpus resolve never did, and read from the store alone those were gaps
+  nothing asked — a verdict decided with its fill unread was kept, and stood once TMDB had answered (PL "Lalka (Dolly)"
+  ×5, right → unmatched, 2026-10-07). A fill that meets a TMDB gap now keeps no verdict: the cluster is resolved again
+  on the next pass.
 - **Metrics** (`IdentityCutoverMetrics`, charted on worker-diagnostics):
   `kinowo_worker_identity_cutover_films|listings{country,path}`,
   `kinowo_worker_identity_regroupings_total{country,kind}`,
