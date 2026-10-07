@@ -88,6 +88,30 @@ class TaskQueueContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfte
       fresh(cls).amendWaiting("absent|2026", Map("force" -> "true")) shouldBe false
     }
 
+    // A held task's insert finds nothing to claim and its hold ending writes nothing, so the pool times
+    // its wake from the hold the push hands it. A queue that drops the hold leaves a staggered chunk
+    // waiting out the pool's 30 s idle backstop once claimable.
+    it should s"[$name] hand a watcher each enqueued task's hold, or none for a task claimable at once" in {
+      val queue = fresh(cls)
+      val holds = new java.util.concurrent.CopyOnWriteArrayList[Option[Instant]]()
+      queue.watchWaiting(hold => { holds.add(hold); () }).foreach { handle =>
+        try {
+          // A change stream opens asynchronously: enqueue until the first push arrives.
+          tools.Eventually.awaitStreamLive("an unheld task's insert", !holds.isEmpty) { pass =>
+            queue.enqueue(TaskType.ResolveImdbId, s"live|$pass", Map.empty, t0); ()
+          }
+          holds.get(0) shouldBe None
+          holds.clear()
+          val until = t0.plusSeconds(90)
+          queue.enqueue(TaskType.ScrapeChunk, "chunk|held", Map.empty, t0, notBefore = Some(until))
+          org.scalatest.concurrent.Eventually.eventually(org.scalatest.concurrent.PatienceConfiguration.Timeout(
+            org.scalatest.time.Span(tools.SpecTimeouts.Settle.toMillis, org.scalatest.time.Millis))) {
+            scala.jdk.CollectionConverters.ListHasAsScala(holds).asScala.toList should contain (Some(until))
+          }
+        } finally handle.close()
+      }
+    }
+
     it should s"[$name] free a key once its task completes" in {
       val queue = fresh(cls)
       queue.enqueue(TaskType.ResolveImdbId, "film|2026", Map.empty, t0)

@@ -355,16 +355,20 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
   "InMemoryTaskQueue.watchWaiting" should "ring on a fresh enqueue, not on a duplicate, and stop after close" in {
     val q     = new InMemoryTaskQueue
     val rings = new AtomicInteger(0)
-    val handle = q.watchWaiting(() => { rings.incrementAndGet(); () }).get
+    val holds  = new java.util.concurrent.CopyOnWriteArrayList[Option[Instant]]()
+    val handle = q.watchWaiting { hold => rings.incrementAndGet(); holds.add(hold); () }.get
 
     q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0) shouldBe EnqueueResult.Added
     rings.get() shouldBe 1
     q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0) shouldBe EnqueueResult.Duplicate
     rings.get() shouldBe 1 // a no-op duplicate must not ring
 
+    q.enqueue(ScrapeCinema, "scrape|held", submittedAt = t0, notBefore = Some(t0.plusSeconds(90))) shouldBe EnqueueResult.Added
+    scala.jdk.CollectionConverters.ListHasAsScala(holds).asScala.toList shouldBe List(None, Some(t0.plusSeconds(90))) // a held task's ring carries its hold
+
     handle.close()
     q.enqueue(ImdbRating, "imdb|y", submittedAt = t0) shouldBe EnqueueResult.Added
-    rings.get() shouldBe 1 // unsubscribed — no more rings
+    rings.get() shouldBe 2 // unsubscribed — no more rings
   }
 
   "TaskDoorbell" should "return at once when a ring already moved the generation past the snapshot (no lost wakeup)" in {
@@ -425,6 +429,46 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
         q.countByState() shouldBe empty // picked up + completed (removed) via the doorbell
       }
       h.seen.map(_.dedupKey) shouldBe List("scrape|x")
+    } finally w.stop()
+  }
+
+  it should "pick up a task enqueued on hold the moment its hold ends, without waiting out the idle backstop" in {
+    // A staggered ScrapeChunk fan-out is inserted at once, each chunk held by `notBefore`. Its insert
+    // rang when nothing was claimable yet, and a hold ending writes nothing — so the pool, parked
+    // again, sat out the 30 s backstop: worker-uk's oldest claimable chunk read 0–28 s all night
+    // with three of four slots idle (2026-10-07).
+    // The hold has to end in real time, on the clock the worker claims by: t0, moving with elapsed time.
+    val started = System.nanoTime()
+    val clock = new java.time.Clock {
+      override def instant(): Instant                          = t0.plusNanos(System.nanoTime() - started)
+      override def getZone: java.time.ZoneId                   = java.time.ZoneOffset.UTC
+      override def withZone(zone: java.time.ZoneId): java.time.Clock = this
+    }
+    val emptyClaims = new AtomicInteger(0)
+    val q = new InMemoryTaskQueue {
+      override def claim(workerId: String, lease: FiniteDuration, now: Instant): Option[Task] = {
+        val claimed = super.claim(workerId, lease, now)
+        if (claimed.isEmpty) emptyClaims.incrementAndGet()
+        claimed
+      }
+    }
+    val claimedAt = new java.util.concurrent.atomic.AtomicReference[Instant]()
+    val h = new RecordingHandler(ScrapeCinema, HandlerOutcome.Done) {
+      override def handle(task: Task): HandlerOutcome = { claimedAt.set(clock.instant()); super.handle(task) }
+    }
+    val w = new TaskWorker(q, Seq(h), processingTimeout = services.tasks.TaskWorker.ProcessingTimeout(5.minutes),
+      retryBackoff = services.tasks.TaskWorker.RetryBackoff(1.second), idleBackstop = services.tasks.TaskWorker.IdleBackstop(10.minutes),
+      poolSize = settings.WorkerPoolSize(1), clock = clock)
+    w.start()
+    try {
+      eventually(timeout(SpecTimeouts.Settle), interval(Span(5, Millis)))(emptyClaims.get should be >= 1)
+      val heldUntil = clock.instant().plusMillis(500)
+      q.enqueue(ScrapeCinema, "scrape|held", submittedAt = clock.instant(), notBefore = Some(heldUntil))
+      eventually(timeout(SpecTimeouts.Settle), interval(Span(20, Millis))) {
+        q.countByState() shouldBe empty
+      }
+      h.seen.map(_.dedupKey) shouldBe List("scrape|held")
+      claimedAt.get.isBefore(heldUntil) shouldBe false // not claimed before its hold ended
     } finally w.stop()
   }
 

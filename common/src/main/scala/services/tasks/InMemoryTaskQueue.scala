@@ -30,7 +30,7 @@ class InMemoryTaskQueue extends TaskQueue {
 
   private val rows = scala.collection.mutable.LinkedHashMap.empty[String, Row]
   private val lock = new Object
-  private val waitingListeners = new CopyOnWriteArrayList[() => Unit]()
+  private val waitingListeners = new CopyOnWriteArrayList[Option[Instant] => Unit]()
 
   override def enqueue(
     taskType:    TaskType,
@@ -53,7 +53,7 @@ class InMemoryTaskQueue extends TaskQueue {
     }
     // Ring outside the lock, and only for genuinely new work — a duplicate is a
     // no-op, exactly like MongoTaskQueue's insert-only change-stream signal.
-    if (result == EnqueueResult.Added) waitingListeners.asScala.foreach(_())
+    if (result == EnqueueResult.Added) waitingListeners.asScala.foreach(_(notBefore))
     result
   }
 
@@ -135,7 +135,7 @@ class InMemoryTaskQueue extends TaskQueue {
 
   /** Push parity with [[MongoTaskQueue]] for Mongo-less dev/tests: fire
    *  `onWaiting` whenever a fresh task is actually added (see `enqueue`). */
-  override def watchWaiting(onWaiting: () => Unit): Option[AutoCloseable] = {
+  override def watchWaiting(onWaiting: Option[Instant] => Unit): Option[AutoCloseable] = {
     waitingListeners.add(onWaiting)
     Some(new AutoCloseable { override def close(): Unit = { waitingListeners.remove(onWaiting); () } })
   }

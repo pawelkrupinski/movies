@@ -321,7 +321,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
    *  guard in [[TaskInsertStream]] is kept as defence-in-depth. The subscription
    *  itself — and its reopen after a terminal error, which is what keeps this node's
    *  workers woken across a Mongo blip — lives in [[TaskInsertStream]]. */
-  override def watchWaiting(onWaiting: () => Unit): Option[AutoCloseable] = coll.map { c =>
+  override def watchWaiting(onWaiting: Option[Instant] => Unit): Option[AutoCloseable] = coll.map { c =>
     val stream = new TaskInsertStream(
       open      = c.watch(Seq(Aggregates.filter(Filters.eq("operationType", "insert")))).subscribe(_),
       onWaiting = onWaiting,

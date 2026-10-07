@@ -77,6 +77,7 @@ object TraitDecorators {
     case c if c == java.lang.Long.TYPE                     => 1L
     case c if c == java.lang.Boolean.TYPE                  => true
     case c if c == classOf[Function0[?]]                   => () => ()
+    case c if c == classOf[Function1[?, ?]]                => (_: Any) => ()
     case other =>
       throw new AssertionError(s"TraitDecorators.sampleArgument: no sample for a ${other.getName} parameter — add one")
   }

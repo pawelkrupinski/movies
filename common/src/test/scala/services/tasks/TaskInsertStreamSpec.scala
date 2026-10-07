@@ -7,6 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.RecordingSchedule
 
+import java.time.Instant
 import scala.collection.mutable
 import scala.concurrent.duration._
 
@@ -34,25 +35,35 @@ class TaskInsertStreamSpec extends AnyFlatSpec with Matchers {
     def current: Observer[ChangeStreamDocument[Document]] = observers.last
   }
 
-  private def event(op: String) =
+  private def event(op: String, fullDocument: Document = null) =
     new ChangeStreamDocument[Document](op, new BsonDocument("_data", new BsonString("token")),
-      null, null, null, null, null, new BsonDocument("_id", new BsonString("t1")),
+      null, null, null, fullDocument, null, new BsonDocument("_id", new BsonString("t1")),
       null, null, null, null, null, null, null)
 
-  private def stream(cursor: HandFedCursor, clock: RecordingSchedule, rings: mutable.Buffer[Int] = mutable.Buffer.empty) = {
-    val s = new TaskInsertStream(cursor.open, () => rings += rings.size, clock.schedule)
+  private def stream(cursor: HandFedCursor, clock: RecordingSchedule, rings: mutable.Buffer[Option[Instant]] = mutable.Buffer.empty) = {
+    val s = new TaskInsertStream(cursor.open, hold => rings += hold, clock.schedule)
     s.start()
     s
   }
 
   "TaskInsertStream" should "ring the doorbell once per insert and ignore other ops" in {
     val cursor = new HandFedCursor; val clock = new RecordingSchedule
-    val rings = mutable.Buffer.empty[Int]
+    val rings = mutable.Buffer.empty[Option[Instant]]
     stream(cursor, clock, rings)
     cursor.current.onNext(event("insert"))
     cursor.current.onNext(event("update"))
     cursor.current.onNext(event("insert"))
     rings should have size 2
+  }
+
+  it should "hand the doorbell an inserted task's hold, so the pool can wake when it ends" in {
+    val cursor = new HandFedCursor; val clock = new RecordingSchedule
+    val rings = mutable.Buffer.empty[Option[Instant]]
+    stream(cursor, clock, rings)
+    val until = Instant.parse("2026-10-07T06:30:00Z")
+    cursor.current.onNext(event("insert", Document("_id" -> "t1", "nextEligibleAt" -> new java.util.Date(until.toEpochMilli))))
+    cursor.current.onNext(event("insert", Document("_id" -> "t2")))
+    rings.toList shouldBe List(Some(until), None)
   }
 
   it should "reopen the cursor after a terminal error, on the reopen backoff" in {

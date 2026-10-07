@@ -122,8 +122,9 @@ class TaskWorker(
   def start(): Unit = {
     running.set(true)
     // Push: ring the doorbell whenever the queue gains a fresh task, so a parked
-    // worker wakes and claims it immediately instead of waiting out the backstop.
-    watchHandle = queue.watchWaiting(() => doorbell.ring())
+    // worker wakes and claims it immediately instead of waiting out the backstop —
+    // or, for a task held by `notBefore`, the moment its hold ends.
+    watchHandle = queue.watchWaiting(ringWhenClaimable)
     // Leases run `processingTimeout` (5min), so reaping every `reapInterval`
     // (30s) is ample. A reap returns crashed/stuck (and other nodes') leases to
     // waiting; ring so the freed work is picked up now, not at the next backstop.
@@ -139,6 +140,18 @@ class TaskWorker(
     }
     logger.info(s"TaskWorker started (${poolSize.value} worker(s) $baseId-0..${poolSize.value - 1}, ${byType.size} handler(s), push=${watchHandle.isDefined}, idle-backstop ${idleBackstop.value.toSeconds}s, reap ${reapInterval.value.toSeconds}s).")
   }
+
+  /** Ring for a new task when it can be claimed: now, or when its hold ends. A held task's insert finds
+   *  nothing to claim, and its hold ending writes nothing, so without a timed ring the pool — parked
+   *  again — sat out `idleBackstop` with the task claimable: a staggered ScrapeChunk fan-out read 0–28 s
+   *  of head-of-line age around the clock on worker-uk with three of four slots idle (2026-10-07).
+   *  The ring runs on the reaper's thread; it only bumps the doorbell. */
+  private def ringWhenClaimable(heldUntil: Option[Instant]): Unit =
+    heldUntil.map(until => java.time.Duration.between(clock.instant(), until).toMillis).filter(_ > 0) match {
+      // A push racing `stop()` meets a shut scheduler: nothing is left to wake then.
+      case Some(waitMillis) => Try(reaper.schedule((() => doorbell.ring()): Runnable, waitMillis, TimeUnit.MILLISECONDS)); ()
+      case None             => doorbell.ring()
+    }
 
   /** One worker slot: claim a task, run it to completion, claim the next.
    *
@@ -315,7 +328,7 @@ class TaskWorker(
     stopping = true
     running.set(false)
     watchHandle.foreach(h => Try(h.close()))
-    reaper.shutdown()
+    reaper.shutdownNow()           // the reap, and every hold's pending ring with it
     doorbell.ringAll()             // wake every parked worker so it sees running=false
     workers.foreach(_.interrupt()) // break any in-flight retryBackoff sleep or fetch
     val waited = tools.Stopwatch.start()

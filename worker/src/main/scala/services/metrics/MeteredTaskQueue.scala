@@ -41,6 +41,6 @@ class MeteredTaskQueue(delegate: TaskQueue, metrics: WorkerTaskMetrics) extends 
   override def countByState(): Map[String, Long] = delegate.countByState()
   override def waitingCount(taskType: TaskType): Int = delegate.waitingCount(taskType)
   override def monitor(activeLimit: Int): QueueSnapshot = delegate.monitor(activeLimit)
-  override def watchWaiting(onWaiting: () => Unit): Option[AutoCloseable] = delegate.watchWaiting(onWaiting)
+  override def watchWaiting(onWaiting: Option[java.time.Instant] => Unit): Option[AutoCloseable] = delegate.watchWaiting(onWaiting)
   override def close(): Unit = delegate.close()
 }

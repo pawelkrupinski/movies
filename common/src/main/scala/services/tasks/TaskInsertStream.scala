@@ -5,13 +5,14 @@ import org.mongodb.scala.{Document, Observer, Subscription}
 import play.api.Logging
 import services.movies.ChangeStreamReopen
 
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.duration.FiniteDuration
 
 /**
  * The `tasks` change-stream SUBSCRIPTION behind [[MongoTaskQueue.watchWaiting]]: one
- * cursor over the collection's inserts, ringing `onWaiting` per insert (an insert is
- * exactly "new claimable work" — see `watchWaiting`), REOPENED after it dies.
+ * cursor over the collection's inserts, ringing `onWaiting` per insert with the task's hold
+ * (an insert is exactly "new work" — see `watchWaiting`), REOPENED after it dies.
  *
  * A change stream's `onError` is terminal — the driver auto-resumes across transient
  * blips, but once it reports the death nothing brings the cursor back. `watchWaiting`
@@ -30,7 +31,7 @@ import scala.concurrent.duration.FiniteDuration
  */
 final class TaskInsertStream(
   open:      Observer[ChangeStreamDocument[Document]] => Unit,
-  onWaiting: () => Unit,
+  onWaiting: Option[Instant] => Unit,
   schedule:  (FiniteDuration, () => Unit) => Unit
 ) extends Logging with AutoCloseable {
 
@@ -46,7 +47,7 @@ final class TaskInsertStream(
       reopen.opened() // a delivered event is what proves the cursor healthy — reset the backoff
       // The server-side `$match` already keeps this to inserts; the guard is defence-in-depth.
       if (change.getOperationType == OperationType.INSERT)
-        try onWaiting()
+        try onWaiting(heldUntil(change))
         catch { case exception: Throwable => logger.warn(s"Task queue doorbell ring failed: ${exception.getMessage}") }
     }
     override def onError(e: Throwable): Unit = {
@@ -55,6 +56,10 @@ final class TaskInsertStream(
     }
     override def onComplete(): Unit = died()
   })
+
+  /** The inserted task's `notBefore` hold — `nextEligibleAt`, which `enqueue` sets only for a held task. */
+  private def heldUntil(change: ChangeStreamDocument[Document]): Option[Instant] =
+    Option(change.getFullDocument).flatMap(_.get[org.bson.BsonDateTime]("nextEligibleAt")).map(at => Instant.ofEpochMilli(at.getValue))
 
   private def died(): Unit = { subscription.set(null); reopen.failed() }
 
