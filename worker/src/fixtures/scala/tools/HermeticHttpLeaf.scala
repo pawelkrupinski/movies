@@ -51,7 +51,9 @@ final class MissingFixtures {
    *  list says this leg missed nothing fillable, which an absent one cannot. */
   def writeRefetches(file: java.nio.file.Path): Int = {
     val lines = refetches.asScala.toSeq.sortBy(_._1).map { case (key, r) => s"$key\t${r.verb}\t${r.url}" }
-    AtomicFiles.writeString(file, lines.map(_ + "\n").mkString)
+    // A header, so even an empty list is a non-empty file: a release refuses a zero-byte asset (HTTP 400,
+    // run 37608911385). `Refetch.parse` reads past it.
+    AtomicFiles.writeString(file, (s"# ${lines.size} fetchable gap(s)" +: lines).map(_ + "\n").mkString)
     lines.size
   }
 }

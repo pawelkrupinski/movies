@@ -24,7 +24,7 @@ check "a fill that fetched nothing packs no archive, so nothing is published" "f
 # Assets of the release: two fills and two lists for pair 100, others for another pair and country.
 cp "$work/release/fill-us-100-201.tar.zst" "$work/release/fill-us-100-35.tar.zst"
 printf 'k\tGET\thttps://old\n' > "$work/release/refetch-us-100-35.tsv"
-printf 'a\tGET\thttps://www.flicks.us/movie/a/\nb\tGET\thttps://www.flicks.us/movie/b/\n' > "$work/release/refetch-us-100-201.tsv"
+printf '# 2 fetchable gap(s)\na\tGET\thttps://www.flicks.us/movie/a/\nb\tGET\thttps://www.flicks.us/movie/b/\n' > "$work/release/refetch-us-100-201.tsv"
 : > "$work/release/fill-us-99-300.tar.zst"
 : > "$work/release/fill-uk-100-301.tar.zst"
 : > "$work/release/enrichment-us-100.tar.zst"

@@ -73,6 +73,12 @@ class HermeticHttpLeafSpec extends AnyFlatSpec with Matchers {
       MissingFixtures.Refetch("BYTES", "https://drafthouse.com/s/mother/v2/schedule/presentation/akira"),
       MissingFixtures.Refetch("GET", "https://www.flicks.us/movie/toy-story-5/"))
     lines.mkString should not include "secret"
+    lines.head shouldBe "# 2 fetchable gap(s)"
+    withClue("a release refuses a zero-byte asset: ") {
+      val none = file.resolveSibling("enrichment-de.refetch.tsv")
+      new MissingFixtures().writeRefetches(none) shouldBe 0
+      java.nio.file.Files.size(none) should be > 0L
+    }
     missing.size shouldBe 5
     missing.report("enrichment-us") should include("by host: ")
   }

@@ -61,9 +61,9 @@ case "${1:-}" in
     : > "$out"
     # allow-silenced: a list that cannot be read is no gaps this time — the next leg's fill reads it again.
     if [ -n "$newest" ] && gh release download "$TAG" --pattern "$newest" --output "$out" --clobber 2>/dev/null; then
-      echo "::notice::$newest lists $(grep -c . "$out" || true) fetchable gap(s)" >&2
+      echo "::notice::$newest lists $(grep -c "$(printf '\t')" "$out" || true) fetchable gap(s)" >&2
     fi
-    grep -c . "$out" || true
+    grep -c "$(printf '\t')" "$out" || true
     ;;
   pack)
     dir="${2:?fill dir}"; archive="${3:?archive}"

@@ -182,8 +182,8 @@ runs:
           code="${{ inputs.code }}"
           named="refetch-$code-$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-$GITHUB_RUN_ID.tsv"
           mkdir -p refetch-upload && cp "$LIST" "refetch-upload/$named"
-          echo "$(grep -c . "$LIST" || true) fetchable gap(s) for the next leg's fill"
-          scripts/ci/gh-release.sh upload "$FIXTURE_RELEASE_TAG" "refetch-upload/$named" || exit 1
+          echo "$(grep -c "$(printf '\t')" "$LIST" || true) fetchable gap(s) for the next leg's fill"
+          scripts/ci/gh-release.sh upload "$FIXTURE_RELEASE_TAG" "refetch-upload/$named" || { echo "::warning::could not publish $named — the next leg's fill reads the list before it"; exit 0; }
           # Only the newest is read (convergence-fill.sh gaps); the one before it may be mid-read.
           # allow-silenced: pruning old lists is housekeeping; one that fails to delete is pruned next time.
           gh release view "$FIXTURE_RELEASE_TAG" --json assets \
@@ -202,7 +202,7 @@ runs:
           [ -f "$ARCHIVE" ] || { echo "the fill fetched nothing — nothing to publish"; exit 0; }
           named="fill-${{ inputs.code }}-$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-$GITHUB_RUN_ID.tar.zst"
           mkdir -p fill-upload && ln -f "$ARCHIVE" "fill-upload/$named"
-          scripts/ci/gh-release.sh upload "$FIXTURE_RELEASE_TAG" "fill-upload/$named" || exit 1
+          scripts/ci/gh-release.sh upload "$FIXTURE_RELEASE_TAG" "fill-upload/$named" || { echo "::warning::could not publish $named — the next fill fetches its pages again"; exit 0; }
           echo "published $named over pair $KINOWO_CONVERGENCE_PIN_CORPUS_RUN"
 
     # Which corpus this GREEN full leg replayed, as `corpus-green-<code>.txt` beside the

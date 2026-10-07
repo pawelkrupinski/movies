@@ -67,6 +67,7 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
         step should include("inputs.mode == 'hermetic'")
         step should include("$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-$GITHUB_RUN_ID")
         RepoFile.withoutComments(step) should not include "--clobber"
+        withClue("a publish that fails must not turn the verdict red: ")(RepoFile.withoutComments(step) should not include "|| exit 1")
       }
     }
   }
