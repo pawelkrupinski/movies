@@ -24,6 +24,12 @@
 # A convergence leg's replays write hundreds of thousands of documents into databases that die with
 # the runner, and on disk they kept 1.3 of the runner's 4 cores in iowait (run 37513892540); a leg
 # holds 1.1-1.5 GB there. Only where the box has the room: a 10g-heap leg does not.
+#
+# On the runner's own network (`--network host`), not a published port: a client reaching a published
+# port on 127.0.0.1 is relayed by docker-proxy, a userland process copying every byte of every round
+# trip. A convergence leg makes millions of them, and through its detail phases the runner was ~0.7 of
+# a core busier than the JVM and mongod together (run 37581348550). The image's mongod binds every
+# interface, so 127.0.0.1:27017 reaches it directly.
 set -uo pipefail
 
 timeout_seconds="${MONGO_START_TIMEOUT_SECONDS:-180}"
@@ -55,7 +61,7 @@ is_primary() { mongosh_eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; }
 
 storage=()
 [ -n "${MONGO_TMPFS:-}" ] && storage=(--tmpfs "/data/db:rw,size=${MONGO_TMPFS}")
-docker run -d --name mongo -p 27017:27017 ${storage[@]+"${storage[@]}"} mongo:8.3.11 --replSet rs0 "$@" || exit 1
+docker run -d --name mongo --network host ${storage[@]+"${storage[@]}"} mongo:8.3.11 --replSet rs0 "$@" || exit 1
 wait_for "reachable" is_up || exit 1
 mongosh_eval "rs.initiate({_id:\"rs0\",writeConcernMajorityJournalDefault:$majority_journal,members:[{_id:0,host:\"127.0.0.1:27017\"}]})" || exit 1
 wait_for "PRIMARY" is_primary || exit 1
