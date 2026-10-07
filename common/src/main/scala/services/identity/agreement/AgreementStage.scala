@@ -545,11 +545,18 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         val known    = verdicts.flatMap(_.toOption)
         val stated   = listings.map(asStated)
         val agreed   = Agreement.agreed(listings, known, lean, Some(thisYear), stated)
-        val verdict  = StoredVerdict(id, digest, reads.toMap, agreed, decidedUnder,
-          // an agreement only review sites make is taken as nothing ([[taken]]): the fill reads the cluster as one none agreed on
-          if (agreed.exists(_.families.exists(_.namesFilms))) None else filledOf(decision, listings, known, stated, thisYear, version, asked))
-        if (!held.get(id).contains(verdict)) moved += verdict
-        checked(id) = (digest, version)
+        // an agreement only review sites make is taken as nothing ([[taken]]): the fill reads the cluster as one none agreed on
+        val fill     = if (agreed.exists(_.families.exists(_.namesFilms))) Answer.Known(None) else filledOf(decision, listings, known, stated, thisYear, version, asked)
+        val verdict  = StoredVerdict(id, digest, reads.toMap, agreed, decidedUnder, fill.toOption.flatten)
+        if (fill == Answer.Unknown) {
+          // the fill met a TMDB question not answered yet: this pass reads the verdict, none keeps it — kept, it stood once
+          // TMDB had answered (its reads are the families' only), and the fill was never read again (PL "Lalka (Dolly)" ×5)
+          waiting(id) = AgreementStage.Waiting(digest, Set.empty, clock.instant())
+          checked -= id
+        } else {
+          if (!held.get(id).contains(verdict)) moved += verdict
+          checked(id) = (digest, version)
+        }
         verdict
       }
     }
@@ -570,22 +577,23 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
 
   /** The film the first selected FILL rule takes for a cluster the families agreed on nothing for
    *  ([[services.identity.UnifiedRules.filled]] over [[services.identity.UnifiedEvidence.contenders]]: the cluster's own
-   *  TMDB candidates, none denied, and the films the families took or lean to) — none while a TMDB answer the cluster's
-   *  candidates need is a gap. The venue posters' veto is read when it is taken ([[filledTake]]). */
+   *  TMDB candidates, none denied, and the films the families took or lean to) — `Unknown` while a TMDB answer the
+   *  cluster's candidates need is a gap. The venue posters' veto is read when it is taken ([[filledTake]]). */
   private def filledOf(decision: ResolverDecision, listings: Seq[Listing], verdicts: Seq[FamilyVerdict], stated: Seq[Listing],
-                       thisYear: Int, version: Long, asked: mutable.Set[(VoterFamily, String)]): Option[StoredFill] =
-    tmdb.filter(_ => rules.fill.nonEmpty).flatMap { lookups =>
+                       thisYear: Int, version: Long, asked: mutable.Set[(VoterFamily, String)]): Answer[Option[StoredFill]] =
+    tmdb.filter(_ => rules.fill.nonEmpty).fold[Answer[Option[StoredFill]]](Answer.Known(None)) { lookups =>
       val noting = new AgreementStage.UnknownNoting(lookups)
       val nodes  = IdentityResolver.evidenceOf(listings, noting, normalizer, calibration)(_ => true)
-      Option.when(!noting.unknown) {
+      if (noting.unknown) Answer.Unknown
+      else {
         val measured = (listing: Listing) => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured
         // the `broadcast.take` signal read as the stage's own take reads the join: the same productions, the same wait
         val evidence = services.identity.UnifiedEvidence.ClusterEvidence(listings, decision, nodes, verdicts, Nil, _ => None, thisYear, stated,
           Some(measured), venueNames(listings), film => lookups.cast(film).toOption.flatten,
           productions = () => productionsOf(listings, measured, asked), undated = undatedOf(lookups, version))
-        rules.filled(services.identity.UnifiedEvidence.contenders(evidence)).map { case (film, rule) =>
-          StoredFill(rule, film.tmdb, film.imdb, rules.explain(film, rule)) }
-      }.flatten
+        Answer.Known(rules.filled(services.identity.UnifiedEvidence.contenders(evidence)).map { case (film, rule) =>
+          StoredFill(rule, film.tmdb, film.imdb, rules.explain(film, rule)) })
+      }
     }
 
   /** The people the listings' VENUES name — each listing's own synopsis and cast, and its venue's detail page's — that the
@@ -1009,7 +1017,8 @@ object AgreementStage {
   trait Metrics { def applied(applied: Applied): Unit }
   object Metrics { val Silent: Metrics = _ => () }
 
-  /** A cluster waiting on families' answers: its listings' digest, the questions it waits on, and since when. */
+  /** A cluster waiting on families' answers: its listings' digest, the questions it waits on, and since when — none
+   *  where only its fill's TMDB answers were missing, resolved again on the next pass. */
   private final case class Waiting(listings: Long, gaps: Set[(VoterFamily, String)], since: java.time.Instant)
   /** How long a cluster with some of its questions answered waits for the rest before it is resolved on what came. */
   val PartialAfter: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, java.util.concurrent.TimeUnit.MINUTES)

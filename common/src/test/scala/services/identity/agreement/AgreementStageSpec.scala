@@ -32,18 +32,12 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val tour    = IdentityMeasures.Film("Seventeen World Tour (New_)", None, Nil, Some(2026), None, None, None, None)
     val imdb    = Map(VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt46658626" -> SourceRecord(tour, Map("imdb" -> "tt46658626"))))) ++
       Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
-    val nothing = new services.identity.IdentityLookups {
-      def hasDetail(listing: services.identity.Listing): Boolean = false
-      def detail(listing: services.identity.Listing) = Answer.Known(None)
-      def candidates(query: services.identity.CandidateQuery) = Answer.Known(Nil)
-      def film(tmdbId: Int) = Answer.Known(None)
-    }
     def decided(title: String, venues: Seq[models.Cinema], rules: services.identity.UnifiedRules) = {
       val listings = venues.map(venue => listing(venue, title))
       val model = Resolution(Seq(ResolverDecision(listings.map(_.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil)()), listings.size,
         listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
-      new AgreementStage(imdb, nothing, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
-        clock = _root_.tools.SpecClock.Pinned, tmdb = Some(nothing), rules = rules).apply(model, listings.map(l => l.key -> l).toMap.get, version = 1).decisions.head
+      new AgreementStage(imdb, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+        clock = _root_.tools.SpecClock.Pinned, tmdb = Some(NoVenueDetails), rules = rules).apply(model, listings.map(l => l.key -> l).toMap.get, version = 1).decisions.head
     }
     val selected = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current"))
     val wide     = Seq(KinoMuza, models.Multikino, models.KinoPalacowe)
@@ -68,18 +62,12 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       VoterFamily.RottenTomatoes -> new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map("seventeen_world_tour_new" -> record)),
       VoterFamily.Imdb           -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt46658626" -> record))) ++
       Seq(VoterFamily.Wiki, VoterFamily.Filmweb).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
-    val nothing = new services.identity.IdentityLookups {
-      def hasDetail(listing: services.identity.Listing): Boolean = false
-      def detail(listing: services.identity.Listing) = Answer.Known(None)
-      def candidates(query: services.identity.CandidateQuery) = Answer.Known(Nil)
-      def film(tmdbId: Int) = Answer.Known(None)
-    }
     val listings = Seq(KinoMuza, models.Multikino, models.KinoPalacowe).map(venue => listing(venue, "SEVENTEEN World Tour 'NEW_'"))
     val model = Resolution(Seq(ResolverDecision(listings.map(_.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil)()), listings.size,
       listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     def decided(families: Map[VoterFamily, FamilyAnswers]) =
-      new AgreementStage(families, nothing, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
-        clock = _root_.tools.SpecClock.Pinned, tmdb = Some(nothing),
+      new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
+        clock = _root_.tools.SpecClock.Pinned, tmdb = Some(NoVenueDetails),
         rules = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current")))
         .apply(model, listings.map(l => l.key -> l).toMap.get, version = 1).decisions.head
     // IMDb's take and the review sites' agree: the stage takes the agreement
@@ -88,6 +76,34 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val leaning = reviews.updated(VoterFamily.Imdb, new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty))
     val filled  = decided(leaning)
     (filled.basis, filled.fallback.map(_.id)) shouldBe ((ResolverDecision.Basis.Filled, Some("tt46658626")))
+  }
+
+  // PL "Lalka (Dolly)" ×5: the fill's own resolve of the cluster asked TMDB what its store did not hold yet; the verdict
+  // was kept with no fill, and stood once TMDB had answered — the families' agreement on Dolly never reached the fill again
+  it should "read the fill again once TMDB answers what it could not, never keeping a verdict decided blind" in {
+    val tour     = IdentityMeasures.Film("Seventeen World Tour (New_)", None, Nil, Some(2026), None, None, None, None)
+    val families = Map(VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt46658626" -> SourceRecord(tour, Map("imdb" -> "tt46658626"))))) ++
+      Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
+    var answered = false
+    val tmdb = new services.identity.IdentityLookups {
+      def hasDetail(listing: services.identity.Listing): Boolean = false
+      def detail(listing: services.identity.Listing) = Answer.Known(None)
+      def candidates(query: services.identity.CandidateQuery) = if (answered) Answer.Known(Nil) else Answer.Unknown
+      def film(tmdbId: Int) = Answer.Known(None)
+    }
+    val listings = Seq(KinoMuza, models.Multikino, models.KinoPalacowe).map(venue => listing(venue, "SEVENTEEN World Tour 'NEW_'"))
+    val model = Resolution(Seq(ResolverDecision(listings.map(_.key), None, 0.2, ResolverDecision.Basis.BelowThreshold, Nil)()), listings.size,
+      listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val stored = new InMemoryAgreementVerdicts
+    val stage  = new AgreementStage(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), stored,
+      clock = _root_.tools.SpecClock.Pinned, tmdb = Some(tmdb), rules = services.identity.UnifiedRules("t", services.identity.UnifiedEvidence.Guards, Seq("venues.current")))
+    val byKey = listings.map(l => l.key -> l).toMap
+    stage.apply(model, byKey.get, version = 1).decisions.head.basis shouldBe ResolverDecision.Basis.BelowThreshold
+    stored.all().filter(_.filled.isEmpty) shouldBe empty   // nothing kept that a blind fill decided
+    answered = true
+    val filled = stage.apply(model, byKey.get, version = 2).decisions.head
+    (filled.basis, filled.fallback.map(_.id)) shouldBe ((ResolverDecision.Basis.Filled, Some("tt46658626")))
+    stored.all().flatMap(_.filled).map(_.imdb) shouldBe Seq(Some("tt46658626"))
   }
 
   it should "take, by the pinned families.current rule, a current release two families take at one venue" in {
