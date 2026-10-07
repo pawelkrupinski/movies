@@ -353,7 +353,7 @@ object IdentityMeasures {
      *  `dark city`, and `dark city` leading `director s cut`). */
     def split(title: String): Seq[(Seq[String], Seq[String], Boolean)] = {
       val whole = yearlessTokens(title)
-      shapes(Seq(title)).map(yearlessTokens).filter(p => TitleContainment.isTokenRun(p, whole)).flatMap { p =>
+      shapesOfTitle(title).map(yearlessTokens).filter(p => TitleContainment.isTokenRun(p, whole)).flatMap { p =>
         val trails = !whole.startsWith(p)
         val rest   = if (trails) whole.dropRight(p.length) else whole.drop(p.length)
         Seq((p, rest, trails), (rest, p, !trails))
@@ -704,7 +704,17 @@ object IdentityMeasures {
    *  all in capitals ("BEZ KOŃCA 2D PL LOLO"): its case says nothing. */
   def capitalisedTags(billed: String): Seq[String] =
     if (!billed.exists(_.isLower)) Nil
-    else shapes(Seq(billed)).filter(piece => piece != billed.trim && piece.exists(_.isLetter) && !piece.exists(_.isLower))
+    else shapesOfTitle(billed).filter(piece => piece != billed.trim && piece.exists(_.isLetter) && !piece.exists(_.isLower))
+
+  /** [[shapes]] of ONE title with no learned decorations, split once and remembered: the scorer asks it of
+   *  the same billed titles for every candidate it weighs (`CandidateScoring.namesOnlyATag`, `Qualifiers.split`),
+   *  ~6% of a US order-independence replay's CPU (run 37517196329). A pure function of the string; bounded. */
+  private[identity] def shapesOfTitle(title: String): Seq[String] = SingleTitleShapes.get(title, t => {
+    titleShapesSplit.incrementAndGet(); shapes(Seq(t))
+  })
+  private val SingleTitleShapes = tools.BoundedCache.ofSize(100_000).build[String, Seq[String]]()
+  /** How many single titles [[shapesOfTitle]] has split rather than remembered — what the spec reads the memo by. */
+  private[identity] val titleShapesSplit = new java.util.concurrent.atomic.AtomicLong(0)
 
   private def shapesOf(l: Listing): Seq[String] = {
     shapes(Seq(l.title) ++ l.rawTitle ++ l.searchTitles ++ SearchTitles.candidates(l.title, l.originalTitle) ++
@@ -1042,11 +1052,11 @@ object IdentityMeasures {
   /** An original title's comparison forms: its own, and its shapes' keys. */
   private[identity] final case class OriginalForm(text: String) {
     val form: TitleForm = TitleForm(text)
-    lazy val shapeKeys: Seq[String] = shapes(Seq(text)).map(key)
+    lazy val shapeKeys: Seq[String] = shapesOfTitle(text).map(key)
     /** Its delimited segments as words, read for a decoration: "Michael Mann's Manhunter: The Final
      *  Cut"'s "Michael Mann's Manhunter" ends in the film's title. */
     lazy val segmentWords: Seq[Seq[String]] =
-      (shapes(Seq(text)) ++ ColonBreak.split(text).headOption.filter(_ != text)).filterNot(_ == text).map(words).filter(_.nonEmpty).distinct
+      (shapesOfTitle(text) ++ ColonBreak.split(text).headOption.filter(_ != text)).filterNot(_ == text).map(words).filter(_.nonEmpty).distinct
     lazy val longWords: Set[String] = form.words.filter(_.length >= 4).toSet
   }
 

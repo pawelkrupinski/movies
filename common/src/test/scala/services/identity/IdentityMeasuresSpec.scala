@@ -910,4 +910,16 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.originalTitleRelation(Some("The Metropolitan Opera: Così fan tutte (2026)"),
       Seq("The Metropolitan Opera 2026/27: Così fan tutte"), filmYear = Some(2026)) shouldBe IdentityMeasures.Category("match")
   }
+
+  // The scorer asks the shapes of one billed title again for every candidate it weighs
+  // (`CandidateScoring.namesOnlyATag`, `Qualifiers.split`): ~6% of a US replay's CPU (run 37517196329).
+  "a title's shapes" should "be split once and answered from memory after, the same as split afresh" in {
+    val title  = s"MISTYCZKA /film polski/ [2D LEKTOR] ${System.nanoTime()}"
+    val before = IdentityMeasures.titleShapesSplit.get()
+    val first  = IdentityMeasures.shapesOfTitle(title)
+    IdentityMeasures.shapesOfTitle(title) shouldBe first
+    IdentityMeasures.capitalisedTags(title)
+    IdentityMeasures.titleShapesSplit.get() - before shouldBe 1
+    first shouldBe IdentityMeasures.shapes(Seq(title))
+  }
 }
