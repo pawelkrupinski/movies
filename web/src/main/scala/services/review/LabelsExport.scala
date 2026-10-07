@@ -84,7 +84,7 @@ object LabelsExport {
             // database's id on the label the answer corrects (filmweb:10008278 and tmdb:1157322 are one Franz)
             shown.filter(f => identity.provablyDifferent(f.ref, ref)).flatMap(f => rows(f, right = false, s"must not: ${f.describe}"))
         }
-      case ReviewVerdict.Undo        => Nil
+      case ReviewVerdict.Unsure | ReviewVerdict.Undo => Nil
     }
   }
 
@@ -101,7 +101,7 @@ object LabelsExport {
           flipped += 1
       }
     }
-    val unexportable = answers.filter(a => rowsOf(a, identity).isEmpty)
+    val unexportable = answers.filter(a => a.verdict != ReviewVerdict.Unsure && rowsOf(a, identity).isEmpty)
       .map(a => s"${a.country} ${a.title}: ${a.verdict.label} with no film to label")
     val warnings = answers.flatMap(a => a.warnings.map(w => s"${a.country} ${a.title}: $w"))
     (rows.toSeq, Summary(added, flipped, unchanged, unexportable, warnings))

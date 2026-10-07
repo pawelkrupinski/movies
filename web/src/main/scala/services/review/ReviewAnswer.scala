@@ -20,6 +20,8 @@ enum ReviewVerdict(val code: String, val label: String) {
   case Event       extends ReviewVerdict("event", "Not a film")
   /** The cluster bills two films or more at once. */
   case Bill        extends ReviewVerdict("bill", "Double bill")
+  /** The reviewer cannot tell the cluster's film: off the list, and nothing to label. */
+  case Unsure      extends ReviewVerdict("unsure", "Can't determine")
   case Undo        extends ReviewVerdict("undo", "Undo")
 }
 

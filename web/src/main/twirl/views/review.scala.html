@@ -323,6 +323,7 @@
         <button type="button" class="btn none@if(isOn(card, "none")){ on}" data-verdict="none">None of these</button>
         <button type="button" class="btn event@if(isOn(card, "event")){ on}" data-verdict="event">Not a film</button>
         <button type="button" class="btn bill@if(isOn(card, "bill")){ on}" data-verdict="bill">Double bill</button>
+        <button type="button" class="btn unsure@if(isOn(card, "unsure")){ on}" data-verdict="unsure">Can't determine</button>
         <button type="button" class="btn" data-verdict="undo"@if(card.answer.isEmpty){ hidden}>Undo</button>
         <span class="status"></span>
       </div>

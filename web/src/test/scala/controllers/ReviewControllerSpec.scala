@@ -112,4 +112,36 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest())) should include("FRANZ KAFKA")
     status(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "film")))) shouldBe BAD_REQUEST
   }
+
+  it should "take a cluster the reviewer can't determine off the list, and label nothing for it" in {
+    val answers = new ReviewAnswers(new InMemoryReviewAnswerStore)
+    val labels  = Files.createTempFile("labels", ".tsv")
+    val c       = controller(Mode.Dev, answers, labels)
+    contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest())) should include("""data-verdict="unsure">Can't determine""")
+    val card    = ReviewCards.build(ReviewFixtures.source(now), Seq(ReviewCluster.of(Country.Poland, heldDecision) -> None), Nil,
+      new ReviewAnswers.Index(Nil)).head.payload(ReviewPage.Queue)
+    status(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "unsure")))) shouldBe OK
+    contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest())) should not include "FRANZ KAFKA"
+
+    val exported = contentAsJson(c.exportLabels()(FakeRequest()))
+    (exported \ "added").as[Int] shouldBe 0
+    (exported \ "summary").as[String] should not include "not exported"   // no film to label is the answer, not a gap
+    LabelsTsv.read(labels) shouldBe empty
+  }
+
+  "every review page" should "read its countries side by side, not one after another" in {
+    // Each country's read waits until the other's has started: read in turn, the first would wait out the barrier.
+    val barrier = new java.util.concurrent.CyclicBarrier(2)
+    def meeting(held: Seq[services.identity.ResolverDecision]): ReviewSource = new ReviewSource {
+      private val source = new InMemoryReviewSource(held)
+      export source.{decisions as _, *}
+      def decisions(unmatchedOnly: Boolean) = { barrier.await(5, java.util.concurrent.TimeUnit.SECONDS); source.decisions(unmatchedOnly) }
+    }
+    val c = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
+      Map(Country.Poland -> meeting(Seq(heldDecision)), Country.UnitedKingdom -> meeting(Nil)),
+      new ReviewAnswers(new InMemoryReviewAnswerStore), Files.createTempFile("labels", ".tsv"), clock)
+    val html = contentAsString(c.queue(None, 60, false)(FakeRequest()))
+    html should not include "could not read"
+    html should include("FRANZ KAFKA")
+  }
 }

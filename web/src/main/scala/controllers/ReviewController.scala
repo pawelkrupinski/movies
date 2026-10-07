@@ -9,6 +9,8 @@ import services.review._
 
 import java.nio.file.Path
 import java.time.{Clock, Instant}
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future, blocking}
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -35,9 +37,16 @@ class ReviewController(cc: ControllerComponents,
   private def countriesOf(code: Option[String]): Seq[Country] =
     code.filterNot(_ == "all").flatMap(Country.byCode).fold(Country.all.filter(sources.contains))(c => Seq(c).filter(sources.contains))
 
+  /** `read` of each country, side by side: a page over every country waits on its slowest, not on their sum. Each
+   *  read bounds its own Mongo calls. */
+  private def perCountry[A](countries: Seq[Country])(read: Country => A): Seq[(Country, Try[A])] = {
+    val reads = countries.map(c => c -> Future(blocking(Try(read(c))))(using ExecutionContext.global))
+    reads.map { case (c, f) => c -> Await.result(f, Duration.Inf) }
+  }
+
   /** Each selected country's clusters, a failed read reported rather than shown as no clusters. */
   private def clustersOf(countries: Seq[Country], unmatchedOnly: Boolean): (Seq[ReviewCluster], Seq[String]) = {
-    val read = countries.map(c => c -> Try(sources(c).decisions(unmatchedOnly).map(ReviewCluster.of(c, _))))
+    val read = perCountry(countries)(c => sources(c).decisions(unmatchedOnly).map(ReviewCluster.of(c, _)))
     (read.collect { case (_, Success(cs)) => cs }.flatten,
       read.collect { case (c, Failure(e)) => s"${c.code}: could not read identity_model_families (${e.getMessage})" })
   }
@@ -52,8 +61,8 @@ class ReviewController(cc: ControllerComponents,
       case Success(rows) => (rows, None)
       case Failure(e)    => (Nil, Some(s"could not read $labelsPath: ${e.getMessage}"))
     }
-    val cards    = shown.groupBy(_._1.country).toSeq.flatMap { case (c, cs) =>
-      ReviewCards.build(sources(c), cs, labels, index) }
+    val byCountry = shown.groupBy(_._1.country)
+    val cards    = perCountry(byCountry.keys.toSeq)(c => ReviewCards.build(sources(c), byCountry(c), labels, index)).flatMap(_._2.get)
     val order    = shown.map(_._1.id).zipWithIndex.toMap
     val answered = selected.count { case (c, _) => index.answerFor(c.id, c.reviewMembers).isDefined }
     val view     = ReviewView(page, country.getOrElse("all"), cards.sortBy(card => order(card.cluster.id)), total = open.size,
@@ -82,7 +91,7 @@ class ReviewController(cc: ControllerComponents,
       val countries = countriesOf(country)
       val since     = clock.instant().minusSeconds(hours.toLong * 3600)
       val (clusters, errors) = clustersOf(countries, unmatchedOnly = false)
-      val updated   = countries.flatMap(c => Try(sources(c).updatedSince(since)).toOption).flatten.toMap
+      val updated   = perCountry(countries)(sources(_).updatedSince(since)).flatMap(_._2.toOption).flatten.toMap
       render(ReviewPage.Recent, country, ReviewSelection.recent(clusters, updated, since).map { case (c, at) => c -> Some(at) },
         limit, answered, errors, ReviewView.Controls(hours = Some(hours)))
     }

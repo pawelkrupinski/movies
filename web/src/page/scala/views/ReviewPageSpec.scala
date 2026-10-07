@@ -298,6 +298,22 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     }
   }
 
+  it should "take a card the reviewer can't determine off the list, labelling nothing for it" in {
+    onQueue { page =>
+      val robaczki = card("Filmowe popołudnie dla dzieci: Robaczki")
+      page.evalString(s"$robaczki.querySelector('button[data-verdict=unsure]').textContent") shouldBe "Can't determine"
+      page.eval(s"$robaczki.querySelector('button[data-verdict=unsure]').click()")
+      page.waitFor(s"$robaczki.getAttribute('data-answered') === 'unsure'")
+      page.waitFor(s"$robaczki.hidden === true")
+      val unsure = answers.current().filter(_.title.contains("Robaczki"))
+      unsure.map(_.verdict) shouldBe Seq(ReviewVerdict.Unsure)
+      unsure.flatMap(LabelsExport.rowsOf(_)) shouldBe empty
+      // withdrawn again, so the cases after this one see the queue as they expect it
+      page.eval(s"$robaczki.querySelector('button[data-verdict=undo]').click()")
+      page.waitFor(s"$robaczki.getAttribute('data-answered') === ''")
+    }
+  }
+
   "a card whose best candidate was vetoed" should "lead with the candidate that survived, the vetoed one folded into a closed list it can still be picked from" in {
     chrome match {
       case None => cancel("Chrome not installed — skipping /debug/review page test")
