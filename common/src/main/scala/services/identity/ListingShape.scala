@@ -42,8 +42,14 @@ object ListingShape {
    *  ("Balet z Opery Paryskiej 2026-2027: Bajadera", "ReTransmisje Met: Na żywo w HD - Così fan tutte")? Cinema the
    *  broadcast take names, never an event however its vocabulary reads. `title`: its raw title in lower case. */
   def relays(listing: Listing, title: String): Boolean =
-    NonMovieEventClassifier.isScreenedBroadcast(title) || ConcertFilm.findFirstIn(title).isDefined || stagesAWork(listing) ||
-      IdentityMeasures.seasonYear(Seq(listing.rawTitle)).isDefined
+    relaysBilled(title, Seq(listing.title, listing.cleanTitle, listing.rawTitle).distinct, listing.rawTitle)
+
+  /** [[relays]] for a venue's raw title alone, where no listing is in hand (the review app's fact check). */
+  def relaysTitle(rawTitle: String): Boolean = relaysBilled(rawTitle.toLowerCase(java.util.Locale.ROOT), Seq(rawTitle), rawTitle)
+
+  private def relaysBilled(lowerTitle: String, titles: Seq[String], rawTitle: String): Boolean =
+    NonMovieEventClassifier.isScreenedBroadcast(lowerTitle) || ConcertFilm.findFirstIn(lowerTitle).isDefined ||
+      IdentityMeasures.billsStageWork(titles, rawTitle) || IdentityMeasures.seasonYear(Seq(rawTitle)).isDefined
 
   // ── a bill of several works ────────────────────────────────────────────────────────────────
 
