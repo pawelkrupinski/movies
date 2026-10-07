@@ -764,6 +764,18 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     study.take().map(_.map(_.id)) shouldBe Some(Seq(second.id, first.id))
   }
 
+  // The rows are asked for once, at boot, and were kept for the life of the process after: 6.2 MiB of a
+  // 244 MiB worker-uk live set at 44 min up, 1,478 BootRows and their lessons (2026-10-07).
+  it should "hold none of the rows once the boot reads have taken them" in {
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    val study = new BootCorpusStudy(titleNormalizer)
+    study.bootPage(repository.findAll())
+    study.bootReadEnded(services.movies.BootReadEnd.Whole)
+    study.take().map(_.size) shouldBe Some(1)
+    study.holdsRows shouldBe false
+  }
+
   // ~26 a day for days (a TMDB re-try making rows briefly unready) with nothing but a WARN line
   // to show for it. The count is what an alert can watch: each pass meters the rows it WROTE
   // for, by which pass it was, and a pass that found nothing missing meters nothing.

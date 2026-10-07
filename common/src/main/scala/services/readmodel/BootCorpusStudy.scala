@@ -26,38 +26,49 @@ import scala.util.Try
  *  composition root is still being built, before the projector has been built. */
 final class BootCorpusStudy(normalizer: TitleNormalizer, wait: FiniteDuration = BootCorpusStudy.Wait)
   extends BootCorpusReader with Logging {
-  import BootCorpusStudy.{NoRows, State}
+  import BootCorpusStudy.{NoRows, State, Taken}
 
   private val state = new AtomicReference[State](State.Open)
-  private val study = Promise[Option[Seq[BootRow]]]()
-  // The current read's pages, derived in the order they came. Touched only from the hydrate's thread.
-  private var derived: Future[Vector[BootRow]] = NoRows
+  // Dropped once taken: the rows are asked for once, and a completed promise keeps its value.
+  private val study = new AtomicReference(Promise[Option[Seq[BootRow]]]())
+  // The current read's pages, derived in the order they came. Written from the hydrate's thread, and
+  // emptied by `take`.
+  @volatile private var derived: Future[Vector[BootRow]] = NoRows
 
   def bootPage(rows: Seq[StoredMovieRecord]): Unit =
     // Only while the boot reads have not yet looked for it. If they have, they read for themselves,
     // and deriving it now would only cost CPU.
-    if (state.compareAndSet(State.Open, State.Studying(study.future)) || state.get.isInstanceOf[State.Studying])
+    if (state.compareAndSet(State.Open, State.Studying(study.get.future)) || state.get.isInstanceOf[State.Studying])
       derived = derived.map(_ ++ rows.collect { case row if row.record.readyToProject =>
         val partition = ReadModelProjection.partition(row, normalizer)
         BootRow(row.id, partition.filmIds, partition.screeningIds, ReadModelProjection.metadataHash(row), Lesson.of(partition))
       })(using ExecutionContext.global)
 
   def bootReadEnded(end: BootReadEnd): Unit = end match {
-    case BootReadEnd.Whole    => study.completeWith(derived.map(Some(_))(using ExecutionContext.parasitic)); ()
+    case BootReadEnd.Whole    => study.get.completeWith(derived.map(Some(_))(using ExecutionContext.parasitic)); derived = NoRows
     case BootReadEnd.Retrying => derived = NoRows
-    case BootReadEnd.GaveUp   => derived = NoRows; study.trySuccess(None); ()
+    case BootReadEnd.GaveUp   => derived = NoRows; study.get.trySuccess(None); ()
   }
 
   /** The hydrate's ready rows, derived, once the derivation is done. Asked once. It is `None` in
    *  three cases: nothing was offered, the derivation failed, or it ran past `wait`. The boot reads
    *  then read the corpus themselves. */
-  private[readmodel] def take(): Option[Seq[BootRow]] = state.getAndSet(State.Closed) match {
-    case State.Studying(rows) =>
-      Try(Await.result(rows, wait)).fold(
-        exception => { logger.warn(s"read model: the boot hydrate's rows could not be derived (${exception.getMessage}) — reading the corpus instead"); None },
-        identity)
-    case _ => None
+  private[readmodel] def take(): Option[Seq[BootRow]] = {
+    val taken = state.getAndSet(State.Closed) match {
+      case State.Studying(rows) =>
+        Try(Await.result(rows, wait)).fold(
+          exception => { logger.warn(s"read model: the boot hydrate's rows could not be derived (${exception.getMessage}) — reading the corpus instead"); None },
+          identity)
+      case _ => None
+    }
+    study.set(Taken)
+    derived = NoRows
+    taken
   }
+
+  /** Whether the study still holds any derived rows. */
+  private[readmodel] def holdsRows: Boolean =
+    (derived ne NoRows) || study.get.future.value.exists(_.toOption.flatten.nonEmpty)
 }
 
 object BootCorpusStudy {
@@ -66,6 +77,8 @@ object BootCorpusStudy {
   val Wait: FiniteDuration = FiniteDuration(60, "seconds")
 
   private val NoRows: Future[Vector[BootRow]] = Future.successful(Vector.empty)
+  /** What a taken study answers a late read's end with: nothing, and nothing kept. */
+  private def Taken: Promise[Option[Seq[BootRow]]] = Promise.successful(None)
 
   private enum State {
     case Open
