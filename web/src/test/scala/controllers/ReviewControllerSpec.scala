@@ -8,6 +8,7 @@ import play.api.libs.json.Json
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import services.review._
+import tools.SpecTimeouts
 
 import java.nio.file.Files
 import java.time.{Clock, Instant, ZoneOffset}
@@ -135,7 +136,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     def meeting(held: Seq[services.identity.ResolverDecision]): ReviewSource = new ReviewSource {
       private val source = new InMemoryReviewSource(held)
       export source.{decisions as _, *}
-      def decisions(unmatchedOnly: Boolean) = { barrier.await(5, java.util.concurrent.TimeUnit.SECONDS); source.decisions(unmatchedOnly) }
+      def decisions(unmatchedOnly: Boolean) = { barrier.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); source.decisions(unmatchedOnly) }
     }
     val c = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
       Map(Country.Poland -> meeting(Seq(heldDecision)), Country.UnitedKingdom -> meeting(Nil)),
@@ -148,7 +149,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
   "the recently matched page" should "read the slot times while it reads the decisions" in {
     // Each read waits until the other has started: read in turn, the first would wait out the barrier.
     val barrier = new java.util.concurrent.CyclicBarrier(2)
-    def meet[A](read: => A): A = { barrier.await(5, java.util.concurrent.TimeUnit.SECONDS); read }
+    def meet[A](read: => A): A = { barrier.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); read }
     val meeting: ReviewSource = new ReviewSource {
       private val source = ReviewFixtures.source(now)
       export source.{decisions as _, updatedSince as _, *}
