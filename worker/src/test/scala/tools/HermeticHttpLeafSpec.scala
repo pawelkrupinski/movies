@@ -68,23 +68,27 @@ class HermeticHttpLeafSpec extends AnyFlatSpec with Matchers {
       Map("Authorization" -> "Bearer secret"))
     an [Exception] should be thrownBy leaf.get("https://api.test/bearer", Map("Authorization" -> "Bearer secret"))
     an [Exception] should be thrownBy leaf.post("https://caching.graphql.imdb.com/", """{"id":"tt1"}""", "application/json")
+    an [Exception] should be thrownBy leaf.post("https://api.test/token", "grant_type=client_credentials&client_secret=secret",
+      "application/x-www-form-urlencoded")
 
     val file = java.nio.file.Files.createTempDirectory("refetch").resolve("enrichment-us.refetch.tsv")
-    missing.writeRefetches(file) shouldBe 4
+    missing.writeRefetches(file) shouldBe 5
     val lines = java.nio.file.Files.readAllLines(file).toArray(Array.empty[String]).toSeq
     lines.flatMap(MissingFixtures.Refetch.parse).map(_._2) shouldBe Seq(
       MissingFixtures.Refetch("GET", "https://api.themoviedb.org/3/movie/1018?language=pl-PL&api_key=***"),
+      MissingFixtures.Refetch("POST", "https://caching.graphql.imdb.com/",
+        Some(MissingFixtures.Refetch.Body("application/json", """{"id":"tt1"}"""))),
       MissingFixtures.Refetch("BYTES", "https://drafthouse.com/s/mother/v2/schedule/presentation/akira"),
       MissingFixtures.Refetch("GET", "https://www.flicks.us/movie/toy-story-5/"),
       MissingFixtures.Refetch("GET", "https://www.omdbapi.com/?t=A&apikey=***"))
     lines.mkString should not include "secret"
-    lines.head shouldBe "# 4 fetchable gap(s)"
+    lines.head shouldBe "# 5 fetchable gap(s)"
     withClue("a release refuses a zero-byte asset: ") {
       val none = file.resolveSibling("enrichment-de.refetch.tsv")
       new MissingFixtures().writeRefetches(none) shouldBe 0
       java.nio.file.Files.size(none) should be > 0L
     }
-    missing.size shouldBe 6
+    missing.size shouldBe 7
     missing.report("enrichment-us") should include("by host: ")
   }
 

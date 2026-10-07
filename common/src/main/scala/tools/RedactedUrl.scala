@@ -35,6 +35,13 @@ object RedactedUrl {
 
   val Mask = "***"
 
+  /** Whether a request body names a credential: a form field (`client_secret=…`) or a JSON key (`"api_key": …`) spelled
+   *  as one of the parameters a URL's credentials are masked under. What lets a body go into a public list. */
+  def carriesCredential(body: String): Boolean = {
+    val lower = body.toLowerCase(java.util.Locale.ROOT)
+    SecretParameters.exists(name => lower.contains(s"\"$name\"") || s"(^|&)${java.util.regex.Pattern.quote(name)}=".r.findFirstIn(lower).isDefined)
+  }
+
   /** The URL with every secret parameter's value replaced by [[Mask]]. A URL with
    *  no query string is returned unchanged. */
   def apply(url: String): String = url.indexOf('?') match {

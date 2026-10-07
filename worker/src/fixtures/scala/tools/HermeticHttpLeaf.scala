@@ -50,7 +50,7 @@ final class MissingFixtures {
    *  what the next leg's rows fetch before their suites (`FillMissingFixtures`). Written even when empty: an empty
    *  list says this leg missed nothing fillable, which an absent one cannot. */
   def writeRefetches(file: java.nio.file.Path): Int = {
-    val lines = refetches.asScala.toSeq.sortBy(_._1).map { case (key, r) => s"$key\t${r.verb}\t${r.url}" }
+    val lines = refetches.asScala.toSeq.sortBy(_._1).map { case (key, r) => MissingFixtures.Refetch.line(key, r) }
     // A header, so even an empty list is a non-empty file: a release refuses a zero-byte asset (HTTP 400,
     // run 37608911385). `Refetch.parse` reads past it.
     AtomicFiles.writeString(file, (s"# ${lines.size} fetchable gap(s)" +: lines).map(_ + "\n").mkString)
@@ -64,15 +64,27 @@ object MissingFixtures {
    *  read, which the remembered verdicts key apart) and its URL with every credential masked
    *  ([[RedactedUrl]]) — so it can be named in a public release asset, and fetched by a process that signs
    *  it again with a key of its own ([[FillCredentials]]), or as it is when it never held one. */
-  final case class Refetch(verb: String, url: String)
+  final case class Refetch(verb: String, url: String, body: Option[Refetch.Body] = None)
 
   object Refetch {
-    val Verbs: Set[String] = Set("GET", "BYTES")
+    val Verbs: Set[String] = Set("GET", "BYTES", "POST")
+
+    /** A POST's body and its content type — what the fill sends again. */
+    final case class Body(contentType: String, text: String)
+
+    /** One line of the list: `<fixture key>\t<verb>\t<url>`, and for a POST `\t<content type>\t<body, base64>` — a body
+     *  can hold tabs and newlines. */
+    def line(key: String, r: Refetch): String =
+      (Seq(key, r.verb, r.url) ++ r.body.toSeq.flatMap(b =>
+        Seq(b.contentType, java.util.Base64.getEncoder.encodeToString(b.text.getBytes(java.nio.charset.StandardCharsets.UTF_8))))).mkString("\t")
 
     /** One line of [[MissingFixtures.writeRefetches]], or None for a line that is not one. */
     def parse(line: String): Option[(String, Refetch)] = line.split('\t') match {
-      case Array(key, verb, url) if Verbs(verb) && url.startsWith("http") => Some(key -> Refetch(verb, url))
-      case _                                                             => None
+      case Array(key, verb, url) if Verbs(verb) && verb != "POST" && url.startsWith("http") => Some(key -> Refetch(verb, url))
+      case Array(key, "POST", url, contentType, body) if url.startsWith("http") =>
+        scala.util.Try(new String(java.util.Base64.getDecoder.decode(body), java.nio.charset.StandardCharsets.UTF_8)).toOption
+          .map(text => key -> Refetch("POST", url, Some(Body(contentType, text))))
+      case _ => None
     }
   }
 
@@ -118,17 +130,21 @@ final class HermeticHttpLeaf(missing: MissingFixtures) extends HttpFetch {
   // a header could not be asked by the fill at all. A body is never listed.
   override def get(url: String, headers: Map[String, String]): String =
     refuse(url, body = None, refetchAs = Option.when(RedactedUrl(url) != url)("GET"))
-  override def post(url: String, body: String, contentType: String): String = refuse(url, Some(body), refetchAs = None)
+  // A POST is listed whole — body and content type — when neither its URL nor its body carries a credential: IMDb's
+  // GraphQL, a query naming a title, and most of a US or UK leg's gaps (run 37656742608).
+  override def post(url: String, body: String, contentType: String): String =
+    refuse(url, Some(body), refetchAs = Option.when(RedactedUrl(url) == url && !RedactedUrl.carriesCredential(body))("POST"),
+      contentType = contentType)
 
   /** `foldYear = false`: the convergence trees are recorded that way on both chains (see
    *  `ArchiveReplayWiring`), so this is the file the replay looked for and did not find. */
-  private def refuse(url: String, body: Option[String], refetchAs: Option[String]): Nothing = {
+  private def refuse(url: String, body: Option[String], refetchAs: Option[String], contentType: String = ""): Nothing = {
     val key      = clients.tools.RecordingHttpFetch.fixtureKey(url, body, foldYear = false)
     val redacted = RedactedUrl(url)
     val request  = s"${if (body.isDefined) "POST" else "GET"} $redacted"
     // Listed with every credential masked: the list is a public release asset, and the fill signs it again.
     refetchAs match {
-      case Some(verb) => missing.record(key, request, MissingFixtures.Refetch(verb, redacted))
+      case Some(verb) => missing.record(key, request, MissingFixtures.Refetch(verb, redacted, body.map(MissingFixtures.Refetch.Body(contentType, _))))
       case None       => missing.record(key, request)
     }
     throw new MissingFixtureException(key, request)

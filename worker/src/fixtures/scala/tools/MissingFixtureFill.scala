@@ -41,7 +41,12 @@ final class MissingFixtureFill(held: MissingFixtures.Refetch => Boolean, fetch: 
           // masks a credential this fill holds no key for: never asked with the mask in it
           case None => unsigned.incrementAndGet()
           case Some((url, headers)) => try {
-            if (gap.verb == "BYTES") fetch.getBytes(url) else if (headers.isEmpty) fetch.get(url) else fetch.get(url, headers)
+            gap.body match {
+              case Some(body)                => fetch.post(url, body.text, body.contentType)
+              case None if gap.verb == "BYTES" => fetch.getBytes(url)
+              case None if headers.isEmpty   => fetch.get(url)
+              case None                      => fetch.get(url, headers)
+            }
             fetched.incrementAndGet()
           } catch {
           case NonFatal(e) =>
@@ -98,8 +103,14 @@ object MissingFixtureFill {
     val verdicts = new EnrichmentCache(new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(root, tree),
       FileEnrichmentCacheStore.NeverExpires), transients = EnrichmentCache.Transients.Replayed)
     verdicts.preload()
-    gap => Seq("BYTES", "GET").exists(verb => verdicts.lookup(CachingEnrichmentFetch.keyOf(verb, gap.url)).isDefined) ||
-      scala.util.Try(if (gap.verb == "BYTES") recorded.getBytes(gap.url).length else recorded.get(gap.url).length).isSuccess
+    gap => gap.body match {
+      case Some(body) =>
+        verdicts.lookup(CachingEnrichmentFetch.keyOf("POST", gap.url, Some(body.text))).isDefined ||
+          scala.util.Try(recorded.post(gap.url, body.text, body.contentType).length).isSuccess
+      case None =>
+        Seq("BYTES", "GET").exists(verb => verdicts.lookup(CachingEnrichmentFetch.keyOf(verb, gap.url)).isDefined) ||
+          scala.util.Try(if (gap.verb == "BYTES") recorded.getBytes(gap.url).length else recorded.get(gap.url).length).isSuccess
+    }
   }
 
   /** Round-robin over the hosts, each host's requests in their listed order. */

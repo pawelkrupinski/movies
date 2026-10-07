@@ -76,5 +76,13 @@ A TMDB request is listed with its `api_key` masked, and the fill signs it again 
 (`FillCredentials`); among the fill's steps the key reaches only the fetching one, and what it
 records is keyed without it (`RecordingHttpFetch.fixtureKey`, `LookupQuery.of`), so no published
 asset carries it. OMDb's `apikey` is masked in the list too but never signed: its free key allows
-1,000 requests a day, which the workers spend. A request whose credential is only in a header, or
-that carries a body (IMDb's GraphQL POST), is never listed. Those stay the recorder's to record.
+1,000 requests a day, which the workers spend. A POST is listed whole — content type and body,
+the body base64 in the list — when neither its URL nor its body names a credential
+(`RedactedUrl.carriesCredential`): IMDb's GraphQL, a query naming a title, which was most of a US
+or UK leg's gaps (run 37656742608); the fill sends it again as it was sent. A request whose
+credential is only in a header, or whose body names one, is never listed. Those stay the
+recorder's to record.
+
+A hermetic leg takes no fleet-wide pace slots (`ArchiveReplayWiring.pacingFleet`): on its frozen
+clock the fleet pacer's slots never came round, and from Wikidata's fifth request on it answered
+"circuit open" above the leaf, so those gaps were never named and never filled.

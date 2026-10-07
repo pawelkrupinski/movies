@@ -108,4 +108,29 @@ class MissingFixtureFillSpec extends AnyFlatSpec with Matchers {
     MissingFixtureFill.heldIn(out, Tree)(gap(tmdb)) shouldBe true
     Files.walk(out.value).iterator().asScala.filter(Files.isRegularFile(_)).map(Files.readString).mkString should not include "k3y"
   }
+
+  // IMDb's GraphQL is a POST of a query naming a title: the fill asks it again, body and all, and records the answer
+  // where a replay of the same POST looks for it.
+  it should "ask a POST gap again with its body, and record it where a replay of it looks" in withRoots { (held, out) =>
+    val posted = new ConcurrentLinkedQueue[(String, String, String)]()
+    val live  = new Live {
+      override def post(url: String, body: String, contentType: String): String = { posted.add((url, body, contentType)); s"""{"data":{"title":{"id":"tt1"}}}""" }
+    }
+    val body = """{"query":"{ title(id: \"tt1\") { id } }"}"""
+    val gap  = MissingFixtures.Refetch("POST", "https://caching.graphql.imdb.com/", Some(MissingFixtures.Refetch.Body("application/json", body)))
+    new MissingFixtureFill(MissingFixtureFill.heldIn(held, Tree), MissingFixtureFill.recordingInto(out, Tree, live), threads = 1)
+      .fill(Seq(gap), 1.minute).fetched shouldBe 1
+
+    posted.asScala.toSeq shouldBe Seq(("https://caching.graphql.imdb.com/", body, "application/json"))
+    new clients.tools.FakeHttpFetch(Tree, strict = true, foldYear = false, root = out)
+      .post("https://caching.graphql.imdb.com/", body, "application/json") should include ("tt1")
+    MissingFixtureFill.heldIn(out, Tree)(gap) shouldBe true
+  }
+
+  // The list is read from a file another job wrote: a body holding tabs and newlines survives the round trip.
+  "a refetch line" should "carry a POST's body whole through the list" in {
+    val gap = MissingFixtures.Refetch("POST", "https://caching.graphql.imdb.com/",
+      Some(MissingFixtures.Refetch.Body("application/json", "{\n\t\"query\": \"x\"\n}")))
+    MissingFixtures.Refetch.parse(MissingFixtures.Refetch.line("key", gap)) shouldBe Some("key" -> gap)
+  }
 }

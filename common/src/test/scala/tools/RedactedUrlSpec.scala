@@ -80,4 +80,14 @@ class RedactedUrlSpec extends AnyFlatSpec with Matchers {
 
     exception.getMessage.matches("HTTP 5\\d\\d .*") shouldBe true
   }
+
+  // A convergence leg lists a POST it could not answer, body and all, in a public release asset — only when the body
+  // names no credential the way a URL's would be masked.
+  "RedactedUrl.carriesCredential" should "find a credential in a form or JSON body, and nothing in a GraphQL query" in {
+    RedactedUrl.carriesCredential("grant_type=client_credentials&client_secret=s3cret") shouldBe true
+    RedactedUrl.carriesCredential("""{"api_key":"abc","query":"x"}""") shouldBe true
+    RedactedUrl.carriesCredential("""{"Token": "abc"}""") shouldBe true
+    RedactedUrl.carriesCredential("""{"query":"query Titles($id:ID!){title(id:$id){titleText{text}}}","variables":{"id":"tt1"}}""") shouldBe false
+    RedactedUrl.carriesCredential("monkey=1&keystone=2") shouldBe false
+  }
 }
