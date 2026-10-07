@@ -1240,10 +1240,9 @@ class MongoMovieRepository(
         if (!moviesMatched.forall(_ > 0)) WriteOutcome.Declined("absent")
         else WriteOutcome.all(
           screenings.toSeq.flatMap(ops.applyTo(_, id)) ++
-          slots.toSeq.flatMap(s => slotWrites.map {
-            case (k, Some(sd)) => s.upsertSlot(id, k, sd)
-            case (k, None)     => s.deleteSlot(id, k)
-          }))
+          slots.toSeq.flatMap(s =>
+            s.upsertSlots(id, slotWrites.collect { case (k, Some(sd)) => k -> sd }.toMap) +:
+              slotWrites.collect { case (k, None) => s.deleteSlot(id, k) }.toSeq))
       } == WriteOutcome.Written
   }
 

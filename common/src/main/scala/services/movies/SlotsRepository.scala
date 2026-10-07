@@ -100,6 +100,11 @@ trait SlotsRepository extends SlotKeyedRows {
   /** Upsert one slot — the per-slot patch write path. */
   def upsertSlot(filmId: String, slotKey: String, slot: SourceData): WriteOutcome
 
+  /** [[upsertSlot]] of each of a film's `slots` — the per-slot patch write path when a patch moves several. A store
+   *  that pays a round trip per write does all of them in one read and one write (`MongoSlotsRepository`). */
+  def upsertSlots(filmId: String, slots: Map[String, SourceData]): WriteOutcome =
+    WriteOutcome.all(slots.toSeq.map { case (slotKey, slot) => upsertSlot(filmId, slotKey, slot) })
+
   /** Drop one slot (it left the film's listings). */
   def deleteSlot(filmId: String, slotKey: String): WriteOutcome
 
@@ -451,6 +456,36 @@ class MongoSlotsRepository(
       WriteOutcome.Written
     }
   }
+
+  /** [[upsertSlot]] of each slot, in one read of the rows held and one write of those that differ: a venue page lands on
+   *  every slot of the row that names it, and the per-slot read and replace of a widely shown film's hundreds of venues
+   *  held the detail drain on round trips (JFR, 2026-10-07). The same guard per row — a row holding exactly what would
+   *  be written is not written, and an unreadable one is — and the same roster. */
+  override def upsertSlots(filmId: String, slots: Map[String, SourceData]): WriteOutcome =
+    coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
+      if (slots.isEmpty) WriteOutcome.Written
+      else write("upsertSlots", s"SlotsRepository.upsertSlots($filmId, ${slots.size} slots)") {
+        val admitted = slots.filter { case (slotKey, _) => roster.admitsWrite(SlotsRepository.Collection, filmId, slotKey) }
+        val held     = storedSlots(c, filmId, admitted.keySet)
+        // A failed read says no row is redundant, so every one writes — as `upsertSlot` writes an unreadable row.
+        def redundant(slotKey: String, slot: SourceData): Boolean = held match {
+          case tools.ReadOutcome.Answered(rows) => rows.get(slotKey).contains(slot)
+          case _                                => false
+        }
+        val now      = Instant.now()
+        val replaces = admitted.toSeq.collect { case (slotKey, slot) if !redundant(slotKey, slot) =>
+          val dto = StoredSlotDto.of(filmId, slotKey, slot, now)
+          ReplaceOneModel(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true))
+        }
+        if (replaces.nonEmpty) Await.result(c.bulkWrite(replaces, new BulkWriteOptions().ordered(false)).toFuture(), 30.seconds)
+        WriteOutcome.Written
+      }
+    }
+
+  /** The stored slots among `slotKeys` of one film, by slot key. */
+  private def storedSlots(c: MongoCollection[StoredSlotDto], filmId: String, slotKeys: Set[String]): tools.ReadOutcome[Map[String, SourceData]] =
+    tools.MongoRead(10.seconds)(c.find(Filters.in("_id", slotKeys.toSeq.map(idOf(filmId, _))*))
+      .batchSize(tools.MongoReplies.Default).toFuture()).map(_.map(row => row.slotKey -> row.slot).toMap)
 
   /** Every write's exception handling — see [[RepositoryWrite]]. */
   private def write(op: String, what: => String)(body: => WriteOutcome): WriteOutcome =
