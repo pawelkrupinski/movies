@@ -301,7 +301,9 @@ object Candidate {
   def of(tmdbId: Int, hits: Seq[Hit], record: Option[IdentityMeasures.Film]): Candidate = {
     val popularity = hits.map(_.popularity).maxOption
     val best = hits.sortBy(h => (-h.popularity, h.title, h.originalTitle.getOrElse(""), h.year.getOrElse(0))).headOption
-    Candidate(tmdbId, record.map(f => f.copy(popularity = f.popularity.orElse(popularity))).getOrElse(
+    // A record that carries its popularity is the candidate's film itself: a copy restating it was a second Film per
+    // recorded film beside the corpus's `records` (30k on worker-uk, 2026-10-07).
+    Candidate(tmdbId, record.map(f => if (f.popularity.isDefined) f else f.copy(popularity = popularity)).getOrElse(
       IdentityMeasures.Film(best.fold("")(_.title), best.flatMap(_.originalTitle), Nil, best.flatMap(_.year),
         popularity = popularity)))
   }
