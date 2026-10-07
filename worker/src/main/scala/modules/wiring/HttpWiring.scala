@@ -70,11 +70,11 @@ trait HttpWiring { self: WorkerWiring =>
           new RateLimitedHttpFetch(
             new CountingHttpFetch(sharedRealHttpLeaf,
               workerMetrics.httpMetrics.recorderFor(country.code, phase)),
-            pace, clock = clock, sleep = pacingSleep),
-          meter = workerMetrics.httpBreakers.meterFor(country.code, phase), clock = clock),
-        paceFor = pace, clock = clock, sleep = pacingSleep),
+            pace, clock = pacingClock, sleep = pacingSleep),
+          meter = workerMetrics.httpBreakers.meterFor(country.code, phase), clock = pacingClock),
+        paceFor = pace, clock = pacingClock, sleep = pacingSleep),
         fleetHostPace, url => HostPolicies.fleetIntervalFor(url, configuration).map(d => FiniteDuration(d.toMillis, MILLISECONDS)),
-        FleetPacedHttpFetch.Horizon, clock, sleep = pacingSleep),
+        FleetPacedHttpFetch.Horizon, pacingClock, sleep = pacingSleep),
       uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
   }
 
@@ -82,6 +82,11 @@ trait HttpWiring { self: WorkerWiring =>
    *  out; a wiring whose leaf never sends one (a hermetic replay) keeps every pacing decision and
    *  skips only the wait. */
   protected def pacingSleep: Long => Unit = Thread.sleep
+
+  /** The time the chain's pacers, 429 gate and breaker measure their slots and windows in: the
+   *  time requests actually go out in. The wiring's own clock in production; a harness whose
+   *  clock is frozen but whose requests are real gives them the wall clock instead. */
+  protected def pacingClock: java.time.Clock = clock
 
   /** The fleet's shared host paces (`fleet_host_pace` in the fleet database): every country's worker holds a shared
    *  origin to one budget. Without the fleet database each worker paces itself alone. */

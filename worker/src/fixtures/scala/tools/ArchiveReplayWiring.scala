@@ -60,7 +60,9 @@ class ArchiveReplayWiring(
   // The identity model's TMDB and family answers — one layer for every pass of an order-independence replay,
   // so an answer one pass fetched is filed once and read by the others from a warm store; the wiring's own
   // over its database otherwise.
-  identityTmdb:     Option[services.identity.IdentityTmdbLayer] = None
+  identityTmdb:     Option[services.identity.IdentityTmdbLayer] = None,
+  // The time a RECORDING's requests go out in ([[pacingClock]]) — the wall's, unless a spec pins it.
+  wallClock:        java.time.Clock = java.time.Clock.systemUTC()
 ) extends WorkerWiring(country, env = environment) with TestWiring {
 
   private def live(fetch: HttpFetch): HttpFetch = sharedLive.fold(fetch)(_.over(fetch))
@@ -78,6 +80,14 @@ class ArchiveReplayWiring(
    *  of a US boot in Flicks' 200 ms slots (run 37546591704). */
   override protected def pacingSleep: Long => Unit =
     if (hermetic.isDefined) _ => () else super.pacingSleep
+
+  /** A RECORDING's requests go out over real time, so its pacers measure slots in it. On the
+   *  harness's frozen clock no slot ever came round: the k-th request to a paced host waited k
+   *  slots, and the first recording to fetch Flicks' film pages sat in that wait at 0% CPU until
+   *  its step ceilings (run 37562532213). A hermetic replay keeps the frozen clock: its waits are
+   *  skipped, and its pacing decisions stay independent of how fast the runner is. */
+  override protected def pacingClock: java.time.Clock =
+    if (hermetic.isDefined) super.pacingClock else wallClock
 
   /**
    * The scrape side: recorded DETAIL pages first, live behind them, and whatever the

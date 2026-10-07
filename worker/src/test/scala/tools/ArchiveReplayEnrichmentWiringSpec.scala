@@ -119,6 +119,25 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
    *  straight to the store, paying a write round trip per repeat that production never makes —
    *  ~45% of a UK replay's drain, the reaper re-enqueueing every venue still owing a
    *  film's detail each time one venue's lands (2026-10-03). */
+  // A RECORDING's requests go out over real time, but its pacers read the harness's frozen clock: no slot
+  // ever came round, so the k-th request to a paced host waited k slots. The first recording to fetch
+  // Flicks' film pages sat in that wait at 0% CPU until its 120- and 315-minute ceilings (run 37562532213),
+  // pinned nothing, and every hermetic leg kept replaying a pair recorded before those pages were asked.
+  "a recording's paced host" should "be paced one slot per request, not one more slot per request asked before" in {
+    val leaf    = new CountingLeaf
+    // Positional: a named argument to an anonymous subclass's constructor is bound before `super`
+    // initialises, which this compiler turns into a VerifyError once the body captures `leaf`.
+    val wiring  = new ArchiveReplayWiring(Country.UnitedStates, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage,
+      fixtureTree, settings.FixtureRoot.RepositoryRelative, None, Env.of("KINOWO_FLICKS_US_PACE_MS" -> "40")) {
+      override protected def realHttpLeaf: HttpFetch = leaf
+    }
+    val started = System.nanoTime()
+    (1 to 10).foreach(i => wiring.httpFetch.get(s"https://www.flicks.us/movie/paced-$i/"))
+    val elapsedMs = (System.nanoTime() - started) / 1000000
+    leaf.calls shouldBe 10
+    withClue(s"ten requests 40 ms apart took $elapsedMs ms (a frozen clock makes it 1,800): ") { elapsedMs should be < 1000L }
+  }
+
   "the archive replay queue" should "answer a repeat enqueue from production's dedup cache, not the store" in {
     import services.tasks.{EnqueueResult, TaskType}
     val reachedStore = new java.util.concurrent.atomic.AtomicInteger(0)
