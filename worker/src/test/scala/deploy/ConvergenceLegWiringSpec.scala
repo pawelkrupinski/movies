@@ -682,6 +682,10 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     // The `run:` block holding each sbt line, up to that line.
     val blocks = runs.map(i => lines.slice(lines.lastIndexWhere(_.trim == "run: |", i), i).mkString("\n"))
     all(blocks) should include ("scripts/ci/cpu-sampler.sh 15 &")
+    // ...and the suite names which collections Mongo's share of it goes to, sampled before its databases drop.
+    val suite = RepoFile.step(RepoFile.block(leg, "convergence"), "Run the ${{ inputs.country }} ${{ matrix.phase }} suite")
+    suite should include ("scripts/ci/mongo-top.sh start")
+    suite should include ("scripts/ci/mongo-top.sh report")
   }
 
   "a profiled dispatch" should "record a JFR profile of the suite and upload it, and only when asked" in {

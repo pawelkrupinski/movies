@@ -46,6 +46,7 @@ scripts/ci/preflight.sh
 scripts/ci/start-mongo-replset.sh
 scripts/ci/in-background.sh
 scripts/ci/cpu-sampler.sh
+scripts/ci/mongo-top.sh
 scripts/ci/wait-for-run-artifact.sh
 scripts/ci/install-apt-package.sh
 scripts/ci/drop-microsoft-apt-sources.sh

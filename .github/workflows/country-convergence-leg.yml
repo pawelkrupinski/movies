@@ -581,8 +581,10 @@ jobs:
                   set -o pipefail
                   # The sample, above, wrote its JUnit XML here; the report below is this suite's.
                   rm -rf target/test-reports/unit
-                  # The runner's whole CPU beside the phase log's JVM-only number (cpu-sampler.sh).
+                  # The runner's whole CPU beside the phase log's JVM-only number (cpu-sampler.sh), and which
+                  # collections Mongo's share of it goes to (mongo-top.sh).
                   scripts/ci/cpu-sampler.sh 15 & sampler=$!; trap 'kill "$sampler"' EXIT
+                  scripts/ci/mongo-top.sh start || true
                   profile=()
                   if [ "${{ inputs.profile }}" = true ]; then
                       profile=("-J-XX:StartFlightRecording=filename=convergence.jfr,settings=profile,dumponexit=true")
@@ -591,6 +593,7 @@ jobs:
                   sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" "${profile[@]}" ${{ matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode != 'record' && inputs.shape-command || '' }} ${{ matrix.phase == 'convergence' && inputs.command || inputs.order-command }} 2>&1 | tee convergence.log
                   # What the leg left in Mongo: the size a RAM-backed mongod would have to hold.
                   docker exec mongo du -sh /data/db || true
+                  scripts/ci/mongo-top.sh report || true
               env:
                   # The spec builds this country's TitleNormalizer itself; naming the
                   # country here too means anything that reads the environment
