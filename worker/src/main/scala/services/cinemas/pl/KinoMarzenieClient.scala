@@ -4,7 +4,7 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ScraperParse, SlotsToMovies}
-import tools.{HttpFetch, HttpRead}
+import tools.{HttpFetch, HttpRead, ReadOutcome}
 
 import java.time.LocalDate
 import java.util.Locale
@@ -77,7 +77,10 @@ class KinoMarzenieClient(
 
   def planChunks(): Seq[String] = {
     val lastDay = today.plusDays(ScrapeHorizon.MaxDays.toLong)
-    DayChunks.keys(sliderDays(HttpRead.page(http, RepertoireUrl)).filter(d => !d.isBefore(today) && !d.isAfter(lastDay)))
+    // the slider's container, not its items: a slider listing no days is a venue with nothing on, a page
+    // without one (a maintenance page served 200, a redesign) a failed read that must not publish the venue empty
+    val page = HttpRead.html(http, RepertoireUrl, SliderMarker)(ReadOutcome.Answered(_)).required
+    DayChunks.keys(sliderDays(page).filter(d => !d.isBefore(today) && !d.isAfter(lastDay)))
   }
 
   def fetchChunk(key: String): Seq[CinemaMovie] = {
@@ -104,6 +107,8 @@ object KinoMarzenieClient {
   val BaseUrl              = "https://www.kinomarzenie.pl"
   val RepertoireUrl         = s"$BaseUrl/repertuar"
   private val EventsCategoryId = 8
+
+  private val SliderMarker = HttpRead.PageMarker("calendar-slider")
 
   /** `start_date=2026-10-09` off a slider item's `data-href` partial URL. */
   private val SliderDayPat = """start_date=(\d{4}-\d{2}-\d{2})""".r

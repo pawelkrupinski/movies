@@ -109,6 +109,12 @@ class KinoMarzenieChunkedSpec extends AnyFlatSpec with Matchers with OptionValue
     client.planChunks() should have size 9
   }
 
+  it should "refuse a repertoire page with no day slider, rather than plan nothing and publish the venue empty" in {
+    val maintenance = new KinoMarzenieClient(new clients.tools.ConstantHttpFetch("<html><body>Przerwa techniczna</body></html>"),
+      KinoMarzenie, today = LocalDate.of(2026, 10, 7))
+    an[Exception] should be thrownBy maintenance.planChunks()
+  }
+
   it should "read a week's chunk one partial per day" in {
     val movies = client.fetchChunk(client.planChunks().head)
     movies.find(_.movie.title == "LALKA").value.showtimes.map(_.dateTime) should contain allOf (
