@@ -32,16 +32,17 @@ trait ShareCardWiring { self: WorkerWiring =>
   lazy val shareCardBudget: ShareCardStorageBudget = configuration.shareCardStorageBudget(ShareCardStorageBudget(1024L * 1024 * 1024))
 
   /** Posters download directly, except those of a site that blocks the worker's IP, which go through the
-   *  egress its scrapes use: Multikino 403s the worker's IP on every poster as on its pages (the proxy), Kino
-   *  Kryterium's portal times it out (Zyte). Those routes are PAID, so a poster that fails on one is remembered rather than
-   *  asked for again by every render and every daily backfill. */
+   *  egress its scrapes use: Multikino 403s the worker's IP on every poster as on its pages (the proxy), biletyna.pl
+   *  refuses it (the proxy), Kino Kryterium's portal times it out (Zyte). Those routes are PAID, so a poster that fails on
+   *  one is remembered rather than asked for again by every render and every daily backfill. */
   private lazy val posterDownload: PosterDownload = PosterDownload.routed(new HttpPosterDownload(tls = tlsContext), posterEgressRoutes)
 
-  /** The poster hosts that block the worker's IP, each by the egress its scrapes use — for every poster download. */
-  lazy val posterEgressRoutes: Map[String, PosterDownload] = Map(
-    java.net.URI.create(services.cinemas.pl.MultikinoClient.HomeUrl).getHost -> remembered(multikinoPosterFetch),
-    // Kino Kryterium's posters time out the worker's IP as its pages do: direct, a poster question never answered
-    java.net.URI.create(services.cinemas.CinemaScraperCatalog.KinoKryteriumUrl).getHost -> remembered(zyteFetch))
+  /** The poster hosts that block the worker's IP, each by the egress its scrapes use — for every poster download: every
+   *  host the scraper catalog reads through an egress ([[services.cinemas.CinemaScraperCatalog.egressByHost]]), and
+   *  Multikino's on a poster route of its own (its own breaker, off the scrapes' /uptime row). */
+  lazy val posterEgressRoutes: Map[String, PosterDownload] =
+    cinemaScraperCatalog.egressByHost.map { case (host, egress) => host -> remembered(egress) } +
+      (java.net.URI.create(services.cinemas.pl.MultikinoClient.HomeUrl).getHost -> remembered(multikinoPosterFetch))
 
   /** A PAID poster route, a failure on it remembered rather than asked again by every render and backfill. */
   private def remembered(egress: tools.HttpFetch): PosterDownload =

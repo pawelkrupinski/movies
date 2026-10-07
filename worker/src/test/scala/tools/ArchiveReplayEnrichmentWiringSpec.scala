@@ -472,13 +472,14 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   /** The production egress shape — a residential proxy AND a Zyte key — over a proxy that fails
    *  every call, with the Zyte API stood in for by a client that counts what is sent through it.
    *  (The client itself is built regardless: the scraper catalogue holds ck105's Zyte route.) */
-  private final class ProxiedAndZyteKeyedWiring(direct: HttpFetch)
+  private final class ProxiedAndZyteKeyedWiring(direct: HttpFetch,
+                                                proxied: java.util.concurrent.ConcurrentLinkedQueue[String] = new java.util.concurrent.ConcurrentLinkedQueue[String])
       extends ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage, fixtureTree,
         settings.FixtureRoot.RepositoryRelative) {
     override protected def realHttpLeaf: HttpFetch = direct
     override protected def residentialProxyShards: Option[IndexedSeq[HttpFetch]] =
       Some(IndexedSeq(new GetOnlyHttpFetch {
-        override def get(url: String): String = throw new java.io.IOException("proxy: Tunnel failed, got: 503")
+        override def get(url: String): String = { proxied.add(url); throw new java.io.IOException("proxy: Tunnel failed, got: 503") }
       }))
     override protected def zyteApiKey: Option[settings.ZyteApiKey] = Some(settings.ZyteApiKey("paid-key"))
     override lazy val zyteHttpClient: clients.zyte.RefusingHttpClient = new clients.zyte.RefusingHttpClient
@@ -523,6 +524,25 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
 
     withClue("the poster is asked of Zyte first: ") { wiring.zyteHttpClient.sends.get shouldBe 1 }
     withClue("never of the plain poster download: ") { directPosters.get shouldBe 0 }
+  }
+
+  // prod PL 2026-10-06: biletyna.pl refuses the worker's IP its posters (403) as it does its pages, and every one of its
+  // 226 venue posters was fetched direct and filed unreadable — the poster evidence for Binti, Fritzi and the rest gone.
+  // Its scrapes go through the residential proxy; so must its posters, read off the catalog's own routes.
+  "biletyna's posters" should "go through the residential proxy its scrapes use, as every host the catalog routes" in {
+    val proxied = new java.util.concurrent.ConcurrentLinkedQueue[String]
+    val wiring  = new ProxiedAndZyteKeyedWiring(new CountingLeaf, proxied)
+    val directPosters = new java.util.concurrent.atomic.AtomicInteger
+    val download = services.sharecards.PosterDownload.routed(
+      new services.sharecards.PosterDownload {
+        def fetch(url: String): Either[String, java.nio.file.Path] = { directPosters.incrementAndGet(); Left("direct") }
+      }, wiring.posterEgressRoutes)
+
+    download.fetch("https://biletyna.pl/file/get/id/394113")
+
+    withClue("the poster is asked of the residential proxy first: ") { proxied.toArray.toSeq shouldBe Seq("https://biletyna.pl/file/get/id/394113") }
+    withClue("never of the plain poster download: ") { directPosters.get shouldBe 0 }
+    wiring.posterEgressRoutes.keySet should contain allOf ("biletyna.pl", "bilety.ck105.koszalin.pl", "www.multikino.pl")
   }
 
   "a test wiring handed the residential-proxy credentials" should "build no proxy leg" in {

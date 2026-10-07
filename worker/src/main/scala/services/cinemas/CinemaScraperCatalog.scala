@@ -2476,6 +2476,14 @@ class CinemaScraperCatalog(
   val scrapeHosts: Set[String] = all.flatMap(_.scrapeHosts).toSet ++
     // A fallback feed is scraped for a venue too, but by no catalogue scraper.
     Option.when(kinoprogrammFallbackPaths.nonEmpty)(CinemaScraper.hostsOf(KinoprogrammClient.BaseUrl)).toSet.flatten
+
+  /** The hosts of the ticketing platforms' venue pages read through an egress other than direct — a host that blocks the
+   *  worker's IP — each by that egress: read off the platform tables above, so a venue routed there routes every other
+   *  link of its host (its posters) the same way, with no list of hosts kept beside them. */
+  val egressByHost: Map[String, HttpFetch] =
+    (msiVenues.values.filter(_.fetch ne http).map(venue => venue.baseUrl -> venue.fetch) ++
+      (biletynaPages.values ++ koneckieHalls.map(_._1.url)).map(_ -> bnFetch))
+      .flatMap { case (url, fetch) => CinemaScraper.hostsOf(url).map(_ -> fetch) }.toMap
 }
 
 object CinemaScraperCatalog {
