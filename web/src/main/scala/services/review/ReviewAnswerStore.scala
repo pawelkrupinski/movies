@@ -30,7 +30,7 @@ final class InMemoryReviewAnswerStore extends ReviewAnswerStore {
  * own database ([[MongoReviewAnswerStore.Database]]) so a mirror re-seed, which drops and refills
  * the mirrored collections, can never touch them, and so they never reach prod.
  *
- * `_id` is the answer's recording time (zero-padded epoch millis) and a per-process sequence, so
+ * `_id` is the answer's time (`at`, zero-padded epoch millis — the clock the caller gave it) and a per-process sequence, so
  * the keyset read below returns them in the order they were given.
  */
 final class MongoReviewAnswerStore(db: MongoDatabase) extends ReviewAnswerStore {
@@ -40,7 +40,7 @@ final class MongoReviewAnswerStore(db: MongoDatabase) extends ReviewAnswerStore 
   private val sequence = new AtomicLong
 
   def append(answer: ReviewAnswer): Unit = {
-    val id = f"${System.currentTimeMillis()}%015d-${sequence.incrementAndGet()}%06d-${java.util.UUID.randomUUID().toString.take(8)}"
+    val id = f"${answer.at.toEpochMilli}%015d-${sequence.incrementAndGet()}%06d-${java.util.UUID.randomUUID().toString.take(8)}"
     Await.result(collection.insertOne(Document(encode(answer).append("_id", BsonString(id)))).toFuture(), Timeout)
     ()
   }
@@ -127,9 +127,17 @@ final class ReviewAnswers(store: ReviewAnswerStore) {
 }
 
 object ReviewAnswers {
+  /** An `Undo` withdraws every answer that covers the card it was given on — by its id, or by a listing it holds —
+   *  as a card answered under an earlier cluster id (before it gained a venue) posts its Undo under its new one. */
   def current(history: Seq[ReviewAnswer]): Seq[ReviewAnswer] =
-    history.zipWithIndex.groupBy(_._1.clusterId).values.map(_.maxBy(_._2)).toSeq.sortBy(_._2).map(_._1)
-      .filterNot(_.verdict == ReviewVerdict.Undo)
+    history.foldLeft(Vector.empty[ReviewAnswer]) { (kept, a) =>
+      val withdrawn = kept.filterNot(_.clusterId == a.clusterId)
+      if (a.verdict != ReviewVerdict.Undo) withdrawn :+ a
+      else {
+        val listings = a.members.map(_.identity).toSet
+        withdrawn.filterNot(_.members.exists(m => listings(m.identity)))
+      }
+    }
 
   /** Looks a cluster's current answer up by its id, then by any of its listings. */
   final class Index(current: Seq[ReviewAnswer]) {

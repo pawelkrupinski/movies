@@ -33,10 +33,11 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
   private val mirror  = IsolatedMongoDatabase.open(mongoTarget, "review-mirror")
   private val review  = IsolatedMongoDatabase.open(mongoTarget, "review-answers")
   private val imports = IsolatedMongoDatabase.open(mongoTarget, "review-import")
+  private val ordered = IsolatedMongoDatabase.open(mongoTarget, "review-order")
   private val now     = Instant.parse("2026-10-06T10:00:00Z")
   private val clock   = Clock.fixed(now, ZoneOffset.UTC)
 
-  override protected def afterAll(): Unit = try { mirror.drop(); review.drop(); imports.drop() } finally super.afterAll()
+  override protected def afterAll(): Unit = try { mirror.drop(); review.drop(); imports.drop(); ordered.drop() } finally super.afterAll()
 
   private def insert(collection: String, docs: BsonDocument*): Unit =
     Await.result(mirror.database.getCollection[Document](collection).insertMany(docs.map(Document(_))).toFuture(), tools.SpecTimeouts.Io): Unit
@@ -113,6 +114,16 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
     status(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "undo")))) shouldBe OK
     reread.current() shouldBe empty
     reread.history().map(_.verdict) shouldBe Seq(ReviewVerdict.Event, ReviewVerdict.Undo)
+  }
+
+  "the stored history" should "run in the order of the answers' own times, not the wall clock's" in {
+    val store  = new MongoReviewAnswerStore(ordered.database)
+    val member = ReviewMember("Kino A", "Film", None)
+    def answered(verdict: ReviewVerdict, at: Instant) = ReviewAnswer(ReviewClusterId.of(Seq(member)), "pl", ReviewPage.Queue,
+      verdict, None, None, "Film", Seq(member), "dev", at)
+    store.append(answered(ReviewVerdict.Wrong, now))
+    store.append(answered(ReviewVerdict.Right, now.minusSeconds(3600)))
+    store.all().map(_.verdict) shouldBe Seq(ReviewVerdict.Right, ReviewVerdict.Wrong)
   }
 
   "importing the hand-built pages' answers" should "store each once" in {
