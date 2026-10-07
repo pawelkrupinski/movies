@@ -197,6 +197,13 @@ on:
                 required: false
                 type: string
                 default: ''
+            # Extra sbt JVM options for every sbt run of the leg (`-J-XX:+UseParallelGC`): how a hand-dispatched
+            # run tries a JVM setting on the runner it would ship to. Empty on every dispatch Main makes.
+            jvm-options:
+                description: Extra JVM options (each prefixed -J) for the leg's sbt runs.
+                required: false
+                type: string
+                default: ''
             # A JFR CPU profile of the suite, uploaded as `convergence-profile-<code>-<phase>`: where a
             # leg's CPU goes, for whoever is making the lane faster. Off on every dispatch Main makes.
             profile:
@@ -501,8 +508,10 @@ jobs:
                   set -o pipefail
                   # The runner's whole CPU beside the phase log's JVM-only number (cpu-sampler.sh).
                   scripts/ci/cpu-sampler.sh 15 & sampler=$!; trap 'kill "$sampler"' EXIT
-                  sbt -J-Xmx${{ inputs.heap }} ${{ inputs.sample-command }} 2>&1 | tee convergence-sample.log
+                  read -ra jvm <<< "$JVM_OPTIONS"
+                  sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" ${{ inputs.sample-command }} 2>&1 | tee convergence-sample.log
               env:
+                  JVM_OPTIONS:      ${{ inputs.jvm-options }}
                   KINOWO_COUNTRY:   ${{ inputs.code }}
                   KINOWO_COUNTRIES: ${{ inputs.code }}
                   MONGODB_URI:      mongodb://127.0.0.1:27017/?directConnection=true
@@ -578,7 +587,8 @@ jobs:
                   if [ "${{ inputs.profile }}" = true ]; then
                       profile=("-J-XX:StartFlightRecording=filename=convergence.jfr,settings=profile,dumponexit=true")
                   fi
-                  sbt -J-Xmx${{ inputs.heap }} "${profile[@]}" ${{ matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode != 'record' && inputs.shape-command || '' }} ${{ matrix.phase == 'convergence' && inputs.command || inputs.order-command }} 2>&1 | tee convergence.log
+                  read -ra jvm <<< "$JVM_OPTIONS"
+                  sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" "${profile[@]}" ${{ matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode != 'record' && inputs.shape-command || '' }} ${{ matrix.phase == 'convergence' && inputs.command || inputs.order-command }} 2>&1 | tee convergence.log
                   # What the leg left in Mongo: the size a RAM-backed mongod would have to hold.
                   docker exec mongo du -sh /data/db || true
               env:
@@ -586,6 +596,7 @@ jobs:
                   # country here too means anything that reads the environment
                   # directly (`Country.fromEnv`) agrees with it rather than
                   # falling back to the Poland default.
+                  JVM_OPTIONS:      ${{ inputs.jvm-options }}
                   KINOWO_COUNTRY:   ${{ inputs.code }}
                   KINOWO_COUNTRIES: ${{ inputs.code }}
                   # NO Mongo here, deliberately — not the corpus, not the cache.

@@ -689,6 +689,10 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     leg should include ("if [ \"${{ inputs.profile }}\" = true ]; then")
     leg should include ("-J-XX:StartFlightRecording=filename=convergence.jfr")
     leg should include ("if: always() && inputs.profile && matrix.phase != 'sample'")
+    // A hand-dispatched JVM setting reaches every sbt run through the environment, never interpolated into the script.
+    caller should include ("jvm-options:                   ${{ inputs.jvm-options || '' }}")
+    leg.linesIterator.count(_.trim == "JVM_OPTIONS:      ${{ inputs.jvm-options }}") shouldBe 2
+    leg.linesIterator.count(_.trim == "read -ra jvm <<< \"$JVM_OPTIONS\"") shouldBe 2
     // Main's kick passes no inputs, so every push-dispatched run stays unprofiled.
     RepoFile.read(".github/workflows/main.yml") should not include ("-f profile")
   }

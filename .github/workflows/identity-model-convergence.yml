@@ -29,6 +29,11 @@ on:
                 required: false
                 type: boolean
                 default: false
+            jvm-options:
+                description: Extra JVM options, each prefixed -J, for every leg's sbt runs (country-convergence-leg.yml).
+                required: false
+                type: string
+                default: ''
 
 concurrency:
     group: identity-model-convergence
@@ -105,6 +110,7 @@ jobs:
             # Replay the pinned pair and nothing else: the verdict a bisect can trust.
             mode:                          hermetic
             profile:                       ${{ inputs.profile == true }}
+            jvm-options:                   ${{ inputs.jvm-options || '' }}
         # TMDB_API_KEY / OMDB_API_KEY, and the GITHUB_TOKEN the setup action reads.
         secrets: inherit
 
