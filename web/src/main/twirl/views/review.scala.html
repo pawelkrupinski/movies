@@ -258,9 +258,7 @@
           @if(card.members.size <= 3) {
             <div class="meta">@for((m, i) <- card.members.zipWithIndex){@if(i > 0){ · }@venueLink(m)}</div>
           } else {
-            <details class="venues"><summary>@card.members.size cinemas</summary><ul>
-              @for(m <- card.members){<li>@venueLink(m)</li>}
-            </ul></details>
+            <details class="venues" data-listings><summary>@card.members.size cinemas</summary><ul></ul></details>
           }
           @if(card.venueSays.nonEmpty){@factRows(card.venueSays, "")} else {<div class="s muted">The venue gives no film details.</div>}
           @if(card.catalogueSays.nonEmpty) {
@@ -495,6 +493,28 @@
         .then(function (r) { return r.ok ? r.text() : r.text().then(function (t) { throw new Error(t || r.status); }); })
         .then(function (html) { box.innerHTML = html; })
         .catch(function (err) { box.textContent = 'could not load the traces: ' + (err.message || err); });
+    }, true);
+    // A card's cinemas are listed when their fold is opened, from the card's own listings: a film at hundreds of
+    // venues otherwise sent each of them twice, most of the page.
+    document.addEventListener('toggle', function (e) {
+      var fold = e.target;
+      if (!fold.matches || !fold.matches('details[data-listings]') || !fold.open) return;
+      var list = fold.querySelector('ul');
+      if (list.childElementCount) return;
+      JSON.parse(fold.closest('.card').getAttribute('data-card')).listings.forEach(function (l) {
+        l.venues.forEach(function (venue) {
+          var item = document.createElement('li');
+          if (l.page && /^https?:\/\//.test(l.page)) {
+            var link = document.createElement('a');
+            link.href = l.page;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.textContent = venue;
+            item.appendChild(link);
+          } else item.textContent = venue;
+          list.appendChild(item);
+        });
+      });
     }, true);
     // A poster that fails to load gives way to the next it has, then to the "no poster" placeholder.
     document.addEventListener('error', function (e) {

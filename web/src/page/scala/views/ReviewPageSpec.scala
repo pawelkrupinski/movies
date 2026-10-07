@@ -67,9 +67,11 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
   private val odblask = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
     Map(Country.Poland -> ReviewFixtures.odblaskSource), new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
 
-  /** A cluster of 46 cinemas, every one crediting a director the film it leans to doesn't have. */
+  /** A cluster of 46 cinemas, every one crediting a director the film it leans to doesn't have, and 4 with a film page
+   *  of their own that credit nobody. */
   private val crowded = {
-    val keys = (1 to 46).map(i => services.movies.ListingKey.Published(f"Cinema $i%02d", "Kandydaci śmierci", None, Seq("Richard Jones")))
+    val keys = (1 to 46).map(i => services.movies.ListingKey.Published(f"Cinema $i%02d", "Kandydaci śmierci", None, Seq("Richard Jones"))) ++
+      (47 to 50).map(i => services.movies.ListingKey.Native(s"Cinema $i", s"https://cinema$i.example/kandydaci", "Kandydaci śmierci"))
     val film = FilmCard(1703629, None, Some("Kandydaci"), None, Some(2026), Seq("Maciej Kozłowski"), None, None, None)
     new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
       Seq(services.identity.ResolverDecision(keys, None, 0.3, services.identity.ResolverDecision.Basis.BelowThreshold,
@@ -353,13 +355,20 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     }
   }
 
-  "a card of 46 cinemas" should "fold its cinemas into one 'N cinemas' list, and its one grouped disagreement into a closed ⚠ at the bottom" in {
+  "a card of 50 cinemas" should "fold its cinemas into one 'N cinemas' list, and its one grouped disagreement into a closed ⚠ at the bottom" in {
     chrome match {
       case None => cancel("Chrome not installed — skipping /debug/review page test")
       case Some(c) => c.openPage(server.baseUrl + "/crowded/review") { page =>
         val card = "document.querySelector('.card')"
-        page.evalString(s"$card.querySelector('.listing details.venues > summary').textContent") shouldBe "46 cinemas"
+        page.evalString(s"$card.querySelector('.listing details.venues > summary').textContent") shouldBe "50 cinemas"
         page.evalBool(s"$card.querySelector('.listing details.venues').open") shouldBe false
+        // the cinemas are listed once opened, from the card's own listings: none is sent twice
+        page.evalInt(s"$card.querySelectorAll('.listing details.venues li').length") shouldBe 0
+        page.eval(s"$card.querySelector('.listing details.venues').open = true")
+        page.waitFor(s"$card.querySelectorAll('.listing details.venues li').length === 50")
+        page.evalString(s"$card.querySelector('.listing details.venues li').textContent") shouldBe "Cinema 01"
+        page.evalString(s"Array.prototype.map.call($card.querySelectorAll('.listing details.venues li a'), function (a) { return a.textContent + ' ' + a.getAttribute('href') + ' ' + a.target; }).join('|')") shouldBe
+          (47 to 50).map(i => s"Cinema $i https://cinema$i.example/kandydaci _blank").mkString("|")
         // nothing of the disagreement shows until the ⚠ is opened
         page.evalString(s"$card.innerText") should not include "is directed by"
         page.evalString(s"$card.lastElementChild.tagName + ' ' + $card.lastElementChild.className") shouldBe "DETAILS checks"

@@ -50,8 +50,13 @@ class ReviewController(cc: ControllerComponents,
   private val clustersKept = tools.BoundedCache.ofSize(16).weakKeys().build[Seq[ResolverDecision], Seq[ReviewCluster]]()
 
   /** Each selected country's clusters, a failed read reported rather than shown as no clusters. */
-  private def clustersOf(countries: Seq[Country], unmatchedOnly: Boolean): (Seq[ReviewCluster], Seq[String]) = {
-    val read = perCountry(countries)(c => clustersKept.get(sources(c).decisions(unmatchedOnly), _.map(ReviewCluster.of(c, _))))
+  private def clustersOf(countries: Seq[Country], unmatchedOnly: Boolean): (Seq[ReviewCluster], Seq[String]) =
+    chosenOf(countries, unmatchedOnly)(_ => identity)
+
+  /** What `choose` picks of each selected country's clusters, each country's on its own thread; a failed read reported
+   *  rather than shown as no clusters. */
+  private def chosenOf[A](countries: Seq[Country], unmatchedOnly: Boolean)(choose: Country => Seq[ReviewCluster] => Seq[A]): (Seq[A], Seq[String]) = {
+    val read = perCountry(countries)(c => choose(c)(clustersKept.get(sources(c).decisions(unmatchedOnly), _.map(ReviewCluster.of(c, _)))))
     (read.collect { case (_, Success(cs)) => cs }.flatten,
       read.collect { case (c, Failure(e)) => s"${c.code}: could not read identity_model_families (${e.getMessage})" })
   }
@@ -59,7 +64,8 @@ class ReviewController(cc: ControllerComponents,
   private def render(page: ReviewPage, country: Option[String], selected: Seq[(ReviewCluster, Option[Instant])], limit: Int,
                      showAnswered: Boolean, errors: Seq[String], controls: ReviewView.Controls): Result = {
     val index    = new ReviewAnswers.Index(answers.current())
-    val open     = if (showAnswered) selected else selected.filter { case (c, _) => index.answerFor(c.id, c.reviewMembers).isEmpty }
+    val (done, notDone) = selected.partition { case (c, _) => index.answerFor(c.id, c.reviewMembers).isDefined }
+    val open     = if (showAnswered) selected else notDone
     val shown    = open.take(limit)
     // A labels file that cannot be read is said so on the page, never shown as "no labels".
     val (labels, labelsError) = Try(LabelsTsv.read(labelsPath)) match {
@@ -69,9 +75,8 @@ class ReviewController(cc: ControllerComponents,
     val byCountry = shown.groupBy(_._1.country)
     val cards    = perCountry(byCountry.keys.toSeq)(c => ReviewCards.build(sources(c), byCountry(c), labels, index)).flatMap(_._2.get)
     val order    = shown.map(_._1.id).zipWithIndex.toMap
-    val answered = selected.count { case (c, _) => index.answerFor(c.id, c.reviewMembers).isDefined }
     val view     = ReviewView(page, country.getOrElse("all"), cards.sortBy(card => order(card.cluster.id)), total = open.size,
-      answeredHidden = selected.size - open.size, answered, showAnswered, limit, controls, errors ++ labelsError ++ notices)
+      answeredHidden = selected.size - open.size, done.size, showAnswered, limit, controls, errors ++ labelsError ++ notices)
     Ok(views.html.review(view)).withHeaders("Content-Security-Policy" -> modules.CspFilter.WithGoogleFonts)
   }
 
@@ -96,10 +101,12 @@ class ReviewController(cc: ControllerComponents,
       val countries = countriesOf(country)
       val since     = clock.instant().minusSeconds(hours.toLong * 3600)
       // the slot times read while the decisions are: neither waits on the other
-      val updating  = Future(blocking(perCountry(countries)(sources(_).updatedSince(since))))(using ExecutionContext.global)
-      val (clusters, errors) = clustersOf(countries, unmatchedOnly = false)
-      val updated   = Await.result(updating, Duration.Inf).flatMap(_._2.toOption).flatten.toMap
-      render(ReviewPage.Recent, country, ReviewSelection.recent(clusters, updated, since).map { case (c, at) => c -> Some(at) },
+      val updating  = countries.map(c => c -> Future(blocking(Try(sources(c).updatedSince(since))))(using ExecutionContext.global)).toMap
+      // each country's clusters chosen by its own slot times, the countries side by side: no merged corpus is built
+      val (chosen, errors) = chosenOf(countries, unmatchedOnly = false) { c => clusters =>
+        ReviewSelection.recent(clusters, Await.result(updating(c), Duration.Inf).getOrElse(Map.empty), since)
+      }
+      render(ReviewPage.Recent, country, ReviewSelection.byConfidence(chosen).map { case (c, at) => c -> Some(at) },
         limit, answered, errors, ReviewView.Controls(hours = Some(hours)))
     }
   }

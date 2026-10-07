@@ -4,6 +4,8 @@ import play.api.libs.json.{JsObject, Json}
 import services.movies.ListingKey
 
 import java.time.Instant
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future, blocking}
 
 /** One member listing of a card: its listing row, its own film page, and the catalogue ids its feed names it by.
  *  When the feed is an aggregator's that copies its catalogue entry's facts onto the listing
@@ -12,11 +14,11 @@ import java.time.Instant
 final case class MemberView(key: ListingKey, slot: Option[SlotFacts], page: Option[VenueFacts], feed: Option[ListingFeed]) {
   def venue: String = key.venue
   def pageUrl: Option[String] = key match { case ListingKey.Native(_, page, _) => Some(page); case _ => None }
-  def factsFromCatalogue: Boolean =
+  lazy val factsFromCatalogue: Boolean =
     services.identity.CatalogueSources.feedStated(feed.toSeq.flatMap(_.catalogueIds), pageUrl)
   /** The year and directors the VENUE stated — its key's, else its listing row's, else its own page's — and none
    *  when its listing's facts are a feed catalogue's: those are no venue's statement to check an answer against. */
-  def member: ReviewMember = {
+  lazy val member: ReviewMember = {
     val base = ReviewMember.of(key)
     if (factsFromCatalogue) base.copy(year = None, directors = Nil)
     else {
@@ -38,23 +40,23 @@ final case class ReviewCard(cluster: ReviewCluster, members: Seq[MemberView], fi
                             labels: Seq[LabelRow], answer: Option[ReviewAnswer], updatedAt: Option[Instant]) {
   def shown: Option[Int] = cluster.shown
   def filmFacts(tmdb: Int): FilmFacts = films.get(tmdb).fold(FilmFacts(FilmRef.tmdb(tmdb)))(_.facts)
-  def reviewMembers: Seq[ReviewMember] = members.map(_.member)
+  lazy val reviewMembers: Seq[ReviewMember] = members.map(_.member)
   /** Where the venues' own facts contradict the film the card puts forward. */
-  def disagreements: Seq[Disagreement] = shown.toSeq.flatMap(film => FactCheck.disagreements(reviewMembers, filmFacts(film)))
+  lazy val disagreements: Seq[Disagreement] = shown.toSeq.flatMap(film => FactCheck.disagreements(reviewMembers, filmFacts(film)))
 
   /** The candidates that survived their vetoes the card lists below the film it puts forward. */
-  def otherCandidates: Seq[ReviewCandidate] = cluster.candidates.filter(_.survives).filterNot(c => shown.contains(c.film))
+  lazy val otherCandidates: Seq[ReviewCandidate] = cluster.candidates.filter(_.survives).filterNot(c => shown.contains(c.film))
   /** The vetoed candidates, folded apart on the card: still answerable, never put forward. */
   def vetoedCandidates: Seq[ReviewCandidate] = cluster.vetoedCandidates
 
   /** The venues' posters, each once — a venue's own before a feed catalogue's copy: the card shows the first that loads. */
-  def posters: Seq[String]     = members.sortBy(_.factsFromCatalogue).flatMap(_.poster).distinct
+  lazy val posters: Seq[String]     = members.sortBy(_.factsFromCatalogue).flatMap(_.poster).distinct
   /** The venue's synopsis: a venue's own before a feed catalogue's copy. */
-  def synopsis: Option[String] = members.sortBy(_.factsFromCatalogue).flatMap(_.synopsis).headOption
+  lazy val synopsis: Option[String] = members.sortBy(_.factsFromCatalogue).flatMap(_.synopsis).headOption
 
   /** What the venues themselves say, merged across members — the first stated value per fact wins — with a
    *  feed catalogue's copied claims left to [[catalogueSays]]. Screenings are every member's: no catalogue claims those. */
-  def venueSays: Seq[(String, String)] = {
+  lazy val venueSays: Seq[(String, String)] = {
     val own    = members.filterNot(_.factsFromCatalogue)
     val stated = own.map(_.member)
     val facts  = own.flatMap(m => m.slot.map(_.facts).toSeq ++ m.page.toSeq)
@@ -78,7 +80,7 @@ final case class ReviewCard(cluster: ReviewCluster, members: Seq[MemberView], fi
   }
 
   /** What an aggregator's catalogue entry claims, copied onto its listings by the feed — never the venue's word. */
-  def catalogueSays: Seq[(String, String)] = {
+  lazy val catalogueSays: Seq[(String, String)] = {
     val fed   = members.filter(_.factsFromCatalogue)
     val facts = fed.flatMap(m => m.slot.map(_.facts).toSeq ++ m.page.toSeq)
     rows(
@@ -113,11 +115,17 @@ object ReviewCards {
   def build(source: ReviewSource, clusters: Seq[(ReviewCluster, Option[Instant])], labels: Seq[LabelRow],
             answers: ReviewAnswers.Index): Seq[ReviewCard] = {
     val keys   = clusters.flatMap(_._1.members)
-    val slots  = source.slots(keys.map(ListingKey.serialised))
-    val pages  = source.venuePages(keys.collect { case ListingKey.Native(_, page, _) => page })
-    val feeds  = source.feeds(keys.map(k => k.venue -> k.rawTitle))
     val ids    = clusters.flatMap { case (c, _) => c.film.toSeq ++ c.candidates.map(_.film) }.distinct
-    val films  = withRecords(source.films(ids), source.filmRecords(ids))
+    // the five reads side by side: a page of cards waits on the slowest, not on their sum
+    def reading[A](read: => A): Future[A] = Future(blocking(read))(using ExecutionContext.global)
+    val slotsRead   = reading(source.slots(keys.map(ListingKey.serialised)))
+    val pagesRead   = reading(source.venuePages(keys.collect { case ListingKey.Native(_, page, _) => page }))
+    val feedsRead   = reading(source.feeds(keys.map(k => k.venue -> k.rawTitle)))
+    val filmsRead   = reading(source.films(ids))
+    val recordsRead = reading(source.filmRecords(ids))
+    def read[A](f: Future[A]): A = Await.result(f, Duration.Inf)
+    val (slots, pages, feeds) = (read(slotsRead), read(pagesRead), read(feedsRead))
+    val films  = withRecords(read(filmsRead), read(recordsRead))
     clusters.map { case (cluster, at) =>
       val members = cluster.members.map(k => MemberView(k, slots.get(ListingKey.serialised(k)),
         k match { case ListingKey.Native(_, page, _) => pages.get(page); case _ => None }, feeds.get(k.venue -> k.rawTitle)))

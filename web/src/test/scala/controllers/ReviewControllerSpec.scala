@@ -162,6 +162,23 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     html should include("Klondike")
   }
 
+  "a card" should "read its listings, pages, feeds and films side by side, not one after another" in {
+    // Each of the five reads waits until the others have started: read in turn, the first would wait out the barrier.
+    val barrier = new java.util.concurrent.CyclicBarrier(5)
+    def meet[A](read: => A): A = { barrier.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); read }
+    val meeting: ReviewSource = new ReviewSource {
+      private val source = ReviewFixtures.source(now)
+      export source.{slots as _, venuePages as _, feeds as _, films as _, filmRecords as _, *}
+      def slots(listingKeys: Seq[String])          = meet(source.slots(listingKeys))
+      def venuePages(urls: Seq[String])            = meet(source.venuePages(urls))
+      def feeds(listings: Seq[(String, String)])   = meet(source.feeds(listings))
+      def films(tmdbIds: Seq[Int])                 = meet(source.films(tmdbIds))
+      def filmRecords(tmdbIds: Seq[Int])           = meet(source.filmRecords(tmdbIds))
+    }
+    val card = ReviewCards.build(meeting, Seq(ReviewCluster.of(Country.Poland, heldDecision) -> None), Nil, new ReviewAnswers.Index(Nil)).head
+    card.members.map(_.venue) shouldBe Seq("Kino Opalenica")
+  }
+
   "every review page" should "show the clusters of the source's latest decisions read, not those it kept from an earlier one" in {
     var held = Seq(heldDecision)
     val rereading: ReviewSource = new ReviewSource {

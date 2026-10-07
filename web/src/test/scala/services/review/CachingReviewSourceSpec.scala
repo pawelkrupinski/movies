@@ -8,7 +8,7 @@ import services.movies.ListingKey
 import java.time.{Duration, Instant}
 import scala.concurrent.duration._
 
-class CorpusCachingReviewSourceSpec extends AnyFlatSpec with Matchers {
+class CachingReviewSourceSpec extends AnyFlatSpec with Matchers {
   import ReviewFixtures._
 
   private val now = Instant.parse("2026-10-06T10:00:00Z")
@@ -39,7 +39,7 @@ class CorpusCachingReviewSourceSpec extends AnyFlatSpec with Matchers {
   }
 
   private def caching(underlying: ReviewSource, clock: tools.MutableClock, behind: Behind = new Behind) =
-    new CorpusCachingReviewSource(underlying, clock, refreshAfter = 30.seconds, expireAfter = 10.minutes, ticker = clock.ticker,
+    new CachingReviewSource(underlying, clock, refreshAfter = 30.seconds, expireAfter = 10.minutes, ticker = clock.ticker,
       refreshOn = behind)
 
   "the whole-corpus reads" should "be read once while they are fresh, each kind of decision read apart" in {
@@ -112,11 +112,34 @@ class CorpusCachingReviewSourceSpec extends AnyFlatSpec with Matchers {
     underlying.lastSince.get.isAfter(since) shouldBe false
   }
 
-  "the per-card reads" should "go straight through, every time" in {
-    val underlying = new Counting
-    val source     = caching(underlying, new tools.MutableClock(now))
-    val key        = ListingKey.serialised(Held)
-    source.slots(Seq(key)).keySet shouldBe Set(key)
-    source.slots(Seq(key)).keySet shouldBe Set(key)
+  "the per-card reads" should "be read once while fresh for the same rows, and again behind the answer once stale" in {
+    val reads = scala.collection.mutable.ListBuffer.empty[String]
+    var feedScreenings = 3
+    val underlying: ReviewSource = new ReviewSource {
+      private val source = new InMemoryReviewSource(Seq(heldDecision), written)
+      export source.{slots as _, venuePages as _, feeds as _, films as _, filmRecords as _, *}
+      def slots(listingKeys: Seq[String])        = { reads += "slots"; source.slots(listingKeys) }
+      def venuePages(urls: Seq[String])          = { reads += "pages"; source.venuePages(urls) }
+      def feeds(listings: Seq[(String, String)]) = { reads += "feeds"
+        listings.map(_ -> ListingFeed(Nil, feedScreenings, None, None)).toMap }
+      def films(tmdbIds: Seq[Int])               = { reads += "films"; source.films(tmdbIds) }
+      def filmRecords(tmdbIds: Seq[Int])         = { reads += "records"; source.filmRecords(tmdbIds) }
+    }
+    val clock  = new tools.MutableClock(now)
+    val behind = new Behind
+    val source = caching(underlying, clock, behind)
+    val feed   = Seq("Kino Opalenica" -> "FRANZ KAFKA")
+    def readAll() = { source.slots(Seq(ListingKey.serialised(Held))); source.venuePages(Seq("https://kino.example/franz"))
+      source.films(Seq(1157322)); source.filmRecords(Seq(1157322)); source.feeds(feed) }
+    readAll(); readAll()
+    reads.sorted shouldBe Seq("feeds", "films", "pages", "records", "slots")
+    source.feeds(Seq("Kino Opalenica" -> "MACBETH"))                                     // other rows: another read
+    reads.count(_ == "feeds") shouldBe 2
+
+    feedScreenings = 5
+    clock.advanceSeconds(31)
+    source.feeds(feed)(feed.head).screenings shouldBe 3                                  // at once, as kept
+    behind.runAll()
+    source.feeds(feed)(feed.head).screenings shouldBe 5
   }
 }

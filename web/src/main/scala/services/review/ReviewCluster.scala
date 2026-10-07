@@ -82,7 +82,11 @@ object ReviewSelection {
   /** Matched clusters a listing of which was (re)written since `since`, least confident first. The model
    *  stores no decision time: a member's `movie_slots.updatedAt` stands in for it. */
   def recent(clusters: Seq[ReviewCluster], updatedAt: Map[String, Instant], since: Instant): Seq[(ReviewCluster, Instant)] =
-    clusters.filter(_.film.isDefined).flatMap { c =>
+    byConfidence(clusters.filter(_.film.isDefined).flatMap { c =>
       c.memberKeys.flatMap(updatedAt.get).maxOption.filterNot(_.isBefore(since)).map(c -> _)
-    }.sortBy { case (c, at) => (c.confidence, -at.toEpochMilli) }
+    })
+
+  /** Least confident first, the latest first among equals — the order [[recent]] lists in, kept when several lists merge. */
+  def byConfidence(chosen: Seq[(ReviewCluster, Instant)]): Seq[(ReviewCluster, Instant)] =
+    chosen.sortBy { case (c, at) => (c.confidence, -at.toEpochMilli) }
 }
