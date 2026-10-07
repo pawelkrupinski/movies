@@ -146,6 +146,8 @@ abstract class CountryConvergenceBehaviour(
    *  model's enrichment yet — so they are REPORTED here, at the end of the run, never fatal: failing every
    *  claim on them would leave the build measuring nothing about the model. */
   override def afterAll(): Unit = {
+    // What the next leg's `fill` row fetches (country-convergence-leg.yml), beside the tree.
+    missingFixtures.foreach(_.writeRefetches(MissingFixtures.refetchListBeside(java.nio.file.Paths.get(fixtureRoot.of(fixtureDirectory)))))
     missingFixtures.filterNot(_.isEmpty).foreach { m =>
       val report = s"${country.displayName} (identity model): enrichment the pipeline's tree does not hold, " +
         s"so these films went unrated here —\n${m.report(fixtureDirectory)}"

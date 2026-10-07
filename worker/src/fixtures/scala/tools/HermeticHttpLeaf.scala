@@ -12,10 +12,18 @@ import scala.jdk.CollectionConverters._
  * fixing the gap needs: it is what `RecordingHttpFetch` writes and `FakeHttpFetch` reads.
  */
 final class MissingFixtures {
-  private val missing = new ConcurrentHashMap[String, String]()
+  private val missing   = new ConcurrentHashMap[String, String]()
+  private val refetches = new ConcurrentHashMap[String, MissingFixtures.Refetch]()
 
   /** Remember a gap: the fixture key, and the (credential-masked) request that wanted it. */
   def record(fixtureKey: String, request: String): Unit = { missing.putIfAbsent(fixtureKey, request); () }
+
+  /** Remember a gap a later run can fetch on its own ([[MissingFixtures.Refetch]]): one whose whole
+   *  request is its URL, with no credential in it. */
+  def record(fixtureKey: String, request: String, refetch: MissingFixtures.Refetch): Unit = {
+    record(fixtureKey, request)
+    refetches.putIfAbsent(fixtureKey, refetch); ()
+  }
 
   def isEmpty: Boolean = missing.isEmpty
   def size: Int        = missing.size
@@ -23,17 +31,52 @@ final class MissingFixtures {
   /** The gaps, sorted so two runs over the same tree report them in the same order. */
   def keys: Seq[(String, String)] = missing.asScala.toSeq.sortBy(_._1)
 
-  /** What the suite fails with: how many, the first `limit` of them by fixture key, and
+  /** What the suite fails with: how many, by host, the first `limit` of them by fixture key, and
    *  how to close the gap. Recording is the NIGHTLY RECORDER's job, never a hand edit —
    *  a hand-written fixture is exactly the drift the tree exists to prevent. */
   def report(tree: String, limit: Int = 25): String = {
-    val shown = keys.take(limit).map { case (key, request) => s"  $tree/$key   <- $request" }
-    val more  = if (size > limit) Seq(s"  … and ${size - limit} more") else Nil
+    val shown  = keys.take(limit).map { case (key, request) => s"  $tree/$key   <- $request" }
+    val more   = if (size > limit) Seq(s"  … and ${size - limit} more") else Nil
+    val byHost = keys.groupMapReduce { case (key, _) => key.takeWhile(_ != '/') }(_ => 1)(_ + _)
+      .toSeq.sortBy { case (host, count) => (-count, host) }.map { case (host, count) => s"$host $count" }
     (Seq(s"HERMETIC run needed $size request(s) the recorded fixture tree does not hold — no live fill " +
-         "was attempted:") ++ shown ++ more ++ Seq(
+         "was attempted:", s"  by host: ${byHost.mkString(", ")}") ++ shown ++ more ++ Seq(
       "The tree and the corpus are a PAIR recorded together by `Record scrape fixtures` (its `enrichment` " +
-      "jobs). Re-run that workflow to re-record them; never hand-write a fixture.")).mkString("\n")
+      "jobs). Re-run that workflow to re-record them; never hand-write a fixture. Each hermetic leg on main also " +
+      "fetches the credential-free ones itself (`FillMissingFixtures`) for the legs after it.")).mkString("\n")
   }
+
+  /** Every gap a later run can fetch on its own, one `<fixture key>\t<verb>\t<url>` line each, sorted —
+   *  what the next leg's `fill` row reads (`FillMissingFixtures`). Written even when empty: an empty
+   *  list says this leg missed nothing fillable, which an absent one cannot. */
+  def writeRefetches(file: java.nio.file.Path): Int = {
+    val lines = refetches.asScala.toSeq.sortBy(_._1).map { case (key, r) => s"$key\t${r.verb}\t${r.url}" }
+    AtomicFiles.writeString(file, lines.map(_ + "\n").mkString)
+    lines.size
+  }
+}
+
+object MissingFixtures {
+
+  /** A gap's request, whole: the verb the pipeline asked it with (`GET`, or `BYTES` for a raw-bytes
+   *  read, which the remembered verdicts key apart) and a URL holding no credential — so it can be
+   *  fetched by a process that holds no secret, and named in a public release asset. */
+  final case class Refetch(verb: String, url: String)
+
+  object Refetch {
+    val Verbs: Set[String] = Set("GET", "BYTES")
+
+    /** One line of [[MissingFixtures.writeRefetches]], or None for a line that is not one. */
+    def parse(line: String): Option[(String, Refetch)] = line.split('\t') match {
+      case Array(key, verb, url) if Verbs(verb) && url.startsWith("http") => Some(key -> Refetch(verb, url))
+      case _                                                             => None
+    }
+  }
+
+  /** Where a hermetic leg leaves its [[writeRefetches]] list: beside the tree it replayed, never in it
+   *  (`enrichment-us` → `enrichment-us.refetch.tsv`), so no pack of the tree can carry it. */
+  def refetchListBeside(tree: java.nio.file.Path): java.nio.file.Path =
+    tree.resolveSibling(s"${tree.getFileName}.refetch.tsv")
 }
 
 /**
@@ -65,17 +108,22 @@ final class MissingFixtureException(val fixtureKey: String, request: String)
  */
 final class HermeticHttpLeaf(missing: MissingFixtures) extends HttpFetch {
 
-  override def get(url: String): String                      = refuse(url, body = None)
-  override def getBytes(url: String): Array[Byte]            = refuse(url, body = None)
-  override def get(url: String, headers: Map[String, String]): String = refuse(url, body = None)
-  override def post(url: String, body: String, contentType: String): String = refuse(url, Some(body))
+  override def get(url: String): String                      = refuse(url, body = None, refetchAs = Some("GET"))
+  override def getBytes(url: String): Array[Byte]            = refuse(url, body = None, refetchAs = Some("BYTES"))
+  // Headers and bodies are not in the refetch list: a header can be a credential (TMDB's bearer).
+  override def get(url: String, headers: Map[String, String]): String = refuse(url, body = None, refetchAs = None)
+  override def post(url: String, body: String, contentType: String): String = refuse(url, Some(body), refetchAs = None)
 
   /** `foldYear = false`: the convergence trees are recorded that way on both chains (see
    *  `ArchiveReplayWiring`), so this is the file the replay looked for and did not find. */
-  private def refuse(url: String, body: Option[String]): Nothing = {
-    val key     = clients.tools.RecordingHttpFetch.fixtureKey(url, body, foldYear = false)
-    val request = s"${if (body.isDefined) "POST" else "GET"} ${RedactedUrl(url)}"
-    missing.record(key, request)
+  private def refuse(url: String, body: Option[String], refetchAs: Option[String]): Nothing = {
+    val key      = clients.tools.RecordingHttpFetch.fixtureKey(url, body, foldYear = false)
+    val redacted = RedactedUrl(url)
+    val request  = s"${if (body.isDefined) "POST" else "GET"} $redacted"
+    refetchAs.filter(_ => redacted == url) match {
+      case Some(verb) => missing.record(key, request, MissingFixtures.Refetch(verb, url))
+      case None       => missing.record(key, request)
+    }
     throw new MissingFixtureException(key, request)
   }
 }

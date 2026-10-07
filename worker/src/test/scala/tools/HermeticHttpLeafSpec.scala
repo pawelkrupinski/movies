@@ -54,6 +54,34 @@ class HermeticHttpLeafSpec extends AnyFlatSpec with Matchers {
       Files.walk(root).sorted(java.util.Comparator.reverseOrder()).forEach(p => Files.deleteIfExists(p))
   }
 
+  // What the next leg's fill row fetches: every gap whose whole request is a credential-free URL, with the
+  // verb the remembered verdicts key it by — and nothing a process holding no secret could not ask, or a
+  // public release asset should not name.
+  "the refetch list" should "carry every credential-free GET with its verb, and nothing else" in {
+    val missing = new MissingFixtures
+    val leaf    = new HermeticHttpLeaf(missing)
+    an [Exception] should be thrownBy leaf.get("https://www.flicks.us/movie/toy-story-5/")
+    an [Exception] should be thrownBy leaf.getBytes("https://drafthouse.com/s/mother/v2/schedule/presentation/akira")
+    an [Exception] should be thrownBy leaf.get("https://www.omdbapi.com/?t=A&apikey=secret")
+    an [Exception] should be thrownBy leaf.get("https://api.test/bearer", Map("Authorization" -> "Bearer secret"))
+    an [Exception] should be thrownBy leaf.post("https://caching.graphql.imdb.com/", """{"id":"tt1"}""", "application/json")
+
+    val file = java.nio.file.Files.createTempDirectory("refetch").resolve("enrichment-us.refetch.tsv")
+    missing.writeRefetches(file) shouldBe 2
+    val lines = java.nio.file.Files.readAllLines(file).toArray(Array.empty[String]).toSeq
+    lines.flatMap(MissingFixtures.Refetch.parse).map(_._2) shouldBe Seq(
+      MissingFixtures.Refetch("BYTES", "https://drafthouse.com/s/mother/v2/schedule/presentation/akira"),
+      MissingFixtures.Refetch("GET", "https://www.flicks.us/movie/toy-story-5/"))
+    lines.mkString should not include "secret"
+    missing.size shouldBe 5
+    missing.report("enrichment-us") should include("by host: ")
+  }
+
+  it should "be written beside the tree, never inside it" in {
+    MissingFixtures.refetchListBeside(Paths.get("test/resources/fixtures/enrichment-us")) shouldBe
+      Paths.get("test/resources/fixtures/enrichment-us.refetch.tsv")
+  }
+
   "the missing-fixture report" should "count every gap, list them in a stable order, and never print a credential" in {
     val missing = new MissingFixtures
     val leaf    = new HermeticHttpLeaf(missing)

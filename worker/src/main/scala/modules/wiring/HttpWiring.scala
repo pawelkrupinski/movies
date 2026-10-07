@@ -4,7 +4,7 @@ import clients.TmdbClient
 import modules.WorkerWiring
 import services.enrichment.{FilmwebClient, ImdbClient, LetterboxdClient, LetterboxdIdResolver, MetacriticClient, OMDbClient, RottenTomatoesClient, WikidataClient}
 import services.metrics.WorkerHttpMetrics
-import tools.{CountingHttpFetch, FleetHostPace, FleetPacedHttpFetch, HostCircuitBreakerHttpFetch, HostPolicies, HttpFetch, InMemoryFleetHostPace, MongoFleetHostPace, MonitoringHttpFetch, RateLimitedHttpFetch, RealHttpFetch, ThrottledHttpFetch, TlsTrust}
+import tools.{CircuitBreakerMeter, CountingHttpFetch, FleetHostPace, FleetPacedHttpFetch, HostCircuitBreakerHttpFetch, HostPolicies, HttpFetch, InMemoryFleetHostPace, MongoFleetHostPace, MonitoringHttpFetch, RateLimitedHttpFetch, RealHttpFetch, ThrottledHttpFetch, TlsTrust}
 
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
@@ -61,22 +61,12 @@ trait HttpWiring { self: WorkerWiring =>
   // `protected`, not private: the archive-replay wiring rebuilds the enrich-phase
   // chain to hang its own cache OUTSIDE it (a cache hit must not be metered,
   // throttled or rate-limited — it never touches the wire).
-  protected def phaseFetch(phase: String): HttpFetch = {
-    val pace = RateLimitedHttpFetch.configuredInterval(configuration)
+  protected def phaseFetch(phase: String): HttpFetch =
     new MonitoringHttpFetch(
-      new FleetPacedHttpFetch(
-      new ThrottledHttpFetch(
-        new HostCircuitBreakerHttpFetch(
-          new RateLimitedHttpFetch(
-            new CountingHttpFetch(sharedRealHttpLeaf,
-              workerMetrics.httpMetrics.recorderFor(country.code, phase)),
-            pace, clock = pacingClock, sleep = pacingSleep),
-          meter = workerMetrics.httpBreakers.meterFor(country.code, phase), clock = pacingClock),
-        paceFor = pace, clock = pacingClock, sleep = pacingSleep),
-        fleetHostPace, url => HostPolicies.fleetIntervalFor(url, configuration).map(d => FiniteDuration(d.toMillis, MILLISECONDS)),
-        FleetPacedHttpFetch.Horizon, pacingClock, sleep = pacingSleep),
+      HttpWiring.pacedWire(
+        new CountingHttpFetch(sharedRealHttpLeaf, workerMetrics.httpMetrics.recorderFor(country.code, phase)),
+        configuration, fleetHostPace, pacingClock, pacingSleep, workerMetrics.httpBreakers.meterFor(country.code, phase)),
       uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
-  }
 
   /** How the chain's pacing layers wait out a host's slot. A real wait wherever a request can go
    *  out; a wiring whose leaf never sends one (a hermetic replay) keeps every pacing decision and
@@ -140,4 +130,26 @@ trait HttpWiring { self: WorkerWiring =>
   lazy val letterboxdClient     = new LetterboxdClient(enrichmentFetch)
   lazy val letterboxdIdResolver = new LetterboxdIdResolver(letterboxdClient)
   lazy val wikidataClient = new WikidataClient(enrichmentFetch)
+}
+
+object HttpWiring {
+
+  /** Everything between a caller and the wire that decides WHEN a request may go out: the fleet's shared
+   *  pace, the 429 gate, the host breaker and the per-host pace (`HostPolicies`), in the order the trait's
+   *  notes explain. Both phase chains are this over their metered leaf; a process that sends requests
+   *  with no worker around it (a convergence leg's `FillMissingFixtures`) is this over the bare one, so
+   *  it asks every host exactly as politely as the worker does. */
+  def pacedWire(leaf: HttpFetch, configuration: settings.ProcessConfiguration, fleetHostPace: FleetHostPace,
+                clock: java.time.Clock, sleep: Long => Unit,
+                breakerMeter: CircuitBreakerMeter = CircuitBreakerMeter.noop): HttpFetch = {
+    val pace = RateLimitedHttpFetch.configuredInterval(configuration)
+    new FleetPacedHttpFetch(
+      new ThrottledHttpFetch(
+        new HostCircuitBreakerHttpFetch(
+          new RateLimitedHttpFetch(leaf, pace, clock = clock, sleep = sleep),
+          meter = breakerMeter, clock = clock),
+        paceFor = pace, clock = clock, sleep = sleep),
+      fleetHostPace, url => HostPolicies.fleetIntervalFor(url, configuration).map(d => FiniteDuration(d.toMillis, MILLISECONDS)),
+      FleetPacedHttpFetch.Horizon, clock, sleep = sleep)
+  }
 }

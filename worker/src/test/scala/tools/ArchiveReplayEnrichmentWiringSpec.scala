@@ -124,18 +124,21 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   // Flicks' film pages sat in that wait at 0% CPU until its 120- and 315-minute ceilings (run 37562532213),
   // pinned nothing, and every hermetic leg kept replaying a pair recorded before those pages were asked.
   "a recording's paced host" should "be paced one slot per request, not one more slot per request asked before" in {
-    val leaf    = new CountingLeaf
+    val leaf  = new CountingLeaf
+    // The wall, stood in for: it moves only by the waits the pacers ask for.
+    val wall  = new MutableClock(TestWiring.FixedInstant.plusSeconds(3600))
+    val waits = new java.util.concurrent.ConcurrentLinkedQueue[Long]()
     // Positional: a named argument to an anonymous subclass's constructor is bound before `super`
     // initialises, which this compiler turns into a VerifyError once the body captures `leaf`.
-    val wiring  = new ArchiveReplayWiring(Country.UnitedStates, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage,
-      fixtureTree, settings.FixtureRoot.RepositoryRelative, None, Env.of("KINOWO_FLICKS_US_PACE_MS" -> "40")) {
+    val wiring = new ArchiveReplayWiring(Country.UnitedStates, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage,
+      fixtureTree, settings.FixtureRoot.RepositoryRelative, None, Env.of("KINOWO_FLICKS_US_PACE_MS" -> "40"), None,
+      new JsonBodies, None, wall) {
       override protected def realHttpLeaf: HttpFetch = leaf
+      override protected def pacingSleep: Long => Unit = ms => { waits.add(ms); wall.advance(java.time.Duration.ofMillis(ms)) }
     }
-    val started = System.nanoTime()
     (1 to 10).foreach(i => wiring.httpFetch.get(s"https://www.flicks.us/movie/paced-$i/"))
-    val elapsedMs = (System.nanoTime() - started) / 1000000
     leaf.calls shouldBe 10
-    withClue(s"ten requests 40 ms apart took $elapsedMs ms (a frozen clock makes it 1,800): ") { elapsedMs should be < 1000L }
+    withClue("a frozen clock asks 40, 80, 120 … ms: ") { waits.toArray.toSeq.distinct shouldBe Seq(40L) }
   }
 
   "the archive replay queue" should "answer a repeat enqueue from production's dedup cache, not the store" in {
