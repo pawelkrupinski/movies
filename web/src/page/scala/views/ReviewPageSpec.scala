@@ -101,13 +101,13 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
     if (chrome.nonEmpty) server = new TestHttpServer(
       {
-        case "/debug/review?country=pl" => contentAsString(controller.queue(Some("pl"), 60, false)(FakeRequest()))
-        case "/debug/review?country=pl&answered=true" => contentAsString(controller.queue(Some("pl"), 60, true)(FakeRequest()))
-        case "/debug/review/recent?country=pl" => contentAsString(controller.recent(Some("pl"), 48, 60, false)(FakeRequest()))
-        case "/de/review"               => contentAsString(german.queue(Some("de"), 60, false)(FakeRequest()))
-        case "/listed/review"           => contentAsString(listed.queue(Some("pl"), 60, false)(FakeRequest()))
-        case "/crowded/review"          => contentAsString(crowded.queue(Some("pl"), 60, false)(FakeRequest()))
-        case "/odblask/review"          => contentAsString(odblask.queue(Some("pl"), 60, false)(FakeRequest()))
+        case "/debug/review?country=pl" => contentAsString(controller.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
+        case "/debug/review?country=pl&answered=true" => contentAsString(controller.queue(Some("pl"), ReviewController.DefaultLimit, true)(FakeRequest()))
+        case "/debug/review/recent?country=pl" => contentAsString(controller.recent(Some("pl"), 48, ReviewController.DefaultLimit, false)(FakeRequest()))
+        case "/de/review"               => contentAsString(german.queue(Some("de"), ReviewController.DefaultLimit, false)(FakeRequest()))
+        case "/listed/review"           => contentAsString(listed.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
+        case "/crowded/review"          => contentAsString(crowded.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
+        case "/odblask/review"          => contentAsString(odblask.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
         case why if why.startsWith("/debug/review/why?") =>
           val query = java.net.URI.create(why).getRawQuery.split("&").map(_.split("=", 2)).collect { case Array(k, v) =>
             k -> java.net.URLDecoder.decode(v, StandardCharsets.UTF_8) }.toMap
@@ -424,10 +424,10 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
             withClue(path) {
               page.evalInt("document.querySelectorAll('.card').length") should be >= atLeast
               page.evalInt("document.querySelectorAll('.notice.warn').length") shouldBe 0
-              // every card's payload parses and names its cluster, title and members
+              // every card's payload parses and names its cluster, title and listings
               page.evalBool("""Array.prototype.every.call(document.querySelectorAll('.card'), function (c) {
                 var p = JSON.parse(c.getAttribute('data-card'));
-                return p.clusterId === c.getAttribute('data-cluster') && p.members.length > 0 && typeof p.title === 'string';
+                return p.clusterId === c.getAttribute('data-cluster') && p.listings.length > 0 && typeof p.title === 'string';
               })""") shouldBe true
             }
           }

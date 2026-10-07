@@ -156,7 +156,7 @@ class ReviewController(cc: ControllerComponents,
 }
 
 object ReviewController {
-  val DefaultLimit = 60
+  val DefaultLimit = 20
 }
 
 /** Everything `review.scala.html` renders. */

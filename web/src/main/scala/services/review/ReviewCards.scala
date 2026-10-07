@@ -94,8 +94,11 @@ final case class ReviewCard(cluster: ReviewCluster, members: Seq[MemberView], fi
   /** What the page's answer buttons post back: the cluster as the card showed it. */
   def payload(page: ReviewPage): JsObject = Json.obj(
     "clusterId" -> cluster.id, "country" -> cluster.country.code, "page" -> page.code, "title" -> cluster.title,
-    "members" -> reviewMembers.map(m => Json.obj("venue" -> m.venue, "rawTitle" -> m.rawTitle, "page" -> m.page,
-      "year" -> m.year, "directors" -> m.directors)),
+    // a listing the venues share is named once with its venues: a film at hundreds of venues of one aggregator page
+    // otherwise repeated its every fact hundreds of times, most of a recently-matched page's weight
+    "listings" -> reviewMembers.groupBy(m => (m.rawTitle, m.page, m.year, m.directors)).toSeq
+      .sortBy { case (_, ms) => reviewMembers.indexOf(ms.head) }.map { case ((raw, page, year, directors), ms) =>
+        Json.obj("rawTitle" -> raw, "page" -> page, "year" -> year, "directors" -> directors, "venues" -> ms.map(_.venue)) },
     "shown" -> shown.map(filmJson),
     "films" -> (shown.toSeq ++ cluster.candidates.map(_.film)).distinct.map(filmJson))
 

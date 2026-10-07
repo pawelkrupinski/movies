@@ -177,5 +177,13 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     html should include("Macbeth")
     html should not include "FRANZ KAFKA"
   }
+
+  "every review page" should "show 20 cards unless asked for more, the routes' default the one its links leave out" in {
+    val routes = scala.io.Source.fromResource("routes").getLines().filter(_.contains("controllers.ReviewController.")).toSeq
+    val limits = routes.flatMap(line => """limit: Int \?= (\w+)""".r.findFirstMatchIn(line).map(_.group(1)))
+    limits should have size 3                                                   // the queue, the matchable page, the recent page
+    limits.distinct shouldBe Seq(ReviewController.DefaultLimit.toString)
+    ReviewController.DefaultLimit shouldBe 20
+  }
 }
 

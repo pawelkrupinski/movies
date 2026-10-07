@@ -69,7 +69,8 @@ class ReviewAnswersSpec extends AnyFlatSpec with Matchers {
 
   "a posted answer" should "carry a warning when the chosen film contradicts the venue's own facts" in {
     val card = Json.obj("clusterId" -> "c1", "country" -> "pl", "page" -> "matchable", "title" -> "Queen",
-      "members" -> Json.arr(Json.obj("venue" -> "Planken", "rawTitle" -> "Queen", "page" -> "https://p/q", "year" -> 2020, "directors" -> Json.arr())),
+      "listings" -> Json.arr(Json.obj("rawTitle" -> "Queen", "page" -> "https://p/q", "year" -> 2020, "directors" -> Json.arr(),
+        "venues" -> Json.arr("Planken"))),
       "shown" -> Json.obj("ref" -> "tmdb:519465", "title" -> "Queen of Hearts", "year" -> 2019, "directors" -> Json.arr("May el-Toukhy")),
       "films" -> Json.arr(Json.obj("ref" -> "tmdb:1", "title" -> "Queen Rock Montreal", "year" -> 1981, "directors" -> Json.arr())))
     val right = AnswerRequest.parse(Json.obj("card" -> card, "verdict" -> "right"), "dev", at).toOption.get
@@ -80,5 +81,22 @@ class ReviewAnswersSpec extends AnyFlatSpec with Matchers {
     other.warnings shouldBe Seq("Planken states Queen is from 2020; Queen Rock Montreal (1981) is from 1981")
     AnswerRequest.parse(Json.obj("card" -> card, "verdict" -> "film", "ref" -> "not a link"), "dev", at).isLeft shouldBe true
     AnswerRequest.parse(Json.obj("card" -> card, "verdict" -> "maybe"), "dev", at).isLeft shouldBe true
+  }
+
+  "a card's payload" should "name a listing the venues share once, with its venues, and read back as every member" in {
+    import services.movies.ListingKey
+    val page    = "https://www.flicks.us/movie/bts-world-tour/"
+    val members = (1 to 300).map(i => ListingKey.Native(s"Cinema $i", page, "BTS WORLD TOUR")) :+
+      ListingKey.Published("Kino Muza", "Macbeth", Some(1971), Seq("Roman Polański"))
+    val decision = ReviewFixtures.heldDecision.copy(members = members)(services.identity.DecisionTrace.Empty)
+    val card     = ReviewCards.build(new InMemoryReviewSource(Seq(decision)), Seq(ReviewCluster.of(models.Country.UnitedStates, decision) -> (None: Option[Instant])),
+      Nil, new ReviewAnswers.Index(Nil)).head
+    val payload  = card.payload(ReviewPage.Recent)
+    (payload \ "listings").as[Seq[play.api.libs.json.JsObject]].map(l => ((l \ "rawTitle").as[String], (l \ "venues").as[Seq[String]].size)) shouldBe
+      Seq("BTS WORLD TOUR" -> 300, "Macbeth" -> 1)
+    payload.toString.length should be < 15000                               // ~27 bytes a venue, not the listing's every fact again
+
+    AnswerRequest.parse(Json.obj("card" -> payload, "verdict" -> "unsure"), "dev", at).toOption.get.members shouldBe
+      members.map(ReviewMember.of)
   }
 }

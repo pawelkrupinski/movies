@@ -26,9 +26,10 @@ object AnswerRequest {
                      case _                                => Right(None)
                    }
     } yield {
-      val members = (card \ "members").asOpt[Seq[JsObject]].getOrElse(Nil).map(m => ReviewMember(
-        str(m, "venue").getOrElse(""), str(m, "rawTitle").getOrElse(""), str(m, "page"), (m \ "year").asOpt[Int],
-        (m \ "directors").asOpt[Seq[String]].getOrElse(Nil)))
+      // each listing the payload names once, at every venue that lists it
+      val members = (card \ "listings").asOpt[Seq[JsObject]].getOrElse(Nil).flatMap(l =>
+        (l \ "venues").asOpt[Seq[String]].getOrElse(Nil).map(venue => ReviewMember(venue, str(l, "rawTitle").getOrElse(""),
+          str(l, "page"), (l \ "year").asOpt[Int], (l \ "directors").asOpt[Seq[String]].getOrElse(Nil))))
       val shown  = (card \ "shown").toOption.flatMap(filmOf)
       val films  = (card \ "films").asOpt[Seq[JsObject]].getOrElse(Nil).flatMap(filmOf)
       val answer = ReviewAnswer(clusterId, country, page, verdict, ref, shown, str(card, "title").getOrElse(""), members, who, at)
