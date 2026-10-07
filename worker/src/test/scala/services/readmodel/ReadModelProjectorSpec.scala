@@ -398,6 +398,28 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // The rolling content check re-projects 1/48 of the corpus every 30-minute sweep, and with
+  // deploys restarting the worker every hour or two its rows are almost never in this
+  // process's metadata cache — every one RECOMPUTES. Uncounted by trigger, those bursts read
+  // on the dashboard as half-hourly collapses of the change stream's reuse ratio (2026-10-06).
+  "a metadata projection" should "be counted under the trigger that asked for it" in {
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    val streamed = new RecordingReadModelProjectionMetrics()
+    new ReadModelProjector(repository, rm, rm, streamed, clock = specClock).onMovieUpsert(repository.findAll().head)
+    streamed.metadataProjections.toSeq shouldBe Seq(ReadModelProjectionMetrics.ProjectTrigger.Stream -> false)
+
+    val m       = new RecordingReadModelProjectionMetrics()
+    val checker = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    checker.start()
+    (1 to 48).foreach(_ => checker.pruneOrphans())
+    withClue("each sweep projection is counted under the trigger its project call was: ") {
+      m.metadataProjections.map(_._1).toSeq shouldBe m.projectTriggers.toSeq
+    }
+    m.metadataProjections.map(_._1) should contain (ReadModelProjectionMetrics.ProjectTrigger.Content)
+    checker.stop()
+  }
+
   // ── Venue reuse: a change at one venue rebuilds that venue's screenings row only ──
   // A wide US release carries thousands of venues, and building every one of their rows —
   // union, dedupe and sort each venue's showtimes — was most of the ~2s a scrape wave's

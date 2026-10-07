@@ -78,8 +78,11 @@ trait ReadModelProjectionMetrics {
    *  `ratingsFor` were skipped and only the cheap screenings half re-ran. `reused=false`
    *  is a genuine metadata change (rating / synopsis / new cinema) or a first projection.
    *  The rate of reused vs recomputed is the opt's effectiveness — high reuse under the
-   *  showtime-churn the reproject/enrich pipeline generates is the whole point. */
-  def recordMetadataProjection(reused: Boolean): Unit
+   *  showtime-churn the reproject/enrich pipeline generates is the whole point — read it on
+   *  `trigger=stream`: the sweeps re-project rows this process has mostly never cached (the
+   *  content check reaches each row once a day, the worker restarts on every deploy), so they
+   *  recompute by construction. */
+  def recordMetadataProjection(trigger: ReadModelProjectionMetrics.ProjectTrigger, reused: Boolean): Unit
 
   /** One projection's screenings half: how many venues' rows it REBUILT (the venue's slots
    *  moved since its row was written, or this process never wrote it) and how many it
@@ -198,7 +201,7 @@ object ReadModelProjectionMetrics {
     def recordUnlistedVenues(rows: Int, withheld: Boolean): Unit  = ()
     def recordProject(trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit = ()
     def recordWriteBurst(seconds: Double): Unit                       = ()
-    def recordMetadataProjection(reused: Boolean): Unit           = ()
+    def recordMetadataProjection(trigger: ReadModelProjectionMetrics.ProjectTrigger, reused: Boolean): Unit = ()
     def recordVenueProjection(rebuilt: Int, reused: Int): Unit     = ()
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()
     def recordCatchUp(rows: Int): Unit                              = ()

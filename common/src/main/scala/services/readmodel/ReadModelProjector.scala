@@ -305,7 +305,7 @@ class ReadModelProjector(
     // be compared against process CPU is the CPU one — see `recordProject`.
     val wall      = tools.Stopwatch.start()
     val cpuStart  = cpuClock.nanos()
-    val projected = projectReusingMetadata(partition)
+    val projected = projectReusingMetadata(partition, trigger)
     val variants  = projected.map { (movie, venues) => (movie, planScreenings(movie._id, venues)) }
     lastGroups.update(rowId, RowGroups(partition.anchorKey, partition.cardByGroup,
       projected.iterator.flatMap(_._2).filter(_.slotCount > 1).map(_._id).toSet))
@@ -474,7 +474,7 @@ class ReadModelProjector(
   // belt-and-suspenders fallback to recomputing: it can never pair a movie with the wrong
   // screenings. Reusing skips the resolve/synopsisByCity/ratings work; the venues' rows are
   // built (or not) afterwards, by `planScreenings`.
-  private def projectReusingMetadata(partition: ReadModelProjection.Partition): Seq[(ResolvedMovie, Seq[ReadModelProjection.VenueScreening])] = {
+  private def projectReusingMetadata(partition: ReadModelProjection.Partition, trigger: ProjectTrigger): Seq[(ResolvedMovie, Seq[ReadModelProjection.VenueScreening])] = {
     val stored = partition.stored
     // Keyed by the SOURCE ROW (`persistedId`, unique per `movies` document), NOT by the
     // projected `ReadModelProjection.filmId`: that id keys on `resolvedYear` and so
@@ -490,12 +490,12 @@ class ReadModelProjector(
     val venues = partition.venuesAll
     val movies = lastMetadata.get(rowKey) match {
       case Some((cachedHash, cached)) if cachedHash == hash && venues.sizeIs == cached.size =>
-        metrics.recordMetadataProjection(reused = true)
+        metrics.recordMetadataProjection(trigger, reused = true)
         cached
       case _ =>
         val recomputed = partition.moviesAll.map(ratingGate(stored, _))
         lastMetadata.update(rowKey, hash -> recomputed)
-        metrics.recordMetadataProjection(reused = false)
+        metrics.recordMetadataProjection(trigger, reused = false)
         recomputed
     }
     movies.zip(venues)
@@ -923,7 +923,7 @@ class ReadModelProjector(
     if (!partition.stored.record.readyToProject) return 0
     val wall      = tools.Stopwatch.start()
     val cpuStart  = cpuClock.nanos()
-    val cards     = projectReusingMetadata(partition).map(_._1)
+    val cards     = projectReusingMetadata(partition, ProjectTrigger.Derivation).map(_._1)
     metrics.recordProject(ProjectTrigger.Derivation,
       wallSeconds = wall.seconds, cpuSeconds = (cpuClock.nanos() - cpuStart) / 1e9)
     var written = 0

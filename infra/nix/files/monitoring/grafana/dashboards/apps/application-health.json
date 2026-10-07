@@ -1567,8 +1567,8 @@
         },
         {
           "id": 53,
-          "title": "Worker — read-model metadata: reused vs recomputed (per min)",
-          "description": "Which HALF of a projection actually ran, from kinowo_worker_readmodel_metadata_projections{outcome}. reused = a showtime-only change at an already-present cinema, so only the cheap screenings half re-ran; recomputed = a rating / synopsis / new-cinema change, or a first projection, so the expensive metadata half (resolve + synopsisByCity + ratingsFor) ran too. This is the read-model's split of scrape churn into \"slots moved\" versus \"the film itself changed\" — the projection-side counterpart to source_data on the change-stream UPDATE-kinds panel above. rate(reused) / rate(reused+recomputed) is the reuse hit ratio; high reuse under heavy churn is the CPU win the metadata cache exists for, and a collapse in it explains a projection-CPU climb that the trigger rate alone does not.",
+          "title": "Worker — read-model metadata: reused vs recomputed on change-stream events (per min)",
+          "description": "Which HALF of a projection actually ran, from kinowo_worker_readmodel_metadata_projections{outcome}. reused = a showtime-only change at an already-present cinema, so only the cheap screenings half re-ran; recomputed = a rating / synopsis / new-cinema change, or a first projection, so the expensive metadata half (resolve + synopsisByCity + ratingsFor) ran too. This is the read-model's split of scrape churn into \"slots moved\" versus \"the film itself changed\" — the projection-side counterpart to source_data on the change-stream UPDATE-kinds panel above. rate(reused) / rate(reused+recomputed) is the reuse hit ratio; high reuse under heavy churn is the CPU win the metadata cache exists for, and a collapse in it explains a projection-CPU climb that the trigger rate alone does not. Stream-triggered projections only: the sweeps (heal, catch-up and above all the rolling content check, 1/48 of the corpus every 30-minute sweep) re-project rows a worker restarted by the last deploy has never cached, so they recompute by construction — summed in, they drew a recomputed spike every half hour that read as reuse collapsing. Their volume is on \"projection triggers & output\".",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1595,7 +1595,7 @@
           "targets": [
             {
               "refId": "A",
-              "expr": "sum by (outcome) (rate(kinowo_worker_readmodel_metadata_projections_total{country=~\"$country\"}[$__rate_interval])) * 60",
+              "expr": "sum by (outcome) (rate(kinowo_worker_readmodel_metadata_projections_total{country=~\"$country\",trigger=\"stream\"}[$__rate_interval])) * 60",
               "legendFormat": "{{outcome}}",
               "datasource": {
                 "type": "prometheus",

@@ -83,7 +83,8 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   def recordProject(trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit =
     series.recordProject(countryCode, trigger, wallSeconds, cpuSeconds)
   def recordWriteBurst(seconds: Double): Unit                    = series.recordWriteBurst(countryCode, seconds)
-  def recordMetadataProjection(reused: Boolean): Unit           = series.recordMetadataProjection(countryCode, reused)
+  def recordMetadataProjection(trigger: ReadModelProjectionMetrics.ProjectTrigger, reused: Boolean): Unit =
+    series.recordMetadataProjection(countryCode, trigger, reused)
   def recordVenueProjection(rebuilt: Int, reused: Int): Unit     = series.recordVenueProjection(countryCode, rebuilt, reused)
   def recordReconcileSweep(kind: String, didWork: Boolean): Unit = series.recordReconcileSweep(countryCode, kind, didWork)
   def recordHeal(trigger: String, rows: Int): Unit              = series.recordHeal(countryCode, trigger, rows)
@@ -368,8 +369,8 @@ object WorkerTaskMetrics {
 
     private val readModelMetadataProjections = Counter.builder()
       .name("kinowo_worker_readmodel_metadata_projections")
-      .help("Projections by country and whether the metadata half (resolve/synopsisByCity/ratingsFor) was REUSED from the per-film cache (outcome=reused — a showtime-only change at an already-present cinema, only the cheap screenings half re-ran) or RECOMPUTED (outcome=recomputed — a rating/synopsis/new-cinema change, or a first projection). rate(reused) / rate(reused+recomputed) is opt-1's hit ratio — high reuse under reproject/enrich showtime churn is the CPU win.")
-      .labelNames("country", "outcome")
+      .help("Projections by country and whether the metadata half (resolve/synopsisByCity/ratingsFor) was REUSED from the per-film cache (outcome=reused — a showtime-only change at an already-present cinema, only the cheap screenings half re-ran) or RECOMPUTED (outcome=recomputed — a rating/synopsis/new-cinema change, or a first projection). rate(reused) / rate(reused+recomputed) is opt-1's hit ratio — high reuse under reproject/enrich showtime churn is the CPU win. trigger is readmodel_project_calls' trigger: read the ratio on trigger=stream, because the sweeps (content above all — 1/48 of the corpus every 30-minute sweep) re-project rows a worker restarted by the last deploy has never cached, so they recompute by construction and, unsplit, drew half-hourly spikes that read as reuse collapsing.")
+      .labelNames("country", "trigger", "outcome")
       .register(registry)
 
     private val readModelVenueProjections = Counter.builder()
@@ -522,7 +523,8 @@ object WorkerTaskMetrics {
         readModelProjectCpu.labelValues(c).inc(0.0)       // ditto — the CPU-attribution counter the drivers panel stacks
         readModelProjectDuration.labelValues(c).observe(0.0) // materialize the histogram (_sum/_count/_bucket) from boot — no Grafana gap
         readModelWriteBurst.labelValues(c).observe(0.0)      // ditto — the write-phase half of that same answer
-        ReadModelProjectionMetrics.MetadataOutcomes.foreach(o => readModelMetadataProjections.labelValues(c, o))
+        ReadModelProjectionMetrics.ProjectTrigger.values.foreach(t =>
+          ReadModelProjectionMetrics.MetadataOutcomes.foreach(o => readModelMetadataProjections.labelValues(c, t.label, o)))
         ReadModelProjectionMetrics.VenueOutcomes.foreach(o => readModelVenueProjections.labelValues(c, o))
         ReadModelProjectionMetrics.ReconcileKinds.foreach(k =>
           Seq("true", "false").foreach(w => readModelReconcileSweeps.labelValues(c, k, w)))
@@ -587,8 +589,8 @@ object WorkerTaskMetrics {
     def recordWriteBurst(country: String, seconds: Double): Unit =
       readModelWriteBurst.labelValues(country).observe(math.max(0.0, seconds))
 
-    def recordMetadataProjection(country: String, reused: Boolean): Unit =
-      readModelMetadataProjections.labelValues(country,
+    def recordMetadataProjection(country: String, trigger: ReadModelProjectionMetrics.ProjectTrigger, reused: Boolean): Unit =
+      readModelMetadataProjections.labelValues(country, trigger.label,
         if (reused) ReadModelProjectionMetrics.MetadataOutcome.Reused
         else ReadModelProjectionMetrics.MetadataOutcome.Recomputed).inc()
 
