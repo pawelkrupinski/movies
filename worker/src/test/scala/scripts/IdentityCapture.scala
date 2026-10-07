@@ -247,11 +247,21 @@ object IdentityCapture {
     s"-Xmx$heap" +: jvmopts.map(_.trim).filter(o => o.nonEmpty && !o.startsWith("#") && !o.startsWith("-Xmx"))
 
   /** A country's JVM did its job when its spec printed what it captured — not merely when ScalaTest ran: a suite
-   *  CANCELLED for a missing variable is no failure to ScalaTest. */
+   *  CANCELLED for a missing variable is no failure to ScalaTest. Its exit status is [[failure]]'s to read. */
   def succeeded(cc: String, mode: Mode, log: Seq[String]): Boolean = mode match {
     case Mode.Capture => log.exists(_.contains(s"[full-$cc] captured "))
     case Mode.Fill    => log.exists(_.contains(s"[$cc] filled after "))
   }
+
+  /** Why a country's JVM failed, if it did: it exited non-zero (killed — Spain's, hung on an IMDb body read on
+   *  2026-10-07 — or crashed past its last line), or its spec printed no capture or fill. */
+  def failure(cc: String, mode: Mode, ran: Ran): Option[String] =
+    if (ran.exit != 0) Some(s"its JVM exited ${ran.exit}${if (ran.exit > 128) s" (killed by signal ${ran.exit - 128})" else ""}")
+    else Option.when(!succeeded(cc, mode, ran.log))(s"the spec printed no ${mode.toString.toLowerCase(java.util.Locale.ROOT)}")
+
+  /** A capture that read venue pages the recorded tree lacks says so ("capture again"): the next run answers them from
+   *  the stored pages. The run captures such a country once more, and only once. */
+  def capturesAgain(log: Seq[String]): Boolean = log.exists(_.contains("capture again"))
 
   private val Captured = """\] captured (\d+) listings""".r.unanchored
   def capturedListings(log: Seq[String]): Option[Int] = log.collectFirst { case Captured(n) => n.toInt }
@@ -281,6 +291,9 @@ object IdentityCapture {
   /** One country's capture: its JVM's command, environment and log. */
   final case class Job(cc: String, command: Seq[String], env: Map[String, String], log: Path)
 
+  /** A country's JVM run to its end: its exit status and its log's lines. */
+  final case class Ran(exit: Int, log: Seq[String])
+
   /** Everything that reaches outside the process. */
   trait Effects {
     /** The newest successful "Record scrape fixtures" run, else `None`. */
@@ -291,8 +304,8 @@ object IdentityCapture {
     def fetchTree(run: String, cc: String, layout: Layout): Long
     /** Export prod's `identity_family_answers` of database `db` into `into/<db>.jsonl`, read-only; documents written. */
     def exportFamilies(db: String, into: Path): Long
-    /** Run a country's JVM to its end; its log's lines. */
-    def run(job: Job): Seq[String]
+    /** Run a country's JVM to its end: its exit status and its log's lines. */
+    def run(job: Job): Ran
   }
 
   /** Prints what the real run would do; touches neither the network, prod, nor a child process. */
@@ -307,11 +320,11 @@ object IdentityCapture {
     def exportFamilies(db: String, into: Path): Long = {
       out(s"would export $db.identity_family_answers read-only from prod into ${into.resolve(s"$db.jsonl")}"); 0L
     }
-    def run(job: Job): Seq[String] = {
+    def run(job: Job): Ran = {
       val shown = job.env.map { case (k, v) => if (k.endsWith("_KEY")) s"$k=<from the vault>" else s"$k=$v" }.toSeq.sorted
       val command = job.command.zip("" +: job.command).map { case (arg, before) => if (before == "-cp") s"<classpath: ${arg.split(java.io.File.pathSeparator).length} entries>" else arg }
       out(s"would run ${job.cc}: ${command.mkString(" ")}\n      ${shown.mkString("\n      ")}\n      log ${job.log}")
-      Nil
+      Ran(0, Nil)
     }
   }
 
@@ -376,14 +389,14 @@ object IdentityCapture {
       } finally client.close()
     }
 
-    def run(job: Job): Seq[String] = {
+    def run(job: Job): Ran = {
       Files.createDirectories(job.log.getParent)
       val pb = new ProcessBuilder(job.command*).directory(repo.toFile).redirectErrorStream(true).redirectOutput(job.log.toFile)
       pb.environment().putAll(job.env.asJava)
       val child = pb.start()
-      child.waitFor()
+      val exit  = child.waitFor()
       dropDatabasesOf(child.pid(), job.env.get("MONGODB_URI"))
-      Files.readAllLines(job.log, StandardCharsets.UTF_8).asScala.toSeq
+      Ran(exit, Files.readAllLines(job.log, StandardCharsets.UTF_8).asScala.toSeq)
     }
 
     /** The it/ Mongo databases a country's JVM opened (each named for its pid, `RunScopedDatabaseName`), dropped once it
@@ -466,26 +479,37 @@ object IdentityCapture {
     val jvm = Seq("java") ++ jvmOptions(jvmopts, options.heap) ++ Seq("-cp", classpath, "org.scalatest.tools.Runner", "-oDW", "-s")
     def one(choice: Choice, run: Option[String]): (Boolean, Double) = {
       val Choice(cc, mode, _) = choice
-      val job = mode match {
-        case Mode.Capture => Job(cc, jvm :+ CaptureSpec, environment(cc, env, layout, plan.perHost), layout.logs.resolve(s"$cc-capture.log"))
+      val verb = mode.toString.toLowerCase(java.util.Locale.ROOT)
+      def job(again: Boolean) = mode match {
+        case Mode.Capture => Job(cc, jvm :+ CaptureSpec, environment(cc, env, layout, plan.perHost),
+          layout.logs.resolve(if (again) s"$cc-capture-again.log" else s"$cc-capture.log"))
         case Mode.Fill    => Job(cc, jvm :+ FillSpec, fillEnvironment(cc, env, layout, plan.perHost), layout.logs.resolve(s"$cc-fill.log"))
       }
-      val verb = mode.toString.toLowerCase(java.util.Locale.ROOT)
-      out(s"[identity-capture] $cc: $verb (log ${job.log})")
-      val t0  = System.nanoTime()
-      val log = timed(s"$verb $cc")(effects.run(job))(l => capturedListings(l).map(_.toDouble -> "listings"))
-      val ok  = options.dryRun || succeeded(cc, mode, log)
-      if (!ok) out(s"[identity-capture] $cc: FAILED — the spec printed no $verb; see ${job.log}")
-      else {
-        log.filter(l => l.contains(s"[full-$cc]") || l.contains(s"[$cc]")).foreach(l => out(s"  $l"))
+      def attempt(again: Boolean): (Job, Ran) = {
+        val j = job(again)
+        out(s"[identity-capture] $cc: $verb${if (again) " again" else ""} (log ${j.log})")
+        j -> timed(s"$verb $cc${if (again) " again" else ""}")(effects.run(j))(r => capturedListings(r.log).map(_.toDouble -> "listings"))
+      }
+      val t0 = System.nanoTime()
+      val first = attempt(again = false)
+      val (last, ran) =
+        if (mode == Mode.Capture && !options.dryRun && failure(cc, mode, first._2).isEmpty && capturesAgain(first._2.log)) {
+          out(s"[identity-capture] $cc: its capture read venue pages the tree lacks — capturing once more to answer them")
+          attempt(again = true)
+        } else first
+      val failed = if (options.dryRun) None else failure(cc, mode, ran)
+      failed.foreach(why => out(s"[identity-capture] $cc: FAILED — $why; see ${last.log}"))
+      if (failed.isEmpty) {
+        ran.log.filter(l => l.contains(s"[full-$cc]") || l.contains(s"[$cc]")).foreach(l => out(s"  $l"))
         // a capture's decisions are now those of this recording under this code: what the next run compares with
         if (mode == Mode.Capture && !options.dryRun) run.foreach(r => Files.writeString(fixtures.resolve(s"$cc.inputs"), Inputs(r, code).render))
       }
-      (ok, (System.nanoTime() - t0) / 1e9)
+      (failed.isEmpty, (System.nanoTime() - t0) / 1e9)
     }
     val countriesStarted = System.nanoTime()
     val pool = java.util.concurrent.Executors.newFixedThreadPool(plan.parallel)
     val results = try plans.map { case (choice, _, run) => pool.submit(() => one(choice, run)) }.map(_.get) finally pool.shutdown()
+    val failed  = plans.zip(results).collect { case ((choice, _, _), (false, _)) => choice.cc }
     val countriesWall = (System.nanoTime() - countriesStarted) / 1e9
 
     if (!options.dryRun) {
@@ -494,7 +518,8 @@ object IdentityCapture {
       out("  %s of country time in %s, %d side by side: %.1fx".formatLocal(java.util.Locale.ROOT, duration(summed), duration(countriesWall),
         plan.parallel, summed / math.max(1e-9, countriesWall)))
     }
-    results.forall(_._1)
+    if (failed.nonEmpty) out(s"[identity-capture] FAILED: ${failed.sorted.mkString(", ")} — the run exits non-zero")
+    failed.isEmpty
   }
 
   /** The caller's own corpus (`KINOWO_IDENTITY_CORPUS_DIR`), named by its content's hash for the fixture's stamp. */

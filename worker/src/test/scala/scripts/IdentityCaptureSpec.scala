@@ -60,34 +60,69 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
     heapGigabytes("8192m") shouldBe 8
   }
 
-  "The run" should "start the largest countries first and never hold more JVMs than its budget" in {
+  /** A run over the caller's own corpus, tree and family seed — nothing fetched, nothing exported — each country's JVM
+   *  answered by `jvm`: its success, what it printed, and what the run said. */
+  private def runOf(countries: Seq[String], jvm: Job => Ran): (Boolean, String) = {
     val dir = java.nio.file.Files.createTempDirectory("identity-capture-spec")
-    val now = new java.util.concurrent.atomic.AtomicInteger
-    val peak = new java.util.concurrent.atomic.AtomicInteger
-    val started = java.util.Collections.synchronizedList(new java.util.ArrayList[String])
-    val pair = new java.util.concurrent.CyclicBarrier(2)
     val effects = new Effects {
       def newestRecording(): Option[String] = fail("the caller's corpus needs no lookup")
       def fetchCorpus(run: String, cc: String, layout: Layout): Long = fail("the caller's corpus is not fetched")
       def fetchTree(run: String, cc: String, layout: Layout): Long = fail("the caller's tree is not fetched")
       def exportFamilies(db: String, into: Path): Long = fail("the caller's seed needs no export")
-      def run(job: Job): Seq[String] = {
-        started.add(job.cc); peak.accumulateAndGet(now.incrementAndGet(), math.max)
-        // two JVMs at once or none: each waits for a partner, which a run one at a time never sends
-        pair.await(tools.SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
-        now.decrementAndGet()
-        Seq(s"[full-${job.cc}] captured 10 listings in 5 clusters")
-      }
+      def run(job: Job): Ran = jvm(job)
     }
     val env = Map("KINOWO_IDENTITY_CORPUS_DIR" -> dir.toString, "KINOWO_FIXTURE_ROOT" -> dir.toString,
       "KINOWO_IDENTITY_FAMILY_SEED" -> dir.toString, "KINOWO_IDENTITY_UNMATCHED_CAPTURE" -> dir.toString)
     val lines = Seq.newBuilder[String]
-    val ok = capture(parse(Seq("pl", "es", "us", "uk")).toOption.get, env, Layout(dir, dir), effects, "cp", Nil, "abc", memoryGb = 64,
+    val ok = capture(parse(countries).toOption.get, env, Layout(dir, dir), effects, "cp", Nil, "abc", memoryGb = 64,
       out = line => lines.synchronized { lines += line; () })
+    (ok, lines.synchronized(lines.result()).mkString("\n"))
+  }
+
+  private def captured(cc: String, more: String*) = Ran(0, s"[full-$cc] captured 10 listings in 5 clusters" +: more)
+
+  "The run" should "start the largest countries first and never hold more JVMs than its budget" in {
+    val now = new java.util.concurrent.atomic.AtomicInteger
+    val peak = new java.util.concurrent.atomic.AtomicInteger
+    val started = java.util.Collections.synchronizedList(new java.util.ArrayList[String])
+    val pair = new java.util.concurrent.CyclicBarrier(2)
+    val (ok, said) = runOf(Seq("pl", "es", "us", "uk"), { job =>
+      started.add(job.cc); peak.accumulateAndGet(now.incrementAndGet(), math.max)
+      // two JVMs at once or none: each waits for a partner, which a run one at a time never sends
+      pair.await(tools.SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
+      now.decrementAndGet()
+      captured(job.cc)
+    })
     ok shouldBe true
     peak.get shouldBe 2
     started.asScala.take(2).toSet shouldBe Set("us", "uk")
-    lines.result().mkString("\n") should include("2 side by side")
+    said should include("2 side by side")
+  }
+
+  it should "capture a country once more when its capture read venue pages live and says to capture again — once" in {
+    val runs = new java.util.concurrent.ConcurrentHashMap[String, Integer]
+    val (ok, said) = runOf(Seq("uk", "de"), { job =>
+      runs.merge(job.cc, 1, (a, b) => a + b)
+      if (job.cc == "uk") captured("uk", "[full-uk] 4 listing(s) whose venue page the tree lacks: read 4 page(s) live — capture again to read them")
+      else captured(job.cc)
+    })
+    ok shouldBe true
+    runs.asScala.toMap shouldBe Map("uk" -> 2, "de" -> 1)
+    said should include("uk: its capture read venue pages the tree lacks — capturing once more")
+  }
+
+  it should "fail, naming the country, when a country's JVM fails or is killed" in {
+    // 2026-10-07: Spain's JVM, hung on an IMDb body read, was killed and the run still ended well
+    val (ok, said) = runOf(Seq("pl", "es", "de"), {
+      case job if job.cc == "es" => Ran(143, Seq("[full-es] capture round 1: 5 open family question(s), 0 poster(s)"))
+      case job if job.cc == "de" => Ran(137, captured("de").log)
+      case job                   => captured(job.cc)
+    })
+    ok shouldBe false
+    said should include("FAILED: de, es")
+    said should include("es: FAILED — its JVM exited 143 (killed by signal 15)")
+    said should include("de: FAILED — its JVM exited 137 (killed by signal 9)")
+    said should not include "pl: FAILED"
   }
 
   // ── capture or fill ──

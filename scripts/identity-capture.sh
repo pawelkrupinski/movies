@@ -32,8 +32,10 @@
 #   3. runs each country's UnmatchedClustersCaptureIntegrationSpec in a JVM of its own, against the
 #      it/ Mongo (127.0.0.1:28017) in a database of its own, every variable defaulted (a variable you
 #      set is kept), the TMDB key read from the Touch ID vault (`secrets get movies TMDB_API_KEY`)
-#      unless KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY is set;
-#   4. prints each phase's time and throughput.
+#      unless KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY is set; a country whose capture read venue pages live
+#      ("capture again") is captured once more, to answer them;
+#   4. prints each phase's time and throughput, and exits non-zero, naming them, when any country's JVM
+#      failed, was killed or printed no capture.
 #
 # Then judge every new take into labels.tsv and re-baseline expected-matches.tsv (the ratchet,
 # worker/src/test/scala/services/identity/UnmatchedClustersRatchetSpec.scala).
@@ -46,7 +48,7 @@ for arg in "$@"; do
     case "$arg" in
         --dry-run) dry=true ;;
         --fill) fill_only=true ;;
-        -h|--help) sed -n '3,39p' "$0"; exit 0 ;;
+        -h|--help) sed -n '3,42p' "$0"; exit 0 ;;
     esac
 done
 
