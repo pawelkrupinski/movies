@@ -123,6 +123,16 @@ class HttpReadSpec extends AnyFlatSpec with Matchers {
     ChallengePage.detect(IncapsulaBlock) shouldBe Some("Incapsula")
   }
 
+  // Every TMDB answer a replay reads crosses `FallbackHttpFetch`, and searching each for eight markers was
+  // 3.5% of a US order-independence leg's CPU (JFR, run 37581348550) — for bodies no vendor serves as a challenge.
+  it should "not search a JSON body, which no challenge page is" in {
+    val before = ChallengePage.scansOnThisThread
+    ChallengePage.detect(s"""{"title":"px-captcha","overview":"<title>Just a moment...</title>"}""") shouldBe None
+    ChallengePage.detect(s"""\n  [{"id":1,"note":"window._cf_chl_opt"}]""") shouldBe None
+    ChallengePage.scansOnThisThread - before shouldBe 0
+    ChallengePage.detect(s"\n  $IncapsulaBlock") shouldBe Some("Incapsula")
+  }
+
   it should "recognise Incapsula's block page and its bare JS challenge" in {
     ChallengePage.detect(IncapsulaBlock) shouldBe Some("Incapsula")
     ChallengePage.detect(IncapsulaJsChallenge) shouldBe Some("Incapsula")

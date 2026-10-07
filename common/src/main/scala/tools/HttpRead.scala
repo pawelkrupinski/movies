@@ -200,12 +200,23 @@ object ChallengePage {
   def detect(body: String): Option[String] = {
     val seen = lastClear.get()
     if (seen.body.get() eq body) None
+    else if (isJson(body)) None
     else {
       seen.scans += 1
       val vendor = Signatures.collectFirst { case (matches, v) if matches(body) => v }
       if (vendor.isEmpty) seen.body = new java.lang.ref.WeakReference(body)
       vendor
     }
+  }
+
+  /** A body opening as a JSON object or array: an API's answer, never a vendor's interstitial, which is
+   *  always an HTML page — so it is not searched at all. Every TMDB answer a replay reads crosses
+   *  `FallbackHttpFetch`, and searching those for the markers was 3.5% of a US order-independence leg's CPU
+   *  (JFR, run 37581348550). */
+  private def isJson(body: String): Boolean = {
+    var i = 0
+    while (i < body.length && Character.isWhitespace(body.charAt(i))) i += 1
+    i < body.length && (body.charAt(i) == '{' || body.charAt(i) == '[')
   }
 
   private final class LastClear {
