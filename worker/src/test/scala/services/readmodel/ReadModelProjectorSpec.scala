@@ -1628,6 +1628,42 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     projector.stop()
   }
 
+  // DRIFT IS A WRITE THE STREAM DID NOT MAKE ITSELF — the same verdict as a heal's. The stream
+  // debounces a film's re-read for up to two minutes and every apply waits for the sweep's lock,
+  // so a showtime change landing just before the content check reaches its row is projected by
+  // the check first. Counted, that was "drift": petsematary|1989 at Regal Kendall Village Miami
+  // on 2026-10-07, its source slot written at 06:32:12.9 and the check rewriting it at 06:32:50,
+  // with the stream applying nothing late and declining nothing.
+  "the content check" should "not count as drift a change the stream applies once the sweep lets go" in {
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
+    val m = new RecordingReadModelProjectionMetrics()
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
+    // The stream's apply thread: what it had queued when the sweep took the lock, run once it is free.
+    val queued = scala.collection.mutable.Buffer.empty[StoredMovieRecord]
+    lazy val projector: ReadModelProjector =
+      new ReadModelProjector(repository, rm, rm, m, awaitStreamApplied = _ => queued.foreach(projector.onMovieUpsert), clock = specClock)
+    repository.findAll().foreach(projector.onMovieUpsert)
+    // Foo gains a showtime; its event is delivered, and waits behind the sweep.
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"), at("2026-06-14T18:00"))))
+    queued ++= repository.findAll().filter(_.id.value.startsWith("foo"))
+    // Bar's showtime moves and no event ever comes: real drift.
+    repository.putEmbeddedOutOfBand("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-15T20:00")), tmdbId = 2))
+
+    val lines = tools.LogCapture.capture(classOf[ReadModelProjector].getName)((1 to 48).foreach(_ => projector.pruneOrphans()))
+      .map(_.getFormattedMessage).filter(_.contains("had drifted from its source"))
+
+    rm.findAllScreenings().filter(_.filmId.startsWith("foo")).flatMap(_.showtimes).map(_.dateTime.toString).sorted shouldBe
+      Seq("2026-06-12T20:00", "2026-06-14T18:00")
+    rm.findAllScreenings().filter(_.filmId.startsWith("bar")).flatMap(_.showtimes).map(_.dateTime.toString) shouldBe Seq("2026-06-15T20:00")
+    withClue("only the row the stream never applied drifted: ") {
+      m.drift.toMap shouldBe Map(ReadModelProjectionMetrics.DriftCause.ScreeningUpsert -> 1)
+    }
+    lines should have size 1
+    lines.head should include ("bar|2024")
+    projector.stop()
+  }
+
   it should "ask again once the row itself changes" in {
     val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
                                                  slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)

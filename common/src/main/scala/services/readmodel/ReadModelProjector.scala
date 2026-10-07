@@ -69,7 +69,7 @@ class ReadModelProjector(
   pruneInterval:  ReadModelPruneInterval  = ReadModelProjector.DefaultPruneInterval,
   pruneBootDelay: ReadModelPruneBootDelay = ReadModelProjector.DefaultPruneBootDelay,
   // Blocks until the change stream has applied what it had in flight when a sweep let go of the
-  // lock — what tells a heal the stream would have made anyway from a real miss (see `verdictOnHeals`).
+  // lock — what tells a heal the stream would have made anyway from a real miss (see `verdictOnSweep`).
   awaitStreamApplied: ChangeStreamLiveness => Unit = ReadModelProjector.awaitStreamApplied(_),
   // Which derivation the stored read model was last re-projected whole under — see
   // [[ReadModelDerivationMarker]] and `advanceDerivationPass`. `none` owes no pass.
@@ -162,8 +162,11 @@ class ReadModelProjector(
   private var sweepCount    = clock.instant().getEpochSecond / PruneSeconds
   @volatile private var watchHandle: Option[AutoCloseable] = None
   // The rows the change stream applied or deleted since the running prune sweep started, `None`
-  // outside one: what tells a heal the stream would have made anyway from a miss (`verdictOnHeals`).
+  // outside one: what tells a heal the stream would have made anyway from a miss (`verdictOnSweep`).
   private var appliedSinceSweep: Option[scala.collection.mutable.Set[String]] = None
+  // The rows the running sweep's content check rewrote, held for the same verdict as its heals:
+  // only a row the stream does not then apply itself drifted (`verdictOnSweep`).
+  private val sweepDrift = scala.collection.mutable.Buffer.empty[RowDrift]
   // Where the whole-corpus re-projection a derivation change owes stands — see `advanceDerivationPass`.
   private var derivationPass: DerivationPass = DerivationPass.Unchecked
 
@@ -321,10 +324,11 @@ class ReadModelProjector(
     // scales with city count, not with resolve/synopsisByCity/ratings cost.
     val writing = tools.Stopwatch.start()
     var written = 0
-    // A content check's writes are DRIFT — the stored projection disagreed with the source and no
-    // event repaired it — so each is counted by what moved and named on one line per row, the
-    // film ids being what a drift investigation has to start from.
+    // A content check's writes are DRIFT CANDIDATES — the stored projection disagreed with the
+    // source — held by what moved for the sweep's verdict, which counts and names only the rows
+    // no event then repaired, the film ids being what a drift investigation has to start from.
     val drifting = trigger == ProjectTrigger.Content
+    val causes   = Seq.newBuilder[(String, Int)]
     val drifted  = Seq.newBuilder[String]
     val now     = clock.millis()
     val publish = variants.flatMap { case (projected, screenings) =>
@@ -342,7 +346,7 @@ class ReadModelProjector(
         written += 1
         if (drifting) {
           val cause = ReadModelProjectionMetrics.cardWriteCause(parts)
-          metrics.recordDrift(cause, 1)
+          causes += cause -> 1
           drifted += s"card ${movie._id} (${if (parts.isEmpty) cause else parts.toSeq.sorted.mkString("+")})"
         }
       }
@@ -350,7 +354,7 @@ class ReadModelProjector(
       written += screeningDiff.documents
       if (drifting) {
         def note(cause: String, ids: Seq[String]): Unit = if (ids.nonEmpty) {
-          metrics.recordDrift(cause, ids.size)
+          causes += cause -> ids.size
           drifted += s"$cause ${ids.size} (${ReadModelProjector.idsForLog(ids)})"
         }
         note(ReadModelProjectionMetrics.DriftCause.ScreeningUpsert, screeningDiff.upserted)
@@ -379,7 +383,7 @@ class ReadModelProjector(
     healedClean.updateWith(rowId)(_.map { case (hash, phantoms) => (hash, phantoms -- served) }.filter(_._2.nonEmpty))
     metrics.recordWriteBurst(writing.seconds)
     val drift = drifted.result()
-    if (drift.nonEmpty) logger.warn(s"read-model content check: row $rowId had drifted from its source — ${drift.mkString("; ")}.")
+    if (drift.nonEmpty) sweepDrift += RowDrift(rowId, causes.result(), drift.mkString("; "))
     written
   }
 
@@ -438,7 +442,7 @@ class ReadModelProjector(
   def refreshShareCard(filmId: String): Unit = lock.synchronized {
     val row = held.get(filmId).map(_.row).getOrElse(filmId.takeWhile(_ != '~'))
     // A card held for its share card and published by the render landing is in flight like a
-    // stream event: a sweep between the two found it absent (see `verdictOnHeals`).
+    // stream event: a sweep between the two found it absent (see `verdictOnSweep`).
     appliedSinceSweep.foreach(_ += row)
     movieRepository.findById(services.movies.FilmId(row)).foreach(projectRow(_, ProjectTrigger.ShareCard))
   }
@@ -791,10 +795,7 @@ class ReadModelProjector(
     // partition the corpus rather than sampling it, and every row is reached.
     if (!reproject && scanComplete) {
       val slice   = math.floorMod(sweepCount, ContentSlices.toLong).toInt
-      val drifted = reprojectSlice(liveRowIds, slice, s"$kind sweep", movieRepository.findByIdChecked, projectRow(_, ProjectTrigger.Content))._1
-      if (drifted > 0)
-        logger.warn(s"read-model $kind sweep: content check slice $slice of $ContentSlices rewrote $drifted document(s) — " +
-          "a stored projection had drifted from what the source projects to, which the id-only sweeps cannot see.")
+      reprojectSlice(liveRowIds, slice, s"$kind sweep", movieRepository.findByIdChecked, projectRow(_, ProjectTrigger.Content))
       if (derivationPass == DerivationPass.Unchecked) armDerivationPass(liveRowIds.toVector)
     }
     sweepCount += 1
@@ -863,7 +864,8 @@ class ReadModelProjector(
     }
   }
 
-  /** Which of the rows a prune sweep healed were MISSES — the rest the change stream had in flight.
+  /** Which of the rows a prune sweep healed, or its content check rewrote, were MISSES — the rest
+   *  the change stream had in flight.
    *
    *  The sweep holds the projection lock from its first read of the read model to its last
    *  write, and every stream apply waits for that lock. So a scrape landing a new venue or a new
@@ -874,10 +876,24 @@ class ReadModelProjector(
    *  within five seconds of the sweep starting, and with no retirement, failed re-read or restart
    *  behind it. So the verdict waits, outside the lock, for the stream to apply what it had in
    *  flight: a healed row the stream then applies was not missed; one it leaves alone was. Only
-   *  misses are metered and named in the WARN line. */
-  private def verdictOnHeals(healed: Seq[String]): Unit = {
-    if (healed.nonEmpty) awaitStreamApplied(movieRepository.changeStreamLiveness)
+   *  misses are metered and named in the WARN line.
+   *
+   *  The content check's rewrites race the stream the same way, and more often: the stream holds
+   *  a film's re-read for up to `Debounce.Worker.cap`, so a showtime change landing in the two
+   *  minutes before the check reaches its row is projected by the check first. Every such row
+   *  counted as drift — petsematary|1989 at Regal Kendall Village Miami on 2026-10-07, its source
+   *  slot written 38 s before the check rewrote it, the stream applying it once the sweep let go. */
+  private def verdictOnSweep(healed: Seq[String], rewritten: Seq[RowDrift]): Unit = {
+    if (healed.nonEmpty || rewritten.nonEmpty) awaitStreamApplied(movieRepository.changeStreamLiveness)
     val applied = lock.synchronized { val rows = appliedSinceSweep.fold(Set.empty[String])(_.toSet); appliedSinceSweep = None; rows }
+    val (raced, drifted) = rewritten.partition(row => applied(row.rowId))
+    if (raced.nonEmpty)
+      logger.info(s"read-model content check: rewrote ${raced.size} row(s) the change stream had in flight and then " +
+        s"applied itself — not drift: ${ReadModelProjector.idsForLog(raced.map(_.rowId))}.")
+    drifted.foreach { row =>
+      row.causes.foreach { case (cause, documents) => metrics.recordDrift(cause, documents) }
+      logger.warn(s"read-model content check: row ${row.rowId} had drifted from its source — ${row.detail}.")
+    }
     val (inFlight, missed) = healed.partition(applied)
     if (inFlight.nonEmpty)
       logger.info(s"read-model prune sweep: wrote ${inFlight.size} row(s) the change stream had in flight and then " +
@@ -905,11 +921,11 @@ class ReadModelProjector(
   /** Cheap id-only orphan prune — the frequent backstop for deleted / merged-away rows, and
    *  for the rows a silent change stream failed to deliver (see `sweep`). */
   def pruneOrphans(): Unit = {
-    lock.synchronized { appliedSinceSweep = Some(scala.collection.mutable.Set.empty) }
-    val healed =
-      try sweep(reproject = false)._1
+    lock.synchronized { appliedSinceSweep = Some(scala.collection.mutable.Set.empty); sweepDrift.clear() }
+    val (healed, rewritten) =
+      try { val healed = sweep(reproject = false)._1; lock.synchronized((healed, sweepDrift.toSeq)) }
       catch { case exception: Throwable => lock.synchronized { appliedSinceSweep = None }; throw exception }
-    verdictOnHeals(healed)
+    verdictOnSweep(healed, rewritten)
   }
 
   /** Caller holds `lock`. Re-project every row of `rowIds` in content slice `slice`, each `read` by
@@ -1453,6 +1469,9 @@ private[readmodel] object WrittenScreening {
 /** One venue's screenings row as a projection plans it: rebuilt (`built`), or carried
  *  unbuilt because the row written from the same `input` is still current. */
 private[readmodel] final case class PlannedScreening(_id: String, input: Int, built: Option[CityScreening])
+
+/** One row the content check rewrote: the documents by cause, and what moved, for its WARN line. */
+private[readmodel] final case class RowDrift(rowId: String, causes: Seq[(String, Int)], detail: String)
 
 /** The screenings rows one card's diff wrote and removed, by id. */
 private[readmodel] final case class ScreeningDiff(upserted: Seq[String], deleted: Seq[String]) {
