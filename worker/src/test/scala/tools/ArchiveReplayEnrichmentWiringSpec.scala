@@ -385,22 +385,9 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     missing.size shouldBe pages.size
   }
 
-  // A drain's tasks are round trips to Mongo, not CPU: four claimants left a US detail phase at under one busy core,
-  // so the harness runs more than production's pool. A same-thread budget still drains on one, for the seeded
-  // replays whose only nondeterminism must be their shuffle.
-  "a harness queue drain" should "run more claimants than the background budget's cap, and one under a same-thread budget" in {
-    val wiring = hermeticWiring(None, new MissingFixtures)
-    wiring.drainClaimants shouldBe TestWiring.DrainClaimantsPerBudgetSlot * wiring.backgroundBudget.maxConcurrent
-    val serial = new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage, fixtureTree,
-        settings.FixtureRoot.RepositoryRelative) {
-      override lazy val backgroundBudget: ExecutionBudget = new SameThreadExecutionBudget
-    }
-    serial.drainClaimants shouldBe 1
-  }
-
   // The detail drain worked one task at a time on one thread: a few thousand detail tasks of serial
   // round trips on every US projection, ~23 s each at under one core (run 37563035752).
-  it should "work its tasks on the background budget's claimants side by side" in {
+  "a harness queue drain" should "work its tasks on the background budget's claimants side by side" in {
     val wiring  = hermeticWiring(None, new MissingFixtures)
     (1 to 12).foreach(i => wiring.taskQueue.enqueue(services.tasks.TaskType.EnrichDetails, s"probe-$i", Map.empty,
       submittedAt = wiring.clock.instant()))

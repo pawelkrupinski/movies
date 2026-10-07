@@ -312,23 +312,19 @@ trait TestWiring extends WorkerWiring {
 
   private lazy val ratingHandlerByType = ratingHandlers.map(h => h.taskType -> h).toMap
 
-  /** How many claimants the queue drains run — [[TestWiring.DrainClaimantsPerBudgetSlot]] for each slot of the
-   *  `backgroundBudget` that caps every other background consumer.
+  /** How many claimants the queue drains run — production's own pool size, read off
+   *  the SAME `backgroundBudget` that caps every other background consumer.
    *
-   *  More than production's pool, on purpose. A drain's tasks are Mongo round trips — claim, the handler's reads and
-   *  writes, complete — so at production's four claimants a US detail phase ran at under one busy core of the
-   *  runner's four (run 37581348550), a wait production spreads over a tick and the harness pays on its critical
-   *  path. `claim` is atomic per task, so any number of claimants partition the queue rather than race for a row.
-   *
-   *  Derived from the budget rather than declared, so the one lever stays the budget. The convergence suite's
-   *  order-independence passes and the determinism specs swap in a `SameThreadExecutionBudget` to leave their seeded
-   *  shuffle as the only nondeterminism; that budget reports 1, and drains on exactly one claimant. An unbounded
-   *  budget (`<= 0`) means "no cap", which is not a usable count, so the pool default stands in for it. */
+   *  Derived rather than declared, so it cannot drift from the lever callers already
+   *  use. The convergence suite's order-independence passes and the determinism specs
+   *  swap in a `SameThreadExecutionBudget` to leave their seeded shuffle as the only
+   *  nondeterminism; that budget reports 1, so those drains stay strictly serial with
+   *  nothing extra to remember. Everything else gets the real budget's cap. An unbounded budget (`<= 0`) means "no cap", which is not a
+   *  usable claimant count, so the pool default stands in. */
   private[tools] def drainClaimants: Int =
     backgroundBudget.maxConcurrent match {
-      case 1                      => 1
-      case bounded if bounded > 0 => bounded * TestWiring.DrainClaimantsPerBudgetSlot
-      case _                      => TaskWorker.DefaultPoolSize * TestWiring.DrainClaimantsPerBudgetSlot
+      case bounded if bounded > 0 => bounded
+      case _                      => TaskWorker.DefaultPoolSize
     }
 
   /**
@@ -445,9 +441,6 @@ trait TestWiring extends WorkerWiring {
 }
 
 object TestWiring {
-  /** Queue-drain claimants per slot of a wiring's background budget ([[TestWiring.drainClaimants]]). */
-  val DrainClaimantsPerBudgetSlot = 3
-
   /** The instant every harness clock starts at. */
   val FixedInstant: java.time.Instant = java.time.Instant.parse("2026-06-08T12:00:00Z")
 
