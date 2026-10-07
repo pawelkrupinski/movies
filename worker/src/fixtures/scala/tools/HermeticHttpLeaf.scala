@@ -88,15 +88,14 @@ object MissingFixtures {
     }
   }
 
-  /** What answering a remembered failure says about the tree: a gap, when the recording remembered only a failure of
-   *  the moment — a circuit it opened on itself, a 503, a timeout — for no fill could close it otherwise: the replay
-   *  answers it before the leaf, so the leaf never names it (Poland's Wikidata lookups, "circuit open" since the
-   *  recording that hit its own fleet pace, run 37661888315). Not a definite answer (a 404), not a refusal of the asker
-   *  (401, 403 — CI's fill would be refused too), and not a gap this run already named at the leaf. Listed as the leaf
-   *  lists: credentials masked, a POST whole only when its body names none. */
+  /** What answering a remembered failure says about the tree: a gap, when the recording remembered only a failure — a
+   *  circuit it opened on itself, a 503, a timeout, or a 403 refusing the recording's address — for no fill could close
+   *  it otherwise: the replay answers it before the leaf, so the leaf never names it (Poland's Wikidata lookups, "circuit
+   *  open" since the recording that hit its own fleet pace, run 37661888315; Cineworld's 403s, which the fill asks again
+   *  through the residential proxy, `MissingFixtureFill.route`). Not a definite answer (a 404), and not a gap this run
+   *  already named at the leaf. Listed as the leaf lists: credentials masked, a POST whole only when its body names none. */
   def listingPassingFailures(missing: MissingFixtures): CachingEnrichmentFetch.Replayed => Unit = replayed =>
-    if (!replayed.failed.definitive && !replayed.failed.status.exists(RefusedAsker) &&
-        !replayed.failed.message.startsWith(classOf[MissingFixtureException].getName)) {
+    if (!replayed.failed.definitive && !replayed.failed.message.startsWith(classOf[MissingFixtureException].getName)) {
       val redacted = RedactedUrl(replayed.url)
       if (replayed.body.forall { case (text, _) => redacted == replayed.url && !RedactedUrl.carriesCredential(text) }) {
         val key = clients.tools.RecordingHttpFetch.fixtureKey(replayed.url, replayed.body.map(_._1), foldYear = false)
@@ -104,9 +103,6 @@ object MissingFixtures {
           Refetch(replayed.verb, redacted, replayed.body.map { case (text, contentType) => Refetch.Body(contentType, text) }))
       }
     }
-
-  /** Statuses that refuse whoever asks — the fill, asking from CI, would be refused alike. */
-  private val RefusedAsker: Set[Int] = Set(401, 403)
 
   /** Where a hermetic leg leaves its [[writeRefetches]] list: beside the tree it replayed, never in it
    *  (`enrichment-us` → `enrichment-us.refetch.tsv`), so no pack of the tree can carry it. */

@@ -86,6 +86,13 @@ object MissingFixtureFill {
         s"$alreadyHeld already held, $unsigned needing a key this fill lacks, $unreached left for the next leg"
   }
 
+  /** The wire a fill asks over: `direct`, and through `proxy` — the residential proxy production reaches the origins
+   *  that refuse a datacenter with — only what the origin refused directly (a 403: Cineworld's detail API answers CI's own
+   *  address so, run 37670426810). An answer, a 404 included, ends it; without a proxy, `direct` alone. Only what needs
+   *  the paid egress uses it. */
+  def route(direct: HttpFetch, proxy: Option[HttpFetch]): HttpFetch =
+    proxy.fold(direct)(p => new FallbackHttpFetch(Seq("direct" -> direct, "proxy" -> p), endsChain = FallbackHttpFetch.OriginAnswered))
+
   /** The chain a fill writes through: `ArchiveReplayWiring.recordedChain` into `tree` under `root` — the
    *  recorder's own, so a fetched page lands where a hermetic replay looks for it, and a durable verdict
    *  (a 404) is remembered beside it as a recording remembers one. A transient failure is not: the next

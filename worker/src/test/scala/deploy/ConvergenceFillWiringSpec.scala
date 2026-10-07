@@ -80,6 +80,16 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
     rows.linesIterator.dropWhile(!_.contains("id: publish")).take(25).mkString("\n") should not include "TMDB"
   }
 
+  // A request the origin refuses CI's own address (Cineworld's 403s) is asked again through the residential proxy
+  // (`MissingFixtureFill.route`): its credentials, like TMDB's key, in the fetching step alone.
+  it should "hold the residential proxy's credentials in the fetching step alone" in {
+    Seq("KINOWO_PROXY_USER", "KINOWO_PROXY_PASS").foreach { name =>
+      fillStep should include(s"$name: $${{ secrets.$name }}")
+      publish should not include name
+      RepoFile.withoutComments(leg).linesIterator.count(_.contains(s"secrets.$name")) shouldBe 1
+    }
+  }
+
   it should "publish what it fetched under a name of its own row, from every phase" in {
     val others = rows.substring(RepoFile.positionOf(rows, "id: publish-row-fill"))
     rows.substring(RepoFile.positionOf(rows, "id: publish\n"), RepoFile.positionOf(rows, "id: publish-row-fill")) should
@@ -117,6 +127,8 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
     job should include("code: ${{ fromJson(needs.countries.outputs.codes) }}")
     job should include("uses: ./.github/actions/convergence-fill")
     job should include("tmdb-api-key: ${{ secrets.TMDB_API_KEY }}")
+    job should include("proxy-user: ${{ secrets.KINOWO_PROXY_USER }}")
+    job should include("proxy-pass: ${{ secrets.KINOWO_PROXY_PASS }}")
     withClue("its own run id names its fill, so it never writes a row's name: ")(fill should not include "fill-row:")
   }
 
@@ -125,6 +137,9 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.step(fill, "Fetch them until the fill's minutes run out") should include("$FILL_UNTIL")
     RepoFile.step(fill, "Fetch them until the fill's minutes run out") should include("TMDB_API_KEY:     ${{ inputs.tmdb-api-key }}")
     fill.linesIterator.count(_.contains("inputs.tmdb-api-key")) shouldBe 1
+    RepoFile.step(fill, "Fetch them until the fill's minutes run out") should include("KINOWO_PROXY_USER: ${{ inputs.proxy-user }}")
+    RepoFile.step(fill, "Fetch them until the fill's minutes run out") should include("KINOWO_PROXY_PASS: ${{ inputs.proxy-pass }}")
+    Seq("inputs.proxy-user", "inputs.proxy-pass").foreach(i => fill.linesIterator.count(_.contains(i)) shouldBe 1)
   }
 
   it should "replay nothing and compile only the fixtures, without becoming the build cache's entry" in {

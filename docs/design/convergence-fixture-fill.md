@@ -83,6 +83,13 @@ or UK leg's gaps (run 37656742608); the fill sends it again as it was sent. A re
 credential is only in a header, or whose body names one, is never listed. Those stay the
 recorder's to record.
 
+A failure the recording remembered for a request is a gap too, unless it is an answer (a 404): a
+circuit the recording opened on itself, a 503, a timeout — and a 403, an origin refusing the
+recording's address. The fill asks every gap directly first, and only what the origin refuses
+directly goes again through the residential proxy, as production reaches those origins
+(`MissingFixtureFill.route`; Cineworld's detail API answers CI's own address 403). Its credentials,
+like TMDB's key, reach only the fetching step; without them a refused request stays a gap.
+
 A hermetic leg takes no fleet-wide pace slots (`ArchiveReplayWiring.pacingFleet`): on its frozen
 clock the fleet pacer's slots never came round, and from Wikidata's fifth request on it answered
 "circuit open" above the leaf, so those gaps were never named and never filled.

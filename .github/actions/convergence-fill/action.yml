@@ -26,6 +26,16 @@ inputs:
       one those gaps are left for the recorder.
     required: false
     default: ''
+  proxy-user:
+    description: >-
+      The residential proxy's user — what an origin refuses directly is asked again through it
+      (MissingFixtureFill.route). Only the fetching step sees it; without one, refused requests stay gaps.
+    required: false
+    default: ''
+  proxy-pass:
+    description: The residential proxy's password, beside proxy-user.
+    required: false
+    default: ''
   minutes:
     description: >-
       Minutes from this action's start at which the fill stops starting requests. Its setup and compile come
@@ -76,6 +86,8 @@ runs:
           KINOWO_COUNTRY:   ${{ inputs.code }}
           KINOWO_COUNTRIES: ${{ inputs.code }}
           TMDB_API_KEY:     ${{ inputs.tmdb-api-key }}
+          KINOWO_PROXY_USER: ${{ inputs.proxy-user }}
+          KINOWO_PROXY_PASS: ${{ inputs.proxy-pass }}
       run: |
           sbt -J-Xmx2g "worker/Fixtures/runMain scripts.FillMissingFixtures ${{ inputs.code }} refetch.tsv $RUNNER_TEMP/fill-held/test/resources/fixtures $RUNNER_TEMP/fill-out/test/resources/fixtures $FILL_UNTIL"
 

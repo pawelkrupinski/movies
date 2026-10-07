@@ -401,10 +401,10 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
 
   // A recording remembers a failure that says nothing about its URL — a circuit it opened on itself, a 503 — and a hermetic
   // leg replays it, so the request never reaches the leaf and is never named: a Polish leg's ~60 Wikidata lookups were
-  // answered "circuit open" from the recording for ever (run 37661888315). Such a request is a gap the fill can close. A
-  // 404 is an answer, and a 403 is the origin refusing whoever asks — CI's fill would be refused too. (Remembered under
-  // the BYTES request, as the recorder fetches every response.)
-  it should "name a request its recording remembers only a passing failure for, and never one with an answer" in {
+  // answered "circuit open" from the recording for ever (run 37661888315). Such a request is a gap the fill can close, and
+  // so is a 403 — the origin refusing CI's address, which the fill asks again through the residential proxy. A 404 is an
+  // answer. (Remembered under the BYTES request, as the recorder fetches every response.)
+  it should "name a request its recording remembers only a failure for, and never one with an answer" in {
     val missing = new MissingFixtures
     val cache   = new EnrichmentCache(new InMemoryEnrichmentCacheStore(), transients = EnrichmentCache.Transients.Replayed)
     val wiring  = hermeticWiring(Some(cache), missing)
@@ -419,7 +419,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     val file = java.nio.file.Files.createTempDirectory("remembered").resolve("enrichment-pl.refetch.tsv")
     missing.writeRefetches(file)
     java.nio.file.Files.readAllLines(file).toArray(Array.empty[String]).toSeq.flatMap(MissingFixtures.Refetch.parse).map(_._2) shouldBe
-      Seq(MissingFixtures.Refetch("BYTES", passing))
+      Seq(MissingFixtures.Refetch("BYTES", passing), MissingFixtures.Refetch("BYTES", refused))
   }
 
   // The detail drain worked one task at a time on one thread: a few thousand detail tasks of serial
@@ -480,7 +480,8 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
       .getMessage should include("HTTP 403")
     (the [Exception] thrownBy hermetic.enrichmentFetch.get("https://www.omdbapi.com/?t=Dune"))
       .getMessage should include("HTTP 403")
-    missing.isEmpty shouldBe true
+    // ...and named as gaps for the fill, which asks a refused request again through the residential proxy.
+    missing.size shouldBe 2
   }
 
   // A detail page that answered nothing used to be asked again on every call: the detail

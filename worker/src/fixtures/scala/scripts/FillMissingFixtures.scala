@@ -34,8 +34,15 @@ object FillMissingFixtures {
       val gaps = if (Files.isRegularFile(Path.of(list)))
         Files.readAllLines(Path.of(list)).asScala.toSeq.flatMap(MissingFixtures.Refetch.parse).map(_._2)
       else Nil
-      val live: HttpFetch = modules.wiring.HttpWiring.pacedWire(new RealHttpFetch(tls = TlsTrust.newContext()),
-        configuration, new InMemoryFleetHostPace, java.time.Clock.systemUTC(), Thread.sleep)
+      val tls   = TlsTrust.newContext()
+      val pace  = new InMemoryFleetHostPace
+      def paced(leaf: HttpFetch): HttpFetch =
+        modules.wiring.HttpWiring.pacedWire(leaf, configuration, pace, java.time.Clock.systemUTC(), Thread.sleep)
+      // The residential proxy, when the process holds its credentials: what the origin refuses directly is asked again
+      // through it, as production reaches those origins (`MissingFixtureFill.route`).
+      val proxy = modules.wiring.EgressWiring.residentialShards(tools.ResidentialProxy.fromConfiguration(configuration), tls)
+        .map(shards => paced(new tools.StickyShardHttpFetch(shards, tools.StickyShardHttpFetch.hostAndPath)))
+      val live: HttpFetch = MissingFixtureFill.route(paced(new RealHttpFetch(tls = tls)), proxy)
       val fill = new MissingFixtureFill(
         MissingFixtureFill.heldIn(settings.FixtureRoot(Path.of(held)), tree),
         MissingFixtureFill.recordingInto(settings.FixtureRoot(Path.of(out)), tree, live),

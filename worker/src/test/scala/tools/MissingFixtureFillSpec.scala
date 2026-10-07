@@ -140,6 +140,20 @@ class MissingFixtureFillSpec extends AnyFlatSpec with Matchers {
     MissingFixtureFill.heldIn(held, Tree)(gone) shouldBe true
   }
 
+  // Cineworld answers CI's own address 403 and production reaches it through the residential proxy: the fill asks every
+  // gap directly, and only one the origin refused goes again through the proxy. An answer — a 404 included — is final.
+  "a fill's route" should "go through the proxy only for what the origin refused directly, and never without one" in {
+    val refused = "https://www.cineworld.co.uk/api/gatsby-source-boxofficeapi/movies?id=1"
+    val gone    = "https://www.cineworld.co.uk/api/gatsby-source-boxofficeapi/movies?id=2"
+    val direct  = new Live(url => throw new HttpStatusException(if (url == refused) 403 else 404, "GET", url, None))
+    val proxy   = new Live(url => s"proxied $url")
+    val route   = MissingFixtureFill.route(direct, Some(proxy))
+    route.get(refused) shouldBe s"proxied $refused"
+    an [HttpStatusException] should be thrownBy route.get(gone)
+    proxy.asked.asScala.toSeq shouldBe Seq(refused)
+    MissingFixtureFill.route(direct, None) should be theSameInstanceAs direct
+  }
+
   // The list is read from a file another job wrote: a body holding tabs and newlines survives the round trip.
   "a refetch line" should "carry a POST's body whole through the list" in {
     val gap = MissingFixtures.Refetch("POST", "https://caching.graphql.imdb.com/",
