@@ -129,7 +129,8 @@ class ArchiveReplayWiring(
    */
   override lazy val httpFetch: HttpFetch =
     ArchiveReplayWiring.recordedChain(fixtureDirectory, fixtureRoot, enrichmentCache,
-      live(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape)), "detail-fixtures", "detail-live")
+      live(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape)), "detail-fixtures", "detail-live",
+      replayedFailure = hermetic.fold[CachingEnrichmentFetch.Replayed => Unit](_ => ())(MissingFixtures.listingPassingFailures))
   // Every cinema-egress route (Multikino, biletyna, ck105's Zyte, Flicks, Vue, Odeon) is this chain
   // too, with no override of its own: `TestWiring` refuses their paid legs, and a route with
   // neither a proxy nor a Zyte leg IS its direct leg.
@@ -170,7 +171,8 @@ class ArchiveReplayWiring(
     // `live: HTTP 404`, so a run answering entirely from remembered verdicts looked
     // exactly like one re-fetching every one of them.
     ArchiveReplayWiring.recordedChain(fixtureDirectory, fixtureRoot, enrichmentCache,
-      live(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Enrich)), "enrichment-fixtures", "remembered-or-live")
+      live(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Enrich)), "enrichment-fixtures", "remembered-or-live",
+      replayedFailure = hermetic.fold[CachingEnrichmentFetch.Replayed => Unit](_ => ())(MissingFixtures.listingPassingFailures))
 
   /** The real key and the country's own language — the enrichment is meant to be the one
    *  production would do. Overridden because `TestWiring` pins a stub key and the DEFAULT
@@ -317,9 +319,10 @@ object ArchiveReplayWiring {
    * A chain built without it (the identity gate's first draft) reads none of them.
    */
   def recordedChain(fixtureDirectory: String, root: settings.FixtureRoot, cache: Option[EnrichmentCache], live: HttpFetch,
-                    fixturesLabel: String, liveLabel: String): HttpFetch =
+                    fixturesLabel: String, liveLabel: String,
+                    replayedFailure: CachingEnrichmentFetch.Replayed => Unit = _ => ()): HttpFetch =
     new FallbackHttpFetch(Seq(
       fixturesLabel -> new clients.tools.FakeHttpFetch(fixtureDirectory, strict = true, foldYear = false, root = root),
       liveLabel     -> new clients.tools.RecordingHttpFetch(
-        fixtureDirectory, cache.fold(live)(new CachingEnrichmentFetch(_, live)), foldYear = false, root = root)))
+        fixtureDirectory, cache.fold(live)(new CachingEnrichmentFetch(_, live, replayedFailure)), foldYear = false, root = root)))
 }

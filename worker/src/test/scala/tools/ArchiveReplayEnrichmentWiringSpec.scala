@@ -399,6 +399,29 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     missing.size shouldBe asks.size
   }
 
+  // A recording remembers a failure that says nothing about its URL — a circuit it opened on itself, a 503 — and a hermetic
+  // leg replays it, so the request never reaches the leaf and is never named: a Polish leg's ~60 Wikidata lookups were
+  // answered "circuit open" from the recording for ever (run 37661888315). Such a request is a gap the fill can close. A
+  // 404 is an answer, and a 403 is the origin refusing whoever asks — CI's fill would be refused too. (Remembered under
+  // the BYTES request, as the recorder fetches every response.)
+  it should "name a request its recording remembers only a passing failure for, and never one with an answer" in {
+    val missing = new MissingFixtures
+    val cache   = new EnrichmentCache(new InMemoryEnrichmentCacheStore(), transients = EnrichmentCache.Transients.Replayed)
+    val wiring  = hermeticWiring(Some(cache), missing)
+    val passing = "https://www.wikidata.org/wiki/Special:EntityData/Q1.json"
+    val refused = "https://www.wikidata.org/wiki/Special:EntityData/Q2.json"
+    val gone    = "https://www.wikidata.org/wiki/Special:EntityData/Q3.json"
+    cache.remember(CachingEnrichmentFetch.keyOf("BYTES", passing), CachedResponse.Failed(None, "GET", "tools.CircuitOpenException: circuit open"))
+    cache.remember(CachingEnrichmentFetch.keyOf("BYTES", refused), CachedResponse.Failed(Some(403), "GET", "HTTP 403"))
+    cache.remember(CachingEnrichmentFetch.keyOf("BYTES", gone), CachedResponse.Failed(Some(404), "GET", "HTTP 404"))
+    Seq(passing, refused, gone).foreach(url => an [Exception] should be thrownBy wiring.enrichmentFetch.get(url))
+
+    val file = java.nio.file.Files.createTempDirectory("remembered").resolve("enrichment-pl.refetch.tsv")
+    missing.writeRefetches(file)
+    java.nio.file.Files.readAllLines(file).toArray(Array.empty[String]).toSeq.flatMap(MissingFixtures.Refetch.parse).map(_._2) shouldBe
+      Seq(MissingFixtures.Refetch("BYTES", passing))
+  }
+
   // The detail drain worked one task at a time on one thread: a few thousand detail tasks of serial
   // round trips on every US projection, ~23 s each at under one core (run 37563035752).
   "a harness queue drain" should "work its tasks on the background budget's claimants side by side" in {

@@ -34,10 +34,11 @@ import scala.util.control.NonFatal
  * preserves the URL's shape, so two genuinely different requests stay two
  * different keys.
  */
-class CachingEnrichmentFetch(cache: EnrichmentCache, underlying: HttpFetch) extends HttpFetch {
+class CachingEnrichmentFetch(cache: EnrichmentCache, underlying: HttpFetch,
+                             replayedFailure: CachingEnrichmentFetch.Replayed => Unit = _ => ()) extends HttpFetch {
 
   override def get(url: String): String =
-    cached(CachingEnrichmentFetch.keyOf("GET", url), "GET", url)(
+    cached(CachingEnrichmentFetch.keyOf("GET", url), "GET", url, "GET")(
       CachingEnrichmentFetch.asBody)(CachedResponse.Body.apply)(underlying.get(url))
 
   // Every enrichment client sends a constant header set (a user agent, or the
@@ -45,7 +46,7 @@ class CachingEnrichmentFetch(cache: EnrichmentCache, underlying: HttpFetch) exte
   // key), so headers don't discriminate between two responses. Same key as the
   // bare form, exactly as `MongoCachingDetailFetch` treats its detail pages.
   override def get(url: String, headers: Map[String, String]): String =
-    cached(CachingEnrichmentFetch.keyOf("GET", url), "GET", url)(
+    cached(CachingEnrichmentFetch.keyOf("GET", url), "GET", url, "GET")(
       CachingEnrichmentFetch.asBody)(CachedResponse.Body.apply)(underlying.get(url, headers))
 
   // Cached as base64 rather than left to the inherited default, which re-encodes
@@ -53,7 +54,7 @@ class CachingEnrichmentFetch(cache: EnrichmentCache, underlying: HttpFetch) exte
   // warning on `HttpFetch.getBytes`). Kept on its own key so a body and its bytes
   // can never be served for one another.
   override def getBytes(url: String): Array[Byte] =
-    cached(CachingEnrichmentFetch.keyOf("BYTES", url), "GET", url)(
+    cached(CachingEnrichmentFetch.keyOf("BYTES", url), "GET", url, "BYTES")(
       { case CachedResponse.Bytes(base64) => java.util.Base64.getDecoder.decode(base64) })(
       bytes => CachedResponse.Bytes(java.util.Base64.getEncoder.encodeToString(bytes)))(
       underlying.getBytes(url))
@@ -61,7 +62,7 @@ class CachingEnrichmentFetch(cache: EnrichmentCache, underlying: HttpFetch) exte
   // POST is the IMDb GraphQL rating query, whose whole request lives in the body —
   // so the body is part of the key, or every film would share one cached answer.
   override def post(url: String, body: String, contentType: String): String =
-    cached(CachingEnrichmentFetch.keyOf("POST", url, Some(body)), "POST", url)(
+    cached(CachingEnrichmentFetch.keyOf("POST", url, Some(body)), "POST", url, "POST", Some(body -> contentType))(
       CachingEnrichmentFetch.asBody)(CachedResponse.Body.apply)(underlying.post(url, body, contentType))
 
   /**
@@ -71,10 +72,10 @@ class CachingEnrichmentFetch(cache: EnrichmentCache, underlying: HttpFetch) exte
    * for `get`/`post`, bytes for `getBytes`), so a key can never be served as the
    * wrong kind; `encode` says how the fetched value is remembered.
    */
-  private def cached[A](key: String, method: String, url: String)
+  private def cached[A](key: String, method: String, url: String, verb: String, body: Option[(String, String)] = None)
                        (decode: PartialFunction[CachedResponse, A])
                        (encode: A => CachedResponse)(fetch: => A): A = {
-    def hit: Option[A] = replay(key, url).collect(decode)
+    def hit: Option[A] = replay(key, url, verb, body).collect(decode)
 
     hit.getOrElse {
       cache.singleFlight(key) {
@@ -97,14 +98,20 @@ class CachingEnrichmentFetch(cache: EnrichmentCache, underlying: HttpFetch) exte
 
   /** A remembered FAILURE is thrown from here rather than returned, so the caller
    *  sees pass 2 fail exactly the way pass 1 did. */
-  private def replay(key: String, url: String): Option[CachedResponse] =
+  private def replay(key: String, url: String, verb: String, body: Option[(String, String)]): Option[CachedResponse] =
     cache.lookup(key) match {
-      case Some(failed: CachedResponse.Failed) => throw CachingEnrichmentFetch.revive(failed, url)
+      case Some(failed: CachedResponse.Failed) =>
+        replayedFailure(CachingEnrichmentFetch.Replayed(verb, url, body, failed))
+        throw CachingEnrichmentFetch.revive(failed, url)
       case other                               => other
     }
 }
 
 object CachingEnrichmentFetch {
+
+  /** A remembered failure answered in place of a fetch: the request — its verb (`GET`, `BYTES`, `POST`), URL and a
+   *  POST's body and content type — and what was remembered of it. */
+  final case class Replayed(verb: String, url: String, body: Option[(String, String)], failed: CachedResponse.Failed)
 
   /** The remembered shape a String-returning verb accepts as its answer. */
   private val asBody: PartialFunction[CachedResponse, String] = { case CachedResponse.Body(text) => text }
