@@ -24,6 +24,11 @@ class CircuitOpenException(val host: String, val openForMs: Long, val lastFailur
     s"circuit open for $host (${openForMs}ms before half-open)" +
       lastFailure.fold("")(cause => s"; last failure: $cause"))
 
+/** A failure raised IN PLACE of sending a request — a hermetic replay's leaf refusing what its
+ *  recording lacks. Nothing reached the host, so it is no evidence about the host either way: the
+ *  breaker neither counts it as a failure nor takes it as the host answering. */
+trait NeverSent { self: Throwable => }
+
 /**
  * A per-host circuit breaker wrapping any [[HttpFetch]]. When a host racks up
  * `failureThreshold` consecutive trip-worthy failures (request/connect timeouts,
@@ -183,6 +188,7 @@ class HostCircuitBreakerHttpFetch(
       // came back 404 would leave the host blocked for another full `openDuration` on the
       // strength of a reply that proves it recovered.
       catch {
+        case e: (Throwable & NeverSent)      => throw e
         case e: Throwable if isTripWorthy(e) => onFailure(host, e); throw e
         case e: Throwable                    => onSuccess(host); throw e
       }
@@ -204,8 +210,11 @@ class HostCircuitBreakerHttpFetch(
         // Same rule as `guarded`: a non-trip-worthy failure is the host answering, which
         // closes the breaker rather than leaving a re-armed window in place.
         else {
-          val failure = unwrap(throwable)
-          if (isTripWorthy(failure)) onFailure(host, failure) else onSuccess(host)
+          unwrap(throwable) match {
+            case _: NeverSent                     => ()
+            case failure if isTripWorthy(failure) => onFailure(host, failure)
+            case _                                => onSuccess(host)
+          }
           throw throwable
         }
       })

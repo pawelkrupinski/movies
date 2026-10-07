@@ -349,6 +349,20 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     missing.size should be >= 1
   }
 
+  // A refusal is not the host failing: nothing was sent. Counted as one, the fourth refusal opened the
+  // host's breaker and every later page of it was answered "circuit open" above the leaf, so a US leg
+  // named 12 of the ~2,300 Flicks and Drafthouse pages its tree lacked (run 37597662228).
+  it should "name every unrecorded page of a host, never letting the refusals open its breaker" in {
+    val missing = new MissingFixtures
+    val wiring  = hermeticWiring(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), missing)
+    val pages   = (1 to 12).map(i => s"https://www.flicks.us/movie/unrecorded-$i/")
+    pages.foreach { page =>
+      val refused = the [Exception] thrownBy wiring.httpFetch.get(page)
+      refused.getMessage should not include "circuit open"
+    }
+    missing.size shouldBe pages.size
+  }
+
   // A drain's tasks are round trips to Mongo, not CPU: four claimants left a US detail phase at under one busy core,
   // so the harness runs more than production's pool. A same-thread budget still drains on one, for the seeded
   // replays whose only nondeterminism must be their shuffle.

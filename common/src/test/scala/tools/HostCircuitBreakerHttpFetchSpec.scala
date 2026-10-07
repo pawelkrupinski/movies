@@ -54,6 +54,25 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     blocked.getMessage should include("last failure: ")
   }
 
+  // A request refused before it was sent — a hermetic replay's leaf — says nothing about the host. Counted
+  // as a failure it opened the host's breaker after four, and every later request was answered "circuit
+  // open" above the leaf that names what is missing (run 37597662228).
+  it should "neither trip nor reset on a request that was never sent" in {
+    val neverSent: String => String = url => throw new java.io.IOException(s"refused $url") with NeverSent
+    val delegate = new RecordingHttpFetch(timeout)
+    val cb = breaker(delegate)
+    (1 to 3).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
+    delegate.respond = neverSent
+    (1 to 10).foreach(_ => an[java.io.IOException] should be thrownBy cb.get(urlA))
+    delegate.calls shouldBe 13
+    cb.openRemainingMillis(hostA) shouldBe 0L
+    withClue("the refusals must not have cleared the three real failures: ") {
+      delegate.respond = timeout
+      a[HttpTimeoutException] should be thrownBy cb.get(urlA)
+      cb.openRemainingMillis(hostA) should be > 0L
+    }
+  }
+
   it should "stay closed below the threshold" in {
     val delegate = new RecordingHttpFetch(timeout)
     val cb = breaker(delegate)

@@ -39,10 +39,12 @@ final class MissingFixtures {
 /**
  * Thrown instead of reaching the network in a hermetic run. Deliberately NOT an
  * `HttpStatusException`: no status came back, so no caller may read it as a verdict about
- * the URL, and `EnrichmentCache` treats it as transient — it is never persisted.
+ * the URL, and `EnrichmentCache` treats it as transient — it is never persisted. [[NeverSent]],
+ * so a host's breaker never opens on refusals: open, it answered every later request to that
+ * host itself, and this leaf — the one place a gap is named — never saw them.
  */
 final class MissingFixtureException(val fixtureKey: String, request: String)
-  extends java.io.IOException(s"HERMETIC: no recorded fixture $fixtureKey for $request — live fill refused")
+  extends java.io.IOException(s"HERMETIC: no recorded fixture $fixtureKey for $request — live fill refused") with NeverSent
 
 /**
  * The WIRE, replaced. What sits at the very bottom of both phase chains
