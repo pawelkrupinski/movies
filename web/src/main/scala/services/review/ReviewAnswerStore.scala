@@ -127,15 +127,15 @@ final class ReviewAnswers(store: ReviewAnswerStore) {
 }
 
 object ReviewAnswers {
-  /** An `Undo` withdraws every answer that covers the card it was given on — by its id, or by a listing it holds —
-   *  as a card answered under an earlier cluster id (before it gained a venue) posts its Undo under its new one. */
+  /** An `Undo` withdraws the answer its card showed ([[Index.answerFor]]: by the cluster's id, else by a listing it
+   *  holds) — a card answered under an earlier cluster id, before it gained a venue, posts its Undo under its new one —
+   *  and no other, though another cluster's answer shares a listing with it. */
   def current(history: Seq[ReviewAnswer]): Seq[ReviewAnswer] =
     history.foldLeft(Vector.empty[ReviewAnswer]) { (kept, a) =>
-      val withdrawn = kept.filterNot(_.clusterId == a.clusterId)
-      if (a.verdict != ReviewVerdict.Undo) withdrawn :+ a
+      if (a.verdict != ReviewVerdict.Undo) kept.filterNot(_.clusterId == a.clusterId) :+ a
       else {
-        val listings = a.members.map(_.identity).toSet
-        withdrawn.filterNot(_.members.exists(m => listings(m.identity)))
+        val shown = new Index(kept).answerFor(a.clusterId, a.members)
+        kept.filterNot(k => shown.exists(_ eq k))
       }
     }
 

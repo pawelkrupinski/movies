@@ -38,6 +38,14 @@ class ReviewAnswersSpec extends AnyFlatSpec with Matchers {
     index.answerFor(ReviewClusterId.of(grown), grown) shouldBe None
   }
 
+  it should "withdraw only the answer its card showed, not another cluster's sharing a listing" in {
+    val m3      = ReviewMember("Kino C", "Film", None)
+    val before  = answer(ReviewVerdict.Right, Seq(m1, m2))            // m2 was in m1's cluster then
+    val moved   = answer(ReviewVerdict.Wrong, Seq(m2, m3))            // and is in another's now
+    val current = ReviewAnswers.current(Seq(before, moved, answer(ReviewVerdict.Undo, Seq(m2, m3))))
+    new ReviewAnswers.Index(current).answerFor(ReviewClusterId.of(Seq(m1)), Seq(m1)).map(_.verdict) shouldBe Some(ReviewVerdict.Right)
+  }
+
   "importing" should "add each answer once, however often it runs" in {
     val answers = new ReviewAnswers(new InMemoryReviewAnswerStore)
     val first   = answer(ReviewVerdict.Right).copy(legacyId = Some("a"))
