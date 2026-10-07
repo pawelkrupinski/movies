@@ -3,7 +3,7 @@ package integration
 import models.CineworldGreenwich
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{CatalogueId, Listing}
+import services.identity.{CatalogueId, Listing, ResolverDecision}
 import services.movies.ListingKey
 import tools.{HostPacing, HttpFetch, HttpStatusException}
 
@@ -60,7 +60,7 @@ class LiveGapLeafReadPagesSpec extends AnyFlatSpec with Matchers {
   }
 
   private def listing(page: String, catalogueIds: CatalogueId*) = {
-    val title = "RBO Cinema Season 2026-27: Macbeth"
+    val title = page.stripSuffix("/").split('/').last
     Listing(CineworldGreenwich, ListingKey.Published(CineworldGreenwich.displayName, title, None, Nil), title, title, title, None, Nil, None,
       Some(page), None, catalogueIds = catalogueIds)
   }
@@ -79,5 +79,19 @@ class LiveGapLeafReadPagesSpec extends AnyFlatSpec with Matchers {
     val api = "https://www.cineworld.co.uk/api/gatsby-source-boxofficeapi/movies?basic=false&castingLimit=10&ids="
     LiveGapLeaf.gapsOf(Seq(macbeth), Seq(s"${api}1000043020", s"${api}1000052295", s"${api}10000430201")) shouldBe
       Seq(s"${api}1000043020")
+  }
+
+  "the venue pages a capture reads ahead" should "be the unread ones of its captured clusters and of the model's POOLED takes — " +
+    "where a venue's facts can still veto the take — never of a member's own match" in {
+    val page = "https://www.flicks.co.uk/movie/"
+    val captured = listing(s"${page}rbo-cinema-season-2026-27-la-fanciulla-del-west/")
+    val pooled   = listing(s"${page}cbeebies-panto-2026-treasure-island/")
+    val own      = listing(s"${page}the-shining/")
+    val read     = listing(s"${page}cbeebies-panto-2026-treasure-island-relaxed/")
+    def decision(basis: ResolverDecision.Basis, film: Option[Int], members: Listing*) =
+      ResolverDecision(members.map(_.key), film, 0.9, basis, Nil)()
+    val decisions = Seq(decision(ResolverDecision.Basis.BelowThreshold, None, captured),
+      decision(ResolverDecision.Basis.PooledMatch, Some(6646), pooled, read), decision(ResolverDecision.Basis.OwnMatch, Some(694), own))
+    LiveGapLeaf.readAhead(decisions, Set(captured.key), Seq(captured, pooled, own, read), _ != read) shouldBe Seq(captured, pooled)
   }
 }

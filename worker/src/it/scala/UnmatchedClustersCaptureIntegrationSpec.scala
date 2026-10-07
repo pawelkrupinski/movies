@@ -4,7 +4,6 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity._
-import services.movies.ListingKey
 import services.identity.agreement.{FamilyAnswers, VoterFamily}
 import tools._
 
@@ -112,14 +111,18 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
       UnmatchedClusters.takes(capture, replayed) shouldBe UnmatchedClusters.takes(capture, outcome)
       println(s"[${c.label}] captured ${subset.size} listings in ${decisions.size} clusters; ${capture.queries.size} queries, ${capture.films.size} films, " +
         s"${filed.size} family answers after $rounds round(s); takes ${UnmatchedClusters.takes(capture, outcome).size}")
-      // the captured listings' venue pages the recorded tree lacks — the page, and every gap met that holds its detail
-      // beside it (`LiveGapLeaf.gapsOf`: by its page's slug or its catalogue id) — read live and kept, for the next run to
-      // answer
-      val unread = subset.filter(l => capture.withDetail(ListingKey.serialised(l.key)) && !capture.details.contains(ListingKey.serialised(l.key)))
-      val gaps   = LiveGapLeaf.gapsOf(unread, c.missedKeys().collect { case key if key.startsWith("GET ") => key.drop(4) })
-      if (unread.nonEmpty && configuration.identityLiveGaps.isDefined)
-        println(s"[${c.label}] ${unread.size} listing(s) whose venue page the tree lacks: read ${LiveGapLeaf.readPages(unread.flatMap(_.page) ++ gaps)} " +
-          "page(s) live — capture again to read them")
+      // the venue pages the recorded tree lacks of the captured listings and the model's pooled takes (`LiveGapLeaf.readAhead`)
+      // — the page, and every gap met that holds its detail beside it (`LiveGapLeaf.gapsOf`: by its page's slug or its
+      // catalogue id) — read live and kept, for the next run to answer; what reading every unread page would cost beside it
+      val missed = c.missedKeys().collect { case key if key.startsWith("GET ") => key.drop(4) }
+      def reads(ls: Seq[Listing]) = (ls.flatMap(_.page) ++ LiveGapLeaf.gapsOf(ls, missed)).distinct
+      val unreadDetail = (l: Listing) => lookups.hasDetail(l) && lookups.unreadDetail(l)
+      val ahead = reads(LiveGapLeaf.readAhead(whole.decisions, unmatched, listings, unreadDetail))
+      println(s"[${c.label}] unread venue pages: ${ahead.size} read(s) ahead; every unread page of the corpus ${reads(listings.filter(unreadDetail)).size}")
+      if (ahead.nonEmpty && configuration.identityLiveGaps.isDefined) {
+        val read = LiveGapLeaf.readPages(ahead)
+        println(s"[${c.label}] read $read of ${ahead.size} venue page(s) the tree lacks live" + (if (read > 0) " — capture again to read them" else ""))
+      }
     }
   }
 

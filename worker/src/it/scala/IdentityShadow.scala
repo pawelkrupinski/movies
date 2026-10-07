@@ -164,11 +164,21 @@ object IdentityShadow {
     private[integration] def fileOf(id: String): Path =
       Store.resolve(java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(id.getBytes("UTF-8"))))
 
+    /** The listings whose venue page a capture reads ahead: those whose detail went `unread`, of a `captured` cluster or
+     *  of a cluster the model takes by POOLED evidence alone — where a venue's facts can still veto the take, and an unread
+     *  page let it stand (UK "CBeebies Panto 2026: Treasure Island" ×110 taken as the 1950 film; its Flicks page says 2026).
+     *  Not a member's own match: its pages cost ~1,600 reads per corpus (UK, 2026-10-07) against 6 for the pooled takes. */
+    def readAhead(decisions: Seq[ResolverDecision], captured: Set[ListingKey],
+                  listings: Seq[Listing], unread: Listing => Boolean): Seq[Listing] = {
+      val pooled = decisions.iterator.filter(_.basis == ResolverDecision.Basis.PooledMatch).flatMap(_.members).toSet
+      listings.filter(l => (captured(l.key) || pooled(l.key)) && unread(l))
+    }
+
     /** The gaps met (`missed`, each a requested URL) that hold one of `listings`' venue detail beside its page — a chain
      *  reading its show's detail off its API: those ending in its page's slug (Alamo Drafthouse's `…/presentation/<slug>`),
      *  and those naming one of its catalogue ids as an `ids=` parameter (the Gatsby box-office platform's
      *  `…/movies?…&ids=<id>`, Cineworld's detail). */
-    def gapsOf(listings: Seq[services.identity.Listing], missed: Seq[String]): Seq[String] = {
+    def gapsOf(listings: Seq[Listing], missed: Seq[String]): Seq[String] = {
       val slugs = listings.flatMap(_.page).map(_.trim.stripSuffix("/").split('/').last).filter(_.length >= 4).toSet
       val ids   = listings.flatMap(_.catalogueIds).map(_.id).filter(_.length >= 4).toSet
       def namesAnId(url: String) = Option(java.net.URI.create(url).getRawQuery).toSeq.flatMap(_.split('&'))
@@ -303,6 +313,8 @@ object IdentityShadow {
       } finally pool.shutdown()
     }
     def sizes: (Int, Int, Int) = (details.size, queries.size, films.size)
+    /** Whether `l`'s venue detail was asked through it and had no answer: its page unread. */
+    def unreadDetail(l: Listing): Boolean = Option(details.get((l.venue, l.page.getOrElse("")))).exists(!_.isKnown)
     /** Every candidate question and film record asked through it, with the answer it got. */
     def asked: (Map[CandidateQuery, Answer[Seq[Hit]]], Map[Int, Answer[Option[IdentityMeasures.Film]]]) =
       (queries.asScala.toMap, films.asScala.toMap)
