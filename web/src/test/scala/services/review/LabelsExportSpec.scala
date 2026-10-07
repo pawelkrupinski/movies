@@ -117,6 +117,23 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers {
     summary.render should include("WARNING: pl FRANZ KAFKA: Kino X states 1999")
   }
 
+  "exporting" should "take only the answers given since the last export, and mark them used for the next" in {
+    val dir   = Files.createTempDirectory("labels")
+    val path  = dir.resolve("labels.tsv")
+    val later = answer(ReviewVerdict.Wrong, shown = Some(dawnWall)).copy(at = at.plusSeconds(60))
+    try {
+      LabelsExport.exportTo(path, Seq(answer(ReviewVerdict.Right))).added shouldBe 1
+      LabelsTsv.usedUntil(path) shouldBe Some(at)
+      // the used answer, even contradicted by hand in the file since, is not applied again; the new one is
+      LabelsTsv.write(path, LabelsTsv.read(path).map(_.copy(verdict = "wrong")))
+      val second = LabelsExport.exportTo(path, Seq(answer(ReviewVerdict.Right), later))
+      (second.added, second.flipped, second.alreadyUsed) shouldBe ((1, 0, 1))
+      second.render should include ("1 answer already used")
+      LabelsTsv.read(path).map(r => r.film -> r.verdict) shouldBe Seq("tmdb:1157322" -> "wrong", "tmdb:489471" -> "wrong")
+      LabelsTsv.usedUntil(path) shouldBe Some(later.at)
+    } finally { Files.deleteIfExists(LabelsTsv.usedPath(path)); Files.deleteIfExists(path); Files.deleteIfExists(dir): Unit }
+  }
+
   "the labels file" should "round-trip byte for byte through read and write" in {
     val path  = LabelsTsv.locate()
     val bytes = Files.readAllBytes(path)
@@ -126,6 +143,6 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers {
       Files.readAllBytes(copy) shouldBe bytes
       LabelsExport.exportTo(copy, Seq(answer(ReviewVerdict.Wrong, shown = Some(dawnWall)))).added shouldBe 1
       LabelsTsv.read(copy).size shouldBe LabelsTsv.read(path).size + 1
-    } finally Files.deleteIfExists(copy): Unit
+    } finally { Files.deleteIfExists(LabelsTsv.usedPath(copy)); Files.deleteIfExists(copy): Unit }
   }
 }

@@ -2,6 +2,7 @@ package services.review
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
+import java.time.Instant
 import scala.jdk.CollectionConverters._
 
 /** One row of `test/resources/fixtures/identity-unmatched/labels.tsv`: a listing (country, the venue
@@ -39,10 +40,21 @@ object LabelsTsv {
 
   def write(path: Path, rows: Seq[LabelRow]): Unit =
     Files.write(path, (Header +: rows.map(_.line)).mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8)): Unit
+
+  /** Beside the labels file: when the newest review answer already turned into its rows was given. Checked in with
+   *  the rows, so an export takes only the answers given since — never re-applies one a later edit overruled. */
+  def usedPath(path: Path): Path = path.resolveSibling(s"${path.getFileName}.used-until")
+
+  def usedUntil(path: Path): Option[Instant] =
+    Option.when(Files.exists(usedPath(path)))(Instant.parse(Files.readString(usedPath(path), StandardCharsets.UTF_8).trim))
+
+  def markUsed(path: Path, until: Instant): Unit =
+    Files.writeString(usedPath(path), s"$until\n", StandardCharsets.UTF_8): Unit
 }
 
 /**
- * Review answers as `labels.tsv` rows, merged into the rows the file already holds.
+ * Review answers as `labels.tsv` rows, merged into the rows the file already holds — only the answers given since
+ * the last export ([[LabelsTsv.usedUntil]]).
  *
  *  - right / wrong: that verdict for the film the card showed;
  *  - another film: right for it, and wrong for the film the card showed when that is provably another film
@@ -56,9 +68,11 @@ object LabelsTsv {
  */
 object LabelsExport {
 
-  final case class Summary(added: Int, flipped: Int, unchanged: Int, unexportable: Seq[String], warnings: Seq[String]) {
+  final case class Summary(added: Int, flipped: Int, unchanged: Int, unexportable: Seq[String], warnings: Seq[String],
+                           alreadyUsed: Int = 0) {
     def render: String =
-      (s"labels.tsv: $added added, $flipped flipped, $unchanged already there" +:
+      ((s"labels.tsv: $added added, $flipped flipped, $unchanged already there" +
+        (if (alreadyUsed > 0) s"; $alreadyUsed answer${if (alreadyUsed == 1) "" else "s"} already used, skipped" else "")) +:
         (unexportable.map("not exported: " + _) ++ warnings.map("WARNING: " + _))).mkString("\n")
   }
 
@@ -107,10 +121,13 @@ object LabelsExport {
     (rows.toSeq, Summary(added, flipped, unchanged, unexportable, warnings))
   }
 
-  /** Merge `answers` into the file at `path` and write it back. */
+  /** Merge the `answers` given since the last export into the file at `path`, write it back, and mark them used. */
   def exportTo(path: Path, answers: Seq[ReviewAnswer], identity: FilmIdentity = FilmIdentity.Unlinked): Summary = {
-    val (rows, summary) = merge(LabelsTsv.read(path), answers, identity)
+    val used          = LabelsTsv.usedUntil(path)
+    val (fresh, old)  = answers.partition(a => used.forall(a.at.isAfter))
+    val (rows, summary) = merge(LabelsTsv.read(path), fresh, identity)
     LabelsTsv.write(path, rows)
-    summary
+    fresh.map(_.at).maxOption.foreach(LabelsTsv.markUsed(path, _))
+    summary.copy(alreadyUsed = old.size)
   }
 }
