@@ -25,11 +25,12 @@ class IdentityRuleFindingsSpec extends AnyFlatSpec with Matchers {
   }
 
   "F3: a title with a leading article the venue drops" should "be named alike by the measures and by the agreement" in {
-    // today: IdentityMeasures' article-less exact title knows English articles only ("the", "a", "an"); Agreement.namesIt
-    // knows fifteen in five languages (DE "Camp der Verlorenen" names TMDB's "Das Camp der Verlorenen" only there)
+    // one article list for both: DE "Camp der Verlorenen" is TMDB's "Das Camp der Verlorenen" to the measures too
     val listing = IdentityMeasures.Listing("Camp der Verlorenen")
-    IdentityMeasures.titleRelation(listing, IdentityMeasures.Film("Das Camp der Verlorenen")) should not be IdentityMeasures.Category("exact")
-    pending // decide: one article list for both (a resolver change: measure it on the ratchet and the full corpora)
+    IdentityMeasures.titleRelation(listing, IdentityMeasures.Film("Das Camp der Verlorenen")) shouldBe IdentityMeasures.Category("exact")
+    // still three words after it at least, and never the listing's own article dropped
+    IdentityMeasures.titleRelation(IdentityMeasures.Listing("Grande Bellezza"), IdentityMeasures.Film("La Grande Bellezza")) should not be IdentityMeasures.Category("exact")
+    IdentityMeasures.titleRelation(IdentityMeasures.Listing("Das Camp der Verlorenen"), IdentityMeasures.Film("Camp der Verlorenen")) should not be IdentityMeasures.Category("exact")
   }
 
   "F4: the broadcast join" should "take the same record in the fill's signal as in the stage's take" in {

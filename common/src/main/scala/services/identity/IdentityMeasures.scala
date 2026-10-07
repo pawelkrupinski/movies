@@ -574,16 +574,18 @@ object IdentityMeasures {
     lazy val yearlessWords: Seq[String] = yearlessTokens(text)
     lazy val yearless: String       = yearlessWords.mkString
     lazy val latinKey: String       = IdentityMeasures.latinKey(text)
-    /** Its words after a leading English article, when it has one — what a venue that drops the article lists. */
+    /** Its words after a leading article ([[LeadingArticles]]), when it has one — what a venue that drops the article lists. */
     lazy val afterArticle: Option[Seq[String]] = Option.when(words.sizeIs >= 2 && LeadingArticles(words.head))(words.tail)
     /** The title before a trailing bracketed gloss, keyed — "TKT (T'inquiète)" is "TKT" too. */
     lazy val unglossedKey: Option[String] =
       TrailingGloss.findFirstMatchIn(text).map(m => IdentityMeasures.key(m.group(1))).filter(k => k.nonEmpty && k != key)
   }
   private val TrailingGloss = """^(.*\S)\s*\([^()]*\)\s*$""".r
-  /** The English articles a venue drops from a title's head, as the old pipeline's IMDb match dropped them — English
-   *  titles are listed everywhere; another language's articles are part of its titles ("La familia Dino"). */
-  private val LeadingArticles = Set("the", "a", "an")
+  /** Articles a title may lead with that a venue drops — English, German, French, Spanish, Italian: DE "Camp der
+   *  Verlorenen" bills TMDB's "Das Camp der Verlorenen". ONE list for every rule that reads a title without its article:
+   *  the measures' article-less exact title ([[TitleForm.afterArticle]]) and the agreement's naming
+   *  ([[services.identity.agreement.Agreement]]). */
+  val LeadingArticles: Set[String] = Set("the", "a", "an", "der", "die", "das", "le", "la", "les", "el", "los", "las", "il", "lo", "gli")
 
   private def words(s: String): Seq[String] = TitleContainment.tokens(withoutPossessives(s))
 
@@ -870,7 +872,7 @@ object IdentityMeasures {
     val fs  = if (qualifiers.companions.isEmpty) all else all.filterNot(t => qualifying(t.yearless))
     val (titleForm, rest) = (all.head, all.tail)
     val (originalForms, alternativeForms) = rest.splitAt(f.originalTitle.size)
-    // The film's title with the leading English article the venue dropped: "Brides of Dracula" is "The Brides of Dracula"
+    // The film's title with the leading article the venue dropped: "Brides of Dracula" is "The Brides of Dracula"
     // (US Metrograph's listing took Fisher's "Dracula" over a `fragment` of its own film). Three words left at least —
     // "Spookies" is no more "The Spookies" than any other — and never the other way: a listing's own article is its title's.
     // A plain title, not a banner's: "Royal Ballet: Swan Lake" is not thereby "The Royal Ballet: Swan Lake" (2024), the

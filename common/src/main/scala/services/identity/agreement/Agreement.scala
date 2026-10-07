@@ -435,7 +435,7 @@ object Agreement {
         words.nonEmpty && raw.containsSlice(words) && (kept.isEmpty || words.exists(kept)) }) ||
       // the film's title with a leading article the listing drops — two words after it at least (DE "Camp der
       // Verlorenen", TMDB's "Das Camp der Verlorenen"; "Devil" is not "The Devil")
-      titles.exists { title => val words = TitleContainment.tokens(title); words.sizeIs >= 3 && LeadingArticles(words.head) && ownWords(words.tail) } ||
+      titles.exists { title => val words = TitleContainment.tokens(title); words.sizeIs >= 3 && IdentityMeasures.LeadingArticles(words.head) && ownWords(words.tail) } ||
       titles.exists(namedPieceByPiece(listing.rawTitle, _))
   }
 
@@ -467,11 +467,9 @@ object Agreement {
     own.nonEmpty && others.exists { other =>
       val longer = other.filter(words => !own.contains(words))
       own.forall(span => longer.exists(words => words.sizeIs > span.size && words.containsSlice(span) &&
-        !(LeadingArticles(words.head) && words.tail == span)))
+        !(IdentityMeasures.LeadingArticles(words.head) && words.tail == span)))
     }
 
-  /** Articles a title may lead with that a venue drops: English, German, French, Spanish, Italian. */
-  private val LeadingArticles = Set("the", "a", "an", "der", "die", "das", "le", "la", "les", "el", "los", "las", "il", "lo", "gli")
 
   /** May a listing naming a stage work show the agreed film, a SCREEN ADAPTATION of it, after all? No listing bills a
    *  house or a season ([[ListingShape.billsAHouse]]), TMDB's own evidence weighs the film best ([[ModelVote]]: the model's

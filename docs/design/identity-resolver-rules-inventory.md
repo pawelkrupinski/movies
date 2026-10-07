@@ -198,8 +198,8 @@ catalogue match; `broadcast.take` via `Broadcast.take`). Rules: the fill `venues
    `Broadcast.superseded`'s `ownFacts` (re-derived, broader: any linked catalogue page), the catalogue-id-equals-pick test
    in `Agreement.supported` and `UnifiedEvidence` `listing.catalogue`.
 7. **Title names the film — 4.** `IdentityMeasures.names`/`NamingRelations`, `Agreement.namesIt` (own leading
-   articles), `IdentityMeasures.backsFilm`, `Agreement.namedWithinAnother`. Two leading-article lists:
-   `IdentityMeasures.LeadingArticles` {the, a, an} vs `Agreement.LeadingArticles` (15, five languages) — **finding F3**.
+   articles), `IdentityMeasures.backsFilm`, `Agreement.namedWithinAnother`. Two leading-article lists were one each —
+   **finding F3**, unified into `IdentityMeasures.LeadingArticles` (15, five languages).
 8. **Runtime tolerance — 5.** `runtimeDelta`, `runtimeContradicts` (30), `Agreement.runsAsTheListing` (±5, own lookup
    incl. `FilmCuts`), `Agreement.equivalent` (±2), `Acceptance.BilledRuntime` (15).
 9. **Director same-ness — 3 in Acceptance.** `Acceptance.imdbSuggestedWhy`'s local `sameDirector` repeated
@@ -250,7 +250,7 @@ Accidental or fragile:
 `IdentityMeasures.RuntimeContradiction` 30, `PosterEvidence.VoteBits` 4 / `VetoMatchBits` 8 / `VetoBits` 10,
 `Broadcast.EncoreDays` 60 / `RelayRunDays` 365, `CastEvidence.Names` 2, `FamilyLookups.Records` 6, the VoterFamily prior
 spreads, `UnifiedEvidence.Guards` (duplicated by the JSON's `guards`), and the word lists (`HouseWords`,
-`LeadingArticles` ×2, `EventWords`, `EditionWords`, `NonFilmEvents.Markers`, `MultiFilmBill.Markers`). Not moved
+`LeadingArticles`, `EventWords`, `EditionWords`, `NonFilmEvents.Markers`, `MultiFilmBill.Markers`). Not moved
 (behaviour-preserving brief; listed for the refit).
 
 ## 4. Iterative and recursive processes
@@ -292,8 +292,12 @@ loops' own overhead is the confirming `grow` round (grouping, `takenAlone` memo 
   of "The Metropolitan Opera"), `IdentityMeasures.spellsItsHouse` only two shared words. Not a bug: the resolver's
   rule takes a season record on the banner alone, where a subset would teach the Paris Opera's banner to be the Met;
   the broadcast join has the screening day beside it. Kept apart on purpose.
-- **F3 — leading articles.** `IdentityMeasures`' article-less exact title knows "the", "a", "an"; `Agreement.namesIt`
-  knows fifteen in five languages. Unifying is a resolver change, to measure on the ratchet and the full corpora.
+- **F3 — leading articles. UNIFIED.** `IdentityMeasures`' article-less exact title knew "the", "a", "an";
+  `Agreement.namesIt` fifteen in five languages. One list now, `IdentityMeasures.LeadingArticles` (the fifteen): the
+  measures read DE "Camp der Verlorenen" as TMDB's "Das Camp der Verlorenen" `exact`, as the agreement already named it.
+  The other direction (the agreement down to English) would lose that agreed take. The measures' own thresholds stay
+  (three words after the article, no banner, never the listing's own article dropped). Ratchet 507 right / 0 wrong
+  before and after; FilmScheduleEndToEndSpec unchanged.
 - **F4 — the broadcast join twice.** The stage takes by `Broadcast.takeOrWait` (a credited production; waiting on
   undated records), the fill's `broadcast.take` signal by `Broadcast.take` (neither).
 - **F5 — the fill's poster guard.** `AgreementStage.filledOf` builds the fill's evidence with no posters, so
