@@ -44,9 +44,14 @@ class ReviewController(cc: ControllerComponents,
     reads.map { case (c, f) => c -> Await.result(f, Duration.Inf) }
   }
 
+  // The clusters of each decisions read, kept as long as the read is: a source that keeps its reads answers the same
+  // one until it reads again, so its clusters, their ids and member keys are worked out once. Weak keys compare by
+  // identity; an empty read (`Nil`, shared) is no clusters whichever country it came from.
+  private val clustersKept = tools.BoundedCache.ofSize(16).weakKeys().build[Seq[ResolverDecision], Seq[ReviewCluster]]()
+
   /** Each selected country's clusters, a failed read reported rather than shown as no clusters. */
   private def clustersOf(countries: Seq[Country], unmatchedOnly: Boolean): (Seq[ReviewCluster], Seq[String]) = {
-    val read = perCountry(countries)(c => sources(c).decisions(unmatchedOnly).map(ReviewCluster.of(c, _)))
+    val read = perCountry(countries)(c => clustersKept.get(sources(c).decisions(unmatchedOnly), _.map(ReviewCluster.of(c, _))))
     (read.collect { case (_, Success(cs)) => cs }.flatten,
       read.collect { case (c, Failure(e)) => s"${c.code}: could not read identity_model_families (${e.getMessage})" })
   }

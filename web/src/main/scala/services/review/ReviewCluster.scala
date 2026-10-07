@@ -22,6 +22,8 @@ final case class ReviewCluster(country: Country, members: Seq[ListingKey], film:
                                candidates: Seq[ReviewCandidate], reasons: ReviewReasons = ReviewReasons()) {
   lazy val reviewMembers: Seq[ReviewMember] = members.map(ReviewMember.of)
   lazy val id: String = ReviewClusterId.of(reviewMembers)
+  /** The members as `movie_slots.listingKey` writes them ([[ListingKey.serialised]]). */
+  lazy val memberKeys: Seq[String] = members.map(ListingKey.serialised)
   def title: String = members.headOption.fold("")(_.rawTitle)
   /** The best candidate the resolver weighed, vetoed or not: what the queue and the matchable page sort by. */
   def best: Option[ReviewCandidate] = candidates.headOption
@@ -81,6 +83,6 @@ object ReviewSelection {
    *  stores no decision time: a member's `movie_slots.updatedAt` stands in for it. */
   def recent(clusters: Seq[ReviewCluster], updatedAt: Map[String, Instant], since: Instant): Seq[(ReviewCluster, Instant)] =
     clusters.filter(_.film.isDefined).flatMap { c =>
-      c.members.flatMap(m => updatedAt.get(ListingKey.serialised(m))).maxOption.filterNot(_.isBefore(since)).map(c -> _)
+      c.memberKeys.flatMap(updatedAt.get).maxOption.filterNot(_.isBefore(since)).map(c -> _)
     }.sortBy { case (c, at) => (c.confidence, -at.toEpochMilli) }
 }

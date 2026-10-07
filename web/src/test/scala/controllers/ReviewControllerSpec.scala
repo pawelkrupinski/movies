@@ -161,5 +161,21 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     html should not include "could not read"
     html should include("Klondike")
   }
+
+  "every review page" should "show the clusters of the source's latest decisions read, not those it kept from an earlier one" in {
+    var held = Seq(heldDecision)
+    val rereading: ReviewSource = new ReviewSource {
+      private val source = ReviewFixtures.source(now)
+      export source.{decisions as _, *}
+      def decisions(unmatchedOnly: Boolean) = held                                   // the same read until it changes
+    }
+    val c = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> rereading),
+      new ReviewAnswers(new InMemoryReviewAnswerStore), Files.createTempFile("labels", ".tsv"), clock)
+    contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest())) should include("FRANZ KAFKA")
+    held = Seq(vetoedDecision)
+    val html = contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest()))
+    html should include("Macbeth")
+    html should not include "FRANZ KAFKA"
+  }
 }
 

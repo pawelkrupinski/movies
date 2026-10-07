@@ -4,7 +4,7 @@ import controllers.ReviewController
 import modules.Wiring
 import play.api.Mode
 import services.MongoConnection
-import services.review.{InMemoryReviewAnswerStore, LabelsTsv, MongoReviewAnswerStore, MongoReviewSource, ReviewAnswers, ReviewSource}
+import services.review.{CorpusCachingReviewSource, InMemoryReviewAnswerStore, LabelsTsv, MongoReviewAnswerStore, MongoReviewSource, ReviewAnswers, ReviewSource}
 
 /** ── /debug/review ─────────────────────────────────────────────────────────
  *  The dev-only identity review pages. They read the LOCAL read-mirror and nothing else: with
@@ -21,7 +21,8 @@ trait ReviewWiring { self: Wiring =>
 
   lazy val reviewSources: Map[models.Country, ReviewSource] =
     reviewMirrorClient.fold(Map.empty[models.Country, ReviewSource]) { client =>
-      models.Country.all.map(c => c -> (new MongoReviewSource(client.getDatabase(MongoConnection.mirrorDbFor(c.mongoDb))): ReviewSource)).toMap
+      models.Country.all.map(c => c -> (new CorpusCachingReviewSource(
+        new MongoReviewSource(client.getDatabase(MongoConnection.mirrorDbFor(c.mongoDb))), clock): ReviewSource)).toMap
     }
 
   lazy val reviewAnswers: ReviewAnswers = new ReviewAnswers(reviewMirrorClient.fold(new InMemoryReviewAnswerStore: services.review.ReviewAnswerStore)(
