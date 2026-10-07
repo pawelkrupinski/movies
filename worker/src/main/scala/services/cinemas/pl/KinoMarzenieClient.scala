@@ -3,7 +3,7 @@ package services.cinemas.pl
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ScraperParse, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
 import java.time.LocalDate
@@ -16,8 +16,18 @@ import scala.jdk.CollectionConverters._
  * own calendar slider swaps days via a lighter AJAX partial:
  * `kinomarzenie.pl/embed/events?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD&category_id=8`
  * (`category_id=8` selects film screenings). There is no whole-programme feed
- * — each request answers for exactly the one requested day — so the client
- * sweeps a fixed window of days from `today`, one fetch per day.
+ * — each request answers for exactly the one requested day, `end_date`
+ * notwithstanding — so the programme is read one fetch per day.
+ *
+ * The day list is the source's own: `/repertuar`'s calendar slider carries one
+ * `a.item[data-href]` per day it offers (about two months ahead), each
+ * `data-href` the day's `/embed/events` partial — read as the chunk plan.
+ *
+ * Chunked, because the partials are SLOW: from 2026-09-30 each took 8–10 s to
+ * first byte from the worker (connect stays fast), so fourteen sequential days
+ * overran the 45 s per-scrape ceiling of `AdaptiveTimeoutScraper` on every
+ * scrape and the venue sat red for a week with no Filmweb cover. A chunked
+ * cinema is scraped as its own per-chunk tasks, each bounded by itself.
  *
  * Booking is delegated to the parent org's own MSI ticketing backend
  * (`marzenieonline.tck.pl/MSI/...`), linked directly off each showtime with no
@@ -51,9 +61,8 @@ import scala.jdk.CollectionConverters._
 class KinoMarzenieClient(
   http:        HttpFetch,
   override val cinema: Cinema = KinoMarzenie,
-  today:       => LocalDate,
-  windowDays:  Int = 14
-) extends CinemaScraper with DetailEnricher {
+  today:       => LocalDate
+) extends ChunkedCinemaScraper with DetailEnricher {
 
   import KinoMarzenieClient._
 
@@ -66,11 +75,13 @@ class KinoMarzenieClient(
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(RepertoireUrl)
 
-  def fetch(): Seq[CinemaMovie] = {
-    val slots = (0 until windowDays).flatMap { offset =>
-      val date = today.plusDays(offset.toLong)
-      parseDay(HttpRead.page(http, eventsUrl(date)), date)
-    }
+  def planChunks(): Seq[String] = {
+    val lastDay = today.plusDays(ScrapeHorizon.MaxDays.toLong)
+    DayChunks.keys(sliderDays(HttpRead.page(http, RepertoireUrl)).filter(d => !d.isBefore(today) && !d.isAfter(lastDay)))
+  }
+
+  def fetchChunk(key: String): Seq[CinemaMovie] = {
+    val slots = DayChunks.days(key).flatMap(date => parseDay(HttpRead.page(http, eventsUrl(date)), date))
 
     SlotsToMovies.fold(slots, titleOf = _.title, showtimeOf = _.showtime) { (_, group, showtimes) =>
       val head = group.head
@@ -93,6 +104,16 @@ object KinoMarzenieClient {
   val BaseUrl              = "https://www.kinomarzenie.pl"
   val RepertoireUrl         = s"$BaseUrl/repertuar"
   private val EventsCategoryId = 8
+
+  /** `start_date=2026-10-09` off a slider item's `data-href` partial URL. */
+  private val SliderDayPat = """start_date=(\d{4}-\d{2}-\d{2})""".r
+
+  /** The days `/repertuar`'s calendar slider offers, in order. */
+  private[cinemas] def sliderDays(html: String): Seq[LocalDate] =
+    Jsoup.parse(html, BaseUrl).select("a.item[data-href]").asScala.toSeq
+      .flatMap(a => SliderDayPat.findFirstMatchIn(a.attr("data-href")))
+      .flatMap(m => scala.util.Try(LocalDate.parse(m.group(1))).toOption)
+      .distinct
 
   private[cinemas] def eventsUrl(date: LocalDate): String =
     s"$BaseUrl/embed/events?start_date=$date&end_date=$date&category_id=$EventsCategoryId"

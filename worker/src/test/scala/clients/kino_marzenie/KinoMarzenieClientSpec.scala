@@ -10,16 +10,13 @@ import services.cinemas.pl.KinoMarzenieClient
 import java.time.{LocalDate, LocalDateTime}
 
 /** Replays three recorded `kinomarzenie.pl/embed/events?start_date=…` day
- *  partials (2026-09-23 through 2026-09-25) through the client. There is no
- *  whole-programme feed — the client sweeps one request per day in its
- *  window, so `windowDays = 3` here pins it to exactly the three recorded
- *  days rather than the production default of 14. */
+ *  partials (2026-09-23 through 2026-09-25) through the client as ONE chunk —
+ *  there is no whole-programme feed, so a chunk is read one request per day. */
 class KinoMarzenieClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val movies = new KinoMarzenieClient(
-    new FakeHttpFetch("kino-marzenie"), KinoMarzenie,
-    today = LocalDate.of(2026, 9, 23), windowDays = 3
-  ).fetch()
+    new FakeHttpFetch("kino-marzenie"), KinoMarzenie, today = LocalDate.of(2026, 9, 23)
+  ).fetchChunk("2026-09-23,2026-09-24,2026-09-25")
 
   "KinoMarzenieClient" should "return a non-empty, single-cinema film list" in {
     movies should not be empty
@@ -87,5 +84,36 @@ class KinoMarzenieClientSpec extends AnyFlatSpec with Matchers with OptionValues
   it should "declare the venue's own host as its scrape host" in {
     new KinoMarzenieClient(new FakeHttpFetch("kino-marzenie"), KinoMarzenie, today = _root_.tools.SpecClock.PinnedDay).scrapeHosts shouldBe
       Set("www.kinomarzenie.pl")
+  }
+}
+
+/** Replays a 2026-10-07 capture: `/repertuar` plus the first week's day partials.
+ *  From 2026-09-30 each partial took 8–10 s to first byte from the worker, so the
+ *  old fourteen sequential day fetches overran `AdaptiveTimeoutScraper`'s 45 s
+ *  ceiling on every scrape and the venue sat red, uncovered, for a week. Chunked,
+ *  each week is its own task; and the plan is the slider's own day list, not a
+ *  fixed fourteen days. */
+class KinoMarzenieChunkedSpec extends AnyFlatSpec with Matchers with OptionValues {
+
+  private val client = new KinoMarzenieClient(new FakeHttpFetch("kino-marzenie-2026-10"), KinoMarzenie, today = LocalDate.of(2026, 10, 7))
+
+  "KinoMarzenieClient" should "be scraped as chunk tasks, outside the per-scrape budget" in {
+    client shouldBe a[services.cinemas.common.ChunkedCinemaScraper]
+  }
+
+  it should "plan every day the repertoire slider offers, in week-long chunks" in {
+    val days = client.planChunks().flatMap(services.cinemas.common.DayChunks.days)
+    days.head shouldBe LocalDate.of(2026, 10, 7)
+    days.last shouldBe LocalDate.of(2026, 12, 7)
+    days should have size 62
+    client.planChunks() should have size 9
+  }
+
+  it should "read a week's chunk one partial per day" in {
+    val movies = client.fetchChunk(client.planChunks().head)
+    movies.find(_.movie.title == "LALKA").value.showtimes.map(_.dateTime) should contain allOf (
+      LocalDateTime.of(2026, 10, 7, 16, 0),
+      LocalDateTime.of(2026, 10, 13, 19, 15))
+    movies.flatMap(_.showtimes) should have size 16
   }
 }
