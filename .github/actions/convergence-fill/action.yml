@@ -89,7 +89,7 @@ runs:
           KINOWO_PROXY_USER: ${{ inputs.proxy-user }}
           KINOWO_PROXY_PASS: ${{ inputs.proxy-pass }}
       run: |
-          sbt -J-Xmx2g "worker/Fixtures/runMain scripts.FillMissingFixtures ${{ inputs.code }} refetch.tsv $RUNNER_TEMP/fill-held/test/resources/fixtures $RUNNER_TEMP/fill-out/test/resources/fixtures $FILL_UNTIL"
+          sbt -J-Xmx2g -J-Djdk.http.auth.tunneling.disabledSchemes= "worker/Fixtures/runMain scripts.FillMissingFixtures ${{ inputs.code }} refetch.tsv $RUNNER_TEMP/fill-held/test/resources/fixtures $RUNNER_TEMP/fill-out/test/resources/fixtures $FILL_UNTIL"
 
     # Whatever the fetch step did: a fill cut short still holds every page it wrote (one file per answer).
     - name: Pack what the fill fetched

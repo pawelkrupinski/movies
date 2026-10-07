@@ -28,6 +28,10 @@ object FillMissingFixtures {
 
   def main(args: Array[String]): Unit = args match {
     case Array(code, list, held, out, until, rest*) =>
+      // What the origin refuses directly goes again through the residential proxy, whose Basic challenge on an HTTPS
+      // tunnel the JDK refuses by default: every proxied request answered 407 (run 37677032787). The process's to set,
+      // first — see ProxyTunnelAuthentication.
+      tools.ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
       val country       = Country.all.find(_.code == code).getOrElse(sys.error(s"no country $code"))
       val tree          = s"enrichment-${country.code}"
       val configuration = settings.ProcessConfiguration.resolve()

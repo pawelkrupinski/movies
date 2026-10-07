@@ -514,7 +514,7 @@ jobs:
                   out="$RUNNER_TEMP/fill-out"
                   # As every sbt run of a leg: the runner's whole CPU beside it, on the caller's heap ceiling.
                   scripts/ci/cpu-sampler.sh 15 & sampler=$!; trap 'kill "$sampler"' EXIT
-                  sbt -J-Xmx${{ inputs.heap }} "worker/Fixtures/runMain scripts.FillMissingFixtures ${{ inputs.code }} $list $fixtures $out/test/resources/fixtures $until"
+                  sbt -J-Xmx${{ inputs.heap }} -J-Djdk.http.auth.tunneling.disabledSchemes= "worker/Fixtures/runMain scripts.FillMissingFixtures ${{ inputs.code }} $list $fixtures $out/test/resources/fixtures $until"
                   if [ -d "$out/test/resources/fixtures" ]; then cp -a "$out/test/resources/fixtures/." "$fixtures/"; fi
                   .github/scripts/convergence-fill.sh pack "$out" fill-upload-source/fill.tar.zst
 

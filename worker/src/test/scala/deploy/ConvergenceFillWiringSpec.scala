@@ -82,6 +82,14 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
 
   // A request the origin refuses CI's own address (Cineworld's 403s) is asked again through the residential proxy
   // (`MissingFixtureFill.route`): its credentials, like TMDB's key, in the fetching step alone.
+  // The fill runs inside sbt's JVM, which reads the tunnel-auth policy once: set at the JVM's start, so nothing sbt
+  // touched first can have read the JDK's default, which answers every proxied request 407 (run 37677032787).
+  it should "start the fill's JVM with Basic allowed on the proxy's tunnels" in {
+    val option = "-J" + tools.ProxyTunnelAuthentication.BasicAllowed.jvmOption
+    fillStep should include(s"$option \"worker/Fixtures/runMain scripts.FillMissingFixtures")
+    RepoFile.step(fill, "Fetch them until the fill's minutes run out") should include(s"$option \"worker/Fixtures/runMain")
+  }
+
   it should "hold the residential proxy's credentials in the fetching step alone" in {
     Seq("KINOWO_PROXY_USER", "KINOWO_PROXY_PASS").foreach { name =>
       fillStep should include(s"$name: $${{ secrets.$name }}")
