@@ -50,15 +50,15 @@ object Correction {
   }
 
   /** Does `record` (another database's film) contradict `model` (the model's TMDB film) by its facts — years more than
-   *  one apart, or Latin-script directors who are other people, sharing no name's stem? A missing fact contradicts
+   *  one apart, or directors who are other people, sharing no name's stem ([[FactRelations.otherPeople]])? A missing fact contradicts
    *  nothing: a title alone never does. */
   def contradicts(record: IdentityMeasures.Film, model: IdentityMeasures.Film): Boolean =
     FactRelations.yearsApart(record.year, model.year) ||
-      FactRelations.otherPeople(record.directors.getOrElse(Nil), model.directors.getOrElse(Nil), acrossScripts = true)
+      FactRelations.otherPeople(record.directors.getOrElse(Nil), model.directors.getOrElse(Nil))
 
   /** Do two films' credited directors share one — the same person, or a shared name's stem ("Simona Risi", "Simona
    *  Lina Risi")? `None` where either credits none. */
   def shareDirector(a: Seq[String], b: Seq[String]): Option[Boolean] =
-    Option.when(a.nonEmpty && b.nonEmpty)(!FactRelations.otherPeople(a, b, acrossScripts = true))
+    Option.when(a.nonEmpty && b.nonEmpty)(!FactRelations.otherPeople(a, b))
 
 }

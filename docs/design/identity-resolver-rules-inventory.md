@@ -182,7 +182,7 @@ catalogue match; `broadcast.take` via `Broadcast.take`). Rules: the fill `venues
    (year > 1), `Agreement.listingVotes` (year ≤ 1, same person), `Broadcast.fitsButTheHouse`/`credits`/`superseded`
    (`PublishedAdjacency`, literal 1), `Posters.editionsApart` (year > 1), `IdentityMeasures` :972/:988/:1009/:1233/:1365/
    :1522 and `Acceptance` :212/:520/:560 (`PublishedAdjacency`, literal 1). **Consolidated** (phase 1:
-   `FactRelations`). The two contradiction semantics disagree on names in two scripts — **finding F1**.
+   `FactRelations`). The two contradiction semantics disagreed on names in two scripts — **finding F1**, unified.
 2. **Bill / several works — 7.** `Acceptance.billsSeveralWorks`, `Agreement.billsSeveral`/`billsSeveralBeside`/
    `billsSeveralBySigns` (zestaw, quoted), `IdentityMeasures.billsTwoWorks`/`billsTwoWholeWorks`, `MultiFilmBill`,
    `DecorationSegments.billsSeveral`, `NonFilmEvents` "marathon" marker, `ConstraintEdges`:40.
@@ -280,10 +280,14 @@ loops' own overhead is the confirming `grow` round (grouping, `takenAlone` memo 
 
 ## 5. Findings: two copies disagreeing (kept as they were; pending tests in `IdentityRuleFindingsSpec`)
 
-- **F1 — a credit in another script.** The agreement's listing contradiction (`Agreement.contradicts`) reads only names
-  in one script as other people; a correction's (`Correction.contradicts`, `shareDirector`) reads `different_script`
-  too. Now one function with the difference named (`FactRelations.otherPeople(…, acrossScripts)`). Decision needed:
-  should a venue's Latin credit against a record's Cyrillic one rule an agreed film out?
+- **F1 — a credit in another script. UNIFIED.** The agreement's listing contradiction (`Agreement.contradicts`) read
+  only names in one script as other people; a correction's (`Correction.contradicts`, `shareDirector`) read
+  `different_script` too. Now one reading, `FactRelations.otherPeople`: other people in either script, sharing no
+  name's stem — the stems taken in Latin letters (`IdentityMeasures.latinized`), so "Andrei Tarkovsky" and
+  "Андрей Тарковский" share "andr"/"tark" and contradict nothing (before, a Cyrillic name had no stem at all, and the
+  correction's across-script read could not tell one person transliterated from another). The agreement's guard is the
+  stricter of the two now (it rules out more, takes nothing more). Ratchet 507 right / 0 wrong before and after;
+  FilmScheduleEndToEndSpec unchanged.
 - **F2 — spelling a house.** `Broadcast.Billing.spells` accepts a banner that is a subset of the house's words ("Opera"
   of "The Metropolitan Opera"), `IdentityMeasures.spellsItsHouse` only two shared words. Not a bug: the resolver's
   rule takes a season record on the banner alone, where a subset would teach the Paris Opera's banner to be the Met;

@@ -597,7 +597,7 @@ object IdentityMeasures {
    *  Han, ISO-style for Cyrillic, Greek, Georgian, …: no table of names. One instance per thread
    *  (an ICU transliterator is not documented as safe to share). */
   private val toLatin = ThreadLocal.withInitial(() => com.ibm.icu.text.Transliterator.getInstance("Any-Latin; Latin-ASCII"))
-  private def latinized(name: String): String = toLatin.get.transliterate(name)
+  private[identity] def latinized(name: String): String = toLatin.get.transliterate(name)
   private[identity] def isAscii(s: String): Boolean = { var i = 0; while (i < s.length && s.charAt(i) < 0x80) i += 1; i == s.length }
 
   /** Credit lists as the director relation compares them, each written form found once. */

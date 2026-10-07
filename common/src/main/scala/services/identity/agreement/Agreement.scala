@@ -352,8 +352,8 @@ object Agreement {
     timed.nonEmpty && timed.forall(listing => records.exists(record => recordRuntimes(record).exists(a => listing.runtime.exists(b => math.abs(a - b) <= RuntimeSlack))))
   }
 
-  /** Does a listing's own year (more than one apart) or director (another person in the same script, sharing no name's
-   *  stem — "Marc Donskoi" is "Mark Donskoy") rule the film out — a listing whose VENUE states them? A feed catalogue's
+  /** Does a listing's own year (more than one apart) or director (another person, in either script, sharing no name's
+   *  stem — "Marc Donskoi" is "Mark Donskoy": [[FactRelations.otherPeople]]) rule the film out — a listing whose VENUE states them? A feed catalogue's
    *  facts ([[Listing.factsFromCatalogue]]) are no venue's statement: they rule nothing out on their own
    *  ([[contradictedByTheCatalogue]]). */
   private[identity] def contradictedByTheListing(listings: Seq[Listing], record: SourceRecord): Boolean =
@@ -371,7 +371,7 @@ object Agreement {
 
   private def contradicts(listing: Listing, record: SourceRecord): Boolean =
     FactRelations.yearsApart(record.film.year, listing.year) ||
-      FactRelations.otherPeople(listing.directors, record.film.directors.getOrElse(Nil), acrossScripts = false)
+      FactRelations.otherPeople(listing.directors, record.film.directors.getOrElse(Nil))
 
   /** Is the listing's title another film's ORIGINAL title — one a family weighed — while it is none of the agreed film's
    *  records' original titles, only a translation they file? Then the venue may well bill that film by its own name:

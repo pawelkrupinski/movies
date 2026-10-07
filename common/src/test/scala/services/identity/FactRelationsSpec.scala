@@ -25,12 +25,12 @@ class FactRelationsSpec extends AnyFlatSpec with Matchers {
     FactRelations.otherPerson(Nil, Seq("Andrzej Wajda")) shouldBe false
   }
 
-  "other people" should "share no name's stem, and be read across scripts only where the caller asks" in {
-    FactRelations.otherPeople(Seq("Agnieszka Holland"), Seq("Andrzej Wajda"), acrossScripts = false) shouldBe true
+  "other people" should "share no name's stem, read across scripts too" in {
+    FactRelations.otherPeople(Seq("Agnieszka Holland"), Seq("Andrzej Wajda")) shouldBe true
     // a respelling sharing a stem is no other person
-    FactRelations.otherPeople(Seq("Simona Risi"), Seq("Simona Lina Risi"), acrossScripts = false) shouldBe false
-    // names in two scripts: the agreement's listing contradiction reads none, a correction's does
-    FactRelations.otherPeople(Seq("Kira Muratova"), Seq("Андрей Тарковский"), acrossScripts = false) shouldBe false
-    FactRelations.otherPeople(Seq("Kira Muratova"), Seq("Андрей Тарковский"), acrossScripts = true) shouldBe true
+    FactRelations.otherPeople(Seq("Simona Risi"), Seq("Simona Lina Risi")) shouldBe false
+    // names in two scripts, transliterated: another person where they share no stem, the same one where they do
+    FactRelations.otherPeople(Seq("Kira Muratova"), Seq("Андрей Тарковский")) shouldBe true
+    FactRelations.otherPeople(Seq("Andrei Tarkovsky"), Seq("Андрей Тарковский")) shouldBe false
   }
 }

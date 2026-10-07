@@ -11,10 +11,17 @@ import org.scalatest.matchers.should.Matchers
 class IdentityRuleFindingsSpec extends AnyFlatSpec with Matchers {
 
   "F1: a director credited in another script" should "contradict the film alike in the agreement's listing check and in a correction" in {
-    // today: the agreement's listing contradiction reads names in one script only, a correction's in any
-    FactRelations.otherPeople(Seq("Kira Muratova"), Seq("Андрей Тарковский"), acrossScripts = false) shouldBe false
-    FactRelations.otherPeople(Seq("Kira Muratova"), Seq("Андрей Тарковский"), acrossScripts = true) shouldBe true
-    pending // decide: should a venue's Latin credit against a record's Cyrillic one rule the agreed film out?
+    // one rule for both: a venue's Latin credit against a record's Cyrillic one, transliterated and sharing no name's
+    // stem, is another person — a guard that rules a film out reads the weaker evidence as against it (wrong beats
+    // missing), as a correction always did
+    val tarkovsky = IdentityMeasures.Film("Zerkalo", None, Nil, Some(1975), Some(107), Some(Seq("Андрей Тарковский")), None, None)
+    val muratova  = IdentityMeasures.Film("Zerkalo", None, Nil, Some(1975), Some(107), Some(Seq("Kira Muratova")), None, None)
+    val billed    = FilmTable.listing(models.KinoMuza, "Zerkalo", director = Some("Kira Muratova"))
+    agreement.Agreement.contradictedByAnyListing(Seq(billed), agreement.SourceRecord(tarkovsky)) shouldBe true
+    agreement.Correction.contradicts(muratova, tarkovsky) shouldBe true
+    // the same person in two scripts contradicts neither
+    val tarkovskyBilled = FilmTable.listing(models.KinoMuza, "Zerkalo", director = Some("Andrei Tarkovsky"))
+    agreement.Agreement.contradictedByAnyListing(Seq(tarkovskyBilled), agreement.SourceRecord(tarkovsky)) shouldBe false
   }
 
   "F3: a title with a leading article the venue drops" should "be named alike by the measures and by the agreement" in {

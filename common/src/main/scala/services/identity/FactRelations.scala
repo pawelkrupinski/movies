@@ -36,15 +36,18 @@ object FactRelations {
   /** Are the two credits other people, in the same script? */
   def otherPerson(a: Seq[String], b: Seq[String]): Boolean = directorRelation(a, b) == Different
 
-  /** Are the two credits other PEOPLE — other names (`acrossScripts`: in different scripts too, transliterated) sharing
-   *  no name's stem ([[namePrefixes]]: "Marc Donskoi" is "Mark Donskoy", "Simona Risi" is "Simona Lina Risi")? The
-   *  agreement's listing contradiction reads names in one script alone; a correction's, in any. */
-  def otherPeople(a: Seq[String], b: Seq[String], acrossScripts: Boolean): Boolean = {
+  /** Are the two credits other PEOPLE — other names, in the same script or in two (transliterated,
+   *  [[IdentityMeasures.directorRelation]]'s `different_script`), sharing no name's stem ([[namePrefixes]]: "Marc Donskoi"
+   *  is "Mark Donskoy", "Simona Risi" is "Simona Lina Risi", "Andrei Tarkovsky" is "Андрей Тарковский")? ONE reading for
+   *  every rule that rules a film out by its director: the agreement's listing contradiction and a correction's. */
+  def otherPeople(a: Seq[String], b: Seq[String]): Boolean = {
     val relation = directorRelation(a, b)
-    (relation == Different || acrossScripts && relation == DifferentScript) && namePrefixes(a).intersect(namePrefixes(b)).isEmpty
+    (relation == Different || relation == DifferentScript) && namePrefixes(a).intersect(namePrefixes(b)).isEmpty
   }
 
-  /** Each name's words of four letters or more, folded to ASCII and cut to their first four. */
+  /** Each name's words of four letters or more, in Latin letters ([[IdentityMeasures.latinized]]), folded to ASCII and cut
+   *  to their first four. */
   def namePrefixes(names: Seq[String]): Set[String] =
-    names.flatMap(name => tools.TextNormalization.deburr(name).toLowerCase(java.util.Locale.ROOT).split("[^a-z]+")).filter(_.length >= 4).map(_.take(4)).toSet
+    names.flatMap(name => tools.TextNormalization.deburr(IdentityMeasures.latinized(name)).toLowerCase(java.util.Locale.ROOT).split("[^a-z]+"))
+      .filter(_.length >= 4).map(_.take(4)).toSet
 }
