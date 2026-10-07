@@ -72,6 +72,8 @@ class NoSleepInTestsSpec extends AnyFlatSpec with Matchers {
       "a seeded 0-1 ms jitter that reorders two writers' interleaving per seed; the property holds for every order",
     "worker/src/test/scala/modules/wiring/ScrapeWiringFallbackSpec.scala" ->
       "a fetch that hangs far past the client's own timeout, so the spec proves the timeout fires (it never waits it out)",
+    "common/src/test/scala/tools/RealHttpFetchSpec.scala" ->
+      "its local server dribbles a body over real time — the slow-but-finishing upstream the exchange deadline must not cut off",
     "worker/src/fixtures/scala/tools/FixpointPass.scala" ->
       "waits for real change streams (another thread, fed by Mongo) to go quiet between fixpoint passes; bounded",
     "web/src/it/scala/UserStateAcrossPodsIntegrationSpec.scala" ->

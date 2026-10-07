@@ -7,7 +7,7 @@ import java.net.http.{HttpClient, HttpRequest, HttpResponse, HttpTimeoutExceptio
 import java.net.{Authenticator, CookieManager, CookiePolicy, InetSocketAddress, PasswordAuthentication, ProxySelector}
 import java.nio.charset.StandardCharsets
 import java.time.Duration
-import java.util.concurrent.CompletableFuture
+import java.util.concurrent.{CompletableFuture, CountDownLatch, ExecutionException, TimeUnit, TimeoutException}
 import scala.concurrent.duration.FiniteDuration
 
 class RealHttpFetch(
@@ -15,7 +15,9 @@ class RealHttpFetch(
   // The TLS context every client below handshakes with (see TlsTrust). A wiring builds
   // one and hands it to each fetch it composes, so they share its session cache; a
   // fetch built without one gets its own.
-  tls: javax.net.ssl.SSLContext = TlsTrust.newContext()
+  tls: javax.net.ssl.SSLContext = TlsTrust.newContext(),
+  // The host's request budget — HostPolicies' table; a spec passes a short one.
+  requestTimeoutFor: String => Duration = HostPolicies.requestTimeoutFor
 ) extends HttpFetch with Logging {
   // Connect + per-request timeouts so a hung upstream (MC search HTML
   // sometimes streams forever, Filmweb soft-blocks by holding the socket
@@ -121,32 +123,74 @@ class RealHttpFetch(
   override def post(url: String, body: String, contentType: String = "application/json"): String =
     checkStatus("POST", url, sendLogged("POST", url, send(postRequest(url, body, contentType))))
 
-  /** Send `request`, following its redirects through [[RedirectGuard]]; each hop goes
-   *  out on the client whose connect budget its own host's policy names. */
-  @scala.annotation.tailrec
-  private def send(request: HttpRequest, hops: Int = 0): HttpResponse[Array[Byte]] = {
-    val response = clientFor(request.uri().toString).send(request, HttpResponse.BodyHandlers.ofByteArray())
-    RedirectGuard.next(request, response, hops) match {
-      case Some(next) => send(next, hops + 1)
-      case None       => response
+  /** [[sendAsync]], waited for. A failure is rethrown as its cause (an `HttpTimeoutException`,
+   *  a `ConnectException`, …) — the shape `HttpClient.send` throws.
+   *
+   *  It waits on a latch, NOT in `CompletableFuture.get` (which `HttpClient.send` uses): on a
+   *  ForkJoinPool worker, `get` first runs async tasks queued on that worker, on this thread,
+   *  inside the wait. A caller that fans reads out with `CompletableFuture.runAsync` and holds a
+   *  slot across each (HostPacing) then has a queued read wait for a slot this very thread's
+   *  outer frames hold — a deadlock at 0% CPU, two IMDb POSTs hung 23+ minutes in an identity
+   *  capture. A latch just parks; once it opens the result is in, and `get` returns at once. */
+  private def send(request: HttpRequest): HttpResponse[Array[Byte]] = {
+    val exchange = sendAsync(request, hops = 0)
+    val done     = new CountDownLatch(1)
+    exchange.whenComplete((_, _) => done.countDown())
+    try { done.await(); exchange.get() }
+    catch {
+      case failure: ExecutionException if failure.getCause != null => throw failure.getCause
+      case interrupted: InterruptedException => exchange.cancel(true); throw interrupted
     }
   }
 
-  private def sendAsync(request: HttpRequest, hops: Int): CompletableFuture[HttpResponse[Array[Byte]]] =
-    clientFor(request.uri().toString).sendAsync(request, HttpResponse.BodyHandlers.ofByteArray())
+  /** Send `request`, following its redirects through [[RedirectGuard]]; each hop goes
+   *  out on the client whose connect budget its own host's policy names, and within
+   *  that host's [[exchangeDeadline]]. */
+  private def sendAsync(request: HttpRequest, hops: Int): CompletableFuture[HttpResponse[Array[Byte]]] = {
+    val url = request.uri().toString
+    withinDeadline(url, clientFor(url).sendAsync(request, HttpResponse.BodyHandlers.ofByteArray()))
       .thenCompose { response =>
         RedirectGuard.next(request, response, hops) match {
           case Some(next) => sendAsync(next, hops + 1)
           case None       => CompletableFuture.completedFuture(response)
         }
       }
+  }
+
+  /** One hop's exchange — connect, headers AND body — bounded by its host's
+   *  [[exchangeDeadline]]. Up to JDK 25 a request's own `timeout` stops at the
+   *  response HEADERS, so a body that stalls after them held `HttpClient.send` for
+   *  good. (JDK 26+ times the body too; the build targets Java 21, so this does it here.)
+   *  Past the deadline the exchange is cancelled, freeing its connection, and the
+   *  read fails with the `HttpTimeoutException` a header-phase timeout throws, so
+   *  every caller's timeout handling — logging, retry, back-off — applies unchanged. */
+  private def withinDeadline[A](url: String, exchange: CompletableFuture[A]): CompletableFuture[A] = {
+    val deadline = exchangeDeadline(url)
+    val bounded  = new CompletableFuture[A]
+    exchange.whenComplete { (value, failure) =>
+      if (failure == null) bounded.complete(value) else bounded.completeExceptionally(unwrap(failure))
+    }
+    bounded.orTimeout(deadline.toMillis, TimeUnit.MILLISECONDS).exceptionallyCompose { failure =>
+      unwrap(failure) match {
+        case _: TimeoutException =>
+          exchange.cancel(true)
+          CompletableFuture.failedFuture(new HttpTimeoutException(s"no complete response within ${deadline.toMillis}ms"))
+        case other => CompletableFuture.failedFuture(other)
+      }
+    }
+  }
+
+  /** The longest one hop of an exchange with `url`'s host may take: its connect
+   *  budget plus its request budget. */
+  private def exchangeDeadline(url: String): Duration =
+    HostPolicies.connectTimeoutFor(url).plus(requestTimeoutFor(url))
 
   /** Package-private so the spec can assert what actually goes on the wire — the
    *  header a host policy demands is only observable on the built request. */
   private[tools] def postRequest(url: String, body: String, contentType: String): HttpRequest = {
     val builder = HttpRequest.newBuilder()
       .uri(URI.create(url))
-      .timeout(HostPolicies.requestTimeoutFor(url))
+      .timeout(requestTimeoutFor(url))
       .header("Content-Type", contentType)
       .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
       // Decoded transparently in `decodeBody` below. See the matching
@@ -225,7 +269,7 @@ class RealHttpFetch(
     val safeUrl = RedactedUrl(url)
     exception match {
       case _: HttpTimeoutException =>
-        logger.warn(s"HTTP $method $safeUrl timed out after ${HostPolicies.requestTimeoutFor(url).toSeconds}s (service not responding)")
+        logger.warn(s"HTTP $method $safeUrl timed out after ${requestTimeoutFor(url).toSeconds}s (service not responding)")
       case _ =>
         logger.warn(s"HTTP $method $safeUrl failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
     }
@@ -242,7 +286,7 @@ class RealHttpFetch(
   private[tools] def buildRequest(url: String, extraHeaders: Map[String, String] = Map.empty): HttpRequest = {
     val builder = HttpRequest.newBuilder()
       .uri(URI.create(url))
-      .timeout(HostPolicies.requestTimeoutFor(url))
+      .timeout(requestTimeoutFor(url))
       .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
       .header("Accept-Language", "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7")
       // Advertise gzip — `decodeBody` decompresses transparently. Without

@@ -7,9 +7,10 @@ import java.net.{InetSocketAddress, URI}
 
 /**
  * The HTTP client itself — what it builds from the per-host policy it consults
- * ([[HostPolicies]], whose lookups HostPoliciesSpec pins). The actual
- * slow-handshake / slow-read behaviour needs a real upstream and can't be
- * reproduced in a unit test, so we assert the closest reachable mechanism: that a
+ * ([[HostPolicies]], whose lookups HostPoliciesSpec pins). A stalled or slow
+ * response body is served by a local server below; the slow TLS handshake needs a
+ * real upstream and can't be reproduced in a unit test, so we assert the closest
+ * reachable mechanism for it and the headers: that a
  * real client carries the connect budget its host policy names, that the built
  * request carries the policy's headers, and that a caller's explicit header wins.
  */
@@ -139,6 +140,29 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
 
   private def withServer(test: String => Unit): Unit = {
     val server = com.sun.net.httpserver.HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
+    // A handler of its own per exchange: the stalled bodies below hold theirs until the server stops.
+    val handlers = java.util.concurrent.Executors.newCachedThreadPool()
+    server.setExecutor(handlers)
+    val stopped = new java.util.concurrent.CountDownLatch(1)
+    // Status and headers, the first bytes of a 1000-byte body, then nothing until the server stops.
+    def stall(exchange: com.sun.net.httpserver.HttpExchange): Unit = {
+      exchange.sendResponseHeaders(200, 1000)
+      exchange.getResponseBody.write("<html>".getBytes(java.nio.charset.StandardCharsets.UTF_8))
+      exchange.getResponseBody.flush()
+      stopped.await()
+      exchange.close()
+    }
+    // A body that dribbles in over a few hundred milliseconds but does finish.
+    def dribble(exchange: com.sun.net.httpserver.HttpExchange): Unit = {
+      val chunks = Seq("<html>", "<body>", "Kino", "</body>", "</html>")
+      exchange.sendResponseHeaders(200, chunks.map(_.length).sum.toLong)
+      chunks.foreach { chunk =>
+        exchange.getResponseBody.write(chunk.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+        exchange.getResponseBody.flush()
+        Thread.sleep(150)
+      }
+      exchange.close()
+    }
     def respond(code: Int, headers: (String, String)*)(body: String)(exchange: com.sun.net.httpserver.HttpExchange): Unit = {
       headers.foreach { case (k, v) => exchange.getResponseHeaders.add(k, v) }
       val bytes = body.getBytes(java.nio.charset.StandardCharsets.UTF_8)
@@ -159,8 +183,10 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
     // 301/302 turn a POST into a GET, as browsers (and the JDK's own redirect filter) do.
     server.createContext("/form", e => respond(302, "Location" -> "/method")("")(e))
     server.createContext("/method", e => respond(200)(e.getRequestMethod)(e))
+    server.createContext("/stalled-body", e => stall(e))
+    server.createContext("/slow-body", e => dribble(e))
     server.start()
-    try test(base) finally server.stop(0)
+    try test(base) finally { stopped.countDown(); server.stop(0); handlers.shutdownNow(); () }
   }
 
   "getPage" should "report the URL a redirect ended on, with the page served there" in withServer { base =>
@@ -218,4 +244,81 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
     // A host NAME is never resolved: only a literal address or a localhost name is judged.
     RedirectGuard.refusal(URI.create("https://www.sfr.pl/x"), URI.create("https://bilety.sfr.pl/x")) shouldBe None
   }
+
+  // ── A body that stalls after its headers ──────────────────────────────────
+  // Up to JDK 25 a request's timeout covers only the wait for the response HEADERS, so a
+  // body that stalled after them held HttpClient.send for good (JDK 26+ times the body
+  // too; the build targets Java 21). Every read gets a whole-exchange deadline (connect +
+  // headers + body): the host's connect budget plus its request budget, failing as the
+  // same HttpTimeoutException a header-phase timeout does.
+
+  private val requestBudget = java.time.Duration.ofSeconds(1)
+  private def tightFetch = new RealHttpFetch(requestTimeoutFor = _ => requestBudget)
+  // The local server's host has the default connect budget.
+  private val deadline = HostPolicies.DefaultConnectTimeout.plus(requestBudget)
+
+  /** `read`'s failure and how long it took to come, bounded so a hanging read fails the spec instead of hanging it. */
+  private def timedFailure(read: => Any): (Throwable, java.time.Duration) = {
+    val started = System.nanoTime()
+    // A thread of its own: a read that hangs keeps it, never a pool thread another suite needs.
+    val outcome = java.util.concurrent.CompletableFuture.supplyAsync(() => scala.util.Try(read), (task: Runnable) => new Thread(task).start())
+    val result  = outcome.get(deadline.toMillis * 4, java.util.concurrent.TimeUnit.MILLISECONDS)
+    val elapsed = java.time.Duration.ofNanos(System.nanoTime() - started)
+    result.failed.getOrElse(fail(s"the read succeeded: $result")) -> elapsed
+  }
+
+  private def unwrapped(failure: Throwable): Throwable = failure match {
+    case wrapper @ (_: java.util.concurrent.ExecutionException | _: java.util.concurrent.CompletionException)
+        if wrapper.getCause != null => unwrapped(wrapper.getCause)
+    case other => other
+  }
+
+  "a body that stalls after its headers" should "time out get, post and getAsync within the host's budget" in withServer { base =>
+    val reads: Seq[(String, () => Any)] = Seq(
+      "get"      -> (() => tightFetch.get(s"$base/stalled-body")),
+      "post"     -> (() => tightFetch.post(s"$base/stalled-body", "{}")),
+      "getAsync" -> (() => tightFetch.getAsync(s"$base/stalled-body").get()),
+    )
+    reads.foreach { case (name, read) =>
+      withClue(name) {
+        val (failure, elapsed) = timedFailure(read())
+        unwrapped(failure) shouldBe a [java.net.http.HttpTimeoutException]
+        elapsed.compareTo(requestBudget) should be >= 0
+        elapsed.compareTo(deadline.plusSeconds(3)) should be < 0
+      }
+    }
+  }
+
+  "a slow body that finishes" should "still be read whole" in withServer { base =>
+    tightFetch.get(s"$base/slow-body") shouldBe "<html><body>Kino</body></html>"
+    tightFetch.getAsync(s"$base/slow-body").get() shouldBe "<html><body>Kino</body></html>"
+  }
+
+  // ── A blocking read on a ForkJoinPool worker ──────────────────────────────
+  // CompletableFuture.get on a ForkJoinPool worker first RUNS async tasks queued on that
+  // worker (ForkJoinPool.helpAsyncBlocker), on the waiting thread, inside the wait. The
+  // identity capture fans its reads out with CompletableFuture.runAsync, each holding a
+  // HostPacing slot while it reads: a waiting read picked up a queued one, which waited for
+  // a slot its own thread's outer frames held — two IMDb POSTs deadlocked 23+ minutes at
+  // 0% CPU (JDK 27, thread dump 2026-10-07). This gate is that slot: held across the read,
+  // and wanted again by the task queued behind it.
+
+  "a read on a ForkJoinPool worker" should "wait for its response without running the worker's queued tasks" in withServer { base =>
+    val pool = new java.util.concurrent.ForkJoinPool(1)
+    val gate = new java.util.concurrent.Semaphore(1)
+    try {
+      val reader = java.util.concurrent.CompletableFuture.supplyAsync(() => {
+        gate.acquire()
+        try {
+          // Queued on this worker; it can only run once the read is done and the gate is free.
+          java.util.concurrent.CompletableFuture.runAsync(() => { gate.acquire(); gate.release() }, pool)
+          new RealHttpFetch().get(s"$base/slow-body")
+        } finally gate.release()
+      }, pool)
+      reader.get(SpecBound.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe "<html><body>Kino</body></html>"
+    } finally pool.shutdownNow()
+  }
+
+  // Far past the slow body's under-a-second answer: only a deadlocked read gets near it.
+  private val SpecBound = java.time.Duration.ofSeconds(20)
 }
