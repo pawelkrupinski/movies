@@ -70,13 +70,18 @@ trait HttpWiring { self: WorkerWiring =>
           new RateLimitedHttpFetch(
             new CountingHttpFetch(sharedRealHttpLeaf,
               workerMetrics.httpMetrics.recorderFor(country.code, phase)),
-            pace, clock = clock),
+            pace, clock = clock, sleep = pacingSleep),
           meter = workerMetrics.httpBreakers.meterFor(country.code, phase), clock = clock),
-        paceFor = pace, clock = clock),
+        paceFor = pace, clock = clock, sleep = pacingSleep),
         fleetHostPace, url => HostPolicies.fleetIntervalFor(url, configuration).map(d => FiniteDuration(d.toMillis, MILLISECONDS)),
-        FleetPacedHttpFetch.Horizon, clock),
+        FleetPacedHttpFetch.Horizon, clock, sleep = pacingSleep),
       uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
   }
+
+  /** How the chain's pacing layers wait out a host's slot. A real wait wherever a request can go
+   *  out; a wiring whose leaf never sends one (a hermetic replay) keeps every pacing decision and
+   *  skips only the wait. */
+  protected def pacingSleep: Long => Unit = Thread.sleep
 
   /** The fleet's shared host paces (`fleet_host_pace` in the fleet database): every country's worker holds a shared
    *  origin to one budget. Without the fleet database each worker paces itself alone. */

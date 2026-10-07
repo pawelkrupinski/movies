@@ -333,6 +333,22 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     missing.keys.map(_._1) shouldBe Seq("cinema.test/film/dune")
   }
 
+  // A page the tree lacks is asked again on every listing that names it: one Flicks detail page,
+  // 36,569 times in a US boot (run 37546591704). Each ask was PACED on its way down to the leaf that
+  // refuses it — 200 ms a slot on Flicks — 251 s of a boot spent sleeping before requests that can
+  // never be sent. The pacing still decides; it no longer sleeps where nothing goes out.
+  it should "refuse an unrecorded request to a paced host without waiting out its pace" in {
+    val missing = new MissingFixtures
+    val wiring  = new ArchiveReplayWiring(Country.UnitedKingdom, new InMemoryScrapeArchiveRepository,
+      Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), new FetchOnlyStorage, fixtureTree,
+      settings.FixtureRoot.RepositoryRelative, Some(missing))
+    val started = System.nanoTime()
+    (1 to 4).foreach(i => an [Exception] should be thrownBy wiring.httpFetch.get(s"https://www.flicks.co.uk/movie/unrecorded-$i/"))
+    val elapsedMs = (System.nanoTime() - started) / 1000000
+    withClue(s"four refusals on a 200 ms-paced host took ${elapsedMs} ms: ") { elapsedMs should be < 300L }
+    missing.size should be >= 1
+  }
+
   it should "answer what the recording holds without refusing anything" in {
     // Record through a RECORDING wiring on the same tree, exactly as the recorder would.
     val leaf = new CountingLeaf

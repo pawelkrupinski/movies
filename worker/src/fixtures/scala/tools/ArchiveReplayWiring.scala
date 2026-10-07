@@ -68,6 +68,13 @@ class ArchiveReplayWiring(
   override protected def realHttpLeaf: HttpFetch =
     hermetic.fold(super.realHttpLeaf)(new HermeticHttpLeaf(_))
 
+  /** Over a hermetic leaf no request goes out, so a paced host's slot guards nothing: the pacing
+   *  layers still claim their slots and decide as production does, and only the wait is skipped.
+   *  Waited out, a page the tree lacks — asked again on every listing that names it — slept 251 s
+   *  of a US boot in Flicks' 200 ms slots (run 37546591704). */
+  override protected def pacingSleep: Long => Unit =
+    if (hermetic.isDefined) _ => () else super.pacingSleep
+
   /**
    * The scrape side: recorded DETAIL pages first, live behind them, and whatever the
    * live leg fetched written back into the same tree.
