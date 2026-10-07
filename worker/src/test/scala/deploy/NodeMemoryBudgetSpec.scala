@@ -271,6 +271,25 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // A Serial-GC worker's old generation is -Xmx less its young generation (-Xmn; a third of the heap
+  // when unset). Packed close to its live set, every boot and every heavy tick ran back-to-back full
+  // collections: worker-uk's 341 MB old gen over a 268 MB median / 308 MB max live set ran 11 full GCs
+  // and 16.2 s of them an hour (24 h to 2026-10-07 12:30 UTC), so it got -Xmn100m (412 MB old).
+  // Live set = `jvm_memory_pool_collection_used_bytes{pool="Tenured Gen"}`, pods past 10 min up.
+  private val MeasuredLiveSetMaxMib = Map(("worker", "uk") -> 308)
+  private val OldGenHeadroom        = 1.25
+
+  "a measured worker's old generation" should "leave a quarter of headroom over its measured live set" in {
+    MeasuredLiveSetMaxMib.foreach { case ((tier, cc), live) =>
+      val opts  = javaOpts(tier, cc)
+      val heap  = flagMib(opts, "-Xmx", tier, cc)
+      val young = if (opts.contains("-Xmn")) flagMib(opts, "-Xmn", tier, cc) else heap / 3
+      withClue(s"$tier/$cc: -Xmx${heap}Mi with a ${young}Mi young generation leaves ${heap - young}Mi old over a ${live}Mi live set: ") {
+        (heap - young).toDouble should be >= live * OldGenHeadroom
+      }
+    }
+  }
+
   /** web's `/data` emptyDir, as the pod actually gets it: the overlay's where it restates the
    *  volume, the base's otherwise. */
   private def scratchVolume(cc: String): String = {
