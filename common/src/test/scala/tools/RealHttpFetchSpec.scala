@@ -250,7 +250,7 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
   // body that stalled after them held HttpClient.send for good (JDK 26+ times the body
   // too; the build targets Java 21). Every read gets a whole-exchange deadline (connect +
   // headers + body): the host's connect budget plus its request budget, failing as the
-  // same HttpTimeoutException a header-phase timeout does.
+  // same HttpTimeoutException a header-phase timeout does (or, when the JDK's own body timer wins, its IOException).
 
   private val requestBudget = java.time.Duration.ofSeconds(1)
   private def tightFetch = new RealHttpFetch(requestTimeoutFor = _ => requestBudget)
@@ -282,7 +282,10 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
     reads.foreach { case (name, read) =>
       withClue(name) {
         val (failure, elapsed) = timedFailure(read())
-        unwrapped(failure) shouldBe a [java.net.http.HttpTimeoutException]
+        // Whichever timer fires first: our whole-exchange deadline fails it as an HttpTimeoutException; on JDK 26+ the
+        // JDK's own body timer can beat it and cut the body short as a plain IOException ("bytes received: 6"). Both are
+        // the read failing inside the bound instead of hanging, and every caller handles them as one failed read.
+        unwrapped(failure) shouldBe an [java.io.IOException]
         elapsed.compareTo(requestBudget) should be >= 0
         elapsed.compareTo(deadline.plusSeconds(3)) should be < 0
       }
