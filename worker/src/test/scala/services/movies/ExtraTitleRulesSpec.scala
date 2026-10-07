@@ -1117,6 +1117,44 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
       "Jak żyć, żeby nie zwariować"
   }
 
+  /** Listings of the 2026-10-07 Polish recording whose TMDB query kept a screening marker
+   *  (SearchQueryMarkersSpec over the recorded corpus), each through the whole query path a listing
+   *  takes — the venue's cleanup, the format peel, then `searchQuery`. */
+  private val screeningMarkerListings: Seq[((models.Cinema, String), String)] = Seq(
+    (models.KinoBajkaDarlowo, "BEZ KOŃCA 2D PL LOLO")                                                          -> "Bez końca",
+    (models.KinoBajkaDarlowo, "VINCENT. LEGENDA OCEANU 2D DUB. SPS")                                           -> "Vincent. Legenda oceanu",
+    (models.KinoCentrum3D, "Mity greckie i Odyseja premiera")                                       -> "Mity greckie i Odyseja",
+    (models.HeliosOutletPark, "Godzilla Minus Zero (IMAX) - Event Projekt")                         -> "Godzilla Minus Zero",
+    (models.HeliosRiviera, "Godzilla Minus Zero - Event Projekt")                                   -> "Godzilla Minus Zero",
+    (models.Helios, "Godzilla Minus Zero IMAX (specjalny przedpremierowy pokaz nocny) - Event Projekt") -> "Godzilla Minus Zero",
+    (models.KinoSokol, "LALKA - napisy dla osób nie(do)słyszących i PJM")                           -> "LALKA",
+    (models.KinoSokol, "Lalka - napisy dla osób niedosłyszących")                                   -> "Lalka"
+  )
+
+  private def listingQuery(titles: TitleNormalizer, cinema: models.Cinema, raw: String): String =
+    titles.searchQuery(titles.listingTitle(cinema, raw)._1)
+
+  "A screening marker the 2026-10-07 recording billed" should "leave the listing's search query" in {
+    val titles = new TitleNormalizer(withExtras)
+    screeningMarkerListings.foreach { case ((cinema, raw), query) =>
+      withClue(s"searchQuery of '$raw' at ${cinema.displayName}: ")(listingQuery(titles, cinema, raw) shouldBe query)
+    }
+  }
+
+  it should "be load-bearing — the seed rules alone search the marker along" in {
+    val titles = new TitleNormalizer(seedOnly)
+    screeningMarkerListings.foreach { case ((cinema, raw), query) =>
+      withClue(s"seed searchQuery of '$raw': ")(listingQuery(titles, cinema, raw) should not be query)
+    }
+  }
+
+  it should "leave a film's own capitalised 'Premiera', a non-event parenthesis and the event words alone" in {
+    Seq("Ostatnia Premiera", "Nikt nie wie (Dziecięcy świat)", "Kino w 3D na sobotę",
+      "Event Horizon", "Projekt Hail Mary").foreach { t =>
+      withClue(s"search('$t') unchanged: ")(withExtras.search(t) shouldBe t)
+    }
+  }
+
   "ExtraTitleRules per-cinema rules" should "strip venue-specific junk for the owning cinema" in {
     perCinemaCases.foreach { case ((slug, raw), clean) =>
       withClue(s"perCinema('$slug', '$raw'): ")(withExtras.perCinema(slug, raw) shouldBe clean)

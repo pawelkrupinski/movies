@@ -315,8 +315,8 @@ object ExtraTitleRules {
   /** Strips that fix enrichment without merging the row away — a premiere or a
    *  DKF screening keeps its own line, it just resolves ratings now. */
   val searchStrips: Seq[TitleRule] = Seq(
-    searchStrip("xtra-napisy-dla-nieslyszacych", """(?iu)\s*[-–(]?\s*napisy\s+dla\s+(?:osób\s+)?niesłysząc\p{L}*\s*\)?\s*$""",
-      "'Lalka-napisy dla niesłyszących' accessibility subtitles, joined with or without a spaced hyphen"),
+    searchStrip("xtra-napisy-dla-nieslyszacych", """(?iu)\s*[-–(]?\s*napisy\s+dla\s+(?:osób\s+)?nie(?:\(do\)|do)?słysząc\p{L}*(?:\s+(?:i|\+)\s+PJM)?\s*\)?\s*$""",
+      "'Lalka-napisy dla niesłyszących' accessibility subtitles, joined with or without a spaced hyphen; the 'nie(do)słyszących' / 'niedosłyszących' spellings and an 'i PJM' sign-language tail with them (Kino Sokół: Lalka)"),
     searchStrip("xtra-unclosed-bracket-tail",   """\s*\([^()]*$""",
       "'Lalka (+ ENG' — a bracket a truncated title never closes"),
     // "<film>. Amerykańska klasyka od Warner Bros." — a distributor's re-release strapline
@@ -607,7 +607,6 @@ object ExtraTitleRules {
     //   "BACKROOM: Bez wyjścia" (the film IS 'Backrooms. Bez wyjścia') — see the
     //   negative controls in ExtraTitleRulesSpec.
     searchStrip("xtra-pp-ffs-festival",            """(?iu)^\d+\s*FFS\s+""",                          "'26 FFS <film>' film-festival edition prefix (Być kochaną, Ostatni wiking, Wartość sentymentalna, Świat po pracy, Wiking i magiczny miecz)"),
-    searchStrip("xtra-dub-sps-suffix",             """(?iu)\s+(?:2D|3D)\s+(?:DUB|NAP)\.?\s+SPS\s*$""", "'<film> 2D DUB. SPS' screening-code suffix — the global form of the kino-bajka per-cinema rule (other venues use it too: Toy Story 5, Vaiana)"),
     searchStrip("xtra-premiera-prefix",            """(?iu)^Premiera\s*[:!]+\s*""",                   "'Premiera: <film>' / 'PREMIERA!!! <film>' release-announcement prefix (Kumotry, Straszny film) — distinct from the existing przedpremiera prefix"),
     searchStrip("xtra-dialog-przez-film",          """(?iu)^Dialog\s+przez\s+Film:\s*""",             "'Dialog przez Film: <film>' discussion-cycle prefix (Co do... Kury?)"),
     searchStrip("xtra-mistrzowska-kreska",         """(?iu)^Mistrzowska\s+Kreska:\s*""",              "'Mistrzowska Kreska: <film>' animation-cycle prefix (Podwójne życie Weroniki)"),
@@ -789,7 +788,27 @@ object ExtraTitleRules {
       "'<film> [– 2D napisy] – [Wielka/Polska] Premiera [Krajowa/filmu]' release-announcement suffix — stripped for the LOOKUP only: a premiere screening keeps its own title and row (user, 2026-10-01)"),
     // An encore is a repeat showing of a broadcast, never part of its title: US "The Metropolitan Opera: Così fan
     // tutte ENCORE (2026)" ×7 found nothing on TMDB until the word came off. Never the whole title ("Encore").
-    searchStrip("xtra-encore-suffix",              """(?i)(?<=\S)\s+encore(?=\s*(?:\(\d{4}\))?\s*$)""", "'<broadcast> ENCORE (2026)' encore-screening tag")
+    searchStrip("xtra-encore-suffix",              """(?i)(?<=\S)\s+encore(?=\s*(?:\(\d{4}\))?\s*$)""", "'<broadcast> ENCORE (2026)' encore-screening tag"),
+    // The four below run last, after every separated premiere / pokaz / format strip has taken its whole spelling.
+    // A chain's event-programme label after the film ("Godzilla Minus Zero (IMAX) - Event Projekt", every
+    // Helios venue), then a parenthesised screening-event note ("(specjalny przedpremierowy pokaz nocny)")
+    // the label stripped first exposes. Both before the format peel, which then takes the IMAX they hid.
+    searchStrip("xtra-event-projekt-suffix",     """(?iu)\s*[-–—|]\s*Event\s+Projekt\s*$""",
+      "'<film> - Event Projekt' chain event-programme label (Helios: Godzilla Minus Zero)"),
+    searchStrip("xtra-paren-screening-event",    """(?iu)(?<=\S)\s*\((?=[^()]*(?<!\p{L})(?:pokaz|seans)(?!\p{L}))[^()]*\)\s*$""",
+      "'<film> (specjalny przedpremierowy pokaz nocny)' parenthesised screening-event note naming a pokaz / seans (Helios: Godzilla Minus Zero IMAX)"),
+    // A venue code behind a format and version tag ("BEZ KOŃCA 2D PL LOLO", Kino Bajka Darłowo; "TOY STORY 5
+    // 2D DUB. SPS" at several venues): the end-anchored format peel stops at the code, so the tag stayed in the
+    // query. The tag goes with the code. Only one short word that is not itself a version word, and only behind
+    // a 2D/3D + version pair, which no title ends with.
+    searchStrip("xtra-code-after-format-tag",    """(?iu)\s+[23]d\s+(?:pl|pol|dub\.?|dubbing|nap\.?|napisy|lektor|lek\.?)\s+(?!(?:pl|pol|dub|dubb|nap|lek|lektor|napisy)\.?\s*$)\p{L}{2,5}\.?\s*$""",
+      "'<film> 2D PL LOLO' / '<film> 2D DUB. SPS' venue code behind the format tag (Kino Bajka Darłowo: Bez końca; Toy Story 5, Vaiana)"),
+    // A lower-case "premiera" after the film is the venue's premiere note ("Mity greckie i Odyseja premiera",
+    // Centrum 3D Kalisz, beside its "… na bis"); searchQuery re-cases a shouted title first, so an all-caps
+    // "LALKA PREMIERA" arrives here as "Lalka premiera" too. Case-sensitive: "Ostatnia Premiera" is a title;
+    // a separated ": premiera" is the separator rules' to take whole.
+    searchStrip("xtra-premiera-lowercase-suffix", """(?u)(?<=[\p{L}\p{N}])\s+premiera\s*$""",
+      "'<film> premiera' bare lower-case premiere note (Centrum 3D Kalisz: Mity greckie i Odyseja)")
   )
 
   /** One decoration the weekly discovery bot (`scripts.DecorationDiscovery`, `.github/workflows/decoration-discovery.yml`)
