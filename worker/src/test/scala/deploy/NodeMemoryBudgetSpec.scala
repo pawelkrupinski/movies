@@ -233,7 +233,7 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
 
   /** Floors bought by a measured heap exhaustion, per tier+country. See the test
    *  below for what each one cost. */
-  private val HeapFloorsMib = Map(("worker", "us") -> 1152, ("web", "us") -> 768)
+  private val HeapFloorsMib = Map(("worker", "us") -> 1152, ("web", "us") -> 768, ("worker", "pl") -> 512, ("worker", "uk") -> 640)
 
   // The MIRROR of the test above, and the failure it missed. That one stops a heap
   // outgrowing its container; this one stops a heap the container has already paid
@@ -257,7 +257,10 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   // held a far larger corpus graph; it has not been tried since.
   // US carries ~5000 venues against Germany's ~1500, and one US "city" (California)
   // renders an 18.9MB page, which is why it is the country that runs out first.
-  "the US deployments' heaps" should "claim the container limit they were already given" in {
+  // worker-pl's 512 and worker-uk's 640 were bought by GC, not by an OOM, on 2026-10-07: on 448m PL ran 24 full
+  // GCs an hour with no boot among them (2.1% of wall time, 14:25-16:40 UTC); UK's 512m, cut from 640m on
+  // 09-29, packed a 308 MB live-set max into 341-412 MB of old gen.
+  "the deployments with a measured heap floor" should "claim the container limit they were already given" in {
     HeapFloorsMib.foreach { case ((tier, cc), floor) =>
       val heap  = flagMib(javaOpts(tier, cc), "-Xmx", tier, cc)
       val limit = limitMib(tier, cc)
