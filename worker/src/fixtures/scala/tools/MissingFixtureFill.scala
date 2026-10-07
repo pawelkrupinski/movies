@@ -21,14 +21,15 @@ import scala.util.control.NonFatal
  * back, and stopped at the budget: a request not started by then is left for the next leg's fill.
  */
 final class MissingFixtureFill(held: MissingFixtures.Refetch => Boolean, fetch: HttpFetch, threads: Int,
-                               nanoTime: () => Long = () => System.nanoTime()) {
+                               nanoTime: () => Long = () => System.nanoTime(),
+                               sign: String => Option[(String, Map[String, String])] = FillCredentials(None).sign) {
   import MissingFixtureFill.Outcome
 
   def fill(gaps: Seq[MissingFixtures.Refetch], budget: FiniteDuration): Outcome = {
     val order    = MissingFixtureFill.interleavedByHost(gaps).toIndexedSeq
     val deadline = nanoTime() + budget.toNanos
     val next     = new AtomicInteger(0)
-    val fetched, failed, alreadyHeld = new AtomicInteger(0)
+    val fetched, failed, alreadyHeld, unsigned = new AtomicInteger(0)
     val failures = new java.util.concurrent.ConcurrentHashMap[String, AtomicInteger]()
 
     def work(): Unit = {
@@ -36,13 +37,17 @@ final class MissingFixtureFill(held: MissingFixtures.Refetch => Boolean, fetch: 
       while (index < order.size && nanoTime() < deadline) {
         val gap = order(index)
         if (held(gap)) alreadyHeld.incrementAndGet()
-        else try {
-          if (gap.verb == "BYTES") fetch.getBytes(gap.url) else fetch.get(gap.url)
-          fetched.incrementAndGet()
-        } catch {
+        else sign(gap.url) match {
+          // masks a credential this fill holds no key for: never asked with the mask in it
+          case None => unsigned.incrementAndGet()
+          case Some((url, headers)) => try {
+            if (gap.verb == "BYTES") fetch.getBytes(url) else if (headers.isEmpty) fetch.get(url) else fetch.get(url, headers)
+            fetched.incrementAndGet()
+          } catch {
           case NonFatal(e) =>
             failed.incrementAndGet()
-            failures.computeIfAbsent(e.getClass.getSimpleName, _ => new AtomicInteger(0)).incrementAndGet()
+              failures.computeIfAbsent(e.getClass.getSimpleName, _ => new AtomicInteger(0)).incrementAndGet()
+          }
         }
         index = next.getAndIncrement()
       }
@@ -56,8 +61,8 @@ final class MissingFixtureFill(held: MissingFixtures.Refetch => Boolean, fetch: 
       pool.awaitTermination(budget.toMillis + MissingFixtureFill.Grace.toMillis, TimeUnit.MILLISECONDS)
     } finally pool.shutdownNow()
 
-    val asked = fetched.get + failed.get + alreadyHeld.get
-    Outcome(gaps.size, fetched.get, failed.get, alreadyHeld.get, (order.size - asked).max(0),
+    val asked = fetched.get + failed.get + alreadyHeld.get + unsigned.get
+    Outcome(gaps.size, fetched.get, failed.get, alreadyHeld.get, unsigned.get, (order.size - asked).max(0),
       failures.entrySet().toArray(Array.empty[java.util.Map.Entry[String, AtomicInteger]]).map(e => e.getKey -> e.getValue.get).toMap)
   }
 }
@@ -68,12 +73,12 @@ object MissingFixtureFill {
   val Grace: FiniteDuration = FiniteDuration(60, TimeUnit.SECONDS)
 
   /** What one fill did: of `listed` requests, `fetched` answered (and were recorded), `failed` did not
-   *  (a durable verdict — a 404 — is remembered all the same), `alreadyHeld` an earlier fill had, and
-   *  `unreached` the budget ran out before. */
-  final case class Outcome(listed: Int, fetched: Int, failed: Int, alreadyHeld: Int, unreached: Int, failures: Map[String, Int]) {
+   *  (a durable verdict — a 404 — is remembered all the same), `alreadyHeld` an earlier fill had, `unsigned`
+   *  masked a credential this fill holds no key for ([[FillCredentials]]), and `unreached` the budget ran out before. */
+  final case class Outcome(listed: Int, fetched: Int, failed: Int, alreadyHeld: Int, unsigned: Int, unreached: Int, failures: Map[String, Int]) {
     def describe: String =
       s"$listed listed: $fetched fetched, $failed failed${if (failures.isEmpty) "" else failures.toSeq.sorted.map { case (k, n) => s"$k $n" }.mkString(" (", ", ", ")")}, " +
-        s"$alreadyHeld already held, $unreached left for the next leg"
+        s"$alreadyHeld already held, $unsigned needing a key this fill lacks, $unreached left for the next leg"
   }
 
   /** The chain a fill writes through: `ArchiveReplayWiring.recordedChain` into `tree` under `root` — the

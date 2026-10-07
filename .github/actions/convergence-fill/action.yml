@@ -30,6 +30,12 @@ inputs:
   token:
     description: A token that can read runs and write this repo's releases.
     required: true
+  tmdb-api-key:
+    description: >-
+      TMDB's key, for the gaps listed with it masked (tools.FillCredentials). Only the fetching step sees it; without
+      one those gaps are left for the recorder.
+    required: false
+    default: ''
   minutes:
     description: >-
       Minutes from this action's start at which the fill stops starting requests. Its setup and compile come
@@ -79,6 +85,7 @@ runs:
       env:
           KINOWO_COUNTRY:   ${{ inputs.code }}
           KINOWO_COUNTRIES: ${{ inputs.code }}
+          TMDB_API_KEY:     ${{ inputs.tmdb-api-key }}
       run: |
           sbt -J-Xmx2g "worker/Fixtures/runMain scripts.FillMissingFixtures ${{ inputs.code }} refetch.tsv $RUNNER_TEMP/fill-held/test/resources/fixtures $RUNNER_TEMP/fill-out/test/resources/fixtures $FILL_UNTIL"
 

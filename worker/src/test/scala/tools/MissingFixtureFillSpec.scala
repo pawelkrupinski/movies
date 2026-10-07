@@ -20,8 +20,10 @@ class MissingFixtureFillSpec extends AnyFlatSpec with Matchers {
   private def gap(url: String) = MissingFixtures.Refetch("GET", url)
 
   private class Live(answer: String => String = url => s"page $url") extends HttpFetch {
-    val asked = new ConcurrentLinkedQueue[String]()
+    val asked   = new ConcurrentLinkedQueue[String]()
+    val headers = new ConcurrentLinkedQueue[Map[String, String]]()
     override def get(url: String): String = { asked.add(url); answer(url) }
+    override def get(url: String, sent: Map[String, String]): String = { headers.add(sent); get(url) }
     override def getBytes(url: String): Array[Byte] = get(url).getBytes("UTF-8")
     override def post(url: String, body: String, contentType: String): String = sys.error("never posted")
   }
@@ -87,5 +89,23 @@ class MissingFixtureFillSpec extends AnyFlatSpec with Matchers {
       gap("https://www.flicks.us/movie/a/"), gap("https://www.flicks.us/movie/b/"), gap("https://www.flicks.us/movie/c/"),
       gap("https://drafthouse.com/x"), gap("https://drafthouse.com/y")))
     order.map(g => Path.of(java.net.URI.create(g.url).getPath).getFileName.toString) shouldBe Seq("x", "a", "y", "b", "c")
+  }
+
+  // A TMDB gap is listed with its key masked: the fill signs it again with the key it holds, as the TMDB client does —
+  // query parameter and bearer header — and records the answer where a replay looks for it, which no key reaches. A
+  // gap whose credential it does not hold is left for the recorder, never asked with the mask in it.
+  it should "sign a masked request with the credential it holds, and leave one it holds none for" in withRoots { (held, out) =>
+    val live   = new Live(url => s"""{"id":1018,"asked":"${url.length}"}""")
+    val tmdb   = "https://api.themoviedb.org/3/movie/1018?language=pl-PL&api_key=***"
+    val omdb   = "https://www.omdbapi.com/?t=A&apikey=***"
+    val signer = FillCredentials(Some(settings.TmdbApiKey("k3y")))
+    val outcome = new MissingFixtureFill(MissingFixtureFill.heldIn(held, Tree), MissingFixtureFill.recordingInto(out, Tree, live),
+        threads = 1, sign = signer.sign).fill(Seq(gap(tmdb), gap(omdb)), 1.minute)
+
+    live.asked.asScala.toSeq shouldBe Seq("https://api.themoviedb.org/3/movie/1018?language=pl-PL&api_key=k3y")
+    live.headers.asScala.toSeq shouldBe Seq(clients.TmdbClient.authorization(settings.TmdbApiKey("k3y")))
+    (outcome.fetched, outcome.unsigned) shouldBe (1, 1)
+    MissingFixtureFill.heldIn(out, Tree)(gap(tmdb)) shouldBe true
+    Files.walk(out.value).iterator().asScala.filter(Files.isRegularFile(_)).map(Files.readString).mkString should not include "k3y"
   }
 }

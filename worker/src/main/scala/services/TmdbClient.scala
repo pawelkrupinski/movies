@@ -66,7 +66,7 @@ class TmdbClient(
    *  key returns None and the calling method short-circuits via flatMap
    *  without ever hitting the network. */
   private def authHeader: Option[Map[String, String]] =
-    apiKey.map(key => Map("Authorization" -> s"Bearer ${key.value}"))
+    apiKey.map(TmdbClient.authorization)
 
   /** Query-string suffix carrying the legacy v3 `api_key=` parameter.
    *  Empty when no key is configured (the calling method short-circuits
@@ -461,6 +461,11 @@ class TmdbClient(
 }
 
 object TmdbClient {
+
+  /** The header every request carries its key in — beside the `api_key` parameter, so a v3 key and a v4 read
+   *  token both authenticate. Also how a convergence fill signs a TMDB request it was listed masked
+   *  (`tools.FillCredentials`). */
+  def authorization(key: settings.TmdbApiKey): Map[String, String] = Map("Authorization" -> s"Bearer ${key.value}")
 
   // ── What each identity response is read as: ONE parser per response, shared by the client's
   //    own calls and by the normalized identity store (`services.identity.TmdbStore`), so a

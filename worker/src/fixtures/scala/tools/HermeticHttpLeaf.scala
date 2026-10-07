@@ -18,8 +18,8 @@ final class MissingFixtures {
   /** Remember a gap: the fixture key, and the (credential-masked) request that wanted it. */
   def record(fixtureKey: String, request: String): Unit = { missing.putIfAbsent(fixtureKey, request); () }
 
-  /** Remember a gap a later run can fetch on its own ([[MissingFixtures.Refetch]]): one whose whole
-   *  request is its URL, with no credential in it. */
+  /** Remember a gap a later run can fetch ([[MissingFixtures.Refetch]]): one whose whole request is its URL,
+   *  any credential in it masked. */
   def record(fixtureKey: String, request: String, refetch: MissingFixtures.Refetch): Unit = {
     record(fixtureKey, request)
     refetches.putIfAbsent(fixtureKey, refetch); ()
@@ -43,7 +43,7 @@ final class MissingFixtures {
          "was attempted:", s"  by host: ${byHost.mkString(", ")}") ++ shown ++ more ++ Seq(
       "The tree and the corpus are a PAIR recorded together by `Record scrape fixtures` (its `enrichment` " +
       "jobs). Re-run that workflow to re-record them; never hand-write a fixture. Each hermetic leg on main also " +
-      "fetches the credential-free ones itself (`FillMissingFixtures`) for the legs after it.")).mkString("\n")
+      "fetches the GETs itself (`FillMissingFixtures`, TMDB's signed with the lane's key) for the legs after it.")).mkString("\n")
   }
 
   /** Every gap a later run can fetch on its own, one `<fixture key>\t<verb>\t<url>` line each, sorted —
@@ -61,8 +61,9 @@ final class MissingFixtures {
 object MissingFixtures {
 
   /** A gap's request, whole: the verb the pipeline asked it with (`GET`, or `BYTES` for a raw-bytes
-   *  read, which the remembered verdicts key apart) and a URL holding no credential — so it can be
-   *  fetched by a process that holds no secret, and named in a public release asset. */
+   *  read, which the remembered verdicts key apart) and its URL with every credential masked
+   *  ([[RedactedUrl]]) — so it can be named in a public release asset, and fetched by a process that signs
+   *  it again with a key of its own ([[FillCredentials]]), or as it is when it never held one. */
   final case class Refetch(verb: String, url: String)
 
   object Refetch {
@@ -112,8 +113,11 @@ final class HermeticHttpLeaf(missing: MissingFixtures) extends HttpFetch {
 
   override def get(url: String): String                      = refuse(url, body = None, refetchAs = Some("GET"))
   override def getBytes(url: String): Array[Byte]            = refuse(url, body = None, refetchAs = Some("BYTES"))
-  // Headers and bodies are not in the refetch list: a header can be a credential (TMDB's bearer).
-  override def get(url: String, headers: Map[String, String]): String = refuse(url, body = None, refetchAs = None)
+  // A header request is listed only when its URL carries a credential (TMDB's: `api_key` beside the bearer header
+  // holding the same key), which the fill signs again — headers are never listed, and one whose credential is only in
+  // a header could not be asked by the fill at all. A body is never listed.
+  override def get(url: String, headers: Map[String, String]): String =
+    refuse(url, body = None, refetchAs = Option.when(RedactedUrl(url) != url)("GET"))
   override def post(url: String, body: String, contentType: String): String = refuse(url, Some(body), refetchAs = None)
 
   /** `foldYear = false`: the convergence trees are recorded that way on both chains (see
@@ -122,8 +126,9 @@ final class HermeticHttpLeaf(missing: MissingFixtures) extends HttpFetch {
     val key      = clients.tools.RecordingHttpFetch.fixtureKey(url, body, foldYear = false)
     val redacted = RedactedUrl(url)
     val request  = s"${if (body.isDefined) "POST" else "GET"} $redacted"
-    refetchAs.filter(_ => redacted == url) match {
-      case Some(verb) => missing.record(key, request, MissingFixtures.Refetch(verb, url))
+    // Listed with every credential masked: the list is a public release asset, and the fill signs it again.
+    refetchAs match {
+      case Some(verb) => missing.record(key, request, MissingFixtures.Refetch(verb, redacted))
       case None       => missing.record(key, request)
     }
     throw new MissingFixtureException(key, request)

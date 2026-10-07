@@ -19,7 +19,8 @@ import scala.jdk.CollectionConverters._
  * this fill's — both fixture roots, `enrichment-<code>` under each. `<until>` (epoch seconds) is when
  * the row stops starting requests: a deadline rather than a duration, so the row's own setup and
  * compile, however long they took, come out of the same minutes. Every request goes through the
- * worker's own pacing (`HttpWiring.pacedWire`, `HostPolicies`) over the real wire, on the wall clock.
+ * worker's own pacing (`HttpWiring.pacedWire`, `HostPolicies`) over the real wire, on the wall clock, and a
+ * gap listed with its key masked is signed with the process's own (`TMDB_API_KEY`, [[tools.FillCredentials]]).
  * Exits 0 whatever it fetched: a fill is best effort, and what it missed the next leg's fill asks.
  */
 object FillMissingFixtures {
@@ -37,7 +38,8 @@ object FillMissingFixtures {
       val fill = new MissingFixtureFill(
         MissingFixtureFill.heldIn(settings.FixtureRoot(Path.of(held)), tree),
         MissingFixtureFill.recordingInto(settings.FixtureRoot(Path.of(out)), tree, live),
-        threads = rest.headOption.flatMap(_.toIntOption).getOrElse(8))
+        threads = rest.headOption.flatMap(_.toIntOption).getOrElse(8),
+        sign = tools.FillCredentials.from(configuration).sign)
       val started = System.nanoTime()
       val outcome = fill.fill(gaps, (until.toLong - java.time.Instant.now().getEpochSecond).max(0L).seconds)
       val seconds = (System.nanoTime() - started) / 1e9

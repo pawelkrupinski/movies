@@ -45,6 +45,14 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
     """(?m)^\s+minutes:\s*(\d+)""".r.findFirstMatchIn(fillJob).map(_.group(1).toInt).getOrElse(99) should be <= 7
   }
 
+  // A TMDB gap is listed with its key masked; the fill signs it again with the lane's key (`FillCredentials`) — handed
+  // to the one step that fetches, never to the setup or the publish.
+  it should "hold TMDB's key in the step that fetches, and only there" in {
+    fillJob should include("tmdb-api-key: ${{ secrets.TMDB_API_KEY }}")
+    RepoFile.step(fill, "Fetch them until the fill's minutes run out") should include("TMDB_API_KEY:     ${{ inputs.tmdb-api-key }}")
+    fill.linesIterator.count(_.contains("inputs.tmdb-api-key")) shouldBe 1
+  }
+
   it should "replay nothing and compile only the fixtures, without becoming the build cache's entry" in {
     fill should include("replay: 'false'")
     setup should include("restore-only: ${{ inputs.replay != 'true' }}")

@@ -54,32 +54,37 @@ class HermeticHttpLeafSpec extends AnyFlatSpec with Matchers {
       Files.walk(root).sorted(java.util.Comparator.reverseOrder()).forEach(p => Files.deleteIfExists(p))
   }
 
-  // What the next leg's fill row fetches: every gap whose whole request is a credential-free URL, with the
-  // verb the remembered verdicts key it by — and nothing a process holding no secret could not ask, or a
-  // public release asset should not name.
-  "the refetch list" should "carry every credential-free GET with its verb, and nothing else" in {
+  // What the next leg's fill row fetches: every GET gap, with the verb the remembered verdicts key it by and any
+  // credential in its URL masked — the fill signs those again with the key it holds (`FillCredentials`). Never a
+  // credential, and never a request whose credential is only in a header or that carries a body: a public release
+  // asset names these.
+  "the refetch list" should "carry every GET with its URL's credentials masked, and nothing else" in {
     val missing = new MissingFixtures
     val leaf    = new HermeticHttpLeaf(missing)
     an [Exception] should be thrownBy leaf.get("https://www.flicks.us/movie/toy-story-5/")
     an [Exception] should be thrownBy leaf.getBytes("https://drafthouse.com/s/mother/v2/schedule/presentation/akira")
     an [Exception] should be thrownBy leaf.get("https://www.omdbapi.com/?t=A&apikey=secret")
+    an [Exception] should be thrownBy leaf.get("https://api.themoviedb.org/3/movie/1018?language=pl-PL&api_key=secret",
+      Map("Authorization" -> "Bearer secret"))
     an [Exception] should be thrownBy leaf.get("https://api.test/bearer", Map("Authorization" -> "Bearer secret"))
     an [Exception] should be thrownBy leaf.post("https://caching.graphql.imdb.com/", """{"id":"tt1"}""", "application/json")
 
     val file = java.nio.file.Files.createTempDirectory("refetch").resolve("enrichment-us.refetch.tsv")
-    missing.writeRefetches(file) shouldBe 2
+    missing.writeRefetches(file) shouldBe 4
     val lines = java.nio.file.Files.readAllLines(file).toArray(Array.empty[String]).toSeq
     lines.flatMap(MissingFixtures.Refetch.parse).map(_._2) shouldBe Seq(
+      MissingFixtures.Refetch("GET", "https://api.themoviedb.org/3/movie/1018?language=pl-PL&api_key=***"),
       MissingFixtures.Refetch("BYTES", "https://drafthouse.com/s/mother/v2/schedule/presentation/akira"),
-      MissingFixtures.Refetch("GET", "https://www.flicks.us/movie/toy-story-5/"))
+      MissingFixtures.Refetch("GET", "https://www.flicks.us/movie/toy-story-5/"),
+      MissingFixtures.Refetch("GET", "https://www.omdbapi.com/?t=A&apikey=***"))
     lines.mkString should not include "secret"
-    lines.head shouldBe "# 2 fetchable gap(s)"
+    lines.head shouldBe "# 4 fetchable gap(s)"
     withClue("a release refuses a zero-byte asset: ") {
       val none = file.resolveSibling("enrichment-de.refetch.tsv")
       new MissingFixtures().writeRefetches(none) shouldBe 0
       java.nio.file.Files.size(none) should be > 0L
     }
-    missing.size shouldBe 5
+    missing.size shouldBe 6
     missing.report("enrichment-us") should include("by host: ")
   }
 

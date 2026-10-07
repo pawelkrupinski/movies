@@ -10,8 +10,8 @@ recording — and what that does to a verdict.
    circuit breaker neither counts it nor opens on it: before that, the fourth refusal opened the
    breaker and every later request to the host was answered "circuit open" above the leaf, and a
    US leg named 12 of the ~2,300 Flicks and Drafthouse detail pages its tree lacked (run
-   37597662228). At the end of the suite the leg writes every gap it could fetch without a secret
-   — a plain GET of a URL holding no credential — to `enrichment-<code>.refetch.tsv` beside the
+   37597662228). At the end of the suite the leg writes every GET gap — its URL with any credential
+   masked (`RedactedUrl`) — to `enrichment-<code>.refetch.tsv` beside the
    tree, and its convergence row publishes it as `refetch-<code>-<corpus run>-<run id>.tsv`
    (main only). Gaps are reported, never fatal: the run's report says how many, by host.
 2. **The next run's `fill` job fetches them.** Beside the legs, on a runner of its own,
@@ -58,5 +58,10 @@ the waits.
 
 ## What it does not fill
 
-A request needing a credential (TMDB, OMDb), a header (TMDB's bearer) or a body (IMDb's GraphQL
-POST) is never listed. Those stay the recorder's to record.
+A TMDB request is listed with its `api_key` masked, and the fill signs it again with the lane's
+`TMDB_API_KEY` — the parameter and the bearer header, as `TmdbClient` sends them
+(`FillCredentials`); the key reaches only the fill's fetching step, and what it records is keyed
+without it (`RecordingHttpFetch.fixtureKey`, `LookupQuery.of`), so no published asset carries it.
+OMDb's `apikey` is masked in the list too but never signed: its free key allows 1,000 requests a
+day, which the workers spend. A request whose credential is only in a header, or that carries a
+body (IMDb's GraphQL POST), is never listed. Those stay the recorder's to record.

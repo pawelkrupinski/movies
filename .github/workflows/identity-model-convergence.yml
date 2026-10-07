@@ -150,6 +150,7 @@ jobs:
                   code:    ${{ matrix.code }}
                   token:   ${{ secrets.GITHUB_TOKEN }}
                   minutes: 7
+                  tmdb-api-key: ${{ secrets.TMDB_API_KEY }}
 
     # A red HERMETIC leg on main hands its range to `convergence-bisect.yml` — DISPATCHED, the one event
     # the GITHUB_TOKEN may raise: Main dispatched this run, so its completion starts no `workflow_run`.
