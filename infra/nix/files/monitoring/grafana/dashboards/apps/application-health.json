@@ -1673,7 +1673,7 @@
         },
         {
           "id": 109,
-          "title": "Worker — read-model drift: what the content check rewrote, by cause (per hour)",
+          "title": "Worker — read-model drift: what the content check rewrote, by cause (per bar, 1h minimum)",
           "description": "Documents the rolling content check rewrote because the stored projection disagreed with its source and nothing on the change-stream path had repaired it (kinowo_worker_readmodel_drift_writes_total{cause}). One slice of 48 is re-projected per 30-minute prune sweep, so every film is re-checked once a day. cause = the card part that moved (title / poster / facts / synopsis / synopsis-by-city / ratings / trailers / age-rating / share-card), new (no card was stored), multiple (more than one part), or screening-upsert / screening-delete for a venue's screenings row. Zero is the healthy reading: each bar is writes some live path lost. The worker names every drifted row's card and screening ids on a WARN 'read-model content check: row … had drifted from its source' — start the investigation there. Dashed lines: the same total per country.",
           "type": "timeseries",
           "datasource": {
@@ -1740,7 +1740,7 @@
           "targets": [
             {
               "refId": "A",
-              "expr": "sum by (cause) (increase(kinowo_worker_readmodel_drift_writes_total{country=~\"$country\"}[1h])) > 0",
+              "expr": "sum by (cause) (increase(kinowo_worker_readmodel_drift_writes_total{country=~\"$country\"}[$__interval])) > 0",
               "legendFormat": "{{cause}}",
               "datasource": {
                 "type": "prometheus",
@@ -1749,7 +1749,7 @@
             },
             {
               "refId": "B",
-              "expr": "sum by (country) (increase(kinowo_worker_readmodel_drift_writes_total{country=~\"$country\"}[1h])) > 0",
+              "expr": "sum by (country) (increase(kinowo_worker_readmodel_drift_writes_total{country=~\"$country\"}[$__interval])) > 0",
               "legendFormat": "total: {{country}}",
               "datasource": {
                 "type": "prometheus",
