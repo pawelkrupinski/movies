@@ -2738,6 +2738,18 @@ marked unread, tried again after `UnreadAge`. An unread venue poster is no evide
 questions (the programmes, the families), and is corrected only where that evidence decides it without the poster.
 Families alone never do.
 
+**A failed poster read is not data (2026-10-07).** Prod had filed all 226 biletyna.pl venue posters as `hashes: null`
+for a year: the origin refuses the worker's IP (403) as it does its pages, and a refusal was filed as "no poster" —
+Binti, Fritzi and the rest lost their poster evidence. Now (a) a venue poster not hashed, whatever the reason, is filed
+UNREAD (`PosterAnswerStore.file`), and a legacy `null` without the flag ages as an unread one (`UnreadAge`, a week
+from its filing: prod's biletyna posters are asked again from 2026-10-13); (b) a filed poster answer
+past its age (`Age`, `UnreadAge`) is read meanwhile and ASKED AGAIN (`PosterAnswers.fresh`, as a family's stale answer
+is) — before, only a missing answer was ever asked, so `UnreadAge` never fired; (c) poster routes are read off the
+scraper catalog (`CinemaScraperCatalog.egressByHost`: the MSI and biletyna tables' non-direct egresses), so biletyna's
+posters go through the residential proxy its scrapes use, and Kino Kryterium's through Zyte, with no host list beside
+them. Kino Kryterium's 16 posters were hashed through Zyte on 2026-10-06 17:00 UTC, and "Ktoś całkiem obcy" is corrected
+live to *I Was a Stranger* (1193128) by the families and its poster.
+
 **A superseded relay (`Broadcast.superseded`).** US Oriental Theatre Milwaukee's "NT Live: All My Sons" (10–11 October
 2026) is the National Theatre's 2026 van Hove broadcast on Milwaukee Film's own page. Flicks links it to its 2019 Old
 Vic page, so the listing states 2019 and Herrin, and the model took the 2019 record. A relay's take is WITHDRAWN when

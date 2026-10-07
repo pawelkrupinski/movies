@@ -416,7 +416,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     else {
       def read[A](question: AgreementStage.PosterQuestion, answer: Answer[A]): Answer[A] = {
         reads(PosterAnswers.idOf(question)) = 0L
-        if (answer == Answer.Unknown) asked += question
+        if (answer == Answer.Unknown || !reading.posters.fresh(question)) asked += question   // a stale one read, and asked again
         answer
       }
       val venue = urls.map(url => url -> read(AgreementStage.PosterQuestion.Venue(url), reading.posters.venue(url)))
@@ -799,7 +799,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     if (urls.isEmpty || tmdb.isEmpty) Answer.Known(Nil)
     else {
       val venue = urls.map(url => url -> hashes.venue(url))
-      venue.collect { case (url, Answer.Unknown) => asked += AgreementStage.PosterQuestion.Venue(url) }
+      venue.collect { case (url, answer) if answer == Answer.Unknown || !hashes.fresh(AgreementStage.PosterQuestion.Venue(url)) =>
+        asked += AgreementStage.PosterQuestion.Venue(url) }
       if (venue.exists(_._2 == Answer.Unknown)) Answer.Unknown
       else {
         val shown: Seq[PosterHash] = venue.flatMap(_._2.toOption.flatten)
@@ -809,7 +810,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
           def apart(film: Int) = tmdb.flatMap(_.film(film).toOption.flatten).exists(record => showing.exists(PosterEvidence.editionsApart(_, record)))
           val films  = (candidates(id, digest, listings).filterNot(apart) ++ also.filterNot(FallbackIds.isFallback)).distinct
           val filmHashes = films.map(film => film -> hashes.film(film))
-          filmHashes.collect { case (film, Answer.Unknown) => asked += AgreementStage.PosterQuestion.Film(film) }
+          filmHashes.collect { case (film, answer) if answer == Answer.Unknown || !hashes.fresh(AgreementStage.PosterQuestion.Film(film)) =>
+            asked += AgreementStage.PosterQuestion.Film(film) }
           if (filmHashes.exists(_._2 == Answer.Unknown)) Answer.Unknown
           else Answer.Known(shown.map(poster => filmHashes.map { case (film, answer) => film -> PosterEvidence.nearest(Seq(poster), answer.toOption.getOrElse(Nil)) }.toMap))
         }
@@ -979,6 +981,7 @@ object AgreementStage {
       def venue(url: String): Answer[Option[PosterHash]] = venues.getOrElseUpdate(url, hashes.venue(url))
       def film(tmdbId: Int): Answer[Seq[PosterHash]]     = films.getOrElseUpdate(tmdbId, hashes.film(tmdbId))
       override def unread(question: PosterQuestion): Boolean = hashes.unread(question)
+      override def fresh(question: PosterQuestion): Boolean  = hashes.fresh(question)
     }
     val programmes: Option[FamilyAnswers] = family.map { answers =>
       val showings = mutable.HashMap.empty[String, Answer[Seq[Showing]]]

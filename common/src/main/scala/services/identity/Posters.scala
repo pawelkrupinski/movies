@@ -67,7 +67,8 @@ object PosterHash {
 }
 
 /** What the posters are, as filed: `Unknown` while one is not hashed yet — a gap the poster fill asks, never "no poster".
- *  A venue poster that could not be read is `Known(None)`; a film TMDB keeps no poster of is `Known(Nil)`. */
+ *  A venue poster that could not be read is `Known(None)` and [[unread]]: a failed read, no evidence, asked again; a
+ *  film TMDB keeps no poster of is `Known(Nil)`. */
 trait PosterAnswers {
   /** The hash of the image at a venue's poster `url`. */
   def venue(url: String): Answer[Option[PosterHash]]
@@ -76,6 +77,9 @@ trait PosterAnswers {
   /** Was `question`'s poster GIVEN UP on — filed as none because its fetch kept failing, not because there is none? It
    *  is no evidence either way: what it might have vetoed is read without it. */
   def unread(question: agreement.AgreementStage.PosterQuestion): Boolean = false
+  /** Is `question`'s filed answer still fresh? One that is not — a hash a year old, a poster unread a week — is read
+   *  meanwhile and asked again, as a family's stale answer is. */
+  def fresh(question: agreement.AgreementStage.PosterQuestion): Boolean = true
 }
 
 object PosterAnswers {

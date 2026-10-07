@@ -92,6 +92,7 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
     store.file(PosterQuestion.Film(2), Nil)
     (store.venue(patria), store.film(1), store.venue("https://gone"), store.film(2)) shouldBe
       ((Answer.Known(Some(PosterHash(-7L))), Answer.Known(Seq(PosterHash(1L), PosterHash(2L))), Answer.Known(None), Answer.Known(Nil)))
+    (store.unread(PosterQuestion.Venue("https://gone")), store.unread(PosterQuestion.Film(2))) shouldBe ((true, false))
     // counted as the families' answers are: one version covers all the agreement reads
     families.version shouldBe 4
     families.changedSince(0).map(_.size) shouldBe Some(4)
@@ -129,14 +130,33 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
     store.film(1483477).toOption.map(_.size) shouldBe Some(3)
   }
 
-  it should "be filed as no poster when the origin refuses it, and asked again when the failure may pass" in {
+  // prod PL 2026-10-06: biletyna.pl refused all 226 of its posters (403) and each was filed as "no poster" for a year —
+  // a failed read taken for data, the poster evidence for Binti, Fritzi and the rest gone with it
+  it should "be filed as unread when the origin refuses it, asked again a week on, and asked again at once when the failure may pass" in {
     val store = new PosterAnswerStore(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock)
     val task  = Task("t1", TaskType.AgreementPoster, s"agreement-poster|venue|$patria", Map("venuePoster" -> patria), 1)
     new AgreementPosterHandler(store, hashing(new Recorded(Some(PosterFailure.Timeout))), () => (), clock).handle(task) shouldBe a[HandlerOutcome.Reschedule]
     store.venue(patria) shouldBe Answer.Unknown
     new AgreementPosterHandler(store, hashing(new Recorded(Some(PosterFailure.Http4xx))), () => (), clock).handle(task) shouldBe HandlerOutcome.Done
-    store.venue(patria) shouldBe Answer.Known(None)
-    store.unread(PosterQuestion.Venue(patria)) shouldBe false
+    (store.venue(patria), store.unread(PosterQuestion.Venue(patria))) shouldBe ((Answer.Known(None), true))
+    store.fresh(PosterQuestion.Venue(patria)) shouldBe true
+    clock.advanceSeconds(PosterAnswerStore.UnreadAge.toSeconds + 1)
+    store.fresh(PosterQuestion.Venue(patria)) shouldBe false
+  }
+
+  // the 226 biletyna.pl posters as prod filed them on 2026-10-06: no hash, not marked unread
+  it should "want a venue poster filed as none before a failed read was told from data a week on, as an unread one" in {
+    val families = new FamilyAnswerStore(new InMemoryTmdbDocuments, clock)
+    val store    = new PosterAnswerStore(families, clock)
+    val biletyna = "https://biletyna.pl/file/get/id/394113"
+    families.put(PosterAnswers.idOf(PosterQuestion.Venue(biletyna)), new org.bson.BsonDocument("hashes", org.bson.BsonNull.VALUE))
+    store.file(PosterQuestion.Film(2), Nil)
+    store.venue(biletyna) shouldBe Answer.Known(None)
+    store.fresh(PosterQuestion.Venue(biletyna)) shouldBe true
+    clock.advanceSeconds(PosterAnswerStore.UnreadAge.toSeconds + 1)
+    (store.wanted(PosterQuestion.Venue(biletyna)), store.fresh(PosterQuestion.Venue(biletyna))) shouldBe ((true, false))
+    // a film TMDB keeps no poster of is data, not a failed read: read for a year
+    store.wanted(PosterQuestion.Film(2)) shouldBe false
   }
 
   // prod PL 2026-10-06: Kino Kryterium's poster host times out the worker, so 17 of its posters were asked again 10

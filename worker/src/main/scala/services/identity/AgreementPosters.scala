@@ -29,23 +29,31 @@ final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends 
   def film(tmdbId: Int): Answer[Seq[PosterHash]] =
     document(idOf(PosterQuestion.Film(tmdbId))).fold[Answer[Seq[PosterHash]]](Answer.Unknown)(d => Answer.Known(hashesOf(d)))
 
-  /** `question`'s hashes, filed: one at most for a venue's poster (none: it could not be read), a film's up to
-   *  [[PosterEvidence.FilmPosters]]. */
-  def file(question: PosterQuestion, hashes: Seq[PosterHash]): Unit = {
-    answers.put(idOf(question), new BsonDocument("hashes", if (hashes.isEmpty) BsonNull() else BsonArray.fromIterable(hashes.map(h => BsonInt64(h.bits)))))
+  /** `question`'s hashes, filed: one at most for a venue's poster, a film's up to [[PosterEvidence.FilmPosters]]. A venue
+   *  poster with none was not READ — its link fetches nothing, the origin refused it, no decoder reads it — and a failed
+   *  read is no data: it is [[giveUp given up on]]. A film with none is one TMDB keeps no poster of. */
+  def file(question: PosterQuestion, hashes: Seq[PosterHash]): Unit = question match {
+    case PosterQuestion.Venue(_) if hashes.isEmpty => giveUp(question)
+    case _ =>
+      answers.put(idOf(question), new BsonDocument("hashes", if (hashes.isEmpty) BsonNull() else BsonArray.fromIterable(hashes.map(h => BsonInt64(h.bits)))))
   }
 
-  /** `question`'s poster GIVEN UP on: its fetch failed every attempt the queue allowed it ([[GiveUpAttempts]]), so it is
-   *  filed as no poster and marked [[Unread]] — no evidence either way ([[PosterAnswers.unread]]), never a gap waited on
-   *  for ever. */
+  /** `question`'s poster GIVEN UP on: not read — refused, unreadable, or its fetch failed every attempt the queue allowed
+   *  it ([[GiveUpAttempts]]) — so it is filed as no poster and marked [[Unread]]: no evidence either way
+   *  ([[PosterAnswers.unread]]), never a gap waited on for ever, and asked again after [[UnreadAge]]. */
   def giveUp(question: PosterQuestion): Unit =
     answers.put(idOf(question), new BsonDocument("hashes", BsonNull()).append(Unread, org.bson.BsonBoolean.TRUE))
 
-  override def unread(question: PosterQuestion): Boolean = document(idOf(question)).exists(d => d.getBoolean(Unread, org.bson.BsonBoolean.FALSE).getValue)
+  override def unread(question: PosterQuestion): Boolean = document(idOf(question)).exists(isUnread)
 
-  /** Is the question's answer missing, or older than [[Age]] — [[UnreadAge]] for one given up on? */
+  override def fresh(question: PosterQuestion): Boolean = !wanted(question)
+
+  /** Is the question's answer missing, or older than [[Age]] — [[UnreadAge]] for a venue poster with no hash: one given
+   *  up on, or one filed so before a failed read was told from data (prod PL 2026-10-06: all 226 biletyna.pl posters,
+   *  refused by the origin, filed as "no poster" with no unread mark, for a year)? */
   def wanted(question: PosterQuestion): Boolean = document(idOf(question)).forall { d =>
-    val age = if (d.getBoolean(Unread, org.bson.BsonBoolean.FALSE).getValue) UnreadAge else Age
+    val unreadVenue = isUnread(d) || (question.isInstanceOf[PosterQuestion.Venue] && hashesOf(d).isEmpty)
+    val age         = if (unreadVenue) UnreadAge else Age
     Option(d.get(TmdbStore.FetchedAt)).filter(_.isInt64).forall(at => clock.millis() - at.asInt64.getValue > age.toMillis)
   }
 
@@ -62,6 +70,8 @@ object PosterAnswerStore {
   val GiveUpAttempts = 8
   private val Unread = "unread"
 
+  private def isUnread(d: BsonDocument): Boolean = d.getBoolean(Unread, org.bson.BsonBoolean.FALSE).getValue
+
   private def hashesOf(d: BsonDocument): Seq[PosterHash] =
     Option(d.get("hashes")).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala.map(v => PosterHash(v.asInt64.getValue)))
 }
@@ -72,7 +82,8 @@ object PosterAnswerStore {
  * never kept. A TMDB film's posters are its `/images` artwork (`images`) in its country's language, English and none,
  * by votes, at TMDB's 185-wide print.
  *
- * A poster the origin refuses, or no decoder can read, is no poster (`Right(None)`); a failure that may pass — a timeout,
+ * A poster the origin refuses, or no decoder can read, is not read (`None`: filed unread, asked again after
+ * [[PosterAnswerStore.UnreadAge]]); a failure that may pass — a timeout,
  * a 5xx, the network — THROWS, for the queue to ask again on its backoff. A venue's link is fetched escaped as a card
  * serves it ([[services.movies.SlotFields.url]]: a raw space no fetch takes is no network failure), and a film TMDB
  * answers durably gone ([[tools.HttpStatusException.isDurable]]) has no posters.

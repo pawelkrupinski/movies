@@ -167,6 +167,20 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
     decided(stage(takingHas, givenUp)).basis shouldBe ResolverDecision.Basis.OwnMatch
   }
 
+  // prod PL 2026-10-06: biletyna.pl's 226 posters, refused by the origin and filed unread, were read as such for good —
+  // nothing ever asked a filed poster again, however old, so a route that now reads them never would
+  "a model take whose venue poster's answer is stale" should "read it meanwhile, and ask it again" in {
+    val unreadVenue = AgreementStage.PosterQuestion.Venue(venuePoster)
+    val stale = new HeldPosters(Map(venuePoster -> None), Map(1001 -> Seq(far), 1002 -> Seq(near(3))), Set(unreadVenue), Set(unreadVenue))
+    val s = stage(takingHas, stale)
+    decided(s).basis shouldBe ResolverDecision.Basis.OwnMatch
+    s.wantedPosters shouldBe Set(unreadVenue)
+    // a fresh one is not asked again
+    val fresh = stage(takingHas, givenUp)
+    decided(fresh)
+    fresh.wantedPosters shouldBe empty
+  }
+
   // prod US 2026-10-06: Oriental Theatre Milwaukee's "NT Live: All My Sons" — Milwaukee Film bills the National
   // Theatre's 2026 van Hove relay on 10–11 October, but Flicks links the listing to its 2019 Old Vic page, so it states
   // 2019 and Herrin, and the model took the 2019 record: broadcast seven years before the screenings, while TMDB dates
