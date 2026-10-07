@@ -89,11 +89,14 @@ object UnifiedEvidence {
 
   /** What a cluster's evidence holds: its listings, the model's decision on it, its nodes' scored candidates, each
    *  family's verdict (the families that answered), each venue poster's nearest distance to each TMDB film hashed
-   *  (empty where none), the TMDB film an IMDb id finds, and the year it is now. */
+   *  (empty where none), the TMDB film an IMDb id finds, and the year it is now — and, for the broadcast join
+   *  ([[Broadcast.take]]), the film databases' house productions and which records still wait on their day. */
   final case class ClusterEvidence(listings: Seq[Listing], decision: ResolverDecision, nodes: Seq[IdentityResolver.NodeEvidence],
                                    verdicts: Seq[FamilyVerdict], posters: Seq[Map[Int, Option[Int]]], tmdbOf: String => Option[Int],
                                    thisYear: Int, stated: Seq[Listing] = Nil, measured: Option[Listing => IdentityMeasures.Listing] = None,
-                                   venueNames: VenueNames = VenueNames.None, cast: Int => Option[Seq[String]] = _ => None)
+                                   venueNames: VenueNames = VenueNames.None, cast: Int => Option[Seq[String]] = _ => None,
+                                   productions: () => Answer[Seq[IdentityMeasures.Film]] = () => Answer.Known(Nil),
+                                   undated: Int => Boolean = _ => false)
 
   /** One film the evidence reaches: `tmdb:<id>` or, a film only other databases hold, `imdb:<tt>`; its title, each family
    *  that took it with its own id of it (`"rt" -> "dune_2021"`, an id only, never read as evidence), every signal that
@@ -145,9 +148,11 @@ object UnifiedEvidence {
     val agreed    = (if (c.decision.film.isDefined) None else Agreement.agreed(c.listings, c.verdicts, modelVote, Some(c.thisYear), c.stated))
       .filter(_.families.exists(_.namesFilms))
     val asStated  = if (c.stated.nonEmpty) c.stated else c.listings
-    // the stage relay's broadcast date: the one record of the cluster's undenied candidates its screening days name
+    // the stage relay's broadcast date: the one record of the cluster's undenied candidates its screening days name, as
+    // the stage's take reads it (the productions credited, none while it waits on a record's day)
     val broadcastTake = c.measured.filter(_ => c.listings.exists(!_.screenings.isEmpty)).flatMap(measured =>
-      Broadcast.take(c.listings, measured, eligible.map { case (id, candidates) => id -> candidates.head.film })).map(_.film)
+      Broadcast.take(c.listings, measured, eligible.map { case (id, candidates) => id -> candidates.head.film }, c.productions)(c.undated)
+        .toOption.flatten).map(_.film)
     val posterVote = PosterEvidence.vote(c.posters).map(_._1)
     val agreedImdb = agreed.flatMap(_.crossId("imdb"))
     val agreedTmdb = agreed.flatMap(film => film.crossId("tmdb").flatMap(_.toIntOption).orElse(agreedImdb.flatMap(c.tmdbOf)))

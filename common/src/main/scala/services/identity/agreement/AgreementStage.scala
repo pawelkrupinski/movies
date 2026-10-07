@@ -365,7 +365,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     // day) — a house's production taken is the model's reading of the relay, never corrected here
     def relayed(film: IdentityMeasures.Film) = Option.when(listings.exists(ListingShape.stagesAWork) && !Broadcast.billsAProduction(film.title)) {
       val known = (model +: candidatesOf(digested.id, digested.digest, listings)).distinct.flatMap(id => named(id).map(id -> _))
-      Broadcast.take(listings, listing => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured, known)
+      // a correction reads no film database's productions and waits on no record's day: a take that would wait is none
+      Broadcast.take(listings, listing => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured, known)().toOption.flatten
     }.flatten.filter(_.film != model).map(taken => Correction.Outcome(Some(taken.film), s"corrected from ${title(model)} — ${taken.line}"))
     val outcome = named(model).flatMap(film => superseded(film).orElse(relayed(film)).orElse {
       val modelRecord = recordOf(model, film)
@@ -546,7 +547,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         val agreed   = Agreement.agreed(listings, known, lean, Some(thisYear), stated)
         val verdict  = StoredVerdict(id, digest, reads.toMap, agreed, decidedUnder,
           // an agreement only review sites make is taken as nothing ([[taken]]): the fill reads the cluster as one none agreed on
-          if (agreed.exists(_.families.exists(_.namesFilms))) None else filledOf(decision, listings, known, stated, thisYear))
+          if (agreed.exists(_.families.exists(_.namesFilms))) None else filledOf(decision, listings, known, stated, thisYear, version, asked))
         if (!held.get(id).contains(verdict)) moved += verdict
         checked(id) = (digest, version)
         verdict
@@ -572,14 +573,16 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  TMDB candidates, none denied, and the films the families took or lean to) — none while a TMDB answer the cluster's
    *  candidates need is a gap. The venue posters' veto is read when it is taken ([[filledTake]]). */
   private def filledOf(decision: ResolverDecision, listings: Seq[Listing], verdicts: Seq[FamilyVerdict], stated: Seq[Listing],
-                       thisYear: Int): Option[StoredFill] =
+                       thisYear: Int, version: Long, asked: mutable.Set[(VoterFamily, String)]): Option[StoredFill] =
     tmdb.filter(_ => rules.fill.nonEmpty).flatMap { lookups =>
       val noting = new AgreementStage.UnknownNoting(lookups)
       val nodes  = IdentityResolver.evidenceOf(listings, noting, normalizer, calibration)(_ => true)
       Option.when(!noting.unknown) {
+        val measured = (listing: Listing) => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured
+        // the `broadcast.take` signal read as the stage's own take reads the join: the same productions, the same wait
         val evidence = services.identity.UnifiedEvidence.ClusterEvidence(listings, decision, nodes, verdicts, Nil, _ => None, thisYear, stated,
-          Some(listing => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured), venueNames(listings),
-          film => lookups.cast(film).toOption.flatten)
+          Some(measured), venueNames(listings), film => lookups.cast(film).toOption.flatten,
+          productions = () => productionsOf(listings, measured, asked), undated = undatedOf(lookups, version))
         rules.filled(services.identity.UnifiedEvidence.contenders(evidence)).map { case (film, rule) =>
           StoredFill(rule, film.tmdb, film.imdb, rules.explain(film, rule)) }
       }.flatten
@@ -721,13 +724,17 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         .flatMap { known =>
           val measured = (listing: Listing) => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured
           // a record of the billed work holding only its year is read again before the day decides: it might be the one
-          Broadcast.takeOrWait(listings, measured, known, () => productionsOf(listings, measured, asked))(film =>
-            !lookups.releaseDay(film).isKnown && waitsOn(film, version))
+          Broadcast.take(listings, measured, known, () => productionsOf(listings, measured, asked))(undatedOf(lookups, version))
             .left.map(dating ++= _).toOption.flatten
         }
         .map(taken => decision.copy(film = Some(taken.film), basis = ResolverDecision.Basis.Broadcast,
           explanation = decision.explanation :+ taken.line)(decision.trace))
     }
+
+  /** Is a record of the billed work dated by its year alone, its day still to be read before the broadcast join decides
+   *  ([[waitsOn]])? What the stage's take and the fill's `broadcast.take` signal both wait on. */
+  private def undatedOf(lookups: IdentityLookups, version: Long): Int => Boolean =
+    film => !lookups.releaseDay(film).isKnown && waitsOn(film, version)
 
   /** The candidates of a relay whose listings link a listings site's catalogue entry as their page, read as the venues
    *  bill them — the entry's facts left out: Flicks links an encore to an old season's page, whose year denies the

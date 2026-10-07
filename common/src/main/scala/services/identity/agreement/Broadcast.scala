@@ -26,17 +26,21 @@ object Broadcast {
   /** The one record the cluster's screenings name: broadcast on one of the days the cluster screens on, else — every
    *  listing billing the record's house or its season — the one broadcast within [[EncoreDays]] before one. Every record
    *  must bill a stage work each listing bills, and no fact a listing states may stand against it: its year, its
-   *  director, its season, or a banner spelling another house. `None`: no such record, or two. */
-  def take(listings: Seq[Listing], measured: Listing => IdentityMeasures.Listing, records: Seq[(Int, Film)]): Option[Taken] =
-    billed(listings, measured).flatMap(chosen(_, _, records, Nil))
-
-  /** [[take]], unless a record it would weigh but for its day — every listing's billing fits it, and it states no release
-   *  day — has a day not known yet (`undated`: a stored record filed when records kept only TMDB's year): `Left` those
-   *  records, which the take waits for, since any one might be the production broadcast on the cluster's day. A cluster
-   *  one of whose listings' days could not be read ([[ScreeningDays.Unknown]]) waits too, asking no record: `Left` none. */
-  def takeOrWait(listings: Seq[Listing], measured: Listing => IdentityMeasures.Listing, records: Seq[(Int, Film)],
-                 productions: () => Answer[Seq[Film]] = () => Answer.Known(Nil))(
-      undated: Int => Boolean): Either[Seq[Int], Option[Taken]] =
+   *  director, its season, or a banner spelling another house — unless one of `productions` (film databases' records of
+   *  the house's productions) credits the record's production with the director the listing credits. `Right(None)`: no
+   *  such record, or two.
+   *
+   *  `Left`, the take WAITING, where a record it would weigh but for its day — every listing's billing fits it, and it
+   *  states no release day — has a day not known yet (`undated`: a stored record filed when records kept only TMDB's
+   *  year): those records, since any one might be the production broadcast on the cluster's day. A cluster one of whose
+   *  listings' days could not be read ([[ScreeningDays.Unknown]]) waits too, asking no record: `Left` none; and so does
+   *  one whose `productions` are not all answered.
+   *
+   *  The ONE broadcast join: the stage's take, a correction's switch and the unified fill's `broadcast.take` signal all
+   *  read it; a reader that cannot wait reads a `Left` as no take. */
+  def take(listings: Seq[Listing], measured: Listing => IdentityMeasures.Listing, records: Seq[(Int, Film)],
+           productions: () => Answer[Seq[Film]] = () => Answer.Known(Nil))(
+      undated: Int => Boolean = _ => false): Either[Seq[Int], Option[Taken]] =
     if (listings.exists(_.screenings.isUnknown)) Left(Nil)
     else billed(listings, measured).fold[Either[Seq[Int], Option[Taken]]](Right(None)) { (days, billing) =>
       // the films databases' productions are read only for a record every listing's billing fits but by its banner

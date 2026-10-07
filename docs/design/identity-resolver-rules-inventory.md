@@ -206,8 +206,8 @@ catalogue match; `broadcast.take` via `Broadcast.take`). Rules: the fill `venues
    `IdentityMeasures.sameDirector` — **consolidated** (phase 1).
 10. **The "titled top hit" override** `title=exact, search.rank=1, rivals=0` built twice in Acceptance (:271, :327) —
     **consolidated** (phase 1, `asItsTitlesTopHit`).
-11. **The broadcast join twice.** The stage's `takeOrWait` (productions, undated-record wait) vs the fill signal's
-    `Broadcast.take` (neither): the `broadcast.take` signal can disagree with the stage's take.
+11. **The broadcast join twice** — **finding F4**, unified: one `Broadcast.take` (productions credited, the
+    undated-record wait as a `Left`) for the stage's take, a correction's switch and the fill's `broadcast.take` signal.
 12. **The agreement's concepts twice.** `UnifiedEvidence` recomputes quorum, venues, dissent, turnedDown, namesIt, poster
     vote/veto, catalogue match and broadcast as fill signals; the stage's hand-written takes apply the same concepts.
 
@@ -298,8 +298,14 @@ loops' own overhead is the confirming `grow` round (grouping, `takenAlone` memo 
   The other direction (the agreement down to English) would lose that agreed take. The measures' own thresholds stay
   (three words after the article, no banner, never the listing's own article dropped). Ratchet 507 right / 0 wrong
   before and after; FilmScheduleEndToEndSpec unchanged.
-- **F4 — the broadcast join twice.** The stage takes by `Broadcast.takeOrWait` (a credited production; waiting on
-  undated records), the fill's `broadcast.take` signal by `Broadcast.take` (neither).
+- **F4 — the broadcast join twice. UNIFIED.** The stage took by `Broadcast.takeOrWait` (a credited production; waiting
+  on undated records), the fill's `broadcast.take` signal by `Broadcast.take` (neither). Now one `Broadcast.take`
+  returning `Either` (a `Left` while it waits); the fill's evidence carries the stage's productions read and its
+  undated-record wait (`ClusterEvidence.productions`/`undated`, wired in `AgreementStage.filledOf`), and a reader that
+  cannot wait reads a `Left` as no take. A correction's switch to a relay (`relayed`) reads it with no productions and
+  no record wait, as before — except that a cluster whose screening days could not be read is now no take there either
+  (fewer switches, never a new one). No selected fill rule or guard reads `broadcast.take` (it is a fitted feature
+  only), so no production take moves: ratchet 507 right / 0 wrong before and after; FilmScheduleEndToEndSpec unchanged.
 - **F5 — the fill's poster guard.** `AgreementStage.filledOf` builds the fill's evidence with no posters, so
   `poster.otherMatches` never rules a contender out before a rule picks; `filledTake` vetoes the picked film after and
   then takes nothing, where the offline fit picked the next contender. Fewer takes than measured, never a wrong one.

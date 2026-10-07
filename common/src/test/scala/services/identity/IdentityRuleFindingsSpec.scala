@@ -34,9 +34,29 @@ class IdentityRuleFindingsSpec extends AnyFlatSpec with Matchers {
   }
 
   "F4: the broadcast join" should "take the same record in the fill's signal as in the stage's take" in {
-    // today: the stage takes by Broadcast.takeOrWait (a credited production, waiting on undated records), the unified
-    // fill's `broadcast.take` signal by Broadcast.take (neither) — where a production's credit decides, they disagree
-    pending
+    // one join: the fill's `broadcast.take` signal reads the productions the stage credits and waits as it waits. UK
+    // Flicks' "RBO Cinema Season 2026-27: Macbeth" crediting Louisa Proske is the Met's 2026/27 Macbeth only by the film
+    // database's record of the Met's production crediting her
+    val metMacbeth = IdentityMeasures.Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026), runtime = Some(209),
+      released = Some(java.time.LocalDate.of(2026, 10, 17)))
+    val proske     = Seq(IdentityMeasures.Film("The Metropolitan Opera: Macbeth", runtime = Some(209), directors = Some(Seq("Louisa Proske"))))
+    val relay      = FilmTable.listing(models.Multikino, "RBO Cinema Season 2026-27: Macbeth", director = Some("Louisa Proske"))
+      .copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 10, 20))))
+    val measured   = (listing: Listing) => Evidence.of(listing, None).measured
+    agreement.Broadcast.take(Seq(relay), measured, Seq(1703622 -> metMacbeth), () => Answer.Known(proske))().toOption.flatten.map(_.film) shouldBe Some(1703622)
+    val decision = ResolverDecision(Seq(relay.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()
+    val node     = IdentityResolver.NodeEvidence(Seq(relay.key), Seq(IdentityResolver.CandidateEvidence(1703622, metMacbeth, 0.1, Some(1), false,
+      titleNamesIt = true, seasonProduction = true, houseProduction = false)))
+    def signal(evidence: UnifiedEvidence.ClusterEvidence) =
+      UnifiedEvidence.contenders(evidence).find(_.tmdb.contains(1703622)).flatMap(_.signals.get("broadcast.take"))
+    val evidence = UnifiedEvidence.ClusterEvidence(Seq(relay), decision, Seq(node), Nil, Nil, _ => None, thisYear = 2026,
+      measured = Some(measured), productions = () => Answer.Known(proske))
+    signal(evidence) shouldBe Some(1.0)
+    // …and none while the stage would wait on a record's day
+    val undated = IdentityMeasures.Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026), runtime = Some(209))
+    val waiting = evidence.copy(nodes = Seq(node.copy(candidates = node.candidates :+ IdentityResolver.CandidateEvidence(1703699, undated, 0.1,
+      Some(2), false, titleNamesIt = true, seasonProduction = true, houseProduction = false))), undated = _ == 1703699)
+    signal(waiting) shouldBe None
   }
 
   "F5: the unified fill's poster guard" should "rule a contender out before a fill rule picks, as the offline fit measured it" in {
