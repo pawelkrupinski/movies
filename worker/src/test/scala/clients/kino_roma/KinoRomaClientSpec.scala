@@ -53,4 +53,14 @@ class KinoRomaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     movies.find(_.movie.title == "Tom i Jerry: Przygoda w muzeum").value
       .movie.releaseYear shouldBe Some(2025)
   }
+
+  // prod PL 2026-10-07: the card's `img src` is site-relative ("/app/assets/movie/…"), and the identity model's listing
+  // carried it as it came — six poster questions filed under a link no fetch takes, the poster evidence gone. The
+  // listing's poster is absolutised against its page, as the card's (CinemaSlotBuilder) is.
+  it should "give the identity model's listing an absolute poster, as the card serves it" in {
+    val film = fetched.find(_.movie.title == "Tom i Jerry: Przygoda w muzeum").value
+    film.posterUrl.value should startWith ("/app/assets/movie/")
+    services.identity.Listing.of(KinoRoma, film, services.movies.TitleNormalizer.forCountry(models.Country.Poland)).poster shouldBe
+      Some("https://www.kinoroma.zabrze.pl/app/assets/movie/zieS_6XO_LtKn5uQL0krgB7Hlrd5.jpg")
+  }
 }

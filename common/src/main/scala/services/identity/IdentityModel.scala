@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie}
-import services.movies.{ListingKey, ScrapeListing, TitleNormalizer}
+import services.movies.{ListingKey, ScrapeListing, SlotFields, TitleNormalizer}
 
 /*
  * The identity resolver's vocabulary (docs/design/identity-resolver.md, phase 2). Everything here
@@ -175,7 +175,9 @@ object Listing {
     countries     = cm.movie.countries.map(_.trim).filter(_.nonEmpty).distinct.sorted,
     catalogueIds  = CatalogueId.of(cm),
     searchTitle   = Some(normalizer.apiQuery(cm.movie.title).trim).filter(q => q.nonEmpty && q != cm.movie.title.trim),
-    poster        = cm.posterUrl.map(_.trim).filter(_.nonEmpty),
+    // as the card serves it ([[services.movies.CinemaSlotBuilder]]): absolute against its page, escaped — a site-relative
+    // `img src` (PL Kino Roma's "/app/assets/movie/…") is a link no poster fetch takes
+    poster        = SlotFields.url(cm.posterUrl, SlotFields.url(cm.filmUrl, None)),
     screenings    = ScreeningDays.of(cm.showtimes.map(_.dateTime.toLocalDate)),
     names         = venueNames(cm))
 
