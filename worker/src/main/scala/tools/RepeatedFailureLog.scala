@@ -80,7 +80,11 @@ final class RepeatedFailureLog(logger: Logger, settings: RepeatedFailureLog.Sett
 }
 
 object RepeatedFailureLog {
-  final case class Settings(maxEntries: Int = 1024,
+  /** Keys tracked at most: past what one instance's failing URLs number, or a round of asks evicts each before
+   *  it comes again and every repeat warns. A convergence leg's detail phase cycles ~4,500 pages its recording
+   *  lacks; at 1,024 that was ~235,000 warning lines in one 37 s phase (run 37595419218). An entry is a URL and
+   *  a hash — a few hundred bytes — and only failing keys are held. */
+  final case class Settings(maxEntries: Int = 16384,
                             relogEvery: Duration = Duration.ofHours(1),
                             now: () => Instant = () => Instant.now()) {
     require(maxEntries > 0, "maxEntries must be positive")

@@ -217,4 +217,19 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
     // Cycling three URLs through two slots evicts each before it repeats, so every ask warns.
     urls.foreach(u => warningsFor(events, u) should have size 2)
   }
+
+  // A convergence leg's detail phase asks ~4,500 distinct pages its recording lacks, round and round: past
+  // the old 1,024-key default each was evicted before it came round again, and every ask of every pass warned
+  // in full — ~235,000 log lines in one 37 s phase of a US order-independence leg (run 37595419218).
+  it should "hold back the repeats of a few thousand distinct failing URLs asked round and round" in {
+    val log  = new RepeatedFailureLog(play.api.Logger(classOf[FallbackHttpFetch]), RepeatedFailureLog.Settings())
+    val urls = (1 to 5000).map(i => uniqueUrl(s"round-$i"))
+
+    val events = LogCapture.capture(classOf[FallbackHttpFetch].getName, Some(Level.TRACE)) {
+      (1 to 2).foreach(_ => urls.foreach(u => log.failed(u, s"failed $u")))
+    }
+
+    val ours = urls.toSet
+    events.count(e => e.getLevel == Level.WARN && ours.contains(e.getFormattedMessage.stripPrefix("failed "))) shouldBe urls.size
+  }
 }
