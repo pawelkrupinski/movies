@@ -1,7 +1,7 @@
 package services.cinemas.common
 
-import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.jsoup.parser.Parser
 import play.api.libs.json.{JsArray, JsLookupResult, JsObject, JsString, Json}
 
 import java.time.LocalDate
@@ -24,8 +24,11 @@ import scala.jdk.CollectionConverters._
  */
 object FlicksFilmPage {
 
-  def parse(html: String, slug: String, today: LocalDate): FilmDetail = {
-    val document = Jsoup.parse(html)
+  def parse(html: String, slug: String, today: LocalDate): FilmDetail =
+    parseDocument(Parser.htmlParser().parseInput(slimmedReader(html), ""), slug, today)
+
+  /** What [[parse]] reads off a parsed page — the whole page or its [[slimmed]] parts alike. */
+  private[common] def parseDocument(document: Document, slug: String, today: LocalDate): FilmDetail = {
     val movie    = movieBlock(document)
     def text(field: String): Option[String] = movie.flatMap(m => (m \ field).asOpt[String]).map(_.trim).filter(_.nonEmpty)
     def names(field: String): Seq[String]   = movie.fold(Seq.empty[String])(m => listOf(m \ field)).distinct
@@ -46,6 +49,32 @@ object FlicksFilmPage {
       trailerUrl     = movie.flatMap(m => (m \ "trailer" \ "url").asOpt[String]).map(_.trim).filter(_.nonEmpty)
     )
   }
+
+  /** `html` as the parts [[parse]] reads — the head (og:image), the hero (title, year and runtime line, poster) and
+   *  every schema.org block after it — without the showtimes tabs between, so the parser does not tokenise them. A page
+   *  is ~350 KB and the tabs nearly all of it; whole-page parsing was 42% of a US detail drain's CPU (JFR, run
+   *  37619819275). Cut where the tabs open (`id="movie-tabs"`); a page without that mark is read whole. */
+  private[common] def slimmedReader(html: String): java.io.Reader = new RangesReader(html, keptRanges(html))
+
+  /** [[slimmedReader]]'s text as a string — for the spec. */
+  private[common] def slimmed(html: String): String = {
+    val out = new java.io.StringWriter(html.length); slimmedReader(html).transferTo(out); out.toString
+  }
+
+  private def keptRanges(html: String): Array[Int] = html.indexOf(TabsMark) match {
+    case -1   => Array(0, html.length)
+    case tabs =>
+      val cut     = html.lastIndexOf('<', tabs)
+      val scripts = Iterator.iterate(html.indexOf(SchemaType, cut))(at => html.indexOf(SchemaType, at + 1))
+        .takeWhile(_ >= 0)
+        .map(at => (html.lastIndexOf("<script", at), html.indexOf("</script>", at)))
+        .collect { case (open, close) if open >= cut && close >= 0 => Array(open, close + "</script>".length) }
+        .flatten.toArray
+      Array(0, cut) ++ scripts
+  }
+
+  private val TabsMark   = "id=\"movie-tabs\""
+  private val SchemaType = "application/ld+json"
 
   /** The page's schema.org `Movie` block. A block that is not JSON throws: that is not a page we can read. */
   private def movieBlock(document: Document): Option[JsObject] =
