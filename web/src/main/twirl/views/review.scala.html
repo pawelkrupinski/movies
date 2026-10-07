@@ -221,7 +221,8 @@
   </div>
   <pre id="export-summary"></pre>
   <div class="bar" data-total="@{view.total + view.answeredHidden}" data-answered="@view.answered" data-hidden="@view.answeredHidden"
-       data-show-answered="@view.showAnswered" data-answered-link="@view.link("answered" -> Some("true"))">
+       data-show-answered="@view.showAnswered" data-answered-link="@view.link("answered" -> Some("true"))"
+       data-open-link="@view.link("answered" -> None)">
     <div class="meter" aria-hidden="true"><i id="meterFill"></i></div>
     <span class="count" id="count">@view.answered / @{view.total + view.answeredHidden} answered</span>
     <div class="filters" role="group" aria-label="Show">
@@ -463,6 +464,9 @@
         try { localStorage.setItem('review.filter', wanted); } catch (err) { /* storage blocked: not remembered */ }
         // The answered cards aren't on this page: load the page that lists them.
         if (wanted !== 'open' && Number(bar.getAttribute('data-hidden')) > 0) { location.href = bar.getAttribute('data-answered-link'); return; }
+        // This page's first cards can all be answered ones, the unanswered past its limit: load the page that leaves
+        // the answered out, never hide them into an empty page.
+        if (wanted === 'open' && bar.getAttribute('data-show-answered') === 'true') { location.href = bar.getAttribute('data-open-link'); return; }
         setFilter(wanted);
         return;
       }

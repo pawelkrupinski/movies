@@ -263,13 +263,17 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       page.evalString("document.querySelector('.summary').textContent") should include ("1 answered hidden")
       page.evalString("document.getElementById('count').textContent") shouldBe "1 / 3 answered"
 
-      // the answered card isn't on this page: "All" loads the page that lists it, then "To review" hides it again
+      // the answered card isn't on this page: "All" loads the page that lists it
       page.eval("document.getElementById('fAll').click()")
       page.waitFor(s"location.search.indexOf('answered=true') >= 0 && document.readyState === 'complete' && !!${card("FRANZ KAFKA")}")
       page.evalBool(s"${card("FRANZ KAFKA")}.hidden") shouldBe false
       page.evalBool(s"${card("FRANZ KAFKA")}.querySelector('button[data-verdict=event]').classList.contains('on')") shouldBe true
+      // and "To review" loads the page without it: that page's first `limit` cards can all be answered ones, which
+      // hiding left an empty page while unanswered cards waited past the limit
       page.eval("document.getElementById('fOpen').click()")
-      page.evalBool(s"${card("FRANZ KAFKA")}.hidden") shouldBe true
+      page.waitFor(s"location.search.indexOf('answered=true') < 0 && document.readyState === 'complete' && !!${card("Macbeth")}")
+      page.evalBool(s"!!${card("FRANZ KAFKA")}") shouldBe false
+      page.evalString("document.querySelector('.filters button[aria-pressed=true]').textContent") shouldBe "To review"
     }
   }
 
