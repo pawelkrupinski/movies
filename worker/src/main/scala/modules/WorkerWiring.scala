@@ -99,19 +99,13 @@ class WorkerWiring(
   // The identity model's TMDB and IMDb answers, normalized as they are fetched (`TmdbStore`): a film,
   // a person and a question each once, as native BSON holding only what the resolver reads. Filled
   // by the pipeline's client (`identityLookupFetch`) and the fill; read by the model. Where the model
-  // runs, in the country's database.
-  lazy val identityTmdbDocuments: services.identity.TmdbDocuments =
-    mongoConnection.database.fold[services.identity.TmdbDocuments](identityTmdbBackend)(_ =>
-      new services.identity.CoalescedTmdbDocuments(identityTmdbBackend))
-  /** Where the store's documents are kept, under the coalescing in front of Mongo: what the sweep scans
-   *  and deletes through. Over Mongo, its answers are kept across projection ticks until written or
-   *  deleted (`CachedTmdbDocuments`) — every write and delete passes through it. */
-  private lazy val identityTmdbBackend: services.identity.TmdbDocuments & services.identity.TmdbDocumentRetention =
-    mongoConnection.database.fold[services.identity.TmdbDocuments & services.identity.TmdbDocumentRetention](
-      new services.identity.InMemoryTmdbDocuments)(db => new services.identity.CachedTmdbDocuments(new services.identity.MongoTmdbDocuments(db)))
+  // runs, in the country's database — documents, store and family answers as one layer.
+  protected lazy val identityTmdbLayer: services.identity.IdentityTmdbLayer =
+    new services.identity.IdentityTmdbLayer(mongoConnection.database, clock)
+  lazy val identityTmdbDocuments: services.identity.TmdbDocuments = identityTmdbLayer.documents
   /** The store's retention (`TmdbStoreSweep`): answers the model no longer reads, and stale gap markers. */
   lazy val identityTmdbSweep: services.identity.TmdbStoreSweep =
-    new services.identity.TmdbStoreSweep(identityTmdbBackend,
+    new services.identity.TmdbStoreSweep(identityTmdbLayer.backend,
       liveKeys = () => identityModel.peek(WorkerWiring.IdentityModelPeek).map(_ => identityReads.trackedKeys), clock)
   /** Rating stamps, last attempts and cadence of films gone from the corpus (`OrphanFilmStateSweep`). */
   lazy val orphanFilmStateSweep: services.movies.OrphanFilmStateSweep = new services.movies.OrphanFilmStateSweep(
@@ -124,7 +118,7 @@ class WorkerWiring(
   lazy val identityTmdbSweepSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     new services.tasks.ClaimedPeriodicTask("tmdb-store-sweep", () => { identityTmdbSweep.sweep(); () },
       services.identity.TmdbStoreSweep.Interval, WorkerWiring.TmdbSweepInitialDelay, scheduledRunStore, clock))
-  lazy val identityTmdbStore: services.identity.TmdbStore = new services.identity.TmdbStore(identityTmdbDocuments, clock)
+  lazy val identityTmdbStore: services.identity.TmdbStore = identityTmdbLayer.store
   lazy val identityTmdbNormalizer: services.identity.TmdbNormalizer = new services.identity.TmdbNormalizer(identityTmdbStore, tmdbJsonBodies)
   /** Keeps the store current from TMDB's change lists (`TmdbChangesSweep`), on demand: before a fill
    *  round, whenever the last complete sweep is from before today. */

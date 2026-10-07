@@ -56,7 +56,11 @@ class ArchiveReplayWiring(
   // Where the TMDB bodies the identity store's normalizer and the client read are parsed — one
   // [[SharedJsonBodies]] for every pass of an order-independence replay, so each body is parsed once
   // between them rather than once per pass; production's per-thread handoff otherwise.
-  tmdbBodies:       JsonBodies = new JsonBodies
+  tmdbBodies:       JsonBodies = new JsonBodies,
+  // The identity model's TMDB and family answers — one layer for every pass of an order-independence replay,
+  // so an answer one pass fetched is filed once and read by the others from a warm store; the wiring's own
+  // over its database otherwise.
+  identityTmdb:     Option[services.identity.IdentityTmdbLayer] = None
 ) extends WorkerWiring(country, env = environment) with TestWiring {
 
   private def live(fetch: HttpFetch): HttpFetch = sharedLive.fold(fetch)(_.over(fetch))
@@ -167,6 +171,8 @@ class ArchiveReplayWiring(
     new TmdbClient(http, apiKey = configuration.tmdbApiKey, language = country.language, bodies = tmdbJsonBodies)
 
   override lazy val tmdbJsonBodies: JsonBodies = tmdbBodies
+  override protected lazy val identityTmdbLayer: services.identity.IdentityTmdbLayer =
+    identityTmdb.getOrElse(new services.identity.IdentityTmdbLayer(mongoConnection.database, clock))
 
   /** No identity traces. They are diagnostics for `/admin/identity/traces` — nothing a replay asserts
    *  reads them, nor does the resolver — yet a cut-over replay built one per listing on every resolve

@@ -54,7 +54,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
 
   // ── Agreement: the no-matches ≥3 other film database families agree on ─────────────────────
   /** What the other film database families answered (`identity_family_answers`), kept long. */
-  lazy val familyAnswerStore: services.identity.FamilyAnswerStore = new services.identity.FamilyAnswerStore(identityTmdbDocuments, clock)
+  lazy val familyAnswerStore: services.identity.FamilyAnswerStore = identityTmdbLayer.familyAnswers
   /** The families asked in this country: Filmweb only where it indexes the country's titles (measured 2026-10-04: it helps
    *  in PL, DE and ES, adds nothing in the UK, and its dissent blocks a right US agreement). */
   def agreementFamilies: Seq[services.identity.agreement.VoterFamily] = {

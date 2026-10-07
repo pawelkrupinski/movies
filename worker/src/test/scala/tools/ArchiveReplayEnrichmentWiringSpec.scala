@@ -583,4 +583,21 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
       settings.FixtureRoot.RepositoryRelative)
     alone.tmdbJsonBodies.getClass shouldBe classOf[JsonBodies]
   }
+
+  // An order-independence replay's passes share one identity TMDB layer: a search answer one pass's normalizer files is
+  // in the store every other pass reads, and every pass's family answers count each other's filings. Without one, a
+  // replay keeps its own, as a worker does.
+  it should "file TMDB answers into the identity layer it is handed, shared with every pass handed the same one" in {
+    val layer  = new services.identity.IdentityTmdbLayer(None, java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC))
+    def pass(identityTmdb: Option[services.identity.IdentityTmdbLayer]) =
+      new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage, fixtureTree,
+        settings.FixtureRoot.RepositoryRelative, identityTmdb = identityTmdb)
+    val (first, second, alone) = (pass(Some(layer)), pass(Some(layer)), pass(None))
+    val question = services.identity.TmdbStore.titleSearchId("pl-PL", "Diuna")
+    first.identityTmdbNormalizer.filed("GET", "https://api.themoviedb.org/3/search/movie?query=Diuna&language=pl-PL",
+      scala.util.Success("""{"results":[{"id":438631,"title":"Diuna","original_title":"Dune","release_date":"2021-09-15","popularity":50.0}]}"""))
+    second.identityTmdbStore.get(services.identity.TmdbKind.Query, Seq(question)).keySet shouldBe Set(question)
+    second.familyAnswerStore should be theSameInstanceAs first.familyAnswerStore
+    alone.identityTmdbStore.get(services.identity.TmdbKind.Query, Seq(question)) shouldBe empty
+  }
 }
