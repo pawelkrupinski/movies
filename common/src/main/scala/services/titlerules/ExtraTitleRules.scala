@@ -84,6 +84,26 @@ object ExtraTitleRules {
   private val FelliniSuffix =
     """(?i)\s*(?:\|\s*|[–—-]\s*przegl[ąa]d\s+)Federico\s+Fellini\b.*$"""
 
+  /** A festival or film club's ACRONYM tag on its screening of an ordinary film, generic in the
+   *  acronym: a numbered edition BEFORE the film ("11. UFF - Demony", "19. FGA: Szepty lasu") or a
+   *  pipe tag AFTER it ("Atlantyda | UFF", "Frances Ha | DKF", "Kumotry | FKS"). The tag is the
+   *  screening's, never the film's, so it comes off in two tiers, like the Fellini patterns above: the
+   *  lookup query (the film is found bare) and the Canonical tier (the card shows the film's own title
+   *  and keys with its other listings). The Canonical rules are REWRITES (`$1`), not strips, so a
+   *  film only one venue lists — most of a festival's programme — shows bare too (see
+   *  `TitleNormalizer.preferredDisplay`).
+   *
+   *  What keeps each one honest:
+   *   - prefix: an edition ORDINAL, then 2–6 CAPITALS (case-sensitive) and a separator straight after
+   *     them, so "1. FC Köln - Der Film" (the name runs on) and "32. MFSP A PART - Trixie" stay whole;
+   *   - suffix: 3–6 CAPITALS ending the title after a pipe, with a lower-case letter BEFORE the pipe —
+   *     in "KINO SENIORA | LALKA" the capitals after the pipe are the film — and never a signed,
+   *     subtitled or language-version tag (PJM, SDH, ENG, UKR, ORG): that screening is its own
+   *     audience's card. Screen-format tags ("| IMAX", "| DUB") are `FormatTags`' and are peeled at
+   *     ingest before this tier sees the title. */
+  private val NumberedFestivalTag = """^\d{1,3}\.\s*\p{Lu}{2,6}\s*[-–—:]\s*"""
+  private val FestivalTagAfterPipe = """\s*\|\s*(?!(?:PJM|SDH|ENG|UKR|ORG)\s*$)\p{Lu}{3,6}\s*$"""
+
   /** Programme banners not in the seed alternation. Each anchored at `^` and
    *  ending in its delimiter (`: `, ` | `) so it's a true prefix the extractor
    *  can split off. `[^:]+` variants absorb the cycle's sub-name (DKF Kropka,
@@ -574,7 +594,8 @@ object ExtraTitleRules {
     searchStrip("xtra-maraton-prefix",             """(?iu)^Maraton{{SEP}}""",                       "'Maraton: <film>' marathon prefix (Powrót do przyszłości); NOT 'Minimaraton …' which fronts a double-feature bundle"),
     searchStrip("xtra-spotkania-filmowe-banner",   """(?iu)^(?:\p{L}+\s+)?Spotkania\s+Filmowe\b[^:|]*[:|]\s*""", "'[<adj>] Spotkania Filmowe [„<cycle>”] : / | <film>' film-meeting banner — the pipe form + a leading-adjective form the seed 'spotkani…:' prefix (anchored, colon-only) misses (Spotkania Filmowe | Ojczyzna; Psychoanalityczne Spotkania Filmowe „W głębi”: Czytając Lolitę w Teheranie)"),
     searchStrip("xtra-classy-monday-prefix",       """(?iu)^Classy\s+Monday{{SEP}}""",               "'Classy Monday - <film>' cycle prefix (Rambo: Pierwsza krew)"),
-    searchStrip("xtra-fga-prefix",                 """(?iu)^\d+\.\s*FGA{{SEP}}""",                    "'19. FGA: <film>' film-festival numbered prefix (Szepty lasu)"),
+    searchStrip("xtra-festival-tag-prefix",        s"""(?u)$NumberedFestivalTag(?=\\S)""",              "'11. UFF - <film>' / '19. FGA: <film>' numbered festival-acronym prefix, generic in the acronym (Demony, Za zwycięstwo, Szepty lasu) — see NumberedFestivalTag"),
+    searchReplace("xtra-festival-tag-suffix",      s"""(?u)^(.*\\p{Ll}.*?)$FestivalTagAfterPipe""", "$1", "'<film> | UFF / DKF / FKS / CHKF' festival or club acronym after a pipe (Atlantyda, Frances Ha, Kumotry) — see FestivalTagAfterPipe"),
     searchStrip("xtra-bkf-prefix",                 """(?iu)^BKF\s*#?\s*\d+\s+""",                     "'BKF #53 <film>' film-club numbered prefix (Chronologia wody)"),
     searchStrip("xtra-niedziela-z-dokumentem",     """(?iu)^Niedziela\s+z\s+Dokumentem{{SEP}}""",    "'Niedziela z Dokumentem: <film>' documentary-strand prefix (Dziecko z pyłu)"),
     searchStrip("xtra-nlecie-org-prefix",          """(?iu)^\d+[-–]lecie\s+{{NSEP}}{2,40}{{SEP}}""", "'70-lecie Wydawnictwa Poznańskiego: <film>' anniversary-of-an-organisation prefix; the name guard is {{NSEP}} so it stops at the banner separator (Wędrówka na północ)"),
@@ -854,6 +875,10 @@ object ExtraTitleRules {
       "'Federico Fellini: [ciao a tutti!] <film>' / 'Fellini. [Ciao a tutti:] <film>' retrospective prefix — merge-key fold (Noce Cabirii, Słodkie życie, Wałkonie, Giulietta i duchy, Osiem i pół)"),
     canon("xtra-canonical-fellini-suffix", FelliniSuffix, "",
       "'<film> [(year)] | / – przegląd Federico Fellini …' retrospective suffix — merge-key fold; runs before the year strip so a '(1957)' glued in before the banner still folds (Noce Cabirii, Wałkonie, Słodkie życie)"),
+    canon("xtra-canonical-festival-tag-prefix", s"""(?u)$NumberedFestivalTag(\\S.*)$$""", "$1",
+      "'11. UFF - <film>' / '19. FGA: <film>' numbered festival-acronym prefix — CANONICAL rewrite to the film's title (display + merge key); see NumberedFestivalTag"),
+    canon("xtra-canonical-festival-tag-suffix", s"""(?u)^(.*\\p{Ll}.*?)$FestivalTagAfterPipe""", "$1",
+      "'<film> | UFF / DKF / FKS / CHKF' festival or club acronym after a pipe — CANONICAL rewrite to the film's title; runs before the trailing-year strips so a year it hid is exposed; see FestivalTagAfterPipe"),
     // "<film> w Helios na Scenie" — Helios brands its own event screenings in the
     // LISTING title, so the venue reports a spelling no other cinema uses. CANONICAL,
     // not query-only, because the problem is the merge key: Cinema City's detail page

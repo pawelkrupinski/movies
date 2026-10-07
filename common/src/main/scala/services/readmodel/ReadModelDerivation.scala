@@ -56,7 +56,10 @@ object ReadModelDerivation {
     Derivation(DerivationVersion("c2dcd1d6f117fd7d"), DerivationScope.Cards),
     // A title's search form re-peels the format tags a search strip exposes, and knows the strands the recorded
     // country corpora named (SearchQueryMarkersSpec): a card's lookup title moves with it.
-    Derivation(DerivationVersion("b029df625de7c5a5"), DerivationScope.Cards))
+    Derivation(DerivationVersion("b029df625de7c5a5"), DerivationScope.Cards),
+    // A festival or club acronym tag ("11. UFF - <film>", "<film> | DKF") comes off the title a card shows and the
+    // key it groups by, so the tagged listing joins its film's card.
+    Derivation(DerivationVersion("acb3f7f8f6df518c"), DerivationScope.Full))
 
   def current: DerivationVersion = History.last.version
 
