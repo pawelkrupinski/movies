@@ -90,8 +90,10 @@ class ReviewController(cc: ControllerComponents,
     devOnly {
       val countries = countriesOf(country)
       val since     = clock.instant().minusSeconds(hours.toLong * 3600)
+      // the slot times read while the decisions are: neither waits on the other
+      val updating  = Future(blocking(perCountry(countries)(sources(_).updatedSince(since))))(using ExecutionContext.global)
       val (clusters, errors) = clustersOf(countries, unmatchedOnly = false)
-      val updated   = perCountry(countries)(sources(_).updatedSince(since)).flatMap(_._2.toOption).flatten.toMap
+      val updated   = Await.result(updating, Duration.Inf).flatMap(_._2.toOption).flatten.toMap
       render(ReviewPage.Recent, country, ReviewSelection.recent(clusters, updated, since).map { case (c, at) => c -> Some(at) },
         limit, answered, errors, ReviewView.Controls(hours = Some(hours)))
     }

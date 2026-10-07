@@ -144,4 +144,21 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     html should not include "could not read"
     html should include("FRANZ KAFKA")
   }
+
+  "the recently matched page" should "read the slot times while it reads the decisions" in {
+    // Each read waits until the other has started: read in turn, the first would wait out the barrier.
+    val barrier = new java.util.concurrent.CyclicBarrier(2)
+    def meet[A](read: => A): A = { barrier.await(5, java.util.concurrent.TimeUnit.SECONDS); read }
+    val meeting: ReviewSource = new ReviewSource {
+      private val source = ReviewFixtures.source(now)
+      export source.{decisions as _, updatedSince as _, *}
+      def decisions(unmatchedOnly: Boolean) = meet(source.decisions(unmatchedOnly))
+      def updatedSince(since: Instant)      = meet(source.updatedSince(since))
+    }
+    val html = contentAsString(new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> meeting),
+      new ReviewAnswers(new InMemoryReviewAnswerStore), Files.createTempFile("labels", ".tsv"), clock).recent(Some("pl"), 48, 60, false)(FakeRequest()))
+    html should not include "could not read"
+    html should include("Klondike")
+  }
 }
+

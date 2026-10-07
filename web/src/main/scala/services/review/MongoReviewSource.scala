@@ -76,18 +76,23 @@ final class MongoReviewSource(db: MongoDatabase) extends ReviewSource {
     val byVenue = listings.distinct.groupMap(_._1)(_._2)
     if (byVenue.isEmpty) Map.empty
     else {
-      // Only the listed films, and of their showtimes only the count and the span, leave the server.
+      // Only the listed films, and of their showtimes only the count and the span, leave the server. The films are
+      // picked out of each venue's array before it is unwound: a venue's listing is its whole programme (US documents
+      // average ~60 KB), and unwinding all of it to keep a few titles was most of a card page's build.
+      def raw(film: String) = Document("$ifNull" -> org.mongodb.scala.bson.BsonArray(s"$film.movie.rawTitle", s"$film.movie.title"))
+      val raws = org.mongodb.scala.bson.BsonArray.fromIterable(byVenue.values.flatten.toSeq.distinct.map(org.mongodb.scala.bson.BsonString(_)))
       val pipeline = Seq(
         Aggregates.`match`(Filters.in("_id", byVenue.keys.toSeq*)),
+        Aggregates.project(Document("films" -> Document("$filter" -> Document("input" -> "$films", "as" -> "film",
+          "cond" -> Document("$in" -> org.mongodb.scala.bson.BsonArray(raw("$$film"), raws)))))),
         Aggregates.unwind("$films"),
         Aggregates.project(Document(
-          "raw" -> Document("$ifNull" -> org.mongodb.scala.bson.BsonArray("$films.movie.rawTitle", "$films.movie.title")),
+          "raw" -> raw("$films"),
           "externalIds" -> "$films.externalIds",
           "poster" -> "$films.posterUrl",
           "screenings" -> Document("$size" -> Document("$ifNull" -> org.mongodb.scala.bson.BsonArray("$films.showtimes", org.mongodb.scala.bson.BsonArray()))),
           "first" -> Document("$min" -> "$films.showtimes.dateTime"),
-          "last" -> Document("$max" -> "$films.showtimes.dateTime"))),
-        Aggregates.`match`(Filters.in("raw", byVenue.values.flatten.toSeq.distinct*)))
+          "last" -> Document("$max" -> "$films.showtimes.dateTime"))))
       await(collection(ListingsCollection).aggregate(pipeline).batchSize(tools.MongoReplies.Default).toFuture()).flatMap { d =>
         val b = d.toBsonDocument
         for { venue <- string(b, "_id"); raw <- string(b, "raw") if byVenue.get(venue).exists(_.contains(raw)) } yield
