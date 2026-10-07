@@ -9380,6 +9380,11 @@
     "sweep"
    ]
   },
+  "kinowo_worker_readmodel_metadata_projections_total": {
+   "trigger": {
+    "same_as": "kinowo_worker_readmodel_project_calls_total"
+   }
+  },
   "kinowo_worker_readmodel_project_calls_total": {
    "trigger": [
     "catch-up",
