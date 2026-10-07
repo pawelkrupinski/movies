@@ -26,10 +26,13 @@ class FakeChunkedScraper(
   // A page inside these chunks fails while the rest of the chunk reads (a multi-page walk's
   // tolerated failure); `planPageFails` does the same to the plan's day walk.
   pageFailsIn: Set[String] = Set.empty,
-  planPageFails: Boolean = false
+  planPageFails: Boolean = false,
+  // as `pageFailsIn`, on the chunk's first read only
+  pageFailsOnceIn: Set[String] = Set.empty
 ) extends ChunkedCinemaScraper {
   import FakeChunkedScraper.{CircuitBlockMs, Host}
-  private val failed = mutable.Set.empty[String]
+  private val failed     = mutable.Set.empty[String]
+  private val pageFailed = mutable.Set.empty[String]
   def scrapeHosts: Set[String] = Set(Host)
   def planChunks(): Seq[String] =
     if (planThrows) throw new RuntimeException("nav down")
@@ -45,7 +48,7 @@ class FakeChunkedScraper(
     else if (failAlways.contains(k)) throw new RuntimeException(s"chunk $k permanently down")
     else if (failOnce.contains(k) && failed.add(k)) throw new RuntimeException(s"chunk $k transient")
     else {
-      if (pageFailsIn.contains(k)) services.cinemas.common.ListingReads.pageFailed(new RuntimeException(s"a page of chunk $k failed"))
+      if (pageFailsIn.contains(k) || (pageFailsOnceIn.contains(k) && pageFailed.add(k))) services.cinemas.common.ListingReads.pageFailed(new RuntimeException(s"a page of chunk $k failed"))
       slices.getOrElse(k, Nil)
     }
 }

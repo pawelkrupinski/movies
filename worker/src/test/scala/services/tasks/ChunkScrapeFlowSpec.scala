@@ -391,4 +391,26 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     h.store.activeRun(cinemaName) shouldBe None  // no run started
     h.published should have size 1        // the failure was published through the recorder path
   }
+
+  // A chunk whose first read lost a page stores its INCOMPLETE marker, then its slice store
+  // fails and the task retries. The retry reads every page: the marker the failed attempt left
+  // must not outlive it, or the run reduces INCOMPLETE and skips the prune it owes.
+  it should "publish a run complete once a retry reads every page the failed attempt lost" in {
+    val blipOnce = new InMemoryChunkScrapeStore {
+      private var blipped = false
+      override def storeChunk(cinema: String, runId: String, key: String, valueJson: String, now: Instant): Unit =
+        if (key == "a" && !blipped) { blipped = true; throw new RuntimeException("mongo blip") }
+        else super.storeChunk(cinema, runId, key, valueJson, now)
+    }
+    val completeness = mutable.ListBuffer.empty[Boolean]
+    val stack = new ChunkScrapeHarness(new FakeChunkedScraper(Map("a" -> Seq(film("Dune", 25))), pageFailsOnceIn = Set("a")),
+      s => { completeness += s.listingIsComplete; () }, Clock.fixed(now, ZoneOffset.UTC), blipOnce, staleAfter = stale)
+    stack.planner.plan(cinemaName) shouldBe 1
+    val runId = stack.store.activeRun(cinemaName).value.runId
+    val chunk = Task("t", TaskType.ScrapeChunk, "d", ChunkScrapeKeys.chunkPayload(cinemaName, runId, "a"), 1)
+    stack.chunkH.handle(chunk) shouldBe a[Reschedule]
+    stack.chunkH.handle(chunk.copy(attempts = 2)) shouldBe Done
+    stack.reduceH.handle(Task("r", TaskType.ScrapeChunkReduce, "r", ChunkScrapeKeys.reducePayload(cinemaName, runId), 1)) shouldBe Done
+    completeness shouldBe Seq(true)
+  }
 }

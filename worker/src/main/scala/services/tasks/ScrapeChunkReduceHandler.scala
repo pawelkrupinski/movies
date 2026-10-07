@@ -45,7 +45,8 @@ class ScrapeChunkReduceHandler(
     chunkScrapers.get(cinema) match {
       case None => store.completeRun(cinema, runId); Done
       case Some(scraper) =>
-        val (markers, slices) = store.loadChunks(cinema, runId).partition { case (k, _) => ChunkScrapeKeys.isIncompleteMarker(k) }
+        val (allMarkers, slices) = store.loadChunks(cinema, runId).partition { case (k, _) => ChunkScrapeKeys.isIncompleteMarker(k) }
+        val markers = allMarkers.filterNot { case (_, value) => value == ChunkScrapeKeys.MarkerWithdrawn }
         val stored = slices.map { case (k, json) => k -> CinemaMovieJson.decode(json, scraper.cinema) }
         val movies = scraper.reduceChunks(stored)
         // Work out whether this is the WHOLE listing BEFORE publishing, and tell the

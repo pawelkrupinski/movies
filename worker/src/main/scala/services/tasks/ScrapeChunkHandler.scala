@@ -49,6 +49,10 @@ class ScrapeChunkHandler(
           if (!reads.complete) {
             logger.info(s"chunk '$key' for $cinema run $runId stored INCOMPLETE: ${reads.failed.size} page(s) failed")
             store.storeChunk(cinema, runId, ChunkScrapeKeys.chunkIncomplete(key), CinemaMovieJson.encode(Nil), clock.instant())
+          } else if (task.attempts > 1) {
+            // A retry that read every page: an earlier attempt may have stored the marker and then failed
+            // storing its slice — left standing, it would reduce this whole chunk's listing as INCOMPLETE.
+            store.storeChunk(cinema, runId, ChunkScrapeKeys.chunkIncomplete(key), ChunkScrapeKeys.MarkerWithdrawn, clock.instant())
           }
           store.storeChunk(cinema, runId, key, slice, clock.instant())
           Done

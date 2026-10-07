@@ -31,4 +31,6 @@ object ChunkScrapeKeys {
   val PlanIncomplete: String = IncompletePrefix + "plan"
   def chunkIncomplete(key: String): String = IncompletePrefix + key
   def isIncompleteMarker(key: String): Boolean = key.startsWith(IncompletePrefix)
+  /** A marker's value once a later attempt of its chunk read every page: no longer a failed read. */
+  val MarkerWithdrawn: String = "withdrawn"
 }
