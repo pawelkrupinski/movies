@@ -54,7 +54,7 @@ class HermeticHttpLeafSpec extends AnyFlatSpec with Matchers {
       Files.walk(root).sorted(java.util.Comparator.reverseOrder()).forEach(p => Files.deleteIfExists(p))
   }
 
-  // What the next leg's fill row fetches: every GET gap, with the verb the remembered verdicts key it by and any
+  // What the next leg's rows fetch before their suites: every GET gap, with the verb the remembered verdicts key it by and any
   // credential in its URL masked — the fill signs those again with the key it holds (`FillCredentials`). Never a
   // credential, and never a request whose credential is only in a header or that carries a body: a public release
   // asset names these.

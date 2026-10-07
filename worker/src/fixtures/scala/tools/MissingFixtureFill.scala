@@ -9,7 +9,7 @@ import scala.util.control.NonFatal
  * Fetches, within a time budget, the requests a hermetic leg's recorded tree could not answer
  * ([[MissingFixtures.Refetch]]), into a fixture tree of their own — the half of "every convergence
  * build publishes the missing data it found" that does the fetching (`FillMissingFixtures`, the
- * leg's `fill` row).
+ * leg's rows run before their suites, and the hand-dispatched `Convergence fill`).
  *
  * The policy lives here, above the two seams a run hands in, so a spec drives it with an in-memory
  * fetch: `held` says whether an earlier fill already holds a request (never asked twice), and

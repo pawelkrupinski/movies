@@ -11,6 +11,11 @@
 # rather than in front of it — the suite then runs ungated, and a red sample costs its runner, not
 # wall time.
 #
+# A HERMETIC row first fetches, for at most ~90 s, what the previous leg's suite could not answer
+# from the pinned pair, and lays it over its tree; only then does its suite run, touching no
+# network. What it fetched is published under the row's own name and carried in its bisect
+# request's pair (docs/design/convergence-fixture-fill.md).
+#
 # Order-independence is part of the standard run and belongs inside it; the one country
 # whose corpus outgrew a single job (the United States, whose boot and replays are 5.5
 # hours together in a job GitHub cancels at 6) splits it into a second MATRIX ROW of the
@@ -155,9 +160,11 @@ on:
             # enrichment tree `Record scrape fixtures` recorded together — and a request the
             # pair cannot answer fails the leg naming the missing fixture instead of filling
             # it live. No expiry, and no tree published: a verdict leg never changes its own inputs.
-            # It does publish what it found missing (`refetch-<code>-...tsv`), which the lane's `fill`
-            # job fetches and publishes as a fill of the pair — so LATER legs replay more, every row of
-            # one leg the same fills, named once at setup (docs/design/convergence-fixture-fill.md).
+            # It does publish what it found missing (`refetch-<code>-...tsv`), and every row of the NEXT
+            # leg fetches that list for ~90 s BEFORE its suite ("Fill the gaps the last leg listed"), lays
+            # what it got over its tree and publishes it as a fill of the pair — so that run's suites
+            # already replay it. The suite itself still never touches the network
+            # (docs/design/convergence-fixture-fill.md).
             # Live fills inside verdict legs were a flake source of their own — a UK boot
             # making 345 live fills of which 63 failed, Cinemeta 504s, Metacritic timeouts,
             # sample legs running into their 60-minute ceiling (runs 35870834558,
@@ -462,6 +469,51 @@ jobs:
                   gh run download "$GITHUB_RUN_ID" --name "scrape-fixtures-${{ inputs.code }}" --dir scrape-archive
                   .github/scripts/unpack-fixture-archive.sh "scrape-archive/scrapes-${{ inputs.code }}.tar.gz"
 
+            # THE PRE-SUITE FILL (docs/design/convergence-fixture-fill.md): what the PREVIOUS leg's suite
+            # could not answer from this pair — the newest `refetch-<code>-<corpus>-*.tsv` it published —
+            # fetched live now, through the worker's own per-host pace, 429 gate and breaker
+            # (`FillMissingFixtures`, `HttpWiring.pacedWire`), and laid over this row's tree, so THIS run's
+            # suite replays it instead of the run after next. `held` is the tree as setup restored it — the
+            # pinned tree and every fill already laid over it — so nothing it holds is asked again.
+            #
+            # It FINISHES before the suite starts: the deadline is 90 s from this step's start (sbt's boot and
+            # the fixtures' compile, which the suite would pay anyway, come out of it), and past it a request
+            # already in flight only completes. The suite itself never touches the network — it refuses every
+            # request its tree cannot answer, as it always has. Best effort: a failed or slow fill is a gap the
+            # suite reports, never a red row. TMDB's key is this step's alone among the fill's steps
+            # (`FillCredentials` signs the TMDB gaps listed with it masked); nothing it records carries it.
+            #
+            # Every row fills on its own (each its own runner), and publishes what it fetched under its own
+            # name after its suite (`fill-row` below), which its bisect request carries in the pair.
+            - name: Fill the gaps the last leg listed, before the suite
+              id: fill
+              if: inputs.mode == 'hermetic'
+              continue-on-error: true
+              timeout-minutes: 5
+              shell: bash
+              env:
+                  GH_TOKEN:         ${{ secrets.GITHUB_TOKEN }}
+                  KINOWO_COUNTRY:   ${{ inputs.code }}
+                  KINOWO_COUNTRIES: ${{ inputs.code }}
+                  TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
+                  FILL_SECONDS:     90
+              run: |
+                  set -uo pipefail
+                  until=$(( $(date +%s) + FILL_SECONDS ))
+                  list="$RUNNER_TEMP/fill-refetch.tsv"
+                  count=$(.github/scripts/convergence-fill.sh gaps "${{ inputs.code }}" "$KINOWO_CONVERGENCE_PIN_CORPUS_RUN" "$list")
+                  if [ "${count:-0}" -eq 0 ]; then
+                      echo "[fill] the last leg listed no fetchable gap of this pair — nothing to fetch"
+                      exit 0
+                  fi
+                  fixtures="$GITHUB_WORKSPACE/test/resources/fixtures"
+                  out="$RUNNER_TEMP/fill-out"
+                  # As every sbt run of a leg: the runner's whole CPU beside it, on the caller's heap ceiling.
+                  scripts/ci/cpu-sampler.sh 15 & sampler=$!; trap 'kill "$sampler"' EXIT
+                  sbt -J-Xmx${{ inputs.heap }} "worker/Fixtures/runMain scripts.FillMissingFixtures ${{ inputs.code }} $list $fixtures $out/test/resources/fixtures $until"
+                  if [ -d "$out/test/resources/fixtures" ]; then cp -a "$out/test/resources/fixtures/." "$fixtures/"; fi
+                  .github/scripts/convergence-fill.sh pack "$out" fill-upload-source/fill.tar.zst
+
             # A SAMPLE row hands on only what its sample records: every file under the tree newer
             # than this (an unpacked file keeps its archived mtime) — a recording's entries.
             - name: Mark the tree before the sample records into it
@@ -752,14 +804,30 @@ jobs:
             # pair. Replays re-ask nothing: they share the boot's cache.
             - uses: ./.github/actions/convergence-publish
               if: always() && matrix.phase == 'convergence'
+              id: publish
               with:
                   code: ${{ inputs.code }}
                   token: ${{ secrets.GITHUB_TOKEN }}
                   green: ${{ steps.suite.outcome == 'success' }}
                   mode: ${{ inputs.mode }}
                   complete: ${{ inputs.mode == 'record' && steps.suite.outcome != 'cancelled' }}
-                  # A hermetic row's fetchable gaps, for the next leg's `fill` job (MissingFixtures.writeRefetches).
+                  # A hermetic row's fetchable gaps, for the next leg's pre-suite fills (MissingFixtures.writeRefetches).
                   refetch-list: ${{ inputs.mode == 'hermetic' && format('test/resources/fixtures/enrichment-{0}.refetch.tsv', inputs.code) || '' }}
+                  # What this row's pre-suite fill fetched, for every later leg (hermetic only: the step is).
+                  fill-archive: fill-upload-source/fill.tar.zst
+                  fill-row:     ${{ matrix.phase }}
+
+            # Every OTHER hermetic row's pre-suite fill, under its own name: the publish above is the
+            # convergence row's, the one writer of the tree; this one writes nothing but the row's fill.
+            - uses: ./.github/actions/convergence-publish
+              id: publish-row-fill
+              if: always() && inputs.mode == 'hermetic' && matrix.phase != 'convergence'
+              with:
+                  code:         ${{ inputs.code }}
+                  token:        ${{ secrets.GITHUB_TOKEN }}
+                  mode:         hermetic
+                  fill-archive: fill-upload-source/fill.tar.zst
+                  fill-row:     ${{ matrix.phase }}
 
             # A red HERMETIC leg on main asks `convergence-bisect.yml` which commit did it — with
             # the sample, which the bisect first checks reproduces the failure, unless it was
@@ -774,7 +842,9 @@ jobs:
                   sample-command: ${{ inputs.sample-command }}
                   heap:           ${{ inputs.heap }}
                   step-minutes:   ${{ inputs.sample-suite-timeout-minutes }}
-                  pair:           ${{ steps.setup.outputs.hermetic-pair }}
+                  # The pair as this row replayed it: setup's, then the fill this row fetched before its suite
+                  # and published above (at most one of the two publishes names one), laid over last.
+                  pair:           ${{ format('{0} {1}{2}', steps.setup.outputs.hermetic-pair, steps.publish.outputs.fill-asset, steps.publish-row-fill.outputs.fill-asset) }}
                   sample-failed:  ${{ steps.sample.outcome == 'failure' }}
 
             # Only on a red leg, and after the publish so it can never cost the tree:

@@ -40,8 +40,8 @@ inputs:
     default: ''
   replay:
     description: >-
-      'false' for a job that replays nothing — a leg's `fill` row, which needs the pair's name and a warm
-      sbt but no MongoDB, corpus or tree.
+      'false' for a job that replays nothing — the `Convergence fill` workflow's, which needs the pair's name
+      and a warm sbt but no MongoDB, corpus or tree.
     required: false
     default: 'true'
 
@@ -159,9 +159,9 @@ runs:
               echo "::error::No recorded pair pinned for ${{ inputs.code }} (release asset hermetic-${{ inputs.code }}.txt) — a hermetic leg replays nothing else. Record one: gh workflow run \"Record scrape fixtures\" --ref main"
               exit 1
           fi
-          # The FILLS earlier legs published over this tree (convergence-fill.sh, the leg's `fill` row):
-          # named here, once, so every row of the leg replays the same ones, and carried in the pair so a
-          # bisect replays them too.
+          # The FILLS published over this tree (convergence-fill.sh) — earlier legs' rows' pre-suite fills and
+          # any hand-dispatched `Convergence fill` — named here, once: the row lays its own pre-suite fill
+          # over them, and its bisect request carries all of them in the pair.
           if [ -z "$GIVEN" ]; then
               fills=$(FIXTURE_RELEASE_TAG="$FIXTURE_RELEASE_TAG" "$GITHUB_WORKSPACE"/.github/scripts/convergence-fill.sh fills "${{ inputs.code }}" "$corpus")
               pair="$corpus $recorded $tree${fills:+ $fills}"

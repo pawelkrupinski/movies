@@ -51,6 +51,17 @@ run() { PATH="$work/bin:$PATH" FIXTURE_RELEASE_TAG=convergence-fixtures bash "$f
 
 check "a pair's fills are its own country's and corpus's, oldest run first" \
   "fill-us-100-35.tar.zst fill-us-100-201.tar.zst" "$(run fills us 100)"
+
+# Each leg row publishes its pre-suite fill under its phase; a later leg lays every row's over the tree.
+: > "$work/release/fill-us-100-201-order-independence.tar.zst"
+: > "$work/release/fill-us-100-201-convergence.tar.zst"
+: > "$work/release/fill-us-100-35-sample.tar.zst"
+: > "$work/release/fill-us-100-201-Bogus.tar.zst"
+check "a row's fill is one of the pair's, by run id and then by name" \
+  "fill-us-100-35-sample.tar.zst fill-us-100-35.tar.zst fill-us-100-201-convergence.tar.zst fill-us-100-201-order-independence.tar.zst fill-us-100-201.tar.zst" \
+  "$(run fills us 100)"
+rm "$work/release/fill-us-100-201-order-independence.tar.zst" "$work/release/fill-us-100-201-convergence.tar.zst" \
+  "$work/release/fill-us-100-35-sample.tar.zst" "$work/release/fill-us-100-201-Bogus.tar.zst"
 check "a release that cannot be listed gives no fills, not a failed leg" "0:" \
   "$(out=$(STUB_UNREACHABLE=1 run fills us 100 2>/dev/null); echo "$?:$out")"
 # Every leg's setup asks, under `bash -e`, before any fill exists (run 37608599525 failed every leg here).

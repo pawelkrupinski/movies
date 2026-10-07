@@ -84,11 +84,12 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
 
   // The sample, the full leg and the bisect of one run must replay ONE pair, or a recorder
   // pinning a new pair mid-run would split a leg across two recordings. One job resolves it
-  // once, in its setup, and every step after it — sample, suite, bisect request — reads that.
+  // once, in its setup, and every step after it — sample, suite, bisect request — reads that (the bisect's
+  // with the row's own pre-suite fill after it: ConvergenceFillWiringSpec).
   it should "replay the pair its sample replayed" in {
     val convergence = RepoFile.block(leg, "convergence")
     convergence should include("- uses: ./.github/actions/convergence-setup\n              id: setup")
-    convergence should include("pair:           ${{ steps.setup.outputs.hermetic-pair }}")
+    convergence should include("pair:           ${{ format('{0} {1}{2}', steps.setup.outputs.hermetic-pair, ")
     withClue("the pair comes from this job's own setup, not another job's: ") {
       convergence should not include "needs.sample"
     }

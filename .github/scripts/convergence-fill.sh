@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The release side of a convergence leg's FILL: what a hermetic leg's tree lacked, fetched by the next
-# leg and published beside the pinned pair, so the gap closes run over run instead of waiting for the
+# leg's rows before their suites and published beside the pinned pair, so the gap closes run over run instead of waiting for the
 # next recording (docs/design/convergence-fixture-fill.md).
 #
 #   convergence-fill.sh fills  <code> <corpus run>               # the pair's fill assets, oldest first, one line
@@ -10,10 +10,12 @@
 #
 # Reads FIXTURE_RELEASE_TAG and GH_TOKEN from the environment.
 #
-# NAMES, NEVER A REPLACEMENT. A fill is `fill-<code>-<corpus run>-<run id>.tar.zst` and a refetch list
-# `refetch-<code>-<corpus run>-<run id>.tsv`: each publish adds an asset under a name nobody else writes,
-# so no reader ever meets the moment `--clobber` deletes an asset before re-uploading it, and five
-# countries publishing side by side never touch each other's names. Readers take every fill of the pair
+# NAMES, NEVER A REPLACEMENT. A fill is `fill-<code>-<corpus run>-<run id>[-<row>].tar.zst` — a leg row's
+# pre-suite fill carries its phase (`-convergence`, `-order-independence`, `-sample`), the manual
+# `Convergence fill` workflow's none — and a refetch list `refetch-<code>-<corpus run>-<run id>.tsv`: each
+# publish adds an asset under a name nobody else writes, so no reader ever meets the moment `--clobber`
+# deletes an asset before re-uploading it, and five countries' rows publishing side by side never touch
+# each other's names. Readers take every fill of the pair
 # (`fills`) and the NEWEST list (`gaps`); the pin step prunes both with the pair they belong to.
 #
 # Best effort throughout: a fill a leg cannot read is a fill it replays without, never a failed leg.
@@ -29,10 +31,11 @@ assets() {
     echo "::warning::could not list release $TAG — no fills this time" >&2
 }
 
-# The names matching ^<prefix>-<code>-<corpus>-<run id>.<ext>$, by run id ascending.
+# The names matching ^<prefix>-<code>-<corpus>-<run id>[-<row>].<ext>$, by run id ascending — one run's
+# rows then by name, in the C locale, so every reader lays them over in the same order.
 named() {
   local prefix="$1" code="$2" corpus="$3" ext="$4"
-  assets | { grep -E "^$prefix-$code-$corpus-[0-9]+\\.$ext\$" || true; } | sort -t- -k4,4n
+  assets | { grep -E "^$prefix-$code-$corpus-[0-9]+(-[a-z][a-z-]*)?\\.$ext\$" || true; } | LC_ALL=C sort -t- -k4,4n
 }
 
 case "${1:-}" in

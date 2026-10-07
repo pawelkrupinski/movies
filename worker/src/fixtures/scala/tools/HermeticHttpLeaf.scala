@@ -47,7 +47,7 @@ final class MissingFixtures {
   }
 
   /** Every gap a later run can fetch on its own, one `<fixture key>\t<verb>\t<url>` line each, sorted —
-   *  what the next leg's `fill` row reads (`FillMissingFixtures`). Written even when empty: an empty
+   *  what the next leg's rows fetch before their suites (`FillMissingFixtures`). Written even when empty: an empty
    *  list says this leg missed nothing fillable, which an absent one cannot. */
   def writeRefetches(file: java.nio.file.Path): Int = {
     val lines = refetches.asScala.toSeq.sortBy(_._1).map { case (key, r) => s"$key\t${r.verb}\t${r.url}" }

@@ -11,8 +11,8 @@ import scala.jdk.CollectionConverters._
 
 /**
  * The fetching half of "every convergence build publishes the missing data it found": what a hermetic
- * leg's tree could not answer, fetched by the next leg's `fill` row within a budget, into a tree the
- * legs after it replay.
+ * leg's tree could not answer, fetched by the next leg's rows before their suites, within a budget, into a tree the
+ * row's suite and the legs after it replay.
  */
 class MissingFixtureFillSpec extends AnyFlatSpec with Matchers {
 
@@ -71,7 +71,7 @@ class MissingFixtureFillSpec extends AnyFlatSpec with Matchers {
     live.asked.asScala shouldBe empty
   }
 
-  // The budget is what keeps a fill row inside the lane's minutes: a request not started by then is the next leg's.
+  // The budget is what keeps a row's pre-suite fill inside its ~90 s: a request not started by then is the next leg's.
   it should "start nothing past its budget, and say how many it left" in {
     val now  = new AtomicLong(0L)
     val live = new Live(url => { now.addAndGet(40.seconds.toNanos); s"page $url" })

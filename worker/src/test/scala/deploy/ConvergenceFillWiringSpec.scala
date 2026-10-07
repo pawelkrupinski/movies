@@ -4,11 +4,12 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * Every hermetic convergence leg publishes what its tree lacked, and the next one fetches it: the
- * suite's refetch list goes up beside the pinned pair, a `fill` job beside the suite fetches the
- * previous leg's within its minutes and publishes what it got, and every leg set up after that
- * replays the pinned tree with the pair's fills over it (docs/design/convergence-fixture-fill.md).
- * Each rule below is one way that loop silently stops, or starts costing a verdict its determinism.
+ * Every hermetic convergence leg publishes what its tree lacked, and the next run's rows fetch it
+ * before their suites: the suite's refetch list goes up beside the pinned pair, each row of the next
+ * leg fetches it for ~90 s and lays what it got over its own tree, and publishes that as a fill every
+ * later leg replays (docs/design/convergence-fixture-fill.md). A longer fill is the hand-dispatched
+ * `Convergence fill`. Each rule below is one way that loop silently stops, or starts costing a verdict
+ * its hermeticity or its bisect's reproducibility.
  */
 class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val leg     = RepoFile.read(".github/workflows/country-convergence-leg.yml")
@@ -16,39 +17,112 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val publish = RepoFile.read(".github/actions/convergence-publish/action.yml")
   private lazy val lane    = RepoFile.read(".github/workflows/identity-model-convergence.yml")
   private lazy val fill    = RepoFile.read(".github/actions/convergence-fill/action.yml")
-  private lazy val fillJob = RepoFile.jobs(lane)("fill")
+  private lazy val manual  = RepoFile.read(".github/workflows/convergence-fill.yml")
+  private lazy val rows    = RepoFile.jobs(leg)("convergence")
 
-  private val MainOnly = "github.ref == 'refs/heads/main'"
+  private val FillStep  = "Fill the gaps the last leg listed, before the suite"
+  private val SuiteStep = "Run the ${{ inputs.country }} ${{ matrix.phase }} suite"
+  private val Sample    = "Run the ${{ inputs.country }} sample ahead of the suite"
+  private val MainOnly  = "github.ref == 'refs/heads/main'"
 
-  "a hermetic convergence row" should "publish the gaps its tree could not answer, for the next leg's fill" in {
-    val convergence = RepoFile.jobs(leg)("convergence")
-    convergence should include(
+  private lazy val fillStep = RepoFile.step(leg, FillStep)
+
+  "a hermetic convergence row" should "publish the gaps its tree could not answer, for the next leg's rows" in {
+    rows should include(
       "refetch-list: ${{ inputs.mode == 'hermetic' && format('test/resources/fixtures/enrichment-{0}.refetch.tsv', inputs.code) || '' }}")
     // ...the file the suite writes it to.
     tools.MissingFixtures.refetchListBeside(java.nio.file.Paths.get("test/resources/fixtures/enrichment-us")).toString shouldBe
       "test/resources/fixtures/enrichment-us.refetch.tsv"
   }
 
-  it should "never fetch anything itself: the fill runs on a runner of its own, beside the legs" in {
-    leg should not include "FillMissingFixtures"
-    leg should not include "convergence-fill"
-    RepoFile.withoutComments(fill) should include("scripts.FillMissingFixtures")
-    fillJob should include("uses: ./.github/actions/convergence-fill")
-    withClue("waiting for the legs would add the fill's minutes to the lane's: ")(fillJob should include("needs: preflight"))
-    fillJob should include("code: [pl, de, uk, es, us]")
-    withClue("a fill gates nothing: ")(fillJob should include("continue-on-error: true"))
+  // The fill before the suite, in EVERY hermetic row: what the previous run listed is replayed by this run's
+  // suites, not the run after next.
+  "every hermetic row" should "fetch the previous leg's gaps after setup and before its sample and suite" in {
+    fillStep should include("if: inputs.mode == 'hermetic'\n")
+    withClue("every phase, not only the convergence row: ")(fillStep should not include "matrix.phase")
+    fillStep should include("convergence-fill.sh gaps")
+    fillStep should include("scripts.FillMissingFixtures")
+    val at = RepoFile.positionOf(rows, s"- name: $FillStep")
+    RepoFile.positionOf(rows, "uses: ./.github/actions/convergence-setup") should be < at
+    at should be < RepoFile.positionOf(rows, s"- name: $Sample")
+    at should be < RepoFile.positionOf(rows, s"- name: $SuiteStep")
+    // ...and before a sample row stamps its tree, so a fill is never taken for the sample's recordings.
+    at should be < RepoFile.positionOf(rows, "- name: Mark the tree before the sample records into it")
   }
 
-  "the fill" should "stop starting requests at its minute, inside the lane's 9-minute rows" in {
+  it should "stop starting requests within 90 seconds of the step's start, and never fail the row" in {
+    val seconds = """FILL_SECONDS:\s*(\d+)""".r.findFirstMatchIn(fillStep).map(_.group(1).toInt)
+    seconds.getOrElse(fail("the fill step names no FILL_SECONDS")) should be <= 90
+    fillStep should include("until=$(( $(date +%s) + FILL_SECONDS ))")
+    fillStep should include("$until\"")
+    fillStep should include("continue-on-error: true")
+    """timeout-minutes:\s*(\d+)""".r.findFirstMatchIn(fillStep).map(_.group(1).toInt).getOrElse(99) should be <= 5
+  }
+
+  it should "skip what its restored tree holds, and lay what it fetched over that tree for its suite" in {
+    fillStep should include("""fixtures="$GITHUB_WORKSPACE/test/resources/fixtures"""")
+    fillStep should include("$list $fixtures $out/test/resources/fixtures $until")
+    fillStep should include("""cp -a "$out/test/resources/fixtures/." "$fixtures/"""")
+    fillStep should include("convergence-fill.sh pack \"$out\" fill-upload-source/fill.tar.zst")
+  }
+
+  // The suite is still hermetic: no fetching step after the fill, and nothing of the fill in the suite.
+  it should "keep the suite itself off the network" in {
+    RepoFile.step(leg, SuiteStep) should include("KINOWO_CONVERGENCE_HERMETIC: ${{ inputs.mode == 'hermetic' }}")
+    RepoFile.withoutComments(leg).linesIterator.count(_.contains("scripts.FillMissingFixtures")) shouldBe 1
+  }
+
+  // A TMDB gap is listed with its key masked; the fill signs it again (`FillCredentials`) — the key in the step
+  // that fetches, never in the ones that pack or publish what it fetched.
+  it should "hold TMDB's key in the fetching step, and not in the publishes of what it fetched" in {
+    fillStep should include("TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}")
+    publish should not include "TMDB_API_KEY"
+    rows.linesIterator.dropWhile(!_.contains("id: publish")).take(25).mkString("\n") should not include "TMDB"
+  }
+
+  it should "publish what it fetched under a name of its own row, from every phase" in {
+    val others = rows.substring(RepoFile.positionOf(rows, "id: publish-row-fill"))
+    rows.substring(RepoFile.positionOf(rows, "id: publish\n"), RepoFile.positionOf(rows, "id: publish-row-fill")) should
+      include("fill-row:     ${{ matrix.phase }}")
+    others should include("if: always() && inputs.mode == 'hermetic' && matrix.phase != 'convergence'")
+    others should include("fill-archive: fill-upload-source/fill.tar.zst")
+    others should include("fill-row:     ${{ matrix.phase }}")
+    val named = RepoFile.step(publish, "Publish what this leg's fill fetched")
+    named should include("$GITHUB_RUN_ID${ROW:+-$ROW}.tar.zst")
+    named should include("""echo "asset=$named" >> "$GITHUB_OUTPUT"""")
+  }
+
+  // A bisect replays the pair the request names: without the row's own fill it would replay a tree the
+  // verdict was never decided on.
+  it should "carry its own fill in the pair its bisect request replays" in {
+    rows should include(
+      "pair:           ${{ format('{0} {1}{2}', steps.setup.outputs.hermetic-pair, steps.publish.outputs.fill-asset, steps.publish-row-fill.outputs.fill-asset) }}")
+    publish should include("value: ${{ steps.fill.outputs.asset }}")
+    RepoFile.positionOf(rows, "id: publish-row-fill") should be < RepoFile.positionOf(rows, "uses: ./.github/actions/convergence-bisect-request")
+    RepoFile.read(".github/actions/convergence-bisect-request/action.yml") should include("""--arg pair "${words[*]}"""")
+  }
+
+  "the identity lane" should "run no fill job of its own any more" in {
+    RepoFile.jobs(lane).keySet should not contain "fill"
+    RepoFile.withoutComments(lane) should not include "convergence-fill"
+  }
+
+  "the manual fill" should "be dispatched by hand only, per country, through the fill action" in {
+    val on = RepoFile.block(manual, "on")
+    on should include("workflow_dispatch:")
+    Seq("push:", "schedule:", "workflow_run:", "workflow_call:", "pull_request").foreach(t => on should not include t)
+    on should include("default: pl,de,uk,es,us")
+    """(?s)minutes:.*?default:\s*(\d+)""".r.findFirstMatchIn(on).map(_.group(1).toInt) shouldBe Some(7)
+    val job = RepoFile.jobs(manual)("fill")
+    job should include("code: ${{ fromJson(needs.countries.outputs.codes) }}")
+    job should include("uses: ./.github/actions/convergence-fill")
+    job should include("tmdb-api-key: ${{ secrets.TMDB_API_KEY }}")
+    withClue("its own run id names its fill, so it never writes a row's name: ")(fill should not include "fill-row:")
+  }
+
+  "the fill action" should "stop starting requests at its minute, with TMDB's key in the fetching step alone" in {
     fill should include("""echo "FILL_UNTIL=$(( $(date +%s) + ${{ inputs.minutes }} * 60 ))" >> "$GITHUB_ENV"""")
     RepoFile.step(fill, "Fetch them until the fill's minutes run out") should include("$FILL_UNTIL")
-    """(?m)^\s+minutes:\s*(\d+)""".r.findFirstMatchIn(fillJob).map(_.group(1).toInt).getOrElse(99) should be <= 7
-  }
-
-  // A TMDB gap is listed with its key masked; the fill signs it again with the lane's key (`FillCredentials`) — handed
-  // to the one step that fetches, never to the setup or the publish.
-  it should "hold TMDB's key in the step that fetches, and only there" in {
-    fillJob should include("tmdb-api-key: ${{ secrets.TMDB_API_KEY }}")
     RepoFile.step(fill, "Fetch them until the fill's minutes run out") should include("TMDB_API_KEY:     ${{ inputs.tmdb-api-key }}")
     fill.linesIterator.count(_.contains("inputs.tmdb-api-key")) shouldBe 1
   }
@@ -89,8 +163,9 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.read(".github/scripts/restore-enrichment-tree.sh") should include("""convergence-fill.sh" unpack "$stage" "${fills[@]}"""")
   }
 
-  "a new pin" should "prune the fills and lists of the pairs it prunes" in {
-    RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay") should include("^(fill|refetch)-$code-")
+  "a new pin" should "prune the fills — a row's included — and lists of the pairs it prunes" in {
+    RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay") should include(
+      "^(fill|refetch)-$code-[0-9]+-[0-9]+(-[a-z][a-z-]*)?\\\\.(tar\\\\.zst|tsv)$")
   }
 
   "the fill's release script" should "be run by CI's shell specs" in {

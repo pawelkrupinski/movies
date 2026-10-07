@@ -46,8 +46,11 @@ runs:
               SAMPLE_FAILED: ${{ inputs.sample-failed }}
           run: |
               mkdir -p bisect-request
+              # One space between the pair's words: the leg appends its row's fill to setup's pair, either
+              # of which may be empty — and an empty pair is what tells the bisect to resolve one afresh.
+              read -ra words <<< "$PAIR"
               jq -n --arg country "$COUNTRY" --arg code "$CODE" --arg sample "$SAMPLE_COMMAND" \
-                    --arg heap "$HEAP" --arg minutes "$STEP_MINUTES" --arg pair "$PAIR" \
+                    --arg heap "$HEAP" --arg minutes "$STEP_MINUTES" --arg pair "${words[*]}" \
                     --arg sampleFailed "$SAMPLE_FAILED" \
                     '{country: $country, code: $code, sample: $sample, heap: $heap,
                       minutes: $minutes, pair: $pair, sampleFailed: $sampleFailed}' \

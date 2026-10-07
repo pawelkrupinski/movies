@@ -8,14 +8,15 @@ import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
 /**
- * A convergence leg's `fill` row (country-convergence-leg.yml): fetch, within a budget, what the
+ * A hermetic leg row's pre-suite fill (country-convergence-leg.yml), or a `Convergence fill` row: fetch, within a budget, what the
  * previous hermetic leg's tree could not answer, into a fixture tree of its own for the row to
  * publish beside the pinned pair. See [[tools.MissingFixtureFill]] for the policy and
  * docs/design/convergence-fixture-fill.md for why.
  *
  *   sbt "worker/Fixtures/runMain scripts.FillMissingFixtures <code> <refetch list> <held root> <out root> <until> [threads]"
  *
- * `<held root>` holds the fills earlier legs published (never fetched again); `<out root>` receives
+ * `<held root>` holds what is already recorded — a leg row's restored tree with the pair's fills over it,
+ * or those fills alone — never fetched again; `<out root>` receives
  * this fill's — both fixture roots, `enrichment-<code>` under each. `<until>` (epoch seconds) is when
  * the row stops starting requests: a deadline rather than a duration, so the row's own setup and
  * compile, however long they took, come out of the same minutes. Every request goes through the

@@ -1,25 +1,15 @@
-# THE FILL: what the last hermetic leg's tree could not answer, fetched now and published beside the
-# pinned pair, so a gap closes run over run instead of waiting for the next recording to pin a pair that
-# holds it (docs/design/convergence-fixture-fill.md). Run by `Identity model convergence`'s `fill` job,
-# one row per country, beside the legs.
+# THE LONG FILL: what the last hermetic leg's tree could not answer, fetched for `minutes` and published
+# beside the pinned pair (docs/design/convergence-fixture-fill.md). Run by the hand-dispatched
+# `Convergence fill` workflow (convergence-fill.yml), one row per country — for a list longer than the
+# ~90 s every leg row spends on it before its suite ("Fill the gaps the last leg listed",
+# country-convergence-leg.yml).
 #
-# ON ITS OWN RUNNER, never inside a leg. The suite is CPU-bound and this network-bound, but a hermetic
-# suite must not share its process — or its runner's network — with live requests, and every suite row
-# is already at the lane's ~9-minute mark; this costs a runner, never wall time.
-#
-# It reads the PREVIOUS leg's refetch list (this run's suite is still running): the newest
-# `refetch-<code>-<corpus>-*.tsv` of the pinned pair, which a hermetic convergence row publishes
-# (`convergence-publish`). It fetches through the worker's own per-host pacing, 429 gate and breaker
-# (`HttpWiring.pacedWire`, `HostPolicies` — Flicks stays at its 200 ms), skips what an earlier fill
-# already holds, and stops starting requests `minutes` into the job. What it fetched goes up as
+# It reads the newest `refetch-<code>-<corpus>-*.tsv` of the pinned pair, which a hermetic convergence
+# row publishes (`convergence-publish`). It fetches through the worker's own per-host pacing, 429 gate and
+# breaker (`HttpWiring.pacedWire`, `HostPolicies` — Flicks stays at its 200 ms), skips what the pair's
+# fills already hold, and stops starting requests `minutes` into the job. What it fetched goes up as
 # `fill-<code>-<corpus>-<run>.tar.zst` (main only): every hermetic leg set up after that replays it over
-# the pinned tree.
-#
-# WHAT THAT DOES TO A VERDICT. The next leg replays more than this one did — pages that were refusals now
-# answer, which is the change intended, and it can move that leg's coverage and films. Never mid-leg: a
-# leg names its fills once, at setup, and every row of it replays those (`hermetic-pair` carries them, so
-# a bisect of the leg replays them too). A gap that cannot be fetched without a credential (TMDB, OMDb), a
-# header or a body is never listed — those stay the recorder's.
+# the pinned tree. A TMDB gap is signed with the key handed in; OMDb's, a header's or a body's never are.
 name: Fill a hermetic leg's gaps
 description: Fetch, within a budget, what the last hermetic leg's tree lacked, and publish it beside the pinned pair.
 

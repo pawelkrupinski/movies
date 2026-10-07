@@ -1,0 +1,84 @@
+#
+# THE LONG FILL, BY HAND: what the last hermetic convergence leg of each country could not answer from its
+# pinned pair, fetched for `minutes` and published as `fill-<code>-<corpus>-<this run>.tar.zst`, which every
+# hermetic leg set up after it replays over the pinned tree (docs/design/convergence-fixture-fill.md).
+#
+# Every leg row already spends ~90 s on the list before its suite (country-convergence-leg.yml); this is for
+# a list longer than that — a new detail fetch that left thousands of pages unrecorded. DISPATCH ONLY: it
+# changes the inputs of every later verdict, so nobody's push starts it.
+#
+#   gh workflow run convergence-fill.yml --ref main -f countries=us -f minutes=20
+#
+# Its own run id names what it publishes, so it never writes a leg row's name (those carry their phase).
+# Main only, like every publish of the release (convergence-publish). (ConvergenceFillWiringSpec)
+#
+name: Convergence fill
+
+on:
+    workflow_dispatch:
+        inputs:
+            countries:
+                description: Comma-separated country codes to fill (pl, de, uk, es, us).
+                required: false
+                type: string
+                default: pl,de,uk,es,us
+            minutes:
+                description: Minutes into each country's job at which its fill stops starting requests (at most 30).
+                required: false
+                type: number
+                default: 7
+
+# One fill at a time: two would fetch the same list twice.
+concurrency:
+    group: convergence-fill
+    cancel-in-progress: false
+
+# Least privilege by default: every job that needs more than reading the
+# repository grants it at job level.
+permissions:
+    contents: read
+
+jobs:
+    # The countries asked for, as the fill's matrix — only the five that have a convergence leg.
+    countries:
+        runs-on: ubuntu-latest
+        timeout-minutes: 2
+        outputs:
+            codes: ${{ steps.codes.outputs.codes }}
+        steps:
+            - id: codes
+              env:
+                  COUNTRIES: ${{ inputs.countries }}
+              run: |
+                  set -euo pipefail
+                  codes=$(tr -s ', ' '\n' <<< "$COUNTRIES" | { grep -xE 'pl|de|uk|es|us' || true; } | sort -u | jq -Rnc '[inputs]')
+                  if [ "$codes" = "[]" ]; then
+                      echo "::error::no country with a convergence leg in '$COUNTRIES' (pl, de, uk, es, us)"
+                      exit 1
+                  fi
+                  echo "codes=$codes" >> "$GITHUB_OUTPUT"
+
+    fill:
+        needs: countries
+        name: fill (${{ matrix.code }})
+        strategy:
+            fail-fast: false
+            matrix:
+                code: ${{ fromJson(needs.countries.outputs.codes) }}
+        runs-on: ubuntu-latest
+        # `minutes` (at most 30) plus the grace for requests in flight, the pack and the publish.
+        timeout-minutes: 40
+        permissions:
+            contents: write
+            actions: read
+        env:
+            # The rolling release the trees and their fills live in (country-convergence-leg.yml declares the same).
+            FIXTURE_RELEASE_TAG: convergence-fixtures
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/convergence-fill
+              with:
+                  code:         ${{ matrix.code }}
+                  token:        ${{ secrets.GITHUB_TOKEN }}
+                  minutes:      ${{ inputs.minutes > 30 && 30 || inputs.minutes }}
+                  tmdb-api-key: ${{ secrets.TMDB_API_KEY }}

@@ -55,15 +55,28 @@ inputs:
   refetch-list:
     description: >-
       A HERMETIC convergence row's list of the gaps its tree could not answer and a later leg can fetch
-      (`MissingFixtures.writeRefetches`) — published for the next leg's `fill` row. Empty publishes none.
+      (`MissingFixtures.writeRefetches`) — published for the next leg's rows to fetch before their suites.
+      Empty publishes none.
     required: false
     default: ''
   fill-archive:
     description: >-
-      A `fill` row's packed fetches (`convergence-fill.sh pack`) — published beside the pinned pair for
-      every later hermetic leg to replay over it. Empty, or a path with no file, publishes none.
+      A fill's packed fetches (`convergence-fill.sh pack`) — a leg row's pre-suite fill, or the manual
+      `Convergence fill` workflow's — published beside the pinned pair for every later hermetic leg to
+      replay over it. Empty, or a path with no file, publishes none.
     required: false
     default: ''
+  fill-row:
+    description: >-
+      The leg row that fetched `fill-archive` (its phase), appended to the fill's name so the rows of one
+      run never write one name. Empty for the manual workflow's fills.
+    required: false
+    default: ''
+
+outputs:
+  fill-asset:
+    description: The name `fill-archive` was published under; empty when nothing was.
+    value: ${{ steps.fill.outputs.asset }}
 
 runs:
   using: composite
@@ -160,15 +173,14 @@ runs:
     # WHAT A HERMETIC LEG FOUND MISSING, AND WHAT A FILL FETCHED — the two halves of "every convergence
     # build publishes the missing data it found" (docs/design/convergence-fixture-fill.md).
     #
-    # The suite's refetch list goes up for the NEXT leg's `fill` row, which fetches it within its budget
-    # and publishes what it got as a fill of the pinned pair; every hermetic leg after that replays the
-    # pinned tree with the pair's fills laid over it (`convergence-setup`). Never the tree, never the
-    # pin: a verdict leg's own inputs stay what it resolved at setup, and the pinned pair stays the
-    # recorder's to replace.
+    # The suite's refetch list goes up for the NEXT leg's rows, each of which fetches it within ~90 s
+    # before its suite, replays what it got, and publishes that as a fill of the pinned pair; every
+    # hermetic leg after that replays the pinned tree with the pair's fills laid over it
+    # (`convergence-setup`). Never the tree, never the pin: the pinned pair stays the recorder's to replace.
     #
-    # NEW NAMES, never `--clobber`: `<kind>-<code>-<corpus run>-<this run>`, so no reader meets an asset
-    # mid-replacement and the five countries' legs, publishing side by side, never write one name. Main
-    # only, like every write here (ConvergencePublishMainOnlySpec): a branch's gaps and fetches are a
+    # NEW NAMES, never `--clobber`: `<kind>-<code>-<corpus run>-<this run>[-<row>]`, so no reader meets an
+    # asset mid-replacement and the five countries' rows, publishing side by side, never write one name.
+    # Main only, like every write here (ConvergencePublishMainOnlySpec): a branch's gaps and fetches are a
     # branch's.
     - name: Publish the gaps this leg's tree could not answer
       if: github.ref == 'refs/heads/main' && inputs.mode == 'hermetic' && inputs.refetch-list != '' && env.KINOWO_CONVERGENCE_PIN_CORPUS_RUN != ''
@@ -191,18 +203,23 @@ runs:
               | sort -t- -k4,4n | head -n -2 \
               | while read -r stale; do scripts/ci/gh-release.sh delete-asset "$FIXTURE_RELEASE_TAG" "$stale" -y || true; done
 
+    # Names what it published in `fill-asset`: a leg row's bisect request carries it in the pair, so the
+    # bisect replays the tree that decided the verdict — this row's own fill included.
     - name: Publish what this leg's fill fetched
+      id: fill
       if: github.ref == 'refs/heads/main' && inputs.mode == 'hermetic' && inputs.fill-archive != '' && env.KINOWO_CONVERGENCE_PIN_CORPUS_RUN != ''
       shell: bash
       env:
           GH_TOKEN: ${{ inputs.token }}
           ARCHIVE: ${{ inputs.fill-archive }}
+          ROW: ${{ inputs.fill-row }}
       run: |
           set -uo pipefail
           [ -f "$ARCHIVE" ] || { echo "the fill fetched nothing — nothing to publish"; exit 0; }
-          named="fill-${{ inputs.code }}-$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-$GITHUB_RUN_ID.tar.zst"
+          named="fill-${{ inputs.code }}-$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-$GITHUB_RUN_ID${ROW:+-$ROW}.tar.zst"
           mkdir -p fill-upload && ln -f "$ARCHIVE" "fill-upload/$named"
           scripts/ci/gh-release.sh upload "$FIXTURE_RELEASE_TAG" "fill-upload/$named" || { echo "::warning::could not publish $named — the next fill fetches its pages again"; exit 0; }
+          echo "asset=$named" >> "$GITHUB_OUTPUT"
           echo "published $named over pair $KINOWO_CONVERGENCE_PIN_CORPUS_RUN"
 
     # Which corpus this GREEN full leg replayed, as `corpus-green-<code>.txt` beside the
@@ -270,7 +287,7 @@ runs:
           # allow-silenced: as above.
           names=$(gh release view "$FIXTURE_RELEASE_TAG" --json assets --jq '.assets[].name')
           kept=$(grep -oE "^enrichment-$code-[0-9]+\\.tar\\.(gz|zst)$" <<< "$names" | grep -oE '[0-9]+' | sort -u)
-          grep -E "^(fill|refetch)-$code-[0-9]+-[0-9]+\\.(tar\\.zst|tsv)$" <<< "$names" \
+          grep -E "^(fill|refetch)-$code-[0-9]+-[0-9]+(-[a-z][a-z-]*)?\\.(tar\\.zst|tsv)$" <<< "$names" \
               | while read -r asset; do
                     run=$(cut -d- -f3 <<< "$asset")
                     grep -qxF "$run" <<< "$kept" || "$RELEASE" delete-asset "$FIXTURE_RELEASE_TAG" "$asset" -y || true

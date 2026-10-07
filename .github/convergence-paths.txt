@@ -29,7 +29,6 @@ test/resources/fixtures/corpus/**
 .github/actions/setup-jdk/**
 .github/actions/sbt-target-cache/**
 .github/actions/convergence-publish/**
-.github/actions/convergence-fill/**
 .github/actions/convergence-findings/**
 .github/scripts/pack-enrichment-tree.sh
 .github/scripts/unpack-fixture-archive.sh
