@@ -53,6 +53,22 @@ import scala.util.Try
  * every `<details>` under that accordion is dropped before parsing — structural,
  * not a text offset.
  *
+ * **The card layout.** From the 30.09.2026 post on, the programme is instead a
+ * styled card grid inside an Elementor HTML widget — no heading/paragraph run
+ * at all:
+ *
+ *   `<div class="gcsw-day">`
+ *     `<div class="gcsw-day__date">1.10</div>`             one day, `D.MM`
+ *     `<div class="gcsw-screening">`                        one screening
+ *       `<div class="gcsw-screening__time">17:30</div>`
+ *       `<div class="gcsw-screening__title">500 mil</div>`
+ *       `<div class="gcsw-screening__meta">102’ · 2026 · Morgan Matthews · dramat</div>`
+ *
+ * The post prints no year, so a card's day takes the shared upcoming-date rule.
+ * The posts are hand-authored and the layout has changed three times in two
+ * months, so a post with cards is read as cards and any other post still walks
+ * the heading/paragraph run below.
+ *
  * Tickets are sold at the box office only ("Bilety … dostępne w sprzedaży
  * bezpośrednio przed pokazem w kasie kina"), so no screening carries a booking
  * deep-link; the repertoire post itself is the film URL.
@@ -132,6 +148,12 @@ object KinoPortClient {
   /** `1962, Orson Welles` — September 2026's captions dropped the "reż."
    *  prefix; a name straight after the year comma is still the director. */
   private val DirectorNoCreditWordPat = """^\d{4}\s*,\s*(.+?)\s*$""".r
+  /** A card's `17:30` — the whole `__time` text. */
+  private val CardTimePat    = raw"^${ScraperParse.ClockParts}$$".r
+  /** A card meta part `102’` — runtime in minutes, U+2019 (or the older U+2032 PRIME). */
+  private val CardRuntimePat = "^(\\d{1,3})[’′]$".r
+  /** A card meta part `2026` — the release year, alone between `·`s. */
+  private val CardYearPat    = "^\\d{4}$".r
   private val YearInHeaderPat = """\b(20\d{2})\b""".r
   /** Co-directed films are listed either "Wilhelm Sasnal i Anna Sasnal" or
    *  "Wilhelm Sasnal, Anna Sasnal"; both mean two people. */
@@ -163,7 +185,42 @@ object KinoPortClient {
   private def parseProgramme(renderedHtml: String, postUrl: String, today: LocalDate): Seq[RawSlot] = {
     val body = Jsoup.parseBodyFragment(renderedHtml).body()
     dropArchive(body)
+    val days = body.select("div.gcsw-day").asScala.toSeq
+    if (days.nonEmpty) days.flatMap(parseCardDay(_, postUrl, today))
+    else parseHeadingRun(body, postUrl, today)
+  }
 
+  /** One `div.gcsw-day` card → its screenings; none when its date header isn't a `D.MM` day. */
+  private def parseCardDay(day: Element, postUrl: String, today: LocalDate): Seq[RawSlot] = {
+    val date = Option(day.selectFirst(".gcsw-day__date")).map(_.text.trim).collect {
+      case DayPat(d, m) => ScraperParse.monthDay(d.toInt, m.toInt).flatMap(ScraperParse.upcomingDate(_, today))
+    }.flatten
+    for {
+      date      <- date.toSeq
+      screening <- day.select("div.gcsw-screening").asScala.toSeq
+      time      <- Option(screening.selectFirst(".gcsw-screening__time")).map(_.text.trim).collect {
+                     case CardTimePat(h, m) => ScraperParse.clock(h, m)
+                   }.flatten
+      title     <- Option(screening.selectFirst(".gcsw-screening__title")).map(_.text.trim).filter(_.nonEmpty)
+    } yield {
+      // "102’ · 2026 · Morgan Matthews · dramat": runtime and year are recognised by
+      // shape, and the director is the part straight after the year.
+      val meta  = Option(screening.selectFirst(".gcsw-screening__meta")).map(_.text).getOrElse("")
+        .split("·").map(_.trim).filter(_.nonEmpty).toSeq
+      val yearAt = meta.indexWhere(CardYearPat.matches)
+      RawSlot(
+        title          = title,
+        dateTime       = LocalDateTime.of(date, time),
+        postUrl        = postUrl,
+        runtimeMinutes = meta.collectFirst { case CardRuntimePat(n) => n.toInt },
+        releaseYear    = meta.lift(yearAt).map(_.toInt),
+        director       = (if (yearAt >= 0) meta.lift(yearAt + 1) else None).toSeq
+          .flatMap(DirectorSeparator.split(_).toSeq).map(_.trim).filter(_.nonEmpty)
+      )
+    }
+  }
+
+  private def parseHeadingRun(body: Element, postUrl: String, today: LocalDate): Seq[RawSlot] = {
     var year: Int                 = today.getYear
     var previousMonth: Option[Int] = None
     var day: Option[LocalDate]     = None

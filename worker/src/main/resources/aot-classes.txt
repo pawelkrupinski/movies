@@ -10095,6 +10095,9 @@ services.cinemas.pl.KinoPodBaranamiClient$RawSlot
 services.cinemas.pl.KinoPodBaranamiClient$RawSlot$
 services.cinemas.pl.KinoPortClient
 services.cinemas.pl.KinoPortClient$
+services.cinemas.pl.KinoPortClient$$anon$1
+services.cinemas.pl.KinoPortClient$$anon$2
+services.cinemas.pl.KinoPortClient$$anon$3
 services.cinemas.pl.KinoPortClient$RawSlot
 services.cinemas.pl.KinoPortClient$RawSlot$
 services.cinemas.pl.KinoPromienClient
