@@ -11,7 +11,6 @@ import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
-import scala.util.Success
 
 /**
  * Kino Iskra (Augustów). The venue's own site replaced Filmweb as the source:
@@ -70,7 +69,7 @@ class KinoIskraClient(
     val slots   = listing(HttpRead.page(http, RepertoireUrl), today)
     val reads   = ListingPages.readEnrichment("kino-iskra", slots.map(_.movieId), movieUrl, maxConcurrent = 2)(url =>
       record(HttpRead.page(http, url))).toMap
-    val records = reads.collect { case (id, Success(r)) => id -> r }
+    val records = reads.flatMap { case (id, attempt) => attempt.toOption.map(id -> _) }
     val films = SlotsToMovies.fold(slots, _.title, _.showtime) { (title, group, showtimes) =>
       val record = group.map(_.movieId).distinct.flatMap(records.get).foldLeft(Record())((known, next) => known.orElse(next))
       CinemaMovie(
