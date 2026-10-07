@@ -59,7 +59,9 @@ jobs:
     # runs no sample — it replays a slice of the corpus the suite replays, so it only failed sooner, for
     # ~2 minutes of every row (`country-convergence-leg.yml`) — and runs the sample's corpus-shape specs
     # (`shape`) ahead of its suite instead. `mongoTmpfs` holds Mongo's data in RAM where the heap
-    # leaves room for it. Germany and the United States run their order-independence replay in a row of their own,
+    # leaves room for it. A row that holds its order-independence replays runs them BESIDE its boot
+    # (CountryConvergenceBehaviour.runTests), so its JVM holds both at once: 7g, and 3g of tmpfs for a
+    # Mongo that holds at most 1.5 GB. Germany and the United States run their order-independence replay in a row of their own,
     # so their replays no longer bound the lane. The United States runs its sample in a row of its
     # own too (`sampleRow`), beside its suite rather than in front of it: 79 s of the lane's 10.0-minute
     # critical path (run 37150307201), its convergence row then ungated — a red sample costs a
@@ -72,10 +74,10 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  shape: corpusShapePoland,  job: 155, suite: 120, sampleSuite: 20, heap: 4g, mongoTmpfs: 6g }
+                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  shape: corpusShapePoland,  job: 155, suite: 120, sampleSuite: 20, heap: 7g, mongoTmpfs: 3g }
                     - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, shape: corpusShapeGermany, job: 155, suite: 120, sampleSuite: 20, heap: 4g, mongoTmpfs: 6g, order: convergenceGermanyOrder, orderJob: 155, orderSuite: 120 }
-                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      shape: corpusShapeUk, job: 155, suite: 120, sampleSuite: 20, heap: 4g, mongoTmpfs: 6g }
-                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   shape: corpusShapeSpain, job: 155, suite: 120, sampleSuite: 20, heap: 4g, mongoTmpfs: 6g }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      shape: corpusShapeUk, job: 155, suite: 120, sampleSuite: 20, heap: 7g, mongoTmpfs: 3g }
+                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   shape: corpusShapeSpain, job: 155, suite: 120, sampleSuite: 20, heap: 7g, mongoTmpfs: 3g }
                     - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 350, suite: 315, sampleSuite: 20, heap: 10g, order: convergenceUsOrder, orderJob: 350, orderSuite: 315, sampleRow: true }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:

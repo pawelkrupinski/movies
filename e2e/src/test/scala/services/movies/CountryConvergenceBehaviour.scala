@@ -798,8 +798,10 @@ abstract class CountryConvergenceBehaviour(
       }, SpecTimeouts.Run)
     } finally pool.shutdown()
     }
-    info(s"${country.displayName}: seeded from REAL cinema_scrapes — ${rows.size} venues, " +
-         s"${rows.map(_.films.size).sum} listings, rendering at $renderAt")
+    // `println`, not `info`: the order replays seed their own archive on a thread of their own,
+    // beside whichever test is running (see `runTests`).
+    println(s"[${country.code}] seeded from REAL cinema_scrapes — ${rows.size} venues, " +
+            s"${rows.map(_.films.size).sum} listings, rendering at $renderAt")
     rows.size
   }
 
@@ -1076,26 +1078,63 @@ abstract class CountryConvergenceBehaviour(
     }
   }
 
-  s"the ${country.displayName} corpus" should
-    "come out identical — films, screenings and rendered rows — whatever order it arrives in" taggedAs OrderIndependence in {
-    {
-      // One archive per run, in Mongo like everything else. The passes each get their
-      // own database (see `replay`), so they still cannot tread on each other.
-      val archive = storage.archive
-      seedArchive(archive)
-      reportCorpusProvenance()
+  private val OrderTest = "come out identical — films, screenings and rendered rows — whatever order it arrives in"
 
-      // Concurrently: the passes are independent whole-corpus replays and running
-      // them back-to-back made this the leg's long pole (three boots serially, on
-      // top of the shared one). Same helper the fixture determinism specs use.
-      //
-      // Each pass folds ITSELF into `comparison` as it finishes rather than handing
-      // a corpus back to be diffed afterwards, so only the baseline and the pass
-      // being compared are ever resident. Everything before that stays concurrent;
-      // only the materialise-and-diff tail is one-at-a-time. See [[CorpusComparison]]
-      // for the leg that ran out of heap holding all three.
-      val comparison = new CorpusComparison
-      val _ = ParallelReplays((0 until Passes).map(i => OrderSeed + i.toLong), replayGuard)(replay(archive, comparison, _))
+  /** The order replays, once started. */
+  @volatile private var orderReplays: Option[Alongside.Started[CorpusComparison]] = None
+
+  /**
+   * The order-independence replays BESIDE the boot rather than after it.
+   *
+   * They share nothing the boot writes: their own archive (its own database, seeded from the same
+   * corpus, so the next-day test's re-scrape of the boot's archive never reaches them), their own
+   * database per pass, and a clock of their own. Run after the boot they were the second half of
+   * every row that holds both — Poland's 195 s boot, then 356 s of replays (run 37546591704) — while
+   * the boot, bound by Mongo round trips, kept two of the runner's four cores idle.
+   *
+   * Started only when this run includes the order test: a row that excludes it by tag (Germany's
+   * and the United States' convergence rows) must not pay for replays nobody asserts on.
+   */
+  override protected def runTests(testName: Option[String], args: org.scalatest.Args): org.scalatest.Status = {
+    val included = args.filter(Set(orderTestName), tags, suiteId).exists { case (name, ignored) => name == orderTestName && !ignored }
+    if (included && testName.forall(_ == orderTestName)) { val _ = startOrderReplays() }
+    super.runTests(testName, args)
+  }
+
+  private def orderTestName: String = s"the ${country.displayName} corpus should $OrderTest"
+
+  private def startOrderReplays(): Alongside.Started[CorpusComparison] = synchronized {
+    orderReplays.getOrElse {
+      val started = Alongside.start(s"order-replays-${country.code}") {
+        val orderStorage = ConvergenceStorage.fromConfiguration(configuration, s"convergence-$corpusKey-order",
+          TitleNormalizer.forCountry(country), MovieChangeStream.Debounce.forCountry(country))
+        passStorages.synchronized(passStorages += orderStorage)
+        val archive = orderStorage.archive
+        seedArchive(archive)
+        // Concurrently: the passes are independent whole-corpus replays and running
+        // them back-to-back made this the leg's long pole (three boots serially, on
+        // top of the shared one). Same helper the fixture determinism specs use.
+        //
+        // Each pass folds ITSELF into `comparison` as it finishes rather than handing
+        // a corpus back to be diffed afterwards, so only the baseline and the pass
+        // being compared are ever resident. Everything before that stays concurrent;
+        // only the materialise-and-diff tail is one-at-a-time. See [[CorpusComparison]]
+        // for the leg that ran out of heap holding all three.
+        val comparison = new CorpusComparison
+        val _ = ParallelReplays((0 until Passes).map(i => OrderSeed + i.toLong), replayGuard)(replay(archive, comparison, _))
+        comparison
+      }
+      orderReplays = Some(started)
+      started
+    }
+  }
+
+  s"the ${country.displayName} corpus" should
+    OrderTest taggedAs OrderIndependence in {
+    {
+      // Started at the suite's start, beside the boot, when this run includes this test (`runTests`).
+      val comparison = startOrderReplays().join(replayGuard + 5.minutes)
+      reportCorpusProvenance()
       val reference = comparison.reference
       info(s"${country.displayName}: ${passBodies.describe}")
       info(s"${country.displayName}: $Passes passes over ${reference.records.size} films, " +
