@@ -113,6 +113,13 @@ class PosterProxySpec extends AnyFlatSpec with Matchers {
     PosterProxy.proxy(imdbPoster) shouldBe imdbPoster
   }
 
+  // biletyna.pl refuses weserv the same way: 8 of 8 posters probed on 2026-10-07 (the fixture pages' and two
+  // live ones) came back 404 through weserv and 200 image/jpeg fetched directly from a home connection.
+  it should "pass biletyna.pl URLs through unproxied (their origin blocks weserv)" in {
+    Seq("https://biletyna.pl/file/get/id/403764", "https://www.biletyna.pl/file/get/id/403764")
+      .foreach(url => PosterProxy.proxy(url) shouldBe url)
+  }
+
   // Guard the suffix match against the classic "endsWith" hole — a
   // lookalike domain that merely ends in the same letters must NOT be
   // treated as acsta.net and must still be proxied.

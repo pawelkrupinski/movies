@@ -87,10 +87,15 @@ object PosterProxy {
   //     /uptime because Amazon is nearly always a *fallback* poster (182
   //     fallback refs vs 6 primary on /berlin/) and the onerror chain walks
   //     silently past a failed fallback.
+  //   biletyna.pl — 8 of 8 posters probed on 2026-10-07: 404 through weserv,
+  //     200 image/jpeg direct from a home connection (its Cloudflare refuses
+  //     datacenter IPs, weserv's among them).
   private val SkipHosts = Set(
     "www.multikino.pl",
     "multikino.pl",
-    "m.media-amazon.com"
+    "m.media-amazon.com",
+    "biletyna.pl",
+    "www.biletyna.pl"
   )
 
   // The mirror image of SkipHosts: domains weserv itself refuses to fetch,
