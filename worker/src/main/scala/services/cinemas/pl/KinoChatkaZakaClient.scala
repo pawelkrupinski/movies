@@ -25,7 +25,8 @@ import scala.util.Try
  *     detail page. The list has the full-year date but NO time.
  *   - each DETAIL page (`…,<slug>,<id>.chtm`) carries the screening's wall-clock
  *     time, director, country, year and runtime in its `<meta name="description">`
- *     (`"DD.MM.YY | day | HH:MM\nTITLE (Original)\nreż. Director, Country Year (NN min)"`).
+ *     (`"DD.MM.YY | day | HH:MM\nTITLE (Original)\nreż. Director, Country Year (NN min)"`,
+ *     or since October 2026 the same with no pipes: `"13.10.26 wtorek 18:00\n…"`).
  *
  * So the list gives the date + film identity, the detail gives the time + the
  * cinema metadata. The descriptive list title is `TITLE (Original) reż. Director
@@ -67,8 +68,10 @@ object KinoChatkaZakaClient {
 
   // "23.06.2026" off the `<h3>` date header — full year, so no inference.
   private val ListDatePat = """(\d{1,2})\.(\d{1,2})\.(\d{4})""".r
-  // The detail meta description's leading "… | HH:MM" stamp.
-  private val DetailTimePat = raw"""\|\s*${ScraperParse.ClockParts}""".r
+  // The time off the detail meta description's "DD.MM.YY | day | HH:MM" stamp
+  // — or, from October 2026, the same stamp without pipes ("13.10.26 wtorek
+  // 18:00"), sometimes under a banner line: the clock after the weekday.
+  private val DetailTimePat = raw"""\p{L}+\s*\|?\s*${ScraperParse.ClockParts}""".r
   // The detail meta's "reż. Director, Country[/Country…] Year (NN min)" line.
   private val DetailMetaPat = """(?s)reż\.\s*(.+?),\s*([^()]+?)\s+(\d{4})\s*\((\d+)\s*min\)""".r
   // A trailing "(Original title)" segment on the descriptive list title.

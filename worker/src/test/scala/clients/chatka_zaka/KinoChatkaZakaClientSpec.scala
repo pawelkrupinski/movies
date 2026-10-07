@@ -47,3 +47,27 @@ class KinoChatkaZakaClientSpec extends AnyFlatSpec with Matchers with OptionValu
     movies.map(_.movie.title).exists(_.toLowerCase.contains("koncert")) shouldBe false
   }
 }
+
+/** Replays a 2026-10-07 capture of the same calendar. By October the detail
+ *  pages' meta description had dropped the pipes — `"13.10.26 wtorek 18:00\nKTOŚ
+ *  CAŁKIEM OBCY\nreż. …"`, sometimes under a banner line ("WIECZÓR Z KLASYKĄ") —
+ *  so the `| HH:MM` stamp the client looked for was gone, every entry lost its
+ *  time and was dropped, and the venue read white while it listed five DKF
+ *  screenings. */
+class KinoChatkaZakaPipelessDetailSpec extends AnyFlatSpec with Matchers with OptionValues {
+
+  private val movies = new KinoChatkaZakaClient(new FakeHttpFetch("chatka-zaka-2026-10")).fetch()
+
+  "KinoChatkaZakaClient" should "time a screening off a detail stamp without pipes" in {
+    movies.flatMap(_.showtimes) should have size 5
+    val film = movies.find(_.movie.title.toLowerCase.contains("ktoś całkiem obcy")).value
+    film.showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.of(2026, 10, 13, 18, 0))
+    film.director should contain("Brandt Andersen")
+    film.movie.runtimeMinutes.value shouldBe 103
+  }
+
+  it should "time a screening whose stamp sits under a banner line" in {
+    val film = movies.find(_.movie.title.toLowerCase.contains("czerwone latarnie")).value
+    film.showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.of(2026, 10, 14, 18, 0))
+  }
+}
