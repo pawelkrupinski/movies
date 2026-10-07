@@ -16,7 +16,7 @@ import java.time.Clock
  * did not take ([[VenuePageRead.unfiled]]): the model reads a page only from the store, and only once
  * its read is announced, so a page read but not filed was not read at all.
  *
- * Every page fetch goes through here — the film rows' enrichment, staging's, a cut-over listing's —
+ * Every page fetch goes through here — the film rows' enrichment, a cut-over listing's —
  * each caller keeping only what is its own: when a page is due, and what it does with the detail.
  */
 final class VenuePageReader(store: VenuePageStore, freshness: FreshnessStore, announce: VenueDetailRead => Unit, clock: Clock) {

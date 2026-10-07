@@ -36,7 +36,7 @@ class ImdbIdResolver(
   // `SharedExecutionBudget`.
   executionContext:    ExecutionContextExecutorService = DaemonExecutors.virtualThreadEC("imdb-id-resolver"),
   // Caches the IMDb suggestion lookup keyed by (search title, year), so the same
-  // search resolves once for 24h across the staging and event-driven paths.
+  // search resolves once for 24h across every path that asks it.
   // Defaults to passthrough so unit specs resolve live unless they wire one.
   imdbIdCache: ResolutionCache = ResolutionCache.passthrough,
   // Wikidata cross-reference fallback: when both the IMDb suggestion endpoint and
@@ -231,8 +231,7 @@ class ImdbIdResolver(
     // resolver's fallback source (`ResolverDecision.fallback`), on every fact it publishes, never from a title search.
     cache.get(key).filter(record => record.imdbId.isEmpty && record.tmdbId.isDefined).foreach { record =>
       logger.info(s"IMDb-id: looking up '${key.cleanTitle}' (${key.year.getOrElse("?")}) [search='$searchTitle']")
-      // Try every year the film's cinemas report (plus the key year), sorted — the
-      // mirror of the staging recovery. IMDb's release year can sit at any cinema's
+      // Try every year the film's cinemas report (plus the key year), sorted. IMDb's release year can sit at any cinema's
       // reported (production) year, not the canonical TMDB one ("Chłopiec na krańcach
       // świata": TMDB 2026, IMDb + the cinemas 2025), so a single-key-year lookup left
       // the id flickering present/absent with arrival order.
@@ -270,9 +269,7 @@ class ImdbIdResolver(
   def drain(): Unit = pool.drain()
 
   /** Drain within `budget`, then end the pool — shutdown only. A caller that merely wants the
-   *  in-flight work finished wants [[drain]]: this one rejects everything after it,
-   *  and the replay boot drains BEFORE the staging fold publishes the
-   *  `ImdbIdMissing` events that need this resolver.
+   *  in-flight work finished wants [[drain]]: this one rejects everything after it.
    *
    *  Lookups still queued at the budget, and failed ones waiting to be retried, are dropped: the row
    *  keeps no imdbId, so it is asked again — on its next Filmweb rating refresh, the daily OMDb

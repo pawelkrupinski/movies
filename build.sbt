@@ -296,13 +296,6 @@ lazy val worker = (project in file("worker"))
       scalatestPlay % Test,
       scalatestScalaCheck % Test,
     ),
-    // The hand-stepped time doubles and the polling helper live ONCE, in testkit, beside every other
-    // shared fake. common's own specs need them too, but common cannot depend on testkit (testkit depends on common), so
-    // compile those two sources into common's test config as well. common's test classpath is never
-    // on another module's, so the two compilations never meet.
-    Test / unmanagedSources ++= Seq("MutableClock", "ManualScheduler", "Eventually", "SpecClock", "SpecTimeouts").map { name =>
-      (LocalRootProject / baseDirectory).value / "testkit" / "src" / "main" / "scala" / "tools" / s"$name.scala"
-    }
   )
   .settings(unitReportSettings, testOrderSettings)
   .settings(itReportSettings)

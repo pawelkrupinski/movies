@@ -100,10 +100,8 @@ class MovieService(
   }
 
   /** Build the resolved `MovieRecord` from a TMDB hit + the row's `existing`
-   *  record — pure (no cache, no lock), so the movies path (then `settleResolved`)
-   *  and the staging promoter (then `stagingRepository.upsert`) share ONE definition of
-   *  how a resolution writes the TMDB-side fields + `Tmdb` slot while carrying the
-   *  cinema-side data and score fields forward. */
+   *  record — pure (no cache, no lock): how a resolution writes the TMDB-side fields
+   *  + `Tmdb` slot while carrying the cinema-side data and score fields forward. */
   private def buildResolvedRecord(
     tmdbId:      Int,
     hit:         Option[TmdbClient.SearchResult],
@@ -247,8 +245,8 @@ class MovieService(
 
   /** Offer one row's ratings to the enqueuer, addressed by `(title, year)`.
    *
-   *  Exists for the same reason the [[retryResolve]] overload above does: `CacheKey`
-   *  is `private[services]`, so a caller outside the package cannot name a row. The
+   *  Exists because `CacheKey` is `private[services]`, so a caller outside the
+   *  package cannot name a row. The
    *  fixture harness stands in for `EnrichmentReaper`'s tick, and without this it had
    *  to restate the reaper's eligibility itself — which is precisely how it came to
    *  gate every rating source on `tmdbId` while production gates IMDb on an `imdbId`

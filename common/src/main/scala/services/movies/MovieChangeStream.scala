@@ -663,7 +663,7 @@ final class MovieChangeStream(
 
 object MovieChangeStream {
   /** The apply queue's capacity: the three cursors' demand windows, each event at most one task,
-   *  plus room for the re-read retries and venue waits that owe no demand. */
+   *  plus room for the re-read retries that owe no demand. */
   private[movies] def applyQueueCapacity(window: Int): Int = math.min(Int.MaxValue.toLong, 3L * window + 4096L).toInt
 
   /** One re-read film on its way to the listeners, with the fence mark taken before the read. */

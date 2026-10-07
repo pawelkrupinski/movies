@@ -526,7 +526,7 @@ groups:
     interval: 1m
     rules:
       # RETIRED RULE kinowo-residential-proxy-failing -- ported to Prometheus-native
-      # nix/files/monitoring/rules/residential-proxy.rules (`ResidentialProxyFallingBackToZyte`) on
+      # nix/files/monitoring/rules/residential-proxy.rules (`ResidentialProxyFailing`) on
       # 2026-09-10, not deleted outright: this file's ONLY contact point is Telegram
       # (grafana-contactpoints.yaml has no email receiver), so a rule living here could nag a chat
       # channel and nothing else about a cost regression that had, that same day, left UK's
@@ -1004,7 +1004,7 @@ groups:
       # frozen ratio of 1.0. This counter is the only remaining evidence, so it is
       # the only thing that can carry the alert.
       #
-      # Any incomplete pass at all is worth a page: since 2026-10-04 the census
+      # A run of incomplete passes is worth a page: since 2026-10-04 the census
       # counts the worker's cache (every 5 minutes), and a tick is incomplete only
       # while the cache has never read the whole corpus since boot — a real fault
       # (decode, connection, timeout), not routine noise. The

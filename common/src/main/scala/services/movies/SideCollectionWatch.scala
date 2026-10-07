@@ -111,8 +111,10 @@ final class SideCollectionWatch[Dto: ClassTag](
                   .getOrElse(fid))
                 rowId match {
                   // Caught whatever it is, fatal included: this is the driver's `onNext`, which must not
-                  // throw — a throw out of it ends the cursor with this event's demand never released.
-                  // An interrupt keeps its flag for whoever owns the thread.
+                  // throw — a throw out of it ends the cursor. The event stays unacknowledged (a restart
+                  // replays it) and its demand slot unreleased, since `onChange` may have queued it before
+                  // throwing and releasing here too would release it twice; it throws only as the apply
+                  // executor shuts down. An interrupt keeps its flag for whoever owns the thread.
                   case Some(id) => try onChange(id, applied)
                     catch { case e: Throwable =>
                       if (e.isInstanceOf[InterruptedException]) Thread.currentThread().interrupt()
