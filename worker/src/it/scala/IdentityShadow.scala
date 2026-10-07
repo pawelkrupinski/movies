@@ -73,12 +73,38 @@ object IdentityShadow {
         val cache = new EnrichmentCache(store, clock = () => TestWiring.FixedInstant.toEpochMilli)
         val leaf  = new GapLeaf(missing)
         cache.preload()
-        val fetch = new FallbackHttpFetch(Seq(
-          "tree"  -> new clients.tools.FakeHttpFetch(tree, strict = true, foldYear = false, root = root),
-          "cache" -> new CachingEnrichmentFetch(cache, live.fold[HttpFetch](leaf)(key => new LiveGapLeaf(key, leaf)))))
+        val fetch = replayChain(new clients.tools.FakeHttpFetch(tree, strict = true, foldYear = false, root = root), cache,
+          live.fold[HttpFetch](leaf)(key => new LiveGapLeaf(key, leaf)))
         new Corpus(s"full-${c.code}", c, CorpusFixture.readFrom(path), fetch, () => leaf.met, () => missing.keys.map(_._2), Some(() => leaf.metOnThread))
       }
     }
+
+  /** A full corpus's chain: the recorded `tree`, then the remembered verdicts in `cache` ([[RememberedVerdicts]],
+   *  read-only), then `leaf` for a request neither answers. */
+  def replayChain(tree: HttpFetch, cache: EnrichmentCache, leaf: HttpFetch): HttpFetch =
+    new FallbackHttpFetch(Seq("tree" -> tree, "verdicts" -> new RememberedVerdicts(cache, leaf)))
+
+  /** The verdicts a recording remembered beside its tree, READ-ONLY: a remembered answer is answered, a remembered failure
+   *  thrown as it was, and anything else asked of `leaf` every time. Never a [[CachingEnrichmentFetch]], which remembers
+   *  what `leaf` answered for the rest of the run: the gap leaf's empty stand-in then answered every later ask of the same
+   *  request as though the source had — the chain-wide Cineworld detail, a gap for the first venue asking, read
+   *  "read, empty" for the other 76, and never read again (UK RBO Macbeth, 2026-10-07). */
+  final class RememberedVerdicts(cache: EnrichmentCache, leaf: HttpFetch) extends HttpFetch {
+    private def held[A](key: String, url: String)(answer: PartialFunction[CachedResponse, A])(orElse: => A): A =
+      cache.lookup(key) match {
+        case Some(failed: CachedResponse.Failed) => throw CachingEnrichmentFetch.revive(failed, url)
+        case Some(response) if answer.isDefinedAt(response) => answer(response)
+        case _ => orElse
+      }
+    private val body: PartialFunction[CachedResponse, String] = { case CachedResponse.Body(text) => text }
+    override def get(url: String): String = held(CachingEnrichmentFetch.keyOf("GET", url), url)(body)(leaf.get(url))
+    override def get(url: String, headers: Map[String, String]): String =
+      held(CachingEnrichmentFetch.keyOf("GET", url), url)(body)(leaf.get(url, headers))
+    override def getBytes(url: String): Array[Byte] =
+      held(CachingEnrichmentFetch.keyOf("BYTES", url), url) { case b: CachedResponse.Bytes => b.bytes }(leaf.getBytes(url))
+    override def post(url: String, body: String, contentType: String): String =
+      held(CachingEnrichmentFetch.keyOf("POST", url, Some(body)), url)(this.body)(leaf.post(url, body, contentType))
+  }
 
   /** The end of a full corpus's chain: a request the recorded tree and verdicts cannot answer is
    *  NAMED in `missing` and answered EMPTY, as a remembered 404 would be. A hermetic leaf throws
@@ -105,12 +131,14 @@ object IdentityShadow {
    *  live before ([[LiveGapLeaf.readPages]]), answered as read; anything else, and a live failure, is still the gap. For
    *  the local resolver-only loop and the capture only (`settings.IdentityLiveGaps`): at most
    *  `perHost` requests at a time per host ([[tools.HostPacing]]: halved on a 429 or 503, retried after a back-off), and
-   *  every answer kept on disk ([[LiveGapLeaf.Store]]) so a re-run after a rule change asks nothing it asked before. */
+   *  every answer kept on disk ([[LiveGapLeaf.Store]]) so a re-run after a rule change asks nothing it asked before. A
+   *  read that FAILED is kept nowhere — the gap again for the rest of this run, asked live again by the next. */
   final class LiveGapLeaf(key: settings.IdentityLiveGaps, gap: GapLeaf,
-                          perHost: settings.IdentityLivePerHost = settings.ProcessConfiguration.resolve().identityLivePerHost) extends HttpFetch {
+                          perHost: settings.IdentityLivePerHost = settings.ProcessConfiguration.resolve().identityLivePerHost,
+                          real: HttpFetch = new RealHttpFetch()) extends HttpFetch {
     import LiveGapLeaf._
-    private val real   = new RealHttpFetch()
     private val pacing = new tools.HostPacing(perHost.value, Retries, BackOff.toMillis)
+    private val failed = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
     private def answerable(url: String) = url.contains("themoviedb.org") || url.contains("imdb.com")
     private def keyed(url: String) = url.replace(s"api_key=$StubTmdbKey", s"api_key=${key.tmdbKey}")
     private def stored(id: String)(read: => String): String = {
@@ -118,8 +146,9 @@ object IdentityShadow {
       if (Files.exists(file)) Files.readString(file)
       else { val answer = read; tools.AtomicFiles.writeString(file, answer); answer }
     }
-    private def tried(url: String, id: => String, read: => String, orGap: => String): String =
-      if (!answerable(url) && !Files.exists(fileOf(id))) orGap else scala.util.Try(stored(id)(pacing(url)(read))).getOrElse(orGap)
+    private def tried(url: String, id: String, read: => String, orGap: => String): String =
+      if (failed.contains(id) || (!answerable(url) && !Files.exists(fileOf(id)))) orGap
+      else scala.util.Try(stored(id)(pacing(url)(read))).getOrElse { failed.add(id); orGap }
     override def get(url: String): String = tried(url, s"GET $url", real.get(keyed(url)), gap.get(url))
     override def get(url: String, headers: Map[String, String]): String =
       tried(url, s"GET $url", real.get(keyed(url), headers), gap.get(url, headers))
