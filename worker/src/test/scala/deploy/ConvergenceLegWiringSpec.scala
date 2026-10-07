@@ -697,6 +697,9 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     caller should include ("jvm-options:                   ${{ inputs.jvm-options || '' }}")
     leg.linesIterator.count(_.trim == "JVM_OPTIONS:      ${{ inputs.jvm-options }}") shouldBe 2
     leg.linesIterator.count(_.trim == "read -ra jvm <<< \"$JVM_OPTIONS\"") shouldBe 2
+    // ...and a hand-dispatched runner label reaches every leg, x64 unless asked.
+    caller should include ("runner:                        ${{ inputs.runner || 'ubuntu-latest' }}")
+    leg should include ("runs-on: ${{ inputs.runner }}")
     // Main's kick passes no inputs, so every push-dispatched run stays unprofiled.
     RepoFile.read(".github/workflows/main.yml") should not include ("-f profile")
   }

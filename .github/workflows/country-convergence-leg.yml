@@ -197,6 +197,13 @@ on:
                 required: false
                 type: string
                 default: ''
+            # The runner label the leg runs on: how a hand-dispatched run tries another machine (an arm64
+            # runner's 4 vCPUs are 4 cores, an x64 one's 2 hyperthreaded) on the lane it would ship to.
+            runner:
+                description: The runner label the leg runs on.
+                required: false
+                type: string
+                default: ubuntu-latest
             # Extra sbt JVM options for every sbt run of the leg (`-J-XX:+UseParallelGC`): how a hand-dispatched
             # run tries a JVM setting on the runner it would ship to. Empty on every dispatch Main makes.
             jvm-options:
@@ -292,7 +299,7 @@ jobs:
             fail-fast: false
             matrix:
                 phase: ${{ fromJson(format('["convergence"{0}{1}]', inputs.order-command != '' && ',"order-independence"' || '', inputs.sample-row && ',"sample"' || '')) }}
-        runs-on: ubuntu-latest
+        runs-on: ${{ inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
         # because the corpus was mis-sized (Poland's films-per-venue ratio applied

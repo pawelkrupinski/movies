@@ -34,6 +34,11 @@ on:
                 required: false
                 type: string
                 default: ''
+            runner:
+                description: The runner label every leg runs on (country-convergence-leg.yml), e.g. ubuntu-24.04-arm.
+                required: false
+                type: string
+                default: ubuntu-latest
 
 concurrency:
     group: identity-model-convergence
@@ -111,6 +116,7 @@ jobs:
             mode:                          hermetic
             profile:                       ${{ inputs.profile == true }}
             jvm-options:                   ${{ inputs.jvm-options || '' }}
+            runner:                        ${{ inputs.runner || 'ubuntu-latest' }}
         # TMDB_API_KEY / OMDB_API_KEY, and the GITHUB_TOKEN the setup action reads.
         secrets: inherit
 
