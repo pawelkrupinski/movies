@@ -88,10 +88,11 @@ trait TestWiring extends WorkerWiring {
   // The harness's detail handler announces its page reads (`VenueDetailRead`) to THIS buffer rather
   // than straight to the bus, and each detail pass flushes it only after EVERY detail in the pass has
   // merged, so no re-ask races the pass's other merges. Production publishes inline (no buffer).
-  private val detailEventBuffer = scala.collection.mutable.ListBuffer.empty[DomainEvent]
+  // Concurrent: the detail drain's claimants announce side by side (`drainQueue`).
+  private val detailEventBuffer = new java.util.concurrent.ConcurrentLinkedQueue[DomainEvent]()
   private val detailCaptureBus: EventBus = new EventBus {
     def subscribe(handler: PartialFunction[DomainEvent, Unit]): Unit = ()
-    def publish(event: DomainEvent): Unit = { detailEventBuffer += event; () }
+    def publish(event: DomainEvent): Unit = { detailEventBuffer.add(event); () }
   }
   override lazy val enrichDetailsHandler = new EnrichDetailsHandler(
     detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache,
@@ -348,51 +349,58 @@ trait TestWiring extends WorkerWiring {
    */
   private def drainRatingQueueOnce(): Int = {
     lastRatingRound.clear()
-    val handled   = new java.util.concurrent.atomic.AtomicInteger(0)
+    val handled = new java.util.concurrent.atomic.AtomicInteger(0)
+    drainQueue("rating-sync") { task =>
+      ratingHandlerByType.get(task.taskType).foreach { h =>
+        try { lastRatingRound.add(task -> h.handle(task).toString); handled.incrementAndGet() }
+        catch { case e: Exception => lastRatingRound.add(task -> s"threw ${e.getClass.getSimpleName}: ${e.getMessage}"); () }
+      }
+    }
+    handled.get()
+  }
+
+  /** Every claimable task through `handle`, on [[drainClaimants]] claimants side by side — the
+   *  synchronous stand-in for production's `TaskWorker` pool, each task completed once handled. A
+   *  claimant that finds the queue momentarily empty stops; the caller's round loop drains again.
+   *
+   *  The detail drain claimed one task at a time on one thread until 2026-10-07: every US pass worked
+   *  its few thousand detail tasks as serial round trips, ~23 s of each of the leg's six projections
+   *  at under one core (run 37563035752). Under a `SameThreadExecutionBudget` this is one claimant, so
+   *  a determinism spec's drains stay strictly serial. */
+  private[tools] def drainQueue(workerPrefix: String)(handle: services.tasks.Task => Unit): Unit = {
     val claimants = (0 until drainClaimants).map { i =>
-      val workerId = s"rating-sync-$i"
+      val workerId = s"$workerPrefix-$i"
       val thread   = new Thread(
         () =>
           Iterator.continually(taskQueue.claim(workerId, 5.minutes))
             .takeWhile(_.isDefined).flatten
-            .foreach { task =>
-              ratingHandlerByType.get(task.taskType).foreach { h =>
-                try { lastRatingRound.add(task -> h.handle(task).toString); handled.incrementAndGet() }
-                catch { case e: Exception => lastRatingRound.add(task -> s"threw ${e.getClass.getSimpleName}: ${e.getMessage}"); () }
-              }
-              taskQueue.complete(task.id, workerId)
-            },
+            .foreach { task => handle(task); taskQueue.complete(task.id, workerId) },
         workerId)
       thread.start()
       thread
     }
     claimants.foreach(_.join())
-    handled.get()
   }
 
   /** One detail pass — the reaper's tick (capped at its `maxEnqueuePerTick`) and the tasks it
    *  enqueued worked — answering how many it enqueued. */
   private def enrichDetailsOnce(): Int = {
     val enqueued = detailReaper.tick()
-    val workerId = "detail-sync"
     // A handler that asks for its task again (`Reschedule`: a page venue_pages did not take) has it queued for the
     // next pass, as production's TaskWorker returns it to waiting — never worked again within this pass.
-    val again = Iterator.continually(taskQueue.claim(workerId, 5.minutes))
-      .takeWhile(_.isDefined).flatten
-      .flatMap { task =>
-        // The page reads a cut-over model asked for its waiting listings run beside the film rows'.
-        val outcome =
-          if (task.taskType == TaskType.EnrichDetails) scala.util.Try(enrichDetailsHandler.handle(task)).toOption
-          else if (task.taskType == TaskType.ReadVenuePage) scala.util.Try(readVenuePageHandler.handle(task)).toOption
-          else None
-        taskQueue.complete(task.id, workerId)
-        outcome.collect { case _: services.tasks.HandlerOutcome.Reschedule => task }
-      }.toList
-    again.foreach(task => taskQueue.enqueue(task.taskType, task.dedupKey, task.payload, submittedAt = clock.instant()))
+    val again = new java.util.concurrent.ConcurrentLinkedQueue[services.tasks.Task]()
+    drainQueue("detail-sync") { task =>
+      // The page reads a cut-over model asked for its waiting listings run beside the film rows'.
+      val outcome =
+        if (task.taskType == TaskType.EnrichDetails) scala.util.Try(enrichDetailsHandler.handle(task)).toOption
+        else if (task.taskType == TaskType.ReadVenuePage) scala.util.Try(readVenuePageHandler.handle(task)).toOption
+        else None
+      outcome.collect { case _: services.tasks.HandlerOutcome.Reschedule => again.add(task) }
+      ()
+    }
+    again.forEach(task => { taskQueue.enqueue(task.taskType, task.dedupKey, task.payload, submittedAt = clock.instant()); () })
     // Every detail has merged; now announce the pages read, against a fully-settled cache.
-    val ready = detailEventBuffer.toList
-    detailEventBuffer.clear()
-    ready.foreach(eventBus.publish)
+    Iterator.continually(detailEventBuffer.poll()).takeWhile(_ != null).foreach(eventBus.publish)
     enqueued + again.size
   }
 

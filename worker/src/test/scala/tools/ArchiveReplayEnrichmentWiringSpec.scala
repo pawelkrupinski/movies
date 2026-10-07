@@ -349,6 +349,26 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     missing.size should be >= 1
   }
 
+  // The detail drain worked one task at a time on one thread: a few thousand detail tasks of serial
+  // round trips on every US projection, ~23 s each at under one core (run 37563035752).
+  "a harness queue drain" should "work its tasks on the background budget's claimants side by side" in {
+    val wiring  = hermeticWiring(None, new MissingFixtures)
+    (1 to 12).foreach(i => wiring.taskQueue.enqueue(services.tasks.TaskType.EnrichDetails, s"probe-$i", Map.empty,
+      submittedAt = wiring.clock.instant()))
+    // Opens only once two handlers are in flight at once: one claimant at a time never opens it.
+    val together = new java.util.concurrent.CountDownLatch(2)
+    val met      = new java.util.concurrent.atomic.AtomicBoolean(false)
+    val handled  = new java.util.concurrent.atomic.AtomicInteger(0)
+    wiring.drainClaimants should be > 1
+    wiring.drainQueue("probe") { _ =>
+      together.countDown()
+      if (together.await(10, java.util.concurrent.TimeUnit.SECONDS)) met.set(true)
+      handled.incrementAndGet(); ()
+    }
+    handled.get shouldBe 12
+    withClue("no two tasks were ever handled at once: ") { met.get shouldBe true }
+  }
+
   it should "answer what the recording holds without refusing anything" in {
     // Record through a RECORDING wiring on the same tree, exactly as the recorder would.
     val leaf = new CountingLeaf
