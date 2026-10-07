@@ -133,6 +133,17 @@ class HttpReadSpec extends AnyFlatSpec with Matchers {
     ChallengePage.detect(s"\n  $IncapsulaBlock") shouldBe Some("Incapsula")
   }
 
+  // A film page from Flicks is ~350 KB, and searching all of it for eight markers was 17% of a US detail drain's CPU
+  // (JFR, run 37622335270 and after). Every vendor's interstitial is a page of a few KB with its marks near the top,
+  // so a body is searched in its first SearchedChars: a challenge page whole, a long page only where one would say so.
+  it should "search a long body only as far as a challenge page reaches" in {
+    val filler = "<div class=\"film\">Diuna</div>" * (ChallengePage.SearchedChars / 20)
+    ChallengePage.detect(s"<html><head><title>Just a moment...</title></head><body>$filler</body></html>") shouldBe Some("Cloudflare")
+    ChallengePage.detect(s"<html><body>$filler<div id=\"px-captcha\"></div></body></html>") shouldBe None
+    ChallengePage.detect(s"<html><body>${filler.take(ChallengePage.SearchedChars - 200)}<div id=\"px-captcha\"></div></body></html>") shouldBe
+      Some("PerimeterX")
+  }
+
   it should "recognise Incapsula's block page and its bare JS challenge" in {
     ChallengePage.detect(IncapsulaBlock) shouldBe Some("Incapsula")
     ChallengePage.detect(IncapsulaJsChallenge) shouldBe Some("Incapsula")

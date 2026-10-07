@@ -189,7 +189,12 @@ object ChallengePage {
     contains("px-captcha")                          -> "PerimeterX"
   )
 
-  private def contains(marker: String): String => Boolean = _.contains(marker)
+  private def contains(marker: String): String => Boolean = body => body.indexOf(marker, 0, math.min(body.length, SearchedChars)) >= 0
+
+  /** How far into a body the markers are searched. Every vendor's interstitial is a page of a few KB with its marks
+   *  near the top, so this holds a challenge page whole; past it is a real page's own content — a Flicks film page is
+   *  ~350 KB, and searching all of it for every marker was 17% of a US detail drain's CPU (JFR, 2026-10-07). */
+  val SearchedChars: Int = 64 * 1024
 
   /** The vendor whose challenge this body is, if it is one.
    *
