@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.OkfIluzjaClient
 
-import java.time.{LocalDate, LocalDateTime}
+import java.time.LocalDateTime
 
 /** Replays the recorded weekly repertoire page (07-06-2026 capture) through
  *  the client.  The page lists all seven days of the current week in a single
@@ -17,7 +17,7 @@ import java.time.{LocalDate, LocalDateTime}
 class OkfIluzjaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val http   = new FakeHttpFetch("okf-iluzja")
-  private val client = new OkfIluzjaClient(http, OkfIluzja, LocalDate.of(2026, 6, 7))
+  private val client = new OkfIluzjaClient(http, OkfIluzja)
   // Every case only reads the parsed result, so the fixture is replayed once per suite.
   private lazy val fetched = client.fetch()
 

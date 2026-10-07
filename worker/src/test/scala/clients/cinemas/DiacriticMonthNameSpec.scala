@@ -31,7 +31,7 @@ class DiacriticMonthNameSpec extends AnyFlatSpec with Matchers {
     movies.flatMap(_.showtimes.map(_.dateTime))
 
   "OkfIluzjaClient" should "read a 'września' day header" in {
-    val client = new OkfIluzjaClient(new FakeHttpFetch("okf-iluzja-diacritic-month"), OkfIluzja, today)
+    val client = new OkfIluzjaClient(new FakeHttpFetch("okf-iluzja-diacritic-month"), OkfIluzja)
     val movies = client.fetch()
     movies should not be empty
     showtimesOf(movies) should contain(LocalDateTime.of(2026, 9, 4, 16, 15))

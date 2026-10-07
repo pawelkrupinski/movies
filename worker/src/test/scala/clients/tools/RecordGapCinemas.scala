@@ -43,7 +43,7 @@ object RecordGapCinemas {
     // ── Lublin ──
     report("Kino CK Lublin")(new Bilety24Client(record("kino-ck-lublin"), "https://ck-lublin.bilety24.pl", KinoCkLublin, titles = titleNormalizer).fetch().size)
     // ── Częstochowa / Radom ──
-    report("OKF Iluzja")(new OkfIluzjaClient(record("okf-iluzja"), OkfIluzja, today = models.VenueClock.system.todayInPoland).fetch().size)
+    report("OKF Iluzja")(new OkfIluzjaClient(record("okf-iluzja"), OkfIluzja).fetch().size)
     report("MCSW Elektrownia")(new McswElektrowniaCinemaClient(record("mcsw-elektrownia"), McswElektrowniaCinema, today = models.VenueClock.system.todayInPoland).fetch().size)
     // ── Kielce ──
     report("Kino Fenomen")(new KinoFenomenClient(record("kino-fenomen"), KinoFenomen).fetch().size)

@@ -33,16 +33,12 @@ import scala.jdk.CollectionConverters._
  * (https://bilety.okf.czest.pl/MSI/mvc/pl) — there are no per-screening
  * booking URLs on the repertoire page, so `bookingUrl` is always `None`.
  *
- * `today` is accepted so the spec can pin the date inference to a fixed
- * capture day; production passes the real `LocalDate.now`.  The date is
- * taken directly from the h2 header (year included), not inferred from
- * `today` — `today` is currently unused but kept for structural consistency
- * with other single-page scrapers that do need it.
+ * The date is taken directly from the h2 header (year included), so the
+ * client needs no "today" to infer it from.
  */
 class OkfIluzjaClient(
   http:              HttpFetch,
-  override val cinema: Cinema = OkfIluzja,
-  today:             => LocalDate
+  override val cinema: Cinema = OkfIluzja
 ) extends CinemaScraper {
 
   import OkfIluzjaClient._

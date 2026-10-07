@@ -587,7 +587,7 @@ class CinemaScraperCatalog(
   private val czestochowaScrapers: Seq[CinemaScraper] = Seq(
     cinemaCity("1089", CinemaCityCzestochowaJurajska),
     cinemaCity("1075", CinemaCityCzestochowaWolnosc),
-    new OkfIluzjaClient(http, OkfIluzja, today),
+    new OkfIluzjaClient(http, OkfIluzja),
   )
 
   private val radomScrapers: Seq[CinemaScraper] = Seq(
