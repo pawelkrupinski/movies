@@ -2988,6 +2988,16 @@ US halves because the model itself now takes SEVENTEEN, TOMORROW X TOGETHER and 
 their pages are read. One capture cycle (capture 3–4 min, fill 25 s, ratchet 15 s, whole-corpus dump 7 min) runs in
 about 11 minutes once the pages are stored.
 
+**From an empty store** (re-capture of 2026-10-07, same recording). A capture with no stored pages lost 187 right takes:
+the API gaps a page's detail sits in are now matched by catalogue id too (Cineworld's `movies?…&ids=<id>`, UK RBO
+Macbeth ×77), a replay gap is never remembered as an answer (it read "read, empty" for every venue after the first), the
+unread pages of the model's POOLED takes are read too (UK CBeebies Panto ×110, else taken as the 1950 *Treasure
+Island*), and a country is captured again while each capture reads more (at most 4). Reading every unread page instead
+would cost UK ~1,600 reads, US ~2,400, PL 18 (nearly all own matches); the bound reads UK 43, US 113, PL 9, DE/ES 0.
+Re-baseline: 507 right / 0 wrong; the 27 lines that left it are right in the whole corpus (Swan Lake ×23, Ocean
+Odyssey, Pip and Posy now model takes; Binti and Fritzi at Terminal Kultury, whose biletyna.pl posters prod files as
+unreadable — `hashes: null` for all 205 — so the fixture's poster take is gone while a local read still takes them).
+
 **Re-baseline.** The ratchet replays only the clusters the model leaves unmatched, so 1,172 of the old 1,460 right lines
 left it: every one was checked against the whole-corpus final decisions (`IdentityResolveDumpIntegrationSpec`) — 1,155
 are still taken right (by the model, its fallback or the stage), 16 left the corpus, and one is lost: US "Exhibition on
