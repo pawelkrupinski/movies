@@ -33,8 +33,10 @@ trait ReadModelProjectionMetrics {
   def recordCardRetired(reason: String): Unit
 
   /** Documents the rolling CONTENT check rewrote — a stored projection that had drifted
-   *  from what its source row projects to. Zero is the healthy reading. */
-  def recordDriftWrites(documents: Int): Unit
+   *  from what its source row projects to — by `cause` ([[ReadModelProjectionMetrics.DriftCause]]):
+   *  which part of a card moved, or a venue's screenings row written or removed. Zero is the
+   *  healthy reading; the cause says which path is losing writes. */
+  def recordDrift(cause: String, documents: Int): Unit
 
   /** A prune sweep found `rows` venue rows whose film no longer lists the venue -- removals the
    *  change stream did not apply -- and pruned them, or `withheld` them all as over the cap
@@ -176,6 +178,9 @@ object ReadModelProjectionMetrics {
   }
   /** The `cause` of a card write: `new`, the one part that moved, or `multiple`. */
   object CardWriteCause { val New = "new"; val Multiple = "multiple" }
+  /** The `cause` of a content-check rewrite: a card's [[CardWriteCause]], or one of these for a
+   *  venue's screenings row. */
+  object DriftCause { val ScreeningUpsert = "screening-upsert"; val ScreeningDelete = "screening-delete" }
 
   val Targets: Seq[String]        = Seq(Target.Movie, Target.Screening)
   val Ops:     Seq[String]        = Seq(Op.Upsert, Op.Delete)
@@ -188,6 +193,7 @@ object ReadModelProjectionMetrics {
   val CardParts: Seq[String] = Seq(CardPart.Title, CardPart.Poster, CardPart.Facts, CardPart.Synopsis,
     CardPart.SynopsisByCity, CardPart.Ratings, CardPart.Trailers, CardPart.AgeRating, CardPart.ShareCard)
   val CardWriteCauses: Seq[String] = Seq(CardWriteCause.New, CardWriteCause.Multiple) ++ CardParts
+  val DriftCauses: Seq[String]     = CardWriteCauses ++ Seq(DriftCause.ScreeningUpsert, DriftCause.ScreeningDelete)
 
   /** The cause label of a write that moved `changed`. */
   def cardWriteCause(changed: Set[String]): String =
@@ -197,7 +203,7 @@ object ReadModelProjectionMetrics {
     def recordWrite(target: String, op: String, count: Int): Unit = ()
     def recordFilmPruned(reason: String, count: Int): Unit        = ()
     def recordCardRetired(reason: String): Unit                   = ()
-    def recordDriftWrites(documents: Int): Unit                   = ()
+    def recordDrift(cause: String, documents: Int): Unit          = ()
     def recordUnlistedVenues(rows: Int, withheld: Boolean): Unit  = ()
     def recordProject(trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit = ()
     def recordWriteBurst(seconds: Double): Unit                       = ()

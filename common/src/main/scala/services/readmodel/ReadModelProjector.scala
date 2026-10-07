@@ -321,6 +321,11 @@ class ReadModelProjector(
     // scales with city count, not with resolve/synopsisByCity/ratings cost.
     val writing = tools.Stopwatch.start()
     var written = 0
+    // A content check's writes are DRIFT — the stored projection disagreed with the source and no
+    // event repaired it — so each is counted by what moved and named on one line per row, the
+    // film ids being what a drift investigation has to start from.
+    val drifting = trigger == ProjectTrigger.Content
+    val drifted  = Seq.newBuilder[String]
     val now     = clock.millis()
     val publish = variants.flatMap { case (projected, screenings) =>
       gate(rowId, projected, screened = screenings.nonEmpty, now).map(_ -> screenings)
@@ -332,10 +337,25 @@ class ReadModelProjector(
       if (changed) {
         writer.upsertMovie(movie)
         metrics.recordWrite(Target.Movie, Op.Upsert, 1)
-        metrics.recordCardWrite(before.fold(Set.empty[String])(_.partsDifferingFrom(hash)))
+        val parts = before.fold(Set.empty[String])(_.partsDifferingFrom(hash))
+        metrics.recordCardWrite(parts)
         written += 1
+        if (drifting) {
+          val cause = ReadModelProjectionMetrics.cardWriteCause(parts)
+          metrics.recordDrift(cause, 1)
+          drifted += s"card ${movie._id} (${if (parts.isEmpty) cause else parts.toSeq.sorted.mkString("+")})"
+        }
       }
-      written += diffScreenings(movie._id, screenings)
+      val screeningDiff = diffScreenings(movie._id, screenings)
+      written += screeningDiff.documents
+      if (drifting) {
+        def note(cause: String, ids: Seq[String]): Unit = if (ids.nonEmpty) {
+          metrics.recordDrift(cause, ids.size)
+          drifted += s"$cause ${ids.size} (${ReadModelProjector.idsForLog(ids)})"
+        }
+        note(ReadModelProjectionMetrics.DriftCause.ScreeningUpsert, screeningDiff.upserted)
+        note(ReadModelProjectionMetrics.DriftCause.ScreeningDelete, screeningDiff.deleted)
+      }
       // Remembered only once the screenings are written too: a throw in the screenings
       // write used to leave the card's hash "current", so the screenings were never
       // retried until the row changed again.
@@ -358,6 +378,8 @@ class ReadModelProjector(
     val served = kept.flatMap(card => lastScreenings.ids(card).toSet)
     healedClean.updateWith(rowId)(_.map { case (hash, phantoms) => (hash, phantoms -- served) }.filter(_._2.nonEmpty))
     metrics.recordWriteBurst(writing.seconds)
+    val drift = drifted.result()
+    if (drift.nonEmpty) logger.warn(s"read-model content check: row $rowId had drifted from its source — ${drift.mkString("; ")}.")
     written
   }
 
@@ -520,7 +542,7 @@ class ReadModelProjector(
   }
 
   /** Returns the number of screening documents written (upserts + deletes). */
-  private def diffScreenings(filmId: String, next: Seq[PlannedScreening]): Int = {
+  private def diffScreenings(filmId: String, next: Seq[PlannedScreening]): ScreeningDiff = {
     val previous = lastScreenings.of(filmId)
     val upserts  = Seq.newBuilder[CityScreening]
     val nextById = next.map { planned =>
@@ -549,7 +571,7 @@ class ReadModelProjector(
         whole = nextById.isEmpty, reason = "reproject-trim")
     }
     lastScreenings.update(filmId, nextById)
-    upserted + deletes.size
+    ScreeningDiff(written.map(_._id), deletes)
   }
 
   // Only `reconcile` calls this — a film whose source row vanished or was re-keyed
@@ -773,7 +795,6 @@ class ReadModelProjector(
       if (drifted > 0)
         logger.warn(s"read-model $kind sweep: content check slice $slice of $ContentSlices rewrote $drifted document(s) — " +
           "a stored projection had drifted from what the source projects to, which the id-only sweeps cannot see.")
-      metrics.recordDriftWrites(drifted)
       if (derivationPass == DerivationPass.Unchecked) armDerivationPass(liveRowIds.toVector)
     }
     sweepCount += 1
@@ -1432,6 +1453,11 @@ private[readmodel] object WrittenScreening {
 /** One venue's screenings row as a projection plans it: rebuilt (`built`), or carried
  *  unbuilt because the row written from the same `input` is still current. */
 private[readmodel] final case class PlannedScreening(_id: String, input: Int, built: Option[CityScreening])
+
+/** The screenings rows one card's diff wrote and removed, by id. */
+private[readmodel] final case class ScreeningDiff(upserted: Seq[String], deleted: Seq[String]) {
+  def documents: Int = upserted.size + deleted.size
+}
 
 /** A projected row's display-title groups — the group a slot with no title of its own falls into
  *  (`anchor`), the card each group's venues are filed under, and the venues whose row unioned two

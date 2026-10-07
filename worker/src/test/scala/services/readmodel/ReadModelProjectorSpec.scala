@@ -1692,7 +1692,9 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
       rm.findAllScreenings().filter(_.filmId.startsWith("foo")).flatMap(_.showtimes).map(_.dateTime.toString) shouldBe Seq("2026-07-20T18:00")
     }
     rm.findAllMovies().find(_._id.startsWith("foo")).flatMap(_.ratings.imdb) shouldBe Some(9.9)
-    m.driftWrites.sum should be > 0
+    withClue("each rewrite is counted by what drifted — the stale rating on the card, the stale showtimes on the venue: ") {
+      m.drift.keySet should contain allOf (ReadModelProjectionMetrics.CardPart.Ratings, ReadModelProjectionMetrics.DriftCause.ScreeningUpsert)
+    }
     checker.stop()
   }
 

@@ -21,8 +21,9 @@ final class RecordingReadModelProjectionMetrics extends ReadModelProjectionMetri
   def recordFilmPruned(reason: String, count: Int): Unit        = { prunes += count; pruneReasons += reason }
   val retired = scala.collection.mutable.Buffer.empty[String]
   def recordCardRetired(reason: String): Unit                   = retired += reason
-  val driftWrites = scala.collection.mutable.Buffer.empty[Int]
-  def recordDriftWrites(documents: Int): Unit                    = driftWrites += documents
+  /** Documents the content check rewrote, by what drifted. */
+  val drift = scala.collection.mutable.Map.empty[String, Int].withDefaultValue(0)
+  def recordDrift(cause: String, documents: Int): Unit          = drift(cause) += documents
   /** Each sweep's unlisted venue rows, and whether they were withheld as over the cap. */
   val unlistedVenues = scala.collection.mutable.Buffer.empty[(Int, Boolean)]
   def recordUnlistedVenues(rows: Int, withheld: Boolean): Unit   = unlistedVenues += (rows -> withheld)

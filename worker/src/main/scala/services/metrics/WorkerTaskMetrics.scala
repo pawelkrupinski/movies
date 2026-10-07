@@ -76,7 +76,7 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   def recordWrite(target: String, op: String, count: Int): Unit = series.recordWrite(countryCode, target, op, count)
   def recordFilmPruned(reason: String, count: Int): Unit        = series.recordFilmPruned(countryCode, reason, count)
   def recordCardRetired(reason: String): Unit                   = series.recordCardRetired(countryCode, reason)
-  def recordDriftWrites(documents: Int): Unit                   = series.recordDriftWrites(countryCode, documents)
+  def recordDrift(cause: String, documents: Int): Unit          = series.recordDrift(countryCode, cause, documents)
   def recordUnlistedVenues(rows: Int, withheld: Boolean): Unit  = series.recordUnlistedVenues(countryCode, rows, withheld)
   def recordCatchUp(rows: Int): Unit                            = series.recordCatchUp(countryCode, rows)
   def recordCardWrite(changed: Set[String]): Unit               = series.recordCardWrite(countryCode, changed)
@@ -329,8 +329,8 @@ object WorkerTaskMetrics {
 
     private val readModelDriftWrites = Counter.builder()
       .name("kinowo_worker_readmodel_drift_writes")
-      .help("Read-model documents the rolling CONTENT check rewrote since boot, by country. Every other sweep compares IDS — the prune removes a card whose row is gone, the heal writes one that is missing — and none of them can see a row that exists and is WRONG: three UK films held showtimes from August until 2026-09-08, served to users and unreachable by the change stream because their source had stopped changing. One slice of the corpus is re-projected per prune sweep (one of 48 slices, so the whole corpus once a day, plus a whole-corpus pass when the projection's derivation version changes) and the projection's own diff writes only what drifted. Zero is the healthy reading; a sustained rate means the incremental path is losing writes.")
-      .labelNames("country")
+      .help("Read-model documents the rolling CONTENT check rewrote since boot, by country. Every other sweep compares IDS — the prune removes a card whose row is gone, the heal writes one that is missing — and none of them can see a row that exists and is WRONG: three UK films held showtimes from August until 2026-09-08, served to users and unreachable by the change stream because their source had stopped changing. One slice of the corpus is re-projected per prune sweep (one of 48 slices, so the whole corpus once a day, plus a whole-corpus pass when the projection's derivation version changes) and the projection's own diff writes only what drifted. Zero is the healthy reading; a sustained rate means the incremental path is losing writes. cause says what drifted: a card's readmodel_card_writes cause (new, the one part that moved, or multiple) or screening-upsert / screening-delete for a venue's row; the worker logs each drifted row's card and screening ids on a 'read-model content check: row … had drifted' line.")
+      .labelNames("country", "cause")
       .register(registry)
 
     private val readModelUnlistedVenues = Counter.builder()
@@ -513,7 +513,7 @@ object WorkerTaskMetrics {
         // line that MUST stay at zero is visibly at zero rather than absent (the rule).
         ReadModelProjectionMetrics.PruneReasons.foreach(r => readModelFilmsPruned.labelValues(c, r).inc(0.0))
         ReadModelProjectionMetrics.RetireReasons.foreach(r => readModelCardsRetired.labelValues(c, r).inc(0.0))
-        readModelDriftWrites.labelValues(c).inc(0.0)   // zero is the healthy reading, so it must be drawn
+        ReadModelProjectionMetrics.DriftCauses.foreach(cause => readModelDriftWrites.labelValues(c, cause).inc(0.0)) // zero is the healthy reading, so it must be drawn
         Seq("pruned", "withheld").foreach(o => readModelUnlistedVenues.labelValues(c, o).inc(0.0)) // ditto
         readModelCatchUpRows.labelValues(c).inc(0.0) // ditto — zero is the healthy reading, so it must be drawn
         ReadModelProjectionMetrics.HealTriggers.foreach(t => readModelHeals.labelValues(c, t).inc(0.0)) // ditto
@@ -566,8 +566,8 @@ object WorkerTaskMetrics {
     def recordUnlistedVenues(country: String, rows: Int, withheld: Boolean): Unit =
       if (rows > 0) readModelUnlistedVenues.labelValues(country, if (withheld) "withheld" else "pruned").inc(rows.toDouble)
 
-    def recordDriftWrites(country: String, documents: Int): Unit =
-      if (documents > 0) readModelDriftWrites.labelValues(country).inc(documents.toDouble)
+    def recordDrift(country: String, cause: String, documents: Int): Unit =
+      if (documents > 0) readModelDriftWrites.labelValues(country, cause).inc(documents.toDouble)
 
     def recordCatchUp(country: String, rows: Int): Unit =
       if (rows > 0) readModelCatchUpRows.labelValues(country).inc(rows.toDouble)
