@@ -274,20 +274,36 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   // A Serial-GC worker's old generation is -Xmx less its young generation (-Xmn; a third of the heap
   // when unset). Packed close to its live set, every boot and every heavy tick ran back-to-back full
   // collections: worker-uk's 341 MB old gen over a 268 MB median / 308 MB max live set ran 11 full GCs
-  // and 16.2 s of them an hour (24 h to 2026-10-07 12:30 UTC), so it got -Xmn100m (412 MB old).
-  // Live set = `jvm_memory_pool_collection_used_bytes{pool="Tenured Gen"}`, pods past 10 min up.
-  private val MeasuredLiveSetMaxMib = Map(("worker", "uk") -> 308)
+  // and 16.2 s of them an hour (24 h to 2026-10-07 10:40 UTC), so it got -Xmn100m (412 MB old), and every
+  // worker its young generation sized from its own live set the same day: the old gen a quarter over the
+  // max, the rest young — no more than half the heap, past which a young collection's survivors can
+  // outgrow the old gen and Serial falls back to a full one. US already sat just over (768 old over 605).
+  // Live set = max `jvm_memory_pool_collection_used_bytes{pool="Tenured Gen"}` over 24 h, pods past 10 min up.
+  private val MeasuredLiveSetMaxMib = Map(
+    ("worker", "pl") -> 244, ("worker", "uk") -> 308, ("worker", "de") -> 314, ("worker", "es") -> 107, ("worker", "us") -> 605)
   private val OldGenHeadroom        = 1.25
 
   "a measured worker's old generation" should "leave a quarter of headroom over its measured live set" in {
     MeasuredLiveSetMaxMib.foreach { case ((tier, cc), live) =>
-      val opts  = javaOpts(tier, cc)
-      val heap  = flagMib(opts, "-Xmx", tier, cc)
-      val young = if (opts.contains("-Xmn")) flagMib(opts, "-Xmn", tier, cc) else heap / 3
+      val (heap, young) = generations(tier, cc)
       withClue(s"$tier/$cc: -Xmx${heap}Mi with a ${young}Mi young generation leaves ${heap - young}Mi old over a ${live}Mi live set: ") {
         (heap - young).toDouble should be >= live * OldGenHeadroom
       }
     }
+  }
+
+  it should "never be smaller than the young generation beside it" in {
+    MeasuredLiveSetMaxMib.keys.foreach { case (tier, cc) =>
+      val (heap, young) = generations(tier, cc)
+      withClue(s"$tier/$cc: a ${young}Mi young generation of a ${heap}Mi heap: ")(young should be <= heap / 2)
+    }
+  }
+
+  /** The heap and its young generation: `-Xmn`, or the third Serial gives it when unset. */
+  private def generations(tier: String, cc: String): (Int, Int) = {
+    val opts = javaOpts(tier, cc)
+    val heap = flagMib(opts, "-Xmx", tier, cc)
+    (heap, if (opts.contains("-Xmn")) flagMib(opts, "-Xmn", tier, cc) else heap / 3)
   }
 
   /** web's `/data` emptyDir, as the pod actually gets it: the overlay's where it restates the
