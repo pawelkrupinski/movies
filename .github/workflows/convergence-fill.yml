@@ -82,5 +82,5 @@ jobs:
                   token:        ${{ secrets.GITHUB_TOKEN }}
                   minutes:      ${{ inputs.minutes > 30 && 30 || inputs.minutes }}
                   tmdb-api-key: ${{ secrets.TMDB_API_KEY }}
-                  proxy-user: ${{ secrets.KINOWO_PROXY_USER }}
-                  proxy-pass: ${{ secrets.KINOWO_PROXY_PASS }}
+                  proxy-user: ${{ secrets.DECODO_PROXY_USER }}
+                  proxy-pass: ${{ secrets.DECODO_PROXY_PASS }}

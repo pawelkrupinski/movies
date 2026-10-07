@@ -17,7 +17,7 @@ class EnvKnobClassifierSpec extends AnyFlatSpec with Matchers {
   it should "treat credentials and structural infra as secret" in {
     Seq(
       "ZYTE_API_KEY", "TMDB_API_KEY", "TELEGRAM_BOT_TOKEN", "MONGODB_URI",
-      "GOOGLE_CLIENT_SECRET", "KINOWO_PROXY_PASS", "ADMIN_ALLOWLIST"
+      "GOOGLE_CLIENT_SECRET", "DECODO_PROXY_PASS", "ADMIN_ALLOWLIST"
     ).foreach(k => withClue(k)(EnvKnobClassifier.isSecret(k) shouldBe true))
   }
 }

@@ -22,7 +22,7 @@ material on both zones (2026-09-15), and a challenge page carries none of the he
 here -- so "no ACAC header" would pass against a page that is not ours. Every request therefore
 has an EXPECTED status (401 anonymous /api/me, 2xx preflight, 303 OAuth start), and anything else
 fails with the status and `cf-mitigated` named. Requests go through the Decodo residential proxy
-when KINOWO_PROXY_USER / KINOWO_PROXY_PASS are set, as the OG-card workflow's do.
+when DECODO_PROXY_USER / DECODO_PROXY_PASS are set, as the OG-card workflow's do.
 
 Usage: check-security-headers.py [host ...]     (default: kinowo.net showtimes.cc)
 The pure `evaluate_*` functions are unit-tested offline by test_check_security_headers.py.
@@ -102,7 +102,7 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def _proxy_credentials():
-    return os.environ.get("KINOWO_PROXY_USER", "").strip(), os.environ.get("KINOWO_PROXY_PASS", "").strip()
+    return os.environ.get("DECODO_PROXY_USER", "").strip(), os.environ.get("DECODO_PROXY_PASS", "").strip()
 
 
 def redact(text):

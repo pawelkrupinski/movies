@@ -12,10 +12,10 @@ import services.cinemas.pl.MultikinoClient
  * `jdk.http.auth.tunneling.disabledSchemes` fix) actually authenticates and
  * clears the block. Run it before wiring the proxy into the worker's deploy:
  *
- *   KINOWO_PROXY_USER=… KINOWO_PROXY_PASS=… sbt 'worker/Test/runMain scripts.ProxyProbe'
+ *   DECODO_PROXY_USER=… DECODO_PROXY_PASS=… sbt 'worker/Test/runMain scripts.ProxyProbe'
  *
- * Host + ports come from residential-proxy.properties; KINOWO_PROXY_USER /
- * KINOWO_PROXY_PASS come from the environment / .env.local (same path the worker
+ * Host + ports come from residential-proxy.properties; DECODO_PROXY_USER /
+ * DECODO_PROXY_PASS come from the environment / .env.local (same path the worker
  * uses, via [[ResidentialProxy]]). Pass/fail is printed per target; a `407` or
  * `403` shows as FAIL with the status in the message.
  */
@@ -27,7 +27,7 @@ object ProxyProbe {
     tools.IssuerCertificateFetching.Enabled.applyToJvm()
     ResidentialProxy.fromConfiguration(_root_.settings.ProcessConfiguration.resolve()) match {
       case None =>
-        println("No proxy config — set KINOWO_PROXY_USER / KINOWO_PROXY_PASS (host+ports come from residential-proxy.properties).")
+        println("No proxy config — set DECODO_PROXY_USER / DECODO_PROXY_PASS (host+ports come from residential-proxy.properties).")
       case Some(config) =>
         val fetch = new RealHttpFetch(Some(config))
         println(s"proxy: ${config.host} ports=${config.ports.mkString(",")} (rotating), via java.net.http RealHttpFetch")

@@ -7,8 +7,8 @@ import java.util.Properties
  *
  *   - NON-SECRET host + ports from a committed classpath properties file
  *     (`/residential-proxy.properties`) — `host`, `ports` (comma-separated).
- *   - SECRET user + pass from the process's configuration (`KINOWO_PROXY_USER` /
- *     `KINOWO_PROXY_PASS`, resolved by `settings.ProcessConfiguration`), so credentials
+ *   - SECRET user + pass from the process's configuration (`DECODO_PROXY_USER` /
+ *     `DECODO_PROXY_PASS`, resolved by `settings.ProcessConfiguration`), so credentials
  *     never land in the repo.
  *
  * Returns a [[RealHttpFetch.ProxyConfig]] only when ALL four are present, so the

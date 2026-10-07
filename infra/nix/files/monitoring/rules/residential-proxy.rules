@@ -70,7 +70,7 @@ groups:
             Check the "Residential proxy" row on that country's /uptime for the error text (a
             per-IP "Limit: 3" auth cap, 401/407, or a burned IP is one cinema/port; an account-wide
             "Tunnel failed, got: 503" across every port, reproducible locally with
-            `KINOWO_PROXY_USER=… KINOWO_PROXY_PASS=… sbt 'worker/Test/runMain scripts.ProxyProbe'`,
+            `DECODO_PROXY_USER=… DECODO_PROXY_PASS=… sbt 'worker/Test/runMain scripts.ProxyProbe'`,
             is the whole account -- check the Decodo dashboard for plan/billing/quota before
             chasing worker code, same as the 2026-06-16 "Limit: 3" incident). See
             reference_decodo_isp_proxy.

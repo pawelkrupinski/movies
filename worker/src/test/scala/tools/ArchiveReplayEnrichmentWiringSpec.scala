@@ -620,7 +620,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   }
 
   "a test wiring handed the residential-proxy credentials" should "build no proxy leg" in {
-    new PaidKeyedWiring(new CountingLeaf, Seq("KINOWO_PROXY_USER" -> "user", "KINOWO_PROXY_PASS" -> "pass"))
+    new PaidKeyedWiring(new CountingLeaf, Seq("DECODO_PROXY_USER" -> "user", "DECODO_PROXY_PASS" -> "pass"))
       .proxyShardsBuilt shouldBe None
   }
 

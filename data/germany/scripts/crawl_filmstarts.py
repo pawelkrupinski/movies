@@ -47,7 +47,7 @@ HEADERS = {"User-Agent": UA, "Accept-Language": "de-DE,de;q=0.9,en;q=0.8"}
 
 # Route through the Decodo residential proxy — filmstarts (Webedia/CF) hard
 # rate-limits (429) a direct bulk crawl; the prod worker already scrapes it via
-# this proxy. Reads KINOWO_PROXY_USER/PASS from the repo .env.local.
+# this proxy. Reads DECODO_PROXY_USER/PASS from the repo .env.local.
 def _proxy_opener():
     env = {}
     try:
@@ -56,7 +56,7 @@ def _proxy_opener():
                 k, v = l.split("=", 1); env[k] = v.strip()
     except OSError:
         pass
-    u, p = env.get("KINOWO_PROXY_USER"), env.get("KINOWO_PROXY_PASS")
+    u, p = env.get("DECODO_PROXY_USER"), env.get("DECODO_PROXY_PASS")
     if not (u and p):
         return urllib.request.build_opener()
     px = f"http://{u}:{p}@isp.decodo.com:10001"

@@ -42,7 +42,7 @@ phase, it is the input to `GermanRosterData.scala` (see "Regenerating" below).
    filmstarts.de `/kinoprogramm/` directory: all 16 Bundesländer → cities →
    theaters, extracting each `theaterId` (the id `WebediaShowtimesClient` scrapes
    via `theater-<id>`). filmstarts hard rate-limits (429) a direct bulk crawl, so
-   this routes through the **Decodo residential proxy** (`KINOWO_PROXY_*`) — the
+   this routes through the **Decodo residential proxy** (`DECODO_PROXY_*`) — the
    same proxy the prod worker already uses for filmstarts. NRW needs special
    handling (its lander page 1 is a link-less shell; real content starts at
    `?page=2`, and its big cities — Köln/Düsseldorf/Dortmund — are only on the

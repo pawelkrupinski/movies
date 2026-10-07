@@ -51,9 +51,9 @@ final case class TmdbApiKey(value: String) extends AnyVal
 final case class OmdbApiKey(value: String) extends AnyVal
 /** `ZYTE_API_KEY`. */
 final case class ZyteApiKey(value: String) extends AnyVal
-/** `KINOWO_PROXY_USER` — the residential egress's user. */
+/** `DECODO_PROXY_USER` — the residential egress's user. */
 final case class ProxyUser(value: String) extends AnyVal
-/** `KINOWO_PROXY_PASS` — the residential egress's password. */
+/** `DECODO_PROXY_PASS` — the residential egress's password. */
 final case class ProxyPassword(value: String) extends AnyVal
 /** `FACEBOOK_APP_ID` — the Facebook app sign-in and the share-card re-scrape run as. */
 final case class FacebookAppId(value: String) extends AnyVal

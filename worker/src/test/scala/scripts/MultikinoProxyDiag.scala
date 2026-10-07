@@ -10,7 +10,7 @@ import services.cinemas.pl.MultikinoClient
  * thing curl can't mimic, because the JVM's persistent CookieManager accumulates
  * Multikino's session cookie across the burst + rotating IPs.
  *
- *   KINOWO_PROXY_USER=… KINOWO_PROXY_PASS=… sbt 'worker/Test/runMain scripts.MultikinoProxyDiag'
+ *   DECODO_PROXY_USER=… DECODO_PROXY_PASS=… sbt 'worker/Test/runMain scripts.MultikinoProxyDiag'
  */
 object MultikinoProxyDiag {
   // Warm-required locations FIRST (0015/0042/0008/0041 401 on a cold call), to
@@ -24,7 +24,7 @@ object MultikinoProxyDiag {
     tools.ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
     tools.IssuerCertificateFetching.Enabled.applyToJvm()
     ResidentialProxy.fromConfiguration(_root_.settings.ProcessConfiguration.resolve()) match {
-      case None => println("set KINOWO_PROXY_USER / KINOWO_PROXY_PASS")
+      case None => println("set DECODO_PROXY_USER / DECODO_PROXY_PASS")
       case Some(config) =>
         val rounds = if (args.nonEmpty) args(0).toInt else 2
         run("single-IP, NO warm (some cinemas 401 cold)", new RealHttpFetch(Some(config)), rounds)

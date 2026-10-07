@@ -112,7 +112,7 @@ class ProxyCredentialsNeverPrinted(unittest.TestCase):
         return Opener()
 
     def _fetched(self, error):
-        env = {"KINOWO_PROXY_USER": self.USER, "KINOWO_PROXY_PASS": self.PASSWORD}
+        env = {"DECODO_PROXY_USER": self.USER, "DECODO_PROXY_PASS": self.PASSWORD}
         old = {k: os.environ.get(k) for k in env}
         os.environ.update(env)
         try:

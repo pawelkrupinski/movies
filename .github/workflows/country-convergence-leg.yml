@@ -498,8 +498,8 @@ jobs:
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
                   # What an origin refuses CI's own address (Cineworld's 403s) is asked again through the
                   # residential proxy, as production reaches it (MissingFixtureFill.route).
-                  KINOWO_PROXY_USER: ${{ secrets.KINOWO_PROXY_USER }}
-                  KINOWO_PROXY_PASS: ${{ secrets.KINOWO_PROXY_PASS }}
+                  DECODO_PROXY_USER: ${{ secrets.DECODO_PROXY_USER }}
+                  DECODO_PROXY_PASS: ${{ secrets.DECODO_PROXY_PASS }}
                   FILL_SECONDS:     90
               run: |
                   set -uo pipefail

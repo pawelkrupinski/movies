@@ -15,12 +15,12 @@ trait EgressWiring { self: WorkerWiring =>
 
   // Residential-proxy egress (Decodo static-ISP, PL Netia) for the cinema sites
   // that Cloudflare-block our Fly datacenter IP. Non-secret host+ports come from
-  // the committed residential-proxy.properties; the KINOWO_PROXY_USER/PASS secrets
+  // the committed residential-proxy.properties; the DECODO_PROXY_USER/PASS secrets
   // come from Env (env -> .env.local). Set only when both are present — absent in
   // local/test, where the chain collapses to the direct path. See the
   // `reference_decodo_isp_proxy` memory.
   // One RealHttpFetch per Decodo pool IP (each pinned, own cookie jar), built
-  // once and shared by the proxied clients; None where the KINOWO_PROXY_* secrets
+  // once and shared by the proxied clients; None where the DECODO_PROXY_* secrets
   // aren't set (local/CI/fixture-replay → direct). Sharing the shards means
   // each IP warms its Multikino session at most once and reuses it across the
   // venues routed there.

@@ -91,7 +91,7 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "hold the residential proxy's credentials in the fetching step alone" in {
-    Seq("KINOWO_PROXY_USER", "KINOWO_PROXY_PASS").foreach { name =>
+    Seq("DECODO_PROXY_USER", "DECODO_PROXY_PASS").foreach { name =>
       fillStep should include(s"$name: $${{ secrets.$name }}")
       publish should not include name
       RepoFile.withoutComments(leg).linesIterator.count(_.contains(s"secrets.$name")) shouldBe 1
@@ -135,8 +135,8 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
     job should include("code: ${{ fromJson(needs.countries.outputs.codes) }}")
     job should include("uses: ./.github/actions/convergence-fill")
     job should include("tmdb-api-key: ${{ secrets.TMDB_API_KEY }}")
-    job should include("proxy-user: ${{ secrets.KINOWO_PROXY_USER }}")
-    job should include("proxy-pass: ${{ secrets.KINOWO_PROXY_PASS }}")
+    job should include("proxy-user: ${{ secrets.DECODO_PROXY_USER }}")
+    job should include("proxy-pass: ${{ secrets.DECODO_PROXY_PASS }}")
     withClue("its own run id names its fill, so it never writes a row's name: ")(fill should not include "fill-row:")
   }
 
@@ -145,8 +145,8 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.step(fill, "Fetch them until the fill's minutes run out") should include("$FILL_UNTIL")
     RepoFile.step(fill, "Fetch them until the fill's minutes run out") should include("TMDB_API_KEY:     ${{ inputs.tmdb-api-key }}")
     fill.linesIterator.count(_.contains("inputs.tmdb-api-key")) shouldBe 1
-    RepoFile.step(fill, "Fetch them until the fill's minutes run out") should include("KINOWO_PROXY_USER: ${{ inputs.proxy-user }}")
-    RepoFile.step(fill, "Fetch them until the fill's minutes run out") should include("KINOWO_PROXY_PASS: ${{ inputs.proxy-pass }}")
+    RepoFile.step(fill, "Fetch them until the fill's minutes run out") should include("DECODO_PROXY_USER: ${{ inputs.proxy-user }}")
+    RepoFile.step(fill, "Fetch them until the fill's minutes run out") should include("DECODO_PROXY_PASS: ${{ inputs.proxy-pass }}")
     Seq("inputs.proxy-user", "inputs.proxy-pass").foreach(i => fill.linesIterator.count(_.contains(i)) shouldBe 1)
   }
 

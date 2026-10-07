@@ -23,8 +23,8 @@
 #                       never overwrites another's corpus.
 #   TMDB_API_KEY        REQUIRED — real TMDB key; the whole enrichment cascade
 #                       401s and captures nothing without it.
-#   KINOWO_PROXY_USER   REQUIRED — the Decodo residential-proxy credentials the
-#   KINOWO_PROXY_PASS   Multikino / biletyna scrapes egress through (their WAF
+#   DECODO_PROXY_USER   REQUIRED — the Decodo residential-proxy credentials the
+#   DECODO_PROXY_PASS   Multikino / biletyna scrapes egress through (their WAF
 #                       blocks a datacenter IP, a GitHub runner's included).
 # All are auto-loaded from .env.local locally; the script exits 1 if a required
 # one is still missing rather than recording a silently-partial corpus.
@@ -57,8 +57,8 @@ load_env_key() {
 }
 if [ -f "$REPO_ROOT/.env.local" ]; then
     [ -n "${TMDB_API_KEY:-}" ] || load_env_key TMDB_API_KEY
-    [ -n "${KINOWO_PROXY_USER:-}" ] || load_env_key KINOWO_PROXY_USER
-    [ -n "${KINOWO_PROXY_PASS:-}" ] || load_env_key KINOWO_PROXY_PASS
+    [ -n "${DECODO_PROXY_USER:-}" ] || load_env_key DECODO_PROXY_USER
+    [ -n "${DECODO_PROXY_PASS:-}" ] || load_env_key DECODO_PROXY_PASS
 fi
 
 # Without TMDB_API_KEY the whole enrichment cascade (TMDB → IMDb → MC → RT →
@@ -68,8 +68,8 @@ fi
 # cinemas/ratings — so fail loudly rather than record a sparse one.
 missing=""
 [ -n "${TMDB_API_KEY:-}" ] || missing="$missing TMDB_API_KEY"
-[ -n "${KINOWO_PROXY_USER:-}" ] || missing="$missing KINOWO_PROXY_USER"
-[ -n "${KINOWO_PROXY_PASS:-}" ] || missing="$missing KINOWO_PROXY_PASS"
+[ -n "${DECODO_PROXY_USER:-}" ] || missing="$missing DECODO_PROXY_USER"
+[ -n "${DECODO_PROXY_PASS:-}" ] || missing="$missing DECODO_PROXY_PASS"
 if [ -n "$missing" ]; then
     echo "::error::Missing required key(s):$missing — set them in the environment or .env.local before recording." >&2
     exit 1

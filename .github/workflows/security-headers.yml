@@ -56,8 +56,8 @@ jobs:
 
             - name: Check kinowo.net and showtimes.cc
               env:
-                  KINOWO_PROXY_USER: ${{ secrets.KINOWO_PROXY_USER }}
-                  KINOWO_PROXY_PASS: ${{ secrets.KINOWO_PROXY_PASS }}
+                  DECODO_PROXY_USER: ${{ secrets.DECODO_PROXY_USER }}
+                  DECODO_PROXY_PASS: ${{ secrets.DECODO_PROXY_PASS }}
                   REQUIRE_SECURE_SESSION_COOKIE: ${{ vars.REQUIRE_SECURE_SESSION_COOKIE }}
               run: python3 scripts/ci/check-security-headers.py
 

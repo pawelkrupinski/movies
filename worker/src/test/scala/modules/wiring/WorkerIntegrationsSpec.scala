@@ -16,15 +16,15 @@ class WorkerIntegrationsSpec extends AnyFlatSpec with Matchers {
     WorkerIntegrations.features(resolved()) shouldBe Seq(
       EnvGatedFeature("tmdb", Seq(MissingSetting("TMDB_API_KEY"))),
       EnvGatedFeature("omdb", Seq(MissingSetting("OMDB_API_KEY"))),
-      EnvGatedFeature("residential_proxy", Seq(MissingSetting("KINOWO_PROXY_USER"), MissingSetting("KINOWO_PROXY_PASS"))),
+      EnvGatedFeature("residential_proxy", Seq(MissingSetting("DECODO_PROXY_USER"), MissingSetting("DECODO_PROXY_PASS"))),
       EnvGatedFeature("zyte", Seq(MissingSetting("ZYTE_API_KEY"))),
       EnvGatedFeature("sentry", Seq(MissingSetting("SENTRY_DSN"))),
       EnvGatedFeature("facebook_rescrape", Seq(MissingSetting("FACEBOOK_APP_ID"), MissingSetting("FACEBOOK_APP_SECRET"))))
   }
 
   it should "report one integration off when only its own key is missing" in {
-    val everyKeyButOne = GatedIntegration.values.toSeq.flatMap(_.keys).filterNot(_ == "KINOWO_PROXY_PASS").map(_ -> "x")
+    val everyKeyButOne = GatedIntegration.values.toSeq.flatMap(_.keys).filterNot(_ == "DECODO_PROXY_PASS").map(_ -> "x")
     val features = WorkerIntegrations.features(resolved(everyKeyButOne*))
-    features.filterNot(_.enabled) shouldBe Seq(EnvGatedFeature("residential_proxy", Seq(MissingSetting("KINOWO_PROXY_PASS"))))
+    features.filterNot(_.enabled) shouldBe Seq(EnvGatedFeature("residential_proxy", Seq(MissingSetting("DECODO_PROXY_PASS"))))
   }
 }

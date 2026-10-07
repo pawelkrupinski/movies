@@ -51,7 +51,7 @@ import javax.imageio.{IIOImage, ImageIO, ImageWriteParam}
  * Chrome is located via `Chrome.findExecutable()` (same `CDP_BROWSER_BIN`
  * override the page tests use). Each card takes well under a minute.
  *
- * `KINOWO_PROXY_USER` / `KINOWO_PROXY_PASS` (same secrets the worker's Decodo
+ * `DECODO_PROXY_USER` / `DECODO_PROXY_PASS` (same secrets the worker's Decodo
  * residential proxy already uses, see [[reference_decodo_isp_proxy]]), when
  * BOTH non-blank, route every screenshot request through
  * `KINOWO_OG_PROXY_HOST`/`KINOWO_OG_PROXY_PORT` (default `isp.decodo.com` on

@@ -50,8 +50,8 @@ jobs:
               continue-on-error: true
               run: sbt "worker/runMain tools.FilmwebDiff 3 filmweb-diff.txt filmweb-diff.csv filmweb-diff.json"
               env:
-                  KINOWO_PROXY_USER: ${{ secrets.KINOWO_PROXY_USER }}
-                  KINOWO_PROXY_PASS: ${{ secrets.KINOWO_PROXY_PASS }}
+                  DECODO_PROXY_USER: ${{ secrets.DECODO_PROXY_USER }}
+                  DECODO_PROXY_PASS: ${{ secrets.DECODO_PROXY_PASS }}
 
             # Upload the human-readable report, the CSV summary, AND the
             # deterministic JSON (per-film discrepancies; diffs cleanly across

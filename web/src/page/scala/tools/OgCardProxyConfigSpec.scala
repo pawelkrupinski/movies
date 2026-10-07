@@ -17,7 +17,7 @@ import org.scalatest.matchers.should.Matchers
  */
 class OgCardProxyConfigSpec extends AnyFlatSpec with Matchers {
 
-  private val creds = Map("KINOWO_PROXY_USER" -> "u", "KINOWO_PROXY_PASS" -> "p")
+  private val creds = Map("DECODO_PROXY_USER" -> "u", "DECODO_PROXY_PASS" -> "p")
 
   private def configured(vars: Map[String, String]) = new settings.ProcessConfiguration(Env.of(vars.toSeq*))
 
@@ -32,12 +32,12 @@ class OgCardProxyConfigSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "stay off when either credential is absent" in {
-    OgCardGenerator.proxyConfigFor(10002, configured(creds - "KINOWO_PROXY_PASS")) shouldBe None
-    OgCardGenerator.proxyConfigFor(10002, configured(creds - "KINOWO_PROXY_USER")) shouldBe None
+    OgCardGenerator.proxyConfigFor(10002, configured(creds - "DECODO_PROXY_PASS")) shouldBe None
+    OgCardGenerator.proxyConfigFor(10002, configured(creds - "DECODO_PROXY_USER")) shouldBe None
   }
 
   it should "stay off when a credential is present but blank, the way GitHub Actions renders an unset secret" in {
-    OgCardGenerator.proxyConfigFor(10002, configured(creds + ("KINOWO_PROXY_USER" -> ""))) shouldBe None
-    OgCardGenerator.proxyConfigFor(10002, configured(creds + ("KINOWO_PROXY_PASS" -> "  "))) shouldBe None
+    OgCardGenerator.proxyConfigFor(10002, configured(creds + ("DECODO_PROXY_USER" -> ""))) shouldBe None
+    OgCardGenerator.proxyConfigFor(10002, configured(creds + ("DECODO_PROXY_PASS" -> "  "))) shouldBe None
   }
 }

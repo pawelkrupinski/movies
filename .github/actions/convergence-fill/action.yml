@@ -86,8 +86,8 @@ runs:
           KINOWO_COUNTRY:   ${{ inputs.code }}
           KINOWO_COUNTRIES: ${{ inputs.code }}
           TMDB_API_KEY:     ${{ inputs.tmdb-api-key }}
-          KINOWO_PROXY_USER: ${{ inputs.proxy-user }}
-          KINOWO_PROXY_PASS: ${{ inputs.proxy-pass }}
+          DECODO_PROXY_USER: ${{ inputs.proxy-user }}
+          DECODO_PROXY_PASS: ${{ inputs.proxy-pass }}
       run: |
           sbt -J-Xmx2g -J-Djdk.http.auth.tunneling.disabledSchemes= "worker/Fixtures/runMain scripts.FillMissingFixtures ${{ inputs.code }} refetch.tsv $RUNNER_TEMP/fill-held/test/resources/fixtures $RUNNER_TEMP/fill-out/test/resources/fixtures $FILL_UNTIL"
 

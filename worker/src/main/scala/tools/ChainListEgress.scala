@@ -8,7 +8,7 @@ import services.cinemas.roster.RosterFinding.DirectoryNotRead
  * How [[RosterAudit]] reaches the chains' own venue lists. Multikino's sits
  * behind Cloudflare, which refuses GitHub's runner addresses (403 on both the
  * home page and the list, run 35910520576), so when the Decodo credentials are
- * set (`KINOWO_PROXY_USER`/`PASS`, the worker's and the OG-card workflow's
+ * set (`DECODO_PROXY_USER`/`PASS`, the worker's and the OG-card workflow's
  * secrets) every list goes through the same proxy-primary chain the worker's
  * Multikino scrapes use, with the direct fetch behind it. Without them the lists
  * are fetched directly, as before.

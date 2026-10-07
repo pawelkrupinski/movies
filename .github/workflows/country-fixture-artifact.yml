@@ -110,8 +110,8 @@ jobs:
             - name: Record the country's fixture corpus
               id: record
               env:
-                  KINOWO_PROXY_USER: ${{ secrets.KINOWO_PROXY_USER }}
-                  KINOWO_PROXY_PASS: ${{ secrets.KINOWO_PROXY_PASS }}
+                  DECODO_PROXY_USER: ${{ secrets.DECODO_PROXY_USER }}
+                  DECODO_PROXY_PASS: ${{ secrets.DECODO_PROXY_PASS }}
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:  ${{ secrets.MONGODB_URI }}
                   MONGODB_DB:   ${{ secrets.MONGODB_DB }}

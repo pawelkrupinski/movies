@@ -26,7 +26,7 @@ class ResidentialProxySpec extends AnyFlatSpec with Matchers {
     ResidentialProxy.fromConfig(props("isp.decodo.com", "10001"), None, Some(settings.ProxyPassword("p")))      shouldBe None
     ResidentialProxy.fromConfig(props("isp.decodo.com", "10001"), Some(settings.ProxyUser("u")), None)      shouldBe None
     // A blank credential is no credential: the resolver never yields one.
-    new settings.ProcessConfiguration(Env.of("KINOWO_PROXY_USER" -> "  ")).proxyUser shouldBe None
+    new settings.ProcessConfiguration(Env.of("DECODO_PROXY_USER" -> "  ")).proxyUser shouldBe None
   }
 
   it should "be None when the properties file has no host or no usable ports" in {

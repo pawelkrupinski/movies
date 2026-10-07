@@ -235,7 +235,7 @@ For a full-country sweep (DE), see `data/germany/README.md` + `scripts/`: crawl 
 source directory for every venue + its scraper id, geocode the cities
 (GeoNames bulk `DE.txt`, 100% match — no live Nominatim needed), cluster into
 ≤~200 regions. **Source sites rate-limit bulk crawls (429)** — route through the
-Decodo residential proxy (`KINOWO_PROXY_*`, `isp.decodo.com:10001`), the same proxy
+Decodo residential proxy (`DECODO_PROXY_*`, `isp.decodo.com:10001`), the same proxy
 the prod worker uses. Persist the dataset into the repo (`data/<country>/`) as the
 loader's input.
 
