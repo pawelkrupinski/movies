@@ -362,7 +362,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     wiring.drainClaimants should be > 1
     wiring.drainQueue("probe") { _ =>
       together.countDown()
-      if (together.await(10, java.util.concurrent.TimeUnit.SECONDS)) met.set(true)
+      if (together.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)) met.set(true)
       handled.incrementAndGet(); ()
     }
     handled.get shouldBe 12
