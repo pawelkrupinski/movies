@@ -27,6 +27,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
   override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], pages: Iterable[Listing]): Unit = {
     held.values.foreach(_.clear())
     this.films.clear()
+    hits.clear()
     val asked = queries.toSeq
     load(TmdbKind.Query, asked.flatMap(questionIds))
     // What the questions name: each person search's people, each IMDb title's finds.
@@ -41,11 +42,13 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
       heldDocument(TmdbKind.Query, TmdbStore.suggestionsId(ImdbClient.suggestionUrl(title))).toSeq.flatMap(suggestionsOf).take(ImdbClient.SuggestedMovies).map(_.id)
     }.distinct
     load(TmdbKind.Query, titled.map(TmdbStore.imdbTitlesId) ++ titled.map(TmdbStore.findId))
-    // And every film any of them names: TMDB's records, and a fallback source's for the ids TMDB holds none of.
+    // And every film any of them names, for its hit; the records asked for, read through — whoever asks for a
+    // record keeps it decoded (the corpus its records) — and a fallback source's for the ids TMDB holds none of.
     val named = held(TmdbKind.Query).values.asScala.flatMap(_.document).filter(_.containsKey("ids")).flatMap(intsOf(_)) ++
       held(TmdbKind.Person).values.asScala.flatMap(_.document).flatMap(d => intsOf(d, "directed") ++ intsOf(d, "wrote"))
     val (fallbacks, tmdbFilms) = films.toSeq.partition(FallbackIds.isFallback)
-    load(TmdbKind.Film, (named ++ tmdbFilms).map(_.toString).toSeq)
+    loadHits(named.map(_.toString).toSeq)
+    load(TmdbKind.Film, tmdbFilms.map(_.toString), readThrough = true)
     load(TmdbKind.Query, fallbacks.flatMap(FallbackIds.imdbId).map(TmdbStore.imdbRecordId))
     details.prefetch(Nil, Nil, pages)
   }
@@ -53,10 +56,10 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
   // The documents a prefetch read stay only while its own asks are answered: held until the next
   // prefetch, a slice's searches and every film they name sat in the heap through the slice's build
   // and the resolves after it, and UK's take-up spent 72% of its time in full GCs.
-  override def prefetchAnswered(): Unit = { held.values.foreach(_.clear()); films.clear(); details.prefetchAnswered() }
+  override def prefetchAnswered(): Unit = { held.values.foreach(_.clear()); films.clear(); hits.clear(); details.prefetchAnswered() }
 
-  /** How many documents the last prefetch still holds. */
-  private[identity] def heldDocuments: Int = held.values.map(_.size).sum
+  /** How many documents and hits the last prefetch still holds. */
+  private[identity] def heldDocuments: Int = held.values.map(_.size).sum + hits.size
 
   def hasDetail(listing: Listing): Boolean                  = details.hasDetail(listing)
   def detail(listing: Listing): Answer[Option[DetailFacts]] = details.detail(listing)
@@ -163,9 +166,10 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
 
   // ── documents, read once per prefetch and filed with `reads` ──────────────────────
 
-  private def load(kind: TmdbKind, ids: Seq[String]): Map[String, Option[BsonDocument]] = {
+  private def load(kind: TmdbKind, ids: Seq[String], readThrough: Boolean = false): Map[String, Option[BsonDocument]] = {
     val wanted = ids.distinct.filterNot(held(kind).containsKey)
-    val got    = if (wanted.isEmpty) Map.empty[String, BsonDocument] else store.answers(kind, wanted)
+    val got    = if (wanted.isEmpty) Map.empty[String, BsonDocument]
+                 else if (readThrough) store.answersReadThrough(kind, wanted) else store.answers(kind, wanted)
     wanted.foreach(id => held(kind).put(id, Held(got.get(id))))
     ids.map(id => id -> held(kind).get(id).document).toMap
   }
@@ -179,8 +183,23 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
 
   /** The films `ids` name, each as its record or hit reads — `Unknown` while any is not held. */
   private def hitsOf(ids: Seq[Int]): Answer[Seq[Hit]] = {
-    val hits = ids.map(id => document(TmdbKind.Film, id.toString).flatMap(TmdbStore.filmHit(id, _)))
-    if (hits.exists(_.isEmpty)) Answer.Unknown else Answer.Known(hits.flatten)
+    val found = ids.map(hit)
+    if (found.exists(_.isEmpty)) Answer.Unknown else Answer.Known(found.flatten)
+  }
+
+  // The hits the current prefetch holds, by film id: `None` for a film holding none. Let go with it.
+  private val hits = new ConcurrentHashMap[String, Option[Hit]]()
+
+  private def loadHits(ids: Seq[String]): Unit = {
+    val wanted = ids.distinct.filterNot(hits.containsKey)
+    if (wanted.nonEmpty) { val got = store.filmHits(wanted); wanted.foreach(id => hits.put(id, got.get(id))) }
+  }
+
+  /** A film's hit, filed with `reads` under its document's key: its change re-asks the question. */
+  private def hit(id: Int): Option[Hit] = {
+    val key = id.toString
+    reads.read(TmdbStore.keyOf(TmdbKind.Film, key))
+    Option(hits.get(key)).getOrElse(store.filmHits(Seq(key)).get(key))
   }
 
   private def questionIds(query: CandidateQuery): Seq[String] = Seq(TmdbStore.questionId(language, query))

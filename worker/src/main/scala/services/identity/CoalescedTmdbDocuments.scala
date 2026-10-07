@@ -43,6 +43,8 @@ final class CoalescedTmdbDocuments(inner: TmdbDocuments, maxBatch: Int = Coalesc
   def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit    = if (docs.nonEmpty) writes(kind)(docs)
 
   override def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = inner.answers(kind, ids)
+  override def filmHits(ids: Seq[String]): Map[String, Hit] = inner.filmHits(ids)
+  override def answersReadThrough(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = inner.answersReadThrough(kind, ids)
 
   /** Calls made and not yet returned, across every kind's reads and writes. */
   private[identity] def calling: Int = (reads.values ++ writes.values).map(_.calling).sum

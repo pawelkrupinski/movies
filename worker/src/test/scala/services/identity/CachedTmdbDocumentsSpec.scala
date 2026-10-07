@@ -74,6 +74,57 @@ class CachedTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
     w.backend.drain().toSet shouldBe Set(search, TmdbStore.titleSearchId(language, "Nowa"), "2001", "3003")
   }
 
+  private def recordDoc(film: IdentityMeasures.Film) = new BsonDocument("record", IdentityAnswerBson.film(Some(film)))
+  private val lalka = IdentityMeasures.Film("Lalka", Some("Lalka"), year = Some(2025), popularity = Some(7.3))
+
+  // A resolve asks every film its questions name for its hit, and the hit of a recorded film is read off its record:
+  // keeping the record for it held the whole film beside the record the corpus keeps decoded — 31k of worker-uk's 33k
+  // cached film answers, 9.2 MiB of their 12.3 (heap dump 2026-10-07).
+  "a resolve's candidates" should "keep each named film's hit, not its record, answering it as the record reads it" in {
+    val w = new World
+    w.backend.put(TmdbKind.Film, Seq("1018" -> recordDoc(lalka)))
+    w.store.question(TmdbStore.titleSearchId(language, "Lalka"), Seq(hit(1018, "Lalka")))
+    val q = CandidateQuery.Title("Lalka")
+    w.lookups.prefetch(Seq(q), Nil, Nil)
+    w.lookups.candidates(q) shouldBe Answer.Known(TmdbStore.filmHit(1018, recordDoc(lalka)).toSeq)
+    w.lookups.prefetchAnswered()
+    w.cached.holdsAnswer(TmdbKind.Film, "1018") shouldBe false
+    w.backend.drain()
+    w.tick(Seq(q)) shouldBe Seq(Some(Seq(1018)))
+    w.backend.drain() shouldBe empty                                  // the hit is held, so nothing is read again
+  }
+
+  it should "answer a rewritten film's new hit" in {
+    val w = new World
+    w.backend.put(TmdbKind.Film, Seq("1018" -> recordDoc(lalka)))
+    w.store.question(TmdbStore.titleSearchId(language, "Lalka"), Seq(hit(1018, "Lalka")))
+    val q = CandidateQuery.Title("Lalka")
+    w.tick(Seq(q))
+    w.cached.put(TmdbKind.Film, Seq("1018" -> recordDoc(lalka.copy(title = "Lalka (2025)", popularity = Some(9.9)))))
+    w.lookups.prefetch(Seq(q), Nil, Nil)
+    w.lookups.candidates(q).toOption.toSeq.flatten.map(h => h.title -> h.popularity) shouldBe Seq("Lalka (2025)" -> 9.9)
+  }
+
+  // The corpus decodes each record it loads and keeps that ([[LiveCorpus]]'s `records`): the cache keeping its bytes too
+  // was the same film twice.
+  "a record the corpus loads" should "be read through, not kept" in {
+    val w = new World
+    w.backend.put(TmdbKind.Film, Seq("1018" -> recordDoc(lalka)))
+    w.lookups.prefetch(Nil, Seq(1018), Nil)
+    w.lookups.film(1018).toOption.flatten.map(_.title) shouldBe Some("Lalka")
+    w.lookups.prefetchAnswered()
+    w.cached.holdsAnswer(TmdbKind.Film, "1018") shouldBe false
+  }
+
+  "a record asked alone" should "still be answered from the cache when asked again" in {
+    val w = new World
+    w.backend.put(TmdbKind.Film, Seq("1018" -> recordDoc(lalka)))
+    w.lookups.film(1018).toOption.flatten.map(_.title) shouldBe Some("Lalka")
+    w.backend.drain()
+    w.lookups.film(1018).toOption.flatten.map(_.title) shouldBe Some("Lalka")
+    w.backend.drain() shouldBe empty
+  }
+
   "a document the sweep deleted" should "be read again, not answered from the cache" in {
     val w = new World
     w.backend.put(TmdbKind.Query, Seq("q" -> new BsonDocument("ids", new org.bson.BsonArray()).append(TmdbStore.FetchedAt, org.bson.BsonInt64(1))))

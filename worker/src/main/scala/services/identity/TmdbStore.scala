@@ -50,6 +50,14 @@ trait TmdbDocuments {
       kept
     }.toMap
   }
+  /** Each film's hit as an answer reads it ([[TmdbStore.filmHit]]: its record's, else its search hit's); a film the
+   *  store holds no hit of is left out. A store that keeps answers keeps these apart from the films' records: a
+   *  resolve asks every film its questions name for its hit, and reads none of their records. */
+  def filmHits(ids: Seq[String]): Map[String, Hit] =
+    answers(TmdbKind.Film, ids).flatMap { case (id, d) => TmdbStore.filmHit(id.toInt, d).map(id -> _) }
+  /** [[answers]], for a caller that keeps what it reads decoded (the corpus its records): a store that keeps answers
+   *  need not keep these too. */
+  def answersReadThrough(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = answers(kind, ids)
   def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit
 }
 
@@ -257,6 +265,10 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
   def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = docs.get(kind, ids)
   /** What answers read of these documents ([[TmdbDocuments.answers]]). */
   def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = docs.answers(kind, ids)
+  /** Each film's hit as an answer reads it ([[TmdbDocuments.filmHits]]). */
+  def filmHits(ids: Seq[String]): Map[String, Hit] = docs.filmHits(ids)
+  /** What answers read, for a caller that keeps it decoded ([[TmdbDocuments.answersReadThrough]]). */
+  def answersReadThrough(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = docs.answersReadThrough(kind, ids)
 }
 
 object TmdbStore {
