@@ -32,7 +32,7 @@ assets() {
 # The names matching ^<prefix>-<code>-<corpus>-<run id>.<ext>$, by run id ascending.
 named() {
   local prefix="$1" code="$2" corpus="$3" ext="$4"
-  assets | grep -E "^$prefix-$code-$corpus-[0-9]+\\.$ext\$" | sort -t- -k4,4n
+  assets | { grep -E "^$prefix-$code-$corpus-[0-9]+\\.$ext\$" || true; } | sort -t- -k4,4n
 }
 
 case "${1:-}" in

@@ -51,7 +51,10 @@ run() { PATH="$work/bin:$PATH" FIXTURE_RELEASE_TAG=convergence-fixtures bash "$f
 
 check "a pair's fills are its own country's and corpus's, oldest run first" \
   "fill-us-100-35.tar.zst fill-us-100-201.tar.zst" "$(run fills us 100)"
-check "a release that cannot be listed gives no fills, not a failed leg" "" "$(STUB_UNREACHABLE=1 run fills us 100 2>/dev/null)"
+check "a release that cannot be listed gives no fills, not a failed leg" "0:" \
+  "$(out=$(STUB_UNREACHABLE=1 run fills us 100 2>/dev/null); echo "$?:$out")"
+# Every leg's setup asks, under `bash -e`, before any fill exists (run 37608599525 failed every leg here).
+check "a pair with no fills yet gives none, and succeeds" "0:" "$(out=$(run fills es 100); echo "$?:$out")"
 
 run unpack "$work/stage" fill-us-100-201.tar.zst fill-us-100-gone.tar.zst > "$work/out-unpack" 2>&1
 check "each fill is laid over the staged tree, under the tree's own paths" "toy story 5" \
