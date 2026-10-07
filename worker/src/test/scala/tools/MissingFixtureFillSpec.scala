@@ -127,6 +127,19 @@ class MissingFixtureFillSpec extends AnyFlatSpec with Matchers {
     MissingFixtureFill.heldIn(out, Tree)(gap) shouldBe true
   }
 
+  // A leg's fill checks what is held against the leg's own tree, whose remembered verdicts include the passing failure
+  // that made the request a gap: a circuit the recording opened on itself. Taken for an answer, it was "already held"
+  // on every run and never fetched — Poland's Wikidata lookups (run 37666942870). Only an answer holds a request.
+  it should "hold a request a 404 is remembered for, and not one only a passing failure is remembered for" in withRoots { (held, _) =>
+    val passing = gap("https://www.wikidata.org/w/api.php?action=query&srsearch=passing&format=json")
+    val gone    = gap("https://www.wikidata.org/w/api.php?action=query&srsearch=gone&format=json")
+    val store   = new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(held, Tree), FileEnrichmentCacheStore.NeverExpires)
+    store.put(CachingEnrichmentFetch.keyOf("GET", passing.url), CachedResponse.Failed(None, "GET", "tools.CircuitOpenException: circuit open"))
+    store.put(CachingEnrichmentFetch.keyOf("GET", gone.url), CachedResponse.Failed(Some(404), "GET", "HTTP 404"))
+    MissingFixtureFill.heldIn(held, Tree)(passing) shouldBe false
+    MissingFixtureFill.heldIn(held, Tree)(gone) shouldBe true
+  }
+
   // The list is read from a file another job wrote: a body holding tabs and newlines survives the round trip.
   "a refetch line" should "carry a POST's body whole through the list" in {
     val gap = MissingFixtures.Refetch("POST", "https://caching.graphql.imdb.com/",

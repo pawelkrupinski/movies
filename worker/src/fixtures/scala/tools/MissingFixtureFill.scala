@@ -96,8 +96,10 @@ object MissingFixtureFill {
     ArchiveReplayWiring.recordedChain(tree, root, Some(cache), live, "fill-fixtures", "fill-live")
   }
 
-  /** Whether `tree` under `root` — the fills earlier legs published — already answers a request: a recorded
-   *  response, or a remembered verdict. */
+  /** Whether `tree` under `root` — the fills earlier legs published, or a leg's own tree — already answers a request: a
+   *  recorded response, or a remembered verdict that is an answer (a 404). A failure of the moment remembered there — a
+   *  circuit the recording opened on itself — is what made the request a gap, never what answers it: taken for one,
+   *  Poland's Wikidata lookups were "already held" on every run and never fetched (run 37666942870). */
   def heldIn(root: settings.FixtureRoot, tree: String): MissingFixtures.Refetch => Boolean = {
     val recorded = new clients.tools.FakeHttpFetch(tree, strict = true, foldYear = false, root = root)
     val verdicts = new EnrichmentCache(new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(root, tree),
@@ -105,10 +107,10 @@ object MissingFixtureFill {
     verdicts.preload()
     gap => gap.body match {
       case Some(body) =>
-        verdicts.lookup(CachingEnrichmentFetch.keyOf("POST", gap.url, Some(body.text))).isDefined ||
+        verdicts.lookup(CachingEnrichmentFetch.keyOf("POST", gap.url, Some(body.text))).exists(_.definitive) ||
           scala.util.Try(recorded.post(gap.url, body.text, body.contentType).length).isSuccess
       case None =>
-        Seq("BYTES", "GET").exists(verb => verdicts.lookup(CachingEnrichmentFetch.keyOf(verb, gap.url)).isDefined) ||
+        Seq("BYTES", "GET").exists(verb => verdicts.lookup(CachingEnrichmentFetch.keyOf(verb, gap.url)).exists(_.definitive)) ||
           scala.util.Try(if (gap.verb == "BYTES") recorded.getBytes(gap.url).length else recorded.get(gap.url).length).isSuccess
     }
   }
