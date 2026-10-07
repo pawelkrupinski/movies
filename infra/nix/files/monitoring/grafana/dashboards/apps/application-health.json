@@ -2766,6 +2766,112 @@
           ]
         },
         {
+          "id": 9026,
+          "title": "Both tiers \u2014 full GCs per hour (worker Serial old, web G1 old)",
+          "description": "How many FULL collections each JVM ran over the last hour: the worker's MarkSweepCompact (Serial old generation, every one a stop-the-world pass over the whole heap) and the web's G1 Old Generation. A worker whose old generation sits close to its live set runs them back to back \u2014 worker-pl on 448m ran 24 an hour with no boot among them (2026-10-07). A rollout's boot adds a burst of its own.",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 230
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "lineWidth": 1
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (job, country) (increase(jvm_gc_collection_seconds_count{job=~\"kinowo-worker|kinowo-web\",country=~\"$country\",gc=~\"MarkSweepCompact|G1 Old Generation\"}[1h]))",
+              "legendFormat": "{{job}} {{country}}",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            }
+          ]
+        },
+        {
+          "id": 9027,
+          "title": "Both tiers \u2014 share of wall time in GC per hour, by collector (%)",
+          "description": "The share of the last hour each collector spent collecting: pause time for Copy, MarkSweepCompact and G1's young and old (G1 Concurrent GC runs beside the application). Young and full apart, so a smaller young generation's extra young collections can be weighed against the full ones it saves.",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 230
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "lineWidth": 1
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "right",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ]
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "100 * sum by (job, country, gc) (increase(jvm_gc_collection_seconds_sum{job=~\"kinowo-worker|kinowo-web\",country=~\"$country\"}[1h])) / 3600",
+              "legendFormat": "{{job}} {{country}} {{gc}}",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            }
+          ]
+        },
+        {
           "id": 46,
           "title": "kinowo-worker CPU drivers — projection vs JIT vs other (stacked = total CPU)",
           "description": "STACKED breakdown of the worker's process CPU (centi-cores): the three areas sum to total, so you can see at a glance how much of a daytime hump is READ-MODEL PROJECTION versus JIT versus everything else. Projection dominating is normal and self-limiting; 'other' dominating for a long stretch is GC or scrape work and worth chasing. The dashed total is drawn over the stack as a check that the three parts really do account for the CPU.",
@@ -2778,7 +2884,7 @@
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 230
+            "y": 239
           },
           "fieldConfig": {
             "defaults": {
@@ -2946,7 +3052,7 @@
             "h": 7,
             "w": 24,
             "x": 0,
-            "y": 239
+            "y": 248
           },
           "fieldConfig": {
             "defaults": {
@@ -3057,7 +3163,7 @@
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 246
+            "y": 255
           },
           "fieldConfig": {
             "defaults": {
@@ -3214,7 +3320,7 @@
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 255
+            "y": 264
           },
           "options": {
             "calculate": false,
