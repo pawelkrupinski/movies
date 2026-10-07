@@ -385,6 +385,20 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     missing.size shouldBe pages.size
   }
 
+  // Wikidata is paced across the fleet (500 ms a request, 2 s horizon). On a hermetic leg's frozen clock no slot
+  // ever came round, so from the fifth request on the pacer answered "circuit open" above the leaf, and a Polish leg
+  // named none of the ~60 Wikidata lookups its tree lacked (run 37656742608). A request that is never sent paces nothing.
+  it should "name every unrecorded request to a fleet-paced host, never pacing what it does not send" in {
+    val missing = new MissingFixtures
+    val wiring  = hermeticWiring(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), missing)
+    val asks    = (1 to 12).map(i => s"https://www.wikidata.org/wiki/Special:EntityData/Q$i.json")
+    asks.foreach { url =>
+      val refused = the [Exception] thrownBy wiring.enrichmentFetch.get(url)
+      refused.getMessage should not include "circuit open"
+    }
+    missing.size shouldBe asks.size
+  }
+
   // The detail drain worked one task at a time on one thread: a few thousand detail tasks of serial
   // round trips on every US projection, ~23 s each at under one core (run 37563035752).
   "a harness queue drain" should "work its tasks on the background budget's claimants side by side" in {

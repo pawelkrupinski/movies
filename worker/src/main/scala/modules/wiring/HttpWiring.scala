@@ -65,7 +65,7 @@ trait HttpWiring { self: WorkerWiring =>
     new MonitoringHttpFetch(
       HttpWiring.pacedWire(
         new CountingHttpFetch(sharedRealHttpLeaf, workerMetrics.httpMetrics.recorderFor(country.code, phase)),
-        configuration, fleetHostPace, pacingClock, pacingSleep, workerMetrics.httpBreakers.meterFor(country.code, phase)),
+        configuration, pacingFleet, pacingClock, pacingSleep, workerMetrics.httpBreakers.meterFor(country.code, phase)),
       uptimeMonitor, cinemaScraperCatalog.scrapeHosts)
 
   /** How the chain's pacing layers wait out a host's slot. A real wait wherever a request can go
@@ -77,6 +77,10 @@ trait HttpWiring { self: WorkerWiring =>
    *  time requests actually go out in. The wiring's own clock in production; a harness whose
    *  clock is frozen but whose requests are real gives them the wall clock instead. */
   protected def pacingClock: java.time.Clock = clock
+
+  /** The fleet-wide slots the chain's fleet pacer takes ([[fleetHostPace]]) — the one pacing decision that can refuse a
+   *  request rather than wait for it. */
+  protected def pacingFleet: FleetHostPace = fleetHostPace
 
   /** The fleet's shared host paces (`fleet_host_pace` in the fleet database): every country's worker holds a shared
    *  origin to one budget. Without the fleet database each worker paces itself alone. */

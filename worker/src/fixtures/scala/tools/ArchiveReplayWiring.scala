@@ -75,7 +75,8 @@ class ArchiveReplayWiring(
     hermetic.fold(super.realHttpLeaf)(new HermeticHttpLeaf(_))
 
   /** Over a hermetic leaf no request goes out, so a paced host's slot guards nothing: the pacing
-   *  layers still claim their slots and decide as production does, and only the wait is skipped.
+   *  layers still claim their slots and decide as production does — the fleet's aside ([[pacingFleet]]) — and only the
+   *  wait is skipped.
    *  Waited out, a page the tree lacks — asked again on every listing that names it — slept 251 s
    *  of a US boot in Flicks' 200 ms slots (run 37546591704). */
   override protected def pacingSleep: Long => Unit =
@@ -88,6 +89,12 @@ class ArchiveReplayWiring(
    *  skipped, and its pacing decisions stay independent of how fast the runner is. */
   override protected def pacingClock: java.time.Clock =
     if (hermetic.isDefined) super.pacingClock else wallClock
+
+  /** Over a hermetic leaf no request goes out, so no fleet slot is taken: the fleet pacer refuses a request whose slot is
+   *  past its horizon, and on the frozen clock no slot ever came round, so from Wikidata's fifth request on it answered
+   *  "circuit open" above the leaf, and the leg named none of the lookups its tree lacked (run 37656742608). */
+  override protected def pacingFleet: FleetHostPace =
+    if (hermetic.isDefined) ArchiveReplayWiring.UnpacedFleet else super.pacingFleet
 
   /**
    * The scrape side: recorded DETAIL pages first, live behind them, and whatever the
@@ -255,6 +262,12 @@ class ArchiveReplayWiring(
 }
 
 object ArchiveReplayWiring {
+
+  /** Every slot free at once: the fleet pace of a wiring that sends nothing. */
+  private[tools] object UnpacedFleet extends FleetHostPace {
+    def take(host: String, interval: scala.concurrent.duration.FiniteDuration, horizon: scala.concurrent.duration.FiniteDuration,
+             now: java.time.Instant): Either[java.time.Instant, java.time.Instant] = Right(now)
+  }
 
   /** Points a run at a PARTICULAR tree — a scratch one to prove recording works, a
    *  shared one restored from a CI cache. Only ever an override: unset means the
