@@ -77,6 +77,19 @@ class CachingReviewSourceSpec extends AnyFlatSpec with Matchers {
     source.decisions(unmatchedOnly = false) shouldBe Seq(vetoedDecision)
   }
 
+  they should "by default, still answer at once after most of an hour nobody looked, read again behind that answer" in {
+    val underlying = new Counting
+    val clock      = new tools.MutableClock(now)
+    val behind     = new Behind
+    val source     = new CachingReviewSource(underlying, clock, ticker = clock.ticker, refreshOn = behind)
+    source.decisions(unmatchedOnly = false)
+    underlying.held = Seq(vetoedDecision)
+    clock.advance(Duration.ofMinutes(59))
+    source.decisions(unmatchedOnly = false) shouldBe Seq(heldDecision)                  // at once, as kept
+    behind.runAll()
+    source.decisions(unmatchedOnly = false) shouldBe Seq(vetoedDecision)
+  }
+
   they should "keep the read a failed refresh would have replaced" in {
     val underlying = new Counting
     val clock      = new tools.MutableClock(now)

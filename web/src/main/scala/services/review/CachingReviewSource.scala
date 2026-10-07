@@ -20,7 +20,8 @@ import scala.concurrent.duration._
  */
 final class CachingReviewSource(underlying: ReviewSource, clock: Clock,
                                       refreshAfter: FiniteDuration = 30.seconds,
-                                      expireAfter: FiniteDuration = 10.minutes,
+                                      // an hour: a page opened after a break answers at once, from reads at most that old
+                                      expireAfter: FiniteDuration = 1.hour,
                                       // what both ages are measured on: the system's nanosecond ticker outside specs
                                       ticker: Ticker = Ticker.systemTicker(),
                                       refreshOn: Executor = ForkJoinPool.commonPool()) extends ReviewSource {
