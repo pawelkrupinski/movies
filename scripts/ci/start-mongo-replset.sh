@@ -30,7 +30,12 @@ timeout_seconds="${MONGO_START_TIMEOUT_SECONDS:-180}"
 majority_journal="${MONGO_MAJORITY_JOURNAL:-true}"
 deadline=$((SECONDS + timeout_seconds))
 
-mongosh_eval() { docker exec mongo mongosh --quiet --eval "$1"; }
+# HOME outside /data/db: the image's HOME is the data directory, so a probe's mongosh would write its
+# lock files there while the entrypoint's `find /data/db ... -exec chown` walks it -- and a lock file
+# gone between the two fails the chown, which kills the container before mongod starts. A tmpfs data
+# directory starts root-owned, so the entrypoint walks it every time (run 37586335937, Poland: "chown:
+# cannot access '/data/db/.mongodb/mongosh/am-unknown.json.lock'", never reachable).
+mongosh_eval() { docker exec -e HOME=/tmp mongo mongosh --quiet --eval "$1"; }
 
 # wait_for <what> <command...>: retry once a second until it succeeds or the deadline passes.
 wait_for() {
