@@ -409,21 +409,21 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     }
   }
 
-  "a venue's poster" should "show from its scraped listing alone, fetched through the poster proxy" in {
+  "a venue's poster" should "show from its scraped listing alone, at the address the poster proxy gives it" in {
     chrome match {
       case None => cancel("Chrome not installed — skipping /debug/review page test")
       case Some(c) => c.openPage(server.baseUrl + "/listed/review") { page =>
-        // the proxy answers every poster with a 1×1 PNG: no network, and positive proof the browser asked IT
+        // the poster's address answers with a 1×1 PNG: no network, and positive proof the browser asked IT — biletyna's
+        // own host, which refuses the weserv proxy (`PosterProxy`)
         val png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
         page.onEvent("Fetch.requestPaused") { p =>
           page.send("Fetch.fulfillRequest", Json.obj("requestId" -> (p \ "requestId").as[String], "responseCode" -> 200,
             "responseHeaders" -> Json.arr(Json.obj("name" -> "Content-Type", "value" -> "image/png")), "body" -> png))
         }
-        page.send("Fetch.enable", Json.obj("patterns" -> Json.arr(Json.obj("urlPattern" -> s"https://${tools.PosterProxy.ProxyHost}/*"))))
+        page.send("Fetch.enable", Json.obj("patterns" -> Json.arr(Json.obj("urlPattern" -> tools.PosterProxy.proxy(listedPoster)))))
         page.reload()
         page.waitFor("(function(){ var i = document.querySelector('.listing img.poster'); return !!i && i.complete && i.naturalWidth > 0; })()")
         page.evalString("document.querySelector('.listing img.poster').src") shouldBe tools.PosterProxy.proxy(listedPoster)
-        page.evalString("document.querySelector('.listing img.poster').src") should startWith (s"https://${tools.PosterProxy.ProxyHost}/")
       }
     }
   }
