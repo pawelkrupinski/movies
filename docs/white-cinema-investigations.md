@@ -305,6 +305,164 @@ big cities (see that entry). It is now only venues Filmweb itself doesn't list.
 
 ---
 
+## 2026-10-07
+
+**Eleventh all-five-country sweep** (the first since 09-29; no run landed in
+between). Newest bucket 2026-10-07 02:00 UTC. The sweep is the checked-in
+script, unchanged. PL was fully probed. UK, DE and ES were cut to non-seasonal
+whites with an archive of 10 days or less, plus every green→white. US was cut
+to non-seasonal whites with an archive of 3 days or less: 194 venues, of which
+a random 40 plus every one with 5 or more archived films were probed. **Three PL
+scrapers were broken and are fixed. The other four countries have no parser bugs.**
+
+| DB | services | white | white % | red | green→white | seasonal | probed |
+|---|---|---|---|---|---|---|---|
+| `kinowo` (PL) | 551 | **6** | 1.1% | 1 | 2 | 0 | all 6 + the red one + 1 on the fallback |
+| `kinowo_uk` | 855 | **51** | 6.0% | 0 | 0 | 1 | 6 (arch≤10d) |
+| `kinowo_de` | 1,526 | **364** | 23.9% | 13 | 1 | 143 | 19 (arch≤10d) |
+| `kinowo_us` | 5,041 | **1,073** | 21.3% | 1 | 0 | 263 | 47 of 194 (arch≤3d) |
+| `kinowo_es` | 609 | **223** | 36.6% | 0 | 3 | 25 | all 55 (arch≤10d) |
+
+Compared with 09-29:
+- **White:** PL 9 → 6, UK 56 → 51, DE 364 → 364, US 1,142 → 1,073, ES 198 → 223.
+- **Red:** PL 2 → 1, DE 22 → 13, US 2 → 1. UK and ES stay at 0.
+- **`thin`:** PL 68 → 35, UK 17 → 16, DE 18 → 11, ES 17 → 13. US stays at 0, for the cadence reason in the methodology.
+- **DE kinoprogramm.com fallback:** 18 venues have `fallback: true` buckets in-window, up from 16.
+- **ES archive≤10d candidates doubled** (27 → 55). This is not systemic. 49 of the 55 are small municipal or theatre venues in 30+ provinces, each with 1–2 archived films and an archive 1.2–2.4 days old: Friday–Sunday programmes that ended on Sunday, swept on a Wednesday. The venue page reads `data-showtimes-dates="[]"`.
+
+### KinoPort (Gdańsk): `fixed` @29f36d728. It was on the Filmweb fallback since 10-01
+
+This is the run's only active `filmwebFallback` doc. It ENTERed 2026-10-01 00:39 UTC.
+`failingSince` was 09-30 18:17, with 104 consecutive `primary returned no screenings`.
+All 24 of its in-window buckets are `fallback: true`, so it stayed green on Filmweb 1735.
+
+gcsw.pl's 30.09 repertoire post ("1–9 PAŹDZIERNIKA") replaced the
+heading/paragraph run with a styled card grid inside an Elementor HTML widget:
+- `div.gcsw-day` holds `__date` ("1.10").
+- `div.gcsw-screening` holds `__time`, `__title` and a `·`-separated `__meta` ("102’ · 2026 · Morgan Matthews · dramat").
+
+No `h3`/`h4`/`p` carries a day or a time any more, so the client read 0 of 16
+screenings. This is the third layout in two months, after 09-08 (h3/h4/p moved)
+and 09-18 (undashed times). So a post with cards is read as cards, and any other
+post still walks the heading run. The card days take the shared
+`ScraperParse.upcomingDate`. `KinoPortCardLayoutSpec` replays the live 10-07
+capture: 16 screenings, plus runtime, year and director off the meta line. It
+failed before the change (0 results) and passes after.
+
+### Kino Chatka Żaka (Lublin): `fixed` @770a53aa0. Previously "dormant"
+
+The calendar `umcs.pl/pl/kalendarz-wydarzen,9469,1.lhtm` now lists five DKF
+"Bariera" screenings: 13, 14, 20, 21 and 27 October at 18:00. The list parse
+still matched. The detail pages' meta description dropped its pipes, though:
+`"13.10.26 wtorek 18:00\nKTOŚ CAŁKIEM OBCY\n…"`, sometimes under a banner line
+("WIECZÓR Z KLASYKĄ"). `DetailTimePat` wanted `| HH:MM`, so every entry lost
+its time and was dropped, and the bar read white like the dormant summer.
+**Lesson:** a venue long logged as dormant can wake into a broken parser, with
+the bar the same colour throughout. `DetailTimePat` now takes the stamp with or
+without pipes. `KinoChatkaZakaPipelessDetailSpec` replays the 10-07 capture
+(5 screenings). It failed before the change and passes after.
+
+### Kino Marzenie (Tarnów): `fixed` @e76de5e34. Red for a week, UNCOVERED
+
+It was red on all 25 retained buckets. The last content-bearing scrape was 09-30,
+and the `filmwebFallback` doc reads `UNCOVERED` because Filmweb's Tarnów list
+(city 132) has only Millenium and Multikino. **It was dark to users.**
+
+The worker's own log (VictoriaLogs via mongo-1) shows every scrape cut at
+45 s by `AdaptiveTimeoutScraper`, 5–6 day partials in, with 0 throttled and
+100% clean. The site is up and its feed is intact. The cause is speed:
+- **From mongo-1**, `/embed/events?start_date=D&end_date=D&category_id=8` connects in 0.02 s but takes **8–10 s to first byte**.
+- **From a Mac** the same request takes 0.5–2.4 s.
+- `end_date` is ignored, so a range request returns only its start day.
+
+So 14 sequential days (about 2 minutes) can never fit the 45 s ceiling
+(`HostScrapeStats.DefaultCeiling`).
+
+The fix converts `KinoMarzenieClient` to a `ChunkedCinemaScraper`. Chunked
+cinemas skip the per-scrape budget, and each 7-day chunk runs as its own task.
+The plan is now the source's own day list: `/repertuar`'s slider `a.item[data-href]`,
+62 days (today to 12-07). That replaces the old fixed 14-day window, which was
+also a horizon cap of the kind `feedback_never_limit_scrape_horizon` forbids.
+`KinoMarzenieChunkedSpec` replays a 10-07 capture. It plans 62 days in 9 chunks,
+and the first chunk yields 16 showtimes. Against the old code the spec fails
+twice: it does not compile (no `planChunks`), and the client is not a `ChunkedCinemaScraper`.
+**Re-check next run** that it is green, and that a ~60 s chunk is not cut anywhere.
+
+### Poland: the other whites
+
+| Venue | Source | Verdict |
+|---|---|---|
+| Baszta (Braniewo) | Filmweb 2352 | **intentionally-dormant**. It is green→white, but only for the last 6 hourly buckets, after its last film. Filmweb `/seances` is `[]` for all 28 days from 10-07. No own site found. Filmweb-only, so re-check next run. |
+| GOK Lipka | biletyna | **intentionally-dormant**. green→white; the place page has only 2 concerts (10-24, 11-11). |
+| Kino MCK Radłów | Filmweb 2408 | **intentionally-dormant**. Filmweb `[]` for 28 days; last archive 4.9 d. |
+| CKiS Sępólno Krajeńskie | biletyna | **intentionally-dormant**. A play, concerts and a stand-up through 2027-02, no films. |
+| Kino Wisła Brzeszcze | bilety24 1539 | **intentionally-dormant**. The organiser page says "Brak wydarzeń". |
+
+Red (1): Kino Marzenie (above). 09-29's two reds have both cleared:
+- Kino Na Biegunach: the fallback doc RECOVERED 10-02 14:39, so the MSI host is back. The `needs-human` from 09-29 is withdrawn.
+- Chatka Żaka: now fixed (above).
+
+### Filmweb-fallback sweep (PL only): 1 active (KinoPort, fixed), flappers all transient
+
+| Venue | Since | Last reason | Verdict |
+|---|---|---|---|
+| KinoPort | 2026-10-01 00:39 | primary returned no screenings | **fixed** (above) |
+
+These ENTER→RECOVERED pairs since 09-29 are all **transient**:
+
+| Venue | Entered | Recovered | Duration | Reason |
+|---|---|---|---|---|
+| Bajka (Darłowo, `darlowo.vectorsoft.pl`) | 10-03 20:45 | 10-06 12:43 | 2.7 d | `CircuitOpenException` |
+| Kino Roma | 10-03 09:00 | 10-05 08:00 | 2 d | connect timeout |
+| Kino Górnik Łęczyca | 09-30 03:13 | 09-30 07:13 | 4 h | eurobilet timeout |
+| Kino Kultura Bełchatów | 10-05 04:39 | 10-05 08:39 | 4 h | primary returned no screenings |
+| Teatr Ziemi Rybnickiej | 09-29 20:23 | 10-01 11:24 | — | the dormant venue's Filmweb listing briefly had something |
+
+`UNCOVERED` one-offs were single bilety24/biletyna 8 s budget timeouts on venues
+that are dormant anyway: Wisła Brzeszcze 10-01, MGOK Recz 10-03 and Sępólno 10-05.
+Kino Marzenie's own `UNCOVERED` (09-30) is covered above.
+
+### UK: 51 white, 6 probed, 0 bugs
+
+All 6 are EMPTY (`no-streaming-sessions`, no `data-date` tabs). Control: Finsbury Park Picturehouse, 75 tabs.
+
+### DE: 364 white, 19 probed, 0 fixable bugs; 13 red, all aggregator 404s
+
+Of the 19 whites:
+- **13 EMPTY.**
+- **4 LAG:** Film-Eck 10-09, Kino Free Cinema 10-09, Blitz-Lichtspiele Schönberg 10-08 and Höchster Lichtspiele 10-08.
+- **"Studio Köln"** still doesn't map to a roster id (as on 09-29).
+- **Cinema Boppard (A1360): `unfixable: aggregator data`.** It shows the `movie: null` shape seen at Cine Central 3D: `/_/showtimes/theater-A1360/d-2026-10-08/p-1/` has a dubbed 14:00 slot with no movie. The kinoheld ticket URL carries `gid_entity=movie.movie._.307311`, so a film id exists upstream. If this shape keeps spreading, it may be worth reading that id from the ticket link.
+
+Control CinemaxX Kiel is populated.
+
+**The 13 red venues** each 404 on `filmstarts.de/kinoprogramm/kino/<id>/`. None was found re-listed: there were 200 Bundesland listing pages (640 ids), plus city pages for Bremen, Hamburg, Regensburg, Ludwigsburg and Kaufbeuren. Filmstarts' search answers 410.
+- **Seasonal, so leave them** (drive-in or open-air): Movieplexx Autokino A2945, LOTTO Hamburg Auto- und Open Air Kino A2949, Kino unterm Sternenhimmel Loßburg A2083 and Open Air Kino Auf Schloss Pürkelgut A1876.
+- **`needs-human: retire?`** These have no closure evidence beyond the 404, so they were not retired this run (precedent: retire only with operator or news evidence): Kulturkirche St. Stephani A2681, Kinocenter Maxhütte-Haidhof A0656, MoKi Ludwigsburg A2859, Lichtwerk Kino Schwandorf A2096, Olympia Winnenden A1578, Music Hall Worpswede A0979, Kino am Seffersbach A2800, Melodrom-Filmtheater A1558 and Instituto Cervantes Hamburg A2846.
+- **None is covered.** None has a content-bearing archive except MoKi (31 d old), so no user-visible programme was lost.
+
+### US: 1,073 white, 47 probed, 0 bugs; 1 red
+
+Of the 47 probed:
+- **31 EMPTY.**
+- **16 LAG**, with earliest tabs on 10-08 or 10-09. Examples are Grand Cinema Hinckley, Malco Wolfchase 8, Bay Theatre Morro Bay and Rogers Theatre (10-11).
+
+Control AMC Empire 25 has 78 tabs.
+
+**Red:** ACME Screening Room Lambertville 404s on flicks.us, with and without the trailing slash. A re-listing can't be checked, because the search pages are JS-rendered. **`needs-human: retire?`** There is no closure evidence.
+
+### ES: 223 white, 55 probed, 0 fixable bugs
+
+Of the 55 probed:
+- **49 EMPTY.**
+- **5 LAG:** Almassafes 10-09, Oñatiko Zinea 10-09, Cine Méliès Estepa 10-10, Cine Avenida (Valladolid) 10-09 and Baztartxo 10-11.
+- **Multicines Cáceres (E0143, green→white): `unfixable: aggregator data`.** It has `movie: null` slots on 10-15 and 10-31, as at Boppard above. It self-healed once before (09-27).
+
+The other two green→white, Auditorio La Colina and Herri Antzokia, are `[]`.
+Control Cinesa Marineda City is populated.
+
+---
+
 ## 2026-09-29
 
 **Tenth all-five-country sweep.** Newest bucket 2026-09-29 12:00 UTC. PL was
