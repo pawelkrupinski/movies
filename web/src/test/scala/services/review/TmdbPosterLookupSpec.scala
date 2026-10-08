@@ -23,6 +23,19 @@ class TmdbPosterLookupSpec extends AnyFlatSpec with Matchers {
   it should "be none for a film TMDB no longer has" in {
     lookup.poster(1575247, Locale.UK) shouldBe None
   }
+
+  it should "be none while TMDB fails for the moment, and asked again the next time" in {
+    var failing = true
+    val fetch = new tools.HttpFetch {
+      def get(url: String): String =
+        if (failing) throw new tools.HttpStatusException(429, "GET", url, None) else HowlsAnswer
+      def post(url: String, body: String, contentType: String): String = throw new UnsupportedOperationException
+    }
+    val lookup = new TmdbPosterLookup(fetch, settings.TmdbApiKey("k"))
+    lookup.poster(4935, Locale.UK) shouldBe None
+    failing = false
+    lookup.poster(4935, Locale.UK) shouldBe Some(HowlsPoster)
+  }
 }
 
 object TmdbPosterLookupSpec {

@@ -155,7 +155,7 @@ object LabelsExport {
     val current       = ReviewAnswers.current(history)
     val stood         = used.fold(Seq.empty[ReviewAnswer])(u => ReviewAnswers.current(history.filterNot(_.at.isAfter(u))))
     val (fresh, old)  = current.partition(a => used.forall(a.at.isAfter))
-    val (kept, taken) = takeBack(LabelsTsv.read(path), stood.filterNot(s => current.exists(_ eq s)), old, identity)
+    val (kept, taken) = takeBack(LabelsTsv.read(path), stood.filterNot(s => current.exists(_ eq s)), current, identity)
     val (rows, summary) = merge(kept, fresh, identity)
     LabelsTsv.write(path, rows)
     history.map(_.at).maxOption.foreach(LabelsTsv.markUsed(path, _))

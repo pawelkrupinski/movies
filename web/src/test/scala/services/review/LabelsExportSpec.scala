@@ -162,6 +162,24 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers {
     } finally { Files.deleteIfExists(LabelsTsv.usedPath(path)); Files.deleteIfExists(path); Files.deleteIfExists(dir): Unit }
   }
 
+  it should "leave the rows of an exported answer replaced since by one that gives them too" in {
+    val dir   = Files.createTempDirectory("labels")
+    val path  = dir.resolve("labels.tsv")
+    val hand  = LabelRow("pl", "Kino Opalenica", "FRANZ KAFKA", "tmdb:1157322", "wrong", "by hand")
+    val right = answer(ReviewVerdict.Right)
+    // the same verdict again on the card after it grew a venue: a new cluster id, the same row
+    val again = answer(ReviewVerdict.Right, members = Seq(opalenica, ReviewMember("Kino Opalenica", "FRANZ KAFKA", Some("https://b24/kafka-2"))))
+      .copy(at = at.plusSeconds(60))
+    try {
+      LabelsTsv.write(path, Seq(hand))
+      LabelsExport.exportTo(path, Seq(right)).flipped shouldBe 1
+      val flippedRow = LabelsTsv.read(path)
+      val second = LabelsExport.exportTo(path, Seq(right, again))
+      (second.withdrawn, second.flipped, second.unchanged) shouldBe ((0, 0, 1))
+      LabelsTsv.read(path) shouldBe flippedRow
+    } finally { Files.deleteIfExists(LabelsTsv.usedPath(path)); Files.deleteIfExists(path); Files.deleteIfExists(dir): Unit }
+  }
+
   it should "keep a withdrawn answer's row another standing answer also gives" in {
     val dir   = Files.createTempDirectory("labels")
     val path  = dir.resolve("labels.tsv")
