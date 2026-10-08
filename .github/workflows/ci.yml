@@ -176,6 +176,7 @@ jobs:
                       bash scripts/ci/leg-verdict-test.sh
                       bash scripts/ci/rerun-failed-sbt-test.sh
                       bash scripts/ci/start-mongo-replset-test.sh
+                      bash scripts/ci/mongo-top-test.sh
                       bash scripts/ci/install-apt-package-test.sh
                       bash scripts/ci/in-background-test.sh
                       bash scripts/ci/cpu-sampler-test.sh

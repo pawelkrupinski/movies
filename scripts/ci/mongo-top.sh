@@ -14,7 +14,7 @@ summary=/tmp/mongo-top.json
 case "${1:-}" in
   start)
     interval="${2:-20}"
-    docker exec -d mongo mongosh --quiet --eval "
+    docker exec -d -e HOME=/tmp mongo mongosh --quiet --eval "
       const fs = require('fs'); const seen = {};
       while (true) {
         for (const [ns, t] of Object.entries(db.adminCommand({ top: 1 }).totals)) {
@@ -26,7 +26,7 @@ case "${1:-}" in
       }" ;;
   report)
     limit="${2:-15}"
-    docker exec mongo mongosh --quiet --eval "
+    docker exec -e HOME=/tmp mongo mongosh --quiet --eval "
       const seen = JSON.parse(require('fs').readFileSync('$summary', 'utf8')); const totals = {};
       for (const [ns, s] of Object.entries(seen)) {
         const t = totals[ns.slice(ns.indexOf('.') + 1)] ??= { ms: 0, reads: 0, writes: 0 };
