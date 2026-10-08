@@ -505,7 +505,7 @@ jobs:
                   set -uo pipefail
                   until=$(( $(date +%s) + FILL_SECONDS ))
                   list="$RUNNER_TEMP/fill-refetch.tsv"
-                  count=$(.github/scripts/convergence-fill.sh gaps "${{ inputs.code }}" "$KINOWO_CONVERGENCE_PIN_CORPUS_RUN" "$list")
+                  count=$(.github/scripts/convergence-fill.sh gaps "${{ inputs.code }}" "$KINOWO_CONVERGENCE_PIN_CORPUS_RUN" "$list") || exit 1
                   if [ "${count:-0}" -eq 0 ]; then
                       echo "[fill] the last leg listed no fetchable gap of this pair — nothing to fetch"
                       exit 0

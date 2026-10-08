@@ -62,8 +62,14 @@ check "a row's fill is one of the pair's, by run id and then by name" \
   "$(run fills us 100)"
 rm "$work/release/fill-us-100-201-order-independence.tar.zst" "$work/release/fill-us-100-201-convergence.tar.zst" \
   "$work/release/fill-us-100-35-sample.tar.zst" "$work/release/fill-us-100-201-Bogus.tar.zst"
-check "a release that cannot be listed gives no fills, not a failed leg" "0:" \
+# A listing that FAILED is not an empty release: read as "no fills", the leg would decide its verdict on —
+# and pin into its bisect's pair — a tree without the fills its pair has.
+check "a release that cannot be listed fails the fills, loudly" "1:" \
   "$(out=$(STUB_UNREACHABLE=1 run fills us 100 2>/dev/null); echo "$?:$out")"
+check "...saying which release it could not list" "true" \
+  "$(err=$(STUB_UNREACHABLE=1 run fills us 100 2>&1 >/dev/null); grep -q '::error::could not list release convergence-fixtures' <<< "$err" && echo true || echo false)"
+check "...and the gaps too, rather than reporting none" "1" \
+  "$(STUB_UNREACHABLE=1 run gaps us 100 "$work/unreachable.tsv" > /dev/null 2>&1; echo "$?")"
 # Every leg's setup asks, under `bash -e`, before any fill exists (run 37608599525 failed every leg here).
 check "a pair with no fills yet gives none, and succeeds" "0:" "$(out=$(run fills es 100); echo "$?:$out")"
 

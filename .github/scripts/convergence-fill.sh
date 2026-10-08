@@ -18,30 +18,38 @@
 # each other's names. Readers take every fill of the pair
 # (`fills`) and the NEWEST list (`gaps`); the pin step prunes both with the pair they belong to.
 #
-# Best effort throughout: a fill a leg cannot read is a fill it replays without, never a failed leg.
+# A fill a leg cannot DOWNLOAD is a fill it replays without, never a failed leg. A release it cannot LIST
+# fails `fills` and `gaps` loudly instead: a failed listing is not an empty release, and read as "no fills"
+# it would let the leg decide its verdict on — and pin into its bisect's pair — a tree without the fills
+# its pair has. Only a listing that succeeds and names none means no fills.
 set -uo pipefail
 
 TAG="${FIXTURE_RELEASE_TAG:?FIXTURE_RELEASE_TAG names the rolling release}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Every asset name in the release, one per line; nothing (and a warning) when it cannot be read.
+# Every asset name in the release, one per line; an error and a non-zero status when it cannot be listed.
 assets() {
-  # allow-silenced: a release that cannot be listed means no fills this time, said in the warning below.
-  gh release view "$TAG" --json assets --jq '.assets[].name' 2>/dev/null ||
-    echo "::warning::could not list release $TAG — no fills this time" >&2
+  local names
+  if ! names=$(gh release view "$TAG" --json assets --jq '.assets[].name'); then
+    echo "::error::could not list release $TAG — its fills are unknown, not none" >&2
+    return 1
+  fi
+  [ -z "$names" ] || printf '%s\n' "$names"
 }
 
 # The names matching ^<prefix>-<code>-<corpus>-<run id>[-<row>].<ext>$, by run id ascending — one run's
 # rows then by name, in the C locale, so every reader lays them over in the same order.
 named() {
-  local prefix="$1" code="$2" corpus="$3" ext="$4"
-  assets | { grep -E "^$prefix-$code-$corpus-[0-9]+(-[a-z][a-z-]*)?\\.$ext\$" || true; } | LC_ALL=C sort -t- -k4,4n
+  local prefix="$1" code="$2" corpus="$3" ext="$4" names
+  names=$(assets) || return 1
+  printf '%s\n' "$names" | { grep -E "^$prefix-$code-$corpus-[0-9]+(-[a-z][a-z-]*)?\\.$ext\$" || true; } | LC_ALL=C sort -t- -k4,4n
 }
 
 case "${1:-}" in
   fills)
     code="${2:?code}"; corpus="${3:?corpus run}"
-    named fill "$code" "$corpus" 'tar\.zst' | paste -sd' ' -
+    names=$(named fill "$code" "$corpus" 'tar\.zst') || exit 1
+    printf '%s\n' "$names" | paste -sd' ' -
     ;;
   unpack)
     stage="${2:?stage dir}"; shift 2
@@ -60,7 +68,8 @@ case "${1:-}" in
     ;;
   gaps)
     code="${2:?code}"; corpus="${3:?corpus run}"; out="${4:?out file}"
-    newest=$(named refetch "$code" "$corpus" tsv | tail -1)
+    newest=$(named refetch "$code" "$corpus" tsv) || exit 1
+    newest=$(printf '%s\n' "$newest" | tail -1)
     : > "$out"
     # allow-silenced: a list that cannot be read is no gaps this time — the next leg's fill reads it again.
     if [ -n "$newest" ] && gh release download "$TAG" --pattern "$newest" --output "$out" --clobber 2>/dev/null; then
