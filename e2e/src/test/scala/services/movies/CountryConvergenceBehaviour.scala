@@ -148,6 +148,9 @@ abstract class CountryConvergenceBehaviour(
    *  model's enrichment yet — so they are REPORTED here, at the end of the run, never fatal: failing every
    *  claim on them would leave the build measuring nothing about the model. */
   override def afterAll(): Unit = {
+    // Replays still running — their test timed out, or never ran — still name gaps and write their databases: waited
+    // for, bounded, before the list is written and the databases closed under them.
+    OrderReplays.settle(orderReplays, replayGuard + 5.minutes)
     // What the next leg's `fill` row fetches (country-convergence-leg.yml), beside the tree.
     missingFixtures.foreach(_.writeRefetches(MissingFixtures.refetchListBeside(java.nio.file.Paths.get(fixtureRoot.of(fixtureDirectory)))))
     missingFixtures.filterNot(_.isEmpty).foreach { m =>
@@ -1123,6 +1126,11 @@ abstract class CountryConvergenceBehaviour(
         // (`tmdb_films`, 380k across the three, run 37595419218). A pass then reads answers another filed, as a
         // worker reads its warm store after the first tick; the passes still differ in the order they land in,
         // and that is what they must come out identical across.
+        //
+        // The trade, taken knowingly (2026-10-07): the passes are no longer independent. Every pass's model listens
+        // to the one store, so a filing by any pass wakes all of them, and the first pass to ask a question answers
+        // it for the others. An order dependence that shows only through the store's state — a listing resolved
+        // before rather than after its answer is filed — can be masked by a pass that warmed the store early.
         val identityTmdb = new services.identity.IdentityTmdbLayer(orderStorage.connection.database,
           java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC))
         // Concurrently: the passes are independent whole-corpus replays and running
