@@ -102,8 +102,9 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
       // and sorted in memory on every claim.
       Try(Await.result(collection.createIndex(
         Indexes.ascending("country", "kind", "enqueuedAt", "notBefore")).toFuture(), Timeout))
-        .recover { case e => logger.warn(s"facebook_rescrapes index creation failed: ${e.getMessage}") }
-      ()
+        .fold(e => logger.warn(s"facebook_rescrapes index creation failed: ${e.getMessage}"),
+              // The range-first order it replaced, kept by nothing: dropped only once the claim order is there.
+              _ => services.MongoIndex.dropSuperseded(collection, SupersededClaimIndex, "facebook_rescrapes"))
     }, "facebook-rescrapes-init")
     thread.setDaemon(true)
     thread.start()
@@ -183,6 +184,8 @@ object MongoFacebookRescrapeStore {
   val Collection = "facebook_rescrapes"
   val QuotaId    = "quota"
   private val Timeout = 10.seconds
+  /** The claim index's first shape, the `notBefore` range before `enqueuedAt`'s sort. */
+  private val SupersededClaimIndex = "country_1_kind_1_notBefore_1_enqueuedAt_1"
 }
 
 /** What a share-card render asks for when a film's previews on Facebook are out of date. */

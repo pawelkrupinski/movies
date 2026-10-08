@@ -5,7 +5,7 @@ import org.bson.conversions.Bson
 import org.bson.{BsonArray, BsonDocument, BsonInt64, BsonNumber, BsonValue}
 import org.mongodb.scala.bson.collection.immutable.{Document => ImmutableDocument}
 import org.mongodb.scala.model.IndexOptions
-import org.mongodb.scala.{Document, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
 
 import java.util.concurrent.TimeUnit
@@ -58,6 +58,7 @@ object MongoIndex extends Logging {
   private val Unauthorized               = 13
   private val CannotConvertIndexToUnique = 359
   private val Raced                      = Set(125 /* CommandFailed */, 72 /* InvalidOptions */)
+  private val Gone                       = Set(26 /* NamespaceNotFound */, 27 /* IndexNotFound */)
   private val ConversionAttempts         = 5
   private[services] val RaceBackoffMillis = 200L
   private val Timeout                    = 30.seconds
@@ -106,6 +107,20 @@ object MongoIndex extends Logging {
               Outcome.NotInPlace(reason)
             }
         }
+    }
+  }
+
+  /** Drop the index named `name` from `collection` when it is there — one a reordered or renamed
+   *  successor superseded, which Mongo otherwise keeps maintaining on every write for nothing. Call
+   *  it AFTER ensuring the successor, so the collection is never without one. An index or collection
+   *  already gone is the done state, so every boot after the first, and two pods booting together,
+   *  succeed quietly. Never throws: any other failure is a WARN and the index stays. */
+  def dropSuperseded(collection: MongoCollection[Document], name: String, label: String): Unit = {
+    val ns = collection.namespace.getFullName
+    Try(Await.result(collection.dropIndex(name).toFuture(), Timeout)) match {
+      case Success(_) => logger.info(s"$label: dropped the superseded index `$name` on $ns.")
+      case Failure(gone: MongoCommandException) if Gone(gone.getErrorCode) => ()
+      case Failure(exception) => logger.warn(s"$label: the superseded index `$name` on $ns could not be dropped: ${exception.getMessage}")
     }
   }
 
