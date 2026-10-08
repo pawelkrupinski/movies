@@ -57,10 +57,10 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
   def namesOnlyATag(node: EvidenceNode, candidate: Candidate): Boolean = {
     val listing = node.evidence.published
     val billed  = listing.rawTitle.getOrElse(listing.title)
-    val tags    = IdentityMeasures.capitalisedTags(billed).map(IdentityMeasures.key).toSet
+    val tags    = IdentityMeasures.capitalisedTags(listing).map(IdentityMeasures.key).toSet
     tags.nonEmpty && {
       val pieces = namingPieces(node, candidate).map(words => IdentityMeasures.key(words.mkString(" ")))
-      val (tagged, rest) = IdentityMeasures.shapes(Seq(billed)).partition(shape => tags(IdentityMeasures.key(shape)))
+      val (tagged, rest) = listing.shapesOfOwn(billed).partition(shape => tags(IdentityMeasures.key(shape)))
       def recurs(piece: String) = generation.context.recurringSegment(generation.normalizer.sanitize(piece))
       pieces.nonEmpty && pieces.forall(tags) && tagged.filter(tag => pieces(IdentityMeasures.key(tag))).forall(recurs) && !rest.exists(recurs)
     }

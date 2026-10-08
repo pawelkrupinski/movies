@@ -926,16 +926,16 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       Seq("The Metropolitan Opera 2026/27: Così fan tutte"), filmYear = Some(2026)) shouldBe IdentityMeasures.Category("match")
   }
 
-  // The scorer asks the shapes of one billed title again for every candidate it weighs
-  // (`CandidateScoring.namesOnlyATag`, `Qualifiers.split`): ~6% of a US replay's CPU (run 37517196329).
-  "a title's shapes" should "be split once and answered from memory after, the same as split afresh" in {
-    // the very split answered again: a fresh split builds another Seq (a process-wide split counter read here raced every
-    // suite splitting titles in parallel)
-    val title = s"MISTYCZKA /film polski/ [2D LEKTOR] ${System.nanoTime()}"
-    val first = IdentityMeasures.shapesOfTitle(title)
-    IdentityMeasures.capitalisedTags(title)
-    IdentityMeasures.shapesOfTitle(title) should be theSameInstanceAs first
-    IdentityMeasures.shapes(Seq(title)) should not be theSameInstanceAs(first)
-    first shouldBe IdentityMeasures.shapes(Seq(title))
+  // The scorer asks the shapes of a listing's billed title again for every candidate it weighs
+  // (`CandidateScoring.namesOnlyATag`, `Qualifiers.split`): ~6% of a US replay's CPU (run 37517196329). Kept on the
+  // listing, split once each — never in a process-wide cache.
+  "a listing's own titles' shapes" should "be split once per listing, the same as split afresh" in {
+    val listing = IdentityMeasures.Listing("Mistyczka", rawTitle = Some("MISTYCZKA /film polski/ [2D LEKTOR] | DKF"))
+    val billed  = listing.rawTitle.get
+    val first   = listing.shapesOfOwn(billed)
+    IdentityMeasures.capitalisedTags(listing)
+    listing.shapesOfOwn(billed) should be theSameInstanceAs first
+    first shouldBe IdentityMeasures.shapes(Seq(billed))
+    listing.shapesOfOwn("another title") shouldBe IdentityMeasures.shapes(Seq("another title"))
   }
 }

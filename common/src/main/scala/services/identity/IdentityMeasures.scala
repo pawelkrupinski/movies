@@ -51,6 +51,10 @@ object IdentityMeasures {
     /** The venue's own runtime: its field, else the one its title brackets — a running time no film has
      *  ([[services.movies.FilmRuntime.plausible]]) is none. */
     def statedRuntime: Option[Int] = runtime.filter(services.movies.FilmRuntime.plausible).orElse(titleRuntime)
+    /** Each of the listing's own titles' shapes alone ([[IdentityMeasures.shapes]] of the one title, no learned
+     *  decorations), split once per listing: the scorer asks them of its billed title for every candidate it weighs. */
+    private lazy val ownShapes: Map[String, Seq[String]] = titles.distinct.map(t => t -> IdentityMeasures.shapes(Seq(t))).toMap
+    private[identity] def shapesOfOwn(t: String): Seq[String] = ownShapes.getOrElse(t, IdentityMeasures.shapes(Seq(t)))
     /** `titleShapes`, once per listing: every title relation and billing reads them. */
     private[identity] lazy val shapes: Seq[String] = IdentityMeasures.shapesOf(this)
     /** What a title relation reads of this listing, hashed once: `FamilyScope` shares relations by it. */
@@ -335,7 +339,7 @@ object IdentityMeasures {
       lazy val undecorated = (Seq(l.title) ++ l.rawTitle).flatMap(l.decorations.strip).map(yearlessTokens).toSet
       def leavesNoWork(piece: Seq[String], rest: Seq[String], trails: Boolean) =
         works(piece) && !works.exists(work => rest.containsSlice(work)) && (!trails || undecorated(piece))
-      (Seq(l.title) ++ l.rawTitle).flatMap(Qualifiers.split).collect {
+      (Seq(l.title) ++ l.rawTitle).flatMap(t => Qualifiers.split(t, l.shapesOfOwn(t))).collect {
         case (piece, rest, trails) if count(piece, trails) >= 2 && count(piece, trails) > count(rest, !trails) && !named.contains(piece.mkString) &&
             !leavesNoWork(piece, rest, trails) =>
           piece.mkString
@@ -348,12 +352,12 @@ object IdentityMeasures {
     val Unknown: Qualifiers = Qualifiers(Map.empty)
 
     /** A title's pieces, each with the rest of the title and whether it TRAILS the rest: every
-     *  delimited piece of it ([[shapes]]) that is a token run along one of its edges, and the rest,
+     *  delimited piece of it (`titleShapes`, its [[shapes]]) that is a token run along one of its edges, and the rest,
      *  both ways round, as yearless tokens ("Dark City: Director's Cut" → `director s cut` trailing
      *  `dark city`, and `dark city` leading `director s cut`). */
-    def split(title: String): Seq[(Seq[String], Seq[String], Boolean)] = {
+    def split(title: String, titleShapes: Seq[String]): Seq[(Seq[String], Seq[String], Boolean)] = {
       val whole = yearlessTokens(title)
-      shapesOfTitle(title).map(yearlessTokens).filter(p => TitleContainment.isTokenRun(p, whole)).flatMap { p =>
+      titleShapes.map(yearlessTokens).filter(p => TitleContainment.isTokenRun(p, whole)).flatMap { p =>
         val trails = !whole.startsWith(p)
         val rest   = if (trails) whole.dropRight(p.length) else whole.drop(p.length)
         Seq((p, rest, trails), (rest, p, !trails))
@@ -364,7 +368,7 @@ object IdentityMeasures {
      *  original titles. */
     def learn(records: Seq[Film]): Qualifiers = {
       val titles = records.flatMap(f => Seq(f.title) ++ f.originalTitle).distinct
-      Qualifiers(titles.flatMap(split).map { case (p, r, trails) => ((p.mkString, trails), r.mkString) }.distinct.groupMapReduce(_._1)(_ => 1)(_ + _),
+      Qualifiers(records.flatMap(_.ownSplits).map { case (p, r, trails) => ((p.mkString, trails), r.mkString) }.distinct.groupMapReduce(_._1)(_ => 1)(_ + _),
         titles.map(yearlessTokens).filter(_.nonEmpty).toSet)
     }
   }
@@ -456,6 +460,10 @@ object IdentityMeasures {
     /** The film's titles and their delimited pieces as yearless tokens, once per record (`billing`). */
     private[identity] lazy val billedTitles: Seq[Seq[String]] =
       titles.map(IdentityMeasures.yearlessTokens).filter(_.nonEmpty).distinct
+    /** Each of the film's title and original title's [[IdentityMeasures.Qualifiers.split]] alone, once per record:
+     *  every family whose pool holds the record learns its qualifiers from them. */
+    private[identity] lazy val ownSplits: Seq[(Seq[String], Seq[String], Boolean)] =
+      (Seq(title) ++ originalTitle).distinct.flatMap(t => IdentityMeasures.Qualifiers.split(t, IdentityMeasures.shapes(Seq(t))))
     private[identity] lazy val billedWorks: Set[Seq[String]] =
       titles.flatMap(SearchTitles.candidates(_, None)).map(IdentityMeasures.yearlessTokens).toSet.filter(_.nonEmpty)
     /** The title, original title and alternative titles, in that order, as comparison forms once
@@ -701,18 +709,14 @@ object IdentityMeasures {
    *  programme-banner segment (`SearchTitles.candidates`: `|`, ` - `, a first `: `, …). */
   def titleShapes(l: Listing): Seq[String] = l.shapes
 
-  /** The pieces of a title AS BILLED ([[shapes]]) that are written in capitals where the title is not — the case change
-   *  a venue's programme tag makes beside a work's own spelling ("Alim | UFF", "DKF: Lalka"). None in a title billed
-   *  all in capitals ("BEZ KOŃCA 2D PL LOLO"): its case says nothing. */
-  def capitalisedTags(billed: String): Seq[String] =
+  /** The pieces of a listing's title AS BILLED ([[shapes]]) that are written in capitals where the title is not — the
+   *  case change a venue's programme tag makes beside a work's own spelling ("Alim | UFF", "DKF: Lalka"). None in a title
+   *  billed all in capitals ("BEZ KOŃCA 2D PL LOLO"): its case says nothing. */
+  def capitalisedTags(l: Listing): Seq[String] = {
+    val billed = l.rawTitle.getOrElse(l.title)
     if (!billed.exists(_.isLower)) Nil
-    else shapesOfTitle(billed).filter(piece => piece != billed.trim && piece.exists(_.isLetter) && !piece.exists(_.isLower))
-
-  /** [[shapes]] of ONE title with no learned decorations, split once and remembered: the scorer asks it of
-   *  the same billed titles for every candidate it weighs (`CandidateScoring.namesOnlyATag`, `Qualifiers.split`),
-   *  ~6% of a US order-independence replay's CPU (run 37517196329). A pure function of the string; bounded. */
-  private[identity] def shapesOfTitle(title: String): Seq[String] = SingleTitleShapes.get(title, t => shapes(Seq(t)))
-  private val SingleTitleShapes = tools.BoundedCache.ofSize(100_000).build[String, Seq[String]]()
+    else l.shapesOfOwn(billed).filter(piece => piece != billed.trim && piece.exists(_.isLetter) && !piece.exists(_.isLower))
+  }
 
   private def shapesOf(l: Listing): Seq[String] = {
     shapes(Seq(l.title) ++ l.rawTitle ++ l.searchTitles ++ SearchTitles.candidates(l.title, l.originalTitle) ++
@@ -1050,11 +1054,12 @@ object IdentityMeasures {
   /** An original title's comparison forms: its own, and its shapes' keys. */
   private[identity] final case class OriginalForm(text: String) {
     val form: TitleForm = TitleForm(text)
-    lazy val shapeKeys: Seq[String] = shapesOfTitle(text).map(key)
+    private lazy val ownShapes: Seq[String] = shapes(Seq(text))
+    lazy val shapeKeys: Seq[String] = ownShapes.map(key)
     /** Its delimited segments as words, read for a decoration: "Michael Mann's Manhunter: The Final
      *  Cut"'s "Michael Mann's Manhunter" ends in the film's title. */
     lazy val segmentWords: Seq[Seq[String]] =
-      (shapesOfTitle(text) ++ ColonBreak.split(text).headOption.filter(_ != text)).filterNot(_ == text).map(words).filter(_.nonEmpty).distinct
+      (ownShapes ++ ColonBreak.split(text).headOption.filter(_ != text)).filterNot(_ == text).map(words).filter(_.nonEmpty).distinct
     lazy val longWords: Set[String] = form.words.filter(_.length >= 4).toSet
   }
 
