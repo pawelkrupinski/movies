@@ -21,4 +21,9 @@ class MongoChunkScrapeStoreUnreachableSpec extends AnyFlatSpec with Matchers wit
     an[Exception] should be thrownBy store.loadChunks("Kino X", "run-1")
     an[Exception] should be thrownBy store.activeRuns()
   }
+
+  // Logged and dropped, a lost INCOMPLETE marker let the run reduce as a whole listing and prune.
+  it should "throw when a chunk's write cannot reach Mongo, so the chunk task retries" in {
+    an[Exception] should be thrownBy store.storeChunk("Kino X", "run-1", "2026-10-01", "[]", java.time.Instant.EPOCH)
+  }
 }

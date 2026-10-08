@@ -58,7 +58,8 @@ trait ChunkScrapeStore {
   def activeRun(cinema: String): Option[ChunkRun]
 
   /** Store (idempotently) one chunk's serialised slice. A no-op if the run is no
-   *  longer the cinema's active run. */
+   *  longer the cinema's active run. THROWS when the write fails: a chunk or marker
+   *  that silently never landed would let the run reduce as if it had. */
   def storeChunk(cinema: String, runId: String, key: String, valueJson: String, now: Instant): Unit
 
   /** The chunk keys stored so far for the run. */

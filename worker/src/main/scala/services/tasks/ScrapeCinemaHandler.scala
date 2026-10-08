@@ -63,9 +63,10 @@ class ScrapeCinemaHandler(
         // already active). Freshness is marked by whichever step TERMINATES the
         // scrape — the reduce on success, the planner itself on an empty or failed
         // plan — not here. The run doc is the per-cinema mutex, so a duplicate
-        // ScrapeCinema while a run is in flight just no-ops. A plan throw can't
-        // escape (it records the outcome itself), but guard anyway so the queue
-        // never reschedules. A shutdown's interrupt is no fault: kept set for the task loop to stop on.
+        // ScrapeCinema while a run is in flight just no-ops. A plan records a failed
+        // fetch itself; what still escapes (a store write that failed) leaves the venue
+        // due for the next tick, so the queue never reschedules. A shutdown's interrupt
+        // is no fault: kept set for the task loop to stop on.
         try { val _ = planner.plan(cinemaName) }
         catch {
           case _: InterruptedException =>

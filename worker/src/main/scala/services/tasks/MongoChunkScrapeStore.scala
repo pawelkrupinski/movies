@@ -80,15 +80,16 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
     Await.result(c.find(Filters.eq("_id", cinema)).headOption(), 10.seconds).map(toRun)
   }
 
+  // A failed write THROWS too: logged and dropped, a lost INCOMPLETE marker let the run reduce as a
+  // whole listing and prune what the failed read missed. The throw fails the task, which retries.
   def storeChunk(cinema: String, runId: String, key: String, valueJson: String, now: Instant): Unit = chunks.foreach { c =>
     val id = chunkId(cinema, runId, key)
     val update = Updates.combine(
       Updates.setOnInsert("_id", id),
       Updates.set("cinema", cinema), Updates.set("runId", runId), Updates.set("key", key),
       Updates.set("value", valueJson), Updates.set("storedAt", new java.util.Date(now.toEpochMilli)))
-    Try(Await.result(c.updateOne(Filters.eq("_id", id), update,
-      new com.mongodb.client.model.UpdateOptions().upsert(true)).toFuture(), 10.seconds))
-      .recover { case e => logger.warn(s"storeChunk($cinema/$runId/$key) failed: ${e.getMessage}") }
+    val _ = Await.result(c.updateOne(Filters.eq("_id", id), update,
+      new com.mongodb.client.model.UpdateOptions().upsert(true)).toFuture(), 10.seconds)
   }
 
   // Only the keys: asked on every chunk that lands, reading each stored chunk's parse (~7 KB) as well

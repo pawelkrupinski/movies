@@ -15,7 +15,7 @@ import java.time.Clock
  *    feed a published listing.
  *  - An upstream "not found" (404/410) stores the chunk EMPTY: it is the answer,
  *    and retrying it only holds the run open until the chunk exhausts.
- *  - Any other fetch failure `Reschedule`s just this chunk (the queue's exponential
+ *  - Any other fetch failure — or a store that failed to land the chunk — `Reschedule`s just this chunk (the queue's exponential
  *    backoff = the per-chunk retry); the run completes via the coordinator only
  *    once every chunk has stored, or via the backstop's partial reduce on timeout.
  *  - A fetch the host's circuit breaker refused outright never happened, so it
@@ -44,10 +44,22 @@ class ScrapeChunkHandler(
       case None => Done // cinema dropped from the catalogue
       case Some(scraper) =>
         try {
-          val (slice, reads) = ListingReads.during(sliceOf(cinema, key, scraper))
+          val (slice, complete) =
+            try {
+              val (slice, reads) = ListingReads.during(sliceOf(cinema, key, scraper))
+              (slice, reads.complete)
+            } catch {
+              // The upstream says this chunk does not exist (a 404/410 on a key its own
+              // plan advertised — Odeon's empty business dates, UK 2026-09-21/22). That is
+              // an answer, not a failure: a retry only replays it, holding the run open
+              // until the chunk exhausts. Land it empty so the run can complete.
+              case e: Exception if ReadOutcome.isAbsent(e) =>
+                logger.info(s"chunk '$key' for $cinema run $runId is gone upstream; storing it empty: ${e.getMessage}")
+                (CinemaMovieJson.encode(Nil), true)
+            }
           // The marker first: a reduce that runs between the two stores must not miss it.
-          if (!reads.complete) {
-            logger.info(s"chunk '$key' for $cinema run $runId stored INCOMPLETE: ${reads.failed.size} page(s) failed")
+          if (!complete) {
+            logger.info(s"chunk '$key' for $cinema run $runId stored INCOMPLETE: a page failed")
             store.storeChunk(cinema, runId, ChunkScrapeKeys.chunkIncomplete(key), CinemaMovieJson.encode(Nil), clock.instant())
           } else if (task.attempts > 1) {
             // A retry that read every page: an earlier attempt may have stored the marker and never got to its
@@ -66,14 +78,7 @@ class ScrapeChunkHandler(
           case e: CircuitOpenException =>
             logger.info(s"chunk '$key' for $cinema run $runId deferred: ${e.getMessage}")
             Deferred(Some(e.getMessage), Some(clock.instant().plusMillis(e.openForMs)))
-          // The upstream says this chunk does not exist (a 404/410 on a key its own
-          // plan advertised — Odeon's empty business dates, UK 2026-09-21/22). That is
-          // an answer, not a failure: a retry only replays it, holding the run open
-          // until the chunk exhausts. Land it empty so the run can complete.
-          case e: Exception if ReadOutcome.isAbsent(e) =>
-            logger.info(s"chunk '$key' for $cinema run $runId is gone upstream; storing it empty: ${e.getMessage}")
-            store.storeChunk(cinema, runId, key, CinemaMovieJson.encode(Nil), clock.instant())
-            Done
+          // A failed fetch, or a store that failed to land the slice: retry the chunk.
           case e: Exception =>
             logger.warn(s"chunk '$key' for $cinema run $runId failed: ${e.getMessage}")
             Reschedule(Some(e.getMessage))

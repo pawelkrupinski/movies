@@ -396,12 +396,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
   // (here a store that throws once; in production a worker stopped between the two) and the task retries. The retry reads every page: the marker the failed attempt left
   // must not outlive it, or the run reduces INCOMPLETE and skips the prune it owes.
   it should "publish a run complete once a retry reads every page the failed attempt lost" in {
-    val blipOnce = new InMemoryChunkScrapeStore {
-      private var blipped = false
-      override def storeChunk(cinema: String, runId: String, key: String, valueJson: String, now: Instant): Unit =
-        if (key == "a" && !blipped) { blipped = true; throw new RuntimeException("mongo blip") }
-        else super.storeChunk(cinema, runId, key, valueJson, now)
-    }
+    val blipOnce = failingWrites("a", 1)
     val completeness = mutable.ListBuffer.empty[Boolean]
     val stack = new ChunkScrapeHarness(new FakeChunkedScraper(Map("a" -> Seq(film("Dune", 25))), pageFailsOnceIn = Set("a")),
       s => { completeness += s.listingIsComplete; () }, Clock.fixed(now, ZoneOffset.UTC), blipOnce, staleAfter = stale)
@@ -412,5 +407,36 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     stack.chunkH.handle(chunk.copy(attempts = 2)) shouldBe Done
     stack.reduceH.handle(Task("r", TaskType.ScrapeChunkReduce, "r", ChunkScrapeKeys.reducePayload(cinemaName, runId), 1)) shouldBe Done
     completeness shouldBe Seq(true)
+  }
+
+  /** A store whose writes of `key` throw `times` times, then land. */
+  private def failingWrites(key: String, times: Int) = new InMemoryChunkScrapeStore {
+    private var left = times
+    override def storeChunk(cinema: String, runId: String, k: String, valueJson: String, now: Instant): Unit =
+      if (k == key && left > 0) { left -= 1; throw new RuntimeException("mongo blip") }
+      else super.storeChunk(cinema, runId, k, valueJson, now)
+  }
+
+  // Without its marker the run would reduce as the whole listing and prune what the plan's
+  // failed day probe missed: the run is abandoned instead, so the venue's next scrape plans afresh.
+  it should "abandon a run whose plan marker failed to store" in {
+    val stack = new ChunkScrapeHarness(new FakeChunkedScraper(Map("a" -> Seq(film("Dune", 25))), planPageFails = true),
+      _ => (), Clock.fixed(now, ZoneOffset.UTC), failingWrites(ChunkScrapeKeys.PlanIncomplete, 1), staleAfter = stale)
+    a[RuntimeException] should be thrownBy stack.planner.plan(cinemaName)
+    stack.store.activeRun(cinemaName) shouldBe None
+    stack.queue.claim("w", 30.seconds, now) shouldBe None
+  }
+
+  // A chunk gone upstream lands empty — and when that store fails, the chunk retries like any
+  // other failure rather than escaping the handler.
+  it should "reschedule a gone chunk whose empty slice failed to store" in {
+    val stack = new ChunkScrapeHarness(new FakeChunkedScraper(Map("a" -> Nil), gone = Set("a")),
+      _ => (), Clock.fixed(now, ZoneOffset.UTC), failingWrites("a", 1), staleAfter = stale)
+    stack.planner.plan(cinemaName) shouldBe 1
+    val runId = stack.store.activeRun(cinemaName).value.runId
+    val chunk = Task("t", TaskType.ScrapeChunk, "d", ChunkScrapeKeys.chunkPayload(cinemaName, runId, "a"), 1)
+    stack.chunkH.handle(chunk) shouldBe a[Reschedule]
+    stack.chunkH.handle(chunk.copy(attempts = 2)) shouldBe Done
+    stack.store.storedKeys(cinemaName, runId) should contain("a")
   }
 }
