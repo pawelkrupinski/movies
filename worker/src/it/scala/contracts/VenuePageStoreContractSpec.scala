@@ -85,13 +85,14 @@ class VenuePageStoreContractSpec extends AnyFlatSpec with Matchers with BeforeAn
       val store = fresh(cls)
       val has   = FilmDetail(director = Seq("Wojciech Has"), releaseYear = Some(1968))
       store.put(VenuePage(lalka, VenuePage.Read(has), at))
-      store.landed(lalka) shouldBe None
+      store.stored(lalka).landed shouldBe None
       store.land(lalka, has) shouldBe true
       store.put(VenuePage(lalka, VenuePage.Read(everything), at.plusSeconds(3600))) shouldBe true
-      store.landed(lalka) shouldBe Some(has)
+      store.stored(lalka).landed shouldBe Some(has)
       store.get(lalka).map(_.outcome) shouldBe Some(VenuePage.Read(everything))
+      store.stored(lalka).page.map(_.outcome) shouldBe Some(VenuePage.Read(everything))
       store.land(lalka, everything) shouldBe true
-      store.landed(lalka) shouldBe Some(everything)
+      store.stored(lalka).landed shouldBe Some(everything)
     }
 
     it should s"[$name] deliver every page once on a read-through" in {

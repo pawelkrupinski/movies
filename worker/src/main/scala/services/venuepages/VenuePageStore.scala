@@ -2,7 +2,7 @@ package services.venuepages
 
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonString}
-import org.mongodb.scala.model.{Filters, Projections, Sorts, UpdateOptions, Updates}
+import org.mongodb.scala.model.{Filters, Sorts, UpdateOptions, Updates}
 import play.api.Logging
 import services.cinemas.common.FilmDetail
 
@@ -29,6 +29,10 @@ object VenuePage {
   final case class Gone(code: Int) extends Outcome
 }
 
+/** What `venue_pages` holds of one page, in one read: its last read, if any, and what the film rows last took of it
+ *  ([[VenuePageStore.land]]), if they took it since `landed` was kept. */
+final case class StoredVenuePage(page: Option[VenuePage], landed: Option[FilmDetail])
+
 /**
  * Every venue detail page read, by page (`venue_pages`): the ONE place a page's facts are written.
  * Both identity paths read it — the old one derives its film slots from it, the identity model
@@ -38,13 +42,13 @@ object VenuePage {
 trait VenuePageStore {
   def get(key: VenuePageKey): Option[VenuePage]
   /** Store `page`, replacing what it held; whether the store has it now. What the rows took of the page
-   *  ([[landed]]) is not the read's, and outlives it. */
+   *  ([[land]]) is not the read's, and outlives it. */
   def put(page: VenuePage): Boolean
-  /** The page's detail as the film rows last took it ([[land]]), which a re-read that states a field differently
-   *  overrules: not the page as last READ, which is stored before its detail reaches a row and may never reach one
-   *  (the row was re-keyed between the task's enqueue and its pickup) — compared with that, the read that changed
-   *  was the last ever to differ, and the change was never written. */
-  def landed(key: VenuePageKey): Option[FilmDetail]
+  /** The page as last read and its detail as the film rows last took it ([[land]]), in ONE read: a re-read that states
+   *  a field differently from what the rows took overrules it. Not the page as last READ, which is stored before its
+   *  detail reaches a row and may never reach one (the row was re-keyed between the task's enqueue and its pickup) —
+   *  compared with that, the read that changed was the last ever to differ, and the change was never written. */
+  def stored(key: VenuePageKey): StoredVenuePage
   /** Record `detail` as what the rows took of the page; whether the store has it now. */
   def land(key: VenuePageKey, detail: FilmDetail): Boolean
   /** Every page, read through; whether the read reached every page (a failed read stops it short). */
@@ -57,7 +61,7 @@ final class InMemoryVenuePageStore extends VenuePageStore {
   private val landings = new ConcurrentHashMap[String, FilmDetail]()
   def get(key: VenuePageKey): Option[VenuePage] = Option(pages.get(key.id))
   def put(page: VenuePage): Boolean = { pages.put(page.key.id, page); true }
-  def landed(key: VenuePageKey): Option[FilmDetail] = Option(landings.get(key.id))
+  def stored(key: VenuePageKey): StoredVenuePage = StoredVenuePage(get(key), Option(landings.get(key.id)))
   def land(key: VenuePageKey, detail: FilmDetail): Boolean = { landings.put(key.id, detail); true }
   def foreach(onPage: VenuePage => Unit): tools.ScanOutcome = { pages.values.asScala.toSeq.sortBy(_.key.id).foreach(onPage); tools.ScanOutcome.complete }
 }
@@ -66,8 +70,16 @@ final class InMemoryVenuePageStore extends VenuePageStore {
 final class MongoVenuePageStore(database: MongoDatabase) extends VenuePageStore with Logging {
   private val collection: MongoCollection[Document] = database.getCollection(MongoVenuePageStore.Collection)
 
-  def get(key: VenuePageKey): Option[VenuePage] =
-    Await.result(collection.find(Filters.eq("_id", key.id)).headOption(), 10.seconds).flatMap(MongoVenuePageStore.pageOf)
+  def get(key: VenuePageKey): Option[VenuePage] = document(key).flatMap(MongoVenuePageStore.pageOf)
+
+  def stored(key: VenuePageKey): StoredVenuePage = {
+    val held = document(key)
+    StoredVenuePage(held.flatMap(MongoVenuePageStore.pageOf),
+      held.flatMap(_.get(MongoVenuePageStore.Landed)).map(landed => MongoVenuePageStore.detailOf(Document(landed.asDocument))))
+  }
+
+  private def document(key: VenuePageKey): Option[Document] =
+    Await.result(collection.find(Filters.eq("_id", key.id)).headOption(), 10.seconds)
 
   // Every field the read states set, every one it does not unset: a replace, but for `landed`, which is not the read's.
   def put(page: VenuePage): Boolean = {
@@ -77,10 +89,6 @@ final class MongoVenuePageStore(database: MongoDatabase) extends VenuePageStore 
     acknowledged(page.key, collection.updateOne(Filters.eq("_id", page.key.id), Updates.combine((sets ++ unsets)*),
       UpdateOptions().upsert(true)).toFuture())
   }
-
-  def landed(key: VenuePageKey): Option[FilmDetail] =
-    Await.result(collection.find(Filters.eq("_id", key.id)).projection(Projections.include(MongoVenuePageStore.Landed)).headOption(), 10.seconds)
-      .flatMap(_.get(MongoVenuePageStore.Landed)).map(landed => MongoVenuePageStore.detailOf(Document(landed.asDocument)))
 
   def land(key: VenuePageKey, detail: FilmDetail): Boolean =
     acknowledged(key, collection.updateOne(Filters.eq("_id", key.id),

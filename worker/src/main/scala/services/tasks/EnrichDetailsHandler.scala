@@ -127,9 +127,8 @@ class EnrichDetailsHandler(
         // The page is read into venue_pages, stamped and announced there, and recorded on /uptime;
         // this handler lands it on the row.
         val pageKey = services.venuepages.VenuePageKey(enricher.detailGroup, ref)
-        // What the rows last took of the page, or — for a page last landed before `landed` was kept — the page as
-        // last read, which was what every read then landed. Taken before this read replaces that.
-        val baseline = pages.landed(pageKey).orElse(pages.get(pageKey).map(_.outcome).collect { case VenuePage.Read(before) => before })
+        // What venue_pages held of the page before this read replaces it: the last read and what the rows took of it.
+        val before  = pages.stored(pageKey)
         val read    = reader.read(enricher, ref)
         services.venuepages.DetailUptime.record(uptime, enricher, label, read.outcome)
         read.outcome match {
@@ -207,7 +206,7 @@ class EnrichDetailsHandler(
                 else if (cinemaSlots.contains(derived)) Seq(derived)  // scrape wrote the base title too
                 else cinemaSlots                                  // decorated edition(s) → merge into the real slot(s)
               }
-            // What did this page say when the rows last took it (`VenuePageStore.landed`)? The fields
+            // What did this page say when the rows last took it (`StoredVenuePage.landed`)? The fields
             // it now states DIFFERENTLY are authoritative
             // (`FilmDetail.refreshInto`): a venue that reuses a URL for a different film —
             // Kino Pionier's `/event/lalka`, Has's 1968 picture then the 2026 one — otherwise
@@ -224,7 +223,19 @@ class EnrichDetailsHandler(
             // refresh window rewrote the listing's own countries and genres with the page's.
             // Both reads as a slot may hold them (`landed`): compared raw, a page that spells a
             // country or lists its genres the way it always has would differ from what it landed as.
-            val changed = baseline.fold(FilmDetail())(before => detail.changedSince(landed(before)))
+            //
+            // A page last read before `landed` was kept has no record of what the rows took. Its last read is what every
+            // read then landed — except on a row whose merge had already missed, which holds an older read. Its year and
+            // runtime (what such a stuck row shows: the row is keyed by the year) are therefore landed authoritatively
+            // ONCE, and the page is then landed, so every later read is measured against what the rows took. Only those
+            // two: making the whole read authoritative would rewrite the listing's own countries and genres (above). The
+            // cost is that a listing whose own year or runtime differs from its page's is overruled once, on a
+            // field the page states.
+            val changed = before.landed match {
+              case Some(took) => detail.changedSince(landed(took))
+              case None       => before.page.map(_.outcome).collect { case VenuePage.Read(last) => last }.fold(FilmDetail())(last =>
+                detail.changedSince(landed(last)).copy(releaseYear = detail.releaseYear, runtimeMinutes = detail.runtimeMinutes))
+            }
             // Merge into the target slot(s), creating one if absent: a chain's network
             // source has no slot from a listing scrape, so it must be added here;
             // a 1:1 cinema's slot already exists, so this preserves its showtimes.
@@ -232,7 +243,9 @@ class EnrichDetailsHandler(
             // re-keyed between enqueue and pickup — and then the page is not landed, so its next read still overrules.
             val onRow = cache.putSlotsIfPresent(rowKey, targets)((_, held) =>
               detail.mergeInto(changed.refreshInto(held.getOrElse(SourceData()), screeningTokens), screeningTokens))
-            if (onRow && !baseline.contains(read)) pages.land(pageKey, read)
+            // Landed against what the rows took alone: compared with the last read, a page read before `landed` was kept
+            // and unchanged since was never landed, and paid this check's find on every task for ever.
+            if (onRow && !before.landed.contains(read)) pages.land(pageKey, read)
             freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
             Done
         }
