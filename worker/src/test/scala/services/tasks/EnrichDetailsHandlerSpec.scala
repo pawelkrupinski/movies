@@ -452,6 +452,24 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     legacy.stored(page).landed shouldBe Some(now)
   }
 
+  // A page no slot names was taken by no row: recording it as landed made the change look already landed once a slot
+  // named the page again, so the slot only filled gaps and kept the old year.
+  it should "not record a page as landed when no slot of the row took it" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    services.movies.ListingSeed.land(cache, KinoApollo, Seq(CinemaMovie(Movie("Dune"), KinoApollo, posterUrl = None,
+      filmUrl = Some("http://another-page"), synopsis = None, cast = Seq.empty, director = Seq.empty,
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book"))))))
+    val pages    = new InMemoryVenuePageStore
+    val enricher = new FakeDetailEnricher(models.BarnCinemaDartingtonArtCentre, "flicks|uk",
+      Some(FilmDetail(releaseYear = Some(2021))), sharedPages = true)
+    new EnrichDetailsHandler(Map("flicks|uk" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned),
+      noBus, dueWindow, clock = specClock, enrichmentLanguage = polish, pages = pages).handle(taskFor("flicks|uk", cache, "Dune", enricher)) shouldBe Done
+
+    val page = VenuePageKey("flicks|uk", "http://ref")
+    pages.stored(page).page.map(_.outcome) shouldBe Some(VenuePage.Read(FilmDetail(releaseYear = Some(2021))))
+    pages.stored(page).landed shouldBe None
+  }
+
   // A 404 is not a read. The `Gone` branch stamps the task's own freshness key to stop
   // the re-enqueue livelock, and reading that back as "we have seen this page" made a
   // recovered page's FIRST real read authoritative — so the detail page could overwrite

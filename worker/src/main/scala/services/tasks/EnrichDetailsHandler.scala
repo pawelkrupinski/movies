@@ -241,7 +241,9 @@ class EnrichDetailsHandler(
             // a 1:1 cinema's slot already exists, so this preserves its showtimes.
             // Only those slots are written, each from what it held (`putSlotsIfPresent`): a no-op on a row that was
             // re-keyed between enqueue and pickup — and then the page is not landed, so its next read still overrules.
-            val onRow = cache.putSlotsIfPresent(rowKey, targets)((_, held) =>
+            // Nor is it landed when no slot names the page (`targets` empty): the row is there, but nothing took the
+            // read, and recording it as taken would make the change look landed once a slot names the page again.
+            val onRow = targets.nonEmpty && cache.putSlotsIfPresent(rowKey, targets)((_, held) =>
               detail.mergeInto(changed.refreshInto(held.getOrElse(SourceData()), screeningTokens), screeningTokens))
             // Landed against what the rows took alone: compared with the last read, a page read before `landed` was kept
             // and unchanged since was never landed, and paid this check's find on every task for ever.

@@ -160,7 +160,8 @@ trait MovieCache extends MovieCacheReader {
   private[services] def retireProjected(id: FilmId): WriteOutcome
   private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean
   /** [[putIfPresent]] of an update to `sources`' slots alone, each set to `slotOf` what it held — in work independent of
-   *  the row's other slots. */
+   *  the row's other slots. Like `putIfPresent`, true says the row is resident and holds the update, so with no
+   *  `sources` it is true of any resident row: it does not say a slot took anything. */
   private[services] def putSlotsIfPresent(key: CacheKey, sources: Seq[Source])(slotOf: (Source, Option[SourceData]) => SourceData): Boolean
   /** Like [[get]], but falls back to a direct `movies` read when the cache doesn't
    *  hold `key`. The TMDB resolve's carry-forward reads this rather than the
