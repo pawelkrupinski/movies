@@ -93,6 +93,28 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
     voting.apply(model, Map(now.key -> now).get, version = 1, republished = None).decisions.head.film shouldBe Some(1001)
   }
 
+  it should "ask a search TMDB had no answer to again only once something was filed, not on every pass" in {
+    // the stage's TMDB lookups fall back to live TMDB: a blind read kept nowhere was a live search per pass per cluster
+    var searches = 0
+    val blind = new services.identity.IdentityLookups {
+      def hasDetail(listing: Listing): Boolean = false
+      def detail(listing: Listing) = Answer.Known(None)
+      def candidates(query: services.identity.CandidateQuery) = { searches += 1; Answer.Unknown }
+      def film(tmdbId: Int) = table.film(tmdbId)
+    }
+    val listing = lalka()
+    val voting = new AgreementStage(silentFamilies, blind, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(blind),
+      posters = new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(near(3)), 1002 -> Seq(PosterHash(-1L)))))
+    voting.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 1)
+    val once = searches
+    once should be > 0
+    voting.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 1)   // a new decision, nothing filed
+    searches shouldBe once
+    voting.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 2)
+    searches should be > once
+  }
+
   it should "hold the cluster while a poster is not hashed yet, and hand the poster to the queue" in {
     val listing = lalka()
     val handed  = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Open]

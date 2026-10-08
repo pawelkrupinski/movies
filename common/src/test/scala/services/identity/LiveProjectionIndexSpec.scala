@@ -135,6 +135,22 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
       first.filter(_.listing.title == recut).map(_.listing.key)
   }
 
+  it should "name none for a lean re-read beside the model's object holding the days the lean read leaves out" in {
+    // the projection reads lean rows (no days for a film that bills no stage work); the model's object it adopts holds
+    // the full scrape's days: read against each other every tick, every re-read venue looked re-published
+    val live    = new LiveProjectionIndex(normalizer)
+    val rows    = Seq(row(new Random(1), Multikino))
+    val days    = ScreeningDays.of(Seq(start.toLocalDate, start.toLocalDate.plusDays(1)))
+    def read(d: ScreeningDays) = rows.map(cm => ProjectedListing.of(Listing.of(cm.cinema, cm, normalizer), cm))
+      .map(p => p.copy(listing = p.listing.copy(screenings = d)))
+    val adopted = read(days)
+    val decided = adopted.map(l => ResolverDecision(Seq(l.listing.key), Some(1), 0.9, ResolverDecision.Basis.OwnMatch, Nil)())
+    live.update(Seq(Multikino.displayName -> adopted), adopted.map(_.listing.key), decided, Nil)
+    live.republished(Seq(Multikino.displayName -> read(ScreeningDays.None))) shouldBe empty
+    live.republished(Seq(Multikino.displayName -> read(ScreeningDays.Unknown))) shouldBe empty
+    live.republished(Seq(Multikino.displayName -> read(ScreeningDays.of(Seq(start.toLocalDate))))) shouldBe adopted.map(_.listing.key)
+  }
+
   it should "name each listing by its own key object, not the copies a decision or a stored slot was read with" in {
     // A decision's keys and a stored slot's are read anew from the store: kept as they came, the index held ~4.8 key
     // objects per listing on worker-us.

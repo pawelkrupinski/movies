@@ -120,7 +120,9 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  or after [[AgreementStage.RecordWait]], is waited on no more. One entry per stage-work record, a few hundred. */
   private val rereads = TrieMap.empty[Int, (Long, java.time.Instant)]
   /** Each cluster's TMDB candidates, none denied, at its listings' digest: what its posters are compared against. */
-  private val candidateFilms = TrieMap.empty[String, (Long, Seq[Int])]
+  private val candidateFilms = TrieMap.empty[String, AgreementStage.CandidateFilms]
+  /** The `version` the current [[apply]] runs at. */
+  private var applying = -1L
   /** What a correction still waiting on an answer asks, by its stored id: a take's posters, families' questions and
    *  finds while the backfill hashes them — none kept once its evidence is all answered. */
   private val correctionWaits = TrieMap.empty[String, AgreementStage.CorrectionWaits]
@@ -174,6 +176,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       held.valuesIterator.filter(_.rules == decidedUnder).foreach(v => checked(v.id) = (v.listings, version))
     }
     val started = tools.Stopwatch.start()
+    applying = version
     resolves = 0
     val asked  = mutable.Set.empty[(VoterFamily, String)]
     val finding = mutable.Set.empty[String]
@@ -575,7 +578,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         if (fill == Answer.Unknown) {
           // the fill met a TMDB question not answered yet: this pass reads the verdict, none keeps it — kept, it stood once
           // TMDB had answered (its reads are the families' only), and the fill was never read again (PL "Lalka (Dolly)" ×5)
-          waiting(id) = AgreementStage.Waiting(digest, Set.empty, clock.instant())
+          waiting(id) = AgreementStage.Waiting(digest, Set.empty, clock.instant(), blindAt = Some(version))
           checked -= id
         } else {
           if (!held.get(id).contains(verdict)) moved += verdict
@@ -655,7 +658,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  re-ran the same partial resolve: prod PL 2026-10-04, 25–48 s an agreement phase after the per-question fix — or once
    *  some are and it has waited [[AgreementStage.PartialAfter]], so a question never answered holds no cluster for ever. */
   private def due(waiting: AgreementStage.Waiting): Boolean =
-    waiting.gaps.forall(answered) ||
+    // a fill read blind waits on no family's question but on TMDB's answer: due once something is filed, not every pass
+    waiting.blindAt.fold(waiting.gaps.forall(answered))(_ != applying) ||
       (!clock.instant().isBefore(waiting.since.plusMillis(AgreementStage.PartialAfter.toMillis)) && waiting.gaps.exists(answered))
 
   /** A stored read whose answer is stale, as the question to ask again. */
@@ -844,9 +848,9 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   }
 
   /** The TMDB films the cluster's own evidence reaches, none denied — read once per listings' digest; none, read again
-   *  next time, while a TMDB question of theirs has no answer. */
+   *  once something is filed (another `version`), while a TMDB question of theirs has no answer. */
   private def candidatesOf(id: String, digest: Long, listings: Seq[Listing]): Seq[Int] =
-    candidateFilms.get(id).filter(_._1 == digest).map(_._2).getOrElse {
+    candidateFilms.get(id).filter(kept => kept.digest == digest && kept.blindAt.forall(_ == applying)).map(_.films).getOrElse {
       var blind = false
       val films = tmdb.fold(Seq.empty[Int]) { lookups =>
         val noting = new AgreementStage.UnknownNoting(lookups)
@@ -855,8 +859,9 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         blind = noting.unknown
         if (blind) Nil else found
       }
-      // none kept while a search had no answer: the digest does not move when TMDB answers, so kept, "none" stood for good
-      if (!blind) candidateFilms(id) = (digest, films)
+      // read blind — a search with no answer — it is kept only while nothing is filed: the digest does not move when TMDB
+      // answers, so kept for good, "none" stood for good; kept for no pass, every pass searched live TMDB again
+      candidateFilms(id) = AgreementStage.CandidateFilms(digest, films, Option.when(blind)(applying))
       films
     }
 
@@ -1049,7 +1054,10 @@ object AgreementStage {
 
   /** A cluster waiting on families' answers: its listings' digest, the questions it waits on, and since when — none
    *  where only its fill's TMDB answers were missing, resolved again on the next pass. */
-  private final case class Waiting(listings: Long, gaps: Set[(VoterFamily, String)], since: java.time.Instant)
+  private final case class Waiting(listings: Long, gaps: Set[(VoterFamily, String)], since: java.time.Instant, blindAt: Option[Long] = None)
+  /** A cluster's candidates read at its listings' `digest` — `blindAt` the version they were read at while a TMDB search had
+   *  no answer, to be read again at another. */
+  private final case class CandidateFilms(digest: Long, films: Seq[Int], blindAt: Option[Long])
   /** How long a cluster with some of its questions answered waits for the rest before it is resolved on what came. */
   val PartialAfter: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, java.util.concurrent.TimeUnit.MINUTES)
 

@@ -161,9 +161,14 @@ object CatalogueId {
 object Listing {
   /** Does `now` publish what the stages after the model read differently from `was` — its poster, its screening days, the
    *  names its venue's text gives — though the two are equal ([[Listing.equals]] leaves those out)? The model then holds
-   *  `now` without resolving it again, and the agreement reads it afresh ([[agreement.AgreementStage]]). */
+   *  `now` without resolving it again, and the agreement reads it afresh ([[agreement.AgreementStage]]). Days count only
+   *  where both sides know them: a lean read leaves out the days of a film billing no stage work
+   *  (`services.scrapes.LeanListing.leanFilm`), which beside the model's object holding the scrape's days moved nothing —
+   *  read as moved, every venue read again looked re-published, on every tick. */
   def movedOutsideEquality(was: Listing, now: Listing): Boolean =
-    was.poster != now.poster || was.screenings != now.screenings || was.names != now.names
+    was.poster != now.poster || was.names != now.names ||
+      (knowsDays(was.screenings) && knowsDays(now.screenings) && was.screenings != now.screenings)
+  private def knowsDays(days: ScreeningDays): Boolean = !days.isEmpty && !days.isUnknown
 
 
   /** `cm` as `cinema` lists it. Blank director names and non-positive runtimes are absent. */
