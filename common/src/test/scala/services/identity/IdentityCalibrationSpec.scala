@@ -300,6 +300,16 @@ class IdentityCalibrationSpec extends AnyFlatSpec with Matchers {
     IdentityCalibration.Condition("year.distance", atLeast = Some(6)).holds(Map("year.distance" -> Missing("film"))) shouldBe false
   }
 
+  "a learned cannot-link on the runtime gap" should "read the size of the signed runtime.delta, either way" in {
+    // The listing-film runtime.delta is signed; a veto learned on how far off a venue's runtime is reads its size.
+    val gap = IdentityCalibration.Condition(IdentityMeasures.RuntimeGap, atLeast = Some(30))
+    gap.holds(Map("runtime.delta" -> Number(-40))) shouldBe true
+    gap.holds(Map("runtime.delta" -> Number(40))) shouldBe true
+    gap.holds(Map("runtime.delta" -> Number(-10))) shouldBe false
+    gap.holds(Map("runtime.delta" -> Missing("listing"))) shouldBe false
+    IdentityMeasures.ruleMeasure(Map("runtime.delta" -> Number(-12)), IdentityMeasures.RuntimeGap) shouldBe Some(Number(12))
+  }
+
   // The evidence a trace keeps is digested, and a trace is rewritten when its digest moves: rendered as the
   // raw count, `venues.corroborating=571` became `=570` as one venue's listing came and went, and ~8% of the
   // US traces were rewritten every tick for a weight that never moved.

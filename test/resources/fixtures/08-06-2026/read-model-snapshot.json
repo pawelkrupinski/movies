@@ -1243,7 +1243,7 @@
     "title" : "Willow i tajemniczy las",
     "originalTitle" : "Ein Mädchen namens Willow",
     "posterUrl" : "https://img.helios.pl/pliki/film/willow-i-tajemniczy-las/willow-i-tajemniczy-las-plakat-745.jpg",
-    "fallbackPosterUrls" : [ "https://www.iluzjon.fn.org.pl/public/covers/movie-7838.jpg", "https://bilety.csm.tarnow.pl/Kino/ImageData.ashx?id=405&mode=thumb", "https://bilety.csm.tarnow.pl/Kino/ImageData.ashx?id=401&mode=thumb", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/screenshot-2026-05-11-at-12-06-58-willow-i-tajemniczy-las.png", "http://bilety.dkkozienice.pl/MSI/ImageData.ashx?id=1429&mode=thumb", "https://biletyna.pl/file/get/id/331519", "https://bilety.kino.swiebodzin.pl:4433/MSI/ImageData.ashx?id=673&mode=thumb", "https://kinoodeon.eurobilet.pl/MSI/ImageData.ashx?id=2307&mode=thumb", "https://image.tmdb.org/t/p/w500/91o854WcptbixlbqybQTzz5BeIv.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.iluzjon.fn.org.pl/public/covers/movie-7838.jpg", "https://bilety.csm.tarnow.pl/Kino/ImageData.ashx?id=401&mode=thumb", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/screenshot-2026-05-11-at-12-06-58-willow-i-tajemniczy-las.png", "http://bilety.dkkozienice.pl/MSI/ImageData.ashx?id=1429&mode=thumb", "https://bilety.kino.swiebodzin.pl:4433/MSI/ImageData.ashx?id=673&mode=thumb", "https://kinoodeon.eurobilet.pl/MSI/ImageData.ashx?id=2307&mode=thumb", "https://image.tmdb.org/t/p/w500/91o854WcptbixlbqybQTzz5BeIv.jpg" ],
     "runtimeMinutes" : 100,
     "releaseYear" : 2025,
     "genres" : [ "Familijny", "Przygodowy", "Fantasy" ],
@@ -1265,30 +1265,6 @@
       "konin" : "Willow odziedziczyła nie tylko cały majątek po swej babci, ale także tajemną księgę magii. Okazuje się, że jest potomkinią całej llinii czarownic. Przy pomocy Księgi przywołuje czarownika Grimoo, który ma jej pomóc obudzić służące jej moce ognia.\n\nWszystko byłoby piękne gdyby nie to, że jej ojciec planuje sprzedać las, z którego wywodzi się cała magia, którą Willow posiada. Nie ma już wiele czasu aby obudzić w sobie pełną moc magii i wraz z trzema innymi czarownicami uratować istnienie pradawnego, czarodziejskiego lasu."
     },
     "ageRating" : "6",
-    "shareCardPending" : false
-  }, {
-    "_id" : "f13d0c721ccd32f3~kinosensorycznewillowitajemniczylas",
-    "title" : "Kino sensoryczne:willow i tajemniczy las",
-    "originalTitle" : "Ein Mädchen namens Willow",
-    "posterUrl" : "https://img.helios.pl/pliki/film/willow-i-tajemniczy-las/willow-i-tajemniczy-las-plakat-745.jpg",
-    "fallbackPosterUrls" : [ "https://www.iluzjon.fn.org.pl/public/covers/movie-7838.jpg", "https://bilety.csm.tarnow.pl/Kino/ImageData.ashx?id=405&mode=thumb", "https://bilety.csm.tarnow.pl/Kino/ImageData.ashx?id=401&mode=thumb", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/screenshot-2026-05-11-at-12-06-58-willow-i-tajemniczy-las.png", "http://bilety.dkkozienice.pl/MSI/ImageData.ashx?id=1429&mode=thumb", "https://biletyna.pl/file/get/id/331519", "https://bilety.kino.swiebodzin.pl:4433/MSI/ImageData.ashx?id=673&mode=thumb", "https://kinoodeon.eurobilet.pl/MSI/ImageData.ashx?id=2307&mode=thumb", "https://image.tmdb.org/t/p/w500/91o854WcptbixlbqybQTzz5BeIv.jpg" ],
-    "runtimeMinutes" : 100,
-    "releaseYear" : 2025,
-    "genres" : [ "Familijny", "Przygodowy", "Fantasy" ],
-    "countries" : [ "Niemcy", "Austria" ],
-    "directors" : [ "Mike Marzuk" ],
-    "cast" : [ "Ava Petsch", "Cora Trube", "Anna von Seld", "Mary Tölle", "Golo Euler" ],
-    "synopsis" : "Co Willow mogłaby zrobić z całym lasem? Właśnie to zadaje sobie pytanie, kiedy odziedzicza ten las po cioci Alwinie. To jednak nie wszystko – Alwina zostawiła jej również małą, krzywą chatkę i, co najważniejsze, swoje czary. Pytanie jednak pozostaje: czy Willow w ogóle przyjmie ten nieoczekiwany spadek, ze wszystkimi jego konsekwencjami?",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt35300281/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Ein+M%C3%A4dchen+namens+Willow/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Ein+M%C3%A4dchen+namens+Willow",
-      "filmweb" : 5,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Willow+i+tajemniczy+las-2025-10073149"
-    },
-    "weightedRating" : 5,
-    "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
     "_id" : "f144117c5f2bf7d0",
@@ -2294,6 +2270,26 @@
       "czestochowa" : "Drogie Panie, zapraszamy na kolejną edycję Ladies Night w Cinema City! W programie: bezalkoholowy welcome drink, prezenty od partnerów dla każdego i konkursy z nagrodami. Tego wieczoru zobaczymy wzruszająca, filmowo-muzyczną opowieść o miłości, sławie i walce z własnymi demonami. Jackson Maine, gwiazdor muzyki country, którego kariera chyli się ku upadkowi, odkrywa utalentowaną, nieznaną nikomu piosenkarkę Ally. Kiedy między tą dwójką wybucha płomienny romans, Jack nakłania Ally do wyjścia z cienia i pomaga jej osiągnąć sławę. Jednak gdy kariera Ally w szybkim tempie przyćmiewa dokonania Jacka, jest mu coraz trudniej poradzić sobie z własną gasnącą gwiazdą."
     },
     "ageRating" : "12",
+    "shareCardPending" : false
+  }, {
+    "_id" : "f1f34f4daa69b804",
+    "title" : "Ojczyzna",
+    "fallbackPosterUrls" : [ ],
+    "runtimeMinutes" : 120,
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Ojczyzna/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Ojczyzna",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Ojczyzna"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : {
+      "legnica" : "\"Ojczyzna\" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych."
+    },
     "shareCardPending" : false
   }, {
     "_id" : "f1fb3f6ad076641b",
@@ -3635,6 +3631,25 @@
       "metacriticUrl" : "https://www.metacritic.com/search/90.+urodziny+Pavarottiego+-+Koncert+gwiazd+z+Arena+di+Verona/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=90.+urodziny+Pavarottiego+-+Koncert+gwiazd+z+Arena+di+Verona",
       "filmwebUrl" : "https://www.filmweb.pl/search?query=90.+urodziny+Pavarottiego+-+Koncert+gwiazd+z+Arena+di+Verona"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
+    "_id" : "f2a63cfe93ac32f2",
+    "title" : "Willow i tajemniczy las",
+    "posterUrl" : "https://biletyna.pl/file/get/id/331519",
+    "fallbackPosterUrls" : [ ],
+    "runtimeMinutes" : 140,
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Willow+i+tajemniczy+las/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Willow+i+tajemniczy+las",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Willow+i+tajemniczy+las"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
@@ -12288,7 +12303,6 @@
       "wroclaw" : "Film opowiada o relacji między Thomasem Mannem, laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych. Film jest koprodukcją Dolnośląskiego Centrum Filmowego.",
       "szczecin" : "„Ojczyzna\" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od zakończenia wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.",
       "torun" : "„Ojczyzna\" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od zakończenia wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.",
-      "legnica" : "\"Ojczyzna\" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.",
       "konin" : "„Ojczyzna” to najnowszy, długo wyczekiwany film laureata Oscara®, Pawła Pawlikowskiego, twórcy „Idy” i „Zimnej wojny”, zdobywca nagrody za reżyserię na tegorocznym 79. Międzynarodowym Festiwalu Filmowym w Cannes. Poprzedni film Pawlikowskiego, „Zimna wojna”, również nagrodzony za reżyserię w Cannes, oprócz spektakularnego sukcesu międzynarodowego (52 nagrody i 126 nominacje, w tym do Oscara® dla najlepszego filmu nieanglojęzycznego, za najlepszą reżyserię i najlepsze zdjęcia) podbił serca polskiej publiczności. W swoim najnowszym dziele reżyser podejmuje tematy tożsamości, winy, rodziny i miłości na tle chaosu i moralnego zagubienia powojennej Europy.\n\"Ojczyzna\" splata w sobie wiele wątków, ale opowiada o nich z umiarem i prostotą, w mocnych kadrach i gęstych scenach, pozostawiając widzowi przestrzeń do przeżywania i wyobrażania.\nW rolach głównych zobaczymy nominowaną do Oscara® Sandrę Hüller. Akcja filmu rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od zakończenia wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.",
       "walbrzych" : "\"Ojczyzna\" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.",
       "poznan" : "„Ojczyzna” to najnowszy, długo wyczekiwany film laureata Oscara®, Pawła Pawlikowskiego, twórcy „Idy” i „Zimnej wojny”, który powalczy o jedną z najważniejszych nagród filmowych na świecie – Złotą Palmę (Palme d’Or) na tegorocznym 79. Międzynarodowym Festiwalu Filmowym w Cannes.\n\nPoprzedni film Pawlikowskiego, „Zimna wojna”, w Polsce również dystrybuowany przez Kino Świat, oprócz spektakularnego sukcesu międzynarodowego (52 nagrody i 126 nominacje, w tym do Oscara® dla najlepszego filmu nieanglojęzycznego, za najlepszą reżyserię i najlepsze zdjęcia) podbił serca polskiej publiczności, przyciągając do kin ponad 1 milion widzów.\n\nW swoim najnowszym dziele, podobnie jak w „Idzie” i „Zimnej wojnie”, reżyser podejmuje tematy tożsamości, winy, rodziny i miłości na tle chaosu i moralnego zagubienia powojennej Europy.\n\nW rolach głównych zobaczymy nominowaną do Oscara® Sandrę Hüller („Strefa interesów”, „Anatomia upadku”, „Projekt Hail Mary”) i Hannsa Zischlera („Monachium”). Scenariusz napisali Paweł Pawlikowski i Henk Handloegten. Do realizacji filmu reżyser ponownie zaprosił swój wieloletni zespół twórczy – nominowanego do Oscara® operatora Łukasza Żala („Hamnet”), kostiumografkę Aleksandrę Staszko („Ministranci”) oraz scenografów Katarzynę Sobańską i Marcela Sławińskiego („Lalka”).\n\n„Ojczyzna” opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od zakończenia wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.\n\nProducentami filmu są: Mario Gianani i Lorenzo Mieli (OUR Films), Ewa Puszczyńska (Extreme Emotions), Jeanne Tremsal i Edward Berger (Nine Hours), Dimitri Rassam (Chapter 2) oraz Lorenzo Gangarossa (Circle One).\n\nZe strony polskiej film powstał w koprodukcji z Canal + Polska, Wytwórnią Filmów Fabularnych we Wrocławiu, Dolnośląskim Centrum Filmowym i Instytucją Filmową Silesia-Film. Film został współfinansowany przez Polski Instytut Sztuki Filmowej. Produkcję dofinansowano także ze środków Ministerstwa Kultury i Dziedzictwa Narodowego.",
@@ -14442,6 +14456,26 @@
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
+    "_id" : "fa0c58c9b9dda82b",
+    "title" : "Kino sensoryczne:willow i tajemniczy las",
+    "posterUrl" : "https://bilety.csm.tarnow.pl/Kino/ImageData.ashx?id=405&mode=thumb",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Kino+sensoryczne%3Awillow+i+tajemniczy+las/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kino+sensoryczne%3Awillow+i+tajemniczy+las",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kino+sensoryczne%3Awillow+i+tajemniczy+las"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : {
+      "tarnow" : "Willow dziedziczy las, krzywy domek i… magiczne moce ciotecznej babki! Choć nie jest pewna, czy ich chce, musi działać – las potrzebuje ratunku. Z pomocą Rufusa, sprytnego lisa, szuka trzech czarodziejek!"
+    },
     "shareCardPending" : false
   }, {
     "_id" : "fa1480e0a6f4ccd4",
@@ -26292,22 +26326,6 @@
     } ],
     "listingKeys" : [ "N\u0000Kino MDK\u0000https://www.bilety24.pl/kino/1546-willow-i-tajemniczy-las-2d-dubbing-157843?id=940080\u0000WILLOW I TAJEMNICZY LAS" ]
   }, {
-    "_id" : "f13d0c721ccd32f3|slawno|Kino DK",
-    "filmId" : "f13d0c721ccd32f3",
-    "city" : "slawno",
-    "cinema" : "Kino DK",
-    "filmUrl" : "https://biletyna.pl/film/Willow-i-tajemniczy-las?eid=672295#opis",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-13T15:00:00",
-      "bookingUrl" : "https://biletyna.pl/film/Willow-i-tajemniczy-las?eid=672295#opis",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-14T15:00:00",
-      "bookingUrl" : "https://biletyna.pl/film/Willow-i-tajemniczy-las?eid=672296#opis",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino DK\u0000https://biletyna.pl/film/Willow-i-tajemniczy-las?eid=672295#opis\u0000Willow i tajemniczy las" ]
-  }, {
     "_id" : "f13d0c721ccd32f3|srem|Kino Baszta Środa",
     "filmId" : "f13d0c721ccd32f3",
     "city" : "srem",
@@ -26487,17 +26505,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "P\u0000Kino ODEON\u0000WILLOW I TAJEMNICZY LAS\u0000" ]
-  }, {
-    "_id" : "f13d0c721ccd32f3~kinosensorycznewillowitajemniczylas|tarnow|Kino Millenium",
-    "filmId" : "f13d0c721ccd32f3~kinosensorycznewillowitajemniczylas",
-    "city" : "tarnow",
-    "cinema" : "Kino Millenium",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-20T16:30:00",
-      "bookingUrl" : "https://bilety.csm.tarnow.pl/Kino/Default.aspx?event_id=36080&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino Millenium\u0000KINO SENSORYCZNE:WILLOW I TAJEMNICZY LAS\u0000" ]
   }, {
     "_id" : "f144117c5f2bf7d0|trojmiasto|Cinema1",
     "filmId" : "f144117c5f2bf7d0",
@@ -34860,6 +34867,66 @@
     } ],
     "listingKeys" : [ "N\u0000Cinema City Zielona Góra\u0000https://www.cinema-city.pl/filmy/ladies-night-narodziny-gwiazdy/3026s2r1\u0000Ladies Night - Narodziny gwiazdy" ]
   }, {
+    "_id" : "f1f34f4daa69b804|legnica|Kino Piast",
+    "filmId" : "f1f34f4daa69b804",
+    "city" : "legnica",
+    "cinema" : "Kino Piast",
+    "filmUrl" : "https://kino-piast.bilety24.pl/wydarzenie/?id=156173",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-19T16:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929004",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-20T16:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929003",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-21T16:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929005",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-22T16:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929006",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-23T16:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929007",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-24T16:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929008",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-25T16:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929009",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-26T18:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929011",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-27T18:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929012",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-28T18:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929010",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-29T18:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929013",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-01T18:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929014",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-02T18:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929015",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Piast\u0000https://kino-piast.bilety24.pl/wydarzenie/?id=156173\u0000Ojczyzna" ]
+  }, {
     "_id" : "f1fb3f6ad076641b|krakow|Kino Pod Baranami",
     "filmId" : "f1fb3f6ad076641b",
     "city" : "krakow",
@@ -38654,6 +38721,22 @@
       "format" : [ "2D", "NAP" ]
     } ],
     "listingKeys" : [ "N\u0000Cinema City Zielona Góra\u0000https://www.cinema-city.pl/filmy/90-urodziny-pavarottiego-koncert-gwiazd-z-arena-di-verona/8131s2r\u000090. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona" ]
+  }, {
+    "_id" : "f2a63cfe93ac32f2|slawno|Kino DK",
+    "filmId" : "f2a63cfe93ac32f2",
+    "city" : "slawno",
+    "cinema" : "Kino DK",
+    "filmUrl" : "https://biletyna.pl/film/Willow-i-tajemniczy-las?eid=672295#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-13T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Willow-i-tajemniczy-las?eid=672295#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-14T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Willow-i-tajemniczy-las?eid=672296#opis",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino DK\u0000https://biletyna.pl/film/Willow-i-tajemniczy-las?eid=672295#opis\u0000Willow i tajemniczy las" ]
   }, {
     "_id" : "f2aa344240f951f1|tczew|Helios Tczew",
     "filmId" : "f2aa344240f951f1",
@@ -111054,66 +111137,6 @@
     } ],
     "listingKeys" : [ "N\u0000Kino Sfinks\u0000https://kinosfinks.okn.edu.pl/wydarzenie-3186-ojczyzna-szczegoly-21401.html\u0000OJCZYZNA" ]
   }, {
-    "_id" : "f9112bae6ec7e2f6|legnica|Kino Piast",
-    "filmId" : "f9112bae6ec7e2f6",
-    "city" : "legnica",
-    "cinema" : "Kino Piast",
-    "filmUrl" : "https://kino-piast.bilety24.pl/wydarzenie/?id=156173",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-19T16:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929004",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-20T16:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929003",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-21T16:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929005",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-22T16:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929006",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-23T16:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929007",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-24T16:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929008",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-25T16:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929009",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-26T18:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929011",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-27T18:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929012",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-28T18:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929010",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-29T18:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929013",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-01T18:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929014",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-02T18:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929015",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Piast\u0000https://kino-piast.bilety24.pl/wydarzenie/?id=156173\u0000Ojczyzna" ]
-  }, {
     "_id" : "f9112bae6ec7e2f6|lodz|Cinema City Manufaktura",
     "filmId" : "f9112bae6ec7e2f6",
     "city" : "lodz",
@@ -121796,6 +121819,17 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino Paradox\u0000https://kinoparadox.pl/naekranie/super-wang-wang/\u0000Super Wang Wang" ]
+  }, {
+    "_id" : "fa0c58c9b9dda82b|tarnow|Kino Millenium",
+    "filmId" : "fa0c58c9b9dda82b",
+    "city" : "tarnow",
+    "cinema" : "Kino Millenium",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-20T16:30:00",
+      "bookingUrl" : "https://bilety.csm.tarnow.pl/Kino/Default.aspx?event_id=36080&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "P\u0000Kino Millenium\u0000KINO SENSORYCZNE:WILLOW I TAJEMNICZY LAS\u0000" ]
   }, {
     "_id" : "fa1480e0a6f4ccd4|krakow|Kino Pod Baranami",
     "filmId" : "fa1480e0a6f4ccd4",

@@ -1192,9 +1192,12 @@ object IdentityMeasures {
     case (Some(l), Some(f)) => Number((f - l).toDouble)
   }
 
-  /** The listing's `runtime.delta` against the film: how many minutes its stated runtime is off the CLOSEST of the runtimes
-   *  TMDB states for the film in any language it was fetched in ([[Film.runtimes]]) — a listing running as any translation's
-   *  cut runs as the film. A listing billing an EDITION ([[DecorationSegments.billsAnEdition]]: "… (Extended Edition)",
+  /** The listing's `runtime.delta` against the film, SIGNED: its stated runtime less the CLOSEST (by size of the gap) of
+   *  the runtimes TMDB states for the film in any language it was fetched in ([[Film.runtimes]]) and of the cuts
+   *  [[FilmCuts]] names — a listing running as any translation's cut runs as the film. Positive when the venue bills more
+   *  minutes (an interval, an introduction, a short before the feature), negative when it bills fewer (another cut,
+   *  another film); a gap the same size either way reads as the longer billing. Its table is fitted on each side of 0
+   *  ([[EvidenceDirection.Peaked]]); the hand-written rules read its size ([[runtimeGap]]). A listing billing an EDITION ([[DecorationSegments.billsAnEdition]]: "… (Extended Edition)",
    *  "Director's Cut", "Redux") that runs LONGER than every one of them states nothing for or against it: TMDB keeps no
    *  record of an extended cut apart from its film's ("The Return of the King" is 201 minutes in every language, its
    *  extended edition 263), so the longer cut is neutral. A shorter one still counts: an edition never makes a film shorter. */
@@ -1204,7 +1207,11 @@ object IdentityMeasures {
       // walked in place, not as a collection: every listing is measured against every candidate
       var off = Int.MaxValue
       var longest = 0
-      def against(runtime: Int): Unit = if (runtime > 0) { off = math.min(off, math.abs(stated - runtime)); longest = math.max(longest, runtime) }
+      def against(runtime: Int): Unit = if (runtime > 0) {
+        val d = stated - runtime
+        if (math.abs(d) < math.abs(off) || (math.abs(d) == math.abs(off) && d > off)) off = d
+        longest = math.max(longest, runtime)
+      }
       f.runtime.foreach(against)
       if (f.alternativeRuntimes.nonEmpty) f.alternativeRuntimes.foreach(against)
       FilmCuts.of(f.imdbNumber).foreach(cut => against(cut.runtime))  // a billed cut runs as the film ([[FilmCuts]])
@@ -1501,9 +1508,19 @@ object IdentityMeasures {
   /** How many minutes a listing's stated runtime is off its film's, either way: the size of the
    *  listing-film `runtime.delta`, which is SIGNED — the venue's minutes less the record's — so its
    *  table can weigh a venue billing more (an interval, an introduction, a short before the feature)
-   *  apart from one billing less. The hand-written rules that read a runtime gap read its size. */
+   *  apart from one billing less. The rules that read a runtime gap read its size: the hand-written ones
+   *  here, the learned cannot-links as [[RuntimeGap]] — a venue's minutes off its film either way are what
+   *  rules out a film, while which way they are off is the table's to weigh. */
   def runtimeGap(m: Map[String, Measure]): Option[Double] =
-    m.get("runtime.delta").collect { case Number(d) => math.abs(d) }
+    ruleMeasure(m, RuntimeGap).collect { case Number(d) => d }
+  /** The measure a learned cannot-link's [[RuntimeGap]] condition reads. */
+  val RuntimeGap: String = "runtime.gap"
+  /** What a learned cannot-link's condition on `signal` reads from a pair's measures: the measure itself, or —
+   *  [[RuntimeGap]] — the size of `runtime.delta`. The calibration's rule search and the resolver's rule
+   *  evaluation both read it (`IdentityCalibration.Condition`), so a rule is learned on what it is applied to. */
+  def ruleMeasure(m: Map[String, Measure], signal: String): Option[Measure] =
+    if (signal == RuntimeGap) m.get("runtime.delta").map { case Number(d) => Number(math.abs(d)); case other => other }
+    else m.get(signal)
   def sameDirector(m: Map[String, Measure]): Boolean = m.get("director").contains(SamePersonMeasure)
   private val SamePersonMeasure = Category("same_person")
   /** Does the listing's original title only repeat its own title — the whole of it (a venue

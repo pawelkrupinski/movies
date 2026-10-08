@@ -162,4 +162,13 @@ class IdentityCalibrateSpec extends AnyFlatSpec with Matchers {
     rules.flatten.filter(_.atLeast.isDefined) shouldBe empty
     IdentityCalibrate.Atom("runtime.delta", atMost = Some(-40)).render shouldBe "runtime.delta <= -40"
   }
+
+  "a cannot-link on the runtime gap" should "read its size, and never veto a runtime the agreement counts as the film's" in {
+    // A venue running 3 minutes off either way runs as the film (Agreement.RuntimeSlack): a thin conjunction whose
+    // same-film units happen to sit at 0 would otherwise certify "runtime.gap >= 1" (2046 at Kinoteka, 1 minute off).
+    def rows(value: Double, same: Int, different: Int) = numbers("runtime.delta", value, same, different)
+    val all = rows(0, 200, 20) ++ rows(-3, 0, 300) ++ rows(3, 0, 300) ++ rows(-40, 0, 300) ++ rows(40, 0, 300)
+    val rules = IdentityCalibrate.deriveRules("listing-film", all, Nil, Seq(IdentityMeasures.RuntimeGap), None).map(_._1)
+    rules shouldBe Seq(Seq(IdentityCalibrate.Atom(IdentityMeasures.RuntimeGap, atLeast = Some(40))))
+  }
 }

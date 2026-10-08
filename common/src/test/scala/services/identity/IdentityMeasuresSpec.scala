@@ -598,7 +598,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.runtimeContradicts(longer) shouldBe false
     // An edition never makes a film shorter.
     val shorter = measures(Listing(extended, runtime = Some(120)), film)
-    shorter("runtime.delta") shouldBe Number(81)
+    shorter("runtime.delta") shouldBe Number(-81)
     IdentityMeasures.runtimeContradicts(shorter) shouldBe true
     // No edition billed: 62 minutes longer is another film's runtime.
     val plain = measures(Listing("The Lord of the Rings: The Return of the King", runtime = Some(263)), film)
@@ -606,6 +606,21 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.runtimeContradicts(plain) shouldBe true
     // Nor is a word the film's own title carries an edition: "The Final Cut" is the film, not a cut of it.
     measures(Listing("The Final Cut", runtime = Some(150)), Film("The Final Cut", runtime = Some(95)))("runtime.delta") shouldBe Number(55)
+  }
+
+  "the listing-film runtime.delta" should "be signed: the venue's minutes less the closest of the film's" in {
+    val film = Film("Anora", year = Some(2024), runtime = Some(139), alternativeRuntimes = Seq(132))
+    // a venue billing fewer minutes than every runtime TMDB states reads below 0, one billing more above it
+    measures(Listing("Anora", runtime = Some(120)), film)("runtime.delta") shouldBe Number(-12)
+    measures(Listing("Anora", runtime = Some(150)), film)("runtime.delta") shouldBe Number(11)
+    // closest by size: 135 is 3 above the 132-minute cut, not 4 below the 139
+    measures(Listing("Anora", runtime = Some(135)), film)("runtime.delta") shouldBe Number(3)
+    // the hand-written rules read its size either way
+    IdentityMeasures.runtimeGap(measures(Listing("Anora", runtime = Some(100)), film)) shouldBe Some(32.0)
+    IdentityMeasures.runtimeContradicts(measures(Listing("Anora", runtime = Some(100)), film)) shouldBe true
+    // between two listings it stays a distance
+    IdentityMeasures.listingListing(Listing("Anora", runtime = Some(120)), Listing("Anora", runtime = Some(139)),
+      sameVenue = false, sharedChainId = None)("runtime.delta") shouldBe Number(19)
   }
 
   "a runtime a title brackets with a minute mark" should "be the listing's runtime when it publishes none" in {

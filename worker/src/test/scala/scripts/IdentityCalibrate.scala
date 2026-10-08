@@ -3,6 +3,7 @@ package scripts
 import models.Country
 import play.api.libs.json.{JsArray, JsObject, Json}
 import services.identity.{IdentityCalibration, IdentityMeasures, TitleDecorations}
+import services.identity.agreement.Agreement
 import services.identity.IdentityCalibration.{Bin, Calibration, CannotLinkRule, Condition, ScopeModel, SignalWeights, Threshold}
 import services.identity.IdentityMeasures.{Category, Film, Measure, Missing, Number}
 import scripts.IdentityCalibrationData.*
@@ -103,7 +104,7 @@ object IdentityCalibrate {
     case "director"                      => Some("director")
     case "originalTitle"                 => Some("originalTitle")
     case "venues.corroborating"          => Some("venues")
-    case "runtime.delta"                 => Some("runtime")
+    case "runtime.delta" | IdentityMeasures.RuntimeGap => Some("runtime")
     case _                               => None
   }
 
@@ -550,7 +551,8 @@ object IdentityCalibrate {
    *  under `epsilon`, each at the threshold that vetoes the most different-film pairs. */
   def deriveRules(scope: String, rows: Seq[Row], categorical: Seq[Atom], numeric: Seq[String], epsilon: Option[Double]): Seq[(Seq[Atom], RuleStats)] = {
     def thresholds(side: NumericSide): Seq[Double] =
-      rows.iterator.flatMap(r => number(r.measures.get(side.signal))).map(side.distance).filter(x => x > 0 && x <= 120).toSeq.distinct.sorted
+      rows.iterator.flatMap(r => number(IdentityMeasures.ruleMeasure(r.measures, side.signal))).map(side.distance)
+        .filter(x => x > leastBound(side.signal) && x <= 120).toSeq.distinct.sorted
     // Each side a measure takes values on: an unsigned one only ever its upper side.
     val numAtoms: Map[NumericSide, Seq[Double]] =
       numeric.flatMap(s => Seq(NumericSide(s, below = false), NumericSide(s, below = true))).map(s => s -> thresholds(s)).filter(_._2.nonEmpty).toMap
@@ -696,7 +698,18 @@ object IdentityCalibrate {
     Atom("title", Seq("none", "overlap")), Atom("country", Seq("mismatch")))
   val LlCatAtoms: Seq[Atom] = Seq(Atom("director", Seq("different")), Atom("originalTitle", Seq("disjoint")), Atom("title", Seq("none")),
     Atom("title", Seq("none", "overlap")), Atom("venue", Seq("same")), Atom("chainId", Seq("different")))
-  val LfRuleNumbers: Seq[String] = Seq("year.distance", "runtime.delta")
+  /** The listing-film rules read the runtime's SIZE ([[IdentityMeasures.RuntimeGap]]), not the signed `runtime.delta` its
+   *  table weighs: a veto on one side alone was certified on whichever side the same-film units of a thin conjunction
+   *  happened to fall ("director in {different} AND runtime.delta >= 6" beside the old ">= 54"). */
+  val LfRuleNumbers: Seq[String] = Seq("year.distance", IdentityMeasures.RuntimeGap)
+  /** The least distance a rule's bound on `signal` may sit above: a runtime within [[Agreement.RuntimeSlack]] minutes of
+   *  the film's is a venue's rounding, trailers or a cut's minute, and the agreement counts it AS the film's — a
+   *  cannot-link may not count it against. Without it a two-number rule certified on a thin context ("runtime.gap >= 1
+   *  AND year.distance >= 2": no same-film unit dated two years off happened to run off at all) vetoed re-releases
+   *  running one minute off their film (2046 at Kinoteka, "Entfesselte Begierde"). */
+  def leastBound(signal: String): Double = if (signal == IdentityMeasures.RuntimeGap) Agreement.RuntimeSlack.toDouble else 0.0
+  /** The rule number a listing-film table's refit re-derives the rules of. */
+  def ruleNumberOf(signal: String): String = if (signal == "runtime.delta") IdentityMeasures.RuntimeGap else signal
   val LlRuleNumbers: Seq[String] = Seq("year.delta", "runtime.delta")
   /** Measures a pair carries that no table weighs, and why. */
   val Unweighted: Map[String, String] = Map(
@@ -766,7 +779,7 @@ object IdentityCalibrate {
 
   /** `cfg.weightsOut` with ONE listing-film signal's table refitted from the corpora's labels exactly as [[run]] fits
    *  it (train split, labels without its own corroborator, under its [[IdentityMeasures.NumericDirection]]), and —
-   *  when the cannot-link rules search it ([[LfRuleNumbers]]) — the listing-film rules reading it re-derived and
+   *  when the cannot-link rules search it or its rule number ([[LfRuleNumbers]], [[ruleNumberOf]]) — the listing-film rules reading it re-derived and
    *  re-selected among themselves, replacing the ones that read it. Every other table, rule, the isotonic map and the
    *  thresholds stay as they are: the full relearn moves the certified cut, and a measure whose DEFINITION changed
    *  (the runtime turned signed) needs its own table refitted without moving anything else. The title shapes read the
@@ -777,14 +790,16 @@ object IdentityCalibrate {
     require(LfSignals.contains(signal), s"$signal is not a listing-film signal (${LfSignals.mkString(", ")})")
     val prepared = prepare(cfg, TitleDecorations.resolver)
     val table = fitSignal(signal, prepared.lfRows(2).filter(_.split == "train"), corroboratorOf(_).toSet)
-    val rules = Option.when(LfRuleNumbers.contains(signal))(
-      learnRules(scope, prepared.lfRows, LfCatAtoms, LfRuleNumbers, cfg.epsilon, reads = _.exists(_.signal == signal)))
+    val ruleNumber = ruleNumberOf(signal)
+    val rules = Option.when(LfRuleNumbers.contains(ruleNumber))(
+      learnRules(scope, prepared.lfRows, LfCatAtoms, LfRuleNumbers, cfg.epsilon, reads = _.exists(_.signal == ruleNumber)))
     val listingFilm = model.scopes(scope)
     val refitted = model.copy(
       version = if (model.version.endsWith(s"-$signal")) model.version else s"${model.version}-$signal",
       scopes = model.scopes.updated(scope, listingFilm.copy(signals = listingFilm.signals.updated(signal, table.weights))),
       cannotLinks = rules.fold(model.cannotLinks)(learned =>
-        model.cannotLinks.filterNot(rule => rule.scope == scope && rule.all.exists(_.signal == signal)) ++ learned.map(_._1)),
+        model.cannotLinks.filterNot(rule => rule.scope == scope && rule.all.exists(c => c.signal == signal || c.signal == ruleNumber)) ++
+          learned.map(_._1)),
       provenance = model.provenance + (s"refit:$signal" ->
         s"scripts.IdentityCalibrate --refit-signal $signal over ${cfg.corpora.getFileName} and production ${cfg.prod.fold("not used")(_.getFileName.toString)}"))
     Files.writeString(cfg.weightsOut, Json.prettyPrint(Json.toJson(refitted)) + "\n")

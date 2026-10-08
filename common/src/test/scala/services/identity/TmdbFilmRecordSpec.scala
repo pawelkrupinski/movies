@@ -89,6 +89,6 @@ class TmdbFilmRecordSpec extends AnyFlatSpec with Matchers {
     // PL dates only a 2003 Redux and a 2024 Director's Cut: 2019 is five years off the closest there.
     measured(2019, 183, Some("PL"))("year.distance") shouldBe IdentityMeasures.Number(5)
     // A runtime SHORTER than the film's still counts, edition or not.
-    measured(2019, 100)("runtime.delta") shouldBe IdentityMeasures.Number(47)
+    measured(2019, 100)("runtime.delta") shouldBe IdentityMeasures.Number(-47)
   }
 }

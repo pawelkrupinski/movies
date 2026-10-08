@@ -1144,6 +1144,29 @@ Russell's The Devils" → *Tommy*, "Trainspotting. 30 rocznica" → *T2*). `frag
 title along one edge of the film's: "It" beside "It Ends with Us") and the naming categories stay
 outside the order: a fragment is the opposite evidence, so the data alone places it.
 
+A numeric signal with a direction of its own is fitted under it (`IdentityMeasures.NumericDirection`):
+`venues.corroborating` rising, `search.rank` falling, and the listing-film `runtime.delta` PEAKED. That
+`runtime.delta` is signed — the venue's minutes less the closest of the film's runtimes (any translation's,
+or a cut `FilmCuts` names) — so its table rises up to 0 and falls past it, each side fitted on its own counts:
+a venue billing more minutes (an interval, an introduction, a short before the feature) is weighed apart from
+one billing fewer (another cut, another film). The rules read its SIZE: the hand-written ones through
+`IdentityMeasures.runtimeGap`, the learned listing-film cannot-links through the derived rule measure `runtime.gap`
+(`IdentityMeasures.ruleMeasure`, the one definition the calibration's rule search and the resolver's
+`Condition.holds` both read). A signed search certified one-sided bounds on whichever side a thin conjunction's
+same-film units happened to fall (`director in {different} AND runtime.delta >= 6`, which vetoed the 2026 "Fallen
+Angels" recording), so the search reads the size; and a gap bound never sits within `Agreement.RuntimeSlack` (5
+minutes), where the agreement counts the runtime AS the film's (`runtime.gap >= 1 AND year.distance >= 2` had vetoed
+re-releases running a minute off: 2046, "Entfesselte Begierde"). The listing-listing `runtime.delta` stays a
+distance. Until 2026-10-08 the
+measure was computed as a distance though declared peaked, so the shipped table had bins only at ≥ 0 and its
+first bin had no lower bound: a negative value would have read as the strongest same-film weight.
+`scripts/identity-calibrate.sh --refit-signal runtime.delta` (`IdentityCalibrate.refitSignal`) refits that one
+table and the listing-film cannot-links reading it in place, from the corpora, the recorded trees and a
+production snapshot (`CORPORA`, `FIXTURES`, `PROD`), leaving every other table, rule, the isotonic map and
+the cut as they are; the artefact's provenance names the refit (`refit:runtime.delta`). The pinned rating
+gate's artefact (`identity-weights-gate.json`) reads its own frozen, unsigned measure (`PinnedGateMeasures`)
+and is not refitted.
+
 ### 14.4 Thresholds, from data
 
 - **Today's wrong rate**: 60 contradicted of 6,217 decisive production filings per unit =
@@ -2436,7 +2459,7 @@ Calibrated = fitted from data today (`identity-weights.json`, §14). Feature = a
 | originalTitle | listing's original title vs record | `IdentityMeasures` | LLR per category | yes | `model.logit` |
 | year.delta, titleYear.delta, season.delta | published / title / season year vs record | `IdentityMeasures` | LLR per bin | yes | `model.logit` |
 | director | credited director relation (same_person/different/missing) | `IdentityMeasures` | LLR per category | yes | `model.logit` |
-| runtime.delta | minutes apart | `IdentityMeasures` | LLR per bin (monotone falling) | yes | `model.logit` |
+| runtime.delta | listing-film: the venue's minutes less the closest film runtime (signed); listing-listing: minutes apart | `IdentityMeasures` | LLR per bin (listing-film peaked at 0, each side monotone) | yes | `model.logit` |
 | country | listing vs record country | `IdentityMeasures` | LLR | yes | `model.logit` |
 | search.rank, rivals, popularity.log2 | where/among what the search returned the film | `IdentityMeasures` (priors) | LLR per bin; spread ×`priorSpread` per family | yes | `model.logit` |
 | venues.corroborating | venues of the family billing it | `IdentityMeasures` | LLR per bin (monotone rising) | yes | `model.logit` |

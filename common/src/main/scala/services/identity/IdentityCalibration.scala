@@ -237,7 +237,7 @@ object IdentityCalibration {
    *  lies in [`atLeast`, `atMost`]. Same shape as `ListingConstraints.LearnedCondition`. */
   final case class Condition(signal: String, in: Seq[String] = Nil, atLeast: Option[Double] = None,
                              atMost: Option[Double] = None) {
-    def holds(measures: Map[String, Measure]): Boolean = measures.get(signal) match {
+    def holds(measures: Map[String, Measure]): Boolean = IdentityMeasures.ruleMeasure(measures, signal) match {
       case Some(Category(v)) => in.nonEmpty && in.contains(v)
       case Some(Number(x))   => in.isEmpty && (atLeast.nonEmpty || atMost.nonEmpty) && atLeast.forall(x >= _) && atMost.forall(x <= _)
       case _                 => false

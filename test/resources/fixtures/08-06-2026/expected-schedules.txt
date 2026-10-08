@@ -2989,7 +2989,6 @@ cinemaScrapes:
   Kino Oskard / Ojczyzna / —
   Kino PDK / Ojczyzna / —
   Kino Paradox / Ojczyzna / 2026
-  Kino Piast / Ojczyzna / —
   Kino Pionier 1907 / OJCZYZNA / 2026
   Kino Pod Baranami / Ojczyzna / —
   Kino Rialto / OJCZYZNA / 2026
@@ -6386,7 +6385,6 @@ cinemaScrapes:
   Kino Oskard / Ojczyzna / —
   Kino PDK / Ojczyzna / —
   Kino Paradox / Ojczyzna / 2026
-  Kino Piast / Ojczyzna / —
   Kino Pionier 1907 / OJCZYZNA / 2026
   Kino Pod Baranami / Ojczyzna / —
   Kino Rialto / OJCZYZNA / 2026

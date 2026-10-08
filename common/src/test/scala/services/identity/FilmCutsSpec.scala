@@ -23,9 +23,9 @@ class FilmCutsSpec extends AnyFlatSpec with Matchers {
   }
 
   "a runtime no cut runs" should "still be the gap to the nearest of the film's runtimes" in {
-    delta(150, returnOfTheKing) shouldBe Number(51)
-    delta(240, returnOfTheKing) shouldBe Number(23)
-    delta(95, apocalypseNow) shouldBe Number(52)
+    delta(150, returnOfTheKing) shouldBe Number(-51)
+    delta(240, returnOfTheKing) shouldBe Number(-23)
+    delta(95, apocalypseNow) shouldBe Number(-52)
     // a film the table names no cut of keeps its one runtime
     delta(263, Film("Some Other Film", runtime = Some(201), imdbNumber = 1)) shouldBe Number(62)
   }
