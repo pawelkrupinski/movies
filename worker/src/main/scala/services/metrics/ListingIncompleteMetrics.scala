@@ -43,9 +43,9 @@ class ListingIncompleteMetrics(countryCodes: Seq[String], registry: PrometheusRe
     streakVenues.labelValues(c).set(0)
   }
 
-  /** The recorder one country's scrape runner reports to; only `roster`'s venues can be stuck. */
-  def recorderFor(country: String, roster: Set[Cinema]): ListingCompletenessRecorder =
-    new ListingIncompleteMetrics.Streaks(ListingIncompleteMetrics.StreakThreshold, roster,
+  /** The recorder one country's scrape runner reports to. */
+  def recorderFor(country: String): ListingCompletenessRecorder =
+    new ListingIncompleteMetrics.Streaks(ListingIncompleteMetrics.StreakThreshold,
       reason => incomplete.labelValues(country, reason.label).inc(),
       stuck => streakVenues.labelValues(country).set(stuck.toDouble))
 }
@@ -55,20 +55,20 @@ object ListingIncompleteMetrics {
    *  scrapes in PL, a few days at the slower countries' cadence. */
   val StreakThreshold: Int = 24
 
-  /** Each roster venue's run of incomplete landings, the stuck count it implies, and the one WARN as a
-   *  venue reaches the threshold. A complete landing ends the run. A venue off the roster is counted
-   *  incomplete but never holds a run: nothing scrapes it again, so no complete landing would ever
-   *  end it, and the gauge would count it stuck for the life of the process. */
-  private[metrics] final class Streaks(threshold: Int, roster: Set[Cinema], counted: ListingCompleteness => Unit, stuck: Int => Unit)
+  /** Each venue's run of incomplete landings, the stuck count it implies, and the one WARN as a
+   *  venue reaches the threshold. A complete landing ends the run. Every venue landed is on the
+   *  roster the runner was built with, and the runs live only as long as the process that holds it. */
+  private[metrics] final class Streaks(threshold: Int, counted: ListingCompleteness => Unit, stuck: Int => Unit)
       extends ListingCompletenessRecorder with Logging {
     private val runs = new ConcurrentHashMap[Cinema, Integer]()
 
     def landed(cinema: Cinema, completeness: ListingCompleteness): Unit = {
-      val incomplete = completeness != ListingCompleteness.Complete
-      if (incomplete) counted(completeness)
       val run =
-        if (incomplete && roster(cinema)) runs.merge(cinema, 1, (a, b) => a + b).intValue
-        else { runs.remove(cinema); 0 }
+        if (completeness == ListingCompleteness.Complete) { runs.remove(cinema); 0 }
+        else {
+          counted(completeness)
+          runs.merge(cinema, 1, (a, b) => a + b).intValue
+        }
       if (run == threshold)
         logger.warn(s"${cinema.displayName} has landed $threshold incomplete listings in a row (${completeness.label}) — " +
           "none of its stopped films is being pruned until a scrape reads its whole listing")
