@@ -197,7 +197,7 @@ trait TaskQueue {
    *  `lease`, or None when nothing is waiting. A task released with a future
    *  `notBefore` (transient-failure backoff) is skipped until `now` reaches it,
    *  so a perpetually-failing task can't hot-loop ahead of newer work. */
-  def claim(workerId: String, lease: FiniteDuration, now: Instant = Instant.now()): Option[Task]
+  def claim(workerId: String, lease: FiniteDuration, now: Instant): Option[Task]
 
   /** Mark a worked-on task done — removes it. No-op unless `workerId` still holds
    *  it — so a late call from a worker whose lease was reaped can't clobber a
@@ -219,7 +219,7 @@ trait TaskQueue {
 
   /** Return every worked-on task whose lease has expired to waiting. Returns how
    *  many were reaped. */
-  def reapExpiredLeases(now: Instant = Instant.now()): Int
+  def reapExpiredLeases(now: Instant): Int
 
   /** Count of tasks per state — for the debug view, the heartbeat and tests. THROWS
    *  when the counts cannot be read, like [[waitingCount]]: an empty map is an empty

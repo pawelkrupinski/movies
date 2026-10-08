@@ -190,7 +190,7 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     val q = new InMemoryTaskQueue
     q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)
     // Walk the task to one attempt short of the cap with bare claim/release cycles.
-    (1 until 3).foreach { _ => val t = q.claim("w9", 1.minute).get; q.release(t.id, "w9") }
+    (1 until 3).foreach { _ => val t = q.claim("w9", 1.minute, t0).get; q.release(t.id, "w9") }
     val outcomes = scala.collection.mutable.Buffer.empty[String]
     val observer = new TaskObserver {
       def onStarted(task: Task): Unit = ()
@@ -220,7 +220,7 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
   it should "keep rescheduling below the attempt cap" in {
     val q = new InMemoryTaskQueue
     q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)
-    val t = q.claim("w9", 1.minute).get; q.release(t.id, "w9")   // attempts = 1, cap is 3
+    val t = q.claim("w9", 1.minute, t0).get; q.release(t.id, "w9")   // attempts = 1, cap is 3
     val w = new TaskWorker(q, Seq(new RecordingHandler(ImdbRating, HandlerOutcome.Reschedule(Some("later")))), maxAttempts = services.tasks.TaskWorker.MaxAttempts(3), clock = specClock)
     w.claimAndRun("w0") shouldBe PollResult.Returned                  // attempt 2 of 3 — still retried
     q.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
@@ -341,8 +341,8 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     q.enqueue(ScrapeCinema, "scrape|y", submittedAt = t0.plusSeconds(1))
     // Two distinct worker ids claim concurrently; the second can't steal the
     // first's leased task, so each ends up on a different one.
-    val a = q.claim("w0", 5.minutes).get
-    val b = q.claim("w1", 5.minutes).get
+    val a = q.claim("w0", 5.minutes, t0).get
+    val b = q.claim("w1", 5.minutes, t0).get
     Set(a.dedupKey, b.dedupKey) shouldBe Set("scrape|x", "scrape|y")
     q.countByState().getOrElse(TaskState.WorkedOn, 0L) shouldBe 2L
   }

@@ -380,7 +380,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case p if p.startsWith("/debug/details?") =>
             val id = java.net.URLDecoder.decode(p.split("id=", 2).lift(1).getOrElse(""), "UTF-8")
             (debugRows :+ slotsRow).find(r => r.id.value == id)
-              .map(r => views.html.debugDetails(r.title, r.year, r.record, titleNormalizer, Map.empty[String, String], latestYear = tools.SpecClock.latestTitleYear).body)
+              .map(r => views.html.debugDetails(r.title, r.year, r.record, titleNormalizer, Map.empty[String, String], latestYear = tools.SpecClock.latestTitleYear, now = tools.SpecClock.Pinned.instant()).body)
               .getOrElse("")
         },
         dynamicRoute = hiddenFilmsDynamicRoute

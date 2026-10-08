@@ -40,9 +40,10 @@ class InMemoryMovieRepository(
   // Required, and passed by name: a single-country spec hands it
   // `SingleCountryNormalizer.titleNormalizer`, a spec ABOUT country scoping its own instance.
   override val normalizer: services.movies.TitleNormalizer,
-  // Stamps a write's `updatedAt` and a delivery's instant, exactly as production stamps them
-  // from the wall clock — injected so a spec about AGES can move time by hand.
-  clock: java.time.Clock = java.time.Clock.systemUTC()
+  // Stamps a write's `updatedAt` and a delivery's instant, as production stamps them from the
+  // wiring's clock — injected so a spec about AGES can move time by hand. Pinned by default, so a
+  // spec that does not care which instant it reads never reads the wall clock.
+  clock: java.time.Clock = tools.SpecClock.Pinned
 ) extends MovieRepository with KeyAddressedMovieWrites {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)

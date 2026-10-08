@@ -255,11 +255,11 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     // Each round: the reaper enqueues one cinema, the worker runs it to completion.
     def round(): Unit = {
       reaper.tick()
-      var next = queue.claim("w", 1.minute)
+      var next = queue.claim("w", 1.minute, now)
       while (next.isDefined) {
         handler.handle(next.get)
         queue.complete(next.get.id, "w")
-        next = queue.claim("w", 1.minute)
+        next = queue.claim("w", 1.minute, now)
       }
     }
 
@@ -431,7 +431,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
 
     // Two chunks finish → two task-slots free → two more cinemas may go in.
     (1 to 2).foreach { _ =>
-      val c = queue.claim("w", 1.minute).get
+      val c = queue.claim("w", 1.minute, _root_.tools.SpecClock.Pinned.instant()).get
       queue.complete(c.id, "w")
     }
     reaper.tick() shouldBe 2

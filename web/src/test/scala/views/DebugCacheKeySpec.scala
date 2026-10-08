@@ -20,7 +20,7 @@ class DebugCacheKeySpec extends AnyFlatSpec with Matchers {
     MovieRecord(data = Map[Source, SourceData]())
 
   private def render(title: String, year: Option[Int]): String =
-    views.html.debugDetails(title, year, record, titleNormalizer, latestYear = tools.SpecClock.latestTitleYear).body
+    views.html.debugDetails(title, year, record, titleNormalizer, latestYear = tools.SpecClock.latestTitleYear, now = tools.SpecClock.Pinned.instant()).body
 
   "debugDetails" should "show the sanitized cache key with its year" in {
     render("Diabeł ubiera się u Prady", Some(2024)) should include ("diabelubierasieuprady|2024")

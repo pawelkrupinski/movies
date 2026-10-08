@@ -18,7 +18,7 @@ object RelativeTime {
   private val NowThreshold = Duration.ofSeconds(30)
 
   /** `when` relative to `reference`. Past → "3h ago"; future → "in 3h". */
-  def of(when: Instant, reference: Instant = Instant.now()): String = {
+  def of(when: Instant, reference: Instant): String = {
     val gap = Duration.between(reference, when)
     if (gap.abs.compareTo(NowThreshold) < 0) "now"
     else if (gap.isNegative) s"${magnitude(gap.abs)} ago"

@@ -160,7 +160,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     queue.enqueue(TaskType.EnrichDetails, "detail|film|venue") shouldBe EnqueueResult.Duplicate
     withClue("the repeat is answered from memory: ")(reachedStore.get shouldBe 1)
 
-    val task = queue.claim("replay", scala.concurrent.duration.Duration(1, "minute")).getOrElse(fail("nothing to claim"))
+    val task = queue.claim("replay", scala.concurrent.duration.Duration(1, "minute"), SpecClock.Pinned.instant()).getOrElse(fail("nothing to claim"))
     queue.complete(task.id, "replay")
     withClue("and completing the task lets the key be queued again, through the store: ") {
       queue.enqueue(TaskType.EnrichDetails, "detail|film|venue") shouldBe EnqueueResult.Added

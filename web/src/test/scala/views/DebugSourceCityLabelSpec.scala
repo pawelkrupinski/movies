@@ -30,7 +30,7 @@ class DebugSourceCityLabelSpec extends AnyFlatSpec with Matchers {
     )
 
   private def render(cinema: models.Cinema): String =
-    views.html.debugDetails("My Film", Some(2024), recordFrom(cinema), titleNormalizer, latestYear = tools.SpecClock.latestTitleYear).body
+    views.html.debugDetails("My Film", Some(2024), recordFrom(cinema), titleNormalizer, latestYear = tools.SpecClock.latestTitleYear, now = tools.SpecClock.Pinned.instant()).body
 
   "debugDetails source slot" should "show the cinema name with its city" in {
     render(HeliosKonin) should include ("Helios Konin · Konin")

@@ -375,7 +375,7 @@ trait TestWiring extends WorkerWiring {
       val workerId = s"$workerPrefix-$i"
       val thread   = new Thread(
         () =>
-          try Iterator.continually(taskQueue.claim(workerId, 5.minutes))
+          try Iterator.continually(taskQueue.claim(workerId, 5.minutes, clock.instant().plus(TestWiring.DrainHorizon)))
             .takeWhile(_ => failure.get == null).takeWhile(_.isDefined).flatten
             .foreach { task => handle(task); taskQueue.complete(task.id, workerId) }
           catch { case t: Throwable => failure.compareAndSet(null, t); () },
@@ -448,6 +448,11 @@ trait TestWiring extends WorkerWiring {
 object TestWiring {
   /** The instant every harness clock starts at. */
   val FixedInstant: java.time.Instant = java.time.Instant.parse("2026-06-08T12:00:00Z")
+
+  /** How far past the harness clock a drain claims: a drain stands in for time passing until the queue is empty, so
+   *  every task held back by a `notBefore` (a spaced chunk, a re-check, a backoff) is due to it. The drain used to
+   *  claim at the wall clock, which gave the same answer only because the wall clock was months past [[FixedInstant]]. */
+  val DrainHorizon: java.time.Duration = java.time.Duration.ofDays(3650)
 
   /** The most projections one `projectIdentity` runs again after its enrichment moved stored films: an enrichment of what
    *  a projection wrote moves less each round, and settles in one or two. */

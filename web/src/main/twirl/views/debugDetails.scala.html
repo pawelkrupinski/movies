@@ -3,7 +3,7 @@
 @import java.time.format.DateTimeFormatter
 @import java.time.{Instant, ZoneOffset}
 @import services.attempts.{AttemptOutcome, SourceAttemptStatus}
-@(title: String, year: Option[Int], e: MovieRecord, normalizer: services.movies.TitleNormalizer, cinemaUrls: Map[String, String] = Map.empty, enrichment: Seq[SourceAttemptStatus] = Nil, latestYear: services.movies.LatestTitleYear)
+@(title: String, year: Option[Int], e: MovieRecord, normalizer: services.movies.TitleNormalizer, cinemaUrls: Map[String, String] = Map.empty, enrichment: Seq[SourceAttemptStatus] = Nil, latestYear: services.movies.LatestTitleYear, now: Instant)
 @dtFmt = @{DateTimeFormatter.ofPattern("HH:mm")}
 @dateFmt = @{DateTimeFormatter.ofPattern("MM-dd")}
 
@@ -137,7 +137,7 @@
      failed fetch plus a multi-day backoff is why a film can sit rating-less
      without anything looking broken. --*@
 @stamp(i: Instant) = @{
-  s"${DateTimeFormatter.ofPattern("MM-dd HH:mm").withZone(ZoneOffset.UTC).format(i)} (${tools.RelativeTime.of(i)})"
+  s"${DateTimeFormatter.ofPattern("MM-dd HH:mm").withZone(ZoneOffset.UTC).format(i)} (${tools.RelativeTime.of(i, now)})"
 }
 
 <h4 class="enrichment-heading">Enrichment attempts</h4>

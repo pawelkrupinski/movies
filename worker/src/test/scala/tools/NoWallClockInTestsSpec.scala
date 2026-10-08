@@ -132,11 +132,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
   /** `file:parameter` → why that main-source parameter may still default to the wall clock. */
   private val MainDefaultAllowlist: Map[String, String] = Map(
     "common/src/main/scala/services/tasks/TaskQueue.scala:submittedAt" ->
-      "queue bookkeeping (the task's submit stamp), read by no freshness decision; ~60 call sites — follow-up",
-    "common/src/main/scala/services/tasks/TaskQueue.scala:now" ->
-      "lease expiry for claim/reap, compared only with other queue stamps the same default wrote — follow-up",
-    "common/src/main/scala/tools/RelativeTime.scala:reference" ->
-      "renders \"3 minutes ago\" for an operator page at request time; nothing is decided from it")
+      "queue bookkeeping (the task's submit stamp), read by no freshness decision; ~60 call sites — follow-up")
 
   private val MainWallClockRead = """\b(?:Instant|LocalDate|LocalDateTime|ZonedDateTime|OffsetDateTime)\.now\(\s*\)|System\.currentTimeMillis\(""".r
   // A value default only: `now: () => Instant = () => Instant.now()` is a seam, like a Clock.

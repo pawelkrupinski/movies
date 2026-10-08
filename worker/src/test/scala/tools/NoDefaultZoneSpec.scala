@@ -27,6 +27,7 @@ import java.nio.file.{Files, Paths}
  *     components (the task worker, every census and metric, the chunk planner, the reapers) and
  *     two UK chains were silently on the system clock instead of the wiring's. The live clock is
  *     read once, at a composition root (`WorkerWiring.clock`, `Wiring.clock`, a tool's `main`).
+ *     The shared testkit is held to it as well: a fake defaults to `tools.SpecClock.Pinned`.
  */
 class NoDefaultZoneSpec extends AnyFlatSpec with Matchers {
 
@@ -48,8 +49,10 @@ class NoDefaultZoneSpec extends AnyFlatSpec with Matchers {
 
   private val LiveClockDefault = """\bClock\.system(?:UTC|DefaultZone)\(|\bVenueClock\.system\b""".r
 
+  // The testkit too: its fakes stand in for production classes, and one that defaults to the live clock
+  // puts every spec that forgets to pass a clock back on the wall clock (`InMemoryMovieRepository` did).
   private lazy val clockDefaults: Seq[String] =
-    parameterDefaults(MainRoots).collect { case d if LiveClockDefault.findFirstIn(d.default).isDefined => d.label }
+    parameterDefaults(MainRoots :+ "testkit/src/main").collect { case d if LiveClockDefault.findFirstIn(d.default).isDefined => d.label }
 
   private val LocalNow     = """\b(?:LocalDate|LocalDateTime|LocalTime|ZonedDateTime|OffsetDateTime|OffsetTime|YearMonth|Year|MonthDay)\.now\(""".r
   private val DefaultZone  =

@@ -98,7 +98,7 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     val key = s"scrape|it-after-retired-${System.nanoTime()}"
     queue.enqueue(TaskType.ScrapeCinema, key, submittedAt = t0.minusSeconds(86400L * 300)) shouldBe EnqueueResult.Added
 
-    val claimed = queue.claim("w-retired", 5.minutes)
+    val claimed = queue.claim("w-retired", 5.minutes, t0)
     claimed.map(_.dedupKey) shouldBe Some(key)
     Await.result(db.getCollection(collName).countDocuments(
       org.mongodb.scala.model.Filters.eq("_id", retired)).toFuture(), SpecTimeouts.Io) shouldBe 0L
@@ -111,7 +111,7 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     val claimed = drainUntil(_.dedupKey == key, "w1") // now worked_on, owned by w1
     claimed.payload shouldBe Map("title" -> "Dune")
     // It's leased now, so a further claim can never hand the same task back out.
-    queue.claim("w2", 5.minutes).foreach(t => t.dedupKey should not be key)
+    queue.claim("w2", 5.minutes, t0).foreach(t => t.dedupKey should not be key)
   }
 
   it should "amend a WAITING task's payload, but leave a worked-on one as it was claimed" in {
