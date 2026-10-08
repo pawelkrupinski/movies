@@ -156,8 +156,10 @@ class ShareCardBackfill(
     }
 
   // Not before the first sweep: until then the projection's films are only those it happened to touch.
+  // With none on screen, none misses its card: full coverage, published like any other ratio — left
+  // unpublished, the gauge froze at whatever the last film to leave had left it at.
   private def publish(): Unit =
-    if (swept && tracked.nonEmpty) metrics.coverage((tracked.size - uncovered.size).toDouble / tracked.size)
+    if (swept) metrics.coverage(if (tracked.isEmpty) 1.0 else (tracked.size - uncovered.size).toDouble / tracked.size)
 }
 
 object ShareCardBackfill {

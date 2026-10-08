@@ -18,7 +18,7 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
  *    `web_movies` points at and the posters of films on screen.
  *  - `kinowo_worker_share_cards_budget_bytes` — `KINOWO_SHARE_CARD_BUDGET_MB`.
  *  - `kinowo_worker_share_cards_coverage_ratio` — films on screen whose card for their current
- *    inputs exists, over films on screen. What says a backfill is done.
+ *    inputs exists, over films on screen (1 when none is). What says a backfill is done.
  *  - `kinowo_worker_share_cards_render_total{outcome,reason}` — renders by result and by why.
  *  - `kinowo_worker_share_cards_render_path_total{path}` — cards drawn on a cached base or not.
  *  - `kinowo_worker_share_cards_pruned_total{kind,reason}` — deletions by the prune and the budget.

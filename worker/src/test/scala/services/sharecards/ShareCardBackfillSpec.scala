@@ -142,6 +142,28 @@ class ShareCardBackfillSpec extends AnyFlatSpec with Matchers {
     series.coverageFor("pl") shouldBe 1.0 / 2
   }
 
+  // Nothing tracked used to publish nothing, so the gauge froze at whatever the last film left it at —
+  // a country whose last film without a card left the screens read 0% covered until the next film came.
+  it should "publish full coverage once no film on screen expects a card, not freeze at the last ratio" in {
+    val rig      = new Rig
+    val only     = seed(rig, 1).head                                      // on screen, card missing
+    val series   = newSeries()
+    val backfill = backfillOn(rig, series, maxBacklog = 0)
+    prunePass(backfill)
+    series.coverageFor("pl") shouldBe 0.0
+
+    backfill.onRetired(only._id)
+    series.coverageFor("pl") shouldBe 1.0
+  }
+
+  it should "publish full coverage when its sweep finds no film on screen" in {
+    val rig      = new Rig
+    val series   = newSeries()
+    series.forCountry("pl").coverage(0.25)                                // what a previous sweep left
+    prunePass(backfillOn(rig, series))
+    series.coverageFor("pl") shouldBe 1.0
+  }
+
   it should "not bring back a film that left the screens while its sweep was reading" in {
     var duringRead: () => Unit = () => ()
     val readModel = new services.readmodel.InMemoryReadModelRepository {
