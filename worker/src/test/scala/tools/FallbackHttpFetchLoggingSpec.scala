@@ -232,4 +232,21 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
     val ours = urls.toSet
     events.count(e => e.getLevel == Level.WARN && ours.contains(e.getFormattedMessage.stripPrefix("failed "))) shouldBe urls.size
   }
+
+  // A convergence fill signs a TMDB gap with the lane's real key (`FillCredentials`) and asks it through this chain
+  // (`MissingFixtureFill.route`): every line, key and message it writes about the URL is public CI log.
+  it should "never write a URL's credential into a log line or the failure it throws" in {
+    val chain = new FallbackHttpFetch(Seq(
+      "direct" -> new FailingHttpFetch((_, url) => new java.io.IOException(s"timed out asking $url")),
+      "proxy"  -> new FailingHttpFetch((_, url) => new java.io.IOException(s"tunnel refused for $url"))))
+    val url = s"${uniqueUrl("signed")}?query=heat&api_key=s3cr3t-tmdb-key"
+
+    val (thrown, events) = capture(the [RuntimeException] thrownBy chain.get(url))
+
+    val written = events.map(_.getFormattedMessage) :+ thrown.getMessage
+    written.filter(_.contains("s3cr3t-tmdb-key")) shouldBe empty
+    // ...while still naming the request, its credential masked.
+    thrown.getMessage should include ("query=heat&api_key=***")
+    events.exists(e => e.getLevel == Level.WARN && e.getFormattedMessage.contains("query=heat&api_key=***")) shouldBe true
+  }
 }

@@ -73,7 +73,11 @@ class FallbackHttpFetch(
     var lastFailure     = Option.empty[Throwable]
     var result: Option[T] = None
     val it              = backends.iterator
-    val key             = s"$verb $url"
+    // Every line, key and message below names the URL MASKED (RedactedUrl): a convergence fill asks TMDB with the
+    // real key in the query (FillCredentials), and a backend's own failure message often repeats the URL it was asked.
+    val shown           = RedactedUrl(url)
+    def masked(message: String): String = Option(message).fold("null")(_.replace(url, shown))
+    val key             = s"$verb $shown"
     while (result.isEmpty && it.hasNext) {
       val (name, backend) = it.next()
       try {
@@ -86,11 +90,11 @@ class FallbackHttpFetch(
       } catch {
         case t: Throwable =>
           lastFailure = Some(t)
-          val message = s"$name: ${t.getClass.getSimpleName}: ${t.getMessage}"
+          val message = s"$name: ${t.getClass.getSimpleName}: ${masked(t.getMessage)}"
           safeOutcome(name, Some(message))
           if (endsChain(t)) {
-            logger.debug(s"FallbackHttpFetch $verb $url — $message; the origin answered, not trying later backends")
-            failureLog.cleared(key, s"the origin answered (${t.getMessage})")
+            logger.debug(s"FallbackHttpFetch $verb $shown — $message; the origin answered, not trying later backends")
+            failureLog.cleared(key, s"the origin answered (${masked(t.getMessage)})")
             throw t
           }
           // DEBUG, not WARN: falling through is what a fallback chain is FOR, and a
@@ -102,13 +106,13 @@ class FallbackHttpFetch(
           // warnings that meant something. The detail is kept for whoever is actually
           // diagnosing a fall-through, and every failure is still named in the warning
           // below if the chain runs out of backends.
-          logger.debug(s"FallbackHttpFetch $verb $url — $message; trying next backend")
+          logger.debug(s"FallbackHttpFetch $verb $shown — $message; trying next backend")
           failures += message
       }
     }
     if (result.isDefined) failureLog.cleared(key, "answered")
     result.getOrElse {
-      val detail = s"All ${backends.size} backends failed for $verb $url:\n  " + failures.mkString("\n  ")
+      val detail = s"All ${backends.size} backends failed for $verb $shown:\n  " + failures.mkString("\n  ")
       // A definitive "not found" from the LAST backend is an ANSWER, and it has to
       // reach the caller as one. Wrapping it in a composite `RuntimeException` hid
       // it: the composite is not an `HttpStatusException`, so `ReadOutcome.classify`
@@ -122,9 +126,9 @@ class FallbackHttpFetch(
       // fixture recorded) says nothing about the resource; the leg that actually
       // reached the upstream is the one whose answer this is.
       lastFailure.filter(ReadOutcome.isAbsent).foreach { absent =>
-        logger.debug(s"FallbackHttpFetch $verb $url — every backend failed and the last says NOT FOUND; " +
+        logger.debug(s"FallbackHttpFetch $verb $shown — every backend failed and the last says NOT FOUND; " +
                      s"propagating that rather than a composite failure")
-        failureLog.cleared(key, s"answered not found (${absent.getMessage})")
+        failureLog.cleared(key, s"answered not found (${masked(absent.getMessage)})")
         throw absent
       }
       // NOW it is a warning: nothing answered. Logged as well as thrown because
