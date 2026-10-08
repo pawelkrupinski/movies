@@ -14,7 +14,9 @@ import java.time.{LocalDate, LocalDateTime}
  *  `/repertuar/` full-repertoire page (24 film/event blocks, yearless
  *  "27 września" + HH:MM screening buttons) and each film's
  *  `ajax/user/get_movie.php?movie=<id>` record (genres, countries, year,
- *  runtime, director, cast, age, poster, synopsis).
+ *  runtime, director, cast, age, poster, synopsis). The live events' records
+ *  (stand-up, "Spektakl …") were recorded 08-10-2026: each answers 200, those of
+ *  past events with a "Film o podanym ID nie istnieje" stub.
  *
  *  Fixture directory: test/resources/fixtures/kino-iskra/ (recorded with
  *  RecordingHttpFetch over RealHttpFetch). */
@@ -122,8 +124,32 @@ class KinoIskraClientSpec extends AnyFlatSpec with Matchers with OptionValues {
       def get(url: String): String = if (url == record) throw new HttpStatusException(503, "GET", url, None) else replay.get(url)
       def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
     }
-    // (the capture holds no record of the stand-up shows, which ARE dropped: their reads report, this one must not)
-    services.cinemas.common.ListingReads.during(new KinoIskraClient(oneDown, KinoIskra, today).fetch())._2.failed
-      .map(_.getMessage).filter(_.contains(record)) shouldBe empty
+    services.cinemas.common.ListingReads.during(new KinoIskraClient(oneDown, KinoIskra, today).fetch())._2.complete shouldBe true
+  }
+
+  // The stand-up and stage shows are dropped by title, so their records are read to give each a chance to
+  // prove itself a film. Live, those records answer (even a past event's, with a stub): replay must too, or
+  // the venue reads incomplete on every scrape and never prunes.
+  it should "read the dropped live events' records, so a clean scrape is a complete listing" in {
+    services.cinemas.common.ListingReads.during(
+      new KinoIskraClient(new FakeHttpFetch("kino-iskra"), KinoIskra, today).fetch())._2.complete shouldBe true
+  }
+
+  // Two versions of one film are two records of it: when one fails but the other names the director and
+  // year, the film is kept and the listing is complete — the failed record could not have changed anything.
+  it should "not count a failed version's record when the film's other version proves it a film" in {
+    val replay   = new FakeHttpFetch("kino-iskra")
+    val failing  = KinoIskraClient.movieUrl("2326") // the capture's dubbed version; 2325 is the subtitled one
+    def billedAsEvent = new tools.HttpFetch {
+      def get(url: String): String =
+        if (url == KinoIskraClient.RepertoireUrl)
+          replay.get(url).replace("Avengers: Koniec gry - wersja rozszerzona", "Stand-up: Avengers")
+        else if (url == failing) throw new HttpStatusException(503, "GET", url, None)
+        else replay.get(url)
+      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
+    }
+    val (listed, reads) = services.cinemas.common.ListingReads.during(new KinoIskraClient(billedAsEvent, KinoIskra, today).fetch())
+    listed.map(_.movie.title) should contain("Stand-up: Avengers")
+    reads.complete shouldBe true
   }
 }
