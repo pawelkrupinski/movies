@@ -215,13 +215,42 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
         Updates.unset("workerId"),
         Updates.unset("leaseExpiresAt")
       )
-      Try {
+      val reaped = Try {
         Await.result(c.updateMany(filter, update).toFuture(), 10.seconds).getModifiedCount.toInt
       }.recover {
         case exception: Throwable =>
           logger.warn(s"TaskQueue.reapExpiredLeases failed: ${exception.getMessage}")
           0
       }.getOrElse(0)
+      dropRetiredTypes(c, now)
+      reaped
+  }
+
+  /** The same pass's other sweep: a row of a type this build does not know, waiting past
+   *  [[MongoTaskQueue.RetiredTaskTypeAfter]], is a RETIRED type's — no image will claim it — so it is
+   *  deleted, logged by type. A younger one is left for the newer image a rollback will hand back to.
+   *  Aged by `enqueuedAt` (the real enqueue time), `submittedAt` on a row from before that field. */
+  private def dropRetiredTypes(c: MongoCollection[Document], now: Instant): Unit = {
+    val cutoff  = new java.util.Date(now.minus(MongoTaskQueue.RetiredTaskTypeAfter).toEpochMilli)
+    val retired = Filters.and(
+      Filters.eq("state", TaskState.Waiting),
+      Filters.nin("taskType", MongoTaskQueue.KnownTypeNames*),
+      Filters.or(
+        Filters.lt("enqueuedAt", cutoff),
+        Filters.and(Filters.exists("enqueuedAt", false), Filters.lt("submittedAt", cutoff))))
+    Try {
+      val rows = Await.result(c.find(retired).projection(org.mongodb.scala.model.Projections.include("taskType"))
+        .limit(MongoTaskQueue.RetiredDropsPerPass).batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)
+      if (rows.nonEmpty) {
+        // Deleted by id AND the same filter, so a row a newer image claimed meanwhile is left alone.
+        Await.result(c.deleteMany(Filters.and(Filters.in("_id", rows.map(_.getString("_id"))*), retired)).toFuture(), 10.seconds)
+        rows.groupBy(_.getString("taskType")).toSeq.sortBy(_._1).foreach { case (taskType, ofType) =>
+          logger.warn(s"TaskQueue dropped ${ofType.size} waiting task(s) of retired type $taskType, unknown to this build " +
+            s"and queued over ${MongoTaskQueue.RetiredTaskTypeAfter.toDays} days ago.")
+        }
+      }
+    }.recover { case exception => logger.warn(s"TaskQueue retired-type sweep failed: ${exception.getMessage}") }
+    ()
   }
 
   /**
@@ -245,7 +274,9 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
     case None => Map.empty
     case Some(c) =>
       val pipeline = Seq(
-        Aggregates.filter(Filters.in("state", TaskState.all*)),
+        // Only types this build knows: a row of any other is a newer image's (left for it) or a retired
+        // type's (dropped by the lease reaper), never work this queue is behind on.
+        Aggregates.filter(Filters.and(Filters.in("state", TaskState.all*), Filters.in("taskType", MongoTaskQueue.KnownTypeNames*))),
         Aggregates.group("$state", Accumulators.sum("n", 1)))
       // A read failure PROPAGATES, as `waitingCount`'s does: an empty map is an empty
       // queue, and was exported as a queue depth of 0 while the queue was unreadable.
@@ -289,7 +320,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
           val remaining = activeLimit - listed.size
           if (remaining <= 0) listed
           else listed ++ Await.result(
-            c.find(Filters.eq("state", state))
+            c.find(Filters.and(Filters.eq("state", state), Filters.in("taskType", MongoTaskQueue.KnownTypeNames*)))
               .sort(Indexes.ascending("submittedAt"))
               .limit(remaining)
               .batchSize(tools.MongoReplies.Default).toFuture(),
@@ -366,6 +397,16 @@ object MongoTaskQueue {
    *  per-op cost that dominated the shared-cpu Mongo's load. See the class document. */
   val QueueWriteConcern: WriteConcern = WriteConcern.W1.withJournal(false)
 
-  /** The task types this build has a decoder for — what `claim` restricts its match to. */
+  /** How long a task of a type this build does not know waits before the lease reaper drops it as RETIRED. Such a
+   *  row is, while a rollback lasts, a newer image's work this one must leave for it; no rollback runs a week (an
+   *  image older than that is a re-deploy, not a rollback), so a row still unknown after it belongs to a type no
+   *  image handles any more and would otherwise wait for ever. */
+  val RetiredTaskTypeAfter: java.time.Duration = java.time.Duration.ofDays(7)
+
+  /** At most this many retired rows per reaper pass — a bound on one pass's read, not a budget: the next drops the rest. */
+  private val RetiredDropsPerPass = 500
+
+  /** The task types this build has a decoder for — what `claim`, the counts and the snapshot restrict their match
+   *  to. */
   private val KnownTypeNames: Seq[String] = TaskType.all.map(_.name)
 }

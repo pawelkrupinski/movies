@@ -218,10 +218,11 @@ trait TaskQueue {
               notBefore: Option[Instant] = None, refundAttempt: Boolean = false): Unit
 
   /** Return every worked-on task whose lease has expired to waiting. Returns how
-   *  many were reaped. */
+   *  many were reaped. The same pass drops a task of a type this build does not know
+   *  once it has waited past a rollback's length (`MongoTaskQueue.RetiredTaskTypeAfter`). */
   def reapExpiredLeases(now: Instant): Int
 
-  /** Count of tasks per state — for the debug view, the heartbeat and tests. THROWS
+  /** Count of tasks per state, of the types this build knows — for the debug view, the heartbeat and tests. THROWS
    *  when the counts cannot be read, like [[waitingCount]]: an empty map is an empty
    *  queue. */
   def countByState(): Map[String, Long]

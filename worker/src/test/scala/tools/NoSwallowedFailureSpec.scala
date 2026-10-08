@@ -145,6 +145,8 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/services/tasks/MongoTaskQueue.scala", "claim",
       "case Failure(exception) =>") ->
       "None is an idle poll: the worker claims again on its next poll, and nothing is decided from it",
+    ("common/src/main/scala/services/tasks/MongoTaskQueue.scala", "dropRetiredTypes", "Try {") ->
+      "a failed sweep decides nothing: the retired rows wait for the next reaper pass, logged at WARN",
     ("common/src/main/scala/services/tasks/MongoTaskQueue.scala", "reapExpiredLeases",
       "case exception: Throwable =>") ->
       "the count only decides whether to ring the doorbell early; a failed reap is retried on the next tick",

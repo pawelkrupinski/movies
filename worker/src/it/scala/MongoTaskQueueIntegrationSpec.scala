@@ -112,6 +112,37 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     Await.result(db.getCollection(collName).deleteOne(org.mongodb.scala.model.Filters.eq("_id", unknown)).toFuture(), SpecTimeouts.Io)
   }
 
+  // ...but a type no image will ever know again (retired with its handler) would then sit there for good. The
+  // lease reaper drops an unknown-type row once it has waited longer than any rollback lasts
+  // (`MongoTaskQueue.RetiredTaskTypeAfter`), and leaves a younger one for the newer image to come back to.
+  // Meanwhile neither counts as this build's waiting work.
+  it should "drop an unknown-type row only once it has waited past RetiredTaskTypeAfter, and never count it" in {
+    def unknownRow(id: String, waited: java.time.Duration) = org.mongodb.scala.Document(
+      "_id" -> id, "taskType" -> "RetiredLongAgo", "dedupKey" -> s"retired|$id",
+      "payload" -> org.mongodb.scala.Document(), "state" -> services.tasks.TaskState.Waiting, "active" -> true,
+      "submittedAt" -> new java.util.Date(t0.minus(waited).toEpochMilli),
+      "enqueuedAt" -> new java.util.Date(t0.minus(waited).toEpochMilli), "attempts" -> 0)
+    val stale = s"it-retired-stale-${System.nanoTime()}"
+    val young = s"it-retired-young-${System.nanoTime()}"
+    val waitingBefore = queue.countByState().getOrElse(services.tasks.TaskState.Waiting, 0L)
+    Await.result(db.getCollection(collName).insertMany(Seq(
+      unknownRow(stale, MongoTaskQueue.RetiredTaskTypeAfter.plusHours(1)),
+      unknownRow(young, MongoTaskQueue.RetiredTaskTypeAfter.minusHours(1)))).toFuture(), SpecTimeouts.Io)
+    withClue("an unknown type is not this build's waiting work: ") {
+      queue.countByState().getOrElse(services.tasks.TaskState.Waiting, 0L) shouldBe waitingBefore
+      queue.monitor(1000).active.map(_.id) should contain noneOf (stale, young)
+    }
+
+    queue.reapExpiredLeases(t0)
+
+    def present(id: String) = Await.result(db.getCollection(collName).countDocuments(
+      org.mongodb.scala.model.Filters.eq("_id", id)).toFuture(), SpecTimeouts.Io)
+    withClue("past the rollback window the row is dropped; within it, kept: ") {
+      (present(stale), present(young)) shouldBe ((0L, 1L))
+    }
+    Await.result(db.getCollection(collName).deleteOne(org.mongodb.scala.model.Filters.eq("_id", young)).toFuture(), SpecTimeouts.Io)
+  }
+
   it should "claim the task once, carry its payload, and not hand it out twice" in {
     val key = s"imdb|it-claim-${System.nanoTime()}"
     queue.enqueue(TaskType.ImdbRating, key, Map("title" -> "Dune"), submittedAt = t0)
