@@ -53,7 +53,7 @@ object FlicksFilmPage {
   /** `html` as the parts [[parse]] reads — the head (og:image), the hero (title, year and runtime line, poster) and
    *  every schema.org block after it — without the showtimes tabs between, so the parser does not tokenise them. A page
    *  is ~350 KB and the tabs nearly all of it; whole-page parsing was 42% of a US detail drain's CPU (JFR, run
-   *  37619819275). Cut where the tabs open (`id="movie-tabs"`); a page without that mark is read whole. */
+   *  37619819275). Cut where the tabs open (`id="movie-tabs"`), as [[keptRanges]] says. */
   private[common] def slimmedReader(html: String): java.io.Reader = new RangesReader(html, keptRanges(html))
 
   /** [[slimmedReader]]'s text as a string — for the spec. */
@@ -61,19 +61,30 @@ object FlicksFilmPage {
     val out = new java.io.StringWriter(html.length); slimmedReader(html).transferTo(out); out.toString
   }
 
+  /** The head and hero — everything before the tabs — then each schema.org block after them, in order. The whole page
+   *  when there is no tabs mark, or any hero markup comes after it (the cut would drop what the parse reads there). A
+   *  block is a `<script>` whose own opening tag names the type, so a mention in inline JS is no block, and each is
+   *  kept once: ranges strictly in order, never overlapping. */
   private def keptRanges(html: String): Array[Int] = html.indexOf(TabsMark) match {
-    case -1   => Array(0, html.length)
+    case tabs if tabs < 0 || html.lastIndexOf(HeroMark) > tabs => Array(0, html.length)
     case tabs =>
-      val cut     = html.lastIndexOf('<', tabs)
-      val scripts = Iterator.iterate(html.indexOf(SchemaType, cut))(at => html.indexOf(SchemaType, at + 1))
-        .takeWhile(_ >= 0)
-        .map(at => (html.lastIndexOf("<script", at), html.indexOf("</script>", at)))
-        .collect { case (open, close) if open >= cut && close >= 0 => Array(open, close + "</script>".length) }
-        .flatten.toArray
-      Array(0, cut) ++ scripts
+      val cut    = html.lastIndexOf('<', tabs)
+      val ranges = Array.newBuilder[Int]
+      ranges += 0; ranges += cut
+      var keptTo = cut
+      var at     = html.indexOf(SchemaType, cut)
+      while (at >= 0) {
+        val open  = html.lastIndexOf("<script", at)
+        val close = html.indexOf("</script>", at)
+        val inOpeningTag = open >= keptTo && html.indexOf('>', open) > at
+        if (inOpeningTag && close >= 0) { ranges += open; ranges += close + "</script>".length; keptTo = close + "</script>".length }
+        at = html.indexOf(SchemaType, math.max(at + 1, keptTo))
+      }
+      ranges.result()
   }
 
   private val TabsMark   = "id=\"movie-tabs\""
+  private val HeroMark   = "movie-hero-v6"
   private val SchemaType = "application/ld+json"
 
   /** The page's schema.org `Movie` block. A block that is not JSON throws: that is not a page we can read. */

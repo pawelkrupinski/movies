@@ -28,12 +28,29 @@ class FlicksFilmPageSlimSpec extends AnyFlatSpec with Matchers {
   }
 
   // The positive control: a slimming that kept the whole page would pass the test above too.
-  it should "drop the showtimes tabs, and leave a page it cannot find the hero's end in whole" in {
+  it should "drop the showtimes tabs, and leave a page without the tabs mark whole" in {
     val html = clients.tools.FixtureFile.read("test/resources/fixtures/flicks/www.flicks.us/movie/a-night-at-the-opera.html")
     val slim = FlicksFilmPage.slimmed(html)
     slim.length.toDouble / html.length should be < 0.2
     slim should include ("application/ld+json")
     val unknown = "<html><body><div class=\"elsewhere\">x</div></body></html>"
     FlicksFilmPage.slimmed(unknown) shouldBe unknown
+  }
+
+  // Markup the recorded pages do not show, read the same slimmed as whole all the same: a page whose tabs come before
+  // its hero is kept whole (the cut would drop the hero), and a schema.org type named outside a script tag — inline JS
+  // selecting the block — keeps each script once, in order, never text twice.
+  it should "read unusual markup the same slimmed as whole" in {
+    val block = """<script type="application/ld+json">{"@type":"Movie","name":"Odd","dateCreated":"1999-01-01"}</script>"""
+    val hero  = """<div class="movie-hero-v6__title"><h1>Odd</h1></div><div class="movie-hero-v6__meta"><span>1999</span><span>101mins</span></div>"""
+    val tabsFirst = s"""<html><head></head><body><div id="movie-tabs">sessions</div>$hero$block</body></html>"""
+    val inlineJs  = s"""<html><head></head><body>$hero<div id="movie-tabs">sessions</div>""" +
+      """<script>document.querySelector('script[type="application/ld+json"]')</script>""" + block +
+      """<script>var t = "application/ld+json"; var u = "application/ld+json";</script></body></html>"""
+    Seq("tabs first" -> tabsFirst, "inline js" -> inlineJs).foreach { case (name, html) =>
+      withClue(name)(FlicksFilmPage.parse(html, "odd", today) shouldBe FlicksFilmPage.parseDocument(org.jsoup.Jsoup.parse(html), "odd", today))
+    }
+    FlicksFilmPage.slimmed(tabsFirst) shouldBe tabsFirst
+    "application/ld\\+json\">".r.findAllMatchIn(FlicksFilmPage.slimmed(inlineJs)).size shouldBe 1
   }
 }
