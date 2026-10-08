@@ -24,9 +24,13 @@ final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock) extends service
   /** How many answers this store filed since it was made: a reader's verdicts over them hold while it does not move. */
   def version: Long = filed.get
 
-  /** Counts an answer the agreement reads that another store filed — a TMDB record read again for its release day — as
-   *  a filing: the stage's verdicts hold while the version does not move, so it must. */
-  def noteFiled(id: String): Unit = { changes.put(filed.incrementAndGet(), id); while (changes.size > FamilyAnswerStore.ChangesKept) changes.pollFirstEntry(); () }
+  /** Counts a filing under `id`: every answer [[put]] files, and one the agreement reads that another store filed — a
+   *  TMDB record read again for its release day: the stage's verdicts hold while the version does not move, so it must. */
+  def noteFiled(id: String): Unit = {
+    changes.put(filed.incrementAndGet(), id)
+    while (changes.size > FamilyAnswerStore.ChangesKept) changes.pollFirstEntry()
+    ()
+  }
 
   /** Each filing's question id, by the version it made — what [[changedSince]] answers from; the oldest dropped past
    *  [[FamilyAnswerStore.ChangesKept]], a version before them then unknown. */
@@ -68,9 +72,7 @@ final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock) extends service
    *  so one version and one [[changedSince]] cover everything the agreement reads. */
   private[identity] def put(id: String, d: BsonDocument): Unit = {
     docs.put(TmdbKind.Family, Seq(id -> d.append(TmdbStore.FetchedAt, BsonInt64(clock.millis()))))
-    changes.put(filed.incrementAndGet(), id)
-    while (changes.size > FamilyAnswerStore.ChangesKept) changes.pollFirstEntry()
-    ()
+    noteFiled(id)
   }
 }
 
