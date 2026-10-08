@@ -74,7 +74,7 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   // e2e depends on worker's fixtures, never its specs, so no leg's build cache holds worker's
   // test-classes current: recording from `worker/Test` recompiled up to all 744 of them first.
   it should "record from the Fixtures configuration, which every leg's build cache holds compiled" in {
-    RepoFile.step(convergence, Record) should include("""run: sbt "worker/Fixtures/runMain scripts.RecordCorpusFixture ${{ inputs.code }}"""")
+    RepoFile.step(convergence, Record) should include("""sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" "worker/Fixtures/runMain scripts.RecordCorpusFixture ${{ inputs.code }}"""")
     RepoFile.exists("worker/src/fixtures/scala/scripts/RecordCorpusFixture.scala") shouldBe true
     RepoFile.exists("worker/src/test/scala/scripts/RecordCorpusFixture.scala") shouldBe false
   }
@@ -87,15 +87,15 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
     ordered.map(_.contains("code: us,")) shouldBe Seq(true)
     RepoFile.block(recorder, "enrichment") should include("sample-row:     ${{ matrix.sampleRow == true }}")
     RepoFile.step(convergence, "Mark the tree before the sample records into it") should include(
-      "if: matrix.phase == 'sample'\n")
+      "if: inputs.mode == 'record' && matrix.phase == 'sample'\n")
     RepoFile.step(convergence, "Pack the sample's recordings") should include(
       ".github/scripts/sample-recordings.sh pack \"test/resources/fixtures/enrichment-${{ inputs.code }}\" \"$RUNNER_TEMP/sample-stamp\"")
     val merge = RepoFile.step(convergence, "Merge the sample row's recordings")
-    merge should include("if: always() && inputs.sample-row && matrix.phase == 'convergence'\n")
-    merge should include("PRODUCER: ${{ inputs.mode == 'record' && format('({0}) / sample', inputs.country) || format('{0} / sample', inputs.country) }}")
+    merge should include("if: always() && inputs.mode == 'record' && inputs.sample-row && matrix.phase == 'convergence'\n")
+    merge should include("PRODUCER: (${{ inputs.country }}) / sample")
     merge should include(""".github/scripts/sample-recordings.sh merge "sample-download/enrichment-sample-${{ inputs.code }}.tar.zst"""")
     withClue("merged before the tree is packed and published: ") {
-      at("- name: Merge the sample row's recordings") should be < at("uses: ./.github/actions/convergence-publish")
+      at("- name: Merge the sample row's recordings") should be < at("id: publish\n")
     }
     withClue("and the sample row runs no suite: ")(
       RepoFile.step(convergence, "Run the ${{ inputs.country }} ${{ matrix.phase }} suite") should include("if: matrix.phase != 'sample'\n"))

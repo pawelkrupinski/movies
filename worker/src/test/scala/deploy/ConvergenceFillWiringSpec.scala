@@ -4,10 +4,10 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * Every hermetic convergence leg publishes what its tree lacked, and the next run's rows fetch it
- * before their suites: the suite's refetch list goes up beside the pinned pair, each row of the next
- * leg fetches it for ~90 s and lays what it got over its own tree, and publishes that as a fill every
- * later leg replays (docs/design/convergence-fixture-fill.md). A longer fill is the hand-dispatched
+ * Every hermetic convergence leg publishes what its tree lacked, and the next run's convergence row fetches
+ * it before its suite: the suite's refetch list goes up beside the pinned pair, the next leg's convergence
+ * row fetches it for ~90 s, publishes what it got as a fill every later leg replays, and lays it over its
+ * own tree (docs/design/convergence-fixture-fill.md). A longer fill is the hand-dispatched
  * `Convergence fill`. Each rule below is one way that loop silently stops, or starts costing a verdict
  * its hermeticity or its bisect's reproducibility.
  */
@@ -22,7 +22,6 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
 
   private val FillStep  = "Fill the gaps the last leg listed, before the suite"
   private val SuiteStep = "Run the ${{ inputs.country }} ${{ matrix.phase }} suite"
-  private val Sample    = "Run the ${{ inputs.country }} sample ahead of the suite"
   private val MainOnly  = "github.ref == 'refs/heads/main'"
 
   private lazy val fillStep = RepoFile.step(leg, FillStep)
@@ -35,35 +34,49 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
       "test/resources/fixtures/enrichment-us.refetch.tsv"
   }
 
-  // The fill before the suite, in EVERY hermetic row: what the previous run listed is replayed by this run's
-  // suites, not the run after next.
-  "every hermetic row" should "fetch the previous leg's gaps after setup and before its sample and suite" in {
-    fillStep should include("if: inputs.mode == 'hermetic'\n")
-    withClue("every phase, not only the convergence row: ")(fillStep should not include "matrix.phase")
+  // The fill before the suite: what the previous run listed is replayed by this run's suite, not the run after next.
+  // In the CONVERGENCE row alone — three rows asking one list was the same paid egress three times a run; the other
+  // rows replay what is published.
+  "a hermetic convergence row" should "fetch the previous leg's gaps after setup and before its suite, alone of the rows" in {
+    fillStep should include("if: inputs.mode == 'hermetic' && matrix.phase == 'convergence'\n")
     fillStep should include("convergence-fill.sh gaps")
     fillStep should include("scripts.FillMissingFixtures")
     val at = RepoFile.positionOf(rows, s"- name: $FillStep")
     RepoFile.positionOf(rows, "uses: ./.github/actions/convergence-setup") should be < at
-    at should be < RepoFile.positionOf(rows, s"- name: $Sample")
     at should be < RepoFile.positionOf(rows, s"- name: $SuiteStep")
-    // ...and before a sample row stamps its tree, so a fill is never taken for the sample's recordings.
-    at should be < RepoFile.positionOf(rows, "- name: Mark the tree before the sample records into it")
   }
 
   it should "stop starting requests within 90 seconds of the step's start, and never fail the row" in {
     val seconds = """FILL_SECONDS:\s*(\d+)""".r.findFirstMatchIn(fillStep).map(_.group(1).toInt)
     seconds.getOrElse(fail("the fill step names no FILL_SECONDS")) should be <= 90
     fillStep should include("until=$(( $(date +%s) + FILL_SECONDS ))")
-    fillStep should include("$until\"")
+    fillStep should include("$until fill-upload-source/refused.tsv\"")
     fillStep should include("continue-on-error: true")
     """timeout-minutes:\s*(\d+)""".r.findFirstMatchIn(fillStep).map(_.group(1).toInt).getOrElse(99) should be <= 5
   }
 
-  it should "skip what its restored tree holds, and lay what it fetched over that tree for its suite" in {
+  it should "skip what its restored tree holds, and write down what it was refused" in {
     fillStep should include("""fixtures="$GITHUB_WORKSPACE/test/resources/fixtures"""")
-    fillStep should include("$list $fixtures $out/test/resources/fixtures $until")
-    fillStep should include("""cp -a "$out/test/resources/fixtures/." "$fixtures/"""")
+    fillStep should include("$list $fixtures $out/test/resources/fixtures $until fill-upload-source/refused.tsv")
     fillStep should include("convergence-fill.sh pack \"$out\" fill-upload-source/fill.tar.zst")
+    withClue("nothing is laid over the tree before it is published: ")(fillStep should not include "cp -a")
+  }
+
+  // The pair a bisect replays must be the tree that decided the verdict: on main the fill is replayed only once it is
+  // published under the name the bisect request carries.
+  it should "publish its fill before laying it over the tree its suite replays" in {
+    val publishFill = rows.substring(RepoFile.positionOf(rows, "id: publish-fill"))
+    publishFill should include("if: inputs.mode == 'hermetic' && matrix.phase == 'convergence'\n")
+    publishFill should include("fill-archive: fill-upload-source/fill.tar.zst")
+    publishFill should include("fill-row:     convergence")
+    publishFill should include("refused-list: fill-upload-source/refused.tsv")
+    val lay = RepoFile.step(leg, "Lay the fill over the tree the suite replays")
+    lay should include("PUBLISHED: ${{ steps.publish-fill.outputs.fill-asset }}")
+    lay should include("""if [ "$ON_MAIN" = true ] && [ -z "$PUBLISHED" ]; then""")
+    lay should include("""cp -a "$fetched/." "$GITHUB_WORKSPACE/test/resources/fixtures/"""")
+    RepoFile.positionOf(rows, s"- name: $FillStep") should be < RepoFile.positionOf(rows, "id: publish-fill")
+    RepoFile.positionOf(rows, "id: publish-fill") should be < RepoFile.positionOf(rows, "- name: Lay the fill over the tree the suite replays")
+    RepoFile.positionOf(rows, "- name: Lay the fill over the tree the suite replays") should be < RepoFile.positionOf(rows, s"- name: $SuiteStep")
   }
 
   // The suite is still hermetic: no fetching step after the fill, and nothing of the fill in the suite.
@@ -98,15 +111,13 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "publish what it fetched under a name of its own row, from every phase" in {
-    val others = rows.substring(RepoFile.positionOf(rows, "id: publish-row-fill"))
-    rows.substring(RepoFile.positionOf(rows, "id: publish\n"), RepoFile.positionOf(rows, "id: publish-row-fill")) should
-      include("fill-row:     ${{ matrix.phase }}")
-    others should include("if: always() && inputs.mode == 'hermetic' && matrix.phase != 'convergence'")
-    others should include("fill-archive: fill-upload-source/fill.tar.zst")
-    others should include("fill-row:     ${{ matrix.phase }}")
+  // A re-run of a failed job is a new ATTEMPT of the same run: without it in the name, its upload failed as "already
+  // exists" and the row's fill was missing from the pair its suite replayed.
+  it should "publish what it fetched under a name of its own run attempt, and no other row a fill at all" in {
+    rows should not include "publish-row-fill"
+    RepoFile.withoutComments(rows).linesIterator.count(_.contains("fill-archive:")) shouldBe 1
     val named = RepoFile.step(publish, "Publish what this leg's fill fetched")
-    named should include("$GITHUB_RUN_ID${ROW:+-$ROW}.tar.zst")
+    named should include("$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT${ROW:+-$ROW}.tar.zst")
     named should include("""echo "asset=$named" >> "$GITHUB_OUTPUT"""")
   }
 
@@ -114,9 +125,9 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
   // verdict was never decided on.
   it should "carry its own fill in the pair its bisect request replays" in {
     rows should include(
-      "pair:           ${{ format('{0} {1}{2}', steps.setup.outputs.hermetic-pair, steps.publish.outputs.fill-asset, steps.publish-row-fill.outputs.fill-asset) }}")
+      "pair:           ${{ format('{0} {1}', steps.setup.outputs.hermetic-pair, steps.publish-fill.outputs.fill-asset) }}")
     publish should include("value: ${{ steps.fill.outputs.asset }}")
-    RepoFile.positionOf(rows, "id: publish-row-fill") should be < RepoFile.positionOf(rows, "uses: ./.github/actions/convergence-bisect-request")
+    RepoFile.positionOf(rows, "id: publish-fill") should be < RepoFile.positionOf(rows, "uses: ./.github/actions/convergence-bisect-request")
     RepoFile.read(".github/actions/convergence-bisect-request/action.yml") should include("""--arg pair "${words[*]}"""")
   }
 
@@ -164,13 +175,14 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   // A `--clobber` deletes the asset before re-uploading it: a leg restoring in that moment finds nothing.
-  "a fill and a refetch list" should "go up from main only, under a name nobody else writes" in {
-    Seq("Publish the gaps this leg's tree could not answer", "Publish what this leg's fill fetched").foreach { name =>
+  "a fill and its lists" should "go up from main only, under a name nobody else writes" in {
+    Seq("Publish the gaps this leg's tree could not answer", "Publish what this leg's fill fetched",
+        "Publish the gaps this leg's fill was refused").foreach { name =>
       val step = RepoFile.step(publish, name)
       withClue(s"$name: ") {
         step should include(MainOnly)
         step should include("inputs.mode == 'hermetic'")
-        step should include("$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-$GITHUB_RUN_ID")
+        step should include("$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT")
         RepoFile.withoutComments(step) should not include "--clobber"
         withClue("a publish that fails must not turn the verdict red: ")(RepoFile.withoutComments(step) should not include "|| exit 1")
       }
@@ -186,9 +198,9 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.read(".github/scripts/restore-enrichment-tree.sh") should include("""convergence-fill.sh" unpack "$stage" "${fills[@]}"""")
   }
 
-  "a new pin" should "prune the fills — a row's included — and lists of the pairs it prunes" in {
+  "a new pin" should "prune the fills — a row's and a re-run's included — and lists of the pairs it prunes" in {
     RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay") should include(
-      "^(fill|refetch)-$code-[0-9]+-[0-9]+(-[a-z][a-z-]*)?\\\\.(tar\\\\.zst|tsv)$")
+      "^(fill|refetch|refused)-$code-[0-9]+-[0-9]+(-[0-9]+)?(-[a-z][a-z-]*)?\\\\.(tar\\\\.zst|tsv)$")
   }
 
   "the fill's release script" should "be run by CI's shell specs" in {

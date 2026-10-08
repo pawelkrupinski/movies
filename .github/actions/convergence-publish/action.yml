@@ -68,8 +68,14 @@ inputs:
     default: ''
   fill-row:
     description: >-
-      The leg row that fetched `fill-archive` (its phase), appended to the fill's name so the rows of one
-      run never write one name. Empty for the manual workflow's fills.
+      The leg row that fetched `fill-archive` (its phase), appended to the fill's name so it never meets the
+      manual workflow's fills, which leave it empty.
+    required: false
+    default: ''
+  refused-list:
+    description: >-
+      The gaps `fill-archive`'s fill asked and was refused (`MissingFixtureFill.writeRefused`) — published for the
+      next fills to skip for a while (convergence-fill.sh `gaps`). Empty, or a path with no file, publishes none.
     required: false
     default: ''
 
@@ -173,13 +179,14 @@ runs:
     # WHAT A HERMETIC LEG FOUND MISSING, AND WHAT A FILL FETCHED — the two halves of "every convergence
     # build publishes the missing data it found" (docs/design/convergence-fixture-fill.md).
     #
-    # The suite's refetch list goes up for the NEXT leg's rows, each of which fetches it within ~90 s
-    # before its suite, replays what it got, and publishes that as a fill of the pinned pair; every
-    # hermetic leg after that replays the pinned tree with the pair's fills laid over it
-    # (`convergence-setup`). Never the tree, never the pin: the pinned pair stays the recorder's to replace.
+    # The suite's refetch list goes up for the NEXT leg's convergence row, which fetches it within ~90 s
+    # before its suite, publishes what it got as a fill of the pinned pair, and replays it; every hermetic
+    # leg after that replays the pinned tree with the pair's fills laid over it (`convergence-setup`). Never
+    # the tree, never the pin: the pinned pair stays the recorder's to replace.
     #
-    # NEW NAMES, never `--clobber`: `<kind>-<code>-<corpus run>-<this run>[-<row>]`, so no reader meets an
-    # asset mid-replacement and the five countries' rows, publishing side by side, never write one name.
+    # NEW NAMES, never `--clobber`: `<kind>-<code>-<corpus run>-<this run>-<this attempt>[-<row>]`, so no
+    # reader meets an asset mid-replacement, the five countries' rows, publishing side by side, never write
+    # one name, and a re-run of a failed job never meets its first attempt's ("already exists").
     # Main only, like every write here (ConvergencePublishMainOnlySpec): a branch's gaps and fetches are a
     # branch's.
     - name: Publish the gaps this leg's tree could not answer
@@ -192,19 +199,41 @@ runs:
           set -uo pipefail
           [ -f "$LIST" ] || { echo "no $LIST — the suite never reached its end"; exit 0; }
           code="${{ inputs.code }}"
-          named="refetch-$code-$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-$GITHUB_RUN_ID.tsv"
+          named="refetch-$code-$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.tsv"
           mkdir -p refetch-upload && cp "$LIST" "refetch-upload/$named"
           echo "$(grep -c "$(printf '\t')" "$LIST" || true) fetchable gap(s) for the next leg's fill"
           scripts/ci/gh-release.sh upload "$FIXTURE_RELEASE_TAG" "refetch-upload/$named" || { echo "::warning::could not publish $named — the next leg's fill reads the list before it"; exit 0; }
           # Only the newest is read (convergence-fill.sh gaps); the one before it may be mid-read.
           # allow-silenced: pruning old lists is housekeeping; one that fails to delete is pruned next time.
           gh release view "$FIXTURE_RELEASE_TAG" --json assets \
-                  --jq ".assets[].name | select(test(\"^refetch-$code-$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-[0-9]+\\\\.tsv$\"))" \
-              | sort -t- -k4,4n | head -n -2 \
+                  --jq ".assets[].name | select(test(\"^refetch-$code-$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-[0-9]+(-[0-9]+)?\\\\.tsv$\"))" \
+              | LC_ALL=C sort -t- -k4,4n -k5,5n | head -n -2 \
               | while read -r stale; do scripts/ci/gh-release.sh delete-asset "$FIXTURE_RELEASE_TAG" "$stale" -y || true; done
 
-    # Names what it published in `fill-asset`: a leg row's bisect request carries it in the pair, so the
-    # bisect replays the tree that decided the verdict — this row's own fill included.
+    # What a fill asked and was refused, for the next fills to skip (convergence-fill.sh `gaps` reads the newest
+    # four): an origin refusing CI for good is then asked once every few fills through paid egress, not every run.
+    - name: Publish the gaps this leg's fill was refused
+      if: github.ref == 'refs/heads/main' && inputs.mode == 'hermetic' && inputs.refused-list != '' && env.KINOWO_CONVERGENCE_PIN_CORPUS_RUN != ''
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+          LIST: ${{ inputs.refused-list }}
+      run: |
+          set -uo pipefail
+          [ -f "$LIST" ] || { echo "no $LIST — the fill asked nothing"; exit 0; }
+          code="${{ inputs.code }}"
+          named="refused-$code-$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.tsv"
+          mkdir -p refused-upload && cp "$LIST" "refused-upload/$named"
+          scripts/ci/gh-release.sh upload "$FIXTURE_RELEASE_TAG" "refused-upload/$named" || { echo "::warning::could not publish $named — the next fill asks its gaps again"; exit 0; }
+          # allow-silenced: pruning old lists is housekeeping; one that fails to delete is pruned next time.
+          gh release view "$FIXTURE_RELEASE_TAG" --json assets \
+                  --jq ".assets[].name | select(test(\"^refused-$code-$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-[0-9]+(-[0-9]+)?\\\\.tsv$\"))" \
+              | LC_ALL=C sort -t- -k4,4n -k5,5n | head -n -5 \
+              | while read -r stale; do scripts/ci/gh-release.sh delete-asset "$FIXTURE_RELEASE_TAG" "$stale" -y || true; done
+
+    # Names what it published in `fill-asset`: the leg's convergence row lays its fill over its tree only once this
+    # names it (on main), and its bisect request carries it in the pair — so the bisect replays exactly the tree
+    # that decided the verdict.
     - name: Publish what this leg's fill fetched
       id: fill
       if: github.ref == 'refs/heads/main' && inputs.mode == 'hermetic' && inputs.fill-archive != '' && env.KINOWO_CONVERGENCE_PIN_CORPUS_RUN != ''
@@ -216,7 +245,7 @@ runs:
       run: |
           set -uo pipefail
           [ -f "$ARCHIVE" ] || { echo "the fill fetched nothing — nothing to publish"; exit 0; }
-          named="fill-${{ inputs.code }}-$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-$GITHUB_RUN_ID${ROW:+-$ROW}.tar.zst"
+          named="fill-${{ inputs.code }}-$KINOWO_CONVERGENCE_PIN_CORPUS_RUN-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT${ROW:+-$ROW}.tar.zst"
           mkdir -p fill-upload && ln -f "$ARCHIVE" "fill-upload/$named"
           scripts/ci/gh-release.sh upload "$FIXTURE_RELEASE_TAG" "fill-upload/$named" || { echo "::warning::could not publish $named — the next fill fetches its pages again"; exit 0; }
           echo "asset=$named" >> "$GITHUB_OUTPUT"
@@ -282,12 +311,12 @@ runs:
                   --jq ".assets[] | select(.name | test(\"^enrichment-$code-[0-9]+\\\\.tar\\\\.(gz|zst)$\")) | [.createdAt, .name] | @tsv" \
               | sort -r | tail -n +6 | cut -f2 \
               | while read -r stale; do "$RELEASE" delete-asset "$FIXTURE_RELEASE_TAG" "$stale" -y || true; done
-          # ...and the fills and refetch lists of the pairs just pruned (convergence-fill.sh): they only
+          # ...and the fills, refetch and refused lists of the pairs just pruned (convergence-fill.sh): they only
           # mean anything over their own pair's tree.
           # allow-silenced: as above.
           names=$(gh release view "$FIXTURE_RELEASE_TAG" --json assets --jq '.assets[].name')
           kept=$(grep -oE "^enrichment-$code-[0-9]+\\.tar\\.(gz|zst)$" <<< "$names" | grep -oE '[0-9]+' | sort -u)
-          grep -E "^(fill|refetch)-$code-[0-9]+-[0-9]+(-[a-z][a-z-]*)?\\.(tar\\.zst|tsv)$" <<< "$names" \
+          grep -E "^(fill|refetch|refused)-$code-[0-9]+-[0-9]+(-[0-9]+)?(-[a-z][a-z-]*)?\\.(tar\\.zst|tsv)$" <<< "$names" \
               | while read -r asset; do
                     run=$(cut -d- -f3 <<< "$asset")
                     grep -qxF "$run" <<< "$kept" || "$RELEASE" delete-asset "$FIXTURE_RELEASE_TAG" "$asset" -y || true

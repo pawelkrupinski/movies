@@ -89,7 +89,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   it should "replay the pair its sample replayed" in {
     val convergence = RepoFile.block(leg, "convergence")
     convergence should include("- uses: ./.github/actions/convergence-setup\n              id: setup")
-    convergence should include("pair:           ${{ format('{0} {1}{2}', steps.setup.outputs.hermetic-pair, ")
+    convergence should include("pair:           ${{ format('{0} {1}', steps.setup.outputs.hermetic-pair, ")
     withClue("the pair comes from this job's own setup, not another job's: ") {
       convergence should not include "needs.sample"
     }

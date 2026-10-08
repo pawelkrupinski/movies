@@ -1,7 +1,8 @@
 #
 # THE COUNTRY CONVERGENCE SUITE — every country's films as the identity model decides them, from the
-# pinned recording (docs/design/identity-cutover-runbook.md): a sample gate, the full run and the
-# order-independence replay per country. Every claim — a fixpoint under identical re-scrapes, the same
+# pinned recording (docs/design/identity-cutover-runbook.md): per country the corpus-shape specs and the
+# full run, the order-independence replay (in the run, or a row of its own), and — for the United States —
+# the sample as a row of its own. Every claim — a fixpoint under identical re-scrapes, the same
 # films whatever order the corpus arrives in, every archived cinema, showtime and film emitted, coverage
 # within 5% of production — is a claim about what production serves.
 #
@@ -117,11 +118,13 @@ jobs:
             profile:                       ${{ inputs.profile == true }}
             jvm-options:                   ${{ inputs.jvm-options || '' }}
             runner:                        ${{ inputs.runner || 'ubuntu-latest' }}
-        # TMDB_API_KEY / OMDB_API_KEY, and the GITHUB_TOKEN the setup action reads.
+        # TMDB_API_KEY (the pre-suite fill signs TMDB's gaps with it), DECODO_PROXY_USER / DECODO_PROXY_PASS (the
+        # fill asks what an origin refuses CI again through the residential proxy), and the GITHUB_TOKEN the setup
+        # and publish actions read.
         secrets: inherit
 
-    # NO fill job: every hermetic row fetches what the previous run's suite listed, for ~90 s before its own
-    # suite, so this run already replays it (country-convergence-leg.yml, docs/design/convergence-fixture-fill.md).
+    # NO fill job: each country's convergence row fetches what the previous run's suite listed, for ~90 s before
+    # its own suite, so this run already replays it (country-convergence-leg.yml, docs/design/convergence-fixture-fill.md).
     # A longer fill is a hand-dispatched `Convergence fill` (convergence-fill.yml).
 
     # A red HERMETIC leg on main hands its range to `convergence-bisect.yml` — DISPATCHED, the one event

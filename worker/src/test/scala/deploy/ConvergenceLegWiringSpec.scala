@@ -359,7 +359,8 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val convergence = RepoFile.block(leg, "convergence")
     convergence should include(s"- name: $SampleStep")
     convergence should include(s"$PublishAction\n              if: always()")
-    RepoFile.positionOf(convergence, s"- name: $SampleStep") should be < RepoFile.positionOf(convergence, PublishAction)
+    // The tree's publish — `id: publish`; the convergence row's pre-suite fill goes up through the same action earlier.
+    RepoFile.positionOf(convergence, s"- name: $SampleStep") should be < RepoFile.positionOf(convergence, "id: publish\n")
   }
 
   it should "keep the capture when tar reports the tree changing under it" in {
@@ -686,6 +687,9 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val suite = RepoFile.step(RepoFile.block(leg, "convergence"), "Run the ${{ inputs.country }} ${{ matrix.phase }} suite")
     suite should include ("scripts/ci/mongo-top.sh start")
     suite should include ("scripts/ci/mongo-top.sh report")
+    // ...on a red suite too: under the step's `bash -e`, a failing `sbt | tee` ended the script before them.
+    suite should include ("2>&1 | tee convergence.log || suite=$?")
+    RepoFile.positionOf(suite, "scripts/ci/mongo-top.sh report") should be < RepoFile.positionOf(suite, "exit \"${suite:-0}\"")
   }
 
   "a profiled dispatch" should "record a JFR profile of the suite and upload it, and only when asked" in {
@@ -695,8 +699,12 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     leg should include ("if: always() && inputs.profile && matrix.phase != 'sample'")
     // A hand-dispatched JVM setting reaches every sbt run through the environment, never interpolated into the script.
     caller should include ("jvm-options:                   ${{ inputs.jvm-options || '' }}")
-    leg.linesIterator.count(_.trim == "JVM_OPTIONS:      ${{ inputs.jvm-options }}") shouldBe 2
-    leg.linesIterator.count(_.trim == "read -ra jvm <<< \"$JVM_OPTIONS\"") shouldBe 2
+    // Every sbt run of the leg: the sample, the suite, the pre-suite fill and a recording's corpus capture.
+    leg.linesIterator.count(_.trim == "JVM_OPTIONS:      ${{ inputs.jvm-options }}") shouldBe 4
+    leg.linesIterator.count(_.trim == "read -ra jvm <<< \"$JVM_OPTIONS\"") shouldBe 4
+    RepoFile.withoutComments(leg).linesIterator.filter(_.trim.startsWith("sbt ")).foreach { line =>
+      withClue(s"$line: ")(line should include ("\"${jvm[@]}\""))
+    }
     // ...and a hand-dispatched runner label reaches every leg, x64 unless asked.
     caller should include ("runner:                        ${{ inputs.runner || 'ubuntu-latest' }}")
     leg should include ("runs-on: ${{ inputs.runner }}")

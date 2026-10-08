@@ -19,7 +19,7 @@
 # Exit status: 0 with the tree staged, or with nothing to stage on a RECORDING (which fetches
 # live and publishes what it learns); 3 when a replay leg's pinned tree is missing (a hermetic
 # leg replays nothing else, so its setup fails); 4 when the release could not be read at all;
-# anything else is an unpack that failed.
+# anything else is an unpack that failed — the tree's, or a fill's the pair names.
 set -uo pipefail
 
 code="${1:?usage: restore-enrichment-tree.sh <code> <mode> <stage dir>}"
@@ -62,7 +62,8 @@ ls -l "$archives/"
 echo "restored $tree ($(du -h "$tree" | cut -f1))"
 
 # A HERMETIC leg's pair is the pinned tree AND the fills earlier legs published over it, oldest first
-# ("Resolve the recorded pair" names them in KINOWO_CONVERGENCE_FILL_ASSETS; convergence-fill.sh).
+# ("Resolve the recorded pair" names them in KINOWO_CONVERGENCE_FILL_ASSETS; convergence-fill.sh). One it cannot
+# restore fails the restore, and so the leg's setup: the pair names it, so its verdict and its bisect would not agree.
 if [ "$mode" != "record" ] && [ -n "${KINOWO_CONVERGENCE_FILL_ASSETS:-}" ]; then
     read -ra fills <<< "$KINOWO_CONVERGENCE_FILL_ASSETS"
     "$here/convergence-fill.sh" unpack "$stage" "${fills[@]}"

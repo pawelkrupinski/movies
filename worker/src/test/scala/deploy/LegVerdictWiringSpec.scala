@@ -41,20 +41,15 @@ class LegVerdictWiringSpec extends AnyFlatSpec with Matchers {
     problems shouldBe empty
   }
 
-  /** The sample's verdict, the moment the SAMPLE ends — as the sample job posted it when that job
-   *  ended, minutes before the full leg behind it reports. Folded into the full leg's job it would
-   *  otherwise surface only with the row's verdict, hours later on a green sample. One row posts it,
-   *  so the order row cannot race the convergence row for the one status context. */
-  "every hermetic leg" should "post its sample's verdict straight after the sample step" in {
-    val body   = leg("convergence")
-    val steps  = body.split("\n\\s+- (?=uses:|name:)").toSeq.drop(1)
-    val sample = steps.indexWhere(_.startsWith("name: Run the ${{ inputs.country }} sample ahead of the suite"))
-    sample should be >= 0
-    val verdict = steps(sample + 1)
-    verdict should startWith(Action)
-    verdict should include("if: always() && inputs.mode != 'record' && matrix.phase == 'convergence' && steps.sample.outcome != 'skipped'")
-    verdict should include("leg:    sample (${{ inputs.country }})")
-    verdict should include("status: ${{ steps.sample.outcome }}")
+  /** A sample's verdict is its row's. A hermetic leg runs its sample only in a `sample` row, whose last step
+   *  already posts `sample (<country>)`; a convergence row runs it only in a recording, which never posted one. A
+   *  step posting the sample's outcome from the convergence row of a hermetic leg could never run. */
+  "a sample's verdict" should "be posted by the row that runs it, as its own" in {
+    val body = leg("convergence")
+    RepoFile.step(body, "Run the ${{ inputs.country }} sample ahead of the suite") should include(
+      "if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode == 'record')")
+    RepoFile.withoutComments(body) should not include "status: ${{ steps.sample.outcome }}"
+    body.linesIterator.count(_.contains(Action)) shouldBe 1
   }
 
   it should "hold the statuses: write the verdict needs" in {

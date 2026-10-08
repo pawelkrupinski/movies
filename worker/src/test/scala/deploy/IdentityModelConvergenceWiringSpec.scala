@@ -83,7 +83,8 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   /** The US sample was 79 s in front of the lane's critical path, its convergence row (run
    *  37150307201). In a row of its own it runs beside the suite: the convergence row runs ungated, the
    *  sample row speaks for the sample (its verdict, its red-sample ratchet), and what it records — in a
-   *  recording, which runs the same rows — is merged into the convergence row's one publish. */
+   *  recording, which runs the same rows; a hermetic one records nothing — is merged into the convergence row's
+   *  one publish. */
   it should "run the US sample in a row of its own, merged into the convergence row" in {
     RepoFile.matrixRows(workflow).filter(_.get("sampleRow").contains("true")).map(_("country")) shouldBe
       Seq("united-states")
@@ -92,16 +93,18 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     convergence should include("""inputs.sample-row && ',"sample"' || ''""")
     RepoFile.step(convergence, "Run the ${{ inputs.country }} sample ahead of the suite") should include(
       "if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode == 'record')\n")
-    Seq("Mark the tree before the sample records into it", "Pack the sample's recordings").foreach { name =>
-      withClue(s"$name, in every mode's sample row: ")(RepoFile.step(convergence, name) should not include "inputs.mode == 'record'")
-    }
+    // A hermetic leg — this lane's — records nothing and publishes no tree, so its sample row hands nothing on.
+    Seq("Mark the tree before the sample records into it", "Pack the sample's recordings", "Merge the sample row's recordings")
+      .foreach { name =>
+        withClue(s"$name, in a recording alone: ")(RepoFile.step(convergence, name) should include("inputs.mode == 'record'"))
+      }
     val merge = RepoFile.step(convergence, "Merge the sample row's recordings")
-    merge should include("if: always() && inputs.sample-row && matrix.phase == 'convergence'\n")
-    withClue("the identity lane renders the sample row as `<country> / sample`: ") {
-      merge should include("format('{0} / sample', inputs.country)")
+    merge should include("if: always() && inputs.mode == 'record' && inputs.sample-row && matrix.phase == 'convergence'\n")
+    withClue("the recorder renders the sample row as `enrichment (<country>) / sample`: ") {
+      merge should include("PRODUCER: (${{ inputs.country }}) / sample")
     }
     convergence.indexOf("- name: Merge the sample row's recordings") should be <
-      convergence.indexOf("uses: ./.github/actions/convergence-publish")
+      convergence.indexOf("id: publish\n")
     withClue("a red sample row ratchets its findings: ") {
       convergence should include("if: always() && (matrix.phase == 'convergence' || matrix.phase == 'sample') && steps.sample.outcome == 'failure'")
     }

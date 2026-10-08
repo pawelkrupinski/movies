@@ -1,14 +1,14 @@
 # THE LONG FILL: what the last hermetic leg's tree could not answer, fetched for `minutes` and published
 # beside the pinned pair (docs/design/convergence-fixture-fill.md). Run by the hand-dispatched
 # `Convergence fill` workflow (convergence-fill.yml), one row per country — for a list longer than the
-# ~90 s every leg row spends on it before its suite ("Fill the gaps the last leg listed",
+# ~90 s a leg's convergence row spends on it before its suite ("Fill the gaps the last leg listed",
 # country-convergence-leg.yml).
 #
 # It reads the newest `refetch-<code>-<corpus>-*.tsv` of the pinned pair, which a hermetic convergence
-# row publishes (`convergence-publish`). It fetches through the worker's own per-host pacing, 429 gate and
-# breaker (`HttpWiring.pacedWire`, `HostPolicies` — Flicks stays at its 200 ms), skips what the pair's
-# fills already hold, and stops starting requests `minutes` into the job. What it fetched goes up as
-# `fill-<code>-<corpus>-<run>.tar.zst` (main only): every hermetic leg set up after that replays it over
+# row publishes (`convergence-publish`), less the gaps the last fills were refused. It fetches through the worker's
+# own per-host pacing, 429 gate and breaker (`HttpWiring.pacedWire`, `HostPolicies` — Flicks stays at its 200 ms),
+# skips what the pair's fills already hold, and stops starting requests `minutes` into the job. What it fetched goes
+# up as `fill-<code>-<corpus>-<run>-<attempt>.tar.zst` (main only): every hermetic leg set up after that replays it over
 # the pinned tree. A TMDB gap is signed with the key handed in; OMDb's, a header's or a body's never are.
 name: Fill a hermetic leg's gaps
 description: Fetch, within a budget, what the last hermetic leg's tree lacked, and publish it beside the pinned pair.
@@ -69,9 +69,11 @@ runs:
           echo "the last leg listed $count fetchable gap(s)"
           echo "count=$count" >> "$GITHUB_OUTPUT"
 
-    # What earlier fills already hold, so nothing is asked twice.
+    # What earlier fills already hold, so nothing is asked twice. One that cannot be restored only means its pages
+    # are asked again — this job replays no verdict — so it fails nothing.
     - name: Restore the fills already published over the pair
       if: steps.gaps.outputs.count > 0
+      continue-on-error: true
       shell: bash
       env:
           GH_TOKEN: ${{ inputs.token }}
@@ -89,7 +91,7 @@ runs:
           DECODO_PROXY_USER: ${{ inputs.proxy-user }}
           DECODO_PROXY_PASS: ${{ inputs.proxy-pass }}
       run: |
-          sbt -J-Xmx2g -J-Djdk.http.auth.tunneling.disabledSchemes= "worker/Fixtures/runMain scripts.FillMissingFixtures ${{ inputs.code }} refetch.tsv $RUNNER_TEMP/fill-held/test/resources/fixtures $RUNNER_TEMP/fill-out/test/resources/fixtures $FILL_UNTIL"
+          sbt -J-Xmx2g -J-Djdk.http.auth.tunneling.disabledSchemes= "worker/Fixtures/runMain scripts.FillMissingFixtures ${{ inputs.code }} refetch.tsv $RUNNER_TEMP/fill-held/test/resources/fixtures $RUNNER_TEMP/fill-out/test/resources/fixtures $FILL_UNTIL $RUNNER_TEMP/fill-refused.tsv"
 
     # Whatever the fetch step did: a fill cut short still holds every page it wrote (one file per answer).
     - name: Pack what the fill fetched
@@ -104,3 +106,4 @@ runs:
           token:        ${{ inputs.token }}
           mode:         hermetic
           fill-archive: fill-upload-source/fill.tar.zst
+          refused-list: ${{ runner.temp }}/fill-refused.tsv

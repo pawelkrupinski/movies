@@ -51,6 +51,10 @@ status="$(STUB_FILL="$work/fill-uk-1-2.tar.zst" KINOWO_CONVERGENCE_FILL_ASSETS="
   restore filled hermetic "$work/enrichment-uk.tar.zst")"
 check "a hermetic leg's pair includes the fills published over its tree" "0:filled:recorded" \
   "$status:$(cat "$work/stage-filled/test/resources/fixtures/enrichment-uk/www.flicks.co.uk/movie" 2>/dev/null):$(cat "$work/stage-filled/test/resources/fixtures/enrichment-uk/api.themoviedb.org/search" 2>/dev/null)"
+status="$(STUB_FILL="$work/fill-uk-gone.tar.zst" KINOWO_CONVERGENCE_FILL_ASSETS="fill-uk-1-2.tar.zst" CONVERGENCE_FILL_LIST_BACKOFF=0 \
+  restore unfilled hermetic "$work/enrichment-uk.tar.zst")"
+check "...and a fill its pair names but it cannot restore fails the restore, never replayed without" "true" \
+  "$([ "$status" -ne 0 ] && [ "$status" -ne 3 ] && grep -q '::error::fill fill-uk-1-2.tar.zst' "$work/out-unfilled" && echo true || echo false)"
 STUB_FILL="$work/fill-uk-1-2.tar.zst" KINOWO_CONVERGENCE_FILL_ASSETS="fill-uk-1-2.tar.zst" restore recording-fill record "$work/enrichment-uk.tar.zst" > /dev/null
 check "...and a recording's never does: it records them itself" "false" \
   "$([ -e "$work/stage-recording-fill/test/resources/fixtures/enrichment-uk/www.flicks.co.uk/movie" ] && echo true || echo false)"

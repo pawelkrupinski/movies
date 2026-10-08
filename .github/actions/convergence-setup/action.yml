@@ -159,9 +159,11 @@ runs:
               echo "::error::No recorded pair pinned for ${{ inputs.code }} (release asset hermetic-${{ inputs.code }}.txt) — a hermetic leg replays nothing else. Record one: gh workflow run \"Record scrape fixtures\" --ref main"
               exit 1
           fi
-          # The FILLS published over this tree (convergence-fill.sh) — earlier legs' rows' pre-suite fills and
-          # any hand-dispatched `Convergence fill` — named here, once: the row lays its own pre-suite fill
-          # over them, and its bisect request carries all of them in the pair.
+          # The FILLS published over this tree (convergence-fill.sh) — earlier legs' convergence rows' pre-suite
+          # fills and any hand-dispatched `Convergence fill` — named here, once: a convergence row lays its own
+          # published pre-suite fill over them, and its bisect request carries all of them in the pair. Every one
+          # is laid over, or the restore fails (restore-enrichment-tree.sh): the pair never names a fill the leg
+          # replayed without.
           if [ -z "$GIVEN" ]; then
               fills=$(FIXTURE_RELEASE_TAG="$FIXTURE_RELEASE_TAG" "$GITHUB_WORKSPACE"/.github/scripts/convergence-fill.sh fills "${{ inputs.code }}" "$corpus")
               pair="$corpus $recorded $tree${fills:+ $fills}"
