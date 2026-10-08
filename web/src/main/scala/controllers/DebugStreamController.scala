@@ -29,7 +29,7 @@ class DebugStreamController(
   // set carries the selection here, since an EventSource sends no query string).
   debugCountries:   DebugCountries,
   environment:      Mode
-)(using mat: Materializer) extends AbstractController(cc) {
+)(using mat: Materializer, latestYear: services.movies.LatestTitleYear) extends AbstractController(cc) {
 
   def stream: Action[AnyContent] = Action { request =>
     DevMode.gate(environment)(Ok.chunked(eventSource(request)).as("text/event-stream"))
@@ -46,7 +46,7 @@ class DebugStreamController(
   private[controllers] def upsertFrame(row: StoredMovieRecord, country: models.Country,
                                        normalizer: services.movies.TitleNormalizer): String = {
     implicit val city: models.City = frameCity(country)
-    val html = views.html._debugRow(row, normalizer).body
+    val html = views.html._debugRow(row, normalizer, latestYear).body
     s"data: ${Json.stringify(Json.obj("type" -> "upsert", "id" -> row.id.value, "html" -> html))}\n\n"
   }
 

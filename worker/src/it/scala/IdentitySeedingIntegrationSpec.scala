@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecClock.given
+
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

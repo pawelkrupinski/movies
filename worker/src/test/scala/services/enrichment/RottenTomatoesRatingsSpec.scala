@@ -1,5 +1,7 @@
 package services.enrichment
 
+import tools.SpecClock.given
+
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import clients.TmdbClient
 import models.MovieRecord

@@ -1,5 +1,8 @@
 package tools
 
+import services.movies.LatestTitleYear
+
+
 import models.ResolvedMovie
 import org.bson.codecs.{DecoderContext, EncoderContext}
 import org.bson.json.{JsonMode, JsonWriterSettings}
@@ -89,7 +92,7 @@ object ReadModelDerivationCorpus {
     case other            => other
   }
 
-  def decode(line: String, normalizer: TitleNormalizer): StoredMovieRecord =
+  def decode(line: String, normalizer: TitleNormalizer)(using LatestTitleYear): StoredMovieRecord =
     StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(BsonDocument.parse(line)), DecoderContext.builder().build()), normalizer)
 
   /** Every ready row, each under the stand-in its content names, sorted. */
@@ -101,10 +104,10 @@ object ReadModelDerivationCorpus {
     unique.sortBy(_._1).map { case (id, row) => encode(row, id) }.mkString("", "\n", "\n")
   }
 
-  def parseRows(text: String, normalizer: TitleNormalizer): Seq[StoredMovieRecord] =
+  def parseRows(text: String, normalizer: TitleNormalizer)(using LatestTitleYear): Seq[StoredMovieRecord] =
     text.linesIterator.filter(_.nonEmpty).map(decode(_, normalizer)).toSeq
 
-  def hashes(row: StoredMovieRecord, normalizer: TitleNormalizer): RowHashes = {
+  def hashes(row: StoredMovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): RowHashes = {
     val projected = ReadModelProjection.partition(row, normalizer).projectAll
     val cards     = projected.map(_._1)
     def part(f: ResolvedMovie => Any): String = sha(cards.map(card => card._id + ":" + canon(f(card))).mkString("|"))
@@ -132,7 +135,7 @@ object ReadModelDerivationCorpus {
   }
 
   /** The rows whose projection under the current code is not the one recorded. */
-  def moved(recorded: Recorded, rows: Seq[StoredMovieRecord], normalizer: TitleNormalizer): Seq[Moved] =
+  def moved(recorded: Recorded, rows: Seq[StoredMovieRecord], normalizer: TitleNormalizer)(using LatestTitleYear): Seq[Moved] =
     rows.flatMap { row =>
       val now = hashes(row, normalizer)
       recorded.rows.get(now.id) match {
@@ -151,7 +154,7 @@ object ReadModelDerivationCorpus {
    *  derivation exactly when the checked-in rows project differently under the current code, named
    *  by the previous one and what moved, so it is the same on every machine. With nothing checked
    *  in, nothing can be compared: a new derivation owing everything. */
-  def regenerate(fresh: Seq[StoredMovieRecord], normalizer: TitleNormalizer, checkedIn: Option[(String, String)]): Regeneration = {
+  def regenerate(fresh: Seq[StoredMovieRecord], normalizer: TitleNormalizer, checkedIn: Option[(String, String)])(using LatestTitleYear): Regeneration = {
     val rowsText = renderRows(fresh)
     val rows     = parseRows(rowsText, normalizer)
     val (derivation, bumped, moves) = checkedIn match {

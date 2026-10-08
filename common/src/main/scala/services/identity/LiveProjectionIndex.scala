@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{Source, SourceData}
-import services.movies.{LeanRecords, ListingKey, StoredMovieRecord, TitleNormalizer}
+import services.movies.{LatestTitleYear, LeanRecords, ListingKey, StoredMovieRecord, TitleNormalizer}
 
 import scala.collection.mutable
 
@@ -24,7 +24,7 @@ import scala.collection.mutable
  *
  * Single-threaded: the projection's tick holds it.
  */
-final class LiveProjectionIndex(normalizer: TitleNormalizer) {
+final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYear) {
   import IdentityProjectionPlan.{clusterOf => clusterFor, oneByKey, ownerOf}
 
   // Listings: each venue's listing as last read (the object, to tell it unmoved) — one listing per key at it is worked

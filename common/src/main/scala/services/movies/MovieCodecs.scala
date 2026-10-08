@@ -114,7 +114,7 @@ object StoredMovieDto {
       updatedAt         = updatedAt
     )
 
-  def toDomain(dto: StoredMovieDto, normalizer: TitleNormalizer): StoredMovieRecord = {
+  def toDomain(dto: StoredMovieDto, normalizer: TitleNormalizer)(using LatestTitleYear): StoredMovieRecord = {
     val record = MovieRecord(
       imdbId            = dto.imdbId,
       imdbRating        = dto.imdbRating,

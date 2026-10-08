@@ -1,7 +1,7 @@
 package tools
 
 import models.{CinemaMovie, Country}
-import services.movies.{SequelMarker, TitleContainment, TitleNormalizer}
+import services.movies.{LatestTitleYear, SequelMarker, TitleContainment, TitleNormalizer}
 import services.scrapes.ArchivedScrape
 
 import java.nio.charset.StandardCharsets
@@ -117,7 +117,7 @@ object HardClusters {
    * ranked by a stable score and ties broken by name — so the same corpus and seeds
    * always write the same file.
    */
-  def select(country: Country, rows: Seq[ArchivedScrape], seeds: Seq[Seed], budget: Int): (Seq[ArchivedScrape], Seq[Seed]) = {
+  def select(country: Country, rows: Seq[ArchivedScrape], seeds: Seq[Seed], budget: Int)(using LatestTitleYear): (Seq[ArchivedScrape], Seq[Seed]) = {
     val normalizer = TitleNormalizer.forCountry(country)
     val indexed    = rows.toIndexedSeq.sortBy(_.cinema.displayName)
     val listings   = indexed.indices.flatMap(v => indexed(v).films.map(Listing(v, _)))
@@ -164,7 +164,7 @@ object HardClusters {
       val sorted = bucket.sortBy(_._1)
       for {
         (a, la) <- sorted
-        (b, lb) <- sorted if a < b && SequelMarker.differentInstalments(a.split(' ').toSeq, b.split(' ').toSeq)
+        (b, lb) <- sorted if a < b && SequelMarker(LatestTitleYear.current).differentInstalments(a.split(' ').toSeq, b.split(' ').toSeq)
       } yield (s"$a | $b", la ++ lb)
     }.sortBy { case (k, ls) => (-venues(ls), k) }
 
@@ -219,7 +219,7 @@ object HardClusters {
    * makes the fixture a ratchet — a cluster that once caught a bug is never swapped out
    * because a newer corpus ranks something else higher.
    */
-  def extend(country: Country, existing: Seq[ArchivedScrape], fullCorpus: Seq[ArchivedScrape], seeds: Seq[Seed]): Seq[ArchivedScrape] = {
+  def extend(country: Country, existing: Seq[ArchivedScrape], fullCorpus: Seq[ArchivedScrape], seeds: Seq[Seed])(using LatestTitleYear): Seq[ArchivedScrape] = {
     val (added, _) = select(country, fullCorpus, seeds, budget = 0)
     val byVenue    = existing.map(r => r.cinema -> r).toMap
     val merged = added.map { row =>

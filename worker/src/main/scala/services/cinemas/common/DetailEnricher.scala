@@ -1,5 +1,7 @@
 package services.cinemas.common
 
+import services.movies.LatestTitleYear
+
 import services.movies.ScreeningTokens
 import models.{Cinema, MovieRecord, Source, SourceData}
 import services.cinemas.pl.FilmwebShowtimesClient
@@ -199,7 +201,7 @@ trait DetailEnricher {
    *  Pointing `fetchFilmDetail` at a fallback URL fails on every pass, so every
    *  detail-driving site (scrape classify, the reaper, staging) gates on this
    *  rather than the raw `filmUrl`. */
-  final def nativeDetailRef(record: MovieRecord): Option[String] =
+  final def nativeDetailRef(record: MovieRecord)(using LatestTitleYear): Option[String] =
     nativeDetailRefIn(record.cinemaData)
 
   /** [[nativeDetailRef]] against an ALREADY-COMPUTED `cinemaData`, for callers that

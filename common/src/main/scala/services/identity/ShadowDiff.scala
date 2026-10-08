@@ -1,5 +1,7 @@
 package services.identity
 
+import services.movies.LatestTitleYear
+
 import java.util.Locale
 
 import models.{CinemaShowing, SourceData}
@@ -63,7 +65,7 @@ object ShadowDiff {
 
   /** Every cluster of `resolution` with its relation, and every family whose clusters are not
    *  all identical to a pipeline film (or that holds a listing the pipeline has not placed). */
-  def of(resolution: Resolution, pipelineOf: Map[ListingKey, PipelineFilmRef]): (Seq[ShadowCluster], Seq[ShadowFamily]) = {
+  def of(resolution: Resolution, pipelineOf: Map[ListingKey, PipelineFilmRef])(using LatestTitleYear): (Seq[ShadowCluster], Seq[ShadowFamily]) = {
     val membersOf = membersOfFilms(pipelineOf)
     val clusters = resolution.decisions.map(d => cluster(d, d.members.headOption.flatMap(resolution.familyOf.get).getOrElse(-1), pipelineOf, membersOf))
     val families = clusters.groupBy(_.family).toSeq.sortBy(_._1).flatMap { case (family, cs) =>
@@ -120,7 +122,7 @@ object PipelineFilms {
 
   /** `films` are anything carrying a film's venue slots `(venue, slot key, slot)`. */
   def assign[F](listings: Seq[Listing], films: Seq[(F, Seq[(String, String, SourceData)])],
-                normalizer: TitleNormalizer)(using Ordering[F]): Map[ListingKey, F] = {
+                normalizer: TitleNormalizer)(using Ordering[F], LatestTitleYear): Map[ListingKey, F] = {
     val bySlot = films.flatMap { case (f, slots) => slots.map { case (v, k, sd) => (v, k) -> (f, sd) } }.groupMap(_._1)(_._2)
     listings.flatMap(l => bySlot.get(slotOf(l, normalizer)).flatMap(pick(l, _, normalizer)).map(l.key -> _)).toMap
   }
@@ -130,10 +132,10 @@ object PipelineFilms {
 
   /** The film `listing` is on among those holding a slot at [[slotOf]] it (`held`, never empty): the one film, or of
    *  several the one whose slot's year and directors the listing's agree with, the smallest first. */
-  def pick[F](listing: Listing, held: Seq[(F, SourceData)], normalizer: TitleNormalizer)(using Ordering[F]): Option[F] = held match {
+  def pick[F](listing: Listing, held: Seq[(F, SourceData)], normalizer: TitleNormalizer)(using Ordering[F], LatestTitleYear): Option[F] = held match {
     case Seq((f, _)) => Some(f)
     case several =>
-      val year = listing.year.orElse(EmbeddedYear.of(listing.rawTitle, listing.cleanTitle))
+      val year = listing.year.orElse(EmbeddedYear.ofAll(Seq(listing.rawTitle, listing.cleanTitle), LatestTitleYear.current))
       val fits = several.filter { case (_, sd) =>
         val slotYear = ScrapeListing.yearOf(sd)
         (year.isEmpty || slotYear.isEmpty || math.abs(year.get - slotYear.get) <= YearWindow.ProductionToRelease) &&
@@ -147,6 +149,6 @@ object PipelineFilms {
     row.record.data.toSeq.collect { case (cs: CinemaShowing, sd) => (cs.cinema.displayName, cs.titleKey, sd) }
 
   /** Each listing's film among the pipeline's stored rows. */
-  def of(listings: Seq[Listing], rows: Seq[StoredMovieRecord], normalizer: TitleNormalizer): Map[ListingKey, PipelineFilmRef] =
+  def of(listings: Seq[Listing], rows: Seq[StoredMovieRecord], normalizer: TitleNormalizer)(using LatestTitleYear): Map[ListingKey, PipelineFilmRef] =
     assign(listings, rows.map(r => PipelineFilmRef(r.id.value, r.record.tmdbId) -> slotsOf(r)), normalizer)
 }

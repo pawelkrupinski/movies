@@ -1,5 +1,7 @@
 package services.metrics
 
+import services.movies.LatestTitleYear
+
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Country, MovieRecord}
@@ -43,6 +45,8 @@ class RatingRunCensus(
   clock:          Clock,
   override protected val sampleInterval: FiniteDuration = RatingRunCensus.DefaultSampleInterval
 ) extends SampledCensus {
+  // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
+  private given LatestTitleYear = LatestTitleYear(clock)
   import RatingRunCensus._
 
   private val countryCode = country.code
@@ -141,7 +145,7 @@ object RatingRunCensus {
     now:                  Instant,
     sources:              Seq[RatingSource] = RatingSources.all,
     firstBacklogSighting: Option[(String, CacheKey) => Instant] = None
-  ): Map[String, SiteBacklog] = {
+  )(using LatestTitleYear): Map[String, SiteBacklog] = {
     val acc = scala.collection.mutable.Map.empty[String, SiteBacklog]
     entries.foreach { case (key, record) =>
       sources.foreach { s =>

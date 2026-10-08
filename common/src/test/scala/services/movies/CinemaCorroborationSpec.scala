@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecClock.given
+
 import models.{KinoApollo, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

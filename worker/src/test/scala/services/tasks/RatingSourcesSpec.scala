@@ -1,5 +1,7 @@
 package services.tasks
 
+import tools.SpecClock.given
+
 import models.{Country, MovieRecord}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

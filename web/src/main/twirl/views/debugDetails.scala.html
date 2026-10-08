@@ -3,7 +3,7 @@
 @import java.time.format.DateTimeFormatter
 @import java.time.{Instant, ZoneOffset}
 @import services.attempts.{AttemptOutcome, SourceAttemptStatus}
-@(title: String, year: Option[Int], e: MovieRecord, normalizer: services.movies.TitleNormalizer, cinemaUrls: Map[String, String] = Map.empty, enrichment: Seq[SourceAttemptStatus] = Nil)
+@(title: String, year: Option[Int], e: MovieRecord, normalizer: services.movies.TitleNormalizer, cinemaUrls: Map[String, String] = Map.empty, enrichment: Seq[SourceAttemptStatus] = Nil, latestYear: services.movies.LatestTitleYear)
 @dtFmt = @{DateTimeFormatter.ofPattern("HH:mm")}
 @dateFmt = @{DateTimeFormatter.ofPattern("MM-dd")}
 
@@ -16,13 +16,13 @@
   <dd>@normalizer.sanitize(title)@year.map("|" + _).getOrElse("")</dd>
 
   <dt>displayTitle</dt>
-  <dd>@e.displayTitle(title, normalizer)</dd>
+  <dd>@e.displayTitle(title, normalizer)(using latestYear)</dd>
 
   <dt>cinemaTitles (variants)</dt>
   <dd>
-    @if(e.evidence.titles.isEmpty) { <span class="miss">—</span> } else {
+    @if(e.evidence(using latestYear).titles.isEmpty) { <span class="miss">—</span> } else {
       <div class="variants">
-        @for(t <- e.evidence.titles.toSeq.sorted) { <span class="variant">@t</span> }
+        @for(t <- e.evidence(using latestYear).titles.toSeq.sorted) { <span class="variant">@t</span> }
       </div>
     }
   </dd>
@@ -34,7 +34,7 @@
   }</dd>
 
   <dt>evidence.originalTitle</dt>
-  <dd>@e.evidence.originalTitle match {
+  <dd>@e.evidence(using latestYear).originalTitle match {
     case Some(t) => { @t }
     case None    => { <span class="miss">—</span> }
   }</dd>

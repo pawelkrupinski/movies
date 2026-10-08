@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecClock.given
+
 import tools.SpecTimeouts
 
 

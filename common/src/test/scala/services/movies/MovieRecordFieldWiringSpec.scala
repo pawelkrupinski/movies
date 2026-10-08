@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecClock.given
+
 import models.{Helios, MovieRecord, Source, SourceData, Tmdb}
 import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
 import org.bson.{BsonDocument, BsonDocumentReader, BsonDocumentWriter}

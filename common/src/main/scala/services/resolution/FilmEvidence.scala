@@ -1,5 +1,7 @@
 package services.resolution
 
+import services.movies.LatestTitleYear
+
 import models.MovieRecord
 import services.movies.TitleNormalizer
 
@@ -91,7 +93,7 @@ object FilmEvidence {
    *  original title, director, cast, runtime, year — come from one representative
    *  slot per venue, in source-priority order, exactly as the accessors this
    *  replaces read them. */
-  def of(record: MovieRecord): FilmEvidence = {
+  def of(record: MovieRecord)(using LatestTitleYear): FilmEvidence = {
     val perVenue = record.cinemaData.toSeq
       .sortBy { case (cinema, _) => models.Source.priority.getOrElse(cinema, Int.MaxValue) }
       .map(_._2)

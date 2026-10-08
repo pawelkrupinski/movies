@@ -36,7 +36,7 @@ object ListingCorpora {
 
   val FixtureBootLabel = "fixture boot 08-06-2026"
 
-  def fixtureBoot(wiring: => FixtureTestWiring): ListingCorpus =
+  def fixtureBoot(wiring: => FixtureTestWiring)(using LatestTitleYear): ListingCorpus =
     new ListingCorpus(FixtureBootLabel, Country.Poland, normalizer =>
       ScheduleCorpusText.recordsByFilmId(wiring).values.toSeq.distinct.flatMap(_.cinemaData.toSeq).map { case (cinema, slot) =>
         val raw = slot.rawTitle.orElse(slot.title).getOrElse("")

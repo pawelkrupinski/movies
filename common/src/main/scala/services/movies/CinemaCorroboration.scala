@@ -41,7 +41,7 @@ object CinemaCorroboration {
    *  name can disagree for a dozen reasons that are not a different film. A caller
    *  about to spend a re-resolution on the director signal should confirm it first
    *  (the since-deleted `CrewConfirmation` asked TMDB's crew ids). */
-  def contradiction(record: MovieRecord): Option[Contradiction] =
+  def contradiction(record: MovieRecord)(using LatestTitleYear): Option[Contradiction] =
     for {
       tmdbId <- record.tmdbId
       film   <- record.data.get(Tmdb)
@@ -54,5 +54,5 @@ object CinemaCorroboration {
   /** True when the cinemas positively contradict the film this row resolved to.
    *  The cheap, PURE form — a corpus-scan metric uses it as-is; a caller about to
    *  act on it should go through [[contradiction]] and confirm a director. */
-  def contradicts(record: MovieRecord): Boolean = contradiction(record).isDefined
+  def contradicts(record: MovieRecord)(using LatestTitleYear): Boolean = contradiction(record).isDefined
 }

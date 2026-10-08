@@ -1,5 +1,7 @@
 package services
 
+import tools.SpecClock.given
+
 import tools.SpecTimeouts
 
 import com.mongodb.{ConnectionString, MongoClientSettings}

@@ -1,5 +1,8 @@
 package scripts
 
+import services.movies.LatestTitleYear
+
+
 import models.{Country, Filmweb, Source, Tmdb}
 import services.movies.TitleNormalizer
 
@@ -30,7 +33,7 @@ object GenreLanguageAudit {
   private def isPolish(genres: Seq[String]): Boolean =
     genres.exists(g => PolishGenres.contains(g.trim.toLowerCase))
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String])(using LatestTitleYear): Unit = {
     val country = args.headOption.flatMap(Country.byCode).getOrElse(Country.Germany)
     val filter  = args.drop(1).headOption
     val dbName  = country.mongoDb
@@ -79,7 +82,7 @@ object GenreLanguageAudit {
     bySource.foreach { case (src, n) => println(f"  $src%-12s $n") }
 
     def polishCount(pick: models.MovieRecord => Seq[String]) = rows.count(s => isPolish(pick(s.record)))
-    def slot(so: Source)(r: models.MovieRecord) = r.data.get(so).map(_.genres).getOrElse(Seq.empty)
+    def slot(so: Source)(r: models.MovieRecord)(using LatestTitleYear) = r.data.get(so).map(_.genres).getOrElse(Seq.empty)
 
     println(s"\nEFFECTIVE genres look Polish: ${polishCount(_.genres)} / ${rows.size}")
     println(s"Tmdb slot holds Polish genres:    ${polishCount(slot(Tmdb))} / ${rows.size}")

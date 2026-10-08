@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecClock.given
+
 import controllers.{CinemaShowtimes, FilmSchedule}
 import models._
 import org.scalatest.flatspec.AnyFlatSpec

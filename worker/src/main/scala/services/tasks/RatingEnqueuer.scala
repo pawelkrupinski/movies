@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.movies.LatestTitleYear
+
 import models.{Country, MovieRecord}
 import services.freshness.FreshnessStore
 import services.movies.CacheKey
@@ -33,7 +35,7 @@ class RatingEnqueuer(
   // behaviour; the worker wiring passes the actual per-country value so a non-Filmweb
   // country (UK) never enqueues a handler-less FilmwebRating task (see RatingSources).
   country: Country = Country.default
-) {
+)(using LatestTitleYear) {
   // The eligibility rule lives in RatingSources so the metrics census can't drift
   // from what this actually enqueues (see RatingSources). `forCountry` also drops
   // sources this country doesn't wire a handler for (Filmweb outside Poland).

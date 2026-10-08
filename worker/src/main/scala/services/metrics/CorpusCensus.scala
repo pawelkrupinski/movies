@@ -1,5 +1,7 @@
 package services.metrics
 
+import services.movies.LatestTitleYear
+
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Cinema, City, MovieRecord, Showtime, Source, SourceData, VenueClock}
@@ -56,6 +58,8 @@ final class CorpusCensus(
   metrics:         CorpusCensusMetrics = CorpusCensusMetrics.noop,
   publishInterval: FiniteDuration    = CorpusCensus.DefaultPublishInterval
 ) extends services.Stoppable with Logging {
+  // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
+  private given LatestTitleYear = LatestTitleYear(clock)
   import CorpusCensus._
 
   // Each film's part, as of the last drain, and the time-free subsets' running sums over them. Both guarded by `parts`.
@@ -169,7 +173,7 @@ object CorpusCensus {
       .register(registry)
 
   /** The corpus subsets that do not move with the clock, in the order of their bits in [[FilmCensus.subsets]]. */
-  private[metrics] val StaticSubsets: IndexedSeq[(String, MovieRecord => Boolean)] = {
+  private[metrics] val StaticSubsets: IndexedSeq[(String, MovieRecord => LatestTitleYear ?=> Boolean)] = {
     import WorkerCorpusMetrics.Subset._
     IndexedSeq(
       Total         -> (_ => true),
@@ -190,7 +194,7 @@ object CorpusCensus {
   }
 
   /** The census of `rows` against `clock` — what a census holding exactly these films reads. */
-  def read(rows: Iterable[StoredMovieRecord], cities: Seq[City], clock: Clock, normalizer: TitleNormalizer): Reading = {
+  def read(rows: Iterable[StoredMovieRecord], cities: Seq[City], clock: Clock, normalizer: TitleNormalizer)(using LatestTitleYear): Reading = {
     val parts  = rows.map(FilmCensus.of(_, normalizer, None)).toSeq
     val static = StaticSubsets.indices.map(i => parts.count(p => (p.subsets & (1 << i)) != 0).toLong)
     tally(parts.iterator, static, cities, clock)
@@ -265,7 +269,7 @@ final class FilmCensus private (val subsets: Int, val ready: Boolean, val cinema
 object FilmCensus {
   /** `stored`'s part. A slot the cache holds as the very object it held for `prior` keeps its derived part: a scrape
    *  landing moves one slot of a film, and a film can hold thousands. */
-  def of(stored: StoredMovieRecord, normalizer: TitleNormalizer, prior: Option[FilmCensus]): FilmCensus = {
+  def of(stored: StoredMovieRecord, normalizer: TitleNormalizer, prior: Option[FilmCensus])(using LatestTitleYear): FilmCensus = {
     val record   = stored.record
     val subsets  = CorpusCensus.StaticSubsets.indices.foldLeft(0)((bits, i) =>
       if (CorpusCensus.StaticSubsets(i)._2(record)) bits | (1 << i) else bits)

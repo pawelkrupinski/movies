@@ -250,6 +250,8 @@ class CaffeineMovieCache(
   // the corpus once (see [[BootCorpusReader]]). None for specs and a lone cache.
   bootReaders: Seq[BootCorpusReader] = Nil
 ) extends MovieCache with Stoppable with Logging {
+  // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
+  private given LatestTitleYear = LatestTitleYear(clock)
 
   // `recordStats` so the resident corpus can report its hit ratio — a read served
   // here is a Mongo read not made. Unbounded, so its eviction count stays 0 by

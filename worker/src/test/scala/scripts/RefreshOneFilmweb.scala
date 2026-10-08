@@ -1,5 +1,8 @@
 package scripts
 
+import services.movies.LatestTitleYear
+
+
 import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
 import services.movies.CaffeineMovieCache
@@ -11,7 +14,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  *  enrichment (Polish indies whose TMDB hit had no IMDb id) get filled now
  *  rather than waiting for the next hourly walk. */
 object RefreshOneFilmweb {
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String])(using LatestTitleYear): Unit = {
     val (title, year) = ("Chłopiec na krańcach świata", Some(2026))
     val configuration = _root_.settings.ProcessConfiguration.resolve()
     val repository  = AmbientMovieRepository.open(configuration, java.time.Clock.systemUTC())

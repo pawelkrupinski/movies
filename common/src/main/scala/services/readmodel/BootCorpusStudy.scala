@@ -1,7 +1,7 @@
 package services.readmodel
 
 import play.api.Logging
-import services.movies.{BootCorpusReader, BootReadEnd, StoredMovieRecord, TitleNormalizer}
+import services.movies.{BootCorpusReader, BootReadEnd, LatestTitleYear, StoredMovieRecord, TitleNormalizer}
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
@@ -24,7 +24,7 @@ import scala.util.Try
  *
  *  It is separate from the projector so the hydrate can hand it the rows while the worker's
  *  composition root is still being built, before the projector has been built. */
-final class BootCorpusStudy(normalizer: TitleNormalizer, wait: FiniteDuration = BootCorpusStudy.Wait)
+final class BootCorpusStudy(normalizer: TitleNormalizer, wait: FiniteDuration = BootCorpusStudy.Wait)(using LatestTitleYear)
   extends BootCorpusReader with Logging {
   import BootCorpusStudy.{NoRows, State, Taken}
 

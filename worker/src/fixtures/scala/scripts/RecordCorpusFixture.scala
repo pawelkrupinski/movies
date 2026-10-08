@@ -1,5 +1,7 @@
 package scripts
 
+import services.movies.LatestTitleYear
+
 import models.Country
 import org.mongodb.scala.MongoClient
 import services.scrapes.MongoScrapeArchiveRepository
@@ -25,6 +27,8 @@ import tools.{Alongside, CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdC
  *     sbt "worker/Fixtures/runMain scripts.RecordCorpusFixture"
  */
 object RecordCorpusFixture {
+  // The latest year a title may name (`LatestTitleYear`), read off this clock at each ask.
+  private given LatestTitleYear = LatestTitleYear(java.time.Clock.systemUTC())
 
   def main(args: Array[String]): Unit = {
     val configuration = _root_.settings.ProcessConfiguration.resolve()

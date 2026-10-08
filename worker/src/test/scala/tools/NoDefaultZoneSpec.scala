@@ -44,10 +44,7 @@ class NoDefaultZoneSpec extends AnyFlatSpec with Matchers {
     "worker/src/main/scala/services/cinemas/us/UsChainVenues.scala" -> RosterData)
 
   /** `file: Owner.parameter` → why that main-code parameter may still default to the live clock. */
-  private val ClockDefaultAllowlist: Map[String, String] = Map(
-    "common/src/main/scala/services/movies/EmbeddedYear.scala: ofAll.maxYear" ->
-      "a plausibility cap on a year read out of a title (next year at most); only New Year moves it, never a venue's day",
-  )
+  private val ClockDefaultAllowlist: Map[String, String] = Map.empty
 
   private val LiveClockDefault = """\bClock\.system(?:UTC|DefaultZone)\(|\bVenueClock\.system\b""".r
 

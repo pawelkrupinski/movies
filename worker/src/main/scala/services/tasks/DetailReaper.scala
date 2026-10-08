@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.movies.LatestTitleYear
+
 import settings.{DetailMaxEnqueuePerTick, DetailTickInterval}
 
 import services.freshness.{FreshnessKind, FreshnessStore}
@@ -63,6 +65,8 @@ class DetailReaper(
   // the pipeline, every page a venue slot names for a cut-over country's identity model.
   pages:     DetailPages = DetailPages.PerVenue
 ) extends Stoppable with Logging {
+  // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
+  private given LatestTitleYear = LatestTitleYear(clock)
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("detail-reaper")
 
@@ -181,7 +185,7 @@ object DetailReaper {
 /** Which detail pages of a film row the [[DetailReaper]] asks for, each with the key it is due,
  *  deduplicated and stamped under. */
 trait DetailPages {
-  def of(key: CacheKey, record: MovieRecord, enrichersByCinema: Map[Cinema, Seq[DetailEnricher]]): Seq[(DetailEnricher, String, String)]
+  def of(key: CacheKey, record: MovieRecord, enrichersByCinema: Map[Cinema, Seq[DetailEnricher]])(using LatestTitleYear): Seq[(DetailEnricher, String, String)]
 }
 
 object DetailPages {
@@ -189,7 +193,7 @@ object DetailPages {
   /** The pipeline's: one page per venue and film — the page its venue slots, merged, name — keyed by
    *  the film row. `cinemaData` is computed once per row: it sorts and rebuilds a Map per call. */
   object PerVenue extends DetailPages {
-    def of(key: CacheKey, record: MovieRecord, enrichersByCinema: Map[Cinema, Seq[DetailEnricher]]): Seq[(DetailEnricher, String, String)] = {
+    def of(key: CacheKey, record: MovieRecord, enrichersByCinema: Map[Cinema, Seq[DetailEnricher]])(using LatestTitleYear): Seq[(DetailEnricher, String, String)] = {
       val cinemaData = record.cinemaData
       cinemaData.keys.toSeq.flatMap(c => enrichersByCinema.getOrElse(c, Nil)).flatMap(e =>
         e.nativeDetailRefIn(cinemaData).map(ref => (e, ref, EnrichDetailsTasks.dedupKey(e.detailGroup, key))))
@@ -199,7 +203,7 @@ object DetailPages {
   /** A cut-over country's: every page any venue slot of the row names, keyed by the PAGE — so which
    *  pages the identity model gets does not depend on how its films were gathered over time. */
   object PerPage extends DetailPages {
-    def of(key: CacheKey, record: MovieRecord, enrichersByCinema: Map[Cinema, Seq[DetailEnricher]]): Seq[(DetailEnricher, String, String)] =
+    def of(key: CacheKey, record: MovieRecord, enrichersByCinema: Map[Cinema, Seq[DetailEnricher]])(using LatestTitleYear): Seq[(DetailEnricher, String, String)] =
       record.data.toSeq.flatMap { case (source, slot) =>
         for {
           cinema <- Source.cinemaOf(source).toSeq

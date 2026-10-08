@@ -1,5 +1,7 @@
 package tools
 
+import services.movies.LatestTitleYear
+
 import models.{Cinema, CinemaMovie, Country, CinemaShowing, CityScreening, ResolvedMovie, Showtime}
 import services.movies.{ScrapeListing, StoredMovieRecord, TitleNormalizer}
 import services.scrapes.ArchivedScrape
@@ -66,7 +68,7 @@ object ServedCorpusInvariants {
     from:       LocalDateTime = LocalDateTime.MIN,
     country:    Option[Country] = None,
     knownWrongMerges: Set[String] = Set.empty
-  ): Seq[String] = {
+  )(using LatestTitleYear): Seq[String] = {
     def upcoming(times: Iterable[Showtime]): Set[LocalDateTime] = times.iterator.map(_.dateTime).filterNot(_.isBefore(from)).toSet
     def base(cardId: String): String = cardId.takeWhile(_ != '~')
     val label: Map[String, String] = records.map(r =>
@@ -83,7 +85,7 @@ object ServedCorpusInvariants {
         (c.displayName, key) -> (r.id.value, sd.filmUrl, ScrapeListing.yearOf(sd))
       }
     }.groupMap(_._1)(_._2)
-    def holdersOf(cinema: String, key: String, cm: CinemaMovie): Seq[String] = {
+    def holdersOf(cinema: String, key: String, cm: CinemaMovie)(using LatestTitleYear): Seq[String] = {
       val all = holders.getOrElse((cinema, key), Nil)
       def narrowed(by: Seq[(String, Option[String], Option[Int])]) =
         if (all.map(_._1).distinct.sizeIs > 1 && by.nonEmpty) by else all
@@ -192,7 +194,7 @@ object ServedCorpusInvariants {
    * The rule is production's own (`MixedFilmDetector.deniesFilm`), the one the staging fold
    * keeps such a venue apart by. Returns `(film key, report line)`.
    */
-  def wrongMerges(records: Seq[StoredMovieRecord], normalizer: TitleNormalizer): Seq[(String, String)] =
+  def wrongMerges(records: Seq[StoredMovieRecord], normalizer: TitleNormalizer)(using LatestTitleYear): Seq[(String, String)] =
     records.filter(_.record.tmdbId.isDefined).flatMap { r =>
       r.record.data.get(models.Tmdb).toSeq.flatMap { film =>
         r.record.cinemaSlots.collect {
@@ -201,7 +203,7 @@ object ServedCorpusInvariants {
               (s"'${r.title}' (${r.year.getOrElse("—")}) [${r.key(normalizer)}] tmdb=${r.record.tmdbId.get} " +
                s"(${film.releaseYear.getOrElse("—")}, ${film.director.mkString("/")}) at " +
                s"${models.Source.cinemaOf(source).fold(source.displayName)(_.displayName)}: '${sd.title.getOrElse("—")}' " +
-               s"${sd.releaseYear.orElse(services.movies.EmbeddedYear.ofAll(sd.rawTitle ++ sd.title)).getOrElse("—")}, " +
+               s"${sd.releaseYear.orElse(services.movies.EmbeddedYear.ofAll(sd.rawTitle ++ sd.title, services.movies.LatestTitleYear.current)).getOrElse("—")}, " +
                sd.director.mkString("/"))
         }
       }

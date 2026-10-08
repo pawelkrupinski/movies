@@ -1,5 +1,8 @@
 package controllers
 
+import services.movies.LatestTitleYear
+
+
 import services.movies.SingleCountryNormalizer
 
 import play.api.Mode
@@ -32,7 +35,7 @@ object TestDebugController {
     // multi-country `DebugCountries` instead.
     debugCountries: Option[DebugCountries] = None,
     clock: java.time.Clock = java.time.Clock.fixed(java.time.Instant.parse("2026-10-03T12:00:00Z"), java.time.ZoneOffset.UTC),
-  ): (DebugController, WebReadModel) = {
+  )(using LatestTitleYear): (DebugController, WebReadModel) = {
     given play.api.i18n.Messages = testsupport.TestMessages.deployment
     val readModel = TestReadModel.fromRecords(records)
     val ctrl = new DebugController(

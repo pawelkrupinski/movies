@@ -1,5 +1,7 @@
 package tools
 
+import tools.SpecClock.given
+
 import models._
 import models.Kinoteka
 import org.scalatest.flatspec.AnyFlatSpec

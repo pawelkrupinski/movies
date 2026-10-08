@@ -1,5 +1,7 @@
 package services.readmodel
 
+import tools.SpecClock.given
+
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models._

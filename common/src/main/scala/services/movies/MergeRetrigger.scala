@@ -49,7 +49,7 @@ object MergeRetrigger {
   def changedEnrichments(
     before:    MovieRecord, beforeKey: CacheKey,
     after:     MovieRecord, afterKey:  CacheKey
-  ): Set[RetriggerKind] = {
+  )(using LatestTitleYear): Set[RetriggerKind] = {
     // Compare the SANITIZED title, not the raw spelling. A pure case/punctuation
     // re-spelling (sanitize-equal) is not a real change of the film's identity:
     // every enrichment lookup folds the key to `sanitize`, and Filmweb/RT/Metacritic

@@ -1,5 +1,7 @@
 package services.enrichment
 
+import services.movies.LatestTitleYear
+
 import clients.TmdbClient
 import services.movies.{CacheKey, MovieCache}
 import services.resolution.{ResolutionCache, ResolutionKeys}
@@ -28,7 +30,7 @@ class RottenTomatoesRatings(
   // film's slug probe runs once for 24h. Passthrough by default (tests).
   rtLinkCache: ResolutionCache = ResolutionCache.passthrough,
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
-) extends CacheRefresher(cache, cadenceRecorder) {
+)(using LatestTitleYear) extends CacheRefresher(cache, cadenceRecorder) {
 
   override protected def sourceName: String = "RT"
 

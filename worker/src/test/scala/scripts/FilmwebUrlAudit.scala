@@ -1,5 +1,8 @@
 package scripts
 
+import services.movies.LatestTitleYear
+
+
 import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
 import services.movies.{CaffeineMovieCache, StoredMovieRecord}
@@ -35,7 +38,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 object FilmwebUrlAudit {
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String])(using LatestTitleYear): Unit = {
     val configuration = _root_.settings.ProcessConfiguration.resolve()
     val repository = AmbientMovieRepository.open(configuration, java.time.Clock.systemUTC())
     if (!repository.enabled) {

@@ -1,5 +1,8 @@
 package scripts
 
+import services.movies.LatestTitleYear
+
+
 import services.MongoConnection
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
@@ -33,6 +36,8 @@ import services.readmodel.{MongoReadModelRepository, ReadModelProjection, ReadMo
  *   sbt "worker/Test/runMain scripts.BackfillReadModel"
  */
 object BackfillReadModel {
+  // The latest year a title may name (`LatestTitleYear`), read off this clock at each ask.
+  private given LatestTitleYear = LatestTitleYear(java.time.Clock.systemUTC())
 
   /** Project every `movies` row into the read model and prune derived documents no
    *  longer produced. Pure over the repository traits, so `BackfillReadModelSpec`

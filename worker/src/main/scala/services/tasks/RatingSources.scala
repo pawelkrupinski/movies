@@ -3,6 +3,7 @@ package services.tasks
 import models.{Country, MovieRecord}
 import services.enrichment.TmdbLessRatingLinks
 import services.freshness.FreshnessKind
+import services.movies.LatestTitleYear
 
 /**
  * The four rating sources and the single thing that decides whether a row can be
@@ -32,7 +33,7 @@ object RatingSources {
   case class RatingSource(
     taskType: TaskType,
     kind:     FreshnessKind,
-    eligible: MovieRecord => Boolean,
+    eligible: MovieRecord => LatestTitleYear ?=> Boolean,
     // Which countries this source applies in at all — an axis ABOVE per-row
     // `eligible`. Global sources (IMDb/RT/MC) apply everywhere; Filmweb only where
     // `country.filmwebEnabled` (its handler is wired only there).

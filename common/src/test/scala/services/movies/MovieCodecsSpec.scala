@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecClock.given
+
 import models.{CinemaShowing, CurzonCinemaAldgate, Helios, Imdb, Multikino, MovieRecord, Showtime, Source, SourceData, TitleSearch, Tmdb}
 import org.bson.{BsonDocument, BsonDocumentReader, BsonDocumentWriter}
 import org.bson.codecs.{Codec, DecoderContext, EncoderContext}

@@ -10,4 +10,8 @@ object SpecClock {
 
   /** [[Pinned]]'s day — the `today` a scraper spec hands a client whose parse does not depend on it. */
   val PinnedDay: LocalDate = LocalDate.ofInstant(Pinned.instant(), ZoneOffset.UTC)
+
+  /** The latest year a title may name, read off [[Pinned]] — what a spec's title readers and record accessors cap a
+   *  year by. `import tools.SpecClock.given`. */
+  given latestTitleYear: services.movies.LatestTitleYear = services.movies.LatestTitleYear(Pinned)
 }

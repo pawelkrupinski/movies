@@ -4,6 +4,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.MovieRecord
 import java.time.Clock
+import tools.SpecClock.given
 import services.movies.StoredMovieRecord
 
 /**

@@ -1,5 +1,7 @@
 package views
 
+import tools.SpecClock.given
+
 import controllers.TestDebugController
 import models.MovieRecord
 import org.scalatest.BeforeAndAfterAll

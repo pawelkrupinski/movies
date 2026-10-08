@@ -44,7 +44,7 @@ object TitleContainment {
     case _ => whole.startsWith(base, at)
   }
 
-  /** `whole` is a decorated screening of the film titled `base`. */
-  def decorates(base: Seq[String], whole: Seq[String]): Boolean =
-    isTokenRun(base, whole) && !SequelMarker.namesAnotherEntry(base, whole)
+  /** `whole` is a decorated screening of the film titled `base` (`latestYear`: [[LatestTitleYear]]). */
+  def decorates(base: Seq[String], whole: Seq[String], latestYear: Int): Boolean =
+    isTokenRun(base, whole) && !SequelMarker(latestYear).namesAnotherEntry(base, whole)
 }

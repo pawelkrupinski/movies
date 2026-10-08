@@ -1,5 +1,7 @@
 package services.resolution
 
+import tools.SpecClock.given
+
 import models.Source
 import org.scalacheck.Gen
 import services.IdentityPropertySpec

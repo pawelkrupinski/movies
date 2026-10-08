@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecClock.given
+
 import scala.concurrent.duration.DurationInt
 import models.{CinemaCityKinepolis, MovieRecord, Multikino, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec

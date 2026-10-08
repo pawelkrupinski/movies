@@ -143,15 +143,17 @@ case class MovieRecord(
    *  by its LEAST-decorated listing — see [[leastDecorated]]; it used to be whichever
    *  title sorted last, which named rows after promotions. Consumers that need EVERY
    *  slot (the display split, divert) use [[cinemaShowings]]; consumers that only ask
-   *  WHICH venues are present use [[slotCinemas]]. */
-  def cinemaData: Map[Cinema, SourceData] = {
+   *  WHICH venues are present use [[slotCinemas]]. `latestYear` is what tells a sequel's
+   *  number from a year in that decoration test ("Odyssey 2027"), so every accessor built on
+   *  this view takes it from its caller's clock. */
+  def cinemaData(using latestYear: services.movies.LatestTitleYear): Map[Cinema, SourceData] = {
     val byVenue = cinemaShowings.groupMap(_._1)(_._2)
     if (byVenue.valuesIterator.forall(_.lengthIs == 1)) byVenue.view.mapValues(_.head).toMap
     else {
       val venuesPerSpelling = byVenue.valuesIterator
         .flatMap(_.flatMap(_.title).map(services.movies.TitleContainment.tokens).distinct)
         .toSeq.groupMapReduce(identity)(_ => 1)(_ + _)
-      byVenue.view.mapValues(leastDecorated(_, venuesPerSpelling)).toMap
+      byVenue.view.mapValues(leastDecorated(_, venuesPerSpelling, latestYear.value)).toMap
     }
   }
 
@@ -162,10 +164,10 @@ case class MovieRecord(
    *  themselves. Structural rather than rule-driven, so it needs no country's
    *  normalizer. Several slots carrying that one spelling are one listing and settle
    *  field by field (`MovieRecordMerge.mergeSlots`), so no order picks among them. */
-  private def leastDecorated(slots: Seq[SourceData], venuesPerSpelling: Map[Seq[String], Int]): SourceData = {
+  private def leastDecorated(slots: Seq[SourceData], venuesPerSpelling: Map[Seq[String], Int], latestYear: Int): SourceData = {
     val spelled = slots.map(sd => sd -> services.movies.TitleContainment.tokens(sd.title.getOrElse("")))
     val best = spelled.map(_._2).distinct.minBy { tokens =>
-      (spelled.exists { case (_, other) => services.movies.TitleContainment.decorates(other, tokens) },
+      (spelled.exists { case (_, other) => services.movies.TitleContainment.decorates(other, tokens, latestYear) },
        -venuesPerSpelling.getOrElse(tokens, 0), tokens.length, tokens.mkString(" "))
     }
     spelled.collect { case (sd, tokens) if tokens == best => sd } match {
@@ -177,7 +179,7 @@ case class MovieRecord(
   /** What the cinemas published about this film — the only evidence a TMDB
    *  resolution is searched from or judged against. Cinema slots only; see
    *  [[services.resolution.FilmEvidence]] for why the derived slots are excluded. */
-  def evidence: services.resolution.FilmEvidence = services.resolution.FilmEvidence.of(this)
+  def evidence(using services.movies.LatestTitleYear): services.resolution.FilmEvidence = services.resolution.FilmEvidence.of(this)
 
   /** A view of this record restricted to the given cinema SLOT KEYS, keeping
    *  every NON-cinema source (TMDB / IMDb / Filmweb) and their retained synopses
@@ -270,7 +272,7 @@ case class MovieRecord(
    *  that should *not* fall back to TMDB/IMDb (e.g. `cinemaOriginalTitle`,
    *  which is specifically the cinema-reported English title used as a
    *  TMDB-search hint). */
-  private def prioritizedCinema: Seq[(Cinema, SourceData)] =
+  private def prioritizedCinema(using services.movies.LatestTitleYear): Seq[(Cinema, SourceData)] =
     cinemaData.toSeq.sortBy { case (c, _) => (Source.priority.getOrElse(c, Int.MaxValue), c.displayName) }
 
   /** Display title for the row, derived deterministically (no scrape-order
@@ -294,7 +296,7 @@ case class MovieRecord(
    *  ladder is country-specific, and the Twirl templates that render a row have
    *  no given in scope — making it implicit silently broke `web`. */
   def displayTitle(cleanTitle: String, normalizer: services.movies.TitleNormalizer,
-                   extraCinemaTitles: Seq[String] = Nil): String =
+                   extraCinemaTitles: Seq[String] = Nil)(using services.movies.LatestTitleYear): String =
     normalizer.chooseDisplay(
       perCinemaTitles = cinemaData.values.flatMap(_.title).toSeq ++ extraCinemaTitles,
       fallback        = cleanTitle,
@@ -623,7 +625,7 @@ case class MovieRecord(
    *  has its own taxonomy and spelling (TMDB's "Sci-Fi" vs Helios'
    *  "science fiction"); unioning would surface inconsistent labels for the
    *  same concept. The list is taken verbatim from whichever source wins. */
-  def genres: Seq[String] = {
+  def genres(using services.movies.LatestTitleYear): Seq[String] = {
     def slotGenres(s: Source): Seq[String] = data.get(s).map(_.genres).getOrElse(Seq.empty)
     val tmdb    = slotGenres(Tmdb)
     val filmweb = slotGenres(Filmweb)
@@ -638,7 +640,7 @@ case class MovieRecord(
    *  value only if no cinema carries one. Verbatim per source — no cross-scheme
    *  normalisation (a UK "15" and a German "FSK 16" are different labels for
    *  different audiences). */
-  def ageRating: Option[String] =
+  def ageRating(using services.movies.LatestTitleYear): Option[String] =
     prioritizedCinema.iterator.flatMap(_._2.ageRating).find(_.nonEmpty)
       .orElse(data.get(Tmdb).flatMap(_.ageRating))
 
@@ -666,7 +668,7 @@ case class MovieRecord(
    *  Filmweb-only row TMDB never resolved). None when no source supplied one.
    *  Distinct from `originalTitle`, which is TMDB-only and stays that way for
    *  the search/URL fallbacks that rely on it. */
-  def anyOriginalTitle: Option[String] =
+  def anyOriginalTitle(using services.movies.LatestTitleYear): Option[String] =
     originalTitle
       .orElse(data.get(Imdb).flatMap(_.originalTitle))
       .orElse(evidence.originalTitle)
@@ -688,7 +690,7 @@ case class MovieRecord(
    *  title and its original title, so showing it would just repeat the line.
    *  Centralising the "is it redundant?" test here lets every frontend render
    *  the result unconditionally. */
-  def distinctOriginalTitle(displayed: String): Option[String] =
+  def distinctOriginalTitle(displayed: String)(using services.movies.LatestTitleYear): Option[String] =
     anyOriginalTitle.map(_.trim).filter(_.nonEmpty)
       .filterNot(_.equalsIgnoreCase(displayed.trim))
 

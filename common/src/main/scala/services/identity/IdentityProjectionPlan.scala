@@ -1,5 +1,7 @@
 package services.identity
 
+import services.movies.LatestTitleYear
+
 import models.{Cinema, CinemaMovie, CinemaShowing, Filmweb, FilmwebPages, Imdb, MovieRecord, Source, SourceData}
 import services.movies.{CacheKey, CinemaSlotBuilder, FilmId, LeanRecords, ListingKey, ScreeningTokens,
   ShowtimesDigest, StoredMovieRecord, TitleNormalizer}
@@ -131,7 +133,7 @@ object IdentityProjectionPlan {
 
   def draft(listings: Seq[ProjectedListing], resolution: Resolution, stored: Seq[StoredMovieRecord], counters: FilmIdCounters,
             normalizer: TitleNormalizer, slots: CinemaSlotBuilder, tokens: ScreeningTokens, at: Instant,
-            rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]], memo: VenueSlotMemo = VenueSlotMemo.none): ProjectionDraft = {
+            rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]], memo: VenueSlotMemo = VenueSlotMemo.none)(using LatestTitleYear): ProjectionDraft = {
     val whole = index(listings, resolution, stored, counters, normalizer)
     draftOf(whole, whole.everything, normalizer, slots, tokens, at, rowsOf, memo)
   }
@@ -139,7 +141,7 @@ object IdentityProjectionPlan {
   /** What a projection reads off the whole listing set, the resolution and the stored films before it drafts any film:
    *  each a pass over the corpus, made every tick, and what [[ProjectionScope]] closes a tick's changes over. */
   def index(listings: Seq[ProjectedListing], resolution: Resolution, stored: Seq[StoredMovieRecord], counters: FilmIdCounters,
-            normalizer: TitleNormalizer): ProjectionIndex = {
+            normalizer: TitleNormalizer)(using LatestTitleYear): ProjectionIndex = {
     val byKey      = oneByKey(listings)
     val storedById = stored.map(r => r.id.value -> r).toMap
 
@@ -212,7 +214,7 @@ object IdentityProjectionPlan {
   def draftOf(index: ProjectionIndex, scope: ProjectionScope, normalizer: TitleNormalizer, slots: CinemaSlotBuilder,
               tokens: ScreeningTokens, at: Instant, rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]],
               memo: VenueSlotMemo = VenueSlotMemo.none, shapes: FilmShapes = FilmShapes.none,
-              changed: Set[ListingKey] = Set.empty): ProjectionDraft = {
+              changed: Set[ListingKey] = Set.empty)(using LatestTitleYear): ProjectionDraft = {
     import index.{byKey, storedById, covered}
     // Within the scope: its stored films' listings, and its clusters. Everything outside it is a film no change reached,
     // whose draft is the film as stored.
@@ -440,7 +442,7 @@ object IdentityProjectionPlan {
 
   /** Choose every film's title, year and key, and mint the id of every fresh one. `taken` says
    *  whether an id is live already (a fresh id must not be one). */
-  def finish(draft: ProjectionDraft, normalizer: TitleNormalizer, taken: FilmId => Boolean): ProjectionPlan = {
+  def finish(draft: ProjectionDraft, normalizer: TitleNormalizer, taken: FilmId => Boolean)(using LatestTitleYear): ProjectionPlan = {
     val titled = draft.drafts.sortBy(_.counter).map { d =>
       val title = d.record.displayTitle(d.anchor, normalizer)
       (d, title, d.record.resolvedYear)

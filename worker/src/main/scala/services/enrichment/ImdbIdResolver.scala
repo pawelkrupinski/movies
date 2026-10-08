@@ -1,5 +1,7 @@
 package services.enrichment
 
+import services.movies.LatestTitleYear
+
 import play.api.Logging
 import services.Drainable
 import services.events.{DomainEvent, ImdbIdMissing}
@@ -66,7 +68,7 @@ class ImdbIdResolver(
   // (Filmweb's refresh does there), so without it one blip cost the film its IMDb rating for good.
   retries: ScheduledExecutorService = DaemonExecutors.scheduler("imdb-id-retry"),
   random: () => Double = () => scala.util.Random.nextDouble()
-) extends Drainable with Logging {
+)(using LatestTitleYear) extends Drainable with Logging {
   // Fold titles with the rules the corpus was keyed under, not a process default.
   private val normalizer: services.movies.TitleNormalizer = cache.normalizer
 
@@ -166,7 +168,7 @@ class ImdbIdResolver(
     // it the search is yearless, and the lone IMDb film of the bare name binds (It, 2017).
     val reported = record.cinemaData.values.flatMap(_.releaseYear).toSet ++ year
     val years = (if (reported.nonEmpty) reported
-                 else services.movies.EmbeddedYear.ofAll(searchTitle +: record.evidence.titles.toSeq).toSet).toSeq.sorted
+                 else services.movies.EmbeddedYear.ofAll(searchTitle +: record.evidence.titles.toSeq, services.movies.LatestTitleYear.current).toSet).toSeq.sorted
     val yearSeq = if (years.isEmpty) Seq(year) else years.map(Option(_))
     // Each rung is asked in turn and the first id wins; a rung whose source FAILED does not
     // stop the ones after it, but if none answers the failure is thrown, not booked as

@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecClock.given
+
 import controllers.{FilmSchedule, MovieControllerService}
 import models.{City, MovieRecord}
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -22,7 +24,7 @@ object ScheduleCorpusText {
    *  Read from the REPOSITORY (its showtimes are authoritative — stitched from `screenings`
    *  under the read-split), NOT `movieCache.snapshot()`, whose resident records are stripped
    *  of showtime lists (index-only cache). */
-  def recordsByFilmId(wiring: FixtureTestWiring): Map[String, MovieRecord] =
+  def recordsByFilmId(wiring: FixtureTestWiring)(using LatestTitleYear): Map[String, MovieRecord] =
     wiring.movieRepository.findAll().flatMap { r =>
       services.readmodel.ReadModelProjection.filmIds(r, titleNormalizer).map(_ -> r.record)
     }.toMap
@@ -37,7 +39,7 @@ object ScheduleCorpusText {
   def render(schedules: Seq[FilmSchedule], recordFor: FilmSchedule => Option[MovieRecord]): String =
     schedules.sortBy(s => (s.movie.title.toLowerCase(Locale.ROOT), s.movie.releaseYear)).map(renderOne(_, recordFor)).mkString("\n\n")
 
-  private def renderOne(s: FilmSchedule, recordFor: FilmSchedule => Option[MovieRecord]): String = {
+  private def renderOne(s: FilmSchedule, recordFor: FilmSchedule => Option[MovieRecord])(using LatestTitleYear): String = {
     val e = recordFor(s)
     val cinemaUrls = s.cinemaFilmUrls.sortBy(_._1.displayName)
       .map { case (c, u) => s"${c.displayName} = $u" }

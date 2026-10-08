@@ -1,5 +1,7 @@
 package controllers
 
+import tools.SpecClock.given
+
 import tools.SpecTimeouts
 
 import services.movies.SingleCountryNormalizer.titleNormalizer

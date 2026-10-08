@@ -44,6 +44,8 @@ class InMemoryMovieRepository(
   // from the wall clock — injected so a spec about AGES can move time by hand.
   clock: java.time.Clock = java.time.Clock.systemUTC()
 ) extends MovieRepository with KeyAddressedMovieWrites {
+  // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
+  private given LatestTitleYear = LatestTitleYear(clock)
   // Fold titles with the rules the corpus was keyed under, not a process default.
 
   override def hasScreenings: Boolean = screenings.isDefined

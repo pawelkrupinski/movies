@@ -1,5 +1,7 @@
 package services.readmodel
 
+import services.movies.LatestTitleYear
+
 import models.{CityScreening, ResolvedMovie}
 import play.api.Logging
 import services.Stoppable
@@ -84,6 +86,8 @@ class ReadModelProjector(
   // (see [[BootCorpusStudy]]). Without one, they read the corpus themselves.
   bootStudy: Option[BootCorpusStudy] = None
 ) extends Stoppable with Logging {
+  // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
+  private given LatestTitleYear = LatestTitleYear(clock)
   // The projection keys rows by the repository's own `_id` formula, so it must
   // fold titles with the same rules the repository writes under — take them from
   // it rather than accepting a second, separately-wired copy that could disagree.
@@ -1493,7 +1497,7 @@ private[readmodel] final case class Lesson(anchorKey: String, cardByGroup: Map[S
 private[readmodel] object Lesson {
   final case class Venue(id: String, output: Int, input: Int)
 
-  def of(partition: ReadModelProjection.Partition): Lesson = {
+  def of(partition: ReadModelProjection.Partition)(using LatestTitleYear): Lesson = {
     val cards = partition.filmIds.zip(partition.venuesAll)
     Lesson(partition.anchorKey, partition.cardByGroup,
       cards.map { case (card, venues) => card -> venues.map(venue => Venue(venue._id, venue.screening.##, venue.inputHash)) },
@@ -1520,7 +1524,7 @@ private[readmodel] final case class CardHash(parts: Map[String, Int]) {
 
 private[readmodel] object CardHash {
   import ReadModelProjectionMetrics.CardPart
-  def of(m: ResolvedMovie): CardHash = CardHash(Map(
+  def of(m: ResolvedMovie)(using LatestTitleYear): CardHash = CardHash(Map(
     CardPart.Title          -> (m.title, m.originalTitle).##,
     CardPart.Poster         -> (m.posterUrl, m.fallbackPosterUrls).##,
     CardPart.Facts          -> (m.runtimeMinutes, m.releaseYear, m.genres, m.countries, m.directors, m.cast).##,

@@ -1,5 +1,7 @@
 package services.enrichment
 
+import tools.SpecClock.given
+
 import clients.TmdbClient
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec

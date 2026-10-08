@@ -1,5 +1,7 @@
 package services.identity
 
+import services.movies.LatestTitleYear
+
 import models.{Cinema, CinemaMovie, CinemaShowing, Source, SourceData}
 import services.movies.{CinemaSlotBuilder, ListingConstraints, ListingKey, MovieRecordMerge, ScrapeListing, ScreeningTokens, ShowtimesDigest, StoredMovieRecord,
   TitleNormalizer, VenuePageFacts}
@@ -216,7 +218,7 @@ private[identity] object VenueSlots {
    *  representative listing's previous film held there. */
   private[identity] def buildVenue(cinema: Cinema, keys: Seq[ListingKey], byKey: VenueRows, previousOf: Map[ListingKey, PipelineFilmRef],
                          storedById: Map[String, StoredMovieRecord], normalizer: TitleNormalizer, slots: CinemaSlotBuilder,
-                         tokens: ScreeningTokens): Seq[(Source, SourceData)] = {
+                         tokens: ScreeningTokens)(using LatestTitleYear): Seq[(Source, SourceData)] = {
     val rows     = keys.flatMap(key => byKey.get(key).map(merged(cinema, _, normalizer)))
     val apart    = filmPages(cinema, rows, normalizer, slots.pages)
     val pageOf: CinemaMovie => Option[String] = cm => cm.filmUrl.map(_.trim).filter(apart)

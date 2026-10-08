@@ -1,5 +1,7 @@
 package services.metrics
 
+import tools.SpecClock.given
+
 import io.prometheus.metrics.core.metrics.Gauge
 import models.{City, MovieRecord}
 import play.api.Logging

@@ -1,5 +1,7 @@
 package views
 
+import tools.SpecClock.given
+
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import testsupport.TestMessages.given
@@ -320,12 +322,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // the other adds a SHOWTIME to an existing slot — a real change that leaves
       // the light data row byte-identical (same cinema count, same ids), so only
       // the details digest can tell the two apart.
-      slotsUnchangedFrame = views.html._debugRow(slotsRow, titleNormalizer).body
+      slotsUnchangedFrame = views.html._debugRow(slotsRow, titleNormalizer, tools.SpecClock.latestTitleYear).body
       slotsChangedFrame = views.html._debugRow(slotsRow.copy(record = slotsRow.record.copy(
         data = slotsRow.record.data.map { case (showing, source) =>
           showing -> source.copy(showtimes = Seq(
             Showtime(LocalDateTime.of(2026, 6, 8, 18, 30), bookingUrl = Some("https://example.test/book"))))
-        })), titleNormalizer).body
+        })), titleNormalizer, tools.SpecClock.latestTitleYear).body
       // Pages are served under `/{city}/…` (production hard-cut). `onPath`
       // prepends the prefix, so strip it here, then match the in-city sub-path.
       def sub(p: String): String = p.stripPrefix(cityPrefix)
@@ -378,7 +380,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case p if p.startsWith("/debug/details?") =>
             val id = java.net.URLDecoder.decode(p.split("id=", 2).lift(1).getOrElse(""), "UTF-8")
             (debugRows :+ slotsRow).find(r => r.id.value == id)
-              .map(r => views.html.debugDetails(r.title, r.year, r.record, titleNormalizer, Map.empty[String, String]).body)
+              .map(r => views.html.debugDetails(r.title, r.year, r.record, titleNormalizer, Map.empty[String, String], latestYear = tools.SpecClock.latestTitleYear).body)
               .getOrElse("")
         },
         dynamicRoute = hiddenFilmsDynamicRoute

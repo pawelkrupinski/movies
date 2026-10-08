@@ -23,7 +23,8 @@ package services.movies
  *     it is read: "It (1990)" and "It (2017)" both sanitize to `it`.
  *
  *  Abstains (returns None) when there's no delimited year, when it's outside the
- *  plausible film range [1888, maxYear], or when SEVERAL distinct years appear
+ *  plausible film range [1888, maxYear] (`maxYear`: the caller's [[LatestTitleYear]], or
+ *  `Int.MaxValue` for no cap), or when SEVERAL distinct years appear
  *  across the given titles (ambiguous). A wrong/absent year then costs at most a
  *  MISS, never a mis-key or mis-resolve.
  *
@@ -40,15 +41,12 @@ object EmbeddedYear {
 
   private val FirstFilmYear = 1888
 
-  /** Varargs convenience for the common "scan these few title spellings" call. */
-  def of(titles: String*): Option[Int] = ofAll(titles)
-
   /** Every spelling a row's slots carry — the raw scraped title and the cleaned one —
    *  which is where a bracketed year survives once the key has stripped it. */
   def slotTitles(record: models.MovieRecord): Iterable[String] =
     record.data.values.flatMap(sd => sd.rawTitle ++ sd.title)
 
-  def ofAll(titles: Iterable[String], maxYear: Int = LatestTitleYear.of(java.time.Clock.systemUTC())): Option[Int] = {
+  def ofAll(titles: Iterable[String], maxYear: Int): Option[Int] = {
     val years = titles.iterator
       .flatMap(Delimited.findAllMatchIn)
       .map(m => (1 to m.groupCount).iterator.flatMap(i => Option(m.group(i))).next().toInt)

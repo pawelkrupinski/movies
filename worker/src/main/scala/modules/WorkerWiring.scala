@@ -326,6 +326,10 @@ class WorkerWiring(
    *  across arrival orders. */
   lazy val clock: java.time.Clock = java.time.Clock.systemUTC()
 
+  /** The latest year a title may name, read off [[clock]] at each ask: what every title reader this wiring builds
+   *  (and the record accessors they reach) caps a year by. */
+  given latestTitleYear: services.movies.LatestTitleYear = services.movies.LatestTitleYear(clock)
+
   // ── Shared due schedules (eager) ──────────────────────────────────────────
   // The per-venue cadence override `scrapeDueWindow` reads and `ScrapeFreshnessPolicy`
   // writes after every landed scrape — see `VenueScrapeCadence`. Country-scoped

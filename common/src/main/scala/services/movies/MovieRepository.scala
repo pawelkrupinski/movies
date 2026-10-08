@@ -37,7 +37,7 @@ case class StoredMovieRecord(title: String, year: Option[Int], record: MovieReco
   /** This row as a read of it back from the store would give it ([[StoredMovieRecord.fromStorage]]): titled with the
    *  display title its record votes for under its stored key. A row the cache holds keeps the title it was keyed under,
    *  which its record's later slots can outvote — and the read model titles, and splits, the row the store gives. */
-  def asReadBack(normalizer: TitleNormalizer): StoredMovieRecord =
+  def asReadBack(normalizer: TitleNormalizer)(using LatestTitleYear): StoredMovieRecord =
     storedKey.fold(this)(key => StoredMovieRecord.fromStorage(id.value, Some(key), record, normalizer))
 }
 
@@ -60,7 +60,7 @@ object StoredMovieRecord {
     s"${k.normalized}|${k.year.map(_.toString).getOrElse("")}"
 
   /** A document with no `key` field — written before ids existed, its `_id` is its key. */
-  def fromStorage(id: String, record: MovieRecord, normalizer: TitleNormalizer): StoredMovieRecord =
+  def fromStorage(id: String, record: MovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): StoredMovieRecord =
     fromStorage(id, None, record, normalizer)
 
   /** Rebuild a stored row from its persisted `_id`, its `key` field (absent on a
@@ -79,7 +79,7 @@ object StoredMovieRecord {
    *  the state `MovieCodecs.toDomain` decodes into now that the slots live in
    *  `movie_slots`, which is why `MongoMovieRepository.stitchSlots` calls this again
    *  once the record is whole. */
-  def fromStorage(id: String, key: Option[String], record: MovieRecord, normalizer: TitleNormalizer): StoredMovieRecord = {
+  def fromStorage(id: String, key: Option[String], record: MovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): StoredMovieRecord = {
     val k        = key.getOrElse(id)
     val sep      = k.lastIndexOf('|')
     val idPrefix = if (sep >= 0) k.substring(0, sep) else k
@@ -575,6 +575,8 @@ class MongoMovieRepository(
   // read model's skipped documents. Noop for scripts/web/tests.
   decodeFailures: services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop
 ) extends MovieRepository with KeyAddressedMovieWrites with Logging {
+  // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
+  private given LatestTitleYear = LatestTitleYear(clock)
   /** Every `updatedAt` this store writes: strictly increasing within the process, so the stamp
    *  is a version the dotted-replace guard can trust (two writes in one millisecond no longer
    *  share one) and a cursor the catch-up can trust (its floor is a stamp from this same

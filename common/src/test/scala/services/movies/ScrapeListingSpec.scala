@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecClock.given
+
 import models.{CinemaMovie, Helios, KinoApollo, KinoMuza, Movie, Multikino, Rialto, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

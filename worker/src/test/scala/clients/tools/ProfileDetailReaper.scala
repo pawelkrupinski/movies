@@ -1,5 +1,8 @@
 package clients.tools
 
+import services.movies.LatestTitleYear
+
+
 import models.{MovieRecord, Source}
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, ObservableFuture}
 import services.movies.{MovieCodecs, StoredMovieDto, StoredMovieRecord}
@@ -34,7 +37,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  *   . scripts/local-mirror/prod-tunnel.sh && ensure_prod_tunnel   # ssh forward to mongo-1
  *   MONGODB_DB=kinowo_uk sbt 'worker/Test/runMain clients.tools.ProfileDetailReaper'
  *
- * `def main`, not `extends App` — an `App` body runs inside `<clinit>`, so a
+ * `def main(using LatestTitleYear)`, not `extends App` — an `App` body runs inside `<clinit>`, so a
  * connect timeout surfaces as `ExceptionInInitializerError` with the real cause
  * buried (and fires a fatal Sentry event through Play's logback appender).
  */
@@ -52,7 +55,7 @@ object ProfileDetailReaper {
     last
   }
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String])(using LatestTitleYear): Unit = {
     val mongo  = ToolMongoAddress.orExit(_root_.settings.ProcessConfiguration.resolve())
     val dbName = mongo.database.value
     println(s"\nProfileDetailReaper → $dbName\n")

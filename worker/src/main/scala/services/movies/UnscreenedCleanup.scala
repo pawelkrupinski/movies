@@ -72,7 +72,7 @@ class UnscreenedCleanup(
   cache:      MovieCache,
   repository: MovieRepository,
   scheduler:  ScheduledExecutorService = DaemonExecutors.scheduler("unscreened-cleanup")
-) extends Stoppable with Logging {
+)(using LatestTitleYear) extends Stoppable with Logging {
   // Fold titles with the rules the corpus was keyed under, not a process default.
   private val normalizer: services.movies.TitleNormalizer = cache.normalizer
 

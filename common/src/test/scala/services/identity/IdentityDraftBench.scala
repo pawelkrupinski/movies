@@ -1,5 +1,7 @@
 package services.identity
 
+import tools.SpecClock.given
+
 import models.{Cinema, CinemaMovie, Country, Movie, Showtime, UsCinema}
 import services.movies.{CinemaSlotBuilder, ListingKey, ScreeningTokens, SingleCountryNormalizer, StoredMovieRecord, StringPool}
 

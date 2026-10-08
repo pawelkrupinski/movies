@@ -51,7 +51,7 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
   "A detail tick" should "derive again only the films whose cached record changed" in {
     var derived = 0
     val counting = new DetailPages {
-      def of(key: CacheKey, record: MovieRecord, enrichersByCinema: Map[Cinema, Seq[DetailEnricher]]) = {
+      def of(key: CacheKey, record: MovieRecord, enrichersByCinema: Map[Cinema, Seq[DetailEnricher]])(using services.movies.LatestTitleYear) = {
         derived += 1; DetailPages.PerVenue.of(key, record, enrichersByCinema)
       }
     }

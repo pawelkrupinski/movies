@@ -1,5 +1,7 @@
 package views
 
+import tools.SpecClock.given
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -42,7 +44,7 @@ class DebugViewPerTitleSlotSpec extends AnyFlatSpec with Matchers {
     SourceData(title = Some(title), showtimes = Seq(Showtime(now.plusHours(2), None, None, Nil)))
 
   private def detailsOf(data: Map[Source, SourceData]): String =
-    views.html.debugDetails(polishTitle, Some(2024), MovieRecord(data = data), titleNormalizer).body
+    views.html.debugDetails(polishTitle, Some(2024), MovieRecord(data = data), titleNormalizer, latestYear = tools.SpecClock.latestTitleYear).body
 
   "debugDetails" should "render a cinema slot keyed by CinemaShowing (the production shape)" in {
     val html = detailsOf(Map[Source, SourceData](original -> slot(originalTitle)))

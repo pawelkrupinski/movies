@@ -1,5 +1,7 @@
 package services.enrichment
 
+import tools.SpecClock.given
+
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

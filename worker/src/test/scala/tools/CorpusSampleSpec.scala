@@ -1,5 +1,7 @@
 package tools
 
+import tools.SpecClock.given
+
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

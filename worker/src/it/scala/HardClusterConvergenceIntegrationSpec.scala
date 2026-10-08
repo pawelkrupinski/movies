@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecClock.given
+
 import tools.SpecTimeouts
 
 import models.Country

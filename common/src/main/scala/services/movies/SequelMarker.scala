@@ -29,43 +29,16 @@ package services.movies
  * Catching Fire"): their subtitles are listed in `KnownFranchiseSubtitles`, and two
  * titles naming different entries of one are siblings even when neither contains the
  * other (`curatedSiblings`).
+ *
+ * Whether a four-digit token is a year depends on `latestYear`, the latest release
+ * year a title may name ([[LatestTitleYear]]), which each caller reads off its own clock.
  */
-object SequelMarker {
-
-  private val PartMarkers: Set[String] =
-    Set("part", "pt", "chapter", "chap", "vol", "volume", "episode", "ep",
-        "czesc", "cz", "teil", "parte", "capitulo", "kapitel", "partie")
-
-  private val Roman = "^(ii|iii|iv|v|vi|vii|viii|ix|x|xi|xii)$".r
-
-  private val RomanValues: Map[String, Int] =
-    Map("ii" -> 2, "iii" -> 3, "iv" -> 4, "v" -> 5, "vi" -> 6, "vii" -> 7,
-        "viii" -> 8, "ix" -> 9, "x" -> 10, "xi" -> 11, "xii" -> 12)
-
-  /** Spelled-out ordinals, English and the catalogue's other languages, sanitized
-   *  (no diacritics) the way `TitleContainment.tokens` hands them over. */
-  private val WordOrdinals: Set[String] =
-    Set("one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
-        "second", "third", "fourth", "fifth",
-        "druga", "trzecia", "czwarta", "piata", "drugi", "trzeci", "czwarty",
-        "zwei", "drei", "vier", "zweiter", "dritter",
-        "dos", "tres", "cuatro", "segunda", "tercera")
-
-  /** The number each spelled-out ordinal above names, so a comparison across
-   *  languages ("Part Two" vs "Część druga") and across notations (below) means
-   *  the same thing as comparing the digits. */
-  private val WordOrdinalValues: Map[String, Int] =
-    Map("one" -> 1, "two" -> 2, "three" -> 3, "four" -> 4, "five" -> 5,
-        "six" -> 6, "seven" -> 7, "eight" -> 8, "nine" -> 9, "ten" -> 10,
-        "second" -> 2, "third" -> 3, "fourth" -> 4, "fifth" -> 5,
-        "druga" -> 2, "trzecia" -> 3, "czwarta" -> 4, "piata" -> 5,
-        "drugi" -> 2, "trzeci" -> 3, "czwarty" -> 4,
-        "zwei" -> 2, "drei" -> 3, "vier" -> 4, "zweiter" -> 2, "dritter" -> 3,
-        "dos" -> 2, "tres" -> 3, "cuatro" -> 4, "segunda" -> 2, "tercera" -> 3)
+final class SequelMarker(latestYear: Int) {
+  import SequelMarker.*
 
   /** A plausible release year is a year, never an ordinal. */
   private def isYear(t: String): Boolean =
-    t.length == 4 && t.forall(_.isDigit) && { val y = t.toInt; y >= 1888 && y <= LatestTitleYear.of(java.time.Clock.systemUTC()) }
+    t.length == 4 && t.forall(_.isDigit) && { val y = t.toInt; y >= 1888 && y <= latestYear }
 
   private def isOrdinal(t: String): Boolean =
     (t.nonEmpty && t.forall(_.isDigit) && !isYear(t) && t.toIntOption.isDefined) || Roman.matches(t)
@@ -80,56 +53,6 @@ object SequelMarker {
     // instalment, and `toInt` threw out of every comparison that met it.
     if (t.nonEmpty && t.forall(_.isDigit) && !isYear(t)) t.toIntOption
     else RomanValues.get(t).orElse(WordOrdinalValues.get(t))
-
-  /** Sequels that don't NUMBER themselves — a subtitle change instead of an
-   *  ordinal/part-marker, so neither `ordinalRightAfterBase` nor
-   *  `partThenOrdinal` below can see them. The pattern (base is a token-run
-   *  PREFIX, extras are ordinary words) is indistinguishable in general from a
-   *  genuine prefix-anchored decoration — `"Casablanca 1942"` and
-   *  `"Ojczyzna - pokaz przedpremierowy"` are both PREFIX-shaped and both fold
-   *  correctly (`SequelMarkerSpec`), so widening the ordinal check to "any
-   *  trailing words" would break them. A curated, per-franchise list — same
-   *  idiom as `ExtraTitleRules`' curated banner exceptions — is the only safe
-   *  way to name the ones that AREN'T decorations, evidenced as they're found.
-   *
-   *  UK convergence, 2026-09-16: "The Hunger Games" (the resolved 2012
-   *  original) swallowed "The Hunger Games: Catching Fire" via the containment
-   *  edge — Catching Fire carries no ordinal, so the existing guard let it
-   *  through, and the ORDER two settle passes discovered the row in decided
-   *  whether Catching Fire's screenings folded onto the original or stayed
-   *  their own row. "The Ballad of Songbirds and Snakes" (2023) is the same
-   *  franchise's other non-ordinal entry — added alongside since it fits the
-   *  identical shape, though not itself confirmed in a corpus yet. */
-  private val KnownFranchiseSubtitles: Map[Seq[String], Set[Seq[String]]] = Map(
-    Seq("the", "hunger", "games") -> Set(
-      Seq("catching", "fire"),
-      Seq("the", "ballad", "of", "songbirds", "and", "snakes"),
-      Seq("the", "ballad", "of", "songbirds", "snakes"),
-      // UK convergence, 2026-09-15→17: a newly-trending, not-yet-released entry
-      // in the SAME franchise ("Sunrise on the Reaping", 2026-11-18, also
-      // Francis Lawrence) shares nothing with "Catching Fire"/"Mockingjay - Part
-      // 1"/"Part 2" but the "the hunger games" prefix — so a bare, undated
-      // rerelease listing (Odeon's rerelease-season pages stamp every title with
-      // the season's current year, exactly the "Catching Fire" 2013 vs the
-      // resolved cluster's own trap `437d1fa21` already names) let
-      // the since-deleted `TmdbCandidateSearch.directorWalk`'s year-pinned tier resolve straight to
-      // it: nothing here previously told `isDifferentInstalment` this was a
-      // DIFFERENT entry rather than the same one under an unfamiliar subtitle,
-      // so `corroboratedByTitle`'s "shares Hunger/Games with the query" was
-      // enough on its own. Curating it closes the same gap `catching fire` and
-      // `the ballad of songbirds and snakes` were added for.
-      Seq("sunrise", "on", "the", "reaping")
-    ),
-    // US prod, 2026-09-16: "Bring It On: All or Nothing" (2006, dir. Steve
-    // Rash) folded onto the resolved "Bring It On" (2000, dir. Peyton Reed)
-    // the same way — a franchise entry that renames itself instead of
-    // numbering itself. Found via a `CinemaCorroboration` director
-    // contradiction, not a re-key log; fixed by hand on the one row, added
-    // here so the containment edge refuses it on its own next time.
-    Seq("bring", "it", "on") -> Set(
-      Seq("all", "or", "nothing")
-    )
-  )
 
   /** True when `whole` (an edition's tokens, which contain `base`'s tokens as a
    *  prefix or suffix run) names a different film in `base`'s series. */
@@ -310,4 +233,89 @@ object SequelMarker {
       }
     else if (a.length < b.length) namesAnotherEntry(a, b)
     else namesAnotherEntry(b, a)
+}
+
+object SequelMarker {
+
+  private val PartMarkers: Set[String] =
+    Set("part", "pt", "chapter", "chap", "vol", "volume", "episode", "ep",
+        "czesc", "cz", "teil", "parte", "capitulo", "kapitel", "partie")
+
+  private val Roman = "^(ii|iii|iv|v|vi|vii|viii|ix|x|xi|xii)$".r
+
+  private val RomanValues: Map[String, Int] =
+    Map("ii" -> 2, "iii" -> 3, "iv" -> 4, "v" -> 5, "vi" -> 6, "vii" -> 7,
+        "viii" -> 8, "ix" -> 9, "x" -> 10, "xi" -> 11, "xii" -> 12)
+
+  /** Spelled-out ordinals, English and the catalogue's other languages, sanitized
+   *  (no diacritics) the way `TitleContainment.tokens` hands them over. */
+  private val WordOrdinals: Set[String] =
+    Set("one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+        "second", "third", "fourth", "fifth",
+        "druga", "trzecia", "czwarta", "piata", "drugi", "trzeci", "czwarty",
+        "zwei", "drei", "vier", "zweiter", "dritter",
+        "dos", "tres", "cuatro", "segunda", "tercera")
+
+  /** The number each spelled-out ordinal above names, so a comparison across
+   *  languages ("Part Two" vs "Część druga") and across notations (below) means
+   *  the same thing as comparing the digits. */
+  private val WordOrdinalValues: Map[String, Int] =
+    Map("one" -> 1, "two" -> 2, "three" -> 3, "four" -> 4, "five" -> 5,
+        "six" -> 6, "seven" -> 7, "eight" -> 8, "nine" -> 9, "ten" -> 10,
+        "second" -> 2, "third" -> 3, "fourth" -> 4, "fifth" -> 5,
+        "druga" -> 2, "trzecia" -> 3, "czwarta" -> 4, "piata" -> 5,
+        "drugi" -> 2, "trzeci" -> 3, "czwarty" -> 4,
+        "zwei" -> 2, "drei" -> 3, "vier" -> 4, "zweiter" -> 2, "dritter" -> 3,
+        "dos" -> 2, "tres" -> 3, "cuatro" -> 4, "segunda" -> 2, "tercera" -> 3)
+
+  /** Sequels that don't NUMBER themselves — a subtitle change instead of an
+   *  ordinal/part-marker, so neither `ordinalRightAfterBase` nor
+   *  `partThenOrdinal` below can see them. The pattern (base is a token-run
+   *  PREFIX, extras are ordinary words) is indistinguishable in general from a
+   *  genuine prefix-anchored decoration — `"Casablanca 1942"` and
+   *  `"Ojczyzna - pokaz przedpremierowy"` are both PREFIX-shaped and both fold
+   *  correctly (`SequelMarkerSpec`), so widening the ordinal check to "any
+   *  trailing words" would break them. A curated, per-franchise list — same
+   *  idiom as `ExtraTitleRules`' curated banner exceptions — is the only safe
+   *  way to name the ones that AREN'T decorations, evidenced as they're found.
+   *
+   *  UK convergence, 2026-09-16: "The Hunger Games" (the resolved 2012
+   *  original) swallowed "The Hunger Games: Catching Fire" via the containment
+   *  edge — Catching Fire carries no ordinal, so the existing guard let it
+   *  through, and the ORDER two settle passes discovered the row in decided
+   *  whether Catching Fire's screenings folded onto the original or stayed
+   *  their own row. "The Ballad of Songbirds and Snakes" (2023) is the same
+   *  franchise's other non-ordinal entry — added alongside since it fits the
+   *  identical shape, though not itself confirmed in a corpus yet. */
+  private val KnownFranchiseSubtitles: Map[Seq[String], Set[Seq[String]]] = Map(
+    Seq("the", "hunger", "games") -> Set(
+      Seq("catching", "fire"),
+      Seq("the", "ballad", "of", "songbirds", "and", "snakes"),
+      Seq("the", "ballad", "of", "songbirds", "snakes"),
+      // UK convergence, 2026-09-15→17: a newly-trending, not-yet-released entry
+      // in the SAME franchise ("Sunrise on the Reaping", 2026-11-18, also
+      // Francis Lawrence) shares nothing with "Catching Fire"/"Mockingjay - Part
+      // 1"/"Part 2" but the "the hunger games" prefix — so a bare, undated
+      // rerelease listing (Odeon's rerelease-season pages stamp every title with
+      // the season's current year, exactly the "Catching Fire" 2013 vs the
+      // resolved cluster's own trap `437d1fa21` already names) let
+      // the since-deleted `TmdbCandidateSearch.directorWalk`'s year-pinned tier resolve straight to
+      // it: nothing here previously told `isDifferentInstalment` this was a
+      // DIFFERENT entry rather than the same one under an unfamiliar subtitle,
+      // so `corroboratedByTitle`'s "shares Hunger/Games with the query" was
+      // enough on its own. Curating it closes the same gap `catching fire` and
+      // `the ballad of songbirds and snakes` were added for.
+      Seq("sunrise", "on", "the", "reaping")
+    ),
+    // US prod, 2026-09-16: "Bring It On: All or Nothing" (2006, dir. Steve
+    // Rash) folded onto the resolved "Bring It On" (2000, dir. Peyton Reed)
+    // the same way — a franchise entry that renames itself instead of
+    // numbering itself. Found via a `CinemaCorroboration` director
+    // contradiction, not a re-key log; fixed by hand on the one row, added
+    // here so the containment edge refuses it on its own next time.
+    Seq("bring", "it", "on") -> Set(
+      Seq("all", "or", "nothing")
+    )
+  )
+
 }

@@ -1,5 +1,7 @@
 package services.identity
 
+import services.movies.LatestTitleYear
+
 import java.util.Locale
 import scala.util.chaining.scalaUtilChainingOps
 
@@ -129,6 +131,8 @@ final class IdentityProjection(
    *  when there is no last projection to tell by). */
   agreement:   (Resolution, ListingKey => Option[Listing], Option[Seq[ListingKey]]) => Resolution = (resolution, _, _) => resolution
 ) extends Logging {
+  // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
+  private given LatestTitleYear = LatestTitleYear(clock)
 
   private val mapping = new FilmIdMapping(filmIds)
   private var consecutiveShrinks = 0

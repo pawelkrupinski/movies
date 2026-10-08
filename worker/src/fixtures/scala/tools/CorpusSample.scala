@@ -1,6 +1,6 @@
 package tools
 
-import services.movies.TitleNormalizer
+import services.movies.{LatestTitleYear, TitleNormalizer}
 import services.scrapes.ArchivedScrape
 
 import scala.util.Random
@@ -96,7 +96,7 @@ object CorpusSample {
    * choices, so a seed reproduces the sample exactly.
    */
   def draw(rows: Seq[ArchivedScrape], size: Int, random: Random, normalizer: TitleNormalizer,
-           maxVenuesPerFilm: Int = MaxVenuesPerFilm): Seq[ArchivedScrape] =
+           maxVenuesPerFilm: Int = MaxVenuesPerFilm)(using LatestTitleYear): Seq[ArchivedScrape] =
     capVenues(trim(rows, withSpellings(rows, pick(rows, size, random, normalizer), normalizer), normalizer),
       maxVenuesPerFilm, random, normalizer)
 
@@ -112,12 +112,12 @@ object CorpusSample {
    * their bare titles and sat eight films under production on tmdbId with no code at
    * fault. One step, not a closure: the sample stays about `size` films.
    */
-  private[tools] def withSpellings(rows: Seq[ArchivedScrape], keys: Set[String], normalizer: TitleNormalizer): Set[String] = {
+  private[tools] def withSpellings(rows: Seq[ArchivedScrape], keys: Set[String], normalizer: TitleNormalizer)(using LatestTitleYear): Set[String] = {
     import services.movies.TitleContainment.{decorates, tokens}
     val tokensOf = rows.flatMap(_.films).map(film => keyOf(film, normalizer) -> tokens(film.movie.title))
       .filter(_._1.nonEmpty).distinct
     val drawn = tokensOf.filter((key, _) => keys.contains(key)).map(_._2)
-    keys ++ tokensOf.collect { case (key, t) if drawn.exists(d => decorates(d, t) || decorates(t, d)) => key }
+    keys ++ tokensOf.collect { case (key, t) if drawn.exists(d => decorates(d, t, LatestTitleYear.current) || decorates(t, d, LatestTitleYear.current)) => key }
   }
 
   /**

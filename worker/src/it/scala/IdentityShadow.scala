@@ -1,5 +1,7 @@
 package integration
 
+import tools.SpecClock.given
+
 import models.{Country, SourceData, Tmdb}
 import services.identity._
 import services.movies.{ListingKey, TitleNormalizer}

@@ -13,7 +13,7 @@
  * expand. Rendering every row's breakdown up front built one giant HTML string
  * that OOM'd the view on the full corpus.
  *@
-@(row: StoredMovieRecord, normalizer: services.movies.TitleNormalizer)(implicit city: models.City)
+@(row: StoredMovieRecord, normalizer: services.movies.TitleNormalizer, latestYear: services.movies.LatestTitleYear)(implicit city: models.City)
 @defining(row.id.value) { id =>
 @defining(row.title) { title =>
 @defining(row.year)  { year =>
@@ -36,12 +36,12 @@
        never match a `data-key="imdbR"`, so that column never actually sorted. *@
     data-rating="@{f"${e.weightedRating}%.3f"}"
     data-urls="@{Seq(e.metacriticUrl, e.rottenTomatoesUrl, e.filmwebUrl).flatten.mkString(" ")}"
-    data-cinemas="@e.cinemaData.size">
+    data-cinemas="@e.cinemaData(using latestYear).size">
   @* The debug table is the global corpus, but /movie is city-scoped — link
      into a city the film actually plays in, not this page's own city
      (which would 404 for any out-of-city row). Falls back to the page
      city for a stored row with no live showtimes anywhere. *@
-  <td class="title"><a href="@FilmHref(e.displayTitle(title, normalizer), e.cities.headOption.getOrElse(city))">@title</a></td>
+  <td class="title"><a href="@FilmHref(e.displayTitle(title, normalizer)(using latestYear), e.cities.headOption.getOrElse(city))">@title</a></td>
   <td class="orig">@if(orig.nonEmpty) { @orig } else { <span class="miss">—</span> }</td>
   <td class="year">@e.releaseYear.map(_.toString).getOrElse("—")</td>
   @* How many distinct cinemas currently screen this title (TMDB/IMDb slots
@@ -52,7 +52,7 @@
      count exceeds the cinema count we show it in parens so the per-title split
      is visible without expanding the row. The sort key (`data-cinemas`) stays
      the distinct-cinema count. *@
-  <td class="cinemas">@e.cinemaData.size@if(e.cinemaSlots.size > e.cinemaData.size) { <span class="slots" title="per-title slots">(@e.cinemaSlots.size)</span> }</td>
+  <td class="cinemas">@e.cinemaData(using latestYear).size@if(e.cinemaSlots.size > e.cinemaData(using latestYear).size) { <span class="slots" title="per-title slots">(@e.cinemaSlots.size)</span> }</td>
   <td class="id">
     @e.imdbId match {
       case Some(id) => { <a href="@{s"https://www.imdb.com/title/$id/"}" target="_blank" rel="noopener">@id</a> }

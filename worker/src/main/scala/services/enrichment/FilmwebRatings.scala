@@ -2,7 +2,7 @@ package services.enrichment
 
 import clients.TmdbClient
 import models.{Filmweb, MovieRecord, Source, SourceData}
-import services.movies.{CacheKey, EmbeddedYear, MovieCache}
+import services.movies.{CacheKey, EmbeddedYear, LatestTitleYear, MovieCache}
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import services.tasks.BulkRefreshResult
 
@@ -45,7 +45,7 @@ class FilmwebRatings(
   // Args: (title, year, searchTitle) matching ImdbIdMissing. No-op by default.
   onImdbIdMissing: (String, Option[Int], String) => Unit = (_, _, _) => (),
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
-) extends CacheRefresher(cache, cadenceRecorder) {
+)(using LatestTitleYear) extends CacheRefresher(cache, cadenceRecorder) {
 
   override protected def sourceName: String = "Filmweb"
 
@@ -251,7 +251,7 @@ class FilmwebRatings(
     // year — the SAME deterministic hint `resolveTmdbId` uses (`EmbeddedYear`), fed
     // here so the Filmweb side gets the same disambiguation. Falls back to the
     // scraped key year.
-    val effectiveYear = key.year.orElse(EmbeddedYear.ofAll(key.cleanTitle +: e.evidence.titles.toSeq))
+    val effectiveYear = key.year.orElse(EmbeddedYear.ofAll(key.cleanTitle +: e.evidence.titles.toSeq, LatestTitleYear.current))
     // TMDB's Polish blurb (same language as Filmweb's `plot`) breaks a same-year
     // same-title tie inside `lookup`; None when TMDB hasn't resolved a synopsis.
     val referenceSynopsis = e.data.get(models.Tmdb).flatMap(_.synopsis)

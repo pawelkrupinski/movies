@@ -49,7 +49,7 @@ final class DebugStack(
   val mirrorFreshness:        MirrorFreshness = MirrorFreshness.notMirrored,
   corpusListing:              Option[() => DebugSnapshot[CorpusListing]] = None,
   ratingCadenceSnapshot:      Option[() => DebugSnapshot[Seq[(String, services.cadence.RatingChangeStats)]]] = None,
-) {
+)(using services.movies.LatestTitleYear) {
   /** The `movies` corpus without showtimes — the `/debug` table, and the titles
    *  `/debug/cadence` names its films by. */
   val listing: () => DebugSnapshot[CorpusListing] =
@@ -67,22 +67,22 @@ final class DebugStack(
 final case class DebugCorpusTable(size: Int, rows: String)
 
 object DebugCorpusTable {
-  def of(records: Seq[StoredMovieRecord], normalizer: services.movies.TitleNormalizer)(implicit city: models.City): DebugCorpusTable =
+  def of(records: Seq[StoredMovieRecord], normalizer: services.movies.TitleNormalizer)(implicit city: models.City, latestYear: services.movies.LatestTitleYear): DebugCorpusTable =
     // Flattened to ONE string: a `fill`ed `Html` is a tree of thousands of fragments that
     // every page render walks again to rebuild the same text.
     DebugCorpusTable(records.size,
-      play.twirl.api.HtmlFormat.fill(records.sortBy(_.title.toLowerCase(Locale.ROOT)).map(views.html._debugRow(_, normalizer))).body)
+      play.twirl.api.HtmlFormat.fill(records.sortBy(_.title.toLowerCase(Locale.ROOT)).map(views.html._debugRow(_, normalizer, latestYear))).body)
 }
 
 /** One read of the corpus, in the two shapes the debug pages use it. */
 final case class CorpusListing(table: DebugCorpusTable, titleByTmdb: Map[Int, String])
 
 object CorpusListing {
-  def read(movieRepository: MovieRepository): CorpusListing = {
+  def read(movieRepository: MovieRepository)(using latestYear: services.movies.LatestTitleYear): CorpusListing = {
     val records = movieRepository.findAllForListing()
     // The table is the global corpus; its only use for a city is the /movie fallback
     // link on a row with no live showtimes anywhere — the default city, as before.
-    CorpusListing(DebugCorpusTable.of(records, movieRepository.normalizer)(using models.City.all.head),
+    CorpusListing(DebugCorpusTable.of(records, movieRepository.normalizer)(using models.City.all.head, latestYear),
       records.flatMap(r => r.record.tmdbId.map(_ -> r.title)).toMap)
   }
 }

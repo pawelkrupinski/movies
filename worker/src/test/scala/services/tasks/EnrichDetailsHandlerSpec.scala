@@ -1,5 +1,7 @@
 package services.tasks
 
+import tools.SpecClock.given
+
 import models.{CinemaCityChain, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, CinemaShowing, KinoApollo, Movie, MovieRecord, Showtime, Source, SourceData}
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.cinemas.FakeDetailEnricher

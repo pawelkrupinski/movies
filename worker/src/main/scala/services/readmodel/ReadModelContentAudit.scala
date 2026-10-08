@@ -1,5 +1,7 @@
 package services.readmodel
 
+import services.movies.LatestTitleYear
+
 import models.{CityScreening, ResolvedMovie}
 import services.identity.RatingGate
 import services.movies.{FilmId, MovieRepository}
@@ -30,7 +32,7 @@ object ReadModelContentAudit {
    *  judged: a read failed, or its row no longer projects this card (unready, re-keyed, gone),
    *  which is the prune's and the heal's business and already has its own signals. */
   def differences(cardId: String, movies: MovieRepository, reader: ReadModelReader,
-                  ratingGate: RatingGate = RatingGate.off): Option[Seq[String]] = {
+                  ratingGate: RatingGate = RatingGate.off)(using LatestTitleYear): Option[Seq[String]] = {
     for {
       stored   <- movies.findByIdChecked(FilmId(rowIdOf(cardId))).answered.filter(_.record.readyToProject)
       expected <- ReadModelProjection.projectAll(stored, movies.normalizer).find(_._1._id == cardId)
@@ -45,7 +47,7 @@ object ReadModelContentAudit {
 
   /** Pure: what differs between the projected card and the stored one, as `field` for the
    *  document and `screenings[<id>].field` / `screenings[<id>] missing|unexpected` for its rows. */
-  def differences(expected: (ResolvedMovie, Seq[CityScreening]), stored: (ResolvedMovie, Seq[CityScreening])): Seq[String] = {
+  def differences(expected: (ResolvedMovie, Seq[CityScreening]), stored: (ResolvedMovie, Seq[CityScreening]))(using LatestTitleYear): Seq[String] = {
     def comparable(m: ResolvedMovie) = m.copy(shareCard = None, shareCardPending = false)
     val (expectedMovie, expectedRows) = expected
     val (storedMovie, storedRows)     = stored

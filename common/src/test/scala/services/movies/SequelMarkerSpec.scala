@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecClock.given
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -10,7 +12,7 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
   private def toks(s: String): Seq[String] =
     tools.TextNormalization.deburr(s).toLowerCase.split("[^\\p{L}\\p{N}]+").filter(_.nonEmpty).toSeq
 
-  private def anotherEntry(base: String, whole: String) = SequelMarker.namesAnotherEntry(toks(base), toks(whole))
+  private def anotherEntry(base: String, whole: String) = SequelMarker(LatestTitleYear.current).namesAnotherEntry(toks(base), toks(whole))
 
   "SequelMarker" should "refuse a sequel that carries the base title as a prefix" in {
     anotherEntry("The Hunger Games", "The Hunger Games: Mockingjay Pt 2 (2026 Re-Release)") shouldBe true
@@ -68,10 +70,10 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
     anotherEntry("Cars 20th Anniversary",    "Toddler Club Cars 20th Anniversary")       shouldBe false
   }
 
-  private def siblings(a: String, b: String) = SequelMarker.curatedSiblingTitles(Seq(a), Seq(b))
+  private def siblings(a: String, b: String) = SequelMarker(LatestTitleYear.current).curatedSiblingTitles(Seq(a), Seq(b))
 
   private def different(a: String, b: String) =
-    SequelMarker.differentInstalments(TitleContainment.tokens(a), TitleContainment.tokens(b))
+    SequelMarker(LatestTitleYear.current).differentInstalments(TitleContainment.tokens(a), TitleContainment.tokens(b))
 
   it should "tell same-length sibling instalments apart, whichever side is asked first" in {
     // The UK convergence flip (2026-09-10): "Mockingjay - Part 1" and "Part 2" are one
@@ -211,7 +213,7 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
   // number past Int (a phone number or a ticket code a venue left in the title) threw out of
   // the comparison, failing the resolution or settle that asked, on every retry.
   it should "read a number too large for an instalment as none, rather than throw" in {
-    SequelMarker.differentInstalments(toks("Kino Seniora 48612345678901"), toks("Kino Seniora 2")) shouldBe false
-    SequelMarker.differentInstalments(toks("Film 99999999999 Part 2"), toks("Film 99999999999 Part 3")) shouldBe true
+    SequelMarker(LatestTitleYear.current).differentInstalments(toks("Kino Seniora 48612345678901"), toks("Kino Seniora 2")) shouldBe false
+    SequelMarker(LatestTitleYear.current).differentInstalments(toks("Film 99999999999 Part 2"), toks("Film 99999999999 Part 3")) shouldBe true
   }
 }

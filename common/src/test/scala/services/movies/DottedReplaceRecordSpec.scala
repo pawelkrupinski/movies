@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecClock.given
+
 import models.{HeliosOstrowWlkp, MovieRecord, Multikino, Source, SourceData}
 import org.mongodb.scala.MongoClient
 import org.scalatest.flatspec.AnyFlatSpec

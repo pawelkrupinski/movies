@@ -46,7 +46,7 @@ object AllowedCard {
 object ServedOutputInvariants {
 
   /** Every city's served cards at `now`, each joined to the stored record it was projected from. */
-  def cardsOf(wiring: tools.TestWiring, country: Country, normalizer: TitleNormalizer, now: LocalDateTime): Seq[ServedCard] = {
+  def cardsOf(wiring: tools.TestWiring, country: Country, normalizer: TitleNormalizer, now: LocalDateTime)(using LatestTitleYear): Seq[ServedCard] = {
     val byCard: Map[String, (String, MovieRecord, Int)] = wiring.movieRepository.findAll().flatMap { stored =>
       val ids = ReadModelProjection.filmIds(stored, normalizer)
       ids.map(_ -> (stored.id.value, stored.record, ids.size))

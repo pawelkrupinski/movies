@@ -3,7 +3,7 @@ package services.enrichment
 import java.util.Locale
 
 import models.MovieRecord
-import services.movies.{CacheKey, EmbeddedYear, TitleNormalizer}
+import services.movies.{CacheKey, EmbeddedYear, LatestTitleYear, TitleNormalizer}
 import services.resolution.SearchTitles
 
 /**
@@ -21,9 +21,9 @@ object TmdbLessRatingLinks {
 
   /** Is `row`, which TMDB could not match, queued for a rating site: TMDB was asked and found
    *  nothing, and the cinemas publish a director or a year (a field's, or one the title dates, "Lawa (1989)")? */
-  def eligible(row: MovieRecord): Boolean =
+  def eligible(row: MovieRecord)(using LatestTitleYear): Boolean =
     row.tmdbNoMatch && !row.evidence.titles.exists(notAFilm) &&
-      (directorsOf(row).nonEmpty || row.evidence.years.nonEmpty || EmbeddedYear.ofAll(row.evidence.titles).isDefined)
+      (directorsOf(row).nonEmpty || row.evidence.years.nonEmpty || EmbeddedYear.ofAll(row.evidence.titles, LatestTitleYear.current).isDefined)
 
   /** A title that is no single film, whatever its facts: a festival pass, a fan event, a double bill, a
    *  marathon or a secret screening. A rating site has no page for it — "12. SPLAT! FilmFest | karnet"
@@ -38,21 +38,21 @@ object TmdbLessRatingLinks {
     """(?iu)\b(?:karnet\w*|festival pass|film pass|fan (?:event|screening)|double bill|triple (?:bill|feature)|marat(?:h)?on\w*|secret screening|seans\s+niespodzian\w*)\b|\s\+\s(?!(?:dyskusj|spotkani|prelekcj|rozmow|wykład|debat|panel|warsztat|konkurs|quiz|q\s*&\s*a|intro|discussion|talk|meet))""".r
 
   /** Can a page be checked against what the cinemas publish of this TMDB-less row: a director, or a year? */
-  def checkable(key: CacheKey, row: MovieRecord): Boolean = directorsOf(row).nonEmpty || yearOf(key, row).isDefined
+  def checkable(key: CacheKey, row: MovieRecord)(using LatestTitleYear): Boolean = directorsOf(row).nonEmpty || yearOf(key, row).isDefined
 
   /** The film's year as its cinemas publish it: the key's, a year the title itself dates
    *  ("Tabu (1987)"), else one a slot published. */
-  def yearOf(key: CacheKey, row: MovieRecord): Option[Int] =
-    key.year.orElse(EmbeddedYear.ofAll(key.cleanTitle +: row.evidence.titles.toSeq)).orElse(row.evidence.years.headOption)
+  def yearOf(key: CacheKey, row: MovieRecord)(using LatestTitleYear): Option[Int] =
+    key.year.orElse(EmbeddedYear.ofAll(key.cleanTitle +: row.evidence.titles.toSeq, LatestTitleYear.current)).orElse(row.evidence.years.headOption)
 
   /** Every director the cinemas credit, a comma-packed crew split. */
-  def directorsOf(row: MovieRecord): Set[String] =
+  def directorsOf(row: MovieRecord)(using LatestTitleYear): Set[String] =
     row.evidence.directors.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty).toSet
 
   /** The titles a site is searched under, STRIPPED: the cinemas' original titles first (the
    *  international title the sites index), then the cinema title without its programme decoration
    *  ("Kino bez barier: …", "… | Kino dyskomfortu") and each piece a banner splits off it. */
-  def titlesOf(key: CacheKey, row: MovieRecord, normalizer: TitleNormalizer): Seq[String] = {
+  def titlesOf(key: CacheKey, row: MovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): Seq[String] = {
     val stripped = normalizer.searchQuery(key.cleanTitle)
     (row.evidence.originalTitles ++ Seq(stripped) ++ SearchTitles.candidates(stripped, None).map(normalizer.searchQuery))
       .map(_.trim).filter(_.nonEmpty).distinctBy(_.toLowerCase(Locale.ROOT))
@@ -61,13 +61,13 @@ object TmdbLessRatingLinks {
   /** The year a site is searched with: none when the cinemas credit a director, whose agreement
    *  then decides — a retrospective's row carries its SCREENING year ("NADZY", Leigh's 1993 film
    *  shown in 2026), which would turn the right page away. */
-  def searchYear(key: CacheKey, row: MovieRecord): Option[Int] =
+  def searchYear(key: CacheKey, row: MovieRecord)(using LatestTitleYear): Option[Int] =
     if (directorsOf(row).nonEmpty) None else yearOf(key, row)
 
   /** Does a page crediting `pageDirectors`, dated `pageYear`, name this row's film? Its director
    *  must agree with the cinemas', or — the page crediting none — its year must equal theirs. A
    *  page contradicting the director is never it, and a page saying nothing is not evidence. */
-  def corroborated(key: CacheKey, row: MovieRecord, pageYear: Option[Int], pageDirectors: Set[String]): Boolean = {
+  def corroborated(key: CacheKey, row: MovieRecord, pageYear: Option[Int], pageDirectors: Set[String])(using LatestTitleYear): Boolean = {
     val ours     = directorsOf(row)
     val credited = ours.nonEmpty && pageDirectors.nonEmpty
     if (credited) MetacriticClient.directorsCompatible(ours, pageDirectors)

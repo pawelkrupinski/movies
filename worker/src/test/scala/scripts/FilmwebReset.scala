@@ -1,5 +1,8 @@
 package scripts
 
+import services.movies.LatestTitleYear
+
+
 import clients.TmdbClient
 import services.enrichment.{FilmwebClient, FilmwebRatings}
 import services.events.InProcessEventBus
@@ -35,7 +38,7 @@ object FilmwebReset {
   private case class  ReplacedSame(url: String, rating: Option[Double])   extends Outcome  // same URL, possibly fresh rating
   private case class  ReplacedDifferent(beforeUrl: String, afterUrl: String, rating: Option[Double]) extends Outcome
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String])(using LatestTitleYear): Unit = {
     val configuration = _root_.settings.ProcessConfiguration.resolve()
     val repository = AmbientMovieRepository.open(configuration, java.time.Clock.systemUTC())
     if (!repository.enabled) {

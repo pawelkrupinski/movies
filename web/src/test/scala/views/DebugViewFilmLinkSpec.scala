@@ -1,5 +1,7 @@
 package views
 
+import tools.SpecClock.given
+
 import models.{CinemaCityWroclavia, MovieRecord, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

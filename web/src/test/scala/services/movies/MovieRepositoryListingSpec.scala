@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecClock.given
+
 import models.{CinemaCityWroclavia, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.LoneElement
 import org.scalatest.flatspec.AnyFlatSpec

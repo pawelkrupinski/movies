@@ -1,5 +1,8 @@
 package clients.tools
 
+import services.movies.LatestTitleYear
+
+
 import com.github.benmanes.caffeine.cache.Caffeine
 import models.MovieRecord
 import org.bson.Document
@@ -46,6 +49,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 // and the try/catch below exits the JVM cleanly instead of throwing
 // across the JVM boundary.
 object MeasureStartup {
+  // The latest year a title may name (`LatestTitleYear`), read off this clock at each ask.
+  private given LatestTitleYear = LatestTitleYear(java.time.Clock.systemUTC())
 
   private def ms(nanos: Long): String = f"${nanos / 1e6}%9.2f ms"
   private def fmt(label: String, nanos: Long): Unit =

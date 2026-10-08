@@ -1,5 +1,7 @@
 package services.enrichment
 
+import services.movies.LatestTitleYear
+
 import services.movies.{CacheKey, MovieCache}
 import services.tasks.BulkRefreshResult
 import tools.BoundedParallel
@@ -48,6 +50,8 @@ class OmdbBackfill(
   clock:    Clock,
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
 ) extends CacheRefresher(cache, cadenceRecorder) {
+  // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
+  private given LatestTitleYear = LatestTitleYear(clock)
 
   private val normalizer: services.movies.TitleNormalizer = cache.normalizer
 

@@ -1,5 +1,7 @@
 package services.metrics
 
+import tools.SpecClock.given
+
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Cinema, CinemaShowing, City, Helios, HeliosMagnolia, Imdb, KinoApollo, MovieRecord, Rialto, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec

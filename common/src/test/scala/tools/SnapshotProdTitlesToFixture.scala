@@ -1,5 +1,8 @@
 package tools
 
+import services.movies.LatestTitleYear
+
+
 import services.MongoConnection
 import services.movies.MongoMovieRepository
 
@@ -21,6 +24,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * Re-run whenever you want fresh coverage; commit the regenerated fixture.
  */
 object SnapshotProdTitlesToFixture {
+  // The latest year a title may name (`LatestTitleYear`), read off this clock at each ask.
+  private given LatestTitleYear = LatestTitleYear(java.time.Clock.systemUTC())
   private val Out = Paths.get("common/src/test/resources/fixtures/prod-movies/titles.txt")
 
   def main(args: Array[String]): Unit = {

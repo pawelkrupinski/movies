@@ -63,14 +63,14 @@ object MixedFilmDetector {
    *
    *  Empty when the row describes ONE film — the normal case, including when it
    *  describes it inconsistently. */
-  def split(record: MovieRecord, normalizer: TitleNormalizer): Seq[Group] = {
+  def split(record: MovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): Seq[Group] = {
     val groups = identityGroups(record, normalizer, allowTitleFallback = true)
     if (groups.sizeIs < 2 || !groups.exists(g => conflicting(groups.head, g))) Seq.empty else groups
   }
 
   /** The slots belonging to a film OTHER than the row's main one — what has to
    *  leave the row for each film to get a record of its own. */
-  def strays(record: MovieRecord, normalizer: TitleNormalizer): Seq[(Source, SourceData)] =
+  def strays(record: MovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): Seq[(Source, SourceData)] =
     split(record, normalizer) match {
       case Seq()          => bracketStrays(record)
       case main +: others => others.filter(conflicting(main, _)).flatMap(_.slots)
@@ -83,11 +83,11 @@ object MixedFilmDetector {
    *  the row is what staging would have split. The largest bracket keeps the row (the
    *  lower year on a tie); every other bracket's slots are strays. Bare listings stay. Never
    *  on a resolved row (a bracket there can be the event's year) nor an unanswered one. */
-  private def bracketStrays(record: MovieRecord): Seq[(Source, SourceData)] =
+  private def bracketStrays(record: MovieRecord)(using LatestTitleYear): Seq[(Source, SourceData)] =
     if (record.tmdbId.isDefined || !record.tmdbNoMatch || !record.tmdbAnswered) Seq.empty
     else {
       val byYear = record.cinemaSlots
-        .flatMap { case (source, sd) => EmbeddedYear.ofAll(sd.rawTitle ++ sd.title).map(y => y -> (source, sd)) }
+        .flatMap { case (source, sd) => EmbeddedYear.ofAll(sd.rawTitle ++ sd.title, LatestTitleYear.current).map(y => y -> (source, sd)) }
         .groupMap(_._1)(_._2)
       if (byYear.sizeIs < 2) Seq.empty
       else {
@@ -114,7 +114,7 @@ object MixedFilmDetector {
     year:          Option[Int],
     director:      Seq[String],
     normalizer:    TitleNormalizer
-  ): Boolean = {
+  )(using LatestTitleYear): Boolean = {
     val incomingTitle     = titleWords(originalTitle, normalizer)
     val incomingDirectors = directorKeys(director, normalizer)
     incomingTitle.nonEmpty && publishedIdentity(record, normalizer).exists { main =>
@@ -156,11 +156,11 @@ object MixedFilmDetector {
    *  — the verdict accepts and this splits, and both are right for their question.
    *  It also reads the title and the year, which the verdict never does.
    *  `SameFilmVocabulariesSpec` pins the difference. */
-  def describeDifferentFilms(a: MovieRecord, b: MovieRecord, normalizer: TitleNormalizer): Boolean =
+  def describeDifferentFilms(a: MovieRecord, b: MovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): Boolean =
     describeDifferentFilms(publishedIdentity(a, normalizer), publishedIdentity(b, normalizer))
 
   /** [[describeDifferentFilms]] on identities already read by [[publishedIdentity]]. */
-  def describeDifferentFilms(a: Option[Group], b: Option[Group]): Boolean =
+  def describeDifferentFilms(a: Option[Group], b: Option[Group])(using LatestTitleYear): Boolean =
     (a, b) match {
       case (Some(mainA), Some(mainB)) => conflicting(mainA, mainB)
       case _                          => false
@@ -173,11 +173,11 @@ object MixedFilmDetector {
    *  tmdbId group's main row with every sibling, and every imdbId-sharing pair of
    *  groups row by row) reads it once and asks the [[describeDifferentFilms]]
    *  overload on the result. */
-  def publishedIdentity(record: MovieRecord, normalizer: TitleNormalizer): Option[Group] =
+  def publishedIdentity(record: MovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): Option[Group] =
     identityGroups(record, normalizer).headOption
 
   /** Do these two identities describe DIFFERENT films? */
-  def conflicting(a: Group, b: Group): Boolean =
+  def conflicting(a: Group, b: Group)(using LatestTitleYear): Boolean =
     ((titlesDiffer(a.identity, b.identity) || sequelApart(a, b)) &&
       !sameDirector(a.directors, b.directors) &&
       corroborated(a.runtimes, b.runtimes, a.years, b.years)) ||
@@ -204,10 +204,10 @@ object MixedFilmDetector {
    *  guard existed) to one wrong tmdbId — the since-deleted `MixedFilmSplitter` could not detect or
    *  split any of it, because every existing signal here needs evidence Odeon never
    *  publishes. This is what let it find and re-divert it. */
-  private def curatedSiblingGroups(a: Group, b: Group): Boolean = {
+  private def curatedSiblingGroups(a: Group, b: Group)(using LatestTitleYear): Boolean = {
     def rawTitles(g: Group): Set[String] =
       g.slots.flatMap { case (_, sd) => sd.title.toSeq ++ sd.originalTitle.toSeq }.toSet
-    SequelMarker.curatedSiblingTitles(rawTitles(a), rawTitles(b))
+    SequelMarker(LatestTitleYear.current).curatedSiblingTitles(rawTitles(a), rawTitles(b))
   }
 
   /** A film beside its own numbered SEQUEL — the one pair `titlesDiffer` structurally
@@ -309,8 +309,8 @@ object MixedFilmDetector {
    *  broadcast (Darko Tresnjak) is not DeMille's 1949 picture. Directors are compared only
    *  when both sides spell one in Latin script: TMDB credits "王家衛" where a Polish cinema
    *  prints "Wong Kar Wai", and nothing here can tell those are one man. */
-  def deniesFilm(slot: SourceData, film: SourceData, normalizer: TitleNormalizer): Boolean = {
-    val slotYear = slot.releaseYear.orElse(EmbeddedYear.ofAll(slot.rawTitle ++ slot.title))
+  def deniesFilm(slot: SourceData, film: SourceData, normalizer: TitleNormalizer)(using LatestTitleYear): Boolean = {
+    val slotYear = slot.releaseYear.orElse(EmbeddedYear.ofAll(slot.rawTitle ++ slot.title, LatestTitleYear.current))
     slotYear.isDefined && latin(slot.director) && latin(film.director) &&
       services.resolution.YearWindow.contradicts(slotYear, film.releaseYear, services.resolution.YearWindow.SlotYearImplausibility) &&
       !creditSamePerson(slot.director, film.director, normalizer)

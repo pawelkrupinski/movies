@@ -1,5 +1,7 @@
 package controllers
 
+import tools.SpecClock.given
+
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{CinemaCityWroclavia, MovieRecord, SourceData}

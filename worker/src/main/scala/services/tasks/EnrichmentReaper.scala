@@ -1,5 +1,7 @@
 package services.tasks
 
+import services.movies.LatestTitleYear
+
 import settings.{EnrichmentMaxEnqueuePerTick, EnrichmentTickInterval}
 
 import play.api.Logging
@@ -81,6 +83,8 @@ class EnrichmentReaper(
   // passes `Some(...)` of the SAME instance it hands `MovieService` for the newcomer kick.
   enqueuer: Option[RatingEnqueuer] = None
 ) extends Stoppable with Logging {
+  // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
+  private given LatestTitleYear = LatestTitleYear(clock)
 
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("enrichment-reaper")
 

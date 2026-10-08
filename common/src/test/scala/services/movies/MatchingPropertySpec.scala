@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecClock.given
+
 import org.scalacheck.Gen
 import services.IdentityPropertySpec
 import services.IdentityGenerators.{genFilmEvidence, genCandidate}
@@ -53,16 +55,16 @@ class MatchingPropertySpec extends IdentityPropertySpec {
   "titles differing only in an instalment ordinal" should "always read as different instalments, in any notation" in {
     forAll(genInstalments.flatMap { case (base, n, m) => genNotation(base, n).flatMap(a => genNotation(base, m).map(a -> _)) }) {
       case (a, b) =>
-        SequelMarker.differentInstalments(tokens(a), tokens(b)) shouldBe true
-        SequelMarker.differentInstalments(tokens(b), tokens(a)) shouldBe true
+        SequelMarker(LatestTitleYear.current).differentInstalments(tokens(a), tokens(b)) shouldBe true
+        SequelMarker(LatestTitleYear.current).differentInstalments(tokens(b), tokens(a)) shouldBe true
     }
   }
 
   it should "never decorate one another, nor share a merge key" in {
     forAll(genInstalments.flatMap { case (base, n, m) => genNotation(base, n).flatMap(a => genNotation(base, m).map(a -> _)) }) {
       case (a, b) =>
-        TitleContainment.decorates(tokens(a), tokens(b)) shouldBe false
-        TitleContainment.decorates(tokens(b), tokens(a)) shouldBe false
+        TitleContainment.decorates(tokens(a), tokens(b), LatestTitleYear.current) shouldBe false
+        TitleContainment.decorates(tokens(b), tokens(a), LatestTitleYear.current) shouldBe false
         titleNormalizer.sanitize(a) should not be titleNormalizer.sanitize(b)
     }
   }
@@ -71,8 +73,8 @@ class MatchingPropertySpec extends IdentityPropertySpec {
     val trailing = Seq(" (2026)", " (2026 Re-Release)", " 4K", " 3D", " - Re-Release")
     forAll(genInstalments.flatMap { case (base, n, m) => genNotation(base, n).flatMap(a => genNotation(base, m).map(a -> _)) },
            Gen.oneOf(trailing)) { case ((a, b), tag) =>
-      SequelMarker.differentInstalments(tokens(a + tag), tokens(b)) shouldBe true
-      SequelMarker.differentInstalments(tokens(b), tokens(a + tag)) shouldBe true
+      SequelMarker(LatestTitleYear.current).differentInstalments(tokens(a + tag), tokens(b)) shouldBe true
+      SequelMarker(LatestTitleYear.current).differentInstalments(tokens(b), tokens(a + tag)) shouldBe true
     }
   }
 
@@ -80,7 +82,7 @@ class MatchingPropertySpec extends IdentityPropertySpec {
     forAll(Gen.oneOf(seriesBases), Gen.choose(2, 9)) { (base, n) =>
       val all = notations(base, n)
       for (a <- all; b <- all) withClue(s"'$a' vs '$b': ") {
-        SequelMarker.differentInstalments(tokens(a), tokens(b)) shouldBe false
+        SequelMarker(LatestTitleYear.current).differentInstalments(tokens(a), tokens(b)) shouldBe false
       }
     }
   }

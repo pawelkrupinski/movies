@@ -1,5 +1,7 @@
 package services.enrichment
 
+import services.movies.LatestTitleYear
+
 import models.MovieRecord
 
 /**
@@ -26,7 +28,7 @@ object RatingPageIdentity {
   /** Does a page crediting `pageDirectors` POSITIVELY agree with the row's film — its TMDB crew or the
    *  cinemas' credit? Then a year decades apart is a retrospective's screening year ("Przekleństwa
    *  niewinności" 2026 is Coppola's 1999 film), not another film's, as Filmweb's own pick reads it. */
-  def directorsAgree(row: MovieRecord, pageDirectors: Set[String], tmdbDirectors: Int => Set[String]): Boolean = {
+  def directorsAgree(row: MovieRecord, pageDirectors: Set[String], tmdbDirectors: Int => Set[String])(using LatestTitleYear): Boolean = {
     val ours = directorsOf(row, tmdbDirectors) ++ TmdbLessRatingLinks.directorsOf(row)
     ours.nonEmpty && pageDirectors.nonEmpty && MetacriticClient.directorsCompatible(ours, pageDirectors)
   }

@@ -1,5 +1,7 @@
 package services.movies
 
+import tools.SpecClock.given
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -60,22 +62,22 @@ class MatchingCorporaSpec extends AnyFlatSpec with Matchers {
 
   "SequelMarker.differentInstalments" should "tell every historical pair of instalments apart, both ways round" in {
     for ((sha, a, b) <- differentInstalments) withClue(s"[$sha] '$a' vs '$b': ") {
-      SequelMarker.differentInstalments(tokens(a), tokens(b)) shouldBe true
-      SequelMarker.differentInstalments(tokens(b), tokens(a)) shouldBe true
+      SequelMarker(LatestTitleYear.current).differentInstalments(tokens(a), tokens(b)) shouldBe true
+      SequelMarker(LatestTitleYear.current).differentInstalments(tokens(b), tokens(a)) shouldBe true
     }
   }
 
   it should "never tell two spellings of one instalment apart" in {
     for ((sha, a, b) <- sameInstalment) withClue(s"[$sha] '$a' vs '$b': ") {
-      SequelMarker.differentInstalments(tokens(a), tokens(b)) shouldBe false
-      SequelMarker.differentInstalments(tokens(b), tokens(a)) shouldBe false
+      SequelMarker(LatestTitleYear.current).differentInstalments(tokens(a), tokens(b)) shouldBe false
+      SequelMarker(LatestTitleYear.current).differentInstalments(tokens(b), tokens(a)) shouldBe false
     }
   }
 
   "TitleContainment.decorates" should "never read one instalment as a decoration of another" in {
     for ((sha, a, b) <- differentInstalments) withClue(s"[$sha] '$a' vs '$b': ") {
-      TitleContainment.decorates(tokens(a), tokens(b)) shouldBe false
-      TitleContainment.decorates(tokens(b), tokens(a)) shouldBe false
+      TitleContainment.decorates(tokens(a), tokens(b), LatestTitleYear.current) shouldBe false
+      TitleContainment.decorates(tokens(b), tokens(a), LatestTitleYear.current) shouldBe false
     }
   }
 

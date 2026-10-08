@@ -1,5 +1,7 @@
 package services.metrics
 
+import tools.SpecClock.given
+
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry

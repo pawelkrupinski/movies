@@ -1,5 +1,7 @@
 package services.readmodel
 
+import tools.SpecClock.given
+
 import models.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

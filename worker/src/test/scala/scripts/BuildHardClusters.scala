@@ -1,5 +1,8 @@
 package scripts
 
+import services.movies.LatestTitleYear
+
+
 import models.Country
 import tools.{CorpusFixture, HardClusters}
 
@@ -22,6 +25,8 @@ import java.nio.file.{Files, Paths}
  * }}}
  */
 object BuildHardClusters {
+  // The latest year a title may name (`LatestTitleYear`), read off this clock at each ask.
+  private given LatestTitleYear = LatestTitleYear(java.time.Clock.systemUTC())
 
   def main(args: Array[String]): Unit = args.toList match {
     case "select" :: dir :: rest => select(dir, rest.headOption.map(_.toInt).getOrElse(HardClusters.DefaultBudget))
@@ -34,7 +39,7 @@ object BuildHardClusters {
   private def corpusIn(dir: String, country: Country) =
     Some(Paths.get(dir, s"cinema-scrapes-${country.code}.json.gz")).filter(Files.exists(_))
 
-  private def select(dir: String, budget: Int): Unit = {
+  private def select(dir: String, budget: Int)(using LatestTitleYear): Unit = {
     val present = Country.all.flatMap(c => corpusIn(dir, c).map(c -> _))
     val seeds   = HardClusters.readSeeds()
     val share   = budget / present.size.max(1)
@@ -47,7 +52,7 @@ object BuildHardClusters {
     }
   }
 
-  private def extend(dir: String, titlesFile: String): Unit = {
+  private def extend(dir: String, titlesFile: String)(using LatestTitleYear): Unit = {
     val titles = Files.readAllLines(Paths.get(titlesFile), StandardCharsets.UTF_8).toArray(Array.empty[String]).toSeq
       .map(_.split("\t", -1)).collect { case Array(code, title, _*) if title.trim.nonEmpty =>
         HardClusters.Seed(code.trim.toLowerCase, title.trim, HardClusters.Reason.Finding.label) }

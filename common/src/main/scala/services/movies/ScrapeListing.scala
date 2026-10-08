@@ -15,7 +15,7 @@ object ScrapeListing {
   final case class Prepared(movies: Seq[CinemaMovie], cleaned: CinemaMovie => String)
 
   def prepare(cinema: Cinema, movies: Seq[CinemaMovie], normalizer: TitleNormalizer,
-              screeningTokens: ScreeningTokens, pageApart: CinemaMovie => Option[String] = _ => None): Prepared = {
+              screeningTokens: ScreeningTokens, pageApart: CinemaMovie => Option[String] = _ => None)(using LatestTitleYear): Prepared = {
     // Per-cinema title cleanup, rule-driven and keyed by the cinema. A migrated
     // client already applies these rules to `title` (carrying the pre-strip string in
     // `rawTitle`), so this re-application is idempotent insurance; a client that
@@ -85,7 +85,7 @@ object ScrapeListing {
    *
    *  Rows of one film stay one group, as before: a dub beside a subtitled print. A pure
    *  function of the rows as a set; the parts come out in a fixed order. */
-  private def filmsOf(group: Seq[CinemaMovie], normalizer: TitleNormalizer): Seq[Seq[CinemaMovie]] = {
+  private def filmsOf(group: Seq[CinemaMovie], normalizer: TitleNormalizer)(using LatestTitleYear): Seq[Seq[CinemaMovie]] = {
     val years = group.flatMap(yearOf).distinct
     val byYear =
       // Years a production-vs-release gap apart are one film printed two ways.
@@ -110,10 +110,10 @@ object ScrapeListing {
 
   /** The year a listing names: its own, else the one its title brackets. What tells two films
    *  a venue lists under one title apart. */
-  def yearOf(cm: CinemaMovie): Option[Int] =
-    cm.movie.releaseYear.orElse(EmbeddedYear.ofAll(cm.movie.rawTitle.toSeq :+ cm.movie.title))
+  def yearOf(cm: CinemaMovie)(using LatestTitleYear): Option[Int] =
+    cm.movie.releaseYear.orElse(EmbeddedYear.ofAll(cm.movie.rawTitle.toSeq :+ cm.movie.title, LatestTitleYear.current))
   /** The same reading off a stored slot, so a slot and the listing that wrote it agree. */
-  def yearOf(sd: SourceData): Option[Int] = sd.releaseYear.orElse(EmbeddedYear.ofAll(sd.rawTitle ++ sd.title))
+  def yearOf(sd: SourceData)(using LatestTitleYear): Option[Int] = sd.releaseYear.orElse(EmbeddedYear.ofAll(sd.rawTitle ++ sd.title, LatestTitleYear.current))
 
   /** A listed title as the venue's slot will carry it — cleaned by the venue's rules, its
    *  format tags peeled off — with those tags. The one definition [[prepare]] folds on. */

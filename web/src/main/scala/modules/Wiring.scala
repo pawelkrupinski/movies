@@ -54,6 +54,10 @@ trait Wiring
   // it by constructor; a test wiring overrides it to pin the time.
   lazy val clock: java.time.Clock = java.time.Clock.systemUTC()
 
+  /** The latest year a title may name, read off [[clock]] at each ask: what the record accessors the debug pages
+   *  render (a venue's representative slot, the display title) cap a title's year by. */
+  given latestTitleYear: services.movies.LatestTitleYear = services.movies.LatestTitleYear(clock)
+
   // Start the data layer. Force the Mongo connection at boot (so connection
   // errors surface in the boot timeline, not mid-request), then start the cache
   // — hydrate from Mongo + open the change stream that keeps it warm.

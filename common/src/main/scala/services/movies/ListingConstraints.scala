@@ -71,34 +71,34 @@ object ListingConstraints {
 
   /** A venue's own `slot` against the `film` TMDB described (a `Tmdb` slot, or a candidate's
    *  year and director). */
-  def slotDeniesFilm(slot: SourceData, film: SourceData, normalizer: TitleNormalizer): Option[CannotLink] =
+  def slotDeniesFilm(slot: SourceData, film: SourceData, normalizer: TitleNormalizer)(using LatestTitleYear): Option[CannotLink] =
     Option.when(MixedFilmDetector.deniesFilm(slot, film, normalizer))(CannotLink.VenueDeniesFilm)
 
   /** The first of `row`'s venue slots (in its cinema-data order) that denies one of `films`. */
-  def denyingSlot(row: MovieRecord, films: Seq[SourceData], normalizer: TitleNormalizer): Option[SourceData] =
+  def denyingSlot(row: MovieRecord, films: Seq[SourceData], normalizer: TitleNormalizer)(using LatestTitleYear): Option[SourceData] =
     row.cinemaData.values.find(slot => films.exists(slotDeniesFilm(slot, _, normalizer).isDefined))
 
   /** Does one of `row`'s venues deny one of `films`? A TMDB candidate so denied is not the row's
    *  film, however it was found; an unresolved row so denied is filed apart by the staging fold. */
-  def rowDeniesFilms(row: MovieRecord, films: Seq[SourceData], normalizer: TitleNormalizer): Option[CannotLink] =
+  def rowDeniesFilms(row: MovieRecord, films: Seq[SourceData], normalizer: TitleNormalizer)(using LatestTitleYear): Option[CannotLink] =
     denyingSlot(row, films, normalizer).map(_ => CannotLink.VenueDeniesFilm)
 
   /** Two rows' cinemas publish contradicting identities for their main film. STRICT (see
    *  `MixedFilmDetector.describeDifferentFilms`): the canonicaliser's pairwise veto, the
    *  imdbId sibling edge, and the rule-4 straggler's home check all read it. */
-  def cinemasDescribeDifferentFilms(a: MovieRecord, b: MovieRecord, normalizer: TitleNormalizer): Option[CannotLink] =
+  def cinemasDescribeDifferentFilms(a: MovieRecord, b: MovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): Option[CannotLink] =
     Option.when(MixedFilmDetector.describeDifferentFilms(a, b, normalizer))(CannotLink.CinemasDescribeDifferentFilms)
 
   /** Does the listing's own original title make it a second film on `row`? The landing's
    *  "every same-titled row is a different film" divert reads this rule alone. */
   def originalTitleNamesAnotherFilm(listing: ListingEvidence, row: MovieRecord,
-                                    normalizer: TitleNormalizer): Option[CannotLink] =
+                                    normalizer: TitleNormalizer)(using LatestTitleYear): Option[CannotLink] =
     Option.when(MixedFilmDetector.wouldAddASecondFilm(row, listing.originalTitle, listing.runtime, listing.year,
       listing.director, normalizer))(CannotLink.OriginalTitleNamesAnotherFilm)
 
   /** May a listing matched by the SHAPE of its title (a decoration, a shared search key) land
    *  on `row`? */
-  def landingRefused(listing: ListingEvidence, row: MovieRecord, normalizer: TitleNormalizer): Option[CannotLink] =
+  def landingRefused(listing: ListingEvidence, row: MovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): Option[CannotLink] =
     originalTitleNamesAnotherFilm(listing, row, normalizer).orElse(
       Option.when(MixedFilmDetector.listingDeniesFilm(row, listing.runtime, listing.year, listing.director, normalizer))(
         CannotLink.ListingDeniesFilm))

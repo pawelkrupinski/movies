@@ -1,5 +1,7 @@
 package controllers
 
+import services.movies.LatestTitleYear
+
 import models._
 import play.api.mvc._
 import play.api.Mode
@@ -56,6 +58,8 @@ class DebugController(cc: ControllerComponents,
                       // The serving country's title rules — the wiring's one instance.
                       normalizer: TitleNormalizer,
                      )(implicit messages: play.api.i18n.Messages) extends AbstractController(cc) {
+  // The latest year a title may name, read off this controller's clock: what the row details cap a title's year by.
+  private val latestYear = LatestTitleYear(clock)
 
 
   private def withCity(slug: String)(f: City => Result): Result = ServedCity.resolve(slug, servingCountry)(f)
@@ -146,7 +150,7 @@ class DebugController(cc: ControllerComponents,
             row.record.tmdbId, stack.attemptReader, stack.ratingCadenceReader)) match {
             case scala.util.Success(statuses) =>
               Ok(views.html.debugDetails(row.title, row.year, row.record,
-                stack.movieRepository.normalizer, cinemaSourceUrls(), statuses))
+                stack.movieRepository.normalizer, cinemaSourceUrls(), statuses, latestYear))
             // Not an empty report: that reads as "never attempted".
             case scala.util.Failure(e) =>
               ServiceUnavailable(s"could not read the enrichment log for this row: ${e.getMessage}")
