@@ -54,11 +54,11 @@ class HermeticHttpLeafSpec extends AnyFlatSpec with Matchers {
       Files.walk(root).sorted(java.util.Comparator.reverseOrder()).forEach(p => Files.deleteIfExists(p))
   }
 
-  // What the next leg's rows fetch before their suites: every GET gap, with the verb the remembered verdicts key it by and any
-  // credential in its URL masked — the fill signs those again with the key it holds (`FillCredentials`). Never a
-  // credential, and never a request whose credential is only in a header or that carries a body: a public release
-  // asset names these.
-  "the refetch list" should "carry every GET with its URL's credentials masked, and nothing else" in {
+  // What the next leg's convergence row fetches before its suite: every GET and BYTES gap, with the verb the remembered
+  // verdicts key it by and any credential in its URL masked — the fill signs those again with the key it holds
+  // (`FillCredentials`) — and every POST whose URL and body name no credential, whole. Never a credential, and never a
+  // request whose credential is only in a header or its body: a public release asset names these.
+  "the refetch list" should "carry every request the fill can ask as it was asked, credentials masked, and nothing else" in {
     val missing = new MissingFixtures
     val leaf    = new HermeticHttpLeaf(missing)
     an [Exception] should be thrownBy leaf.get("https://www.flicks.us/movie/toy-story-5/")
@@ -92,7 +92,51 @@ class HermeticHttpLeafSpec extends AnyFlatSpec with Matchers {
     missing.report("enrichment-us") should include("by host: ")
   }
 
-  it should "be written beside the tree, never inside it" in {
+  // RedactedUrl masks more names than a fixture's key ignores: `key=` (Firestore's) is hashed into the key, so the masked
+  // URL names a fixture no real request writes — the fill could neither find it held nor sign it, and asked it never.
+  it should "list no request whose masked credential the fixture key hashes" in {
+    val missing = new MissingFixtures
+    val leaf    = new HermeticHttpLeaf(missing)
+    an [Exception] should be thrownBy leaf.get("https://firestore.test/v1/documents/films?key=secret")
+    an [Exception] should be thrownBy leaf.getBytes("https://cdn.test/poster.jpg?sig=secret")
+    an [Exception] should be thrownBy leaf.get("https://api.themoviedb.org/3/movie/1?api_key=secret")
+
+    val file = Files.createTempDirectory("refetch").resolve("enrichment-pl.refetch.tsv")
+    missing.writeRefetches(file) shouldBe 1
+    Files.readAllLines(file).toArray(Array.empty[String]).toSeq.flatMap(MissingFixtures.Refetch.parse).map(_._2) shouldBe
+      Seq(MissingFixtures.Refetch("GET", "https://api.themoviedb.org/3/movie/1?api_key=***"))
+    missing.size shouldBe 3
+  }
+
+  // A remembered failure is keyed without the headers it was sent with, so the cache reports a header GET as "GET": the
+  // fill would send it bare and record the bare answer at the same key. The leaf's rule applies to it too.
+  "a remembered failure" should "be listed by the leaf's rule, headers included" in {
+    val missing = new MissingFixtures
+    val list    = MissingFixtures.listingPassingFailures(missing)
+    val failed  = CachedResponse.Failed(Some(503), "GET", "HTTP 503")
+    list(CachingEnrichmentFetch.Replayed("GET", "https://api.test/bearer", None, failed, withHeaders = true))
+    list(CachingEnrichmentFetch.Replayed("GET", "https://api.themoviedb.org/3/movie/2?api_key=secret", None, failed, withHeaders = true))
+    list(CachingEnrichmentFetch.Replayed("GET", "https://firestore.test/doc?key=secret", None, failed))
+    list(CachingEnrichmentFetch.Replayed("GET", "https://www.flicks.us/movie/a/", None, failed))
+
+    val file = Files.createTempDirectory("refetch").resolve("enrichment-us.refetch.tsv")
+    missing.writeRefetches(file) shouldBe 2
+    Files.readAllLines(file).toArray(Array.empty[String]).toSeq.flatMap(MissingFixtures.Refetch.parse).map(_._2) shouldBe Seq(
+      MissingFixtures.Refetch("GET", "https://api.themoviedb.org/3/movie/2?api_key=***"),
+      MissingFixtures.Refetch("GET", "https://www.flicks.us/movie/a/"))
+  }
+
+  "the cache" should "say a replayed failure was asked with headers" in {
+    val cache = new EnrichmentCache(new InMemoryEnrichmentCacheStore(), transients = EnrichmentCache.Transients.Replayed)
+    cache.remember(CachingEnrichmentFetch.keyOf("GET", "https://api.test/h"), CachedResponse.Failed(Some(503), "GET", "HTTP 503"))
+    val seen  = new java.util.concurrent.ConcurrentLinkedQueue[CachingEnrichmentFetch.Replayed]()
+    val fetch = new CachingEnrichmentFetch(cache, new clients.tools.FailingHttpFetch(), r => { seen.add(r); () })
+    an [Exception] should be thrownBy fetch.get("https://api.test/h", Map("Authorization" -> "Bearer x"))
+    an [Exception] should be thrownBy fetch.get("https://api.test/h")
+    seen.toArray(Array.empty[CachingEnrichmentFetch.Replayed]).map(_.withHeaders).toSeq shouldBe Seq(true, false)
+  }
+
+  "the refetch list" should "be written beside the tree, never inside it" in {
     MissingFixtures.refetchListBeside(Paths.get("test/resources/fixtures/enrichment-us")) shouldBe
       Paths.get("test/resources/fixtures/enrichment-us.refetch.tsv")
   }

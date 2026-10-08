@@ -59,6 +59,18 @@ object RedactedUrl {
       s"$base?$masked$fragment"
   }
 
+  /** The names, as spelled in the URL, of the query parameters [[apply]] masks. */
+  def maskedParameters(url: String): Seq[String] = url.indexOf('?') match {
+    case -1 => Nil
+    case at =>
+      url.substring(at + 1).takeWhile(_ != '#').split("&", -1).toSeq.flatMap { parameter =>
+        parameter.indexOf('=') match {
+          case -1   => None
+          case sign => Some(parameter.substring(0, sign)).filter(name => SecretParameters.contains(name.toLowerCase(Locale.ROOT)))
+        }
+      }
+  }
+
   /** `name=secret` → `name=***` for a credential-bearing name; anything else
    *  (including a bare valueless flag) is left exactly as it was. */
   private def redactParameter(parameter: String): String = parameter.indexOf('=') match {

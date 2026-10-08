@@ -150,10 +150,12 @@ object RecordingHttpFetch {
    *  *response* doesn't materially differ for our parser — pickBest
    *  filters the results anyway — so we fold both URL flavours onto a
    *  single fixture file and avoid the order-of-scrape coupling. */
-  private val IgnoredParameters = Set(
-    "api_key", "apikey", "access_token", "token",
-    "year", "primary_release_year"
-  )
+  private lazy val IgnoredParameters = CredentialParameters ++ YearParameters
+
+  /** The auth parameters a fixture's key never hashes, whatever `foldYear` says (matched by exact name): a URL whose
+   *  credential is one of these names the same fixture with it masked as with the real key — what lets a hermetic
+   *  leg list such a gap masked and a fill find, and record, it (`MissingFixtures.listedAs`). */
+  lazy val CredentialParameters: Set[String] = Set("api_key", "apikey", "access_token", "token")
 
   /** Hash the meaningful (non-ignored) parts of a raw query string.
    *  Shared between `RecordingHttpFetch` (write side) and
