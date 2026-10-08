@@ -14,4 +14,12 @@ object OrderReplays {
    *  refetch list) and closes the databases they write. Their failure is their test's to report, never the teardown's. */
   def settle(started: Option[tools.Alongside.Started[?]], within: scala.concurrent.duration.FiniteDuration): Unit =
     started.foreach(replays => scala.util.Try(replays.join(within)))
+
+  /** Whether a run of a suite with `filter` and `testName` (one test, or all) runs the order test `orderTest`, tagged
+   *  as the suite tags it — what keeps a row that excludes the order test by tag (Germany's and the United States'
+   *  convergence rows) from paying for replays nobody asserts on. */
+  def includes(filter: org.scalatest.Filter, testName: Option[String], orderTest: String, tags: Map[String, Set[String]],
+               suiteId: String): Boolean =
+    testName.forall(_ == orderTest) &&
+      filter(Set(orderTest), tags, suiteId).exists { case (name, ignored) => name == orderTest && !ignored }
 }

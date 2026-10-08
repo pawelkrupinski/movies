@@ -1105,8 +1105,8 @@ abstract class CountryConvergenceBehaviour(
    * hermetic run ([[OrderReplays.besideTheBoot]]); a recording starts them when the test does.
    */
   override protected def runTests(testName: Option[String], args: org.scalatest.Args): org.scalatest.Status = {
-    val included = args.filter(Set(orderTestName), tags, suiteId).exists { case (name, ignored) => name == orderTestName && !ignored }
-    if (OrderReplays.besideTheBoot(hermetic = missingFixtures.isDefined, included = included && testName.forall(_ == orderTestName)))
+    val included = OrderReplays.includes(args.filter, testName, orderTestName, tags, suiteId)
+    if (OrderReplays.besideTheBoot(hermetic = missingFixtures.isDefined, included = included))
       { val _ = startOrderReplays() }
     super.runTests(testName, args)
   }

@@ -29,4 +29,14 @@ class OrderReplaysSpec extends AnyFlatSpec with Matchers {
     OrderReplays.settle(Some(tools.Alongside.start("failing-replays")(throw new IllegalStateException("diverged"))), tools.SpecTimeouts.Io)
     OrderReplays.settle(None, tools.SpecTimeouts.Io)
   }
+
+  // The order test is tagged; a row excluding the tag (Germany's 4g convergence row) must not start replays.
+  "a run" should "include the order test only when its tag is not excluded and no other test is named" in {
+    val order = "the corpus should come out identical"
+    val tags  = Map(order -> Set(OrderIndependence.name))
+    OrderReplays.includes(org.scalatest.Filter(), None, order, tags, "suite") shouldBe true
+    OrderReplays.includes(org.scalatest.Filter(tagsToExclude = Set(OrderIndependence.name)), None, order, tags, "suite") shouldBe false
+    OrderReplays.includes(org.scalatest.Filter(tagsToInclude = Some(Set(OrderIndependence.name))), None, order, tags, "suite") shouldBe true
+    OrderReplays.includes(org.scalatest.Filter(), Some("another test"), order, tags, "suite") shouldBe false
+  }
 }
