@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 
 /**
  * `putSlotsIfPresent` is `putIfPresent` of an update to some of a row's slots, made cheap: it compares,
- * strips, re-indexes and diffs only the slots it writes (see its doc comment). Cheap must
+ * strips and diffs only the slots it writes (see its doc comment). Cheap must
  * not mean different, so this drives the same sequence of slot writes through both and
  * asserts the store, its screenings, the cache and the films announced changed end up identical after every step.
  */
@@ -46,7 +46,7 @@ class PutSlotsIfPresentSpec extends AnyFlatSpec with Matchers {
   }
 
   // A venue page read lands on every slot of the row it names, each merged from what that slot held — the detail
-  // handler's write, which took the whole row's strip, re-index and diff under the title lock: 40% of a US detail
+  // handler's write, which took the whole row's strip and diff under the title lock: 40% of a US detail
   // drain's CPU, with the drain's other claimants queued behind the lock (JFR, run 37622335270 and after).
   it should "write several slots at once, each from what it held, exactly as putIfPresent of the same update does" in {
     val (slotWise, recordWise) = (new Side, new Side)

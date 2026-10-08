@@ -422,9 +422,19 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
       Seq(MissingFixtures.Refetch("BYTES", passing), MissingFixtures.Refetch("BYTES", refused))
   }
 
+  // A claimant is a thread of its own: an error its handler or the queue throws ended that thread alone, the join
+  // returned as if the queue were drained, and the phase read as quiet with the task still leased — on the harness's
+  // frozen clock, for ever. The drain fails with it instead.
+  "a harness queue drain" should "fail with what a claimant threw, not read as drained" in {
+    val wiring = hermeticWiring(None, new MissingFixtures)
+    wiring.taskQueue.enqueue(services.tasks.TaskType.EnrichDetails, "probe-throws", Map.empty, submittedAt = wiring.clock.instant())
+    val thrown = the [Throwable] thrownBy wiring.drainQueue("probe")(_ => throw new StackOverflowError("handler blew its stack"))
+    thrown.getMessage should include ("handler blew its stack")
+  }
+
   // The detail drain worked one task at a time on one thread: a few thousand detail tasks of serial
   // round trips on every US projection, ~23 s each at under one core (run 37563035752).
-  "a harness queue drain" should "work its tasks on the background budget's claimants side by side" in {
+  it should "work its tasks on the background budget's claimants side by side" in {
     val wiring  = hermeticWiring(None, new MissingFixtures)
     (1 to 12).foreach(i => wiring.taskQueue.enqueue(services.tasks.TaskType.EnrichDetails, s"probe-$i", Map.empty,
       submittedAt = wiring.clock.instant()))

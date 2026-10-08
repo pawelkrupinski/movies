@@ -368,18 +368,23 @@ trait TestWiring extends WorkerWiring {
    *  at under one core (run 37563035752). Under a `SameThreadExecutionBudget` this is one claimant, so
    *  a determinism spec's drains stay strictly serial. */
   private[tools] def drainQueue(workerPrefix: String)(handle: services.tasks.Task => Unit): Unit = {
+    // What a claimant threw, rethrown once every claimant has stopped: its thread would otherwise end alone, the join
+    // return as if the queue were drained, and its task stay leased on the frozen clock for ever.
+    val failure   = new java.util.concurrent.atomic.AtomicReference[Throwable]()
     val claimants = (0 until drainClaimants).map { i =>
       val workerId = s"$workerPrefix-$i"
       val thread   = new Thread(
         () =>
-          Iterator.continually(taskQueue.claim(workerId, 5.minutes))
-            .takeWhile(_.isDefined).flatten
-            .foreach { task => handle(task); taskQueue.complete(task.id, workerId) },
+          try Iterator.continually(taskQueue.claim(workerId, 5.minutes))
+            .takeWhile(_ => failure.get == null).takeWhile(_.isDefined).flatten
+            .foreach { task => handle(task); taskQueue.complete(task.id, workerId) }
+          catch { case t: Throwable => failure.compareAndSet(null, t); () },
         workerId)
       thread.start()
       thread
     }
     claimants.foreach(_.join())
+    Option(failure.get).foreach(t => throw t)
   }
 
   /** One detail pass — the reaper's tick (capped at its `maxEnqueuePerTick`) and the tasks it
