@@ -112,7 +112,11 @@ class KinoMarzenieChunkedSpec extends AnyFlatSpec with Matchers with OptionValue
   it should "refuse a repertoire page with no day slider, rather than plan nothing and publish the venue empty" in {
     val maintenance = new KinoMarzenieClient(new clients.tools.ConstantHttpFetch("<html><body>Przerwa techniczna</body></html>"),
       KinoMarzenie, today = LocalDate.of(2026, 10, 7))
-    an[Exception] should be thrownBy maintenance.planChunks()
+    // An unexpected body, not an absence: a 404-like answer would let the venue read as gone.
+    val refused = the[tools.UnexpectedBodyException] thrownBy maintenance.planChunks()
+    refused.url shouldBe KinoMarzenieClient.RepertoireUrl
+    refused.why shouldBe "no 'calendar-slider' in the page"
+    tools.ReadOutcome.isAbsent(refused) shouldBe false
   }
 
   it should "read a week's chunk one partial per day" in {
