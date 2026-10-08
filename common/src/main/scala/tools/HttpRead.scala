@@ -196,40 +196,8 @@ object ChallengePage {
    *  ~350 KB, and searching all of it for every marker was 17% of a US detail drain's CPU (JFR, 2026-10-07). */
   val SearchedChars: Int = 64 * 1024
 
-  /** The vendor whose challenge this body is, if it is one.
-   *
-   *  A body this thread has just found clear is not searched again: a proxied read is searched by
-   *  `FallbackHttpFetch` choosing its route and again by the `HttpRead` helper parsing it, the same
-   *  String both times, and over whole rating pages the second search was half of 7% of a
-   *  convergence leg's CPU (run 37517196329). Held weakly, so a thread never keeps a page alive. */
-  def detect(body: String): Option[String] = {
-    val seen = lastClear.get()
-    if (seen.body.get() eq body) None
-    else if (isJson(body)) None
-    else {
-      seen.scans += 1
-      val vendor = Signatures.collectFirst { case (matches, v) if matches(body) => v }
-      if (vendor.isEmpty) seen.body = new java.lang.ref.WeakReference(body)
-      vendor
-    }
-  }
-
-  /** A body opening as a JSON object or array: an API's answer, never a vendor's interstitial, which is
-   *  always an HTML page — so it is not searched at all. Every TMDB answer a replay reads crosses
-   *  `FallbackHttpFetch`, and searching those for the markers was 3.5% of a US order-independence leg's CPU
-   *  (JFR, run 37581348550). */
-  private def isJson(body: String): Boolean = {
-    var i = 0
-    while (i < body.length && Character.isWhitespace(body.charAt(i))) i += 1
-    i < body.length && (body.charAt(i) == '{' || body.charAt(i) == '[')
-  }
-
-  private final class LastClear {
-    var body: java.lang.ref.WeakReference[String] = new java.lang.ref.WeakReference(null)
-    var scans = 0L
-  }
-  private val lastClear = ThreadLocal.withInitial(() => new LastClear)
-
-  /** How many bodies this thread has searched in full — what the spec reads the memo by. */
-  private[tools] def scansOnThisThread: Long = lastClear.get().scans
+  /** The vendor whose challenge this body is, if it is one — a JSON body included: DataDome and PerimeterX answer an
+   *  API-style request with a JSON block. Each search reads at most [[SearchedChars]], so a body read twice (by
+   *  `FallbackHttpFetch` choosing its route, then by the `HttpRead` helper parsing it) costs little. */
+  def detect(body: String): Option[String] = Signatures.collectFirst { case (matches, v) if matches(body) => v }
 }

@@ -107,30 +107,12 @@ class HttpReadSpec extends AnyFlatSpec with Matchers {
     ChallengePage.detect(page) shouldBe None
   }
 
-  // Every proxied read is searched twice — by `FallbackHttpFetch` choosing a route, then by the
-  // `HttpRead` helper parsing it — and the bodies are whole rating pages: the two searches were 7% of a
-  // convergence leg's CPU (run 37517196329).
-  it should "search a body it has already found clear on this thread only once" in {
-    val page = new String(s"<html><body>${"<div>Diuna</div>" * 300}</body></html>")
-    val before = ChallengePage.scansOnThisThread
-    ChallengePage.detect(page) shouldBe None
-    ChallengePage.detect(page) shouldBe None
-    ChallengePage.scansOnThisThread - before shouldBe 1
-    // an equal body that is another String is searched again, and a challenge still is one
-    ChallengePage.detect(new String(page)) shouldBe None
-    ChallengePage.scansOnThisThread - before shouldBe 2
-    ChallengePage.detect(IncapsulaBlock) shouldBe Some("Incapsula")
-    ChallengePage.detect(IncapsulaBlock) shouldBe Some("Incapsula")
-  }
-
-  // Every TMDB answer a replay reads crosses `FallbackHttpFetch`, and searching each for eight markers was
-  // 3.5% of a US order-independence leg's CPU (JFR, run 37581348550) — for bodies no vendor serves as a challenge.
-  it should "not search a JSON body, which no challenge page is" in {
-    val before = ChallengePage.scansOnThisThread
-    ChallengePage.detect(s"""{"title":"px-captcha","overview":"<title>Just a moment...</title>"}""") shouldBe None
-    ChallengePage.detect(s"""\n  [{"id":1,"note":"window._cf_chl_opt"}]""") shouldBe None
-    ChallengePage.scansOnThisThread - before shouldBe 0
-    ChallengePage.detect(s"\n  $IncapsulaBlock") shouldBe Some("Incapsula")
+  // DataDome and PerimeterX answer an API-style request with a JSON block, not an HTML page: relayed as a 2xx by a
+  // proxy, it is a challenge all the same, and the route must fall through rather than book the proxy as having served.
+  it should "recognise a vendor's JSON block as the challenge it is" in {
+    ChallengePage.detect("""{"url":"https://geo.captcha-delivery.com/captcha/?initialCid=AHrlqAAAAAMA"}""") shouldBe Some("DataDome")
+    ChallengePage.detect("""  {"appId":"PXabc","blockScript":"/px-captcha/main.min.js"}""") shouldBe Some("PerimeterX")
+    ChallengePage.detect("""{"results":[{"id":1018,"title":"Mulholland Drive"}]}""") shouldBe None
   }
 
   // A film page from Flicks is ~350 KB, and searching all of it for eight markers was 17% of a US detail drain's CPU
