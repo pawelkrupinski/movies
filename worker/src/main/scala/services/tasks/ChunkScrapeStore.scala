@@ -9,6 +9,16 @@ case class ChunkRun(cinema: String, runId: String, expectedKeys: Seq[String], cr
     createdAt.isBefore(now.minusMillis(staleAfter.toMillis))
 }
 
+/** One chunk's stored parse: whether every page of it read, and which attempt of the
+ *  chunk's task read it. Slice and completeness travel in ONE write, so no reduce can
+ *  see one without the other. */
+case class StoredChunk(valueJson: String, complete: Boolean = true, attempt: Int = 0) {
+  /** Whether this may replace `stored`, the rule both stores apply: never when a LATER
+   *  attempt stored it. A stalled attempt whose lease expired can land after its retry
+   *  did, and its partial slice must not overwrite the retry's whole one. */
+  def replaces(stored: StoredChunk): Boolean = attempt >= stored.attempt
+}
+
 /**
  * Coordination + partial-data store for chunked scrapes. Two jobs:
  *
@@ -57,16 +67,17 @@ trait ChunkScrapeStore {
    *  store cannot be read: "no run" and "no chunks" are answers callers act on. */
   def activeRun(cinema: String): Option[ChunkRun]
 
-  /** Store (idempotently) one chunk's serialised slice. A no-op if the run is no
-   *  longer the cinema's active run. THROWS when the write fails: a chunk or marker
-   *  that silently never landed would let the run reduce as if it had. */
-  def storeChunk(cinema: String, runId: String, key: String, valueJson: String, now: Instant): Unit
+  /** Store (idempotently) one chunk's slice. A no-op if the run is no longer the
+   *  cinema's active run, or when a later attempt already stored the key
+   *  ([[StoredChunk.replaces]]). THROWS when the write fails: a chunk or marker that
+   *  silently never landed would let the run reduce as if it had. */
+  def storeChunk(cinema: String, runId: String, key: String, chunk: StoredChunk, now: Instant): Unit
 
   /** The chunk keys stored so far for the run. */
   def storedKeys(cinema: String, runId: String): Set[String]
 
-  /** key -> serialised slice for every stored chunk of the run. */
-  def loadChunks(cinema: String, runId: String): Map[String, String]
+  /** key -> stored slice for every stored chunk of the run. */
+  def loadChunks(cinema: String, runId: String): Map[String, StoredChunk]
 
   /** Every active run — for the backstop reaper to check completeness/staleness. */
   def activeRuns(): Seq[ChunkRun]
@@ -83,7 +94,7 @@ trait ChunkScrapeStore {
  * the Mongo store uses UUIDs.
  */
 class InMemoryChunkScrapeStore extends ChunkScrapeStore {
-  private case class State(run: ChunkRun, chunks: Map[String, String])
+  private case class State(run: ChunkRun, chunks: Map[String, StoredChunk])
   private val byCinema = scala.collection.mutable.Map.empty[String, State]
   private val lock     = new Object
   private var counter  = 0L
@@ -102,10 +113,11 @@ class InMemoryChunkScrapeStore extends ChunkScrapeStore {
 
   def activeRun(cinema: String): Option[ChunkRun] = lock.synchronized(byCinema.get(cinema).map(_.run))
 
-  def storeChunk(cinema: String, runId: String, key: String, valueJson: String, now: Instant): Unit =
+  def storeChunk(cinema: String, runId: String, key: String, chunk: StoredChunk, now: Instant): Unit =
     lock.synchronized {
       byCinema.get(cinema).foreach { st =>
-        if (st.run.runId == runId) byCinema.put(cinema, st.copy(chunks = st.chunks.updated(key, valueJson)))
+        if (st.run.runId == runId && st.chunks.get(key).forall(chunk.replaces))
+          byCinema.put(cinema, st.copy(chunks = st.chunks.updated(key, chunk)))
       }
     }
 
@@ -113,7 +125,7 @@ class InMemoryChunkScrapeStore extends ChunkScrapeStore {
     byCinema.get(cinema).filter(_.run.runId == runId).map(_.chunks.keySet.toSet).getOrElse(Set.empty)
   }
 
-  def loadChunks(cinema: String, runId: String): Map[String, String] = lock.synchronized {
+  def loadChunks(cinema: String, runId: String): Map[String, StoredChunk] = lock.synchronized {
     byCinema.get(cinema).filter(_.run.runId == runId).map(_.chunks).getOrElse(Map.empty)
   }
 

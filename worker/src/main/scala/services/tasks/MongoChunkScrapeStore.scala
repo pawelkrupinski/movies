@@ -24,7 +24,8 @@ import scala.util.Try
  *    or, on conflict, atomically replaces a STALE run via a `createdAt < threshold`
  *    guard (supersession). TTL on `createdAt` clears a wedged run.
  *  - `scrape_chunks`: one doc per `(cinema, runId, key)` (`_id` is their join) —
- *    the stored slice. Upsert = idempotent on chunk retry. TTL on `storedAt`.
+ *    the stored slice, whether it read whole, and the attempt that read it. Upsert =
+ *    idempotent on chunk retry, never over a later attempt's. TTL on `storedAt`.
  */
 class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrapeStore with Logging {
   import MongoChunkScrapeStore._
@@ -82,14 +83,23 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
 
   // A failed write THROWS too: logged and dropped, a lost INCOMPLETE marker let the run reduce as a
   // whole listing and prune what the failed read missed. The throw fails the task, which retries.
-  def storeChunk(cinema: String, runId: String, key: String, valueJson: String, now: Instant): Unit = chunks.foreach { c =>
+  // [[StoredChunk.replaces]] as a filter: the upsert matches the key only while no LATER attempt holds
+  // it (a doc without an attempt predates them: attempt 0), and one that does turns the upsert's insert
+  // into a duplicate key — that attempt's slice stands.
+  def storeChunk(cinema: String, runId: String, key: String, chunk: StoredChunk, now: Instant): Unit = chunks.foreach { c =>
     val id = chunkId(cinema, runId, key)
     val update = Updates.combine(
       Updates.setOnInsert("_id", id),
       Updates.set("cinema", cinema), Updates.set("runId", runId), Updates.set("key", key),
-      Updates.set("value", valueJson), Updates.set("storedAt", new java.util.Date(now.toEpochMilli)))
-    val _ = Await.result(c.updateOne(Filters.eq("_id", id), update,
-      new com.mongodb.client.model.UpdateOptions().upsert(true)).toFuture(), 10.seconds)
+      Updates.set("value", chunk.valueJson), Updates.set("complete", chunk.complete), Updates.set("attempt", chunk.attempt),
+      Updates.set("storedAt", new java.util.Date(now.toEpochMilli)))
+    try {
+      val _ = Await.result(c.updateOne(Filters.and(Filters.eq("_id", id), Filters.not(Filters.gt("attempt", chunk.attempt))), update,
+        new com.mongodb.client.model.UpdateOptions().upsert(true)).toFuture(), 10.seconds)
+    } catch {
+      case e: MongoWriteException if services.MongoErrors.isDuplicateKey(e) =>
+        logger.info(s"storeChunk($cinema/$runId/$key) attempt ${chunk.attempt} kept out: a later attempt stored it")
+    }
   }
 
   // Only the keys: asked on every chunk that lands, reading each stored chunk's parse (~7 KB) as well
@@ -100,8 +110,11 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
       .batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)
   }.map(_.getString("key")).toSet
 
-  def loadChunks(cinema: String, runId: String): Map[String, String] =
-    loadDocs(cinema, runId).map(d => d.getString("key") -> d.getString("value")).toMap
+  def loadChunks(cinema: String, runId: String): Map[String, StoredChunk] =
+    loadDocs(cinema, runId).map(d => d.getString("key") -> StoredChunk(
+      valueJson = d.getString("value"),
+      complete  = d.get("complete").filter(_.isBoolean).forall(_.asBoolean().getValue),
+      attempt   = d.get("attempt").filter(_.isInt32).fold(0)(_.asInt32().getValue))).toMap
 
   private def loadDocs(cinema: String, runId: String): Seq[Document] = chunks.toSeq.flatMap { c =>
     Await.result(c.find(Filters.and(Filters.eq("cinema", cinema), Filters.eq("runId", runId))).batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)

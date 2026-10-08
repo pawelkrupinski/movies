@@ -133,7 +133,7 @@ class ChunkScrapeReaperSpec extends AnyFlatSpec with Matchers {
     val rig   = new Rig()
     // A run another (since crashed) process started; this one boots five minutes later.
     val runId = rig.store.startRun(cinema, Seq("a", "b"), t0, timeout.value).get
-    rig.store.storeChunk(cinema, runId, "a", "[]", t0)
+    rig.store.storeChunk(cinema, runId, "a", StoredChunk("[]"), t0)
     rig.clock.advance(Duration.ofMinutes(5))
     rig.reaper().start()
 

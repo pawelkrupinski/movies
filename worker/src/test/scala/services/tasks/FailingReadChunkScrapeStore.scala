@@ -13,7 +13,7 @@ class FailingReadChunkScrapeStore extends InMemoryChunkScrapeStore with FailsOnP
     if (failingReads) unreadable() else super.activeRun(cinema)
   override def storedKeys(cinema: String, runId: String): Set[String] =
     if (failingReads) unreadable() else super.storedKeys(cinema, runId)
-  override def loadChunks(cinema: String, runId: String): Map[String, String] =
+  override def loadChunks(cinema: String, runId: String): Map[String, StoredChunk] =
     if (failingReads) unreadable() else super.loadChunks(cinema, runId)
   override def activeRuns(): Seq[ChunkRun] =
     if (failingReads) unreadable() else super.activeRuns()

@@ -150,7 +150,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
       val now   = Far
       awaitIndexes(db, "scrape_chunks", 3)
       val run   = store.startRun("helios-lodz", Seq("a", "b"), now, 1.hour).get
-      store.storeChunk("helios-lodz", run, "a", "{}", now)
+      store.storeChunk("helios-lodz", run, "a", services.tasks.StoredChunk("{}"), now)
       store.storedKeys("helios-lodz", run)
       store.loadChunks("helios-lodz", run)
       store.activeRun("helios-lodz")

@@ -45,9 +45,9 @@ class ScrapeChunkReduceHandler(
     chunkScrapers.get(cinema) match {
       case None => store.completeRun(cinema, runId); Done
       case Some(scraper) =>
-        val (allMarkers, slices) = store.loadChunks(cinema, runId).partition { case (k, _) => ChunkScrapeKeys.isIncompleteMarker(k) }
-        val markers = allMarkers.filterNot { case (_, value) => value == ChunkScrapeKeys.MarkerWithdrawn }
-        val stored = slices.map { case (k, json) => k -> CinemaMovieJson.decode(json, scraper.cinema) }
+        val (markers, slices) = store.loadChunks(cinema, runId).partition { case (k, _) => ChunkScrapeKeys.isIncompleteMarker(k) }
+        val partialSlices = slices.count { case (_, chunk) => !chunk.complete }
+        val stored = slices.map { case (k, chunk) => k -> CinemaMovieJson.decode(chunk.valueJson, scraper.cinema) }
         val movies = scraper.reduceChunks(stored)
         // Work out whether this is the WHOLE listing BEFORE publishing, and tell the
         // cache. A partial reduce omits every film that only screens on a missing date,
@@ -57,14 +57,15 @@ class ScrapeChunkReduceHandler(
         val expected = run.get.expectedKeys.toSet
         val missing  = expected.diff(stored.keySet)
         try {
-          // …and not whole either when a read inside the plan or a chunk failed (`markers`).
-          publishScrape(PreScrapedCinemaScraper.of(scraper, () => movies, listingComplete = missing.isEmpty && markers.isEmpty))
+          // …and not whole either when a read inside the plan (`markers`) or a chunk failed.
+          val readsComplete = markers.isEmpty && partialSlices == 0
+          publishScrape(PreScrapedCinemaScraper.of(scraper, () => movies, listingComplete = missing.isEmpty && readsComplete))
           val horizon = VenueScrapeCadence.remainingHorizonOf(scraper.cinema, movies, clock)
           scrapeFreshness.succeeded(ScrapeCinemaHandler.dedupKey(scraper.cinema), Some(horizon))
           store.completeRun(cinema, runId)
-          if (missing.nonEmpty || markers.nonEmpty)
+          if (missing.nonEmpty || !readsComplete)
             logger.warn(s"$cinema run $runId reduced PARTIAL: ${stored.size}/${expected.size} chunks (${missing.size} missing)" +
-              s", ${markers.size} read(s) incomplete")
+              s", ${markers.size + partialSlices} read(s) incomplete")
           Done
         } catch {
           case e: Exception =>

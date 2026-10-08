@@ -34,17 +34,28 @@ class ChunkScrapeStoreSpec extends AnyFlatSpec with Matchers {
   "storeChunk" should "persist per active run, ignoring a stale runId" in {
     val s = store
     val r = s.startRun("Kino", Seq("a", "b"), now, stale).get
-    s.storeChunk("Kino", r, "a", "VA", now)
-    s.storeChunk("Kino", "ghost", "b", "VB", now) // not the active run → ignored
+    s.storeChunk("Kino", r, "a", StoredChunk("VA"), now)
+    s.storeChunk("Kino", "ghost", "b", StoredChunk("VB"), now) // not the active run → ignored
     s.storedKeys("Kino", r) shouldBe Set("a")
-    s.loadChunks("Kino", r)  shouldBe Map("a" -> "VA")
+    s.loadChunks("Kino", r)  shouldBe Map("a" -> StoredChunk("VA"))
     s.storedKeys("Kino", "ghost") shouldBe empty
+  }
+
+  // A stalled attempt whose lease expired can land after its retry: its slice must not replace the retry's.
+  it should "keep a later attempt's slice from an earlier attempt landing after it" in {
+    val s = store
+    val r = s.startRun("Kino", Seq("a"), now, stale).get
+    s.storeChunk("Kino", r, "a", StoredChunk("whole", attempt = 2), now)
+    s.storeChunk("Kino", r, "a", StoredChunk("partial", complete = false, attempt = 1), now)
+    s.loadChunks("Kino", r) shouldBe Map("a" -> StoredChunk("whole", attempt = 2))
+    s.storeChunk("Kino", r, "a", StoredChunk("newer", complete = false, attempt = 3), now)
+    s.loadChunks("Kino", r) shouldBe Map("a" -> StoredChunk("newer", complete = false, attempt = 3))
   }
 
   "completeRun" should "drop the run and its chunks only for the matching runId" in {
     val s = store
     val r = s.startRun("Kino", Seq("a"), now, stale).get
-    s.storeChunk("Kino", r, "a", "VA", now)
+    s.storeChunk("Kino", r, "a", StoredChunk("VA"), now)
     s.completeRun("Kino", "not-this-run")
     s.activeRun("Kino") shouldBe defined
     s.completeRun("Kino", r)

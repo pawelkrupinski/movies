@@ -57,17 +57,8 @@ class ScrapeChunkHandler(
                 logger.info(s"chunk '$key' for $cinema run $runId is gone upstream; storing it empty: ${e.getMessage}")
                 (CinemaMovieJson.encode(Nil), true)
             }
-          // The marker first: a reduce that runs between the two stores must not miss it.
-          if (!complete) {
-            logger.info(s"chunk '$key' for $cinema run $runId stored INCOMPLETE: a page failed")
-            store.storeChunk(cinema, runId, ChunkScrapeKeys.chunkIncomplete(key), CinemaMovieJson.encode(Nil), clock.instant())
-          } else if (task.attempts > 1) {
-            // A retry that read every page: an earlier attempt may have stored the marker and never got to its
-            // slice (its worker stopped between the two, the lease expired) — left standing, the marker would
-            // reduce the run as INCOMPLETE.
-            store.storeChunk(cinema, runId, ChunkScrapeKeys.chunkIncomplete(key), ChunkScrapeKeys.MarkerWithdrawn, clock.instant())
-          }
-          store.storeChunk(cinema, runId, key, slice, clock.instant())
+          if (!complete) logger.info(s"chunk '$key' for $cinema run $runId stored INCOMPLETE: a page failed")
+          store.storeChunk(cinema, runId, key, StoredChunk(slice, complete, task.attempts), clock.instant())
           Done
         } catch {
           // The host's breaker is open, so this chunk never reached the wire. Give

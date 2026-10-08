@@ -46,7 +46,7 @@ class ChunkPageMemoSpec extends AnyFlatSpec with Matchers {
       val runId = store.startRun(Multikino.displayName, Seq("2026-10-02"), clock.instant(), 1.hour).get
       handler.handle(services.tasks.Task("t", TaskType.ScrapeChunk, "d", Map(ChunkScrapeKeys.CinemaKey -> Multikino.displayName,
         ChunkScrapeKeys.RunIdKey -> runId, ChunkScrapeKeys.ChunkKey -> "2026-10-02"), attempts = 1))
-      val stored = store.loadChunks(Multikino.displayName, runId)("2026-10-02")
+      val stored = store.loadChunks(Multikino.displayName, runId)("2026-10-02").valueJson
       store.completeRun(Multikino.displayName, runId)
       stored
     }

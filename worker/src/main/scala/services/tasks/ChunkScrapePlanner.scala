@@ -87,7 +87,7 @@ class ChunkScrapePlanner(
           // A run whose marker never landed would reduce as the whole listing, so it is
           // abandoned instead: the venue stays due and the next scrape plans afresh.
           if (!planReads.complete)
-            try store.storeChunk(cinema, runId, ChunkScrapeKeys.PlanIncomplete, CinemaMovieJson.encode(Nil), now)
+            try store.storeChunk(cinema, runId, ChunkScrapeKeys.PlanIncomplete, StoredChunk(CinemaMovieJson.encode(Nil), complete = false), now)
             catch { case e: Exception => store.completeRun(cinema, runId); throw e }
           // Stagger the fan-out's eligibility evenly across the (clamped) spread
           // window so this venue's chunks don't all become claimable at once and
