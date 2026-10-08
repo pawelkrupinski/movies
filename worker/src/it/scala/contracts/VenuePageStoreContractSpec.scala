@@ -18,8 +18,8 @@ import scala.concurrent.Await
 /**
  * ONE behaviour suite for [[VenuePageStore]], run against every implementation on the class path:
  * the `venue_pages` collection and the in-memory store. A page round-trips with every fact it
- * stated, a gone page with its code, a re-read replaces the earlier one, and a read-through
- * delivers every page once.
+ * stated, a gone page with its code, a re-read replaces the earlier one but keeps what the rows took of the
+ * page, and a read-through delivers every page once.
  */
 class VenuePageStoreContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
@@ -69,6 +69,29 @@ class VenuePageStoreContractSpec extends AnyFlatSpec with Matchers with BeforeAn
       val later = VenuePage(lalka, VenuePage.Read(everything), at.plusSeconds(3600))
       store.put(later) shouldBe true
       store.get(lalka) shouldBe Some(later)
+    }
+
+    it should s"[$name] drop a fact a re-read no longer states" in {
+      val store = fresh(cls)
+      store.put(VenuePage(lalka, VenuePage.Read(everything), at))
+      val later = VenuePage(lalka, VenuePage.Read(FilmDetail(runtimeMinutes = Some(162))), at.plusSeconds(3600))
+      store.put(later) shouldBe true
+      store.get(lalka) shouldBe Some(later)
+    }
+
+    // What the rows took of a page is not the page's latest read: a read stored and never landed (its row was
+    // re-keyed) must not become the baseline the next read is compared with.
+    it should s"[$name] keep what the rows took of a page across later reads of it" in {
+      val store = fresh(cls)
+      val has   = FilmDetail(director = Seq("Wojciech Has"), releaseYear = Some(1968))
+      store.put(VenuePage(lalka, VenuePage.Read(has), at))
+      store.landed(lalka) shouldBe None
+      store.land(lalka, has) shouldBe true
+      store.put(VenuePage(lalka, VenuePage.Read(everything), at.plusSeconds(3600))) shouldBe true
+      store.landed(lalka) shouldBe Some(has)
+      store.get(lalka).map(_.outcome) shouldBe Some(VenuePage.Read(everything))
+      store.land(lalka, everything) shouldBe true
+      store.landed(lalka) shouldBe Some(everything)
     }
 
     it should s"[$name] deliver every page once on a read-through" in {

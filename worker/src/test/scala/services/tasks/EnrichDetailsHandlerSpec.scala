@@ -384,6 +384,41 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     withClue("the listing's showtimes must survive a refresh: ")(slot.map(_.showtimes.size) shouldBe Some(1))
   }
 
+  // A changed page was saved to venue_pages and never written onto its film. The read that saw the change missed the
+  // row (re-keyed between enqueue and pickup), yet the page was already stored as read; every later read compared the
+  // page with itself, saw nothing new, and only filled gaps, so the network slot kept the old year and runtime.
+  // "Changed" is measured against what the rows last TOOK from the page, not what venue_pages last read.
+  it should "still overrule a slot with a changed page whose first read missed the re-keyed row" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    services.movies.ListingSeed.land(cache, CinemaCityPoznanPlaza, Seq(CinemaMovie(Movie("Dune"), CinemaCityPoznanPlaza, posterUrl = None,
+      filmUrl = Some("http://ref"), synopsis = None, cast = Seq.empty, director = Seq.empty,
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book"))))))
+    val fresh = new InMemoryFreshnessStore
+    val pages = new InMemoryVenuePageStore
+    def handle(detail: FilmDetail, task: DetailEnricher => Task) = {
+      val enricher = new FakeDetailEnricher(CinemaCityPoznanPlaza, "cinema-city", Some(detail), target = Some(CinemaCityChain))
+      new EnrichDetailsHandler(Map("cinema-city" -> enricher), cache, fresh, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), noBus,
+        dueWindow, clock = specClock, enrichmentLanguage = polish, pages = pages).handle(task(enricher)) shouldBe Done
+    }
+    def chainSlot = cache.get(cache.keyOf("Dune", None)).flatMap(_.data.get(CinemaCityChain))
+    val was = FilmDetail(releaseYear = Some(1984), runtimeMinutes = Some(137))
+    val now = FilmDetail(releaseYear = Some(2021), runtimeMinutes = Some(155))
+
+    handle(was, taskFor("cinema-city", cache, "Dune", _))
+    chainSlot.flatMap(_.releaseYear) shouldBe Some(1984)
+    // The page changes, and the read that sees it is asked for a key the row no longer holds.
+    handle(now, taskFor("cinema-city", cache, "Dune", _, year = Some(1984)))
+    chainSlot.flatMap(_.releaseYear) shouldBe Some(1984)
+    pages.get(VenuePageKey("cinema-city", "http://ref")).map(_.outcome) shouldBe Some(VenuePage.Read(now))
+
+    // The next window reads the same (changed) page for the row's current key: it must land.
+    val current = taskFor("cinema-city", cache, "Dune", new FakeDetailEnricher(CinemaCityPoznanPlaza, "cinema-city"))
+    fresh.markFresh(current.dedupKey, FreshnessKind.DetailEnrich, specClock.instant().minus(2, ChronoUnit.DAYS))
+    handle(now, taskFor("cinema-city", cache, "Dune", _))
+    withClue(s"slot=$chainSlot: ")(chainSlot.flatMap(_.releaseYear) shouldBe Some(2021))
+    chainSlot.flatMap(_.runtimeMinutes) shouldBe Some(155)
+  }
+
   // A 404 is not a read. The `Gone` branch stamps the task's own freshness key to stop
   // the re-enqueue livelock, and reading that back as "we have seen this page" made a
   // recovered page's FIRST real read authoritative — so the detail page could overwrite

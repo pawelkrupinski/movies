@@ -126,7 +126,10 @@ class EnrichDetailsHandler(
         val ref = task.payload.getOrElse(EnrichDetailsTasks.RefKey, "")
         // The page is read into venue_pages, stamped and announced there, and recorded on /uptime;
         // this handler lands it on the row.
-        val prior   = pages.get(services.venuepages.VenuePageKey(enricher.detailGroup, ref)).map(_.outcome)
+        val pageKey = services.venuepages.VenuePageKey(enricher.detailGroup, ref)
+        // What the rows last took of the page, or — for a page last landed before `landed` was kept — the page as
+        // last read, which was what every read then landed. Taken before this read replaces that.
+        val baseline = pages.landed(pageKey).orElse(pages.get(pageKey).map(_.outcome).collect { case VenuePage.Read(before) => before })
         val read    = reader.read(enricher, ref)
         services.venuepages.DetailUptime.record(uptime, enricher, label, read.outcome)
         read.outcome match {
@@ -204,31 +207,32 @@ class EnrichDetailsHandler(
                 else if (cinemaSlots.contains(derived)) Seq(derived)  // scrape wrote the base title too
                 else cinemaSlots                                  // decorated edition(s) → merge into the real slot(s)
               }
-            // What did this page say when it was last read (`venue_pages`, as it stood before
-            // this read)? The fields it now states DIFFERENTLY are authoritative
+            // What did this page say when the rows last took it (`VenuePageStore.landed`)? The fields
+            // it now states DIFFERENTLY are authoritative
             // (`FilmDetail.refreshInto`): a venue that reuses a URL for a different film —
             // Kino Pionier's `/event/lalka`, Has's 1968 picture then the 2026 one — otherwise
             // keeps the first film's year and runtime for ever, because the fill-only merge
             // has nothing to fill. Everything else only fills gaps (`mergeInto`), so the
-            // listing keeps out-ranking the page wherever both speak — on a first read (a
+            // listing keeps out-ranking the page wherever both speak — on a first landing (a
             // page never read, or read only as gone: a 404 is not a read), and on every
-            // re-read that says what the page said before. Not a freshness marker: the
+            // re-read that says what the rows took before. Not the page as last READ: the reader
+            // stores that before this merge, and a merge that missed its row (re-keyed between
+            // enqueue and pickup) left the changed read stored and never landed — every later read
+            // then matched it, and the row kept the old year and runtime for ever. Not a freshness marker: the
             // reader stamps the page read before this handler merges, so a marker read here
             // made every read — the first included — authoritative, and a re-read every
             // refresh window rewrote the listing's own countries and genres with the page's.
             // Both reads as a slot may hold them (`landed`): compared raw, a page that spells a
             // country or lists its genres the way it always has would differ from what it landed as.
-            val changed = prior match {
-              case Some(VenuePage.Read(before)) => detail.changedSince(landed(before))
-              case _                            => FilmDetail()
-            }
+            val changed = baseline.fold(FilmDetail())(before => detail.changedSince(landed(before)))
             // Merge into the target slot(s), creating one if absent: a chain's network
             // source has no slot from a listing scrape, so it must be added here;
             // a 1:1 cinema's slot already exists, so this preserves its showtimes.
             // Only those slots are written, each from what it held (`putSlotsIfPresent`): a no-op on a row that was
-            // re-keyed between enqueue and pickup.
-            cache.putSlotsIfPresent(rowKey, targets)((_, held) =>
+            // re-keyed between enqueue and pickup — and then the page is not landed, so its next read still overrules.
+            val onRow = cache.putSlotsIfPresent(rowKey, targets)((_, held) =>
               detail.mergeInto(changed.refreshInto(held.getOrElse(SourceData()), screeningTokens), screeningTokens))
+            if (onRow && !baseline.contains(read)) pages.land(pageKey, read)
             freshness.markFresh(key, FreshnessKind.DetailEnrich, clock.instant())
             Done
         }

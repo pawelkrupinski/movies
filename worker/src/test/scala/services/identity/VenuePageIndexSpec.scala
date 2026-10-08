@@ -49,10 +49,8 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
     pages.put(VenuePage(VenuePageKey(Group, "http://a"), VenuePage.Read(Full), clock.instant()))
     val reported = scala.collection.mutable.ArrayBuffer.empty[String]
     var index: VenuePageIndex = null
-    val scanning = new services.venuepages.VenuePageStore {
-      def get(key: VenuePageKey) = pages.get(key)
-      def put(page: VenuePage)   = pages.put(page)
-      def foreach(onPage: VenuePage => Unit): tools.ScanOutcome = {
+    val scanning = new tools.ForwardingVenuePageStore(pages) {
+      override def foreach(onPage: VenuePage => Unit): tools.ScanOutcome = {
         pages.foreach(onPage).isComplete shouldBe true
         // The scan has passed every page it will see; a reader writes and announces a new one now.
         pages.put(VenuePage(VenuePageKey(Group, Page), VenuePage.Read(Full), clock.instant()))
@@ -75,10 +73,8 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
     val pages    = new InMemoryVenuePageStore
     val reported = scala.collection.mutable.ArrayBuffer.empty[String]
     var failing  = true
-    val flaky = new services.venuepages.VenuePageStore {
-      def get(key: VenuePageKey) = if (failing) throw new IllegalStateException("timed out") else pages.get(key)
-      def put(page: VenuePage)   = pages.put(page)
-      def foreach(onPage: VenuePage => Unit): tools.ScanOutcome = pages.foreach(onPage)
+    val flaky = new tools.ForwardingVenuePageStore(pages) {
+      override def get(key: VenuePageKey) = if (failing) throw new IllegalStateException("timed out") else pages.get(key)
     }
     val index    = new VenuePageIndex(flaky, reported += _)
     val enricher = new FakeDetailEnricher(KinoApollo, Group)
@@ -101,10 +97,8 @@ class VenuePageIndexSpec extends AnyFlatSpec with Matchers {
     pages.put(VenuePage(VenuePageKey(Group, "http://a"), VenuePage.Read(Full), clock.instant()))
     pages.put(VenuePage(VenuePageKey(Group, "http://b"), VenuePage.Read(Full), clock.instant()))
     var failNextScan = true
-    val failing = new services.venuepages.VenuePageStore {
-      def get(key: VenuePageKey) = pages.get(key)
-      def put(page: VenuePage)   = pages.put(page)
-      def foreach(onPage: VenuePage => Unit): tools.ScanOutcome =
+    val failing = new tools.ForwardingVenuePageStore(pages) {
+      override def foreach(onPage: VenuePage => Unit): tools.ScanOutcome =
         if (failNextScan) { failNextScan = false; pages.get(VenuePageKey(Group, "http://a")).foreach(onPage); tools.ScanOutcome.of(whole = false, "scan fails on purpose") }
         else pages.foreach(onPage)
     }
