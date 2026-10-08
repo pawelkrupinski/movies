@@ -56,6 +56,43 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
     stage(new HeldPosters(Map.empty, Map(1001 -> Seq(shown)))).apply(resolutionOf(bare), Map(bare.key -> bare).get, version = 1).decisions.head.film shouldBe None
   }
 
+  it should "compare the poster against the cluster's candidates once TMDB answers the search it had not, never against none" in {
+    var answered = false
+    val searching = new services.identity.IdentityLookups {
+      def hasDetail(listing: Listing): Boolean = false
+      def detail(listing: Listing) = Answer.Known(None)
+      def candidates(query: services.identity.CandidateQuery) = if (answered) table.candidates(query) else Answer.Unknown
+      def film(tmdbId: Int) = table.film(tmdbId)
+    }
+    val listing = lalka()
+    val voting = new AgreementStage(silentFamilies, searching, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(searching),
+      posters = new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(near(3)), 1002 -> Seq(PosterHash(-1L)))))
+    voting.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 1).decisions.head.film shouldBe None
+    answered = true
+    voting.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 2).decisions.head.film shouldBe Some(1001)
+  }
+
+  it should "read a poster the venue re-cut, though the model hands over the same decision" in {
+    val recut  = "https://kino.example/lalka-recut.jpg"
+    val (was, now) = (lalka(), lalka().copy(poster = Some(recut)))
+    val voting = stage(new HeldPosters(Map(venuePoster -> Some(PosterHash(-1L)), recut -> Some(shown)),
+      Map(1001 -> Seq(near(3)), 1002 -> Seq(PosterHash(0L)))))
+    val model  = resolutionOf(was)   // one decision object: the listings are equal, the poster outside their equality
+    voting.apply(model, Map(was.key -> was).get, version = 1).decisions.head.film shouldBe None
+    voting.apply(model, Map(now.key -> now).get, version = 1, republished = Some(Seq(now.key))).decisions.head.film shouldBe Some(1001)
+  }
+
+  it should "read every cluster's listings again when the caller cannot tell what was re-published" in {
+    val recut  = "https://kino.example/lalka-recut.jpg"
+    val (was, now) = (lalka(), lalka().copy(poster = Some(recut)))
+    val voting = stage(new HeldPosters(Map(venuePoster -> Some(PosterHash(-1L)), recut -> Some(shown)),
+      Map(1001 -> Seq(near(3)), 1002 -> Seq(PosterHash(0L)))))
+    val model  = resolutionOf(was)
+    voting.apply(model, Map(was.key -> was).get, version = 1).decisions.head.film shouldBe None
+    voting.apply(model, Map(now.key -> now).get, version = 1, republished = None).decisions.head.film shouldBe Some(1001)
+  }
+
   it should "hold the cluster while a poster is not hashed yet, and hand the poster to the queue" in {
     val listing = lalka()
     val handed  = scala.collection.mutable.ArrayBuffer.empty[AgreementStage.Open]

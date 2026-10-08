@@ -50,7 +50,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
       clock       = clock,
       fingerprints = venueSlotFingerprints,
       adopt       = identityListingIntake.adopt,
-      agreement   = (resolution, listingOf) => agreementStage.apply(resolution, listingOf, familyAnswerStore.version))
+      agreement   = (resolution, listingOf, republished) => agreementStage.apply(resolution, listingOf, familyAnswerStore.version, republished))
 
   // ── Agreement: the no-matches ≥3 other film database families agree on ─────────────────────
   /** What the other film database families answered (`identity_family_answers`), kept long. */

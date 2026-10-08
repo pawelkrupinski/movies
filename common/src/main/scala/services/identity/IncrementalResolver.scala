@@ -87,6 +87,14 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     // (A listing that left in this batch is released already, so it is held no more.)
     val redetailed = answered.details.flatMap(heldListing)
     val fresh      = seen.filterNot(listing => heldListing(listing.key).contains(listing))
+    // An equal listing re-published with another poster, other screening days or names resolves nothing again, but is
+    // held in its place, under the held key object its families name: the stages after the model read those fields
+    // off the model's listings (`listings`, which the projection's own listings adopt).
+    seen.foreach(listing => byKey.get(listing.key).foreach { keyed =>
+      val held = keyed.listing
+      if (held != null && (held ne listing) && held == listing && Listing.movedOutsideEquality(held, listing))
+        keyed.listing = listing.copy(key = held.key)
+    })
     val freshKeys  = fresh.iterator.map(_.key).toSet
     val arrived    = fresh ++ redetailed.filterNot(listing => freshKeys(listing.key))
     arrived.foreach(hold)

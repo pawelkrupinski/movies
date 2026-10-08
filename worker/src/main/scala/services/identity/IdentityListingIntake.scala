@@ -261,7 +261,10 @@ object IdentityListingIntake {
    *  gave a stage relay ([[services.scrapes.LeanListing.leanFilm]]): they are outside a listing's equality, and the
    *  model's may be older, or unknown where this read knows them. (Another film's lean read gives no days at all.) */
   private def modelledAs(modelled: Map[ListingKey, Listing], listing: Listing): Listing =
-    modelled.get(listing.key).filter(held => held == listing && (listing.screenings.isEmpty || held.screenings == listing.screenings))
+    // the model's object only where it publishes what the read does — its poster and names too, which the listing's
+    // equality leaves out: one taken in place of a re-published poster put the old one back before the model held the new
+    modelled.get(listing.key).filter(held => held == listing && held.poster == listing.poster && held.names == listing.names &&
+      (listing.screenings.isEmpty || held.screenings == listing.screenings))
       .getOrElse(listing)
 
   /** How a projection read takes the archives: whole, by their rows' stamps, or only what this intake took since. */

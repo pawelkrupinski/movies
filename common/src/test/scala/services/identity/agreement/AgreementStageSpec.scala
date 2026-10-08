@@ -472,7 +472,9 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     stage.apply(model, listingOf, version = 2)                      // one of its questions answered, Filmweb's still open: no resolve
     resolves shouldBe afterFirst
     clock.advanceSeconds(AgreementStage.PartialAfter.toSeconds)
-    stage.apply(model, listingOf, version = 3)                      // waited long with some answered: resolved on what came
+    stage.apply(model, listingOf, version = 2)                      // waited long with some answered: resolved on what came,
+    resolves should be > afterFirst                                 // though nothing was filed since — the wait is the clock's
+    stage.apply(model, listingOf, version = 3)
     resolves should be > afterFirst
     val afterPartial = resolves
     filmwebAnswered = true

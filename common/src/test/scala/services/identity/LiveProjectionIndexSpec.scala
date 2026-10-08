@@ -120,6 +120,21 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
     again.foreach(l => withClue(l.listing.rawTitle)(byKey(l.listing.key) should be theSameInstanceAs l))
   }
 
+  it should "name the listings a venue re-published with another poster, days or names — equal, the model's decisions unmoved" in {
+    val live    = new LiveProjectionIndex(normalizer)
+    val rows    = Seq(row(new Random(1), Multikino), row(new Random(3), Multikino)).distinctBy(_.movie.title)
+    def read(poster: String => Option[String]) =
+      rows.map(cm => ProjectedListing.of(Listing.of(cm.cinema, cm, normalizer), cm)).map(p => p.copy(listing = p.listing.copy(poster = poster(p.listing.title))))
+    val first   = read(_ => None)
+    val decided = first.map(l => ResolverDecision(Seq(l.listing.key), Some(1), 0.9, ResolverDecision.Basis.OwnMatch, Nil)())
+    live.update(Seq(Multikino.displayName -> first), first.map(_.listing.key), decided, Nil)
+    live.republished(Seq(Multikino.displayName -> first)) shouldBe empty      // the same read
+    live.republished(Seq(Multikino.displayName -> read(_ => None))) shouldBe empty   // read again, unmoved
+    val recut = rows.head.movie.title
+    live.republished(Seq(Multikino.displayName -> read(title => Option.when(title == recut)("https://kino.example/new.jpg")))) shouldBe
+      first.filter(_.listing.title == recut).map(_.listing.key)
+  }
+
   it should "name each listing by its own key object, not the copies a decision or a stored slot was read with" in {
     // A decision's keys and a stored slot's are read anew from the store: kept as they came, the index held ~4.8 key
     // objects per listing on worker-us.

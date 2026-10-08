@@ -196,6 +196,16 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     read.find(_.listing.title == "Obcy").get.listing should not be theSameInstanceAs (w.whole.find(_.listing.title == "Obcy").get.listing)
   }
 
+  it should "keep a re-published poster over the model's object holding the old one" in {
+    // The listing's equality leaves its poster out: adopted as "the same", the model's object put the old poster back
+    val w = new World
+    w.archive.store(Multikino, clock.instant(), film(Multikino, "Lalka", 0, 1))
+    w.project()
+    val modelled = w.whole.map(_.listing).map(_.copy(poster = Some("https://kino.example/old.jpg")))
+    w.intake.adopt(modelled)
+    w.project()._1.map(_.listing.poster) shouldBe w.whole.map(_.listing.poster)
+  }
+
   it should "not look the model's listings up again for a venue holding the model's objects throughout" in {
     // Each projection hands the intake the model's 100k listings; built into a map and looked up venue by venue every
     // time, that was ~5% of a US projection's CPU (JFR) for venues that had long taken them.

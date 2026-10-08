@@ -106,6 +106,20 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer) {
       clusters, clusterOfView)
   }
 
+  /** The keys of `venues`' listings published equal to the one this index holds but for a field the model's equality
+   *  leaves out ([[Listing.movedOutsideEquality]]): what the agreement reads afresh. Only a venue whose listing is
+   *  another object is looked at; nothing is updated. */
+  def republished(venues: Seq[(String, Seq[ProjectedListing])]): Seq[ListingKey] =
+    venues.flatMap { case (venue, listings) =>
+      venueListings.get(venue).filterNot(_ eq listings).toSeq.flatMap { was =>
+        val before = oneByKey(was)
+        listings.flatMap { now =>
+          before.get(now.listing.key).filter(old => (old.listing ne now.listing) && old.listing == now.listing &&
+            Listing.movedOutsideEquality(old.listing, now.listing)).map(_ => now.listing.key)
+        }
+      }
+    }
+
   /** Move the index to what these inputs say, and say what moved. `held`: the keys of the listings the model holds. */
   def update(venues: Seq[(String, Seq[ProjectedListing])], held: Iterable[ListingKey], resolved: Seq[ResolverDecision],
              stored: Seq[StoredMovieRecord]): ProjectionScope.Changes = {

@@ -2,6 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.LoneElement
 import services.movies.{ListingKey, SingleCountryNormalizer}
 
 import tools.IndependentCases
@@ -16,7 +17,7 @@ import scala.util.Random
  * lookups as they are then. P1 (a resolve is a function of the set) is what makes that the whole
  * contract: the order events arrive in is not an input.
  */
-class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
+class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement {
 
   private val normalizer  = SingleCountryNormalizer.titleNormalizer
   private val calibration = IdentityCalibration.fromResource("services/identity/test-calibration.json").get
@@ -310,6 +311,24 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers {
     model.familiesResolved shouldBe afterTwo + 1                // a film of its own: its family alone
     model.listingsGone(Seq(listing(Helios, "Lalka").key))
     model.familiesResolved shouldBe afterTwo + 2                // Lalka's family, and only it
+  }
+
+  "a listing re-published with only another poster, days or names" should "be held in its place, nothing resolved again" in {
+    import FilmTable.{F, listing}
+    import models.Multikino
+    val model = new IncrementalResolver(new FilmTable(Seq(F(1, "Lalka", 1968, "Wojciech Has", 159)), normalizer), normalizer, calibration,
+      decorations = TitleDecorations.None)
+    val first = listing(Multikino, "Lalka", Some(1968)).copy(poster = Some("https://kino.example/lalka-a.jpg"))
+    model.listingsSeen(Seq(first))
+    val (resolved, decided) = (model.familiesResolved, model.decisions)
+    val recut = listing(Multikino, "Lalka", Some(1968)).copy(poster = Some("https://kino.example/lalka-b.jpg"),
+      names = VenueNames.ofHashes(Seq(42)))
+    model.listingsSeen(Seq(recut))
+    model.familiesResolved shouldBe resolved                    // equal to what it holds: no family resolved again
+    model.decisions.zip(decided).forall { case (a, b) => a eq b } shouldBe true
+    val held = model.listings.loneElement
+    (held.poster, held.names) shouldBe ((recut.poster, recut.names))
+    held.key should be theSameInstanceAs first.key              // under the key object its families name
   }
 
   "a family" should "decide alone, with the corpus's context, exactly as the whole resolve does" in {

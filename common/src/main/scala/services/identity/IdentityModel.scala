@@ -36,7 +36,7 @@ final case class Listing(
   /** The venue's poster URL. OUTSIDE the listing's equality and hash (below): the model never reads it — only the
    *  stages after it do ([[PosterEvidence]]), from the listings as published — and a listing the model holds equal to
    *  the one published is not resolved again, so a venue re-cutting a poster URL (a CDN token, a resize) re-resolves
-   *  nothing. */
+   *  nothing — the model holds the re-published listing in its place all the same ([[Listing.movedOutsideEquality]]). */
   poster:        Option[String] = None,
   /** The days the venue screens it. OUTSIDE the listing's equality and hash, as the poster is: a venue adding a
    *  showtime re-resolves nothing. Only the season they place a stage relay in ([[broadcastSeason]]) is the model's;
@@ -159,6 +159,12 @@ object CatalogueId {
 }
 
 object Listing {
+  /** Does `now` publish what the stages after the model read differently from `was` — its poster, its screening days, the
+   *  names its venue's text gives — though the two are equal ([[Listing.equals]] leaves those out)? The model then holds
+   *  `now` without resolving it again, and the agreement reads it afresh ([[agreement.AgreementStage]]). */
+  def movedOutsideEquality(was: Listing, now: Listing): Boolean =
+    was.poster != now.poster || was.screenings != now.screenings || was.names != now.names
+
 
   /** `cm` as `cinema` lists it. Blank director names and non-positive runtimes are absent. */
   def of(cinema: Cinema, cm: CinemaMovie, normalizer: TitleNormalizer): Listing = Listing(

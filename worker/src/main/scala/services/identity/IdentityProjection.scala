@@ -124,8 +124,10 @@ final class IdentityProjection(
   /** How many projections of a scope run between two of the whole corpus ([[IdentityProjection.ScopedBetweenWhole]]). */
   scopedBetweenWhole: Int = IdentityProjection.ScopedBetweenWhole,
   /** The resolution as projected: the model's, with the no-matches other film databases agree on taken
-   *  (`agreement.AgreementStage`), given each listing the resolution decided. */
-  agreement:   (Resolution, ListingKey => Option[Listing]) => Resolution = (resolution, _) => resolution
+   *  (`agreement.AgreementStage`), given each listing the resolution decided and the keys of those re-published since
+   *  the last projection with a field the model's decisions do not move with (`LiveProjectionIndex.republished`; `None`
+   *  when there is no last projection to tell by). */
+  agreement:   (Resolution, ListingKey => Option[Listing], Option[Seq[ListingKey]]) => Resolution = (resolution, _, _) => resolution
 ) extends Logging {
 
   private val mapping = new FilmIdMapping(filmIds)
@@ -223,7 +225,10 @@ final class IdentityProjection(
             adopt(modelled)
             // built only when the agreement meets a decision it has not seen: a quiet tick builds none
             lazy val decided = venues.iterator.flatMap(_._2).map(projected => projected.listing.key -> projected.listing).toMap
-            val resolution = phases("agreement")(agreement(modelResolution, key => decided.get(key)))
+            // what a venue re-published with a poster, days or names the model's decisions do not move with — unknown
+            // to a projection with nothing to build on, whose index is read afresh
+            val republished = previous.map(_ => live.republished(venues.map { case (c, ls) => c.displayName -> ls }))
+            val resolution = phases("agreement")(agreement(modelResolution, key => decided.get(key), republished))
             val at    = clock.instant()
             phases("seed")(seedSlotMemo())
             if (previous.isEmpty) { live = new LiveProjectionIndex(normalizer); shapes = FilmShapes(); carried = ProjectionScope.Changes.none }

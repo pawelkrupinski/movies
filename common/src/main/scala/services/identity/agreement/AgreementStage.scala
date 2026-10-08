@@ -99,7 +99,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  so the projection, which diffs decisions by identity, redrafts an agreed cluster only when its verdict moved. */
   private val takenAs = new java.util.IdentityHashMap[ResolverDecision, ResolverDecision]()
   /** Each model decision's cluster id, listings and their digest, kept while the decision is the same object: the model
-   *  hands over a new decision when one of its listings or a fact it reads moves, so a quiet tick reads no listing again. */
+   *  hands over a new decision when one of its listings or a fact it reads moves, so a quiet tick reads no listing again
+   *  — and one re-published with a field only the stage reads is forgotten ([[apply]]'s `republished`). */
   private val digested = new java.util.IdentityHashMap[ResolverDecision, AgreementStage.Digested]()
   /** Each model decision's verdict as an event no film database holds ([[NonFilmEvents]]), kept while the decision is
    *  the same object: such a cluster is asked nothing — neither the agreement's questions nor a model take's correction. */
@@ -130,14 +131,34 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   /** The last resolution applied to, at which `version`, and what it came to: a tick handed the same decisions while
    *  no answer was filed gets those again, nothing re-read. */
   private var last: Option[(Resolution, Long, Resolution)] = None
+  /** The first instant a wait of the last [[apply]]'s ends — a waiting cluster's [[AgreementStage.PartialAfter]], a
+   *  record's [[AgreementStage.RecordWait]]: from then the same decisions at the same version are read again, since
+   *  the clock, not a filing, is what releases them. */
+  private var releaseAt: Option[java.time.Instant] = None
 
-  /** `resolution` with every unmatched, fully answered cluster its families agree on taken as that film. */
-  def apply(resolution: Resolution, listingOf: ListingKey => Option[Listing], version: Long): Resolution = synchronized {
-    last.collect { case (was, at, came) if at == version && sameDecisions(was, resolution) => resolution.copy(decisions = came.decisions) }.getOrElse {
+  /** `resolution` with every unmatched, fully answered cluster its families agree on taken as that film. `republished`:
+   *  the listings published again since the last apply equal to what the model holds but for a field the stage reads
+   *  and the model does not — a poster, screening days, names ([[Listing.movedOutsideEquality]]) — which hand over no new
+   *  decision; `None` when the caller cannot tell, and every cluster's listings are read again. */
+  def apply(resolution: Resolution, listingOf: ListingKey => Option[Listing], version: Long,
+            republished: Option[Iterable[ListingKey]] = Some(Nil)): Resolution = synchronized {
+    val reread = republished.fold { digested.clear(); true }(forgetRead(resolution, _))
+    val waited = releaseAt.exists(at => !clock.instant().isBefore(at))
+    last.collect { case (was, at, came) if !reread && !waited && at == version && sameDecisions(was, resolution) =>
+      resolution.copy(decisions = came.decisions) }.getOrElse {
       val came = applied(resolution, listingOf, version)
       last = Some((resolution, version, came))
       came
     }
+  }
+
+  /** Forget the listings read for each decision holding one of `keys`; whether one the stage reads — a cluster nothing
+   *  took, a model take it corrects — holds any. */
+  private def forgetRead(resolution: Resolution, keys: Iterable[ListingKey]): Boolean = keys.nonEmpty && {
+    val moved   = keys.toSet
+    val touched = resolution.decisions.filter(_.members.exists(moved))
+    touched.foreach(digested.remove)
+    touched.exists(decision => decision.film.isEmpty || correctable(decision))
   }
 
   /** The same decisions, object for object: the model hands each unchanged decision over as the same object. */
@@ -232,6 +253,9 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       ask(open); handed ++= open.questions; handedFinds ++= open.finds; handedPosters ++= open.posters; handedCatalogue ++= open.catalogue
       open.records.foreach(film => rereads(film) = (version, clock.instant()))
     }
+    val now = clock.instant()
+    releaseAt = (waiting.valuesIterator.map(_.since.plusMillis(AgreementStage.PartialAfter.toMillis)) ++
+      rereads.valuesIterator.map(_._2.plusMillis(AgreementStage.RecordWait.toMillis))).filter(_.isAfter(now)).minOption
     val agreedNow = decisions.filter(_.basis == ResolverDecision.Basis.Agreed)
     metrics.applied(AgreementStage.Applied(waiting = waiting.size, verdicts = held.valuesIterator.count(_.correction.isEmpty),
       agreed = held.valuesIterator.count(_.agreed.isDefined),
@@ -819,17 +843,20 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     }
   }
 
-  /** The TMDB films the cluster's own evidence reaches, none denied — read once per listings' digest; none while a TMDB
-   *  question of theirs has no answer. */
+  /** The TMDB films the cluster's own evidence reaches, none denied — read once per listings' digest; none, read again
+   *  next time, while a TMDB question of theirs has no answer. */
   private def candidatesOf(id: String, digest: Long, listings: Seq[Listing]): Seq[Int] =
     candidateFilms.get(id).filter(_._1 == digest).map(_._2).getOrElse {
+      var blind = false
       val films = tmdb.fold(Seq.empty[Int]) { lookups =>
         val noting = new AgreementStage.UnknownNoting(lookups)
         val found  = IdentityResolver.candidatesOf(listings, noting, normalizer, calibration)(_ => true)
           .flatMap(_.candidates.filterNot(_.denied).map(_.tmdbId)).filterNot(FallbackIds.isFallback).distinct.sorted
-        if (noting.unknown) Nil else found
+        blind = noting.unknown
+        if (blind) Nil else found
       }
-      candidateFilms(id) = (digest, films)
+      // none kept while a search had no answer: the digest does not move when TMDB answers, so kept, "none" stood for good
+      if (!blind) candidateFilms(id) = (digest, films)
       films
     }
 
