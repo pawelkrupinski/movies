@@ -181,6 +181,9 @@ object DecisionTrace {
     else if (own.forall(scored => scored.denied || scored.suggestedOnly))
       s"veto:${id(own.flatMap(_.denial).headOption.getOrElse("imdb-suggested only"))}"
     else refusals.find(_.rule == "favoured-calibrated").orElse(refusals.headOption).fold("rule:none")(refusal => s"rule:${id(refusal.why)}")
-  /** A reason as a rule id: "Learned(runtime.delta >= 11 AND title in {none,overlap})" → "learned-runtime-delta-11-and-title-in-none-overlap". */
-  def id(reason: String): String = reason.toLowerCase(java.util.Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", "-").stripPrefix("-").stripSuffix("-")
+  /** A reason as a rule id: "Learned(runtime.delta >= 11 AND title in {none,overlap})" → "learned-runtime-delta-11-and-title-in-none-overlap".
+   *  An upper bound keeps its sense ("runtime.delta <= -7" → "runtime-delta-at-most-minus-7"): the signed runtime learns a
+   *  rule on each side of 0, and "<= -1" and ">= 1" must stay two ids. */
+  def id(reason: String): String = reason.toLowerCase(java.util.Locale.ROOT).replace("<= -", " at-most minus ").replace("<=", " at-most ")
+    .replaceAll("[^\\p{L}\\p{N}]+", "-").stripPrefix("-").stripSuffix("-")
 }

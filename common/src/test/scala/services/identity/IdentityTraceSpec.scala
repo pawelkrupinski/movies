@@ -129,6 +129,13 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
       BlockerCount("search:found-nothing", 3, 2, Seq("Film 0", "Film 1")), BlockerCount("veto:x", 1, 1, Seq("Film 2")))
   }
 
+  "a learned rule's id" should "keep an upper bound apart from a lower one" in {
+    // the signed runtime.delta learns both sides: "<= -1" and ">= 1" are two rules, never one id
+    DecisionTrace.id("Learned(runtime.delta >= 11 AND title in {none,overlap})") shouldBe "learned-runtime-delta-11-and-title-in-none-overlap"
+    DecisionTrace.id("Learned(runtime.delta <= -1 AND year.distance >= 2)") shouldBe "learned-runtime-delta-at-most-minus-1-and-year-distance-2"
+    DecisionTrace.id("Learned(runtime.delta <= -1 AND year.distance >= 2)") should not be DecisionTrace.id("Learned(runtime.delta >= 1 AND year.distance >= 2)")
+  }
+
   "a title" should "name the title rules it took and the formats peeled off it" in {
     // `xtra-pokaz-filmu`: "Klub Filmowy: pokaz filmu „Mira”" searches as "Mira"
     normalizer.firedRules(Rialto, "Klub Filmowy: pokaz filmu \"Mira\"") should contain ("title:xtra-pokaz-filmu")
