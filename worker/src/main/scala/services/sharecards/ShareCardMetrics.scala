@@ -18,7 +18,7 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
  *    `web_movies` points at and the posters of films on screen.
  *  - `kinowo_worker_share_cards_budget_bytes` — `KINOWO_SHARE_CARD_BUDGET_MB`.
  *  - `kinowo_worker_share_cards_coverage_ratio` — films on screen whose card for their current
- *    inputs exists, over films on screen (1 when none is). What says a backfill is done.
+ *    inputs exists, over films on screen (absent when none is). What says a backfill is done.
  *  - `kinowo_worker_share_cards_render_total{outcome,reason}` — renders by result and by why.
  *  - `kinowo_worker_share_cards_render_path_total{path}` — cards drawn on a cached base or not.
  *  - `kinowo_worker_share_cards_pruned_total{kind,reason}` — deletions by the prune and the budget.
@@ -114,6 +114,11 @@ object ShareCardMetrics {
 
     /** Test seam: the coverage gauge's current value. */
     private[sharecards] def coverageFor(country: String): Double = coverage.labelValues(country).get()
+    /** Test seam: the coverage sample the registry exposes for `country`, if it exposes one. */
+    private[sharecards] def coverageSample(country: String): Option[Double] = {
+      import scala.jdk.CollectionConverters._
+      coverage.collect().getDataPoints.asScala.find(_.getLabels.get("country") == country).map(_.getValue)
+    }
     /** Test seam: how many cards were drawn by `path`. */
     private[sharecards] def pathCount(country: String, path: String): Double = paths.labelValues(country, path).get()
     /** Test seam: how many poster fetches ended `ok` or failed. */
@@ -152,6 +157,8 @@ final class ShareCardMetrics private[sharecards] (country: String, series: Optio
   def rescrape(outcome: String): Unit = series.foreach(_.rescrapes.labelValues(country, outcome).inc())
   def rescrapesWaiting(pages: Long): Unit = series.foreach(_.rescrapesWaiting.labelValues(country).set(pages.toDouble))
   def coverage(ratio: Double): Unit = series.foreach(_.coverage.labelValues(country).set(ratio))
+  /** No film on screen to measure: the sample is removed, so the series goes absent rather than hold a stale ratio. */
+  def coverageUnknown(): Unit = series.foreach(_.coverage.remove(country))
 
   /** The directory's state as the janitor last measured it. */
   def directory(bytesByKind: Map[String, Long], filesByKind: Map[String, Long], currentByKind: Map[String, Long], budgetBytes: Long): Unit =

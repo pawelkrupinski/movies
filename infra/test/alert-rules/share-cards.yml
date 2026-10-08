@@ -220,7 +220,7 @@ tests:
               country: uk
             exp_annotations:
               summary: "uk's worker is up but publishes no share-card coverage"
-              description: "The worker answers its scrape (`up`) but has published no `kinowo_worker_share_cards_coverage_ratio` for this country for an hour, so ShareCardCoverageLow cannot fire and a stalled card pipeline goes unseen. The backfill publishes it from its first sweep, after the first PruneShareCards pass since boot, and on every projection and finished render after; its absence means no prune pass has finished since boot, or the gauge was unwired from the worker's metrics. A worker that is DOWN is WorkerDown's to report, not this one's."
+              description: "The worker answers its scrape (`up`) but has published no `kinowo_worker_share_cards_coverage_ratio` for this country for an hour, so ShareCardCoverageLow cannot fire and a stalled card pipeline goes unseen. The backfill publishes it from its first sweep, after the first PruneShareCards pass since boot, and on every projection and finished render after; its absence means no prune pass has finished since boot, the backfill tracks no film on screen (it withdraws the gauge then: is web_screenings empty, or failing to read?), or the gauge was unwired from the worker's metrics. A worker that is DOWN is WorkerDown's to report, not this one's."
 
   # QUIET: a worker restart leaves both `up` and the gauge absent for a few minutes; nothing fires.
   - interval: 1m

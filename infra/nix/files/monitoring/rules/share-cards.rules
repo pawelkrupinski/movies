@@ -133,7 +133,9 @@ groups:
       # metric: one country's backfill not running must not hide behind the others' series. A
       # worker that is down is WorkerDown's (its `up` is 0, so it drops out here). One hour, as the
       # other *MetricsAbsent rules: longer than a fleet rollout; the gauge is published by the first
-      # PruneShareCards pass after a boot, the budget pass four to fourteen minutes in.
+      # PruneShareCards pass after a boot, the budget pass four to fourteen minutes in. It is also
+      # WITHDRAWN while no film on screen is tracked: a wiped or failed web_screenings read must page
+      # here, not read as full coverage.
       - alert: ShareCardCoverageAbsent
         expr: >-
           max by (country) (last_over_time(up{job="kinowo-worker"}[10m]) == 1)
@@ -150,7 +152,9 @@ groups:
             ShareCardCoverageLow cannot fire and a stalled card pipeline goes unseen. The
             backfill publishes it from its first sweep, after the first PruneShareCards pass since
             boot, and on every projection and finished render after; its absence means no prune
-            pass has finished since boot, or the gauge was unwired from the worker's metrics. A worker that is DOWN is WorkerDown's to report, not this one's.
+            pass has finished since boot, the backfill tracks no film on screen (it withdraws the
+            gauge then: is web_screenings empty, or failing to read?), or the gauge was unwired from
+            the worker's metrics. A worker that is DOWN is WorkerDown's to report, not this one's.
 
       # RENDERS FAILING OUTRIGHT. `failed` is a card that could not be drawn even without its
       # poster -- a template, font or libvips fault, not an upstream (a dead poster is
