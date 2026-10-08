@@ -164,7 +164,14 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
   // film, so this banner must fold before it, and the director tail after.
   private val sokolniaWajda = "„WAJDA: re-wizje” 2026 / KRAJOBRAZ PO BITWIE (1970) reż. Andrzej Wajda"
 
-  "ExtraTitleRules" should "strip a quoted banner that sits before a slash, keeping the film after it" in {
+  // An id names one rule: a second rule under it reads as the first wherever a rule is named (an override, a report,
+  // the rule store), and two strands added a day apart each brought their own copy.
+  "ExtraTitleRules" should "give every rule an id of its own" in {
+    val ids = services.titlerules.ExtraTitleRules.all.map(_.id)
+    ids.diff(ids.distinct).distinct shouldBe empty
+  }
+
+  it should "strip a quoted banner that sits before a slash, keeping the film after it" in {
     withExtras.search(sokolniaWajda) shouldBe "KRAJOBRAZ PO BITWIE (1970)"
     withExtras.programmePrefix(sokolniaWajda) shouldBe Some("„WAJDA: re-wizje” 2026 / ")
     withClue("seed rules alone keep the banner and drop the film: ")(
@@ -1146,6 +1153,15 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     screeningMarkerListings.foreach { case ((cinema, raw), query) =>
       withClue(s"seed searchQuery of '$raw': ")(listingQuery(titles, cinema, raw) should not be query)
     }
+  }
+
+  // searchQuery re-cases a shouted title before the rules run, so the case guard cannot tell a venue's all-caps premiere
+  // note from a shouted title ending in the word: both lose it. The note is what the venues bill; a shouted film titled
+  // "… PREMIERA" is the cost, taken knowingly.
+  it should "take a shouted title's PREMIERA as the venue's note" in {
+    val titles = new TitleNormalizer(withExtras)
+    listingQuery(titles, models.KinoCentrum3D, "LALKA PREMIERA") shouldBe "Lalka"
+    listingQuery(titles, models.KinoCentrum3D, "OSTATNIA PREMIERA") shouldBe "Ostatnia"
   }
 
   it should "leave a film's own capitalised 'Premiera', a non-event parenthesis and the event words alone" in {
