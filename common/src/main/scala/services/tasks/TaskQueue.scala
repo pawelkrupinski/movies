@@ -180,7 +180,7 @@ trait TaskQueue {
     taskType:    TaskType,
     dedupKey:    String,
     payload:     Map[String, String] = Map.empty,
-    submittedAt: Instant             = Instant.now(),
+    submittedAt: Instant,
     notBefore:   Option[Instant]     = None,
     claimAhead:  FiniteDuration      = Duration.Zero
   ): EnqueueResult

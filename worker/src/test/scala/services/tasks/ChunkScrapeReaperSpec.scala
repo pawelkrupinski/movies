@@ -35,7 +35,7 @@ class ChunkScrapeReaperSpec extends AnyFlatSpec with Matchers {
     val scheduler = new ManualScheduler(clock)
     val store     = new CountingStore
     val queue     = new InMemoryTaskQueue
-    val coord     = new ChunkScrapeCoordinator(store, queue)
+    val coord     = new ChunkScrapeCoordinator(store, queue, _root_.tools.SpecClock.Pinned)
     val runStore  = new InMemoryScheduledRunStore
     /** A reaper as a freshly booted process builds it: nothing armed in memory. */
     def reaper(): ChunkScrapeReaper =

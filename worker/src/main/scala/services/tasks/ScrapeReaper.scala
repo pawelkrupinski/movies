@@ -352,7 +352,7 @@ class ScrapeReaper(
     due.iterator.takeWhile { case (key, _) => enqueued < cap && room.fits(spent, key, first = enqueued == 0) }
       .foreach { case (key, displayName) =>
         if (queue.enqueue(TaskType.ScrapeCinema, key,
-              Map(ScrapeCinemaHandler.CinemaKey -> displayName)) == EnqueueResult.Added) {
+              Map(ScrapeCinemaHandler.CinemaKey -> displayName), submittedAt = clock.instant()) == EnqueueResult.Added) {
           enqueued += 1
           spent    += costs.costOf(key)
         }

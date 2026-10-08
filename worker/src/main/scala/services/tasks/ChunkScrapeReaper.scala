@@ -97,7 +97,7 @@ class ChunkScrapeReaper(
     else if (run.isStale(now, staleAfter.value)) {
       logger.warn(s"${run.cinema} run ${run.runId} abandoned (${stored.size}/${run.expectedKeys.size} chunks) — partial reduce")
       queue.enqueue(TaskType.ScrapeChunkReduce, ChunkScrapeKeys.reduceDedup(run.cinema, run.runId),
-        ChunkScrapeKeys.reducePayload(run.cinema, run.runId)) == EnqueueResult.Added
+        ChunkScrapeKeys.reducePayload(run.cinema, run.runId), submittedAt = now) == EnqueueResult.Added
     } else { armDeadline(run); false }
   }
 

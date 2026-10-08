@@ -60,7 +60,7 @@ object EnrichDetailsTasks {
   def enqueueIfDueAs(queue: TaskQueue, freshness: FreshnessStore, dueWindow: DueWindow,
                      enricher: DetailEnricher, key: CacheKey, ref: String, dk: String, now: Instant): Boolean = {
     dueWindow.isDue(dk, freshness.lastFetchedAt(dk), now) &&
-      queue.enqueue(TaskType.EnrichDetails, dk, payload(enricher, key, ref)) == EnqueueResult.Added
+      queue.enqueue(TaskType.EnrichDetails, dk, payload(enricher, key, ref), submittedAt = now) == EnqueueResult.Added
   }
 }
 

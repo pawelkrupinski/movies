@@ -158,7 +158,7 @@ class WorkerWiring(
       // A new listing waits for its venue page, read into venue_pages by a ReadVenuePage task, so
       // its first resolve has the page's facts.
       pageWait   = new services.identity.VenuePageWait(detailEnrichers, venuePageIndex, taskQueue, freshnessStore,
-                     WorkerWiring.VenuePageWaitLimit),
+                     WorkerWiring.VenuePageWaitLimit, clock),
       takenUp    = () => identityModelTakenUp(),
       clock      = clock)
     identityTmdbStore.onChanged(model.observed)

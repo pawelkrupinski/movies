@@ -32,15 +32,15 @@ class EnrichTaskKeysSpec extends AnyFlatSpec with Matchers {
   "the queue" should "collapse a second bulk trigger while the first is active (constant dedup key)" in {
     val queue = new InMemoryTaskQueue
     val key   = EnrichTaskKeys.bulkDedup(TaskType.RefreshAllFilmweb)
-    queue.enqueue(TaskType.RefreshAllFilmweb, key) shouldBe EnqueueResult.Added
-    queue.enqueue(TaskType.RefreshAllFilmweb, key) shouldBe EnqueueResult.Duplicate
+    queue.enqueue(TaskType.RefreshAllFilmweb, key, submittedAt = _root_.tools.SpecClock.Pinned.instant()) shouldBe EnqueueResult.Added
+    queue.enqueue(TaskType.RefreshAllFilmweb, key, submittedAt = _root_.tools.SpecClock.Pinned.instant()) shouldBe EnqueueResult.Duplicate
   }
 
   it should "queue two different films' IMDb-id resolves independently" in {
     val queue = new InMemoryTaskQueue
     queue.enqueue(TaskType.ResolveImdbId, EnrichTaskKeys.resolveImdbIdDedup("A", None),
-      EnrichTaskKeys.resolveImdbIdPayload("A", None, "A")) shouldBe EnqueueResult.Added
+      EnrichTaskKeys.resolveImdbIdPayload("A", None, "A"), submittedAt = _root_.tools.SpecClock.Pinned.instant()) shouldBe EnqueueResult.Added
     queue.enqueue(TaskType.ResolveImdbId, EnrichTaskKeys.resolveImdbIdDedup("B", None),
-      EnrichTaskKeys.resolveImdbIdPayload("B", None, "B")) shouldBe EnqueueResult.Added
+      EnrichTaskKeys.resolveImdbIdPayload("B", None, "B"), submittedAt = _root_.tools.SpecClock.Pinned.instant()) shouldBe EnqueueResult.Added
   }
 }

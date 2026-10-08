@@ -10,7 +10,7 @@ import services.events.{DomainEvent, TaskFinished}
  * Idempotent via the reduce dedup key, so the `ChunkScrapeReaper` (a run's
  * deadline, or its boot/hourly sweep) can call it too without double-enqueuing.
  */
-class ChunkScrapeCoordinator(store: ChunkScrapeStore, queue: TaskQueue) extends Logging {
+class ChunkScrapeCoordinator(store: ChunkScrapeStore, queue: TaskQueue, clock: java.time.Clock) extends Logging {
 
   def onTaskFinished: PartialFunction[DomainEvent, Unit] = {
     case TaskFinished(TaskType.ScrapeChunk, _, payload) =>
@@ -27,6 +27,6 @@ class ChunkScrapeCoordinator(store: ChunkScrapeStore, queue: TaskQueue) extends 
       val complete = run.expectedKeys.toSet.subsetOf(store.storedKeys(cinema, runId))
       complete && queue.enqueue(TaskType.ScrapeChunkReduce,
         ChunkScrapeKeys.reduceDedup(cinema, runId),
-        ChunkScrapeKeys.reducePayload(cinema, runId)) == EnqueueResult.Added
+        ChunkScrapeKeys.reducePayload(cinema, runId), submittedAt = clock.instant()) == EnqueueResult.Added
     }
 }

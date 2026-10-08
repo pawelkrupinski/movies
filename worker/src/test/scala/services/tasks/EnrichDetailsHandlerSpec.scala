@@ -327,8 +327,8 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val enricher = new FakeDetailEnricher(KinoApollo, "kino-apollo", Some(FilmDetail()))
     val key      = cache.keyOf("Dune", None)
     val dk       = EnrichDetailsTasks.dedupKey("kino-apollo", key)
-    queue.enqueue(TaskType.EnrichDetails, dk, EnrichDetailsTasks.payload(enricher, key, "http://ref")) shouldBe EnqueueResult.Added
-    queue.enqueue(TaskType.EnrichDetails, dk, EnrichDetailsTasks.payload(enricher, key, "http://ref")) shouldBe EnqueueResult.Duplicate
+    queue.enqueue(TaskType.EnrichDetails, dk, EnrichDetailsTasks.payload(enricher, key, "http://ref"), submittedAt = _root_.tools.SpecClock.Pinned.instant()) shouldBe EnqueueResult.Added
+    queue.enqueue(TaskType.EnrichDetails, dk, EnrichDetailsTasks.payload(enricher, key, "http://ref"), submittedAt = _root_.tools.SpecClock.Pinned.instant()) shouldBe EnqueueResult.Duplicate
   }
 
   // Kino Kolory's page lists "Biograficzny/Muzyczny" as one genre and Kino Scena Kultura's poster has raw

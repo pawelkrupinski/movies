@@ -222,7 +222,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
       publish, Clock.fixed(now, ZoneOffset.UTC), staleAfter = stale)
     val (queue, store, planner, chunkH, reduceH) = (h.queue, h.store, h.planner, h.chunkH, h.reduceH)
     val coordA  = h.coord                                   // instance A
-    val coordB  = new ChunkScrapeCoordinator(store, queue) // instance B
+    val coordB  = new ChunkScrapeCoordinator(store, queue, _root_.tools.SpecClock.Pinned) // instance B
 
     planner.plan(cinemaName) // one instance plans; the run + chunk tasks are shared
 

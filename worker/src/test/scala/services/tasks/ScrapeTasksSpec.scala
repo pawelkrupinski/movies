@@ -426,7 +426,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
       maxEnqueuePerTick = settings.ScrapeMaxEnqueuePerTick(Int.MaxValue), maxOutstandingScrapeTasks = settings.ScrapeMaxOutstandingTasks(4), clock = _root_.tools.SpecClock.Pinned)
 
     // Not throttled: the healthy path. A previous tick's venue is still fanned out.
-    (1 to 4).foreach(i => queue.enqueue(TaskType.ScrapeChunk, s"chunk-$i", Map("chunk" -> i.toString)))
+    (1 to 4).foreach(i => queue.enqueue(TaskType.ScrapeChunk, s"chunk-$i", Map("chunk" -> i.toString), submittedAt = _root_.tools.SpecClock.Pinned.instant()))
     reaper.tick() shouldBe 0
 
     // Two chunks finish → two task-slots free → two more cinemas may go in.
@@ -759,8 +759,8 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
 
   "WorkerHeartbeat.statusLine" should "report the queue backlog depth" in {
     val queue = new InMemoryTaskQueue
-    queue.enqueue(TaskType.ScrapeCinema, "a")
-    queue.enqueue(TaskType.ScrapeCinema, "b")
+    queue.enqueue(TaskType.ScrapeCinema, "a", submittedAt = _root_.tools.SpecClock.Pinned.instant())
+    queue.enqueue(TaskType.ScrapeCinema, "b", submittedAt = _root_.tools.SpecClock.Pinned.instant())
     val line = new WorkerHeartbeat(queue).statusLine()
     line should include ("waiting=2")
     line should include ("backlog=2")

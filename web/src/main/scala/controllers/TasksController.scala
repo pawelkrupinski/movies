@@ -53,7 +53,7 @@ class TasksController(cc: ControllerComponents, adminAction: AdminAction, queue:
     BulkJobs.get(job) match {
       case None => BadRequest(Json.obj("error" -> s"unknown job '$job'"))
       case Some(taskType) =>
-        val result = queue.enqueue(taskType, EnrichTaskKeys.bulkDedup(taskType))
+        val result = queue.enqueue(taskType, EnrichTaskKeys.bulkDedup(taskType), submittedAt = clock.instant())
         Ok(Json.obj(
           "job"       -> job,
           "taskType"  -> taskType.name,

@@ -11,7 +11,7 @@ import scala.concurrent.duration.FiniteDuration
  *  carries the listing's identity (`defersTmdbResolution`) is waited for until read or gone; a
  *  display-only one only until it has been tried — staging likewise lets a display-only page fail. */
 final class VenuePageWait(enrichers: Seq[DetailEnricher], index: VenuePageIndex, queue: TaskQueue,
-                          freshness: services.freshness.FreshnessStore, val limit: FiniteDuration)
+                          freshness: services.freshness.FreshnessStore, val limit: FiniteDuration, clock: java.time.Clock)
     extends PageWait {
   private val enricherOf = enrichers.map(e => e.cinema -> e).toMap
 
@@ -22,5 +22,5 @@ final class VenuePageWait(enrichers: Seq[DetailEnricher], index: VenuePageIndex,
     index.answer(enricher, page).isEmpty &&
       (enricher.defersTmdbResolution || freshness.lastFetchedAt(services.tasks.EnrichDetailsTasks.pageAttempted(enricher.detailGroup, page)).isEmpty)
   }
-  def request(listing: Listing): Unit = pageOf(listing).foreach { case (enricher, page) => ReadVenuePageTasks.enqueue(queue, enricher, page) }
+  def request(listing: Listing): Unit = pageOf(listing).foreach { case (enricher, page) => ReadVenuePageTasks.enqueue(queue, enricher, page, clock.instant()) }
 }

@@ -18,8 +18,8 @@ class MeteredTaskQueueSpec extends AnyFlatSpec with Matchers {
     val metrics       = new WorkerTaskMetrics("pl", series)
     val queue: TaskQueue = new MeteredTaskQueue(new InMemoryTaskQueue, metrics)
 
-    queue.enqueue(TaskType.ImdbRating, "film|2026")        // added
-    queue.enqueue(TaskType.ImdbRating, "film|2026")        // dup of the active one → deduped
+    queue.enqueue(TaskType.ImdbRating, "film|2026", submittedAt = _root_.tools.SpecClock.Pinned.instant())        // added
+    queue.enqueue(TaskType.ImdbRating, "film|2026", submittedAt = _root_.tools.SpecClock.Pinned.instant())        // dup of the active one → deduped
 
     val out = series.scrape(Seq(WorkerTaskMetrics.CountryQueueSample("pl", QueueSnapshot(Map.empty, Nil),
       services.movies.ChangeStreamLiveness.unwatched(_root_.tools.SpecClock.Pinned))), now)
@@ -38,7 +38,7 @@ class MeteredTaskQueueSpec extends AnyFlatSpec with Matchers {
     }
     val queue: TaskQueue = new MeteredTaskQueue(failing, metrics)
 
-    queue.enqueue(TaskType.ImdbRating, "film|2026") shouldBe EnqueueResult.Failed("mongo down")
+    queue.enqueue(TaskType.ImdbRating, "film|2026", submittedAt = _root_.tools.SpecClock.Pinned.instant()) shouldBe EnqueueResult.Failed("mongo down")
 
     val out = series.scrape(Seq(WorkerTaskMetrics.CountryQueueSample("pl", QueueSnapshot(Map.empty, Nil),
       services.movies.ChangeStreamLiveness.unwatched(_root_.tools.SpecClock.Pinned))), now)

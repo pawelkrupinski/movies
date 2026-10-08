@@ -76,7 +76,7 @@ trait CorpusWiring { self: WorkerWiring =>
   // After a merge changes an enrichment's input fields, re-kick that enrichment
   // (per case) as a worker task — clearing its freshness stamp so the tmdbId-keyed
   // dedup doesn't skip the re-fetch. See QueueEnrichmentRetrigger / MergeRetrigger.
-  lazy val enrichmentRetrigger = new services.tasks.QueueEnrichmentRetrigger(taskQueue, freshnessStore, country, titleNormalizer)
+  lazy val enrichmentRetrigger = new services.tasks.QueueEnrichmentRetrigger(taskQueue, freshnessStore, country, titleNormalizer, clock)
 
   lazy val unscreenedCleanup = managedResources.stopping(new UnscreenedCleanup(movieCache, movieRepository))
 

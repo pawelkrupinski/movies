@@ -45,7 +45,7 @@ trait ChunkScrapeWiring { self: WorkerWiring =>
     pageMemo = chunkPageMemo, memoMetrics = taskMetrics, clock = clock)
   lazy val scrapeChunkReduceHandler = new ScrapeChunkReduceHandler(chunkScrapers, chunkScrapeStore, publishScrape,
     scrapeFreshnessPolicy, clock = clock)
-  lazy val chunkScrapeCoordinator   = new ChunkScrapeCoordinator(chunkScrapeStore, taskQueue)
+  lazy val chunkScrapeCoordinator   = new ChunkScrapeCoordinator(chunkScrapeStore, taskQueue, clock)
   lazy val chunkScrapeReaper        = managedResources.stopping(new ChunkScrapeReaper(chunkScrapeStore, taskQueue, chunkScrapeCoordinator,
     runStore = scheduledRunStore, clock = clock))
 

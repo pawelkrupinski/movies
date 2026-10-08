@@ -15,7 +15,7 @@ class QueueEnrichmentRetriggerSpec extends AnyFlatSpec with Matchers {
   private def fixtureFor(country: Country) = {
     val queue   = new InMemoryTaskQueue
     val fresh   = new InMemoryFreshnessStore
-    val trigger = new QueueEnrichmentRetrigger(queue, fresh, country, titleNormalizer)
+    val trigger = new QueueEnrichmentRetrigger(queue, fresh, country, titleNormalizer, _root_.tools.SpecClock.Pinned)
     (queue, fresh, trigger)
   }
 

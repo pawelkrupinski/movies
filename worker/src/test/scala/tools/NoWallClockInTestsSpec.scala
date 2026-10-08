@@ -130,9 +130,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
   // NoDefaultZoneSpec rule 4.
 
   /** `file:parameter` → why that main-source parameter may still default to the wall clock. */
-  private val MainDefaultAllowlist: Map[String, String] = Map(
-    "common/src/main/scala/services/tasks/TaskQueue.scala:submittedAt" ->
-      "queue bookkeeping (the task's submit stamp), read by no freshness decision; ~60 call sites — follow-up")
+  private val MainDefaultAllowlist: Map[String, String] = Map.empty
 
   private val MainWallClockRead = """\b(?:Instant|LocalDate|LocalDateTime|ZonedDateTime|OffsetDateTime)\.now\(\s*\)|System\.currentTimeMillis\(""".r
   // A value default only: `now: () => Instant = () => Instant.now()` is a seam, like a Clock.

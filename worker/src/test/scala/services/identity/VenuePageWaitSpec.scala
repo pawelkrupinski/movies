@@ -28,7 +28,7 @@ class VenuePageWaitSpec extends AnyFlatSpec with Matchers {
     val pages     = new InMemoryVenuePageStore
     val index     = new VenuePageIndex(pages)
     val freshness = new InMemoryFreshnessStore
-    val pageWait  = new VenuePageWait(Seq(enricher), index, new InMemoryTaskQueue, freshness, 1.hour)
+    val pageWait  = new VenuePageWait(Seq(enricher), index, new InMemoryTaskQueue, freshness, 1.hour, _root_.tools.SpecClock.Pinned)
     def attempted(): Unit = freshness.markFresh(EnrichDetailsTasks.pageAttempted("kino-apollo", Page), FreshnessKind.DetailEnrich, now)
     def read(): Unit = { pages.put(VenuePage(VenuePageKey("kino-apollo", Page), VenuePage.Read(FilmDetail()), now)); index.pageRead("kino-apollo", Page); index.settle() }
   }

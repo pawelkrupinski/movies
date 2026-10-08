@@ -60,7 +60,7 @@ trait RatingsWiring { self: WorkerWiring =>
     configuration.omdbBackfillInterval(OmdbBackfillInterval(OmdbBackfillReaper.DefaultInterval))
   lazy val omdbBackfillReaper: Option[OmdbBackfillReaper] = managedResources.stoppingEach(
     omdbBackfill.map(_ => new OmdbBackfillReaper(
-      () => { taskQueue.enqueue(TaskType.RefreshAllOmdb, EnrichTaskKeys.bulkDedup(TaskType.RefreshAllOmdb)); () },
+      () => { taskQueue.enqueue(TaskType.RefreshAllOmdb, EnrichTaskKeys.bulkDedup(TaskType.RefreshAllOmdb), submittedAt = clock.instant()); () },
       interval = omdbBackfillInterval, runStore = scheduledRunStore, clock = clock)))
 
   // Rating refresh as queue tasks. The handlers reuse each *Ratings class's

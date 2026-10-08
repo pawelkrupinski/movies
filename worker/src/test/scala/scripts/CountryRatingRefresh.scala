@@ -32,7 +32,7 @@ object CountryRatingRefresh {
       // would: the tmdbId-keyed RT dedup key + the title/year payload the handler decodes.
       val dedup   = s"${FreshnessKind.RtRating.label}|tmdb:${r.record.tmdbId.get}"
       val payload = Map(RatingTasks.TitleKey -> r.title, RatingTasks.YearKey -> r.year.map(_.toString).getOrElse(""))
-      queue.enqueue(TaskType.RtRating, dedup, payload) match {
+      queue.enqueue(TaskType.RtRating, dedup, payload, submittedAt = java.time.Clock.systemUTC().instant()) match {
         case EnqueueResult.Added => added += 1
         case _                   => dup += 1
       }

@@ -41,7 +41,9 @@ class QueueEnrichmentRetrigger(
   // The country's title rules. Required rather than derived from `country`:
   // Scala forbids a default that references an earlier parameter, and deriving
   // one silently would let a non-default country key through Poland's rules.
-  normalizer: TitleNormalizer
+  normalizer: TitleNormalizer,
+  // Stamps each retriggered task's `submittedAt`.
+  clock: java.time.Clock
 ) extends EnrichmentRetrigger with Logging {
 
   // The rating task types whose handler THIS country wires — the single source of
@@ -70,7 +72,8 @@ class QueueEnrichmentRetrigger(
         queue.enqueue(
           TaskType.ResolveImdbId,
           EnrichTaskKeys.resolveImdbIdDedup(key.cleanTitle, key.year),
-          EnrichTaskKeys.resolveImdbIdPayload(key.cleanTitle, key.year, searchTitleOf(key, record)))
+          EnrichTaskKeys.resolveImdbIdPayload(key.cleanTitle, key.year, searchTitleOf(key, record)),
+          submittedAt = clock.instant())
       case RetriggerKind.ImdbRating    => refreshRating(key, record, TaskType.ImdbRating,    FreshnessKind.ImdbRating)
       case RetriggerKind.FilmwebRating => refreshRating(key, record, TaskType.FilmwebRating, FreshnessKind.FilmwebRating)
       case RetriggerKind.RtRating      => refreshRating(key, record, TaskType.RtRating,      FreshnessKind.RtRating)
@@ -83,7 +86,7 @@ class QueueEnrichmentRetrigger(
   private def refreshRating(key: CacheKey, record: MovieRecord, taskType: TaskType, kind: FreshnessKind): Unit = {
     val dedup = RatingTasks.dedupKey(kind, key, record.tmdbId)
     freshness.invalidate(dedup)
-    queue.enqueue(taskType, dedup, RatingTasks.payload(key))
+    queue.enqueue(taskType, dedup, RatingTasks.payload(key), submittedAt = clock.instant())
   }
 
   /** The title the IMDb-id lookup queries with — same derivation as
