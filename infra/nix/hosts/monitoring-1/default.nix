@@ -415,4 +415,12 @@ in
   sops.defaultSopsFile = ../../secrets/monitoring-1.yaml;
 
   system.stateVersion = "26.05";
+
+  # THE 8788 DASHBOARD'S PROMETHEUS READ (infra/version-dashboard/src/fleet/prometheus.ts, promArgv).
+  # A plain file key on the operator Mac (no Touch ID), so the local dashboard service can poll
+  # without prompting. `restrict` + a forced command: no shell, no forwarding, and this one read
+  # whatever the client asks for -- a leaked copy reads metrics and nothing else. Added 2026-10-08.
+  users.users.root.openssh.authorizedKeys.keys = [
+    "restrict,command=\"curl -sS --max-time 15 'http://10.20.0.11:9090/api/v1/query?query=%7B__name__%3D~%22nixos_.%2A%7Cnode_os_info%22%7D'\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFPLz9aUrwhj93QLY1twe3Q3UURoxWftoDKVXqKMbBUS dashboards-readonly"
+  ];
 }
