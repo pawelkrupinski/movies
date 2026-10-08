@@ -33,7 +33,10 @@ cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 release="$(dirname "$0")/../release"
 if [ "$1 $2" = "release view" ]; then
+  echo x >> "$release/../views"
   [ -z "${STUB_UNREACHABLE:-}" ] || exit 1
+  # A GitHub 5xx on the first listing only.
+  if [ -n "${STUB_FAILS_ONCE:-}" ] && [ ! -e "$release/../failed-once" ]; then : > "$release/../failed-once"; exit 1; fi
   ls "$release"; exit 0
 fi
 if [ "$1 $2" = "release download" ]; then
@@ -47,7 +50,8 @@ fi
 exit 1
 STUB
 chmod +x "$work/bin/gh"
-run() { PATH="$work/bin:$PATH" FIXTURE_RELEASE_TAG=convergence-fixtures bash "$fill" "$@"; }
+run() { PATH="$work/bin:$PATH" FIXTURE_RELEASE_TAG=convergence-fixtures CONVERGENCE_FILL_LIST_BACKOFF=0 bash "$fill" "$@"; }
+views() { wc -l < "$work/views" 2>/dev/null | tr -d ' '; }
 
 check "a pair's fills are its own country's and corpus's, oldest run first" \
   "fill-us-100-35.tar.zst fill-us-100-201.tar.zst" "$(run fills us 100)"
@@ -68,8 +72,16 @@ check "a release that cannot be listed fails the fills, loudly" "1:" \
   "$(out=$(STUB_UNREACHABLE=1 run fills us 100 2>/dev/null); echo "$?:$out")"
 check "...saying which release it could not list" "true" \
   "$(err=$(STUB_UNREACHABLE=1 run fills us 100 2>&1 >/dev/null); grep -q '::error::could not list release convergence-fixtures' <<< "$err" && echo true || echo false)"
+rm -f "$work/views"
+STUB_UNREACHABLE=1 run fills us 100 > /dev/null 2>&1
+check "...but only after asking three times" "3" "$(views)"
 check "...and the gaps too, rather than reporting none" "1" \
   "$(STUB_UNREACHABLE=1 run gaps us 100 "$work/unreachable.tsv" > /dev/null 2>&1; echo "$?")"
+# One GitHub 5xx is not a release that cannot be listed: a single failed listing must not fail the leg.
+rm -f "$work/views" "$work/failed-once"
+check "a listing that fails once and then answers gives the pair's fills" "0:fill-us-100-35.tar.zst fill-us-100-201.tar.zst" \
+  "$(out=$(STUB_FAILS_ONCE=1 run fills us 100 2>/dev/null); echo "$?:$out")"
+check "...having asked twice" "2" "$(views)"
 # Every leg's setup asks, under `bash -e`, before any fill exists (run 37608599525 failed every leg here).
 check "a pair with no fills yet gives none, and succeeds" "0:" "$(out=$(run fills es 100); echo "$?:$out")"
 

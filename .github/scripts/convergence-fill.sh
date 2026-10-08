@@ -18,8 +18,8 @@
 # each other's names. Readers take every fill of the pair
 # (`fills`) and the NEWEST list (`gaps`); the pin step prunes both with the pair they belong to.
 #
-# A fill a leg cannot DOWNLOAD is a fill it replays without, never a failed leg. A release it cannot LIST
-# fails `fills` and `gaps` loudly instead: a failed listing is not an empty release, and read as "no fills"
+# A fill a leg cannot DOWNLOAD is a fill it replays without, never a failed leg. A release it cannot LIST,
+# asked three times, fails `fills` and `gaps` loudly instead: a failed listing is not an empty release, and read as "no fills"
 # it would let the leg decide its verdict on — and pin into its bisect's pair — a tree without the fills
 # its pair has. Only a listing that succeeds and names none means no fills.
 set -uo pipefail
@@ -28,12 +28,19 @@ TAG="${FIXTURE_RELEASE_TAG:?FIXTURE_RELEASE_TAG names the rolling release}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Every asset name in the release, one per line; an error and a non-zero status when it cannot be listed.
+# Asked up to three times, the wait doubling from CONVERGENCE_FILL_LIST_BACKOFF seconds (5): one GitHub 5xx is
+# not a release that cannot be listed, and failing the leg on it re-runs a whole convergence row.
 assets() {
-  local names
-  if ! names=$(gh release view "$TAG" --json assets --jq '.assets[].name'); then
-    echo "::error::could not list release $TAG — its fills are unknown, not none" >&2
-    return 1
-  fi
+  local names attempt=1 wait="${CONVERGENCE_FILL_LIST_BACKOFF:-5}" attempts=3
+  until names=$(gh release view "$TAG" --json assets --jq '.assets[].name'); do
+    if [ "$attempt" -ge "$attempts" ]; then
+      echo "::error::could not list release $TAG after $attempts attempts — its fills are unknown, not none" >&2
+      return 1
+    fi
+    echo "::warning::listing release $TAG failed (attempt $attempt of $attempts); asking again in ${wait}s" >&2
+    sleep "$wait"
+    attempt=$((attempt + 1)); wait=$((wait * 2))
+  done
   [ -z "$names" ] || printf '%s\n' "$names"
 }
 
