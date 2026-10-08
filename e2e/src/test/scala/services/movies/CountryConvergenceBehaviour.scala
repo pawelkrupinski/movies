@@ -1096,11 +1096,13 @@ abstract class CountryConvergenceBehaviour(
    * the boot, bound by Mongo round trips, kept two of the runner's four cores idle.
    *
    * Started only when this run includes the order test: a row that excludes it by tag (Germany's
-   * and the United States' convergence rows) must not pay for replays nobody asserts on.
+   * and the United States' convergence rows) must not pay for replays nobody asserts on. And only in a
+   * hermetic run ([[OrderReplays.besideTheBoot]]); a recording starts them when the test does.
    */
   override protected def runTests(testName: Option[String], args: org.scalatest.Args): org.scalatest.Status = {
     val included = args.filter(Set(orderTestName), tags, suiteId).exists { case (name, ignored) => name == orderTestName && !ignored }
-    if (included && testName.forall(_ == orderTestName)) { val _ = startOrderReplays() }
+    if (OrderReplays.besideTheBoot(hermetic = missingFixtures.isDefined, included = included && testName.forall(_ == orderTestName)))
+      { val _ = startOrderReplays() }
     super.runTests(testName, args)
   }
 
