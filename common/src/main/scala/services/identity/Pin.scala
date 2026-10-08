@@ -31,7 +31,9 @@ final case class Pin(listings: Seq[ListingKey], claim: PinClaim, author: String,
 
 object Pin {
   def idOf(listings: Seq[ListingKey], claim: PinClaim): String = {
-    val canonical = (claim.toString +: listings.distinct.sorted.map(_.toString)).mkString("\u0000")
+    // each key by its stored form, never its toString: a decoded key's directors come back in whatever collection the
+    // decoder built, and "List()" stored against "Vector()" read gave the same pin two ids
+    val canonical = (claim.toString +: listings.distinct.sorted.map(ListingKey.serialised)).mkString("\u0000")
     java.security.MessageDigest.getInstance("SHA-256").digest(canonical.getBytes("UTF-8"))
       .take(8).map(b => f"${b & 0xff}%02x").mkString
   }
