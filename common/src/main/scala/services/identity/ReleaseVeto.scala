@@ -36,8 +36,10 @@ private[identity] object ReleaseVeto {
   /** Is `denial` this veto's? */
   def vetoes(denial: String): Boolean = denial.startsWith(Vetoed)
 
-  /** `measures` with the namesakes the veto took away from `scored`'s rivals taken out of its `rivals` count. */
+  /** `measures` with the namesakes the veto took away from `scored`'s rivals taken out of its `rivals` count — never
+   *  below none: the veto counts every namesake it took away, which can be more than `rivals` ranked against the film. */
   def unvetoed(scored: Scored, measures: Map[String, Measure]): Map[String, Measure] =
     if (scored.vetoedRivals == 0) measures
-    else measures.get("rivals").collect { case Number(rivals) => measures.updated("rivals", Number(rivals - scored.vetoedRivals)) }.getOrElse(measures)
+    else measures.get("rivals").collect { case Number(rivals) => measures.updated("rivals", Number(math.max(0.0, rivals - scored.vetoedRivals))) }
+      .getOrElse(measures)
 }

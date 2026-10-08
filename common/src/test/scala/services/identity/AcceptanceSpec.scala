@@ -389,4 +389,15 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     acceptance.leaning(Seq(scored(672208, 0.30), scored(425751, 0.20))).map(_.candidate.tmdbId) shouldBe Some(672208)
     acceptance.leaning(Seq(scored(672208, 0.30), scored(425751, 0.25))) shouldBe None
   }
+
+  "the release veto's rivals" should "count no fewer than none, however many namesakes it took away" in {
+    // the `rivals` measure counts the namesakes ranked against the film; the veto may take away more than it counts
+    val listing = Listing("Diabły")
+    val scored  = Scored(Candidate(1, Film("Diabły", year = Some(1971))), 0.5, Map("rivals" -> IdentityMeasures.Number(1)), denial = None,
+      listing, Some(1), vetoedRivals = 3)
+    ReleaseVeto.unvetoed(scored, scored.measures)("rivals") shouldBe IdentityMeasures.Number(0)
+    ReleaseVeto.unvetoed(scored.copy(vetoedRivals = 1), scored.measures)("rivals") shouldBe IdentityMeasures.Number(0)
+    ReleaseVeto.unvetoed(scored.copy(measures = Map("rivals" -> IdentityMeasures.Number(4))), Map("rivals" -> IdentityMeasures.Number(4)))("rivals") shouldBe
+      IdentityMeasures.Number(1)
+  }
 }
