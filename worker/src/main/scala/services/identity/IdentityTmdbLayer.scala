@@ -11,11 +11,8 @@ import java.time.Clock
  *
  * One layer, because its parts keep state about each other: the store's listeners hear only its own filings, and a
  * family-answer store counts only its own (`version`), so a reader handed documents another store wrote would never
- * learn they moved. Whoever holds the layer gets all three together.
- *
- * A worker builds its own over its country's database. The order-independence replay hands one to all its passes, so
- * a TMDB answer one pass fetched is filed once and read by the others as a warm store's answer — production's case
- * after the first tick, not a cold store three times over.
+ * learn they moved. Whoever holds the layer gets all three together; a worker builds its own over its country's
+ * database.
  *
  * Over Mongo, the documents are coalesced in front of a cache in front of the collections ([[CoalescedTmdbDocuments]],
  * [[CachedTmdbDocuments]]); without one, in memory.

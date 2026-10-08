@@ -1042,8 +1042,7 @@ abstract class CountryConvergenceBehaviour(
    *  only nondeterminism left is the seeded shuffle — otherwise a thread race,
    *  not an order dependency, would decide the outcome and the test would flake
    *  rather than fail. */
-  private def replay(archive: ScrapeArchiveRepository, identityTmdb: services.identity.IdentityTmdbLayer,
-                     comparison: CorpusComparison, seed: Long): Unit = {
+  private def replay(archive: ScrapeArchiveRepository, comparison: CorpusComparison, seed: Long): Unit = {
     val rnd = new Random(seed)
     // Its OWN Mongo database, one per pass. The passes run concurrently over the same
     // corpus, so they cannot share collections — but they no longer run in memory either.
@@ -1060,7 +1059,7 @@ abstract class CountryConvergenceBehaviour(
       MovieChangeStream.Debounce.forCountry(country))
     passStorages.synchronized(passStorages += passStorage)
     val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env, sharedLive,
-        tmdbBodies = passBodies, identityTmdb = Some(identityTmdb)) {
+        tmdbBodies = passBodies) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
     }
     // A cut-over pass lands and projects through the identity model (see `rescrapeCutover`); a replayed
@@ -1121,18 +1120,6 @@ abstract class CountryConvergenceBehaviour(
         passStorages.synchronized(passStorages += orderStorage)
         val archive = orderStorage.archive
         seedArchive(archive)
-        // One identity TMDB layer for every pass, in the order database: each TMDB answer is fetched, normalized
-        // and filed once between the passes rather than once each — about a third of the US leg's Mongo writes
-        // (`tmdb_films`, 380k across the three, run 37595419218). A pass then reads answers another filed, as a
-        // worker reads its warm store after the first tick; the passes still differ in the order they land in,
-        // and that is what they must come out identical across.
-        //
-        // The trade, taken knowingly (2026-10-07): the passes are no longer independent. Every pass's model listens
-        // to the one store, so a filing by any pass wakes all of them, and the first pass to ask a question answers
-        // it for the others. An order dependence that shows only through the store's state — a listing resolved
-        // before rather than after its answer is filed — can be masked by a pass that warmed the store early.
-        val identityTmdb = new services.identity.IdentityTmdbLayer(orderStorage.connection.database,
-          java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC))
         // Concurrently: the passes are independent whole-corpus replays and running
         // them back-to-back made this the leg's long pole (three boots serially, on
         // top of the shared one). Same helper the fixture determinism specs use.
@@ -1143,7 +1130,7 @@ abstract class CountryConvergenceBehaviour(
         // only the materialise-and-diff tail is one-at-a-time. See [[CorpusComparison]]
         // for the leg that ran out of heap holding all three.
         val comparison = new CorpusComparison
-        val _ = ParallelReplays((0 until Passes).map(i => OrderSeed + i.toLong), replayGuard)(replay(archive, identityTmdb, comparison, _))
+        val _ = ParallelReplays((0 until Passes).map(i => OrderSeed + i.toLong), replayGuard)(replay(archive, comparison, _))
         comparison
       }
       orderReplays = Some(started)

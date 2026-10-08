@@ -132,7 +132,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     // initialises, which this compiler turns into a VerifyError once the body captures `leaf`.
     val wiring = new ArchiveReplayWiring(Country.UnitedStates, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage,
       fixtureTree, settings.FixtureRoot.RepositoryRelative, None, Env.of("KINOWO_FLICKS_US_PACE_MS" -> "40"), None,
-      new JsonBodies, None, wall) {
+      new JsonBodies, wall) {
       override protected def realHttpLeaf: HttpFetch = leaf
       override protected def pacingSleep: Long => Unit = ms => { waits.add(ms); wall.advance(java.time.Duration.ofMillis(ms)) }
     }
@@ -668,20 +668,18 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     alone.tmdbJsonBodies.getClass shouldBe classOf[JsonBodies]
   }
 
-  // An order-independence replay's passes share one identity TMDB layer: a search answer one pass's normalizer files is
-  // in the store every other pass reads, and every pass's family answers count each other's filings. Without one, a
-  // replay keeps its own, as a worker does.
-  it should "file TMDB answers into the identity layer it is handed, shared with every pass handed the same one" in {
-    val layer  = new services.identity.IdentityTmdbLayer(None, java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC))
-    def pass(identityTmdb: Option[services.identity.IdentityTmdbLayer]) =
-      new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage, fixtureTree,
-        settings.FixtureRoot.RepositoryRelative, identityTmdb = identityTmdb)
-    val (first, second, alone) = (pass(Some(layer)), pass(Some(layer)), pass(None))
+  // Each wiring — each pass of an order-independence replay — keeps its own identity TMDB layer over its own database:
+  // shared, a pass's store held answers another pass filed whenever it happened to get there first, so what a seeded
+  // pass resolved depended on the others' wall-clock progress and a divergence would not reproduce from its seed.
+  it should "keep its identity TMDB answers its own, never another wiring's" in {
+    def pass() = new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage,
+      fixtureTree, settings.FixtureRoot.RepositoryRelative)
+    val (first, second) = (pass(), pass())
     val question = services.identity.TmdbStore.titleSearchId("pl-PL", "Diuna")
     first.identityTmdbNormalizer.filed("GET", "https://api.themoviedb.org/3/search/movie?query=Diuna&language=pl-PL",
       scala.util.Success("""{"results":[{"id":438631,"title":"Diuna","original_title":"Dune","release_date":"2021-09-15","popularity":50.0}]}"""))
-    second.identityTmdbStore.get(services.identity.TmdbKind.Query, Seq(question)).keySet shouldBe Set(question)
-    second.familyAnswerStore should be theSameInstanceAs first.familyAnswerStore
-    alone.identityTmdbStore.get(services.identity.TmdbKind.Query, Seq(question)) shouldBe empty
+    first.identityTmdbStore.get(services.identity.TmdbKind.Query, Seq(question)).keySet shouldBe Set(question)
+    second.identityTmdbStore.get(services.identity.TmdbKind.Query, Seq(question)) shouldBe empty
+    second.familyAnswerStore should not be theSameInstanceAs(first.familyAnswerStore)
   }
 }
