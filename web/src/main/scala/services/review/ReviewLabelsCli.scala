@@ -40,8 +40,8 @@ object ReviewLabelsCli {
         parsed.flatMap(a => a.warnings.map(w => s"WARNING: ${a.country} ${a.title}: $w"))).mkString("\n")
     case "export" :: rest =>
       val path = rest.headOption.map(Paths.get(_)).getOrElse(LabelsTsv.locate())
-      val current = answers.current()
-      s"$path\n" + LabelsExport.exportTo(path, current, FilmIdentity.linking(current, sources)).render
+      val history = answers.history()
+      s"$path\n" + LabelsExport.exportTo(path, history, FilmIdentity.linking(history, sources)).render
     case _ =>
       "usage: ReviewLabelsCli import <answers.json> | export [labels.tsv]"
   }

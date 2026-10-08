@@ -20,7 +20,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
   private val clock = Clock.fixed(now, ZoneOffset.UTC)
 
   private def controller(mode: Mode, answers: ReviewAnswers = new ReviewAnswers(new InMemoryReviewAnswerStore),
-                         labels: java.nio.file.Path = Files.createTempFile("labels", ".tsv")) =
+                         labels: java.nio.file.Path = Files.createTempFile("labels", ".tsv"), clock: Clock = clock) =
     new ReviewController(Helpers.stubControllerComponents(), mode, Map(Country.Poland -> ReviewFixtures.source(now)), answers, labels, clock)
 
   "every review page" should "404 in production" in {
@@ -110,8 +110,12 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     LabelsTsv.read(labels) shouldBe Seq(LabelRow("pl", "Kino Opalenica", "FRANZ KAFKA", "tmdb:1157322", "right", "review page: right: Franz (2025)"))
     (contentAsJson(c.exportLabels()(FakeRequest())) \ "alreadyUsed").as[Int] shouldBe 1   // exported once: not again
 
-    status(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "undo")))) shouldBe OK
+    // the undo a minute after the export: the export it follows takes the undone answer's row back
+    val later = controller(Mode.Dev, answers, labels, Clock.fixed(now.plusSeconds(60), ZoneOffset.UTC))
+    status(later.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "undo")))) shouldBe OK
     contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest())) should include("FRANZ KAFKA")
+    (contentAsJson(later.exportLabels()(FakeRequest())) \ "withdrawn").as[Int] shouldBe 1
+    LabelsTsv.read(labels) shouldBe empty
     status(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "film")))) shouldBe BAD_REQUEST
   }
 

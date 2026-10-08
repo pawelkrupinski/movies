@@ -120,7 +120,8 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers {
   "exporting" should "take only the answers given since the last export, and mark them used for the next" in {
     val dir   = Files.createTempDirectory("labels")
     val path  = dir.resolve("labels.tsv")
-    val later = answer(ReviewVerdict.Wrong, shown = Some(dawnWall)).copy(at = at.plusSeconds(60))
+    val later = answer(ReviewVerdict.Wrong, shown = Some(dawnWall), members = Seq(opalenica.copy(venue = "Kino Muza")))
+      .copy(at = at.plusSeconds(60))
     try {
       LabelsExport.exportTo(path, Seq(answer(ReviewVerdict.Right))).added shouldBe 1
       LabelsTsv.usedUntil(path) shouldBe Some(at)
@@ -131,6 +132,47 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers {
       second.render should include ("1 answer already used")
       LabelsTsv.read(path).map(r => r.film -> r.verdict) shouldBe Seq("tmdb:1157322" -> "wrong", "tmdb:489471" -> "wrong")
       LabelsTsv.usedUntil(path) shouldBe Some(later.at)
+    } finally { Files.deleteIfExists(LabelsTsv.usedPath(path)); Files.deleteIfExists(path); Files.deleteIfExists(dir): Unit }
+  }
+
+  it should "take back the rows of an exported answer withdrawn since, and restore a row it flipped" in {
+    val dir   = Files.createTempDirectory("labels")
+    val path  = dir.resolve("labels.tsv")
+    val hand  = LabelRow("pl", "Kino Opalenica", "FRANZ KAFKA", "tmdb:1157322", "wrong", "by hand")
+    val other = LabelRow("pl", "*", "Dune", "tmdb:438631", "right", "by hand")
+    val right = answer(ReviewVerdict.Right)
+    val undo  = answer(ReviewVerdict.Undo, shown = None).copy(at = at.plusSeconds(60))
+    try {
+      LabelsTsv.write(path, Seq(hand, other))
+      LabelsExport.exportTo(path, Seq(right)).flipped shouldBe 1
+      LabelsTsv.read(path).head.verdict shouldBe "right"
+      val second = LabelsExport.exportTo(path, Seq(right, undo))
+      second.withdrawn shouldBe 1
+      second.render should include ("1 row of withdrawn answers taken back")
+      LabelsTsv.read(path) shouldBe Seq(hand, other)   // the flipped row is the hand label again
+
+      // a row the withdrawn answer added is removed; the file's other rows stay
+      LabelsTsv.write(path, Seq(other)); Files.delete(LabelsTsv.usedPath(path))
+      LabelsExport.exportTo(path, Seq(right)).added shouldBe 1
+      LabelsExport.exportTo(path, Seq(right, undo)).withdrawn shouldBe 1
+      LabelsTsv.read(path) shouldBe Seq(other)
+      // and the next export has nothing more to take back
+      LabelsExport.exportTo(path, Seq(right, undo)).withdrawn shouldBe 0
+      LabelsTsv.read(path) shouldBe Seq(other)
+    } finally { Files.deleteIfExists(LabelsTsv.usedPath(path)); Files.deleteIfExists(path); Files.deleteIfExists(dir): Unit }
+  }
+
+  it should "keep a withdrawn answer's row another standing answer also gives" in {
+    val dir   = Files.createTempDirectory("labels")
+    val path  = dir.resolve("labels.tsv")
+    val muza  = ReviewMember("Kino Muza", "FRANZ KAFKA", Some("https://muza/kafka"))
+    val both  = answer(ReviewVerdict.Right, members = Seq(opalenica, muza))           // FRANZ KAFKA under *
+    val alone = answer(ReviewVerdict.Right, members = Seq(opalenica, muza.copy(page = Some("https://muza/kafka-2"))))
+    val undo  = answer(ReviewVerdict.Undo, shown = None, members = Seq(opalenica, muza)).copy(at = at.plusSeconds(60))
+    try {
+      LabelsExport.exportTo(path, Seq(both, alone)).added shouldBe 1
+      LabelsExport.exportTo(path, Seq(both, alone, undo)).withdrawn shouldBe 0
+      LabelsTsv.read(path).map(r => r.venue -> r.verdict) shouldBe Seq("*" -> "right")
     } finally { Files.deleteIfExists(LabelsTsv.usedPath(path)); Files.deleteIfExists(path); Files.deleteIfExists(dir): Unit }
   }
 

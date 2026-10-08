@@ -42,7 +42,8 @@ object LabelsTsv {
     Files.write(path, (Header +: rows.map(_.line)).mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8)): Unit
 
   /** Beside the labels file: when the newest review answer already turned into its rows was given. Checked in with
-   *  the rows, so an export takes only the answers given since — never re-applies one a later edit overruled. */
+   *  the rows, so an export takes only the answers given since — never re-applies one a later edit overruled — and
+   *  knows which answers stood when it last ran, to take back the rows of one withdrawn since. */
   def usedPath(path: Path): Path = path.resolveSibling(s"${path.getFileName}.used-until")
 
   def usedUntil(path: Path): Option[Instant] =
@@ -63,16 +64,18 @@ object LabelsTsv {
  *  - one row per distinct raw title of the cluster, under its venue when one venue bills it, `*` otherwise.
  *
  * A row the file already holds is never written twice. A row it holds with the OPPOSITE verdict is
- * flipped in place, its old verdict and note kept after "was:". Only current answers are exported —
- * an undone one leaves its rows as they were.
+ * flipped in place, its old verdict and note kept after "was:". An answer exported before and no longer
+ * standing (undone, or replaced by a newer answer) takes its rows back: a row it flipped is its "was:"
+ * again, a row it added goes — unless an answer still standing gives that row too.
  */
 object LabelsExport {
 
   final case class Summary(added: Int, flipped: Int, unchanged: Int, unexportable: Seq[String], warnings: Seq[String],
-                           alreadyUsed: Int = 0) {
+                           alreadyUsed: Int = 0, withdrawn: Int = 0) {
     def render: String =
       ((s"labels.tsv: $added added, $flipped flipped, $unchanged already there" +
-        (if (alreadyUsed > 0) s"; $alreadyUsed answer${if (alreadyUsed == 1) "" else "s"} already used, skipped" else "")) +:
+        (if (alreadyUsed > 0) s"; $alreadyUsed answer${if (alreadyUsed == 1) "" else "s"} already used, skipped" else "") +
+        (if (withdrawn > 0) s"; $withdrawn row${if (withdrawn == 1) "" else "s"} of withdrawn answers taken back" else "")) +:
         (unexportable.map("not exported: " + _) ++ warnings.map("WARNING: " + _))).mkString("\n")
   }
 
@@ -121,13 +124,41 @@ object LabelsExport {
     (rows.toSeq, Summary(added, flipped, unchanged, unexportable, warnings))
   }
 
-  /** Merge the `answers` given since the last export into the file at `path`, write it back, and mark them used. */
-  def exportTo(path: Path, answers: Seq[ReviewAnswer], identity: FilmIdentity = FilmIdentity.Unlinked): Summary = {
+  /** `existing` without the rows of `withdrawn` answers, but those a `standing` answer gives too. Only a row the review
+   *  page wrote with that verdict is touched: one it flipped becomes what it was, one it added goes. */
+  def takeBack(existing: Seq[LabelRow], withdrawn: Seq[ReviewAnswer], standing: Seq[ReviewAnswer],
+               identity: FilmIdentity = FilmIdentity.Unlinked): (Seq[LabelRow], Int) = {
+    val kept  = standing.flatMap(rowsOf(_, identity))
+    val stale = withdrawn.flatMap(rowsOf(_, identity))
+      .filterNot(row => kept.exists(k => k.sameJudgement(row) && k.verdict == row.verdict))
+    stale.foldLeft((existing, 0)) { case ((rows, taken), row) =>
+      rows.indexWhere(r => r.sameJudgement(row) && r.verdict == row.verdict && r.note.startsWith(ReviewNote)) match {
+        case -1 => (rows, taken)
+        case i  => (wasRow(rows(i)).fold(rows.patch(i, Nil, 1))(rows.updated(i, _)), taken + 1)
+      }
+    }
+  }
+
+  private val ReviewNote = "review page: "
+  private val Was        = """^review page: .*? \(was: (right|wrong): (.*)\)$""".r
+
+  /** The row a flip replaced, from the "was:" it kept. */
+  private def wasRow(row: LabelRow): Option[LabelRow] = row.note match {
+    case Was(verdict, note) => Some(row.copy(verdict = verdict, note = note))
+    case _                  => None
+  }
+
+  /** Bring the file at `path` up to `history`: take back the rows of the answers that stood at the last export and no
+   *  longer do, merge in the current answers given since, write it back, and mark them used. */
+  def exportTo(path: Path, history: Seq[ReviewAnswer], identity: FilmIdentity = FilmIdentity.Unlinked): Summary = {
     val used          = LabelsTsv.usedUntil(path)
-    val (fresh, old)  = answers.partition(a => used.forall(a.at.isAfter))
-    val (rows, summary) = merge(LabelsTsv.read(path), fresh, identity)
+    val current       = ReviewAnswers.current(history)
+    val stood         = used.fold(Seq.empty[ReviewAnswer])(u => ReviewAnswers.current(history.filterNot(_.at.isAfter(u))))
+    val (fresh, old)  = current.partition(a => used.forall(a.at.isAfter))
+    val (kept, taken) = takeBack(LabelsTsv.read(path), stood.filterNot(s => current.exists(_ eq s)), old, identity)
+    val (rows, summary) = merge(kept, fresh, identity)
     LabelsTsv.write(path, rows)
-    fresh.map(_.at).maxOption.foreach(LabelsTsv.markUsed(path, _))
-    summary.copy(alreadyUsed = old.size)
+    history.map(_.at).maxOption.foreach(LabelsTsv.markUsed(path, _))
+    summary.copy(alreadyUsed = old.size, withdrawn = taken)
   }
 }
