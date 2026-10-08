@@ -28,34 +28,6 @@ object IdentityLookupSweep {
 
   def enabledIn(configuration: settings.ProcessConfiguration): Boolean = configuration.identityLookupSweep.value
 
-  /** Left at the root of a tree whose recording ran the sweep, holding the NAME of every lookup the
-   *  recording asked, one per line (the legs recording one tree add to it, [[markRecorded]]).
-   *
-   *  A HERMETIC verdict leg no longer replays it. It ran the whole query set again beside the boot
-   *  to prove the tree still answers lookups the boot and the replays never ask — which no verdict
-   *  of the leg rests on (a lookup they DO ask that the tree cannot answer is still refused by name)
-   *  — for 60-90 s of every row (run 37522262304). Full coverage of the query set is the recording's
-   *  job, and the nightly recording runs the sweep. */
-  val RecordedMarker = ".identity-lookups-v3"
-
-  /** The lookups `treeRoot`'s recording asked (its [[RecordedMarker]]), when it was recorded with the sweep. */
-  def recordedIn(treeRoot: java.nio.file.Path): Option[Set[String]] = {
-    val marker = treeRoot.resolve(RecordedMarker)
-    Option.when(java.nio.file.Files.exists(marker))(
-      scala.jdk.CollectionConverters.ListHasAsScala(java.nio.file.Files.readAllLines(marker)).asScala.filter(_.nonEmpty).toSet)
-  }
-
-  /** Mark `treeRoot` as recorded with the sweep that asked `asked` — by a RECORDING leg, once the
-   *  sweep has run. A tree is recorded by more than one leg (the sample, then the full leg over the
-   *  same tree), so the names already there are kept: the tree answers every one of them. */
-  def markRecorded(treeRoot: java.nio.file.Path, asked: Iterable[String]): Unit = {
-    java.nio.file.Files.createDirectories(treeRoot)
-    val names = (recordedIn(treeRoot).getOrElse(Set.empty) ++ asked).toSeq.sorted
-    java.nio.file.Files.writeString(treeRoot.resolve(RecordedMarker), names.mkString("", "\n", "\n"))
-    ()
-  }
-
-
   /** The sweep over a booted replay wiring: its archived listings, its venues' detail enrichers,
    *  its TMDB client and an IMDb suggestion client over the TMDB client's fetch, all fetching
    *  through the wiring's recording chain — which is what files the answers into the leg's tree.

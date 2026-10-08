@@ -759,11 +759,10 @@ Cineworld from an IP it serves. No recording from a runner can close them.
   for nothing already recorded, and that the gate is then met. On a clone of PL's tree it asked
   the 200 gaps plus 3 follow-ons (two TMDB person credits and one search, reachable only once a
   gap is answered), and the gate then read 6,242 / 6,242.
-- A recording that ran the sweep leaves `.identity-lookups-v3` at its tree's root, naming every
-  lookup it asked (the legs recording one tree add to it).
-- The hermetic verdict legs do not run the sweep (since 2026-10-06). Until then a hermetic leg
-  replaying a marked tree re-asked the lookups the mark named, to prove the tree still answered
-  them. No verdict of the leg rests on a lookup its boot and replays never ask, and every request
+- The hermetic verdict legs do not run the sweep (since 2026-10-06). Until then a recording that
+  ran it left a `.identity-lookups-v3` marker naming every lookup it asked, and a hermetic leg
+  replaying a marked tree re-asked them, to prove the tree still answered them; nothing reads a
+  marker any more, and recordings no longer write one (2026-10-08). No verdict of the leg rests on a lookup its boot and replays never ask, and every request
   they DO make is still refused by name when the tree lacks it. So the replay bought nothing the
   lane claims, for 60-90 s of every row. The gate is kept by the recordings, which run the sweep.
 - The hard-cluster responses are recorded from the trees (`scripts/hard-clusters.sh record`),
@@ -1876,7 +1875,7 @@ The resolver has no per-title, per-venue, per-chain or per-franchise rule of its
   - the venue co-occurrence count (`corroboratingVenues`);
   - own-evidence agreement (`ownAgreement`);
   - the TMDB record parser (`TmdbFilmRecord`).
-- `IdentityLookupSweep` **is** a resolve over the recording chains. It asks exactly the resolver's candidate searches, filmographies, detail pages and candidate identity records (`TmdbClient.identityRecord`). Its tree marker, `.identity-lookups-v3`, lists every lookup the recording asked (§9a).
+- `IdentityLookupSweep` **is** a resolve over the recording chains. It asks exactly the resolver's candidate searches, filmographies, detail pages and candidate identity records (`TmdbClient.identityRecord`). A recording runs it to file every such answer into the tree it pins (§9a).
 - Cannot-links are the artefact's learned rules and certified cuts, reached through `ListingConstraints.learned`. The probability cut reads the listing's **own facts** only, not the ranking priors. A candidate is not vetoed for ranking second in TMDB's search.
 - A node accepts a film **alone** only when its own facts favour it over the runner-up. Otherwise it follows the film its cluster's credited members chose, or the pooled vote. The confidence is the calibrated probability.
 - One member's denial never vetoes the pooled vote for the whole cluster. When the whole cluster's pooled facts (modal year, median runtime, every director) still carry the vote's best film, the members whose own evidence denies it split off (a `denies-film` cannot-link), and the rest take it when their own pooled facts carry it too: a fact compared, and the facts-only probability over the cut. UK "Ozzy & Black Sabbath: Back to the Beginning" (229 listings) was vetoed whole by the 46 venues crediting only a co-director TMDB does not name.

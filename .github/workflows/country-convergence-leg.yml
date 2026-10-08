@@ -578,8 +578,7 @@ jobs:
             # A RECORDING runs it over the tree this job then records the whole corpus into —
             # the order the two jobs ran in, without the release in between: the sample records
             # into the tree on disk, the full suite replays and extends it, and the one publish
-            # below carries both (and the identity lookups' marker keeps both legs' names,
-            # `IdentityLookupSweep.markRecorded`). Hermetic sample legs replay the pair this job
+            # below carries both. Hermetic sample legs replay the pair this job
             # pins, so the sample's requests have to be in it. `continue-on-error` there alone,
             # because a recording records the full corpus whatever the sample said; the leg
             # still goes red on a red sample, after the publish ("Fail the leg on the sample's

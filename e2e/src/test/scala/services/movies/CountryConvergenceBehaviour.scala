@@ -416,20 +416,18 @@ abstract class CountryConvergenceBehaviour(
          s"${w.archivedListings.values.map(_.size).sum} film listings")
     // The identity resolver's per-listing query set (docs/design/identity-resolver.md §9), only when
     // asked for (`KINOWO_IDENTITY_LOOKUPS`): a RECORDING leg files every answer into the tree it then
-    // pins and marks; a hermetic leg asked for it names each gap below. A hermetic verdict leg is not
-    // asked: the gaps it could name are lookups no claim of the leg rests on, and the boot and the
-    // replays still have every request THEY make refused by name (see `IdentityLookupSweep.RecordedMarker`).
+    // pins; a hermetic leg asked for it names each gap below. A hermetic verdict leg is not asked: the
+    // gaps it could name are lookups no claim of the leg rests on, and the boot and the replays still
+    // have every request THEY make refused by name.
     //
     // BESIDE the boot, not after it: the sweep reads the corpus's listings and asks the lookups,
     // never a row the boot writes, so nothing it does waits on the boot or moves it — and after the
     // boot it was 35 s of the US recording's critical path (run 37111868620), on the cores the
     // boot's Mongo-bound drains leave idle. Joined before the boot is declared complete.
-    val treeRoot = java.nio.file.Paths.get(fixtureRoot.of(fixtureDirectory))
     val sweep = Option.when(IdentityLookupSweep.enabledIn(configuration)) {
-      val asked = scala.collection.mutable.ArrayBuffer.empty[String]
       // Timed like every other phase: in a recording leg it is minutes of live lookups.
-      asked -> Alongside.start(s"identity-sweep-${country.code}")(
-        step("identityLookupSweep")(IdentityLookupSweep.over(w, asked += _, IdentityLookupSweep.LookupThreads)))
+      Alongside.start(s"identity-sweep-${country.code}")(
+        step("identityLookupSweep")(IdentityLookupSweep.over(w, threads = IdentityLookupSweep.LookupThreads)))
     }
     bootSettled(w)
     // Every replayed venue must LAND: the claims below are all "nothing changed", which a
@@ -439,11 +437,7 @@ abstract class CountryConvergenceBehaviour(
       w.scrapeFailures.asScala shouldBe empty
     }
     reportCorpusProvenance()
-    sweep.foreach { case (asked, running) =>
-      val lookups = running.join()
-      info(s"${country.displayName}: identity resolver lookups — $lookups")
-      if (missingFixtures.isEmpty) IdentityLookupSweep.markRecorded(treeRoot, asked)
-    }
+    sweep.foreach(running => info(s"${country.displayName}: identity resolver lookups — ${running.join()}"))
     info(s"${country.displayName}: " + missingFixtures.fold("RECORDING run — requests the tree lacks are fetched live and recorded")(
       m => s"HERMETIC run — ${m.size} request(s) the recorded tree could not answer"))
     // Read by `convergence-publish`: a RECORDING leg pins its tree as the hermetic pair only

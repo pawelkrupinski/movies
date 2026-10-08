@@ -19,19 +19,16 @@ touch "$work/stamp"; sleep 1
 printf 'sample-only\n' > "$tree/tmdb/only-sample"
 printf 'sample-fresh\n' > "$tree/tmdb/stale-here"
 printf 'sample-older\n' > "$tree/tmdb/both"
-printf 'sample-leg\n' > "$tree/.identity-lookups-v3"
 bash "$script" pack "$tree" "$work/stamp" "$work/recordings.tar.zst" > /dev/null
-check "pack takes only what the sample wrote" "4" "$(zstd -dc "$work/recordings.tar.zst" | tar -tf - | grep -vc '/$')"
+check "pack takes only what the sample wrote" "3" "$(zstd -dc "$work/recordings.tar.zst" | tar -tf - | grep -vc '/$')"
 
 # The CONVERGENCE row: its own restored tree, its own later recordings.
 mkdir -p "$work/conv/$tree/tmdb" && cd "$work/conv" || exit 1
 printf 'restored-old\n' > "$tree/tmdb/stale-here"; touch -t 202601010000 "$tree/tmdb/stale-here"
 sleep 1; printf 'suite-newer\n' > "$tree/tmdb/both"
-printf 'full-leg\n' > "$tree/.identity-lookups-v3"
 bash "$script" merge "$work/recordings.tar.zst" > /dev/null
 check "a file only the sample recorded is taken" "sample-only" "$(cat "$tree/tmdb/only-sample")"
 check "the sample's fresh answer replaces an older one here" "sample-fresh" "$(cat "$tree/tmdb/stale-here")"
 check "an answer recorded here after the sample's is kept" "suite-newer" "$(cat "$tree/tmdb/both")"
-check "the identity marker names both legs" "full-leg sample-leg" "$(tr '\n' ' ' < "$tree/.identity-lookups-v3" | sed 's/ $//')"
 
 spec_summary

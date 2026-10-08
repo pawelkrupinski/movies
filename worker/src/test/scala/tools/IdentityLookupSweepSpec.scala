@@ -88,21 +88,6 @@ class IdentityLookupSweepSpec extends AnyFlatSpec with Matchers {
     sweep(shuffled)._1 shouldBe sweep(corpus)._1
   }
 
-  private def withTree[A](body: java.nio.file.Path => A): A = {
-    val root = java.nio.file.Files.createTempDirectory("identity-sweep-tree")
-    try body(root)
-    finally {
-      Seq(IdentityLookupSweep.RecordedMarker, ".identity-lookups-v2", ".identity-lookups").foreach(m => java.nio.file.Files.deleteIfExists(root.resolve(m)))
-      java.nio.file.Files.deleteIfExists(root)
-    }
-  }
-
-  "a recording" should "keep every lookup each recording leg over the same tree asked" in withTree { root =>
-    IdentityLookupSweep.markRecorded(root, Seq("film 1", "query b"))
-    IdentityLookupSweep.markRecorded(root, Seq("film 2", "query b"))
-    IdentityLookupSweep.recordedIn(root) shouldBe Some(Set("film 1", "film 2", "query b"))
-  }
-
   // A recording leg's sweep met every lookup its tree lacked live and ONE AT A TIME: 274 s of the US
   // leg against 41 s for the same sweep replayed hermetically (runs 36974178044, 37029415020).
   private def pooled[A](body: java.util.concurrent.ExecutorService => A): A = {

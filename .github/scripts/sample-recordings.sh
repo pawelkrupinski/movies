@@ -16,12 +16,9 @@
 #   - a file the convergence row lacks is taken (a request only the sample made, or a stale entry
 #     the convergence row expired and never re-asked);
 #   - a file both have is the NEWER one's (each row's mtime is when it recorded the answer; an
-#     untouched file in the convergence row still carries its archived, older mtime);
-#   - the identity lookups' marker is the UNION of both, exactly as `IdentityLookupSweep
-#     .markRecorded` keeps the names already there when a second leg records into one tree.
+#     untouched file in the convergence row still carries its archived, older mtime).
 set -euo pipefail
 
-Marker=".identity-lookups-v3"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 case "${1:-}" in
@@ -43,10 +40,7 @@ case "${1:-}" in
     while IFS= read -r -d '' file; do
       dest="${file#"$work"/}"
       mkdir -p "$(dirname "$dest")"
-      if [ "$(basename "$file")" = "$Marker" ] && [ -f "$dest" ]; then
-        sort -u "$dest" "$file" | grep -v '^$' > "$dest.merged" || true
-        mv "$dest.merged" "$dest"
-      elif [ ! -e "$dest" ] || [ "$file" -nt "$dest" ]; then
+      if [ ! -e "$dest" ] || [ "$file" -nt "$dest" ]; then
         cp -p "$file" "$dest"; taken=$((taken + 1))
       else
         kept=$((kept + 1))
