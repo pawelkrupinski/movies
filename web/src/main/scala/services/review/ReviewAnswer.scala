@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.time.Instant
 
-/** What a reviewer said about a cluster. `Undo` withdraws the cluster's previous answer. */
+/** What a reviewer said about a cluster. `Undo` withdraws the answer the cluster's card showed ([[ReviewAnswers.current]]). */
 enum ReviewVerdict(val code: String, val label: String) {
   /** The film the card shows (the resolver's match, or its best candidate no veto denied) is the cluster's film. */
   case Right       extends ReviewVerdict("right", "Right")
@@ -64,7 +64,7 @@ final case class FilmFacts(ref: FilmRef, title: Option[String] = None, year: Opt
 
 /**
  * One answer, as stored. Answers are never rewritten: a changed mind is a newer answer for the same
- * cluster, and `Undo` withdraws the latest — so the whole history stays readable.
+ * cluster, and `Undo` withdraws the one the card showed ([[ReviewAnswers.current]]) — so the whole history stays readable.
  *
  * @param clusterId [[ReviewClusterId]] of the members as the card showed them
  * @param shown     the film the card put forward (the match, the best candidate no veto denied, or the labelled film)

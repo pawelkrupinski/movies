@@ -46,6 +46,19 @@ class ReviewAnswersSpec extends AnyFlatSpec with Matchers {
     new ReviewAnswers.Index(current).answerFor(ReviewClusterId.of(Seq(m1)), Seq(m1)).map(_.verdict) shouldBe Some(ReviewVerdict.Right)
   }
 
+  it should "be replaced by a newer answer on the card that cluster has since become, which an undo then leaves none" in {
+    val grown   = Seq(m1, m2)
+    val history = Seq(answer(ReviewVerdict.Right), answer(ReviewVerdict.Wrong, grown))
+    ReviewAnswers.current(history).map(_.verdict) shouldBe Seq(ReviewVerdict.Wrong)
+    val undone  = new ReviewAnswers.Index(ReviewAnswers.current(history :+ answer(ReviewVerdict.Undo, grown)))
+    undone.answerFor(ReviewClusterId.of(grown), grown) shouldBe None   // not the Right the grown card re-answered
+  }
+
+  it should "follow the time each answer was given, whatever order a store hands them back in" in {
+    val earlier = answer(ReviewVerdict.Right).copy(at = at.minusSeconds(60))
+    ReviewAnswers.current(Seq(answer(ReviewVerdict.Wrong), earlier)).map(_.verdict) shouldBe Seq(ReviewVerdict.Wrong)
+  }
+
   "importing" should "add each answer once, however often it runs" in {
     val answers = new ReviewAnswers(new InMemoryReviewAnswerStore)
     val first   = answer(ReviewVerdict.Right).copy(legacyId = Some("a"))

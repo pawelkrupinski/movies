@@ -31,7 +31,7 @@ final class InMemoryReviewAnswerStore extends ReviewAnswerStore {
  * the mirrored collections, can never touch them, and so they never reach prod.
  *
  * `_id` is the answer's time (`at`, zero-padded epoch millis — the clock the caller gave it) and a per-process sequence, so
- * the keyset read below returns them in the order they were given.
+ * the keyset read below returns them in the order they were given — the order [[ReviewAnswers.current]] reads them in.
  */
 final class MongoReviewAnswerStore(db: MongoDatabase) extends ReviewAnswerStore {
   import MongoReviewAnswerStore._
@@ -107,10 +107,10 @@ object MongoReviewAnswerStore {
 }
 
 /**
- * What the answer history means — shared by every store. The CURRENT answer of a cluster is the
- * latest one given for it, unless that is an `Undo`; a cluster is answered when a current answer
- * covers it — given for its id, or for any listing it holds now (so a cluster that gains a venue
- * after it was answered does not come back into the queue).
+ * What the answer history means — shared by every store. The CURRENT answers are what
+ * [[ReviewAnswers.current]] leaves standing; a cluster is answered when a current answer covers it —
+ * given for its id, or for any listing it holds now (so a cluster that gains a venue after it was
+ * answered does not come back into the queue).
  */
 final class ReviewAnswers(store: ReviewAnswerStore) {
   def record(answer: ReviewAnswer): Unit = store.append(answer)
@@ -127,15 +127,20 @@ final class ReviewAnswers(store: ReviewAnswerStore) {
 }
 
 object ReviewAnswers {
-  /** An `Undo` withdraws the answer its card showed ([[Index.answerFor]]: by the cluster's id, else by a listing it
-   *  holds) — a card answered under an earlier cluster id, before it gained a venue, posts its Undo under its new one —
-   *  and no other, though another cluster's answer shares a listing with it. */
+  /** The answers standing after `history`, read in the order they were given (`at`; a store's own order breaks ties). An
+   *  answer replaces its cluster's earlier one, and the one its card showed when that was given on the cluster before it
+   *  gained a venue (its listings all the card's still): re-answered on the grown card, the old verdict no longer stands
+   *  behind the new one. An `Undo` withdraws the answer its card showed ([[Index.answerFor]]: by the cluster's id, else
+   *  by a listing it holds) — a card answered under an earlier cluster id posts its Undo under its new one — and no
+   *  other, though another cluster's answer shares a listing with it. */
   def current(history: Seq[ReviewAnswer]): Seq[ReviewAnswer] =
-    history.foldLeft(Vector.empty[ReviewAnswer]) { (kept, a) =>
-      if (a.verdict != ReviewVerdict.Undo) kept.filterNot(_.clusterId == a.clusterId) :+ a
+    history.sortBy(_.at).foldLeft(Vector.empty[ReviewAnswer]) { (kept, a) =>
+      val shown = new Index(kept).answerFor(a.clusterId, a.members)
+      if (a.verdict == ReviewVerdict.Undo) kept.filterNot(k => shown.exists(_ eq k))
       else {
-        val shown = new Index(kept).answerFor(a.clusterId, a.members)
-        kept.filterNot(k => shown.exists(_ eq k))
+        val held   = a.members.map(_.identity).toSet
+        val before = shown.filter(_.members.forall(m => held(m.identity)))
+        kept.filterNot(k => k.clusterId == a.clusterId || before.exists(_ eq k)) :+ a
       }
     }
 
