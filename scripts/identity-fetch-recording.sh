@@ -24,13 +24,17 @@ CCS=("$@")
 REPO=${KINOWO_REPO:-pawelkrupinski/movies}
 RELEASE=${FIXTURE_RELEASE_TAG:-convergence-fixtures}
 UNPACK="$(cd "$(dirname "$0")/.." && pwd)/.github/scripts/unpack-fixture-archive.sh"
+GH_OPTIONAL="$(cd "$(dirname "$0")" && pwd)/ci/gh-optional.sh"
 mkdir -p "$DEST/pair" "$DEST/archive"
 
-# fetch <asset prefix> -> the downloaded asset's path, whichever compressor packed it; fails when the release lacks it
+# fetch <asset prefix> -> the downloaded asset's path, whichever compressor packed it; 1 when the release lacks it,
+# 2 when the release could not be read (gh-optional.sh tells the two apart)
 fetch() {
-  local ext
+  local ext present
   for ext in tar.zst tar.gz; do
-    if gh release download "$RELEASE" -R "$REPO" --pattern "$1.$ext" --dir "$DEST/archive" --clobber 2>/dev/null; then
+    # absent (this compressor did not pack it) moves on to the next; a failed read stops the fetch
+    present=$("$GH_OPTIONAL" release download "$RELEASE" -R "$REPO" --pattern "$1.$ext" --dir "$DEST/archive" --clobber) || return 2
+    if [ "$present" = present ]; then
       echo "$DEST/archive/$1.$ext"
       return 0
     fi
@@ -39,9 +43,13 @@ fetch() {
 }
 
 for cc in "${CCS[@]}"; do
-  tree=$(fetch "enrichment-$cc-$RUN") || { echo "$cc: release $RELEASE holds no enrichment-$cc-$RUN" >&2; exit 1; }
+  if tree=$(fetch "enrichment-$cc-$RUN"); then :
+  elif [ $? -eq 2 ]; then echo "$cc: could not read release $RELEASE (see gh's error above)" >&2; exit 1
+  else echo "$cc: release $RELEASE holds no enrichment-$cc-$RUN" >&2; exit 1; fi
   bash "$UNPACK" "$tree" "$DEST/pair"
-  if overlay=$(fetch "identity-overlay-$cc-$RUN"); then bash "$UNPACK" "$overlay" "$DEST/pair"; fi
+  # the overlay is optional: absent is fine, a failed read is not
+  if overlay=$(fetch "identity-overlay-$cc-$RUN"); then bash "$UNPACK" "$overlay" "$DEST/pair"
+  elif [ $? -eq 2 ]; then echo "$cc: could not read release $RELEASE (see gh's error above)" >&2; exit 1; fi
   gh run download "$RUN" -R "$REPO" --name "scrape-fixtures-$cc" --dir "$DEST/archive/scrape-$cc"
   corpus=$(compgen -G "$DEST/archive/scrape-$cc/scrapes-$cc.tar.*" | head -1 || true)
   [ -n "$corpus" ] || { echo "$cc: run $RUN's scrape-fixtures-$cc holds no scrapes-$cc.tar.*" >&2; exit 1; }

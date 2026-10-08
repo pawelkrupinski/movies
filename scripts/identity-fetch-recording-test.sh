@@ -29,7 +29,10 @@ cat > "$work/bin/gh" <<'STUB'
 cmd="$1 $2"; shift 2
 while [ "$#" -gt 0 ]; do case "$1" in --dir) dir="$2" ;; --pattern) pattern="$2" ;; --name) name="$2" ;; esac; shift; done
 case "$cmd" in
-  "release download") [ -f "$STUB/assets/$pattern" ] || exit 1; mkdir -p "$dir"; cp "$STUB/assets/$pattern" "$dir/" ;;
+  "release download")
+    [ -f "$STUB/down" ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
+    [ -f "$STUB/assets/$pattern" ] || { echo "no assets match the file pattern" >&2; exit 1; }
+    mkdir -p "$dir"; cp "$STUB/assets/$pattern" "$dir/" ;;
   "run download")     [ -d "$STUB/artifacts/$name" ] || exit 1; mkdir -p "$dir"; cp "$STUB/artifacts/$name/"* "$dir/" ;;
   *) exit 1 ;;
 esac
@@ -47,7 +50,11 @@ check "...and its scrape corpus" "corpus" "$(cat "$pair/corpus/uk.json" 2>/dev/n
 rm "$work/assets/identity-overlay-uk-77.tar.gz"
 check "a run without an overlay is laid out too" "0" "$(fetch 77 "$work/no-overlay" uk)"
 check "a run the release holds no tree for fails" "1" "$(fetch 78 "$work/missing" uk)"
-check "...naming what is missing" "uk: release convergence-fixtures holds no enrichment-uk-78" "$(head -1 "$work/out")"
+check "...naming what is missing" "1" "$(grep -c 'uk: release convergence-fixtures holds no enrichment-uk-78' "$work/out")"
+touch "$work/down"
+check "a release that cannot be read fails, not as a missing tree" "1" "$(fetch 77 "$work/down-dest" uk)"
+check "...saying the read failed" "1" "$(grep -c 'uk: could not read release convergence-fixtures' "$work/out")"
+rm "$work/down"
 check "--help prints the usage" "0" "$(fetch --help)"
 check "...which names the arguments" "1" "$(grep -c '<recording run id> <dest dir>' "$work/out")"
 check "too few arguments is a usage error" "2" "$(fetch 77)"
