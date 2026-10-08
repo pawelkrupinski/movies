@@ -2,7 +2,7 @@ package integration
 
 import tools.SpecTimeouts
 
-import org.mongodb.scala.{SingleObservableFuture}
+import org.mongodb.scala.{SingleObservableFuture, documentToUntypedDocument}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -84,25 +84,32 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     queue.countByState() should not contain key ("not_a_real_state")
   }
 
-  // A row of a task type this build no longer has (retired with its handler while one was still
-  // queued) used to throw out of the decode: the claim answered None, the row stayed leased, was
-  // reaped back to waiting and claimed again every lease, for ever. It is dropped and the claim
-  // goes on to the next task.
-  it should "drop a row of an unknown task type and claim the next task instead" in {
-    val retired = s"it-retired-${System.nanoTime()}"
+  // A row of a task type this build does not know is, almost always, one a NEWER image queued and this
+  // one meets on a rollback: deleting it lost that work. It is left queued, untouched, for an image that
+  // knows it — and never even leased here, so it cannot hold a claim loop on it either (a leased unknown
+  // row was reaped back to waiting and claimed again every lease, for ever).
+  it should "leave a row of an unknown task type queued, untouched, and claim the next task instead" in {
+    val unknown = s"it-unknown-${System.nanoTime()}"
     val doc = org.mongodb.scala.Document(
-      "_id" -> retired, "taskType" -> "RetiredSinceThisRowWasQueued", "dedupKey" -> s"retired|$retired",
+      "_id" -> unknown, "taskType" -> "QueuedByANewerImage", "dedupKey" -> s"newer|$unknown",
       "payload" -> org.mongodb.scala.Document(), "state" -> services.tasks.TaskState.Waiting, "active" -> true,
       "submittedAt" -> new java.util.Date(t0.minusSeconds(86400L * 365).toEpochMilli), "attempts" -> 0)
     Await.result(db.getCollection(collName).insertOne(doc).toFuture(), SpecTimeouts.Io)
-    val key = s"scrape|it-after-retired-${System.nanoTime()}"
+    val key = s"scrape|it-after-unknown-${System.nanoTime()}"
     queue.enqueue(TaskType.ScrapeCinema, key, submittedAt = t0.minusSeconds(86400L * 300)) shouldBe EnqueueResult.Added
 
-    val claimed = queue.claim("w-retired", 5.minutes, t0)
+    val claimed = queue.claim("w-unknown", 5.minutes, t0)
     claimed.map(_.dedupKey) shouldBe Some(key)
-    Await.result(db.getCollection(collName).countDocuments(
-      org.mongodb.scala.model.Filters.eq("_id", retired)).toFuture(), SpecTimeouts.Io) shouldBe 0L
-    claimed.foreach(t => queue.complete(t.id, "w-retired"))
+    claimed.foreach(t => queue.complete(t.id, "w-unknown"))
+
+    val row = Await.result(db.getCollection(collName).find(
+      org.mongodb.scala.model.Filters.eq("_id", unknown)).headOption(), SpecTimeouts.Io)
+    withClue("the unknown row is still there, waiting, never leased: ") {
+      row.map(_.getString("state")) shouldBe Some(services.tasks.TaskState.Waiting)
+      row.map(_.getInteger("attempts", -1)) shouldBe Some(0)
+      row.flatMap(r => Option(r.getString("workerId"))) shouldBe None
+    }
+    Await.result(db.getCollection(collName).deleteOne(org.mongodb.scala.model.Filters.eq("_id", unknown)).toFuture(), SpecTimeouts.Io)
   }
 
   it should "claim the task once, carry its payload, and not hand it out twice" in {
