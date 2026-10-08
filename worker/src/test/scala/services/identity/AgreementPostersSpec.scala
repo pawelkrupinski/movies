@@ -25,7 +25,7 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
     val fetched = new AtomicInteger
     def fetch(url: String): Either[String, Path] = failure.toLeft {
       fetched.incrementAndGet()
-      val name = if (url == patria) "venue-patria-dyrygent.jpg" else "tmdb-w185" + url.stripPrefix(clients.TmdbClient.PosterHashBase).replace('/', '-')
+      val name = if (url == patria) "venue-patria-dyrygent.jpg" else "tmdb-w185" + url.stripPrefix(PosterAnswers.FilmPosterBase).replace('/', '-')
       val copy = Files.createTempFile("poster-", ".img")
       Files.copy(fixtures.resolve(name), copy, StandardCopyOption.REPLACE_EXISTING)
       copy
@@ -40,8 +40,8 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
   "a venue's poster" should "match the film it is of, and name it against the namesake the families took" in {
     val h       = hashing()
     val venue   = h.venue(patria).toSeq
-    val broken  = h.film(1483477)
-    val wajda   = h.film(95269)
+    val broken  = h.film(1483477).map(_.hash)
+    val wajda   = h.film(95269).map(_.hash)
     (broken.size, wajda.size) shouldBe ((3, PosterEvidence.FilmPosters))
     PosterEvidence.nearest(venue, broken).get should be <= PosterEvidence.VetoMatchBits
     PosterEvidence.nearest(venue, wajda).get should be > PosterEvidence.VetoBits
@@ -86,8 +86,8 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
     val store    = new PosterAnswerStore(families, clock)
     store.venue(patria) shouldBe Answer.Unknown
     store.film(1) shouldBe Answer.Unknown
-    store.file(PosterQuestion.Venue(patria), Seq(PosterHash(-7L)))
-    store.file(PosterQuestion.Film(1), Seq(PosterHash(1L), PosterHash(2L)))
+    store.file(PosterQuestion.Venue(patria), Seq(HashedPoster(patria, PosterHash(-7L))))
+    store.file(PosterQuestion.Film(1), Seq(HashedPoster("/1.jpg", PosterHash(1L)), HashedPoster("/2.jpg", PosterHash(2L))))
     store.file(PosterQuestion.Venue("https://gone"), Nil)
     store.file(PosterQuestion.Film(2), Nil)
     (store.venue(patria), store.film(1), store.venue("https://gone"), store.film(2)) shouldBe
@@ -101,7 +101,7 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
   it should "want a poster hashed again only once its hash is a year old" in {
     val store = new PosterAnswerStore(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock)
     store.wanted(PosterQuestion.Film(1)) shouldBe true
-    store.file(PosterQuestion.Film(1), Seq(PosterHash(1L)))
+    store.file(PosterQuestion.Film(1), Seq(HashedPoster("/1.jpg", PosterHash(1L))))
     store.wanted(PosterQuestion.Film(1)) shouldBe false
     clock.advanceSeconds(PosterAnswerStore.Age.toSeconds + 1)
     store.wanted(PosterQuestion.Film(1)) shouldBe true
@@ -128,6 +128,24 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers {
     download.fetched.get shouldBe 1
     handler.handle(Task("t2", TaskType.AgreementPoster, "agreement-poster|film|1483477", Map("filmPoster" -> "1483477"), 1)) shouldBe HandlerOutcome.Done
     store.film(1483477).toOption.map(_.size) shouldBe Some(3)
+  }
+
+  // the review pages show a candidate's TMDB poster: the paths hashed, filed beside their hashes, in their order — one
+  // filing, counted once, as a filing without them was
+  it should "file a film's poster paths beside the hashes read from them" in {
+    val families = new FamilyAnswerStore(new InMemoryTmdbDocuments, clock)
+    val store    = new PosterAnswerStore(families, clock)
+    new AgreementPosterHandler(store, hashing(), () => (), clock)
+      .handle(Task("t1", TaskType.AgreementPoster, "agreement-poster|film|1483477", Map("filmPoster" -> "1483477"), 1)) shouldBe HandlerOutcome.Done
+    val filed = families.document(PosterAnswers.idOf(PosterQuestion.Film(1483477))).get
+    val paths = PosterHashing.chosen(tmdb.posters(1483477, also = Seq("en")), "pl")
+    PosterAnswers.pathsOf(filed) shouldBe paths
+    paths should have size 3
+    store.film(1483477).toOption.map(_.size) shouldBe Some(3)
+    families.version shouldBe 1
+    // a venue's poster is filed under its own URL: no path beside it
+    store.file(PosterQuestion.Venue(patria), Seq(HashedPoster(patria, PosterHash(-7L))))
+    PosterAnswers.pathsOf(families.document(PosterAnswers.idOf(PosterQuestion.Venue(patria))).get) shouldBe Nil
   }
 
   // prod PL 2026-10-06: biletyna.pl refused all 226 of its posters (403) and each was filed as "no poster" for a year —

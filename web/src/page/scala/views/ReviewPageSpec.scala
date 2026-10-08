@@ -8,7 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.Mode
 import play.api.libs.json.Json
-import play.api.test.Helpers.{contentAsString, defaultAwaitTimeout, status}
+import play.api.test.Helpers.{contentAsString, defaultAwaitTimeout, redirectLocation, status}
 import play.api.test.{FakeRequest, Helpers}
 import services.review._
 import tools.{CdpPage, Chrome, TestHttpServer}
@@ -65,7 +65,10 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
 
   /** Prod's "Odblask | UFF": the resolver vetoed "Uff" and stored 16878 as the candidate that survived. */
   private val odblask = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
-    Map(Country.Poland -> ReviewFixtures.odblaskSource), new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
+    Map(Country.Poland -> ReviewFixtures.odblaskSource), new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC),
+    // no stored read gives its candidates a poster: each is asked of TMDB, which answers every film as it answered 4935
+    tmdbPosters = Some(new TmdbPosterLookup(tools.RoutingHttpFetch.getOnly(Seq("/3/movie/" -> TmdbPosterLookupSpec.HowlsAnswer)),
+      settings.TmdbApiKey("k"))))
 
   /** A cluster of 46 cinemas, every one crediting a director the film it leans to doesn't have, and 4 with a film page
    *  of their own that credit nobody. */
@@ -79,16 +82,20 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
   }
 
-  private def post(exchange: HttpExchange): Boolean = {
+  private def dynamic(exchange: HttpExchange): Boolean = {
     val path = exchange.getRequestURI.getPath
     lazy val body = Json.parse(new String(exchange.getRequestBody.readAllBytes(), StandardCharsets.UTF_8))
     val result = Option.when(exchange.getRequestMethod == "POST")(path).collect {
       case "/debug/review/answer" => controller.answer()(FakeRequest("POST", path).withBody(body))
       case "/debug/review/export" => controller.exportLabels()(FakeRequest("POST", path))
-    }
+    }.orElse(Option.when(exchange.getRequestMethod == "GET")(path).collect {
+      case poster if poster.startsWith("/debug/review/tmdb-poster/") =>
+        odblask.tmdbPoster(poster.stripPrefix("/debug/review/tmdb-poster/").toInt, Some("pl"))(FakeRequest("GET", path))
+    })
     result.foreach { r =>
       val bytes = contentAsString(r).getBytes(StandardCharsets.UTF_8)
       exchange.getResponseHeaders.add("Content-Type", "application/json")
+      redirectLocation(r).foreach(exchange.getResponseHeaders.add("Location", _))
       exchange.sendResponseHeaders(status(r), bytes.length.toLong)
       val os = exchange.getResponseBody
       try os.write(bytes) finally os.close()
@@ -118,7 +125,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
         case "/sample/review/matchable" => contentAsString(sample.matchable(Some("all"), 0.0, None, 200, false)(FakeRequest()))
         case "/sample/review/recent"    => contentAsString(sample.recent(Some("all"), 24 * 365, 200, false)(FakeRequest()))
       },
-      dynamicRoute = post)
+      dynamicRoute = dynamic)
   }
 
   override def afterAll(): Unit = {
@@ -424,6 +431,28 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
         page.reload()
         page.waitFor("(function(){ var i = document.querySelector('.listing img.poster'); return !!i && i.complete && i.naturalWidth > 0; })()")
         page.evalString("document.querySelector('.listing img.poster').src") shouldBe tools.PosterProxy.proxy(listedPoster)
+      }
+    }
+  }
+
+  "a candidate's TMDB poster" should "load from TMDB's own address, looked up live when no stored read gives one" in {
+    chrome match {
+      case None => cancel("Chrome not installed — skipping /debug/review page test")
+      case Some(c) => c.openPage(server.baseUrl + "/odblask/review") { page =>
+        // TMDB's image host answers with a 1×1 PNG: no network, and positive proof the lookup's redirect led the browser there
+        val png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        val asked = new java.util.concurrent.atomic.AtomicBoolean(false)
+        page.onEvent("Fetch.requestPaused") { p =>
+          asked.set(true)
+          page.send("Fetch.fulfillRequest", Json.obj("requestId" -> (p \ "requestId").as[String], "responseCode" -> 200,
+            "responseHeaders" -> Json.arr(Json.obj("name" -> "Content-Type", "value" -> "image/png")), "body" -> png))
+        }
+        page.send("Fetch.enable", Json.obj("patterns" -> Json.arr(Json.obj("urlPattern" -> TmdbPosterLookupSpec.HowlsPoster))))
+        page.reload()
+        val lead = "document.querySelector('.card img.poster[alt=\"TMDB poster\"]')"
+        page.waitFor(s"(function(){ var i = $lead; return !!i && i.complete && i.naturalWidth > 0; })()")
+        page.evalString(s"$lead.getAttribute('src')") shouldBe "/debug/review/tmdb-poster/16878?country=pl"
+        asked.get shouldBe true
       }
     }
   }

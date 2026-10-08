@@ -18,7 +18,8 @@
 @factRows(rows: Seq[(String, String)], extra: String) = {<dl class="facts@extra">@for((name, value) <- rows){<dt>@name</dt><dd>@value</dd>}</dl>}
 @filmBody(card: ReviewCard, tmdb: Int, candidate: Option[ReviewCandidate]) = {
   @defining(card.films.get(tmdb)) { known =>
-    @poster(known.flatMap(_.poster), "TMDB")
+    @* no stored read gives this film a poster: asked of TMDB live, the "no TMDB poster" placeholder should none load *@
+    @poster(known.flatMap(_.poster).orElse(Some(controllers.routes.ReviewController.tmdbPoster(tmdb, Some(card.cluster.country.code)).url)), "TMDB")
     <div class="t">
       <b>@known.flatMap(_.title).getOrElse(s"tmdb:$tmdb")</b>@for(k <- known; o <- k.originalTitle if !k.title.contains(o)){ <span class="s">(@o)</span>}
       @for(c <- candidate if c.vetoed){<span class="tag veto">vetoed</span>}

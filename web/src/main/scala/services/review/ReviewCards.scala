@@ -137,12 +137,13 @@ object ReviewCards {
   }
 
   /** Each film as the resolver weighed it — its stored TMDB record's title, year, directors and running time — with the
-   *  corpus's poster and overview (never a live TMDB call); the corpus's facts only where no record states them. */
+   *  corpus's poster (else the record's) and overview (never a live TMDB call); the corpus's facts only where no record
+   *  states them. */
   private[review] def withRecords(corpus: Map[Int, FilmCard], records: Map[Int, FilmCard]): Map[Int, FilmCard] =
     (corpus.keySet ++ records.keySet).toSeq.flatMap { tmdb =>
       ((records.get(tmdb), corpus.get(tmdb)) match {
         case (Some(r), Some(c)) => Some(FilmCard(tmdb, c.imdb.orElse(r.imdb), r.title.orElse(c.title), r.originalTitle.orElse(c.originalTitle),
-          r.year.orElse(c.year), if (r.directors.nonEmpty) r.directors else c.directors, r.runtime.orElse(c.runtime), c.poster, c.overview))
+          r.year.orElse(c.year), if (r.directors.nonEmpty) r.directors else c.directors, r.runtime.orElse(c.runtime), c.poster.orElse(r.poster), c.overview))
         case (r, c) => r.orElse(c)
       }).map(tmdb -> _)
     }.toMap

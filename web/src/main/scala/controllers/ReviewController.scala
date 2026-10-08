@@ -30,7 +30,9 @@ class ReviewController(cc: ControllerComponents,
                        labelsPath: Path,
                        clock: Clock,
                        // Why the pages may be empty or answers not kept, for the banner (no mirror, answers in memory).
-                       notices: Seq[String] = Nil) extends AbstractController(cc) {
+                       notices: Seq[String] = Nil,
+                       // A candidate's TMDB poster asked live when no stored read gives one; none without a TMDB key.
+                       tmdbPosters: Option[TmdbPosterLookup] = None) extends AbstractController(cc) {
 
   private def devOnly(result: => Result): Result = DevMode.gate(environment)(result)
 
@@ -126,6 +128,15 @@ class ReviewController(cc: ControllerComponents,
             case Failure(e)      => InternalServerError(s"could not read identity_traces: ${e.getMessage}")
           }
       }
+    }
+  }
+
+  /** A candidate's TMDB poster, looked up live ([[TmdbPosterLookup]]) in its country's language: a redirect to it, or not
+   *  found — the card's "no TMDB poster" placeholder then takes the image's place. */
+  def tmdbPoster(tmdbId: Int, country: Option[String]): Action[AnyContent] = Action {
+    devOnly {
+      val language = country.flatMap(Country.byCode).fold(java.util.Locale.UK)(_.language)
+      tmdbPosters.flatMap(_.poster(tmdbId, language)).fold(NotFound("no TMDB poster"))(Redirect(_))
     }
   }
 

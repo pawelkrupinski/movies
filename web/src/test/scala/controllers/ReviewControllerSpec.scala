@@ -20,14 +20,28 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
   private val clock = Clock.fixed(now, ZoneOffset.UTC)
 
   private def controller(mode: Mode, answers: ReviewAnswers = new ReviewAnswers(new InMemoryReviewAnswerStore),
-                         labels: java.nio.file.Path = Files.createTempFile("labels", ".tsv"), clock: Clock = clock) =
-    new ReviewController(Helpers.stubControllerComponents(), mode, Map(Country.Poland -> ReviewFixtures.source(now)), answers, labels, clock)
+                         labels: java.nio.file.Path = Files.createTempFile("labels", ".tsv"), clock: Clock = clock,
+                         tmdbPosters: Option[TmdbPosterLookup] = None) =
+    new ReviewController(Helpers.stubControllerComponents(), mode, Map(Country.Poland -> ReviewFixtures.source(now)), answers, labels, clock,
+      tmdbPosters = tmdbPosters)
 
   "every review page" should "404 in production" in {
     val prod = controller(Mode.Prod)
     Seq(prod.queue(None, 60, false), prod.matchable(None, 0.5, None, 60, false), prod.recent(None, 48, 60, false), prod.history(),
       prod.exportLabels()).foreach(action => status(action(FakeRequest())) shouldBe NOT_FOUND)
     status(prod.answer()(FakeRequest().withBody(Json.obj()))) shouldBe NOT_FOUND
+    status(controller(Mode.Prod, tmdbPosters = Some(howlsLookup)).tmdbPoster(4935, Some("pl"))(FakeRequest())) shouldBe NOT_FOUND
+  }
+
+  // TMDB's recorded answer for "Howl's Moving Castle" (4935): the poster a card shows when no stored read gives one
+  private def howlsLookup = TmdbPosterLookupSpec.lookup
+
+  "a candidate's TMDB poster" should "redirect to the poster TMDB names for it, and be not found when TMDB names none or no key is set" in {
+    val looked = controller(Mode.Dev, tmdbPosters = Some(howlsLookup)).tmdbPoster(4935, Some("pl"))(FakeRequest())
+    status(looked) shouldBe SEE_OTHER
+    redirectLocation(looked) shouldBe Some(TmdbPosterLookupSpec.HowlsPoster)
+    status(controller(Mode.Dev, tmdbPosters = Some(howlsLookup)).tmdbPoster(1575247, Some("pl"))(FakeRequest())) shouldBe NOT_FOUND
+    status(controller(Mode.Dev).tmdbPoster(4935, Some("pl"))(FakeRequest())) shouldBe NOT_FOUND
   }
 
   "the queue" should "render the unmatched clusters with the venue's facts, the candidates and the explanation" in {
@@ -68,7 +82,10 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     val recordOnly = queueOver(Map.empty, Map(kafka.tmdb -> record))
     recordOnly should include("<b>Franz (TMDB)</b>")
     recordOnly should include("2025 · Agnieszka Holland · 127 min")
-    recordOnly should include("no TMDB poster")
+    // no poster stored for it: the card asks for one live, the "no TMDB poster" placeholder taking its place should none load
+    recordOnly should include("""src="/debug/review/tmdb-poster/1157322?country=pl"""")
+    queueOver(Map.empty, Map(kafka.tmdb -> record.copy(poster = Some("https://image.tmdb.org/t/p/w185/hashed.jpg")))) should
+      include("""src="https://image.tmdb.org/t/p/w185/hashed.jpg"""")   // the poster the poster evidence hashed
     recordOnly should not include "not in this country&#x27;s corpus"
 
     val both = queueOver(Map(kafka.tmdb -> kafka), Map(kafka.tmdb -> record))

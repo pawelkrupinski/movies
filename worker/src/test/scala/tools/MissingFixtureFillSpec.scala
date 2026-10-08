@@ -103,7 +103,7 @@ class MissingFixtureFillSpec extends AnyFlatSpec with Matchers {
         threads = 1, sign = signer.sign).fill(Seq(gap(tmdb), gap(omdb)), 1.minute)
 
     live.asked.asScala.toSeq shouldBe Seq("https://api.themoviedb.org/3/movie/1018?language=pl-PL&api_key=k3y")
-    live.headers.asScala.toSeq shouldBe Seq(clients.TmdbClient.authorization(settings.TmdbApiKey("k3y")))
+    live.headers.asScala.toSeq shouldBe Seq(settings.TmdbApiKey("k3y").authorization)
     (outcome.fetched, outcome.unsigned) shouldBe (1, 1)
     MissingFixtureFill.heldIn(out, Tree)(gap(tmdb)) shouldBe true
     Files.walk(out.value).iterator().asScala.filter(Files.isRegularFile(_)).map(Files.readString).mkString should not include "k3y"

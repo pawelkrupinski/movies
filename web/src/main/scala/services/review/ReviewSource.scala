@@ -74,7 +74,8 @@ trait ReviewSource {
   /** The corpus's record of each of these TMDB films that it holds. */
   def films(tmdbIds: Seq[Int]): Map[Int, FilmCard]
   /** The resolver's own stored TMDB record of each of these films (`tmdb_films`) — its title, original title, year,
-   *  directors, running time and IMDb id; no poster or overview — the films it weighed whether or not the corpus has them. */
+   *  directors, running time and IMDb id, and the TMDB poster its poster evidence hashed (`identity_family_answers`); no
+   *  overview — the films it weighed whether or not the corpus has them. */
   def filmRecords(tmdbIds: Seq[Int]): Map[Int, FilmCard]
   /** For each corpus record naming one of `refs` (by its TMDB, IMDb, Filmweb, RT or Metacritic id), every ref it names. */
   def filmLinks(refs: Seq[FilmRef]): Seq[Set[FilmRef]]

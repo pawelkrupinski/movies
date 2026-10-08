@@ -1,6 +1,7 @@
 package services.identity
 
 import java.awt.image.BufferedImage
+import scala.jdk.CollectionConverters._
 
 /**
  * A poster's perceptual hash (pHash, 63 bits): the signs of the lowest 8×8 DCT frequencies of its 32×32 grey image,
@@ -88,6 +89,18 @@ object PosterAnswers {
     def venue(url: String): Answer[Option[PosterHash]] = Answer.Known(None)
     def film(tmdbId: Int): Answer[Seq[PosterHash]]     = Answer.Known(Nil)
   }
+
+  /** TMDB's CDN at the small size a film's posters are hashed from (a hash is of a 32×32 grey image) — and shown at by the
+   *  review pages, from the paths filed beside the hashes. */
+  val FilmPosterBase = "https://image.tmdb.org/t/p/w185"
+
+  /** The field a film's poster document keeps its TMDB poster paths in (`/abc.jpg`), each beside the hash read from it.
+   *  The agreement never reads them: they are for the review pages, which show a candidate's poster. */
+  val Paths = "paths"
+
+  /** The TMDB poster paths filed in a poster document, in its hashes' order; none for a venue's, or one filed before them. */
+  def pathsOf(d: org.bson.BsonDocument): Seq[String] =
+    Option(d.get(Paths)).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala.collect { case v if v.isString => v.asString.getValue })
 
   /** The id a poster's hashes are filed under among the families' answers: `poster|venue|<url>`, `poster|film|<tmdbId>`. */
   def idOf(question: agreement.AgreementStage.PosterQuestion): String = question match {

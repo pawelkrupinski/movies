@@ -2,7 +2,7 @@ package integration
 
 import clients.TmdbClient
 import play.api.libs.json.{JsArray, Json}
-import services.identity.{PosterAnswerStore, PosterHash, PosterHashing}
+import services.identity.{HashedPoster, PosterAnswerStore, PosterHashing}
 import services.identity.agreement.AgreementStage.PosterQuestion
 import services.sharecards.{HttpPosterDownload, PosterDownload, PosterFailure}
 
@@ -61,13 +61,8 @@ final class CachedPosters(dir: Path, live: Option[TmdbClient], language: String,
 
   /** Each poster of `questions` hashed and filed in `store`, eight at a time — one that fails twice filed as no poster. */
   def file(store: PosterAnswerStore, questions: Seq[PosterQuestion]): Unit = {
-    def hashed(question: PosterQuestion): Seq[PosterHash] = {
-      def once() = question match {
-        case PosterQuestion.Venue(url)   => hashing.venue(url).toSeq
-        case PosterQuestion.Film(tmdbId) => hashing.film(tmdbId)
-      }
-      scala.util.Try(once()).orElse(scala.util.Try(once())).getOrElse(Nil)
-    }
+    def hashed(question: PosterQuestion): Seq[HashedPoster] =
+      scala.util.Try(hashing.of(question)).orElse(scala.util.Try(hashing.of(question))).getOrElse(Nil)
     questions.grouped(8).foreach(_.map(question => java.util.concurrent.CompletableFuture.runAsync(() => store.file(question, hashed(question))))
       .foreach(_.join()))
   }

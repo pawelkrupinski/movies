@@ -66,7 +66,7 @@ class TmdbClient(
    *  key returns None and the calling method short-circuits via flatMap
    *  without ever hitting the network. */
   private def authHeader: Option[Map[String, String]] =
-    apiKey.map(TmdbClient.authorization)
+    apiKey.map(_.authorization)
 
   /** Query-string suffix carrying the legacy v3 `api_key=` parameter.
    *  Empty when no key is configured (the calling method short-circuits
@@ -462,11 +462,6 @@ class TmdbClient(
 
 object TmdbClient {
 
-  /** The header every request carries its key in — beside the `api_key` parameter, so a v3 key and a v4 read
-   *  token both authenticate. Also how a convergence fill signs a TMDB request it was listed masked
-   *  (`tools.FillCredentials`). */
-  def authorization(key: settings.TmdbApiKey): Map[String, String] = Map("Authorization" -> s"Bearer ${key.value}")
-
   // ── What each identity response is read as: ONE parser per response, shared by the client's
   //    own calls and by the normalized identity store (`services.identity.TmdbStore`), so a
   //    stored answer is by construction what the client would have made of the body. ──
@@ -566,8 +561,6 @@ object TmdbClient {
   // cards (next step up is "original" which can be 2000+ px and isn't worth
   // the bytes). Matches the size Multikino's own posters ship at.
   private val PosterBase = "https://image.tmdb.org/t/p/w500"
-  /** TMDB's CDN at the small size the identity's poster hashes read (a hash is of a 32×32 grey image). */
-  val PosterHashBase = "https://image.tmdb.org/t/p/w185"
   // Top-N cast cap for `fullDetails.cast`. TMDB's `cast` is the whole role
   // list; keeping the top 5 matches the length cinemas typically ship.
   private val MaxCastNames = 5

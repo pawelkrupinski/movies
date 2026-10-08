@@ -5,7 +5,8 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonDocument, BsonValue}
 import org.mongodb.scala.model.{Aggregates, Filters, Projections, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture}
-import services.identity.{MongoIdentityModelStore, ResolverDecision, ResolverDecisionBson}
+import services.identity.agreement.AgreementStage.PosterQuestion
+import services.identity.{MongoIdentityModelStore, PosterAnswers, ResolverDecision, ResolverDecisionBson}
 import services.movies.{KeysetScan, SlotsRepository}
 
 import java.time.{Instant, LocalDateTime, ZoneOffset}
@@ -128,9 +129,14 @@ final class MongoReviewSource(db: MongoDatabase) extends ReviewSource {
     }.toMap
 
   def filmRecords(tmdbIds: Seq[Int]): Map[Int, FilmCard] =
-    tmdbIds.distinct.map(_.toString).grouped(500).flatMap { ids =>
-      await(collection(TmdbFilmsCollection).find(Filters.in("_id", ids*)).projection(Projections.include("record", "hit"))
+    tmdbIds.distinct.grouped(500).flatMap { ids =>
+      val records = await(collection(TmdbFilmsCollection).find(Filters.in("_id", ids.map(_.toString)*)).projection(Projections.include("record", "hit"))
         .batchSize(tools.MongoReplies.Default).toFuture()).flatMap(d => filmRecord(d.toBsonDocument))
+      val posterIds = ids.map(id => PosterAnswers.idOf(PosterQuestion.Film(id)) -> id).toMap
+      val posters = await(collection(FamilyAnswersCollection).find(Filters.in("_id", posterIds.keys.toSeq*))
+        .projection(Projections.include(PosterAnswers.Paths)).batchSize(tools.MongoReplies.Default).toFuture())
+        .flatMap(d => posterIds.get(idText(d.toBsonDocument.get("_id"))).zip(posterOf(d.toBsonDocument))).toMap
+      records.map { case (tmdb, card) => tmdb -> card.copy(poster = posters.get(tmdb)) }
     }.toMap
 
   def films(tmdbIds: Seq[Int]): Map[Int, FilmCard] = {
@@ -166,6 +172,7 @@ object MongoReviewSource {
   val VenuePagesCollection = services.DebugMirror.VenuePages
   val ListingsCollection   = services.DebugMirror.IdentityListings
   val TmdbFilmsCollection  = services.DebugMirror.TmdbFilms
+  val FamilyAnswersCollection = services.DebugMirror.FamilyAnswers
   val TracesCollection     = services.identity.MongoIdentityTraceStore.Collection
   val MoviesCollection     = services.movies.MovieRepository.Collection
   val WebMoviesCollection  = services.readmodel.MongoReadModelRepository.MoviesCollection
@@ -180,6 +187,10 @@ object MongoReviewSource {
       title <- string(film, "title")
     } yield tmdb -> FilmCard(tmdb, int(film, "imdbNumber").filter(_ > 0).map(n => f"tt$n%07d"), Some(title),
       string(film, "originalTitle"), int(film, "year"), strings(film, "directors"), int(film, "runtime"), None, None)
+
+  /** A film's poster document (`poster|film|<tmdbId>`) as the film's TMDB poster: the first of the paths filed beside its
+   *  hashes, the one the film's country's language prefers. `None` for one filed before paths were. */
+  private def posterOf(d: BsonDocument): Option[String] = PosterAnswers.pathsOf(d).headOption.map(PosterAnswers.FilmPosterBase + _)
 
   private def idText(v: BsonValue): String = if (v.isString) v.asString.getValue else if (v.isObjectId) v.asObjectId.getValue.toHexString else v.toString
   private def string(d: BsonDocument, name: String): Option[String] =

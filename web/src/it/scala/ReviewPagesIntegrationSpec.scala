@@ -16,6 +16,7 @@ import services.identity.{MongoIdentityModelStore, ResolverDecisionBson}
 import services.movies.ListingKey
 import services.review._
 import tools.IsolatedMongoDatabase
+import services.{DebugMirror => DebugMirrorCollections}
 
 import java.nio.file.Files
 import java.time.{Clock, Instant, ZoneOffset}
@@ -84,6 +85,22 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
     source.venuePages(Seq(Held.nativeId)).values.map(_.runtime) shouldBe Seq(Some(127))
     source.films(Seq(1157322, 42)) shouldBe Map(1157322 ->
       FilmCard(1157322, Some("tt22963134"), Some("Franz"), None, Some(2025), Seq("Agnieszka Holland"), None, None, None))
+  }
+
+  "a candidate's TMDB record" should "carry the poster the poster corroboration hashed it from, the first of its paths" in {
+    import services.identity.PosterAnswers
+    import services.identity.agreement.AgreementStage.PosterQuestion
+    insert(DebugMirrorCollections.TmdbFilms,
+      new BsonDocument("_id", BsonString("1599768")).append("record", new BsonDocument("title", BsonString("Ghost School")).append("year", BsonInt32(2026))),
+      new BsonDocument("_id", BsonString("603")).append("hit", new BsonDocument("title", BsonString("The Matrix"))))
+    // as the worker's PosterAnswerStore files a film's posters: the hashes, and the TMDB paths beside them
+    insert(DebugMirrorCollections.FamilyAnswers, new BsonDocument("_id", BsonString(PosterAnswers.idOf(PosterQuestion.Film(1599768))))
+      .append("hashes", BsonArray.fromIterable(Seq(org.bson.BsonInt64(7L), org.bson.BsonInt64(9L))))
+      .append(PosterAnswers.Paths, BsonArray.fromIterable(Seq(BsonString("/ghost-pl.jpg"), BsonString("/ghost-en.jpg"))))
+      .append("fetchedAt", org.bson.BsonInt64(now.toEpochMilli)))
+    val records = source.filmRecords(Seq(1599768, 603))
+    records(1599768).poster shouldBe Some(s"${PosterAnswers.FilmPosterBase}/ghost-pl.jpg")
+    records(603).poster shouldBe None                       // hashed before paths were filed, or never: no poster
   }
 
   "the corpus's film links" should "tie a Filmweb id to the TMDB and IMDb ids of the same record" in {

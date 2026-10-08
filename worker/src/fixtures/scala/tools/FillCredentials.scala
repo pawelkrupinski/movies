@@ -13,7 +13,7 @@ package tools
  */
 final case class FillCredentials(tmdb: Option[settings.TmdbApiKey]) {
   private val byParameter: Map[String, (String, Map[String, String])] =
-    tmdb.map(key => "api_key" -> (key.value, clients.TmdbClient.authorization(key))).toMap
+    tmdb.map(key => "api_key" -> (key.value, key.authorization)).toMap
 
   /** The URL to ask and the headers to send for a listed gap; None when it masks a credential this fill does not hold. */
   def sign(url: String): Option[(String, Map[String, String])] = url.indexOf('?') match {

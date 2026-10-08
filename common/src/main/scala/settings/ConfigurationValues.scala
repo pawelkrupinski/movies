@@ -46,7 +46,11 @@ final case class MongoOptional(value: Boolean) extends AnyVal
 
 // ── Third-party credentials and ids ─────────────────────────────────────────────
 /** `TMDB_API_KEY` (a v3 key or a v4 read token). */
-final case class TmdbApiKey(value: String) extends AnyVal
+final case class TmdbApiKey(value: String) extends AnyVal {
+  /** The header every TMDB request carries the key in — beside the `api_key` parameter, so a v3 key and a v4 read token
+   *  both authenticate. Also how a convergence fill signs a TMDB request it was listed masked (`tools.FillCredentials`). */
+  def authorization: Map[String, String] = Map("Authorization" -> s"Bearer $value")
+}
 /** `OMDB_API_KEY`. */
 final case class OmdbApiKey(value: String) extends AnyVal
 /** `ZYTE_API_KEY`. */

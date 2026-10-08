@@ -30,7 +30,8 @@ source of truth for both halves:
   `/debug/review/recent`), `identity_model_families` (the model's decisions),
   `identity_listings` (each venue's last scrape: catalogue ids, screenings),
   `venue_pages` (each listing's own film page), `tmdb_films` (the resolver's
-  own TMDB record of each candidate film) and `identity_traces` (each listing's
+  own TMDB record of each candidate film), `identity_family_answers` (the
+  paths of each candidate's TMDB posters, filed beside their hashes) and `identity_traces` (each listing's
   evidence and every rule's refusal, read when a card's "Why" is opened). A running mirror picks a newly
   listed collection up by itself: the tailers restart on the changed list and the
   staleness audit re-seeds a database missing one. A collection this list

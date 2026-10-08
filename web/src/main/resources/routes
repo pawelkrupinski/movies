@@ -258,6 +258,7 @@ GET     /debug/review/matchable          controllers.ReviewController.matchable(
 GET     /debug/review/recent             controllers.ReviewController.recent(country: Option[String] ?= None, hours: Int ?= 48, limit: Int ?= 20, answered: Boolean ?= false)
 GET     /debug/review/why                controllers.ReviewController.why(country: String, cluster: String)
 GET     /debug/review/answers            controllers.ReviewController.history()
+GET     /debug/review/tmdb-poster/:tmdbId controllers.ReviewController.tmdbPoster(tmdbId: Int, country: Option[String] ?= None)
 + nocsrf
 POST    /debug/review/answer             controllers.ReviewController.answer()
 + nocsrf

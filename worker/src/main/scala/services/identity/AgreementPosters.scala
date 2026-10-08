@@ -1,6 +1,6 @@
 package services.identity
 
-import org.bson.{BsonDocument, BsonInt64, BsonNull}
+import org.bson.{BsonDocument, BsonInt64, BsonNull, BsonString}
 import org.mongodb.scala.bson.BsonArray
 import services.identity.agreement.AgreementStage.PosterQuestion
 import services.sharecards.{PosterDownload, PosterFailure, PosterShrinker}
@@ -18,7 +18,8 @@ import scala.jdk.CollectionConverters._
  * ([[Answer.Unknown]]) the poster fill asks, never "no poster". Filed among the other families' answers (`answers`:
  * `identity_family_answers`, kept long, and counted in its `version`), under `poster|venue|<url>` and
  * `poster|film|<tmdbId>`, and hashed again only after [[PosterAnswerStore.Age]]: an image at one URL, and a released
- * film's artwork, rarely change.
+ * film's artwork, rarely change. A film's document keeps beside its hashes the TMDB paths they were read from
+ * ([[PosterAnswers.Paths]]), for the review pages to show; the agreement reads only the hashes.
  */
 final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends PosterAnswers {
   import PosterAnswerStore._
@@ -29,13 +30,18 @@ final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends 
   def film(tmdbId: Int): Answer[Seq[PosterHash]] =
     document(idOf(PosterQuestion.Film(tmdbId))).fold[Answer[Seq[PosterHash]]](Answer.Unknown)(d => Answer.Known(hashesOf(d)))
 
-  /** `question`'s hashes, filed: one at most for a venue's poster, a film's up to [[PosterEvidence.FilmPosters]]. A venue
-   *  poster with none was not READ — its link fetches nothing, the origin refused it, no decoder reads it — and a failed
-   *  read is no data: it is [[giveUp given up on]]. A film with none is one TMDB keeps no poster of. */
-  def file(question: PosterQuestion, hashes: Seq[PosterHash]): Unit = question match {
-    case PosterQuestion.Venue(_) if hashes.isEmpty => giveUp(question)
+  /** `question`'s posters, filed: one at most for a venue's poster, a film's up to [[PosterEvidence.FilmPosters]], and a
+   *  film's each with the TMDB path it was read from. A venue poster with none was not READ — its link fetches nothing,
+   *  the origin refused it, no decoder reads it — and a failed read is no data: it is [[giveUp given up on]]. A film
+   *  with none is one TMDB keeps no poster of. */
+  def file(question: PosterQuestion, posters: Seq[HashedPoster]): Unit = question match {
+    case PosterQuestion.Venue(_) if posters.isEmpty => giveUp(question)
     case _ =>
-      answers.put(idOf(question), new BsonDocument("hashes", if (hashes.isEmpty) BsonNull() else BsonArray.fromIterable(hashes.map(h => BsonInt64(h.bits)))))
+      val d = new BsonDocument("hashes", if (posters.isEmpty) BsonNull() else BsonArray.fromIterable(posters.map(p => BsonInt64(p.hash.bits))))
+      // a venue's poster is filed under its URL already
+      if (question.isInstanceOf[PosterQuestion.Film] && posters.nonEmpty)
+        d.append(PosterAnswers.Paths, BsonArray.fromIterable(posters.map(p => BsonString(p.path))))
+      answers.put(idOf(question), d)
   }
 
   /** `question`'s poster GIVEN UP on: not read — refused, unreadable, or its fetch failed every attempt the queue allowed
@@ -76,6 +82,9 @@ object PosterAnswerStore {
     Option(d.get("hashes")).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala.map(v => PosterHash(v.asInt64.getValue)))
 }
 
+/** A poster hashed: where it was read from — a venue's URL, a TMDB film poster's path — and its hash. */
+final case class HashedPoster(path: String, hash: PosterHash)
+
 /**
  * Hashes a poster: downloaded through `download` (the enrichment fetch chain, with its pacing and breakers), decoded and
  * cut to the card's 2:3 slot by `shrinker` (under the process's one decode gate), hashed ([[PosterHash]]) — the image is
@@ -90,11 +99,17 @@ object PosterAnswerStore {
  */
 final class PosterHashing(download: PosterDownload, shrinker: PosterShrinker, images: Int => Seq[clients.TmdbClient.PosterImage], language: String) {
 
+  /** `question`'s poster hashed, or a film's posters. */
+  def of(question: PosterQuestion): Seq[HashedPoster] = question match {
+    case PosterQuestion.Venue(url)   => venue(url).map(HashedPoster(url, _)).toSeq
+    case PosterQuestion.Film(tmdbId) => film(tmdbId)
+  }
+
   def venue(url: String): Option[PosterHash] = services.movies.SlotFields.url(url).flatMap(hash)
 
-  def film(tmdbId: Int): Seq[PosterHash] = {
+  def film(tmdbId: Int): Seq[HashedPoster] = {
     val posters = try images(tmdbId) catch { case e: tools.HttpStatusException if tools.HttpStatusException.isDurable(e.code) => Nil }
-    PosterHashing.chosen(posters, language).flatMap(path => hash(s"${clients.TmdbClient.PosterHashBase}$path"))
+    PosterHashing.chosen(posters, language).flatMap(path => hash(s"${PosterAnswers.FilmPosterBase}$path").map(HashedPoster(path, _)))
   }
 
   private def hash(url: String): Option[PosterHash] = download.fetch(url) match {
@@ -136,10 +151,7 @@ final class AgreementPosterHandler(store: PosterAnswerStore, hashing: PosterHash
     if (!store.wanted(question)) { metrics.asked(AgreementQuestionMetrics.Poster, AgreementQuestionMetrics.Fresh); Skipped }
     else {
       val outcome = try {
-        store.file(question, question match {
-          case PosterQuestion.Venue(url)   => hashing.venue(url).toSeq
-          case PosterQuestion.Film(tmdbId) => hashing.film(tmdbId)
-        })
+        store.file(question, hashing.of(question))
         filed(); Done
       } catch { case scala.util.control.NonFatal(e) => AgreementQuestions.failed(e, s"poster ${PosterAnswers.idOf(question)}", clock) }
       metrics.asked(AgreementQuestionMetrics.Poster, outcome match {
