@@ -11,8 +11,8 @@ import scala.jdk.CollectionConverters._
 
 /**
  * The fetching half of "every convergence build publishes the missing data it found": what a hermetic
- * leg's tree could not answer, fetched by the next leg's rows before their suites, within a budget, into a tree the
- * row's suite and the legs after it replay.
+ * leg's tree could not answer, fetched by the next leg's convergence row before its suite, within a budget, into a
+ * tree that suite and the legs after it replay.
  */
 class MissingFixtureFillSpec extends AnyFlatSpec with Matchers {
 
@@ -58,6 +58,18 @@ class MissingFixtureFillSpec extends AnyFlatSpec with Matchers {
     outcome.failed shouldBe 2
     MissingFixtureFill.heldIn(out, Tree)(gap(gone)) shouldBe true
     MissingFixtureFill.heldIn(out, Tree)(gap(flaky)) shouldBe false
+    withClue("what the next fills skip for a while, so a refusing origin is not re-asked every run: ") {
+      outcome.refused shouldBe Seq(gap(flaky))
+    }
+  }
+
+  // The list the next fills skip (convergence-fill.sh `gaps`): the refused gaps under their own fixture keys, in the
+  // refetch list's own format.
+  it should "write the gaps it was refused as a list of its own" in {
+    val file = Files.createTempDirectory("refused").resolve("refused.tsv")
+    val flaky = MissingFixtures.Refetch("GET", "https://www.flicks.us/movie/flaky/")
+    MissingFixtureFill.writeRefused(file, Seq("k-flaky" -> flaky, "k-other" -> gap("https://www.flicks.us/movie/other/")), Seq(flaky))
+    Files.readAllLines(file).asScala.toSeq shouldBe Seq("# 1 refused gap(s)", MissingFixtures.Refetch.line("k-flaky", flaky))
   }
 
   it should "never ask again what an earlier fill already holds" in withRoots { (held, out) =>

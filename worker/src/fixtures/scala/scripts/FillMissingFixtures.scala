@@ -8,12 +8,15 @@ import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
 /**
- * A hermetic leg row's pre-suite fill (country-convergence-leg.yml), or a `Convergence fill` row: fetch, within a budget, what the
- * previous hermetic leg's tree could not answer, into a fixture tree of its own for the row to
+ * A hermetic leg's convergence row's pre-suite fill (country-convergence-leg.yml), or a `Convergence fill` row: fetch,
+ * within a budget, what the previous hermetic leg's tree could not answer, into a fixture tree of its own for the row to
  * publish beside the pinned pair. See [[tools.MissingFixtureFill]] for the policy and
  * docs/design/convergence-fixture-fill.md for why.
  *
- *   sbt "worker/Fixtures/runMain scripts.FillMissingFixtures <code> <refetch list> <held root> <out root> <until> [threads]"
+ *   sbt "worker/Fixtures/runMain scripts.FillMissingFixtures <code> <refetch list> <held root> <out root> <until> [refused list]"
+ *
+ * `[refused list]`, when given, receives the gaps the origin refused ([[tools.MissingFixtureFill.writeRefused]]), for
+ * the row to publish so the next fills skip them for a while.
  *
  * `<held root>` holds what is already recorded — a leg row's restored tree with the pair's fills over it,
  * or those fills alone — never fetched again; `<out root>` receives
@@ -35,9 +38,10 @@ object FillMissingFixtures {
       val country       = Country.all.find(_.code == code).getOrElse(sys.error(s"no country $code"))
       val tree          = s"enrichment-${country.code}"
       val configuration = settings.ProcessConfiguration.resolve()
-      val gaps = if (Files.isRegularFile(Path.of(list)))
-        Files.readAllLines(Path.of(list)).asScala.toSeq.flatMap(MissingFixtures.Refetch.parse).map(_._2)
+      val listed = if (Files.isRegularFile(Path.of(list)))
+        Files.readAllLines(Path.of(list)).asScala.toSeq.flatMap(MissingFixtures.Refetch.parse)
       else Nil
+      val gaps = listed.map(_._2)
       val tls   = TlsTrust.newContext()
       val pace  = new InMemoryFleetHostPace
       def paced(leaf: HttpFetch): HttpFetch =
@@ -50,7 +54,7 @@ object FillMissingFixtures {
       val fill = new MissingFixtureFill(
         MissingFixtureFill.heldIn(settings.FixtureRoot(Path.of(held)), tree),
         MissingFixtureFill.recordingInto(settings.FixtureRoot(Path.of(out)), tree, live),
-        threads = rest.headOption.flatMap(_.toIntOption).getOrElse(8),
+        threads = 8,
         sign = tools.FillCredentials.from(configuration).sign)
       val started = System.nanoTime()
       val outcome = fill.fill(gaps, (until.toLong - java.time.Instant.now().getEpochSecond).max(0L).seconds)
@@ -58,12 +62,16 @@ object FillMissingFixtures {
       val line = f"${country.displayName}: ${outcome.describe} in $seconds%.0fs " +
         f"(${(outcome.fetched + outcome.failed) / seconds.max(1.0)}%.1f req/s)"
       println(s"[fill] $line")
+      rest.headOption.foreach { refusedList =>
+        val refused = MissingFixtureFill.writeRefused(Path.of(refusedList), listed, outcome.refused)
+        println(s"[fill] $refused refused gap(s) the next fills skip for a while")
+      }
       // What the legs after this one replay beyond the pinned tree, where the run's page shows it.
       configuration.stepSummaryFile.foreach(summary => scala.util.Try(Files.writeString(summary.value, s"**fill** — $line\n\n",
         java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND)))
       sys.exit(0)
     case _ =>
-      System.err.println("usage: FillMissingFixtures <code> <refetch list> <held root> <out root> <until, epoch seconds> [threads]")
+      System.err.println("usage: FillMissingFixtures <code> <refetch list> <held root> <out root> <until, epoch seconds> [refused list]")
       sys.exit(64)
   }
 }

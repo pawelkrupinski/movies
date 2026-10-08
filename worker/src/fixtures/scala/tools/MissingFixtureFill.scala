@@ -9,7 +9,7 @@ import scala.util.control.NonFatal
  * Fetches, within a time budget, the requests a hermetic leg's recorded tree could not answer
  * ([[MissingFixtures.Refetch]]), into a fixture tree of their own — the half of "every convergence
  * build publishes the missing data it found" that does the fetching (`FillMissingFixtures`, the
- * leg's rows run before their suites, and the hand-dispatched `Convergence fill`).
+ * leg's convergence row runs before its suite, and the hand-dispatched `Convergence fill`).
  *
  * The policy lives here, above the two seams a run hands in, so a spec drives it with an in-memory
  * fetch: `held` says whether an earlier fill already holds a request (never asked twice), and
@@ -31,6 +31,7 @@ final class MissingFixtureFill(held: MissingFixtures.Refetch => Boolean, fetch: 
     val next     = new AtomicInteger(0)
     val fetched, failed, alreadyHeld, unsigned = new AtomicInteger(0)
     val failures = new java.util.concurrent.ConcurrentHashMap[String, AtomicInteger]()
+    val refused  = java.util.concurrent.ConcurrentHashMap.newKeySet[MissingFixtures.Refetch]()
 
     def work(): Unit = {
       var index = next.getAndIncrement()
@@ -51,7 +52,9 @@ final class MissingFixtureFill(held: MissingFixtures.Refetch => Boolean, fetch: 
           } catch {
           case NonFatal(e) =>
             failed.incrementAndGet()
-              failures.computeIfAbsent(e.getClass.getSimpleName, _ => new AtomicInteger(0)).incrementAndGet()
+            failures.computeIfAbsent(e.getClass.getSimpleName, _ => new AtomicInteger(0)).incrementAndGet()
+            // A 404 is an answer, remembered in the fill's own tree; anything else the origin may refuse again.
+            if (!ReadOutcome.isAbsent(e)) refused.add(gap)
           }
         }
         index = next.getAndIncrement()
@@ -68,7 +71,8 @@ final class MissingFixtureFill(held: MissingFixtures.Refetch => Boolean, fetch: 
 
     val asked = fetched.get + failed.get + alreadyHeld.get + unsigned.get
     Outcome(gaps.size, fetched.get, failed.get, alreadyHeld.get, unsigned.get, (order.size - asked).max(0),
-      failures.entrySet().toArray(Array.empty[java.util.Map.Entry[String, AtomicInteger]]).map(e => e.getKey -> e.getValue.get).toMap)
+      failures.entrySet().toArray(Array.empty[java.util.Map.Entry[String, AtomicInteger]]).map(e => e.getKey -> e.getValue.get).toMap,
+      order.filter(refused.contains))
   }
 }
 
@@ -79,8 +83,11 @@ object MissingFixtureFill {
 
   /** What one fill did: of `listed` requests, `fetched` answered (and were recorded), `failed` did not
    *  (a durable verdict — a 404 — is remembered all the same), `alreadyHeld` an earlier fill had, `unsigned`
-   *  masked a credential this fill holds no key for ([[FillCredentials]]), and `unreached` the budget ran out before. */
-  final case class Outcome(listed: Int, fetched: Int, failed: Int, alreadyHeld: Int, unsigned: Int, unreached: Int, failures: Map[String, Int]) {
+   *  masked a credential this fill holds no key for ([[FillCredentials]]), and `unreached` the budget ran out before.
+   *  `refused` are the failed requests that were not an answer (anything but a 404) — what the next fills skip for a
+   *  while ([[writeRefused]]), so an origin refusing CI for good is not re-asked through paid egress every run. */
+  final case class Outcome(listed: Int, fetched: Int, failed: Int, alreadyHeld: Int, unsigned: Int, unreached: Int, failures: Map[String, Int],
+                           refused: Seq[MissingFixtures.Refetch] = Nil) {
     def describe: String =
       s"$listed listed: $fetched fetched, $failed failed${if (failures.isEmpty) "" else failures.toSeq.sorted.map { case (k, n) => s"$k $n" }.mkString(" (", ", ", ")")}, " +
         s"$alreadyHeld already held, $unsigned needing a key this fill lacks, $unreached left for the next leg"
@@ -120,6 +127,15 @@ object MissingFixtureFill {
         Seq("BYTES", "GET").exists(verb => verdicts.lookup(CachingEnrichmentFetch.keyOf(verb, gap.url)).exists(_.definitive)) ||
           scala.util.Try(if (gap.verb == "BYTES") recorded.getBytes(gap.url).length else recorded.get(gap.url).length).isSuccess
     }
+  }
+
+  /** The `refused` of `listed` (key and request, as the refetch list read), in the refetch list's own format under a
+   *  header — never a zero-byte file, which a release refuses. Published as `refused-<code>-…tsv`; the next fills skip
+   *  every key it names (`convergence-fill.sh gaps`). */
+  def writeRefused(file: java.nio.file.Path, listed: Seq[(String, MissingFixtures.Refetch)], refused: Seq[MissingFixtures.Refetch]): Int = {
+    val lines = listed.filter { case (_, gap) => refused.contains(gap) }.map { case (key, gap) => MissingFixtures.Refetch.line(key, gap) }
+    AtomicFiles.writeString(file, (s"# ${lines.size} refused gap(s)" +: lines).map(_ + "\n").mkString)
+    lines.size
   }
 
   /** Round-robin over the hosts, each host's requests in their listed order. */
