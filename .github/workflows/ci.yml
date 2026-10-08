@@ -191,6 +191,11 @@ jobs:
                       python3 scripts/ci/flake_verdict_test.py
                       python3 scripts/test_aot_class_list.py
                       python3 scripts/test_convergence_findings.py
+                      python3 scripts/ci/changed_line_coverage_test.py
+                      python3 scripts/ops/jfr_rank_test.py
+                      python3 scripts/ops/dumpheap_test.py
+                      python3 scripts/ops/fleet_metrics_test.py
+                      bash scripts/identity-fetch-recording-test.sh
                       bash .github/actions/drop-bot-branch/drop-test.sh
                   '
 

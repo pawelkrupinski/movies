@@ -109,6 +109,12 @@ kubectl -n kinowo cp web-pl-<pod>:/data/heapdumps/<file>.hprof.gz ./<file>.hprof
 
 Take a copy **before** you debug by restarting things. A crash loop keeps only the 3 newest dumps.
 
+To take a dump of a running worker whose `POST /heapdump` no longer answers, ask its JVM directly
+from the node: copy `scripts/ops/dumpheap.py` there and run, as root,
+`python3 dumpheap.py <pid on the node> /data/heapdumps/<file>.hprof` (or `--histo` for a live class
+histogram). It speaks HotSpot's attach protocol through `/proc/<pid>/root`, so it needs no `jcmd`
+in the image. The live dump forces one full GC first.
+
 ## Reading one
 
 The images are a JRE, so they have no `jcmd`, `jmap` or `jhat`. Read the dump off the box with
