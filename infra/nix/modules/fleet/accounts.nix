@@ -19,11 +19,10 @@ let
   # every ordinary login is a person escalating as themselves, so `sudo` in the journal names
   # somebody.
   #
-  # Read from /Users/pawel/.ssh/id_ed25519.pub and embedded verbatim. If this key is ever rotated,
+  # The Secure Enclave key in Secretive on the operator Mac (non-exportable). If this key is ever rotated,
   # the ONLY safe order is: add the new key here, deploy, verify a login with it, and only then
   # delete the old line -- because the deploy that removes a key is applied by that same key.
   operatorKeys = [
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG0cBPBe5YH/lkLZ4cnGnmO/XpMQiDS7IScDZWHU2TCn pawel.krupinski@gmail.com interim 2026-09-27 (post-incident)"
     "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBMOpfIieokztWsuQ2qNI7rU/pTbPvTNambckBP5Hz+h1G13L61K06AelMxi0aKFynYzQ9GfILkPaDv8dCvEpZvo= pawel.krupinski@gmail.com Secretive (Secure Enclave) 2026-10-08"
   ];
 in
