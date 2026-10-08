@@ -434,7 +434,13 @@ object ExtraTitleRules {
     searchStrip("xtra-film-pl-suffix",             """(?u)(?<=\S)\s+(?i:film)\s+PL\s*$""",                "'<film> Film PL' venue tail (Kino CKiF: Lalka, Mistyczka, Czas, który nie nadszedł)"),
     searchStrip("xtra-age-bo-pipe-suffix",         """(?iu)\s*\|\s*BO\s*\|?\s*$""",                     "'<film> | 2D | DUB | BO |' trailing 'BO' (bez ograniczeń) age tag behind the format pipes, which searchQuery then re-peels (Kino Milenium)"),
     // Found by SearchQueryMarkersSpec over the recorded UK / US / DE / ES corpora (2026-10-04).
-    searchStrip("xtra-4k-restoration-suffix",      """(?iu)\s*(?:\(\s*(?:\d+(?:st|nd|rd|th)\s+Anniversary\s+)?4K\s+(?:Restoration|Remaster(?:ed)?)\s*\)|(?:\s*[-–—|])?\s+4K\s+(?:Restoration|Remaster(?:ed)?|Director['’]?s\s+Cut))\s*$""", "'<film> (4K Restoration)' / '(50th Anniversary 4K Restoration)' / '<film> 4K Director's Cut' print tag (Cineworld: Arrietty, Rocky, Dracula; US: Cabin Fever)"),
+    // A parenthesised anniversary note, whatever else it bills ("(25th Anniversary)", "(30th Anniversary, 4K
+    // Restoration)", "(50th Anniversary 4K Restoration)"): the seed anniversary suffix takes only a bare one. The
+    // note goes whole, its ordinal with it — the "25th" is the re-release's, never the film's year. Before the 4K
+    // rules, so the print tag a note sat behind ("Donnie Darko 4K (25th Anniversary)") is trailing for them.
+    searchStrip("xtra-paren-anniversary-note",     """(?iu)(?<=\S)\s*\(\s*\d+(?:st|nd|rd|th)\s+Anniversary\b[^()]*\)\s*$""",
+      "'<film> [4K] (25th Anniversary)' / '<film> (30th Anniversary, 4K Restoration)' parenthesised anniversary re-release note (Showcase: Donnie Darko, Scream; Cineworld: Rocky)"),
+    searchStrip("xtra-4k-restoration-suffix",      """(?iu)\s*(?:\(\s*4K\s+(?:Restoration|Remaster(?:ed)?)\s*\)|(?:\s*[-–—|]\s*|\s+)4K\s+(?:Restoration|Remaster(?:ed)?|Director['’]?s\s+Cut))\s*$""", "'<film> (4K Restoration)' / '<film> [-] 4K RESTORATION' / '<film> 4K Director's Cut' print tag (Cineworld: Arrietty, Dracula; Alamo: Cemetery Man; US: Cabin Fever)"),
     searchStrip("xtra-imax-experience-suffix",     """(?iu)\s*[-–—:]\s*(?:The\s+IMAX\s+Experience|Ein\s+IMAX(?:\s+3D)?[-\s]Erlebnis)\s*$""", "'<film> - The IMAX Experience' / '<film> - Ein IMAX 3D-Erlebnis' format billing (Cineworld: Dune: Part Three; ES: La Odisea; DE: A Beautiful Planet)"),
     searchStrip("xtra-fan-event-suffix",           """(?iu)\s+(?:RealD\s+)?(?:3D\s+)?Fan\s+Event\s*$""",   "'<film> RealD 3D Fan Event' early-screening event tail (US: Avengers: Doomsday)"),
     // Found by SearchQueryMarkersSpec over the recorded US / UK corpora (2026-10-05).
@@ -772,12 +778,10 @@ object ExtraTitleRules {
     // 'Film\p{L}*' because the same listing spells the banner 'FILMOWE' three times
     // and 'FILMWE' once.
     searchReplace("xtra-wakacyjne-poranki-quoted", """(?iu)^Wakacyjne\s+Poranki\s+Film\p{L}*\s*[“„"]\s*(.+?)\s*[”"]\s*$""", "$1", "'WAKACYJNE PORANKI FILMOWE “<film>”' Kino Sokół Sokółka holiday-mornings strand — banner first, film QUOTED after it with no colon, so the colon-anchored xtra-pp-wakacyjne-cycle cannot reach it (Jutro będę odważny → TMDB 1470499, Psoty → 1584452, Miss Moxy. Kocia ekipa → 587357)"),
-    // Twenty-fifth wave (2026-09-14): Alamo Drafthouse restoration-print suffixes
-    // that sit BEHIND the new 'TERROR TUESDAY:' prefix. 'xtra-4k-suffix' only
-    // matches a bare trailing '4K' / '(4K)'; these spell the tag as two words
-    // ('4K RESTORATION') or name the format outright ('ON 35MM'), so neither the
-    // seed nor that rule reaches them (Cemetery Man, The Exorcist).
-    searchStrip("xtra-4k-restoration-suffix", """(?iu)\s*[-–—]\s*4K\s+RESTORATION\s*$""", "'<film> - 4K RESTORATION' Alamo Drafthouse restoration-print suffix, sibling of xtra-4k-suffix's bare '4K' form"),
+    // Twenty-fifth wave (2026-09-14): an Alamo Drafthouse print-format suffix that
+    // sits BEHIND the new 'TERROR TUESDAY:' prefix, naming the format outright
+    // ('ON 35MM'), which neither the seed nor 'xtra-4k-suffix' reaches (The Exorcist).
+    // Its '- 4K RESTORATION' sibling (Cemetery Man) is xtra-4k-restoration-suffix's.
     searchStrip("xtra-on-35mm-suffix", """(?iu)\s*[-–—]\s*ON\s+35MM\s*$""", "'<film> - ON 35MM' Alamo Drafthouse print-format suffix"),
     // Last of the strips: the quoted-film rules above read the premiere tail as their banner.
     // Trailing '– Premiera' release-announcement suffix, in every separator/case

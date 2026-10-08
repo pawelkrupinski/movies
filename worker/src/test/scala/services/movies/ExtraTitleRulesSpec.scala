@@ -1155,6 +1155,43 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  /** Listings of the 2026-10-08 UK recording whose TMDB query kept a screening marker: a Showcase
+   *  re-release billed with its print and an anniversary note, in either order. Through the whole query path. */
+  private val anniversaryReleaseListings: Seq[((models.Cinema, String), String)] = Seq(
+    (models.ShowcaseDeLuxReading, "Donnie Darko 4K (25th Anniversary)")           -> "Donnie Darko",
+    (models.ShowcaseBristolAvonmeads, "SCREAM (30th Anniversary, 4K Restoration)") -> "SCREAM"
+  )
+
+  "An anniversary re-release the 2026-10-08 UK recording billed" should "search the bare film" in {
+    val titles = new TitleNormalizer(withExtras)
+    anniversaryReleaseListings.foreach { case ((cinema, raw), query) =>
+      withClue(s"searchQuery of '$raw' at ${cinema.displayName}: ")(listingQuery(titles, cinema, raw) shouldBe query)
+    }
+  }
+
+  it should "be load-bearing — the seed rules alone search the note along" in {
+    val titles = new TitleNormalizer(seedOnly)
+    anniversaryReleaseListings.foreach { case ((cinema, raw), query) =>
+      withClue(s"seed searchQuery of '$raw': ")(listingQuery(titles, cinema, raw) should not be query)
+    }
+  }
+
+  it should "never leave the anniversary's number behind for the year extractor" in {
+    val titles = new TitleNormalizer(withExtras)
+    Seq("Donnie Darko 4K (25th Anniversary)", "SCREAM (30th Anniversary, 4K Restoration)",
+      "Jaws (50th Anniversary)", "Alien (1979) (45th Anniversary Re-release)").foreach { raw =>
+      val q = listingQuery(titles, models.ShowcaseDeLuxReading, raw)
+      withClue(s"searchQuery of '$raw' = '$q': ")(q should not include regex ("""\d{2}(?:st|nd|rd|th)|Anniversary"""))
+    }
+  }
+
+  it should "leave a film's own parenthesis, and a title that is an anniversary, alone" in {
+    Seq("The Anniversary", "Anniversary (2025)", "Wallace & Gromit: The Wrong Trousers (Restored)",
+      "Night of the Living Dead (1968)", "Happy Anniversary").foreach { t =>
+      withClue(s"search('$t') unchanged: ")(withExtras.search(t) shouldBe t)
+    }
+  }
+
   "ExtraTitleRules per-cinema rules" should "strip venue-specific junk for the owning cinema" in {
     perCinemaCases.foreach { case ((slug, raw), clean) =>
       withClue(s"perCinema('$slug', '$raw'): ")(withExtras.perCinema(slug, raw) shouldBe clean)
