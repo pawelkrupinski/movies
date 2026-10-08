@@ -1243,7 +1243,7 @@
     "title" : "Willow i tajemniczy las",
     "originalTitle" : "Ein Mädchen namens Willow",
     "posterUrl" : "https://img.helios.pl/pliki/film/willow-i-tajemniczy-las/willow-i-tajemniczy-las-plakat-745.jpg",
-    "fallbackPosterUrls" : [ "https://www.iluzjon.fn.org.pl/public/covers/movie-7838.jpg", "https://bilety.csm.tarnow.pl/Kino/ImageData.ashx?id=401&mode=thumb", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/screenshot-2026-05-11-at-12-06-58-willow-i-tajemniczy-las.png", "http://bilety.dkkozienice.pl/MSI/ImageData.ashx?id=1429&mode=thumb", "https://bilety.kino.swiebodzin.pl:4433/MSI/ImageData.ashx?id=673&mode=thumb", "https://kinoodeon.eurobilet.pl/MSI/ImageData.ashx?id=2307&mode=thumb", "https://image.tmdb.org/t/p/w500/91o854WcptbixlbqybQTzz5BeIv.jpg" ],
+    "fallbackPosterUrls" : [ "https://www.iluzjon.fn.org.pl/public/covers/movie-7838.jpg", "https://bilety.csm.tarnow.pl/Kino/ImageData.ashx?id=405&mode=thumb", "https://bilety.csm.tarnow.pl/Kino/ImageData.ashx?id=401&mode=thumb", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/screenshot-2026-05-11-at-12-06-58-willow-i-tajemniczy-las.png", "http://bilety.dkkozienice.pl/MSI/ImageData.ashx?id=1429&mode=thumb", "https://biletyna.pl/file/get/id/331519", "https://bilety.kino.swiebodzin.pl:4433/MSI/ImageData.ashx?id=673&mode=thumb", "https://kinoodeon.eurobilet.pl/MSI/ImageData.ashx?id=2307&mode=thumb", "https://image.tmdb.org/t/p/w500/91o854WcptbixlbqybQTzz5BeIv.jpg" ],
     "runtimeMinutes" : 100,
     "releaseYear" : 2025,
     "genres" : [ "Familijny", "Przygodowy", "Fantasy" ],
@@ -1265,6 +1265,30 @@
       "konin" : "Willow odziedziczyła nie tylko cały majątek po swej babci, ale także tajemną księgę magii. Okazuje się, że jest potomkinią całej llinii czarownic. Przy pomocy Księgi przywołuje czarownika Grimoo, który ma jej pomóc obudzić służące jej moce ognia.\n\nWszystko byłoby piękne gdyby nie to, że jej ojciec planuje sprzedać las, z którego wywodzi się cała magia, którą Willow posiada. Nie ma już wiele czasu aby obudzić w sobie pełną moc magii i wraz z trzema innymi czarownicami uratować istnienie pradawnego, czarodziejskiego lasu."
     },
     "ageRating" : "6",
+    "shareCardPending" : false
+  }, {
+    "_id" : "f13d0c721ccd32f3~kinosensorycznewillowitajemniczylas",
+    "title" : "Kino sensoryczne:willow i tajemniczy las",
+    "originalTitle" : "Ein Mädchen namens Willow",
+    "posterUrl" : "https://img.helios.pl/pliki/film/willow-i-tajemniczy-las/willow-i-tajemniczy-las-plakat-745.jpg",
+    "fallbackPosterUrls" : [ "https://www.iluzjon.fn.org.pl/public/covers/movie-7838.jpg", "https://bilety.csm.tarnow.pl/Kino/ImageData.ashx?id=405&mode=thumb", "https://bilety.csm.tarnow.pl/Kino/ImageData.ashx?id=401&mode=thumb", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/screenshot-2026-05-11-at-12-06-58-willow-i-tajemniczy-las.png", "http://bilety.dkkozienice.pl/MSI/ImageData.ashx?id=1429&mode=thumb", "https://biletyna.pl/file/get/id/331519", "https://bilety.kino.swiebodzin.pl:4433/MSI/ImageData.ashx?id=673&mode=thumb", "https://kinoodeon.eurobilet.pl/MSI/ImageData.ashx?id=2307&mode=thumb", "https://image.tmdb.org/t/p/w500/91o854WcptbixlbqybQTzz5BeIv.jpg" ],
+    "runtimeMinutes" : 100,
+    "releaseYear" : 2025,
+    "genres" : [ "Familijny", "Przygodowy", "Fantasy" ],
+    "countries" : [ "Niemcy", "Austria" ],
+    "directors" : [ "Mike Marzuk" ],
+    "cast" : [ "Ava Petsch", "Cora Trube", "Anna von Seld", "Mary Tölle", "Golo Euler" ],
+    "synopsis" : "Co Willow mogłaby zrobić z całym lasem? Właśnie to zadaje sobie pytanie, kiedy odziedzicza ten las po cioci Alwinie. To jednak nie wszystko – Alwina zostawiła jej również małą, krzywą chatkę i, co najważniejsze, swoje czary. Pytanie jednak pozostaje: czy Willow w ogóle przyjmie ten nieoczekiwany spadek, ze wszystkimi jego konsekwencjami?",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "imdbUrl" : "https://www.imdb.com/title/tt35300281/",
+      "metacriticUrl" : "https://www.metacritic.com/search/Ein+M%C3%A4dchen+namens+Willow/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Ein+M%C3%A4dchen+namens+Willow",
+      "filmweb" : 5,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Willow+i+tajemniczy+las-2025-10073149"
+    },
+    "weightedRating" : 5,
+    "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
     "_id" : "f144117c5f2bf7d0",
@@ -2272,26 +2296,6 @@
     "ageRating" : "12",
     "shareCardPending" : false
   }, {
-    "_id" : "f1f34f4daa69b804",
-    "title" : "Ojczyzna",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 120,
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Ojczyzna/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Ojczyzna",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Ojczyzna"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : {
-      "legnica" : "\"Ojczyzna\" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych."
-    },
-    "shareCardPending" : false
-  }, {
     "_id" : "f1fb3f6ad076641b",
     "title" : "Felix – Dare to dream",
     "posterUrl" : "https://image.tmdb.org/t/p/w500/3Zd2645LadoobcuLeFxGRq20BzG.jpg",
@@ -2342,9 +2346,9 @@
     "_id" : "f1fca10abd56e3cf",
     "title" : "Zawieście czerwone latarnie",
     "originalTitle" : "大红灯笼高高挂",
-    "posterUrl" : "http://kinobulgarska19.pl/wp-content/uploads/2026/05/ZLC_poster_v3-1086x1536.jpg",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster-200x288.jpg", "https://www.kinomuza.pl/content/uploads/2026/05/ZLC_poster_v3-724x1024-1-566x800.jpg", "https://kinopalacowe.pl/media/gallery/lg/Zawiescie_czerwone_latarnie_poster_web_light.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/zawiescie-czerwone-laternie-poster.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/plak1at_7812893_1.8.jpg_x_standa.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/raise_the_red_lantern_photo_1.jpg?itok=au1FlO-C", "https://www.iluzjon.fn.org.pl/public/covers/movie-7815.jpg", "https://www.kinokultura.pl/foto,20550,6dfd152f3bd82e4fd6f49d90077445f9,jpg.html", "https://api-sf.artmuseum.pl/uploads/thumbs/6a15ac4d8b5fa920302580.jpg", "https://www.novekino.pl/multimedia/zawiescie_czerwone_latarnie_v2/plakat.jpg", "https://medstore.kinoteka.pl/d97ef05ecbcf44c4ac0a98117fbc3863.jpg", "https://u-jazdowski.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_600x900.jpg", "https://www.charlie.pl/grafika/filmy/plakaty/9/9047.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/04/Zawiescie-czerwone-latarnie.jpg", "https://ec1lodz.pl/fileadmin/user_upload/dfgrhtj.png", "https://www.muzeum1939.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-1_auto_600x900.jpg", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/7/image-thumb__4997__zak_event_tile_thumbnail/Zawie%C5%9Bcie%20czerwone%20latarnie.webp", "https://gcf.org.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/zawiescie-czerwone-lc-poster-v3-scaled.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1315&mode=thumb", "https://image.tmdb.org/t/p/w500/hlbkj4NNvAG5N23kUBUTM1yFXPF.jpg", "https://m.media-amazon.com/images/M/MV5BZjZlMThlZTktOGYxNS00NjY0LWFkMzAtMjNiOTYxYjYxZWFmXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 125,
+    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/04/ZCL_poster_B1_web_light-1-724x1024-1.jpg",
+    "fallbackPosterUrls" : [ "http://kinobulgarska19.pl/wp-content/uploads/2026/05/ZLC_poster_v3-1086x1536.jpg", "https://www.kinomalta.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster-200x288.jpg", "https://www.kinomuza.pl/content/uploads/2026/05/ZLC_poster_v3-724x1024-1-566x800.jpg", "https://kinopalacowe.pl/media/gallery/lg/Zawiescie_czerwone_latarnie_poster_web_light.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/zawiescie-czerwone-laternie-poster.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/plak1at_7812893_1.8.jpg_x_standa.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/raise_the_red_lantern_photo_1.jpg?itok=au1FlO-C", "https://www.iluzjon.fn.org.pl/public/covers/movie-7815.jpg", "https://www.kinokultura.pl/foto,20550,6dfd152f3bd82e4fd6f49d90077445f9,jpg.html", "https://api-sf.artmuseum.pl/uploads/thumbs/6a15ac4d8b5fa920302580.jpg", "https://www.novekino.pl/multimedia/zawiescie_czerwone_latarnie_v2/plakat.jpg", "https://medstore.kinoteka.pl/d97ef05ecbcf44c4ac0a98117fbc3863.jpg", "https://u-jazdowski.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_600x900.jpg", "https://www.charlie.pl/grafika/filmy/plakaty/9/9047.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/04/Zawiescie-czerwone-latarnie.jpg", "https://ec1lodz.pl/fileadmin/user_upload/dfgrhtj.png", "https://www.muzeum1939.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-1_auto_600x900.jpg", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/7/image-thumb__4997__zak_event_tile_thumbnail/Zawie%C5%9Bcie%20czerwone%20latarnie.webp", "https://gcf.org.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/zawiescie-czerwone-lc-poster-v3-scaled.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1315&mode=thumb", "https://image.tmdb.org/t/p/w500/hlbkj4NNvAG5N23kUBUTM1yFXPF.jpg", "https://m.media-amazon.com/images/M/MV5BZjZlMThlZTktOGYxNS00NjY0LWFkMzAtMjNiOTYxYjYxZWFmXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 142,
     "releaseYear" : 1991,
     "genres" : [ "Dramat" ],
     "countries" : [ "Chiny", "Hongkong", "Tajwan" ],
@@ -2369,12 +2373,40 @@
     },
     "shareCardPending" : false
   }, {
+    "_id" : "f1fca10abd56e3cf~cyklkultowaklasykazawiescieczerwonelatarnie",
+    "title" : "Cykl \"Kultowa klasyka\" - Zawieście czerwone latarnie",
+    "originalTitle" : "大红灯笼高高挂",
+    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/04/ZCL_poster_B1_web_light-1-724x1024-1.jpg",
+    "fallbackPosterUrls" : [ "http://kinobulgarska19.pl/wp-content/uploads/2026/05/ZLC_poster_v3-1086x1536.jpg", "https://www.kinomalta.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster-200x288.jpg", "https://www.kinomuza.pl/content/uploads/2026/05/ZLC_poster_v3-724x1024-1-566x800.jpg", "https://kinopalacowe.pl/media/gallery/lg/Zawiescie_czerwone_latarnie_poster_web_light.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/zawiescie-czerwone-laternie-poster.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/plak1at_7812893_1.8.jpg_x_standa.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/raise_the_red_lantern_photo_1.jpg?itok=au1FlO-C", "https://www.iluzjon.fn.org.pl/public/covers/movie-7815.jpg", "https://www.kinokultura.pl/foto,20550,6dfd152f3bd82e4fd6f49d90077445f9,jpg.html", "https://api-sf.artmuseum.pl/uploads/thumbs/6a15ac4d8b5fa920302580.jpg", "https://www.novekino.pl/multimedia/zawiescie_czerwone_latarnie_v2/plakat.jpg", "https://medstore.kinoteka.pl/d97ef05ecbcf44c4ac0a98117fbc3863.jpg", "https://u-jazdowski.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_600x900.jpg", "https://www.charlie.pl/grafika/filmy/plakaty/9/9047.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/04/Zawiescie-czerwone-latarnie.jpg", "https://ec1lodz.pl/fileadmin/user_upload/dfgrhtj.png", "https://www.muzeum1939.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-1_auto_600x900.jpg", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/7/image-thumb__4997__zak_event_tile_thumbnail/Zawie%C5%9Bcie%20czerwone%20latarnie.webp", "https://gcf.org.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/zawiescie-czerwone-lc-poster-v3-scaled.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1315&mode=thumb", "https://image.tmdb.org/t/p/w500/hlbkj4NNvAG5N23kUBUTM1yFXPF.jpg", "https://m.media-amazon.com/images/M/MV5BZjZlMThlZTktOGYxNS00NjY0LWFkMzAtMjNiOTYxYjYxZWFmXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 142,
+    "releaseYear" : 1991,
+    "genres" : [ "Dramat" ],
+    "countries" : [ "Chiny", "Hongkong", "Tajwan" ],
+    "directors" : [ "Yimou Zhang" ],
+    "cast" : [ "Gong Li", "Saifei He", "Jingwu Ma", "Cuifen Cao", "Qi Zhao", "Shuyuan Jin" ],
+    "synopsis" : "Chiny, lata dwudzieste XX wieku. Po śmierci ojca, dziewiętnastoletnia Song Lian zmuszona jest poślubić Chen Zuoqiana – głowę wpływowej rodziny. Pięćdziesięcioletni Chen ma już trzy żony, każda z nich mieszka w oddzielnym domu na terenie wielkiego zamku. Żony zaciekle ze sobą konkurują, ponieważ zainteresowanie ich męża daje władzę, status i przywileje. Każdej nocy Chen decyduje, którą żonę odwiedzi, a wtedy przed jej domem zapalana jest czerwona latarnia. Żony gotowe są na wszystko, by latarnia zapłonęła przed ich drzwiami. Jednak czasem sprawy mogą wymknąć się spod kontroli...",
+    "trailerUrls" : [ "https://www.youtube.com/embed/UN42D-ffvYQ" ],
+    "ratings" : {
+      "imdb" : 8.1,
+      "imdbUrl" : "https://www.imdb.com/title/tt0101640/",
+      "metacriticUrl" : "https://www.metacritic.com/search/%E5%A4%A7%E7%BA%A2%E7%81%AF%E7%AC%BC%E9%AB%98%E9%AB%98%E6%8C%82/?category=2",
+      "rottenTomatoes" : 97,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/raise_the_red_lantern_1991",
+      "filmweb" : 7.8,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Zawie%C5%9Bcie+czerwone+latarnie-1991-31273"
+    },
+    "weightedRating" : 8.533333333333333,
+    "synopsisByCity" : {
+      "poznan" : "Słynne chińskie arcydzieło i jeden z najpiękniejszych filmów lat 90. po raz pierwszy w polskich kinach.\n\n„Zawieście czerwone latarnie” to absolutna perła w bogatym i eklektycznym dorobku Zhanga Yimou („Dom latających sztyletów”, „Żyć”, „Hero”). Adaptacja opowiadania Su Tonga „Żony i konkubiny” przyniosła mu międzynarodowe uznanie i status nowego mistrza światowego kina. Srebrny Lew w Wenecji, nagroda BAFTA dla najlepszego filmu nieanglojęzycznego oraz nominacja oscarowa tylko dopełniły sukces reżysera. W głównej roli błyszczy natomiast Gong Li („Czerwone sorgo”, „Wyznania gejszy”), która dziewięciokrotnie współpracowała z Zhangiem i szybko stała się ikoną współczesnego kina.\n\nFilm zachwyca nowatorskim użyciem koloru, mistrzowską aranżacją zabytkowych XVIII-wiecznych przestrzeni, dramaturgiczną precyzją czy głęboko feministyczną refleksją. Choć chińska cenzura dostrzegła w nim metaforę autorytarnego systemu i opóźniła krajową dystrybucję, nic nie mogło zaszkodzić jego sławie. Z czasem wyrafinowana kostiumowa opowieść zagościła na wielu listach z najlepszymi tytułami w historii kina.\n\nAkcja rozgrywa się w latach 20. XX wieku. 19-letnia Songlian zostaje czwartą konkubiną zamożnego pana Chena. Trafia do jego imponującej posiadłości, gdzie obowiązują specyficzne zasady, a każdy aspekt codzienności kształtują wielowiekowe tradycje. Główna bohaterka powoli odkrywa, że w kobiecym gronie, do którego dołączyła, trwa rywalizacja o względy pana domu. Do czego mogą jednak doprowadzić ciągłe erupcje zazdrości, atmosfera wzajemnych oskarżeń i niepewność dotycząca własnej pozycji? Czy niedoświadczona Songlian odnajdzie się w skomplikowanym labiryncie dziedzińców i korytarzy?\n\nRekonstrukcja filmu w jakości 4K pozwala jeszcze bardziej docenić jego wizualną urodę. Symetryczne malarskie kadry, gra czerwonych świateł oraz zjawiskowe kostiumy i scenografie tworzą niezapomniany estetyczny spektakl."
+    },
+    "shareCardPending" : false
+  }, {
     "_id" : "f1fca10abd56e3cf~dkfzawiescieczerwonelatarnie",
     "title" : "Dkf - Zawieście czerwone latarnie",
     "originalTitle" : "大红灯笼高高挂",
-    "posterUrl" : "http://kinobulgarska19.pl/wp-content/uploads/2026/05/ZLC_poster_v3-1086x1536.jpg",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster-200x288.jpg", "https://www.kinomuza.pl/content/uploads/2026/05/ZLC_poster_v3-724x1024-1-566x800.jpg", "https://kinopalacowe.pl/media/gallery/lg/Zawiescie_czerwone_latarnie_poster_web_light.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/zawiescie-czerwone-laternie-poster.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/plak1at_7812893_1.8.jpg_x_standa.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/raise_the_red_lantern_photo_1.jpg?itok=au1FlO-C", "https://www.iluzjon.fn.org.pl/public/covers/movie-7815.jpg", "https://www.kinokultura.pl/foto,20550,6dfd152f3bd82e4fd6f49d90077445f9,jpg.html", "https://api-sf.artmuseum.pl/uploads/thumbs/6a15ac4d8b5fa920302580.jpg", "https://www.novekino.pl/multimedia/zawiescie_czerwone_latarnie_v2/plakat.jpg", "https://medstore.kinoteka.pl/d97ef05ecbcf44c4ac0a98117fbc3863.jpg", "https://u-jazdowski.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_600x900.jpg", "https://www.charlie.pl/grafika/filmy/plakaty/9/9047.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/04/Zawiescie-czerwone-latarnie.jpg", "https://ec1lodz.pl/fileadmin/user_upload/dfgrhtj.png", "https://www.muzeum1939.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-1_auto_600x900.jpg", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/7/image-thumb__4997__zak_event_tile_thumbnail/Zawie%C5%9Bcie%20czerwone%20latarnie.webp", "https://gcf.org.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/zawiescie-czerwone-lc-poster-v3-scaled.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1315&mode=thumb", "https://image.tmdb.org/t/p/w500/hlbkj4NNvAG5N23kUBUTM1yFXPF.jpg", "https://m.media-amazon.com/images/M/MV5BZjZlMThlZTktOGYxNS00NjY0LWFkMzAtMjNiOTYxYjYxZWFmXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 125,
+    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/04/ZCL_poster_B1_web_light-1-724x1024-1.jpg",
+    "fallbackPosterUrls" : [ "http://kinobulgarska19.pl/wp-content/uploads/2026/05/ZLC_poster_v3-1086x1536.jpg", "https://www.kinomalta.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster-200x288.jpg", "https://www.kinomuza.pl/content/uploads/2026/05/ZLC_poster_v3-724x1024-1-566x800.jpg", "https://kinopalacowe.pl/media/gallery/lg/Zawiescie_czerwone_latarnie_poster_web_light.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/zawiescie-czerwone-laternie-poster.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/plak1at_7812893_1.8.jpg_x_standa.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/raise_the_red_lantern_photo_1.jpg?itok=au1FlO-C", "https://www.iluzjon.fn.org.pl/public/covers/movie-7815.jpg", "https://www.kinokultura.pl/foto,20550,6dfd152f3bd82e4fd6f49d90077445f9,jpg.html", "https://api-sf.artmuseum.pl/uploads/thumbs/6a15ac4d8b5fa920302580.jpg", "https://www.novekino.pl/multimedia/zawiescie_czerwone_latarnie_v2/plakat.jpg", "https://medstore.kinoteka.pl/d97ef05ecbcf44c4ac0a98117fbc3863.jpg", "https://u-jazdowski.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_600x900.jpg", "https://www.charlie.pl/grafika/filmy/plakaty/9/9047.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/04/Zawiescie-czerwone-latarnie.jpg", "https://ec1lodz.pl/fileadmin/user_upload/dfgrhtj.png", "https://www.muzeum1939.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-1_auto_600x900.jpg", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/7/image-thumb__4997__zak_event_tile_thumbnail/Zawie%C5%9Bcie%20czerwone%20latarnie.webp", "https://gcf.org.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/zawiescie-czerwone-lc-poster-v3-scaled.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1315&mode=thumb", "https://image.tmdb.org/t/p/w500/hlbkj4NNvAG5N23kUBUTM1yFXPF.jpg", "https://m.media-amazon.com/images/M/MV5BZjZlMThlZTktOGYxNS00NjY0LWFkMzAtMjNiOTYxYjYxZWFmXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 142,
     "releaseYear" : 1991,
     "genres" : [ "Dramat" ],
     "countries" : [ "Chiny", "Hongkong", "Tajwan" ],
@@ -2399,9 +2431,9 @@
     "_id" : "f1fca10abd56e3cf~klasykawkinieatlanticzawiescieczerwonelatarnie",
     "title" : "Klasyka w kinie Atlantic: Zawieście czerwone latarnie",
     "originalTitle" : "大红灯笼高高挂",
-    "posterUrl" : "http://kinobulgarska19.pl/wp-content/uploads/2026/05/ZLC_poster_v3-1086x1536.jpg",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster-200x288.jpg", "https://www.kinomuza.pl/content/uploads/2026/05/ZLC_poster_v3-724x1024-1-566x800.jpg", "https://kinopalacowe.pl/media/gallery/lg/Zawiescie_czerwone_latarnie_poster_web_light.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/zawiescie-czerwone-laternie-poster.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/plak1at_7812893_1.8.jpg_x_standa.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/raise_the_red_lantern_photo_1.jpg?itok=au1FlO-C", "https://www.iluzjon.fn.org.pl/public/covers/movie-7815.jpg", "https://www.kinokultura.pl/foto,20550,6dfd152f3bd82e4fd6f49d90077445f9,jpg.html", "https://api-sf.artmuseum.pl/uploads/thumbs/6a15ac4d8b5fa920302580.jpg", "https://www.novekino.pl/multimedia/zawiescie_czerwone_latarnie_v2/plakat.jpg", "https://medstore.kinoteka.pl/d97ef05ecbcf44c4ac0a98117fbc3863.jpg", "https://u-jazdowski.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_600x900.jpg", "https://www.charlie.pl/grafika/filmy/plakaty/9/9047.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/04/Zawiescie-czerwone-latarnie.jpg", "https://ec1lodz.pl/fileadmin/user_upload/dfgrhtj.png", "https://www.muzeum1939.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-1_auto_600x900.jpg", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/7/image-thumb__4997__zak_event_tile_thumbnail/Zawie%C5%9Bcie%20czerwone%20latarnie.webp", "https://gcf.org.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/zawiescie-czerwone-lc-poster-v3-scaled.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1315&mode=thumb", "https://image.tmdb.org/t/p/w500/hlbkj4NNvAG5N23kUBUTM1yFXPF.jpg", "https://m.media-amazon.com/images/M/MV5BZjZlMThlZTktOGYxNS00NjY0LWFkMzAtMjNiOTYxYjYxZWFmXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 125,
+    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/04/ZCL_poster_B1_web_light-1-724x1024-1.jpg",
+    "fallbackPosterUrls" : [ "http://kinobulgarska19.pl/wp-content/uploads/2026/05/ZLC_poster_v3-1086x1536.jpg", "https://www.kinomalta.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster-200x288.jpg", "https://www.kinomuza.pl/content/uploads/2026/05/ZLC_poster_v3-724x1024-1-566x800.jpg", "https://kinopalacowe.pl/media/gallery/lg/Zawiescie_czerwone_latarnie_poster_web_light.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/zawiescie-czerwone-laternie-poster.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/plak1at_7812893_1.8.jpg_x_standa.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/raise_the_red_lantern_photo_1.jpg?itok=au1FlO-C", "https://www.iluzjon.fn.org.pl/public/covers/movie-7815.jpg", "https://www.kinokultura.pl/foto,20550,6dfd152f3bd82e4fd6f49d90077445f9,jpg.html", "https://api-sf.artmuseum.pl/uploads/thumbs/6a15ac4d8b5fa920302580.jpg", "https://www.novekino.pl/multimedia/zawiescie_czerwone_latarnie_v2/plakat.jpg", "https://medstore.kinoteka.pl/d97ef05ecbcf44c4ac0a98117fbc3863.jpg", "https://u-jazdowski.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_600x900.jpg", "https://www.charlie.pl/grafika/filmy/plakaty/9/9047.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/04/Zawiescie-czerwone-latarnie.jpg", "https://ec1lodz.pl/fileadmin/user_upload/dfgrhtj.png", "https://www.muzeum1939.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-1_auto_600x900.jpg", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/7/image-thumb__4997__zak_event_tile_thumbnail/Zawie%C5%9Bcie%20czerwone%20latarnie.webp", "https://gcf.org.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/zawiescie-czerwone-lc-poster-v3-scaled.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1315&mode=thumb", "https://image.tmdb.org/t/p/w500/hlbkj4NNvAG5N23kUBUTM1yFXPF.jpg", "https://m.media-amazon.com/images/M/MV5BZjZlMThlZTktOGYxNS00NjY0LWFkMzAtMjNiOTYxYjYxZWFmXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 142,
     "releaseYear" : 1991,
     "genres" : [ "Dramat" ],
     "countries" : [ "Chiny", "Hongkong", "Tajwan" ],
@@ -2427,9 +2459,9 @@
     "_id" : "f1fca10abd56e3cf~zawiescieczerwonelatarniepokazjednorazowy",
     "title" : "Zawieście czerwone latarnie (pokaz jednorazowy)",
     "originalTitle" : "大红灯笼高高挂",
-    "posterUrl" : "http://kinobulgarska19.pl/wp-content/uploads/2026/05/ZLC_poster_v3-1086x1536.jpg",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster-200x288.jpg", "https://www.kinomuza.pl/content/uploads/2026/05/ZLC_poster_v3-724x1024-1-566x800.jpg", "https://kinopalacowe.pl/media/gallery/lg/Zawiescie_czerwone_latarnie_poster_web_light.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/zawiescie-czerwone-laternie-poster.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/plak1at_7812893_1.8.jpg_x_standa.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/raise_the_red_lantern_photo_1.jpg?itok=au1FlO-C", "https://www.iluzjon.fn.org.pl/public/covers/movie-7815.jpg", "https://www.kinokultura.pl/foto,20550,6dfd152f3bd82e4fd6f49d90077445f9,jpg.html", "https://api-sf.artmuseum.pl/uploads/thumbs/6a15ac4d8b5fa920302580.jpg", "https://www.novekino.pl/multimedia/zawiescie_czerwone_latarnie_v2/plakat.jpg", "https://medstore.kinoteka.pl/d97ef05ecbcf44c4ac0a98117fbc3863.jpg", "https://u-jazdowski.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_600x900.jpg", "https://www.charlie.pl/grafika/filmy/plakaty/9/9047.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/04/Zawiescie-czerwone-latarnie.jpg", "https://ec1lodz.pl/fileadmin/user_upload/dfgrhtj.png", "https://www.muzeum1939.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-1_auto_600x900.jpg", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/7/image-thumb__4997__zak_event_tile_thumbnail/Zawie%C5%9Bcie%20czerwone%20latarnie.webp", "https://gcf.org.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/zawiescie-czerwone-lc-poster-v3-scaled.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1315&mode=thumb", "https://image.tmdb.org/t/p/w500/hlbkj4NNvAG5N23kUBUTM1yFXPF.jpg", "https://m.media-amazon.com/images/M/MV5BZjZlMThlZTktOGYxNS00NjY0LWFkMzAtMjNiOTYxYjYxZWFmXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 125,
+    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/04/ZCL_poster_B1_web_light-1-724x1024-1.jpg",
+    "fallbackPosterUrls" : [ "http://kinobulgarska19.pl/wp-content/uploads/2026/05/ZLC_poster_v3-1086x1536.jpg", "https://www.kinomalta.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster-200x288.jpg", "https://www.kinomuza.pl/content/uploads/2026/05/ZLC_poster_v3-724x1024-1-566x800.jpg", "https://kinopalacowe.pl/media/gallery/lg/Zawiescie_czerwone_latarnie_poster_web_light.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/zawiescie-czerwone-laternie-poster.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/plak1at_7812893_1.8.jpg_x_standa.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/raise_the_red_lantern_photo_1.jpg?itok=au1FlO-C", "https://www.iluzjon.fn.org.pl/public/covers/movie-7815.jpg", "https://www.kinokultura.pl/foto,20550,6dfd152f3bd82e4fd6f49d90077445f9,jpg.html", "https://api-sf.artmuseum.pl/uploads/thumbs/6a15ac4d8b5fa920302580.jpg", "https://www.novekino.pl/multimedia/zawiescie_czerwone_latarnie_v2/plakat.jpg", "https://medstore.kinoteka.pl/d97ef05ecbcf44c4ac0a98117fbc3863.jpg", "https://u-jazdowski.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_600x900.jpg", "https://www.charlie.pl/grafika/filmy/plakaty/9/9047.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/04/Zawiescie-czerwone-latarnie.jpg", "https://ec1lodz.pl/fileadmin/user_upload/dfgrhtj.png", "https://www.muzeum1939.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-1_auto_600x900.jpg", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/7/image-thumb__4997__zak_event_tile_thumbnail/Zawie%C5%9Bcie%20czerwone%20latarnie.webp", "https://gcf.org.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/zawiescie-czerwone-lc-poster-v3-scaled.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1315&mode=thumb", "https://image.tmdb.org/t/p/w500/hlbkj4NNvAG5N23kUBUTM1yFXPF.jpg", "https://m.media-amazon.com/images/M/MV5BZjZlMThlZTktOGYxNS00NjY0LWFkMzAtMjNiOTYxYjYxZWFmXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 142,
     "releaseYear" : 1991,
     "genres" : [ "Dramat" ],
     "countries" : [ "Chiny", "Hongkong", "Tajwan" ],
@@ -2453,9 +2485,9 @@
     "_id" : "f1fca10abd56e3cf~zawiescieczerwonelatarniepokazyspecjalne",
     "title" : "Zawieście czerwone latarnie - pokazy specjalne",
     "originalTitle" : "大红灯笼高高挂",
-    "posterUrl" : "http://kinobulgarska19.pl/wp-content/uploads/2026/05/ZLC_poster_v3-1086x1536.jpg",
-    "fallbackPosterUrls" : [ "https://www.kinomalta.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster-200x288.jpg", "https://www.kinomuza.pl/content/uploads/2026/05/ZLC_poster_v3-724x1024-1-566x800.jpg", "https://kinopalacowe.pl/media/gallery/lg/Zawiescie_czerwone_latarnie_poster_web_light.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/zawiescie-czerwone-laternie-poster.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/plak1at_7812893_1.8.jpg_x_standa.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/raise_the_red_lantern_photo_1.jpg?itok=au1FlO-C", "https://www.iluzjon.fn.org.pl/public/covers/movie-7815.jpg", "https://www.kinokultura.pl/foto,20550,6dfd152f3bd82e4fd6f49d90077445f9,jpg.html", "https://api-sf.artmuseum.pl/uploads/thumbs/6a15ac4d8b5fa920302580.jpg", "https://www.novekino.pl/multimedia/zawiescie_czerwone_latarnie_v2/plakat.jpg", "https://medstore.kinoteka.pl/d97ef05ecbcf44c4ac0a98117fbc3863.jpg", "https://u-jazdowski.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_600x900.jpg", "https://www.charlie.pl/grafika/filmy/plakaty/9/9047.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/04/Zawiescie-czerwone-latarnie.jpg", "https://ec1lodz.pl/fileadmin/user_upload/dfgrhtj.png", "https://www.muzeum1939.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-1_auto_600x900.jpg", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/7/image-thumb__4997__zak_event_tile_thumbnail/Zawie%C5%9Bcie%20czerwone%20latarnie.webp", "https://gcf.org.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/zawiescie-czerwone-lc-poster-v3-scaled.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1315&mode=thumb", "https://image.tmdb.org/t/p/w500/hlbkj4NNvAG5N23kUBUTM1yFXPF.jpg", "https://m.media-amazon.com/images/M/MV5BZjZlMThlZTktOGYxNS00NjY0LWFkMzAtMjNiOTYxYjYxZWFmXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 125,
+    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/04/ZCL_poster_B1_web_light-1-724x1024-1.jpg",
+    "fallbackPosterUrls" : [ "http://kinobulgarska19.pl/wp-content/uploads/2026/05/ZLC_poster_v3-1086x1536.jpg", "https://www.kinomalta.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster-200x288.jpg", "https://www.kinomuza.pl/content/uploads/2026/05/ZLC_poster_v3-724x1024-1-566x800.jpg", "https://kinopalacowe.pl/media/gallery/lg/Zawiescie_czerwone_latarnie_poster_web_light.jpg", "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/235/zawiescie-czerwone-laternie-poster.jpg", "https://www.kinonh.pl/pliki/wgrane/image/fotosy/2026/ZAPOWIEDZI/ZAWIESCIE_CZERWONE_LATARNIE/plak1at_7812893_1.8.jpg_x_standa.jpg", "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/raise_the_red_lantern_photo_1.jpg?itok=au1FlO-C", "https://www.iluzjon.fn.org.pl/public/covers/movie-7815.jpg", "https://www.kinokultura.pl/foto,20550,6dfd152f3bd82e4fd6f49d90077445f9,jpg.html", "https://api-sf.artmuseum.pl/uploads/thumbs/6a15ac4d8b5fa920302580.jpg", "https://www.novekino.pl/multimedia/zawiescie_czerwone_latarnie_v2/plakat.jpg", "https://medstore.kinoteka.pl/d97ef05ecbcf44c4ac0a98117fbc3863.jpg", "https://u-jazdowski.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-9_1_auto_600x900.jpg", "https://www.charlie.pl/grafika/filmy/plakaty/9/9047.jpg", "https://muzeumkinematografii.pl/wp-content/uploads/2026/04/Zawiescie-czerwone-latarnie.jpg", "https://ec1lodz.pl/fileadmin/user_upload/dfgrhtj.png", "https://www.muzeum1939.pl/upload/thumb/2026/05/raise-the-red-lantern-photo-1_auto_600x900.jpg", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/7/image-thumb__4997__zak_event_tile_thumbnail/Zawie%C5%9Bcie%20czerwone%20latarnie.webp", "https://gcf.org.pl/wp-content/uploads/2026/05/Zawiescie_czerwone_laternie_poster.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_low/dealer-default/892/zawiescie-czerwone-lc-poster-v3-scaled.jpg", "https://kino.mcswelektrownia.pl/MSI/ImageData.ashx?id=1315&mode=thumb", "https://image.tmdb.org/t/p/w500/hlbkj4NNvAG5N23kUBUTM1yFXPF.jpg", "https://m.media-amazon.com/images/M/MV5BZjZlMThlZTktOGYxNS00NjY0LWFkMzAtMjNiOTYxYjYxZWFmXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 142,
     "releaseYear" : 1991,
     "genres" : [ "Dramat" ],
     "countries" : [ "Chiny", "Hongkong", "Tajwan" ],
@@ -3636,25 +3668,6 @@
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
-    "_id" : "f2a63cfe93ac32f2",
-    "title" : "Willow i tajemniczy las",
-    "posterUrl" : "https://biletyna.pl/file/get/id/331519",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 140,
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Willow+i+tajemniczy+las/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Willow+i+tajemniczy+las",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Willow+i+tajemniczy+las"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { },
-    "shareCardPending" : false
-  }, {
     "_id" : "f2aa344240f951f1",
     "title" : "Zmiennokształtni 2",
     "originalTitle" : "Woodwalkers 2",
@@ -3910,27 +3923,6 @@
       "trojmiasto" : "72 godziny przed lądowaniem w Normandii, losy świata mają zależeć od… pogody. Wojna to nie tylko bitwy, to w szczególności strategie i decyzje, których skutki odczuć mogą miliony. Pracujący dla brytyjskiej armii meteorolog James Stagg musi podjąć najważniejszą decyzję w swojej karierze – prognoza, którą przedstawi, może przesądzić o sukcesie lub klęsce największej operacji wojskowej w historii. Zamknięty w atmosferze nieufności i presji ze strony najwyższych dowódców, Stagg toczy psychologiczną walkę z czasem, wspierany jedynie przez kapitan Kay Summersby. Nad wszystkim czuwa generał Dwight D. Eisenhower, który musi zdecydować czy ruszyć z inwazją, czy ją opóźnić – ryzykując, że Niemcy odkryją plany aliantów."
     },
     "ageRating" : "15",
-    "shareCardPending" : false
-  }, {
-    "_id" : "f2df0f66709e7abc",
-    "title" : "Cykl \"Kultowa klasyka\" - Zawieście czerwone latarnie",
-    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/04/ZCL_poster_B1_web_light-1-724x1024-1.jpg",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 142,
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Cykl+%22Kultowa+klasyka%22+-+Zawie%C5%9Bcie+czerwone+latarnie/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Cykl+%22Kultowa+klasyka%22+-+Zawie%C5%9Bcie+czerwone+latarnie",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Cykl+%22Kultowa+klasyka%22+-+Zawie%C5%9Bcie+czerwone+latarnie"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : {
-      "poznan" : "Słynne chińskie arcydzieło i jeden z najpiękniejszych filmów lat 90. po raz pierwszy w polskich kinach.\n\n„Zawieście czerwone latarnie” to absolutna perła w bogatym i eklektycznym dorobku Zhanga Yimou („Dom latających sztyletów”, „Żyć”, „Hero”). Adaptacja opowiadania Su Tonga „Żony i konkubiny” przyniosła mu międzynarodowe uznanie i status nowego mistrza światowego kina. Srebrny Lew w Wenecji, nagroda BAFTA dla najlepszego filmu nieanglojęzycznego oraz nominacja oscarowa tylko dopełniły sukces reżysera. W głównej roli błyszczy natomiast Gong Li („Czerwone sorgo”, „Wyznania gejszy”), która dziewięciokrotnie współpracowała z Zhangiem i szybko stała się ikoną współczesnego kina.\n\nFilm zachwyca nowatorskim użyciem koloru, mistrzowską aranżacją zabytkowych XVIII-wiecznych przestrzeni, dramaturgiczną precyzją czy głęboko feministyczną refleksją. Choć chińska cenzura dostrzegła w nim metaforę autorytarnego systemu i opóźniła krajową dystrybucję, nic nie mogło zaszkodzić jego sławie. Z czasem wyrafinowana kostiumowa opowieść zagościła na wielu listach z najlepszymi tytułami w historii kina.\n\nAkcja rozgrywa się w latach 20. XX wieku. 19-letnia Songlian zostaje czwartą konkubiną zamożnego pana Chena. Trafia do jego imponującej posiadłości, gdzie obowiązują specyficzne zasady, a każdy aspekt codzienności kształtują wielowiekowe tradycje. Główna bohaterka powoli odkrywa, że w kobiecym gronie, do którego dołączyła, trwa rywalizacja o względy pana domu. Do czego mogą jednak doprowadzić ciągłe erupcje zazdrości, atmosfera wzajemnych oskarżeń i niepewność dotycząca własnej pozycji? Czy niedoświadczona Songlian odnajdzie się w skomplikowanym labiryncie dziedzińców i korytarzy?\n\nRekonstrukcja filmu w jakości 4K pozwala jeszcze bardziej docenić jego wizualną urodę. Symetryczne malarskie kadry, gra czerwonych świateł oraz zjawiskowe kostiumy i scenografie tworzą niezapomniany estetyczny spektakl."
-    },
     "shareCardPending" : false
   }, {
     "_id" : "f2e676b14f18e859",
@@ -4487,6 +4479,55 @@
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Lata%C4%87+ka%C5%BCdy+mo%C5%BCe"
     },
     "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
+    "_id" : "f34cc92ad2f66dd6",
+    "title" : "Salto",
+    "posterUrl" : "https://medstore.kinoteka.pl/782062813.jpg",
+    "fallbackPosterUrls" : [ "https://bilety.kinospektrum.pl/uploads/event//1778509853.jpg" ],
+    "runtimeMinutes" : 100,
+    "releaseYear" : 2025,
+    "genres" : [ "Psychologiczny", "Dramat", "Poetycki" ],
+    "countries" : [ "Polska" ],
+    "directors" : [ "Tadeusz Konwicki" ],
+    "cast" : [ "Zbigniew Cybulski", "Jerzy Block", "Włodzimierz Boruńs" ],
+    "synopsis" : "W miasteczku pojawia się tajemniczy mężczyzna, który przedstawia mieszkańcom różne wersje swojego życia.",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Salto/?category=2",
+      "rottenTomatoes" : 76,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/salto",
+      "filmweb" : 7.8,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Salto-1965-9334"
+    },
+    "weightedRating" : 7.699999999999999,
+    "synopsisByCity" : {
+      "warszawa" : "Do małego miasteczka przybywa mężczyzna o podwójnym nazwisku Kowalski-Malinowski (Z. Cybulski). Podaje się za niegdysiejszego mieszkańca, a teraz ucieka przed wyrokiem swojego oddziału partyzantów, mimo upływu kilkunastu lat od wojny. Zatrzymuje się w domu, który podobno kiedyś do niego należał, co obecny Gospodarz (Z. Holoubek) przyjmuje ze spokojem. Makówki w rękach Gospodarza symbolizują sen, który zapewne śnią wszystkie postaci – uosobienia postaw ważnych dla tej mitycznej wspólnoty, nie mogącej wyzwolić się z widma wojny. Kowalski-Malinowski zdolny jest zahipnotyzować mieszkańców, wprowadzić ich w trans przeżywania jego mitomańskiej opowieści o bohaterstwie, konieczności ucieczki, ukrytych skarbach przeszłości. Po rocznicowej uroczystości, która stanowi kulminację wszystkich spotkań bohaterów, mieszkańcy buntują się przeciw przybyszowi i decydują przegnać z miasteczka. Film Tadeusza Konwickiego wpisuje się w dorobek Szkoły Polskiej przez polemikę z narodową mitologią, której ucieleśnieniem jest w filmie postać Kowalskiego-Malinowskiego granego przez Zbyszka Cybulskiego, ikonicznego Maćka z „Popiołu i diamentu”. Nawiązuje przy tym do neoromantycznego chocholego tańca i figur z „Wesela” Stanisława Wyspiańskiego przez postaci Poety, Pijaka, Wdowy, Gospodarza. Koresponduje przez kompozycję i problematykę z ówczesną powieścią Konwickiego „Sennik współczesny”. Motyw osobliwego tańca powraca na urodzinowym przyjęciu bohatera filmu „Jak daleko stąd, jak blisko”."
+    },
+    "shareCardPending" : false
+  }, {
+    "_id" : "f34cc92ad2f66dd6~saltoponiedzialkizkonwickimpisarzscenarzystarezyser",
+    "title" : "Salto | Poniedziałki z Konwickim: pisarz – scenarzysta – reżyser",
+    "originalTitle" : "Salto",
+    "posterUrl" : "https://medstore.kinoteka.pl/782062813.jpg",
+    "fallbackPosterUrls" : [ "https://bilety.kinospektrum.pl/uploads/event//1778509853.jpg" ],
+    "runtimeMinutes" : 100,
+    "releaseYear" : 2025,
+    "genres" : [ "Psychologiczny", "Dramat", "Poetycki" ],
+    "countries" : [ "Polska" ],
+    "directors" : [ "Tadeusz Konwicki" ],
+    "cast" : [ "Zbigniew Cybulski", "Jerzy Block", "Włodzimierz Boruńs" ],
+    "synopsis" : "W miasteczku pojawia się tajemniczy mężczyzna, który przedstawia mieszkańcom różne wersje swojego życia.",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Salto+%7C+Poniedzia%C5%82ki+z+Konwickim%3A+pisarz+%E2%80%93+scenarzysta+%E2%80%93+re%C5%BCyser/?category=2",
+      "rottenTomatoes" : 76,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/salto",
+      "filmweb" : 7.8,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Salto-1965-9334"
+    },
+    "weightedRating" : 7.699999999999999,
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
@@ -6405,26 +6446,6 @@
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
-    "shareCardPending" : false
-  }, {
-    "_id" : "f4bdc7195a5aff10",
-    "title" : "Ojczyzna | Pokaz przedpremierowy",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 120,
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Ojczyzna+%7C+Pokaz+przedpremierowy/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Ojczyzna+%7C+Pokaz+przedpremierowy",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Ojczyzna+%7C+Pokaz+przedpremierowy"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : {
-      "legnica" : "\"Ojczyzna\" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych."
-    },
     "shareCardPending" : false
   }, {
     "_id" : "f4c51ea3cbdac3de",
@@ -12303,6 +12324,7 @@
       "wroclaw" : "Film opowiada o relacji między Thomasem Mannem, laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych. Film jest koprodukcją Dolnośląskiego Centrum Filmowego.",
       "szczecin" : "„Ojczyzna\" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od zakończenia wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.",
       "torun" : "„Ojczyzna\" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od zakończenia wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.",
+      "legnica" : "\"Ojczyzna\" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.",
       "konin" : "„Ojczyzna” to najnowszy, długo wyczekiwany film laureata Oscara®, Pawła Pawlikowskiego, twórcy „Idy” i „Zimnej wojny”, zdobywca nagrody za reżyserię na tegorocznym 79. Międzynarodowym Festiwalu Filmowym w Cannes. Poprzedni film Pawlikowskiego, „Zimna wojna”, również nagrodzony za reżyserię w Cannes, oprócz spektakularnego sukcesu międzynarodowego (52 nagrody i 126 nominacje, w tym do Oscara® dla najlepszego filmu nieanglojęzycznego, za najlepszą reżyserię i najlepsze zdjęcia) podbił serca polskiej publiczności. W swoim najnowszym dziele reżyser podejmuje tematy tożsamości, winy, rodziny i miłości na tle chaosu i moralnego zagubienia powojennej Europy.\n\"Ojczyzna\" splata w sobie wiele wątków, ale opowiada o nich z umiarem i prostotą, w mocnych kadrach i gęstych scenach, pozostawiając widzowi przestrzeń do przeżywania i wyobrażania.\nW rolach głównych zobaczymy nominowaną do Oscara® Sandrę Hüller. Akcja filmu rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od zakończenia wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.",
       "walbrzych" : "\"Ojczyzna\" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.",
       "poznan" : "„Ojczyzna” to najnowszy, długo wyczekiwany film laureata Oscara®, Pawła Pawlikowskiego, twórcy „Idy” i „Zimnej wojny”, który powalczy o jedną z najważniejszych nagród filmowych na świecie – Złotą Palmę (Palme d’Or) na tegorocznym 79. Międzynarodowym Festiwalu Filmowym w Cannes.\n\nPoprzedni film Pawlikowskiego, „Zimna wojna”, w Polsce również dystrybuowany przez Kino Świat, oprócz spektakularnego sukcesu międzynarodowego (52 nagrody i 126 nominacje, w tym do Oscara® dla najlepszego filmu nieanglojęzycznego, za najlepszą reżyserię i najlepsze zdjęcia) podbił serca polskiej publiczności, przyciągając do kin ponad 1 milion widzów.\n\nW swoim najnowszym dziele, podobnie jak w „Idzie” i „Zimnej wojnie”, reżyser podejmuje tematy tożsamości, winy, rodziny i miłości na tle chaosu i moralnego zagubienia powojennej Europy.\n\nW rolach głównych zobaczymy nominowaną do Oscara® Sandrę Hüller („Strefa interesów”, „Anatomia upadku”, „Projekt Hail Mary”) i Hannsa Zischlera („Monachium”). Scenariusz napisali Paweł Pawlikowski i Henk Handloegten. Do realizacji filmu reżyser ponownie zaprosił swój wieloletni zespół twórczy – nominowanego do Oscara® operatora Łukasza Żala („Hamnet”), kostiumografkę Aleksandrę Staszko („Ministranci”) oraz scenografów Katarzynę Sobańską i Marcela Sławińskiego („Lalka”).\n\n„Ojczyzna” opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od zakończenia wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.\n\nProducentami filmu są: Mario Gianani i Lorenzo Mieli (OUR Films), Ewa Puszczyńska (Extreme Emotions), Jeanne Tremsal i Edward Berger (Nine Hours), Dimitri Rassam (Chapter 2) oraz Lorenzo Gangarossa (Circle One).\n\nZe strony polskiej film powstał w koprodukcji z Canal + Polska, Wytwórnią Filmów Fabularnych we Wrocławiu, Dolnośląskim Centrum Filmowym i Instytucją Filmową Silesia-Film. Film został współfinansowany przez Polski Instytut Sztuki Filmowej. Produkcję dofinansowano także ze środków Ministerstwa Kultury i Dziedzictwa Narodowego.",
@@ -12588,10 +12610,11 @@
     },
     "weightedRating" : 8.15,
     "synopsisByCity" : {
+      "jelenia-gora" : "\"Ojczyzna\" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.\nReżyser Paweł Pawlikowski – laureata Oscara® i twórca „Idy” oraz „Zimnej wojny”. otrzymał nagrodą za reżyserię na Festiwalu Filmowym w Cannes.",
       "warszawa" : "„Ojczyzna” to najnowszy, długo wyczekiwany film laureata Oscara®, Pawła Pawlikowskiego, twórcy „Idy” i „Zimnej wojny”.\n\nW swoim najnowszym dziele, podobnie jak w poprzednich, reżyser podejmuje tematy tożsamości, winy, rodziny i miłości na tle chaosu i moralnego zagubienia powojennej Europy.\n\nW rolach głównych zobaczymy nominowaną do Oscara® Sandrę Hüller („Strefa interesów”, „Anatomia upadku”, „Projekt Hail Mary”) i Hannsa Zischlera („Monachium”). Scenariusz napisali Paweł Pawlikowski i Henk Handloegten. Do realizacji filmu reżyser ponownie zaprosił swój wieloletni zespół twórczy – nominowanego do Oscara® operatora Łukasza Żala („Hamnet”), kostiumografkę Aleksandrę Staszko („Ministranci”) oraz scenografów Katarzynę Sobańską i Marcela Sławińskiego („Lalka”).\n\n„Ojczyzna” opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od zakończenia wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.",
       "katowice" : "„**Ojczyzna” to najnowszy, długo wyczekiwany film laureata Oscara®, Pawła Pawlikowskiego, twórcy „Idy” i „Zimnej wojny”, zdobywca nagrody za reżyserię na tegorocznym 79. Międzynarodowym Festiwalu Filmowym w Cannes.**\n**Poprzedni film Pawlikowskiego, „Zimna wojna”, również nagrodzony za reżyserię w Cannes, oprócz spektakularnego sukcesu międzynarodowego (52 nagrody i 126 nominacje, w tym do Oscara® dla najlepszego filmu nieanglojęzycznego, za najlepszą reżyserię i najlepsze zdjęcia) podbił serca polskiej publiczności, przyciągając do kin ponad 1 milion widzów.**\n**W swoim najnowszym dziele, podobnie jak w „Idzie” i „Zimnej wojnie”, reżyser podejmuje tematy tożsamości, winy, rodziny i miłości na tle chaosu i moralnego zagubienia powojennej Europy.**\n\n**\"'Ojczyzna' splata w sobie wiele wątków, ale opowiada o nich z umiarem i prostotą, w mocnych kadrach i gęstych scenach, pozostawiając widzowi przestrzeń do przeżywania i wyobrażania.\"**\nPaweł Pawlikowski\n\n**W rolach głównych zobaczymy nominowaną do Oscara® Sandrę Hüller („Strefa interesów”, „Anatomia upadku”, „Projekt Hail Mary”) i Hannsa Zischlera („Monachium”). Scenariusz napisali Paweł Pawlikowski i Henk Handloegten. Do realizacji filmu reżyser ponownie zaprosił swój wieloletni zespół twórczy – nominowanego do Oscara® operatora Łukasza Żala („Hamnet”), kostiumografkę Aleksandrę Staszko („Ministranci”) oraz scenografów Katarzynę Sobańską i Marcela Sławińskiego („Lalka”).**\n\n„Ojczyzna\" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od zakończenia wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.\n\n**Producentami filmu są: Mario Gianani i Lorenzo Mieli (OUR Films), Ewa Puszczyńska (Extreme Emotions), Jeanne Tremsal i Edward Berger (Nine Hours), Dimitri Rassam (Chapter 2) oraz Lorenzo Gangarossa (Circle One).**\n\nZe strony polskiej film powstał w koprodukcji z Canal + Polska, Wytwórnią Filmów Fabularnych we Wrocławiu, Dolnośląskim Centrum Filmowym i Instytucją Filmową Silesia-Film. Film został współfinansowany przez Polski Instytut Sztuki Filmowej. Produkcję dofinansowano także ze środków Ministra Kultury i Dziedzictwa Narodowego.",
-      "walbrzych" : "\"Ojczyzna\" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.",
-      "jelenia-gora" : "\"Ojczyzna\" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.\nReżyser Paweł Pawlikowski – laureata Oscara® i twórca „Idy” oraz „Zimnej wojny”. otrzymał nagrodą za reżyserię na Festiwalu Filmowym w Cannes."
+      "legnica" : "\"Ojczyzna\" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych.",
+      "walbrzych" : "\"Ojczyzna\" opowiada o relacji między Thomasem Mannem (Hanns Zischler), laureatem Nagrody Nobla w dziedzinie literatury, a jego córką Eriką (Sandra Hüller) – aktorką i pisarką. Akcja rozgrywa się w szczytowym okresie zimnej wojny. Ojciec i córka wyruszają w trudną, pełną emocji podróż czarnym Buickiem przez zrujnowane Niemcy – z Frankfurtu pod kontrolą amerykańską do Weimaru pod wpływem sowieckim. Po raz pierwszy od wojny Mann wraca do swojej ojczyzny, po tym jak podjął wcześniej trudną decyzję o emigracji do Stanów Zjednoczonych."
     },
     "shareCardPending" : false
   }, {
@@ -14458,26 +14481,6 @@
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
-    "_id" : "fa0c58c9b9dda82b",
-    "title" : "Kino sensoryczne:willow i tajemniczy las",
-    "posterUrl" : "https://bilety.csm.tarnow.pl/Kino/ImageData.ashx?id=405&mode=thumb",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Kino+sensoryczne%3Awillow+i+tajemniczy+las/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kino+sensoryczne%3Awillow+i+tajemniczy+las",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kino+sensoryczne%3Awillow+i+tajemniczy+las"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : {
-      "tarnow" : "Willow dziedziczy las, krzywy domek i… magiczne moce ciotecznej babki! Choć nie jest pewna, czy ich chce, musi działać – las potrzebuje ratunku. Z pomocą Rufusa, sprytnego lisa, szuka trzech czarodziejek!"
-    },
-    "shareCardPending" : false
-  }, {
     "_id" : "fa1480e0a6f4ccd4",
     "title" : "Stowarzyszenie Umarłych Poetów",
     "originalTitle" : "Dead Poets Society",
@@ -16207,55 +16210,6 @@
     "synopsisByCity" : {
       "warszawa" : "**Zasiądź z bliskimi w kinie, bo czeka na Was 20. już retransmisja letniego koncertu André Rieu z Maastricht! Tak, tak... W lipcu 2026 roku Maestro i jego ukochana Orkiestra Johanna Straussa po raz kolejny wystąpią na Vrijthof, słynnym placu tego urokliwego średniowiecznego miasteczka. Król Walca i jego goście zagrają po raz 20. dla ściągających tu co roku z całego świata kilkudziesięciu tysięcy miłośników dobrej muzyki. Na szczęście ten wspaniały letni wieczór będzie retransmitowany już jesienią do kin całego świata. Czeka Was więc seans pełen uroczych walców i marszy Johannów Straussów ojca i syna, ale też songi ze słynnych musicali „My Fair Lady” czy „Nędznicy”, jak również inne hity, choćby „Obój Gabriela” Ennia Morricone z filmu „Misja”. Oprócz Platynowych Tenorów i sopranistek o międzynarodowej renomie pojawią się też gwiazdy, które nigdy wcześniej nie występowały na Vrijthof. To będzie spektakularny jubileusz!**\n\nNowy show pt. „Niech żyje Maastricht!” to radosny hołd dla rodzinnego miasta Maestra, w którym wszystko się zaczęło. 20 lat temu André Rieu i jego Orkiestra Johanna Straussa po raz pierwszy wystąpili na Vrijthof. Średniowieczny plac zamienił się wtedy w lśniącą salę balową na świeżym powietrzu. Publiczność wysłuchała pierwszego tego typu koncertu, a wszystko pod letnim niebem, usianym migoczącymi gwiazdami. Sukces był niebywały, tym bardziej że całość była retransmitowana do kin. Teraz walc „Nad pięknym modrym Dunajem” i „Marsz Radetzky’ego” zabrzmią dla publiczności na całym świecie po raz dwudziesty.\n\n„Jestem niezwykle podekscytowany tym jubileuszem. W lipcu tego roku po raz 20. zagram nasz letni koncert w Maastricht – mówi André Rieu. – Mam nadzieję, że wyjątkowa atmosfera Vrijthof, najstarszego placu w Holandii, znów poruszy serca i dusze wszystkich widzów. To fantastyczne, że ten koncert będzie można zobaczyć również w kinach na całym świecie, w tym w Polsce, i to już jesienią. Jestem przekonany, że ucieszy on Was tak samo, jak mnie i moją orkiestrę. Niech żyje Maastricht!”.\n\nDla polskich widzów retransmisję poprowadzi jak zwykle Maja Jasińska, która nie tylko jest flecistką w Orkiestrze Johanna Straussa, ale i niezrównaną ambasadorką całego przedsięwzięcia. Dzięki niej zajrzymy za kulisy i wysłuchamy wywiadu z André Rieu, przeprowadzonego przez nią wyłącznie dla polskich widzów kinowych."
     },
-    "shareCardPending" : false
-  }, {
-    "_id" : "fb1efab2ea40da74",
-    "title" : "Salto",
-    "posterUrl" : "https://medstore.kinoteka.pl/782062813.jpg",
-    "fallbackPosterUrls" : [ "https://bilety.kinospektrum.pl/uploads/event//1778509853.jpg" ],
-    "runtimeMinutes" : 100,
-    "releaseYear" : 2025,
-    "genres" : [ "Psychologiczny", "Dramat", "Poetycki" ],
-    "countries" : [ "Polska" ],
-    "directors" : [ "Tadeusz Konwicki" ],
-    "cast" : [ "Zbigniew Cybulski", "Jerzy Block", "Włodzimierz Boruńs" ],
-    "synopsis" : "W miasteczku pojawia się tajemniczy mężczyzna, który przedstawia mieszkańcom różne wersje swojego życia.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Salto/?category=2",
-      "rottenTomatoes" : 76,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/salto",
-      "filmweb" : 7.8,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Salto-1965-9334"
-    },
-    "weightedRating" : 7.699999999999999,
-    "synopsisByCity" : {
-      "warszawa" : "Do małego miasteczka przybywa mężczyzna o podwójnym nazwisku Kowalski-Malinowski (Z. Cybulski). Podaje się za niegdysiejszego mieszkańca, a teraz ucieka przed wyrokiem swojego oddziału partyzantów, mimo upływu kilkunastu lat od wojny. Zatrzymuje się w domu, który podobno kiedyś do niego należał, co obecny Gospodarz (Z. Holoubek) przyjmuje ze spokojem. Makówki w rękach Gospodarza symbolizują sen, który zapewne śnią wszystkie postaci – uosobienia postaw ważnych dla tej mitycznej wspólnoty, nie mogącej wyzwolić się z widma wojny. Kowalski-Malinowski zdolny jest zahipnotyzować mieszkańców, wprowadzić ich w trans przeżywania jego mitomańskiej opowieści o bohaterstwie, konieczności ucieczki, ukrytych skarbach przeszłości. Po rocznicowej uroczystości, która stanowi kulminację wszystkich spotkań bohaterów, mieszkańcy buntują się przeciw przybyszowi i decydują przegnać z miasteczka. Film Tadeusza Konwickiego wpisuje się w dorobek Szkoły Polskiej przez polemikę z narodową mitologią, której ucieleśnieniem jest w filmie postać Kowalskiego-Malinowskiego granego przez Zbyszka Cybulskiego, ikonicznego Maćka z „Popiołu i diamentu”. Nawiązuje przy tym do neoromantycznego chocholego tańca i figur z „Wesela” Stanisława Wyspiańskiego przez postaci Poety, Pijaka, Wdowy, Gospodarza. Koresponduje przez kompozycję i problematykę z ówczesną powieścią Konwickiego „Sennik współczesny”. Motyw osobliwego tańca powraca na urodzinowym przyjęciu bohatera filmu „Jak daleko stąd, jak blisko”."
-    },
-    "shareCardPending" : false
-  }, {
-    "_id" : "fb1efab2ea40da74~saltoponiedzialkizkonwickimpisarzscenarzystarezyser",
-    "title" : "Salto | Poniedziałki z Konwickim: pisarz – scenarzysta – reżyser",
-    "originalTitle" : "Salto",
-    "posterUrl" : "https://medstore.kinoteka.pl/782062813.jpg",
-    "fallbackPosterUrls" : [ "https://bilety.kinospektrum.pl/uploads/event//1778509853.jpg" ],
-    "runtimeMinutes" : 100,
-    "releaseYear" : 2025,
-    "genres" : [ "Psychologiczny", "Dramat", "Poetycki" ],
-    "countries" : [ "Polska" ],
-    "directors" : [ "Tadeusz Konwicki" ],
-    "cast" : [ "Zbigniew Cybulski", "Jerzy Block", "Włodzimierz Boruńs" ],
-    "synopsis" : "W miasteczku pojawia się tajemniczy mężczyzna, który przedstawia mieszkańcom różne wersje swojego życia.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Salto+%7C+Poniedzia%C5%82ki+z+Konwickim%3A+pisarz+%E2%80%93+scenarzysta+%E2%80%93+re%C5%BCyser/?category=2",
-      "rottenTomatoes" : 76,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/salto",
-      "filmweb" : 7.8,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Salto-1965-9334"
-    },
-    "weightedRating" : 7.699999999999999,
-    "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
     "_id" : "fb1ffa62515e79e9",
@@ -26326,6 +26280,22 @@
     } ],
     "listingKeys" : [ "N\u0000Kino MDK\u0000https://www.bilety24.pl/kino/1546-willow-i-tajemniczy-las-2d-dubbing-157843?id=940080\u0000WILLOW I TAJEMNICZY LAS" ]
   }, {
+    "_id" : "f13d0c721ccd32f3|slawno|Kino DK",
+    "filmId" : "f13d0c721ccd32f3",
+    "city" : "slawno",
+    "cinema" : "Kino DK",
+    "filmUrl" : "https://biletyna.pl/film/Willow-i-tajemniczy-las?eid=672295#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-13T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Willow-i-tajemniczy-las?eid=672295#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-14T15:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Willow-i-tajemniczy-las?eid=672296#opis",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino DK\u0000https://biletyna.pl/film/Willow-i-tajemniczy-las?eid=672295#opis\u0000Willow i tajemniczy las" ]
+  }, {
     "_id" : "f13d0c721ccd32f3|srem|Kino Baszta Środa",
     "filmId" : "f13d0c721ccd32f3",
     "city" : "srem",
@@ -26505,6 +26475,17 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "P\u0000Kino ODEON\u0000WILLOW I TAJEMNICZY LAS\u0000" ]
+  }, {
+    "_id" : "f13d0c721ccd32f3~kinosensorycznewillowitajemniczylas|tarnow|Kino Millenium",
+    "filmId" : "f13d0c721ccd32f3~kinosensorycznewillowitajemniczylas",
+    "city" : "tarnow",
+    "cinema" : "Kino Millenium",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-20T16:30:00",
+      "bookingUrl" : "https://bilety.csm.tarnow.pl/Kino/Default.aspx?event_id=36080&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "P\u0000Kino Millenium\u0000KINO SENSORYCZNE:WILLOW I TAJEMNICZY LAS\u0000" ]
   }, {
     "_id" : "f144117c5f2bf7d0|trojmiasto|Cinema1",
     "filmId" : "f144117c5f2bf7d0",
@@ -34867,66 +34848,6 @@
     } ],
     "listingKeys" : [ "N\u0000Cinema City Zielona Góra\u0000https://www.cinema-city.pl/filmy/ladies-night-narodziny-gwiazdy/3026s2r1\u0000Ladies Night - Narodziny gwiazdy" ]
   }, {
-    "_id" : "f1f34f4daa69b804|legnica|Kino Piast",
-    "filmId" : "f1f34f4daa69b804",
-    "city" : "legnica",
-    "cinema" : "Kino Piast",
-    "filmUrl" : "https://kino-piast.bilety24.pl/wydarzenie/?id=156173",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-19T16:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929004",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-20T16:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929003",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-21T16:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929005",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-22T16:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929006",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-23T16:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929007",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-24T16:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929008",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-25T16:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929009",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-26T18:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929011",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-27T18:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929012",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-28T18:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929010",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-29T18:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929013",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-01T18:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929014",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-02T18:00:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929015",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Piast\u0000https://kino-piast.bilety24.pl/wydarzenie/?id=156173\u0000Ojczyzna" ]
-  }, {
     "_id" : "f1fb3f6ad076641b|krakow|Kino Pod Baranami",
     "filmId" : "f1fb3f6ad076641b",
     "city" : "krakow",
@@ -35332,6 +35253,18 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino Nowe Horyzonty\u0000https://www.kinonh.pl/op.s?id=22422\u0000Zawieście czerwone latarnie" ]
+  }, {
+    "_id" : "f1fca10abd56e3cf~cyklkultowaklasykazawiescieczerwonelatarnie|poznan|Kino Apollo",
+    "filmId" : "f1fca10abd56e3cf~cyklkultowaklasykazawiescieczerwonelatarnie",
+    "city" : "poznan",
+    "cinema" : "Kino Apollo",
+    "filmUrl" : "https://kinoapollo.pl/kino/cykl-kultowa-klasyka-zawiescie-czerwone-latarnie/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-13T17:30:00",
+      "bookingUrl" : "https://bilety.kinoapollo.pl/event/view/id/666642",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Apollo\u0000https://kinoapollo.pl/kino/cykl-kultowa-klasyka-zawiescie-czerwone-latarnie/\u0000Cykl \"Kultowa klasyka\" - Zawieście czerwone latarnie" ]
   }, {
     "_id" : "f1fca10abd56e3cf~dkfzawiescieczerwonelatarnie|radom|Kino MCSW Elektrownia",
     "filmId" : "f1fca10abd56e3cf~dkfzawiescieczerwonelatarnie",
@@ -38722,22 +38655,6 @@
     } ],
     "listingKeys" : [ "N\u0000Cinema City Zielona Góra\u0000https://www.cinema-city.pl/filmy/90-urodziny-pavarottiego-koncert-gwiazd-z-arena-di-verona/8131s2r\u000090. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona" ]
   }, {
-    "_id" : "f2a63cfe93ac32f2|slawno|Kino DK",
-    "filmId" : "f2a63cfe93ac32f2",
-    "city" : "slawno",
-    "cinema" : "Kino DK",
-    "filmUrl" : "https://biletyna.pl/film/Willow-i-tajemniczy-las?eid=672295#opis",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-13T15:00:00",
-      "bookingUrl" : "https://biletyna.pl/film/Willow-i-tajemniczy-las?eid=672295#opis",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-14T15:00:00",
-      "bookingUrl" : "https://biletyna.pl/film/Willow-i-tajemniczy-las?eid=672296#opis",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino DK\u0000https://biletyna.pl/film/Willow-i-tajemniczy-las?eid=672295#opis\u0000Willow i tajemniczy las" ]
-  }, {
     "_id" : "f2aa344240f951f1|tczew|Helios Tczew",
     "filmId" : "f2aa344240f951f1",
     "city" : "tczew",
@@ -40336,18 +40253,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000KINOkawiarnia Stacja Falenica\u0000https://stacjafalenica.pl/filmy/niebo-nad-normandia/\u0000Niebo nad Normandią" ]
-  }, {
-    "_id" : "f2df0f66709e7abc|poznan|Kino Apollo",
-    "filmId" : "f2df0f66709e7abc",
-    "city" : "poznan",
-    "cinema" : "Kino Apollo",
-    "filmUrl" : "https://kinoapollo.pl/kino/cykl-kultowa-klasyka-zawiescie-czerwone-latarnie/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-13T17:30:00",
-      "bookingUrl" : "https://bilety.kinoapollo.pl/event/view/id/666642",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Apollo\u0000https://kinoapollo.pl/kino/cykl-kultowa-klasyka-zawiescie-czerwone-latarnie/\u0000Cykl \"Kultowa klasyka\" - Zawieście czerwone latarnie" ]
   }, {
     "_id" : "f2e676b14f18e859|zlocieniec|Kino Goplana",
     "filmId" : "f2e676b14f18e859",
@@ -42768,6 +42673,30 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Żuławski Ośrodek Kultury\u0000https://biletyna.pl/dla-dzieci/Latac-kazdy-moze-2?eid=669985#opis\u0000Latać każdy może" ]
+  }, {
+    "_id" : "f34cc92ad2f66dd6|warszawa|Kinoteka",
+    "filmId" : "f34cc92ad2f66dd6",
+    "city" : "warszawa",
+    "cinema" : "Kinoteka",
+    "filmUrl" : "https://kinoteka.pl/film/salto/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-22T19:00:00",
+      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=9acdfac6-264f-46eb-86eb-fd0fa78c379b&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kinoteka\u0000https://kinoteka.pl/film/salto/\u0000Salto" ]
+  }, {
+    "_id" : "f34cc92ad2f66dd6~saltoponiedzialkizkonwickimpisarzscenarzystarezyser|trojmiasto|Kino Spektrum",
+    "filmId" : "f34cc92ad2f66dd6~saltoponiedzialkizkonwickimpisarzscenarzystarezyser",
+    "city" : "trojmiasto",
+    "cinema" : "Kino Spektrum",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-29T20:00:00",
+      "bookingUrl" : "https://bilety.kinospektrum.pl/index.php/kup-bilet/salto-poniedzialki-z-konwickim-pisarz-scenarzysta-rezyser-2026-06-29-20-00",
+      "room" : "Sala Duża",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "P\u0000Kino Spektrum\u0000Salto | Poniedziałki z Konwickim: pisarz – scenarzysta – reżyser\u0000" ]
   }, {
     "_id" : "f35657ebb4560e07|bielsko-biala|Cinema City Bielsko-Biała",
     "filmId" : "f35657ebb4560e07",
@@ -57247,18 +57176,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino Pod Baranami\u0000https://kinopodbaranami.pl/film.php?film_id=12816\u0000Krótka historia o miłości" ]
-  }, {
-    "_id" : "f4bdc7195a5aff10|legnica|Kino Piast",
-    "filmId" : "f4bdc7195a5aff10",
-    "city" : "legnica",
-    "cinema" : "Kino Piast",
-    "filmUrl" : "https://kino-piast.bilety24.pl/wydarzenie/?id=156769",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-14T15:30:00",
-      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=932245",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Piast\u0000https://kino-piast.bilety24.pl/wydarzenie/?id=156769\u0000Ojczyzna | Pokaz przedpremierowy" ]
   }, {
     "_id" : "f4c51ea3cbdac3de|krakow|Kino Paradox",
     "filmId" : "f4c51ea3cbdac3de",
@@ -111137,6 +111054,66 @@
     } ],
     "listingKeys" : [ "N\u0000Kino Sfinks\u0000https://kinosfinks.okn.edu.pl/wydarzenie-3186-ojczyzna-szczegoly-21401.html\u0000OJCZYZNA" ]
   }, {
+    "_id" : "f9112bae6ec7e2f6|legnica|Kino Piast",
+    "filmId" : "f9112bae6ec7e2f6",
+    "city" : "legnica",
+    "cinema" : "Kino Piast",
+    "filmUrl" : "https://kino-piast.bilety24.pl/wydarzenie/?id=156173",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-19T16:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929004",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-20T16:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929003",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-21T16:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929005",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-22T16:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929006",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-23T16:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929007",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-24T16:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929008",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-25T16:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929009",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-26T18:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929011",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-27T18:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929012",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-28T18:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929010",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-29T18:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929013",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-01T18:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929014",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-02T18:00:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=929015",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Piast\u0000https://kino-piast.bilety24.pl/wydarzenie/?id=156173\u0000Ojczyzna" ]
+  }, {
     "_id" : "f9112bae6ec7e2f6|lodz|Cinema City Manufaktura",
     "filmId" : "f9112bae6ec7e2f6",
     "city" : "lodz",
@@ -112194,6 +112171,18 @@
       "format" : [ "2D" ]
     } ],
     "listingKeys" : [ "N\u0000Kinoteatr Rialto\u0000https://kinoteatrrialto.bilety24.pl/wydarzenie/?id=157463\u0000Ojczyzna - pokaz przedpremierowy" ]
+  }, {
+    "_id" : "f9112bae6ec7e2f6~ojczyznapokazprzedpremierowy|legnica|Kino Piast",
+    "filmId" : "f9112bae6ec7e2f6~ojczyznapokazprzedpremierowy",
+    "city" : "legnica",
+    "cinema" : "Kino Piast",
+    "filmUrl" : "https://kino-piast.bilety24.pl/wydarzenie/?id=156769",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-14T15:30:00",
+      "bookingUrl" : "https://kino-piast.bilety24.pl/kup-bilety/?id=932245",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Piast\u0000https://kino-piast.bilety24.pl/wydarzenie/?id=156769\u0000Ojczyzna | Pokaz przedpremierowy" ]
   }, {
     "_id" : "f9112bae6ec7e2f6~ojczyznapokazprzedpremierowy|trojmiasto|Gdyńskie Centrum Filmowe",
     "filmId" : "f9112bae6ec7e2f6~ojczyznapokazprzedpremierowy",
@@ -121819,17 +121808,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino Paradox\u0000https://kinoparadox.pl/naekranie/super-wang-wang/\u0000Super Wang Wang" ]
-  }, {
-    "_id" : "fa0c58c9b9dda82b|tarnow|Kino Millenium",
-    "filmId" : "fa0c58c9b9dda82b",
-    "city" : "tarnow",
-    "cinema" : "Kino Millenium",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-20T16:30:00",
-      "bookingUrl" : "https://bilety.csm.tarnow.pl/Kino/Default.aspx?event_id=36080&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino Millenium\u0000KINO SENSORYCZNE:WILLOW I TAJEMNICZY LAS\u0000" ]
   }, {
     "_id" : "fa1480e0a6f4ccd4|krakow|Kino Pod Baranami",
     "filmId" : "fa1480e0a6f4ccd4",
@@ -146903,30 +146881,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino Wisła\u0000https://www.novekino.pl/kina/wisla/film.php?id=19758\u0000ANDRÉ RIEU W KINIE „Niech żyje Maastricht!” najnowszy letni koncert Króla Walca!" ]
-  }, {
-    "_id" : "fb1efab2ea40da74|warszawa|Kinoteka",
-    "filmId" : "fb1efab2ea40da74",
-    "city" : "warszawa",
-    "cinema" : "Kinoteka",
-    "filmUrl" : "https://kinoteka.pl/film/salto/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-22T19:00:00",
-      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=9acdfac6-264f-46eb-86eb-fd0fa78c379b&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kinoteka\u0000https://kinoteka.pl/film/salto/\u0000Salto" ]
-  }, {
-    "_id" : "fb1efab2ea40da74~saltoponiedzialkizkonwickimpisarzscenarzystarezyser|trojmiasto|Kino Spektrum",
-    "filmId" : "fb1efab2ea40da74~saltoponiedzialkizkonwickimpisarzscenarzystarezyser",
-    "city" : "trojmiasto",
-    "cinema" : "Kino Spektrum",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-29T20:00:00",
-      "bookingUrl" : "https://bilety.kinospektrum.pl/index.php/kup-bilet/salto-poniedzialki-z-konwickim-pisarz-scenarzysta-rezyser-2026-06-29-20-00",
-      "room" : "Sala Duża",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino Spektrum\u0000Salto | Poniedziałki z Konwickim: pisarz – scenarzysta – reżyser\u0000" ]
   }, {
     "_id" : "fb1ffa62515e79e9|warszawa|Kino Muranów",
     "filmId" : "fb1ffa62515e79e9",

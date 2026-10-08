@@ -219,6 +219,19 @@ class IdentityCalibrationSpec extends AnyFlatSpec with Matchers {
     filmDenied(Listing("Vincent. Legenda oceanu", runtime = Some(88)), whale, corroborating = 36) shouldBe None
   }
 
+  it should "not deny a film on its probability when only the screening's length is off" in {
+    // The runtime a venue bills is its screening's, not the film's: CK Lublin's Halloween "Martwe zło 2" at 121 minutes
+    // (the film runs 84), Kino Piast's pre-premiere "Ojczyzna" at a round 120 (82), Kino Spektrum's "Akademia Polskiego
+    // Filmu" lecture around the 1937 "Znachor" at 150 (98). A runtime vetoes through the learned rules certified on it.
+    val evilDead = Film("Martwe zło 2", year = Some(1987), runtime = Some(84), directors = Some(Seq("Sam Raimi")))
+    filmDenied(Listing("Martwe zło 2", runtime = Some(121)), evilDead, corroborating = 4) shouldBe None
+    val znachor = Film("Znachor", year = Some(1937), runtime = Some(98), directors = Some(Seq("Michał Waszyński")))
+    filmDenied(Listing("Akademia Polskiego Filmu: Znachor (1937) | Gatunki międzywojnia II: melodramat", runtime = Some(150)),
+      znachor, corroborating = 0) shouldBe None
+    // a gap the certified runtime rules cover still denies it
+    filmDenied(Listing("Martwe zło 2", runtime = Some(200)), evilDead, corroborating = 4) shouldBe defined
+  }
+
   it should "still deny it when a compared fact weighs against the film" in {
     val whale = Film("The Last Whale Singer", runtime = Some(91), year = Some(2026), directors = Some(Seq("Reza Memari")))
     filmDenied(Listing("Vincent. Legenda oceanu", runtime = Some(9), directors = Seq("Pavel Hrubas")), whale, corroborating = 0) shouldBe defined

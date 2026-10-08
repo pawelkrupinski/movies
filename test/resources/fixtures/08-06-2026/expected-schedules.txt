@@ -1253,28 +1253,56 @@ showings:
 
 === Cykl "Kultowa klasyka" - Zawieście czerwone latarnie ===
 displayTitle:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie
-cinemaTitles:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie
+cinemaTitles:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie | DKF - ZAWIEŚCIE CZERWONE LATARNIE | Klasyka w kinie Atlantic: Zawieście czerwone latarnie | ZAWIEŚCIE CZERWONE LATARNIE | Zawieście czerwone latarnie | Zawieście czerwone latarnie (1991) | Zawieście czerwone latarnie (pokaz jednorazowy) | Zawieście czerwone latarnie - pokazy specjalne
 runtimeMinutes:    142
-releaseYear:       —
-countries:         —
+releaseYear:       1991
+countries:         Chiny, Hongkong, Tajwan
 posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/04/ZCL_poster_B1_web_light-1-724x1024-1.jpg
 synopsis.length:   1908
-cast:              —
-director:          —
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
+cast:              Gong Li, Saifei He, Jingwu Ma, Cuifen Cao, Qi Zhao, Shuyuan Jin
+director:          Yimou Zhang
+tmdbId:            10404
+imdbId:            tt0101640
+originalTitle:     大红灯笼高高挂
+imdbRating:        8.1
 metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
+rottenTomatoes:    97
+filmwebRating:     7.8
 metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/raise_the_red_lantern_1991
+filmwebUrl:        https://www.filmweb.pl/film/Zawie%C5%9Bcie+czerwone+latarnie-1991-31273
 cinemaFilmUrls:
   Kino Apollo = https://kinoapollo.pl/kino/cykl-kultowa-klasyka-zawiescie-czerwone-latarnie/
 cinemaScrapes:
+  Gdyńskie Centrum Filmowe / Zawieście czerwone latarnie / —
+  KINOMUZEUM / Zawieście czerwone latarnie / 1991
+  Kino Agrafka / ZAWIEŚCIE CZERWONE LATARNIE / 1991
   Kino Apollo / Cykl "Kultowa klasyka" - Zawieście czerwone latarnie / —
+  Kino Atlantic / Klasyka w kinie Atlantic: Zawieście czerwone latarnie / 1991
+  Kino Bułgarska 19 / ZAWIEŚCIE CZERWONE LATARNIE / 1991
+  Kino CK Lublin / Zawieście czerwone latarnie / —
+  Kino Charlie / Zawieście czerwone latarnie / —
+  Kino Iluzjon / Zawieście czerwone latarnie / 1991
+  Kino Kinematograf / Zawieście czerwone latarnie / 1991
+  Kino Kultura / Zawieście czerwone latarnie / —
+  Kino Luna / Zawieście czerwone latarnie / —
+  Kino MCSW Elektrownia / DKF - ZAWIEŚCIE CZERWONE LATARNIE / 1991
+  Kino Malta Charlie Monroe / Zawieście czerwone latarnie / —
+  Kino Muranów / Zawieście czerwone latarnie / 1991
+  Kino Muza / Zawieście czerwone latarnie / 1991
+  Kino Muzeum / ZAWIEŚCIE CZERWONE LATARNIE / 1989
+  Kino NCKF EC1 / Zawieście czerwone latarnie (1991) / —
+  Kino Nowe Horyzonty / Zawieście czerwone latarnie / 1991
+  Kino Orzeł / Zawieście czerwone latarnie (pokaz jednorazowy) / —
+  Kino Paradox / Zawieście czerwone latarnie / 1991
+  Kino Pałacowe / Zawieście czerwone latarnie / 1991
+  Kino Pod Baranami / Zawieście czerwone latarnie / —
+  Kino Rialto / ZAWIEŚCIE CZERWONE LATARNIE / 1991
+  Kino U-jazdowski / Zawieście czerwone latarnie / 1991
+  Kino Wisła / Zawieście czerwone latarnie - pokazy specjalne / 1991
+  Kino Żak / Zawieście czerwone latarnie / 1991
+  KinoPort / Zawieście czerwone latarnie / 1991
+  Kinoteka / Zawieście czerwone latarnie / 2026
 showings:
   2026-06-13  Kino Apollo                   17:30
 
@@ -2922,7 +2950,7 @@ showings:
 
 === Filmowy Klub Seniora: Ojczyzna ===
 displayTitle:      Filmowy Klub Seniora: Ojczyzna
-cinemaTitles:      Dyskusyjny Klub Filmowy: Ojczyzna | FILMOTERAPIA W LUNIE | Ojczyzna | seans + rozmowa Martyny Harland | Fatherland | Filmowy Klub Seniora i Seniorki: OJCZYZNA | Filmowy Klub Seniora: OJCZYZNA | KINO SENIORA | Ojczyzna | LUNATYCY. KINO I ROZMOWA | Ojczyzna | film + spotkanie z Joanną Kulig | OJCZYZNA | OJCZYZNA - DKF KOT | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna + spotkanie z Ewą Puszczyńską | Ojczyzna + spotkanie z producentką Ewą Puszczyńską | Ojczyzna - pokaz przedpremierowy | Ojczyzna | DZIEŃ OJCA W GCF | Ojczyzna | POKAZ PRZEDPREMIEROWY | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy | Ojczyzna | przedpremierowo | Pora dla Seniora: Ojczyzna | Tani wtorek: OJCZYZNA | WSP: Ojczyzna - przedpremiera | Za Drzwiami Atlantica: Ojczyzna
+cinemaTitles:      Dyskusyjny Klub Filmowy: Ojczyzna | FILMOTERAPIA W LUNIE | Ojczyzna | seans + rozmowa Martyny Harland | Fatherland | Filmowy Klub Seniora i Seniorki: OJCZYZNA | Filmowy Klub Seniora: OJCZYZNA | KINO SENIORA | Ojczyzna | LUNATYCY. KINO I ROZMOWA | Ojczyzna | film + spotkanie z Joanną Kulig | OJCZYZNA | OJCZYZNA - DKF KOT | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna + spotkanie z Ewą Puszczyńską | Ojczyzna + spotkanie z producentką Ewą Puszczyńską | Ojczyzna - pokaz przedpremierowy | Ojczyzna | DZIEŃ OJCA W GCF | Ojczyzna | POKAZ PRZEDPREMIEROWY | Ojczyzna | Pokaz przedpremierowy | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy | Ojczyzna | przedpremierowo | Pora dla Seniora: Ojczyzna | Tani wtorek: OJCZYZNA | WSP: Ojczyzna - przedpremiera | Za Drzwiami Atlantica: Ojczyzna
 runtimeMinutes:    82
 releaseYear:       2026
 countries:         Polska, Niemcy, Włochy, Francja
@@ -2989,6 +3017,7 @@ cinemaScrapes:
   Kino Oskard / Ojczyzna / —
   Kino PDK / Ojczyzna / —
   Kino Paradox / Ojczyzna / 2026
+  Kino Piast / Ojczyzna / —
   Kino Pionier 1907 / OJCZYZNA / 2026
   Kino Pod Baranami / Ojczyzna / —
   Kino Rialto / OJCZYZNA / 2026
@@ -6316,7 +6345,7 @@ showings:
 
 === Ojczyzna ===
 displayTitle:      Ojczyzna
-cinemaTitles:      Dyskusyjny Klub Filmowy: Ojczyzna | FILMOTERAPIA W LUNIE | Ojczyzna | seans + rozmowa Martyny Harland | Fatherland | Filmowy Klub Seniora i Seniorki: OJCZYZNA | Filmowy Klub Seniora: OJCZYZNA | KINO SENIORA | Ojczyzna | LUNATYCY. KINO I ROZMOWA | Ojczyzna | film + spotkanie z Joanną Kulig | OJCZYZNA | OJCZYZNA - DKF KOT | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna + spotkanie z Ewą Puszczyńską | Ojczyzna + spotkanie z producentką Ewą Puszczyńską | Ojczyzna - pokaz przedpremierowy | Ojczyzna | DZIEŃ OJCA W GCF | Ojczyzna | POKAZ PRZEDPREMIEROWY | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy | Ojczyzna | przedpremierowo | Pora dla Seniora: Ojczyzna | Tani wtorek: OJCZYZNA | WSP: Ojczyzna - przedpremiera | Za Drzwiami Atlantica: Ojczyzna
+cinemaTitles:      Dyskusyjny Klub Filmowy: Ojczyzna | FILMOTERAPIA W LUNIE | Ojczyzna | seans + rozmowa Martyny Harland | Fatherland | Filmowy Klub Seniora i Seniorki: OJCZYZNA | Filmowy Klub Seniora: OJCZYZNA | KINO SENIORA | Ojczyzna | LUNATYCY. KINO I ROZMOWA | Ojczyzna | film + spotkanie z Joanną Kulig | OJCZYZNA | OJCZYZNA - DKF KOT | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna + spotkanie z Ewą Puszczyńską | Ojczyzna + spotkanie z producentką Ewą Puszczyńską | Ojczyzna - pokaz przedpremierowy | Ojczyzna | DZIEŃ OJCA W GCF | Ojczyzna | POKAZ PRZEDPREMIEROWY | Ojczyzna | Pokaz przedpremierowy | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy | Ojczyzna | przedpremierowo | Pora dla Seniora: Ojczyzna | Tani wtorek: OJCZYZNA | WSP: Ojczyzna - przedpremiera | Za Drzwiami Atlantica: Ojczyzna
 runtimeMinutes:    82
 releaseYear:       2026
 countries:         Polska, Niemcy, Włochy, Francja
@@ -6385,6 +6414,7 @@ cinemaScrapes:
   Kino Oskard / Ojczyzna / —
   Kino PDK / Ojczyzna / —
   Kino Paradox / Ojczyzna / 2026
+  Kino Piast / Ojczyzna / —
   Kino Pionier 1907 / OJCZYZNA / 2026
   Kino Pod Baranami / Ojczyzna / —
   Kino Rialto / OJCZYZNA / 2026
@@ -10749,11 +10779,11 @@ showings:
 
 === Zawieście czerwone latarnie ===
 displayTitle:      Zawieście czerwone latarnie
-cinemaTitles:      DKF - ZAWIEŚCIE CZERWONE LATARNIE | Klasyka w kinie Atlantic: Zawieście czerwone latarnie | ZAWIEŚCIE CZERWONE LATARNIE | Zawieście czerwone latarnie | Zawieście czerwone latarnie (1991) | Zawieście czerwone latarnie (pokaz jednorazowy) | Zawieście czerwone latarnie - pokazy specjalne
-runtimeMinutes:    125
+cinemaTitles:      Cykl "Kultowa klasyka" - Zawieście czerwone latarnie | DKF - ZAWIEŚCIE CZERWONE LATARNIE | Klasyka w kinie Atlantic: Zawieście czerwone latarnie | ZAWIEŚCIE CZERWONE LATARNIE | Zawieście czerwone latarnie | Zawieście czerwone latarnie (1991) | Zawieście czerwone latarnie (pokaz jednorazowy) | Zawieście czerwone latarnie - pokazy specjalne
+runtimeMinutes:    142
 releaseYear:       1991
 countries:         Chiny, Hongkong, Tajwan
-posterUrl:         http://kinobulgarska19.pl/wp-content/uploads/2026/05/ZLC_poster_v3-1086x1536.jpg
+posterUrl:         https://kinoapollo.pl/wp-content/uploads/2026/04/ZCL_poster_B1_web_light-1-724x1024-1.jpg
 synopsis.length:   1934
 cast:              Gong Li, Saifei He, Jingwu Ma, Cuifen Cao, Qi Zhao, Shuyuan Jin
 director:          Yimou Zhang
@@ -10777,6 +10807,7 @@ cinemaScrapes:
   Gdyńskie Centrum Filmowe / Zawieście czerwone latarnie / —
   KINOMUZEUM / Zawieście czerwone latarnie / 1991
   Kino Agrafka / ZAWIEŚCIE CZERWONE LATARNIE / 1991
+  Kino Apollo / Cykl "Kultowa klasyka" - Zawieście czerwone latarnie / —
   Kino Atlantic / Klasyka w kinie Atlantic: Zawieście czerwone latarnie / 1991
   Kino Bułgarska 19 / ZAWIEŚCIE CZERWONE LATARNIE / 1991
   Kino CK Lublin / Zawieście czerwone latarnie / —

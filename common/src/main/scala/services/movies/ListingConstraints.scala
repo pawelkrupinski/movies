@@ -146,13 +146,17 @@ object ListingConstraints {
    *  credited siblings matched, and the denial outranks the title must-link that would join them.
    *  Nor does the probability cut when the facts it does compare agree, together, with the film: its
    *  low score is then the title's (PL Kino Łuków's "Vincent. Legenda oceanu" at 88 minutes against
-   *  "The Last Whale Singer" at 91, TMDB carrying no Polish title). A learned rule still vetoes. */
+   *  "The Last Whale Singer" at 91, TMDB carrying no Polish title). Nor does it when only the RUNTIME pulls it down: the
+   *  minutes a venue bills are its screening's — a lecture, a Halloween night, a pre-premiere's round estimate around the
+   *  film (Kino Spektrum's "Akademia Polskiego Filmu: Znachor (1937)" at 150 against 98, CK Lublin's "Martwe zło 2" at 121
+   *  against 84) — not a fact of the film, and the learned rules certified on the runtime's size (`runtime.gap`) are what
+   *  a runtime vetoes through. A learned rule still vetoes. */
   def learnedListingFilm(calibration: services.identity.IdentityCalibration,
                          measures: Map[String, services.identity.IdentityMeasures.Measure],
                          probability: Double): Option[CannotLink] = {
     import services.identity.IdentityMeasures.{ListingFilm, comparedFacts, comparesAFact}
-    // The cut on a probability the compared facts do not pull down is the title's verdict alone.
-    lazy val factsAgree = calibration.contributionSum(ListingFilm, comparedFacts(ListingFilm, measures)) >= 0
+    // The cut on a probability the film's own facts do not pull down is the title's, or the screening's length's, alone.
+    lazy val factsAgree = calibration.contributionSum(ListingFilm, comparedFacts(ListingFilm, measures) - "runtime.delta") >= 0
     if (!comparesAFact(ListingFilm, measures)) None
     else calibration.cannotLink(ListingFilm, measures).map(r => CannotLink.Learned(r.name))
       .orElse(Option.when(!factsAgree && calibration.forbidsLink(ListingFilm, probability))(CannotLink.Learned(s"$ListingFilm probability below the cannot-link cut")))
