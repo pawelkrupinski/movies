@@ -108,6 +108,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     val exported = contentAsJson(c.exportLabels()(FakeRequest()))
     (exported \ "added").as[Int] shouldBe 1
     LabelsTsv.read(labels) shouldBe Seq(LabelRow("pl", "Kino Opalenica", "FRANZ KAFKA", "tmdb:1157322", "right", "review page: right: Franz (2025)"))
+    (contentAsJson(c.exportLabels()(FakeRequest())) \ "alreadyUsed").as[Int] shouldBe 1   // exported once: not again
 
     status(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "undo")))) shouldBe OK
     contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest())) should include("FRANZ KAFKA")

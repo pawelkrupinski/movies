@@ -142,13 +142,13 @@ class ReviewController(cc: ControllerComponents,
     }
   }
 
-  /** Writes every current answer into the checkout's `labels.tsv`. */
+  /** Writes the current answers given since the last export into the checkout's `labels.tsv` ([[LabelsExport.exportTo]]). */
   def exportLabels(): Action[AnyContent] = Action {
     devOnly {
       val current = answers.current()
       val summary = LabelsExport.exportTo(labelsPath, current, FilmIdentity.linking(current, sources))
       Ok(Json.obj("summary" -> summary.render, "added" -> summary.added, "flipped" -> summary.flipped,
-        "unchanged" -> summary.unchanged, "warnings" -> summary.warnings, "path" -> labelsPath.toString))
+        "unchanged" -> summary.unchanged, "alreadyUsed" -> summary.alreadyUsed, "warnings" -> summary.warnings, "path" -> labelsPath.toString))
     }
   }
 

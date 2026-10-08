@@ -88,8 +88,8 @@ object PosterProxy {
   //     fallback refs vs 6 primary on /berlin/) and the onerror chain walks
   //     silently past a failed fallback.
   //   biletyna.pl — 8 of 8 posters probed on 2026-10-07: 404 through weserv,
-  //     200 image/jpeg direct from a home connection (its Cloudflare refuses
-  //     datacenter IPs, weserv's among them).
+  //     200 image/jpeg direct from a home connection, with or without a
+  //     kinowo.net Referer.
   private val SkipHosts = Set(
     "www.multikino.pl",
     "multikino.pl",
