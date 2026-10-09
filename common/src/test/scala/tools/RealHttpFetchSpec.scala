@@ -152,14 +152,17 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
       stopped.await()
       exchange.close()
     }
-    // A body that dribbles in over a few hundred milliseconds but does finish.
+    // A body that dribbles in over ~200 ms but does finish: well inside the 1 s request budget, since
+    // what is asserted is that a body arriving in pieces is read whole, not how close to the budget it
+    // can run. At 150 ms a chunk (750 ms) a loaded CI runner let the JDK's body timer cut it after the
+    // fourth chunk ("fixed content-length: 30, bytes received: 23", run 37993027475).
     def dribble(exchange: com.sun.net.httpserver.HttpExchange): Unit = {
       val chunks = Seq("<html>", "<body>", "Kino", "</body>", "</html>")
       exchange.sendResponseHeaders(200, chunks.map(_.length).sum.toLong)
       chunks.foreach { chunk =>
         exchange.getResponseBody.write(chunk.getBytes(java.nio.charset.StandardCharsets.UTF_8))
         exchange.getResponseBody.flush()
-        Thread.sleep(150)
+        Thread.sleep(50)
       }
       exchange.close()
     }
