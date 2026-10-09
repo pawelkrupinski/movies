@@ -19,6 +19,11 @@
 #   infra/nix/bin/convert-host mongo-1 --yes
 set -euo pipefail
 
+# The Hetzner token comes from the operator's Touch ID vault (`movies/HETZNER_API_TOKEN`), never from a
+# file: missing from the environment, the script re-runs itself under `secrets run` (one Touch ID).
+# Done FIRST, before the irreversible-confirmation prompt below, so nobody is asked to confirm twice.
+[[ -n "${HETZNER_API_TOKEN:-}" ]] || exec secrets run movies HETZNER_API_TOKEN -- "$0" "$@"
+
 host="${1:-}"
 confirm="${2:-}"
 
@@ -60,16 +65,19 @@ MSG
   exit 1
 fi
 
-token="$(grep -E '^HETZNER_API_TOKEN=' "$repo_root/.env.local" | head -1 | cut -d= -f2- | tr -d '"'"'"' \r')"
-
 api() {
-  curl -fsS -H "Authorization: Bearer $token" -H "Content-Type: application/json" "$@"
+  # The bearer header goes in through a curl config on stdin, so the token is never in argv (ps).
+  printf 'header = "Authorization: Bearer %s"\n' "$HETZNER_API_TOKEN" |
+    curl -fsS -K - -H "Content-Type: application/json" "$@"
 }
 
-# The operator SSH key, by Hetzner key id. Injected into the rescue system -- NOT into the installed
-# system, which gets its keys from nix/modules/fleet/accounts.nix like every other setting.
+# The operator SSH key, looked up by NAME: its id changes every time the key is rotated (118066985,
+# hard-coded here until 2026-10-09, was deleted on 2026-09-27). Injected into the rescue system -- NOT
+# into the installed system, which gets its keys from nix/modules/fleet/accounts.nix.
+ssh_key_id="$(api "https://api.hetzner.cloud/v1/ssh_keys?name=pawel.krupinski%40gmail.com" | jq -r '.ssh_keys[0].id // empty')"
+[[ -n "$ssh_key_id" ]] || { echo "convert-host: no Hetzner SSH key named pawel.krupinski@gmail.com in this project" >&2; exit 1; }
 echo "==> enabling rescue on $host ($id)"
-api -X POST -d '{"type":"linux64","ssh_keys":[118066985]}' \
+api -X POST -d '{"type":"linux64","ssh_keys":['"$ssh_key_id"']}' \
   "https://api.hetzner.cloud/v1/servers/$id/actions/enable_rescue" >/dev/null
 
 # A HARD RESET, not a graceful reboot: the point is to land in rescue, and a machine that declines

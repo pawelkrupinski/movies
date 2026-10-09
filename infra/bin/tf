@@ -1,41 +1,28 @@
 #!/usr/bin/env bash
-# Terraform, with the credentials this root module needs taken from the repo-root .env.local.
+# Terraform, with the credentials this root module needs taken from the operator's Touch ID vault
+# (`secrets`), never from a file.
 #
 # IT EXISTS SO THAT NO HETZNER TOKEN IS EVER WRITTEN INTO A tfvars FILE OR A SHELL HISTORY. The
-# hcloud provider reads HCLOUD_TOKEN from the environment and nothing else; .env.local calls the
-# same value HETZNER_API_TOKEN because that is what every other script in this repository calls it.
-# Renaming it in one place beats teaching each caller both names.
+# hcloud provider reads HCLOUD_TOKEN from the environment and nothing else; the vault calls the
+# same value HETZNER_API_TOKEN (namespace `movies`) because that is what every other script in this
+# repository calls it.
 #
 # The Terraform Cloud backend (organisation `bitcashier`, workspace `kinowo-infra`) runs in LOCAL
 # execution mode, so the plan happens here and only the state is stored remotely -- which is the
-# reason the Hetzner token has to be present locally at all, and the reason it never leaves.
-# Authentication to TFC itself comes from ~/.terraform.d/credentials.tfrc.json, written by
-# `terraform login`.
+# reason the Hetzner token has to be present locally at all, and the reason it never leaves. The TFC
+# token is TF_TOKEN_app_terraform_io in the vault's `bitcashier` namespace (same TFC organisation).
+#
+# HOW: if a variable is missing, this script re-runs itself under `secrets run`, which unlocks the
+# namespace (one Touch ID) and execs it again with the variable set. Already set (CI, or a caller
+# that exported it) means no vault lookup at all. There is no .env.local any more (2026-10-09).
 #
 #   infra/bin/tf plan
 #   infra/bin/tf apply
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd "$here/../.." && pwd)"
-env_file="$repo_root/.env.local"
 
-if [[ ! -f "$env_file" ]]; then
-  # .env.local is gitignored, so a fresh `git worktree` checkout does not have one -- a trap this
-  # repository has hit before with sbt scripts. Say so, rather than letting the provider fail later
-  # with an unauthenticated API call that reads like a revoked token.
-  echo "infra/bin/tf: $env_file not found." >&2
-  echo "  It is gitignored, so a fresh worktree does not have it. Copy it from the main checkout." >&2
-  exit 1
-fi
-
-token="$(grep -E '^HETZNER_API_TOKEN=' "$env_file" | head -1 | cut -d= -f2- | tr -d '"'"'"' \r')"
-
-if [[ -z "$token" ]]; then
-  echo "infra/bin/tf: HETZNER_API_TOKEN is not set in $env_file" >&2
-  exit 1
-fi
-
-export HCLOUD_TOKEN="$token"
+[[ -n "${HCLOUD_TOKEN:-}" ]] || exec secrets run movies HCLOUD_TOKEN=HETZNER_API_TOKEN -- "$0" "$@"
+[[ -n "${TF_TOKEN_app_terraform_io:-}" ]] || exec secrets run bitcashier TF_TOKEN_app_terraform_io -- "$0" "$@"
 
 exec terraform -chdir="$here/../terraform" "$@"
