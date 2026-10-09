@@ -213,8 +213,9 @@ in
   # `owner = "caddy"` because Caddy reads them as itself at startup, and 0400 because nothing else
   # on this host has any business with them. A wrong owner here does not fail the build: it fails
   # at Caddy start, which on this host means the product is down until somebody reads a journal.
-  sops.secrets."origin-tls/kinowo_net"   = { owner = "caddy"; mode = "0400"; };
-  sops.secrets."origin-tls/showtimes_cc" = { owner = "caddy"; mode = "0400"; };
+  # reloadUnits: Caddy reads the origin certificate keys at (re)load; a rotated key is otherwise ignored.
+  sops.secrets."origin-tls/kinowo_net"   = { owner = "caddy"; mode = "0400"; reloadUnits = [ "caddy.service" ]; };
+  sops.secrets."origin-tls/showtimes_cc" = { owner = "caddy"; mode = "0400"; reloadUnits = [ "caddy.service" ]; };
 
   system.stateVersion = "26.05";
 }

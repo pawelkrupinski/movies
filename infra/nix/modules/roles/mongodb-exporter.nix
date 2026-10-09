@@ -198,7 +198,10 @@ in
     # there -- so a connection deliberately made over loopback quietly becomes one over the private
     # NIC, and a bootstrap window that binds loopback only would break the exporter for reasons
     # that have nothing to do with the exporter.
-    sops.secrets."mongodb/exporter-password" = { };
+    # restartUnits on every secret: sops-nix writes a changed value to /run/secrets and nothing re-reads
+    # it until the service restarts, so a rotation "deployed" with no restart changes nothing (found
+    # 2026-10-09 on oauth2-proxy, running on September values). Restarts only when the VALUE changes.
+    sops.secrets."mongodb/exporter-password" = { restartUnits = [ "mongodb-exporter.service" ]; };
     sops.templates."mongodb-exporter.env" = {
       owner = "mongodb-exporter";
       mode = "0400";

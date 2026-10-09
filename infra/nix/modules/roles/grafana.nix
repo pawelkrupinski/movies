@@ -275,8 +275,11 @@ in
 
     # `$__file{}` READS THESE AT RUNTIME, so both must be readable by grafana and neither is ever
     # interpolated into a settings value -- `settings` is rendered into the world-readable store.
-    sops.secrets."grafana/secret-key" = { owner = "grafana"; mode = "0400"; };
-    sops.secrets."grafana/admin-password" = { owner = "grafana"; mode = "0400"; };
+    # restartUnits on every secret: sops-nix writes a changed value to /run/secrets and nothing re-reads
+    # it until the service restarts, so a rotation "deployed" with no restart changes nothing (found
+    # 2026-10-09 on oauth2-proxy, running on September values). Restarts only when the VALUE changes.
+    sops.secrets."grafana/secret-key" = { owner = "grafana"; mode = "0400"; restartUnits = [ "grafana.service" ]; };
+    sops.secrets."grafana/admin-password" = { owner = "grafana"; mode = "0400"; restartUnits = [ "grafana.service" ]; };
 
     # THE TWO THAT GO THROUGH THE ENVIRONMENT INSTEAD, because Grafana's provisioning files expand
     # environment variables but have no `$__file{}`: the bot token lands in the Telegram contact
@@ -289,7 +292,7 @@ in
     # same expansion re-types it to a number and Grafana exits at startup unable to unmarshal it --
     # which is why it is a quoted literal in grafana-contactpoints.yaml and does NOT appear here.
     # That is not an inconsistency; it is the two halves of one trap.
-    sops.secrets."grafana/telegram-bot-token" = { owner = "grafana"; mode = "0400"; };
+    sops.secrets."grafana/telegram-bot-token" = { owner = "grafana"; mode = "0400"; restartUnits = [ "grafana.service" ]; };
 
     # RENDERED INTO /run BY sops-nix, NEVER INTO THE STORE. Grafana reads this as an EnvironmentFile
     # and expands the name where the provisioning references it.

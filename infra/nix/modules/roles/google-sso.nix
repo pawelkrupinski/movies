@@ -82,7 +82,12 @@ in
       default = config.sops.secrets."google-sso/cookie-secret".path;
       defaultText = ''config.sops.secrets."google-sso/cookie-secret".path'';
       description = ''
-        What the session cookie is sealed with -- 32 random bytes, base64.
+        What the session cookie is sealed with: EXACTLY 16, 24 or 32 BYTES, used as-is.
+        oauth2-proxy reads a cookie-secret FILE raw, without base64-decoding it, and refuses to
+        start on any other length ("cookie_secret from file must be 16, 24, or 32 bytes to create
+        an AES cipher"). This comment said "32 random bytes, base64" until 2026-10-09, when a
+        44-character base64 value took the gate down on restart. Generate it with
+        `openssl rand -hex 16 | tr -d '\n'` (32 ASCII bytes, no trailing newline).
 
         A SECOND SECRET, NOT A REUSE OF THE FIRST. It is what stops a cookie being forged, so it
         must be unguessable, and it is rotated on a different schedule from the client secret:
@@ -153,8 +158,11 @@ in
     # browser retries it.
     fleet.autoApply.restartableUnits = [ "oauth2-proxy.service" ];
 
-    sops.secrets."google-sso/client-secret" = { owner = "oauth2-proxy"; mode = "0400"; };
-    sops.secrets."google-sso/cookie-secret" = { owner = "oauth2-proxy"; mode = "0400"; };
+    # restartUnits: a changed secret is otherwise written to /run/secrets and IGNORED until the next
+    # reboot -- oauth2-proxy reads both files only at start. Found 2026-10-09: both were rotated and
+    # deployed, and the proxy was still running on the September values (started 2026-09-27).
+    sops.secrets."google-sso/client-secret" = { owner = "oauth2-proxy"; mode = "0400"; restartUnits = [ "oauth2-proxy.service" ]; };
+    sops.secrets."google-sso/cookie-secret" = { owner = "oauth2-proxy"; mode = "0400"; restartUnits = [ "oauth2-proxy.service" ]; };
 
     services.oauth2-proxy = {
       enable = true;

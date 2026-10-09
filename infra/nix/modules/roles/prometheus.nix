@@ -643,15 +643,18 @@ in
     # store, and a file the wrong process owns fails at the moment it is needed rather than at
     # start. A `prometheus/fly-token` sat beside it, read at scrape time by the Fly federation job,
     # until both went on 2026-09-04.
-    sops.secrets."alertmanager/telegram-bot-token" = { owner = "alertmanager"; mode = "0400"; };
+    # restartUnits on every secret: sops-nix writes a changed value to /run/secrets and nothing re-reads
+    # it until the service restarts, so a rotation "deployed" with no restart changes nothing (found
+    # 2026-10-09 on oauth2-proxy, running on September values). Restarts only when the VALUE changes.
+    sops.secrets."alertmanager/telegram-bot-token" = { owner = "alertmanager"; mode = "0400"; restartUnits = [ "alertmanager.service" ]; };
     # Same shape, same reason, for the SMTP relay's API key: owned by the process that reads it,
     # read at send time, never interpolated into a config file.
-    sops.secrets."alertmanager/smtp-password" = { owner = "alertmanager"; mode = "0400"; };
+    sops.secrets."alertmanager/smtp-password" = { owner = "alertmanager"; mode = "0400"; restartUnits = [ "alertmanager.service" ]; };
     # The dead-man's switch ping URL is a credential too (whoever holds it can keep the check
     # green), so it gets the same treatment -- declared only when the switch is on, because sops-nix
     # fails activation on a key the file does not have.
     sops.secrets."alertmanager/dead-mans-switch-url" = lib.mkIf cfg.deadMansSwitch.enable
-      { owner = "alertmanager"; mode = "0400"; };
+      { owner = "alertmanager"; mode = "0400"; restartUnits = [ "alertmanager.service" ]; };
 
     users.users.prometheus = { isSystemUser = true; group = "prometheus"; description = "Prometheus"; };
     users.groups.prometheus = { };
