@@ -374,6 +374,14 @@ object OgCardGenerator {
   private[tools] def screenshotCity(chrome: Chrome, url: String, postersTimeoutMs: Int = PostersTimeoutMs): String =
     chrome.openPage(url) { page =>
       setMetrics(page, 1180, 760, ScreenshotScale)
+      // On desktop, pickDay slides the day track over to an off-screen copy of
+      // the target day's grid. Every poster check below that ran during the
+      // slide looked at the wrong posters and passed; the lazy posters only
+      // started loading as they slid into view, and the blank cards of PRs
+      // #216 / #217 were screenshotted that way. Under reduced motion the page
+      // commits the day in place (shared.js runSlide).
+      page.send("Emulation.setEmulatedMedia", Json.obj(
+        "features" -> Json.arr(Json.obj("name" -> "prefers-reduced-motion", "value" -> "reduce"))))
       try page.waitFor(RepertoireLoadedJs, timeoutMs = 4000, pollMs = 100)
       catch {
         case _: Throwable =>
@@ -416,20 +424,26 @@ object OgCardGenerator {
    *  `postersTimeoutMs`, and throw if the posters never show up — writeCard
    *  then retries in a fresh tab. */
   private def screenshotOncePainted(page: CdpPage, postersTimeoutMs: Int): String = {
-    val boxes = page.eval(PosterBoxesJs).as[Seq[Seq[Int]]].map {
+    val shots = math.max(2, postersTimeoutMs / 1000)
+    var blank = ""
+    (1 to shots).iterator.map { shot =>
+      Thread.sleep(if (shot == 1) 400 else 1000) // layout + paint settle
+      // Read per shot, alongside the screenshot it is checked against: boxes
+      // read once would go stale if the layout moved in between.
+      val boxes = posterBoxes(page)
+      val png   = page.screenshot()
+      val unpainted = unpaintedPosters(ImageIO.read(new ByteArrayInputStream(Base64.getDecoder.decode(png))), boxes, ScreenshotScale)
+      blank = s"${unpainted.size} of ${boxes.size}"
+      (png, unpainted.isEmpty)
+    }.collectFirst { case (png, true) => png }
+      .getOrElse(throw new RuntimeException(s"$blank posters still blank in the screenshot after $shots tries"))
+  }
+
+  private def posterBoxes(page: CdpPage): Seq[PosterBox] =
+    page.eval(PosterBoxesJs).as[Seq[Seq[Int]]].map {
       case Seq(x, y, width, height, r, g, b) => PosterBox(x, y, width, height, new Color(r, g, b))
       case row                               => throw new RuntimeException(s"unexpected poster box $row")
     }
-    val shots = math.max(2, postersTimeoutMs / 1000)
-    var blank = 0
-    (1 to shots).iterator.map { shot =>
-      Thread.sleep(if (shot == 1) 400 else 1000) // layout + paint settle
-      val png = page.screenshot()
-      blank = unpaintedPosters(ImageIO.read(new ByteArrayInputStream(Base64.getDecoder.decode(png))), boxes, ScreenshotScale).size
-      (png, blank)
-    }.collectFirst { case (png, 0) => png }
-      .getOrElse(throw new RuntimeException(s"$blank of ${boxes.size} posters still blank in the screenshot after $shots tries"))
-  }
 
   /** Compose the card HTML (the screenshot as a full-bleed background + the
    *  left gradient, wordmark, city line and rating pills) and screenshot it at

@@ -4236,6 +4236,25 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // The OG-card generator (tools.OgCardGenerator) screenshots the page right
+  // after pickDay('anytime') and relies on this: under reduced motion the day
+  // commits in place, with no armed track or off-screen clone to check
+  // posters against mid-slide.
+  it should "skip the slide on a FINE pointer under prefers-reduced-motion" in {
+    onPath("/") { page =>
+      page.send("Emulation.setEmulatedMedia", play.api.libs.json.Json.obj(
+        "features" -> play.api.libs.json.Json.arr(
+          play.api.libs.json.Json.obj("name" -> "prefers-reduced-motion", "value" -> "reduce")
+        )
+      ))
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+      page.eval("pickDay('anytime')")
+      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe false
+      page.evalInt("document.querySelectorAll('#day-track > .day-col').length") shouldBe 0
+      page.evalString("document.getElementById('date-filter').value") shouldBe "anytime"
+    }
+  }
+
   // ── Day-filter pills (the visible day picker) ────────────────────────────────
   //
   // The four presets render as a `.day-pill` row driving a visually-hidden

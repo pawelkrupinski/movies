@@ -137,6 +137,25 @@ class OgCardPostersReadySpec extends AnyFlatSpec with Matchers with BeforeAndAft
   private val boxBackground = new java.awt.Color(0x2a, 0x2a, 0x3e)
   private val box = OgCardGenerator.PosterBox(x = 10, y = 10, width = 50, height = 74, background = boxBackground)
 
+  // On desktop, pickDay('anytime') slides the day track: a copy of the target
+  // day's grid is mounted off to the side and the track animates over to it.
+  // Every poster check that ran during the slide saw the wrong posters (one
+  // clipped Hoppers at the screen edge on Renfrewshire, 2026-10-09), so the
+  // blank cards of PRs #216 and #217 passed them all. Under
+  // prefers-reduced-motion the page commits the day in place (shared.js
+  // runSlide), so screenshotCity must emulate it. This fixture's pickDay
+  // stands in for the slide: a blank poster unless motion is reduced.
+  it should "change the day under prefers-reduced-motion, so pickDay never slides" in withRepertoireUrl("") { (c, url) =>
+    val fixture = java.nio.file.Paths.get(java.net.URI.create(url))
+    Files.writeString(fixture, Files.readString(fixture).replace(
+      "function pickDay(){}",
+      "function pickDay(){var reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;" +
+        "document.body.innerHTML=" + play.api.libs.json.Json.stringify(play.api.libs.json.JsString(posterInBox("cc2222"))) +
+        ".replace('cc2222',reduced?'cc2222':'2a2a3e');}"
+    ))
+    OgCardGenerator.screenshotCity(c, url, postersTimeoutMs = 1000) should not be empty
+  }
+
   "unpaintedPosters" should "flag a poster box still showing its background" in {
     OgCardGenerator.unpaintedPosters(filled(200, 200, boxBackground), Seq(box), deviceScale = 2) shouldBe Seq(box)
   }
