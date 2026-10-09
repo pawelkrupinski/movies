@@ -76,6 +76,42 @@ class OgCardPostersReadySpec extends AnyFlatSpec with Matchers with BeforeAndAft
     page.evalBool(s"!!(${OgCardGenerator.PostersReadyJs})") shouldBe true
   }
 
+  "postersPaintedJs" should "resolve true once every in-viewport poster has decoded" in withFixture { page =>
+    page.eval("document.getElementById('pending').style.display='none'")
+    page.evalBool(OgCardGenerator.postersPaintedJs(5000)) shouldBe true
+  }
+
+  // A repertoire stand-in for screenshotCity: `pickDay` defined (so the load
+  // guard passes) and the given posters in the viewport.
+  private def repertoireHtml(posters: String): String =
+    s"""<!DOCTYPE html><html><head><meta charset="utf-8">
+       |<script>function pickDay(){}</script></head>
+       |<body style="margin:0">$posters</body></html>""".stripMargin
+
+  private def withRepertoireUrl(posters: String)(body: (Chrome, String) => Unit): Unit = chrome match {
+    case None => cancel("Chrome not installed — skipping CDP poster-ready spec")
+    case Some(c) =>
+      val tmp = Files.createTempFile("og-repertoire-", ".html")
+      Files.writeString(tmp, repertoireHtml(posters))
+      try body(c, tmp.toUri.toString) finally Files.deleteIfExists(tmp)
+  }
+
+  // og-alamosa.jpg (PR #216) shipped with blank posters: a poster that never
+  // became ready used to be swallowed and the half-loaded page screenshotted
+  // anyway. It must fail the attempt instead, so writeCard reopens the page.
+  "screenshotCity" should "throw rather than screenshot while an in-viewport poster never loads" in withRepertoireUrl(
+    """<img data-original-src="b" style="width:100px;height:100px">"""
+  ) { (c, url) =>
+    val error = the[RuntimeException] thrownBy OgCardGenerator.screenshotCity(c, url, postersTimeoutMs = 500)
+    error.getMessage should include("posters")
+  }
+
+  it should "screenshot once every in-viewport poster has decoded" in withRepertoireUrl(
+    s"""<img data-original-src="a" decoding="async" src="$onePxPng" style="width:100px;height:100px">"""
+  ) { (c, url) =>
+    OgCardGenerator.screenshotCity(c, url, postersTimeoutMs = 5000) should not be empty
+  }
+
   // The load guard: a page that isn't the repertoire (Chrome's offline dino
   // page, a 5xx body) has no `pickDay`, so the generator skips it instead of
   // screenshotting an error page into a blank card.

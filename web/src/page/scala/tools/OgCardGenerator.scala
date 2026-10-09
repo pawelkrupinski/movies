@@ -239,6 +239,10 @@ object OgCardGenerator {
    *  `complete`. */
   private[tools] val RepertoireLoadedJs: String = "typeof pickDay==='function'"
 
+  /** How long [[screenshotCity]] gives the in-viewport posters to load, and
+   *  again to decode, before failing the attempt. */
+  private val PostersTimeoutMs = 20000
+
   /** JS predicate: every poster `<img>` currently intersecting the viewport
    *  has either decoded (`complete` with a non-zero natural size) or been
    *  hidden by its `onerror` fallback chain (the "Brak plakatu" placeholder
@@ -253,6 +257,25 @@ object OgCardGenerator {
       ".filter(function(i){var r=i.getBoundingClientRect();" +
       "return r.bottom>0&&r.top<window.innerHeight&&r.right>0&&r.left<window.innerWidth;})" +
       ".every(function(i){return (i.complete&&i.naturalWidth>0)||i.offsetParent===null;})"
+
+  /** JS promise resolving `true` once every in-viewport poster's decode has
+   *  finished and two more frames have painted, or `false` after `timeoutMs`.
+   *
+   *  [[PostersReadyJs]] alone is not enough: the posters are
+   *  `decoding="async"`, so an `<img>` reports `complete` with a non-zero
+   *  `naturalWidth` before its pixels reach the screen. og-alamosa.jpg (PR
+   *  #216) passed that check in 2.4s and was screenshotted with one poster
+   *  half-painted and three blank. `img.decode()` resolves only once the
+   *  image can be painted. A rejected decode is a broken image, which the
+   *  page's `onerror` chain hides, so it counts as done. */
+  private[tools] def postersPaintedJs(timeoutMs: Int): String =
+    "(function(){var imgs=[].slice.call(document.querySelectorAll('img[data-original-src]'))" +
+      ".filter(function(i){var r=i.getBoundingClientRect();" +
+      "return i.offsetParent!==null&&r.bottom>0&&r.top<window.innerHeight&&r.right>0&&r.left<window.innerWidth;});" +
+      "var decoded=Promise.all(imgs.map(function(i){return i.decode().catch(function(){});}))" +
+      ".then(function(){return new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(function(){r(true);});});});});" +
+      s"var timeout=new Promise(function(r){setTimeout(function(){r(false);},$timeoutMs);});" +
+      "return Promise.race([decoded,timeout]);})()"
 
   /** Click the area-picker's "Show listings" button if the modal is showing, so
    *  a split city's card (London) captures the poster grid instead of the
@@ -294,8 +317,9 @@ object OgCardGenerator {
    *  emit a blank card. `pickDay` is defined inline on every repertoire render
    *  — empty repertoire or not — so its absence means the site never loaded.
    *  The caller treats the throw as a skip + retry rather than overwriting a
-   *  previously-good card with garbage. */
-  private def screenshotCity(chrome: Chrome, url: String): String =
+   *  previously-good card with garbage. Posters that haven't loaded and
+   *  painted within `postersTimeoutMs` throw the same way. */
+  private[tools] def screenshotCity(chrome: Chrome, url: String, postersTimeoutMs: Int = PostersTimeoutMs): String =
     chrome.openPage(url) { page =>
       setMetrics(page, 1180, 760, 2)
       try page.waitFor(RepertoireLoadedJs, timeoutMs = 4000, pollMs = 100)
@@ -313,25 +337,25 @@ object OgCardGenerator {
       // days so a late-night "Dziś" empty view doesn't yield an empty card.
       try page.eval("pickDay('anytime')")
       catch { case _: Throwable => () }
-      // Wait for the in-viewport posters to actually decode (see PostersReadyJs).
-      // Capped so a genuinely broken poster can't hang the run — we screenshot
-      // whatever decoded once the cap elapses. 8000ms was enough before the
-      // generator routed through a proxy; once it did (2026-09-15, Decodo
-      // residential — see Chrome.tryStart's ProxyConfig), ~1/3 of a regen PR's
-      // cards started shipping with a blank poster. That was NOT a GH Actions
-      // CPU/headroom problem — it was CdpPage's WebSocket send race (see
-      // sendLock): concurrent Fetch.requestPaused handlers raced calling
-      // `send` back in, and a lost Fetch.continueRequest left the paused
-      // resource, and the whole page, never finishing loading. Fixed by
-      // sendLock in fdb7299de. The 20000ms cap here is now defense-in-depth
-      // for genuinely slow decodes on the slow tail, not the fix for the
-      // blank-poster bug — widening it in 96b000063 shipped alongside the
-      // eventPool change and, per fdb7299de's commit message, made no
-      // measurable difference to the failure rate. The poll returns as soon
-      // as posters ARE ready, so this only costs time on the slow tail, not
-      // the common case.
-      try page.waitFor(PostersReadyJs, timeoutMs = 20000, pollMs = 150)
-      catch { case _: Throwable => () }
+      // Wait for the in-viewport posters to load (see PostersReadyJs), then
+      // for their async decode to reach the screen (see postersPaintedJs).
+      // Capped so a genuinely broken poster can't hang the run. The cap was
+      // 8000ms before the generator went through the Decodo proxy (2026-09-15);
+      // the blank posters that followed were CdpPage's WebSocket send race
+      // (fixed by sendLock in fdb7299de), not a slow decode, so 20000ms is
+      // defense-in-depth for the slow tail. The poll returns as soon as the
+      // posters ARE ready, so the cap only costs time on that tail.
+      //
+      // Running out either cap FAILS the attempt rather than screenshotting
+      // half-loaded posters: writeCard retries in a fresh tab, and if every
+      // attempt fails it keeps the previous card.
+      try page.waitFor(PostersReadyJs, timeoutMs = postersTimeoutMs, pollMs = 150)
+      catch {
+        case _: Throwable =>
+          throw new RuntimeException(s"posters did not load within ${postersTimeoutMs}ms")
+      }
+      if (!page.evalBool(postersPaintedJs(postersTimeoutMs)))
+        throw new RuntimeException(s"posters did not decode within ${postersTimeoutMs}ms")
       Thread.sleep(400) // final layout + paint settle
       page.screenshot()
     }
