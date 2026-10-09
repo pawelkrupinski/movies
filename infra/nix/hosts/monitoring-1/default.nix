@@ -406,10 +406,11 @@ in
   #
   # The public half is here; the private half is in the vault (movies/K8S_DEPLOY_SSH_KEY), copied to
   # the GitHub Actions secret.
-  fleet.k8sDeploy = {
-    enable = true;
-    authorizedKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHavoG1cfP7hVNnNDDwwEvl3B2TJWc4UkKdAkI8yrxa5 k8sdeploy@kinowo-ci-2026-10-09";
-  };
+  # RETIRED 2026-10-09. CI stopped deploying over ssh at 4def6caa1 ("Retire `kubectl set image`:
+  # git is now the record"); Flux image automation deploys instead. The account had no login in 30
+  # days, and its key was a GitHub secret copied from a .env.local on the laptop stolen 2026-09-27,
+  # so the account is switched off rather than re-keyed. Off removes the user and its authorized key.
+  fleet.k8sDeploy.enable = false;
 
   fleet.firewall.k3sServer = true;
 
