@@ -3,7 +3,10 @@
 ## Pages
 
 Which page lists which venue is data, built by `scripts/build_pages.py` into
-`pages.json` and generated into `common/.../models/PolishPages.scala`:
+`pages.json` and generated into `common/.../models/PolishPages.scala`. The
+clustering rule itself lives in `data/scripts/town_pages.py`, shared with Spain
+(`data/spain/scripts/build_pages.py`); this script supplies only what is Polish —
+the towns, the majors, the locatives and the voivodeships:
 
 1. **A major city** — the 41 original city pages, Trójmiasto being Gdańsk,
    Gdynia and Sopot — lists only the venues inside that city. `/poznan/` is

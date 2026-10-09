@@ -2,7 +2,8 @@
 """Build data/pl/pages.json — which Polish listing page each venue belongs to.
 
 A Polish page used to be a city plus whatever towns had been folded into it
-(Poznań listed Buk and Wronki; Konin listed Turek and Koło). The rule is now:
+(Poznań listed Buk and Wronki; Konin listed Turek and Koło). The rule is now the
+one `data/scripts/town_pages.py` implements for every country that uses it:
 
   1. A MAJOR city (the 41 original city pages, Trójmiasto being Gdańsk, Gdynia
      and Sopot) lists only the venues inside that city.
@@ -20,6 +21,11 @@ it; a page that existed before and is not a page any more is listed under
 "retired" with the page now holding its town, so its old URL still lands there. Distances are straight-line between GeoNames
 town centres — 25 km is roughly a half-hour drive on Polish county roads.
 
+What is Polish here is the edges: a venue's town is its annotation in
+`Cinema.scala` (`venues.json`), the majors are the hand-declined `case object`s
+in City.scala, each anchor needs its locative, and a page is grouped under its
+voivodeship.
+
 Inputs: data/pl/venues.json (venue → town, today's page), common/.../City.scala
 (the pages that exist now and their coordinates), data/pl/town_forms.json (the
 locative of each anchor, hand-checked), and the GeoNames Poland dump:
@@ -27,18 +33,21 @@ locative of each anchor, hand-checked), and the GeoNames Poland dump:
     mkdir -p data/pl/geonames
     curl -sL https://download.geonames.org/export/dump/PL.zip -o data/pl/geonames/PL.zip
     unzip -o data/pl/geonames/PL.zip -d data/pl/geonames
-    python3 data/pl/scripts/build_pages.py
+    python3 data/pl/scripts/build_pages.py            # or: build_pages.py <path to PL.txt>
     rm -rf data/pl/geonames
     python3 data/pl/scripts/generate_polish_pages.py
 """
 import json
-import math
 import re
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "data" / "scripts"))
+import town_pages  # noqa: E402
+from town_pages import km, slugify  # noqa: E402,F401  (slugify: the tests' and callers' spelling)
+
 VENUES = ROOT / "data/pl/venues.json"
 FORMS = ROOT / "data/pl/town_forms.json"
 OUT = ROOT / "data/pl/pages.json"
@@ -53,10 +62,6 @@ MAJOR_SLUGS = [
     "dabrowa-gornicza", "nowy-sacz", "slupsk", "jelenia-gora", "przemysl", "konin",
 ]
 TRICITY = {"Gdańsk", "Gdynia", "Sopot"}
-OWN_PAGE_MIN_VENUES = 3
-TWO_VENUE_RADIUS_KM = 10
-ONE_VENUE_RADIUS_KM = 25
-ABSORB_RADIUS_KM = 35
 
 # GeoNames admin1 code → voivodeship, as the picker heads it.
 VOIVODESHIPS = {
@@ -73,31 +78,15 @@ DISPLAY = {"Jastrzębie Zdrój": "Jastrzębie-Zdrój"}
 # Podlaskie. `load_gazetteer` pins these, and `build` refuses any town that lands
 # more than MAX_DRIFT_KM from the page it used to be on — how Janki was caught.
 TOWN_COORDS = {"Janki": {"lat": 52.13733, "lon": 20.90012, "pop": 0, "admin1": "78"}}
-MAX_DRIFT_KM = 60
+MAX_DRIFT_KM = town_pages.Rules().max_drift_km
 # Annotations that spell a town differently from GeoNames.
 TOWN_ALIASES = {"Połczyn": "Połczyn-Zdrój", "Krynica Zdrój": "Krynica-Zdrój", "Rabka Zdrój": "Rabka-Zdrój",
                 "Jastrzębie-Zdrój": "Jastrzębie Zdrój"}
 
 
-def fold(s):
-    import unicodedata
-    s = s.replace("ł", "l").replace("Ł", "L")
-    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn").lower()
-
-
-def slugify(name):
-    return re.sub(r"[^a-z0-9]+", "-", fold(name)).strip("-")
-
-
-def km(a, b):
-    p = math.radians
-    return 2 * 6371 * math.asin(math.sqrt(math.sin(p(b[0] - a[0]) / 2) ** 2 +
-                                          math.cos(p(a[0])) * math.cos(p(b[0])) * math.sin(p(b[1] - a[1]) / 2) ** 2))
-
-
-def load_gazetteer():
+def load_gazetteer(path=None):
     towns = {}
-    with open(GEONAMES, encoding="utf-8") as f:
+    with open(path or GEONAMES, encoding="utf-8") as f:
         for line in f:
             c = line.rstrip("\n").split("\t")
             if c[6] != "P":
@@ -120,7 +109,7 @@ def current_pages():
 
 
 def build(venues, gaz, forms, pages, previous, prior_retired):
-    majors = {slug: pages[slug] for slug in MAJOR_SLUGS}
+    rules = town_pages.Rules(max_drift_km=MAX_DRIFT_KM)
     major_town = {pages[s][1]: s for s in MAJOR_SLUGS if s != "trojmiasto"}
     for t in TRICITY:
         major_town[t] = "trojmiasto"
@@ -139,85 +128,37 @@ def build(venues, gaz, forms, pages, previous, prior_retired):
     if missing:
         sys.exit(f"towns missing from GeoNames: {missing}")
 
-    result = {}   # slug -> page
+    majors = {}
     for slug in MAJOR_SLUGS:
-        obj, nom, lat, lon = majors[slug]
-        result[slug] = {"slug": slug, "kind": "major", "object": obj, "name": nom, "anchor": nom,
+        obj, nom, lat, lon = pages[slug]
+        majors[slug] = {"slug": slug, "kind": "major", "object": obj, "name": nom, "anchor": nom,
                         "lat": lat, "lon": lon, "towns": [], "cinemas": []}
 
-    minor = {t: vs for t, vs in by_town.items() if t not in major_town}
-    count = {t: len(vs) for t, vs in minor.items()}
-    pos = {t: (gaz[t]["lat"], gaz[t]["lon"]) for t in minor}
-    pop = {t: gaz[t]["pop"] for t in minor}
-
-    own = sorted(t for t in minor if count[t] >= OWN_PAGE_MIN_VENUES)
-    pool = set(minor) - set(own)
-    clusters = [[t] for t in own]
-    own_set = set(own)
-
-    def grab(anchor, radius, eligible):
-        members = [t for t in pool if t in eligible and km(pos[anchor], pos[t]) <= radius]
-        members.sort(key=lambda t: (t != anchor, -count[t], -pop[t], t))
-        pool.difference_update(members)
-        return members
-
-    two = {t for t in pool if count[t] == 2}
-    while pool & two:
-        anchor = max(pool & two, key=lambda t: (pop[t], t))
-        clusters.append(grab(anchor, TWO_VENUE_RADIUS_KM, set(pool)))
-    while pool:
-        anchor = max(pool, key=lambda t: (pop[t], t))
-        clusters.append(grab(anchor, ONE_VENUE_RADIUS_KM, set(pool)))
-
-    # Only a ONE-venue town left alone is folded into a neighbour; a 2-venue town
-    # that found nobody within 10 km is a page of its own, like a 3-venue one.
-    multi = [c for c in clusters if len(c) > 1]
-    final = []
-    for c in clusters:
-        if len(c) == 1 and count[c[0]] == 1 and multi:
-            nearest = min(multi, key=lambda m: km(pos[c[0]], pos[m[0]]))
-            if km(pos[c[0]], pos[nearest[0]]) <= ABSORB_RADIUS_KM:
-                nearest.append(c[0])
-                continue
-        final.append(c)
-
-    used = set(result)
-    for c in final:
-        # The anchor — the town the page is named after — is the one with the most
-        # venues, then the most people.
-        c.sort(key=lambda t: (-count[t], -pop[t], t))
-        anchor = c[0]
-        name = DISPLAY.get(anchor, anchor)
-        slug = slugify(name)
-        if slug in used:
-            slug = f"{slug}-{slugify(VOIVODESHIPS[gaz[anchor]['admin1']])}"
-        used.add(slug)
+    def make_page(slug, kind, anchor, towns):
         if anchor not in forms:
             sys.exit(f"no locative for anchor {anchor!r} — add it to {FORMS.name}")
-        result[slug] = {"slug": slug, "kind": "town" if len(c) == 1 else "cluster", "object": None,
-                        "name": name, "anchor": anchor, "locative": forms[anchor],
-                        "lat": round(pos[anchor][0], 4), "lon": round(pos[anchor][1], 4),
-                        "towns": c, "cinemas": []}
+        return {"slug": slug, "kind": kind, "object": None, "name": DISPLAY.get(anchor, anchor),
+                "anchor": anchor, "locative": forms[anchor],
+                "lat": round(gaz[anchor]["lat"], 4), "lon": round(gaz[anchor]["lon"], 4),
+                "towns": towns, "cinemas": []}
 
-    page_of_town = dict(major_town)
-    for slug, p in result.items():
-        for t in p["towns"]:
-            page_of_town[t] = slug
-    for t, vs in by_town.items():
-        page = result[page_of_town[t]]
-        page["cinemas"].extend(v["cinemaObject"] for v in vs)
+    result, page_of_town = town_pages.build(
+        by_town, majors, major_town, gaz,
+        display=lambda anchor: DISPLAY.get(anchor, anchor),
+        make_page=make_page,
+        region_slug=lambda anchor: VOIVODESHIPS[gaz[anchor]["admin1"]],
+        cinema_of=lambda v: v["cinemaObject"],
+        rules=rules)
 
     # A town whose gazetteer position is far from the page its venues were on
     # before has almost certainly been matched to a namesake — stop and pin it.
-    drifted = []
-    for t in minor:
-        if t in TOWN_COORDS:   # pinned on purpose — its old page may be the mistake
-            continue
+    def previous_centres(t):
         before = {v["citySlug"] for v in by_town[t]}
-        centres = [(pages[s][2], pages[s][3]) for s in before if s in pages]
-        centres += [(result[s]["lat"], result[s]["lon"]) for s in before if s in result]
-        if centres and min(km(pos[t], c) for c in centres) > MAX_DRIFT_KM:
-            drifted.append(t)
+        return ([(pages[s][2], pages[s][3]) for s in before if s in pages] +
+                [(result[s]["lat"], result[s]["lon"]) for s in before if s in result])
+    minor = [t for t in by_town if t not in major_town and t not in TOWN_COORDS]   # pinned on purpose
+    pos = {t: (gaz[t]["lat"], gaz[t]["lon"]) for t in minor}
+    drifted = town_pages.drifted(minor, pos, previous_centres, rules.max_drift_km)
     if drifted:
         sys.exit(f"towns placed > {MAX_DRIFT_KM} km from their previous page (namesake?): {drifted} "
                  f"— pin them in TOWN_COORDS")
@@ -228,19 +169,9 @@ def build(venues, gaz, forms, pages, previous, prior_retired):
         p["voivodeship"] = VOIVODESHIPS[admin_of(p["lat"], p["lon"], anchor)]
 
     # Every page that existed before this build and is not a page any more: where
-    # its URL goes now — the page holding its town. Kept across builds (a URL
-    # outlives the re-cluster that retired it), and re-pointed when the page an
-    # earlier retirement landed on has itself moved on.
-    retired = {}
-    for slug, town in previous.items():
-        if slug not in result:
-            retired[slug] = page_of_town[TOWN_ALIASES.get(town, town)]
-    for slug, target in prior_retired.items():
-        if slug not in result:
-            retired[slug] = target if target in result else retired.get(target, target)
-    missing_targets = {s: t for s, t in retired.items() if t not in result}
-    if missing_targets:
-        sys.exit(f"retired slugs point at pages that no longer exist: {missing_targets}")
+    # its URL goes now — the page holding its town.
+    gone = {slug: page_of_town[TOWN_ALIASES.get(town, town)] for slug, town in previous.items() if slug not in result}
+    retired = town_pages.retire(gone, prior_retired, result)
     return list(result.values()), retired
 
 
@@ -253,7 +184,8 @@ def main():
     previous = ({p["slug"]: p["anchor"] for p in prior["pages"]} if prior
                 else {slug: nom for slug, (_, nom, _, _) in current_pages().items()})
     prior_retired = prior["retired"] if prior else {}
-    pages, retired = build(venues, load_gazetteer(), forms, current_pages(), previous, prior_retired)
+    gazetteer = load_gazetteer(sys.argv[1] if len(sys.argv) > 1 else None)
+    pages, retired = build(venues, gazetteer, forms, current_pages(), previous, prior_retired)
     pages.sort(key=lambda p: (p["kind"] != "major", MAJOR_SLUGS.index(p["slug"]) if p["kind"] == "major" else 0, p["slug"]))
     OUT.write_text(json.dumps({"pages": pages, "retired": retired}, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     kinds = Counter(p["kind"] for p in pages)
