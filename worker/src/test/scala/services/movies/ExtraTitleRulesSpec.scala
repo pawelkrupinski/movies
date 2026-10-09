@@ -235,6 +235,9 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Góra mocy- seans przyjazny sensorycznie"                  -> "Góra mocy",
     "Psi Patrol i dinozaury - PRZEDPREMIERA!"                  -> "Psi Patrol i dinozaury",
     "Dzień Tove Jansson. Pokaz specjalny – Księga lata"        -> "Księga lata",
+    // Kino Bajka Kluczbork's anniversary screenings (recorded:pl, 2026-10-09).
+    "POKAZ SPECJALNY Z OKAZJI 10 - LECIA REAKTYWACJI KINA BAJKA: Róża" -> "Róża",
+    "POKAZ SPECJALNY Z OKAZJI 10 - LECIA REAKTYWACJI KINA BAJKA: Czas, który nie nadszedł" -> "Czas, który nie nadszedł",
     "Pokazy specjalne. 35 lat od premiery! Terminator 2: Dzień Sądu" -> "Terminator 2: Dzień Sądu",
     "Big Shark, PREMIERA"                                      -> "Big Shark",
     "Do utraty tchu | Rekonstrukcja 4K | Prelekcja Przed Seansem" -> "Do utraty tchu",

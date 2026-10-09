@@ -444,7 +444,7 @@ object ExtraTitleRules {
     // Found by SearchQueryMarkersSpec over the recorded US / UK corpora (2026-10-05).
     searchStrip("xtra-live-qa-prefix",             """(?i)^Live\s+Q\s*&\s*A\s*:\s*""",                  "'Live Q&A: <film>' event-night prefix (Alamo Drafthouse Winchester: Mourning Dove, It's Just Business)"),
     searchStrip("xtra-with-live-qa-suffix",        """(?i)\s+with\s+(?:a\s+)?Live\s+Q\s*&\s*A\s*$""",   "'<film> with Live Q&A' event-night tail (Cineworld: NAZA)"),
-    searchStrip("xtra-pokaz-specjalny-prefix",    """(?i)^(?:[^.]+\.\s+)?Pokaz\s+specjalny\s*[-–—:|]\s*""", "'[<occasion>.] Pokaz specjalny – <film>' event prefix (Kinematograf, its 'Dzień Tove Jansson.' occasion included)"),
+    searchStrip("xtra-pokaz-specjalny-prefix",    """(?i)^(?:[^.]+\.\s+)?Pokaz\s+specjalny(?:\s+z\s+okazji[^:]*(?=:))?\s*[-–—:|]\s*""", "'[<occasion>.] Pokaz specjalny [z okazji <occasion>] – <film>' event prefix (Kinematograf's 'Dzień Tove Jansson.' occasion; Kino Bajka Kluczbork's 'z okazji 10 - lecia reaktywacji kina bajka:')"),
     searchStrip("xtra-pokazy-specjalne-prefix",    """(?iu)^Pokazy\s+specjalne\.\s*(?:\d+\s+lat\s+od\s+premiery!?\s*)?""", "'Pokazy specjalne. [35 lat od premiery!] <film>' anniversary-screening prefix (Zacisze: Terminator 2)"),
     searchStrip("xtra-tadeusz-konwicki-suffix",    """(?i)\s*[-–—]\s*tadeusz\s+konwicki\b.*$""",      "'<film> – Tadeusz Konwicki / 100. rocznica urodzin' suffix"),
     searchStrip("xtra-wajda-o-filmie-suffix",      """(?i)\s*[-–—]\s*Andrzej\s+Wajda\s+o\s+filmie\s*$""", "'<film> - Andrzej Wajda o filmie' suffix (Brzezina)"),
