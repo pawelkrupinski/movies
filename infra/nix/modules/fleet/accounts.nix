@@ -19,13 +19,12 @@ let
   # every ordinary login is a person escalating as themselves, so `sudo` in the journal names
   # somebody.
   #
-  # The operator Mac's Secure Enclave keys (both non-exportable): Secretive's, and since 2026-10-09
-  # pawel-mbp-se, served by the `secrets` vault daemon's agent (one Touch ID per session, not per use),
-  # which replaces it once a login with it is verified on every host. If a key is ever rotated,
+  # The operator Mac's Secure Enclave key (non-exportable): pawel-mbp-se, served by the `secrets` vault
+  # daemon's agent (one Touch ID per session, not per use). It replaced Secretive's key on 2026-10-09,
+  # after a login with it was verified on every host. If this key is ever rotated,
   # the ONLY safe order is: add the new key here, deploy, verify a login with it, and only then
   # delete the old line -- because the deploy that removes a key is applied by that same key.
   operatorKeys = [
-    "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBMOpfIieokztWsuQ2qNI7rU/pTbPvTNambckBP5Hz+h1G13L61K06AelMxi0aKFynYzQ9GfILkPaDv8dCvEpZvo= pawel.krupinski@gmail.com Secretive (Secure Enclave) 2026-10-08"
     "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBO3WMjnDl0nbOhu9fggw2z/nU7ySqHwkzzuV8SElZpv+LdCkxfeajz09nG+vMxaDUUKmGyolYBYRjS5HCVcA7mY= pawel-mbp-se"
   ];
 in
