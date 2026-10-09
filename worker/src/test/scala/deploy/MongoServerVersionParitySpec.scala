@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
  * release mongo-1 runs.
  *
  * The production server is `roles/mongodb.nix`'s package; the CI replica set and
- * the local convergence runner are `docker run mongo:<tag>`. Nothing tied the two
+ * the local convergence runner are `docker run` of a `mongo:<tag>` image. Nothing tied the two
  * together, and they drifted a whole major apart: CI tested against 7.0 for the
  * month prod ran 8.2, so a query, index or aggregation stage that behaves
  * differently across those releases was green in every layer and only met the real
@@ -31,8 +31,11 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
       .map(_.group(1))
       .getOrElse(fail(s"$role no longer names `mongodbVersion = \"x.y.z\"`"))
 
+  // Every `mongo:<tag>` image reference, bare or registry-qualified (`mirror.gcr.io/library/mongo:`,
+  // `docker.io/library/mongo:`): the CI script names its image in a variable, a mirror first and
+  // Docker Hub as the fallback, and both must be the production release.
   private def dockerTags(path: String): Seq[String] =
-    """docker run[^\n]*\smongo:(\S+)""".r.findAllMatchIn(RepoFile.read(path)).map(_.group(1)).toSeq
+    """(?<![\w.-])(?:[\w.-]+/)*mongo:([0-9][0-9.]*)""".r.findAllMatchIn(RepoFile.read(path)).map(_.group(1)).toSeq
 
   "every docker-started mongod" should "run the exact server release production runs" in {
     dockerStarts.foreach { path =>
