@@ -47,3 +47,29 @@ and the obvious "take the last part" rule answers "Merseyside".
 That rule is scored, not assumed: `test_harvest_towns.py` runs it against the
 87 UK venues in the recorded Cineworld fixture, which carry the chain's OWN
 `addressInfo.city` alongside the address. It has to agree on every one.
+
+## Which page a venue is on
+
+The pages stay the Flicks regions — mostly counties — and each venue is filed
+under one by hand in `Cinema.scala`. Two straight-line (haversine) rules,
+borrowed from Poland's clustering (`data/pl/scripts/build_pages.py`), hold that
+filing to the venues' own fixes here; `UkPageGeographySpec` enforces both
+against this file and the roster's hubs (each `UkCity`'s lat/lon):
+
+- **A misfiled venue moves.** A venue more than 40 km from its page's hub that
+  is within 25 km of ANOTHER page's hub belongs to that page. Ystradgynlais's
+  Miners Welfare Hall, which Flicks files under Dyfed (47 km), is on the
+  Glamorgan page (18 km). A remote venue with no hub near it — Lerwick, 285 km
+  up the Highlands and Islands — stays where its region put it; so do Plymouth
+  (Cornwall, 56 km; Devon's hub is 45 km), Goole (Lincolnshire; South
+  Yorkshire 36 km), Wrexham (Powys; Liverpool 41 km) and King's Lynn (Norwich;
+  Cambridgeshire 45 km), none of which is within 25 km of another hub.
+- **One urban area is one page.** Two hubs under 15 km apart are halves of the
+  same town, so the smaller is folded into the larger: Dudley (13 km) and
+  Sandwell (9 km) into Birmingham, Lanarkshire (East Kilbride/Hamilton, 12 km)
+  into Glasgow. `City.ukMergedPages` is the one place that says so — the old
+  slugs 301 onto the absorbing page and stay searchable in the picker. Pairs
+  between 15 and 25 km are separate places and are left alone: Belfast/Down
+  (17.5), Belfast/Antrim (20.1), Glasgow/Renfrewshire (22.7), South
+  Yorkshire/Yorkshire (16.0), Edinburgh/Fife (21.1), Hampshire/Isle of Wight
+  (23.9).

@@ -1321,28 +1321,36 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         """["England","Scotland","Northern Ireland","Wales","Crown Dependencies"]"""
 
       clickPickerRow(page, "England")
-      // Almost all of it is places, because every county holding ONE place
-      // was pulled up a level (`CityGroup.soleCity`) — including where the
-      // county's own name differs from the place's (Merseyside → Liverpool).
-      pickerRowLabels(page) should include ("West Midlands")
+      // All of it is places, because every county holding ONE place was
+      // pulled up a level (`CityGroup.soleCity`) — including where the
+      // county's own name differs from the place's (Merseyside → Liverpool,
+      // West Midlands → Birmingham).
       pickerRowLabels(page) should include ("Cheshire")
       pickerRowLabels(page) should include ("Liverpool")
+      pickerRowLabels(page) should include ("Birmingham")
       pickerRowLabels(page) should not include "Merseyside"
-      pickerRowLabels(page) should not include "Birmingham"
-      // "West Midlands" sits interleaved in its own alphabetical position —
-      // beside "West Sussex", not stranded ahead of every direct city in
-      // England — the fix for the reported "West Midlands out of order" bug.
-      val england = Json.parse(pickerRowLabels(page)).as[Seq[String]]
-      england.indexOf("Warwickshire") should be < england.indexOf("West Midlands")
-      england.indexOf("West Midlands") should be < england.indexOf("West Sussex")
+      pickerRowLabels(page) should not include "West Midlands"
+      page.eval("document.getElementById('picker-back-row').click()")
 
-      clickPickerRow(page, "West Midlands")
-      page.evalString("document.getElementById('picker-subtitle').textContent") shouldBe "England — West Midlands"
-      pickerRowLabels(page) shouldBe """["Birmingham","Dudley","Sandwell"]"""
+      clickPickerRow(page, "Wales")
+      pickerRowLabels(page) should include ("Glamorgan")
+      pickerRowLabels(page) should not include "Cardiff"
+      // The "Glamorgan" heading sits interleaved in its own alphabetical
+      // position — between Dyfed and Gwent, not stranded ahead of every direct
+      // place in Wales — the fix for the reported "West Midlands out of order"
+      // bug, back when West Midlands was a heading.
+      val wales = Json.parse(pickerRowLabels(page)).as[Seq[String]]
+      wales.indexOf("Dyfed")     should be < wales.indexOf("Glamorgan")
+      wales.indexOf("Glamorgan") should be < wales.indexOf("Gwent")
+
+      clickPickerRow(page, "Glamorgan")
+      page.evalString("document.getElementById('picker-subtitle').textContent") shouldBe "Wales — Glamorgan"
+      pickerRowLabels(page) shouldBe """["Cardiff","Glamorgan"]"""
 
       // Back pops ONE level at a time — county first, then nation.
       page.eval("document.getElementById('picker-back-row').click()")
-      pickerRowLabels(page) should include ("West Midlands")
+      pickerRowLabels(page) should include ("Glamorgan")
+      pickerRowLabels(page) should include ("Powys")
       page.eval("document.getElementById('picker-back-row').click()")
       pickerRowLabels(page) shouldBe
         """["England","Scotland","Northern Ireland","Wales","Crown Dependencies"]"""
@@ -1354,29 +1362,30 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // English text throughout — see the note on the US state test above.
       // Two levels here — the root box names both, deepest last.
       pickerSearchPlaceholder(page) shouldBe "Search for a nation, county or city…"
-      clickPickerRow(page, "England")
+      clickPickerRow(page, "Wales")
       // The nation is fixed now — only its counties and places are left.
       pickerSearchPlaceholder(page) shouldBe "Search for a county or city…"
-      clickPickerRow(page, "West Midlands")
+      clickPickerRow(page, "Glamorgan")
       pickerSearchPlaceholder(page) shouldBe "Search for a city…"
     }
   }
 
   it should "find a county from the nation root, and land two levels deep in one tap" in {
     onNestedLanding { page =>
-      // "West Midlands" is a COUNTY two levels below the root the box shows
+      // "Glamorgan" is a COUNTY two levels below the root the box shows
       // (nation → county → place) — the search scans the whole country
-      // regardless of level, so it surfaces from the very first screen.
-      typePickerSearch(page, "west midlands")
-      pickerRowLabels(page) shouldBe """["West Midlands"]"""
+      // regardless of level, so it surfaces from the very first screen,
+      // ahead of the place of the same name inside it.
+      typePickerSearch(page, "glamorgan")
+      pickerRowLabels(page) shouldBe """["Glamorgan","Glamorgan"]"""
 
       // Picking it has to land on the right NATION too, not just the
       // county — `buildSearchRows` carries the parent region along for
       // exactly this, since a bare subregion name says nothing about which
       // nation it belongs to.
-      clickPickerRow(page, "West Midlands")
-      page.evalString("document.getElementById('picker-subtitle').textContent") shouldBe "England — West Midlands"
-      pickerRowLabels(page) shouldBe """["Birmingham","Dudley","Sandwell"]"""
+      clickPickerRow(page, "Glamorgan")
+      page.evalString("document.getElementById('picker-subtitle').textContent") shouldBe "Wales — Glamorgan"
+      pickerRowLabels(page) shouldBe """["Cardiff","Glamorgan"]"""
     }
   }
 

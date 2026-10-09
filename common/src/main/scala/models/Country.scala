@@ -75,7 +75,7 @@ sealed abstract class Country(
    *  41 and Spain's 52 — short enough that a name is all a visitor needs), and
    *  otherwise one group per US state, per German Bundesland, or per UK nation
    *  over its counties. "Los Angeles" is found under "California", and none of
-   *  468 US places, 158 German regions or 79 UK counties is a list anybody reads
+   *  468 US places, 158 German regions or 76 UK counties is a list anybody reads
    *  straight through.
    *
    *  Depth is the country's own: the US and Germany nest one level, the UK two.
@@ -92,9 +92,9 @@ sealed abstract class Country(
    *  Re-sorted HERE, not taken from [[CityGroup.allCities]] in tree order. The
    *  tree's order is the PAGE's: a county that kept its heading contributes its
    *  places at the county's own alphabetical position, which reads correctly
-   *  under a "West Midlands" heading and not at all without one — Birmingham
-   *  came after Warwickshire in a flat list, where native type-ahead on "b"
-   *  never reaches it.
+   *  under a "Glamorgan" heading and not at all without one — Cardiff would
+   *  come after Dyfed in a flat list, where native type-ahead on "c" never
+   *  reaches it.
    *
    *  Empty for a flat country, whose `<select>` takes the ungrouped branch. */
   def optionGroups: Seq[(String, Seq[City])] =
@@ -225,7 +225,7 @@ object Country {
   ) {
     val cities: Seq[City] = City.ukCities
     /** The four nations plus the Crown Dependencies, each over the counties and
-     *  cities inside it — 79 places is not an A-to-Z anybody reads. */
+     *  cities inside it — 76 places is not an A-to-Z anybody reads. */
     override val cityGroups: Seq[CityGroup] = City.ukNations
     // Britain subtitles rather than dubs: `SUB` (captions, 4,000 screenings on
     // 2026-09-02) is the one a visitor filters for, `DUB` the rare foreign-language

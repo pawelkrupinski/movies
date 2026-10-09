@@ -209,7 +209,7 @@ class CitySpec extends AnyFlatSpec with Matchers {
 
   it should "cover the UK roster, not a handful of venues that happened to match" in {
     val uk = City.allModelled.collect { case c: UkCity => c }
-    uk.size shouldBe 79
+    uk.size shouldBe 76
     // A table that silently stopped matching displayNames would leave every one
     // of these naming only itself again.
     uk.count(_.otherCoveredPlaces.nonEmpty) should be >= 70

@@ -9,15 +9,17 @@
    A group holding ONE place is that place's link, pulled up a level — a heading
    you open to find a single row underneath is a tap that buys nothing. See
    `CityGroup.soleCity`. Most UK counties are that shape, which is what keeps a
-   two-level list readable: only the counties that really group something (West
-   Midlands over Birmingham, Dudley and Sandwell) cost the reader a second tap.
+   two-level list readable: only the counties that really group something
+   (Glamorgan over Cardiff and the rest of it) cost the reader a second tap.
 
    Where the group's own name differs from the place it collapsed onto —
    Merseyside over Liverpool — that name rides along in `data-alias` so the
-   search still finds the row by it. Dropping the heading saves a tap; it is not
-   meant to make the county unfindable.
+   search still finds the row by it, as do the names of former pages folded
+   into the place (Dudley and Sandwell into Birmingham; `CityGroup.absorbed`).
+   Dropping the heading saves a tap; it is not meant to make the county
+   unfindable.
 
-   The alias goes through Twirl's own escaping (`@@alias`, not a hand-built
+   The alias goes through Twirl's own escaping (`@@group.searchAliases`, not a hand-built
    `Html(...)`): a Bundesland's name is scraped out of `regions.json` rather than
    hand-authored here, so it is not this template's place to assume no label will
    ever carry a quote.
@@ -28,7 +30,7 @@
 *@
 @group.soleCity match {
   case Some(c) => {
-<li class="city-direct"@for(alias <- group.collapsedAlias) { data-alias="@alias"}><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
+<li class="city-direct"@if(group.searchAliases.nonEmpty) { data-alias="@group.searchAliases.mkString(", ")"}><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
   }
   case None => {
 <li>

@@ -6073,7 +6073,6 @@ models.DomeWorthing$
 models.DominionCinemaEdinburgh$
 models.Dorset$
 models.Down$
-models.Dudley$
 models.DukeOfYorkSPicturehouseBrighton$
 models.DukeSAtKomediaPicturehouse$
 models.DumfriesAndGalloway$
@@ -6681,7 +6680,6 @@ models.Konin$
 models.Koszalin$
 models.Krakow$
 models.LASPortRighArosCinemaPortree$
-models.Lanarkshire$
 models.Lancashire$
 models.LanternhouseCinema$
 models.LeatherheadTheatreCinemaLeatherhead$
@@ -7064,7 +7062,6 @@ models.RoyaltyBownessOnWindemere$
 models.Rybnik$
 models.Rzeszow$
 models.SaffronScreen$
-models.Sandwell$
 models.SavoyBoston$
 models.SavoyCinemaCatterickGarrison$
 models.SavoyCinemaCorby$

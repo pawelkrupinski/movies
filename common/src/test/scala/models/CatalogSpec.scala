@@ -146,12 +146,9 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     val j = Catalog.json
     def cityEntry(slug: String) =
       j.split("\\{").find(_.contains(s""""slug":"$slug"""")).getOrElse(fail(s"no $slug entry"))
-    // West Midlands, Glamorgan and Antrim are the three UK counties that group
-    // more than one place — the level `region` alone can't carry (it names only
-    // the nation, "England"/"Wales"/"Northern Ireland").
-    cityEntry("birmingham") should include(""""region":"England","subregion":"West Midlands"""")
-    cityEntry("dudley")     should include(""""subregion":"West Midlands"""")
-    cityEntry("sandwell")   should include(""""subregion":"West Midlands"""")
+    // Glamorgan and Antrim are the two UK counties that group more than one
+    // place — the level `region` alone can't carry (it names only the nation,
+    // "Wales"/"Northern Ireland").
     cityEntry("cardiff")    should include(""""region":"Wales","subregion":"Glamorgan"""")
     cityEntry("glamorgan")  should include(""""subregion":"Glamorgan"""")
     cityEntry("antrim")     should include(""""region":"Northern Ireland","subregion":"Antrim"""")
@@ -159,6 +156,9 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     // A county that collapsed onto its one place carries no subregion — Cheshire
     // reads correctly through `region` alone, with no extra tap to reach it.
     cityEntry("cheshire") should not include "subregion"
+    // West Midlands used to group three, until Dudley and Sandwell were folded
+    // into Birmingham (`City.ukMergedPages`); it now collapses like Cheshire.
+    cityEntry("birmingham") should not include "subregion"
     cityEntry("glasgow")  should not include "subregion"
     // Germany and the US group one level deep, so neither ever writes it.
     cityEntry("muenchen")     should not include "subregion"

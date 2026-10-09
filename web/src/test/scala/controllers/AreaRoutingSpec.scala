@@ -146,8 +146,8 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     // `CityGroup.soleCity`) earns a subregion of its own.
     val html = contentAsString(ukController().index("london")(req("/london/")))
     catalogRegion(html, "glasgow") shouldBe Some("Scotland")
-    catalogRegion(html, "birmingham") shouldBe Some("England")
-    catalogSubregion(html, "birmingham") shouldBe Some("West Midlands")
+    catalogRegion(html, "cardiff") shouldBe Some("Wales")
+    catalogSubregion(html, "cardiff") shouldBe Some("Glamorgan")
     // Cheshire collapsed onto its one place, so it reads correctly through
     // `region` alone — no subregion heading for a visitor to open for nothing.
     catalogRegion(html, "cheshire") shouldBe Some("England")

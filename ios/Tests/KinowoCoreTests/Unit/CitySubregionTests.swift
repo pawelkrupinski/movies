@@ -2,9 +2,11 @@ import XCTest
 @testable import KinowoCore
 
 /// The UK picker's THIRD step — a county that holds more than one city
-/// (West Midlands, Glamorgan, Antrim) gets its own tap; every other county
-/// stays flat under its nation, exactly as before. Mirrors `CityRegionTests`'
-/// shape one level down.
+/// (Glamorgan, Antrim) gets its own tap; every other county stays flat under
+/// its nation, exactly as before. Mirrors `CityRegionTests`' shape one level
+/// down. The fixtures below are synthetic — West Midlands as it was before
+/// Dudley and Sandwell were folded into Birmingham — and exercise the mechanism,
+/// not the live roster (the bundled-seed test at the bottom does that).
 final class CitySubregionTests: XCTestCase {
 
     private let birmingham = City(slug: "birmingham", name: "Birmingham", lat: 52.46, lon: -1.9,
@@ -90,10 +92,9 @@ final class CitySubregionTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(City.self, from: Data(withSubregion.utf8)).subregion, "West Midlands")
     }
 
-    /// The bundled seed is what the app actually opens on: West Midlands,
-    /// Glamorgan and Antrim have to carry a `subregion` there too, not merely
-    /// in the model.
-    func testTheBundledSeedNamesTheThreeMultiCityCounties() throws {
+    /// The bundled seed is what the app actually opens on: Glamorgan and
+    /// Antrim have to carry a `subregion` there too, not merely in the model.
+    func testTheBundledSeedNamesTheMultiCityCounties() throws {
         struct Seed: Decodable {
             struct Body: Decodable { let cities: [City] }
             let catalog: Body
@@ -103,9 +104,6 @@ final class CitySubregionTests: XCTestCase {
             .catalog.cities
 
         func subregion(_ slug: String) -> String? { seeded.first { $0.slug == slug }?.subregion }
-        XCTAssertEqual(subregion("birmingham"), "West Midlands")
-        XCTAssertEqual(subregion("dudley"), "West Midlands")
-        XCTAssertEqual(subregion("sandwell"), "West Midlands")
         XCTAssertEqual(subregion("cardiff"), "Glamorgan")
         XCTAssertEqual(subregion("glamorgan"), "Glamorgan")
         XCTAssertEqual(subregion("antrim"), "Antrim")
@@ -113,6 +111,10 @@ final class CitySubregionTests: XCTestCase {
         // A collapsed county carries none — Cheshire reads correctly through
         // `region` alone.
         XCTAssertNil(subregion("cheshire"))
+        // West Midlands collapsed onto Birmingham once Dudley and Sandwell were
+        // folded into it — and their old slugs resolve there for deep links.
+        XCTAssertNil(subregion("birmingham"))
+        XCTAssertEqual(seeded.first { $0.slug == "birmingham" }?.formerSlugs, ["dudley", "sandwell"])
         XCTAssertTrue(seeded.inCountry("de").allSatisfy { $0.subregion == nil })
         XCTAssertTrue(seeded.inCountry("us").allSatisfy { $0.subregion == nil })
     }

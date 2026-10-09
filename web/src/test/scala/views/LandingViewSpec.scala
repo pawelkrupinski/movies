@@ -94,8 +94,8 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     ukHtml should include ("""<summary class="city-group-label">Scotland</summary>""")
     ukHtml should include ("""<summary class="city-group-label">Northern Ireland</summary>""")
     // The second level: a county heading, with its places inside it.
-    ukHtml should include ("""<summary class="city-group-label">West Midlands</summary>""")
-    ukHtml should include ("""<a href="/birmingham/">Birmingham</a>""")
+    ukHtml should include ("""<summary class="city-group-label">Glamorgan</summary>""")
+    ukHtml should include ("""<a href="/cardiff/">Cardiff</a>""")
     // Neither level is a link: `/scotland/` and `/west-midlands/` are not pages.
     ukHtml should not include """href="/scotland/""""
     ukHtml should not include """href="/england/""""
@@ -122,8 +122,16 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     // Nothing to remember where the two names already agree.
     ukHtml should not include """data-alias="Cheshire""""
 
-    // West Midlands really groups three, so it keeps its heading.
-    ukHtml should include ("""<summary class="city-group-label">West Midlands</summary>""")
+    // Glamorgan really groups two, so it keeps its heading.
+    ukHtml should include ("""<summary class="city-group-label">Glamorgan</summary>""")
+    ukHtml should not include """<summary class="city-group-label">West Midlands</summary>"""
+
+    // A page folded into its neighbour (`City.ukMergedPages`) is findable by its
+    // old name on the row that absorbed it, beside the collapsed county's.
+    ukHtml should include (
+      """<li class="city-direct" data-alias="West Midlands, Dudley, Sandwell"><a href="/birmingham/">Birmingham</a></li>""")
+    ukHtml should include (
+      """<li class="city-direct" data-alias="Lanarkshire"><a href="/glasgow/">Glasgow</a></li>""")
   }
 
   /** Germany picks a REGION — Köln, München — found under its Bundesland. */

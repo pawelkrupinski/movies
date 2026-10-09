@@ -37,9 +37,9 @@ data class City(
     val region: String? = null,
     /**
      * The SECOND-level group [region] sits under a further split, where that
-     * split actually holds more than one city — the UK's West Midlands
-     * (Birmingham/Dudley/Sandwell), Glamorgan (Cardiff/Glamorgan) and Antrim
-     * (Antrim/Belfast). Null everywhere else: a county that collapsed onto its
+     * split actually holds more than one city — the UK's Glamorgan
+     * (Cardiff/Glamorgan) and Antrim (Antrim/Belfast).
+     * Null everywhere else: a county that collapsed onto its
      * one place reads correctly through [region] alone (Cheshire needs no
      * third tap to reach Cheshire), and Germany/the US never nest this deep.
      *
@@ -310,7 +310,7 @@ object Cities {
         City("bedfordshire", "Bedfordshire", 52.0082, -0.4435, "uk", "England"),
         City("belfast", "Belfast", 54.5857, -5.9428, "uk", "Northern Ireland", "Antrim"),
         City("berkshire", "Berkshire", 51.4268, -0.9169, "uk", "England"),
-        City("birmingham", "Birmingham", 52.4581, -1.9041, "uk", "England", "West Midlands"),
+        City("birmingham", "Birmingham", 52.4581, -1.9041, "uk", "England"),
         City("bristol", "Bristol", 51.4659, -2.5805, "uk", "England"),
         City("buckinghamshire", "Buckinghamshire", 51.7582, -0.7609, "uk", "England"),
         City("cambridgeshire", "Cambridgeshire", 52.4301, -0.0137, "uk", "England"),
@@ -325,7 +325,6 @@ object Cities {
         City("devon", "Devon", 50.6651, -3.687, "uk", "England"),
         City("dorset", "Dorset", 50.7664, -2.1122, "uk", "England"),
         City("down", "Down", 54.4293, -5.9704, "uk", "Northern Ireland"),
-        City("dudley", "Dudley", 52.497, -2.0918, "uk", "England", "West Midlands"),
         City("dumfries-and-galloway", "Dumfries and Galloway", 54.9881, -3.8232, "uk", "Scotland"),
         City("dunbartonshire-argyll-bute", "Dunbartonshire and Argyll & Bute", 55.7795, -4.9973, "uk", "Scotland"),
         City("dyfed", "Dyfed", 51.9892, -4.3329, "uk", "Wales"),
@@ -349,7 +348,6 @@ object Cities {
         City("isle-of-wight", "Isle of Wight", 50.7118, -1.2248, "uk", "England"),
         City("jersey", "Jersey", 49.1839, -2.1144, "uk", "Crown Dependencies"),
         City("kent", "Kent", 51.2682, 0.8631, "uk", "England"),
-        City("lanarkshire", "Lanarkshire", 55.7953, -4.0904, "uk", "Scotland"),
         City("lancashire", "Lancashire", 53.7367, -2.6625, "uk", "England"),
         City("leicestershire", "Leicestershire", 52.6656, -1.1514, "uk", "England"),
         City("lincolnshire", "Lincolnshire", 53.2194, -0.2916, "uk", "England"),
@@ -363,7 +361,6 @@ object Cities {
         City("powys", "Powys", 52.3806, -3.26, "uk", "Wales"),
         City("renfrewshire", "Renfrewshire", 55.9204, -4.5838, "uk", "Scotland"),
         City("roxburgh-ettrick-and-lauderdale", "Roxburgh, Ettrick and Lauderdale", 55.5183, -2.7969, "uk", "Scotland"),
-        City("sandwell", "Sandwell", 52.5175, -1.9932, "uk", "England", "West Midlands"),
         City("shropshire", "Shropshire", 52.6813, -2.6215, "uk", "England"),
         City("somerset", "Somerset", 51.2159, -2.824, "uk", "England"),
         City("south-yorkshire", "South Yorkshire", 53.5141, -1.3109, "uk", "England"),

@@ -30,9 +30,9 @@ struct City: Codable, Hashable {
     var region: String? = nil
 
     /// The SECOND-level group `region` sits under a further split, where that
-    /// split actually holds more than one city — the UK's West Midlands
-    /// (Birmingham/Dudley/Sandwell), Glamorgan (Cardiff/Glamorgan) and Antrim
-    /// (Antrim/Belfast). `nil` everywhere else: a county that collapsed onto its
+    /// split actually holds more than one city — the UK's Glamorgan
+    /// (Cardiff/Glamorgan) and Antrim (Antrim/Belfast).
+    /// `nil` everywhere else: a county that collapsed onto its
     /// one place reads correctly through `region` alone (Cheshire needs no
     /// third tap to reach Cheshire), and Germany/the US never nest this deep.
     ///
@@ -277,7 +277,7 @@ struct City: Codable, Hashable {
         City(slug: "bedfordshire", name: "Bedfordshire", lat: 52.0082, lon: -0.4435, country: "uk", region: "England"),
         City(slug: "belfast", name: "Belfast", lat: 54.5857, lon: -5.9428, country: "uk", region: "Northern Ireland", subregion: "Antrim"),
         City(slug: "berkshire", name: "Berkshire", lat: 51.4268, lon: -0.9169, country: "uk", region: "England"),
-        City(slug: "birmingham", name: "Birmingham", lat: 52.4581, lon: -1.9041, country: "uk", region: "England", subregion: "West Midlands"),
+        City(slug: "birmingham", name: "Birmingham", lat: 52.4581, lon: -1.9041, country: "uk", region: "England"),
         City(slug: "bristol", name: "Bristol", lat: 51.4659, lon: -2.5805, country: "uk", region: "England"),
         City(slug: "buckinghamshire", name: "Buckinghamshire", lat: 51.7582, lon: -0.7609, country: "uk", region: "England"),
         City(slug: "cambridgeshire", name: "Cambridgeshire", lat: 52.4301, lon: -0.0137, country: "uk", region: "England"),
@@ -292,7 +292,6 @@ struct City: Codable, Hashable {
         City(slug: "devon", name: "Devon", lat: 50.6651, lon: -3.687, country: "uk", region: "England"),
         City(slug: "dorset", name: "Dorset", lat: 50.7664, lon: -2.1122, country: "uk", region: "England"),
         City(slug: "down", name: "Down", lat: 54.4293, lon: -5.9704, country: "uk", region: "Northern Ireland"),
-        City(slug: "dudley", name: "Dudley", lat: 52.497, lon: -2.0918, country: "uk", region: "England", subregion: "West Midlands"),
         City(slug: "dumfries-and-galloway", name: "Dumfries and Galloway", lat: 54.9881, lon: -3.8232, country: "uk", region: "Scotland"),
         City(slug: "dunbartonshire-argyll-bute", name: "Dunbartonshire and Argyll & Bute", lat: 55.7795, lon: -4.9973, country: "uk", region: "Scotland"),
         City(slug: "dyfed", name: "Dyfed", lat: 51.9892, lon: -4.3329, country: "uk", region: "Wales"),
@@ -316,7 +315,6 @@ struct City: Codable, Hashable {
         City(slug: "isle-of-wight", name: "Isle of Wight", lat: 50.7118, lon: -1.2248, country: "uk", region: "England"),
         City(slug: "jersey", name: "Jersey", lat: 49.1839, lon: -2.1144, country: "uk", region: "Crown Dependencies"),
         City(slug: "kent", name: "Kent", lat: 51.2682, lon: 0.8631, country: "uk", region: "England"),
-        City(slug: "lanarkshire", name: "Lanarkshire", lat: 55.7953, lon: -4.0904, country: "uk", region: "Scotland"),
         City(slug: "lancashire", name: "Lancashire", lat: 53.7367, lon: -2.6625, country: "uk", region: "England"),
         City(slug: "leicestershire", name: "Leicestershire", lat: 52.6656, lon: -1.1514, country: "uk", region: "England"),
         City(slug: "lincolnshire", name: "Lincolnshire", lat: 53.2194, lon: -0.2916, country: "uk", region: "England"),
@@ -330,7 +328,6 @@ struct City: Codable, Hashable {
         City(slug: "powys", name: "Powys", lat: 52.3806, lon: -3.26, country: "uk", region: "Wales"),
         City(slug: "renfrewshire", name: "Renfrewshire", lat: 55.9204, lon: -4.5838, country: "uk", region: "Scotland"),
         City(slug: "roxburgh-ettrick-and-lauderdale", name: "Roxburgh, Ettrick and Lauderdale", lat: 55.5183, lon: -2.7969, country: "uk", region: "Scotland"),
-        City(slug: "sandwell", name: "Sandwell", lat: 52.5175, lon: -1.9932, country: "uk", region: "England", subregion: "West Midlands"),
         City(slug: "shropshire", name: "Shropshire", lat: 52.6813, lon: -2.6215, country: "uk", region: "England"),
         City(slug: "somerset", name: "Somerset", lat: 51.2159, lon: -2.824, country: "uk", region: "England"),
         City(slug: "south-yorkshire", name: "South Yorkshire", lat: 53.5141, lon: -1.3109, country: "uk", region: "England"),

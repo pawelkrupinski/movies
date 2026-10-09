@@ -617,7 +617,13 @@ final class PolishPage private[models] (row: PolishPages.Row)
  *  US's do — they come from [[VenueTowns]] instead, which every city reads by
  *  default, so this class does not have to say so.
  *
- *  What it is for now is the zone the 79 of them were each repeating. */
+ *  What it is for now is the zone the 76 of them were each repeating.
+ *
+ *  Which venues each one lists is held to two distance rules by
+ *  `UkPageGeographySpec` (see `data/uk/README.md`): a venue far from its own
+ *  hub and close to another's is re-filed there, and two pages whose hubs are
+ *  one urban area are merged — Dudley and Sandwell into [[Birmingham]],
+ *  Lanarkshire into [[Glasgow]] ([[ukMergedPages]]). */
 sealed abstract class UkCity(slug: String, labels: CityLabels, lat: Double, lon: Double)
   extends City(slug, labels, lat, lon, TimeZones.UnitedKingdom)
 
@@ -722,10 +728,6 @@ case object Down extends UkCity("down",
   CityLabels("Down", "Down", "Down"), 54.4293, -5.9704) {
   val cinemas: Seq[Cinema] = Cinema.down
 }
-case object Dudley extends UkCity("dudley",
-  CityLabels("Dudley", "Dudley", "Dudley"), 52.497, -2.0918) {
-  val cinemas: Seq[Cinema] = Cinema.dudley
-}
 case object DumfriesAndGalloway extends UkCity("dumfries-and-galloway",
   CityLabels("Dumfries and Galloway", "Dumfries and Galloway", "Dumfries and Galloway"), 54.9881, -3.8232) {
   val cinemas: Seq[Cinema] = Cinema.dumfriesAndGalloway
@@ -818,10 +820,6 @@ case object Kent extends UkCity("kent",
   CityLabels("Kent", "Kent", "Kent"), 51.2682, 0.8631) {
   val cinemas: Seq[Cinema] = Cinema.kent
 }
-case object Lanarkshire extends UkCity("lanarkshire",
-  CityLabels("Lanarkshire", "Lanarkshire", "Lanarkshire"), 55.7953, -4.0904) {
-  val cinemas: Seq[Cinema] = Cinema.lanarkshire
-}
 case object Lancashire extends UkCity("lancashire",
   CityLabels("Lancashire", "Lancashire", "Lancashire"), 53.7367, -2.6625) {
   val cinemas: Seq[Cinema] = Cinema.lancashire
@@ -873,10 +871,6 @@ case object Renfrewshire extends UkCity("renfrewshire",
 case object RoxburghEttrickAndLauderdale extends UkCity("roxburgh-ettrick-and-lauderdale",
   CityLabels("Roxburgh, Ettrick and Lauderdale", "Roxburgh, Ettrick and Lauderdale", "Roxburgh, Ettrick and Lauderdale"), 55.5183, -2.7969) {
   val cinemas: Seq[Cinema] = Cinema.roxburghEttrickAndLauderdale
-}
-case object Sandwell extends UkCity("sandwell",
-  CityLabels("Sandwell", "Sandwell", "Sandwell"), 52.5175, -1.9932) {
-  val cinemas: Seq[Cinema] = Cinema.sandwell
 }
 case object Shropshire extends UkCity("shropshire",
   CityLabels("Shropshire", "Shropshire", "Shropshire"), 52.6813, -2.6215) {
@@ -1032,9 +1026,12 @@ final class SpanishProvince(slug: String, labels: CityLabels, lat: Double, lon: 
  *
  *  A country whose picker is one flat list — Poland's 65 and Spain's 52, the
  *  two short enough to read straight through — leaves `Country.cityGroups`
- *  empty rather than declaring one group per city. */
+ *  empty rather than declaring one group per city.
+ *
+ *  @param absorbed names of former pages now listed by this group's one place —
+ *                  the UK's [[City.ukMergedPages]] — kept findable by [[searchAliases]]. */
 final case class CityGroup(label: String, slug: String, cities: Seq[City] = Nil,
-                          groups: Seq[CityGroup] = Nil) {
+                          groups: Seq[CityGroup] = Nil, absorbed: Seq[String] = Nil) {
 
   /** The one place this group holds, pulled up a level — and `None` for a group
    *  that really arranges several.
@@ -1081,6 +1078,11 @@ final case class CityGroup(label: String, slug: String, cities: Seq[City] = Nil,
   def collapsedAlias: Option[String] =
     soleCity.filter(_.labels.nominative != label).map(_ => label)
 
+  /** Every other name the picker should find this row by: [[collapsedAlias]], then
+   *  the names of the pages [[absorbed]] into its one place. Empty for a group
+   *  that did not collapse — its heading is already on screen. */
+  def searchAliases: Seq[String] = soleCity.fold(Seq.empty[String])(_ => collapsedAlias.toSeq ++ absorbed)
+
   /** Every city under this group at any depth — its own, plus its subgroups'.
    *
    *  A picker nests (a UK nation over its counties over their places), but the
@@ -1123,12 +1125,12 @@ object City {
   }
 
   /** The United Kingdom's full modelled roster — every Flicks region we know how
-   *  to scrape (79). Retained in full even while only a subset is live so that
+   *  to scrape (76), less the ones folded into a neighbour ([[ukMergedPages]]). Retained in full even while only a subset is live so that
    *  bringing a city back online is a one-line edit to [[activeUkCities]], never
    *  a re-declaration. Do NOT trim this list to disable cities — narrow
    *  [[activeUkCities]] instead. */
   private[models] val allUkCities: Seq[City] = Seq(
-    London, Manchester, Norwich, Aberdeenshire, Antrim, Armagh, AyrshireAndArran, Bedfordshire, Belfast, Berkshire, Birmingham, Bristol, Buckinghamshire, Cambridgeshire, Cardiff, CentralScotland, Cheshire, Clwyd, Cornwall, CountyDurham, Cumbria, Derbyshire, Devon, Dorset, Down, Dudley, DumfriesAndGalloway, DunbartonshireArgyllBute, Dyfed, EastSussex, EastYorkshire, EdinburghAndLothians, Essex, Fermanagh, Fife, Glamorgan, Glasgow, Gloucestershire, Guernsey, Gwent, Gwynedd, Hampshire, Herefordshire, Hertfordshire, HighlandsAndIslands, IsleOfMan, IsleOfWight, Jersey, Kent, Lanarkshire, Lancashire, Leicestershire, Lincolnshire, Londonderry, Liverpool, NorthYorkshire, Northamptonshire, Northumberland, Nottinghamshire, Oxfordshire, Powys, Renfrewshire, RoxburghEttrickAndLauderdale, Sandwell, Shropshire, Somerset, SouthYorkshire, Staffordshire, Suffolk, Surrey, Tayside, TyneAndWear, Tyrone, Warwickshire, WestSussex, WestYorkshire, Wiltshire, Worcestershire, Yorkshire,
+    London, Manchester, Norwich, Aberdeenshire, Antrim, Armagh, AyrshireAndArran, Bedfordshire, Belfast, Berkshire, Birmingham, Bristol, Buckinghamshire, Cambridgeshire, Cardiff, CentralScotland, Cheshire, Clwyd, Cornwall, CountyDurham, Cumbria, Derbyshire, Devon, Dorset, Down, DumfriesAndGalloway, DunbartonshireArgyllBute, Dyfed, EastSussex, EastYorkshire, EdinburghAndLothians, Essex, Fermanagh, Fife, Glamorgan, Glasgow, Gloucestershire, Guernsey, Gwent, Gwynedd, Hampshire, Herefordshire, Hertfordshire, HighlandsAndIslands, IsleOfMan, IsleOfWight, Jersey, Kent, Lancashire, Leicestershire, Lincolnshire, Londonderry, Liverpool, NorthYorkshire, Northamptonshire, Northumberland, Nottinghamshire, Oxfordshire, Powys, Renfrewshire, RoxburghEttrickAndLauderdale, Shropshire, Somerset, SouthYorkshire, Staffordshire, Suffolk, Surrey, Tayside, TyneAndWear, Tyrone, Warwickshire, WestSussex, WestYorkshire, Wiltshire, Worcestershire, Yorkshire,
   )
 
   /** The UK cities currently live — the ones web serves and the worker scrapes.
@@ -1139,13 +1141,29 @@ object City {
    *  re-declaration. */
   private[models] val activeUkCities: Set[City] = allUkCities.toSet
 
+  /** Flicks regions that are not pages of their own, by name, and the page that
+   *  lists their venues instead. Each one's hub was under 15 km from its
+   *  neighbour's — two halves of one urban area, which `UkPageGeographySpec`
+   *  holds no two pages may be: Dudley (13 km) and Sandwell (9 km) are boroughs
+   *  of the Birmingham conurbation, and Lanarkshire's hub sits between East
+   *  Kilbride and Hamilton, 12 km from Glasgow's.
+   *
+   *  The ONE place the merge is said: their old slugs redirect from here (see
+   *  [[slugSuccession]]), and the picker keeps each name as a search alias on
+   *  the row that absorbed it (see [[CityGroup.absorbed]]). */
+  private[models] val ukMergedPages: Seq[(String, City)] = Seq(
+    "Dudley"      -> Birmingham,
+    "Sandwell"    -> Birmingham,
+    "Lanarkshire" -> Glasgow,
+  )
+
   /** The authoritative UK list for [[Country.UnitedKingdom]] — the live subset
    *  of [[allUkCities]], kept in that list's declared order. */
   private[models] val ukCities: Seq[City] = allUkCities.filter(activeUkCities)
 
   /** The UK picker's grouping: NATION over COUNTY over the places inside it.
    *
-   *  79 places is past what anyone reads as one A-to-Z — the same problem the US
+   *  76 places is past what anyone reads as one A-to-Z — the same problem the US
    *  has at 468 — but the UK's answer is levels UP rather than one down. A Flicks
    *  region is usually already the county ("Cheshire", "Cornwall", "Kent"), so
    *  there is nothing to cut those into; what the list wanted was the county over
@@ -1153,9 +1171,9 @@ object City {
    *
    *  Most counties therefore stand exactly where their one place stands and
    *  collapse back into it — see [[CityGroup.soleCity]]. The level earns its keep
-   *  on the entries that are a CITY rather than a county: Birmingham, Dudley and
-   *  Sandwell are three separate places a visitor finds under West Midlands, and
-   *  Manchester is where it is because Greater Manchester is.
+   *  on the entries that are a CITY rather than a county: Cardiff and Belfast sit
+   *  beside the rest of Glamorgan and Antrim, and Manchester is where it is
+   *  because Greater Manchester is.
    *
    *  Declared as a table rather than derived, because nothing in a `UkCity` knows
    *  its county or its nation: the roster is hand-authored `case object`s
@@ -1218,9 +1236,7 @@ object City {
         "Surrey"            -> Seq(Surrey),
         "Tyne and Wear"     -> Seq(TyneAndWear),
         "Warwickshire"      -> Seq(Warwickshire),
-        // The one county that groups several places rather than standing in for
-        // one: three of the metropolitan boroughs are separately scraped.
-        "West Midlands"     -> Seq(Birmingham, Dudley, Sandwell),
+        "West Midlands"     -> Seq(Birmingham),
         "West Sussex"       -> Seq(WestSussex),
         "West Yorkshire"    -> Seq(WestYorkshire),
         "Wiltshire"         -> Seq(Wiltshire),
@@ -1238,7 +1254,6 @@ object City {
         "Fife"                             -> Seq(Fife),
         "Glasgow"                          -> Seq(Glasgow),
         "Highlands and Islands"            -> Seq(HighlandsAndIslands),
-        "Lanarkshire"                      -> Seq(Lanarkshire),
         "Renfrewshire"                     -> Seq(Renfrewshire),
         "Roxburgh Ettrick and Lauderdale"  -> Seq(RoxburghEttrickAndLauderdale),
         "Tayside"                          -> Seq(Tayside),
@@ -1276,7 +1291,8 @@ object City {
       val kept = counties
         .map { case (county, places) =>
           CityGroup(county, Slugify.stable(county),
-                    CityListing.sorted(places.filter(activeUkCities), UkLocale))
+                    CityListing.sorted(places.filter(activeUkCities), UkLocale),
+                    absorbed = places.flatMap(place => ukMergedPages.collect { case (name, `place`) => name }))
         }
         .filter(_.cities.nonEmpty)
       // By what each row SHOWS, not by the county it came from: a county that
@@ -1295,7 +1311,7 @@ object City {
    *  inside it, alphabetically both ways.
    *
    *  158 regions is Germany's version of the same problem the US has at 468 and
-   *  the UK at 79 — and unlike the UK there is a natural level directly above,
+   *  the UK at 76 — and unlike the UK there is a natural level directly above,
    *  so this is one level rather than two. A region is already a travel-shed of
    *  towns around a hub ("Köln" also covers Düsseldorf and Bonn); the Land is
    *  what a visitor knows it by.
@@ -1386,6 +1402,8 @@ object City {
    *    and Oakland under a city they are not in. See `UsRoster.MetroDisplayNames`.
    *  - `alaska` and `hawaii` → their metros (2026-09-03). Neither was a place
    *    anyone browses as one list — see [[splitStates]].
+   *  - `dudley`, `sandwell` → `birmingham` and `lanarkshire` → `glasgow`
+   *    (2026-10-09): UK pages whose hubs were one urban area — see [[ukMergedPages]].
    */
   lazy val slugSuccession: Map[String, Seq[String]] = PolishPages.retired.view.mapValues(Seq(_)).toMap ++ Map(
     "san-francisco" -> Seq("san-francisco-bay-area"),
@@ -1401,7 +1419,7 @@ object City {
     "newport-news" -> Seq("hampton-roads", "willamette-valley"),
     "jefferson"    -> Seq("carroll", "fort-dodge"),
     "osage"        -> Seq("mason-city", "decorah"),
-  ) ++ splitStateSuccession
+  ) ++ ukMergedPages.map { case (name, into) => Slugify.stable(name) -> Seq(into.slug) } ++ splitStateSuccession
 
   /** States that used to be ONE city and are now their metros, so a single old
    *  slug is succeeded by several new ones.

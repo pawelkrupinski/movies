@@ -75,11 +75,11 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   }
 
   "Country.UnitedKingdom.cities" should "be the full modelled UK roster (every Flicks region live)" in {
-    // Every one of the 79 modelled regions is live — web serves them and the
+    // Every one of the 76 modelled regions is live — web serves them and the
     // worker scrapes them. `activeUkCities` currently equals the full roster, so
     // `ukCities` is `allUkCities` unchanged (in its declared order).
     City.ukCities shouldBe City.allUkCities
-    City.ukCities should have size 79
+    City.ukCities should have size 76
     City.activeUkCities shouldBe City.allUkCities.toSet
     // Formerly-disabled regions (e.g. Norwich) are now live too.
     City.ukCities.map(_.slug) should contain("norwich")
@@ -212,9 +212,9 @@ class CountrySpec extends AnyFlatSpec with Matchers {
       Seq("guernsey", "isle-of-man", "jersey")
 
     // The county level earns its keep on the entries that are a CITY rather than
-    // a county: three separately-scraped boroughs under one heading.
-    val westMidlands = nation("England").groups.find(_.label == "West Midlands").getOrElse(fail("no West Midlands"))
-    westMidlands.cities.map(_.slug) shouldBe Seq("birmingham", "dudley", "sandwell")
+    // a county: Cardiff beside the rest of Glamorgan.
+    val glamorgan = nation("Wales").groups.find(_.label == "Glamorgan").getOrElse(fail("no Glamorgan"))
+    glamorgan.cities.map(_.slug) shouldBe Seq("cardiff", "glamorgan")
     // Counties are alphabetical under British collation BY WHAT THEY SHOW, and
     // nations are not — England leads by size. Sorting on the county name would
     // file Manchester under "Greater Manchester" and Liverpool under
@@ -222,7 +222,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     val collator = java.text.Collator.getInstance(Locale.forLanguageTag("en-GB"))
     val shown    = nation("England").groups.map(_.displayLabel)
     shown shouldBe shown.sortWith((a, b) => collator.compare(a, b) < 0)
-    shown should contain allOf ("Liverpool", "Manchester", "Cheshire", "West Midlands")
+    shown should contain allOf ("Liverpool", "Manchester", "Cheshire", "Birmingham")
     shown.indexOf("Liverpool")  should be < shown.indexOf("Manchester")
     shown.indexOf("Manchester") should be < shown.indexOf("Norwich")
 
@@ -241,7 +241,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     val counties = Country.UnitedKingdom.cityGroups.flatMap(_.groups)
     counties.find(_.label == "Cheshire").get.slug shouldBe "cheshire"
     counties.filter(_.soleCity.isEmpty).map(_.label) should contain theSameElementsAs
-      Seq("West Midlands", "Glamorgan", "Antrim")
+      Seq("Glamorgan", "Antrim")
   }
 
   it should "group Germany by Bundesland, from the roster's own field" in {
@@ -327,9 +327,10 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     county("Greater Manchester").soleCity.map(_.slug) shouldBe Some("manchester")
     county("Merseyside").soleCity.map(_.slug)         shouldBe Some("liverpool")
     county("Norfolk").soleCity.map(_.slug)            shouldBe Some("norwich")
-    // Only the ones really arranging several keep a heading.
-    county("West Midlands").soleCity shouldBe None
-    england.groups.count(_.soleCity.isEmpty) shouldBe 1
+    county("West Midlands").soleCity.map(_.slug)      shouldBe Some("birmingham")
+    // England has no county arranging several places any more; Wales and
+    // Northern Ireland keep a heading each (Glamorgan, Antrim).
+    england.groups.count(_.soleCity.isEmpty) shouldBe 0
 
     // A collapsed county's own name is kept as a search alias where it differs,
     // so dropping the heading saves a tap without making the county unfindable.
@@ -337,7 +338,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     county("Greater Manchester").collapsedAlias shouldBe Some("Greater Manchester")
     // …and there is nothing to remember when the two names already agree.
     county("Cheshire").collapsedAlias    shouldBe None
-    county("West Midlands").collapsedAlias shouldBe None
+    county("Cheshire").searchAliases     shouldBe empty
 
     // A nation is never a place.
     Country.UnitedKingdom.cityGroups.flatMap(_.soleCity) shouldBe empty

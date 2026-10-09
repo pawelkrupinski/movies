@@ -1163,10 +1163,13 @@ class CinemaScraperCatalog(
     flicks("midlands-arts-centre-birmingham", MidlandsArtsCentreBirmingham),
     flicks("mockingbird-cinema-kitchen-birmingham", MockingbirdCinemaKitchenBirmingham),
     odeon("017", OdeonBirminghamNewStreet),
+    odeon("915", OdeonCinemaDudley),
+    odeon("761", OdeonCinemaWestBromwich),
     odeon("846", OdeonLuxeBirminghamBroadwayPlaza),
     flicks("empire-cinema-birmingham", OmniplexBirmingham),
     flicks("reel-cinema-quinton", ReelCinemaQuinton),
     flicks("royal-cinema-sutton-coldfield", RoyalCinemasSuttonColdfield),
+    showcase("X06JJ", ShowcaseCinemaDudley),
     vueUk("10015", VueCinemasBirmingham),
   )
   private val bristolScrapers: Seq[CinemaScraper] = Seq(
@@ -1343,10 +1346,6 @@ class CinemaScraperCatalog(
     flicks("omniplex-dundonald", OmniplexDundonald),
     flicks("omniplex-newry", OmniplexNewry),
   )
-  private val dudleyScrapers: Seq[CinemaScraper] = Seq(
-    odeon("915", OdeonCinemaDudley),
-    showcase("X06JJ", ShowcaseCinemaDudley),
-  )
   private val dumfriesAndGallowayScrapers: Seq[CinemaScraper] = Seq(
     flicks("lonsdale-city-annan", LonsdaleCityCinemaAnnan),
     flicks("robert-burns-centre-film-theatre-dumfries", RobertBurnsCentreFilmTheatre),
@@ -1364,7 +1363,6 @@ class CinemaScraperCatalog(
     flicks("commodore-aberystwyth", CommodoreCinemaAberystwyth),
     flicks("public-hall-cinema-cross-hands", CrossHandsHallCinema),
     flicks("libanus-1877-borth", Libanus1877),
-    flicks("miners-welfare-and-community-hall-ystradgynlais", MinersWelfareAndCommunityHallYstradgynlais),
     odeon("760", OdeonCinemaLlanelli),
     flicks("palace-haverfordwest", PalaceCinemaHaverfordwest),
     flicks("public-hall-brynamman", PublicHallBrynamman),
@@ -1444,6 +1442,7 @@ class CinemaScraperCatalog(
   private val glamorganScrapers: Seq[CinemaScraper] = Seq(
     flicks("coliseum-theatre-aberdare", ColiseumTheatreAberdare),
     flicks("gwyn-hall-neath", GwynHallNeath),
+    flicks("miners-welfare-and-community-hall-ystradgynlais", MinersWelfareAndCommunityHallYstradgynlais),
     odeon("546", OdeonCinemaBridgend),
     odeon("920", OdeonCinemaSwansea),
     flicks("pontardawe-arts-centre", PontardaweArtsCentre),
@@ -1459,9 +1458,12 @@ class CinemaScraperCatalog(
     flicks("grosvenor-cinema-glasgow", GrosvenorCinemaGlasgow),
     flicks("imax-glasgow", IMAXAtGlasgowScienceCentre),
     flicks("cumbernauld-theatre-at-lanternhouse", LanternhouseCinema),
+    odeon("923", OdeonLuxeEastKilbride),
     odeon("530", OdeonLuxeGlasgow),
+    showcase("X06KE", ShowcaseGlasgowCoatbridge),
     vueUk("10086", VueCinemasGlasgowFort),
     vueUk("10097", VueCinemasGlasgowStEnoch),
+    vueUk("10003", VueCinemasHamilton),
   )
   private val gloucestershireScrapers: Seq[CinemaScraper] = Seq(
     cineworld("x07p5-cineworld-cinema-cheltenham", CineworldCheltenham),
@@ -1583,11 +1585,6 @@ class CinemaScraperCatalog(
     flicks("the-light-cinemas-sittingbourne", TheLightSittingbourne),
     flicks("the-woodville-gravesend", TheWoodvilleGravesend),
     vueUk("10063", VueCinemasThanetWestwoodCross),
-  )
-  private val lanarkshireScrapers: Seq[CinemaScraper] = Seq(
-    odeon("923", OdeonLuxeEastKilbride),
-    showcase("X06KE", ShowcaseGlasgowCoatbridge),
-    vueUk("10003", VueCinemasHamilton),
   )
   private val lancashireScrapers: Seq[CinemaScraper] = Seq(
     flicks("the-backlot-cinema-and-diner", ArcCinemaBlackpool),
@@ -1740,9 +1737,6 @@ class CinemaScraperCatalog(
   private val roxburghEttrickAndLauderdaleScrapers: Seq[CinemaScraper] = Seq(
     flicks("pavilion-galashiels", PavilionCinemaGalashiels),
     flicks("tower-mill-cinema-hawick", TowerMillHeartOfHawick),
-  )
-  private val sandwellScrapers: Seq[CinemaScraper] = Seq(
-    odeon("761", OdeonCinemaWestBromwich),
   )
   private val shropshireScrapers: Seq[CinemaScraper] = Seq(
     flicks("assembly-rooms-ludlow", AssemblyRoomsLudlow),
@@ -2133,7 +2127,6 @@ class CinemaScraperCatalog(
     "devon" -> devonScrapers,
     "dorset" -> dorsetScrapers,
     "down" -> downScrapers,
-    "dudley" -> dudleyScrapers,
     "dumfries-and-galloway" -> dumfriesAndGallowayScrapers,
     "dunbartonshire-argyll-bute" -> dunbartonshireArgyllButeScrapers,
     "dyfed" -> dyfedScrapers,
@@ -2157,7 +2150,6 @@ class CinemaScraperCatalog(
     "isle-of-wight" -> isleOfWightScrapers,
     "jersey" -> jerseyScrapers,
     "kent" -> kentScrapers,
-    "lanarkshire" -> lanarkshireScrapers,
     "lancashire" -> lancashireScrapers,
     "leicestershire" -> leicestershireScrapers,
     "lincolnshire" -> lincolnshireScrapers,
@@ -2171,7 +2163,6 @@ class CinemaScraperCatalog(
     "powys" -> powysScrapers,
     "renfrewshire" -> renfrewshireScrapers,
     "roxburgh-ettrick-and-lauderdale" -> roxburghEttrickAndLauderdaleScrapers,
-    "sandwell" -> sandwellScrapers,
     "shropshire" -> shropshireScrapers,
     "somerset" -> somersetScrapers,
     "south-yorkshire" -> southYorkshireScrapers,

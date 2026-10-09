@@ -5,8 +5,8 @@ import { gotoAndWaitForCards } from './helpers';
 // (`#picker-static` — real crawlable links, hidden once the dynamic picker
 // below takes over; see `landing.scala.html`). `hasText` would not do: it
 // matches any group containing the text, and a nested picker's outermost
-// group contains every heading under it — asking for "West Midlands" that
-// way returns England.
+// group contains every heading under it — asking for "Glamorgan" that
+// way returns Wales.
 const staticGroupNamed = (page: Page, name: string) =>
   page.locator(`#city-list details.city-group:has(> summary:text-is("${name}"))`);
 
@@ -178,7 +178,7 @@ test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
   });
 });
 
-// The UK lists 79 places — Flicks regions, which are usually already the COUNTY
+// The UK lists 76 places — Flicks regions, which are usually already the COUNTY
 // ("Cheshire", "Kent") plus the handful of cities big enough to be a region of
 // their own (Birmingham, Glasgow, Liverpool). So its picker gained BOTH levels
 // above them: the county, and the nation over that. Most counties are the region
@@ -187,7 +187,7 @@ test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
 test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
   test('the static fallback lists every place under its county under its nation', async ({ page }) => {
     await page.goto('/landing-uk', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('.city-list a')).toHaveCount(79);
+    await expect(page.locator('.city-list a')).toHaveCount(76);
     await expect(page.locator('#city-list > li > details.city-group > summary')).toHaveText(
       ['England', 'Scotland', 'Northern Ireland', 'Wales', 'Crown Dependencies']);
     await expect(page.locator('details.city-group[open]')).toHaveCount(0);
@@ -211,20 +211,27 @@ test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
     await expect(pickerRow(page, 'Cheshire')).toBeVisible();
     await expect(pickerRow(page, 'Liverpool')).toBeVisible();
     await expect(pickerRow(page, 'Merseyside')).toHaveCount(0);
-    await expect(pickerRow(page, 'Birmingham')).toHaveCount(0);
-    // "West Midlands" sits interleaved in its own alphabetical position,
-    // beside "West Sussex" — not stranded ahead of every direct city in
-    // England, the reported "West Midlands out of order" bug.
-    const englandLabels = await page.locator('#picker-list .picker-item-label').allTextContents();
-    expect(englandLabels.indexOf('Warwickshire')).toBeLessThan(englandLabels.indexOf('West Midlands'));
-    expect(englandLabels.indexOf('West Midlands')).toBeLessThan(englandLabels.indexOf('West Sussex'));
+    // West Midlands holds only Birmingham since Dudley and Sandwell were folded
+    // into it (`City.ukMergedPages`), so it collapsed the same way.
+    await expect(pickerRow(page, 'Birmingham')).toBeVisible();
+    await expect(pickerRow(page, 'West Midlands')).toHaveCount(0);
 
-    await pickerRow(page, 'West Midlands').click();
-    await expect(page.locator('#picker-subtitle')).toHaveText('England — West Midlands');
-    // Scoped to the SUBREGION alone (3 places), not the whole region's 49 —
+    await page.locator('#picker-back-row').click();
+    await pickerRow(page, 'Wales').click();
+    await expect(pickerRow(page, 'Cardiff')).toHaveCount(0);
+    // "Glamorgan" sits interleaved in its own alphabetical position, between
+    // Dyfed and Gwent — not stranded ahead of every direct place in Wales, the
+    // reported "West Midlands out of order" bug.
+    const walesLabels = await page.locator('#picker-list .picker-item-label').allTextContents();
+    expect(walesLabels.indexOf('Dyfed')).toBeLessThan(walesLabels.indexOf('Glamorgan'));
+    expect(walesLabels.indexOf('Glamorgan')).toBeLessThan(walesLabels.indexOf('Gwent'));
+
+    await pickerRow(page, 'Glamorgan').click();
+    await expect(page.locator('#picker-subtitle')).toHaveText('Wales — Glamorgan');
+    // Scoped to the SUBREGION alone (2 places), not the whole region's —
     // a real bug this exact assertion caught upstream in `landing.scala.html`'s
     // `buildPickerRows`, inherited unchanged from the retired popup.
-    await expect(page.locator('#picker-list .picker-item')).toHaveText(['Birmingham', 'Dudley', 'Sandwell']);
+    await expect(page.locator('#picker-list .picker-item')).toHaveText(['Cardiff', 'Glamorgan']);
     // A pick's final navigation isn't exercised here — see the US test above
     // for why the fixture harness can't support it for a non-default country.
   });
@@ -233,22 +240,22 @@ test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
     await page.goto('/landing-uk', { waitUntil: 'domcontentloaded' });
     // Two levels here — the root box names both, deepest last.
     await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj: kraj, hrabstwo lub miasto…');
-    await pickerRow(page, 'England').click();
+    await pickerRow(page, 'Wales').click();
     // The nation is fixed now — only its counties and places are left.
     await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj: hrabstwo lub miasto…');
-    await pickerRow(page, 'West Midlands').click();
+    await pickerRow(page, 'Glamorgan').click();
     await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj miasta…');
   });
 
   test('back pops one level at a time — county, then nation', async ({ page }) => {
     await page.goto('/landing-uk', { waitUntil: 'domcontentloaded' });
-    await pickerRow(page, 'England').click();
-    await pickerRow(page, 'West Midlands').click();
-    await expect(pickerRow(page, 'Birmingham')).toBeVisible();
+    await pickerRow(page, 'Wales').click();
+    await pickerRow(page, 'Glamorgan').click();
+    await expect(pickerRow(page, 'Cardiff')).toBeVisible();
 
     await page.locator('#picker-back-row').click();
-    await expect(pickerRow(page, 'West Midlands')).toBeVisible();
-    await expect(page.locator('#picker-subtitle')).toHaveText('England');
+    await expect(pickerRow(page, 'Powys')).toBeVisible();
+    await expect(page.locator('#picker-subtitle')).toHaveText('Wales');
 
     await page.locator('#picker-back-row').click();
     await expect(page.locator('#picker-back-row')).toBeHidden();
@@ -258,17 +265,18 @@ test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
 
   test('finds a county from the nation root, and lands two levels deep in one tap', async ({ page }) => {
     await page.goto('/landing-uk', { waitUntil: 'domcontentloaded' });
-    // "West Midlands" is a COUNTY two levels below the root the box shows
+    // "Glamorgan" is a COUNTY two levels below the root the box shows
     // (nation → county → place) — the search scans the whole country
-    // regardless of level, so it surfaces from the very first screen.
-    await page.locator('#picker-search').fill('west midlands');
-    await expect(page.locator('#picker-list .picker-item-label')).toHaveText(['West Midlands']);
+    // regardless of level, so it surfaces from the very first screen, ahead
+    // of the place of the same name inside it.
+    await page.locator('#picker-search').fill('glamorgan');
+    await expect(page.locator('#picker-list .picker-item-label')).toHaveText(['Glamorgan', 'Glamorgan']);
 
     // Picking it has to land on the right NATION too, not just the county —
     // a bare subregion name says nothing about which nation it belongs to.
-    await pickerRow(page, 'West Midlands').click();
-    await expect(page.locator('#picker-subtitle')).toHaveText('England — West Midlands');
-    await expect(page.locator('#picker-list .picker-item')).toHaveText(['Birmingham', 'Dudley', 'Sandwell']);
+    await pickerRow(page, 'Glamorgan').first().click();
+    await expect(page.locator('#picker-subtitle')).toHaveText('Wales — Glamorgan');
+    await expect(page.locator('#picker-list .picker-item')).toHaveText(['Cardiff', 'Glamorgan']);
   });
 
   test('a search hit at the county level does NOT find a place by its collapsed county name', async ({ page }) => {
