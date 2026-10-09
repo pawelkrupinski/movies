@@ -28,7 +28,7 @@
 #
 # The keys below are PUBLIC. Nothing secret belongs in this file.
 keys:
-  - &operator age1xk5y9cqtyphr3deefnnfkfpd47yh7se90waj0hwzgefgmqzqsq7q8dy8ca
+  - &operator age1gyzqlh05zh2fv85a640wcxx9ln2n7fvcvfv4rj533y4wqe3qe4sqmmvp7l
 
   # THE THREE HOST KEYS DO NOT EXIST YET and cannot: a host key is minted by the machine on its
   # first boot as NixOS, so there is nothing to derive one from until `convert-host` has run against
