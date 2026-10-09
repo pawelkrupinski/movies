@@ -6,6 +6,7 @@ import models.KinoParczew
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.KinoParczewClient
+import tools.HttpRead
 
 import java.time.LocalDateTime
 
@@ -48,5 +49,15 @@ class ParczewClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     dates should contain allOf (LocalDateTime.of(2026, 9, 18, 19, 0), LocalDateTime.of(2026, 10, 1, 19, 0))
     film.movie.genres shouldBe Seq("Akcja", "Komedia")
     film.director shouldBe Seq("Mikołaj Piszczan")
+  }
+
+  // Supermocni's page (captured 2026-10-09) fills `Reżyseria:` with a bare ".." placeholder; read as a
+  // name, it reached recorded:pl as a director called ".." (CinemaSlotInvariantsSpec).
+  it should "read a director placeholder with no name in it as no director" in {
+    val url  = "https://kinoparczew.pl/filmy/supermocni/"
+    val film = KinoParczewClient.parseFilm(HttpRead.page(new FakeHttpFetch("kino-parczew"), url), url, KinoParczew).value
+    film.movie.title shouldBe "Supermocni"
+    film.movie.genres shouldBe Seq("Animacja", "Familijny", "Fantasy")
+    film.director shouldBe empty
   }
 }

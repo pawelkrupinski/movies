@@ -32,12 +32,19 @@ class CinemaSlotInvariantsSpec extends CorpusShapeSpec {
       "allowlist the listing with why the value is right:"
 
   private val RecordedBeforeFix =
-    "recorded 2026-10-03 before the parser fix named here; the recorded corpus is the parser's OUTPUT, so it keeps " +
-      "the old value until re-recorded — listed in awaitingReRecord, so a fresh recording reports it instead of failing; drop it once every corpus is re-recorded"
+    "recorded before the parser fix named here; the recorded corpus is the parser's OUTPUT, so it keeps the old value " +
+      "until re-recorded — listed in awaitingReRecord, so a fresh recording reports it instead of failing; drop it once every corpus is re-recorded"
 
-  override protected val awaitingReRecord: Set[AllowedListing] =
+  /** Listings a parser fix has already cured, whose recorded slot still carries the old value. */
+  private val recordedBeforeFix: Map[AllowedListing, String] =
     Seq("Kino Mikro" -> "Lalka (+ ENG", "Mikro Bronowice" -> "Lalka (+ ENG", "Kino Mikro" -> "World Space Week - Interstellar",
-      "Kino Mikro" -> "Zaproszenie").map(AllowedListing.apply.tupled).toSet
+      "Kino Mikro" -> "Zaproszenie").map { case (venue, listing) =>
+      AllowedListing(venue, listing) ->
+        s"director = the whole credits line (and 'Lalka' cut at 'SUBS)'), 2026-10-03: $RecordedBeforeFix (SystemBiletowy's 'aktorzy' label, FormatTags' bracket guard)"
+    }.toMap + (AllowedListing("Kino Parczew", "Supermocni") ->
+      s"director '..', the site's placeholder for an unknown one, 2026-10-09 (run 37877199615): $RecordedBeforeFix (KinoParczewClient keeps only names with a letter)")
+
+  override protected val awaitingReRecord: Set[AllowedListing] = recordedBeforeFix.keySet
 
   protected val allowlist: Map[AllowedListing, String] = Map(
     AllowedListing("Pictureville (Science and Media Museum Bradford)", "Jubilee (1978)") ->
@@ -50,11 +57,7 @@ class CinemaSlotInvariantsSpec extends CorpusShapeSpec {
       "TODO(parser): the checked-in 2026-07-29 corpus has Rialto's 'Reż.' line glued to its production line (director " +
         "'Caroline Origer Belgia', 'Francja', … '85 minut'); the event page has left the programme (not in the 2026-10-04 " +
         "recording), so the parser cannot be re-checked against it — parked"),
-  ) ++ Seq("Kino Mikro" -> "Lalka (+ ENG", "Mikro Bronowice" -> "Lalka (+ ENG", "Kino Mikro" -> "World Space Week - Interstellar",
-    "Kino Mikro" -> "Zaproszenie").map {
-    case (venue, listing) => AllowedListing(venue, listing) ->
-      s"director = the whole credits line (and 'Lalka' cut at 'SUBS)'): $RecordedBeforeFix (SystemBiletowy's 'aktorzy' label, FormatTags' bracket guard)"
-  }
+  ) ++ recordedBeforeFix
 
   "the invariants" should "catch each wrong-node read the clients shipped" in {
     violations(SourceData(director = Seq("75’"))) shouldBe Seq("person-is-runtime: 75’")

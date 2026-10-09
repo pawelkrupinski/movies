@@ -26,7 +26,7 @@ import scala.util.Try
  *   - `Format:`          `<li>` list, e.g. "2D"
  *   - `Długość:`         runtime in minutes
  *   - `Gatunek:`         `<li>` list of genres
- *   - `Reżyseria:`       plain-text director(s), comma-separated
+ *   - `Reżyseria:`       plain-text director(s), comma-separated; ".." when unknown
  *   - `Kraj produkcji:`  `<li>` list of countries
  * No online ticketing — reservation is phone-only, so `bookingUrl` stays
  * `None`. Each "Codziennie od X do Y o godzinie …" run expands to one
@@ -85,8 +85,9 @@ object KinoParczewClient {
         filmUrl   = Some(url),
         synopsis  = synopsisOf(document),
         cast      = Seq.empty,
-        director  = fields.get("reżyseria").map(_.text.trim).filter(_.nonEmpty)
-                      .map(_.split(",").toSeq.map(_.trim).filter(_.nonEmpty)).getOrElse(Seq.empty),
+        // A name has a letter in it: the site fills an unknown director with a ".." placeholder.
+        director  = fields.get("reżyseria").map(_.text.split(",").toSeq.map(_.trim).filter(_.exists(_.isLetter)))
+                      .getOrElse(Seq.empty),
         showtimes = showtimes
       )
     }
