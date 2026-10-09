@@ -142,7 +142,12 @@ jobs:
             contents: write
             pull-requests: write
         steps:
+            # main's tip, not the triggering commit: a long run can see main gain a
+            # workflow change, and a branch built on the older commit would revert it
+            # (refused for the App). See BotPullRequestBranchSpec.
             - uses: actions/checkout@v5
+              with:
+                  ref: main
 
             - uses: actions/download-artifact@v6
               with:

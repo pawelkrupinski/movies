@@ -11,6 +11,11 @@ import org.scalatest.matchers.should.Matchers
  * the `workflows` permission. The OG-card refresh stopped landing that way on 2026-09-25. So
  * every such job drops its branch first (`.github/actions/drop-bot-branch`) and the push is
  * always a fresh branch off `main`.
+ *
+ * "Off `main`" means `main`'s tip when the PR job runs, not the commit the run was triggered
+ * on: `actions/checkout` defaults to the triggering SHA, and a run long enough for `main` to
+ * gain a workflow change meanwhile builds a branch that reverts it -- the same refusal. The
+ * OG-card refresh hit that on 2026-10-09 (two `ci.yml` commits landed during its 35 minutes).
  */
 class BotPullRequestBranchSpec extends AnyFlatSpec with Matchers {
   private val CreatePr   = "uses: peter-evans/create-pull-request@"
@@ -26,6 +31,14 @@ class BotPullRequestBranchSpec extends AnyFlatSpec with Matchers {
     if job.contains(CreatePr)
   } yield (file.getName, name, job)
 
+  private val Checkout = "uses: actions/checkout@"
+  private val RefMain  = """^\s*ref:\s*main\s*$""".r
+
+  /** Whether the job's first checkout pins `ref: main` in its own `with:` block. */
+  private def checksOutMainTip(job: String): Boolean =
+    job.linesIterator.dropWhile(!_.contains(Checkout)).drop(1)
+      .takeWhile(line => !line.trim.startsWith("- ")).exists(RefMain.matches)
+
   /** The `branch:` value of the first `with:` block after `marker` in `job`. */
   private def branchAfter(job: String, marker: String): Option[String] =
     job.linesIterator.dropWhile(!_.contains(marker)).collectFirst { case Branch(branch) => branch }
@@ -39,6 +52,11 @@ class BotPullRequestBranchSpec extends AnyFlatSpec with Matchers {
             branchAfter(job, DropBranch) != branchAfter(job, CreatePr) =>
         s"$file:$name"
     }
+    offending shouldBe empty
+  }
+
+  it should "build that branch on main's current tip, not the run's triggering commit" in {
+    val offending = prJobs.collect { case (file, name, job) if !checksOutMainTip(job) => s"$file:$name" }
     offending shouldBe empty
   }
 }

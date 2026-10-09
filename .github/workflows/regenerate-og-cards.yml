@@ -212,7 +212,12 @@ jobs:
                   app-id: ${{ secrets.SYNC_PR_APP_ID }}
                   private-key: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
 
+            # main's tip, not the triggering commit: a long run can see main gain a
+            # workflow change, and a branch built on the older commit would revert it
+            # (refused for the App). See BotPullRequestBranchSpec.
             - uses: actions/checkout@v5
+              with:
+                  ref: main
 
             - uses: actions/download-artifact@v6
               with:
