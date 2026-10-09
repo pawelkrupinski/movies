@@ -77,9 +77,10 @@ def main():
     try:
         run({"Poznań": (60, 0, 500000), "Namesake": (400, 300, 3000)},
             [("Namesake", "N1"), ("Poznań", "P1")], max_drift=b.MAX_DRIFT_KM)
-        check("the drift guard stops a town placed far from its old page", False)
+        refused = False
     except SystemExit:
-        check("the drift guard stops a town placed far from its old page", True)
+        refused = True
+    check("the drift guard stops a town placed far from its old page", refused)
     print("all passed")
 
 

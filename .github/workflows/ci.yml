@@ -147,8 +147,10 @@ jobs:
                   python3 data/germany/scripts/test_harvest_kinoprogramm.py
                   python3 data/pl/scripts/test_build_pages.py
                   python3 data/pl/scripts/test_build_venue_towns.py
+                  python3 data/spain/scripts/test_build_pages.py
                   python3 data/spain/scripts/test_build_provinces.py
                   python3 data/spain/scripts/test_build_town_names.py
+                  python3 data/spain/scripts/test_build_venue_towns.py
                   python3 data/spain/scripts/test_generate_roster.py
                   python3 data/us/scripts/test_cluster_metros.py
                   python3 data/us/scripts/test_generate_roster.py

@@ -1,0 +1,4920 @@
+{
+ "pages": [
+  {
+   "slug": "madrid",
+   "kind": "major",
+   "name": "Madrid",
+   "anchor": "Madrid",
+   "province": "Madrid",
+   "community": "Comunidad de Madrid",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.4165,
+   "lon": -3.7026,
+   "towns": [
+    "Madrid"
+   ],
+   "cinemas": [
+    "Cines Princesa",
+    "Cinesa La Gavia",
+    "Cinesa Manoteras",
+    "Cinesa Méndez Álvaro",
+    "Cinesa Príncipe Pío",
+    "Yelmo Cines Ideal",
+    "Yelmo Cines Islazul",
+    "Yelmo Cines La Vaguada",
+    "Yelmo Cines Plenilunio",
+    "mk2 Palacio de Hielo (antiguos Cines Dreams)",
+    "Ocine Urban Caleido"
+   ],
+   "qualifiedSlug": "madrid-comunidad-de-madrid"
+  },
+  {
+   "slug": "barcelona",
+   "kind": "major",
+   "name": "Barcelona",
+   "anchor": "Barcelona",
+   "province": "Barcelona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.3888,
+   "lon": 2.159,
+   "towns": [
+    "Barcelona"
+   ],
+   "cinemas": [
+    "Arenas Multicines 3D",
+    "Aribau Multicines",
+    "Balmes Multicines",
+    "Bosque Multicines",
+    "Cinesa Diagonal",
+    "Cinesa Diagonal Mar",
+    "Cinesa SOM Multiespai",
+    "Glòries Multicines",
+    "Gran Sarrià Multicines",
+    "Renoir Floridablanca"
+   ],
+   "qualifiedSlug": "barcelona-cataluna"
+  },
+  {
+   "slug": "valencia",
+   "kind": "major",
+   "name": "Valencia",
+   "anchor": "Valencia",
+   "province": "Valencia",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.4739,
+   "lon": -0.3797,
+   "towns": [
+    "Valencia"
+   ],
+   "cinemas": [
+    "Abc El Saler",
+    "Abc Park",
+    "Autocine Star",
+    "Cines Babel",
+    "Cines Lys",
+    "Cinestudio D´or",
+    "Ocine Premium Aqua",
+    "Teatro Flumen",
+    "Yelmo Cines Campanar",
+    "Yelmo Cines Mercado de Campanar"
+   ],
+   "qualifiedSlug": "valencia-comunidad-valenciana"
+  },
+  {
+   "slug": "sevilla",
+   "kind": "major",
+   "name": "Sevilla",
+   "anchor": "Sevilla",
+   "province": "Sevilla",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.3828,
+   "lon": -5.9732,
+   "towns": [
+    "Sevilla"
+   ],
+   "cinemas": [
+    "Avenida 5 Cines",
+    "Los Arcos Multicines",
+    "Odeon Multicines Plaza de Armas",
+    "Yelmo Cines Premium Lagoh",
+    "Zona Este",
+    "mk2 Nervión Plaza"
+   ],
+   "qualifiedSlug": "sevilla-andalucia"
+  },
+  {
+   "slug": "zaragoza",
+   "kind": "major",
+   "name": "Zaragoza",
+   "anchor": "Zaragoza",
+   "province": "Zaragoza",
+   "community": "Aragón",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.6561,
+   "lon": -0.8773,
+   "towns": [
+    "Zaragoza"
+   ],
+   "cinemas": [
+    "Artesiete La Torre",
+    "Cine Palafox Zaragoza",
+    "Cine Sala Cervantes",
+    "Cines Aragonia",
+    "Cinesa Grancasa",
+    "Cinesa Puerto Venecia"
+   ],
+   "qualifiedSlug": "zaragoza-aragon"
+  },
+  {
+   "slug": "malaga",
+   "kind": "major",
+   "name": "Málaga",
+   "anchor": "Málaga",
+   "province": "Málaga",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.7202,
+   "lon": -4.4203,
+   "towns": [
+    "Málaga"
+   ],
+   "cinemas": [
+    "Alameda Multicines Malaga",
+    "Cine Albéniz",
+    "Multicines Rosaleda",
+    "mk2 Malaga Nostrum"
+   ],
+   "qualifiedSlug": "malaga-andalucia"
+  },
+  {
+   "slug": "murcia",
+   "kind": "major",
+   "name": "Murcia",
+   "anchor": "Murcia",
+   "province": "Murcia",
+   "community": "Región de Murcia",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.987,
+   "lon": -1.13,
+   "towns": [
+    "Murcia"
+   ],
+   "cinemas": [
+    "Cinesa Nueva Condomina",
+    "Neocine Centrofama",
+    "Neocine El Tiro",
+    "Neocine Rex",
+    "Neocine Thader"
+   ],
+   "qualifiedSlug": "murcia-region-de-murcia"
+  },
+  {
+   "slug": "palma-de-mallorca",
+   "kind": "major",
+   "name": "Palma de Mallorca",
+   "anchor": "Palma de Mallorca",
+   "province": "Islas Baleares",
+   "community": "Islas Baleares",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.5694,
+   "lon": 2.6502,
+   "towns": [
+    "Palma de Mallorca"
+   ],
+   "cinemas": [
+    "Artesiete Fan",
+    "CineCiutat",
+    "Cines Ocimax",
+    "Multicines Rivoli",
+    "Sala Augusta",
+    "Ocine Premium Porto Pi"
+   ],
+   "qualifiedSlug": "palma-de-mallorca-islas-baleares"
+  },
+  {
+   "slug": "las-palmas-de-gran-canaria",
+   "kind": "major",
+   "name": "Las Palmas de Gran Canaria",
+   "anchor": "Las Palmas de Gran Canaria",
+   "province": "Las Palmas",
+   "community": "Canarias",
+   "zoneId": "Atlantic/Canary",
+   "lat": 28.1018,
+   "lon": -15.4157,
+   "towns": [
+    "Las Palmas de Gran Canaria"
+   ],
+   "cinemas": [
+    "Yelmo Cines Las Arenas",
+    "Yelmo Cines Premium Alisios",
+    "Ocine Premium 7 Palmas"
+   ],
+   "qualifiedSlug": "las-palmas-de-gran-canaria-canarias"
+  },
+  {
+   "slug": "bilbao",
+   "kind": "major",
+   "name": "Bilbao",
+   "anchor": "Bilbao",
+   "province": "Vizcaya",
+   "community": "País Vasco",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.2627,
+   "lon": -2.9253,
+   "towns": [
+    "Bilbao"
+   ],
+   "cinemas": [
+    "Cinesa Zubiarte",
+    "Golem Alhóndiga",
+    "Multicines 7 Bilbao"
+   ],
+   "qualifiedSlug": "bilbao-pais-vasco"
+  },
+  {
+   "slug": "alicante",
+   "kind": "major",
+   "name": "Alicante",
+   "anchor": "Alicante",
+   "province": "Alicante",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.3452,
+   "lon": -0.4815,
+   "towns": [
+    "Alicante"
+   ],
+   "cinemas": [
+    "Cine Aana Alicante",
+    "Cine Navas",
+    "Cinebox Plaza Mar 2",
+    "Cines Axion Playa de San Juan ",
+    "Cines Costa",
+    "Cines Panoramis",
+    "Kinépolis Alicante",
+    "Yelmo Cines Puerta De Alicante"
+   ],
+   "qualifiedSlug": "alicante-comunidad-valenciana"
+  },
+  {
+   "slug": "cordoba",
+   "kind": "major",
+   "name": "Córdoba",
+   "anchor": "Córdoba",
+   "province": "Córdoba",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.8916,
+   "lon": -4.7728,
+   "towns": [
+    "Córdoba"
+   ],
+   "cinemas": [
+    "Cine Delicias",
+    "Guadalquivir Cinemas 10",
+    "mk2 El Tablero"
+   ],
+   "qualifiedSlug": "cordoba-andalucia"
+  },
+  {
+   "slug": "valladolid",
+   "kind": "major",
+   "name": "Valladolid",
+   "anchor": "Valladolid",
+   "province": "Valladolid",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.6554,
+   "lon": -4.7235,
+   "towns": [
+    "Valladolid"
+   ],
+   "cinemas": [
+    "Cine Casablanca",
+    "Cines Broadway",
+    "Cines Manhattan",
+    "Yelmo Cines Premium VallSur"
+   ],
+   "qualifiedSlug": "valladolid-castilla-y-leon"
+  },
+  {
+   "slug": "vigo",
+   "kind": "major",
+   "name": "Vigo",
+   "anchor": "Vigo",
+   "province": "Pontevedra",
+   "community": "Galicia",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.2328,
+   "lon": -8.7226,
+   "towns": [
+    "Vigo"
+   ],
+   "cinemas": [
+    "Cines Tamberlick Plaza Elíptica",
+    "Multicines Norte",
+    "Teatro Salesianos",
+    "Yelmo Cines Premium Vialia Vigo",
+    "Yelmo Cines Travesía Vigo",
+    "Ocine Premium Gran Vía de Vigo"
+   ],
+   "qualifiedSlug": "vigo-galicia"
+  },
+  {
+   "slug": "gijon",
+   "kind": "major",
+   "name": "Gijón",
+   "anchor": "Gijón",
+   "province": "Asturias",
+   "community": "Asturias",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.5357,
+   "lon": -5.6615,
+   "towns": [
+    "Gijón"
+   ],
+   "cinemas": [
+    "Autocine Gijón",
+    "Ocine Premium Los Fresnos"
+   ],
+   "qualifiedSlug": "gijon-asturias"
+  },
+  {
+   "slug": "l-hospitalet-de-llobregat",
+   "kind": "major",
+   "name": "L'Hospitalet de Llobregat",
+   "anchor": "L'Hospitalet de Llobregat",
+   "province": "Barcelona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.3597,
+   "lon": 2.1003,
+   "towns": [
+    "L'Hospitalet de Llobregat"
+   ],
+   "cinemas": [
+    "Cinesa La Farga",
+    "Filmax Gran Via 3D"
+   ],
+   "qualifiedSlug": "l-hospitalet-de-llobregat-cataluna"
+  },
+  {
+   "slug": "a-coruna",
+   "kind": "major",
+   "name": "A Coruña",
+   "anchor": "A Coruña",
+   "province": "A Coruña",
+   "community": "Galicia",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.3713,
+   "lon": -8.396,
+   "towns": [
+    "A Coruña"
+   ],
+   "cinemas": [
+    "Cantones Cines",
+    "Cines Forum Metropolitano",
+    "Cinesa Marineda City",
+    "Yelmo Cines Espacio Coruña"
+   ],
+   "qualifiedSlug": "a-coruna-galicia"
+  },
+  {
+   "slug": "vitoria-gasteiz",
+   "kind": "major",
+   "name": "Vitoria-Gasteiz",
+   "anchor": "Vitoria-Gasteiz",
+   "province": "Álava",
+   "community": "País Vasco",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.85,
+   "lon": -2.6727,
+   "towns": [
+    "Vitoria-Gasteiz"
+   ],
+   "cinemas": [
+    "Cines Florida",
+    "Cines Guridi",
+    "Yelmo Cines Boulevard"
+   ],
+   "qualifiedSlug": "vitoria-gasteiz-pais-vasco"
+  },
+  {
+   "slug": "granada",
+   "kind": "major",
+   "name": "Granada",
+   "anchor": "Granada",
+   "province": "Granada",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.1882,
+   "lon": -3.6067,
+   "towns": [
+    "Granada"
+   ],
+   "cinemas": [
+    "Cine Madrigal",
+    "Megarama Granada",
+    "Ocine Serrallo",
+    "Teatro Isabel La Catolica"
+   ],
+   "qualifiedSlug": "granada-andalucia"
+  },
+  {
+   "slug": "elche",
+   "kind": "major",
+   "name": "Elche",
+   "anchor": "Elche",
+   "province": "Alicante",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.2622,
+   "lon": -0.7011,
+   "towns": [
+    "Elche"
+   ],
+   "cinemas": [
+    "Abc Elx",
+    "Cines Odeón"
+   ],
+   "qualifiedSlug": "elche-comunidad-valenciana"
+  },
+  {
+   "slug": "oviedo",
+   "kind": "major",
+   "name": "Oviedo",
+   "anchor": "Oviedo",
+   "province": "Asturias",
+   "community": "Asturias",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.3603,
+   "lon": -5.8448,
+   "towns": [
+    "Oviedo"
+   ],
+   "cinemas": [
+    "Yelmo Cines Los Prados"
+   ],
+   "qualifiedSlug": "oviedo-asturias"
+  },
+  {
+   "slug": "badalona",
+   "kind": "major",
+   "name": "Badalona",
+   "anchor": "Badalona",
+   "province": "Barcelona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.45,
+   "lon": 2.2474,
+   "towns": [
+    "Badalona"
+   ],
+   "cinemas": [
+    "Ocine Màgic"
+   ],
+   "qualifiedSlug": "badalona-cataluna"
+  },
+  {
+   "slug": "terrassa",
+   "kind": "major",
+   "name": "Terrassa",
+   "anchor": "Terrassa",
+   "province": "Barcelona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.5667,
+   "lon": 2.0167,
+   "towns": [
+    "Terrassa"
+   ],
+   "cinemas": [
+    "Cinema Catalunya",
+    "Cinesa Parc Vallès",
+    "Club Catalunya"
+   ],
+   "qualifiedSlug": "terrassa-cataluna"
+  },
+  {
+   "slug": "cartagena",
+   "kind": "major",
+   "name": "Cartagena",
+   "anchor": "Cartagena",
+   "province": "Murcia",
+   "community": "Región de Murcia",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.602,
+   "lon": -0.984,
+   "towns": [
+    "Cartagena"
+   ],
+   "cinemas": [
+    "Cine La Manga",
+    "Cine Sirenas",
+    "NeoCine Espacio Mediterraneo",
+    "Neocine Mandarache",
+    "Nuevos Cines Cabos de Palos "
+   ],
+   "qualifiedSlug": "cartagena-region-de-murcia"
+  },
+  {
+   "slug": "jerez-de-la-frontera",
+   "kind": "major",
+   "name": "Jerez de la Frontera",
+   "anchor": "Jerez de la Frontera",
+   "province": "Cádiz",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.6865,
+   "lon": -6.1361,
+   "towns": [
+    "Jerez de la Frontera"
+   ],
+   "cinemas": [
+    "Multicines Jerez UCC",
+    "Yelmo Cines Área Sur"
+   ],
+   "qualifiedSlug": "jerez-de-la-frontera-andalucia"
+  },
+  {
+   "slug": "sabadell",
+   "kind": "major",
+   "name": "Sabadell",
+   "anchor": "Sabadell",
+   "province": "Barcelona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.5433,
+   "lon": 2.1094,
+   "towns": [
+    "Sabadell"
+   ],
+   "cinemas": [
+    "Cines Imperial",
+    "Multicines Eix Macià"
+   ],
+   "qualifiedSlug": "sabadell-cataluna"
+  },
+  {
+   "slug": "santa-cruz-de-tenerife",
+   "kind": "major",
+   "name": "Santa Cruz de Tenerife",
+   "anchor": "Santa Cruz de Tenerife",
+   "province": "Santa Cruz de Tenerife",
+   "community": "Canarias",
+   "zoneId": "Atlantic/Canary",
+   "lat": 28.4682,
+   "lon": -16.2546,
+   "towns": [
+    "Santa Cruz de Tenerife"
+   ],
+   "cinemas": [
+    "Cines Price Prime",
+    "Yelmo Cines Meridiano"
+   ],
+   "qualifiedSlug": "santa-cruz-de-tenerife-canarias"
+  },
+  {
+   "slug": "mostoles",
+   "kind": "major",
+   "name": "Móstoles",
+   "anchor": "Móstoles",
+   "province": "Madrid",
+   "community": "Comunidad de Madrid",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.3223,
+   "lon": -3.865,
+   "towns": [
+    "Móstoles"
+   ],
+   "cinemas": [
+    "Cines Dos de Mayo"
+   ],
+   "qualifiedSlug": "mostoles-comunidad-de-madrid"
+  },
+  {
+   "slug": "alcala-de-henares",
+   "kind": "major",
+   "name": "Alcalá de Henares",
+   "anchor": "Alcalá de Henares",
+   "province": "Madrid",
+   "community": "Comunidad de Madrid",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.4821,
+   "lon": -3.36,
+   "towns": [
+    "Alcalá de Henares"
+   ],
+   "cinemas": [
+    "Multicines Cisneros",
+    "Ocine Quadernillos"
+   ],
+   "qualifiedSlug": "alcala-de-henares-comunidad-de-madrid"
+  },
+  {
+   "slug": "pamplona",
+   "kind": "major",
+   "name": "Pamplona",
+   "anchor": "Pamplona",
+   "province": "Navarra",
+   "community": "Navarra",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.8169,
+   "lon": -1.6432,
+   "towns": [
+    "Pamplona"
+   ],
+   "cinemas": [
+    "Golem Baiona",
+    "Golem Yamaguchi"
+   ],
+   "qualifiedSlug": "pamplona-navarra"
+  },
+  {
+   "slug": "fuenlabrada",
+   "kind": "major",
+   "name": "Fuenlabrada",
+   "anchor": "Fuenlabrada",
+   "province": "Madrid",
+   "community": "Comunidad de Madrid",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.2842,
+   "lon": -3.7942,
+   "towns": [
+    "Fuenlabrada"
+   ],
+   "cinemas": [
+    "Cinesa Plaza Loranca 2"
+   ],
+   "qualifiedSlug": "fuenlabrada-comunidad-de-madrid"
+  },
+  {
+   "slug": "almeria",
+   "kind": "major",
+   "name": "Almería",
+   "anchor": "Almería",
+   "province": "Almería",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.8381,
+   "lon": -2.4597,
+   "towns": [
+    "Almería"
+   ],
+   "cinemas": [
+    "Kinépolis Almería Mediterráneo",
+    "Yelmo Cines Torrecárdenas"
+   ],
+   "qualifiedSlug": "almeria-andalucia"
+  },
+  {
+   "slug": "leganes",
+   "kind": "major",
+   "name": "Leganés",
+   "anchor": "Leganés",
+   "province": "Madrid",
+   "community": "Comunidad de Madrid",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.3272,
+   "lon": -3.7635,
+   "towns": [
+    "Leganés"
+   ],
+   "cinemas": [
+    "Cinesa Parquesur",
+    "Odeon Multicines Sambil Dolby Atmos"
+   ],
+   "qualifiedSlug": "leganes-comunidad-de-madrid"
+  },
+  {
+   "slug": "san-sebastian",
+   "kind": "major",
+   "name": "San Sebastián",
+   "anchor": "San Sebastián",
+   "province": "Guipúzcoa",
+   "community": "País Vasco",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.3128,
+   "lon": -1.975,
+   "towns": [
+    "San Sebastián"
+   ],
+   "cinemas": [
+    "Cine Príncipe",
+    "Cine Trueba",
+    "Cines Antiguo Berri"
+   ],
+   "qualifiedSlug": "san-sebastian-pais-vasco"
+  },
+  {
+   "slug": "getafe",
+   "kind": "major",
+   "name": "Getafe",
+   "anchor": "Getafe",
+   "province": "Madrid",
+   "community": "Comunidad de Madrid",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.3057,
+   "lon": -3.733,
+   "towns": [
+    "Getafe"
+   ],
+   "cinemas": [
+    "Cinesa Nassica"
+   ],
+   "qualifiedSlug": "getafe-comunidad-de-madrid"
+  },
+  {
+   "slug": "castellon-de-la-plana",
+   "kind": "major",
+   "name": "Castellón de la Plana",
+   "anchor": "Castellón de la Plana",
+   "province": "Castellón",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.9857,
+   "lon": -0.0493,
+   "towns": [
+    "Castellón de la Plana"
+   ],
+   "cinemas": [
+    "Cinesa Salera",
+    "Neocine Puerto Azahar",
+    "Ocine Premium Estepark"
+   ],
+   "qualifiedSlug": "castellon-de-la-plana-comunidad-valenciana"
+  },
+  {
+   "slug": "burgos",
+   "kind": "major",
+   "name": "Burgos",
+   "anchor": "Burgos",
+   "province": "Burgos",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.3411,
+   "lon": -3.7018,
+   "towns": [
+    "Burgos"
+   ],
+   "cinemas": [
+    "Cines Van Golem Arlanzón",
+    "Odeon Multicines Burgos"
+   ],
+   "qualifiedSlug": "burgos-castilla-y-leon"
+  },
+  {
+   "slug": "santander",
+   "kind": "major",
+   "name": "Santander",
+   "anchor": "Santander",
+   "province": "Cantabria",
+   "community": "Cantabria",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.4659,
+   "lon": -3.8049,
+   "towns": [
+    "Santander"
+   ],
+   "cinemas": [
+    "Cine Los Ángeles",
+    "Cines Embajadores Santander",
+    "Cinesa Bahía de Santander",
+    "Filmoteca de Cantabria - Santander",
+    "Palacios De Festivales",
+    "Yelmo Cines Premium Peñacastillo"
+   ],
+   "qualifiedSlug": "santander-cantabria"
+  },
+  {
+   "slug": "albacete",
+   "kind": "major",
+   "name": "Albacete",
+   "anchor": "Albacete",
+   "province": "Albacete",
+   "community": "Castilla-La Mancha",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.9942,
+   "lon": -1.8564,
+   "towns": [
+    "Albacete"
+   ],
+   "cinemas": [
+    "Yelmo Cines Imaginalia"
+   ],
+   "qualifiedSlug": "albacete-castilla-la-mancha"
+  },
+  {
+   "slug": "alcorcon",
+   "kind": "major",
+   "name": "Alcorcón",
+   "anchor": "Alcorcón",
+   "province": "Madrid",
+   "community": "Comunidad de Madrid",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.3458,
+   "lon": -3.8249,
+   "towns": [
+    "Alcorcón"
+   ],
+   "cinemas": [
+    "Ocine Urban X-Madrid",
+    "Yelmo Cines TresAguas"
+   ],
+   "qualifiedSlug": "alcorcon-comunidad-de-madrid"
+  },
+  {
+   "slug": "san-cristobal-de-la-laguna",
+   "kind": "major",
+   "name": "San Cristóbal de La Laguna",
+   "anchor": "San Cristóbal de La Laguna",
+   "province": "Santa Cruz de Tenerife",
+   "community": "Canarias",
+   "zoneId": "Atlantic/Canary",
+   "lat": 28.4853,
+   "lon": -16.3201,
+   "towns": [
+    "San Cristóbal de La Laguna"
+   ],
+   "cinemas": [
+    "Multicines Tenerife"
+   ],
+   "qualifiedSlug": "san-cristobal-de-la-laguna-canarias"
+  },
+  {
+   "slug": "salamanca",
+   "kind": "major",
+   "name": "Salamanca",
+   "anchor": "Salamanca",
+   "province": "Salamanca",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.9688,
+   "lon": -5.6639,
+   "towns": [
+    "Salamanca"
+   ],
+   "cinemas": [
+    "Cines Van Dyck",
+    "Megarama Salamanca"
+   ],
+   "qualifiedSlug": "salamanca-castilla-y-leon"
+  },
+  {
+   "slug": "logrono",
+   "kind": "major",
+   "name": "Logroño",
+   "anchor": "Logroño",
+   "province": "La Rioja",
+   "community": "La Rioja",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.4661,
+   "lon": -2.4512,
+   "towns": [
+    "Logroño"
+   ],
+   "cinemas": [
+    "Cines 7 Infantes",
+    "Cines Moderno",
+    "Yelmo Cines Premium Berceo"
+   ],
+   "qualifiedSlug": "logrono-la-rioja"
+  },
+  {
+   "slug": "adeje",
+   "kind": "cluster",
+   "name": "Adeje",
+   "anchor": "Adeje",
+   "province": "Santa Cruz de Tenerife",
+   "community": "Canarias",
+   "zoneId": "Atlantic/Canary",
+   "lat": 28.1227,
+   "lon": -16.726,
+   "towns": [
+    "Adeje",
+    "Arona"
+   ],
+   "cinemas": [
+    "Autocinema Tenerife",
+    "Multicines Zentral Center",
+    "X-Sur Cine"
+   ],
+   "qualifiedSlug": "adeje-canarias"
+  },
+  {
+   "slug": "aguilar-de-campoo",
+   "kind": "town",
+   "name": "Aguilar de Campoo",
+   "anchor": "Aguilar de Campoo",
+   "province": "Palencia",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.7945,
+   "lon": -4.2589,
+   "towns": [
+    "Aguilar de Campoo"
+   ],
+   "cinemas": [
+    "Cines Campoo",
+    "Cines Campoo 3D"
+   ],
+   "qualifiedSlug": "aguilar-de-campoo-castilla-y-leon"
+  },
+  {
+   "slug": "aguilas",
+   "kind": "cluster",
+   "name": "Águilas",
+   "anchor": "Águilas",
+   "province": "Murcia",
+   "community": "Región de Murcia",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.4063,
+   "lon": -1.5829,
+   "towns": [
+    "Águilas",
+    "Huércal-Overa",
+    "Vera",
+    "Albox",
+    "Garrucha"
+   ],
+   "cinemas": [
+    "Cine Albox",
+    "Cine Tenis",
+    "Cine Terraza de Verano de Vera",
+    "Cine Municipal Huércal-Overa",
+    "Multicines El Hornillo"
+   ],
+   "qualifiedSlug": "aguilas-region-de-murcia"
+  },
+  {
+   "slug": "alcala-de-xivert",
+   "kind": "town",
+   "name": "Alcalà de Xivert",
+   "anchor": "Alcalà de Xivert",
+   "province": "Castellón",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.3,
+   "lon": 0.2333,
+   "towns": [
+    "Alcalà de Xivert"
+   ],
+   "cinemas": [
+    "Cine Terraza Avenida",
+    "Terraza Neptuno"
+   ],
+   "qualifiedSlug": "alcala-de-xivert-comunidad-valenciana"
+  },
+  {
+   "slug": "alcala-la-real",
+   "kind": "town",
+   "name": "Alcalá la Real",
+   "anchor": "Alcalá la Real",
+   "province": "Jaén",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.4614,
+   "lon": -3.923,
+   "towns": [
+    "Alcalá la Real"
+   ],
+   "cinemas": [
+    "Cine Teatro Martínez Montañés"
+   ],
+   "qualifiedSlug": "alcala-la-real-andalucia"
+  },
+  {
+   "slug": "alcaniz",
+   "kind": "cluster",
+   "name": "Alcañiz",
+   "anchor": "Alcañiz",
+   "province": "Teruel",
+   "community": "Aragón",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.05,
+   "lon": -0.1333,
+   "towns": [
+    "Alcañiz",
+    "Caspe",
+    "Arens de Lledo"
+   ],
+   "cinemas": [
+    "Cine Arens de Lledó",
+    "Cines Alcañiz",
+    "Teatro Cine Goya"
+   ],
+   "qualifiedSlug": "alcaniz-aragon"
+  },
+  {
+   "slug": "alcazar-de-san-juan",
+   "kind": "cluster",
+   "name": "Alcázar de San Juan",
+   "anchor": "Alcázar de San Juan",
+   "province": "Ciudad Real",
+   "community": "Castilla-La Mancha",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.3901,
+   "lon": -3.2083,
+   "towns": [
+    "Alcázar de San Juan",
+    "Quintanar de la Orden",
+    "Villacañas",
+    "Pedro Muñoz"
+   ],
+   "cinemas": [
+    "Cine Teatro Municipal Pedro Muñoz",
+    "Multicines Cinemancha",
+    "Cine Princesa",
+    "Quintanar Cinema"
+   ],
+   "qualifiedSlug": "alcazar-de-san-juan-castilla-la-mancha"
+  },
+  {
+   "slug": "alcobendas",
+   "kind": "cluster",
+   "name": "Alcobendas",
+   "anchor": "Alcobendas",
+   "province": "Madrid",
+   "community": "Comunidad de Madrid",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.5475,
+   "lon": -3.642,
+   "towns": [
+    "Alcobendas",
+    "Tres Cantos",
+    "San Sebastián de los Reyes"
+   ],
+   "cinemas": [
+    "Cinebox 3 C",
+    "Odeon Multicines Tres Cantos",
+    "Cinesa La Moraleja",
+    "Kinépolis Madrid Diversia",
+    "Yelmo Cines Plaza Norte 2"
+   ],
+   "qualifiedSlug": "alcobendas-comunidad-de-madrid"
+  },
+  {
+   "slug": "alcoy",
+   "kind": "cluster",
+   "name": "Alcoy",
+   "anchor": "Alcoy",
+   "province": "Alicante",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.7054,
+   "lon": -0.4743,
+   "towns": [
+    "Alcoy",
+    "Ontinyent",
+    "Cocentaina"
+   ],
+   "cinemas": [
+    "Cine BIC",
+    "Multicines El Altet",
+    "Cineapolis El Teler"
+   ],
+   "qualifiedSlug": "alcoy-comunidad-valenciana"
+  },
+  {
+   "slug": "algeciras",
+   "kind": "cluster",
+   "name": "Algeciras",
+   "anchor": "Algeciras",
+   "province": "Cádiz",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.1333,
+   "lon": -5.4505,
+   "towns": [
+    "Algeciras",
+    "Los Barrios"
+   ],
+   "cinemas": [
+    "Odeon Bahía Plaza",
+    "Yelmo Cines Premium Puerta Europa "
+   ],
+   "qualifiedSlug": "algeciras-andalucia"
+  },
+  {
+   "slug": "alhaurin-el-grande",
+   "kind": "cluster",
+   "name": "Alhaurín el Grande",
+   "anchor": "Alhaurín el Grande",
+   "province": "Málaga",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.643,
+   "lon": -4.6873,
+   "towns": [
+    "Alhaurín el Grande",
+    "Coín"
+   ],
+   "cinemas": [
+    "Cine Pixel",
+    "Cine San Francisco"
+   ],
+   "qualifiedSlug": "alhaurin-el-grande-andalucia"
+  },
+  {
+   "slug": "almazan",
+   "kind": "town",
+   "name": "Almazán",
+   "anchor": "Almazán",
+   "province": "Soria",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.4865,
+   "lon": -2.5309,
+   "towns": [
+    "Almazán"
+   ],
+   "cinemas": [
+    "Cine Calderón - Almazán"
+   ],
+   "qualifiedSlug": "almazan-castilla-y-leon"
+  },
+  {
+   "slug": "almendralejo",
+   "kind": "cluster",
+   "name": "Almendralejo",
+   "anchor": "Almendralejo",
+   "province": "Badajoz",
+   "community": "Extremadura",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.6832,
+   "lon": -6.4075,
+   "towns": [
+    "Almendralejo",
+    "Zafra",
+    "Fuente de Cantos"
+   ],
+   "cinemas": [
+    "Cine La Fábrica",
+    "Cines Victoria Almendralejo",
+    "Multicines España"
+   ],
+   "qualifiedSlug": "almendralejo-extremadura"
+  },
+  {
+   "slug": "alzira",
+   "kind": "cluster",
+   "name": "Alzira",
+   "anchor": "Alzira",
+   "province": "Valencia",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.15,
+   "lon": -0.4333,
+   "towns": [
+    "Alzira",
+    "Xàtiva",
+    "Sueca",
+    "Cullera",
+    "Tavernes de la Valldigna"
+   ],
+   "cinemas": [
+    "Cine Avenida El Perelló",
+    "Cine Terraza Olimpo",
+    "Cines Axion de Xàtiva",
+    "Cines Victoria Cullera",
+    "Kinepolis Alzira"
+   ],
+   "qualifiedSlug": "alzira-comunidad-valenciana"
+  },
+  {
+   "slug": "amposta",
+   "kind": "cluster",
+   "name": "Amposta",
+   "anchor": "Amposta",
+   "province": "Tarragona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.7099,
+   "lon": 0.5786,
+   "towns": [
+    "Amposta",
+    "Roquetes"
+   ],
+   "cinemas": [
+    "Cinemes Amposta",
+    "Ocine Roquetes"
+   ],
+   "qualifiedSlug": "amposta-cataluna"
+  },
+  {
+   "slug": "andujar",
+   "kind": "town",
+   "name": "Andújar",
+   "anchor": "Andújar",
+   "province": "Jaén",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.0392,
+   "lon": -4.0508,
+   "towns": [
+    "Andújar"
+   ],
+   "cinemas": [
+    "Europa Pantallas 8",
+    "París Multicines"
+   ],
+   "qualifiedSlug": "andujar-andalucia"
+  },
+  {
+   "slug": "antequera",
+   "kind": "town",
+   "name": "Antequera",
+   "anchor": "Antequera",
+   "province": "Málaga",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.0194,
+   "lon": -4.5612,
+   "towns": [
+    "Antequera"
+   ],
+   "cinemas": [
+    "Cines La Verónica"
+   ],
+   "qualifiedSlug": "antequera-andalucia"
+  },
+  {
+   "slug": "aranda-de-duero",
+   "kind": "town",
+   "name": "Aranda de Duero",
+   "anchor": "Aranda de Duero",
+   "province": "Burgos",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.6704,
+   "lon": -3.6892,
+   "towns": [
+    "Aranda de Duero"
+   ],
+   "cinemas": [
+    "Cines Victoria Ribera de Duero"
+   ],
+   "qualifiedSlug": "aranda-de-duero-castilla-y-leon"
+  },
+  {
+   "slug": "arcos-de-la-frontera",
+   "kind": "cluster",
+   "name": "Arcos de la Frontera",
+   "anchor": "Arcos de la Frontera",
+   "province": "Cádiz",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.7507,
+   "lon": -5.8106,
+   "towns": [
+    "Arcos de la Frontera",
+    "Lebrija",
+    "Las Cabezas de San Juan"
+   ],
+   "cinemas": [
+    "Arcos Cinema",
+    "Teatro Municipal Juan Bernabé",
+    "Teatro Municipal Las Cabezas de San Juan"
+   ],
+   "qualifiedSlug": "arcos-de-la-frontera-andalucia"
+  },
+  {
+   "slug": "arenas-de-san-pedro",
+   "kind": "cluster",
+   "name": "Arenas de San Pedro",
+   "anchor": "Arenas de San Pedro",
+   "province": "Ávila",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.2104,
+   "lon": -5.0869,
+   "towns": [
+    "Arenas de San Pedro",
+    "Candeleda"
+   ],
+   "cinemas": [
+    "Cine Arenas",
+    "Cine Candeleda"
+   ],
+   "qualifiedSlug": "arenas-de-san-pedro-castilla-y-leon"
+  },
+  {
+   "slug": "arrecife",
+   "kind": "town",
+   "name": "Arrecife",
+   "anchor": "Arrecife",
+   "province": "Las Palmas",
+   "community": "Canarias",
+   "zoneId": "Atlantic/Canary",
+   "lat": 28.963,
+   "lon": -13.5477,
+   "towns": [
+    "Arrecife"
+   ],
+   "cinemas": [
+    "Deiland Multicines",
+    "Multicine Atlántida",
+    "Multicines Deiland"
+   ],
+   "qualifiedSlug": "arrecife-canarias"
+  },
+  {
+   "slug": "arroyo-de-la-encomienda",
+   "kind": "town",
+   "name": "Arroyo de la Encomienda",
+   "anchor": "Arroyo de la Encomienda",
+   "province": "Valladolid",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.6096,
+   "lon": -4.7969,
+   "towns": [
+    "Arroyo de la Encomienda"
+   ],
+   "cinemas": [
+    "Ocine Rio Shopping"
+   ],
+   "qualifiedSlug": "arroyo-de-la-encomienda-castilla-y-leon"
+  },
+  {
+   "slug": "astorga",
+   "kind": "town",
+   "name": "Astorga",
+   "anchor": "Astorga",
+   "province": "León",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.4588,
+   "lon": -6.056,
+   "towns": [
+    "Astorga"
+   ],
+   "cinemas": [
+    "Cine Velasco"
+   ],
+   "qualifiedSlug": "astorga-castilla-y-leon"
+  },
+  {
+   "slug": "avila",
+   "kind": "town",
+   "name": "Ávila",
+   "anchor": "Ávila",
+   "province": "Ávila",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.6572,
+   "lon": -4.6995,
+   "towns": [
+    "Ávila"
+   ],
+   "cinemas": [
+    "Cines Bulevar"
+   ],
+   "qualifiedSlug": "avila-castilla-y-leon"
+  },
+  {
+   "slug": "ayamonte",
+   "kind": "cluster",
+   "name": "Ayamonte",
+   "anchor": "Ayamonte",
+   "province": "Huelva",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.2133,
+   "lon": -7.4081,
+   "towns": [
+    "Ayamonte",
+    "Lepe",
+    "Isla Cristina"
+   ],
+   "cinemas": [
+    "Cine 3D Ayamonte",
+    "La Dehesa Ayamonte",
+    "Cine Vip 3d Lepe",
+    "Multicines La Dehesa - Islantilla"
+   ],
+   "qualifiedSlug": "ayamonte-andalucia"
+  },
+  {
+   "slug": "badajoz",
+   "kind": "town",
+   "name": "Badajoz",
+   "anchor": "Badajoz",
+   "province": "Badajoz",
+   "community": "Extremadura",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.8779,
+   "lon": -6.9706,
+   "towns": [
+    "Badajoz"
+   ],
+   "cinemas": [
+    "Yelmo Cines Premium El Faro",
+    "mk2 Conquistadores"
+   ],
+   "qualifiedSlug": "badajoz-extremadura"
+  },
+  {
+   "slug": "barakaldo",
+   "kind": "cluster",
+   "name": "Barakaldo",
+   "anchor": "Barakaldo",
+   "province": "Vizcaya",
+   "community": "País Vasco",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.2964,
+   "lon": -2.9881,
+   "towns": [
+    "Barakaldo",
+    "Getxo",
+    "Santurtzi",
+    "Leioa"
+   ],
+   "cinemas": [
+    "Autocine Getxo",
+    "Getxo Zinemak",
+    "Cinesa Max Ocio",
+    "Yelmo Cines Megapark",
+    "Serantes Kultur Aretoa",
+    "Yelmo Cines Artea"
+   ],
+   "qualifiedSlug": "barakaldo-pais-vasco"
+  },
+  {
+   "slug": "barbastro",
+   "kind": "cluster",
+   "name": "Barbastro",
+   "anchor": "Barbastro",
+   "province": "Huesca",
+   "community": "Aragón",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.0356,
+   "lon": 0.1269,
+   "towns": [
+    "Barbastro",
+    "Monzón"
+   ],
+   "cinemas": [
+    "Cine Cortés",
+    "Cine Teatro Victoria"
+   ],
+   "qualifiedSlug": "barbastro-aragon"
+  },
+  {
+   "slug": "barbate",
+   "kind": "cluster",
+   "name": "Barbate",
+   "anchor": "Barbate",
+   "province": "Cádiz",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.1924,
+   "lon": -5.9219,
+   "towns": [
+    "Barbate",
+    "Vejer de la Frontera"
+   ],
+   "cinemas": [
+    "Cine de Verano La Muralla",
+    "Teatro San Francisco"
+   ],
+   "qualifiedSlug": "barbate-andalucia"
+  },
+  {
+   "slug": "baza",
+   "kind": "town",
+   "name": "Baza",
+   "anchor": "Baza",
+   "province": "Granada",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.4907,
+   "lon": -2.7726,
+   "towns": [
+    "Baza"
+   ],
+   "cinemas": [
+    "Salón Cine Ideal"
+   ],
+   "qualifiedSlug": "baza-andalucia"
+  },
+  {
+   "slug": "beasain",
+   "kind": "cluster",
+   "name": "Beasain",
+   "anchor": "Beasain",
+   "province": "Guipúzcoa",
+   "community": "País Vasco",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.0502,
+   "lon": -2.2009,
+   "towns": [
+    "Beasain",
+    "Azkoitia",
+    "Oñati",
+    "Ordizia",
+    "Ibarra"
+   ],
+   "cinemas": [
+    "Baztartxo Antzokia",
+    "Herri Antzokia ",
+    "Leidor Zinema",
+    "Oñatiko Zinea",
+    "Usurbe Antzokia"
+   ],
+   "qualifiedSlug": "beasain-pais-vasco"
+  },
+  {
+   "slug": "bejar",
+   "kind": "cluster",
+   "name": "Béjar",
+   "anchor": "Béjar",
+   "province": "Salamanca",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.3864,
+   "lon": -5.7634,
+   "towns": [
+    "Béjar",
+    "El Barco de Ávila"
+   ],
+   "cinemas": [
+    "Multicines Béjar",
+    "Cine-Teatro Lagasca"
+   ],
+   "qualifiedSlug": "bejar-castilla-y-leon"
+  },
+  {
+   "slug": "benidorm",
+   "kind": "cluster",
+   "name": "Benidorm",
+   "anchor": "Benidorm",
+   "province": "Alicante",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.5382,
+   "lon": -0.131,
+   "towns": [
+    "Benidorm",
+    "L'Alfàs del Pi",
+    "Finestrat"
+   ],
+   "cinemas": [
+    "Cinema Roma",
+    "Cines Colci ",
+    "Cines Colci Rincón",
+    "Colci Suyma"
+   ],
+   "qualifiedSlug": "benidorm-comunidad-valenciana"
+  },
+  {
+   "slug": "berga",
+   "kind": "town",
+   "name": "Berga",
+   "anchor": "Berga",
+   "province": "Barcelona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.1043,
+   "lon": 1.8463,
+   "towns": [
+    "Berga"
+   ],
+   "cinemas": [
+    "Multicines Catalunya"
+   ],
+   "qualifiedSlug": "berga-cataluna"
+  },
+  {
+   "slug": "binefar",
+   "kind": "town",
+   "name": "Binéfar",
+   "anchor": "Binéfar",
+   "province": "Huesca",
+   "community": "Aragón",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.8514,
+   "lon": 0.2943,
+   "towns": [
+    "Binéfar"
+   ],
+   "cinemas": [
+    "Cine La Paz",
+    "Teatro Municipal Los Titiriteros"
+   ],
+   "qualifiedSlug": "binefar-aragon"
+  },
+  {
+   "slug": "blanes",
+   "kind": "cluster",
+   "name": "Blanes",
+   "anchor": "Blanes",
+   "province": "Girona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.6742,
+   "lon": 2.7904,
+   "towns": [
+    "Blanes",
+    "Calella",
+    "Arenys de Mar"
+   ],
+   "cinemas": [
+    "Cinema Sala Mozart",
+    "Ocine Arenys",
+    "Ocine Blanes"
+   ],
+   "qualifiedSlug": "blanes-cataluna"
+  },
+  {
+   "slug": "boltana",
+   "kind": "town",
+   "name": "Boltaña",
+   "anchor": "Boltaña",
+   "province": "Huesca",
+   "community": "Aragón",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.4455,
+   "lon": 0.068,
+   "towns": [
+    "Boltaña"
+   ],
+   "cinemas": [
+    "Palacio De Congresos Boltaña"
+   ],
+   "qualifiedSlug": "boltana-aragon"
+  },
+  {
+   "slug": "bunol",
+   "kind": "town",
+   "name": "Buñol",
+   "anchor": "Buñol",
+   "province": "Valencia",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.4167,
+   "lon": -0.7833,
+   "towns": [
+    "Buñol"
+   ],
+   "cinemas": [
+    "Cine Montecarlo",
+    "Cine Palacio de la Música de Buñol"
+   ],
+   "qualifiedSlug": "bunol-comunidad-valenciana"
+  },
+  {
+   "slug": "burgo-de-osma",
+   "kind": "town",
+   "name": "Burgo de Osma",
+   "anchor": "Burgo de Osma",
+   "province": "Soria",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.5862,
+   "lon": -3.0652,
+   "towns": [
+    "Burgo de Osma"
+   ],
+   "cinemas": [
+    "Cine Palafox Burgo de Osma"
+   ],
+   "qualifiedSlug": "burgo-de-osma-castilla-y-leon"
+  },
+  {
+   "slug": "caceres",
+   "kind": "cluster",
+   "name": "Cáceres",
+   "anchor": "Cáceres",
+   "province": "Cáceres",
+   "community": "Extremadura",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.4765,
+   "lon": -6.3722,
+   "towns": [
+    "Cáceres",
+    "Arroyo de la Luz"
+   ],
+   "cinemas": [
+    "Cine Arroyo de la Luz",
+    "Multicines Cáceres"
+   ],
+   "qualifiedSlug": "caceres-extremadura"
+  },
+  {
+   "slug": "cadiz",
+   "kind": "town",
+   "name": "Cádiz",
+   "anchor": "Cádiz",
+   "province": "Cádiz",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.5267,
+   "lon": -6.2891,
+   "towns": [
+    "Cádiz"
+   ],
+   "cinemas": [
+    "Al-Andalus Cádiz",
+    "Multicines el Centro",
+    "mk2 Bahía de Cádiz"
+   ],
+   "qualifiedSlug": "cadiz-andalucia"
+  },
+  {
+   "slug": "calahorra",
+   "kind": "cluster",
+   "name": "Calahorra",
+   "anchor": "Calahorra",
+   "province": "La Rioja",
+   "community": "La Rioja",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.3051,
+   "lon": -1.9652,
+   "towns": [
+    "Calahorra",
+    "Rincón de Soto"
+   ],
+   "cinemas": [
+    "Cine Avenida Rincón de Soto",
+    "Cines Arcca"
+   ],
+   "qualifiedSlug": "calahorra-la-rioja"
+  },
+  {
+   "slug": "calatayud",
+   "kind": "town",
+   "name": "Calatayud",
+   "anchor": "Calatayud",
+   "province": "Zaragoza",
+   "community": "Aragón",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.3535,
+   "lon": -1.6432,
+   "towns": [
+    "Calatayud"
+   ],
+   "cinemas": [
+    "Teatro Capitol"
+   ],
+   "qualifiedSlug": "calatayud-aragon"
+  },
+  {
+   "slug": "calpe",
+   "kind": "cluster",
+   "name": "Calpe",
+   "anchor": "Calpe",
+   "province": "Alicante",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.6447,
+   "lon": 0.0445,
+   "towns": [
+    "Calpe",
+    "Ondara"
+   ],
+   "cinemas": [
+    "Cine Calp",
+    "Cine Imf Ondara"
+   ],
+   "qualifiedSlug": "calpe-comunidad-valenciana"
+  },
+  {
+   "slug": "camargo",
+   "kind": "cluster",
+   "name": "Camargo",
+   "anchor": "Camargo",
+   "province": "Cantabria",
+   "community": "Cantabria",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.4074,
+   "lon": -3.885,
+   "towns": [
+    "Camargo",
+    "El Astillero",
+    "Los Corrales de Buelna"
+   ],
+   "cinemas": [
+    "Cine La Vidriera",
+    "Ocine Premium Bahía Real",
+    "Sala Bretón",
+    "Teatro De Los Corrales De Buelna"
+   ],
+   "qualifiedSlug": "camargo-cantabria"
+  },
+  {
+   "slug": "carballo",
+   "kind": "town",
+   "name": "Carballo",
+   "anchor": "Carballo",
+   "province": "A Coruña",
+   "community": "Galicia",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.213,
+   "lon": -8.691,
+   "towns": [
+    "Carballo"
+   ],
+   "cinemas": [
+    "Multicines Bergantiños"
+   ],
+   "qualifiedSlug": "carballo-galicia"
+  },
+  {
+   "slug": "cee",
+   "kind": "town",
+   "name": "Cee",
+   "anchor": "Cee",
+   "province": "A Coruña",
+   "community": "Galicia",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.9547,
+   "lon": -9.188,
+   "towns": [
+    "Cee"
+   ],
+   "cinemas": [
+    "Cines Xunqueira"
+   ],
+   "qualifiedSlug": "cee-galicia"
+  },
+  {
+   "slug": "ceuta",
+   "kind": "town",
+   "name": "Ceuta",
+   "anchor": "Ceuta",
+   "province": "Ceuta",
+   "community": "Ceuta",
+   "zoneId": "Europe/Madrid",
+   "lat": 35.8892,
+   "lon": -5.3204,
+   "towns": [
+    "Ceuta"
+   ],
+   "cinemas": [
+    "Marina Cinemas 7"
+   ],
+   "qualifiedSlug": "ceuta-ceuta"
+  },
+  {
+   "slug": "ciudad-real",
+   "kind": "town",
+   "name": "Ciudad Real",
+   "anchor": "Ciudad Real",
+   "province": "Ciudad Real",
+   "community": "Castilla-La Mancha",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.9863,
+   "lon": -3.9291,
+   "towns": [
+    "Ciudad Real"
+   ],
+   "cinemas": [
+    "Parque De Ocio Las Vías"
+   ],
+   "qualifiedSlug": "ciudad-real-castilla-la-mancha"
+  },
+  {
+   "slug": "ciudad-rodrigo",
+   "kind": "town",
+   "name": "Ciudad Rodrigo",
+   "anchor": "Ciudad Rodrigo",
+   "province": "Salamanca",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.6,
+   "lon": -6.5333,
+   "towns": [
+    "Ciudad Rodrigo"
+   ],
+   "cinemas": [
+    "Cine Juventud"
+   ],
+   "qualifiedSlug": "ciudad-rodrigo-castilla-y-leon"
+  },
+  {
+   "slug": "ciutadella-de-menorca",
+   "kind": "town",
+   "name": "Ciutadella de Menorca",
+   "anchor": "Ciutadella de Menorca",
+   "province": "Islas Baleares",
+   "community": "Islas Baleares",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.0011,
+   "lon": 3.8414,
+   "towns": [
+    "Ciutadella de Menorca"
+   ],
+   "cinemas": [
+    "Cinema Ca-Los",
+    "Cinemes Moix Negre"
+   ],
+   "qualifiedSlug": "ciutadella-de-menorca-islas-baleares"
+  },
+  {
+   "slug": "coria",
+   "kind": "town",
+   "name": "Coria",
+   "anchor": "Coria",
+   "province": "Cáceres",
+   "community": "Extremadura",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.9841,
+   "lon": -6.536,
+   "towns": [
+    "Coria"
+   ],
+   "cinemas": [
+    "Cine Coria"
+   ],
+   "qualifiedSlug": "coria-extremadura"
+  },
+  {
+   "slug": "cornella-de-llobregat",
+   "kind": "town",
+   "name": "Cornellà de Llobregat",
+   "anchor": "Cornellà de Llobregat",
+   "province": "Barcelona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.35,
+   "lon": 2.0833,
+   "towns": [
+    "Cornellà de Llobregat"
+   ],
+   "cinemas": [
+    "Cinesa Llobregat Centre",
+    "Kinépolis Barcelona Full Splau",
+    "Odeon Multicines Llobregat"
+   ],
+   "qualifiedSlug": "cornella-de-llobregat-cataluna"
+  },
+  {
+   "slug": "cortegana",
+   "kind": "town",
+   "name": "Cortegana",
+   "anchor": "Cortegana",
+   "province": "Huelva",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.8104,
+   "lon": -6.9868,
+   "towns": [
+    "Cortegana"
+   ],
+   "cinemas": [
+    "Cortegana Cinema"
+   ],
+   "qualifiedSlug": "cortegana-andalucia"
+  },
+  {
+   "slug": "corvera-de-asturias",
+   "kind": "town",
+   "name": "Corvera de Asturias",
+   "anchor": "Corvera de Asturias",
+   "province": "Asturias",
+   "community": "Asturias",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.5355,
+   "lon": -5.8889,
+   "towns": [
+    "Corvera de Asturias"
+   ],
+   "cinemas": [
+    "Cinebox Parque Astur",
+    "Odeon Multicines Parque Astur"
+   ],
+   "qualifiedSlug": "corvera-de-asturias-asturias"
+  },
+  {
+   "slug": "coslada",
+   "kind": "cluster",
+   "name": "Coslada",
+   "anchor": "Coslada",
+   "province": "Madrid",
+   "community": "Comunidad de Madrid",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.4238,
+   "lon": -3.5613,
+   "towns": [
+    "Coslada",
+    "Torrejón de Ardoz",
+    "Rivas-Vaciamadrid"
+   ],
+   "cinemas": [
+    "Cines La Rambla",
+    "Cines Plaza Coslada",
+    "Yelmo Cines Premium Parque Corredor",
+    "Yelmo Cines Rivas H2O"
+   ],
+   "qualifiedSlug": "coslada-comunidad-de-madrid"
+  },
+  {
+   "slug": "cuenca",
+   "kind": "town",
+   "name": "Cuenca",
+   "anchor": "Cuenca",
+   "province": "Cuenca",
+   "community": "Castilla-La Mancha",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.0667,
+   "lon": -2.1333,
+   "towns": [
+    "Cuenca"
+   ],
+   "cinemas": [
+    "Abaco Cuenca",
+    "Odeon Multicines Cuenca",
+    "Odeon Multicines Mirador"
+   ],
+   "qualifiedSlug": "cuenca-castilla-la-mancha"
+  },
+  {
+   "slug": "daimiel",
+   "kind": "town",
+   "name": "Daimiel",
+   "anchor": "Daimiel",
+   "province": "Ciudad Real",
+   "community": "Castilla-La Mancha",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.07,
+   "lon": -3.615,
+   "towns": [
+    "Daimiel"
+   ],
+   "cinemas": [
+    "Daimiel Cinema"
+   ],
+   "qualifiedSlug": "daimiel-castilla-la-mancha"
+  },
+  {
+   "slug": "don-benito",
+   "kind": "town",
+   "name": "Don Benito",
+   "anchor": "Don Benito",
+   "province": "Badajoz",
+   "community": "Extremadura",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.9563,
+   "lon": -5.8616,
+   "towns": [
+    "Don Benito"
+   ],
+   "cinemas": [
+    "Cines Victoria Don Benito"
+   ],
+   "qualifiedSlug": "don-benito-extremadura"
+  },
+  {
+   "slug": "dos-hermanas",
+   "kind": "cluster",
+   "name": "Dos Hermanas",
+   "anchor": "Dos Hermanas",
+   "province": "Sevilla",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.2829,
+   "lon": -5.9209,
+   "towns": [
+    "Dos Hermanas",
+    "Alcalá de Guadaíra",
+    "Utrera"
+   ],
+   "cinemas": [
+    "Cineapolis Dos Hermanas 3D",
+    "Cineapolis WAY",
+    "Cineapolis Utrera",
+    "mk2 Alcores"
+   ],
+   "qualifiedSlug": "dos-hermanas-andalucia"
+  },
+  {
+   "slug": "ecija",
+   "kind": "town",
+   "name": "Écija",
+   "anchor": "Écija",
+   "province": "Sevilla",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.5422,
+   "lon": -5.0826,
+   "towns": [
+    "Écija"
+   ],
+   "cinemas": [
+    "Artesiete Écija"
+   ],
+   "qualifiedSlug": "ecija-andalucia"
+  },
+  {
+   "slug": "eibar",
+   "kind": "cluster",
+   "name": "Eibar",
+   "anchor": "Eibar",
+   "province": "Guipúzcoa",
+   "community": "País Vasco",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.1849,
+   "lon": -2.4716,
+   "towns": [
+    "Eibar",
+    "Ermua"
+   ],
+   "cinemas": [
+    "Cine Modelo",
+    "Teatro Coliseo",
+    "Ermua Antzokia"
+   ],
+   "qualifiedSlug": "eibar-pais-vasco"
+  },
+  {
+   "slug": "el-ejido",
+   "kind": "cluster",
+   "name": "El Ejido",
+   "anchor": "El Ejido",
+   "province": "Almería",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.7006,
+   "lon": -2.7898,
+   "towns": [
+    "El Ejido",
+    "Berja"
+   ],
+   "cinemas": [
+    "Cine Berja",
+    "Ocine Copo"
+   ],
+   "qualifiedSlug": "el-ejido-andalucia"
+  },
+  {
+   "slug": "el-pont-de-suert",
+   "kind": "town",
+   "name": "El Pont de Suert",
+   "anchor": "El Pont de Suert",
+   "province": "Lérida",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.4081,
+   "lon": 0.7417,
+   "towns": [
+    "El Pont de Suert"
+   ],
+   "cinemas": [
+    "Cinema Ribagorza"
+   ],
+   "qualifiedSlug": "el-pont-de-suert-cataluna"
+  },
+  {
+   "slug": "el-puerto-de-santa-maria",
+   "kind": "cluster",
+   "name": "El Puerto de Santa María",
+   "anchor": "El Puerto de Santa María",
+   "province": "Cádiz",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.5939,
+   "lon": -6.233,
+   "towns": [
+    "El Puerto de Santa María",
+    "Sanlúcar de Barrameda",
+    "Chipiona"
+   ],
+   "cinemas": [
+    "Al-Andalus Sanlucar",
+    "Cine Alba Chipiona",
+    "Multicines Bahia Mar"
+   ],
+   "qualifiedSlug": "el-puerto-de-santa-maria-andalucia"
+  },
+  {
+   "slug": "el-vendrell",
+   "kind": "cluster",
+   "name": "El Vendrell",
+   "anchor": "El Vendrell",
+   "province": "Tarragona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.2167,
+   "lon": 1.5333,
+   "towns": [
+    "El Vendrell",
+    "Calafell"
+   ],
+   "cinemas": [
+    "MCB Calafell",
+    "Ocine El Vendrell"
+   ],
+   "qualifiedSlug": "el-vendrell-cataluna"
+  },
+  {
+   "slug": "estella-lizarra",
+   "kind": "town",
+   "name": "Estella-Lizarra",
+   "anchor": "Estella-Lizarra",
+   "province": "Navarra",
+   "community": "Navarra",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.6718,
+   "lon": -2.0323,
+   "towns": [
+    "Estella-Lizarra"
+   ],
+   "cinemas": [
+    "Cines Los Llanos Zinemak"
+   ],
+   "qualifiedSlug": "estella-lizarra-navarra"
+  },
+  {
+   "slug": "estepa",
+   "kind": "town",
+   "name": "Estepa",
+   "anchor": "Estepa",
+   "province": "Sevilla",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.2926,
+   "lon": -4.879,
+   "towns": [
+    "Estepa"
+   ],
+   "cinemas": [
+    "Cine Méliès Estepa"
+   ],
+   "qualifiedSlug": "estepa-andalucia"
+  },
+  {
+   "slug": "ferrol",
+   "kind": "cluster",
+   "name": "Ferrol",
+   "anchor": "Ferrol",
+   "province": "A Coruña",
+   "community": "Galicia",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.4845,
+   "lon": -8.2329,
+   "towns": [
+    "Ferrol",
+    "Narón"
+   ],
+   "cinemas": [
+    "Cine Duplex",
+    "Odeon Multicines Narón"
+   ],
+   "qualifiedSlug": "ferrol-galicia"
+  },
+  {
+   "slug": "figueres",
+   "kind": "cluster",
+   "name": "Figueres",
+   "anchor": "Figueres",
+   "province": "Girona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.2664,
+   "lon": 2.9616,
+   "towns": [
+    "Figueres",
+    "Roses"
+   ],
+   "cinemas": [
+    "Cat Cinemes",
+    "Cinemes Roses"
+   ],
+   "qualifiedSlug": "figueres-cataluna"
+  },
+  {
+   "slug": "fuengirola",
+   "kind": "town",
+   "name": "Fuengirola",
+   "anchor": "Fuengirola",
+   "province": "Málaga",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.54,
+   "lon": -4.6247,
+   "towns": [
+    "Fuengirola"
+   ],
+   "cinemas": [
+    "Multicines Alfil 3D",
+    "mk2 Miramar"
+   ],
+   "qualifiedSlug": "fuengirola-andalucia"
+  },
+  {
+   "slug": "galdakao",
+   "kind": "cluster",
+   "name": "Galdakao",
+   "anchor": "Galdakao",
+   "province": "Vizcaya",
+   "community": "País Vasco",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.2307,
+   "lon": -2.8429,
+   "towns": [
+    "Galdakao",
+    "Durango",
+    "Amorebieta-Etxano",
+    "Llodio",
+    "Gernika-Lumo",
+    "Zalla",
+    "Zigoitia"
+   ],
+   "cinemas": [
+    "Cine Torrezabal",
+    "Cine Zugaza",
+    "Liceo Antzokia",
+    "Zalla Zine - Antzokia ",
+    "Zornotza Aretoa",
+    "Cine Municipal Llodio",
+    "Cines Gorbeia Zinemak "
+   ],
+   "qualifiedSlug": "galdakao-pais-vasco"
+  },
+  {
+   "slug": "gandia",
+   "kind": "town",
+   "name": "Gandia",
+   "anchor": "Gandia",
+   "province": "Valencia",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.9667,
+   "lon": -0.1833,
+   "towns": [
+    "Gandia"
+   ],
+   "cinemas": [
+    "Abc Gandia",
+    "Cine de Verano Tugar",
+    "Cines Axion Premium Gandía",
+    "Ozone Gandía"
+   ],
+   "qualifiedSlug": "gandia-comunidad-valenciana"
+  },
+  {
+   "slug": "girona",
+   "kind": "cluster",
+   "name": "Girona",
+   "anchor": "Girona",
+   "province": "Girona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.9831,
+   "lon": 2.8249,
+   "towns": [
+    "Girona",
+    "Salt"
+   ],
+   "cinemas": [
+    "Cinema Truffaut",
+    "Ocine Girona",
+    "Odeon Multicines Girona"
+   ],
+   "qualifiedSlug": "girona-cataluna"
+  },
+  {
+   "slug": "golmayo",
+   "kind": "town",
+   "name": "Golmayo",
+   "anchor": "Golmayo",
+   "province": "Soria",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.7662,
+   "lon": -2.5227,
+   "towns": [
+    "Golmayo"
+   ],
+   "cinemas": [
+    "Cines Lara"
+   ],
+   "qualifiedSlug": "golmayo-castilla-y-leon"
+  },
+  {
+   "slug": "granollers",
+   "kind": "cluster",
+   "name": "Granollers",
+   "anchor": "Granollers",
+   "province": "Barcelona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.608,
+   "lon": 2.2877,
+   "towns": [
+    "Granollers",
+    "Sant Celoni",
+    "La Garriga",
+    "Cànoves i Samalús"
+   ],
+   "cinemas": [
+    "Cine Alhambra",
+    "Cinema Edison",
+    "Ocine Granollers",
+    "Cinema Esbarjo",
+    "Ocine Sant Celoni Altrium"
+   ],
+   "qualifiedSlug": "granollers-cataluna"
+  },
+  {
+   "slug": "guadalajara",
+   "kind": "cluster",
+   "name": "Guadalajara",
+   "anchor": "Guadalajara",
+   "province": "Guadalajara",
+   "community": "Castilla-La Mancha",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.6286,
+   "lon": -3.1618,
+   "towns": [
+    "Guadalajara",
+    "Azuqueca de Henares"
+   ],
+   "cinemas": [
+    "Cultura Azuqueca",
+    "Multicines Guadalajara"
+   ],
+   "qualifiedSlug": "guadalajara-castilla-la-mancha"
+  },
+  {
+   "slug": "guardo",
+   "kind": "cluster",
+   "name": "Guardo",
+   "anchor": "Guardo",
+   "province": "Palencia",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.7897,
+   "lon": -4.8482,
+   "towns": [
+    "Guardo",
+    "Cistierna"
+   ],
+   "cinemas": [
+    "Cine Marí",
+    "Cine AMGu"
+   ],
+   "qualifiedSlug": "guardo-castilla-y-leon"
+  },
+  {
+   "slug": "herrera-del-duque",
+   "kind": "town",
+   "name": "Herrera del Duque",
+   "anchor": "Herrera del Duque",
+   "province": "Badajoz",
+   "community": "Extremadura",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.1684,
+   "lon": -5.0505,
+   "towns": [
+    "Herrera del Duque"
+   ],
+   "cinemas": [
+    "Cine Municipal Herrera del Duque"
+   ],
+   "qualifiedSlug": "herrera-del-duque-extremadura"
+  },
+  {
+   "slug": "huarte",
+   "kind": "cluster",
+   "name": "Huarte",
+   "anchor": "Huarte",
+   "province": "Navarra",
+   "community": "Navarra",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.8304,
+   "lon": -1.5909,
+   "towns": [
+    "Huarte",
+    "Galar"
+   ],
+   "cinemas": [
+    "Golem La Morea",
+    "Yelmo Cines Itaroa"
+   ],
+   "qualifiedSlug": "huarte-navarra"
+  },
+  {
+   "slug": "huelva",
+   "kind": "cluster",
+   "name": "Huelva",
+   "anchor": "Huelva",
+   "province": "Huelva",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.2664,
+   "lon": -6.94,
+   "towns": [
+    "Huelva",
+    "Punta Umbría",
+    "Palos de la Frontera"
+   ],
+   "cinemas": [
+    "Al-Andalus Punta Umbría 3D",
+    "Artesiete Holea",
+    "Cines Aqualón",
+    "Cine Alba Mazagón"
+   ],
+   "qualifiedSlug": "huelva-andalucia"
+  },
+  {
+   "slug": "huesca",
+   "kind": "town",
+   "name": "Huesca",
+   "anchor": "Huesca",
+   "province": "Huesca",
+   "community": "Aragón",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.1362,
+   "lon": -0.4087,
+   "towns": [
+    "Huesca"
+   ],
+   "cinemas": [
+    "CineMundo Huesca"
+   ],
+   "qualifiedSlug": "huesca-aragon"
+  },
+  {
+   "slug": "huetor-tajar",
+   "kind": "town",
+   "name": "Huétor-Tájar",
+   "anchor": "Huétor-Tájar",
+   "province": "Granada",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.1983,
+   "lon": -4.0469,
+   "towns": [
+    "Huétor-Tájar"
+   ],
+   "cinemas": [
+    "Huétor Cinema"
+   ],
+   "qualifiedSlug": "huetor-tajar-andalucia"
+  },
+  {
+   "slug": "ibiza",
+   "kind": "cluster",
+   "name": "Ibiza",
+   "anchor": "Ibiza",
+   "province": "Islas Baleares",
+   "community": "Islas Baleares",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.9088,
+   "lon": 1.433,
+   "towns": [
+    "Ibiza",
+    "Santa Eulària des Riu",
+    "Sant Antoni de Portmany"
+   ],
+   "cinemas": [
+    "Cine Regio",
+    "Multicines Eivissa",
+    "Teatro España"
+   ],
+   "qualifiedSlug": "ibiza-islas-baleares"
+  },
+  {
+   "slug": "iniesta",
+   "kind": "town",
+   "name": "Iniesta",
+   "anchor": "Iniesta",
+   "province": "Cuenca",
+   "community": "Castilla-La Mancha",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.4333,
+   "lon": -1.75,
+   "towns": [
+    "Iniesta"
+   ],
+   "cinemas": [
+    "Cine Iniesta"
+   ],
+   "qualifiedSlug": "iniesta-castilla-la-mancha"
+  },
+  {
+   "slug": "irun",
+   "kind": "cluster",
+   "name": "Irun",
+   "anchor": "Irun",
+   "province": "Guipúzcoa",
+   "community": "País Vasco",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.339,
+   "lon": -1.7894,
+   "towns": [
+    "Irun",
+    "Renteria",
+    "Usurbil"
+   ],
+   "cinemas": [
+    "Cinesa Urbil",
+    "Multicines Niessen Zinemak",
+    "Ocine Mendibil"
+   ],
+   "qualifiedSlug": "irun-pais-vasco"
+  },
+  {
+   "slug": "jaraiz-de-la-vera",
+   "kind": "town",
+   "name": "Jaraíz de la Vera",
+   "anchor": "Jaraíz de la Vera",
+   "province": "Cáceres",
+   "community": "Extremadura",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.06,
+   "lon": -5.7543,
+   "towns": [
+    "Jaraíz de la Vera"
+   ],
+   "cinemas": [
+    "Cine Avenida Jaraíz"
+   ],
+   "qualifiedSlug": "jaraiz-de-la-vera-extremadura"
+  },
+  {
+   "slug": "javea",
+   "kind": "cluster",
+   "name": "Javea",
+   "anchor": "Javea",
+   "province": "Alicante",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.7833,
+   "lon": 0.1667,
+   "towns": [
+    "Javea",
+    "Dénia"
+   ],
+   "cinemas": [
+    "Auto Cine Drive In",
+    "Cine Club Xábia",
+    "Cine Jayan"
+   ],
+   "qualifiedSlug": "javea-comunidad-valenciana"
+  },
+  {
+   "slug": "la-orotava",
+   "kind": "cluster",
+   "name": "La Orotava",
+   "anchor": "La Orotava",
+   "province": "Santa Cruz de Tenerife",
+   "community": "Canarias",
+   "zoneId": "Atlantic/Canary",
+   "lat": 28.3908,
+   "lon": -16.5231,
+   "towns": [
+    "La Orotava",
+    "Los Realejos",
+    "Candelaria"
+   ],
+   "cinemas": [
+    "Cine Realejos",
+    "Multicines Puntalarga",
+    "Yelmo Cines La Villa de Orotava"
+   ],
+   "qualifiedSlug": "la-orotava-canarias"
+  },
+  {
+   "slug": "la-palma-del-condado",
+   "kind": "town",
+   "name": "La Palma del Condado",
+   "anchor": "La Palma del Condado",
+   "province": "Huelva",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.386,
+   "lon": -6.5523,
+   "towns": [
+    "La Palma del Condado"
+   ],
+   "cinemas": [
+    "Condado Cinemas 7"
+   ],
+   "qualifiedSlug": "la-palma-del-condado-andalucia"
+  },
+  {
+   "slug": "la-seu-d-urgell",
+   "kind": "town",
+   "name": "La Seu d'Urgell",
+   "anchor": "La Seu d'Urgell",
+   "province": "Lérida",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.3588,
+   "lon": 1.4614,
+   "towns": [
+    "La Seu d'Urgell"
+   ],
+   "cinemas": [
+    "Cinemes Guiu"
+   ],
+   "qualifiedSlug": "la-seu-d-urgell-cataluna"
+  },
+  {
+   "slug": "la-zubia",
+   "kind": "cluster",
+   "name": "La Zubia",
+   "anchor": "La Zubia",
+   "province": "Granada",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.112,
+   "lon": -3.5714,
+   "towns": [
+    "La Zubia",
+    "Armilla",
+    "Pulianas"
+   ],
+   "cinemas": [
+    "Artesiete Alhsur",
+    "Cine Liszt Terraza de verano",
+    "Kinépolis Granada",
+    "Kinépolis Nevada"
+   ],
+   "qualifiedSlug": "la-zubia-andalucia"
+  },
+  {
+   "slug": "laredo",
+   "kind": "cluster",
+   "name": "Laredo",
+   "anchor": "Laredo",
+   "province": "Cantabria",
+   "community": "Cantabria",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.4098,
+   "lon": -3.4161,
+   "towns": [
+    "Laredo",
+    "Santoña",
+    "Noja"
+   ],
+   "cinemas": [
+    "Casa de Cultura Doctor Velasco ",
+    "Cine Playa Dorada",
+    "Teatro Casino Liceo de Santoña"
+   ],
+   "qualifiedSlug": "laredo-cantabria"
+  },
+  {
+   "slug": "leiro",
+   "kind": "town",
+   "name": "Leiro",
+   "anchor": "Leiro",
+   "province": "Ourense",
+   "community": "Galicia",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.35,
+   "lon": -8.1333,
+   "towns": [
+    "Leiro"
+   ],
+   "cinemas": [
+    "NovoCine Leiro 3D"
+   ],
+   "qualifiedSlug": "leiro-galicia"
+  },
+  {
+   "slug": "leon",
+   "kind": "town",
+   "name": "León",
+   "anchor": "León",
+   "province": "León",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.6,
+   "lon": -5.5703,
+   "towns": [
+    "León"
+   ],
+   "cinemas": [
+    "Cines Van Gogh",
+    "Odeon Multicines León"
+   ],
+   "qualifiedSlug": "leon-castilla-y-leon"
+  },
+  {
+   "slug": "linares",
+   "kind": "cluster",
+   "name": "Linares",
+   "anchor": "Linares",
+   "province": "Jaén",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.0952,
+   "lon": -3.636,
+   "towns": [
+    "Linares",
+    "Úbeda",
+    "La Carolina"
+   ],
+   "cinemas": [
+    "Multicines Bowling",
+    "Multicines Carolina",
+    "Multicines Úbeda"
+   ],
+   "qualifiedSlug": "linares-andalucia"
+  },
+  {
+   "slug": "lleida",
+   "kind": "cluster",
+   "name": "Lleida",
+   "anchor": "Lleida",
+   "province": "Lérida",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.6167,
+   "lon": 0.6222,
+   "towns": [
+    "Lleida",
+    "Balaguer",
+    "Almacelles",
+    "Alpicat"
+   ],
+   "cinemas": [
+    "Cinema El Casal",
+    "Jca Cinemes Alpicat",
+    "Sala d''actes Ajuntament",
+    "Ocine Premium Lleida"
+   ],
+   "qualifiedSlug": "lleida-cataluna"
+  },
+  {
+   "slug": "lorca",
+   "kind": "town",
+   "name": "Lorca",
+   "anchor": "Lorca",
+   "province": "Murcia",
+   "community": "Región de Murcia",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.6712,
+   "lon": -1.7017,
+   "towns": [
+    "Lorca"
+   ],
+   "cinemas": [
+    "Cines Almenara Lorca"
+   ],
+   "qualifiedSlug": "lorca-region-de-murcia"
+  },
+  {
+   "slug": "los-llanos-de-aridane",
+   "kind": "cluster",
+   "name": "Los Llanos de Aridane",
+   "anchor": "Los Llanos de Aridane",
+   "province": "Santa Cruz de Tenerife",
+   "community": "Canarias",
+   "zoneId": "Atlantic/Canary",
+   "lat": 28.6585,
+   "lon": -17.9182,
+   "towns": [
+    "Los Llanos de Aridane",
+    "Santa Cruz de la Palma"
+   ],
+   "cinemas": [
+    "Multicines Millennium",
+    "Teatro Chico"
+   ],
+   "qualifiedSlug": "los-llanos-de-aridane-canarias"
+  },
+  {
+   "slug": "lucena",
+   "kind": "cluster",
+   "name": "Lucena",
+   "anchor": "Lucena",
+   "province": "Córdoba",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.4088,
+   "lon": -4.4852,
+   "towns": [
+    "Lucena",
+    "Cabra",
+    "Baena"
+   ],
+   "cinemas": [
+    "Artesiete Lucena",
+    "Cine Baena",
+    "Cinestudio Municipal Cabra"
+   ],
+   "qualifiedSlug": "lucena-andalucia"
+  },
+  {
+   "slug": "lugo",
+   "kind": "town",
+   "name": "Lugo",
+   "anchor": "Lugo",
+   "province": "Lugo",
+   "community": "Galicia",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.0099,
+   "lon": -7.556,
+   "towns": [
+    "Lugo"
+   ],
+   "cinemas": [
+    "Multicines Cristal",
+    "Yelmo Cines As Termas"
+   ],
+   "qualifiedSlug": "lugo-galicia"
+  },
+  {
+   "slug": "mairena-del-aljarafe",
+   "kind": "cluster",
+   "name": "Mairena del Aljarafe",
+   "anchor": "Mairena del Aljarafe",
+   "province": "Sevilla",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.3446,
+   "lon": -6.0639,
+   "towns": [
+    "Mairena del Aljarafe",
+    "Coria del Río",
+    "Camas",
+    "Tomares",
+    "Bormujos"
+   ],
+   "cinemas": [
+    "Centro Cultural de la Villa - Pastora Soler",
+    "Al-Andalus Mega Ocio",
+    "Cinema Tomares",
+    "Cinesa Camas",
+    "Metromar Cinemas 12"
+   ],
+   "qualifiedSlug": "mairena-del-aljarafe-andalucia"
+  },
+  {
+   "slug": "majadahonda",
+   "kind": "cluster",
+   "name": "Majadahonda",
+   "anchor": "Majadahonda",
+   "province": "Madrid",
+   "community": "Comunidad de Madrid",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.4735,
+   "lon": -3.8718,
+   "towns": [
+    "Majadahonda",
+    "Boadilla del Monte",
+    "Las Rozas de Madrid",
+    "Pozuelo de Alarcón"
+   ],
+   "cinemas": [
+    "Cine Los Molinos",
+    "Cines Boadilla",
+    "Cines Zoco Majadahonda",
+    "Cinesa Equinoccio",
+    "Cinesa Heron City Las Rozas",
+    "Kinépolis Madrid"
+   ],
+   "qualifiedSlug": "majadahonda-comunidad-de-madrid"
+  },
+  {
+   "slug": "manacor",
+   "kind": "town",
+   "name": "Manacor",
+   "anchor": "Manacor",
+   "province": "Islas Baleares",
+   "community": "Islas Baleares",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.5696,
+   "lon": 3.2096,
+   "towns": [
+    "Manacor"
+   ],
+   "cinemas": [
+    "Multicines Manacor"
+   ],
+   "qualifiedSlug": "manacor-islas-baleares"
+  },
+  {
+   "slug": "manresa",
+   "kind": "cluster",
+   "name": "Manresa",
+   "anchor": "Manresa",
+   "province": "Barcelona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.7281,
+   "lon": 1.824,
+   "towns": [
+    "Manresa",
+    "Igualada",
+    "Santa Margarida de Montbui"
+   ],
+   "cinemas": [
+    "Ateneu Cinema ",
+    "Mont-Àgora Cinemes",
+    "Multicines Bages 3D"
+   ],
+   "qualifiedSlug": "manresa-cataluna"
+  },
+  {
+   "slug": "mao",
+   "kind": "town",
+   "name": "Maó",
+   "anchor": "Maó",
+   "province": "Islas Baleares",
+   "community": "Islas Baleares",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.8885,
+   "lon": 4.2658,
+   "towns": [
+    "Maó"
+   ],
+   "cinemas": [
+    "Ocimax Multisalas"
+   ],
+   "qualifiedSlug": "mao-islas-baleares"
+  },
+  {
+   "slug": "marbella",
+   "kind": "town",
+   "name": "Marbella",
+   "anchor": "Marbella",
+   "province": "Málaga",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.5154,
+   "lon": -4.8858,
+   "towns": [
+    "Marbella"
+   ],
+   "cinemas": [
+    "Cines Gran Marbella",
+    "Kinépolis La Cañada",
+    "Red Dog Cinemas"
+   ],
+   "qualifiedSlug": "marbella-andalucia"
+  },
+  {
+   "slug": "marchena",
+   "kind": "town",
+   "name": "Marchena",
+   "anchor": "Marchena",
+   "province": "Sevilla",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.329,
+   "lon": -5.4168,
+   "towns": [
+    "Marchena"
+   ],
+   "cinemas": [
+    "Cine Planelles"
+   ],
+   "qualifiedSlug": "marchena-andalucia"
+  },
+  {
+   "slug": "marratxi",
+   "kind": "town",
+   "name": "Marratxí",
+   "anchor": "Marratxí",
+   "province": "Islas Baleares",
+   "community": "Islas Baleares",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.6214,
+   "lon": 2.7253,
+   "towns": [
+    "Marratxí"
+   ],
+   "cinemas": [
+    "Cinesa Festival Park"
+   ],
+   "qualifiedSlug": "marratxi-islas-baleares"
+  },
+  {
+   "slug": "martos",
+   "kind": "town",
+   "name": "Martos",
+   "anchor": "Martos",
+   "province": "Jaén",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.7211,
+   "lon": -3.9726,
+   "towns": [
+    "Martos"
+   ],
+   "cinemas": [
+    "Teatro Maestro Álvarez Alonso"
+   ],
+   "qualifiedSlug": "martos-andalucia"
+  },
+  {
+   "slug": "mazarron",
+   "kind": "town",
+   "name": "Mazarrón",
+   "anchor": "Mazarrón",
+   "province": "Murcia",
+   "community": "Región de Murcia",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.5992,
+   "lon": -1.3149,
+   "towns": [
+    "Mazarrón"
+   ],
+   "cinemas": [
+    "Cine Bahía"
+   ],
+   "qualifiedSlug": "mazarron-region-de-murcia"
+  },
+  {
+   "slug": "medina-de-rioseco",
+   "kind": "town",
+   "name": "Medina de Ríoseco",
+   "anchor": "Medina de Ríoseco",
+   "province": "Valladolid",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.8833,
+   "lon": -5.0441,
+   "towns": [
+    "Medina de Ríoseco"
+   ],
+   "cinemas": [
+    "Teatro Principal"
+   ],
+   "qualifiedSlug": "medina-de-rioseco-castilla-y-leon"
+  },
+  {
+   "slug": "medina-del-campo",
+   "kind": "town",
+   "name": "Medina del Campo",
+   "anchor": "Medina del Campo",
+   "province": "Valladolid",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.3124,
+   "lon": -4.9141,
+   "towns": [
+    "Medina del Campo"
+   ],
+   "cinemas": [
+    "Multicines Coliseo"
+   ],
+   "qualifiedSlug": "medina-del-campo-castilla-y-leon"
+  },
+  {
+   "slug": "melilla",
+   "kind": "town",
+   "name": "Melilla",
+   "anchor": "Melilla",
+   "province": "Melilla",
+   "community": "Melilla",
+   "zoneId": "Europe/Madrid",
+   "lat": 35.2937,
+   "lon": -2.9383,
+   "towns": [
+    "Melilla"
+   ],
+   "cinemas": [
+    "Cine Teatro Perelló"
+   ],
+   "qualifiedSlug": "melilla-melilla"
+  },
+  {
+   "slug": "mequinenza",
+   "kind": "town",
+   "name": "Mequinenza",
+   "anchor": "Mequinenza",
+   "province": "Zaragoza",
+   "community": "Aragón",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.3721,
+   "lon": 0.3017,
+   "towns": [
+    "Mequinenza"
+   ],
+   "cinemas": [
+    "Sala Goya"
+   ],
+   "qualifiedSlug": "mequinenza-aragon"
+  },
+  {
+   "slug": "merida",
+   "kind": "town",
+   "name": "Mérida",
+   "anchor": "Mérida",
+   "province": "Badajoz",
+   "community": "Extremadura",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.918,
+   "lon": -6.3429,
+   "towns": [
+    "Mérida"
+   ],
+   "cinemas": [
+    "Cines Victoria Mérida"
+   ],
+   "qualifiedSlug": "merida-extremadura"
+  },
+  {
+   "slug": "miranda-de-ebro",
+   "kind": "cluster",
+   "name": "Miranda de Ebro",
+   "anchor": "Miranda de Ebro",
+   "province": "Burgos",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.6865,
+   "lon": -2.947,
+   "towns": [
+    "Miranda de Ebro",
+    "Haro",
+    "Santo Domingo de la Calzada"
+   ],
+   "cinemas": [
+    "Cine Novedades Miranda de Ebro",
+    "Cine Avenida Santo Domingo",
+    "Teatro Bretón"
+   ],
+   "qualifiedSlug": "miranda-de-ebro-castilla-y-leon"
+  },
+  {
+   "slug": "molina-de-segura",
+   "kind": "cluster",
+   "name": "Molina de Segura",
+   "anchor": "Molina de Segura",
+   "province": "Murcia",
+   "community": "Región de Murcia",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.0546,
+   "lon": -1.2076,
+   "towns": [
+    "Molina de Segura",
+    "Archena",
+    "Mula",
+    "Abarán"
+   ],
+   "cinemas": [
+    "Cine de Verano Abarán",
+    "Cine de Verano de Archena",
+    "Neocine HD Digital Vega Plaza",
+    "Terraza Centro Joven"
+   ],
+   "qualifiedSlug": "molina-de-segura-region-de-murcia"
+  },
+  {
+   "slug": "mollerussa",
+   "kind": "town",
+   "name": "Mollerussa",
+   "anchor": "Mollerussa",
+   "province": "Lérida",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.6333,
+   "lon": 0.9,
+   "towns": [
+    "Mollerussa"
+   ],
+   "cinemas": [
+    "Autocine Resquitx - Golmés",
+    "Cinema Mollerussa",
+    "Cinemes Urgell"
+   ],
+   "qualifiedSlug": "mollerussa-cataluna"
+  },
+  {
+   "slug": "monforte-de-lemos",
+   "kind": "town",
+   "name": "Monforte de Lemos",
+   "anchor": "Monforte de Lemos",
+   "province": "Lugo",
+   "community": "Galicia",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.5217,
+   "lon": -7.5142,
+   "towns": [
+    "Monforte de Lemos"
+   ],
+   "cinemas": [
+    "Multicines Hollywood"
+   ],
+   "qualifiedSlug": "monforte-de-lemos-galicia"
+  },
+  {
+   "slug": "motril",
+   "kind": "cluster",
+   "name": "Motril",
+   "anchor": "Motril",
+   "province": "Granada",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.7507,
+   "lon": -3.5179,
+   "towns": [
+    "Motril",
+    "Almuñécar",
+    "Salobreña"
+   ],
+   "cinemas": [
+    "Cañaveral Cinema",
+    "Cine San Cristobal",
+    "Motril Cinema"
+   ],
+   "qualifiedSlug": "motril-andalucia"
+  },
+  {
+   "slug": "mungia",
+   "kind": "town",
+   "name": "Mungia",
+   "anchor": "Mungia",
+   "province": "Vizcaya",
+   "community": "País Vasco",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.3546,
+   "lon": -2.8452,
+   "towns": [
+    "Mungia"
+   ],
+   "cinemas": [
+    "Cine Torrebillela",
+    "Olalde Aretoa"
+   ],
+   "qualifiedSlug": "mungia-pais-vasco"
+  },
+  {
+   "slug": "navalmoral-de-la-mata",
+   "kind": "town",
+   "name": "Navalmoral de la Mata",
+   "anchor": "Navalmoral de la Mata",
+   "province": "Cáceres",
+   "community": "Extremadura",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.8916,
+   "lon": -5.5406,
+   "towns": [
+    "Navalmoral de la Mata"
+   ],
+   "cinemas": [
+    "Cines Navalmoral"
+   ],
+   "qualifiedSlug": "navalmoral-de-la-mata-extremadura"
+  },
+  {
+   "slug": "navia",
+   "kind": "town",
+   "name": "Navia",
+   "anchor": "Navia",
+   "province": "Asturias",
+   "community": "Asturias",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.5354,
+   "lon": -6.7194,
+   "towns": [
+    "Navia"
+   ],
+   "cinemas": [
+    "Cine Fantasio Navia"
+   ],
+   "qualifiedSlug": "navia-asturias"
+  },
+  {
+   "slug": "oliva",
+   "kind": "cluster",
+   "name": "Oliva",
+   "anchor": "Oliva",
+   "province": "Valencia",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.9197,
+   "lon": -0.1193,
+   "towns": [
+    "Oliva",
+    "Guardamar de la Safor"
+   ],
+   "cinemas": [
+    "Cine Terraza Charly",
+    "Terraza de Verano Oliva"
+   ],
+   "qualifiedSlug": "oliva-comunidad-valenciana"
+  },
+  {
+   "slug": "olot",
+   "kind": "cluster",
+   "name": "Olot",
+   "anchor": "Olot",
+   "province": "Girona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.181,
+   "lon": 2.4901,
+   "towns": [
+    "Olot",
+    "Ripoll"
+   ],
+   "cinemas": [
+    "Cinema Teatre Comtal",
+    "Multicines Olot"
+   ],
+   "qualifiedSlug": "olot-cataluna"
+  },
+  {
+   "slug": "orihuela",
+   "kind": "cluster",
+   "name": "Orihuela",
+   "anchor": "Orihuela",
+   "province": "Alicante",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.0848,
+   "lon": -0.944,
+   "towns": [
+    "Orihuela",
+    "Callosa de Segura"
+   ],
+   "cinemas": [
+    "Cine Navia",
+    "Cines Axion de Orihuela",
+    "Terraza Imperial - Cine de Verano"
+   ],
+   "qualifiedSlug": "orihuela-comunidad-valenciana"
+  },
+  {
+   "slug": "ourense",
+   "kind": "town",
+   "name": "Ourense",
+   "anchor": "Ourense",
+   "province": "Ourense",
+   "community": "Galicia",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.3367,
+   "lon": -7.8641,
+   "towns": [
+    "Ourense"
+   ],
+   "cinemas": [
+    "Cinebox Ourense",
+    "Multicines Ponte Vella"
+   ],
+   "qualifiedSlug": "ourense-galicia"
+  },
+  {
+   "slug": "palafrugell",
+   "kind": "cluster",
+   "name": "Palafrugell",
+   "anchor": "Palafrugell",
+   "province": "Girona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.9174,
+   "lon": 3.1631,
+   "towns": [
+    "Palafrugell",
+    "Palamós",
+    "Castell-Platja d'Aro",
+    "Begur",
+    "Fontanilles"
+   ],
+   "cinemas": [
+    "Cinema Casino",
+    "Cinema Kyton",
+    "Cinema Montgrí",
+    "Ocine Platja d'Aro",
+    "Teatro Municipal de Palafrugel"
+   ],
+   "qualifiedSlug": "palafrugell-cataluna"
+  },
+  {
+   "slug": "palencia",
+   "kind": "town",
+   "name": "Palencia",
+   "anchor": "Palencia",
+   "province": "Palencia",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.0095,
+   "lon": -4.5241,
+   "towns": [
+    "Palencia"
+   ],
+   "cinemas": [
+    "Cines Ortega",
+    "Multicines Avenida"
+   ],
+   "qualifiedSlug": "palencia-castilla-y-leon"
+  },
+  {
+   "slug": "paterna",
+   "kind": "cluster",
+   "name": "Paterna",
+   "anchor": "Paterna",
+   "province": "Valencia",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.5026,
+   "lon": -0.4408,
+   "towns": [
+    "Paterna",
+    "Burjassot",
+    "Aldaia",
+    "Xirivella",
+    "Llíria",
+    "Alboraya",
+    "Alfafar",
+    "L'Eliana",
+    "Benetússer",
+    "Almussafes",
+    "Serra"
+   ],
+   "cinemas": [
+    "Abc Gran Turia",
+    "Centre Cultural Almassafes",
+    "Centre Cultural Benetússer El Molí",
+    "Cine La Unió Musical",
+    "Cine Tívoli",
+    "Cine de Verano Serra",
+    "Cines MN4",
+    "Cinesa Bonaire",
+    "Kinépolis Valencia",
+    "Terraza Lumiere",
+    "Terraza de Verano"
+   ],
+   "qualifiedSlug": "paterna-comunidad-valenciana"
+  },
+  {
+   "slug": "pedrajas-de-san-esteban",
+   "kind": "town",
+   "name": "Pedrajas de San Esteban",
+   "anchor": "Pedrajas de San Esteban",
+   "province": "Valladolid",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.3415,
+   "lon": -4.5823,
+   "towns": [
+    "Pedrajas de San Esteban"
+   ],
+   "cinemas": [
+    "Cine Avenida"
+   ],
+   "qualifiedSlug": "pedrajas-de-san-esteban-castilla-y-leon"
+  },
+  {
+   "slug": "penaranda-de-bracamonte",
+   "kind": "town",
+   "name": "Peñaranda de Bracamonte",
+   "anchor": "Peñaranda de Bracamonte",
+   "province": "Salamanca",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.9011,
+   "lon": -5.2003,
+   "towns": [
+    "Peñaranda de Bracamonte"
+   ],
+   "cinemas": [
+    "Cine Calderón"
+   ],
+   "qualifiedSlug": "penaranda-de-bracamonte-castilla-y-leon"
+  },
+  {
+   "slug": "penarroya-pueblonuevo",
+   "kind": "town",
+   "name": "Peñarroya-Pueblonuevo",
+   "anchor": "Peñarroya-Pueblonuevo",
+   "province": "Córdoba",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.3,
+   "lon": -5.2667,
+   "towns": [
+    "Peñarroya-Pueblonuevo"
+   ],
+   "cinemas": [
+    "Peñarroya Cinema"
+   ],
+   "qualifiedSlug": "penarroya-pueblonuevo-andalucia"
+  },
+  {
+   "slug": "petrer",
+   "kind": "town",
+   "name": "Petrer",
+   "anchor": "Petrer",
+   "province": "Alicante",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.4913,
+   "lon": -0.7384,
+   "towns": [
+    "Petrer"
+   ],
+   "cinemas": [
+    "CinesMax 3D Petrer",
+    "Yelmo Cines Vinalopo"
+   ],
+   "qualifiedSlug": "petrer-comunidad-valenciana"
+  },
+  {
+   "slug": "pilar-de-la-horadada",
+   "kind": "cluster",
+   "name": "Pilar de la Horadada",
+   "anchor": "Pilar de la Horadada",
+   "province": "Alicante",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.8659,
+   "lon": -0.7926,
+   "towns": [
+    "Pilar de la Horadada",
+    "Torrevieja",
+    "San Pedro del Pinatar"
+   ],
+   "cinemas": [
+    "Cine Horadada",
+    "Cine Las Villas",
+    "Cine Imf Torrevieja",
+    "Cine Acapulco"
+   ],
+   "qualifiedSlug": "pilar-de-la-horadada-comunidad-valenciana"
+  },
+  {
+   "slug": "plasencia",
+   "kind": "town",
+   "name": "Plasencia",
+   "anchor": "Plasencia",
+   "province": "Cáceres",
+   "community": "Extremadura",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.0312,
+   "lon": -6.0884,
+   "towns": [
+    "Plasencia"
+   ],
+   "cinemas": [
+    "Multicines Alkázar"
+   ],
+   "qualifiedSlug": "plasencia-extremadura"
+  },
+  {
+   "slug": "ponferrada",
+   "kind": "town",
+   "name": "Ponferrada",
+   "anchor": "Ponferrada",
+   "province": "León",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.5466,
+   "lon": -6.5962,
+   "towns": [
+    "Ponferrada"
+   ],
+   "cinemas": [
+    "La Dehesa Ponferrada"
+   ],
+   "qualifiedSlug": "ponferrada-castilla-y-leon"
+  },
+  {
+   "slug": "pontevedra",
+   "kind": "cluster",
+   "name": "Pontevedra",
+   "anchor": "Pontevedra",
+   "province": "Pontevedra",
+   "community": "Galicia",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.431,
+   "lon": -8.6443,
+   "towns": [
+    "Pontevedra",
+    "Marín",
+    "Nigrán"
+   ],
+   "cinemas": [
+    "Cine Club Pontevedra",
+    "Multicines Cinexpo",
+    "Cine Imperial",
+    "Cine Seixo"
+   ],
+   "qualifiedSlug": "pontevedra-galicia"
+  },
+  {
+   "slug": "pozoblanco",
+   "kind": "town",
+   "name": "Pozoblanco",
+   "anchor": "Pozoblanco",
+   "province": "Córdoba",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.3791,
+   "lon": -4.8483,
+   "towns": [
+    "Pozoblanco"
+   ],
+   "cinemas": [
+    "Cine Pósito"
+   ],
+   "qualifiedSlug": "pozoblanco-andalucia"
+  },
+  {
+   "slug": "premia-de-mar",
+   "kind": "cluster",
+   "name": "Premià de Mar",
+   "anchor": "Premià de Mar",
+   "province": "Barcelona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.4921,
+   "lon": 2.3652,
+   "towns": [
+    "Premià de Mar",
+    "Mataró",
+    "El Masnou"
+   ],
+   "cinemas": [
+    "Cine la Calandria",
+    "Cinema Teatre Patronat",
+    "Espai L'Amistat",
+    "Kinépolis Mataró Parc"
+   ],
+   "qualifiedSlug": "premia-de-mar-cataluna"
+  },
+  {
+   "slug": "puerto-del-rosario",
+   "kind": "cluster",
+   "name": "Puerto del Rosario",
+   "anchor": "Puerto del Rosario",
+   "province": "Las Palmas",
+   "community": "Canarias",
+   "zoneId": "Atlantic/Canary",
+   "lat": 28.5004,
+   "lon": -13.8627,
+   "towns": [
+    "Puerto del Rosario",
+    "Antigua"
+   ],
+   "cinemas": [
+    "Odeón Puerto del Rosario",
+    "Yelmo Cines Fuerteventura"
+   ],
+   "qualifiedSlug": "puerto-del-rosario-canarias"
+  },
+  {
+   "slug": "puertollano",
+   "kind": "town",
+   "name": "Puertollano",
+   "anchor": "Puertollano",
+   "province": "Ciudad Real",
+   "community": "Castilla-La Mancha",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.6871,
+   "lon": -4.1073,
+   "towns": [
+    "Puertollano"
+   ],
+   "cinemas": [
+    "Multicines Ortega"
+   ],
+   "qualifiedSlug": "puertollano-castilla-la-mancha"
+  },
+  {
+   "slug": "requena",
+   "kind": "town",
+   "name": "Requena",
+   "anchor": "Requena",
+   "province": "Valencia",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.4883,
+   "lon": -1.1004,
+   "towns": [
+    "Requena"
+   ],
+   "cinemas": [
+    "Cine Teatro Principal Requena",
+    "Teatro García Berlanga"
+   ],
+   "qualifiedSlug": "requena-comunidad-valenciana"
+  },
+  {
+   "slug": "reus",
+   "kind": "cluster",
+   "name": "Reus",
+   "anchor": "Reus",
+   "province": "Tarragona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.1561,
+   "lon": 1.1069,
+   "towns": [
+    "Reus",
+    "Cambrils",
+    "Valls",
+    "Montblanc",
+    "Altafulla"
+   ],
+   "cinemas": [
+    "Cinema Casal Montblanquí",
+    "Cines Axion Reus",
+    "JCA Cinemes Tarragona Valls",
+    "MCB Altafulla - Les Bruixes",
+    "Rambla de L'art"
+   ],
+   "qualifiedSlug": "reus-cataluna"
+  },
+  {
+   "slug": "ribadeo",
+   "kind": "town",
+   "name": "Ribadeo",
+   "anchor": "Ribadeo",
+   "province": "Lugo",
+   "community": "Galicia",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.537,
+   "lon": -7.0409,
+   "towns": [
+    "Ribadeo"
+   ],
+   "cinemas": [
+    "Cine Ribadeo"
+   ],
+   "qualifiedSlug": "ribadeo-galicia"
+  },
+  {
+   "slug": "ronda",
+   "kind": "town",
+   "name": "Ronda",
+   "anchor": "Ronda",
+   "province": "Málaga",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.7423,
+   "lon": -5.1671,
+   "towns": [
+    "Ronda"
+   ],
+   "cinemas": [
+    "Multicines Ronda"
+   ],
+   "qualifiedSlug": "ronda-andalucia"
+  },
+  {
+   "slug": "roquetas-de-mar",
+   "kind": "town",
+   "name": "Roquetas de Mar",
+   "anchor": "Roquetas de Mar",
+   "province": "Almería",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.7642,
+   "lon": -2.6147,
+   "towns": [
+    "Roquetas de Mar"
+   ],
+   "cinemas": [
+    "Cine de verano Aguadulce",
+    "Yelmo Cines Roquetas"
+   ],
+   "qualifiedSlug": "roquetas-de-mar-andalucia"
+  },
+  {
+   "slug": "rota",
+   "kind": "town",
+   "name": "Rota",
+   "anchor": "Rota",
+   "province": "Cádiz",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.6236,
+   "lon": -6.36,
+   "towns": [
+    "Rota"
+   ],
+   "cinemas": [
+    "Cines Victoria Rota",
+    "Portalejo Cinemas"
+   ],
+   "qualifiedSlug": "rota-andalucia"
+  },
+  {
+   "slug": "sabinanigo",
+   "kind": "town",
+   "name": "Sabiñánigo",
+   "anchor": "Sabiñánigo",
+   "province": "Huesca",
+   "community": "Aragón",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.5192,
+   "lon": -0.3661,
+   "towns": [
+    "Sabiñánigo"
+   ],
+   "cinemas": [
+    "Auditorio La Colina"
+   ],
+   "qualifiedSlug": "sabinanigo-aragon"
+  },
+  {
+   "slug": "sagunto",
+   "kind": "town",
+   "name": "Sagunto",
+   "anchor": "Sagunto",
+   "province": "Valencia",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.6833,
+   "lon": -0.2667,
+   "towns": [
+    "Sagunto"
+   ],
+   "cinemas": [
+    "Alucine Sagunto",
+    "Yelmo Cines VidaNova Parc"
+   ],
+   "qualifiedSlug": "sagunto-comunidad-valenciana"
+  },
+  {
+   "slug": "san-fernando",
+   "kind": "cluster",
+   "name": "San Fernando",
+   "anchor": "San Fernando",
+   "province": "Cádiz",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.4759,
+   "lon": -6.1982,
+   "towns": [
+    "San Fernando",
+    "Chiclana de la Frontera"
+   ],
+   "cinemas": [
+    "Cines Plaza San Fernando",
+    "Yelmo Cines Premium Bahía Sur",
+    "Multicines Las Salinas"
+   ],
+   "qualifiedSlug": "san-fernando-andalucia"
+  },
+  {
+   "slug": "san-javier",
+   "kind": "town",
+   "name": "San Javier",
+   "anchor": "San Javier",
+   "province": "Murcia",
+   "community": "Región de Murcia",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.8063,
+   "lon": -0.8374,
+   "towns": [
+    "San Javier"
+   ],
+   "cinemas": [
+    "Cines IMF Galán",
+    "Neocine Dos Mares",
+    "Terraza España"
+   ],
+   "qualifiedSlug": "san-javier-region-de-murcia"
+  },
+  {
+   "slug": "san-martin-de-valdeiglesias",
+   "kind": "cluster",
+   "name": "San Martín de Valdeiglesias",
+   "anchor": "San Martín de Valdeiglesias",
+   "province": "Madrid",
+   "community": "Comunidad de Madrid",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.3618,
+   "lon": -4.3983,
+   "towns": [
+    "San Martín de Valdeiglesias",
+    "Villa del Prado",
+    "Sotillo de la Adrada",
+    "Pelayos de la Presa",
+    "Navaluenga"
+   ],
+   "cinemas": [
+    "Cine Teatro Municipal",
+    "Cine de Verano El Molino",
+    "Cines Villa",
+    "Cine Blasco",
+    "Cine Rueda"
+   ],
+   "qualifiedSlug": "san-martin-de-valdeiglesias-comunidad-de-madrid"
+  },
+  {
+   "slug": "san-vicente-del-raspeig",
+   "kind": "cluster",
+   "name": "San Vicente del Raspeig",
+   "anchor": "San Vicente del Raspeig",
+   "province": "Alicante",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.4343,
+   "lon": -0.5496,
+   "towns": [
+    "San Vicente del Raspeig",
+    "Santa Pola",
+    "Mutxamel",
+    "San Juan de Alicante"
+   ],
+   "cinemas": [
+    "Autocine El Sur",
+    "Cine Aana San Juan",
+    "Cine La Esperanza",
+    "Odeon Multicines Alicante",
+    "Cines Axion de Santa Pola"
+   ],
+   "qualifiedSlug": "san-vicente-del-raspeig-comunidad-valenciana"
+  },
+  {
+   "slug": "sant-boi-de-llobregat",
+   "kind": "cluster",
+   "name": "Sant Boi de Llobregat",
+   "anchor": "Sant Boi de Llobregat",
+   "province": "Barcelona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.3436,
+   "lon": 2.0366,
+   "towns": [
+    "Sant Boi de Llobregat",
+    "El Prat de Llobregat",
+    "Castelldefels",
+    "Gavà",
+    "Sant Feliu de Llobregat",
+    "Sant Vicenç dels Horts",
+    "Abrera"
+   ],
+   "cinemas": [
+    "Cine Capri",
+    "Cinebaix",
+    "Cinemes Can Castellet",
+    "Cinesa Barnasud",
+    "Multicinemes La Vailet",
+    "Yelmo Cines Abrera",
+    "Yelmo Cines Premium Castelldefels"
+   ],
+   "qualifiedSlug": "sant-boi-de-llobregat-cataluna"
+  },
+  {
+   "slug": "sant-cugat-del-valles",
+   "kind": "cluster",
+   "name": "Sant Cugat del Vallès",
+   "anchor": "Sant Cugat del Vallès",
+   "province": "Barcelona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.4706,
+   "lon": 2.0861,
+   "towns": [
+    "Sant Cugat del Vallès",
+    "Montcada i Reixac",
+    "Barberà del Vallès"
+   ],
+   "cinemas": [
+    "Cinemes Sant Cugat",
+    "Yelmo Cines Premium Sant Cugat",
+    "Cines Montcada",
+    "Yelmo Cines Baricentro"
+   ],
+   "qualifiedSlug": "sant-cugat-del-valles-cataluna"
+  },
+  {
+   "slug": "santa-maria-del-paramo",
+   "kind": "town",
+   "name": "Santa María del Páramo",
+   "anchor": "Santa María del Páramo",
+   "province": "León",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.3551,
+   "lon": -5.7515,
+   "towns": [
+    "Santa María del Páramo"
+   ],
+   "cinemas": [
+    "Cine Paramés"
+   ],
+   "qualifiedSlug": "santa-maria-del-paramo-castilla-y-leon"
+  },
+  {
+   "slug": "santa-marta-de-tormes",
+   "kind": "town",
+   "name": "Santa Marta de Tormes",
+   "anchor": "Santa Marta de Tormes",
+   "province": "Salamanca",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.9507,
+   "lon": -5.6272,
+   "towns": [
+    "Santa Marta de Tormes"
+   ],
+   "cinemas": [
+    "Cines Van Dyck Tormes"
+   ],
+   "qualifiedSlug": "santa-marta-de-tormes-castilla-y-leon"
+  },
+  {
+   "slug": "santiago-de-compostela",
+   "kind": "town",
+   "name": "Santiago de Compostela",
+   "anchor": "Santiago de Compostela",
+   "province": "A Coruña",
+   "community": "Galicia",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.8805,
+   "lon": -8.5457,
+   "towns": [
+    "Santiago de Compostela"
+   ],
+   "cinemas": [
+    "Cinesa As Cancelas",
+    "Multicines Compostela",
+    "Numax"
+   ],
+   "qualifiedSlug": "santiago-de-compostela-galicia"
+  },
+  {
+   "slug": "segovia",
+   "kind": "town",
+   "name": "Segovia",
+   "anchor": "Segovia",
+   "province": "Segovia",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.9481,
+   "lon": -4.1184,
+   "towns": [
+    "Segovia"
+   ],
+   "cinemas": [
+    "Artesiete Segovia",
+    "Cines Luz de Castilla"
+   ],
+   "qualifiedSlug": "segovia-castilla-y-leon"
+  },
+  {
+   "slug": "siero",
+   "kind": "town",
+   "name": "Siero",
+   "anchor": "Siero",
+   "province": "Asturias",
+   "community": "Asturias",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.4027,
+   "lon": -5.8121,
+   "towns": [
+    "Siero"
+   ],
+   "cinemas": [
+    "Cinesa Parque Principado"
+   ],
+   "qualifiedSlug": "siero-asturias"
+  },
+  {
+   "slug": "sitges",
+   "kind": "cluster",
+   "name": "Sitges",
+   "anchor": "Sitges",
+   "province": "Barcelona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.2351,
+   "lon": 1.8119,
+   "towns": [
+    "Sitges",
+    "Vilanova i la Geltrú",
+    "Sant Pere de Ribes"
+   ],
+   "cinemas": [
+    "Cinema Prado",
+    "Cinema Retiro",
+    "Cinema Ribes",
+    "Odeon Multicines Vilanova"
+   ],
+   "qualifiedSlug": "sitges-cataluna"
+  },
+  {
+   "slug": "solsona",
+   "kind": "town",
+   "name": "Solsona",
+   "anchor": "Solsona",
+   "province": "Lérida",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.9939,
+   "lon": 1.5171,
+   "towns": [
+    "Solsona"
+   ],
+   "cinemas": [
+    "Cinema Paris"
+   ],
+   "qualifiedSlug": "solsona-cataluna"
+  },
+  {
+   "slug": "talavera-de-la-reina",
+   "kind": "town",
+   "name": "Talavera de la Reina",
+   "anchor": "Talavera de la Reina",
+   "province": "Toledo",
+   "community": "Castilla-La Mancha",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.9635,
+   "lon": -4.8308,
+   "towns": [
+    "Talavera de la Reina"
+   ],
+   "cinemas": [
+    "Artesiete Los Alfares"
+   ],
+   "qualifiedSlug": "talavera-de-la-reina-castilla-la-mancha"
+  },
+  {
+   "slug": "tarancon",
+   "kind": "town",
+   "name": "Tarancón",
+   "anchor": "Tarancón",
+   "province": "Cuenca",
+   "community": "Castilla-La Mancha",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.0085,
+   "lon": -3.0073,
+   "towns": [
+    "Tarancón"
+   ],
+   "cinemas": [
+    "Cine de Verano Tarancón"
+   ],
+   "qualifiedSlug": "tarancon-castilla-la-mancha"
+  },
+  {
+   "slug": "tarragona",
+   "kind": "cluster",
+   "name": "Tarragona",
+   "anchor": "Tarragona",
+   "province": "Tarragona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.1191,
+   "lon": 1.2454,
+   "towns": [
+    "Tarragona",
+    "Vila-seca"
+   ],
+   "cinemas": [
+    "Ocine Gavarres",
+    "Yelmo Cines Parc Central",
+    "Ocine Vila-seca"
+   ],
+   "qualifiedSlug": "tarragona-cataluna"
+  },
+  {
+   "slug": "tarrega",
+   "kind": "cluster",
+   "name": "Tàrrega",
+   "anchor": "Tàrrega",
+   "province": "Lérida",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.647,
+   "lon": 1.1396,
+   "towns": [
+    "Tàrrega",
+    "Agramunt",
+    "Bellpuig",
+    "Linyola"
+   ],
+   "cinemas": [
+    "Cinema Armengol",
+    "Cinema Casal Agramunt",
+    "Cinema Planell",
+    "Cinemes Majestic"
+   ],
+   "qualifiedSlug": "tarrega-cataluna"
+  },
+  {
+   "slug": "telde",
+   "kind": "cluster",
+   "name": "Telde",
+   "anchor": "Telde",
+   "province": "Las Palmas",
+   "community": "Canarias",
+   "zoneId": "Atlantic/Canary",
+   "lat": 27.9924,
+   "lon": -15.4192,
+   "towns": [
+    "Telde",
+    "Santa Lucía de Tirajana"
+   ],
+   "cinemas": [
+    "Artesiete Las Terrazas",
+    "Yelmo Cines Vecindario"
+   ],
+   "qualifiedSlug": "telde-canarias"
+  },
+  {
+   "slug": "teruel",
+   "kind": "town",
+   "name": "Teruel",
+   "anchor": "Teruel",
+   "province": "Teruel",
+   "community": "Aragón",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.3456,
+   "lon": -1.1065,
+   "towns": [
+    "Teruel"
+   ],
+   "cinemas": [
+    "Cine Maravillas"
+   ],
+   "qualifiedSlug": "teruel-aragon"
+  },
+  {
+   "slug": "toledo",
+   "kind": "cluster",
+   "name": "Toledo",
+   "anchor": "Toledo",
+   "province": "Toledo",
+   "community": "Castilla-La Mancha",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.8581,
+   "lon": -4.0226,
+   "towns": [
+    "Toledo",
+    "Torrijos",
+    "Sonseca",
+    "Olías del Rey"
+   ],
+   "cinemas": [
+    "Cine Central 3D",
+    "Cines Redux",
+    "Real Cinema De Olías",
+    "mk2 Luz del Tajo"
+   ],
+   "qualifiedSlug": "toledo-castilla-la-mancha"
+  },
+  {
+   "slug": "tomelloso",
+   "kind": "cluster",
+   "name": "Tomelloso",
+   "anchor": "Tomelloso",
+   "province": "Ciudad Real",
+   "community": "Castilla-La Mancha",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.1576,
+   "lon": -3.0216,
+   "towns": [
+    "Tomelloso",
+    "Socuéllamos"
+   ],
+   "cinemas": [
+    "Cine Reina Sofía Socuéllamos",
+    "La Dehesa Tomelloso"
+   ],
+   "qualifiedSlug": "tomelloso-castilla-la-mancha"
+  },
+  {
+   "slug": "torrelodones",
+   "kind": "cluster",
+   "name": "Torrelodones",
+   "anchor": "Torrelodones",
+   "province": "Madrid",
+   "community": "Comunidad de Madrid",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.5765,
+   "lon": -3.9266,
+   "towns": [
+    "Torrelodones",
+    "Collado Villalba",
+    "Guadarrama",
+    "Soto del Real"
+   ],
+   "cinemas": [
+    "Casa de Cultura Guadarrama",
+    "Centro de Arte y Cine de Verano Soto del Real",
+    "Sala Babel",
+    "Teatro Fernández-Baldor",
+    "Yelmo Cines Planetocio"
+   ],
+   "qualifiedSlug": "torrelodones-comunidad-de-madrid"
+  },
+  {
+   "slug": "totana",
+   "kind": "town",
+   "name": "Totana",
+   "anchor": "Totana",
+   "province": "Murcia",
+   "community": "Región de Murcia",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.7688,
+   "lon": -1.5023,
+   "towns": [
+    "Totana"
+   ],
+   "cinemas": [
+    "Cinema Velasco Totana",
+    "Terraza Auditorio Parque Municipal"
+   ],
+   "qualifiedSlug": "totana-region-de-murcia"
+  },
+  {
+   "slug": "tremp",
+   "kind": "town",
+   "name": "Tremp",
+   "anchor": "Tremp",
+   "province": "Lérida",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.167,
+   "lon": 0.8949,
+   "towns": [
+    "Tremp"
+   ],
+   "cinemas": [
+    "Cinema La Lira"
+   ],
+   "qualifiedSlug": "tremp-cataluna"
+  },
+  {
+   "slug": "tudela",
+   "kind": "town",
+   "name": "Tudela",
+   "anchor": "Tudela",
+   "province": "Navarra",
+   "community": "Navarra",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.0617,
+   "lon": -1.6045,
+   "towns": [
+    "Tudela"
+   ],
+   "cinemas": [
+    "Ocine Tudela"
+   ],
+   "qualifiedSlug": "tudela-navarra"
+  },
+  {
+   "slug": "ubrique",
+   "kind": "town",
+   "name": "Ubrique",
+   "anchor": "Ubrique",
+   "province": "Cádiz",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.6778,
+   "lon": -5.446,
+   "towns": [
+    "Ubrique"
+   ],
+   "cinemas": [
+    "Teatro Maestro Francisco Fatou"
+   ],
+   "qualifiedSlug": "ubrique-andalucia"
+  },
+  {
+   "slug": "valdemorillo",
+   "kind": "town",
+   "name": "Valdemorillo",
+   "anchor": "Valdemorillo",
+   "province": "Madrid",
+   "community": "Comunidad de Madrid",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.5006,
+   "lon": -4.0671,
+   "towns": [
+    "Valdemorillo"
+   ],
+   "cinemas": [
+    "Cine Giralt Laporta",
+    "Cine de Verano Juan Falco"
+   ],
+   "qualifiedSlug": "valdemorillo-comunidad-de-madrid"
+  },
+  {
+   "slug": "valdemoro",
+   "kind": "cluster",
+   "name": "Valdemoro",
+   "anchor": "Valdemoro",
+   "province": "Madrid",
+   "community": "Comunidad de Madrid",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.1908,
+   "lon": -3.6789,
+   "towns": [
+    "Valdemoro",
+    "Parla",
+    "Aranjuez",
+    "Pinto"
+   ],
+   "cinemas": [
+    "Cine Aranjuez",
+    "Cine de Verano Valdemoro",
+    "Restón Cinema",
+    "Ocine Plaza Éboli",
+    "Spazio Cines"
+   ],
+   "qualifiedSlug": "valdemoro-comunidad-de-madrid"
+  },
+  {
+   "slug": "valdepenas",
+   "kind": "town",
+   "name": "Valdepeñas",
+   "anchor": "Valdepeñas",
+   "province": "Ciudad Real",
+   "community": "Castilla-La Mancha",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.7621,
+   "lon": -3.3848,
+   "towns": [
+    "Valdepeñas"
+   ],
+   "cinemas": [
+    "Multicines Valdepeñas"
+   ],
+   "qualifiedSlug": "valdepenas-castilla-la-mancha"
+  },
+  {
+   "slug": "velez-malaga",
+   "kind": "cluster",
+   "name": "Vélez-Málaga",
+   "anchor": "Vélez-Málaga",
+   "province": "Málaga",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 36.7811,
+   "lon": -4.1027,
+   "towns": [
+    "Vélez-Málaga",
+    "Rincón de la Victoria",
+    "Nerja"
+   ],
+   "cinemas": [
+    "Centro Cultural Villa de Nerja",
+    "Yelmo Cines Rincón De La Victoria",
+    "mk2 El Ingenio"
+   ],
+   "qualifiedSlug": "velez-malaga-andalucia"
+  },
+  {
+   "slug": "viana",
+   "kind": "town",
+   "name": "Viaña",
+   "anchor": "Viaña",
+   "province": "Navarra",
+   "community": "Navarra",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.4944,
+   "lon": -2.3495,
+   "towns": [
+    "Viaña"
+   ],
+   "cinemas": [
+    "Cines Las Cañas Viana"
+   ],
+   "qualifiedSlug": "viana-navarra"
+  },
+  {
+   "slug": "vic",
+   "kind": "town",
+   "name": "Vic",
+   "anchor": "Vic",
+   "province": "Barcelona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.9301,
+   "lon": 2.2549,
+   "towns": [
+    "Vic"
+   ],
+   "cinemas": [
+    "Cine Vigatà",
+    "Multicines Sucre"
+   ],
+   "qualifiedSlug": "vic-cataluna"
+  },
+  {
+   "slug": "vielha",
+   "kind": "town",
+   "name": "Vielha",
+   "anchor": "Vielha",
+   "province": "Lérida",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.702,
+   "lon": 0.7956,
+   "towns": [
+    "Vielha"
+   ],
+   "cinemas": [
+    "Cinema Era Audiovisuau"
+   ],
+   "qualifiedSlug": "vielha-cataluna"
+  },
+  {
+   "slug": "vila-real",
+   "kind": "cluster",
+   "name": "Vila-real",
+   "anchor": "Vila-real",
+   "province": "Castellón",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.9383,
+   "lon": -0.1009,
+   "towns": [
+    "Vila-real",
+    "La Vall d'Uixó"
+   ],
+   "cinemas": [
+    "Cines Sucre",
+    "Teatre Municipal Carmen Tur - Antic Cine España"
+   ],
+   "qualifiedSlug": "vila-real-comunidad-valenciana"
+  },
+  {
+   "slug": "vilafranca-del-penedes",
+   "kind": "town",
+   "name": "Vilafranca del Penedès",
+   "anchor": "Vilafranca del Penedès",
+   "province": "Barcelona",
+   "community": "Cataluña",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.3462,
+   "lon": 1.6971,
+   "towns": [
+    "Vilafranca del Penedès"
+   ],
+   "cinemas": [
+    "Cine Kubrick",
+    "Cineclub Vilafranca - Sala Zazie-Casa"
+   ],
+   "qualifiedSlug": "vilafranca-del-penedes-cataluna"
+  },
+  {
+   "slug": "vilagarcia-de-arousa",
+   "kind": "cluster",
+   "name": "Vilagarcía de Arousa",
+   "anchor": "Vilagarcía de Arousa",
+   "province": "Pontevedra",
+   "community": "Galicia",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.5963,
+   "lon": -8.7643,
+   "towns": [
+    "Vilagarcía de Arousa",
+    "Ribeira",
+    "A Estrada",
+    "Caldas de Reis"
+   ],
+   "cinemas": [
+    "Barbanza Multicines",
+    "Cines Avenida 3D",
+    "Minicines Central ",
+    "Multicines Gran Arousa"
+   ],
+   "qualifiedSlug": "vilagarcia-de-arousa-galicia"
+  },
+  {
+   "slug": "villablino",
+   "kind": "town",
+   "name": "Villablino",
+   "anchor": "Villablino",
+   "province": "León",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.9393,
+   "lon": -6.3194,
+   "towns": [
+    "Villablino"
+   ],
+   "cinemas": [
+    "El cine Villablino"
+   ],
+   "qualifiedSlug": "villablino-castilla-y-leon"
+  },
+  {
+   "slug": "villarrobledo",
+   "kind": "town",
+   "name": "Villarrobledo",
+   "anchor": "Villarrobledo",
+   "province": "Albacete",
+   "community": "Castilla-La Mancha",
+   "zoneId": "Europe/Madrid",
+   "lat": 39.2699,
+   "lon": -2.6012,
+   "towns": [
+    "Villarrobledo"
+   ],
+   "cinemas": [
+    "Gran Teatro de Villarrobledo"
+   ],
+   "qualifiedSlug": "villarrobledo-castilla-la-mancha"
+  },
+  {
+   "slug": "villaviciosa-de-odon",
+   "kind": "cluster",
+   "name": "Villaviciosa de Odón",
+   "anchor": "Villaviciosa de Odón",
+   "province": "Madrid",
+   "community": "Comunidad de Madrid",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.3581,
+   "lon": -3.9043,
+   "towns": [
+    "Villaviciosa de Odón",
+    "Arroyomolinos"
+   ],
+   "cinemas": [
+    "Cine Colíseo de la Cultura",
+    "Cine de verano el castillo",
+    "Cinesa Intu Xanadú"
+   ],
+   "qualifiedSlug": "villaviciosa-de-odon-comunidad-de-madrid"
+  },
+  {
+   "slug": "villena",
+   "kind": "cluster",
+   "name": "Villena",
+   "anchor": "Villena",
+   "province": "Alicante",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 38.6373,
+   "lon": -0.8657,
+   "towns": [
+    "Villena",
+    "Yecla",
+    "Almansa"
+   ],
+   "cinemas": [
+    "Cines Coliseum",
+    "Cine Club Villena",
+    "Cine Pya"
+   ],
+   "qualifiedSlug": "villena-comunidad-valenciana"
+  },
+  {
+   "slug": "vinaros",
+   "kind": "cluster",
+   "name": "Vinaròs",
+   "anchor": "Vinaròs",
+   "province": "Castellón",
+   "community": "Comunidad Valenciana",
+   "zoneId": "Europe/Madrid",
+   "lat": 40.4703,
+   "lon": 0.4756,
+   "towns": [
+    "Vinaròs",
+    "Benicarló"
+   ],
+   "cinemas": [
+    "Cines Axion Benicarló",
+    "JJ Cinema "
+   ],
+   "qualifiedSlug": "vinaros-comunidad-valenciana"
+  },
+  {
+   "slug": "viveiro",
+   "kind": "town",
+   "name": "Viveiro",
+   "anchor": "Viveiro",
+   "province": "Lugo",
+   "community": "Galicia",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.6623,
+   "lon": -7.5934,
+   "towns": [
+    "Viveiro"
+   ],
+   "cinemas": [
+    "Cines Viveiro 3D"
+   ],
+   "qualifiedSlug": "viveiro-galicia"
+  },
+  {
+   "slug": "xinzo-de-limia",
+   "kind": "town",
+   "name": "Xinzo de Limia",
+   "anchor": "Xinzo de Limia",
+   "province": "Ourense",
+   "community": "Galicia",
+   "zoneId": "Europe/Madrid",
+   "lat": 42.0635,
+   "lon": -7.7246,
+   "towns": [
+    "Xinzo de Limia"
+   ],
+   "cinemas": [
+    "Cine Gesma"
+   ],
+   "qualifiedSlug": "xinzo-de-limia-galicia"
+  },
+  {
+   "slug": "zamora",
+   "kind": "town",
+   "name": "Zamora",
+   "anchor": "Zamora",
+   "province": "Zamora",
+   "community": "Castilla y León",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.5063,
+   "lon": -5.7446,
+   "towns": [
+    "Zamora"
+   ],
+   "cinemas": [
+    "Multicines Zamora"
+   ],
+   "qualifiedSlug": "zamora-castilla-y-leon"
+  },
+  {
+   "slug": "zuera",
+   "kind": "town",
+   "name": "Zuera",
+   "anchor": "Zuera",
+   "province": "Zaragoza",
+   "community": "Aragón",
+   "zoneId": "Europe/Madrid",
+   "lat": 41.8678,
+   "lon": -0.7898,
+   "towns": [
+    "Zuera"
+   ],
+   "cinemas": [
+    "Teatro Reina Sofía"
+   ],
+   "qualifiedSlug": "zuera-aragon"
+  },
+  {
+   "slug": "zumaia",
+   "kind": "cluster",
+   "name": "Zumaia",
+   "anchor": "Zumaia",
+   "province": "Guipúzcoa",
+   "community": "País Vasco",
+   "zoneId": "Europe/Madrid",
+   "lat": 43.2947,
+   "lon": -2.2534,
+   "towns": [
+    "Zumaia",
+    "Lekeitio"
+   ],
+   "cinemas": [
+    "Aita Mari Zinema",
+    "Ikusgarri Zinema"
+   ],
+   "qualifiedSlug": "zumaia-pais-vasco"
+  }
+ ],
+ "retired": {
+  "alava": {
+   "page": "vitoria-gasteiz",
+   "qualifiedSlug": "alava-pais-vasco"
+  },
+  "asturias": {
+   "page": "gijon",
+   "qualifiedSlug": "asturias-asturias"
+  },
+  "cantabria": {
+   "page": "santander",
+   "qualifiedSlug": "cantabria-cantabria"
+  },
+  "castellon": {
+   "page": "castellon-de-la-plana",
+   "qualifiedSlug": "castellon-comunidad-valenciana"
+  },
+  "guipuzcoa": {
+   "page": "beasain",
+   "qualifiedSlug": "guipuzcoa-pais-vasco"
+  },
+  "islas-baleares": {
+   "page": "palma-de-mallorca",
+   "qualifiedSlug": "islas-baleares-islas-baleares"
+  },
+  "jaen": {
+   "page": "linares",
+   "qualifiedSlug": "jaen-andalucia"
+  },
+  "la-rioja": {
+   "page": "logrono",
+   "qualifiedSlug": "la-rioja-la-rioja"
+  },
+  "las-palmas": {
+   "page": "las-palmas-de-gran-canaria",
+   "qualifiedSlug": "las-palmas-canarias"
+  },
+  "lerida": {
+   "page": "lleida",
+   "qualifiedSlug": "lerida-cataluna"
+  },
+  "navarra": {
+   "page": "pamplona",
+   "qualifiedSlug": "navarra-navarra"
+  },
+  "soria": {
+   "page": "golmayo",
+   "qualifiedSlug": "soria-castilla-y-leon"
+  },
+  "vizcaya": {
+   "page": "barakaldo",
+   "qualifiedSlug": "vizcaya-pais-vasco"
+  }
+ }
+}

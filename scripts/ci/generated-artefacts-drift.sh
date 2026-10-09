@@ -11,6 +11,7 @@
 #     → data/pl/scripts/generate_polish_pages.py → PolishPages.scala + the apps' City lists
 #   data/{uk,pl}/venues.json → data/scripts/generate_venue_towns.py → VenueTowns.scala
 #   data/us/venues.json      → data/us/scripts/generate_roster.py   → UsRosterData.scala
+#   data/spain/town-coords.json → data/spain/scripts/build_pages.py   → data/spain/pages.json
 #   data/germany, data/spain → their generate_roster.py              → *RosterData.scala
 #
 # An edit to any link that skips the regeneration below it compiles, passes every spec that
@@ -76,6 +77,7 @@ python3 data/pl/scripts/generate_polish_pages.py
 python3 data/scripts/generate_venue_towns.py
 python3 data/us/scripts/generate_roster.py data/us/venues.json common/src/main/scala/models/UsRosterData.scala
 python3 data/germany/scripts/generate_roster.py
+python3 data/spain/scripts/build_pages.py
 python3 data/spain/scripts/generate_roster.py
 
 drift=$(diff <(printf '%s\n' "$before") <(tree_state) | sed -n 's/^[<>] \(.*\) [^ ]*$/\1/p' | LC_ALL=C sort -u || true)

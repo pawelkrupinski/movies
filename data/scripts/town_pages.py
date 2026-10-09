@@ -51,21 +51,30 @@ def slugify(name):
 
 
 def km(a, b):
+    """Great-circle kilometres between two (lat, lon) points."""
     p = math.radians
     return 2 * 6371 * math.asin(math.sqrt(math.sin(p(b[0] - a[0]) / 2) ** 2 +
                                           math.cos(p(a[0])) * math.cos(p(b[0])) * math.sin(p(b[1] - a[1]) / 2) ** 2))
 
 
-def cluster(count, pos, pop, rules=Rules()):
+def cluster(count, pos, pop, rules=Rules(), landmass=None):
     """Group the non-major towns into pages: a list of clusters, each a list of
     towns with its anchor first. `count`, `pos` and `pop` map each town to its
-    venue count, (lat, lon) and population."""
+    venue count, (lat, lon) and population.
+
+    `landmass` (town → key, optional) keeps towns a short line but a sea apart off
+    one page: Ceuta is 28 km from Algeciras across the Strait, Fuerteventura 11 km
+    from Lanzarote. Towns with different keys are never within any radius."""
+    def dist(a, b):
+        if landmass and landmass(a) != landmass(b):
+            return math.inf
+        return km(pos[a], pos[b])
     own = sorted(t for t in count if count[t] >= rules.own_page_min_venues)
     pool = set(count) - set(own)
     clusters = [[t] for t in own]
 
     def grab(anchor, radius, eligible):
-        members = [t for t in pool if t in eligible and km(pos[anchor], pos[t]) <= radius]
+        members = [t for t in pool if t in eligible and dist(anchor, t) <= radius]
         members.sort(key=lambda t: (t != anchor, -count[t], -pop[t], t))
         pool.difference_update(members)
         return members
@@ -82,8 +91,8 @@ def cluster(count, pos, pop, rules=Rules()):
     final = []
     for c in clusters:
         if len(c) == 1 and count[c[0]] == 1 and multi:
-            nearest = min(multi, key=lambda m: km(pos[c[0]], pos[m[0]]))
-            if km(pos[c[0]], pos[nearest[0]]) <= rules.absorb_radius_km:
+            nearest = min(multi, key=lambda m: dist(c[0], m[0]))
+            if dist(c[0], nearest[0]) <= rules.absorb_radius_km:
                 nearest.append(c[0])
                 continue
         final.append(c)
@@ -94,7 +103,8 @@ def cluster(count, pos, pop, rules=Rules()):
     return final
 
 
-def build(by_town, majors, major_town, gaz, display, make_page, region_slug, cinema_of, rules=Rules()):
+def build(by_town, majors, major_town, gaz, display, make_page, region_slug, cinema_of, rules=Rules(),
+          landmass=None):
     """Every page, as {slug: page}, and the page each town is on.
 
     by_town:    town → its venues, in roster order (the order a page lists them in)
@@ -105,6 +115,7 @@ def build(by_town, majors, major_town, gaz, display, make_page, region_slug, cin
     make_page:  (slug, kind, anchor, towns) → the page record for a town or cluster
     region_slug: anchor → what qualifies its slug when another page has it already
     cinema_of:  venue → what the page's "cinemas" lists for it
+    landmass:   see `cluster`
     """
     result = dict(majors)
     minor = {t: vs for t, vs in by_town.items() if t not in major_town}
@@ -113,7 +124,7 @@ def build(by_town, majors, major_town, gaz, display, make_page, region_slug, cin
     pop = {t: gaz[t]["pop"] for t in minor}
 
     used = set(result)
-    for c in cluster(count, pos, pop, rules):
+    for c in cluster(count, pos, pop, rules, landmass):
         anchor = c[0]
         slug = slugify(display(anchor))
         if slug in used:
