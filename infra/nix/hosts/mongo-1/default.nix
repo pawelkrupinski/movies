@@ -101,7 +101,7 @@ in
 
   fleet.mongoCiRead = {
     enable = true;
-    authorizedKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINZAmY3cDz1SCSvIWh4dIYFxNXNjofJAiDYlE2UMxKoa mongo-ci-read@kinowo-ci";
+    authorizedKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEwLQiFOpvjky2b1eWT2+42phDBJatVR7A8BUG4wVmdG mongo-ci-read@kinowo-ci-2026-10-09";
   };
 
   fleet.firewall.mongo = true;

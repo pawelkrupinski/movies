@@ -353,10 +353,11 @@
     # then switch CI to the new private half. Doing it in the other order locks CI out of a fleet
     # that no longer trusts it, and the recovery is a manual colmena deploy to all three hosts.
     fleet.deployStaging.authorizedKey = lib.mkDefault
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINFG71ktZWOCBDbipR7AYcr+bWTJ09qwB0chXDLP9Cx9 nixdeploy@kinowo-ci";
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKJWJSwyjJ8ytDmSB62yms5bk9gNZkHb6BCd285m3xXf nixdeploy@kinowo-ci-2026-10-09";
 
     fleet.deployStaging.trustedPublicKeys = lib.mkDefault [
-      "kinowo-ci-1:Zn/H+cOSVYLLJRSvBVJLbr86cjWnaMujLr0hm9rEl1Y="
+      "kinowo-ci-1:Zn/H+cOSVYLLJRSvBVJLbr86cjWnaMujLr0hm9rEl1Y=" # pre-theft key: REMOVE once CI signs with kinowo-ci-2
+      "kinowo-ci-2:Esx3xrj9u3CTeFVu/1J8c5Ej4TuzlIL61haDOUBjk1Q=" # 2026-10-09 rotation (private half: vault movies/NIX_STAGE_SIGNING_KEY)
     ];
 
     # THE FLEET'S DISTURBANCE POLICY, and it is the CONSERVATIVE end of the range the ported module

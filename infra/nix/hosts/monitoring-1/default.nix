@@ -404,10 +404,11 @@ in
   # reference and updates one container -- see roles/k8s-deploy.nix for why CI is not simply given a
   # kubeconfig (k3s writes exactly one, and it is cluster-admin).
   #
-  # The public half is here; the private half is a GitHub Actions secret and is in .env.local.
+  # The public half is here; the private half is in the vault (movies/K8S_DEPLOY_SSH_KEY), copied to
+  # the GitHub Actions secret.
   fleet.k8sDeploy = {
     enable = true;
-    authorizedKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIg+/1urv1bMUdFd3yRyrb6SgrOz5f7cjJdM7H4sDUuQ k8sdeploy@kinowo-ci";
+    authorizedKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHavoG1cfP7hVNnNDDwwEvl3B2TJWc4UkKdAkI8yrxa5 k8sdeploy@kinowo-ci-2026-10-09";
   };
 
   fleet.firewall.k3sServer = true;
