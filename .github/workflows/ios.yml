@@ -50,7 +50,7 @@ permissions:
 jobs:
     unit-integration:
         runs-on: ubuntu-latest
-        container: swift:5.10
+        container: mirror.gcr.io/library/swift:5.10
         steps:
             - uses: actions/checkout@v5
 
