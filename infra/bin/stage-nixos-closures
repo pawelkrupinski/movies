@@ -113,12 +113,49 @@ SSH_OPTIONS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
 NOT_A_MACHINE: set = set()
 
 
+# SECONDARY GUARD ONLY. The cause is addressed by `prefetch_inputs` below; this exists because
+# nix's fetcher cache can still be raced by something we do not control (a second job on a
+# self-hosted runner, a person running this by hand during a rebuild). It retries ONLY the one
+# failure signature seen in run 37968909524 -- never a build or copy error, which are real answers.
+FETCH_CACHE_RACE = ("opening Git repository", "tarball-cache")
+
+
 def run(argv, **kwargs):
-    result = subprocess.run(argv, cwd=REPO, capture_output=True, text=True, **kwargs)
-    if result.returncode != 0:
-        detail = (result.stderr or result.stdout).strip().splitlines()
-        return None, detail[-1] if detail else f"exit {result.returncode}"
-    return result.stdout.strip(), None
+    for attempt in range(3):
+        result = subprocess.run(argv, cwd=REPO, capture_output=True, text=True, **kwargs)
+        if result.returncode == 0:
+            return result.stdout.strip(), None
+        stderr = result.stderr or ""
+        if attempt < 2 and all(marker in stderr for marker in FETCH_CACHE_RACE):
+            time.sleep(2 * (attempt + 1))
+            continue
+        break
+    detail = (result.stderr or result.stdout).strip().splitlines()
+    return None, detail[-1] if detail else f"exit {result.returncode}"
+
+
+def prefetch_inputs():
+    """Fetch every flake input ONCE, serially, before any worker thread starts.
+
+    WHAT FAILED in run 37968909524 (attempt 1; attempt 2 passed with no code change): `stage` runs
+    one thread per host, each starting with its own `nix eval` against a runner whose ~/.cache/nix
+    is EMPTY (the workflow restores no cache; the nix-evaluate job is a different runner and shares
+    nothing). Concurrent nix processes all go to the github: inputs (nixpkgs, disko, sops-nix,
+    colmena) and so to nix's git tarball cache. monitoring-1 lost that race:
+
+        error: opening Git repository '"/home/runner/.cache/nix/tarball-cache"': could not find
+        repository at '/home/runner/.cache/nix/tarball-cache'
+
+    and the script reported it as `unreachable-by-declaration` -- a claim about the host that was
+    never true. mongo-1 and k3s-worker-1 won the race, which is why it was intermittent. bitcashier
+    never hit it: its copy ran on a long-lived self-hosted runner whose cache was already warm.
+
+    Archiving the flake once, before the pool starts, makes the cache exist and hold every input,
+    so the parallel evals only READ it. Failure here is fatal for the same reason as everywhere in
+    this file: nothing could be evaluated, which is not the same as nothing being wrong.
+    """
+    _, error = run(["nix", "flake", "archive"])
+    return error
 
 
 def target(address):
@@ -210,7 +247,12 @@ def stage(name):
 
     address, error = timed("eval", lambda: address_of(name))
     if error:
-        return name, None, "unreachable-by-declaration", error, timings
+        # A nix ERROR (it starts with "error:") means the flake could not be evaluated -- a problem
+        # with this run, not a claim about the host. Only a host that evaluates fine but declares no
+        # address is `unreachable-by-declaration`. Run 37968909524 printed the latter for a fetcher
+        # race and sent the reader looking at the wrong thing.
+        verdict = "eval-failed" if error.lstrip().startswith("error:") else "unreachable-by-declaration"
+        return name, None, verdict, error, timings
 
     # --no-link so this leaves nothing in the working tree; the GC root on the HOST is what keeps
     # the closure alive, and a result symlink here would only keep it alive on a runner that is
@@ -245,6 +287,10 @@ def stage(name):
 
 def main():
     wanted = sys.argv[1:]
+    error = prefetch_inputs()
+    if error:
+        print(f"could not fetch this flake's inputs, so NOTHING was staged: {error}")
+        return 2
     names, error = configurations()
     if error:
         print(f"could not read this flake's hosts, so NOTHING was staged: {error}")
