@@ -30,7 +30,9 @@
 # `Cannot open: Function not implemented` for every file in a subdirectory: 26.04's GNU tar makes a
 # syscall neither QEMU nor Rosetta translates. A real amd64 kernel has it (checked on k3s-worker-1,
 # 2026-09-27), and CI builds on one. Locally, build for the Mac's own arm64.
-FROM ubuntu:26.04 AS jdk
+# Both stages' base comes through mirror.gcr.io, Docker Hub's pull-through cache: CI's anonymous
+# pulls from Docker Hub hit its rate limit and its token endpoint's 504s (CiImageMirrorSpec).
+FROM mirror.gcr.io/library/ubuntu:26.04 AS jdk
 RUN set -eux; \
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates wget; \
@@ -48,7 +50,7 @@ RUN set -eux; \
     /tmp/jdk/bin/jlink --output /opt/java/openjdk --no-man-pages --no-header-files \
       --add-modules java.base,java.compiler,java.datatransfer,java.desktop,java.instrument,java.logging,java.management,java.management.rmi,java.naming,java.net.http,java.prefs,java.rmi,java.scripting,java.se,java.security.jgss,java.security.sasl,java.smartcardio,java.sql,java.sql.rowset,java.transaction.xa,java.xml,java.xml.crypto,jdk.accessibility,jdk.charsets,jdk.crypto.cryptoki,jdk.dynalink,jdk.httpserver,jdk.incubator.vector,jdk.jdwp.agent,jdk.jfr,jdk.localedata,jdk.management,jdk.management.agent,jdk.management.jfr,jdk.naming.dns,jdk.naming.rmi,jdk.net,jdk.nio.mapmode,jdk.sctp,jdk.security.auth,jdk.security.jgss,jdk.unsupported,jdk.xml.dom,jdk.zipfs,jdk.jcmd,jdk.attach
 
-FROM ubuntu:26.04
+FROM mirror.gcr.io/library/ubuntu:26.04
 # The OS side of Temurin's own JRE image (adoptium/containers, ubuntu/noble, jre) reproduced on 26.04:
 # the same OS packages, locale, JAVA_HOME and CDS archive, over the runtime the `jdk` stage linked.
 ENV JAVA_HOME=/opt/java/openjdk
