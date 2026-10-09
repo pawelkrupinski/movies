@@ -106,10 +106,50 @@ class OgCardPostersReadySpec extends AnyFlatSpec with Matchers with BeforeAndAft
     error.getMessage should include("posters")
   }
 
-  it should "screenshot once every in-viewport poster has decoded" in withRepertoireUrl(
-    s"""<img data-original-src="a" decoding="async" src="$onePxPng" style="width:100px;height:100px">"""
-  ) { (c, url) =>
+  // An SVG poster filling a `.poster-wrap`-coloured (#2a2a3e) box.
+  private def posterInBox(fill: String): String =
+    s"""<div style="background:#2a2a3e;width:200px;height:296px">""" +
+      s"""<img data-original-src="a" decoding="async" style="width:200px;height:296px" """ +
+      s"""src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10'><rect width='10' height='10' fill='%23$fill'/></svg>"></div>"""
+
+  it should "screenshot once every in-viewport poster has painted" in withRepertoireUrl(posterInBox("cc2222")) { (c, url) =>
     OgCardGenerator.screenshotCity(c, url, postersTimeoutMs = 5000) should not be empty
+  }
+
+  // PR #217's Tarnów / Tauberbischofsheim / Westerland / Wittenberge cards
+  // passed every in-page check (loaded, decoded) in under 4s and still shipped
+  // empty poster boxes: the pixels hadn't reached the screenshot. A poster
+  // whose box in the screenshot is still the box's own background must fail
+  // the attempt. (A poster that genuinely IS that colour stands in for one
+  // that never painted — the screenshot can't tell them apart either.)
+  it should "throw when a poster's box in the screenshot is still the empty background" in withRepertoireUrl(posterInBox("2a2a3e")) { (c, url) =>
+    val error = the[RuntimeException] thrownBy OgCardGenerator.screenshotCity(c, url, postersTimeoutMs = 1000)
+    error.getMessage should include("blank")
+  }
+
+  private def filled(width: Int, height: Int, color: java.awt.Color): java.awt.image.BufferedImage = {
+    val image = new java.awt.image.BufferedImage(width, height, java.awt.image.BufferedImage.TYPE_INT_RGB)
+    val g = image.createGraphics()
+    g.setColor(color); g.fillRect(0, 0, width, height); g.dispose()
+    image
+  }
+
+  private val boxBackground = new java.awt.Color(0x2a, 0x2a, 0x3e)
+  private val box = OgCardGenerator.PosterBox(x = 10, y = 10, width = 50, height = 74, background = boxBackground)
+
+  "unpaintedPosters" should "flag a poster box still showing its background" in {
+    OgCardGenerator.unpaintedPosters(filled(200, 200, boxBackground), Seq(box), deviceScale = 2) shouldBe Seq(box)
+  }
+
+  it should "pass a fully painted poster box" in {
+    OgCardGenerator.unpaintedPosters(filled(200, 200, java.awt.Color.ORANGE), Seq(box), deviceScale = 2) shouldBe empty
+  }
+
+  it should "flag a poster painted only in a top band (the half-painted shape)" in {
+    val image = filled(200, 200, boxBackground)
+    val g = image.createGraphics()
+    g.setColor(java.awt.Color.ORANGE); g.fillRect(0, 0, 200, 2 * (10 + 15)); g.dispose()
+    OgCardGenerator.unpaintedPosters(image, Seq(box), deviceScale = 2) shouldBe Seq(box)
   }
 
   // The load guard: a page that isn't the repertoire (Chrome's offline dino

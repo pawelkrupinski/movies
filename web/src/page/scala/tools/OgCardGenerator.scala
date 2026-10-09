@@ -5,7 +5,7 @@ import models.Country
 import play.api.libs.json.Json
 import settings.{CdpBrowserBinary, ProcessConfiguration}
 
-import java.awt.RenderingHints
+import java.awt.{Color, RenderingHints}
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.nio.file.Files
@@ -76,6 +76,7 @@ object OgCardGenerator {
   private val Height = 630
   private val Scale  = 3 // render the card at 3× then supersample down for smooth text
   private val JpegQuality = 0.85f
+  private val ScreenshotScale = 2 // the background screenshot's device scale
 
   /** The pool's residential (not M247 datacenter) Decodo ports — see
    *  `worker/src/main/resources/residential-proxy.properties`. Rotated across
@@ -277,6 +278,56 @@ object OgCardGenerator {
       s"var timeout=new Promise(function(r){setTimeout(function(){r(false);},$timeoutMs);});" +
       "return Promise.race([decoded,timeout]);})()"
 
+  /** An in-viewport poster's on-screen box (CSS pixels) and the background
+   *  colour its empty box shows until the image paints. */
+  private[tools] final case class PosterBox(x: Int, y: Int, width: Int, height: Int, background: Color)
+
+  /** JS: the [[PosterBox]]es of every visible in-viewport poster, as
+   *  `[x, y, width, height, r, g, b]` rows, clipped to the viewport. The
+   *  background is the nearest ancestor's non-transparent one (`.poster-wrap`'s
+   *  `#2a2a3e` on the real page); a poster with none is skipped, as there is
+   *  nothing to tell an unpainted box apart from. */
+  private[tools] val PosterBoxesJs: String =
+    "[].slice.call(document.querySelectorAll('img[data-original-src]'))" +
+      ".filter(function(i){return i.offsetParent!==null;})" +
+      ".map(function(i){var r=i.getBoundingClientRect(),x=Math.max(0,r.left),y=Math.max(0,r.top)," +
+      "w=Math.min(window.innerWidth,r.right)-x,h=Math.min(window.innerHeight,r.bottom)-y,e=i.parentElement,m=null;" +
+      "while(e&&!m){var c=getComputedStyle(e).backgroundColor.match(/[0-9.]+/g);" +
+      "if(c&&(c.length<4||+c[3]>0))m=c;e=e.parentElement;}" +
+      "return m&&w>0&&h>0?[Math.round(x),Math.round(y),Math.round(w),Math.round(h),+m[0],+m[1],+m[2]]:null;})" +
+      ".filter(function(b){return b!==null;})"
+
+  /** The `boxes` whose pixels in `screenshot` (taken at `deviceScale`) are
+   *  still mostly their own empty background: never painted, or painted only
+   *  in a top band. Checked on the screenshot itself because the in-page
+   *  signals all passed for PR #217's blank Tarnów / Tauberbischofsheim /
+   *  Westerland cards: the images had loaded and decoded, but their pixels
+   *  had not reached the frame Chrome captured. Samples a grid inside each
+   *  box. A poster that really is more than half that exact navy would be
+   *  flagged too, which only costs a retry. */
+  private[tools] def unpaintedPosters(screenshot: BufferedImage, boxes: Seq[PosterBox], deviceScale: Int): Seq[PosterBox] = {
+    val Grid = 12
+    def matchesBackground(rgb: Int, background: Color): Boolean = {
+      val pixel = new Color(rgb)
+      math.abs(pixel.getRed - background.getRed) <= BackgroundTolerance &&
+        math.abs(pixel.getGreen - background.getGreen) <= BackgroundTolerance &&
+        math.abs(pixel.getBlue - background.getBlue) <= BackgroundTolerance
+    }
+    boxes.filter { box =>
+      val samples = for {
+        row    <- 0 until Grid
+        column <- 0 until Grid
+        px = ((box.x + box.width * (column + 0.5) / Grid) * deviceScale).toInt
+        py = ((box.y + box.height * (row + 0.5) / Grid) * deviceScale).toInt
+        if px < screenshot.getWidth && py < screenshot.getHeight
+      } yield matchesBackground(screenshot.getRGB(px, py), box.background)
+      samples.nonEmpty && samples.count(identity) > samples.size * MaxBackgroundShare
+    }
+  }
+
+  private val BackgroundTolerance = 6
+  private val MaxBackgroundShare  = 0.4
+
   /** Click the area-picker's "Show listings" button if the modal is showing, so
    *  a split city's card (London) captures the poster grid instead of the
    *  "Choose your areas" overlay. `shared.js` builds the picker as
@@ -317,11 +368,12 @@ object OgCardGenerator {
    *  emit a blank card. `pickDay` is defined inline on every repertoire render
    *  — empty repertoire or not — so its absence means the site never loaded.
    *  The caller treats the throw as a skip + retry rather than overwriting a
-   *  previously-good card with garbage. Posters that haven't loaded and
-   *  painted within `postersTimeoutMs` throw the same way. */
+   *  previously-good card with garbage. Posters that haven't loaded,
+   *  decoded, and shown up in the screenshot within `postersTimeoutMs`
+   *  throw the same way. */
   private[tools] def screenshotCity(chrome: Chrome, url: String, postersTimeoutMs: Int = PostersTimeoutMs): String =
     chrome.openPage(url) { page =>
-      setMetrics(page, 1180, 760, 2)
+      setMetrics(page, 1180, 760, ScreenshotScale)
       try page.waitFor(RepertoireLoadedJs, timeoutMs = 4000, pollMs = 100)
       catch {
         case _: Throwable =>
@@ -356,9 +408,28 @@ object OgCardGenerator {
       }
       if (!page.evalBool(postersPaintedJs(postersTimeoutMs)))
         throw new RuntimeException(s"posters did not decode within ${postersTimeoutMs}ms")
-      Thread.sleep(400) // final layout + paint settle
-      page.screenshot()
+      screenshotOncePainted(page, postersTimeoutMs)
     }
+
+  /** Screenshot until no poster box in it is still blank (see
+   *  [[unpaintedPosters]]), re-shooting about once a second within
+   *  `postersTimeoutMs`, and throw if the posters never show up — writeCard
+   *  then retries in a fresh tab. */
+  private def screenshotOncePainted(page: CdpPage, postersTimeoutMs: Int): String = {
+    val boxes = page.eval(PosterBoxesJs).as[Seq[Seq[Int]]].map {
+      case Seq(x, y, width, height, r, g, b) => PosterBox(x, y, width, height, new Color(r, g, b))
+      case row                               => throw new RuntimeException(s"unexpected poster box $row")
+    }
+    val shots = math.max(2, postersTimeoutMs / 1000)
+    var blank = 0
+    (1 to shots).iterator.map { shot =>
+      Thread.sleep(if (shot == 1) 400 else 1000) // layout + paint settle
+      val png = page.screenshot()
+      blank = unpaintedPosters(ImageIO.read(new ByteArrayInputStream(Base64.getDecoder.decode(png))), boxes, ScreenshotScale).size
+      (png, blank)
+    }.collectFirst { case (png, 0) => png }
+      .getOrElse(throw new RuntimeException(s"$blank of ${boxes.size} posters still blank in the screenshot after $shots tries"))
+  }
 
   /** Compose the card HTML (the screenshot as a full-bleed background + the
    *  left gradient, wordmark, city line and rating pills) and screenshot it at
