@@ -121,6 +121,8 @@ jobs:
               with:
                   code:          ${{ matrix.code }}
                   token:         ${{ secrets.GITHUB_TOKEN }}
+                  dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  dockerhub-token:    ${{ secrets.DOCKERHUB_TOKEN }}
                   hermetic-pair: ${{ steps.recording.outputs.pair }}
 
             # The baseline is production AT THE BASE: keyed on the base's code (the resolver included),

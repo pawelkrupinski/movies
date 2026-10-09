@@ -94,6 +94,8 @@ jobs:
               run: scripts/ci/start-mongo-replset.sh
               env:
                   MONGO_MAJORITY_JOURNAL: 'false'
+                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
             # The CI end of the read-only route to prod Mongo; it exports KINOWO_CONVERGENCE_SCRAPES_URI.
             - name: Tunnel to prod Mongo

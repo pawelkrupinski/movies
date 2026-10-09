@@ -162,6 +162,8 @@ jobs:
               with:
                   code:          ${{ matrix.request.code }}
                   token:         ${{ secrets.GITHUB_TOKEN }}
+                  dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  dockerhub-token:    ${{ secrets.DOCKERHUB_TOKEN }}
                   mode:          hermetic
                   hermetic-pair: ${{ matrix.request.pair }}
 

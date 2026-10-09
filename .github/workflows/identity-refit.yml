@@ -109,6 +109,8 @@ jobs:
               run: scripts/ci/start-mongo-replset.sh
               env:
                   MONGO_MAJORITY_JOURNAL: 'false'
+                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
             # The real pipeline over the hard clusters: their checked-in films must not move.
             - name: Hard clusters

@@ -38,6 +38,14 @@ inputs:
       the bisect replays the same one it did, fills included. Empty resolves the pinned pair afresh.
     required: false
     default: ''
+  dockerhub-username:
+    description: Docker Hub account the MongoDB image is pulled as, should mirror.gcr.io refuse it (scripts/ci/start-mongo-replset.sh).
+    required: false
+    default: ''
+  dockerhub-token:
+    description: That account's read-only access token. A composite action cannot read secrets itself.
+    required: false
+    default: ''
   replay:
     description: >-
       'false' for a job that replays nothing — the `Convergence fill` workflow's, which needs the pair's name
@@ -102,6 +110,8 @@ runs:
       env:
           MONGO_MAJORITY_JOURNAL: 'false'
           MONGO_TMPFS: ${{ inputs.mongo-tmpfs }}
+          DOCKERHUB_USERNAME: ${{ inputs.dockerhub-username }}
+          DOCKERHUB_TOKEN: ${{ inputs.dockerhub-token }}
       run: '"$GITHUB_WORKSPACE"/scripts/ci/in-background.sh start mongo-start "$GITHUB_WORKSPACE"/scripts/ci/start-mongo-replset.sh --wiredTigerCacheSizeGB 2'
 
     # A RECORDING leg's tunnel to prod Mongo relays through `socat`, which the runner image lacks:

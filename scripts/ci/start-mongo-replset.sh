@@ -34,7 +34,10 @@
 # The image is pulled through mirror.gcr.io, Google's pull-through cache of Docker Hub's official
 # images, not from Docker Hub itself: GitHub's runners pull anonymously and share egress IPs, so
 # Docker Hub's per-IP anonymous limit refused the pull outright ("toomanyrequests", run 37989550418)
-# and failed the job before a single test ran.
+# and failed the job before a single test ran. Should the mirror refuse it too, the image comes from
+# Docker Hub after all -- logged in as the CI account when DOCKERHUB_USERNAME/DOCKERHUB_TOKEN are set
+# (repo secrets; a fork's PR has none and pulls anonymously), so the pull counts against that
+# account's limit instead of the shared IP's. The token goes to `docker login` on stdin, never argv.
 set -uo pipefail
 
 timeout_seconds="${MONGO_START_TIMEOUT_SECONDS:-180}"
@@ -66,7 +69,16 @@ is_primary() { mongosh_eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; }
 
 storage=()
 [ -n "${MONGO_TMPFS:-}" ] && storage=(--tmpfs "/data/db:rw,size=${MONGO_TMPFS}")
-docker run -d --name mongo --network host ${storage[@]+"${storage[@]}"} mirror.gcr.io/library/mongo:8.3.11 --replSet rs0 "$@" || exit 1
+image=mirror.gcr.io/library/mongo:8.3.11
+if ! docker pull -q "$image"; then
+    echo "::warning::$image refused the pull; falling back to Docker Hub"
+    image=docker.io/library/mongo:8.3.11
+    if [ -n "${DOCKERHUB_USERNAME:-}" ] && [ -n "${DOCKERHUB_TOKEN:-}" ]; then
+        printf '%s' "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin || true
+    fi
+    docker pull -q "$image" || exit 1
+fi
+docker run -d --name mongo --network host ${storage[@]+"${storage[@]}"} "$image" --replSet rs0 "$@" || exit 1
 wait_for "reachable" is_up || exit 1
 mongosh_eval "rs.initiate({_id:\"rs0\",writeConcernMajorityJournalDefault:$majority_journal,members:[{_id:0,host:\"127.0.0.1:27017\"}]})" || exit 1
 wait_for "PRIMARY" is_primary || exit 1
