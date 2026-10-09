@@ -233,8 +233,6 @@ jobs:
               run: sbt testUnitNoE2e
               env:
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
-                  MONGODB_URI:     ${{ secrets.MONGODB_URI }}
-                  MONGODB_DB:      ${{ secrets.MONGODB_DB }}
 
             # FLAKE DETECTION, the same shape in every sbt job below: each failed test rerun
             # alone, three times, in this job, and labelled DETERMINISTIC or FLAKY in the job
@@ -247,8 +245,6 @@ jobs:
               run: scripts/ci/rerun-failed-sbt.sh target/test-reports/unit "unit tests" target/flake-rerun
               env:
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
-                  MONGODB_URI:     ${{ secrets.MONGODB_URI }}
-                  MONGODB_DB:      ${{ secrets.MONGODB_DB }}
 
             - name: Keep the flaky unit tests for the ledger
               if: failure() && hashFiles('target/flake-rerun/flaky.tsv') != ''
@@ -583,8 +579,6 @@ jobs:
               run: sbt ${{ matrix.cmd }}
               env:
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
-                  MONGODB_URI:     ${{ secrets.MONGODB_URI }}
-                  MONGODB_DB:      ${{ secrets.MONGODB_DB }}
 
             # Flake detection — see the unit job. A whole-corpus spec reruns in minutes, hence
             # the ceiling; a rerun that runs out of it leaves those tests NOT RERUN.
@@ -594,8 +588,6 @@ jobs:
               run: scripts/ci/rerun-failed-sbt.sh target/test-reports/unit "e2e (${{ matrix.shard }})" target/flake-rerun
               env:
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
-                  MONGODB_URI:     ${{ secrets.MONGODB_URI }}
-                  MONGODB_DB:      ${{ secrets.MONGODB_DB }}
 
             - name: Keep the flaky e2e tests for the ledger
               if: failure() && hashFiles('target/flake-rerun/flaky.tsv') != ''

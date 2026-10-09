@@ -105,16 +105,13 @@ jobs:
             # through, direct behind it exactly as in production. No Zyte key: no
             # CI step is handed one (PaidEgressWorkflowSpec). IMDb/Filmweb/RT/
             # Metacritic are keyless.
-            # MONGODB_* are passed for parity with ci.yml even though the recorder
-            # uses an in-memory repo and writes no Mongo.
+            # No MONGODB_*: the recorder uses an in-memory repo and writes no Mongo.
             - name: Record the country's fixture corpus
               id: record
               env:
                   DECODO_PROXY_USER: ${{ secrets.DECODO_PROXY_USER }}
                   DECODO_PROXY_PASS: ${{ secrets.DECODO_PROXY_PASS }}
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-                  MONGODB_URI:  ${{ secrets.MONGODB_URI }}
-                  MONGODB_DB:   ${{ secrets.MONGODB_DB }}
                   # Schedule has no inputs, so it falls through to Poland.
                   KINOWO_COUNTRY: ${{ inputs.country || 'pl' }}
               run: |

@@ -102,8 +102,6 @@ jobs:
               env:
                   TEST_ORDER_SEED: ${{ steps.order.outputs.seed }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
-                  MONGODB_URI:     ${{ secrets.MONGODB_URI }}
-                  MONGODB_DB:      ${{ secrets.MONGODB_DB }}
 
     android:
         needs: seed
