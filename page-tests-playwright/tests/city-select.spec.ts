@@ -450,6 +450,12 @@ test.describe('Filtry → Miasto navigates to the unified picker', { tag: '@agno
     // `COUNTRY_NAMES` (`landing.scala.html`), not "Deutschland".
     await pickerCountryPill(page, 'Niemcy').click();
     await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj: kraj związkowy lub miasto…');
+    // Spain: one level since its pages became towns rather than provinces — the
+    // province, which a Barcelona-province town is found under.
+    await pickerCountryPill(page, 'Hiszpania').click();
+    await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj: prowincja lub miasto…');
+    await pickerRow(page, 'Barcelona').click();
+    await expect(pickerRow(page, 'Sitges y alrededores')).toBeVisible();
   });
 
   test('picking a city in another country hands off through this origin\'s SSO start', async ({ page }) => {
