@@ -8,6 +8,11 @@
 # InRelease 403 Forbidden"). Dropping them leaves only the Ubuntu mirrors apt needs.
 set -euo pipefail
 
-sources="${APT_SOURCES_DIR:-/etc/apt/sources.list.d}"
-grep -l 'packages\.microsoft\.com' "$sources"/*.list "$sources"/*.sources 2>/dev/null \
-  | while read -r file; do sudo rm -f "$file"; done
+# A runner with none of them left -- no such file, or a second call in the same job -- is
+# already in the state this wants: neither an unmatched glob nor grep's "no match" exit 1
+# is a failure.
+shopt -s nullglob
+files=("${APT_SOURCES_DIR:-/etc/apt/sources.list.d}"/*.{list,sources})
+[ "${#files[@]}" -gt 0 ] || exit 0
+matches="$(grep -l 'packages\.microsoft\.com' "${files[@]}")" || [ "$?" -eq 1 ]
+for file in $matches; do sudo rm -f "$file"; done
