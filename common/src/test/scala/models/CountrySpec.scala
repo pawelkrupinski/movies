@@ -144,8 +144,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     names shouldBe names.sortWith((a, b) => collator.compare(a, b) < 0)
   }
 
-  "Country.cityGroups" should "group the US by state and leave the flat countries flat" in {
-    Country.Spain.cityGroups shouldBe empty
+  "Country.cityGroups" should "group the US by state" in {
     Country.UnitedStates.cityGroups should have size 55
     // The groups partition the country's cities — a metro reachable from no
     // state heading is a metro nobody can find.
@@ -363,38 +362,37 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Spain.cities shouldBe City.spanishCities
   }
 
-  "Country.Spain.cities" should "be one city per province, flat like Germany's regions" in {
-    // The 52 provinces SensaCine itself enumerates. Flat, with no CityGroup above
-    // them: 52 is a list a picker stays readable at, and a province is the unit a
-    // Spanish visitor names — unlike a US state, which nobody asks what is on in.
-    Country.Spain.cities should have size 52
-    Country.Spain.cityGroups shouldBe empty
-    Country.Spain.cities.map(_.slug) should contain allOf ("madrid", "barcelona", "valencia", "las-palmas")
+  "Country.Spain.cities" should "be Poland's shape of page, grouped by province" in {
+    // Major cities, towns and clusters of towns (see SpanishPagesSpec), under the
+    // 52 provinces they used to be.
+    Country.Spain.cities should have size 240
+    Country.Spain.cityGroups should have size 52
+    Country.Spain.cities.map(_.slug) should contain allOf ("madrid", "barcelona", "valencia", "las-palmas-de-gran-canaria")
     all(Country.Spain.cities.map(_.cinemas.size)) should be > 0
     Country.Spain.cities.flatMap(_.cinemas).size shouldBe 602   // SensaCine's 595, less 2 closed, + the 9 Ocine venues it does not list
   }
 
-  it should "qualify a province slug another country already serves, and only that one" in {
+  it should "qualify a page slug another country already serves" in {
     // `/toledo/` is the live US metro in Ohio — a published URL with a sitemap
     // entry and a `city` cookie behind it — so the NEWCOMER moves, not the
-    // incumbent. Every other province keeps its bare name.
+    // incumbent.
     Country.Spain.bySlug.get("toledo") shouldBe None
     Country.Spain.cities.map(_.slug) should contain ("toledo-castilla-la-mancha")
     City.bySlug("toledo").get.country shouldBe Country.UnitedStates
     // The LABEL is untouched — inside Spain "Toledo" is not ambiguous, and the
     // picker is what a visitor reads.
-    Country.Spain.bySlug("toledo-castilla-la-mancha").labels.nominative shouldBe "Toledo"
+    Country.Spain.bySlug("toledo-castilla-la-mancha").labels.nominative shouldBe "Toledo y alrededores"
   }
 
-  "Spanish provinces" should "carry their own time zone, so the Canaries are not on peninsular time" in {
-    // Spain has TWO zones, which is why `SpanishProvince` takes one per place like
+  "Spanish pages" should "carry their own time zone, so the Canaries are not on peninsular time" in {
+    // Spain has TWO zones, which is why `SpanishPage` takes one per place like
     // `UsCity` rather than hardcoding one like `GermanRegion`. An hour is enough to
     // move a day boundary, so a Canary venue's late showing would otherwise fall on
     // the wrong day.
     def zoneOf(slug: String) = Country.Spain.bySlug(slug).zoneId.getId
     zoneOf("madrid")                 shouldBe "Europe/Madrid"
     zoneOf("barcelona")              shouldBe "Europe/Madrid"
-    zoneOf("las-palmas")             shouldBe "Atlantic/Canary"
+    zoneOf("las-palmas-de-gran-canaria") shouldBe "Atlantic/Canary"
     zoneOf("santa-cruz-de-tenerife") shouldBe "Atlantic/Canary"
   }
 

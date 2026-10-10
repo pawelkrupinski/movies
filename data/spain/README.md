@@ -4,9 +4,87 @@ Harvested + geocoded roster of **all Spanish cinemas** on sensacine.com (the
 Webedia/AlloCiné platform's Spanish deployment), mirroring
 [`data/germany`](../germany/README.md)'s roster shape and pipeline.
 
+## Pages
+
+Since 2026-10 a Spanish page is not a province but Poland's shape of page
+(`data/pl/README.md`), built by the same rule — `data/scripts/town_pages.py`,
+called by `scripts/build_pages.py` into **`pages.json`** and generated into
+`common/.../models/SpanishRosterData.scala`:
+
+1. **A major city** — one of the **43 municipalities of 150,000 people or
+   more** (GeoNames municipal population; Badajoz, 149,746, is the first one
+   out) — lists only the venues inside that municipality. `/barcelona/` is
+   Barcelona's cinemas, not Berga's or Sitges'.
+2. **Any other town with 3+ venues** is a page of its own (Cornellà de
+   Llobregat, Arrecife…).
+3. **Every other town is clustered:** a 2-venue town takes the 1- and 2-venue
+   towns within 10 km; the 1-venue towns left cluster within 25 km of the
+   biggest of them; a town still alone joins the nearest cluster within 35 km.
+   A cluster is named after its biggest town — "Sitges y alrededores", "en
+   Sitges y alrededores". Never across the sea: every town in the island
+   provinces, Ceuta and Melilla is on an island in `build_pages.py`'s
+   `ISLANDS`, and towns on different landmasses share no page (Ceuta is 28 km
+   from Algeciras).
+4. The picker groups every page by **province**, majors and clusters side by
+   side; the apps get the province as each city's `region`.
+
+240 pages (43 major, 111 towns, 86 clusters) for 602 venues: median 2 venues a
+page, at most 11; 85 one-venue pages, mostly towns with nothing within 35 km.
+Barcelona's province went from one page of 55 venues to 15, Madrid's 51 to 15.
+
+A page that disappears is kept in `pages.json`'s `retired` map, pointing at the
+page now holding MOST of its venues (ties: a major city's, then the one nearest
+the old page's centre); `City.renamedSlugs` 301s it. The first build retired
+the 13 province slugs that are not also a town's — `/asturias/` → Gijón,
+`/islas-baleares/` → Palma de Mallorca, `/vizcaya/` → Barakaldo,
+`/soria/` → Golmayo (Soria's cinema, a municipality over the line). The other
+39 province slugs are a town's page now and answer as that town. Each retired
+entry also carries the slug its page was qualified to where another country
+had the plain one (`City.spanishSlug`), so the redirect leaves from the URL the
+page really had.
+
+### Towns: `town-coords.json`
+
+A town is a **municipality**, and each venue's comes from its own address, not
+from SensaCine: the section header SensaCine files a venue under is usually its
+town and sometimes not — "Estacion De Espiel" (Córdoba) heads Huércal-Overa's
+cinema (Almería), "Fraile" (Jaén) the Autocinema Tenerife, "Grau I Platja" is
+Gandia's beach district.
+
+- `scripts/fetch_venue_addresses.py` → **`venue-addresses.json`**: every
+  SensaCine venue page's schema.org address (street, postal code, locality);
+  595 pages, 5 workers, ~80 s.
+- `scripts/build_venue_towns.py` → **`town-coords.json`**: each venue's
+  municipality — the locality or header matched inside the province the postal
+  code names, else the postal code's own municipality (GeoNames' postal dump),
+  else a hand-checked pin in `PINNED` — and each municipality's centre (its most
+  populous place), population and province. 602 venues in 420 towns. Shown the
+  way the header writes it when that is the whole name ("Alcoy"), GeoNames'
+  name otherwise ("El Masnou", not SensaCine's "Masnou").
+
+Re-cluster (after a re-harvest, or to change the rule):
+
+```
+python3 data/spain/scripts/fetch_venue_addresses.py   # after a re-harvest only
+D=$(mktemp -d)
+curl -sL https://download.geonames.org/export/dump/ES.zip -o $D/ES.zip && unzip -oq $D/ES.zip -d $D
+mkdir $D/zip && curl -sL https://download.geonames.org/export/zip/ES.zip -o $D/zip/ES.zip && unzip -oq $D/zip/ES.zip -d $D/zip
+python3 data/spain/scripts/build_venue_towns.py $D/ES.txt $D/zip/ES.txt   # -> town-coords.json
+python3 data/spain/scripts/test_build_venue_towns.py
+python3 data/spain/scripts/build_pages.py                                 # -> pages.json
+python3 data/spain/scripts/test_build_pages.py
+python3 data/spain/scripts/generate_roster.py                             # -> SpanishRosterData.scala
+rm -rf $D
+```
+
+A new page has no share card until it has deployed; list it in
+`OgCardAssetsSpec`'s `awaitingFirstDeploy`, and delete a retired page's card.
+
 ## Contents
 
-- **`provinces.json`** — the roster the app will load: **52 provinces**
+- **`pages.json`**, **`town-coords.json`**, **`venue-addresses.json`** — see
+  "Pages" above.
+- **`provinces.json`** — the harvested roster: **52 provinces**
   (Spain's 50 provinces + the autonomous cities Ceuta and Melilla, which
   sensacine.com's own `/cines/` index treats as provinces) covering **595
   cinemas**. Each province:
@@ -24,15 +102,19 @@ Webedia/AlloCiné platform's Spanish deployment), mirroring
 - `theaters-raw.json` — the raw flat harvest (595 theaters), one object per
   venue: `{theaterId, name, town, provinceId, provinceName}`.
 - `province-coords.json` — the 52 provinces → capital city name + lat/lon +
-  zoneId (GeoNames), the direct input to `provinces.json`'s geo fields.
+  zoneId (GeoNames), the direct input to `provinces.json`'s geo fields. No
+  page is placed by these any more (a page is placed at its town); the first
+  page build used them only to break a tie over where a retired province
+  redirects. Salamanca's is wrong — GeoNames' biggest "Salamanca" is the Madrid
+  district — and harmlessly so, since `/salamanca/` is a town page now.
 - **`communities.json`** — province → autonomous community. Reference data
   (the Spanish state's own administrative division), NOT harvested, which is
   why it sits apart from `provinces.json` and survives a re-harvest. It has
-  exactly one job: qualifying a province slug that another country already
+  exactly one job: qualifying a page slug that another country already
   claims in `City.bySlug`'s single global namespace, the way a state qualifies
-  a US metro's. One province needs it today — Toledo, which the US roster
-  already serves as the Ohio metro at `/toledo/`, so Spain's becomes
-  `/toledo-castilla-la-mancha/`.
+  a US metro's. Two pages need it today — Toledo and Laredo, which the US
+  roster already serves (Ohio, Texas), so Spain's are
+  `/toledo-castilla-la-mancha/` and `/laredo-cantabria/`.
 - `scripts/` — the reproducible pipeline.
 
 ## How it was produced
@@ -73,7 +155,9 @@ Webedia/AlloCiné platform's Spanish deployment), mirroring
    correction can only ever re-spell a town, never substitute one: a GeoNames
    name is accepted only when it folds to the same ASCII as the harvested one.
    The 60 towns GeoNames does not know under that name are left as harvested,
-   with only the particle-casing rule applied.
+   with only the particle-casing rule applied. Since the move to town pages
+   these spellings are read by `build_venue_towns.py`, which shows a
+   municipality the way its header writes it.
    ```
    mkdir -p data/spain/geonames
    curl -sL https://download.geonames.org/export/dump/ES.zip -o data/spain/geonames/ES.zip
@@ -89,14 +173,14 @@ Webedia/AlloCiné platform's Spanish deployment), mirroring
    ```
    python3 data/spain/scripts/build_provinces.py
    ```
-5. **Generate the Scala** (`scripts/generate_roster.py`) — turns
-   `provinces.json` + `communities.json` + `town-names.json` into
+5. **Pages** — `build_venue_towns.py` and `build_pages.py`, see "Pages" above.
+6. **Generate the Scala** (`scripts/generate_roster.py`) — turns
+   `pages.json` + `provinces.json` + `ocine.json` into
    `common/src/main/scala/models/SpanishRosterData.scala`, the flat tuple data
    `models.SpanishRoster` materialises into `City`/`Cinema` objects. It refuses
-   to emit a province with no community, or a duplicate `displayName` across
-   the whole country — both are silent downstream, the first as an
-   unqualifiable slug collision and the second as two cinemas sharing one wire
-   key.
+   to emit a duplicate `displayName` across the whole country, or a venue on no
+   page or two — both silent downstream, the first as two cinemas sharing one
+   wire key, the second as a venue never scraped.
    ```
    python3 data/spain/scripts/generate_roster.py
    ```
@@ -135,7 +219,7 @@ python3 data/spain/scripts/test_build_provinces.py
 ## What consumes this
 
 `scripts/generate_roster.py` → `common/src/main/scala/models/SpanishRosterData.scala`
-→ `models.SpanishRoster`, which materialises the `SpanishProvince` cities and
+→ `models.SpanishRoster`, which materialises the `SpanishPage` cities and
 `SpanishCinema` venues once and hands them to `City.spanishCities`,
 `Cinema.byCity` and `CinemaScraperCatalog.spanishBaseByCity` (one
 `WebediaShowtimesClient` on `WebediaMarket.Spain` per venue, keyed by its

@@ -47,8 +47,6 @@ OUT = DATA / "town-coords.json"
 
 sys.path.insert(0, str(ROOT / "data" / "scripts"))
 import retired_venues  # noqa: E402
-sys.path.insert(0, str(ROOT / "data" / "spain" / "scripts"))
-from generate_roster import spanish_case  # noqa: E402
 
 # INE province code (a postal code's first two digits) → the province as the
 # roster names it.
@@ -88,6 +86,16 @@ DISPLAY = {
     "12040": "Castellón de la Plana", "33024": "Gijón", "08101": "L'Hospitalet de Llobregat",
     "01036": "Llodio",
 }
+
+
+# SensaCine title-cases every word of a town header ("Arroyo De La Luz"); Spanish
+# lowercases the particles in a toponym. Applied to a header before it is shown.
+PARTICLES = {"de", "del", "la", "las", "el", "los", "y", "i", "a", "o"}
+
+
+def spanish_case(town: str) -> str:
+    words = town.split(" ")
+    return " ".join(w.lower() if i > 0 and w.lower() in PARTICLES else w for i, w in enumerate(words))
 
 
 def fold(s: str) -> str:

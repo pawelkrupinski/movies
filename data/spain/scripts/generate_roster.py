@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Generate common/src/main/scala/models/SpanishRosterData.scala from provinces.json.
+"""Generate common/src/main/scala/models/SpanishRosterData.scala from pages.json.
 
 The JSON -> Scala step of the Spanish roster pipeline, modelled on
-data/us/scripts/generate_roster.py. Reads the harvested roster
-(`provinces.json`) plus two hand-kept reference tables — province ->
-autonomous community (`communities.json`) and the Ocine chain's own ticketing
-servers (`ocine.json`) — and emits the flat tuple data `models.SpanishRoster`
-materialises into City/Cinema objects.
+data/us/scripts/generate_roster.py. Reads the PAGES (`pages.json`, built by
+`build_pages.py`: which town or cluster page each venue is on, and where each page
+that stopped existing now redirects), the harvested venues (`provinces.json`) and
+the Ocine chain's own ticketing servers (`ocine.json`), and emits the flat tuple
+data `models.SpanishRoster` materialises into City/Cinema objects.
 
 `ocine.json` does two things to the harvest: it names the ticketing server of
 each Ocine venue SensaCine lists (`listed`, by theaterId), and it ADDS the
@@ -15,12 +15,11 @@ theaterId and are scraped off their own server only.
 
 Things it refuses to do, because each fails SILENTLY downstream:
 
-  * emit a province with no community — the community is what qualifies a
-    province slug that another country already claims (`City.spanishSlugs`), so
-    a missing one means an unqualifiable collision;
   * emit a duplicate `displayName` — that string is the wire key every stored
     showtime is filed under, and `Source.byDisplayName` is a plain `toMap`, so
     two venues sharing one silently become one venue;
+  * emit a venue on no page, or on two, or a page listing a venue the roster does
+    not have — a venue on no page is never scraped, and nothing else says so;
   * merge an `ocine.json` row that no longer lines up with the harvest — a
     listed theaterId the harvest dropped, an unlisted venue in a province it
     does not know, or one ticketing server named for two venues — since a stale
@@ -39,13 +38,12 @@ import retired_venues  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 DATA = ROOT / "data" / "spain"
-TOWN_NAMES = DATA / "town-names.json"
 OCINE = DATA / "ocine.json"
+PAGES = DATA / "pages.json"
 OUT = ROOT / "common" / "src" / "main" / "scala" / "models" / "SpanishRosterData.scala"
 
-# Chunked exactly as the German roster is: one `Seq(...)` per 40 provinces, so no
-# single generated method approaches the JVM's 64 KB method-size limit as the
-# roster grows.
+# One `Seq(...)` per 40 pages, so no single generated method approaches the JVM's
+# 64 KB method-size limit as the roster grows.
 CHUNK = 40
 
 
@@ -55,62 +53,6 @@ def scala_string(value: str) -> str:
 
 def ident(slug: str) -> str:
     return "p_" + re.sub(r"[^a-z0-9]", "_", slug)
-
-
-# SensaCine's own town headers title-case every word and mostly drop the
-# accents, and those headers are where `town` comes from. The names go on the
-# page — the `<h1>`, the meta description, the schema.org `containsPlace` — so
-# they are written the way Spanish writes them.
-#
-# Two passes, because the two problems have different answers. The ACCENTS are
-# not in anything SensaCine serves, so they come from GeoNames, via the
-# `town-names.json` table `build_town_names.py` builds (100 of the 423 towns).
-# The CASING is a rule — Spanish lowercases the particles in a toponym — and
-# applies to the rest, including the 60 towns GeoNames does not know under the
-# name we harvested.
-PARTICLES = {"de", "del", "la", "las", "el", "los", "y", "i", "a", "o"}
-
-
-def spanish_case(town: str) -> str:
-    words = town.split(" ")
-    return " ".join(
-        w.lower() if i > 0 and w.lower() in PARTICLES else w
-        for i, w in enumerate(words))
-
-
-def load_corrections(path: pathlib.Path) -> dict:
-    """The accent table, which is REQUIRED rather than optional.
-
-    Falling back to an empty one would still emit a perfectly valid roster —
-    with all 100 accents silently gone from the page headings and the structured
-    data, and nothing anywhere to say so. That is the same shape of failure the
-    community and displayName guards refuse, so it is refused the same way.
-    """
-    if not path.exists():
-        print(f"ERROR: {path.name} is missing — without it every accent SensaCine dropped "
-              f"stays dropped, silently. Rebuild it:\n"
-              f"  mkdir -p data/spain/geonames\n"
-              f"  curl -sL https://download.geonames.org/export/dump/ES.zip "
-              f"-o data/spain/geonames/ES.zip\n"
-              f"  unzip -o data/spain/geonames/ES.zip -d data/spain/geonames\n"
-              f"  python3 data/spain/scripts/build_town_names.py", file=sys.stderr)
-        sys.exit(1)
-    return json.loads(path.read_text())
-
-
-def town_name(raw: str, corrections: dict) -> str:
-    """The town as Spanish writes it: GeoNames' spelling where it has one for
-    exactly this town, and the casing rule everywhere else."""
-    return corrections.get(raw) or spanish_case(raw)
-
-
-def towns_of(province: dict, corrections: dict) -> list[str]:
-    """The province's towns, the ones with most venues first (ties
-    alphabetical) — the order `City.coveredPlaces` promises, because the
-    consumers cap the list and the biggest towns are the ones worth naming."""
-    counts = collections.Counter(
-        town_name(c["town"], corrections) for c in province["cinemas"] if c.get("town"))
-    return [t for t, _ in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]
 
 
 def scala_option(value) -> str:
@@ -150,44 +92,49 @@ def merge_ocine(provinces: list, ocine: dict) -> list[str]:
     return problems
 
 
+def placement_problems(venues: dict, pages: list) -> list[str]:
+    """Every venue on exactly one page, and every page's venues in the roster."""
+    on = collections.Counter(name for p in pages for name in p["cinemas"])
+    return ([f"venue {name!r} is on {n} pages" for name, n in sorted(on.items()) if n > 1] +
+            [f"venue {name!r} is on no page — rebuild pages.json" for name in sorted(set(venues) - set(on))] +
+            [f"page venue {name!r} is not in the roster" for name in sorted(set(on) - set(venues))])
+
+
 def main() -> int:
     provinces = json.loads((DATA / "provinces.json").read_text())
     retired = retired_venues.load(DATA)
     for province in provinces:
         province["cinemas"] = [c for c in province["cinemas"] if c.get("theaterId") not in retired]
-    corrections = load_corrections(TOWN_NAMES)
-    ocine = json.loads(OCINE.read_text())
-    problems = merge_ocine(provinces, ocine)
+    problems = merge_ocine(provinces, json.loads(OCINE.read_text()))
     if problems:
         for problem in problems:
             print(f"ERROR: {problem}", file=sys.stderr)
         print("Fix data/spain/ocine.json.", file=sys.stderr)
         return 1
-    communities = json.loads((DATA / "communities.json").read_text())
-    communities.pop("_comment", None)
 
-    missing = sorted(p["name"] for p in provinces if p["name"] not in communities)
-    if missing:
-        print(f"ERROR: no autonomous community for: {missing}", file=sys.stderr)
-        print("Add them to data/spain/communities.json.", file=sys.stderr)
-        return 1
-
-    seen: dict[str, str] = {}
+    venues: dict[str, dict] = {}
     for province in provinces:
         for cinema in province["cinemas"]:
             name = cinema["displayName"]
-            if name in seen:
-                print(f"ERROR: duplicate displayName {name!r} in "
-                      f"{seen[name]} and {province['name']}", file=sys.stderr)
+            if name in venues:
+                print(f"ERROR: duplicate displayName {name!r}", file=sys.stderr)
                 return 1
-            seen[name] = province["name"]
+            venues[name] = cinema
+
+    data = json.loads(PAGES.read_text())
+    pages, retired_pages = data["pages"], data["retired"]
+    problems = placement_problems(venues, pages)
+    if problems:
+        for problem in problems:
+            print(f"ERROR: {problem}", file=sys.stderr)
+        return 1
 
     lines = [
-        "// GENERATED from data/spain/provinces.json by data/spain/scripts/generate_roster.py",
+        "// GENERATED from data/spain/pages.json by data/spain/scripts/generate_roster.py",
         "// — do NOT edit by hand. Full Spanish cinema roster: "
-        f"{len(provinces)} provinces / {len(seen)} cinemas (SensaCine, plus the Ocine",
+        f"{len(pages)} pages / {len(venues)} cinemas (SensaCine, plus the Ocine",
         "// venues it does not list, from data/spain/ocine.json).",
-        "// Regenerate with `python3 data/spain/scripts/generate_roster.py` after re-harvesting;",
+        "// Regenerate with `python3 data/spain/scripts/generate_roster.py` after re-clustering;",
         "// see data/spain/README.md.",
         "package models",
         "",
@@ -195,51 +142,43 @@ def main() -> int:
         "  // (displayName, pillName, SensaCine theaterId, Ocine ticketing server) — a venue",
         "  // SensaCine does not list has no theaterId and is scraped off its own server",
         "  type C = (String, String, Option[String], Option[String])",
-        "  // (slug, name, autonomous community, lat, lon, zoneId, towns, cinemas)",
-        "  type R = (String, String, String, Double, Double, String, Seq[String], Seq[C])",
+        "  // (slug, slug qualified with its autonomous community, name, province, lat, lon,",
+        "  //  zoneId, multiTown, towns, cinemas)",
+        "  type R = (String, String, String, String, Double, Double, String, Boolean, Seq[String], Seq[C])",
         "",
     ]
-
-    for province in provinces:
-        venues = ",\n".join(
+    for page in pages:
+        rows = ",\n".join(
             "    ({}, {}, {}, {})".format(
-                scala_string(c["displayName"]), scala_string(c["displayName"]),
-                scala_option(c["theaterId"]), scala_option(c.get("ocineServer")))
-            for c in province["cinemas"])
-        towns = ", ".join(scala_string(t) for t in towns_of(province, corrections))
+                scala_string(name), scala_string(name),
+                scala_option(venues[name]["theaterId"]), scala_option(venues[name].get("ocineServer")))
+            for name in page["cinemas"])
         lines.append(
-            "  private def {}: R = ({}, {}, {}, {}, {}, {}, Seq({}), Seq(\n{}\n  ))".format(
-                ident(province["slug"]),
-                scala_string(province["slug"]),
-                scala_string(province["name"]),
-                scala_string(communities[province["name"]]),
-                province["lat"], province["lon"],
-                scala_string(province["zoneId"]),
-                towns,
-                venues))
+            "  private def {}: R = ({}, {}, {}, {}, {}, {}, {}, {}, Seq({}), Seq(\n{}\n  ))".format(
+                ident(page["slug"]), scala_string(page["slug"]), scala_string(page["qualifiedSlug"]),
+                scala_string(page["name"]), scala_string(page["province"]), page["lat"], page["lon"],
+                scala_string(page["zoneId"]), "true" if page["kind"] == "cluster" else "false",
+                ", ".join(scala_string(t) for t in page["towns"]), rows))
 
     lines.append("")
-    names = [ident(p["slug"]) for p in provinces]
+    names = [ident(p["slug"]) for p in pages]
     chunks = [names[i:i + CHUNK] for i in range(0, len(names), CHUNK)]
     for index, chunk in enumerate(chunks):
         lines.append(f"  private def chunk{index}: Seq[R] = Seq({', '.join(chunk)})")
-    lines.append("  val provinces: Seq[R] = "
-                 + " ++ ".join(f"chunk{i}" for i in range(len(chunks))))
+    lines.append("  val pages: Seq[R] = " + " ++ ".join(f"chunk{i}" for i in range(len(chunks))))
+    lines.append("")
+    lines.append("  /** Pages that no longer exist — the provinces Spain's pages were until 2026-10")
+    lines.append("   *  among them — and the page now holding most of their venues: (slug, slug")
+    lines.append("   *  qualified with its autonomous community, the page's slug). */")
+    lines.append("  val retired: Seq[(String, String, String)] = Seq(")
+    lines.extend(f"    ({scala_string(slug)}, {scala_string(r['qualifiedSlug'])}, {scala_string(r['page'])}),"
+                 for slug, r in sorted(retired_pages.items()))
+    lines.append("  )")
     lines.append("}")
 
     OUT.write_text("\n".join(lines) + "\n")
-    # Say how much of the table actually landed: a correction whose key no
-    # longer matches a harvested town is dead weight after a re-crawl, and a
-    # count that has fallen to nothing is the silent failure above arriving by
-    # another route.
-    harvested = {c["town"] for p in provinces for c in p["cinemas"] if c.get("town")}
-    applied = sorted(k for k in corrections if k in harvested)
-    stale = sorted(k for k in corrections if k not in harvested)
-    print(f"Wrote {OUT.relative_to(ROOT)}: {len(provinces)} provinces / {len(seen)} cinemas / "
-          f"{len(applied)} town names corrected")
-    if stale:
-        print(f"  {len(stale)} corrections no longer match any harvested town — rerun "
-              f"build_town_names.py after a re-crawl: {stale[:8]}", file=sys.stderr)
+    print(f"Wrote {OUT.relative_to(ROOT)}: {len(pages)} pages / {len(venues)} cinemas / "
+          f"{len(retired_pages)} retired slugs")
     return 0
 
 

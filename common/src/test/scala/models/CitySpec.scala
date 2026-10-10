@@ -183,23 +183,17 @@ class CitySpec extends AnyFlatSpec with Matchers {
     Sosnowiec.otherCoveredPlaces shouldBe empty
   }
 
-  it should "read a Spanish province's towns, which the province's own name hides" in {
-    val madrid = City.all.find(_.slug == "madrid").getOrElse(fail("no Madrid province in the roster"))
-    madrid.coveredPlaces.head shouldBe "Madrid"
-    // Accented, which SensaCine's own headers are not: these names go in the
-    // page's heading and description, so they are spelled the way Spanish
-    // spells them (see data/spain/scripts/build_town_names.py).
-    madrid.otherCoveredPlaces should contain allOf ("Getafe", "Alcalá de Henares")
-    // The province is named after its capital, so the capital is both the
-    // province name and one of its towns — named once, not twice.
-    madrid.coveredPlaces shouldBe madrid.coveredPlaces.distinct
+  // A Spanish page was a whole province until 2026-10, and named its towns; it is
+  // Poland's shape now — a major city is itself alone, a cluster names its towns.
+  it should "keep a major Spanish city to itself, and name a cluster's towns, accented" in {
+    val madrid = City.bySlug("madrid").getOrElse(fail("no Madrid page in the roster"))
+    madrid.coveredPlaces shouldBe Seq("Madrid")
+    val sitges = City.bySlug("sitges").getOrElse(fail("no Sitges page in the roster"))
+    // Spelled the way Spanish spells them, which SensaCine's own headers are not
+    // (see data/spain/scripts/build_venue_towns.py).
+    sitges.coveredPlaces shouldBe Seq("Sitges y alrededores", "Sitges", "Vilanova i la Geltrú", "Sant Pere de Ribes")
   }
 
-  // The UK was the last roster with no town data at all: its venues are
-  // hand-written `case object`s, so there was nowhere for one to live, and most
-  // of its "cities" are counties. `/aberdeenshire/` named neither Aberdeen nor
-  // Peterhead — Aberdeen appears in two cinema names, Peterhead in one, and
-  // neither in a single heading, meta tag or piece of structured data.
   it should "read a UK county's towns from the harvested venue table" in {
     Aberdeenshire.coveredPlaces.head shouldBe "Aberdeenshire"
     Aberdeenshire.otherCoveredPlaces should contain allOf ("Aberdeen", "Peterhead", "Banchory")

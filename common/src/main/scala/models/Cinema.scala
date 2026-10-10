@@ -2130,57 +2130,58 @@ object UsRoster {
 
 
 // ── Spain (SensaCine) — data-driven from the full roster ─────────────────────
-// `SpanishRosterData` (generated from data/spain/provinces.json + ocine.json) carries 52
-// provinces / 602 cinemas. Same shape as `GermanCinema` and `UsCinema`: each
-// venue is built ONCE in `SpanishRoster` and reused everywhere, so one `Source`
-// instance serves the province, `Cinema.byCity` and the scrape catalog, and
+// `SpanishRosterData` (generated from data/spain/pages.json + provinces.json + ocine.json)
+// carries 240 town and cluster pages / 602 cinemas. Same shape as `GermanCinema` and
+// `UsCinema`: each venue is built ONCE in `SpanishRoster` and reused everywhere, so one
+// `Source` instance serves the page, `Cinema.byCity` and the scrape catalog, and
 // identity equality holds like the hand-authored `case object` cinemas.
 final class SpanishCinema(displayName: String, pillName: String) extends Cinema(displayName, pillName)
 
-/** One addressable Spanish place: a PROVINCE, which is both the unit SensaCine
- *  itself enumerates (`/cines/provincias-<id>/`) and the one a Spanish visitor
- *  names — "los cines de Alicante" is a thing people say, and there are 52 of
- *  them, a list a picker stays readable at. So unlike every other country here
- *  there is no group above it and no metro below it: Spain's picker is the only
- *  flat one left besides Poland's.
+/** One addressable Spanish page — Poland's shape since 2026-10: a major city (the
+ *  43 municipalities of 150,000+) with only its own venues, a town with three or
+ *  more, or a cluster of small towns a short drive apart named after the biggest
+ *  ("Sitges y alrededores"). Which page holds which venue is data, built by
+ *  `data/spain/scripts/build_pages.py` with the rule Poland's pages share
+ *  (`data/scripts/town_pages.py`).
  *
  *  Deliberately plain data rather than a [[City]], for the reason [[UsPlace]]
- *  is: the slug a province ends up addressable under depends on what every
- *  OTHER country has already claimed, and `City` is the only place that can see
- *  all those lists at once. It builds the `SpanishProvince` objects from these;
- *  see `City.spanishCities`. */
+ *  is: the slug a page ends up addressable under depends on what every OTHER
+ *  country has already claimed, and `City` is the only place that can see all
+ *  those lists at once. It builds the `SpanishPage` objects from these; see
+ *  `City.spanishCities`. */
 final case class SpanishPlace(
-  /** The slug this province wants — its own folded name. `City` qualifies it
-   *  with [[community]] only on a collision. */
+  /** The slug this page wants — its own folded name. `City` uses
+   *  [[qualifiedSlug]] instead only on a collision. */
   preferredSlug: String,
+  /** The slug qualified with the autonomous community (`toledo-castilla-la-mancha`)
+   *  — what the page answers at where another country already serves
+   *  [[preferredSlug]], the way a state qualifies a US metro's. */
+  qualifiedSlug: String,
+  /** The town the page is named after. */
   name:          String,
-  /** The autonomous community the province belongs to — reference data from
-   *  `data/spain/communities.json`, and used for exactly one thing: qualifying
-   *  a slug another country already serves, the way a state qualifies a US
-   *  metro's. */
-  community:     String,
+  /** The province of [[name]]'s town — what the picker groups the page under. */
+  province:      String,
   lat:           Double,
   lon:           Double,
-  /** The province's own zone. A CONSTRUCTOR value rather than the constant
-   *  `GermanRegion` can afford, because Spain has TWO: the Canary provinces
-   *  (Las Palmas, Santa Cruz de Tenerife) run an hour behind the peninsula on
-   *  `Atlantic/Canary`, and a national default would move their "today"
-   *  boundary — the same trap `UsCity` documents for six US zones. */
+  /** The page's own zone. A CONSTRUCTOR value rather than the constant
+   *  `GermanRegion` can afford, because Spain has TWO: the Canary Islands run an
+   *  hour behind the peninsula on `Atlantic/Canary`, and a national default would
+   *  move their "today" boundary — the same trap `UsCity` documents for six US
+   *  zones. */
   zoneId:        ZoneId,
-  /** The province's towns, most venues first — the place names a Spanish
-   *  visitor actually searches by. A province is not a town: "los cines de
-   *  Alicante" covers Elche, Benidorm and Denia, none of which the page named
-   *  anywhere before. Harvested from SensaCine's own per-town headers; see
-   *  [[City.coveredPlaces]], which is what puts them on the page. */
+  /** Several towns rather than one — the page is then "<name> y alrededores". */
+  multiTown:     Boolean,
+  /** The page's towns (municipalities), most venues first, [[name]] leading — the
+   *  place names a Spanish visitor searches by; see [[City.coveredPlaces]]. */
   towns:         Seq[String],
   cinemas:       Seq[Cinema],
 )
 
 /** Materialises the generated Spanish roster into [[SpanishPlace]]s +
  *  `SpanishCinema` venues, once. Exposes the places for `City.spanishCities`,
- *  the by-display-name grouping for `Cinema.byCity`, and each cinema's SensaCine
- *  `theaterId` for the scrape catalog — the Spanish counterpart of
- *  [[GermanRoster]] and [[UsRoster]]. */
+ *  the by-PROVINCE grouping for `Cinema.byCity` (the uptime page's level, as the
+ *  US's is the state), and each cinema's SensaCine `theaterId` for the scrape
+ *  catalog — the Spanish counterpart of [[GermanRoster]] and [[UsRoster]]. */
 object SpanishRoster {
   /** Display names already spoken for, which a generated Spanish venue may NOT
    *  reuse.
@@ -2208,19 +2209,26 @@ object SpanishRoster {
       Cinema.Networks).map(_.displayName).toSet
 
   private val built: Seq[(SpanishPlace, Seq[(SpanishCinema, Option[String], Option[String])])] =
-    SpanishRosterData.provinces.map { case (slug, name, community, lat, lon, zone, towns, cinemas) =>
+    SpanishRosterData.pages.map { case (slug, qualified, name, province, lat, lon, zone, multiTown, towns, cinemas) =>
       // Qualify only the venues that would collide, so the roster's names — and the
       // wire keys of every already-stored Spanish slot — stay exactly as they are
-      // otherwise.
+      // otherwise. Qualified with the PROVINCE, as they were when a page was one, so
+      // a re-cluster never changes a venue's wire key.
       val venues = cinemas.map { case (disp, pill, theaterId, ocineServer) =>
-        val unique = if (claimedElsewhere.contains(disp)) s"$disp $name" else disp
+        val unique = if (claimedElsewhere.contains(disp)) s"$disp $province" else disp
         (new SpanishCinema(unique, pill), theaterId, ocineServer)
       }
-      (SpanishPlace(slug, name, community, lat, lon, TimeZones.named(zone), towns, venues.map(_._1)), venues)
+      (SpanishPlace(slug, qualified, name, province, lat, lon, TimeZones.named(zone), multiTown, towns,
+                    venues.map(_._1)), venues)
     }
 
-  val places: Seq[SpanishPlace]           = built.map(_._1)
-  val byCity:  Seq[(String, Seq[Cinema])] = built.map { case (p, v) => p.name -> v.map(_._1) }
+  val places: Seq[SpanishPlace] = built.map(_._1)
+  /** Venues by province, provinces in roster order — the grouping `Cinema.byCity`
+   *  reports Spain at (the uptime page), one level above the pages. */
+  val byCity: Seq[(String, Seq[Cinema])] = {
+    val byProvince = places.groupBy(_.province)
+    places.map(_.province).distinct.map(province => province -> byProvince(province).flatMap(_.cinemas))
+  }
 
   /** Each SensaCine-listed venue's `theaterId`. The Ocine venues SensaCine does
    *  not list (`data/spain/ocine.json`'s `unlisted`) have none, and are absent. */
@@ -2583,7 +2591,7 @@ object Cinema {
     polishAndUk ++
       GermanRoster.byCity ++  // Germany: the full 158-region roster (data-driven)
       UsRoster.byCity ++      // USA: 55 states/territories, the level its venues are grouped at
-      SpanishRoster.byCity   // Spain: the full 52-province roster (data-driven)
+      SpanishRoster.byCity   // Spain: by province, the level above its 240 town pages (data-driven)
 
   lazy val all: Seq[Cinema] = byCity.flatMap(_._2)
 

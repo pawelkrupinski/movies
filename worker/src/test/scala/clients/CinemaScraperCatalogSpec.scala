@@ -487,22 +487,22 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     "E0727" -> "tickets.ocinevilaseca.es",
   )
 
-  // (province slug, display name, cartelera) of the chain's venues SensaCine does
+  // (page slug, display name, cartelera) of the chain's venues SensaCine does
   // not list at all, so the harvest never had them: the roster adds them from
   // `data/spain/ocine.json`, and their own server is their only source. Each
   // server verified 2026-09-25 to list 15-27 films. Porto Pi's answers only on
   // :8444 — the port its own site links, 443 never connects — so the port has to
   // survive into the URL the scraper fetches.
   private val UnlistedOcine: Seq[(String, String, String)] = Seq(
-    ("almeria",        "Ocine Copo",                     "https://tickets.ocinecopo.es/"),
-    ("tarragona",      "Ocine El Vendrell",              "https://tickets.ocinevendrell.es/"),
-    ("las-palmas",     "Ocine Premium 7 Palmas",         "https://tickets.ocinepremium7palmas.es/"),
-    ("pontevedra",     "Ocine Premium Gran Vía de Vigo", "https://tickets.ocinepremiumgranvia.es/"),
-    ("lerida",         "Ocine Premium Lleida",           "https://tickets.ocinepremiumlleida.es/"),
-    ("asturias",       "Ocine Premium Los Fresnos",      "https://tickets.ocinepremiumlosfresnos.es/"),
-    ("islas-baleares", "Ocine Premium Porto Pi",         "https://tickets.ocinepremiumportopi.es:8444/"),
-    ("madrid",         "Ocine Quadernillos",             "https://tickets.ocinequadernillos.es/"),
-    ("madrid",         "Ocine Urban Caleido",            "https://tickets.ocineurbancaleido.es/"),
+    ("el-ejido",                   "Ocine Copo",                     "https://tickets.ocinecopo.es/"),
+    ("el-vendrell",                "Ocine El Vendrell",              "https://tickets.ocinevendrell.es/"),
+    ("las-palmas-de-gran-canaria", "Ocine Premium 7 Palmas",         "https://tickets.ocinepremium7palmas.es/"),
+    ("vigo",                       "Ocine Premium Gran Vía de Vigo", "https://tickets.ocinepremiumgranvia.es/"),
+    ("lleida",                     "Ocine Premium Lleida",           "https://tickets.ocinepremiumlleida.es/"),
+    ("gijon",                      "Ocine Premium Los Fresnos",      "https://tickets.ocinepremiumlosfresnos.es/"),
+    ("palma-de-mallorca",          "Ocine Premium Porto Pi",         "https://tickets.ocinepremiumportopi.es:8444/"),
+    ("alcala-de-henares",          "Ocine Quadernillos",             "https://tickets.ocinequadernillos.es/"),
+    ("madrid",                     "Ocine Urban Caleido",            "https://tickets.ocineurbancaleido.es/"),
   )
 
   private def spanishVenue(theaterId: String): Cinema =
@@ -521,12 +521,12 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     }
   }
 
-  it should "add the chain's venues SensaCine does not list, under their province, on their own server" in {
+  it should "add the chain's venues SensaCine does not list, on their town's page, on their own server" in {
     val c = catalog()
-    UnlistedOcine.foreach { case (province, name, cartelera) =>
+    UnlistedOcine.foreach { case (page, name, cartelera) =>
       withClue(s"$name: ") {
-        val venue = Country.Spain.bySlug(province).cinemas.find(_.displayName == name)
-          .getOrElse(fail(s"not in the roster under $province"))
+        val venue = Country.Spain.bySlug(page).cinemas.find(_.displayName == name)
+          .getOrElse(fail(s"not in the roster under $page"))
         val scrapers = c.all.filter(_.cinema == venue)
         scrapers should have size 1
         scrapers.head.sourceUrl shouldBe Some(cartelera)

@@ -297,10 +297,10 @@ object Country {
    *  reached through the same [[services.cinemas.common.WebediaShowtimesClient]]
    *  on the `Spain` market. No Filmweb (Polish-only).
    *
-   *  Its cities are the 52 PROVINCES SensaCine itself enumerates — flat, like
-   *  Germany's regions, because 52 is a list a picker stays readable at and a
-   *  province is what a Spanish visitor names. 602 venues, a third of Germany's
-   *  roster, so its worker is sized like the UK's rather than like Germany's.
+   *  Its cities are Poland's shape of page — a major city's own venues, a town of
+   *  three or more, a cluster of small towns ([[SpanishPage]]) — 240 of them,
+   *  grouped in the picker by province. 602 venues, a third of Germany's roster,
+   *  so its worker is sized like the UK's rather than like Germany's.
    *
    *  It shares a client with Germany but NOT a request budget: `www.sensacine.com`
    *  is a different host, so the pace gate and the 429 back-off — both keyed by
@@ -318,6 +318,8 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.spanishCities
+    /** One group per province — see `City.spanishProvinces`. */
+    override lazy val cityGroups: Seq[CityGroup] = City.spanishProvinces
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("VOSE", "DOB"))
     // SensaCine names VO, VOSE, VOSI, DOB and CAT — and no voice-over.
     val voiceoverToken: Option[String] = None

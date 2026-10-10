@@ -115,6 +115,7 @@ landing.level.uk.subregion=hrabstwo
 landing.level.us.region=stan
 landing.level.de.region=kraj związkowy
 landing.level.pl.region=województwo
+landing.level.es.region=prowincja
 
 
 # ── Poster / detail labels ──────────────────────────────────────────────────

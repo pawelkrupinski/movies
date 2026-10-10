@@ -77,6 +77,10 @@ def synthetic():
         b.PINNED.update(saved)
     check("a postal code in another province never matches a namesake there",
           resolve("Somewhere", "Gandia", "Gandia", "04999")[0] is None)
+    check("a header's particles are lowercased, its first word kept",
+          b.spanish_case("Arroyo De La Luz") == "Arroyo de la Luz" and b.spanish_case("La Coruna") == "La Coruna")
+    check("GeoNames' article-last municipality reads article-first",
+          b.uninvert("Ejido, El") == "El Ejido" and b.uninvert("Eliana, l'") == "l'Eliana")
 
 
 def committed():

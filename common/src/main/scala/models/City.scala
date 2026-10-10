@@ -990,43 +990,51 @@ final class UsCity(slug: String, labels: CityLabels, lat: Double, lon: Double,
   override val areas: Seq[CinemaAreaGroup] = areas0
 }
 
-/** A Spanish PROVINCE — the data-driven `City` subtype, and the unit both the
- *  source and a Spanish visitor use. SensaCine enumerates its own catalogue by
- *  province (`/cines/provincias-<id>/`), and 52 of them is a list a picker stays
- *  readable at, so unlike every other country here there is nothing to group
- *  them under: Spain's picker is the only flat one left besides Poland's.
+/** A Spanish page — a major city (one of the 43 municipalities of 150,000+) with
+ *  only its own venues, a town with three or more, or a cluster of small towns a
+ *  short drive apart named after the biggest: "Sitges y alrededores", "en Sitges y
+ *  alrededores". Poland's shape ([[PolishPage]]), built by the same rule
+ *  (`data/spain/scripts/build_pages.py`); until 2026-10 a Spanish page was a
+ *  whole province, and `/barcelona/` listed Berga, 100 km away.
  *
- *  The roster (602 cinemas over 52 provinces: SensaCine's 595 less two closed,
- *  plus nine Ocine venues it does not list) is generated into
- *  `SpanishRosterData` and materialised by [[SpanishRoster]]; instances are built
- *  ONCE (in `City.spanishCities`), so identity equality holds just like the
- *  hand-authored `case object` cities.
+ *  The roster (602 cinemas over 240 pages) is generated into `SpanishRosterData`
+ *  and materialised by [[SpanishRoster]]; instances are built ONCE (in
+ *  `City.spanishCities`), so identity equality holds just like the hand-authored
+ *  `case object` cities.
  *
  *  Like [[UsCity]] and unlike [[GermanRegion]] the zone is a CONSTRUCTOR
- *  parameter: the Canary provinces run an hour behind the peninsula, and a
- *  single national zone would move their day boundary. */
-final class SpanishProvince(slug: String, labels: CityLabels, lat: Double, lon: Double,
-                            zoneId: ZoneId, cinemas0: Seq[Cinema], towns: Seq[String])
-  extends City(slug, labels, lat, lon, zoneId) {
-  val cinemas: Seq[Cinema] = cinemas0
-  /** The province's towns, from the roster. A province is flat — no [[areas]]
-   *  to name it — but it is nonetheless several towns under one name, so it
-   *  names them the way [[Trojmiasto]] does. Most provinces are named after
-   *  their own capital, which is then in both halves and deduped away. */
-  override protected val extraPlaces: Seq[String] = towns
+ *  parameter: the Canary Islands run an hour behind the peninsula, and a single
+ *  national zone would move their day boundary. */
+final class SpanishPage private[models] (slug: String, place: SpanishPlace)
+  extends City(slug, SpanishPage.labels(place), place.lat, place.lon, place.zoneId) {
+  val cinemas: Seq[Cinema] = place.cinemas
+  /** The town the page is named after first, then the rest of its towns. */
+  override protected val extraPlaces: Seq[String] = (place.name +: place.towns).distinct
+  /** The province the picker groups this page under. */
+  def province: String = place.province
+}
+
+private[models] object SpanishPage {
+  /** Spanish does not decline a place name, so all three slots carry the page's
+   *  name — "<town> y alrededores" for a cluster, which reads right both alone and
+   *  after the grammar's "en". */
+  def labels(place: SpanishPlace): CityLabels = {
+    val name = if (place.multiTown) s"${place.name} y alrededores" else place.name
+    CityLabels(name, name, name)
+  }
 }
 
 /** A named group of [[City]]s in a picker — a US STATE over its metros
  *  ("California → Los Angeles", the way a visitor finds one), or a UK NATION
- *  over its counties ("Scotland → Fife"). Ordinarily the group is not a place
- *  you can open: `/california/` is nothing, and its films live at
- *  `/los-angeles/`. It is how the list of them is arranged, and nothing else.
+ *  over its counties ("Scotland → Fife"), a Polish voivodeship or a Spanish
+ *  province over its towns. Ordinarily the group is not a place you can open:
+ *  `/california/` is nothing, and its films live at `/los-angeles/`. It is how
+ *  the list of them is arranged, and nothing else.
  *
  *  The exception is [[soleCity]] — see there.
  *
- *  A country whose picker is one flat list — Poland's 65 and Spain's 52, the
- *  two short enough to read straight through — leaves `Country.cityGroups`
- *  empty rather than declaring one group per city.
+ *  A country whose picker is one flat list leaves `Country.cityGroups` empty
+ *  rather than declaring one group per city.
  *
  *  @param absorbed names of former pages now listed by this group's one place —
  *                  the UK's [[City.ukMergedPages]] — kept findable by [[searchAliases]]. */
@@ -1419,7 +1427,7 @@ object City {
     "newport-news" -> Seq("hampton-roads", "willamette-valley"),
     "jefferson"    -> Seq("carroll", "fort-dodge"),
     "osage"        -> Seq("mason-city", "decorah"),
-  ) ++ ukMergedPages.map { case (name, into) => Slugify.stable(name) -> Seq(into.slug) } ++ splitStateSuccession
+  ) ++ ukMergedPages.map { case (name, into) => Slugify.stable(name) -> Seq(into.slug) } ++ splitStateSuccession ++ spanishSuccession
 
   /** States that used to be ONE city and are now their metros, so a single old
    *  slug is succeeded by several new ones.
@@ -1515,43 +1523,57 @@ object City {
         groups :+ CityGroup(place.stateName, place.stateSlug, Seq(city))
     }.map(g => g.copy(cities = CityListing.sorted(g.cities, Locale.forLanguageTag("en-US"))))
 
-  /** Spain's cities — the authoritative list for [[Country.Spain]]. One city per
-   *  PROVINCE (52 of them), materialised data-driven from `SpanishRosterData`
-   *  (see [[SpanishProvince]] / [[SpanishRoster]]) rather than hand-authored case
-   *  objects, the same shape Germany uses.
+  /** Spain's cities — the authoritative list for [[Country.Spain]]. One per town
+   *  or cluster page (see [[SpanishPage]] / [[SpanishRoster]]), materialised
+   *  data-driven from `SpanishRosterData` rather than hand-authored case objects.
    *
    *  The slug is assigned HERE rather than in [[SpanishRoster]] for the reason
    *  [[usSlugs]] spells out: `City.bySlug` is a single global namespace, and a
-   *  province name is not unique in it. */
-  private[models] val spanishCities: Seq[City] = {
-    val slugs = spanishSlugs(SpanishRoster.places)
-    SpanishRoster.places.zip(slugs).map { case (p, slug) =>
-      new SpanishProvince(slug, CityLabels(p.name, p.name, p.name), p.lat, p.lon, p.zoneId, p.cinemas, p.towns)
-    }
-  }
+   *  Spanish town's name is not unique in it. */
+  private[models] val spanishPages: Seq[SpanishPage] =
+    SpanishRoster.places.map(p => new SpanishPage(spanishSlug(p.preferredSlug, p.qualifiedSlug), p))
+  private[models] val spanishCities: Seq[City] = spanishPages
 
-  /** The URL slug of each [[SpanishRoster.places]] entry, in that order.
+  /** Slugs another country already serves, which a Spanish page may not take. */
+  private lazy val foreignToSpain: Set[String] =
+    (polishCities ++ allUkCities ++ germanCities ++ usCities).map(_.slug).toSet
+
+  /** The URL slug of a Spanish page — or of one that used to be (see
+   *  [[spanishSuccession]]), which answered at the slug this gives too.
    *
-   *  A province keeps its own folded name wherever that is free, and is
+   *  A page keeps its own folded name wherever that is free, and takes its name
    *  qualified with its autonomous community where it is not
    *  (`toledo-castilla-la-mancha`) — the same rule, and the same reason, as a US
-   *  metro qualifying with its state.
-   *
-   *  ONE province needs it today: Toledo, whose name the US roster already
-   *  serves as the Ohio metro at `/toledo/`. Spain qualifies rather than the US,
-   *  because `/toledo/` is a live published URL with a sitemap entry, an
-   *  indexed page and a `city` cookie behind it, and the newcomer is the one
-   *  that can still choose. Unlike the US case there is no "biggest claimant
-   *  keeps it" tie-break to make: two provinces never share a name.
+   *  metro qualifying with its state. Toledo is the case: the US roster already
+   *  serves the Ohio metro at `/toledo/`, a live published URL with a sitemap
+   *  entry, an indexed page and a `city` cookie behind it, and the newcomer is the
+   *  one that can still choose.
    *
    *  Qualifying only the SLUG — the label stays "Toledo", which is what the
    *  Spanish picker shows and what is unambiguous inside Spain. */
-  private def spanishSlugs(places: Seq[SpanishPlace]): Seq[String] = {
-    val foreign = (polishCities ++ allUkCities ++ germanCities ++ usCities).map(_.slug).toSet
-    places.map { p =>
-      if (foreign.contains(p.preferredSlug)) Slugify.stable(s"${p.name} ${p.community}")
-      else p.preferredSlug
-    }
+  private def spanishSlug(preferred: String, qualified: String): String =
+    if (foreignToSpain.contains(preferred)) qualified else preferred
+
+  /** Spanish pages that no longer exist → the page now holding most of their
+   *  venues. The 13 provinces that did not leave a town page under their own slug
+   *  when Spain went from provinces to towns (2026-10) among them: `/asturias/` →
+   *  Gijón, `/islas-baleares/` → Palma de Mallorca. A province whose slug is a
+   *  town page now (`/madrid/`, `/barcelona/`) simply IS that town's page. Both
+   *  sides are slugged by [[spanishSlug]], so a former page that had to be
+   *  qualified redirects from the URL it really answered at. */
+  private lazy val spanishSuccession: Map[String, Seq[String]] =
+    SpanishRosterData.retired.map { case (preferred, qualified, page) =>
+      val target = SpanishRoster.places.find(_.preferredSlug == page)
+        .fold(page)(p => spanishSlug(p.preferredSlug, p.qualifiedSlug))
+      spanishSlug(preferred, qualified) -> Seq(target)
+    }.toMap
+
+  /** Spain's picker: one group per province, its major cities, towns and
+   *  clusters side by side, alphabetically — as Poland's voivodeships. */
+  private[models] lazy val spanishProvinces: Seq[CityGroup] = {
+    val es = Locale.forLanguageTag("es-ES")
+    val built = spanishPages.groupBy(_.province).toSeq.map { case (name, cities) => CityGroup(name, Slugify.stable(name), CityListing.sorted(cities, es)) }
+    CityListing.sortedLabels(built, es)(_.displayLabel)
   }
 
   /** Every modelled city, across all countries — the global view used by the

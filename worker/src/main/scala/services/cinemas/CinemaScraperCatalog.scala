@@ -1950,11 +1950,11 @@ class CinemaScraperCatalog(
   private def ocine(ticketingSlug: String, cinema: Cinema): OcineClient =
     new OcineClient(http, ticketingSlug, cinema, today = venueClock.todayAt(cinema, OcineClient.Zone))
 
-  // Spain — data-driven from the full SpanishRoster (52 provinces / 602 cinemas):
-  // one scraper per cinema, keyed by the PROVINCE slug City.slug uses — the
-  // venue's own chain server where the roster names one, SensaCine otherwise.
-  // Keyed off `Country.Spain.cities` rather than off `SpanishRoster.places`,
-  // because the slug a province is finally addressable under is decided in
+  // Spain — data-driven from the full SpanishRoster (240 town pages / 602 cinemas):
+  // one scraper per cinema, keyed by the PAGE slug City.slug uses — the venue's
+  // own chain server where the roster names one, SensaCine otherwise. Keyed off
+  // `Country.Spain.cities` rather than off `SpanishRoster.places`, because
+  // the slug a page is finally addressable under is decided in
   // `City.spanishCities` (one of them is qualified away from a US metro's) and
   // the catalogue has to agree with the roster the web tier serves.
   private val spanishBaseByCity: Map[String, Seq[CinemaScraper]] =
@@ -2180,7 +2180,7 @@ class CinemaScraperCatalog(
     "yorkshire" -> yorkshireScrapers,
   ) ++ germanBaseByCity   // Germany: the full 158-region roster (data-driven)
     ++ usBaseByCity       // USA: 461 metros + 7 small states (data-driven)
-    ++ spanishBaseByCity  // Spain: the full 52-province roster (data-driven)
+    ++ spanishBaseByCity  // Spain: 240 town and cluster pages (data-driven)
 
   // Venues the 2026-09 sweeps added (Filmweb, bilety24, biletyna, the chains' own
   // branch lists), grouped by the city they were first found near. The key is

@@ -95,6 +95,7 @@ landing.level.uk.subregion=county
 landing.level.us.region=state
 landing.level.de.region=state
 landing.level.pl.region=voivodeship
+landing.level.es.region=province
 
 
 # ── Poster / detail labels ──────────────────────────────────────────────────

@@ -95,6 +95,7 @@ landing.level.uk.subregion=condado
 landing.level.us.region=estado
 landing.level.de.region=estado federado
 landing.level.pl.region=voivodato
+landing.level.es.region=provincia
 
 
 # ── Poster / detail labels ──────────────────────────────────────────────────

@@ -111,8 +111,8 @@ object WebediaMarket {
    *  (measured 2026-09-01 by sweeping `/cines/provincias-<id>/`; SensaCine
    *  publishes no cinema sitemap, so the province index is the only enumeration
    *  there is). `Europe/Madrid` is the "today" default only: the Canary
-   *  provinces run an hour behind on `Atlantic/Canary` and each carries its own
-   *  zone, so a client for a Canary venue is handed that city's date. */
+   *  Islands run an hour behind on `Atlantic/Canary` and each of their pages carries
+   *  its own zone, so a client for a Canary venue is handed that city's date. */
   case object Spain extends WebediaMarket(
     host                 = "www.sensacine.com",
     zoneId               = TimeZones.Spain,

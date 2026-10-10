@@ -116,10 +116,8 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     // page puts between them.
     cityEntry("cheshire") should include(""""region":"England"""")
     cityEntry("cheshire") should not include "West Midlands"
-    // A flat country sends nothing — a name is all its visitor needs, and the
-    // field costs bytes on every city where it would say nothing.
     cityEntry("poznan") should include(""""region":"Wielkopolskie"""")
-    cityEntry("madrid") should not include "region"
+    cityEntry("sitges") should include(""""region":"Barcelona"""")
   }
 
   it should "carry no region where the TOP group collapsed onto its one city" in {
