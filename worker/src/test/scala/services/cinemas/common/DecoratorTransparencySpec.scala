@@ -76,7 +76,9 @@ class DecoratorTransparencySpec extends AnyFlatSpec with Matchers {
     // its own (checked on their own below).
     classOf[PreScrapedCinemaScraper] -> ((d: CinemaScraper) => PreScrapedCinemaScraper.of(d, () => Seq.empty), Set("listingIsComplete", "noScheduleListed")),
     // A composite rather than a decorator, but over ONE listing it is that listing.
-    classOf[MultiListingScraper] -> ((d: CinemaScraper) => new MultiListingScraper(d.cinema, Seq(d)), Set.empty[String])
+    classOf[MultiListingScraper] -> ((d: CinemaScraper) => new MultiListingScraper(d.cinema, Seq(d)), Set.empty[String]),
+    // A German venue's fallback chain; a chain of one is that one source.
+    classOf[FirstAnsweringScraper] -> ((d: CinemaScraper) => new FirstAnsweringScraper(Seq(d)), Set.empty[String])
   )
 
   "The CinemaScraper members under test" should "include every member a decorator has to carry" in {

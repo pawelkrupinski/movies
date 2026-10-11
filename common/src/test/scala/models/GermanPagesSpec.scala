@@ -36,7 +36,7 @@ class GermanPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
     val bayreuth = page("bayreuth")
     bayreuth.labels.nominative shouldBe "Bayreuth und Umgebung"
     bayreuth.locativePhrase shouldBe "in Bayreuth und Umgebung"
-    bayreuth.coveredPlaces shouldBe Seq("Bayreuth und Umgebung", "Bayreuth", "Kulmbach", "Hollfeld")
+    bayreuth.coveredPlaces shouldBe Seq("Bayreuth und Umgebung", "Bayreuth", "Kulmbach", "Pegnitz", "Hollfeld")
     pageOf("Cineplex Kulmbach") shouldBe "bayreuth"
   }
 
@@ -47,7 +47,7 @@ class GermanPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   "a venue whose town GeoNames matched to a namesake" should "be on the page of the town it is really in" in {
     pageOf("Capitol-Kinocenter Lohne (Oldenburg)") shouldBe "cloppenburg"   // not Löhne, Westphalia
-    pageOf("Sommernachtskino (Löhne)") shouldBe "minden"
+    pageOf("Sommernachtskino (Löhne)") shouldBe "herford"
     pageOf("Kinopolis Main-Taunus") shouldBe "hofheim-am-taunus"            // Sulzbach (Taunus)
     pageOf("Lu-Li Sommernachtskino") shouldBe "amberg"                      // Sulzbach-Rosenberg
     pageOf("KuKi - Das Kultkino") shouldBe "dingolfing"                     // Landau an der Isar
@@ -64,7 +64,7 @@ class GermanPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
     val onPages = Country.Germany.cities.flatMap(_.cinemas)
     onPages.distinct should have size onPages.size
     onPages.toSet shouldBe GermanRoster.byCity.flatMap(_._2).toSet
-    onPages should have size GermanRoster.theaterIdByCinema.size   // CountrySpec pins the count
+    onPages should have size GermanRoster.venueKeyByCinema.size   // CountrySpec pins the count
   }
 
   "Germany's picker" should "group every page by Bundesland, major cities beside their clusters" in {
@@ -125,12 +125,30 @@ class GermanPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
       val landing = City.renamedSlugs.getOrElse(slug, slug)
       City.bySlug(landing).value.country shouldBe Country.Germany
     }
-    regions.count(City.bySlug(_).isDefined) shouldBe 139
+    regions.count(City.bySlug(_).isDefined) shouldBe 138
   }
 
   it should "never redirect a slug another country serves" in {
     val germanFormer = City.slugSuccession.filter { case (_, to) => to.exists(City.bySlug(_).exists(_.country == Country.Germany)) }.keySet
     forAll(germanFormer)(former => City.bySlug(former) shouldBe None)
+  }
+
+  // Filmstarts' directory never linked these cities; its id sweep and Cineamo/kinoheld found
+  // their cinemas (data/germany/venue-sources.json, add_found_venues.py, 2026-10-11).
+  "a city Filmstarts' directory never reached" should "be a page holding its cinemas" in {
+    page("bochum").cinemas.map(_.displayName) should contain theSameElementsAs Seq(
+      "Capitol Bochum", "Casablanca Bochum", "Endstation Kino", "Metropolis Bochum", "UCI Bochum", "Union Bochum")
+    page("aachen").cinemas.map(_.displayName) should contain theSameElementsAs Seq(
+      "Apollo Aachen", "Capitol Aachen", "Cineplex Aachen", "Eden Palast Aachen", "Filmstudio an der RWTH", "Raststätte")
+    page("solingen").cinemas.map(_.displayName) should contain theSameElementsAs Seq("Das Lumen Solingen", "Kino im Cobra")
+    page("siegen").cinemas.map(_.displayName) should contain theSameElementsAs Seq("CineStar Siegen", "Kurbelkiste")
+    page("hamm").cinemas.map(_.displayName) shouldBe Seq("Cineplex Hamm")
+  }
+
+  "a venue Filmstarts does not list" should "be keyed by the feed that found it, and have no theaterId" in {
+    GermanRoster.venueKeyByCinema(venue("Raststätte")) shouldBe "kinoheld:2417"
+    GermanRoster.theaterIdByCinema.get(venue("Raststätte")) shouldBe None
+    GermanRoster.theaterIdByCinema(venue("UCI Bochum")) shouldBe "A1216"   // the id sweep's: Filmstarts lists it
   }
 
   private def forAll[A](xs: Iterable[A])(f: A => Unit): Unit = org.scalatest.Inspectors.forAll(xs)(f)

@@ -26,18 +26,22 @@ object GermanFeed {
 }
 
 /**
- * Which sources serve each rostered German venue, primary first — the choice
+ * Which sources serve each German venue, primary first — the choice
  * `data/germany/scripts/harvest_sources.py` measures (every source's shows over the
  * next fortnight and its whole horizon) and records in `data/germany/venue-sources.json`,
  * generated into [[GermanSourcesData]]. The primary is the venue's scraper; the rest,
  * in order, its fallback chain ([[services.cinemas.common.FirstAnsweringScraper]]).
  *
- * A venue the measurement has no row for keeps the arrangement it had before it:
+ * Keyed by the venue's KEY (`GermanRoster.venueKeyByCinema`): its Filmstarts `theaterId`,
+ * or the feed that found a venue Filmstarts does not list ("cineamo:997"). A Filmstarts
+ * venue the measurement has no row for keeps the arrangement it had before it:
  * Filmstarts, with its kinoprogramm.com page as the fallback where it has one.
  */
 object GermanSources {
-  /** The venue's sources, primary first, by its Filmstarts `theaterId`. */
-  def of(theaterId: String, kinoprogrammPath: Option[String]): Seq[GermanFeed] =
-    GermanSourcesData.byTheaterId.getOrElse(theaterId,
-      GermanFeed.Filmstarts(theaterId) +: kinoprogrammPath.map(GermanFeed.Kinoprogramm(_)).toSeq)
+  /** The venue's sources, primary first, by its venue key. */
+  def of(venueKey: String, kinoprogrammPath: Option[String]): Seq[GermanFeed] =
+    GermanSourcesData.byVenueKey.getOrElse(venueKey, {
+      require(!venueKey.contains(':'), s"$venueKey is no Filmstarts venue, and venue-sources.json names no source for it")
+      GermanFeed.Filmstarts(venueKey) +: kinoprogrammPath.map(GermanFeed.Kinoprogramm(_)).toSeq
+    })
 }

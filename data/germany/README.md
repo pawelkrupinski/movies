@@ -8,7 +8,9 @@ source the shipped German model is generated FROM. Germany has been live at
 ## Contents
 
 - **`venues.json`** — every Filmstarts venue harvested, one per line:
-  `{ theaterId, name, city, displayName }`. `city` is the town Filmstarts files
+  `{ theaterId, name, city, displayName }` — and, since 2026-10-11, the venues
+  only Cineamo or kinoheld list, with the `feed` that found them in place of a
+  `theaterId` (see "Adding venues" below). `city` is the town Filmstarts files
   it under; `displayName` is the wire key and globally unique (chain-name
   collisions disambiguated with `(City)`). The roster is this less `retired.json`.
 - **`pages.json`** — which listing page each venue is on (`build_pages.py`, below):
@@ -104,6 +106,20 @@ the town is pinned in `TOWN_COORDS`.
    displayName). A city not yet in `city-coords.json` stops the build: geocode it
    (`scripts/geocode_cities.py`, or add the GeoNames row by hand) — and check it is
    the right namesake.
+
+   The venues `harvest_sources.py` finds are added by
+   `scripts/add_found_venues.py <GeoNames DE.txt>`: every found venue whose primary
+   lists 3+ shows in the fortnight, its town read off its coordinates (new towns join
+   `city-coords.json`). A venue Filmstarts does not list has no `theaterId`; its
+   `feed` ("cineamo:997", "kinoheld:2417") is its key instead — in the roster, in
+   `retired.json` and in `venue-sources.json`. Then re-run `harvest_sources.py` (it
+   marks them rostered) and `generate_sources.py` with the steps below. On 2026-10-11
+   that added 64 venues and 22 pages: 34 Filmstarts venues the id sweep found
+   (Bochum's six, Aachen's five, Solingen, Siegen, Gießen…) and 30 only Cineamo or
+   kinoheld list (Cineplex Hamm, Kinopolis Bad Homburg, Aachen's Raststätte…).
+   Each of the found pairs it could not decide was checked by hand (`DECIDED`,
+   `SAME_VENUE`, `NOT_A_VENUE` in `harvest_sources.py`, `TOWN_OF` in
+   `add_found_venues.py`).
 2. Rebuild and regenerate:
 
    ```
@@ -158,15 +174,15 @@ them AND the venues only Filmstarts lists were few or mostly closed/seasonal.
 
 | most complete at | venues |
 |---|---|
-| Cineamo | 764 (66.9%) |
-| Filmstarts | 204 |
-| kinoheld | 158 |
-| kinoprogramm.com | 16 |
+| Cineamo | 765 (67.0%) |
+| Filmstarts | 200 |
+| kinoheld | 162 |
+| kinoprogramm.com | 15 |
 
-and 88 venues list shows on Filmstarts that Cineamo has no upcoming show for —
-1,318 shows in the fortnight, only 6 of them seasonal (drive-ins, a tent cinema).
-Neither condition held, so each venue keeps its own measured primary: Cineamo 717
-of the 1,515 rostered venues, Filmstarts 712, kinoheld 80, kinoprogramm.com 6.
+and 82 venues list shows on Filmstarts that Cineamo has no upcoming show for —
+1,115 shows in the fortnight, only 6 of them seasonal (drive-ins, a tent cinema).
+Neither condition held, so each venue keeps its own measured primary: of the 1,515
+venues rostered before, Cineamo 719, Filmstarts 708, kinoheld 82, kinoprogramm.com 6.
 `test_harvest_sources.py` pins the split's two numbers against the rule.
 
 Rerun it — `python3 data/germany/scripts/harvest_sources.py`, then

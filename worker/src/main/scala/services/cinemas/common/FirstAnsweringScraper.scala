@@ -1,6 +1,6 @@
 package services.cinemas.common
 
-import models.{Cinema, CinemaMovie}
+import models.CinemaMovie
 
 import scala.util.{Failure, Success, Try}
 
@@ -18,13 +18,10 @@ import scala.util.{Failure, Success, Try}
  * source's error. The page failures of the source that served are the listing's
  * ([[ListingReads]]); a source that was passed over leaves none behind.
  */
-class FirstAnsweringScraper(sources: Seq[CinemaScraper]) extends CinemaScraper {
-  require(sources.nonEmpty, "a fallback chain needs a source")
-
-  val cinema: Cinema           = sources.head.cinema
-  def scrapeHosts: Set[String] = sources.flatMap(_.scrapeHosts).toSet
-  override def sourceUrl: Option[String] = sources.head.sourceUrl
-  override def sourceKey: Option[String] = sources.head.sourceKey
+class FirstAnsweringScraper(sources: Seq[CinemaScraper]) extends DelegatingCinemaScraper(sources.head) {
+  // The chain answers as its first link (its venue, its page, its completeness), but it
+  // reaches every link's hosts.
+  override def scrapeHosts: Set[String] = sources.flatMap(_.scrapeHosts).toSet
 
   def fetch(): Seq[CinemaMovie] = {
     val attempts = sources.iterator.map(source => ListingReads.during(Try(source.fetch())))

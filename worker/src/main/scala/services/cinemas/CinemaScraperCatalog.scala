@@ -1942,7 +1942,7 @@ class CinemaScraperCatalog(
   /** Each rostered German venue's sources, primary first ([[GermanSources]]: the per-venue
    *  choice `data/germany/scripts/harvest_sources.py` measured). */
   private def germanFeeds(cinema: Cinema): Seq[GermanFeed] =
-    GermanSources.of(models.GermanRoster.theaterIdByCinema(cinema), models.GermanRoster.kinoprogrammPathByCinema.get(cinema))
+    GermanSources.of(models.GermanRoster.venueKeyByCinema(cinema), models.GermanRoster.kinoprogrammPathByCinema.get(cinema))
 
   // Germany — data-driven from the full GermanRoster (436 town pages / 1,515 cinemas):
   // one scraper per cinema — its primary source's ([[germanFeeds]]) — keyed by the

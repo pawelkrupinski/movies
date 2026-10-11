@@ -157,7 +157,7 @@ class CitySpec extends AnyFlatSpec with Matchers {
     val koeln = City.bySlug("koeln").getOrElse(fail("no Köln page in the roster"))
     koeln.coveredPlaces shouldBe Seq("Köln")
     val bayreuth = City.bySlug("bayreuth").getOrElse(fail("no Bayreuth page in the roster"))
-    bayreuth.coveredPlaces shouldBe Seq("Bayreuth und Umgebung", "Bayreuth", "Kulmbach", "Hollfeld")
+    bayreuth.coveredPlaces shouldBe Seq("Bayreuth und Umgebung", "Bayreuth", "Kulmbach", "Pegnitz", "Hollfeld")
   }
 
   // The gap the districts left: only the five biggest metros are sub-divided,

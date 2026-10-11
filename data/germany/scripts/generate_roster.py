@@ -60,12 +60,13 @@ def render(roster: list, pages: list, retired: dict, kinoprogramm: dict, town_of
     lines = [
         "// GENERATED from data/germany/pages.json by data/germany/scripts/generate_roster.py",
         f"// — do NOT edit by hand. Full German cinema roster: {len(pages)} pages over {len(laender)} Bundesländer /",
-        f"// {len(venues):,} cinemas (Filmstarts). Regenerate after adding venues or re-clustering;",
+        f"// {len(venues):,} cinemas (Filmstarts, and the ones only Cineamo or kinoheld list). Regenerate after adding venues or re-clustering;",
         "// see data/germany/README.md.",
         "package models",
         "",
         "private[models] object GermanRosterData {",
-        "  // (displayName, pillName, Filmstarts theaterId, kinoprogramm.com fallback path, town)",
+        "  // (displayName, pillName, venue key -- its Filmstarts theaterId, or the feed that found a venue",
+        "  //  Filmstarts does not list (\"cineamo:997\") --, kinoprogramm.com fallback path, town)",
         "  type C = (String, String, String, Option[String], String)",
         "  // (slug, slug qualified with its Bundesland, name, Bundesland, lat, lon, multiTown, towns, cinemas)",
         "  type R = (String, String, String, String, Double, Double, Boolean, Seq[String], Seq[C])",
@@ -74,9 +75,9 @@ def render(roster: list, pages: list, retired: dict, kinoprogramm: dict, town_of
     for page in pages:
         rows = ",\n".join(
             "    ({}, {}, {}, {}, {})".format(
-                scala_string(name), scala_string(name), scala_string(venues[name]["theaterId"]),
+                scala_string(name), scala_string(name), scala_string(build_pages.venue_key(venues[name])),
                 "Some({})".format(scala_string(kinoprogramm[venues[name]["theaterId"]]))
-                if venues[name]["theaterId"] in kinoprogramm else "None",
+                if venues[name].get("theaterId") in kinoprogramm else "None",
                 scala_string(town_of(venues[name]["city"])))
             for name in page["cinemas"])
         lines.append(
@@ -118,7 +119,7 @@ def main() -> int:
     kinoprogramm = json.loads((DATA / "kinoprogramm.json").read_text())
     town_of, _ = build_pages.load_towns(build_pages.load_coords())
     OUT.write_text(render(roster, data["pages"], data["retired"], kinoprogramm, town_of))
-    covered = sum(1 for v in roster if v["theaterId"] in kinoprogramm)
+    covered = sum(1 for v in roster if v.get("theaterId") in kinoprogramm)
     print(f"Wrote {OUT.relative_to(ROOT)}: {len(data['pages'])} pages / {len(roster):,} cinemas, "
           f"{covered:,} with a kinoprogramm.com fallback / {len(data['retired'])} retired slugs")
     return 0

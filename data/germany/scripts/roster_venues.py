@@ -21,6 +21,12 @@ def load(data=DATA):
             for v in venues if v.get("theaterId") and v["theaterId"] not in retired]
 
 
+def keys(data=DATA):
+    """Every venue venues.json holds, by its key: its Filmstarts theaterId, or its `feed`
+    ("cineamo:997") when Filmstarts does not list it."""
+    return {v.get("theaterId") or v["feed"] for v in json.load(open(os.path.join(data, "venues.json")))}
+
+
 def page_slugs(data=DATA):
     """The slugs of the pages the roster is served under -- each one's `/de/<slug>/api/repertoire`."""
     return [p["slug"] for p in json.load(open(os.path.join(data, "pages.json")))["pages"]]

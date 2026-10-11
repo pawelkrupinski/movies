@@ -565,6 +565,16 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     c.germanFallbackFeeds(babylon).map(_.label) shouldBe Seq("kinoheld", "Filmstarts", "Kinoprogramm")
   }
 
+  // Bochum was on no German page until the 2026-10 harvest: Filmstarts lists its cinemas, its
+  // directory never linked the city. A venue Filmstarts does not list at all is scraped off the
+  // feed that found it.
+  it should "scrape the venues the harvest found: Bochum's off their measured primary, kinoheld's own off kinoheld" in {
+    val c = catalog()
+    c.byCity("bochum").map(_.cinema.displayName) should have size 6
+    val raststaette = models.Cinema.byDisplayName("Raststätte")
+    c.byCity("aachen").filter(_.cinema == raststaette).map(_.sourceKey) shouldBe Seq(Some("kinoheld.de/cinema/2417"))
+  }
+
   it should "keep Filmstarts, then kinoprogramm.com, for a venue the measurement has no row for" in {
     GermanSources.of("A9999", Some("/kino/x/y-1")) shouldBe Seq(GermanFeed.Filmstarts("A9999"), GermanFeed.Kinoprogramm("/kino/x/y-1"))
   }

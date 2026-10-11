@@ -17,9 +17,11 @@ people ("Bayreuth und Umgebung"; the phrase is the Scala side's, `GermanPage`).
 
 Inputs, all committed:
 
-  venues.json       every Filmstarts venue ever harvested: theaterId, name, the
-                    city Filmstarts files it under, and its displayName (the wire
-                    key). `retired.json` drops the closed ones.
+  venues.json       every venue ever harvested: its Filmstarts theaterId -- or,
+                    for a venue Filmstarts does not list, the `feed` that found it
+                    ("cineamo:997", add_found_venues.py) -- name, the town it is
+                    in, and its displayName (the wire key). `retired.json` drops
+                    the closed ones.
   city-coords.json  each Filmstarts city → GeoNames lat/lon, population and admin1
                     (`geocode_cities.py`). A venue in a city missing here stops
                     the build — geocode it first.
@@ -165,7 +167,12 @@ def load_towns(coords, aliases=TOWN_ALIASES, pins=TOWN_COORDS):
 def roster_venues():
     """Every rostered venue, in venues.json order — the harvest less the retired."""
     retired = retired_venues.load(DATA)
-    return [v for v in json.loads((DATA / "venues.json").read_text()) if v["theaterId"] not in retired]
+    return [v for v in json.loads((DATA / "venues.json").read_text()) if venue_key(v) not in retired]
+
+
+def venue_key(venue):
+    """A venue's key: its Filmstarts theaterId, or the `feed` that found it."""
+    return venue.get("theaterId") or venue["feed"]
 
 
 def build(venues, venue_town, towns, previous, prior_retired, rules=RULES):

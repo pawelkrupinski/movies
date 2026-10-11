@@ -1,4 +1,10 @@
 {
+ "Aachen": {
+  "lat": 50.77664,
+  "lon": 6.08342,
+  "population": 265208,
+  "admin1": "07"
+ },
  "Aalen": {
   "lat": 48.83777,
   "lon": 10.0933,
@@ -22,6 +28,12 @@
   "lon": 9.0263,
   "population": 32870,
   "admin1": "06"
+ },
+ "Ahaus": {
+  "lat": 52.07936,
+  "lon": 7.01344,
+  "population": 38165,
+  "admin1": "07"
  },
  "Ahlen": {
   "lat": 51.76338,
@@ -100,6 +112,12 @@
   "lon": 9.93333,
   "population": 250192,
   "admin1": "04"
+ },
+ "Alzenau": {
+  "lat": 50.0888,
+  "lon": 9.06455,
+  "population": 18932,
+  "admin1": "02"
  },
  "Alzey": {
   "lat": 49.74657,
@@ -291,6 +309,12 @@
   "lat": 50.87197,
   "lon": 9.70891,
   "population": 30725,
+  "admin1": "05"
+ },
+ "Bad Homburg vor der Höhe": {
+  "lat": 50.22683,
+  "lon": 8.61816,
+  "population": 51859,
   "admin1": "05"
  },
  "Bad Kissingen": {
@@ -569,6 +593,12 @@
   "population": 14839,
   "admin1": "05"
  },
+ "Beelitz": {
+  "lat": 52.23812,
+  "lon": 12.9714,
+  "population": 12475,
+  "admin1": "11"
+ },
  "Beeskow": {
   "lat": 52.17291,
   "lon": 14.24597,
@@ -629,6 +659,12 @@
   "population": 11883,
   "admin1": "01"
  },
+ "Biberach an der Riß": {
+  "lat": 48.09345,
+  "lon": 9.79053,
+  "population": 32333,
+  "admin1": "01"
+ },
  "Biblis": {
   "lat": 49.69167,
   "lon": 8.45861,
@@ -652,6 +688,18 @@
   "lon": 10.57202,
   "population": 6456,
   "admin1": "15"
+ },
+ "Bocholt": {
+  "lat": 51.83879,
+  "lon": 6.61531,
+  "population": 73943,
+  "admin1": "07"
+ },
+ "Bochum": {
+  "lat": 51.48165,
+  "lon": 7.21648,
+  "population": 385729,
+  "admin1": "07"
  },
  "Boizenburg": {
   "lat": 53.38081,
@@ -681,6 +729,12 @@
   "lat": 51.56917,
   "lon": 9.24113,
   "population": 9713,
+  "admin1": "07"
+ },
+ "Borken": {
+  "lat": 51.84382,
+  "lon": 6.85774,
+  "population": 40876,
   "admin1": "07"
  },
  "Borna": {
@@ -1259,6 +1313,12 @@
   "population": 7189,
   "admin1": "08"
  },
+ "Ennigerloh": {
+  "lat": 51.83843,
+  "lon": 8.03093,
+  "population": 20713,
+  "admin1": "07"
+ },
  "Ensingen": {
   "lat": 48.65452,
   "lon": 9.35799,
@@ -1601,6 +1661,12 @@
   "population": 6638,
   "admin1": "02"
  },
+ "Garbsen": {
+  "lat": 52.41961,
+  "lon": 9.6033,
+  "population": 63355,
+  "admin1": "06"
+ },
  "Garmisch-Partenkirchen": {
   "lat": 47.49209,
   "lon": 11.09576,
@@ -1702,6 +1768,12 @@
   "lon": 12.92074,
   "population": 4118,
   "admin1": "13"
+ },
+ "Gießen": {
+  "lat": 50.58727,
+  "lon": 8.67554,
+  "population": 89179,
+  "admin1": "05"
  },
  "Gifhorn": {
   "lat": 52.47774,
@@ -1811,6 +1883,12 @@
   "population": 50547,
   "admin1": "07"
  },
+ "Gronau (Westf.)": {
+  "lat": 52.21099,
+  "lon": 7.02238,
+  "population": 50547,
+  "admin1": "07"
+ },
  "Gross-Gerau": {
   "lat": 49.92139,
   "lon": 8.48255,
@@ -1834,6 +1912,12 @@
   "lon": 10.78333,
   "population": 4274,
   "admin1": "02"
+ },
+ "Großhennersdorf": {
+  "lat": 50.98597,
+  "lon": 14.78776,
+  "population": 1539,
+  "admin1": "13"
  },
  "Gräfelfing": {
   "lat": 48.11878,
@@ -1972,6 +2056,12 @@
   "lon": 9.35623,
   "population": 58666,
   "admin1": "06"
+ },
+ "Hamm": {
+  "lat": 51.68033,
+  "lon": 7.82089,
+  "population": 178967,
+  "admin1": "07"
  },
  "Hammelburg": {
   "lat": 50.11633,
@@ -2741,6 +2831,12 @@
   "population": 1990,
   "admin1": "06"
  },
+ "Langerringen": {
+  "lat": 48.1459,
+  "lon": 10.75894,
+  "population": 3802,
+  "admin1": "02"
+ },
  "Lauda-Königshofen": {
   "lat": 49.56526,
   "lon": 9.70816,
@@ -2897,11 +2993,23 @@
   "population": 51310,
   "admin1": "06"
  },
+ "Lippstadt": {
+  "lat": 51.67369,
+  "lon": 8.34482,
+  "population": 67219,
+  "admin1": "07"
+ },
  "Lohne": {
   "lat": 52.18848,
   "lon": 8.6922,
   "population": 39521,
   "admin1": "07"
+ },
+ "Lohr am Main": {
+  "lat": 49.98922,
+  "lon": 9.57223,
+  "population": 16127,
+  "admin1": "02"
  },
  "Lossburg": {
   "lat": 48.4,
@@ -2985,6 +3093,12 @@
   "lat": 51.21977,
   "lon": 7.6273,
   "population": 79386,
+  "admin1": "07"
+ },
+ "Lüdinghausen": {
+  "lat": 51.7683,
+  "lon": 7.44379,
+  "population": 24094,
   "admin1": "07"
  },
  "Lüneburg": {
@@ -3142,6 +3256,12 @@
   "lon": 10.18527,
   "population": 44192,
   "admin1": "02"
+ },
+ "Menden": {
+  "lat": 51.44337,
+  "lon": 7.77825,
+  "population": 52452,
+  "admin1": "07"
  },
  "Mengen": {
   "lat": 48.04951,
@@ -3340,6 +3460,12 @@
   "lon": 7.85892,
   "population": 4310,
   "admin1": "08"
+ },
+ "Naumburg": {
+  "lat": 51.14987,
+  "lon": 11.80979,
+  "population": 29722,
+  "admin1": "14"
  },
  "Neckarsulm": {
   "lat": 49.18912,
@@ -3545,6 +3671,12 @@
   "population": 526,
   "admin1": "10"
  },
+ "Norderney": {
+  "lat": 53.70803,
+  "lon": 7.15716,
+  "population": 5949,
+  "admin1": "06"
+ },
  "Norderstedt": {
   "lat": 53.70177,
   "lon": 9.99328,
@@ -3641,11 +3773,23 @@
   "population": 11492,
   "admin1": "02"
  },
+ "Oelde": {
+  "lat": 51.8289,
+  "lon": 8.14724,
+  "population": 29297,
+  "admin1": "07"
+ },
  "Oelsnitz": {
   "lat": 50.4147,
   "lon": 12.1695,
   "population": 12686,
   "admin1": "13"
+ },
+ "Oerlinghausen": {
+  "lat": 51.95453,
+  "lon": 8.6622,
+  "population": 17403,
+  "admin1": "07"
  },
  "Offenbach am Main": {
   "lat": 50.10061,
@@ -3741,6 +3885,12 @@
   "lat": 48.5665,
   "lon": 13.43122,
   "population": 50560,
+  "admin1": "02"
+ },
+ "Pegnitz": {
+  "lat": 49.75216,
+  "lon": 11.54187,
+  "population": 14279,
   "admin1": "02"
  },
  "Peine": {
@@ -4006,6 +4156,12 @@
   "lon": 8.93871,
   "population": 17442,
   "admin1": "01"
+ },
+ "Rerik": {
+  "lat": 54.10536,
+  "lon": 11.61275,
+  "population": 0,
+  "admin1": "12"
  },
  "Reutlingen": {
   "lat": 48.49144,
@@ -4451,6 +4607,12 @@
   "population": 39135,
   "admin1": "07"
  },
+ "Siegen": {
+  "lat": 50.87481,
+  "lon": 8.02431,
+  "population": 107242,
+  "admin1": "07"
+ },
  "Sigmaringen": {
   "lat": 48.08829,
   "lon": 9.23033,
@@ -4497,6 +4659,12 @@
   "lat": 51.57558,
   "lon": 8.10619,
   "population": 48037,
+  "admin1": "07"
+ },
+ "Solingen": {
+  "lat": 51.17343,
+  "lon": 7.0845,
+  "population": 164359,
   "admin1": "07"
  },
  "Soltau": {
@@ -4817,6 +4985,12 @@
   "population": 29729,
   "admin1": "06"
  },
+ "Velbert": {
+  "lat": 51.33537,
+  "lon": 7.04348,
+  "population": 87669,
+  "admin1": "07"
+ },
  "Verden an der Aller": {
   "lat": 52.92334,
   "lon": 9.23804,
@@ -4840,6 +5014,12 @@
   "lon": 8.5782,
   "population": 32620,
   "admin1": "05"
+ },
+ "Viersen": {
+  "lat": 51.25435,
+  "lon": 6.39441,
+  "population": 76153,
+  "admin1": "07"
  },
  "Villingen-Schwenningen": {
   "lat": 48.06226,
@@ -4948,6 +5128,12 @@
   "lon": 12.68128,
   "population": 21470,
   "admin1": "12"
+ },
+ "Warendorf": {
+  "lat": 51.95109,
+  "lon": 7.98756,
+  "population": 38707,
+  "admin1": "07"
  },
  "Wasserburg am Inn": {
   "lat": 48.0525,
@@ -5159,6 +5345,12 @@
   "population": 84393,
   "admin1": "06"
  },
+ "Willich": {
+  "lat": 51.26371,
+  "lon": 6.54734,
+  "population": 51843,
+  "admin1": "07"
+ },
  "Willingen": {
   "lat": 51.29418,
   "lon": 8.6091,
@@ -5327,6 +5519,12 @@
   "population": 28328,
   "admin1": "14"
  },
+ "Zell": {
+  "lat": 50.02918,
+  "lon": 7.18232,
+  "population": 4402,
+  "admin1": "08"
+ },
  "Zella-Mehlis": {
   "lat": 50.65642,
   "lon": 10.66046,
@@ -5374,6 +5572,12 @@
   "lon": 7.36977,
   "population": 35221,
   "admin1": "08"
+ },
+ "Zwenkau": {
+  "lat": 51.21872,
+  "lon": 12.33008,
+  "population": 8905,
+  "admin1": "13"
  },
  "Zwickau": {
   "lat": 50.72724,

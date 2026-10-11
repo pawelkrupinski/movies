@@ -2,9 +2,9 @@
 """Generate GermanSourcesData.scala from venue-sources.json.
 
 Each ROSTERED venue whose sources differ from the default arrangement
-(Filmstarts, then its kinoprogramm.com page) becomes one entry: its Filmstarts
-theaterId -> its feeds, primary first, as harvest_sources.py chose them. Venues
-not yet rostered join with the roster itself, keyed by their own page.
+(Filmstarts, then its kinoprogramm.com page) becomes one entry: its venue key --
+its Filmstarts theaterId, or its `feed` ("cineamo:997") when Filmstarts does not
+list it -- -> its feeds, primary first, as harvest_sources.py chose them.
 
 Run: python3 data/germany/scripts/generate_sources.py
 """
@@ -44,7 +44,7 @@ def entries(doc):
         order = [v["primary"]] + v["fallbacks"]
         default = ["filmstarts"] + (["kinoprogramm"] if v.get("kinoprogramm") else [])
         if order != default:
-            out.append((v["filmstarts"], [feed(s, v) for s in order]))
+            out.append((v["key"], [feed(s, v) for s in order]))
     return sorted(out)
 
 
@@ -53,7 +53,7 @@ def render(doc):
     chunks = [rows[i:i + CHUNK] for i in range(0, len(rows), CHUNK)]
     lines = [
         "// GENERATED from data/germany/venue-sources.json by data/germany/scripts/generate_sources.py",
-        f"// -- do NOT edit by hand. Measured {doc['measuredOn']}: {len(rows)} rostered venues served other than",
+        f"// -- do NOT edit by hand. Measured {doc['measuredOn']}: {len(rows)} venues served other than",
         "// Filmstarts-then-kinoprogramm.com. Regenerate after re-running harvest_sources.py; see data/germany/README.md.",
         "package services.cinemas.de",
         "",
@@ -72,8 +72,8 @@ def render(doc):
         lines.append("  )")
         lines.append("")
     parts = " ++ ".join(f"part{i}" for i in range(len(chunks))) or "Seq.empty"
-    lines.append(f"  /** Each venue's feeds, primary first, by its Filmstarts theaterId. */")
-    lines.append(f"  val byTheaterId: Map[String, Seq[GermanFeed]] = ({parts}).toMap")
+    lines.append(f"  /** Each venue's feeds, primary first, by its venue key. */")
+    lines.append(f"  val byVenueKey: Map[String, Seq[GermanFeed]] = ({parts}).toMap")
     lines.append("}")
     return "\n".join(lines) + "\n"
 

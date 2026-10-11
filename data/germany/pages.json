@@ -94,7 +94,8 @@
     "Yorck Kino (Kreuzberg)",
     "Z-inema im Z-Bar",
     "Zeughauskino - Deutsches Historisches Museum",
-    "ZOO PALAST Berlin"
+    "ZOO PALAST Berlin",
+    "SINEMA TRANSTOPIA - Berlin"
    ]
   },
   {
@@ -138,7 +139,8 @@
     "Sommerkino auf dem Alsterdorfer Markt",
     "UCI Mundsburg",
     "UCI Wandsbek",
-    "Zeise Kinos"
+    "Zeise Kinos",
+    "Studio Kino"
    ]
   },
   {
@@ -484,7 +486,9 @@
     "Regina-Palast",
     "Schauburg Leipzig",
     "Schaubühne Lindenfels",
-    "Sommerkino Schauportal"
+    "Sommerkino Schauportal",
+    "Cineplex Leipzig",
+    "Ostpassagen Theater"
    ]
   },
   {
@@ -503,6 +507,27 @@
     "Filmforum",
     "Stadtwerke Sommerkino",
     "UCI Duisburg"
+   ]
+  },
+  {
+   "slug": "bochum",
+   "kind": "major",
+   "name": "Bochum",
+   "anchor": "Bochum",
+   "bundesland": "Nordrhein-Westfalen",
+   "qualifiedSlug": "bochum-nordrhein-westfalen",
+   "lat": 51.4817,
+   "lon": 7.2165,
+   "towns": [
+    "Bochum"
+   ],
+   "cinemas": [
+    "Capitol Bochum",
+    "Casablanca Bochum",
+    "Endstation Kino",
+    "Metropolis Bochum",
+    "UCI Bochum",
+    "Union Bochum"
    ]
   },
   {
@@ -565,7 +590,9 @@
     "Kino in der Brotfabrik",
     "Neue Filmbühne Bonn",
     "Rex-Lichtspieltheater",
-    "Woki"
+    "Woki",
+    "Arthaus-Kino im Rheinischen Landesmuseum LVR Bonn",
+    "Kinopolis Bonn-Bad Godesberg"
    ]
   },
   {
@@ -604,7 +631,8 @@
     "Cinema Quadrat e.V.",
     "Cineplex Mannheim",
     "Odeon Mannheim",
-    "Planken Lichtspiele Mannheim"
+    "Planken Lichtspiele Mannheim",
+    "Kino im Stadthaus"
    ]
   },
   {
@@ -685,6 +713,27 @@
    "cinemas": [
     "Multiplex Gelsenkirchen",
     "Schauburg Filmpalast"
+   ]
+  },
+  {
+   "slug": "aachen",
+   "kind": "major",
+   "name": "Aachen",
+   "anchor": "Aachen",
+   "bundesland": "Nordrhein-Westfalen",
+   "qualifiedSlug": "aachen-nordrhein-westfalen",
+   "lat": 50.7766,
+   "lon": 6.0834,
+   "towns": [
+    "Aachen"
+   ],
+   "cinemas": [
+    "Apollo Aachen",
+    "Capitol Aachen",
+    "Cineplex Aachen",
+    "Eden Palast Aachen",
+    "Filmstudio an der RWTH",
+    "Raststätte"
    ]
   },
   {
@@ -1025,6 +1074,22 @@
    ]
   },
   {
+   "slug": "hamm",
+   "kind": "major",
+   "name": "Hamm",
+   "anchor": "Hamm",
+   "bundesland": "Nordrhein-Westfalen",
+   "qualifiedSlug": "hamm-nordrhein-westfalen",
+   "lat": 51.6803,
+   "lon": 7.8209,
+   "towns": [
+    "Hamm"
+   ],
+   "cinemas": [
+    "Cineplex Hamm"
+   ]
+  },
+  {
    "slug": "muelheim-an-der-ruhr",
    "kind": "major",
    "name": "Mülheim an der Ruhr",
@@ -1097,6 +1162,23 @@
     "Kino in der Lagerhalle",
     "Open Air Kino im Innenhof der Domschule Giro Live",
     "Open-Air-Kino Schloss-Innenhof"
+   ]
+  },
+  {
+   "slug": "solingen",
+   "kind": "major",
+   "name": "Solingen",
+   "anchor": "Solingen",
+   "bundesland": "Nordrhein-Westfalen",
+   "qualifiedSlug": "solingen-nordrhein-westfalen",
+   "lat": 51.1734,
+   "lon": 7.0845,
+   "towns": [
+    "Solingen"
+   ],
+   "cinemas": [
+    "Das Lumen Solingen",
+    "Kino im Cobra"
    ]
   },
   {
@@ -1301,7 +1383,8 @@
    "cinemas": [
     "CinemaxX Göttingen",
     "Lumière",
-    "Open Air Kino im Freibad"
+    "Open Air Kino im Freibad",
+    "Méliès Göttingen"
    ]
   },
   {
@@ -1409,7 +1492,8 @@
    ],
    "cinemas": [
     "CinemaxX Offenbach",
-    "Hafenkino - Programmkino im Kulturzentrum Hafen 2"
+    "Hafenkino - Programmkino im Kulturzentrum Hafen 2",
+    "Filmklubb"
    ]
   },
   {
@@ -1479,6 +1563,23 @@
    "cinemas": [
     "Kinopolis Koblenz",
     "Odeon-Kinocenter"
+   ]
+  },
+  {
+   "slug": "siegen",
+   "kind": "major",
+   "name": "Siegen",
+   "anchor": "Siegen",
+   "bundesland": "Nordrhein-Westfalen",
+   "qualifiedSlug": "siegen-nordrhein-westfalen",
+   "lat": 50.8748,
+   "lon": 8.0243,
+   "towns": [
+    "Siegen"
+   ],
+   "cinemas": [
+    "CineStar Siegen",
+    "Kurbelkiste"
    ]
   },
   {
@@ -1660,6 +1761,43 @@
     "Cine City",
     "Koki Kommunales Kino",
     "Stadtkino Rotenburg"
+   ]
+  },
+  {
+   "slug": "ahaus",
+   "kind": "town",
+   "name": "Ahaus",
+   "anchor": "Ahaus",
+   "bundesland": "Nordrhein-Westfalen",
+   "qualifiedSlug": "ahaus-nordrhein-westfalen",
+   "lat": 52.0794,
+   "lon": 7.0134,
+   "towns": [
+    "Ahaus"
+   ],
+   "cinemas": [
+    "Cinema Borken",
+    "Cinetech das Erlebniskino Ahaus"
+   ]
+  },
+  {
+   "slug": "ahlen",
+   "kind": "cluster",
+   "name": "Ahlen",
+   "anchor": "Ahlen",
+   "bundesland": "Nordrhein-Westfalen",
+   "qualifiedSlug": "ahlen-nordrhein-westfalen",
+   "lat": 51.7634,
+   "lon": 7.8887,
+   "towns": [
+    "Ahlen",
+    "Oelde",
+    "Ennigerloh"
+   ],
+   "cinemas": [
+    "CinemAhlen",
+    "Alte Brennerei",
+    "Filmzentrum am Rathaus"
    ]
   },
   {
@@ -2059,22 +2197,6 @@
     "Capitol Bad Berleburg",
     "Filmtheater Winterberg",
     "Residenztheater"
-   ]
-  },
-  {
-   "slug": "bad-doberan",
-   "kind": "town",
-   "name": "Bad Doberan",
-   "anchor": "Bad Doberan",
-   "bundesland": "Mecklenburg-Vorpommern",
-   "qualifiedSlug": "bad-doberan-mecklenburg-vorpommern",
-   "lat": 54.1071,
-   "lon": 11.9005,
-   "towns": [
-    "Bad Doberan"
-   ],
-   "cinemas": [
-    "Kino- und Kulturverein"
    ]
   },
   {
@@ -2506,12 +2628,14 @@
    "towns": [
     "Bayreuth",
     "Kulmbach",
+    "Pegnitz",
     "Hollfeld"
    ],
    "cinemas": [
     "Cineplex Bayreuth",
     "Cineplex Kulmbach",
-    "Kintopp"
+    "Kintopp",
+    "Regina-Filmtheater"
    ]
   },
   {
@@ -2548,6 +2672,46 @@
     "Cine Circus",
     "Filmpalast Aschersleben",
     "Filmtheater Capitol Bernburg"
+   ]
+  },
+  {
+   "slug": "biberach-an-der-riss",
+   "kind": "cluster",
+   "name": "Biberach an der Riß",
+   "anchor": "Biberach an der Riß",
+   "bundesland": "Baden-Württemberg",
+   "qualifiedSlug": "biberach-an-der-riss-baden-wuerttemberg",
+   "lat": 48.0934,
+   "lon": 9.7905,
+   "towns": [
+    "Biberach an der Riß",
+    "Ehingen",
+    "Bad Waldsee"
+   ],
+   "cinemas": [
+    "Central Kino Center",
+    "seenema - Stadtkino Bad Waldsee eG",
+    "Cineplex Biberach"
+   ]
+  },
+  {
+   "slug": "bocholt",
+   "kind": "cluster",
+   "name": "Bocholt",
+   "anchor": "Bocholt",
+   "bundesland": "Nordrhein-Westfalen",
+   "qualifiedSlug": "bocholt-nordrhein-westfalen",
+   "lat": 51.8388,
+   "lon": 6.6153,
+   "towns": [
+    "Bocholt",
+    "Wesel",
+    "Borken"
+   ],
+   "cinemas": [
+    "Comet Kinos Wesel",
+    "Kinodrom Multiplex",
+    "Kino-Center Borken"
    ]
   },
   {
@@ -2602,7 +2766,8 @@
    ],
    "cinemas": [
     "Concerthaus Kino",
-    "Fontane Klub"
+    "Fontane Klub",
+    "Movietown Brandenburg"
    ]
   },
   {
@@ -2829,6 +2994,24 @@
    ]
   },
   {
+   "slug": "cochem",
+   "kind": "cluster",
+   "name": "Cochem",
+   "anchor": "Cochem",
+   "bundesland": "Rheinland-Pfalz",
+   "qualifiedSlug": "cochem-rheinland-pfalz",
+   "lat": 50.1451,
+   "lon": 7.1638,
+   "towns": [
+    "Cochem",
+    "Zell"
+   ],
+   "cinemas": [
+    "Apollo Cochern",
+    "KulturKino Kaimt"
+   ]
+  },
+  {
    "slug": "cottbus",
    "kind": "town",
    "name": "Cottbus",
@@ -3013,12 +3196,14 @@
    "lon": 8.8732,
    "towns": [
     "Detmold",
-    "Lage"
+    "Lage",
+    "Bad Pyrmont"
    ],
    "cinemas": [
     "Filmwelt Lippe",
     "Kaiserhof+ Einfach Gutes Kino",
-    "Open-Air Mondscheinkino Waldbühne"
+    "Open-Air Mondscheinkino Waldbühne",
+    "Kronenlichtspiele"
    ]
   },
   {
@@ -3100,12 +3285,12 @@
    "lon": 6.7434,
    "towns": [
     "Dinslaken",
-    "Wesel",
-    "Kamp-Lintfort"
+    "Kamp-Lintfort",
+    "Geldern"
    ],
    "cinemas": [
-    "Comet Kinos Wesel",
     "Hall of Fame Kamp-Lintfort",
+    "Herzog-Theater",
     "Lichtburg Dinslaken"
    ]
   },
@@ -3129,6 +3314,25 @@
     "Kommunales Kino Guckloch Donaueschingen",
     "Krone-Theater",
     "Kultur im Kino"
+   ]
+  },
+  {
+   "slug": "dorfen",
+   "kind": "cluster",
+   "name": "Dorfen",
+   "anchor": "Dorfen",
+   "bundesland": "Bayern",
+   "qualifiedSlug": "dorfen-bayern",
+   "lat": 48.2704,
+   "lon": 12.1606,
+   "towns": [
+    "Dorfen",
+    "Taufkirchen (Vils)"
+   ],
+   "cinemas": [
+    "Kinocafe",
+    "sKino im Jakobmayer",
+    "Kino in Dorfen"
    ]
   },
   {
@@ -3221,12 +3425,14 @@
    "towns": [
     "Ebersbach",
     "Neustadt in Sachsen",
-    "Mittelherwigsdorf"
+    "Mittelherwigsdorf",
+    "Großhennersdorf"
    ],
    "cinemas": [
     "Film Theater Ebersbach",
     "Grenzland Lichtspiele",
-    "Kulturfabrik Meda"
+    "Kulturfabrik Meda",
+    "Kunst-Bauer-Kino"
    ]
   },
   {
@@ -3276,26 +3482,6 @@
    "cinemas": [
     "Gerniale Kino Open-Air",
     "Kinocenter Eggenfelden"
-   ]
-  },
-  {
-   "slug": "ehingen",
-   "kind": "cluster",
-   "name": "Ehingen",
-   "anchor": "Ehingen",
-   "bundesland": "Baden-Württemberg",
-   "qualifiedSlug": "ehingen-baden-wuerttemberg",
-   "lat": 48.2826,
-   "lon": 9.7275,
-   "towns": [
-    "Ehingen",
-    "Riedlingen",
-    "Mengen"
-   ],
-   "cinemas": [
-    "Central Kino Center",
-    "Kinocenter Mengen",
-    "Lichtspielhaus Riedlingen"
    ]
   },
   {
@@ -3448,16 +3634,12 @@
    "towns": [
     "Erding",
     "Neufahrn",
-    "Moosburg",
-    "Dorfen",
-    "Taufkirchen (Vils)"
+    "Moosburg"
    ],
    "cinemas": [
     "Cineplex Erding",
     "Cineplex Neufahrn",
-    "Kinocafe",
-    "Rosenhof-Lichtspiele",
-    "sKino im Jakobmayer"
+    "Rosenhof-Lichtspiele"
    ]
   },
   {
@@ -3724,7 +3906,7 @@
   },
   {
    "slug": "friedrichsdorf",
-   "kind": "town",
+   "kind": "cluster",
    "name": "Friedrichsdorf",
    "anchor": "Friedrichsdorf",
    "bundesland": "Hessen",
@@ -3732,11 +3914,13 @@
    "lat": 50.2496,
    "lon": 8.6428,
    "towns": [
-    "Friedrichsdorf"
+    "Friedrichsdorf",
+    "Bad Homburg vor der Höhe"
    ],
    "cinemas": [
     "Filmtheater Friedrichsdorf",
-    "Open Air im Freibad Friedrichsdorf"
+    "Open Air im Freibad Friedrichsdorf",
+    "Kinopolis Bad Homburg"
    ]
   },
   {
@@ -3791,12 +3975,13 @@
    "lon": 14.0618,
    "towns": [
     "Fürstenwalde an der Spree",
-    "Beeskow",
     "Bad Saarow",
+    "Beeskow",
     "Buckow"
    ],
    "cinemas": [
     "Cinema by Velotel",
+    "Cinema Bad Saarow",
     "Filmtheater Union",
     "Open Air Kino Parkbühne",
     "Park-Theater Buckow",
@@ -3854,6 +4039,28 @@
     "Kommunales Guckloch-Kino Furtwangen e.V.",
     "Open Air Kino Furtwangen",
     "Kronen-Lichtspiele Triberg im Schwarzwald"
+   ]
+  },
+  {
+   "slug": "garbsen",
+   "kind": "cluster",
+   "name": "Garbsen",
+   "anchor": "Garbsen",
+   "bundesland": "Niedersachsen",
+   "qualifiedSlug": "garbsen-niedersachsen",
+   "lat": 52.4196,
+   "lon": 9.6033,
+   "towns": [
+    "Garbsen",
+    "Langenhagen",
+    "Neustadt am Rübenberge",
+    "Bad Nenndorf"
+   ],
+   "cinemas": [
+    "Cinema im Leinepark",
+    "CineMotion Langenhagen",
+    "Phoenix Kurlichtspiele Bad Nenndorf",
+    "CineStar Garbsen"
    ]
   },
   {
@@ -3921,6 +4128,23 @@
     "Kino Breitwand Starnberg",
     "Kino in der Alten Brauerei",
     "Kino Pfarrstadel"
+   ]
+  },
+  {
+   "slug": "giessen",
+   "kind": "town",
+   "name": "Gießen",
+   "anchor": "Gießen",
+   "bundesland": "Hessen",
+   "qualifiedSlug": "giessen-hessen",
+   "lat": 50.5873,
+   "lon": 8.6755,
+   "towns": [
+    "Gießen"
+   ],
+   "cinemas": [
+    "Kinocenter Giessen",
+    "Kinopolis Giessen"
    ]
   },
   {
@@ -4108,6 +4332,22 @@
    ]
   },
   {
+   "slug": "gronau-westf",
+   "kind": "town",
+   "name": "Gronau (Westf.)",
+   "anchor": "Gronau (Westf.)",
+   "bundesland": "Nordrhein-Westfalen",
+   "qualifiedSlug": "gronau-westf-nordrhein-westfalen",
+   "lat": 52.211,
+   "lon": 7.0224,
+   "towns": [
+    "Gronau (Westf.)"
+   ],
+   "cinemas": [
+    "Cinetech das Erlebniskino Gronau"
+   ]
+  },
+  {
    "slug": "gruenberg",
    "kind": "town",
    "name": "Grünberg",
@@ -4246,11 +4486,13 @@
    "lon": 8.9142,
    "towns": [
     "Hanau",
-    "Nidderau"
+    "Nidderau",
+    "Alzenau"
    ],
    "cinemas": [
     "Kinopolis Hanau",
-    "Luxor Filmpalast Nidderau"
+    "Luxor Filmpalast Nidderau",
+    "Kino Alzenau"
    ]
   },
   {
@@ -4377,7 +4619,10 @@
    "towns": [
     "Herford",
     "Bad Salzuflen",
+    "Bad Oeynhausen",
     "Lemgo",
+    "Löhne",
+    "Oerlinghausen",
     "Kirchlengern",
     "Spenge",
     "Rödinghausen"
@@ -4388,7 +4633,10 @@
     "Filmbühne Kinocenter",
     "Hansa-Kino",
     "LichtBlick Kirchlengern",
-    "Zentral-Theater Spenge"
+    "Sommernachtskino (Löhne)",
+    "UCI Bad Oeynhausen",
+    "Zentral-Theater Spenge",
+    "KNUP – Soziokulturelles Zentrum Oerlinghausen"
    ]
   },
   {
@@ -4607,12 +4855,14 @@
    "towns": [
     "Iserlohn",
     "Unna",
+    "Menden",
     "Herdecke"
    ],
    "cinemas": [
     "Filmpalast Iserlohn",
     "Kinorama Unna",
-    "Onikon"
+    "Onikon",
+    "Corso-Kino Menden"
    ]
   },
   {
@@ -4887,11 +5137,13 @@
    "lon": 10.8918,
    "towns": [
     "Königsbrunn",
-    "Gersthofen"
+    "Gersthofen",
+    "Langerringen"
    ],
    "cinemas": [
     "Cineplex Königsbrunn",
-    "Open Air Seebühne"
+    "Open Air Seebühne",
+    "Filmhaus (Langerringen)"
    ]
   },
   {
@@ -4914,7 +5166,7 @@
   },
   {
    "slug": "kuehlungsborn",
-   "kind": "town",
+   "kind": "cluster",
    "name": "Kühlungsborn",
    "anchor": "Kühlungsborn",
    "bundesland": "Mecklenburg-Vorpommern",
@@ -4922,11 +5174,15 @@
    "lat": 54.1476,
    "lon": 11.7432,
    "towns": [
-    "Kühlungsborn"
+    "Kühlungsborn",
+    "Bad Doberan",
+    "Rerik"
    ],
    "cinemas": [
+    "Kino- und Kulturverein",
     "Open Air Strandkorbkino am Bootshafen",
-    "Ostseekino Kühlungsborn"
+    "Ostseekino Kühlungsborn",
+    "Kino am Campingpark Rerik"
    ]
   },
   {
@@ -5037,42 +5293,6 @@
     "Lux Lichtspiele",
     "Programmkino im Schaustall",
     "Rex Langenfeld"
-   ]
-  },
-  {
-   "slug": "langenhagen",
-   "kind": "cluster",
-   "name": "Langenhagen",
-   "anchor": "Langenhagen",
-   "bundesland": "Niedersachsen",
-   "qualifiedSlug": "langenhagen-niedersachsen",
-   "lat": 52.4476,
-   "lon": 9.7374,
-   "towns": [
-    "Langenhagen",
-    "Neustadt am Rübenberge"
-   ],
-   "cinemas": [
-    "Cinema im Leinepark",
-    "CineMotion Langenhagen"
-   ]
-  },
-  {
-   "slug": "langeoog",
-   "kind": "cluster",
-   "name": "Langeoog",
-   "anchor": "Langeoog",
-   "bundesland": "Niedersachsen",
-   "qualifiedSlug": "langeoog-niedersachsen",
-   "lat": 53.7455,
-   "lon": 7.4817,
-   "towns": [
-    "Langeoog",
-    "Spiekeroog"
-   ],
-   "cinemas": [
-    "Inselkino Spiekeroog",
-    "Windlicht"
    ]
   },
   {
@@ -5212,6 +5432,23 @@
    ]
   },
   {
+   "slug": "lippstadt",
+   "kind": "town",
+   "name": "Lippstadt",
+   "anchor": "Lippstadt",
+   "bundesland": "Nordrhein-Westfalen",
+   "qualifiedSlug": "lippstadt-nordrhein-westfalen",
+   "lat": 51.6737,
+   "lon": 8.3448,
+   "towns": [
+    "Lippstadt"
+   ],
+   "cinemas": [
+    "Cinema+Studio Lippstadt",
+    "Cineplex Lippstadt"
+   ]
+  },
+  {
    "slug": "loeningen",
    "kind": "cluster",
    "name": "Löningen",
@@ -5245,6 +5482,24 @@
     "Cineplex Lörrach",
     "Kino Free Cinema",
     "Open Air im Hof"
+   ]
+  },
+  {
+   "slug": "lohr-am-main",
+   "kind": "cluster",
+   "name": "Lohr am Main",
+   "anchor": "Lohr am Main",
+   "bundesland": "Bayern",
+   "qualifiedSlug": "lohr-am-main-bayern",
+   "lat": 49.9892,
+   "lon": 9.5722,
+   "towns": [
+    "Lohr am Main",
+    "Karlstadt am Main"
+   ],
+   "cinemas": [
+    "Burg-Lichtspiele (Karlstadt am Main)",
+    "Stattkino"
    ]
   },
   {
@@ -5364,13 +5619,13 @@
    "lon": 7.5287,
    "towns": [
     "Lünen",
-    "Ahlen",
-    "Werne"
+    "Werne",
+    "Lüdinghausen"
    ],
    "cinemas": [
     "Capitol-Cinema-Center",
-    "CinemAhlen",
-    "Cineworld Lünen"
+    "Cineworld Lünen",
+    "CineMotion Lüdinghausen"
    ]
   },
   {
@@ -5462,11 +5717,9 @@
    "lon": 7.2228,
    "towns": [
     "Mayen",
-    "Cochem",
     "Nürburg"
    ],
    "cinemas": [
-    "Apollo Cochern",
     "Corso Kino",
     "ring°kino"
    ]
@@ -5617,15 +5870,14 @@
    "lon": 8.9146,
    "towns": [
     "Minden",
-    "Bad Oeynhausen",
-    "Löhne",
-    "Stadthagen"
+    "Stadthagen",
+    "Bückeburg"
    ],
    "cinemas": [
     "Filmtheater &quot;Die Birke&quot;",
+    "Kleines Theater Am Weingarten",
     "Kinocenter Stadthagen",
-    "Sommernachtskino (Löhne)",
-    "UCI Bad Oeynhausen"
+    "Residenz-Kino-Center"
    ]
   },
   {
@@ -5748,6 +6000,30 @@
    ]
   },
   {
+   "slug": "naumburg",
+   "kind": "cluster",
+   "name": "Naumburg",
+   "anchor": "Naumburg",
+   "bundesland": "Sachsen-Anhalt",
+   "qualifiedSlug": "naumburg-sachsen-anhalt",
+   "lat": 51.1499,
+   "lon": 11.8098,
+   "towns": [
+    "Naumburg",
+    "Zeitz",
+    "Zwenkau",
+    "Groitzsch",
+    "Bad Klosterlausnitz"
+   ],
+   "cinemas": [
+    "Brühl Cinema Zeitz",
+    "Bürgerhaus Kino",
+    "Holzlandkino",
+    "Cineplex Naumburg",
+    "KulturKino zwenkau"
+   ]
+  },
+  {
    "slug": "neckarsulm",
    "kind": "town",
    "name": "Neckarsulm",
@@ -5780,26 +6056,6 @@
    "cinemas": [
     "Kinomobil Stuttgart - Härtsfeldhalle",
     "Open-Air Kino Ballmertshofer Filmfest"
-   ]
-  },
-  {
-   "slug": "nettetal",
-   "kind": "cluster",
-   "name": "Nettetal",
-   "anchor": "Nettetal",
-   "bundesland": "Nordrhein-Westfalen",
-   "qualifiedSlug": "nettetal-nordrhein-westfalen",
-   "lat": 51.3167,
-   "lon": 6.2833,
-   "towns": [
-    "Nettetal",
-    "Kempen",
-    "Geldern"
-   ],
-   "cinemas": [
-    "Corso Film Casino",
-    "Herzog-Theater",
-    "Kempener Lichtspiele"
    ]
   },
   {
@@ -6131,6 +6387,26 @@
    ]
   },
   {
+   "slug": "norderney",
+   "kind": "cluster",
+   "name": "Norderney",
+   "anchor": "Norderney",
+   "bundesland": "Niedersachsen",
+   "qualifiedSlug": "norderney-niedersachsen",
+   "lat": 53.708,
+   "lon": 7.1572,
+   "towns": [
+    "Norderney",
+    "Langeoog",
+    "Spiekeroog"
+   ],
+   "cinemas": [
+    "Inselkino Spiekeroog",
+    "Windlicht",
+    "Kino im Kurtheater"
+   ]
+  },
+  {
    "slug": "nordhausen",
    "kind": "cluster",
    "name": "Nordhausen",
@@ -6307,14 +6583,12 @@
    "towns": [
     "Oranienburg",
     "Falkensee",
-    "Werder",
     "Kleinmachnow"
    ],
    "cinemas": [
     "ALA Kino am Falkensee",
     "Filmpalast Oranienburg",
-    "Kammerspiele Kleinmachnow",
-    "Scala Kulturpalast Werder"
+    "Kammerspiele Kleinmachnow"
    ]
   },
   {
@@ -6642,6 +6916,7 @@
    "lon": 6.8493,
    "towns": [
     "Ratingen",
+    "Velbert",
     "Meerbusch - Lank",
     "Kaarst",
     "Mettmann"
@@ -6650,7 +6925,8 @@
     "Kino am Forum Wasserturm",
     "Kino Kaarst",
     "Studiokino Ratingen",
-    "Weltspiegel-Kino-Center"
+    "Weltspiegel-Kino-Center",
+    "Forum Velbert"
    ]
   },
   {
@@ -6664,15 +6940,13 @@
    "lon": 9.6106,
    "towns": [
     "Ravensburg",
-    "Weingarten",
-    "Bad Waldsee"
+    "Weingarten"
    ],
    "cinemas": [
     "CineParC Ravensburg",
     "Kinozentrum Frauentor",
     "Kulturzentrum Linse",
-    "Open Air Kino im Schlösse Hof",
-    "seenema - Stadtkino Bad Waldsee eG"
+    "Open Air Kino im Schlösse Hof"
    ]
   },
   {
@@ -6732,6 +7006,24 @@
    ]
   },
   {
+   "slug": "riedlingen",
+   "kind": "cluster",
+   "name": "Riedlingen",
+   "anchor": "Riedlingen",
+   "bundesland": "Baden-Württemberg",
+   "qualifiedSlug": "riedlingen-baden-wuerttemberg",
+   "lat": 48.1546,
+   "lon": 9.4756,
+   "towns": [
+    "Riedlingen",
+    "Mengen"
+   ],
+   "cinemas": [
+    "Kinocenter Mengen",
+    "Lichtspielhaus Riedlingen"
+   ]
+  },
+  {
    "slug": "riesa",
    "kind": "cluster",
    "name": "Riesa",
@@ -6769,7 +7061,7 @@
   },
   {
    "slug": "rinteln",
-   "kind": "cluster",
+   "kind": "town",
    "name": "Rinteln",
    "anchor": "Rinteln",
    "bundesland": "Niedersachsen",
@@ -6777,17 +7069,11 @@
    "lat": 52.186,
    "lon": 9.0792,
    "towns": [
-    "Rinteln",
-    "Bad Pyrmont",
-    "Bückeburg",
-    "Bad Nenndorf"
+    "Rinteln"
    ],
    "cinemas": [
     "Kinocenter Rinteln",
-    "Metropol-Theater Rinteln",
-    "Kronenlichtspiele",
-    "Phoenix Kurlichtspiele Bad Nenndorf",
-    "Residenz-Kino-Center"
+    "Metropol-Theater Rinteln"
    ]
   },
   {
@@ -7128,7 +7414,8 @@
    ],
    "cinemas": [
     "Kino im Schafstall",
-    "Lichtspielhaus Schwäbisch Hall"
+    "Lichtspielhaus Schwäbisch Hall",
+    "Kinostar Schwäbisch Hall – GLORIA"
    ]
   },
   {
@@ -7500,11 +7787,13 @@
    "lon": 10.694,
    "towns": [
     "Suhl",
-    "Zella-Mehlis"
+    "Zella-Mehlis",
+    "Masserberg"
    ],
    "cinemas": [
     "Cineplex Suhl",
-    "Clubkino Zella-Mehlis"
+    "Clubkino Zella-Mehlis",
+    "Kino im Badehaus Masserberg"
    ]
   },
   {
@@ -7723,19 +8012,25 @@
    ]
   },
   {
-   "slug": "versmold",
-   "kind": "town",
-   "name": "Versmold",
-   "anchor": "Versmold",
+   "slug": "viersen",
+   "kind": "cluster",
+   "name": "Viersen",
+   "anchor": "Viersen",
    "bundesland": "Nordrhein-Westfalen",
-   "qualifiedSlug": "versmold-nordrhein-westfalen",
-   "lat": 52.0401,
-   "lon": 8.1527,
+   "qualifiedSlug": "viersen-nordrhein-westfalen",
+   "lat": 51.2544,
+   "lon": 6.3944,
    "towns": [
-    "Versmold"
+    "Viersen",
+    "Willich",
+    "Nettetal",
+    "Kempen"
    ],
    "cinemas": [
-    "Kulturbühne Versmold"
+    "Corso Film Casino",
+    "Kempener Lichtspiele",
+    "Königsburg Süchteln",
+    "Lichtspieltheater Willich"
    ]
   },
   {
@@ -7916,6 +8211,24 @@
    ]
   },
   {
+   "slug": "warendorf",
+   "kind": "cluster",
+   "name": "Warendorf",
+   "anchor": "Warendorf",
+   "bundesland": "Nordrhein-Westfalen",
+   "qualifiedSlug": "warendorf-nordrhein-westfalen",
+   "lat": 51.9511,
+   "lon": 7.9876,
+   "towns": [
+    "Warendorf",
+    "Versmold"
+   ],
+   "cinemas": [
+    "Kulturbühne Versmold",
+    "Scala und Studio"
+   ]
+  },
+  {
    "slug": "wasserburg-am-inn",
    "kind": "town",
    "name": "Wasserburg am Inn",
@@ -8089,6 +8402,24 @@
    ]
   },
   {
+   "slug": "werder",
+   "kind": "cluster",
+   "name": "Werder",
+   "anchor": "Werder",
+   "bundesland": "Brandenburg",
+   "qualifiedSlug": "werder-brandenburg",
+   "lat": 52.3787,
+   "lon": 12.934,
+   "towns": [
+    "Werder",
+    "Beelitz"
+   ],
+   "cinemas": [
+    "Scala Kulturpalast Werder",
+    "Neues Lichtspielhaus Beelitz"
+   ]
+  },
+  {
    "slug": "wermelskirchen",
    "kind": "cluster",
    "name": "Wermelskirchen",
@@ -8117,12 +8448,10 @@
    "lon": 9.5085,
    "towns": [
     "Wertheim am Main",
-    "Karlstadt am Main",
     "Marktheidenfeld",
     "Miltenberg"
    ],
    "cinemas": [
-    "Burg-Lichtspiele (Karlstadt am Main)",
     "Movie im Luitpoldhaus",
     "Roxy Wertheim",
     "Schloß-Theater"
@@ -8417,26 +8746,6 @@
    ]
   },
   {
-   "slug": "zeitz",
-   "kind": "cluster",
-   "name": "Zeitz",
-   "anchor": "Zeitz",
-   "bundesland": "Sachsen-Anhalt",
-   "qualifiedSlug": "zeitz-sachsen-anhalt",
-   "lat": 51.0496,
-   "lon": 12.1369,
-   "towns": [
-    "Zeitz",
-    "Groitzsch",
-    "Bad Klosterlausnitz"
-   ],
-   "cinemas": [
-    "Brühl Cinema Zeitz",
-    "Bürgerhaus Kino",
-    "Holzlandkino"
-   ]
-  },
-  {
    "slug": "zeven",
    "kind": "town",
    "name": "Zeven",
@@ -8495,6 +8804,10 @@
    "page": "nagold",
    "qualifiedSlug": "altensteig-baden-wuerttemberg"
   },
+  "bad-doberan": {
+   "page": "kuehlungsborn",
+   "qualifiedSlug": "bad-doberan-mecklenburg-vorpommern"
+  },
   "bad-lobenstein": {
    "page": "schleiz",
    "qualifiedSlug": "bad-lobenstein-thueringen"
@@ -8510,6 +8823,10 @@
   "dorsten": {
    "page": "marl",
    "qualifiedSlug": "dorsten-nordrhein-westfalen"
+  },
+  "ehingen": {
+   "page": "biberach-an-der-riss",
+   "qualifiedSlug": "ehingen-baden-wuerttemberg"
   },
   "finsterwalde": {
    "page": "senftenberg",
@@ -8531,6 +8848,14 @@
    "page": "meschede",
    "qualifiedSlug": "korbach-hessen"
   },
+  "langenhagen": {
+   "page": "garbsen",
+   "qualifiedSlug": "langenhagen-niedersachsen"
+  },
+  "langeoog": {
+   "page": "norderney",
+   "qualifiedSlug": "langeoog-niedersachsen"
+  },
   "lychen": {
    "page": "templin",
    "qualifiedSlug": "lychen-brandenburg"
@@ -8538,6 +8863,10 @@
   "marktoberdorf": {
    "page": "kempten-im-allgaeu",
    "qualifiedSlug": "marktoberdorf-bayern"
+  },
+  "nettetal": {
+   "page": "viersen",
+   "qualifiedSlug": "nettetal-nordrhein-westfalen"
   },
   "regen": {
    "page": "deggendorf",
@@ -8566,6 +8895,14 @@
   "vechta": {
    "page": "cloppenburg",
    "qualifiedSlug": "vechta-niedersachsen"
+  },
+  "versmold": {
+   "page": "warendorf",
+   "qualifiedSlug": "versmold-nordrhein-westfalen"
+  },
+  "zeitz": {
+   "page": "naumburg",
+   "qualifiedSlug": "zeitz-sachsen-anhalt"
   }
  }
 }

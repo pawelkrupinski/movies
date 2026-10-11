@@ -70,6 +70,7 @@ WINDOW_DAYS = 14
 ACCEPT_SCORE = 0.86
 REVIEW_SCORE = 0.55
 SAME_SITE_M = 300
+SAME_TOWN_M = 2000
 GERMANY = (47.2, 55.1, 5.8, 15.1)   # lat min/max, lon min/max
 
 SOURCES = ("filmstarts", "cineamo", "kinoheld", "kinoprogramm")
@@ -97,6 +98,33 @@ DECIDED = {
     "kinoheld:1334": "A0632",  # Kaiserhof+ Detmold
     "cineamo:541": "A0696",    # City 46, Birkenstr. 1 -- Filmstarts lists it twice (A1378 "City-Filmtheater")
     "cineamo:1027": "A2784",   # Audi Programmkino, Ettinger Str., Ingolstadt
+    # Reviewing the venues the first run called new, against every rostered venue in their towns:
+    "cineamo:999": "A0886",    # Kino Berchtesgaden = Kurkino im Kurhaus, Maximilianstr. 9
+    "kinoheld:1326": "A0111",  # Kino in der Brotfabrik, Prenzlauer Promenade 3 = Berlin's Brotfabrik
+    "kinoheld:1332": "A1597",  # Rex Kinos, Grafenstr. = Darmstadt's programmkino rex
+    "kinoheld:97": "A2729",    # Burg-Film-Theater Fehmarn, Breite Str. 13a
+    "kinoheld:817": "A2661",   # Kino 35 = Kinoinitiative 35, Fulda
+    "kinoheld:1853": "A2747",  # nestkino is kinoheld's SchanzenKino 73 (its page is /schanzenkino-73)
+    "cineamo:887": "A1715",    # CineMotion Filmpalast Maxx Hameln, Bahnhofplatz 9
+    "kinoheld:1304": "A0014",  # Kommunales Kino = Kino Kandern, Hauptstr. 28
+    "kinoheld:66": "A0078",    # Bali-Kinos im KulturBahnhof Kassel
+    "cineamo:600": "A0916",    # Lilo = Li-Lo-Lichtspiele Löningen, Poststr.
+    "cineamo:1238": "G011E",   # Promenade Lichtspiele = ProLi Cinema, Unterer Sand 13
+    "cineamo:782": "A1518",    # KiTT Tettnang, Schloßstr. 9
+    "cineamo:123": "A1212",    # UCI Nova Eventis, Günthersdorf (Leuna): Einkaufszentrum Nova
+}
+
+# Two discovered listings of one venue the site rule cannot see as one: kinoheld id ->
+# the Cineamo id it is. Same name and programme, two addresses or points.
+SAME_VENUE = {
+    "kinoheld:2172": "cineamo:1232",   # Regina-Filmtheater Pegnitz
+    "kinoheld:3317": "cineamo:2981",   # Lichtspieltheater Willich
+}
+
+# Listed like a venue, but not one: never added.
+NOT_A_VENUE = {
+    "cineamo:778",   # "Innenstadtkinos": the brand of Stuttgart's six city-centre cinemas, each rostered
+    "kinoheld:3665", # Sinema Transtopia's old listing (Lindower Str.); kinoheld 2933 is its current one
 }
 
 KINOHELD_CINEMAS = """query($page: Int!) { cinemas(first: 100, page: $page) {
@@ -258,15 +286,21 @@ def filmstarts_days(fx, roster):
 
 # ------------------------------------------------------------------ identity
 def same_site(a, b):
-    return metres(a, b) <= SAME_SITE_M and (kp.score(a["name"], b["name"], a["town"]) >= REVIEW_SCORE
-                                            or (kp.chain_of(a["name"]) and kp.chain_of(a["name"]) == kp.chain_of(b["name"])))
+    """Within SAME_SITE_M with names that agree; or one name in one town a little further
+    apart -- the two sites geocode a venue to different ends of its block (Göttingen's
+    Méliès, Pegnitz's Regina, 300-900 m apart)."""
+    distance, score = metres(a, b), kp.score(a["name"], b["name"], a["town"])
+    chain = kp.chain_of(a["name"])
+    return ((distance <= SAME_SITE_M and (score >= REVIEW_SCORE or (chain and chain == kp.chain_of(b["name"]))))
+            or (distance <= SAME_TOWN_M and score >= ACCEPT_SCORE))
 
 
 def union(cineamo, kinoheld):
     """One venue per site: a kinoheld venue at a Cineamo venue's site joins it."""
     venues = [{**c, "handles": {"cineamo": c["handle"]}} for c in cineamo]
     for k in kinoheld:
-        twin = next((v for v in venues if "kinoheld" not in v["handles"] and same_site(v, k)), None)
+        twin = next((v for v in venues if "kinoheld" not in v["handles"]
+                     and (SAME_VENUE.get(k["key"]) == v["key"] or same_site(v, k))), None)
         if twin:
             twin["handles"]["kinoheld"] = k["handle"]
         else:
@@ -350,13 +384,16 @@ class FilmstartsIndex:
 def load_filmstarts():
     addresses = json.load(open(os.path.join(DATA, "filmstarts-addresses.json")))
     venues = []
+    sweep = {v["theaterId"]: v for v in json.load(open(os.path.join(DATA, "filmstarts-sweep.json")))}
     for c in roster_venues.load():
-        a = addresses.get(c["theaterId"], {})
+        a = addresses.get(c["theaterId"]) or sweep.get(c["theaterId"], {})
         venues.append({"theaterId": c["theaterId"], "name": c["name"], "town": a.get("town") or c["city"],
                        "rosterCity": c["city"], "postcode": a.get("postcode", ""), "street": a.get("street", ""),
                        "rostered": True})
-    for v in json.load(open(os.path.join(DATA, "filmstarts-sweep.json"))):
-        venues.append({**v, "rosterCity": v["town"], "rostered": False})
+    rostered = {v["theaterId"] for v in venues}
+    for v in sweep.values():
+        if v["theaterId"] not in rostered:
+            venues.append({**v, "rosterCity": v["town"], "rostered": False})
     return venues
 
 
@@ -406,21 +443,21 @@ def choose(shows, order=None):
 def summarise(rows):
     """The split over the ROSTERED venues -- the ones whose Filmstarts listing we serve
     today, so whose Filmstarts count is measured -- and the new ones apart."""
-    with_shows = [r for r in rows if r.get("rostered") and any(c[0] > 0 for c in r["shows"].values())]
+    with_shows = [r for r in rows if not r.get("found") and any(c[0] > 0 for c in r["shows"].values())]
     wins = Counter(r["rawWinner"] for r in with_shows)
     primaries = Counter(r["primary"] for r in rows)
     filmstarts_only = [
         {"theaterId": r["filmstarts"], "name": r["name"], "town": r["town"], "next14": r["shows"]["filmstarts"][0],
          "seasonal": excluded_reason(r["name"]) is not None}
-        for r in rows if r.get("rostered") and r["shows"]["filmstarts"][0] > 0 and "cineamo" not in r["shows"]]
+        for r in rows if not r.get("found") and r["shows"]["filmstarts"][0] > 0 and "cineamo" not in r["shows"]]
     return {
         "venuesWithShows": len(with_shows),
         "rawWinners": dict(wins.most_common()),
         "cineamoWinShare": round(wins["cineamo"] / len(with_shows), 3) if with_shows else 0,
         "primaries": dict(primaries.most_common()),
-        "newVenues": sum(1 for r in rows if not r.get("rostered")),
-        "newVenuesFromFilmstartsSweep": sum(1 for r in rows if r.get("filmstarts") and not r.get("rostered")),
-        "newVenuesBySource": dict(Counter(r["primary"] for r in rows if not r.get("rostered")).most_common()),
+        "newVenues": sum(1 for r in rows if r.get("found")),
+        "newVenuesFromFilmstartsSweep": sum(1 for r in rows if r.get("found") and r.get("filmstarts")),
+        "newVenuesBySource": dict(Counter(r["primary"] for r in rows if r.get("found")).most_common()),
         "filmstartsOnly": sorted(filmstarts_only, key=lambda v: -v["next14"]),
     }
 
@@ -446,10 +483,11 @@ def main():
                                kinoheld_fx.map(lambda k: counts(kinoheld_days(kinoheld_fx, k["handle"]["id"]), today), kinoheld)))
     cineamo = [c for c in cineamo if cineamo_counts[c["key"]][1] > 0]
     kinoheld = [k for k in kinoheld if kinoheld_counts[k["key"]][1] > 0]
-    discovered = union(cineamo, kinoheld)
+    discovered = [d for d in union(cineamo, kinoheld) if d["key"] not in NOT_A_VENUE]
     print(f"with an upcoming show: Cineamo {len(cineamo)}, kinoheld {len(kinoheld)}; one per site: {len(discovered)}")
 
     roster = roster_venues.load()
+    in_roster = roster_venues.keys()
     index = FilmstartsIndex(load_filmstarts())
     by_theater, new, undecided = {}, [], []
     for d in discovered:
@@ -478,7 +516,8 @@ def main():
     sweep = {v["theaterId"]: v for v in json.load(open(os.path.join(DATA, "filmstarts-sweep.json")))}
 
     rows = []
-    for v in roster + [{"theaterId": t, "name": s["name"], "city": s["town"]} for t, s in sweep.items()]:
+    rostered_ids = {v["theaterId"] for v in roster}
+    for v in roster + [{"theaterId": t, "name": s["name"], "city": s["town"]} for t, s in sweep.items() if t not in rostered_ids]:
         tid = v["theaterId"]
         d = by_theater.get(tid, {"handles": {}})
         shows = {}
@@ -494,15 +533,17 @@ def main():
         if tid in kp_counts:
             shows["kinoprogramm"] = kp_counts[tid]
         rows.append(row(v["name"], d.get("town") or v["city"], tid, handles, kp_paths.get(tid), shows, d.get("how"),
-                        rostered=tid not in sweep))
+                        place={k: d[k] for k in ("street", "postcode", "lat", "lon")} if "lat" in d else None,
+                        found=tid in sweep, rostered=tid in in_roster))
     for d in new:
         shows = {}
         if "cineamo" in d["handles"]:
             shows["cineamo"] = cineamo_counts[f"cineamo:{d['handles']['cineamo']['id']}"]
         if "kinoheld" in d["handles"]:
             shows["kinoheld"] = kinoheld_counts[f"kinoheld:{d['handles']['kinoheld']['id']}"]
+        key = next(f"{s}:{h['id']}" for s, h in sorted(d["handles"].items()))
         rows.append(row(d["name"], d["town"], None, d["handles"], None, shows, None,
-                        place={k: d[k] for k in ("street", "postcode", "lat", "lon")}))
+                        place={k: d[k] for k in ("street", "postcode", "lat", "lon")}, rostered=key in in_roster))
 
     for fx in (cineamo_fx, kinoheld_fx, kp_fx, site_fx):
         fx.report()
@@ -518,10 +559,12 @@ def main():
         print(f"  {v['next14']:4d}  {v['theaterId']} {v['name']} ({v['town']}){'  [seasonal]' if v['seasonal'] else ''}")
 
 
-def row(name, town, theater_id, handles, kp_path, shows, how, place=None, rostered=False):
+def row(name, town, theater_id, handles, kp_path, shows, how, place=None, found=True, rostered=False):
     primary, fallbacks, raw = choose(shows, DEFAULT_ORDER)
     key = theater_id or next(f"{s}:{h['id']}" for s, h in sorted(handles.items()))
-    out = {"key": key, "name": name, "town": town, "rostered": rostered}
+    # `found`: the venue is one this harvest found -- not in the roster Filmstarts' directory gave.
+    # `rostered`: venues.json has it (add_found_venues.py adds the found ones).
+    out = {"key": key, "name": name, "town": town, "found": found, "rostered": rostered}
     if place:
         out.update(place)
     if theater_id:

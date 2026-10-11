@@ -1858,8 +1858,8 @@ final case class GermanPlace(
 /** Materialises the generated German roster into [[GermanPlace]]s + `GermanCinema`
  *  venues, once. Exposes the places for `City.germanPages`, the by-BUNDESLAND
  *  grouping for `Cinema.byCity` (the uptime page's level, as Spain's is the
- *  province), each cinema's Filmstarts `theaterId` for the scrape catalog, and its
- *  kinoprogramm.com fallback. */
+ *  province), each cinema's venue key (its Filmstarts `theaterId`, or the feed that
+ *  found it) for the scrape catalog, and its kinoprogramm.com fallback. */
 object GermanRoster {
   /** Display names already spoken for by a hand-declared source, which a generated German
    *  venue may NOT reuse.
@@ -1899,7 +1899,11 @@ object GermanRoster {
     val byLand = places.groupBy(_.bundesland)
     places.map(_.bundesland).distinct.map(land => land -> byLand(land).flatMap(_.cinemas))
   }
-  val theaterIdByCinema: Map[Cinema, String] = built.flatMap(_._2).map { case (c, tid, _) => c -> tid }.toMap
+  /** Each venue's key: its Filmstarts `theaterId`, or — for a venue Filmstarts does not
+   *  list — the feed that found it ("cineamo:997"), which its sources are filed under. */
+  val venueKeyByCinema: Map[Cinema, String] = built.flatMap(_._2).map { case (c, key, _) => c -> key }.toMap
+  /** Each Filmstarts-listed venue's `theaterId`. */
+  val theaterIdByCinema: Map[Cinema, String] = venueKeyByCinema.filterNot(_._2.contains(':'))
   /** Each venue's kinoprogramm.com page path, its showtime fallback behind Filmstarts;
    *  absent for a venue `harvest_kinoprogramm.py` could not match with confidence. */
   val kinoprogrammPathByCinema: Map[Cinema, String] =

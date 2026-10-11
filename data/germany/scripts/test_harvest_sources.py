@@ -79,6 +79,11 @@ def test_a_kinoheld_and_a_cineamo_venue_at_one_site_are_one_venue():
                  "handle": {"id": "60", "path": "/kino/berlin/babylon-kreuzberg"}}
     venues = hs.union([cineamo], [kinoheld, elsewhere])
     assert [sorted(v["handles"]) for v in venues] == [["cineamo", "kinoheld"], ["kinoheld"]]
+    # One name, geocoded 600 m apart by the two sites: still one venue.
+    regina_c = {**found("Regina-Filmtheater", "Pegnitz", "91257", "Hauptstr. 1", 49.7560, 11.5420, "cineamo:1232"), "handle": {"id": "1232"}}
+    regina_k = {**found("Regina- Filmtheater", "Pegnitz", "91257", "Hauptstr. 1", 49.7510, 11.5440, "kinoheld:2172"),
+                "handle": {"id": "2172", "path": "/kino/pegnitz/regina"}}
+    assert [sorted(v["handles"]) for v in hs.union([regina_c], [regina_k])] == [["cineamo", "kinoheld"]]
 
 
 def test_the_most_complete_source_is_the_primary_and_the_rest_its_fallbacks_in_order():
@@ -120,6 +125,8 @@ def test_open_air_screens_and_sex_cinemas_never_join():
     assert excluded_reason("Sommerkino im Park") == "open-air/drive-in"
     assert excluded_reason("Anything", is_open_air=True) == "open-air/drive-in"
     assert excluded_reason("Erotik-Kino Blue Movie") == "sex cinema"
+    assert excluded_reason("Exground Filmfest") == "not a cinema"
+    assert excluded_reason("Zeiss-Großplanetarium Berlin") == "not a cinema"
     assert excluded_reason("Capitol Kino Bochum") is None
     assert excluded_reason("Casablanca Filmtheater Bochum") is None
 
