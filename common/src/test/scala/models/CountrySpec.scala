@@ -274,7 +274,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "keep every node either a list of places or a list of groups, never both" in {
-    // `_cityPickerGroup` renders subgroups first and then cities, so a node
+    // `_pickerPane` lists a region's places and then its subgroups, so a node
     // holding both would emit two separate alphabetical runs under one heading —
     // and `CountrySpec`'s ordering guards read only `cities`, so they would not
     // see it. No country builds such a node today; this is what says so, and

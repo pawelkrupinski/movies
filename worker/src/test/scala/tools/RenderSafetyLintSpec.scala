@@ -127,6 +127,7 @@ object RenderSafetyLintSpec {
       "an app URL: the page's own address, passed by the controller that renders it",
     ("_errorTracking.scala.html", "url.value")       -> "configuration: the error-tracker loader URL from the deployment's settings",
     ("landing.scala.html", "{c.webUrl.get}")         -> "configuration: a country's own web origin (models.Country)",
+    ("_pickerPane.scala.html", "baseUrl")            -> "configuration: a country's own web origin (Country.webUrl, via PickerFragments.render)",
     ("_appBanner.scala.html", "models.ClientSupport.ios.storeUrl.getOrElse(\"#\")") ->
       "configuration: the App Store URL, validated as https in models.ClientSupport",
     ("_appBanner.scala.html", "models.ClientSupport.android.storeUrl.getOrElse(\"#\")") ->
@@ -144,6 +145,8 @@ object RenderSafetyLintSpec {
     ("ResponseBody.scala", "List(streamed)")  -> "wraps a StreamedHtml so a template passes it through; the text is its producer's",
     ("FilmCardFragments.scala", "List(new PrewrittenHtml(text))") ->
       "a card's own rendered (escaped) template markup, cached and re-emitted whole",
+    ("PickerFragments.scala", "bodies.get(country.code).fold(\"\")(_.text)") ->
+      "a country's own rendered (escaped) _pickerPane markup, rendered once per process and re-emitted whole",
     ("ShowingsMarkup.scala", "List(new StreamedHtml((out, flush) =>") ->
       "the showings tree ShowingsMarkup writes itself, every value through escapeInto",
     ("ShowingsMarkup.scala", "href")          ->

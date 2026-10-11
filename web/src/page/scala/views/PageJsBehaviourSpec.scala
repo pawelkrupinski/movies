@@ -110,7 +110,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // The city-selection landing (`/` with no city cookie) — drives the
       // inline city-search filter. City-independent, so served off-prefix.
-      val landingHtml: String = views.html.landing(models.Country.default, isApex = false).body
+      val pickerFragments = controllers.PickerFragments.rendered()
+      val landingHtml: String = views.html.landing(models.Country.default, isApex = false, pickerFragments).body
 
       // The GROUPED landing — the same page for a country whose places are found
       // through a heading (`Country.cityGroups`). Poland's is one flat list, so
@@ -118,7 +119,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // 52 collapsed states over 2,003 places, and the three that are a state and
       // a single place at once. Rendered under the English bundle that host serves.
       val groupedLandingHtml: String =
-        views.html.landing(models.Country.UnitedStates, isApex = false)(using testsupport.TestMessages.forLang("en")).body
+        views.html.landing(models.Country.UnitedStates, isApex = false, pickerFragments)(using testsupport.TestMessages.forLang("en")).body
 
       // …and the NESTED one. The UK puts a county between its nation and its
       // places, so a heading there sits inside another heading — the shape the
@@ -128,10 +129,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // wrong — nobody types "koln" — and its 16 Bundesländer all arrive shut, so
       // the search box is the way in rather than a convenience.
       val germanLandingHtml: String =
-        views.html.landing(models.Country.Germany, isApex = false)(using testsupport.TestMessages.forLang("en")).body
+        views.html.landing(models.Country.Germany, isApex = false, pickerFragments)(using testsupport.TestMessages.forLang("en")).body
 
       val nestedLandingHtml: String =
-        views.html.landing(models.Country.UnitedKingdom, isApex = false)(using testsupport.TestMessages.forLang("en")).body
+        views.html.landing(models.Country.UnitedKingdom, isApex = false, pickerFragments)(using testsupport.TestMessages.forLang("en")).body
 
       val pills = city.cinemaPillMap
       val indexHtml: String = views.html.repertoire(
@@ -364,6 +365,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // …and its two-level variant.
           case "/landing-nested" => nestedLandingHtml
           case "/landing-german" => germanLandingHtml
+          // Every other country's picker pane, fetched by the landing once it is up.
+          case p if p.startsWith("/api/picker/") =>
+            pickerFragments.body(p.stripPrefix("/api/picker/").takeWhile(_ != '?')).fold("")(_.text)
           // The global-corpus /debug page (no city prefix).
           case "/debug" => debugHtml
           // Isolated single-row /debug variant for the Cinemas-cell layout test.
@@ -1111,10 +1115,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   // ── the dynamic picker: static fallback replaced by JS on load ──────────
 
-  "the landing page" should "hide the static, no-JS city list and mount the dynamic picker in its place" in {
+  "the landing page" should "show one level at a time once its script runs — the root, untitled" in {
     onLanding { page =>
-      page.evalBool("getComputedStyle(document.getElementById('picker-static')).display === 'none'") shouldBe true
-      page.evalBool("getComputedStyle(document.getElementById('picker-dynamic')).display !== 'none'") shouldBe true
+      page.evalBool("document.documentElement.classList.contains('js')") shouldBe true
+      page.evalBool("getComputedStyle(document.querySelector('.picker-level-title')).display === 'none'") shouldBe true
+      pickerRowCount(page) shouldBe models.Country.default.cityGroups.size
+      page.evalBool("getComputedStyle(document.getElementById('picker-search')).display !== 'none'") shouldBe true
     }
   }
 
@@ -1163,8 +1169,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       s"""function(el){return el.textContent.trim()==="$label";})[0].click()""")
 
   /** Click the country pill whose label is `label` — the country's name in
-   *  the VISITOR's chosen UI language (`COUNTRY_NAMES`, `landing.scala.html`),
-   *  not `KINOWO_CATALOG`'s own fixed native/English label. */
+   *  the VISITOR's chosen UI language (its `data-i18n="country.<code>"`,
+   *  relabelled by `applyLanguage`), not the country's own fixed native label. */
   private def clickCountryPill(page: CdpPage, label: String): Unit =
     page.eval(
       "Array.prototype.filter.call(document.querySelectorAll('#picker-countries .picker-country-pill')," +
@@ -1420,7 +1426,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "find a Land holding several pages by its own name, and its city by the city's" in {
     onGermanLanding { page =>
       // Saarland was one 35 km region until 2026-10, pulled up a level onto
-      // Saarbrücken, and `KINOWO_CATALOG` carries no collapsed group's name, so
+      // Saarbrücken, and the picker's old JSON carried no collapsed group's name, so
       // "saarland" found nothing. It holds seven town pages now: a heading again.
       typePickerSearch(page, "saarland")
       pickerRowLabels(page) shouldBe """["Saarland"]"""
@@ -1446,6 +1452,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // same as production — `/landing` just opens on Poland's. Pills are
       // localized to the visitor's UI language (Polish here, the fixture's
       // default), so Germany's pill reads "Niemcy", not "Deutschland".
+      awaitPanes(page)
       clickCountryPill(page, "Niemcy")
       pickerRowLabels(page) should include ("Bayern")
       pickerRowLabels(page) should not include "Wrocław"
@@ -1462,8 +1469,174 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // `onLanding` renders in Polish, so the German term is Polish too
       // (`landing.level.de.region`), same as a Polish visitor browsing
       // another country from this page would see.
+      awaitPanes(page)
       clickCountryPill(page, "Niemcy")
       pickerSearchPlaceholder(page) shouldBe "Szukaj: kraj związkowy lub miasto…"
+    }
+  }
+
+  // ── the panes: the opening country in the page, the rest fetched at once ──
+  //
+  // The landing carries only the country it opens on; every other country's
+  // pane comes from `/api/picker/:country`, requested in parallel as soon as
+  // the script runs. These hold those requests in the page
+  // (`landing/hold-picker-panes.js`, installed before any page script; its
+  // `window.__panes` is what the tests below drive and read) to see what a
+  // visitor sees while one is in flight, and fail them to see what a visitor
+  // sees when one never lands.
+
+  private lazy val holdPickerPanes: String =
+    new String(getClass.getResourceAsStream("/landing/hold-picker-panes.js").readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)
+
+  /** Reopen the landing with every pane fetch held until `__panes.release`, and
+   *  those for `failing` answered 500 at once. */
+  private def holdingPanes(page: CdpPage, failing: Set[String] = Set.empty): Unit = {
+    val failingCodes = s"window.__paneFailing = ${Json.toJson(failing.toSeq.sorted)};\n"
+    page.send("Page.addScriptToEvaluateOnNewDocument", Json.obj("source" -> (failingCodes + holdPickerPanes)))
+    page.reload()
+  }
+
+  private def releasePane(page: CdpPage, code: String): Unit = page.eval(s"__panes.release('$code')")
+  private def waitForPane(page: CdpPage, code: String): Unit = page.waitFor(s"__panes.arrived('$code')")
+  private def shown(page: CdpPage, id: String): Boolean = page.evalBool(s"__panes.shown('$id')")
+  private def paneRequests(page: CdpPage, code: String): Int = page.evalInt(s"__panes.requestsFor('$code')")
+  private def awaitSpinnerGone(page: CdpPage): Unit = page.waitFor("!__panes.shown('picker-loading')")
+
+  /** Wait until every country's pane is in — what a test about browsing another
+   *  country needs before it can click one without meeting the spinner. */
+  private def awaitPanes(page: CdpPage): Unit =
+    page.waitFor(s"document.getElementById('picker-panes').children.length === ${models.Country.switchable.size}")
+
+  private val otherCountries: Seq[String] = models.Country.switchable.map(_.code).filterNot(_ == "pl")
+
+  "the landing's picker" should "render its own country server-side, every place a link, with no script at all" in {
+    onLanding { page =>
+      page.send("Emulation.setScriptExecutionDisabled", Json.obj("value" -> true))
+      page.reload()
+      page.evalBool("document.documentElement.classList.contains('js')") shouldBe false
+      // Every one of Poland's places is in the HTML as a real link to its page —
+      // and no other country's.
+      page.evalInt("document.querySelectorAll('#picker-panes a[data-slug]').length") shouldBe models.Country.Poland.cities.size
+      page.evalInt("document.querySelectorAll('#picker-panes .picker-pane').length") shouldBe 1
+      page.evalString("document.querySelector('a[data-slug=poznan]').getAttribute('href')") shouldBe "https://kinowo.net/poznan/"
+      // With no script to move between levels, they all show, each titled.
+      page.evalBool("document.querySelector('a[data-slug=poznan]').getClientRects().length > 0") shouldBe true
+      page.evalBool("document.querySelector('.picker-level-title').getClientRects().length > 0") shouldBe true
+      // The pills are links to each country's own picker; the script-only search stays out of the way.
+      page.evalString("document.querySelector('.picker-country-pill[data-country=de]').getAttribute('href')") shouldBe
+        "https://showtimes.cc/de/?pick=city"
+      page.evalBool("document.getElementById('picker-search').getClientRects().length === 0") shouldBe true
+    }
+  }
+
+  it should "fetch every other country's pane once, all at once, as soon as it loads" in {
+    onLanding { page =>
+      holdingPanes(page)
+      page.waitFor(s"__panes.requests.length === ${otherCountries.size}")
+      Json.parse(page.evalString("JSON.stringify(__panes.requests.slice().sort())")).as[Seq[String]] shouldBe otherCountries.sorted
+      // In parallel: every request was open before any answered.
+      page.evalInt("__panes.maxOpen") shouldBe otherCountries.size
+      otherCountries.foreach(releasePane(page, _))
+      awaitPanes(page)
+      page.evalInt("__panes.requests.length") shouldBe otherCountries.size
+      // Slotted in hidden: Poland still shows, alone.
+      page.evalInt("__panes.shownPanes()") shouldBe 1
+      pickerRowLabels(page) should include ("Wielkopolskie")
+    }
+  }
+
+  it should "show a spinner for a country whose pane is still on its way, then its places once it lands" in {
+    onLanding { page =>
+      holdingPanes(page)
+      page.waitFor("__panes.requestsFor('de') === 1")
+      clickCountryPill(page, "Niemcy")
+      shown(page, "picker-loading") shouldBe true
+      page.evalString("getComputedStyle(document.querySelector('#picker-loading .picker-spinner')).animationName") shouldBe "picker-spin"
+      pickerRowCount(page) shouldBe 0
+
+      releasePane(page, "de")
+      waitForPane(page, "de")
+      awaitSpinnerGone(page)
+      pickerRowLabels(page) should include ("Bayern")
+      pickerRowLabels(page) should not include "Wielkopolskie"
+      // …and Poland, already here, never waits.
+      clickCountryPill(page, "Polska")
+      shown(page, "picker-loading") shouldBe false
+      pickerRowLabels(page) should include ("Wielkopolskie")
+    }
+  }
+
+  it should "pick the nearest place only once every pane is in, waiting with a spinner" in {
+    onLanding { page =>
+      holdingPanes(page)
+      page.waitFor(s"__panes.requests.length === ${otherCountries.size}")
+      // Berlin, answered at once — the panes are what it waits on. Stubbed after
+      // load, so the page's own automatic (Poland-only) check is not handed it.
+      page.eval("__panes.locateAt(52.52, 13.405)")
+      shown(page, "picker-locate-status") shouldBe true
+      page.evalBool("!document.querySelector('#picker-locate-status .picker-spinner').hidden") shouldBe true
+      // Every pane but Germany's in: still waiting, nothing picked.
+      val germany = "de"
+      otherCountries.filterNot(_ == germany).foreach { code => releasePane(page, code); waitForPane(page, code) }
+      page.evalBool("__panes.picked === undefined") shouldBe true
+      page.evalBool("!document.querySelector('#picker-locate-status .picker-spinner').hidden") shouldBe true
+
+      releasePane(page, germany)
+      page.waitFor("__panes.picked !== undefined")
+      page.evalString("__panes.picked.slug") shouldBe "berlin"
+      page.evalString("__panes.picked.country") shouldBe germany
+      shown(page, "picker-locate-status") shouldBe false
+    }
+  }
+
+  it should "say so when a pane fails, keep its own country working, and ask again on the next pick" in {
+    onLanding { page =>
+      holdingPanes(page, failing = Set("de"))
+      page.waitFor("__panes.requestsFor('de') === 1")
+      // The load-time fetch failed; the pick asks again, and fails too.
+      clickCountryPill(page, "Niemcy")
+      page.waitFor("__panes.shown('picker-error')")
+      paneRequests(page, "de") shouldBe 2
+      shown(page, "picker-loading") shouldBe false
+      page.evalString("document.getElementById('picker-error').textContent") shouldBe
+        "Nie udało się wczytać miast — dotknij, aby spróbować ponownie."
+
+      // Poland is in the page, so it never depended on the fetch.
+      clickCountryPill(page, "Polska")
+      shown(page, "picker-error") shouldBe false
+      pickerRowLabels(page) should include ("Wielkopolskie")
+
+      // The next pick asks again — and this time it lands.
+      page.eval("__panes.fail('de', false)")
+      clickCountryPill(page, "Niemcy")
+      page.waitFor("__panes.requestsFor('de') === 3")
+      releasePane(page, "de")
+      waitForPane(page, "de")
+      awaitSpinnerGone(page)
+      shown(page, "picker-error") shouldBe false
+      pickerRowLabels(page) should include ("Bayern")
+    }
+  }
+
+  it should "speak the visitor's language around a pane that arrives after they switched" in {
+    onLanding { page =>
+      holdingPanes(page, failing = Set("uk"))
+      page.eval("onLanguageChange('en')")
+      try {
+        page.waitFor("__panes.requestsFor('de') === 1")
+        clickCountryPill(page, "Germany")
+        page.evalString("document.querySelector('#picker-loading .visually-hidden').textContent") shouldBe "Loading…"
+        releasePane(page, "de")
+        waitForPane(page, "de")
+        awaitSpinnerGone(page)
+        pickerSearchPlaceholder(page) shouldBe "Search for a state or city…"
+        pickerRowLabels(page) should include ("Bayern")
+
+        clickCountryPill(page, "United Kingdom")
+        page.waitFor("__panes.shown('picker-error')")
+        page.evalString("document.getElementById('picker-error').textContent") shouldBe
+          "Couldn't load the cities — tap to try again."
+      } finally page.eval("localStorage.removeItem('kinowo_lang')")
     }
   }
 

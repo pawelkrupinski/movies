@@ -1,4 +1,4 @@
-@(deployment: models.Country, isApex: Boolean)(implicit messages: play.api.i18n.Messages)
+@(deployment: models.Country, isApex: Boolean, picker: controllers.PickerFragments)(implicit messages: play.api.i18n.Messages)
 @*
    The unified country + city picker. Two doors lead here (see
    `LandingController`):
@@ -15,30 +15,36 @@
        of which deployment happens to answer the host.
 
    ONE mobile-parity picker serves both, mirroring the iOS `CityGate` chooser /
-   Android `CityChoiceScreen` (and the web's own retired Filtry → Miasto popup,
-   `_cityPickerModal` — deleted; this replaces it rather than sitting beside
-   it): every deployed country across the top, then a region → subregion →
-   city drill-down with a back row, driven entirely by `KINOWO_CATALOG`
-   (`models.Catalog.json` — the same JSON `/api/catalog` hands the apps).
-   Picking a city in `deployment`'s own country navigates straight there (and
-   on the per-country door, remembers it via the `city` cookie); picking one
-   in another country navigates straight to THAT city too — same-origin
-   (the Showtimes family sharing showtimes.cc) with a plain link, a genuinely
-   different origin (kinowo.net) via `/auth/sso/start` first, which would
-   otherwise drop a signed-in session crossing the origin and carries the
-   picked city's slug alongside it, re-validated against the target
-   country's own cities before being trusted (see `crossCountryUrl` /
-   `AuthController.validatedCitySlug`).
+   Android `CityChoiceScreen`: every deployed country across the top, then a
+   region → subregion → city drill-down with a back row. Picking a city in
+   `deployment`'s own country navigates straight there (and on the per-country
+   door, remembers it via the `city` cookie); picking one in another country
+   navigates straight to THAT city too — same-origin (the Showtimes family
+   sharing showtimes.cc) with a plain link, a genuinely different origin
+   (kinowo.net) via `/auth/sso/start` first, which would otherwise drop a
+   signed-in session crossing the origin and carries the picked city's slug
+   alongside it, re-validated against the target country's own cities before
+   being trusted (see `crossCountryUrl` / `AuthController.validatedCitySlug`).
 
-   STATIC FALLBACK: everything above is JS. `#picker-static` holds real,
-   crawlable markup with no JS of its own — `deployment`'s own city tree
-   (`_cityPickerGroup`, exactly as this page always rendered) on the
-   per-country door, the flat list of country links the old
-   `landingCountries.scala.html` rendered on the apex — so a visitor (or a
-   crawler) whose script never ran still has a complete, working picker one
-   tap from the door they arrived at. `initPicker()` hides it and mounts the
-   dynamic one in its place; nothing here assumes JS ran.
+   THE PLACES ARE SERVER-RENDERED, ONE COUNTRY AT A TIME. The country the
+   picker opens on arrives inside this page as real markup
+   (`_pickerPane.scala.html`, via `picker` — rendered once per deploy, not per
+   request), so its cities are links in the HTML before any script runs, and
+   picking among them never waits on anything. Every OTHER country's pane is
+   the same partial fetched from `/api/picker/:country` in parallel the moment
+   the script runs, and slotted in hidden as each arrives: the US alone is
+   2,003 places, which no visitor to kinowo.net should download before seeing
+   Poland's. Anything that needs a pane still in flight — that country's pill,
+   or "nearest city", which searches them all — shows a spinner until it lands,
+   and a short error (retried on the next attempt) if it never does.
+
+   NO SCRIPT: the country pills are links to each country's own picker, and
+   every level of the opening country's pane shows at once, each under its own
+   title, its headings linking down to their levels — so a visitor (or a
+   crawler) whose script never ran still has a complete, working picker. The
+   `js` class set in `<head>` is what switches to one level at a time.
 *@
+@opening = @{ if (isApex) models.Country.default else deployment }
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -72,8 +78,12 @@
     )
     @_jsonLd(controllers.StructuredData.landing(deployment))
   }
+  @* Before any markup paints: the picker shows one level at a time only once a
+     script is there to move between them (see the class doc's NO SCRIPT). *@
+  <script>document.documentElement.classList.add('js');</script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
     body {
       font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: #e7e7f5; background: #0d0d22; min-height: 100vh;
@@ -91,53 +101,24 @@
     .picker-search::placeholder { color: #6f6f9c; }
     .picker-search:focus { border-color: #3a3a7e; }
     .picker-empty { color: #9a9ac0; font-size: .95rem; margin: .25rem 0; display: none; }
-    .city-list, .country-list, .picker-list { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
-    .city-list a, .country-list a, .picker-item {
+    .picker-list { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
+    .picker-item {
       display: block; text-decoration: none; color: #e7e7f5;
       background: #1a1a3a; border: 1px solid #2a2a5e; border-radius: 10px;
       padding: .9rem 1.1rem; font-size: 1.05rem; font-weight: 500;
       transition: background .15s, border-color .15s;
       cursor: pointer; text-align: left;
     }
-    .city-list a:hover, .country-list a:hover, .picker-item:hover { background: #25254e; border-color: #3a3a7e; }
-    .country-list a { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
-    .country-host { color: #9a9ac0; font-size: .85rem; font-weight: 400; }
-    /* No `display` of its own — a <details> laid out as anything but a block
-       (flex especially) is how several engines end up showing a shut group's
-       contents anyway. Its summary and its list stack on their own. */
-    .city-group-label {
-      display: flex; align-items: center; justify-content: space-between; gap: .75rem;
-      cursor: pointer; list-style: none;
-      color: #e7e7f5; background: #1a1a3a; border: 1px solid #2a2a5e; border-radius: 10px;
-      padding: .9rem 1.1rem; font-size: 1.05rem; font-weight: 600; text-align: left;
-      transition: background .15s, border-color .15s;
-    }
-    /* Safari draws its own disclosure triangle on a <summary> and ignores
-       `list-style` to hide it. */
-    .city-group-label::-webkit-details-marker { display: none; }
-    .city-group-label:hover { background: #25254e; border-color: #3a3a7e; }
-    .city-group-label::after {
-      content: ''; flex: none; width: .45rem; height: .45rem; margin-right: .15rem;
-      border-right: 2px solid #9a9ac0; border-bottom: 2px solid #9a9ac0;
-      transform: rotate(45deg); transform-origin: 60% 60%; transition: transform .15s;
-    }
-    .city-group[open] > .city-group-label::after { transform: rotate(-135deg); }
-    .city-group-cities {
-      list-style: none; display: flex; flex-direction: column; gap: .6rem;
-      margin: .6rem 0 0 .9rem;
-    }
-    .city-group-cities .city-group-cities { margin-left: .6rem; }
-    .city-group-cities a, .city-direct a { text-align: left; }
+    .picker-item:hover { background: #25254e; border-color: #3a3a7e; }
     .locating { color: #9a9ac0; font-size: .9rem; margin-top: 1.25rem; min-height: 1.2em; }
 
-    /* ── Dynamic picker — mobile-parity, own class namespace ─────────────── */
     /* Country pills to the left, the locate icon (if any) trailing them —
        same row, matching the apps' own layout. */
     .picker-header { display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; }
     .picker-countries { display: flex; flex-wrap: wrap; gap: .4rem; flex: 1; }
     .picker-country-pill {
       background: #1a1a3a; color: #cdd; border: 1px solid #2a2a5e; border-radius: 999px;
-      padding: .35rem .85rem; font-size: .85rem; cursor: pointer;
+      padding: .35rem .85rem; font-size: .85rem; cursor: pointer; text-decoration: none;
     }
     .picker-country-pill:hover { background: #25254e; }
     .picker-country-pill.active { background: #3a3a7e; color: #fff; border-color: #3a3a7e; }
@@ -158,9 +139,29 @@
       color: #aad4ff; font-size: .9rem; margin-bottom: .5rem;
     }
     .picker-back-arrow { font-size: 1.2rem; line-height: 1; }
-    .picker-subtitle { color: #9a9ac0; font-size: .85rem; margin: -.25rem 0 .75rem; }
+    .picker-subtitle, .picker-level-title { color: #9a9ac0; font-size: .85rem; margin: -.25rem 0 .75rem; text-align: left; }
     .picker-group-item { display: flex; align-items: center; justify-content: space-between; }
     .picker-group-item .submenu-chevron { color: #9a9ac0; }
+    /* With no script every level stacks under its own title; with one, only the
+       level being browsed shows, titled by `#picker-subtitle` instead. */
+    .picker-level + .picker-level { margin-top: 1.5rem; }
+    .js .picker-pane:not(.picker-current), .js .picker-level:not(.picker-current), .js .picker-level-title { display: none; }
+    .js .picker-searching #picker-panes { display: none; }
+    html:not(.js) .js-only { display: none; }
+
+    /* A pane still on its way: the site has no spinner of its own to borrow, so
+       this one is drawn in the picker's own palette — its border and link blue. */
+    .picker-loading { display: flex; justify-content: center; padding: 1.5rem 0; }
+    .picker-spinner {
+      display: inline-block; width: 1.5rem; height: 1.5rem; flex: none;
+      border: 2px solid #2a2a5e; border-top-color: #aad4ff; border-radius: 50%;
+      animation: picker-spin .8s linear infinite; vertical-align: middle;
+    }
+    .locate-status .picker-spinner { width: 1rem; height: 1rem; margin-right: .4rem; }
+    @@keyframes picker-spin { to { transform: rotate(360deg); } }
+    @@media (prefers-reduced-motion: reduce) { .picker-spinner { animation-duration: 2.4s; } }
+    .picker-error { color: #ffb4b4; font-size: .95rem; margin: .25rem 0 1rem; cursor: pointer; }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   </style>
   @* This page never loads `shared.js` — it's fully self-contained — so it
      embeds the language pack and `i18n.js` (the `t`/`applyLanguage`/
@@ -170,9 +171,12 @@
      own chrome ("Choose your city", "Back", country names, …) to open in it;
      the boot-time apply below (inside `i18n.js`) does that from
      `localStorage`, and this page's own inline script below reads the same
-     live `t()`/`currentLang` for its JS-built copy (country pills, search
-     placeholder, geolocation status) rather than baking one language in at
-     render time.
+     live `t()`/`currentLang` for its JS-built copy (search placeholder,
+     geolocation status) rather than baking one language in at render time.
+     The country pills, spinner label and load error are `data-i18n` markup
+     `applyLanguage` relabels; the panes need nothing — they hold only place
+     names (see `_pickerPane.scala.html`), so one fetched after a switch is
+     already in the visitor's language.
      `KINOWO_LOCALE` isn't embedded via `_sharedJsConfig` here, so `i18n.js`
      needs its `.lang` seeded directly — `messages.lang.code` (this page's own
      implicit) is `frontDoorMessages`'s fixed "en" on the apex,
@@ -180,9 +184,9 @@
      On the apex specifically, `KINOWO_NO_AUTO_LANG` stops `i18n.js`'s boot
      from applying a stored/sniffed pick: the apex is brand chrome that speaks
      for the whole brand, not for a visitor (see the class doc above), so it
-     must always render in English — `t()`/`countryName()` still work there
-     (needed for `renderPickerCountries()` below), they just always resolve
-     against the English pack since `currentLang` never moves off it. *@
+     must always render in English — `t()` still works there (the search
+     copy below needs it), it just always resolves against the English pack
+     since `currentLang` never moves off it. *@
   <script>
     const KINOWO_LOCALE = { lang: "@messages.lang.code" };
     @if(isApex) { window.KINOWO_NO_AUTO_LANG = true; }
@@ -200,52 +204,33 @@
       <p class="sub" data-i18n="landing.chooseCity">@messages("landing.chooseCity")</p>
     }
 
-    <div id="picker-static">
-      @if(isApex) {
-        @* Poland answers on kinowo.net under a different brand, but is listed
-           like the rest — someone who lands here wanting Polish listings
-           should not have to know that the two brands are the same product. *@
-        <ul class="country-list" id="country-list">
-          @for(c <- models.Country.switchable) {
-            <li><a href="@{c.webUrl.get}/@controllers.LandingController.PickCityQuery" data-country="@c.code"><span data-i18n="@{"country." + c.code}">@messages("country." + c.code)</span><span class="country-host">@c.shareHost</span></a></li>
-          }
-        </ul>
-      } else {
-        <ul class="city-list" id="city-list">
-          @if(deployment.cityGroups.isEmpty) {
-          @for(c <- deployment.allSorted) {
-            <li><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
-          }
-          } else {
-          @for(g <- deployment.cityGroups) {@_cityPickerGroup(g)}
-          }
-        </ul>
-      }
-    </div>
-
-    <div id="picker-dynamic" style="display:none">
+    <div id="picker-dynamic">
       <div class="picker-header">
-        <div id="picker-countries" class="picker-countries"></div>
+        @* Links, so a visitor with no script still reaches each country's own
+           picker — Poland listed like the rest, though it answers on
+           kinowo.net under another brand: someone wanting Polish listings
+           should not have to know the two are one product. The script takes
+           a tap over and shows that country's pane in place. Named in the
+           page's language and relabelled by `applyLanguage` like any other
+           `data-i18n` text. *@
+        <div id="picker-countries" class="picker-countries"@if(models.Country.switchable.size <= 1) { hidden}>
+          @for(c <- models.Country.switchable) {<a class="picker-country-pill@if(c.code == opening.code) { active}" href="@{c.webUrl.get}/@controllers.LandingController.PickCityQuery" data-country="@c.code" data-i18n="@{"country." + c.code}">@messages("country." + c.code)</a>}
+        </div>
         @* Icon-only, trailing the country row — mirrors the apps' own
            locate control (iOS: a bare `location.fill` toolbar button, no
            label; Android: a 32dp `IconButton` trailing the "Country"
-           heading). A labelled full-width button here used to render as an
-           unstyled white strip: `.btn`/`.refresh-btn`/`.btn-sm` are the
-           navbar's OWN classes, defined in `_sharedStyles` — which this
-           self-contained page never includes — so the button fell through
-           to the browser's bare default appearance.
-           Shown on the apex too, unlike the automatic on-load geolocation
-           below: this is opt-in (the visitor taps it), and `locatePickerAnywhere`
-           already searches every deployed country, so it never has the
-           "guessed the wrong country with no way to opt out" problem the
-           automatic check is deliberately skipped for on the apex. *@
-        <button type="button" id="picker-locate-btn" class="picker-locate-btn" onclick="locatePickerAnywhere()" aria-label="@messages("nav.locateMe")" title="@messages("nav.locateMe")" data-i18n-attr="aria-label:nav.locateMe;title:nav.locateMe">
+           heading). Shown on the apex too, unlike the automatic on-load
+           geolocation below: this is opt-in (the visitor taps it), and
+           `locatePickerAnywhere` searches every deployed country, so it never
+           has the "guessed the wrong country with no way to opt out" problem
+           the automatic check is deliberately skipped for on the apex. *@
+        <button type="button" id="picker-locate-btn" class="picker-locate-btn js-only" onclick="locatePickerAnywhere()" aria-label="@messages("nav.locateMe")" title="@messages("nav.locateMe")" data-i18n-attr="aria-label:nav.locateMe;title:nav.locateMe">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
           </svg>
         </button>
       </div>
-      <div id="picker-locate-status" class="locate-status" style="display:none"></div>
+      <div id="picker-locate-status" class="locate-status" role="status" hidden><span class="picker-spinner" aria-hidden="true" hidden></span><span class="locate-status-text"></span></div>
       <div id="picker-back-row" class="picker-back-row" style="display:none" onclick="pickerBack()">
         <span class="picker-back-arrow" aria-hidden="true">&#8249;</span>
         <span data-i18n="back.back">@messages("back.back")</span>
@@ -253,12 +238,16 @@
       <div id="picker-subtitle" class="picker-subtitle" style="display:none"></div>
       @* No `data-i18n-attr` here: `updatePickerSearchCopy()` (below) already
          recomputes this placeholder/aria-label live from `t()` on every
-         render, so a static marker would just race it. *@
-      <input class="picker-search" id="picker-search" type="search" inputmode="search"
+         render, so a static marker would just race it. `aria-controls` names
+         whichever list is on screen: the script moves `id="picker-list"` to it. *@
+      <input class="picker-search js-only" id="picker-search" type="search" inputmode="search"
              autocomplete="off" autocapitalize="off" spellcheck="false"
              placeholder="@messages("landing.searchCity")" aria-label="@messages("landing.searchCityAria")" aria-controls="picker-list" oninput="filterPicker()">
       <p class="picker-empty" id="picker-empty" data-i18n="landing.noCity">@messages("landing.noCity")</p>
-      <ul class="picker-list" id="picker-list"></ul>
+      <div id="picker-loading" class="picker-loading" role="status" hidden><span class="picker-spinner" aria-hidden="true"></span><span class="visually-hidden" data-i18n="landing.loading">@messages("landing.loading")</span></div>
+      <p id="picker-error" class="picker-error" role="alert" hidden onclick="retryPicker()" data-i18n="landing.loadError">@messages("landing.loadError")</p>
+      <ul class="picker-list picker-results" hidden></ul>
+      <div id="picker-panes">@picker.pane(opening)</div>
     </div>
 
     @if(!isApex) {
@@ -267,37 +256,30 @@
   </main>
   @_geoDistance()
   <script>
-    const KINOWO_CATALOG = @controllers.ScriptJson.embedSerialized(models.Catalog.json);
-    // Country names in the VISITOR's chosen UI language — `Catalog.json`'s own
-    // `name` field is each country's fixed native/English label (baked into the
-    // static, cacheable `/api/catalog` JSON), so it can't carry per-request
-    // text. Same `country.<code>` keys the static `#picker-static` fallback
-    // already reads (see above) — looked up live via `t()` (from `i18n.js`,
-    // loaded before this script) rather than baked into one language at
-    // render time, so it tracks whatever `bootLanguage()` already applied
-    // (always English on the apex — see the `<head>` comment on
-    // `KINOWO_NO_AUTO_LANG`).
-    function countryName(code) { return t('country.' + code); }
     // The country this PROCESS actually serves — decides whether a picked
     // city is a local navigation or a hand-off to another deployment. Unlike
-    // `DEFAULT_PICKER_COUNTRY` below, this never changes with which pill is
-    // active.
+    // `OPENING_COUNTRY` below, this never changes with which pill is active.
     const DEPLOYMENT_COUNTRY_CODE = "@deployment.code";
     const DEPLOYMENT_MOUNT_PATH   = "@deployment.mountPath";
     const DEPLOYMENT_PATH_PREFIX  = "@deployment.pathPrefix";
     const IS_APEX = @isApex;
-    // The pill the picker opens on. The apex isn't itself anybody's city
-    // site (see IS_APEX branch in `pickPickerCity`), so it opens on the
-    // brand's own country rather than on `DEPLOYMENT_COUNTRY_CODE`, which may
-    // not even be a country a visitor would recognise as "home" here.
-    const DEFAULT_PICKER_COUNTRY = IS_APEX ? "@models.Country.default.code" : DEPLOYMENT_COUNTRY_CODE;
+    // The pill the picker opens on, and the one pane this page carries. The
+    // apex isn't itself anybody's city site (see IS_APEX branch in
+    // `pickPickerCity`), so it opens on the brand's own country rather than
+    // on `DEPLOYMENT_COUNTRY_CODE`, which may not even be a country a visitor
+    // would recognise as "home" here.
+    const OPENING_COUNTRY = "@opening.code";
+    // Every other country's pane, by a URL naming its content version — so a
+    // repeat visit takes them from the browser's cache without asking.
+    const PICKER_PANE_URLS = {@for(c <- models.Country.switchable if c.code != opening.code) {"@c.code":"@picker.url(c.code)",}};
 
     // The search box's copy names what a query can ACTUALLY reach from the
     // level currently open — "state" in the US, "nation"/"county" in the UK —
     // never a bare "region" that would misname either. One entry per country
     // that nests (`Country.cityGroups`) — which is every one of them now. See `landing.level.*` in
     // the messages files for the per-language terms. Looked up live via `t()`
-    // (like `countryName` above), not pre-rendered in one language.
+    // (from `i18n.js`, loaded before this script), not pre-rendered in one
+    // language.
     function pickerGroupLabels() {
       return {
         uk: { region: t('landing.level.uk.region'), subregion: t('landing.level.uk.subregion') },
@@ -317,7 +299,7 @@
     // form, and ß, which has no mark to strip.
     function fold(s) {
       return (s || '').toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
         .replace(/ł/g, 'l').replace(/ß/g, 'ss');
     }
 
@@ -327,7 +309,7 @@
     function foldExpanded(s) {
       return (s || '').toLowerCase()
         .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
         .replace(/ł/g, 'l');
     }
 
@@ -339,43 +321,102 @@
     //
     // `pickerRegion`/`pickerSubregion` mirror the apps' own two nullable
     // state fields 1:1 (`region`/`subregion` in `CityChoiceScreen.kt` /
-    // `CityGate.swift`, and the retired popup's `cityPickerRegion`/
-    // `cityPickerSubregion`): both null is the top level (regions, or
-    // straight to cities for a flat country), region set is the second
-    // level, both set is the third (only the UK ever reaches it).
-    let pickerCountry = DEFAULT_PICKER_COUNTRY;
+    // `CityGate.swift`): both null is the top level (regions, or straight to
+    // cities for a flat country), region set is the second level, both set is
+    // the third (only the UK ever reaches it). Each names one `.picker-level`
+    // of the pane, by its `data-region`/`data-subregion`.
+    let pickerCountry = OPENING_COUNTRY;
     let pickerRegion = null;
     let pickerSubregion = null;
-    let pickerRows = [];
 
-    function citiesOf(code) {
-      return KINOWO_CATALOG.cities.filter(function (c) { return c.country === code; });
+    // ── The panes ─────────────────────────────────────────────────────────
+    //
+    // One `.picker-pane` per country, all inside `#picker-panes`: the opening
+    // country's came with the page, the rest are fetched below and appended,
+    // hidden, as each arrives. A pane is the source of truth for what a country
+    // offers — nothing here keeps a second copy of its places.
+    function paneOf(code) {
+      const panes = document.getElementById('picker-panes').children;
+      for (let i = 0; i < panes.length; i++) if (panes[i].dataset.country === code) return panes[i];
+      return null;
     }
 
-    function renderPickerCountries() {
-      const wrap = document.getElementById('picker-countries');
-      if (KINOWO_CATALOG.countries.length <= 1) { wrap.style.display = 'none'; return; }
-      wrap.style.display = '';
-      wrap.innerHTML = '';
-      KINOWO_CATALOG.countries.forEach(function (country) {
-        const pill = document.createElement('button');
-        pill.type = 'button';
-        pill.className = 'picker-country-pill' + (country.code === pickerCountry ? ' active' : '');
-        pill.textContent = countryName(country.code);
-        pill.onclick = function () { pickPickerCountry(country.code); };
-        wrap.appendChild(pill);
+    // In flight, by country. A fetch that fails is forgotten, so the next thing
+    // to need that pane asks again — the retry.
+    const paneLoads = {};
+
+    function loadPane(code) {
+      const ready = paneOf(code);
+      if (ready) return Promise.resolve(ready);
+      if (!paneLoads[code]) {
+        paneLoads[code] = fetch(PICKER_PANE_URLS[code], { credentials: 'same-origin' })
+          .then(function (response) {
+            if (!response.ok) throw new Error('picker pane ' + code + ': HTTP ' + response.status);
+            return response.text();
+          })
+          .then(function (html) {
+            // Two requests for one country can both land after a retry; the
+            // second finds the first's pane already in.
+            if (!paneOf(code)) document.getElementById('picker-panes').insertAdjacentHTML('beforeend', html);
+            const pane = paneOf(code);
+            if (!pane) throw new Error('picker pane ' + code + ': no pane in the response');
+            delete paneLoads[code];
+            return pane;
+          })
+          .catch(function (error) { delete paneLoads[code]; throw error; });
+      }
+      return paneLoads[code];
+    }
+
+    // Every pane at once, settled — what "nearest city" waits on. Never rejects:
+    // it searches whatever arrived, and says so when something did not.
+    function loadAllPanes() {
+      return Promise.all(Object.keys(PICKER_PANE_URLS).map(function (code) {
+        return loadPane(code).then(function () { return true; }, function () { return false; });
+      })).then(function (outcomes) { return outcomes.every(Boolean); });
+    }
+
+    // The search hits. Found by class, not id: whichever list is on screen
+    // borrows the id `picker-list` (see `showList`).
+    function searchResults() { return document.querySelector('#picker-dynamic .picker-results'); }
+
+    function setLoading(on) { document.getElementById('picker-loading').hidden = !on; }
+    function setLoadError(on) { document.getElementById('picker-error').hidden = !on; }
+
+    function cityOf(link) {
+      return {
+        slug: link.dataset.slug,
+        name: link.querySelector('.picker-item-label').textContent,
+        lat: parseFloat(link.dataset.lat),
+        lon: parseFloat(link.dataset.lon),
+        country: link.closest('[data-country]').dataset.country,
+      };
+    }
+
+    function citiesIn(root) {
+      return Array.prototype.map.call(root.querySelectorAll('a.picker-item[data-slug]'), cityOf);
+    }
+
+    function markActivePill() {
+      Array.prototype.forEach.call(document.querySelectorAll('#picker-countries .picker-country-pill'), function (pill) {
+        pill.classList.toggle('active', pill.dataset.country === pickerCountry);
       });
     }
 
+    // Picking the country already shown is a no-op — unless its pane never
+    // came, when it is the way to ask again.
     function pickPickerCountry(code) {
-      if (code === pickerCountry) return;
+      if (code === pickerCountry && paneOf(code)) return;
       pickerCountry = code;
       pickerRegion = null;
       pickerSubregion = null;
       clearPickerSearch();
-      renderPickerCountries();
+      markActivePill();
       renderPickerBody();
     }
+
+    function retryPicker() { renderPickerBody(); }
+    window.retryPicker = retryPicker;
 
     // Pops one drill level — subregion first, then region — same one-tap-per-
     // level back as the apps' own back button.
@@ -387,82 +428,26 @@
     }
     window.pickerBack = pickerBack;
 
-    // The current level's rows: region/subregion HEADINGS interleaved with
-    // any DIRECT city at that level (a group collapsed onto its one city —
-    // `CityGroup.soleCity` — never earned a heading of its own), in ONE pass
-    // over `Catalog.json`'s own order — never re-sorted here. That order is
-    // already exactly right (`Catalog.scala` emits each country's cities in
-    // its picker tree's own traversal order: the UK's nations in a fixed
-    // reading order, everything below them alphabetical, same for Germany's
-    // Bundesländer and the US's states) — a heading is emitted at the FIRST
-    // city that carries it, which is precisely where it belongs relative to
-    // its sibling direct cities. Concatenating "all headings, then all direct
-    // cities" instead (the old shape) stranded a heading like "West Midlands"
-    // ahead of every direct city in its region, rather than beside "West
-    // Sussex" where it alphabetically belongs.
-    function buildPickerRows() {
-      const cities = citiesOf(pickerCountry);
-      // Scoped by BOTH levels drilled so far, not just the first — the third
-      // (city) level of a country like the UK must narrow to the SUBREGION
-      // (West Midlands' 3 places), not fall back to the whole region
-      // (England's 49) once `pickerSubregion` is the only thing left unset.
-      const scoped = cities.filter(function (c) {
-        return (pickerRegion === null || c.region === pickerRegion) &&
-          (pickerSubregion === null || c.subregion === pickerSubregion);
-      });
-      const groupField = pickerRegion === null ? 'region' : (pickerSubregion === null ? 'subregion' : null);
-      if (groupField === null) {
-        return scoped.map(function (c) { return { kind: 'city', label: c.name, city: c }; });
+    // The level of `pane` the drill state names — the root when nothing is
+    // drilled. Compared as data rather than through a selector, so a region
+    // name needs no escaping.
+    function levelOf(pane) {
+      const levels = pane.querySelectorAll('.picker-level');
+      for (let i = 0; i < levels.length; i++) {
+        const level = levels[i];
+        const region = level.dataset.region === undefined ? null : level.dataset.region;
+        const subregion = level.dataset.subregion === undefined ? null : level.dataset.subregion;
+        if (region === pickerRegion && subregion === pickerSubregion) return level;
       }
-      const rows = [];
-      const seen = {};
-      scoped.forEach(function (c) {
-        const group = c[groupField];
-        if (group) {
-          if (!seen[group]) { seen[group] = true; rows.push({ kind: groupField, label: group }); }
-        } else {
-          rows.push({ kind: 'city', label: c.name, city: c });
-        }
-      });
-      return rows;
-    }
-
-    // Every region, subregion and city in the current country, regardless of
-    // how deep pickerRegion/pickerSubregion have drilled — a query for "kent"
-    // must surface the Kent COUNTY heading even from the UK's top level, not
-    // only once England is already open. Matches from every level land in one
-    // alphabetical list together (folded compare, so it agrees with `haystack`
-    // on what counts as a match).
-    function buildSearchRows(query) {
-      const rows = [];
-      const seenRegion = {};
-      const seenSubregion = {};
-      citiesOf(pickerCountry).forEach(function (c) {
-        if (c.region && !seenRegion[c.region]) {
-          seenRegion[c.region] = true;
-          if (haystack(c.region).indexOf(query) !== -1) rows.push({ kind: 'region', label: c.region });
-        }
-        if (c.subregion) {
-          const key = c.region + ' ' + c.subregion;
-          if (!seenSubregion[key]) {
-            seenSubregion[key] = true;
-            if (haystack(c.subregion).indexOf(query) !== -1) {
-              rows.push({ kind: 'subregion', label: c.subregion, region: c.region });
-            }
-          }
-        }
-        if (haystack(c.name).indexOf(query) !== -1) rows.push({ kind: 'city', label: c.name, city: c });
-      });
-      rows.sort(function (a, b) { return fold(a.label).localeCompare(fold(b.label)); });
-      return rows;
+      return levels[0];
     }
 
     // The group term(s) a query from THIS level can still reach, deepest
-    // first — never more than the two `PICKER_GROUP_LABELS` ever carries, and
+    // first — never more than the two `pickerGroupLabels` ever carries, and
     // fewer once a level is already drilled past (once a nation is picked,
     // "nation" no longer belongs in the box — only its counties and cities
     // are left to search for). Empty for a flat country (no entry in
-    // `PICKER_GROUP_LABELS`) or once drilled all the way to city rows.
+    // `pickerGroupLabels`) or once drilled all the way to city rows.
     function pickerSearchLevels() {
       const groups = pickerGroupLabels()[pickerCountry];
       if (!groups) return [];
@@ -487,56 +472,51 @@
       input.setAttribute('aria-label', text.replace(/…$/, ''));
     }
 
+    // Puts `pickerCountry`'s pane, at the drilled level, on screen — or, while
+    // that pane is still on its way, the spinner in its place, finishing the
+    // job once it lands (if the visitor is still waiting on that country).
     function renderPickerBody() {
       const backRow = document.getElementById('picker-back-row');
       const subtitle = document.getElementById('picker-subtitle');
-      const deeper = pickerRegion !== null;
-      backRow.style.display = deeper ? 'flex' : 'none';
+      backRow.style.display = pickerRegion !== null ? 'flex' : 'none';
       const parts = [pickerRegion, pickerSubregion].filter(Boolean);
       subtitle.textContent = parts.join(' — ');
       subtitle.style.display = parts.length ? '' : 'none';
       updatePickerSearchCopy();
-      pickerRows = buildPickerRows();
+      setLoadError(false);
+
+      const pane = paneOf(pickerCountry);
+      Array.prototype.forEach.call(document.querySelectorAll('#picker-panes .picker-current'), function (el) {
+        if (el !== pane) el.classList.remove('picker-current');
+      });
+      if (!pane) {
+        const code = pickerCountry;
+        document.getElementById('picker-dynamic').classList.remove('picker-searching');
+        searchResults().hidden = true;
+        setLoading(true);
+        showList(null);
+        loadPane(code).then(
+          function () { if (pickerCountry === code) renderPickerBody(); },
+          function () { if (pickerCountry === code) { setLoading(false); setLoadError(true); } });
+        return;
+      }
+      setLoading(false);
+      pane.classList.add('picker-current');
+      const level = levelOf(pane);
+      Array.prototype.forEach.call(pane.querySelectorAll('.picker-level'), function (l) {
+        l.classList.toggle('picker-current', l === level);
+      });
       filterPicker();
     }
 
-    function paintPickerRows(rows) {
-      const list = document.getElementById('picker-list');
-      const empty = document.getElementById('picker-empty');
-      list.innerHTML = '';
-      rows.forEach(function (row) {
-        const item = document.createElement('li');
-        item.className = 'picker-item';
-        // The label lives in its OWN `.picker-item-label` span — never bare
-        // `item.textContent` — so a region/subregion row's chevron (below)
-        // never runs into it: `el.textContent` walks every descendant text
-        // node, so a bare assignment followed by `appendChild(chevron)`
-        // would read back as "England›", not "England".
-        const label = document.createElement('span');
-        label.className = 'picker-item-label';
-        label.textContent = row.label;
-        item.appendChild(label);
-        if (row.kind === 'city') {
-          item.onclick = function () { pickPickerCity(row.city); };
-        } else {
-          item.classList.add('picker-group-item');
-          const chevron = document.createElement('span');
-          chevron.className = 'submenu-chevron';
-          chevron.setAttribute('aria-hidden', 'true');
-          chevron.textContent = '›';
-          item.appendChild(chevron);
-          // `row.region` is only set on a subregion row that came out of
-          // `buildSearchRows` (a normal, single-level `buildPickerRows` row
-          // never carries it because `pickerRegion` is already correct by
-          // then) — jumping to a flattened match still has to land with the
-          // right region selected, not just the subregion.
-          item.onclick = row.kind === 'region'
-            ? function () { pickerRegion = row.label; pickerSubregion = null; clearPickerSearch(); renderPickerBody(); }
-            : function () { pickerRegion = row.region !== undefined ? row.region : pickerRegion; pickerSubregion = row.label; clearPickerSearch(); renderPickerBody(); };
-        }
-        list.appendChild(item);
-      });
-      empty.style.display = rows.length === 0 ? 'block' : 'none';
+    // The list on screen carries `id="picker-list"` — the one the search box's
+    // `aria-controls` names — and `null` is none (a pane still loading).
+    function showList(list) {
+      const current = document.getElementById('picker-list');
+      if (current && current !== list) current.removeAttribute('id');
+      if (list) list.id = 'picker-list';
+      const rows = list ? list.querySelectorAll('.picker-item').length : -1;
+      document.getElementById('picker-empty').style.display = rows === 0 ? 'block' : 'none';
     }
 
     function clearPickerSearch() {
@@ -544,18 +524,42 @@
       if (input) input.value = '';
     }
 
-    // An empty box shows just the current level's rows (`buildPickerRows`).
-    // A query flattens the WHOLE country instead — regions, subregions and
-    // cities together, sorted alphabetically by `buildSearchRows` — so typing
-    // a county or nation name works from anywhere, not only once you've
-    // drilled down to the level it lives at. Folded (Polish/German diacritics
-    // included, see `haystack` above), which the retired popup's own plain
-    // substring match never was.
+    // An empty box shows just the current level. A query searches the WHOLE
+    // country instead — regions, subregions and places from every level,
+    // together in one alphabetical list — so typing a county or nation name
+    // works from anywhere, not only once you've drilled down to the level it
+    // lives at. Matches are copies of the pane's own rows; a place answers to
+    // its other names too (`data-alias`). Folded (see `haystack` above).
     function filterPicker() {
-      const input = document.getElementById('picker-search');
-      const query = fold(input.value.trim());
-      const visible = query === '' ? pickerRows : buildSearchRows(query);
-      paintPickerRows(visible);
+      const dynamic = document.getElementById('picker-dynamic');
+      const results = searchResults();
+      const pane = paneOf(pickerCountry);
+      const query = fold(document.getElementById('picker-search').value.trim());
+      if (!pane) return;
+      if (query === '') {
+        dynamic.classList.remove('picker-searching');
+        results.hidden = true;
+        showList(levelOf(pane).querySelector('.picker-list'));
+        return;
+      }
+      const matches = Array.prototype.filter.call(pane.querySelectorAll('.picker-level a.picker-item'), function (row) {
+        const label = row.querySelector('.picker-item-label').textContent;
+        return haystack(label + ' ' + (row.dataset.alias || '')).indexOf(query) !== -1;
+      });
+      matches.sort(function (a, b) {
+        return fold(a.querySelector('.picker-item-label').textContent)
+          .localeCompare(fold(b.querySelector('.picker-item-label').textContent));
+      });
+      results.innerHTML = '';
+      results.dataset.country = pickerCountry;
+      matches.forEach(function (row) {
+        const item = document.createElement('li');
+        item.appendChild(row.cloneNode(true));
+        results.appendChild(item);
+      });
+      dynamic.classList.add('picker-searching');
+      results.hidden = false;
+      showList(results);
     }
     window.filterPicker = filterPicker;
 
@@ -604,38 +608,72 @@
     // not that country shares this origin.
     function pickPickerCity(city) {
       if (!IS_APEX && city.country === DEPLOYMENT_COUNTRY_CODE) { rememberAndGo(city.slug); return; }
-      const country = KINOWO_CATALOG.countries.find(function (c) { return c.code === city.country; });
-      if (country) window.location.href = crossCountryUrl(country.baseUrl, city.slug);
+      const pane = paneOf(city.country);
+      if (pane) window.location.href = crossCountryUrl(pane.dataset.baseUrl, city.slug);
+    }
+
+    // One listener for every row, the copies in the search results included: a
+    // place is picked, a heading drills in (a search hit may name another
+    // region than the one open, so it carries its own). A place opened in a new
+    // tab or window is left to the browser — its link is real.
+    function onPickerRowClick(event) {
+      const row = event.target.closest('a.picker-item');
+      if (!row) return;
+      if (row.dataset.slug && (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)) return;
+      event.preventDefault();
+      if (row.dataset.slug) { pickPickerCity(cityOf(row)); return; }
+      pickerRegion = row.dataset.region;
+      pickerSubregion = row.dataset.subregion === undefined ? null : row.dataset.subregion;
+      clearPickerSearch();
+      renderPickerBody();
+    }
+
+    function setLocateStatus(text, busy) {
+      const status = document.getElementById('picker-locate-status');
+      status.querySelector('.locate-status-text').textContent = text;
+      status.querySelector('.picker-spinner').hidden = !busy;
+      status.hidden = !text;
     }
 
     // The picker's own manual locate button — unlike the automatic check
     // below (scoped to `DEPLOYMENT_COUNTRY_CODE`, and skipped entirely on the
     // apex), this searches every deployed country, mirroring the apps'
-    // `resolveNearestCityAnyCountry`, so it works from the apex too.
+    // `resolveNearestCityAnyCountry`, so it works from the apex too. It needs
+    // every pane for that: the spinner stays until they have all arrived or
+    // failed, and the nearest place among those that came wins — with the
+    // error said instead of "nothing nearby" when one that didn't might have
+    // held the answer.
     function locatePickerAnywhere() {
-      const status = document.getElementById('picker-locate-status');
-      const show = function (text) { status.textContent = text; status.style.display = text ? '' : 'none'; };
       if (!navigator.geolocation) return;
-      show(t('landing.locating'));
+      setLocateStatus(t('landing.locating'), true);
+      const panes = loadAllPanes();
       navigator.geolocation.getCurrentPosition(
         function (pos) {
-          const c = nearestCityWithinKm(KINOWO_CATALOG.cities, pos.coords.latitude, pos.coords.longitude, 100);
-          if (c) { show(''); pickPickerCity(c); }
-          else show(t('landing.noNearby'));
+          panes.then(function (allArrived) {
+            const c = nearestCityWithinKm(citiesIn(document.getElementById('picker-panes')), pos.coords.latitude, pos.coords.longitude, 100);
+            if (c) { setLocateStatus('', false); pickPickerCity(c); }
+            else setLocateStatus(t(allArrived ? 'landing.noNearby' : 'landing.loadError'), false);
+          });
         },
-        function () { show(t('landing.noNearby')); },
+        function () { setLocateStatus(t('landing.noNearby'), false); },
         { timeout: 5000, maximumAge: 600000 }
       );
     }
     window.locatePickerAnywhere = locatePickerAnywhere;
 
-    // Hides the static fallback and mounts the dynamic picker in its place —
-    // everything above works fully without this ever running.
+    // Mounts the picker: one level at a time from here on, every tap handled
+    // in place — and the other countries' panes on their way at once.
     function initPicker() {
-      document.getElementById('picker-static').style.display = 'none';
-      document.getElementById('picker-dynamic').style.display = '';
-      renderPickerCountries();
+      document.getElementById('picker-panes').addEventListener('click', onPickerRowClick);
+      searchResults().addEventListener('click', onPickerRowClick);
+      document.getElementById('picker-countries').addEventListener('click', function (event) {
+        const pill = event.target.closest('.picker-country-pill');
+        if (!pill) return;
+        event.preventDefault();
+        pickPickerCountry(pill.dataset.country);
+      });
       renderPickerBody();
+      Object.keys(PICKER_PANE_URLS).forEach(function (code) { loadPane(code).catch(function () {}); });
     }
     initPicker();
 
@@ -653,7 +691,7 @@
       navigator.geolocation.getCurrentPosition(
         function (pos) {
           if (done) return;
-          var c = nearestCityWithinKm(citiesOf(DEPLOYMENT_COUNTRY_CODE), pos.coords.latitude, pos.coords.longitude, 100);
+          var c = nearestCityWithinKm(citiesIn(paneOf(DEPLOYMENT_COUNTRY_CODE)), pos.coords.latitude, pos.coords.longitude, 100);
           if (c) { done = true; rememberAndGo(c.slug); }
           else { finish(t('landing.noNearby')); }
         },

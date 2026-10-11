@@ -54,6 +54,10 @@ GET     /api/catalog                controllers.CatalogController.catalog()
 # Same shape as the catalog above: static per deploy, ETag'd, country-agnostic —
 # the apps ask whichever host they are already pointed at.
 GET     /api/client-support         controllers.ClientSupportController.clientSupport()
+# One country's `/` picker fragment — the landing fetches every other country's
+# right after it loads. Country-agnostic too; `v` is the content version the
+# landing links it by, which makes the response cacheable for good.
+GET     /api/picker/:country        controllers.PickerController.fragment(country: String, v: Option[String])
 
 # ── Debug ─────────────────────────────────────────────────────────────────────
 # Top-level, not city-scoped: the debug table is the *global* corpus (every

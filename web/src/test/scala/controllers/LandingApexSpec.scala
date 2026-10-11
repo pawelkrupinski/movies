@@ -18,7 +18,7 @@ import play.api.test.{FakeRequest, Helpers}
 class LandingApexSpec extends AnyFlatSpec with Matchers {
 
   private val controller = new LandingController(
-    Helpers.stubControllerComponents(messagesApi = testsupport.TestMessages.messagesApi), models.Country.Poland)
+    Helpers.stubControllerComponents(messagesApi = testsupport.TestMessages.messagesApi), models.Country.Poland, PickerFragments.rendered())
 
   private def bodyOn(host: String): String =
     contentAsString(controller.index().apply(
@@ -34,7 +34,7 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
 
   "the showtimes.cc apex" should "offer every deployed country, each on its own domain" in {
     val html = bodyOn("showtimes.cc")
-    html should include ("""<ul class="country-list"""")
+    html should include ("""data-i18n="landing.chooseCountry"""")
     // The front door is pinned to English regardless of visitor/deployment
     // language (it's brand chrome — see `LandingController.frontDoorMessages`),
     // so a country's name here is its ENGLISH one, not `c.displayName` (which
@@ -56,9 +56,9 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
     html should include ("kinowo.net")
   }
 
-  it should "pick a country, not a city — no city links and no automatic geolocation redirect" in {
+  it should "ask for a country, and never guess one — no automatic geolocation redirect" in {
     val html = bodyOn("showtimes.cc")
-    html should not include ("""class="city-list"""")
+    html should not include ("""data-i18n="landing.chooseCity"""")
     // The AUTOMATIC on-load redirect (`#locating`'s status element + the IIFE
     // that drives it) stays apex-only-excluded — guessing a COUNTRY from
     // coordinates would send a visitor somewhere they cannot opt out of. The
@@ -70,17 +70,17 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "answer the www. spelling too, in case the proxy redirect is bypassed" in {
-    bodyOn("www.showtimes.cc") should include ("""<ul class="country-list"""")
+    bodyOn("www.showtimes.cc") should include ("""data-i18n="landing.chooseCountry"""")
   }
 
   it should "ignore a port suffix on the host" in {
-    bodyOn("showtimes.cc:9000") should include ("""<ul class="country-list"""")
+    bodyOn("showtimes.cc:9000") should include ("""data-i18n="landing.chooseCountry"""")
   }
 
   "a country's own host" should "still get the city picker, not the country picker" in {
     val html = bodyOn("kinowo.net")
-    html should include ("""<ul class="city-list"""")
-    html should not include ("""class="country-list"""")
+    html should include ("""data-i18n="landing.chooseCity"""")
+    html should not include ("""data-i18n="landing.chooseCountry"""")
   }
 
   // Since the Showtimes countries moved under `showtimes.cc/{code}/`, the apex
@@ -88,11 +88,11 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
   // decide. A deployment mounted under a country segment must never answer the
   // front door, or `showtimes.cc/uk/` replaces the UK homepage with a picker.
   it should "not be answered by a deployment mounted under a country segment" in {
-    val uk = new LandingController(Helpers.stubControllerComponents(), models.Country.UnitedKingdom)
+    val uk = new LandingController(Helpers.stubControllerComponents(), models.Country.UnitedKingdom, PickerFragments.rendered())
     val html = contentAsString(uk.index().apply(
       FakeRequest("GET", "/").withHeaders("X-Forwarded-Host" -> "showtimes.cc")))
-    html should include ("""<ul class="city-list"""")
-    html should not include ("""class="country-list"""")
+    html should include ("""data-i18n="landing.chooseCity"""")
+    html should not include ("""data-i18n="landing.chooseCountry"""")
   }
 
   // The front door is BRAND chrome, not a country's site. It used to be English
@@ -120,7 +120,7 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
   }
 
   "a returning visitor's city bounce" should "stay inside the deployment's mount point" in {
-    val uk = new LandingController(Helpers.stubControllerComponents(), models.Country.UnitedKingdom)
+    val uk = new LandingController(Helpers.stubControllerComponents(), models.Country.UnitedKingdom, PickerFragments.rendered())
     val res = uk.index().apply(FakeRequest("GET", "/")
       .withHeaders("X-Forwarded-Host" -> "showtimes.cc")
       .withCookies(play.api.mvc.Cookie("city", "kent")))
@@ -148,7 +148,7 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
   "a landing reached by picking this country" should "show the city list, not bounce to the cookie'd city" in {
     status(resultOn("kinowo.net", "/" + controllers.LandingController.PickCityQuery)) shouldBe OK
     contentAsString(resultOn("kinowo.net", "/" + controllers.LandingController.PickCityQuery)) should
-      include ("""<ul class="city-list"""")
+      include ("""data-i18n="landing.chooseCity"""")
   }
 
   it should "still bounce a returning visitor who did not pick a country" in {

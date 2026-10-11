@@ -30,7 +30,7 @@ class FixtureServerLandingSpec extends AnyFlatSpec with Matchers {
   /** The place slugs a landing offers, in render order. */
   private def rows(path: String): List[String] = {
     val html = landings.getOrElse(path, fail(s"the fixture server serves no $path"))
-    """<a href="/([^/"]+)/">""".r.findAllMatchIn(html).map(_.group(1)).toList
+    """ data-slug="([^"]+)"""".r.findAllMatchIn(html).map(_.group(1)).toList
   }
 
   "the fixture server's `/`" should "offer the default country's own list, exactly as a deployment does" in {
@@ -65,8 +65,8 @@ class FixtureServerLandingSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "offer a GROUPED country every place it has, not just the ones a heading collapsed onto" in {
-    // The nesting is what this could silently lose: a bug in `_cityPickerGroup`'s
-    // recursion, or a group that stopped being rendered, drops rows the count
+    // The nesting is what this could silently lose: a bug in `_pickerPane`'s
+    // levels, or a group that stopped being rendered, drops rows the count
     // catches and the spot-checks above would not.
     rows("/landing-uk") should have size Country.UnitedKingdom.cities.size
     rows("/landing-de") should have size Country.Germany.cities.size

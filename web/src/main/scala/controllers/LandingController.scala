@@ -42,7 +42,7 @@ import play.api.mvc._
  * Hard cut: the old unprefixed repertoire URLs no longer exist; these are the
  * only things served at `/`.
  */
-class LandingController(cc: ControllerComponents, country: Country)
+class LandingController(cc: ControllerComponents, country: Country, picker: PickerFragments)
     extends AbstractController(cc) {
 
   /** The front door is BRAND chrome, not a country's site, so it is rendered in
@@ -67,12 +67,12 @@ class LandingController(cc: ControllerComponents, country: Country)
 
   def index(): Action[AnyContent] = Action { request =>
     if (country.servesApex(PageMeta.host(request)))
-      Ok(views.html.landing(country, isApex = true)(using frontDoorMessages))
+      Ok(views.html.landing(country, isApex = true, picker)(using frontDoorMessages))
     else
       request.cookies.get("city").map(_.value).flatMap(City.bySlug) match {
         case Some(c) if !LandingController.picksCity(request) =>
           Redirect(s"${country.pathPrefix}/${c.slug}/")
-        case _ => Ok(views.html.landing(country, isApex = false)(using cityScreenMessages))
+        case _ => Ok(views.html.landing(country, isApex = false, picker)(using cityScreenMessages))
       }
   }
 }

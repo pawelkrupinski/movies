@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{CatalogController, ClientSupportController, EncodedResponseCache, HealthController, LandingController, LegalController, MovieController, SupportController, WellKnownController}
+import controllers.{CatalogController, ClientSupportController, EncodedResponseCache, HealthController, LandingController, LegalController, MovieController, PickerController, PickerFragments, SupportController, WellKnownController}
 import modules.Wiring
 
 /** ── The public site ───────────────────────────────────────────────────────
@@ -21,7 +21,11 @@ trait ControllersWiring { self: Wiring =>
   implicit lazy val deploymentMessages: play.api.i18n.Messages =
     messagesApi.preferred(Seq(deploymentLang))
 
-  lazy val landingController = new LandingController(controllerComponents, country)
+  // Every country's `/` picker fragment, rendered once for the life of the process:
+  // the landing embeds its own country's, `/api/picker/:country` serves the rest.
+  lazy val pickerFragments = PickerFragments.rendered()
+  lazy val landingController = new LandingController(controllerComponents, country, pickerFragments)
+  lazy val pickerController  = new PickerController(controllerComponents, pickerFragments)
   // Where a cached page superseded by a read-model change is re-rendered while the
   // previous copy keeps being served (`EncodedResponseCache.gzippedBody`). Capped at
   // two: a render is ~1 s of CPU for the biggest cities, and an uncapped burst of

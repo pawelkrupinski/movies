@@ -108,7 +108,7 @@ class RenderBudgetSpec extends AnyFlatSpec with Matchers {
 
   "the city-selection landing" should "stay within its allocation budget" in {
     // The one page that embeds every country's city catalog, which its picker browses.
-    val l = new LandingController(play.api.test.Helpers.stubControllerComponents(), Country.default)
+    val l = new LandingController(play.api.test.Helpers.stubControllerComponents(), Country.default, PickerFragments.rendered())
     holds(PerformanceBudgets.Landing, AllocationMeter.median()(landing(l)))
   }
 

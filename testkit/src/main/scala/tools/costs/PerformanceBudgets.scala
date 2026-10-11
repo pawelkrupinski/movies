@@ -33,7 +33,7 @@ object PerformanceBudgets {
   // (196 showtimes), and its cost grows with the showtimes (Warsaw's 524-showtime film writes ~2x).
   // "Cold" includes filling the minifier's memo, which is why the film page's cold is above its warm.
   // Lowered 2026-10-11 when the listing, film and facet pages stopped embedding every country's city
-  // catalog (`KINOWO_CATALOG`, now the `/` landing's alone), measured against parent ee9c28631:
+  // catalog (`KINOWO_CATALOG`, then the `/` landing's alone), measured against parent ee9c28631:
   // listing warm 2.03 -> 1.30 MB, film page warm 4.00 -> 2.81, cold 5.83 -> 4.63, facet warm 2.14 -> 1.30.
 
   /** The city listing with every controller cache empty: schedules, cards, JSON-LD all built. */
@@ -47,9 +47,11 @@ object PerformanceBudgets {
   val FilmPageWarm = bytes("film page render, warm caches", measured = mb(2.81))
   /** The facet page of the country the most films list. */
   val BrowseWarm = bytes("facet page render, warm caches", measured = mb(1.30))
-  /** The `/` city-selection landing — the one page embedding every country's city catalog, so it grows
-   *  with the roster: 2.95 -> 5.21 MB when the US went from 468 metro pages to 2,003 town pages. */
-  val Landing = bytes("landing render", measured = mb(5.21))
+  /** The `/` city-selection landing. It embedded every country's city catalog, so it grew with the roster
+   *  (2.95 -> 5.21 MB when the US went from 468 metro pages to 2,003 town pages); it now carries only its
+   *  own country's pane, rendered once per process (`PickerFragments`), and fetches the rest after load:
+   *  5.21 MB -> 990 KB, measured 2026-10-11. */
+  val Landing = bytes("landing render", measured = kb(990))
   /** `/api/repertoire` and `/api/details`, every film's JSON built (cold) or kept (warm). */
   val ApiRepertoireCold = bytes("/api/repertoire render, cold caches", measured = mb(14.3))
   val ApiRepertoireWarm = bytes("/api/repertoire render, warm caches", measured = mb(1.35))

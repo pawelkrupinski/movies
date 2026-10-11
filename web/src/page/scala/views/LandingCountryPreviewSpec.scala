@@ -22,7 +22,7 @@ class LandingCountryPreviewSpec extends AnyFlatSpec with Matchers {
 
   private def renderUk(): String = {
     given Messages = TestMessages.forLang("en")
-    views.html.landing(Country.UnitedKingdom, isApex = false).body
+    views.html.landing(Country.UnitedKingdom, isApex = false, controllers.PickerFragments.rendered()).body
   }
 
   // Every page (including this one) embeds ALL FOUR languages' packs inline

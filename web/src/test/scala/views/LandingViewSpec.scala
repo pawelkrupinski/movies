@@ -7,7 +7,9 @@ import org.scalatest.matchers.should.Matchers
 
 class LandingViewSpec extends AnyFlatSpec with Matchers {
 
-  private val html = views.html.landing(models.Country.Poland, isApex = false).body
+  private val picker = controllers.PickerFragments.rendered()
+
+  private val html = views.html.landing(models.Country.Poland, isApex = false, picker).body
 
   "the city-selection landing page" should "render as a Polish HTML document listing the cities" in {
     html should include ("""<html lang="pl">""")
@@ -50,56 +52,68 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   /** The US picks a METRO here — Los Angeles, Houston — found under its state's
    *  heading. The page renders under the English bundle that host serves. */
   private val usHtml =
-    views.html.landing(models.Country.UnitedStates, isApex = false)(using testsupport.TestMessages.forLang("en")).body
+    views.html.landing(models.Country.UnitedStates, isApex = false, picker)(using testsupport.TestMessages.forLang("en")).body
 
-  "the US landing page" should "list every page, each under its state" in {
-    models.Country.UnitedStates.cities.foreach(c => usHtml should include (s"/${c.slug}/"))
-    usHtml should include ("""<details class="city-group">""")
-    usHtml should include ("""<summary class="city-group-label">California</summary>""")
-    usHtml should include ("""<a href="/los-angeles/">Los Angeles</a>""")
-    // The state is a heading, never a link: `/texas/` is not a page.
-    usHtml should not include """href="/texas/""""
+  /** The opening tag of `slug`'s place link. */
+  private def placeLink(html: String, slug: String): String =
+    s"""<a class="picker-item" href="[^"]*/$slug/" data-slug="$slug"[^>]*>""".r.findFirstIn(html)
+      .getOrElse(fail(s"no place link for $slug"))
+
+  /** The heading row that drills into `label`'s level. */
+  private def heading(label: String): String =
+    s"""data-region="$label"><span class="picker-item-label">$label</span>"""
+
+  "the US landing page" should "list every page, each under its state, as a real link to its page" in {
+    models.Country.UnitedStates.cities.foreach(c => placeLink(usHtml, c.slug) should include (s"""href="https://showtimes.cc/us/${c.slug}/""""))
+    usHtml should include (heading("California"))
+    usHtml should include ("""<div class="picker-level" id="pick-us-california" data-region="California">""")
+    placeLink(usHtml, "los-angeles")
+    usHtml should include ("""<span class="picker-item-label">Los Angeles</span>""")
+    // The state is a heading linking DOWN the page to its level, never a page of its own.
+    usHtml should include ("""href="#pick-us-california" data-region="California"""")
+    usHtml should not include """/texas/""""
     usHtml should not include "/poznan/"
   }
 
-  it should "start every group SHUT — a <details> with no `open`, so 2,003 places aren't the first screen" in {
-    // The grouping only earns its keep closed. Rendered open, the page is the
-    // A-to-Z of 2,003 places the states were introduced to break up, with 52
-    // headings added to it.
-    // No `<details>` anywhere on the page carries `open` — matched as an
-    // ATTRIBUTE rather than by a substring, so it cannot be satisfied or
-    // defeated by the word appearing in a comment.
-    """<details\b[^>]*\bopen\b[^>]*>""".r.findFirstIn(usHtml) shouldBe None
-    // …and the disclosures really are there to be shut: one per state that did
-    // not collapse onto its single place.
-    """<details class="city-group">""".r.findAllIn(usHtml).size shouldBe
-      models.Country.UnitedStates.cityGroups.count(_.soleCity.isEmpty)
+  it should "carry one level per state that holds several places, plus the root — and no other country's" in {
+    // One screen of the drill-down each; the script shows one at a time. A state
+    // that collapsed onto its single place is a row, not a level.
+    """<div class="picker-level"""".r.findAllIn(usHtml).size shouldBe
+      1 + models.Country.UnitedStates.cityGroups.count(_.soleCity.isEmpty)
+    """data-country="([a-z]+)" data-base-url""".r.findAllMatchIn(usHtml).map(_.group(1)).toList shouldBe List("us")
+  }
+
+  it should "give every place what the picker's script reads: its coordinates" in {
+    val la = models.Country.UnitedStates.cities.find(_.slug == "los-angeles").get
+    placeLink(usHtml, "los-angeles") should include (s"""data-lat="${la.lat}" data-lon="${la.lon}"""")
   }
 
   it should "link a state that IS a place straight through, rather than heading a list of one" in {
     // The District of Columbia has one page, Washington: the picker links it
     // straight through, keeping the district's name searchable. See `CityGroup.soleCity`.
-    usHtml should include ("""<li class="city-direct" data-alias="District of Columbia"><a href="/washington/">Washington</a></li>""")
-    usHtml should not include """<summary class="city-group-label">District of Columbia</summary>"""
+    placeLink(usHtml, "washington") should include ("""data-alias="District of Columbia"""")
+    usHtml should not include heading("District of Columbia")
   }
 
   /** The UK picks a COUNTY — Cheshire, Kent — or one of the cities big enough to
    *  be a region of its own, found under its nation's heading. */
   private val ukHtml =
-    views.html.landing(models.Country.UnitedKingdom, isApex = false)(using testsupport.TestMessages.forLang("en")).body
+    views.html.landing(models.Country.UnitedKingdom, isApex = false, picker)(using testsupport.TestMessages.forLang("en")).body
 
   "the UK landing page" should "list every county under its nation, and its places under the county" in {
-    models.Country.UnitedKingdom.cities.foreach(c => ukHtml should include (s"/${c.slug}/"))
-    ukHtml should include ("""<summary class="city-group-label">England</summary>""")
-    ukHtml should include ("""<summary class="city-group-label">Scotland</summary>""")
-    ukHtml should include ("""<summary class="city-group-label">Northern Ireland</summary>""")
-    // The second level: a county heading, with its places inside it.
-    ukHtml should include ("""<summary class="city-group-label">Glamorgan</summary>""")
-    ukHtml should include ("""<a href="/cardiff/">Cardiff</a>""")
-    // Neither level is a link: `/scotland/` and `/west-midlands/` are not pages.
-    ukHtml should not include """href="/scotland/""""
-    ukHtml should not include """href="/england/""""
-    ukHtml should not include """href="/west-midlands/""""
+    models.Country.UnitedKingdom.cities.foreach(c => placeLink(ukHtml, c.slug))
+    ukHtml should include (heading("England"))
+    ukHtml should include (heading("Scotland"))
+    ukHtml should include (heading("Northern Ireland"))
+    // The second level: a county heading inside its nation's level, with its own
+    // level below, titled by both.
+    ukHtml should include ("""data-region="Wales" data-subregion="Glamorgan"><span class="picker-item-label">Glamorgan</span>""")
+    ukHtml should include ("""<p class="picker-level-title">Wales — Glamorgan</p>""")
+    placeLink(ukHtml, "cardiff")
+    // Neither level is a page.
+    ukHtml should not include "/scotland/\""
+    ukHtml should not include "/england/\""
+    ukHtml should not include "/west-midlands/\""
   }
 
   it should "pull a county's single place up a level, so most of the list stays one tap deep" in {
@@ -108,49 +122,45 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     // and Greater Manchester collapse onto names that differ. Only the counties
     // really arranging several cost a second tap — which is what keeps two
     // levels readable. See `CityGroup.soleCity`.
-    ukHtml should include ("""<li class="city-direct"><a href="/cheshire/">Cheshire</a></li>""")
-    ukHtml should not include """<summary class="city-group-label">Cheshire</summary>"""
-    ukHtml should not include """<summary class="city-group-label">Greater Manchester</summary>"""
-    ukHtml should not include """<summary class="city-group-label">Merseyside</summary>"""
+    placeLink(ukHtml, "cheshire") should not include "data-alias"
+    ukHtml should not include """data-subregion="Cheshire""""
+    ukHtml should not include """data-subregion="Greater Manchester""""
+    ukHtml should not include """data-subregion="Merseyside""""
 
     // …and the county's own name rides along so the search still finds the row
     // by it: dropping the heading saves a tap, it does not hide the county.
-    ukHtml should include (
-      """<li class="city-direct" data-alias="Merseyside"><a href="/liverpool/">Liverpool</a></li>""")
-    ukHtml should include (
-      """<li class="city-direct" data-alias="Greater Manchester"><a href="/manchester/">Manchester</a></li>""")
-    // Nothing to remember where the two names already agree.
-    ukHtml should not include """data-alias="Cheshire""""
+    placeLink(ukHtml, "liverpool") should include ("""data-alias="Merseyside"""")
+    placeLink(ukHtml, "manchester") should include ("""data-alias="Greater Manchester"""")
 
     // Glamorgan really groups two, so it keeps its heading.
-    ukHtml should include ("""<summary class="city-group-label">Glamorgan</summary>""")
-    ukHtml should not include """<summary class="city-group-label">West Midlands</summary>"""
+    ukHtml should include ("""data-subregion="Glamorgan"""")
+    ukHtml should not include """data-subregion="West Midlands""""
 
     // A page folded into its neighbour (`City.ukMergedPages`) is findable by its
     // old name on the row that absorbed it, beside the collapsed county's.
-    ukHtml should include (
-      """<li class="city-direct" data-alias="West Midlands, Dudley, Sandwell"><a href="/birmingham/">Birmingham</a></li>""")
-    ukHtml should include (
-      """<li class="city-direct" data-alias="Lanarkshire"><a href="/glasgow/">Glasgow</a></li>""")
+    placeLink(ukHtml, "birmingham") should include ("""data-alias="West Midlands, Dudley, Sandwell"""")
+    placeLink(ukHtml, "glasgow") should include ("""data-alias="Lanarkshire"""")
   }
 
   /** Germany picks a town page — Köln, München, "Bayreuth und Umgebung" — found under its Bundesland. */
   private val deHtml =
-    views.html.landing(models.Country.Germany, isApex = false)(using testsupport.TestMessages.forLang("en")).body
+    views.html.landing(models.Country.Germany, isApex = false, picker)(using testsupport.TestMessages.forLang("en")).body
 
   "the German landing page" should "list every page under its Bundesland" in {
-    models.Country.Germany.cities.foreach(c => deHtml should include (s"/${c.slug}/"))
-    deHtml should include ("""<summary class="city-group-label">Bayern</summary>""")
-    deHtml should include ("""<summary class="city-group-label">Nordrhein-Westfalen</summary>""")
-    deHtml should include ("""<a href="/koeln/">Köln</a>""")
-    deHtml should include ("""<a href="/bayreuth/">Bayreuth und Umgebung</a>""")
-    // A Land is a heading, never a link.
-    deHtml should not include """href="/bayern/""""
+    models.Country.Germany.cities.foreach(c => placeLink(deHtml, c.slug))
+    deHtml should include (heading("Bayern"))
+    deHtml should include (heading("Nordrhein-Westfalen"))
+    deHtml should include ("""<span class="picker-item-label">Köln</span>""")
+    placeLink(deHtml, "bayreuth")
+    deHtml should include ("""<span class="picker-item-label">Bayreuth und Umgebung</span>""")
+    // A Land is a heading, never a page.
+    deHtml should not include "/bayern/\""
     // …except a city-state holding one page, which is pulled up.
-    deHtml should include ("""<li class="city-direct"><a href="/hamburg/">Hamburg</a></li>""")
-    deHtml should include ("""<summary class="city-group-label">Saarland</summary>""")
+    placeLink(deHtml, "hamburg")
+    deHtml should not include heading("Hamburg")
+    deHtml should include (heading("Saarland"))
     // One level, not the UK's two.
-    deHtml should not include """<summary class="city-group-label">Saarbrücken</summary>"""
+    deHtml should not include "data-subregion=\""
   }
 
   "a collapsed group's search alias" should "be HTML-escaped, not pasted into the attribute" in {
@@ -162,7 +172,7 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
       """Ruck" onmouseover=alert(1) x="""",
       "hostile",
       Seq(models.Country.UnitedKingdom.cities.head))
-    val rendered = views.html._cityPickerGroup(hostile).body
+    val rendered = views.html._pickerPane("uk", "https://example.org", Seq(hostile), Nil).body
     rendered should include ("""data-alias="Ruck&quot; onmouseover=alert(1) x=&quot;"""")
     rendered should not include "onmouseover=alert(1) x=\"\">"
     // The attribute is still one attribute: exactly one unescaped quote pair
@@ -178,17 +188,34 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "group Spain by province, a major city beside the towns around it" in {
-    val esHtml = views.html.landing(models.Country.Spain, isApex = false).body
-    esHtml should include ("""<details class="city-group">""")
-    esHtml should include ("""<a href="/barcelona/">Barcelona</a>""")
-    esHtml should include ("""<a href="/sitges/">Sitges y alrededores</a>""")
+    val esHtml = views.html.landing(models.Country.Spain, isApex = false, picker).body
+    esHtml should include ("""<div class="picker-level" id="pick-es-""")
+    placeLink(esHtml, "barcelona")
+    esHtml should include ("""<span class="picker-item-label">Sitges y alrededores</span>""")
   }
 
   it should "group Poland by voivodeship, a major city beside the towns around it" in {
-    html should include ("""<details class="city-group">""")
-    html should include ("Wielkopolskie")
-    html should include ("""<a href="/poznan/">Poznań</a>""")
-    html should include ("""<a href="/turek/">Turek i okolice</a>""")
+    html should include (heading("Wielkopolskie"))
+    placeLink(html, "poznan") should include ("""href="https://kinowo.net/poznan/"""")
+    html should include ("""<span class="picker-item-label">Turek i okolice</span>""")
+  }
+
+  // ── Every other country arrives after the page ─────────────────────────────
+
+  "the landing" should "embed only the country it opens on, and link every other country's pane by its content version" in {
+    // Poland's own pane is in the HTML; the US's 2,003 places are not.
+    html should include ("""data-country="pl" data-base-url""")
+    html should not include """data-country="us" data-base-url"""
+    html should not include "/los-angeles/"
+    models.Country.switchable.filterNot(_ == models.Country.Poland).foreach { c =>
+      html should include (s""""${c.code}":"${picker.url(c.code)}"""")
+    }
+    picker.url("us") should startWith ("/api/picker/us?v=")
+  }
+
+  it should "no longer embed the whole catalog" in {
+    html should not include "KINOWO_CATALOG"
+    html should not include """"cities":["""
   }
 
   // ── The share preview ──────────────────────────────────────────────────────
@@ -229,7 +256,7 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   // English + US posters is the closest thing this brand-neutral page has to a
   // representative image.
   private val apexHtml =
-    views.html.landing(models.Country.default, isApex = true)(using testsupport.TestMessages.forLang("en")).body
+    views.html.landing(models.Country.default, isApex = true, picker)(using testsupport.TestMessages.forLang("en")).body
 
   "the front-door preview" should "point og:image + twitter:image at the US home card, not Poland's" in {
     apexHtml should include ("""<meta property="og:image"       content="https://showtimes.cc/assets/img/og-home-us.jpg">""")
@@ -243,19 +270,12 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
 
   // ── The picker's country names ─────────────────────────────────────────────
   //
-  // The dynamic picker's country pills (`renderPickerCountries`) used to read
-  // `country.name` straight off `KINOWO_CATALOG`, i.e. `Country.displayName` —
-  // each country's own FIXED native/English label, baked once into the
-  // boot-time `/api/catalog` JSON and so incapable of varying with a visitor's
-  // chosen UI language (Germany's pill always said "Deutschland", everywhere).
-  //
-  // The fix is client-side: `countryName(code)` calls `t('country.' + code)`
-  // against the embedded language pack (`#i18n-packs`, `controllers.I18nPacks`)
-  // at RUNTIME, driven by whatever the visitor last picked (`localStorage`) —
-  // not a server-baked, request-language-scoped object. So every page embeds
-  // EVERY language's country names regardless of which `Messages` rendered it;
-  // these assert the pack itself carries the right mapping in every language
-  // and that the picker's own lookup function is present. (The pack doesn't
+  // The country pills are server-rendered links carrying `data-i18n="country.<code>"`,
+  // so `applyLanguage` names them in the VISITOR's chosen language at runtime from
+  // the embedded pack (`#i18n-packs`, `controllers.I18nPacks`) — never each
+  // country's fixed native label (`Country.displayName`), which once made Germany's
+  // pill say "Deutschland" everywhere. These assert the pack carries the right
+  // mapping in every language and that every pill is wired to it. (The pack doesn't
   // depend on the rendering `Messages`, so `html`'s Polish render serves.)
 
   "the embedded language pack" should "carry Germany's name in every language, not just its native one" in {
@@ -270,8 +290,11 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "expose the client-side lookup the dynamic picker calls per pill" in {
-    html should include ("function countryName(code)")
-    html should include ("t('country.' + code)")
+  "the country pills" should "each link to that country's own picker and relabel with the visitor's language" in {
+    models.Country.switchable.foreach { c =>
+      html should include (
+        s"""href="${c.webUrl.get}/${controllers.LandingController.PickCityQuery}" data-country="${c.code}" data-i18n="country.${c.code}">""")
+    }
+    html should include ("""<a class="picker-country-pill active" href="https://kinowo.net/?pick=city" data-country="pl"""")
   }
 }

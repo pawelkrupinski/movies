@@ -51,12 +51,12 @@ object FixtureServerMain {
    *  against a country this server is not defaulting to; production has one
    *  country per deployment and so only ever one of these shapes.
    */
-  private[tools] def landings(): Map[String, String] = Map(
-    "/"             -> views.html.landing(models.Country.default, isApex = false).body,
-    "/landing-us"   -> views.html.landing(models.Country.UnitedStates, isApex = false).body,
-    "/landing-uk"   -> views.html.landing(models.Country.UnitedKingdom, isApex = false).body,
-    "/landing-de"   -> views.html.landing(models.Country.Germany, isApex = false).body,
-    "/landing-apex" -> views.html.landing(models.Country.default, isApex = true).body,
+  private[tools] def landings(picker: controllers.PickerFragments = controllers.PickerFragments.rendered()): Map[String, String] = Map(
+    "/"             -> views.html.landing(models.Country.default, isApex = false, picker).body,
+    "/landing-us"   -> views.html.landing(models.Country.UnitedStates, isApex = false, picker).body,
+    "/landing-uk"   -> views.html.landing(models.Country.UnitedKingdom, isApex = false, picker).body,
+    "/landing-de"   -> views.html.landing(models.Country.Germany, isApex = false, picker).body,
+    "/landing-apex" -> views.html.landing(models.Country.default, isApex = true, picker).body,
   )
 
   def main(args: Array[String]): Unit = {
@@ -169,7 +169,10 @@ object FixtureServerMain {
     // Bundesländer, and is the only roster whose names carry umlauts; the UK
     // nests TWO, its places under a county under a nation — the only one with a
     // heading inside a heading.
-    val landingPages: Map[String, String] = landings()
+    val pickerFragments = controllers.PickerFragments.rendered()
+    val landingPages: Map[String, String] = landings(pickerFragments)
+    // The other countries' picker panes those landings fetch once they are up.
+    val pickerApi = new controllers.PickerController(play.api.test.Helpers.stubControllerComponents(), pickerFragments)
 
     // Resolve `/{city}/…` to (City, in-city sub-path). The first path segment
     // is matched against the known cities; an unknown first segment → None.
@@ -229,7 +232,11 @@ object FixtureServerMain {
       val uri     = exchange.getRequestURI.toString
       val request = play.api.test.FakeRequest("GET", uri).withHeaders(
         Seq("If-Modified-Since", "If-None-Match").flatMap(name => Option(exchange.getRequestHeaders.getFirst(name)).map(name -> _))*)
-      resolve(exchange.getRequestURI.getPath).flatMap { case (c, sub) => apiAction(c, sub, request) } match {
+      val path    = exchange.getRequestURI.getPath
+      val action  =
+        if (path.startsWith("/api/picker/")) Some(pickerApi.fragment(path.stripPrefix("/api/picker/"), request.getQueryString("v")))
+        else resolve(path).flatMap { case (c, sub) => apiAction(c, sub, request) }
+      action match {
         case None         => false
         case Some(action) =>
           import play.api.test.Helpers.{contentAsBytes, contentType, defaultAwaitTimeout, headers, status}

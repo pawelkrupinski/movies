@@ -1,0 +1,53 @@
+@(code: String, baseUrl: String, groups: Seq[models.CityGroup], ungrouped: Seq[models.City])
+@*
+   One country's places, as the `/` picker shows them — the SAME markup whether it
+   arrives inside the landing (the page's own country, `landing.scala.html`) or
+   from `GET /api/picker/:country` (every other country, fetched once the page
+   is up). Rendered once per deploy (`controllers.PickerFragments`), never per
+   request, so it may depend on nothing but the country it is handed — its
+   `code`, its site's `baseUrl`, its `groups` (`Country.cityGroups`) or, for a
+   country that does not group, its `ungrouped` places: no host, no mount path
+   and no language. That last one holds by construction — this template takes no
+   `Messages` — and it can, because every word in it is a place or region NAME,
+   which no language switch translates. The picker chrome around it (back row,
+   search copy, spinner, error) lives in the landing and carries the
+   `data-i18n` hooks `applyLanguage` relabels.
+
+   One `.picker-level` per screen of the drill-down: the root (regions and any
+   place a region collapsed onto, `CityGroup.soleCity`), one per region that
+   holds several things, one per subregion (only the UK nests that deep). Each
+   level lists its rows in the order the picker always showed them — a heading
+   where its first place would be, direct places beside it. The script shows
+   one level at a time; with no script, every level shows, each under its own
+   title, and a heading is a link down to its level — so the page still works,
+   and a crawler still reaches every place.
+
+   A place is a real link to its page on its own country's site (absolute: the
+   fragment is served by every deployment, so it cannot assume the host it
+   lands on), carrying what the script needs and nothing more: its slug, its
+   coordinates for "nearest city", and the other names the search should find
+   it by (`data-alias` — a region it collapsed onto, pages folded into it).
+*@
+@levelId(parts: Seq[String]) = @{ ("pick" +: code +: parts).mkString("-") }
+@place(c: models.City, aliases: Seq[String]) = {<li><a class="picker-item" href="@baseUrl/@c.slug/" data-slug="@c.slug" data-lat="@c.lat" data-lon="@c.lon"@if(aliases.nonEmpty){ data-alias="@aliases.mkString(", ")"}><span class="picker-item-label">@c.labels.nominative</span></a></li>}
+@heading(label: String, id: String, region: String, subregion: Option[String]) = {<li><a class="picker-item picker-group-item" href="#@id" data-region="@region"@for(s <- subregion){ data-subregion="@s"}><span class="picker-item-label">@label</span><span class="submenu-chevron" aria-hidden="true">›</span></a></li>}
+@node(g: models.CityGroup, region: Option[models.CityGroup]) = {@g.soleCity match {
+  case Some(c) => {@place(c, g.searchAliases)}
+  case None => {@region match {
+    case None    => {@heading(g.label, levelId(Seq(g.slug)), g.label, None)}
+    case Some(r) => {@heading(g.label, levelId(Seq(r.slug, g.slug)), r.label, Some(g.label))}
+  }}
+}}
+<div class="picker-pane" data-country="@code" data-base-url="@baseUrl">
+<div class="picker-level" data-level="root"><ul class="picker-list">
+@if(groups.isEmpty) {@for(c <- ungrouped) {@place(c, Nil)
+}} else {@for(g <- groups) {@node(g, None)
+}}</ul></div>
+@for(r <- groups if r.soleCity.isEmpty) {<div class="picker-level" id="@levelId(Seq(r.slug))" data-region="@r.label"><p class="picker-level-title">@r.label</p><ul class="picker-list">
+@for(c <- r.cities) {@place(c, Nil)
+}@for(g <- r.groups) {@node(g, Some(r))
+}</ul></div>
+@for(g <- r.groups if g.soleCity.isEmpty) {<div class="picker-level" id="@levelId(Seq(r.slug, g.slug))" data-region="@r.label" data-subregion="@g.label"><p class="picker-level-title">@r.label — @g.label</p><ul class="picker-list">
+@for(c <- g.allCities) {@place(c, Nil)
+}</ul></div>
+}}</div>
