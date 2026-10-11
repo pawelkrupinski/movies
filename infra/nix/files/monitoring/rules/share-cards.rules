@@ -1,7 +1,7 @@
 ---
-# FILM SHARE CARDS: the worker renders each film's Open Graph card (and caches its poster and the
+# SHARE CARDS: the worker renders each film's and each city's Open Graph card (and caches the poster and the
 # card's badge-less base) into a per-country directory on k3s-worker-1 that Caddy serves at
-# /share-cards/<cc>/. Cards, posters and bases share ONE budget (KINOWO_SHARE_CARD_BUDGET_MB, 1 GiB by default) that the worker's janitor
+# /share-cards/<cc>/. Film cards, posters, bases and city cards share ONE budget (KINOWO_SHARE_CARD_BUDGET_MB, 3 GiB by default) that the worker's janitor
 # enforces by evicting the oldest files nothing references. These rules watch the two ways that
 # can go wrong -- the directory filling towards the budget, and the part the janitor may NOT delete
 # outgrowing it -- the poster upstreams the cards are drawn from, and the pipeline itself: cards
@@ -41,7 +41,7 @@ groups:
         annotations:
           summary: "{{ $labels.country }}'s share cards and posters use {{ $value | humanizePercentage }} of their disk budget"
           description: >-
-            `kinowo_worker_share_cards_bytes` summed over cards, cached posters and card bases is above 85% of
+            `kinowo_worker_share_cards_bytes` summed over film cards, cached posters, card bases and city cards is above 85% of
             `kinowo_worker_share_cards_budget_bytes` for this country; most of it is {{ $labels.kind }}s.
             The janitor evicts unreferenced files oldest-first every ten minutes, so this staying
             high means most of the directory is CURRENT (the card, base and poster of every film web_movies
@@ -219,3 +219,66 @@ groups:
             "re-scrape drain failed" or "Facebook re-scrapes are OFF"). `sent` still counting while
             the queue grows is demand above the quota -- a flood of card changes; see
             `kinowo_worker_share_cards_render_total` by reason.
+
+      # THE VOLUME UNDER THE CARDS RUNNING LOW. The worker writes no NEW file once the volume's free
+      # space is under KINOWO_SHARE_CARD_MIN_FREE_MB (`_min_free_bytes`, 4 GiB by default; see
+      # ShareCardRoom), so the cards never fill k3s-worker-1's root. Twice that floor for a quarter
+      # hour is the warning before the refusals start: whatever is filling the disk (the cards, or
+      # anything else on the node -- FilesystemSpaceLow names the mount) has hours left, not days.
+      - alert: ShareCardVolumeLowSpace
+        expr: >-
+          max by (country) (last_over_time(kinowo_worker_share_cards_volume_free_bytes[10m]))
+          < 2 * max by (country) (last_over_time(kinowo_worker_share_cards_min_free_bytes[10m]))
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}'s share-card volume has {{ $value | humanize1024 }}B free, under twice the floor the cards keep"
+          description: >-
+            `kinowo_worker_share_cards_volume_free_bytes` is under twice
+            `kinowo_worker_share_cards_min_free_bytes`. At the floor the worker stops writing NEW
+            share-card files (ShareCardWritesRefused): new films keep their city's card and new
+            cities their country's home card. Find what is filling k3s-worker-1's root (`du -xh
+            --max-depth=2 / | sort -h | tail`); if it is the cards, compare
+            `kinowo_worker_share_cards_bytes` by kind with the budget.
+
+      # THE CAP REFUSING NEW FILES. A new card, base, poster or city card refused because the
+      # directory stays over its budget after eviction or the volume is under its free-space floor.
+      # Nothing breaks -- existing cards are still overwritten, new ones fall back -- but every new
+      # film and city goes without its own card until there is room again.
+      - alert: ShareCardWritesRefused
+        expr: >-
+          sum by (country) (increase(kinowo_worker_share_cards_refused_total[30m])) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}'s worker is refusing new share-card files: no room"
+          description: >-
+            `kinowo_worker_share_cards_refused_total` counted new share-card files the directory's cap
+            refused over the last half hour. Either what nothing may evict exceeds the budget
+            (ShareCardsOverBudget: raise KINOWO_SHARE_CARD_BUDGET_MB) or the volume is under
+            KINOWO_SHARE_CARD_MIN_FREE_MB (ShareCardVolumeLowSpace: free the disk). The worker logs
+            `no room for a new share-card <kind> file: <why>`.
+
+      # CITY CARDS MISSING OR STALE. Every city is re-rendered once a week at its own phase, and a
+      # city with no card goes first, twenty a minute; `city_coverage_ratio` is the share of the
+      # country's cities whose card was rendered in the last two weeks. A first deploy fills the US's
+      # ~2,000 cities in under two hours, so six hours under 95% means the RenderCityCard renders are
+      # not running or not landing.
+      - alert: ShareCardCityCoverageLow
+        expr: >-
+          max by (country) (last_over_time(kinowo_worker_share_cards_city_coverage_ratio[10m])) < 0.95
+        for: 6h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }} has a current share card for only {{ $value | humanizePercentage }} of its cities"
+          description: >-
+            `kinowo_worker_share_cards_city_coverage_ratio` -- the country's cities whose card was
+            rendered within two weeks -- has been under 95% for six hours. A city without one shows
+            its country's home card in previews; a stale one shows last week's films. Read
+            `kinowo_worker_share_cards_city_render_total` by outcome: `refused` is the cap
+            (ShareCardWritesRefused), `failed` a drawing fault (the worker logs `city card: <slug>
+            could not be drawn`), nothing at all means the `city-card` reaper or the RenderCityCard
+            handler is not running.

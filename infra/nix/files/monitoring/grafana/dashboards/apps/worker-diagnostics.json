@@ -3339,6 +3339,228 @@
           "legendFormat": "{{country}} drift films per interval"
         }
       ]
+    },
+    {
+      "id": 64,
+      "title": "City share cards — cities whose card was rendered in the last two weeks",
+      "description": "`kinowo_worker_share_cards_city_coverage_ratio`: of the country's cities, the share whose card (`city-<slug>.jpg`, drawn by the worker from the city's films and cached posters) was rendered within two weeks. Each city is re-rendered once a week at its own hashed phase, new cities first (20 a minute), so a first deploy climbs from 0 to 1 within two hours and then stays flat. ShareCardCityCoverageLow fires under 95% for 6h.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 361
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country) (kinowo_worker_share_cards_city_coverage_ratio{country=~\"$country\"})",
+          "legendFormat": "{{country}}"
+        }
+      ]
+    },
+    {
+      "id": 65,
+      "title": "City share-card renders per interval — by outcome",
+      "description": "`kinowo_worker_share_cards_city_render_total`: rendered (a new picture), unchanged (the same films and posters as last week: only the file's date moved), refused (no room for a new file: see the volume panel) and failed (a drawing fault; the worker logs `city card: <slug> could not be drawn`). Steady state is a flat trickle, about a seventh of the country's cities a day.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 361
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, outcome) (increase(kinowo_worker_share_cards_city_render_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} {{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 66,
+      "title": "Share-card volume — free space against the floor the cards keep",
+      "description": "`kinowo_worker_share_cards_volume_free_bytes` / `_volume_size_bytes`: the volume holding the share-card directory (k3s-worker-1's root), as the janitor read it at its last pass. `_min_free_bytes` is KINOWO_SHARE_CARD_MIN_FREE_MB: below it the worker writes no NEW share-card file. ShareCardVolumeLowSpace fires under twice the floor for 15m.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 369
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country) (kinowo_worker_share_cards_volume_free_bytes{country=~\"$country\"})",
+          "legendFormat": "{{country}} free"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country) (kinowo_worker_share_cards_volume_size_bytes{country=~\"$country\"})",
+          "legendFormat": "{{country}} size"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country) (kinowo_worker_share_cards_min_free_bytes{country=~\"$country\"})",
+          "legendFormat": "{{country}} floor"
+        }
+      ]
+    },
+    {
+      "id": 67,
+      "title": "Share-card files refused by the cap — by kind",
+      "description": "`kinowo_worker_share_cards_refused_total`: new files (film card, base, poster, city card) the directory refused because it stays over its budget after eviction or the volume is under its free-space floor. Existing cards are still overwritten in place; a refused new one falls back (film page → city card, city page → home card). Anything above zero is ShareCardWritesRefused.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 369
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, kind) (increase(kinowo_worker_share_cards_refused_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} {{kind}}"
+        }
+      ]
     }
   ],
   "description": "Why a worker is misbehaving, once the application-health dashboard has told you that one is. There are FIVE workers — pl, uk, de, us and es, each its own k3s Deployment — so every panel is scoped by the Country variable and carries the country in its legend; pick one to isolate it, or All to compare. Memory (heap, NMT native categories, the off-book gap, buffers, and the pod's real cgroup limit from kube-state-metrics), CPU split by JIT and GC, GC frequency, restarts, resolution-cache hit rates, and the error shape of the outbound HTTP the scrape and enrichment phases depend on. All from each worker's own /metrics on k3s via local-prometheus. There is no CPU-credit panel: shared-CPU credit was a Fly billing concept and the whole throttle path it drove was deleted on 2026-09-04, so no series behind it exists. · NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still — the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",

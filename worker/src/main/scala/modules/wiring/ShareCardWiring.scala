@@ -32,7 +32,7 @@ trait ShareCardWiring { self: WorkerWiring =>
 
   lazy val shareCardMetrics: ShareCardMetrics = workerMetrics.shareCardSeries.forCountry(country.code)
 
-  lazy val shareCardBudget: ShareCardStorageBudget = configuration.shareCardStorageBudget(ShareCardStorageBudget(1024L * 1024 * 1024))
+  lazy val shareCardBudget: ShareCardStorageBudget = configuration.shareCardStorageBudget(ShareCardStorageBudget(3072L * 1024 * 1024))
 
   /** Posters download directly, except those of a site that blocks the worker's IP, which go through the
    *  egress its scrapes use: Multikino 403s the worker's IP on every poster as on its pages (the proxy), biletyna.pl

@@ -36,7 +36,7 @@ tests:
               kind: poster
             exp_annotations:
               summary: "pl's share cards and posters use 87.89% of their disk budget"
-              description: "`kinowo_worker_share_cards_bytes` summed over cards, cached posters and card bases is above 85% of `kinowo_worker_share_cards_budget_bytes` for this country; most of it is posters. The janitor evicts unreferenced files oldest-first every ten minutes, so this staying high means most of the directory is CURRENT (the card, base and poster of every film web_movies points a card at) -- compare `kinowo_worker_share_cards_current_bytes`. Raise KINOWO_SHARE_CARD_BUDGET_MB if the corpus grew; if current bytes did not grow, look for a flood of re-renders in `kinowo_worker_share_cards_render_total` by reason."
+              description: "`kinowo_worker_share_cards_bytes` summed over film cards, cached posters, card bases and city cards is above 85% of `kinowo_worker_share_cards_budget_bytes` for this country; most of it is posters. The janitor evicts unreferenced files oldest-first every ten minutes, so this staying high means most of the directory is CURRENT (the card, base and poster of every film web_movies points a card at) -- compare `kinowo_worker_share_cards_current_bytes`. Raise KINOWO_SHARE_CARD_BUDGET_MB if the corpus grew; if current bytes did not grow, look for a flood of re-renders in `kinowo_worker_share_cards_render_total` by reason."
       - eval_time: 45m
         alertname: ShareCardsOverBudget
         exp_alerts: []
@@ -347,3 +347,73 @@ tests:
       - eval_time: 700m
         alertname: ShareCardRescrapesNotDraining
         exp_alerts: []
+
+  # VOLUME LOW: 6 GiB free against a 4 GiB floor (under twice it), through a restart gap. Fires after
+  # 15m; 10 GiB free stays quiet.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_share_cards_volume_free_bytes{country="pl",instance="w1",job="kinowo-worker"}'
+        values: '6442450944x10 stale _x2 6442450944x20'
+      - series: 'kinowo_worker_share_cards_min_free_bytes{country="pl",instance="w1",job="kinowo-worker"}'
+        values: '4294967296x10 stale _x2 4294967296x20'
+      - series: 'kinowo_worker_share_cards_volume_free_bytes{country="uk",instance="w3",job="kinowo-worker"}'
+        values: '10737418240x32'
+      - series: 'kinowo_worker_share_cards_min_free_bytes{country="uk",instance="w3",job="kinowo-worker"}'
+        values: '4294967296x32'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ShareCardVolumeLowSpace
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: ShareCardVolumeLowSpace
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: pl
+            exp_annotations:
+              summary: "pl's share-card volume has 6GiB free, under twice the floor the cards keep"
+              description: "`kinowo_worker_share_cards_volume_free_bytes` is under twice `kinowo_worker_share_cards_min_free_bytes`. At the floor the worker stops writing NEW share-card files (ShareCardWritesRefused): new films keep their city's card and new cities their country's home card. Find what is filling k3s-worker-1's root (`du -xh --max-depth=2 / | sort -h | tail`); if it is the cards, compare `kinowo_worker_share_cards_bytes` by kind with the budget."
+
+  # WRITES REFUSED: one refusal a few minutes in fires after 15m; a country whose counter never moves
+  # stays quiet.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_share_cards_refused_total{country="pl",kind="city",instance="w1",job="kinowo-worker"}'
+        values: '0x4 1x30'
+      - series: 'kinowo_worker_share_cards_refused_total{country="uk",kind="city",instance="w3",job="kinowo-worker"}'
+        values: '0x34'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: ShareCardWritesRefused
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: ShareCardWritesRefused
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: pl
+            exp_annotations:
+              summary: "pl's worker is refusing new share-card files: no room"
+              description: "`kinowo_worker_share_cards_refused_total` counted new share-card files the directory's cap refused over the last half hour. Either what nothing may evict exceeds the budget (ShareCardsOverBudget: raise KINOWO_SHARE_CARD_BUDGET_MB) or the volume is under KINOWO_SHARE_CARD_MIN_FREE_MB (ShareCardVolumeLowSpace: free the disk). The worker logs `no room for a new share-card <kind> file: <why>`."
+
+  # CITY COVERAGE LOW: 80% for seven hours, across a restart gap, fires at 6h; a cold start that
+  # recovers within two hours never does.
+  - interval: 5m
+    input_series:
+      - series: 'kinowo_worker_share_cards_city_coverage_ratio{country="us",instance="w4",job="kinowo-worker"}'
+        values: '0.8x40 stale 0.8x50'
+      - series: 'kinowo_worker_share_cards_city_coverage_ratio{country="de",instance="w5",job="kinowo-worker"}'
+        values: '0 0.2 0.4 0.6 0.8 0.9 0.95 0.99 1x80'
+    alert_rule_test:
+      - eval_time: 5h
+        alertname: ShareCardCityCoverageLow
+        exp_alerts: []
+      - eval_time: 7h
+        alertname: ShareCardCityCoverageLow
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: us
+            exp_annotations:
+              summary: "us has a current share card for only 80% of its cities"
+              description: "`kinowo_worker_share_cards_city_coverage_ratio` -- the country's cities whose card was rendered within two weeks -- has been under 95% for six hours. A city without one shows its country's home card in previews; a stale one shows last week's films. Read `kinowo_worker_share_cards_city_render_total` by outcome: `refused` is the cap (ShareCardWritesRefused), `failed` a drawing fault (the worker logs `city card: <slug> could not be drawn`), nothing at all means the `city-card` reaper or the RenderCityCard handler is not running."
