@@ -9,6 +9,10 @@
       input.value = value;
       input.dispatchEvent(new Event('input'));
     },
+    // Click the first element matching each selector, in turn.
+    click: function () {
+      Array.prototype.forEach.call(arguments, function (selector) { document.querySelector(selector).click(); });
+    },
     // The trimmed text of every element matching `selector`, in DOM order.
     texts: function (selector) {
       return all(selector).map(function (el) { return el.textContent.trim(); });
@@ -23,6 +27,11 @@
       if (!element) return false;
       var r = element.getBoundingClientRect();
       return r.width > 0 && r.height > 0;
+    },
+    // Fire a cancelable `submit` at the form matching `selector`: its listeners
+    // run, and nothing navigates.
+    submit: function (selector) {
+      document.querySelector(selector).dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     },
     // [top, left] of the first element matching `selector`.
     topLeft: function (selector) {

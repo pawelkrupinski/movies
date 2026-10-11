@@ -401,7 +401,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  see [[tools.PageScripts]]): pure definitions, installed in every tab before
    *  its body runs and again ahead of every document it loads after. */
   private val PageHelpers = Seq(
-    "common/dom.js", "film/film-page.js", "layout/navbar.js", "listing/carousel.js", "listing/grid.js", "listing/posters.js",
+    "common/dom.js", "debug/corpus-table.js", "film/film-page.js", "layout/navbar.js", "listing/carousel.js",
+    "listing/expiry.js", "listing/filtry.js", "listing/grid.js", "listing/posters.js",
     "user-state/user-state.js")
 
   /** Open `url` in a fresh tab with [[PageHelpers]] installed. Cancels the test
@@ -651,8 +652,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "not let a pre-upgrade validator 304 an emptied bucket" in {
     onLoggedInIndex { page =>
       awaitOwnReconcile(page)  // pl synced, pl validators cached
-      page.eval("localStorage.removeItem('hiddenFilms:pl');" +
-        "localStorage.setItem('hiddenFilms', JSON.stringify(['UK Film'])); localStorage.setItem('hiddenFilmsCountry', 'uk')")
+      page.eval("localStorage.removeItem('hiddenFilms:pl')")
+      page.eval("localStorage.setItem('hiddenFilms', JSON.stringify(['UK Film'])); localStorage.setItem('hiddenFilmsCountry', 'uk')")
       page.reload()
       page.waitFor("__userState.requested('/api/me/pl/hidden-films')")
       page.waitFor("getHidden().indexOf('Film A') !== -1")
@@ -2764,10 +2765,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // the two helpers: proves what actually lands in the batch the server reads.
   it should "queue the origin host and fallback flag for a failed fallback poster" in {
     onPath("/") { page =>
-      val queued = page.evalString(
-        "JSON.stringify(__posters.queuedFor('error', " +
-          "'https://images.weserv.nl/?url=m.media-amazon.com%2Fimages%2FM%2Fx.jpg', " +
-          "'https://images.weserv.nl/?url=image.tmdb.org%2Fp%2Fa.jpg'))")
+      val (fallback, primary) = ("https://images.weserv.nl/?url=m.media-amazon.com%2Fimages%2FM%2Fx.jpg",
+        "https://images.weserv.nl/?url=image.tmdb.org%2Fp%2Fa.jpg")
+      val queued = page.evalString(s"JSON.stringify(__posters.queuedFor('error', '$fallback', '$primary'))")
       queued should include (""""host":"m.media-amazon.com"""")   // origin, not images.weserv.nl
       queued should include (""""fallback":true""")
       queued should include (""""success":false""")
@@ -2940,8 +2940,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       clearLocalStorage(page)
       pinDateFilterAnytime(page)
-      page.eval("document.querySelector('input[name=\"format-dim\"][value=\"2D\"]').click(); " +
-        "document.querySelector('input[name=\"format-lang\"][value=\"NAP\"]').click()")
+      page.eval("__dom.click('input[name=\"format-dim\"][value=\"2D\"]', 'input[name=\"format-lang\"][value=\"NAP\"]')")
       val after = visibleBadgeCount(page)
       after should be > 0
       page.evalBool("__grid.badgesAllCarry(['2D', 'NAP'])") shouldBe true
@@ -3075,7 +3074,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       clearLocalStorage(page)
       // The fixture render pins "today"; drop it so the bounds are measured.
-      page.eval("delete window.KINOWO_PINNED_TODAY; window.showtimeNow = () => Date.UTC(2026, 5, 8, 22, 30)")
+      page.eval("__grid.clockAt(Date.UTC(2026, 5, 8, 22, 30))")
 
       page.eval("window.CITY_TIMEZONE = 'Europe/London'")
       page.evalString("dateBounds().today")    shouldBe "2026-06-08"
@@ -3090,8 +3089,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "leave a London visitor on today's listings at 23:30 local" in {
     onPath("/") { page =>
       clearLocalStorage(page)
-      page.eval("delete window.KINOWO_PINNED_TODAY; window.showtimeNow = () => Date.UTC(2026, 5, 8, 22, 30); " +
-        "window.CITY_TIMEZONE = 'Europe/London'")
+      page.eval("__grid.clockAt(Date.UTC(2026, 5, 8, 22, 30)); window.CITY_TIMEZONE = 'Europe/London'")
       page.eval("document.getElementById('date-filter').value = 'today'; applyFilters()")
 
       visibleCardCount(page) should be > 0
@@ -3516,10 +3514,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       page.eval("__carousel.releaseFrames()")
 
-      page.waitFor(
-        "document.querySelectorAll('#day-track > .day-col').length === 0 && " +
-          "document.getElementById('date-filter').value === 'tomorrow'"
-      )
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0 && document.getElementById('date-filter').value === 'tomorrow'")
       // Let any straggling frame / transition run before judging the layout.
       page.waitFor("__carousel.msSinceStep() > 2400")
 
@@ -3567,8 +3562,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
       page.eval("window.animateToDay('tomorrow')")
       page.waitFor("getComputedStyle(document.getElementById('day-track')).transitionDuration !== '0s'")
-      page.eval("document.querySelector('#day-track .card')" +
-        ".dispatchEvent(new TransitionEvent('transitionend', { bubbles: true, propertyName: 'transform' }))")
+      page.eval("document.querySelector('#day-track .card').dispatchEvent(new TransitionEvent('transitionend', { bubbles: true, propertyName: 'transform' }))")
       page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
       page.evalString("document.getElementById('date-filter').value") shouldBe "today"
       // …and the slide's own end still commits it.
@@ -3723,9 +3717,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // Narrow on two axes at once: one cinema off, and a query broad enough to
       // leave several cards standing.
-      page.eval(
-        "localStorage.setItem('disabledCinemas', JSON.stringify(ALL_CINEMAS.slice(0, 1))); " +
-        "document.getElementById('search-input').value = 'a'; applyFilters()")
+      page.eval("localStorage.setItem('disabledCinemas', JSON.stringify(ALL_CINEMAS.slice(0, 1)))")
+      page.eval("document.getElementById('search-input').value = 'a'; applyFilters()")
       visibleCardCount(page) should be > 1
 
       dragLeftAndHold(page)
@@ -4077,9 +4070,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // The label is STILL visible — no `single-cinema` suppression any more.
       page.evalBool("document.getElementById('film-grid').classList.contains('single-cinema')") shouldBe false
       page.evalBool(
-        "(() => { const labels = [...document.querySelectorAll('.cinema-label')];" +
-        "  return labels.length > 0 && labels.some(element =>" +
-        "    element.offsetParent !== null && getComputedStyle(element).display !== 'none'); })()"
+        "[...document.querySelectorAll('.cinema-label')].some(l => l.offsetParent !== null && getComputedStyle(l).display !== 'none')"
       ) shouldBe true
     }
   }
@@ -4097,9 +4088,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // now the name + chevron beside the checkbox, not around it.
   "an area group's fold" should "sit beside its area checkbox, not around it" in {
     onPath("/") { page =>
-      page.eval(
-        "const cs = ALL_CINEMAS; window.CINEMA_AREAS = [{name:'Group A', slug:'group-a', cinemas: cs}];" +
-        "buildCinemaPanel();")
+      page.eval("__filtry.areas(1); buildCinemaPanel()")
       page.evalBool("document.querySelector('.cinema-area-toggle').closest('[role=\"button\"]') === null") shouldBe true
       val fold = "document.querySelector('.cinema-area-header [role=\"button\"]')"
       page.evalString(s"$fold.textContent") should include ("Group A")
@@ -4112,13 +4101,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   "the area-grouped cinema filter" should "render collapsible groups; area (de)select drives disabledCinemas + indeterminate state" in {
     onPath("/") { page =>
-      page.eval(
-        "const cs = ALL_CINEMAS; const mid = Math.ceil(cs.length/2);" +
-        "window.CINEMA_AREAS = [" +
-        "  {name:'Group A', slug:'group-a', cinemas: cs.slice(0, mid)}," +
-        "  {name:'Group B', slug:'group-b', cinemas: cs.slice(mid)} ];" +
-        "localStorage.setItem('disabledCinemas','[]'); buildCinemaPanel();"
-      )
+      page.eval("__filtry.areas(2); localStorage.setItem('disabledCinemas', '[]'); buildCinemaPanel()")
 
       // One group per area; every cinema rendered as a row; bodies collapsed.
       page.evalInt("document.querySelectorAll('.cinema-area-group').length") shouldBe 2
@@ -4133,21 +4116,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // Deselecting an area disables exactly that area's cinemas; the area
       // checkbox clears and the master (Wszystkie kina) goes indeterminate.
-      page.eval("(() => { const cb = document.querySelector('.cinema-area-toggle'); cb.checked = false; cb.dispatchEvent(new Event('change')); })()")
+      page.eval("__filtry.setArea(false)")
       page.evalInt("JSON.parse(localStorage.getItem('disabledCinemas')).length") shouldBe
         page.evalInt("window.CINEMA_AREAS[0].cinemas.length")
       page.evalBool("document.querySelector('.cinema-area-toggle').checked") shouldBe false
       page.evalBool("document.getElementById('cinema-all').indeterminate") shouldBe true
 
       // Re-selecting the area re-enables all its cinemas; master returns to all-checked.
-      page.eval("(() => { const cb = document.querySelector('.cinema-area-toggle'); cb.checked = true; cb.dispatchEvent(new Event('change')); })()")
+      page.eval("__filtry.setArea(true)")
       page.evalInt("JSON.parse(localStorage.getItem('disabledCinemas')).length") shouldBe 0
       page.evalBool("document.getElementById('cinema-all').checked") shouldBe true
 
       // Disabling ONE cinema inside an area makes that area checkbox indeterminate.
-      page.eval("(() => { const one = window.CINEMA_AREAS[0].cinemas[0];" +
-        " const row = document.querySelector('#cinema-list input[data-cinema=\"' + CSS.escape(one) + '\"]');" +
-        " row.checked = false; row.dispatchEvent(new Event('change')); })()")
+      page.eval("__filtry.setCinema(window.CINEMA_AREAS[0].cinemas[0], false)")
       page.evalBool("document.querySelector('.cinema-area-toggle').indeterminate") shouldBe true
       page.evalBool("document.getElementById('cinema-all').indeterminate") shouldBe true
     }
@@ -4166,14 +4147,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def onAreaPicker(body: CdpPage => Any): Unit =
     onPath("/") { page =>
       try {
-        page.eval(
-          "const cs = ALL_CINEMAS; const mid = Math.ceil(cs.length/2);" +
-          "window.CINEMA_AREAS = [" +
-          "  {name:'Group A', slug:'group-a', cinemas: cs.slice(0, mid)}," +
-          "  {name:'Group B', slug:'group-b', cinemas: cs.slice(mid)} ];" +
-          "localStorage.removeItem('areasChosen:' + CURRENT_CITY);" +
-          "localStorage.setItem('disabledCinemas','[]'); maybeShowAreaPicker();"
-        )
+        page.eval("__filtry.openAreaPicker()")
         body(page)
       } finally page.eval("localStorage.removeItem('disabledCinemas'); localStorage.removeItem('areasChosen:' + CURRENT_CITY); 0")
     }
@@ -4184,11 +4158,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Modal up, one checkbox per area, all pre-checked.
       page.evalBool("!!document.getElementById('area-picker-overlay')") shouldBe true
       page.evalInt("document.querySelectorAll('#area-picker-overlay input[data-area-slug]').length") shouldBe 2
-      page.evalBool("[...document.querySelectorAll('#area-picker-overlay input[data-area-slug]')].every(c => c.checked)") shouldBe true
+      page.evalInt("__filtry.pickerAreasChecked()") shouldBe 2
 
       // Uncheck the second area and confirm.
-      page.eval("(() => { const cbs = document.querySelectorAll('#area-picker-overlay input[data-area-slug]');" +
-        " cbs[1].checked = false; document.querySelector('#area-picker-overlay button').click(); })()")
+      page.eval("__filtry.setPickerArea(1, false, false); document.querySelector('#area-picker-overlay button').click()")
 
       // Dismissed; that area's cinemas disabled; choice remembered.
       page.evalBool("!document.getElementById('area-picker-overlay')") shouldBe true
@@ -4208,11 +4181,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // row at a time.
   it should "select and deselect every area from the master row" in {
     onAreaPicker { page =>
-      def areasChecked = page.evalInt(
-        "[...document.querySelectorAll('#area-picker-overlay input[data-area-slug]')].filter(c => c.checked).length")
-      def clickAll()   = page.eval(
-        "(() => { const a = document.getElementById('area-picker-all');" +
-        " a.checked = !a.checked; a.onchange(); })()")
+      def areasChecked = page.evalInt("__filtry.pickerAreasChecked()")
+      def clickAll()   = page.eval("__filtry.togglePickerAll()")
 
       // Starts all-checked, mirroring the pre-selected areas.
       page.evalBool("document.getElementById('area-picker-all').checked") shouldBe true
@@ -4226,12 +4196,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // Unticking one area drops the master to indeterminate; re-ticking it
       // restores the full check.
-      page.eval("(() => { const cbs = document.querySelectorAll('#area-picker-overlay input[data-area-slug]');" +
-        " cbs[1].checked = false; cbs[1].onchange(); })()")
+      page.eval("__filtry.setPickerArea(1, false, true)")
       page.evalBool("document.getElementById('area-picker-all').checked") shouldBe false
       page.evalBool("document.getElementById('area-picker-all').indeterminate") shouldBe true
-      page.eval("(() => { const cbs = document.querySelectorAll('#area-picker-overlay input[data-area-slug]');" +
-        " cbs[1].checked = true; cbs[1].onchange(); })()")
+      page.eval("__filtry.setPickerArea(1, true, true)")
       page.evalBool("document.getElementById('area-picker-all').checked") shouldBe true
       page.evalBool("document.getElementById('area-picker-all').indeterminate") shouldBe false
 
@@ -4291,10 +4259,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   "a non-date filter change" should "leave the URL alone until the Copy button is pressed" in {
     onPath("/") { page =>
-      page.eval(
-        "document.querySelector('input[name=\"format-dim\"][value=\"3D\"]').click();" +
-        "document.getElementById('format-imax').click()"
-      )
+      page.eval("document.querySelector('input[name=\"format-dim\"][value=\"3D\"]').click(); document.getElementById('format-imax').click()")
       // Neither click is reflected in the URL — only Copy commits state.
       page.evalBool("new URL(location.href).searchParams.has('dim')")  shouldBe false
       page.evalBool("new URL(location.href).searchParams.has('imax')") shouldBe false
@@ -4303,10 +4268,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   "format Wymiar = 3D" should "round-trip through ?dim=3D when the Copy button is used" in {
     onPath("/") { page =>
-      page.eval(
-        "document.querySelector('input[name=\"format-dim\"][value=\"3D\"]').click();" +
-        "copyFilterLinkToClipboard()"
-      )
+      page.eval("document.querySelector('input[name=\"format-dim\"][value=\"3D\"]').click(); copyFilterLinkToClipboard()")
       page.evalString("new URL(location.href).searchParams.get('dim')") shouldBe "3D"
     }
     onPath("/?dim=3D") { page =>
@@ -4317,10 +4279,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   "format Wersja = DUB" should "round-trip through ?lang=DUB when the Copy button is used" in {
     onPath("/?lang=DUB") { page =>
       page.evalBool("document.querySelector('input[name=\"format-lang\"][value=\"DUB\"]').checked") shouldBe true
-      page.eval(
-        "document.querySelector('input[name=\"format-lang\"][value=\"\"]').click();" +
-        "copyFilterLinkToClipboard()"
-      )
+      page.eval("document.querySelector('input[name=\"format-lang\"][value=\"\"]').click(); copyFilterLinkToClipboard()")
       page.evalBool("new URL(location.href).searchParams.has('lang')") shouldBe false
     }
   }
@@ -4354,11 +4313,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   "the from-hour filter" should "round-trip through ?from=HH:MM when the Copy button is used" in {
     onPath("/") { page =>
-      page.eval(
-        "document.getElementById('from-hour').value = '18';" +
-        "document.getElementById('from-minute').value = '30';" +
-        "onFormatChange(); copyFilterLinkToClipboard()"
-      )
+      page.eval("document.getElementById('from-hour').value = '18'; document.getElementById('from-minute').value = '30'")
+      page.eval("onFormatChange(); copyFilterLinkToClipboard()")
       page.evalString("new URL(location.href).searchParams.get('from')") shouldBe "18:30"
     }
     onPath("/?from=20:15") { page =>
@@ -4370,10 +4326,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   "the search input" should "round-trip through ?q= when the Copy button is used" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)
-      page.eval(
-        "document.getElementById('search-input').value = 'Diabeł';" +
-        "applyFilters(); copyFilterLinkToClipboard()"
-      )
+      page.eval("document.getElementById('search-input').value = 'Diabeł'; applyFilters(); copyFilterLinkToClipboard()")
       page.evalString("new URL(location.href).searchParams.get('q')") shouldBe "Diabeł"
     }
     onPath("/?q=Diab%C5%82eb") { page =>
@@ -4412,9 +4365,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalString("document.getElementById('genre-row').getAttribute('role')") shouldBe "button"
       page.evalInt("document.getElementById('genre-row').tabIndex") shouldBe 0
       expanded("#genre-row") shouldBe "false"
-      page.eval(
-        "(() => { const row = document.getElementById('genre-row'); row.focus();" +
-        "  row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()")
+      page.eval("document.getElementById('genre-row').focus()")
+      page.eval("document.getElementById('genre-row').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))")
       page.evalString("document.getElementById('genre-list').style.display") shouldBe ""
       expanded("#genre-row") shouldBe "true"
 
@@ -4437,10 +4389,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "document.querySelector('#country-list input[type=\"checkbox\"]:not(.submenu-all)').value"
       )
       firstCountry should not be ""
-      page.eval(
-        "document.querySelector('#country-list input[type=\"checkbox\"]:not(.submenu-all)').click();" +
-        "copyFilterLinkToClipboard()"
-      )
+      page.eval("document.querySelector('#country-list input[type=\"checkbox\"]:not(.submenu-all)').click(); copyFilterLinkToClipboard()")
       val included = page.evalString(
         "new URL(location.href).searchParams.getAll('country').join('|')"
       ).split('|').toSet
@@ -4459,16 +4408,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "document.querySelector('#country-list input[type=\"checkbox\"]:not(.submenu-all)').value"
       )
       onPath("/?country=" + java.net.URLEncoder.encode(firstCountry, "UTF-8")) { page2 =>
-        val firstChecked = page2.evalBool(
-          "[...document.querySelectorAll('#country-list input[type=\"checkbox\"]:not(.submenu-all)')]" +
-            ".find(cb => cb.value === " + jsString(firstCountry) + ").checked"
-        )
-        firstChecked shouldBe true
-        val anyOtherChecked = page2.evalBool(
-          "[...document.querySelectorAll('#country-list input[type=\"checkbox\"]:not(.submenu-all)')]" +
-            ".some(cb => cb.value !== " + jsString(firstCountry) + " && cb.checked)"
-        )
-        anyOtherChecked shouldBe false
+        page2.evalBool(s"__filtry.isChecked('#country-list', ${jsString(firstCountry)})") shouldBe true
+        page2.evalBool(s"__filtry.othersChecked('#country-list', ${jsString(firstCountry)})") shouldBe false
       }
     }
   }
@@ -4495,26 +4436,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       )
       firstGenre should not be ""
       onPath("/?genre=" + java.net.URLEncoder.encode(firstGenre, "UTF-8")) { page2 =>
-        val firstChecked = page2.evalBool(
-          "[...document.querySelectorAll('#genre-list input[type=\"checkbox\"]:not(.submenu-all)')]" +
-            ".find(cb => cb.value === " + jsString(firstGenre) + ").checked"
-        )
-        firstChecked shouldBe true
-        val anyOtherChecked = page2.evalBool(
-          "[...document.querySelectorAll('#genre-list input[type=\"checkbox\"]:not(.submenu-all)')]" +
-            ".some(cb => cb.value !== " + jsString(firstGenre) + " && cb.checked)"
-        )
-        anyOtherChecked shouldBe false
+        page2.evalBool(s"__filtry.isChecked('#genre-list', ${jsString(firstGenre)})") shouldBe true
+        page2.evalBool(s"__filtry.othersChecked('#genre-list', ${jsString(firstGenre)})") shouldBe false
       }
     }
   }
 
   "a genre pill on a film card" should "link to the /{city}/movies?genre= browse page for that genre" in {
     onPath("/") { page =>
-      val href = page.evalString(
-        "(() => { const a = document.querySelector('.col[data-genres] a.pill.genre');" +
-          "  return a ? a.getAttribute('href') : ''; })()"
-      )
+      val href = page.evalString("document.querySelector('.col[data-genres] a.pill.genre')?.getAttribute('href') || ''")
       href should startWith(cityPrefix + "/movies?genre=")
     }
   }
@@ -4525,11 +4455,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // The cinema-picker checkbox has no `value` attribute (the cinema name
       // is captured by closure in its `onchange` handler), so the cinema
       // identity is in the adjacent label text, not on `cb.value`.
-      val cinema = page.evalString(
-        "(() => { const cb = document.querySelector('#cinema-list input[type=\"checkbox\"]');" +
-          "  if (!cb.checked) return ''; cb.click();" +
-          "  return cb.parentElement.textContent.trim(); })()"
-      )
+      val cinema = page.evalString("__filtry.uncheckFirstCinema()")
       cinema should not be ""
       page.eval("copyFilterLinkToClipboard()")
       val enabled = page.evalString(
@@ -4538,10 +4464,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // The URL carries the canonical cinema displayNames of every enabled
       // cinema (i.e. ALL_CINEMAS minus the one just disabled). Look up what
       // landed in disabledCinemas to find the canonical for the one we toggled.
-      val disabled = page.evalString(
-        "(() => { const dis = JSON.parse(localStorage.getItem('disabledCinemas') || '[]');" +
-          "  return dis[0] || ''; })()"
-      )
+      val disabled = page.evalString("__filtry.disabled()[0] || ''")
       enabled should not contain disabled
       enabled.size should be > 0
       // Reset the LS so neighbouring tests start with the default all-enabled
@@ -4607,10 +4530,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       pinDateFilterAnytime(page)
 
       // First checkbox (ALL_CINEMAS[0] order) off, the rest on.
-      page.evalBool(
-        "(() => { const bs = [...document.querySelectorAll('#cinema-list input[type=\"checkbox\"]')];" +
-          "  return !bs[0].checked && bs.slice(1).every(cb => cb.checked); })()"
-      ) shouldBe true
+      page.evalBool("__filtry.onlyFirstCinemaOff()") shouldBe true
       page.evalBool("document.getElementById('cinema-all').checked")       shouldBe false
       page.evalBool("document.getElementById('cinema-all').indeterminate") shouldBe true
       // An in-city deselection IS a filter "Wyczyść" clears, so the funnel
@@ -4636,10 +4556,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("document.getElementById('cinema-all').click()")
 
       // The foreign deselection survives; this city's entry is gone.
-      page.evalBool(
-        s"(() => { const d = JSON.parse(localStorage.getItem('disabledCinemas') || '[]');" +
-          s"  return d.length === 1 && d[0] === ${jsString(foreignCinema)}; })()"
-      ) shouldBe true
+      page.eval("__filtry.disabled()").as[Seq[String]] shouldBe Seq(foreignCinema)
       page.evalBool("document.getElementById('cinema-all').checked")       shouldBe true
       page.evalBool("document.getElementById('cinema-all').indeterminate") shouldBe false
 
@@ -4659,11 +4576,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("document.getElementById('cinema-all').click()")
 
       // Disabled set is now the foreign entry PLUS every cinema of this city.
-      page.evalBool(
-        s"(() => { const d = new Set(JSON.parse(localStorage.getItem('disabledCinemas') || '[]'));" +
-          s"  return d.has(${jsString(foreignCinema)}) && ALL_CINEMAS.every(c => d.has(c))" +
-          s"    && d.size === ALL_CINEMAS.length + 1; })()"
-      ) shouldBe true
+      val disabled  = page.eval("__filtry.disabled()").as[Seq[String]].toSet
+      val inThisCity = page.eval("ALL_CINEMAS").as[Seq[String]]
+      disabled should contain (foreignCinema)
+      inThisCity.foreach(c => disabled should contain (c))
+      disabled.size shouldBe inThisCity.size + 1
       page.evalBool("document.getElementById('cinema-all').checked")       shouldBe false
       // Every in-city cinema is disabled, so the master is unchecked, not
       // indeterminate.
@@ -4719,14 +4636,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Browar / Cinema City sites in the fixture corpus). Then assert the
       // DOM order matches natural-sort: the index of "Sala 9" is less than
       // the index of "Sala 10", not the other way around.
-      val rooms = page.evalString(
-        "(() => { const headers = [...document.querySelectorAll('#room-list .room-cinema-header')];" +
-          "  for (const h of headers) {" +
-          "    const inner = h.nextElementSibling;" +
-          "    const rs = [...inner.querySelectorAll('input[type=\"checkbox\"]')].map(cb => cb.value.split('|')[1]);" +
-          "    if (rs.includes('Sala 9') && rs.includes('Sala 10')) return rs.join('|');" +
-          "  } return ''; })()"
-      )
+      val rooms = page.evalString("__filtry.roomsPastNine()")
       rooms should not be ""
       val list = rooms.split('|').toIndexedSeq
       val ix9  = list.indexOf("Sala 9")
@@ -4743,21 +4653,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       openFiltry(page)
       // Pick a header whose inner list has ≥ 2 rooms so unchecking one
       // leaves a visible "1/N" state instead of a hidden "0/N".
-      val headerInfo = page.evalString(
-        "(() => { const headers = [...document.querySelectorAll('#room-list .room-cinema-header')];" +
-          "  for (let i = 0; i < headers.length; i++) {" +
-          "    const inner = headers[i].nextElementSibling;" +
-          "    const boxes = inner.querySelectorAll('input[type=\"checkbox\"]');" +
-          "    if (boxes.length >= 2) { headers[i].click(); boxes[0].click(); return String(boxes.length); }" +
-          "  } return ''; })()"
-      )
-      headerInfo should not be ""
-      val total = headerInfo.toInt
+      val total = page.evalInt("__filtry.uncheckARoom()")
+      total should not be 0
       val expectedBadge = (total - 1) + "/" + total
-      val badgeText = page.evalString(
-        "(() => { const c = document.querySelector('#room-list .room-cinema-header .room-cinema-count');" +
-          "  return c.style.display === 'none' ? '' : c.textContent; })()"
-      )
+      val badgeText = page.evalString("__filtry.firstRoomBadge()")
       badgeText shouldBe expectedBadge
     }
   }
@@ -4776,11 +4675,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val cinema  = targetPair.substring(0, pipeIndex)
       val room    = targetPair.substring(pipeIndex + 1)
 
-      page.eval(
-        "(() => { const boxes = [...document.querySelectorAll('#room-list input[type=\"checkbox\"]:not(.submenu-all)')];" +
-          s"  for (const cb of boxes) { if (cb.value !== ${jsString(targetPair)}) cb.click(); }" +
-          "  applyFilters(); return true; })()"
-      )
+      page.eval(s"__filtry.onlyRoom(${jsString(targetPair)})")
 
       val narrowed = visibleBadgeCount(page)
       narrowed should be < baseline
@@ -4788,11 +4683,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // Every visible badge must be in the picked (cinema, room) — the
       // include-list filter excludes "no-room" badges entirely.
-      val allMatch = page.evalBool(
-        "[...document.querySelectorAll('.badge-time')].filter(b => b.style.display !== 'none')" +
-          s".every(b => b.dataset.room === ${jsString(room)} &&" +
-          s"            b.closest('.cinema-group')?.dataset.cinema === ${jsString(cinema)})"
-      )
+      val allMatch = page.evalBool(s"__filtry.badgesAllIn(${jsString(cinema)}, ${jsString(room)})")
       allMatch shouldBe true
     }
   }
@@ -4804,10 +4695,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val targetPair = page.evalString(
         "document.querySelector('#room-list input[type=\"checkbox\"]:not(.submenu-all)').value"
       )
-      page.eval(
-        "document.querySelector('#room-list input[type=\"checkbox\"]:not(.submenu-all)').click();" +
-        "copyFilterLinkToClipboard()"
-      )
+      page.eval("document.querySelector('#room-list input[type=\"checkbox\"]:not(.submenu-all)').click(); copyFilterLinkToClipboard()")
       val included = page.evalString(
         "new URL(location.href).searchParams.getAll('room').join('||')"
       ).split("\\|\\|").toSet
@@ -4824,16 +4712,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         "document.querySelector('#room-list input[type=\"checkbox\"]:not(.submenu-all)').value"
       )
       onPath("/?date=anytime&room=" + java.net.URLEncoder.encode(targetPair, "UTF-8")) { page2 =>
-        val targetChecked = page2.evalBool(
-          "[...document.querySelectorAll('#room-list input[type=\"checkbox\"]:not(.submenu-all)')]" +
-            ".find(cb => cb.value === " + jsString(targetPair) + ").checked"
-        )
-        targetChecked shouldBe true
-        val anyOtherChecked = page2.evalBool(
-          "[...document.querySelectorAll('#room-list input[type=\"checkbox\"]:not(.submenu-all)')]" +
-            ".some(cb => cb.value !== " + jsString(targetPair) + " && cb.checked)"
-        )
-        anyOtherChecked shouldBe false
+        page2.evalBool(s"__filtry.isChecked('#room-list', ${jsString(targetPair)})") shouldBe true
+        page2.evalBool(s"__filtry.othersChecked('#room-list', ${jsString(targetPair)})") shouldBe false
       }
     }
   }
@@ -4906,10 +4786,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   it should "keep a restored sort axis and from-time for the same reason" in {
     onPath("/?date=tomorrow") { page =>
-      page.eval(
-        "(() => { document.getElementById('sort-by').value = 'rating';" +
-        "         document.getElementById('from-hour').value = '18';" +
-        "         bootView(); })()")
+      page.eval("document.getElementById('sort-by').value = 'rating'; document.getElementById('from-hour').value = '18'; bootView()")
       page.evalString("document.getElementById('sort-by').value") shouldBe "rating"
       page.evalString("document.getElementById('from-hour').value") shouldBe "18"
     }
@@ -4922,20 +4799,16 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val built = page.evalInt("document.querySelectorAll('#cinema-list input[type=\"checkbox\"]').length")
       withClue("no cinema checkboxes were built, so this asserts nothing: ") { built should be > 0 }
       page.evalInt(
-        "[...document.querySelectorAll('#cinema-list input[type=\"checkbox\"]')]" +
-          ".filter(c => c.getAttribute('autocomplete') !== 'off').length") shouldBe 0
+        "[...document.querySelectorAll('#cinema-list input[type=checkbox]')].filter(c => c.getAttribute('autocomplete') !== 'off').length"
+      ) shouldBe 0
     }
   }
 
   it should "not leave a restored day or format filter on the page, which are the two that can lie" in {
     onPath("/?date=tomorrow") { page =>
       val before = visibleCardCount(page)
-      page.eval(
-        "(() => {" +
-        "  document.getElementById('date-filter').value = 'anytime';" +
-        "  document.querySelector('input[name=\"format-dim\"][value=\"3D\"]').checked = true;" +
-        "  bootView();" +
-        "})()")
+      page.eval("document.getElementById('date-filter').value = 'anytime'")
+      page.eval("document.querySelector('input[name=\"format-dim\"][value=\"3D\"]').checked = true; bootView()")
 
       page.evalBool("document.querySelector('input[name=\"format-dim\"][value=\"\"]').checked") shouldBe true
       // The URL still names the day, so that one is re-applied rather than lost.
@@ -4958,10 +4831,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       pinDateFilterAnytime(page)
       val title = firstVisibleTitle(page)
 
-      page.eval(
-        s"(() => { const btn = document.querySelector('.col[data-title=${jsString(title)}] .hide-btn');" +
-        "  hideFilm(btn); })()"
-      )
+      page.eval(s"__grid.hideCard(${jsString(title)})")
       page.evalBool(
         s"JSON.parse(localStorage.getItem('hiddenFilms:pl') || '[]').includes(${jsString(title)})"
       ) shouldBe true
@@ -4982,29 +4852,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       pinDateFilterAnytime(page)
       val title  = firstVisibleTitle(page)
-      val others = page.evalInt(
-        "[...document.querySelectorAll('.col[data-title]')].filter(c => c.style.display !== 'none').length"
-      )
+      val others = visibleCardCount(page)
       others should be > 1  // need at least one card that must survive the hide
 
-      page.eval(
-        "window.__afCalls = 0; const _origAf = window.applyFilters;" +
-        "  window.applyFilters = function () { window.__afCalls++; return _origAf.apply(this, arguments); };"
-      )
-      page.eval(
-        s"(() => { const btn = document.querySelector('.col[data-title=${jsString(title)}] .hide-btn');" +
-        "  hideFilm(btn); })()"
-      )
+      page.eval("__grid.countFilterPasses()")
+      page.eval(s"__grid.hideCard(${jsString(title)})")
 
       page.evalString(
         s"document.querySelector('.col[data-title=${jsString(title)}]').style.display"
       ) shouldBe "none"
       // The fast path leaves every other visible card on screen…
-      page.evalInt(
-        "[...document.querySelectorAll('.col[data-title]')].filter(c => c.style.display !== 'none').length"
-      ) shouldBe (others - 1)
+      visibleCardCount(page) shouldBe (others - 1)
       // …and never falls back to the full grid filter.
-      page.evalInt("window.__afCalls") shouldBe 0
+      page.evalInt("__grid.filterPasses") shouldBe 0
     }
   }
 
@@ -5019,12 +4879,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onLoggedInIndex { page =>
       pinDateFilterAnytime(page)
       val title = firstVisibleTitle(page)
-      page.eval(
-        "(() => { document.getElementById('auth-menu').remove();" +
-        "  Object.defineProperty(window, 'localStorage', { configurable: true," +
-        "    get() { throw new DOMException('The operation is insecure.', 'SecurityError'); } });" +
-        s"  hideFilm(document.querySelector('.col[data-title=${jsString(title)}] .hide-btn')); })()"
-      )
+      page.eval(s"__grid.hideCardWithStorageBlocked(${jsString(title)})")
       page.evalString(
         s"document.querySelector('.col[data-title=${jsString(title)}]').style.display"
       ) shouldBe "none"
@@ -5043,44 +4898,29 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   "the facet listing's own filter pass" should "drop a hidden card and keep the rest" in {
     onPath("/filmy?country=Polska") { page =>
       clearLocalStorage(page)
-      val before = page.evalInt(
-        "[...document.querySelectorAll('#film-grid > .col[data-title]')].filter(c => c.style.display !== 'none').length"
-      )
+      val before = page.evalInt("__grid.visibleGridCards()")
       before should be > 1
 
       val title = page.evalString("document.querySelector('#film-grid > .col[data-title]').dataset.title")
-      page.eval(
-        s"(() => { const btn = document.querySelector('.col[data-title=${jsString(title)}] .hide-btn');" +
-        "  hideFilm(btn); })()"
-      )
+      page.eval(s"__grid.hideCard(${jsString(title)})")
 
       page.evalString(
         s"document.querySelector('.col[data-title=${jsString(title)}]').style.display"
       ) shouldBe "none"
-      page.evalInt(
-        "[...document.querySelectorAll('#film-grid > .col[data-title]')].filter(c => c.style.display !== 'none').length"
-      ) shouldBe (before - 1)
+      page.evalInt("__grid.visibleGridCards()") shouldBe (before - 1)
     }
   }
 
   it should "show the empty state once every film is hidden, and clear it again" in {
     onPath("/filmy?country=Polska") { page =>
       clearLocalStorage(page)
-      page.eval(
-        "localStorage.setItem('hiddenFilms:pl', JSON.stringify(" +
-        "  [...document.querySelectorAll('#film-grid > .col[data-title]')].map(c => c.dataset.title)));" +
-        "applyFilters()"
-      )
+      page.eval("__grid.hideEveryCard()")
       page.evalBool("document.getElementById('no-films').style.display !== 'none'") shouldBe true
-      page.evalInt(
-        "[...document.querySelectorAll('#film-grid > .col[data-title]')].filter(c => c.style.display !== 'none').length"
-      ) shouldBe 0
+      page.evalInt("__grid.visibleGridCards()") shouldBe 0
 
       page.eval("localStorage.setItem('hiddenFilms:pl', '[]'); applyFilters()")
       page.evalBool("document.getElementById('no-films').style.display === 'none'") shouldBe true
-      page.evalInt(
-        "[...document.querySelectorAll('#film-grid > .col[data-title]')].filter(c => c.style.display !== 'none').length"
-      ) should be > 0
+      page.evalInt("__grid.visibleGridCards()") should be > 0
     }
   }
 
@@ -5097,10 +4937,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       ) shouldBe "none"
 
       page.eval("openHiddenModal()")
-      page.evalBool(
-        s"[...document.querySelectorAll('#hidden-modal-list .panel-item')]" +
-        s".some(i => i.textContent.trim() === ${jsString(title)})"
-      ) shouldBe true
+      page.evalBool(s"__dom.texts('#hidden-modal-list .panel-item').includes(${jsString(title)})") shouldBe true
 
       page.eval(s"restoreFilm(${jsString(title)})")
       page.evalString(
@@ -5130,7 +4967,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // The wrap holds [−, range, +] — last-child is +, first-child is −.
       val wrap = "document.querySelector('.ctrl .slider-wrap')"
       def click(child: String): Unit =
-        page.evalBool(s"(() => { $wrap.querySelector(${jsString(child)}).click(); return true; })()") shouldBe true
+        page.eval(s"$wrap.querySelector(${jsString(child)}).click()")
 
       click("button.step:last-child")
       val up = sliderValue
@@ -5160,9 +4997,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val before = page.evalInt("document.querySelectorAll('.badge-time').length")
       before should be > 0
 
-      page.evalInt(
-        "document.querySelector('.badge-time').dataset.expires = String(showtimeNow() - 1); " +
-        "pruneExpiredShowtimes()") shouldBe 1
+      page.evalInt("__expiry.expireFirst(-1); pruneExpiredShowtimes()") shouldBe 1
       page.evalInt("document.querySelectorAll('.badge-time').length") shouldBe (before - 1)
     }
   }
@@ -5172,17 +5007,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // a cinema's name only as its label, and its page for the film only on its first
   // day. `_showingsHydrate` puts all of it back before any script reads the tree —
   // every link in it ends up whole, opening in a new tab, nofollowed and classed.
-  private val HydratedShowings =
-    """(() => {
-      |  const groups = [...document.querySelectorAll('.cinema-group')];
-      |  const label  = g => g.querySelector('.cinema-label').textContent.replace(/\s*↗\s*$/, '').trim();
-      |  return groups.length > 0 &&
-      |    groups.every(g => g.dataset.cinema && g.dataset.cinema === label(g)) &&
-      |    [...document.querySelectorAll('.cinema-group a')].every(a =>
-      |      /^https?:\/\//.test(a.getAttribute('href') || '') &&
-      |      a.getAttribute('target') === '_blank' && a.getAttribute('rel') === 'nofollow' &&
-      |      (a.classList.contains('badge-time') || a.classList.contains('cinema-label-link')));
-      |})()""".stripMargin
+  private val HydratedShowings = "__expiry.hydrated()"
 
   "the showings tree" should "come back whole in the browser: names, booking links, cinema pages" in {
     onPath("/") { page => page.evalBool(HydratedShowings) shouldBe true }
@@ -5206,17 +5031,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       clearLocalStorage(page)
       pinDateFilterAnytime(page)
-      page.evalBool(
-        """(() => {
-          |  const b = [...document.querySelectorAll('.badge-time')].find(x => !x.dataset.expires);
-          |  const day = b.closest('.date-group');
-          |  const [h, m] = slotTime(b).split(':').map(Number);
-          |  day.dataset.expiresFrom = String(showtimeNow() - 1 - (h * 60 + m) * 60000);
-          |  const later = [...day.querySelectorAll('.badge-time')]
-          |    .filter(x => !x.dataset.expires && slotTime(x) > slotTime(b));
-          |  pruneExpiredShowtimes();
-          |  return !b.isConnected && later.every(x => x.isConnected);
-          |})()""".stripMargin) shouldBe true
+      page.evalBool("__expiry.lapseAtDayBase()") shouldBe true
     }
   }
 
@@ -5229,24 +5044,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       clearLocalStorage(page)
       pinDateFilterAnytime(page)
-      page.evalBool(
-        """(() => {
-          |  const b = [...document.querySelectorAll('.badge-time')].find(x => !x.dataset.expires);
-          |  const day = b.closest('.date-group');
-          |  b.firstChild.nodeValue = '7:30 PM';
-          |  const afternoon = slotTime(b) === '19:30';
-          |  b.firstChild.nodeValue = '12:05 AM';
-          |  const midnight = slotTime(b) === '00:05';
-          |  b.firstChild.nodeValue = '12:30 PM';
-          |  const noon = slotTime(b) === '12:30';
-          |  b.firstChild.nodeValue = '11:15 PM';
-          |  day.dataset.expiresFrom = String(showtimeNow() + 60000 - (23 * 60 + 15) * 60000);
-          |  pruneExpiredShowtimes();
-          |  const kept = b.isConnected;
-          |  day.dataset.expiresFrom = String(showtimeNow() - 1 - (23 * 60 + 15) * 60000);
-          |  pruneExpiredShowtimes();
-          |  return afternoon && midnight && noon && kept && !b.isConnected;
-          |})()""".stripMargin) shouldBe true
+      page.evalBool("__expiry.twelveHourPillReadsBack()") shouldBe true
     }
   }
 
@@ -5259,14 +5057,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // Expire every slot of the first card, then prune: the card itself goes,
       // and no childless cinema-group / date-group is left behind anywhere.
-      page.evalBool(
-        "(() => {" +
-        "  const col = document.querySelector('#film-grid .col[data-title]');" +
-        "  const title = col.dataset.title;" +
-        "  col.querySelectorAll('.badge-time').forEach(b => b.dataset.expires = String(showtimeNow() - 1));" +
-        "  pruneExpiredShowtimes();" +
-        "  return ![...document.querySelectorAll('#film-grid .col[data-title]')].some(c => c.dataset.title === title);" +
-        "})()") shouldBe true
+      page.evalBool("__expiry.lapseFirstCard()") shouldBe true
       page.evalInt("document.querySelectorAll('#film-grid .col[data-title]').length") shouldBe (cardsBefore - 1)
       page.evalBool("[...document.querySelectorAll('.cinema-group')].every(g => g.querySelector('.badge-time'))") shouldBe true
       page.evalBool("[...document.querySelectorAll('.date-group')].every(g => g.querySelector('.badge-time'))") shouldBe true
@@ -5277,9 +5068,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       clearLocalStorage(page)
       pinDateFilterAnytime(page)
-      page.eval(
-        "document.querySelectorAll('.badge-time').forEach(b => b.dataset.expires = String(showtimeNow() - 1)); " +
-        "pruneExpiredShowtimes()")
+      page.eval("__expiry.expireAll(); pruneExpiredShowtimes()")
       page.evalInt("document.querySelectorAll('#film-grid .col[data-title]').length") shouldBe 0
       page.evalBool("document.getElementById('no-films').style.display !== 'none'") shouldBe true
     }
@@ -5293,9 +5082,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // Re-arm the clock with one slot lapsing shortly: nothing is pruned yet,
       // and nothing but the scheduled timer runs between here and the assert.
-      page.eval(
-        "document.querySelector('.badge-time').dataset.expires = String(showtimeNow() + 300); " +
-        "scheduleExpiryPrune()")
+      page.eval("__expiry.expireFirst(300); scheduleExpiryPrune()")
       page.evalInt("document.querySelectorAll('.badge-time').length") shouldBe before
 
       page.waitFor(s"document.querySelectorAll('.badge-time').length === ${before - 1}")
@@ -5310,13 +5097,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/many-showtimes") { page =>
       val pills = page.evalInt("document.querySelectorAll('.badge-time').length")
       pills should be > 10000
-      page.eval(
-        "window.__dayLookups = 0; const _closest = Element.prototype.closest;" +
-        "  Element.prototype.closest = function (selector) {" +
-        "    if (selector === '.date-group') window.__dayLookups++;" +
-        "    return _closest.call(this, selector); };" +
-        "  document.dispatchEvent(new Event('visibilitychange'));")
-      page.evalInt("window.__dayLookups") shouldBe 0
+      page.eval("__expiry.watchDayLookups(); document.dispatchEvent(new Event('visibilitychange'))")
+      page.evalInt("__expiry.dayLookups") shouldBe 0
       page.evalInt("document.querySelectorAll('.badge-time').length") shouldBe pills
     }
   }
@@ -5353,9 +5135,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       val card = page.evalString("document.querySelector('#film-grid .col[data-title]').dataset.title")
       card should not be empty
-      val badgesOfCard =
-        s"[...document.querySelectorAll('#film-grid .col[data-title]')]" +
-          s".find(c => c.dataset.title === ${jsString(card)})"
+      val badgesOfCard = s"__expiry.cardOf(${jsString(card)})"
       val baselineBadges = page.evalInt(s"$badgesOfCard.querySelectorAll('.badge-time').length")
       baselineBadges should be > 0
 
@@ -5370,13 +5150,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // 3. A slot lapses: sweepExpired → buildIndex → applyFilters, all while
       //    the search is still narrowing the grid.
-      page.evalInt(
-        "document.querySelector('.badge-time').dataset.expires = String(showtimeNow() - 1); " +
-        "pruneExpiredShowtimes()") shouldBe 1
+      page.evalInt("__expiry.expireFirst(-1); pruneExpiredShowtimes()") shouldBe 1
 
       // 4. The user clears both filters — everything must come back.
-      page.eval("localStorage.setItem('disabledCinemas', '[]'); " +
-        "document.getElementById('search-input').value = ''; applyFilters()")
+      page.eval("localStorage.setItem('disabledCinemas', '[]'); document.getElementById('search-input').value = ''; applyFilters()")
 
       withClue(s"card '$card' is on screen: ") {
         page.evalBool(s"$badgesOfCard.style.display !== 'none'") shouldBe true
@@ -5390,11 +5167,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // screen because something under it is.
       // (Also asserted below over the reported journey itself.)
       withClue("every visible card shows at least one showtime: ") {
-        page.evalBool(
-          "[...document.querySelectorAll('#film-grid .col[data-title]')]" +
-            ".filter(c => c.style.display !== 'none')" +
-            ".every(c => [...c.querySelectorAll('.badge-time')].some(b => b.offsetParent !== null))"
-        ) shouldBe true
+        page.evalBool("__expiry.everyShownCardHasBadge()") shouldBe true
       }
     }
   }
@@ -5420,44 +5193,28 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       clearLocalStorage(page)
 
       // A film playing tomorrow — the one we'll search for once we get there.
-      val film = page.evalString(
-        "(() => { const t = dateBounds().tomorrow;" +
-        "  const col = [...document.querySelectorAll('#film-grid .col[data-title]')]" +
-        "    .find(c => c.querySelector(`.date-group[data-date='${t}']`));" +
-        "  return col ? col.dataset.title : ''; })()")
+      val film = page.evalString("__expiry.filmPlayingTomorrow()")
       withClue("no fixture film plays tomorrow: ") { film should not be empty }
 
       // On "today", with the search box narrowed to something else — our film is
       // off screen and its tomorrow rows are hidden.
-      page.eval("document.getElementById('date-filter').value = 'today'; " +
-        "document.getElementById('search-input').value = 'zzzzz-no-such-film'; applyFilters()")
+      page.eval("document.getElementById('date-filter').value = 'today'")
+      page.eval("document.getElementById('search-input').value = 'zzzzz-no-such-film'; applyFilters()")
 
       // The tab has been open a while: a slot lapses and the grid re-indexes.
       // The slot belongs to ANOTHER film — expiring one of this film's own would
       // cascade its card out of the DOM entirely when it's a one-screening event.
-      page.evalInt(
-        "(() => { const slot = [...document.querySelectorAll('.badge-time')]" +
-        s"    .find(b => b.closest('.col[data-title]').dataset.title !== ${jsString(film)});" +
-        "  slot.dataset.expires = String(showtimeNow() - 1);" +
-        "  return pruneExpiredShowtimes(); })()") shouldBe 1
+      page.evalInt(s"__expiry.lapseOneNotOf(${jsString(film)})") shouldBe 1
 
       // "Jutro", then the film's name in the search box.
       page.eval("document.getElementById('date-filter').value = 'tomorrow'; applyFilters()")
       page.eval(s"document.getElementById('search-input').value = ${jsString(film)}; applyFilters()")
 
       withClue(s"'$film' is on screen: ") {
-        page.evalBool(
-          s"[...document.querySelectorAll('#film-grid .col[data-title]')]" +
-            s".some(c => c.dataset.title === ${jsString(film)} && c.style.display !== 'none')"
-        ) shouldBe true
+        page.evalBool(s"__expiry.cardShown(${jsString(film)})") shouldBe true
       }
       withClue(s"showtimes visible under '$film': ") {
-        page.evalInt(
-          s"[...document.querySelectorAll('#film-grid .col[data-title]')]" +
-            s".filter(c => c.dataset.title === ${jsString(film)})" +
-            ".flatMap(c => [...c.querySelectorAll('.badge-time')])" +
-            ".filter(b => b.offsetParent !== null).length"
-        ) should be > 0
+        page.evalInt(s"__expiry.shownBadgesOf(${jsString(film)})") should be > 0
       }
     }
   }
@@ -5474,10 +5231,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       clearLocalStorage(page)
       // A marker on the current document instance: a real reload discards it.
-      page.eval(
-        "window.__preRollover = true; " +
-        "document.getElementById('view-root').dataset.nextDay = String(showtimeNow() + 300); " +
-        "scheduleDayRollover()")
+      page.eval("window.__preRollover = true")
+      page.eval("document.getElementById('view-root').dataset.nextDay = String(showtimeNow() + 300); scheduleDayRollover()")
       page.evalBool("window.__preRollover === true") shouldBe true
 
       // The rollover fires at ~550ms; the marker going is the navigation landing.
@@ -5653,15 +5408,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // details is spliced back in, adjacent, only while it's expanded. The fixture
   // corpus is Pending/Unresolved/Done Film; the FIRST click sorts descending, so
   // by title that is Unresolved, Pending, Done, and a second click reverses it.
-  private val corpusTitles = """[...document.querySelectorAll('#t tbody tr.data')].map(r => r.dataset.title).join('|')"""
-  private val attachedDetailsCount = """String(document.querySelectorAll('#t tbody tr.details').length)"""
+  private val corpusTitles = "__debugTable.titles()"
+  private val attachedDetailsCount = "String(__debugTable.attachedDetails())"
   // Every EXPANDED data row is immediately followed by its own visible details row.
-  private val expandedDetailsAdjacent =
-    """[...document.querySelectorAll('#t tbody tr.data.expanded')].every(r => {
-         const n = r.nextElementSibling;
-         return !!n && n.classList.contains('details') && n.dataset.rowId === r.dataset.rowId
-                && !n.classList.contains('hidden');
-       })"""
+  private val expandedDetailsAdjacent = "__debugTable.expandedDetailsAdjacent()"
 
   "the /debug corpus table" should "sort data rows and keep an expanded row's details beside it" in {
     onDebug { page =>
@@ -5697,8 +5447,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalBool("""document.body.innerHTML.indexOf('cacheKey') === -1""") shouldBe true
       // Expand the first row → its details cell fills from the fetched fragment.
       page.eval("""document.querySelector('#t tbody tr.data').click()""")
-      page.waitFor(
-        """[...document.querySelectorAll('#t tbody tr.details td')].some(td => td.innerHTML.indexOf('cacheKey') !== -1)""")
+      page.waitFor("__debugTable.detailsHold('cacheKey')")
     }
   }
 
@@ -5723,30 +5472,21 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onDebug { page =>
       page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 3""")
       // Expand "Pending Film" before filtering it away.
-      page.eval(
-        """[...document.querySelectorAll('#t tbody tr.data')]""" +
-          """.find(tr => tr.dataset.haystack.includes('pending')).click()""")
+      page.eval("__debugTable.clickRowMatching('pending')")
       page.evalString(attachedDetailsCount) shouldBe "1"
 
       page.eval("__dom.type('#q', 'done')")
 
-      page.evalString(
-        """[...document.querySelectorAll('#t tbody tr.data')]""" +
-          """.filter(tr => !tr.classList.contains('hidden')).map(tr => tr.dataset.haystack.trim()).join('|')""") should
-        include("done film")
-      page.evalInt(
-        """[...document.querySelectorAll('#t tbody tr.data')].filter(tr => !tr.classList.contains('hidden')).length""") shouldBe 1
+      page.evalString("__debugTable.shownHaystacks()") should include("done film")
+      page.evalInt("__debugTable.shownRows()") shouldBe 1
       // The filtered-out "Pending Film" row was expanded — collapsing it detaches
       // its details rather than leaving them orphaned behind a hidden row.
-      page.evalBool(
-        """[...document.querySelectorAll('#t tbody tr.data')]""" +
-          """.find(tr => tr.dataset.haystack.includes('pending')).classList.contains('expanded')""") shouldBe false
+      page.evalBool("__debugTable.rowExpanded('pending')") shouldBe false
       page.evalString(attachedDetailsCount) shouldBe "0"
 
       // Clearing the box restores every row, still collapsed.
       page.eval("__dom.type('#q', '')")
-      page.evalInt(
-        """[...document.querySelectorAll('#t tbody tr.data')].filter(tr => !tr.classList.contains('hidden')).length""") shouldBe 3
+      page.evalInt("__debugTable.shownRows()") shouldBe 3
     }
   }
 
@@ -5763,27 +5503,21 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onDebugSlots { page =>
       page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 1""")
       page.eval("""document.querySelector('#t tbody tr.data').click()""")
-      page.waitFor(
-        """[...document.querySelectorAll('#t tbody tr.details td')].some(td => td.innerHTML.indexOf('cacheKey') !== -1)""")
+      page.waitFor("__debugTable.detailsHold('cacheKey')")
       // Count /debug/details fetches from here on. loadDetails calls the global
       // `fetch`, so the counter sees every refetch a replayed frame provokes.
-      page.eval("""window.__detailFetches = 0; const _f = window.fetch;
-        window.fetch = function (u) {
-          if (String(u).indexOf('/debug/details') !== -1) window.__detailFetches++;
-          return _f.apply(this, arguments);
-        };""")
+      page.eval("__debugTable.countDetailFetches()")
+      def applyUpsert(frame: String): Unit =
+        page.eval(s"__debugTable.applyUpsert(${jsString(slotsRowId)}, ${jsString(frame)})")
       // An UNCHANGED frame (same digest) must not refetch — and must leave the
       // loaded body in place rather than swapping in a fresh empty shell.
-      page.eval(s"""applySse(JSON.stringify({type:'upsert', id:${Json.stringify(Json.toJson(slotsRowId))},
-        html:${Json.stringify(Json.toJson(slotsUnchangedFrame))}})); flushSse();""")
-      page.evalString("String(window.__detailFetches)") shouldBe "0"
-      page.evalBool(
-        """[...document.querySelectorAll('#t tbody tr.details td')].some(td => td.innerHTML.indexOf('cacheKey') !== -1)""") shouldBe true
+      applyUpsert(slotsUnchangedFrame)
+      page.evalInt("__debugTable.detailFetches") shouldBe 0
+      page.evalBool("__debugTable.detailsHold('cacheKey')") shouldBe true
       // A frame whose showtimes changed shifts the digest, so the open row does
       // refetch — the guard suppresses no-ops, not real updates.
-      page.eval(s"""applySse(JSON.stringify({type:'upsert', id:${Json.stringify(Json.toJson(slotsRowId))},
-        html:${Json.stringify(Json.toJson(slotsChangedFrame))}})); flushSse();""")
-      page.waitFor("""window.__detailFetches === 1""")
+      applyUpsert(slotsChangedFrame)
+      page.waitFor("__debugTable.detailFetches === 1")
     }
   }
 
@@ -5822,14 +5556,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         """document.querySelector('#t tbody td.cinemas').textContent.replace(/\s+/g,'')""") shouldBe "1(2)"
       // Layout: the cell is a plain table-cell (NOT a grid), and the slot span
       // sits on the count's line (tops aligned within a line) and to its right.
-      page.evalBool("""(function(){
-        var td = document.querySelector('#t tbody td.cinemas');
-        var slot = td.querySelector('.slots');
-        var tdR = td.getBoundingClientRect(), sR = slot.getBoundingClientRect();
-        return getComputedStyle(td).display === 'table-cell'
-            && sR.left > tdR.left
-            && Math.abs(sR.top - tdR.top) < sR.height;
-      })()""") shouldBe true
+      page.evalBool("__debugTable.slotCountBesideCount()") shouldBe true
     }
   }
 
@@ -5906,13 +5633,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onLoggedInIndex { page =>
       // The page as SERVED, re-fetched from inside the tab — the live DOM has the
       // avatar in it by now precisely because JS put it there.
-      page.eval(
-        "window.__servedAvatar = null;" +
-        "fetch(location.href).then(r => r.text()).then(t => {" +
-        "  window.__servedAvatar = t.indexOf('id=\"auth-menu\"') >= 0" +
-        "                       || t.indexOf('IS_LOGGED_IN') >= 0; })")
-      page.waitFor("window.__servedAvatar !== null")
-      page.evalBool("window.__servedAvatar") shouldBe false
+      page.eval("__userState.fetchServedPage()")
+      page.waitFor("__userState.servedNamesVisitor !== null")
+      page.evalBool("__userState.servedNamesVisitor") shouldBe false
     }
   }
 
@@ -5952,8 +5675,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalBool("!!document.getElementById('auth-menu')") shouldBe true
       // A synthetic `submit` event runs the listeners without navigating, so the
       // fixture page survives to be asserted on.
-      page.eval("document.querySelector('.auth-logout-form')" +
-        ".dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))")
+      page.eval("__dom.submit('.auth-logout-form')")
 
       page.evalString("document.getElementById('auth-menu').style.display") shouldBe "none"
       page.evalString("String(sessionStorage.getItem('signedOut'))")        shouldBe "1"
@@ -5971,8 +5693,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.setDesktopViewport(1280, 900)   // the pill is a desktop-only navbar control
       page.evalString("getComputedStyle(document.getElementById('auth-login')).display") shouldBe "none"
 
-      page.eval("document.querySelector('.auth-logout-form')" +
-        ".dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))")
+      page.eval("__dom.submit('.auth-logout-form')")
 
       page.evalString("getComputedStyle(document.getElementById('auth-menu')).display")  shouldBe "none"
       page.evalString("getComputedStyle(document.getElementById('auth-login')).display") should not be "none"

@@ -38,6 +38,15 @@
         .filter(function (r) { return r.name.slice(-suffix.length) === suffix; }).length;
     },
 
+    // Re-fetch this page as served; `servedNamesVisitor` is then whether its
+    // bytes carry the avatar menu or a logged-in flag (null until it lands).
+    fetchServedPage: function () {
+      userState.servedNamesVisitor = null;
+      fetch(location.href).then(function (r) { return r.text(); }).then(function (t) {
+        userState.servedNamesVisitor = t.indexOf('id="auth-menu"') >= 0 || t.indexOf('IS_LOGGED_IN') >= 0;
+      });
+    },
+
     // This country's reconcile has run, and `title` came out of it hidden.
     synced: function (title) {
       return localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf(title) !== -1;
