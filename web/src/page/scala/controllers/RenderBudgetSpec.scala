@@ -63,6 +63,7 @@ class RenderBudgetSpec extends AnyFlatSpec with Matchers {
   private def browse(c: MovieController)   = served(c.browse(city.slug, Some(country), None, None, None), s"/${city.slug}/movies?country=$country")
   private def repertoire(c: MovieController) = served(c.apiRepertoire(city.slug), s"/${city.slug}/api/repertoire")
   private def details(c: MovieController)  = served(c.apiDetails(city.slug), s"/${city.slug}/api/details")
+  private def landing(l: LandingController) = served(l.index(), "/")
 
   /** The body `action` serves a gzip-accepting client at `uri` — on this thread, or the spec fails. */
   private def served(action: Action[AnyContent], uri: String): ByteString = {
@@ -103,6 +104,12 @@ class RenderBudgetSpec extends AnyFlatSpec with Matchers {
   "a facet page" should "stay within its warm allocation budget" in {
     val warm = controller()
     holds(PerformanceBudgets.BrowseWarm, AllocationMeter.median()(browse(warm)))
+  }
+
+  "the city-selection landing" should "stay within its allocation budget" in {
+    // The one page that embeds every country's city catalog, which its picker browses.
+    val l = new LandingController(play.api.test.Helpers.stubControllerComponents(), Country.default)
+    holds(PerformanceBudgets.Landing, AllocationMeter.median()(landing(l)))
   }
 
   "the apps' JSON payloads" should "stay within their cold and warm allocation budgets" in {

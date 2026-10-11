@@ -38,14 +38,12 @@
      "Today" listed tomorrow. `window.`-scoped (not a lexical const) so tests
      can move a rendered page to another zone. *@
   window.CITY_TIMEZONE      = "@city.zoneId.getId";
-  @* The full multi-country catalog (every deployed country's cities, each
-     carrying its `region`/`subregion` grouping and its own `baseUrl`) — the
-     exact JSON `/api/catalog` hands the apps (`models.Catalog`). No JS on
-     THIS page reads it (the Filtry → Miasto row now navigates to the `/`
-     picker, which embeds its own copy — see `landing.scala.html`); embedded
-     here so `AreaRoutingSpec` can assert a city's region/subregion grouping
-     straight off the rendered page rather than re-deriving it. *@
-  const KINOWO_CATALOG      = @controllers.ScriptJson.embedSerialized(models.Catalog.json);
+  @* The country this city belongs to — what `shared.js` keys a signed-in
+     visitor's per-country state by (`/api/me/{country}/hidden-films`). Just the
+     code: the whole multi-country catalog it used to be looked up in was ~170 KB
+     on every page, and the `/` picker, the one page that browses it, embeds its
+     own (`landing.scala.html`). *@
+  const CURRENT_COUNTRY     = "@city.country.code";
   @* Per-deployment locale for shared.js: weekday/month arrays and the
      showtime plural rule + forms — for EVERY deployed language (`locales`),
      not just this deployment's default, so `i18n.js`'s `applyLanguage` can

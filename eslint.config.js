@@ -43,9 +43,7 @@ module.exports = [
         ALL_CINEMAS: 'readonly',
         CINEMA_PILLS: 'readonly',
         CURRENT_CITY: 'readonly',
-        CURRENT_COUNTRY_CODE: 'readonly',
-        ALL_CITIES: 'readonly',
-        KINOWO_CATALOG: 'readonly',
+        CURRENT_COUNTRY: 'readonly',
         KINOWO_LOCALE: 'readonly',
 
         // From the per-page inline `<script>` block.

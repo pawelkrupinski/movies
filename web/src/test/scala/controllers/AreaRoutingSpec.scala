@@ -60,30 +60,15 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     servingCountry = Country.UnitedStates,
   )._1
 
-  private def deController(): MovieController = TestMovieController.build(
-    Seq(
-      (LaFilm, Some(2024), filmIn(laCinema, LaFilm, "tt101")),
-    ),
-    servingCountry = Country.Germany,
-  )._1
-
-  private def ukController(): MovieController = TestMovieController.build(
-    Seq(
-      (LaFilm, Some(2024), filmIn(laCinema, LaFilm, "tt101")),
-    ),
-    servingCountry = Country.UnitedKingdom,
-  )._1
-
   private def req(path: String) = EdgeRequest(path, host = "showtimes.cc")
 
-  // The unified `/` picker (`landing.scala.html`) reads `KINOWO_CATALOG` —
-  // the embedded `models.Catalog.json` — rather than a server-rendered
-  // `<optgroup>` tree, so these read the same field the picker's JS drill-down
-  // groups by instead of parsing markup that no longer exists.
-  private def catalogRegion(html: String, slug: String): Option[String] =
-    s""""slug":"$slug"[^}]*"region":"([^"]+)"""".r.findFirstMatchIn(html).map(_.group(1))
-  private def catalogSubregion(html: String, slug: String): Option[String] =
-    s""""slug":"$slug"[^}]*"subregion":"([^"]+)"""".r.findFirstMatchIn(html).map(_.group(1))
+  // The unified `/` picker (`landing.scala.html`) and the apps (`/api/catalog`) read
+  // `models.Catalog.json` rather than a server-rendered `<optgroup>` tree, so these
+  // read the same field the picker's JS drill-down groups by.
+  private def catalogRegion(slug: String): Option[String] =
+    s""""slug":"$slug"[^}]*"region":"([^"]+)"""".r.findFirstMatchIn(models.Catalog.json).map(_.group(1))
+  private def catalogSubregion(slug: String): Option[String] =
+    s""""slug":"$slug"[^}]*"subregion":"([^"]+)"""".r.findFirstMatchIn(models.Catalog.json).map(_.group(1))
 
   // ── The metro's own listing ─────────────────────────────────────────────────
 
@@ -127,9 +112,18 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     html should include ("\"los-angeles\";")
   }
 
-  it should "carry the other metros' state grouping in the catalog the city picker drills through" in {
+  it should "name its country for the client, and not carry every country's city catalog" in {
+    // `shared.js` keys a visitor's per-country state by this; the whole catalog it
+    // was once looked up in is the `/` picker's to embed, not every listing's.
     val html = contentAsString(usController().index("los-angeles")(req("/los-angeles/")))
-    catalogRegion(html, "san-francisco-bay-area") shouldBe Some("California")
+    html should include ("CURRENT_COUNTRY     = \"us\"")
+    html should not include "KINOWO_CATALOG"
+    html should not include "\"slug\":\"san-francisco-bay-area\""
+  }
+
+  it should "carry the other metros' state grouping in the catalog the city picker drills through" in {
+    val html = models.Catalog.json
+    catalogRegion("san-francisco-bay-area") shouldBe Some("California")
     // Two of the 461 metros are both called "Philadelphia" — a flat list offers
     // them as two identical rows, which is why the picker groups by state at
     // all; the catalog is how it (and a visitor) can tell them apart.
@@ -138,31 +132,29 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     philadelphiaRegions should contain allOf ("Pennsylvania", "New Jersey")
   }
 
-  "A UK page's city picker" should "group its counties by nation, with a further subregion where a county holds more than one place" in {
+  "The UK's catalog" should "group its counties by nation, with a further subregion where a county holds more than one place" in {
     // The catalog reads `Country.cityGroups` — the same grouping the landing
     // picker's tree does — through `models.Catalog`'s `region`/`subregion`
     // fields, so a nation groups its counties and a county that really holds
     // several places (unlike one that collapsed onto its single place —
     // `CityGroup.soleCity`) earns a subregion of its own.
-    val html = contentAsString(ukController().index("london")(req("/london/")))
-    catalogRegion(html, "glasgow") shouldBe Some("Scotland")
-    catalogRegion(html, "cardiff") shouldBe Some("Wales")
-    catalogSubregion(html, "cardiff") shouldBe Some("Glamorgan")
+    catalogRegion("glasgow") shouldBe Some("Scotland")
+    catalogRegion("cardiff") shouldBe Some("Wales")
+    catalogSubregion("cardiff") shouldBe Some("Glamorgan")
     // Cheshire collapsed onto its one place, so it reads correctly through
     // `region` alone — no subregion heading for a visitor to open for nothing.
-    catalogRegion(html, "cheshire") shouldBe Some("England")
-    catalogSubregion(html, "cheshire") shouldBe None
+    catalogRegion("cheshire") shouldBe Some("England")
+    catalogSubregion("cheshire") shouldBe None
   }
 
   it should "group Germany's regions by Bundesland, the same way" in {
     // Germany joined the grouped countries with the UK; the catalog carries the
     // same `Country.cityGroups`, so 158 regions are grouped rather than run
     // together in one A-to-Z.
-    val html = contentAsString(deController().index("koeln")(req("/koeln/")))
-    catalogRegion(html, "muenchen") shouldBe Some("Bayern")
-    catalogRegion(html, "koeln") shouldBe Some("Nordrhein-Westfalen")
+    catalogRegion("muenchen") shouldBe Some("Bayern")
+    catalogRegion("koeln") shouldBe Some("Nordrhein-Westfalen")
     // A Land is a heading a visitor drills through, never a place of its own.
-    html should not include """"slug":"bayern""""
+    models.Catalog.json should not include """"slug":"bayern""""
   }
 
   "A small metro" should "leave its cinema list flat rather than wrapping it in one group" in {

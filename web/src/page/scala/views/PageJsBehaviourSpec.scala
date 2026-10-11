@@ -511,7 +511,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  document plus the chained fetches its boot makes. */
   // hiddenFilms moved off `/api/me/state` onto the granular, per-country
   // `/api/me/pl/hidden-films` — this fixture's city (Poznań) resolves to
-  // country "pl" via `KINOWO_CATALOG`. The synced flag is per-country too
+  // country "pl" via `CURRENT_COUNTRY`. The synced flag is per-country too
   // (`hiddenFilmsSynced:pl`), replacing the old single `serverStateSynced`.
   private def awaitOwnReconcile(page: CdpPage): Unit = {
     clearLocalStorage(page)

@@ -2382,9 +2382,7 @@
   }
 
   function currentCountryCode() {
-    const city = (typeof KINOWO_CATALOG !== 'undefined' ? KINOWO_CATALOG.cities : [])
-      .find(c => c.slug === CURRENT_CITY);
-    return city ? city.country : 'pl';
+    return typeof CURRENT_COUNTRY !== 'undefined' ? CURRENT_COUNTRY : 'pl';
   }
 
   function _hiddenFilmsSyncedKey(country)     { return 'hiddenFilmsSynced:' + country; }
