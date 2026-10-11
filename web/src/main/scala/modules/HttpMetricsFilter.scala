@@ -1,13 +1,15 @@
 package modules
 
 import play.api.mvc.{EssentialAction, EssentialFilter, Result}
-import services.metrics.WebHttpMetrics
+import services.metrics.{WebHttpMetrics, WebRouteUsageMetrics}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 /**
- * Counts and times every inbound request into [[WebHttpMetrics]].
+ * Counts and times every inbound request into [[WebHttpMetrics]], and stamps
+ * when its route was last called, by which kind of client, into
+ * [[WebRouteUsageMetrics]] — the "which old endpoints can we retire" signal.
  *
  * An `EssentialFilter` rather than per-controller instrumentation because the
  * point is that NOTHING can be added to the app and quietly go unmeasured — a
@@ -33,13 +35,17 @@ import scala.util.control.NonFatal
  *                  wall-clock would let an NTP step produce a negative latency.
  */
 class HttpMetricsFilter(
-  metrics:  WebHttpMetrics,
-  stopwatch: tools.Stopwatch = tools.Stopwatch.System
+  metrics:    WebHttpMetrics,
+  routeUsage: WebRouteUsageMetrics,
+  stopwatch:  tools.Stopwatch = tools.Stopwatch.System
 )(using executionContext: ExecutionContext) extends EssentialFilter {
 
   override def apply(next: EssentialAction): EssentialAction = EssentialAction { request =>
     if (!WebHttpMetrics.isMeasured(request)) next(request)
     else {
+      // Stamped on ARRIVAL, not on the response: "was this route called" must not
+      // depend on whether the handler answered or threw.
+      routeUsage.record(request)
       val started = stopwatch.start()
       def elapsedSeconds: Double = started.seconds
 

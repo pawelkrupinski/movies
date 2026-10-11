@@ -11,7 +11,7 @@ import play.api.libs.streams.Accumulator
 import play.api.mvc.{EssentialAction, Headers, RequestHeader, Result, Results}
 import play.api.routing.{HandlerDef, Router}
 import play.api.test.FakeRequest
-import services.metrics.{PrometheusExposition, WebHttpMetrics}
+import services.metrics.{PrometheusExposition, WebHttpMetrics, WebRouteUsageMetrics}
 
 import scala.concurrent.{Await, ExecutionContext, Future}
 
@@ -58,7 +58,8 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
     private val registry = new PrometheusRegistry()
     private val metrics  = new WebHttpMetrics(registry, country = "pl")
     private var ticks    = 0L
-    private val filter   = new HttpMetricsFilter(metrics, new tools.Stopwatch(() => { ticks += elapsedNanos; ticks }))
+    private val usage    = new WebRouteUsageMetrics(registry, "pl", new tools.MutableClock(java.time.Instant.parse("2026-10-11T12:00:00Z")))
+    private val filter   = new HttpMetricsFilter(metrics, usage, new tools.Stopwatch(() => { ticks += elapsedNanos; ticks }))
 
     def run(request: RequestHeader, upstream: Result = Results.Ok("ok")): Result = {
       val action = EssentialAction(_ => Accumulator.done(upstream))
@@ -292,4 +293,19 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
     h.valueOf(Histogram + s"""_count{country="pl",method="GET",route="/:city/"}""") shouldBe Some(1.0)
   }
 
+  // ── Route usage: the retirement signal ────────────────────────────────────
+
+  it should "stamp when the route was last called, by client kind" in {
+    val harness = new Harness()
+    harness.run(routed("GET", "/poznan/", CityIndexPath).withHeaders(Headers("User-Agent" -> "KinowoAndroid/1.0")))
+
+    harness.valueOf(s"""kinowo_web_route_last_called_seconds{client="android_app",country="pl",route="/:city/"}""") shouldBe
+      Some(java.time.Instant.parse("2026-10-11T12:00:00Z").getEpochSecond.toDouble)
+  }
+
+  it should "not stamp route usage for the /metrics scrape" in {
+    val harness = new Harness()
+    harness.run(routed("GET", MetricsPath, MetricsPath))
+    harness.exposition should not include "kinowo_web_route_last_called_seconds{"
+  }
 }

@@ -166,7 +166,7 @@ class AppComponents(context: Context, val env: Env, val country: Country, val mo
   lazy val cspFilter: CspFilter = new CspFilter()(using materializer, executionContext)
   lazy val renamedCityRedirectFilter: RenamedCityRedirectFilter =
     new RenamedCityRedirectFilter(country.mountPath)(using materializer)
-  lazy val httpMetricsFilter: HttpMetricsFilter = new HttpMetricsFilter(webHttpMetrics)(using executionContext)
+  lazy val httpMetricsFilter: HttpMetricsFilter = new HttpMetricsFilter(webHttpMetrics, webRouteUsageMetrics)(using executionContext)
   lazy val crossSiteWriteFilter: CrossSiteWriteFilter = new CrossSiteWriteFilter()(using materializer)
   // Metrics FIRST (outermost) so the latency it records is the whole chain —
   // including gzip of a multi-MB body — and so a request rejected by Play's own
@@ -206,6 +206,10 @@ class AppComponents(context: Context, val env: Env, val country: Country, val mo
     AppLoader.rootOperationalRoutes(healthController.check, healthController.ready, metricsController.metrics)
       .orElse(new Routes(httpErrorHandler, landingController, wellKnownController, movieController, catalogController, clientSupportController, debugController, debugStreamController, authController, userStateController, healthController, metricsController, uptimeController, tasksController, legalController, supportController, facebookDataDeletionController, envConfigController, identityAdminController, reviewController, assets)
         .withPrefix(httpConfiguration.context))
+
+  // The routes inventory the "longest uncalled route" panel ranks against — a
+  // route nobody calls has no last-called series, only this one.
+  webRouteUsageMetrics.declareRoutes(router.documentation.map(_._2))
 
   start()
 

@@ -179,8 +179,14 @@ object WebHttpMetrics {
   def routeLabel(request: RequestHeader): String =
     request.attrs
       .get(Router.Attrs.HandlerDef)
-      .map(handler => DynamicPart.replaceAllIn(handler.path, m => ":" + m.group(1)))
+      .map(handler => readablePattern(handler.path))
       .getOrElse(UnmatchedRoute)
+
+  /** Play's generated route path in the routes-file spelling — see [[DynamicPart]].
+   *  Shared with [[WebRouteUsageMetrics.declareRoutes]] so the routes inventory and
+   *  the per-request labels can never spell the same route two ways. */
+  def readablePattern(generatedPath: String): String =
+    DynamicPart.replaceAllIn(generatedPath, m => ":" + m.group(1))
 
   /** Clamp a client-supplied verb to the closed set above. */
   def methodLabel(method: String): String =

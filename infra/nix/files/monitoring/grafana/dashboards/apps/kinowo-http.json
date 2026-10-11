@@ -1468,6 +1468,188 @@
           }
         }
       ]
+    },
+    {
+      "type": "barchart",
+      "title": "Routes ranked by days since the last NON-bot call (retirement candidates first)",
+      "description": "Every route pattern the routers define, ranked by how long ago an app, a browser or an unclassified client last called it, across all countries (the /uk/, /us/\u2026 mount prefix is stripped so one route is one bar). Bot traffic (crawlers, link previews, scripted clients) is excluded: a legacy URL keeps being crawled long after its last real user, so a route only bots still reach is retirable. 60 = no non-bot call in the whole 60-day window (or since kinowo_web_route_last_called_seconds shipped, 2026-10-11 \u2014 read the bars as a lower bound until then). Read across pod restarts with max_over_time, because the gauge lives in pod memory. Check the per-client table beside this before deleting anything. The mobile apps send no build number, so this cannot tell WHICH app version still calls a route.",
+      "id": 27,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 110,
+        "w": 14,
+        "h": 22
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "d",
+          "min": 0,
+          "max": 60,
+          "decimals": 1,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 7
+              },
+              {
+                "color": "red",
+                "value": 30
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "route",
+        "showValue": "always",
+        "barWidth": 0.8,
+        "groupWidth": 0.8,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "colorByField": "Value",
+        "xTickLabelMaxLength": 60
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(time() - max by (route) (label_replace(max_over_time(kinowo_web_route_last_called_seconds{client!=\"bot\"}[60d]), \"route\", \"/$1\", \"route\", \"/[a-z][a-z]/(.*)\"))) / 86400\nor on (route)\n(max by (route) (label_replace(max_over_time(kinowo_web_route_defined[60d]), \"route\", \"/$1\", \"route\", \"/[a-z][a-z]/(.*)\")) * 60 unless on (route) max by (route) (label_replace(max_over_time(kinowo_web_route_last_called_seconds{client!=\"bot\"}[60d]), \"route\", \"/$1\", \"route\", \"/[a-z][a-z]/(.*)\")))",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "legendFormat": "{{route}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "Value": "days since last non-bot call"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "days since last non-bot call",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Days since last call, by route and client kind",
+      "description": "Who still calls each route, from kinowo_web_route_last_called_seconds over 60 days, all countries. An empty cell = that client kind made no call in the window. ios_app/android_app match the apps' fixed KinowoIOS/ and KinowoAndroid/ User-Agents. bot = self-declared crawlers, link previews and scripted clients. browser = any other Mozilla/ agent. other = no or unrecognised agent. A route whose only recent cells are bot is retirable from the clients' side; SEO redirects may still be worth keeping for crawlers.",
+      "id": 28,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 110,
+        "w": 10,
+        "h": 22
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "d",
+          "decimals": 1,
+          "custom": {
+            "cellOptions": {
+              "type": "color-text"
+            }
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 7
+              },
+              {
+                "color": "red",
+                "value": 30
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "route",
+            "desc": false
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(time() - max by (route, client) (label_replace(max_over_time(kinowo_web_route_last_called_seconds[60d]), \"route\", \"/$1\", \"route\", \"/[a-z][a-z]/(.*)\"))) / 86400",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "rowField": "route",
+            "columnField": "client",
+            "valueField": "Value"
+          }
+        }
+      ]
     }
   ],
   "annotations": {
