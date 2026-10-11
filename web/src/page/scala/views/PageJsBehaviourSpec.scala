@@ -397,65 +397,58 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     chrome.foreach(_.close())
   }
 
-  /** Open `path` (relative to the test server) in a fresh tab. Cancels
-   *  the test cleanly when Chrome wasn't located in beforeAll. */
-  private def onPath(path: String)(body: CdpPage => Any): Unit =
+  /** The in-page helper APIs this spec's tests call (`web/src/page/resources/`,
+   *  see [[tools.PageScripts]]): pure definitions, installed in every tab before
+   *  its body runs and again ahead of every document it loads after. */
+  private val PageHelpers = Seq("user-state/user-state.js")
+
+  /** Open `url` in a fresh tab with [[PageHelpers]] installed. Cancels the test
+   *  cleanly when Chrome wasn't located in beforeAll. */
+  private def open(url: String)(body: CdpPage => Any): Unit =
     chrome match {
-      // `path` is an in-city sub-path ("/", "/movie/{slug}"); pages
-      // live under `/{city}/…`, so prepend the city prefix.
-      case Some(c) => c.openPage(server.baseUrl + cityPrefix + path)(body(_))
+      case Some(c) => c.openPage(url) { page =>
+        PageHelpers.foreach(page.useScript)
+        body(page)
+      }
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
+
+  /** Open `path`, an in-city sub-path ("/", "/movie/{slug}"); pages live under
+   *  `/{city}/…`, so the city prefix is prepended. */
+  private def onPath(path: String)(body: CdpPage => Any): Unit =
+    open(server.baseUrl + cityPrefix + path)(body)
 
   /** Open the city-selection landing page (not city-scoped). Server-rendered
    *  Polish (the fixture's default deployment), and `i18n.js`'s boot no
    *  longer sniffs the browser's own locale, so the page stays in Polish
    *  with no forcing needed. */
   private def onLanding(body: CdpPage => Any): Unit =
-    chrome match {
-      case Some(c) => c.openPage(server.baseUrl + "/landing")(body(_))
-      case None    => cancel("Chrome not installed — skipping JS behaviour test")
-    }
+    open(server.baseUrl + "/landing")(body)
 
   /** Open the GROUPED city-selection landing — the US one, whose metros sit
    *  behind a state heading. */
   private def onGroupedLanding(body: CdpPage => Any): Unit =
-    chrome match {
-      case Some(c) => c.openPage(server.baseUrl + "/landing-grouped")(body(_))
-      case None    => cancel("Chrome not installed — skipping JS behaviour test")
-    }
+    open(server.baseUrl + "/landing-grouped")(body)
 
   /** Open the GERMAN city-selection landing — the one whose place names carry
    *  umlauts the search has to fold both ways. */
   private def onGermanLanding(body: CdpPage => Any): Unit =
-    chrome match {
-      case Some(c) => c.openPage(server.baseUrl + "/landing-german")(body(_))
-      case None    => cancel("Chrome not installed — skipping JS behaviour test")
-    }
+    open(server.baseUrl + "/landing-german")(body)
 
   /** Open the two-level city-selection landing — the UK one, whose places sit
    *  behind a county heading behind a nation heading. */
   private def onNestedLanding(body: CdpPage => Any): Unit =
-    chrome match {
-      case Some(c) => c.openPage(server.baseUrl + "/landing-nested")(body(_))
-      case None    => cancel("Chrome not installed — skipping JS behaviour test")
-    }
+    open(server.baseUrl + "/landing-nested")(body)
 
   /** Open the global-corpus `/debug` page (not city-scoped). */
   private def onDebug(body: CdpPage => Any): Unit =
-    chrome match {
-      case Some(c) => c.openPage(server.baseUrl + "/debug")(body(_))
-      case None    => cancel("Chrome not installed — skipping JS behaviour test")
-    }
+    open(server.baseUrl + "/debug")(body)
 
   /** Open the single-row `/debug-slots` variant of the corpus table — the row
    *  carries real cinema slots, so it drives both the Cinemas-cell layout and the
    *  change-stream no-op guard without disturbing `/debug`'s three-row tests. */
   private def onDebugSlots(body: CdpPage => Any): Unit =
-    chrome match {
-      case Some(c) => c.openPage(server.baseUrl + "/debug-slots")(body(_))
-      case None    => cancel("Chrome not installed — skipping JS behaviour test")
-    }
+    open(server.baseUrl + "/debug-slots")(body)
 
   /** Open the index as a signed-in visitor and WAIT FOR THE AVATAR TO ARRIVE.
    *
@@ -468,12 +461,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  This is also the page that carries the hidden login pill the sign-out swap
    *  puts back, since hydration is what hid it. */
   private def onLoggedInIndex(body: CdpPage => Any): Unit =
-    chrome match {
-      case Some(c) => c.openPage(server.baseUrl + cityPrefix + "/li") { page =>
-        page.waitFor("!!document.getElementById('auth-menu')")
-        body(page)
-      }
-      case None    => cancel("Chrome not installed — skipping JS behaviour test")
+    open(server.baseUrl + cityPrefix + "/li") { page =>
+      page.waitFor("!!document.getElementById('auth-menu')")
+      body(page)
     }
 
   // ── Server-state reconcile on boot (logged-in users) ─────────────────────
@@ -526,10 +516,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     // now running went and asked — which localStorage, shared across every tab
     // on this origin, can never be. The two state reads then confirm the answer
     // landed.
-    page.waitFor("performance.getEntriesByType('resource')" +
-                 ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films') !== -1; }) && " +
-                 "localStorage.getItem('hiddenFilmsSynced:pl') === '1' && " +
-                 "getHidden().indexOf('Film A') !== -1")
+    page.waitFor("__userState.requested('/api/me/pl/hidden-films') && __userState.synced('Film A')")
   }
 
   "server-state reconcile" should
@@ -573,9 +560,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // across several unrelated commits on 2026-09-05 while passing locally —
       // the condition was already right, the budget was not. Matches the 5s the
       // sibling waits in this file already use for post-login server state.
-      page.waitFor(
-        "localStorage.getItem('hiddenFilmsSynced:pl') === '1' && " +
-          "getHidden().indexOf('Local Z') !== -1 && getHidden().indexOf('Film A') !== -1")
+      page.waitFor("__userState.synced('Local Z') && __userState.synced('Film A')")
       val hidden = page.evalString("JSON.stringify(getHidden())")
       hidden should include ("Film A")  // pulled from the server
       hidden should include ("Local Z") // migrated up from this device
@@ -596,7 +581,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("localStorage.removeItem('hiddenFilmsSynced:pl')")
       page.eval("setHidden(['Local Z'])")
       page.reload()
-      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1")
+      page.waitFor("__userState.synced('Film A')")
       page.evalString("JSON.stringify(getHidden())") should include ("Local Z")
     }
   }
@@ -633,11 +618,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("localStorage.removeItem('hiddenFilmsSynced:pl')")
       page.eval("setHidden(['UK Film'], 'uk')")
       page.reload()
-      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1")
+      page.waitFor("__userState.synced('Film A')")
       awaitHiddenFilmsWrites(page)
-      page.evalString(
-        "performance.getEntriesByType('resource')" +
-          ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films/UK%20Film') !== -1; }).toString()") shouldBe "false"
+      page.evalBool("__userState.requested('/api/me/pl/hidden-films/UK%20Film')") shouldBe false
       page.evalString("JSON.stringify(getHidden())") should not include "UK Film"
     }
   }
@@ -669,8 +652,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("localStorage.removeItem('hiddenFilms:pl');" +
         "localStorage.setItem('hiddenFilms', JSON.stringify(['UK Film'])); localStorage.setItem('hiddenFilmsCountry', 'uk')")
       page.reload()
-      page.waitFor("performance.getEntriesByType('resource')" +
-                   ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films') !== -1; })")
+      page.waitFor("__userState.requested('/api/me/pl/hidden-films')")
       page.waitFor("getHidden().indexOf('Film A') !== -1")
       page.evalString("JSON.stringify(getHidden('uk'))") shouldBe """["UK Film"]"""
     }
@@ -689,11 +671,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.navigate(server.baseUrl + cityPrefix + "/")          // signed out: the anonymous boot runs
       page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === null")
       page.navigate(server.baseUrl + cityPrefix + "/li")        // signed back in, on pl
-      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1")
+      page.waitFor("__userState.synced('Film A')")
       awaitHiddenFilmsWrites(page)
-      page.evalString(
-        "performance.getEntriesByType('resource')" +
-          ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films/UK%20Film') !== -1; }).toString()") shouldBe "false"
+      page.evalBool("__userState.requested('/api/me/pl/hidden-films/UK%20Film')") shouldBe false
       page.evalString("JSON.stringify(getHidden())") should not include "UK Film"
     }
   }
@@ -707,12 +687,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("setHidden(getHidden().concat(['Rejected'])); hideFilmOnServer('Rejected')")
       page.waitFor("localStorage.getItem('hiddenFilmsEtag:pl') === null")
       page.reload()
-      page.waitFor("performance.getEntriesByType('resource')" +
-                   ".some(function (r) { return /\\/api\\/me\\/pl\\/hidden-films$/.test(r.name); }) && " +
-                   "getHidden().indexOf('Film A') !== -1")
+      page.waitFor("__userState.requestedMatching('/api/me/pl/hidden-films$') && getHidden().indexOf('Film A') !== -1")
       page.evalString("JSON.stringify(getHidden())") should include ("Rejected")
-      page.waitFor("performance.getEntriesByType('resource')" +
-                   ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films/Rejected') !== -1; })")
+      page.waitFor("__userState.requested('/api/me/pl/hidden-films/Rejected')")
     }
   }
 
@@ -720,17 +697,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  return the pending queue it leaves. */
   private def pendingAfterWriteAnswered(page: CdpPage, status: Int, title: String): String =
     try {
-      page.eval(
-        "window._realFetch = window.fetch; window._written = false;" +
-        "window.fetch = function (url, opts) {" +
-        "  if (!/\\/api\\/me\\/pl\\/hidden-films\\//.test(String(url))) return window._realFetch(url, opts);" +
-        s"  return Promise.resolve(new Response('answer', { status: $status }));" +
-        "};" +
-        s"_writeHiddenFilms('PUT', 'pl', '$title').then(() => { window._written = true; }); 0")
-      page.waitFor("window._written === true")
+      page.eval(s"__userState.writeAnswered($status, '$title')")
+      page.waitFor("__userState.written === true")
       page.evalString("String(localStorage.getItem('hiddenFilmsPending:pl'))")
-    } finally page.eval("if (window._realFetch) window.fetch = window._realFetch;" +
-      "localStorage.removeItem('hiddenFilmsPending:pl'); 0")
+    } finally page.eval("__userState.restore(); localStorage.removeItem('hiddenFilmsPending:pl')")
 
   // Only the controller's own refusals (400 over-long title or unknown country,
   // 413 full bucket) are for good. A 403 is as likely a Cloudflare challenge in
@@ -752,42 +722,22 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   }
 
   // A stateful `/api/me/pl/hidden-films` server installed in the page, over
-  // `fetch`: the fixture's is static (it never records a write), so a reconcile
-  // that re-asks after an edit could only be driven through it by a 304. A PUT
-  // adds its title and moves the ETag; a GET answers 304 to the current ETag and
-  // the list otherwise. With `holdFirstGet` the first GET is held until
-  // `window._releaseGet()`.
+  // `fetch` (`__userState.serveHiddenFilms`): the fixture's is static (it never
+  // records a write), so a reconcile that re-asks after an edit could only be
+  // driven through it by a 304. With `holdFirstGet` the first GET is held until
+  // `__userState.releaseGet()`.
   private def withHiddenFilmsServer(page: CdpPage, serverList: Seq[String], holdFirstGet: Boolean)(body: => Any): Unit =
     try {
-      page.eval(
-        "window._realFetch = window.fetch; window._releaseGet = null;" +
-        s"window._server = { list: ${serverList.map(t => s"'$t'").mkString("[", ",", "]")}, version: 2 };" +
-        "function _answer(status, body) {" +
-        "  return new Response(status === 304 ? null : JSON.stringify(body)," +
-        "    { status: status, headers: { 'ETag': '\"v' + window._server.version + '\"', 'Content-Type': 'application/json' } });" +
-        "}" +
-        "window.fetch = function (url, opts) {" +
-        "  const u = String(url); const method = (opts && opts.method) || 'GET';" +
-        "  if (!/\\/api\\/me\\/pl\\/hidden-films/.test(u)) return window._realFetch(url, opts);" +
-        "  if (method === 'PUT') {" +
-        "    const title = decodeURIComponent(u.split('/').pop());" +
-        "    window._server.list = [...new Set(window._server.list.concat([title]))]; window._server.version++;" +
-        "    return Promise.resolve(_answer(200, { hiddenFilms: window._server.list }));" +
-        "  }" +
-        "  const inm = opts && opts.headers && opts.headers['If-None-Match'];" +
-        "  const answer = inm === '\"v' + window._server.version + '\"' ? _answer(304) : _answer(200, { hiddenFilms: window._server.list });" +
-        s"  if (${holdFirstGet} && !window._releaseGet) return new Promise(resolve => { window._releaseGet = () => resolve(answer); });" +
-        "  return Promise.resolve(answer);" +
-        "}; 0")
+      page.eval(s"__userState.serveHiddenFilms(${Json.toJson(serverList)}, $holdFirstGet)")
       body
-    } finally page.eval("if (window._realFetch) window.fetch = window._realFetch; 0")
+    } finally page.eval("__userState.restore()")
 
   /** [[withHiddenFilmsServer]] holding its first GET, with a `bootMergeFromServer`
-   *  started behind it (`window._reconciled` once it is done). */
+   *  started behind it (`__userState.reconciled` once it is done). */
   private def reconcileAgainstHeldServer(page: CdpPage, serverList: Seq[String])(body: => Any): Unit =
     withHiddenFilmsServer(page, serverList, holdFirstGet = true) {
-      page.eval("window._reconciled = false; bootMergeFromServer().then(() => { window._reconciled = true; }); 0")
-      page.waitFor("typeof window._releaseGet === 'function'")
+      page.eval("__userState.reconcile()")
+      page.waitFor("typeof __userState.releaseGet === 'function'")
       body
     }
 
@@ -795,9 +745,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  out, then let the fetch answer and wait for the reconcile to finish. */
   private def hideDuringHeldFetch(page: CdpPage, title: String): Unit = {
     page.eval(s"setHidden(getHidden().concat(['$title'])); hideFilmOnServer('$title'); 0")
-    page.waitFor(s"window._server.list.indexOf('$title') !== -1")
-    page.eval("window._releaseGet()")
-    page.waitFor("window._reconciled === true")
+    page.waitFor(s"__userState.server.list.indexOf('$title') !== -1")
+    page.eval("__userState.releaseGet()")
+    page.waitFor("__userState.reconciled === true")
   }
 
   // A hide made while a reconcile's fetch is out: the answer predates the hide's
@@ -838,11 +788,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onLoggedInIndex { page =>
       awaitOwnReconcile(page)
       withHiddenFilmsServer(page, Seq("Film A", "Other Device"), holdFirstGet = false) {
-        page.eval("setHidden(getHidden().concat(['Mine'])); window._written = false;" +
-                  "_writeHiddenFilms('PUT', 'pl', 'Mine').then(() => { window._written = true; }); 0")
-        page.waitFor("window._written === true")
-        page.eval("window._reconciled = false; bootMergeFromServer().then(() => { window._reconciled = true; }); 0")
-        page.waitFor("window._reconciled === true")
+        page.eval("setHidden(getHidden().concat(['Mine'])); __userState.write('Mine')")
+        page.waitFor("__userState.written === true")
+        page.eval("__userState.reconcile()")
+        page.waitFor("__userState.reconciled === true")
         page.evalString("JSON.stringify(getHidden())") should include ("Other Device")
       }
     }
@@ -861,10 +810,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("hideFilmOnServer('New Hide')")
       // 150ms: comfortably under the retired 400ms debounce window, so this
       // only passes if the request fires immediately rather than waiting.
-      page.waitFor(
-        "performance.getEntriesByType('resource')" +
-          ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films/New%20Hide') !== -1; })",
-        timeoutMs = 150)
+      page.waitFor("__userState.requested('/api/me/pl/hidden-films/New%20Hide')", timeoutMs = 150)
     }
   }
 
@@ -875,14 +821,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // count, not mere presence — same shape as the disabledCinemas "never
       // PUT" test above.
       awaitOwnReconcile(page)
-      def bucketHits(): String = page.evalString(
-        "performance.getEntriesByType('resource')" +
-          ".filter(function (r) { return r.name.slice(-'/api/me/pl/hidden-films'.length) === '/api/me/pl/hidden-films'; })" +
-          ".length.toString()")
+      def bucketHits(): Int = page.evalInt("__userState.requestsEndingWith('/api/me/pl/hidden-films')")
       val before = bucketHits()
       page.eval("clearHiddenFilmsOnServer()")
       awaitHiddenFilmsWrites(page)
-      bucketHits().toInt shouldBe (before.toInt + 1)
+      bucketHits() shouldBe (before + 1)
     }
   }
 
@@ -900,7 +843,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // more to land on the "already synced" branch, which pushes nothing of
       // its own for hiddenFilms.
       page.reload()
-      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1")
+      page.waitFor("__userState.synced('Film A')")
       // `reconcileLanguage()` (shared.js) fires its OWN GET to `/api/me/state`
       // on every logged-in boot — unconditionally, and unawaited alongside
       // `bootMergeFromServer()` in the same `hydrateAuth().then(...)` block —
@@ -912,18 +855,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // captured below, flipping `after` — the intermittent CI failure this
       // test actually hit ("[1]" was not equal to "[0]"), not a real extra
       // PUT. Waiting for it explicitly turns that race into a fixed point.
-      page.waitFor("performance.getEntriesByType('resource')" +
-                   ".some(function (r) { return r.name.indexOf('/api/me/state') !== -1; })")
-      val before = page.evalString(
-        "performance.getEntriesByType('resource')" +
-          ".filter(function (r) { return r.name.indexOf('/api/me/state') !== -1; }).length.toString()")
+      page.waitFor("__userState.requested('/api/me/state')")
+      val before = page.evalInt("__userState.requests('/api/me/state')")
       page.eval("setDisabledCinemas(['Local Only Cinema'])")
       // Past the 400ms debounce a hiddenFilms write would have used — long
       // enough that a PUT, if one fired, would already be a resource entry.
       Thread.sleep(700)
-      val after = page.evalString(
-        "performance.getEntriesByType('resource')" +
-          ".filter(function (r) { return r.name.indexOf('/api/me/state') !== -1; }).length.toString()")
+      val after = page.evalInt("__userState.requests('/api/me/state')")
       after shouldBe before
     }
   }
@@ -939,7 +877,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Second reconcile is the AUTHORITATIVE-REPLACE phase for hiddenFilms —
       // confirm disabledCinemas still isn't touched even there.
       page.reload()
-      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1")
+      page.waitFor("__userState.synced('Film A')")
       val disabled = page.evalString("JSON.stringify(getDisabledCinemas())")
       disabled should include ("Device Pick")
       disabled should not include "Server-Only Cinema"
@@ -1001,22 +939,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       onLoggedInIndex { page =>
         awaitOwnReconcile(page)
         try {
-          page.eval(
-            "window._realFetch = window.fetch; window._pushHandled = false;" +
-            "window.fetch = function (url, opts) {" +
-            "  if (!/\\/api\\/me\\/state$/.test(String(url)) || !opts || opts.method !== 'PUT') return window._realFetch(url, opts);" +
-            // A macrotask runs only once every microtask queued before it has —
-            // the push's response handler included — so this flags "handled".
-            "  setTimeout(() => { window._pushHandled = true; }, 0);" +
-            s"  return Promise.resolve(new Response('answer', { status: ${row.status.get} }));" +
-            "};")
+          page.eval(s"__userState.answerLanguagePush(${row.status.get})")
           page.eval("onLanguageChange('es')")
-          page.waitFor("window._pushHandled === true")
+          page.waitFor("__userState.pushHandled === true")
           val pending = page.eval("localStorage.getItem('kinowo_lang_pending')").asOpt[String]
           pending shouldBe (if (row.verdict == RetryClassificationTable.Verdict.Permanent) None else Some("es"))
         } finally {
-          page.eval("if (window._realFetch) window.fetch = window._realFetch;" +
-            "localStorage.removeItem('kinowo_lang'); localStorage.removeItem('kinowo_lang_pending')")
+          page.eval("__userState.restore(); localStorage.removeItem('kinowo_lang'); localStorage.removeItem('kinowo_lang_pending')")
         }
       }
     }
@@ -1029,14 +958,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         // The reconcile above already made its own PUT (migrating the union
         // up), so proving THIS pick's push needs a rising count, not just
         // presence — a `.some(…)` check would pass on that earlier PUT alone.
-        def putCount(): Int = page.evalInt(
-          "performance.getEntriesByType('resource')" +
-            ".filter(function (r) { return r.name.indexOf('/api/me/state') !== -1; }).length")
+        def putCount(): Int = page.evalInt("__userState.requests('/api/me/state')")
         val before = putCount()
         page.eval("onLanguageChange('es')")
-        page.waitFor(
-          "performance.getEntriesByType('resource')" +
-            ".filter(function (r) { return r.name.indexOf('/api/me/state') !== -1; }).length > " + before)
+        page.waitFor(s"__userState.requests('/api/me/state') > $before")
         page.evalString("document.documentElement.lang") shouldBe "es"
       } finally {
         // Same origin-wide leak concern as the test above.
@@ -1053,30 +978,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onLoggedInIndex { page =>
       awaitOwnReconcile(page)
       try {
-        page.eval(
-          "window._realFetch = window.fetch; window._langPuts = []; window._langInFlight = 0; window._langMaxInFlight = 0;" +
-          "window._releaseFirstPut = null;" +
-          "window.fetch = function (url, opts) {" +
-          "  if (!/\\/api\\/me\\/state$/.test(String(url)) || !opts || opts.method !== 'PUT') return window._realFetch(url, opts);" +
-          "  window._langPuts.push(JSON.parse(opts.body).language);" +
-          "  window._langInFlight++; window._langMaxInFlight = Math.max(window._langMaxInFlight, window._langInFlight);" +
-          "  const answer = () => { window._langInFlight--; return new Response(null, { status: 204 }); };" +
-          "  if (window._langPuts.length === 1) return new Promise(resolve => { window._releaseFirstPut = () => resolve(answer()); });" +
-          "  return Promise.resolve(answer());" +
-          "}; 0")
+        page.eval("__userState.holdFirstLanguagePush()")
         page.eval("onLanguageChange('es')")
-        page.waitFor("typeof window._releaseFirstPut === 'function'")
+        page.waitFor("typeof __userState.releaseFirstPut === 'function'")
         page.eval("onLanguageChange('de')")
         page.eval("new Promise(resolve => setTimeout(resolve, 800))")
-        page.evalInt("window._langPuts.length") shouldBe 1
-        page.eval("window._releaseFirstPut()")
-        page.waitFor("window._langPuts.length === 2 && window._langInFlight === 0")
-        page.evalString("JSON.stringify(window._langPuts)") shouldBe """["es","de"]"""
-        page.evalInt("window._langMaxInFlight") shouldBe 1
+        page.evalInt("__userState.languagePuts.length") shouldBe 1
+        page.eval("__userState.releaseFirstPut()")
+        page.waitFor("__userState.languagePuts.length === 2 && __userState.languageInFlight === 0")
+        page.evalString("JSON.stringify(__userState.languagePuts)") shouldBe """["es","de"]"""
+        page.evalInt("__userState.languageMaxInFlight") shouldBe 1
         page.evalString("String(localStorage.getItem('kinowo_lang_pending'))") shouldBe "null"
       } finally {
-        page.eval("if (window._realFetch) window.fetch = window._realFetch; " +
-                  "localStorage.removeItem('kinowo_lang'); localStorage.removeItem('kinowo_lang_pending'); 0")
+        page.eval("__userState.restore(); localStorage.removeItem('kinowo_lang'); localStorage.removeItem('kinowo_lang_pending')")
       }
     }
   }
@@ -1088,27 +1002,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onLoggedInIndex { page =>
       awaitOwnReconcile(page)
       try {
-        page.eval(
-          "window._realFetch = window.fetch; window._realSetTimeout = window.setTimeout; window._langPuts = [];" +
-          "window.setTimeout = function (fn, ms) { return window._realSetTimeout.apply(window, [fn, ms === 10000 ? 50 : ms].concat([].slice.call(arguments, 2))); };" +
-          "window.fetch = function (url, opts) {" +
-          "  if (!/\\/api\\/me\\/state$/.test(String(url)) || !opts || opts.method !== 'PUT') return window._realFetch(url, opts);" +
-          "  window._langPuts.push(JSON.parse(opts.body).language);" +
-          "  if (window._langPuts.length === 1) return new Promise((resolve, reject) => {" +
-          "    if (opts.signal) opts.signal.addEventListener('abort', () => reject(new DOMException('timed out', 'AbortError')));" +
-          "  });" +
-          "  return Promise.resolve(new Response(null, { status: 204 }));" +
-          "}; 0")
+        page.eval("__userState.hangFirstLanguagePush()")
         page.eval("onLanguageChange('es')")
-        page.waitFor("window._langPuts.length === 1")
+        page.waitFor("__userState.languagePuts.length === 1")
         page.eval("onLanguageChange('de')")
-        page.waitFor("window._langPuts.length === 2")
-        page.evalString("JSON.stringify(window._langPuts)") shouldBe """["es","de"]"""
+        page.waitFor("__userState.languagePuts.length === 2")
+        page.evalString("JSON.stringify(__userState.languagePuts)") shouldBe """["es","de"]"""
         page.waitFor("localStorage.getItem('kinowo_lang_pending') === null")
       } finally {
-        page.eval("if (window._realFetch) window.fetch = window._realFetch; " +
-                  "if (window._realSetTimeout) window.setTimeout = window._realSetTimeout; " +
-                  "localStorage.removeItem('kinowo_lang'); localStorage.removeItem('kinowo_lang_pending'); 0")
+        page.eval("__userState.restore(); localStorage.removeItem('kinowo_lang'); localStorage.removeItem('kinowo_lang_pending')")
       }
     }
   }
@@ -6316,15 +6218,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // on first expand — inlining every showtime of the US read model (~100k screening
   // docs) OOM'd the dev server.
   "the /debug/readmodel table" should "fetch a film's screenings lazily on expand, not ship them in the page" in {
-    chrome match {
-      case Some(c) => c.openPage(server.baseUrl + "/debug/readmodel") { page =>
-        page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 1""")
-        page.evalBool("""document.body.innerHTML.indexOf('book.example/readmodel') === -1""") shouldBe true
-        page.eval("""document.querySelector('#t tbody tr.data').click()""")
-        page.waitFor(
-          """[...document.querySelectorAll('.screenings-slot')].some(s => s.innerHTML.indexOf('book.example/readmodel') !== -1)""")
-      }
-      case None => cancel("Chrome not installed — skipping JS behaviour test")
+    open(server.baseUrl + "/debug/readmodel") { page =>
+      page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 1""")
+      page.evalBool("""document.body.innerHTML.indexOf('book.example/readmodel') === -1""") shouldBe true
+      page.eval("""document.querySelector('#t tbody tr.data').click()""")
+      page.waitFor(
+        """[...document.querySelectorAll('.screenings-slot')].some(s => s.innerHTML.indexOf('book.example/readmodel') !== -1)""")
     }
   }
 
