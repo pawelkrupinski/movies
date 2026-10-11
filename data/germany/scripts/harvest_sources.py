@@ -1,85 +1,129 @@
 #!/usr/bin/env python3
 """
-Harvest the German cinemas kinoheld.de sells for, and split them into the ones
-the roster already has and the ones it lacks.
+Every German cinema we could serve, and which source to serve each one from.
 
-kinoheld's GraphQL API (https://next-live.kinoheld.de/graphql, no auth) lists
-~2,150 venues. The roster comes from Filmstarts' city directory, which skips
-whole cities (Bochum, Aachen, Solingen...), so a few hundred venues with a live
-programme are on kinoheld and not on our pages.
+Four sources list German programmes, each incompletely:
+  - Filmstarts (the roster's own source) stops at the end of the programme week
+    and skips whole cities its directory never links (Bochum, Aachen...);
+  - Cineamo (api.cineamo.com) lists ~1,300 venues, months ahead;
+  - kinoheld.de (GraphQL) lists ~2,150, many of them ticketing-only;
+  - kinoprogramm.com mirrors Filmstarts' window (the roster's fallback).
 
 Method:
-  1. Discovery. Page through `cinemas(first:100, page:n)`; keep the German ones
-     (5-digit postcode, inside Germany's bounding box) that are not closed,
-     hidden, open-air or drive-in, and not excluded by name (venue_filters.py:
-     seasonal screens, sex cinemas).
-  2. Live check. One `programShows(excludeExpired:true, first:1)` per venue:
-     a venue with no upcoming show is left out (it may be on a break; a rerun
-     picks it up when it lists again).
-  3. Dedup against Filmstarts -- the roster (regions.json, with each venue's
-     address from filmstarts-addresses.json) AND the venues the id sweep
-     recovered (filmstarts-sweep.json). Filmstarts stays every such venue's
-     primary source; kinoheld becomes only its fallback. A kinoheld venue is
-     the same as a Filmstarts one when they share a postcode or town AND
-       - the same street (house number included), or
-       - names that score >= ACCEPT_SCORE (harvest_kinoprogramm.score: city
-         and noise words dropped), or
-       - the same chain (CineStar, UCI, ...) as the only branch of it there.
-     A pair that scores between REVIEW_SCORE and ACCEPT_SCORE is ambiguous and
-     printed; each was checked by hand and its verdict recorded in DECIDED
-     (kinoheld id -> theaterId, or None for "a different venue").
-     kinoheld venues within SAME_SITE_M of each other whose names also agree
-     are one site listed twice; the one with more upcoming shows is kept.
+  1. Discovery. Cineamo's and kinoheld's German venues that are open, not an
+     open-air/drive-in screen or a sex cinema (venue_filters.py) and list an
+     upcoming show. A kinoheld and a Cineamo venue within SAME_SITE_M of each
+     other whose names agree are one venue.
+  2. Identity. Each discovered venue is matched to a Filmstarts venue -- the
+     roster's (addresses from filmstarts-addresses.json, by the id sweep) or one
+     the sweep recovered (filmstarts-sweep.json) -- when they share a postcode or
+     town AND the same street, or names scoring >= ACCEPT_SCORE
+     (harvest_kinoprogramm.score), or the same chain as its only branch there.
+     A pair between REVIEW_SCORE and ACCEPT_SCORE was checked by hand; its
+     verdict is in DECIDED. Unmatched venues are NEW: no Filmstarts page.
+  3. Measurement. Every source a venue has is counted over the next WINDOW_DAYS
+     days and over its whole published horizon: Cineamo and kinoheld off their
+     APIs, kinoprogramm.com off its week pages (until three blank weeks), and
+     Filmstarts off what showtimes.cc/de serves today (`/<page>/api/repertoire`:
+     the roster as projected from Filmstarts).
+  4. Choice. A venue's `rawWinner` is the source with the most shows in the
+     window, the whole horizon breaking a tie (then SOURCES order). Without a
+     DEFAULT_ORDER its sources are ranked that way: the winner is its primary,
+     the rest its fallback chain. With one, the primary is the first source in
+     DEFAULT_ORDER that has a show, the rest following in that order. The
+     summary's split counts the raw winners over the rostered venues with a show.
 
-Writes:
-  - kinoheld-venues.json: the kinoheld-ONLY venues with an upcoming show --
-    the ones kinoheld will be the primary source for. Sorted by town.
-  - kinoheld-matches.json: {theaterId: {kinoheldId, path, how}} -- the
-    Filmstarts venues kinoheld also lists, i.e. their fallback feed.
+Writes venue-sources.json: the measurement day, the summary (where each source
+wins, the Filmstarts-only venues) and one row per venue with its handles in
+every source, its counts and its chosen primary + fallbacks.
 
-Politeness: 5 workers, <= 5 req/s, concurrency halving on 429/503
-(polite_fetch). Answers are cached under ~/.cache/kinowo/kh-harvest
-(KH_HARVEST_CACHE_DIR): delete it to see today's programme.
+Politeness: polite_fetch pools -- Cineamo 6 workers / 10 req/s, kinoheld 5 / 5,
+kinoprogramm.com 4 / 3, showtimes.cc 2 / 2 -- each halving on 429/503. Answers
+are cached under ~/.cache/kinowo/sources-<day> (SOURCES_CACHE_DIR): a rerun on
+the same day is free, the next day measures afresh.
 
-Run: python3 data/germany/scripts/harvest_kinoheld.py
+Run: python3 data/germany/scripts/harvest_sources.py
 """
 
+import datetime
 import json
 import os
 import pathlib
 import re
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import harvest_kinoprogramm as kp  # noqa: E402  (shared name normalising + scoring)
+import roster_venues  # noqa: E402
 from polite_fetch import PoliteFetcher, cache_dir  # noqa: E402
 from venue_filters import excluded_reason  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.dirname(HERE)
-OUT_VENUES = os.path.join(DATA, "kinoheld-venues.json")
-OUT_MATCHES = os.path.join(DATA, "kinoheld-matches.json")
+OUT = os.path.join(DATA, "venue-sources.json")
 
-API = "https://next-live.kinoheld.de"
+BERLIN = ZoneInfo("Europe/Berlin")
+WINDOW_DAYS = 14
 ACCEPT_SCORE = 0.86
 REVIEW_SCORE = 0.55
 SAME_SITE_M = 300
 GERMANY = (47.2, 55.1, 5.8, 15.1)   # lat min/max, lon min/max
 
-# Hand-checked verdicts on the pairs the matcher could not decide (see the
-# module doc): kinoheld id -> Filmstarts theaterId it IS, or None when it is a
-# different venue. Each decided from both sites' addresses.
+SOURCES = ("filmstarts", "cineamo", "kinoheld", "kinoprogramm")
+# The order a venue's sources are tried in, when Germany has one (README, "Which
+# source serves a venue"); None ranks each venue's sources by what they list.
+DEFAULT_ORDER = None
+
+# Hand-checked verdicts on the pairs the matcher could not decide: discovered
+# venue key ("cineamo:<id>" / "kinoheld:<id>") -> the Filmstarts theaterId it IS,
+# or None for "a different venue". Each decided from both sites' addresses.
 DECIDED = {
 }
 
-CINEMAS_QUERY = """query($page: Int!) { cinemas(first: 100, page: $page) {
+KINOHELD_CINEMAS = """query($page: Int!) { cinemas(first: 100, page: $page) {
   data { id name urlSlug street city { name urlSlug } postcode { postcode }
          latitude longitude isClosed isOpenAir isDriveIn isHidden } } }"""
-LIVE_QUERY = """query($cinema: ID!) { programShows(cinemaIds: [$cinema], excludeExpired: true, first: 100, page: 1) {
+KINOHELD_SHOWS = """query($cinema: ID!, $page: Int!) { programShows(cinemaIds: [$cinema], excludeExpired: true, first: 100, page: $page) {
   paginatorInfo { hasMorePages } data { beginning } } }"""
 
 
+# ------------------------------------------------------------------ helpers
+def berlin_day(iso):
+    """The German calendar day an ISO instant ("...Z" or "+02:00") falls on."""
+    return datetime.datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(BERLIN).date().isoformat()
+
+
+def counts(days, today):
+    """[shows in the next WINDOW_DAYS days, shows in all] of a list of show days."""
+    end = (datetime.date.fromisoformat(today) + datetime.timedelta(days=WINDOW_DAYS)).isoformat()
+    upcoming = [d for d in days if d >= today]
+    return [sum(1 for d in upcoming if d < end), len(upcoming)]
+
+
+def german_place(postcode, lat, lon):
+    return (re.fullmatch(r"\d{5}", str(postcode or "")) is not None and lat is not None and lon is not None
+            and GERMANY[0] <= lat <= GERMANY[1] and GERMANY[2] <= lon <= GERMANY[3])
+
+
+def metres(a, b):
+    return 1000 * kp.km_between(a["lat"], a["lon"], b["lat"], b["lon"])
+
+
+STREET_ABBREVIATION = re.compile(r"str\b\.?|strasse\b|straße\b", re.I)
+
+
+def street_key(street):
+    """"Kortumstr. 51" and "Kortumstraße 51" -> "kortumstrasse51"."""
+    return kp.fold(STREET_ABBREVIATION.sub("strasse", street or "")).replace(" ", "")
+
+
+def town_key(town):
+    return kp.fold(re.split(r"[,(]", town or "")[0])
+
+
+# ---------------------------------------------------------------- discovery
 def gql(fx, query, variables):
     status, _, text = fx.post_json("/graphql", {"query": query, "variables": variables})
     if status != 200:
@@ -90,188 +134,331 @@ def gql(fx, query, variables):
     return doc["data"]
 
 
-def all_cinemas(fx):
-    out, page = [], 1
+def kinoheld_venues(fx, excluded):
+    raw, page = [], 1
     while True:
-        batch = gql(fx, CINEMAS_QUERY, {"page": page})["cinemas"]["data"]
-        out.extend(batch)
+        batch = gql(fx, KINOHELD_CINEMAS, {"page": page})["cinemas"]["data"]
+        raw.extend(batch)
         if len(batch) < 100:
-            return out
+            break
+        page += 1
+    out = []
+    for c in raw:
+        why = ("not German" if not german_place((c.get("postcode") or {}).get("postcode"), c.get("latitude"), c.get("longitude"))
+               else "closed" if c.get("isClosed") else "hidden" if c.get("isHidden")
+               else excluded_reason(c["name"], c.get("isOpenAir"), c.get("isDriveIn")))
+        if why:
+            excluded[f"kinoheld: {why}"] += 1
+            continue
+        out.append({"key": f"kinoheld:{c['id']}", "source": "kinoheld", "name": c["name"].strip(),
+                    "street": (c.get("street") or "").strip(), "postcode": c["postcode"]["postcode"],
+                    "town": c["city"]["name"], "lat": c["latitude"], "lon": c["longitude"],
+                    "handle": {"id": c["id"], "path": f"/kino/{c['city']['urlSlug']}/{c['urlSlug']}"}})
+    return out
+
+
+def kinoheld_days(fx, venue_id):
+    days, page = [], 1
+    while True:
+        doc = gql(fx, KINOHELD_SHOWS, {"cinema": venue_id, "page": page})["programShows"]
+        days += [berlin_day(s["beginning"]) for s in doc["data"]]
+        if not doc["paginatorInfo"]["hasMorePages"] or not doc["data"]:
+            return days
         page += 1
 
 
-def german(c):
-    postcode = str((c.get("postcode") or {}).get("postcode") or "")
-    lat, lon = c.get("latitude"), c.get("longitude")
-    return (re.fullmatch(r"\d{5}", postcode) is not None and lat is not None and lon is not None
-            and GERMANY[0] <= lat <= GERMANY[1] and GERMANY[2] <= lon <= GERMANY[3])
+def cineamo_json(fx, path):
+    status, _, text = fx.get(path)
+    if status != 200:
+        raise RuntimeError(f"Cineamo answered {status} to {path}")
+    return json.loads(text)
 
 
-def metres(a, b):
-    return 1000 * kp.km_between(a[0], a[1], b[0], b[1])
+def cineamo_venues(fx, excluded):
+    first = cineamo_json(fx, "/cinemas?countryCode=DE&page=1")
+    pages = [first] + fx.map(lambda p: cineamo_json(fx, f"/cinemas?countryCode=DE&page={p}"),
+                             range(2, first["_page_count"] + 1))
+    out = []
+    for c in (c for page in pages for c in page["_embedded"]["cinemas"]):
+        why = ("not German" if not german_place(c.get("postalCode"), c.get("latitude"), c.get("longitude"))
+               else excluded_reason(c.get("name") or ""))
+        if why:
+            excluded[f"cineamo: {why}"] += 1
+            continue
+        out.append({"key": f"cineamo:{c['id']}", "source": "cineamo", "name": (c.get("name") or "").strip(),
+                    "street": (c.get("street") or "").strip(), "postcode": c.get("postalCode") or "",
+                    "town": c.get("city") or "", "lat": c["latitude"], "lon": c["longitude"],
+                    "handle": {"id": str(c["id"])}})
+    return out
 
 
-STREET_ABBREVIATION = re.compile(r"str\b\.?|strasse\b|straße\b", re.I)
+def cineamo_days(fx, venue_id):
+    first = cineamo_json(fx, f"/showings?cinemaId={venue_id}&page=1")
+    pages = [first] + [cineamo_json(fx, f"/showings?cinemaId={venue_id}&page={p}") for p in range(2, first["_page_count"] + 1)]
+    return [berlin_day(s["startDatetime"]) for page in pages for s in page["_embedded"]["showings"]
+            if s.get("state", "scheduled") == "scheduled"]
 
 
-def street_key(street):
-    """"Kortumstr. 51" and "Kortumstraße 51" -> "kortumstrasse51"."""
-    s = STREET_ABBREVIATION.sub("strasse", street or "")
-    return kp.fold(s).replace(" ", "")
+KP_DAY = re.compile(r'<section[^>]*data-kino-week-day="(\d{4}-\d{2}-\d{2})"(.*?)</section>', re.S)
 
 
-def town_key(town):
-    return kp.fold(re.split(r"[,(]", town or "")[0])
+def kinoprogramm_days(fx, path, today):
+    """Every show day on a venue's kinoprogramm.com week pages, walked until three blank weeks."""
+    days, blank, week = [], 0, datetime.date.fromisoformat(today)
+    while blank < 3:
+        status, _, text = fx.get(f"{path}?datum={week.isoformat()}")
+        if status != 200:
+            raise RuntimeError(f"kinoprogramm.com answered {status} to {path}")
+        found = [d for d, body in KP_DAY.findall(text) for _ in range(body.count("kino-week-time"))]
+        days += found
+        blank = 0 if found else blank + 1
+        week += datetime.timedelta(days=7)
+    return days
 
 
-def load_filmstarts():
-    """Every Filmstarts venue a kinoheld one may duplicate: the roster's and the sweep's."""
-    addresses = json.load(open(os.path.join(DATA, "filmstarts-addresses.json")))
-    venues = []
-    for region in json.load(open(os.path.join(DATA, "regions.json"))):
-        for c in region["cinemas"]:
-            a = addresses.get(c["theaterId"], {})
-            venues.append({"theaterId": c["theaterId"], "name": c["name"], "town": a.get("town") or c["city"],
-                           "rosterCity": c["city"], "postcode": a.get("postcode", ""), "street": a.get("street", ""),
-                           "source": "roster"})
-    for v in json.load(open(os.path.join(DATA, "filmstarts-sweep.json"))):
-        venues.append({**v, "rosterCity": v["town"], "source": "sweep"})
+def filmstarts_days(fx, roster):
+    """{theaterId: [show days]} as showtimes.cc/de serves the roster today."""
+    by_name = {}
+    for v in roster:
+        by_name.setdefault(v["displayName"], v["theaterId"])
+    days = defaultdict(list)
+    for slug in roster_venues.page_slugs():
+        status, _, text = fx.get(f"/de/{slug}/api/repertoire")
+        if status != 200:
+            print(f"  showtimes.cc /de/{slug}: {status}", file=sys.stderr)
+            continue
+        for film in json.loads(text):
+            for showing in film.get("showings", []):
+                for cinema in showing.get("cinemas", []):
+                    tid = by_name.get(cinema["cinema"])
+                    if tid:
+                        days[tid] += [showing["date"]] * len(cinema.get("showtimes", []))
+    return days
+
+
+# ------------------------------------------------------------------ identity
+def same_site(a, b):
+    return metres(a, b) <= SAME_SITE_M and (kp.score(a["name"], b["name"], a["town"]) >= REVIEW_SCORE
+                                            or (kp.chain_of(a["name"]) and kp.chain_of(a["name"]) == kp.chain_of(b["name"])))
+
+
+def union(cineamo, kinoheld):
+    """One venue per site: a kinoheld venue at a Cineamo venue's site joins it."""
+    venues = [{**c, "handles": {"cineamo": c["handle"]}} for c in cineamo]
+    for k in kinoheld:
+        twin = next((v for v in venues if "kinoheld" not in v["handles"] and same_site(v, k)), None)
+        if twin:
+            twin["handles"]["kinoheld"] = k["handle"]
+        else:
+            venues.append({**k, "handles": {"kinoheld": k["handle"]}})
     return venues
 
 
-def candidates(k, by_postcode, by_town):
-    seen = {}
-    for v in by_postcode.get(k["postcode"], []) + by_town.get(town_key(k["town"]), []):
-        seen[v["theaterId"]] = v
-    return list(seen.values())
+class FilmstartsIndex:
+    """The Filmstarts venues a discovered one may be, by postcode and by town."""
+
+    def __init__(self, venues):
+        self.by_postcode, self.by_town, self.chains = defaultdict(list), defaultdict(list), Counter()
+        for v in venues:
+            if v["postcode"]:
+                self.by_postcode[v["postcode"]].append(v)
+            for town in {town_key(v["town"]), town_key(v["rosterCity"])}:
+                self.by_town[town].append(v)
+            if kp.chain_of(v["name"]):
+                self.chains[(kp.chain_of(v["name"]), town_key(v["town"]))] += 1
+
+    def candidates(self, k):
+        seen = {}
+        for v in self.by_postcode.get(k["postcode"], []) + self.by_town.get(town_key(k["town"]), []):
+            seen[v["theaterId"]] = v
+        return list(seen.values())
+
+    def decide(self, k):
+        """(theaterId, how) for the Filmstarts venue `k` is, (None, None) for none, or
+        ("?", candidates) when only a human can tell."""
+        best, best_score, review = None, 0.0, []
+        for v in self.candidates(k):
+            if not (v["postcode"] == k["postcode"] or town_key(k["town"]) in (town_key(v["town"]), town_key(v["rosterCity"]))):
+                continue
+            if v["street"] and v["postcode"] == k["postcode"] and street_key(v["street"]) == street_key(k["street"]):
+                return v["theaterId"], "same address"
+            s = kp.score(v["name"], k["name"], k["town"])
+            chain = kp.chain_of(k["name"])
+            if chain and chain == kp.chain_of(v["name"]) and self.chains[(chain, town_key(k["town"]))] == 1:
+                s = max(s, ACCEPT_SCORE)
+            if s > best_score:
+                best, best_score = v, s
+            if s >= REVIEW_SCORE:
+                review.append((round(s, 2), v["theaterId"], v["name"], v["street"], v["postcode"]))
+        if best is not None and best_score >= ACCEPT_SCORE:
+            return best["theaterId"], f"name {best_score:.2f}"
+        return ("?", review) if review else (None, None)
 
 
-def decide(k, cands, chain_count):
-    """(theaterId, how) for the Filmstarts venue `k` is, (None, None) for none,
-    or ("?", review_rows) when only a human can tell."""
-    best, best_score, review = None, 0.0, []
-    for v in cands:
-        same_place = v["postcode"] == k["postcode"] or town_key(v["town"]) == town_key(k["town"]) \
-            or town_key(v["rosterCity"]) == town_key(k["town"])
-        if not same_place:
-            continue
-        if v["street"] and street_key(v["street"]) == street_key(k["street"]) and v["postcode"] == k["postcode"]:
-            return v["theaterId"], "same address"
-        s = kp.score(v["name"], k["name"], k["town"])
-        chain = kp.chain_of(k["name"])
-        if chain and chain == kp.chain_of(v["name"]) and chain_count[(chain, town_key(k["town"]))] == 1:
-            s = max(s, ACCEPT_SCORE)
-        if s > best_score:
-            best, best_score = v, s
-        if s >= REVIEW_SCORE:
-            review.append((round(s, 2), v["theaterId"], v["name"], v["street"], v["postcode"]))
-    if best is not None and best_score >= ACCEPT_SCORE:
-        return best["theaterId"], f"name {best_score:.2f}"
-    if review:
-        return "?", review
-    return None, None
+def load_filmstarts():
+    addresses = json.load(open(os.path.join(DATA, "filmstarts-addresses.json")))
+    venues = []
+    for c in roster_venues.load():
+        a = addresses.get(c["theaterId"], {})
+        venues.append({"theaterId": c["theaterId"], "name": c["name"], "town": a.get("town") or c["city"],
+                       "rosterCity": c["city"], "postcode": a.get("postcode", ""), "street": a.get("street", ""),
+                       "rostered": True})
+    for v in json.load(open(os.path.join(DATA, "filmstarts-sweep.json"))):
+        venues.append({**v, "rosterCity": v["town"], "rostered": False})
+    return venues
 
 
+# -------------------------------------------------------------------- choice
+def rank(shows):
+    """A venue's sources, most complete first: shows in the window, then in all, then SOURCES order."""
+    return sorted(shows, key=lambda s: (-shows[s][0], -shows[s][1], SOURCES.index(s)))
+
+
+def choose(shows, order=None):
+    """(primary, fallbacks, rawWinner) from a venue's {source: [window, horizon]}."""
+    ranked = rank(shows)
+    raw = ranked[0] if ranked else None
+    if order is None:
+        return raw, ranked[1:], raw
+    listed = [s for s in order if s in shows]
+    live = [s for s in listed if shows[s][1] > 0] or listed
+    primary = live[0] if live else None
+    return primary, [s for s in listed if s != primary], raw
+
+
+def summarise(rows):
+    """The split over the ROSTERED venues -- the ones whose Filmstarts listing we serve
+    today, so whose Filmstarts count is measured -- and the new ones apart."""
+    with_shows = [r for r in rows if r.get("rostered") and any(c[0] > 0 for c in r["shows"].values())]
+    wins = Counter(r["rawWinner"] for r in with_shows)
+    primaries = Counter(r["primary"] for r in rows)
+    filmstarts_only = [
+        {"theaterId": r["filmstarts"], "name": r["name"], "town": r["town"], "next14": r["shows"]["filmstarts"][0],
+         "seasonal": excluded_reason(r["name"]) is not None}
+        for r in rows if r.get("rostered") and r["shows"]["filmstarts"][0] > 0 and "cineamo" not in r["shows"]]
+    return {
+        "venuesWithShows": len(with_shows),
+        "rawWinners": dict(wins.most_common()),
+        "cineamoWinShare": round(wins["cineamo"] / len(with_shows), 3) if with_shows else 0,
+        "primaries": dict(primaries.most_common()),
+        "newVenues": sum(1 for r in rows if not r.get("rostered")),
+        "newVenuesFromFilmstartsSweep": sum(1 for r in rows if r.get("filmstarts") and not r.get("rostered")),
+        "newVenuesBySource": dict(Counter(r["primary"] for r in rows if not r.get("rostered")).most_common()),
+        "filmstartsOnly": sorted(filmstarts_only, key=lambda v: -v["next14"]),
+    }
+
+
+# ---------------------------------------------------------------------- main
 def main():
-    fx = PoliteFetcher(API, cache_dir("kh-harvest", os.environ, pathlib.Path.home(), "KH_HARVEST_CACHE_DIR"),
-                       workers=5, max_rps=5.0)
-    raw = all_cinemas(fx)
-    print(f"kinoheld venues: {len(raw)}")
-    excluded = defaultdict(list)
-    kept = []
-    for c in raw:
-        if not german(c):
-            excluded["not German"].append(c["name"])
-        elif c.get("isClosed"):
-            excluded["closed"].append(c["name"])
-        elif c.get("isHidden"):
-            excluded["hidden"].append(c["name"])
-        elif excluded_reason(c["name"], c.get("isOpenAir"), c.get("isDriveIn")):
-            excluded[excluded_reason(c["name"], c.get("isOpenAir"), c.get("isDriveIn"))].append(c["name"])
-        else:
-            kept.append(c)
+    today = datetime.datetime.now(BERLIN).date().isoformat()
+    cache = cache_dir(f"sources-{today}", os.environ, pathlib.Path.home(), "SOURCES_CACHE_DIR")
+    cineamo_fx = PoliteFetcher("https://api.cineamo.com", os.path.join(cache, "cineamo"), workers=6, max_rps=10.0)
+    kinoheld_fx = PoliteFetcher("https://next-live.kinoheld.de", os.path.join(cache, "kinoheld"), workers=5, max_rps=5.0)
+    kp_fx = PoliteFetcher(kp.BASE, os.path.join(cache, "kinoprogramm"), workers=4, max_rps=3.0,
+                          headers={"User-Agent": kp.UA, "Accept-Language": "de-DE,de;q=0.9"})
+    site_fx = PoliteFetcher("https://showtimes.cc", os.path.join(cache, "showtimes"), workers=2, max_rps=2.0)
 
-    def upcoming(c):
-        doc = gql(fx, LIVE_QUERY, {"cinema": c["id"]})["programShows"]
-        return len(doc["data"]) + (1000 if doc["paginatorInfo"]["hasMorePages"] else 0)
+    excluded = Counter()
+    cineamo = cineamo_venues(cineamo_fx, excluded)
+    kinoheld = kinoheld_venues(kinoheld_fx, excluded)
+    print(f"Cineamo venues: {len(cineamo)}; kinoheld venues: {len(kinoheld)}; excluded: {dict(excluded)}")
 
-    counts = fx.map(upcoming, kept)
-    live = []
-    for c, n in zip(kept, counts):
-        if n == 0:
-            excluded["no upcoming show"].append(c["name"])
-            continue
-        live.append({"kinoheldId": c["id"], "name": c["name"].strip(),
-                     "path": f"/kino/{c['city']['urlSlug']}/{c['urlSlug']}",
-                     "street": (c.get("street") or "").strip(), "postcode": c["postcode"]["postcode"],
-                     "town": c["city"]["name"], "lat": c["latitude"], "lon": c["longitude"], "shows": n})
-    fx.report()
-    for reason, names in sorted(excluded.items()):
-        print(f"excluded ({reason}): {len(names)}")
-    print(f"German, open, with upcoming shows: {len(live)}")
+    cineamo_counts = dict(zip([c["key"] for c in cineamo],
+                              cineamo_fx.map(lambda c: counts(cineamo_days(cineamo_fx, c["handle"]["id"]), today), cineamo)))
+    kinoheld_counts = dict(zip([k["key"] for k in kinoheld],
+                               kinoheld_fx.map(lambda k: counts(kinoheld_days(kinoheld_fx, k["handle"]["id"]), today), kinoheld)))
+    cineamo = [c for c in cineamo if cineamo_counts[c["key"]][1] > 0]
+    kinoheld = [k for k in kinoheld if kinoheld_counts[k["key"]][1] > 0]
+    discovered = union(cineamo, kinoheld)
+    print(f"with an upcoming show: Cineamo {len(cineamo)}, kinoheld {len(kinoheld)}; one per site: {len(discovered)}")
 
-    # One site listed twice on kinoheld: keep the one with more shows.
-    live.sort(key=lambda v: -v["shows"])
-    sites = []
-    for k in live:
-        twin = next((s for s in sites if metres((s["lat"], s["lon"]), (k["lat"], k["lon"])) <= SAME_SITE_M
-                     and kp.score(s["name"], k["name"], k["town"]) >= ACCEPT_SCORE), None)
-        if twin:
-            print(f"  same site twice: kept {twin['kinoheldId']} {twin['name']}, dropped {k['kinoheldId']} {k['name']}")
-        else:
-            sites.append(k)
-
-    filmstarts = load_filmstarts()
-    by_postcode, by_town = defaultdict(list), defaultdict(list)
-    chain_count = defaultdict(int)
-    for v in filmstarts:
-        if v["postcode"]:
-            by_postcode[v["postcode"]].append(v)
-        by_town[town_key(v["town"])].append(v)
-        if town_key(v["rosterCity"]) != town_key(v["town"]):
-            by_town[town_key(v["rosterCity"])].append(v)
-        chain = kp.chain_of(v["name"])
-        if chain:
-            chain_count[(chain, town_key(v["town"]))] += 1
-
-    only, matches, undecided = [], {}, []
-    for k in sites:
-        if k["kinoheldId"] in DECIDED:
-            tid, how = DECIDED[k["kinoheldId"]], "hand-checked"
-        else:
-            tid, how = decide(k, candidates(k, by_postcode, by_town), chain_count)
+    roster = roster_venues.load()
+    index = FilmstartsIndex(load_filmstarts())
+    by_theater, new, undecided = {}, [], []
+    for d in discovered:
+        tid, how = (DECIDED[d["key"]], "hand-checked") if d["key"] in DECIDED else index.decide(d)
         if tid == "?":
-            undecided.append((k, how))
-            continue
-        if tid is None:
-            only.append({key: k[key] for key in ("kinoheldId", "name", "path", "street", "postcode", "town", "lat", "lon")})
-        elif tid in matches:
-            print(f"  {tid} matched twice: {matches[tid]['kinoheldId']} and {k['kinoheldId']} {k['name']} -- keeping the first")
+            undecided.append((d, how))
+        elif tid is None:
+            new.append(d)
+        elif tid in by_theater:
+            # Two discovered venues on one Filmstarts venue: keep the sources the first lacks.
+            for source, handle in d["handles"].items():
+                by_theater[tid]["handles"].setdefault(source, handle)
         else:
-            matches[tid] = {"kinoheldId": k["kinoheldId"], "path": k["path"], "how": how}
-
-    for k, rows in undecided:
-        print(f"REVIEW {k['kinoheldId']} {k['name']} | {k['street']} {k['postcode']} {k['town']}")
+            by_theater[tid] = {**d, "how": how}
+    for d, rows in undecided:
+        print(f"REVIEW {d['key']} {d['name']} | {d['street']} {d['postcode']} {d['town']}")
         for row in sorted(rows, reverse=True):
             print(f"         {row}")
     if undecided:
         print(f"{len(undecided)} venues need a verdict in DECIDED; nothing written.", file=sys.stderr)
         sys.exit(1)
 
-    only.sort(key=lambda v: (v["town"], v["name"], v["kinoheldId"]))
-    with open(OUT_VENUES, "w") as f:
-        json.dump(only, f, ensure_ascii=False, indent=1)
+    kp_paths = json.load(open(os.path.join(DATA, "kinoprogramm.json")))
+    kp_counts = dict(zip(kp_paths, kp_fx.map(lambda tid: counts(kinoprogramm_days(kp_fx, kp_paths[tid], today), today), kp_paths)))
+    fs_days = filmstarts_days(site_fx, roster)
+    sweep = {v["theaterId"]: v for v in json.load(open(os.path.join(DATA, "filmstarts-sweep.json")))}
+
+    rows = []
+    for v in roster + [{"theaterId": t, "name": s["name"], "city": s["town"]} for t, s in sweep.items()]:
+        tid = v["theaterId"]
+        d = by_theater.get(tid, {"handles": {}})
+        shows = {}
+        # A venue the sweep recovered is not served yet, so its Filmstarts listing is
+        # counted off its page's advertised days only: 1 a day, a floor.
+        shows["filmstarts"] = (counts(sweep[tid]["showDays"], today) if tid in sweep
+                               else counts(fs_days.get(tid, []), today))
+        handles = d["handles"]
+        if "cineamo" in handles:
+            shows["cineamo"] = cineamo_counts[f"cineamo:{handles['cineamo']['id']}"]
+        if "kinoheld" in handles:
+            shows["kinoheld"] = kinoheld_counts[f"kinoheld:{handles['kinoheld']['id']}"]
+        if tid in kp_counts:
+            shows["kinoprogramm"] = kp_counts[tid]
+        rows.append(row(v["name"], d.get("town") or v["city"], tid, handles, kp_paths.get(tid), shows, d.get("how"),
+                        rostered=tid not in sweep))
+    for d in new:
+        shows = {}
+        if "cineamo" in d["handles"]:
+            shows["cineamo"] = cineamo_counts[f"cineamo:{d['handles']['cineamo']['id']}"]
+        if "kinoheld" in d["handles"]:
+            shows["kinoheld"] = kinoheld_counts[f"kinoheld:{d['handles']['kinoheld']['id']}"]
+        rows.append(row(d["name"], d["town"], None, d["handles"], None, shows, None,
+                        place={k: d[k] for k in ("street", "postcode", "lat", "lon")}))
+
+    for fx in (cineamo_fx, kinoheld_fx, kp_fx, site_fx):
+        fx.report()
+    rows.sort(key=lambda r: (r["town"], r["name"], r["key"]))
+    summary = summarise(rows)
+    with open(OUT, "w") as f:
+        json.dump({"measuredOn": today, "windowDays": WINDOW_DAYS, "defaultOrder": list(DEFAULT_ORDER),
+                   "summary": summary, "venues": rows}, f, ensure_ascii=False, indent=1)
         f.write("\n")
-    with open(OUT_MATCHES, "w") as f:
-        json.dump(dict(sorted(matches.items())), f, ensure_ascii=False, indent=1)
-        f.write("\n")
-    roster_matched = sum(1 for t in matches if not any(v["theaterId"] == t and v["source"] == "sweep" for v in filmstarts))
-    print(f"kinoheld-only venues: {len(only)}; Filmstarts venues kinoheld also lists: {len(matches)} "
-          f"({roster_matched} rostered, {len(matches) - roster_matched} recovered by the sweep)")
-    towns = defaultdict(int)
-    for v in only:
-        towns[v["town"]] += 1
-    print("towns with most kinoheld-only venues:", sorted(towns.items(), key=lambda t: -t[1])[:25])
+    print(json.dumps({k: v for k, v in summary.items() if k != "filmstartsOnly"}, indent=1))
+    print(f"Filmstarts-only venues: {len(summary['filmstartsOnly'])}")
+    for v in summary["filmstartsOnly"][:40]:
+        print(f"  {v['next14']:4d}  {v['theaterId']} {v['name']} ({v['town']}){'  [seasonal]' if v['seasonal'] else ''}")
+
+
+def row(name, town, theater_id, handles, kp_path, shows, how, place=None, rostered=False):
+    primary, fallbacks, raw = choose(shows, DEFAULT_ORDER)
+    key = theater_id or next(f"{s}:{h['id']}" for s, h in sorted(handles.items()))
+    out = {"key": key, "name": name, "town": town, "rostered": rostered}
+    if place:
+        out.update(place)
+    if theater_id:
+        out["filmstarts"] = theater_id
+    if "cineamo" in handles:
+        out["cineamo"] = handles["cineamo"]["id"]
+    if "kinoheld" in handles:
+        out["kinoheld"] = handles["kinoheld"]
+    if kp_path:
+        out["kinoprogramm"] = kp_path
+    if how:
+        out["matchedBy"] = how
+    out.update({"shows": shows, "primary": primary, "fallbacks": fallbacks, "rawWinner": raw})
+    return out
 
 
 if __name__ == "__main__":

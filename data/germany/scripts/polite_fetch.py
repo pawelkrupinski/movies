@@ -1,8 +1,9 @@
 """A polite, cached fetcher for the German harvest scripts.
 
 A fixed worker pool under a global request rate, whose concurrency HALVES on
-every 429/503 -- and, once down to one worker, whose rate halves instead --
-backing off exponentially before retrying that request, with
+every 429/503 -- and, once down to one worker, whose rate halves instead,
+climbing back after a run of clean answers -- backing off exponentially
+before retrying that request, with
 every answer -- 404s included -- cached gzip-compressed on disk, so a rerun
 costs nothing but the requests it has not made yet. Ends with a throughput line
 (`report`). Used by harvest_kinoprogramm.py, harvest_kinoheld.py and
@@ -22,6 +23,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+
+RECOVER_AFTER = 30
 
 BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/126 Safari/537.36")
@@ -48,6 +51,8 @@ class PoliteFetcher:
         self.max_attempts = max_attempts
         self.max_backoff = max_backoff
         self.min_rps = min_rps
+        self.base_rps = max_rps
+        self.streak = 0
         os.makedirs(os.path.join(cache, "pages"), exist_ok=True)
         self.lock = threading.Lock()
         self.next_slot = 0.0
@@ -113,6 +118,7 @@ class PoliteFetcher:
                 if status in (429, 503):
                     with self.cond:
                         self.throttled += 1
+                        self.streak = 0
                         if self.limit > 1:
                             self.limit //= 2
                         else:
@@ -129,6 +135,7 @@ class PoliteFetcher:
                 time.sleep(min(self.max_backoff, 2 ** attempt * 4))
                 continue
             break
+        self._recover()
 
         with open(key + ".json", "w") as f:
             json.dump({"path": path, "status": status, "final": final}, f)
@@ -136,6 +143,17 @@ class PoliteFetcher:
             with gzip.open(key + ".gz", "wt", encoding="utf-8") as f:
                 f.write(text)
         return status, final, text
+
+    def _recover(self):
+        """After RECOVER_AFTER answers in a row with no throttling, step the rate back up
+        towards the configured one: a block that has lifted must not leave the rest of a
+        long sweep crawling at the floor."""
+        with self.cond:
+            self.streak += 1
+            if self.streak >= RECOVER_AFTER and self.max_rps < self.base_rps:
+                self.max_rps = min(self.base_rps, self.max_rps * 1.25)
+                self.streak = 0
+                print(f"  recovering: {self.max_rps:.2f} req/s", file=sys.stderr)
 
     def _fetch(self, path, body):
         url = self.base + urllib.parse.quote(path, safe="/?=&%-._~")

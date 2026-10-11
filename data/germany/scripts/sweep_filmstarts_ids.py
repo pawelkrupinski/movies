@@ -20,7 +20,7 @@ Writes:
 
 Filmstarts 429s a bulk crawl: at 2 req/s it blocked the sweep for minutes
 after ~430 pages (2026-10-11), so this keeps the prod worker's own sustained
-pace -- 2 workers, <= 0.7 req/s (one per ~1.4s) -- halving on 429/503 and
+pace -- 2 workers, <= 0.6 req/s -- halving on 429/503 and
 backing off up to 5 minutes (polite_fetch). Pages are cached under
 ~/.cache/kinowo/fs-sweep (FS_SWEEP_CACHE_DIR), so a rerun is free.
 
@@ -36,6 +36,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from polite_fetch import PoliteFetcher, cache_dir  # noqa: E402
+import roster_venues  # noqa: E402
 from venue_filters import excluded_reason  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -77,13 +78,13 @@ def parse_venue(text):
 
 
 def main():
-    roster = {c["theaterId"]: c for r in json.load(open(os.path.join(DATA, "regions.json"))) for c in r["cinemas"]}
+    roster = {c["theaterId"]: c for c in roster_venues.load()}
     harvested = {t["theaterId"] for t in json.load(open(os.path.join(DATA, "theaters-raw.json")))}
     retired = set(json.load(open(os.path.join(DATA, "retired.json"))))
     ids = sorted(set(SWEEP_IDS) | set(roster))
 
     fx = PoliteFetcher(BASE, cache_dir("fs-sweep", os.environ, pathlib.Path.home(), "FS_SWEEP_CACHE_DIR"),
-                       workers=2, max_rps=0.7, headers={"Accept-Language": "de-DE,de;q=0.9"},
+                       workers=2, max_rps=0.6, headers={"Accept-Language": "de-DE,de;q=0.9"},
                        max_attempts=8, max_backoff=300)
 
     def one(theater_id):
@@ -118,7 +119,7 @@ def main():
             skipped.append((tid, venue["name"], reason))
             continue
         recovered.append({"theaterId": tid, "name": venue["name"], "street": venue["street"],
-                          "postcode": venue["postcode"], "town": venue["town"]})
+                          "postcode": venue["postcode"], "town": venue["town"], "showDays": venue["showDays"]})
 
     recovered.sort(key=lambda v: (v["town"], v["name"], v["theaterId"]))
     with open(OUT_ADDRESSES, "w") as f:
