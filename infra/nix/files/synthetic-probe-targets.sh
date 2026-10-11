@@ -142,9 +142,10 @@ for pair in "$@"; do
       echo "synthetic-probe-targets: $country: the edge refuses $film (403), so monitoring-1's Cloudflare exemption is lost; read from the origin, still probed" >&2
     targets="$(jq -c --arg t "$film" --arg c "$country" \
       '. + [{targets: [$t], labels: {country: $c, kind: "film", __param_module: "http_page", __film: $t}}]' <<<"$targets")"
-    # THE SHARE CARD IS OPTIONAL. A film whose card has not been rendered yet names the city's
-    # fallback image instead, which is not under /share-cards/ and is not what this probe is for.
-    card="$(grep -oE 'og:image"[[:space:]]+content="[^"]*/share-cards/[^"]*"' "$work/body" |
+    # THE SHARE CARD IS OPTIONAL. A film whose card has not been rendered yet names its city's
+    # card instead (`/share-cards/<cc>/city-<slug>.jpg`), which is not the film's and not what this
+    # probe is for: a film card's name is `[a-z0-9]+`, a city card's always holds a `-`.
+    card="$(grep -oE 'og:image"[[:space:]]+content="[^"]*/share-cards/[a-z]{2}/[a-z0-9]+\.jpg[^"]*"' "$work/body" |
       sed -n '1{s/.*content="//; s/"$//; p;}')"
     if [ -n "$card" ]; then
       targets="$(jq -c --arg t "$card" --arg c "$country" --arg f "$film" \

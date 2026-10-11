@@ -68,7 +68,7 @@ serve "https://kinowo.net/warszawa/movie/100-dni-misja-zeus" \
   '<meta property="og:image"        content="https://kinowo.net/share-cards/pl/had62.jpg?v=b179"></html>'
 serve "https://showtimes.cc/uk/london/" '<a href="/uk/london/movie/bad-apples">x</a></html>'
 serve "https://showtimes.cc/uk/london/movie/bad-apples" \
-  '<meta property="og:image" content="https://showtimes.cc/uk/assets/img/og-london.jpg"></html>'
+  '<meta property="og:image" content="https://showtimes.cc/share-cards/uk/city-london.jpg"></html>'
 
 echo "discovery: a film per country, and its share card when it has one"
 run "$tmp/targets.json" pl=https://kinowo.net/warszawa/ uk=https://showtimes.cc/uk/london/
@@ -78,7 +78,7 @@ check "the FIRST film listed on each city page, made absolute against the page's
 check "the film's share card, probed as an asset" \
   "https://kinowo.net/share-cards/pl/had62.jpg?v=b179 http_asset pl" \
   "$(field '.[] | select(.labels.kind == "share-card") | "\(.targets[0]) \(.labels.__param_module) \(.labels.country)"')"
-check "a film whose og:image is the city fallback gets no share-card probe (it is not a card)" \
+check "a film whose og:image is its city's card gets no share-card probe (it is not the film's)" \
   "0" "$(field '[.[] | select(.labels.kind == "share-card" and .labels.country == "uk")] | length')"
 check "film pages are probed as pages" "http_page http_page" \
   "$(field '[.[] | select(.labels.kind == "film") | .labels.__param_module] | join(" ")')"
