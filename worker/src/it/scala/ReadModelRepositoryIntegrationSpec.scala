@@ -40,6 +40,42 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
     rm.findAllMovieIdsChecked().required.toSet shouldBe ids.toSet
   }
 
+  // The city cards rank a city's films off these refs' ids (`ScreeningRef.citySlug`), read through
+  // the real projection: a projected `_id` that lost its city would draw every city card empty.
+  "A city card" should "draw its city's films, ranked by how many of its cinemas show them, off the Mongo refs" in {
+    import models.{CityScreening, Country}
+    val poznan = Country.Poland.bySlug("poznan")
+    val rows = Seq(("fitwide", "Kino Muza"), ("fitwide", "Rialto"), ("fitnarrow", "Kino Muza"), ("Diuna|2021", "Rialto"))
+    rows.foreach { case (film, cinema) =>
+      rm.upsertScreening(CityScreening(_id = s"$film|poznan|$cinema", filmId = film, city = "poznan", cinema = cinema, filmUrl = None, showtimes = Nil))
+    }
+    rm.upsertScreening(CityScreening(_id = "fitelsewhere|krakow|Kijów", filmId = "fitelsewhere", city = "krakow", cinema = "Kijów", filmUrl = None, showtimes = Nil))
+    val store = new services.sharecards.ShareCardStore(java.nio.file.Files.createTempDirectory("city-cards-it-"))
+    assert(store.usable)
+    // A poster cached for every film, each its own colour: the first tile is the widest-shown film's.
+    def poster(colour: java.awt.Color) = {
+      val image = new java.awt.image.BufferedImage(420, 630, java.awt.image.BufferedImage.TYPE_INT_RGB)
+      val g = image.createGraphics(); g.setColor(colour); g.fillRect(0, 0, 420, 630); g.dispose()
+      tools.OgCardRenderer.encodeCard(image)
+    }
+    Seq("fitwide" -> java.awt.Color.RED, "fitnarrow" -> java.awt.Color.GREEN, "Diuna|2021" -> java.awt.Color.BLUE, "fitelsewhere" -> java.awt.Color.YELLOW)
+      .foreach { case (film, colour) => store.writeAtomically(store.posterPath(film), poster(colour), film) }
+    val read = collection.mutable.Buffer.empty[String]
+    val reading = new MongoReadModelRepository(Some(db)) {
+      override def findAllScreeningRefsChecked() = { val refs = super.findAllScreeningRefsChecked(); refs.answered.foreach(_.flatMap(_.citySlug).foreach(read += _)); refs }
+    }
+    val service = new services.sharecards.CityCardService(Country.Poland, store, reading, new services.tasks.InMemoryTaskQueue,
+      services.sharecards.ShareCardMetrics.noop, java.time.Clock.fixed(java.time.Instant.parse("2026-10-12T00:00:00Z"), java.time.ZoneOffset.UTC))
+    try {
+      service.render(poznan) shouldBe services.sharecards.ShareCardMetrics.CityOutcome.Rendered
+      read.toSet shouldBe Set("poznan", "krakow")
+      val card   = javax.imageio.ImageIO.read(store.cityCardPath(poznan).toFile)
+      val (x, y) = tools.CityCardRenderer.tileAt(0)
+      val first  = new java.awt.Color(card.getRGB(x + 180, y + 150))
+      (first.getRed > 200 && first.getGreen < 60 && first.getBlue < 60) shouldBe true
+    } finally (rows.map { case (film, cinema) => s"$film|poznan|$cinema" } :+ "fitelsewhere|krakow|Kijów").foreach(rm.deleteScreening)
+  }
+
   "findAllScreeningRefs" should "project the same (_id, filmId) pairs as a full findAllScreenings decode" in {
     import models.CityScreening
     val pairs = (0 until 3).map(i => s"__it-rm-pair-${i}__" -> s"__it-rm-pair-film-${i % 2}__")
