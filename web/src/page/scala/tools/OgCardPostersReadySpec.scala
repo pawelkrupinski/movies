@@ -55,6 +55,7 @@ class OgCardPostersReadySpec extends AnyFlatSpec with Matchers with BeforeAndAft
       val tmp = Files.createTempFile("og-posters-ready-", ".html")
       Files.writeString(tmp, html)
       try c.openPage(tmp.toUri.toString) { page =>
+        page.useScript(OgCardGenerator.PageScript)
         page.setDesktopViewport(1180, 760)
         body(page)
       } finally Files.deleteIfExists(tmp)

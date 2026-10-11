@@ -95,18 +95,10 @@ object MobileScreenshots {
             // Inject the Zaloguj-się pill so the screenshot matches the
             // production anonymous-user navbar (the fixture renders with
             // no OAuth providers configured, leaving `.navbar-auth`
-            // empty). /movie doesn't have `.navbar-auth` — the IIFE is a
-            // no-op there because the querySelector returns null.
-            page.eval(
-              "(() => { const a = document.querySelector('.navbar-auth');" +
-              "          if (a && !a.children.length) {" +
-              "            const btn = document.createElement('button');" +
-              "            btn.type = 'button';" +
-              "            btn.className = 'nav-tab nav-tab-login';" +
-              "            btn.textContent = 'Zaloguj';" +
-              "            a.appendChild(btn);" +
-              "          } })()"
-            )
+            // empty). /movie doesn't have `.navbar-auth` — the call is a
+            // no-op there.
+            page.useScript("layout/navbar.js")
+            page.eval("__navbar.addLoginButton()")
             for (w <- Viewports) {
               page.setViewport(w, ViewportHeight)
               // setDeviceMetricsOverride is synchronous, but a beat lets

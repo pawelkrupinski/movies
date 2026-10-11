@@ -253,11 +253,7 @@ object OgCardGenerator {
    *  slow with blank posters on their card. Only viewport-intersecting
    *  posters matter — that's all the screenshot captures — so lazy posters
    *  below the fold are excluded (they never load and would hang the poll). */
-  private[tools] val PostersReadyJs: String =
-    "[].slice.call(document.querySelectorAll('img[data-original-src]'))" +
-      ".filter(function(i){var r=i.getBoundingClientRect();" +
-      "return r.bottom>0&&r.top<window.innerHeight&&r.right>0&&r.left<window.innerWidth;})" +
-      ".every(function(i){return (i.complete&&i.naturalWidth>0)||i.offsetParent===null;})"
+  private[tools] val PostersReadyJs: String = "__ogCard.postersReady()"
 
   /** JS promise resolving `true` once every in-viewport poster's decode has
    *  finished and two more frames have painted, or `false` after `timeoutMs`.
@@ -269,14 +265,7 @@ object OgCardGenerator {
    *  half-painted and three blank. `img.decode()` resolves only once the
    *  image can be painted. A rejected decode is a broken image, which the
    *  page's `onerror` chain hides, so it counts as done. */
-  private[tools] def postersPaintedJs(timeoutMs: Int): String =
-    "(function(){var imgs=[].slice.call(document.querySelectorAll('img[data-original-src]'))" +
-      ".filter(function(i){var r=i.getBoundingClientRect();" +
-      "return i.offsetParent!==null&&r.bottom>0&&r.top<window.innerHeight&&r.right>0&&r.left<window.innerWidth;});" +
-      "var decoded=Promise.all(imgs.map(function(i){return i.decode().catch(function(){});}))" +
-      ".then(function(){return new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(function(){r(true);});});});});" +
-      s"var timeout=new Promise(function(r){setTimeout(function(){r(false);},$timeoutMs);});" +
-      "return Promise.race([decoded,timeout]);})()"
+  private[tools] def postersPaintedJs(timeoutMs: Int): String = s"__ogCard.postersPainted($timeoutMs)"
 
   /** An in-viewport poster's on-screen box (CSS pixels) and the background
    *  colour its empty box shows until the image paints. */
@@ -287,15 +276,7 @@ object OgCardGenerator {
    *  background is the nearest ancestor's non-transparent one (`.poster-wrap`'s
    *  `#2a2a3e` on the real page); a poster with none is skipped, as there is
    *  nothing to tell an unpainted box apart from. */
-  private[tools] val PosterBoxesJs: String =
-    "[].slice.call(document.querySelectorAll('img[data-original-src]'))" +
-      ".filter(function(i){return i.offsetParent!==null;})" +
-      ".map(function(i){var r=i.getBoundingClientRect(),x=Math.max(0,r.left),y=Math.max(0,r.top)," +
-      "w=Math.min(window.innerWidth,r.right)-x,h=Math.min(window.innerHeight,r.bottom)-y,e=i.parentElement,m=null;" +
-      "while(e&&!m){var c=getComputedStyle(e).backgroundColor.match(/[0-9.]+/g);" +
-      "if(c&&(c.length<4||+c[3]>0))m=c;e=e.parentElement;}" +
-      "return m&&w>0&&h>0?[Math.round(x),Math.round(y),Math.round(w),Math.round(h),+m[0],+m[1],+m[2]]:null;})" +
-      ".filter(function(b){return b!==null;})"
+  private[tools] val PosterBoxesJs: String = "__ogCard.posterBoxes()"
 
   /** The `boxes` whose pixels in `screenshot` (taken at `deviceScale`) are
    *  still mostly their own empty background: never painted, or painted only
@@ -335,8 +316,11 @@ object OgCardGenerator {
    *  applies the checked areas (all, by default) and removes the overlay. Guarded
    *  by `if(b)`, so it's a harmless no-op on the flat cities that never render a
    *  picker. */
-  private[tools] val DismissAreaPickerJs: String =
-    "(function(){var b=document.querySelector('#area-picker-overlay button');if(b)b.click();})()"
+  private[tools] val DismissAreaPickerJs: String = "__ogCard.dismissAreaPicker()"
+
+  /** The page script ([[PageScripts]]) behind the `__ogCard` calls above; every
+   *  page they run on needs it installed first. */
+  private[tools] val PageScript = "og-card/og-card.js"
 
   /** What did Chrome actually land on, when [[RepertoireLoadedJs]] never
    *  became true? Distinguishes a DNS/connection failure (Chrome's own error
@@ -373,6 +357,7 @@ object OgCardGenerator {
    *  throw the same way. */
   private[tools] def screenshotCity(chrome: Chrome, url: String, postersTimeoutMs: Int = PostersTimeoutMs): String =
     chrome.openPage(url) { page =>
+      page.useScript(PageScript)
       setMetrics(page, 1180, 760, ScreenshotScale)
       // On desktop, pickDay slides the day track over to an off-screen copy of
       // the target day's grid. Every poster check below that ran during the
