@@ -15,6 +15,7 @@ printf '\033[36m▸\033[0m pre-push --plan\n'
 plan() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --plan | tr '\n' ' ' | sed 's/ $//'; }
 
 check "production JS runs ESLint" "eslint" "$(plan web/src/main/assets/js/shared.js)"
+check "a page spec's JS runs ESLint" "eslint" "$(plan web/src/page/resources/landing/hold-picker-panes.js)"
 check "the ESLint config runs ESLint" "eslint" "$(plan eslint.config.js)"
 check "a repo-local ESLint rule runs ESLint" "eslint" "$(plan eslint-rules/storage-access-in-try.js)"
 check "a roster source runs the generated-artefact drift check" "drift" "$(plan data/pl/venues.json)"

@@ -529,6 +529,21 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
     (result \ "result" \ "value").asOpt[JsValue].getOrElse(Json.obj())
   }
 
+  /** Run the page script `resource` ([[PageScripts]]) ahead of every document this
+   *  tab loads from now on, before the page's own scripts — what a fetch stub that
+   *  must see the boot's own requests needs. `prelude`, one line of configuration
+   *  (`window.__paneFailing = […]`), runs just before it. */
+  def installScript(resource: String, prelude: String = ""): Unit =
+    send("Page.addScriptToEvaluateOnNewDocument", Json.obj("source" -> (prelude + "\n" + PageScripts.source(resource))))
+
+  /** [[installScript]], and run it in the document already loaded too: for a helper
+   *  API (pure definitions, no side effects of its own) a spec calls straight away
+   *  and still has after a reload. */
+  def useScript(resource: String): Unit = {
+    installScript(resource)
+    eval(PageScripts.source(resource))
+  }
+
   def evalString(js: String): String = eval(js).as[String]
   def evalInt(js: String):    Int    = eval(js).as[Int]
   def evalBool(js: String):   Boolean = eval(js).as[Boolean]

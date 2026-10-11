@@ -1485,14 +1485,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // visitor sees while one is in flight, and fail them to see what a visitor
   // sees when one never lands.
 
-  private lazy val holdPickerPanes: String =
-    new String(getClass.getResourceAsStream("/landing/hold-picker-panes.js").readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)
-
   /** Reopen the landing with every pane fetch held until `__panes.release`, and
    *  those for `failing` answered 500 at once. */
   private def holdingPanes(page: CdpPage, failing: Set[String] = Set.empty): Unit = {
-    val failingCodes = s"window.__paneFailing = ${Json.toJson(failing.toSeq.sorted)};\n"
-    page.send("Page.addScriptToEvaluateOnNewDocument", Json.obj("source" -> (failingCodes + holdPickerPanes)))
+    page.installScript("landing/hold-picker-panes.js", s"window.__paneFailing = ${Json.toJson(failing.toSeq.sorted)};")
     page.reload()
   }
 
@@ -3598,10 +3594,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "leave the page alone when the stored pick is the language it was rendered in" in {
     onPath("/") { page =>
       page.eval("localStorage.setItem('kinowo_lang', 'pl')")
-      page.send("Page.addScriptToEvaluateOnNewDocument", play.api.libs.json.Json.obj("source" ->
-        ("window.__i18nRewrites = 0; new MutationObserver(records => records.forEach(r => {" +
-         "  if (r.type === 'childList' && r.removedNodes.length && r.target.hasAttribute && r.target.hasAttribute('data-i18n'))" +
-         "    window.__i18nRewrites++; })).observe(document, { childList: true, subtree: true });")))
+      page.installScript("i18n/count-rewrites.js")
       try {
         page.reload()
         page.waitFor("document.readyState === 'complete'")

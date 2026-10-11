@@ -327,33 +327,19 @@ object HiddenFilmsSyncModelSpec {
     private var expectedLanguage: Option[String] = None
 
     // Count this page's own requests from the moment each document starts, so
-    // "nothing in flight" can be asked of the page itself.
-    page.send("Page.addScriptToEvaluateOnNewDocument", Json.obj("source" ->
-      """(function () {
-        |  window.__inflight = 0;
-        |  var original = window.fetch.bind(window);
-        |  var done = function () { setTimeout(function () { window.__inflight--; }, 0); };
-        |  window.fetch = function () {
-        |    window.__inflight++;
-        |    var p;
-        |    try { p = original.apply(null, arguments); } catch (e) { done(); throw e; }
-        |    p.then(done, done);
-        |    return p;
-        |  };
-        |})();""".stripMargin))
+    // "nothing in flight" can be asked of the page itself (`__syncModel.idle()`).
+    page.installScript("hidden-films/sync-model.js")
 
     private def load(): Unit = { page.navigate(base + Pages.path(country)); quiesce() }
 
     /** Nothing in flight and no debounced language push armed, held for a
      *  while — the page's reconcile chains its requests. */
     private def quiesce(): Unit = {
-      val idle = "document.readyState === 'complete' && window.__inflight === 0 && " +
-        "(typeof _serverSyncTimer === 'undefined' || _serverSyncTimer === 0)"
       val deadline = System.nanoTime() + 10000L * 1000000L
       var stable = 0
       while (stable < 6) {
         if (System.nanoTime() > deadline) throw new RuntimeException("the page never went quiet")
-        stable = if (page.evalBool(s"!!($idle)")) stable + 1 else 0
+        stable = if (page.evalBool("__syncModel.idle()")) stable + 1 else 0
         Thread.sleep(25)
       }
     }
@@ -455,9 +441,7 @@ object HiddenFilmsSyncModelSpec {
 
     /** The card button's own handler, on a card carrying the title. */
     private def hideFilm(title: String): Unit =
-      page.eval(s"""(function (t) { var card = document.createElement('div'); card.setAttribute('data-title', t);
-                   |  var b = document.createElement('button'); card.appendChild(b); document.body.appendChild(card);
-                   |  hideFilm(b); })(${JsString(title)})""".stripMargin)
+      page.eval(s"__syncModel.hideFilm(${JsString(title)})")
 
     private def expect(c: String, title: String, hidden: Boolean): Unit =
       if (hidden) { mustHave(c) = mustHave(c) + title; mustNotHave(c) = mustNotHave(c) - title }

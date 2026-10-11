@@ -1,7 +1,8 @@
 // ESLint 9 flat config. Lints `web/src/main/assets/js/**/*.js` — the production
-// browser code that ships to users. Test JS lives under
-// `page-tests-playwright/tests/` and has its own setup; this config
-// deliberately stays narrow.
+// browser code that ships to users — and `web/src/page/resources/**/*.js`, the
+// page specs' in-page helpers (CDP fetch stubs, harness APIs; see
+// `tools.PageScripts`). The Playwright suite under `page-tests-playwright/tests/`
+// has its own setup.
 //
 // The "globals" list below is the contract between `shared.js` and
 // the inline `<script>` blocks in `repertoire/film/kina.scala.html`.
@@ -75,6 +76,21 @@ module.exports = [
       // that don't understand the template-stitching pattern.
       'no-inner-declarations': 'off',
       'no-prototype-builtins': 'off',
+    },
+  },
+  {
+    // The page specs' helpers run inside the rendered pages, so they reach the
+    // page's own globals (`getHidden`, `applyFilters`, …). Each file names the
+    // ones it uses in a `/* global … */` comment rather than here: the list is
+    // per page, and a helper calling something its page lacks should fail lint.
+    files: ['web/src/page/resources/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script',
+      globals: { ...globals.browser },
+    },
+    rules: {
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
 ];
