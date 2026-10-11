@@ -27,11 +27,12 @@ Method:
      Filmstarts off what showtimes.cc/de serves today (`/<page>/api/repertoire`:
      the roster as projected from Filmstarts).
   4. Choice. A venue's `rawWinner` is the source with the most shows in the
-     window, the whole horizon breaking a tie (then SOURCES order). Without a
-     DEFAULT_ORDER its sources are ranked that way: the winner is its primary,
-     the rest its fallback chain. With one, the primary is the first source in
-     DEFAULT_ORDER that has a show, the rest following in that order. The
-     summary's split counts the raw winners over the rostered venues with a show.
+     window, the whole horizon breaking a tie (then SOURCES order) -- what the
+     summary's split counts, over the rostered venues with a show. Its PRIMARY
+     is the most complete source too, but a near-tie (within `tolerance`) stays
+     with the source earlier in SOURCES; the rest are its fallback chain, most
+     complete first. With a DEFAULT_ORDER instead, the primary is the first
+     source in it that has a show, the rest following in that order.
 
 Writes venue-sources.json: the measurement day, the summary (where each source
 wins, the Filmstarts-only venues) and one row per venue with its handles in
@@ -80,6 +81,22 @@ DEFAULT_ORDER = None
 # venue key ("cineamo:<id>" / "kinoheld:<id>") -> the Filmstarts theaterId it IS,
 # or None for "a different venue". Each decided from both sites' addresses.
 DECIDED = {
+    "cineamo:141": "A1062",    # Residenz Arnsberg: Rumbecker Str. 6 / 6a
+    "cineamo:458": "A0024",    # Cadillac Casablanca = Casablanca Ingelheim, Binger Str. 75
+    "cineamo:504": "A0999",    # Neues Theater St. Wendel, Alter Woog 2
+    "cineamo:579": "A0602",    # Harsefelder Lichtspiele, Marktstr. 17-21
+    "cineamo:823": "A0858",    # Kommunales Kino Weiterstadt, Carl-Ulrich-Str. 9
+    "cineamo:836": "A0566",    # Subiaco, Alpirsbach: the Kloster's cinema
+    "cineamo:1006": "A0863",   # guckloch, Kalkofenstr. 3
+    "cineamo:1180": "A0040",   # Friedrichsbau, Kaiser-Joseph-Str. 268-270
+    "cineamo:1211": "A2747",   # SchanzenKino 73, Schulterblatt 73 (Filmstarts' postcode is Munich's)
+    "cineamo:1235": None,      # Ostpassagen Theater, Konradstr. -- not the Passage Kinos, Hainstr.
+    "cineamo:1397": None,      # Film-Shop Kassel, Grüner Weg -- not the Filmpalast, Karlsplatz
+    "cineamo:1431": "A0240",   # Höchster Lichtspiele, Frankfurter Str.
+    "kinoheld:291": None,      # Cineplex Thalia-Hollywood, Kirchgasse -- not Apollo nor Arkaden
+    "kinoheld:1334": "A0632",  # Kaiserhof+ Detmold
+    "cineamo:541": "A0696",    # City 46, Birkenstr. 1 -- Filmstarts lists it twice (A1378 "City-Filmtheater")
+    "cineamo:1027": "A2784",   # Audi Programmkino, Ettinger Str., Ingolstadt
 }
 
 KINOHELD_CINEMAS = """query($page: Int!) { cinemas(first: 100, page: $page) {
@@ -96,9 +113,12 @@ def berlin_day(iso):
 
 
 def counts(days, today):
-    """[shows in the next WINDOW_DAYS days, shows in all] of a list of show days."""
-    end = (datetime.date.fromisoformat(today) + datetime.timedelta(days=WINDOW_DAYS)).isoformat()
-    upcoming = [d for d in days if d >= today]
+    """[shows in the WINDOW_DAYS days from tomorrow, shows from tomorrow on] of a list of
+    show days. Today is left out: a source that lists the day's earlier shows (kinoprogramm.com's
+    week page does) would outscore one that has dropped them as past."""
+    start = datetime.date.fromisoformat(today) + datetime.timedelta(days=1)
+    end = (start + datetime.timedelta(days=WINDOW_DAYS)).isoformat()
+    upcoming = [d for d in days if d >= start.isoformat()]
     return [sum(1 for d in upcoming if d < end), len(upcoming)]
 
 
@@ -254,44 +274,76 @@ def union(cineamo, kinoheld):
     return venues
 
 
+def town_forms(town):
+    """The spellings one town goes by across sources: "Eberswalde-Finow" is also
+    "Eberswalde", "Gießen, Lahn" is "Gießen", "Lübben (Spreewald)" is "Lübben"."""
+    whole = town_key(town)
+    return {f for f in {whole, whole.split(" ")[0] if "-" in (town or "") else whole} if f}
+
+
 class FilmstartsIndex:
-    """The Filmstarts venues a discovered one may be, by postcode and by town."""
+    """The Filmstarts venues a discovered one may be: by postcode, by town and by street."""
 
     def __init__(self, venues):
-        self.by_postcode, self.by_town, self.chains = defaultdict(list), defaultdict(list), Counter()
+        self.by_postcode, self.by_town, self.by_street = defaultdict(list), defaultdict(list), defaultdict(list)
+        self.chains = Counter()
         for v in venues:
             if v["postcode"]:
                 self.by_postcode[v["postcode"]].append(v)
-            for town in {town_key(v["town"]), town_key(v["rosterCity"])}:
+            for town in town_forms(v["town"]) | town_forms(v["rosterCity"]):
                 self.by_town[town].append(v)
+            if re.search(r"\d", v["street"] or ""):
+                self.by_street[street_key(v["street"])].append(v)
             if kp.chain_of(v["name"]):
                 self.chains[(kp.chain_of(v["name"]), town_key(v["town"]))] += 1
 
     def candidates(self, k):
         seen = {}
-        for v in self.by_postcode.get(k["postcode"], []) + self.by_town.get(town_key(k["town"]), []):
+        for v in (self.by_postcode.get(k["postcode"], []) + [x for t in town_forms(k["town"]) for x in self.by_town.get(t, [])]
+                  + self.by_street.get(street_key(k["street"]), [])):
             seen[v["theaterId"]] = v
         return list(seen.values())
 
+    @staticmethod
+    def same_place(v, k):
+        """One postcode, one town under any spelling, or one street in the same postcode area."""
+        return (v["postcode"] == k["postcode"]
+                or bool((town_forms(v["town"]) | town_forms(v["rosterCity"])) & town_forms(k["town"]))
+                or (v["postcode"][:3] == k["postcode"][:3] and street_key(v["street"]) == street_key(k["street"])))
+
+    @staticmethod
+    def same_address(v, k):
+        """The same street and house number, and a postcode in the same area -- house
+        numbers drift ("25" / "25a") less often than the postcode a site files under."""
+        return (bool(re.search(r"\d", v["street"] or "")) and street_key(v["street"]) == street_key(k["street"])
+                and v["postcode"][:3] == k["postcode"][:3])
+
     def decide(self, k):
         """(theaterId, how) for the Filmstarts venue `k` is, (None, None) for none, or
-        ("?", candidates) when only a human can tell."""
-        best, best_score, review = None, 0.0, []
+        ("?", candidates) when only a human can tell. One address can hold two Filmstarts
+        venues -- a Filmhaus's two cinemas, a Kurhaus's two screens -- and then the name
+        decides between them."""
+        scored = []
         for v in self.candidates(k):
-            if not (v["postcode"] == k["postcode"] or town_key(k["town"]) in (town_key(v["town"]), town_key(v["rosterCity"]))):
+            if not self.same_place(v, k):
                 continue
-            if v["street"] and v["postcode"] == k["postcode"] and street_key(v["street"]) == street_key(k["street"]):
-                return v["theaterId"], "same address"
             s = kp.score(v["name"], k["name"], k["town"])
             chain = kp.chain_of(k["name"])
             if chain and chain == kp.chain_of(v["name"]) and self.chains[(chain, town_key(k["town"]))] == 1:
                 s = max(s, ACCEPT_SCORE)
-            if s > best_score:
-                best, best_score = v, s
-            if s >= REVIEW_SCORE:
-                review.append((round(s, 2), v["theaterId"], v["name"], v["street"], v["postcode"]))
-        if best is not None and best_score >= ACCEPT_SCORE:
-            return best["theaterId"], f"name {best_score:.2f}"
+            scored.append((s, self.same_address(v, k), v))
+        # An open-air screen run by a cinema is filed under the cinema's address
+        # (Aschaffenburg's campus open-air at the Casino's): an address never makes the
+        # one the other.
+        at_address = sorted([x for x in scored if x[1] and kp.is_event(x[2]["name"]) == kp.is_event(k["name"])],
+                            key=lambda x: -x[0])
+        if len(at_address) == 1 or (at_address and at_address[0][0] - at_address[1][0] >= 0.15):
+            return at_address[0][2]["theaterId"], "same address"
+        best = max(scored, key=lambda x: x[0], default=None)
+        if best and best[0] >= ACCEPT_SCORE and not at_address:
+            return best[2]["theaterId"], f"name {best[0]:.2f}"
+        review = [(round(s, 2), v["theaterId"], v["name"], v["street"], v["postcode"]) for s, address, v in scored
+                  if s >= REVIEW_SCORE or address]
         return ("?", review) if review else (None, None)
 
 
@@ -314,12 +366,37 @@ def rank(shows):
     return sorted(shows, key=lambda s: (-shows[s][0], -shows[s][1], SOURCES.index(s)))
 
 
+def tolerance(count):
+    """How many more shows a source must list to count as more complete: a source that lists
+    one more show today must not take a venue over -- each switch of source re-keys what the
+    venue's films are matched by."""
+    return max(2, -(-count // 10))
+
+
+def beats(challenger, holder):
+    """Is a [window, horizon] count more complete than another, beyond the tolerance? More
+    shows in the window, or as many there and more in the whole horizon."""
+    (cw, ch), (hw, hh) = challenger, holder
+    return cw - hw > tolerance(hw) or (abs(cw - hw) <= tolerance(hw) and cw >= hw and ch - hh > tolerance(hh))
+
+
 def choose(shows, order=None):
-    """(primary, fallbacks, rawWinner) from a venue's {source: [window, horizon]}."""
+    """(primary, fallbacks, rawWinner) from a venue's {source: [window, horizon]}.
+
+    `rawWinner` is the plain most-complete source. Without an `order`, the primary is
+    decided in SOURCES order: each source takes the venue from the one before only when it
+    `beats` it, so a near-tie stays with the source with the richer listing (Filmstarts:
+    posters, film ids; then Cineamo and kinoheld; kinoprogramm.com last). The rest follow,
+    most complete first."""
     ranked = rank(shows)
     raw = ranked[0] if ranked else None
     if order is None:
-        return raw, ranked[1:], raw
+        listed = [s for s in SOURCES if s in shows]
+        primary = listed[0] if listed else None
+        for s in listed[1:]:
+            if beats(shows[s], shows[primary]):
+                primary = s
+        return primary, [s for s in ranked if s != primary], raw
     listed = [s for s in order if s in shows]
     live = [s for s in listed if shows[s][1] > 0] or listed
     primary = live[0] if live else None
@@ -389,8 +466,8 @@ def main():
             by_theater[tid] = {**d, "how": how}
     for d, rows in undecided:
         print(f"REVIEW {d['key']} {d['name']} | {d['street']} {d['postcode']} {d['town']}")
-        for row in sorted(rows, reverse=True):
-            print(f"         {row}")
+        for candidate in sorted(rows, reverse=True):
+            print(f"         {candidate}")
     if undecided:
         print(f"{len(undecided)} venues need a verdict in DECIDED; nothing written.", file=sys.stderr)
         sys.exit(1)
@@ -432,7 +509,7 @@ def main():
     rows.sort(key=lambda r: (r["town"], r["name"], r["key"]))
     summary = summarise(rows)
     with open(OUT, "w") as f:
-        json.dump({"measuredOn": today, "windowDays": WINDOW_DAYS, "defaultOrder": list(DEFAULT_ORDER),
+        json.dump({"measuredOn": today, "windowDays": WINDOW_DAYS, "defaultOrder": list(DEFAULT_ORDER) if DEFAULT_ORDER else None,
                    "summary": summary, "venues": rows}, f, ensure_ascii=False, indent=1)
         f.write("\n")
     print(json.dumps({k: v for k, v in summary.items() if k != "filmstartsOnly"}, indent=1))

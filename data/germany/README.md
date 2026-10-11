@@ -44,6 +44,14 @@ source the shipped German model is generated FROM. Germany has been live at
   regular cinema). Rerun it after a re-harvest, then `generate_roster.py`, which
   carries the path into `GermanRosterData`. The fallback is keyed by venue, not by
   page, so a re-cluster leaves it alone.
+- **`venue-sources.json`** — which source serves each venue, and the measurement
+  that chose it (`scripts/harvest_sources.py`, below): every venue's handle in each
+  source, its shows there over the next fortnight and its whole horizon, its primary
+  and its fallback chain; `summary` holds the country-wide split.
+  `scripts/generate_sources.py` turns it into `GermanSourcesData.scala`.
+- `filmstarts-addresses.json` — every rostered venue's address off its Filmstarts
+  page, and `filmstarts-sweep.json` — the live Filmstarts venues the roster lacks,
+  both from `scripts/sweep_filmstarts_ids.py` (below).
 - `scripts/` — the reproducible pipeline.
 
 ## The pages
@@ -113,6 +121,57 @@ the tuples `models.GermanRoster` materialises into `GermanPage` cities and
 or two. `scripts/ci/generated-artefacts-drift.sh` re-runs both scripts in CI, so a
 `pages.json` or roster that disagrees with its inputs fails the build.
 
+## Which source serves a venue
+
+Four sources list German programmes, each incompletely: **Filmstarts** (where the
+roster came from) stops at the end of the programme week — Wednesday — and its
+directory never links whole cities; **Cineamo** (`CineamoClient`, ~1,300 venues)
+and **kinoheld.de** (`KinoheldClient`, ~2,150, many ticketing-only) list months
+ahead; **kinoprogramm.com** (`KinoprogrammClient`) mirrors Filmstarts' window.
+
+`scripts/harvest_sources.py` measures them per venue and records the choice in
+`venue-sources.json`:
+
+1. Cineamo's and kinoheld's German venues with an upcoming show (open-air and
+   drive-in screens and sex cinemas left out, `scripts/venue_filters.py`); a
+   kinoheld and a Cineamo venue within 300 m whose names agree are one venue.
+2. Each is matched to a Filmstarts venue by address (`filmstarts-addresses.json`;
+   one address holding two venues is decided by name, and an open-air screen
+   never takes its cinema's address), else by name in the same town or postcode,
+   else as a chain's only branch there. The pairs it cannot decide were checked by
+   hand and their verdicts kept in the script (`DECIDED`). The rest are NEW.
+3. Every source a venue has is counted over the 14 days from tomorrow and over
+   its whole horizon (Filmstarts as showtimes.cc/de serves the roster that day).
+4. The **primary** is the most complete source; a near-tie (within 10%, at least
+   2 shows) stays with the earlier of Filmstarts, Cineamo, kinoheld,
+   kinoprogramm.com, so a venue does not change source over one show. The others
+   are its **fallback chain**, most complete first: `ScrapeWiring` hands the venue
+   to the first of them still listing a showtime once its primary has failed or
+   come back empty three runs running (`FirstAnsweringScraper` inside
+   `SourceFallbackScraper`). A venue with no row keeps Filmstarts, then its
+   kinoprogramm.com page.
+
+**The design is the per-venue choice, measured 2026-10-11** (1,142 rostered venues
+with a show). The rule set beforehand: make Cineamo every venue's default primary,
+Filmstarts its fallback, only if Cineamo were the most complete source at ≥ 90% of
+them AND the venues only Filmstarts lists were few or mostly closed/seasonal.
+
+| most complete at | venues |
+|---|---|
+| Cineamo | 764 (66.9%) |
+| Filmstarts | 204 |
+| kinoheld | 158 |
+| kinoprogramm.com | 16 |
+
+and 88 venues list shows on Filmstarts that Cineamo has no upcoming show for —
+1,318 shows in the fortnight, only 6 of them seasonal (drive-ins, a tent cinema).
+Neither condition held, so each venue keeps its own measured primary: Cineamo 717
+of the 1,515 rostered venues, Filmstarts 712, kinoheld 80, kinoprogramm.com 6.
+`test_harvest_sources.py` pins the split's two numbers against the rule.
+
+Rerun it — `python3 data/germany/scripts/harvest_sources.py`, then
+`generate_sources.py` — to re-measure; a near-tie never flips a venue, a real gain does.
+
 ## How the harvest was produced
 
 1. **Crawl** (`scripts/crawl_de_full.py`, reusing `crawl_filmstarts.py`) — the
@@ -128,6 +187,13 @@ or two. `scripts/ci/generated-artefacts-drift.sh` re-runs both scripts in CI, so
    GeoNames `DE.txt` dump (no live Nominatim needed).
 3. **Pages** (`scripts/build_pages.py`) — above. Until 2026-10 a greedy 35 km
    hub clustering made 158 regions instead; its venues are `venues.json` now.
+4. **Id sweep** (`scripts/sweep_filmstarts_ids.py`, 2026-10-11) — the crawl only
+   reaches cities a Bundesland page links, and Bochum, Aachen, Solingen, Siegen,
+   Gießen… are linked from nowhere. Every venue page answers by id, so the sweep
+   reads `A0001`–`A2999` and every rostered id: 35 live venues the roster lacked
+   (`filmstarts-sweep.json`), and the address of 1,479 rostered ones. 36 rostered
+   ids answered 404 — candidates for `retired.json`. Direct, at 2 workers and
+   0.6 req/s: at 2 req/s Filmstarts blocked the sweep for minutes after ~430 pages.
 
 ## What consumes this
 

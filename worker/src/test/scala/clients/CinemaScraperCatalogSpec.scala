@@ -6,6 +6,7 @@ import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
+import services.cinemas.de.{GermanFeed, GermanSources}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper}
 import services.cinemas.pl._
@@ -534,14 +535,14 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     }
   }
 
-  "Germany's venues" should "be scraped under the town page they are on, with their kinoprogramm.com fallback kept" in {
+  "Germany's venues" should "be scraped under the town page they are on, with their fallback chain kept" in {
     // The pages were 35 km regions until 2026-10: the Main-Taunus Kinopolis was on
     // /frankfurt-am-main/; Sulzbach (Taunus) clusters with Hofheim now.
     val c        = catalog()
     val venue    = models.GermanRoster.theaterIdByCinema.collectFirst { case (v, "A0831") => v }.value
     val scrapers = c.byCity("hofheim-am-taunus").filter(_.cinema == venue)
     scrapers should have size 1
-    scrapers.head.scrapeHosts shouldBe Set("www.filmstarts.de")
+    scrapers.head.scrapeHosts shouldBe Set("api.cineamo.com")   // its measured primary (venue-sources.json)
     c.byCity.get("frankfurt-am-main").value.map(_.cinema) should not contain venue
     // Every German page the web tier serves has its scrapers under the same slug,
     // and the fallback is still found for venues that moved pages.
@@ -550,7 +551,22 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     }
     // Kulmbach was on /bayreuth/'s region and is on its cluster now — a venue's
     // fallback is keyed by the venue, so moving pages leaves it alone.
-    c.kinoprogrammFallbackPaths.get(models.Cinema.byDisplayName("Cineplex Kulmbach")) should not be empty
+    c.germanFallbackFeeds.get(models.Cinema.byDisplayName("Cineplex Kulmbach")).value
+      .collect { case GermanFeed.Kinoprogramm(path) => path } should not be empty
+  }
+
+  // Babylon Mitte is why Germany chooses a source per venue: on 2026-10-11 Filmstarts listed
+  // 34 of its shows in the next fortnight, Cineamo and kinoheld 50, and Cineamo's ran to
+  // June 2027 (data/germany/venue-sources.json).
+  it should "serve Babylon Mitte from Cineamo, falling back to kinoheld, Filmstarts, then kinoprogramm.com" in {
+    val c       = catalog()
+    val babylon = models.Cinema.byDisplayName("Babylon (Mitte)")
+    c.byCity(pageOf(babylon)).filter(_.cinema == babylon).map(_.sourceKey) shouldBe Seq(Some("api.cineamo.com/cinema/997"))
+    c.germanFallbackFeeds(babylon).map(_.label) shouldBe Seq("kinoheld", "Filmstarts", "Kinoprogramm")
+  }
+
+  it should "keep Filmstarts, then kinoprogramm.com, for a venue the measurement has no row for" in {
+    GermanSources.of("A9999", Some("/kino/x/y-1")) shouldBe Seq(GermanFeed.Filmstarts("A9999"), GermanFeed.Kinoprogramm("/kino/x/y-1"))
   }
 
   it should "pace every Ocine ticketing host" in {

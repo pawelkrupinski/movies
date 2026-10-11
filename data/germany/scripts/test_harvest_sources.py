@@ -32,9 +32,26 @@ def test_a_bochum_venue_filmstarts_never_listed_is_new():
 
 
 def test_the_same_address_is_the_same_venue_whatever_either_site_calls_it():
-    k = found("Cinema Arthouse Kino", "Frankfurt am Main", "60313", "Roßmarkt 7")
-    assert hs.FilmstartsIndex([fs("A0216", "Cinema", "Frankfurt", "60313", "Rossmarkt 7")]).decide(k) == ("A0216", "same address")
+    k = found("Lichtspiele im Kino-Hotel", "Harsefeld", "21698", "Marktstraße 19")
+    assert hs.FilmstartsIndex([fs("A0602", "Harsefelder Lichtspiele", "Harsefeld", "21698", "Marktstr. 19")]).decide(k) == \
+        ("A0602", "same address")
     assert hs.street_key("Kortumstr. 51") == hs.street_key("Kortumstraße 51") == hs.street_key("Kortumstrasse 51")
+
+
+def test_one_address_with_two_venues_is_decided_by_name():
+    # The Filmhaus Nürnberg's two cinemas share Königstr. 93; an open-air screen is filed
+    # under the address of the cinema that runs it.
+    index = hs.FilmstartsIndex([fs("A0854", "Filmfabrik KommKino", "Nürnberg", "90402", "Königstrasse 93"),
+                                fs("A1418", "Filmhauskino im Künstlerhaus", "Nürnberg", "90402", "Königstrasse 93")])
+    assert index.decide(found("Filmhauskino", "Nürnberg", "90402", "Königstraße 93"))[0] == "A1418"
+    index = hs.FilmstartsIndex([fs("A1959", "OPEN AIR auf dem Campus FH", "Aschaffenburg", "63739", "Ohmbachgasse 1"),
+                                fs("A1342", "Casino Aschaffenburg", "Aschaffenburg", "63739", "Ohmbachsgasse 1")])
+    assert index.decide(found("Casino", "Aschaffenburg", "63739", "Ohmbachgasse 1"))[0] == "A1342"
+
+
+def test_a_town_spelled_with_its_district_and_another_postcode_is_still_the_town():
+    index = hs.FilmstartsIndex([fs("A2891", "Movie Magic", "Eberswalde-Finow", "16225", "Heegermühler Strasse 25")])
+    assert index.decide(found("Movie Magic", "Eberswalde", "16230", "Heegermühler Straße 25"))[0] == "A2891"
 
 
 def test_a_town_s_only_branch_of_a_chain_is_that_chain_s_venue_there():
@@ -68,9 +85,12 @@ def test_the_most_complete_source_is_the_primary_and_the_rest_its_fallbacks_in_o
     # Babylon Mitte, 2026-10-11: Filmstarts 23 shows in the fortnight, Cineamo 52.
     shows = {"filmstarts": [23, 23], "cineamo": [52, 114], "kinoprogramm": [20, 20]}
     assert hs.choose(shows) == ("cineamo", ["filmstarts", "kinoprogramm"], "cineamo")
-    # A tie on the window goes to the longer horizon, then to SOURCES order.
+    # As many shows in the window and far more beyond it: the longer horizon wins.
     assert hs.choose({"filmstarts": [40, 40], "kinoheld": [40, 90]})[0] == "kinoheld"
+    # A near-tie stays with the earlier source; the raw winner is still recorded.
+    assert hs.choose({"filmstarts": [20, 22], "kinoprogramm": [21, 21]}) == ("filmstarts", ["kinoprogramm"], "kinoprogramm")
     assert hs.choose({"filmstarts": [40, 40], "cineamo": [40, 40]})[0] == "filmstarts"
+    assert hs.choose({"filmstarts": [0, 1], "cineamo": [46, 49], "kinoheld": [48, 51]})[0] == "cineamo"
 
 
 def test_a_default_order_serves_its_first_source_that_lists_anything():
@@ -81,7 +101,18 @@ def test_a_default_order_serves_its_first_source_that_lists_anything():
 
 def test_shows_count_by_the_german_day_they_start_on():
     assert hs.berlin_day("2026-10-11T22:30:00Z") == "2026-10-12"
-    assert hs.counts(["2026-10-10", "2026-10-11", "2026-10-24", "2026-10-25", "2027-01-01"], "2026-10-11") == [2, 4]
+    # Today's shows are left out -- some sources still list the ones already past.
+    assert hs.counts(["2026-10-10", "2026-10-11", "2026-10-12", "2026-10-25", "2026-10-26", "2027-01-01"], "2026-10-11") == [2, 4]
+
+
+def test_the_measured_split_keeps_the_per_venue_choice():
+    # The rule (2026-10-11): Cineamo would become every venue's default primary only if it
+    # were the most complete source at 90% or more of the venues with a show, and the
+    # venues only Filmstarts lists were few or seasonal. Measured: neither held.
+    summary = json.loads((DATA / "venue-sources.json").read_text())["summary"]
+    assert summary["cineamoWinShare"] < 0.9
+    assert len(summary["filmstartsOnly"]) > 20 and sum(v["seasonal"] for v in summary["filmstartsOnly"]) < len(summary["filmstartsOnly"]) / 2
+    assert hs.DEFAULT_ORDER is None
 
 
 def test_open_air_screens_and_sex_cinemas_never_join():

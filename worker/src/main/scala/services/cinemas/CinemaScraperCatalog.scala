@@ -2474,8 +2474,8 @@ class CinemaScraperCatalog(
    *  whole-Filmstarts outage would fetch every listed film's page at each of 1,500 venues,
    *  where the cache asks each film once per sweep. The TTL stays under the 6h
    *  `DetailEnrich` window every chain cache keeps to, and outlasts one outage sweep. */
-  val kinoprogrammFilmTtl:   FiniteDuration = 5.hours
-  // Lazy: the German venues built above may already read it (a kinoprogramm.com primary).
+  lazy val kinoprogrammFilmTtl: FiniteDuration = 5.hours
+  // Lazy, both: the German venues built above may already read them (a kinoprogramm.com primary).
   lazy val kinoprogrammFilmPages: HttpFetch = chainDetailCache("kinoprogramm", http, kinoprogrammFilmTtl)
 
   /** Union of every cinema scraper's HTTP hosts. `MonitoringHttpFetch`
