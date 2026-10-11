@@ -400,7 +400,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   /** The in-page helper APIs this spec's tests call (`web/src/page/resources/`,
    *  see [[tools.PageScripts]]): pure definitions, installed in every tab before
    *  its body runs and again ahead of every document it loads after. */
-  private val PageHelpers = Seq("common/dom.js", "film/film-page.js", "layout/navbar.js", "user-state/user-state.js")
+  private val PageHelpers = Seq(
+    "common/dom.js", "film/film-page.js", "layout/navbar.js", "listing/carousel.js", "listing/grid.js", "listing/posters.js",
+    "user-state/user-state.js")
 
   /** Open `url` in a fresh tab with [[PageHelpers]] installed. Cancels the test
    *  cleanly when Chrome wasn't located in beforeAll. */
@@ -1711,15 +1713,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // or under-matches (drops one of the two rows). (Was "Diabeł"/3 against
       // the old Prada corpus; Prada left cinemas and now has a single card.)
       page.eval("document.getElementById('search-input').value = 'Straszny film'; applyFilters()")
-      val matchingCards = page.evalInt(
-        "[...document.querySelectorAll('.col[data-title]')].filter(c => c.style.display !== 'none').length"
-      )
+      val matchingCards = visibleCardCount(page)
       matchingCards shouldBe 2
-      page.evalBool(
-        "[...document.querySelectorAll('.col[data-title]')]" +
-          ".filter(c => c.style.display !== 'none')" +
-          ".every(c => c.dataset.title.toLowerCase().includes('straszny film'))"
-      ) shouldBe true
+      page.evalBool("__grid.titlesContain('straszny film')") shouldBe true
     }
   }
 
@@ -1730,14 +1726,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // only on the search input.
       pinDateFilterAnytime(page)
 
-      val baselineVisible = page.evalInt(
-        "[...document.querySelectorAll('.col[data-title]')].filter(c => c.style.display !== 'none').length"
-      )
+      val baselineVisible = visibleCardCount(page)
       page.eval("document.getElementById('search-input').value = 'Straszny film'; applyFilters()")
       page.eval("document.getElementById('search-input').value = '';             applyFilters()")
-      page.evalInt(
-        "[...document.querySelectorAll('.col[data-title]')].filter(c => c.style.display !== 'none').length"
-      ) shouldBe baselineVisible
+      visibleCardCount(page) shouldBe baselineVisible
     }
   }
 
@@ -2591,20 +2583,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // Every tap on a poster or title link navigates directly to /movie.
   // Icons (★, ✕) are always visible — no two-tap preview system.
 
-  private val firstCardPosterLink =
-    "(() => [...document.querySelectorAll('.col[data-title]')]" +
-    "        .find(c => c.style.display !== 'none')" +
-    "        ?.querySelector('.card .poster-wrap > a'))()"
-
   "the card poster link" should
     "navigate to the film's slug path on the first click" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)
-      val slug = page.evalString(
-        s"$firstCardPosterLink.closest('[data-title]').dataset.slug"
-      )
+      val slug = page.evalString("__grid.firstPosterLink().closest('[data-title]').dataset.slug")
       slug should not be empty
-      page.eval(s"$firstCardPosterLink.click()")
+      page.eval("__grid.firstPosterLink().click()")
       page.waitFor(s"location.pathname === '$cityPrefix/movie/$slug'")
       // The whole point of the slug: the address carries no query string at all.
       page.evalString("location.search") shouldBe ""
@@ -2646,27 +2631,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Grab the first poster img and simulate exhaustion of all fallbacks.
       // Reset any state from a natural onerror cycle that may have already
       // completed (Chrome 113 processes the fallback chain before the test runs).
-      page.eval(
-        """(() => {
-          |  const img = document.querySelector('.poster-wrap img[data-original-src]');
-          |  img.onerror = null;
-          |  cancelPosterRetry(img);
-          |  img.removeAttribute('data-retry-attempt');
-          |  img.removeAttribute('data-fallbacks');
-          |  img.style.display = 'none';
-          |  img.nextElementSibling.style.display = 'flex';
-          |  schedulePosterRetry(img);
-          |})()""".stripMargin)
+      page.eval("__posters.exhaustFirst()")
       val attempt = page.evalString(
         "document.querySelector('.poster-wrap img[data-retry-attempt]').dataset.retryAttempt"
       )
       attempt shouldBe "1"
       // Clean up the timer so it doesn't fire during teardown.
-      page.eval(
-        """(() => {
-          |  const img = document.querySelector('.poster-wrap img[data-retry-attempt]');
-          |  cancelPosterRetry(img);
-          |})()""".stripMargin)
+      page.eval("__posters.cancelScheduledRetry()")
     }
   }
 
@@ -2712,30 +2683,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // copy, and the backoff retry rewinds by resetting the cursor.
   it should "walk the chain on error, keep it intact, and rewind it on retry" in {
     onPath("/") { page =>
-      val steps = page.evalString(
-        """(() => {
-          |  const real = document.querySelector('.poster-wrap img[data-fallbacks]');
-          |  const img = real.cloneNode(false);
-          |  const placeholder = document.createElement('div');
-          |  const wrap = document.createElement('div');
-          |  wrap.appendChild(img); wrap.appendChild(placeholder);
-          |  const onError = img.onerror;
-          |  img.onerror = null;
-          |  ['data-retry-attempt', 'data-retry-gen', 'data-fallback-index'].forEach(a => img.removeAttribute(a));
-          |  img.dataset.originalSrc = 'https://p.example/primary.jpg';
-          |  img.dataset.fallbacks = 'https://a.example/1.jpg|https://b.example/2.jpg';
-          |  img.setAttribute('src', img.dataset.originalSrc);
-          |  const steps = [];
-          |  onError.call(img); steps.push(img.getAttribute('src'));
-          |  onError.call(img); steps.push(img.getAttribute('src'));
-          |  onError.call(img); steps.push(img.style.display + '/' + placeholder.style.display + '/' + img.dataset.retryAttempt);
-          |  cancelPosterRetry(img);
-          |  restartPosterChain(img);
-          |  steps.push(img.getAttribute('src') + '/' + (img.style.display || 'shown'));
-          |  onError.call(img); steps.push(img.getAttribute('src'));
-          |  steps.push(img.getAttribute('data-fallbacks'));
-          |  return steps.join(' ');
-          |})()""".stripMargin)
+      val steps = page.evalString("__posters.walkChain()")
       steps shouldBe Seq(
         "https://a.example/1.jpg",
         "https://b.example/2.jpg",
@@ -2791,48 +2739,24 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // `record` guards on a falsy src before classifying, so an empty src is
       // never bucketed (not even as 'unknown') — asserting the guard rather
       // than what originHost would have returned for input it never sees.
-      page.evalString(
-        """(() => {
-          |  _drainImgEvents();
-          |  const img = document.createElement('img');
-          |  document.body.appendChild(img);
-          |  img.dispatchEvent(new Event('error', { bubbles: false }));
-          |  const events = _drainImgEvents();
-          |  img.remove();
-          |  return String(events.length);
-          |})()""".stripMargin) shouldBe "0"
+      page.evalInt("__posters.queuedFor('error').length") shouldBe 0
     }
   }
 
   it should "treat the primary src as primary and a swapped-in fallback as fallback" in {
     onPath("/") { page =>
-      val verdicts = page.evalString(
-        """(() => {
-          |  const mk = (src, original) => {
-          |    const img = document.createElement('img');
-          |    img.setAttribute('src', src);
-          |    img.dataset.originalSrc = original;
-          |    return _imgIsFallback(img);
-          |  };
-          |  const primary  = mk('https://a.example/p.jpg', 'https://a.example/p.jpg');
-          |  const fallback = mk('https://b.example/f.jpg', 'https://a.example/p.jpg');
-          |  // A retry re-requests the SAME primary with a cache-buster appended —
-          |  // that is still the primary, not a fallback.
-          |  const retried  = mk('https://a.example/p.jpg?_kinowo_t=3', 'https://a.example/p.jpg');
-          |  return [primary, fallback, retried].join(',');
-          |})()""".stripMargin)
-      verdicts shouldBe "false,true,false"
+      def isFallback(src: String) = page.evalBool(s"__posters.isFallback('$src', 'https://a.example/p.jpg')")
+      isFallback("https://a.example/p.jpg") shouldBe false
+      isFallback("https://b.example/f.jpg") shouldBe true
+      // A retry re-requests the SAME primary with a cache-buster appended —
+      // that is still the primary, not a fallback.
+      isFallback("https://a.example/p.jpg?_kinowo_t=3") shouldBe false
     }
   }
 
   it should "not flag a non-poster image, which has no primary to compare against" in {
     onPath("/") { page =>
-      page.evalString(
-        """(() => {
-          |  const img = document.createElement('img');
-          |  img.setAttribute('src', 'https://cdn.example/logo.png');
-          |  return String(_imgIsFallback(img));
-          |})()""".stripMargin) shouldBe "false"
+      page.evalBool("__posters.isFallback('https://cdn.example/logo.png')") shouldBe false
     }
   }
 
@@ -2841,17 +2765,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "queue the origin host and fallback flag for a failed fallback poster" in {
     onPath("/") { page =>
       val queued = page.evalString(
-        """(() => {
-          |  _drainImgEvents();                        // discard anything the page itself queued
-          |  const img = document.createElement('img');
-          |  img.dataset.originalSrc = 'https://images.weserv.nl/?url=image.tmdb.org%2Fp%2Fa.jpg';
-          |  img.setAttribute('src', 'https://images.weserv.nl/?url=m.media-amazon.com%2Fimages%2FM%2Fx.jpg');
-          |  document.body.appendChild(img);
-          |  img.dispatchEvent(new Event('error', { bubbles: false }));
-          |  const events = _drainImgEvents();
-          |  img.remove();
-          |  return JSON.stringify(events);
-          |})()""".stripMargin)
+        "JSON.stringify(__posters.queuedFor('error', " +
+          "'https://images.weserv.nl/?url=m.media-amazon.com%2Fimages%2FM%2Fx.jpg', " +
+          "'https://images.weserv.nl/?url=image.tmdb.org%2Fp%2Fa.jpg'))")
       queued should include (""""host":"m.media-amazon.com"""")   // origin, not images.weserv.nl
       queued should include (""""fallback":true""")
       queued should include (""""success":false""")
@@ -2860,19 +2776,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   it should "queue a successful primary with no fallback flag" in {
     onPath("/") { page =>
-      val queued = page.evalString(
-        """(() => {
-          |  _drainImgEvents();
-          |  const src = 'https://images.weserv.nl/?url=image.tmdb.org%2Fp%2Fa.jpg';
-          |  const img = document.createElement('img');
-          |  img.dataset.originalSrc = src;
-          |  img.setAttribute('src', src);
-          |  document.body.appendChild(img);
-          |  img.dispatchEvent(new Event('load', { bubbles: false }));
-          |  const events = _drainImgEvents();
-          |  img.remove();
-          |  return JSON.stringify(events);
-          |})()""".stripMargin)
+      val src = "'https://images.weserv.nl/?url=image.tmdb.org%2Fp%2Fa.jpg'"
+      val queued = page.evalString(s"JSON.stringify(__posters.queuedFor('load', $src, $src))")
       queued should include (""""host":"image.tmdb.org"""")
       queued should include (""""success":true""")
       queued should not include """"fallback":true"""
@@ -2889,21 +2794,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   it should "mark a proxied poster as proxied, and a directly-served one as not" in {
     onPath("/") { page =>
-      val queued = page.evalString(
-        """(() => {
-          |  _drainImgEvents();
-          |  const load = (src) => {
-          |    const img = document.createElement('img');
-          |    img.dataset.originalSrc = src;
-          |    img.setAttribute('src', src);
-          |    document.body.appendChild(img);
-          |    img.dispatchEvent(new Event('load', { bubbles: false }));
-          |    img.remove();
-          |  };
-          |  load('https://images.weserv.nl/?url=image.tmdb.org%2Fp%2Fa.jpg');
-          |  load('https://www.multikino.pl/media/x.jpg');   // SkipHosts: never proxied
-          |  return JSON.stringify(_drainImgEvents());
-          |})()""".stripMargin)
+      val queued = page.evalString("JSON.stringify(__posters.queuedForProxiedAndDirect())")
       queued should include ("""{"host":"image.tmdb.org","success":true,"proxied":true}""")
       queued should include ("""{"host":"www.multikino.pl","success":true}""")
     }
@@ -2931,21 +2822,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // probes of their own — so these assert on the event this test PROVOKED
   // (matched by the local URL in its error), never on the batch's size. A
   // count assertion here is a race with the page's ambient image traffic.
-  private val ProbeVerdicts =
-    "_peekImgEvents().filter(e => e.host === 'images.weserv.nl' " +
-      "&& (e.error || '').includes('favicon.png'))"
+  private val ProbeVerdicts = "__posters.proxyVerdicts('favicon.png')"
 
   it should "blame the proxy when the origin serves what weserv could not" in {
     onPath("/") { page =>
       // The probe fetches the unwrapped target for real, so point it at an
       // image this test server holds: a 200 stands in for the origin that
       // answers a request weserv failed.
-      page.eval(
-        """(() => {
-          |  _resetImgProbeBudget();   // the page's own broken posters spend it
-          |  const local = location.origin + '/assets/img/favicon.png';
-          |  _imgProbeProxyFault('https://images.weserv.nl/?url=' + encodeURIComponent(local) + '&w=480');
-          |})()""".stripMargin)
+      page.eval("__posters.probe('/assets/img/favicon.png', '&w=480')")
       page.waitFor(s"$ProbeVerdicts.length === 1")
       val verdict = page.evalString(s"JSON.stringify($ProbeVerdicts[0])")
       verdict should include (""""host":"images.weserv.nl"""")
@@ -2959,23 +2843,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // a probe rather than the probe merely working when called.
   it should "probe the origin when a proxied poster breaks, and queue both verdicts" in {
     onPath("/") { page =>
-      page.eval(
-        """(() => {
-          |  _drainImgEvents();
-          |  _resetImgProbeBudget();   // the page's own broken posters spend it
-          |  const local = location.origin + '/assets/img/favicon.png';
-          |  const img = document.createElement('img');
-          |  const src = 'https://images.weserv.nl/?url=' + encodeURIComponent(local);
-          |  img.dataset.originalSrc = src;
-          |  img.setAttribute('src', src);
-          |  document.body.appendChild(img);
-          |  img.dispatchEvent(new Event('error', { bubbles: false }));
-          |  img.remove();
-          |})()""".stripMargin)
+      page.eval("__posters.breakProxied()")
       // The break the visitor saw is queued synchronously against the origin
       // (host carries the test server's port, as `URL.host` does) …
-      val queued = page.evalString(
-        "JSON.stringify(_peekImgEvents().filter(e => (e.host || '').startsWith('127.0.0.1')))")
+      val queued = page.evalString("JSON.stringify(__posters.queuedForHost('127.0.0.1'))")
       queued should include (""""proxied":true""")
       queued should include (""""success":false""")
       // … and the probe it started adds the proxy's own failure beside it.
@@ -2989,35 +2860,20 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Asserted on the budget, not on 20 arriving verdicts: the counter moves
       // synchronously as each probe fires, so this can't race the network (20
       // loads timed out on a contended CI runner).
-      val leftAfterOverspending = page.evalString(
-        """(() => {
-          |  _resetImgProbeBudget();
-          |  const local = location.origin + '/assets/img/favicon.png';
-          |  const budget = _imgProbeBudget();
-          |  for (let i = 0; i < budget + 5; i++) {
-          |    _imgProbeProxyFault('https://images.weserv.nl/?url=' + encodeURIComponent(local) + '&n=' + i);
-          |  }
-          |  return String(_imgProbeBudget());
-          |})()""".stripMargin)
+      val leftAfterOverspending = page.evalInt("__posters.overspendProbes()")
       // Exactly spent, never overdrawn — the 5 probes past the cap returned
       // before fetching anything.
-      leftAfterOverspending shouldBe "0"
+      leftAfterOverspending shouldBe 0
     }
   }
 
   it should "stay silent when the origin is down too — that failure is the origin's" in {
     onPath("/") { page =>
-      page.eval(
-        """(() => {
-          |  _resetImgProbeBudget();
-          |  const missing = location.origin + '/assets/img/no-such-poster.png';
-          |  _imgProbeProxyFault('https://images.weserv.nl/?url=' + encodeURIComponent(missing));
-          |})()""".stripMargin)
+      page.eval("__posters.probe('/assets/img/no-such-poster.png')")
       // Wait for the 404 itself to land, then assert the probe drew no verdict
       // from it — there is no event to wait for, only one to rule out.
       page.waitFor("performance.getEntriesByName(location.origin + '/assets/img/no-such-poster.png').length > 0")
-      page.evalString(
-        "String(_peekImgEvents().filter(e => (e.error || '').includes('no-such-poster')).length)") shouldBe "0"
+      page.evalInt("_peekImgEvents().filter(e => (e.error || '').includes('no-such-poster')).length") shouldBe 0
     }
   }
 
@@ -3034,11 +2890,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val after = visibleBadgeCount(page)
       after should be > 0
       after should be < before
-      page.evalBool(
-        "[...document.querySelectorAll('.badge-time')]" +
-          ".filter(b => b.style.display !== 'none')" +
-          ".every(b => (b.dataset.format || '').split(' ').includes('3D'))"
-      ) shouldBe true
+      page.evalBool("__grid.badgesAllCarry(['3D'])") shouldBe true
     }
   }
 
@@ -3052,11 +2904,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val after = visibleBadgeCount(page)
       after should be > 0
       after should be < before
-      page.evalBool(
-        "[...document.querySelectorAll('.badge-time')]" +
-          ".filter(b => b.style.display !== 'none')" +
-          ".every(b => (b.dataset.format || '').split(' ').includes('NAP'))"
-      ) shouldBe true
+      page.evalBool("__grid.badgesAllCarry(['NAP'])") shouldBe true
     }
   }
 
@@ -3070,11 +2918,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val after = visibleBadgeCount(page)
       after should be > 0
       after should be < before
-      page.evalBool(
-        "[...document.querySelectorAll('.badge-time')]" +
-          ".filter(b => b.style.display !== 'none')" +
-          ".every(b => (b.dataset.format || '').split(' ').includes('IMAX'))"
-      ) shouldBe true
+      page.evalBool("__grid.badgesAllCarry(['IMAX'])") shouldBe true
     }
   }
 
@@ -3088,11 +2932,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val after = visibleBadgeCount(page)
       after should be > 0
       after should be < before
-      page.evalBool(
-        "[...document.querySelectorAll('.badge-time')]" +
-          ".filter(b => b.style.display !== 'none')" +
-          ".every(b => { const [h,m] = slotTime(b).split(':').map(Number); return h*60+m >= 18*60; })"
-      ) shouldBe true
+      page.evalBool("__grid.badgesFrom(18 * 60)") shouldBe true
     }
   }
 
@@ -3100,17 +2940,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       clearLocalStorage(page)
       pinDateFilterAnytime(page)
-      page.eval(
-        "document.querySelector('input[name=\"format-dim\"][value=\"2D\"]').click(); " +
-        "document.querySelector('input[name=\"format-lang\"][value=\"NAP\"]').click()"
-      )
+      page.eval("document.querySelector('input[name=\"format-dim\"][value=\"2D\"]').click(); " +
+        "document.querySelector('input[name=\"format-lang\"][value=\"NAP\"]').click()")
       val after = visibleBadgeCount(page)
       after should be > 0
-      page.evalBool(
-        "[...document.querySelectorAll('.badge-time')]" +
-          ".filter(b => b.style.display !== 'none')" +
-          ".every(b => { const t = (b.dataset.format||'').split(' '); return t.includes('2D') && t.includes('NAP'); })"
-      ) shouldBe true
+      page.evalBool("__grid.badgesAllCarry(['2D', 'NAP'])") shouldBe true
     }
   }
 
@@ -3140,13 +2974,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // Dispatch a real, cancelable click on a card's poster <a> (outside the
       // panel). The fix runs in the capture phase and preventDefault()s it.
-      val defaultPrevented = page.evalBool(
-        s"(() => { const a = $firstCardPosterLink;" +
-        "  const e = new MouseEvent('click', { bubbles: true, cancelable: true });" +
-        "  a.dispatchEvent(e);" +
-        "  return e.defaultPrevented; })()"
-      )
-      defaultPrevented shouldBe true
+      page.evalBool("__grid.clickFirstPosterPrevented()") shouldBe true
       page.evalString("location.pathname") shouldBe (cityPrefix + "/")
       page.evalString("document.getElementById('format-panel').style.display") shouldBe "none"
     }
@@ -3158,13 +2986,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       clearLocalStorage(page)
       pinDateFilterAnytime(page)
-      val defaultPrevented = page.evalBool(
-        s"(() => { const a = $firstCardPosterLink;" +
-        "  const e = new MouseEvent('click', { bubbles: true, cancelable: true });" +
-        "  a.dispatchEvent(e);" +
-        "  return e.defaultPrevented; })()"
-      )
-      defaultPrevented shouldBe false
+      page.evalBool("__grid.clickFirstPosterPrevented()") shouldBe false
     }
   }
 
@@ -3188,13 +3010,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Read the visible cards in DOM order and assert the rating sequence is
       // non-increasing. `length > 1` guards against a trivially-true pass on
       // an empty/one-card grid.
-      val nonIncreasing = page.evalBool(
-        "(() => { const r = [...document.querySelectorAll('#film-grid > .col[data-title]')]" +
-        "  .filter(c => c.style.display !== 'none')" +
-        "  .map(c => parseFloat(c.dataset.rating) || 0);" +
-        "  for (let i = 1; i < r.length; i++) if (r[i] > r[i-1] + 1e-9) return false;" +
-        "  return r.length > 1; })()"
-      )
+      val nonIncreasing = page.evalBool("__grid.ratingsNonIncreasing()")
       nonIncreasing shouldBe true
     }
   }
@@ -3258,10 +3074,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   "the day filter's today/tomorrow" should "be measured on the city's clock, not Warsaw's" in {
     onPath("/") { page =>
       clearLocalStorage(page)
-      page.eval(
-        // The fixture render pins "today"; drop it so the bounds are measured.
-        "delete window.KINOWO_PINNED_TODAY; " +
-        "window.showtimeNow = () => Date.UTC(2026, 5, 8, 22, 30);")
+      // The fixture render pins "today"; drop it so the bounds are measured.
+      page.eval("delete window.KINOWO_PINNED_TODAY; window.showtimeNow = () => Date.UTC(2026, 5, 8, 22, 30)")
 
       page.eval("window.CITY_TIMEZONE = 'Europe/London'")
       page.evalString("dateBounds().today")    shouldBe "2026-06-08"
@@ -3276,21 +3090,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "leave a London visitor on today's listings at 23:30 local" in {
     onPath("/") { page =>
       clearLocalStorage(page)
-      page.eval(
-        "delete window.KINOWO_PINNED_TODAY; " +
-        "window.showtimeNow = () => Date.UTC(2026, 5, 8, 22, 30); " +
-        "window.CITY_TIMEZONE = 'Europe/London';")
+      page.eval("delete window.KINOWO_PINNED_TODAY; window.showtimeNow = () => Date.UTC(2026, 5, 8, 22, 30); " +
+        "window.CITY_TIMEZONE = 'Europe/London'")
       page.eval("document.getElementById('date-filter').value = 'today'; applyFilters()")
 
       visibleCardCount(page) should be > 0
       withClue("every day-row on screen under 'today' is the city's today: ") {
-        page.evalBool(
-          "[...document.querySelectorAll('#film-grid .col[data-title]')]" +
-            ".filter(c => c.style.display !== 'none')" +
-            ".flatMap(c => [...c.querySelectorAll('.date-group[data-date]')])" +
-            ".filter(g => g.style.display !== 'none')" +
-            ".every(g => g.dataset.date === '2026-06-08')"
-        ) shouldBe true
+        page.evalBool("__grid.shownDates().every(d => d === '2026-06-08')") shouldBe true
       }
     }
   }
@@ -3401,8 +3207,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "re-render an already-visible truncated-showings link's plural noun on a language switch" in {
     onPath("/") { page =>
       pinDateFilterAnytime(page)
-      page.waitFor("document.querySelector('.showings-more') !== null && " +
-        "document.querySelector('.showings-more').textContent.trim().length > 0")
+      page.waitFor("(document.querySelector('.showings-more')?.textContent.trim() || '').length > 0")
       val before = page.evalString("document.querySelector('.showings-more').textContent")
       before should include("seans")
 
@@ -3451,13 +3256,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       pinDateFilterAnytime(page)
       page.evalInt("document.querySelectorAll('.showings-more').length") should be > 0
-      page.eval(
-        "window.__pillQueries = 0; const _qsa = Element.prototype.querySelectorAll;" +
-        "  Element.prototype.querySelectorAll = function (selector) {" +
-        "    if (selector === '.badge-time') window.__pillQueries++;" +
-        "    return _qsa.call(this, selector); };" +
-        "  applyFilters(); Element.prototype.querySelectorAll = _qsa;")
-      page.evalInt("window.__pillQueries") shouldBe 0
+      page.evalInt("__grid.pillQueriesPerPass()") shouldBe 0
     }
   }
 
@@ -3470,14 +3269,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       var counted = 0L
       onPath(path) { page =>
         pinDateFilterAnytime(page)
-        page.eval(
-          "window.__domQueries = 0; const _wrapped = [];" +
-          "  [[Element.prototype, ['querySelectorAll', 'querySelector', 'getElementsByClassName', 'getElementsByTagName']]," +
-          "   [Document.prototype, ['querySelectorAll', 'querySelector', 'getElementsByClassName', 'getElementsByTagName', 'getElementById']]]" +
-          "  .forEach(([proto, names]) => names.forEach(name => { const original = proto[name]; _wrapped.push([proto, name, original]);" +
-          "    proto[name] = function (...args) { window.__domQueries++; return original.apply(this, args); }; }));" +
-          "  applyFilters(); _wrapped.forEach(([proto, name, original]) => { proto[name] = original; });")
-        counted = page.evalInt("window.__domQueries").toLong
+        counted = page.evalInt("__grid.domQueriesPerPass()").toLong
       }
       counted
     }
@@ -3504,12 +3296,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // So unfolding alone puts them back on screen — no filter pass needed.
       page.eval("undoTruncation()")
       page.evalInt("document.querySelectorAll('.truncated').length") shouldBe 0
-      page.evalBool(
-        "[...document.querySelectorAll('#film-grid .col[data-title]')]" +
-          ".filter(c => c.style.display !== 'none')" +
-          ".flatMap(c => [...c.querySelectorAll('.date-group[data-date]')])" +
-          ".every(g => g.offsetParent !== null)"
-      ) shouldBe true
+      page.evalBool("__grid.everyDayRowShown()") shouldBe true
     }
   }
 
@@ -3639,16 +3426,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Synced vertical scroll: the revealed neighbour's top equals the centre
       // grid's top — both are top-aligned in the same flex row sharing the
       // page's single scroll, so the offset matches even after scrolling.
-      val sameTop = page.evalBool(
-        """(() => {
-          |  const root = document.getElementById('view-root');
-          |  const cols = [...document.querySelectorAll('#day-track > .day-col')]
-          |    .filter(c => c.querySelector('.col[data-title]'));
-          |  if (!root || cols.length === 0) return false;
-          |  const rt = root.getBoundingClientRect().top;
-          |  return cols.some(c => Math.abs(c.getBoundingClientRect().top - rt) < 1);
-          |})()""".stripMargin
-      )
+      val sameTop = page.evalBool("__carousel.neighbourTopAligned()")
       sameTop shouldBe true
 
       // Release below the commit threshold → snap back, leaving scroll untouched.
@@ -3690,10 +3468,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Observed in the SAME evaluate as the step: the slide commits on its own
       // ~610 ms timer, so a renderer frozen between two evaluates could resume
       // with that timer overdue and run it before a separate armed-check.
-      val inFlight = page.eval(
-        """(() => { window.stepDate(1);
-          |  return [document.getElementById('day-track').classList.contains('day-track--armed'),
-          |          document.querySelectorAll('#day-track > .day-col').length]; })()""".stripMargin)
+      val inFlight = page.eval("__carousel.stepAndObserve()")
       inFlight(0).as[Boolean] shouldBe true
       inFlight(1).as[Int] should be >= 1
 
@@ -3735,39 +3510,22 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
       page.waitFor("document.querySelector('.col[data-title]') !== null")
 
-      page.eval(
-        """(() => {
-          |  window.__heldFrames = [];
-          |  window.__realRaf = window.requestAnimationFrame;
-          |  window.requestAnimationFrame = cb => { window.__heldFrames.push(cb); return window.__heldFrames.length; };
-          |  window.__stepAt = performance.now();
-          |  window.stepDate(1);
-          |})()""".stripMargin)
+      page.eval("__carousel.stepHoldingFrames()")
       // Well past the slide (550 ms) plus its fallback margin, frames still held.
-      page.waitFor("performance.now() - window.__stepAt > 1200")
+      page.waitFor("__carousel.msSinceStep() > 1200")
 
-      page.eval(
-        """(() => {
-          |  window.requestAnimationFrame = window.__realRaf;
-          |  const held = window.__heldFrames.splice(0);
-          |  held.forEach(cb => cb(performance.now()));
-          |})()""".stripMargin)
+      page.eval("__carousel.releaseFrames()")
 
       page.waitFor(
         "document.querySelectorAll('#day-track > .day-col').length === 0 && " +
           "document.getElementById('date-filter').value === 'tomorrow'"
       )
       // Let any straggling frame / transition run before judging the layout.
-      page.waitFor("performance.now() - window.__stepAt > 2400")
+      page.waitFor("__carousel.msSinceStep() > 2400")
 
       page.evalString("document.getElementById('day-track').style.transform") shouldBe ""
       page.evalInt("Math.round(document.getElementById('view-root').getBoundingClientRect().left)") shouldBe 0
-      page.evalBool(
-        """[...document.querySelectorAll('#view-root .col[data-title]')]
-          |  .filter(c => c.offsetParent !== null)
-          |  .some(c => { const r = c.getBoundingClientRect();
-          |               return r.right > 0 && r.left < window.innerWidth; })""".stripMargin
-      ) shouldBe true
+      page.evalBool("__carousel.gridOnScreen()") shouldBe true
     }
   }
 
@@ -3809,10 +3567,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
       page.eval("window.animateToDay('tomorrow')")
       page.waitFor("getComputedStyle(document.getElementById('day-track')).transitionDuration !== '0s'")
-      page.eval(
-        "document.querySelector('#day-track .card').dispatchEvent(" +
-        "  new TransitionEvent('transitionend', { bubbles: true, propertyName: 'transform' }))"
-      )
+      page.eval("document.querySelector('#day-track .card')" +
+        ".dispatchEvent(new TransitionEvent('transitionend', { bubbles: true, propertyName: 'transform' }))")
       page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
       page.evalString("document.getElementById('date-filter').value") shouldBe "today"
       // …and the slide's own end still commits it.
@@ -4005,54 +3761,25 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Commit that day through the REAL path to capture the authoritative order.
       // The static #date-filter only carries today/tomorrow/week/anytime, so add
       // the specific-date option the URL-sync / stepDate path would otherwise add.
-      page.eval(
-        s"(() => { const sel = document.getElementById('date-filter');" +
-        s"  const o = document.createElement('option'); o.value = ${jsString(day)};" +
-        s"  sel.appendChild(o); sel.value = ${jsString(day)}; applyFilters(); })()"
-      )
+      selectSpecificDay(page, day)
       val committedOrder = visibleTitleOrder(page)
       committedOrder.nonEmpty shouldBe true
 
       // Guard against a silently vacuous test: the tiebreak only fires when two
       // visible films share an earliest showtime. If the fixture ever drifts and
       // loses its ties on `day`, fail loudly here rather than pass for free.
-      val hasTie = page.evalBool(
-        s"""(() => {
-          |  const earliest = c => {
-          |    let best = null;
-          |    c.querySelectorAll('.date-group[data-date="$day"] .badge-time').forEach(b => {
-          |      if (b.style.display === 'none') return;
-          |      const t = slotTime(b);
-          |      if (t && (best === null || t < best)) best = t;
-          |    });
-          |    return best;
-          |  };
-          |  const times = [...document.querySelectorAll('#film-grid > .col[data-title]')]
-          |    .filter(c => c.style.display !== 'none').map(earliest).filter(Boolean);
-          |  return new Set(times).size < times.length;
-          |})()""".stripMargin
-      )
+      val hasTie = page.evalBool(s"__carousel.hasEarliestTie(${jsString(day)})")
       hasTie shouldBe true
 
       // Simulate what a prior day (e.g. having viewed 'jutro' first) leaves behind:
       // the live #film-grid in a NON-server order. A full reverse guarantees every
       // tied pair now sits opposite to its server order.
-      page.eval(
-        "(() => { const g = document.getElementById('film-grid');" +
-        "  [...g.querySelectorAll('.col[data-title]')].reverse().forEach(c => g.appendChild(c)); })()"
-      )
+      page.eval("__carousel.reverseGrid()")
 
       // The carousel preview clones that reordered grid and re-sorts it for `day`.
       // Its order must match the committed order — equal-earliest films tiebroken
       // by the stamped server index, not the clone's current (reversed) position.
-      val previewOrder = page.evalString(
-        s"""(() => {
-          |  const clone = document.getElementById('film-grid').cloneNode(true);
-          |  applyFiltersForDay(clone, ${jsString(day)});
-          |  return [...clone.querySelectorAll('.col[data-title]')]
-          |    .filter(c => c.style.display !== 'none').map(c => c.dataset.title).join('|');
-          |})()""".stripMargin
-      )
+      val previewOrder = page.evalString(s"__carousel.previewOrder(${jsString(day)})")
 
       previewOrder shouldBe committedOrder
     }
@@ -4252,10 +3979,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // The day two steps on, read from the option list so the assertion doesn't
       // hard-code preset labels.
-      val twoStepsOn = page.evalString(
-        "(() => { const s = document.getElementById('date-filter');" +
-        "  return s.options[s.selectedIndex + 2].value; })()"
-      )
+      val twoStepsOn = page.evalString("__carousel.dayAhead(2)")
 
       // Both presses before the first slide commits.
       page.eval("stepDate(1); stepDate(1)")
@@ -5789,29 +5513,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def clearLocalStorage(page: CdpPage): Unit =
     page.eval("localStorage.clear(); applyFilters()")
 
-  private def visibleBadgeCount(page: CdpPage): Int =
-    page.evalInt("[...document.querySelectorAll('.badge-time')].filter(b => b.style.display !== 'none').length")
+  private def visibleBadgeCount(page: CdpPage): Int = page.evalInt("__grid.visibleBadges()")
 
-  private def visibleCardCount(page: CdpPage): Int =
-    page.evalInt("[...document.querySelectorAll('.col[data-title]')].filter(c => c.style.display !== 'none').length")
+  private def visibleCardCount(page: CdpPage): Int = page.evalInt("__grid.visibleCards()")
 
   /** Pipe-joined titles of the visible `/` grid cards in current DOM order —
    *  used to assert the sort axis reorders (and restores) the grid. */
-  private def visibleTitleOrder(page: CdpPage): String =
-    page.evalString(
-      "[...document.querySelectorAll('#film-grid > .col[data-title]')]" +
-      "  .filter(c => c.style.display !== 'none').map(c => c.dataset.title).join('|')"
-    )
+  private def visibleTitleOrder(page: CdpPage): String = page.evalString("__grid.titleOrder()")
 
   /** Point `#date-filter` at a specific ISO date and run a filter pass. The
    *  static select only carries today/tomorrow/week/anytime, so the option the
    *  URL-sync / stepDate path would have added is added here first. */
   private def selectSpecificDay(page: CdpPage, day: String): Unit =
-    page.eval(
-      s"(() => { const sel = document.getElementById('date-filter');" +
-      s"  const o = document.createElement('option'); o.value = ${jsString(day)};" +
-      s"  sel.appendChild(o); sel.value = ${jsString(day)}; applyFilters(); })()"
-    )
+    page.eval(s"__grid.selectDay(${jsString(day)})")
 
   /** Each visible card's earliest VISIBLE showtime on `day`, in current DOM
    *  order — the key `sortByEarliestVisible` claims to have sorted on, read back
@@ -5819,28 +5533,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  than badge text, which also carries the format chip. Cards showing nothing
    *  on `day` contribute nothing. */
   private def visibleEarliestTimes(page: CdpPage, day: String): Seq[String] =
-    page.evalString(
-      s"""(() => {
-        |  const earliest = c => {
-        |    let best = null;
-        |    c.querySelectorAll('.date-group[data-date=${jsString(day)}]').forEach(g => {
-        |      if (g.style.display === 'none') return;
-        |      g.querySelectorAll('.cinema-group[data-cinema]').forEach(cg => {
-        |        if (cg.style.display === 'none') return;
-        |        cg.querySelectorAll('.badge-time').forEach(b => {
-        |          if (b.style.display === 'none') return;
-        |          const t = slotTime(b);
-        |          if (t && (best === null || t < best)) best = t;
-        |        });
-        |      });
-        |    });
-        |    return best;
-        |  };
-        |  return [...document.querySelectorAll('#film-grid > .col[data-title]')]
-        |    .filter(c => c.style.display !== 'none')
-        |    .map(earliest).filter(Boolean).join('|');
-        |})()""".stripMargin
-    ).split('|').filter(_.nonEmpty).toSeq
+    page.evalString(s"__grid.earliestTimes(${jsString(day)})").split('|').filter(_.nonEmpty).toSeq
 
   /** Drag left far enough to lock and arm the carousel, and keep the finger
    *  down: the NEXT day's preview column stays mounted for inspection. */
@@ -5853,29 +5546,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   /** The visible cards of the NEXT-day preview — the `.day-col` mounted to the
    *  right of `#view-root` — in the order releasing the drag would commit. */
-  private def neighbourColumnTitles(page: CdpPage): String =
-    page.evalString(
-      """(() => {
-        |  const root = document.getElementById('view-root');
-        |  if (!root) return '';
-        |  let element = root.nextElementSibling;
-        |  while (element && !element.classList.contains('day-col')) element = element.nextElementSibling;
-        |  if (!element) return '';
-        |  return [...element.querySelectorAll('.col[data-title]')]
-        |    .filter(c => c.style.display !== 'none')
-        |    .map(c => c.dataset.title).join('|');
-        |})()""".stripMargin
-    )
+  private def neighbourColumnTitles(page: CdpPage): String = page.evalString("__carousel.neighbourTitles()")
 
   /** Which day that preview column is for — the next entry in the day ring, so
    *  a commit can target the SAME day the preview showed. */
-  private def neighbourDayValue(page: CdpPage): String =
-    page.evalString(
-      "(() => { const sel = document.getElementById('date-filter');" +
-      "  const ring = window.dayRing ? window.dayRing() : " +
-      "    [...sel.options].map(o => o.value);" +
-      "  const n = ring.length; return ring[((sel.selectedIndex + 1) % n + n) % n]; })()"
-    )
+  private def neighbourDayValue(page: CdpPage): String = page.evalString("__carousel.neighbourDay()")
 
   /** Release below the commit threshold: the track snaps back and the clones
    *  are torn down, leaving the real day unchanged. */
@@ -5890,30 +5565,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  for `directory < 0`. Returns "next" or "previous" for whichever side holds the
    *  populated column, or "" if neither is populated (no slide in flight). This
    *  is the deterministic read of the slide direction the dropdown picked. */
-  private def armedSlideSide(page: CdpPage): String =
-    page.evalString(
-      """(() => {
-        |  const root = document.getElementById('view-root');
-        |  if (!root) return '';
-        |  const popOn = (directoryProp) => {
-        |    let element = root[directoryProp];
-        |    while (element && !element.classList.contains('day-col')) element = element[directoryProp];
-        |    return !!(element && element.querySelector('.col[data-title]'));
-        |  };
-        |  if (popOn('nextElementSibling'))     return 'next';
-        |  if (popOn('previousElementSibling')) return 'previous';
-        |  return '';
-        |})()""".stripMargin
-    )
+  private def armedSlideSide(page: CdpPage): String = page.evalString("__carousel.armedSide()")
 
-  private def firstVisibleTitle(page: CdpPage): String =
-    page.evalString(
-      "(() => { const cols = [...document.querySelectorAll('.col[data-title]')];" +
-      "  for (const c of cols) { if (c.style.display === 'none') continue;" +
-      "    const img = c.querySelector('.poster-wrap > a img');" +
-      "    if (img && img.style.display !== 'none') return c.dataset.title; }" +
-      "  return cols.find(c => c.style.display !== 'none')?.dataset.title || ''; })()"
-    )
+  private def firstVisibleTitle(page: CdpPage): String = page.evalString("__grid.firstTitleWithPoster()")
 
   /** Pin every visible element on the page to Arial / Liberation Sans
    *  before layout-sensitive measurements. Why: the layout sweeps below
@@ -6184,10 +5838,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  carousel handlers (which arm + translate `#day-track`) without needing real
    *  CDP touch injection. `pointerType:'touch'` clears the handlers'
    *  mouse-skip + coarse-pointer gates. */
-  private def synthDrag(kind: String, x: Int, y: Int): String =
-    s"""document.dispatchEvent(new PointerEvent('$kind', {
-       |  pointerType: 'touch', isPrimary: true, clientX: $x, clientY: $y, bubbles: true, cancelable: true
-       |}))""".stripMargin
+  private def synthDrag(kind: String, x: Int, y: Int): String = s"__carousel.drag('$kind', $x, $y)"
 
   // ── Picker country crossing: an origin boundary, not a sign-in check ─────
   //
