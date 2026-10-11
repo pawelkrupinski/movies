@@ -56,6 +56,17 @@ object CorpusFixture {
 
   def exists(countryCode: String): Boolean = Files.exists(pathFor(countryCode))
 
+  /** Why a convergence leg refuses to run without `corpusKey`'s corpus, and how to get it.
+   *  Names the KEY's file, not the country: a sample leg (`de-sample`) missing its corpus
+   *  beside a present `cinema-scrapes-de.json.gz` otherwise reads like a path bug. */
+  def missingMessage(corpusKey: String, countryCode: String): String =
+    s"no corpus fixture at ${pathFor(corpusKey)} (relative to the working directory, which must be the " +
+    s"repo root). Restore the pair CI replays — this corpus and its enrichment tree — with:\n" +
+    s"  scripts/restore-country-corpus.sh $countryCode\n" +
+    s"or record a fresh one: gh workflow run \"Record scrape fixtures\" --ref main. Without it this leg " +
+    s"would replay the GENERATED corpus, whose synthetic titles cannot enrich — a fixpoint over a " +
+    s"repertoire that does not exist.\n"
+
   /** Capture rows straight from an archive, sorted by `_id` so the file is a pure
    *  function of the corpus rather than of the store's iteration order — the same
    *  discipline `ReadModelSnapshot.capture` applies. */

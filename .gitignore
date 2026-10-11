@@ -66,6 +66,14 @@ logs/
 test/resources/fixtures/enrichment-*/
 test/resources/fixtures/enrichment-*
 
+# The recorded scrape corpora `scripts/restore-country-corpus.sh` (and every convergence leg)
+# unpacks beside them — 2-60 MB each, from the recorder's artifacts, never committed. The July
+# Polish and German ones still TRACKED are unaffected by these patterns.
+test/resources/fixtures/corpus/cinema-scrapes-??.json.gz
+test/resources/fixtures/corpus/cinema-scrapes-??-sample.json.gz
+test/resources/fixtures/corpus/prod-coverage-??.json
+test/resources/fixtures/corpus/prod-coverage-??-sample.json
+
 # The GitOps manifests live in pawelkrupinski/movies-gitops. CI and `infra/bin/fetch-gitops`
 # check that repository out HERE, so the deploy specs read the same paths they always did.
 /infra/kubernetes/

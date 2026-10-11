@@ -211,12 +211,11 @@ abstract class CountryConvergenceBehaviour(
    * country to prove nothing. The keyless run used to be a supported mode, with the cache
    * simply absent and the enrichment assertion excused along with it.
    *
-   * The trap worth naming: `Env` reads `.env.local` from the WORKING DIRECTORY, so a run
-   * from a fresh worktree finds no key. Symlink it in:
+   * Pass the key inline from the Touch ID vault — never by sourcing or symlinking a
+   * `.env.local`, whose `MONGODB_URI` is production's:
    *
    * {{{
-   *   ln -s /path/to/movies/.env.local .env.local     # gitignored
-   *   sbt convergencePoland
+   *   scripts/convergence-local.sh pl     # restores the pair, reads the key from the vault
    * }}}
    *
    * The run prints the preload count and the hit/fill split, so whether it was warm is
@@ -226,8 +225,8 @@ abstract class CountryConvergenceBehaviour(
     if (configuration.tmdbApiKey.isEmpty)
       throw new IllegalStateException(
         s"TMDB_API_KEY is not set, so ${country.displayName} would resolve nothing: TmdbClient.search " +
-        "short-circuits on a missing key without reaching the fixture tree at all. Symlink .env.local into " +
-        "the working directory (see this suite's scaladoc) and re-run.")
+        "short-circuits on a missing key without reaching the fixture tree at all. Pass it inline — " +
+        "TMDB_API_KEY=\"$(secrets get movies TMDB_API_KEY)\" — or run scripts/convergence-local.sh <code>.")
     // A hermetic run never expires a remembered verdict: freshness is the RECORDING run's
     // job, and an entry that ages out between the recording and a replay of it would turn
     // into a refused fetch the recording never saw.
@@ -504,12 +503,7 @@ abstract class CountryConvergenceBehaviour(
    * So it fails, and says what is missing and how to produce it.
    */
   private def requireCorpusFixture(): Unit =
-    withClue(s"no corpus fixture for ${country.code} and no KINOWO_CONVERGENCE_SCRAPES_URI to " +
-             s"record one from. This leg would otherwise replay the " +
-             s"GENERATED corpus, whose synthetic titles cannot enrich — a fixpoint over a " +
-             s"repertoire that does not exist. Record one:\n" +
-             s"  KINOWO_COUNTRY=${country.code} KINOWO_CONVERGENCE_SCRAPES_URI=<prod mongo> \\\n" +
-             s"    sbt 'worker/Fixtures/runMain scripts.RecordCorpusFixture'\n") {
+    withClue(CorpusFixture.missingMessage(corpusKey, country.code)) {
       CorpusFixture.exists(corpusKey) shouldBe true
     }
 

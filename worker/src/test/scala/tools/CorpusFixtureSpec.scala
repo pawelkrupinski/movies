@@ -71,4 +71,13 @@ class CorpusFixtureSpec extends AnyFlatSpec with Matchers {
       CorpusFixture.read(key) shouldBe CorpusFixture.parse(CorpusFixture.render(rows))
     } finally java.nio.file.Files.deleteIfExists(written.path)
   }
+
+  // A sample leg's key is `de-sample`, and the refusal used to name only the COUNTRY — "no corpus
+  // fixture for de" — beside a checked-in cinema-scrapes-de.json.gz, which sent the reader hunting
+  // a path bug. It names the exact file it looked for, and the one command that restores it.
+  it should "name the exact file a missing corpus was looked for at, and how to restore it" in {
+    val message = CorpusFixture.missingMessage("de-sample", "de")
+    message should include("test/resources/fixtures/corpus/cinema-scrapes-de-sample.json.gz")
+    message should include("scripts/restore-country-corpus.sh de")
+  }
 }

@@ -41,6 +41,43 @@ is that the local toolchain is missing (e.g. no full Xcode for
   without the live server. Quicker; required for any change to iOS
   model / parser logic regardless of whether you also need LocalServer.
 
+## Per-country convergence suites (e2e, `@CountryScoped`)
+
+`GermanyConvergenceSpec` and its PL/UK/ES/US siblings (plus the `*SampleConvergenceSpec`
+fast legs) run in CI's convergence workflows, never in `testUnit`. Their inputs are not
+in git: each replays the PAIR `Record scrape fixtures` pinned — the country's scrape
+corpus (artifact `scrape-fixtures-<code>` of the pinned recording run, 14-day retention)
+and its enrichment tree plus fills (release `convergence-fixtures`, pinned by
+`hermetic-<code>.txt`). One command restores the pair and runs the full leg hermetically,
+exactly as CI does:
+
+```
+scripts/convergence-local.sh de               # or pl / uk / es / us
+scripts/convergence-local.sh de convergenceGermanySample   # any alias, same pair
+```
+
+It reads `TMDB_API_KEY` (required) and `OMDB_API_KEY` (optional) from the environment or,
+inline, from the Touch ID vault (`secrets get movies TMDB_API_KEY`) — never from a
+`.env.local`, whose `MONGODB_URI` is production's. Mongo: `MONGODB_URI` if set, else the
+itAll mongod on `:28017`, else a throwaway `mongo:8.3.11` on `:27117`; every run's
+databases sit under a unique `MONGODB_DB` prefix and the suite drops them.
+
+By hand, the same thing:
+
+```
+scripts/restore-country-corpus.sh de          # or all; fails loudly if no pair is pinned/left
+TMDB_API_KEY="$(secrets get movies TMDB_API_KEY)" \
+  MONGODB_URI="mongodb://127.0.0.1:28017/?directConnection=true" MONGODB_DB=kinowo_it_conv_de1 \
+  KINOWO_COUNTRY=de KINOWO_COUNTRIES=de \
+  KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES=enrichment-de KINOWO_CONVERGENCE_HERMETIC=true \
+  sbt convergenceGermany
+```
+
+The restore overwrites the still-tracked July `cinema-scrapes-{pl,de}.json.gz` /
+`prod-coverage-{pl,de}.json`; `git checkout -- test/resources/fixtures/corpus` before
+committing. Everything else it writes is gitignored. A pair expired from the release
+or its artifact gone: `gh workflow run "Record scrape fixtures" --ref main` (~10 min).
+
 ## Run the narrowest scope you can
 
 `sbt web/PageTest/test` runs the page specs in ~30 s. `sbt 'web/PageTest/testOnly

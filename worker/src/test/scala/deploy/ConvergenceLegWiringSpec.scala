@@ -568,7 +568,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "leave no reader of the tree assuming gzip" in {
-    Seq(".github/workflows/identity-decorations.yml", "scripts/hard-clusters.sh", "scripts/convergence-local.sh").foreach { file =>
+    Seq(".github/workflows/identity-decorations.yml", "scripts/hard-clusters.sh", "scripts/restore-country-corpus.sh").foreach { file =>
       val text = RepoFile.read(file)
       withClue(s"$file: ")(text should include("unpack-fixture-archive.sh"))
       withClue(s"$file still names a gzip tree: ")(text should not include regex("""enrichment-\$[^ ]*\.tar\.gz"""))
