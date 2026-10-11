@@ -1,7 +1,5 @@
 package models
 
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
 import java.util.Properties
 
 import scala.util.Using
@@ -86,10 +84,7 @@ object ClientSupport {
 
   /** Content hash — the payload has no meaningful timestamp, so its identity IS
    *  its bytes, exactly as for [[Catalog.etag]]. */
-  val etag: String = {
-    val digest = MessageDigest.getInstance("SHA-256").digest(json.getBytes(StandardCharsets.UTF_8))
-    "\"" + digest.take(8).map("%02x".format(_)).mkString + "\""
-  }
+  val etag: String = tools.Digest.contentEtag(json)
 }
 
 /**

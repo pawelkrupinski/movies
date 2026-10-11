@@ -11,6 +11,11 @@ object Digest {
   /** SHA-256, for the share-card store's versions (a card's inputs, a poster's URL). */
   def sha256Hex(s: String): String = hex("SHA-256", s)
 
+  /** A strong HTTP ETag naming `s` by its content: a quoted 16-hex-char SHA-256 prefix. For a
+   *  body with no meaningful timestamp, whose identity IS its bytes (the app catalog, a user's
+   *  hidden films, a picker fragment). */
+  def contentEtag(s: String): String = "\"" + sha256Hex(s).take(16) + "\""
+
   /** SHA-1 over the compiled bytes of `classes`: what changes when any of their code does. A class
    *  whose bytes cannot be read (no class file on the classpath) counts by its name alone. */
   def classesHex(classes: Seq[Class[?]]): String = {

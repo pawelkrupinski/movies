@@ -1,8 +1,5 @@
 package models
 
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
-
 /**
  * The mobile "catalog": the set of deployed countries and every city they serve,
  * plus a content [[etag]]. Static per build — it changes only when a country or
@@ -156,10 +153,5 @@ object Catalog {
    * per build, so it's computed once. The apps send it as `If-None-Match`; the
    * server answers `304 Not Modified` when it matches.
    */
-  val etag: String =
-    "\"" + MessageDigest.getInstance("SHA-256")
-      .digest(json.getBytes(StandardCharsets.UTF_8))
-      .take(8)
-      .map("%02x".format(_))
-      .mkString + "\""
+  val etag: String = tools.Digest.contentEtag(json)
 }

@@ -7,8 +7,6 @@ import play.api.mvc._
 import services.metrics.LegacyUserStateMetrics
 import services.users.{AccountDeletion, HiddenFilmsChange, LegacyStatePatch, UserChangeTimeCache, UserRepository, UserStateRepository}
 
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
@@ -321,11 +319,7 @@ object UserStateController {
    *  handful of titles, not the whole catalog.
    */
   def hiddenFilmsETag(body: JsValue): String =
-    "\"" + MessageDigest.getInstance("SHA-256")
-      .digest(Json.stringify(body).getBytes(StandardCharsets.UTF_8))
-      .take(8)
-      .map("%02x".format(_))
-      .mkString + "\""
+    tools.Digest.contentEtag(Json.stringify(body))
 
   /** `instant` as an RFC 7231 HTTP-date, for the `Last-Modified` header. */
   def httpDate(instant: Instant): String =
