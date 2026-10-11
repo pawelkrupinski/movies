@@ -646,7 +646,9 @@ in
     # 0400 AND OWNED BY mongodb IS NOT TIDINESS FOR THE KEYFILE: mongod REFUSES TO START if the
     # replica-set key file is group- or world-readable. That check is a good one and it produces a
     # startup error that names permissions, so it is at least loud -- but only after a deploy.
-    sops.secrets."mongodb/keyfile" = { owner = "mongodb"; mode = "0400"; };
+    # restartUnits: mongod reads the key file once, at start. Without this a rotated key is written
+    # and ignored until some unrelated restart (rotated 2026-10-11 after the laptop theft).
+    sops.secrets."mongodb/keyfile" = { owner = "mongodb"; mode = "0400"; restartUnits = [ "mongodb.service" ]; };
 
     # The dump's credentials, as a mongodump `--config` document. Rendered into /run by sops-nix at
     # start; never in the store, and never on a command line. See `backup.credentialsFile`.
