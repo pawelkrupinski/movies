@@ -65,21 +65,13 @@ object FilterDescription {
       case _    => english
     }
 
-  /** "Repertuar kin w Poznaniu" / "Cinema listings in London" — the city-scoped
-   *  heading of the default page title ([[defaultTitle]]). Reads the declined
-   *  locative for Polish, "in {City}" for English, off [[City.locativePhrase]]. */
-  def cityHeading(city: City): String = {
-    val caption = tr(city)("Repertuar kin", "Cinema listings", "Cartelera de cine", "Kinoprogramm")
-    s"$caption ${city.locativePhrase}"
-  }
-
   /** Default (no-filter) `<title>` for a city listing — keyword-first so the tab
    *  and the Google result lead with what people search ("repertuar kin
    *  <miasto>", "godziny seansów" / "cinema listings <city>", "showtimes")
    *  rather than the bare brand. The brand is appended only when it fits
    *  [[MaxTitle]]: the phrase is never cut to make room for it. */
   def defaultTitle(city: City): String = {
-    val heading = tr(city)(s"Repertuar wszystkich kin ${city.locativePhrase}", cityHeading(city), cityHeading(city), cityHeading(city))
+    val heading = tr(city)(s"Repertuar wszystkich kin ${city.locativePhrase}", city.heading, city.heading, city.heading)
     val tail    = tr(city)("program, godziny seansów, oceny", "today's showtimes", "sesiones de hoy", "Spielzeiten heute")
     val title   = s"$heading – $tail"
     val branded = s"$title | ${brand(city)}"
@@ -142,8 +134,8 @@ object FilterDescription {
    *  `/trojmiasto/` or a US metro, the only heading text a search for one of the
    *  covered towns can match. */
   def pageHeading(city: City): String = namedPlaces(city) match {
-    case Nil   => cityHeading(city)
-    case towns => s"${cityHeading(city)} – ${towns.mkString(", ")}"
+    case Nil   => city.heading
+    case towns => s"${city.heading} – ${towns.mkString(", ")}"
   }
 
   /** The covered towns this page is willing to spell out. Capped because a

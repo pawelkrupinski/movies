@@ -56,17 +56,21 @@ object PosterDecode {
 
   /** The bounded read of a poster on disk — the worker's download lands in a file, so a large
    *  poster is never held in the heap as bytes too. */
-  def fromFile(file: java.io.File): Option[BufferedImage] =
-    Using.resource(new javax.imageio.stream.FileImageInputStream(file))(read)
+  def fromFile(file: java.io.File): Option[BufferedImage] = fromFile(file, OgCardRenderer.PosterSlotWidth, OgCardRenderer.PosterSlotHeight)
 
-  private def read(in: javax.imageio.stream.ImageInputStream): Option[BufferedImage] = {
+  /** The bounded read of a poster on disk, subsampled to the smallest image still covering a
+   *  `slotWidth` × `slotHeight` box — a city card's tile reads a cached poster at half its size. */
+  def fromFile(file: java.io.File, slotWidth: Int, slotHeight: Int): Option[BufferedImage] =
+    Using.resource(new javax.imageio.stream.FileImageInputStream(file))(read(_, slotWidth, slotHeight))
+
+  private def read(in: javax.imageio.stream.ImageInputStream, slotWidth: Int, slotHeight: Int): Option[BufferedImage] = {
       val readers = ImageIO.getImageReaders(in)
       Option.when(readers.hasNext)(readers.next()).flatMap { reader =>
         try {
           reader.setInput(in, true, true)
           val (width, height) = (reader.getWidth(0), reader.getHeight(0))
           Option.when(width.toLong * height <= MaxPixels) {
-            val step  = math.max(1, math.min(width / OgCardRenderer.PosterSlotWidth, height / OgCardRenderer.PosterSlotHeight))
+            val step  = math.max(1, math.min(width / slotWidth, height / slotHeight))
             val param = reader.getDefaultReadParam
             param.setSourceSubsampling(step, step, 0, 0)
             Option(reader.read(0, param))

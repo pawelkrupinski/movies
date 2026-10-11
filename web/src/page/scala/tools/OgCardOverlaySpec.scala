@@ -10,7 +10,7 @@ import org.scalatest.matchers.should.Matchers
  * the generator used to hardcode the Polish prefix "Repertuar kin …" for every
  * country, so a `KINOWO_COUNTRY=uk` run rendered "Repertuar kin in London" onto
  * the English cards. The per-city line now comes from the shared
- * [[controllers.FilterDescription.cityHeading]] and the home tagline branches on
+ * [[models.City.heading]] and the home tagline branches on
  * the country language, so a non-PL deployment gets clean English (or German).
  *
  * Pure string logic — no Chrome needed (the CDP path is covered by

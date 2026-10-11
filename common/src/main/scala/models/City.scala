@@ -133,6 +133,19 @@ sealed abstract class City(
    *  the grammar lives in one place and PL output stays byte-identical. Used by
    *  the per-city share-card generator (`tools.OgCardGenerator`) + `StructuredData`. */
   def locativePhrase: String = CityGrammar.of(country.language).locativePhrase(labels)
+  /** "Repertuar kin w Poznaniu" / "Cinema listings in London" — the city-scoped heading, in the
+   *  city's country language: the default page title's lead, the listing's structured-data name and
+   *  the line the worker draws on the city's share card. Here, in `common`, because the web and the
+   *  worker both read it. */
+  def heading: String = {
+    val caption = country.language.getLanguage match {
+      case "pl" => "Repertuar kin"
+      case "es" => "Cartelera de cine"
+      case "de" => "Kinoprogramm"
+      case _    => "Cinema listings"
+    }
+    s"$caption $locativePhrase"
+  }
   /** Filename (under `assets/img/`) of this city's share-preview card — the
    *  repertoire montage `tools.OgCardGenerator` writes and every `/{slug}/` page
    *  names as its `og:image`. The city half of [[Country.homeOgImage]], and here

@@ -116,8 +116,8 @@ object OgCardRenderer {
   }
 
   // Loaded once; `deriveFont` is cheap and thread-safe per call.
-  private val regular = loadFont("/fonts/DejaVuSans.ttf")
-  private val bold    = loadFont("/fonts/DejaVuSans-Bold.ttf")
+  private[tools] val regular = loadFont("/fonts/DejaVuSans.ttf")
+  private[tools] val bold    = loadFont("/fonts/DejaVuSans-Bold.ttf")
 
   /** Compose the card. `subtitle` is the year · genres line; `badges` are the
    *  rating pills from [[ratingBadges]]; `poster` is the decoded poster image or
@@ -272,7 +272,7 @@ object OgCardRenderer {
   /** Test seam: an encode at any quality and chroma sampling, for the measurement behind [[encodeBase]]. */
   private[tools] def encodeWith(img: BufferedImage, quality: Float, fullChroma: Boolean): Array[Byte] = toJpeg(img, quality, fullChroma)
 
-  private def applyHints(g: Graphics2D): Unit = {
+  private[tools] def applyHints(g: Graphics2D): Unit = {
     g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
     g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
     g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
@@ -332,7 +332,7 @@ object OgCardRenderer {
 
   /** Cover-scale `p` to fill the (x, y, w, h) box, cropping the overflow
    *  (`object-fit: cover`), clipped to that box. */
-  private def drawCover(g: Graphics2D, p: BufferedImage, x: Int, y: Int, w: Int, h: Int): Unit = {
+  private[tools] def drawCover(g: Graphics2D, p: BufferedImage, x: Int, y: Int, w: Int, h: Int): Unit = {
     val prev  = g.getClip
     g.setClip(x, y, w, h)
     val scale = math.max(w.toDouble / p.getWidth, h.toDouble / p.getHeight)
@@ -376,14 +376,17 @@ object OgCardRenderer {
    *  and the label/value seam stays square — exactly the web pill.
    *
    *  Returns the y of the bottom edge of the last badge row, so the caller can
-   *  place the director/synopsis directly beneath however many rows wrapped. */
-  private def drawBadges(g: Graphics2D, badges: Seq[Badge], x0: Int, top: Int, xMax: Int, paint: Boolean = true): Int = {
-    val labelFont = bold.deriveFont(30f)
-    val valueFont = regular.deriveFont(30f)
+   *  place the director/synopsis directly beneath however many rows wrapped. `scale` sizes the
+   *  pills: the city card draws them at the site's 25px, five sixths of the film card's. */
+  private[tools] def drawBadges(g: Graphics2D, badges: Seq[Badge], x0: Int, top: Int, xMax: Int, paint: Boolean = true,
+                                scale: Float = 1f): Int = {
+    val labelFont = bold.deriveFont(30f * scale)
+    val valueFont = regular.deriveFont(30f * scale)
     def fontFor(s: Seg)  = if (s.bold) labelFont else valueFont
-    val padY  = 11
-    val gap   = 14
-    val arcD  = 16f
+    def padX(s: Seg)     = math.round(s.padX * scale)
+    val padY  = math.round(11 * scale)
+    val gap   = math.round(14 * scale)
+    val arcD  = 16f * scale
     // Uniform height across every badge, from the (taller) bold metrics.
     val refFm = g.getFontMetrics(labelFont)
     val height      = refFm.getAscent + refFm.getDescent + padY * 2
@@ -391,7 +394,7 @@ object OgCardRenderer {
     var yPosition = top
     for (b <- badges) {
       val fms   = b.segs.map(s => g.getFontMetrics(fontFor(s)))
-      val segW  = b.segs.zip(fms).map { case (s, fm) => fm.stringWidth(s.text) + s.padX * 2 }
+      val segW  = b.segs.zip(fms).map { case (s, fm) => fm.stringWidth(s.text) + padX(s) * 2 }
       val width     = segW.sum
       if (xPosition + width > xMax && xPosition > x0) { xPosition = x0; yPosition += height + 12 }
       if (paint) {
@@ -405,7 +408,7 @@ object OgCardRenderer {
         g.setColor(s.fg)
         g.setFont(fontFor(s))
         val ty = yPosition + (height - (fm.getAscent + fm.getDescent)) / 2 + fm.getAscent
-        g.drawString(s.text, sx + s.padX, ty)
+        g.drawString(s.text, sx + padX(s), ty)
         sx += sw
       }
       g.setClip(saved)
@@ -417,7 +420,7 @@ object OgCardRenderer {
 
   /** Greedy word-wrap to `maxLines`; if more lines remain, the last kept line
    *  is ellipsised so an over-long title never spills past the card. */
-  private def wrap(g: Graphics2D, text: String, maxW: Int, maxLines: Int): Seq[String] = {
+  private[tools] def wrap(g: Graphics2D, text: String, maxW: Int, maxLines: Int): Seq[String] = {
     val all = wrapAll(g, text, maxW)
     if (all.length <= maxLines) all
     else all.take(maxLines - 1) :+ ellipsize(g, all.drop(maxLines - 1).mkString(" "), maxW)

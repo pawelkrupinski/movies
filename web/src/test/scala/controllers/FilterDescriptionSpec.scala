@@ -271,9 +271,9 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     FilterDescription.defaultTitle(Sosnowiec) should not include "…"
   }
 
-  "cityHeading" should "read the declined Polish locative / the English 'in {city}'" in {
-    FilterDescription.cityHeading(Poznan) shouldBe "Repertuar kin w Poznaniu"
-    FilterDescription.cityHeading(London) shouldBe "Cinema listings in London"
+  "City.heading" should "read the declined Polish locative / the English 'in {city}'" in {
+    Poznan.heading shouldBe "Repertuar kin w Poznaniu"
+    London.heading shouldBe "Cinema listings in London"
   }
 
   "FilterDescription for a UK city" should "produce the English default title + description" in {
@@ -362,9 +362,9 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
 
   private val Madrid: City = Country.Spain.bySlug("madrid")
 
-  "cityHeading" should "read the Spanish caption, not an English one with a Spanish preposition" in {
-    FilterDescription.cityHeading(Madrid) shouldBe "Cartelera de cine en Madrid"
-    FilterDescription.cityHeading(Madrid) should not include "Cinema listings"
+  "City.heading" should "read the Spanish caption, not an English one with a Spanish preposition" in {
+    Madrid.heading shouldBe "Cartelera de cine en Madrid"
+    Madrid.heading should not include "Cinema listings"
   }
 
   "FilterDescription for a Spanish city" should "produce the Spanish default title + description" in {
@@ -405,9 +405,9 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
 
   private val Berlin: City = Country.Germany.bySlug("berlin")
 
-  "cityHeading" should "read the German caption, not the English fallback" in {
-    FilterDescription.cityHeading(Berlin) shouldBe "Kinoprogramm in Berlin"
-    FilterDescription.cityHeading(Berlin) should not include "Cinema listings"
+  "City.heading" should "read the German caption, not the English fallback" in {
+    Berlin.heading shouldBe "Kinoprogramm in Berlin"
+    Berlin.heading should not include "Cinema listings"
   }
 
   "FilterDescription for a German city" should "produce the German default title + description" in {

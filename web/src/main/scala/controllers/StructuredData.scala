@@ -105,7 +105,7 @@ object StructuredData {
         // Same city heading as the OG tags / card overlay, so the JSON-LD is
         // in the deployment's language ("Repertuar kin w Poznaniu" /
         // "Cinema listings in London") rather than a half-Polish mix.
-        "name" -> FilterDescription.cityHeading(city),
+        "name" -> city.heading,
         "numberOfItems" -> items.size,
         "itemListElement" -> items,
       ),

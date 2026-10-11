@@ -1,6 +1,5 @@
 package tools
 
-import controllers.FilterDescription
 import models.Country
 import play.api.libs.json.Json
 import settings.{CdpBrowserBinary, ProcessConfiguration}
@@ -217,10 +216,10 @@ object OgCardGenerator {
 
   /** The per-city overlay line under the wordmark — "Repertuar kin w Poznaniu" /
    *  "Cinema listings in London", in the city's country language. Delegates to
-   *  the shared [[FilterDescription.cityHeading]] (also the page `<title>` and
+   *  the shared [[models.City.heading]] (also the page `<title>` and
    *  the dynamic film OG card) so the static card can't drift back to a
    *  half-Polish "Repertuar kin in London" on a non-PL deployment. */
-  private[tools] def cityTagline(city: models.City): String = FilterDescription.cityHeading(city)
+  private[tools] def cityTagline(city: models.City): String = city.heading
 
   /** The `/` home-card tagline for a deployment's language — the line under the
    *  wordmark on `og-home{-code}.jpg`. Mirrors each `messages` bundle's
