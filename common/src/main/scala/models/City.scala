@@ -935,23 +935,34 @@ case object Yorkshire extends UkCity("yorkshire",
 
 // ── Germany (also non-declining for our purposes). ───────────────────────────
 
-/** A German region — the data-driven `City` subtype. The full roster (158 regions
- *  / 1,515 cinemas) is generated into `GermanRosterData` and materialised by
- *  [[GermanRoster]]; each region groups the cinemas within ~35 km of a hub city
- *  (see `data/germany/`). Instances are built ONCE (in `GermanRoster`), so
- *  identity equality holds just like the hand-authored `case object` cities —
- *  every lookup uses those singletons. */
-final class GermanRegion(slug: String, labels: CityLabels, lat: Double, lon: Double, cinemas0: Seq[Cinema],
-                         cities: Seq[String])
-  extends City(slug, labels, lat, lon, TimeZones.Germany) {
-  val cinemas: Seq[Cinema] = cinemas0
-  /** The region's towns, most venues first, from the clustering that built it:
-   *  145 of the 158 regions are several towns around a hub, so the hub's name
-   *  is not the only place they cover — `/koeln/` also covers Düsseldorf, Bonn
-   *  and Leverkusen. Flat, like [[SpanishProvince]], so the region's [[areas]]
-   *  name nothing and these are all it has. The hub is in its own list; the
-   *  dedupe in [[coveredPlaces]] is what stops it being named twice. */
-  override protected val extraPlaces: Seq[String] = cities
+/** A German page — a major city (a municipality of 100,000+) with only its own
+ *  venues, a town with three or more, or a cluster of small towns a short drive
+ *  apart named after the biggest: "Bayreuth und Umgebung", "in Bayreuth und
+ *  Umgebung". Poland's shape ([[PolishPage]]), built by the same rule
+ *  (`data/germany/scripts/build_pages.py`); until 2026-10 a German page was a
+ *  REGION of every venue within ~35 km of a hub, and `/koeln/` listed Bonn.
+ *
+ *  The roster (1,515 cinemas over 436 pages) is generated into `GermanRosterData`
+ *  and materialised by [[GermanRoster]]; instances are built ONCE (in
+ *  `City.germanPages`), so identity equality holds just like the hand-authored
+ *  `case object` cities. One zone for the country, `Europe/Berlin`. */
+final class GermanPage private[models] (slug: String, place: GermanPlace)
+  extends City(slug, GermanPage.labels(place), place.lat, place.lon, TimeZones.Germany) {
+  val cinemas: Seq[Cinema] = place.cinemas
+  /** The town the page is named after first, then the rest of its towns. */
+  override protected val extraPlaces: Seq[String] = (place.name +: place.towns).distinct
+  /** The Bundesland the picker groups this page under. */
+  def bundesland: String = place.bundesland
+}
+
+private[models] object GermanPage {
+  /** German does not decline a place name after "in", so all three slots carry
+   *  the page's name — "<town> und Umgebung" for a cluster, which reads right both
+   *  alone and after the grammar's "in" ("in Bayreuth und Umgebung"). */
+  def labels(place: GermanPlace): CityLabels = {
+    val name = if (place.multiTown) s"${place.name} und Umgebung" else place.name
+    CityLabels(name, name, name)
+  }
 }
 
 /** A US METRO — the data-driven `City` subtype, and the place a US visitor
@@ -969,7 +980,7 @@ final class GermanRegion(slug: String, labels: CityLabels, lat: Double, lon: Dou
  *  `City.usCities`), so identity equality holds just like the hand-authored
  *  `case object` cities.
  *
- *  Unlike [[GermanRegion]] the zone is a CONSTRUCTOR parameter rather than a
+ *  Unlike [[GermanPage]] the zone is a CONSTRUCTOR parameter rather than a
  *  constant: the US spans six of them, so `Europe/Berlin`'s one-size answer has
  *  no US equivalent. Each place carries its state's predominant zone (see
  *  `data/us/scripts/states.py` for the handful of states that straddle two). */
@@ -1002,7 +1013,7 @@ final class UsCity(slug: String, labels: CityLabels, lat: Double, lon: Double,
  *  `City.spanishCities`), so identity equality holds just like the hand-authored
  *  `case object` cities.
  *
- *  Like [[UsCity]] and unlike [[GermanRegion]] the zone is a CONSTRUCTOR
+ *  Like [[UsCity]] and unlike [[GermanPage]] the zone is a CONSTRUCTOR
  *  parameter: the Canary Islands run an hour behind the peninsula, and a single
  *  national zone would move their day boundary. */
 final class SpanishPage private[models] (slug: String, place: SpanishPlace)
@@ -1310,34 +1321,58 @@ object City {
     }.filter(_.groups.nonEmpty)
   }
 
-  /** Germany's cities — the authoritative list for [[Country.Germany]]. The full
-   *  158-region roster, materialised data-driven from `GermanRosterData` (see
-   *  [[GermanRegion]] / `GermanRoster`), rather than hand-authored case objects. */
-  private[models] val germanCities: Seq[City] = GermanRoster.regions
+  /** Germany's cities — the authoritative list for [[Country.Germany]]. One per
+   *  town or cluster page (see [[GermanPage]] / [[GermanRoster]]), materialised
+   *  data-driven from `GermanRosterData` rather than hand-authored case objects.
+   *
+   *  The slug is assigned HERE rather than in [[GermanRoster]] for the reason
+   *  [[usSlugs]] spells out: `City.bySlug` is a single global namespace. */
+  private[models] val germanPages: Seq[GermanPage] =
+    GermanRoster.places.map(p => new GermanPage(germanSlug(p.preferredSlug, p.qualifiedSlug), p))
+  private[models] val germanCities: Seq[City] = germanPages
 
-  /** The German picker's grouping: one entry per BUNDESLAND, over the regions
-   *  inside it, alphabetically both ways.
+  /** Slugs another country serves or wants, which a German page may not take.
    *
-   *  158 regions is Germany's version of the same problem the US has at 468 and
-   *  the UK at 76 — and unlike the UK there is a natural level directly above,
-   *  so this is one level rather than two. A region is already a travel-shed of
-   *  towns around a hub ("Köln" also covers Düsseldorf and Bonn); the Land is
-   *  what a visitor knows it by.
-   *
-   *  Data-driven, not a table: `regions.json` has carried each region's
-   *  `bundesland` since `cluster_regions.py` first wrote it, and the roster
-   *  generator now emits it — so a re-harvest re-groups the picker rather than
-   *  drifting from a list somebody has to remember to edit. That is the same
-   *  shape the US state grouping has, and the reason the UK's is hand-authored
-   *  is only that its roster carries no such field. */
-  private[models] val germanStates: Seq[CityGroup] = {
+   *  Germany's slugs are decided BEFORE the US's and Spain's (both qualify around
+   *  Germany's), so their final slugs cannot be read here — their PREFERRED ones
+   *  can. A German page that wants a slug a US metro or a Spanish town wants
+   *  yields it: the other page is the live URL, and the newcomer is the one that
+   *  can still choose. None of the 139 slugs the regions kept collides with one. */
+  private lazy val foreignToGermany: Set[String] =
+    (polishCities ++ allUkCities).map(_.slug).toSet ++
+      UsRoster.places.map(_.preferredSlug) ++ SpanishRoster.places.map(_.preferredSlug)
+
+  /** The URL slug of a German page — or of one that used to be (see
+   *  [[germanSuccession]]), which answered at the slug this gives too: its own
+   *  name wherever that is free, and its name qualified with its Bundesland where
+   *  it is not, the way Spain's Toledo is `toledo-castilla-la-mancha`. Only the
+   *  SLUG is qualified; the label the German picker shows stays the town. */
+  private[models] def germanSlug(preferred: String, qualified: String): String =
+    if (foreignToGermany.contains(preferred)) qualified else preferred
+
+  /** German pages that no longer exist → the page now holding most of their
+   *  venues. The 19 regions that did not leave a page under their own slug when
+   *  Germany went from regions to towns (2026-10) among them: `/vechta/` →
+   *  Wildeshausen, `/itzehoe/` → Elmshorn. A region whose slug is a page now
+   *  (`/koeln/`, `/freiburg/`) simply IS that town's page. */
+  private lazy val germanSuccession: Map[String, Seq[String]] =
+    GermanRosterData.retired.map { case (preferred, qualified, page) =>
+      val target = GermanRoster.places.find(_.preferredSlug == page)
+        .fold(page)(p => germanSlug(p.preferredSlug, p.qualifiedSlug))
+      germanSlug(preferred, qualified) -> Seq(target)
+    }.toMap
+
+  /** The German picker's grouping: one entry per BUNDESLAND over the pages inside
+   *  it — major cities, towns and clusters side by side — alphabetically both
+   *  ways, as Poland's voivodeships and Spain's provinces. The Land is the
+   *  anchor town's, read off its coordinates by `build_pages.py`. */
+  private[models] lazy val germanStates: Seq[CityGroup] = {
     val de = Locale.forLanguageTag("de-DE")
-    val grouped = GermanRoster.bundeslandByRegion.groupMap(_._2)(_._1).toSeq
-    val built = grouped.map { case (land, regions) =>
-      CityGroup(land, Slugify.stable(land), CityListing.sorted(regions, de))
+    val built = germanPages.groupBy(_.bundesland).toSeq.map { case (land, pages) =>
+      CityGroup(land, Slugify.stable(land), CityListing.sorted(pages, de))
     }
-    // By the displayed name — a Land holding one region shows that region
-    // (Saarland shows Saarbrücken), and sorting on the Land would misplace it.
+    // By the displayed name — a Land holding one page shows that page, and
+    // sorting on the Land would misplace it.
     CityListing.sortedLabels(built, de)(_.displayLabel)
   }
 
@@ -1427,7 +1462,8 @@ object City {
     "newport-news" -> Seq("hampton-roads", "willamette-valley"),
     "jefferson"    -> Seq("carroll", "fort-dodge"),
     "osage"        -> Seq("mason-city", "decorah"),
-  ) ++ ukMergedPages.map { case (name, into) => Slugify.stable(name) -> Seq(into.slug) } ++ splitStateSuccession ++ spanishSuccession
+  ) ++ ukMergedPages.map { case (name, into) => Slugify.stable(name) -> Seq(into.slug) } ++ splitStateSuccession ++ spanishSuccession ++
+    germanSuccession
 
   /** States that used to be ONE city and are now their metros, so a single old
    *  slug is succeeded by several new ones.

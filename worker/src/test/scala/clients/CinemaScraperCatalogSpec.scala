@@ -534,6 +534,25 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     }
   }
 
+  "Germany's venues" should "be scraped under the town page they are on, with their kinoprogramm.com fallback kept" in {
+    // The pages were 35 km regions until 2026-10: the Main-Taunus Kinopolis was on
+    // /frankfurt-am-main/; Sulzbach (Taunus) clusters with Hofheim now.
+    val c        = catalog()
+    val venue    = models.GermanRoster.theaterIdByCinema.collectFirst { case (v, "A0831") => v }.value
+    val scrapers = c.byCity("hofheim-am-taunus").filter(_.cinema == venue)
+    scrapers should have size 1
+    scrapers.head.scrapeHosts shouldBe Set("www.filmstarts.de")
+    c.byCity.get("frankfurt-am-main").value.map(_.cinema) should not contain venue
+    // Every German page the web tier serves has its scrapers under the same slug,
+    // and the fallback is still found for venues that moved pages.
+    Country.Germany.cities.foreach { city =>
+      withClue(s"${city.slug}: ")(c.byCity.get(city.slug).value.map(_.cinema).toSet shouldBe city.cinemas.toSet)
+    }
+    // Kulmbach was on /bayreuth/'s region and is on its cluster now — a venue's
+    // fallback is keyed by the venue, so moving pages leaves it alone.
+    c.kinoprogrammFallbackPaths.get(models.Cinema.byDisplayName("Cineplex Kulmbach")) should not be empty
+  }
+
   it should "pace every Ocine ticketing host" in {
     (OcineHosts.values ++ UnlistedOcine.map(_._3).flatMap(CinemaScraper.hostsOf(_))).foreach { host =>
       withClue(s"$host has no HostPolicy pace row, so it is UNPACED: ") {

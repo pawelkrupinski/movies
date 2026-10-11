@@ -117,10 +117,15 @@ those is expensive to change once a `Country` is switchable.
      Keep an `all<CC>Cities` full roster + an `active<CC>Cities` filter so
      enabling/disabling a city is a one-line edit (see UK). Add the list to
      `City.all`, `City.allModelled`.
-   - **Data-driven** (like DE at scale — hundreds of cinemas): generate the roster
-     from a checked-in data file (see `data/germany/`), grouped into **regions**
-     (≤~200, to cap the dropdown). This needs a `case class` data subtype of the
-     sealed `City`/`Cinema` fed into `Cinema.byCity`.
+   - **Data-driven** (like DE, ES at scale — hundreds of cinemas): generate the
+     roster from a checked-in data file (see `data/germany/`). Poland, Spain and
+     Germany share ONE page rule, `data/scripts/town_pages.py`: a major city keeps
+     only its own venues, a town of 3+ is a page, and 1-2 venue towns cluster
+     under the biggest ("<Anchor> und Umgebung"); each country's
+     `build_pages.py` supplies its majors, radii, town spellings and slug rule,
+     and the picker groups the pages by an administrative level (voivodeship,
+     province, Bundesland). This needs a `case class` data subtype of the sealed
+     `City`/`Cinema` fed into `Cinema.byCity`.
 3. **Cinemas** (`Cinema.scala`) — each venue is a `Cinema(displayName, pillName)`
    **and a `Source`** (merge/priority). `Cinema.all` = `byCity.flatMap(_._2)`, and
    `Source.all`/`priority`/`byDisplayName` derive from it — so just add the country
@@ -210,10 +215,17 @@ a re-harvest if missed:
   `City.bySlug` namespace that already held a UK Birmingham, and a metro name is
   not unique across state lines either. `City.usSlugs` qualifies with the state
   where the bare slug is taken; `CitySpec` fails on any collision that survives.
-- **A country wider than one time zone needs the zone per PLACE.** `GermanRegion`
+- **A country wider than one time zone needs the zone per PLACE.** `GermanPage`
   hardcodes `Europe/Berlin` because Germany has one; `UsCity` takes it as a
   constructor parameter because the US has six, and a national default would move
-  a whole coast's "today" boundary. Check this before copying `GermanRegion`.
+  a whole coast's "today" boundary. Check this before copying `GermanPage`.
+- **Check the gazetteer's town matches against the venue's own address.** A town
+  name matched to GeoNames' biggest namesake files a venue hundreds of km away:
+  Germany's harvest put Lohne (Oldenburg) at Löhne, the Main-Taunus Kinopolis in
+  Sulzbach-Rosenberg and the KuKi of Landau an der Isar in the Palatinate. Cross-
+  check each town's region against the region the source files the venue under,
+  read the mismatches' postal codes off the venue pages, and pin the real
+  coordinate (`TOWN_COORDS` in `data/germany/scripts/build_pages.py`).
 - **Expect the source's region index to be incomplete.** The US region sweep
   missed 789 of the 5,017 venues in `sitemap-cinemas.xml`; they were recovered by
   fetching each `/cinema/<slug>/` page for its own `data-lat`/`data-lon` and
@@ -233,8 +245,8 @@ five countries as the backstop.
 
 For a full-country sweep (DE), see `data/germany/README.md` + `scripts/`: crawl the
 source directory for every venue + its scraper id, geocode the cities
-(GeoNames bulk `DE.txt`, 100% match — no live Nominatim needed), cluster into
-≤~200 regions. **Source sites rate-limit bulk crawls (429)** — route through the
+(GeoNames bulk `DE.txt`, 100% match — no live Nominatim needed), then build the
+town pages from the committed venues and coordinates (`build_pages.py`). **Source sites rate-limit bulk crawls (429)** — route through the
 Decodo residential proxy (`DECODO_PROXY_*`, `isp.decodo.com:10001`), the same proxy
 the prod worker uses. Persist the dataset into the repo (`data/<country>/`) as the
 loader's input.

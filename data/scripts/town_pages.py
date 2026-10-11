@@ -26,6 +26,7 @@ how a name becomes a slug, what a page records beside its towns and venues
 that stopped existing now redirects. `data/{pl,spain,germany}/scripts/build_pages.py`
 are those callers.
 """
+import collections
 import math
 import re
 import sys
@@ -152,6 +153,18 @@ def drifted(towns, pos, previous_centres, max_km):
             if previous_centres(t) and min(km(pos[t], c) for c in previous_centres(t)) > max_km]
 
 
+def heir(held, centre, result):
+    """The page a page that stopped existing now redirects to: the one holding
+    most of its venues (`held`, page → how many); on a tie, a major city's, then
+    the one nearest where the old page was centred. When none of its venues is
+    left — the one cinema of a town page closed — simply the page nearest it."""
+    def near(s):
+        return -km(centre, (result[s]["lat"], result[s]["lon"]))
+    if not held:
+        return max(result, key=lambda s: (near(s), s))
+    return max(held, key=lambda s: (held[s], result[s]["kind"] == "major", near(s), s))
+
+
 def retire(previous, prior_retired, result):
     """Where each page that existed before and is not a page any more now points.
 
@@ -169,3 +182,13 @@ def retire(previous, prior_retired, result):
     if missing:
         sys.exit(f"retired slugs point at pages that no longer exist: {missing}")
     return retired
+
+
+def placement_problems(venues, pages):
+    """Every venue on exactly one page, and every page's venues in the roster —
+    what a roster generator checks pages.json against before emitting it: a venue
+    on no page is never scraped, and nothing else says so."""
+    on = collections.Counter(name for p in pages for name in p["cinemas"])
+    return ([f"venue {name!r} is on {n} pages" for name, n in sorted(on.items()) if n > 1] +
+            [f"venue {name!r} is on no page — rebuild pages.json" for name in sorted(set(venues) - set(on))] +
+            [f"page venue {name!r} is not in the roster" for name in sorted(set(on) - set(venues))])

@@ -71,12 +71,11 @@ sealed abstract class Country(
    *  only one whose `/` is not already a country's landing. */
   def servesApex(host: String): Boolean = pathPrefix.isEmpty && Country.isApexHost(host)
 
-  /** How the picker at `/` ARRANGES [[cities]]: empty for a flat list (Poland's
-   *  41 and Spain's 52 — short enough that a name is all a visitor needs), and
-   *  otherwise one group per US state, per German Bundesland, or per UK nation
-   *  over its counties. "Los Angeles" is found under "California", and none of
-   *  468 US places, 158 German regions or 76 UK counties is a list anybody reads
-   *  straight through.
+  /** How the picker at `/` ARRANGES [[cities]]: empty for a flat list, and
+   *  otherwise one group per US state, per German Bundesland, Polish voivodeship
+   *  or Spanish province, or per UK nation over its counties. "Los Angeles" is
+   *  found under "California", and none of 468 US places, 436 German pages or 76
+   *  UK counties is a list anybody reads straight through.
    *
    *  Depth is the country's own: the US and Germany nest one level, the UK two.
    *  Where it is non-empty the groups PARTITION [[cities]] — through
@@ -237,7 +236,11 @@ object Country {
   /** Germany — a German-language country on its own `kinowo_de` database,
    *  sourced from the AlloCiné/Filmstarts website-JSON
    *  ([[services.cinemas.common.WebediaShowtimesClient]], via `www.filmstarts.de`).
-   *  No Filmweb (Polish-only). */
+   *  No Filmweb (Polish-only).
+   *
+   *  Its cities are Poland's shape of page — a major city's own venues, a town of
+   *  three or more, a cluster of small towns ([[GermanPage]]) — 436 of them,
+   *  grouped in the picker by Bundesland. */
   case object Germany extends Country(
     code           = "de",
     displayName    = "Deutschland",
@@ -249,9 +252,8 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.germanCities
-    /** The 16 Bundesländer, each over the regions inside it — 158 in one A-to-Z
-     *  is not a list anybody reads. */
-    override val cityGroups: Seq[CityGroup] = City.germanStates
+    /** The 16 Bundesländer, each over the pages inside it — see `City.germanStates`. */
+    override lazy val cityGroups: Seq[CityGroup] = City.germanStates
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("OmU", "DF"))
     // Filmstarts names four versions — OV, OmU, OmeU, DF — and none is a voice-over.
     val voiceoverToken: Option[String] = None

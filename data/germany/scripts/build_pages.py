@@ -13,7 +13,7 @@ the rule Poland and Spain use, from the shared `data/scripts/town_pages.py`:
      biggest of them; a town still alone joins the nearest cluster within 30 km.
 
 A cluster is named after its anchor — the town with the most venues, then the most
-people ("Ilmenau und Umgebung"; the phrase is the Scala side's, `GermanPage`).
+people ("Bayreuth und Umgebung"; the phrase is the Scala side's, `GermanPage`).
 
 Inputs, all committed:
 
@@ -27,9 +27,9 @@ Inputs, all committed:
   TOWN_COORDS       (below) towns `city-coords.json` matched to a namesake.
 
 A page that existed before and is not a page any more is listed under "retired",
-pointing at the page now holding MOST of its venues — for the 158 regions of the
-first build (2026-10), usually the hub (`/vechta/` → Lohne). Every page carries the
-Bundesland of its anchor (from the coordinates, not from the Filmstarts lander page
+pointing at the page now holding MOST of its venues — 19 of the 158 regions of the
+first build (2026-10) left no page under their own slug (`/itzehoe/` → Elmshorn).
+Every page carries the Bundesland of its anchor (from the coordinates, not from the Filmstarts lander page
 a venue was crawled under, which files Münster under Hessen); the picker groups by
 it, and a slug another country already serves is qualified with it.
 
@@ -210,14 +210,10 @@ def build(venues, venue_town, towns, previous, prior_retired, rules=RULES):
                  f"— pin them in TOWN_COORDS")
 
     # A page gone since the last build goes to the page now holding most of its
-    # venues; on a tie, a major city's, then the one nearest where it was centred.
+    # venues (`town_pages.heir` has the tie-breaks).
     def heir(old):
         held = collections.Counter(page_of_town[venue_town[v]] for v in old["cinemas"] if v in venue_town)
-        if not held:
-            sys.exit(f"a retired page held no venue that is still rostered: {old}")
-        centre = (old["lat"], old["lon"])
-        return max(held, key=lambda s: (held[s], result[s]["kind"] == "major",
-                                        -km(centre, (result[s]["lat"], result[s]["lon"])), s))
+        return town_pages.heir(held, (old["lat"], old["lon"]), result)
     gone = {slug: heir(old) for slug, old in previous.items() if slug not in result}
     retired = town_pages.retire(gone, {k: v["page"] for k, v in prior_retired.items()}, result)
     qualified_of = {**{k: v["qualifiedSlug"] for k, v in prior_retired.items()},

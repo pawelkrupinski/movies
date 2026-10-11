@@ -1818,17 +1818,48 @@ case object VueCinemasSheffield extends Cinema("Vue Cinemas Sheffield", "Vue She
 
 
 // ── Germany (Filmstarts) — data-driven from the full roster ──────────────────
-// `GermanRosterData` (generated from data/germany/regions.json) carries 158
-// regions / 1,515 cinemas. Each venue is a `GermanCinema` instance built ONCE in
-// `GermanRoster` and reused everywhere (the region's cinemas, `Cinema.byCity`, and
-// the scrape catalog) — so the same `Source` instance is used throughout and
-// identity equality holds like the hand-authored `case object` cinemas did.
+// `GermanRosterData` (generated from data/germany/pages.json + venues.json) carries
+// 436 town and cluster pages / 1,515 cinemas. Each venue is a `GermanCinema` instance
+// built ONCE in `GermanRoster` and reused everywhere (the page's cinemas,
+// `Cinema.byCity`, and the scrape catalog) — so the same `Source` instance is used
+// throughout and identity equality holds like the hand-authored `case object` cinemas did.
 final class GermanCinema(displayName: String, pillName: String) extends Cinema(displayName, pillName)
 
-/** Materialises the generated German roster into `GermanRegion` cities +
- *  `GermanCinema` venues, once. Exposes the regions for `City.germanCities`, the
- *  by-display-name grouping for `Cinema.byCity`, and each cinema's Filmstarts
- *  `theaterId` for the scrape catalog. */
+/** One addressable German page — Poland's and Spain's shape since 2026-10: a major
+ *  city (a municipality of 100,000+) with only its own venues, a town with three or
+ *  more, or a cluster of small towns a short drive apart named after the biggest
+ *  ("Bayreuth und Umgebung"). Which page holds which venue is data, built by
+ *  `data/germany/scripts/build_pages.py` with the shared rule
+ *  (`data/scripts/town_pages.py`).
+ *
+ *  Plain data rather than a [[City]], for the reason [[SpanishPlace]] is: the slug a
+ *  page ends up addressable under depends on what every OTHER country has claimed,
+ *  and `City` is the only place that sees all of them. See `City.germanPages`. */
+final case class GermanPlace(
+  /** The slug this page wants — its own name, umlauts spelt out (`muenster`). */
+  preferredSlug: String,
+  /** The slug qualified with the Bundesland (`neustadt-hessen`) — what the page
+   *  answers at where another country already serves or wants [[preferredSlug]]. */
+  qualifiedSlug: String,
+  /** The town the page is named after. */
+  name:          String,
+  /** The Bundesland of [[name]]'s town — what the picker groups the page under. */
+  bundesland:    String,
+  lat:           Double,
+  lon:           Double,
+  /** Several towns rather than one — the page is then "<name> und Umgebung". */
+  multiTown:     Boolean,
+  /** The page's towns, most venues first, [[name]] leading — the place names a
+   *  visitor searches by; see [[City.coveredPlaces]]. */
+  towns:         Seq[String],
+  cinemas:       Seq[Cinema],
+)
+
+/** Materialises the generated German roster into [[GermanPlace]]s + `GermanCinema`
+ *  venues, once. Exposes the places for `City.germanPages`, the by-BUNDESLAND
+ *  grouping for `Cinema.byCity` (the uptime page's level, as Spain's is the
+ *  province), each cinema's Filmstarts `theaterId` for the scrape catalog, and its
+ *  kinoprogramm.com fallback. */
 object GermanRoster {
   /** Display names already spoken for by a hand-declared source, which a generated German
    *  venue may NOT reuse.
@@ -1849,32 +1880,30 @@ object GermanRoster {
   private lazy val claimedElsewhere: Set[String] =
     (Cinema.polishAndUk.flatMap(_._2) ++ Cinema.Networks).map(_.displayName).toSet
 
-  private val built: Seq[(GermanRegion, String, Seq[(GermanCinema, String, Option[String])])] =
-    GermanRosterData.regions.map { case (slug, name, bundesland, lat, lon, cities, cinemas) =>
+  private val built: Seq[(GermanPlace, Seq[(GermanCinema, String, Option[String])])] =
+    GermanRosterData.pages.map { case (slug, qualified, name, bundesland, lat, lon, multiTown, towns, cinemas) =>
       // Qualify only the venues that would collide, so the roster's names — and the wire
       // keys of every already-stored German slot — stay exactly as they are otherwise.
-      val venues = cinemas.map { case (disp, pill, tid, kinoprogramm) =>
-        val unique = if (claimedElsewhere.contains(disp)) s"$disp $name" else disp
+      // Qualified with the venue's own TOWN, so a re-cluster never changes a wire key.
+      val venues = cinemas.map { case (disp, pill, tid, kinoprogramm, town) =>
+        val unique = if (claimedElsewhere.contains(disp)) s"$disp $town" else disp
         (new GermanCinema(unique, pill), tid, kinoprogramm)
       }
-      (new GermanRegion(slug, CityLabels(name, name, name), lat, lon, venues.map(_._1), cities), bundesland, venues)
+      (GermanPlace(slug, qualified, name, bundesland, lat, lon, multiTown, towns, venues.map(_._1)), venues)
     }
-  val regions: Seq[GermanRegion]             = built.map(_._1)
-  val byCity:  Seq[(String, Seq[Cinema])]    = built.map { case (r, _, v) => r.labels.nominative -> v.map(_._1) }
-  val theaterIdByCinema: Map[Cinema, String] = built.flatMap(_._3).map { case (c, tid, _) => c -> tid }.toMap
+
+  val places: Seq[GermanPlace] = built.map(_._1)
+  /** Venues by Bundesland, in roster order — the grouping `Cinema.byCity` reports
+   *  Germany at (the uptime page), one level above the pages. */
+  val byCity: Seq[(String, Seq[Cinema])] = {
+    val byLand = places.groupBy(_.bundesland)
+    places.map(_.bundesland).distinct.map(land => land -> byLand(land).flatMap(_.cinemas))
+  }
+  val theaterIdByCinema: Map[Cinema, String] = built.flatMap(_._2).map { case (c, tid, _) => c -> tid }.toMap
   /** Each venue's kinoprogramm.com page path, its showtime fallback behind Filmstarts;
    *  absent for a venue `harvest_kinoprogramm.py` could not match with confidence. */
   val kinoprogrammPathByCinema: Map[Cinema, String] =
-    built.flatMap(_._3).collect { case (c, _, Some(path)) => c -> path }.toMap
-
-  /** Each region's BUNDESLAND — the heading the picker finds it under, straight
-   *  from `regions.json` (`cluster_regions.py` reads it off the Filmstarts lander
-   *  page the region's hub came from).
-   *
-   *  Kept here, beside the regions themselves, rather than on `GermanRegion`:
-   *  a region does not need to know what it is listed under any more than a US
-   *  metro does, and `City.germanStates` is the one caller. */
-  val bundeslandByRegion: Seq[(GermanRegion, String)] = built.map { case (r, land, _) => (r, land) }
+    built.flatMap(_._2).collect { case (c, _, Some(path)) => c -> path }.toMap
 }
 
 
@@ -2164,7 +2193,7 @@ final case class SpanishPlace(
   lat:           Double,
   lon:           Double,
   /** The page's own zone. A CONSTRUCTOR value rather than the constant
-   *  `GermanRegion` can afford, because Spain has TWO: the Canary Islands run an
+   *  `GermanPage` can afford, because Spain has TWO: the Canary Islands run an
    *  hour behind the peninsula on `Atlantic/Canary`, and a national default would
    *  move their "today" boundary — the same trap `UsCity` documents for six US
    *  zones. */
@@ -2444,7 +2473,7 @@ object Cinema {
   val yorkshire: Seq[Cinema] = Seq(CineworldSheffield, OdeonLuxeSheffield, ParamountPenistone, ShowroomSheffield, TheLightSheffield, VueCinemasSheffield)
 
   // Germany's cinemas come from `GermanRoster.byCity` (appended to `byCity` below),
-  // not per-city vals — the full 158-region roster is data-driven.
+  // not per-city vals — the full 436-page roster is data-driven.
 
   /** The hand-declared venues — Poland and the UK. Split out from [[byCity]] so
    *  `GermanRoster` can see which display names are already claimed before it materialises
@@ -2589,7 +2618,7 @@ object Cinema {
    *  re-entering the roster, so either entry point works. */
   lazy val byCity: Seq[(String, Seq[Cinema])] =
     polishAndUk ++
-      GermanRoster.byCity ++  // Germany: the full 158-region roster (data-driven)
+      GermanRoster.byCity ++  // Germany: by Bundesland, the level above its 436 town pages (data-driven)
       UsRoster.byCity ++      // USA: 55 states/territories, the level its venues are grouped at
       SpanishRoster.byCity   // Spain: by province, the level above its 240 town pages (data-driven)
 

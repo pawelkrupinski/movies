@@ -92,11 +92,11 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Germany.language.toLanguageTag shouldBe "de-DE"
     Country.Germany.brandName shouldBe "Showtimes"   // any non-Polish deployment
     Country.Germany.cities shouldBe City.germanCities
-    // The full data-driven Filmstarts roster: 158 regions (German slugs — muenchen,
-    // koeln, …), each an aggregation of nearby cities' cinemas (see data/germany/).
-    Country.Germany.cities should have size 158
+    // The full data-driven Filmstarts roster: 436 town and cluster pages (German
+    // slugs — muenchen, koeln, …; see GermanPagesSpec and data/germany/).
+    Country.Germany.cities should have size 436
     Country.Germany.cities.map(_.slug) should contain allOf ("berlin", "muenchen", "koeln", "hamburg", "frankfurt-am-main")
-    // Every region carries cinemas; the roster totals 1,515 venues.
+    // Every page carries cinemas; the roster totals 1,515 venues.
     Country.Germany.cities.flatMap(_.cinemas).size shouldBe 1515
   }
 
@@ -244,9 +244,9 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "group Germany by Bundesland, from the roster's own field" in {
-    // 16 Länder over 158 regions, and the grouping is DATA — `regions.json` has
-    // carried each region's `bundesland` all along, so a re-harvest re-groups the
-    // picker instead of drifting from a hand-kept list.
+    // 16 Länder over 436 pages, and the grouping is DATA — `pages.json` carries
+    // each page's `bundesland`, so a re-harvest re-groups the picker instead of
+    // drifting from a hand-kept list.
     Country.Germany.cityGroups should have size 16
     Country.Germany.cityGroups.map(_.label) should contain allOf (
       "Bayern", "Nordrhein-Westfalen", "Sachsen-Anhalt", "Saarland")
@@ -269,18 +269,16 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Germany.bySlug.get("bayern") shouldBe None
   }
 
-  it should "file a German region by its own coordinates where the crawl mis-filed it" in {
-    // `cluster_regions.py` takes a region's Land from the Filmstarts lander page
-    // its hub venues came from, and two of those pages are wrong. Both regions
-    // are in North Rhine-Westphalia by their own coordinates — Westphalian
-    // Münster (51.96N), not the Hessian village near Darmstadt; Dorsten in the
-    // Ruhr, 450 km from the Berlin the crawl filed it under.
+  it should "file a German page by its own coordinates where the crawl mis-filed it" in {
+    // The Filmstarts lander page a venue was crawled under is wrong for some:
+    // Münster's are filed under Hessen, Dorsten's under Berlin. A page's Land is
+    // its anchor town's, read off the town's coordinates (`build_pages.py`) —
+    // Westphalian Münster (51.96N), not the Hessian village near Darmstadt;
+    // Dorsten, on Marl's page, in the Ruhr.
     def landOf(slug: String): String =
       Country.Germany.cityGroups.find(_.cities.exists(_.slug == slug)).get.label
     landOf("muenster") shouldBe "Nordrhein-Westfalen"
-    landOf("dorsten")  shouldBe "Nordrhein-Westfalen"
-    // A region whose CLUSTER crosses a border still follows its hub: Rheine is
-    // in NRW though most of its venues are over the line in Niedersachsen.
+    landOf("marl")     shouldBe "Nordrhein-Westfalen"
     landOf("rheine")   shouldBe "Nordrhein-Westfalen"
     landOf("cuxhaven") shouldBe "Niedersachsen"
   }
@@ -341,15 +339,13 @@ class CountrySpec extends AnyFlatSpec with Matchers {
 
     // A nation is never a place.
     Country.UnitedKingdom.cityGroups.flatMap(_.soleCity) shouldBe empty
-    // The same rule reaches Germany: a Land holding one region collapses onto it.
-    // Hamburg and Berlin share their region's name; Saarland does not, and shows
-    // as Saarbrücken while keeping "Saarland" searchable.
+    // The same rule reaches Germany: a Land holding one page collapses onto it —
+    // the city-states Hamburg and Berlin, which share their page's name.
     group(Country.Germany, "hamburg").soleCity.map(_.slug)  shouldBe Some("hamburg")
     group(Country.Germany, "berlin").soleCity.map(_.slug)   shouldBe Some("berlin")
-    group(Country.Germany, "saarland").soleCity.map(_.slug) shouldBe Some("saarbruecken")
-    group(Country.Germany, "saarland").collapsedAlias       shouldBe Some("Saarland")
     group(Country.Germany, "hamburg").collapsedAlias        shouldBe None
-    Country.Germany.cityGroups.count(_.soleCity.isDefined)  shouldBe 3
+    Country.Germany.cityGroups.count(_.soleCity.isDefined)  shouldBe 2
+    group(Country.Germany, "saarland").soleCity shouldBe None
     group(Country.Germany, "bayern").soleCity shouldBe None
   }
 
@@ -386,7 +382,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
 
   "Spanish pages" should "carry their own time zone, so the Canaries are not on peninsular time" in {
     // Spain has TWO zones, which is why `SpanishPage` takes one per place like
-    // `UsCity` rather than hardcoding one like `GermanRegion`. An hour is enough to
+    // `UsCity` rather than hardcoding one like `GermanPage`. An hour is enough to
     // move a day boundary, so a Canary venue's late showing would otherwise fall on
     // the wrong day.
     def zoneOf(slug: String) = Country.Spain.bySlug(slug).zoneId.getId
@@ -458,8 +454,8 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   // city-coords.json put "Frankfurt (Oder)" at Frankfurt am Main's coordinates, so
   // clustering filed its CineStar under Frankfurt am Main, 450 km from the cinema.
   it should "list CineStar Frankfurt (Oder) under Frankfurt an der Oder, not Frankfurt am Main" in {
-    def regionOf(name: String) = GermanRoster.regions.find(_.cinemas.exists(_.displayName == name)).map(_.slug)
-    regionOf("CineStar Frankfurt (Oder)") shouldBe Some("frankfurt-an-der-oder")
+    val cinestar = Cinema.byDisplayName("CineStar Frankfurt (Oder)")
+    City.forCinema(cinestar).map(_.slug) shouldBe Some("frankfurt-an-der-oder")
   }
 
   // data/<country>/retired.json is the one list of venues a country has retired

@@ -39,7 +39,7 @@ class CitySpec extends AnyFlatSpec with Matchers {
 
   /** `/{slug}/` is ONE global namespace — `City.bySlug` searches every country's
    *  list — and the US now puts 468 places into it beside 65 Polish, 79 UK and
-   *  158 German ones. Two cities sharing a slug means one of them is
+   *  436 German ones. Two cities sharing a slug means one of them is
    *  unreachable, silently, at whichever position `find` reaches second. */
   "Every city slug" should "be unique across every country, and URL-shaped" in {
     val slugs = City.allModelled.map(_.slug)
@@ -150,13 +150,14 @@ class CitySpec extends AnyFlatSpec with Matchers {
     bay.coveredPlaces      shouldBe bay.coveredPlaces.distinct
   }
 
-  it should "read a German region's towns, which the hub's own name hides" in {
-    val koeln = City.all.find(_.slug == "koeln").getOrElse(fail("no Köln region in the roster"))
-    koeln.coveredPlaces.head shouldBe "Köln"
-    // A region is the towns within ~35 km of its hub, so `/koeln/` has always
-    // listed Düsseldorf's and Bonn's cinemas while naming neither.
-    koeln.otherCoveredPlaces should contain allOf ("Düsseldorf", "Bonn")
-    koeln.coveredPlaces shouldBe koeln.coveredPlaces.distinct
+  // A German page was a 35 km region until 2026-10, and `/koeln/` named Düsseldorf
+  // and Bonn; it is Poland's shape now — a major city is itself alone, a cluster
+  // names its towns.
+  it should "keep a major German city to itself, and name a cluster's towns" in {
+    val koeln = City.bySlug("koeln").getOrElse(fail("no Köln page in the roster"))
+    koeln.coveredPlaces shouldBe Seq("Köln")
+    val bayreuth = City.bySlug("bayreuth").getOrElse(fail("no Bayreuth page in the roster"))
+    bayreuth.coveredPlaces shouldBe Seq("Bayreuth und Umgebung", "Bayreuth", "Kulmbach", "Hollfeld")
   }
 
   // The gap the districts left: only the five biggest metros are sub-divided,

@@ -15,7 +15,7 @@ import java.io.File
  * country whose cards were never generated therefore doesn't degrade to a
  * generic card — it points Facebook, Messenger, Slack and X at a 404 and the
  * link preview comes back with no image at all. That is exactly what Germany
- * (158 regions) and the United States (55 states + their metros) shipped with:
+ * (158 regions, as it then was) and the United States (55 states + their metros) shipped with:
  * `og-*.png` covered Poland and the UK alone, because the weekly refresh
  * workflow only ever ran those two legs, and nothing failed when the other two
  * countries went live.
@@ -52,7 +52,8 @@ class OgCardAssetsSpec extends AnyFlatSpec with Matchers {
    *  here until its entry is deleted — the list cannot become the place missing
    *  cards quietly go.
    *
-   *  2026-10-09 — Spain's 201 new town and cluster pages (provinces → towns). */
+   *  2026-10-09 — Spain's 201 new town and cluster pages (provinces → towns).
+ *  2026-10-11 — Germany's 297 new town and cluster pages (regions → towns). */
   private val awaitingFirstDeploy: Set[String] = Seq(
     "adeje", "aguilar-de-campoo", "aguilas", "alcala-de-henares", "alcala-de-xivert", "alcala-la-real",
     "alcaniz", "alcazar-de-san-juan", "alcobendas", "alcorcon", "alcoy", "algeciras", "alhaurin-el-grande",
@@ -85,6 +86,50 @@ class OgCardAssetsSpec extends AnyFlatSpec with Matchers {
     "vila-real", "vilafranca-del-penedes", "vilagarcia-de-arousa", "villablino", "villarrobledo",
     "villaviciosa-de-odon", "villena", "vinaros", "vitoria-gasteiz", "viveiro", "xinzo-de-limia", "zuera",
     "zumaia",
+    // Germany's 297 new town and cluster pages (regions → towns, 2026-10).
+    "aalen", "achim", "aichach", "albstadt", "alfeld", "alpirsbach", "alsdorf", "annaberg-buchholz", "asbach",
+    "asperg", "auerbach", "aurich", "backnang", "bad-belzig", "bad-doberan", "bad-driburg", "bad-fuessing",
+    "bad-kissingen", "bad-mergentheim", "bad-neustadt-an-der-saale", "bad-oldesloe", "bad-reichenhall",
+    "bad-saulgau", "bad-vilbel", "bad-wildbad", "bad-woerishofen", "baden-baden", "baunatal",
+    "bergisch-gladbach", "bernau", "boeblingen", "bonn", "bottrop", "bramsche", "bruchsal", "brunsbuettel",
+    "buchholz-in-der-nordheide", "buedingen", "buende", "burg", "cloppenburg", "dahme", "darmstadt",
+    "deggendorf", "delmenhorst", "detmold", "diessen-am-ammersee", "dillenburg", "dillingen-an-der-donau",
+    "dingolfing", "dinslaken", "donaueschingen", "dreieich", "duderstadt", "duelmen", "dueren", "duesseldorf",
+    "duisburg", "ebersbach", "eckental", "eggenfelden", "ehingen", "einbeck", "elmshorn", "emmendingen",
+    "enkenbach-alsenborn", "erding", "erdmannhausen", "erlangen", "eschborn", "eschwege", "espelkamp",
+    "essen", "esslingen-am-neckar", "fellbach", "forchheim", "frankenthal", "freiberg", "freudenstadt",
+    "freyung", "friedrichsdorf", "friedrichshafen", "fuerstenfeldbruck", "fuerstenwalde-an-der-spree",
+    "fuerth", "fuessen", "furtwangen-im-schwarzwald", "gelsenkirchen", "genthin", "gera", "germering",
+    "gifhorn", "ginsheim-gustavsburg", "goeppingen", "gotha", "grafing-bei-muenchen", "greifswald",
+    "grevenbroich", "grimma", "gruenberg", "gruenstadt", "guestrow", "guetersloh", "hagen", "halle", "hanau",
+    "heide", "heidelberg", "heidenheim", "heinsberg", "helmstedt", "herford", "herne", "herrenberg",
+    "hildesheim", "hof", "hofheim-am-taunus", "holzkirchen", "holzminden", "homburg", "hoyerswerda", "huerth",
+    "ibbenbueren", "ilmenau", "iserlohn", "kaufbeuren", "kaufering", "kehl", "kelheim", "kelkheim",
+    "kempten-im-allgaeu", "kerpen", "kirchheim-unter-teck", "kitzingen", "koenigs-wusterhausen",
+    "koenigsbrunn", "kuehlungsborn", "lahnstein", "lahr-am-schwarzwald", "landau-in-der-pfalz", "langenfeld",
+    "langenhagen", "lehrte", "leutkirch-im-allgaeu", "leverkusen", "limbach-oberfrohna", "limburg", "lindau",
+    "lingen", "loeningen", "ludwigsburg", "ludwigslust", "luedenscheid", "luenen", "lutherstadt-wittenberg",
+    "mainz", "marl", "mayen", "meiningen", "meissen", "merseburg", "merzig", "meschede", "moelln",
+    "moenchengladbach", "moers", "mosbach", "muehlacker", "muelheim-an-der-ruhr", "muellheim", "murrhardt",
+    "nagold", "neckarsulm", "neresheim", "nettetal", "neu-anspach", "neu-ulm", "neuburg-an-der-donau",
+    "neumarkt-in-der-oberpfalz", "neumuenster", "neunkirchen", "neuss", "neustadt-an-der-aisch",
+    "neustadt-an-der-weinstrasse", "neustadt-in-holstein", "neustrelitz", "neuwied", "nonnweiler",
+    "norddorf-auf-amrum", "nordhorn", "northeim", "nuertingen", "oberhausen", "oberndorf-am-neckar",
+    "oehringen", "offenbach-am-main", "oldenburg-in-holstein", "oranienburg", "osterholz-scharmbeck",
+    "ottobrunn", "papenburg", "pfaffenhofen-an-der-ilm", "pforzheim", "pirmasens", "pirna", "plettenberg",
+    "potsdam", "preetz", "prien-am-chiemsee", "quickborn", "rastatt", "rathenow", "ratingen",
+    "recklinghausen", "remscheid", "rendsburg", "reutlingen", "rheinfelden", "rietschen", "rinteln", "rodgau",
+    "rothenburg", "rottenburg-am-neckar", "rottweil", "rudolstadt", "saalfeld", "salzgitter", "sangerhausen",
+    "schleiz", "schleswig", "schloss-holte-stukenbrock", "schluechtern", "schmelz", "schongau", "schorndorf",
+    "schwabach", "schwaebisch-hall", "schwalmstadt", "schwandorf", "senftenberg", "siegburg",
+    "simbach-am-inn", "sindelfingen", "singen-am-hohentwiel", "sinsheim", "soest", "speyer", "spremberg",
+    "stade", "taucha", "templin", "torgau", "traunreut", "tuebingen", "tuttlingen", "ueberlingen",
+    "ueckermuende", "uelzen", "unterschleissheim", "versmold", "vilsbiburg", "voelklingen", "waldkraiburg",
+    "walsrode", "wangen-im-allgaeu", "warburg", "wasserburg-am-inn", "weiden-in-der-oberpfalz",
+    "weil-am-rhein", "weil-der-stadt", "weilheim-in-oberbayern", "weimar", "weinheim", "weiterstadt",
+    "wermelskirchen", "wertheim-am-main", "wesenberg", "wiesbaden", "wildeshausen", "wilhelmshaven", "winsen",
+    "wismar", "witten", "wittingen", "wittlich", "wittstock", "wolfenbuettel", "wolfratshausen", "wolfsburg",
+    "worms", "wuerzburg", "wusterhausen", "zeil-am-main", "zeitz", "zeven", "zittau", "zwickau",
   ).map(slug => s"og-$slug.jpg").toSet
 
   "every city, in every country" should "have the card its index page names" in {

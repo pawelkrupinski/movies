@@ -1406,7 +1406,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("document.getElementById('picker-back-row').click()")
       clickPickerRow(page, "Bayern")
       typePickerSearch(page, "muenchen")
-      pickerRowLabels(page) shouldBe """["München"]"""
+      // München, and the cluster of small towns named after Grafing bei München.
+      pickerRowLabels(page) shouldBe """["Grafing bei München und Umgebung","München"]"""
 
       // A root-level HEADING answers to both spellings for the same reason.
       typePickerSearch(page, "")
@@ -1418,19 +1419,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  it should "NOT find a Land pulled up a level by its own name — KINOWO_CATALOG carries no alias" in {
+  it should "find a Land holding several pages by its own name, and its city by the city's" in {
     onGermanLanding { page =>
-      // The static fallback's `data-alias="Saarland"` (see `_cityPickerGroup`)
-      // is what makes Saarbrücken findable by "saarland" there — but
-      // `KINOWO_CATALOG` (`models.Catalog.json`, the same JSON the mobile
-      // apps read) never carries a collapsed group's name at all (see
-      // `Catalog.scala`'s `regionOf`, built only from groups whose
-      // `soleCity` is empty). The dynamic picker searches THAT data, so it
-      // shares the apps' own gap here rather than closing it — a pre-existing
-      // limitation of the popup this replaces, not a regression.
+      // Saarland was one 35 km region until 2026-10, pulled up a level onto
+      // Saarbrücken, and `KINOWO_CATALOG` carries no collapsed group's name, so
+      // "saarland" found nothing. It holds seven town pages now: a heading again.
       typePickerSearch(page, "saarland")
-      pickerRowCount(page) shouldBe 0
-      // The city's OWN name still finds it, same as any other root-level row.
+      pickerRowLabels(page) shouldBe """["Saarland"]"""
       typePickerSearch(page, "saarbruecken")
       pickerRowLabels(page) shouldBe """["Saarbrücken"]"""
     }

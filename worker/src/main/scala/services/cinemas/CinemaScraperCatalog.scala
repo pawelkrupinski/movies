@@ -1928,12 +1928,15 @@ class CinemaScraperCatalog(
   // ── Germany (AlloCiné/Filmstarts website-JSON) ───────────────────────────
   private def filmstarts(theaterId: String, cinema: Cinema): WebediaShowtimesClient =
     WebediaShowtimesClient.forVenue(http, WebediaMarket.Germany, theaterId, cinema, venueClock)
-  // Germany — data-driven from the full GermanRoster (158 regions / 1,515 cinemas):
-  // one filmstarts scraper per cinema, keyed by region slug (the slug City.slug uses).
-  // Each cinema's Filmstarts theaterId comes from GermanRoster.theaterIdByCinema.
+  // Germany — data-driven from the full GermanRoster (436 town pages / 1,515 cinemas):
+  // one filmstarts scraper per cinema, keyed by the PAGE slug City.slug uses. Keyed
+  // off `Country.Germany.cities` rather than `GermanRoster.places` for Spain's
+  // reason: the slug a page is finally addressable under is decided in
+  // `City.germanPages`, and the catalogue has to agree with the roster the web tier
+  // serves. Each cinema's Filmstarts theaterId comes from GermanRoster.theaterIdByCinema.
   private val germanBaseByCity: Map[String, Seq[CinemaScraper]] =
-    models.GermanRoster.regions.map { region =>
-      region.slug -> region.cinemas.map(c => filmstarts(models.GermanRoster.theaterIdByCinema(c), c))
+    models.Country.Germany.cities.map { city =>
+      city.slug -> city.cinemas.map(c => filmstarts(models.GermanRoster.theaterIdByCinema(c), c))
     }.toMap
 
   // ── Spain (AlloCiné/SensaCine website-JSON) ──────────────────────────────
@@ -2178,7 +2181,7 @@ class CinemaScraperCatalog(
     "wiltshire" -> wiltshireScrapers,
     "worcestershire" -> worcestershireScrapers,
     "yorkshire" -> yorkshireScrapers,
-  ) ++ germanBaseByCity   // Germany: the full 158-region roster (data-driven)
+  ) ++ germanBaseByCity   // Germany: 436 town and cluster pages (data-driven)
     ++ usBaseByCity       // USA: 461 metros + 7 small states (data-driven)
     ++ spanishBaseByCity  // Spain: 240 town and cluster pages (data-driven)
 

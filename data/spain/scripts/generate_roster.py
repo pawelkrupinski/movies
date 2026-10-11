@@ -35,6 +35,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "scripts"))
 import retired_venues  # noqa: E402
+from town_pages import placement_problems  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 DATA = ROOT / "data" / "spain"
@@ -90,14 +91,6 @@ def merge_ocine(provinces: list, ocine: dict) -> list[str]:
     for name in grown:
         by_province[name]["cinemas"].sort(key=lambda c: c["displayName"])
     return problems
-
-
-def placement_problems(venues: dict, pages: list) -> list[str]:
-    """Every venue on exactly one page, and every page's venues in the roster."""
-    on = collections.Counter(name for p in pages for name in p["cinemas"])
-    return ([f"venue {name!r} is on {n} pages" for name, n in sorted(on.items()) if n > 1] +
-            [f"venue {name!r} is on no page — rebuild pages.json" for name in sorted(set(venues) - set(on))] +
-            [f"page venue {name!r} is not in the roster" for name in sorted(set(on) - set(venues))])
 
 
 def main() -> int:

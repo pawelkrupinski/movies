@@ -2,29 +2,36 @@
 
 Harvested + geocoded roster of **all German cinemas** on filmstarts.de, and the
 source the shipped German model is generated FROM. Germany has been live at
-`showtimes.cc/de` for some time: this is no longer a staging area for a future
-phase, it is the input to `GermanRosterData.scala` (see "Regenerating" below).
+`showtimes.cc/de` for some time: this is the input to `GermanRosterData.scala`
+(see "Adding venues and regenerating" below).
 
 ## Contents
 
-- **`regions.json`** — the roster the app will load: **158 regions** covering
-  **1,515 cinemas** across all 16 Bundesländer. Each region:
-  `{ slug, name, lat, lon, bundesland, cities:[…], cinemas:[{theaterId, name, city, displayName}] }`.
-  Regions cap the city dropdown (901 raw cities → 158 regions, each aggregating
-  cinemas within ~35 km of a hub city). Every cinema `displayName` is globally
-  unique (4 chain-name collisions disambiguated with `(City)`).
-- `theaters-raw.json` — the raw flat harvest (1,534 theaters, pre-clustering).
-- `city-coords.json` — the 900 distinct cities → lat/lon (GeoNames), for reference.
-  "Frankfurt (Oder)" carried Frankfurt am Main's coordinates until 2026-09-26, which
-  had clustered its CineStar into the Frankfurt am Main region, 450 km away; moved
-  by hand to `frankfurt-an-der-oder`, since re-clustering would reshuffle regions.
+- **`venues.json`** — every Filmstarts venue harvested, one per line:
+  `{ theaterId, name, city, displayName }`. `city` is the town Filmstarts files
+  it under; `displayName` is the wire key and globally unique (chain-name
+  collisions disambiguated with `(City)`). The roster is this less `retired.json`.
+- **`pages.json`** — which listing page each venue is on (`build_pages.py`, below):
+  **436 pages** over 1,515 cinemas — 74 major cities, 42 towns of three or more
+  venues, 203 clusters of small towns, and 117 one- or two-venue towns with no
+  neighbour to cluster with. Each page:
+  `{ slug, kind, name, anchor, bundesland, qualifiedSlug, lat, lon, towns, cinemas }`.
+  `retired` maps every slug that was a page and is not any more to the page now
+  holding most of its venues (the 19 regions of 2026-10 that left no town page
+  under their own slug: `/vechta/` → Wildeshausen, `/itzehoe/` → Elmshorn).
+- `city-coords.json` — each Filmstarts city → GeoNames lat/lon, population and
+  admin1 (`scripts/geocode_cities.py`). The gazetteer `build_pages.py` reads,
+  corrected by its `TOWN_COORDS`.
+- `theaters-raw.json` — the raw flat harvest (1,534 theaters).
 - **`retired.json`** — venues this country has retired (closed, duplicate or
   feedless), keyed by Filmstarts `theaterId`, each with its reason, date and evidence. The
-  generator drops them, so a re-harvest cannot bring one back, and `CountrySpec`
+  build drops them, so a re-harvest cannot bring one back, and `CountrySpec`
   fails if one is rostered anyway. To retire a venue, add it here and regenerate;
   to bring one back, delete its entry. Entries also arrive by PR: the worker's daily
   closure sweep (`ClosureSweep`) starts `.github/workflows/retire-venues.yml` for a
-  venue confirmed closed, which re-checks it live and opens the PR adding it here.
+  venue confirmed closed, which re-checks it live, rebuilds the pages and roster,
+  and opens the PR adding it here. A page left with no venue redirects to the
+  page nearest it.
 - **`kinoprogramm.json`** — each venue's kinoprogramm.com page, `{ theaterId: path }`:
   its showtime FALLBACK behind Filmstarts (`KinoprogrammClient`, served once a
   venue's Filmstarts scrape has failed three separate runs). 1,132 of 1,515 venues
@@ -33,10 +40,78 @@ phase, it is the input to `GermanRosterData.scala` (see "Regenerating" below).
   candidate must name the roster city in its address AND sit within 25 km of it,
   so a same-named town elsewhere cannot match; open-air screens never match a
   regular cinema). Rerun it after a re-harvest, then `generate_roster.py`, which
-  carries the path into `GermanRosterData`.
+  carries the path into `GermanRosterData`. The fallback is keyed by venue, not by
+  page, so a re-cluster leaves it alone.
 - `scripts/` — the reproducible pipeline.
 
-## How it was produced
+## The pages
+
+A German page used to be a REGION — every venue within ~35 km of a hub city, so
+`/koeln/` listed Düsseldorf and Bonn and `/berlin/` listed Potsdam. Since 2026-10
+it is the rule Poland and Spain use (`data/scripts/town_pages.py`), with Germany's
+parameters in `scripts/build_pages.py`:
+
+1. A **major city** — a municipality of 100,000 people or more — lists only the
+   venues inside it.
+2. Any other town with **3+ venues** is a page of its own.
+3. The rest — 1- and 2-venue towns only — **cluster**: a 2-venue town takes the
+   1- and 2-venue towns within **10 km**; the 1-venue towns left cluster within
+   **20 km** of the biggest of them; a town still alone joins the nearest cluster
+   within **30 km**. Tighter than Poland's 10/25/35: at those radii Germany's dense
+   villages chain into clusters 66 km across. At 10/20/30 no cinema is more than
+   46 km from the town its page is named after (Werder, on Oranienburg's page),
+   and 95% are within 22 km.
+
+A cluster is named after its anchor — most venues, then most people — as
+"Bayreuth und Umgebung" ("in Bayreuth und Umgebung"; the phrase is `GermanPage`'s).
+Slugs spell umlauts out (`muenster`); a page whose slug another country already
+serves or wants is qualified with its Bundesland (`City.germanSlug`). The picker
+groups pages by the anchor's Bundesland, read off its coordinates.
+
+Towns are Filmstarts' cities, with two corrections in `build_pages.py`:
+
+- **`TOWN_ALIASES`** — second spellings of one town (`Frankfurt` / `Frankfurt am
+  Main`, `Freiburg im Breisgau` / `Freiburg`) and districts Filmstarts names on
+  their own (`Kalk` is Köln, `Altona` Hamburg, `Regionalverband Saarbrücken` the
+  Residenz's Völklingen). An alias between two points more than 10 km apart is
+  refused. Lohne/Löhne and Sulzbach/Sulzbach-Rosenberg are NOT aliases — they are
+  four towns.
+- **`TOWN_COORDS`** — towns `city-coords.json` matched to a GeoNames namesake,
+  each re-placed from the venue's own Filmstarts address: Lohne (Oldenburg), not
+  Löhne; Sulzbach (Taunus), not Sulzbach-Rosenberg; Landau an der Isar, not
+  Landau in der Pfalz; Gronau (Leine), Grafenberg, Ebersbach, Hirschberg, Walheim,
+  Buckow and Taufkirchen (Vils) likewise. Found by comparing each town's GeoNames
+  Land with the Filmstarts lander page its venue was crawled under, and reading
+  the postal code of every mismatch.
+
+The build is a **drift guard** too: it refuses a town placed more than 60 km from
+the page its venues were on before — the shape a gazetteer namesake takes — unless
+the town is pinned in `TOWN_COORDS`.
+
+## Adding venues and regenerating
+
+1. Append the venues to `venues.json` (theaterId, name, Filmstarts city,
+   displayName). A city not yet in `city-coords.json` stops the build: geocode it
+   (`scripts/geocode_cities.py`, or add the GeoNames row by hand) — and check it is
+   the right namesake.
+2. Rebuild and regenerate:
+
+   ```
+   python3 data/germany/scripts/build_pages.py
+   python3 data/germany/scripts/test_build_pages.py
+   python3 data/germany/scripts/generate_roster.py
+   ```
+
+   then run `CatalogSeedSpec` twice (it rewrites the apps' seeds) and the
+   `OgCardAssetsSpec`, which lists any new page as awaiting its first share card.
+
+`generate_roster.py` emits `common/src/main/scala/models/GermanRosterData.scala` —
+the tuples `models.GermanRoster` materialises into `GermanPage` cities and
+`GermanCinema` venues. It refuses a duplicate `displayName` and a venue on no page
+or two. `scripts/ci/generated-artefacts-drift.sh` re-runs both scripts in CI, so a
+`pages.json` or roster that disagrees with its inputs fails the build.
+
+## How the harvest was produced
 
 1. **Crawl** (`scripts/crawl_de_full.py`, reusing `crawl_filmstarts.py`) — the
    filmstarts.de `/kinoprogramm/` directory: all 16 Bundesländer → cities →
@@ -48,37 +123,14 @@ phase, it is the input to `GermanRosterData.scala` (see "Regenerating" below).
    `?page=2`, and its big cities — Köln/Düsseldorf/Dortmund — are only on the
    homepage-featured list, not the lander sub-pages).
 2. **Geocode** (`scripts/geocode_cities.py`) — 900/900 cities matched via the bulk
-   GeoNames `DE.txt` dump (no live Nominatim needed); Bundesland backfilled from
-   GeoNames admin1.
-3. **Cluster** (`scripts/cluster_regions.py`) — greedy hub-assignment at a 35 km
-   radius → 158 regions (13 single-city, 145 merged), each named after its
-   largest constituent city.
-
-## Regenerating
-
-`scripts/generate_roster.py` turns `regions.json` into
-`common/src/main/scala/models/GermanRosterData.scala` — the tuples
-`models.GermanRoster` materialises into `GermanRegion` cities and `GermanCinema`
-venues. Re-run it after any re-harvest, and commit the generated file with the
-data.
-
-It carries each region's `bundesland` through, because that is what
-`City.germanStates` groups the `/` picker by: 16 headings over 158 regions, since
-158 in one A-to-Z is not a list anybody reads. So a re-harvest re-groups the
-picker on its own rather than drifting from a hand-kept list.
-
-Two regions are corrected on the way through (`MISFILED` in the generator):
-Münster and Dorsten are filed by the crawl under Hessen and Berlin, and both are
-in Nordrhein-Westfalen by their own coordinates — the Land comes off whichever
-Filmstarts lander page a region's hub venues were harvested under, and those two
-pages are wrong. The generator FAILS if a correction stops correcting anything,
-or names a slug the roster no longer has, so a stale override cannot sit there
-quietly.
+   GeoNames `DE.txt` dump (no live Nominatim needed).
+3. **Pages** (`scripts/build_pages.py`) — above. Until 2026-10 a greedy 35 km
+   hub clustering made 158 regions instead; its venues are `venues.json` now.
 
 ## What consumes this
 
-All of it, as of the German launch: the roster model (`GermanRegion` /
-`GermanCinema`), the scrape catalog's filmstarts entries, `Country.Germany`
-(`showtimes.cc/de`, switchable, in the deploy matrix), the apps via
-`/api/catalog` — which carries each city's Bundesland as its `region`, so the
-two-step pick works there too — and the page + read-model snapshots.
+All of it: the roster model (`GermanPage` / `GermanCinema`), the scrape catalog's
+filmstarts entries (keyed by page slug) and kinoprogramm.com fallbacks (keyed by
+venue), `Country.Germany` (`showtimes.cc/de`), the apps via `/api/catalog` — which
+carries each page's Bundesland as its `region`, so the two-step pick works there
+too — and the page snapshots.

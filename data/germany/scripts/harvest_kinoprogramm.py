@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Map the German cinema roster (data/germany/regions.json, keyed by Filmstarts
+Map the German cinema roster (data/germany/venues.json, keyed by Filmstarts
 theaterId) to kinoprogramm.com venue pages.
 
 Method:
@@ -22,8 +22,9 @@ Method:
      from suchApi&kino=<id> when the linked one 404s, e.g. names with quotes).
      A candidate is the city's own only if its JSON-LD addressLocality names
      the roster city AND its geo lies within MAX_CITY_KM of the city in
-     data/germany/city-coords.json. Same-named towns elsewhere (Landau an
-     der Isar vs Landau in der Pfalz) fail the geo test.
+     data/germany/city-coords.json, as corrected by build_pages.TOWN_COORDS.
+     Same-named towns elsewhere (Landau an der Isar vs Landau in der Pfalz)
+     fail the geo test.
   3. Matching. Names are normalised (HTML entities, casefold, umlaut/ss
      transliteration, punctuation stripped); the noise words kino /
      filmtheater / cinema and the city's own name are dropped for scoring
@@ -67,7 +68,7 @@ from difflib import SequenceMatcher
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.dirname(HERE)
-REGIONS = os.path.join(DATA, "regions.json")
+VENUES = os.path.join(DATA, "venues.json")
 COORDS = os.path.join(DATA, "city-coords.json")
 OUT = os.path.join(DATA, "kinoprogramm.json")
 OUT_UNMATCHED = os.path.join(DATA, "kinoprogramm-unmatched.json")
@@ -420,9 +421,10 @@ PRESCORE = 0.6     # candidates below this vs every roster venue are never fetch
 
 def main():
     sys.stdout.reconfigure(line_buffering=True)
-    regions = json.load(open(REGIONS))
-    coords = json.load(open(COORDS))
-    roster = [c for r in regions for c in r["cinemas"]]
+    sys.path.insert(0, HERE)
+    from build_pages import TOWN_COORDS  # the towns city-coords.json put at a namesake
+    coords = {**json.load(open(COORDS)), **TOWN_COORDS}
+    roster = json.load(open(VENUES))
     by_city = {}
     for r in roster:
         by_city.setdefault(r["city"], []).append(r)

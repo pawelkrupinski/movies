@@ -107,6 +107,10 @@ def synthetic():
     check("every venue is on exactly one page",
           sorted(c for p in pages.values() for c in p["cinemas"]) == sorted(v for _, v in venues))
 
+    closed = dict(previous, helgoland=region(["H1"], 302, 50))   # its one cinema since retired
+    _, retired = run(coords, venues, closed, aliases, pins)
+    check("a page none of whose venues is left goes to the page nearest it", retired["helgoland"]["page"] == "lueneburg")
+
     far = {"Lohne": town(-100, 0, 39000, "07"), "Lohne (Oldenburg)": town(50, 0, 27000, "06")}
     check("a town placed > 60 km from the page its venues were on is refused",
           refuses(lambda: run(far, [("Lohne (Oldenburg)", "LO2")], {"minden": region(["LO2"], -100, 0)})))

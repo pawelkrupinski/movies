@@ -39,11 +39,16 @@ PAGE = {
     "spain":   "https://www.sensacine.com/cines/cine/{id}/",
     "us":      "https://www.flicks.us/cinema/{id}/",
 }
+# The commands that rebuild each roster without the retired venues, in order. A
+# country with town pages rebuilds them first: its generator refuses a page that
+# still lists a venue the roster dropped.
 GENERATE = {
-    "germany": ["python3", "data/germany/scripts/generate_roster.py"],
-    "spain":   ["python3", "data/spain/scripts/generate_roster.py"],
-    "us":      ["python3", "data/us/scripts/generate_roster.py", "data/us/venues.json",
-                "common/src/main/scala/models/UsRosterData.scala"],
+    "germany": [["python3", "data/germany/scripts/build_pages.py"],
+                ["python3", "data/germany/scripts/generate_roster.py"]],
+    "spain":   [["python3", "data/spain/scripts/build_pages.py"],
+                ["python3", "data/spain/scripts/generate_roster.py"]],
+    "us":      [["python3", "data/us/scripts/generate_roster.py", "data/us/venues.json",
+                 "common/src/main/scala/models/UsRosterData.scala"]],
 }
 # The line in CountrySpec that pins each roster's size.
 PINNED_SIZE = {
@@ -134,7 +139,8 @@ def main() -> int:
     if added:
         (directory / "retired.json").write_text(
             json.dumps({**retired, **added}, ensure_ascii=False, indent=2) + "\n")
-        subprocess.run(GENERATE[args.roster], cwd=ROOT, check=True)
+        for command in GENERATE[args.roster]:
+            subprocess.run(command, cwd=ROOT, check=True)
         spec = COUNTRY_SPEC.read_text()
         old = int(re.search(PINNED_SIZE[args.roster], spec).group(2))
         new = old - len(added)

@@ -124,7 +124,7 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     val j = Catalog.json
     def cityEntry(slug: String) =
       j.split("\\{").find(_.contains(s""""slug":"$slug"""")).getOrElse(fail(s"no $slug entry"))
-    // Berlin and Hamburg are Germany's single-region city-states; Delaware and
+    // Berlin and Hamburg are Germany's single-page city-states; Delaware and
     // Vermont are US states too small to split into metros. Naming their one
     // Bundesland/state as a `region` a visitor would only ever open to reach
     // the single thing under it costs a tap for nothing — this is the same

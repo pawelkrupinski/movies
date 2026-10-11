@@ -154,9 +154,7 @@ def build(venues, venue_town, towns, zones, communities, previous, prior_retired
     # three one-cinema towns go to Golmayo, Soria's own cinema in all but name.
     def heir(old):
         held = collections.Counter(page_of_town[venue_town[v]] for v in old["cinemas"] if v in venue_town)
-        centre = (old["lat"], old["lon"])
-        return max(held, key=lambda s: (held[s], result[s]["kind"] == "major",
-                                        -km(centre, (result[s]["lat"], result[s]["lon"])), s))
+        return town_pages.heir(held, (old["lat"], old["lon"]), result)
     gone = {slug: heir(old) for slug, old in previous.items() if slug not in result}
     retired = town_pages.retire(gone, {k: v["page"] for k, v in prior_retired.items()}, result)
     qualified_of = {**{k: v["qualifiedSlug"] for k, v in prior_retired.items()},

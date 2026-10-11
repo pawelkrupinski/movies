@@ -134,30 +134,28 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
       """<li class="city-direct" data-alias="Lanarkshire"><a href="/glasgow/">Glasgow</a></li>""")
   }
 
-  /** Germany picks a REGION — Köln, München — found under its Bundesland. */
+  /** Germany picks a town page — Köln, München, "Bayreuth und Umgebung" — found under its Bundesland. */
   private val deHtml =
     views.html.landing(models.Country.Germany, isApex = false)(using testsupport.TestMessages.forLang("en")).body
 
-  "the German landing page" should "list every region under its Bundesland" in {
+  "the German landing page" should "list every page under its Bundesland" in {
     models.Country.Germany.cities.foreach(c => deHtml should include (s"/${c.slug}/"))
     deHtml should include ("""<summary class="city-group-label">Bayern</summary>""")
     deHtml should include ("""<summary class="city-group-label">Nordrhein-Westfalen</summary>""")
     deHtml should include ("""<a href="/koeln/">Köln</a>""")
+    deHtml should include ("""<a href="/bayreuth/">Bayreuth und Umgebung</a>""")
     // A Land is a heading, never a link.
     deHtml should not include """href="/bayern/""""
-    // …except a Land holding one region, which is pulled up: Hamburg shares its
-    // region's name, Saarland does not and keeps "Saarland" searchable.
+    // …except a city-state holding one page, which is pulled up.
     deHtml should include ("""<li class="city-direct"><a href="/hamburg/">Hamburg</a></li>""")
-    deHtml should include (
-      """<li class="city-direct" data-alias="Saarland"><a href="/saarbruecken/">Saarbrücken</a></li>""")
-    deHtml should not include """<summary class="city-group-label">Saarland</summary>"""
+    deHtml should include ("""<summary class="city-group-label">Saarland</summary>""")
     // One level, not the UK's two.
     deHtml should not include """<summary class="city-group-label">Saarbrücken</summary>"""
   }
 
   "a collapsed group's search alias" should "be HTML-escaped, not pasted into the attribute" in {
     // `data-alias` carries the group's own name, and a Bundesland's comes out of
-    // the scraped `regions.json` rather than being hand-authored — so nothing
+    // the generated roster rather than being hand-authored — so nothing
     // upstream guarantees it holds no quote. Built as raw `Html(...)` the first
     // one to do so would close the attribute and inject whatever followed.
     val hostile = models.CityGroup(

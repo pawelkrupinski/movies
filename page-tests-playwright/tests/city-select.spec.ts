@@ -11,9 +11,13 @@ const staticGroupNamed = (page: Page, name: string) =>
   page.locator(`#city-list details.city-group:has(> summary:text-is("${name}"))`);
 
 // The dynamic picker's CURRENT LEVEL row whose label is `label` — a region /
-// subregion heading (drills in on click) or a city (navigates on click).
+// subregion heading (drills in on click) or a city (navigates on click). The
+// WHOLE label (a heading's drill-in "›" aside): "München" must not also find
+// "Grafing bei München und Umgebung".
 const pickerRow = (page: Page, label: string) =>
-  page.locator('#picker-list .picker-item', { hasText: label });
+  page.locator('#picker-list .picker-item', {
+    hasText: new RegExp(`^\\s*${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*›?\\s*$`),
+  });
 
 const pickerCountryPill = (page: Page, label: string) =>
   page.locator('#picker-countries .picker-country-pill', { hasText: label });
@@ -298,19 +302,19 @@ test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
   });
 });
 
-// Germany lists 158 regions — each already a travel-shed of towns around a hub
-// ("Köln" also covers Düsseldorf and Bonn) — under the 16 Bundesländer, which is
-// what a visitor knows them by. One level, like the US.
+// Germany lists 436 town pages — a major city's own venues, a town of three or
+// more, or a cluster of small towns ("Bayreuth und Umgebung") — under the 16
+// Bundesländer, which is what a visitor knows them by. One level, like Poland's
+// voivodeships.
 test.describe('grouped city landing (Germany)', { tag: '@agnostic' }, () => {
-  test('the static fallback lists every region under its Bundesland, collated as German', async ({ page }) => {
+  test('the static fallback lists every page under its Bundesland, collated as German', async ({ page }) => {
     await page.goto('/landing-de', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('.city-list a')).toHaveCount(158);
+    await expect(page.locator('.city-list a')).toHaveCount(436);
     await expect(page.locator('details.city-group[open]')).toHaveCount(0);
-    // Three of the 16 hold one region each and are pulled up: Berlin and
-    // Hamburg share their region's name, Saarland collapses onto Saarbrücken.
-    await expect(page.locator('#city-list > li.city-direct > a')).toHaveText(
-      ['Berlin', 'Hamburg', 'Saarbrücken']);
-    await expect(page.locator('#city-list > li > details.city-group > summary')).toHaveCount(13);
+    // Two of the 16 hold one page each and are pulled up: the city-states
+    // Berlin and Hamburg, which share their page's name.
+    await expect(page.locator('#city-list > li.city-direct > a')).toHaveText(['Berlin', 'Hamburg']);
+    await expect(page.locator('#city-list > li > details.city-group > summary')).toHaveCount(14);
     const nrw = staticGroupNamed(page, 'Nordrhein-Westfalen');
     const names = await nrw.locator('a').allTextContents();
     // Collated, not code-point-ordered: Köln belongs under K-o, and a bare
@@ -325,14 +329,15 @@ test.describe('grouped city landing (Germany)', { tag: '@agnostic' }, () => {
     await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj miasta…');
   });
 
+  test('a Bundesland holds its major cities beside the town clusters around them', async ({ page }) => {
+    await page.goto('/landing-de', { waitUntil: 'domcontentloaded' });
+    await pickerRow(page, 'Bayern').click();
+    await expect(pickerRow(page, 'München')).toBeVisible();
+    await expect(pickerRow(page, 'Bayreuth und Umgebung')).toBeVisible();
+  });
+
   test('the dynamic picker folds umlauts both ways, one level down', async ({ page }) => {
     await page.goto('/landing-de', { waitUntil: 'domcontentloaded' });
-    // Unlike the static fallback's `data-alias`, `KINOWO_CATALOG` carries no
-    // collapsed-group name at all (see the UK's equivalent test above) — so,
-    // unlike the static tree, "saarland" finds nothing here; "saarbruecken"
-    // (the city's own name) still does.
-    await page.locator('#picker-search').fill('saarland');
-    await expect(page.locator('#picker-list .picker-item')).toHaveCount(0);
     await page.locator('#picker-search').fill('saarbruecken');
     await expect(page.locator('#picker-list .picker-item')).toHaveText(['Saarbrücken']);
     await page.locator('#picker-search').fill('');
@@ -462,8 +467,8 @@ test.describe('Filtry → Miasto navigates to the unified picker', { tag: '@agno
     await gotoAndWaitForCards(page, '/poznan/');
     await page.locator('#format-filter-btn').click();
     await page.locator('#city-picker-row').click();
-    // Germany is one level deep (Bundesland over its regions, no third
-    // level), so one region tap reaches cities directly. The pill reads
+    // Germany is one level deep (Bundesland over its pages, no third
+    // level), so one Bundesland tap reaches cities directly. The pill reads
     // "Niemcy" — the fixture always renders in Polish (`TestMessages`'s
     // deployment `Messages`) — not "Deutschland", Germany's own native
     // name: the pill is now localized to the VISITOR's language via
