@@ -126,6 +126,7 @@ www_vhost="${www_vhost//$share_dir/$cards}"
 mkdir -p "$cards/pl/.posters" "$cards/pl/.base" "$cards/uk"
 printf 'CARD-PL' > "$cards/pl/f0123456789abcd.jpg"
 printf 'CARD-UK' > "$cards/uk/h0123456789abcdef0123.jpg"
+printf 'CITY-PL' > "$cards/pl/city-poznan.jpg"
 printf 'PARTIAL' > "$cards/pl/f3.jpg.k3sworker1-7-deadbeef.tmp"
 printf 'POSTER'  > "$cards/pl/.posters/f0123456789abcd.jpg"
 printf 'BASE'    > "$cards/pl/.base/f0123456789abcd.jpg"
@@ -309,6 +310,12 @@ card 404 "$port" "/share-cards/pl/f999.jpg" "a missing card is a 404, not the ap
 cc="$(header_of "$port" "/share-cards/pl/f999.jpg" Cache-Control)"
 case "$cc" in *immutable*) echo "  FAILED a 404 is cached as immutable ('$cc'), so a card written later stays missing"; failed=1 ;;
   *) echo "  ok  ...and the 404 is not cached as immutable" ;; esac
+card 200 "$port" "/share-cards/pl/city-poznan.jpg" "a city card that exists is served" CITY-PL
+loc="$(header_of "$port" "/share-cards/uk/city-new-town.jpg" Location)"
+st="$(curl -s -o /dev/null -w '%{http_code}' -A "$HUMAN" "http://127.0.0.1:$port/share-cards/uk/city-new-town.jpg")"
+if [ "$st" = 302 ] && [ "$loc" = "/share-card-fallback/uk" ]; then echo "  ok  a city card not drawn yet goes to the app's home-card fallback, not a 404"
+else echo "  FAILED a missing city card answered $st -> '$loc', wanted 302 -> /share-card-fallback/uk"; failed=1; fi
+card 404 "$port" "/share-cards/pl/city-x.jpg.k3sworker1-7-deadbeef.tmp" "...but a city card still being written is a 404, like any temp"
 card 404 "$port" "/share-cards/pl/"   "the country directory is never listed"
 card 404 "$port" "/share-cards/pl"    "...with or without its slash"
 card 404 "$port" "/share-cards/"      "...nor the root"

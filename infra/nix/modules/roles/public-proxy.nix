@@ -273,7 +273,10 @@ in
                   content, a changed card gets a new `v`, and Cloudflare keys its cache on the whole
                   URL, query included (checked 2026-09-24: `?v=a` MISS then HIT, `?v=b` MISS). A
                   stale `v` still gets the latest bytes, which is what a preview wants;
-                - 404 for EVERYTHING ELSE under `/share-cards/`: a missing file, a directory (never
+                - a CITY card (`<cc>/city-<slug>.jpg`, each city's card, re-rendered weekly by the
+                  worker) that is not on disk yet: a 302 to the app's `/share-card-fallback/<cc>`,
+                  which sends it on to the country's home card;
+                - 404 for EVERYTHING ELSE under `/share-cards/`: a missing film card, a directory (never
                   listed), a `.jpg.tmp` the worker is still writing, any dot-named segment (the
                   worker's `.posters/` and `.base/` caches live beside the cards and are not public), and any
                   deeper or shallower path. The whole prefix is claimed here, so none of it falls
@@ -508,6 +511,14 @@ in
                 header @shareCardBare Cache-Control "public, max-age=300"
                 header @shareCard Content-Type image/jpeg
                 file_server @shareCard
+                # A CITY card the worker has not drawn yet (a city new to the catalog) goes to the
+                # app, which redirects to the country's home card: a page names its city card
+                # before the first render lands, and a preview of a 404 has no image at all.
+                @cityCardMissing {
+                  path_regexp cityCard ^/([a-z]{2})/city-[a-z0-9-]+\.jpg$
+                  not file
+                }
+                redir @cityCardMissing /share-card-fallback/{re.cityCard.1} 302
                 respond 404
               }
             }
