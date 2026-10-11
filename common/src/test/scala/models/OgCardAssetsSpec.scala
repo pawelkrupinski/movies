@@ -32,4 +32,10 @@ class OgCardAssetsSpec extends AnyFlatSpec with Matchers {
     val strays = Option(cards.listFiles((_, n) => n.startsWith("og-") && n.endsWith(".png"))).toSeq.flatten.map(_.getName)
     withClue(s"${strays.size} stale PNG cards; first: ") { strays.take(8) shouldBe empty }
   }
+
+  "a city card" should "not be committed: the worker renders them, and nothing serves an `og-<city>.jpg` asset" in {
+    val homes  = Country.all.map(_.homeOgImage).toSet
+    val strays = Option(cards.listFiles((_, n) => n.startsWith("og-") && n.endsWith(".jpg") && !homes(n))).toSeq.flatten.map(_.getName)
+    withClue(s"${strays.size} committed city cards; first: ") { strays.sorted.take(8) shouldBe empty }
+  }
 }
