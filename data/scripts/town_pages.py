@@ -12,6 +12,8 @@ A country's pages are built from its venues' towns:
      c. a 1-venue town still alone after that joins the nearest multi-town
         cluster within `absorb_radius_km`, if there is one. A 2-venue town that
         found nobody stays a page of its own, like a 3-venue one.
+     Only 1- and 2-venue towns ever cluster: a major or a town with
+     `own_page_min_venues`+ venues never takes in a neighbour, however close.
 
 A cluster is named and slugged after its anchor — the town with the most venues,
 then the most people. Distances are straight-line (haversine) between gazetteer

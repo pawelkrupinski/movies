@@ -41,6 +41,7 @@ def check(name, cond):
 def main():
     towns = {
         "Big":      (0, 0, 50000),    # 3 venues → its own page
+        "BigNeighbour": (5, 0, 4000), # 1 venue 5 km from Big → never joins a 3-venue town's page
         "Two":      (100, 0, 20000),  # 2 venues → anchors a 10 km cluster
         "NearTwo":  (106, 0, 3000),   # 6 km from Two → joins it
         "Mid":      (115, 0, 9000),   # 15 km from Two: outside its 10 km → clusters with MidFriend
@@ -51,13 +52,15 @@ def main():
         "Island":   (400, 0, 5000),   # nothing within 35 km → a page of its own
         "Poznań":   (60, 0, 500000),
     }
-    venues = [("Big", "B1"), ("Big", "B2"), ("Big", "B3"), ("Two", "T1"), ("Two", "T2"),
+    venues = [("Big", "B1"), ("Big", "B2"), ("Big", "B3"), ("BigNeighbour", "BN1"), ("Two", "T1"), ("Two", "T2"),
               ("NearTwo", "N1"), ("Mid", "M1"), ("MidFriend", "M2"), ("Hub", "H1"), ("Satellite", "S1"),
               ("Loner", "L1"), ("Island", "I1"), ("Poznań", "P1")]
     pages, retired = run(towns, venues)
 
     check("a major city keeps only its own venues", pages["poznan"]["cinemas"] == ["P1"])
     check("a 3-venue town is a page of its own", pages["big"]["kind"] == "town" and pages["big"]["towns"] == ["Big"])
+    check("a 1-venue town never clusters into a 3-venue town's page, however close",
+          pages["big"]["towns"] == ["Big"] and pages["bigneighbour"]["towns"] == ["BigNeighbour"])
     check("a 2-venue town takes the towns within 10 km", pages["two"]["towns"] == ["Two", "NearTwo"])
     check("a 1-venue town 15 km from a 2-venue town clusters with its own neighbours instead",
           "Mid" not in pages["two"]["towns"] and pages["mid"]["towns"] == ["Mid", "MidFriend"])
