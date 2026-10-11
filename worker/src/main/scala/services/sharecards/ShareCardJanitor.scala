@@ -7,7 +7,7 @@ import java.time.Clock
 import scala.concurrent.duration.*
 
 /**
- * Keeps one country's share-card directory — each film's card, base and poster, under ONE budget —
+ * Keeps one country's share-card directory — each film's card, base and poster and each city's card, under ONE budget —
  * in bounds. Run by the `PruneShareCards` task: daily in full ([[prune]]), and every few minutes for
  * the budget alone ([[enforceBudget]]). The prompt half of retirement is the projection's: a card
  * that leaves the read model has its files deleted at once ([[ShareCardService.onRetired]]); this is
@@ -35,7 +35,10 @@ class ShareCardJanitor(
   clock:       Clock,
   // Re-project a film whose card the prune retired while its document still pointed at it.
   refresh:     String => Unit,
-  grace:       FiniteDuration = ShareCardJanitor.Grace
+  grace:       FiniteDuration = ShareCardJanitor.Grace,
+  // The country's city slugs: a city card is current while its city is in the catalog, and retired
+  // (whichever pass finds it) once the city is not.
+  cities:      Set[String] = Set.empty
 ) extends Logging {
   import ShareCardMetrics.PruneReason
 
@@ -60,7 +63,7 @@ class ShareCardJanitor(
     val deleted = scala.collection.mutable.Set.empty[java.nio.file.Path]
     val counts  = scala.collection.mutable.Map.empty[String, Int].withDefaultValue(0)
     def old(file: StoredFile): Boolean = file.modified.isBefore(cutoff)
-    def current(file: StoredFile): Boolean = file.token.exists(liveTokens)
+    def current(file: StoredFile): Boolean = file.token.exists(liveTokens) || file.citySlug.exists(cities)
     def delete(file: StoredFile, reason: String): Unit =
       if (store.delete(file)) { deleted += file.path; counts(reason) += 1; metrics.pruned(file.kind, reason) }
 
@@ -72,6 +75,9 @@ class ShareCardJanitor(
       catch { case scala.util.control.NonFatal(e) => logger.warn(s"share cards: re-projecting $filmId after retiring its card failed: $e", e) }
 
     files.filter(file => file.temp && old(file)).foreach(delete(_, PruneReason.Temp))
+    // A city gone from the catalog: its card goes at the next pass. Read from the code, not the read
+    // model, so no incomplete read can hold it back.
+    files.filter(file => file.citySlug.exists(slug => !cities(slug)) && old(file)).foreach(delete(_, PruneReason.Retired))
 
     if (daily && complete) {
       files.filter(file => !file.temp && old(file) && !current(file)).foreach(delete(_, PruneReason.Retired))
@@ -92,6 +98,10 @@ class ShareCardJanitor(
         if (deleted(file.path)) total -= file.bytes
       }
     }
+    // What happens AT the limit: what the eviction could not bring under the budget is referenced,
+    // so the directory takes no NEW file until a pass finds it back under ([[ShareCardRoom]]).
+    if (complete) store.room.measured(overBudget = total > budget.bytes)
+    metrics.volume(store.room.free(), ShareCardRoom.volumeSize(store.root), store.room.minimumFreeBytes)
     val kept = files.filterNot(file => deleted(file.path))
     metrics.directory(
       bytesByKind   = kept.groupMapReduce(_.kind)(_.bytes)(_ + _),
@@ -101,11 +111,11 @@ class ShareCardJanitor(
     val report = ShareCardJanitor.Report(counts.toMap, kept.iterator.map(_.bytes).sum, currentBytes.values.sum, complete)
     if (report.currentBytes > budget.bytes)
       logger.error(s"share cards: the ${report.currentBytes} bytes of CURRENT cards, bases and posters alone exceed the " +
-        s"$budget.bytes-byte budget — nothing more can be pruned; raise KINOWO_SHARE_CARD_BUDGET_MB.")
+        s"${budget.bytes}-byte budget — nothing more can be pruned, and no new file is written; raise KINOWO_SHARE_CARD_BUDGET_MB.")
     if (!complete) logger.warn("share cards: web_movies/web_screenings read incomplete — pruned abandoned temp files only.")
     if (daily || counts.nonEmpty)
       logger.info(s"share cards ${if (daily) "prune" else "budget"}: deleted ${counts.toSeq.sorted.map { case (r, n) => s"$r=$n" }.mkString(", ")}; " +
-        s"${report.bytes} bytes on disk (${report.currentBytes} current) of $budget.bytes budget.")
+        s"${report.bytes} bytes on disk (${report.currentBytes} current) of ${budget.bytes} budget.")
     report
   }
 }

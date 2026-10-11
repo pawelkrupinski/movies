@@ -44,7 +44,7 @@ class ShareCardConcurrencySpec extends AnyFlatSpec with Matchers {
     }
     store.list().filter(_.temp) shouldBe empty
     // One card, base and poster per film, whole, however the two replicas raced on the renames.
-    ShareCardStore.Kind.all.foreach(kind => store.list().count(_.kind == kind) shouldBe films.size)
+    Seq(ShareCardStore.Kind.Card, ShareCardStore.Kind.Base, ShareCardStore.Kind.Poster).foreach(kind => store.list().count(_.kind == kind) shouldBe films.size)
 
     // Once past the grace period, the budget holds: nothing is referenced, so it all may go.
     Files.list(store.root).iterator.asScala.toSeq.filter(Files.isRegularFile(_))

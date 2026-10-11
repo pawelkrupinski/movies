@@ -75,6 +75,8 @@ final case class ReadModelAuditSample(value: Int) extends AnyVal with AuditSampl
 // ── Share cards ─────────────────────────────────────────────────────────────────
 /** `KINOWO_SHARE_CARD_BUDGET_MB` — the card store's disk budget, in bytes. */
 final case class ShareCardStorageBudget(bytes: Long) extends AnyVal
+/** `KINOWO_SHARE_CARD_MIN_FREE_MB` — the free space the card store leaves on its volume: below it, no new file is written. */
+final case class ShareCardMinimumFree(bytes: Long) extends AnyVal
 /** `KINOWO_SHARE_CARD_BACKFILL_MAX_BACKLOG`. */
 final case class ShareCardBackfillMaxBacklog(value: Int) extends AnyVal
 /** `KINOWO_SHARE_CARD_DECODE_MEMORY_MB` — the vips child's memory cap. */

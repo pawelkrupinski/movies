@@ -49,6 +49,8 @@ object TaskType {
   case object RenderShareCard      extends TaskType { val name = "RenderShareCard"      }
   case object PruneShareCards      extends TaskType { val name = "PruneShareCards"      }
   case object ReleaseShareCardHold extends TaskType { val name = "ReleaseShareCardHold" }
+  // A city's share card, re-rendered weekly at its own phase (`services.sharecards.CityCardService`).
+  case object RenderCityCard       extends TaskType { val name = "RenderCityCard"       }
 
   // Runtime invariants checked by sample (see `services.tasks.RecheckedAudit`): an hourly sample
   // and, fifteen minutes later, the re-check of whatever it found — the same type, the ids in its
@@ -69,7 +71,7 @@ object TaskType {
     Seq(ScrapeCinema, EnrichDetails, ReadVenuePage, ResolveImdbId, ImdbRating, FilmwebRating, RtRating, McRating,
         RefreshAllImdb, RefreshAllFilmweb, RefreshAllMetacritic, RefreshAllRt, RefreshAllOmdb, SettleNow,
         ScrapeChunk, ScrapeChunkReduce,
-        RenderShareCard, PruneShareCards, ReleaseShareCardHold,
+        RenderShareCard, PruneShareCards, ReleaseShareCardHold, RenderCityCard,
         AuditReadModelContent, AuditShareCards, AgreementQuestion, AgreementFind, AgreementPoster, AgreementCatalogue)
 
   def byName(s: String): Option[TaskType] = all.find(_.name == s)

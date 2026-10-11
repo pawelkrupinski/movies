@@ -13,34 +13,31 @@ import javax.imageio.stream.MemoryCacheImageOutputStream
 import javax.imageio.{IIOImage, ImageIO, ImageWriteParam}
 
 /**
- * Regenerates the per-city Open Graph share cards under
- * `web/src/main/assets/img/og-{slug}.jpg` — the 1200×630 previews
- * Facebook / Messenger / X / Slack render when a `/{slug}/` link is shared.
+ * Regenerates a country's LANDING Open Graph card — `og-home.jpg` for Poland,
+ * `og-home-{code}.jpg` elsewhere, under `web/src/main/assets/img/` — the
+ * 1200×630 preview Facebook / Messenger / X / Slack render when the `/` page is
+ * shared, and what a city with no card of its own yet falls back to. Run by
+ * hand when a country is added or the brand changes. (The CITY cards are the
+ * worker's, rendered weekly from data: `services.sharecards.CityCardService`.)
  *
- * Each card is the REAL repertoire page (a live desktop screenshot, with all
- * dates shown so the poster grid is full even at night) under a left-side dark
- * gradient carrying the deployment's wordmark (Kinowo / Showtimes) and the
- * IMDb·Metacritic·RT(·Filmweb) pills — the same look as the `/` landing card.
- * Everything language- and brand-specific is read from `KINOWO_COUNTRY` (`settings.ProcessConfiguration.country`)
- * (`KINOWO_COUNTRY`): the brand, the display host, the tagline language, and
- * whether the Filmweb pill shows (Poland only).
+ * The card is the REAL repertoire page of the country's primary city (its first
+ * [[Country.cities]], or `KINOWO_OG_HOME_CITY`; a live desktop screenshot, with
+ * all dates shown so the poster grid is full even at night) under a left-side
+ * dark gradient carrying the deployment's wordmark (Kinowo / Showtimes) and the
+ * IMDb·Metacritic·RT(·Filmweb) pills. Everything language- and brand-specific is
+ * read from `KINOWO_COUNTRY` (`settings.ProcessConfiguration.country`): the
+ * brand, the display host, the tagline language, and whether the Filmweb pill
+ * shows (Poland only).
  *
- * Pipeline per card (one headless Chrome over CDP, a fresh tab each step):
+ * Pipeline (one headless Chrome over CDP, a fresh tab each step):
  *   1. open the live `/{slug}/`, run `pickDay('anytime')`, screenshot the
  *      desktop viewport at 2× → the background.
  *   2. open a card HTML (the screenshot embedded as a data: URI + the
  *      overlay) at 3× → the composed card.
- *   3. downscale 3×→1× with bicubic supersampling (smooth text) → write PNG.
+ *   3. downscale 3×→1× with bicubic supersampling (smooth text) → write JPEG.
  *
  * Run (from the repo root):
- *   sbt 'web/PageTest/runMain tools.OgCardGenerator'                  # every city card
- *   sbt 'web/PageTest/runMain tools.OgCardGenerator poznan wroclaw'   # a subset of cities
- *   sbt 'web/PageTest/runMain tools.OgCardGenerator home'             # the `/` landing card
- *
- * The `home` target renders this country's landing montage — `og-home.jpg` for
- * Poland, `og-home-{code}.jpg` elsewhere (e.g. an English `og-home-uk.jpg`
- * screenshot off showtimes.cc/uk). It screenshots the country's primary
- * city (its first [[Country.cities]], or `KINOWO_OG_HOME_CITY`).
+ *   KINOWO_COUNTRY=uk sbt 'web/PageTest/runMain tools.OgCardGenerator'
  *
  * Env: `KINOWO_COUNTRY` (default `pl`) — which country's brand/language/base
  * URL to render; `KINOWO_OG_BASE` (default: that country's own base URL, which
@@ -77,38 +74,11 @@ object OgCardGenerator {
   private val JpegQuality = 0.85f
   private val ScreenshotScale = 2 // the background screenshot's device scale
 
-  /** The pool's residential (not M247 datacenter) Decodo ports — see
-   *  `worker/src/main/resources/residential-proxy.properties`. Rotated across
-   *  batches (see `CitiesPerProxyBatch`) rather than pinning the whole run to
-   *  one, same shape as the worker's own `StickyShardHttpFetch`. Only used
-   *  when `KINOWO_OG_PROXY_PORT` is unset. */
-  private val ResidentialProxyPorts: Seq[Int] = Seq(10002, 10003, 10006, 10007)
-
-  /** How many cities one Chrome (and its one proxy port) handles before this
-   *  process restarts Chrome on the NEXT port in `ResidentialProxyPorts`.
-   *
-   *  A single Decodo port carrying a WHOLE country's cities (up to 468 for
-   *  the US) doesn't just get slow, it starts failing outright —
-   *  `document.readyState` itself timing out, not merely a slow poster.
-   *  Reproduced locally: 1-3 cities through one port, zero failures, every
-   *  time; 10 cities through one port in one run, 4/10 failed outright
-   *  (2026-09-15). The earlier fix (a bigger thread pool + a wider
-   *  poster-decode cap) targeted CPU contention on the CI runner and made
-   *  no measurable difference to the failure RATE in the actual regen PR —
-   *  because the bottleneck is the single residential connection's own
-   *  sustained-load ceiling, not this process's CPU. Batching bounds how
-   *  much traffic any one Decodo IP carries per run, the same reason the
-   *  worker's own Multikino/biletyna fetches shard across the pool instead
-   *  of pinning one port. */
-  private val CitiesPerProxyBatch = 15
-
-  /** The ports to rotate through this run. `KINOWO_OG_PROXY_PORT`, when set,
-   *  pins a single port instead (local debugging against one specific port). */
-  private def proxyPorts(configuration: ProcessConfiguration): Seq[Int] =
-    configuration.ogCardProxyPort match {
-      case Some(port) => Seq(port.value)
-      case None       => ResidentialProxyPorts
-    }
+  /** A residential (not M247 datacenter) Decodo port — see
+   *  `worker/src/main/resources/residential-proxy.properties` — unless
+   *  `KINOWO_OG_PROXY_PORT` names another. */
+  private def proxyPort(configuration: ProcessConfiguration): Int =
+    configuration.ogCardProxyPort.fold(10002)(_.value)
 
   /** The proxy for `port`, or `None` to use this machine's own egress. Needs
    *  BOTH credentials NON-BLANK, not merely present: GitHub Actions renders an
@@ -139,52 +109,15 @@ object OgCardGenerator {
     val outDir  = configuration.ogCardOutputDirectory.value
     Files.createDirectories(outDir)
 
-    // `home` renders the `/` landing montage; any other args are city slugs.
-    val homeMode = args.sameElements(Array("home"))
-    val only     = args.toSet
-    val cities   = if (homeMode) Nil else country.cities.filter(c => only.isEmpty || only(c.slug))
-    if (!homeMode && cities.isEmpty) { System.err.println(s"No ${country.code} cities matched ${only.mkString(", ")}"); sys.exit(1) }
-
-    val ports = proxyPorts(configuration)
-    val startedAt = System.currentTimeMillis()
-    var ok = 0
-
-    if (homeMode) {
-      val chrome = startChromeOrExit(configuration.cdpBrowserBinary, proxyConfigFor(ports.head, configuration))
-      try {
-        val city = configuration.ogCardHomeCity.flatMap(slug => country.bySlug.get(slug.value))
-          .orElse(country.cities.headOption)
-          .getOrElse { System.err.println(s"Country ${country.code} has no cities to screenshot for the home card."); sys.exit(1) }
-        if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", homeTagline(country), outDir.resolve(country.homeOgImage), "home")) ok += 1
-      } finally chrome.close()
-    } else {
-      cities.grouped(CitiesPerProxyBatch).zipWithIndex.foreach { case (batch, batchIndex) =>
-        val chrome = startChromeOrExit(configuration.cdpBrowserBinary, proxyConfigFor(ports(batchIndex % ports.size), configuration))
-        try batch.foreach { city =>
-          if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", cityTagline(city), outDir.resolve(city.shareImage), city.slug)) ok += 1
-        } finally chrome.close()
-      }
-    }
-
-    val total = if (homeMode) 1 else cities.size
-    val secs  = (System.currentTimeMillis() - startedAt) / 1000.0
-    println(f"done: $ok/$total cards in $secs%.1fs")
-    if (!runSucceeded(ok, total)) {
-      System.err.println(f"✗ only $ok/$total cards written, below the ${MinSuccessRatio * 100}%.0f%% a run needs — failing")
-      sys.exit(1)
-    }
+    val city = configuration.ogCardHomeCity.flatMap(slug => country.bySlug.get(slug.value))
+      .orElse(country.cities.headOption)
+      .getOrElse { System.err.println(s"Country ${country.code} has no cities to screenshot for the home card."); sys.exit(1) }
+    val chrome = startChromeOrExit(configuration.cdpBrowserBinary, proxyConfigFor(proxyPort(configuration), configuration))
+    val written =
+      try writeCard(chrome, country, s"$baseUrl/${city.slug}/", homeTagline(country), outDir.resolve(country.homeOgImage), "home")
+      finally chrome.close()
+    if (!written) sys.exit(1)
   }
-
-  /** The share of cards a run must write to count as a success. A few cities
-   *  failing all three attempts is ordinary slow-tail noise and must not cost
-   *  the other cards their refresh; a third of them failing (the 2026-09-15
-   *  blank-poster shape) is a broken run and should turn the CI leg red. The
-   *  cards that WERE written are still uploaded either way — the workflow's
-   *  upload step runs regardless of this exit code. */
-  private[tools] val MinSuccessRatio = 0.9
-
-  private[tools] def runSucceeded(ok: Int, total: Int): Boolean =
-    total > 0 && ok.toDouble / total >= MinSuccessRatio
 
   /** Screenshot `screenshotUrl`, compose the card for `country` with `tagline`,
    *  and write it to `out`. Retries transient load failures (the offline dino
@@ -213,13 +146,6 @@ object OgCardGenerator {
     }
     false
   }
-
-  /** The per-city overlay line under the wordmark — "Repertuar kin w Poznaniu" /
-   *  "Cinema listings in London", in the city's country language. Delegates to
-   *  the shared [[models.City.heading]] (also the page `<title>` and
-   *  the dynamic film OG card) so the static card can't drift back to a
-   *  half-Polish "Repertuar kin in London" on a non-PL deployment. */
-  private[tools] def cityTagline(city: models.City): String = city.heading
 
   /** The `/` home-card tagline for a deployment's language — the line under the
    *  wordmark on `og-home{-code}.jpg`. Mirrors each `messages` bundle's

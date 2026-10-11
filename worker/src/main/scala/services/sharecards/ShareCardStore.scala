@@ -19,6 +19,11 @@ import scala.util.{Try, Using}
  *  - its card BASE, [[BaseDir]]`/<film>.jpg` — the card without its rating badges;
  *  - its poster, [[PosterDir]]`/<film>.jpg` — shrunk to the card's slot.
  *
+ * And each of the country's cities has ONE: its card, `city-<slug>.jpg` ([[cityCardPath]]), served
+ * beside the film cards at `/share-cards/<cc>/city-<slug>.jpg` and re-rendered weekly
+ * ([[CityCardService]]). All of it sits under one budget and one free-space floor
+ * ([[ShareCardRoom]]).
+ *
  * WHAT A FILE WAS DRAWN FROM TRAVELS INSIDE IT: every file carries a JPEG comment
  * (`kinowo:v=<version>[;p=<epoch seconds>]`) written in the same atomic rename as its pixels, so
  * the version can never disagree with the bytes. `v` is the file's input hash; `p`, on a card, is
@@ -38,7 +43,7 @@ import scala.util.{Try, Using}
  *  - What the janitor may delete is decided from the directory ITSELF, never from per-process
  *    counters, so every replica sees the same budget.
  */
-class ShareCardStore(val root: Path) {
+class ShareCardStore(val root: Path, val room: ShareCardRoom = ShareCardRoom.Unlimited) {
   import ShareCardStore.*
 
   // The in-JVM half of a film's lock (see `holding`): per store, because a directory has ONE store
@@ -61,6 +66,16 @@ class ShareCardStore(val root: Path) {
   def cardPath(filmId: String): Path   = root.resolve(ShareCardFile.name(filmId))
   def basePath(filmId: String): Path   = bases.resolve(ShareCardFile.name(filmId))
   def posterPath(filmId: String): Path = posters.resolve(ShareCardFile.name(filmId))
+  /** A city's card, `city-<slug>.jpg` beside the film cards ([[models.City.shareImage]]). */
+  def cityCardPath(city: models.City): Path = root.resolve(city.shareImage)
+
+  /** When the file at `path` was last written, or None when it is absent. */
+  def written(path: Path): Option[Instant] = Try(Files.getLastModifiedTime(path).toInstant).toOption
+
+  /** Mark the file at `path` written now without rewriting it — a re-render that would draw the
+   *  same picture. False when it is gone. */
+  def touch(path: Path, at: Instant): Boolean =
+    Try(Files.setLastModifiedTime(path, java.nio.file.attribute.FileTime.from(at))).isSuccess
   /** Where a paid poster route remembers the posters that failed (see `RememberedFailurePosterDownload`):
    *  a dot directory under the poster cache, which the janitor's listing does not descend into. */
   def failedPosters: Path = posters.resolve(".failed")
@@ -97,7 +112,7 @@ class ShareCardStore(val root: Path) {
         val name = path.getFileName.toString
         Try {
           if (!Files.isRegularFile(path)) None
-          else Some(StoredFile(path, name, kind, temp = name.endsWith(TempSuffix),
+          else Some(StoredFile(path, name, if (kind == Kind.Card && isCityCard(name)) Kind.City else kind, temp = name.endsWith(TempSuffix),
             bytes = Files.size(path), modified = Files.getLastModifiedTime(path).toInstant))
         }.toOption.flatten
       }
@@ -111,6 +126,10 @@ class ShareCardStore(val root: Path) {
    *  `target` holds a card asked for after `asked`. */
   def writeAtomically(target: Path, bytes: Array[Byte], version: String, published: Option[Instant] = None,
                       asked: Option[Instant] = None): Unit = {
+    // THE CAP: a write that would ADD a file is refused while the directory is over its budget or
+    // the volume is short of its free-space floor (see [[ShareCardRoom]]); overwriting a file in
+    // place adds nothing and always goes ahead.
+    if (!Files.exists(target)) room.admit(kindOf(target))
     val temp = target.resolveSibling(s"${target.getFileName}.$writerId-${UUID.randomUUID().toString.take(8)}$TempSuffix")
     try {
       Using.resource(FileChannel.open(temp, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) { channel =>
@@ -155,6 +174,13 @@ class ShareCardStore(val root: Path) {
     Array[Byte](0xff.toByte, 0xd8.toByte, 0xff.toByte, 0xfe.toByte, (length >> 8).toByte, length.toByte) ++ text ++ jpeg.drop(2)
   }
 
+  /** Which of the directory's kinds a file at `path` is. */
+  private def kindOf(path: Path): String =
+    if (path.getParent == posters) Kind.Poster
+    else if (path.getParent == bases) Kind.Base
+    else if (isCityCard(path.getFileName.toString)) Kind.City
+    else Kind.Card
+
   /** Delete `file`; false when it was already gone. */
   def delete(file: StoredFile): Boolean = deletePath(file.path)
 
@@ -193,8 +219,13 @@ object ShareCardStore {
     val Card   = "card"
     val Poster = "poster"
     val Base   = "base"
-    val all: Seq[String] = Seq(Card, Poster, Base)
+    /** A city's card ([[models.City.shareImage]]), beside the film cards. */
+    val City   = "city"
+    val all: Seq[String] = Seq(Card, Poster, Base, City)
   }
+
+  /** True for a city card's name (finished or a temp of one); a film card's never holds a `-`. */
+  def isCityCard(name: String): Boolean = name.startsWith(models.City.ShareImagePrefix)
 
   /** Host and pid, so a temp file names the process that wrote it. */
   private[sharecards] val writerId: String = {
@@ -211,5 +242,60 @@ object ShareCardStore {
  *  in progress (or abandoned by a writer that died). */
 final case class StoredFile(path: Path, name: String, kind: String, temp: Boolean, bytes: Long, modified: Instant) {
   /** The film token its name carries (`<token>.jpg`), for a finished file. */
-  def token: Option[String] = Option.when(!temp && name.endsWith(".jpg"))(name.stripSuffix(".jpg"))
+  def token: Option[String] = Option.when(!temp && kind != ShareCardStore.Kind.City && name.endsWith(".jpg"))(name.stripSuffix(".jpg"))
+
+  /** The city slug a finished city card's name carries (`city-<slug>.jpg`). */
+  def citySlug: Option[String] =
+    Option.when(!temp && kind == ShareCardStore.Kind.City && name.endsWith(".jpg"))(name.stripPrefix(models.City.ShareImagePrefix).stripSuffix(".jpg"))
+}
+
+/** A new file refused by the directory's cap ([[ShareCardRoom]]): nothing written. */
+final class NoRoomForShareCard(kind: String, why: String)
+  extends RuntimeException(s"no room for a new share-card $kind file: $why")
+
+/**
+ * THE CAP ON THE SHARE-CARD DIRECTORY, as the writes see it. What happens at the limit:
+ *
+ *  - Over the BUDGET (`KINOWO_SHARE_CARD_BUDGET_MB`, the janitor's measure): the janitor first
+ *    evicts the oldest files nothing references; when what IS referenced still exceeds it, it
+ *    tells this room ([[measured]]), and from then until a pass finds the directory back under
+ *    budget no NEW file is written.
+ *  - Under the volume's FREE-SPACE FLOOR (`KINOWO_SHARE_CARD_MIN_FREE_MB`, read at each write): the
+ *    same, so the cards never fill the node's disk, whatever else on it is growing.
+ *
+ * Refused is never broken: an existing file is still overwritten in place (a re-render adds no
+ * bytes), and whatever has no card yet falls back — a film page to its city's card, a city page
+ * to its country's home card. Every refusal is counted (`share_cards_refused_total{kind}`) and
+ * alerted on (`ShareCardWritesRefused`).
+ */
+final class ShareCardRoom(val minimumFreeBytes: Long, freeBytes: () => Long, refused: String => Unit = _ => (),
+                          honoursBudget: Boolean = true) {
+  @volatile private var overBudget = false
+
+  /** The janitor's latest measure: whether the directory stays over its budget after pruning. */
+  def measured(overBudget: Boolean): Unit = if (honoursBudget) this.overBudget = overBudget
+
+  /** The volume's free bytes now. */
+  def free(): Long = freeBytes()
+
+  /** THROWS [[NoRoomForShareCard]] when a new `kind` file may not be written. */
+  def admit(kind: String): Unit = {
+    val why =
+      if (overBudget) Some("the directory is over its budget")
+      else Some(free()).filter(_ < minimumFreeBytes).map(f => s"the volume has $f bytes free, under the $minimumFreeBytes-byte floor")
+    why.foreach { reason => refused(kind); throw new NoRoomForShareCard(kind, reason) }
+  }
+}
+
+object ShareCardRoom {
+  /** No cap — for specs that are not about it. Shared, so it ignores the janitor's measure. */
+  val Unlimited: ShareCardRoom = new ShareCardRoom(0L, () => Long.MaxValue, honoursBudget = false)
+
+  /** The room on the volume holding `root`. A volume that cannot be asked reads as roomy: the
+   *  budget still holds, and a stat failing must not stop every render. */
+  def onVolumeOf(root: Path, minimumFree: settings.ShareCardMinimumFree, refused: String => Unit): ShareCardRoom =
+    new ShareCardRoom(minimumFree.bytes, () => Try(Files.getFileStore(root).getUsableSpace).getOrElse(Long.MaxValue), refused)
+
+  /** The volume's total size, for the gauge beside the free bytes. */
+  def volumeSize(root: Path): Option[Long] = Try(Files.getFileStore(root).getTotalSpace).toOption
 }

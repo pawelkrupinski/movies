@@ -2267,15 +2267,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  // ── /movie og:image: the worker's share card, or the city's static card ────
+  // ── /movie og:image: the worker's share card, or the city's ────────────────
   // What a link-preview scraper reads off the parsed page. The fixture corpus has no cards, so
   // a plain film page names the city's card; the purpose-built render names the film's own.
   private def ogImage(page: CdpPage): String =
     page.eval("document.querySelector('meta[property=\"og:image\"]').content").as[String]
 
-  "the /movie og:image" should "name the city's static card while the film has no share card" in {
+  "the /movie og:image" should "name the city's card while the film has no share card" in {
     onPath(s"/movie/${tools.Slugify(firstFixtureTitle)}") { page =>
-      ogImage(page) shouldBe "https://kinowo.net/assets/img/og-poznan.jpg"
+      ogImage(page) shouldBe "https://kinowo.net/share-cards/pl/city-poznan.jpg"
       page.evalInt("document.querySelectorAll('meta[property=\"og:image:width\"][content=\"1200\"]').length") shouldBe 1
     }
   }

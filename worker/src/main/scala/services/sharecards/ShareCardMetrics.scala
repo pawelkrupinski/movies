@@ -11,9 +11,16 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
  * numbers for the same directory: aggregate them with `max by (country, …)`, never `sum` (which
  * would count one directory once per replica). The counters are per process: `sum` them.
  *
- *  - `kinowo_worker_share_cards_bytes{kind}` / `_files{kind}` — everything on disk: cards, the
- *    poster cache and the card bases (`kind="card"|"poster"|"base"`), temp files included. One
- *    budget covers the sum.
+ *  - `kinowo_worker_share_cards_bytes{kind}` / `_files{kind}` — everything on disk: film cards, the
+ *    poster cache, the card bases and the city cards (`kind="card"|"poster"|"base"|"city"`), temp
+ *    files included. One budget covers the sum.
+ *  - `kinowo_worker_share_cards_volume_free_bytes` / `_volume_size_bytes` — the volume holding the
+ *    directory; `_min_free_bytes` — the floor below which no new file is written
+ *    (`KINOWO_SHARE_CARD_MIN_FREE_MB`, see [[ShareCardRoom]]).
+ *  - `kinowo_worker_share_cards_refused_total{kind}` — new files the cap refused.
+ *  - `kinowo_worker_share_cards_city_coverage_ratio` — the country's cities whose card was rendered
+ *    within two weeks, over its cities ([[CityCardService]]).
+ *  - `kinowo_worker_share_cards_city_render_total{outcome}` — city card renders by result.
  *  - `kinowo_worker_share_cards_current_bytes{kind}` — the part no pruner may delete: the cards
  *    `web_movies` points at and the posters of films on screen.
  *  - `kinowo_worker_share_cards_budget_bytes` — `KINOWO_SHARE_CARD_BUDGET_MB`.
@@ -47,6 +54,11 @@ object ShareCardMetrics {
   object Path {
     val BaseHit = "base_hit"; val BaseRebuild = "base_rebuild"; val Full = "full"
     val all: Seq[String] = Seq(BaseHit, BaseRebuild, Full)
+  }
+  /** How a city card's render ended — see [[CityCardService.render]]. */
+  object CityOutcome {
+    val Rendered = "rendered"; val Unchanged = "unchanged"; val Refused = "refused"; val Failed = "failed"
+    val all: Seq[String] = Seq(Rendered, Unchanged, Refused, Failed)
   }
   object RescrapeOutcome {
     val Sent = "sent"; val Failed = "failed"; val Disabled = "disabled"
@@ -96,6 +108,25 @@ object ShareCardMetrics {
       .help("The country's film pages waiting in the fleet's Facebook re-scrape queue. Read from the shared queue: max by country across replicas.")
       .labelNames("country").register(registry)
 
+    private[ShareCardMetrics] val volumeFree = Gauge.builder().name("kinowo_worker_share_cards_volume_free_bytes")
+      .help("Free bytes on the volume holding the country's share-card directory, as the janitor last read them.")
+      .labelNames("country").register(registry)
+    private[ShareCardMetrics] val volumeSize = Gauge.builder().name("kinowo_worker_share_cards_volume_size_bytes")
+      .help("Size of the volume holding the country's share-card directory.")
+      .labelNames("country").register(registry)
+    private[ShareCardMetrics] val minimumFree = Gauge.builder().name("kinowo_worker_share_cards_min_free_bytes")
+      .help("The free space the share cards leave on their volume (KINOWO_SHARE_CARD_MIN_FREE_MB): below it no new file is written.")
+      .labelNames("country").register(registry)
+    private[ShareCardMetrics] val refused = Counter.builder().name("kinowo_worker_share_cards_refused")
+      .help("New share-card files refused by the directory's cap (over its budget, or the volume under its free-space floor), by kind.")
+      .labelNames("country", "kind").register(registry)
+    private[ShareCardMetrics] val cityCoverage = Gauge.builder().name("kinowo_worker_share_cards_city_coverage_ratio")
+      .help("The country's cities whose share card was rendered within the last two weeks, over its cities.")
+      .labelNames("country").register(registry)
+    private[ShareCardMetrics] val cityRenders = Counter.builder().name("kinowo_worker_share_cards_city_render")
+      .help("City share-card renders by outcome: rendered, unchanged (the same picture: only its date moved), refused (no room for a new card), failed.")
+      .labelNames("country", "outcome").register(registry)
+
     for (c <- countryCodes) {
       for (k <- ShareCardStore.Kind.all) { bytes.labelValues(c, k); files.labelValues(c, k); currentBytes.labelValues(c, k) }
       budget.labelValues(c)
@@ -108,6 +139,9 @@ object ShareCardMetrics {
       for (a <- Seq("first", "retry"); r <- Seq("ok", "failed")) posterLoad.labelValues(c, a, r)
       RescrapeOutcome.all.foreach(rescrapes.labelValues(c, _))
       rescrapesWaiting.labelValues(c)
+      volumeFree.labelValues(c); volumeSize.labelValues(c); minimumFree.labelValues(c)
+      ShareCardStore.Kind.all.foreach(refused.labelValues(c, _))
+      CityOutcome.all.foreach(cityRenders.labelValues(c, _))
     }
 
     def forCountry(code: String): ShareCardMetrics = new ShareCardMetrics(code, Some(this))
@@ -131,6 +165,18 @@ object ShareCardMetrics {
     private[sharecards] def rescrapeCount(country: String, outcome: String): Double = rescrapes.labelValues(country, outcome).get()
     /** Test seam: the country's pages waiting in the fleet's re-scrape queue. */
     private[sharecards] def rescrapesWaitingFor(country: String): Double = rescrapesWaiting.labelValues(country).get()
+    /** Test seam: the city coverage gauge's current value. */
+    private[sharecards] def cityCoverageFor(country: String): Double = cityCoverage.labelValues(country).get()
+    /** Test seam: city renders counted by outcome. */
+    private[sharecards] def cityRenderCount(country: String, outcome: String): Double = cityRenders.labelValues(country, outcome).get()
+    /** Test seam: new files refused, by kind. */
+    private[sharecards] def refusedCount(country: String, kind: String): Double = refused.labelValues(country, kind).get()
+    /** Test seam: the volume gauges (free, size, floor). */
+    private[sharecards] def volumeFor(country: String): (Double, Double, Double) =
+      (volumeFree.labelValues(country).get(), volumeSize.labelValues(country).get(), minimumFree.labelValues(country).get())
+    /** Test seam: a directory gauge's (bytes, files) for `kind`. */
+    private[sharecards] def directoryFor(country: String, kind: String): (Double, Double) =
+      (bytes.labelValues(country, kind).get(), files.labelValues(country, kind).get())
     private[sharecards] def renderCount(country: String, outcome: String, reason: String): Double = renders.labelValues(country, outcome, reason).get()
   }
 
@@ -159,6 +205,18 @@ final class ShareCardMetrics private[sharecards] (country: String, series: Optio
   def coverage(ratio: Double): Unit = series.foreach(_.coverage.labelValues(country).set(ratio))
   /** No film on screen to measure: the sample is removed, so the series goes absent rather than hold a stale ratio. */
   def coverageUnknown(): Unit = series.foreach(_.coverage.remove(country))
+
+  def cityRender(outcome: String): Unit = series.foreach(_.cityRenders.labelValues(country, outcome).inc())
+  def cityCoverage(ratio: Double): Unit = series.foreach(_.cityCoverage.labelValues(country).set(ratio))
+  def refused(kind: String): Unit = series.foreach(_.refused.labelValues(country, kind).inc())
+
+  /** The volume under the directory as the janitor last read it, and the floor the writes keep. */
+  def volume(freeBytes: Long, sizeBytes: Option[Long], minimumFreeBytes: Long): Unit =
+    series.foreach { s =>
+      s.volumeFree.labelValues(country).set(freeBytes.toDouble)
+      sizeBytes.foreach(size => s.volumeSize.labelValues(country).set(size.toDouble))
+      s.minimumFree.labelValues(country).set(minimumFreeBytes.toDouble)
+    }
 
   /** The directory's state as the janitor last measured it. */
   def directory(bytesByKind: Map[String, Long], filesByKind: Map[String, Long], currentByKind: Map[String, Long], budgetBytes: Long): Unit =

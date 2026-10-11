@@ -82,6 +82,48 @@ class ShareCardJanitorSpec extends AnyFlatSpec with Matchers {
     report.currentBytes shouldBe 1200
     filmFiles("flive") shouldBe 3
   }
+
+  it should "refuse every NEW file while what it may not evict exceeds it, and admit them again once back under" in new Setup {
+    val room   = new ShareCardRoom(0L, () => Long.MaxValue)
+    val capped = new ShareCardStore(store.root, room)
+    withCard("flive")
+    putFilm("flive", old, size = 400)
+    new ShareCardJanitor(capped, readModel, settings.ShareCardStorageBudget(500), metrics, clock, _ => ()).enforceBudget()
+    a[NoRoomForShareCard] should be thrownBy capped.writeAtomically(capped.cardPath("fnew"), ShareCardTestKit.posterJpeg, "v")
+    Files.exists(capped.cardPath("fnew")) shouldBe false
+    capped.writeAtomically(capped.cardPath("flive"), ShareCardTestKit.posterJpeg, "v") // an overwrite adds nothing
+    new ShareCardJanitor(capped, readModel, settings.ShareCardStorageBudget(1L << 30), metrics, clock, _ => ()).enforceBudget()
+    capped.writeAtomically(capped.cardPath("fnew"), ShareCardTestKit.posterJpeg, "v")
+    Files.exists(capped.cardPath("fnew")) shouldBe true
+  }
+
+  "A city card" should "never be pruned or evicted while its city is in the catalog, however old" in new Setup {
+    put(cityCard("poznan"), old, size = 400)
+    janitor(budget = 1, cities = Set("poznan")).prune().deleted shouldBe empty
+    janitor(budget = 1, cities = Set("poznan")).enforceBudget().deleted shouldBe empty
+    Files.exists(path(cityCard("poznan"))) shouldBe true
+  }
+
+  it should "be retired once its city leaves the catalog — by either pass, past the grace period" in new Setup {
+    put(cityCard("gone-town"), old); put(cityCard("new-gone"), young)
+    janitor(cities = Set("poznan")).enforceBudget().deleted shouldBe Map("retired" -> 1)
+    Files.exists(path(cityCard("gone-town"))) shouldBe false
+    Files.exists(path(cityCard("new-gone"))) shouldBe true
+  }
+
+  "The directory gauges" should "count city cards as their own kind, and read the volume" in new Setup {
+    val series = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
+    put(cityCard("poznan"), old, size = 70); put(cityCard("krakow"), old, size = 30); putFilm("flive", old, size = 5)
+    withCard("flive")
+    val room = new ShareCardRoom(4096L, () => 123456L)
+    new ShareCardJanitor(new ShareCardStore(store.root, room), readModel, settings.ShareCardStorageBudget(1L << 30), series.forCountry("pl"),
+      clock, _ => (), cities = Set("poznan", "krakow")).enforceBudget()
+    series.directoryFor("pl", ShareCardStore.Kind.City) shouldBe (100.0, 2.0)
+    series.directoryFor("pl", ShareCardStore.Kind.Card) shouldBe (5.0, 1.0)
+    val (free, size, floor) = series.volumeFor("pl")
+    (free, floor) shouldBe (123456.0, 4096.0)
+    size should be > 0.0
+  }
 }
 
 object ShareCardJanitorSpec {
@@ -93,8 +135,10 @@ object ShareCardJanitorSpec {
     val old: Instant   = T0.minusSeconds(2 * 3600)
     val young: Instant = T0.minusSeconds(600)
 
-    def janitor(budget: Long = 1L << 30, refresh: String => Unit = _ => ()) =
-      new ShareCardJanitor(store, readModel, settings.ShareCardStorageBudget(budget), metrics, clock, refresh)
+    def janitor(budget: Long = 1L << 30, refresh: String => Unit = _ => (), cities: Set[String] = Set.empty) =
+      new ShareCardJanitor(store, readModel, settings.ShareCardStorageBudget(budget), metrics, clock, refresh, cities = cities)
+
+    def cityCard(slug: String): String = s"city-$slug.jpg"
 
     def path(name: String): Path = store.root.resolve(name)
     def put(name: String, modified: Instant, size: Int = 10): Unit = {

@@ -285,6 +285,15 @@ GET     /sitemap.xml                controllers.MovieController.sitemap
 # content, just served at the flat address instead.
 GET     /sitemap-root.xml           controllers.MovieController.sitemapRoot
 
+# ── City share cards ──────────────────────────────────────────────────────────
+# A city's card is the worker's, on disk, served by Caddy at /share-cards/<cc>/city-<slug>.jpg.
+# Its OLD address, the committed asset `og-<slug>.jpg`, is cached by link previews: 301'd to the
+# new one. Above the assets route, and never a home card (`og-home.jpg`, `og-home-<cc>.jpg`),
+# which are still assets.
+GET     /assets/img/$file<og-(?!home(-[a-z]{2})?\.jpg$)[a-z0-9-]+\.jpg>   controllers.MovieController.legacyCityCard(file: String)
+# Where Caddy sends a request for a city card the worker has not drawn yet: the country's home card.
+GET     /share-card-fallback/:country controllers.MovieController.cityCardFallback(country: String)
+
 # ── Static assets ─────────────────────────────────────────────────────────────
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
 

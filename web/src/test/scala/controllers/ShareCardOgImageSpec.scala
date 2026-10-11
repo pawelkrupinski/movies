@@ -32,7 +32,7 @@ class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
   }
 
   private val request = FakeRequest().withHeaders("Host" -> "kinowo.net", "X-Forwarded-Proto" -> "https")
-  private val cityCard = "https://kinowo.net/assets/img/og-poznan.jpg"
+  private val cityCard = "https://kinowo.net/share-cards/pl/city-poznan.jpg"
 
   private def ogImage(slug: String): Option[String] =
     """<meta property="og:image"\s+content="([^"]+)">""".r
@@ -75,9 +75,50 @@ class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
     redirectLocation(ctrl.ogImage("poznan", "No Such Film").apply(request)) shouldBe Some(cityCard)
   }
 
-  "The old city card URL" should "redirect to the city's static card" in {
+  "The old city card URL" should "redirect to the city's card" in {
     val result = controller().cityOgImage("poznan").apply(request)
     status(result) shouldBe MOVED_PERMANENTLY
     redirectLocation(result) shouldBe Some(cityCard)
+  }
+
+  "A city's card" should "be the worker's file on disk, on its country's host" in {
+    ShareCardUrl.city(models.Poznan) shouldBe cityCard
+    ShareCardUrl.city(models.London) shouldBe "https://showtimes.cc/share-cards/uk/city-london.jpg"
+  }
+
+  // Every city slug must pass Caddy's share-card matcher, `[A-Za-z0-9_-][A-Za-z0-9._-]*\.jpg`, or
+  // its card is a 404 however well the worker drew it.
+  it should "have a file name Caddy serves, for every city in every country" in {
+    models.Country.all.flatMap(_.cities).map(_.shareImage).filterNot(_.matches("city-[a-z0-9-]+\\.jpg")) shouldBe empty
+  }
+
+  "The committed-asset city card URL" should "redirect permanently to the worker's card" in {
+    val result = controller().legacyCityCard("og-poznan.jpg").apply(request)
+    status(result) shouldBe MOVED_PERMANENTLY
+    redirectLocation(result) shouldBe Some(cityCard)
+  }
+
+  // The route that sends it there, read off the routes file: above the assets route (Play matches
+  // top-down), taking every old city card and never a home card, which is still an asset.
+  it should "be routed ahead of the assets, and never take a home card" in {
+    val lines   = scala.io.Source.fromResource("routes").getLines().map(_.trim).filterNot(l => l.isEmpty || l.startsWith("#")).toVector
+    val legacy  = lines.indexWhere(_.contains("MovieController.legacyCityCard"))
+    val assets  = lines.indexWhere(_.contains("controllers.Assets.versioned"))
+    legacy should (be >= 0 and be < assets)
+    val pattern = "\\$file<(.+)>".r.findFirstMatchIn(lines(legacy)).get.group(1)
+    Seq("og-poznan.jpg", "og-zielona-gora.jpg", "og-homestead.jpg").filterNot(_.matches(pattern)) shouldBe empty
+    Seq("og-home.jpg", "og-home-uk.jpg", "og-home-us.jpg", "logo.png", "og-poznan.png").filter(_.matches(pattern)) shouldBe empty
+  }
+
+  it should "send a slug no city answers to any more to the home card" in {
+    val result = controller().legacyCityCard("og-atlantis.jpg").apply(request)
+    status(result) shouldBe FOUND
+    redirectLocation(result) shouldBe Some("https://kinowo.net/assets/img/og-home.jpg")
+  }
+
+  "A city card the worker has not drawn yet" should "fall back to its country's home card, never a 404" in {
+    redirectLocation(controller().cityCardFallback("uk").apply(request)) shouldBe Some("https://showtimes.cc/uk/assets/img/og-home-uk.jpg")
+    redirectLocation(controller().cityCardFallback("pl").apply(request)) shouldBe Some("https://kinowo.net/assets/img/og-home.jpg")
+    redirectLocation(controller().cityCardFallback("zz").apply(request)) shouldBe Some("https://kinowo.net/assets/img/og-home.jpg")
   }
 }

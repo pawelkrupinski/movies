@@ -26,7 +26,18 @@ final case class StreamCheckpoint(value: Long)
  * so [[ReadModelReader.findAllScreeningRefs]] projects them server-side instead of
  * decoding the whole `web_screenings` corpus (6k+ documents) onto the heap.
  */
-final case class ScreeningRef(_id: String, filmId: String)
+final case class ScreeningRef(_id: String, filmId: String) {
+  /** The city the row is filed under, read back off its `_id` — `<card>|<city>|<cinema>`, the card
+   *  being the film id or `<film>~<variant>` (`ReadModelProjection.screeningId`). A film id may
+   *  itself hold a `|` (a legacy `title|year` id), so the city is found AFTER the film id, never by
+   *  splitting the whole id. None for an id not shaped so. */
+  def citySlug: Option[String] =
+    Option.when(_id.startsWith(filmId))(_id.substring(filmId.length)).flatMap { rest =>
+      val afterCard = rest.indexOf('|')
+      val end       = if (afterCard < 0) -1 else rest.indexOf('|', afterCard + 1)
+      Option.when(end > afterCard + 1)(rest.substring(afterCard + 1, end))
+    }
+}
 
 /** What the share-card janitor needs of one `web_movies` document: the card it points at — so it
  *  can tell which films' files are still referenced without decoding the whole film. */

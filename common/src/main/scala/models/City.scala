@@ -146,13 +146,12 @@ sealed abstract class City(
     }
     s"$caption $locativePhrase"
   }
-  /** Filename (under `assets/img/`) of this city's share-preview card — the
-   *  repertoire montage `tools.OgCardGenerator` writes and every `/{slug}/` page
-   *  names as its `og:image`. The city half of [[Country.homeOgImage]], and here
-   *  rather than spelled out at each use for the same reason: the extension and
-   *  the naming scheme have both changed under it, and a second spelling is a
-   *  second thing to miss. */
-  def shareImage: String = s"og-$slug.jpg"
+  /** File name of this city's share-preview card in its country's share-card directory — the card
+   *  the worker renders (`services.sharecards.CityCardService`), Caddy serves at
+   *  `/share-cards/<cc>/<this>` and every `/{slug}/` page names as its `og:image`. One spelling
+   *  for the writer and the reader. The `city-` prefix keeps it apart from the film cards beside
+   *  it, whose names never hold a `-`. */
+  def shareImage: String = s"${City.ShareImagePrefix}$slug.jpg"
   /** The city label used in the "…skich kin" ("<city>'s cinemas") genitive-plural
    *  slot: the declined Polish adjective ("poznańskich"), or — for a language
    *  that doesn't decline — the plain nominative ("London"). */
@@ -1577,6 +1576,9 @@ object City {
   val allModelled: Seq[City] = polishCities ++ allUkCities ++ germanCities ++ usCities ++ spanishCities
 
   def bySlug(slug: String): Option[City] = all.find(_.slug == slug)
+
+  /** What starts every city's [[City.shareImage]]. */
+  val ShareImagePrefix: String = "city-"
 
   /** Reverse lookup: which city a cinema belongs to. Each cinema appears in
    *  exactly one city's `cinemas` list, so the map is unambiguous. Used by

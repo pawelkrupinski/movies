@@ -732,9 +732,24 @@ class MovieController( cc: ControllerComponents,
   }
 
   /** `/:city/og-image` — the city card's old, web-rendered address, kept because link previews
-   *  cached it. Permanently redirected, unlike [[ogImage]]: the city's static card never moves. */
+   *  cached it. Permanently redirected, unlike [[ogImage]]: the city card's address never moves. */
   def cityOgImage(city: String): Action[AnyContent] = Action {
     withCity(city)(c => MovedPermanently(ShareCardUrl.city(c)))
+  }
+
+  /** `/assets/img/og-<slug>.jpg` — the city card's address while it was a committed asset, kept
+   *  because link previews cached it: permanently redirected to the worker's card. A slug no city
+   *  answers to any more goes to this deployment's home card. */
+  def legacyCityCard(file: String): Action[AnyContent] = Action {
+    val slug = file.stripPrefix("og-").stripSuffix(".jpg")
+    models.City.bySlug(slug).fold(Found(ShareCardUrl.home(servingCountry)))(city => MovedPermanently(ShareCardUrl.city(city)))
+  }
+
+  /** `/share-card-fallback/<cc>` — where Caddy sends a request for a city card the worker has not
+   *  drawn yet (a city new to the catalog): the country's home card, never a 404. A 302: the card
+   *  will exist soon. */
+  def cityCardFallback(country: String): Action[AnyContent] = Action {
+    Found(ShareCardUrl.home(models.Country.byCode(country).getOrElse(servingCountry)))
   }
 
   private def devOnly(result: => play.api.mvc.Result): play.api.mvc.Result = DevMode.gate(environment)(result)

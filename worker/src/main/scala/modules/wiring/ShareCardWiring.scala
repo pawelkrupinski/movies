@@ -1,6 +1,6 @@
 package modules.wiring
 
-import settings.{PosterDecodeMemoryCap, ShareCardBackfillMaxBacklog, ShareCardStorageBudget}
+import settings.{PosterDecodeMemoryCap, ShareCardBackfillMaxBacklog, ShareCardMinimumFree, ShareCardStorageBudget}
 
 import modules.WorkerWiring
 import services.readmodel.ShareCardLedger
@@ -10,8 +10,8 @@ import services.tasks.{ClaimedEnqueueReaper, TaskHandler, TaskType}
 
 import scala.concurrent.duration.*
 
-/** ── Film share cards ─────────────────────────────────────────────────────────
- *  The worker renders each film's Open Graph card into this country's share-card directory
+/** ── Film and city share cards ──────────────────────────────────────────────
+ *  The worker renders each film's and each city's Open Graph card into this country's share-card directory
  *  (`KINOWO_SHARE_CARD_DIR`, default `/share-cards` — the pod's mount of the node's
  *  `/var/lib/kinowo/share-cards/<cc>`; a process running several countries sets it to
  *  `/share-cards/{cc}`), and the projection records each card's path and version on `web_movies`.
@@ -22,8 +22,11 @@ import scala.concurrent.duration.*
  *  pipeline is off and the projection runs with [[ShareCardLedger.none]]. */
 trait ShareCardWiring { self: WorkerWiring =>
 
-  lazy val shareCardStore: ShareCardStore =
-    new ShareCardStore(configuration.shareCardDirectory.forCountry(country))
+  lazy val shareCardStore: ShareCardStore = {
+    val directory = configuration.shareCardDirectory.forCountry(country)
+    new ShareCardStore(directory, ShareCardRoom.onVolumeOf(directory,
+      configuration.shareCardMinimumFree(ShareCardMinimumFree(ShareCardWiring.DefaultMinimumFreeMb * 1024 * 1024)), shareCardMetrics.refused))
+  }
 
   lazy val shareCardsEnabled: Boolean = shareCardStore.usable
 
@@ -99,7 +102,11 @@ trait ShareCardWiring { self: WorkerWiring =>
 
   lazy val shareCardJanitor: ShareCardJanitor = new ShareCardJanitor(
     shareCardStore, readModelRepository, shareCardBudget, shareCardMetrics, clock,
-    refresh = readModelProjector.refreshShareCard)
+    refresh = readModelProjector.refreshShareCard, cities = country.cities.iterator.map(_.slug).toSet)
+
+  /** The country's city cards, each re-rendered weekly at its own phase. */
+  lazy val cityCardService: CityCardService =
+    new CityCardService(country, shareCardStore, readModelRepository, taskQueue, shareCardMetrics, clock)
 
   lazy val shareCardBackfill: ShareCardBackfill =
     new ShareCardBackfill(shareCardService, readModelRepository, taskQueue, shareCardMetrics, clock,
@@ -113,7 +120,8 @@ trait ShareCardWiring { self: WorkerWiring =>
     else Seq(
       new RenderShareCardHandler(shareCardService),
       new PruneShareCardsHandler(shareCardJanitor),
-      new ReleaseShareCardHoldHandler(() => readModelProjector.releaseExpiredHolds()))
+      new ReleaseShareCardHoldHandler(() => readModelProjector.releaseExpiredHolds()),
+      new RenderCityCardHandler(cityCardService))
 
   /** The recurring enqueues: the budget pass every ten minutes (first four after boot), the full
    *  prune daily at 03:00 UTC (or five minutes after a boot that finds that day's prune never ran). Each window is claimed, so one replica enqueues it. */
@@ -128,7 +136,9 @@ trait ShareCardWiring { self: WorkerWiring =>
           10.minutes, 4.minutes, scheduledRunStore, clock),
         new ClaimedEnqueueReaper("share-card-prune",
           enqueue(TaskType.PruneShareCards, "share-card-prune", Map(PruneShareCardsHandler.ModeKey -> PruneShareCardsHandler.Daily)),
-          24.hours, 5.minutes, scheduledRunStore, clock, ClaimedEnqueueReaper.Timing.Aligned(ShareCardWiring.DailyPruneAt)))
+          24.hours, 5.minutes, scheduledRunStore, clock, ClaimedEnqueueReaper.Timing.Aligned(ShareCardWiring.DailyPruneAt)),
+        // The city cards' weekly spread, ticked every minute like the scrape reaper.
+        new ClaimedEnqueueReaper("city-card", () => { cityCardService.enqueueDue(); () }, 1.minute, 3.minutes, scheduledRunStore, clock))
     })
 }
 
@@ -136,6 +146,11 @@ object ShareCardWiring {
   /** When the daily share-card prune runs, past midnight UTC: a fixed time, so its burst of
    *  deletions lands at one place on the dashboard however the day's deploys fall. */
   val DailyPruneAt: FiniteDuration = 3.hours
+
+  /** The free space the cards leave on their volume, in MB (`KINOWO_SHARE_CARD_MIN_FREE_MB`): 4 GiB,
+   *  under FilesystemSpaceCritical's 7% of k3s-worker-1's 160 GB root, so the node's own alerts fire
+   *  first and this floor only ever stops the cards being what fills it. */
+  val DefaultMinimumFreeMb: Long = 4096
 
   /** The database every country's worker shares: the fleet's Facebook re-scrape queue and quota.
    *

@@ -23,14 +23,14 @@ class RepertoirePreviewMetaSpec extends AnyFlatSpec with Matchers {
 
   "the city index preview" should "point og:image + twitter:image at the city's own card" in {
     val html = render(Poznan)
-    html should include ("""content="https://kinowo.net/assets/img/og-poznan.jpg"""")
+    html should include ("""content="https://kinowo.net/share-cards/pl/city-poznan.jpg"""")
     // og:image AND twitter:image both carry it.
-    html.sliding("og-poznan.jpg".length).count(_ == "og-poznan.jpg") should be >= 2
+    html.sliding("city-poznan.jpg".length).count(_ == "city-poznan.jpg") should be >= 2
   }
 
   it should "use a different card per city (not a shared national image)" in {
-    render(Poznan) should include ("og-poznan.jpg")
-    render(Wroclaw) should include ("og-wroclaw.jpg")
+    render(Poznan) should include ("share-cards/pl/city-poznan.jpg")
+    render(Wroclaw) should include ("share-cards/pl/city-wroclaw.jpg")
     render(Poznan) should not include "og-home.jpg"
     render(Poznan) should not include "og-image.png"
   }
