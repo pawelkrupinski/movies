@@ -400,7 +400,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   /** The in-page helper APIs this spec's tests call (`web/src/page/resources/`,
    *  see [[tools.PageScripts]]): pure definitions, installed in every tab before
    *  its body runs and again ahead of every document it loads after. */
-  private val PageHelpers = Seq("user-state/user-state.js")
+  private val PageHelpers = Seq("common/dom.js", "film/film-page.js", "layout/navbar.js", "user-state/user-state.js")
 
   /** Open `url` in a fresh tab with [[PageHelpers]] installed. Cancels the test
    *  cleanly when Chrome wasn't located in beforeAll. */
@@ -1038,20 +1038,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   /** Type `q` into the dynamic picker's search box and fire the `input`
    *  handler. */
   private def typePickerSearch(page: CdpPage, q: String): Unit =
-    page.eval(
-      "(function(){var i=document.getElementById('picker-search');" +
-      s"""i.value="$q";""" +
-      "i.dispatchEvent(new Event('input'));})()")
+    page.eval(s"__dom.type('#picker-search', ${jsString(q)})")
 
   /** JSON array of the current level's row labels, in DOM order. Reads
    *  `.picker-item-label` rather than the row's own `.textContent` — a
    *  region/subregion row also carries a chevron `<span>`, whose text
    *  `.textContent` would otherwise run straight into the label's. */
   private def pickerRowLabels(page: CdpPage): String =
-    page.evalString(
-      "JSON.stringify(Array.prototype.map.call(" +
-      "document.querySelectorAll('#picker-list .picker-item-label'),"+
-      "function(el){return el.textContent.trim();}))")
+    page.evalString("JSON.stringify(__dom.texts('#picker-list .picker-item-label'))")
 
   private def pickerRowCount(page: CdpPage): Int =
     page.evalInt("document.querySelectorAll('#picker-list .picker-item').length")
@@ -1066,17 +1060,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  subregion heading (drills in) or a city (would navigate; not exercised
    *  here, see `city-select.spec.ts`). */
   private def clickPickerRow(page: CdpPage, label: String): Unit =
-    page.eval(
-      "Array.prototype.filter.call(document.querySelectorAll('#picker-list .picker-item-label')," +
-      s"""function(el){return el.textContent.trim()==="$label";})[0].click()""")
+    page.eval(s"__dom.clickText('#picker-list .picker-item-label', ${jsString(label)})")
 
   /** Click the country pill whose label is `label` — the country's name in
    *  the VISITOR's chosen UI language (its `data-i18n="country.<code>"`,
    *  relabelled by `applyLanguage`), not the country's own fixed native label. */
   private def clickCountryPill(page: CdpPage, label: String): Unit =
-    page.eval(
-      "Array.prototype.filter.call(document.querySelectorAll('#picker-countries .picker-country-pill')," +
-      s"""function(el){return el.textContent.trim()==="$label";})[0].click()""")
+    page.eval(s"__dom.clickText('#picker-countries .picker-country-pill', ${jsString(label)})")
 
   "the dynamic picker's search" should "narrow the country's rows to a typed city name, across its groups" in {
     onLanding { page =>
@@ -1643,16 +1633,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // uncaught ReferenceError and the menu never opened.
   it should "toggle the auth menu open on a real click through the inline onclick" in {
     onPath("/") { page =>
-      val opened = page.evalBool(
-        "(() => {" +
-        "  const m = document.createElement('div');" +
-        "  m.id = 'auth-menu'; m.className = 'auth-menu';" +
-        "  m.setAttribute('onclick', 'toggleAuthMenu(event)');" +
-        "  document.body.appendChild(m);" +
-        "  m.click();" +
-        "  return m.classList.contains('open');" +
-        "})()"
-      )
+      val opened = page.evalBool("__navbar.clickInlineAuthMenu()")
       opened shouldBe true
     }
   }
@@ -1672,42 +1653,21 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   "delegated handlers" should "tolerate a click event whose target isn't an Element" in {
     onPath("/") { page =>
-      val ok = page.evalBool(
-        """(() => {
-          |  try {
-          |    document.dispatchEvent(new MouseEvent('click', { bubbles: false }));
-          |    return true;
-          |  } catch (e) { return false; }
-          |})()""".stripMargin
-      )
+      val ok = page.evalBool("__dom.dispatchesOnDocument(new MouseEvent('click', { bubbles: false }))")
       ok shouldBe true
     }
   }
 
   it should "tolerate a mouseover event whose target isn't an Element" in {
     onPath("/") { page =>
-      val ok = page.evalBool(
-        """(() => {
-          |  try {
-          |    document.dispatchEvent(new MouseEvent('mouseover', { bubbles: false }));
-          |    return true;
-          |  } catch (e) { return false; }
-          |})()""".stripMargin
-      )
+      val ok = page.evalBool("__dom.dispatchesOnDocument(new MouseEvent('mouseover', { bubbles: false }))")
       ok shouldBe true
     }
   }
 
   it should "tolerate a touchstart event whose target isn't an Element" in {
     onPath("/") { page =>
-      val ok = page.evalBool(
-        """(() => {
-          |  try {
-          |    document.dispatchEvent(new Event('touchstart', { bubbles: false }));
-          |    return true;
-          |  } catch (e) { return false; }
-          |})()""".stripMargin
-      )
+      val ok = page.evalBool("__dom.dispatchesOnDocument(new Event('touchstart', { bubbles: false }))")
       ok shouldBe true
     }
   }
@@ -1855,13 +1815,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // Simulate the keyboard stealing 300px off the bottom of the visual
       // viewport, focus the field, and run the tracker.
-      page.eval(
-        "Object.defineProperty(window, 'visualViewport', { configurable: true, value: {" +
-        "  height: window.innerHeight - 300, offsetTop: 0," +
-        "  addEventListener() {}, removeEventListener() {} } });" +
-        "document.getElementById('search-input').focus();" +
-        "applySearchKeyboardInset();"
-      )
+      page.eval("__navbar.openKeyboard(300)")
 
       val insetVar = page.evalString(
         "getComputedStyle(document.documentElement).getPropertyValue('--keyboard-inset').trim()"
@@ -1874,11 +1828,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       }
 
       // Restore the real visual viewport, clear the inset, blur, reset metrics.
-      page.eval(
-        "delete window.visualViewport;" +
-        "document.documentElement.style.removeProperty('--keyboard-inset');" +
-        "document.getElementById('search-input').blur();"
-      )
+      page.eval("__navbar.closeKeyboard()")
       page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())
     }
   }
@@ -1984,24 +1934,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // `buildAuthMenu` hydrates in) to exercise the realistic
       // logged-in mobile navbar; `.auth-name` hides at this width but the
       // `.auth-menu` pill itself stays visible.
-      page.eval(
-        "(() => { const a = document.querySelector('.navbar-auth');" +
-        "          if (a && !a.children.length) {" +
-        "            const pill = document.createElement('div');" +
-        "            pill.className = 'auth-menu';" +
-        "            pill.id = 'auth-menu';" +
-        "            pill.innerHTML = '<span class=\"auth-avatar-fallback\">A</span>" +
-        "<span class=\"auth-name\">Anonim</span>';" +
-        "            a.appendChild(pill);" +
-        "          } })()"
-      )
+      page.eval("__navbar.addAvatarPill()")
 
       def rect(sel: String): (Double, Double) =
-        page.evalString(
-          s"(() => { const r = document.querySelector(${jsString(sel)}).getBoundingClientRect();" +
-          s"          return r.top + '|' + r.left; })()"
-        ).split('|') match {
-          case Array(t, l) => (t.toDouble, l.toDouble)
+        page.eval(s"__dom.topLeft(${jsString(sel)})").as[Seq[Double]] match {
+          case Seq(t, l) => (t, l)
         }
       val (searchTop, _         ) = rect(".navbar-search")
       val (authTop,   authLeft  ) = rect(".navbar-auth")
@@ -2030,13 +1967,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // navbar can carry must NOT change its footprint (it's an icon, not
       // a growing text label), so it stays next to date on its row instead
       // of being pushed onto a row of its own.
-      page.eval(
-        "document.querySelector('input[name=\"format-dim\"][value=\"2D\"]').click(); " +
-        "document.querySelector('input[name=\"format-lang\"][value=\"NAP\"]').click(); " +
-        "document.getElementById('format-imax').click(); " +
-        "document.getElementById('from-hour').value = '18'; onFormatChange(); " +
-        "updateFormatBtn();"
-      )
+      page.eval("__navbar.setEveryFilter()")
       page.awaitRenderedFrame()
       val (dateTop2,   _) = rect(".navbar-date")
       val (filtryTop2, _) = rect(".navbar-filtry")
@@ -2116,30 +2047,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // navbar flow as a bottom overlay, so it's not a row member and its
           // top sits well below the row — counting it would always read as a
           // second row.
-          val rowCount = page.evalInt(
-            "(() => { const nav = document.querySelector('.navbar');" +
-            "          const tops = new Set();" +
-            "          for (const c of nav.children) {" +
-            "            const r = c.getBoundingClientRect();" +
-            "            if (r.width === 0 || r.height === 0) continue;" +
-            "            if (getComputedStyle(c).position === 'fixed') continue;" +
-            "            tops.add(Math.round(r.top));" +
-            "          }" +
-            "          return tops.size; })()"
-          )
-          val overflowPx = page.evalInt(
-            "(() => { const nav = document.querySelector('.navbar');" +
-            "          const navRight = nav.getBoundingClientRect().right;" +
-            "          let maxOver = 0;" +
-            "          for (const c of nav.children) {" +
-            "            const r = c.getBoundingClientRect();" +
-            "            if (r.width === 0 || r.height === 0) continue;" +
-            "            if (getComputedStyle(c).position === 'fixed') continue;" +
-            "            const over = Math.ceil(r.right - navRight);" +
-            "            if (over > maxOver) maxOver = over;" +
-            "          }" +
-            "          return maxOver; })()"
-          )
+          val rowCount = page.evalInt("__navbar.rows(true)")
+          val overflowPx = page.evalInt("__navbar.overflow()")
           // Sanity: --mobile-scale is monotone-nondecreasing in viewport
           // and lands exactly on 1.0 at the breakpoint top.
           // `getComputedStyle.getPropertyValue` returns the *declared* CSS
@@ -2156,22 +2065,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // resolve `100vw`-relative clamps; reading by `clientWidth`
           // (which the var-style probe uses) succeeds across every
           // matrix Chrome version.
-          val scale = page.evalString(
-            "(() => {" +
-            "  const inProbe = (parent, extraStyle) => {" +
-            "    const d = document.createElement('div');" +
-            "    d.style.cssText = 'width:calc(1000px*var(--mobile-scale));' + extraStyle;" +
-            "    parent.appendChild(d);" +
-            "    const w = d.clientWidth;" +
-            "    parent.removeChild(d);" +
-            "    return w;" +
-            "  };" +
-            "  let w = inProbe(document.body," +
-            "    'position:fixed;visibility:hidden;top:0;left:0');" +
-            "  if (!w) w = inProbe(document.body, 'display:block');" +
-            "  return String(w / 1000);" +
-            "})()"
-          ).toDouble
+          val scale = page.eval("__navbar.mobileScale()").as[Double]
           Row(w, rowCount, overflowPx, scale)
         }
 
@@ -2255,15 +2149,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   /** Switch off `count` of the film's cinemas the way the Filtry sheet does —
    *  by display name into `disabledCinemas` — and re-run the page's filter.
    *  Returns the names switched off. */
-  private def disableCinemas(page: CdpPage, count: Int): Seq[String] = {
-    val names = page.eval(
-      s"""[...document.querySelectorAll('.cinema-group[data-cinema]')]
-         |  .map(g => g.dataset.cinema).slice(0, $count)""".stripMargin).as[Seq[String]]
-    page.eval(
-      s"""localStorage.setItem('disabledCinemas', JSON.stringify(${Json.toJson(names)}));
-         |applyFilters()""".stripMargin)
-    names
-  }
+  private def disableCinemas(page: CdpPage, count: Int): Seq[String] =
+    page.eval(s"__film.disableCinemas($count)").as[Seq[String]]
 
   "the /movie showings tree" should "render every cinema of a date, unfolded and with no button" in {
     onFilmMany { page =>
@@ -2280,10 +2167,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       visibleCinemaGroups(page) shouldBe 8
       // Hidden are the ones named, not merely four of them.
-      page.eval(
-        """[...document.querySelectorAll('.cinema-group[data-cinema]')]
-          |  .filter(g => g.offsetParent === null).map(g => g.dataset.cinema)""".stripMargin
-      ).as[Seq[String]] should contain theSameElementsAs off
+      page.eval("__film.hiddenGroups()").as[Seq[String]] should contain theSameElementsAs off
     }
   }
 
@@ -2341,10 +2225,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onFilmMany { page =>
       val off = disableCinemas(page, 4)
 
-      page.eval(
-        """[...document.querySelectorAll('.cinema-link[data-cinema]')]
-          |  .filter(a => a.style.display === 'none').map(a => a.dataset.cinema)""".stripMargin
-      ).as[Seq[String]] should contain theSameElementsAs off
+      page.eval("__film.filteredLinks()").as[Seq[String]] should contain theSameElementsAs off
     }
   }
 
@@ -2389,10 +2270,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       visibleCinemaLinks(page)  shouldBe 8
       visibleCinemaGroups(page) shouldBe 8
-      page.eval(
-        """[...document.querySelectorAll('.cinema-link[data-cinema]')]
-          |  .filter(a => a.offsetParent !== null).map(a => a.dataset.cinema)""".stripMargin
-      ).as[Seq[String]] should contain noElementsOf off
+      page.eval("__film.shownLinks()").as[Seq[String]] should contain noElementsOf off
     }
   }
 
@@ -2478,14 +2356,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   "the /movie page elements" should "all be visible at desktop width" in {
     onPath(filmTarget) { page =>
       page.setDesktopViewport(1280, 900)
-      val failures = filmVisibleElements.flatMap { case (label, sel) =>
-        val visible = page.evalBool(
-          s"(function(){ var element = document.querySelector('$sel');" +
-          "if (!element) return false; var r = element.getBoundingClientRect();" +
-          "return r.width > 0 && r.height > 0; })()"
-        )
-        if (visible) None else Some(label)
-      }
+      val failures = filmVisibleElements.collect { case (label, sel) if !page.evalBool(s"__dom.hasBox('$sel')") => label }
       page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())
       withClue(s"Not visible at 1280px desktop: ${failures.mkString(", ")}\n") {
         failures shouldBe empty
@@ -2496,14 +2367,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "all be visible at mobile width (375px)" in {
     onPath(filmTarget) { page =>
       page.setViewport(375, 800)
-      val failures = filmVisibleElements.flatMap { case (label, sel) =>
-        val visible = page.evalBool(
-          s"(function(){ var element = document.querySelector('$sel');" +
-          "if (!element) return false; var r = element.getBoundingClientRect();" +
-          "return r.width > 0 && r.height > 0; })()"
-        )
-        if (visible) None else Some(label)
-      }
+      val failures = filmVisibleElements.collect { case (label, sel) if !page.evalBool(s"__dom.hasBox('$sel')") => label }
       page.send("Emulation.clearDeviceMetricsOverride", play.api.libs.json.Json.obj())
       withClue(s"Not visible at 375px mobile: ${failures.mkString(", ")}\n") {
         failures shouldBe empty
@@ -2526,11 +2390,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalBool(open) shouldBe false
 
       openIt()
-      page.evalBool(
-        "(function(){ var r = document.querySelector('#poster-lightbox img').getBoundingClientRect();" +
-        "return r.width > 0 && r.height > 0 && " +
-        "(r.width >= innerWidth - 1 || r.height >= innerHeight - 1); })()"
-      ) shouldBe true
+      page.evalBool("__film.lightboxFillsScreen()") shouldBe true
       page.evalString("document.querySelector('#poster-lightbox img').src") shouldBe
         page.evalString("document.querySelector('.poster-img').currentSrc")
       page.evalString("document.documentElement.style.overflow") shouldBe "hidden"
@@ -2619,12 +2479,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  for the /movie hero — the poster box and the title that heads the
    *  details column. */
   private def filmHeroGeometry(page: CdpPage): (Double, Double, Double, Double, Double, Double) =
-    page.evalString(
-      "(() => { const p = document.querySelector('.poster-wrap').getBoundingClientRect();" +
-      "          const t = document.querySelector('.film-title').getBoundingClientRect();" +
-      "          return [p.top, p.right, p.bottom, p.left, t.top, t.left].join('|'); })()"
-    ).split('|').map(_.toDouble) match {
-      case Array(pt, pr, pb, pl, tt, tl) => (pt, pr, pb, pl, tt, tl)
+    page.eval("__film.heroGeometry()").as[Seq[Double]] match {
+      case Seq(pt, pr, pb, pl, tt, tl) => (pt, pr, pb, pl, tt, tl)
     }
 
   // Widths in the "cramped band": wide enough that the 300 px poster +
@@ -2702,32 +2558,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         // Same anonymous-user pill injection the mobile sweep uses, so
         // the navbar width measurement covers the realistic prod
         // layout (logged-out visitor with a Zaloguj-się button).
-        page.eval(
-          "(() => { const a = document.querySelector('.navbar-auth');" +
-          "          if (a && !a.children.length) {" +
-          "            const btn = document.createElement('button');" +
-          "            btn.type = 'button';" +
-          "            btn.className = 'nav-tab nav-tab-login';" +
-          "            btn.textContent = 'Zaloguj';" +
-          "            a.appendChild(btn);" +
-          "          } })()"
-        )
+        page.eval("__navbar.addLoginButton()")
 
         case class Row(width: Int, rows: Int, documentOverflow: Int)
         val measured: Seq[Row] = DesktopViewports.map { w =>
           page.setDesktopViewport(w, 900)
           page.awaitRenderedFrame()
 
-          val rowCount = page.evalInt(
-            "(() => { const nav = document.querySelector('.navbar');" +
-            "          const tops = new Set();" +
-            "          for (const c of nav.children) {" +
-            "            const r = c.getBoundingClientRect();" +
-            "            if (r.width === 0 || r.height === 0) continue;" +
-            "            tops.add(Math.round(r.top));" +
-            "          }" +
-            "          return tops.size; })()"
-          )
+          val rowCount = page.evalInt("__navbar.rows(false)")
           val documentOverflow = page.evalInt(
             "Math.max(0, document.documentElement.scrollWidth - window.innerWidth)"
           )
@@ -6101,11 +5939,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  users on narrower system fonts are even more comfortably inside
    *  the layout bounds. */
   private def pinDeterministicFont(page: CdpPage): Unit =
-    page.eval(
-      "(() => { const s = document.createElement('style');" +
-      "          s.textContent = '*, body { font-family: Arial, \"Liberation Sans\", sans-serif !important; }';" +
-      "          document.head.appendChild(s); })()"
-    )
+    page.eval("__dom.pinFont()")
 
   /** Quote a string for embedding inside a JS expression. Round-trips
    *  Polish diacritics + apostrophes via `JSON.stringify`-compatible
@@ -6240,9 +6074,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           """.find(tr => tr.dataset.haystack.includes('pending')).click()""")
       page.evalString(attachedDetailsCount) shouldBe "1"
 
-      page.eval(
-        "(function(){var i=document.getElementById('q');" +
-          "i.value='done';i.dispatchEvent(new Event('input'));})()")
+      page.eval("__dom.type('#q', 'done')")
 
       page.evalString(
         """[...document.querySelectorAll('#t tbody tr.data')]""" +
@@ -6258,9 +6090,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalString(attachedDetailsCount) shouldBe "0"
 
       // Clearing the box restores every row, still collapsed.
-      page.eval(
-        "(function(){var i=document.getElementById('q');" +
-          "i.value='';i.dispatchEvent(new Event('input'));})()")
+      page.eval("__dom.type('#q', '')")
       page.evalInt(
         """[...document.querySelectorAll('#t tbody tr.data')].filter(tr => !tr.classList.contains('hidden')).length""") shouldBe 3
     }
