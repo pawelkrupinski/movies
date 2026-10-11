@@ -47,8 +47,6 @@ Politeness: 4 workers, <=3 req/s overall, concurrency halves and backs off on
 Run: python3 data/germany/scripts/harvest_kinoprogramm.py
 """
 
-import gzip
-import hashlib
 import html
 import json
 import math
@@ -58,13 +56,13 @@ import random
 import re
 import sys
 import threading
-import time
 import unicodedata
-import urllib.error
 import urllib.parse
-import urllib.request
-from concurrent.futures import ThreadPoolExecutor
 from difflib import SequenceMatcher
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import polite_fetch  # noqa: E402
+from polite_fetch import PoliteFetcher  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.dirname(HERE)
@@ -76,10 +74,7 @@ OUT_UNMATCHED = os.path.join(DATA, "kinoprogramm-unmatched.json")
 
 def cache_dir(env, home):
     """KP_CACHE_DIR, else the user's cache directory: it must outlive the session that ran it."""
-    if env.get("KP_CACHE_DIR"):
-        return env["KP_CACHE_DIR"]
-    base = env.get("XDG_CACHE_HOME") or str(home / ".cache")
-    return os.path.join(base, "kinowo", "kp-harvest")
+    return polite_fetch.cache_dir("kp-harvest", env, home, "KP_CACHE_DIR")
 
 
 CACHE_DIR = cache_dir(os.environ, pathlib.Path.home())
@@ -106,122 +101,9 @@ CHAIN_BRANDS = {"cinestar", "cinemaxx", "cineplex", "uci", "kinopolis",
 
 
 # ---------------------------------------------------------------- fetching
-class Fetcher:
-    """Polite cached fetcher: fixed worker pool, global rate limit, adaptive
-    concurrency (halved on 429/503)."""
-
-    def __init__(self):
-        os.makedirs(os.path.join(CACHE_DIR, "pages"), exist_ok=True)
-        self.lock = threading.Lock()
-        self.next_slot = 0.0
-        self.limit = WORKERS
-        self.active = 0
-        self.cond = threading.Condition()
-        self.requests = 0
-        self.cache_hits = 0
-        self.throttled = 0
-        self.failures = 0
-        self.bytes = 0
-        self.started = time.time()
-
-    def _key(self, path):
-        safe = re.sub(r"[^a-zA-Z0-9._-]+", "_", path.strip("/"))[:120]
-        digest = hashlib.sha1(path.encode()).hexdigest()[:10]
-        return os.path.join(CACHE_DIR, "pages", f"{safe}-{digest}")
-
-    def _throttle(self):
-        with self.lock:
-            now = time.time()
-            slot = max(now, self.next_slot)
-            self.next_slot = slot + 1.0 / MAX_RPS
-        if slot > now:
-            time.sleep(slot - now)
-
-    def get(self, path):
-        """Return (status, final_path, text). Cached on disk, 404s included."""
-        key = self._key(path)
-        if os.path.exists(key + ".json"):
-            with open(key + ".json") as f:
-                meta = json.load(f)
-            text = ""
-            if os.path.exists(key + ".html.gz"):
-                with gzip.open(key + ".html.gz", "rt", encoding="utf-8") as f:
-                    text = f.read()
-            with self.lock:
-                self.cache_hits += 1
-            return meta["status"], meta["final"], text
-
-        attempt = 0
-        while True:
-            with self.cond:
-                while self.active >= self.limit:
-                    self.cond.wait()
-                self.active += 1
-            try:
-                self._throttle()
-                status, final, text = self._fetch(path)
-            finally:
-                with self.cond:
-                    self.active -= 1
-                    self.cond.notify_all()
-            if status in (429, 503) or status < 0:
-                attempt += 1
-                if status in (429, 503):
-                    with self.cond:
-                        self.throttled += 1
-                        self.limit = max(1, self.limit // 2)
-                    print(f"  throttled {status} on {path}; concurrency -> "
-                          f"{self.limit}", file=sys.stderr)
-                if attempt > 4:
-                    # Not cached: the next rerun tries again.
-                    print(f"  giving up on {path}: {status}", file=sys.stderr)
-                    with self.lock:
-                        self.failures += 1
-                    return status, path, ""
-                time.sleep(min(60, 2 ** attempt * 2))
-                continue
-            break
-
-        with open(key + ".json", "w") as f:
-            json.dump({"path": path, "status": status, "final": final}, f)
-        if text:
-            with gzip.open(key + ".html.gz", "wt", encoding="utf-8") as f:
-                f.write(text)
-        return status, final, text
-
-    def _fetch(self, path):
-        url = BASE + urllib.parse.quote(path, safe="/?=&%-._~")
-        req = urllib.request.Request(url, headers={
-            "User-Agent": UA, "Accept-Language": "de-DE,de;q=0.9"})
-        with self.lock:
-            self.requests += 1
-            if self.requests % 100 == 0:
-                print(f"  ... {self.requests} requests, "
-                      f"{self.requests / (time.time() - self.started):.2f} req/s")
-        try:
-            with urllib.request.urlopen(req, timeout=40) as resp:
-                body = resp.read()
-                final = urllib.parse.urlsplit(resp.geturl())
-                final_path = final.path + ("?" + final.query if final.query else "")
-                with self.lock:
-                    self.bytes += len(body)
-                return resp.status, final_path, body.decode("utf-8", "replace")
-        except urllib.error.HTTPError as e:
-            return e.code, path, ""
-        except Exception as e:  # network hiccup: retried by caller
-            print(f"  error {path}: {e}", file=sys.stderr)
-            return -1, path, ""
-
-    def map(self, fn, items):
-        with ThreadPoolExecutor(WORKERS) as pool:
-            return list(pool.map(fn, items))
-
-    def report(self):
-        elapsed = time.time() - self.started
-        rate = self.requests / elapsed if elapsed else 0
-        print(f"requests: {self.requests} network, {self.cache_hits} cache hits,"
-              f" {self.bytes / 1e6:.1f} MB in {elapsed:.0f}s -> {rate:.2f} req/s;"
-              f" 429/503: {self.throttled}; gave up: {self.failures}")
+def Fetcher():
+    """The polite cached fetcher (polite_fetch), at kinoprogramm.com's pace."""
+    return PoliteFetcher(BASE, CACHE_DIR, WORKERS, MAX_RPS, headers={"User-Agent": UA, "Accept-Language": "de-DE,de;q=0.9"})
 
 
 # -------------------------------------------------------------- normalising
