@@ -7,16 +7,16 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
 /**
- * `GET /api/catalog` serves the catalog JSON with a content ETag and honours
- * `If-None-Match`: the current ETag → `304 Not Modified` (no body); a stale or
- * absent one → a fresh `200`. This is what lets the apps revalidate on every
- * open while transferring only headers when nothing changed.
+ * `GET /api/catalog` is the catalog JSON under the ETag the apps' bundled seed
+ * carries (`Catalog.etag`, written by `CatalogSeedSpec`), revalidated on every
+ * use. The conditional-GET mechanics themselves are [[FixedBodySpec]]'s; this
+ * pins the contract the apps hold on to.
  */
 class CatalogControllerSpec extends AnyFlatSpec with Matchers {
 
   private def controller = new CatalogController(stubControllerComponents())
 
-  "GET /api/catalog" should "return the catalog JSON with an ETag and no-cache" in {
+  "GET /api/catalog" should "return the catalog JSON with the seed's ETag and no-cache" in {
     val result = controller.catalog()(FakeRequest())
     status(result) shouldBe OK
     contentType(result) shouldBe Some("application/json")
@@ -25,16 +25,11 @@ class CatalogControllerSpec extends AnyFlatSpec with Matchers {
     contentAsString(result) shouldBe Catalog.json
   }
 
-  it should "answer 304 Not Modified when If-None-Match carries the current ETag" in {
-    val result = controller.catalog()(FakeRequest().withHeaders("If-None-Match" -> Catalog.etag))
-    status(result) shouldBe NOT_MODIFIED
-    header("ETag", result) shouldBe Some(Catalog.etag)
-    contentAsString(result) shouldBe ""
-  }
-
-  it should "return a fresh 200 when If-None-Match is stale" in {
-    val result = controller.catalog()(FakeRequest().withHeaders("If-None-Match" -> "\"0000000000000000\""))
-    status(result) shouldBe OK
-    contentAsString(result) shouldBe Catalog.json
+  // An app's stored tag, handed back the way a cache in between may spell it:
+  // weakened, or offered beside another. Exact string equality answered both
+  // with the whole catalog again.
+  it should "answer 304 to the seed's ETag offered weak or in a list" in {
+    status(controller.catalog()(FakeRequest().withHeaders("If-None-Match" -> s"W/${Catalog.etag}"))) shouldBe NOT_MODIFIED
+    status(controller.catalog()(FakeRequest().withHeaders("If-None-Match" -> s""""0000000000000000", ${Catalog.etag}"""))) shouldBe NOT_MODIFIED
   }
 }

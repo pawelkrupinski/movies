@@ -19,11 +19,7 @@ import play.api.mvc._
  */
 class ClientSupportController(cc: ControllerComponents) extends AbstractController(cc) {
 
-  def clientSupport(): Action[AnyContent] = Action { request =>
-    val validators = Seq("ETag" -> ClientSupport.etag, "Cache-Control" -> "no-cache")
-    if (request.headers.get("If-None-Match").contains(ClientSupport.etag))
-      NotModified.withHeaders(validators*)
-    else
-      Ok(ClientSupport.json).as("application/json").withHeaders(validators*)
-  }
+  private val body = FixedBody.json(ClientSupport.json)
+
+  def clientSupport(): Action[AnyContent] = Action(request => body.serve(request, FixedBody.Revalidate))
 }

@@ -75,12 +75,6 @@ class ClientSupportSpec extends AnyFlatSpec with Matchers {
     ClientSupport.json should include("storeUrl")
   }
 
-  it should "be stable, so the ETag can identify it" in {
-    ClientSupport.json shouldBe ClientSupport.json
-    ClientSupport.etag shouldBe ClientSupport.etag
-    ClientSupport.etag should startWith("\"")
-  }
-
   it should "keep the configured Android rule usable" in {
     // Not asserting the VALUE (it moves every time support is dropped) — asserting
     // that whatever is configured is well-formed enough to gate with.

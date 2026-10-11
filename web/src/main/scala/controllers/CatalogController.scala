@@ -17,11 +17,7 @@ import play.api.mvc._
  */
 class CatalogController(cc: ControllerComponents) extends AbstractController(cc) {
 
-  def catalog(): Action[AnyContent] = Action { request =>
-    val validators = Seq("ETag" -> Catalog.etag, "Cache-Control" -> "no-cache")
-    if (request.headers.get("If-None-Match").contains(Catalog.etag))
-      NotModified.withHeaders(validators*)
-    else
-      Ok(Catalog.json).as("application/json").withHeaders(validators*)
-  }
+  private val body = FixedBody.json(Catalog.json)
+
+  def catalog(): Action[AnyContent] = Action(request => body.serve(request, FixedBody.Revalidate))
 }

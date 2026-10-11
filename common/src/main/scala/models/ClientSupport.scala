@@ -8,8 +8,8 @@ import scala.util.Using
  * Which mobile client versions this server still serves, and where to send the
  * ones it doesn't — the payload behind `GET /api/client-support`.
  *
- * Shaped like [[Catalog]] on purpose: a static, deterministic body plus a content
- * [[etag]], so the apps can revalidate cheaply and an unchanged answer costs a
+ * Shaped like [[Catalog]] on purpose: a static, deterministic body the web serves
+ * under a content ETag (`controllers.FixedBody`), so the apps can revalidate cheaply and an unchanged answer costs a
  * `304` with no body. Both are country-AGNOSTIC, so every deployment serves the
  * same bytes.
  *
@@ -81,10 +81,6 @@ object ClientSupport {
     }
     s"""{"android":${obj(android)},"ios":${obj(ios)}}"""
   }
-
-  /** Content hash — the payload has no meaningful timestamp, so its identity IS
-   *  its bytes, exactly as for [[Catalog.etag]]. */
-  val etag: String = tools.Digest.contentEtag(json)
 }
 
 /**
