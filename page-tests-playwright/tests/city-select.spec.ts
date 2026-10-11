@@ -303,7 +303,7 @@ test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
 test.describe('grouped city landing (Germany)', { tag: '@agnostic' }, () => {
   test('the static fallback lists every page under its Bundesland, collated as German', async ({ page }) => {
     await page.goto('/landing-de', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('.city-list a')).toHaveCount(436);
+    await expect(page.locator('.city-list a')).toHaveCount(451);
     await expect(page.locator('details.city-group[open]')).toHaveCount(0);
     // Two of the 16 hold one page each and are pulled up: the city-states
     // Berlin and Hamburg, which share their page's name.
