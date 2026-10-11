@@ -6,7 +6,8 @@ import models.Cinema
 import modules.WorkerWiring
 import services.MongoCachingDetailFetch
 import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
-import services.cinemas.common.{AdaptiveTimeoutScraper, ChunkedCinemaScraper, CinemaClientMarkers, CinemaScrapeRunner, CinemaScraper, FallbackAfter, FallbackEligibility, FlicksClient, KinoprogrammClient, RetryingCinemaScraper, SourceFallbackScraper, UptimeRecordingScraper}
+import services.cinemas.de.GermanFeed
+import services.cinemas.common.{AdaptiveTimeoutScraper, ChunkedCinemaScraper, CinemaClientMarkers, CinemaScrapeRunner, CinemaScraper, FallbackAfter, FallbackEligibility, FirstAnsweringScraper, FlicksClient, RetryingCinemaScraper, SourceFallbackScraper, UptimeRecordingScraper}
 import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient}
 import services.alerts.{FallbackAlert, GoneVenueAlertingArchive}
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
@@ -174,10 +175,9 @@ trait ScrapeWiring { self: WorkerWiring =>
   protected def flicksFallbackSlugs: Map[Cinema, ChainFlicksFallback.FlicksFallback] =
     cinemaScraperCatalog.flicksFallbackSlugs
 
-  /** Cinema → its kinoprogramm.com page, for German venues whose Filmstarts scrape
-   *  has kinoprogramm as its FALLBACK. */
-  protected def kinoprogrammFallbackPaths: Map[Cinema, String] =
-    cinemaScraperCatalog.kinoprogrammFallbackPaths
+  /** Cinema → its fallback chain, for German venues read from more than one source. */
+  protected def germanFallbackFeeds: Map[Cinema, Seq[GermanFeed]] =
+    cinemaScraperCatalog.germanFallbackFeeds
 
   /** A venue's fallback: the feed that serves it once its own scrape keeps failing. */
   private final case class FallbackPlan(
@@ -191,9 +191,11 @@ trait ScrapeWiring { self: WorkerWiring =>
    *  and [[venuesPagedElsewhere]] read, so they cannot disagree about who is covered:
    *   - a chain venue → Flicks, on the market its catalogue entry names (flicks.co.uk
    *     for the UK chains, flicks.us for the US ones);
-   *   - a German venue kinoprogramm.com lists → Kinoprogramm, once its Filmstarts
-   *     scrape has failed [[KinoprogrammFailedRuns]] SEPARATE runs: German venues are
-   *     scraped ~10-hourly, so a 6h window would hand over on the second failure;
+   *   - a German venue another source lists → its fallback chain (Filmstarts, kinoheld,
+   *     kinoprogramm.com… in the order `GermanSources` keeps), served by the first link
+   *     that lists a showtime, once its primary has failed [[GermanFailedRuns]] SEPARATE
+   *     runs: German venues are scraped ~10-hourly, so a 6h window would hand over on the
+   *     second failure;
    *   - an eligible single venue in a Filmweb country (Poland) → Filmweb. Outside
    *     Poland Filmweb lists nothing, so a wrapper there could only page "Filmweb has
    *     nothing to serve" for a venue it never could have covered. */
@@ -203,18 +205,22 @@ trait ScrapeWiring { self: WorkerWiring =>
       // The market comes from the map, not a constant: a US chain venue's fallback
       // lives on flicks.us, and looking it up on flicks.co.uk would just 404.
       FallbackPlan("Flicks", () => Some(slug), () => Some(FlicksClient.forVenue(flicksFetch, cinemaScraperCatalog.flicksFilmPages, slug, cinema, market, venueClock)), sixHours)
-    }.orElse(kinoprogrammFallbackPaths.get(cinema).map { path =>
-      FallbackPlan("Kinoprogramm", () => Some(path),
-        () => Some(new KinoprogrammClient(httpFetch, path, cinema,
-          today = venueClock.today(KinoprogrammClient.Zone), filmPages = cinemaScraperCatalog.kinoprogrammFilmPages)),
-        FallbackAfter.FailedRuns(KinoprogrammFailedRuns))
+    }.orElse(germanFallbackFeeds.get(cinema).map { feeds =>
+      // Named after its links ("Filmstarts → Kinoprogramm"), so a lone kinoprogramm.com
+      // fallback keeps the "Kinoprogramm" its stored state carries.
+      FallbackPlan(feeds.map(_.label).mkString(" → "), () => feeds.headOption.map(_.ref),
+        () => Some(feeds.map(cinemaScraperCatalog.germanFeedScraper(_, cinema)) match {
+          case Seq(only) => only
+          case chain     => new FirstAnsweringScraper(chain)
+        }),
+        FallbackAfter.FailedRuns(GermanFailedRuns))
     }).orElse(Option.when(eligible && filmwebEnabled)(
       FallbackPlan("Filmweb", () => filmwebFallbackIds.get(cinema).map(_.toString), () => filmwebFallbackFor(cinema), sixHours)))
   }
 
-  /** Separate failed Filmstarts runs before a German venue hands over to kinoprogramm.com:
-   *  several, so one bad scrape — or two — rides out on the last good listing. */
-  private val KinoprogrammFailedRuns = 3
+  /** Separate failed runs of its primary before a German venue hands over to its fallback
+   *  chain: several, so one bad scrape — or two — rides out on the last good listing. */
+  private val GermanFailedRuns = 3
 
   /** Wrap a scrape source with the outcome recorder + its fallback source
    *  ([[fallbackFor]]), or the plain uptime recorder when it has none. One

@@ -4,7 +4,8 @@ import models._
 import tools.{CachingDetailFetch, HttpFetch}
 import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, MultiListingScraper, VueCinemasPlatformClient, WebediaMarket, WebediaShowtimesClient}
 import services.cinemas.pl._
-import services.cinemas.common.{FlicksClient, FlicksMarket, KinoprogrammClient}
+import services.cinemas.common.{CineamoClient, FlicksClient, FlicksMarket, KinoheldClient, KinoprogrammClient}
+import services.cinemas.de.{GermanFeed, GermanSources}
 import services.cinemas.uk.{CineworldClient, OdeonClient, TheOldCourtClient}
 import services.cinemas.es.OcineClient
 import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
@@ -1928,15 +1929,30 @@ class CinemaScraperCatalog(
   // ── Germany (AlloCiné/Filmstarts website-JSON) ───────────────────────────
   private def filmstarts(theaterId: String, cinema: Cinema): WebediaShowtimesClient =
     WebediaShowtimesClient.forVenue(http, WebediaMarket.Germany, theaterId, cinema, venueClock)
+  /** A German venue's scraper for one of its sources ([[GermanFeed]]) — its primary in the
+   *  catalogue, or a link of its fallback chain (`ScrapeWiring`). */
+  def germanFeedScraper(feed: GermanFeed, cinema: Cinema): CinemaScraper = feed match {
+    case GermanFeed.Filmstarts(theaterId) => filmstarts(theaterId, cinema)
+    case GermanFeed.Cineamo(id)           => new CineamoClient(http, id, cinema, today = venueClock.todayAt(cinema, CineamoClient.Zone))
+    case GermanFeed.Kinoheld(venue)       => new KinoheldClient(http, venue, cinema, today = venueClock.todayAt(cinema, KinoheldClient.Zone))
+    case GermanFeed.Kinoprogramm(path)    =>
+      new KinoprogrammClient(http, path, cinema, today = venueClock.today(KinoprogrammClient.Zone), filmPages = kinoprogrammFilmPages)
+  }
+
+  /** Each rostered German venue's sources, primary first ([[GermanSources]]: the per-venue
+   *  choice `data/germany/scripts/harvest_sources.py` measured). */
+  private def germanFeeds(cinema: Cinema): Seq[GermanFeed] =
+    GermanSources.of(models.GermanRoster.theaterIdByCinema(cinema), models.GermanRoster.kinoprogrammPathByCinema.get(cinema))
+
   // Germany — data-driven from the full GermanRoster (436 town pages / 1,515 cinemas):
-  // one filmstarts scraper per cinema, keyed by the PAGE slug City.slug uses. Keyed
-  // off `Country.Germany.cities` rather than `GermanRoster.places` for Spain's
-  // reason: the slug a page is finally addressable under is decided in
-  // `City.germanPages`, and the catalogue has to agree with the roster the web tier
-  // serves. Each cinema's Filmstarts theaterId comes from GermanRoster.theaterIdByCinema.
+  // one scraper per cinema — its primary source's ([[germanFeeds]]) — keyed by the
+  // PAGE slug City.slug uses. Keyed off `Country.Germany.cities` rather than
+  // `GermanRoster.places` for Spain's reason: the slug a page is finally addressable
+  // under is decided in `City.germanPages`, and the catalogue has to agree with the
+  // roster the web tier serves.
   private val germanBaseByCity: Map[String, Seq[CinemaScraper]] =
     models.Country.Germany.cities.map { city =>
-      city.slug -> city.cinemas.map(c => filmstarts(models.GermanRoster.theaterIdByCinema(c), c))
+      city.slug -> city.cinemas.map(c => germanFeedScraper(germanFeeds(c).head, c))
     }.toMap
 
   // ── Spain (AlloCiné/SensaCine website-JSON) ──────────────────────────────
@@ -2448,9 +2464,10 @@ class CinemaScraperCatalog(
   val flicksFallbackSlugs: Map[Cinema, ChainFlicksFallback.FlicksFallback] =
     ChainFlicksFallback.slugs ++ usFlicksFallback
 
-  /** German venues' kinoprogramm.com pages — their showtime FALLBACK behind Filmstarts,
-   *  harvested into the roster (`data/germany/kinoprogramm.json`). */
-  val kinoprogrammFallbackPaths: Map[Cinema, String] = models.GermanRoster.kinoprogrammPathByCinema
+  /** Each German venue's FALLBACK chain — its sources after the primary, in order
+   *  ([[GermanSources]]); absent for a venue with only the one source. */
+  val germanFallbackFeeds: Map[Cinema, Seq[GermanFeed]] =
+    models.Country.Germany.cities.flatMap(_.cinemas).map(c => c -> germanFeeds(c).tail).filter(_._2.nonEmpty).toMap
 
   /** Where every kinoprogramm.com fallback reads its films' catalogue pages: one page per
    *  FILM, the same for every venue showing it, so one cache serves them all. Without it a
@@ -2458,7 +2475,8 @@ class CinemaScraperCatalog(
    *  where the cache asks each film once per sweep. The TTL stays under the 6h
    *  `DetailEnrich` window every chain cache keeps to, and outlasts one outage sweep. */
   val kinoprogrammFilmTtl:   FiniteDuration = 5.hours
-  val kinoprogrammFilmPages: HttpFetch      = chainDetailCache("kinoprogramm", http, kinoprogrammFilmTtl)
+  // Lazy: the German venues built above may already read it (a kinoprogramm.com primary).
+  lazy val kinoprogrammFilmPages: HttpFetch = chainDetailCache("kinoprogramm", http, kinoprogrammFilmTtl)
 
   /** Union of every cinema scraper's HTTP hosts. `MonitoringHttpFetch`
    *  suppresses per-host uptime rows for these — each cinema's health is
@@ -2469,7 +2487,7 @@ class CinemaScraperCatalog(
    *  automatically — no hand-kept host list to drift. */
   val scrapeHosts: Set[String] = all.flatMap(_.scrapeHosts).toSet ++
     // A fallback feed is scraped for a venue too, but by no catalogue scraper.
-    Option.when(kinoprogrammFallbackPaths.nonEmpty)(CinemaScraper.hostsOf(KinoprogrammClient.BaseUrl)).toSet.flatten
+    germanFallbackFeeds.toSeq.flatMap { case (c, feeds) => feeds.flatMap(germanFeedScraper(_, c).scrapeHosts) }.toSet
 
   /** The hosts of the ticketing platforms' venue pages read through an egress other than direct — a host that blocks the
    *  worker's IP — each by that egress: read off the platform tables above, so a venue routed there routes every other

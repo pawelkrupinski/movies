@@ -4,6 +4,7 @@ import models.{Cinema, CinemaMovie, KinoMikro}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.CinemaScraper
+import services.cinemas.de.GermanFeed
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, InMemoryFallbackStore}
 import tools.{FixtureTestWiring, MutableClock, TestWiring}
 
@@ -21,13 +22,13 @@ class ScrapeWiringFallbackSpec extends AnyFlatSpec with Matchers {
     def fetch(): Seq[CinemaMovie] = throw new tools.HttpStatusException(404, "GET", "https://example.test/", None)
   }
 
-  private class Wiring(filmweb: Boolean, kinoprogramm: Map[Cinema, String] = Map.empty) {
+  private class Wiring(filmweb: Boolean, german: Map[Cinema, Seq[GermanFeed]] = Map.empty) {
     // Runs an hour apart are separate runs; retries minutes apart are not (SeparateRuns).
     private val testClock = new MutableClock(TestWiring.FixedInstant)
     val wiring = new FixtureTestWiring("08-06-2026") {
       override lazy val clock: java.time.Clock = testClock
       override protected def filmwebEnabled: Boolean = filmweb
-      override protected def kinoprogrammFallbackPaths: Map[Cinema, String] = kinoprogramm
+      override protected def germanFallbackFeeds: Map[Cinema, Seq[GermanFeed]] = german
       override lazy val filmwebFallbackStore: FallbackStore = new InMemoryFallbackStore
     }
     private val scraper = wiring.recordingScraper(failing, eligible = true)
@@ -55,7 +56,7 @@ class ScrapeWiringFallbackSpec extends AnyFlatSpec with Matchers {
   // its second failure. Kinoprogramm waits for three SEPARATE failed runs instead —
   // an hour apart here, far inside a 6h window, so only a run count can trip it.
   it should "give a venue kinoprogramm.com lists a Kinoprogramm fallback, after three failed runs" in {
-    val w = new Wiring(filmweb = false, kinoprogramm = Map(KinoMikro -> "/kino/somewhere/kino-mikro-1"))
+    val w = new Wiring(filmweb = false, german = Map(KinoMikro -> Seq(GermanFeed.Kinoprogramm("/kino/somewhere/kino-mikro-1"))))
     w.failRun(); w.failRun()
     w.state.map(_.fallbackSource) shouldBe Some("Kinoprogramm")
     w.state.map(_.fallbackRef) shouldBe Some(Some("/kino/somewhere/kino-mikro-1"))
@@ -77,7 +78,8 @@ class ScrapeWiringFallbackSpec extends AnyFlatSpec with Matchers {
     val wiring = new FixtureTestWiring("08-06-2026") {
       override lazy val clock: java.time.Clock = testClock
       override protected def filmwebEnabled: Boolean = false
-      override protected def kinoprogrammFallbackPaths: Map[Cinema, String] = Map(KinoMikro -> "/kino/somewhere/kino-mikro-1")
+      override protected def germanFallbackFeeds: Map[Cinema, Seq[GermanFeed]] =
+        Map(KinoMikro -> Seq(GermanFeed.Kinoprogramm("/kino/somewhere/kino-mikro-1")))
       override lazy val filmwebFallbackStore: FallbackStore = new InMemoryFallbackStore
       override lazy val httpFetch: tools.HttpFetch = stalling
       override lazy val fallbackScrapeStats: HostScrapeStats = new HostScrapeStats(minSamples = 1, floor = 50.millis, ceiling = 200.millis)
