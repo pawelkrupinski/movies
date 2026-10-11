@@ -19,7 +19,7 @@ on:
 
 # Steward pushes its update branches and opens PRs as the "Kinowo Sync Bot"
 # GitHub App (secrets SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY, shared with
-# regenerate-og-cards.yml), so pull_request CI fires on them -- a PR opened with
+# discover-cinemas.yml), so pull_request CI fires on them -- a PR opened with
 # the default GITHUB_TOKEN never does. The App mints a fresh token per run; the
 # personal access token this used before expired silently on 2026-09-28 and
 # every run 401'd from then on.

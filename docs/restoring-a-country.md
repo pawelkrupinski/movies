@@ -101,10 +101,10 @@ convergence band. There is no second place to remember for any of them.
    Every other Grafana asset was left untouched — the `app=~` fleet rules are
    already `noDataState: OK` and the dashboard panels just render empty.
 
-7. **Re-enable the UK OG-card leg.** `.github/workflows/regenerate-og-cards.yml`:
-   delete the `if: false` on "Regenerate per-city UK cards from live prod". It
-   cannot run while the country is undeployed — `ogOrigin`'s fallback would point
-   it at Poland's host and it would commit a PR of 404 cards.
+7. **The city share cards need nothing.** The country's worker renders one card
+   per city into its share-card directory (`CityCardService`), cities with no card
+   first, then each again weekly; until a city's lands, Caddy sends its previews to
+   the country's committed `og-home-<cc>.jpg`.
 
 8. **Put the country back on sale.** Nothing about the store LISTINGS was touched:
    descriptions, keywords and screenshots for `de-DE`, `en-GB` and `pl-PL` are all

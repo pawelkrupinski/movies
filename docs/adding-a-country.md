@@ -499,16 +499,14 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
   locative slot ("in London", "en Madrid"); it read a hardcoded English "in" for
   every non-Polish language until Spain, which would have put "in Madrid" in
   every Spanish share card and every piece of Spanish structured data.
-  Generate `og-home-<cc>.jpg` (the landing share card) AND the country's
-  per-city cards, and add the country to the `regenerate-og-cards` workflow's
-  matrix so the weekly refresh keeps them current. This IS a launch blocker:
-  `OgCardAssetsSpec` fails on a country whose landing or city cards are missing,
+  Generate `og-home-<cc>.jpg` (the landing share card). This IS a launch
+  blocker: `OgCardAssetsSpec` fails on a country whose landing card is missing,
   because a named-but-absent card is not a graceful degrade — it points every
-  share at a 404 and the link previews with no image at all. Germany and the US
-  both shipped that way before the spec existed.
-  **The workflow cannot produce the FIRST set** — it screenshots the live site,
-  which does not exist before launch. Generate placeholders locally instead; the
-  recipe and the reasoning are in phase 8.
+  share at a 404 and the link previews with no image at all. The per-city cards
+  are NOT committed: the country's worker renders them (`CityCardService`), every
+  city with no card first, then each again weekly, and until a city's lands its
+  previews fall back to this home card. The recipe for the home card is in
+  phase 8.
 - **iOS** (`ios/`): add a `<lang>` localization to every key in
   `Localizable.xcstrings` + `InfoPlist.xcstrings`; add `<lang>` to `knownRegions`
   in `project.pbxproj`; add a `Country(code:"<cc>", languageCode:"<lang>")`
@@ -702,20 +700,19 @@ for itself. Nothing is red; the country simply never appears.
    one — so expect the first leg to be slow, and read a timeout there as a cold
    start rather than a regression.
 
-**The share cards are a launch-order problem, and they are the one thing that
+**The home share card is a launch-order problem, and it is the one thing that
 cannot follow the normal order.** `OgCardAssetsSpec` fails while a country's
-`og-home-<cc>.jpg` and per-city cards are missing, so they must be committed
-BEFORE merge — but `regenerate-og-cards.yml` screenshots the LIVE site, which
-does not exist yet. Break the cycle by generating placeholders locally against
-an empty database: the generator renders a valid card with no films (wordmark +
-city line over an empty grid), and the weekly job replaces them with real
-posters once the country serves.
+`og-home-<cc>.jpg` is missing, so it must be committed BEFORE merge — but
+`tools.OgCardGenerator` screenshots a LIVE page, which does not exist yet. Break
+the cycle by generating a placeholder locally against an empty database: the
+generator renders a valid card with no films (wordmark + tagline over an empty
+grid); regenerate it by hand against prod once the country serves.
 
 ```
 MONGODB_DB=<scratch> KINOWO_COUNTRY=<cc> sbt web/run          # local, empty corpus
 KINOWO_OG_BASE=http://localhost:9000 KINOWO_COUNTRY=<cc> \
-  sbt 'web/PageTest/runMain tools.OgCardGenerator home'       # then again with no arg for the cities
+  sbt 'web/PageTest/runMain tools.OgCardGenerator'
 ```
 
-Say out loud in the commit that the cards are placeholders. Germany and the US
-both shipped with NO cards at all, which is what the spec was added to stop.
+Say out loud in the commit that the card is a placeholder. The CITY cards need
+nothing: the worker renders them once the country's worker runs.
