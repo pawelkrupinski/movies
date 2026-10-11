@@ -102,12 +102,14 @@ def test_a_filmstarts_venue_page_gives_its_address_and_showtime_days():
     assert sweep.parse_venue("<html>404</html>") is None
 
 
-def test_the_roster_reads_from_venues_json_once_it_exists():
-    assert any(v["theaterId"] == "A0003" for v in roster_venues.load(str(DATA)))
+def test_the_roster_is_venues_json_less_the_retired_ones():
     with tempfile.TemporaryDirectory() as d:
-        pathlib.Path(d, "venues.json").write_text(json.dumps(
-            [{"theaterId": "A0003", "name": "Abaton", "displayName": "Abaton", "city": "Hamburg"}]))
+        pathlib.Path(d, "venues.json").write_text(json.dumps([
+            {"theaterId": "A0003", "name": "Abaton", "displayName": "Abaton", "city": "Hamburg"},
+            {"theaterId": "A0743", "name": "Kino Kiste", "displayName": "Kino Kiste", "city": "Bad Wörishofen"}]))
+        pathlib.Path(d, "retired.json").write_text(json.dumps({"A0743": {"reason": "closed"}}))
         assert roster_venues.load(d) == [{"theaterId": "A0003", "name": "Abaton", "displayName": "Abaton", "city": "Hamburg"}]
+    assert "berlin" in roster_venues.page_slugs(str(DATA))
 
 
 def test_both_scripts_cache_outside_any_session_scratchpad():
