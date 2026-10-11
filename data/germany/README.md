@@ -16,9 +16,11 @@ source the shipped German model is generated FROM. Germany has been live at
   venues, 203 clusters of small towns, and 117 one- or two-venue towns with no
   neighbour to cluster with. Each page:
   `{ slug, kind, name, anchor, bundesland, qualifiedSlug, lat, lon, towns, cinemas }`.
-  `retired` maps every slug that was a page and is not any more to the page now
-  holding most of its venues (the 19 regions of 2026-10 that left no town page
-  under their own slug: `/vechta/` → Wildeshausen, `/itzehoe/` → Elmshorn).
+  `retired` maps every slug that was a page and is not any more to the page
+  holding the town it was named after — or, when that town has no venue left, the
+  page now holding most of its venues (the 19 regions of 2026-10 that left no
+  town page under their own slug: `/vechta/` → Cloppenburg, whose cluster holds
+  Vechta; `/sigmaringen/`, whose cinema closed, → Tuttlingen).
 - `city-coords.json` — each Filmstarts city → GeoNames lat/lon, population and
   admin1 (`scripts/geocode_cities.py`). The gazetteer `build_pages.py` reads,
   corrected by its `TOWN_COORDS`.

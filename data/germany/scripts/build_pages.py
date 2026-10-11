@@ -27,8 +27,10 @@ Inputs, all committed:
   TOWN_COORDS       (below) towns `city-coords.json` matched to a namesake.
 
 A page that existed before and is not a page any more is listed under "retired",
-pointing at the page now holding MOST of its venues — 19 of the 158 regions of the
-first build (2026-10) left no page under their own slug (`/itzehoe/` → Elmshorn).
+pointing at the page holding the town it was named after (`/vechta/` → Cloppenburg,
+whose cluster Vechta is on) — or, when that town has no venue left, at the page now
+holding MOST of its venues. 19 of the 158 regions of the first build (2026-10) left
+no page under their own slug.
 Every page carries the Bundesland of its anchor (from the coordinates, not from the Filmstarts lander page
 a venue was crawled under, which files Münster under Hessen); the picker groups by
 it, and a slug another country already serves is qualified with it.
@@ -169,7 +171,7 @@ def roster_venues():
 def build(venues, venue_town, towns, previous, prior_retired, rules=RULES):
     """venues: every displayName, in roster order; venue_town: displayName →
     town; towns: town → {lat, lon, pop, land}; previous: slug → {"cinemas",
-    "lat", "lon", "kind", "qualifiedSlug"} for every page the last build had (the
+    "lat", "lon", "kind", "qualifiedSlug", "anchor"} for every page the last build had (the
     regions, before the first)."""
     by_town = collections.defaultdict(list)
     for name in venues:
@@ -209,9 +211,13 @@ def build(venues, venue_town, towns, previous, prior_retired, rules=RULES):
         sys.exit(f"towns placed > {rules.max_drift_km} km from their previous page (namesake?): {drifted} "
                  f"— pin them in TOWN_COORDS")
 
-    # A page gone since the last build goes to the page now holding most of its
-    # venues (`town_pages.heir` has the tie-breaks).
+    # A page gone since the last build is named after a town, and a visitor typing
+    # /vechta/ wants Vechta: it goes to the page holding that town. Only when the
+    # town has no venue left does it go to the page now holding most of its venues
+    # (`town_pages.heir` has the tie-breaks).
     def heir(old):
+        if old.get("anchor") in page_of_town:
+            return page_of_town[old["anchor"]]
         held = collections.Counter(page_of_town[venue_town[v]] for v in old["cinemas"] if v in venue_town)
         return town_pages.heir(held, (old["lat"], old["lon"]), result)
     gone = {slug: heir(old) for slug, old in previous.items() if slug not in result}

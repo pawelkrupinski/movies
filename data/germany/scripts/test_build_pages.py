@@ -48,9 +48,10 @@ def refuses(f):
     return False
 
 
-def region(cinemas, km_north, km_east, qualified=None):
+def region(cinemas, km_north, km_east, qualified=None, anchor=None):
     lat, lon = point(km_north, km_east)
-    return {"cinemas": cinemas, "kind": "region", "lat": lat, "lon": lon, "qualifiedSlug": qualified}
+    return {"cinemas": cinemas, "kind": "region", "lat": lat, "lon": lon, "qualifiedSlug": qualified,
+            "anchor": anchor}
 
 
 def synthetic():
@@ -75,7 +76,8 @@ def synthetic():
               ("Uelzen", "U1"), ("Bad Bevensen", "BB1"),
               ("Löhne", "LO1"), ("Lohne", "LO2")]
     previous = {"frankfurt-am-main": region(["F1", "F2", "O1", "V1", "V2", "V3", "K1", "E1"], 0, 0),
-                "eschborn": region(["E1"], 1, -8),
+                # Named after Eschborn, but most of its venues are Bad Vilbel's now.
+                "eschborn": region(["E1", "V1", "V2"], 1, -8, anchor="Eschborn"),
                 "lueneburg": region(["L1", "L2", "A1", "D1"], 300, 50),
                 "uelzen": region(["U1", "BB1"], 400, 0),
                 "minden": region(["LO1", "LO2"], -100, 0, "minden-nordrhein-westfalen")}
@@ -103,7 +105,8 @@ def synthetic():
           "frankfurt-am-main" not in retired and "lueneburg" not in retired)
     check("a retired region goes to the page holding most of its venues", retired["minden"]["page"] == "loehne")
     check("a retired page keeps the slug it would be qualified to", retired["minden"]["qualifiedSlug"] == "minden-nordrhein-westfalen")
-    check("a region slug now a cluster's member town goes to that cluster", retired["eschborn"]["page"] == "kelkheim")
+    check("a region named after a town goes to the page holding that town, not the one holding most of its venues",
+          retired["eschborn"]["page"] == "kelkheim")
     check("every venue is on exactly one page",
           sorted(c for p in pages.values() for c in p["cinemas"]) == sorted(v for _, v in venues))
 

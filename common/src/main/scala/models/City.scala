@@ -1350,10 +1350,11 @@ object City {
   private[models] def germanSlug(preferred: String, qualified: String): String =
     if (foreignToGermany.contains(preferred)) qualified else preferred
 
-  /** German pages that no longer exist → the page now holding most of their
-   *  venues. The 19 regions that did not leave a page under their own slug when
-   *  Germany went from regions to towns (2026-10) among them: `/vechta/` →
-   *  Wildeshausen, `/itzehoe/` → Elmshorn. A region whose slug is a page now
+  /** German pages that no longer exist → the page holding the town each was
+   *  named after, or — where that town has no venue left — the page now holding
+   *  most of its venues. The 19 regions that did not leave a page under their own
+   *  slug when Germany went from regions to towns (2026-10) among them: `/vechta/`
+   *  → Cloppenburg (Vechta's cluster), `/itzehoe/` → Elmshorn. A region whose slug is a page now
    *  (`/koeln/`, `/freiburg/`) simply IS that town's page. */
   private lazy val germanSuccession: Map[String, Seq[String]] =
     GermanRosterData.retired.map { case (preferred, qualified, page) =>

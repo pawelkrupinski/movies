@@ -82,12 +82,20 @@ class GermanPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
     City.germanSlug("koeln", "koeln-nordrhein-westfalen") shouldBe "koeln"
   }
 
-  "a region that is no longer a page" should "redirect to the page holding most of its venues" in {
+  "a region that is no longer a page" should "redirect to the page holding the town it was named after" in {
+    // Vechta clusters with Cloppenburg; most of the old region's venues are on
+    // Wildeshausen's page, but a visitor typing /vechta/ wants Vechta.
+    City.renamedSlugs.get("vechta").value shouldBe "cloppenburg"
+    City.renamedSlugs.get("korbach").value shouldBe "meschede"
     City.renamedSlugs.get("itzehoe").value shouldBe "elmshorn"
     City.renamedSlugs.get("dorsten").value shouldBe "marl"
     City.renamedSlugs.get("sassnitz").value shouldBe "stralsund"
-    City.renamedSlugs.get("vechta").value shouldBe "wildeshausen"
     City.bySlug("vechta") shouldBe None
+  }
+
+  it should "fall back to the page holding most of its venues when its town has none left" in {
+    // Sigmaringen's own cinema closed; most of its region's venues are on Tuttlingen's page.
+    City.renamedSlugs.get("sigmaringen").value shouldBe "tuttlingen"
   }
 
   it should "leave no old region slug unanswered" in {
