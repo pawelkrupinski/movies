@@ -75,23 +75,21 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     body should include("<loc>https://kinowo.net/poznan/movie/testowy-film</loc>")
   }
 
-  /** The US crawl map is its metros — the state is not an address, so naming
-   *  `/california/` would sitemap a 404 while the metros people search for went
-   *  unadvertised. */
-  it should "advertise every US metro, and no state" in {
+  /** The US crawl map is its town and cluster pages — the state is not an
+   *  address, so naming `/texas/` would sitemap a 404 while the towns people
+   *  search for went unadvertised. */
+  it should "advertise every US page, and no state" in {
     val us   = TestMovieController.build(Seq.empty, servingCountry = models.Country.UnitedStates)._1
     val body = contentAsString(us.sitemap(req("/sitemap.xml")))
     body should include("<loc>https://kinowo.net/us/los-angeles/</loc>")
-    body should include("<loc>https://kinowo.net/us/san-francisco-bay-area/</loc>")
-    // The state is how a metro is FOUND, never a page of its own.
-    body should not include "/us/california/"
-    // A district is a filter inside a metro, never a URL of its own.
-    body should not include "/us/los-angeles/santa-monica/"
-    // A state small enough AND compact enough to be one city is advertised as
-    // that city; one whose metros are a flight apart is advertised as its metros.
-    body should include("<loc>https://kinowo.net/us/vermont/</loc>")
+    body should include("<loc>https://kinowo.net/us/san-francisco/</loc>")
     body should include("<loc>https://kinowo.net/us/anchorage/</loc>")
+    // The state is how a page is FOUND, never a page of its own.
+    body should not include "/us/texas/"
+    // A retired metro redirects, so it is no longer advertised.
+    body should not include "/us/san-francisco-bay-area/"
     body should not include "/us/alaska/"
+    body should not include "/us/vermont/"
   }
 
   /** A country that shares `showtimes.cc` is served one segment down, so every

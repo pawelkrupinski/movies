@@ -6,9 +6,9 @@ import java.time.LocalDateTime
 
 /**
  * When a city's showtimes count as started — `Showtime.isUpcoming`'s cutoff — judged at each
- * venue on that venue's own clock. A city keeps one zone, but a US metro across a zone line
+ * venue on that venue's own clock. A city keeps one zone, but a US page across a zone line
  * holds venues an hour either side of it (`UsRoster.venueZones`): on the city's clock Russell
- * Springs' 21:00 show dropped at 20:30 its time, before it began. Built once per render from
+ * Springs' 21:00 show once dropped at 20:30 its time, before it began. Built once per render from
  * the few venues off their city's clock; every other venue costs one map lookup.
  */
 final class StartedShowtimeCut private (cityCut: LocalDateTime, venueCuts: Map[models.Cinema, LocalDateTime]) {

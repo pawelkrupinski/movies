@@ -194,20 +194,14 @@ class WebReadModel(
     // OLD one (see `City.formerSlugs`), and would otherwise serve almost nothing
     // until every one of its films had been projected again. Rows under the
     // current slug WIN — they are the freshly projected ones — and the former
-    // bucket only fills the venues that have not caught up yet.
-    //
-    // Restricted to the city's OWN venues where the former slug was SPLIT rather
-    // than renamed — `alaska` became nine metros and its rows hold every Alaskan
-    // venue, so unfiltered Anchorage would serve Juneau's cinemas, 1,400 km and
-    // no road away. `City.ownVenuesOfSplitCity` is absent for a plain rename,
-    // whose rows are this city's already.
+    // bucket only fills the venues that have not caught up yet. (A row of a venue
+    // the roster knows is filed under that venue's page already — `onCurrentPage`
+    // — so what a former bucket holds is the rows of venues it does not.)
     val former = City.formerSlugs(citySlug).flatMap(bucket(_, keep))
     if (former.isEmpty) current
     else {
       val projected = current.map(s => (s.filmId, s.cinema)).toSet
-      val mine      = City.ownVenuesOfSplitCity.get(citySlug)
-      current ++ former.filter(s =>
-        !projected((s.filmId, s.cinema)) && mine.forall(_.contains(s.cinema)))
+      current ++ former.filter(s => !projected((s.filmId, s.cinema)))
     }
   }
 

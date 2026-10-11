@@ -52,19 +52,19 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   private val usHtml =
     views.html.landing(models.Country.UnitedStates, isApex = false)(using testsupport.TestMessages.forLang("en")).body
 
-  "the US landing page" should "list every metro, each under its state" in {
+  "the US landing page" should "list every page, each under its state" in {
     models.Country.UnitedStates.cities.foreach(c => usHtml should include (s"/${c.slug}/"))
     usHtml should include ("""<details class="city-group">""")
     usHtml should include ("""<summary class="city-group-label">California</summary>""")
     usHtml should include ("""<a href="/los-angeles/">Los Angeles</a>""")
-    // The state is a heading, never a link: `/california/` is not a page.
-    usHtml should not include """href="/california/""""
+    // The state is a heading, never a link: `/texas/` is not a page.
+    usHtml should not include """href="/texas/""""
     usHtml should not include "/poznan/"
   }
 
-  it should "start every group SHUT — a <details> with no `open`, so 468 places aren't the first screen" in {
+  it should "start every group SHUT — a <details> with no `open`, so 2,003 places aren't the first screen" in {
     // The grouping only earns its keep closed. Rendered open, the page is the
-    // A-to-Z of 468 places the states were introduced to break up, with 55
+    // A-to-Z of 2,003 places the states were introduced to break up, with 52
     // headings added to it.
     // No `<details>` anywhere on the page carries `open` — matched as an
     // ATTRIBUTE rather than by a substring, so it cannot be satisfied or
@@ -77,10 +77,10 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "link a state that IS a place straight through, rather than heading a list of one" in {
-    // Seven states and territories are too small to cut into metros, so the
-    // state's own venue list is its page. See `CityGroup.soleCity`.
-    usHtml should include ("""<li class="city-direct"><a href="/delaware/">Delaware</a></li>""")
-    usHtml should not include """<summary class="city-group-label">Delaware</summary>"""
+    // The District of Columbia has one page, Washington: the picker links it
+    // straight through, keeping the district's name searchable. See `CityGroup.soleCity`.
+    usHtml should include ("""<li class="city-direct" data-alias="District of Columbia"><a href="/washington/">Washington</a></li>""")
+    usHtml should not include """<summary class="city-group-label">District of Columbia</summary>"""
   }
 
   /** The UK picks a COUNTY — Cheshire, Kent — or one of the cities big enough to

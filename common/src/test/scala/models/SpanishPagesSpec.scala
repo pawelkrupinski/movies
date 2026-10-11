@@ -90,7 +90,7 @@ class SpanishPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   it should "never redirect a slug another country serves" in {
-    val spanishFormer = City.slugSuccession.filter { case (_, to) => to.exists(City.bySlug(_).exists(_.country == Country.Spain)) }.keySet
+    val spanishFormer = City.renamedSlugs.filter { case (_, to) => City.bySlug(to).exists(_.country == Country.Spain) }.keySet
     forAll(spanishFormer)(former => City.bySlug(former) shouldBe None)
   }
 

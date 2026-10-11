@@ -14,7 +14,7 @@ import java.util.Locale
  *   - each maps to its OWN Mongo database ([[mongoDb]]) on the shared cluster,
  *   - each carries its UI [[language]] (for collation + i18n),
  *   - each says how its city list is GROUPED in a picker ([[cityGroups]] — a US
- *     metro is found through its state, a German region through its Bundesland,
+ *     town is found through its state, a German town through its Bundesland,
  *     a UK place through its county and its nation), and
  *   - each decides whether the Filmweb rating/fallback path applies
  *     ([[filmwebEnabled]] — a new country won't use Filmweb at all).
@@ -283,8 +283,7 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.usCities
-    /** The states and territories, each over the metros cut out of it — the one
-     *  country whose picker is grouped. */
+    /** The states and territories, each over the pages anchored in it. */
     override val cityGroups: Seq[CityGroup] = City.usStates
     // Same pair as the UK, and for the same reason — a subtitled print is the
     // marked case, a dubbed one rare.

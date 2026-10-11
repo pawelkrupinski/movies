@@ -115,8 +115,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // The GROUPED landing — the same page for a country whose places are found
       // through a heading (`Country.cityGroups`). Poland's is one flat list, so
       // nothing above reaches the disclosure the US and the UK render instead:
-      // 55 collapsed states over 468 places, and the seven that are a state and a
-      // place at once. Rendered under the English bundle that host serves.
+      // 52 collapsed states over 2,003 places, and the three that are a state and
+      // a single place at once. Rendered under the English bundle that host serves.
       val groupedLandingHtml: String =
         views.html.landing(models.Country.UnitedStates, isApex = false)(using testsupport.TestMessages.forLang("en")).body
 
@@ -1221,7 +1221,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   // ── the dynamic picker's drill-down: region → subregion → city ──────────
   //
-  // A country with 468 US places or 79 UK counties does not get one A-to-Z:
+  // A country with 2,003 US places or 79 UK counties does not get one A-to-Z:
   // the root level shows region headings (plus any place small enough to
   // collapse onto — `CityGroup.soleCity`), and opening one REPLACES the list
   // with that region's own rows, with a back row to return — one level per
@@ -1234,10 +1234,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       pickerRowCount(page) shouldBe models.Country.UnitedStates.cityGroups.size
       page.evalBool("getComputedStyle(document.getElementById('picker-back-row')).display === 'none'") shouldBe true
       pickerRowLabels(page) should include ("California")
-      // Delaware is too small to cut into metros, so it is a direct row here —
-      // a heading you open to find one place repeating its own name buys
-      // nothing. See `CityGroup.soleCity`.
-      pickerRowLabels(page) should include ("Delaware")
+      // The District of Columbia has one page, so Washington is a direct row
+      // here — a heading you open to find one place buys nothing. See
+      // `CityGroup.soleCity`.
+      pickerRowLabels(page) should include ("Washington")
     }
   }
 
@@ -1249,13 +1249,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // language with a browser-locale sniff — see `beforeAll`.
       pickerSearchPlaceholder(page) shouldBe "Search for a state or city…"
       clickPickerRow(page, "California")
-      // One level, no subregion — once inside a state, only its own metros
+      // One level, no subregion — once inside a state, only its own pages
       // are left to search for.
       pickerSearchPlaceholder(page) shouldBe "Search for a city…"
     }
   }
 
-  it should "reveal a state's metros when its heading is clicked, with a back row to return" in {
+  it should "reveal a state's pages when its heading is clicked, with a back row to return" in {
     onGroupedLanding { page =>
       clickPickerRow(page, "California")
       page.evalBool("getComputedStyle(document.getElementById('picker-back-row')).display !== 'none'") shouldBe true
@@ -1277,19 +1277,17 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       typePickerSearch(page, "los angeles")
       pickerRowLabels(page) shouldBe """["Los Angeles"]"""
       // The heading itself is a root-level term and matches too — alongside
-      // "Northern California", one of the state's own metros, sorted right
-      // after it.
+      // the town of California, Maryland, whose page carries the name.
       typePickerSearch(page, "california")
-      pickerRowLabels(page) shouldBe """["California","Northern California"]"""
+      pickerRowLabels(page) shouldBe """["California","California area"]"""
 
       typePickerSearch(page, "")
       clickPickerRow(page, "California")
       // One level down, a DIFFERENT state's own name STILL matches — the
       // whole country is searched no matter how deep the visitor has
-      // drilled, exactly like the root level did above (alongside a couple
-      // of the state's own metros that happen to share the name).
+      // drilled, exactly like the root level did above.
       typePickerSearch(page, "texas")
-      pickerRowLabels(page) shouldBe """["East Texas","Texas","West Texas"]"""
+      pickerRowLabels(page) shouldBe """["Texas"]"""
       typePickerSearch(page, "los angeles")
       pickerRowLabels(page) shouldBe """["Los Angeles"]"""
     }
@@ -1301,7 +1299,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       pickerRowLabels(page) should include ("Los Angeles")
       // "Texas" only matches at the ROOT level, yet it is offered from
       // inside California — picking it has to leave California behind and
-      // land on Texas's own metros, not merely narrow California's list.
+      // land on Texas's own pages, not merely narrow California's list.
       typePickerSearch(page, "texas")
       clickPickerRow(page, "Texas")
       page.evalString("document.getElementById('picker-subtitle').textContent") shouldBe "Texas"
@@ -1516,7 +1514,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "write the city cookie on load, now that the server does not" in {
     onPath("/") { page =>
       // The VALUE matters, not just the presence: the bare `/` landing bounces to
-      // whatever this says, and a US metro page has to remember the metro.
+      // whatever this says, and a US page has to remember the page.
       page.evalString("document.cookie.match(/(?:^|; )city=([^;]*)/)[1]") shouldBe
         page.evalString("CURRENT_CITY")
     }

@@ -66,32 +66,29 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
   });
 });
 
-// The US lists 468 places — 461 distance-clustered METROS plus the seven states
-// and territories both small enough and compact enough not to split — grouped
-// under their state, because "Los Angeles" is found under "California" and a
-// 468-row A-to-Z is not a list anybody reads. The state is a heading, never a
-// link: `/california/` is gone.
+// The US lists 2,003 places — major cities, towns and clusters of small towns
+// (`data/us/scripts/build_pages.py`) — grouped under their anchor town's state,
+// because "Los Angeles" is found under "California" and a 2,003-row A-to-Z is not
+// a list anybody reads. The state is a heading, never a link.
 //
-// The count is a roster fact, so it moves on a re-harvest and on any change to
-// the cut (`UsRoster.MinCinemasToSplit` / `MaxSpanToStayWholeKm`). `UsRosterSpec`
-// and `CountrySpec` pin the same number model-side; this one pins that the page
-// RENDERS all of them, which is the part they cannot see.
+// The count is a roster fact, so it moves on a re-harvest and on any re-cut.
+// `UsRosterSpec` and `CountrySpec` pin the same number model-side; this one pins
+// that the page RENDERS all of them, which is the part they cannot see.
 test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
   test('the static fallback lists every place, all headings shut', async ({ page }) => {
     await page.goto('/landing-us', { waitUntil: 'domcontentloaded' });
-    // All 468 places are in the document — 461 metros behind a state heading,
-    // plus the seven states small AND compact enough to be a place in their
-    // own right, which link straight through (`CityGroup.soleCity`).
-    await expect(page.locator('.city-list a')).toHaveCount(468);
+    // All 2,003 places are in the document — behind a state heading, except the
+    // three states and territories with a single page, which link straight
+    // through (`CityGroup.soleCity`): the District of Columbia is Washington.
+    await expect(page.locator('.city-list a')).toHaveCount(2003);
     const groups = page.locator('details.city-group');
-    await expect(groups).toHaveCount(48);
-    await expect(page.locator('#city-list > li.city-direct > a')).toHaveCount(7);
-    await expect(page.locator('#city-list > li.city-direct > a[href="/delaware/"]')).toHaveText('Delaware');
+    await expect(groups).toHaveCount(52);
+    await expect(page.locator('#city-list > li.city-direct > a')).toHaveCount(3);
+    await expect(page.locator('#city-list > li.city-direct > a[href="/washington/"]')).toHaveText('Washington');
     await expect(page.locator('details.city-group[open]')).toHaveCount(0);
     await expect(groups.first()).toContainText('Alabama');
     const california = staticGroupNamed(page, 'California');
-    await expect(california.locator('a')).toHaveCount(22);
-    await expect(page.locator('.city-list a[href="/california/"]')).toHaveCount(0);
+    await expect(california.locator('a')).toHaveCount(156);
   });
 
   test('the dynamic picker opens on the states and drills into one', async ({ page }) => {
@@ -104,7 +101,7 @@ test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
     await expect(page.locator('#picker-subtitle')).toHaveText('California');
     // ALPHABETICAL — a heading you open is a list you scan for a name you
     // already know, not the roster order.
-    await expect(page.locator('#picker-list .picker-item').first()).toHaveText(/Bakersfield/);
+    await expect(page.locator('#picker-list .picker-item').first()).toHaveText(/Alhambra area/);
     await expect(pickerRow(page, 'Los Angeles')).toBeVisible();
     // A pick's final navigation is not exercised here: `/landing-us` is the
     // fixture harness's SIMULATED render of the US's own landing, carrying
@@ -133,7 +130,7 @@ test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
     await expect(page.locator('#picker-search')).toHaveAttribute('aria-label', 'Szukaj: stan lub miasto');
     await pickerRow(page, 'California').click();
     // One level, no subregion here — once inside a state, only its own
-    // metros are left to search for.
+    // pages are left to search for.
     await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj miasta…');
   });
 
@@ -145,21 +142,19 @@ test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
     // text — a region/subregion row also carries a trailing chevron span.
     await page.locator('#picker-search').fill('los angeles');
     await expect(page.locator('#picker-list .picker-item-label')).toHaveText(['Los Angeles']);
-    // The heading itself is a root-level term and matches too — alongside
-    // "Northern California", one of the state's own metros, sorted right
-    // after it.
+    // The heading itself is a root-level term and matches too — alongside the
+    // town of California, Maryland, whose page carries the name.
     await page.locator('#picker-search').fill('california');
-    await expect(page.locator('#picker-list .picker-item-label')).toHaveText(['California', 'Northern California']);
+    await expect(page.locator('#picker-list .picker-item-label')).toHaveText(['California', 'California area']);
 
     await page.locator('#picker-search').fill('');
     await pickerRow(page, 'California').click();
-    await expect(page.locator('#picker-list .picker-item')).toHaveCount(22);
+    await expect(page.locator('#picker-list .picker-item')).toHaveCount(156);
     // One level down, a DIFFERENT state's own name STILL matches — the whole
     // country is searched no matter how deep the visitor has drilled, same
-    // as the root level above (alongside a couple of the state's own metros
-    // that happen to share the name).
+    // as the root level above.
     await page.locator('#picker-search').fill('texas');
-    await expect(page.locator('#picker-list .picker-item-label')).toHaveText(['East Texas', 'Texas', 'West Texas']);
+    await expect(page.locator('#picker-list .picker-item-label')).toHaveText(['Texas']);
     await page.locator('#picker-search').fill('los angeles');
     await expect(page.locator('#picker-list .picker-item')).toHaveText(['Los Angeles']);
   });
@@ -170,9 +165,8 @@ test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
     await expect(pickerRow(page, 'Los Angeles')).toBeVisible();
     // "Texas" only matches at the ROOT level, yet it is offered from inside
     // California — picking it has to leave California behind and land on
-    // Texas's own metros, not merely narrow California's list. Exact text,
-    // not `pickerRow`'s substring match — "East Texas"/"West Texas" also
-    // contain "Texas".
+    // Texas's own pages, not merely narrow California's list. Exact text,
+    // not `pickerRow`'s substring match.
     await page.locator('#picker-search').fill('texas');
     await page.locator('#picker-list .picker-item')
       .filter({ has: page.locator('.picker-item-label', { hasText: /^Texas$/ }) })
@@ -352,11 +346,11 @@ test.describe('grouped city landing (Germany)', { tag: '@agnostic' }, () => {
   });
 });
 
-// A metro is an ordinary city: its `/{slug}/` is its listing, scoped to its own
+// A US page is an ordinary city: its `/{slug}/` is its listing, scoped to its own
 // venues, with no level below it. (The fixture corpus is Poznań's, so the grid
 // itself is empty here; the Scala AreaRoutingSpec asserts the film scoping.)
-test.describe('a metro is a city', { tag: '@agnostic' }, () => {
-  test('a metro serves its listing straight away, with no chooser in between', async ({ page }) => {
+test.describe('a US page is a city', { tag: '@agnostic' }, () => {
+  test('a US page serves its listing straight away, with no chooser in between', async ({ page }) => {
     await page.goto('/los-angeles/', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#view-root')).toHaveCount(1);
     await expect(page.locator('.area-list')).toHaveCount(0);

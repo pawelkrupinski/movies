@@ -6,9 +6,9 @@ import org.scalatest.matchers.should.Matchers
 /**
  * A split city's [[CinemaAreaGroup]]s must PARTITION its `cinemas` — every venue
  * in exactly one area, none dropped, none duplicated. The filter renders one
- * group per area, so a venue missing from `londonAreaOf` (or from a big metro's
- * district map) would silently vanish from the picker; these lock the partition
- * for EVERY split city, plus a few concrete placements.
+ * group per area, so a venue missing from `londonAreaOf` would silently vanish
+ * from the picker; these lock the partition for EVERY split city, plus a few
+ * concrete placements.
  */
 class CinemaAreaSpec extends AnyFlatSpec with Matchers {
 
@@ -17,7 +17,7 @@ class CinemaAreaSpec extends AnyFlatSpec with Matchers {
   private val splitCities: Seq[City] = City.allModelled.filter(_.isSplit)
 
   "Every split city" should "partition its cinemas with none dropped or duplicated" in {
-    splitCities.size should be > 1
+    splitCities should not be empty
     splitCities.foreach { city =>
       withClue(s"${city.slug}: ") {
         val grouped = city.areas.flatMap(_.cinemas)

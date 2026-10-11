@@ -555,6 +555,19 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       .collect { case GermanFeed.Kinoprogramm(path) => path } should not be empty
   }
 
+  "The US's venues" should "be scraped under the town page they are on, across a state line where it runs" in {
+    // The pages were 75 km metros cut at state lines until 2026-10: Hudson, Wisconsin's
+    // cinema was on /minneapolis-st-paul-wisconsin/; it clusters with Woodbury, Minnesota now.
+    val c      = catalog()
+    val hudson = UsRoster.byDisplayName("Hudson 12 Theatre")
+    c.byCity("woodbury").map(_.cinema) should contain (hudson)
+    c.byCity.get("minneapolis-st-paul-wisconsin") shouldBe None
+    // Every US page the web tier serves has its scrapers under the same slug.
+    Country.UnitedStates.cities.foreach { city =>
+      withClue(s"${city.slug}: ")(c.byCity.get(city.slug).value.map(_.cinema).toSet shouldBe city.cinemas.toSet)
+    }
+  }
+
   // Babylon Mitte is why Germany chooses a source per venue: on 2026-10-11 Filmstarts listed
   // 34 of its shows in the next fortnight, Cineamo and kinoheld 50, and Cineamo's ran to
   // June 2027 (data/germany/venue-sources.json).

@@ -55,17 +55,17 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
   // under a name nothing asks for. The rows are rewritten one film at a time as
   // each is projected again — a whole scrape cadence, 14h in the US — and
   // without this the city serves a near-empty page for that entire window. It
-  // is what `/san-francisco/` → `/san-francisco-bay-area/` did: 6 films where
+  // is what `/san-francisco/` → `/san-francisco-bay-area/` did in 2026-08: 6 films where
   // the metro has ~200.
 
   "A city that changed slug" should "serve the rows still projected under its former slug" in {
     val repository = new InMemoryReadModelRepository
     repository.upsertMovie(movie("dune|2021"))
-    repository.upsertScreening(screening("s1", "dune|2021", "san-francisco"))
+    repository.upsertScreening(screening("s1", "dune|2021", "san-francisco-bay-area"))
     val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     rm.reload()
 
-    rm.screeningsForCity("san-francisco-bay-area").map(_._id) shouldBe Seq("s1")
+    rm.screeningsForCity("san-francisco").map(_._id) shouldBe Seq("s1")
   }
 
   it should "prefer the freshly projected row over the stale one for the same venue" in {
@@ -73,12 +73,12 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     // venue must appear ONCE, and with the row projected under the live slug.
     val repository = new InMemoryReadModelRepository
     repository.upsertMovie(movie("dune|2021"))
-    repository.upsertScreening(CityScreening("old", "dune|2021", "san-francisco", "Roxie", None, Nil))
-    repository.upsertScreening(CityScreening("new", "dune|2021", "san-francisco-bay-area", "Roxie", None, Nil))
+    repository.upsertScreening(CityScreening("old", "dune|2021", "san-francisco-bay-area", "Roxie", None, Nil))
+    repository.upsertScreening(CityScreening("new", "dune|2021", "san-francisco", "Roxie", None, Nil))
     val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     rm.reload()
 
-    rm.screeningsForCity("san-francisco-bay-area").map(_._id) shouldBe Seq("new")
+    rm.screeningsForCity("san-francisco").map(_._id) shouldBe Seq("new")
   }
 
   // A re-cluster moves venues between pages without renaming any: Turek's
@@ -101,38 +101,16 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.screeningsForCity(City.forCinema(models.KinoHalszka).get.slug).map(_._id) shouldBe Seq("halszka")
   }
 
-  "A city SPLIT out of a shared slug" should "take only its own venues from the shared bucket" in {
-    // `alaska` was one city and is now nine metros, so — unlike a rename — its
-    // rows hold every OTHER metro's venues too. Anchorage must not serve Juneau's
-    // cinema, which is 1,400 km away with no road between them; and it must
-    // still serve its own, or the split blanks the state for a whole 14 h
-    // cadence.
-    val anchorage = City.bySlug("anchorage").getOrElse(fail("no anchorage"))
-    val juneau    = City.bySlug("juneau").getOrElse(fail("no juneau"))
-    val mine      = anchorage.cinemaDisplayNames.head
-    val theirs    = juneau.cinemaDisplayNames.head
-
-    val repository = new InMemoryReadModelRepository
-    repository.upsertMovie(movie("dune|2021"))
-    repository.upsertScreening(CityScreening("mine", "dune|2021", "alaska", mine, None, Nil))
-    repository.upsertScreening(CityScreening("theirs", "dune|2021", "alaska", theirs, None, Nil))
-    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
-    rm.reload()
-
-    rm.screeningsForCity("anchorage").map(_._id) shouldBe Seq("mine")
-    rm.screeningsForCity("juneau").map(_._id) shouldBe Seq("theirs")
-  }
-
   it should "leave a city that never changed slug reading only its own bucket" in {
     val repository = new InMemoryReadModelRepository
     repository.upsertMovie(movie("dune|2021"))
-    repository.upsertScreening(screening("s1", "dune|2021", "san-francisco"))
+    repository.upsertScreening(screening("s1", "dune|2021", "san-francisco-bay-area"))
     val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     rm.reload()
 
     rm.screeningsForCity("los-angeles") shouldBe empty
     // And the retired slug itself still resolves, for anything reaching it directly.
-    rm.screeningsForCity("san-francisco").map(_._id) shouldBe Seq("s1")
+    rm.screeningsForCity("san-francisco-bay-area").map(_._id) shouldBe Seq("s1")
   }
 
   // ── Boot: a write landing between the hydrate and the watches ───────────────
@@ -783,11 +761,11 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryReadModelRepository
     repository.upsertMovie(titled("dune|2021", "Dune", Some(2021)))
     val rm = started(repository)
-    val before = rm.lastModifiedFor("san-francisco-bay-area")
+    val before = rm.lastModifiedFor("san-francisco")
 
-    repository.upsertScreening(screening("s1", "dune|2021", "san-francisco"))
+    repository.upsertScreening(screening("s1", "dune|2021", "san-francisco-bay-area"))
 
-    rm.lastModifiedFor("san-francisco-bay-area") should be > before
+    rm.lastModifiedFor("san-francisco") should be > before
     rm.stop()
   }
 
@@ -1060,17 +1038,17 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
   "screeningsOfFilms" should "answer exactly the city's rows of those films, former-slug fill included" in {
     val repository = new InMemoryReadModelRepository
     Seq("dune|2021", "alien|1979").foreach(id => repository.upsertMovie(movie(id)))
-    repository.upsertScreening(CityScreening("old", "dune|2021", "san-francisco", "Roxie", None, Nil))
-    repository.upsertScreening(CityScreening("new", "dune|2021", "san-francisco-bay-area", "Roxie", None, Nil))
-    repository.upsertScreening(CityScreening("fill", "dune|2021", "san-francisco", "Castro", None, Nil))
-    repository.upsertScreening(CityScreening("other", "alien|1979", "san-francisco-bay-area", "Roxie", None, Nil))
-    repository.upsertScreening(CityScreening("other-old", "alien|1979", "san-francisco", "Castro", None, Nil))
+    repository.upsertScreening(CityScreening("old", "dune|2021", "san-francisco-bay-area", "Roxie", None, Nil))
+    repository.upsertScreening(CityScreening("new", "dune|2021", "san-francisco", "Roxie", None, Nil))
+    repository.upsertScreening(CityScreening("fill", "dune|2021", "san-francisco-bay-area", "Castro", None, Nil))
+    repository.upsertScreening(CityScreening("other", "alien|1979", "san-francisco", "Roxie", None, Nil))
+    repository.upsertScreening(CityScreening("other-old", "alien|1979", "san-francisco-bay-area", "Castro", None, Nil))
     val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     rm.reload()
 
     for (films <- Seq(Set("dune|2021"), Set("alien|1979"), Set("dune|2021", "alien|1979"), Set("nope")))
-      rm.screeningsOfFilms("san-francisco-bay-area", films).map(_._id) should contain theSameElementsAs
-        rm.screeningsForCity("san-francisco-bay-area").filter(s => films(s.filmId)).map(_._id)
-    rm.screeningsOfFilms("san-francisco-bay-area", Set("dune|2021")).map(_._id) should contain theSameElementsAs Seq("new", "fill")
+      rm.screeningsOfFilms("san-francisco", films).map(_._id) should contain theSameElementsAs
+        rm.screeningsForCity("san-francisco").filter(s => films(s.filmId)).map(_._id)
+    rm.screeningsOfFilms("san-francisco", Set("dune|2021")).map(_._id) should contain theSameElementsAs Seq("new", "fill")
   }
 }

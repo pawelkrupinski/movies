@@ -1,8 +1,12 @@
 # US cinema roster (Flicks, `www.flicks.us`)
 
-`venues.json` is the checked-in input the US roster is generated from. It is the
-loader's source of truth: nothing in `common/` reaches the network, and
-`UsRosterData.scala` is a pure function of this file.
+`venues.json` is the checked-in harvest the US roster is generated from:
+
+    venues.json + towns.json → scripts/build_pages.py → pages.json
+                             → scripts/generate_roster.py → common/src/main/scala/models/UsRosterData.scala
+
+Nothing in `common/` reaches the network; `UsRosterData.scala` is a pure function
+of these files.
 
 ## Shape
 
@@ -12,115 +16,81 @@ One object per venue:
 {"slug":"amc-classic-albuquerque-12","title":"AMC CLASSIC Albuquerque 12",
  "address":"3810 Las Estancias Way, Albuquerque, New Mexico 87121",
  "city":"Albuquerque","state":"New Mexico","postCode":"87121",
- "lat":"35.0214740","lon":"-106.7111172","region_slug":"albuquerque"}
+ "lat":"35.0214740","lon":"-106.7111172"}
 ```
 
 `slug` is the Flicks `/cinema/<slug>/` id the scraper fetches — the one field
-that must stay exact. `region_slug` is the Flicks METRO the venue was found
-under; the roster neither groups nor sub-groups by it directly (see below) — it
-survives only as the source of each clustered metro's display LABEL. It is
-`null` for the 788 venues recovered from their own pages rather than from a
-metro sweep (pass 2 below), which is one of the reasons the sub-grouping is
-distance-clustered instead.
+that must stay exact. The harvest's `region_slug` (the Flicks metro a venue was
+found under) is dropped: it named the 75 km metros the pages were until 2026-10,
+and nothing reads it now. A venue with no `state` is not rostered.
 
-## Grouping: the metro is the place, the state is how you find it
+## Pages: towns and clusters, by the shared rule
 
-The addressable place is the **metro** — `/los-angeles/`, a `City` of its own —
-because "films in Los Angeles" is a screen somebody wants and "films in
-California" is not. 461 of them; a state both under 30 venues and compact enough
-to read as one list is one place in its own right and keeps the slug `states.py`
-gave it (DC, Delaware, Rhode Island, Vermont, Guam, American Samoa and the Virgin
-Islands — seven of the 55), so the US serves **468 cities**.
+A US page is built by the rule Poland, Spain and Germany share
+(`data/scripts/town_pages.py`), because people do not drive far just to see a
+film:
 
-Alaska and Hawaii are under the count but not compact: 1,900 km of roadless
-Alaska and four Hawaiian islands are not one list anybody browses, so both split
-into their metros (`UsRoster.MaxSpanToStayWholeKm`), and `/alaska/` and
-`/hawaii/` 301 to the biggest metro cut out of each.
+1. A **major city** — a place of 100,000 people or more — lists only the venues
+   inside it (`/los-angeles/` is Los Angeles; Pasadena is `/pasadena-california/`).
+2. Any other town with **3+ venues** is a page of its own.
+3. A **2-venue town** anchors a cluster of the 1–2-venue towns within **20 km**.
+4. The 1-venue towns left cluster within **30 km** of the most populous of them.
+5. A 1-venue town still alone joins the nearest multi-town cluster whose anchor
+   is within **40 km**.
 
-The **state** survives as a `CityGroup`: the landing lists metros under their
-state's heading, which is how a visitor gets from "California" to "Los Angeles".
-It is not a URL — `/california/` 404s. The cut lives in `UsRoster.places`, which
-reads the metro each venue was clustered into and the metro centroids this
-generator emits beside them.
+Only 1–2-venue towns ever cluster. A cluster is named after its anchor — most
+venues, then most people — and reads "Bend area" ("in the Bend area"). Wider
+radii than Germany's 10/20/30: American small towns are further apart. The 2026-10
+build: 2,003 pages (302 major, 1,105 single towns, 596 clusters), 865 with one
+cinema; 95% of cinemas within 29 km of the town their page is named after, the
+furthest 76 km, 15 pages reaching past 50 km. The metros it replaced: 468 pages,
+315 of them reaching past 50 km.
 
-Metro names are not unique across state lines (see the clustering note below),
-so `City.usCities` qualifies a slug with its state where the bare one is taken —
-by another US metro (`/new-york/` is the New York side, `/new-york-new-jersey/`
-the Jersey one) or by another country (`/birmingham/` is the UK's, so Alabama's
-is `/birmingham-alabama/`).
+**A cluster may cross a state line** — the per-state metros split one travel-shed
+into two pages (`/philadelphia-new-jersey/`, `/kansas-city-kansas/`); Hudson,
+Wisconsin is on the Woodbury, Minnesota page now. The picker files a page under
+its **anchor town's state**; `/texas/` is no page (`/california/` is California,
+Maryland — a town).
 
-## Sub-grouping: distance-clustered metros
+**Towns** (`towns.json`, written by `scripts/geocode_towns.py` from GeoNames'
+`cities1000.txt`): a venue is in the town of its `city` within 30 km in its own
+state (50 km for a city of 500,000+ — Houston sprawls), else the state's place
+nearest it within 6 km, else a town of its own centred on its venues. New York's
+five boroughs are New York City, whatever Flicks calls them (Brooklyn, Bayside),
+and Los Angeles' neighbourhoods are Los Angeles. The geocoder refuses a venue
+harvested at a namesake's coordinates (`Grand Theater Madison`, Minnesota, sat at
+Madison, Wisconsin) and one too far from its own town's gazetteer centre to be
+matched to it; `build_pages.py` refuses a venue 1,500 km from the rest of its
+state (a flipped longitude sign) and a town more than 60 km from every venue it
+holds. The fix for each is the venue's coordinates in `venues.json`.
 
-The metros a state's picker groups by are **clustered from the venues' own
-coordinates** by `scripts/cluster_metros.py`, the US counterpart of
-`data/germany/scripts/cluster_regions.py`. Grouping on the raw `region_slug`
-instead produced 607 areas over the 46 split states, 159 of them holding two
-cinemas or fewer, plus a per-state "Other areas" catch-all for the 788 venues
-carrying no slug at all. The clustering:
+**Slugs.** A page is slugged after its name; where two US pages share it, the
+bigger is bare and the other qualified with its state (`springfield-missouri`) —
+unless the bare slug already meant a town: a slug a page had, or one retired
+since, keeps meaning the town it was named after while that town has a venue, so
+`/springfield/` is still Springfield, Illinois. Where another country serves the
+slug, `City.usCities` qualifies it (`/birmingham/` is the UK's, so Alabama's is
+`/birmingham-alabama/`; `/potsdam/` is Brandenburg's). Spain yields only
+`/toledo/` and `/laredo/`, which the US held first.
 
-1. Collapses each state's venues to **towns** (a town's cinemas can never end up
-   in two metros), positioned at the centroid of their own venues.
-2. Ranks towns by cinema count, then by how many cinemas sit within a radius of
-   them, then by name, and greedily picks hubs: each town joins the nearest hub
-   within **75 km**, or becomes a hub itself.
-3. **Folds** any cluster left holding fewer than 3 venues into its nearest
-   neighbouring cluster, if one is within 150 km (twice the radius). Only a
-   venue with no metro nearer than that keeps an area of its own — 11 of them.
-4. Names each cluster after the Flicks metro most of its venues came from
-   (whose display label `scripts/metros.py` derives from its slug), the
-   hub town's own metro breaking a tie, and the hub town's name where the
-   cluster has no metro or its metro just repeats the state's name. Labels are
-   unique within a state; the picker's persisted key is `Slugify.stable` of the
-   label, re-derived in `UsRoster` rather than carried in the generated data.
+**Retired slugs** (`pages.json` → `retired`): a page that stops existing 301s to
+the page holding the town it was named after (`/philadelphia-new-jersey/` →
+Philadelphia, `/portland-maine/` → the Westbrook cluster that holds Portland), or,
+when no town of that name has a venue, to the page holding most of its venues
+(`/inland-empire/` → Chino). The first build retired 149 of the 475 slugs the US
+ever published, the four the venue-coordinate fixes had retired and the two
+split states among them; retirements are kept and re-pointed on every build.
 
-**Why 75 km.** Tuned against the outcome, not in the abstract. It is the
-smallest radius that still merges the travel-sheds a resident treats as one
-place — Dallas + Fort Worth, the whole SF Bay — while keeping apart the ones
-they don't: greater LA stays separate from the Inland Empire (~85 km out),
-Philadelphia from the Lehigh Valley. At 90 km both of those over-merge (LA
-swallows the Inland Empire into a 175-cinema area); at 60 km the Dallas
-metroplex splits in two. The resulting spread over the split states is a median
-of 6 venues per metro, biggest Los Angeles at 133, only 18 holding two or fewer.
+```
+python3 data/us/scripts/build_pages.py
+python3 data/us/scripts/test_build_pages.py
+python3 data/us/scripts/generate_roster.py      # needs timezonefinder
+```
 
-**A cluster never crosses a state line**, because the clustering runs per state
-and a state is what the harvest is keyed by. So a metro that really does span one
-arrives as one city per state: the New York travel-shed is `/new-york/` (102
-venues, the NY side) and `/new-york-new-jersey/` (52, the Jersey side), and the
-same goes for Philadelphia, Kansas City and St. Louis. Where the Flicks label for
-the out-of-state metro is the honest name for what is left, it is kept — New
-Jersey's biggest cluster really is called "New York".
-
-`python3 data/us/scripts/cluster_metros.py` prints the venue-count distribution
-the current constants produce; it is the tool the radius was tuned with.
-
-The fold measures great-circle km, which is a fair stand-in for a drive almost
-everywhere the US puts cinemas — and is not one where a mountain crest or open
-water lies across the line. `FOLD_BARRIERS` names the folds where it is not, and
-the bar for an entry is not "no road": it is that the metro's NAME would be a
-containment no resident would say. Southeast Alaska reaches Sitka, Petersburg
-and Wrangell by ferry or plane alone and is still one place, because that is
-what the place is called. "Fresno" is not what Bishop is in — Bishop and Mammoth
-Lakes are 120 km from it on the map and ~400 km by the road that is open all
-year, the direct one over Tioga Pass being shut by snow from roughly November to
-May. They keep their own metro, which `UsRoster.MetroDisplayNames` names the
-Eastern Sierra. Every entry must still fire or the generator refuses to run.
-
-Time zones are resolved PER METRO, from the coordinates of the metro's own
-venues (`cluster_metros.zone_for`), not per state. Fifteen states straddle a
-boundary, and a state-level zone reached every city cut out of one: Knoxville and
-Chattanooga were served on Central time, El Paso on Eastern — 138 venues in all.
-That is not only a "today" boundary. `City.zoneId` also decides when a showtime
-counts as started (so shows vanished an hour early in El Paso and lingered an
-hour in Knoxville) and the UTC offset the schema.org `ScreeningEvent`s carry to
-Google. The clock text itself was always right: showtimes are stored as
-`LocalDateTime` and printed verbatim.
-
-Eighteen metros still straddle a real boundary. Splitting a metro at a zone line
-would cut travel-sheds people drive across daily, so instead each minority venue —
-30 of 5,029 — carries its OWN zone (`UsRosterData.venueZones`, written by the
-generator), which `VenueClock` reads before its city's: its scrape day, its
-scrape cadence and the web's started-showtime cut (`StartedShowtimeCut`, and the
-pills' own expiry) are its own wall clock.
+**Time zones** are resolved per PAGE from its venues' coordinates (the majority
+clock, `generate_roster.zone_for`); a venue across a zone line from the rest of its
+page carries its own (`UsRosterData.venueZones`, 4 of 5,029), which `VenueClock`
+reads before its page's.
 
 ## Re-harvesting
 
@@ -158,83 +128,35 @@ render as `US Virgin Islands`. Normalize all of those to the full state name.
 ## Regenerating the Scala roster
 
 ```
-python3 data/us/scripts/generate_roster.py data/us/venues.json \
-        common/src/main/scala/models/UsRosterData.scala
+python3 data/us/scripts/geocode_towns.py cities1000.txt   # only after a re-harvest adds venues
+python3 data/us/scripts/build_pages.py
+python3 data/us/scripts/generate_roster.py
 ```
 
-It needs `timezonefinder` (`python3 -m pip install timezonefinder`), the only
-dependency outside the standard library and only ever at regeneration time — the
-roster is checked in, so nothing at build or test time imports it.
+`generate_roster.py` needs `timezonefinder` (`python3 -m pip install
+timezonefinder`), the only dependency outside the standard library and only ever
+at regeneration time — the roster is checked in, so nothing at build or test time
+imports it.
 
-The generator refuses to emit a roster whose COORDINATES cannot be what they
-claim, because a venue's coordinates are the only thing deciding which metro —
-which city, which URL — it lands in, and a wrong one does not fail to cluster: it
-clusters somewhere plausible and wrong. Two checks, both in
-`cluster_metros.check_coordinates`, and each caught a record that had been
-shipping, every one contradicted by its own postcode:
+It refuses to emit a roster with an unresolved duplicate display name:
+`displayName` is the wire key every per-cinema slot is stored under, so two venues
+sharing one silently rebind the loser's showtimes to the winner. It qualifies a
+repeated title with its town, then its state, and dies if that is still not
+unique. Cross-country collisions (a US venue against a Polish, UK or German one)
+are caught separately by `UsRoster.claimedElsewhere`, which the generator cannot
+see. It also refuses a page listing a venue the roster lacks, or a venue on no
+page.
 
-- a venue more than 1,500 km from its state's other venues — `Grand Theatre
-  Perry` (Iowa 50220) had a flipped longitude sign and sat in Mongolia, so it
-  became a one-venue metro instead of joining Des Moines 65 km away; `Newport
-  Performing Arts` is in Newport, **Oregon** (97365) and was filed under Newport
-  News, Virginia;
-- a town whose venues are more than 75 km apart — clustering collapses a town to
-  one point, so `Regal Largo Mall` (Largo, 33771) arriving as city "Key Largo"
-  put itself *and* the real Key Largo cinema in the Naples metro, 380 km apart;
-  `Sky Vu Drive In Monroe` (53566) arriving as "Tomah" did the same to the real
-  Tomah cinema.
+A wrong coordinate never fails quietly into a wrong page: the town match is by
+name within 30 km of the venue's own point, so `Regal Largo Mall` (Largo, 33771)
+arriving as city "Key Largo" is matched to Largo, and `Sky Vu Drive In Monroe`
+(53566) arriving as "Tomah" to Monroe. `test_geocode_towns.py`,
+`test_build_pages.py` and `test_generate_roster.py` cover the matching, the page
+rule, the redirects and the clocks.
 
-`python3 data/us/scripts/test_cluster_metros.py` covers both, and the zone
-majority.
-
-It also refuses to emit a roster with an unresolved duplicate display
-name: `displayName` is the wire key every per-cinema slot is stored under, so two
-venues sharing one silently rebind the loser's showtimes to the winner. It
-qualifies a repeated title with its town, then its state, and dies if that is
-still not unique. Cross-country collisions (a US venue against a Polish, UK or
-German one) are caught separately by `UsRoster.claimedElsewhere`, which the
-generator cannot see.
-
-It runs the clustering above as part of the same pass, and dies the same way on
-a metro it cannot name uniquely within its state. It then runs it a SECOND time
-inside each metro of 75+ venues — Los Angeles, New York, San Francisco, Chicago
-and Dallas Fort Worth — at a twelfth of the radius, and carries that district's
-name on the venue too (`sub_areas_for_metro`, grouped by `UsMetroSubAreas`).
-Those five are too big to browse as one list, and their districts are the places
-a local names: Manhattan, Brooklyn, The Bronx and Staten Island fall out of the
-venues' own `city` values, as do Santa Monica, Pasadena and Long Beach.
-
-Three of the five then fold those districts onto REGIONS (`SUB_AREA_REGIONS`).
-A town name is right only while the district really is inside the metro's
-namesake city — true of Chicago, whose suburbs are all Chicagoland, and of
-Dallas Fort Worth, already named for both its anchors, so neither folds. It is
-false for the three that sprawl across places with identities of their own,
-where the raw list asserts a containment no resident would say: San Jose is not
-inside San Francisco, Long Island is not inside New York, Orange County is not
-inside Los Angeles. Those fold onto the regions a local browses by:
-
-    San Francisco  18 districts ->  5   San Francisco, East Bay, South Bay,
-                                        North Bay, Peninsula
-    New York       18 districts ->  8   Manhattan, Long Island, Brooklyn,
-                                        Westchester, Queens, Staten Island,
-                                        Rockland, The Bronx
-    Los Angeles    28 districts -> 12   Los Angeles, San Fernando Valley, San
-                                        Gabriel Valley, Gateway Cities, Orange
-                                        County, South Bay, Ventura County,
-                                        Westside, Long Beach, Antelope Valley,
-                                        Santa Clarita, Catalina Island
-
-The fold runs over the districts the clustering already found, so the geography
-is unchanged and only the buckets are renamed — which also caps its precision at
-the district: the 6 km sub-pass pulls two Queens venues across the river into
-the Manhattan cluster, so both land in Manhattan. The table must cover a listed
-metro exhaustively: a re-harvest that clusters a district it has no region for
-kills the generator rather than showing a stray town beside "East Bay".
-
-Everything it does is a pure
-function of `venues.json` — same input, byte-identical output — so re-running it
-on an unchanged file is a no-op and the diff after a re-harvest is only what the
-harvest moved.
+Everything is a pure function of the committed files — same input,
+byte-identical output — so re-running on an unchanged tree is a no-op and the diff
+after a re-harvest is only what the harvest moved.
 
 ## Retired venues
 

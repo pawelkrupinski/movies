@@ -110,31 +110,21 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.UnitedStates.cities shouldBe City.usCities
   }
 
-  "Country.UnitedStates.cities" should "be one city per metro, the state being only how you find one" in {
-    // The addressable place is the metro: 461 of them, plus the seven states and
-    // territories with too few venues — and compact enough — to be worth
-    // splitting. A state is a `CityGroup`, so `/california/` resolves to nothing.
-    Country.UnitedStates.cities should have size 468
+  "Country.UnitedStates.cities" should "be one city per town or cluster page, the state being only how you find one" in {
+    // A major city (100,000+) with only its own venues, a town of three or more, or
+    // a cluster of small towns a short drive apart — `data/us/scripts/build_pages.py`.
+    // A state is a `CityGroup`; its name is a page only where a TOWN has it
+    // (California, Maryland), never the state's listing.
+    Country.UnitedStates.cities should have size 2003
     Country.UnitedStates.cities.map(_.slug) should contain allOf (
-      "los-angeles", "new-york", "houston", "district-of-columbia", "san-juan")
-    Country.UnitedStates.bySlug.get("california") shouldBe None
+      "los-angeles", "new-york", "houston", "washington", "san-juan", "naples")
+    Country.UnitedStates.bySlug.get("texas") shouldBe None
     // Every place carries venues, and the roster totals 5,029 (5,031 less one feedless venue and the
-    // closed Alamo Drafthouse Naples) — this was a
-    // re-key, not a re-harvest. That corpus is ~6x the UK's, the fact that drives
-    // the US worker's 840-minute cadence rather than the UK's 420 (a ~10h sweep
-    // has to fit inside its own cadence).
+    // closed Alamo Drafthouse Naples) — this was a re-cut, not a re-harvest. That corpus is ~6x the
+    // UK's, the fact that drives the US worker's 840-minute cadence rather than the UK's 420 (a ~10h
+    // sweep has to fit inside its own cadence).
     all(Country.UnitedStates.cities.map(_.cinemas.size)) should be > 0
     Country.UnitedStates.cities.flatMap(_.cinemas).size shouldBe 5029
-  }
-
-  // Alamo Drafthouse Naples closed on 2026-09-09. Without it most of Southwest
-  // Florida's venues are filed under Fort Myers, and the metro would have moved from
-  // /naples/ to /fort-myers/, stranding its projected screenings for a whole cycle.
-  it should "keep Southwest Florida at /naples/ after Alamo Drafthouse Naples closed" in {
-    val naples = Country.UnitedStates.bySlug.get("naples").getOrElse(fail("no /naples/ page"))
-    naples.cinemas.map(_.displayName) should contain ("Regal Hollywood Naples")
-    naples.cinemas.map(_.displayName) should not contain "Alamo Drafthouse Naples"
-    Country.UnitedStates.bySlug.get("fort-myers") shouldBe None
   }
 
   /** Every place in `group` in its country's own collation — the order a reader
@@ -154,19 +144,18 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.UnitedStates.cityGroups.map(_.label) should contain allOf ("California", "Texas", "Alaska")
     Country.UnitedStates.cityGroups.find(_.label == "California").get
       .cities.map(_.labels.nominative) should contain ("Los Angeles")
-    // One level: a state holds metros, not sub-groups.
+    // One level: a state holds pages, not sub-groups.
     Country.UnitedStates.cityGroups.flatMap(_.groups) shouldBe empty
   }
 
   it should "order the places inside a group alphabetically, which is how a reader searches one" in {
-    // `UsRoster.places` is biggest-metro-first, the right order for a list you
+    // `UsRoster.places` is biggest-city-first, the right order for a list you
     // read the top of. A group you OPEN is a list you scan for a name you already
     // know, and the alphabet is the only order that says where to look.
     val california = Country.UnitedStates.cityGroups.find(_.label == "California").get
-    california.cities.map(_.labels.nominative).head shouldBe "Bakersfield"
-    // …and it really was not sorted before: Los Angeles is the state's biggest
-    // metro and led the roster-ordered list this replaced. It is now well down
-    // the list, which is the whole point.
+    california.cities.map(_.labels.nominative).head shouldBe "Alhambra area"
+    // …and it really is not the roster's order: Los Angeles is the state's biggest
+    // page and leads the roster. It is well down the list, which is the whole point.
     california.cities.maxBy(_.cinemas.size).labels.nominative shouldBe "Los Angeles"
     california.cities.map(_.labels.nominative).indexOf("Los Angeles") should be > 3
 
@@ -302,16 +291,14 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     def group(country: Country, slug: String): CityGroup =
       country.cityGroups.find(_.slug == slug).getOrElse(fail(s"no group $slug"))
 
-    // Delaware is too small to cut into metros, so the state's own venue list IS
-    // `/delaware/`: the picker links straight there rather than offering a
-    // heading you open to find one row repeating it.
-    group(Country.UnitedStates, "delaware").soleCity.map(_.slug) shouldBe Some("delaware")
-    group(Country.UnitedStates, "vermont").soleCity.map(_.slug) shouldBe Some("vermont")
+    // The District of Columbia has one page, Washington: the picker links straight
+    // there rather than offering a heading you open to find one row.
+    group(Country.UnitedStates, "district-of-columbia").soleCity.map(_.slug) shouldBe Some("washington")
 
     // California is a way to FIND a place, never a place — even though one of
-    // its metros could have carried its name, it holds many.
+    // its towns carries its name (California, Maryland), it holds many.
     group(Country.UnitedStates, "california").soleCity shouldBe None
-    // New York holds a metro of its own name, and Buffalo and Rochester besides:
+    // New York holds a city of its own name, and Buffalo and Rochester besides:
     // linking the heading straight through would bury them.
     group(Country.UnitedStates, "new-york").cities.map(_.slug) should contain ("new-york")
     group(Country.UnitedStates, "new-york").soleCity shouldBe None
@@ -370,7 +357,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "qualify a page slug another country already serves" in {
-    // `/toledo/` is the live US metro in Ohio — a published URL with a sitemap
+    // `/toledo/` is the live US page of Toledo, Ohio — a published URL with a sitemap
     // entry and a `city` cookie behind it — so the NEWCOMER moves, not the
     // incumbent.
     Country.Spain.bySlug.get("toledo") shouldBe None
@@ -394,17 +381,17 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   }
 
   "US places" should "carry their own time zone rather than one national default" in {
-    // Unlike Germany (one Europe/Berlin for every region), the US spans six zones,
+    // Unlike Germany (one Europe/Berlin for every page), the US spans six zones,
     // so `UsCity` takes the zone per place. A single national default would put
-    // California's day boundary three hours early. A metro carries its OWN zone,
+    // California's day boundary three hours early. A page carries its OWN zone,
     // resolved from its venues' coordinates — not its state's predominant one,
-    // which is a different answer for a metro on the far side of a boundary.
+    // which is a different answer for a page on the far side of a boundary.
     def zoneOf(slug: String) =
       Country.UnitedStates.cities.find(_.slug == slug).get.zoneId.getId
     zoneOf("los-angeles") shouldBe "America/Los_Angeles"
     zoneOf("new-york")    shouldBe "America/New_York"
     zoneOf("houston")     shouldBe "America/Chicago"
-    zoneOf("oahu")        shouldBe "Pacific/Honolulu"
+    zoneOf("honolulu")    shouldBe "Pacific/Honolulu"
     zoneOf("phoenix")     shouldBe "America/Phoenix"   // no DST, deliberately its own
     zoneOf("knoxville")   shouldBe "America/New_York"  // Tennessee's is Central
     zoneOf("el-paso")     shouldBe "America/Denver"    // Texas's is Central

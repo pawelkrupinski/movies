@@ -287,16 +287,18 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
 
   // ── A venue across a zone line from its city ─────────────────────────────────────────────────────
 
-  // Key Twin Russell Springs keeps Central time inside Somerset, KY (Eastern). The web judges its showtimes started on
-  // the venue's clock (`StartedShowtimeCut`); on the city's clock the census dropped a 20:30 show at 19:45 venue time
-  // and, for the hour until the web dropped it too, ReadModelServingDiffersFromCorpus paged every US evening.
+  // Green River Cinema keeps Eastern time in Campbellsville, KY, on a page on Central. The web judges its showtimes
+  // started on the venue's clock (`StartedShowtimeCut`); on the city's clock the census would count a show that began
+  // 45 minutes ago, and — as when Russell Springs sat an hour BEHIND Eastern Somerset and the census dropped its shows
+  // early — ReadModelServingDiffersFromCorpus would page every US evening for the hour the two disagree.
   it should "judge a venue across a zone line from its city on the venue's own clock, as the web does" in {
-    val venue    = models.UsRoster.byDisplayName("Key Twin Russell Springs")
+    val venue    = models.UsRoster.byDisplayName("Green River Cinema Campbellsville")
     val city     = City.forCinema(venue).get
-    val cityTime = LocalDateTime.parse("2026-06-10T21:15")   // EDT; 20:15 CDT at the venue
+    val cityTime = LocalDateTime.parse("2026-06-10T20:15")   // CDT; 21:15 EDT at the venue
     val at       = java.time.Clock.fixed(cityTime.atZone(city.zoneId).toInstant, java.time.ZoneOffset.UTC)
-    val late     = CorpusMetricsFixtures.ready(venue, 1, LocalDateTime.parse("2026-06-10T20:30"))   // in 15 min, venue time
-    val read     = CorpusMetricsFixtures.reading(Seq(row("Late Show", late)), at)
+    val late     = CorpusMetricsFixtures.ready(venue, 1, LocalDateTime.parse("2026-06-10T21:30"))   // in 15 min, venue time
+    val gone     = CorpusMetricsFixtures.ready(venue, 2, LocalDateTime.parse("2026-06-10T20:30"))   // 45 min ago, venue time
+    val read     = CorpusMetricsFixtures.reading(Seq(row("Late Show", late), row("Gone Show", gone)), at)
     read.served.get((city.slug, WorkerSourceFilmsMetrics.Scope.All)) shouldBe Some(1)
     read.showtimes.get(city.slug) shouldBe Some(1)
   }

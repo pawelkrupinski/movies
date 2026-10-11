@@ -1,258 +1,210 @@
 #!/usr/bin/env python3
-"""Generate common/src/main/scala/models/UsRosterData.scala from the harvested
-flicks.us venue dataset.
+"""Generate common/src/main/scala/models/UsRosterData.scala from pages.json.
 
-The addressable place is the METRO, not the state: a visitor wants "films in Los
-Angeles", never "films in California". So each venue carries the metro its
-coordinates put it in (cluster_metros.py, labelled by metros.py) plus that
-metro's own centroid, and `UsRoster` turns each metro into a `City` of its own.
+The JSON -> Scala step of the US roster, the counterpart of
+data/germany/scripts/generate_roster.py. Reads the PAGES (`pages.json`, built by
+`build_pages.py`: which town or cluster page each venue is on, and where each page
+that stopped existing now redirects) and the venues (`venues.json` less
+`retired.json`), and emits the flat tuple data `models.UsRoster` materialises into
+City/Cinema objects.
 
-The STATE survives as the grouping the picker reads — "California → Los
-Angeles" is how a visitor finds a metro — and as the `City` itself for the nine
-states and territories too small to have metros (Alaska, Hawaii, DC, …), whose
-listing IS their page.
+Each page keeps its clock in the zone most of its venues are in, resolved from
+their coordinates — the US spans six zones and fifteen states straddle a
+boundary, so a state's zone put Knoxville on Central time. A venue on another
+clock than its page's majority carries its own (`UsRosterData.venueZones`), which
+`VenueClock` reads before its page's.
 
-Usage:  python3 data/us/scripts/generate_roster.py <venues.json> <out.scala>
+Things it refuses to do, because each fails SILENTLY downstream:
+
+  * emit a duplicate `displayName` — that string is the wire key every stored
+    showtime is filed under, and `Source.byDisplayName` is a plain `toMap`, so
+    two venues sharing one quietly become one venue. A repeated Flicks title is
+    qualified with its town, then its state;
+  * emit a venue on no page, or on two, or a page listing a venue the roster does
+    not have — a venue on no page is never scraped, and nothing else says so.
+
+It needs `timezonefinder` (`python3 -m pip install timezonefinder`), only ever at
+regeneration time — the roster is checked in.
+
+Usage:  python3 data/us/scripts/generate_roster.py
 """
-import json, re, sys, unicodedata
-from decimal import ROUND_HALF_EVEN, Decimal
-from collections import defaultdict
-sys.path.insert(0, __file__.rsplit('/', 1)[0])
+import json
 import pathlib
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / 'scripts'))
-import retired_venues
-from states import STATES
-from metros import labels_by_slug
-from cluster_metros import (BARRIERS_APPLIED, FOLD_BARRIERS, check_coordinates,
-                            metros_for_state, same_clock, sub_areas_for_metro, zone_for)
+import re
+import sys
+from collections import Counter, defaultdict
+from datetime import datetime
+from functools import lru_cache
+from zoneinfo import ZoneInfo
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import build_pages  # noqa: E402
+from town_pages import placement_problems  # noqa: E402
+
+ROOT = build_pages.ROOT
+OUT = ROOT / "common" / "src" / "main" / "scala" / "models" / "UsRosterData.scala"
+
+CHUNK = 40
+
+#: The two dates a timezone is compared on. One is not enough: Phoenix and Denver
+#: share an offset in January and differ in July, because Arizona does not keep
+#: DST — a single-date probe would call them the same zone.
+TZ_PROBE_DATES = (datetime(2026, 1, 15, 12), datetime(2026, 7, 15, 12))
 
 
 def scala_str(s: str) -> str:
-    """Escape a Python string for a Scala double-quoted literal."""
-    return s.replace('\\', '\\\\').replace('"', '\\"').replace('$', '$$')
+    """A Scala double-quoted literal."""
+    return '"' + s.replace('\\', '\\\\').replace('"', '\\"').replace('$', '$$') + '"'
 
 
 def clean(s):
     return re.sub(r'\s+', ' ', (s or '')).strip()
 
 
-#: A centroid's precision: five decimals of a degree, about a metre.
-CENTROID_PLACES = Decimal('0.00001')
+def ident(slug: str) -> str:
+    return "p_" + re.sub(r"[^a-z0-9]", "_", slug)
 
 
-def mean_coordinate(values):
-    """The mean of coordinates given as the harvest's own decimal strings, rounded
-    half-even to five places.
-
-    EXACT, not float: `sum()` over floats is not the same function on every
-    Python -- 3.12 made it compensated (Neumaier), older ones add naively -- and
-    a mean that lands a hair either side of a rounding boundary then prints a
-    different last digit. Spencer, Iowa came out -94.92317 on one machine and
-    -94.92316 on CI, so the generated roster never matched itself. Decimal
-    arithmetic on the source strings has one answer everywhere."""
-    values = [Decimal(str(value)) for value in values]
-    mean = sum(values, Decimal(0)) / len(values)
-    return float(mean.quantize(CENTROID_PLACES, rounding=ROUND_HALF_EVEN))
+@lru_cache(maxsize=1)
+def _timezone_finder():
+    """The lat/lon -> IANA zone lookup, imported lazily with an actionable error."""
+    try:
+        from timezonefinder import TimezoneFinder
+    except ImportError:
+        raise SystemExit("timezonefinder is not installed — `python3 -m pip install timezonefinder` "
+                         "(needed only to regenerate the roster; see data/us/README.md)")
+    return TimezoneFinder()
 
 
-def centroid(vs):
-    """Centroid of a group's actual venues — centres the map where the
-    cinemas are rather than on a geographic midpoint nobody goes to."""
-    return (mean_coordinate(v['lat_src'] for v in vs),
-            mean_coordinate(v['lon_src'] for v in vs))
+@lru_cache(maxsize=None)
+def _offsets(zone):
+    """A zone's UTC offsets on [[TZ_PROBE_DATES]] — what a CLOCK does, which is
+    the only part of a zone name that reaches a reader. `America/Indiana/Indianapolis`
+    and `America/New_York` are two names for one clock; a majority over names would
+    split a page that has no disagreement in it."""
+    tz = ZoneInfo(zone)
+    return tuple(tz.utcoffset(d).total_seconds() for d in TZ_PROBE_DATES)
 
 
-def main(src, out):
-    # Closed and feedless venues (data/us/retired.json) — kept out here rather than
-    # deleted from venues.json, so a re-harvest cannot bring them back.
-    retired = retired_venues.load(pathlib.Path(src).resolve().parent)
-    venues = [v for v in json.load(open(src)) if v.get('slug') not in retired]
-    by_state = defaultdict(list)
-    skipped_no_state, skipped_no_coords, skipped_unknown_state = [], [], []
+def zone_for(venues):
+    """The IANA zone a group of venues keeps its clock in: the majority by OFFSET,
+    then by name within the winning offset, ties alphabetical — a pure function of
+    the input."""
+    finder = _timezone_finder()
+    zones = [z for z in (finder.timezone_at(lat=v['lat'], lng=v['lon']) for v in venues) if z]
+    if not zones:
+        raise SystemExit(f"no timezone resolves for any of {len(venues)} venues at "
+                         f"{[(v['lat'], v['lon']) for v in venues][:3]}")
+    by_offset = Counter(_offsets(z) for z in zones)
+    winner = min(by_offset, key=lambda o: (-by_offset[o], o))
+    names = Counter(z for z in zones if _offsets(z) == winner)
+    return min(names, key=lambda n: (-names[n], n))
 
+
+def same_clock(a, b):
+    """Whether two IANA zones show the same time all year — see [[_offsets]]."""
+    return _offsets(a) == _offsets(b)
+
+
+def display_names(venues):
+    """Flicks slug → displayName, unique across the roster: a title shared by
+    several venues is qualified with each one's town, then — if that still
+    collides — its state. Dies on anything left over."""
+    title = {v['slug']: clean(v['title']) for v in venues}
+    by_title = defaultdict(list)
     for v in venues:
-        state, slug, title = v.get('state'), v.get('slug'), clean(v.get('title'))
-        if not state:
-            skipped_no_state.append(slug); continue
-        if state not in STATES:
-            skipped_unknown_state.append((slug, state)); continue
-        try:
-            lat, lon = float(v['lat']), float(v['lon'])
-        except (TypeError, ValueError, KeyError):
-            skipped_no_coords.append(slug); continue
-        if not (slug and title):
-            continue
-        by_state[state].append({
-            'slug': slug, 'title': title, 'city': clean(v.get('city')),
-            'lat': lat, 'lon': lon, 'metro': v.get('region_slug') or '',
-            # The harvest's own strings, for the exact centroid (see `mean_coordinate`).
-            'lat_src': v['lat'], 'lon_src': v['lon'],
-        })
-
-    # Coordinates decide which metro — which City, which URL — a venue lands in,
-    # and a wrong one clusters somewhere plausible rather than failing. Checked
-    # before anything reads them, so a bad record is a build error and not a
-    # venue quietly filed 380 km from where it is.
-    for state, vs in sorted(by_state.items()):
-        check_coordinates(state, vs)
-
-    # Display names are the WIRE KEY every per-cinema slot is stored under
-    # (Source.byDisplayName is a plain toMap), so a duplicate silently rebinds one
-    # venue's showtimes to another. Qualify collisions with the town, then the
-    # state, and fail loudly if that still is not enough.
-    seen = defaultdict(list)
-    for state, vs in by_state.items():
-        for v in vs:
-            seen[v['title']].append((state, v))
-    for title, entries in seen.items():
-        if len(entries) == 1:
-            continue
-        for state, v in entries:
-            v['title'] = f"{title} ({v['city']})" if v['city'] else f"{title} ({state})"
-    final = defaultdict(list)
-    for state, vs in by_state.items():
-        for v in vs:
-            final[v['title']].append((state, v))
-    for title, entries in final.items():
-        if len(entries) > 1:
-            for state, v in entries:
-                v['title'] = f"{title} ({state})"
-    still = defaultdict(int)
-    for state, vs in by_state.items():
-        for v in vs:
-            still[v['title']] += 1
-    dupes = {t: n for t, n in still.items() if n > 1}
+        by_title[title[v['slug']]].append(v)
+    for t, vs in by_title.items():
+        if len(vs) > 1:
+            for v in vs:
+                city = clean(v.get('city'))
+                title[v['slug']] = f"{t} ({city})" if city else f"{t} ({v['state']})"
+    by_title = defaultdict(list)
+    for v in venues:
+        by_title[title[v['slug']]].append(v)
+    for t, vs in by_title.items():
+        if len(vs) > 1:
+            for v in vs:
+                title[v['slug']] = f"{t} ({v['state']})"
+    dupes = {t: n for t, n in Counter(title.values()).items() if n > 1}
     if dupes:
         raise SystemExit(f"UNRESOLVED display-name collisions (wire keys): {dupes}")
+    return title
 
-    # The metro each venue is filed under is DISTANCE-CLUSTERED, not its raw
-    # Flicks `region_slug`: adjacent metros inside one travel-shed merge, and the
-    # 788 venues recovered from their own pages (no `region_slug` at all) join
-    # the metro nearest them instead of a per-state catch-all. Flicks' metros
-    # survive as the LABELS the clusters are named after.
-    metro_labels = labels_by_slug({state: {v['metro'] for v in vs if v['metro']}
-                                   for state, vs in by_state.items()})
-    metro_of = {state: metros_for_state(state, vs, metro_labels[state])
-                for state, vs in by_state.items()}
 
-    # A barrier that stops applying is a fold that moved under it, and a rule with
-    # no effect is worse than no rule — it reads as a decision that is still being
-    # made. Refused for the same reason an unmapped SUB_AREA_REGIONS district is.
-    stale = sorted(b for b in FOLD_BARRIERS if (b[1], b[2]) not in BARRIERS_APPLIED)
-    if stale:
-        raise SystemExit(f"FOLD_BARRIERS entries that blocked nothing: {stale} — the fold they "
-                         f"describe no longer happens; drop them from cluster_metros.FOLD_BARRIERS")
-
-    # A metro too big to browse as one list is clustered AGAIN, at a twelfth of
-    # the radius, into the districts a local names — `UsMetroSubAreas` groups by
-    # this second label. Empty for every venue in a metro under
-    # `MIN_VENUES_TO_SUBDIVIDE`, which is all but five of the 470.
-    by_metro = defaultdict(list)
-    for state, vs in by_state.items():
-        for v in vs:
-            by_metro[(state, metro_of[state][v['slug']])].append(v)
-    sub_of = {}
-    for (state, metro), members in by_metro.items():
-        sub_of.update(sub_areas_for_metro(metro, members))
-
-    regions = []
-    for state in sorted(by_state, key=lambda s: STATES[s]):
-        vs = sorted(by_state[state], key=lambda v: v['title'].lower())
-        slug = STATES[state]
-        lat, lon = centroid(vs)
-        # A metro is a PLACE of its own — `/los-angeles/`, a `City` — so it needs
-        # its own coordinates for the landing's nearest-place geolocation. The
-        # state's centroid is no answer for one: every metro in California would
-        # sit on the same point, 300 km from most of them.
-        grouped = defaultdict(list)
-        for v in vs:
-            grouped[metro_of[state][v['slug']]].append(v)
-        # A metro carries its OWN zone, resolved from its venues' coordinates.
-        # The state's predominant zone is not an answer for a metro on the far
-        # side of a boundary: it is what put El Paso on Central time.
-        metros = sorted((label, *centroid(members), zone_for(members))
-                        for label, members in grouped.items())
-        regions.append((slug, state, lat, lon, vs, metros))
-
-    total = sum(len(r[4]) for r in regions)
-    # The metro zone is a majority, so a metro straddling a real boundary leaves
-    # minority venues on a clock that is not theirs (the Navajo Nation's cinemas in
-    # Phoenix-time Flagstaff, Bismarck filed under Mountain-time Dickinson). Each
-    # such venue carries its OWN zone, which `VenueClock` reads before its city's:
-    # its scrape day and its "already started" must be its own wall clock.
-    # Keyed by (state, label): a metro label is unique only WITHIN its state —
-    # three states hold a "Philadelphia" — so a bare label collapses them.
-    zone_of = {(state, label): mzone
-               for _, state, _, _, _, metros in regions for label, _, _, mzone in metros}
-    venue_zones = sorted((v['title'], zone_for([v])) for state, vs in by_state.items() for v in vs
-                         if not same_clock(zone_for([v]), zone_of[(state, metro_of[state][v['slug']])]))
+def render(pages, retired, venues, town_names):
+    by_slug = {v['slug']: v for v in venues}
+    name_of = display_names(venues)
+    point = {v['slug']: {'lat': float(v['lat']), 'lon': float(v['lon'])} for v in venues}
+    zones = {p['slug']: zone_for([point[c] for c in p['cinemas']]) for p in pages}
+    own_zone = sorted((name_of[c], z) for p in pages for c in p['cinemas']
+                      for z in [zone_for([point[c]])] if not same_clock(z, zones[p['slug']]))
+    states = {p['state'] for p in pages}
     lines = [
-        "// GENERATED from data/us/venues.json by data/us/scripts/generate_roster.py",
-        "// — do NOT edit by hand. Full US cinema roster: "
-        f"{len(regions)} states/territories / {total:,} cinemas (Flicks, www.flicks.us).",
-        "// Regenerate after re-harvesting; see data/us/README.md.",
+        "// GENERATED from data/us/pages.json by data/us/scripts/generate_roster.py",
+        f"// — do NOT edit by hand. Full US cinema roster: {len(pages):,} pages over {len(states)} states and",
+        f"// territories / {len(venues):,} cinemas (Flicks, www.flicks.us). Regenerate after re-harvesting or",
+        "// re-clustering; see data/us/README.md.",
         "package models",
         "",
         "private[models] object UsRosterData {",
-        "  // (displayName, pillName, flicks cinema slug, metro label, district label, town)",
-        "  type C = (String, String, String, String, String, String)",
-        "  // (metro label, lat, lon, zoneId) — the centroid of that metro's own",
-        "  // venues, and the zone THEY are in (not the state's; see states.py)",
-        "  type M = (String, Double, Double, String)",
-        "  // (slug, name, lat, lon, cinemas, metros)",
-        "  type R = (String, String, Double, Double, Seq[C], Seq[M])",
+        "  // (displayName, pillName, flicks cinema slug, the venue's state, the venue's own town)",
+        "  type C = (String, String, String, String, String)",
+        "  // (slug, slug qualified with its state, name, state, lat, lon, zoneId, multiTown, towns, cinemas)",
+        "  type R = (String, String, String, String, Double, Double, String, Boolean, Seq[String], Seq[C])",
         "",
     ]
-    for slug, state, lat, lon, vs, metros in regions:
-        ident = 'r_' + slug.replace('-', '_')
-        lines.append(f'  private def {ident}: R = ("{slug}", "{scala_str(state)}", '
-                     f'{lat}, {lon}, Seq(')
-        for v in vs:
-            t = scala_str(v['title'])
-            # The venue's own town, straight off the harvest. A metro is not a
-            # town — /san-diego/ covers Chula Vista, Carlsbad and El Cajon — and
-            # this is the field `City.coveredPlaces` names them from, so it is
-            # carried per VENUE rather than per metro: the same roster also
-            # serves whole states as one place, and each grouping counts its own.
-            lines.append(f'    ("{t}", "{t}", "{scala_str(v["slug"])}", '
-                         f'"{scala_str(metro_of[state][v["slug"]])}", '
-                         f'"{scala_str(sub_of.get(v["slug"], ""))}", '
-                         f'"{scala_str(v.get("city", ""))}"),')
-        lines.append('  ), Seq(')
-        for label, mlat, mlon, mzone in metros:
-            lines.append(f'    ("{scala_str(label)}", {mlat}, {mlon}, "{mzone}"),')
-        lines.append('  ))')
-        lines.append('')
-    lines.append("  // (displayName, zoneId) — the venues whose own clock is not their metro's")
-    lines.append('  val venueZones: Seq[(String, String)] = Seq(')
-    for title, zone in venue_zones:
-        lines.append(f'    ("{scala_str(title)}", "{zone}"),')
-    lines.append('  )')
-    lines.append('')
-    lines.append('  val regions: Seq[R] = Seq(')
-    for slug, *_ in regions:
-        lines.append(f'    r_{slug.replace("-", "_")},')
-    lines.append('  )')
-    lines.append('}')
-    open(out, 'w').write('\n'.join(lines) + '\n')
-
-    print(f"regions={len(regions)} cinemas={total}")
-    print(f"skipped: no state={len(skipped_no_state)} unknown state={len(skipped_unknown_state)} "
-          f"no coords={len(skipped_no_coords)}")
-    if skipped_unknown_state:
-        print("  unknown states:", sorted({s for _, s in skipped_unknown_state}))
-    qualified = sum(1 for _, vs in by_state.items() for v in vs if v['title'].endswith(')'))
-    print(f"display names qualified to break collisions: ~{qualified}")
-    raw = {v['metro'] for vs in by_state.values() for v in vs if v['metro']}
-    clustered = {(state, label) for state, m in metro_of.items() for label in m.values()}
-    print(f"metros: {len(raw)} raw Flicks -> {len(clustered)} clustered "
-          f"(python3 data/us/scripts/cluster_metros.py reports the distribution)")
-    print(f"venues on their own zone, not their metro's: {len(venue_zones)} of {total}")
-
-    sub_metros = {m for (_, m), vs in by_metro.items() if any(v['slug'] in sub_of for v in vs)}
-    print(f"sub-divided metros: {sorted(sub_metros)} -> "
-          f"{len(set(sub_of.values()))} sub-areas over {len(sub_of)} venues")
+    for page in pages:
+        rows = ",\n".join(
+            "    ({}, {}, {}, {}, {})".format(
+                scala_str(name_of[c]), scala_str(name_of[c]), scala_str(c), scala_str(by_slug[c]['state']),
+                scala_str(clean(by_slug[c].get('city'))))
+            for c in page['cinemas'])
+        towns = list(dict.fromkeys(town_names(t) for t in page['towns']))
+        lines.append(
+            "  private def {}: R = ({}, {}, {}, {}, {}, {}, {}, {}, Seq({}), Seq(\n{}\n  ))".format(
+                ident(page['slug']), scala_str(page['slug']), scala_str(page['qualifiedSlug']),
+                scala_str(page['name']), scala_str(page['state']), page['lat'], page['lon'],
+                scala_str(zones[page['slug']]), "true" if page['kind'] == 'cluster' else "false",
+                ", ".join(scala_str(t) for t in towns), rows))
+    lines.append("")
+    names = [ident(p['slug']) for p in pages]
+    chunks = [names[i:i + CHUNK] for i in range(0, len(names), CHUNK)]
+    for index, chunk in enumerate(chunks):
+        lines.append(f"  private def chunk{index}: Seq[R] = Seq({', '.join(chunk)})")
+    lines.append("  val pages: Seq[R] = " + " ++ ".join(f"chunk{i}" for i in range(len(chunks))))
+    lines.append("")
+    lines.append("  /** (displayName, zoneId) — the venues whose own clock is not their page's. */")
+    lines.append("  val venueZones: Seq[(String, String)] = Seq(")
+    lines.extend(f"    ({scala_str(n)}, {scala_str(z)})," for n, z in own_zone)
+    lines.append("  )")
+    lines.append("")
+    lines.append("  /** Pages that no longer exist — the metros the US pages were until 2026-10 among")
+    lines.append("   *  them — and the page holding the town each was named after, else most of its")
+    lines.append("   *  venues: (slug, slug qualified with its state, the page's slug). */")
+    lines.append("  val retired: Seq[(String, String, String)] = Seq(")
+    lines.extend(f"    ({scala_str(slug)}, {scala_str(r['qualifiedSlug'])}, {scala_str(r['page'])}),"
+                 for slug, r in sorted(retired.items()))
+    lines.append("  )")
+    lines.append("}")
+    return "\n".join(lines) + "\n", len(own_zone)
 
 
-if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2])
+def main() -> int:
+    roster = build_pages.roster_venues()
+    data = json.loads(build_pages.OUT.read_text())
+    problems = placement_problems({v['slug'] for v in roster}, data['pages'])
+    if problems:
+        for problem in problems:
+            print(f"ERROR: {problem}", file=sys.stderr)
+        return 1
+    _, towns = build_pages.load_towns()
+    text, own_zones = render(data['pages'], data['retired'], roster, lambda key: build_pages.display(towns, key))
+    OUT.write_text(text)
+    print(f"Wrote {OUT.relative_to(ROOT)}: {len(data['pages']):,} pages / {len(roster):,} cinemas, "
+          f"{own_zones} on their own zone / {len(data['retired'])} retired slugs")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

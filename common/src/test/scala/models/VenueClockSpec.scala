@@ -59,25 +59,25 @@ class VenueClockSpec extends AnyFlatSpec with Matchers {
     clock.today(TimeZones.UsEastern) shouldBe LocalDate.parse("2026-11-02")
   }
 
-  it should "read a venue across a zone line from its metro in the venue's own zone" in {
-    // 04:30 UTC on 5 October: 00:30 EDT in Somerset, KY — the metro's majority clock — but 23:30 CDT
-    // on the 4th at Russell Springs and at Marianna (Tallahassee's metro, Eastern), and 22:30 MDT
-    // at Goodland (Northwest Kansas, Central). On the metro's day each venue's scrape started at
-    // the 5th and dropped its still-running evening of the 4th.
+  it should "read a venue across a zone line from its page in the venue's own zone" in {
+    // 04:30 UTC on 5 October: 23:30 CDT on the 4th on the Campbellsville and Three Oaks pages —
+    // their majority clock — but 00:30 on the 5th at Green River Cinema (Taylor County, Eastern)
+    // and at the Vickers Theatre (Michigan, Eastern). On the page's day each venue's scrape would
+    // start a day behind its own and keep an evening that has already ended.
     val clock = new VenueClock(new MutableClock(Instant.parse("2026-10-05T04:30:00Z")))
     val rows = Table(
-      ("venue",                    "city zone",                      "local now"),
-      ("Key Twin Russell Springs", TimeZones.UsEastern,              "2026-10-04T23:30"),
-      ("Marianna Cinemas",         TimeZones.UsEastern,              "2026-10-04T23:30"),
-      ("Sherman Theatre Goodland", TimeZones.UsCentral,              "2026-10-04T22:30"),
+      "venue",
+      "Green River Cinema Campbellsville",
+      "Vickers Theatre Three Oaks",
     )
-    forAll(rows) { (name, cityZone, local) =>
+    forAll(rows) { name =>
       val venue = UsRoster.byDisplayName(name)
-      City.forCinema(venue).map(_.zoneId) shouldBe Some(cityZone)
-      clock.nowAt(venue, fallback = cityZone) shouldBe LocalDateTime.parse(local)
-      clock.todayAt(venue, fallback = cityZone) shouldBe LocalDate.parse("2026-10-04")
+      City.forCinema(venue).map(_.zoneId) shouldBe Some(TimeZones.UsCentral)
+      clock.nowAt(venue, fallback = TimeZones.UsCentral) shouldBe LocalDateTime.parse("2026-10-05T00:30")
+      clock.todayAt(venue, fallback = TimeZones.UsCentral) shouldBe LocalDate.parse("2026-10-05")
     }
-    UsRoster.venueZones.size shouldBe 30
+    // Pages of a few towns rarely straddle a zone line; metros of 75 km did, 30 times.
+    UsRoster.venueZones.size shouldBe 4
   }
 
   it should "answer each ask from the clock, never a date fixed when it was built" in {

@@ -52,8 +52,8 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     // the states once moved it from Chicago to Pacific/Pago_Pago, American Samoa's,
     // and every suite stayed green. Pinned here so the next reshuffle says so.
     val us = Catalog.json.split("\\{").find(_.contains(""""code":"us"""")).getOrElse(fail("no us entry"))
-    us should include(""""timezone":"America/Los_Angeles"""")   // Los Angeles, 133 venues
-    Country.UnitedStates.cities.maxBy(c => (c.cinemas.size, c.slug)).slug shouldBe "los-angeles"
+    us should include(""""timezone":"America/New_York"""")   // New York, 67 venues
+    Country.UnitedStates.cities.maxBy(c => (c.cinemas.size, c.slug)).slug shouldBe "new-york"
     // …and a single-zone country is unaffected by which city is biggest.
     Catalog.json should include(""""code":"pl"""")
     Catalog.json should include(""""timezone":"Europe/Warsaw"""")
@@ -66,17 +66,17 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     // and costs bytes on every city of four countries out of five.
     j should include("""{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252,"country":"pl","region":"Wielkopolskie"}""")
     j should not include """"slug":"london","name":"London","lat":51.5074,"lon":-0.1278,"country":"uk","timezone""""
-    // The US spans six zones, so every metro off the country's own carries its.
-    // This is the whole point: an app pruning a Knoxville showtime on the
-    // country's Pacific would drop it three hours early.
+    // The US spans six zones, so every page off the country's own carries its.
+    // This is the whole point: an app pruning a Los Angeles showtime on the
+    // country's Eastern would drop it three hours early.
     def cityEntry(slug: String) =
       j.split("\\{").find(_.contains(s""""slug":"$slug"""")).getOrElse(fail(s"no $slug entry"))
-    cityEntry("knoxville") should include(""""timezone":"America/New_York"""")
-    cityEntry("el-paso")   should include(""""timezone":"America/Denver"""")
-    cityEntry("juneau")    should include(""""timezone":"America/Juneau"""")
-    cityEntry("oahu")      should include(""""timezone":"Pacific/Honolulu"""")
-    // …and a US metro that IS on the country's zone stays silent.
-    cityEntry("los-angeles") should not include "timezone"
+    cityEntry("los-angeles") should include(""""timezone":"America/Los_Angeles"""")
+    cityEntry("el-paso")     should include(""""timezone":"America/Denver"""")
+    cityEntry("juneau")      should include(""""timezone":"America/Juneau"""")
+    cityEntry("honolulu")    should include(""""timezone":"Pacific/Honolulu"""")
+    // …and a US page that IS on the country's zone stays silent.
+    cityEntry("knoxville") should not include "timezone"
   }
 
   it should "name on each city the slugs the web redirects onto it, so an app can open their links" in {
@@ -86,10 +86,8 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     // A retired Polish page: its URLs 301 onto the page that holds its town now,
     // but a link an app claims never reaches that redirect.
     cityEntry("biala-podlaska") should include(""""formerSlugs":["miedzyrzec-podlaski"]""")
-    cityEntry("san-francisco-bay-area") should include(""""formerSlugs":["san-francisco"]""")
-    // A split's slug goes only to the city its URL redirects to, the biggest.
-    cityEntry("hampton-roads") should include(""""formerSlugs":["newport-news"]""")
-    cityEntry("willamette-valley") should not include "formerSlugs"
+    // A retired US metro, onto the page holding the town it was named after.
+    cityEntry("san-francisco") should include(""""formerSlugs":["san-francisco-bay-area"]""")
     cityEntry("poznan") should not include "formerSlugs"
     // Every former slug is a slug no current city answers at.
     City.renamedSlugs.keySet.foreach(former => j should not include s""""slug":"$former"""")
@@ -124,16 +122,15 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     val j = Catalog.json
     def cityEntry(slug: String) =
       j.split("\\{").find(_.contains(s""""slug":"$slug"""")).getOrElse(fail(s"no $slug entry"))
-    // Berlin and Hamburg are Germany's single-page city-states; Delaware and
-    // Vermont are US states too small to split into metros. Naming their one
+    // Berlin and Hamburg are Germany's single-page city-states; Washington is
+    // the District of Columbia's one page. Naming their one
     // Bundesland/state as a `region` a visitor would only ever open to reach
     // the single thing under it costs a tap for nothing — this is the same
     // `CityGroup.soleCity` collapse `region` already applies one level down
     // (a UK county with one place), now applied at the top too.
     cityEntry("berlin")   should not include "region"
     cityEntry("hamburg")  should not include "region"
-    cityEntry("delaware") should not include "region"
-    cityEntry("vermont")  should not include "region"
+    cityEntry("washington") should not include "region"
     // Bremen genuinely groups two places (Bremen, Bremerhaven), so it keeps
     // its region step.
     cityEntry("bremen")      should include(""""region":"Bremen"""")

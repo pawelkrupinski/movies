@@ -91,25 +91,18 @@ sealed abstract class City(
   def areaBySlug(slug: String): Option[CinemaAreaGroup] = areas.find(_.area.slug == slug)
   /** The real-world towns this listing covers, city first — the place names a
    *  visitor (and a search engine) would look the page up by. For most of the
-   *  roster that is just the city's own name: one town, one page.
-   *
-   *  It is not, for the two shapes that are several towns under one name. A
-   *  SPLIT city's [[areas]] are already its sub-places, so the default reads
-   *  them, keeping only the labels that name a place at all
-   *  ([[CinemaArea.namesAPlace]]) — a US metro's districts are towns in their
-   *  own right (Manhattan, Santa Monica, Long Island) and belong here, London's
-   *  compass bearings are not and do not. A FLAT city that is nonetheless a
-   *  conurbation has no areas to read and overrides this outright; see
-   *  [[Trojmiasto]].
+   *  roster that is just the city's own name: one town, one page; a page of
+   *  several towns names them through [[extraPlaces]] (a cluster's towns,
+   *  [[Trojmiasto]]'s three). London's compass areas are not places and are not
+   *  named.
    *
    *  Read by `controllers.StructuredData.cityPage` (as schema.org
    *  `containsPlace`), `controllers.FilterDescription.defaultDescription` and
    *  the page's `<h1>`. Before those, a covered town appeared nowhere a crawler
    *  could read it: "Sopot" was absent from `/trojmiasto/` entirely — title,
    *  description, structured data, and every one of its cinemas' names. */
-  final def coveredPlaces: Seq[String] =
-    (labels.nominative +: (areas.map(_.area).filter(_.namesAPlace).map(_.label) ++ extraPlaces)).distinct
-  /** Places this city covers that its [[areas]] do not already name. Ordered
+  final def coveredPlaces: Seq[String] = (labels.nominative +: extraPlaces).distinct
+  /** The places this city covers besides its own name. Ordered
    *  most venues first, so the consumers that can only name a few name the ones
    *  worth naming.
    *
@@ -965,40 +958,41 @@ private[models] object GermanPage {
   }
 }
 
-/** A US METRO — the data-driven `City` subtype, and the place a US visitor
- *  actually names. "Films in Los Angeles" is a screen somebody wants; "films in
- *  California" is not, which is why the state is a [[CityGroup]] here and not a
- *  city. The seven states and territories too small AND compact enough not to
- *  split (Delaware, Vermont, DC, Rhode Island, Guam, American Samoa, the Virgin
- *  Islands) have nothing to cut into, so each is one of these in its own right,
- *  keeping the slug it already had. Alaska and Hawaii are NOT among them: both
- *  are under the venue count but sprawl past `MaxSpanToStayWholeKm`, so both
- *  were split into their metros.
+/** A US page — a major city (a place of 100,000+) with only its own venues, a
+ *  town with three or more, or a cluster of small towns a short drive apart named
+ *  after the biggest: "Bend area", "in the Bend area". Poland's shape
+ *  ([[PolishPage]]), built by the same rule (`data/us/scripts/build_pages.py`);
+ *  until 2026-10 a US page was a METRO of every venue within 75 km of a hub, cut
+ *  at state lines, and `/los-angeles/` listed Lancaster. A cluster may cross a
+ *  state line; the picker files it under its anchor's state.
  *
- *  The roster (5,031 cinemas over 461 metros + those seven) is generated into
- *  `UsRosterData` and materialised by [[UsRoster]]; instances are built ONCE (in
+ *  The roster (5,029 cinemas over 2,003 pages) is generated into `UsRosterData`
+ *  and materialised by [[UsRoster]]; instances are built ONCE (in
  *  `City.usCities`), so identity equality holds just like the hand-authored
  *  `case object` cities.
  *
- *  Unlike [[GermanPage]] the zone is a CONSTRUCTOR parameter rather than a
- *  constant: the US spans six of them, so `Europe/Berlin`'s one-size answer has
- *  no US equivalent. Each place carries its state's predominant zone (see
- *  `data/us/scripts/states.py` for the handful of states that straddle two). */
-final class UsCity(slug: String, labels: CityLabels, lat: Double, lon: Double,
-                   zoneId: ZoneId, cinemas0: Seq[Cinema], areas0: Seq[CinemaAreaGroup],
-                   towns: Seq[String])
-  extends City(slug, labels, lat, lon, zoneId) {
-  val cinemas: Seq[Cinema] = cinemas0
-  /** The metro's towns. Its [[areas]] name places too, but only the five
-   *  biggest metros have any — every other US page, `/san-diego/` included,
-   *  covers a dozen towns and named none of them. Both, deduped: a district is
-   *  a grouping a local browses by ("East Bay"), a town is where a cinema is. */
-  override protected val extraPlaces: Seq[String] = towns
-  /** The DISTRICTS of a metro too big to browse as one list — Manhattan,
-   *  Brooklyn, Santa Monica — and `Nil` for every other place. The level below
-   *  the metro, exactly as London's compass areas sit below London; see
-   *  [[UsMetroSubAreas]]. */
-  override val areas: Seq[CinemaAreaGroup] = areas0
+ *  Unlike [[GermanPage]] the zone is the PLACE's rather than a constant: the US
+ *  spans six of them, and a page keeps the clock most of its venues keep. */
+final class UsCity private[models] (slug: String, place: UsPlace)
+  extends City(slug, UsCity.labels(place), place.lat, place.lon, place.zoneId) {
+  val cinemas: Seq[Cinema] = place.cinemas
+  /** The town the page is named after first, then the rest of its towns and the
+   *  towns its venues name (Brooklyn, Hollywood). */
+  override protected val extraPlaces: Seq[String] = place.towns
+  /** "in the Bend area" — an area takes the article a town does not. */
+  override def locativePhrase: String = if (place.multiTown) s"in the ${labels.nominative}" else super.locativePhrase
+  /** The state the picker groups this page under: its anchor town's. */
+  def stateName: String = place.stateName
+}
+
+private[models] object UsCity {
+  /** English does not decline a place name, so all three slots carry the page's
+   *  name — "<town> area" for a cluster, which reads right alone ("Bend area")
+   *  and in a list of cinemas ("All Bend area cinema listings"). */
+  def labels(place: UsPlace): CityLabels = {
+    val name = if (place.multiTown) s"${place.name} area" else place.name
+    CityLabels(name, name, name)
+  }
 }
 
 /** A Spanish page — a major city (one of the 43 municipalities of 150,000+) with
@@ -1035,7 +1029,7 @@ private[models] object SpanishPage {
   }
 }
 
-/** A named group of [[City]]s in a picker — a US STATE over its metros
+/** A named group of [[City]]s in a picker — a US STATE over its towns
  *  ("California → Los Angeles", the way a visitor finds one), or a UK NATION
  *  over its counties ("Scotland → Fife"), a Polish voivodeship or a Spanish
  *  province over its towns. Ordinarily the group is not a place you can open:
@@ -1056,11 +1050,11 @@ final case class CityGroup(label: String, slug: String, cities: Seq[City] = Nil,
    *  that really arranges several.
    *
    *  A heading you open to find exactly one row underneath is a tap that buys
-   *  the reader nothing, whatever the two are called. Seven US states are too
-   *  small to cut into metros (Delaware, Vermont, DC, …) and most UK counties
-   *  ARE the Flicks region under them (Cheshire, Kent), so those collapse onto a
-   *  name they already share. The rest collapse onto a name they do not:
-   *  Merseyside shows as Liverpool, Greater Manchester as Manchester, Saarland
+   *  the reader nothing, whatever the two are called. Most UK counties ARE the
+   *  Flicks region under them (Cheshire, Kent), so those collapse onto a name
+   *  they already share. The rest collapse onto a name they do not: Merseyside
+   *  shows as Liverpool, Greater Manchester as Manchester, the District of
+   *  Columbia as Washington, Saarland
    *  as Saarbrücken.
    *
    *  The group's own name is NOT lost when it differs — the picker keeps it on
@@ -1168,7 +1162,7 @@ object City {
    *  Kilbride and Hamilton, 12 km from Glasgow's.
    *
    *  The ONE place the merge is said: their old slugs redirect from here (see
-   *  [[slugSuccession]]), and the picker keeps each name as a search alias on
+   *  [[renamedSlugs]]), and the picker keeps each name as a search alias on
    *  the row that absorbed it (see [[CityGroup.absorbed]]). */
   private[models] val ukMergedPages: Seq[(String, City)] = Seq(
     "Dudley"      -> Birmingham,
@@ -1326,21 +1320,22 @@ object City {
    *  data-driven from `GermanRosterData` rather than hand-authored case objects.
    *
    *  The slug is assigned HERE rather than in [[GermanRoster]] for the reason
-   *  [[usSlugs]] spells out: `City.bySlug` is a single global namespace. */
+   *  [[usCities]] spells out: `City.bySlug` is a single global namespace. */
   private[models] val germanPages: Seq[GermanPage] =
     GermanRoster.places.map(p => new GermanPage(germanSlug(p.preferredSlug, p.qualifiedSlug), p))
   private[models] val germanCities: Seq[City] = germanPages
 
   /** Slugs another country serves or wants, which a German page may not take.
    *
-   *  Germany's slugs are decided BEFORE the US's and Spain's (both qualify around
-   *  Germany's), so their final slugs cannot be read here — their PREFERRED ones
-   *  can. A German page that wants a slug a US metro or a Spanish town wants
-   *  yields it: the other page is the live URL, and the newcomer is the one that
-   *  can still choose. None of the 139 slugs the regions kept collides with one. */
+   *  Germany's slugs are decided BEFORE Spain's (which qualifies around Germany's),
+   *  so Spain's final slugs cannot be read here — its PREFERRED ones can. A German
+   *  page that wants a slug a Spanish town wants yields it: the other page is the
+   *  live URL, and the newcomer is the one that can still choose. None of the 139
+   *  slugs the regions kept collides with one. The US is decided AFTER Germany and
+   *  yields to it (`/potsdam/` is Brandenburg's, Potsdam, New York qualifies) —
+   *  see [[usSlug]]. */
   private lazy val foreignToGermany: Set[String] =
-    (polishCities ++ allUkCities).map(_.slug).toSet ++
-      UsRoster.places.map(_.preferredSlug) ++ SpanishRoster.places.map(_.preferredSlug)
+    (polishCities ++ allUkCities).map(_.slug).toSet ++ SpanishRoster.places.map(_.preferredSlug)
 
   /** The URL slug of a German page — or of one that used to be (see
    *  [[germanSuccession]]), which answered at the slug this gives too: its own
@@ -1356,11 +1351,11 @@ object City {
    *  slug when Germany went from regions to towns (2026-10) among them: `/vechta/`
    *  → Cloppenburg (Vechta's cluster), `/itzehoe/` → Elmshorn. A region whose slug is a page now
    *  (`/koeln/`, `/freiburg/`) simply IS that town's page. */
-  private lazy val germanSuccession: Map[String, Seq[String]] =
+  private lazy val germanSuccession: Map[String, String] =
     GermanRosterData.retired.map { case (preferred, qualified, page) =>
       val target = GermanRoster.places.find(_.preferredSlug == page)
         .fold(page)(p => germanSlug(p.preferredSlug, p.qualifiedSlug))
-      germanSlug(preferred, qualified) -> Seq(target)
+      germanSlug(preferred, qualified) -> target
     }.toMap
 
   /** The German picker's grouping: one entry per BUNDESLAND over the pages inside
@@ -1379,52 +1374,61 @@ object City {
 
 
   /** The United States' cities — the authoritative list for
-   *  [[Country.UnitedStates]]. One city per METRO (448 of them, distance-clustered
-   *  from the venues' own coordinates — see `data/us/scripts/cluster_metros.py`),
-   *  plus the seven states and territories with too few venues to be worth
-   *  splitting, which are cities in their own right. The state itself is a
+   *  [[Country.UnitedStates]]. One per town or cluster page (see [[UsCity]] /
+   *  [[UsRoster]]), materialised data-driven from `UsRosterData`. The state is a
    *  [[CityGroup]], not a city: nobody wants a screen of every cinema in Texas.
    *
    *  The slug is assigned HERE rather than in [[UsRoster]] because it is the one
    *  thing about a place that depends on every OTHER country: `City.bySlug` is a
-   *  single global namespace, and a metro's own name is not unique in it —
-   *  "Birmingham" is a UK city, and clusters never cross a state line so
-   *  "Philadelphia" is a metro in two states at once. See [[usSlugs]]. */
-  private[models] val usCities: Seq[City] = {
-    val slugs = usSlugs(UsRoster.places)
-    UsRoster.places.zip(slugs).map { case (p, slug) =>
-      new UsCity(slug, CityLabels(p.label, p.label, p.label), p.lat, p.lon, p.zoneId, p.cinemas, p.districts, p.towns)
-    }
+   *  single global namespace, and a US town's name is not unique in it —
+   *  "Birmingham" is a UK city. See [[usSlug]].
+   *
+   *  Lazy because it reads Spain's pages, declared below. */
+  private[models] lazy val usCities: Seq[UsCity] =
+    UsRoster.places.map(p => new UsCity(usSlug(p.preferredSlug, p.qualifiedSlug), p))
+
+  /** Slugs another country serves or redirects, which a US page may not take. The
+   *  US was re-cut into towns (2026-10) after Germany and Spain had theirs, so it
+   *  is the newcomer that yields to them — except at the two Spain yielded to
+   *  before ([[UsSlugsSpainYields]]). Retired slugs count: a US page at `/regen/`
+   *  would be redirected to Deggendorf. */
+  private lazy val foreignToUs: Set[String] =
+    (polishCities ++ allUkCities ++ germanCities ++ spanishCities).map(_.slug).toSet ++
+      PolishPages.retired.keys ++ ukMergedPages.map { case (name, _) => Slugify.stable(name) } ++
+      germanSuccession.keys ++ spanishSuccession.keys
+
+  /** The URL slug of a US page — or of one that used to be (see [[usSuccession]]),
+   *  which answered at the slug this gives too: its own name wherever that is free
+   *  (`build_pages.py` has already qualified a name another US page holds — two
+   *  Springfields), and its name qualified with its state where another country
+   *  has it: `/birmingham/` is a live UK page, so Alabama's is
+   *  `/birmingham-alabama/`. Only the SLUG is qualified; the picker shows the town
+   *  under its state's heading, where it is not ambiguous. */
+  private def usSlug(preferred: String, qualified: String): String =
+    if (foreignToUs.contains(preferred)) qualified else preferred
+
+  /** US pages that no longer exist → the page holding the town each was named
+   *  after, or — where no such town has a venue — the page now holding most of its
+   *  venues. The 149 metros that did not leave a page under their own slug when
+   *  the US went from metros to towns (2026-10) among them: `/philadelphia-new-jersey/`
+   *  → Philadelphia, `/inland-empire/` → Chino. A metro whose slug is a page now
+   *  (`/los-angeles/`, `/springfield/`) simply IS that town's page. Both sides are
+   *  slugged by [[usSlug]]; a former page that now IS its heir's URL
+   *  (`/birmingham-alabama/`) is no redirect at all. */
+  private lazy val usSuccession: Map[String, String] = {
+    val target = UsRoster.places.map(p => p.preferredSlug -> usSlug(p.preferredSlug, p.qualifiedSlug)).toMap
+    val live   = usCities.map(_.slug).toSet
+    UsRosterData.retired
+      .map { case (preferred, qualified, page) => usSlug(preferred, qualified) -> target.getOrElse(page, page) }
+      .collect { case (from, to) if from != to && !live(from) => from -> to }
+      .toMap
   }
 
-  /** The URL slug of each [[UsRoster.places]] entry, in that order.
-   *
-   *  A place keeps its own folded label wherever that is free, and is qualified
-   *  with its state where it is not (`birmingham-alabama`,
-   *  `philadelphia-new-jersey`). Two different things can take the bare slug
-   *  away, and they answer differently:
-   *
-   *  - ANOTHER COUNTRY already serves it. `/birmingham/` is a live UK page and
-   *    `/glasgow/` a live Scottish one; a US metro may not move either. The US
-   *    place qualifies, always.
-   *  - ANOTHER US PLACE wants it, because clusters never cross a state line, so
-   *    one travel-shed arrives as one metro per state it reaches: New York in
-   *    both NY and NJ, Philadelphia in both PA and NJ, Kansas City in both KS
-   *    and MO — 31 names claimed twice or more. Here the BIGGEST keeps the bare slug (ties on the state's name):
-   *    `/new-york/` is the 102-venue New York side, which is what a visitor
-   *    typing it means, and the New Jersey commuter belt is
-   *    `/new-york-new-jersey/`.
-   *
-   *  Qualifying only the SLUG: the label stays "Philadelphia", because the
-   *  picker shows it under its state's heading, where it is not ambiguous. */
-  private def usSlugs(places: Seq[UsPlace]): Seq[String] = {
-    val foreign = (polishCities ++ allUkCities ++ germanCities).map(_.slug).toSet
-    val biggest = places.groupBy(_.preferredSlug)
-      .map { case (slug, claimants) => slug -> claimants.maxBy(p => (p.cinemas.size, p.stateName)) }
-    def keepsBareSlug(p: UsPlace): Boolean =
-      !foreign.contains(p.preferredSlug) && biggest(p.preferredSlug).eq(p)
-    places.map(p => if (keepsBareSlug(p)) p.preferredSlug else Slugify.stable(s"${p.label} ${p.stateName}"))
-  }
+  /** The two US slugs Spain's pages yield to: the Ohio and Texas cities that held
+   *  `/toledo/` and `/laredo/` before Spain had town pages, so the Spanish ones are
+   *  `/toledo-castilla-la-mancha/` and `/laredo-cantabria/`. Every other collision
+   *  is the US's to resolve. */
+  private[models] val UsSlugsSpainYields: Set[String] = Set("toledo", "laredo")
 
   /** Slugs a city USED to answer at, and the one it answers at now.
    *
@@ -1436,66 +1440,21 @@ object City {
    *  An entry stays FOREVER: the cost is one map lookup per request, and the
    *  links it serves are the ones nobody can go back and fix.
    *
-   *  A slug can be succeeded by SEVERAL, because a city can be split as well as
-   *  renamed. The first is the one its URL redirects to; all of them read its
-   *  already-projected rows (see [[formerSlugs]]).
+   *  ONE successor each. A slug once could be split over several (Alaska over its
+   *  nine metros, until 2026-10), which made every successor read the old slug's
+   *  rows filtered to its own venues; every retirement now names the one page its
+   *  URL lands on, and a row of a venue that moved is re-addressed to the venue's
+   *  page by `WebReadModel` whatever slug it was projected under.
    *
-   *  - `san-francisco` → `san-francisco-bay-area` (2026-08-30). The metro is
-   *    the whole Bay and its own regions include a San Francisco that is the
-   *    city proper, so the old name both shadowed a region and filed San Jose
-   *    and Oakland under a city they are not in. See `UsRoster.MetroDisplayNames`.
-   *  - `alaska` and `hawaii` → their metros (2026-09-03). Neither was a place
-   *    anyone browses as one list — see [[splitStates]].
    *  - `dudley`, `sandwell` → `birmingham` and `lanarkshire` → `glasgow`
    *    (2026-10-09): UK pages whose hubs were one urban area — see [[ukMergedPages]].
+   *  - Poland's, Spain's, Germany's and the United States' retired pages, each
+   *    pointing at the page holding the town it was named after — see
+   *    [[germanSuccession]], [[spanishSuccession]], [[usSuccession]].
    */
-  lazy val slugSuccession: Map[String, Seq[String]] = PolishPages.retired.view.mapValues(Seq(_)).toMap ++ Map(
-    "san-francisco" -> Seq("san-francisco-bay-area"),
-    // The four metros that stopped existing when four bad venue coordinates were
-    // corrected (`data/us/README.md`). Two of them WERE the bad coordinate:
-    // `/perry/` was a city whose one cinema had a flipped longitude sign and sat
-    // in Mongolia, 65 km of Iowa from the Des Moines it belongs to; `/newport-news/`
-    // was centred in rural Missouri, because a venue that is really in Newport,
-    // OREGON was filed under it. The other two are their neighbours, re-clustered
-    // once those venues moved. Listed rather than derived: they are facts about a
-    // roster that no longer exists, so there is nothing left for them to drift from.
-    "perry"        -> Seq("des-moines"),
-    "newport-news" -> Seq("hampton-roads", "willamette-valley"),
-    "jefferson"    -> Seq("carroll", "fort-dodge"),
-    "osage"        -> Seq("mason-city", "decorah"),
-  ) ++ ukMergedPages.map { case (name, into) => Slugify.stable(name) -> Seq(into.slug) } ++ splitStateSuccession ++ spanishSuccession ++
-    germanSuccession
-
-  /** States that used to be ONE city and are now their metros, so a single old
-   *  slug is succeeded by several new ones.
-   *
-   *  Both were kept whole by a venue COUNT that had no idea how far apart the
-   *  venues were: Alaska's 18 reach 1,900 km from Nome to Wrangell with no road
-   *  between them, Hawaii's 21 lie across four islands. See
-   *  `UsRoster.MaxSpanToStayWholeKm`.
-   *
-   *  The successors are READ OFF the roster rather than listed here. A hand-written
-   *  list would be a second copy of the split — right on the day it was typed and
-   *  silently wrong after the next re-harvest moved a metro, which is the one
-   *  failure this map exists to prevent. */
-  private val splitStates: Set[String] = Set("alaska", "hawaii")
-
-  private lazy val splitStateSuccession: Map[String, Seq[String]] =
-    usStates.filter(group => splitStates(group.slug))
-      // BIGGEST FIRST, said here rather than inherited. [[renamedSlugs]] sends
-      // `/alaska/` to the first of these, and the group's own order is the
-      // PICKER's — alphabetical, so a reader can find a name they already know.
-      // Those are two different questions of one list, and the redirect used to
-      // get its answer by accident: alphabetising the picker silently moved
-      // `/hawaii/` from Oahu to Hawaii (Big Island).
-      .map(group => group.slug -> group.cities.sortBy(c => (-c.cinemas.size, c.slug)).map(_.slug))
-      .toMap
-
-  /** Where an old slug's URL now points: its FIRST successor, which for a split
-   *  is the biggest metro cut out of it (see [[splitStateSuccession]]).
-   *  `/alaska/` lands on Anchorage — the answer most of that traffic wanted, and
-   *  the picker is one tap away for the rest. */
-  lazy val renamedSlugs: Map[String, String] = slugSuccession.view.mapValues(_.head).toMap
+  lazy val renamedSlugs: Map[String, String] = PolishPages.retired ++
+    ukMergedPages.map { case (name, into) => Slugify.stable(name) -> into.slug } ++ spanishSuccession ++
+    germanSuccession ++ usSuccession
 
   /** The slugs a city used to answer at, given the one it answers at now.
    *
@@ -1507,73 +1466,45 @@ object City {
    *  city keeps serving across that window. */
   def formerSlugs(current: String): Seq[String] = formerSlugsByCurrent.getOrElse(current, Nil)
 
-  /** For a city whose former slug is shared with SIBLINGS, the display names of
-   *  its own venues; absent for every other city.
-   *
-   *  A former slug that was renamed onto one city carries only that city's rows,
-   *  so [[formerSlugs]] alone is enough to serve them. A former slug that was
-   *  SPLIT carries all of them: the `alaska` rows hold every Alaskan venue, and
-   *  nine cities now read that one bucket. Without this each would serve the
-   *  other eight's cinemas until the next projection — Anchorage listing Juneau,
-   *  1,400 km and no road away.
-   *
-   *  Built once rather than per request: `WebReadModel.screeningsForCity` is the
-   *  read key of every repertoire request, and a set of a city's venue names is
-   *  not something to allocate on each one. Absent — rather than every city's
-   *  venues — so the common path stays a single failed map lookup. */
-  lazy val ownVenuesOfSplitCity: Map[String, Set[String]] = {
-    val splitSlugs = slugSuccession.collect { case (former, successors) if successors.sizeIs > 1 => former }.toSet
-    all.filter(city => formerSlugs(city.slug).exists(splitSlugs))
-      .map(city => city.slug -> city.cinemaDisplayNames.toSet)
-      .toMap
-  }
-
   private lazy val formerSlugsByCurrent: Map[String, Seq[String]] =
-    slugSuccession.toSeq
-      .flatMap { case (former, successors) => successors.map(_ -> former) }
-      .groupMap(_._1)(_._2)
+    renamedSlugs.toSeq.groupMap(_._2)(_._1)
 
-  /** The US picker's grouping: one entry per state or territory, in roster
-   *  order — already alphabetical (`UsRosterSpec` pins it; a generator
-   *  regression that scrambled it once went unnoticed because nothing
-   *  asserted the order, only that each state's block stayed intact) — holding
-   *  the metros cut out of it (or the state itself, where it is small enough
-   *  to be one place).
+  /** The US picker's grouping: one entry per state or territory over the pages
+   *  filed under it — major cities, towns and clusters side by side — the state
+   *  being the anchor town's, so a cluster reaching across a state line is under
+   *  the state of the town it is named after.
    *
-   *  The metros inside a state are ALPHABETICAL. `UsRoster.places` has them
-   *  biggest-first, which is the right order for a list you read the top of and
-   *  the wrong one for a list you search by eye: a visitor opening "California"
-   *  is looking for a name they already know, and the only order that tells them
+   *  The pages inside a state are ALPHABETICAL: a visitor opening "California" is
+   *  looking for a name they already know, and the only order that tells them
    *  where to look for it is the one the alphabet gives.
    *
-   *  Not re-sorted through [[CityListing.sortedLabels]] the way Germany's
-   *  Bundesländer and the UK's nations' counties are: a Locale [[Collator]]
-   *  weighs "Virgin Islands"' space against "Virginia"'s continuing letter
-   *  differently than the plain string order the roster (and slug) already
-   *  agree on, which would silently swap the two — worse than the roster's
-   *  own order, not better. */
-  private[models] val usStates: Seq[CityGroup] =
-    UsRoster.places.zip(usCities).foldLeft(Vector.empty[CityGroup]) {
-      case (groups :+ last, (place, city)) if last.slug == place.stateSlug =>
-        groups :+ last.copy(cities = last.cities :+ city)
-      case (groups, (place, city)) =>
-        groups :+ CityGroup(place.stateName, place.stateSlug, Seq(city))
-    }.map(g => g.copy(cities = CityListing.sorted(g.cities, Locale.forLanguageTag("en-US"))))
+   *  The states are in their SLUG's plain string order rather than re-sorted
+   *  through [[CityListing.sortedLabels]] the way Germany's Bundesländer are: a
+   *  Locale [[Collator]] weighs "Virgin Islands"' space against "Virginia"'s
+   *  continuing letter differently than the slug does, which would silently swap
+   *  the two. */
+  private[models] lazy val usStates: Seq[CityGroup] = {
+    val en = Locale.forLanguageTag("en-US")
+    usCities.groupBy(_.stateName).toSeq
+      .map { case (state, pages) => CityGroup(state, Slugify.stable(state), CityListing.sorted(pages, en)) }
+      .sortBy(_.slug)
+  }
 
   /** Spain's cities — the authoritative list for [[Country.Spain]]. One per town
    *  or cluster page (see [[SpanishPage]] / [[SpanishRoster]]), materialised
    *  data-driven from `SpanishRosterData` rather than hand-authored case objects.
    *
    *  The slug is assigned HERE rather than in [[SpanishRoster]] for the reason
-   *  [[usSlugs]] spells out: `City.bySlug` is a single global namespace, and a
+   *  [[usCities]] spells out: `City.bySlug` is a single global namespace, and a
    *  Spanish town's name is not unique in it. */
   private[models] val spanishPages: Seq[SpanishPage] =
     SpanishRoster.places.map(p => new SpanishPage(spanishSlug(p.preferredSlug, p.qualifiedSlug), p))
   private[models] val spanishCities: Seq[City] = spanishPages
 
-  /** Slugs another country already serves, which a Spanish page may not take. */
+  /** Slugs another country already serves, which a Spanish page may not take —
+   *  the US's only where it held them first ([[UsSlugsSpainYields]]). */
   private lazy val foreignToSpain: Set[String] =
-    (polishCities ++ allUkCities ++ germanCities ++ usCities).map(_.slug).toSet
+    (polishCities ++ allUkCities ++ germanCities).map(_.slug).toSet ++ UsSlugsSpainYields
 
   /** The URL slug of a Spanish page — or of one that used to be (see
    *  [[spanishSuccession]]), which answered at the slug this gives too.
@@ -1581,8 +1512,8 @@ object City {
    *  A page keeps its own folded name wherever that is free, and takes its name
    *  qualified with its autonomous community where it is not
    *  (`toledo-castilla-la-mancha`) — the same rule, and the same reason, as a US
-   *  metro qualifying with its state. Toledo is the case: the US roster already
-   *  serves the Ohio metro at `/toledo/`, a live published URL with a sitemap
+   *  page qualifying with its state. Toledo is the case: the US roster already
+   *  serves Toledo, Ohio at `/toledo/`, a live published URL with a sitemap
    *  entry, an indexed page and a `city` cookie behind it, and the newcomer is the
    *  one that can still choose.
    *
@@ -1598,11 +1529,11 @@ object City {
    *  town page now (`/madrid/`, `/barcelona/`) simply IS that town's page. Both
    *  sides are slugged by [[spanishSlug]], so a former page that had to be
    *  qualified redirects from the URL it really answered at. */
-  private lazy val spanishSuccession: Map[String, Seq[String]] =
+  private lazy val spanishSuccession: Map[String, String] =
     SpanishRosterData.retired.map { case (preferred, qualified, page) =>
       val target = SpanishRoster.places.find(_.preferredSlug == page)
         .fold(page)(p => spanishSlug(p.preferredSlug, p.qualifiedSlug))
-      spanishSlug(preferred, qualified) -> Seq(target)
+      spanishSlug(preferred, qualified) -> target
     }.toMap
 
   /** Spain's picker: one group per province, its major cities, towns and

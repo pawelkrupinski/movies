@@ -1,4 +1,4 @@
-"""Which listing page each venue belongs to — the rule Poland, Spain and Germany share.
+"""Which listing page each venue belongs to — the rule Poland, Spain, Germany and the US share.
 
 A country's pages are built from its venues' towns:
 
@@ -20,10 +20,10 @@ then the most people. Distances are straight-line (haversine) between gazetteer
 town centres.
 
 What differs per country is only at the edges, and is the caller's: how a
-venue's town is read, which cities are major, the radii (Germany's are tighter),
+venue's town is read, which cities are major, the radii (Germany's tighter, the US's wider),
 how a name becomes a slug, what a page records beside its towns and venues
-(Poland's locative, Spain's province, Germany's Bundesland), and where a page
-that stopped existing now redirects. `data/{pl,spain,germany}/scripts/build_pages.py`
+(Poland's locative, Spain's province, Germany's Bundesland, the US's state), and where a page
+that stopped existing now redirects. `data/{pl,spain,germany,us}/scripts/build_pages.py`
 are those callers.
 """
 import collections
@@ -108,7 +108,7 @@ def cluster(count, pos, pop, rules=Rules(), landmass=None):
 
 
 def build(by_town, majors, major_town, gaz, display, make_page, region_slug, cinema_of, rules=Rules(),
-          landmass=None, slug_of=slugify):
+          landmass=None, slug_of=slugify, reserved=None):
     """Every page, as {slug: page}, and the page each town is on.
 
     by_town:    town → its venues, in roster order (the order a page lists them in)
@@ -121,7 +121,9 @@ def build(by_town, majors, major_town, gaz, display, make_page, region_slug, cin
     cinema_of:  venue → what the page's "cinemas" lists for it
     landmass:   see `cluster`
     slug_of:    name → URL slug (German spells ä as "ae" where Polish and Spanish drop the accent)
+    reserved:   slug → the town only a page anchored there may take it for (see `reserve`)
     """
+    reserved = reserved or {}
     result = dict(majors)
     minor = {t: vs for t, vs in by_town.items() if t not in major_town}
     count = {t: len(vs) for t, vs in minor.items()}
@@ -132,8 +134,10 @@ def build(by_town, majors, major_town, gaz, display, make_page, region_slug, cin
     for c in cluster(count, pos, pop, rules, landmass):
         anchor = c[0]
         slug = slug_of(display(anchor))
-        if slug in used:
+        if slug in used or reserved.get(slug, anchor) != anchor:
             slug = f"{slug}-{slug_of(region_slug(anchor))}"
+            if slug in used:
+                sys.exit(f"two pages want the slug {slug!r}, qualified or not")
         used.add(slug)
         result[slug] = make_page(slug, "town" if len(c) == 1 else "cluster", anchor, c)
 
@@ -144,6 +148,16 @@ def build(by_town, majors, major_town, gaz, display, make_page, region_slug, cin
     for t, vs in by_town.items():
         result[page_of_town[t]]["cinemas"].extend(cinema_of(v) for v in vs)
     return result, page_of_town
+
+
+def reserve(previous, towns):
+    """slug → the town it must keep meaning: each earlier page's slug, held for the
+    town the page was named after while that town still has a venue. A URL is
+    published — a cookie, a bookmark, an index entry — so when two towns share a
+    name (Springfield, Illinois and Springfield, Missouri) the one whose page had
+    the bare slug keeps it, however the other compares, and a namesake that never
+    had it is the one qualified. `previous`: slug → {"anchor", …}."""
+    return {slug: p["anchor"] for slug, p in previous.items() if p.get("anchor") in towns}
 
 
 def drifted(towns, pos, previous_centres, max_km):

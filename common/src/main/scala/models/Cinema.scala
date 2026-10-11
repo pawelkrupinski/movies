@@ -1912,57 +1912,52 @@ object GermanRoster {
 
 
 // ── United States (Flicks) — data-driven from the full roster ────────────────
-// `UsRosterData` (generated from data/us/venues.json) carries 55 states and
-// territories / 5,031 cinemas, each venue tagged with the metro its coordinates
-// cluster it into. Same shape as `GermanCinema`: each venue is
+// `UsRosterData` (generated from data/us/pages.json) carries 2,003 town and
+// cluster pages / 5,029 cinemas. Same shape as `GermanCinema`: each venue is
 // built ONCE in `UsRoster` and reused everywhere, so one `Source` instance
-// serves the place, `Cinema.byCity` and the scrape catalog, and identity
+// serves the page, `Cinema.byCity` and the scrape catalog, and identity
 // equality holds like the hand-authored `case object` cinemas.
 final class UsCinema(displayName: String, pillName: String) extends Cinema(displayName, pillName)
 
-/** One addressable US place, as the roster sees it: a METRO — the unit a
- *  visitor recognises and the thing `/{slug}/` names — or a whole state or
- *  territory too small to have metros (Alaska, Hawaii, DC, …), whose venue list
- *  IS its page.
+/** One US page, as the roster sees it: a major city (a place of 100,000+) with
+ *  only its own venues, a town with three or more, or a cluster of small towns a
+ *  short drive apart named after the biggest ("Bend area"). Which page holds which
+ *  venue is data, built by `data/us/scripts/build_pages.py` with the shared rule
+ *  (`data/scripts/town_pages.py`); a cluster may cross a state line.
  *
- *  Deliberately plain data rather than a [[City]]: the slug a place ends up
- *  addressable under depends on what every OTHER country has already claimed
- *  ("Birmingham" is a UK city, "Philadelphia" a metro in two states at once), and
- *  `City` is the only place that can see all those lists at once. It builds the
- *  `UsCity` objects from these; see `City.usCities`. */
+ *  Plain data rather than a [[City]], for the reason [[GermanPlace]] is: the slug
+ *  a page ends up addressable under depends on what every OTHER country has
+ *  claimed ("Birmingham" is a UK city), and `City` is the only place that sees
+ *  all of them. See `City.usCities`. */
 final case class UsPlace(
-  stateSlug:     String,
-  stateName:     String,
-  label:         String,
-  /** The slug this place wants: a metro's is folded from its own label, a flat
-   *  state's is the one `data/us/scripts/states.py` already gave it, so those
-   *  nine URLs are unchanged. `City` qualifies it only on a collision. */
+  /** The slug this page wants — its own name (`bend`), or already qualified with
+   *  its state where another US page has or had the name (`springfield-missouri`). */
   preferredSlug: String,
+  /** The slug qualified with the state (`birmingham-alabama`) — what the page
+   *  answers at where another country already serves [[preferredSlug]]. */
+  qualifiedSlug: String,
+  /** The town the page is named after. */
+  name:          String,
+  /** The state of [[name]]'s town — what the picker groups the page under. */
+  stateName:     String,
   lat:           Double,
   lon:           Double,
+  /** The clock most of the page's venues keep; see `generate_roster.zone_for`. */
   zoneId:        ZoneId,
-  cinemas:       Seq[Cinema],
-  /** The districts a big metro is grouped by — see [[UsMetroSubAreas]]. Empty
-   *  for every other place. */
-  districts:     Seq[CinemaAreaGroup],
-  /** The towns this place's venues sit in, most venues first. A metro is not a
-   *  town — `/san-diego/` covers Chula Vista, Carlsbad and El Cajon, and named
-   *  none of them — and only the five biggest metros have [[districts]] to say
-   *  so, so this is where the other 432 get their place names. See
-   *  [[City.coveredPlaces]]. */
+  /** Several towns rather than one — the page is then "<name> area". */
+  multiTown:     Boolean,
+  /** The places a visitor searches the page by, most venues first, [[name]]
+   *  leading: its towns, then the towns its venues give as their own — New
+   *  York's boroughs, Los Angeles' Hollywood. See [[City.coveredPlaces]]. */
   towns:         Seq[String],
+  cinemas:       Seq[Cinema],
 )
 
 /** Materialises the generated US roster into [[UsPlace]]s + `UsCinema` venues,
- *  once. Exposes the places for `City.usCities`, the by-display-name grouping
- *  for `Cinema.byCity`, and each cinema's Flicks slug for the scrape catalog —
- *  the US counterpart of [[GermanRoster]].
- *
- *  `byCity` stays keyed on the STATE while [[places]] is keyed on the metro:
- *  that grouping is the uptime page's one-section-per-city view, whose labels
- *  have to be globally unique (`CinemaByCitySpec`), and three states hold a
- *  metro called "Philadelphia". A state name is unique and is the honest
- *  heading for a list of that state's venues. */
+ *  once. Exposes the places for `City.usCities`, the by-STATE grouping for
+ *  `Cinema.byCity` (the uptime page's level, as Germany's is the Bundesland), each
+ *  cinema's Flicks slug for the scrape catalog, and the venues on their own clock
+ *  — the US counterpart of [[GermanRoster]]. */
 object UsRoster {
   /** Display names already spoken for, which a generated US venue may NOT reuse.
    *
@@ -1985,182 +1980,60 @@ object UsRoster {
     (Cinema.polishAndUk.flatMap(_._2) ++ GermanRoster.byCity.flatMap(_._2) ++
       Cinema.Networks).map(_.displayName).toSet
 
-  /** Metros whose Flicks label is the anchor CITY where the place is really the
-   *  whole region around it. The renamed label carries the URL with it — the
-   *  slug is folded from the name shown, so this metro is `/san-francisco-bay-area/`.
-   *
-   *  Two qualify today.
-   *
-   *  The Bay's districts fold into East Bay / South Bay / North Bay / Peninsula
-   *  and a `San Francisco` that is the city proper (see `SUB_AREA_REGIONS` in
-   *  `data/us/scripts/cluster_metros.py`), which left a metro and one of its own
-   *  five regions sharing a name — and asserted a containment no resident would
-   *  say, San Jose and Oakland filed under San Francisco. New York and Los
-   *  Angeles are not here: each really is the city its region is named for,
-   *  however far the metro reaches past it.
-   *
-   *  The Eastern Sierra is the pair `cluster_metros.FOLD_BARRIERS` keeps out of
-   *  Fresno: Bishop and Mammoth Lakes, 59 km apart on US-395 and a metro of
-   *  exactly two towns. Naming a two-town metro after one of them says the other
-   *  is inside it, and Bishop — the bigger town — is not in Mammoth Lakes. The
-   *  region they ARE in is what a local calls the whole east side of the range.
-   */
-  private val MetroDisplayNames = Map(
-    "San Francisco" -> "San Francisco Bay Area",
-    "Mammoth Lakes" -> "Eastern Sierra",
-    // Southwest Florida clustered as "Naples" until Alamo Drafthouse Naples closed
-    // (2026-09-09); without it most of the metro's venues are filed under Fort
-    // Myers, which would move the page from /naples/ to /fort-myers/ and strand its
-    // projected screenings until the next US scrape cycle. The metro spans both.
-    "Fort Myers"    -> "Naples",
-  )
-
-  /** Below this many venues a state is ONE place rather than a list of metros.
-   *  Its metros are real, but a state short enough to read at a glance is not
-   *  worth breaking into pages of six cinemas each — and the state is then a
-   *  place a visitor recognises in its own right. This keeps American Samoa,
-   *  Delaware, DC, Guam, Rhode Island, Vermont and the Virgin Islands whole;
-   *  every state a US visitor is likely to hit a wall of venues in is well past
-   *  it. */
-  private val MinCinemasToSplit = 30
-
-  /** …but a short list is only one place if it is one PLACE. Past this far
-   *  apart, a state's metros are shown separately however few venues they hold.
-   *
-   *  A count alone made Alaska one city: 18 venues, so under the threshold, and
-   *  1,900 km from Nome to Wrangell — which are not merely far apart but have no
-   *  road between them at all, like Juneau, Sitka, Petersburg, Kodiak and Bethel.
-   *  Hawaii was the same shape across four islands. Neither is a place anyone
-   *  browses as one list, and the metros to show instead were already in the
-   *  roster; only the count gate was discarding them.
-   *
-   *  Twice `cluster_metros.FOLD_RADIUS_KM` rather than a number picked to fit:
-   *  the fold is the widest reach the generator will ever merge two towns
-   *  across, so beyond twice it no clustering would have considered these one
-   *  travel-shed either. It splits Alaska (1,909 km) and Hawaii (496 km) and
-   *  leaves Vermont (142 km) and Delaware (108 km) whole, which is the line a
-   *  reader would draw: Vermont end to end is a long drive, Hawaii is a flight. */
-  private val MaxSpanToStayWholeKm = 300.0
-
   /** One venue of the generated roster, with everything the places and the
    *  scrape catalog read off it. */
-  private final case class Venue(cinema: UsCinema, flicksSlug: String, metro: String, district: String,
-                                town: String, zone: Option[ZoneId])
+  private final case class Venue(cinema: UsCinema, flicksSlug: String, state: String, town: String,
+                                zone: Option[ZoneId])
 
-  /** The venues whose own clock is not their metro's, by roster name (see `generate_roster.py`). */
-  private val ownZones: Map[String, ZoneId] = UsRosterData.venueZones.map { case (disp, zone) => disp -> TimeZones.named(zone) }.toMap
+  /** The venues whose own clock is not their page's, by roster name (see `generate_roster.py`). */
+  private val ownZones: Map[String, ZoneId] =
+    UsRosterData.venueZones.map { case (disp, zone) => disp -> TimeZones.named(zone) }.toMap
 
-  /** One metro's own centre and its own clock. The zone is the metro's, resolved
-   *  by `cluster_metros.zone_for` from the coordinates of the venues in it — not
-   *  the state's, which is what put Knoxville on Central time and El Paso on
-   *  Eastern. */
-  private final case class MetroCentre(lat: Double, lon: Double, zoneId: ZoneId)
-
-  /** One state or territory as the generated data has it — the level the venues
-   *  are built at and `byCity` is grouped by, and the grouping [[places]] are
-   *  cut from. No zone of its own: a state does not keep a clock, its metros do. */
-  private final case class State(slug: String, name: String, lat: Double, lon: Double,
-                                 venues: Seq[Venue], metroCentres: Map[String, MetroCentre])
-
-  private val built: Seq[State] =
-    UsRosterData.regions.map { case (slug, name, lat, lon, cinemas, metros) =>
+  private val built: Seq[(UsPlace, Seq[Venue])] =
+    UsRosterData.pages.map { case (slug, qualified, name, state, lat, lon, zone, multiTown, towns, cinemas) =>
       // Qualify only the venues that would collide, so the roster's names — and
       // the wire keys of every already-stored US slot — stay exactly as they are.
-      val venues = cinemas.map { case (disp, pill, flicksSlug, metro, district, town) =>
-        val unique = if (claimedElsewhere.contains(disp)) s"$disp ($name)" else disp
-        Venue(new UsCinema(unique, pill), flicksSlug, metro, district, town, ownZones.get(disp))
+      // Qualified with the venue's own STATE, so a re-cluster never moves a wire key.
+      val venues = cinemas.map { case (disp, pill, flicksSlug, venueState, town) =>
+        val unique = if (claimedElsewhere.contains(disp)) s"$disp ($venueState)" else disp
+        Venue(new UsCinema(unique, pill), flicksSlug, venueState, town, ownZones.get(disp))
       }
-      State(slug, name, lat, lon, venues,
-            metros.map { case (label, mlat, mlon, zone) =>
-              label -> MetroCentre(mlat, mlon, TimeZones.named(zone))
-            }.toMap)
+      val places = (name +: (towns ++ TownRanking.ranked(venues.map(_.town)))).distinct
+      (UsPlace(slug, qualified, name, state, lat, lon, TimeZones.named(zone), multiTown, places,
+               venues.map(_.cinema)), venues)
     }
 
-  /** The towns a group of venues sits in — computed per GROUP rather than read
-   *  off a metro record because the same roster serves a whole state as one
-   *  place too, and that place's counts are its own. [[TownRanking]] gives it
-   *  the order every country's list shares. */
-  private def townsOf(venues: Seq[Venue]): Seq[String] =
-    TownRanking.ranked(venues.map(_.town))
+  private val venues: Seq[Venue] = built.flatMap(_._2)
 
-  /** Every addressable US place, state by state and — within a state big enough
-   *  to be split — biggest metro first.
-   *
-   *  The metro a venue belongs to is DATA: 5,031 venues is far past what anyone
-   *  could place by hand (London's five compass areas hand-place 133), so each
-   *  venue carries the metro `data/us/scripts/cluster_metros.py` put it in — the
-   *  one whose hub is nearest its coordinates rather than the Flicks
-   *  `region_slug` it was harvested under (several adjacent slugs cover one
-   *  travel-shed, and 788 venues carry no slug at all).
-   *
-   *  A state whose venues all land in one metro contributes ONE place: itself.
-   *  So does a state under [[MinCinemasToSplit]] venues — unless its metros are
-   *  more than [[MaxSpanToStayWholeKm]] apart, which is Alaska and Hawaii. */
-  val places: Seq[UsPlace] = built.flatMap { state =>
-    val byMetro = CinemaAreaGroup.byLabel(state.venues.map(v => (v.cinema, v.metro)))
-    if (byMetro.sizeIs < 2 || (state.venues.sizeIs < MinCinemasToSplit && !sprawls(state)))
-      Seq(UsPlace(state.slug, state.name, state.name, state.slug, state.lat, state.lon,
-                  wholeStateZone(state, byMetro), state.venues.map(_.cinema), Nil,
-                  townsOf(state.venues)))
-    else {
-      val districtOf = state.venues.map(v => (v.cinema: Cinema) -> v.district).toMap
-      val venueOf    = state.venues.map(v => (v.cinema: Cinema) -> v).toMap
-      byMetro.map { metro =>
-        val centre = state.metroCentres(metro.area.label)
-        // A renamed metro re-folds its slug from the name shown, so label and
-        // URL never disagree; `CinemaArea(label)` is the same fold, so every
-        // un-renamed metro keeps the slug it already had.
-        val area = MetroDisplayNames.get(metro.area.label).fold(metro.area)(CinemaArea(_))
-        UsPlace(state.slug, state.name, area.label, area.slug, centre.lat, centre.lon, centre.zoneId,
-                metro.cinemas, UsMetroSubAreas.districts(metro.cinemas.map(c => (c, districtOf(c)))),
-                townsOf(metro.cinemas.map(venueOf)))
-      }
-    }
-  }
-
-  /** Whether a state's metros are too far apart to be browsed as one list —
-   *  the widest gap between two of their centres, against
-   *  [[MaxSpanToStayWholeKm]]. */
-  private def sprawls(state: State): Boolean = {
-    val centres = state.metroCentres.values.map(c => GeoPoint(c.lat, c.lon)).toSeq
-    centres.combinations(2).exists(pair => pair(0).kmTo(pair(1)) > MaxSpanToStayWholeKm)
-  }
-
-  /** The clock a whole-state place keeps: its BIGGEST metro's, ties by label.
-   *  Every state that stays whole has all its metros on one clock anyway — the
-   *  ones that did not, Alaska and Hawaii, are exactly the ones now split — so
-   *  this picks between equals; it is defined by weight rather than by roster
-   *  order so it stays an answer if that ever stops being true. */
-  private def wholeStateZone(state: State, byMetro: Seq[CinemaAreaGroup]): ZoneId =
-    state.metroCentres(byMetro.maxBy(m => (m.cinemas.size, m.area.label)).area.label).zoneId
+  /** Every US page, major cities first (biggest first), then the rest by slug. */
+  val places: Seq[UsPlace] = built.map(_._1)
 
   /** Every US venue under its STATE's name — one section per state on the
-   *  uptime page, and the US half of `Cinema.byCity`. Not per metro: see the
-   *  class doc. */
-  val byCity: Seq[(String, Seq[Cinema])] = built.map(s => s.name -> s.venues.map(_.cinema))
+   *  uptime page, and the US half of `Cinema.byCity`. Not per page: 2,003
+   *  sections of two cinemas each is not a page anybody reads, and a page may
+   *  cross a state line where a venue never does. */
+  val byCity: Seq[(String, Seq[Cinema])] =
+    venues.groupBy(_.state).toSeq.sortBy(_._1).map { case (state, vs) => state -> vs.map(v => v.cinema: Cinema) }
 
   /** Each US venue's Flicks `/cinema/<slug>/` id — what the scrape catalog binds
    *  to a `FlicksClient` on the `FlicksMarket.UnitedStates` market, and what a
    *  chain-primary venue keeps as its FALLBACK slug. */
-  val flicksSlugByCinema: Map[Cinema, String] =
-    built.flatMap(_.venues).map(v => (v.cinema: Cinema) -> v.flicksSlug).toMap
+  val flicksSlugByCinema: Map[Cinema, String] = venues.map(v => (v.cinema: Cinema) -> v.flicksSlug).toMap
 
   /** US venues by display name. The display name is the wire key every stored slot
    *  uses and the only stable handle these venues have — they are built at runtime
    *  from `data/us/venues.json`, so unlike the Polish and UK rosters there is no
    *  case object to refer to one by. `services.cinemas.us.UsChainVenues` keys its
    *  chain maps this way for exactly that reason; this is the lookup back. */
-  val byDisplayName: Map[String, Cinema] =
-    built.flatMap(_.venues).map(v => v.cinema.displayName -> (v.cinema: Cinema)).toMap
+  val byDisplayName: Map[String, Cinema] = venues.map(v => v.cinema.displayName -> (v.cinema: Cinema)).toMap
 
-  /** The venues on a clock that is not their place's: a metro's zone is its venues' majority,
-   *  and these 30 sit across a zone line from the rest (Window Rock on Navajo time in
-   *  Phoenix-time Holbrook, Bismarck under Mountain-time Dickinson). [[VenueClock]] reads
-   *  each one's day and wall-clock time in its own zone. */
+  /** The venues on a clock that is not their page's: a page's zone is its venues'
+   *  majority, and these sit across a zone line from the rest (Green River Cinema in
+   *  Eastern-time Campbellsville, on a page whose other towns keep Central).
+   *  [[VenueClock]] reads each one's day and wall-clock time in its own zone. */
   val venueZones: Map[Cinema, ZoneId] =
-    built.flatMap(_.venues).flatMap(v => v.zone.map((v.cinema: Cinema) -> _)).toMap
+    venues.flatMap(v => v.zone.map((v.cinema: Cinema) -> _)).toMap
 }
-
 
 // ── Spain (SensaCine) — data-driven from the full roster ─────────────────────
 // `SpanishRosterData` (generated from data/spain/pages.json + provinces.json + ocine.json)

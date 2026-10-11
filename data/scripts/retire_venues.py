@@ -47,8 +47,8 @@ GENERATE = {
                 ["python3", "data/germany/scripts/generate_roster.py"]],
     "spain":   [["python3", "data/spain/scripts/build_pages.py"],
                 ["python3", "data/spain/scripts/generate_roster.py"]],
-    "us":      [["python3", "data/us/scripts/generate_roster.py", "data/us/venues.json",
-                 "common/src/main/scala/models/UsRosterData.scala"]],
+    "us":      [["python3", "data/us/scripts/build_pages.py"],
+                ["python3", "data/us/scripts/generate_roster.py"]],
 }
 # The line in CountrySpec that pins each roster's size.
 PINNED_SIZE = {

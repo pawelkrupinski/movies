@@ -10,10 +10,10 @@
 #     → data/pl/scripts/build_pages.py        → data/pl/pages.json
 #     → data/pl/scripts/generate_polish_pages.py → PolishPages.scala + the apps' City lists
 #   data/{uk,pl}/venues.json → data/scripts/generate_venue_towns.py → VenueTowns.scala
-#   data/us/venues.json      → data/us/scripts/generate_roster.py   → UsRosterData.scala
+#   data/us/venues.json + towns.json → data/us/scripts/build_pages.py → data/us/pages.json
 #   data/germany/venues.json + city-coords.json → data/germany/scripts/build_pages.py → data/germany/pages.json
 #   data/spain/town-coords.json → data/spain/scripts/build_pages.py   → data/spain/pages.json
-#   data/germany, data/spain → their generate_roster.py              → *RosterData.scala
+#   data/germany, data/spain, data/us → their generate_roster.py     → *RosterData.scala
 #   data/germany/venue-sources.json → data/germany/scripts/generate_sources.py → GermanSourcesData.scala
 #
 # An edit to any link that skips the regeneration below it compiles, passes every spec that
@@ -38,10 +38,6 @@ cd "$(git rev-parse --show-toplevel)"
 # The generators import each other (data/us/scripts), and CPython would drop __pycache__/
 # next to them — untracked files the drift check below would then report as drift.
 export PYTHONDONTWRITEBYTECODE=1
-
-# The US centroid has to be the same number on every Python (see its test); prove that
-# before trusting a comparison with the committed roster.
-python3 data/us/scripts/test_generate_roster.py
 
 geonames=data/pl/geonames
 
@@ -77,7 +73,8 @@ python3 data/pl/scripts/build_venue_towns.py
 python3 data/pl/scripts/build_pages.py
 python3 data/pl/scripts/generate_polish_pages.py
 python3 data/scripts/generate_venue_towns.py
-python3 data/us/scripts/generate_roster.py data/us/venues.json common/src/main/scala/models/UsRosterData.scala
+python3 data/us/scripts/build_pages.py
+python3 data/us/scripts/generate_roster.py
 python3 data/germany/scripts/build_pages.py
 python3 data/germany/scripts/generate_roster.py
 python3 data/germany/scripts/generate_sources.py

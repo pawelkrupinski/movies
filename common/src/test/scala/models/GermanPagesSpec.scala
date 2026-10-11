@@ -77,7 +77,7 @@ class GermanPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   "a German page slug another country serves or wants" should "be qualified with its Bundesland" in {
-    // `/toledo/` is a live US metro; a German page wanting it would yield.
+    // `/toledo/` is a Spanish town's wanted slug (and the US city's); a German page wanting it would yield.
     City.germanSlug("toledo", "toledo-bayern") shouldBe "toledo-bayern"
     City.germanSlug("koeln", "koeln-nordrhein-westfalen") shouldBe "koeln"
   }
@@ -129,7 +129,7 @@ class GermanPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   it should "never redirect a slug another country serves" in {
-    val germanFormer = City.slugSuccession.filter { case (_, to) => to.exists(City.bySlug(_).exists(_.country == Country.Germany)) }.keySet
+    val germanFormer = City.renamedSlugs.filter { case (_, to) => City.bySlug(to).exists(_.country == Country.Germany) }.keySet
     forAll(germanFormer)(former => City.bySlug(former) shouldBe None)
   }
 

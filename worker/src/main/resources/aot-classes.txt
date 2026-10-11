@@ -7224,14 +7224,9 @@ models.UkCity
 models.UltimatePicturePalaceOxford$
 models.UsCinema
 models.UsCity
-models.UsMetroSubAreas$
 models.UsPlace
 models.UsPlace$
 models.UsRoster$
-models.UsRoster$MetroCentre
-models.UsRoster$MetroCentre$
-models.UsRoster$State
-models.UsRoster$State$
 models.UsRoster$Venue
 models.UsRoster$Venue$
 models.UsRosterData$

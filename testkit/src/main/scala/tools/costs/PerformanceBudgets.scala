@@ -47,8 +47,9 @@ object PerformanceBudgets {
   val FilmPageWarm = bytes("film page render, warm caches", measured = mb(2.81))
   /** The facet page of the country the most films list. */
   val BrowseWarm = bytes("facet page render, warm caches", measured = mb(1.30))
-  /** The `/` city-selection landing — the one page embedding every country's city catalog. */
-  val Landing = bytes("landing render", measured = mb(2.95))
+  /** The `/` city-selection landing — the one page embedding every country's city catalog, so it grows
+   *  with the roster: 2.95 -> 5.21 MB when the US went from 468 metro pages to 2,003 town pages. */
+  val Landing = bytes("landing render", measured = mb(5.21))
   /** `/api/repertoire` and `/api/details`, every film's JSON built (cold) or kept (warm). */
   val ApiRepertoireCold = bytes("/api/repertoire render, cold caches", measured = mb(14.3))
   val ApiRepertoireWarm = bytes("/api/repertoire render, warm caches", measured = mb(1.35))

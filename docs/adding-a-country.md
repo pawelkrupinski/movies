@@ -205,16 +205,20 @@ a re-harvest if missed:
 
 - **Pick the `City` unit deliberately, and do it BEFORE generating.** The source's
   own region list is not automatically the right one, and neither is the biggest
-  administrative unit: the US first grouped by state (55) because Flicks' 577
-  metros are past the ~200 a picker stays usable at, and that was wrong — nobody
-  asks what is on in California. It is one `City` per METRO (448, plus the nine
-  states too small to have any), with the state kept as a `CityGroup` so the
-  picker can still be browsed. Group by the unit a visitor NAMES, and reach for a
-  grouping — not a bigger city — when the resulting list is long.
-- **A metro-sized `City` unit needs a slug rule.** 468 US slugs join one global
-  `City.bySlug` namespace that already held a UK Birmingham, and a metro name is
-  not unique across state lines either. `City.usSlugs` qualifies with the state
-  where the bare slug is taken; `CitySpec` fails on any collision that survives.
+  administrative unit: the US first grouped by state (55), then by 75 km metros
+  (468, cut at state lines, 315 of them listing a cinema 50+ km from their
+  namesake), and both were wrong — nobody asks what is on in California, and
+  nobody drives 80 km to the pictures. It is now the town rule Poland, Spain and
+  Germany share (`data/scripts/town_pages.py`, 2,003 US pages), with the state
+  kept as a `CityGroup` so the picker can still be browsed. Group by the unit a
+  visitor NAMES, and reach for a grouping — not a bigger city — when the
+  resulting list is long.
+- **A town-sized `City` unit needs a slug rule.** 2,003 US slugs join one global
+  `City.bySlug` namespace that already held a UK Birmingham and a German Potsdam,
+  and a town name is not unique across states either. `build_pages.py` qualifies
+  a second Springfield with its state (keeping the bare slug for the town it
+  already meant), and `City.usCities` qualifies a slug another country holds;
+  `CountrySpec` fails on any collision that survives.
 - **A country wider than one time zone needs the zone per PLACE.** `GermanPage`
   hardcodes `Europe/Berlin` because Germany has one; `UsCity` takes it as a
   constructor parameter because the US has six, and a national default would move

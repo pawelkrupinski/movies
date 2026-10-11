@@ -138,16 +138,15 @@ class CitySpec extends AnyFlatSpec with Matchers {
     Trojmiasto.otherCoveredPlaces shouldBe towns
   }
 
-  it should "read a split city's districts, which are towns in their own right" in {
-    val bay = City.all.find(_.labels.nominative == "San Francisco Bay Area")
-      .getOrElse(fail("no San Francisco Bay Area metro in the roster"))
-    bay.coveredPlaces.head shouldBe "San Francisco Bay Area"
-    // The metro is named after the BAY, so it names neither the city it is
-    // named after nor any of the towns around it. Both halves land: the
-    // districts a local browses by, and the towns the cinemas are actually in.
-    bay.otherCoveredPlaces should contain allOf ("East Bay", "South Bay")   // districts
-    bay.otherCoveredPlaces should contain allOf ("San Francisco", "Berkeley", "San Jose")
-    bay.coveredPlaces      shouldBe bay.coveredPlaces.distinct
+  // A US page was a 75 km metro until 2026-10, and `/new-york/` reached Long
+  // Island; it is Poland's shape now — a major city is itself alone (naming the
+  // boroughs its venues give as their town), a cluster names its towns.
+  it should "keep a major US city to itself, naming the boroughs its venues are in" in {
+    val nyc = City.bySlug("new-york").getOrElse(fail("no New York page in the roster"))
+    nyc.coveredPlaces.head shouldBe "New York"
+    nyc.otherCoveredPlaces should contain allOf ("Brooklyn", "Staten Island")
+    nyc.otherCoveredPlaces should not contain "Yonkers"
+    nyc.coveredPlaces shouldBe nyc.coveredPlaces.distinct
   }
 
   // A German page was a 35 km region until 2026-10, and `/koeln/` named Düsseldorf
@@ -160,14 +159,9 @@ class CitySpec extends AnyFlatSpec with Matchers {
     bayreuth.coveredPlaces shouldBe Seq("Bayreuth und Umgebung", "Bayreuth", "Kulmbach", "Pegnitz", "Hollfeld")
   }
 
-  // The gap the districts left: only the five biggest metros are sub-divided,
-  // so the other 432 had nothing but their own name — `/san-diego/` covers
-  // Chula Vista, Carlsbad and El Cajon and named none of them.
-  it should "name a plain metro's towns, which have no districts to name them" in {
-    val sd = City.all.find(_.labels.nominative == "San Diego").getOrElse(fail("no San Diego metro"))
-    sd.areas              shouldBe empty
-    sd.coveredPlaces.head shouldBe "San Diego"
-    sd.otherCoveredPlaces should contain allOf ("Chula Vista", "Carlsbad", "El Cajon")
+  it should "name a US cluster's towns" in {
+    val coeur = City.bySlug("coeur-d-alene").getOrElse(fail("no Coeur d'Alene page in the roster"))
+    coeur.coveredPlaces shouldBe Seq("Coeur d'Alene area", "Coeur d'Alene", "Hayden")
   }
 
   // Poland's pages named no town but Trójmiasto's, on the assumption that a

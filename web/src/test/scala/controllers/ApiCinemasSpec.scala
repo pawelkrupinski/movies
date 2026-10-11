@@ -48,25 +48,14 @@ class ApiCinemasSpec extends AnyFlatSpec with Matchers {
     grouped.distinct should have size grouped.size.toLong.toInt
   }
 
-  "apiCinemas for a big US metro (split by region)" should "return the regions partitioning the cinema list" in {
+  "apiCinemas for a US page" should "list its own venues flat, with no areas" in {
+    // Los Angeles was a 133-venue metro split into twelve regions; it is the city
+    // alone now, one list — no US page is big enough to need areas.
     val result = controller(models.Country.UnitedStates).apiCinemas("los-angeles")(FakeRequest())
     status(result) shouldBe OK
-    val json    = Json.parse(contentAsString(result))
-    val cinemas = (json \ "cinemas").as[Seq[String]]
-
-    val areas = (json \ "areas").as[Seq[play.api.libs.json.JsValue]]
-    // Data-driven names, not the five compass cases: greater LA's 133 venues are
-    // clustered by coordinates and then folded onto the regions a local browses
-    // by, biggest first.
-    areas.map(a => (a \ "name").as[String]).take(3) shouldBe
-      Seq("Los Angeles", "San Fernando Valley", "San Gabriel Valley")
-    areas.map(a => (a \ "slug").as[String]).take(3) shouldBe
-      Seq("los-angeles", "san-fernando-valley", "san-gabriel-valley")
-    areas.map(a => (a \ "name").as[String]) should not contain "Other areas"
-
-    val grouped = areas.flatMap(a => (a \ "cinemas").as[Seq[String]])
-    grouped.toSet shouldBe cinemas.toSet
-    grouped.distinct should have size grouped.size.toLong.toInt
+    val json = Json.parse(contentAsString(result))
+    (json \ "cinemas").as[Seq[String]] shouldBe models.City.bySlug("los-angeles").get.cinemaDisplayNames
+    (json \ "areas").as[Seq[play.api.libs.json.JsValue]] shouldBe empty
   }
 
   "apiCinemas for an unknown city" should "404" in {

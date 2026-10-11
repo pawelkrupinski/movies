@@ -1,39 +1,36 @@
 package models
 
+import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * The US roster's shape: the addressable place is the METRO, and the state is
- * only how a visitor finds one. `/los-angeles/` is a page; `/california/` is
- * nothing at all. These lock the cut (which states split, which stay whole),
- * the slugs (461 metros joining a global namespace that already holds a UK
- * Birmingham, and two states each holding a "Philadelphia"), the clock each
- * metro keeps, and the fact that re-keying the roster moved no cinema.
+ * The US roster after the move from 75 km metros to Poland's shape: a major city
+ * (a place of 100,000+) lists only its own venues, and every venue outside one is
+ * on a town page or a cluster of nearby small towns — see
+ * `data/us/scripts/build_pages.py` and [[UsRoster]]. The state is only how a
+ * visitor finds a page: `/california/` is nothing at all. These lock the cut, the
+ * slugs (2,003 pages joining a global namespace that already holds a UK Birmingham
+ * and a German Potsdam), where each retired metro's URL goes, the clock each page
+ * keeps, and that re-cutting the roster moved no cinema off it.
  */
-class UsRosterSpec extends AnyFlatSpec with Matchers {
+class UsRosterSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private def city(slug: String): City =
-    City.usCities.find(_.slug == slug).getOrElse(fail(s"no US city '$slug'"))
+  private def page(slug: String): City = City.bySlug(slug).value
+  private def venue(name: String): Cinema = UsRoster.byDisplayName.get(name).value
+  private def pageOf(name: String): City = City.forCinema(venue(name)).value
+  private def state(label: String): CityGroup = City.usStates.find(_.label == label).value
 
-  private def group(label: String): CityGroup =
-    City.usStates.find(_.label == label).getOrElse(fail(s"no state '$label'"))
-
-  /** The metro city a named venue was filed under. */
-  private def metroOf(displayName: String): City =
-    City.usCities.find(_.cinemaDisplayNames.contains(displayName))
-      .getOrElse(fail(s"no US city holds '$displayName'"))
-
-  "The US roster" should "be one city per metro, plus the states with no metros to speak of" in {
-    // 461 metros over the 48 states worth splitting + the seven that stay whole.
-    City.usCities should have size 468
+  "The US roster" should "be one city per town or cluster page, grouped by the 55 states and territories" in {
+    City.usCities should have size 2003
     City.usStates should have size 55
   }
 
-  it should "hold every venue exactly once — a re-key, not a re-harvest" in {
+  it should "hold every venue exactly once — a re-cut, not a re-harvest" in {
     val venues = City.usCities.flatMap(_.cinemas)
     venues should have size 5029
     venues.distinct should have size 5029
+    venues.toSet shouldBe UsRoster.byDisplayName.values.toSet
   }
 
   // Flicks' only feed for the Pickwick in Syracuse IN is Park Ridge IL's Veezi site (216/216
@@ -45,79 +42,77 @@ class UsRosterSpec extends AnyFlatSpec with Matchers {
     names should contain ("Pickwick Theatre Park Ridge")
   }
 
-  "A metro" should "be the city, named and placed as itself" in {
-    val la = city("los-angeles")
+  "A major city" should "list only the venues inside it" in {
+    val la = page("los-angeles")
     la.labels.nominative shouldBe "Los Angeles"
-    la.cinemas should have size 133
-    // Its own centroid, not California's (35.2, -119.3) — the landing's
-    // nearest-place geolocation is only as good as this.
-    la.lat shouldBe 34.06 +- 0.4
-    la.lon shouldBe (-118.28) +- 0.4
+    la.cinemaDisplayNames should contain ("Chinese Theatre Hollywood")       // Hollywood is Los Angeles
+    la.cinemaDisplayNames should not contain "Academy Cinemas Pasadena"      // once on the 133-venue metro
+    pageOf("Academy Cinemas Pasadena").slug shouldBe "pasadena-california"
+    la.lat shouldBe 34.05 +- 0.01                                            // its own centre, not the metro's
     la.zoneId.getId shouldBe "America/Los_Angeles"
   }
 
-  it should "carry only its own venues, never the rest of the state's" in {
-    val la = city("los-angeles").cinemaDisplayNames
-    la should contain("Chinese Theatre Hollywood")
-    la should not contain "Castro Theatre"          // San Francisco
-    city("san-francisco-bay-area").cinemaDisplayNames should contain("Castro Theatre")
+  it should "take its boroughs and neighbourhoods, whatever Flicks calls their town" in {
+    val nyc = page("new-york")
+    nyc.cinemas should have size 67
+    nyc.cinemaDisplayNames should contain allOf ("Alamo Drafthouse Brooklyn", "Alamo Drafthouse Staten Island",
+                                                 "AMC Bay Terrace 6")      // Bayside, Queens
+    nyc.coveredPlaces should contain allOf ("New York", "Brooklyn")
   }
 
-  "A state" should "be a grouping over its metros, not a city" in {
-    City.bySlug("california") shouldBe None
+  "A cluster page" should "be named after its biggest town, and speak of it as an area" in {
+    val cherryHill = page("cherry-hill")
+    cherryHill.labels.nominative shouldBe "Cherry Hill area"
+    cherryHill.locativePhrase shouldBe "in the Cherry Hill area"
+    cherryHill.coveredPlaces.take(3) shouldBe Seq("Cherry Hill area", "Cherry Hill", "Sewell")
+  }
+
+  it should "cross a state line where the towns do: one travel-shed, one page" in {
+    // The Twin Cities' Wisconsin side was a metro of its own; Hudson's cinema is on
+    // the Woodbury page with Minnesota's now, filed under Minnesota.
+    val woodbury = pageOf("Hudson 12 Theatre")
+    woodbury.slug shouldBe "woodbury"
+    woodbury.cinemaDisplayNames should contain ("Woodbury 10")
+    state("Minnesota").cities should contain (woodbury)
+    state("Wisconsin").cities should not contain woodbury
+  }
+
+  "A one-town page" should "just name its town" in {
+    page("bend").labels.nominative shouldBe "Bend"
+    page("bend").locativePhrase shouldBe "in Bend"
+  }
+
+  "Two towns a mountain range apart" should "be two pages, as the distance rule has them" in {
+    // Bishop and Mammoth Lakes, 59 km apart on US-395, were one "Eastern Sierra"
+    // metro kept out of Fresno by hand. At 30 km neither reaches the other.
+    pageOf("Bishop Twin Theatre").slug shouldBe "bishop"
+    pageOf("Minaret Cinema is D'Place").slug shouldBe "mammoth-lakes"
+    City.renamedSlugs.get("eastern-sierra").value shouldBe "bishop"
+  }
+
+  "A venue whose coordinates were wrong" should "be on the page of the town its address names" in {
+    // 50220 is Perry, Iowa — a flipped longitude sign once had it in Mongolia.
+    pageOf("Grand Theatre Perry").slug shouldBe "perry"
+    // 56256 is Madison, MINNESOTA, harvested at Madison, Wisconsin's coordinates.
+    pageOf("Grand Theater Madison").labels.nominative shouldBe "Canby area"
+  }
+
+  "A state" should "be a grouping over its pages, not a city" in {
     City.bySlug("texas") shouldBe None
-    val california = group("California")
-    california.cities.map(_.labels.nominative) should contain allOf ("Los Angeles", "San Francisco Bay Area")
-    california.cities should have size 22
-    california.cities.flatMap(_.cinemas) should have size 486
-    // Alphabetical — a heading you OPEN is a list you scan for a name you already
-    // know. `UsRoster.places` is still biggest-first, and the redirect that needs
-    // that reads it for itself (`City.splitStateSuccession`).
+    // A state's name is a page only where a TOWN has it — California, Maryland.
+    City.bySlug("california").value.asInstanceOf[UsCity].stateName shouldBe "Maryland"
+    val california = state("California")
+    california.cities should contain allOf (page("los-angeles"), page("san-francisco"), page("bishop"))
+    // Alphabetical — a heading you OPEN is a list you scan for a name you already know.
     val names = california.cities.map(_.labels.nominative)
-    names shouldBe names.sorted
+    val collator = java.text.Collator.getInstance(java.util.Locale.forLanguageTag("en-US"))
+    names shouldBe names.sortWith((a, b) => collator.compare(a, b) < 0)
   }
 
-  "A metro named for a city it is really the region around" should "be called the region, and answer at the region's own URL" in {
-    // The Bay is the one such metro (`UsRoster.MetroDisplayNames`): its regions
-    // are the East Bay, the South Bay, the North Bay, the Peninsula and a San
-    // Francisco that is the city proper, so a metro also called "San Francisco"
-    // both shadowed one of its own regions and filed San Jose and Oakland under
-    // a city they are not in. The URL follows the name: the metro answers at
-    // `/san-francisco-bay-area/`, and its share card is named to match.
-    val bay = city("san-francisco-bay-area")
-    bay.labels.nominative shouldBe "San Francisco Bay Area"
-    bay.slug shouldBe "san-francisco-bay-area"
-    bay.areas.map(_.area.label) should contain allOf ("East Bay", "South Bay", "San Francisco")
-  }
-
-  it should "come in state order, each state's metros together and biggest first" in {
-    // The order IS the mobile picker's list and the catalog seed's — the apps
-    // read `/api/catalog` top to bottom. A generator regression scrambled it to
-    // American Samoa, Alaska, Alabama, Arizona, Arkansas, Colorado… and every
-    // suite stayed green, because nothing asserted it: the seed spec only
-    // rewrites the file, and `usStates` groups CONSECUTIVE places, which a
-    // reshuffle of whole state blocks leaves intact.
+  it should "come in state order — the apps' picker and catalog seed read it top to bottom" in {
     val states = City.usStates.map(_.slug)
     states shouldBe states.sorted
-    // The first state's block is the first places of the roster — whatever order
-    // the group then shows them in. Compared as SETS because the group sorts its
-    // own members alphabetically while the roster stays biggest-first.
-    City.usCities.map(_.slug).take(City.usStates.head.cities.size) should contain theSameElementsAs
-      City.usStates.head.cities.map(_.slug)
     City.usStates.head.label shouldBe "Alabama"
-  }
-
-  it should "still send a split state's URL to its BIGGEST metro, not its first alphabetically" in {
-    // The picker's order and the redirect's are two different questions of one
-    // list, and this one used to be answered by accident: `usStates` inherited
-    // biggest-first from the roster, so alphabetising it for the picker moved
-    // `/hawaii/` from Oahu (11 venues) to Hawaii (Big Island).
-    City.renamedSlugs.get("alaska") shouldBe Some("anchorage")
-    City.renamedSlugs.get("hawaii") shouldBe Some("oahu")
-    def biggest(state: String): String =
-      City.usStates.find(_.slug == state).get.cities.maxBy(_.cinemas.size).slug
-    biggest("alaska") shouldBe "anchorage"
-    biggest("hawaii") shouldBe "oahu"
   }
 
   it should "partition the country's cities, with none dropped or shared" in {
@@ -125,190 +120,168 @@ class UsRosterSpec extends AnyFlatSpec with Matchers {
     City.usStates.flatMap(_.cities).distinct should have size City.usCities.size
   }
 
-  "A state with too few venues to be worth splitting" should "be the city itself, at the slug it always had" in {
-    Seq("district-of-columbia", "delaware", "rhode-island",
-        "vermont", "guam", "american-samoa", "virgin-islands").foreach { slug =>
+  "A page" should "keep its OWN clock, not its state's predominant one" in {
+    page("knoxville").zoneId.getId shouldBe "America/New_York"    // Tennessee is Central
+    page("el-paso").zoneId.getId shouldBe "America/Denver"        // Texas is Central
+    page("pensacola").zoneId.getId shouldBe "America/Chicago"     // Florida is Eastern
+    page("coeur-d-alene").zoneId.getId shouldBe "America/Los_Angeles" // Idaho is Mountain
+    page("scottsbluff").zoneId.getId shouldBe "America/Denver"    // Nebraska is Central
+    page("nashville").zoneId.getId shouldBe "America/Chicago"
+  }
+
+  it should "give a venue across a zone line from the rest of its page its own" in {
+    // Campbellsville (Taylor County) keeps Eastern; the rest of its page, Russell
+    // Springs among it, keeps Central.
+    val green = venue("Green River Cinema Campbellsville")
+    pageOf("Green River Cinema Campbellsville").zoneId.getId shouldBe "America/Chicago"
+    UsRoster.venueZones.get(green).value.getId shouldBe "America/New_York"
+    UsRoster.venueZones.get(venue("Key Twin Russell Springs")) shouldBe None
+  }
+
+  "US slugs" should "keep the bare name for the town a page had it for" in {
+    // /springfield/ was Springfield, Illinois; Springfield, Missouri is bigger, and
+    // is the one qualified, because the URL is published.
+    pageOf("Moxie Cinema Springfield 2").slug shouldBe "springfield-missouri"
+    page("springfield").asInstanceOf[UsCity].stateName shouldBe "Illinois"
+  }
+
+  it should "never take a name another country serves" in {
+    City.bySlug("birmingham") shouldBe Some(Birmingham)
+    City.bySlug("glasgow")    shouldBe Some(Glasgow)
+    pageOf("Alabama Theatre Birmingham").slug shouldBe "birmingham-alabama"
+    pageOf("Marquee Highland Glasgow 8").slug shouldBe "glasgow-kentucky"
+    City.bySlug("potsdam").value.country shouldBe Country.Germany
+    pageOf("Roxy Potsdam 5").slug shouldBe "potsdam-new-york"
+    pageOf("Stuttgart Twin Cinema").slug shouldBe "stuttgart-arkansas"
+  }
+
+  it should "keep the two Spain yielded to before it had town pages" in {
+    page("toledo").country shouldBe Country.UnitedStates
+    page("laredo").country shouldBe Country.UnitedStates
+    page("toledo-castilla-la-mancha").country shouldBe Country.Spain
+  }
+
+  "A metro that is no longer a page" should "redirect to the page holding the town it was named after" in {
+    // The halves of a travel-shed the state line used to split go to the city itself.
+    City.renamedSlugs.get("philadelphia-new-jersey").value shouldBe "philadelphia"
+    City.renamedSlugs.get("cincinnati-kentucky").value shouldBe "cincinnati"
+    City.renamedSlugs.get("new-york-new-jersey").value shouldBe "new-york"
+    City.renamedSlugs.get("minneapolis-st-paul-wisconsin").value shouldBe "minneapolis"
+    City.renamedSlugs.get("san-francisco-bay-area").value shouldBe "san-francisco"
+    // Its town is on a cluster named after another: the cluster.
+    City.renamedSlugs.get("portland-maine").value shouldBe "westbrook"
+    City.renamedSlugs.get("madison-minnesota").value shouldBe "canby"
+  }
+
+  it should "fall back to the page holding most of its venues when no town has its name" in {
+    City.renamedSlugs.get("inland-empire").value shouldBe "chino"
+    City.renamedSlugs.get("hampton-roads").value shouldBe "norfolk-virginia"
+    City.renamedSlugs.get("alaska").value shouldBe "anchorage"
+  }
+
+  it should "not redirect a slug that is its heir's own URL again" in {
+    // The Alabama metro was /birmingham-alabama/, and so is the Birmingham page.
+    City.renamedSlugs.get("birmingham-alabama") shouldBe None
+    page("birmingham-alabama").labels.nominative shouldBe "Birmingham"
+  }
+
+  "Every US slug ever published" should "still answer, at a US page" in {
+    val published = Seq(
+      "aberdeen", "abilene", "adrian", "alamosa", "albany", "albany-georgia", "albuquerque", "alexandria",
+      "altoona-johnstown", "amarillo", "american-samoa", "anchorage", "asheville", "ashland", "aspen",
+      "atchison", "athens", "atlanta", "augusta", "augusta-georgia", "austin", "bakersfield", "baltimore",
+      "bangor", "barstow", "baton-rouge", "beaumont-port-arthur", "beckley", "bellingham", "bemidji", "bend",
+      "bethel", "billings", "binghamton", "birmingham-alabama", "bloomington", "bloomsburg",
+      "bluefield-princeton", "boise", "boston", "bowling-green", "bozeman", "brainerd-lakes", "brookfield",
+      "brunswick-golden-isles", "buffalo-niagara", "burlington", "burns", "butte", "cadet", "calumet",
+      "canadian", "cape-cod", "cape-girardeau", "carnegie", "carroll", "casper", "cedar-city", "cedar-rapids",
+      "central-coast", "central-wyoming", "champaign-urbana", "charleston", "charleston-south-carolina",
+      "charlotte", "charlotte-south-carolina", "charlottesville", "chattanooga", "cheyenne-laramie", "chicago",
+      "chico", "cincinnati", "cincinnati-kentucky", "clarendon", "clarksburg", "cleveland", "coeur-dalene",
+      "college-station", "colorado-springs", "columbia", "columbia-missouri", "columbus", "columbus-georgia",
+      "colville", "corning-elmira", "corpus-christi", "craig", "daingerfield", "dallas-fort-worth", "dayton",
+      "daytona-beach", "decorah", "dekalb", "delaware", "denver", "des-moines", "destin-fort-walton-beach",
+      "detroit", "devils-lake", "dickinson", "district-of-columbia", "dodge-city", "dothan", "dubuque",
+      "duluth", "durango", "durant", "eads", "east-texas", "eastern-arizona", "eastern-kentucky",
+      "eastern-oregon", "eastern-panhandle", "eastern-sierra", "eau-claire", "effingham", "el-centro",
+      "el-paso", "elizabeth-city", "elkins", "elko", "ely", "ennis", "erie", "eureka-arcata", "evansville",
+      "fairbanks", "fallon", "fargo", "fayetteville", "flagstaff", "flint", "florence", "florence-alabama",
+      "florida-keys", "fort-collins", "fort-dodge", "fort-smith", "fort-wayne", "fox-valley", "fresno",
+      "gadsden", "gallup", "galveston", "gaylord", "glasgow-montana", "graham", "grand-forks",
+      "grand-forks-north-dakota", "grand-island", "grand-junction", "grand-rapids", "great-barrington",
+      "great-falls", "green-bay", "greenville", "greenwood", "grove-city", "guam", "gulf-coast", "guymon",
+      "hackettstown", "hampton-roads", "harrisburg", "hartford", "harvey", "hattiesburg", "havre",
+      "hawaii-big-island", "helena", "higginsville", "highlands", "hilton-head", "holbrook", "holyoke",
+      "hood-river", "houston", "hudson-valley", "huntsville", "hutchinson", "idaho-falls", "indian-lake",
+      "indianapolis", "inland-empire", "iron-range", "ironwood", "jackson", "jackson-mississippi",
+      "jacksonville", "jacksonville-north-carolina", "jamestown", "jamestown-new-york", "jonesboro", "joplin",
+      "juneau", "kalamazoo", "kalispell", "kankakee", "kansas-city", "kansas-city-kansas", "kearney",
+      "kenai-peninsula", "ketchum", "killeen-temple", "knoxville", "kodiak", "kokomo", "la-crosse", "lafayette",
+      "lafayette-tennessee", "lafayette-west-lafayette", "lake-havasu-city", "lake-of-the-ozarks", "lancaster",
+      "laredo", "las-cruces", "las-vegas", "lawton", "lebanon-hanover", "lehigh-valley", "lewisburg",
+      "lewiston", "lewistown", "lexington", "lexington-virginia", "lima", "lincoln", "little-rock", "littleton",
+      "logan", "long-island", "los-angeles", "louisville", "louisville-kentucky", "lubbock", "lufkin", "macon",
+      "madison", "madison-minnesota", "manchester-new-hampshire", "manhattan", "mankato", "martin",
+      "mason-city", "maui", "mayaguez", "mcalester", "mccook", "mckinney", "mcpherson", "medford", "memphis",
+      "memphis-mississippi", "miami", "midland", "midland-odessa", "miles-city", "milwaukee",
+      "minneapolis-st-paul", "minneapolis-st-paul-wisconsin", "minot", "missoula", "mitchell", "moab", "mobile",
+      "mobridge", "modesto", "monroe", "monterey-county", "montevideo", "montgomery", "montrose", "mount-ayr",
+      "murfreesboro", "myrtle-beach", "naples", "nashville", "new-haven", "new-orleans", "new-york",
+      "new-york-new-jersey", "nome", "norfolk", "north-central-arkansas", "north-central-ohio", "north-coast",
+      "north-georgia", "north-missouri", "north-platte", "northeast-wyoming", "northern-california",
+      "northern-michigan", "northwest-arkansas", "northwest-kansas", "northwest-oklahoma",
+      "northwest-wisconsin", "oahu", "ocala", "ocean-city", "oelwein", "oklahoma-city", "old-valdez", "olympia",
+      "omaha", "omaha-iowa", "ontario", "orlando", "ottumwa", "owego", "owensboro", "paducah", "palm-springs",
+      "paullina", "pensacola", "peoria", "philadelphia", "philadelphia-new-jersey", "philip", "phoenix",
+      "pierre", "pittsburgh", "plains", "plattsburgh-north-country", "plentywood", "pocatello", "ponca-city",
+      "port-huron", "portland", "portland-maine", "portland-washington", "portsmouth",
+      "portsmouth-new-hampshire", "presque-isle", "providence", "pueblo", "quad-cities", "quincy", "rapid-city",
+      "reno", "rhinelander", "rhode-island", "richfield", "richmond", "richmond-indiana", "rio-grande-valley",
+      "roanoke", "rochester", "rochester-minnesota", "rockford", "rocky-mount-wilson", "rolla", "roswell",
+      "sacramento", "saginaw-bay-city", "saint-george", "salina", "salmon", "salt-lake-city", "san-antonio",
+      "san-diego", "san-francisco-bay-area", "san-juan", "san-luis-obispo", "sandusky", "sanpete-valley",
+      "santa-barbara", "santa-fe", "santa-rosa", "sarasota-bradenton", "savannah", "sayville", "scottsbluff",
+      "scranton-wilkes-barre", "searcy", "seattle", "sedona", "shelbina", "shenandoah-valley", "sheridan",
+      "show-low", "shreveport", "sierra-foothills", "sioux-city", "sioux-falls", "somerset-kentucky",
+      "south-bend-elkhart", "southeast-alaska", "southeast-kansas", "southern-illinois", "southwest-kansas",
+      "southwest-michigan", "southwest-minnesota", "southwest-virginia", "southwest-washington",
+      "southwest-wisconsin", "southwest-wyoming", "space-coast", "spencer", "spokane", "springfield",
+      "springfield-missouri", "st-cloud", "st-louis", "st-louis-illinois", "stamford", "star-valley",
+      "state-college", "stephenville", "sterling", "stockton", "stuart", "susanville", "syracuse",
+      "tallahassee", "tampa-bay", "terre-haute", "toledo", "towanda", "treasure-coast", "tri-cities",
+      "tri-cities-tennessee", "triad", "triangle", "truth-or-consequences", "tucson", "tucumcari", "tulsa",
+      "tupelo", "tuscaloosa", "twin-falls", "uinta-basin", "ukiah", "upper-peninsula", "utica-rome",
+      "vermillion", "vermont", "victoria", "vinita", "virgin-islands", "virginia-eastern-shore", "waco",
+      "waimea", "warner-robins", "washington-dc", "washington-dc-maryland", "waterloo", "watertown",
+      "watertown-north-country", "wausau-stevens-point", "wenatchee", "west-branch", "west-central-minnesota",
+      "west-palm-beach", "west-texas", "western-maryland", "western-massachusetts", "western-nc-mountains",
+      "western-pa", "wichita", "wichita-falls", "willamette-valley", "williston", "wilmington", "winnemucca",
+      "wytheville", "yakima", "yellowstone-gateway", "yuma", "alaska", "hawaii", "san-francisco", "perry",
+      "newport-news", "jefferson", "osage",
+    )
+    published should have size 475
+    published.foreach { slug =>
       withClue(s"$slug: ") {
-        val flat = city(slug)
-        flat.cinemas should not be empty
-        // It is its own state's whole group — nothing was cut out of it.
-        City.usStates.find(_.cities.contains(flat)).map(_.cities) shouldBe Some(Seq(flat))
+        val landing = City.renamedSlugs.getOrElse(slug, slug)
+        City.bySlug(landing).value.country shouldBe Country.UnitedStates
       }
     }
-    // Vermont is the widest that stays whole: 142 km between its two metros, a
-    // long drive but one drive. Delaware is 108 km.
-    city("vermont").cinemas should have size 23
+    // The metros that are still a page under their own slug — among them three
+    // retired since (`/perry/`, `/newport-news/`, `/san-francisco/`), whose towns
+    // are pages again.
+    published.count(City.bySlug(_).isDefined) shouldBe 329
   }
 
-  "A state whose few venues are nowhere near each other" should "be split anyway" in {
-    // The count gate alone made these one city each. Alaska's 18 venues reach
-    // 1,900 km and most of them have no road between them at all; Hawaii's 21
-    // lie across four islands. `UsRoster.MaxSpanToStayWholeKm` is the term that
-    // sees that, and the metros to show instead were already in the roster.
-    City.bySlug("alaska") shouldBe None
-    City.bySlug("hawaii") shouldBe None
-    city("anchorage").cinemas should have size 5
-    city("juneau").cinemas should have size 2
-    city("oahu").cinemas should have size 11
-    city("maui").cinemas should have size 4
-    // Each holds only its own island/road network — the whole point of the cut.
-    city("anchorage").cinemaDisplayNames should not contain "Gold Town Theater"  // Juneau
-    city("juneau").cinemaDisplayNames should contain("Gold Town Theater")
-    City.usStates.find(_.label == "Alaska").map(_.cities.size) shouldBe Some(9)
-    City.usStates.find(_.label == "Hawaii").map(_.cities.size) shouldBe Some(4)
-    // Still every venue, none dropped by the split.
-    City.usStates.find(_.label == "Alaska").toSeq.flatMap(_.cities.flatMap(_.cinemas)) should have size 18
-  }
-
-  "A city that was split out of a state" should "keep answering for the state's published URL and its projected rows" in {
-    // `/alaska/` is in the sitemap and in visitors' city cookies, so it 301s to
-    // the biggest metro cut out of it rather than 404ing.
-    City.renamedSlugs.get("alaska") shouldBe Some("anchorage")
-    City.renamedSlugs.get("hawaii") shouldBe Some("oahu")
-    // And EVERY metro reads the rows still projected under the old slug, or the
-    // split would blank the state until the next projection — 14 h in the US.
-    City.usStates.find(_.label == "Alaska").toSeq.flatMap(_.cities).foreach { metro =>
-      withClue(s"${metro.slug}: ")(City.formerSlugs(metro.slug) should contain("alaska"))
-    }
-    City.formerSlugs("oahu") should contain("hawaii")
-    // Derived from the roster, never listed by hand: the successors ARE the
-    // state's cities, so a re-harvest that moves a metro cannot leave this stale.
-    City.slugSuccession("alaska") should contain theSameElementsAs
-      City.usStates.find(_.label == "Alaska").toSeq.flatMap(_.cities.map(_.slug))
-  }
-
-  "Every retired slug" should "be retired, and name successors that exist" in {
-    // A typo in `slugSuccession` fails silently in the direction that costs
+  "Every retired slug" should "be retired, and name a successor that exists" in {
+    // A typo in `renamedSlugs` fails silently in the direction that costs
     // most: the redirect 404s and the rows projected under the old slug are
     // read by nobody, so the city serves a near-empty page for a whole scrape
     // cadence and nothing says why.
-    City.slugSuccession.foreach { case (former, successors) =>
-      withClue(s"$former: ") {
+    City.renamedSlugs.foreach { case (former, successor) =>
+      withClue(s"$former → $successor: ") {
         City.bySlug(former) shouldBe None
-        successors should not be empty
-        successors.foreach(slug => withClue(s"successor '$slug': ")(City.bySlug(slug) should not be None))
+        City.bySlug(successor) should not be None
       }
     }
-  }
-
-  "A metro" should "keep its OWN clock, not its state's predominant one" in {
-    // Fifteen states straddle a zone boundary, and every City cut out of one
-    // used to inherit the state's zone. That is not cosmetic: `City.zoneId`
-    // decides when the day rolls over, when a showtime counts as started, and
-    // the UTC offset the schema.org ScreeningEvents carry.
-    city("knoxville").zoneId.getId shouldBe "America/New_York"    // Tennessee is Central
-    city("chattanooga").zoneId.getId shouldBe "America/New_York"
-    city("el-paso").zoneId.getId shouldBe "America/Denver"        // Texas is Central
-    city("pensacola").zoneId.getId shouldBe "America/Chicago"     // Florida is Eastern
-    city("coeur-dalene").zoneId.getId shouldBe "America/Los_Angeles" // Idaho is Mountain
-    city("scottsbluff").zoneId.getId shouldBe "America/Denver"    // Nebraska is Central
-    // …while a metro in its state's majority zone is unmoved.
-    city("nashville").zoneId.getId shouldBe "America/Chicago"
-    city("los-angeles").zoneId.getId shouldBe "America/Los_Angeles"
-  }
-
-  "A pair of towns the straight line puts in a metro they cannot reach" should "keep their own" in {
-    // The fold measures great-circle km, which is a fair approximation of a drive
-    // almost everywhere the US puts cinemas — and not across the Sierra crest.
-    // Bishop and Mammoth Lakes are 120 km from Fresno on the map and ~400 km by
-    // the road that is open all year, the direct one being Tioga Pass, shut by
-    // snow roughly November to May. `cluster_metros.FOLD_BARRIERS` keeps them out.
-    val sierra = metroOf("Bishop Twin Theatre")
-    sierra.labels.nominative shouldBe "Eastern Sierra"
-    sierra.cinemaDisplayNames should contain theSameElementsAs
-      Seq("Bishop Twin Theatre", "Minaret Cinema is D'Place")
-    // Named for the region, not for either town: a two-town metro called after
-    // one of them says the other is inside it, and Bishop is not in Mammoth Lakes.
-    City.bySlug("eastern-sierra") shouldBe Some(sierra)
-    City.bySlug("mammoth-lakes") shouldBe None
-    // Fresno keeps the San Joaquin Valley towns it really does reach.
-    val fresno = city("fresno")
-    fresno.cinemaDisplayNames should contain("Yosemite Cinema")   // Oakhurst, 62 km, no crest
-    fresno.cinemaDisplayNames should not contain "Bishop Twin Theatre"
-  }
-
-  "A venue whose coordinates were wrong" should "be filed where its address says it is" in {
-    // Four records disagreed with their own postcode, and each one had made or
-    // corrupted a city. The generator now refuses them
-    // (`cluster_metros.check_coordinates`); these lock the outcome.
-    // 50220 is Perry, Iowa — a flipped longitude sign had it in Mongolia, and
-    // alone out there it became a one-venue metro of its own.
-    metroOf("Grand Theatre Perry").labels.nominative shouldBe "Des Moines"
-    // 97365 is Newport, OREGON, not Newport News, Virginia.
-    metroOf("Newport Performing Arts").labels.nominative shouldBe "Willamette Valley"
-    City.usCities.map(_.labels.nominative) should not contain "Newport News"
-    // Largo (33771) is on Tampa Bay; filed as "Key Largo" it had dragged the
-    // real Key Largo cinema 380 km with it, into Naples.
-    metroOf("Regal Largo Mall").labels.nominative shouldBe "Tampa Bay"
-    metroOf("Ocean Reef Theater").labels.nominative shouldBe "Miami"
-    // 53566 is Monroe, WI; filed as "Tomah" it had put the real Tomah cinema in
-    // Madison, 142 km away.
-    metroOf("Sky Vu Drive In Monroe").labels.nominative shouldBe "Madison"
-  }
-
-  "Metro slugs" should "give the bare one to the biggest claimant and qualify the rest" in {
-    // Clusters never cross a state line, so one travel-shed arrives as one metro
-    // per state it reaches. The side a visitor typing the name means — the
-    // bigger one — keeps the bare slug.
-    City.bySlug("new-york").map(_.cinemas.size) shouldBe Some(102)
-    City.bySlug("new-york-new-jersey").map(_.labels.nominative) shouldBe Some("New York")
-    City.bySlug("philadelphia").map(_.cinemas.size) shouldBe Some(35)
-    City.bySlug("philadelphia-new-jersey").map(_.labels.nominative) shouldBe Some("Philadelphia")
-  }
-
-  it should "never take a name another country already serves" in {
-    // `/birmingham/` and `/glasgow/` are live UK pages; a US metro may not move
-    // either, however big it is.
-    City.bySlug("birmingham") shouldBe Some(Birmingham)
-    City.bySlug("glasgow")    shouldBe Some(Glasgow)
-    City.bySlug("birmingham-alabama").map(_.labels.nominative) shouldBe Some("Birmingham")
-    City.bySlug("glasgow-montana").map(_.labels.nominative)    shouldBe Some("Glasgow")
-  }
-
-  it should "leave a name nobody else wants exactly as it reads" in {
-    Seq("los-angeles", "san-francisco-bay-area", "chicago", "seattle", "denver", "new-york")
-      .foreach(s => withClue(s"$s: ")(City.bySlug(s) should not be None))
-  }
-
-  "Flicks metros inside one travel-shed" should "cluster into a single city" in {
-    // `dallas` and `fort-worth` are separate Flicks metros and one metroplex.
-    val metroplex = metroOf("AMC North Park 15 Dallas")
-    metroplex.labels.nominative shouldBe "Dallas Fort Worth"
-    metroplex.cinemaDisplayNames should contain("AMC Hulen 10")          // Fort Worth
-    // Greater Cleveland clusters on Akron — whose own cinemas outnumber
-    // Cleveland's, those being spread over a dozen separately-named suburbs —
-    // but keeps the name a visitor is looking for.
-    val cleveland = metroOf("Capitol Theatre Cleveland")
-    cleveland.labels.nominative shouldBe "Cleveland"
-    cleveland.cinemaDisplayNames should contain("Highland Theater Akron")
-  }
-
-  "A venue Flicks files under no metro" should "join the metro nearest it" in {
-    // No `region_slug`, so the raw grouping dumped it in the catch-all.
-    metroOf("Alabama Theatre Birmingham").labels.nominative shouldBe "Birmingham"
-    City.usCities.map(_.labels.nominative) should not contain CinemaArea.Other.label
-  }
-
-  it should "be big enough to be worth a page of its own" in {
-    // Only a venue with no neighbouring metro within 150 km keeps a place of its
-    // own; everything else is folded into the metro nearest it. The handful that
-    // do, plus Guam, American Samoa and the Virgin Islands, which are whole
-    // territories of one or two cinemas — and Alaska's and Hawaii's six, which
-    // are single-cinema towns with no road or no bridge to anywhere else
-    // (Bethel, Kodiak, Nome, Old Valdez, Fairbanks, and Waimea on Kauai).
-    City.usCities.count(_.cinemas.sizeIs <= 2) should be <= 30
-  }
-
-  "A big metro" should "be split into the areas a local names" in {
-    city("los-angeles").areas.map(_.area.label).take(3) shouldBe
-      Seq("Los Angeles", "San Fernando Valley", "San Gabriel Valley")
-    city("new-york").areas.map(_.area.label) should contain allOf ("Manhattan", "Brooklyn")
-    // Chicago is not region-folded, so its areas stay the towns they cluster on.
-    city("chicago").areas.map(_.area.label).head shouldBe "Chicago"
-  }
-
-  "Every other metro" should "stay one flat list" in {
-    City.usCities.filter(_.isSplit).map(_.slug) should contain theSameElementsAs
-      Seq("los-angeles", "new-york", "san-francisco-bay-area", "dallas-fort-worth", "chicago")
   }
 }

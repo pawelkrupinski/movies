@@ -7,24 +7,24 @@ import play.api.test.Helpers._
 
 
 /**
- * The metro level, after the state stopped being a place. A US metro IS the
- * city — `/los-angeles/` is its listing, scoped to its own venues — and the
- * state it sits in has no page at all: `/california/` is as unknown as
+ * The page level, after the state stopped being a place. A US town or cluster
+ * page IS the city — `/los-angeles/` is its listing, scoped to its own venues —
+ * and the state it sits in has no page at all: `/texas/` is as unknown as
  * `/atlantis/`. What survives at the level BELOW is `City.areas`: London's five
- * compass areas, and a big metro's districts, which the cinema filter groups by
- * and the first-visit picker offers.
+ * compass areas, which the cinema filter groups by and the first-visit picker
+ * offers. No US page is big enough to need any since the metros became towns.
  *
- * The ways this can go wrong are what is asserted: a metro page leaking films
- * from the rest of the state, a state answering 200 with an 18 MB listing
- * instead of 404, and London — split too, and deliberately untouched by any of
- * this — losing its areas or its one-page listing.
+ * The ways this can go wrong are what is asserted: a page leaking films from the
+ * rest of the state, a state answering 200 with an 18 MB listing instead of 404,
+ * and London — split, and deliberately untouched by any of this — losing its
+ * areas or its one-page listing.
  */
 class AreaRoutingSpec extends AnyFlatSpec with Matchers {
 
   private def place(slug: String): City = City.all.find(_.slug == slug).getOrElse(fail(s"no city '$slug'"))
 
   private val losAngeles   = place("los-angeles")
-  private val sanFrancisco = place("san-francisco-bay-area")
+  private val sanFrancisco = place("san-francisco")
 
   private val laCinema: Cinema = losAngeles.cinemas.head
   private val sfCinema: Cinema = sanFrancisco.cinemas.head
@@ -49,7 +49,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   }
 
   /** A US-serving deployment holding one film in an LA venue and one in an SF
-   *  venue — two different California metros, and so two different cities. */
+   *  venue — two different California pages, and so two different cities. */
   private def usController(): MovieController = TestMovieController.build(
     Seq(
       (LaFilm, Some(2024), filmIn(laCinema, LaFilm, "tt101")),
@@ -72,13 +72,13 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
 
   // ── The metro's own listing ─────────────────────────────────────────────────
 
-  "/los-angeles/" should "render the repertoire scoped to that metro only" in {
+  "/los-angeles/" should "render the repertoire scoped to that page only" in {
     val res = usController().index("los-angeles")(req("/los-angeles/"))
     status(res) shouldBe OK
     val html = contentAsString(res)
     html should include(LaFilm)
-    // The San Francisco film is in the same STATE — the scoping is by metro, and
-    // this is the assertion that fails if a metro ever swallows its state again.
+    // The San Francisco film is in the same STATE — the scoping is by page, and
+    // this is the assertion that fails if a page ever swallows its state again.
     html should not include SfFilm
   }
 
@@ -86,14 +86,11 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     val html = contentAsString(usController().index("los-angeles")(req("/los-angeles/")))
     html should include(laCinema.displayName)
     html should not include sfCinema.displayName
-    // Los Angeles is past UsMetroSubAreas' threshold, so the panel it offers is
-    // grouped by REGION rather than flat.
-    html should include("CINEMA_AREAS")
-    html should not include "CINEMA_AREAS       = []"
-    html should include("\"name\":\"Westside\"")
+    // Los Angeles is the city alone now — 40 venues, one flat list.
+    html should include("CINEMA_AREAS       = []")
   }
 
-  it should "title, describe and canonicalise itself by the metro" in {
+  it should "title, describe and canonicalise itself by the city" in {
     val html = contentAsString(usController().index("los-angeles")(req("/los-angeles/")))
     html should include("<title>Cinema listings in Los Angeles")
     html should include("""<link rel="canonical" href="https://showtimes.cc/us/los-angeles/"""")
@@ -106,7 +103,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   // writes `city=` on load from `CURRENT_CITY`. What this page owes is therefore
   // the right slug in that constant; that the cookie is then written is asserted
   // in a real browser by `PageJsBehaviourSpec`.
-  it should "remember the metro as the city, so the bare / bounces back to it" in {
+  it should "remember the page as the city, so the bare / bounces back to it" in {
     val html = contentAsString(usController().index("los-angeles")(req("/los-angeles/")))
     html should include ("CURRENT_CITY")
     html should include ("\"los-angeles\";")
@@ -118,18 +115,20 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     val html = contentAsString(usController().index("los-angeles")(req("/los-angeles/")))
     html should include ("CURRENT_COUNTRY     = \"us\"")
     html should not include "KINOWO_CATALOG"
-    html should not include "\"slug\":\"san-francisco-bay-area\""
+    html should not include "\"slug\":\"san-francisco\""
   }
 
-  it should "carry the other metros' state grouping in the catalog the city picker drills through" in {
+  it should "carry the other pages' state grouping in the catalog the city picker drills through" in {
     val html = models.Catalog.json
-    catalogRegion("san-francisco-bay-area") shouldBe Some("California")
-    // Two of the 461 metros are both called "Philadelphia" — a flat list offers
-    // them as two identical rows, which is why the picker groups by state at
-    // all; the catalog is how it (and a visitor) can tell them apart.
-    val philadelphiaRegions = """"name":"Philadelphia"[^}]*"region":"([^"]+)"""".r
+    catalogRegion("san-francisco") shouldBe Some("California")
+    // Several pages are called "Springfield" — a flat list offers them as
+    // identical rows, which is why the picker groups by state at all; the catalog
+    // is how it (and a visitor) can tell them apart.
+    val springfieldRegions = """"name":"Springfield"[^}]*"region":"([^"]+)"""".r
       .findAllMatchIn(html).map(_.group(1)).toList
-    philadelphiaRegions should contain allOf ("Pennsylvania", "New Jersey")
+    springfieldRegions should contain allOf ("Illinois", "Missouri", "Massachusetts")
+    // A page reaching across a state line is under its anchor town's state.
+    catalogRegion("woodbury") shouldBe Some("Minnesota")
   }
 
   "The UK's catalog" should "group its counties by nation, with a further subregion where a county holds more than one place" in {
@@ -157,19 +156,17 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     models.Catalog.json should not include """"slug":"bayern""""
   }
 
-  "A small metro" should "leave its cinema list flat rather than wrapping it in one group" in {
-    // Below UsMetroSubAreas' threshold there are no districts, and a single
-    // collapsible section around the whole list would be chrome with no choice in
-    // it. San Diego (36 venues) is well under.
+  "A US page" should "leave its cinema list flat rather than wrapping it in one group" in {
+    // No US page has districts, and a single collapsible section around the whole
+    // list would be chrome with no choice in it.
     val res = usController().index("san-diego")(req("/san-diego/"))
     status(res) shouldBe OK
     contentAsString(res) should include ("CINEMA_AREAS       = []")
   }
 
-  "A flat state" should "still serve its own listing — its venue list IS the page" in {
-    // Vermont: 23 venues in two metros 142 km apart, which is one drive — under
-    // both `MinCinemasToSplit` and `MaxSpanToStayWholeKm`, so it stays one page.
-    val res = usController().index("vermont")(req("/vermont/"))
+  "A one-cinema town" should "still serve its own listing — its venue list IS the page" in {
+    // Bishop, California: one cinema, 59 km from the next — too far to share a page.
+    val res = usController().index("bishop")(req("/bishop/"))
     status(res) shouldBe OK
     contentAsString(res) should include ("CINEMA_AREAS       = []")
   }
@@ -178,7 +175,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
 
   "A US state" should "404, never answer with the whole state's listing" in {
     val us = usController()
-    Seq("california", "texas", "new-jersey").foreach { slug =>
+    Seq("texas", "new-jersey").foreach { slug =>
       withClue(s"$slug: ") {
         val res = us.index(slug)(req(s"/$slug/"))
         status(res) shouldBe NOT_FOUND
@@ -186,6 +183,11 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
         contentAsString(res) should not include SfFilm
       }
     }
+    // A state's name answers only where a TOWN has it: /california/ is
+    // California, Maryland, listing that town's cinemas — not the state's.
+    val california = us.index("california")(req("/california/"))
+    status(california) shouldBe OK
+    contentAsString(california) should not include SfFilm
   }
 
   "An unknown or foreign city" should "404 like every other city-scoped route" in {
@@ -195,7 +197,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     status(us.index("poznan")(req("/poznan/")))     shouldBe NOT_FOUND
   }
 
-  "/los-angeles/movies with no filter axis" should "serve the metro's listing, not a browse page" in {
+  "/los-angeles/movies with no filter axis" should "serve the page's listing, not a browse page" in {
     val res = usController().browse("los-angeles", None, None, None, None)(req("/los-angeles/movies"))
     status(res) shouldBe OK
     contentAsString(res) should include(LaFilm)
@@ -205,8 +207,8 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   // ── The mobile API ─────────────────────────────────────────────────────────
 
   /** Load-bearing: the iOS and Android apps read the `/:city/api/…` endpoints and
-   *  have no level below the city. They get the metro, whole. */
-  "The mobile API" should "serve the metro's own universe" in {
+   *  have no level below the city. They get the page, whole. */
+  "The mobile API" should "serve the page's own universe" in {
     val us = usController()
     val repertoire = contentAsString(us.apiRepertoire("los-angeles")(req("/los-angeles/api/repertoire")))
     repertoire should include(LaFilm)
@@ -217,8 +219,6 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     val cinemas = contentAsString(us.apiCinemas("los-angeles")(req("/los-angeles/api/cinemas")))
     cinemas should include(laCinema.displayName)
     cinemas should not include sfCinema.displayName
-    // The area grouping the mobile filter renders is the metro's regions.
-    cinemas should include("Westside")
   }
 
   // ── What must NOT change ────────────────────────────────────────────────────
