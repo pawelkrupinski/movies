@@ -13,6 +13,10 @@
     click: function () {
       Array.prototype.forEach.call(arguments, function (selector) { document.querySelector(selector).click(); });
     },
+    // Set each form control named by id in `values` to its value, firing nothing.
+    fill: function (values) {
+      Object.keys(values).forEach(function (id) { document.getElementById(id).value = values[id]; });
+    },
     // The trimmed text of every element matching `selector`, in DOM order.
     texts: function (selector) {
       return all(selector).map(function (el) { return el.textContent.trim(); });

@@ -24,6 +24,11 @@
     detailsHold: function (marker) {
       return all('#t tbody tr.details td').some(function (td) { return td.innerHTML.indexOf(marker) !== -1; });
     },
+    // The data row whose haystack holds `fragment`, and that row's details row.
+    row: rowMatching,
+    detailsOf: function (fragment) {
+      return document.querySelector('#t tbody tr.details[data-row-id="' + rowMatching(fragment).dataset.rowId + '"]');
+    },
     clickRowMatching: function (fragment) { rowMatching(fragment).click(); },
     rowExpanded: function (fragment) { return rowMatching(fragment).classList.contains('expanded'); },
     shownRows: function () { return shownRows().length; },

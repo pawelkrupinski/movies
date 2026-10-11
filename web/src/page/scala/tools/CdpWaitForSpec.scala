@@ -51,13 +51,8 @@ class CdpWaitForSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
     // The state turns true 200 ms of page time after the page notices it was frozen
     // (a >1 s gap between 20 ms ticks) — so it is false for the whole freeze and
     // true shortly after, whatever order the resumed renderer runs things in.
-    page.eval(
-      """(() => { let last = performance.now();
-        |  const tick = setInterval(() => {
-        |    const now = performance.now();
-        |    if (now - last > 1000) { clearInterval(tick); setTimeout(() => { window.settled = true; }, 200); }
-        |    last = now;
-        |  }, 20); })()""".stripMargin)
+    page.useScript("cdp/freeze-watch.js")
+    page.eval("__freezeWatch.settleAfterFreeze()")
     val renderers = rendererPids(chrome)
     renderers should not be empty
     val freezer = new Thread(() => {

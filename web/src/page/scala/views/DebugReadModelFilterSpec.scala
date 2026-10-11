@@ -53,22 +53,20 @@ class DebugReadModelFilterSpec extends AnyFlatSpec with Matchers with BeforeAndA
   }
 
   private def onReadModel(body: CdpPage => Any): Unit = chrome match {
-    case Some(c) => c.openPage(server.baseUrl + "/debug/readmodel")(body(_))
+    case Some(c) => c.openPage(server.baseUrl + "/debug/readmodel") { page =>
+      Seq("common/dom.js", "debug/corpus-table.js").foreach(page.useScript)
+      body(page)
+    }
     case None    => cancel("Chrome not installed — skipping /debug/readmodel filter JS behaviour test")
   }
 
-  private def typeFilter(q: String): String =
-    "(function(){var i=document.getElementById('q');" +
-      s"i.value=${JsString(q)};i.dispatchEvent(new Event('input'));})()"
+  private def typeFilter(q: String): String = s"__dom.type('#q', ${JsString(q)})"
 
-  private val visibleCount =
-    "[...document.querySelectorAll('#t tbody tr.data')].filter(tr => !tr.classList.contains('hidden')).length"
+  private val visibleCount = "__debugTable.shownRows()"
 
-  private def dataRow(needle: String): String =
-    s"[...document.querySelectorAll('#t tbody tr.data')].find(tr => tr.dataset.haystack.includes('$needle'))"
+  private def dataRow(needle: String): String = s"__debugTable.row('$needle')"
 
-  private def detailsFor(needle: String): String =
-    s"document.querySelector('#t tbody tr.details[data-row-id=\"' + ${dataRow(needle)}.dataset.rowId + '\"]')"
+  private def detailsFor(needle: String): String = s"__debugTable.detailsOf('$needle')"
 
   "the /debug/readmodel filter" should "hide rows the search box doesn't match" in {
     onReadModel { page =>

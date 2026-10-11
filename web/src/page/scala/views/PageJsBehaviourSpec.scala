@@ -5768,7 +5768,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   it should "reload when the check comes back 401 — the session went while the tab sat there" in {
     onLoggedInIndex { page =>
-      page.evalBool("(window.fetch = function () { return Promise.resolve({ status: 401 }); }, true)") shouldBe true
+      page.eval("__userState.answerEveryFetch(401)")
       val before = page.evalString("String(performance.timeOrigin)")
 
       page.eval("window.verifySessionOnReturn()")
@@ -5784,7 +5784,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // visitor's page away over one would be worse than the stale avatar.
   it should "leave the page alone when the check cannot be made" in {
     onLoggedInIndex { page =>
-      page.evalBool("(window.fetch = function () { return Promise.reject(new Error('offline')); }, true)") shouldBe true
+      page.eval("__userState.answerEveryFetch()")
       val before = page.evalString("String(performance.timeOrigin)")
 
       page.eval("window.verifySessionOnReturn()")
@@ -5796,7 +5796,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   it should "not reload while the session is still good" in {
     onLoggedInIndex { page =>
-      page.evalBool("(window.fetch = function () { return Promise.resolve({ status: 200 }); }, true)") shouldBe true
+      page.eval("__userState.answerEveryFetch(200)")
       val before = page.evalString("String(performance.timeOrigin)")
 
       page.eval("window.verifySessionOnReturn()")

@@ -154,6 +154,14 @@
       });
     },
 
+    // Answer every fetch, whatever its URL, with a bare `{ status }` — or, with
+    // no status, fail it as a network error does.
+    answerEveryFetch: function (status) {
+      stub(function () {
+        return status === undefined ? Promise.reject(new Error('offline')) : Promise.resolve({ status: status });
+      });
+    },
+
     // Put back the real `fetch` and `setTimeout`.
     restore: function () {
       if (realFetch) { window.fetch = realFetch; realFetch = null; }

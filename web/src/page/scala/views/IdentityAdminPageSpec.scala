@@ -67,7 +67,10 @@ class IdentityAdminPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfte
   }
 
   private def onPage(body: CdpPage => Any): Unit = chrome match {
-    case Some(c) => c.openPage(server.baseUrl + "/admin/identity")(body(_))
+    case Some(c) => c.openPage(server.baseUrl + "/admin/identity") { page =>
+      page.useScript("common/dom.js")
+      body(page)
+    }
     case None    => cancel("Chrome not installed — skipping /admin/identity page test")
   }
 
@@ -79,16 +82,13 @@ class IdentityAdminPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfte
   }
 
   private val samson = ListingKey.Published("Kino Amok", "Samson i Dalila", None, Nil)
+  /** `samson`, as the page's "extra listings" box takes it. */
+  private val SamsonListing = """[{"venue":"Kino Amok","rawTitle":"Samson i Dalila"}]"""
 
   "the identity page" should "pin the listings typed into it, then remove the pin, reloading onto each new state" in {
     onPage { page =>
       page.evalInt("document.querySelectorAll('tr.pin').length") shouldBe 0
-      page.eval("""(function(){
-        document.getElementById('extra').value = '[{"venue":"Kino Amok","rawTitle":"Samson i Dalila"}]';
-        document.getElementById('kind').value = 'never-film';
-        document.getElementById('tmdb').value = '22683';
-        document.getElementById('reason').value = 'an opera broadcast';
-      })()""")
+      page.eval(s"__dom.fill(${Json.obj("extra" -> SamsonListing, "kind" -> "never-film", "tmdb" -> "22683", "reason" -> "an opera broadcast")})")
       reloadingAfter(page)("document.getElementById('pin').click()")
       pins.all().map(p => (p.listings, p.claim, p.author, p.reason)) shouldBe
         Seq((Seq(samson), PinClaim.NeverFilm(22683), TestAdminAction.AdminEmail, "an opera broadcast"))
@@ -103,12 +103,8 @@ class IdentityAdminPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfte
 
   it should "show the pin rules' refusal and stay on the page" in {
     onPage { page =>
-      page.eval("""(function(){
-        document.getElementById('extra').value = '[{"venue":"Kino Amok","rawTitle":"Samson i Dalila"}]';
-        document.getElementById('kind').value = 'same-film';
-        document.getElementById('reason').value = 'one film';
-        document.getElementById('pin').click();
-      })()""")
+      page.eval(s"__dom.fill(${Json.obj("extra" -> SamsonListing, "kind" -> "same-film", "reason" -> "one film")}); " +
+        "document.getElementById('pin').click()")
       page.waitFor("document.getElementById('status').className === 'err'")
       page.evalString("document.getElementById('status').textContent") should include ("two or more")
       pins.all() shouldBe empty

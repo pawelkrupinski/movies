@@ -54,20 +54,18 @@ class CadenceFilterSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll
   }
 
   private def onCadence(body: CdpPage => Any): Unit = chrome match {
-    case Some(c) => c.openPage(server.baseUrl + "/debug/cadence")(body(_))
+    case Some(c) => c.openPage(server.baseUrl + "/debug/cadence") { page =>
+      page.useScript("common/dom.js")
+      body(page)
+    }
     case None    => cancel("Chrome not installed — skipping cadence filter JS behaviour test")
   }
 
   // JSON array of the titles of every row not currently hidden, sorted — a clean,
   // collapse-independent read of "what the filter is letting through".
-  private val visibleTitles =
-    "JSON.stringify(Array.prototype.slice.call(document.querySelectorAll('tbody tr'))" +
-      ".filter(function(tr){return !tr.hidden})" +
-      ".map(function(tr){return tr.querySelector('.film').textContent.trim()}).sort())"
+  private val visibleTitles = "JSON.stringify(__dom.texts('tbody tr:not([hidden]) .film').sort())"
 
-  private def typeFilter(q: String): String =
-    s"(function(){var i=document.getElementById('cadence-filter');" +
-      s"i.value=${JsString(q)};i.dispatchEvent(new Event('input'));})()"
+  private def typeFilter(q: String): String = s"__dom.type('#cadence-filter', ${JsString(q)})"
 
   private val shownGroups = "document.querySelectorAll('details.grp:not([hidden])').length"
 

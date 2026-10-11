@@ -105,20 +105,15 @@ class ReviewDesignParitySpec extends AnyFlatSpec with Matchers with BeforeAndAft
   /** Each selector's computed style, the font family reduced to its first face. */
   private def styles(page: CdpPage): Map[String, Map[String, String]] =
     Selectors.map { sel =>
-      val js = s"""(function(){ var e = document.querySelector(${Json.toJson(sel)}); if (!e) return null; var s = getComputedStyle(e);
-        return { ${Properties.map(p => s"$p: s.$p").mkString(", ")} }; })()"""
-      sel -> page.eval(js).asOpt[Map[String, String]].getOrElse(Map("missing" -> "no element")).map {
+      sel -> page.eval(s"__styles.of(${Json.toJson(sel)}, ${Json.toJson(Properties)})").asOpt[Map[String, String]].getOrElse(Map("missing" -> "no element")).map {
         case ("fontFamily", v) => "fontFamily" -> v.split(",").head.trim.stripPrefix("\"").stripSuffix("\"")
         case other             => other
       }
     }.toMap
 
   /** The font families the page has loaded a face of, once its fonts settle. */
-  private def loadedFamilies(page: CdpPage): Set[String] = {
-    page.eval("document.fonts.ready.then(function(){ return true; })")
-    page.eval("Array.from(document.fonts).filter(function(f){ return f.status === 'loaded'; }).map(function(f){ return f.family.replace(/\"/g, ''); })")
-      .as[Seq[String]].toSet
-  }
+  private def loadedFamilies(page: CdpPage): Set[String] =
+    page.eval("__styles.loadedFamilies()").as[Seq[String]].toSet
 
   private val Families = Set("Archivo", "IBM Plex Sans", "IBM Plex Mono")
 
@@ -129,7 +124,8 @@ class ReviewDesignParitySpec extends AnyFlatSpec with Matchers with BeforeAndAft
 
   private val Viewports = Seq(("desktop", 1280, 900, false), ("mobile", 390, 844, true))
 
-  private def measure(page: CdpPage, name: String): Map[String, (Map[String, Map[String, String]], Set[String])] =
+  private def measure(page: CdpPage, name: String): Map[String, (Map[String, Map[String, String]], Set[String])] = {
+    page.useScript("review/computed-styles.js")
     Viewports.map { case (label, width, height, mobile) =>
       if (mobile) page.setViewport(width, height) else page.setDesktopViewport(width, height)
       page.awaitRenderedFrame()
@@ -138,6 +134,7 @@ class ReviewDesignParitySpec extends AnyFlatSpec with Matchers with BeforeAndAft
       shoot(page, s"$name-$label")
       label -> (computed, families)
     }.toMap
+  }
 
   "the local review page" should "compute the published review page's fonts, sizes, spacing and colours, element for element" in {
     chrome match {

@@ -4,6 +4,7 @@ import controllers.{BarData, ServiceRow}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import play.api.libs.json.Json
 import services.UptimeMonitor
 import tools.{CdpPage, Chrome, TestHttpServer}
 
@@ -72,13 +73,23 @@ class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAl
   }
 
   private def onUptime(body: CdpPage => Any): Unit = chrome match {
-    case Some(c) => c.openPage(server.baseUrl + "/uptime")(body(_))
+    case Some(c) => c.openPage(server.baseUrl + "/uptime") { page =>
+      page.useScript("uptime/bars.js")
+      body(page)
+    }
     case None    => cancel("Chrome not installed — skipping uptime JS behaviour test")
   }
 
-  private def barSel(ts: Long): String =
-    s"""document.querySelector('.row[data-service="TestSvc"] .bar[data-ts="$ts"]')"""
-  private val allBars = """document.querySelectorAll('.row[data-service="TestSvc"] .bar').length"""
+  private def barSel(ts: Long): String = s"__uptime.bar('TestSvc', $ts)"
+  private val allBars = "__uptime.bars('TestSvc')"
+
+  /** A live SSE frame, as `applyUpdate` takes it. */
+  private def frame(service: String, ts: Long, status: String, successes: Int, failures: Int, thin: Boolean = false,
+                    timeFrom: String = "a", timeTo: String = "b", dateLabel: String = "c"): String =
+    Json.stringify(Json.obj("service" -> service, "bucketTs" -> ts, "status" -> status, "fallback" -> false,
+      "successes" -> successes, "failures" -> failures, "zeroes" -> 0, "errors" -> Json.arr(),
+      "timeFrom" -> timeFrom, "timeTo" -> timeTo, "dateLabel" -> dateLabel) ++
+      (if (thin) Json.obj("thin" -> true) else Json.obj()))
 
   "the /uptime live bar append" should
     "backfill empty bars for slots a service was idle so the tail keeps the 15-min grid" in {
@@ -88,9 +99,7 @@ class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAl
       // An SSE frame for a bucket an hour later — the service recorded nothing in
       // the 3 intervening 15-min slots, so no frame ever arrives for them.
       val newTs = lastTs + 4 * step
-      page.eval(
-        s"applyUpdate({service:'TestSvc',bucketTs:$newTs,status:'green',fallback:false," +
-        "successes:2,failures:0,zeroes:0,errors:[],timeFrom:'a',timeTo:'b',dateLabel:'c'})")
+      page.eval(s"applyUpdate(${frame("TestSvc", newTs, "green", successes = 2, failures = 0)})")
 
       // The new active bar lands…
       page.evalBool(s"${barSel(newTs)} !== null") shouldBe true
@@ -116,16 +125,11 @@ class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAl
   // service per day of detail no bar could show any more.
   it should "forget the detail of bars that slide off the row" in {
     onUptime { page =>
-      val frames = (1 to UptimeMonitor.MaxBuckets * 2).map { i =>
-        s"{service:'TestSvc',bucketTs:${lastTs + i * step},status:'green',fallback:false," +
-          "successes:1,failures:0,zeroes:0,errors:[],timeFrom:'a',timeTo:'b',dateLabel:'c'}"
-      }
+      val frames = (1 to UptimeMonitor.MaxBuckets * 2).map(i => frame("TestSvc", lastTs + i * step, "green", successes = 1, failures = 0))
       page.eval(s"[${frames.mkString(",")}].forEach(applyUpdate)")
 
       page.evalInt(allBars) shouldBe UptimeMonitor.MaxBuckets
-      page.evalBool(
-        "Object.keys(barDetail.TestSvc).every(ts => " +
-        "  document.querySelector('.row[data-service=\"TestSvc\"] .bar[data-ts=\"' + ts + '\"]'))") shouldBe true
+      page.evalBool("__uptime.detailOnlyForBars('TestSvc')") shouldBe true
       page.evalInt("Object.keys(barSlots).length") should be <= UptimeMonitor.MaxBuckets
     }
   }
@@ -136,18 +140,13 @@ class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAl
   it should "place a frame older than every bar at its slot, not after the newest" in {
     onUptime { page =>
       val olderTs = lastTs - 6 * step   // one slot before the row's first bar
-      page.eval(
-        s"applyUpdate({service:'TestSvc',bucketTs:$olderTs,status:'red',fallback:false," +
-        "successes:0,failures:1,zeroes:0,errors:[],timeFrom:'a',timeTo:'b',dateLabel:'c'})")
-      val order = page.evalString(
-        "[...document.querySelectorAll('.row[data-service=\"TestSvc\"] .bar')].map(b => b.dataset.ts).join(',')")
+      page.eval(s"applyUpdate(${frame("TestSvc", olderTs, "red", successes = 0, failures = 1)})")
+      val order = page.evalString("__uptime.order('TestSvc')")
       order shouldBe (6 to 0 by -1).map(i => lastTs - i * step).mkString(",")
     }
   }
 
-  private def hover(service: String, ts: Long): String =
-    s"""document.querySelector('.row[data-service="$service"] .bar[data-ts="$ts"]')""" +
-      """.dispatchEvent(new MouseEvent('mouseover', {bubbles: true}))"""
+  private def hover(service: String, ts: Long): String = s"__uptime.hover('$service', $ts)"
   private val overlayText = "document.getElementById('overlay').textContent"
 
   // The per-bucket detail moved out of a per-bar `data-info` attribute and into
@@ -181,9 +180,8 @@ class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAl
 
   it should "fold a live SSE update into the payload so the tooltip shows the new counts" in {
     onUptime { page =>
-      page.eval(
-        s"applyUpdate({service:'DetailSvc',bucketTs:$activeTs,status:'green',fallback:false," +
-        "successes:9,failures:0,zeroes:0,errors:[],timeFrom:'09:30',timeTo:'09:45',dateLabel:'13 Jul'})")
+      page.eval(s"applyUpdate(${frame("DetailSvc", activeTs, "green", successes = 9, failures = 0,
+        timeFrom = "09:30", timeTo = "09:45", dateLabel = "13 Jul")})")
       page.eval(hover("DetailSvc", activeTs))
       val text = page.evalString(overlayText)
 
@@ -196,7 +194,7 @@ class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAl
   // its own marker and the tooltip says why.
   "a thin /uptime bar" should "render marked and explain itself on hover" in {
     onUptime { page =>
-      val sel = s"""document.querySelector('.row[data-service="ThinSvc"] .bar[data-ts="$lastTs"]')"""
+      val sel = s"__uptime.bar('ThinSvc', $lastTs)"
       page.evalString(s"$sel.className") should (include ("green") and include ("thin"))
       page.eval(hover("ThinSvc", lastTs))
       page.evalString(overlayText) should include ("nothing in the next 72h")
@@ -205,9 +203,7 @@ class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAl
 
   it should "pick up the thin marker from a live SSE frame" in {
     onUptime { page =>
-      page.eval(
-        s"applyUpdate({service:'TestSvc',bucketTs:$lastTs,status:'green',fallback:false,thin:true," +
-        "successes:1,failures:0,zeroes:0,errors:[],timeFrom:'a',timeTo:'b',dateLabel:'c'})")
+      page.eval(s"applyUpdate(${frame("TestSvc", lastTs, "green", successes = 1, failures = 0, thin = true)})")
       page.evalString(s"${barSel(lastTs)}.className") should include ("thin")
       page.eval(hover("TestSvc", lastTs))
       page.evalString(overlayText) should include ("nothing in the next 72h")
