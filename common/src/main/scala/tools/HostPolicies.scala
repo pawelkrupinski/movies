@@ -189,6 +189,17 @@ object HostPolicies {
       headers            = Map("User-Agent" -> HostPolicies.KinoprogrammUserAgent),
     ),
 
+    // kinoheld.de's GraphQL API — the primary source for the German venues Filmstarts
+    // does not list (KinoheldClient), one POST per 100 shows: ~2 per venue, five for a
+    // multiplex. Harvesting all 2,159 venues at 5 concurrent requests drew no 429
+    // (2026-10-11), and nobody publishes a limit, so 500ms is a courtesy that still
+    // sweeps the few hundred kinoheld venues in minutes. Retunable live.
+    HostPolicy(
+      Set("kinoheld.de"),
+      minRequestInterval = Some(Duration.ofMillis(500)),
+      paceKnob           = Some(PaceKnob.Kinoheld),
+    ),
+
     // SensaCine (Webedia ES). Spain's 594 venues reach the SAME client Germany
     // does on a DIFFERENT host, and that difference is the whole reason this row
     // exists: `HostPolicies` rows match by host SUFFIX, so `filmstarts.de` does

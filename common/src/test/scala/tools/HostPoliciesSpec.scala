@@ -103,6 +103,16 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
     suffixes.distinct shouldBe suffixes
   }
 
+  // kinoheld.de's GraphQL API serves the German venues Filmstarts does not list; an unpaced
+  // sweep would POST at whatever concurrency the scrape queue reaches.
+  "requestIntervalFor" should "pace kinoheld's API, retunable by its own knob" in {
+    val url     = "https://next-live.kinoheld.de/graphql"
+    val flipped = Env.of()
+    flipped.installOverrides(Map(_root_.settings.PaceKnob.Kinoheld.key -> "900").get)
+    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of()))  shouldBe Some(Duration.ofMillis(500))
+    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(flipped))   shouldBe Some(Duration.ofMillis(900))
+  }
+
   // ── Slow-TLS connect budget (Kino Iluzjon) ────────────────────────────────
   // Iluzjon's TLS handshake runs 20-30s server-side; under the 5s default connect
   // budget every fetch died with HttpConnectTimeoutException. Its host policy gives
