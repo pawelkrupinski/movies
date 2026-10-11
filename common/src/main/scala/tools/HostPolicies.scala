@@ -200,6 +200,16 @@ object HostPolicies {
       paceKnob           = Some(PaceKnob.Kinoheld),
     ),
 
+    // Cineamo's public JSON API (CineamoClient) — German venues' showings, ten a page,
+    // so a multiplex is ~15 GETs and a sweep of every venue it serves thousands. 6
+    // concurrent readers drew no 429 over ~9k requests (2026-10-11); nobody publishes a
+    // limit, so 200ms is a courtesy that still sweeps it well inside DE's cadence.
+    HostPolicy(
+      Set("api.cineamo.com"),
+      minRequestInterval = Some(Duration.ofMillis(200)),
+      paceKnob           = Some(PaceKnob.Cineamo),
+    ),
+
     // SensaCine (Webedia ES). Spain's 594 venues reach the SAME client Germany
     // does on a DIFFERENT host, and that difference is the whole reason this row
     // exists: `HostPolicies` rows match by host SUFFIX, so `filmstarts.de` does

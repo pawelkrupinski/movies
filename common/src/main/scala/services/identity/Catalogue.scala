@@ -20,14 +20,17 @@ object CatalogueSources {
   /** A Rotten Tomatoes film slug (P1258, "m/<slug>"), which a Flicks film page links. */
   val RottenTomatoes: Mapped = Mapped("rt", Seq("P1258"), "m/" + _)
 
+  /** Cineamo's film record id ("567m"), which its showings feed attaches to every German showing it lists. */
+  val Cineamo: String = "cineamo"
+
   /** The catalogues an aggregator's showtimes FEED links a venue's screening to: Webedia's (Filmstarts in Germany,
-   *  SensaCine in Spain), by the id the feed attaches; kinoprogramm.com's, by the catalogue page it serves as the
+   *  SensaCine in Spain) and Cineamo's, by the id the feed attaches; kinoprogramm.com's, by the catalogue page it serves as the
    *  listing's own (`/kinofilm/<slug>-<id>`); kinoheld.de's, by the film page of the film it linked a show to
    *  (`/film/<slug>`, `KinoheldClient`). The feed copies its entry's title, year, directors, running time and
    *  poster onto the listing, so they are that CATALOGUE's claim, not the venue's: the feed can link the wrong entry —
    *  DE Roxy Kitzingen's "To The Bone", Noxon's 2017 feature on the venue's own page, linked to Filmstarts' 227420, Erin
    *  Li's 2014 short, with the short's year, director and 8 minutes — and its facts then only repeat the wrong entry. */
-  val FeedIds: Set[String]       = Set(Webedia.source)
+  val FeedIds: Set[String]       = Set(Webedia.source, Cineamo)
   val FeedPages: Seq[String]     = Seq("https://www.kinoprogramm.com/", "https://kinoprogramm.com/",
                                         "https://www.kinoheld.de/film/")
 

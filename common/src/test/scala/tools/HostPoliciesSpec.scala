@@ -113,6 +113,14 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
     HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(flipped))   shouldBe Some(Duration.ofMillis(900))
   }
 
+  it should "pace Cineamo's API, retunable by its own knob" in {
+    val url     = "https://api.cineamo.com/showings?cinemaId=997&page=1"
+    val flipped = Env.of()
+    flipped.installOverrides(Map(_root_.settings.PaceKnob.Cineamo.key -> "350").get)
+    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of()))  shouldBe Some(Duration.ofMillis(200))
+    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(flipped))   shouldBe Some(Duration.ofMillis(350))
+  }
+
   // ── Slow-TLS connect budget (Kino Iluzjon) ────────────────────────────────
   // Iluzjon's TLS handshake runs 20-30s server-side; under the 5s default connect
   // budget every fetch died with HttpConnectTimeoutException. Its host policy gives

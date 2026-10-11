@@ -101,6 +101,7 @@ enum PaceKnob(val key: String) {
   case Ocine      extends PaceKnob("KINOWO_OCINE_PACE_MS")
   case Kinoprogramm extends PaceKnob("KINOWO_KINOPROGRAMM_PACE_MS")
   case Kinoheld   extends PaceKnob("KINOWO_KINOHELD_PACE_MS")
+  case Cineamo    extends PaceKnob("KINOWO_CINEAMO_PACE_MS")
   case WikidataFleet extends PaceKnob("KINOWO_WIKIDATA_FLEET_PACE_MS")
 }
 /** The live minimum gap between two requests to a paced host. */
