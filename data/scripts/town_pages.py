@@ -1,4 +1,4 @@
-"""Which listing page each venue belongs to — the rule Poland and Spain share.
+"""Which listing page each venue belongs to — the rule Poland, Spain and Germany share.
 
 A country's pages are built from its venues' towns:
 
@@ -20,10 +20,11 @@ then the most people. Distances are straight-line (haversine) between gazetteer
 town centres.
 
 What differs per country is only at the edges, and is the caller's: how a
-venue's town is read, which cities are major, what a page records beside its
-towns and venues (Poland's locative, Spain's province), and where a page that
-stopped existing now redirects. `data/pl/scripts/build_pages.py` and
-`data/spain/scripts/build_pages.py` are those callers.
+venue's town is read, which cities are major, the radii (Germany's are tighter),
+how a name becomes a slug, what a page records beside its towns and venues
+(Poland's locative, Spain's province, Germany's Bundesland), and where a page
+that stopped existing now redirects. `data/{pl,spain,germany}/scripts/build_pages.py`
+are those callers.
 """
 import math
 import re
@@ -106,7 +107,7 @@ def cluster(count, pos, pop, rules=Rules(), landmass=None):
 
 
 def build(by_town, majors, major_town, gaz, display, make_page, region_slug, cinema_of, rules=Rules(),
-          landmass=None):
+          landmass=None, slug_of=slugify):
     """Every page, as {slug: page}, and the page each town is on.
 
     by_town:    town → its venues, in roster order (the order a page lists them in)
@@ -118,6 +119,7 @@ def build(by_town, majors, major_town, gaz, display, make_page, region_slug, cin
     region_slug: anchor → what qualifies its slug when another page has it already
     cinema_of:  venue → what the page's "cinemas" lists for it
     landmass:   see `cluster`
+    slug_of:    name → URL slug (German spells ä as "ae" where Polish and Spanish drop the accent)
     """
     result = dict(majors)
     minor = {t: vs for t, vs in by_town.items() if t not in major_town}
@@ -128,9 +130,9 @@ def build(by_town, majors, major_town, gaz, display, make_page, region_slug, cin
     used = set(result)
     for c in cluster(count, pos, pop, rules, landmass):
         anchor = c[0]
-        slug = slugify(display(anchor))
+        slug = slug_of(display(anchor))
         if slug in used:
-            slug = f"{slug}-{slugify(region_slug(anchor))}"
+            slug = f"{slug}-{slug_of(region_slug(anchor))}"
         used.add(slug)
         result[slug] = make_page(slug, "town" if len(c) == 1 else "cluster", anchor, c)
 
