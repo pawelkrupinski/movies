@@ -351,8 +351,19 @@ case class MovieRecord(
    *  moment; Cinema City has shipped posterLinks to images they
    *  hadn't uploaded yet — `8215S2R.jpg` for Drishyam 3). When the
    *  primary cinema fails we'd rather try another cinema's poster
-   *  than jump straight to TMDB; the data already lives in `data`. */
-  def fallbackPosterUrls: Seq[String] = postersByPreference.drop(1)
+   *  than jump straight to TMDB; the data already lives in `data`.
+   *
+   *  BOUNDED: the first [[MovieRecord.CinemaFallbackPosters]] of them, then TMDB's and IMDb's
+   *  wherever they fell. A wide release listed every venue's poster -- Lalka carried 212 on each
+   *  of its ~40 variant cards (2026-10-12) -- so any venue's poster arriving or leaving changed
+   *  the chain and rewrote every card of the film, the read model's daily PL write peak. A chain
+   *  of three venues and the catalogues is as many fallbacks as a failing primary ever needs, and
+   *  only a change among the highest-priority venues moves it. */
+  def fallbackPosterUrls: Seq[String] = {
+    val rest      = postersByPreference.drop(1)
+    val catalogue = Seq(Tmdb, Imdb).flatMap(data.get(_).flatMap(_.posterUrl)).filter(rest.contains)
+    (rest.take(MovieRecord.CinemaFallbackPosters) ++ catalogue).distinct
+  }
 
   /** First non-empty trailer URL across cinema sources in priority order.
    *  Cinema-only: Tmdb / Imdb slots currently don't carry trailers. */
@@ -714,4 +725,9 @@ object RatingSearchUrls {
   def metacritic(title: String): String     = s"https://www.metacritic.com/search/${q(title)}/?category=2"
   def rottenTomatoes(title: String): String = s"https://www.rottentomatoes.com/search?search=${q(title)}"
   def filmweb(title: String): String        = s"https://www.filmweb.pl/search?query=${q(title)}"
+}
+
+object MovieRecord {
+  /** How many other venues' posters a card's fallback chain offers before the catalogues' (TMDB, IMDb). */
+  val CinemaFallbackPosters: Int = 3
 }

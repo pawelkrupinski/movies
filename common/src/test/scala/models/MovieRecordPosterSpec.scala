@@ -82,6 +82,24 @@ class MovieRecordPosterSpec extends AnyFlatSpec with Matchers {
     record.fallbackPosterUrls shouldBe Seq(cinemaCity, tmdb, imdb)
   }
 
+  it should "keep a wide release's chain to the first cinemas and the catalogues, so a small venue joining moves no card" in {
+    // Lalka (pl, 2026-10-12) carried 212 fallbacks on every one of its ~40 variant cards: any of 213
+    // venues' poster arriving or leaving changed the chain, and every card of the film was rewritten
+    // (2,668 poster rewrites in PL's evening 3h, ReadModelProjectionWritePerCallHigh daily). The
+    // client only ever needs the next few when the primary fails, and TMDB / IMDb are the ones that
+    // do not 404, so those always stay.
+    val venues = Cinema.all.filterNot(_ == Multikino)
+    val tmdb   = "https://image.tmdb.org/t/p/w500/x.jpg"
+    val imdb   = "https://m.media-amazon.com/x.jpg"
+    def wide(cinemas: Seq[Cinema]) = MovieRecord(data =
+      cinemas.map(c => (c: Source) -> SourceData(posterUrl = Some(s"https://poster.example/${c.displayName}.jpg"))).toMap ++
+        Map[Source, SourceData](Tmdb -> SourceData(posterUrl = Some(tmdb)), Imdb -> SourceData(posterUrl = Some(imdb))))
+    val record = wide(Multikino +: venues.take(10))
+    record.fallbackPosterUrls shouldBe
+      venues.take(MovieRecord.CinemaFallbackPosters).map(c => s"https://poster.example/${c.displayName}.jpg") ++ Seq(tmdb, imdb)
+    wide(Multikino +: venues.take(10) :+ venues.last).fallbackPosterUrls shouldBe record.fallbackPosterUrls
+  }
+
   it should "drop the primary even when other sources duplicate it" in {
     val url = "https://image.tmdb.org/t/p/w500/x.jpg"
     val record = MovieRecord(

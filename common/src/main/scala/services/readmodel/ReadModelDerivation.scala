@@ -59,7 +59,9 @@ object ReadModelDerivation {
     Derivation(DerivationVersion("b029df625de7c5a5"), DerivationScope.Cards),
     // A festival or club acronym tag ("11. UFF - <film>", "<film> | DKF") comes off the title a card shows and the
     // key it groups by, so the tagged listing joins its film's card.
-    Derivation(DerivationVersion("acb3f7f8f6df518c"), DerivationScope.Full))
+    Derivation(DerivationVersion("acb3f7f8f6df518c"), DerivationScope.Full),
+    // A card's poster fallback chain stops at three venues plus TMDB / IMDb (`MovieRecord.fallbackPosterUrls`).
+    Derivation(DerivationVersion("0f72666029377308"), DerivationScope.Cards))
 
   def current: DerivationVersion = History.last.version
 
