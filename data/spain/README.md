@@ -241,6 +241,27 @@ stopped lining up with the harvest (a dropped `theaterId`, an unknown
 province, one server named twice), and every host it names needs a pace row
 in `tools.HostPolicies` — `CinemaScraperCatalogSpec` fails on one without.
 
+### taquilla.com: `taquilla.json`
+
+The chain multiplexes SensaCine lists — Yelmo, mk2, Kinépolis, Neocine — are
+also sold through taquilla.com, whose venue calendars run months past
+SensaCine's (advance sales, opera and ballet relays). `scripts/harvest_taquilla.py`
+walks Taquilla's city carteleras for its venue pages, matches each roster venue
+on postcode + name (same town + exact name where the postcodes disagree; ties
+and a page two venues claim are printed for review, never guessed), and moves a
+venue to `TaquillaClient` only when Taquilla is a SUPERSET of what
+showtimes.cc serves today: it reaches past SensaCine's last day AND carries at
+least 95% of SensaCine's sessions on the near fortnight. Cinesa never qualifies
+— its Taquilla calendar is four days long. `generate_own_sources.py` turns the
+file into `worker/.../es/SpanishOwnSourcesData.scala`; SensaCine stays each
+moved venue's fallback (`ScrapeWiring`, after two failed runs).
+
+```
+python3 data/spain/scripts/harvest_taquilla.py      # ~25 min, 5 workers at 2 req/s, cached
+python3 data/spain/scripts/test_harvest_taquilla.py
+python3 data/spain/scripts/generate_own_sources.py
+```
+
 **A re-harvest is not free.** `displayName` is the wire key every stored
 showtime is filed under, so a venue whose name changes upstream arrives as a
 NEW venue and its history stays filed under the old name. Re-run the pipeline

@@ -155,6 +155,7 @@ jobs:
                   python3 data/spain/scripts/test_build_town_names.py
                   python3 data/spain/scripts/test_build_venue_towns.py
                   python3 data/spain/scripts/test_generate_roster.py
+                  python3 data/spain/scripts/test_harvest_taquilla.py
                   python3 data/us/scripts/test_build_pages.py
                   python3 data/us/scripts/test_generate_roster.py
                   python3 data/us/scripts/test_geocode_towns.py

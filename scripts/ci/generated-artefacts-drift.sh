@@ -15,6 +15,7 @@
 #   data/spain/town-coords.json → data/spain/scripts/build_pages.py   → data/spain/pages.json
 #   data/germany, data/spain, data/us → their generate_roster.py     → *RosterData.scala
 #   data/germany/venue-sources.json → data/germany/scripts/generate_sources.py → GermanSourcesData.scala
+#   data/spain/taquilla.json → data/spain/scripts/generate_own_sources.py → SpanishOwnSourcesData.scala
 #
 # An edit to any link that skips the regeneration below it compiles, passes every spec that
 # reads the stale output, and ships a roster that disagrees with itself. (The catalog seeds
@@ -80,6 +81,7 @@ python3 data/germany/scripts/generate_roster.py
 python3 data/germany/scripts/generate_sources.py
 python3 data/spain/scripts/build_pages.py
 python3 data/spain/scripts/generate_roster.py
+python3 data/spain/scripts/generate_own_sources.py
 
 drift=$(diff <(printf '%s\n' "$before") <(tree_state) | sed -n 's/^[<>] \(.*\) [^ ]*$/\1/p' | LC_ALL=C sort -u || true)
 if [ -n "$drift" ]; then

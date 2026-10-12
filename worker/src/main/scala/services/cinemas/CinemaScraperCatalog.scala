@@ -7,7 +7,7 @@ import services.cinemas.pl._
 import services.cinemas.common.{CineamoClient, FlicksClient, FlicksMarket, KinoheldClient, KinoprogrammClient}
 import services.cinemas.de.{GermanFeed, GermanSources}
 import services.cinemas.uk.{CineworldClient, OdeonClient, TheOldCourtClient}
-import services.cinemas.es.OcineClient
+import services.cinemas.es.{OcineClient, SpanishOwnSourcesData, TaquillaClient, TaquillaVenue}
 import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
 import services.movies.TitleNormalizer
 
@@ -1960,6 +1960,7 @@ class CinemaScraperCatalog(
   // The SAME client Germany uses, on a different market — so a different HOST,
   // which is what keeps the two countries' pace gates and 429 back-offs
   // independent of each other; see `WebediaMarket`.
+  def sensacineScraper(theaterId: String, cinema: Cinema): WebediaShowtimesClient = sensacine(theaterId, cinema)
   private def sensacine(theaterId: String, cinema: Cinema): WebediaShowtimesClient =
     WebediaShowtimesClient.forVenue(http, WebediaMarket.Spain, theaterId, cinema, venueClock)
 
@@ -1970,9 +1971,22 @@ class CinemaScraperCatalog(
   private def ocine(ticketingSlug: String, cinema: Cinema): OcineClient =
     new OcineClient(http, ticketingSlug, cinema, today = venueClock.todayAt(cinema, OcineClient.Zone))
 
+  // Chain multiplexes SensaCine lists no programme for read taquilla.com instead,
+  // the aggregator that sells their tickets — measured per venue by
+  // `data/spain/scripts/harvest_taquilla.py`; see `data/spain/taquilla.json`.
+  private def taquilla(venue: TaquillaVenue, cinema: Cinema): TaquillaClient =
+    new TaquillaClient(http, venue, cinema, today = venueClock.todayAt(cinema, TaquillaClient.Zone))
+
+  /** A SensaCine-listed Spanish venue's scraper: taquilla.com where
+   *  [[SpanishOwnSourcesData]] names it, SensaCine otherwise. */
+  private def spanishListed(theaterId: String, cinema: Cinema): CinemaScraper =
+    SpanishOwnSourcesData.taquilla.get(theaterId).map(taquilla(_, cinema))
+      .getOrElse(sensacine(theaterId, cinema))
+
   // Spain — data-driven from the full SpanishRoster (240 town pages / 601 cinemas):
   // one scraper per cinema, keyed by the PAGE slug City.slug uses — the venue's
-  // own chain server where the roster names one, SensaCine otherwise. Keyed off
+  // own chain server where the roster names one, then taquilla.com where
+  // `SpanishOwnSourcesData` names it, SensaCine otherwise. Keyed off
   // `Country.Spain.cities` rather than off `SpanishRoster.places`, because
   // the slug a page is finally addressable under is decided in
   // `City.spanishCities` (one of them is qualified away from a US metro's) and
@@ -1981,7 +1995,7 @@ class CinemaScraperCatalog(
     models.Country.Spain.cities.map { city =>
       city.slug -> city.cinemas.map { c =>
         models.SpanishRoster.ocineServerByCinema.get(c).map(ocine(_, c))
-          .getOrElse(sensacine(models.SpanishRoster.theaterIdByCinema(c), c))
+          .getOrElse(spanishListed(models.SpanishRoster.theaterIdByCinema(c), c))
       }
     }.toMap
 
@@ -2469,6 +2483,14 @@ class CinemaScraperCatalog(
    *  ([[GermanSources]]); absent for a venue with only the one source. */
   val germanFallbackFeeds: Map[Cinema, Seq[GermanFeed]] =
     models.Country.Germany.cities.flatMap(_.cinemas).map(c => c -> germanFeeds(c).tail).filter(_._2.nonEmpty).toMap
+
+  /** Each Spanish venue read off taquilla.com, by the SensaCine theaterId its FALLBACK reads
+   *  ([[sensacineScraper]]): where it was scraped before, and whose near weeks Taquilla
+   *  had to match to take it over (`data/spain/taquilla.json`). */
+  val spanishSensacineFallback: Map[Cinema, String] =
+    models.Country.Spain.cities.flatMap(_.cinemas)
+      .flatMap(c => models.SpanishRoster.theaterIdByCinema.get(c).filter(SpanishOwnSourcesData.taquilla.contains).map(c -> _))
+      .toMap
 
   /** Where every kinoprogramm.com fallback reads its films' catalogue pages: one page per
    *  FILM, the same for every venue showing it, so one cache serves them all. Without it a

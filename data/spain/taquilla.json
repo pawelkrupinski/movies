@@ -1,0 +1,571 @@
+{
+ "_comment": [
+  "The Spanish roster venues scraped off taquilla.com (services.cinemas.es.TaquillaClient) instead of SensaCine, which stays their fallback. WRITTEN by data/spain/scripts/harvest_taquilla.py (this comment survives a rerun); generate_own_sources.py turns it into SpanishOwnSourcesData.scala.",
+  "Measured 2026-10-12: 181 roster venues matched a Taquilla venue page (postcode + name), and a venue moves only where Taquilla is a SUPERSET of what showtimes.cc served that day — it reaches past SensaCine's last day AND carries >= 95% of SensaCine's sessions over the near fortnight. 56 did: 34 Yelmo, 9 Kinépolis, 6 mk2, 5 Neocine, IMF Ondara, Multicines El Hornillo (their calendars run to 2026-12-15..2027-06-05, SensaCine's to 2026-10-12..11-08), +2203 sessions past SensaCine's last day.",
+  "NOT moved: no Cinesa (Taquilla sells only four days of it); no venue SensaCine lists nothing for — Taquilla sold no day at any of them either; mk2 Palacio de Hielo, Multicine Atlántida and eight more that were thinner on the near days. Left out for review rather than guessed: two roster venues claiming one page (Yelmo Campanar E0248/E0773, Kinépolis Marbella E0390/E0427, Neocine Rex, Cinema Catalunya Terrassa, Florida Guridi) and two pages tying for one venue (Yelmo Las Arenas, Abc Gandia).",
+  "Per venue: path + venueId are what the client reads; the rest is the measurement that put it here."
+ ],
+ "measured": "2026-10-12",
+ "venues": {
+  "E0205": {
+   "name": "Yelmo Cines Imaginalia",
+   "taquillaName": "Cine Yelmo Imaginalia",
+   "path": "/albacete/yelmo-cines-imaginalia-albacete",
+   "venueId": "33189",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2027-06-05",
+   "sessionsGained": 36,
+   "why": "Taquilla reaches 2027-06-05 vs SensaCine 2026-11-08, 170 vs 162 near"
+  },
+  "E0209": {
+   "name": "Kinépolis Madrid Diversia",
+   "taquillaName": "Cines Kinépolis Diversia (Ábaco Alcobendas)",
+   "path": "/alcobendas/cines-kinepolis-diversia-abaco-alcobendas",
+   "venueId": "35590",
+   "sensacineLastDay": "2026-11-07",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 36,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-07, 152 vs 152 near"
+  },
+  "E0283": {
+   "name": "Yelmo Cines Itaroa",
+   "taquillaName": "Cine Yelmo Itaroa",
+   "path": "/huarte/yelmo-cines-itaroa-huarte-uharte-navarra",
+   "venueId": "90802",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 18,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 126 vs 131 near"
+  },
+  "E0291": {
+   "name": "Yelmo Cines Premium Parque Corredor",
+   "taquillaName": "Yelmo Cines Premium Parque Corredor",
+   "path": "/madrid/yelmo-cines-premium-parque-corredor-madrid",
+   "venueId": "177432",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 29,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 127 vs 130 near"
+  },
+  "E0332": {
+   "name": "mk2 Bahía de Cádiz",
+   "taquillaName": "mk2 Bahía De Cádiz Cines Premium",
+   "path": "/cadiz/mk2-bahia-de-cadiz-cines-premium",
+   "venueId": "33147",
+   "sensacineLastDay": "2026-11-05",
+   "taquillaLastDay": "2027-02-23",
+   "sessionsGained": 73,
+   "why": "Taquilla reaches 2027-02-23 vs SensaCine 2026-11-05, 103 vs 102 near"
+  },
+  "E0359": {
+   "name": "Kinépolis Almería Mediterráneo",
+   "taquillaName": "Kinépolis Almería Mediterráneo",
+   "path": "/almeria/kinepolis-almeria-mediterraneo",
+   "venueId": "364308",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 38,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 140 vs 139 near"
+  },
+  "E0396": {
+   "name": "Kinépolis Mataró Parc",
+   "taquillaName": "Kinépolis Mataró Parc",
+   "path": "/mataro/kinepolis-mataro-parc",
+   "venueId": "228149",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-24",
+   "sessionsGained": 86,
+   "why": "Taquilla reaches 2026-12-24 vs SensaCine 2026-11-08, 196 vs 202 near"
+  },
+  "E0411": {
+   "name": "mk2 Alcores",
+   "taquillaName": "mk2 Cines Los Alcores",
+   "path": "/alcala-de-guadaira/mk2-cines-los-alcores-alcala-de-guadaira",
+   "venueId": "33176",
+   "sensacineLastDay": "2026-10-15",
+   "taquillaLastDay": "2026-12-23",
+   "sessionsGained": 38,
+   "why": "Taquilla reaches 2026-12-23 vs SensaCine 2026-10-15, 68 vs 68 near"
+  },
+  "E0412": {
+   "name": "mk2 Luz del Tajo",
+   "taquillaName": "mk2 Cines Luz Del Tajo",
+   "path": "/toledo/mk2-cines-luz-del-tajo-toledo",
+   "venueId": "33184",
+   "sensacineLastDay": "2026-11-05",
+   "taquillaLastDay": "2027-02-23",
+   "sessionsGained": 66,
+   "why": "Taquilla reaches 2027-02-23 vs SensaCine 2026-11-05, 143 vs 143 near"
+  },
+  "E0413": {
+   "name": "mk2 Malaga Nostrum",
+   "taquillaName": "mk2 Málaga Nostrum Cines Premium",
+   "path": "/malaga/mk2-malaga-nostrum-cines-premium",
+   "venueId": "33188",
+   "sensacineLastDay": "2026-11-05",
+   "taquillaLastDay": "2026-12-23",
+   "sessionsGained": 82,
+   "why": "Taquilla reaches 2026-12-23 vs SensaCine 2026-11-05, 152 vs 154 near"
+  },
+  "E0415": {
+   "name": "mk2 Nervión Plaza",
+   "taquillaName": "mk2 Cines Nervión Plaza",
+   "path": "/sevilla/mk2-cines-nervion-plaza-sevilla",
+   "venueId": "54634",
+   "sensacineLastDay": "2026-11-05",
+   "taquillaLastDay": "2027-02-23",
+   "sessionsGained": 97,
+   "why": "Taquilla reaches 2027-02-23 vs SensaCine 2026-11-05, 273 vs 287 near"
+  },
+  "E0431": {
+   "name": "Neocine Dos Mares",
+   "taquillaName": "Neocine Dos Mares",
+   "path": "/san-javier/neocine-dos-mares-san-javier",
+   "venueId": "33180",
+   "sensacineLastDay": "2026-10-15",
+   "taquillaLastDay": "2026-12-23",
+   "sessionsGained": 28,
+   "why": "Taquilla reaches 2026-12-23 vs SensaCine 2026-10-15, 99 vs 100 near"
+  },
+  "E0433": {
+   "name": "mk2 El Ingenio",
+   "taquillaName": "mk2 Cines El Ingenio",
+   "path": "/velez-malaga/mk2-cines-el-ingenio-velez-malaga",
+   "venueId": "33333",
+   "sensacineLastDay": "2026-10-15",
+   "taquillaLastDay": "2027-02-23",
+   "sessionsGained": 84,
+   "why": "Taquilla reaches 2027-02-23 vs SensaCine 2026-10-15, 123 vs 122 near"
+  },
+  "E0434": {
+   "name": "Kinepolis Alzira",
+   "taquillaName": "Kinepolis Alzira",
+   "path": "/valencia/kinepolis-alzira-valencia",
+   "venueId": "87355",
+   "sensacineLastDay": "2026-10-29",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 31,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-10-29, 135 vs 136 near"
+  },
+  "E0452": {
+   "name": "Kinépolis Granada",
+   "taquillaName": "Kinépolis Granada",
+   "path": "/granada/kinepolis-granada",
+   "venueId": "52323",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 54,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 211 vs 215 near"
+  },
+  "E0454": {
+   "name": "Kinépolis Valencia",
+   "taquillaName": "Kinépolis Valencia",
+   "path": "/paterna/kinepolis-valencia-paterna",
+   "venueId": "53455",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 80,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 197 vs 205 near"
+  },
+  "E0459": {
+   "name": "Yelmo Cines La Vaguada",
+   "taquillaName": "Cine Yelmo La Vaguada",
+   "path": "/madrid/cine-yelmo-la-vaguada-madrid",
+   "venueId": "200595",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2027-06-05",
+   "sessionsGained": 41,
+   "why": "Taquilla reaches 2027-06-05 vs SensaCine 2026-11-08, 213 vs 200 near"
+  },
+  "E0475": {
+   "name": "Yelmo Cines Plenilunio",
+   "taquillaName": "Cine Yelmo Plenilunio",
+   "path": "/madrid/yelmo-cines-plenilunio-madrid",
+   "venueId": "33194",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 43,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 199 vs 200 near"
+  },
+  "E0506": {
+   "name": "Multicines El Hornillo",
+   "taquillaName": "Multicines El Hornillo",
+   "path": "/aguilas/multicines-el-hornillo-aguilas",
+   "venueId": "53438",
+   "sensacineLastDay": "2026-10-15",
+   "taquillaLastDay": "2026-12-15",
+   "sessionsGained": 2,
+   "why": "Taquilla reaches 2026-12-15 vs SensaCine 2026-10-15, 92 vs 96 near"
+  },
+  "E0546": {
+   "name": "Neocine Mandarache",
+   "taquillaName": "Neocine Mandarache",
+   "path": "/cartagena/neocine-mandarache-cartagena",
+   "venueId": "33197",
+   "sensacineLastDay": "2026-10-15",
+   "taquillaLastDay": "2027-02-23",
+   "sessionsGained": 40,
+   "why": "Taquilla reaches 2027-02-23 vs SensaCine 2026-10-15, 127 vs 123 near"
+  },
+  "E0547": {
+   "name": "Neocine Thader",
+   "taquillaName": "Neocine Thader",
+   "path": "/murcia/neocine-thader-murcia",
+   "venueId": "33199",
+   "sensacineLastDay": "2026-11-06",
+   "taquillaLastDay": "2026-12-23",
+   "sessionsGained": 61,
+   "why": "Taquilla reaches 2026-12-23 vs SensaCine 2026-11-06, 202 vs 201 near"
+  },
+  "E0565": {
+   "name": "Yelmo Cines Premium Peñacastillo",
+   "taquillaName": "Yelmo Cines Premium Peñacastillo",
+   "path": "/santander/yelmo-cines-premium-penacastillo-cantabria",
+   "venueId": "151546",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 24,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 111 vs 113 near"
+  },
+  "E0615": {
+   "name": "Yelmo Cines Baricentro",
+   "taquillaName": "Cine Yelmo Baricentro",
+   "path": "/barbera-del-valles/yelmo-cines-baricentro-barbera-del-valles",
+   "venueId": "33166",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 27,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 125 vs 125 near"
+  },
+  "E0618": {
+   "name": "Yelmo Cines Fuerteventura",
+   "taquillaName": "Cine Yelmo Fuerteventura",
+   "path": "/antigua/yelmo-cines-fuerteventura-antigua",
+   "venueId": "33171",
+   "sensacineLastDay": "2026-11-07",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 21,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-07, 113 vs 90 near"
+  },
+  "E0620": {
+   "name": "Yelmo Cines Roquetas",
+   "taquillaName": "Cine Yelmo Roquetas de Mar",
+   "path": "/roquetas-de-mar/yelmo-cines-roquetas-de-mar-roquetas-de-mar",
+   "venueId": "33172",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2027-06-05",
+   "sessionsGained": 31,
+   "why": "Taquilla reaches 2027-06-05 vs SensaCine 2026-11-08, 133 vs 127 near"
+  },
+  "E0621": {
+   "name": "Yelmo Cines Ideal",
+   "taquillaName": "Cine Yelmo Ideal",
+   "path": "/madrid/yelmo-cines-ideal-madrid",
+   "venueId": "33183",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2027-06-05",
+   "sessionsGained": 32,
+   "why": "Taquilla reaches 2027-06-05 vs SensaCine 2026-11-08, 185 vs 180 near"
+  },
+  "E0622": {
+   "name": "Yelmo Cines La Villa de Orotava",
+   "taquillaName": "Cine Yelmo La Villa-Orotava",
+   "path": "/la-orotava/yelmo-cines-la-villa-orotava-orotava-la",
+   "venueId": "33158",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 35,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 167 vs 172 near"
+  },
+  "E0623": {
+   "name": "Yelmo Cines Los Prados",
+   "taquillaName": "Cine Yelmo Los Prados",
+   "path": "/oviedo/yelmo-cines-los-prados-oviedo",
+   "venueId": "33164",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2027-04-24",
+   "sessionsGained": 39,
+   "why": "Taquilla reaches 2027-04-24 vs SensaCine 2026-11-08, 167 vs 159 near"
+  },
+  "E0626": {
+   "name": "Yelmo Cines Megapark",
+   "taquillaName": "Cine Yelmo Megapark",
+   "path": "/barakaldo/yelmo-cines-megapark-barakaldo",
+   "venueId": "33195",
+   "sensacineLastDay": "2026-11-07",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 36,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-07, 155 vs 158 near"
+  },
+  "E0627": {
+   "name": "Yelmo Cines Meridiano",
+   "taquillaName": "Cine Yelmo Meridiano",
+   "path": "/santa-cruz-de-tenerife/yelmo-cines-meridiano-santa-cruz-de-tenerife",
+   "venueId": "33170",
+   "sensacineLastDay": "2026-11-07",
+   "taquillaLastDay": "2027-06-05",
+   "sessionsGained": 37,
+   "why": "Taquilla reaches 2027-06-05 vs SensaCine 2026-11-07, 177 vs 181 near"
+  },
+  "E0630": {
+   "name": "Yelmo Cines Planetocio",
+   "taquillaName": "Cine Yelmo Planetocio",
+   "path": "/collado-villalba/yelmo-cines-planetocio-collado-villalba",
+   "venueId": "33165",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 34,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 146 vs 149 near"
+  },
+  "E0631": {
+   "name": "Yelmo Cines Puerta De Alicante",
+   "taquillaName": "Cine Yelmo Puerta de Alicante",
+   "path": "/alicante/yelmo-cines-puerta-de-alicante-alicante-alacant",
+   "venueId": "56353",
+   "sensacineLastDay": "2026-10-25",
+   "taquillaLastDay": "2027-06-05",
+   "sessionsGained": 10,
+   "why": "Taquilla reaches 2027-06-05 vs SensaCine 2026-10-25, 80 vs 76 near"
+  },
+  "E0632": {
+   "name": "Yelmo Cines Rincón De La Victoria",
+   "taquillaName": "Cine Yelmo Rincon de la Victoria",
+   "path": "/rincon-de-la-victoria/yelmo-cines-rincon-de-la-victoria-rincon-de-la-victoria",
+   "venueId": "33156",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2027-06-05",
+   "sessionsGained": 31,
+   "why": "Taquilla reaches 2027-06-05 vs SensaCine 2026-11-08, 151 vs 149 near"
+  },
+  "E0635": {
+   "name": "Yelmo Cines Travesía Vigo",
+   "taquillaName": "Cine Yelmo Vigo",
+   "path": "/vigo/yelmo-cines-vigo",
+   "venueId": "33167",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2027-06-05",
+   "sessionsGained": 28,
+   "why": "Taquilla reaches 2027-06-05 vs SensaCine 2026-11-08, 145 vs 150 near"
+  },
+  "E0636": {
+   "name": "Yelmo Cines Vinalopo",
+   "taquillaName": "Cine Yelmo Vinalopo",
+   "path": "/petrer/yelmo-cines-vinalopo-petrer",
+   "venueId": "33162",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 25,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 146 vs 147 near"
+  },
+  "E0658": {
+   "name": "Cine Imf Ondara",
+   "taquillaName": "IMF Ondara",
+   "path": "/ondara/imf-ondara",
+   "venueId": "33209",
+   "sensacineLastDay": "2026-10-12",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 16,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-10-12, 23 vs 24 near"
+  },
+  "E0660": {
+   "name": "Neocine HD Digital Vega Plaza",
+   "taquillaName": "Neocine HD Digital Vega Plaza",
+   "path": "/molina-de-segura/neocine-hd-digital-vega-plaza-molina-de-segura",
+   "venueId": "89683",
+   "sensacineLastDay": "2026-10-15",
+   "taquillaLastDay": "2026-12-23",
+   "sessionsGained": 15,
+   "why": "Taquilla reaches 2026-12-23 vs SensaCine 2026-10-15, 68 vs 68 near"
+  },
+  "E0663": {
+   "name": "NeoCine Espacio Mediterraneo",
+   "taquillaName": "Neocine Espacio Mediterraneo",
+   "path": "/cartagena/neocine-espacio-mediterraneo-cartagena",
+   "venueId": "33205",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-23",
+   "sessionsGained": 44,
+   "why": "Taquilla reaches 2026-12-23 vs SensaCine 2026-11-08, 112 vs 113 near"
+  },
+  "E0681": {
+   "name": "Yelmo Cines Islazul",
+   "taquillaName": "Cine Yelmo Islazul",
+   "path": "/madrid/yelmo-cines-islazul-madrid",
+   "venueId": "33215",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-22",
+   "sessionsGained": 47,
+   "why": "Taquilla reaches 2026-12-22 vs SensaCine 2026-11-08, 192 vs 175 near"
+  },
+  "E0684": {
+   "name": "Yelmo Cines As Termas",
+   "taquillaName": "Cine Yelmo As Termas",
+   "path": "/lugo/yelmo-as-termas-lugo",
+   "venueId": "88088",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 31,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 136 vs 125 near"
+  },
+  "E0733": {
+   "name": "Yelmo Cines Premium Berceo",
+   "taquillaName": "Yelmo Cines Premium Berceo",
+   "path": "/logrono/yelmo-cines-premium-berceo-la-rioja",
+   "venueId": "170586",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 31,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 139 vs 142 near"
+  },
+  "E0735": {
+   "name": "Yelmo Cines Abrera",
+   "taquillaName": "Cine Yelmo Abrera",
+   "path": "/abrera/yelmo-cines-abrera",
+   "venueId": "33222",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 20,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 134 vs 127 near"
+  },
+  "E0756": {
+   "name": "Kinépolis Barcelona Full Splau",
+   "taquillaName": "Kinépolis Barcelona Splau",
+   "path": "/barcelona/kinepolis-barcelona-splau",
+   "venueId": "346235",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 64,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 383 vs 401 near"
+  },
+  "E0786": {
+   "name": "Yelmo Cines Boulevard",
+   "taquillaName": "Cine Yelmo Boulevard",
+   "path": "/vitoria-gasteiz/yelmo-cines-boulevard-vitoria-gasteiz",
+   "venueId": "33221",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2027-06-05",
+   "sessionsGained": 35,
+   "why": "Taquilla reaches 2027-06-05 vs SensaCine 2026-11-08, 168 vs 175 near"
+  },
+  "E0806": {
+   "name": "Yelmo Cines Premium Castelldefels",
+   "taquillaName": "Cine Yelmo Castelldefels",
+   "path": "/castelldefels/yelmo-cines-castelldefels-castelldefels-barcelona",
+   "venueId": "91238",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2027-06-05",
+   "sessionsGained": 31,
+   "why": "Taquilla reaches 2027-06-05 vs SensaCine 2026-11-08, 145 vs 147 near"
+  },
+  "E0807": {
+   "name": "Yelmo Cines Parc Central",
+   "taquillaName": "Cine Yelmo Parc Central",
+   "path": "/tarragona/yelmo-cines-parc-central-tarragona",
+   "venueId": "33217",
+   "sensacineLastDay": "2026-11-07",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 22,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-07, 94 vs 91 near"
+  },
+  "E0819": {
+   "name": "Kinépolis Alicante",
+   "taquillaName": "Kinépolis Plaza Mar 2 Alicante",
+   "path": "/alicante/kinepolis-plaza-mar-2-alicante",
+   "venueId": "53181",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 54,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 191 vs 188 near"
+  },
+  "E0866": {
+   "name": "Kinépolis Nevada",
+   "taquillaName": "Kinépolis Nevada",
+   "path": "/armilla/kinepolis-nevada-armilla",
+   "venueId": "61102",
+   "sensacineLastDay": "2026-10-31",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 50,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-10-31, 135 vs 137 near"
+  },
+  "E0909": {
+   "name": "Yelmo Cines Torrecárdenas",
+   "taquillaName": "Cine Yelmo Torrecardenas",
+   "path": "/almeria/yelmo-torrecardenas-almeria",
+   "venueId": "84435",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 32,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 144 vs 149 near"
+  },
+  "E0910": {
+   "name": "Yelmo Cines Premium Puerta Europa ",
+   "taquillaName": "Cine Yelmo Premium Puerta Europa",
+   "path": "/algeciras/yelmo-cines-premium-puerta-europa-algeciras",
+   "venueId": "84417",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 31,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 138 vs 141 near"
+  },
+  "E0972": {
+   "name": "Yelmo Cines Premium Alisios",
+   "taquillaName": "Cine Yelmo Premium Alisios",
+   "path": "/las-palmas-de-gran-canaria/yelmo-cines-premium-alisios-las-palmas-de-gran-canaria",
+   "venueId": "78555",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 33,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 154 vs 157 near"
+  },
+  "E1002": {
+   "name": "Yelmo Cines Premium Lagoh",
+   "taquillaName": "Cine Yelmo Premium Lagoh",
+   "path": "/sevilla/cine-yelmo-premium-lagoh-sevilla",
+   "venueId": "98159",
+   "sensacineLastDay": "2026-11-07",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 34,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-07, 177 vs 186 near"
+  },
+  "E1038": {
+   "name": "Yelmo Cines Premium El Faro",
+   "taquillaName": "Cine Yelmo Premium El Faro",
+   "path": "/badajoz/yelmo-cines-premium-el-faro-badajoz",
+   "venueId": "96556",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 24,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 114 vs 115 near"
+  },
+  "E1042": {
+   "name": "Yelmo Cines Premium Bahía Sur",
+   "taquillaName": "Cine Yelmo Premium Bahía Sur",
+   "path": "/cadiz/yelmo-cines-premium-bahia-sur-cadiz",
+   "venueId": "96559",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 24,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 119 vs 115 near"
+  },
+  "E2902": {
+   "name": "Yelmo Cines Premium Vialia Vigo",
+   "taquillaName": "Cine Yelmo Premium Vialia Vigo",
+   "path": "/pontevedra/yelmo-cines-premium-vialia-vigo-pontevedra",
+   "venueId": "96746",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 35,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 187 vs 180 near"
+  },
+  "E2916": {
+   "name": "Yelmo Cines Plaza Norte 2",
+   "taquillaName": "Cine Yelmo Plaza Norte 2",
+   "path": "/san-sebastian-de-los-reyes/yelmo-cines-plaza-norte-2-san-sebastian-de-los-reyes",
+   "venueId": "33225",
+   "sensacineLastDay": "2026-11-07",
+   "taquillaLastDay": "2027-04-29",
+   "sessionsGained": 57,
+   "why": "Taquilla reaches 2027-04-29 vs SensaCine 2026-11-07, 276 vs 225 near"
+  }
+ }
+}

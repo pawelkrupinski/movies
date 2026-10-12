@@ -391,6 +391,19 @@ object HostPolicies {
       paceKnob           = Some(PaceKnob.Ocine),
     ),
 
+    // ── taquilla.com (Spain) ───────────────────────────────────────────────
+    // The aggregator Spain's chain multiplexes are read from where SensaCine lists
+    // no programme (`data/spain/taquilla.json`): one calendar call plus one call
+    // per day sold, ~20-30 a venue, all on ONE host, so this row is the whole
+    // sweep's pace — 1s keeps ~50 venues to ~25 minutes of a 7h cadence. A
+    // courtesy bound like the chains' above; Taquilla has not throttled us (the
+    // 2026-10-12 harvest ran 2 req/s with no 429).
+    HostPolicy(
+      Set("taquilla.com"),
+      minRequestInterval = Some(Duration.ofMillis(1000)),
+      paceKnob           = Some(PaceKnob.Taquilla),
+    ),
+
     // Kino Sfinks (Kraków) — its per-screening detail pages
     // (`/wydarzenie-…-szczegoly-….html`), fetched by `EnrichDetails` tasks. The
     // site is normally fast (~1.3s measured 2026-09-14), but stalls completely a

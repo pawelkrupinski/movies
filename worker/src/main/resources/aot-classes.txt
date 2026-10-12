@@ -9751,6 +9751,17 @@ services.cinemas.es.OcineClient
 services.cinemas.es.OcineClient$
 services.cinemas.es.OcineParser
 services.cinemas.es.OcineParser$
+services.cinemas.es.SpanishOwnSourcesData
+services.cinemas.es.SpanishOwnSourcesData$
+services.cinemas.es.TaquillaClient
+services.cinemas.es.TaquillaClient$
+services.cinemas.es.TaquillaParser
+services.cinemas.es.TaquillaParser$
+services.cinemas.es.TaquillaParser$$anon$1
+services.cinemas.es.TaquillaParser$$anon$2
+services.cinemas.es.TaquillaParser$$anon$3
+services.cinemas.es.TaquillaVenue
+services.cinemas.es.TaquillaVenue$
 services.cinemas.pl.AlternatywyClient
 services.cinemas.pl.AlternatywyClient$
 services.cinemas.pl.AlternatywyClient$Screening

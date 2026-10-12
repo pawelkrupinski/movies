@@ -1,0 +1,13 @@
+{
+  "meta" : {
+    "limit" : "-1",
+    "offset" : "0",
+    "next" : null,
+    "previous" : "/json2/search/events?t10venue=33333&t10ptype=2&t10type=15&t10mind=2026-11-10&t10maxd=2026-11-10&t10start=1&t10num=-1&",
+    "total_count" : 0,
+    "view" : "search"
+  },
+  "objects" : [ ],
+  "matches" : false,
+  "entity_map" : { }
+}

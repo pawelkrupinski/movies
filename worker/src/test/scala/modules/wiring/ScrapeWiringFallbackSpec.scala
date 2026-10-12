@@ -22,13 +22,15 @@ class ScrapeWiringFallbackSpec extends AnyFlatSpec with Matchers {
     def fetch(): Seq[CinemaMovie] = throw new tools.HttpStatusException(404, "GET", "https://example.test/", None)
   }
 
-  private class Wiring(filmweb: Boolean, german: Map[Cinema, Seq[GermanFeed]] = Map.empty) {
+  private class Wiring(filmweb: Boolean, german: Map[Cinema, Seq[GermanFeed]] = Map.empty,
+                       spanish: Map[Cinema, String] = Map.empty) {
     // Runs an hour apart are separate runs; retries minutes apart are not (SeparateRuns).
     private val testClock = new MutableClock(TestWiring.FixedInstant)
     val wiring = new FixtureTestWiring("08-06-2026") {
       override lazy val clock: java.time.Clock = testClock
       override protected def filmwebEnabled: Boolean = filmweb
       override protected def germanFallbackFeeds: Map[Cinema, Seq[GermanFeed]] = german
+      override protected def spanishSensacineFallback: Map[Cinema, String] = spanish
       override lazy val filmwebFallbackStore: FallbackStore = new InMemoryFallbackStore
     }
     private val scraper = wiring.recordingScraper(failing, eligible = true)
@@ -65,6 +67,19 @@ class ScrapeWiringFallbackSpec extends AnyFlatSpec with Matchers {
     // The third reaches for the fallback; the fixture corpus has no kinoprogramm.com
     // page, so it has nothing to serve and the venue pages UNCOVERED instead of ENTER.
     w.state.flatMap(_.history.headOption).map(_.event) shouldBe Some(FallbackEvent.Uncovered)
+  }
+
+  // A Spanish venue read off taquilla.com hands back to SensaCine, where it was read
+  // before, when the aggregator keeps failing: after two separate failed runs, the
+  // sweep being 7-hourly.
+  it should "give a venue read off taquilla.com a SensaCine fallback, after two failed runs" in {
+    val w = new Wiring(filmweb = false, spanish = Map(KinoMikro -> "E0433"))
+    w.failRun()
+    w.state.map(_.fallbackSource) shouldBe Some("SensaCine")
+    w.state.map(_.fallbackRef) shouldBe Some(Some("E0433"))
+    w.state.map(_.history) shouldBe Some(Nil)   // one failure: still riding it out
+    w.failRun()
+    w.state.flatMap(_.history.headOption) should not be empty
   }
 
   // A fallback is fetched in the scrape's own call, outside the per-scrape adaptive timeout a

@@ -551,6 +551,36 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     }
   }
 
+  // taquilla.com serves the chain venues whose Taquilla calendar is a superset of
+  // SensaCine's (data/spain/taquilla.json, measured 2026-10-12): mk2 El Ingenio's
+  // ran to 2027-02-23, SensaCine's to 2026-10-15, with 123 vs 122 sessions on the
+  // near fortnight. SensaCine stays the fallback.
+  "Spain's Taquilla venues" should "read taquilla.com, keeping SensaCine as their fallback" in {
+    val c       = catalog()
+    val ingenio = spanishVenue("E0433")
+    val scrapers = c.all.filter(_.cinema == ingenio)
+    scrapers should have size 1
+    scrapers.head.sourceUrl shouldBe Some("https://www.taquilla.com/velez-malaga/mk2-cines-el-ingenio-velez-malaga")
+    scrapers.head.scrapeHosts shouldBe Set("www.taquilla.com")
+    c.spanishSensacineFallback.get(ingenio) shouldBe Some("E0433")
+    c.sensacineScraper("E0433", ingenio).scrapeHosts shouldBe Set("www.sensacine.com")
+    c.spanishSensacineFallback.size shouldBe 56
+  }
+
+  // Cinesa's Taquilla calendar ends four days out while SensaCine's runs a month:
+  // moving it would trade the month for nothing.
+  it should "leave Cinesa on SensaCine" in {
+    val c = catalog()
+    val manoteras = spanishVenue("E0646")
+    c.all.find(_.cinema == manoteras).value.scrapeHosts shouldBe Set("www.sensacine.com")
+    c.spanishSensacineFallback.get(manoteras) shouldBe None
+  }
+
+  it should "pace taquilla.com" in {
+    _root_.tools.RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(_root_.tools.Env.of()))(
+      "https://www.taquilla.com/json2/search/calendar") should not be empty
+  }
+
   "Germany's venues" should "be scraped under the town page they are on, with their fallback chain kept" in {
     // The pages were 35 km regions until 2026-10: the Main-Taunus Kinopolis was on
     // /frankfurt-am-main/; Sulzbach (Taunus) clusters with Hofheim now.
