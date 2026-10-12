@@ -112,5 +112,203 @@
     "reason": "closed",
     "retiredOn": "2026-10-12",
     "evidence": "Filmstarts 404 since 2026-08-31; kinoprogramm.com, kinoheld (1411) and Cineamo list no show; allekinos.com: closed 16.03.2020, Corona Re-checked 2026-10-12: HTTP 404."
+  },
+  "A0988": {
+    "name": "Gabriel Filmtheater",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Shut 2019, building demolished 2023: https://web.de/magazine/panorama/gabriel-filmtheater-aelteste-kino-welt-schliesst-33542710"
+  },
+  "A2907": {
+    "name": "Instituto Cervantes - Berlin",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2907/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2846": {
+    "name": "Instituto Cervantes - Hamburg",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2846/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A0875": {
+    "name": "KUKI Kino",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A0875/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2800": {
+    "name": "Kino am Seffersbach",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2800/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A1980": {
+    "name": "Kino in den Felsengängen",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A1980/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2083": {
+    "name": "Kino unterm Sternenhimmel Loßburg",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2083/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A0775": {
+    "name": "Kino-Center Rendsburg",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A0775/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A0656": {
+    "name": "Kinocenter Maxhütte-Haidhof",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A0656/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2709": {
+    "name": "Kleines Kino Wathlingen",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2709/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2681": {
+    "name": "Kulturkirche St. Stephani",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2681/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A0890": {
+    "name": "Kurtheater Bad Sooden-Allendorf",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A0890/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2949": {
+    "name": "LOTTO Hamburg Auto- und Open Air Kino",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2949/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2096": {
+    "name": "Lichtwerk Kino Schwandorf",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2096/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2533": {
+    "name": "Lu-Li Sommernachtskino",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2533/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A1551": {
+    "name": "Luxor Filmpalast Schwetzingen",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A1551/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2858": {
+    "name": "M54 / AJZ",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2858/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A1558": {
+    "name": "Melodrom-Filmtheater",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A1558/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2859": {
+    "name": "MoKi Ludwigsburg",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2859/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2945": {
+    "name": "Movieplexx Autokino",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2945/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2860": {
+    "name": "Museumscafé",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2860/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A0979": {
+    "name": "Music Hall Worpswede",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A0979/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2767": {
+    "name": "Open Air Kelkheim",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2767/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A1876": {
+    "name": "Open Air Kino Auf Schloss Pürkelgut",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A1876/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2084": {
+    "name": "Open Air Kino Ginsheim-Gustavsburg",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2084/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2488": {
+    "name": "Open Air Kino Kloster Burbach",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2488/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2564": {
+    "name": "Open Air Kino Landau",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2564/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A1999": {
+    "name": "Open Air Kino Tuttlingen",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A1999/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2543": {
+    "name": "Open Air Kino Unter den Linden",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2543/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A1992": {
+    "name": "Open Air Kino am Schweizerhaus",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A1992/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2261": {
+    "name": "Open Air Kino egapark",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A2261/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A1986": {
+    "name": "Open Air Kino im Innenhof Schlachthof",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A1986/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A0651": {
+    "name": "k.i.d. - Kino im Dach",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A0651/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
   }
 }

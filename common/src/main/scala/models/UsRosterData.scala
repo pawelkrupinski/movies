@@ -1,6 +1,6 @@
 // GENERATED from data/us/pages.json by data/us/scripts/generate_roster.py
-// — do NOT edit by hand. Full US cinema roster: 2,003 pages over 55 states and
-// territories / 5,029 cinemas (Flicks, www.flicks.us). Regenerate after re-harvesting or
+// — do NOT edit by hand. Full US cinema roster: 2,001 pages over 55 states and
+// territories / 5,009 cinemas (Flicks, www.flicks.us). Regenerate after re-harvesting or
 // re-clustering; see data/us/README.md.
 package models
 
@@ -397,8 +397,7 @@ private[models] object UsRosterData {
     ("Regal UA Colorado Center Denver", "Regal UA Colorado Center Denver", "regal-ua-colorado-center-denver", "Colorado", "Denver"),
     ("Sie FilmCenter Denver", "Sie FilmCenter Denver", "sie-filmcenter-denver", "Colorado", "Denver"),
     ("Bug Theatre Denver", "Bug Theatre Denver", "bug-theatre-denver", "Colorado", "Denver"),
-    ("Infinity Theater", "Infinity Theater", "infinity-theater", "Colorado", "Denver"),
-    ("Landmark Esquire Theatre", "Landmark Esquire Theatre", "landmark-esquire-theatre", "Colorado", "Denver")
+    ("Infinity Theater", "Infinity Theater", "infinity-theater", "Colorado", "Denver")
   ))
   private def p_washington: R = ("washington", "washington-district-of-columbia", "Washington", "District of Columbia", 38.8951, -77.0364, "America/New_York", false, Seq("Washington"), Seq(
     ("Alamo Drafthouse DC Bryant Street", "Alamo Drafthouse DC Bryant Street", "alamo-drafthouse-dc-bryant-street", "District of Columbia", "Washington"),
@@ -503,7 +502,6 @@ private[models] object UsRosterData {
     ("Malco Stage Cinema Bartlett", "Malco Stage Cinema Bartlett", "malco-stage-cinema-bartlett", "Tennessee", "Memphis"),
     ("Malco Studio on the Square Memphis", "Malco Studio on the Square Memphis", "malco-studio-on-the-square-memphis", "Tennessee", "Memphis"),
     ("Malco Wolfchase 8 Galleria Memphis", "Malco Wolfchase 8 Galleria Memphis", "malco-wolfchase-8-galleria-memphis", "Tennessee", "Memphis"),
-    ("Malco Summer Drive-in Memphis", "Malco Summer Drive-in Memphis", "malco-summer-drive-in-memphis", "Tennessee", "Memphis"),
     ("Palace Cinema Memphis", "Palace Cinema Memphis", "palace-cinema-memphis", "Tennessee", "Memphis"),
     ("Pink Palace Museum Memphis", "Pink Palace Museum Memphis", "pink-palace-museum-memphis", "Tennessee", "Memphis")
   ))
@@ -641,7 +639,6 @@ private[models] object UsRosterData {
     ("B&B Northland 14 Kansas City", "B&B Northland 14 Kansas City", "bb-northland-14-kansas-city", "Missouri", "Kansas City"),
     ("Rooftop Cinema Crossroads Kansas City", "Rooftop Cinema Crossroads Kansas City", "rooftop-cinema-crossroads-kansas-city", "Missouri", "Kansas City"),
     ("Screenland Armour Kansas City", "Screenland Armour Kansas City", "screenland-armour-kansas-city", "Missouri", "Kansas City"),
-    ("B&B Mainstreet Kansas City", "B&B Mainstreet Kansas City", "bb-mainstreet-kansas-city", "Missouri", "Kansas City"),
     ("Regnier Extreme Screen Theatre", "Regnier Extreme Screen Theatre", "regnier-extreme-screen-theatre", "Missouri", "Kansas City")
   ))
   private def p_long_beach: R = ("long-beach", "long-beach-california", "Long Beach", "California", 33.767, -118.1892, "America/Los_Angeles", false, Seq("Long Beach"), Seq(
@@ -1442,8 +1439,7 @@ private[models] object UsRosterData {
     ("Academy Cinemas Pasadena", "Academy Cinemas Pasadena", "academy-cinemas-pasadena", "California", "Pasadena"),
     ("Landmark Pasadena (formerly Laemmle)", "Landmark Pasadena (formerly Laemmle)", "laemmle-pasadena", "California", "Pasadena"),
     ("Regal Paseo Pasadena", "Regal Paseo Pasadena", "regal-paseo-pasadena", "California", "Pasadena"),
-    ("ArtCenter College of Design", "ArtCenter College of Design", "artcenter-college-of-design", "California", "Pasadena"),
-    ("IPIC Pasadena", "IPIC Pasadena", "ipic-pasadena", "California", "Pasadena")
+    ("ArtCenter College of Design", "ArtCenter College of Design", "artcenter-college-of-design", "California", "Pasadena")
   ))
   private def p_orange: R = ("orange", "orange-california", "Orange", "California", 33.7878, -117.8531, "America/Los_Angeles", false, Seq("Orange"), Seq(
     ("AMC Orange 30", "AMC Orange 30", "amc-orange-30", "California", "Orange"),
@@ -1577,8 +1573,7 @@ private[models] object UsRosterData {
   ))
   private def p_abilene: R = ("abilene", "abilene-texas", "Abilene", "Texas", 32.4487, -99.7331, "America/Chicago", false, Seq("Abilene"), Seq(
     ("Abilene Premiere Cinema 10", "Abilene Premiere Cinema 10", "abilene-premiere-cinema-10", "Texas", "Abilene"),
-    ("Cinemark Abilene 12", "Cinemark Abilene 12", "cinemark-abilene-12", "Texas", "Abilene"),
-    ("Cinemark Century Abilene 12", "Cinemark Century Abilene 12", "cinemark-century-abilene-12", "Texas", "Abilene")
+    ("Cinemark Abilene 12", "Cinemark Abilene 12", "cinemark-abilene-12", "Texas", "Abilene")
   ))
   private def p_amherst: R = ("amherst", "amherst-new-york", "Amherst", "New York", 42.9784, -78.7998, "America/New_York", false, Seq("Amherst"), Seq(
     ("AMC Maple Ridge 8 Amherst", "AMC Maple Ridge 8 Amherst", "amc-maple-ridge-8-amherst", "New York", "Amherst")
@@ -1694,8 +1689,7 @@ private[models] object UsRosterData {
     ("Route 66 Drive-In Springfield", "Route 66 Drive-In Springfield", "route-66-drive-in-springfield", "Illinois", "Springfield")
   ))
   private def p_downey: R = ("downey", "downey-california", "Downey", "California", 33.94, -118.1326, "America/Los_Angeles", false, Seq("Downey"), Seq(
-    ("Cinemark Downey 14", "Cinemark Downey 14", "cinemark-downey-14", "California", "Downey"),
-    ("LOOK Cinemas Downey", "LOOK Cinemas Downey", "look-cinemas-downey", "California", "Downey")
+    ("Cinemark Downey 14", "Cinemark Downey 14", "cinemark-downey-14", "California", "Downey")
   ))
   private def p_costa_mesa: R = ("costa-mesa", "costa-mesa-california", "Costa Mesa", "California", 33.6411, -117.9187, "America/Los_Angeles", false, Seq("Costa Mesa"), Seq(
     ("Regal Metro Pointe Stadium Costa Mesa", "Regal Metro Pointe Stadium Costa Mesa", "regal-metro-pointe-stadium-costa-mesa", "California", "Costa Mesa"),
@@ -1916,10 +1910,8 @@ private[models] object UsRosterData {
     ("Capitol Cinema Aberdeen", "Capitol Cinema Aberdeen", "capitol-cinema-aberdeen", "South Dakota", "Aberdeen"),
     ("Golden Ticket Cinemas Aberdeen", "Golden Ticket Cinemas Aberdeen", "golden-ticket-cinemas-aberdeen", "South Dakota", "Aberdeen")
   ))
-  private def p_aberdeen_maryland: R = ("aberdeen-maryland", "aberdeen-maryland", "Aberdeen", "Maryland", 39.5096, -76.1641, "America/New_York", true, Seq("Aberdeen", "Havre de Grace", "Bel Air", "Fallston", "Chestertown", "Perryville"), Seq(
-    ("Flagship Cinemas Churchville", "Flagship Cinemas Churchville", "flagship-cinemas-churchville", "Maryland", "Bel Air"),
+  private def p_aberdeen_maryland: R = ("aberdeen-maryland", "aberdeen-maryland", "Aberdeen", "Maryland", 39.5096, -76.1641, "America/New_York", true, Seq("Aberdeen", "Havre de Grace", "Chestertown", "Perryville"), Seq(
     ("Horizon Cinemas Aberdeen", "Horizon Cinemas Aberdeen", "horizon-cinemas-aberdeen", "Maryland", "Aberdeen"),
-    ("Horizon Cinemas Fallston", "Horizon Cinemas Fallston", "horizon-cinemas-fallston", "Maryland", "Fallston"),
     ("Flagship Cinemas Chestertown", "Flagship Cinemas Chestertown", "flagship-cinemas-chestertown", "Maryland", "Chestertown"),
     ("State Havre de Grace", "State Havre de Grace", "state-havre-de-grace", "Maryland", "Havre de Grace"),
     ("The Screening Room at Grounded", "The Screening Room at Grounded", "the-screening-room-at-grounded", "Maryland", "Perryville")
@@ -2012,13 +2004,12 @@ private[models] object UsRosterData {
   private def p_algona: R = ("algona", "algona-iowa", "Algona", "Iowa", 43.07, -94.233, "America/Chicago", false, Seq("Algona"), Seq(
     ("Fridley Algone State 5", "Fridley Algone State 5", "fridley-algone-state-5", "Iowa", "Algona")
   ))
-  private def p_alhambra: R = ("alhambra", "alhambra-california", "Alhambra", "California", 34.0953, -118.127, "America/Los_Angeles", true, Seq("Alhambra", "Monterey Park", "Arcadia", "Monrovia", "La Cañada Flintridge", "Commerce"), Seq(
+  private def p_alhambra: R = ("alhambra", "alhambra-california", "Alhambra", "California", 34.0953, -118.127, "America/Los_Angeles", true, Seq("Alhambra", "Monterey Park", "Arcadia", "La Cañada Flintridge", "Commerce"), Seq(
     ("AMC Atlantic Times Square 14", "AMC Atlantic Times Square 14", "amc-atlantic-times-square-14", "California", "Monterey Park"),
     ("AMC Santa Anita 16", "AMC Santa Anita 16", "amc-santa-anita-16", "California", "Arcadia"),
     ("Regal Edwards Alhambra Renaissance", "Regal Edwards Alhambra Renaissance", "regal-edwards-alhambra-renaissance", "California", "Alhambra"),
     ("Regal Flintridge La Canada", "Regal Flintridge La Canada", "regal-flintridge-la-canada", "California", "La Cañada Flintridge"),
-    ("Regency Commerce Cinema 14", "Regency Commerce Cinema 14", "regency-commerce-cinema-14", "California", "Commerce"),
-    ("LOOK Cinemas Monrovia", "LOOK Cinemas Monrovia", "look-cinemas-monrovia", "California", "Monrovia")
+    ("Regency Commerce Cinema 14", "Regency Commerce Cinema 14", "regency-commerce-cinema-14", "California", "Commerce")
   ))
   private def p_alice: R = ("alice", "alice-texas", "Alice", "Texas", 27.7523, -98.0697, "America/Chicago", false, Seq("Alice"), Seq(
     ("Rio Plaza IV Alice", "Rio Plaza IV Alice", "rio-plaza-iv-alice", "Texas", "Alice")
@@ -2042,8 +2033,7 @@ private[models] object UsRosterData {
   private def p_alpharetta: R = ("alpharetta", "alpharetta-georgia", "Alpharetta", "Georgia", 34.0754, -84.2941, "America/New_York", false, Seq("Alpharetta"), Seq(
     ("AMC North Point Mall 12 Alpharetta", "AMC North Point Mall 12 Alpharetta", "amc-north-point-mall-12-alpharetta", "Georgia", "Alpharetta"),
     ("Regal Avalon Alpharetta", "Regal Avalon Alpharetta", "regal-avalon-alpharetta", "Georgia", "Alpharetta"),
-    ("Studio Movie Grill North Point", "Studio Movie Grill North Point", "studio-movie-grill-north-point", "Georgia", "Alpharetta"),
-    ("CMX CinéBistro Halcyon", "CMX CinéBistro Halcyon", "cmx-cinbistro-halcyon", "Georgia", "Alpharetta")
+    ("Studio Movie Grill North Point", "Studio Movie Grill North Point", "studio-movie-grill-north-point", "Georgia", "Alpharetta")
   ))
   private def p_alpine: R = ("alpine", "alpine-texas", "Alpine", "Texas", 30.3586, -103.6621, "America/Chicago", false, Seq("Alpine"), Seq(
     ("Rangra Theatre Alpine", "Rangra Theatre Alpine", "rangra-theatre-alpine", "Texas", "Alpine")
@@ -2174,10 +2164,9 @@ private[models] object UsRosterData {
     ("Cinemark Huntington Mall", "Cinemark Huntington Mall", "cinemark-huntington-mall", "West Virginia", "Barboursville"),
     ("Marquee Pullman Square 16", "Marquee Pullman Square 16", "marquee-pullman-square-16", "West Virginia", "Huntington")
   ))
-  private def p_ashland_ohio: R = ("ashland-ohio", "ashland-ohio", "Ashland", "Ohio", 40.8687, -82.3182, "America/New_York", true, Seq("Ashland", "Loudonville", "Hayesville"), Seq(
+  private def p_ashland_ohio: R = ("ashland-ohio", "ashland-ohio", "Ashland", "Ohio", 40.8687, -82.3182, "America/New_York", true, Seq("Ashland", "Loudonville"), Seq(
     ("Ohio Theatre Loudonville", "Ohio Theatre Loudonville", "ohio-theatre-loudonville", "Ohio", "Loudonville"),
-    ("The Ashland Schine Theater", "The Ashland Schine Theater", "the-ashland-schine-theater", "Ohio", "Ashland"),
-    ("Hayesville Opera House", "Hayesville Opera House", "hayesville-opera-house", "Ohio", "Hayesville")
+    ("The Ashland Schine Theater", "The Ashland Schine Theater", "the-ashland-schine-theater", "Ohio", "Ashland")
   ))
   private def p_ashland_wisconsin: R = ("ashland-wisconsin", "ashland-wisconsin", "Ashland", "Wisconsin", 46.5924, -90.8838, "America/Chicago", false, Seq("Ashland"), Seq(
     ("Ashland Bay Cinema", "Ashland Bay Cinema", "ashland-bay-cinema", "Wisconsin", "Ashland")
@@ -2236,10 +2225,6 @@ private[models] object UsRosterData {
     ("Auburn Movieplex", "Auburn Movieplex", "auburn-movieplex", "New York", "Auburn"),
     ("Fingerlake Drive-in Auburn", "Fingerlake Drive-in Auburn", "fingerlake-drive-in-auburn", "New York", "Auburn"),
     ("Track Cinema Auburn", "Track Cinema Auburn", "track-cinema-auburn", "New York", "Auburn")
-  ))
-  private def p_auburn_alabama: R = ("auburn-alabama", "auburn-alabama", "Auburn", "Alabama", 32.6099, -85.4808, "America/Chicago", true, Seq("Auburn", "Opelika"), Seq(
-    ("AMC CLASSIC Tiger 13", "AMC CLASSIC Tiger 13", "amc-classic-tiger-13", "Alabama", "Opelika"),
-    ("AMC CLASSIC Auburn 14", "AMC CLASSIC Auburn 14", "amc-classic-auburn-14", "Alabama", "Auburn")
   ))
   private def p_auburn_california: R = ("auburn-california", "auburn-california", "Auburn", "California", 38.8966, -121.0769, "America/Los_Angeles", false, Seq("Auburn"), Seq(
     ("Regal Auburn California", "Regal Auburn California", "regal-auburn-california", "California", "Auburn"),
@@ -2506,9 +2491,6 @@ private[models] object UsRosterData {
   ))
   private def p_bicknell: R = ("bicknell", "bicknell-utah", "Bicknell", "Utah", 38.3406, -111.5442, "America/Denver", false, Seq("Bicknell"), Seq(
     ("Bicknell Theater", "Bicknell Theater", "bicknell-theater", "Utah", "Bicknell")
-  ))
-  private def p_big_bear_lake: R = ("big-bear-lake", "big-bear-lake-california", "Big Bear Lake", "California", 34.2439, -116.9114, "America/Los_Angeles", false, Seq("Big Bear Lake"), Seq(
-    ("Village North Big Bear Lake", "Village North Big Bear Lake", "village-north-big-bear-lake", "California", "Big Bear Lake")
   ))
   private def p_big_rapids: R = ("big-rapids", "big-rapids-michigan", "Big Rapids", "Michigan", 43.6981, -85.4837, "America/Detroit", false, Seq("Big Rapids"), Seq(
     ("Big Rapids Theater", "Big Rapids Theater", "big-rapids-theater", "Michigan", "Big Rapids")
@@ -3222,10 +3204,8 @@ private[models] object UsRosterData {
     ("MJR Troy 16 Cinema", "MJR Troy 16 Cinema", "mjr-troy-16-cinema", "Michigan", "Troy"),
     ("Romeo Theatre", "Romeo Theatre", "romeo-theatre", "Michigan", "Washington")
   ))
-  private def p_cloquet: R = ("cloquet", "cloquet-minnesota", "Cloquet", "Minnesota", 46.7216, -92.4594, "America/Chicago", true, Seq("Cloquet", "Hermantown", "Moose Lake"), Seq(
-    ("Lake Theater Moose Lake", "Lake Theater Moose Lake", "lake-theater-moose-lake", "Minnesota", "Moose Lake"),
-    ("Premiere Theatres Cloquet", "Premiere Theatres Cloquet", "premiere-theatres-cloquet", "Minnesota", "Cloquet"),
-    ("Marcus Lakes Hermantown", "Marcus Lakes Hermantown", "marcus-lakes-hermantown", "Minnesota", "Hermantown")
+  private def p_cloquet: R = ("cloquet", "cloquet-minnesota", "Cloquet", "Minnesota", 46.7216, -92.4594, "America/Chicago", false, Seq("Cloquet"), Seq(
+    ("Premiere Theatres Cloquet", "Premiere Theatres Cloquet", "premiere-theatres-cloquet", "Minnesota", "Cloquet")
   ))
   private def p_clovis_new_mexico: R = ("clovis-new-mexico", "clovis-new-mexico", "Clovis", "New Mexico", 34.4048, -103.2052, "America/Denver", false, Seq("Clovis"), Seq(
     ("Allen North Plains Clovis 7", "Allen North Plains Clovis 7", "allen-north-plains-clovis-7", "New Mexico", "Clovis")
@@ -3253,12 +3233,13 @@ private[models] object UsRosterData {
   private def p_colorado_city: R = ("colorado-city", "colorado-city-texas", "Colorado City", "Texas", 32.3882, -100.8646, "America/Chicago", false, Seq("Colorado City"), Seq(
     ("3 M Palace Colorado City", "3 M Palace Colorado City", "3-m-palace-colorado-city", "Texas", "Colorado City")
   ))
-  private def p_columbia_maryland: R = ("columbia-maryland", "columbia-maryland", "Columbia", "Maryland", 39.2404, -76.8394, "America/New_York", true, Seq("Columbia", "Hanover", "Laurel", "Arbutus"), Seq(
+  private def p_columbia_maryland: R = ("columbia-maryland", "columbia-maryland", "Columbia", "Maryland", 39.2404, -76.8394, "America/New_York", true, Seq("Columbia", "Glen Burnie", "Towson", "Hanover", "Owings Mills", "Arbutus"), Seq(
     ("AMC Columbia Maryland 14", "AMC Columbia Maryland 14", "amc-columbia-maryland-14", "Maryland", "Columbia"),
-    ("Phoenix Columbia Snowden 14", "Phoenix Columbia Snowden 14", "phoenix-columbia-snowden-14", "Maryland", "Columbia"),
+    ("AMC Owings Mills 17", "AMC Owings Mills 17", "amc-owings-mills-17", "Maryland", "Owings Mills"),
     ("Cinemark Egyptian 24", "Cinemark Egyptian 24", "cinemark-egyptian-24", "Maryland", "Hanover"),
-    ("R/C Hollywood Cinema 4 Arbutus", "R/C Hollywood Cinema 4 Arbutus", "rc-hollywood-cinema-4-arbutus", "Maryland", "Arbutus"),
-    ("Regal Laurel Town Center", "Regal Laurel Town Center", "regal-laurel-town-center", "Maryland", "Laurel")
+    ("Cinemark Towson", "Cinemark Towson", "cinemark-towson", "Maryland", "Towson"),
+    ("Horizon Cinemas Marley Station", "Horizon Cinemas Marley Station", "horizon-cinemas-marley-station", "Maryland", "Glen Burnie"),
+    ("R/C Hollywood Cinema 4 Arbutus", "R/C Hollywood Cinema 4 Arbutus", "rc-hollywood-cinema-4-arbutus", "Maryland", "Arbutus")
   ))
   private def p_columbia_mississippi: R = ("columbia-mississippi", "columbia-mississippi", "Columbia", "Mississippi", 31.2518, -89.8376, "America/Chicago", false, Seq("Columbia"), Seq(
     ("Marion Columbia 2", "Marion Columbia 2", "marion-columbia-2", "Mississippi", "Columbia")
@@ -4274,11 +4255,6 @@ private[models] object UsRosterData {
     ("Ashland Theatre", "Ashland Theatre", "ashland-theatre", "Virginia", "Ashland"),
     ("Regal Virginia Center Glen Allen", "Regal Virginia Center Glen Allen", "regal-virginia-center-glen-allen", "Virginia", "Glen Allen")
   ))
-  private def p_glen_burnie: R = ("glen-burnie", "glen-burnie-maryland", "Glen Burnie", "Maryland", 39.1626, -76.6247, "America/New_York", true, Seq("Glen Burnie", "Towson", "Middle River"), Seq(
-    ("Bengies Drive-In Middle River", "Bengies Drive-In Middle River", "bengies-drive-in-middle-river", "Maryland", "Middle River"),
-    ("Cinemark Towson", "Cinemark Towson", "cinemark-towson", "Maryland", "Towson"),
-    ("Horizon Cinemas Marley Station", "Horizon Cinemas Marley Station", "horizon-cinemas-marley-station", "Maryland", "Glen Burnie")
-  ))
   private def p_glendive: R = ("glendive", "glendive-montana", "Glendive", "Montana", 47.1053, -104.7125, "America/Denver", false, Seq("Glendive"), Seq(
     ("Rose Theatre Glendive", "Rose Theatre Glendive", "rose-theatre-glendive", "Montana", "Glendive")
   ))
@@ -4533,11 +4509,6 @@ private[models] object UsRosterData {
   private def p_hammond: R = ("hammond", "hammond-louisiana", "Hammond", "Louisiana", 30.5046, -90.4629, "America/Chicago", false, Seq("Hammond"), Seq(
     ("AMC Hammond Palace 10", "AMC Hammond Palace 10", "amc-hammond-palace-10", "Louisiana", "Hammond")
   ))
-  private def p_hampton_bays: R = ("hampton-bays", "hampton-bays-new-york", "Hampton Bays", "New York", 40.869, -72.5176, "America/New_York", true, Seq("Hampton Bays", "Mattituck", "Westhampton Beach"), Seq(
-    ("Mattituck Theatre 8", "Mattituck Theatre 8", "mattituck-theatre-8", "New York", "Mattituck"),
-    ("Sunset Theater Westhampton Beach", "Sunset Theater Westhampton Beach", "sunset-theater-westhampton-beach", "New York", "Westhampton Beach"),
-    ("Regal Hampton Bay", "Regal Hampton Bay", "regal-hampton-bay", "New York", "Hampton Bays")
-  ))
   private def p_hampton_south_carolina: R = ("hampton-south-carolina", "hampton-south-carolina", "Hampton", "South Carolina", 32.8779, -81.1276, "America/New_York", false, Seq("Hampton"), Seq(
     ("Palmetto theater Theater", "Palmetto theater Theater", "palmetto-theater-theater", "South Carolina", "Hampton")
   ))
@@ -4550,9 +4521,6 @@ private[models] object UsRosterData {
     ("Hopkins Center Hanover", "Hopkins Center Hanover", "hopkins-center-hanover", "New Hampshire", "Hanover"),
     ("Woodstock Town Hall Theatre", "Woodstock Town Hall Theatre", "woodstock-town-hall-theatre", "Vermont", "Woodstock"),
     ("Fairlee Drive-in", "Fairlee Drive-in", "fairlee-drive-in", "Vermont", "Fairlee")
-  ))
-  private def p_hanover_pennsylvania: R = ("hanover-pennsylvania", "hanover-pennsylvania", "Hanover", "Pennsylvania", 39.8007, -76.983, "America/New_York", false, Seq("Hanover"), Seq(
-    ("R/C Hanover Movies 16", "R/C Hanover Movies 16", "rc-hanover-movies-16", "Pennsylvania", "Hanover")
   ))
   private def p_hardin: R = ("hardin", "hardin-montana", "Hardin", "Montana", 45.7325, -107.612, "America/Denver", false, Seq("Hardin"), Seq(
     ("Centre Cinema Hardin", "Centre Cinema Hardin", "centre-cinema-hardin", "Montana", "Hardin")
@@ -4730,14 +4698,13 @@ private[models] object UsRosterData {
     ("GTC Liberty Cinemas Hinesville", "GTC Liberty Cinemas Hinesville", "gtc-liberty-cinemas-hinesville", "Georgia", "Hinesville"),
     ("Blaze Theatre and Pizzeria", "Blaze Theatre and Pizzeria", "blaze-theatre-and-pizzeria", "Georgia", "Fort Stewart")
   ))
-  private def p_hingham: R = ("hingham", "hingham-massachusetts", "Hingham", "Massachusetts", 42.2418, -70.8898, "America/New_York", true, Seq("Hingham", "Braintree", "Randolph", "Hanover", "Holbrook", "North Scituate"), Seq(
+  private def p_hingham: R = ("hingham", "hingham-massachusetts", "Hingham", "Massachusetts", 42.2418, -70.8898, "America/New_York", true, Seq("Hingham", "Braintree", "Hanover", "Holbrook", "North Scituate"), Seq(
     ("AMC Braintree Cinema 10", "AMC Braintree Cinema 10", "amc-braintree-cinema-10", "Massachusetts", "Braintree"),
     ("Cameo S Weymouth", "Cameo S Weymouth", "cameo-s-weymouth", "Massachusetts", "South Weymouth"),
     ("Patriot Cinemas Hingham", "Patriot Cinemas Hingham", "patriot-cinemas-hingham", "Massachusetts", "Hingham"),
     ("Edgartown Cinemas", "Edgartown Cinemas", "edgartown-cinemas", "Massachusetts", "Hingham"),
     ("Reel Harbor Theater", "Reel Harbor Theater", "reel-harbor-theater", "Massachusetts", "North Scituate"),
-    ("Showcase Hanover Crossing", "Showcase Hanover Crossing", "showcase-hanover-crossing", "Massachusetts", "Hanover"),
-    ("Showcase Randolph", "Showcase Randolph", "showcase-randolph", "Massachusetts", "Randolph")
+    ("Showcase Hanover Crossing", "Showcase Hanover Crossing", "showcase-hanover-crossing", "Massachusetts", "Hanover")
   ))
   private def p_hobbs: R = ("hobbs", "hobbs-new-mexico", "Hobbs", "New Mexico", 32.7026, -103.136, "America/Denver", false, Seq("Hobbs"), Seq(
     ("Allen Eagle Hobbs 9", "Allen Eagle Hobbs 9", "allen-eagle-hobbs-9", "New Mexico", "Hobbs")
@@ -4759,6 +4726,12 @@ private[models] object UsRosterData {
   ))
   private def p_holly: R = ("holly", "holly-colorado", "Holly", "Colorado", 38.0527, -102.1225, "America/Denver", false, Seq("Holly"), Seq(
     ("Holly Theater", "Holly Theater", "holly-theater", "Colorado", "Holly")
+  ))
+  private def p_holly_springs: R = ("holly-springs", "holly-springs-north-carolina", "Holly Springs", "North Carolina", 35.6513, -78.8336, "America/New_York", true, Seq("Holly Springs", "Sanford", "Garner", "Morrisville"), Seq(
+    ("AMC DINE-IN Holly Springs 9", "AMC DINE-IN Holly Springs 9", "amc-dine-in-holly-springs-9", "North Carolina", "Holly Springs"),
+    ("AMC Park Place 12", "AMC Park Place 12", "amc-park-place-12", "North Carolina", "Morrisville"),
+    ("Regal White Oak Garner", "Regal White Oak Garner", "regal-white-oak-garner", "North Carolina", "Garner"),
+    ("Spring Lane Stadium 10", "Spring Lane Stadium 10", "spring-lane-stadium-10", "North Carolina", "Sanford")
   ))
   private def p_holyoke: R = ("holyoke", "holyoke-colorado", "Holyoke", "Colorado", 40.5844, -102.3024, "America/Denver", false, Seq("Holyoke"), Seq(
     ("Peerless Theatre Holyoke", "Peerless Theatre Holyoke", "peerless-theatre-holyoke", "Colorado", "Holyoke")
@@ -5224,7 +5197,7 @@ private[models] object UsRosterData {
   private def p_kinston: R = ("kinston", "kinston-north-carolina", "Kinston", "North Carolina", 35.2627, -77.5816, "America/New_York", false, Seq("Kinston"), Seq(
     ("UEC Theatres Kinston", "UEC Theatres Kinston", "uec-theatres-kinston", "North Carolina", "Kinston")
   ))
-  private def p_kirkland: R = ("kirkland", "kirkland-washington", "Kirkland", "Washington", 47.6815, -122.2087, "America/Los_Angeles", true, Seq("Kirkland", "Redmond", "Lynnwood", "Shoreline", "Bothell", "Edmonds", "Mountlake Terrace", "Woodinville"), Seq(
+  private def p_kirkland: R = ("kirkland", "kirkland-washington", "Kirkland", "Washington", 47.6815, -122.2087, "America/Los_Angeles", true, Seq("Kirkland", "Lynnwood", "Redmond", "Shoreline", "Bothell", "Edmonds", "Mountlake Terrace", "Woodinville"), Seq(
     ("AMC Alderwood Mall 16 Lynnwood", "AMC Alderwood Mall 16 Lynnwood", "amc-alderwood-mall-16-lynnwood", "Washington", "Lynnwood"),
     ("Regal Alderwood Lynnwood", "Regal Alderwood Lynnwood", "regal-alderwood-lynnwood", "Washington", "Lynnwood"),
     ("AMC Woodinville 12", "AMC Woodinville 12", "amc-woodinville-12", "Washington", "Woodinville"),
@@ -5233,7 +5206,6 @@ private[models] object UsRosterData {
     ("Landmark Crest Cinema Center", "Landmark Crest Cinema Center", "landmark-crest-cinema-center", "Washington", "Shoreline"),
     ("McMenamins Anderson School", "McMenamins Anderson School", "mcmenamins-anderson-school", "Washington", "Bothell"),
     ("Regal Bella Bottega Redmond", "Regal Bella Bottega Redmond", "regal-bella-bottega-redmond", "Washington", "Redmond"),
-    ("IPIC Redmond", "IPIC Redmond", "ipic-redmond", "Washington", "Redmond"),
     ("Regal Cinebarre Mountlake", "Regal Cinebarre Mountlake", "regal-cinebarre-mountlake", "Washington", "Mountlake Terrace"),
     ("The Edmonds Theater", "The Edmonds Theater", "the-edmonds-theater", "Washington", "Edmonds")
   ))
@@ -5325,8 +5297,7 @@ private[models] object UsRosterData {
   private def p_lake_city_colorado: R = ("lake-city-colorado", "lake-city-colorado", "Lake City", "Colorado", 38.03, -107.3153, "America/Denver", false, Seq("Lake City"), Seq(
     ("Mountaineer Theatre Lake City", "Mountaineer Theatre Lake City", "mountaineer-theatre-lake-city", "Colorado", "Lake City")
   ))
-  private def p_lake_elsinore: R = ("lake-elsinore", "lake-elsinore-california", "Lake Elsinore", "California", 33.6681, -117.3273, "America/Los_Angeles", true, Seq("Lake Elsinore", "San Jacinto", "Beaumont", "Banning", "Idyllwild"), Seq(
-    ("2nd Street Cinema Beaumont", "2nd Street Cinema Beaumont", "2nd-street-cinema-beaumont", "California", "Beaumont"),
+  private def p_lake_elsinore: R = ("lake-elsinore", "lake-elsinore-california", "Lake Elsinore", "California", 33.6681, -117.3273, "America/Los_Angeles", true, Seq("Lake Elsinore", "San Jacinto", "Banning", "Idyllwild"), Seq(
     ("Fox Cineplex is D'Place", "Fox Cineplex is D'Place", "fox-cineplex-is-dplace", "California", "Banning"),
     ("Regal Metro San Jacinto", "Regal Metro San Jacinto", "regal-metro-san-jacinto", "California", "San Jacinto"),
     ("Rustic Theatre Idyllwild", "Rustic Theatre Idyllwild", "rustic-theatre-idyllwild", "California", "Idyllwild"),
@@ -5938,6 +5909,10 @@ private[models] object UsRosterData {
     ("Flagship Cinemas Matamoras", "Flagship Cinemas Matamoras", "flagship-cinemas-matamoras", "Pennsylvania", "Matamoras"),
     ("Milford Theater", "Milford Theater", "milford-theater", "Pennsylvania", "Milford")
   ))
+  private def p_mattituck: R = ("mattituck", "mattituck-new-york", "Mattituck", "New York", 40.9912, -72.5343, "America/New_York", true, Seq("Mattituck", "Westhampton Beach"), Seq(
+    ("Mattituck Theatre 8", "Mattituck Theatre 8", "mattituck-theatre-8", "New York", "Mattituck"),
+    ("Sunset Theater Westhampton Beach", "Sunset Theater Westhampton Beach", "sunset-theater-westhampton-beach", "New York", "Westhampton Beach")
+  ))
   private def p_mattoon: R = ("mattoon", "mattoon-illinois", "Mattoon", "Illinois", 39.4831, -88.3728, "America/Chicago", false, Seq("Mattoon"), Seq(
     ("VIP Mattoon 10", "VIP Mattoon 10", "vip-mattoon-10", "Illinois", "Mattoon")
   ))
@@ -6090,6 +6065,12 @@ private[models] object UsRosterData {
   private def p_michigan_city: R = ("michigan-city", "michigan-city-indiana", "Michigan City", "Indiana", 41.7075, -86.895, "America/Chicago", true, Seq("Michigan City", "Three Oaks"), Seq(
     ("AMC CLASSIC Michigan City 14", "AMC CLASSIC Michigan City 14", "amc-classic-michigan-city-14", "Indiana", "Michigan City"),
     ("Vickers Theatre Three Oaks", "Vickers Theatre Three Oaks", "vickers-theatre-three-oaks", "Michigan", "Three Oaks")
+  ))
+  private def p_middle_river: R = ("middle-river", "middle-river-maryland", "Middle River", "Maryland", 39.3343, -76.4394, "America/New_York", true, Seq("Middle River", "Hunt Valley", "Bel Air", "Fallston"), Seq(
+    ("Bengies Drive-In Middle River", "Bengies Drive-In Middle River", "bengies-drive-in-middle-river", "Maryland", "Middle River"),
+    ("Flagship Cinemas Churchville", "Flagship Cinemas Churchville", "flagship-cinemas-churchville", "Maryland", "Bel Air"),
+    ("Horizon Cinemas Fallston", "Horizon Cinemas Fallston", "horizon-cinemas-fallston", "Maryland", "Fallston"),
+    ("Regal Hunt Valley", "Regal Hunt Valley", "regal-hunt-valley", "Maryland", "Hunt Valley")
   ))
   private def p_middlebury_village: R = ("middlebury-village", "middlebury-village-vermont", "Middlebury (village)", "Vermont", 44.0155, -73.1694, "America/New_York", false, Seq("Middlebury (village)"), Seq(
     ("Marquis Theatre Middlebury", "Marquis Theatre Middlebury", "marquis-theatre-middlebury", "Vermont", "Middlebury")
@@ -6257,6 +6238,9 @@ private[models] object UsRosterData {
   private def p_moorefield: R = ("moorefield", "moorefield-west-virginia", "Moorefield", "West Virginia", 39.0623, -78.9695, "America/New_York", false, Seq("Moorefield"), Seq(
     ("South Branch Cinema 6", "South Branch Cinema 6", "south-branch-cinema-6", "West Virginia", "Moorefield")
   ))
+  private def p_moose_lake: R = ("moose-lake", "moose-lake-minnesota", "Moose Lake", "Minnesota", 46.4541, -92.7619, "America/Chicago", false, Seq("Moose Lake"), Seq(
+    ("Lake Theater Moose Lake", "Lake Theater Moose Lake", "lake-theater-moose-lake", "Minnesota", "Moose Lake")
+  ))
   private def p_mora: R = ("mora", "mora-minnesota", "Mora", "Minnesota", 45.8769, -93.2938, "America/Chicago", false, Seq("Mora"), Seq(
     ("Paradise Theatre Mora", "Paradise Theatre Mora", "paradise-theatre-mora", "Minnesota", "Mora")
   ))
@@ -6275,12 +6259,6 @@ private[models] object UsRosterData {
   ))
   private def p_morristown: R = ("morristown", "morristown-tennessee", "Morristown", "Tennessee", 36.214, -83.2949, "America/New_York", false, Seq("Morristown"), Seq(
     ("AMC CLASSIC College Square 12", "AMC CLASSIC College Square 12", "amc-classic-college-square-12", "Tennessee", "Morristown")
-  ))
-  private def p_morrisville: R = ("morrisville", "morrisville-north-carolina", "Morrisville", "North Carolina", 35.8235, -78.8256, "America/New_York", true, Seq("Morrisville", "Holly Springs", "Garner"), Seq(
-    ("AMC DINE-IN Holly Springs 9", "AMC DINE-IN Holly Springs 9", "amc-dine-in-holly-springs-9", "North Carolina", "Holly Springs"),
-    ("AMC Park Place 12", "AMC Park Place 12", "amc-park-place-12", "North Carolina", "Morrisville"),
-    ("B&B Morrisville Park West 14", "B&B Morrisville Park West 14", "bb-morrisville-park-west-14", "North Carolina", "Morrisville"),
-    ("Regal White Oak Garner", "Regal White Oak Garner", "regal-white-oak-garner", "North Carolina", "Garner")
   ))
   private def p_morton: R = ("morton", "morton-washington", "Morton", "Washington", 46.5584, -122.2751, "America/Los_Angeles", false, Seq("Morton"), Seq(
     ("Roxy Theater Morton", "Roxy Theater Morton", "roxy-theater-morton", "Washington", "Morton")
@@ -6760,6 +6738,9 @@ private[models] object UsRosterData {
     ("Cinemark Ontario Towne Center", "Cinemark Ontario Towne Center", "cinemark-ontario-towne-center", "Ohio", "Ontario"),
     ("Springmill Drive-in Mansfield", "Springmill Drive-in Mansfield", "springmill-drive-in-mansfield", "Ohio", "East Mansfield")
   ))
+  private def p_opelika: R = ("opelika", "opelika-alabama", "Opelika", "Alabama", 32.6454, -85.3783, "America/Chicago", false, Seq("Opelika"), Seq(
+    ("AMC CLASSIC Tiger 13", "AMC CLASSIC Tiger 13", "amc-classic-tiger-13", "Alabama", "Opelika")
+  ))
   private def p_opelousas: R = ("opelousas", "opelousas-louisiana", "Opelousas", "Louisiana", 30.5335, -92.0815, "America/Chicago", false, Seq("Opelousas"), Seq(
     ("Acadiana Cinemas Opelousas", "Acadiana Cinemas Opelousas", "acadiana-cinemas-opelousas", "Louisiana", "Opelousas")
   ))
@@ -6836,11 +6817,6 @@ private[models] object UsRosterData {
     ("Cinema 66 Tell City", "Cinema 66 Tell City", "cinema-66-tell-city", "Indiana", "Tell City"),
     ("Holiday Drive-in Rockport", "Holiday Drive-in Rockport", "holiday-drive-in-rockport", "Indiana", "Rockport"),
     ("Malco Owensboro Cinema Grill", "Malco Owensboro Cinema Grill", "malco-owensboro-cinema-grill", "Kentucky", "Owensboro")
-  ))
-  private def p_owings_mills: R = ("owings-mills", "owings-mills-maryland", "Owings Mills", "Maryland", 39.4196, -76.7802, "America/New_York", true, Seq("Owings Mills", "Hunt Valley", "Westminster"), Seq(
-    ("AMC Owings Mills 17", "AMC Owings Mills 17", "amc-owings-mills-17", "Maryland", "Owings Mills"),
-    ("R/C Westminster Movies 9", "R/C Westminster Movies 9", "rc-westminster-movies-9", "Maryland", "Westminster"),
-    ("Regal Hunt Valley", "Regal Hunt Valley", "regal-hunt-valley", "Maryland", "Hunt Valley")
   ))
   private def p_oxford: R = ("oxford", "oxford-mississippi", "Oxford", "Mississippi", 34.3665, -89.5192, "America/Chicago", false, Seq("Oxford"), Seq(
     ("Malco Oxford Commons 8", "Malco Oxford Commons 8", "malco-oxford-commons-8", "Mississippi", "Oxford")
@@ -7191,8 +7167,7 @@ private[models] object UsRosterData {
     ("King-Koal Theaters", "King-Koal Theaters", "king-koal-theaters", "Utah", "Price"),
     ("Price Theatre", "Price Theatre", "price-theatre", "Utah", "Price")
   ))
-  private def p_princeton: R = ("princeton", "princeton-new-jersey", "Princeton", "New Jersey", 40.3487, -74.659, "America/New_York", true, Seq("Princeton", "North Brunswick", "Hillsborough", "White Horse", "Hightstown", "Lambertville", "Ten Mile Run"), Seq(
-    ("ACME Screening Room Lambertville", "ACME Screening Room Lambertville", "acme-screening-room-lambertville", "New Jersey", "Lambertville"),
+  private def p_princeton: R = ("princeton", "princeton-new-jersey", "Princeton", "New Jersey", 40.3487, -74.659, "America/New_York", true, Seq("Princeton", "North Brunswick", "Hillsborough", "White Horse", "Hightstown", "Ten Mile Run"), Seq(
     ("AMC Marketfair Princeton 10", "AMC Marketfair Princeton 10", "amc-marketfair-princeton-10", "New Jersey", "Princeton"),
     ("Princeton Garden Theatre", "Princeton Garden Theatre", "princeton-garden-theatre", "New Jersey", "Princeton"),
     ("Hillsborough Cinemas 10", "Hillsborough Cinemas 10", "hillsborough-cinemas-10", "New Jersey", "Hillsborough"),
@@ -7300,9 +7275,10 @@ private[models] object UsRosterData {
   private def p_redfield: R = ("redfield", "redfield-south-dakota", "Redfield", "South Dakota", 44.8758, -98.5187, "America/Chicago", false, Seq("Redfield"), Seq(
     ("Pheasant City Drive-In Redfield", "Pheasant City Drive-In Redfield", "pheasant-city-drive-in-redfield", "South Dakota", "Redfield")
   ))
-  private def p_redlands: R = ("redlands", "redlands-california", "Redlands", "California", 34.0556, -117.1825, "America/Los_Angeles", false, Seq("Redlands"), Seq(
+  private def p_redlands: R = ("redlands", "redlands-california", "Redlands", "California", 34.0556, -117.1825, "America/Los_Angeles", true, Seq("Redlands", "Beaumont", "Big Bear Lake"), Seq(
+    ("2nd Street Cinema Beaumont", "2nd Street Cinema Beaumont", "2nd-street-cinema-beaumont", "California", "Beaumont"),
     ("Harkins Mountain Grove 16", "Harkins Mountain Grove 16", "harkins-mountain-grove-16", "California", "Redlands"),
-    ("LOOK Cinemas Redlands", "LOOK Cinemas Redlands", "look-cinemas-redlands", "California", "Redlands")
+    ("Village North Big Bear Lake", "Village North Big Bear Lake", "village-north-big-bear-lake", "California", "Big Bear Lake")
   ))
   private def p_redmond: R = ("redmond", "redmond-oregon", "Redmond", "Oregon", 44.2726, -121.1739, "America/Los_Angeles", false, Seq("Redmond"), Seq(
     ("Odem Theater Pub", "Odem Theater Pub", "odem-theater-pub", "Oregon", "Redmond"),
@@ -7383,7 +7359,6 @@ private[models] object UsRosterData {
     ("Ritz Theatre Ritzville", "Ritz Theatre Ritzville", "ritz-theatre-ritzville", "Washington", "Ritzville")
   ))
   private def p_riverton: R = ("riverton", "riverton-wyoming", "Riverton", "Wyoming", 43.025, -108.3801, "America/Denver", false, Seq("Riverton"), Seq(
-    ("Acme Theatre Riverton", "Acme Theatre Riverton", "acme-theatre-riverton", "Wyoming", "Riverton"),
     ("Gem Theatre Riverton", "Gem Theatre Riverton", "gem-theatre-riverton", "Wyoming", "Riverton")
   ))
   private def p_riverview: R = ("riverview", "riverview-florida", "Riverview", "Florida", 27.8661, -82.3265, "America/New_York", true, Seq("Riverview", "Plant City", "Ruskin", "Gibsonton"), Seq(
@@ -7559,8 +7534,7 @@ private[models] object UsRosterData {
     ("Main Street Theater Columbiana", "Main Street Theater Columbiana", "main-street-theater-columbiana", "Ohio", "Columbiana")
   ))
   private def p_salina: R = ("salina", "salina-kansas", "Salina", "Kansas", 38.8403, -97.6114, "America/Chicago", false, Seq("Salina"), Seq(
-    ("Salina Art Center", "Salina Art Center", "salina-art-center", "Kansas", "Salina"),
-    ("AMC CLASSIC Salina 10", "AMC CLASSIC Salina 10", "amc-classic-salina-10", "Kansas", "Salina")
+    ("Salina Art Center", "Salina Art Center", "salina-art-center", "Kansas", "Salina")
   ))
   private def p_salisbury: R = ("salisbury", "salisbury-maryland", "Salisbury", "Maryland", 38.3607, -75.5994, "America/New_York", true, Seq("Salisbury", "Pocomoke City", "Chincoteague"), Seq(
     ("Regal Salisbury", "Regal Salisbury", "regal-salisbury", "Maryland", "Salisbury"),
@@ -7612,9 +7586,6 @@ private[models] object UsRosterData {
     ("Cinemark Century Sandy Union Heights 16", "Cinemark Century Sandy Union Heights 16", "cinemark-century-sandy-union-heights-16", "Utah", "Sandy"),
     ("Megaplex Jordan Commons", "Megaplex Jordan Commons", "megaplex-jordan-commons", "Utah", "Sandy"),
     ("King Otter Theater", "King Otter Theater", "king-otter-theater", "Utah", "Sandy")
-  ))
-  private def p_sanford: R = ("sanford", "sanford-north-carolina", "Sanford", "North Carolina", 35.4799, -79.1803, "America/New_York", false, Seq("Sanford"), Seq(
-    ("Spring Lane Stadium 10", "Spring Lane Stadium 10", "spring-lane-stadium-10", "North Carolina", "Sanford")
   ))
   private def p_sanford_maine: R = ("sanford-maine", "sanford-maine", "Sanford", "Maine", 43.4393, -70.7742, "America/New_York", true, Seq("Sanford", "Wells Beach Station"), Seq(
     ("Flagship Cinemas Wells", "Flagship Cinemas Wells", "flagship-cinemas-wells", "Maine", "Wells"),
@@ -7860,7 +7831,7 @@ private[models] object UsRosterData {
   private def p_silver_city: R = ("silver-city", "silver-city-new-mexico", "Silver City", "New Mexico", 32.7701, -108.2803, "America/Denver", false, Seq("Silver City"), Seq(
     ("The Silco Theater", "The Silco Theater", "the-silco-theater", "New Mexico", "Silver City")
   ))
-  private def p_silver_spring: R = ("silver-spring", "silver-spring-maryland", "Silver Spring", "Maryland", 38.9907, -77.0261, "America/New_York", true, Seq("Silver Spring", "Greenbelt", "Rockville", "Downtown DC", "Wheaton", "Hyattsville", "Beltsville", "Falls Church", "Largo"), Seq(
+  private def p_silver_spring: R = ("silver-spring", "silver-spring-maryland", "Silver Spring", "Maryland", 38.9907, -77.0261, "America/New_York", true, Seq("Silver Spring", "Greenbelt", "Rockville", "Downtown DC", "Wheaton", "Laurel", "Hyattsville", "Beltsville", "Falls Church", "Largo"), Seq(
     ("AFI Silver Theatre", "AFI Silver Theatre", "afi-silver-theatre", "Maryland", "Silver Spring"),
     ("Regal Majestic Silver Spring", "Regal Majestic Silver Spring", "regal-majestic-silver-spring", "Maryland", "Silver Spring"),
     ("AMC Academy 8 Greenbelt", "AMC Academy 8 Greenbelt", "amc-academy-8-greenbelt", "Maryland", "Greenbelt"),
@@ -7870,6 +7841,7 @@ private[models] object UsRosterData {
     ("AMC Wheaton Mall 9", "AMC Wheaton Mall 9", "amc-wheaton-mall-9", "Maryland", "Wheaton"),
     ("Paragon Theaters Founders Row", "Paragon Theaters Founders Row", "paragon-theaters-founders-row", "Virginia", "Falls Church"),
     ("Regal Hyattsville Royale", "Regal Hyattsville Royale", "regal-hyattsville-royale", "Maryland", "Hyattsville"),
+    ("Regal Laurel Town Center", "Regal Laurel Town Center", "regal-laurel-town-center", "Maryland", "Laurel"),
     ("Regal Rockville Center", "Regal Rockville Center", "regal-rockville-center", "Maryland", "Rockville"),
     ("National Gallery of Art", "National Gallery of Art", "national-gallery-of-art", "District of Columbia", "Washington City")
   ))
@@ -8821,6 +8793,10 @@ private[models] object UsRosterData {
   private def p_westcliffe: R = ("westcliffe", "westcliffe-colorado", "Westcliffe", "Colorado", 38.1347, -105.4658, "America/Denver", false, Seq("Westcliffe"), Seq(
     ("Jones Theater Westcliff", "Jones Theater Westcliff", "jones-theater-westcliff", "Colorado", "Westcliffe")
   ))
+  private def p_westminster_maryland: R = ("westminster-maryland", "westminster-maryland", "Westminster", "Maryland", 39.5754, -76.9958, "America/New_York", true, Seq("Westminster", "Hanover"), Seq(
+    ("R/C Westminster Movies 9", "R/C Westminster Movies 9", "rc-westminster-movies-9", "Maryland", "Westminster"),
+    ("R/C Hanover Movies 16", "R/C Hanover Movies 16", "rc-hanover-movies-16", "Pennsylvania", "Hanover")
+  ))
   private def p_westons_mills: R = ("westons-mills", "westons-mills-new-york", "Westons Mills", "New York", 42.0623, -78.3772, "America/New_York", true, Seq("Westons Mills", "Allegany"), Seq(
     ("AMC Allegany 8", "AMC Allegany 8", "amc-allegany-8", "New York", "Allegany"),
     ("Portville Drive-In", "Portville Drive-In", "portville-drive-in-olean", "New York", "Portville")
@@ -8970,9 +8946,9 @@ private[models] object UsRosterData {
   private def p_woodward: R = ("woodward", "woodward-oklahoma", "Woodward", "Oklahoma", 36.4337, -99.3904, "America/Chicago", false, Seq("Woodward"), Seq(
     ("Lakeside Woodward 6", "Lakeside Woodward 6", "lakeside-woodward-6", "Oklahoma", "Woodward")
   ))
-  private def p_wooster: R = ("wooster", "wooster-ohio", "Wooster", "Ohio", 40.8052, -81.9365, "America/New_York", false, Seq("Wooster"), Seq(
+  private def p_wooster: R = ("wooster", "wooster-ohio", "Wooster", "Ohio", 40.8052, -81.9365, "America/New_York", true, Seq("Wooster", "Hayesville"), Seq(
     ("Lyric Theater Wooster", "Lyric Theater Wooster", "lyric-theater-wooster", "Ohio", "Wooster"),
-    ("Cinemark Wooster Movies 10", "Cinemark Wooster Movies 10", "cinemark-wooster-movies-10", "Ohio", "Wooster")
+    ("Hayesville Opera House", "Hayesville Opera House", "hayesville-opera-house", "Ohio", "Hayesville")
   ))
   private def p_worland: R = ("worland", "worland-wyoming", "Worland", "Wyoming", 44.0169, -107.9554, "America/Denver", false, Seq("Worland"), Seq(
     ("Washakie Twin Cinemas", "Washakie Twin Cinemas", "washakie-twin-cinemas", "Wyoming", "Worland")
@@ -9055,48 +9031,48 @@ private[models] object UsRosterData {
   private def chunk6: Seq[R] = Seq(p_arvada, p_beaumont, p_provo, p_peoria, p_carlsbad, p_odessa, p_springfield, p_downey, p_costa_mesa, p_fairfield, p_lansing, p_rochester_minnesota, p_elgin, p_west_jordan, p_inglewood, p_tuscaloosa, p_richardson, p_lowell, p_gresham, p_cambridge, p_high_point, p_manchester, p_temecula, p_murrieta, p_centennial, p_richmond_california, p_pueblo, p_pearland, p_waterbury, p_greeley, p_west_covina, p_north_charleston, p_everett, p_college_station, p_pompano_beach, p_norwalk, p_boulder, p_broken_arrow, p_daly_city, p_burbank)
   private def chunk7: Seq[R] = Seq(p_green_bay, p_santa_maria, p_universal_city, p_wichita_falls, p_lakeland, p_clovis, p_lewisville, p_tyler, p_el_cajon, p_san_mateo, p_brandon, p_rialto, p_davenport, p_edison, p_hillsboro, p_las_cruces, p_south_bend, p_albany, p_vista, p_davie, p_renton, p_roanoke, p_aberdeen, p_aberdeen_maryland, p_aberdeen_mississippi, p_abingdon, p_ada, p_adams, p_adrian, p_afton, p_agawam, p_aguadilla, p_ainsworth, p_airway_heights, p_aitkin, p_alamogordo, p_alamosa, p_albany_georgia, p_albany_oregon, p_albemarle)
   private def chunk8: Seq[R] = Seq(p_albertville, p_albion, p_albion_nebraska, p_alexander_city, p_alexandria, p_alexandria_bay, p_alexandria_louisiana, p_algona, p_alhambra, p_alice, p_allen, p_alliance, p_alma, p_alpena, p_alpharetta, p_alpine, p_alturas, p_altus, p_alva, p_amelia, p_amenia, p_ames, p_amherst_massachusetts, p_anaconda, p_anadarko, p_andalusia, p_anderson, p_andover, p_andrews, p_annapolis, p_anniston, p_antigo, p_antlers, p_appleton, p_arapahoe, p_ardmore, p_arecibo, p_arnold, p_arnold_nebraska, p_arroyo_grande)
-  private def chunk9: Seq[R] = Seq(p_ashburn, p_asheboro, p_asheville, p_ashland, p_ashland_ohio, p_ashland_wisconsin, p_ashtabula, p_aspen, p_astoria, p_atascadero, p_atchison, p_athens_ohio, p_athens_tennessee, p_athens_texas, p_athol, p_atlantic_city, p_atmore, p_atwood, p_auburn, p_auburn_alabama, p_auburn_california, p_auburn_maine, p_auburn_washington, p_augusta, p_augusta_georgia, p_aurora_nebraska, p_austin_minnesota, p_ava, p_avalon, p_avon, p_avondale, p_bad_axe, p_bainbridge_island, p_baker_city, p_bangor, p_bar_harbor, p_barberton, p_barrington, p_barstow, p_bartlesville)
-  private def chunk10: Seq[R] = Seq(p_bastrop, p_batesville, p_battle_creek, p_baudette, p_baxter, p_bay_city, p_baytown, p_beacon, p_beatrice, p_beavercreek, p_beaverton, p_beckley, p_bedford, p_bedford_indiana, p_beeville, p_belfield, p_belle_plaine, p_belleville, p_bellingham, p_bellmore, p_beloit, p_belton, p_bemidji, p_bend, p_benkelman, p_bennington, p_bensalem, p_benson, p_benton, p_benton_harbor, p_berryville, p_bethany, p_bethel, p_bethel_maine, p_bethesda, p_bethlehem, p_beverly_hills, p_bicknell, p_big_bear_lake, p_big_rapids)
-  private def chunk11: Seq[R] = Seq(p_big_sky, p_big_spring, p_big_timber, p_binghamton, p_birmingham_michigan, p_bishop, p_bismarck, p_blackduck, p_blacksburg, p_bloomington, p_bloomington_illinois, p_bloomington_minnesota, p_bloomsburg, p_bluefield, p_blytheville, p_boca_raton, p_boerne, p_bolingbrook, p_bolivar, p_bolivar_tennessee, p_bonita_springs, p_bonners_ferry, p_boone, p_borger, p_boscobel, p_bossier_city, p_bottineau, p_bowling_green, p_bowman, p_bozeman, p_bradenton, p_brady, p_branson, p_brattleboro, p_breckenridge, p_bremerton, p_brenham, p_brentwood, p_bridgeport, p_bridgton)
-  private def chunk12: Seq[R] = Seq(p_brigham_city, p_bristol, p_britton, p_broken_bow, p_brookfield, p_brookfield_wisconsin, p_brookhaven, p_brookings, p_brookings_oregon, p_brownsburg, p_brunswick, p_bryan, p_bryant, p_buchanan, p_buena_park, p_buena_vista, p_buffalo_oklahoma, p_buffalo_wyoming, p_burley, p_burlington, p_burlington_colorado, p_burlington_north_carolina, p_burlington_vermont, p_burlington_wisconsin, p_burns, p_burwell, p_butler, p_cabot, p_cadillac, p_calabasas, p_calais, p_caldwell, p_california, p_calvert_city, p_camarillo, p_camas, p_cambridge_ohio, p_camden, p_cameron, p_campbellsville)
-  private def chunk13: Seq[R] = Seq(p_canadian, p_canby, p_cando, p_canon_city, p_canton, p_canton_illinois, p_cape_girardeau, p_carbondale, p_carbondale_colorado, p_carlisle, p_carlsbad_new_mexico, p_carmel, p_carnegie, p_carrington, p_carroll, p_carrollton, p_carson_city, p_carthage, p_casa_grande, p_cascade, p_casper, p_castle_rock, p_cavalier, p_cedar_bluff, p_cedar_city, p_cedar_park, p_celina, p_center, p_centerville, p_centerville_tennessee, p_central_city, p_centralia, p_centre, p_centreville, p_chadron, p_chamberlain, p_champaign, p_chandler_oklahoma, p_chanute, p_chapel_hill)
-  private def chunk14: Seq[R] = Seq(p_charles_city, p_charleston, p_charlottesville, p_cheboygan, p_checotah, p_chelan, p_cherry_hill, p_chester, p_cheyenne, p_cheyenne_wells, p_chickasha, p_chillicothe, p_chillicothe_missouri, p_chilton, p_chino, p_chippewa_falls, p_choteau, p_cicero, p_circle, p_clanton, p_clarendon, p_clarion, p_clarion_iowa, p_clay_center, p_clayton, p_clayton_georgia, p_cle_elum, p_clearfield, p_clearlake, p_cleveland_heights, p_cleveland_tennessee, p_clifton, p_clifton_park, p_clinton, p_clinton_arkansas, p_clinton_illinois, p_clinton_missouri, p_clinton_north_carolina, p_clinton_township, p_cloquet)
-  private def chunk15: Seq[R] = Seq(p_clovis_new_mexico, p_coalinga, p_cody, p_coeur_d_alene, p_colby, p_coldwater, p_coldwater_kansas, p_colorado_city, p_columbia_maryland, p_columbia_mississippi, p_columbus_indiana, p_columbus_mississippi, p_columbus_nebraska, p_colville, p_commerce_city, p_concord_new_hampshire, p_concord_north_carolina, p_concordia, p_concrete, p_conrad, p_conway, p_conway_south_carolina, p_cook, p_cookeville, p_cooperstown, p_coos_bay, p_copperas_cove, p_coral_gables, p_cordele, p_cordell, p_cordova, p_corinth, p_corning, p_corning_iowa, p_corsicana, p_cortez, p_cortland, p_corvallis, p_coshocton, p_coudersport)
-  private def chunk16: Seq[R] = Seq(p_council_bluffs, p_covington, p_craig, p_cranberry_township, p_crawfordsville, p_crescent_city, p_crested_butte, p_crestview, p_crete, p_creve_coeur, p_crookston, p_crosby, p_crowley, p_crystal_lake, p_cullman, p_culpeper, p_curtis, p_cut_bank, p_dacula, p_dallas_oregon, p_dalton, p_danbury, p_danville, p_danville_kentucky, p_daphne, p_davis, p_dayton_washington, p_daytona_beach, p_de_pere, p_de_soto, p_dearborn, p_decatur, p_decatur_alabama, p_decatur_georgia, p_decatur_texas, p_decorah, p_dededo_village, p_defiance, p_dekalb, p_del_rio)
-  private def chunk17: Seq[R] = Seq(p_delano, p_dell_rapids, p_delray_beach, p_delta, p_delta_utah, p_deming, p_demopolis, p_denison, p_dennis, p_derby, p_detroit_lakes, p_devils_lake, p_dexter, p_dickinson, p_dickson, p_dillon, p_dodge_city, p_dodgeville, p_dorado, p_dothan, p_douglas, p_douglas_wyoming, p_dover_foxcroft, p_dublin, p_dublin_georgia, p_dubuque, p_duluth, p_duluth_georgia, p_dumas, p_duncan, p_dunkirk, p_durango, p_durant, p_eads, p_eagle_butte, p_eagle_pass, p_early, p_easley, p_east_grand_forks, p_east_hampton)
-  private def chunk18: Seq[R] = Seq(p_east_lansing, p_east_stroudsburg, p_east_tawas, p_east_windham, p_eastland, p_easton, p_eau_claire, p_eden, p_edenton, p_edinburg, p_edmond, p_edwards, p_edwardsville, p_effingham, p_el_centro, p_el_dorado, p_el_dorado_kansas, p_el_dorado_springs, p_el_segundo, p_elberton, p_elizabeth_city, p_elizabethtown, p_elk_city, p_elk_rapids, p_elkader, p_elkhart, p_elkins, p_elko, p_ellensburg, p_ellijay, p_elroy, p_ely, p_ely_minnesota, p_emeryville, p_emmett, p_emporia, p_enterprise, p_ephraim, p_erie, p_escanaba)
-  private def chunk19: Seq[R] = Seq(p_estes_park, p_eunice, p_eureka, p_eureka_montana, p_evanston, p_evanston_wyoming, p_fairbanks, p_fairbury, p_fairfax, p_fairmont, p_fairview, p_fajardo, p_fall_river, p_fallon, p_farmington, p_farmington_maine, p_farmington_missouri, p_farmville, p_faulkton, p_fayetteville_arkansas, p_fayetteville_georgia, p_fergus_falls, p_findlay, p_fish_creek, p_fitchburg, p_fitzgerald, p_flagler, p_flagstaff, p_flint, p_florence, p_florence_alabama, p_florence_kentucky, p_florence_oregon, p_floresville, p_folsom, p_fond_du_lac, p_forest_city, p_forest_grove, p_forney, p_forrest_city)
-  private def chunk20: Seq[R] = Seq(p_forsyth, p_fort_bliss, p_fort_bragg, p_fort_dodge, p_fort_lee, p_fort_moore, p_fort_morgan, p_fort_myers, p_fort_pierre, p_fort_scott, p_fort_smith, p_fort_stockton, p_fowler, p_framingham, p_frankfort, p_frankfort_michigan, p_franklin, p_franklin_west_virginia, p_frederick, p_fredericksburg, p_freeport, p_fremont_nebraska, p_friday_harbor, p_friendswood, p_front_royal, p_frostburg, p_fulton, p_gadsden, p_gainesville_georgia, p_gainesville_texas, p_gaithersburg, p_galax, p_galesburg, p_gallipolis, p_gallup, p_galveston, p_garden_city, p_garrett, p_garrison, p_gastonia)
-  private def chunk21: Seq[R] = Seq(p_gatesville, p_gaylord, p_geneva, p_geneva_nebraska, p_georgetown, p_georgetown_south_carolina, p_gettysburg, p_gilford, p_gillette, p_glasgow, p_glasgow_montana, p_glen_allen, p_glen_burnie, p_glendive, p_globe, p_gold_beach, p_goldsboro, p_goleta, p_gonzales, p_gonzales_texas, p_goodland, p_gordon, p_grafton, p_graham, p_granbury, p_grand_canyon_village, p_grand_island, p_grand_junction, p_grand_rapids_minnesota, p_grandville, p_grangeville, p_granite_city, p_grants, p_grants_pass, p_grapevine, p_grass_valley, p_grayling, p_great_barrington, p_great_bend, p_great_falls)
-  private def chunk22: Seq[R] = Seq(p_greece, p_greenacres_city, p_greencastle, p_greeneville, p_greenfield, p_greensboro_georgia, p_greensburg, p_greensburg_indiana, p_greensburg_kansas, p_greenville, p_greenville_alabama, p_greenville_mississippi, p_greenville_north_carolina, p_greenwood, p_greenwood_indiana, p_gregory, p_grenada, p_grinnell, p_grove, p_grundy, p_guayama, p_guaynabo, p_guin, p_gulf_shores, p_gulfport, p_gunnison, p_gunnison_utah, p_guymon, p_hadensville, p_hagerstown, p_haleyville, p_hamilton, p_hammond, p_hampton_bays, p_hampton_south_carolina, p_hannibal, p_hanover, p_hanover_pennsylvania, p_hardin, p_hardy)
-  private def chunk23: Seq[R] = Seq(p_harlan, p_harlingen, p_harlowton, p_harrisburg, p_harrisburg_illinois, p_harrison, p_harrisonburg, p_hartford_kentucky, p_harvey, p_hastings, p_hastings_michigan, p_hattiesburg, p_havelock, p_havre, p_hayward_wisconsin, p_hazard, p_hazen, p_hazleton, p_healdsburg, p_heath, p_heber_city, p_heber_springs, p_hebron, p_hebron_north_dakota, p_helena, p_henderson_kentucky, p_henderson_north_carolina, p_hendersonville, p_hendersonville_north_carolina, p_hereford, p_hermiston, p_hesperia, p_hettinger, p_hiawatha, p_hibbing, p_hickory, p_highland, p_highland_arkansas, p_hill_city, p_hilo)
-  private def chunk24: Seq[R] = Seq(p_hilton_head_island, p_hinckley, p_hinesville, p_hingham, p_hobbs, p_holbrook, p_holdrege, p_holland, p_holly, p_holyoke, p_homer, p_homestead, p_hondo, p_honoka_a, p_hood_river, p_hoopeston, p_hoover, p_hopkinsville, p_hoquiam, p_hornell, p_hot_springs, p_hot_springs_south_dakota, p_houghton, p_houghton_lake, p_houlton, p_houma, p_houston_missouri, p_howell, p_hudson, p_hugoton, p_humboldt, p_huntersville, p_huntington, p_huntington_indiana, p_huntsville_texas, p_huron, p_hurricane, p_hutchinson, p_hutchinson_minnesota, p_ida_grove)
-  private def chunk25: Seq[R] = Seq(p_idabel, p_idaho_falls, p_imperial, p_independence_kansas, p_indian_lake, p_indian_trail, p_indiana, p_inez, p_international_falls, p_inverness, p_ionia, p_iowa_city, p_iowa_falls, p_ironwood, p_issaquah, p_ithaca, p_jackson, p_jackson_california, p_jackson_michigan, p_jackson_ohio, p_jackson_wyoming, p_jacksonville_illinois, p_jacksonville_north_carolina, p_jacksonville_texas, p_jamestown, p_jamestown_new_york, p_jamestown_tennessee, p_janesville, p_jasper, p_jefferson_city, p_jeffersonville, p_jerseyville, p_jesup, p_johnson_city, p_johnstown, p_johnstown_new_york, p_jonesboro, p_jonesville, p_joplin, p_julesburg)
-  private def chunk26: Seq[R] = Seq(p_juneau, p_jupiter, p_kahului, p_kailua_kona, p_kalamazoo, p_kalispell, p_kane, p_kankakee, p_kanopolis, p_kapolei, p_katy, p_kaunakakai, p_kayenta, p_kearney, p_keene, p_kelso, p_kemmerer, p_kenai, p_kenmare, p_kenner, p_kennesaw, p_kennett, p_kennewick, p_kenosha, p_kenton, p_keokuk, p_kernersville, p_kerrville, p_ketchum, p_kewanee, p_key_west, p_kill_devil_hills, p_kilmarnock, p_kimball, p_kingfisher, p_kingman, p_kingman_kansas, p_kingston, p_kingston_massachusetts, p_kinsley)
-  private def chunk27: Seq[R] = Seq(p_kinston, p_kirkland, p_kirksville, p_kissimmee, p_klamath_falls, p_knox, p_knoxville_iowa, p_kodiak, p_kokomo, p_kutztown, p_kyle, p_la_crosse, p_la_grande, p_la_jolla, p_la_junta, p_ladysmith, p_lafayette_indiana, p_lafayette_tennessee, p_lagrange, p_laguna_niguel, p_lake_charles, p_lake_city, p_lake_city_colorado, p_lake_elsinore, p_lake_havasu_city, p_lake_jackson, p_lake_ozark, p_lake_placid, p_lakeport, p_lakewood_washington, p_lamar, p_lamar_colorado, p_lamesa, p_lamoni, p_lanai_city, p_lancaster, p_lancaster_new_hampshire, p_lancaster_new_york, p_lancaster_ohio, p_lancaster_texas)
-  private def chunk28: Seq[R] = Seq(p_lancaster_wisconsin, p_lander, p_langdon, p_lansdale, p_lapeer, p_laramie, p_largo, p_larkspur, p_larned, p_las_vegas_new_mexico, p_laughlin, p_laurel, p_laurinburg, p_lawrence, p_lawrenceburg, p_lawrenceville, p_lawton, p_layton, p_le_mars, p_leachville, p_lebanon, p_lebanon_missouri, p_lebanon_ohio, p_lee_s_summit, p_leesville, p_lemmon, p_lemoore, p_leominster, p_lewisburg_west_virginia, p_lewiston, p_lewistown, p_lewistown_pennsylvania, p_lexington_nebraska, p_lexington_south_carolina, p_lexington_tennessee, p_lexington_virginia, p_libby, p_liberal, p_lima, p_limon)
-  private def chunk29: Seq[R] = Seq(p_lincoln_city, p_lincoln_illinois, p_lincoln_kansas, p_lincoln_new_hampshire, p_linn, p_linton, p_lisbon, p_litchfield, p_litchfield_minnesota, p_lititz, p_little_falls, p_littleton_colorado, p_livermore, p_livingston, p_livingston_alabama, p_llano, p_lockport, p_lodi, p_logan, p_logan_west_virginia, p_logansport, p_lompoc, p_london, p_long_beach_washington, p_longmont, p_longview, p_lorain, p_los_alamos, p_los_banos, p_los_lunas, p_loveland, p_lovell, p_lovington, p_lucas, p_ludington, p_lufkin, p_lumberton, p_luverne, p_lyman, p_lynchburg)
-  private def chunk30: Seq[R] = Seq(p_macomb, p_macon, p_macon_missouri, p_madawaska, p_madera, p_madison_connecticut, p_madison_indiana, p_madison_south_dakota, p_madisonville, p_madras, p_malta, p_mammoth_lakes, p_manchester_connecticut, p_manchester_iowa, p_manhattan, p_manistee, p_manistique, p_manitowoc, p_mankato, p_mansfield, p_mansfield_city, p_maquoketa, p_marathon, p_marble_falls, p_marbleton, p_marco_island, p_marianna, p_maricopa, p_marietta, p_marinette, p_marion, p_marion_illinois, p_marion_iowa, p_marion_north_carolina, p_marion_virginia, p_marksville, p_marquette, p_marshall, p_marshall_arkansas, p_marshall_missouri)
-  private def chunk31: Seq[R] = Seq(p_marshalltown, p_marshfield, p_martin, p_martinsburg, p_martinsville, p_martinsville_indiana, p_marysville, p_marysville_kansas, p_maryville, p_maryville_missouri, p_mashpee, p_mason, p_mason_city, p_massena, p_matamoras, p_mattoon, p_mattydale, p_maumee, p_mayaguez, p_mayfield, p_maysville, p_mayville, p_mcalester, p_mcconnelsville, p_mccook, p_mcdonough, p_mclean, p_mcminnville, p_mcminnville_tennessee, p_mcpherson, p_meadville, p_medford, p_medford_wisconsin, p_melbourne, p_mena, p_menomonie, p_mentor, p_merced, p_meridian, p_meridian_mississippi)
-  private def chunk32: Seq[R] = Seq(p_merrill, p_mesilla, p_mesquite_nevada, p_metaline_falls, p_methuen, p_mexico, p_miami_beach, p_miami_oklahoma, p_miamisburg, p_michigan_city, p_middlebury_village, p_middlesboro, p_middletown, p_middletown_connecticut, p_middletown_delaware, p_midland, p_midlothian, p_milbank, p_milbridge, p_miles_city, p_milford, p_milford_delaware, p_milford_new_hampshire, p_millbury, p_milledgeville, p_miller, p_millsboro, p_mineola, p_mineral_wells, p_minot, p_mishawaka, p_missoula, p_missouri_city, p_mitchell, p_moab, p_moberly, p_mobridge, p_moline, p_monett, p_monetta)
-  private def chunk33: Seq[R] = Seq(p_monroe, p_monroe_wisconsin, p_monterey, p_montevideo, p_monticello, p_monticello_arkansas, p_montpelier, p_montpelier_idaho, p_montrose, p_moore, p_moorefield, p_mora, p_morehead, p_morenci, p_morgantown, p_morris, p_morristown, p_morrisville, p_morton, p_moscow, p_moses_lake, p_mott, p_moultrie, p_mount_airy, p_mount_airy_georgia, p_mount_gilead, p_mount_lebanon, p_mount_pleasant, p_mount_pleasant_iowa, p_mount_pleasant_michigan, p_mount_pleasant_texas, p_mount_pleasant_utah, p_mount_shasta, p_mount_sterling, p_mount_vernon, p_mount_vernon_illinois, p_mount_vernon_ohio, p_mountain_grove, p_mountain_home, p_mountain_view)
-  private def chunk34: Seq[R] = Seq(p_mountain_view_arkansas, p_muncie, p_murray, p_muscatine, p_muskegon, p_muskogee, p_myrtle_beach, p_nantucket, p_naples, p_nashville_illinois, p_nashville_indiana, p_national_city, p_nebraska_city, p_nederland, p_neligh, p_neosho, p_nephi, p_new_bern, p_new_braunfels, p_new_brunswick, p_new_caney, p_new_castle, p_new_lenox, p_new_london, p_new_london_wisconsin, p_new_martinsville, p_new_paltz, p_new_philadelphia, p_new_ulm, p_newark_delaware, p_newberg, p_newberry, p_newcastle, p_newport, p_newport_beach, p_newport_vermont, p_newport_washington, p_newton, p_newton_illinois, p_newton_kansas)
-  private def chunk35: Seq[R] = Seq(p_niagara_falls, p_nogales, p_nome, p_norfolk, p_north_attleborough_center, p_north_conway, p_north_fort_myers, p_north_little_rock, p_north_platte, p_north_portland, p_north_virginia_beach, p_north_wilkesboro, p_northfield, p_norton, p_norton_kansas, p_norwalk_connecticut, p_norwood, p_o_fallon, p_oak_bluffs, p_oak_grove, p_oak_harbor, p_oak_ridge, p_oakes, p_oakhurst, p_oakland_maryland, p_oakley, p_oberlin, p_ocala, p_ocean_city, p_ocoee, p_oelwein, p_ogallala, p_ogden, p_okemah, p_old_forge, p_olympia, p_omak, p_onancock, p_onarga, p_onawa)
-  private def chunk36: Seq[R] = Seq(p_oneida, p_oneida_tennessee, p_oneonta, p_ontario, p_ontario_ohio, p_opelousas, p_orangeburg, p_orem, p_oro_valley, p_orofino, p_oroville, p_oshkosh, p_oskaloosa, p_oswego, p_oswego_new_york, p_othello, p_ottawa, p_ottawa_kansas, p_ottumwa, p_owasso, p_owatonna, p_owensboro, p_owings_mills, p_oxford, p_ozark, p_pace, p_paducah, p_page, p_page_north_dakota, p_pageland, p_pago_pago, p_pagosa_springs, p_palestine, p_palm_coast, p_palm_springs, p_pampa, p_panama_city, p_panguitch, p_paonia, p_paris)
-  private def chunk37: Seq[R] = Seq(p_paris_illinois, p_park_falls, p_park_rapids, p_parker, p_parkersburg, p_parsons, p_pauls_valley, p_pawhuska, p_payson, p_pearl_city, p_pell_city, p_pendleton, p_pensacola, p_perham, p_perry, p_perry_new_york, p_perryton, p_perryville, p_petaluma, p_petersburg, p_petoskey, p_pflugerville, p_philadelphia_mississippi, p_philip, p_philipsburg, p_piedmont, p_pikeville, p_pinecrest, p_pittsburg, p_pittsfield, p_plains, p_plantation, p_platte, p_platteville, p_plattsburgh, p_pleasanton, p_plentywood, p_plymouth, p_plymouth_indiana, p_plymouth_michigan)
-  private def chunk38: Seq[R] = Seq(p_pocahontas, p_pocatello, p_point_arena, p_polson, p_ponca_city, p_ponderay, p_pontiac, p_pooler, p_poplar_bluff, p_port_angeles, p_port_arthur, p_port_charlotte, p_port_huron, p_port_lavaca, p_port_townsend, p_portage, p_portage_pennsylvania, p_porterville, p_portland_texas, p_portsmouth, p_portsmouth_new_hampshire, p_poteau, p_potsdam, p_pottstown, p_poughkeepsie, p_powell, p_prairie_du_chien, p_pratt, p_prattville, p_prescott_valley, p_presque_isle, p_preston, p_price, p_princeton, p_princeton_illinois, p_princeton_indiana, p_prineville, p_pryor, p_queen_creek, p_queensbury)
-  private def chunk39: Seq[R] = Seq(p_quincy, p_quincy_california, p_quinnesec, p_rancho_mirage, p_randolph, p_rangeley, p_rapid_city, p_ravenna, p_rawlins, p_reading, p_red_bank, p_red_bank_tennessee, p_red_bluff, p_red_lodge, p_red_oak, p_red_wing, p_redding, p_redfield, p_redlands, p_redmond, p_rensselaer, p_rexburg, p_rhinelander, p_rice_lake, p_richfield, p_richland_center, p_richmond_indiana, p_richmond_kentucky, p_richmond_missouri, p_richmond_texas, p_ridgecrest, p_ridgeland, p_rifle, p_rio_grande_city, p_rio_rancho, p_ripley, p_ritzville, p_riverton, p_riverview, p_roanoke_rapids)
-  private def chunk40: Seq[R] = Seq(p_robinson, p_rock_hill, p_rock_springs, p_rockland, p_rocky_mount, p_rogers, p_rogers_city, p_rolla, p_rolla_north_dakota, p_rome, p_rome_georgia, p_roosevelt, p_roseau, p_roseburg, p_roswell, p_roswell_georgia, p_rothschild, p_roxboro, p_rugby, p_ruidoso, p_rushville, p_russell, p_russellville, p_ruston, p_saco, p_safford, p_saginaw, p_saguache, p_saint_charles, p_saint_clairsville, p_saint_croix, p_saint_croix_falls, p_saint_francis, p_saint_george, p_saint_helens, p_saint_johns, p_saint_joseph, p_saint_marys, p_saint_michael, p_salem_massachusetts)
-  private def chunk41: Seq[R] = Seq(p_salem_ohio, p_salina, p_salisbury, p_salmon, p_san_angelo, p_san_luis_obispo, p_san_marcos, p_san_marcos_texas, p_san_ramon, p_sandusky, p_sandusky_michigan, p_sandy, p_sanford, p_sanford_maine, p_santa_barbara, p_santa_cruz, p_santa_fe, p_santa_monica, p_santa_rosa_new_mexico, p_sapulpa, p_sarasota, p_savannah_tennessee, p_sayre, p_sayville, p_schenectady, p_schererville, p_schertz, p_schroon_lake, p_scobey, p_scottsbluff, p_scottsboro, p_scranton, p_searcy, p_seaside, p_sebring, p_sedalia, p_sedan, p_sedona, p_selinsgrove, p_selma)
-  private def chunk42: Seq[R] = Seq(p_selma_alabama, p_seminole, p_senatobia, p_seneca, p_seneca_kansas, p_sevierville, p_seward, p_seymour, p_shallotte, p_shamrock, p_sharon_springs, p_shattuck, p_shawano, p_shawnee, p_shawnee_kansas, p_sheboygan, p_shelbina, p_shelby, p_shelby_montana, p_shelbyville, p_shelbyville_illinois, p_shelbyville_tennessee, p_shelton, p_sheridan, p_sherman, p_show_low, p_sidney, p_sidney_montana, p_sidney_nebraska, p_sierra_vista, p_sikeston, p_silver_city, p_silver_spring, p_silverton, p_simpsonville, p_sioux_center, p_sioux_city, p_siren, p_sisters, p_sitka)
-  private def chunk43: Seq[R] = Seq(p_skowhegan, p_slidell, p_smith_center, p_smithfield, p_snyder, p_socorro, p_soda_springs, p_soledad, p_somerset, p_somerville, p_sonora, p_south_barrington, p_south_boston, p_south_fallsburg, p_south_jordan, p_south_kingstown, p_south_taft, p_southern_pines, p_southport, p_spanish_fork, p_sparks, p_sparta, p_sparta_wisconsin, p_spartanburg, p_spearfish, p_spearman, p_spencer, p_spencer_indiana, p_spencer_west_virginia, p_spirit_lake, p_spring, p_spring_hill, p_spring_hill_tennessee, p_springerville, p_springfield_colorado, p_springfield_georgia, p_springfield_ohio, p_springfield_oregon, p_springfield_vermont, p_springhill)
-  private def chunk44: Seq[R] = Seq(p_springville, p_st_johns, p_st_johnsbury, p_stafford, p_stamford_texas, p_stanley, p_starke, p_starkville, p_state_college, p_statesboro, p_steamboat_springs, p_stephenville, p_sterling, p_sterling_illinois, p_stevens_point, p_stigler, p_stillwater, p_stockton, p_stony_brook, p_storm_lake, p_stowe, p_strongsville, p_stuart, p_stuart_florida, p_sturgeon_bay, p_sturgis, p_stuttgart, p_suffern, p_suffolk, p_sullivan, p_sulphur_springs, p_summerlin_south, p_summersville, p_summerville, p_sumter, p_sun_prairie, p_sunnyside, p_sunrise, p_superior, p_susanville)
-  private def chunk45: Seq[R] = Seq(p_sutton, p_syracuse_kansas, p_tabor_city, p_tahlequah, p_taos, p_tavernier, p_taylorville, p_teays_valley, p_tehachapi, p_telluride, p_terre_haute, p_texarkana, p_the_colony, p_the_villages, p_the_woodlands, p_thermopolis, p_thief_river_falls, p_thomaston, p_thomasville, p_thompson_falls, p_thomson, p_three_rivers, p_tiffin, p_tigard, p_tillamook, p_tioga, p_tiptonville, p_titusville, p_tomball, p_toms_river, p_tonkawa, p_tooele, p_torrington, p_torrington_wyoming, p_tracy, p_traverse_city, p_trenton, p_tribune, p_trinidad, p_troy)
-  private def chunk46: Seq[R] = Seq(p_truckee, p_truth_or_consequences, p_tuba_city, p_tucumcari, p_tulare, p_tupelo, p_tupper_lake, p_tutu, p_twentynine_palms, p_twin_falls, p_two_harbors, p_ukiah, p_ulysses, p_uniontown, p_utica, p_uvalde, p_vacaville, p_valdez, p_valdosta, p_valley_city, p_valparaiso, p_van_buren, p_van_wert, p_vandalia, p_vandergrift, p_vashon, p_vassar, p_venice, p_ventura, p_vermillion, p_vernal, p_vernon, p_vero_beach, p_viborg, p_vicksburg, p_victor, p_victoria, p_vidalia, p_vienna_bend, p_vincennes)
-  private def chunk47: Seq[R] = Seq(p_vineland, p_vineland_minnesota, p_vinita, p_virginia, p_viroqua, p_wabash, p_waconia, p_wadena, p_wagner, p_waikoloa, p_waimea, p_waite_park, p_waldorf, p_waldron, p_walla_walla, p_walsenburg, p_walterboro, p_walton, p_warner_robins, p_warren_minnesota, p_warren_ohio, p_warrensburg, p_warwick, p_washington_illinois, p_washington_indiana, p_washington_iowa, p_washington_missouri, p_wasilla, p_waterford, p_waterloo, p_watertown, p_watertown_new_york, p_waterville, p_watford_city, p_watsonville, p_wauseon, p_wauwatosa, p_waycross, p_wayne, p_wayne_nebraska)
-  private def chunk48: Seq[R] = Seq(p_waynesboro, p_waynesville, p_waynesville_missouri, p_weatherford, p_weatherford_oklahoma, p_weaverville, p_webster, p_weirton, p_welch, p_wellfleet, p_wellington, p_wellington_texas, p_wells, p_wellsboro, p_wenatchee, p_wesley_chapel, p_west_bend, p_west_branch, p_west_chester, p_west_des_moines, p_west_jefferson, p_west_monroe, p_west_plains, p_west_point, p_west_yellowstone, p_westbrook, p_westcliffe, p_westons_mills, p_wheatland, p_wheaton, p_white_plains, p_whitehall, p_whitewright, p_wickenburg, p_wildwood, p_wilkes_barre, p_willcox, p_williamsburg, p_williamsport, p_williston)
-  private def chunk49: Seq[R] = Seq(p_willits, p_willmar, p_wilmington_delaware, p_winchester, p_winchester_indiana, p_winchester_tennessee, p_windom, p_window_rock, p_winfield, p_wing, p_winnemucca, p_winner, p_winona, p_winslow, p_winter_haven, p_winter_park, p_winthrop, p_wolf_point, p_woodbridge, p_woodbury, p_woodland_park, p_woodward, p_wooster, p_worland, p_worthington, p_wrangell, p_wray, p_wytheville, p_yakima, p_yankton, p_yazoo_city, p_yelm, p_yerington, p_york, p_york_nebraska, p_youngstown, p_yuba_city, p_yucca_valley, p_yulee, p_yuma)
-  private def chunk50: Seq[R] = Seq(p_yuma_colorado, p_zanesville, p_zumbrota)
+  private def chunk9: Seq[R] = Seq(p_ashburn, p_asheboro, p_asheville, p_ashland, p_ashland_ohio, p_ashland_wisconsin, p_ashtabula, p_aspen, p_astoria, p_atascadero, p_atchison, p_athens_ohio, p_athens_tennessee, p_athens_texas, p_athol, p_atlantic_city, p_atmore, p_atwood, p_auburn, p_auburn_california, p_auburn_maine, p_auburn_washington, p_augusta, p_augusta_georgia, p_aurora_nebraska, p_austin_minnesota, p_ava, p_avalon, p_avon, p_avondale, p_bad_axe, p_bainbridge_island, p_baker_city, p_bangor, p_bar_harbor, p_barberton, p_barrington, p_barstow, p_bartlesville, p_bastrop)
+  private def chunk10: Seq[R] = Seq(p_batesville, p_battle_creek, p_baudette, p_baxter, p_bay_city, p_baytown, p_beacon, p_beatrice, p_beavercreek, p_beaverton, p_beckley, p_bedford, p_bedford_indiana, p_beeville, p_belfield, p_belle_plaine, p_belleville, p_bellingham, p_bellmore, p_beloit, p_belton, p_bemidji, p_bend, p_benkelman, p_bennington, p_bensalem, p_benson, p_benton, p_benton_harbor, p_berryville, p_bethany, p_bethel, p_bethel_maine, p_bethesda, p_bethlehem, p_beverly_hills, p_bicknell, p_big_rapids, p_big_sky, p_big_spring)
+  private def chunk11: Seq[R] = Seq(p_big_timber, p_binghamton, p_birmingham_michigan, p_bishop, p_bismarck, p_blackduck, p_blacksburg, p_bloomington, p_bloomington_illinois, p_bloomington_minnesota, p_bloomsburg, p_bluefield, p_blytheville, p_boca_raton, p_boerne, p_bolingbrook, p_bolivar, p_bolivar_tennessee, p_bonita_springs, p_bonners_ferry, p_boone, p_borger, p_boscobel, p_bossier_city, p_bottineau, p_bowling_green, p_bowman, p_bozeman, p_bradenton, p_brady, p_branson, p_brattleboro, p_breckenridge, p_bremerton, p_brenham, p_brentwood, p_bridgeport, p_bridgton, p_brigham_city, p_bristol)
+  private def chunk12: Seq[R] = Seq(p_britton, p_broken_bow, p_brookfield, p_brookfield_wisconsin, p_brookhaven, p_brookings, p_brookings_oregon, p_brownsburg, p_brunswick, p_bryan, p_bryant, p_buchanan, p_buena_park, p_buena_vista, p_buffalo_oklahoma, p_buffalo_wyoming, p_burley, p_burlington, p_burlington_colorado, p_burlington_north_carolina, p_burlington_vermont, p_burlington_wisconsin, p_burns, p_burwell, p_butler, p_cabot, p_cadillac, p_calabasas, p_calais, p_caldwell, p_california, p_calvert_city, p_camarillo, p_camas, p_cambridge_ohio, p_camden, p_cameron, p_campbellsville, p_canadian, p_canby)
+  private def chunk13: Seq[R] = Seq(p_cando, p_canon_city, p_canton, p_canton_illinois, p_cape_girardeau, p_carbondale, p_carbondale_colorado, p_carlisle, p_carlsbad_new_mexico, p_carmel, p_carnegie, p_carrington, p_carroll, p_carrollton, p_carson_city, p_carthage, p_casa_grande, p_cascade, p_casper, p_castle_rock, p_cavalier, p_cedar_bluff, p_cedar_city, p_cedar_park, p_celina, p_center, p_centerville, p_centerville_tennessee, p_central_city, p_centralia, p_centre, p_centreville, p_chadron, p_chamberlain, p_champaign, p_chandler_oklahoma, p_chanute, p_chapel_hill, p_charles_city, p_charleston)
+  private def chunk14: Seq[R] = Seq(p_charlottesville, p_cheboygan, p_checotah, p_chelan, p_cherry_hill, p_chester, p_cheyenne, p_cheyenne_wells, p_chickasha, p_chillicothe, p_chillicothe_missouri, p_chilton, p_chino, p_chippewa_falls, p_choteau, p_cicero, p_circle, p_clanton, p_clarendon, p_clarion, p_clarion_iowa, p_clay_center, p_clayton, p_clayton_georgia, p_cle_elum, p_clearfield, p_clearlake, p_cleveland_heights, p_cleveland_tennessee, p_clifton, p_clifton_park, p_clinton, p_clinton_arkansas, p_clinton_illinois, p_clinton_missouri, p_clinton_north_carolina, p_clinton_township, p_cloquet, p_clovis_new_mexico, p_coalinga)
+  private def chunk15: Seq[R] = Seq(p_cody, p_coeur_d_alene, p_colby, p_coldwater, p_coldwater_kansas, p_colorado_city, p_columbia_maryland, p_columbia_mississippi, p_columbus_indiana, p_columbus_mississippi, p_columbus_nebraska, p_colville, p_commerce_city, p_concord_new_hampshire, p_concord_north_carolina, p_concordia, p_concrete, p_conrad, p_conway, p_conway_south_carolina, p_cook, p_cookeville, p_cooperstown, p_coos_bay, p_copperas_cove, p_coral_gables, p_cordele, p_cordell, p_cordova, p_corinth, p_corning, p_corning_iowa, p_corsicana, p_cortez, p_cortland, p_corvallis, p_coshocton, p_coudersport, p_council_bluffs, p_covington)
+  private def chunk16: Seq[R] = Seq(p_craig, p_cranberry_township, p_crawfordsville, p_crescent_city, p_crested_butte, p_crestview, p_crete, p_creve_coeur, p_crookston, p_crosby, p_crowley, p_crystal_lake, p_cullman, p_culpeper, p_curtis, p_cut_bank, p_dacula, p_dallas_oregon, p_dalton, p_danbury, p_danville, p_danville_kentucky, p_daphne, p_davis, p_dayton_washington, p_daytona_beach, p_de_pere, p_de_soto, p_dearborn, p_decatur, p_decatur_alabama, p_decatur_georgia, p_decatur_texas, p_decorah, p_dededo_village, p_defiance, p_dekalb, p_del_rio, p_delano, p_dell_rapids)
+  private def chunk17: Seq[R] = Seq(p_delray_beach, p_delta, p_delta_utah, p_deming, p_demopolis, p_denison, p_dennis, p_derby, p_detroit_lakes, p_devils_lake, p_dexter, p_dickinson, p_dickson, p_dillon, p_dodge_city, p_dodgeville, p_dorado, p_dothan, p_douglas, p_douglas_wyoming, p_dover_foxcroft, p_dublin, p_dublin_georgia, p_dubuque, p_duluth, p_duluth_georgia, p_dumas, p_duncan, p_dunkirk, p_durango, p_durant, p_eads, p_eagle_butte, p_eagle_pass, p_early, p_easley, p_east_grand_forks, p_east_hampton, p_east_lansing, p_east_stroudsburg)
+  private def chunk18: Seq[R] = Seq(p_east_tawas, p_east_windham, p_eastland, p_easton, p_eau_claire, p_eden, p_edenton, p_edinburg, p_edmond, p_edwards, p_edwardsville, p_effingham, p_el_centro, p_el_dorado, p_el_dorado_kansas, p_el_dorado_springs, p_el_segundo, p_elberton, p_elizabeth_city, p_elizabethtown, p_elk_city, p_elk_rapids, p_elkader, p_elkhart, p_elkins, p_elko, p_ellensburg, p_ellijay, p_elroy, p_ely, p_ely_minnesota, p_emeryville, p_emmett, p_emporia, p_enterprise, p_ephraim, p_erie, p_escanaba, p_estes_park, p_eunice)
+  private def chunk19: Seq[R] = Seq(p_eureka, p_eureka_montana, p_evanston, p_evanston_wyoming, p_fairbanks, p_fairbury, p_fairfax, p_fairmont, p_fairview, p_fajardo, p_fall_river, p_fallon, p_farmington, p_farmington_maine, p_farmington_missouri, p_farmville, p_faulkton, p_fayetteville_arkansas, p_fayetteville_georgia, p_fergus_falls, p_findlay, p_fish_creek, p_fitchburg, p_fitzgerald, p_flagler, p_flagstaff, p_flint, p_florence, p_florence_alabama, p_florence_kentucky, p_florence_oregon, p_floresville, p_folsom, p_fond_du_lac, p_forest_city, p_forest_grove, p_forney, p_forrest_city, p_forsyth, p_fort_bliss)
+  private def chunk20: Seq[R] = Seq(p_fort_bragg, p_fort_dodge, p_fort_lee, p_fort_moore, p_fort_morgan, p_fort_myers, p_fort_pierre, p_fort_scott, p_fort_smith, p_fort_stockton, p_fowler, p_framingham, p_frankfort, p_frankfort_michigan, p_franklin, p_franklin_west_virginia, p_frederick, p_fredericksburg, p_freeport, p_fremont_nebraska, p_friday_harbor, p_friendswood, p_front_royal, p_frostburg, p_fulton, p_gadsden, p_gainesville_georgia, p_gainesville_texas, p_gaithersburg, p_galax, p_galesburg, p_gallipolis, p_gallup, p_galveston, p_garden_city, p_garrett, p_garrison, p_gastonia, p_gatesville, p_gaylord)
+  private def chunk21: Seq[R] = Seq(p_geneva, p_geneva_nebraska, p_georgetown, p_georgetown_south_carolina, p_gettysburg, p_gilford, p_gillette, p_glasgow, p_glasgow_montana, p_glen_allen, p_glendive, p_globe, p_gold_beach, p_goldsboro, p_goleta, p_gonzales, p_gonzales_texas, p_goodland, p_gordon, p_grafton, p_graham, p_granbury, p_grand_canyon_village, p_grand_island, p_grand_junction, p_grand_rapids_minnesota, p_grandville, p_grangeville, p_granite_city, p_grants, p_grants_pass, p_grapevine, p_grass_valley, p_grayling, p_great_barrington, p_great_bend, p_great_falls, p_greece, p_greenacres_city, p_greencastle)
+  private def chunk22: Seq[R] = Seq(p_greeneville, p_greenfield, p_greensboro_georgia, p_greensburg, p_greensburg_indiana, p_greensburg_kansas, p_greenville, p_greenville_alabama, p_greenville_mississippi, p_greenville_north_carolina, p_greenwood, p_greenwood_indiana, p_gregory, p_grenada, p_grinnell, p_grove, p_grundy, p_guayama, p_guaynabo, p_guin, p_gulf_shores, p_gulfport, p_gunnison, p_gunnison_utah, p_guymon, p_hadensville, p_hagerstown, p_haleyville, p_hamilton, p_hammond, p_hampton_south_carolina, p_hannibal, p_hanover, p_hardin, p_hardy, p_harlan, p_harlingen, p_harlowton, p_harrisburg, p_harrisburg_illinois)
+  private def chunk23: Seq[R] = Seq(p_harrison, p_harrisonburg, p_hartford_kentucky, p_harvey, p_hastings, p_hastings_michigan, p_hattiesburg, p_havelock, p_havre, p_hayward_wisconsin, p_hazard, p_hazen, p_hazleton, p_healdsburg, p_heath, p_heber_city, p_heber_springs, p_hebron, p_hebron_north_dakota, p_helena, p_henderson_kentucky, p_henderson_north_carolina, p_hendersonville, p_hendersonville_north_carolina, p_hereford, p_hermiston, p_hesperia, p_hettinger, p_hiawatha, p_hibbing, p_hickory, p_highland, p_highland_arkansas, p_hill_city, p_hilo, p_hilton_head_island, p_hinckley, p_hinesville, p_hingham, p_hobbs)
+  private def chunk24: Seq[R] = Seq(p_holbrook, p_holdrege, p_holland, p_holly, p_holly_springs, p_holyoke, p_homer, p_homestead, p_hondo, p_honoka_a, p_hood_river, p_hoopeston, p_hoover, p_hopkinsville, p_hoquiam, p_hornell, p_hot_springs, p_hot_springs_south_dakota, p_houghton, p_houghton_lake, p_houlton, p_houma, p_houston_missouri, p_howell, p_hudson, p_hugoton, p_humboldt, p_huntersville, p_huntington, p_huntington_indiana, p_huntsville_texas, p_huron, p_hurricane, p_hutchinson, p_hutchinson_minnesota, p_ida_grove, p_idabel, p_idaho_falls, p_imperial, p_independence_kansas)
+  private def chunk25: Seq[R] = Seq(p_indian_lake, p_indian_trail, p_indiana, p_inez, p_international_falls, p_inverness, p_ionia, p_iowa_city, p_iowa_falls, p_ironwood, p_issaquah, p_ithaca, p_jackson, p_jackson_california, p_jackson_michigan, p_jackson_ohio, p_jackson_wyoming, p_jacksonville_illinois, p_jacksonville_north_carolina, p_jacksonville_texas, p_jamestown, p_jamestown_new_york, p_jamestown_tennessee, p_janesville, p_jasper, p_jefferson_city, p_jeffersonville, p_jerseyville, p_jesup, p_johnson_city, p_johnstown, p_johnstown_new_york, p_jonesboro, p_jonesville, p_joplin, p_julesburg, p_juneau, p_jupiter, p_kahului, p_kailua_kona)
+  private def chunk26: Seq[R] = Seq(p_kalamazoo, p_kalispell, p_kane, p_kankakee, p_kanopolis, p_kapolei, p_katy, p_kaunakakai, p_kayenta, p_kearney, p_keene, p_kelso, p_kemmerer, p_kenai, p_kenmare, p_kenner, p_kennesaw, p_kennett, p_kennewick, p_kenosha, p_kenton, p_keokuk, p_kernersville, p_kerrville, p_ketchum, p_kewanee, p_key_west, p_kill_devil_hills, p_kilmarnock, p_kimball, p_kingfisher, p_kingman, p_kingman_kansas, p_kingston, p_kingston_massachusetts, p_kinsley, p_kinston, p_kirkland, p_kirksville, p_kissimmee)
+  private def chunk27: Seq[R] = Seq(p_klamath_falls, p_knox, p_knoxville_iowa, p_kodiak, p_kokomo, p_kutztown, p_kyle, p_la_crosse, p_la_grande, p_la_jolla, p_la_junta, p_ladysmith, p_lafayette_indiana, p_lafayette_tennessee, p_lagrange, p_laguna_niguel, p_lake_charles, p_lake_city, p_lake_city_colorado, p_lake_elsinore, p_lake_havasu_city, p_lake_jackson, p_lake_ozark, p_lake_placid, p_lakeport, p_lakewood_washington, p_lamar, p_lamar_colorado, p_lamesa, p_lamoni, p_lanai_city, p_lancaster, p_lancaster_new_hampshire, p_lancaster_new_york, p_lancaster_ohio, p_lancaster_texas, p_lancaster_wisconsin, p_lander, p_langdon, p_lansdale)
+  private def chunk28: Seq[R] = Seq(p_lapeer, p_laramie, p_largo, p_larkspur, p_larned, p_las_vegas_new_mexico, p_laughlin, p_laurel, p_laurinburg, p_lawrence, p_lawrenceburg, p_lawrenceville, p_lawton, p_layton, p_le_mars, p_leachville, p_lebanon, p_lebanon_missouri, p_lebanon_ohio, p_lee_s_summit, p_leesville, p_lemmon, p_lemoore, p_leominster, p_lewisburg_west_virginia, p_lewiston, p_lewistown, p_lewistown_pennsylvania, p_lexington_nebraska, p_lexington_south_carolina, p_lexington_tennessee, p_lexington_virginia, p_libby, p_liberal, p_lima, p_limon, p_lincoln_city, p_lincoln_illinois, p_lincoln_kansas, p_lincoln_new_hampshire)
+  private def chunk29: Seq[R] = Seq(p_linn, p_linton, p_lisbon, p_litchfield, p_litchfield_minnesota, p_lititz, p_little_falls, p_littleton_colorado, p_livermore, p_livingston, p_livingston_alabama, p_llano, p_lockport, p_lodi, p_logan, p_logan_west_virginia, p_logansport, p_lompoc, p_london, p_long_beach_washington, p_longmont, p_longview, p_lorain, p_los_alamos, p_los_banos, p_los_lunas, p_loveland, p_lovell, p_lovington, p_lucas, p_ludington, p_lufkin, p_lumberton, p_luverne, p_lyman, p_lynchburg, p_macomb, p_macon, p_macon_missouri, p_madawaska)
+  private def chunk30: Seq[R] = Seq(p_madera, p_madison_connecticut, p_madison_indiana, p_madison_south_dakota, p_madisonville, p_madras, p_malta, p_mammoth_lakes, p_manchester_connecticut, p_manchester_iowa, p_manhattan, p_manistee, p_manistique, p_manitowoc, p_mankato, p_mansfield, p_mansfield_city, p_maquoketa, p_marathon, p_marble_falls, p_marbleton, p_marco_island, p_marianna, p_maricopa, p_marietta, p_marinette, p_marion, p_marion_illinois, p_marion_iowa, p_marion_north_carolina, p_marion_virginia, p_marksville, p_marquette, p_marshall, p_marshall_arkansas, p_marshall_missouri, p_marshalltown, p_marshfield, p_martin, p_martinsburg)
+  private def chunk31: Seq[R] = Seq(p_martinsville, p_martinsville_indiana, p_marysville, p_marysville_kansas, p_maryville, p_maryville_missouri, p_mashpee, p_mason, p_mason_city, p_massena, p_matamoras, p_mattituck, p_mattoon, p_mattydale, p_maumee, p_mayaguez, p_mayfield, p_maysville, p_mayville, p_mcalester, p_mcconnelsville, p_mccook, p_mcdonough, p_mclean, p_mcminnville, p_mcminnville_tennessee, p_mcpherson, p_meadville, p_medford, p_medford_wisconsin, p_melbourne, p_mena, p_menomonie, p_mentor, p_merced, p_meridian, p_meridian_mississippi, p_merrill, p_mesilla, p_mesquite_nevada)
+  private def chunk32: Seq[R] = Seq(p_metaline_falls, p_methuen, p_mexico, p_miami_beach, p_miami_oklahoma, p_miamisburg, p_michigan_city, p_middle_river, p_middlebury_village, p_middlesboro, p_middletown, p_middletown_connecticut, p_middletown_delaware, p_midland, p_midlothian, p_milbank, p_milbridge, p_miles_city, p_milford, p_milford_delaware, p_milford_new_hampshire, p_millbury, p_milledgeville, p_miller, p_millsboro, p_mineola, p_mineral_wells, p_minot, p_mishawaka, p_missoula, p_missouri_city, p_mitchell, p_moab, p_moberly, p_mobridge, p_moline, p_monett, p_monetta, p_monroe, p_monroe_wisconsin)
+  private def chunk33: Seq[R] = Seq(p_monterey, p_montevideo, p_monticello, p_monticello_arkansas, p_montpelier, p_montpelier_idaho, p_montrose, p_moore, p_moorefield, p_moose_lake, p_mora, p_morehead, p_morenci, p_morgantown, p_morris, p_morristown, p_morton, p_moscow, p_moses_lake, p_mott, p_moultrie, p_mount_airy, p_mount_airy_georgia, p_mount_gilead, p_mount_lebanon, p_mount_pleasant, p_mount_pleasant_iowa, p_mount_pleasant_michigan, p_mount_pleasant_texas, p_mount_pleasant_utah, p_mount_shasta, p_mount_sterling, p_mount_vernon, p_mount_vernon_illinois, p_mount_vernon_ohio, p_mountain_grove, p_mountain_home, p_mountain_view, p_mountain_view_arkansas, p_muncie)
+  private def chunk34: Seq[R] = Seq(p_murray, p_muscatine, p_muskegon, p_muskogee, p_myrtle_beach, p_nantucket, p_naples, p_nashville_illinois, p_nashville_indiana, p_national_city, p_nebraska_city, p_nederland, p_neligh, p_neosho, p_nephi, p_new_bern, p_new_braunfels, p_new_brunswick, p_new_caney, p_new_castle, p_new_lenox, p_new_london, p_new_london_wisconsin, p_new_martinsville, p_new_paltz, p_new_philadelphia, p_new_ulm, p_newark_delaware, p_newberg, p_newberry, p_newcastle, p_newport, p_newport_beach, p_newport_vermont, p_newport_washington, p_newton, p_newton_illinois, p_newton_kansas, p_niagara_falls, p_nogales)
+  private def chunk35: Seq[R] = Seq(p_nome, p_norfolk, p_north_attleborough_center, p_north_conway, p_north_fort_myers, p_north_little_rock, p_north_platte, p_north_portland, p_north_virginia_beach, p_north_wilkesboro, p_northfield, p_norton, p_norton_kansas, p_norwalk_connecticut, p_norwood, p_o_fallon, p_oak_bluffs, p_oak_grove, p_oak_harbor, p_oak_ridge, p_oakes, p_oakhurst, p_oakland_maryland, p_oakley, p_oberlin, p_ocala, p_ocean_city, p_ocoee, p_oelwein, p_ogallala, p_ogden, p_okemah, p_old_forge, p_olympia, p_omak, p_onancock, p_onarga, p_onawa, p_oneida, p_oneida_tennessee)
+  private def chunk36: Seq[R] = Seq(p_oneonta, p_ontario, p_ontario_ohio, p_opelika, p_opelousas, p_orangeburg, p_orem, p_oro_valley, p_orofino, p_oroville, p_oshkosh, p_oskaloosa, p_oswego, p_oswego_new_york, p_othello, p_ottawa, p_ottawa_kansas, p_ottumwa, p_owasso, p_owatonna, p_owensboro, p_oxford, p_ozark, p_pace, p_paducah, p_page, p_page_north_dakota, p_pageland, p_pago_pago, p_pagosa_springs, p_palestine, p_palm_coast, p_palm_springs, p_pampa, p_panama_city, p_panguitch, p_paonia, p_paris, p_paris_illinois, p_park_falls)
+  private def chunk37: Seq[R] = Seq(p_park_rapids, p_parker, p_parkersburg, p_parsons, p_pauls_valley, p_pawhuska, p_payson, p_pearl_city, p_pell_city, p_pendleton, p_pensacola, p_perham, p_perry, p_perry_new_york, p_perryton, p_perryville, p_petaluma, p_petersburg, p_petoskey, p_pflugerville, p_philadelphia_mississippi, p_philip, p_philipsburg, p_piedmont, p_pikeville, p_pinecrest, p_pittsburg, p_pittsfield, p_plains, p_plantation, p_platte, p_platteville, p_plattsburgh, p_pleasanton, p_plentywood, p_plymouth, p_plymouth_indiana, p_plymouth_michigan, p_pocahontas, p_pocatello)
+  private def chunk38: Seq[R] = Seq(p_point_arena, p_polson, p_ponca_city, p_ponderay, p_pontiac, p_pooler, p_poplar_bluff, p_port_angeles, p_port_arthur, p_port_charlotte, p_port_huron, p_port_lavaca, p_port_townsend, p_portage, p_portage_pennsylvania, p_porterville, p_portland_texas, p_portsmouth, p_portsmouth_new_hampshire, p_poteau, p_potsdam, p_pottstown, p_poughkeepsie, p_powell, p_prairie_du_chien, p_pratt, p_prattville, p_prescott_valley, p_presque_isle, p_preston, p_price, p_princeton, p_princeton_illinois, p_princeton_indiana, p_prineville, p_pryor, p_queen_creek, p_queensbury, p_quincy, p_quincy_california)
+  private def chunk39: Seq[R] = Seq(p_quinnesec, p_rancho_mirage, p_randolph, p_rangeley, p_rapid_city, p_ravenna, p_rawlins, p_reading, p_red_bank, p_red_bank_tennessee, p_red_bluff, p_red_lodge, p_red_oak, p_red_wing, p_redding, p_redfield, p_redlands, p_redmond, p_rensselaer, p_rexburg, p_rhinelander, p_rice_lake, p_richfield, p_richland_center, p_richmond_indiana, p_richmond_kentucky, p_richmond_missouri, p_richmond_texas, p_ridgecrest, p_ridgeland, p_rifle, p_rio_grande_city, p_rio_rancho, p_ripley, p_ritzville, p_riverton, p_riverview, p_roanoke_rapids, p_robinson, p_rock_hill)
+  private def chunk40: Seq[R] = Seq(p_rock_springs, p_rockland, p_rocky_mount, p_rogers, p_rogers_city, p_rolla, p_rolla_north_dakota, p_rome, p_rome_georgia, p_roosevelt, p_roseau, p_roseburg, p_roswell, p_roswell_georgia, p_rothschild, p_roxboro, p_rugby, p_ruidoso, p_rushville, p_russell, p_russellville, p_ruston, p_saco, p_safford, p_saginaw, p_saguache, p_saint_charles, p_saint_clairsville, p_saint_croix, p_saint_croix_falls, p_saint_francis, p_saint_george, p_saint_helens, p_saint_johns, p_saint_joseph, p_saint_marys, p_saint_michael, p_salem_massachusetts, p_salem_ohio, p_salina)
+  private def chunk41: Seq[R] = Seq(p_salisbury, p_salmon, p_san_angelo, p_san_luis_obispo, p_san_marcos, p_san_marcos_texas, p_san_ramon, p_sandusky, p_sandusky_michigan, p_sandy, p_sanford_maine, p_santa_barbara, p_santa_cruz, p_santa_fe, p_santa_monica, p_santa_rosa_new_mexico, p_sapulpa, p_sarasota, p_savannah_tennessee, p_sayre, p_sayville, p_schenectady, p_schererville, p_schertz, p_schroon_lake, p_scobey, p_scottsbluff, p_scottsboro, p_scranton, p_searcy, p_seaside, p_sebring, p_sedalia, p_sedan, p_sedona, p_selinsgrove, p_selma, p_selma_alabama, p_seminole, p_senatobia)
+  private def chunk42: Seq[R] = Seq(p_seneca, p_seneca_kansas, p_sevierville, p_seward, p_seymour, p_shallotte, p_shamrock, p_sharon_springs, p_shattuck, p_shawano, p_shawnee, p_shawnee_kansas, p_sheboygan, p_shelbina, p_shelby, p_shelby_montana, p_shelbyville, p_shelbyville_illinois, p_shelbyville_tennessee, p_shelton, p_sheridan, p_sherman, p_show_low, p_sidney, p_sidney_montana, p_sidney_nebraska, p_sierra_vista, p_sikeston, p_silver_city, p_silver_spring, p_silverton, p_simpsonville, p_sioux_center, p_sioux_city, p_siren, p_sisters, p_sitka, p_skowhegan, p_slidell, p_smith_center)
+  private def chunk43: Seq[R] = Seq(p_smithfield, p_snyder, p_socorro, p_soda_springs, p_soledad, p_somerset, p_somerville, p_sonora, p_south_barrington, p_south_boston, p_south_fallsburg, p_south_jordan, p_south_kingstown, p_south_taft, p_southern_pines, p_southport, p_spanish_fork, p_sparks, p_sparta, p_sparta_wisconsin, p_spartanburg, p_spearfish, p_spearman, p_spencer, p_spencer_indiana, p_spencer_west_virginia, p_spirit_lake, p_spring, p_spring_hill, p_spring_hill_tennessee, p_springerville, p_springfield_colorado, p_springfield_georgia, p_springfield_ohio, p_springfield_oregon, p_springfield_vermont, p_springhill, p_springville, p_st_johns, p_st_johnsbury)
+  private def chunk44: Seq[R] = Seq(p_stafford, p_stamford_texas, p_stanley, p_starke, p_starkville, p_state_college, p_statesboro, p_steamboat_springs, p_stephenville, p_sterling, p_sterling_illinois, p_stevens_point, p_stigler, p_stillwater, p_stockton, p_stony_brook, p_storm_lake, p_stowe, p_strongsville, p_stuart, p_stuart_florida, p_sturgeon_bay, p_sturgis, p_stuttgart, p_suffern, p_suffolk, p_sullivan, p_sulphur_springs, p_summerlin_south, p_summersville, p_summerville, p_sumter, p_sun_prairie, p_sunnyside, p_sunrise, p_superior, p_susanville, p_sutton, p_syracuse_kansas, p_tabor_city)
+  private def chunk45: Seq[R] = Seq(p_tahlequah, p_taos, p_tavernier, p_taylorville, p_teays_valley, p_tehachapi, p_telluride, p_terre_haute, p_texarkana, p_the_colony, p_the_villages, p_the_woodlands, p_thermopolis, p_thief_river_falls, p_thomaston, p_thomasville, p_thompson_falls, p_thomson, p_three_rivers, p_tiffin, p_tigard, p_tillamook, p_tioga, p_tiptonville, p_titusville, p_tomball, p_toms_river, p_tonkawa, p_tooele, p_torrington, p_torrington_wyoming, p_tracy, p_traverse_city, p_trenton, p_tribune, p_trinidad, p_troy, p_truckee, p_truth_or_consequences, p_tuba_city)
+  private def chunk46: Seq[R] = Seq(p_tucumcari, p_tulare, p_tupelo, p_tupper_lake, p_tutu, p_twentynine_palms, p_twin_falls, p_two_harbors, p_ukiah, p_ulysses, p_uniontown, p_utica, p_uvalde, p_vacaville, p_valdez, p_valdosta, p_valley_city, p_valparaiso, p_van_buren, p_van_wert, p_vandalia, p_vandergrift, p_vashon, p_vassar, p_venice, p_ventura, p_vermillion, p_vernal, p_vernon, p_vero_beach, p_viborg, p_vicksburg, p_victor, p_victoria, p_vidalia, p_vienna_bend, p_vincennes, p_vineland, p_vineland_minnesota, p_vinita)
+  private def chunk47: Seq[R] = Seq(p_virginia, p_viroqua, p_wabash, p_waconia, p_wadena, p_wagner, p_waikoloa, p_waimea, p_waite_park, p_waldorf, p_waldron, p_walla_walla, p_walsenburg, p_walterboro, p_walton, p_warner_robins, p_warren_minnesota, p_warren_ohio, p_warrensburg, p_warwick, p_washington_illinois, p_washington_indiana, p_washington_iowa, p_washington_missouri, p_wasilla, p_waterford, p_waterloo, p_watertown, p_watertown_new_york, p_waterville, p_watford_city, p_watsonville, p_wauseon, p_wauwatosa, p_waycross, p_wayne, p_wayne_nebraska, p_waynesboro, p_waynesville, p_waynesville_missouri)
+  private def chunk48: Seq[R] = Seq(p_weatherford, p_weatherford_oklahoma, p_weaverville, p_webster, p_weirton, p_welch, p_wellfleet, p_wellington, p_wellington_texas, p_wells, p_wellsboro, p_wenatchee, p_wesley_chapel, p_west_bend, p_west_branch, p_west_chester, p_west_des_moines, p_west_jefferson, p_west_monroe, p_west_plains, p_west_point, p_west_yellowstone, p_westbrook, p_westcliffe, p_westminster_maryland, p_westons_mills, p_wheatland, p_wheaton, p_white_plains, p_whitehall, p_whitewright, p_wickenburg, p_wildwood, p_wilkes_barre, p_willcox, p_williamsburg, p_williamsport, p_williston, p_willits, p_willmar)
+  private def chunk49: Seq[R] = Seq(p_wilmington_delaware, p_winchester, p_winchester_indiana, p_winchester_tennessee, p_windom, p_window_rock, p_winfield, p_wing, p_winnemucca, p_winner, p_winona, p_winslow, p_winter_haven, p_winter_park, p_winthrop, p_wolf_point, p_woodbridge, p_woodbury, p_woodland_park, p_woodward, p_wooster, p_worland, p_worthington, p_wrangell, p_wray, p_wytheville, p_yakima, p_yankton, p_yazoo_city, p_yelm, p_yerington, p_york, p_york_nebraska, p_youngstown, p_yuba_city, p_yucca_valley, p_yulee, p_yuma, p_yuma_colorado, p_zanesville)
+  private def chunk50: Seq[R] = Seq(p_zumbrota)
   val pages: Seq[R] = chunk0 ++ chunk1 ++ chunk2 ++ chunk3 ++ chunk4 ++ chunk5 ++ chunk6 ++ chunk7 ++ chunk8 ++ chunk9 ++ chunk10 ++ chunk11 ++ chunk12 ++ chunk13 ++ chunk14 ++ chunk15 ++ chunk16 ++ chunk17 ++ chunk18 ++ chunk19 ++ chunk20 ++ chunk21 ++ chunk22 ++ chunk23 ++ chunk24 ++ chunk25 ++ chunk26 ++ chunk27 ++ chunk28 ++ chunk29 ++ chunk30 ++ chunk31 ++ chunk32 ++ chunk33 ++ chunk34 ++ chunk35 ++ chunk36 ++ chunk37 ++ chunk38 ++ chunk39 ++ chunk40 ++ chunk41 ++ chunk42 ++ chunk43 ++ chunk44 ++ chunk45 ++ chunk46 ++ chunk47 ++ chunk48 ++ chunk49 ++ chunk50
 
   /** (displayName, zoneId) — the venues whose own clock is not their page's. */
@@ -9114,7 +9090,9 @@ private[models] object UsRosterData {
     ("alaska", "alaska", "anchorage"),
     ("altoona-johnstown", "altoona-johnstown", "johnstown"),
     ("american-samoa", "american-samoa", "pago-pago"),
+    ("auburn-alabama", "auburn-alabama", "opelika"),
     ("beaumont-port-arthur", "beaumont-port-arthur", "beaumont"),
+    ("big-bear-lake", "big-bear-lake-california", "redlands"),
     ("birmingham-alabama", "birmingham-alabama", "birmingham"),
     ("bluefield-princeton", "bluefield-princeton", "bluefield"),
     ("brainerd-lakes", "brainerd-lakes", "aitkin"),
@@ -9148,13 +9126,16 @@ private[models] object UsRosterData {
     ("eureka-arcata", "eureka-arcata", "eureka"),
     ("florida-keys", "florida-keys", "key-west"),
     ("fox-valley", "fox-valley", "appleton"),
+    ("glen-burnie", "glen-burnie-maryland", "columbia-maryland"),
     ("grand-forks", "grand-forks", "thief-river-falls"),
     ("grand-forks-north-dakota", "grand-forks-north-dakota", "grafton"),
     ("grove-city", "grove-city", "new-castle"),
     ("guam", "guam", "dededo-village"),
     ("gulf-coast", "gulf-coast", "gulfport"),
     ("hackettstown", "hackettstown", "sparta"),
+    ("hampton-bays", "hampton-bays-new-york", "mattituck"),
     ("hampton-roads", "hampton-roads", "norfolk-virginia"),
+    ("hanover-pennsylvania", "hanover-pennsylvania", "westminster-maryland"),
     ("hawaii", "hawaii", "pearl-city"),
     ("hawaii-big-island", "hawaii-big-island", "hilo"),
     ("higginsville", "higginsville", "richmond-missouri"),
@@ -9182,6 +9163,7 @@ private[models] object UsRosterData {
     ("minneapolis-st-paul", "minneapolis-st-paul", "minneapolis"),
     ("minneapolis-st-paul-wisconsin", "minneapolis-st-paul-wisconsin", "minneapolis"),
     ("monterey-county", "monterey-county", "watsonville"),
+    ("morrisville", "morrisville-north-carolina", "holly-springs"),
     ("mount-ayr", "mount-ayr", "lamoni"),
     ("new-haven", "new-haven", "washington-missouri"),
     ("new-york-new-jersey", "new-york-new-jersey", "new-york"),
@@ -9202,6 +9184,7 @@ private[models] object UsRosterData {
     ("omaha-iowa", "omaha-iowa", "omaha"),
     ("osage", "osage", "mason-city"),
     ("owego", "owego", "binghamton"),
+    ("owings-mills", "owings-mills-maryland", "columbia-maryland"),
     ("paullina", "paullina", "storm-lake"),
     ("philadelphia-new-jersey", "philadelphia-new-jersey", "philadelphia"),
     ("pierre", "pierre", "gregory"),
@@ -9214,6 +9197,7 @@ private[models] object UsRosterData {
     ("rocky-mount-wilson", "rocky-mount-wilson", "rocky-mount"),
     ("saginaw-bay-city", "saginaw-bay-city", "bad-axe"),
     ("san-francisco-bay-area", "san-francisco-bay-area", "san-francisco"),
+    ("sanford", "sanford-north-carolina", "holly-springs"),
     ("sanpete-valley", "sanpete-valley", "ephraim"),
     ("sarasota-bradenton", "sarasota-bradenton", "sarasota"),
     ("scranton-wilkes-barre", "scranton-wilkes-barre", "scranton"),

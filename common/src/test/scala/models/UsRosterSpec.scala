@@ -10,7 +10,7 @@ import org.scalatest.matchers.should.Matchers
  * on a town page or a cluster of nearby small towns — see
  * `data/us/scripts/build_pages.py` and [[UsRoster]]. The state is only how a
  * visitor finds a page: `/california/` is nothing at all. These lock the cut, the
- * slugs (2,003 pages joining a global namespace that already holds a UK Birmingham
+ * slugs (2,001 pages joining a global namespace that already holds a UK Birmingham
  * and a German Potsdam), where each retired metro's URL goes, the clock each page
  * keeps, and that re-cutting the roster moved no cinema off it.
  */
@@ -22,14 +22,14 @@ class UsRosterSpec extends AnyFlatSpec with Matchers with OptionValues {
   private def state(label: String): CityGroup = City.usStates.find(_.label == label).value
 
   "The US roster" should "be one city per town or cluster page, grouped by the 55 states and territories" in {
-    City.usCities should have size 2003
+    City.usCities should have size 2001
     City.usStates should have size 55
   }
 
   it should "hold every venue exactly once — a re-cut, not a re-harvest" in {
     val venues = City.usCities.flatMap(_.cinemas)
-    venues should have size 5029
-    venues.distinct should have size 5029
+    venues should have size 5009
+    venues.distinct should have size 5009
     venues.toSet shouldBe UsRoster.byDisplayName.values.toSet
   }
 

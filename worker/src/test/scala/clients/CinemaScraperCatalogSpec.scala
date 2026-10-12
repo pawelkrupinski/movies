@@ -631,11 +631,11 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
 
   // The venues we could NOT verify against a chain's own roster must stay on the
   // aggregator. Wiring one to a chain client on a guessed id would 404 it into a
-  // permanently red venue; leaving it on flicks.us keeps it working. All three are
-  // in our roster but absent from their chain's own venue list.
+  // permanently red venue; leaving it on flicks.us keeps it working. This one is
+  // in our roster but absent from its chain's own venue list (the other two have since closed).
   it should "leave the unmapped chain venues on flicks.us" in {
     val c = catalog()
-    Seq("Showcase Randolph", "Landmark Esquire Theatre", "Landmark Plaza Frontenac Cinema")
+    Seq("Landmark Plaza Frontenac Cinema")
       .foreach { name =>
         withClue(s"$name should still be a FlicksClient: ") {
           c.all.find(_.cinema.displayName == name).value shouldBe a [FlicksClient]

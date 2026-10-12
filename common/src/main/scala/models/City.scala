@@ -978,7 +978,7 @@ private[models] object GermanPage {
  *  at state lines, and `/los-angeles/` listed Lancaster. A cluster may cross a
  *  state line; the picker files it under its anchor's state.
  *
- *  The roster (5,029 cinemas over 2,003 pages) is generated into `UsRosterData`
+ *  The roster (5,009 cinemas over 2,001 pages) is generated into `UsRosterData`
  *  and materialised by [[UsRoster]]; instances are built ONCE (in
  *  `City.usCities`), so identity equality holds just like the hand-authored
  *  `case object` cities.
@@ -1014,7 +1014,7 @@ private[models] object UsCity {
  *  (`data/spain/scripts/build_pages.py`); until 2026-10 a Spanish page was a
  *  whole province, and `/barcelona/` listed Berga, 100 km away.
  *
- *  The roster (602 cinemas over 240 pages) is generated into `SpanishRosterData`
+ *  The roster (601 cinemas over 240 pages) is generated into `SpanishRosterData`
  *  and materialised by [[SpanishRoster]]; instances are built ONCE (in
  *  `City.spanishCities`), so identity equality holds just like the hand-authored
  *  `case object` cities.

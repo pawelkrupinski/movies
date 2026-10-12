@@ -23,13 +23,12 @@ class GermanPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   it should "take the venues Filmstarts files under one of its districts" in {
     pageOf("Lichtspiele Kalk") shouldBe "koeln"
-    pageOf("LOTTO Hamburg Auto- und Open Air Kino") shouldBe "hamburg"   // filed under Altona
   }
 
   "a town with three or more venues" should "be a page of its own" in {
-    val landau = page("landau-in-der-pfalz")
-    landau.labels.nominative shouldBe "Landau in der Pfalz"
-    landau.cinemas.map(_.displayName) should contain allOf ("Filmwelt Landau", "Open Air Kino Landau", "Universum Kinocenter")
+    val ansbach = page("ansbach")
+    ansbach.labels.nominative shouldBe "Ansbach"
+    ansbach.cinemas.map(_.displayName) should contain allOf ("Capitol Kinocenter", "Kammerspiele Ansbach", "Kultur am Schloss")
   }
 
   "a cluster page" should "be named after its biggest town, and speak of it 'und Umgebung'" in {
@@ -49,7 +48,6 @@ class GermanPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
     pageOf("Capitol-Kinocenter Lohne (Oldenburg)") shouldBe "cloppenburg"   // not Löhne, Westphalia
     pageOf("Sommernachtskino (Löhne)") shouldBe "herford"
     pageOf("Kinopolis Main-Taunus") shouldBe "hofheim-am-taunus"            // Sulzbach (Taunus)
-    pageOf("Lu-Li Sommernachtskino") shouldBe "amberg"                      // Sulzbach-Rosenberg
     pageOf("KuKi - Das Kultkino") shouldBe "dingolfing"                     // Landau an der Isar
     pageOf("Park-Theater Buckow") shouldBe "fuerstenwalde-an-der-spree"     // Buckow (Märkische Schweiz)
   }

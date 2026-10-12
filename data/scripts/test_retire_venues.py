@@ -7,6 +7,7 @@ not a clean 404/410 (a 200, a runner blocked with 403, no answer at all) must ke
 
 Run: python3 data/scripts/test_retire_venues.py
 """
+import re
 import importlib.util
 import os
 
@@ -49,7 +50,9 @@ def test_rewrites_the_count_only_in_prose_files():
     # Spain's 602 has no thousands comma, so a bare `git grep 602` also took fonts, OG images and a
     # roster-audit fixture: read_text() crashed on the binaries after retired.json was written, and
     # a fixture whose ids or coordinates hold 602 would have been silently rewritten.
-    files = rv.files_quoting(602, "spain")
+    # The roster's size as CountrySpec pins it today, so a retirement does not break this test.
+    size = int(re.search(rv.PINNED_SIZE["spain"], rv.COUNTRY_SPEC.read_text()).group(2))
+    files = rv.files_quoting(size, "spain")
     assert "common/src/main/scala/models/City.scala" in files, files
     assert "data/spain/README.md" in files, files
     assert all(f.endswith(".scala") or f.endswith("README.md") for f in files), files

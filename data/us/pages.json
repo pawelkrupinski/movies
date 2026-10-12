@@ -633,8 +633,7 @@
     "regal-ua-colorado-center-denver",
     "sie-filmcenter-denver",
     "bug-theatre-denver",
-    "infinity-theater",
-    "landmark-esquire-theatre"
+    "infinity-theater"
    ]
   },
   {
@@ -856,7 +855,6 @@
     "malco-stage-cinema-bartlett",
     "malco-studio-on-the-square-memphis",
     "malco-wolfchase-8-galleria-memphis",
-    "malco-summer-drive-in-memphis",
     "palace-cinema-memphis",
     "pink-palace-museum-memphis"
    ]
@@ -1150,7 +1148,6 @@
     "bb-northland-14-kansas-city",
     "rooftop-cinema-crossroads-kansas-city",
     "screenland-armour-kansas-city",
-    "bb-mainstreet-kansas-city",
     "regnier-extreme-screen-theatre"
    ]
   },
@@ -3875,8 +3872,7 @@
     "academy-cinemas-pasadena",
     "laemmle-pasadena",
     "regal-paseo-pasadena",
-    "artcenter-college-of-design",
-    "ipic-pasadena"
+    "artcenter-college-of-design"
    ]
   },
   {
@@ -4439,8 +4435,7 @@
    ],
    "cinemas": [
     "abilene-premiere-cinema-10",
-    "cinemark-abilene-12",
-    "cinemark-century-abilene-12"
+    "cinemark-abilene-12"
    ]
   },
   {
@@ -4907,8 +4902,7 @@
     "Downey, California"
    ],
    "cinemas": [
-    "cinemark-downey-14",
-    "look-cinemas-downey"
+    "cinemark-downey-14"
    ]
   },
   {
@@ -5857,15 +5851,11 @@
    "towns": [
     "Aberdeen, Maryland",
     "Havre de Grace, Maryland",
-    "Bel Air, Maryland",
-    "Fallston, Maryland",
     "Chestertown, Maryland",
     "Perryville, Maryland"
    ],
    "cinemas": [
-    "flagship-cinemas-churchville",
     "horizon-cinemas-aberdeen",
-    "horizon-cinemas-fallston",
     "flagship-cinemas-chestertown",
     "state-havre-de-grace",
     "the-screening-room-at-grounded"
@@ -6297,7 +6287,6 @@
     "Alhambra, California",
     "Monterey Park, California",
     "Arcadia, California",
-    "Monrovia, California",
     "La Cañada Flintridge, California",
     "Commerce, California"
    ],
@@ -6306,8 +6295,7 @@
     "amc-santa-anita-16",
     "regal-edwards-alhambra-renaissance",
     "regal-flintridge-la-canada",
-    "regency-commerce-cinema-14",
-    "look-cinemas-monrovia"
+    "regency-commerce-cinema-14"
    ]
   },
   {
@@ -6412,8 +6400,7 @@
    "cinemas": [
     "amc-north-point-mall-12-alpharetta",
     "regal-avalon-alpharetta",
-    "studio-movie-grill-north-point",
-    "cmx-cinbistro-halcyon"
+    "studio-movie-grill-north-point"
    ]
   },
   {
@@ -6960,13 +6947,11 @@
    "lon": -82.3182,
    "towns": [
     "Ashland, Ohio",
-    "Loudonville, Ohio",
-    "Hayesville, Ohio"
+    "Loudonville, Ohio"
    ],
    "cinemas": [
     "ohio-theatre-loudonville",
-    "the-ashland-schine-theater",
-    "hayesville-opera-house"
+    "the-ashland-schine-theater"
    ]
   },
   {
@@ -7216,24 +7201,6 @@
     "auburn-movieplex",
     "fingerlake-drive-in-auburn",
     "track-cinema-auburn"
-   ]
-  },
-  {
-   "slug": "auburn-alabama",
-   "kind": "cluster",
-   "name": "Auburn",
-   "anchor": "Auburn, Alabama",
-   "state": "Alabama",
-   "qualifiedSlug": "auburn-alabama",
-   "lat": 32.6099,
-   "lon": -85.4808,
-   "towns": [
-    "Auburn, Alabama",
-    "Opelika, Alabama"
-   ],
-   "cinemas": [
-    "amc-classic-tiger-13",
-    "amc-classic-auburn-14"
    ]
   },
   {
@@ -8318,22 +8285,6 @@
    ],
    "cinemas": [
     "bicknell-theater"
-   ]
-  },
-  {
-   "slug": "big-bear-lake",
-   "kind": "town",
-   "name": "Big Bear Lake",
-   "anchor": "Big Bear Lake, California",
-   "state": "California",
-   "qualifiedSlug": "big-bear-lake-california",
-   "lat": 34.2439,
-   "lon": -116.9114,
-   "towns": [
-    "Big Bear Lake, California"
-   ],
-   "cinemas": [
-    "village-north-big-bear-lake"
    ]
   },
   {
@@ -11297,7 +11248,7 @@
   },
   {
    "slug": "cloquet",
-   "kind": "cluster",
+   "kind": "town",
    "name": "Cloquet",
    "anchor": "Cloquet, Minnesota",
    "state": "Minnesota",
@@ -11305,14 +11256,10 @@
    "lat": 46.7216,
    "lon": -92.4594,
    "towns": [
-    "Cloquet, Minnesota",
-    "Hermantown, Minnesota",
-    "Moose Lake, Minnesota"
+    "Cloquet, Minnesota"
    ],
    "cinemas": [
-    "lake-theater-moose-lake",
-    "premiere-theatres-cloquet",
-    "marcus-lakes-hermantown"
+    "premiere-theatres-cloquet"
    ]
   },
   {
@@ -11457,16 +11404,19 @@
    "lon": -76.8394,
    "towns": [
     "Columbia, Maryland",
+    "Glen Burnie, Maryland",
+    "Towson, Maryland",
     "Hanover, Maryland",
-    "Laurel, Maryland",
+    "Owings Mills, Maryland",
     "Arbutus, Maryland"
    ],
    "cinemas": [
     "amc-columbia-maryland-14",
-    "phoenix-columbia-snowden-14",
+    "amc-owings-mills-17",
     "cinemark-egyptian-24",
-    "rc-hollywood-cinema-4-arbutus",
-    "regal-laurel-town-center"
+    "cinemark-towson",
+    "horizon-cinemas-marley-station",
+    "rc-hollywood-cinema-4-arbutus"
    ]
   },
   {
@@ -15845,26 +15795,6 @@
    ]
   },
   {
-   "slug": "glen-burnie",
-   "kind": "cluster",
-   "name": "Glen Burnie",
-   "anchor": "Glen Burnie, Maryland",
-   "state": "Maryland",
-   "qualifiedSlug": "glen-burnie-maryland",
-   "lat": 39.1626,
-   "lon": -76.6247,
-   "towns": [
-    "Glen Burnie, Maryland",
-    "Towson, Maryland",
-    "Middle River, Maryland"
-   ],
-   "cinemas": [
-    "bengies-drive-in-middle-river",
-    "cinemark-towson",
-    "horizon-cinemas-marley-station"
-   ]
-  },
-  {
    "slug": "glendive",
    "kind": "town",
    "name": "Glendive",
@@ -16954,26 +16884,6 @@
    ]
   },
   {
-   "slug": "hampton-bays",
-   "kind": "cluster",
-   "name": "Hampton Bays",
-   "anchor": "Hampton Bays, New York",
-   "state": "New York",
-   "qualifiedSlug": "hampton-bays-new-york",
-   "lat": 40.869,
-   "lon": -72.5176,
-   "towns": [
-    "Hampton Bays, New York",
-    "Mattituck, New York",
-    "Westhampton Beach, New York"
-   ],
-   "cinemas": [
-    "mattituck-theatre-8",
-    "sunset-theater-westhampton-beach",
-    "regal-hampton-bay"
-   ]
-  },
-  {
    "slug": "hampton-south-carolina",
    "kind": "town",
    "name": "Hampton",
@@ -17026,22 +16936,6 @@
     "hopkins-center-hanover",
     "woodstock-town-hall-theatre",
     "fairlee-drive-in"
-   ]
-  },
-  {
-   "slug": "hanover-pennsylvania",
-   "kind": "town",
-   "name": "Hanover",
-   "anchor": "Hanover, Pennsylvania",
-   "state": "Pennsylvania",
-   "qualifiedSlug": "hanover-pennsylvania",
-   "lat": 39.8007,
-   "lon": -76.983,
-   "towns": [
-    "Hanover, Pennsylvania"
-   ],
-   "cinemas": [
-    "rc-hanover-movies-16"
    ]
   },
   {
@@ -17847,7 +17741,6 @@
    "towns": [
     "Hingham, Massachusetts",
     "Braintree, Massachusetts",
-    "Randolph, Massachusetts",
     "Hanover, Massachusetts",
     "Holbrook, Massachusetts",
     "North Scituate, Massachusetts"
@@ -17858,8 +17751,7 @@
     "patriot-cinemas-hingham",
     "edgartown-cinemas",
     "reel-harbor-theater",
-    "showcase-hanover-crossing",
-    "showcase-randolph"
+    "showcase-hanover-crossing"
    ]
   },
   {
@@ -17950,6 +17842,28 @@
    ],
    "cinemas": [
     "holly-theater"
+   ]
+  },
+  {
+   "slug": "holly-springs",
+   "kind": "cluster",
+   "name": "Holly Springs",
+   "anchor": "Holly Springs, North Carolina",
+   "state": "North Carolina",
+   "qualifiedSlug": "holly-springs-north-carolina",
+   "lat": 35.6513,
+   "lon": -78.8336,
+   "towns": [
+    "Holly Springs, North Carolina",
+    "Sanford, North Carolina",
+    "Garner, North Carolina",
+    "Morrisville, North Carolina"
+   ],
+   "cinemas": [
+    "amc-dine-in-holly-springs-9",
+    "amc-park-place-12",
+    "regal-white-oak-garner",
+    "spring-lane-stadium-10"
    ]
   },
   {
@@ -19962,8 +19876,8 @@
    "lon": -122.2087,
    "towns": [
     "Kirkland, Washington",
-    "Redmond, Washington",
     "Lynnwood, Washington",
+    "Redmond, Washington",
     "Shoreline, Washington",
     "Bothell, Washington",
     "Edmonds, Washington",
@@ -19979,7 +19893,6 @@
     "landmark-crest-cinema-center",
     "mcmenamins-anderson-school",
     "regal-bella-bottega-redmond",
-    "ipic-redmond",
     "regal-cinebarre-mountlake",
     "the-edmonds-theater"
    ]
@@ -20373,12 +20286,10 @@
    "towns": [
     "Lake Elsinore, California",
     "San Jacinto, California",
-    "Beaumont, California",
     "Banning, California",
     "Idyllwild, California"
    ],
    "cinemas": [
-    "2nd-street-cinema-beaumont",
     "fox-cineplex-is-dplace",
     "regal-metro-san-jacinto",
     "rustic-theatre-idyllwild",
@@ -23054,6 +22965,24 @@
    ]
   },
   {
+   "slug": "mattituck",
+   "kind": "cluster",
+   "name": "Mattituck",
+   "anchor": "Mattituck, New York",
+   "state": "New York",
+   "qualifiedSlug": "mattituck-new-york",
+   "lat": 40.9912,
+   "lon": -72.5343,
+   "towns": [
+    "Mattituck, New York",
+    "Westhampton Beach, New York"
+   ],
+   "cinemas": [
+    "mattituck-theatre-8",
+    "sunset-theater-westhampton-beach"
+   ]
+  },
+  {
    "slug": "mattoon",
    "kind": "town",
    "name": "Mattoon",
@@ -23695,6 +23624,28 @@
    "cinemas": [
     "amc-classic-michigan-city-14",
     "vickers-theatre-three-oaks"
+   ]
+  },
+  {
+   "slug": "middle-river",
+   "kind": "cluster",
+   "name": "Middle River",
+   "anchor": "Middle River, Maryland",
+   "state": "Maryland",
+   "qualifiedSlug": "middle-river-maryland",
+   "lat": 39.3343,
+   "lon": -76.4394,
+   "towns": [
+    "Middle River, Maryland",
+    "Hunt Valley, Maryland",
+    "Bel Air, Maryland",
+    "Fallston, Maryland"
+   ],
+   "cinemas": [
+    "bengies-drive-in-middle-river",
+    "flagship-cinemas-churchville",
+    "horizon-cinemas-fallston",
+    "regal-hunt-valley"
    ]
   },
   {
@@ -24423,6 +24374,22 @@
    ]
   },
   {
+   "slug": "moose-lake",
+   "kind": "town",
+   "name": "Moose Lake",
+   "anchor": "Moose Lake, Minnesota",
+   "state": "Minnesota",
+   "qualifiedSlug": "moose-lake-minnesota",
+   "lat": 46.4541,
+   "lon": -92.7619,
+   "towns": [
+    "Moose Lake, Minnesota"
+   ],
+   "cinemas": [
+    "lake-theater-moose-lake"
+   ]
+  },
+  {
    "slug": "mora",
    "kind": "town",
    "name": "Mora",
@@ -24518,27 +24485,6 @@
    ],
    "cinemas": [
     "amc-classic-college-square-12"
-   ]
-  },
-  {
-   "slug": "morrisville",
-   "kind": "cluster",
-   "name": "Morrisville",
-   "anchor": "Morrisville, North Carolina",
-   "state": "North Carolina",
-   "qualifiedSlug": "morrisville-north-carolina",
-   "lat": 35.8235,
-   "lon": -78.8256,
-   "towns": [
-    "Morrisville, North Carolina",
-    "Holly Springs, North Carolina",
-    "Garner, North Carolina"
-   ],
-   "cinemas": [
-    "amc-dine-in-holly-springs-9",
-    "amc-park-place-12",
-    "bb-morrisville-park-west-14",
-    "regal-white-oak-garner"
    ]
   },
   {
@@ -26515,6 +26461,22 @@
    ]
   },
   {
+   "slug": "opelika",
+   "kind": "town",
+   "name": "Opelika",
+   "anchor": "Opelika, Alabama",
+   "state": "Alabama",
+   "qualifiedSlug": "opelika-alabama",
+   "lat": 32.6454,
+   "lon": -85.3783,
+   "towns": [
+    "Opelika, Alabama"
+   ],
+   "cinemas": [
+    "amc-classic-tiger-13"
+   ]
+  },
+  {
    "slug": "opelousas",
    "kind": "town",
    "name": "Opelousas",
@@ -26834,26 +26796,6 @@
     "cinema-66-tell-city",
     "holiday-drive-in-rockport",
     "malco-owensboro-cinema-grill"
-   ]
-  },
-  {
-   "slug": "owings-mills",
-   "kind": "cluster",
-   "name": "Owings Mills",
-   "anchor": "Owings Mills, Maryland",
-   "state": "Maryland",
-   "qualifiedSlug": "owings-mills-maryland",
-   "lat": 39.4196,
-   "lon": -76.7802,
-   "towns": [
-    "Owings Mills, Maryland",
-    "Hunt Valley, Maryland",
-    "Westminster, Maryland"
-   ],
-   "cinemas": [
-    "amc-owings-mills-17",
-    "rc-westminster-movies-9",
-    "regal-hunt-valley"
    ]
   },
   {
@@ -28446,11 +28388,9 @@
     "Hillsborough, New Jersey",
     "White Horse, New Jersey",
     "Hightstown, New Jersey",
-    "Lambertville, New Jersey",
     "Ten Mile Run, New Jersey"
    ],
    "cinemas": [
-    "acme-screening-room-lambertville",
     "amc-marketfair-princeton-10",
     "princeton-garden-theatre",
     "hillsborough-cinemas-10",
@@ -28888,7 +28828,7 @@
   },
   {
    "slug": "redlands",
-   "kind": "town",
+   "kind": "cluster",
    "name": "Redlands",
    "anchor": "Redlands, California",
    "state": "California",
@@ -28896,11 +28836,14 @@
    "lat": 34.0556,
    "lon": -117.1825,
    "towns": [
-    "Redlands, California"
+    "Redlands, California",
+    "Beaumont, California",
+    "Big Bear Lake, California"
    ],
    "cinemas": [
+    "2nd-street-cinema-beaumont",
     "harkins-mountain-grove-16",
-    "look-cinemas-redlands"
+    "village-north-big-bear-lake"
    ]
   },
   {
@@ -29246,7 +29189,6 @@
     "Riverton, Wyoming"
    ],
    "cinemas": [
-    "acme-theatre-riverton",
     "gem-theatre-riverton"
    ]
   },
@@ -30022,8 +29964,7 @@
     "Salina, Kansas"
    ],
    "cinemas": [
-    "salina-art-center",
-    "amc-classic-salina-10"
+    "salina-art-center"
    ]
   },
   {
@@ -30220,22 +30161,6 @@
     "cinemark-century-sandy-union-heights-16",
     "megaplex-jordan-commons",
     "king-otter-theater"
-   ]
-  },
-  {
-   "slug": "sanford",
-   "kind": "town",
-   "name": "Sanford",
-   "anchor": "Sanford, North Carolina",
-   "state": "North Carolina",
-   "qualifiedSlug": "sanford-north-carolina",
-   "lat": 35.4799,
-   "lon": -79.1803,
-   "towns": [
-    "Sanford, North Carolina"
-   ],
-   "cinemas": [
-    "spring-lane-stadium-10"
    ]
   },
   {
@@ -31299,6 +31224,7 @@
     "Rockville, Maryland",
     "Downtown DC, District of Columbia",
     "Wheaton, Maryland",
+    "Laurel, Maryland",
     "Hyattsville, Maryland",
     "Beltsville, Maryland",
     "Falls Church, Virginia",
@@ -31314,6 +31240,7 @@
     "amc-wheaton-mall-9",
     "paragon-theaters-founders-row",
     "regal-hyattsville-royale",
+    "regal-laurel-town-center",
     "regal-rockville-center",
     "national-gallery-of-art"
    ]
@@ -35495,6 +35422,24 @@
    ]
   },
   {
+   "slug": "westminster-maryland",
+   "kind": "cluster",
+   "name": "Westminster",
+   "anchor": "Westminster, Maryland",
+   "state": "Maryland",
+   "qualifiedSlug": "westminster-maryland",
+   "lat": 39.5754,
+   "lon": -76.9958,
+   "towns": [
+    "Westminster, Maryland",
+    "Hanover, Pennsylvania"
+   ],
+   "cinemas": [
+    "rc-westminster-movies-9",
+    "rc-hanover-movies-16"
+   ]
+  },
+  {
    "slug": "westons-mills",
    "kind": "cluster",
    "name": "Westons Mills",
@@ -36133,7 +36078,7 @@
   },
   {
    "slug": "wooster",
-   "kind": "town",
+   "kind": "cluster",
    "name": "Wooster",
    "anchor": "Wooster, Ohio",
    "state": "Ohio",
@@ -36141,11 +36086,12 @@
    "lat": 40.8052,
    "lon": -81.9365,
    "towns": [
-    "Wooster, Ohio"
+    "Wooster, Ohio",
+    "Hayesville, Ohio"
    ],
    "cinemas": [
     "lyric-theater-wooster",
-    "cinemark-wooster-movies-10"
+    "hayesville-opera-house"
    ]
   },
   {
@@ -36500,10 +36446,20 @@
    "qualifiedSlug": "american-samoa",
    "anchor": null
   },
+  "auburn-alabama": {
+   "page": "opelika",
+   "qualifiedSlug": "auburn-alabama",
+   "anchor": "Auburn, Alabama"
+  },
   "beaumont-port-arthur": {
    "page": "beaumont",
    "qualifiedSlug": "beaumont-port-arthur",
    "anchor": null
+  },
+  "big-bear-lake": {
+   "page": "redlands",
+   "qualifiedSlug": "big-bear-lake-california",
+   "anchor": "Big Bear Lake, California"
   },
   "birmingham-alabama": {
    "page": "birmingham",
@@ -36670,6 +36626,11 @@
    "qualifiedSlug": "fox-valley",
    "anchor": null
   },
+  "glen-burnie": {
+   "page": "columbia-maryland",
+   "qualifiedSlug": "glen-burnie-maryland",
+   "anchor": "Glen Burnie, Maryland"
+  },
   "grand-forks": {
    "page": "thief-river-falls",
    "qualifiedSlug": "grand-forks",
@@ -36700,10 +36661,20 @@
    "qualifiedSlug": "hackettstown",
    "anchor": "Hackettstown, New Jersey"
   },
+  "hampton-bays": {
+   "page": "mattituck",
+   "qualifiedSlug": "hampton-bays-new-york",
+   "anchor": "Hampton Bays, New York"
+  },
   "hampton-roads": {
    "page": "norfolk-virginia",
    "qualifiedSlug": "hampton-roads",
    "anchor": null
+  },
+  "hanover-pennsylvania": {
+   "page": "westminster-maryland",
+   "qualifiedSlug": "hanover-pennsylvania",
+   "anchor": "Hanover, Pennsylvania"
   },
   "hawaii": {
    "page": "pearl-city",
@@ -36840,6 +36811,11 @@
    "qualifiedSlug": "monterey-county",
    "anchor": null
   },
+  "morrisville": {
+   "page": "holly-springs",
+   "qualifiedSlug": "morrisville-north-carolina",
+   "anchor": "Morrisville, North Carolina"
+  },
   "mount-ayr": {
    "page": "lamoni",
    "qualifiedSlug": "mount-ayr",
@@ -36940,6 +36916,11 @@
    "qualifiedSlug": "owego",
    "anchor": "Owego, New York"
   },
+  "owings-mills": {
+   "page": "columbia-maryland",
+   "qualifiedSlug": "owings-mills-maryland",
+   "anchor": "Owings Mills, Maryland"
+  },
   "paullina": {
    "page": "storm-lake",
    "qualifiedSlug": "paullina",
@@ -36999,6 +36980,11 @@
    "page": "san-francisco",
    "qualifiedSlug": "san-francisco-bay-area",
    "anchor": null
+  },
+  "sanford": {
+   "page": "holly-springs",
+   "qualifiedSlug": "sanford-north-carolina",
+   "anchor": "Sanford, North Carolina"
   },
   "sanpete-valley": {
    "page": "ephraim",

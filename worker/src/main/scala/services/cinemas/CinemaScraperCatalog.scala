@@ -1970,7 +1970,7 @@ class CinemaScraperCatalog(
   private def ocine(ticketingSlug: String, cinema: Cinema): OcineClient =
     new OcineClient(http, ticketingSlug, cinema, today = venueClock.todayAt(cinema, OcineClient.Zone))
 
-  // Spain — data-driven from the full SpanishRoster (240 town pages / 602 cinemas):
+  // Spain — data-driven from the full SpanishRoster (240 town pages / 601 cinemas):
   // one scraper per cinema, keyed by the PAGE slug City.slug uses — the venue's
   // own chain server where the roster names one, SensaCine otherwise. Keyed off
   // `Country.Spain.cities` rather than off `SpanishRoster.places`, because
@@ -1986,7 +1986,7 @@ class CinemaScraperCatalog(
     }.toMap
 
   // ── United States (chain-primary, Flicks for the rest) ───────────────────
-  // Data-driven from the full UsRoster (2,003 town and cluster pages / 5,029 cinemas):
+  // Data-driven from the full UsRoster (2,001 town and cluster pages / 5,009 cinemas):
   // one scraper per cinema, keyed by the PAGE slug City.slug uses.
   //
   // A venue named in `UsChainVenues` gets its CHAIN'S OWN site as the primary and
@@ -2199,7 +2199,7 @@ class CinemaScraperCatalog(
     "worcestershire" -> worcestershireScrapers,
     "yorkshire" -> yorkshireScrapers,
   ) ++ germanBaseByCity   // Germany: 436 town and cluster pages (data-driven)
-    ++ usBaseByCity       // USA: 2,003 town and cluster pages (data-driven)
+    ++ usBaseByCity       // USA: 2,001 town and cluster pages (data-driven)
     ++ spanishBaseByCity  // Spain: 240 town and cluster pages (data-driven)
 
   // Venues the 2026-09 sweeps added (Filmweb, bilety24, biletyna, the chains' own

@@ -81,7 +81,7 @@ object VenueScrapeCadence {
  */
 class VenueCadenceStore(countryDefault: ScrapeFreshness) {
   // A ConcurrentHashMap, not a TrieMap: the scrape reaper asks every venue's period every minute
-  // (5,029 on US), and the TrieMap's lookups were 3.4% of the US worker's CPU (JFR 2026-10-01).
+  // (5,009 on US), and the TrieMap's lookups were 3.4% of the US worker's CPU (JFR 2026-10-01).
   private val overrides = new java.util.concurrent.ConcurrentHashMap[String, FiniteDuration]()
 
   /** Record this venue's freshly observed runway, deriving and storing the

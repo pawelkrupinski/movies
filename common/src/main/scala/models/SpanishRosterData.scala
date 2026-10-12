@@ -1,5 +1,5 @@
 // GENERATED from data/spain/pages.json by data/spain/scripts/generate_roster.py
-// — do NOT edit by hand. Full Spanish cinema roster: 240 pages / 602 cinemas (SensaCine, plus the Ocine
+// — do NOT edit by hand. Full Spanish cinema roster: 240 pages / 601 cinemas (SensaCine, plus the Ocine
 // venues it does not list, from data/spain/ocine.json).
 // Regenerate with `python3 data/spain/scripts/generate_roster.py` after re-clustering;
 // see data/spain/README.md.
@@ -127,7 +127,6 @@ private[models] object SpanishRosterData {
     ("Ocine Premium Gran Vía de Vigo", "Ocine Premium Gran Vía de Vigo", None, Some("tickets.ocinepremiumgranvia.es"))
   ))
   private def p_gijon: R = ("gijon", "gijon-asturias", "Gijón", "Asturias", 43.5357, -5.6615, "Europe/Madrid", false, Seq("Gijón"), Seq(
-    ("Autocine Gijón", "Autocine Gijón", Some("E0784"), None),
     ("Ocine Premium Los Fresnos", "Ocine Premium Los Fresnos", None, Some("tickets.ocinepremiumlosfresnos.es"))
   ))
   private def p_l_hospitalet_de_llobregat: R = ("l-hospitalet-de-llobregat", "l-hospitalet-de-llobregat-cataluna", "L'Hospitalet de Llobregat", "Barcelona", 41.3597, 2.1003, "Europe/Madrid", false, Seq("L'Hospitalet de Llobregat"), Seq(

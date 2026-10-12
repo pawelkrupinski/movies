@@ -61,7 +61,6 @@
     "fsk am Oranienplatz",
     "Hackesche Höfe Kino",
     "IL KINO",
-    "Instituto Cervantes - Berlin",
     "Kant Kino Charlottenburg",
     "Kino Central Berlin",
     "Kino Central Open Air (Berlin)",
@@ -124,11 +123,9 @@
     "FilmRaum",
     "Hansa Studio Bergedorf",
     "Holi",
-    "Instituto Cervantes - Hamburg",
     "Kinopolis HafenCity",
     "Koralle",
     "Lichtmess",
-    "LOTTO Hamburg Auto- und Open Air Kino",
     "LOTTO Hamburg SchanzenKino Open Air",
     "Magazin",
     "Metropolis Kino",
@@ -166,7 +163,6 @@
     "City-Kinos - München",
     "Filmmuseum München",
     "Forum 2 - Kulturverein Olympiadorf e.V.",
-    "Gabriel Filmtheater",
     "Gloria Palast",
     "Instituto Cervantes - München",
     "Istituto Italiano di Cultura - München",
@@ -367,7 +363,6 @@
     "CLUB PASSAGE",
     "Filmnächte am Elbufer",
     "Filmtheater Schauburg",
-    "k.i.d. - Kino im Dach",
     "Kino im Kasten - Das Studentenkino",
     "Kino in der Scheune Dresden",
     "Programmkino Ost",
@@ -399,7 +394,6 @@
     "Filmkunsttheater Atlantis",
     "Filmkunsttheater Gondel",
     "Instituto Cervantes - Bremen",
-    "Kulturkirche St. Stephani",
     "Schauburg Bremen"
    ]
   },
@@ -422,7 +416,6 @@
     "Cinecittá Open Air",
     "Filmfabrik KommKino",
     "Filmhauskino im Künstlerhaus",
-    "Kino in den Felsengängen",
     "Meisengeige",
     "Metropolis Nürnberg",
     "Open Air Fränkisches Museumseisenbahn",
@@ -792,7 +785,6 @@
     "Clubkino Siegmar",
     "Filmclub Mittendrin",
     "Filmnächte auf dem Theaterplatz",
-    "M54 / AJZ",
     "Metropol Chemnitz",
     "Weltecho"
    ]
@@ -951,8 +943,7 @@
    "cinemas": [
     "CineStar Erfurt",
     "Kinoklub am Hirschlachufer",
-    "Open Air im Kulturhof Krönbacken",
-    "Open Air Kino egapark"
+    "Open Air im Kulturhof Krönbacken"
    ]
   },
   {
@@ -1252,7 +1243,6 @@
     "Filmgalerie im Leeren Beutel",
     "Garbo",
     "Kinos im Andreasstadel",
-    "Open Air Kino Auf Schloss Pürkelgut",
     "Ostentor",
     "Regina Filmtheater Regensburg",
     "Turm-Theater Regensburg"
@@ -1925,11 +1915,15 @@
    "lon": 11.8627,
    "towns": [
     "Amberg",
-    "Sulzbach-Rosenberg"
+    "Burglengenfeld",
+    "Nittenau",
+    "Wald"
    ],
    "cinemas": [
     "Cineplex Amberg",
-    "Lu-Li Sommernachtskino"
+    "Kino-Center Nittenau",
+    "Kinomobil Stuttgart - Feuerwehrhaus Wald",
+    "Starmexx - Erlebniskino"
    ]
   },
   {
@@ -2055,34 +2049,6 @@
     "Kinopolis Aschaffenburg",
     "OPEN AIR auf dem Campus FH",
     "Open-Air-Kino im Nilkheimer Park"
-   ]
-  },
-  {
-   "slug": "asperg",
-   "kind": "cluster",
-   "name": "Asperg",
-   "anchor": "Asperg",
-   "bundesland": "Baden-Württemberg",
-   "qualifiedSlug": "asperg-baden-wuerttemberg",
-   "lat": 48.9053,
-   "lon": 9.135,
-   "towns": [
-    "Asperg",
-    "Besigheim",
-    "Lauffen",
-    "Löchgau",
-    "Kirchheim am Neckar",
-    "Walheim",
-    "Erligheim"
-   ],
-   "cinemas": [
-    "Kinomobil Stuttgart - Alte Kelter",
-    "Kinomobil Stuttgart - Bürgerhaus Vordere Kelter",
-    "Kinomobil Stuttgart - Gemeindehalle Löchgau",
-    "Kinomobil Stuttgart - Kulturzentrum Alte Schule",
-    "Kinomobil Stuttgart - Römerhaus",
-    "Kinomobil Stuttgart - Stadthalle Lauffen",
-    "MoKi Ludwigsburg"
    ]
   },
   {
@@ -2262,10 +2228,12 @@
    "towns": [
     "Bad Kissingen",
     "Hammelburg",
+    "Bad Brückenau",
     "Bad Königshofen im Grabfeld"
    ],
    "cinemas": [
     "Kino in der Stadtbibliothek Hammelburg",
+    "Rhön-Lichtspiele",
     "Stadtsaal-Lichtspiele",
     "Universum Kino Palast"
    ]
@@ -2524,8 +2492,7 @@
    ],
    "cinemas": [
     "Filmhaus",
-    "Filmhaus Bad Wörishofen - Lichtspiele am Bahnhof",
-    "Open Air Kino Unter den Linden"
+    "Filmhaus Bad Wörishofen - Lichtspiele am Bahnhof"
    ]
   },
   {
@@ -2673,6 +2640,32 @@
    ]
   },
   {
+   "slug": "besigheim",
+   "kind": "cluster",
+   "name": "Besigheim",
+   "anchor": "Besigheim",
+   "bundesland": "Baden-Württemberg",
+   "qualifiedSlug": "besigheim-baden-wuerttemberg",
+   "lat": 48.998,
+   "lon": 9.1427,
+   "towns": [
+    "Besigheim",
+    "Lauffen",
+    "Löchgau",
+    "Kirchheim am Neckar",
+    "Walheim",
+    "Erligheim"
+   ],
+   "cinemas": [
+    "Kinomobil Stuttgart - Alte Kelter",
+    "Kinomobil Stuttgart - Bürgerhaus Vordere Kelter",
+    "Kinomobil Stuttgart - Gemeindehalle Löchgau",
+    "Kinomobil Stuttgart - Kulturzentrum Alte Schule",
+    "Kinomobil Stuttgart - Römerhaus",
+    "Kinomobil Stuttgart - Stadthalle Lauffen"
+   ]
+  },
+  {
    "slug": "biberach-an-der-riss",
    "kind": "cluster",
    "name": "Biberach an der Riß",
@@ -2804,7 +2797,7 @@
   },
   {
    "slug": "buchholz-in-der-nordheide",
-   "kind": "town",
+   "kind": "cluster",
    "name": "Buchholz in der Nordheide",
    "anchor": "Buchholz in der Nordheide",
    "bundesland": "Niedersachsen",
@@ -2812,10 +2805,11 @@
    "lat": 53.3304,
    "lon": 9.866,
    "towns": [
-    "Buchholz in der Nordheide"
+    "Buchholz in der Nordheide",
+    "Neu Wulmstorf"
    ],
    "cinemas": [
-    "Movieplexx Autokino",
+    "Das Kino - Neu Wulmstorf",
     "Movieplexx Delhi - Center"
    ]
   },
@@ -3511,10 +3505,12 @@
    "towns": [
     "Eisenach",
     "Mühlhausen",
+    "Eschwege",
     "Bad Salzungen"
    ],
    "cinemas": [
     "Capitol Eisenach",
+    "Cinemagic Eschwege",
     "Filmpalast Central Mühlhausen",
     "PAB Kinocenter"
    ]
@@ -3571,17 +3567,13 @@
     "Emmendingen",
     "Waldkirch",
     "Breisach am Rhein",
-    "Haslach im Kinzigtal",
-    "Schallstadt",
-    "Rust"
+    "Schallstadt"
    ],
    "cinemas": [
     "Engel-Lichtspiele",
     "Kinomobil Stuttgart - Johann-Philipp-Glock-Schule",
     "Kommunales Kino Klappe 11",
-    "Magic Cinema im Europa Park",
-    "Maja",
-    "Rio + Scala"
+    "Maja"
    ]
   },
   {
@@ -3677,26 +3669,6 @@
    "cinemas": [
     "Eschborn K",
     "Kronberger Lichtspiele"
-   ]
-  },
-  {
-   "slug": "eschwege",
-   "kind": "cluster",
-   "name": "Eschwege",
-   "anchor": "Eschwege",
-   "bundesland": "Hessen",
-   "qualifiedSlug": "eschwege-hessen",
-   "lat": 51.1839,
-   "lon": 10.0533,
-   "towns": [
-    "Eschwege",
-    "Witzenhausen",
-    "Bad Sooden-Allendorf"
-   ],
-   "cinemas": [
-    "Capitol-Kino",
-    "Cinemagic Eschwege",
-    "Kurtheater Bad Sooden-Allendorf"
    ]
   },
   {
@@ -3869,7 +3841,7 @@
   },
   {
    "slug": "freudenstadt",
-   "kind": "cluster",
+   "kind": "town",
    "name": "Freudenstadt",
    "anchor": "Freudenstadt",
    "bundesland": "Baden-Württemberg",
@@ -3877,13 +3849,11 @@
    "lat": 48.4669,
    "lon": 8.4137,
    "towns": [
-    "Freudenstadt",
-    "Lossburg"
+    "Freudenstadt"
    ],
    "cinemas": [
     "Central Freudenstadt",
-    "Subiaco im Kurhaus",
-    "Kino unterm Sternenhimmel Loßburg"
+    "Subiaco im Kurhaus"
    ]
   },
   {
@@ -4016,8 +3986,7 @@
    ],
    "cinemas": [
     "CineStar Fulda",
-    "Kinoinitiative 35",
-    "Museumscafé"
+    "Kinoinitiative 35"
    ]
   },
   {
@@ -4159,23 +4128,6 @@
    ],
    "cinemas": [
     "Kinocenter am Steinweg"
-   ]
-  },
-  {
-   "slug": "ginsheim-gustavsburg",
-   "kind": "town",
-   "name": "Ginsheim-Gustavsburg",
-   "anchor": "Ginsheim-Gustavsburg",
-   "bundesland": "Hessen",
-   "qualifiedSlug": "ginsheim-gustavsburg-hessen",
-   "lat": 49.9711,
-   "lon": 8.3453,
-   "towns": [
-    "Ginsheim-Gustavsburg"
-   ],
-   "cinemas": [
-    "Burg-Lichtspiele (Ginsheim-Gustavsburg)",
-    "Open Air Kino Ginsheim-Gustavsburg"
    ]
   },
   {
@@ -4682,6 +4634,7 @@
    "lon": 8.4493,
    "towns": [
     "Hofheim am Taunus",
+    "Kelkheim",
     "Bad Soden am Taunus",
     "Eppstein",
     "Sulzbach"
@@ -4690,6 +4643,8 @@
     "CasaBlanca Art House",
     "Filmpalast Hofheim",
     "Open-Air Spielwiese neben dem Rathaus",
+    "Kino-Kelkheim",
+    "Open-Air Marktplatz Neue Stadtmitte",
     "Kinopolis Main-Taunus",
     "Open-Air auf der Burg"
    ]
@@ -4772,7 +4727,7 @@
   },
   {
    "slug": "huerth",
-   "kind": "town",
+   "kind": "cluster",
    "name": "Hürth",
    "anchor": "Hürth",
    "bundesland": "Nordrhein-Westfalen",
@@ -4780,12 +4735,15 @@
    "lat": 50.8708,
    "lon": 6.8676,
    "towns": [
-    "Hürth"
+    "Hürth",
+    "Euskirchen",
+    "Brühl"
    ],
    "cinemas": [
+    "Cineplex Euskirchen",
     "CP Lichtspielfreunde Hürth von 2016 e.V.",
-    "Open Air Kino Kloster Burbach",
-    "UCI Hürth Park"
+    "UCI Hürth Park",
+    "Zoom-Kino"
    ]
   },
   {
@@ -4911,8 +4869,7 @@
    ],
    "cinemas": [
     "CICO Kaufbeuren",
-    "Corona KinoPlex - Open Air",
-    "Melodrom-Filmtheater"
+    "Corona KinoPlex - Open Air"
    ]
   },
   {
@@ -4970,24 +4927,6 @@
    ]
   },
   {
-   "slug": "kelkheim",
-   "kind": "town",
-   "name": "Kelkheim",
-   "anchor": "Kelkheim",
-   "bundesland": "Hessen",
-   "qualifiedSlug": "kelkheim-hessen",
-   "lat": 50.137,
-   "lon": 8.4502,
-   "towns": [
-    "Kelkheim"
-   ],
-   "cinemas": [
-    "Kino-Kelkheim",
-    "Open Air Kelkheim",
-    "Open-Air Marktplatz Neue Stadtmitte"
-   ]
-  },
-  {
    "slug": "kempten-im-allgaeu",
    "kind": "cluster",
    "name": "Kempten im Allgäu",
@@ -5018,16 +4957,12 @@
    "lon": 6.6969,
    "towns": [
     "Kerpen",
-    "Euskirchen",
-    "Frechen",
-    "Brühl"
+    "Frechen"
    ],
    "cinemas": [
     "Capitol-Theater Kerpen",
     "Euromax - Cinemas",
-    "Cineplex Euskirchen",
-    "Linden Theater Frechen",
-    "Zoom-Kino"
+    "Linden Theater Frechen"
    ]
   },
   {
@@ -5203,7 +5138,7 @@
   },
   {
    "slug": "lahr-am-schwarzwald",
-   "kind": "town",
+   "kind": "cluster",
    "name": "Lahr am Schwarzwald",
    "anchor": "Lahr am Schwarzwald",
    "bundesland": "Baden-Württemberg",
@@ -5211,11 +5146,14 @@
    "lat": 48.3404,
    "lon": 7.8689,
    "towns": [
-    "Lahr am Schwarzwald"
+    "Lahr am Schwarzwald",
+    "Haslach im Kinzigtal",
+    "Rust"
    ],
    "cinemas": [
     "FORUM Lahr",
-    "Open Air Kino im Innenhof Schlachthof"
+    "Magic Cinema im Europa Park",
+    "Rio + Scala"
    ]
   },
   {
@@ -5232,7 +5170,6 @@
    ],
    "cinemas": [
     "Filmwelt Landau",
-    "Open Air Kino Landau",
     "Universum Kinocenter"
    ]
   },
@@ -5305,14 +5242,12 @@
    "towns": [
     "Lehrte",
     "Peine",
-    "Burgdorf",
-    "Wathlingen"
+    "Burgdorf"
    ],
    "cinemas": [
     "Astoria-Filmtheater",
     "Das Andere Kino",
     "Open Air im Stadtpark",
-    "Kleines Kino Wathlingen",
     "Neue Schauburg Burgdorf"
    ]
   },
@@ -5550,8 +5485,7 @@
     "Ludwigslust"
    ],
    "cinemas": [
-    "Luna Filmtheater",
-    "Open Air Kino am Schweizerhaus"
+    "Luna Filmtheater"
    ]
   },
   {
@@ -5827,12 +5761,11 @@
    "lon": 6.6387,
    "towns": [
     "Merzig",
-    "Rehlingen-Siersburg"
+    "Schmelz"
    ],
    "cinemas": [
-    "Kino am Seffersbach",
     "Odeon Kino Merzig",
-    "Kino auf der Burg"
+    "Schmelzer Lichtspiele"
    ]
   },
   {
@@ -6351,24 +6284,6 @@
    ]
   },
   {
-   "slug": "nonnweiler",
-   "kind": "cluster",
-   "name": "Nonnweiler",
-   "anchor": "Nonnweiler",
-   "bundesland": "Saarland",
-   "qualifiedSlug": "nonnweiler-saarland",
-   "lat": 49.6076,
-   "lon": 6.9699,
-   "towns": [
-    "Nonnweiler",
-    "Hoppstädten-Weiersbach"
-   ],
-   "cinemas": [
-    "Central-Filmtheater Nonnweiler",
-    "Movietown Neubrücke"
-   ]
-  },
-  {
    "slug": "norddorf-auf-amrum",
    "kind": "town",
    "name": "Norddorf auf Amrum",
@@ -6516,6 +6431,22 @@
    ]
   },
   {
+   "slug": "oberviechtach",
+   "kind": "town",
+   "name": "Oberviechtach",
+   "anchor": "Oberviechtach",
+   "bundesland": "Bayern",
+   "qualifiedSlug": "oberviechtach-bayern",
+   "lat": 49.4581,
+   "lon": 12.4167,
+   "towns": [
+    "Oberviechtach"
+   ],
+   "cinemas": [
+    "Kino in OVI"
+   ]
+  },
+  {
    "slug": "oehringen",
    "kind": "cluster",
    "name": "Öhringen",
@@ -6601,14 +6532,12 @@
    "towns": [
     "Osterholz-Scharmbeck",
     "Brake",
-    "Ritterhude",
-    "Worpswede"
+    "Ritterhude"
    ],
    "cinemas": [
     "Central Theater Osterholz-Scharmbeck",
     "Oscar Kulturspielhaus",
     "Centraltheater Brake",
-    "Music Hall Worpswede",
     "Ritterhuder-Lichtspiele"
    ]
   },
@@ -6949,7 +6878,7 @@
   },
   {
    "slug": "rendsburg",
-   "kind": "town",
+   "kind": "cluster",
    "name": "Rendsburg",
    "anchor": "Rendsburg",
    "bundesland": "Schleswig-Holstein",
@@ -6957,10 +6886,15 @@
    "lat": 54.3018,
    "lon": 9.6717,
    "towns": [
-    "Rendsburg"
+    "Rendsburg",
+    "Schleswig",
+    "Eckernförde",
+    "Kappeln"
    ],
    "cinemas": [
-    "Kino-Center Rendsburg",
+    "Capitol Theater Kappeln",
+    "Das Haus",
+    "Filmtheater Capitol Schleswig",
     "Schauburg Rendsburg"
    ]
   },
@@ -7149,12 +7083,10 @@
    "lon": 8.6272,
    "towns": [
     "Rottweil",
-    "Schramberg",
-    "Trossingen"
+    "Schramberg"
    ],
    "cinemas": [
     "Central-Kino Rottweil",
-    "Kommunales Kino Trossingen",
     "Subiaco Schramberg"
    ]
   },
@@ -7249,26 +7181,6 @@
    ]
   },
   {
-   "slug": "schleswig",
-   "kind": "cluster",
-   "name": "Schleswig",
-   "anchor": "Schleswig",
-   "bundesland": "Schleswig-Holstein",
-   "qualifiedSlug": "schleswig-schleswig-holstein",
-   "lat": 54.5202,
-   "lon": 9.5683,
-   "towns": [
-    "Schleswig",
-    "Eckernförde",
-    "Kappeln"
-   ],
-   "cinemas": [
-    "Capitol Theater Kappeln",
-    "Das Haus",
-    "Filmtheater Capitol Schleswig"
-   ]
-  },
-  {
    "slug": "schloss-holte-stukenbrock",
    "kind": "cluster",
    "name": "Schloss Holte-Stukenbrock",
@@ -7284,42 +7196,6 @@
    "cinemas": [
     "Odins Filmtheater",
     "Rhythmus-Filmtheater"
-   ]
-  },
-  {
-   "slug": "schluechtern",
-   "kind": "cluster",
-   "name": "Schlüchtern",
-   "anchor": "Schlüchtern",
-   "bundesland": "Hessen",
-   "qualifiedSlug": "schluechtern-hessen",
-   "lat": 50.3489,
-   "lon": 9.5253,
-   "towns": [
-    "Schlüchtern",
-    "Bad Brückenau"
-   ],
-   "cinemas": [
-    "KUKI Kino",
-    "Rhön-Lichtspiele"
-   ]
-  },
-  {
-   "slug": "schmelz",
-   "kind": "cluster",
-   "name": "Schmelz",
-   "anchor": "Schmelz",
-   "bundesland": "Saarland",
-   "qualifiedSlug": "schmelz-saarland",
-   "lat": 49.4333,
-   "lon": 6.85,
-   "towns": [
-    "Schmelz",
-    "Wadern"
-   ],
-   "cinemas": [
-    "Schmelzer Lichtspiele",
-    "Starlight-Kino"
    ]
   },
   {
@@ -7434,32 +7310,6 @@
     "Burgtheater Treysa",
     "Kinocenter Alsfeld",
     "Lichtspielhaus Lauterbach (Hessen)"
-   ]
-  },
-  {
-   "slug": "schwandorf",
-   "kind": "cluster",
-   "name": "Schwandorf",
-   "anchor": "Schwandorf",
-   "bundesland": "Bayern",
-   "qualifiedSlug": "schwandorf-bayern",
-   "lat": 49.3253,
-   "lon": 12.1098,
-   "towns": [
-    "Schwandorf",
-    "Burglengenfeld",
-    "Maxhütte-Haidhof",
-    "Nittenau",
-    "Oberviechtach",
-    "Wald"
-   ],
-   "cinemas": [
-    "Kino in OVI",
-    "Kino-Center Nittenau",
-    "Kinocenter Maxhütte-Haidhof",
-    "Kinomobil Stuttgart - Feuerwehrhaus Wald",
-    "Lichtwerk Kino Schwandorf",
-    "Starmexx - Erlebniskino"
    ]
   },
   {
@@ -7706,13 +7556,11 @@
    "towns": [
     "Stade",
     "Buxtehude",
-    "Neu Wulmstorf",
     "Harsefeld"
    ],
    "cinemas": [
     "CineStar Stade",
     "City Kino Buxtehude",
-    "Das Kino - Neu Wulmstorf",
     "Harsefelder Lichtspiele"
    ]
   },
@@ -7932,13 +7780,14 @@
    "lon": 8.8177,
    "towns": [
     "Tuttlingen",
+    "Trossingen",
     "Emmingen-Liptingen",
     "Kolbingen"
    ],
    "cinemas": [
     "Kinomobil Stuttgart - Kolbingen Dorfplatz",
     "Kinomobil Stuttgart - Musiksaal der Witthohschule",
-    "Open Air Kino Tuttlingen",
+    "Kommunales Kino Trossingen",
     "Scala Tuttlingen"
    ]
   },
@@ -8081,14 +7930,36 @@
     "Saarlouis",
     "Lebach",
     "Illingen",
-    "Bous"
+    "Bous",
+    "Rehlingen-Siersburg"
    ],
    "cinemas": [
     "City-Filmstudio",
+    "Kino auf der Burg",
     "Movie-World",
     "Residenz",
     "Thalia-Lichtspiele",
     "Union Theater Illingen"
+   ]
+  },
+  {
+   "slug": "wadern",
+   "kind": "cluster",
+   "name": "Wadern",
+   "anchor": "Wadern",
+   "bundesland": "Saarland",
+   "qualifiedSlug": "wadern-saarland",
+   "lat": 49.5412,
+   "lon": 6.8877,
+   "towns": [
+    "Wadern",
+    "Nonnweiler",
+    "Hoppstädten-Weiersbach"
+   ],
+   "cinemas": [
+    "Central-Filmtheater Nonnweiler",
+    "Movietown Neubrücke",
+    "Starlight-Kino"
    ]
   },
   {
@@ -8344,13 +8215,11 @@
    "lon": 8.667,
    "towns": [
     "Weinheim",
-    "Schwetzingen",
     "Hemsbach",
     "Hirschberg"
    ],
    "cinemas": [
     "Brennessel-Programmkino",
-    "Luxor Filmpalast Schwetzingen",
     "Modernes Theater",
     "Olympia Hirschberg"
    ]
@@ -8390,9 +8259,11 @@
     "Weiterstadt",
     "Pfungstadt",
     "Gross-Gerau",
-    "Seeheim-Jugenheim"
+    "Seeheim-Jugenheim",
+    "Ginsheim-Gustavsburg"
    ],
    "cinemas": [
+    "Burg-Lichtspiele (Ginsheim-Gustavsburg)",
     "Filmseher Open Air",
     "Kommunales Kino Weiterstadt im Bürgerzentrum",
     "Lichtspielhaus Groß-Gerau",
@@ -8652,6 +8523,22 @@
    ]
   },
   {
+   "slug": "witzenhausen",
+   "kind": "town",
+   "name": "Witzenhausen",
+   "anchor": "Witzenhausen",
+   "bundesland": "Hessen",
+   "qualifiedSlug": "witzenhausen-hessen",
+   "lat": 51.341,
+   "lon": 9.8554,
+   "towns": [
+    "Witzenhausen"
+   ],
+   "cinemas": [
+    "Capitol-Kino"
+   ]
+  },
+  {
    "slug": "wolfenbuettel",
    "kind": "town",
    "name": "Wolfenbüttel",
@@ -8802,6 +8689,10 @@
    "page": "nagold",
    "qualifiedSlug": "altensteig-baden-wuerttemberg"
   },
+  "asperg": {
+   "page": "besigheim",
+   "qualifiedSlug": "asperg-baden-wuerttemberg"
+  },
   "bad-doberan": {
    "page": "kuehlungsborn",
    "qualifiedSlug": "bad-doberan-mecklenburg-vorpommern"
@@ -8826,6 +8717,10 @@
    "page": "biberach-an-der-riss",
    "qualifiedSlug": "ehingen-baden-wuerttemberg"
   },
+  "eschwege": {
+   "page": "eisenach",
+   "qualifiedSlug": "eschwege-hessen"
+  },
   "finsterwalde": {
    "page": "senftenberg",
    "qualifiedSlug": "finsterwalde-brandenburg"
@@ -8834,6 +8729,10 @@
    "page": "pirmasens",
    "qualifiedSlug": "fischbach-bei-dahn-rheinland-pfalz"
   },
+  "ginsheim-gustavsburg": {
+   "page": "weiterstadt",
+   "qualifiedSlug": "ginsheim-gustavsburg-hessen"
+  },
   "hachenburg": {
    "page": "asbach",
    "qualifiedSlug": "hachenburg-rheinland-pfalz"
@@ -8841,6 +8740,10 @@
   "itzehoe": {
    "page": "elmshorn",
    "qualifiedSlug": "itzehoe-schleswig-holstein"
+  },
+  "kelkheim": {
+   "page": "hofheim-am-taunus",
+   "qualifiedSlug": "kelkheim-hessen"
   },
   "korbach": {
    "page": "meschede",
@@ -8866,6 +8769,10 @@
    "page": "viersen",
    "qualifiedSlug": "nettetal-nordrhein-westfalen"
   },
+  "nonnweiler": {
+   "page": "wadern",
+   "qualifiedSlug": "nonnweiler-saarland"
+  },
   "regen": {
    "page": "deggendorf",
    "qualifiedSlug": "regen-bayern"
@@ -8877,6 +8784,22 @@
   "sassnitz": {
    "page": "stralsund",
    "qualifiedSlug": "sassnitz-mecklenburg-vorpommern"
+  },
+  "schleswig": {
+   "page": "rendsburg",
+   "qualifiedSlug": "schleswig-schleswig-holstein"
+  },
+  "schluechtern": {
+   "page": "bad-kissingen",
+   "qualifiedSlug": "schluechtern-hessen"
+  },
+  "schmelz": {
+   "page": "merzig",
+   "qualifiedSlug": "schmelz-saarland"
+  },
+  "schwandorf": {
+   "page": "amberg",
+   "qualifiedSlug": "schwandorf-bayern"
   },
   "sigmaringen": {
    "page": "tuttlingen",

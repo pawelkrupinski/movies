@@ -28,7 +28,7 @@ called by `scripts/build_pages.py` into **`pages.json`** and generated into
 4. The picker groups every page by **province**, majors and clusters side by
    side; the apps get the province as each city's `region`.
 
-240 pages (43 major, 111 towns, 86 clusters) for 602 venues: median 2 venues a
+240 pages (43 major, 111 towns, 86 clusters) for 601 venues: median 2 venues a
 page, at most 11; 85 one-venue pages, mostly towns with nothing within 35 km.
 Barcelona's province went from one page of 55 venues to 15, Madrid's 51 to 15.
 
@@ -58,7 +58,7 @@ Gandia's beach district.
   municipality — the locality or header matched inside the province the postal
   code names, else the postal code's own municipality (GeoNames' postal dump),
   else a hand-checked pin in `PINNED` — and each municipality's centre (its most
-  populous place), population and province. 602 venues in 420 towns. Shown the
+  populous place), population and province. 601 venues in 420 towns. Shown the
   way the header writes it when that is the whole name ("Alcoy"), GeoNames'
   name otherwise ("El Masnou", not SensaCine's "Masnou").
 
@@ -207,7 +207,7 @@ python3 data/spain/scripts/test_build_provinces.py
 - **52** provinces, **0** with zero venues.
 - **595** unique cinemas (theaterIds are unique across the whole harvest), to
   which `ocine.json` adds the **9** Ocine venues SensaCine does not list, less
-  two venues since closed (E0778, E1013): **602** in the roster.
+  three venues since closed (E0778, E1013, E0784): **601** in the roster.
 - Verified-facts expectation of ~594 held: the crawl found 595, one more
   than the pre-reconnoitred estimate — consistent with normal roster churn
   between the manual recon and this run, not a pagination miss (every

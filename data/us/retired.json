@@ -10,5 +10,125 @@
     "reason": "feedless",
     "retiredOn": "2026-09-23",
     "evidence": "108 W Main St, Syracuse IN. Its Flicks sessions book on Veezi site nkjzf31nyb5bbbtbg06g01pq2g, the Pickwick Theatre in Park Ridge IL: 216/216 showtimes identical to Park Ridge's"
+  },
+  "amc-classic-auburn-14": {
+    "name": "AMC CLASSIC Auburn 14",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed 2026-02-01: https://www.wtvm.com/2026/02/02/thats-wrap-longtime-auburn-movie-theater-shuts-down/"
+  },
+  "amc-classic-salina-10": {
+    "name": "AMC CLASSIC Salina 10",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "AMC permanently closed it, May 2026: https://www.salina311.com/stories/2026-05-15-ryan-noonan-amc-public-relations-svp-details-decision-to-permanently-close-salina-10/"
+  },
+  "regal-hampton-bay": {
+    "name": "Regal Hampton Bay",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed for good 2026-01-29: https://www.danspapers.com/2026/01/hampton-bays-regal-cinema-closing"
+  },
+  "look-cinemas-downey": {
+    "name": "LOOK Cinemas Downey",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed 2026-02-02: https://www.thedowneypatriot.com/articles/look-dine-in-cinemas-closes-downey-theater-after-less-than-five-years"
+  },
+  "look-cinemas-monrovia": {
+    "name": "LOOK Cinemas Monrovia",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed Feb 2026: https://www.monrovianow.com/2026/02/look-theater-closes-monrovia-location.html"
+  },
+  "look-cinemas-redlands": {
+    "name": "LOOK Cinemas Redlands",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed 2026-02-02: https://www.redlandscommunitynews.com/look-cinemas-in-redlands-shuts-down/article_1f85a71f-8a6f-464f-8979-b875ded75e9d.html"
+  },
+  "ipic-pasadena": {
+    "name": "IPIC Pasadena",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed for good 2026-06-03: https://www.coloradoboulevard.net/ipic-pasadena-closing-its-doors-for-good-on-june-3/"
+  },
+  "ipic-redmond": {
+    "name": "IPIC Redmond",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "WARN filing, closing 2026-04-28 in iPic's bankruptcy: https://www.geekwire.com/2026/filing-ipic-closing-movie-theater-near-seattle-will-lay-off-64-workers-amid-bankruptcy/"
+  },
+  "landmark-esquire-theatre": {
+    "name": "Landmark Esquire Theatre",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Final screenings July 2024: https://denverite.com/2024/07/16/esquire-theatre-closing/"
+  },
+  "showcase-randolph": {
+    "name": "Showcase Randolph",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Last day 2026-03-01: https://www.boston.com/news/business/2026/02/11/another-movie-theater-is-shutting-down-in-massachusetts/"
+  },
+  "cinemark-century-abilene-12": {
+    "name": "Cinemark Century Abilene 12",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed for good 2026-01-08: https://www.bigcountryhomepage.com/news/main-news/abilenes-century-12-theater-closes-its-doors-for-good/amp/ (NOT cinemark-abilene-12, which is open)"
+  },
+  "cinemark-wooster-movies-10": {
+    "name": "Cinemark Wooster Movies 10",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Final day 2026-03-12: https://www.bigscreen.com/j/Wooster-OH-Cinemark-Movie-Theater-Closed/8287"
+  },
+  "cmx-cinbistro-halcyon": {
+    "name": "CMX CinéBistro Halcyon",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed Feb 2026: https://www.tonetoatl.com/2026/02/CMX-CineBistro-Halcyon-Alpharetta-Closed.html"
+  },
+  "bb-mainstreet-kansas-city": {
+    "name": "B&B Mainstreet Kansas City",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "B&B exited the location 2026-03-01: https://www.kctv5.com/2026/03/02/bb-theatres-closes-mainstreet-kc-location-power-light-district/"
+  },
+  "bb-morrisville-park-west-14": {
+    "name": "B&B Morrisville Park West 14",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Last day 2026-01-04: https://www.yahoo.com/news/articles/triangle-movie-theater-closing-soon-164104345.html"
+  },
+  "phoenix-columbia-snowden-14": {
+    "name": "Phoenix Columbia Snowden 14",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed for good 2026-01-05, then demolished: https://www.thebanner.com/community/local-news/columbia-snowden-movie-theater-closing-P3QMW5NWVFH3JJNRKUQBR4HOTY/"
+  },
+  "marcus-lakes-hermantown": {
+    "name": "Marcus Lakes Hermantown",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed permanently 2026-04-19: https://www.fox21online.com/news/local/marcus-lakes-10-cinema-in-hermantown-to-close-permanently-sunday/article_42284f36-fb5a-47d4-8d71-4cc869153f3a.html"
+  },
+  "malco-summer-drive-in-memphis": {
+    "name": "Malco Summer Drive-in Memphis",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed May 2025 after nearly 60 years: https://www.boxofficepro.com/end-of-an-era-for-malco-summer-drive-in-iconic-theater-closing-after-nearly-60-years/"
+  },
+  "acme-screening-room-lambertville": {
+    "name": "ACME Screening Room Lambertville",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed 2026-09-29: https://www.flicks.us/cinema/acme-screening-room-lambertville/ HTTP 404 since 2026-08-31, no listing on record. No closure news found."
+  },
+  "acme-theatre-riverton": {
+    "name": "Acme Theatre Riverton",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closure sweep confirmed 2026-09-29: https://www.flicks.us/cinema/acme-theatre-riverton/ HTTP 404 since 2026-08-31, no listing on record. Cinema Treasures: closed 2022 https://www.cinematreasures.org/theaters/8643/comments"
   }
 }

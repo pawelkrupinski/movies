@@ -93,12 +93,12 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Germany.brandName shouldBe "Showtimes"   // any non-Polish deployment
     Country.Germany.cities shouldBe City.germanCities
     // The full data-driven roster — Filmstarts', and the cinemas only Cineamo or kinoheld
-    // list: 451 town and cluster pages (German slugs — muenchen, koeln, …; see
+    // list: 446 town and cluster pages (German slugs — muenchen, koeln, …; see
     // GermanPagesSpec and data/germany/).
-    Country.Germany.cities should have size 451
+    Country.Germany.cities should have size 446
     Country.Germany.cities.map(_.slug) should contain allOf ("berlin", "muenchen", "koeln", "hamburg", "frankfurt-am-main")
-    // Every page carries cinemas; the roster totals 1,578 venues.
-    Country.Germany.cities.flatMap(_.cinemas).size shouldBe 1578
+    // Every page carries cinemas; the roster totals 1,545 venues.
+    Country.Germany.cities.flatMap(_.cinemas).size shouldBe 1545
   }
 
   "Country.UnitedStates" should "be an English, Filmweb-free deployment (Flicks-sourced) on its own database" in {
@@ -115,16 +115,16 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     // a cluster of small towns a short drive apart — `data/us/scripts/build_pages.py`.
     // A state is a `CityGroup`; its name is a page only where a TOWN has it
     // (California, Maryland), never the state's listing.
-    Country.UnitedStates.cities should have size 2003
+    Country.UnitedStates.cities should have size 2001
     Country.UnitedStates.cities.map(_.slug) should contain allOf (
       "los-angeles", "new-york", "houston", "washington", "san-juan", "naples")
     Country.UnitedStates.bySlug.get("texas") shouldBe None
-    // Every place carries venues, and the roster totals 5,029 (5,031 less one feedless venue and the
-    // closed Alamo Drafthouse Naples) — this was a re-cut, not a re-harvest. That corpus is ~6x the
+    // Every place carries venues, and the roster totals 5,009 (5,031 less one feedless venue, the
+    // closed Alamo Drafthouse Naples and the 20 closures retired 2026-10-12). That corpus is ~6x the
     // UK's, the fact that drives the US worker's 840-minute cadence rather than the UK's 420 (a ~10h
     // sweep has to fit inside its own cadence).
     all(Country.UnitedStates.cities.map(_.cinemas.size)) should be > 0
-    Country.UnitedStates.cities.flatMap(_.cinemas).size shouldBe 5029
+    Country.UnitedStates.cities.flatMap(_.cinemas).size shouldBe 5009
   }
 
   /** Every place in `group` in its country's own collation — the order a reader
@@ -353,7 +353,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Spain.cityGroups should have size 52
     Country.Spain.cities.map(_.slug) should contain allOf ("madrid", "barcelona", "valencia", "las-palmas-de-gran-canaria")
     all(Country.Spain.cities.map(_.cinemas.size)) should be > 0
-    Country.Spain.cities.flatMap(_.cinemas).size shouldBe 602   // SensaCine's 595, less 2 closed, + the 9 Ocine venues it does not list
+    Country.Spain.cities.flatMap(_.cinemas).size shouldBe 601   // SensaCine's 595, less 3 closed, + the 9 Ocine venues it does not list
   }
 
   it should "qualify a page slug another country already serves" in {

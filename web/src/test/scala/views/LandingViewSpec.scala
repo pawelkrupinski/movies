@@ -203,7 +203,7 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   // ── Every other country arrives after the page ─────────────────────────────
 
   "the landing" should "embed only the country it opens on, and link every other country's pane by its content version" in {
-    // Poland's own pane is in the HTML; the US's 2,003 places are not.
+    // Poland's own pane is in the HTML; the US's 2,001 places are not.
     html should include ("""data-country="pl" data-base-url""")
     html should not include """data-country="us" data-base-url"""
     html should not include "/los-angeles/"
