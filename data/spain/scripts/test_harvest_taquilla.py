@@ -126,6 +126,20 @@ def test_taquilla_must_carry_the_near_days_sensacine_does():
     assert not ht.decide(served, days, {"2026-10-12": 20, "2026-10-13": 20, "2026-12-17": 9}, H)[0]
 
 
+def test_a_venue_already_on_taquilla_is_not_judged_by_its_own_feed():
+    # Once moved, showtimes.cc serves Taquilla's calendar, so the superset rule would
+    # compare Taquilla with itself, find it reaches no further, and move the venue back.
+    moved = {"sensacineLastDay": "2026-10-15", "why": "Taquilla reaches 2026-12-15 vs SensaCine 2026-10-15"}
+    days = ["2026-10-12", "2026-12-15"]
+    assert not ht.decide({"2026-10-12": 35, "2026-12-15": 4}, days, {"2026-10-12": 35}, H)[0]
+    assert ht.keep_moved(moved, days)[0]
+    # ...until Taquilla's own data gets worse: nothing on sale, or short of where
+    # SensaCine reached when the venue moved.
+    assert not ht.keep_moved(moved, [])[0]
+    serve, why = ht.keep_moved(moved, ["2026-10-12", "2026-10-14"])
+    assert not serve and "2026-10-15" in why
+
+
 def test_generate_refuses_a_venue_the_roster_lacks_ocine_serves_or_two_sources_claim():
     problems = gos.problems({"E1", "E2", "E3"}, {"E3"}, {"E1": {}, "E9": {}}, {"E1": {}, "E3": {}})
     assert any("E9 is not a roster venue" in p for p in problems)

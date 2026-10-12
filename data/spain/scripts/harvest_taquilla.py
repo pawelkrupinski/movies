@@ -22,10 +22,14 @@ from SensaCine's schema.org address, venue-addresses.json) AND their names agree
 when the names agree outright in the same town. A roster venue with two equally good
 candidates is left out and printed for review; so is a Taquilla venue claimed twice.
 
-Which venues Taquilla SERVES is measured, not assumed: a match becomes the venue's
-primary only when showtimes.cc/es serves the venue no showtime today (SensaCine has no
-programme for it) and Taquilla's calendar advertises at least one day. Everything else
-stays on its current source.
+Which venues Taquilla SERVES is measured, not assumed (`decide`): against what
+showtimes.cc/es serves the venue today from SensaCine, a match becomes the venue's
+primary only when Taquilla is a SUPERSET -- its calendar reaches past SensaCine's last
+day AND carries >= 95% of SensaCine's sessions on the near fortnight's days -- or when
+SensaCine lists nothing and Taquilla sells at least one day. A venue already in
+taquilla.json is served from Taquilla, so showtimes.cc can no longer say what SensaCine
+has for it: it keeps its verdict unless Taquilla's own calendar got worse (`keep_moved`).
+Everything else stays on its current source.
 
 Usage:
   python3 data/spain/scripts/harvest_taquilla.py   # -> data/spain/taquilla.json
@@ -254,6 +258,22 @@ def decide(served, taquilla_days, taquilla_sessions, horizon):
     return True, f"Taquilla reaches {max(taquilla_days)} vs SensaCine {max(served)}, {theirs} vs {ours} near"
 
 
+def keep_moved(previous, taquilla_days):
+    """Whether a venue ALREADY on Taquilla (`previous`, its taquilla.json row) stays there.
+
+    showtimes.cc serves such a venue from Taquilla, so `served_by_day` measures Taquilla
+    against itself and `decide` would always find it reaches no further -- flipping the
+    venue back to SensaCine every other run. Nothing here reads SensaCine directly, so the
+    verdict stands unless Taquilla's own data got worse: it sells no day, or it now ends
+    before the SensaCine last day measured when the venue moved."""
+    if not taquilla_days:
+        return False, "Taquilla sells no day"
+    then = previous.get("sensacineLastDay")
+    if then and max(taquilla_days) < then:
+        return False, f"Taquilla now ends {max(taquilla_days)}, before SensaCine's {then} when it moved"
+    return True, previous["why"]
+
+
 SUPERSET_SHARE = 0.95
 NEAR_DAYS = 14
 
@@ -316,10 +336,16 @@ def main():
     tids = sorted(chosen)
     days = dict(zip(tids, fx.map(calendar, tids)))
     horizon = (datetime.date.today() + datetime.timedelta(days=NEAR_DAYS)).isoformat()
+    # A venue already on Taquilla is served FROM Taquilla, so `served` is no SensaCine
+    # measurement for it: `keep_moved` judges it on Taquilla's calendar alone.
+    previous = json.loads(OUT.read_text()) if OUT.exists() else {}
+    moved = previous.get("venues", {})
     # Only a venue whose Taquilla calendar outruns what we serve can gain: fetch its days
     # (the near fortnight SensaCine lists, to compare, and the tail, to count the gain).
     jobs = []
     for tid in tids:
+        if tid in moved:
+            continue
         ours = served[by_tid[tid]["name"]]
         if days[tid] and (not ours or max(days[tid]) > max(ours)):
             vid = taquilla[chosen[tid]]["venueId"]
@@ -332,9 +358,13 @@ def main():
     venues, kept = {}, []
     for tid in tids:
         r, t = by_tid[tid], taquilla[chosen[tid]]
-        last = max(served[r["name"]], default=None)
-        serve, why = decide(served[r["name"]], days[tid], by_venue[tid], horizon)
-        gained = sum(n for d, n in by_venue[tid].items() if last is None or d > last)
+        if tid in moved:
+            last, gained = moved[tid].get("sensacineLastDay"), moved[tid].get("sessionsGained", 0)
+            serve, why = keep_moved(moved[tid], days[tid])
+        else:
+            last = max(served[r["name"]], default=None)
+            serve, why = decide(served[r["name"]], days[tid], by_venue[tid], horizon)
+            gained = sum(n for d, n in by_venue[tid].items() if last is None or d > last)
         row = {"name": r["name"], "taquillaName": t["name"], "path": chosen[tid], "venueId": t["venueId"],
                "sensacineLastDay": last, "taquillaLastDay": days[tid][-1] if days[tid] else None,
                "sessionsGained": gained, "why": why}
@@ -350,7 +380,6 @@ def main():
     print(f"matched {len(chosen)} roster venues; Taquilla serves {len(venues)}, "
           f"+{sum(r['sessionsGained'] for r in venues.values())} sessions past SensaCine's last day; "
           f"{len(kept)} stay where they are")
-    previous = json.loads(OUT.read_text()) if OUT.exists() else {}
     OUT.write_text(json.dumps({
         "_comment": previous.get("_comment", []),
         "measured": today,
