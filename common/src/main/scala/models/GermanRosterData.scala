@@ -1,6 +1,6 @@
 // GENERATED from data/germany/pages.json by data/germany/scripts/generate_roster.py
 // — do NOT edit by hand. Full German cinema roster: 446 pages over 16 Bundesländer /
-// 1,545 cinemas (Filmstarts, and the ones only Cineamo or kinoheld list). Regenerate after adding venues or re-clustering;
+// 1,539 cinemas (Filmstarts, and the ones only Cineamo or kinoheld list). Regenerate after adding venues or re-clustering;
 // see data/germany/README.md.
 package models
 
@@ -301,7 +301,6 @@ private[models] object GermanRosterData {
     ("Cineding", "Cineding", "A0225", Some("/kino/leipzig/cineding-56717"), "Leipzig"),
     ("CineStar Leipzig", "CineStar Leipzig", "A0345", Some("/kino/leipzig/cinestar-der-filmpalast-43338"), "Leipzig"),
     ("Cinémathèque in der naTo Leipzig e.V.", "Cinémathèque in der naTo Leipzig e.V.", "A0445", Some("/kino/leipzig/cin%C3%A9math%C3%A8que-in-der-nato-leipzig-e.v.-65357"), "Leipzig"),
-    ("Filmclub KassaBlanka", "Filmclub KassaBlanka", "A2361", None, "Leipzig"),
     ("Freilichtkino auf der Pferderennbahn", "Freilichtkino auf der Pferderennbahn", "A0561", None, "Leipzig"),
     ("Kinobar &quot;Prager Frühling&quot;", "Kinobar &quot;Prager Frühling&quot;", "A1500", Some("/kino/leipzig/kinobar-%22prager-fruehling%22-33663"), "Leipzig"),
     ("Luru Kino in der Spinnerei", "Luru Kino in der Spinnerei", "A2591", Some("/kino/leipzig/lurukino-in-der-spinnerei-76897"), "Leipzig"),
@@ -383,7 +382,6 @@ private[models] object GermanRosterData {
     ("Open Air Kino Reisinger Anlage", "Open Air Kino Reisinger Anlage", "A2424", Some("/kino/wiesbaden/open-air-kino-in-den-reisingeranlagen-75457"), "Wiesbaden")
   ))
   private def p_karlsruhe: R = ("karlsruhe", "karlsruhe-baden-wuerttemberg", "Karlsruhe", "Baden-Württemberg", 49.0094, 8.4044, false, Seq("Karlsruhe"), Seq(
-    ("Die Kurbel Karlsruhe", "Die Kurbel Karlsruhe", "A2614", Some("/kino/karlsruhe-baden/die-kurbel-78682"), "Karlsruhe"),
     ("Filmpalast am ZKM - Karlsruhe", "Filmpalast am ZKM - Karlsruhe", "A0513", Some("/kino/karlsruhe-baden/filmpalast-am-zkm-39797"), "Karlsruhe"),
     ("Kinemathek Karlsruhe", "Kinemathek Karlsruhe", "A1711", Some("/kino/karlsruhe-baden/kinemathek-48097"), "Karlsruhe"),
     ("Open Air Kino am Schloß Gottesaue", "Open Air Kino am Schloß Gottesaue", "A1976", Some("/kino/karlsruhe-baden/open-air-kino-am-schloss-gottesaue-34538"), "Karlsruhe"),
@@ -1038,11 +1036,10 @@ private[models] object GermanRosterData {
     ("UCI am Lausitz Park", "UCI am Lausitz Park", "A1204", Some("/kino/cottbus/uci-kinowelt-am-lausitz-park-43176"), "Cottbus"),
     ("Weltspiegel Cottbus", "Weltspiegel Cottbus", "A1663", Some("/kino/cottbus/weltspiegel-31475"), "Cottbus")
   ))
-  private def p_crailsheim: R = ("crailsheim", "crailsheim-baden-wuerttemberg", "Crailsheim", "Baden-Württemberg", 49.1344, 10.0719, true, Seq("Crailsheim", "Ellwangen", "Feuchtwangen", "Ilshofen", "Kirchberg an der Jagst"), Seq(
+  private def p_crailsheim: R = ("crailsheim", "crailsheim-baden-wuerttemberg", "Crailsheim", "Baden-Württemberg", 49.1344, 10.0719, true, Seq("Crailsheim", "Feuchtwangen", "Ilshofen", "Kirchberg an der Jagst"), Seq(
     ("Cinecity", "Cinecity", "A0224", Some("/kino/crailsheim/cinecity-und-kammer-filmtheater-42476"), "Crailsheim"),
     ("Kammer-Filmtheater Premium-Kino Crailsheim", "Kammer-Filmtheater Premium-Kino Crailsheim", "A0641", Some("/kino/crailsheim/kammerfilmtheater-premiumkino-88777"), "Crailsheim"),
     ("Kino Klappe", "Kino Klappe", "A0744", None, "Kirchberg an der Jagst"),
-    ("Kino Regina Ellwangen", "Kino Regina Ellwangen", "A1590", Some("/kino/ellwangen/kino-regina-32734"), "Ellwangen"),
     ("Kinomobil Stuttgart - Roland-Wurmthaler-Halle", "Kinomobil Stuttgart - Roland-Wurmthaler-Halle", "A0789", None, "Ilshofen"),
     ("KulturKino Feuchtwangen", "KulturKino Feuchtwangen", "A1054", None, "Feuchtwangen")
   ))
@@ -1282,10 +1279,9 @@ private[models] object GermanRosterData {
     ("CineStar Fulda", "CineStar Fulda", "A0366", Some("/kino/fulda/cinestar-fulda-38822"), "Fulda"),
     ("Kinoinitiative 35", "Kinoinitiative 35", "A2661", Some("/kino/fulda/kinoinitiative-35-79917"), "Fulda")
   ))
-  private def p_furtwangen_im_schwarzwald: R = ("furtwangen-im-schwarzwald", "furtwangen-im-schwarzwald-baden-wuerttemberg", "Furtwangen im Schwarzwald", "Baden-Württemberg", 48.0516, 8.2072, true, Seq("Furtwangen im Schwarzwald", "Triberg im Schwarzwald"), Seq(
+  private def p_furtwangen_im_schwarzwald: R = ("furtwangen-im-schwarzwald", "furtwangen-im-schwarzwald-baden-wuerttemberg", "Furtwangen im Schwarzwald", "Baden-Württemberg", 48.0516, 8.2072, false, Seq("Furtwangen im Schwarzwald"), Seq(
     ("Kommunales Guckloch-Kino Furtwangen e.V.", "Kommunales Guckloch-Kino Furtwangen e.V.", "A0855", Some("/kino/furtwangen-im-schwarzwald/kommunales-gucklochkino-furtwangen-e.v.-69579"), "Furtwangen im Schwarzwald"),
-    ("Open Air Kino Furtwangen", "Open Air Kino Furtwangen", "A1774", Some("/kino/furtwangen-im-schwarzwald/open-air-kino-furtwangen-70859"), "Furtwangen im Schwarzwald"),
-    ("Kronen-Lichtspiele Triberg im Schwarzwald", "Kronen-Lichtspiele Triberg im Schwarzwald", "A1526", None, "Triberg im Schwarzwald")
+    ("Open Air Kino Furtwangen", "Open Air Kino Furtwangen", "A1774", Some("/kino/furtwangen-im-schwarzwald/open-air-kino-furtwangen-70859"), "Furtwangen im Schwarzwald")
   ))
   private def p_garbsen: R = ("garbsen", "garbsen-niedersachsen", "Garbsen", "Niedersachsen", 52.4196, 9.6033, true, Seq("Garbsen", "Langenhagen", "Neustadt am Rübenberge", "Bad Nenndorf"), Seq(
     ("Cinema im Leinepark", "Cinema im Leinepark", "A2873", Some("/kino/neustadt-am-ruebenberge/cinema-im-leinepark-93073"), "Neustadt am Rübenberge"),
@@ -1588,8 +1584,7 @@ private[models] object GermanRosterData {
   ))
   private def p_landshut: R = ("landshut", "landshut-bayern", "Landshut", "Bayern", 48.5296, 12.1618, false, Seq("Landshut"), Seq(
     ("Filmzentrum e.V. Kinoptikum", "Filmzentrum e.V. Kinoptikum", "A0834", Some("/kino/landshut-isar/filmzentrum-e.v.-kinoptikum-34563"), "Landshut"),
-    ("Kinopolis Landshut", "Kinopolis Landshut", "A0026", Some("/kino/landshut-isar/kinopolis-57317"), "Landshut"),
-    ("Kleines Theater Landshut", "Kleines Theater Landshut", "A2852", None, "Landshut")
+    ("Kinopolis Landshut", "Kinopolis Landshut", "A0026", Some("/kino/landshut-isar/kinopolis-57317"), "Landshut")
   ))
   private def p_langenfeld: R = ("langenfeld", "langenfeld-nordrhein-westfalen", "Langenfeld", "Nordrhein-Westfalen", 51.1082, 6.9483, true, Seq("Langenfeld", "Hilden", "Monheim am Rhein"), Seq(
     ("Emotion Kino", "Emotion Kino", "G02P3", Some("/kino/monheim-am-rhein/emotion-kino-93182"), "Monheim am Rhein"),
@@ -1656,7 +1651,6 @@ private[models] object GermanRosterData {
     ("Central Theater Ludwigsburg", "Central Theater Ludwigsburg", "A0195", Some("/kino/ludwigsburg-wuerttemberg/central-theater-32839"), "Ludwigsburg"),
     ("Ludwigsburger Sommernachts Open Air Kino", "Ludwigsburger Sommernachts Open Air Kino", "A1944", Some("/kino/ludwigsburg-wuerttemberg/ludwigsburger-sommernachts-open-air-kino-76083"), "Ludwigsburg"),
     ("Luna Lichtspieltheater", "Luna Lichtspieltheater", "A0928", Some("/kino/ludwigsburg-wuerttemberg/luna-lichtspieltheater-39661"), "Ludwigsburg"),
-    ("Scala-Kino Ludwigsburg", "Scala-Kino Ludwigsburg", "A1108", Some("/kino/ludwigsburg-wuerttemberg/scalakino-32838"), "Ludwigsburg"),
     ("Union-Theater Ludwigsburg", "Union-Theater Ludwigsburg", "A1238", Some("/kino/ludwigsburg-wuerttemberg/uniontheater-32840"), "Ludwigsburg")
   ))
   private def p_ludwigslust: R = ("ludwigslust", "ludwigslust-mecklenburg-vorpommern", "Ludwigslust", "Mecklenburg-Vorpommern", 53.3245, 11.4971, false, Seq("Ludwigslust"), Seq(

@@ -471,7 +471,6 @@
     "Cineding",
     "CineStar Leipzig",
     "Cinémathèque in der naTo Leipzig e.V.",
-    "Filmclub KassaBlanka",
     "Freilichtkino auf der Pferderennbahn",
     "Kinobar &quot;Prager Frühling&quot;",
     "Luru Kino in der Spinnerei",
@@ -683,7 +682,6 @@
     "Karlsruhe"
    ],
    "cinemas": [
-    "Die Kurbel Karlsruhe",
     "Filmpalast am ZKM - Karlsruhe",
     "Kinemathek Karlsruhe",
     "Open Air Kino am Schloß Gottesaue",
@@ -3033,7 +3031,6 @@
    "lon": 10.0719,
    "towns": [
     "Crailsheim",
-    "Ellwangen",
     "Feuchtwangen",
     "Ilshofen",
     "Kirchberg an der Jagst"
@@ -3042,7 +3039,6 @@
     "Cinecity",
     "Kammer-Filmtheater Premium-Kino Crailsheim",
     "Kino Klappe",
-    "Kino Regina Ellwangen",
     "Kinomobil Stuttgart - Roland-Wurmthaler-Halle",
     "KulturKino Feuchtwangen"
    ]
@@ -3991,7 +3987,7 @@
   },
   {
    "slug": "furtwangen-im-schwarzwald",
-   "kind": "cluster",
+   "kind": "town",
    "name": "Furtwangen im Schwarzwald",
    "anchor": "Furtwangen im Schwarzwald",
    "bundesland": "Baden-Württemberg",
@@ -3999,13 +3995,11 @@
    "lat": 48.0516,
    "lon": 8.2072,
    "towns": [
-    "Furtwangen im Schwarzwald",
-    "Triberg im Schwarzwald"
+    "Furtwangen im Schwarzwald"
    ],
    "cinemas": [
     "Kommunales Guckloch-Kino Furtwangen e.V.",
-    "Open Air Kino Furtwangen",
-    "Kronen-Lichtspiele Triberg im Schwarzwald"
+    "Open Air Kino Furtwangen"
    ]
   },
   {
@@ -5205,8 +5199,7 @@
    ],
    "cinemas": [
     "Filmzentrum e.V. Kinoptikum",
-    "Kinopolis Landshut",
-    "Kleines Theater Landshut"
+    "Kinopolis Landshut"
    ]
   },
   {
@@ -5468,7 +5461,6 @@
     "Central Theater Ludwigsburg",
     "Ludwigsburger Sommernachts Open Air Kino",
     "Luna Lichtspieltheater",
-    "Scala-Kino Ludwigsburg",
     "Union-Theater Ludwigsburg"
    ]
   },

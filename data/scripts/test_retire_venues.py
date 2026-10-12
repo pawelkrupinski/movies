@@ -71,6 +71,24 @@ def test_retries_a_page_that_did_not_answer_but_not_one_that_did():
     assert never == "no answer (URLError)"
 
 
+def test_accepts_a_venue_retired_for_not_being_a_cinema_and_rejects_an_unknown_reason():
+    import json
+    import tempfile
+    entry = {"name": "Kleines Theater", "retiredOn": "2026-10-12", "evidence": "a stage theatre"}
+    with tempfile.TemporaryDirectory() as directory:
+        path = os.path.join(directory, "retired.json")
+        with open(path, "w") as file:
+            json.dump({"A1": {**entry, "reason": "not-a-cinema"}}, file)
+        assert set(rv.retired_venues.load(rv.pathlib.Path(directory))) == {"A1"}
+        with open(path, "w") as file:
+            json.dump({"A1": {**entry, "reason": "renovating"}}, file)
+        try:
+            rv.retired_venues.load(rv.pathlib.Path(directory))
+            raise AssertionError("an unknown reason was accepted")
+        except SystemExit:
+            pass
+
+
 if __name__ == "__main__":
     for name, test in list(globals().items()):
         if name.startswith("test_"):

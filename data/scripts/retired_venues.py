@@ -3,7 +3,7 @@
 `data/<country>/retired.json` maps a venue's upstream id (Filmstarts/SensaCine
 theaterId, flicks.us slug) to why it left the roster:
 
-    {"A1451": {"name": "...", "reason": "closed" | "duplicate" | "feedless",
+    {"A1451": {"name": "...", "reason": "closed" | "duplicate" | "feedless" | "not-a-cinema",
                "retiredOn": "YYYY-MM-DD", "evidence": "..."}}
 
 The generators DROP these ids rather than relying on them being deleted from the
@@ -13,7 +13,7 @@ same files and fails if a retired id is rostered anyway.
 import json
 import pathlib
 
-REASONS = {"closed", "duplicate", "feedless"}
+REASONS = {"closed", "duplicate", "feedless", "not-a-cinema"}  # not-a-cinema: a theatre or hall the aggregator lists, still open
 FIELDS = {"name", "reason", "retiredOn", "evidence"}
 
 

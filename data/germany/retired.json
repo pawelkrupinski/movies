@@ -310,5 +310,41 @@
     "reason": "closed",
     "retiredOn": "2026-10-12",
     "evidence": "Closure sweep confirmed (venue_closures): https://www.filmstarts.de/kinoprogramm/kino/A0651/ HTTP 404 since 2026-08-31, fallback empty or absent; no showtimes on record. Re-checked 2026-10-12."
+  },
+  "A2614": {
+    "name": "Die Kurbel Karlsruhe",
+    "reason": "duplicate",
+    "retiredOn": "2026-10-12",
+    "evidence": "Same venue as rostered Kinemathek Karlsruhe (A1711): both at Kaiserpassage 6, 76133 Karlsruhe; the Kinemathek screens in the former Kurbel cinema building (Saal + Box, https://www.kinemathek-karlsruhe.de/). A2614 has no showtimes; A1711 is served."
+  },
+  "A2361": {
+    "name": "Filmclub KassaBlanka",
+    "reason": "duplicate",
+    "retiredOn": "2026-10-12",
+    "evidence": "Same venue as rostered Cineding (A0225): both at Karl-Heine-Strasse 83, 04229 Leipzig; listed jointly as 'Filmclub KassaBlanka/Cineding', 2 screens (https://kinofans.com/kino/filmclub-kassablanka-cineding). A2361 has no showtimes; A0225 is served."
+  },
+  "A1526": {
+    "name": "Kronen-Lichtspiele Triberg im Schwarzwald",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed for good on 15 July 2021 when the owners retired; the space became an event venue (https://cinematreasures.org/theaters/74065). No showtimes on record."
+  },
+  "A1590": {
+    "name": "Kino Regina Ellwangen",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "The operator's site says 'das Kino Regina in Ellwangen dauerhaft geschlossen bleibt' (https://www.kino-ellwangen.de/). No showtimes on record."
+  },
+  "A1108": {
+    "name": "Scala-Kino Ludwigsburg",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "KinoKult e.V. ended film screenings in summer 2024: 'Im Sommer 2024 haben wir unseren Spielbetrieb im Scala-Kino beendet' (https://www.kinokult.de/scala-kino.html); the hall now hosts concerts and events. No showtimes on record."
+  },
+  "A2852": {
+    "name": "Kleines Theater Landshut",
+    "reason": "not-a-cinema",
+    "retiredOn": "2026-10-12",
+    "evidence": "A stage theatre (Kammerspiele Landshut, Bauhofstrasse 1), not a cinema (https://en.wikipedia.org/wiki/Kleines_theater_%E2%80%93_Kammerspiele_Landshut); no film programme on any source."
   }
 }
