@@ -318,11 +318,15 @@ object IdentityMeasures {
    *  Beauty" and TMDB's 2017 "The Sleeping Beauty", also "The Sleeping Beauty (The Royal Ballet)"? */
   def billsAnotherHouse(listing: Listing, film: Film): Boolean = film.houseNames.nonEmpty && !billsItsHouse(listing, film)
 
-  /** Words a house's name shares with any other's — the art form in each language, articles, prepositions and a relay's
-   *  own words ("Live", "im Kino", "Season") — which say nothing about WHICH house. */
+  /** Words a house's name shares with any other's — the art form in each language, the kind of institution ("National",
+   *  "Staatsoper", "Opera House", "Theatre", "Company": English National Ballet is not Dutch National Ballet, nor the Wiener
+   *  Staatsoper the Bayerische), articles, prepositions and a relay's own words ("Live", "im Kino", "Season") — which say
+   *  nothing about WHICH house. */
   private val HouseCommonWords: Set[String] = Set("opera", "operas", "oper", "opern", "opery", "operze", "ballet", "ballets", "ballett",
-    "balet", "baletu", "balletto", "the", "and", "und", "of", "de", "du", "des", "di", "del", "der", "die", "das", "la", "le", "les", "el", "los",
-    "las", "im", "in", "aus", "at", "from", "live", "kino", "cinema", "hd", "season", "saison", "sezon", "kinowy", "presents", "z", "w", "na")
+    "balet", "baletu", "balletto", "national", "nationale", "nacional", "nazionale", "narodowa", "narodowy", "staatsoper", "state", "house",
+    "company", "theatre", "theater", "teatro", "teatr", "the", "and", "und", "of", "de", "du", "des", "di", "del", "der", "die", "das", "la",
+    "le", "les", "el", "los", "las", "im", "in", "aus", "at", "from", "live", "kino", "cinema", "hd", "season", "saison", "sezon", "kinowy",
+    "presents", "z", "w", "na")
   /** Do two house names NAME one house: a word in common beyond [[HouseCommonWords]], one's word a prefix of the other's
    *  ("Met", "Metropolitan"), or one's word the other's initials ("RBO" of "Royal Ballet & Opera", "ROH" of "Royal Opera
    *  House")? Never a name of common words alone ("Opera", "The Ballet"): it names no house in particular. Numbers are no

@@ -437,6 +437,12 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // a work billed in the house's word names no house: PL "OPERA-MANON" is no relay of Royal Opera House's "Manon"
     IdentityMeasures.billsItsHouse(Listing("OPERA-MANON"), Film("BALLET LIVE. MANON. ROYAL ÓPERA HOUSE")) shouldBe false
     IdentityMeasures.billsItsHouse(Listing("OPERA- SILENT NIGHT"), Film("Silent Night (Opera North)")) shouldBe false
+    // the kind of institution names no house: records the unmatched-cluster captures hold of other national companies
+    IdentityMeasures.billsItsHouse(enb, Film("The Sleeping Beauty (Dutch National Ballet)")) shouldBe false
+    IdentityMeasures.billsAnotherHouse(enb, Film("The Sleeping Beauty (Dutch National Ballet)")) shouldBe true
+    IdentityMeasures.billsItsHouse(Listing("English National Ballet: Swan Lake"), Film("Swan Lake - Ballet Company of the National Opera of Ukraine")) shouldBe false
+    IdentityMeasures.billsItsHouse(Listing("Wiener Staatsoper: Tosca"), Film("Bayerische Staatsoper: Tosca")) shouldBe false
+    IdentityMeasures.billsItsHouse(Listing("Royal Opera House: Carmen"), Film("Sydney Opera House: Carmen")) shouldBe false
   }
 
   "a record billing the listing's work under its learned house" should "be a segment of its title, and only under that house" in {
