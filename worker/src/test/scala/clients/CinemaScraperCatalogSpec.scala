@@ -625,7 +625,11 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     scrapers.head.scrapeHosts shouldBe Set("www.taquilla.com")
     c.spanishSensacineFallback.get(ingenio) shouldBe Some("E0433")
     c.sensacineScraper("E0433", ingenio).scrapeHosts shouldBe Set("www.sensacine.com")
-    c.spanishSensacineFallback.size shouldBe 56
+    c.spanishSensacineFallback.size shouldBe 60
+    // A pair the name rule left for review, decided by the page's address: the
+    // Campanar page is the row SensaCine serves, not its idle duplicate.
+    c.all.find(_.cinema == spanishVenue("E0773")).value.scrapeHosts shouldBe Set("www.taquilla.com")
+    c.all.find(_.cinema == spanishVenue("E0248")).value.scrapeHosts shouldBe Set("www.sensacine.com")
   }
 
   // Cinesa's Taquilla calendar ends four days out while SensaCine's runs a month:
@@ -644,10 +648,12 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
 
   // Artesiete's own venue pages sell two months out with room and format on every
   // session (data/spain/artesiete.json). Two trade under other names on SensaCine:
-  // Multicines Úbeda and Multicines Bahia Mar. Segovia's subdomain never answered.
+  // Multicines Úbeda and Multicines Bahia Mar. Segovia's subdomain, timing out on
+  // 2026-10-12's first try, answered (from the worker's IP too) on the retry.
   "Spain's Artesiete venues" should "read the chain's own venue page, not SensaCine" in {
     val c = catalog()
     Seq(
+      "E0716" -> "https://segovia.artesiete.es/Cine/13/Artesiete-Segovia",
       "E0723" -> "https://terrazas.artesiete.es/Cine/1/Artesiete-terrazas",
       "E1041" -> "https://latorre.artesiete.es/Cine/21/Artesiete-La-Torre",
       "E0722" -> "https://www.artesiete.es/Cine/26/Artesiete-Alhsur",
@@ -659,7 +665,6 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
         c.all.filter(_.cinema == venue).map(_.sourceUrl) shouldBe Seq(Some(page))
       }
     }
-    c.all.find(_.cinema == spanishVenue("E0716")).value.scrapeHosts shouldBe Set("www.sensacine.com")
   }
 
   "Germany's venues" should "be scraped under the town page they are on, with their fallback chain kept" in {
