@@ -159,7 +159,7 @@ trait ScrapeWiring { self: WorkerWiring =>
         // routes it to ChunkScrapePlanner) and its outcome is recorded at the
         // reduce step, so it skips the per-scrape AdaptiveTimeout — each chunk is
         // already its own bounded task. Everything else is bounded here: the whole
-        // scrape (retries included) to an adaptive per-host budget, OUTSIDE retry
+        // scrape (retries included) to an adaptive per-host-and-venue budget, OUTSIDE retry
         // but INSIDE the uptime recorder so a cut surfaces as a normal failure.
         val inner: CinemaScraper =
           if (raw.isInstanceOf[ChunkedCinemaScraper]) retried
@@ -248,7 +248,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   lazy val closureCandidates: Seq[services.closure.ClosureCandidate] =
     countryScrapers.map(s => services.closure.ClosureCandidate(s.cinema, fallbackFor(s.cinema, FallbackEligibility.eligible(s)).isDefined))
 
-  /** Rolling per-host scrape-duration stats backing the adaptive scrape timeout.
+  /** Rolling per-host and per-venue scrape-duration stats backing the adaptive scrape timeout.
    *  In-memory by design — it adds no Mongo write load (the throttle this guards
    *  against IS write/CPU pressure) and rebuilds within a few refresh ticks. */
   lazy val hostScrapeStats: HostScrapeStats = new HostScrapeStats()

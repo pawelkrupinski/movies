@@ -8,8 +8,8 @@ import java.util.concurrent.{Callable, ExecutionException, ExecutorService, Time
 
 /**
  * Decorator that bounds a single scrape's wall-clock to an ADAPTIVE budget
- * derived from how long this host's scrapes usually take ([[HostScrapeStats]]):
- * `2× the host's rolling median`, clamped. A scrape that overruns is cancelled
+ * derived from how long this host's scrapes, and this venue's own, usually take
+ * ([[HostScrapeStats]]): `2× the larger rolling median`, clamped. A scrape that overruns is cancelled
  * — its thread interrupted, so it stops pinning a worker slot and burning the
  * shared-cpu credit — and a `TimeoutException` is thrown. The outer
  * `UptimeRecordingScraper` / `SourceFallbackScraper` then records that as a
@@ -41,7 +41,7 @@ class AdaptiveTimeoutScraper(
     else cinema.displayName
 
   def fetch(): Seq[CinemaMovie] = {
-    val budget = stats.deadlineFor(hostKey)
+    val budget = stats.deadlineFor(hostKey, cinema.displayName)
     val t0     = tools.Stopwatch.start()
     // On the executor's thread, the pages still report to this scrape's ListingReads.
     val read   = ListingReads.carry(delegate.fetch())
@@ -50,7 +50,7 @@ class AdaptiveTimeoutScraper(
     })
     try {
       val result = task.get(budget.toMillis, TimeUnit.MILLISECONDS)
-      stats.record(hostKey, t0.millis)
+      stats.record(hostKey, cinema.displayName, t0.millis)
       result
     } catch {
       case _: TimeoutException =>

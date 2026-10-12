@@ -20,18 +20,30 @@ import scala.concurrent.duration._
  * cutoff. Only completed scrapes are recorded — a cut scrape never feeds the
  * baseline, so a host that stalls can't slowly normalise its own stalls.
  *
- * Keyed by HOST, not cinema, so a whole chain (Helios, Cinema City, Multikino)
- * whose venues all share one `scrapeHosts` set pools into one robust baseline
- * and a single ballooning venue is caught against the chain's normal speed.
+ * Keyed by HOST, so a whole chain (Helios, Cinema City, Multikino) whose venues
+ * all share one `scrapeHosts` set pools into one robust baseline and a single
+ * ballooning venue is caught against the chain's normal speed — AND by venue,
+ * because one host's venues are not all the same size. Cineamo serves ~800
+ * German venues ten showings a page: a village cinema is one page, a multiplex
+ * forty-odd, so the host's median is a small venue's scrape and its budget (the
+ * 8s floor) cut every multiplex on it, every run (2026-10-12: 29 German venues,
+ * UCI Bochum and Kinopolis Bad Godesberg never once scraped). So a venue is held
+ * to the LARGER of its host's usual time and its own, and a venue that has not
+ * yet completed a scrape gets the ceiling: the host's median says nothing about
+ * how big it is. A venue that stalls is still cut at twice its own usual time.
  */
 class HostScrapeStats(
   window:     Int            = HostScrapeStats.DefaultWindow,
+  /** How many of a venue's own scrapes are kept — few, as a venue scrapes a handful of
+   *  times a day and the per-venue map spans the whole roster. */
+  venueWindow: Int           = HostScrapeStats.DefaultVenueWindow,
   minSamples: Int            = HostScrapeStats.DefaultMinSamples,
   multiplier: Double         = HostScrapeStats.DefaultMultiplier,
   floor:      FiniteDuration = HostScrapeStats.DefaultFloor,
   ceiling:    FiniteDuration = HostScrapeStats.DefaultCeiling
 ) {
   require(window >= 1, s"window must be ≥ 1, was $window")
+  require(venueWindow >= 1, s"venueWindow must be ≥ 1, was $venueWindow")
   require(minSamples >= 1, s"minSamples must be ≥ 1, was $minSamples")
   require(multiplier > 0, s"multiplier must be > 0, was $multiplier")
   require(floor <= ceiling, s"floor ($floor) must be ≤ ceiling ($ceiling)")
@@ -41,32 +53,46 @@ class HostScrapeStats(
   // synchronising on itself (concurrent scrapes can record/read the same host).
   private val samplesByHost = new java.util.concurrent.ConcurrentHashMap[String, mutable.ArrayDeque[Long]]()
 
-  /** Record a completed scrape's wall-clock for `host`. Negative values (a
-   *  clock going backwards) are ignored rather than poisoning the median. */
-  def record(host: String, durationMs: Long): Unit = {
+  // venue key -> that venue's own recent successful durations, bounded to `venueWindow`.
+  private val samplesByVenue = new java.util.concurrent.ConcurrentHashMap[String, mutable.ArrayDeque[Long]]()
+
+  /** Record a completed scrape of `venue` on `host`. Negative values (a clock
+   *  going backwards) are ignored rather than poisoning the median. */
+  def record(host: String, venue: String, durationMs: Long): Unit = {
     if (durationMs < 0) return
-    val deque = samplesByHost.computeIfAbsent(host, _ => mutable.ArrayDeque.empty[Long])
-    deque.synchronized {
-      deque.append(durationMs)
-      while (deque.size > window) deque.removeHead()
+    append(samplesByHost, host, durationMs, window)
+    append(samplesByVenue, venue, durationMs, venueWindow)
+  }
+
+  /** The adaptive budget a single scrape of `venue` on `host` is allowed:
+   *  `multiplier ×` the larger of the host's rolling median and the venue's own,
+   *  clamped to `[floor, ceiling]` — or the `ceiling` alone while the host has
+   *  fewer than `minSamples`, or the venue has never completed a scrape. */
+  def deadlineFor(host: String, venue: String): FiniteDuration = {
+    val hostSamples  = snapshot(samplesByHost, host)
+    val venueSamples = snapshot(samplesByVenue, venue)
+    if (hostSamples.length < minSamples || venueSamples.isEmpty) ceiling
+    else {
+      val usual   = math.max(HostScrapeStats.median(hostSamples), HostScrapeStats.median(venueSamples))
+      val raw     = (usual * multiplier).round
+      math.max(floor.toMillis, math.min(ceiling.toMillis, raw)).millis
     }
   }
 
-  /** The adaptive budget a single scrape of `host` is allowed: `multiplier ×`
-   *  the rolling median once we have `≥ minSamples`, clamped to `[floor,
-   *  ceiling]`; the `ceiling` alone during warm-up. */
-  def deadlineFor(host: String): FiniteDuration = {
-    val snapshot = Option(samplesByHost.get(host)) match {
+  private def append(by: java.util.concurrent.ConcurrentHashMap[String, mutable.ArrayDeque[Long]],
+                     key: String, durationMs: Long, bound: Int): Unit = {
+    val deque = by.computeIfAbsent(key, _ => mutable.ArrayDeque.empty[Long])
+    deque.synchronized {
+      deque.append(durationMs)
+      while (deque.size > bound) deque.removeHead()
+    }
+  }
+
+  private def snapshot(by: java.util.concurrent.ConcurrentHashMap[String, mutable.ArrayDeque[Long]], key: String): Array[Long] =
+    Option(by.get(key)) match {
       case Some(deque) => deque.synchronized(deque.toArray)
       case None        => Array.empty[Long]
     }
-    if (snapshot.length < minSamples) ceiling
-    else {
-      val raw     = (HostScrapeStats.median(snapshot) * multiplier).round
-      val clamped = math.max(floor.toMillis, math.min(ceiling.toMillis, raw))
-      clamped.millis
-    }
-  }
 }
 
 object HostScrapeStats {
@@ -74,6 +100,9 @@ object HostScrapeStats {
    *  short enough that a host genuinely getting faster/slower is reflected
    *  within a few refresh ticks. */
   val DefaultWindow: Int = 20
+
+  /** A venue's own window: its last few scrapes. */
+  val DefaultVenueWindow: Int = 5
 
   /** Below this many observations a host stays on the `ceiling` budget — a
    *  median over one or two samples is too noisy to cut against. */
