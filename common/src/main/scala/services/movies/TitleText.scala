@@ -53,7 +53,20 @@ object TitleText {
    *
    *  Rule-independent by construction: no country's rule set disagrees that
    *  `&quot;` is a quote mark or that a sentence mark is followed by a space. */
-  def tidy(title: String): String = spaceAfterSentenceMark(decodeEntities(title))
+  def tidy(title: String): String = frontArticle(spaceAfterSentenceMark(decodeEntities(title)))
+
+  /** The articles a library-style title files at its end, in each served language and the ones films keep untranslated. */
+  private val FiledArticles = Set("the", "a", "an", "der", "die", "das", "ein", "eine", "le", "la", "les", "el", "los", "las", "il", "lo")
+  private val TrailingArticle = """^(.+?),\s+(\p{Lu}\p{L}{0,3})$""".r
+
+  /** Put a title's article back at its front: German venues' box-office systems file a film library-style,
+   *  "Piano Tuner, The" and "Perfekte Urlaub, Der" (Cineamo, 2026-10-12), which read as a phrase cut off at its end and
+   *  key apart from every venue spelling it "The Piano Tuner". Only a capitalised article: Polish "Powiedz mi, a" ends
+   *  on a conjunction, not a filed article. */
+  def frontArticle(title: String): String = title match {
+    case TrailingArticle(head, article) if FiledArticles(article.toLowerCase(Locale.ROOT)) => s"$article $head"
+    case _                                                                                  => title
+  }
 
   // Numeric (`&#233;` / `&#xE9;`) and the named entities that actually turn up in
   // cinema listings. `&amp;` is decoded LAST so a double-encoded `&amp;quot;`

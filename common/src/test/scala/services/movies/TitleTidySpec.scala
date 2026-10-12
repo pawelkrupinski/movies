@@ -67,4 +67,24 @@ class TitleTidySpec extends AnyFlatSpec with Matchers {
   "tidy" should "decode before spacing, so a decoded mark still gets its space" in {
     TitleText.tidy("Rieu&#33;Niech żyje Maastricht") shouldBe "Rieu! Niech żyje Maastricht"
   }
+
+  "frontArticle" should "put back at the front the article a catalogue filed at the end" in {
+    // German venues' box-office systems name films library-style, as Cineamo serves them (2026-10-12 DE corpus).
+    TitleText.frontArticle("Piano Tuner, The") shouldBe "The Piano Tuner"
+    TitleText.frontArticle("Perfekte Urlaub, Der") shouldBe "Der Perfekte Urlaub"
+    TitleText.frontArticle("Krankheit wie ein Gedicht, Eine") shouldBe "Eine Krankheit wie ein Gedicht"
+    TitleText.frontArticle("Bola negra, La") shouldBe "La Bola negra"
+    TitleText.frontArticle("Tribute von Panem - Catching Fire (WA: 2026), The") shouldBe
+      "The Tribute von Panem - Catching Fire (WA: 2026)"
+    TitleText.frontArticle("PIANO TUNER, THE") shouldBe "THE PIANO TUNER"
+  }
+
+  it should "leave a title whose last word is no article, or a lower-case one, alone" in {
+    val unchanged = Seq("Sorry, Baby", "Crazy, Stupid, Love", "Eins, zwei, drei", "Powiedz mi, a", "The Piano Tuner", "Die Hard")
+    unchanged.foreach(t => withClue(s"$t\n")(TitleText.frontArticle(t) shouldBe t))
+  }
+
+  "tidy" should "front a filed-away article, so the title reads and keys as the film's own" in {
+    TitleText.tidy("Life of Chuck, The") shouldBe "The Life of Chuck"
+  }
 }
