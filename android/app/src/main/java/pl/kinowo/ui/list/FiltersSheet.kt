@@ -55,6 +55,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -443,6 +444,7 @@ private fun CinemasSection(viewModel: KinowoViewModel, films: List<Film>) {
                 effective.areas.forEach { area ->
                     CinemaAreaGroup(
                         area = area,
+                        catalog = effective,
                         section = section,
                         onSetArea = { on -> viewModel.setDisabledCinemas(section.settingArea(area, on)) },
                         onSetCinema = { cinema, on ->
@@ -451,9 +453,10 @@ private fun CinemasSection(viewModel: KinowoViewModel, films: List<Film>) {
                     )
                 }
             } else {
-                section.cityCinemas.forEach { cinema ->
-                    CheckRow(
-                        label = CinemaSection.pillName(cinema),
+                effective.seasonOrdered(section.cityCinemas).forEach { cinema ->
+                    CinemaRow(
+                        cinema = cinema,
+                        catalog = effective,
                         checked = section.checkOfCinema(cinema) == CinemaCheck.ON,
                     ) { on -> viewModel.setDisabledCinemas(section.settingCinema(cinema, on)) }
                 }
@@ -470,6 +473,7 @@ private fun CinemasSection(viewModel: KinowoViewModel, films: List<Film>) {
 @Composable
 private fun CinemaAreaGroup(
     area: CinemaArea,
+    catalog: CinemaCatalog,
     section: CinemaFilterSection,
     onSetArea: (Boolean) -> Unit,
     onSetCinema: (String, Boolean) -> Unit,
@@ -508,9 +512,10 @@ private fun CinemaAreaGroup(
         }
         if (open) {
             Column(Modifier.fillMaxWidth().padding(start = 24.dp)) {
-                area.cinemas.forEach { cinema ->
-                    CheckRow(
-                        label = CinemaSection.pillName(cinema),
+                catalog.seasonOrdered(area.cinemas).forEach { cinema ->
+                    CinemaRow(
+                        cinema = cinema,
+                        catalog = catalog,
                         checked = section.checkOfCinema(cinema) == CinemaCheck.ON,
                     ) { on -> onSetCinema(cinema, on) }
                 }
@@ -714,6 +719,29 @@ private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+/**
+ * One cinema's checkbox row, labelled with its pill name. An out-of-season venue
+ * (open-air, drive-in) carries a muted second line, "back in season · May–Sept",
+ * in the UI language. Exercised by CinemaRowTest.
+ */
+@Composable
+internal fun CinemaRow(cinema: String, catalog: CinemaCatalog, checked: Boolean, onChange: (Boolean) -> Unit) {
+    val language = LocalConfiguration.current.locales[0].language
+    val season = catalog.seasonOf(cinema)?.takeIf { it.offSeason }
+    Row(
+        Modifier.fillMaxWidth().clickable { onChange(!checked) }.padding(vertical = 1.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = onChange)
+        Column {
+            Text(CinemaSection.pillName(cinema), fontSize = 14.sp)
+            if (season != null) {
+                Text(season.backInSeasonLine(language), fontSize = 12.sp, color = TextSecondary)
+            }
+        }
     }
 }
 

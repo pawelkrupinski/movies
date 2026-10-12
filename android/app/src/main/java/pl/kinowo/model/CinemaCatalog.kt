@@ -17,8 +17,23 @@ data class CinemaCatalog(
     val cinemas: List<String> = emptyList(),
     /** The area grouping, or empty for a flat city. */
     val areas: List<CinemaArea> = emptyList(),
+    /** The city's seasonal venues (open-air, drive-in) — absent from the payload
+     *  when it has none, and from servers older than the field. */
+    val seasons: List<CinemaSeason> = emptyList(),
 ) {
     val isSplit: Boolean get() = areas.isNotEmpty()
+
+    /** The season of [cinema], when it is a seasonal venue. */
+    fun seasonOf(cinema: String): CinemaSeason? = seasons.firstOrNull { it.cinema == cinema }
+
+    /** Whether [cinema] is out of season today — the SERVER's verdict, on its own
+     *  clock, so the app never disagrees with the web about it. */
+    fun isOffSeason(cinema: String): Boolean = seasonOf(cinema)?.offSeason ?: false
+
+    /** [cinemas] with the out-of-season ones moved to the bottom, order otherwise
+     *  kept — how the filter lists a flat city, and each area of a split one. */
+    fun seasonOrdered(cinemas: List<String>): List<String> =
+        cinemas.filterNot(::isOffSeason) + cinemas.filter(::isOffSeason)
 
     /** The cinemas to EXCLUDE when only the areas in [keepingAreas] (slugs) are
      *  kept — every cinema in an unchecked area. Drives the first-visit area
@@ -42,3 +57,39 @@ data class CinemaArea(
     val slug: String,
     val cinemas: List<String> = emptyList(),
 )
+
+/**
+ * A seasonal venue's typical window, months 1..12 both inclusive, and whether
+ * today is outside it (decided by the server). Mirrors web `ApiCinemaSeason`.
+ */
+@Serializable
+data class CinemaSeason(
+    val cinema: String,
+    val opens: Int,
+    val closes: Int,
+    val offSeason: Boolean,
+) {
+    /** The filter row's muted second line, "back in season · May–Sept", in the UI
+     *  [language] ("pl", "en", "de", "es"; anything else reads English). */
+    fun backInSeasonLine(language: String): String {
+        val words = SeasonWords.of(language)
+        return "${words.back} · ${words.months[opens - 1]}–${words.months[closes - 1]}"
+    }
+}
+
+/** The words a season is spelled in, per UI language — kept identical to the web's
+ *  `season.back` / `season.month.N` messages and iOS's `SeasonWords`. */
+data class SeasonWords(val back: String, val months: List<String>) {
+    companion object {
+        fun of(language: String): SeasonWords = when (language) {
+            "pl" -> SeasonWords("wraca w sezonie",
+                listOf("sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"))
+            "de" -> SeasonWords("öffnet wieder",
+                listOf("Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."))
+            "es" -> SeasonWords("vuelve en temporada",
+                listOf("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"))
+            else -> SeasonWords("back in season",
+                listOf("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"))
+        }
+    }
+}

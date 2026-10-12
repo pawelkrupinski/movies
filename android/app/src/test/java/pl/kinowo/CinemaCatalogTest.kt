@@ -67,4 +67,43 @@ class CinemaCatalogTest {
         // Keep none → everything disabled.
         assertEquals(catalog.cinemas.toSet(), catalog.cinemasToDisable(emptySet()).toSet())
     }
+
+    private val berlin = """
+        {"cinemas":["Freiluftkino Kreuzberg","Kino Central Berlin","Freiluftkino Rehberge"],"areas":[],
+         "seasons":[{"cinema":"Freiluftkino Kreuzberg","opens":5,"closes":9,"offSeason":true},
+                    {"cinema":"Freiluftkino Rehberge","opens":5,"closes":9,"offSeason":false}]}
+    """.trimIndent()
+
+    /** The server decides which venues are out of season; the filter sinks them to the bottom. */
+    @Test
+    fun outOfSeasonCinemasSinkToTheBottomOnTheServersVerdict() {
+        val catalog = json.decodeFromString<CinemaCatalog>(berlin)
+
+        assertTrue(catalog.isOffSeason("Freiluftkino Kreuzberg"))
+        assertFalse(catalog.isOffSeason("Freiluftkino Rehberge"))   // seasonal, in season
+        assertFalse(catalog.isOffSeason("Kino Central Berlin"))
+        assertEquals(
+            listOf("Kino Central Berlin", "Freiluftkino Rehberge", "Freiluftkino Kreuzberg"),
+            catalog.seasonOrdered(catalog.cinemas),
+        )
+    }
+
+    /** The muted second line of an out-of-season row, in each UI language. */
+    @Test
+    fun backInSeasonLineInEachLanguage() {
+        val season = json.decodeFromString<CinemaCatalog>(berlin).seasonOf("Freiluftkino Kreuzberg")!!
+
+        assertEquals("back in season · May–Sept", season.backInSeasonLine("en"))
+        assertEquals("öffnet wieder · Mai–Sept.", season.backInSeasonLine("de"))
+        assertEquals("wraca w sezonie · maj–wrz", season.backInSeasonLine("pl"))
+        assertEquals("vuelve en temporada · may–sept", season.backInSeasonLine("es"))
+    }
+
+    /** A catalog from a server that predates seasons decodes with none, and nothing sinks. */
+    @Test
+    fun catalogWithoutSeasonsHasNoneOutOfSeason() {
+        val catalog = json.decodeFromString<CinemaCatalog>("""{"cinemas":["A","B"],"areas":[]}""")
+        assertTrue(catalog.seasons.isEmpty())
+        assertEquals(listOf("A", "B"), catalog.seasonOrdered(catalog.cinemas))
+    }
 }
