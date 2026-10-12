@@ -2070,7 +2070,7 @@ class CinemaScraperCatalog(
    *  datacenter egress directly (200 from the fleet, 2026-10-12), so plain `http`. */
   private def usIndependentScraper(cinema: Cinema): Option[CinemaScraper] =
     UsIndependentVenues.squarespace.get(cinema.displayName).map { venue =>
-      val zone = TimeZones.named(venue.zoneId)
+      val zone = VenueClock.zoneOf(cinema, TimeZones.UsEastern)
       new SquarespaceEventsClient(http, venue.siteUrl, venue.eventsPath, cinema, zone, today = venueClock.today(zone))
     }
 

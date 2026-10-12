@@ -10,7 +10,7 @@ object WriteSquarespaceEvents {
   def main(args: Array[String]): Unit = {
     val name   = "ACME Screening Room Lambertville"
     val venue  = UsIndependentVenues.squarespace(name)
-    val zone   = TimeZones.named(venue.zoneId)
+    val zone   = TimeZones.UsEastern
     val http   = new RecordingHttpFetch("squarespace", new RealHttpFetch())
     val movies = new SquarespaceEventsClient(http, venue.siteUrl, venue.eventsPath, UsRoster.byDisplayName(name), zone,
       today = VenueClock.system.today(zone)).fetch()

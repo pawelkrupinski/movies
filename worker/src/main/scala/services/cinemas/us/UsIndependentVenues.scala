@@ -17,12 +17,12 @@ package services.cinemas.us
 object UsIndependentVenues {
 
   /** A venue whose programme is a Squarespace events collection — see
-   *  [[SquarespaceEventsClient]]. `zoneId` reads the collection's epoch instants as the
-   *  venue's wall clock. */
-  final case class SquarespaceVenue(siteUrl: String, eventsPath: String, zoneId: String)
+   *  [[SquarespaceEventsClient]]. Its zone comes from the roster (`VenueClock.zoneOf`),
+   *  not from here, so the two cannot disagree. */
+  final case class SquarespaceVenue(siteUrl: String, eventsPath: String)
 
   val squarespace: Map[String, SquarespaceVenue] = Map(
-    "ACME Screening Room Lambertville" -> SquarespaceVenue("https://www.acmescreeningroom.org", "/now-playing", "America/New_York"),
+    "ACME Screening Room Lambertville" -> SquarespaceVenue("https://www.acmescreeningroom.org", "/now-playing"),
   )
 
   /** Every display name served by an independent's own site — off the flicks.us sweep. */

@@ -19,7 +19,7 @@ class SquarespaceEventsClientSpec extends AnyFlatSpec with Matchers with OptionV
 
   private val Site   = "https://www.acmescreeningroom.org"
   private val Acme   = UsRoster.byDisplayName("ACME Screening Room Lambertville")
-  private val Zone   = TimeZones.named("America/New_York")
+  private val Zone   = TimeZones.UsEastern
   private val today  = LocalDate.of(2026, 10, 12)
   private def scrape(on: LocalDate) =
     new SquarespaceEventsClient(new FakeHttpFetch("squarespace"), Site, "/now-playing", Acme, Zone, on).fetch()
