@@ -53,7 +53,7 @@ final class CorpusCensus(
   served:          Gauge,
   showtimes:       Gauge,
   widest:          Gauge,
-  offSeason:       Gauge,
+  mayBeDark:       Gauge,
   countryCode:     String,
   cities:          Seq[City],
   clock:           Clock,
@@ -118,7 +118,7 @@ final class CorpusCensus(
   /** Each city's [[WorkerCitySeasonMetrics]] verdict, off the clock alone — whatever the corpus holds. */
   private def publishSeasons(): Unit = {
     val now = clock.instant()
-    cities.foreach(c => offSeason.labelValues(countryCode, c.slug).set(if (c.mayBeDarkAt(now)) 1.0 else 0.0))
+    cities.foreach(c => mayBeDark.labelValues(countryCode, c.slug).set(if (c.mayBeDarkAt(now)) 1.0 else 0.0))
   }
 
   /** Publish [[reading]] — or, while the cache does not hold the whole corpus, nothing, counted as a miss. The

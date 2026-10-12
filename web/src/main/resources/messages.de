@@ -75,7 +75,7 @@ empty.films=Keine Filme.
 # The filter panel second line "back in season · May–Sept", and the empty listing
 # when only out-of-season venues are selected: "Out of season: {0} (May–Sept)".
 season.back=öffnet wieder
-season.isBack=Außerhalb der Saison: {0}
+season.outOfSeason=Außerhalb der Saison: {0}
 season.month.1=Jan.
 season.month.2=Feb.
 season.month.3=März

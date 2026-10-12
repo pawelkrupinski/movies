@@ -308,7 +308,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
   // A town whose only screen is an open-air one goes dark every autumn by design, and CityDarkInBothTiers reads
   // this gauge to stand down for it. A city with a year-round venue beside its open-air one must keep reading 0:
   // dark there is still a lost scrape.
-  "the off-season gauge" should "read 1 only for a city whose every venue is out of season, and follow the calendar" in {
+  "the dark-by-design gauge" should "read 1 only for a city whose every venue is off season or in its final month, and follow the calendar" in {
     val winter      = java.time.Instant.parse("2026-01-15T12:00:00Z")
     val allSeasonal = City.all.find(c => c.mayBeDarkAt(winter)).getOrElse(fail("no city whose every venue is seasonal"))
     val mixed       = City.all.find(c => c.cinemas.exists(_.opening != models.Opening.YearRound) && !c.mayBeDarkAt(winter))

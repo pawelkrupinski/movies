@@ -1819,7 +1819,7 @@
     if (visibleCount === 0 && left.length && left.every(isOffSeason)) {
       noFilms.removeAttribute('data-i18n');
       noFilms.textContent = '';
-      noFilms.appendChild(i18nSpan('season.isBack', left.map(c => CINEMA_PILLS[c] || c).join(', ')));
+      noFilms.appendChild(i18nSpan('season.outOfSeason', left.map(c => CINEMA_PILLS[c] || c).join(', ')));
       noFilms.appendChild(document.createTextNode(' ('));
       appendSeasonWindow(noFilms, cinemaSeason(left[0]));
       noFilms.appendChild(document.createTextNode(')'));
