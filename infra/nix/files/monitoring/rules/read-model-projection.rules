@@ -541,9 +541,10 @@ groups:
           summary: "{{ $labels.country }}: the corpus and the site disagree on {{ $value }} film-in-a-city, expected 0"
           description: >-
             `kinowo_worker_movies_served{scope="all"}` is the films this country's corpus WOULD
-            serve and `kinowo_web_movies_served{scope="all"}` is what the site IS serving; summed
-            per city as absolute differences they must be the SAME NUMBER, and they have differed
-            for 20 minutes. Either direction is a defect: the site short of the corpus is a card
+            serve and `kinowo_web_movies_served{scope="all"}` is what the site IS serving; per
+            city they must be the SAME NUMBER, and a city's two recent ranges (the site's last 5
+            minutes, the corpus's last 10) have not overlapped for 20 minutes -- the number above
+            is those gaps, summed over cities. Either direction is a defect: the site short of the corpus is a card
             that should be there and is not, the site ahead of it is a card no source row backs.
             Find them with
             `max by (city) (kinowo_worker_movies_served{country="{{ $labels.country }}",scope="all"})
