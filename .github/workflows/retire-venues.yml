@@ -1,10 +1,15 @@
 name: Retire closed venues
 
 # Started by the worker's daily closure sweep (ClosureSweep → GitHubRetirementDispatch)
-# for venues it has confirmed closed from weeks of evidence: the primary aggregator page
-# gone 404/410 and the fallback feed listing nothing (VenueClosure). This run is the
-# second, independent check: each venue's page must answer 404/410 again NOW, from
-# outside the fleet, or it is kept. Passing venues go into data/<roster>/retired.json,
+# ONLY for venues it has confirmed CLOSED (VenueClosure): their sources dropped them for
+# weeks (aggregator page 404/410, fallback empty or gone) AND the venue itself shows it
+# has closed — its own website gone, parked or announcing the closure, or a second
+# listing that dropped it too. A venue only its sources dropped is a coverage gap: the
+# sweep pages it and lists it on /uptime, and never dispatches it here. This run is the
+# second, independent check, from outside the fleet: the page the venue's primary scrapes
+# (the "page" the sweep sends, else its aggregator page) must answer 404/410 again NOW, and one of the venue-level checks the sweep handed over must
+# re-confirm the closure with nothing showing the venue alive, or the venue is kept
+# (retire_venues.py). Passing venues go into data/<roster>/retired.json,
 # the roster is regenerated, CountrySpec must pass, and a PR is opened for a human to
 # merge. It never pushes to main.
 #
@@ -20,7 +25,7 @@ on:
                 type: choice
                 options: [germany, spain, us]
             venues:
-                description: 'JSON array of {"id", "name", "evidence"}'
+                description: 'JSON array of {"id", "name", "evidence", "page" (optional), "checks": [{"kind": "website" or "listing", "url"}]}'
                 required: true
                 type: string
 

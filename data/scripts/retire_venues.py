@@ -2,12 +2,24 @@
 """Retire venues the worker's closure sweep confirmed closed: the body of
 .github/workflows/retire-venues.yml.
 
-The worker (ClosureSweep) has already judged each venue closed from weeks of
-evidence; this is the second, independent check, made at PR time and from
-outside the fleet: the page the venue's primary scrapes must answer 404 or 410
-NOW — the "page" the sweep sends for a venue scraped off its own site, its
-aggregator page otherwise. Anything else, including a 200, a 403 from a runner the site blocks,
-or a timeout, keeps the venue, and the PR body says why.
+The worker (ClosureSweep) has already judged each venue closed: its sources
+dropped it for weeks AND the venue itself showed it had closed. This is the
+second, independent check, made at PR time and from outside the fleet, and it
+asks both questions again NOW:
+
+  - the page the venue's primary scrapes must answer 404 or 410: the "page" the
+    sweep sends (a venue scraped off its own site), its aggregator page otherwise; and
+  - a page about the venue ITSELF (the sweep's `checks`) must show the closure:
+    its own website gone (404/410, no DNS record), parked or for sale, or
+    announcing a permanent closure; or a second listing answering 404/410.
+    The phrases are closure-notices.json's, which the worker reads too.
+
+An aggregator dropping a venue only proves we lost its programme: ACME
+Screening Room was open with an October festival when flicks.us 404'd it. So a
+venue with no venue-level check, with none that re-confirms the closure, or with
+one that shows it alive (its own site answering with no closure notice) is
+kept, and the PR body says why. Anything that is not an answer (a 403 from a
+runner the site blocks, a timeout) re-confirms nothing.
 
 A venue that passes is appended to data/<roster>/retired.json (which the
 generator drops; see retired_venues.py), the roster is regenerated, and the
@@ -15,14 +27,17 @@ roster size that CountrySpec pins and the comments quote is lowered to match.
 
 Usage:
   python3 data/scripts/retire_venues.py --roster germany \\
-      --venues '[{"id": "A1451", "name": "...", "evidence": "...", "page": "https://..."}]' --body pr-body.md
+      --venues '[{"id": "A1451", "name": "...", "evidence": "...", "page": "https://...",
+                  "checks": [{"kind": "website", "url": "https://..."}]}]' --body pr-body.md
 Prints the number retired; writes the PR body to --body.
 """
 import argparse
 import datetime
+import html.parser
 import json
 import pathlib
 import re
+import socket
 import subprocess
 import sys
 import time
@@ -59,6 +74,8 @@ PINNED_SIZE = {
     "us":      r"(Country\.UnitedStates\.cities\.flatMap\(_\.cinemas\)\.size shouldBe )(\d+)",
 }
 COUNTRY_SPEC = ROOT / "common/src/test/scala/models/CountrySpec.scala"
+NOTICES = json.loads((ROOT / "common/src/main/resources/closure-notices.json").read_text())
+NO_SUCH_HOST = "no such host"
 GONE = {404, 410}
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36"
 
@@ -75,6 +92,85 @@ def status_of(url: str) -> str:
         return f"no answer ({type(error).__name__})"
 
 
+def page_of(url: str) -> tuple[str, str]:
+    """The page's HTTP status as text and its body (empty unless 2xx), NO_SUCH_HOST when
+    its host has no DNS record, or why there is no answer."""
+    request = urllib.request.Request(url, headers={"User-Agent": UA})
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return str(response.status), response.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as error:
+        return str(error.code), ""
+    except urllib.error.URLError as error:
+        if isinstance(error.reason, socket.gaierror) and error.reason.errno == socket.EAI_NONAME:
+            return NO_SUCH_HOST, ""
+        return f"no answer ({type(error.reason).__name__})", ""
+    except Exception as error:  # noqa: BLE001 — any failure to get a status says nothing either way
+        return f"no answer ({type(error).__name__})", ""
+
+
+class _VisibleText(html.parser.HTMLParser):
+    """The text a reader sees: everything outside <script> and <style>."""
+    def __init__(self):
+        super().__init__()
+        self.parts, self._hidden = [], 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ("script", "style"):
+            self._hidden += 1
+
+    def handle_endtag(self, tag):
+        if tag in ("script", "style") and self._hidden:
+            self._hidden -= 1
+
+    def handle_data(self, data):
+        if not self._hidden:
+            self.parts.append(data)
+
+
+def visible_text(body: str) -> str:
+    parser = _VisibleText()
+    parser.feed(body)
+    return re.sub(r"\s+", " ", " ".join(parser.parts)).lower()
+
+
+def website_signal(url: str, answer: str, body: str) -> tuple[str, str]:
+    """("closure" | "life" | "silent", what was observed) for a venue's own site, judged as
+    the worker's OwnSiteEvidence judges it. A page that merely lists no showtimes is life."""
+    if answer == NO_SUCH_HOST:
+        return "closure", f"own site {url} does not resolve (no DNS record)"
+    if answer.isdigit() and int(answer) in GONE:
+        return "closure", f"own site {url} answered HTTP {answer}"
+    if answer.isdigit() and 200 <= int(answer) < 300:
+        raw = body.lower()
+        marker = next((m for m in NOTICES["parked"] if m in raw), None)
+        if marker:
+            return "closure", f'own site {url} is a parked or for-sale domain ("{marker}")'
+        text = visible_text(body)
+        phrase = next((p for p in NOTICES["closure"] if p in text), None)
+        if phrase:
+            return "closure", f'own site {url} announces the closure ("{phrase}")'
+        return "life", f"own site {url} answered with no closure notice"
+    return "silent", f"own site {url} could not be read ({answer})"
+
+
+def listing_signal(url: str, answer: str) -> tuple[str, str]:
+    """A second listing that had dropped the venue: still gone is a closure; listing it again is life."""
+    if answer.isdigit() and int(answer) in GONE:
+        return "closure", f"second listing {url} answered HTTP {answer}"
+    if answer.isdigit() and 200 <= int(answer) < 300:
+        return "life", f"second listing {url} answers HTTP {answer} again"
+    return "silent", f"second listing {url} could not be read ({answer})"
+
+
+def check(venue_check: dict, read_page) -> tuple[str, str]:
+    """One venue-level check the sweep handed over, read live."""
+    answer, body = read_page(venue_check["url"])
+    if venue_check["kind"] == "website":
+        return website_signal(venue_check["url"], answer, body)
+    return listing_signal(venue_check["url"], answer)
+
+
 def probe(url: str, fetch=status_of, sleep=time.sleep, attempts: int = 3) -> str:
     """The page's status, asking again when it did not answer at all. A status is the
     page's answer and stands; a blip must not keep a venue, because the sweep asks for
@@ -88,9 +184,9 @@ def probe(url: str, fetch=status_of, sleep=time.sleep, attempts: int = 3) -> str
     return answer
 
 
-def decide(retired: dict, venues: list, page: str, status_of, today: str):
-    """Split `venues` into the ones to retire (with their retired.json entries) and
-    the ones kept, each with the live status that decided it."""
+def decide(retired: dict, venues: list, page: str, status_of, today: str, read_page=page_of):
+    """Split `venues` into the ones to retire as closed (with their retired.json entries)
+    and the ones kept, each with the live answers that decided it."""
     added, kept = {}, []
     for venue in venues:
         venue_id = venue["id"]
@@ -98,11 +194,21 @@ def decide(retired: dict, venues: list, page: str, status_of, today: str):
             kept.append((venue, "already retired"))
             continue
         status = status_of(venue.get("page") or page.format(id=venue_id))
-        if status.isdigit() and int(status) in GONE:
-            added[venue_id] = {"name": venue["name"], "reason": "closed", "retiredOn": today,
-                               "evidence": f"{venue['evidence']} Re-checked {today}: HTTP {status}."}
+        if not (status.isdigit() and int(status) in GONE):
+            kept.append((venue, f"primary page answered {status}, not 404/410"))
+            continue
+        signals = [check(c, read_page) for c in venue.get("checks", [])]
+        alive = [seen for kind, seen in signals if kind == "life"]
+        shut = [seen for kind, seen in signals if kind == "closure"]
+        if alive:
+            kept.append((venue, f"source dropped, but the venue shows life: {'; '.join(alive)}"))
+        elif not shut:
+            seen = "; ".join(s for _, s in signals) or "no own website or second listing to check"
+            kept.append((venue, f"source dropped, but nothing re-confirms the venue closed ({seen})"))
         else:
-            kept.append((venue, f"page answered {status}, not 404/410"))
+            added[venue_id] = {"name": venue["name"], "reason": "closed", "retiredOn": today,
+                               "evidence": f"{venue['evidence']} Re-checked {today}: primary page HTTP {status}; "
+                                           f"{'; '.join(shut)}."}
     return added, kept
 
 
