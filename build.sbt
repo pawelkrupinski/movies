@@ -358,10 +358,9 @@ lazy val web = (project in file("web"))
     // stop" reader at ~300% CPU. Falls back to Play's default when a real console
     // is attached (see project/HeadlessSafeInteractionMode.scala).
     PlayKeys.playInteractionMode := HeadlessSafeInteractionMode,
-    // Eagerly trigger AppLoader on `sbt run` (see project/Warmup.scala) and start
-    // the Mongo proxy for local dev (see project/MongoProxy.scala).
+    // Eagerly trigger AppLoader on `sbt run` (see project/Warmup.scala). Prod Mongo for a
+    // local run comes from `scripts/with-prod-mongo.sh sbt web/run`, which opens the tunnel.
     PlayKeys.playRunHooks += Warmup(),
-    PlayKeys.playRunHooks += MongoProxy(),
     // The client-side language pack (`controllers.I18nPacks`) — derives from
     // `messages*` on every compile so the bundles stay the one source of
     // truth for both the server-rendered default page and the client-side
