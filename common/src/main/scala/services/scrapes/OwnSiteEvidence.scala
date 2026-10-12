@@ -2,9 +2,8 @@ package services.scrapes
 
 import play.api.libs.json.Json
 import services.scrapes.VenueClosure.VenueSignal
-import tools.HttpStatusException
+import tools.{HttpStatusException, UnresolvedHost}
 
-import java.net.UnknownHostException
 import java.util.Locale
 import scala.util.{Failure, Success, Try, Using}
 
@@ -40,11 +39,14 @@ object OwnSiteEvidence {
         .getOrElse(VenueSignal.Life(s"own site $url answered with no closure notice"))
     case Failure(e: HttpStatusException) if HttpStatusException.isDurable(e.code) =>
       VenueSignal.Closure(s"own site $url answered HTTP ${e.code}")
-    case Failure(e: UnknownHostException) =>
-      VenueSignal.Closure(s"own site $url does not resolve (no DNS record for ${Option(e.getMessage).getOrElse("its host")})")
+    case Failure(UnresolvedHost()) =>
+      VenueSignal.Closure(s"own site $url does not resolve (no DNS record for ${hostOf(url)})")
     case Failure(e) =>
       VenueSignal.Silent(s"own site $url could not be read (${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("")})".take(300))
   }
+
+  /** The host named in `url` — the JDK client's unresolved-address failure carries no message. */
+  private def hostOf(url: String): String = Try(Option(java.net.URI.create(url).getHost)).toOption.flatten.getOrElse("its host")
 }
 
 /** Each venue's own website, where we know it — keyed by display name, the wire key. */

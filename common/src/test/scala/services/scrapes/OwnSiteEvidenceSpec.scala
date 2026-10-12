@@ -3,10 +3,10 @@ package services.scrapes
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.scrapes.VenueClosure.VenueSignal
-import tools.HttpStatusException
+import tools.{HttpStatusException, RealHttpFetch}
 
 import java.net.UnknownHostException
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 /**
  * What a venue's own website says about the venue. The one mistake that matters is
@@ -27,6 +27,15 @@ class OwnSiteEvidenceSpec extends AnyFlatSpec with Matchers {
   it should "show closure when its host no longer resolves" in {
     OwnSiteEvidence.read(url, Failure(new UnknownHostException("kino.example"))).observed should
       (include ("does not resolve") and include ("kino.example"))
+  }
+
+  // What production actually throws: the JDK HttpClient reports a name that does not
+  // resolve as a ConnectException CAUSED BY UnresolvedAddressException, never an
+  // UnknownHostException. `.invalid` is reserved never to resolve (RFC 6761).
+  it should "show closure when the real HTTP client cannot resolve its host" in {
+    val dead = "http://kino-closed.invalid/"
+    OwnSiteEvidence.read(dead, Try(new RealHttpFetch().get(dead))).observed should
+      (include ("does not resolve") and include ("kino-closed.invalid"))
   }
 
   it should "show closure when it announces a permanent closure, in each roster's language" in {
