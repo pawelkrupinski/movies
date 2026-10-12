@@ -29,8 +29,22 @@ head_sha="$1"; ref="$2"; shift 2
 # A refused dispatch fails the job (after the other suites are tried): a green job that
 # dispatched nothing reads as "nothing to verify" when a pipeline change went unverified.
 failed=0
+# A 5xx is GitHub's own blip (2026-10-12: one HTTP 500 left a pipeline push unverified), so it
+# is retried, twice, after a pause; any other refusal (403, 404, 422) fails at once.
+retry_seconds="${CONVERGENCE_DISPATCH_RETRY_SECONDS:-15}"
 dispatch() {
-    gh workflow run "$1" --ref "$ref" || { echo "::error::could not dispatch $1"; failed=1; }
+    local attempt err
+    err=$(mktemp)
+    for attempt in 1 2 3; do
+        if gh workflow run "$1" --ref "$ref" 2> "$err"; then rm -f "$err"; return; fi
+        cat "$err" >&2
+        grep -Eq 'HTTP 5[0-9][0-9]' "$err" && [ "$attempt" -lt 3 ] || break
+        echo "$1: GitHub answered 5xx, retrying in ${retry_seconds}s (attempt $attempt of 3)"
+        sleep "$retry_seconds"
+    done
+    rm -f "$err"
+    echo "::error::could not dispatch $1"
+    failed=1
 }
 
 for workflow in "$@"; do

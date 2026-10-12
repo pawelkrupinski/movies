@@ -30,18 +30,24 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
   }
 
   /** The gate's exit status and what it dispatched; `refuse` names a suite whose
-   *  `gh workflow run` fails. */
+   *  `gh workflow run` is refused (403), `flaky` one whose first dispatch hits a GitHub 500. */
   private def kickWithStatus(repo: ScratchGitRepository, head: String, lastRun: String,
-                             refuse: String = ""): (Int, Seq[String]) = {
+                             refuse: String = "", flaky: String = ""): (Int, Seq[String]) = {
     val dispatched = Files.createTempFile("dispatched", ".log")
+    val flakedOnce = Files.createTempFile("flaked", ".once")
+    Files.delete(flakedOnce)
     val gh = repo.script("gh",
       s"""case "$$1 $$2" in
          |  "run list")      echo "$lastRun" ;;
          |  "workflow run")  [ "$$3" = "$refuse" ] && { echo "HTTP 403" >&2; exit 1; }
+         |                   if [ "$$3" = "$flaky" ] && [ ! -e "$flakedOnce" ]; then
+         |                     touch "$flakedOnce"; echo "HTTP 500: Failed to run workflow dispatch" >&2; exit 1
+         |                   fi
          |                   echo "$$3" >> "$dispatched" ;;
          |esac
          |""".stripMargin)
     val status = repo.process(Seq("bash", Script.toString, head, "main", "Country convergence", "Other convergence"),
+      "CONVERGENCE_DISPATCH_RETRY_SECONDS" -> "0",
       "PATH" -> s"${gh.getParent}:${configuration.executableSearchPath.value.mkString(java.io.File.pathSeparator)}").!(ProcessLogger(_ => ()))
     (status, Files.readString(dispatched).linesIterator.toSeq)
   }
@@ -193,6 +199,15 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
     val head = repo.commit("pipeline", "worker/src/main/Pipeline.scala" -> "v2\n")
 
     kickWithStatus(repo, head, lastRun = base, refuse = "Country convergence") shouldBe (1, Seq("Other convergence"))
+  }
+
+  // 2026-10-12: GitHub answered one `workflow run` with HTTP 500, so 985349f2d's pipeline
+  // change was never verified and Main went red over an outage lasting one request.
+  it should "retry a dispatch GitHub fails with a 5xx" in {
+    val (repo, base) = repoWithBase()
+    val head = repo.commit("pipeline", "worker/src/main/Pipeline.scala" -> "v2\n")
+
+    kickWithStatus(repo, head, lastRun = base, flaky = "Country convergence") shouldBe (0, Seq("Country convergence", "Other convergence"))
   }
 
   it should "dispatch when it cannot tell what changed, rather than read a failed diff as nothing" in {
