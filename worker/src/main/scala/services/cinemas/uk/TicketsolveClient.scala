@@ -105,8 +105,10 @@ object TicketsolveClient {
   })
 
   /** "Sense and Sensibility (U)", "Hay Fever (12A tbc)", "Manon (15 As Live)": the BBFC
-   *  certificate the box office appends to the title — not a venue's age limit, "(18+)". */
-  private val TitleCertificate = """\s*\(\s*(U|PG|12A?|15|18)\b(?!\+)[^)]*\)\s*$""".r
+   *  certificate the box office appends to the title — not a venue's age limit, "(18+)". Watershed
+   *  tails it with a short upper-case box-office code ("Fatherland (12A) S", "(18) CTBA"), which
+   *  goes with it. */
+  private val TitleCertificate = """\s*\(\s*(U|PG|12A?|15|18)\b(?!\+)[^)]*\)(?:\s+[A-Z]{1,4})?\s*$""".r
 
   /** Event statuses that mean the screening is not happening. */
   private val Cancelled = Set("cancelled", "canceled", "postponed")

@@ -52,6 +52,15 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     byTitle("Avengers: Doomsday").ageRating shouldBe Some("12A")
   }
 
+  // Watershed tails the certificate with a short box-office code: "Fatherland (12A) S" (72 shows
+  // across the feeds), "(12A) PS", "(18) CTBA". Left on, the title searched TMDB as "Fatherland (12A) S".
+  it should "lift a certificate that a short box-office code follows" in {
+    val watershed = scrape("watershed", WatershedBristol).map(cm => cm.movie.title -> cm).toMap
+    watershed.get("Fatherland").value.ageRating shouldBe Some("12A")
+    watershed.get("Golden Boy").value.ageRating shouldBe Some("18")
+    watershed.keySet.filter(_.matches(""".*\((U|PG|12A?|15|18)\b.*""")) shouldBe empty
+  }
+
   it should "keep the relays filed under a broadcast category, but not the gigs filed as live" in {
     // All 27 "Live Broadcast Events" shows are relays (NT Live, Royal Ballet & Opera, Met Opera,
     // Exhibition on Screen); Clwb Mwldan's club nights are filed under "Live TM / TM Byw".
