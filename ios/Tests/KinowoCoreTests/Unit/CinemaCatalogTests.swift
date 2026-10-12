@@ -42,13 +42,47 @@ final class CinemaCatalogTests: XCTestCase {
     func testDecodesACatalogCarryingSeasons() throws {
         let json = """
         {"cinemas":["Kino Central Berlin","Freiluftkino Kreuzberg"],"areas":[],
-         "seasons":[{"cinema":"Freiluftkino Kreuzberg","opens":5,"closes":9}]}
+         "seasons":[{"cinema":"Freiluftkino Kreuzberg","opens":5,"closes":9,"offSeason":true}]}
         """.data(using: .utf8)!
 
         let catalog = try JSONDecoder().decode(CinemaCatalog.self, from: json)
 
         XCTAssertEqual(catalog.cinemas, ["Kino Central Berlin", "Freiluftkino Kreuzberg"])
         XCTAssertFalse(catalog.isSplit)
+    }
+
+    private let berlin = """
+    {"cinemas":["Freiluftkino Kreuzberg","Kino Central Berlin","Freiluftkino Rehberge"],"areas":[],
+     "seasons":[{"cinema":"Freiluftkino Kreuzberg","opens":5,"closes":9,"offSeason":true},
+                {"cinema":"Freiluftkino Rehberge","opens":5,"closes":9,"offSeason":false}]}
+    """.data(using: .utf8)!
+
+    /// The server decides which venues are out of season; the filter sinks them to the bottom.
+    func testOutOfSeasonCinemasSinkToTheBottomOnTheServersVerdict() throws {
+        let catalog = try JSONDecoder().decode(CinemaCatalog.self, from: berlin)
+
+        XCTAssertTrue(catalog.isOffSeason("Freiluftkino Kreuzberg"))
+        XCTAssertFalse(catalog.isOffSeason("Freiluftkino Rehberge"))   // seasonal, in season
+        XCTAssertFalse(catalog.isOffSeason("Kino Central Berlin"))
+        XCTAssertEqual(catalog.seasonOrdered(catalog.cinemas),
+                       ["Kino Central Berlin", "Freiluftkino Rehberge", "Freiluftkino Kreuzberg"])
+    }
+
+    /// The muted second line of an out-of-season row, in each UI language.
+    func testBackInSeasonLineInEachLanguage() throws {
+        let season = try XCTUnwrap(JSONDecoder().decode(CinemaCatalog.self, from: berlin).season(of: "Freiluftkino Kreuzberg"))
+
+        XCTAssertEqual(season.backInSeasonLine(language: "en"), "back in season · May–Sept")
+        XCTAssertEqual(season.backInSeasonLine(language: "de"), "öffnet wieder · Mai–Sept.")
+        XCTAssertEqual(season.backInSeasonLine(language: "pl"), "wraca w sezonie · maj–wrz")
+        XCTAssertEqual(season.backInSeasonLine(language: "es"), "vuelve en temporada · may–sept")
+    }
+
+    /// A catalog from a server that predates seasons decodes with none, and nothing sinks.
+    func testCatalogWithoutSeasonsHasNoneOutOfSeason() throws {
+        let catalog = try JSONDecoder().decode(CinemaCatalog.self, from: #"{"cinemas":["A","B"],"areas":[]}"#.data(using: .utf8)!)
+        XCTAssertNil(catalog.seasons)
+        XCTAssertEqual(catalog.seasonOrdered(catalog.cinemas), ["A", "B"])
     }
 
     func testEmptyCatalogIsFlat() {

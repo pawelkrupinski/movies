@@ -40,7 +40,7 @@ struct CinemaFilterSectionView: View {
                 if section.isSplit {
                     ForEach(catalog.areas) { area in areaGroup(area) }
                 } else {
-                    ForEach(catalog.cinemas, id: \.self) { cinema in
+                    ForEach(catalog.seasonOrdered(catalog.cinemas), id: \.self) { cinema in
                         cinemaRow(cinema, indent: false)
                     }
                 }
@@ -92,7 +92,7 @@ struct CinemaFilterSectionView: View {
             }
 
             if open {
-                ForEach(area.cinemas, id: \.self) { cinema in
+                ForEach(catalog.seasonOrdered(area.cinemas), id: \.self) { cinema in
                     cinemaRow(cinema, indent: true)
                 }
             }
@@ -103,6 +103,10 @@ struct CinemaFilterSectionView: View {
         checkboxRow(
             check: section.check(ofCinema: cinema),
             label: CinemaSection.pillName(for: cinema),
+            // An out-of-season venue (open-air, drive-in) says when it is back.
+            subtitle: catalog.isOffSeason(cinema)
+                ? catalog.season(of: cinema)?.backInSeasonLine(language: locale.language.languageCode?.identifier ?? "en")
+                : nil,
             bold: false,
             indent: indent,
             identifier: "\(A11y.CinemaFilter.cinemaPrefix).\(cinema)"
@@ -116,6 +120,7 @@ struct CinemaFilterSectionView: View {
     private func checkboxRow(
         check: CinemaFilterSection.Check,
         label: String,
+        subtitle: String? = nil,
         bold: Bool,
         indent: Bool = false,
         identifier: String,
@@ -125,7 +130,12 @@ struct CinemaFilterSectionView: View {
             HStack(spacing: 8) {
                 Image(systemName: glyph(check))
                     .foregroundColor(check == .off ? .secondary : .accentColor)
-                Text(label).fontWeight(bold ? .semibold : .regular)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(label).fontWeight(bold ? .semibold : .regular)
+                    if let subtitle {
+                        Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
                 Spacer(minLength: 0)
             }
             .padding(.leading, indent ? 26 : 0)

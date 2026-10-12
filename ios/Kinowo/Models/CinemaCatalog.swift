@@ -14,11 +14,31 @@ struct CinemaCatalog: Codable, Hashable {
     let cinemas: [String]
     /// The area grouping, or empty for a flat city.
     let areas: [CinemaArea]
+    /// The city's seasonal venues (open-air, drive-in) — absent from the payload
+    /// when it has none, and from servers older than the field.
+    var seasons: [CinemaSeason]?
 
     static let empty = CinemaCatalog(cinemas: [], areas: [])
 
     /// Whether the city is split into areas (vs. a flat cinema list).
     var isSplit: Bool { !areas.isEmpty }
+
+    /// The season of `cinema`, when it is a seasonal venue.
+    func season(of cinema: String) -> CinemaSeason? {
+        seasons?.first { $0.cinema == cinema }
+    }
+
+    /// Whether `cinema` is out of season today — the SERVER's verdict, on its own
+    /// clock, so the app never disagrees with the web about it.
+    func isOffSeason(_ cinema: String) -> Bool {
+        season(of: cinema)?.offSeason ?? false
+    }
+
+    /// `cinemas` with the out-of-season ones moved to the bottom, order otherwise kept —
+    /// how the filter lists a flat city, and each area of a split one.
+    func seasonOrdered(_ cinemas: [String]) -> [String] {
+        cinemas.filter { !isOffSeason($0) } + cinemas.filter { isOffSeason($0) }
+    }
 
     /// The cinemas to EXCLUDE when only the areas in [keepingAreas] (slugs) are
     /// kept — every cinema in an unchecked area. Drives the first-visit area
@@ -37,6 +57,42 @@ struct CinemaArea: Codable, Hashable, Identifiable {
     let cinemas: [String]
 
     var id: String { slug }
+}
+
+/// A seasonal venue's typical window, months 1...12 both inclusive, and whether
+/// today is outside it (decided by the server). Mirrors web `ApiCinemaSeason`.
+struct CinemaSeason: Codable, Hashable {
+    let cinema: String
+    let opens: Int
+    let closes: Int
+    let offSeason: Bool
+
+    /// The filter row's muted second line, "back in season · May–Sept", in the
+    /// app's UI `language` ("pl", "en", "de", "es"; anything else reads English).
+    func backInSeasonLine(language: String) -> String {
+        let words = SeasonWords.of(language)
+        return "\(words.back) · \(words.months[opens - 1])–\(words.months[closes - 1])"
+    }
+}
+
+/// The words a season is spelled in, per UI language — kept identical to the web's
+/// `season.back` / `season.month.N` messages and Android's `SeasonWords`.
+struct SeasonWords {
+    let back: String
+    let months: [String]
+
+    static func of(_ language: String) -> SeasonWords {
+        switch language {
+        case "pl": return SeasonWords(back: "wraca w sezonie",
+                                      months: ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"])
+        case "de": return SeasonWords(back: "öffnet wieder",
+                                      months: ["Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."])
+        case "es": return SeasonWords(back: "vuelve en temporada",
+                                      months: ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"])
+        default:   return SeasonWords(back: "back in season",
+                                      months: ["Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"])
+        }
+    }
 }
 
 /// The area picker's checkbox state: which of a split city's areas are kept.
