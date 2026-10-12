@@ -85,7 +85,7 @@ object CinemaPlusClient {
   def dayUrl(pageUrl: String, day: LocalDate): String = s"$pageUrl?date=$day"
 
   private val DayId = """js-(\d{4}-\d{2}-\d{2})""".r
-  private val Clock = raw"""(?i)^${ScraperParse.ClockParts}\s*([ap])\.?m?\.?$$""".r
+  private val ShowtimeButton = raw"""(?i)^${ScraperParse.ClockParts}\s*([ap])\.?m?\.?$$""".r
 
   final case class Slot(title: String, card: Element, showtime: Showtime)
 
@@ -106,7 +106,7 @@ object CinemaPlusClient {
 
   /** "6:00p" / "11:30a" → the time of day; anything else is not a showtime button. */
   def timeOf(label: String): Option[LocalTime] =
-    Clock.findFirstMatchIn(label.trim).flatMap(ScraperParse.meridiemClockAt(_, 1, 3))
+    ShowtimeButton.findFirstMatchIn(label.trim).flatMap(ScraperParse.meridiemClockAt(_, 1, 3))
 
   /** One day page's film cards → a slot per showtime button, on `day`. */
   def slots(page: Document, day: LocalDate, cinema: Cinema): Seq[Slot] =
