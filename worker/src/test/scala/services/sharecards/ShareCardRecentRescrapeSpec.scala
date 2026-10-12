@@ -6,8 +6,8 @@ import ShareCardTestKit.*
 
 import java.time.Instant
 
-/** A film in its first week is the one people are sharing, so when its card changes (a ratings
- *  update, a new poster) Facebook is asked to fetch its pages again — through the fleet's re-scrape
+/** A film in its first week is the one people are sharing, so when its card's picture changes (a
+ *  new poster, title or details) Facebook is asked to fetch its pages again — through the fleet's re-scrape
  *  queue, as is the repair of a film published before its card existed. Never onto the task
  *  queue: a re-scrape there held a task-worker slot while it waited on Facebook, and a burst of
  *  them queued ahead of the card renders. */
@@ -30,21 +30,35 @@ class ShareCardRecentRescrapeSpec extends AnyFlatSpec with Matchers {
   private def rerate(rig: Rig, movie: models.ResolvedMovie): Unit =
     rig.service.render(rig.service.inputs(movie.copy(ratings = movie.ratings.copy(imdb = Some(8.4)))), Seq(ShareCardReason.Ratings))
 
+  private def retitle(rig: Rig, movie: models.ResolvedMovie): Unit =
+    rig.service.render(rig.service.inputs(movie.copy(title = "Diuna 2")), Seq(ShareCardReason.Title))
+
   "A film in its first week" should "have Facebook re-scrape its pages when its card changes" in {
     val (rig, movie) = rigWith(now = T0, published = Some(T0.minusSeconds(3 * 86400)))
-    rerate(rig, movie)
+    retitle(rig, movie)
     rescrapes(rig).map(_._1) shouldBe Seq(movie._id)
+  }
+
+  // Facebook allows the app 45-105 re-scrapes before an hour's refusal (2026-10-11/12), and a new
+  // film's Filmweb or IMDb rating moves a decimal every few hours: ratings-only re-draws were 573 of
+  // the ~690 changed cards on 2026-10-10, and their re-scrapes kept the fleet's queue at the quota
+  // until Germany's 2,900 new films grew it past 2,500 pages.
+  it should "not have them re-scraped for its rating badges alone" in {
+    val (rig, movie) = rigWith(now = T0, published = Some(T0.minusSeconds(3 * 86400)))
+    rerate(rig, movie)
+    rig.service.onDisk(movie._id) should not be empty
+    rescrapes(rig) shouldBe empty
   }
 
   it should "be asked only after the new card can be on web_movies" in {
     val (rig, movie) = rigWith(now = T0, published = Some(T0.minusSeconds(86400)))
-    rerate(rig, movie)
+    retitle(rig, movie)
     rescrapes(rig) shouldBe Seq(movie._id -> T0.plusMillis(ShareCardService.RescrapeDelay.toMillis))
   }
 
   it should "leave nothing on the task queue: the card renders never wait behind re-scrapes" in {
     val (rig, movie) = rigWith(now = T0, published = Some(T0.minusSeconds(86400)))
-    rerate(rig, movie)
+    retitle(rig, movie)
     drain(rig.queue) shouldBe empty
   }
 
@@ -57,13 +71,13 @@ class ShareCardRecentRescrapeSpec extends AnyFlatSpec with Matchers {
 
   "A film past its first week" should "not be re-scraped" in {
     val (rig, movie) = rigWith(now = T0, published = Some(T0.minusSeconds(8 * 86400)))
-    rerate(rig, movie)
+    retitle(rig, movie)
     rescrapes(rig) shouldBe empty
   }
 
   "A film published before first-publish times were kept" should "not be re-scraped" in {
     val (rig, movie) = rigWith(now = T0, published = None)
-    rerate(rig, movie)
+    retitle(rig, movie)
     rescrapes(rig) shouldBe empty
   }
 

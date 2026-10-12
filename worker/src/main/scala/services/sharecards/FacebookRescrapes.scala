@@ -302,8 +302,11 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
 
 object FacebookRescrapeDrain {
   /** The fleet's pace: one request every 20 s across every country on average, never two closer
-   *  than 15 s (the slot schedule's [[TickEvery]] of slack) — 180 an hour, well above the steady
-   *  ~20–60 an hour, so a burst drains in hours rather than being refused in minutes. */
+   *  than 15 s (the slot schedule's [[TickEvery]] of slack) — 180 an hour, ABOVE what Facebook
+   *  allows: it refused the app (code 4) after 45-105 requests each hour on 2026-10-11/12, so a
+   *  backlog drains at ~50 an hour, in bursts between [[RateLimitHold]]s. Demand is kept under that
+   *  by re-scraping only a card whose picture moved beyond its rating badges
+   *  ([[ShareCardService.render]]). */
   val Spacing: FiniteDuration = 20.seconds
   /** How often each country looks for due work. Under [[Spacing]], so one country alone keeps up
    *  with the quota. */

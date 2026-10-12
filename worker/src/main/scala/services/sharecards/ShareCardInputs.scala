@@ -216,6 +216,8 @@ final case class ShareCardVersion(hash: String) {
   def ratingsHash: String = hash.slice(5, 10)
   def drawnHash: String   = hash.take(10)
   def posterHash: String  = hash.drop(10)
+  /** Everything drawn but the rating badges: the picture a link preview is worth re-fetching for. */
+  def picture: String     = layoutHash + posterHash
 }
 
 object ShareCardVersion {

@@ -135,6 +135,17 @@ class ShareCardService(
   private def rescrape(filmId: String): Unit =
     rescrapes.request(filmId, clock.instant().plusMillis(RescrapeDelay.toMillis))
 
+  /** True when the card `now` differs from the card `before` in more than its rating badges.
+   *  Ratings alone never re-scrape: Facebook allows the app 45-105 re-scrapes before refusing it
+   *  for an hour (measured 2026-10-11/12), and a new film's rating moves a decimal every few hours
+   *  — ratings-only re-draws were 573 of the ~690 changed cards on 2026-10-10, and their
+   *  re-scrapes alone held the fleet's queue at that quota. An unreadable version counts as moved. */
+  private def movedBeyondRatings(before: String, now: String): Boolean =
+    (ShareCardVersion.parse(before), ShareCardVersion.parse(now)) match {
+      case (Some(b), Some(n)) => b.picture != n.picture
+      case _                  => before != now
+    }
+
   /** True for a film first published by the gate less than [[RecentWindow]] ago — the films people
    *  are sharing, whose previews are worth refreshing when the card changes. */
   private def recent(filmId: String): Boolean =
@@ -224,8 +235,8 @@ class ShareCardService(
     }.get
     card.foreach { version =>
       fingerprints.put(next.filmId, next.fingerprint)
-      // A recent film's card changed: its previews show the old one.
-      if (outcome != Outcome.Existing && before.exists(_ != version) && recent(next.filmId)) rescrape(next.filmId)
+      // A recent film's card changed beyond its rating badges: its previews show the old picture.
+      if (outcome != Outcome.Existing && before.exists(movedBeyondRatings(_, version)) && recent(next.filmId)) rescrape(next.filmId)
     }
     logRender(next, outcome, reasons, detailsMoved)
     metrics.render(outcome, reasons)
@@ -300,7 +311,7 @@ object ShareCardService {
    *  completes, and Facebook must find the new URL, not the old. */
   val RescrapeDelay: FiniteDuration = 1.minute
 
-  /** A card change re-scrapes a film's pages during its first week after first publication. */
+  /** A card change (beyond its ratings) re-scrapes a film's pages during its first week after first publication. */
   val RecentWindow: FiniteDuration = 7.days
 
   def reasons(payload: Map[String, String]): Seq[String] =
