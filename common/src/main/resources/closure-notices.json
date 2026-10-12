@@ -1,0 +1,42 @@
+{
+  "_comment": "What a venue's own website says when the venue itself is gone. Read by services.scrapes.OwnSiteEvidence (the worker's closure sweep) and data/scripts/retire_venues.py (the retirement PR's live re-check), so both judge a page the same way. Lower case; matched as substrings. 'closure' is matched in the page's visible text and must say the closure is PERMANENT: a bare 'geschlossen' or 'closed' is on every live cinema's opening-hours line ('Montag geschlossen'). 'parked' is matched in the raw HTML, where parking services name themselves in script and link URLs.",
+  "closure": [
+    "permanently closed",
+    "closed permanently",
+    "closed for good",
+    "closed its doors for good",
+    "closed our doors for good",
+    "closed its doors permanently",
+    "closed our doors permanently",
+    "will not be reopening",
+    "dauerhaft geschlossen",
+    "endgültig geschlossen",
+    "für immer geschlossen",
+    "schließt endgültig",
+    "hat für immer geschlossen",
+    "cerrado definitivamente",
+    "cerrado permanentemente",
+    "cierre definitivo",
+    "cierra definitivamente",
+    "ha cerrado definitivamente",
+    "zamknięte na stałe",
+    "zamknięte na zawsze",
+    "definitywnie zamknięte",
+    "kino zostało zamknięte"
+  ],
+  "parked": [
+    "this domain is for sale",
+    "this domain may be for sale",
+    "buy this domain",
+    "the domain is for sale",
+    "domain is parked",
+    "parked free, courtesy of",
+    "diese domain steht zum verkauf",
+    "diese domain kaufen",
+    "este dominio está a la venta",
+    "domena jest na sprzedaż",
+    "sedoparking.com",
+    "parkingcrew.net",
+    "hugedomains.com"
+  ]
+}

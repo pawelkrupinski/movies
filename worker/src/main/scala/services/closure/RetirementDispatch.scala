@@ -2,7 +2,6 @@ package services.closure
 
 import models.{Cinema, GermanRoster, SpanishRoster, UsRoster}
 import play.api.libs.json.{JsObject, Json}
-import services.scrapes.VenueClosure.ClosureEvidence
 
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
@@ -23,10 +22,12 @@ object RosterEntry {
       .orElse(UsRoster.flicksSlugByCinema.get(cinema).map(RosterEntry(RosterDirectory("us"), _)))
 }
 
-/** `page`: the primary's own page, which the workflow re-checks in place of the roster's
- *  aggregator page — a venue scraped off its own site (ACME Screening Room, which Flicks
- *  dropped) is closed only if THAT page is gone. */
-final case class RetirementRequest(entry: RosterEntry, name: String, evidence: ClosureEvidence, page: Option[String] = None)
+/** A closed venue to retire: its evidence line, the venue-level pages the live re-check
+ *  must find closed again, and `page`, the primary's own page, which the workflow re-checks
+ *  in place of the roster's aggregator page — a venue scraped off its own site (ACME
+ *  Screening Room, which Flicks dropped) has been dropped only if THAT page is gone. */
+final case class RetirementRequest(entry: RosterEntry, name: String, evidence: String, checks: Seq[LiveCheck],
+                                   page: Option[String] = None)
 
 /** Asks for confirmed-closed venues to be taken off their roster. THROWS when the
  *  request did not go through, so the sweep can try again next time. */
@@ -34,7 +35,8 @@ trait RetirementDispatch {
   def request(directory: RosterDirectory, venues: Seq[RetirementRequest]): Unit
 }
 
-/** Starts `.github/workflows/retire-venues.yml`, which re-checks each venue live, adds
+/** Starts `.github/workflows/retire-venues.yml`, which re-checks each venue live — its
+ *  aggregator page and the venue-level evidence — adds
  *  it to `data/<directory>/retired.json`, regenerates the roster and opens a PR. */
 final class GitHubRetirementDispatch(token: settings.GitHubDispatchToken, client: HttpClient) extends RetirementDispatch {
 
@@ -56,10 +58,12 @@ final class GitHubRetirementDispatch(token: settings.GitHubDispatchToken, client
 object GitHubRetirementDispatch {
   val Endpoint = "https://api.github.com/repos/pawelkrupinski/movies/actions/workflows/retire-venues.yml/dispatches"
 
-  /** One venue as the workflow reads it: its id, name, and the evidence for the PR body. */
+  /** One venue as the workflow reads it: its id, name, the evidence for the PR body, and
+   *  the venue-level pages its live re-check must find closed again. */
   def venueJson(venue: RetirementRequest): JsObject = Json.obj(
     "id"       -> venue.entry.id,
     "name"     -> venue.name,
-    "evidence" -> ClosureSweep.evidenceLine(venue.evidence)) ++
+    "evidence" -> venue.evidence,
+    "checks"   -> venue.checks.map(check => Json.obj("kind" -> check.kind, "url" -> check.url))) ++
     venue.page.fold(Json.obj())(page => Json.obj("page" -> page))
 }

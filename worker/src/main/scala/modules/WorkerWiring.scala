@@ -215,14 +215,16 @@ class WorkerWiring(
   protected lazy val identityModelScheduler: java.util.concurrent.ScheduledExecutorService =
     managedResources.executor("identity model")(tools.DaemonExecutors.scheduler(s"identity-model-${country.code}"))
 
-  // Once a day, every venue through `VenueClosure`: a newly confirmed closure pages once on
-  // the fallback channel and, for a data-driven roster (DE/ES/US), starts the retire-venues
-  // workflow, which re-checks it live and opens the PR removing it. Without
-  // KINOWO_GITHUB_DISPATCH_TOKEN the page asks for a hand retirement instead.
+  // Once a day, every venue through `VenueClosure`. A venue its sources dropped is asked about
+  // itself (its own site, a second listing): only one that shows it has closed pages once as a
+  // closure and, for a data-driven roster (DE/ES/US), starts the retire-venues workflow, which
+  // re-checks it live and opens the PR removing it. Without KINOWO_GITHUB_DISPATCH_TOKEN the
+  // page asks for a hand retirement instead. One with no such evidence pages once as a coverage
+  // gap and is listed on /uptime; it is never retired.
   lazy val closureLedger: services.closure.ClosureLedger =
     mongoConnection.database.fold[services.closure.ClosureLedger](new services.closure.InMemoryClosureLedger)(new services.closure.MongoClosureLedger(_))
   lazy val closureSweep = new services.closure.ClosureSweep(() => closureCandidates, scrapeArchive, filmwebFallbackStore,
-    closureLedger, fallbackPager(services.alerts.TelegramAlertKind.VenueClosure),
+    new services.closure.VenueChecks(services.scrapes.VenueWebsites.checkedIn, httpFetch), closureLedger, fallbackPager(services.alerts.TelegramAlertKind.VenueClosure),
     configuration.githubDispatchToken.map(token => new services.closure.GitHubRetirementDispatch(token,
       java.net.http.HttpClient.newBuilder().connectTimeout(java.time.Duration.ofSeconds(10)).sslContext(tlsContext).build())),
     clock)

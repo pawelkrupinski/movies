@@ -246,7 +246,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
       (1 to 3).foreach(n => costs.record(s"scrape|venue-$n", ScrapeCost(n)))
       costs.recent()
       val ledger = new MongoClosureLedger(db)
-      ledger.confirm("Kino Gone", Far); ledger.confirmed(); ledger.withdraw("Kino Gone")
+      ledger.record("Kino Gone", services.closure.LedgerEntry(services.closure.LedgerKind.SourceDropped, Far, "evidence")); ledger.entries(); ledger.withdraw("Kino Gone")
       val fingerprints = new MongoVenueSlotFingerprints(db)
       fingerprints.update((1L to 10L).toSet, Set.empty); fingerprints.update(Set(11L), Set(1L)); fingerprints.all()
       val token = new ChangeStreamResumeToken("movies", Some(db), enabled = true)

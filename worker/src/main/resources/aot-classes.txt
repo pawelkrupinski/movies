@@ -9681,6 +9681,8 @@ services.cinemas.common.SourceFallbackScraper$
 services.cinemas.common.SourceFallbackScraper$FallbackAnswer
 services.cinemas.common.SourceFallbackScraper$FallbackAnswer$
 services.cinemas.common.SourceFallbackScraper$FallbackAnswer$$anon$1
+services.cinemas.common.SourceFallbackScraper$FallbackAnswer$Dropped
+services.cinemas.common.SourceFallbackScraper$FallbackAnswer$Dropped$
 services.cinemas.common.SourceFallbackScraper$PrimaryOutcome
 services.cinemas.common.SourceFallbackScraper$PrimaryOutcome$
 services.cinemas.common.SourceFallbackScraper$PrimaryOutcome$Empty

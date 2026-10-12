@@ -1,0 +1,4 @@
+{
+  "_comment": "Each venue's OWN website, by its display name (the wire key the closure ledger uses). Only where we know it: the closure sweep reads the site as evidence about the venue itself (services.scrapes.VenueWebsites), and the retirement PR re-reads it live (data/scripts/retire_venues.py). A venue an aggregator dropped is retired as closed only on such evidence; without a site or a second listing that dropped it too, it is raised as a coverage gap instead.",
+  "ACME Screening Room Lambertville": "https://www.acmescreeningroom.org/"
+}
