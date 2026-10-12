@@ -76,12 +76,14 @@ class AgreementQuestionRoundsSpec extends AnyFlatSpec with Matchers {
     () => questions.filter { case (family, question) => store.wanted(FamilyAnswerStore.questionId(family, question)) }
 
   /** A source of `family` answering every ask: one it `counts` counts `release` down, and one it `holds` is held open (a
-   *  host waiting out its timeout) until `release` reaches zero — at most 10s, then it fails as a timeout would. */
+   *  host waiting out its timeout) until `release` reaches zero — at most [[SpecTimeouts.Settle]], then it fails as a
+   *  timeout would, so a regression fails the test rather than hanging it. */
   private final class Held(val family: VoterFamily, release: CountDownLatch, counts: String => Boolean, holds: String => Boolean) extends FamilySource {
     def titled(text: String): Seq[SourceHit] = Nil
     def directedBy(name: String): Seq[SourceHit] = {
       if (counts(name)) release.countDown()
-      if (holds(name) && !release.await(10, TimeUnit.SECONDS)) throw new java.net.SocketTimeoutException(s"'$name' held for 10s")
+      if (holds(name) && !release.await(SpecTimeouts.Settle.toMillis, TimeUnit.MILLISECONDS))
+        throw new java.net.SocketTimeoutException(s"'$name' held past ${SpecTimeouts.Settle}")
       Seq(SourceHit("Q1", "A film", None, Some(2025)))
     }
     def record(id: String): Option[SourceRecord] = None
