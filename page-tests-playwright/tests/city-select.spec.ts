@@ -113,9 +113,9 @@ test.describe('another country’s places arrive after the page', { tag: '@agnos
   });
 });
 
-// The US lists 2,003 places — major cities, towns and clusters of small towns
+// The US lists 2,001 places — major cities, towns and clusters of small towns
 // (`data/us/scripts/build_pages.py`) — grouped under their anchor town's state,
-// because "Los Angeles" is found under "California" and a 2,003-row A-to-Z is not
+// because "Los Angeles" is found under "California" and a 2,001-row A-to-Z is not
 // a list anybody reads. The state is a heading, never a link.
 //
 // The count is a roster fact, so it moves on a re-harvest and on any re-cut.
@@ -124,17 +124,17 @@ test.describe('another country’s places arrive after the page', { tag: '@agnos
 test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
   test('the page carries every place, one state’s level on screen at a time', async ({ page }) => {
     await page.goto('/landing-us', { waitUntil: 'domcontentloaded' });
-    // All 2,003 places are in the document — behind a state heading, except the
+    // All 2,001 places are in the document — behind a state heading, except the
     // three states and territories with a single page, which link straight
     // through (`CityGroup.soleCity`): the District of Columbia is Washington.
-    await expect(placeLinks(page)).toHaveCount(2003);
+    await expect(placeLinks(page)).toHaveCount(2001);
     const states = page.locator('#picker-panes > .picker-pane:first-child .picker-level[data-region]');
     await expect(states).toHaveCount(52);
     await expect(rootPlaces(page)).toHaveCount(3);
     await expect(page.locator('#picker-panes > .picker-pane:first-child a[href="https://showtimes.cc/us/washington/"] .picker-item-label')).toHaveText('Washington');
     await expect(states.filter({ visible: true })).toHaveCount(0);
     await expect(states.first()).toHaveAttribute('data-region', 'Alabama');
-    await expect(regionLevel(page, 'California').locator('a[data-slug]')).toHaveCount(156);
+    await expect(regionLevel(page, 'California').locator('a[data-slug]')).toHaveCount(155);
   });
 
   test('the dynamic picker opens on the states and drills into one', async ({ page }) => {
@@ -195,7 +195,7 @@ test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
 
     await page.locator('#picker-search').fill('');
     await pickerRow(page, 'California').click();
-    await expect(page.locator('#picker-list .picker-item')).toHaveCount(156);
+    await expect(page.locator('#picker-list .picker-item')).toHaveCount(155);
     // One level down, a DIFFERENT state's own name STILL matches — the whole
     // country is searched no matter how deep the visitor has drilled, same
     // as the root level above.
@@ -345,7 +345,7 @@ test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
 test.describe('grouped city landing (Germany)', { tag: '@agnostic' }, () => {
   test('the page carries every page under its Bundesland, collated as German', async ({ page }) => {
     await page.goto('/landing-de', { waitUntil: 'domcontentloaded' });
-    await expect(placeLinks(page)).toHaveCount(451);
+    await expect(placeLinks(page)).toHaveCount(446);
     // Two of the 16 hold one page each and are pulled up: the city-states
     // Berlin and Hamburg, which share their page's name.
     await expect(rootPlaces(page)).toHaveText(['Berlin', 'Hamburg']);
