@@ -41,12 +41,22 @@ object DaemonExecutors {
    *
    *  Dropped means CANCELLED when the task is a `Future` (a `submit` / `invokeAll` wraps every task
    *  in one): left incomplete, its waiter — `submit(...).get()`, or an `invokeAll` (the identity
-   *  prefetch's) — waited forever on a task nothing would ever run. */
+   *  prefetch's) — waited forever on a task nothing would ever run.
+   *
+   *  The same holds for every task `shutdownNow` hands back: drained from the queue, it will never
+   *  run either. A producer waiting for room ([[WhenFull.WaitForRoom]]) can land its task in the
+   *  queue between the two passes of `ThreadPoolExecutor`'s drain, so the drain — not the producer's
+   *  own take-back — holds it; cancelled here, whoever called `shutdownNow`. */
   private[tools] def dropRejectedAfterShutdown(es: ExecutorService): ExecutorService =
     new DelegatingExecutorService(es) {
       override def execute(command: Runnable): Unit =
         try es.execute(command)
         catch { case _: RejectedExecutionException if es.isShutdown => cancelUnrun(command) }
+      override def shutdownNow(): java.util.List[Runnable] = {
+        val drained = es.shutdownNow()
+        drained.forEach(cancelUnrun)
+        drained
+      }
     }
 
   /** Release whoever waits on `task`, which will never run: cancelled when it is a `Future`; failed

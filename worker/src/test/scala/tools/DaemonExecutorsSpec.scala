@@ -78,6 +78,18 @@ class DaemonExecutorsSpec extends AnyFlatSpec with Matchers {
     try done.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true finally caller.interrupt()
   }
 
+  // `shutdownNow` drains the queue and hands the drained tasks back; nothing will ever run them, so a
+  // waiter on one of them used to wait forever unless the caller cancelled what it was handed.
+  it should "cancel a queued task that shutdownNow drains, whoever called it" in {
+    val pool    = DaemonExecutors.singleThreadExecutor("drained-by-shutdown-now", queueCapacity = 1)
+    val started = new CountDownLatch(1)
+    pool.execute(() => { started.countDown(); try new CountDownLatch(1).await() catch { case _: InterruptedException => () } })
+    started.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
+    val queued = pool.submit(() => 1)
+    pool.shutdownNow()
+    an[java.util.concurrent.CancellationException] should be thrownBy queued.get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
+  }
+
   // A producer waiting for room got it from `shutdownNow` draining the queue — after the pool had
   // stopped taking from it — and put its task where nothing would ever run it, its future forever
   // incomplete. A task that lands in the queue of a pool shut down meanwhile is taken back, cancelled.
