@@ -55,10 +55,8 @@ final class CardSpacingTuningUITests: XCTestCase {
 
         let slider = app.sliders[A11y.Tuning.sectionSpacingSlider]
         XCTAssertTrue(slider.waitForExistence(timeout: 5), "Section-spacing slider missing")
-        slider.adjust(toNormalizedSliderPosition: 1.0) // 8 → 24pt
-        Thread.sleep(forTimeInterval: 0.4) // let the layout settle
-
-        let gapAfter = runtime.frame.minY - title.frame.maxY
+        maxOut(slider) // 8 → 24pt
+        let gapAfter = reading(beyond: gapBefore + 8) { runtime.frame.minY - title.frame.maxY }
         XCTAssertGreaterThan(
             gapAfter, gapBefore + 8,
             "Widening the section spacing to max barely moved the runtime row "
@@ -82,10 +80,8 @@ final class CardSpacingTuningUITests: XCTestCase {
         let slider = app.sliders[A11y.Tuning.dayToCinemaSlider]
         XCTAssertTrue(slider.waitForExistence(timeout: 5), "dayToCinema slider missing")
         if !slider.isHittable { app.scrollViews[A11y.Tuning.controlsScroll].swipeUp() }
-        slider.adjust(toNormalizedSliderPosition: 1.0) // 6 → 24pt
-        Thread.sleep(forTimeInterval: 0.4)
-
-        let gapAfter = cinema.frame.minY - dayLabel.frame.maxY
+        maxOut(slider) // 6 → 24pt
+        let gapAfter = reading(beyond: gapBefore + 8) { cinema.frame.minY - dayLabel.frame.maxY }
         XCTAssertGreaterThan(
             gapAfter, gapBefore + 8,
             "Maxing dayToCinema barely moved the cinema name below the day label "
@@ -105,10 +101,8 @@ final class CardSpacingTuningUITests: XCTestCase {
 
         let slider = app.sliders[A11y.Tuning.cinemaHeaderFontSlider]
         XCTAssertTrue(slider.waitForExistence(timeout: 5), "Cinema-header font slider missing on the Kina page")
-        slider.adjust(toNormalizedSliderPosition: 1.0) // 15 → 24pt
-        Thread.sleep(forTimeInterval: 0.4)
-
-        let heightAfter = header.frame.height
+        maxOut(slider) // 15 → 24pt
+        let heightAfter = reading(beyond: heightBefore + 2) { header.frame.height }
         XCTAssertGreaterThan(
             heightAfter, heightBefore + 2,
             "Maxing the cinema-header font barely moved the header height "
@@ -129,10 +123,8 @@ final class CardSpacingTuningUITests: XCTestCase {
         let slider = app.sliders[A11y.Tuning.detailTitleFontSlider]
         XCTAssertTrue(slider.waitForExistence(timeout: 5), "Detail-title font slider missing on the Film page")
         if !slider.isHittable { app.scrollViews[A11y.Tuning.controlsScroll].swipeUp() }
-        slider.adjust(toNormalizedSliderPosition: 1.0) // 22 → 34pt
-        Thread.sleep(forTimeInterval: 0.4)
-
-        let heightAfter = title.frame.height
+        maxOut(slider) // 22 → 34pt
+        let heightAfter = reading(beyond: heightBefore + 4) { title.frame.height }
         XCTAssertGreaterThan(
             heightAfter, heightBefore + 4,
             "Maxing the detail-title font barely moved the title height "
@@ -168,6 +160,39 @@ final class CardSpacingTuningUITests: XCTestCase {
         XCTAssertTrue(tab.waitForExistence(timeout: 5), "Page tab \(index) missing")
         tab.tap()
         Thread.sleep(forTimeInterval: 0.4) // let the pager settle on the new page
+    }
+
+    /// Drags `slider` to its maximum and confirms the slider itself reports it,
+    /// re-dragging (up to three times) when it does not. Run 38278405182 read the
+    /// Film page's detail title at the same height before and after "maxing" its
+    /// font (15 of 15 passed alone locally): the drag was synthesized right after
+    /// the controls sheet swapped to that page on a slow runner, and either never
+    /// moved the slider or was measured before the title re-laid out — either way
+    /// the test blamed the lever's wiring. Checking the slider's
+    /// own position separates the two: a drag that cannot land fails here, an
+    /// unwired lever still fails the caller's measurement.
+    private func maxOut(_ slider: XCUIElement) {
+        for _ in 0..<3 {
+            slider.adjust(toNormalizedSliderPosition: 1.0)
+            if slider.normalizedSliderPosition >= 0.99 { return }
+        }
+        XCTFail("\(slider) stayed at \(slider.normalizedSliderPosition) after three drags to its maximum")
+    }
+
+    /// Re-reads `measure` until it passes `threshold` or `timeout` runs out, and
+    /// returns the last reading for the caller to assert on: a slider's new value
+    /// reaches the measured view only on a later layout pass, which the fixed
+    /// 0.4 s sleep this replaced could outrun. An unwired lever still never
+    /// passes the threshold, so the caller's assertion still fails.
+    private func reading(beyond threshold: CGFloat, timeout: TimeInterval = 5,
+                         _ measure: () -> CGFloat) -> CGFloat {
+        let deadline = Date().addingTimeInterval(timeout)
+        var value = measure()
+        while value <= threshold, Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.2)
+            value = measure()
+        }
+        return value
     }
 
     private func firstCard() -> XCUIElement {
