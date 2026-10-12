@@ -1,7 +1,4 @@
 import { generateKeyPairSync, verify } from "node:crypto";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { HttpError, setHttpClient, type HttpClient, type HttpRequest } from "../../src/http.js";
 import {
@@ -129,16 +126,13 @@ describe("Android release state", () => {
 });
 
 describe("the real clients, over a fake HTTP client", () => {
-  let dir: string;
   let restore: HttpClient;
   let requests: { url: string; init: HttpRequest }[];
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), "mobile-stores-"));
     requests = [];
   });
   afterEach(() => {
     setHttpClient(restore);
-    rmSync(dir, { recursive: true, force: true });
   });
   const answer = (routes: Record<string, [number, unknown]>) => {
     restore = setHttpClient(async (url, init) => {
@@ -182,19 +176,18 @@ describe("the real clients, over a fake HTTP client", () => {
     expect(state.error).toContain("HTTP 401");
   });
 
-  it("reads Play's production track through an edit it never commits", async () => {
+  it("reads Play's production track through an edit it never commits, with the service account from the vault", async () => {
     const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
-    mkdirSync(join(dir, "android"));
-    writeFileSync(join(dir, "android", "play-credentials.json"), JSON.stringify({
+    const secrets = vault({ PLAY_SERVICE_ACCOUNT_JSON: JSON.stringify({
       client_email: "sa@x.iam", private_key: privateKey.export({ type: "pkcs8", format: "pem" }), token_uri: "https://oauth2.example/token",
-    }));
+    }) });
     const base = "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/net.pawel.kinowo";
     answer({
       "https://oauth2.example/token": [200, { access_token: "tok" }],
       [`${base}/edits`]: [200, { id: "e1" }],
       [`${base}/edits/e1/tracks/production`]: [200, { releases: [{ status: "completed", name: "2.0.9", versionCodes: ["312", "313"] }] }],
     });
-    const state = await androidReleaseState(playClient(dir, () => NOW_MS), noSleep);
+    const state = await androidReleaseState(playClient(secrets, () => NOW_MS), noSleep);
     expect(state).toEqual({ error: null, liveVersion: "2.0.9", liveExtra: "312,313", pending: null });
     expect(requests.map(({ url, init }) => `${init.method ?? "GET"} ${url}`)).toEqual([
       "POST https://oauth2.example/token",
@@ -205,6 +198,12 @@ describe("the real clients, over a fake HTTP client", () => {
     expect(requests[1]?.init.headers).toEqual({ Authorization: "Bearer tok" });
     // Nothing ever commits the edit.
     expect(requests.some(({ url }) => url.includes(":commit"))).toBe(false);
+  });
+
+  it("a locked vault on the Play side is the same unlockable state", async () => {
+    const state = await androidReleaseState(playClient(vault({}, true), () => NOW_MS), noSleep);
+    expect(requests).toHaveLength(0);
+    expect(state).toMatchObject({ networkError: false, vaultLocked: true });
   });
 });
 

@@ -12,7 +12,7 @@ type WakeSource = { readonly onWake: (listener: () => void) => void };
 /** The real sources: this checkout's git, App Store Connect and the Play Developer API. */
 export function mobileSources(repoDir: string = REPO_DIR): MobileSources {
   const asc = ascApi();
-  const play = playClient(repoDir);
+  const play = playClient();
   return { repoDir, ios: () => iosReleaseState(asc.get), android: () => androidReleaseState(play), now: Date.now };
 }
 

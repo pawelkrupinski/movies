@@ -9,7 +9,6 @@
  * serving, and each platform is diffed from ITS OWN baseline (see build.ts).
  */
 import { createPrivateKey, sign } from "node:crypto";
-import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { runCommand, type Executor } from "../exec.js";
@@ -34,7 +33,7 @@ const realSleep: Sleep = (ms) => new Promise((wake) => setTimeout(wake, ms));
 
 function failed(error: unknown): StoreState {
   if (error instanceof VaultLockedError) {
-    return { error: "the App Store key is in the Touch ID vault, which is locked for this dashboard -- unlock it with Touch ID", networkError: false, vaultLocked: true };
+    return { error: "the store key is in the Touch ID vault, which is locked for this dashboard -- unlock it with Touch ID", networkError: false, vaultLocked: true };
   }
   return { error: describeError(error), networkError: isTransientNetworkError(error) };
 }
@@ -192,12 +191,12 @@ export function playAssertion(credentials: PlayCredentials, nowSeconds: number):
   return `${input}.${b64u(sign("sha256", Buffer.from(input), createPrivateKey(credentials.private_key)))}`;
 }
 
-/** The Play Developer API through the service account in android/play-credentials.json. */
-export function playClient(repoDir: string, now: () => number = Date.now): PlayApi {
+/** The Play Developer API through the service account in the Touch ID vault (PLAY_SERVICE_ACCOUNT_JSON). */
+export function playClient(secrets: Secrets = vaultSecrets().get, now: () => number = Date.now): PlayApi {
   const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
   return {
     async token() {
-      const credentials = JSON.parse(await readFile(join(repoDir, "android", "play-credentials.json"), "utf8")) as PlayCredentials;
+      const credentials = JSON.parse(await secrets("PLAY_SERVICE_ACCOUNT_JSON")) as PlayCredentials;
       const assertion = playAssertion(credentials, Math.floor(now() / 1000));
       const answer = (await requestJson(credentials.token_uri, {
         method: "POST",

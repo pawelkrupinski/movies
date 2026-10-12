@@ -28,9 +28,9 @@ val releaseStorePath = signingValue("KINOWO_RELEASE_STORE_FILE", "storeFile")
 val hasReleaseSigning = releaseStorePath?.exists() == true
 
 // Google Play publishing (Gradle Play Publisher) reads a service-account JSON
-// key. Same env-var-or-local-file shape as release signing above: CI decodes the
-// PLAY_SERVICE_ACCOUNT_JSON secret to a file and points KINOWO_PLAY_CREDENTIALS_FILE
-// at it; locally, drop a gitignored `play-credentials.json` in android/. With
+// key, from the file KINOWO_PLAY_CREDENTIALS_FILE names. The release lane
+// (infra/version-dashboard, mobile-release) writes it from the Touch ID vault's
+// PLAY_SERVICE_ACCOUNT_JSON for the length of the build. With
 // neither, the play tasks stay unconfigured and fail fast only if invoked — a
 // normal build never needs Play credentials.
 val playCredentialsFile: File? =

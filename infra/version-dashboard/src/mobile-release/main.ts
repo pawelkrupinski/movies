@@ -8,7 +8,7 @@ import { dirname } from "node:path";
 import { parseArgs } from "node:util";
 import { REPO_DIR } from "../config.js";
 import { runCommand } from "../exec.js";
-import { ascApi, playClient } from "../mobile/stores.js";
+import { ascApi, playClient, vaultSecrets } from "../mobile/stores.js";
 import { notesFrom, readNotesDir } from "./notes.js";
 import { release } from "./release.js";
 
@@ -34,8 +34,8 @@ if (values.help) {
   process.exit(0);
 }
 
-// The MAIN checkout, even when this runs from a worktree: the Play key and the Android keystore are
-// gitignored and live only there. (The App Store key is in the Touch ID vault.)
+// The MAIN checkout, even when this runs from a worktree: android/local.properties is gitignored and
+// lives only there. (Every key -- App Store, Play, the upload keystore -- is in the Touch ID vault.)
 const repoDir = dirname(execFileSync("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], { cwd: REPO_DIR, encoding: "utf8" }).trim());
 
 const notesDir = values["notes-dir"];
@@ -44,7 +44,8 @@ try {
   await release(
     {
       asc: ascApi(),
-      play: playClient(repoDir),
+      play: playClient(),
+      secrets: vaultSecrets().get,
       run: runCommand,
       sleep: (ms) => new Promise((wake) => setTimeout(wake, ms)),
       log: (line) => console.log(`${stamp()} ${line}`),

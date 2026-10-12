@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -19,9 +19,24 @@ let dir: string;
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "mobile-ship-"));
   mkdirSync(join(dir, "repo", "android"), { recursive: true });
-  writeFileSync(join(dir, "repo", "android", "keystore.properties"), "storeFile=kinowo-release.jks\nstorePassword=sp\nkeyAlias=ka\nkeyPassword=kp\n");
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+/** The release signing secrets as the Touch ID vault holds them. */
+const VAULT: Record<string, string> = {
+  KINOWO_RELEASE_KEYSTORE_BASE64: Buffer.from("JKS-BYTES").toString("base64"),
+  KINOWO_RELEASE_STORE_PASSWORD: "sp",
+  KINOWO_RELEASE_KEY_ALIAS: "ka",
+  KINOWO_RELEASE_KEY_PASSWORD: "kp",
+  PLAY_SERVICE_ACCOUNT_JSON: '{"client_email":"claude@kinowo"}',
+};
+const vault = async (name: string): Promise<string> => {
+  const value = VAULT[name];
+  if (value === undefined) throw new Error(`${name} is not in the vault`);
+  return value;
+};
+/** What the keystore and Play key files held while Gradle ran (they are gone once the release ends). */
+const signingFiles: Record<string, string> = {};
 
 const ok = (stdout = ""): CommandResult => ({ code: 0, stdout, stderr: "", timedOut: false });
 
@@ -53,6 +68,11 @@ function executor(events: string[], ran: Ran[], gradleExit = 0): Executor {
       options.onLine?.("\u001b[32m✓\u001b[0m uploaded");
     }
     if (argv[0] === "./gradlew") {
+      const env = options.env ?? {};
+      for (const name of ["KINOWO_RELEASE_STORE_FILE", "KINOWO_PLAY_CREDENTIALS_FILE"]) {
+        const path = env[name];
+        if (path) signingFiles[name] = `${readFileSync(path, "utf8")} mode=${(statSync(path).mode & 0o777).toString(8)}`;
+      }
       for (const line of GRADLE_OUTPUT) options.onLine?.(line);
       return { ...ok(), code: gradleExit };
     }
@@ -99,6 +119,7 @@ function deps(events: string[], ran: Ran[], gradleExit = 0): ReleaseDeps & { asc
     log: (line) => lines.push(line),
     lines,
     nowSeconds: () => NOW,
+    secrets: vault,
     repoDir: join(dir, "repo"),
     workDir: dir,
   };
@@ -130,11 +151,20 @@ describe("release", () => {
     expect(push?.options.env).toEqual({ PREPUSH_SKIP: "ios" });
 
     const gradle = ran.find((r) => r.argv[0] === "./gradlew");
+    // Signing comes from the vault: passwords as env, the keystore and Play key as private temp
+    // files that exist only while Gradle runs.
     expect(gradle?.options.env).toMatchObject({
       KINOWO_VERSION_CODE: String(NOW),
-      KINOWO_RELEASE_STORE_FILE: join(dir, "repo", "android", "kinowo-release.jks"),
-      KINOWO_PLAY_CREDENTIALS_FILE: join(dir, "repo", "android", "play-credentials.json"),
+      KINOWO_RELEASE_STORE_PASSWORD: "sp",
+      KINOWO_RELEASE_KEY_ALIAS: "ka",
+      KINOWO_RELEASE_KEY_PASSWORD: "kp",
     });
+    expect(signingFiles).toEqual({
+      KINOWO_RELEASE_STORE_FILE: "JKS-BYTES mode=600",
+      KINOWO_PLAY_CREDENTIALS_FILE: '{"client_email":"claude@kinowo"} mode=600',
+    });
+    expect(existsSync(gradle?.options.env?.["KINOWO_RELEASE_STORE_FILE"] ?? "")).toBe(false);
+    expect(existsSync(gradle?.options.env?.["KINOWO_PLAY_CREDENTIALS_FILE"] ?? "")).toBe(false);
     expect(ran.find((r) => r.argv[0]?.endsWith("tag-mobile-release.sh"))?.argv.slice(1)).toEqual(["android", "2.0.10", BUMP_SHA]);
 
     const at = (needle: string) => events.findIndex((event) => event.includes(needle));
