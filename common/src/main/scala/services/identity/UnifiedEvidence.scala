@@ -108,12 +108,12 @@ object UnifiedEvidence {
     val records = scala.collection.mutable.ArrayBuffer(record)
     val ids     = scala.collection.mutable.Map.empty[String, String]
     def film: String = tmdb.fold(imdb.fold("")(id => s"imdb:$id"))(id => s"tmdb:$id")
-    def is(other: SourceRecord): Boolean = records.exists(Agreement.sameFilm(_, other))
+    def is(other: SourceRecord): Boolean = Agreement.joins(records.toSeq, other)
   }
 
   /** Every film the cluster's evidence reaches — the TMDB candidates some node scored and did not deny, and each film a
-   *  family took or leans to (joined to a TMDB candidate by a shared id, else by its facts, as the agreement joins two
-   *  families' picks) — with its signals. A family's film no id names is none: no film can be shown for it. */
+   *  family took or leans to (joined to a TMDB candidate by a shared id, else by its facts, held apart from none of its
+   *  records, as the agreement joins two families' picks: [[Agreement.joins]]) — with its signals. A family's film no id names is none: no film can be shown for it. */
   def contenders(c: ClusterEvidence): Seq[Contender] = {
     val scored   = c.nodes.flatMap(_.candidates).filterNot(candidate => FallbackIds.isFallback(candidate.tmdbId)).groupBy(_.tmdbId)
     val eligible = scored.filter(_._2.exists(!_.denied)).toSeq.sortBy(_._1)
@@ -127,7 +127,7 @@ object UnifiedEvidence {
     // picks): a film IMDb names by its id alone and Wikidata by its TMDB id is one film, the TMDB candidate both name
     val familyRecords = c.verdicts.sortBy(_.family.ordinal).flatMap(v => v.pick.map(pick => pick.record -> Option(pick)) ++ v.leaning.map(_ -> None))
     val familyFilms = familyRecords.foldLeft(Vector.empty[Vector[(SourceRecord, Option[FamilyPick])]]) { (films, entry) =>
-      val (joined, apart) = films.partition(_.exists { case (record, _) => Agreement.sameFilm(record, entry._1) })
+      val (joined, apart) = films.partition(film => Agreement.joins(film.map(_._1), entry._1))
       apart :+ (joined.flatten :+ entry)
     }
     familyFilms.foreach { members =>

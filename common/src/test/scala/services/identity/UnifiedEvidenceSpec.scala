@@ -56,6 +56,24 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     found.head.familyIds shouldBe Map("imdb" -> "x", "wiki" -> "x")
   }
 
+  it should "join to one film no two records its facts hold apart, whatever an undated record of the title links them by" in {
+    // PL "Homo sapiens?" (Cohn and Duprat's 2025 "Homo Argentum"): TMDB's undated, uncredited Swedish "Homo Sapiens" shares
+    // the title with both Geyrhalter's 2016 film, which IMDb, Metacritic and RT take, and Filmweb's 2025 take — one
+    // contender of the three read Geyrhalter's takers as a film released last year (families.current), and filled it
+    val listings = Seq(listing(KinoMuza, "Homo sapiens?"))
+    val undated  = IdentityMeasures.Film("Homo Sapiens", Some("Homo Sapiens"), directors = Some(Nil))
+    val geyrhalter = film("Homo Sapiens", 2016, "Nikolaus Geyrhalter", 94)
+    val verdicts = Seq(took(VoterFamily.Imdb, SourceRecord(geyrhalter, Map("imdb" -> "tt5450084"))),
+      took(VoterFamily.Metacritic, SourceRecord(geyrhalter, Map("metacritic" -> "homo-sapiens"))),
+      took(VoterFamily.RottenTomatoes, SourceRecord(geyrhalter, Map("rt" -> "homo_sapiens_2016"))),
+      took(VoterFamily.Filmweb, SourceRecord(film("Homo sapiens?", 2025, "Mariano Cohn", 98), Map("filmweb" -> "10110656"))))
+    val decision = ResolverDecision(listings.map(_.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()
+    val found = contenders(ClusterEvidence(listings, decision, Seq(IdentityResolver.NodeEvidence(listings.map(_.key), Seq(candidate(1132522, undated, 0.02)))),
+      verdicts, Nil, _ => None, thisYear = 2026))
+    found.filter(_.signals.contains("families.current")).map(_.film) shouldBe empty
+    found.filter(c => c.signals.contains("family.imdb.took") && c.signals.contains("family.filmweb.took")).map(_.film) shouldBe empty
+  }
+
   it should "carry the agreement's own verdict as a signal" in {
     val record = SourceRecord(klondike2022.copy(imdbNumber = 0), Map("imdb" -> "tt16315948"))
     val three  = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(took(_, record))
