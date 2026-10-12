@@ -11,7 +11,7 @@ import org.bson.BsonDocument
 import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.{CorpusCensus, WorkerCorpusMetrics, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
+import services.metrics.{CorpusCensus, WorkerCorpusMetrics, WorkerShowtimesMetrics, WorkerCitySeasonMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
 import services.movies.{BootCorpusReader, CaffeineMovieCache, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.readmodel.{BootCorpusStudy, MongoReadModelRepository, ReadModelProjector}
@@ -92,7 +92,7 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     projector.prepare()
     val registry = new io.prometheus.metrics.model.registry.PrometheusRegistry()
     val census   = new CorpusCensus(cache, WorkerCorpusMetrics.gauge(registry), WorkerSourceFilmsMetrics.gauge(registry),
-      WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry), "pl", models.City.all, _root_.tools.SpecClock.Pinned)
+      WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry), WorkerCitySeasonMetrics.gauge(registry), "pl", models.City.all, _root_.tools.SpecClock.Pinned)
     census.start()
     org.scalatest.concurrent.Eventually.eventually(org.scalatest.concurrent.Eventually.timeout(SpecTimeouts.Settle)) {
       census.reading().subset(WorkerCorpusMetrics.Subset.Total) shouldBe Films

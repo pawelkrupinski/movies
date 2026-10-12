@@ -18,7 +18,8 @@ import scala.util.Try
 
 /**
  * Every `movies`-census gauge the worker exposes — [[WorkerCorpusMetrics]], [[WorkerSourceFilmsMetrics]],
- * [[WorkerShowtimesMetrics]] and [[WorkerSlotFanoutMetrics]] — kept film by film as the worker's cache changes, never
+ * [[WorkerShowtimesMetrics]] and [[WorkerSlotFanoutMetrics]], with each city's off-season verdict beside them
+ * ([[WorkerCitySeasonMetrics]]) — kept film by film as the worker's cache changes, never
  * by reading the corpus.
  *
  * These were a 15-minute scan of `movies` with its showtimes stitched from `screenings` and its slots from
@@ -52,6 +53,7 @@ final class CorpusCensus(
   served:          Gauge,
   showtimes:       Gauge,
   widest:          Gauge,
+  offSeason:       Gauge,
   countryCode:     String,
   cities:          Seq[City],
   clock:           Clock,
@@ -77,6 +79,7 @@ final class CorpusCensus(
     showtimes.labelValues(countryCode, c.slug).set(0.0)
   }
   widest.labelValues(countryCode).set(0.0)
+  publishSeasons()
 
   private val scheduler = DaemonExecutors.scheduler("corpus-census")
 
@@ -112,8 +115,16 @@ final class CorpusCensus(
     tally(parts.valuesIterator, static.toSeq, cities, clock)
   }
 
-  /** Publish [[reading]] — or, while the cache does not hold the whole corpus, nothing, counted as a miss. */
-  def publish(): Unit =
+  /** Each city's [[WorkerCitySeasonMetrics]] verdict, off the clock alone — whatever the corpus holds. */
+  private def publishSeasons(): Unit = {
+    val now = clock.instant()
+    cities.foreach(c => offSeason.labelValues(countryCode, c.slug).set(if (c.offSeasonAt(now)) 1.0 else 0.0))
+  }
+
+  /** Publish [[reading]] — or, while the cache does not hold the whole corpus, nothing, counted as a miss. The
+   *  off-season verdicts are published either way: they read no corpus. */
+  def publish(): Unit = {
+    publishSeasons()
     if (!seeded || !cache.hydrated) {
       metrics.recordIncompleteSample()
       logger.warn("corpus-census: the cache does not hold the whole corpus yet — census gauges keep their previous " +
@@ -128,6 +139,7 @@ final class CorpusCensus(
       }
       widest.labelValues(countryCode).set(now.widest.toDouble)
     }
+  }
 
   private def publishQuietly(): Unit = {
     Try(publish()).recover { case e => logger.warn(s"corpus-census publish failed: ${e.getMessage}") }

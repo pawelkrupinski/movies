@@ -173,6 +173,9 @@ tests:
   # corpus emptied while the web still serves it (the served-count rules' case, not this one's),
   # and a city only three days on the roster. The worker restarts while Butte is dark; the hold
   # survives the gap. Onset is 12240m (8d12h); the hold is 12h.
+  # Plus a drive-in town whose season closed the instant it went dark -- Butte's shape exactly,
+  # but its every venue is now off-season, so it stays quiet; Butte itself reads in season and
+  # still fires.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 5m
     input_series:
@@ -180,6 +183,14 @@ tests:
         values: '4x2447 0x100 stale 0x186'
       - series: 'kinowo_web_movies_served{scope="all",country="us",city="butte",instance="web1"}'
         values: '4x2447 0x288'
+      - series: 'kinowo_worker_city_off_season{country="us",city="butte",instance="w1"}'
+        values: '0x2447 0x100 stale 0x186'
+      - series: 'kinowo_worker_movies_served{scope="all",country="us",city="wellfleet",instance="w1"}'
+        values: '6x2447 0x100 stale 0x186'
+      - series: 'kinowo_web_movies_served{scope="all",country="us",city="wellfleet",instance="web1"}'
+        values: '6x2447 0x288'
+      - series: 'kinowo_worker_city_off_season{country="us",city="wellfleet",instance="w1"}'
+        values: '0x2447 1x100 stale 1x186'
       - series: 'kinowo_worker_movies_served{scope="all",country="us",city="plentywood",instance="w1"}'
         values: '3x431 0x575 3x1439 0x288'
       - series: 'kinowo_web_movies_served{scope="all",country="us",city="plentywood",instance="web1"}'
@@ -205,4 +216,4 @@ tests:
               city: butte
             exp_annotations:
               summary: "butte (us) has served no film for 12 hours, after six days that all had films"
-              description: 'Neither the worker''s corpus (kinowo_worker_movies_served) nor the web (kinowo_web_movies_served) has a film for butte, although it had films in every sample from eight days ago to two days ago -- so this is not a small town''s weekly gap between programmes. The web is serving what the corpus has; the corpus lost the city. Check its venues on /uptime (a scrape that keeps succeeding empty looks white) and `kinowo_worker_showtimes{city="butte"}` over the last three days: a steady run-down to zero with no new week landing is a venue whose scrape stopped finding its next programme -- a moved listing page, a changed upstream, a venue that closed. It resolves on its own two days after the city went dark; that is not a fix.'
+              description: 'Neither the worker''s corpus (kinowo_worker_movies_served) nor the web (kinowo_web_movies_served) has a film for butte, although it had films in every sample from eight days ago to two days ago -- so this is not a small town''s weekly gap between programmes. The web is serving what the corpus has; the corpus lost the city. Check its venues on /uptime (a scrape that keeps succeeding empty looks white) and `kinowo_worker_showtimes{city="butte"}` over the last three days: a steady run-down to zero with no new week landing is a venue whose scrape stopped finding its next programme -- a moved listing page, a changed upstream, a venue that closed. (A city whose every venue is a seasonal one out of its season is dark by design and never alerts.) It resolves on its own two days after the city went dark; that is not a fix.'

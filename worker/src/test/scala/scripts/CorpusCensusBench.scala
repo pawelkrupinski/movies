@@ -2,7 +2,7 @@ package scripts
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Country
-import services.metrics.{CorpusCensus, ReferenceCensus, WorkerCorpusMetrics, WorkerCorpusScan, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
+import services.metrics.{CorpusCensus, ReferenceCensus, WorkerCorpusMetrics, WorkerCorpusScan, WorkerShowtimesMetrics, WorkerCitySeasonMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
 import services.movies.{CaffeineMovieCache, TitleNormalizer}
 import services.{MongoConnection, MongoRequirement}
 import settings.{MongoDatabaseName, MongoUri}
@@ -43,7 +43,7 @@ object CorpusCensusBench {
     val cache    = new CaffeineMovieCache(repo, normalizer = normalizer, clock = clock)
     val registry = new PrometheusRegistry()
     val census   = new CorpusCensus(cache, WorkerCorpusMetrics.gauge(registry), WorkerSourceFilmsMetrics.gauge(registry),
-      WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry), country.code, country.cities, clock)
+      WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry), WorkerCitySeasonMetrics.gauge(registry), country.code, country.cities, clock)
     measured("census, first count of every film")(census.seed())
     (1 to ticks).foreach(n => measured(s"census tick $n")(census.publish()))
     measured("reference scan, one pass")(WorkerCorpusScan.over(repo,

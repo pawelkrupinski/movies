@@ -77,7 +77,7 @@ object CorpusMetricsFixtures {
   def censusOver(cache: MovieCache, registry: PrometheusRegistry, at: Clock = clock,
                  metrics: CorpusCensusMetrics = CorpusCensusMetrics.noop): CorpusCensus =
     new CorpusCensus(cache, WorkerCorpusMetrics.gauge(registry), WorkerSourceFilmsMetrics.gauge(registry),
-      WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry), "pl", City.all, at, metrics)
+      WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry), WorkerCitySeasonMetrics.gauge(registry), "pl", City.all, at, metrics)
 
   /** The census of exactly `rows`, against `at`. */
   def reading(rows: Seq[StoredMovieRecord], at: Clock = clock): CorpusCensus.Reading =

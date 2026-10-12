@@ -33,7 +33,7 @@ trait MetricsWiring { self: WorkerWiring =>
   // cache changes, with no read of its own (see CorpusCensus).
   lazy val corpusCensus: CorpusCensus = managedResources.stopping(
     new CorpusCensus(movieCache, workerMetrics.corpusGauge, workerMetrics.servedGauge, workerMetrics.showtimesGauge,
-      workerMetrics.widestSlotsGauge, country.code, country.cities, clock,
+      workerMetrics.widestSlotsGauge, workerMetrics.cityOffSeasonGauge, country.code, country.cities, clock,
       CorpusCensusMetrics.prometheus(workerMetrics.corpusCensusIncomplete, country.code)))
   // One venue's scraped feed under another's name, told by booking sessions as each scrape lands
   // (CopiedFeedArchive) — it replaced the programme-comparing census the corpus scan used to carry.

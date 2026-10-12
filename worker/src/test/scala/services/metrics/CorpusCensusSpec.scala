@@ -302,4 +302,31 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     read.served.get((city.slug, WorkerSourceFilmsMetrics.Scope.All)) shouldBe Some(1)
     read.showtimes.get(city.slug) shouldBe Some(1)
   }
+
+  // ── Seasons ───────────────────────────────────────────────────────────────────────────────────
+
+  // A town whose only screen is an open-air one goes dark every autumn by design, and CityDarkInBothTiers reads
+  // this gauge to stand down for it. A city with a year-round venue beside its open-air one must keep reading 0:
+  // dark there is still a lost scrape.
+  "the off-season gauge" should "read 1 only for a city whose every venue is out of season, and follow the calendar" in {
+    val winter      = java.time.Instant.parse("2026-01-15T12:00:00Z")
+    val allSeasonal = City.all.find(c => c.offSeasonAt(winter)).getOrElse(fail("no city whose every venue is seasonal"))
+    val mixed       = City.all.find(c => c.cinemas.exists(_.opening != models.Opening.YearRound) && !c.offSeasonAt(winter))
+                        .getOrElse(fail("no city with a seasonal venue beside a year-round one"))
+    val yearRound   = City.bySlug("poznan").get
+    val clock       = new tools.MutableClock(winter)
+    val registry    = new PrometheusRegistry()
+    val census      = new CorpusCensus(cacheOver(splitRepository()), WorkerCorpusMetrics.gauge(registry),
+      WorkerSourceFilmsMetrics.gauge(registry), WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry),
+      WorkerCitySeasonMetrics.gauge(registry), "xx", Seq(allSeasonal, mixed, yearRound), clock)
+    def offSeason(city: City): Option[Double] =
+      PrometheusExposition.sample(PrometheusExposition.render(registry), WorkerCitySeasonMetrics.Name, s"""city="${city.slug}",country="xx"""")
+
+    census.publish()
+    (offSeason(allSeasonal), offSeason(mixed), offSeason(yearRound)) shouldBe (Some(1.0), Some(0.0), Some(0.0))
+
+    clock.setTo(java.time.Instant.parse("2026-07-15T12:00:00Z"))
+    census.publish()
+    offSeason(allSeasonal) shouldBe Some(0.0)
+  }
 }

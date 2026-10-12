@@ -471,6 +471,45 @@
       ]
     },
     {
+      "id": 9028,
+      "title": "kinowo — cities dark by design (every venue out of season)",
+      "description": "Per country, how many cities have ONLY seasonal venues (open-air, summer, drive-in) and all of them outside their season right now: sum of kinowo_worker_city_off_season, which the worker's CorpusCensus publishes per city every 5 min off the calendar alone (models.City.offSeasonAt). Those cities serve no film by design, and CityDarkInBothTiers stands down for them; a city with any year-round venue is never counted. Steps at month boundaries as countries' season windows open and close (models.SeasonWindow); a step at any other time is the roster's seasonal set changing.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 51
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (country) (max by (country, city) (kinowo_worker_city_off_season{country=~\"$country\"}))",
+          "legendFormat": "{{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
       "id": 36,
       "title": "Worker — movies corpus coverage (records, ids, ratings)",
       "description": "Census of the live `movies` collection, counted every 5 min by the worker's CorpusCensus from its cache and exposed as kinowo_worker_corpus_movies{subset}. total = distinct movie records; with_any_rating = at least one of imdb/fw/rt/mc; with_tmdb_id / with_imdb_id = resolution coverage; imdb_rating/rt_rating/mc_rating/fw_rating = per-source rating coverage. The gap between total and with_*_id is the resolution backlog; the gap between with_tmdb_id and each rating series is each site's enrichment backlog. NOTE — this gauge is census-fed: a census tick whose cache has not read the whole corpus publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: ticks whose cache had not read the whole corpus\" sits at zero.",
@@ -483,7 +522,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 51
+        "y": 57
       },
       "fieldConfig": {
         "defaults": {
@@ -522,7 +561,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 60
+        "y": 66
       },
       "fieldConfig": {
         "defaults": {
@@ -567,7 +606,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 69
+            "y": 75
           },
           "fieldConfig": {
             "defaults": {
@@ -615,7 +654,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 69
+            "y": 75
           },
           "fieldConfig": {
             "defaults": {
@@ -663,7 +702,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 77
+            "y": 83
           },
           "fieldConfig": {
             "defaults": {
@@ -708,7 +747,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 68
+        "y": 74
       }
     },
     {
@@ -730,7 +769,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 78
+            "y": 84
           },
           "fieldConfig": {
             "defaults": {
@@ -787,7 +826,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 86
+            "y": 92
           },
           "fieldConfig": {
             "defaults": {
@@ -829,7 +868,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 86
+            "y": 92
           },
           "fieldConfig": {
             "defaults": {
@@ -871,7 +910,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 86
+            "y": 92
           },
           "fieldConfig": {
             "defaults": {
@@ -913,7 +952,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 94
+            "y": 100
           },
           "fieldConfig": {
             "defaults": {
@@ -968,7 +1007,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 102
+            "y": 108
           },
           "fieldConfig": {
             "defaults": {
@@ -1025,7 +1064,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 102
+            "y": 108
           },
           "fieldConfig": {
             "defaults": {
@@ -1121,7 +1160,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 110
+            "y": 116
           },
           "fieldConfig": {
             "defaults": {
@@ -1172,7 +1211,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 110
+            "y": 116
           },
           "fieldConfig": {
             "defaults": {
@@ -1211,7 +1250,7 @@
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 118
+            "y": 124
           },
           "fieldConfig": {
             "defaults": {
@@ -1250,7 +1289,7 @@
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 127
+            "y": 133
           },
           "fieldConfig": {
             "defaults": {
@@ -1289,7 +1328,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 145
+            "y": 151
           },
           "fieldConfig": {
             "defaults": {
@@ -1336,7 +1375,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 77
+        "y": 83
       }
     },
     {
@@ -1358,7 +1397,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 154
+            "y": 160
           },
           "fieldConfig": {
             "defaults": {
@@ -1397,7 +1436,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 154
+            "y": 160
           },
           "fieldConfig": {
             "defaults": {
@@ -1436,7 +1475,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 162
+            "y": 168
           },
           "fieldConfig": {
             "defaults": {
@@ -1530,7 +1569,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 162
+            "y": 168
           },
           "fieldConfig": {
             "defaults": {
@@ -1578,7 +1617,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 170
+            "y": 176
           },
           "fieldConfig": {
             "defaults": {
@@ -1617,7 +1656,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 178
+            "y": 184
           },
           "fieldConfig": {
             "defaults": {
@@ -1684,7 +1723,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 186
+            "y": 192
           },
           "interval": "1h",
           "fieldConfig": {
@@ -1771,7 +1810,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 194
+            "y": 200
           },
           "fieldConfig": {
             "defaults": {
@@ -1810,7 +1849,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 194
+            "y": 200
           },
           "fieldConfig": {
             "defaults": {
@@ -1849,7 +1888,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 202
+            "y": 208
           },
           "fieldConfig": {
             "defaults": {
@@ -1888,7 +1927,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 210
+            "y": 216
           },
           "fieldConfig": {
             "defaults": {
@@ -1945,7 +1984,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 210
+            "y": 216
           },
           "fieldConfig": {
             "defaults": {
@@ -1994,7 +2033,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 145
+        "y": 151
       }
     },
     {
@@ -2016,7 +2055,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 179
+            "y": 185
           },
           "fieldConfig": {
             "defaults": {
@@ -2055,7 +2094,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 179
+            "y": 185
           },
           "fieldConfig": {
             "defaults": {
@@ -2094,7 +2133,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 187
+            "y": 193
           },
           "fieldConfig": {
             "defaults": {
@@ -2142,7 +2181,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 195
+            "y": 201
           },
           "fieldConfig": {
             "defaults": {
@@ -2181,7 +2220,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 195
+            "y": 201
           },
           "fieldConfig": {
             "defaults": {
@@ -2220,7 +2259,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 203
+            "y": 209
           },
           "fieldConfig": {
             "defaults": {
@@ -2259,7 +2298,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 203
+            "y": 209
           },
           "fieldConfig": {
             "defaults": {
@@ -2298,7 +2337,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 211
+            "y": 217
           },
           "fieldConfig": {
             "defaults": {
@@ -2337,7 +2376,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 219
+            "y": 225
           },
           "fieldConfig": {
             "defaults": {
@@ -2377,7 +2416,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 178
+        "y": 184
       }
     },
     {
@@ -2399,7 +2438,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 212
+            "y": 218
           },
           "fieldConfig": {
             "defaults": {
@@ -2517,7 +2556,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 212
+            "y": 218
           },
           "fieldConfig": {
             "defaults": {
@@ -2619,7 +2658,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 221
+            "y": 227
           },
           "fieldConfig": {
             "defaults": {
@@ -2703,7 +2742,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 221
+            "y": 227
           },
           "fieldConfig": {
             "defaults": {
@@ -2767,8 +2806,8 @@
         },
         {
           "id": 9026,
-          "title": "Both tiers \u2014 full GCs per hour (worker Serial old, web G1 old)",
-          "description": "How many FULL collections each JVM ran over the last hour: the worker's MarkSweepCompact (Serial old generation, every one a stop-the-world pass over the whole heap) and the web's G1 Old Generation. A worker whose old generation sits close to its live set runs them back to back \u2014 worker-pl on 448m ran 24 an hour with no boot among them (2026-10-07). A rollout's boot adds a burst of its own.",
+          "title": "Both tiers — full GCs per hour (worker Serial old, web G1 old)",
+          "description": "How many FULL collections each JVM ran over the last hour: the worker's MarkSweepCompact (Serial old generation, every one a stop-the-world pass over the whole heap) and the web's G1 Old Generation. A worker whose old generation sits close to its live set runs them back to back — worker-pl on 448m ran 24 an hour with no boot among them (2026-10-07). A rollout's boot adds a burst of its own.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -2778,7 +2817,7 @@
             "h": 9,
             "w": 12,
             "x": 0,
-            "y": 230
+            "y": 236
           },
           "fieldConfig": {
             "defaults": {
@@ -2820,7 +2859,7 @@
         },
         {
           "id": 9027,
-          "title": "Both tiers \u2014 share of wall time in GC per hour, by collector (%)",
+          "title": "Both tiers — share of wall time in GC per hour, by collector (%)",
           "description": "The share of the last hour each collector spent collecting: pause time for Copy, MarkSweepCompact and G1's young and old (G1 Concurrent GC runs beside the application). Young and full apart, so a smaller young generation's extra young collections can be weighed against the full ones it saves.",
           "type": "timeseries",
           "datasource": {
@@ -2831,7 +2870,7 @@
             "h": 9,
             "w": 12,
             "x": 12,
-            "y": 230
+            "y": 236
           },
           "fieldConfig": {
             "defaults": {
@@ -2884,7 +2923,7 @@
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 239
+            "y": 245
           },
           "fieldConfig": {
             "defaults": {
@@ -3052,7 +3091,7 @@
             "h": 7,
             "w": 24,
             "x": 0,
-            "y": 248
+            "y": 254
           },
           "fieldConfig": {
             "defaults": {
@@ -3163,7 +3202,7 @@
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 255
+            "y": 261
           },
           "fieldConfig": {
             "defaults": {
@@ -3320,7 +3359,7 @@
             "h": 9,
             "w": 24,
             "x": 0,
-            "y": 264
+            "y": 270
           },
           "options": {
             "calculate": false,
@@ -3366,7 +3405,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 211
+        "y": 217
       }
     },
     {
@@ -3375,7 +3414,7 @@
       "id": 9002,
       "gridPos": {
         "x": 0,
-        "y": 264,
+        "y": 270,
         "w": 24,
         "h": 1
       },
@@ -3392,7 +3431,7 @@
           },
           "gridPos": {
             "x": 0,
-            "y": 265,
+            "y": 271,
             "w": 12,
             "h": 9
           },
@@ -3447,7 +3486,7 @@
           },
           "gridPos": {
             "x": 12,
-            "y": 265,
+            "y": 271,
             "w": 12,
             "h": 9
           },
@@ -3512,7 +3551,7 @@
           },
           "gridPos": {
             "x": 0,
-            "y": 274,
+            "y": 280,
             "w": 12,
             "h": 9
           },
@@ -3585,7 +3624,7 @@
           },
           "gridPos": {
             "x": 12,
-            "y": 274,
+            "y": 280,
             "w": 12,
             "h": 9
           },
@@ -3650,7 +3689,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 284
+            "y": 290
           },
           "fieldConfig": {
             "defaults": {
@@ -3708,7 +3747,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 284
+            "y": 290
           },
           "fieldConfig": {
             "defaults": {
@@ -3835,7 +3874,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 292
+            "y": 298
           },
           "fieldConfig": {
             "defaults": {
@@ -3910,7 +3949,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 292
+            "y": 298
           },
           "fieldConfig": {
             "defaults": {
@@ -3950,7 +3989,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 300
+            "y": 306
           },
           "fieldConfig": {
             "defaults": {
@@ -3990,7 +4029,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 300
+            "y": 306
           },
           "fieldConfig": {
             "defaults": {
@@ -4066,7 +4105,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 283
+        "y": 289
       }
     },
     {
@@ -4088,7 +4127,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 309
+            "y": 315
           },
           "fieldConfig": {
             "defaults": {
@@ -4146,7 +4185,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 309
+            "y": 315
           },
           "fieldConfig": {
             "defaults": {
@@ -4230,7 +4269,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 317
+            "y": 323
           },
           "fieldConfig": {
             "defaults": {
@@ -4305,7 +4344,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 317
+            "y": 323
           },
           "fieldConfig": {
             "defaults": {
@@ -4376,7 +4415,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 308
+        "y": 314
       }
     },
     {
@@ -4389,7 +4428,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 309
+        "y": 315
       }
     },
     {
@@ -4405,7 +4444,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 310
+        "y": 316
       },
       "fieldConfig": {
         "defaults": {

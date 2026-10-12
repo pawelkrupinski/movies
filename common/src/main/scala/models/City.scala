@@ -75,6 +75,11 @@ sealed abstract class City(
   val zoneId: ZoneId,
 ) {
   def cinemas: Seq[Cinema]
+  /** Is EVERY venue of this city outside its season at `now` ([[Opening.offSeasonAt]])? Then
+   *  the city is dark by design — an open-air town in winter — not because a scraper lost it.
+   *  Never for a city with a year-round venue, nor for one with no venues at all. */
+  final def offSeasonAt(now: java.time.Instant): Boolean =
+    cinemas.nonEmpty && cinemas.forall(_.opening.offSeasonAt(now))
   /** The city's geographic centre, as a point. */
   final def centre: GeoPoint = GeoPoint(lat, lon)
   /** This city's cinema sub-regions, or empty when the city is **flat** (the

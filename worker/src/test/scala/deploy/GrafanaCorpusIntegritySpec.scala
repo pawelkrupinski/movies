@@ -55,7 +55,7 @@ class GrafanaCorpusIntegritySpec extends AnyFlatSpec with Matchers {
   private lazy val exposed: String = {
     val metrics = WorkerMetrics.singleCountry(Country.Poland, poolSize = settings.WorkerPoolSize(1))
     new CorpusCensus(services.metrics.CorpusMetricsFixtures.cacheOver(services.metrics.CorpusMetricsFixtures.repositoryOf()),
-      metrics.corpusGauge, metrics.servedGauge, metrics.showtimesGauge, metrics.widestSlotsGauge, Country.Poland.code,
+      metrics.corpusGauge, metrics.servedGauge, metrics.showtimesGauge, metrics.widestSlotsGauge, metrics.cityOffSeasonGauge, Country.Poland.code,
       Country.Poland.cities, _root_.tools.SpecClock.Pinned, CorpusCensusMetrics.prometheus(metrics.corpusCensusIncomplete, Country.Poland.code))
     PrometheusExposition.render(metrics.registry)
   }
