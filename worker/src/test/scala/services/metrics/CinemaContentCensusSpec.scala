@@ -183,22 +183,25 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
     valueOf(summerStale) shouldBe 1.0
   }
 
-  // On 1 May every open-air screen re-enters the census with its last content from September. Aged
-  // from then, they would all read stale at once and page `CinemaContentStaleVenuesGrowing` every
-  // spring; aged from the season's first day, they are held to the same week as any venue.
-  it should "age its quiet from the season's first day, not from last season's content" in {
+  // On 1 May every open-air screen re-enters its season with its last content from September, and
+  // most list nothing until June. Counted from either date, they would all turn stale together —
+  // on 1 May, or a week later — and page `CinemaContentStaleVenuesGrowing` every spring. So a
+  // seasonal venue counts only once it has listed this season; from then it is held to the same
+  // week as any venue.
+  it should "count only once it has listed this season, then like any venue" in {
     val rooftop  = models.RooftopFilmClubStratfordRoofEast          // UK window: May..September
     val scrapers = Seq(new StubCinemaScraper(rooftop))
-    val stamps   = Map(rooftop.displayName -> ContentStamp(Some(Instant.parse("2026-09-20T18:00:00Z"))))
-    def readingAt(at: String) = {
-      val clock = Clock.fixed(Instant.parse(at), ZoneOffset.UTC)
+    def readingAt(at: String, lastContent: String) = {
+      val clock  = Clock.fixed(Instant.parse(at), ZoneOffset.UTC)
+      val stamps = Map(rooftop.displayName -> ContentStamp(Some(Instant.parse(lastContent))))
       val (c, age, _, stale) = censusWithStale(new StubArchive(stamps), scrapers, clock)
       c.sample()
       (valueOf(age), valueOf(stale))
     }
 
-    readingAt("2027-05-01T12:00:00Z") shouldBe ((12 * 3600).toDouble, 0.0)          // half a day into the season
-    readingAt("2027-05-09T00:00:00Z") shouldBe ((8 * 86400).toDouble, 1.0)          // a week in, and still nothing
+    readingAt("2027-05-01T12:00:00Z", "2026-09-20T18:00:00Z") shouldBe ((0.0, 0.0))     // not reopened yet
+    readingAt("2027-05-20T00:00:00Z", "2026-09-20T18:00:00Z") shouldBe ((0.0, 0.0))     // still not: no spring step
+    readingAt("2027-06-12T00:00:00Z", "2027-06-02T00:00:00Z") shouldBe ((10 * 86400).toDouble, 1.0)  // listed, then quiet
   }
 
   // Its alert compares today with yesterday's LOWEST reading, so a zero published at boot would

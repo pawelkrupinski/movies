@@ -170,16 +170,18 @@ object CinemaContentCensus {
   /** The stamps of the roster's venues that are expected to be screening at `now`. A seasonal
    *  venue ([[models.Opening.Seasonal]]) off its season is dark by design, and counted in none
    *  of the three gauges — Germany's ~180 open-air screens would otherwise read as that many
-   *  venues gone quiet every October. In season it counts like any other, its quiet aged from
-   *  the season's first day at the earliest: on 1 May its last content is from September, and
-   *  aged from then every open-air screen would read stale at once, every spring.
+   *  venues gone quiet every October. In season it counts only once it has listed something
+   *  this season: on 1 May its last content is from September and most open-air screens list
+   *  nothing until June, so counted from either date they would all turn stale together, every
+   *  spring. From its first listing on, it is held to the same week as any venue.
    *
    *  A cinema missing from the archive counts the same as one archived with no content — in
    *  both cases we have never seen it produce a film. */
   def inSeason(roster: Seq[models.Cinema], stamps: Map[String, ContentStamp], now: Instant): Seq[ContentStamp] =
-    roster.filterNot(_.opening.offSeasonAt(now)).map { cinema =>
-      val stamp = stamps.getOrElse(cinema.displayName, ContentStamp(None))
-      stamp.copy(lastContentAt = stamp.lastContentAt.map(cinema.opening.sinceThisSeason(_, now)))
+    roster.filterNot(_.opening.offSeasonAt(now)).flatMap { cinema =>
+      val stamp       = stamps.getOrElse(cinema.displayName, ContentStamp(None))
+      val notReopened = cinema.opening.seasonOpenedAt(now).exists(opened => stamp.lastContentAt.exists(_.isBefore(opened)))
+      Option.unless(notReopened)(stamp)
     }
 
   /** Pure: fold the in-season roster's stamps ([[inSeason]]) into the three readings. */
