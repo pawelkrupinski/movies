@@ -1,4 +1,4 @@
-@(country: models.Country)
+@(country: models.Country, languages: Seq[String])
 @*
   Polish privacy policy — the original text, now rendered inside `_legalPage`.
   The English and German versions (`privacyEn` / `privacyDe`) are translations
@@ -6,7 +6,7 @@
   fall out of step and the store listings point at different promises.
 *@
 @_legalPage(country, lang = "pl", heading = "Polityka prywatności", contactLabel = "Kontakt",
-            updated = Some("Ostatnia aktualizacja: 25 lipca 2026")) {
+            updated = Some("Ostatnia aktualizacja: 25 lipca 2026"), languages = languages) {
   <p>
     Niniejsza polityka opisuje, jakie dane osobowe przetwarza aplikacja
     <strong>@country.brandName</strong> (repertuar kin, dostępna w sieci oraz

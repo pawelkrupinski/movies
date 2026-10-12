@@ -18,4 +18,13 @@ object LanguageNames {
     case "es" => "Español"
     case _    => code
   }
+
+  /** The word "Language" in `code` — the accessible name of a language picker
+   *  on a page written in that language. */
+  def languageWord(code: String): String = code match {
+    case "pl" => "Język"
+    case "de" => "Sprache"
+    case "es" => "Idioma"
+    case _    => "Language"
+  }
 }

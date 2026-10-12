@@ -13,16 +13,17 @@ class LegalController(cc: ControllerComponents, country: models.Country) extends
    *  unknown or absent `lang` falls back instead of 404ing.
    */
   def privacy(lang: Option[String]): Action[AnyContent] = Action {
-    Ok(policy(PublishedLanguages.resolve(lang, published, country)))
+    Ok(policy(PublishedLanguages.resolve(lang, published.toSet, country)))
   }
 
-  private val published = Set("pl", "en", "de")
+  /** In the order the page's language picker lists them. */
+  private val published = Seq("pl", "en", "de")
 
   private def policy(language: String): play.twirl.api.Html = language match {
-    case "pl" => views.html.privacyPl(country)
-    case "de" => views.html.privacyDe(country)
+    case "pl" => views.html.privacyPl(country, published)
+    case "de" => views.html.privacyDe(country, published)
     // English doubles as the fallback for a deployment whose language we don't
     // publish a policy in yet.
-    case _    => views.html.privacyEn(country)
+    case _    => views.html.privacyEn(country, published)
   }
 }

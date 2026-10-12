@@ -1,4 +1,4 @@
-@(country: models.Country)
+@(country: models.Country, languages: Seq[String])
 @*
   German privacy policy — a full translation of `privacyPl`, added so the German
   deployment and the de-DE store listings have a policy in their own language
@@ -10,7 +10,7 @@
   change in the other two.
 *@
 @_legalPage(country, lang = "de", heading = "Datenschutzerklärung", contactLabel = "Kontakt",
-            updated = Some("Zuletzt aktualisiert: 25. Juli 2026")) {
+            updated = Some("Zuletzt aktualisiert: 25. Juli 2026"), languages = languages) {
   <p>
     Diese Erklärung beschreibt, welche personenbezogenen Daten die App
     <strong>@country.brandName</strong> (Kinoprogramm, im Web sowie als

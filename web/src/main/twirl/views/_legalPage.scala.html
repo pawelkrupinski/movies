@@ -1,4 +1,4 @@
-@(country: models.Country, lang: String, heading: String, contactLabel: String, updated: Option[String] = None)(content: Html)
+@(country: models.Country, lang: String, heading: String, contactLabel: String, updated: Option[String] = None, languages: Seq[String] = Nil)(content: Html)
 @*
   Shared chrome for the standalone document pages — the privacy policy and the
   support page in each language, and the Facebook data-deletion status pages.
@@ -11,6 +11,12 @@
   it is the LINK's language (`/privacy-policy?lang=de`), not the deployment's.
   `contactLabel` is the footer's "Contact" wording, so the whole page reads in
   one language.
+
+  `languages` — every language this document is published in. With more than
+  one, the header carries a picker that re-requests the SAME path with
+  `?lang=<code>`: a GET form with an empty action, so under a mount prefix
+  (`showtimes.cc/uk/privacy-policy`) it stays on that prefix with no URL built
+  here. It submits on change; the <noscript> button covers a browser without JS.
 *@
 <!DOCTYPE html>
 <html lang="@lang">
@@ -29,6 +35,9 @@
     main { max-width: 720px; margin: 0 auto; background: #fff; border-radius: 14px;
            padding: 40px 36px; box-shadow: 0 1px 3px rgba(11,15,58,.08); }
     header { border-bottom: 1px solid #e7e9f0; padding-bottom: 22px; margin-bottom: 28px; }
+    .lang-switch { float: right; margin-left: 12px; }
+    .lang-switch select { font: inherit; font-size: 14px; color: #0B0F3A; background: #fff;
+                          border: 1px solid #d6d9e3; border-radius: 8px; padding: 4px 8px; cursor: pointer; }
     .brand { font-size: 15px; font-weight: 700; color: #0B0F3A; letter-spacing: .2px; }
     h1 { font-size: 26px; font-weight: 700; color: #0B0F3A; margin-top: 6px; }
     .updated { color: #6b7280; font-size: 13px; margin-top: 8px; }
@@ -50,6 +59,16 @@
 <body>
   <main>
     <header>
+      @if(languages.size > 1) {
+        <form class="lang-switch" method="get" action="">
+          <select name="lang" aria-label="@controllers.LanguageNames.languageWord(lang)" onchange="this.form.submit()">
+            @for(code <- languages) {
+              <option value="@code"@if(code == lang){ selected}>@controllers.LanguageNames.native(code)</option>
+            }
+          </select>
+          <noscript><button type="submit">OK</button></noscript>
+        </form>
+      }
       <div class="brand">🎬 @country.brandName</div>
       <h1>@heading</h1>
       @updated.map { when => <div class="updated">@when</div> }

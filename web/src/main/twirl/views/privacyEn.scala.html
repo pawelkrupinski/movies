@@ -1,4 +1,4 @@
-@(country: models.Country)
+@(country: models.Country, languages: Seq[String])
 @*
   English privacy policy — a full translation of `privacyPl`, no longer the stub
   that told readers the real text was Polish-only. The App Store and Play
@@ -10,7 +10,7 @@
   A change to any one language needs the same change in the other two.
 *@
 @_legalPage(country, lang = "en", heading = "Privacy policy", contactLabel = "Contact",
-            updated = Some("Last updated: 25 July 2026")) {
+            updated = Some("Last updated: 25 July 2026"), languages = languages) {
   <p>
     This policy explains what personal data <strong>@country.brandName</strong>
     (cinema listings, available on the web and as an Android and iOS app)
