@@ -65,16 +65,30 @@ case class ApiCinemaArea(name: String, slug: String, cinemas: Seq[String])
  *  city order, including ones with no showings today) plus its area grouping.
  *  A flat city returns an empty `areas`; a split city (e.g. London) returns one
  *  entry per compass area. Lets the mobile filter render the same collapsible,
- *  per-area (de)selectable list the web filter builds server-side. */
-case class ApiCityCinemas(cinemas: Seq[String], areas: Seq[ApiCinemaArea])
+ *  per-area (de)selectable list the web filter builds server-side.
+ *
+ *  `seasons` names the venues that screen only in a season (open-air, summer, drive-in;
+ *  [[models.Opening.Seasonal]]) with its typical window as month numbers, 1..12 both
+ *  inclusive. ABSENT when the city has none, so every payload without one is byte-for-byte
+ *  what it was and a decoder that does not know the key is never handed it empty. No app
+ *  shows it yet. */
+case class ApiCityCinemas(cinemas: Seq[String], areas: Seq[ApiCinemaArea], seasons: Option[Seq[ApiCinemaSeason]] = None)
+
+/** A seasonal venue's typical window: `{"cinema": "Freiluftkino Kreuzberg", "opens": 5, "closes": 9}`. */
+case class ApiCinemaSeason(cinema: String, opens: Int, closes: Int)
 
 object ApiCityCinemas {
   implicit val apiCinemaAreaWrites: Writes[ApiCinemaArea] = Json.writes[ApiCinemaArea]
+  implicit val apiCinemaSeasonWrites: Writes[ApiCinemaSeason] = Json.writes[ApiCinemaSeason]
   implicit val writes: Writes[ApiCityCinemas] = Json.writes[ApiCityCinemas]
 
   def from(city: City): ApiCityCinemas = ApiCityCinemas(
     cinemas = city.cinemaDisplayNames,
     areas   = city.areas.map(g => ApiCinemaArea(g.area.label, g.area.slug, g.cinemaDisplayNames)),
+    seasons = Option(city.cinemas.flatMap(c => c.opening match {
+      case models.Opening.Seasonal(window) => Some(ApiCinemaSeason(c.displayName, window.opens.getValue, window.closes.getValue))
+      case models.Opening.YearRound        => None
+    })).filter(_.nonEmpty),
   )
 }
 

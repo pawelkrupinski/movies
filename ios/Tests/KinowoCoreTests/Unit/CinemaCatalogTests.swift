@@ -37,6 +37,20 @@ final class CinemaCatalogTests: XCTestCase {
         XCTAssertTrue(catalog.areas.isEmpty)
     }
 
+    /// A city with seasonal venues (open-air, drive-in) carries an extra `seasons` key the
+    /// app does not read yet; the catalog must decode exactly as without it.
+    func testDecodesACatalogCarryingSeasons() throws {
+        let json = """
+        {"cinemas":["Kino Central Berlin","Freiluftkino Kreuzberg"],"areas":[],
+         "seasons":[{"cinema":"Freiluftkino Kreuzberg","opens":5,"closes":9}]}
+        """.data(using: .utf8)!
+
+        let catalog = try JSONDecoder().decode(CinemaCatalog.self, from: json)
+
+        XCTAssertEqual(catalog.cinemas, ["Kino Central Berlin", "Freiluftkino Kreuzberg"])
+        XCTAssertFalse(catalog.isSplit)
+    }
+
     func testEmptyCatalogIsFlat() {
         XCTAssertFalse(CinemaCatalog.empty.isSplit)
         XCTAssertTrue(CinemaCatalog.empty.cinemas.isEmpty)

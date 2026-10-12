@@ -58,6 +58,21 @@ class ApiCinemasSpec extends AnyFlatSpec with Matchers {
     (json \ "areas").as[Seq[play.api.libs.json.JsValue]] shouldBe empty
   }
 
+  "apiCinemas" should "leave seasons out entirely for a city with no seasonal venue" in {
+    val json = Json.parse(contentAsString(controller().apiCinemas("poznan")(FakeRequest())))
+    (json \ "seasons").toOption shouldBe None
+  }
+
+  it should "name a city's seasonal venues with their window as month numbers" in {
+    val kreuzberg = models.GermanRoster.theaterIdByCinema.map(_.swap)("A2198")    // Freiluftkino Kreuzberg
+    val page      = models.City.all.find(_.cinemas.contains(kreuzberg)).get
+    val json      = Json.parse(contentAsString(controller(models.Country.Germany).apiCinemas(page.slug)(FakeRequest())))
+    val seasons   = (json \ "seasons").as[Seq[play.api.libs.json.JsValue]]
+    seasons should contain (Json.obj("cinema" -> "Freiluftkino Kreuzberg", "opens" -> 5, "closes" -> 9))
+    seasons.map(s => (s \ "cinema").as[String]) should not contain "Kino Central Berlin"
+    seasons.map(s => (s \ "cinema").as[String]).toSet.subsetOf((json \ "cinemas").as[Seq[String]].toSet) shouldBe true
+  }
+
   "apiCinemas for an unknown city" should "404" in {
     status(controller().apiCinemas("nieznane")(FakeRequest())) shouldBe NOT_FOUND
   }
