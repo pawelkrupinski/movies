@@ -35,6 +35,8 @@ export type Platform =
     readonly error: string;
     /** The OS/network refused the round trip, as opposed to the store answering with an error. */
     readonly networkError: boolean;
+    /** The store's key sits in the Touch ID vault, locked for this dashboard: the page offers an unlock. */
+    readonly vaultLocked?: true;
   }
   | {
     readonly name: string;

@@ -12,6 +12,7 @@ import { createPrivateKey, sign } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { runCommand, type Executor } from "../exec.js";
 import { httpRequest, type HttpRequest } from "../http.js";
 import type { Pending } from "./model.js";
 import { describeError, isTransientNetworkError, withNetworkRetries } from "./network.js";
@@ -20,18 +21,21 @@ export const IOS_APP_ID = "6792566321";
 export const ANDROID_PACKAGE = "net.pawel.kinowo";
 export const ASC_BASE = "https://api.appstoreconnect.apple.com";
 export const PLAY_BASE = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${ANDROID_PACKAGE}`;
-export const ASC_KEY_DIR = join(homedir(), ".appstoreconnect", "private_keys");
+export const SECRETS_BIN = join(homedir(), ".local", "bin", "secrets");
 const REQUEST_TIMEOUT_MS = 20_000;
 
 /** What one store says: live and pending, or why it could not be asked. */
 export type StoreState =
-  | { readonly error: string; readonly networkError: boolean }
+  | { readonly error: string; readonly networkError: boolean; readonly vaultLocked?: true }
   | { readonly error: null; readonly liveVersion: string | null; readonly liveExtra: string | null; readonly pending: Pending | null };
 
 export type Sleep = (ms: number) => Promise<void>;
 const realSleep: Sleep = (ms) => new Promise((wake) => setTimeout(wake, ms));
 
 function failed(error: unknown): StoreState {
+  if (error instanceof VaultLockedError) {
+    return { error: "the App Store key is in the Touch ID vault, which is locked for this dashboard -- unlock it with Touch ID", networkError: false, vaultLocked: true };
+  }
   return { error: describeError(error), networkError: isTransientNetworkError(error) };
 }
 
@@ -46,21 +50,39 @@ function jsonBody(body: unknown): Pick<HttpRequest, "headers" | "body"> {
   return body === undefined ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
 }
 
-/**
- * One value out of .env.local, by reading the file rather than `source`ing it -- a value in there
- * contains a bare `&`, which kills a zsh `source` outright. Null on anything missing: an absent key
- * is a normal, reportable state for this page (a laptop with no release credentials), not a bug.
- */
-export async function envLocal(repoDir: string, key: string): Promise<string | null> {
-  let text: string;
-  try {
-    text = await readFile(join(repoDir, ".env.local"), "utf8");
-  } catch {
-    return null;
+/** One secret by name from the Touch ID vault; rejects with VaultLockedError while the vault is locked for this process. */
+export type Secrets = (name: string) => Promise<string>;
+
+/** The vault answered "locked": this process (its session anchor) has not been granted the namespace. */
+export class VaultLockedError extends Error {
+  constructor(name: string) {
+    super(`${name}: the Touch ID vault is locked for this process`);
   }
-  const line = text.split("\n").find((candidate) => candidate.startsWith(`${key}=`));
-  if (line === undefined) return null;
-  return line.slice(key.length + 1).trim().replace(/^"+|"+$/g, "").replace(/^'+|'+$/g, "");
+}
+
+const VAULT_NAMESPACE = "movies";
+const VAULT_TIMEOUT_MS = 10_000;
+/** Long enough for a person to notice the Touch ID dialog and touch the sensor. */
+const UNLOCK_TIMEOUT_MS = 120_000;
+
+/**
+ * The Touch ID vault (~/projects/secrets) through its CLI -- where the App Store Connect key lives
+ * since .env.local was retired. The vault pins an unlock to the asking process, so the always-on
+ * dashboard has an unlock of its own (`unlock`, behind the page's button) that lasts while it runs;
+ * a release run from a terminal or Claude session uses that session's.
+ */
+export function vaultSecrets(exec: Executor = runCommand, bin: string = SECRETS_BIN): { readonly get: Secrets; readonly unlock: () => Promise<void> } {
+  const get: Secrets = async (name) => {
+    const result = await exec([bin, "get", VAULT_NAMESPACE, name], { timeoutMs: VAULT_TIMEOUT_MS });
+    if (result.code === 0) return result.stdout.trim();
+    if (/locked/i.test(result.stderr)) throw new VaultLockedError(name);
+    throw new Error(`could not read ${name} from the vault: ${result.stderr.trim() || `exit ${String(result.code)}`}`);
+  };
+  const unlock = async () => {
+    const result = await exec([bin, "unlock", VAULT_NAMESPACE], { timeoutMs: UNLOCK_TIMEOUT_MS });
+    if (result.code !== 0) throw new Error(result.stderr.trim() || (result.timedOut ? "Touch ID prompt timed out" : `exit ${String(result.code)}`));
+  };
+  return { get, unlock };
 }
 
 const b64u = (data: string | Buffer): string => Buffer.from(data).toString("base64url");
@@ -95,13 +117,12 @@ export function retryingReads(asc: AscApi, sleep: Sleep): AscApi {
   return { get: (path) => withNetworkRetries(() => asc.get(path), sleep), send: asc.send };
 }
 
-/** App Store Connect, signing a fresh token per call from the key on this Mac. */
-export function ascApi(repoDir: string, keyDir = ASC_KEY_DIR, now: () => number = Date.now): AscApi {
+/** App Store Connect, signing a fresh token per call from the key in the Touch ID vault. */
+export function ascApi(secrets: Secrets = vaultSecrets().get, now: () => number = Date.now): AscApi {
   const send = async (method: HttpMethod, path: string, body?: unknown) => {
-    const keyId = await envLocal(repoDir, "APP_STORE_KEY_ID");
-    const issuerId = await envLocal(repoDir, "APP_STORE_ISSUER_ID");
-    if (!keyId || !issuerId) throw new Error("APP_STORE_KEY_ID/APP_STORE_ISSUER_ID missing from .env.local");
-    const pem = await readFile(join(keyDir, `AuthKey_${keyId}.p8`), "utf8");
+    const keyId = await secrets("APP_STORE_KEY_ID");
+    const issuerId = await secrets("APP_STORE_ISSUER_ID");
+    const pem = await secrets("APP_STORE_KEY_P8");
     const token = ascToken(keyId, issuerId, pem, Math.floor(now() / 1000));
     const { headers, body: payload } = jsonBody(body);
     return requestJson(`${ASC_BASE}${path}`, { method, headers: { Authorization: `Bearer ${token}`, ...headers }, body: payload });

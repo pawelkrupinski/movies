@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../../src/http.js";
-import { deliveryUuid, existingBuild, iosStateFrom, planIosVersion, submitIos } from "../../src/mobile-release/ios.js";
+import { deliveryUuid, existingBuild, iosStateFrom, planIosVersion, submitIos, syncPrivacyPolicyUrls } from "../../src/mobile-release/ios.js";
 import { notesFrom } from "../../src/mobile-release/notes.js";
 import { ascVersions, FakeAsc, fixture, fixtureJson, noSleep } from "./fakes.js";
 
@@ -10,6 +10,9 @@ const pace = { sleep: noSleep, log: () => {} };
 const VERSIONS = `/v1/apps/${APP}/appStoreVersions?filter[platform]=IOS&limit=50`;
 const DRAFTS = `/v1/reviewSubmissions?filter[app]=${APP}&filter[platform]=IOS&filter[state]=READY_FOR_REVIEW`;
 const OPEN = `/v1/reviewSubmissions?filter[app]=${APP}&filter[platform]=IOS&filter[state]=WAITING_FOR_REVIEW,IN_REVIEW`;
+const APP_INFOS = `/v1/apps/${APP}/appInfos?include=appInfoLocalizations`;
+/** App Store Connect's real answer while 2.0.11 is live: one app info, READY_FOR_DISTRIBUTION, locked. */
+const liveAppInfos = fixtureJson("asc-app-infos.json");
 
 describe("reading the version records", () => {
   it("reads App Store Connect's real list: everything released, nothing pending", () => {
@@ -80,6 +83,7 @@ describe("submitIos", () => {
       "PATCH /v1/appStoreVersions/draft/relationships/build": null,
       "GET /v1/appStoreVersions/draft/appStoreVersionLocalizations": localizations,
       "PATCH /v1/appStoreVersionLocalizations/loc-pl": null,
+      [`GET ${APP_INFOS}`]: liveAppInfos,
       [`GET ${DRAFTS}`]: { data: [] },
       "POST /v1/reviewSubmissions": { data: { id: "sub-1" } },
       "GET /v1/reviewSubmissions/sub-1/items?include=appStoreVersion": { data: [] },
@@ -117,6 +121,7 @@ describe("submitIos", () => {
       "GET /v1/appStoreVersions/inreview": (_: unknown, hit: number) => ({ data: { id: "inreview", attributes: { appStoreState: hit === 1 ? "WAITING_FOR_REVIEW" : "DEVELOPER_REJECTED" } } }),
       "PATCH /v1/appStoreVersions/inreview/relationships/build": null,
       "GET /v1/appStoreVersions/inreview/appStoreVersionLocalizations": { data: [] },
+      [`GET ${APP_INFOS}`]: liveAppInfos,
       [`GET ${DRAFTS}`]: { data: [{ id: "sub-draft" }] },
       "GET /v1/reviewSubmissions/sub-draft/items?include=appStoreVersion": { data: [{ id: "i", relationships: { appStoreVersion: { data: { id: "inreview" } } } }] },
       "PATCH /v1/reviewSubmissions/sub-draft": null,
@@ -146,6 +151,7 @@ describe("submitIos", () => {
       "POST /v1/appStoreVersions": { data: { id: "new" } },
       "PATCH /v1/appStoreVersions/new/relationships/build": null,
       "GET /v1/appStoreVersions/new/appStoreVersionLocalizations": { data: [] },
+      [`GET ${APP_INFOS}`]: liveAppInfos,
       [`GET ${DRAFTS}`]: { data: [{ id: "sub-draft" }] },
       "GET /v1/reviewSubmissions/sub-draft/items?include=appStoreVersion": { data: [] },
       "POST /v1/reviewSubmissionItems": () => {
@@ -162,5 +168,53 @@ describe("submitIos", () => {
   it("stops on a build Apple rejected", async () => {
     const asc = new FakeAsc({ [`GET /v1/builds/${BUILD}`]: { data: { attributes: { processingState: "INVALID" } } } });
     await expect(submitIos(asc, { version: "2.0.10", buildId: BUILD, notes: notesFrom(new Map()), overwriteNotes: false }, pace)).rejects.toThrow(/INVALID/);
+  });
+});
+
+describe("syncPrivacyPolicyUrls", () => {
+  type Info = { id: string; attributes: Record<string, unknown>; relationships: { appInfoLocalizations: { data: { type: string; id: string }[] } } };
+  type Localization = { id: string; attributes: Record<string, unknown> };
+  /**
+   * The real answer plus the draft app info Apple opens beside it once a new version exists: the
+   * live record's localizations copied under new ids, the way App Store Connect carries them over.
+   */
+  const withDraft = (): unknown => {
+    const live = structuredClone(liveAppInfos) as { data: Info[]; included: Localization[] };
+    const draftLocalizations = live.included.map((localization) => ({ ...structuredClone(localization), id: `draft-${String(localization.attributes["locale"])}` }));
+    draftLocalizations.push({ id: "draft-fr-FR", attributes: { locale: "fr-FR", privacyPolicyUrl: "https://example.test/fr" } });
+    const draft = structuredClone(live.data[0]) as Info;
+    draft.id = "draft-info";
+    draft.attributes = { ...draft.attributes, appStoreState: "PREPARE_FOR_SUBMISSION", state: "PREPARE_FOR_SUBMISSION" };
+    draft.relationships.appInfoLocalizations.data = draftLocalizations.map((localization) => ({ type: "appInfoLocalizations", id: localization.id }));
+    // pl already right: it must not be rewritten.
+    const pl = draftLocalizations.find((localization) => localization.attributes["locale"] === "pl");
+    if (pl) pl.attributes["privacyPolicyUrl"] = "https://kinowo.net/privacy-policy?lang=pl";
+    return { ...live, data: [...live.data, draft], included: [...live.included, ...draftLocalizations] };
+  };
+
+  it("points each locale of the editable app info at the policy in its own language", async () => {
+    const asc = new FakeAsc({
+      [`GET ${APP_INFOS}`]: withDraft(),
+      "PATCH /v1/appInfoLocalizations/draft-es-ES": null,
+      "PATCH /v1/appInfoLocalizations/draft-en-GB": null,
+      "PATCH /v1/appInfoLocalizations/draft-de-DE": null,
+    });
+    await syncPrivacyPolicyUrls(asc, pace);
+    const patch = (id: string, url: string) => ({
+      method: "PATCH", path: `/v1/appInfoLocalizations/${id}`, body: { data: { type: "appInfoLocalizations", id, attributes: { privacyPolicyUrl: url } } },
+    });
+    expect(asc.writes()).toEqual([
+      patch("draft-es-ES", "https://showtimes.cc/es/privacy-policy?lang=es"),
+      patch("draft-en-GB", "https://showtimes.cc/uk/privacy-policy?lang=en"),
+      patch("draft-de-DE", "https://showtimes.cc/de/privacy-policy?lang=de"),
+    ]);
+  });
+
+  it("leaves the live app info alone: Apple locks it until a new version exists", async () => {
+    const asc = new FakeAsc({ [`GET ${APP_INFOS}`]: liveAppInfos });
+    const lines: string[] = [];
+    await syncPrivacyPolicyUrls(asc, { ...pace, log: (line) => lines.push(line) });
+    expect(asc.writes()).toEqual([]);
+    expect(lines).toEqual(["privacy policy URLs: no editable app info, left as they are"]);
   });
 });

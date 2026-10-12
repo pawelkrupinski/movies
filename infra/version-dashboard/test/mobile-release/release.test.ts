@@ -68,6 +68,7 @@ function stores(events: string[]) {
     "POST /v1/appStoreVersions": { data: { id: "v10" } },
     "PATCH /v1/appStoreVersions/v10/relationships/build": null,
     "GET /v1/appStoreVersions/v10/appStoreVersionLocalizations": fixtureJson("asc-version-localizations.json"),
+    [`GET /v1/apps/${APP}/appInfos?include=appInfoLocalizations`]: fixtureJson("asc-app-infos.json"),
     [`GET /v1/reviewSubmissions?filter[app]=${APP}&filter[platform]=IOS&filter[state]=READY_FOR_REVIEW`]: { data: [] },
     "POST /v1/reviewSubmissions": { data: { id: "sub" } },
     "GET /v1/reviewSubmissions/sub/items?include=appStoreVersion": { data: [] },

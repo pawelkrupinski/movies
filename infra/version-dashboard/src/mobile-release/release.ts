@@ -29,7 +29,7 @@ export interface ReleaseDeps {
   readonly sleep: Sleep;
   readonly log: (line: string) => void;
   readonly nowSeconds: () => number;
-  /** The main checkout: where .env.local and the Android signing files live. */
+  /** The main checkout: where the Android signing files live. */
   readonly repoDir: string;
   /** Where the release worktree and build logs go. */
   readonly workDir: string;

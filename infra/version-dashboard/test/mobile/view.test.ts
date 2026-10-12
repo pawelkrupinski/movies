@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { emptyMobileState } from "../../src/mobile/model.js";
 import { renderMobile } from "../../src/mobile/view.js";
-import { NOW, state, upToDate } from "./states.js";
+import { networkDown, NOW, state, upToDate, vaultLocked } from "./states.js";
 
 const render = (...args: Parameters<typeof state>) => renderMobile(state(...args), NOW + 90_000).__raw;
 
@@ -75,6 +75,13 @@ describe("renderMobile", () => {
     const out = render([upToDate("iOS")], { buildError: "Error: git exploded" });
     expect(out).toContain("The last rebuild failed, so what is below is from the build before it: Error: git exploded");
     expect(out).toContain("<h2>iOS</h2>");
+  });
+
+  it("offers a Touch ID unlock where the store could not be asked for a locked vault, and only there", () => {
+    const locked = render([vaultLocked("iOS"), networkDown("Android")]);
+    expect(locked).toContain("<button class=needs-live data-action=unlock-vault>Unlock with Touch ID</button>");
+    expect(locked.match(/data-action=unlock-vault/g)).toHaveLength(1);
+    expect(render([networkDown("iOS")])).not.toContain("unlock-vault");
   });
 
   it("has a first-load state and a live-gated Refresh button", () => {

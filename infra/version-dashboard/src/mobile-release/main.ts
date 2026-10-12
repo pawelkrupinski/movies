@@ -34,8 +34,8 @@ if (values.help) {
   process.exit(0);
 }
 
-// The MAIN checkout, even when this runs from a worktree: .env.local, the Play key and the Android
-// keystore are gitignored and live only there.
+// The MAIN checkout, even when this runs from a worktree: the Play key and the Android keystore are
+// gitignored and live only there. (The App Store key is in the Touch ID vault.)
 const repoDir = dirname(execFileSync("git", ["rev-parse", "--path-format=absolute", "--git-common-dir"], { cwd: REPO_DIR, encoding: "utf8" }).trim());
 
 const notesDir = values["notes-dir"];
@@ -43,7 +43,7 @@ const stamp = () => new Date().toTimeString().slice(0, 8);
 try {
   await release(
     {
-      asc: ascApi(repoDir),
+      asc: ascApi(),
       play: playClient(repoDir),
       run: runCommand,
       sleep: (ms) => new Promise((wake) => setTimeout(wake, ms)),

@@ -3,7 +3,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { emptyMobileState } from "../../src/mobile/model.js";
 import { renderMobile } from "../../src/mobile/view.js";
 import { setDeps, start } from "../../web/mobile.js";
-import { NOW, state, upToDate } from "./states.js";
+import { NOW, state, upToDate, vaultLocked } from "./states.js";
 
 /** A stand-in EventSource the test can push snapshots through. */
 class FakeEventSource {
@@ -60,5 +60,12 @@ describe("the mobile page in a browser", () => {
     document.querySelector<HTMLButtonElement>("button[data-action=refresh]")?.click();
     expect(posts).toEqual(["POST /mobile/refresh"]);
     expect(document.getElementById("refreshnote")?.textContent).toBe("rebuilding…");
+  });
+
+  it("posts the vault unlock from the button a locked store shows", async () => {
+    FakeEventSource.last?.push({ version: 3, changedAt: NOW, checkedAt: NOW, state: state([vaultLocked("iOS")]) });
+    document.querySelector<HTMLButtonElement>("button[data-action=unlock-vault]")?.click();
+    expect(posts).toEqual(["POST /mobile/unlock-vault"]);
+    expect(document.getElementById("refreshnote")?.textContent).toBe("waiting for Touch ID…");
   });
 });

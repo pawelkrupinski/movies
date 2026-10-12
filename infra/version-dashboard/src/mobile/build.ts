@@ -31,7 +31,9 @@ async function submittedOf(repoDir: string, subdir: string, baseline: string | n
 }
 
 async function platformOf(repoDir: string, name: string, subdir: string, state: StoreState): Promise<Platform> {
-  if (state.error !== null) return { name, fetchFailed: true, error: state.error, networkError: state.networkError };
+  if (state.error !== null) {
+    return { name, fetchFailed: true, error: state.error, networkError: state.networkError, ...(state.vaultLocked ? { vaultLocked: true as const } : {}) };
+  }
   const version = state.liveVersion;
   // Looked up ONCE: it is both a candidate baseline and, when rejected, what the error names.
   const tagSha = await mobileTagSha(repoDir, subdir, version);

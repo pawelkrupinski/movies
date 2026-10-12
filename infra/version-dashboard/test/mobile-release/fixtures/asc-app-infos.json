@@ -1,0 +1,160 @@
+{
+  "data" : [ {
+    "type" : "appInfos",
+    "id" : "f8ed2f5e-b0f5-4067-ad39-c5658fb8653b",
+    "attributes" : {
+      "appStoreState" : "READY_FOR_SALE",
+      "state" : "READY_FOR_DISTRIBUTION",
+      "appStoreAgeRating" : "TWELVE_PLUS",
+      "australiaAgeRating" : null,
+      "brazilAgeRating" : "FOURTEEN",
+      "brazilAgeRatingV2" : "SELF_RATED_FOURTEEN",
+      "franceAgeRating" : null,
+      "koreaAgeRating" : "TWELVE"
+    },
+    "relationships" : {
+      "ageRatingDeclaration" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/relationships/ageRatingDeclaration",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/ageRatingDeclaration"
+        }
+      },
+      "appInfoLocalizations" : {
+        "meta" : {
+          "paging" : {
+            "total" : 4,
+            "limit" : 10
+          }
+        },
+        "data" : [ {
+          "type" : "appInfoLocalizations",
+          "id" : "6720e895-ad2f-4920-b939-552eadc3a436"
+        }, {
+          "type" : "appInfoLocalizations",
+          "id" : "3b7de8e8-0860-45e4-b2d8-7bd5411ba567"
+        }, {
+          "type" : "appInfoLocalizations",
+          "id" : "517f1aca-8661-4316-b802-b91e7b098ea9"
+        }, {
+          "type" : "appInfoLocalizations",
+          "id" : "43eba3fd-553c-4d6e-9803-6b06b48cdefe"
+        } ],
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/relationships/appInfoLocalizations",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/appInfoLocalizations"
+        }
+      },
+      "primaryCategory" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/relationships/primaryCategory",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/primaryCategory"
+        }
+      },
+      "primarySubcategoryOne" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/relationships/primarySubcategoryOne",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/primarySubcategoryOne"
+        }
+      },
+      "primarySubcategoryTwo" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/relationships/primarySubcategoryTwo",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/primarySubcategoryTwo"
+        }
+      },
+      "secondaryCategory" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/relationships/secondaryCategory",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/secondaryCategory"
+        }
+      },
+      "secondarySubcategoryOne" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/relationships/secondarySubcategoryOne",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/secondarySubcategoryOne"
+        }
+      },
+      "secondarySubcategoryTwo" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/relationships/secondarySubcategoryTwo",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/secondarySubcategoryTwo"
+        }
+      },
+      "territoryAgeRatings" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/relationships/territoryAgeRatings",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b/territoryAgeRatings"
+        }
+      }
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfos/f8ed2f5e-b0f5-4067-ad39-c5658fb8653b"
+    }
+  } ],
+  "included" : [ {
+    "type" : "appInfoLocalizations",
+    "id" : "6720e895-ad2f-4920-b939-552eadc3a436",
+    "attributes" : {
+      "locale" : "es-ES",
+      "name" : "Showtimes: cartelera local",
+      "subtitle" : "Horarios de tu ciudad",
+      "privacyPolicyUrl" : "https://showtimes.cc/es/privacy-policy",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/6720e895-ad2f-4920-b939-552eadc3a436"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "3b7de8e8-0860-45e4-b2d8-7bd5411ba567",
+    "attributes" : {
+      "locale" : "en-GB",
+      "name" : "Showtimes: what's on nearby",
+      "subtitle" : "Showtimes in your city",
+      "privacyPolicyUrl" : "https://showtimes.cc/uk/privacy-policy",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/3b7de8e8-0860-45e4-b2d8-7bd5411ba567"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "517f1aca-8661-4316-b802-b91e7b098ea9",
+    "attributes" : {
+      "locale" : "de-DE",
+      "name" : "Showtimes: nahes Kinoprogramm",
+      "subtitle" : "Jede Vorstellung deiner Stadt",
+      "privacyPolicyUrl" : "https://showtimes.cc/de/privacy-policy",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/517f1aca-8661-4316-b802-b91e7b098ea9"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "43eba3fd-553c-4d6e-9803-6b06b48cdefe",
+    "attributes" : {
+      "locale" : "pl",
+      "name" : "Kinowo: Seanse w Twoim mieście",
+      "subtitle" : "Repertuar kin w Twoim mieście",
+      "privacyPolicyUrl" : "https://kinowo.net/privacy-policy",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/43eba3fd-553c-4d6e-9803-6b06b48cdefe"
+    }
+  } ],
+  "links" : {
+    "self" : "https://api.appstoreconnect.apple.com/v1/apps/6792566321/appInfos?include=appInfoLocalizations"
+  },
+  "meta" : {
+    "paging" : {
+      "total" : 1,
+      "limit" : 50
+    }
+  }
+}

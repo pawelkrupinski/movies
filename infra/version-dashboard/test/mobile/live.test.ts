@@ -152,4 +152,26 @@ describe("the page", () => {
     await app.close();
     page.live.stop();
   });
+
+  it("unlocks the vault for this process when asked, then rebuilds; a refused prompt is reported", async () => {
+    const page = liveWith(oneOk);
+    let unlocks = 0;
+    let refuse = false;
+    const mobile = createMobilePage({ onWake: () => {} }, page.live, async () => {
+      unlocks += 1;
+      if (refuse) throw new Error("Touch ID cancelled");
+    });
+    const app = Fastify();
+    mobile.routes?.(app);
+    expect((await app.inject({ method: "POST", url: "/mobile/unlock-vault" })).json()).toEqual({ ok: true });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(unlocks).toBe(1);
+    expect(page.builds()).toBe(1);
+    refuse = true;
+    expect((await app.inject({ method: "POST", url: "/mobile/unlock-vault" })).json()).toEqual({ ok: false, error: "Touch ID cancelled" });
+    expect(page.builds()).toBe(1);
+    expect((await app.inject({ method: "GET", url: "/mobile/unlock-vault" })).statusCode).toBe(404);
+    await app.close();
+    page.live.stop();
+  });
 });

@@ -12,7 +12,10 @@ const STORE_OF: Readonly<Record<string, string>> = { iOS: "Apple", Android: "Goo
 
 function platformBlock(platform: Platform): Raw {
   const heading = html`<h2>${platform.name}</h2>`;
-  if (platform.fetchFailed) return html`${heading}<div class=err>${platform.error}</div>`;
+  if (platform.fetchFailed) {
+    const unlock = platform.vaultLocked ? html` <button class=needs-live data-action=unlock-vault>Unlock with Touch ID</button>` : "";
+    return html`${heading}<div class=err>${platform.error}${unlock}</div>`;
+  }
   const submitted = platform.submitted;
   const pendingVersion = platform.pending?.version ?? "?";
   // Its own line, ABOVE live: the version on its way out is what this page is usually opened for.

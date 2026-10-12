@@ -8,12 +8,15 @@ import {
   androidReleaseState,
   ascApi,
   ascToken,
-  envLocal,
   iosReleaseState,
   playAssertion,
   playClient,
   type PlayApi,
+  type Secrets,
+  VaultLockedError,
+  vaultSecrets,
 } from "../../src/mobile/stores.js";
+import type { CommandOptions, CommandResult } from "../../src/exec.js";
 import { dnsFailure } from "./errors.js";
 
 const NOW_MS = 1_790_000_000_000;
@@ -145,37 +148,35 @@ describe("the real clients, over a fake HTTP client", () => {
     });
   };
 
-  it("reads .env.local without sourcing it, quotes and ampersands included", async () => {
-    writeFileSync(join(dir, ".env.local"), 'OTHER=1\nAPP_STORE_KEY_ID="KEY&1"\nAPP_STORE_ISSUER_ID=\'iss\'\n');
-    expect(await envLocal(dir, "APP_STORE_KEY_ID")).toBe("KEY&1");
-    expect(await envLocal(dir, "APP_STORE_ISSUER_ID")).toBe("iss");
-    expect(await envLocal(dir, "MISSING")).toBeNull();
-    expect(await envLocal(join(dir, "nowhere"), "APP_STORE_KEY_ID")).toBeNull();
-  });
+  /** A vault holding `values`; every other name, or any name while `locked`, refuses. */
+  const vault = (values: Record<string, string>, locked = false): Secrets => async (name) => {
+    if (locked) throw new VaultLockedError(name);
+    const value = values[name];
+    if (value === undefined) throw new Error(`${name} is not in the vault`);
+    return value;
+  };
+  const ecPem = () => generateKeyPairSync("ec", { namedCurve: "P-256" }).privateKey.export({ type: "pkcs8", format: "pem" }).toString();
 
-  it("signs an App Store Connect request with the key named in .env.local", async () => {
-    const { privateKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
-    writeFileSync(join(dir, ".env.local"), "APP_STORE_KEY_ID=KEY1\nAPP_STORE_ISSUER_ID=iss\n");
-    writeFileSync(join(dir, "AuthKey_KEY1.p8"), privateKey.export({ type: "pkcs8", format: "pem" }));
+  it("signs an App Store Connect request with the key from the vault", async () => {
     answer({ "https://api.appstoreconnect.apple.com/v1/x": [200, { ok: 1 }] });
-    expect(await ascApi(dir, dir, () => NOW_MS).get("/v1/x")).toEqual({ ok: 1 });
+    const secrets = vault({ APP_STORE_KEY_ID: "KEY1", APP_STORE_ISSUER_ID: "iss", APP_STORE_KEY_P8: ecPem() });
+    expect(await ascApi(secrets, () => NOW_MS).get("/v1/x")).toEqual({ ok: 1 });
     const token = requests[0]?.init.headers?.Authorization?.replace("Bearer ", "") ?? "";
+    expect(decode(token.split(".")[0])).toMatchObject({ kid: "KEY1" });
     expect(decode(token.split(".")[1])).toMatchObject({ iss: "iss", iat: 1_790_000_000 });
   });
 
-  it("a missing .p8 is a local fault, not a network error", async () => {
-    writeFileSync(join(dir, ".env.local"), "APP_STORE_KEY_ID=KEY1\nAPP_STORE_ISSUER_ID=iss\n");
-    const state = await iosReleaseState(ascApi(dir, dir, () => NOW_MS).get, noSleep);
-    expect(state).toMatchObject({ networkError: false });
-    expect(state.error).toContain("AuthKey_KEY1.p8");
+  it("a locked vault is its own state, not a network error, and says how to unlock it", async () => {
+    const state = await iosReleaseState(ascApi(vault({}, true), () => NOW_MS).get, noSleep);
+    expect(requests).toHaveLength(0);
+    expect(state).toMatchObject({ networkError: false, vaultLocked: true });
+    expect(state.error).toContain("Touch ID");
   });
 
   it("a 401 from Apple is reported, not retried", async () => {
-    const { privateKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
-    writeFileSync(join(dir, ".env.local"), "APP_STORE_KEY_ID=KEY1\nAPP_STORE_ISSUER_ID=iss\n");
-    writeFileSync(join(dir, "AuthKey_KEY1.p8"), privateKey.export({ type: "pkcs8", format: "pem" }));
     answer({ "https://api.appstoreconnect.apple.com/v1/apps/6792566321/appStoreVersions?limit=10": [401, { errors: ["NOT_AUTHORIZED"] }] });
-    const state = await iosReleaseState(ascApi(dir, dir, () => NOW_MS).get, noSleep);
+    const secrets = vault({ APP_STORE_KEY_ID: "KEY1", APP_STORE_ISSUER_ID: "iss", APP_STORE_KEY_P8: ecPem() });
+    const state = await iosReleaseState(ascApi(secrets, () => NOW_MS).get, noSleep);
     expect(requests).toHaveLength(1);
     expect(state).toMatchObject({ networkError: false });
     expect(state.error).toContain("HTTP 401");
@@ -204,5 +205,42 @@ describe("the real clients, over a fake HTTP client", () => {
     expect(requests[1]?.init.headers).toEqual({ Authorization: "Bearer tok" });
     // Nothing ever commits the edit.
     expect(requests.some(({ url }) => url.includes(":commit"))).toBe(false);
+  });
+});
+
+describe("the Touch ID vault CLI", () => {
+  const run = (results: Record<string, Partial<CommandResult>>) => {
+    const argvs: string[] = [];
+    const exec = async (argv: readonly string[], _options: CommandOptions): Promise<CommandResult> => {
+      argvs.push(argv.join(" "));
+      return { code: 0, stdout: "", stderr: "", timedOut: false, ...results[argv.slice(1).join(" ")] };
+    };
+    return { argvs, exec };
+  };
+
+  it("reads a secret from the movies namespace, trimmed", async () => {
+    const { argvs, exec } = run({ "get movies APP_STORE_KEY_ID": { stdout: "KEY1\n" } });
+    expect(await vaultSecrets(exec, "/bin/secrets").get("APP_STORE_KEY_ID")).toBe("KEY1");
+    expect(argvs).toEqual(["/bin/secrets get movies APP_STORE_KEY_ID"]);
+  });
+
+  it("turns the CLI's locked answer into VaultLockedError", async () => {
+    const { exec } = run({ "get movies X": { code: 1, stderr: "Error: locked — run `secrets unlock movies`" } });
+    await expect(vaultSecrets(exec, "/bin/secrets").get("X")).rejects.toBeInstanceOf(VaultLockedError);
+  });
+
+  it("any other failure is an ordinary error, naming the secret", async () => {
+    const { exec } = run({ "get movies X": { code: 1, stderr: "Error: no such key" } });
+    const failure = vaultSecrets(exec, "/bin/secrets").get("X");
+    await expect(failure).rejects.not.toBeInstanceOf(VaultLockedError);
+    await expect(failure).rejects.toThrow(/X.*no such key/);
+  });
+
+  it("unlocks the movies namespace for this process, and reports a refused prompt", async () => {
+    const ok = run({});
+    await vaultSecrets(ok.exec, "/bin/secrets").unlock();
+    expect(ok.argvs).toEqual(["/bin/secrets unlock movies"]);
+    const refused = run({ "unlock movies": { code: 1, stderr: "Error: Touch ID cancelled" } });
+    await expect(vaultSecrets(refused.exec, "/bin/secrets").unlock()).rejects.toThrow(/cancelled/);
   });
 });

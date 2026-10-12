@@ -194,6 +194,49 @@ async function fillWhatsNew(asc: AscApi, versionId: string, notes: Notes, overwr
 }
 
 /**
+ * Each App Store locale's privacy-policy link, in its own language. One URL per locale (Apple keeps
+ * them per localization), on the host that country's listing serves; `?lang=` pins the language even
+ * on a host whose default is another.
+ */
+export const PRIVACY_POLICY_URLS: Readonly<Record<string, string>> = {
+  pl: "https://kinowo.net/privacy-policy?lang=pl",
+  "en-GB": "https://showtimes.cc/uk/privacy-policy?lang=en",
+  "en-US": "https://showtimes.cc/us/privacy-policy?lang=en",
+  "de-DE": "https://showtimes.cc/de/privacy-policy?lang=de",
+  "es-ES": "https://showtimes.cc/es/privacy-policy?lang=es",
+};
+
+interface JsonApiDocument extends JsonApiList {
+  readonly included?: readonly { readonly id: string; readonly attributes?: Record<string, unknown> }[];
+}
+
+/**
+ * Set each locale's privacy-policy URL to `PRIVACY_POLICY_URLS`. Only the app info a new version
+ * opened can change -- Apple locks the live one (READY_FOR_DISTRIBUTION), and a PATCH to it is
+ * silently ignored -- so this runs after the version record exists and before it is submitted.
+ */
+export async function syncPrivacyPolicyUrls(asc: AscApi, pace: Pace): Promise<void> {
+  const infos = (await asc.get(`/v1/apps/${IOS_APP_ID}/appInfos?include=appInfoLocalizations`)) as JsonApiDocument;
+  const editable = (infos.data ?? []).find((info) => EDITABLE.has(text(info.attributes?.["state"]) || text(info.attributes?.["appStoreState"])));
+  if (!editable) {
+    pace.log("privacy policy URLs: no editable app info, left as they are");
+    return;
+  }
+  // A to-many relationship: `data` is a list here, not the single reference JsonApiList types it as.
+  const refs: unknown = editable.relationships?.["appInfoLocalizations"]?.data;
+  const ids = new Set(Array.isArray(refs) ? refs.map((ref: { id: string }) => ref.id) : []);
+  for (const localization of (infos.included ?? []).filter((item) => ids.has(item.id))) {
+    const locale = text(localization.attributes?.["locale"]);
+    const url = PRIVACY_POLICY_URLS[locale];
+    if (!url || text(localization.attributes?.["privacyPolicyUrl"]) === url) continue;
+    await asc.send("PATCH", `/v1/appInfoLocalizations/${localization.id}`, {
+      data: { type: "appInfoLocalizations", id: localization.id, attributes: { privacyPolicyUrl: url } },
+    });
+    pace.log(`privacyPolicyUrl[${locale}] → ${url}`);
+  }
+}
+
+/**
  * Submit `versionId` for review, reusing a draft review submission if one exists -- a draft left by
  * a failed attempt cannot be deleted (DELETE 403s), only filled and submitted.
  */
@@ -260,6 +303,7 @@ export async function submitIos(asc: AscApi, release: IosSubmission, pace: Pace)
   await asc.send("PATCH", `/v1/appStoreVersions/${versionId}/relationships/build`, { data: { type: "builds", id: release.buildId } });
   pace.log(`build attached to ${release.version}`);
   await fillWhatsNew(asc, versionId, release.notes, release.overwriteNotes, pace);
+  await syncPrivacyPolicyUrls(asc, pace);
   const submissionId = await submit(asc, versionId, pace);
   pace.log(`submitted for review (submission ${submissionId}); version is ${await stateOf(asc, versionId)}`);
   return submissionId;

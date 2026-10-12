@@ -8,7 +8,7 @@ export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /** The flake lives here; `nix eval .` in it resolves to the enclosing checkout on its own. */
 export const INFRA_DIR = resolve(ROOT, "..");
 /**
- * WHERE .env.local, android/play-credentials.json AND `git log -- ios/` ACTUALLY LIVE: the
+ * WHERE android/play-credentials.json AND `git log -- ios/` ACTUALLY LIVE: the
  * repository root. A pathspec resolved against the wrong cwd fails silently by matching nothing.
  */
 export const REPO_DIR = resolve(INFRA_DIR, "..");
