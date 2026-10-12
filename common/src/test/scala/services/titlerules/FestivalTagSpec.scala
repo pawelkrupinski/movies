@@ -24,7 +24,10 @@ class FestivalTagSpec extends AnyFlatSpec with Matchers {
     "Frances Ha | DKF"                -> "Frances Ha",
     "Róża |DKF"                       -> "Róża",
     "Camino dla opornych | CHKF"      -> "Camino dla opornych",
-    "Egon Schiele. Poza tabu | FKS"   -> "Egon Schiele. Poza tabu")
+    "Egon Schiele. Poza tabu | FKS"   -> "Egon Schiele. Poza tabu",
+    // A year-numbered edition: ACME Screening Room's Lighthouse Horror Film Festival (US), 2026-10.
+    "2026 LHFF Night of the Living Dead" -> "Night of the Living Dead",
+    "2026 LHFF The Wicker Man"          -> "The Wicker Man")
 
   "A festival-tagged listing" should "show the film's own title, even when no other venue lists the film" in {
     tagged.foreach { case (listing, film) =>
@@ -45,6 +48,11 @@ class FestivalTagSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "be looked up as the film when the edition is a year and the film carries its own" in {
+    n.apiQuery("2026 LHFF Scream (1996)") shouldBe n.apiQuery("Scream (1996)")
+    n.sanitize("2026 LHFF Scream (1996)") shouldBe n.sanitize("Scream (1996)")
+  }
+
   it should "keep what follows the tag that is the screening's own" in {
     // A nested strand, an accessibility tag and an event stay — only the festival's tag goes.
     n.preferredDisplay(Seq("11. UFF - BKF: Łabędzi śpiew Fiodora Ozerowa")) shouldBe Some("BKF: Łabędzi śpiew Fiodora Ozerowa")
@@ -63,7 +71,14 @@ class FestivalTagSpec extends AnyFlatSpec with Matchers {
       "Lalka | ENG",                      // an English-subtitled screening likewise
       "Kino seniora | Renoir",
       "UFF",
-      "11. UFF - "
+      "11. UFF - ",
+      "2001 A Space Odyssey",             // a year then a one-letter word: the film's own title
+      "2001 Maniacs",                     // a year then an ordinary word
+      "2001 MANIACS",                     // seven capitals: a word, not an acronym
+      "1776 THE MUSICAL",                 // an all-capitals listing: nothing lower-case says a title follows
+      "1917",
+      "2046",
+      "2026 LHFF"                         // a tag and nothing after it
     ).foreach { t =>
       withClue(s"canonical('$t'): ")(n.preferredDisplay(Seq(t)) shouldBe Some(t.trim))
     }
