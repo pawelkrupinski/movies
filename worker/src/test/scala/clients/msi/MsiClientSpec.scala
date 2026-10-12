@@ -429,4 +429,45 @@ class MsiClientSpec
     movies.flatMap(_.posterUrl) should not be empty
     all(movies.flatMap(_.posterUrl)) should startWith("https://bilety.csm.tarnow.pl/Kino/ImageData.ashx?id=")
   }
+
+  // GOK Tychowo sells Laurent Baffie's stage comedy "Bonobo" through its film
+  // portal under the bare title, which the identity model took for the 2014 UK
+  // film. The title says nothing; the portal's own event-labels feed
+  // (`Repertoire/GetShortEventsWithFilters`, the data behind its filter panel)
+  // files it under "Spektakl Teatralny". Recorded 2026-10-13 from the live portal.
+  private lazy val tychowo =
+    new MsiClient(new FakeHttpFetch("kino-gok-stage"), "https://bilety.goktychowo.pl",
+      KinoGOK, today = LocalDate.of(2026, 10, 13)).fetch()
+
+  "MsiClient (event labels)" should "drop an event the portal files under a stage category" in {
+    tychowo.map(_.movie.title).sorted shouldBe Seq("Lalka", "Luna i rozgadana świnka")
+  }
+
+  // Labels as the live portals spelled them on 2026-10-13. A broadcast the box
+  // office files as a concert (Sztum's "RETRANSMISJA ANDRE RIEU…" under
+  // "koncert") is screened cinema and stays, as the broadcast veto keeps it
+  // everywhere else; "Opera" names no stage word, since that is how the
+  // portals file Met transmissions too.
+  it should "read a stage category, but keep a screened broadcast filed as a concert" in {
+    MsiClient.isStagedEvent(Seq("koncert", "koncert"), "RETRANSMISJA ANDRE RIEU. NIECH ŻYJE MAASTRICHT") shouldBe false
+    MsiClient.isStagedEvent(Seq("Opera", "opera"), "OPERA-SAMSON I DALILA") shouldBe false
+    MsiClient.isStagedEvent(Seq("Spektakl Teatralny", "Spektakl Teatralny"), "Bonobo") shouldBe true
+    MsiClient.isStagedEvent(Seq("Spekatakl teatrlany na scenie Kinotetaru ", "Spektakl teatralny"), "TAM, GDZIE TY") shouldBe true
+    MsiClient.isStagedEvent(Seq("Teatr", "Akcja"), "DWIE POŁÓWKI POMARAŃCZY") shouldBe true
+    MsiClient.isStagedEvent(Seq("", "Stand Up"), "Chemik - Stand - up Rafała Rutkowskiego") shouldBe true
+    MsiClient.isStagedEvent(Seq("MARATON FILMOWY", "Horror"), "FILM: OPI") shouldBe false
+    MsiClient.isStagedEvent(Seq("", "Dramat"), "Lalka") shouldBe false
+  }
+
+  // Max Kino's older skin answers the labels route with an HTML page: no labels,
+  // so every listing stays — the scrape before labels — rather than the scrape failing.
+  it should "keep every listing when the labels feed is not JSON" in {
+    val recorded = new FakeHttpFetch("kino-gok-stage")
+    val htmlLabels = new tools.GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.endsWith("/Repertoire/GetShortEventsWithFilters")) "<html><body>Repertuar</body></html>" else recorded.get(url)
+    }
+    new MsiClient(htmlLabels, "https://bilety.goktychowo.pl", KinoGOK, today = LocalDate.of(2026, 10, 13))
+      .fetch().map(_.movie.title).sorted shouldBe Seq("Bonobo", "Lalka", "Luna i rozgadana świnka")
+  }
 }

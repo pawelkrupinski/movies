@@ -74,8 +74,9 @@ private[cinemas] object MsiScraper {
   //
   // The array is the only per-film source the portal offers without a session:
   // MSI has no per-film page (the "Więcej" link opens a modal filled by a POST to
-  // `ajax.aspx/GetEventDetails`, which answers only inside an ASP.NET session),
-  // so a listing carries no `filmUrl`.
+  // `ajax.aspx/GetEventDetails`, which answers HTTP 500 to any request from
+  // outside the page), so a listing carries no `filmUrl`. What KIND of event each
+  // screening is comes from the portal's event-labels feed instead (see MsiClient).
   private val JsObjectPat   = """(?s)\{[^{}]*\}""".r
   private val JsNamePat     = """'Name'\s*:\s*'((?:[^'\\]|\\.)*)'""".r
   private val JsDescPat     = """'Description'\s*:\s*'((?:[^'\\]|\\.)*)'""".r
@@ -151,9 +152,18 @@ private[cinemas] object MsiScraper {
         posterUrl.isDefined || synopsis.isDefined || synopsisExcerpt.isDefined
   }
 
+  /** One screening: `eventId` is the portal's id for it (the booking link's
+   *  `event_id`), the key its event-labels feed is read by. */
   private[cinemas] case class RawSlot(title: String, rawTitle: String, dateTime: LocalDateTime,
                                       booking: Option[String], format: List[String],
-                                      meta: FilmMeta = FilmMeta())
+                                      meta: FilmMeta = FilmMeta(), eventId: Option[Long] = None)
+
+  private val EventIdPat = """[?&]event_id=(\d+)""".r
+
+  // The standard skin's card also states a running time (`<li>czas: 110 min.</li>`),
+  // deliberately NOT read: it is the box office's slot length, not the film's —
+  // "Zawodowcy" (97 min) is 110 at Połczyn and 85 at Kołobrzeg (2026-06 corpus) —
+  // and the identity model's runtime veto then split those screenings off the film.
 
   /** Map every `RepertoireEvents` entry's name → the metadata it carries: the
    *  poster its `PosterId` names, plus what its `Description` yields (synopsis or, cut short, its excerpt,
@@ -287,7 +297,8 @@ private[cinemas] object MsiScraper {
           val href    = a.attr("abs:href")
           val booking = if (href.nonEmpty) Some(href) else None
           parseEventTime(a.text.trim, yearMonth).map { dt =>
-            RawSlot(title, rawTitle, dt, booking, format, meta)
+            RawSlot(title, rawTitle, dt, booking, format, meta,
+              EventIdPat.findFirstMatchIn(href).map(_.group(1).toLong))
           }
         }
       }

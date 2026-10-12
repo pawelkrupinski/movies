@@ -4,10 +4,12 @@ import java.util.Locale
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.{HttpFetch, HttpRead}
+import tools.{HttpFetch, HttpRead, ReadOutcome}
 import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon}
 
 import java.time.{LocalDate, YearMonth}
+import play.api.Logging
+import play.api.libs.json.{JsArray, JsObject, JsValue}
 import scala.util.Try
 
 /**
@@ -40,6 +42,20 @@ import scala.util.Try
  * sentence case so it merges correctly with TMDB and other sources. A version
  * followed by a comma and the distributor (`LALKA 2D PL, DYS. KINO ŚWIAT`) is
  * cut at the format word the same way.
+ *
+ * === Event labels ===
+ * The portal also sells its venue's plays and concerts, often under a title
+ * that names no stage word (GOK Tychowo's "Bonobo", Laurent Baffie's comedy).
+ * What the box office filed each event under — a category ("Spektakl
+ * Teatralny", "koncert", "Teatr") and a sub-category (a genre for a film:
+ * "Dramat", "Animacja") — is served by one JSON feed per portal,
+ * `<base><mvcPath>/Repertoire/GetShortEventsWithFilters` (the data behind its
+ * filter panel), keyed by the booking link's `event_id`. One extra request per
+ * scrape; a screening filed under a stage label is dropped
+ * ([[MsiClient.isStagedEvent]]). A feed that fails or isn't JSON (Max Kino's
+ * older skin) labels nothing, so the scrape degrades to the title filter alone.
+ * (The per-event details modal, `ajax.aspx/GetEventDetails`, answers HTTP 500 to
+ * any request from outside the page, session cookie or not — 2026-10-13.)
  *
  * @parameter http    HTTP client (swap for `FakeHttpFetch` in tests).
  * @parameter baseUrl Scheme + host of the venue's MSI portal, no trailing slash
@@ -85,7 +101,7 @@ class MsiClient(
   // set, a leading `<label>:` is stripped where present and no row is dropped —
   // see [[MsiClient.cleanTitleStripLabel]].
   filmLabel: Option[String] = None
-) extends CinemaScraper with OnlyMovieEventsFilter {
+) extends CinemaScraper with OnlyMovieEventsFilter with Logging {
 
   import MsiClient._
 
@@ -129,7 +145,22 @@ class MsiClient(
     // KinoAwangarda2Client / KinoPatriaClient.
     ListingPages.requireAnyReached(attempts.result())
 
-    MsiScraper.toMovies(slots.result(), cinema)
+    val found  = slots.result()
+    // Only a portal with screenings is asked for their labels, so a dormant venue
+    // still costs just its month walk.
+    val labels: Map[Long, Seq[String]] =
+      if (found.isEmpty) Map.empty
+      else HttpRead.jsonObject(http, eventLabelsUrl(baseUrl, mvcPath))(feed => ReadOutcome.Answered(parseEventLabels(feed))) match {
+        case ReadOutcome.Answered(byEvent) => byEvent
+        // Unread labels leave every screening's kind unknown, and an unknown kind
+        // is kept — what the scrape did before it read labels — since dropping a
+        // film costs more than listing a play. Logged, so a portal that stops
+        // serving the feed is seen rather than silently unfiltered.
+        case unread =>
+          logger.info(s"${cinema.displayName}: no event labels, so only titles filter its stage events: ${unread.explain}")
+          Map.empty
+      }
+    MsiScraper.toMovies(found.filterNot(slot => isStagedSlot(slot, labels)), cinema)
   }
 }
 
@@ -142,6 +173,49 @@ object MsiClient {
 
   def monthUrl(baseUrl: String, mvcPath: String, ym: YearMonth): String =
     s"$baseUrl$mvcPath?sort=Name&date=${ym.getYear}-${"%02d".format(ym.getMonthValue)}"
+
+  /** The portal's event-labels feed: every upcoming event's filter-panel labels. */
+  def eventLabelsUrl(baseUrl: String, mvcPath: String): String =
+    s"$baseUrl$mvcPath/Repertoire/GetShortEventsWithFilters"
+
+  /** The labels a box office filed each event under — its category and
+   *  sub-category names, by event id — read off the event-labels feed
+   *  (`{"filtersForEvent":[{"eventId":10959,"filters":[{"filterName":
+   *  "category-filter","filterItems":[{"name":"Spektakl Teatralny"}]},…]}]}`).
+   *  An event missing a field simply carries fewer labels. */
+  private def parseEventLabels(feed: JsObject): Map[Long, Seq[String]] = {
+    def array(value: play.api.libs.json.JsLookupResult): Seq[JsValue] = value.asOpt[JsArray].toSeq.flatMap(_.value)
+    def labelsOf(event: JsValue): Seq[String] =
+      array(event \ "filters")
+        .filter(filter => (filter \ "filterName").asOpt[String].exists(LabelFilters.contains))
+        .flatMap(filter => array(filter \ "filterItems"))
+        .flatMap(item => (item \ "name").asOpt[String])
+    array(feed \ "filtersForEvent")
+      .flatMap(event => (event \ "eventId").asOpt[Long].map(_ -> labelsOf(event)))
+      .toMap
+  }
+
+  /** The two filters that say what an event is; the others are its audience and price. */
+  private val LabelFilters = Set("category-filter", "event-details-type-filter")
+
+  /** Whether an event filed under `labels` is performed on the venue's stage
+   *  rather than screened: a label carrying the stage vocabulary
+   *  ([[NonMovieEventClassifier.isPerformance]] — "Spektakl Teatralny", "Teatr",
+   *  "koncert", "Stand Up"), unless the title names a screened broadcast
+   *  ("RETRANSMISJA ANDRE RIEU", filed as a concert). A label that is only a genre
+   *  or the portal's own section ("Dramat", "MARATON FILMOWY", "Kino") names no
+   *  stage, and neither does "Opera", which is how the portals file Met
+   *  transmissions as well. */
+  def isStagedEvent(labels: Seq[String], title: String): Boolean =
+    labels.exists(label => NonMovieEventClassifier.isPerformance(label)) &&
+      !NonMovieEventClassifier.isScreenedBroadcast(title)
+
+  /** [[isStagedEvent]] for one screening — unless its Description states a
+   *  film's record (a director AND a year), the veto the title filter grants
+   *  too: a concert FILM filed as "Koncert" is still a film. */
+  private def isStagedSlot(slot: MsiScraper.RawSlot, labels: Map[Long, Seq[String]]): Boolean =
+    slot.eventId.flatMap(labels.get).exists(isStagedEvent(_, slot.rawTitle)) &&
+      !(slot.meta.director.nonEmpty && slot.meta.releaseYear.isDefined)
 
   /** Strip the trailing format/version tag MSI buries in the title, sentence-case
    *  the result (so screening variants of one film merge), AND surface the
