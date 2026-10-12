@@ -1069,7 +1069,6 @@ class CinemaScraperCatalog(
     vueUk("10030", VueCinemasWestEnd),
     vueUk("10072", VueCinemasWestfieldShepherdSBush),
     vueUk("10071", VueCinemasWoodGreen),
-    flicks("watermans-art-centre-brentford", WatermansArtCentreBrentford),
     flicks("wyllyotts-theatre-potters-bar", WyllyottsTheatrePottersBar),
   )
   private val manchesterScrapers: Seq[CinemaScraper] = Seq(
@@ -1111,7 +1110,6 @@ class CinemaScraperCatalog(
   )
   private val aberdeenshireScrapers: Seq[CinemaScraper] = Seq(
     flicks("arc-peterhead", ArcCinemaPeterhead),
-    flicks("belmont-filmhouse-aberdeen", BelmontFilmhouse),
     cineworld("x079z-cineworld-cinema-aberdeen-queens-links", CineworldQueensLinkAberdeen),
     cineworld("x0fr5-cineworld-cinema-aberdeen-union-square", CineworldUnionSquareAberdeen),
     savoy("https://caledoniancinemas.co.uk/MorayPlayhouse.dll/", MorayPlayhouse),
@@ -1156,7 +1154,6 @@ class CinemaScraperCatalog(
     flicks("reading-biscuit-factory", ReadingBiscuitFactory),
     showcase("X06KD", ShowcaseDeLuxReading),
     flicks("south-hill-park-arts-centre-bracknell", SouthHillParkArtsCentreBracknell),
-    flicks("the-assembly-at-heckfield-place", TheAssemblyAtHeckfieldPlace),
     // The Old Court is NOT on Flicks — it is absent from the whole
     // `sitemap-cinemas.xml`, and `the-screen-cinema-windsor` (the only Windsor
     // slug Flicks has) is a different venue, so this venue was reading someone
@@ -1703,7 +1700,6 @@ class CinemaScraperCatalog(
   private val northumberlandScrapers: Seq[CinemaScraper] = Seq(
     savoy("https://forumhexham.com/ForumHexham.dll/", ForumCinemaHexham),
     flicks("market-pavillion-cinema-blyth", MarketPavilionCinemaBlyth),
-    flicks("phoenix-cinema-blyth", PhoenixCinemaBlyth),
     spektrix("maltingsberwick", TheMaltingsBerwickUponTweed),
     vueUk("10085", VueCinemasCramlington),
   )
@@ -1910,7 +1906,6 @@ class CinemaScraperCatalog(
     odeon("755", OdeonCinemaAndover),
     odeon("220", OdeonCinemaSalisbury),
     odeon("847", OdeonCinemaTrowbridge),
-    flicks("palace-cinema-devizes", PalaceCinemaDevizes),
     flicks("astoria-chippenham", ReelCinemaChippenhamAstoria),
     savoy("https://theregalcinema.org/RegalFordingbridge.dll/", RegalCinemaFordingbridge),
     flicks("the-parade-cinema-marlborough", TheParadeCinemaMarlborough),

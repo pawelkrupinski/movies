@@ -288,15 +288,6 @@
   "lon": -2.53527
  },
  {
-  "flicksSlug": "belmont-filmhouse-aberdeen",
-  "cinemaObject": "BelmontFilmhouse",
-  "displayName": "Belmont Filmhouse",
-  "town": "Aberdeen",
-  "address": "49 Belmont Street, Aberdeen AB10 1JS",
-  "lat": 57.14731,
-  "lon": -2.10198
- },
- {
   "flicksSlug": "bfi-london-imax",
   "cinemaObject": "BfiLondonImax",
   "displayName": "BFI London IMAX",
@@ -4590,15 +4581,6 @@
   "lon": -2.49679
  },
  {
-  "flicksSlug": "palace-cinema-devizes",
-  "cinemaObject": "PalaceCinemaDevizes",
-  "displayName": "Palace Cinema Devizes",
-  "town": "Devizes",
-  "address": "19-20 Market Place, Devizes, SN10 1JQ",
-  "lat": 51.35255,
-  "lon": -1.99481
- },
- {
   "flicksSlug": "palace-cinema-felixstowe",
   "cinemaObject": "PalaceCinemaFelixstowe",
   "displayName": "Palace Cinema Felixstowe",
@@ -4723,15 +4705,6 @@
   "address": "95A Rye Ln, Peckham, London SE15 4ST",
   "lat": 51.46985,
   "lon": -0.068
- },
- {
-  "flicksSlug": "phoenix-cinema-blyth",
-  "cinemaObject": "PhoenixCinemaBlyth",
-  "displayName": "Phoenix Cinema Blyth",
-  "town": "Blyth",
-  "address": "37A Beaconsfield Street, Blyth, Northumberland, NE24 2DS",
-  "lat": 55.12555,
-  "lon": -1.50555
  },
  {
   "flicksSlug": "phoenix-cinema-east-finchley",
@@ -6084,15 +6057,6 @@
   "lon": -0.08078
  },
  {
-  "flicksSlug": "the-assembly-at-heckfield-place",
-  "cinemaObject": "TheAssemblyAtHeckfieldPlace",
-  "displayName": "The Assembly at Heckfield Place",
-  "town": "Heckfield Place",
-  "address": "Heckfield Place, Hampshire RG27 0LD",
-  "lat": 51.3438848,
-  "lon": -0.9504216
- },
- {
   "flicksSlug": "the-astra-cinema-st-mawgan",
   "cinemaObject": "TheAstraCinemaStMawgan",
   "displayName": "The Astra Cinema St. Mawgan",
@@ -7441,15 +7405,6 @@
   "address": "Custom House Way, Greenock PA15 1EG",
   "lat": 55.9499,
   "lon": -4.75597
- },
- {
-  "flicksSlug": "watermans-art-centre-brentford",
-  "cinemaObject": "WatermansArtCentreBrentford",
-  "displayName": "Watermans Art Centre Brentford",
-  "town": "London",
-  "address": "High Street, Brentford, London TW8 0DS",
-  "lat": 51.48577,
-  "lon": -0.29806
  },
  {
   "flicksSlug": "watershed-bristol",

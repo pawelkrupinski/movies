@@ -74,6 +74,17 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.UnitedKingdom.cities.map(_.slug) should contain allOf ("london", "manchester", "birmingham")
   }
 
+  // Rechecked 2026-10-12: three closed with no reopening on the calendar (Watermans,
+  // Apr 2024; Palace Devizes, since 2021; Belmont, Oct 2022, only "targeted" for late
+  // 2027) and two never were public cinemas (Blyth's Phoenix is a live theatre,
+  // Heckfield Place a hotel's screening room for guests). Rich Mix only paused, so it stays.
+  it should "list none of the UK venues that closed or never were public cinemas" in {
+    val names = Country.UnitedKingdom.cities.flatMap(_.cinemas).map(_.displayName).toSet
+    names intersect Set("Watermans Art Centre Brentford", "Palace Cinema Devizes", "Belmont Filmhouse",
+      "Phoenix Cinema Blyth", "The Assembly at Heckfield Place") shouldBe empty
+    names should contain ("Rich Mix Shoreditch")
+  }
+
   "Country.UnitedKingdom.cities" should "be the full modelled UK roster (every Flicks region live)" in {
     // Every one of the 76 modelled regions is live — web serves them and the
     // worker scrapes them. `activeUkCities` currently equals the full roster, so

@@ -17,3 +17,8 @@ curzon-cinema-sheffield         # permanently closed 29 Jun 2026 (falling admiss
 omniplex-armagh                 # permanently closed 25 Jan 2026 (lease not renewed)
 vue-cinemas-shepherd-s-bush     # dead-slug duplicate of vue-cinemas-westfield-shepherd-s-bush (real venue, wired & green)
 odeon-cinema-basingstoke        # permanently closed 31 Aug 2026 (dropped from Odeon's own Vista estate)
+watermans-art-centre-brentford  # permanently closed 11 Apr 2024, seeking a new site (watermans.org.uk)
+palace-cinema-devizes           # closed since Jul 2021 for renovation, no reopening date (cinematreasures; own site 2026-10-12)
+belmont-filmhouse-aberdeen      # closed Oct 2022 on administration; reopening only targeted for late 2027 (parliament.scot S6M-20677, Feb 2026)
+phoenix-cinema-blyth            # not a cinema: the Phoenix Theatre, a live/amateur theatre (charity 1149700), no film screenings
+the-assembly-at-heckfield-place # not a public cinema: a hotel screening room for resident guests and Friends of Heckfield (heckfieldplace.com)

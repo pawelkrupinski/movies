@@ -5823,7 +5823,6 @@ models.BarnCinemaDartingtonArtCentre$
 models.BeauSejourLeisureCentreGuernsey$
 models.Bedfordshire$
 models.Belfast$
-models.BelmontFilmhouse$
 models.Berkshire$
 models.BfiLondonImax$
 models.BfiLondonSouthbank$
@@ -6928,7 +6927,6 @@ models.OrionBurgessHill$
 models.OrionDereham$
 models.Oxfordshire$
 models.PalaceCinemaCinderford$
-models.PalaceCinemaDevizes$
 models.PalaceCinemaFelixstowe$
 models.PalaceCinemaGorlestonOnSea$
 models.PalaceCinemaHaverfordwest$
@@ -6947,7 +6945,6 @@ models.PavilionHailsham$
 models.PavilionsTeignmouth$
 models.Peckhamplex$
 models.PhoenixCinemaAndArtCentreLeicester$
-models.PhoenixCinemaBlyth$
 models.PhoenixCinemaEastFinchley$
 models.PhoenixCinemaFalmouth$
 models.PhoenixKirkwallOkneyIslands$
@@ -7145,7 +7142,6 @@ models.TeatrBoto$
 models.TeatrGryphius$
 models.TheArzner$
 models.TheAshfordCinemaFormerlyPicturehouse$
-models.TheAssemblyAtHeckfieldPlace$
 models.TheAstraCinemaStMawgan$
 models.TheAvenueCinemaBelfast$
 models.TheAvenueCinemaMinehead$
@@ -7332,7 +7328,6 @@ models.Warszawa$
 models.WarwickArtsCentreCoventry$
 models.Warwickshire$
 models.WaterfrontGreenock$
-models.WatermansArtCentreBrentford$
 models.WatershedBristol$
 models.Watersmeet$
 models.WellingtonOrbit$
