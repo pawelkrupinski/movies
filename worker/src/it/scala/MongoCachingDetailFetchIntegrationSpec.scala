@@ -166,7 +166,7 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     val url   = s"https://chain/film/legacy-${System.nanoTime()}"
     val under = new CountingFetch
     Await.result(db.getCollection(collName).insertOne(org.mongodb.scala.Document("_id" -> s"${Chain.name}|$url", "body" -> "<html>legacy</html>",
-      "fetchedAt" -> new java.util.Date(0L), "expireAt" -> java.util.Date.from(java.time.Instant.parse("2100-01-01T00:00:00Z")))).toFuture(), SpecTimeouts.Io)
+      "fetchedAt" -> new java.util.Date(0L), "expireAt" -> java.util.Date.from(tools.MongoTtlSpecClock.Pinned.instant()))).toFuture(), SpecTimeouts.Io)
     new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, new services.TtlIndexMismatches).get(url) shouldBe "<html>legacy</html>"
     under.gets shouldBe 0
   }
