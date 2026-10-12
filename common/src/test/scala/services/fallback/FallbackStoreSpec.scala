@@ -105,4 +105,12 @@ class FallbackStoreSpec extends AnyFlatSpec with Matchers {
     val s = state("Heimgarten Kino", active = false).copy(emptyFallback = Some(spell))
     roundTrip(s).flatMap(_.emptyFallback) shouldBe Some(spell)
   }
+
+  // A second listing having dropped the venue is closure evidence, quoted with its answer.
+  it should "round-trip the dropped-fallback spell with the answer it quotes" in {
+    val spell = FallbackState.DroppedSpell(since = Instant.ofEpochMilli(4000), lastSeen = Instant.ofEpochMilli(9000),
+      error = "HttpStatusException: HTTP 410 for GET https://www.sensacine.com/cines/cine/E0001/")
+    val s = state("Cine Mota del Cuervo", active = false).copy(droppedFallback = Some(spell))
+    roundTrip(s).flatMap(_.droppedFallback) shouldBe Some(spell)
+  }
 }

@@ -120,7 +120,7 @@ class SourceFallbackScraper(
       // fails (red) rather than reading as an empty listing. Only a fallback that
       // answered empty is an empty tick.
       val (fwResult, fwMs, fwAnswer) = fetchFallback()
-      previous.foreach(p => store.put(p.copy(updatedAt = nowI, emptyFallback = witnessed(p, fwAnswer, nowI))))
+      previous.foreach(p => store.put(witness(p.copy(updatedAt = nowI), fwAnswer, nowI)))
       fwResult match {
         case scala.util.Success(fwMovies) if showtimeCount(fwMovies) > 0 =>
           monitor.recordFallbackSuccess(service, fwMs, thin(fwMovies)); fallbackServed(fwMovies)
@@ -201,7 +201,7 @@ class SourceFallbackScraper(
   private def ownSpell(state: FallbackState): FallbackState =
     if (state.fallbackSource == fallbackName) state
     else state.copy(
-      active = false, alerted = false, failingSince = None, failedRuns = 0, since = None, emptyFallback = None,
+      active = false, alerted = false, failingSince = None, failedRuns = 0, since = None, emptyFallback = None, droppedFallback = None,
       consecutiveFailures = 0, lastPrimaryProbeAt = None, nextPrimaryProbeAt = None)
 
   /** Has the current failing spell, counting THIS failed run, reached [[fallbackAfter]]?
@@ -253,14 +253,20 @@ class SourceFallbackScraper(
     (if (answer == FallbackAnswer.Served) movies.get else Seq.empty, ms, answer)
   }
 
-  /** The empty-fallback spell after the fallback gave `answer` at `nowI`: listing
-   *  nothing starts or extends it, serving ends it, and an error or a missing
-   *  fallback proves nothing either way. */
-  private def witnessed(base: FallbackState, answer: FallbackAnswer, nowI: Instant): Option[FallbackState.EmptySpell] =
+  /** `state` with the fallback's spells after it gave `answer` at `nowI`. Listing nothing
+   *  starts or extends the empty spell; answering 404/410 starts or extends the dropped
+   *  one; each ends the other, and serving ends both. Any other error, or a missing
+   *  fallback, proves nothing either way and leaves both as they were. */
+  private def witness(state: FallbackState, answer: FallbackAnswer, nowI: Instant): FallbackState =
     answer match {
-      case FallbackAnswer.ListedEmpty => Some(base.emptyFallback.fold(FallbackState.EmptySpell(nowI, nowI))(_.copy(lastSeen = nowI)))
-      case FallbackAnswer.Served      => None
-      case FallbackAnswer.Failed | FallbackAnswer.Absent => base.emptyFallback
+      case FallbackAnswer.ListedEmpty =>
+        state.copy(emptyFallback = Some(state.emptyFallback.fold(FallbackState.EmptySpell(nowI, nowI))(_.copy(lastSeen = nowI))),
+          droppedFallback = None)
+      case FallbackAnswer.Dropped(error) =>
+        state.copy(emptyFallback = None,
+          droppedFallback = Some(state.droppedFallback.fold(FallbackState.DroppedSpell(nowI, nowI, error))(_.copy(lastSeen = nowI, error = error))))
+      case FallbackAnswer.Served => state.copy(emptyFallback = None, droppedFallback = None)
+      case FallbackAnswer.Failed | FallbackAnswer.Absent => state
     }
 
   /** Grace-window failure: keep the `failingSince` clock running (starting it if
@@ -308,8 +314,7 @@ class SourceFallbackScraper(
   /** The persisted shape of "the primary is down and we are not on fallback",
    *  shared by the silent grace ticks and the one that pages. */
   private def stillFailing(base: FallbackState, nowI: Instant, reason: String, answer: FallbackAnswer = FallbackAnswer.Absent): FallbackState =
-    base.copy(
-      emptyFallback       = witnessed(base, answer, nowI),
+    witness(base, answer, nowI).copy(
       active              = false,
       fallbackSource = fallbackName, fallbackRef = fallbackRef(),
       failingSince        = base.failingSince.orElse(Some(nowI)),
@@ -340,7 +345,8 @@ class SourceFallbackScraper(
       updatedAt           = nowI,
       history             = (event :: base.history).take(FallbackState.MaxHistory),
       alerted             = true,
-      emptyFallback       = None
+      emptyFallback       = None,
+      droppedFallback     = None
     )
     store.put(next)
     onEvent(next, event)
@@ -354,7 +360,7 @@ class SourceFallbackScraper(
     val base        = previous.getOrElse(initialState)
     val consecutive = base.consecutiveFailures + 1
     val event       = FallbackEvent(nowI, FallbackEvent.ProbeFailed, reason)
-    val next = base.copy(
+    val next = witness(base, answer, nowI).copy(
       active              = true,
       fallbackSource = fallbackName, fallbackRef = fallbackRef(),
       failingSince        = base.failingSince.orElse(Some(nowI)),
@@ -364,8 +370,7 @@ class SourceFallbackScraper(
       lastPrimaryProbeAt  = Some(nowI),
       nextPrimaryProbeAt  = Some(nowI.plusMillis(backoffFor(consecutive).toMillis)),
       updatedAt           = nowI,
-      history             = (event :: base.history).take(FallbackState.MaxHistory),
-      emptyFallback       = witnessed(base, answer, nowI)
+      history             = (event :: base.history).take(FallbackState.MaxHistory)
     )
     store.put(next)
     onEvent(next, event)
@@ -380,14 +385,14 @@ class SourceFallbackScraper(
       val next = p.copy(
         active = false, lastReason = Some("primary recovered"), consecutiveFailures = 0,
         failingSince = None, failedRuns = 0, since = None, lastPrimaryProbeAt = Some(nowI), nextPrimaryProbeAt = None,
-        emptyFallback = None, updatedAt = nowI, history = (event :: p.history).take(FallbackState.MaxHistory)
+        emptyFallback = None, droppedFallback = None, updatedAt = nowI, history = (event :: p.history).take(FallbackState.MaxHistory)
       )
       store.put(next)
       onEvent(next, event)
-    } else if (p.failingSince.isDefined || p.emptyFallback.isDefined || p.fallbackSource != fallbackName) {
+    } else if (p.failingSince.isDefined || p.emptyFallback.isDefined || p.droppedFallback.isDefined || p.fallbackSource != fallbackName) {
       // A row another fallback wrote reads inactive through `ownSpell` but may still be stored
       // `active`: claim it now, or the stale spell keeps counting as live until a failure.
-      store.put(p.copy(failingSince = None, failedRuns = 0, emptyFallback = None, lastPrimaryProbeAt = Some(nowI), updatedAt = nowI,
+      store.put(p.copy(failingSince = None, failedRuns = 0, emptyFallback = None, droppedFallback = None, lastPrimaryProbeAt = Some(nowI), updatedAt = nowI,
         fallbackSource = fallbackName, fallbackRef = fallbackRef()))
     }
   }
@@ -417,15 +422,19 @@ object SourceFallbackScraper {
   private def showtimeCount(movies: Seq[CinemaMovie]): Int = movies.iterator.map(_.showtimes.size).sum
 
   /** What the fallback said when asked to cover: it served showtimes, it answered with
-   *  none (its page exists and lists nothing), it failed, or the venue has none. */
+   *  none (its page exists and lists nothing), its page for the venue is gone (404/410,
+   *  the answer kept as recorded), it failed otherwise, or the venue has none. */
   private enum FallbackAnswer {
     case Served, ListedEmpty, Failed, Absent
+    case Dropped(error: String)
   }
   private object FallbackAnswer {
     def of(result: scala.util.Try[Seq[CinemaMovie]]): FallbackAnswer = result match {
       case scala.util.Success(movies) if showtimeCount(movies) > 0 => Served
       case scala.util.Success(_)                                  => ListedEmpty
-      case scala.util.Failure(_)                                  => Failed
+      case scala.util.Failure(t) =>
+        val error = UptimeRecordingScraper.errorLabel(t)
+        if (services.scrapes.GoneUpstream.saysPageIsGone(error)) Dropped(error) else Failed
     }
   }
 

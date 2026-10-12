@@ -545,4 +545,26 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
     h.advance(1.day); h.tickSwallowing()
     h.state.value.emptyFallback shouldBe Some(FallbackState.EmptySpell(since = emptied, lastSeen = h.clock))
   }
+
+  // A second listing that answers 404/410 for the venue has DROPPED it, which an empty listing
+  // has not: its spell is kept apart, with the answer itself, so a closure verdict can quote it.
+  it should "start a dropped-fallback spell when the fallback's page answers 404, and keep it apart from an empty one" in {
+    val dropped = new tools.HttpStatusException(404, "GET", "https://www.kinoprogramm.com/kino/x/", None)
+    val fallback = ScriptedCinemaScraper(List(Left(dropped), Left(dropped), Left(new RuntimeException("fallback down")), Right(NoShowtimes)))
+    val h = new Harness(Seq(Left(boom)), Some(fallback))
+    h.tickSwallowing()
+    h.advance(6.hours + 1.minute)
+    val first = h.clock
+    h.tickSwallowing()
+    h.state.value.droppedFallback shouldBe Some(FallbackState.DroppedSpell(first, first,
+      "HttpStatusException: HTTP 404 for GET https://www.kinoprogramm.com/kino/x/"))
+    h.state.value.emptyFallback shouldBe None
+    h.advance(1.day); h.tickSwallowing()
+    h.state.value.droppedFallback.map(_.lastSeen) shouldBe Some(h.clock)
+    h.advance(1.day); h.tickSwallowing()                // a non-durable error proves nothing either way
+    h.state.value.droppedFallback.map(_.since) shouldBe Some(first)
+    h.advance(1.day); h.tickSwallowing()                // the page exists again: it lists nothing, it has not dropped the venue
+    h.state.value.droppedFallback shouldBe None
+    h.state.value.emptyFallback.map(_.since) shouldBe Some(h.clock)
+  }
 }

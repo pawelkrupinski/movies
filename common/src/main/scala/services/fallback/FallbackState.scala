@@ -54,7 +54,8 @@ case class FallbackState(
   history:             List[FallbackEvent],
   alerted:             Boolean = false,   // ENTER page sent for the CURRENT spell — gates the recovery page so a grace-window recovery (never entered fallback) stays silent
   failedRuns:          Int = 0,           // separate failed primary runs in the CURRENT spell, for a run-counting grace (`FallbackAfter.FailedRuns`). Persisted like `failingSince`; cleared on any primary success.
-  emptyFallback:       Option[FallbackState.EmptySpell] = None // the fallback ANSWERED but listed nothing, while the primary was down: closure evidence. Cleared when the fallback serves or the primary recovers; a fallback that errors leaves it as it was.
+  emptyFallback:       Option[FallbackState.EmptySpell] = None, // the fallback ANSWERED but listed nothing, while the primary was down: corroborates the primary's drop. Cleared when the fallback serves, drops the venue or the primary recovers; a fallback that errors leaves it as it was.
+  droppedFallback:     Option[FallbackState.DroppedSpell] = None // the fallback's own page for the venue answered 404/410, while the primary was down: a second listing has dropped the venue. Cleared like `emptyFallback`.
 )
 
 object FallbackState {
@@ -62,6 +63,11 @@ object FallbackState {
    *  the primary was down: first such answer, and the latest one. `lastSeen` lets a
    *  reader tell a spell still being confirmed from one nobody has checked lately. */
   case class EmptySpell(since: Instant, lastSeen: Instant)
+
+  /** How long the fallback has been answering 404/410 for the venue's page while the
+   *  primary was down, and its latest answer verbatim (the status and the URL), so a
+   *  reader can tell which listing dropped the venue and re-check it. */
+  case class DroppedSpell(since: Instant, lastSeen: Instant, error: String)
 
   /** Cap on retained history entries per cinema, oldest dropped first. */
   val MaxHistory: Int = 50

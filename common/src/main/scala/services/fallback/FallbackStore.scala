@@ -148,7 +148,10 @@ object MongoFallbackStore {
     Updates.set("alerted", s.alerted),
     Updates.set("failedRuns", s.failedRuns),
     Updates.set("emptyFallbackSince", s.emptyFallback.map(spell => date(spell.since)).orNull),
-    Updates.set("emptyFallbackLastSeen", s.emptyFallback.map(spell => date(spell.lastSeen)).orNull)
+    Updates.set("emptyFallbackLastSeen", s.emptyFallback.map(spell => date(spell.lastSeen)).orNull),
+    Updates.set("droppedFallbackSince", s.droppedFallback.map(spell => date(spell.since)).orNull),
+    Updates.set("droppedFallbackLastSeen", s.droppedFallback.map(spell => date(spell.lastSeen)).orNull),
+    Updates.set("droppedFallbackError", s.droppedFallback.map(_.error).orNull)
   )
 
   private[fallback] def fromDocument(document: Document): Option[FallbackState] =
@@ -173,7 +176,10 @@ object MongoFallbackStore {
         alerted             = Try(document.getBoolean("alerted", false)).getOrElse(false),
         failedRuns          = Try(document.getInteger("failedRuns", 0)).getOrElse(0),
         emptyFallback       = for (since <- instant("emptyFallbackSince"); lastSeen <- instant("emptyFallbackLastSeen"))
-                                yield FallbackState.EmptySpell(since, lastSeen)
+                                yield FallbackState.EmptySpell(since, lastSeen),
+        droppedFallback     = for (since <- instant("droppedFallbackSince"); lastSeen <- instant("droppedFallbackLastSeen");
+                                   error <- Option(document.getString("droppedFallbackError")))
+                                yield FallbackState.DroppedSpell(since, lastSeen, error)
       )
     }
 }
