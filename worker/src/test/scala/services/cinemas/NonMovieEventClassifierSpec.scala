@@ -281,6 +281,14 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
       withClue(t)(NonMovieEventClassifier.isMysteryScreening(t) shouldBe false))
   }
 
+  it should "name a sneak billed by its week or as an undisclosed original" in {
+    // The DE recording of 2026-10-12 (Filmstarts venues): a sneak dated by calendar week, or billed as the
+    // "original" / "mystery movie" / "surprise preview" it is.
+    Seq("Sneak KW 43 26", "DIE KULT SNEAK KW 44 26", "The Original Sneak", "Original Sneak - Mystery Movie",
+      "OV Sneak: The surprise preview").foreach(t =>
+      withClue(t)(NonMovieEventClassifier.isMysteryScreening(t) shouldBe true))
+  }
+
   // Ground truth: the German feeds' corpus (Cineamo / kinoheld / Filmstarts), prod 2026-10-12.
   "isNonScreening" should "drop the readings, gigs, comedy nights and passes a German venue sells beside its films" in {
     Seq(

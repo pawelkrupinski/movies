@@ -59,10 +59,12 @@ object NonMovieEventClassifier {
 
   /** A sneak billed with no film: "Sneak", "Kult-Sneak", "Horror Sneak FSK 18", "OV-Sneak", "Sneak 1343", "Horror
    *  Classics Sneak Vol. 83", "Cult Sneak of Horror" (German venues, prod 2026-10-12: 48 cards titled just "Sneak").
-   *  Every word must be one a sneak bills itself with, so a sneak that NAMES its film ("Hope Sneak") is that film's
-   *  preview and stays, as do "Sneakers" and "Sneaks". */
+   *  Every word must be one a sneak bills itself with — its week ("Sneak KW 43 26"), or that it is an undisclosed
+   *  "Original Sneak - Mystery Movie" / "OV Sneak: The surprise preview" — so a sneak that NAMES its film ("Hope
+   *  Sneak") is that film's preview and stays, as do "Sneakers" and "Sneaks". */
   private val SneakWords = Set("sneak", "ov", "omu", "omeu", "kult", "cult", "horror", "classic", "classics",
-    "klassiker", "retro", "fsk", "of", "vol", "preview", "die", "des", "jahres", "the")
+    "klassiker", "retro", "fsk", "of", "vol", "preview", "die", "des", "jahres", "the", "kw", "original", "mystery",
+    "movie", "surprise")
   private def isBareSneak(lower: String): Boolean = {
     val words = lower.split("""[^\p{L}\p{N}]+""").filter(_.nonEmpty)
     words.contains("sneak") && words.forall(w => SneakWords.contains(w) || w.forall(_.isDigit))
