@@ -327,7 +327,10 @@ groups:
         # `db.getReplicationInfo().timeDiff` under normal load -- not this threshold lowered until
         # it stops firing. IT FIRED ON 2026-10-03 (2.6h) and that was the write rate, as predicted:
         # ~330k `identity_traces` rewrites an hour on US, every trace rewritten unchanged, until
-        # 56c3e317b wrote one only when it changed (window back to 14h by 10-05).
+        # 56c3e317b wrote one only when it changed (window back to 14h by 10-05). IT FIRED AGAIN
+        # 2026-10-06/07 (low 2.8h): a one-off -- the 10-06 deploys added synopsis/cast/director to
+        # slots, so every slot row was rewritten once (avg oplog entry 3.3KB -> 10KB). Since then
+        # the average entry is ~3.5-5KB, so the steady window is ~6-10h, not 15h.
         for: 15m
         labels:
           severity: warning
@@ -339,9 +342,10 @@ groups:
             ChangeStreamHistoryLost and a full re-read. It shrinks for one of two reasons and they
             need opposite responses: a burst of writes (transient -- check whether the worker is
             backfilling), or a sustained rise in write rate (structural -- the oplog is now too
-            small for the workload). THE FIX FOR THE SECOND IS NOT FREE: `oplogSizeMB` was cut from
-            4096 to 1024 because the data volume is 5GB, so growing the window means growing the
-            Hetzner volume first (it grows in place; see terraform/server.mongo.tf).
+            small for the workload). THE FIX FOR THE SECOND IS NOT FREE: `oplogSizeMB` is already
+            4096 (hosts/mongo-1/default.nix), so growing the window means checking the Hetzner
+            volume's headroom first and growing it if needed (it grows in place; see
+            terraform/server.mongo.tf).
 
       - alert: MongodOplogWindowMetricAbsent
         expr: absent(mongodb_mongod_replset_oplog_head_timestamp)
