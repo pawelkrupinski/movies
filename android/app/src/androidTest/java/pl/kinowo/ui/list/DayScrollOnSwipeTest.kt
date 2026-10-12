@@ -3,6 +3,7 @@ package pl.kinowo.ui.list
 import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasTestTag
@@ -53,16 +54,14 @@ class DayScrollOnSwipeTest {
         val zone = ZoneId.of("Europe/Warsaw")
         val today = LocalDate.now(zone).format(DateTimeFormatter.ISO_DATE)
         val tomorrow = LocalDate.now(zone).plusDays(1).format(DateTimeFormatter.ISO_DATE)
-        // The same movie F-i plays on BOTH days (shared keys), but at a different
-        // time each day, so the day's sort order differs: today F-0..F-39, tomorrow
-        // reversed F-39..F-0. So a film at the top of one day sits mid-list the next.
+        // The same movie F-i plays on BOTH days (shared keys); only F-0..F-6 play tomorrow.
         fun cs(time: String) = listOf(CinemaShowings("Multikino", showtimes = listOf(Showtime(time))))
         // Today: 40 films. Tomorrow: only the first 7 (a much shorter day, as in
         // Poznań). Times increment so today sorts F-0..F-39, tomorrow F-0..F-6.
         val all = (0 until 40).map { i ->
             val showings = buildList {
                 add(DayShowings(today, "label", cs("08:%02d".format(i))))
-                if (i < 7) add(DayShowings(tomorrow, "label", cs("08:%02d".format(i))))
+                if (i < TomorrowFilms) add(DayShowings(tomorrow, "label", cs("08:%02d".format(i))))
             }
             Film(title = "F-$i", posterURL = "https://x/$i.jpg", showings = showings)
         }
@@ -77,14 +76,21 @@ class DayScrollOnSwipeTest {
     /** Topmost on-screen centre card as "title@topY" — topY is its boundsInRoot.top
      *  (negative = scrolled up off the grid's content edge). */
     private fun topCentreFilm(): String? {
+        val node = onScreenCards().minByOrNull { it.boundsInRoot.top } ?: return null
+        return "${titleOf(node)}@${node.boundsInRoot.top.toInt()}"
+    }
+
+    /** Film cards inside the screen — the carousel may keep a neighbouring day composed
+     *  beside it, off-screen. */
+    private fun onScreenCards(): List<SemanticsNode> {
         val w = screenW()
-        val node = compose.onAllNodes(hasTestTag(FilmCardTestTag))
+        return compose.onAllNodes(hasTestTag(FilmCardTestTag))
             .fetchSemanticsNodes()
             .filter { val b = it.boundsInRoot; b.left >= -1f && b.left < w && b.bottom > 0f && b.top < screenH() }
-            .minByOrNull { it.boundsInRoot.top } ?: return null
-        val title = node.config.getOrNull(SemanticsProperties.Text)?.firstOrNull()?.text
-        return "$title@${node.boundsInRoot.top.toInt()}"
     }
+
+    private fun titleOf(node: SemanticsNode): String? =
+        node.config.getOrNull(SemanticsProperties.Text)?.firstOrNull()?.text
 
     private fun scrollCentreDown(times: Int) {
         repeat(times) {
@@ -113,20 +119,37 @@ class DayScrollOnSwipeTest {
     private fun mountSeeded() {
         val viewModel = seedViewModel()
         compose.setContent { KinowoTheme { ListScreen(viewModel, onOpenFilm = {}) } }
-        compose.waitForIdle()
+        // Idle is not loaded: on a cold emulator the grid can still be empty when the
+        // first frame settles, and a swipe over an empty grid moves nothing.
+        compose.waitUntil(SettleTimeoutMs) { topCentreFilm() != null }
     }
 
     /** The grid's content-top Y (where a film at the exact top sits). A card whose
      *  top is at this Y is at the top; a smaller Y means it's scrolled up off it. */
     private val contentTopBand = 150..240
 
+    /** A film only today shows (F-7..F-39): on screen means the swipe has not left today,
+     *  whose first film is ALSO F-0 — the top card alone cannot tell the days apart. */
+    private fun todayOnlyOnScreen(): List<String> =
+        onScreenCards().mapNotNull(::titleOf).filter { (it.removePrefix("F-").toIntOrNull() ?: 0) >= TomorrowFilms }
+
+    private fun isAtTopOfTomorrow(top: String): Boolean =
+        top.substringBeforeLast('@') == "F-0" &&
+            top.substringAfterLast('@').toIntOrNull()?.let { it in contentTopBand } == true &&
+            todayOnlyOnScreen().isEmpty()
+
+    /** Waits for the swipe to SETTLE on the state asserted, not for the first idle frame:
+     *  the land-then-roll-to-top is an animation whose length the emulator's speed sets.
+     *  A timeout falls through to the assertions, which name what the screen shows. */
     private fun assertAtTopOfTomorrow(label: String) {
+        runCatching { compose.waitUntil(SettleTimeoutMs) { topCentreFilm()?.let(::isAtTopOfTomorrow) == true } }
         val top = topCentreFilm() ?: error("$label: no centre film found")
         val (title, y) = top.substringBeforeLast('@') to top.substringAfterLast('@').toInt()
         // Tomorrow's earliest film is F-0 (08:00). At the top it's the first card,
         // sitting at the content-top band — not a later film, and not scrolled up.
         assertEquals("$label: should land on tomorrow's first film", "F-0", title)
         assertTrue("$label: top card must sit at the content top (y=$y, got '$top')", y in contentTopBand)
+        assertEquals("$label: today-only films still on screen — the swipe never left today", emptyList<String>(), todayOnlyOnScreen())
     }
 
     @Test
@@ -147,4 +170,8 @@ class DayScrollOnSwipeTest {
         assertAtTopOfTomorrow("scrolled → swipe")
     }
 
+    private companion object {
+        const val SettleTimeoutMs = 10_000L
+        const val TomorrowFilms = 7
+    }
 }
