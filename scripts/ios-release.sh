@@ -16,10 +16,8 @@
 # script never sets it, so run the bump first and this only builds what is
 # already committed.
 #
-# Credentials: APP_STORE_KEY_ID + APP_STORE_ISSUER_ID out of `.env.local`, with
-# the .p8 at ~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8. NEVER `source
-# .env.local` — one value contains `&` and zsh dies parsing it, so the two vars
-# are grepped out individually.
+# Credentials: the App Store Connect API key from the Touch ID vault — run
+# `secrets unlock movies` first (see app-store-credentials.sh).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -33,31 +31,9 @@ PROFILE="Kinowo App Store"
 upload=1
 [ "${1:-}" = "--no-upload" ] && upload=0
 
-# `.env.local` is gitignored, so it exists ONLY in the main checkout — a release
-# cut from a worktree (which is the normal way here) would not find it beside
-# its own root. `--git-common-dir` points at the main checkout's `.git` from any
-# worktree, so its parent is where to look.
-env_file() {
-  if [ -f "$REPO_ROOT/.env.local" ]; then printf '%s' "$REPO_ROOT/.env.local"; return; fi
-  local common
-  common=$(git -C "$REPO_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)
-  [ -n "$common" ] && [ -f "$(dirname "$common")/.env.local" ] \
-    && printf '%s' "$(dirname "$common")/.env.local"
-}
-
-# Grep one var out of .env.local (see the header for why not `source`).
-env_var() { # $1 name
-  local f v
-  f=$(env_file)
-  [ -n "$f" ] || die ".env.local not found (looked beside $REPO_ROOT and in the main checkout)"
-  # `sed -E`: BSD sed (which is what macOS ships, and this lane is macOS-only)
-  # has no `\?` or `\+` in basic regex, so the optional `export` prefix and the
-  # optional quotes have to be written as ERE.
-  v=$(sed -E -n "s/^[[:space:]]*(export[[:space:]]+)?$1[[:space:]]*=[[:space:]]*\"?([^\"]*)\"?[[:space:]]*$/\2/p" \
-        "$f" | head -1 | tr -d '\r\n')
-  [ -n "$v" ] || die "$1 not found in $f"
-  printf '%s' "$v"
-}
+# Before anything expensive: a locked vault should fail now, not after the archive.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/app-store-credentials.sh"
+load_app_store_credentials
 
 version=$(tr -d '\n' < "$REPO_ROOT/mobile-version.txt")
 say "iOS release $version"
@@ -115,7 +91,7 @@ ok "exported $(du -h "$ipa" | cut -f1)"
 
 # altool ships inside the Xcode toolchain and is not on PATH.
 altool="$(xcode-select -p)/usr/bin/altool"
-key=$(env_var APP_STORE_KEY_ID); iss=$(env_var APP_STORE_ISSUER_ID)
+key="$APP_STORE_KEY_ID"; iss="$APP_STORE_ISSUER_ID"
 
 say "validate"
 "$altool" --validate-app -f "$ipa" -t ios --apiKey "$key" --apiIssuer "$iss" \

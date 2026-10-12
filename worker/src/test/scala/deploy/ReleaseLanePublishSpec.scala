@@ -88,11 +88,11 @@ class ReleaseLanePublishSpec extends AnyFlatSpec with Matchers {
       withClue(s"$step: ") { iosScript should include (step) }
   }
 
-  it should "never source .env.local, whose values break a shell parse" in {
-    // One value contains `&`; `source`-ing it kills zsh. The script greps the
-    // two vars out instead.
-    iosScript should not include "source .env.local"
-    iosScript should not include ". .env.local"
+  it should "take the App Store key from the Touch ID vault, not the retired .env.local" in {
+    // `.env.local` is gone; the key lives only in the vault, and
+    // app-store-credentials.sh (with its own shell test) lays it down for altool.
+    iosScript should include ("load_app_store_credentials")
+    iosScript should not include ".env.local"
     iosScript should include ("APP_STORE_KEY_ID")
     iosScript should include ("APP_STORE_ISSUER_ID")
   }
