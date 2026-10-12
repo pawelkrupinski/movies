@@ -54,8 +54,6 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
       "a live capture/fill tool against Filmweb: asks for today's programmes, which only the real date names (the stores keep their pinned clock)",
     "worker/src/it/scala/UnmatchedClustersFillIntegrationSpec.scala" ->
       "a live capture/fill tool against Filmweb: asks for today's programmes, which only the real date names (the stores keep their pinned clock)",
-    "worker/src/test/scala/tools/RepositoryReadSwallows.scala" ->
-      "quotes main-source lines verbatim as allowlist keys for NoSwallowedFailureSpec; it reads no clock",
     "worker/src/test/scala/tools/NoWallClockInTestsSpec.scala" ->
       "rule 2 compares literals with today on purpose (see the class doc)",
     "worker/src/test/scala/tools/NoDefaultZoneSpec.scala" ->
