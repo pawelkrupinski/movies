@@ -71,7 +71,30 @@ class CopiedFeedDetectorSpec extends AnyFlatSpec with Matchers {
     w.detector.copiedPairs shouldBe empty
   }
 
-  it should "not flag chain-mates running one grid, each booking through its own sessions" in {
+  // Two independent venues on one ticketing product, each on its OWN domain, share the first label
+  // (`www.`, `tickets.`) and the product's path, and number sessions on their own counters: keeping
+  // only the first label read them as one venue listing the other's feed.
+  it should "not flag two venues on different domains whose hosts share only the first label" in {
+    def ownDomain(venue: Cinema, domain: String) = feed(venue, "x").zipWithIndex.map { case (film, f) =>
+      film.copy(showtimes = film.showtimes.zipWithIndex.map { case (s, i) =>
+        s.copy(bookingUrl = Some(s"https://www.$domain/Ticketing/visSelectTickets.aspx?txtSessionId=${1000 + f * 4 + i}")) })
+    }
+    val w = new World
+    w.detector.venueScraped(parkRidge, ownDomain(parkRidge, "parkridgecinema.com"))
+    w.detector.venueScraped(pickwick, ownDomain(pickwick, "pickwicktheatre.co.uk"))
+    w.detector.copiedPairs shouldBe empty
+  }
+
+  "a session" should "keep the host's first label and its domain, dropping only a regional mirror label between them" in {
+    CopiedFeedDetector.sessionOf("https://ticketing.useast.veezi.com/purchase/1") shouldBe "ticketing.veezi.com/purchase/1"
+    CopiedFeedDetector.sessionOf("https://ticketing.us.veezi.com/purchase/1") shouldBe "ticketing.veezi.com/purchase/1"
+    CopiedFeedDetector.sessionOf("https://reelquinton.admit-one.co.uk/?p=1") shouldBe "reelquinton.admit-one.co.uk/?p=1"
+    CopiedFeedDetector.sessionOf("https://www.kino.pl/b?id=1") shouldBe "www.kino.pl/b?id=1"
+    CopiedFeedDetector.sessionOf("https://host/b") shouldBe "host/b"
+    CopiedFeedDetector.sessionOf("veezi-session-1") shouldBe "veezi-session-1"
+  }
+
+  "CopiedFeedDetector" should "not flag chain-mates running one grid, each booking through its own sessions" in {
     val w = new World
     w.detector.venueScraped(parkRidge, feed(parkRidge, "097"))
     w.detector.venueScraped(chainMate, feed(chainMate, "084"))       // same films, same times, own sessions
@@ -207,7 +230,7 @@ class CopiedFeedDetectorSpec extends AnyFlatSpec with Matchers {
     val rnd   = new scala.util.Random(20261001)
     val links = Seq("https://ticketing.us.veezi.com/purchase/", "http://useast.veezi.com/p/", "veezi-session-", "https://host.only",
       "https://host.only/", "https://h/a?b=c&d=", "ftp://x/y", "https://reelquinton.admit-one.co.uk/?p=seats&perfCode=",
-      "https://h.x?q=", "https://a.b/c.d/")
+      "https://h.x?q=", "https://a.b/c.d/", "https://www.a.co.uk/b?", "https://t.mirror.cdn.example.com/s/")
     val films = (1 to 400).map { f =>
       val showtimes = (0 until rnd.nextInt(9)).map { s =>
         val url = Option.when(rnd.nextInt(8) > 0)(links(rnd.nextInt(links.size)) + (if (rnd.nextBoolean()) s"$f-${rnd.nextInt(4)}" else "x" * rnd.nextInt(3)))

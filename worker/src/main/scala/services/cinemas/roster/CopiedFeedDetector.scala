@@ -180,37 +180,50 @@ object CopiedFeedDetector {
     fingerprints.result().distinct
   }
 
-  /** The part of a booking link naming the venue and the session: the host's FIRST label, then its
-   *  path and query. The first label is where a backend giving each venue its own subdomain names
-   *  the venue — admit-one's `reelquinton.` and `reelborehamwood.admit-one.co.uk` both sold
-   *  `/?p=seats&perfCode=20303`, each venue numbering its sessions on its own counter, which with
-   *  the whole host dropped read as one venue listing the other's feed (2026-10-08..10). The rest of
-   *  the host is dropped: one backend serves one session from regional mirrors — Veezi's
-   *  `ticketing.us.` and `ticketing.useast.`, through which the Syracuse Pickwick listed the Park
-   *  Ridge one's sessions (2026-09-23). */
+  /** The part of a booking link naming the venue and the session: the host less the labels between
+   *  its FIRST label and its domain, then its path and query.
+   *   - The first label is where a backend giving each venue its own subdomain names the venue —
+   *     admit-one's `reelquinton.` and `reelborehamwood.admit-one.co.uk` both sold
+   *     `/?p=seats&perfCode=20303`, each venue numbering its sessions on its own counter, which with
+   *     the whole host dropped read as one venue listing the other's feed (2026-10-08..10).
+   *   - The domain is where two venues running one ticketing product each on its OWN site differ:
+   *     `www.` or `tickets.` and the product's path are all they share, and with only the first
+   *     label kept (2026-10-12) their own session counters read as one feed.
+   *   - What lies between is dropped: one backend serves one session from regional mirrors —
+   *     Veezi's `ticketing.us.` and `ticketing.useast.veezi.com`, through which the Syracuse
+   *     Pickwick listed the Park Ridge one's sessions (2026-09-23).
+   *  The domain is its name — the rightmost label longer than three characters — and every label
+   *  after it (`.co.uk`, `.com`); where that name is the first label, the host stays whole. */
   private[roster] def sessionOf(url: String): String = {
-    val (labelStart, labelEnd, pathStart) = sessionParts(url)
-    url.substring(labelStart, labelEnd) + url.substring(pathStart)
+    val (labelStart, labelEnd, restStart) = sessionParts(url)
+    url.substring(labelStart, labelEnd) + url.substring(restStart)
   }
 
-  /** Where the host's first label starts and ends in `url`, and where its path (or query) starts;
-   *  a link with no scheme is all path. */
+  /** [[sessionOf]] as two spans of `url`: [labelStart, labelEnd), the host's first label, then
+   *  everything from restStart — the domain, path and query. A host with nothing to drop is the
+   *  second span alone; a link with no scheme is all path. */
   private def sessionParts(url: String): (Int, Int, Int) = url.indexOf("://") match {
     case -1 => (0, 0, 0)
     case i  =>
       val host = i + 3
       var path = host
       while (path < url.length && url.charAt(path) != '/' && url.charAt(path) != '?') path += 1
-      val dot = url.indexOf('.', host)
-      (host, if (dot < 0 || dot > path) path else dot, path)
+      val firstDot = url.indexOf('.', host)
+      if (firstDot < 0 || firstDot >= path) (host, host, host)
+      else {
+        var labelEnd = path
+        var dot      = url.lastIndexOf('.', labelEnd - 1)
+        while (dot > firstDot && labelEnd - dot - 1 <= 3) { labelEnd = dot; dot = url.lastIndexOf('.', labelEnd - 1) }
+        if (dot > firstDot) (host, firstDot, dot) else (host, host, host)
+      }
   }
 
   /** `hash64(sessionOf(url))`: two MurmurHash3 string hashes of the session, read in place. */
   private[roster] def sessionHash(url: String): Long = {
-    val (labelStart, labelEnd, pathStart) = sessionParts(url)
+    val (labelStart, labelEnd, restStart) = sessionParts(url)
     val labelLength = labelEnd - labelStart
-    val length      = labelLength + url.length - pathStart
-    def at(k: Int): Int = if (k < labelLength) url.charAt(labelStart + k) else url.charAt(pathStart + k - labelLength)
+    val length      = labelLength + url.length - restStart
+    def at(k: Int): Int = if (k < labelLength) url.charAt(labelStart + k) else url.charAt(restStart + k - labelLength)
     var high   = HighSeed
     var low    = LowSeed
     var k      = 0
