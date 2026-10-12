@@ -125,7 +125,7 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
    *  deploys a day this fleet does rather than one pod's lifetime. */
   private val MeasuredPeakMib = Map(
     ("web", "pl") ->  881, ("worker", "pl") ->  800,
-    ("web", "de") ->  813, ("worker", "de") ->  963,
+    ("web", "de") ->  813, ("worker", "de") -> 1058,   // worker re-measured 2026-10-12 on its 640m heap, before -Xmx832m
     ("web", "uk") ->  816, ("worker", "uk") -> 1073,   // worker re-measured 2026-09-29: the 640m heap the identity take-up needs
     ("web", "es") ->  762, ("worker", "es") ->  757,
     // web-us DERIVED, not measured: its 7d RSS peak to 2026-10-03 was 1524 MiB on -Xmx1024m, less the
@@ -282,8 +282,13 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   // max, the rest young — no more than half the heap, past which a young collection's survivors can
   // outgrow the old gen and Serial falls back to a full one. US already sat just over (768 old over 605).
   // Live set = max `jvm_memory_pool_collection_used_bytes{pool="Tenured Gen"}` over 24 h, pods past 10 min up.
+  // DE re-measured 2026-10-12: Germany's per-venue sources (Cineamo, kinoheld) took its corpus from 1,890
+  // films / 19k listings to 5,022 / 30k overnight, and its 400 MB old gen sat full, ~19 full GCs a minute
+  // reclaiming nothing (JvmOldGenNearCap, and the queue it stopped draining). A tenured pool that full
+  // cannot read its live set off, so this is a forced full GC's histogram total (scripts/ops/dumpheap.py
+  // --histo): 423 MB, with the corpus still filling in.
   private val MeasuredLiveSetMaxMib = Map(
-    ("worker", "pl") -> 244, ("worker", "uk") -> 308, ("worker", "de") -> 314, ("worker", "es") -> 107, ("worker", "us") -> 605)
+    ("worker", "pl") -> 244, ("worker", "uk") -> 308, ("worker", "de") -> 423, ("worker", "es") -> 107, ("worker", "us") -> 605)
   private val OldGenHeadroom        = 1.25
 
   "a measured worker's old generation" should "leave a quarter of headroom over its measured live set" in {
