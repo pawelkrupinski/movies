@@ -446,7 +446,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   //   A0119 Burgtheater Gummersbach — moved into the SEVEN Kinocenter (A2912), a duplicate
   //   A0100 Kino Center (Friedberg) — closed 2018, building demolished
   //   A0726 Kulturhaus Gotha — no cinema use; its own /kino page is gone
-  //   A1547 Löwen-Lichtspiele Kenzingen — closed since 2022; re-add if the town's
+  //   A1547 Löwen-Lichtspiele Kenzingen — closed 12.12.2021; re-add if the town's
   //         planned reopening happens
   //   A1824 Kinomobil Besigheim — Filmstarts re-listed it as A0793, already rostered
   // Most of that day's other 404s are cinemas still running that Filmstarts
