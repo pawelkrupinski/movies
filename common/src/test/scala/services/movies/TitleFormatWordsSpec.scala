@@ -41,6 +41,49 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("Dracula (4K Restoration)") shouldBe ("Dracula (4K Restoration)", Nil)
   }
 
+  // German venues (Cineamo / kinoheld / Filmstarts, prod corpus 2026-10-12) write the language version into the
+  // title in front, behind or in brackets, and every spelling became its own card of the one film: "Digger" showed
+  // as 8 cards, "Verity" as 15. The version is the screening's, so it comes off as its token.
+  "A German language-version word" should "come off a title as its token, wherever the venue writes it" in {
+    FormatTags.extractFormatTags("Digger (OV)") shouldBe ("Digger", List("OV"))
+    FormatTags.extractFormatTags("Digger (OmU)") shouldBe ("Digger", List("OmU"))
+    FormatTags.extractFormatTags("Digger - OmU") shouldBe ("Digger", List("OmU"))
+    FormatTags.extractFormatTags("DIGGER -OmU") shouldBe ("DIGGER", List("OmU"))
+    FormatTags.extractFormatTags("Digger OmU") shouldBe ("Digger", List("OmU"))
+    FormatTags.extractFormatTags("VATERLAND (OmeU)") shouldBe ("VATERLAND", List("OmeU"))
+    FormatTags.extractFormatTags("Shaun das schaf - spuk im kürbisfeld df") shouldBe ("Shaun das schaf - spuk im kürbisfeld", List("DF"))
+    FormatTags.extractFormatTags("The Odyssey OV") shouldBe ("The Odyssey", List("OV"))
+    FormatTags.extractFormatTags("Die Odyssee - engl. OV") shouldBe ("Die Odyssee", List("OV"))
+    FormatTags.extractFormatTags("Digger, OV english") shouldBe ("Digger", List("OV"))
+    FormatTags.extractFormatTags("Verity (Original English Version)") shouldBe ("Verity", List("OV"))
+    FormatTags.extractFormatTags("The Rocky Horror Picture Show (1975/Original English Version)") shouldBe ("The Rocky Horror Picture Show", List("OV"))
+  }
+
+  it should "come off in FRONT of the title too, alone or beside a screen format" in {
+    FormatTags.extractFormatTags("OV: Digger") shouldBe ("Digger", List("OV"))
+    FormatTags.extractFormatTags("OmU: Rascal Does Not Dream of a Dear Friend") shouldBe ("Rascal Does Not Dream of a Dear Friend", List("OmU"))
+    FormatTags.extractFormatTags("(OmU) Verity - Dunkle Geheimnisse") shouldBe ("Verity - Dunkle Geheimnisse", List("OmU"))
+    FormatTags.extractFormatTags("ATMOS/OV: Verity - Dunkle Geheimnisse") shouldBe ("Verity - Dunkle Geheimnisse", List("ATMOS", "OV"))
+    FormatTags.extractFormatTags("Dolby Cinema/OV: Verity - Dunkle Geheimnisse") shouldBe ("Verity - Dunkle Geheimnisse", List("OV"))
+    FormatTags.extractFormatTags("Dolby Cinema: Die Odyssee") shouldBe ("Die Odyssee", Nil)
+    FormatTags.extractFormatTags("3D: Forgotten Island") shouldBe ("Forgotten Island", List("3D"))
+    FormatTags.extractFormatTags("(2D) Forgotten Island") shouldBe ("Forgotten Island", List("2D"))
+    FormatTags.extractFormatTags("Forgotten Island (3-D)") shouldBe ("Forgotten Island", List("3D"))
+  }
+
+  it should "leave a title that only contains such letters, or is nothing but the tag, whole" in {
+    FormatTags.extractFormatTags("Johnny English")._1 shouldBe "Johnny English"
+    FormatTags.extractFormatTags("The English Patient")._1 shouldBe "The English Patient"
+    FormatTags.extractFormatTags("Ivanov")._1 shouldBe "Ivanov"
+    FormatTags.extractFormatTags("Original")._1 shouldBe "Original"
+    FormatTags.extractFormatTags("OV: ")._1 shouldBe "OV"
+    FormatTags.extractFormatTags("(OmU)")._1 shouldBe "(OmU)"
+    // A colon after a word that is not a version stays the title's own.
+    FormatTags.extractFormatTags("Dune: Part Two")._1 shouldBe "Dune: Part Two"
+    // "3-D" outside brackets is a film's own title ("Jaws 3-D"), only a bracketed one is the screen's.
+    FormatTags.extractFormatTags("Jaws 3-D")._1 shouldBe "Jaws 3-D"
+  }
+
   "A generic version token" should "be the country's own spelling" in {
     ScreeningTokens.of(models.Country.Poland).normalize(Seq("2D", "SUB")) shouldBe List("2D", "NAP")
     ScreeningTokens.of(models.Country.UnitedKingdom).normalize(Seq("SUB", "DUB")) shouldBe List("SUB", "DUB")

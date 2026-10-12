@@ -36,7 +36,9 @@ object FormatTags {
     // ("Spirited Away (Dubbed)", "Collateral (35mm)"); SUB/DUB take the country's own spelling in
     // `ScreeningTokens` ("2d sub" in Poland is NAP).
     "sub" -> "SUB", "subs" -> "SUB", "subtitled" -> "SUB", "subtitles" -> "SUB", "dubbed" -> "DUB",
-    "35mm" -> "35MM", "70mm" -> "70MM", "4k" -> "4K"
+    "35mm" -> "35MM", "70mm" -> "70MM", "4k" -> "4K",
+    // Germany's language versions, which its venues write into the title as often as into a field.
+    "ov" -> "OV", "omu" -> "OmU", "omeu" -> "OmeU", "df" -> "DF"
   )
 
   // FORMAT/version words only — screen format (2D/3D/IMAX/4DX/Dolby/Atmos) and
@@ -49,14 +51,28 @@ object FormatTags {
   private val FormatVersionWords = Set(
     "2d", "3d", "imax", "4dx", "dolby", "atmos",
     "dubbing", "dubb", "dub", "napisy", "nap", "lektor", "lek",
-    "sub", "subs", "subtitled", "subtitles", "dubbed", "35mm", "70mm", "4k")
+    "sub", "subs", "subtitled", "subtitles", "dubbed", "35mm", "70mm", "4k",
+    "ov", "omu", "omeu", "df", "engl")
   private val FormatSeparators = Set("-", "–", "—", "|", "/", ":")
   // "… - ON 35MM", "… in 70mm", Kino Kolory's "REQUIEM DLA SNU w 4K": the print is billed with a preposition,
   // which goes with it (left behind, the title ended "REQUIEM DLA SNU w").
   private val PrintPreposition = """(?i)\s+(?:on|in|w)\s+(\d{2}mm|4k)\s*$""".r
   private val FormatBracketTag = """\s*\[[^\]]*\]\s*$""".r
   private val FormatParenTag   =
-    """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|ATMOS|4DX|dubbing|napisy|lektor|dubbed|subtitled|subtitles|35mm|70mm|4K(?!\s*restor))\b[^)]*)\)\s*$""".r
+    """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|ATMOS|4DX|dubbing|napisy|lektor|dubbed|subtitled|subtitles|35mm|70mm|4K(?!\s*restor)|OV|OmU|OmeU)\b[^)]*)\)\s*$""".r
+  // German venues spell the original version out in brackets — "Verity (Original English Version)", "The Rocky
+  // Horror Picture Show (1975/Original English Version)" — and bracket a hyphenated screen, "Forgotten Island
+  // (3-D)". Both are rewritten to their token's own word before the strips, inside brackets only: a bare "3-D" is
+  // a film's own title ("Jaws 3-D").
+  private val BracketedOriginalVersion  = """(?i)(?<=[(/])\s*original\s+(?:english\s+)?version\s*(?=\))""".r
+  private val BracketedHyphenatedScreen = """(?i)\(\s*([234])-D\s*\)""".r
+  // The same tags written IN FRONT of the title — "OV: Digger", "(OmU) Verity", "ATMOS/OV: Verity", "Dolby
+  // Cinema: Die Odyssee", "3D: Forgotten Island": brackets, or a colon, closing a run of nothing but format and
+  // version words. Only those words, so "Dune: Part Two" keeps its colon.
+  private val LeadingWord = """(?:dolby\s+cinema|dolby|atmos|imax|4dx|[23]d|ov|omu|omeu|df)"""
+  private val LeadingWords = LeadingWord + """(?:(?:\s*[/,]\s*|\s+)""" + LeadingWord + """)*"""
+  private val LeadingFormatTag =
+    ("""(?i)^\s*(?:\(\s*""" + LeadingWords + """\s*\)\s*:?|""" + LeadingWords + """\s*:)\s*(?=\S)""").r
   // Underscore-glued format/version tag — some bilety24 portals (Forum Bolesławiec)
   // join the version word straight to the title with an underscore:
   // "Supergirl_dubbing", "Spider-Man. Całkiem nowy dzień_3D". Un-glue ONLY before a
@@ -70,6 +86,11 @@ object FormatTags {
   // slashed title ("AC/DC", "Face/Off", "either/or") is never split.
   private val GluedFormatSlash =
     ("(?i)/(?=(?:" + FormatVersionWords.toSeq.sortBy(-_.length).mkString("|") + """)\b)""").r
+
+  // A dash glued to the version word after a space — "DIGGER -OmU" (a Cineamo venue). Spaced out so the word
+  // drops like "Digger - OmU"; the space before it keeps a hyphenated title ("Spider-Man") whole.
+  private val GluedFormatDash =
+    ("(?i)\\s[-–](?=(?:" + FormatVersionWords.toSeq.sortBy(-_.length).mkString("|") + """)\b)""").r
 
   // Ukrainian-screening guard (see class doc). `DubLektorWord` are the guarded
   // trailing tokens; `UaWord` is the exact preceding token; `UaGuardedTag` matches
@@ -94,7 +115,7 @@ object FormatTags {
     (tok.count(c => c == ')' || c == ']')) > (tok.count(c => c == '(' || c == '['))
 
   /** "PL" and Kino Cinema N's "pol" ("Lalka 2d pol"). */
-  private val LanguageQualifiers = Set("pl", "pol")
+  private val LanguageQualifiers = Set("pl", "pol", "english")
 
   /** True when the trailing token is a bare "PL" qualifying the version word
    *  before it ("Lalka 2D PL", "… | DUBBING PL", "Lalka | 2D | PL" — ekobilet and
@@ -122,13 +143,18 @@ object FormatTags {
    *  left-to-right. Words with no version meaning (dolby, premiera, …) yield no
    *  token. A Ukrainian dub/lektor tag is kept whole (guard) and yields no token. */
   def extractFormatTags(raw: String): (String, List[String]) = {
-    var t    = PrintPreposition.replaceAllIn(GluedFormatSlash.replaceAllIn(
-                 GluedFormatUnderscore.replaceAllIn(raw.replaceAll("\\s+", " ").trim, " "), " "), " $1")
+    val spelled = BracketedHyphenatedScreen.replaceAllIn(BracketedOriginalVersion.replaceAllIn(raw, "OV"), "($1D)")
+    var t    = PrintPreposition.replaceAllIn(GluedFormatDash.replaceAllIn(GluedFormatSlash.replaceAllIn(
+                 GluedFormatUnderscore.replaceAllIn(spelled.replaceAll("\\s+", " ").trim, " "), " "), " - "), " $1")
     var previous = ""
     val dropped = scala.collection.mutable.Set.empty[String]
     def uaGuarded(tag: String): Boolean = UaGuardedTag.findFirstIn(tag).isDefined
     while (t != previous) {
       previous = t
+      LeadingFormatTag.findFirstIn(t).foreach { tag =>
+        captureTagWords(tag, dropped)
+        t = t.substring(tag.length).trim
+      }
       // Tokens peeled inside a [..]/(..) tag also carry version meaning, so
       // capture them before deleting the tag — UNLESS the tag names the Ukrainian
       // dub/lektor version, which is kept whole so it stays its own card.
@@ -150,9 +176,9 @@ object FormatTags {
       // Some portals glue the format tag to the title with a separator and a
       // space ("Straszny Film- 2D dubbing"): dropping the format words leaves a
       // dangling "Film-". Trim a trailing separator so the variants collapse.
-      t = toks.mkString(" ").replaceAll("""\s*[-–—|/:]+\s*$""", "").trim
+      t = toks.mkString(" ").replaceAll("""\s*[-–—|/:,]+\s*$""", "").trim
     }
-    val tokens = raw.toLowerCase(Locale.ROOT)
+    val tokens = spelled.toLowerCase(Locale.ROOT)
       .split("""[\s\[\]().,/|:_-]+""")
       .iterator
       .filter(dropped.contains)
@@ -165,7 +191,7 @@ object FormatTags {
   /** Record every [[FormatToken]]-bearing word in `chunk` (a single token or a
    *  whole `(...)`/`[...]` tag) into `out`. */
   private def captureTagWords(chunk: String, out: scala.collection.mutable.Set[String]): Unit =
-    chunk.split("""[\s\[\]()]+""").iterator
+    chunk.split("""[\s\[\]()/:,]+""").iterator
       .map(w => bareWord(w))
       .filter(FormatToken.contains)
       .foreach(out.add)
