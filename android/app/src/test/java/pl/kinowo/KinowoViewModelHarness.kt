@@ -11,6 +11,7 @@ import okhttp3.OkHttpClient
 import org.junit.rules.ExternalResource
 import org.robolectric.Shadows.shadowOf
 import pl.kinowo.auth.StateSync
+import pl.kinowo.data.ClientSupportGate
 import pl.kinowo.data.FreshUserPreferences
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
@@ -53,12 +54,13 @@ class KinowoViewModelHarness : ExternalResource() {
         sync: StateSync = NoopStateSync,
         location: GrantedLocationSource = GrantedLocationSource { null },
         catalogSeed: String? = null,
+        clientSupportGate: ClientSupportGate = offlineClientSupportGate(),
     ): KinowoViewModel {
         val http = OkHttpClient().also { clients += it }
         val factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                testKinowoViewModel(context, repository, prefs, sync, location, http, catalogSeed) as T
+                testKinowoViewModel(context, repository, prefs, sync, location, http, catalogSeed, clientSupportGate) as T
         }
         val store = ViewModelStore().also { stores += it }
         return ViewModelProvider(store, factory)[KinowoViewModel::class.java]

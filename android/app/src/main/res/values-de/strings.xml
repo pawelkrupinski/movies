@@ -122,4 +122,9 @@
         <item quantity="one">%1$d ausgeschaltet</item>
         <item quantity="other">%1$d ausgeschaltet</item>
     </plurals>
+
+    <!-- Shown instead of the app when /api/client-support says this version is no longer served. -->
+    <string name="update_required_title">App aktualisieren</string>
+    <string name="update_required_body">Diese App-Version wird nicht mehr unterstützt.</string>
+    <string name="update_required_button">Bei Google Play aktualisieren</string>
 </resources>

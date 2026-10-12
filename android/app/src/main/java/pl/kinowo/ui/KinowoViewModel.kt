@@ -38,6 +38,7 @@ import pl.kinowo.auth.UserProfile
 import pl.kinowo.auth.HiddenFilmsClient
 import pl.kinowo.auth.LanguageClient
 import pl.kinowo.data.CatalogRepository
+import pl.kinowo.data.ClientSupportGate
 import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
@@ -89,6 +90,8 @@ class KinowoViewModel(
     private val catalogApi: CinemaCatalogApi,
     private val catalogRepository: CatalogRepository,
     private val location: GrantedLocationSource,
+    /** Whether this app version is still served; asked once in [start]. */
+    private val clientSupportGate: ClientSupportGate,
     /** Becomes [viewModelScope] — cancelled when the ViewModel is cleared. Passed
      *  in so [Factory] can hand the same scope to [sync]. */
     scope: CoroutineScope,
@@ -99,6 +102,10 @@ class KinowoViewModel(
      *  `.countries` and run the `List<City>`/`List<Country>` query extensions.
      *  (Distinct from `catalog` below, which is the per-city cinema universe.) */
     val countryCatalog: StateFlow<pl.kinowo.model.Catalog> = catalogRepository.catalog
+
+    /** The store page to update from when the server no longer serves this app
+     *  version, else null — [KinowoApp] then shows only the update screen. */
+    val updateStoreUrl: StateFlow<String?> = clientSupportGate.updateStoreUrl
 
     val films: StateFlow<List<Film>> = repository.films
     val isLoading: StateFlow<Boolean> = repository.isLoading
@@ -348,6 +355,9 @@ class KinowoViewModel(
         // 304 costs only headers). Non-blocking — the UI renders from the
         // seeded/persisted catalog meanwhile.
         viewModelScope.launch { catalogRepository.reload() }
+        // Alongside it, ask whether this version is still served (best-effort:
+        // any failure leaves the app usable).
+        viewModelScope.launch { clientSupportGate.check() }
         // A saved city whose page was retired or renamed answers at another slug
         // now ([pl.kinowo.model.City.formerSlugs]): its listing still arrives
         // through the server's 301, but the picker found no city by the old slug
@@ -685,6 +695,7 @@ class KinowoViewModel(
         private val catalogApi: CinemaCatalogApi,
         private val catalogRepository: CatalogRepository,
         private val location: GrantedLocationSource,
+        private val clientSupportGate: ClientSupportGate,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -694,7 +705,7 @@ class KinowoViewModel(
             val sync = StateSyncService(prefs, authRepository.user, hiddenFilmsClient, languageClient, scope)
             return KinowoViewModel(
                 repository, detailsRepository, prefs, authRepository, sync,
-                catalogApi, catalogRepository, location, scope,
+                catalogApi, catalogRepository, location, clientSupportGate, scope,
             ) as T
         }
     }

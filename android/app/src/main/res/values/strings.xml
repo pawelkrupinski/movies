@@ -134,4 +134,9 @@
         <item quantity="many">%1$d wyłączonych</item>
         <item quantity="other">%1$d wyłączonych</item>
     </plurals>
+
+    <!-- Shown instead of the app when /api/client-support says this version is no longer served. -->
+    <string name="update_required_title">Zaktualizuj aplikację</string>
+    <string name="update_required_body">Ta wersja aplikacji nie jest już obsługiwana.</string>
+    <string name="update_required_button">Zaktualizuj w Google Play</string>
 </resources>

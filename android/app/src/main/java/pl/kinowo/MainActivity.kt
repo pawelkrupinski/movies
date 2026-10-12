@@ -25,6 +25,7 @@ import pl.kinowo.auth.HttpHiddenFilmsClient
 import pl.kinowo.auth.HttpLanguageClient
 import pl.kinowo.data.CatalogCache
 import pl.kinowo.data.CatalogRepository
+import pl.kinowo.data.ClientSupportGate
 import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.JsonListCache
 import pl.kinowo.data.RepertoireRepository
@@ -215,8 +216,14 @@ internal fun kinowoViewModelFactory(context: Context, country: Country): KinowoV
         context.assets.open("catalog-seed.json").bufferedReader().use { it.readText() }
     }.getOrNull()
     val catalogRepository = CatalogRepository(api, CatalogCache(context.filesDir), catalogSeed)
+    // The installed versionName (there is no BuildConfig — see NoBuildConfigTest);
+    // an unreadable one is "" which never parses, so it is treated as supported.
+    val appVersion = runCatching {
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName
+    }.getOrNull().orEmpty()
     return KinowoViewModel.Factory(
         repository, detailsRepository, UserPreferences(context), authRepository,
         hiddenFilmsClient, languageClient, api, catalogRepository, LocationCityResolver(context),
+        ClientSupportGate(api, appVersion),
     )
 }

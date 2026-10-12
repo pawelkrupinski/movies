@@ -122,4 +122,9 @@
         <item quantity="one">%1$d off</item>
         <item quantity="other">%1$d off</item>
     </plurals>
+
+    <!-- Shown instead of the app when /api/client-support says this version is no longer served. -->
+    <string name="update_required_title">Update the app</string>
+    <string name="update_required_body">This version of the app is no longer supported.</string>
+    <string name="update_required_button">Update on Google Play</string>
 </resources>

@@ -1,6 +1,7 @@
 package pl.kinowo.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -39,6 +40,7 @@ import pl.kinowo.ui.common.LocalCitySlug
 import pl.kinowo.ui.common.LocalShareOrigin
 import pl.kinowo.ui.detail.DetailScreen
 import pl.kinowo.ui.list.ListScreen
+import pl.kinowo.ui.update.UpdateRequiredScreen
 
 /** Nav graph: the repertoire list and a per-film detail screen. The detail
  *  screen reads its `Film` straight from the in-memory payload by title, so
@@ -51,6 +53,17 @@ import pl.kinowo.ui.list.ListScreen
 fun KinowoApp(viewModel: KinowoViewModel) {
     LaunchedEffect(Unit) { viewModel.start() }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onResume() }
+
+    // A version the server no longer serves gets the update screen and nothing
+    // else — the gate sits in front of the city gate and the repertoire alike.
+    val updateStoreUrl = viewModel.updateStoreUrl.collectAsState().value
+    if (updateStoreUrl != null) {
+        val context = LocalContext.current
+        UpdateRequiredScreen(onUpdate = {
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(updateStoreUrl))) }
+        })
+        return
+    }
 
     // A non-delegated `val` (not `by`) so the null check smart-casts it to a
     // non-null slug inside the else branch, which scopes every film share link.

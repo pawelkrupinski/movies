@@ -4,9 +4,11 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Rule
 import org.junit.Test
 import pl.kinowo.contracts.MockWebServerRule
+import java.io.IOException
 
 /**
  * Pins the city-slug prefix [KinowoApi] builds into the request path. The
@@ -33,6 +35,21 @@ class KinowoApiPathTest {
         server.enqueue(MockResponse().setBody("[]"))
         api.fetchDetails(citySlug = "poznan", ifModifiedSince = null)
         assertEquals("/poznan/api/details", server.takeRequest().path)
+    }
+
+    @Test
+    fun clientSupportIsCountryAgnostic() = runBlocking {
+        server.enqueue(MockResponse().setBody("{}"))
+        assertEquals("{}", api.fetchClientSupport())
+        assertEquals("/api/client-support", server.takeRequest().path)
+    }
+
+    /** A non-2xx is a failure (which the gate then treats as "supported"), never
+     *  an error page handed on as if it were the payload. */
+    @Test
+    fun clientSupportNon2xxThrows() {
+        server.enqueue(MockResponse().setResponseCode(503).setBody("down"))
+        assertThrows(IOException::class.java) { runBlocking { api.fetchClientSupport() } }
     }
 
     /** The client is the composition root's, not one the API builds for

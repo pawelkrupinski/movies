@@ -10,6 +10,7 @@ import pl.kinowo.auth.SharedPrefsPendingVerifierStore
 import pl.kinowo.auth.StateSync
 import pl.kinowo.data.CatalogCache
 import pl.kinowo.data.CatalogRepository
+import pl.kinowo.data.ClientSupportGate
 import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.JsonListCache
 import pl.kinowo.data.RepertoireRepository
@@ -23,6 +24,7 @@ import pl.kinowo.net.CinemaCatalogApi
 import pl.kinowo.net.KinowoApi
 import pl.kinowo.net.PersistentCookieJar
 import pl.kinowo.ui.KinowoViewModel
+import java.io.IOException
 
 // Shared by the JVM (`src/test`) and on-device (`src/androidTest`) suites —
 // see the `sharedTest` source set in build.gradle.kts.
@@ -40,12 +42,18 @@ object NoopStateSync : StateSync {
     override fun clear(country: String) {}
 }
 
+/** A [ClientSupportGate] whose server is unreachable — so, by the gate's
+ *  never-lock-out rule, the app stays usable. */
+fun offlineClientSupportGate() = ClientSupportGate({ throw IOException("offline") }, appVersion = "1.0")
+
 /**
  * A real [KinowoViewModel] wired for tests: offline, flat cinema catalog,
  * fallback-only country catalog (no seed, never revalidates), no server
  * sync, no location fix. Pass [repository] to seed the listing a test needs,
  * [sync] / [location] to observe or steer those collaborators, [catalogSeed]
- * (a bundled-seed envelope) for a country catalog other than the fallback.
+ * (a bundled-seed envelope) for a country catalog other than the fallback,
+ * [clientSupportGate] to have the server answer that this version is unsupported
+ * (the default's fetch fails, so the app stays usable).
  */
 fun testKinowoViewModel(
     context: Context,
@@ -55,6 +63,7 @@ fun testKinowoViewModel(
     location: GrantedLocationSource = GrantedLocationSource { null },
     http: OkHttpClient = OkHttpClient(),
     catalogSeed: String? = null,
+    clientSupportGate: ClientSupportGate = offlineClientSupportGate(),
 ): KinowoViewModel {
     val api = KinowoApi(baseUrl = UNREACHABLE_BASE_URL, client = http)
     return KinowoViewModel(
@@ -71,6 +80,7 @@ fun testKinowoViewModel(
             seedJson = catalogSeed,
         ),
         location = location,
+        clientSupportGate = clientSupportGate,
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
     )
 }

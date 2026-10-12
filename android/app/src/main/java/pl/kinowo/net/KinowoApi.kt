@@ -33,10 +33,18 @@ fun interface CatalogApi {
     suspend fun fetchCatalog(ifNoneMatch: String?): KinowoApi.FetchedCatalog
 }
 
+/** Which app versions the server still serves (`GET /api/client-support`) —
+ *  the raw 200 body; throws on a transport failure or non-2xx. `fun interface`
+ *  so tests can stub it in one line. */
+fun interface ClientSupportApi {
+    suspend fun fetchClientSupport(): String
+}
+
 /**
- * Talks to the kinowo backend via two endpoints: `GET /{city}/api/repertoire`
- * (grid listing) and `GET /{city}/api/details` (synopsis, trailers, cast).
- * The city slug prefixes the path. Mirrors iOS `RepertoireStore` transport:
+ * Talks to the kinowo backend: the per-city `GET /{city}/api/repertoire` (grid
+ * listing), `/{city}/api/details` (synopsis, trailers, cast) and
+ * `/{city}/api/cinemas`, plus the country-agnostic `/api/catalog` and
+ * `/api/client-support`. Mirrors iOS `RepertoireStore` transport:
  * a `KinowoAndroid/1.0` User-Agent, conditional GET via `If-Modified-Since`,
  * and no on-disk URLCache.
  *
@@ -47,7 +55,7 @@ fun interface CatalogApi {
 class KinowoApi(
     private val baseUrl: String = "https://kinowo.net",
     private val client: OkHttpClient,
-) : RepertoireApi, DetailsApi, CinemaCatalogApi, CatalogApi {
+) : RepertoireApi, DetailsApi, CinemaCatalogApi, CatalogApi, ClientSupportApi {
     private val json = Json { ignoreUnknownKeys = true }
 
     /** Result of a conditional GET: [items] is null on a 304 (use the cache). */
@@ -78,6 +86,20 @@ class KinowoApi(
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             val body = response.body?.string() ?: throw IOException("empty body")
             FetchedCatalog(body, response.header("ETag"), notModified = false)
+        }
+    }
+
+    /** Fetch `/api/client-support` (country-agnostic, like the catalog).
+     *  Unconditional: it is asked once per launch and the body is ~200 bytes. */
+    override suspend fun fetchClientSupport(): String = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("$baseUrl/api/client-support")
+            .header("User-Agent", USER_AGENT)
+            .cacheControl(CacheControl.FORCE_NETWORK)
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+            response.body?.string() ?: throw IOException("empty body")
         }
     }
 
