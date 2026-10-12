@@ -1,0 +1,35 @@
+# THE READ-MODEL SERVING-DIFFERENCE RULES AT PRODUCTION CADENCE.
+#
+# `read-model-projection.yml` evaluates every minute; the `read-model-projection` group runs every
+# 15 seconds in production, and the onset latches carry a city's difference across gaps of up to
+# 90 seconds. The shape below only exists at the real cadence -- two samplers agreeing for under a
+# minute between ticks -- so it replays Prometheus's own 15s samples at a 15s evaluation.
+rule_files:
+  - ../../nix/files/monitoring/rules/read-model-projection.rules
+
+evaluation_interval: 15s
+
+tests:
+  # A CITY'S EVENING DECLINE, SAMPLED AT TWO INSTANTS, IS NOT A DIFFERENCE. us/sikeston on
+  # 2026-10-12 from 00:10Z, as Prometheus holds it at 15s: the web (sampled every minute) drops
+  # one film every 5 minutes from 00:31, the worker's 5-minute census follows 4 minutes later, so
+  # the instants disagree by one film for 4 minutes in every 5 and agree for under the latch's 90s.
+  # The instant-vs-instant form latched one onset across the whole decline and paged at 00:51Z
+  # (firing 00:52-01:09). Both sides are right; their ranges overlap throughout. Silent.
+  - interval: 15s
+    input_series:
+      - series: 'kinowo_worker_movies_served{country="us",city="sikeston",instance="kinowo-worker-us",job="kinowo-worker",scope="all"}'
+        values: '9x99 8x19 7x19 6x19 5x19 4x19 3x19 2x15'
+      - series: 'kinowo_web_movies_served{country="us",city="sikeston",instance="kinowo-web-us",job="kinowo-web",scope="all"}'
+        values: '9x82 8x19 7x19 6x19 5x19 4x19 3x19 2x19 1x15'
+      - series: 'process_start_time_seconds{country="us",instance="kinowo-worker-us",job="kinowo-worker"}'
+        values: '-86400x240'
+      - series: 'process_start_time_seconds{country="us",instance="kinowo-web-us",job="kinowo-web"}'
+        values: '-86400x240'
+    alert_rule_test:
+      - eval_time: 43m
+        alertname: ReadModelServingDiffersFromCorpus
+        exp_alerts: []
+      - eval_time: 55m
+        alertname: ReadModelServingDiffersFromCorpus
+        exp_alerts: []

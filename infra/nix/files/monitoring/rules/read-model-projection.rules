@@ -415,8 +415,9 @@ groups:
       # the 7-hour widening was calibrated on began 68-274 minutes after their restart: none of
       # them is a boot race, and this rule now pages for that shape again, as it should.
       #
-      # The WORKER side is read through `last_over_time(...[10m])`, as in
-      # ReadModelServingShortOfCorpus below, and here it is load-bearing for the latch: each worker
+      # The WORKER side is read over a 10-minute window (`min_`/`max_over_time(...[10m])`), like the
+      # `last_over_time(...[10m])` of ReadModelServingShortOfCorpus below, and here it is
+      # load-bearing for the latch: each worker
       # restart leaves its gauge absent for ~3 minutes, which made this series absent, which let
       # the onset latch lapse -- so a difference that began on a settled pair re-latched on the NEW
       # pod's uptime once it came back and stood down for the rest of the episode.
@@ -431,12 +432,39 @@ groups:
       # a race next to an older difference is still a race, and a real difference that began
       # before a restart keeps its own settled onset through it. The country series remains the
       # page's number; the per-city ones decide whether any of it is excused.
+      #
+      # A DIFFERENCE IS A GAP BETWEEN THE TWO SIDES' RECENT RANGES, NOT BETWEEN TWO INSTANTS
+      # (2026-10-12). Both gauges count films with a showing still ahead, so both fall as a city's
+      # evening passes -- and they are sampled at different instants: the web every minute, the
+      # worker's census every 5 minutes. Through a city's evening decline the worker reads up to 5
+      # minutes behind the web, so the two instants disagree by one film from the first film that
+      # leaves until the last, and a decline longer than 20 minutes paged: us/greensboro-georgia
+      # 10-11 23:26Z, us/hinckley 23:56Z, us/sikeston 10-12 00:31Z (9 films, one every 5 minutes,
+      # 38 minutes apart), de/ingolstadt 10-10 21:25Z -- the four 20m+ runs of the week to 10-12,
+      # every one a decline, with both sides agreeing at every census tick. So a city differs only
+      # when the web's values over the last 5 minutes and the worker's over the last 10 (its 5-minute
+      # cadence plus the web's window) do not overlap at all: a card one side has and the other
+      # has not is a steady gap and still opens within ~10 minutes. Measured on Prometheus: over
+      # 10-05..12 the longest run this form gives is 3.5 minutes (was the four above), and over
+      # 09-29..10-02 it still holds the real us/chicago card (the site serving one the corpus did
+      # not, 22 hours) at 534 minutes. A real gap opening during a decline is hidden for as long as
+      # both sides keep falling through it -- minutes, at the end of a city's day.
+      # A gap is SEEN only once the web's 5-minute window has cleared the value before it -- 4
+      # minutes after it began at the web's one-minute sampling -- so the two latches below date a
+      # city's onset 240s back, and read the uptime as it was then (`offset 4m`): the onset, and the
+      # uptime at it, are the disagreement's, not its detection's. Otherwise a difference that began
+      # on a settled pair just before a restart is detected just after it and excused as a boot race.
       - record: country_city:readmodel_serving_differs:film_cities
         expr: >-
           (
-            abs(
-              max by (country, city) (last_over_time(kinowo_worker_movies_served{scope="all"}[10m]))
-              - max by (country, city) (kinowo_web_movies_served{scope="all"})
+            (
+              min by (country, city) (min_over_time(kinowo_worker_movies_served{scope="all"}[10m]))
+              - max by (country, city) (max_over_time(kinowo_web_movies_served{scope="all"}[5m]))
+            ) > 0
+            or
+            (
+              min by (country, city) (min_over_time(kinowo_web_movies_served{scope="all"}[5m]))
+              - max by (country, city) (max_over_time(kinowo_worker_movies_served{scope="all"}[10m]))
             ) > 0
           )
           and on (country) (
@@ -457,7 +485,7 @@ groups:
             (
               0 * country_city:readmodel_serving_differs:film_cities
               + on (country) group_left
-              min by (country) (time() - process_start_time_seconds{job=~"kinowo-worker|kinowo-web"})
+              min by (country) (time() - 240 - process_start_time_seconds{job=~"kinowo-worker|kinowo-web"} offset 4m)
             )
           )
           and on (country, city) country_city:readmodel_serving_differs:film_cities
@@ -470,7 +498,7 @@ groups:
           (
             last_over_time(country_city:readmodel_serving_differs:onset_timestamp_seconds[90s])
             or on (country, city)
-            (0 * country_city:readmodel_serving_differs:film_cities + time())
+            (0 * country_city:readmodel_serving_differs:film_cities + time() - 240)
           )
           and on (country, city) country_city:readmodel_serving_differs:film_cities
 
