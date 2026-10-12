@@ -399,7 +399,7 @@ tests:
               host: "mongo-1"
               severity: "warning"
             exp_annotations:
-              description: "This is the RESUME BUDGET for the application's change streams, not a disk warning. While it is this short, any consumer offline for longer than the window comes back to ChangeStreamHistoryLost and a full re-read. It shrinks for one of two reasons and they need opposite responses: a burst of writes (transient -- check whether the worker is backfilling), or a sustained rise in write rate (structural -- the oplog is now too small for the workload). THE FIX FOR THE SECOND IS NOT FREE: `oplogSizeMB` was cut from 4096 to 1024 because the data volume is 5GB, so growing the window means growing the Hetzner volume first (it grows in place; see terraform/server.mongo.tf)."
+              description: "This is the RESUME BUDGET for the application's change streams, not a disk warning. While it is this short, any consumer offline for longer than the window comes back to ChangeStreamHistoryLost and a full re-read. It shrinks for one of two reasons and they need opposite responses: a burst of writes (transient -- check whether the worker is backfilling), or a sustained rise in write rate (structural -- the oplog is now too small for the workload). THE FIX FOR THE SECOND IS NOT FREE: `oplogSizeMB` is already 4096 (hosts/mongo-1/default.nix), so growing the window means checking the Hetzner volume's headroom first and growing it if needed (it grows in place; see terraform/server.mongo.tf)."
               summary: "The oplog window on mongo-1 is down to 2h 46m 40s"
       - eval_time: 10m
         alertname: MongodConnectionsSaturated
