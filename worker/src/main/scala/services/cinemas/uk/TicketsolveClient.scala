@@ -39,7 +39,9 @@ import scala.util.Try
  * "Event Cinema", "Access - Cinema Subtitled" — or a broadcast, the opera, ballet and
  * theatre relays ("Live Broadcast Events / Achlysuron Darlledu Byw": all 27 of Mwldan's
  * on 2026-10-12 are NT Live, Royal Ballet & Opera, Met Opera or Exhibition on Screen; its
- * gigs are filed apart, as "Live TM / TM Byw") — unless it files teaching about film: the
+ * gigs are filed apart, as "Live TM / TM Byw") — or a film society, which may file under
+ * its acronym alone (Mwldan's "TMFS / CFFTM", Theatr Mwldan Film Society / Cymdeithas Ffilm:
+ * "Hen", "The President's Cake") — unless it files teaching about film: the
  * Nerve Centre's "BFI Film Academy" is online masterclasses. A certificate in the show's
  * name is no sign of a film: Mwldan's live shows carry them too ("Cardi Bach 2026 (U)").
  *
@@ -70,11 +72,16 @@ object TicketsolveClient {
    *  "Event Cinema", "Access - Cinema Subtitled", "Live Broadcast Events". */
   private val FilmWord = """(?i)\b(films?|cinema|sinema|screens?|screenings?|movies?|broadcasts?)\b""".r
 
+  /** A film society's acronym, which names no film word: "TMFS" in "TMFS / CFFTM". Upper
+   *  case only, so it reads an acronym, not a word ending in "fs". */
+  private val FilmSocietyAcronym = """\b[A-Z]{0,4}FS\b""".r
+
   /** …unless it files teaching about film rather than a screening ("BFI Film Academy"). */
   private val NotAScreening = """(?i)\b(academy|courses?|workshops?|masterclass(es)?|talks?)\b""".r
 
   private def isFilm(category: String): Boolean =
-    FilmWord.findFirstIn(category).isDefined && NotAScreening.findFirstIn(category).isEmpty
+    (FilmWord.findFirstIn(category).isDefined || FilmSocietyAcronym.findFirstIn(category).isDefined) &&
+      NotAScreening.findFirstIn(category).isEmpty
 
   /** "Sense and Sensibility (U)", "Hay Fever (12A tbc)", "Manon (15 As Live)": the BBFC
    *  certificate the box office appends to the title. */

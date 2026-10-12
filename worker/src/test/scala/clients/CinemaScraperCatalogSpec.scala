@@ -405,7 +405,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val c      = catalog(direct = new FakeHttpFetch("ticketsolve"), today = LocalDate.of(2026, 10, 12))
     val mwldan = c.all.find(_.cinema == TheatrMwldanCardigan).value
     mwldan shouldBe a [TicketsolveClient]
-    mwldan.fetch().flatMap(_.showtimes) should have size 236
+    mwldan.fetch().flatMap(_.showtimes) should have size 238
     c.flicksFallbackSlugs.get(TheatrMwldanCardigan).value shouldBe
       ChainFlicksFallback.FlicksFallback(FlicksMarket.UnitedKingdom, "theatr-mwldan-cardigan")
     c.all.find(_.cinema == NerveCentreLondonderry).value.fetch().flatMap(_.showtimes) should have size 14

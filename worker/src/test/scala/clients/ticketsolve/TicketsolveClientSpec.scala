@@ -24,8 +24,8 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   private val byTitle = mwldan.map(cm => cm.movie.title -> cm).toMap
 
   "TicketsolveClient.fetch" should "read Theatr Mwldan's whole cinema programme off the feed" in {
-    mwldan.size shouldBe 44
-    mwldan.flatMap(_.showtimes).size shouldBe 236
+    mwldan.size shouldBe 46
+    mwldan.flatMap(_.showtimes).size shouldBe 238
     mwldan.map(_.cinema).toSet shouldBe Set(TheatrMwldanCardigan)
     mwldan.flatMap(_.showtimes).map(_.dateTime.toLocalDate).max shouldBe LocalDate.of(2027, 6, 12)
   }
@@ -56,6 +56,16 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     byTitle("Royal Ballet & Opera: Manon").ageRating shouldBe Some("15")
     byTitle.keySet should contain allOf ("National Theatre Live: Hay Fever", "Exhibition On Screen - Monet")
     mwldan.map(_.movie.title).filter(_.startsWith("Clwb Mwldan")) shouldBe empty
+  }
+
+  it should "keep the film society's screenings, filed under its acronym" in {
+    // "TMFS / CFFTM" — Theatr Mwldan Film Society / Cymdeithas Ffilm — names no film word:
+    // Pálfi's "Hen" (2026) and Hadi's "The President's Cake" (2025), one screening each.
+    byTitle("Hen").showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.of(2026, 10, 25, 18, 30))
+    byTitle("Hen").ageRating shouldBe Some("15")
+    byTitle.keySet should contain ("The President's Cake")
+    // The negative control: its gigs ("Live TM / TM Byw") stay out.
+    byTitle.keySet.filter(t => t.startsWith("Clwb Mwldan") || t.startsWith("Cardi Bach") || t.startsWith("Sandro Ford")) shouldBe empty
   }
 
   it should "drop screenings before today" in {
