@@ -4,7 +4,7 @@ import models.{Cinema, CinemaMovie, Movie, Showtime}
 import play.api.libs.json._
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
-import java.util.Locale
+import services.cinemas.es.SpanishFeedText.{certificate, field, fold}
 import scala.util.Try
 
 /**
@@ -51,15 +51,15 @@ object TaquillaParser {
 
   private def film(id: Long, events: Seq[JsValue], info: Option[JsValue], cinema: Cinema): Option[CinemaMovie] = {
     val first     = events.head
-    val rawTitle  = text(first, "entity_name").orElse(text(first, "event_name"))
+    val rawTitle  = field(first, "entity_name").orElse(field(first, "event_name"))
       .getOrElse(throw new IllegalStateException(s"taquilla.com film $id has no name"))
     val title     = cleanTitle(rawTitle)
     val showtimes = events.flatMap { e =>
-      val date = text(e, "datetime").flatMap(d => Try(LocalDate.parse(d.take(10))).toOption)
+      val date = field(e, "datetime").flatMap(d => Try(LocalDate.parse(d.take(10))).toOption)
       (e \ "sessions").asOpt[Seq[JsValue]].getOrElse(Nil).flatMap(s => date.flatMap(session(_, s, title)))
     }.distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
 
-    def meta(key: String): Option[String] = info.flatMap(text(_, key)).filterNot(_ == "0")
+    def meta(key: String): Option[String] = info.flatMap(field(_, key)).filterNot(_ == "0")
     Option.when(showtimes.nonEmpty) {
       CinemaMovie(
         movie = Movie(
@@ -72,15 +72,15 @@ object TaquillaParser {
           rawTitle       = Option.when(title != rawTitle)(rawTitle),
         ),
         cinema      = cinema,
-        posterUrl   = text(first, "entity_img_url"),
-        filmUrl     = text(first, "entity_name_url").map(slug => s"${TaquillaClient.BaseUrl}/entradas/$slug"),
+        posterUrl   = field(first, "entity_img_url"),
+        filmUrl     = field(first, "entity_name_url").map(slug => s"${TaquillaClient.BaseUrl}/entradas/$slug"),
         synopsis    = meta("synopsis"),
         cast        = list(meta("actors")),
         director    = list(meta("director")),
         showtimes   = showtimes,
         externalIds = Map("taquilla" -> id.toString),
         trailerUrl  = meta("trailer"),
-        ageRating   = meta("content_rating").flatMap(ageLabel),
+        ageRating   = meta("content_rating").flatMap(certificate),
       )
     }
   }
@@ -91,12 +91,12 @@ object TaquillaParser {
    *  the ticketing link asks for — entradas.com's `language=VOSE` names a VOSE
    *  session its plain name ("Vengadores: Doomsday") does not. */
   private def session(date: LocalDate, s: JsValue, title: String): Option[Showtime] =
-    text(s, "time").flatMap(t => Try(LocalTime.parse(t)).toOption).map { time =>
-      val sellLink = (s \ "p").asOpt[Seq[JsValue]].getOrElse(Nil).flatMap(text(_, "sell_link")).headOption
+    field(s, "time").flatMap(t => Try(LocalTime.parse(t)).toOption).map { time =>
+      val sellLink = (s \ "p").asOpt[Seq[JsValue]].getOrElse(Nil).flatMap(field(_, "sell_link")).headOption
         .map(_.replace("&amp;", "&"))
       val linked   = sellLink.flatMap(LinkLanguage.findFirstMatchIn(_)).map(m => s" (${m.group(1)})").getOrElse("")
-      Showtime(LocalDateTime.of(date, time), sellLink.orElse(text(s, "sminprice_url")), None,
-        formatTokens(text(s, "sname").getOrElse("") + linked, title))
+      Showtime(LocalDateTime.of(date, time), sellLink.orElse(field(s, "sminprice_url")), None,
+        formatTokens(field(s, "sname").getOrElse("") + linked, title))
     }
   private val LinkLanguage = """[?&]language=([A-Za-z.]+)""".r
 
@@ -141,28 +141,6 @@ object TaquillaParser {
   }
   private val CinemaTag = """(?i)\s*\(cine\)\s*$""".r
 
-  /** Lower-cased, accents off: "Catalán" and "CATALÁN" are one marker. */
-  private def fold(s: String): String =
-    java.text.Normalizer.normalize(s.toLowerCase(Locale.ROOT), java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "")
-
-  /** The certificate the way SensaCine prints it: "+12" for "M-12" and "NO
-   *  RECOMENDADA PARA MENORES DE 12 AÑOS", "APTA" for "TP" and "APTA PARA TODOS LOS
-   *  PÚBLICOS"; none while it is pending ("PDC", "EDAD PENDIENTE DE CALIFICACIÓN")
-   *  or a placeholder ("-"). */
-  def ageLabel(raw: String): Option[String] = {
-    val folded = fold(raw.trim)
-    if (folded == "pdc" || folded.contains("pendiente") || !folded.exists(_.isLetterOrDigit)) None
-    else if (folded == "tp" || folded.contains("todos los publicos")) Some("APTA")
-    else Years.findFirstMatchIn(folded).map(m => s"+${m.group(1)}").orElse(Some(raw.trim.toUpperCase(Locale.ROOT)))
-  }
-  private val Years = """(?:^m-|^\+|menores de )(\d{1,2})""".r
-
   private def list(raw: Option[String]): Seq[String] =
     raw.toSeq.flatMap(_.split(',').map(_.trim).filter(_.nonEmpty))
-
-  private def text(js: JsValue, key: String): Option[String] =
-    (js \ key).toOption.collect {
-      case JsString(s) => s.trim
-      case JsNumber(n) => n.toString
-    }.filter(_.nonEmpty)
 }

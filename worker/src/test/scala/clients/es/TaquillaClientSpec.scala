@@ -95,15 +95,6 @@ class TaquillaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     TaquillaParser.formatTokens("Cats", "Cats") shouldBe Nil
   }
 
-  "ageLabel" should "spell certificates the SensaCine way" in {
-    TaquillaParser.ageLabel("M-12").value shouldBe "+12"
-    TaquillaParser.ageLabel("NO RECOMENDADA PARA MENORES DE 16 AÑOS").value shouldBe "+16"
-    TaquillaParser.ageLabel("TP").value shouldBe "APTA"
-    TaquillaParser.ageLabel("APTA PARA TODOS LOS PÚBLICOS").value shouldBe "APTA"
-    TaquillaParser.ageLabel("+18").value shouldBe "+18"
-    Seq("PDC", "EDAD PENDIENTE DE CALIFICACIÓN", "-").foreach(TaquillaParser.ageLabel(_) shouldBe None)
-  }
-
   "days" should "fail a body that is no calendar, and read an empty one as nothing on sale" in {
     an[Exception] should be thrownBy TaquillaParser.days("<html>Cargando…</html>")
     TaquillaParser.days("""{"meta":{}}""") shouldBe None
