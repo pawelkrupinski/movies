@@ -275,3 +275,26 @@ incidents:
     start: 2026-10-02T22:20:00Z
     end: 2026-10-03T03:00:00Z
     expect_firing: [JvmStringDedupTableLarge]
+
+  - id: germany-roster-outgrew-share-card-budget-2026-10-11
+    description: >-
+      Germany's new venues (Cineamo, kinoheld, the Filmstarts sweep) took its corpus from 1,890
+      films to 4,750 by 06:00Z, and its CURRENT share-card files (card, base and poster of every
+      film with a card) from 0.80 GB to 2.2 GB, past the 1 GiB budget of the time. Real: raised to
+      3 GiB by 7e001a8d7's deploy (~01:00Z), then to 6 GiB as the corpus kept growing.
+    source: ALERTS{alertname="ShareCardsOverBudget",country="de"} 10-11 21:43..10-12 01:08Z; kinowo_worker_corpus_movies{country="de"} 1891 at 18:00Z, 4750 at 06:00Z
+    start: 2026-10-11T21:00:00Z
+    end: 2026-10-12T01:00:00Z
+    expect_firing: [ShareCardsOverBudget, ShareCardsNearBudget]
+
+  - id: facebook-rescrape-queue-over-quota-2026-10-12
+    description: >-
+      Facebook refused the app (code 4, Application request limit reached) after 45-105 re-scrapes
+      each hour, so the fleet drained ~50 pages an hour while recent films' ratings-only re-draws
+      -- with Germany's 2,900 new films all in their first week -- queued more: 0 at 20:30Z, 2,536
+      at 07:00Z, all Germany's. Real; fixed by re-scraping only cards whose picture moved beyond
+      the rating badges.
+    source: kinowo_worker_share_cards_rescrape_waiting{country="de"}; ALERTS{alertname="ShareCardRescrapesNotDraining"} 03:53..04:08Z; VictoriaLogs "rate-limited the re-scrape" 21:27..07:00Z
+    start: 2026-10-12T02:00:00Z
+    end: 2026-10-12T07:00:00Z
+    expect_firing: [ShareCardRescrapesNotDraining]

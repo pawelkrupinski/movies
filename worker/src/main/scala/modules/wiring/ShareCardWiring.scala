@@ -32,7 +32,7 @@ trait ShareCardWiring { self: WorkerWiring =>
 
   lazy val shareCardMetrics: ShareCardMetrics = workerMetrics.shareCardSeries.forCountry(country.code)
 
-  lazy val shareCardBudget: ShareCardStorageBudget = configuration.shareCardStorageBudget(ShareCardStorageBudget(3072L * 1024 * 1024))
+  lazy val shareCardBudget: ShareCardStorageBudget = configuration.shareCardStorageBudget(ShareCardStorageBudget(ShareCardWiring.DefaultBudgetMb * 1024 * 1024))
 
   /** Posters download directly, except those of a site that blocks the worker's IP, which go through the
    *  egress its scrapes use: Multikino 403s the worker's IP on every poster as on its pages (the proxy), biletyna.pl
@@ -146,6 +146,12 @@ object ShareCardWiring {
   /** When the daily share-card prune runs, past midnight UTC: a fixed time, so its burst of
    *  deletions lands at one place on the dashboard however the day's deploys fall. */
   val DailyPruneAt: FiniteDuration = 3.hours
+
+  /** Each country's share-card budget, in MB (`KINOWO_SHARE_CARD_BUDGET_MB`): 6 GiB, raised from 3 when
+   *  Germany's new venues took its current cards past 2.2 GB in a night (ShareCardBudgetSpec). Five
+   *  countries at it are under a fifth of k3s-worker-1's root; the free-space floor below, not this,
+   *  guards the node. */
+  val DefaultBudgetMb: Long = 6144
 
   /** The free space the cards leave on their volume, in MB (`KINOWO_SHARE_CARD_MIN_FREE_MB`): 4 GiB,
    *  under FilesystemSpaceCritical's 7% of k3s-worker-1's 160 GB root, so the node's own alerts fire

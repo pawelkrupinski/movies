@@ -1,7 +1,7 @@
 ---
 # SHARE CARDS: the worker renders each film's and each city's Open Graph card (and caches the poster and the
 # card's badge-less base) into a per-country directory on k3s-worker-1 that Caddy serves at
-# /share-cards/<cc>/. Film cards, posters, bases and city cards share ONE budget (KINOWO_SHARE_CARD_BUDGET_MB, 3 GiB by default) that the worker's janitor
+# /share-cards/<cc>/. Film cards, posters, bases and city cards share ONE budget (KINOWO_SHARE_CARD_BUDGET_MB, 6 GiB by default) that the worker's janitor
 # enforces by evicting the oldest files nothing references. These rules watch the two ways that
 # can go wrong -- the directory filling towards the budget, and the part the janitor may NOT delete
 # outgrowing it -- the poster upstreams the cards are drawn from, and the pipeline itself: cards
