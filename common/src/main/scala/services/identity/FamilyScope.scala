@@ -89,11 +89,22 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     // "Niesamowite przygody skarpetek 4. Do roboty! – zestaw" is part 4, not the 2025 first set
     // whose animators it credits).
     val instalment = candidates.exists(scored => !scored.denied && scored.category("numeral").contains("same"))
+    // A stage house's relay that an eligible record bills under its own house is not another house's staging of the
+    // work, however its screen director's credit or running time fits that one: UK Odeon's "English National Ballet: The
+    // Sleeping Beauty" {Ross MacGibbon} ×22 is ENB's 2026 record, not the Royal Ballet's 2017 one he also filmed. Only
+    // beside its own house's: UK's "RBO Cinema Season" relays the Met's productions, which RBO never staged.
+    // Its own house's by a banner word the other record lacks: "OPERA- SILENT NIGHT" names no house by "silent".
+    val housed = if (listing.billsAStageHouse) candidates.filterNot(_.denied) else Nil
+    def besideItsOwnHouse(other: Scored) = !other.denied && IdentityMeasures.billsAnotherHouse(listing, other.candidate.film) &&
+      housed.exists(own => own.candidate.tmdbId != other.candidate.tmdbId &&
+        IdentityMeasures.billsItsHouse(listing, own.candidate.film, other.candidate.film.titleWords))
     candidates.map(scored =>
       if (titled && !IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures))
         scored.copy(denial = Some("its director's other film, which the title does not name"))
       else if (instalment && scored.category("numeral").exists(IdentityMeasures.OtherInstalment))
         scored.copy(denial = Some("another instalment than the one the title numbers"))
+      else if (housed.nonEmpty && besideItsOwnHouse(scored))
+        scored.copy(denial = Some("another house's staging of its work, beside its own house's record"))
       else scored)
       .sortBy(scored => (-scored.probability, scored.candidate.tmdbId))
   }

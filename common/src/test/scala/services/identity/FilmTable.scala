@@ -17,7 +17,8 @@ final class FilmTable(films: Seq[FilmTable.F], normalizer: TitleNormalizer) exte
   override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = Answer.Known(q match {
     case CandidateQuery.Title(text) =>
       val want = words(text)
-      inTmdb.filter(f => f.searched && want.nonEmpty && (f.title +: f.alternatives).exists(t => want.subsetOf(words(t)))).sortBy(-_.popularity).map(hit)
+      inTmdb.filter(f => f.searched && want.nonEmpty && (f.title +: (f.original.toSeq ++ f.alternatives)).exists(t => want.subsetOf(words(t))))
+        .sortBy(-_.popularity).map(hit)
     case CandidateQuery.Director(name) => inTmdb.filter(f => f.director == name || f.directorAliases.contains(name)).map(hit)
     case CandidateQuery.Imdb(title)    => inTmdb.filter(f => words(f.title) == words(title) || f.imdbTitles.exists(words(_) == words(title))).map(hit)
     // and the films only IMDb holds, under their fallback ids
@@ -28,7 +29,7 @@ final class FilmTable(films: Seq[FilmTable.F], normalizer: TitleNormalizer) exte
   override def film(id: Int): Answer[Option[IdentityMeasures.Film]] = {
     val found = FallbackIds.unapply(id).fold(inTmdb.find(_.id == id)) { case (_, number) => films.find(f => f.imdbOnly && f.id == number) }
     Answer.Known(found.map(f =>
-      IdentityMeasures.Film(f.title, None, f.alternatives ++ (if (f.imdbOnly) f.imdbTitles else Nil), Some(f.year), Some(f.runtime).filter(_ > 0),
+      IdentityMeasures.Film(f.title, f.original, f.alternatives ++ (if (f.imdbOnly) f.imdbTitles else Nil), Some(f.year), Some(f.runtime).filter(_ > 0),
         Some(Seq(f.director).filter(_.nonEmpty)), Some(f.countries).filter(_.nonEmpty), if (f.imdbOnly) None else Some(f.popularity),
         imdbNumber = f.id, released = f.released, releaseCountries = f.releaseCountries, releases = f.releases)))
   }
@@ -41,12 +42,13 @@ object FilmTable {
  *  under besides its own (its AKAs), which IMDb's suggestions match a query against. `imdbOnly`: a film TMDB holds no
  *  record of — only the IMDb-titled question answers it, under its fallback id ([[FallbackIds]]). `released`: the day TMDB
  *  dates its release, a broadcast's air date. `releaseCountries`: the countries TMDB dates a release in, codes run
- *  together ([[IdentityMeasures.Film.releaseCountries]]). */
+ *  together ([[IdentityMeasures.Film.releaseCountries]]). `original`: its original title, when TMDB's localised one is
+ *  another ("RBO 2026/27: Schwanensee (The Royal Ballet)" of "Royal Ballet & Opera 2026/27: Swan Lake"). */
   final case class F(id: Int, title: String, year: Int, director: String, runtime: Int, popularity: Double = 10.0,
                      alternatives: Seq[String] = Nil, searched: Boolean = true, countries: Seq[String] = Nil,
                      directorAliases: Seq[String] = Nil, imdbTitles: Seq[String] = Nil, imdbOnly: Boolean = false,
                      released: Option[java.time.LocalDate] = None, releaseCountries: Option[String] = None,
-                     releases: Option[String] = None)
+                     releases: Option[String] = None, original: Option[String] = None)
 
   /** A listing publishing only its title and what it is given, keyed as a page-less venue keys it. */
   def listing(venue: Cinema, title: String, year: Option[Int] = None, director: Option[String] = None,

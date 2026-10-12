@@ -69,6 +69,9 @@ object IdentityMeasures {
       .flatMap(t => IdentityMeasures.AnniversaryYears.findFirstMatchIn(t)).map(_.group(1).toInt).nextOption()
     /** Does the title name an opera or ballet house ([[IdentityMeasures.screenNamesake]]), once per listing: every candidate asks. */
     private[identity] lazy val billsAStageHouse: Boolean = IdentityMeasures.billsAStageHouse(titles)
+    /** Its title read as a stage house's relay ([[IdentityMeasures.Relay]]), once per listing: every candidate asks. */
+    private[identity] lazy val relay: IdentityMeasures.Relay =
+      if (billsAStageHouse) IdentityMeasures.Relay.of(titles) else IdentityMeasures.Relay.Unbilled
     /** The title's words, once per listing: a director's surname heading it is read against every candidate. */
     private[identity] lazy val titleWords: Seq[String] = ownForms.head.words
     private[identity] lazy val shapeKeys: Seq[String] = shapes.map(IdentityMeasures.key)
@@ -246,6 +249,93 @@ object IdentityMeasures {
   /** Does one of `titles` name an opera or ballet house ([[StageHouseWords]])? */
   private[identity] def billsAStageHouse(titles: Seq[String]): Boolean = titles.exists(title => TitleContainment.tokens(title).exists(StageHouseWords))
 
+  /** What a stage house's relay title bills, read off its FRAGMENTS — its delimited pieces ([[pieces]]), each bracket
+   *  apart from what it follows, digits out: a fragment naming a house ([[StageHouseWords]]) is a HOUSE, every other one
+   *  may be the WORK ("RBO Live 2026/27: Schwanensee (Royal Ballet)" bills "Schwanensee" under "RBO Live" and "Royal
+   *  Ballet"; "Live aus der MET: Verdi: Macbeth" bills "Live aus der MET", "Verdi" or "Macbeth"). `workWords`: the work
+   *  fragments' words of four letters or more, beside the house's common ones ([[HouseCommonWords]]) — a venue adds a
+   *  composer ("Giuseppe Verdi MACBETH"), a tag ("Macbeth ENCORE") or a translation ("Cosi fan tutte. Tak czynią
+   *  wszystkie") to the work's name; `workIds` the stage works the fragments name in any language ([[StageWorks]]);
+   *  `fragmentKeys` every fragment's words run together, a leading article off ([[wholeKey]]), a house's or not ("Das
+   *  Phantom der Oper"); `houses` the house fragments' words ([[houseWords]]). */
+  final case class Relay(workWords: Set[String], workIds: Set[String], fragmentKeys: Set[String], houses: Seq[Seq[String]])
+  object Relay {
+    val Unbilled: Relay = Relay(Set.empty, Set.empty, Set.empty, Nil)
+    def of(titles: Seq[String]): Relay = {
+      val all             = titles.flatMap(fragments).distinct
+      val (houses, works) = all.partition(fragment => TitleContainment.tokens(fragment).exists(StageHouseWords))
+      Relay(works.flatMap(wordsOf).filter(word => word.length >= 4 && !HouseCommonWords(word)).toSet,
+        works.flatMap(billedIn(_, seasonNamed = true)).toSet, all.map(wholeKey).filter(_.nonEmpty).toSet,
+        houses.map(houseWords).filter(_.nonEmpty).distinct)
+    }
+  }
+  private val BracketedFragment = """[(\[]([^()\[\]]*)[)\]]""".r
+  /** A title's fragments: each delimited piece, and each bracket in it apart from what it follows. */
+  private def fragments(title: String): Seq[String] = pieces(title).flatMap { piece =>
+    BracketedFragment.findAllMatchIn(piece).map(_.group(1)).toSeq :+ BracketedFragment.replaceAllIn(piece, " ")
+  }.map(_.trim).filter(_.exists(_.isLetter))
+  /** A fragment's words, numbers out: a season ("26/27") or a screening's year ("Macbeth 2026") dates the relay, never names it. */
+  private def wordsOf(fragment: String): Seq[String] = TitleContainment.tokens(fragment).filterNot(_.forall(_.isDigit))
+  /** A house fragment's words, a stage work's name it opens or ends with out ([[billedIn]]'s runs): "OPERA-MANON" and
+   *  "OPERA- SILENT NIGHT" bill the work in the house's word, and name no house "Manon" that "BALLET LIVE. MANON. ROYAL
+   *  ÓPERA HOUSE" would share. */
+  private def houseWords(fragment: String): Seq[String] = {
+    val words = wordsOf(fragment).toIndexedSeq
+    val runs  = words.indices.map(_ -> words.length) ++ (1 until words.length).map(0 -> _)
+    val work  = runs.filter { case (from, until) => StageWorks.resolver.named(words.slice(from, until).mkString).nonEmpty }
+      .flatMap { case (from, until) => from until until }.toSet
+    words.indices.filterNot(work).map(words)
+  }
+  /** A fragment or a whole title as one key: its words ([[wordsOf]]) run together, a leading article off — "Das Phantom
+   *  der Oper" is TMDB's 1943 "Phantom der Oper" whole. */
+  private[identity] def wholeKey(title: String): String = {
+    val words = wordsOf(title)
+    (if (words.sizeIs >= 2 && LeadingArticles(words.head)) words.tail else words).mkString
+  }
+
+  /** Does the film's record bill ANOTHER WORK than the listing's stage-house relay: no title of the record carries a word
+   *  of the relay's work fragments ([[Relay]]) or is one of its fragments whole, nor names a stage work they name in
+   *  another language? DE "RBO Live 2026/27: Schwanensee (Royal Ballet)" ×80 took the house's "RBO 2026/27: Tosca (The
+   *  Royal Opera)" by pooled evidence, and Cinefactory's "MET Opera: Macbeth 2026" — its credits, running time and original title copied from last
+   *  season's Onegin — "MET Opera: Eugen Onegin" by those facts. A house bills many works; the title says which. A
+   *  title whose every fragment names its house says no work, and denies none. */
+  def namesAnotherWork(listing: Listing, film: Film): Boolean = listing.billsAStageHouse && {
+    val relay = listing.relay
+    (relay.workWords.nonEmpty || relay.workIds.nonEmpty) && !relay.workWords.exists(film.titleWords) &&
+      !relay.workIds.exists(film.stageWorkIds) && !relay.fragmentKeys.exists(film.wholeKeys)
+  }
+  /** [[namesAnotherWork]], the relay's work a STAGE WORK the record names in none of its languages: what a venue's title
+   *  is never learned as the record's own by ([[venueTitles]], [[titlesByFacts]]) — a misspelt work ("RBO Live 2026/27:
+   *  Gtterdmmerung (Royal Opera)") names no stage work, and is still its record's spelling. */
+  private def namesAnotherStageWork(listing: Listing, film: Film): Boolean = listing.relay.workIds.nonEmpty && namesAnotherWork(listing, film)
+
+  /** Does one of the film's titles name the house the listing's relay bills ([[Relay.houses]], [[namesOneHouse]]) — by
+   *  a word of its banner other than `besides`, the words a rival's titles share with it? PL "OPERA- SILENT NIGHT" names
+   *  no house by "silent" against the Met's "Silent Night", whose own title carries the word. */
+  def billsItsHouse(listing: Listing, film: Film, besides: Set[String] = Set.empty): Boolean =
+    listing.relay.houses.map(_.filterNot(besides)).exists(house => film.houseNames.exists(namesOneHouse(house, _)))
+  /** Do the film's titles name a house, and none the listing's relay bills: UK's "English National Ballet: The Sleeping
+   *  Beauty" and TMDB's 2017 "The Sleeping Beauty", also "The Sleeping Beauty (The Royal Ballet)"? */
+  def billsAnotherHouse(listing: Listing, film: Film): Boolean = film.houseNames.nonEmpty && !billsItsHouse(listing, film)
+
+  /** Words a house's name shares with any other's — the art form in each language, articles, prepositions and a relay's
+   *  own words ("Live", "im Kino", "Season") — which say nothing about WHICH house. */
+  private val HouseCommonWords: Set[String] = Set("opera", "operas", "oper", "opern", "opery", "operze", "ballet", "ballets", "ballett",
+    "balet", "baletu", "balletto", "the", "and", "und", "of", "de", "du", "des", "di", "del", "der", "die", "das", "la", "le", "les", "el", "los",
+    "las", "im", "in", "aus", "at", "from", "live", "kino", "cinema", "hd", "season", "saison", "sezon", "kinowy", "presents", "z", "w", "na")
+  /** Do two house names NAME one house: a word in common beyond [[HouseCommonWords]], one's word a prefix of the other's
+   *  ("Met", "Metropolitan"), or one's word the other's initials ("RBO" of "Royal Ballet & Opera", "ROH" of "Royal Opera
+   *  House")? Never a name of common words alone ("Opera", "The Ballet"): it names no house in particular. Numbers are no
+   *  part of a name ("RBO 26/27"). */
+  private[identity] def namesOneHouse(a: Seq[String], b: Seq[String]): Boolean = {
+    def own(name: Seq[String]) = name.filter(word => word.length >= 2 && !word.forall(_.isDigit) && !HouseCommonWords(word))
+    def initials(name: Seq[String]) =
+      name.filterNot(word => word.forall(_.isDigit) || Set("the", "and", "und", "of")(word)).flatMap(_.headOption).mkString
+    val (ownA, ownB) = (own(a), own(b))
+    ownA.exists(x => ownB.exists(y => x == y || (x.length >= 3 && y.startsWith(x)) || (y.length >= 3 && x.startsWith(y)))) ||
+      ownA.exists(x => x.length >= 2 && x == initials(b)) || ownB.exists(y => y.length >= 2 && y == initials(a))
+  }
+
   /** Does the film's record bill the listing's work under the listing's OWN house — the banner the
    *  listing puts on the work, spelt as the record spells it or learned to be it (`Houses.same`)?
    *  "NT Live: The Misanthrope" and "National Theatre Live: The Misanthrope" do — by any of the
@@ -275,8 +365,11 @@ object IdentityMeasures {
     /** Do the listing and the film bill the work under one house — the same spelling, or the house
      *  the listing's banner was learned to be? */
     def same(b: Billing): Boolean = b.listingHouse == b.filmHouse || of.get(b.listingHouse).contains(b.filmHouse)
-    /** Is the listing's banner known to be ANOTHER house than the film's? */
-    def other(b: Billing): Boolean = !same(b) && of.contains(b.listingHouse)
+    /** Is the listing's banner known to be ANOTHER house than the film's — and the two names not one house's
+     *  ([[namesOneHouse]])? DE's "RBO Live" banner was learned as the house records spelling it so bill, and then denied
+     *  "RBO Live 2026/27: Schwanensee (Royal Ballet)" ×80 the season's record billing it "RBO 26/27": one house, two
+     *  spellings. */
+    def other(b: Billing): Boolean = !same(b) && of.contains(b.listingHouse) && !namesOneHouse(b.listingWords, b.filmWords)
   }
   object Houses {
     val Unknown: Houses = Houses(Map.empty)
@@ -474,6 +567,13 @@ object IdentityMeasures {
     private[identity] lazy val titleKeys: Set[String] = titles.map(IdentityMeasures.key).toSet
     /** Its own title's and original title's tokens: what a director credited by a house name is read against. */
     private[identity] lazy val ownTitleTokens: Seq[Seq[String]] = (Seq(title) ++ originalTitle).map(TitleContainment.tokens)
+    /** Every word of its titles, the stage works and houses they name, and their keys ([[IdentityMeasures.Relay]]), once per record:
+     *  a stage house's relay reads them of every candidate ([[IdentityMeasures.namesAnotherWork]]). */
+    private[identity] lazy val titleWords: Set[String] = titles.flatMap(TitleContainment.tokens).toSet
+    private[identity] lazy val stageWorkIds: Set[String] =
+      IdentityMeasures.stageWorks(this) ++ IdentityMeasures.stageWorksBilled(titles, seasonNamed = true)
+    private[identity] lazy val wholeKeys: Set[String] = titles.map(IdentityMeasures.wholeKey).toSet
+    private[identity] lazy val houseNames: Seq[Seq[String]] = IdentityMeasures.Relay.of(titles).houses
     /** Its own title's and original title's yearless tokens. */
     private[identity] lazy val ownYearlessTitles: Seq[Seq[String]] = (Seq(title) ++ originalTitle).map(IdentityMeasures.yearlessTokens)
     /** The film's titles and their delimited pieces as yearless tokens, once per record (`billing`). */
@@ -990,7 +1090,10 @@ object IdentityMeasures {
    *    Normandią", originally "Pressure", names one of nine "Pressure"s, and which one is the
    *    listing's facts' to tell, not a title the other eight gain; and
    *  - the title does not name the record already ([[NamingRelations]]): "Coraline (2009)",
-   *    originally "Coraline", is a dated spelling of the record's title, not a translation.
+   *    originally "Coraline", is a dated spelling of the record's title, not a translation; and
+   *  - it is no stage relay of another stage work than the record's ([[namesAnotherStageWork]]): DE Cinefactory's
+   *    "MET Opera: Macbeth 2026", its original title copied from last season's Onegin, is no title of "MET Opera: Eugen
+   *    Onegin".
    *  Keyed by film id, each title once (its smallest spelling), sorted: a function of the two sets. */
   def venueTitles(listings: Iterable[Listing], films: Iterable[(Int, Film)]): Map[Int, Seq[String]] = {
     val translated = listings.iterator.flatMap(l => l.originalTitle.map(o => (key(l.title), key(o), l.title)))
@@ -1001,8 +1104,9 @@ object IdentityMeasures {
       .groupMap(_._1)(_._2)
     val byOriginal = unanimous.toSeq.flatMap { case (t, o) =>
       filmsByKey.getOrElse(o, Nil).distinctBy(_._1) match {
-        case Seq((id, f)) if !NamingRelations(titleRelation(Listing(spelling(t)), f).value) => Some(id -> spelling(t))
-        case _                                                                               => None
+        case Seq((id, f)) if !NamingRelations(titleRelation(Listing(spelling(t)), f).value) &&
+          !namesAnotherStageWork(Listing(spelling(t)), f) => Some(id -> spelling(t))
+        case _ => None
       }
     }
     byOriginal.groupMap(_._1)(_._2).map { case (id, ts) => id -> ts.distinct.sorted }
@@ -1017,7 +1121,8 @@ object IdentityMeasures {
    *  overlap. Read so only when every listing of the title whose facts single out a record single out the
    *  same one, no record of `films` carries the title whole already (as its title, original or
    *  alternative title — this one or another), the title is no piece of the record's own (a tour's name is
-   *  not its São Paulo film's), contains no OTHER record its years do not rule out, and is no double bill's. */
+   *  not its São Paulo film's), contains no OTHER record its years do not rule out, is no double bill's, and is no stage
+   *  relay of another stage work than the record's ([[namesAnotherStageWork]]). */
   def titlesByFacts(listings: Iterable[Listing], films: Iterable[(Int, Film)]): Seq[(Int, String)] = {
     val pool = films.toSeq
     // A bill's title names two works: its facts may single out one, but the title is no record's own.
@@ -1042,7 +1147,8 @@ object IdentityMeasures {
           def ruledOut(f: Film) = f.year.exists(y => years.nonEmpty && years.forall(l => !FactRelations.yearsNear(l, y)))
           // A title that is a piece of the record's own ("BTS World Tour 'ARIRANG'" of its São Paulo concert
           // film) names the tour, not the record: only a title sharing no part of it, a translation, is learned.
-          Option.when(pool.collectFirst { case (`id`, f) => !ContainingRelations(relation(f)) }.getOrElse(false) &&
+          Option.when(pool.collectFirst { case (`id`, f) => !ContainingRelations(relation(f)) && !namesAnotherStageWork(Listing(spelling), f) }
+              .getOrElse(false) &&
             !pool.exists { case (_, f) => Rivalling(relation(f)) } &&
             !pool.exists { case (other, f) => other != id && ContainingRelations(relation(f)) && !ruledOut(f) })(id -> spelling)
         case _ => None

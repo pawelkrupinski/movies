@@ -2133,6 +2133,83 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // DE, recording 38196151886: TMDB's German records of Royal Ballet & Opera's 2026/27 season bill the house "RBO" and
+  // the company after the work, their original titles the English "Royal Ballet & Opera 2026/27: …", and carry the
+  // venues' own spellings ("RBO 26/27: …", "RBO Live 2026/27: …") beside them; the Met's Manon, Macbeth and Onegin as
+  // TMDB holds them, and namesakes of the works. Cineamo feeds link each relay to its record.
+  private def rboRecord(id: Int, german: String, english: String, year: Int, company: String, spellings: String*) =
+    F(id, s"RBO 2026/27: $german (The Royal $company)", year, "", 180, 0.6, original = Some(s"Royal Ballet & Opera 2026/27: $english"),
+      alternatives = Seq(s"RBO 26/27: $german (Royal $company)", s"RBO 26/27: $german (Royal $company) (Aufz.)") ++ spellings)
+  private val relayRecords = Seq(
+    rboRecord(1702782, "Schwanensee", "Swan Lake", 2027, "Ballet"),
+    rboRecord(1702784, "Tosca", "Tosca", 2027, "Opera"),
+    rboRecord(1702757, "Manon", "Manon", 2026, "Ballet"),
+    // the banner "RBO Live" bills these works under records spelling it so, and is learned to be that house, not the
+    // "RBO" the other records bill (the DE corpus: eleven works)
+    rboRecord(1702769, "Götterdämmerung", "Götterdämmerung", 2027, "Opera", "RBO Live 2026/27: Götterdämmerung (Royal Opera)"),
+    rboRecord(1702775, "Così fan tutte", "Così fan tutte", 2027, "Opera", "RBO Live 2026/27: Cosí fan tutte (Royal Opera)"),
+    F(1703631, "The Metropolitan Opera 2026/27: Manon", 2027, "Laurent Pelly", 265, 1.2148, alternatives = Seq("MET Opera: Manon (2027)")),
+    F(1703622, "The Metropolitan Opera 2026/27: Macbeth", 2026, "", 210, 1.3147),
+    F(1479651, "MET Opera: Eugen Onegin", 2026, "Deborah Warner", 245, 1.4277, original = Some("The Metropolitan Opera: Eugene Onegin")),
+    F(1487847, "Schwanensee", 2025, "Someone", 120, 1.8), F(132332, "Manon", 1949, "Henri-Georges Clouzot", 100, 9))
+  private def relayed(venue: Cinema, title: String, year: Int, original: String, record: Int) =
+    fed(listing(venue, title, Some(year)).copy(originalTitle = Some(original)), "cineamo", s"${record}m")
+  private def rbo(venue: Cinema, title: String, year: Int, work: String, record: Int) =
+    relayed(venue, title, year, s"Royal Ballet & Opera 2026/27: $work", record)
+  private val schwanensee = Seq(rbo(KinoMuza, "RBO Live 2026/27: Schwanensee (Royal Ballet)", 2027, "Swan Lake", 1702782),
+    rbo(Helios, "RBO LIVE 2026/27: SCHWANENSEE (ROYAL BALLET)", 2027, "Swan Lake", 1702782))
+  private val tosca = Seq(rbo(KinoApollo, "RBO Live 2026/27: Tosca (Royal Opera)", 2027, "Tosca", 1702784))
+  private val rboLive = Seq(rbo(KinoDKFRumcajs, "RBO Live 2026/27: Götterdämmerung (Royal Opera)", 2027, "Götterdämmerung", 1702769),
+    rbo(Rialto, "RBO Live 2026/27: Cosí fan tutte (Royal Opera)", 2027, "Così fan tutte", 1702775))
+  private val rboManon = Seq(rbo(KinoOaza, "RBO Live 2026/27: Manon (Royal Ballet)", 2026, "Manon", 1702757),
+    rbo(KinoPalacowe, "RBO LIVE 2026/27: MANON (ROYAL BALLET)", 2026, "Manon", 1702757))
+  private val metManon = Seq(KinoBulgarska, Kinoteka).map(relayed(_, "MET Opera: Manon (2027)", 2027, "The Metropolitan Opera 2026/27: Manon", 1703631))
+  private def films(r: Resolution, ls: Seq[Listing]) = ls.map(l => r.decisionOf(l.key).film).distinct
+  private def rendered(r: Resolution, ls: Seq[Listing]) = ls.map(l => r.decisionOf(l.key).render).distinct.mkString("\n")
+
+  "A house's relay of a work" should "take its season's record of that work, never the house's record of another" in {
+    // DE "RBO Live 2026/27: Schwanensee (Royal Ballet)" ×80 in its spellings took RBO's Tosca by pooled evidence, and
+    // "RBO Live 2026/27: Tosca (Royal Opera)" ×26 none: each one's own record was denied as "another house's season
+    // production", its banner "RBO Live" learned as a house the records' "RBO 26/27" was not
+    val ls = schwanensee ++ tosca ++ rboLive
+    val r  = shipped(ls, relayRecords)
+    withClue(rendered(r, ls)) {
+      films(r, schwanensee) shouldBe Seq(Some(1702782))
+      films(r, tosca) shouldBe Seq(Some(1702784))
+    }
+  }
+
+  it should "not take another house's record of its work" in {
+    // DE "RBO Live 2026/27: Manon (Royal Ballet)" ×35 took the Met's Manon, its own house's record denied as above
+    val ls = rboManon ++ metManon ++ rboLive
+    val r  = shipped(ls, relayRecords)
+    withClue(rendered(r, ls)) {
+      films(r, rboManon).flatten should not contain 1703631
+      films(r, metManon) shouldBe Seq(Some(1703631))
+    }
+  }
+
+  it should "not take a record of another work its credited director and running time are copied from" in {
+    // DE Cinefactory's "MET Opera: Macbeth 2026" ×2 {Deborah Warner, Gary Halvorson} [245′], its original title "The
+    // Metropolitan Opera: Eugene Onegin": kinoheld copied last season's Onegin into the Macbeth billing, which took Onegin
+    val macbeth = Seq(KinoMuza, Helios).map(listing(_, "MET Opera: Macbeth 2026", None, Some("Deborah Warner"), Some(245)).copy(
+      originalTitle = Some("The Metropolitan Opera: Eugene Onegin")))
+    val r = shipped(macbeth, relayRecords)
+    withClue(rendered(r, macbeth))(films(r, macbeth).flatten should not contain 1479651)
+  }
+
+  "A ballet company's relay crediting its screen director" should "not take another house's recording of its work by that director" in {
+    // UK Odeon's "English National Ballet: The Sleeping Beauty" {Ross MacGibbon} [144′] ×22 took the Royal Ballet's 2017
+    // recording (TMDB 446902, also his) by his credit; ENB's 2026 relay is 1760605, his too.
+    val films2 = Seq(F(446902, "The Sleeping Beauty", 2017, "Ross MacGibbon", 138, 0.7989, alternatives = Seq("The Sleeping Beauty (The Royal Ballet)")),
+      F(1760605, "English National Ballet presents The Sleeping Beauty", 2026, "Ross MacGibbon", 160, 1.0496),
+      F(142506, "Romeo & Juliet - The Royal Ballet", 2007, "Ross MacGibbon", 140, 1.0098),
+      F(1747420, "The Sleeping Beauty", 1989, "Someone", 90, 2))
+    val ls = Seq(KinoMuza, Helios, Multikino).map(listing(_, "English National Ballet: The Sleeping Beauty", None, Some("Ross MacGibbon"), Some(144)))
+    val r = shipped(ls, films2)
+    withClue(rendered(r, ls))(films(r, ls).flatten should not contain 446902)
+  }
+
   "A library-filed re-release title" should "be searched with its article in front, and take its film" in {
     // DE Filmpalast venues bill "Tribute von Panem - Mockingjay Teil 2 (WA: 2026), Die" ×5. Searched as filed, only its
     // pieces found films ("Tribute von Panem" ranks Catching Fire first) and its no-match leaned to Catching Fire.
