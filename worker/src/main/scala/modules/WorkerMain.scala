@@ -57,7 +57,7 @@ object WorkerMain extends Logging {
     // countries draw run permits from one cap and reuse one connection pool /
     // monitor-thread set — each country still keeps its OWN event bus and its OWN
     // per-country database view on that shared client.
-    // The process's config — env vars, `.env.local`, and (once each wiring's
+    // The process's config — env vars, -D properties, and (once each wiring's
     // EnvConfigService starts) the admin overrides. Built ONCE here and handed to
     // every country's wiring, so a flip reaches all of them.
     val env          = process.env

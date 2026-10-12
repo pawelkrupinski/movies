@@ -9,8 +9,8 @@ import scala.jdk.CollectionConverters.*
 
 /**
  * Production code reads this process's configuration in ONE place. `Env` binds its sources
- * to the real process (`Env.fromProcess`: environment variables, system properties,
- * `.env.local`), and `settings.ProcessConfiguration` is the one resolver that reads a key
+ * to the real process (`Env.fromProcess`: environment variables, then system properties),
+ * and `settings.ProcessConfiguration` is the one resolver that reads a key
  * through it and turns it into a type of its own — the country, the Mongo address, every
  * credential, every tuning knob. Everything else is HANDED those typed values through its
  * constructor or parameters, so a spec builds them directly and no code deep in the object
@@ -39,7 +39,7 @@ class ProcessAccessLintSpec extends AnyFlatSpec with Matchers {
   /** file → why it may touch the process directly. */
   private val ProcessAllowed: Map[String, String] = Map(
     "common/src/main/scala/tools/Env.scala" ->
-      "Env's process binding: environment variables, then system properties, then .env.local",
+      "Env's process binding: environment variables, then system properties",
     "common/src/main/scala/settings/ProcessConfiguration.scala" ->
       "the ONE resolver: binds Env to the process and yields the typed values roots pass down",
     "common/src/main/scala/tools/ProxyTunnelAuthentication.scala" ->

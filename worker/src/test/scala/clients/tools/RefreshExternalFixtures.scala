@@ -20,8 +20,7 @@ import scala.util.Try
  *
  *  Run (needs `TMDB_API_KEY` in the env; the other four are key-less):
  *
- *    eval "$(grep -E '^TMDB_API_KEY=' /path/to/.env.local | sed 's/^/export /')"
- *    sbt 'worker/Test/runMain clients.tools.RefreshExternalFixtures'
+ *    secrets run movies TMDB_API_KEY -- sbt 'worker/Test/runMain clients.tools.RefreshExternalFixtures'
  *
  *  Then regenerate the snapshots (`PageSnapshotSpec`, `FilmScheduleEndToEndSpec`)
  *  and commit the new external fixtures alongside the production change. */

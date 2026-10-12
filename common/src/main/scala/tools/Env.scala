@@ -1,8 +1,5 @@
 package tools
 
-import scala.io.Source
-import scala.util.Try
-
 /**
  * Reads environment-style configuration with a layered fallback:
  *
@@ -13,9 +10,9 @@ import scala.util.Try
  *      mid-flight (no restart) within the override cache's refresh interval.
  *   1. The static source this instance was built over — for [[Env.fromProcess]]:
  *      the process environment variable (System.getenv), then the JVM system
- *      property of the same name, then `.env.local` in the working directory (a
- *      gitignored `KEY=VALUE` file for local dev, `#` for comments, optional
- *      quoting — meant for secrets like ZYTE_API_KEY without polluting the shell).
+ *      property of the same name. Never a file and never the Touch ID vault: a
+ *      local run is launched under `secrets run movies KEY… -- <command>`, which
+ *      puts exactly the secrets it needs into its environment.
  *
  * ONE instance per process, built at the composition root (`AppLoader` for web,
  * `WorkerMain` for the worker) and handed to whatever reads a knob. It holds the
@@ -100,56 +97,24 @@ object Env {
    *  untyped [[Env.get]], whose callers supply their own downstream default). */
   final case class Knob(key: String, kind: Kind, default: Option[String])
 
-  /** This process's configuration: env var → system property → `localFile`
-   *  (`.env.local` in the working directory by default). The file is read at most
-   *  once, and only when a key misses the first two. Built ONCE per process at the
-   *  composition root; everything else is handed the instance. */
-  def fromProcess(localFile: java.io.File = new java.io.File(".env.local")): Env =
-    layered(key => Option(System.getenv(key)), key => Option(System.getProperty(key)), localFile)
+  /** This process's configuration: env var → system property, and nothing else — no file,
+   *  no vault. A local run gets its secrets from whoever launched it
+   *  (`secrets run movies KEY… -- <command>`). Built ONCE per process at the composition
+   *  root; everything else is handed the instance. */
+  def fromProcess(): Env =
+    layered(key => Option(System.getenv(key)), key => Option(System.getProperty(key)))
 
   /** The precedence [[fromProcess]] binds to the real process — environment variables, then
-   *  system properties, then the vars file — over whatever sources it is handed. An empty
-   *  value counts as unset at every layer, so it falls through to the next one. Separate so
-   *  the precedence itself is testable over plain maps: a spec that set a real system
-   *  property to prove it would set it for every suite sharing its JVM. */
-  def layered(
-      environmentVariables: String => Option[String],
-      systemProperties:     String => Option[String],
-      localFile:            java.io.File): Env = {
-    lazy val fileVars = readVarsFile(localFile)
+   *  system properties — over whatever sources it is handed. An empty value counts as unset,
+   *  so it falls through. Separate so the precedence itself is testable over plain maps: a
+   *  spec that set a real system property to prove it would set it for every suite sharing
+   *  its JVM. */
+  def layered(environmentVariables: String => Option[String], systemProperties: String => Option[String]): Env =
     new Env(key =>
       environmentVariables(key).filter(_.nonEmpty)
-        .orElse(systemProperties(key).filter(_.nonEmpty))
-        .orElse(fileVars.get(key)))
-  }
+        .orElse(systemProperties(key).filter(_.nonEmpty)))
 
   /** An instance over a fixed map — for a spec that needs a knob set without
    *  touching the process environment. */
   def of(vars: (String, String)*): Env = new Env(vars.toMap.get)
-
-  /** Parse a `KEY=VALUE` file (`#` comments, optional single/double quoting).
-   *  Empty when the file is absent or unreadable. */
-  private[tools] def readVarsFile(file: java.io.File): Map[String, String] =
-    Try {
-      if (!file.exists()) Map.empty[String, String]
-      else {
-        val source = Source.fromFile(file, "UTF-8")
-        try {
-          source.getLines()
-            .map(_.trim)
-            .filterNot(line => line.isEmpty || line.startsWith("#"))
-            .flatMap { line =>
-              val index = line.indexOf('=')
-              if (index <= 0) None
-              else {
-                val key = line.take(index).trim
-                val value = line.drop(index + 1).trim
-                  .stripPrefix("\"").stripSuffix("\"")
-                  .stripPrefix("'").stripSuffix("'")
-                Some(key -> value)
-              }
-            }.toMap
-        } finally source.close()
-      }
-    }.getOrElse(Map.empty)
 }

@@ -28,7 +28,7 @@ object LocalFixtureWorkerMain {
 
   def main(args: Array[String]): Unit = {
     val process          = ProcessConfiguration.resolve()
-    val mongo            = localMongo(ProcessConfiguration.resolveExported().mongoAddress, process)
+    val mongo            = localMongo(process)
     val fixtureRoot      = fixtureRootFor(process, new java.io.File(".").getCanonicalFile)
     val fixtureDirectory = process.localStackFixtureDirectory.fold("today")(_.value)
     println(s"[local-fixture-worker] replaying HTTP from ${fixtureRoot.of(fixtureDirectory)} " +
@@ -46,18 +46,18 @@ object LocalFixtureWorkerMain {
     latch.await()
   }
 
-  /** The LOCAL Mongo this worker writes into, distinct from the prod database `.env.local`
-   *  reaches: a MONGODB_URI / MONGODB_DB exported in the process environment itself still
-   *  wins (a user who exported one keeps control), else KINOWO_LOCAL_MONGO_URI / _DB, else
-   *  the `localStack` defaults. `.env.local`'s own MONGODB_URI — prod — never counts, which
-   *  is why `exported` is resolved without that file (`ProcessConfiguration.resolveExported`). Handed to the wiring as
+  /** The LOCAL Mongo this worker writes into: a MONGODB_URI / MONGODB_DB exported in the
+   *  process environment wins (a user who exported one keeps control), else
+   *  KINOWO_LOCAL_MONGO_URI / _DB, else the `localStack` defaults. Handed to the wiring as
    *  its address; nothing rewrites the process's MONGODB_URI to get it there. */
-  private[modules] def localMongo(exported: MongoAddress, configuration: ProcessConfiguration): MongoAddress =
+  private[modules] def localMongo(configuration: ProcessConfiguration): MongoAddress = {
+    val exported = configuration.mongoAddress
     MongoAddress(
       uri      = Some(exported.uri
         .getOrElse(configuration.localStackMongoUri.fold(MongoUri(DefaultMongoUri))(uri => MongoUri(uri.value)))),
       database = Some(exported.database
         .getOrElse(configuration.localStackDatabase.fold(MongoDatabaseName(DefaultMongoDb))(database => MongoDatabaseName(database.value)))))
+  }
 
   /** Where the fixture corpus lives. `bgRunMain` forks with CWD = the worker module
    *  directory, but the corpus is `test/resources/fixtures/…` under the repository root, so

@@ -28,7 +28,7 @@ class AppLoader extends ApplicationLoader {
   override def load(context: Context): Application = {
     // Before any TLS handshake the application makes — see IssuerCertificateFetching.
     IssuerCertificateFetching.Enabled.applyToJvm()
-    // The process's config — env vars, `.env.local`, and (once EnvConfigService starts) the
+    // The process's config — env vars, -D properties, and (once EnvConfigService starts) the
     // admin overrides — and the typed values resolved from it, HERE, once: the only place in
     // the web tier that asks the process anything. Everything below is handed them.
     val process = ProcessConfiguration.resolve()

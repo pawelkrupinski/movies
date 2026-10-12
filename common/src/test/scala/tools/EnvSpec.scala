@@ -116,51 +116,36 @@ class EnvSpec extends AnyFlatSpec with Matchers {
   // `Env.fromProcess` is `Env.layered` bound to System.getenv / System.getProperty, so
   // the precedence is proven over maps here — never by setting a real system property,
   // which every suite sharing this JVM would see.
-  private def varsFile(lines: String*): java.io.File = {
-    val path = Files.createTempFile("env-spec", ".env")
-    Files.writeString(path, lines.mkString("\n"))
-    path.toFile.deleteOnExit()
-    path.toFile
+  private def layered(environment: Map[String, String], properties: Map[String, String]): Env =
+    Env.layered(environment.get, properties.get)
+
+  "Env.layered" should "let an environment variable win over a system property" in {
+    layered(Map("KINOWO_TEST_PROC" -> "env"), Map("KINOWO_TEST_PROC" -> "prop")).get("KINOWO_TEST_PROC") shouldBe Some("env")
   }
 
-  private val NoFile = new java.io.File("/nonexistent/.env.local")
-
-  private def layered(environment: Map[String, String], properties: Map[String, String], file: java.io.File = NoFile): Env =
-    Env.layered(environment.get, properties.get, file)
-
-  "Env.layered" should "let an environment variable win over a system property and the vars file" in {
-    val env = layered(Map("KINOWO_TEST_PROC" -> "env"), Map("KINOWO_TEST_PROC" -> "prop"), varsFile("KINOWO_TEST_PROC=file"))
-    env.get("KINOWO_TEST_PROC") shouldBe Some("env")
+  it should "fall through to the system property when the environment lacks the key" in {
+    layered(Map.empty, Map("KINOWO_TEST_PROC" -> "prop")).get("KINOWO_TEST_PROC") shouldBe Some("prop")
   }
 
-  it should "let a system property win over the vars file" in {
-    val env = layered(Map.empty, Map("KINOWO_TEST_PROC" -> "prop"), varsFile("KINOWO_TEST_PROC=file"))
-    env.get("KINOWO_TEST_PROC") shouldBe Some("prop")
+  it should "treat an empty environment value as unset, so the system property answers" in {
+    layered(Map("KINOWO_TEST_PROC" -> ""), Map("KINOWO_TEST_PROC" -> "prop")).get("KINOWO_TEST_PROC") shouldBe Some("prop")
   }
 
-  it should "fall through to the vars file when neither process source has the key" in {
-    layered(Map.empty, Map.empty, varsFile("KINOWO_TEST_PROC=file")).get("KINOWO_TEST_PROC") shouldBe Some("file")
-  }
-
-  it should "treat an empty value at any layer as unset, so the next layer answers" in {
-    val env = layered(Map("KINOWO_TEST_PROC" -> ""), Map("KINOWO_TEST_PROC" -> ""), varsFile("KINOWO_TEST_PROC=file"))
-    env.get("KINOWO_TEST_PROC") shouldBe Some("file")
-  }
-
-  it should "parse comments, blank lines and quoting in the vars file" in {
-    val env = layered(Map.empty, Map.empty, varsFile("# comment", "", "KINOWO_TEST_Q1=\"double\"", "KINOWO_TEST_Q2='single'", "noequals"))
-    env.get("KINOWO_TEST_Q1") shouldBe Some("double")
-    env.get("KINOWO_TEST_Q2") shouldBe Some("single")
-    env.get("noequals")       shouldBe None
-  }
-
-  it should "treat a missing vars file as empty" in {
+  it should "answer None when neither process source has the key" in {
     layered(Map.empty, Map.empty).get("KINOWO_TEST_MISSING") shouldBe None
   }
 
-  // The process binding is reached the one way anything may reach it: through the resolver.
-  "The process-bound Env" should "read the vars file the resolver is pointed at" in {
-    settings.ProcessConfiguration.resolve(varsFile("KINOWO_TEST_FROM_PROCESS_ONLY_IN_FILE=file"))
-      .env.get("KINOWO_TEST_FROM_PROCESS_ONLY_IN_FILE") shouldBe Some("file")
+  // The app reads its process and nothing else: secrets reach a local run through
+  // `secrets run movies … -- <command>`, never a file. `.env.local` (deleted 2026-10-09)
+  // used to be read from the working directory — and every unforked test layer has the
+  // repo root as its working directory, so a key left in that file switched live services
+  // on under the tests.
+  "The process-bound Env" should "never read a .env.local in the working directory" in {
+    val file = new java.io.File(".env.local").getAbsoluteFile  // the working directory
+    assume(!file.exists(), s"$file already exists; refusing to overwrite it")
+    val key = s"KINOWO_TEST_ONLY_IN_FILE_${java.util.UUID.randomUUID().toString.replace("-", "")}"
+    Files.writeString(file.toPath, s"$key=file\n")
+    try settings.ProcessConfiguration.resolve().env.get(key) shouldBe None
+    finally Files.deleteIfExists(file.toPath)
   }
 }

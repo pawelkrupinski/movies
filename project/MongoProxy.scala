@@ -1,6 +1,4 @@
 import play.sbt.PlayRunHook
-import sbt.io.syntax._
-import sbt.File
 
 import java.net.Socket
 import scala.sys.process.{Process, ProcessLogger}
@@ -23,9 +21,10 @@ import scala.util.Try
  *
  * Behaviour:
  *
- *  - **`.env.local` not pointing at a local host** → no-op. Atlas-style
- *    URIs (anything not containing 127.0.0.1 / localhost) handle their own
- *    connectivity; nothing to start.
+ *  - **`MONGODB_URI` (in sbt's own environment) not pointing at a local host**
+ *    → no-op, and so is an unset one. Remote URIs handle their own
+ *    connectivity; nothing to start. A local run that wants prod launches sbt
+ *    under the vault: `secrets run movies MONGODB_URI -- sbt web/run`.
  *  - **Port 27017 already listening** → no-op. The developer has their
  *    own tunnel / mongod running; we leave it alone.
  *  - **Otherwise** → fork `ssh -N -L 27017:127.0.0.1:27017 <target>`
@@ -44,15 +43,17 @@ object MongoProxy {
 
   /** mongo-1's public address, as pinned in `infra/nix/hosts/mongo-1/default.nix`
    *  and mirrored by `scripts/local-mirror/prod-tunnel.sh`. Overridable with
-   *  `KINOWO_MONGO_SSH` in `.env.local` so a rescue host needs no code change. */
+   *  `KINOWO_MONGO_SSH` in sbt's environment so a rescue host needs no code change. */
   private val DefaultSshTarget = "root@2.28.56.140"
 
-  def apply(baseDir: File): PlayRunHook = new PlayRunHook {
+  /** `env` is sbt's own process environment: `web/run` runs the app inside sbt, so the
+   *  MONGODB_URI the app will use is the one sbt was launched with. */
+  def apply(env: String => Option[String] = sys.env.get): PlayRunHook = new PlayRunHook {
 
     @volatile private var proxyProcess: Option[Process] = None
 
     override def beforeStarted(): Unit = {
-      if (!localUriConfigured(baseDir)) {
+      if (!localUriConfigured(env)) {
         // Atlas / remote URI: nothing to forward.
         return
       }
@@ -60,7 +61,7 @@ object MongoProxy {
         println(s"[MongoProxy] :$Port already listening — assuming a tunnel or local mongod is up; not starting one.")
         return
       }
-      val target = sshTarget(baseDir)
+      val target = sshTarget(env)
       println(s"[MongoProxy] starting `ssh -N -L $Port:127.0.0.1:$Port $target` in the background…")
       val sink = ProcessLogger(_ => (), _ => ())
       val started = Try {
@@ -98,35 +99,15 @@ object MongoProxy {
     }
   }
 
-  /** Where to tunnel to. `.env.local`'s `KINOWO_MONGO_SSH` wins so the host can
-   *  move (or a rescue box stand in) without touching build code; otherwise the
-   *  pinned default. */
-  private def sshTarget(baseDir: File): String =
-    envValue(baseDir, "KINOWO_MONGO_SSH").filter(_.nonEmpty).getOrElse(DefaultSshTarget)
+  /** Where to tunnel to. `KINOWO_MONGO_SSH` wins so the host can move (or a rescue box
+   *  stand in) without touching build code; otherwise the pinned default. */
+  private def sshTarget(env: String => Option[String]): String =
+    env("KINOWO_MONGO_SSH").filter(_.nonEmpty).getOrElse(DefaultSshTarget)
 
-  /** `.env.local`, trimmed line by line — deliberately NOT a `source`, since the
-   *  Mongo URIs there carry `&`/`?`. Empty when the file is absent, so both
-   *  readers below degrade to "not configured" rather than throwing. */
-  private def envLines(baseDir: File): List[String] = {
-    val envFile = baseDir / ".env.local"
-    if (!envFile.exists()) return Nil
-    Try {
-      val src = scala.io.Source.fromFile(envFile, "UTF-8")
-      try src.getLines().map(_.trim).toList finally src.close()
-    }.getOrElse(Nil)
-  }
-
-  /** Read one `KEY=VALUE`. Commented-out lines never match — the `#` is part of
-   *  the prefix test. */
-  private def envValue(baseDir: File, key: String): Option[String] =
-    envLines(baseDir).find(_.startsWith(s"$key=")).map(_.drop(key.length + 1).trim)
-      .map(v => v.stripPrefix("\"").stripSuffix("\"").stripPrefix("'").stripSuffix("'"))
-
-  /** True when `.env.local`'s active `MONGODB_URI` points at this machine
-   *  — that's the signal the developer is relying on a tunnel. The
-   *  commented-out Atlas fallback line is skipped (`#` prefix). */
-  private def localUriConfigured(baseDir: File): Boolean =
-    envValue(baseDir, "MONGODB_URI").exists(u => u.contains("127.0.0.1") || u.contains("localhost"))
+  /** True when `MONGODB_URI` points at this machine — the signal the developer is relying
+   *  on a tunnel. */
+  private def localUriConfigured(env: String => Option[String]): Boolean =
+    env("MONGODB_URI").exists(u => u.contains("127.0.0.1") || u.contains("localhost"))
 
   private def isPortListening(port: Int): Boolean = {
     val sock = new Socket()

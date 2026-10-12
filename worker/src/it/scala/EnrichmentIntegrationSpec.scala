@@ -9,7 +9,7 @@ import tools.RealHttpFetch
 
 /**
  * Live test of the enrichment pipeline against real TMDB + IMDb GraphQL.
- * Requires TMDB_API_KEY (in `.env.local` or the environment).
+ * Requires TMDB_API_KEY in the environment (`secrets run movies TMDB_API_KEY -- sbt …`).
  *
  * Exercises the same classes the production code uses — no mocking, no fakes.
  * The Polish-title → TMDB → IMDB id → IMDb-rating chain is what

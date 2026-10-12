@@ -28,9 +28,8 @@ import scala.concurrent.duration._
  * `--write` once the counts look right:
  *
  * ```
- * set -a; . ./.env.local; set +a
- * MONGODB_USERS_DB=kinowo sbt 'web/Test/runMain tools.SharedUsersMigration'
- * MONGODB_USERS_DB=kinowo sbt 'web/Test/runMain tools.SharedUsersMigration --write'
+ * MONGODB_USERS_DB=kinowo scripts/with-prod-mongo.sh sbt 'web/Test/runMain tools.SharedUsersMigration'
+ * MONGODB_USERS_DB=kinowo scripts/with-prod-mongo.sh sbt 'web/Test/runMain tools.SharedUsersMigration --write'
  * ```
  *
  * Sources are the per-country databases by NAME (`Country.mongoDb`), not through

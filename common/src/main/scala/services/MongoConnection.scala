@@ -208,7 +208,7 @@ class MongoConnection(
           case Failure(exception) =>
             val isLocalUri = connectionString.contains("127.0.0.1") || connectionString.contains("localhost")
             val hint = if (isLocalUri)
-              " (local URI — start the tunnel with `ssh -N -L 27017:127.0.0.1:27017 root@2.28.56.140` and restart, or uncomment the Atlas fallback in .env.local)"
+              " (local URI — start the tunnel with `ssh -N -L 27017:127.0.0.1:27017 root@2.28.56.140` and restart, or run under `scripts/with-prod-mongo.sh`, which opens it)"
             else ""
             // A REACHABILITY failure must not abort boot, even when `required`. Refusing
             // to start means Play never binds port 9000, so Fly's health check can never

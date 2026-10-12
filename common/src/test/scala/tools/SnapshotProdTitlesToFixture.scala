@@ -16,10 +16,9 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * real long-tail of production titles through the rule engine — the "tests
  * generated from prod db" requirement.
  *
- * Run against prod via an ssh tunnel to the Mongo host (read-only):
- *   ssh -N -L 27017:127.0.0.1:27017 root@2.28.56.140   # in one shell (see scripts/local-mirror/prod-tunnel.sh)
- *   set -a; source .env.local; set +a              # MONGODB_URI → 127.0.0.1
- *   sbt 'common/Test/runMain tools.SnapshotProdTitlesToFixture'
+ * Run against prod (read-only; the wrapper opens the ssh tunnel and supplies MONGODB_URI
+ * from the Touch ID vault):
+ *   scripts/with-prod-mongo.sh sbt 'common/Test/runMain tools.SnapshotProdTitlesToFixture'
  *
  * Re-run whenever you want fresh coverage; commit the regenerated fixture.
  */

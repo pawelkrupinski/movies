@@ -540,8 +540,7 @@ object IdentityCapture {
       System.err.println(s"[identity-capture] $error"); sys.exit(2)
     case Right(options) =>
       val repo    = Path.of("").toAbsolutePath
-      // the exported environment alone, never .env.local: its MONGODB_URI is prod's, and the capture's Mongo is a throwaway
-      val configuration = settings.ProcessConfiguration.resolveExported()
+      val configuration = settings.ProcessConfiguration.resolve()
       val env     = Variables.flatMap(name => configuration.env.get(name).map(name -> _)).toMap
       val layout  = Layout(repo, env.get("KINOWO_IDENTITY_CAPTURE_WORK").map(Path.of(_).toAbsolutePath).getOrElse(repo.resolve("target/identity-capture")))
       val effects = if (options.dryRun) new DryRun(println) else new Live(repo, env)

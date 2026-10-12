@@ -31,9 +31,7 @@ import services.readmodel.{MongoReadModelRepository, ReadModelProjection, ReadMo
  * both side repositories.
  *
  * Run against prod via the ssh tunnel (see reference_prod_mongo_access):
- *   . scripts/local-mirror/prod-tunnel.sh && ensure_prod_tunnel   # ssh forward to mongo-1
- *   set -a; source .env.local; set +a
- *   sbt "worker/Test/runMain scripts.BackfillReadModel"
+ *   scripts/with-prod-mongo.sh sbt "worker/Test/runMain scripts.BackfillReadModel"
  */
 object BackfillReadModel {
   // The latest year a title may name (`LatestTitleYear`), read off this clock at each ask.

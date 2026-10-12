@@ -31,11 +31,11 @@ import scala.util.Try
  *  active slot. Idempotent — a slot already collapsed to one boundary document
  *  merges to itself.
  *
- *  Reads `MONGODB_URI` / `MONGODB_DB` from env — source `.env.local` first:
+ *  Reads `MONGODB_URI` / `MONGODB_DB` from env; `scripts/with-prod-mongo.sh` opens the
+ *  tunnel and supplies them from the Touch ID vault:
  *
  *  ```
- *  set -a; . ./.env.local; set +a
- *  sbt 'worker/Test/runMain tools.UptimeBucketsMigration'
+ *  scripts/with-prod-mongo.sh sbt 'worker/Test/runMain tools.UptimeBucketsMigration'
  *  ```
  */
 object UptimeBucketsMigration {

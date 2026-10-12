@@ -4,9 +4,9 @@ package tools
  * Refuses to let the `it/` layer run against a REAL MongoDB cluster.
  *
  * The integration specs write sentinel rows into `movies` / `tasks` / … and purge
- * them in `afterAll`. They resolve their target through `Env`, which falls back to
- * `.env.local` — where `MONGODB_URI` points at `127.0.0.1:27017`, i.e. PROD via
- * an ssh tunnel to the prod Mongo host. So `sbt itAll` with a tunnel open silently wrote
+ * them in `afterAll`. They resolve their target through `Env` — and a `MONGODB_URI` at
+ * `127.0.0.1:27017` is PROD via an ssh tunnel to the prod Mongo host (the old `.env.local`
+ * carried exactly that). So `sbt itAll` with a tunnel open silently wrote
  * sentinels into the production corpus, and a run killed before `afterAll` stranded
  * them there. That is not hypothetical — prod still carried "Dotted (1902)" rows,
  * and `MovieRepositoryIntegrationSpec` + `ci.yml` both grew purge code for them.
@@ -54,8 +54,9 @@ object IntegrationMongo {
            |  MONGODB_URI resolved to: ${redact(uri)}
            |
            |These specs write and delete sentinel rows. Against prod that strands data —
-           |it already has ("Dotted (1902)"). `.env.local` points MONGODB_URI at the
-           |prod tunnel, so this fires whenever an ssh forward onto :27017 is up.
+           |it already has ("Dotted (1902)"). A MONGODB_URI on 127.0.0.1:27017 is the
+           |prod tunnel (scripts/with-prod-mongo.sh exports exactly that), so don't run
+           |the it/ layer under it.
            |
            |Run against a throwaway instead — a mongod of the run's own:
            |  scripts/it-local.sh

@@ -27,11 +27,11 @@ import scala.concurrent.duration._
  *  `displayName` rows, and `img: …` rows are untouched: their service strings
  *  aren't bare scrape hosts, so they never match the host set. Idempotent.
  *
- *  Reads `MONGODB_URI` / `MONGODB_DB` from env — source `.env.local` first:
+ *  Reads `MONGODB_URI` / `MONGODB_DB` from env; `scripts/with-prod-mongo.sh` opens the
+ *  tunnel and supplies them from the Touch ID vault:
  *
  *  ```
- *  set -a; . ./.env.local; set +a
- *  sbt 'worker/Test/runMain tools.UptimeCinemaHostCleanup'
+ *  scripts/with-prod-mongo.sh sbt 'worker/Test/runMain tools.UptimeCinemaHostCleanup'
  *  ```
  */
 object UptimeCinemaHostCleanup {

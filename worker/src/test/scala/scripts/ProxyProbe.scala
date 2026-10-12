@@ -15,7 +15,7 @@ import services.cinemas.pl.MultikinoClient
  *   DECODO_PROXY_USER=… DECODO_PROXY_PASS=… sbt 'worker/Test/runMain scripts.ProxyProbe'
  *
  * Host + ports come from residential-proxy.properties; DECODO_PROXY_USER /
- * DECODO_PROXY_PASS come from the environment / .env.local (same path the worker
+ * DECODO_PROXY_PASS come from the environment — `secrets run movies DECODO_PROXY_USER DECODO_PROXY_PASS -- sbt …` (same path the worker
  * uses, via [[ResidentialProxy]]). Pass/fail is printed per target; a `407` or
  * `403` shows as FAIL with the status in the message.
  */

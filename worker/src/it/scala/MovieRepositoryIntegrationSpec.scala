@@ -24,7 +24,7 @@ import scala.concurrent.Await
 
 /**
  * Live test of MovieRepository against real MongoDB Atlas. Requires MONGODB_URI
- * to be set (in `.env.local` or the environment). Skips otherwise so CI doesn't
+ * to be set in the environment. Skips otherwise so CI doesn't
  * fail without secrets.
  *
  * Runs in its own database (see `specDb`), dropped at the end, so nothing it writes

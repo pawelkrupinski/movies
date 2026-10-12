@@ -29,9 +29,9 @@ import tools.{FixtureTestWiring, HttpFetch, RealHttpFetch}
  * case: an EXISTING corpus that predates a new call, which is exactly how the
  * 08-06-2026 tree ended up without them.
  *
- * Run (needs TMDB_API_KEY from `.env.local`, and the network):
- *   sbt "worker/Test/runMain clients.tools.RecordDirectorWalkFixtures"
- *   sbt "worker/Test/runMain clients.tools.RecordDirectorWalkFixtures 350,42238"   // named films
+ * Run (needs TMDB_API_KEY from the Touch ID vault, and the network):
+ *   secrets run movies TMDB_API_KEY -- sbt "worker/Test/runMain clients.tools.RecordDirectorWalkFixtures"
+ *   secrets run movies TMDB_API_KEY -- sbt "worker/Test/runMain clients.tools.RecordDirectorWalkFixtures 350,42238"   // named films
  * then regenerate the snapshots per the `regenerate-snapshots` skill.
  */
 object RecordDirectorWalkFixtures {
@@ -124,7 +124,7 @@ object RecordDirectorWalkFixtures {
     // out of the fixture fingerprint, so a file recorded under the real key is
     // the same file replay looks up under the stub one.
     val realKey = configuration.tmdbApiKey.getOrElse(
-      sys.error("TMDB_API_KEY not set — add it to .env.local (this script records against live TMDB)."))
+      sys.error("TMDB_API_KEY not set — run under `secrets run movies TMDB_API_KEY -- sbt …` (this script records against live TMDB)."))
 
     val wiring = new FixtureTestWiring(Fixture) {
       override lazy val httpFetch: HttpFetch       = new PersonRecordingFetch(Fixture)

@@ -12,12 +12,11 @@ import scala.concurrent.duration._
  *  in Mongo. The next scrape tick refills with fresh, normalised
  *  showtimes from the now-fixed `CinemaCityClient`.
  *
- *  Reads `MONGODB_URI` / `MONGODB_DB` from env — source `.env.local`
- *  before running:
+ *  Reads `MONGODB_URI` / `MONGODB_DB` from env; `scripts/with-prod-mongo.sh` opens the
+ *  tunnel and supplies them from the Touch ID vault:
  *
  *  ```
- *  set -a; . ./.env.local; set +a
- *  sbt 'Test/runMain clients.tools.DropKinepolisSlots'
+ *  scripts/with-prod-mongo.sh sbt 'worker/Test/runMain clients.tools.DropKinepolisSlots'
  *  ```
  */
 object DropKinepolisSlots {

@@ -17,7 +17,7 @@ import scala.concurrent.duration.*
  * out of an OMDb client and a settle interval out of the enrichment reaper.
  *
  * It reads through an [[Env]]: [[ProcessConfiguration.resolve]] binds that to the real
- * process (`Env.fromProcess` — env vars, then system properties, then `.env.local`), a spec
+ * process (`Env.fromProcess` — env vars, then system properties), a spec
  * builds one over `Env.of(...)`. Accessors are `def`s that read the Env on every call, so an
  * `/admin/config` override (installed into the Env) reaches a value read per use without a
  * restart, and each numeric knob still self-registers on the admin page with its default.
@@ -385,15 +385,9 @@ final class ProcessConfiguration(val env: Env) {
 
 object ProcessConfiguration {
 
-  /** This process's configuration: environment variables → system properties → `localFile`
-   *  (`.env.local` by default). Call once, from a `main`. */
-  def resolve(localFile: java.io.File = new java.io.File(".env.local")): ProcessConfiguration =
-    new ProcessConfiguration(Env.fromProcess(localFile))
-
-  /** The process's own environment variables and system properties alone, WITHOUT `.env.local`
-   *  — for a root that must tell a value the user exported from one only that file carries (the
-   *  local stack, whose `.env.local` MONGODB_URI is prod's). */
-  def resolveExported(): ProcessConfiguration = resolve(new java.io.File("/nonexistent/.env.local"))
+  /** This process's configuration: environment variables → system properties. Call once,
+   *  from a `main`. */
+  def resolve(): ProcessConfiguration = new ProcessConfiguration(Env.fromProcess())
 }
 
 /** Where an alerter's Telegram route is configured: its chat and optional topic. */

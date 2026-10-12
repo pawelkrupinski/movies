@@ -43,7 +43,7 @@ import scala.concurrent.duration._
  * country at a time.
  *
  * Each country is its own database, taken from `Country.mongoDb` (never `MONGODB_DB`, which
- * `.env.local` pins to Poland). DRY RUN BY DEFAULT; `--apply` writes.
+ * a prod run pins to Poland). DRY RUN BY DEFAULT; `--apply` writes.
  *
  * {{{
  *   . scripts/local-mirror/prod-tunnel.sh && ensure_prod_tunnel

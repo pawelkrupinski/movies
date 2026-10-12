@@ -67,7 +67,7 @@ class WorkerWiring(
     // reads. `WorkerMain` builds ONE and hands the same instance to every country's
     // wiring, so the override source EnvConfigService installs reaches all of them.
     // Defaulted to an EMPTY Env for test wirings — hermetic: every knob on its compiled-in
-    // default, whatever the shell or `.env.local` holds. A run that wants the process's
+    // default, whatever the shell holds. A run that wants the process's
     // (a convergence leg, a recorder) passes the one its root resolved.
     val env: Env = Env.of()) extends play.api.Logging
     with HttpWiring with EgressWiring with ScrapeWiring with ChunkScrapeWiring with DetailWiring

@@ -211,8 +211,8 @@ abstract class CountryConvergenceBehaviour(
    * country to prove nothing. The keyless run used to be a supported mode, with the cache
    * simply absent and the enrichment assertion excused along with it.
    *
-   * Pass the key inline from the Touch ID vault — never by sourcing or symlinking a
-   * `.env.local`, whose `MONGODB_URI` is production's:
+   * Pass the key inline from the Touch ID vault, and only that key — never the vault's
+   * `MONGODB_URI`, which is production's:
    *
    * {{{
    *   scripts/convergence-local.sh pl     # restores the pair, reads the key from the vault

@@ -16,7 +16,7 @@ trait EgressWiring { self: WorkerWiring =>
   // Residential-proxy egress (Decodo static-ISP, PL Netia) for the cinema sites
   // that Cloudflare-block our Fly datacenter IP. Non-secret host+ports come from
   // the committed residential-proxy.properties; the DECODO_PROXY_USER/PASS secrets
-  // come from Env (env -> .env.local). Set only when both are present — absent in
+  // come from Env (the process environment). Set only when both are present — absent in
   // local/test, where the chain collapses to the direct path. See the
   // `reference_decodo_isp_proxy` memory.
   // One RealHttpFetch per Decodo pool IP (each pinned, own cookie jar), built

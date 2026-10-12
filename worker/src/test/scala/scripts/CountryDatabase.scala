@@ -5,7 +5,7 @@ import org.mongodb.scala.MongoDatabase
 import services.MongoConnection
 
 /** A per-country script's database: `country`'s own (`Country.mongoDb`, never `MONGODB_DB`, which
- *  `.env.local` pins to Poland) on the cluster the resolved configuration names. */
+ *  a prod run pins to Poland) on the cluster the resolved configuration names. */
 object CountryDatabase {
 
   /** The connection and its database, or exit saying why not. The caller closes the connection. */

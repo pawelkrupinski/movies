@@ -361,9 +361,7 @@ lazy val web = (project in file("web"))
     // Eagerly trigger AppLoader on `sbt run` (see project/Warmup.scala) and start
     // the Mongo proxy for local dev (see project/MongoProxy.scala).
     PlayKeys.playRunHooks += Warmup(),
-    // `.env.local` lives at the repo root, not under web/, so point the proxy
-    // hook at the build root rather than this module's baseDirectory.
-    PlayKeys.playRunHooks += MongoProxy((LocalRootProject / baseDirectory).value),
+    PlayKeys.playRunHooks += MongoProxy(),
     // The client-side language pack (`controllers.I18nPacks`) — derives from
     // `messages*` on every compile so the bundles stay the one source of
     // truth for both the server-rendered default page and the client-side
@@ -426,16 +424,17 @@ lazy val root = (project in file("."))
 
 // ── Local dev stack: `sbt localStack` ────────────────────────────────────────
 //
-// Runs `web` + `worker` together against ONE shared local Mongo (distinct from
-// the prod db `.env.local` reaches), where the WORKER replays every HTTP fetch
+// Runs `web` + `worker` together against ONE shared local Mongo (never prod), where the WORKER replays every HTTP fetch
 // from test/resources/fixtures/today while WEB hits the real internet (posters,
 // etc.) and serves the corpus the worker projects into the local read model.
 //
 //   - worker: `worker/Test/bgRunMain modules.LocalFixtureWorkerMain` (background,
 //     forked). Fetches via FakeHttpFetch("today"); real local Mongo + projector.
 //   - web: `web/run` (foreground, Play dev on :9000). Loaded in THIS sbt JVM, so
-//     a JVM property is how it picks up the local Mongo — Env precedence is
-//     process-env > -D > .env.local, so this beats .env.local's prod URI.
+//     a JVM property is how it picks up the local Mongo. Env precedence is
+//     process-env > -D, so launch it WITHOUT a MONGODB_URI in the environment —
+//     plain `sbt localStack`, never under `secrets run movies MONGODB_URI …`,
+//     or that (prod) URI wins over these properties. It needs no secrets.
 //
 // Override via env: KINOWO_LOCAL_MONGO_URI, KINOWO_LOCAL_MONGO_DB, KINOWO_FIXTURE_DIR.
 // Uses the native brew Mongo on port 28017 (NOT 27017 — that's the prod ssh-tunnel
@@ -457,12 +456,10 @@ lazy val localStack = Command.command("localStack") { state =>
   // the SAME defaults itself, so both land on the same db.
   System.setProperty("MONGODB_URI", uri)
   System.setProperty("MONGODB_DB", db)
-  // Point the web app's /debug read-mirror at the SAME local db. Without this it
-  // falls through to .env.local's MONGODB_MOVIES_MIRROR_URI (the prod-synced
-  // kinowo_prod_mirror), so /debug would show the prod corpus instead of what the
-  // local worker projects into `db`. The mirror only exists to dodge the slow prod
-  // tunnel; on a local Mongo it's pointless, so just aim it at `db`. Set to a
-  // non-empty value because Env falls back to .env.local when the property is blank.
+  // Point the web app's /debug read-mirror at the SAME local db, so /debug shows what
+  // the local worker projects into `db` rather than an exported
+  // MONGODB_MOVIES_MIRROR_URI (the prod-synced kinowo_prod_mirror). The mirror only
+  // exists to dodge the slow prod tunnel; on a local Mongo it's pointless.
   System.setProperty("MONGODB_MOVIES_MIRROR_URI", uri)
   state.log.info(s"[localStack] worker replays fixtures/$fixtureDir, web hits the internet — both on Mongo $uri db=$db (mirror→$db too, not prod)")
   "worker/Test/bgRunMain modules.LocalFixtureWorkerMain" :: "web/run" :: state

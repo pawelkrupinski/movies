@@ -51,7 +51,7 @@ import tools.PersonName
  *
  * Each country is its OWN database on the shared cluster, taken from
  * `Country.mongoDb` and NOT from `MongoAddress.databaseFor` — the latter lets
- * `MONGODB_DB` win, and `.env.local` pins that to prod `kinowo`, which would
+ * `MONGODB_DB` win, and a prod run pins that to `kinowo`, which would
  * silently point every country's pass at Poland.
  *
  * DRY RUN BY DEFAULT: it reports per-country counts and writes nothing. Pass

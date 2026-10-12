@@ -30,7 +30,7 @@ trait TestWiring extends WorkerWiring {
   // Pin a DISABLED Mongo connection. Tests get their movie data from
   // `InMemoryMovieRepository` / fixtures and don't exercise the user repos, so a real
   // Mongo is never needed — but the production `fromEnv` would still CONNECT to
-  // whatever `MONGODB_URI` (`.env.local`) is reachable. With a developer's
+  // whatever `MONGODB_URI` the process carries. With a developer's
   // `flyctl proxy 27017` tunnel up, that hydrated real PRODUCTION enrichment
   // into otherwise-hermetic end-to-end specs, so a row's ratings differed
   // depending on whether the tunnel happened to be open — a flake that never
@@ -41,7 +41,7 @@ trait TestWiring extends WorkerWiring {
 
   // NO PAID EGRESS, whatever environment the wiring was handed. A test wiring answers from
   // fixtures; an integration or e2e spec hands it the process's Env for its MONGODB_URI and
-  // TMDB key, and that Env carries CI's secrets or a developer's `.env.local` — which is how a
+  // TMDB key, and that Env carries CI's secrets or whatever a developer launched it with — which is how a
   // replay could reach Zyte (billed per request) or the Decodo proxy without anyone asking.
   // No key means no Zyte leg on any route and no Odeon token; no shards means no proxy leg —
   // so every cinema-egress route collapses onto the wiring's own `httpFetch`.
@@ -117,8 +117,8 @@ trait TestWiring extends WorkerWiring {
 
   // Inject a stub TMDB API key so the test doesn't depend on a `TMDB_API_KEY`
   // env var. `TmdbClient.search` short-circuits to `None` when the key is
-  // absent — without an override, every CI runner (and any local box without
-  // `.env.local`) sees no TMDB resolution and no downstream enrichment at all.
+  // absent — without an override, every CI runner (and any local run without
+  // TMDB_API_KEY) sees no TMDB resolution and no downstream enrichment at all.
   // The fixture replay doesn't need a real key (the URL's
   // `api_key` query parameter is stripped from the fixture fingerprint via
   // `RecordingHttpFetch.stableQueryFingerprint`), so any non-empty string works.
