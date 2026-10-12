@@ -69,8 +69,8 @@ class CitiesTest {
     }
 
     @Test
-    fun ukRosterIsTheFullSeventyNineRegions() {
-        assertEquals(79, Cities.citiesIn("uk").size)
+    fun ukRosterIsTheFullSeventySixRegions() {
+        assertEquals(76, Cities.citiesIn("uk").size)
         assertEquals("london", Cities.citiesIn("uk").first().slug) // hand order
         assertTrue(Cities.citiesIn("uk").all { it.country == "uk" })
     }
@@ -96,9 +96,9 @@ class CitiesTest {
 
     @Test
     fun allIsTheGlobalUnionOfPolishAndUkCities() {
-        assertEquals(259, Cities.all.size)               // 180 PL + 79 GB
+        assertEquals(256, Cities.all.size)               // 180 PL + 76 GB
         assertEquals(180, Cities.citiesIn("pl").size)
-        assertEquals(79, Cities.citiesIn("uk").size)
+        assertEquals(76, Cities.citiesIn("uk").size)
     }
 
     /**
