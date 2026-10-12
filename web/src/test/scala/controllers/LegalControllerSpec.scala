@@ -66,4 +66,16 @@ class LegalControllerSpec extends AnyFlatSpec with Matchers {
     html should include ("""<html lang=""")
     html should include ("pawel.krupinski@gmail.com")
   }
+
+  // Retired 2026-10-12: no registration points here any more — Meta's dashboard
+  // and Google's consent screen carry /privacy-policy (or nothing), and the
+  // only hits in six weeks of access logs were 95 crawler requests. With the
+  // route gone the path falls to the `/:city` catch-all, which 404s an unknown
+  // slug (see CityTrailingSlashRedirectSpec).
+  "the routes file" should "no longer serve the pre-i18n /polityka-prywatnosci path" in {
+    val source = scala.io.Source.fromInputStream(getClass.getResourceAsStream("/routes"))
+    val paths  = try source.getLines().filter(_.startsWith("GET ")).map(_.split("\\s+")(1)).toList finally source.close()
+    paths should contain ("/privacy-policy")
+    paths should not contain "/polityka-prywatnosci"
+  }
 }

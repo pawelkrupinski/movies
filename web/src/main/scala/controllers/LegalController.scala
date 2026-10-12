@@ -16,13 +16,6 @@ class LegalController(cc: ControllerComponents, country: models.Country) extends
     Ok(policy(PublishedLanguages.resolve(lang, published, country)))
   }
 
-  /** The policy used to live at `/polityka-prywatnosci`, a URL that is
-   *  registered in Meta's app dashboard and already sits in links in the wild.
-   *  Redirect it rather than keeping two paths for one document. */
-  def privacyLegacyPath: Action[AnyContent] = Action {
-    MovedPermanently(routes.LegalController.privacy(None).url)
-  }
-
   private val published = Set("pl", "en", "de")
 
   private def policy(language: String): play.twirl.api.Html = language match {

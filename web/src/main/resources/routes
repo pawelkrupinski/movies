@@ -198,9 +198,6 @@ POST    /tasks/run/:job             controllers.TasksController.run(job: String)
 # `lang` picks the language of the DOCUMENT — the store listings link
 # ?lang=pl|en|de — and falls back to the deployment's own language when absent.
 GET     /privacy-policy             controllers.LegalController.privacy(lang: Option[String])
-# The pre-i18n Polish-named path, still live in Meta's dashboard and in links
-# already published. 301s onto the route above.
-GET     /polityka-prywatnosci       controllers.LegalController.privacyLegacyPath
 
 # Public support page. Apple requires a support URL per App Store listing locale
 # and a human reads it during review, so it answers questions rather than
