@@ -23,7 +23,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   val qualifiers: IdentityMeasures.Qualifiers = IdentityMeasures.Qualifiers.learn(pool.map(_.film))
 
   /** Every candidate `l` has an evidence path to, scored; a `denial` marks, with its reason, the ones
-   *  its node (`deniedByNode`: a pin, a venue's own name) or its own evidence rules out
+   *  its node (`deniedByNode`: a pin, a venue's own name, an overruled feed link) or its own evidence rules out
    *  (`CandidateScoring.evidenceDenial`), which are never eligible. */
   def score(listing: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
             deniedByNode: Int => Option[String], suggested: Set[Int] = Set.empty, directedBy: Set[Int] = Set.empty,
@@ -107,9 +107,32 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     relations.getOrElseUpdate((listing.titleInputs, candidate.tmdbId),
       { related(); IdentityMeasures.titleRelation(listing, candidate.film, houses, qualifiers) })
 
+  /** `node`'s feed link, when the title's other sources overrule it ([[FeedLink]]): once per node for this scope's life. */
+  def overruled(node: EvidenceNode): Option[FeedLink] = overruledMemo.getOrElseUpdate(node.id, overrule(node))
+  private val overruledMemo = mutable.HashMap.empty[String, Option[FeedLink]]
+  private def overrule(node: EvidenceNode): Option[FeedLink] = FeedLink.linked(node).flatMap { case (id, film) =>
+    val listing = node.evidence.measured
+    val groups  = IdentityMeasures.titleGroups(listing)
+    val own     = sourceOf(node)
+    def sources(candidate: Candidate) =
+      backing.sources((groups ++ IdentityMeasures.searchGroups(listing, candidate.film)).distinct, candidate.film, own)
+    if (pool.exists(candidate => candidate.tmdbId == film && sources(candidate) > 0)) None
+    else pool.filter(candidate => candidate.tmdbId != film && IdentityMeasures.Rivalling(titleRelation(listing, candidate).value))
+      .map(candidate => candidate.tmdbId -> sources(candidate)).filter(_._2 >= FeedLink.OverrulingSources)
+      .sortBy { case (rival, count) => (-count, rival) }.headOption
+      .map { case (rival, count) => FeedLink(id, film, rival, count) }
+  }
+
+  /** `node`'s evidence as this scope reads it: its titles alone when its feed link is overruled ([[FeedLink]]) — the facts
+   *  were the link's, restated — else its own. */
+  def evidenceOf(node: EvidenceNode): Evidence = if (overruled(node).isEmpty) node.evidence else node.evidence.titlesOnly
+
+  /** Whose claim `node`'s facts are, for the sources backing a film ([[CatalogueSources.factSource]]). */
+  private def sourceOf(node: EvidenceNode): String = CatalogueSources.factSource(node.listings.head)
+
   private val memo = mutable.HashMap.empty[String, Seq[Scored]]
   def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id,
-    score(node.evidence.measured, node.venue, ownSearch(node.id), ownWalk(node.id), sharedOf(node),
+    score(evidenceOf(node).measured, node.venue, ownSearch(node.id), ownWalk(node.id), sharedOf(node),
       id => denialByNode(node, id), imdbOnly(node.id), directed(node.id), imdbTitled(node.id), countryOf(node)).map(placedByImdb(Seq(node)))
       .map(scored => if (soleResults(node.id)(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored)
       .map(scored => imdbTitled(node.id).get(scored.candidate.tmdbId).fold(scored)(titles => scored.copy(imdbTitled = titles))))
@@ -137,6 +160,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  or by a programme tag. */
   private def denialByNode(node: EvidenceNode, id: Int): Option[String] =
     Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
+      .orElse(overruled(node).filter(_.film == id).map(_.denial))
       .orElse(Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))
       .orElse(Option.when(namesOnlyATag(node, candidateById(id)))("its title names it only by a programme tag billed beside many titles"))
       .orElse(Option.when(namesOnlyAProgrammeSlot(node, candidateById(id)))("its title names it only by a festival's programme slot"))
@@ -153,15 +177,16 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     def modal[A: Ordering](values: Seq[(A, Int)]): Option[A] =
       values.groupMapReduce(_._1)(_._2)(_ + _).toSeq.sortBy { case (value, weight) => (-weight, value) }.headOption.map(_._1)
     val lead     = cluster.minBy(node => (-node.weight, node.id))
-    val runtimes = cluster.flatMap(node => node.evidence.runtime.toSeq.flatMap(runtime => Seq.fill(node.weight)(runtime))).sorted
-    val year     = modal(cluster.flatMap(node => node.evidence.year.map(_ -> node.weight)))
-    val listing  = lead.evidence.measured.copy(
+    val evidence = cluster.map(node => node -> evidenceOf(node))
+    val runtimes = evidence.flatMap { case (node, stated) => stated.runtime.toSeq.flatMap(runtime => Seq.fill(node.weight)(runtime)) }.sorted
+    val year     = modal(evidence.flatMap { case (node, stated) => stated.year.map(_ -> node.weight) })
+    val listing  = evidenceOf(lead).measured.copy(
       year          = year,
-      yearCredits   = Some(cluster.filter(node => year.nonEmpty && node.evidence.year == year).flatMap(_.evidence.directors).distinct.sorted),
-      originalTitle = modal(cluster.flatMap(node => node.evidence.originalTitle.map(_ -> node.weight))),
-      directors     = cluster.flatMap(_.evidence.directors).distinct.sorted,
+      yearCredits   = Some(evidence.collect { case (_, stated) if year.nonEmpty && stated.year == year => stated.directors }.flatten.distinct.sorted),
+      originalTitle = modal(evidence.flatMap { case (node, stated) => stated.originalTitle.map(_ -> node.weight) }),
+      directors     = evidence.flatMap(_._2.directors).distinct.sorted,
       runtime       = runtimes.lift(runtimes.size / 2),
-      countries     = cluster.flatMap(_.evidence.countries).distinct.sorted)
+      countries     = evidence.flatMap(_._2.countries).distinct.sorted)
     val ranks = cluster.flatMap(node => ownSearch(node.id)).groupMapReduce(_._1)(_._2)(math.min)
     score(listing, lead.venue, ranks, cluster.flatMap(node => ownWalk(node.id)).toSet, cluster.flatMap(sharedOf).toSet,
       id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption(), cluster.flatMap(node => imdbOnly(node.id)).toSet -- ranks.keySet,

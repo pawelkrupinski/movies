@@ -40,7 +40,8 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
     val sameForm = form.nonEmpty && form == searchForm(second.evidence.cleanTitle) && !titlesBeside(first, form) && !titlesBeside(second, form) &&
       !IdentityMeasures.billsTwoWorks(first.evidence.published) && !IdentityMeasures.billsTwoWorks(second.evidence.published)
     def titled(l: IdentityMeasures.Listing) = if (sameForm) l.copy(title = form, rawTitle = None) else l
-    val (firstListing, secondListing) = (titled(first.evidence.published), titled(second.evidence.published))
+    // as each node's scope reads its facts: an overruled feed link's copied facts keep no listing apart ([[FeedLink]])
+    val (firstListing, secondListing) = (titled(families.scopeOf(first).evidenceOf(first).published), titled(families.scopeOf(second).evidenceOf(second).published))
     lazy val measures = IdentityMeasures.listingListing(firstListing, secondListing, sameVenue = (first.venues intersect second.venues).nonEmpty, sharedChainId = None)
     ListingConstraints.seasonsApart(firstListing.seasonYear, secondListing.seasonYear, secondListing.year)
       .orElse(ListingConstraints.seasonsApart(secondListing.seasonYear, firstListing.seasonYear, firstListing.year))

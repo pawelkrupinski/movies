@@ -1440,7 +1440,17 @@ object IdentityMeasures {
   def exactTopHits(l: Listing, pool: Seq[(Int, Film, Option[Int])]): Seq[Int] =
     pool.collect { case (id, f, Some(1)) if titleRelation(l, f) == Category("exact") => id }.distinct.sorted
 
-  /** The venues among `group` (the listings sharing the listing's title key, with their venue)
+  /** Who backs a film from a title group: the listing's venue, and whose claim its facts are — the venue's own, or the feed
+   *  entry they were copied from (`CatalogueSources.factSource`) — kept as one string per group entry, `venue` and
+   *  `source` joined by [[Backer.Join]]. A key holding no join is its venue's own claim. */
+  object Backer {
+    val Join = '\u0001'
+    def apply(venue: String, source: String): String = s"$venue$Join$source"
+    def venue(key: String): String  = { val at = key.indexOf(Join); if (at < 0) key else key.substring(0, at) }
+    def source(key: String): String = { val at = key.indexOf(Join); if (at < 0) key else key.substring(at + 1) }
+  }
+
+  /** The venues among `group` (the listings sharing the listing's title key, each with its [[Backer]])
    *  whose OWN facts back `f` — a title naming it, and its exact year or a credit of its director —
    *  other than `ownVenue`: the `venues.corroborating` count. */
   def corroboratingVenues(f: Film, group: Seq[(String, Listing)], ownVenue: String): Int =
@@ -1448,7 +1458,10 @@ object IdentityMeasures {
 
   /** Every venue of `group` whose own facts back `f` ([[corroboratingVenues]] before the asking
    *  venue is taken out): one answer per title group and film ([[VenueBacking]]). */
-  def backingVenues(f: Film, group: Seq[(String, Listing)]): Set[String] = {
+  def backingVenues(f: Film, group: Seq[(String, Listing)]): Set[String] = backers(f, group).map(Backer.venue)
+
+  /** Every [[Backer]] of `group` whose own facts back `f`. */
+  private def backers(f: Film, group: Seq[(String, Listing)]): Set[String] = {
     // A node's venues share one listing: its answer is found once, not once per venue.
     val backs = new java.util.IdentityHashMap[Listing, java.lang.Boolean]()
     group.iterator.filter { case (_, l) => backs.computeIfAbsent(l, listing => Boolean.box(backsFilm(listing, f))) }.map(_._1).toSet
@@ -1471,10 +1484,17 @@ object IdentityMeasures {
     // country) per lookup cost more than the backing it saved. An equal record held twice is only
     // computed twice, to the same venues.
     private val memo = scala.collection.mutable.HashMap.empty[String, java.util.IdentityHashMap[Film, Set[String]]]
+    private def backing(titleGroups: Seq[String], f: Film): Iterator[String] =
+      titleGroups.iterator.flatMap(group => memo.getOrElseUpdate(group, new java.util.IdentityHashMap[Film, Set[String]]())
+        .computeIfAbsent(f, film => backers(film, groups.getOrElse(group, Nil))))
     /** The venues of `titleGroups` (a listing's [[titleGroups]]) other than `ownVenue` backing `f`. */
     def corroborating(titleGroups: Seq[String], f: Film, ownVenue: String): Int =
-      (titleGroups.iterator.flatMap(group => memo.getOrElseUpdate(group, new java.util.IdentityHashMap[Film, Set[String]]())
-        .computeIfAbsent(f, film => backingVenues(film, groups.getOrElse(group, Nil)))).toSet - ownVenue).size
+      (backing(titleGroups, f).map(Backer.venue).toSet - ownVenue).size
+    /** The SOURCES of `titleGroups` other than `ownSource` backing `f` ([[Backer.source]]): a feed entry's facts, copied
+     *  onto every venue it lists, are one claim, counted once — what a feed's own link is weighed against
+     *  (`services.identity.FeedLink`). */
+    def sources(titleGroups: Seq[String], f: Film, ownSource: String): Int =
+      (backing(titleGroups, f).map(Backer.source).toSet - ownSource).size
   }
 
   /** The title groups (by [[key]]) whose venues' listings corroborate `l`: its own title's, and the

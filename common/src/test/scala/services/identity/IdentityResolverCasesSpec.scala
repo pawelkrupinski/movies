@@ -2069,6 +2069,48 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // DE "Karla", recording 38196151886: Cineamo links eleven venues' bare "Karla" [99′] to TMDB 9695, the 2006 US film whose
+  // 99 minutes it copies; Filmstarts' entry 1000023315, kinoheld's page and Cineamo's own other entry (1480424m) state
+  // the 2025 film's year and director. Records as TMDB holds them (popularity ranks 9695 first, as its search did).
+  private val karlaFilms = Seq(F(9695, "Karla", 2006, "Joel Bender", 99, 2.102), F(1480424, "Karla", 2025, "Christina Tournatzés", 104, 1.7239))
+  private def fed(l: Listing, source: String, id: String) = l.copy(catalogueIds = Seq(CatalogueId(source, id)))
+  private def karlaStated(venue: Cinema) = listing(venue, "Karla", Some(2025), Some("Christina Tournatzés"), Some(104))
+  private val cineamoKarla = Seq(KinoMikro, KinoOaza, KinoPalacowe).map(v => fed(listing(v, "Karla", runtime = Some(99)), "cineamo", "9695m"))
+
+  "A feed's TMDB link the title's other sources contradict" should "be overruled, its copied facts set aside" in {
+    val others = Seq(KinoMuza, Helios, Multikino).map(v => fed(karlaStated(v), "webedia", "1000023315")) ++
+      Seq(karlaStated(KinoApollo).copy(page = Some("https://www.kinoheld.de/film/karla-68660bfe987df")),
+        fed(listing(KinoBulgarska, "Karla", Some(2025)), "cineamo", "1480424m"))
+    val r = shipped(cineamoKarla ++ others, karlaFilms)
+    val linked = r.decisionOf(cineamoKarla.head.key)
+    withClue((cineamoKarla ++ others).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      (cineamoKarla ++ others).map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1480424))
+      linked.explanation.exists(line => line.contains("cineamo 9695m links 9695, overruled") && line.contains("back 1480424")) shouldBe true
+    }
+  }
+
+  it should "stand while a single source contradicts it" in {
+    // one entry stating another film is one claim against another: two films, each named once (DE "Kohlhiesels Töchter")
+    val other = fed(karlaStated(KinoMuza), "webedia", "1000023315")
+    val r = shipped(cineamoKarla :+ other, karlaFilms)
+    withClue(r.decisionOf(cineamoKarla.head.key).render) {
+      r.decisionOf(cineamoKarla.head.key).film shouldBe Some(9695)
+      r.decisionOf(cineamoKarla.head.key).explanation.exists(_.contains("overruled")) shouldBe false
+    }
+  }
+
+  it should "be overruled though its copied year agrees with the film it links at every venue the feed lists" in {
+    // DE "Momo": Cineamo's 2265m at four venues copies the 1986 film's year — four copies of one claim, which back
+    // nothing beside it; Filmstarts' 314264 and kinoheld's page state Ditter's 2025 film.
+    val films  = Seq(F(2265, "Momo", 1986, "Johannes Schaaf", 101, 2.3504), F(1175842, "Momo", 2025, "Christian Ditter", 91, 3.9229))
+    val linked = Seq(KinoMikro, KinoOaza, KinoPalacowe, Kinoteka).map(v => fed(listing(v, "Momo", Some(1986)), "cineamo", "2265m"))
+    val others = Seq(KinoMuza, Helios).map(v => fed(listing(v, "Momo", Some(2025), Some("Christian Ditter"), Some(92)), "webedia", "314264")) :+
+      listing(Multikino, "Momo", Some(2024), Some("Christian Ditter"), Some(92)).copy(page = Some("https://www.kinoheld.de/film/momo-66b05703e2f2d"))
+    val r = shipped(linked ++ others, films)
+    withClue((linked ++ others).map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(
+      (linked ++ others).map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1175842)))
+  }
+
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {
     weights.version shouldBe "test-fixture-2"
     IdentityCalibration.resolver.scopes.keySet shouldBe weights.scopes.keySet

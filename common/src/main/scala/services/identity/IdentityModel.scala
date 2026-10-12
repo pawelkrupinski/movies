@@ -280,6 +280,10 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
 
   /** The year this listing states: its own field, else the one its title brackets. */
   def statedYear: Option[Int] = measured.statedYear
+
+  /** The evidence with its stated facts set aside — its titles alone: what a node whose facts a feed copied from an
+   *  overruled link is read as ([[FeedLink]]). */
+  def titlesOnly: Evidence = copy(year = None, directors = Nil, runtime = None, originalTitle = None, countries = Nil)
 }
 
 object Evidence {

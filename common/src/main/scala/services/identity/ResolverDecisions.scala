@@ -37,6 +37,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
       s"${node.label}: own match ${scored.candidate.tmdbId} at ${ResolverDecision.percent(confidence)}${acceptance.liftedBy(scope.of(node), scored, confidence)}" +
         scope.acceptedBy(node, scored.candidate.tmdbId).fold("")(rule => s" by $rule") + " " +
         s"(${calibration.explain(ListingFilm, scored.measures)})" })
+    val overruled = cluster.flatMap(node => scope.overruled(node).map(link => s"${node.label}: ${link.explanation}"))
     val joins = edges.filter(edge => edge.must && ids(edge.a) && ids(edge.b)).groupBy(_.reason).toSeq.sortBy(_._1)
       .map { case (reason, reasonEdges) => s"joined by ${reason} ×${reasonEdges.size}" }
     val apart = edges.filter(edge => !edge.must && (ids(edge.a) ^ ids(edge.b))).map { edge =>
@@ -62,7 +63,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
       .filterNot(best => cluster.exists(node => families.denies(node, best.tmdbId)))
       .map(best => ResolverDecision.Leaning(best.tmdbId, best.film.imdbNumber))
     ResolverDecision(cluster.flatMap(_.listings.map(_.key)).sorted, film, confidence, basis,
-      (own.take(4) ++ Option.when(own.size > 4)(s"… ${own.size - 4} more own match(es)") ++ vote ++ joins ++
+      (overruled ++ own.take(4) ++ Option.when(own.size > 4)(s"… ${own.size - 4} more own match(es)") ++ vote ++ joins ++
         apart.take(4) ++ best ++ gaps ++ fallback.map(taken => s"falls back to ${taken.source} ${taken.id} at ${ResolverDecision.percent(taken.probability)}") ++
         leaning.map(lean => s"leans to ${lean.film} (tt${lean.imdbNumber})")) :+
         s"node ${cluster.head.listings.head.key}", contradictions = apart, fallback = fallback, leaning = leaning, unanswered = unknown,

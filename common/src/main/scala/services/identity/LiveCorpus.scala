@@ -315,7 +315,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     live.queries.foreach(query => askers.updateWith(query)(held => Some(held.getOrElse(Set.empty) + key)))
     live.reached.foreach(id => reachers.updateWith(id)(held => Some(held.getOrElse(Set.empty) + key)))
     IdentityMeasures.seasonWorks(live.node.evidence.measured).foreach(pair => seasonNodes.updateWith(pair)(held => Some(held.getOrElse(Set.empty) + key)))
-    groups.getOrElseUpdate(live.titleKey, mutable.TreeMap.empty)(live.id) = live.node.listings.map(listing => listing.venue -> live.node.evidence.measured)
+    groups.getOrElseUpdate(live.titleKey, mutable.TreeMap.empty)(live.id) = live.node.listings.map(listing => IdentityMeasures.Backer(listing.venue, CatalogueSources.factSource(listing)) -> live.node.evidence.measured)
     if (live.whole.nonEmpty) wholes.updateWith(live.whole)(count => Some(count.getOrElse(0) + 1))
     live.pieces.foreach(piece => spreads.getOrElseUpdate(piece, mutable.HashMap.empty).updateWith(live.whole)(count => Some(count.getOrElse(0) + 1)))
     if (live.titleKey.nonEmpty) reachedByKey.getOrElseUpdate(live.titleKey, mutable.TreeMap.empty)(live.id) = live.reached.toSet

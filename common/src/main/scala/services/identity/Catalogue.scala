@@ -44,6 +44,26 @@ object CatalogueSources {
   /** Is `page` a listings site's catalogue entry ([[CatalogueEntryPages]])? */
   def catalogueEntry(page: String): Boolean = CatalogueEntryPages.exists(page.startsWith)
 
+  /** Feeds whose catalogue is TMDB's own: the id they attach IS the TMDB film they linked the screening to, and the facts
+   *  they copy are that record's. Cineamo files a film as its TMDB id and "m" ("9695m" is TMDB 9695 — every one of the
+   *  13,238 recorded DE Cineamo listings, recording 38196151886). Such a link is the feed's own guess at the film, its
+   *  copied facts the guess restated: they agree with the film it linked by construction, so they are no evidence that the
+   *  link is right ([[FeedLink]]). */
+  val TmdbKeyed: Map[String, String => Option[Int]] = Map(Cineamo -> (id => CineamoFilm.unapplySeq(id).flatMap(_.headOption).flatMap(_.toIntOption)))
+  private val CineamoFilm = """(\d+)m""".r
+
+  /** The TMDB film a TMDB-keyed feed linked `listing` to ([[TmdbKeyed]]), with the id that links it. */
+  def tmdbLinked(listing: Listing): Option[(CatalogueId, Int)] =
+    listing.catalogueIds.iterator.flatMap(id => TmdbKeyed.get(id.source).flatMap(_(id.id)).map(id -> _)).nextOption()
+
+  /** Whose claim `listing`'s facts are, for counting the sources that back a film ([[IdentityMeasures.VenueBacking]]): the
+   *  feed entry they were copied from ([[feedStated]]) — one claim however many venues the feed lists it at: its id, or
+   *  its page's last segment (kinoprogramm.com serves one entry under every venue's path) — else its venue's own. */
+  def factSource(listing: Listing): String =
+    listing.catalogueIds.find(id => FeedIds(id.source)).map(_.key)
+      .orElse(listing.page.flatMap(page => FeedPages.find(page.startsWith).map(feed => s"p:$feed${page.reverse.takeWhile(_ != '/').reverse}")))
+      .getOrElse(s"v:${listing.venue}")
+
   /** Are `listing`'s facts a feed catalogue's claim rather than its venue's ([[FeedIds]], [[FeedPages]])? */
   def feedStated(listing: Listing): Boolean = feedStated(listing.catalogueIds, listing.page)
 

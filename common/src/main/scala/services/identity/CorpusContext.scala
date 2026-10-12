@@ -8,8 +8,8 @@ package services.identity
  *    title that names exactly one record ([[IdentityMeasures.venueTitles]]);
  *  - `houseEvidence`: how every node's candidates bill their works, whence each banner's house
  *    ([[IdentityMeasures.Houses]]);
- *  - `titleGroups`: every listing by title key with its venue — a decorated title is backed by
- *    venues listing it plain, whose listings are not title-linked to it ([[IdentityMeasures.VenueBacking]]);
+ *  - `titleGroups`: every listing by title key with its venue and whose claim its facts are ([[IdentityMeasures.Backer]]) —
+ *    a decorated title is backed by venues listing it plain, whose listings are not title-linked to it ([[IdentityMeasures.VenueBacking]]);
  *  - `wholeTitles`: every node's sanitised whole title (`TitleLinks.titlesBeside`);
  *  - `reachedByTitle`: for each title key, every node carrying it and the candidates its own
  *    evidence reached (`CandidateGeneration.sharedOf`);
@@ -26,7 +26,7 @@ private[identity] trait CorpusContext {
   def houses: IdentityMeasures.Houses
   /** Each banner's contending houses, as [[houses]] ranked them — for a report reading why a banner is, or is not, a house. */
   def houseRanking: Map[String, Seq[IdentityMeasures.Houses.Contender]]
-  /** Every listing carrying title key `key`, with its venue, in node order. */
+  /** Every listing carrying title key `key`, with its venue and whose claim its facts are ([[IdentityMeasures.Backer]]), in node order. */
   def titleGroup(key: String): Seq[(String, IdentityMeasures.Listing)]
   /** Is `sanitised` some node's whole title? */
   def wholeTitle(sanitised: String): Boolean
@@ -214,7 +214,7 @@ private[identity] object CorpusContext {
     val houseEvidence = nodes.flatMap { node =>
       val listing = node.evidence.measured
       IdentityMeasures.Houses.evidence(listing, billedFilms(reached(node), listing, seasonFilms.getOrElse(_, Set.empty)).map(candidates(_).film)) }
-    val titleGroups = nodes.flatMap(node => node.listings.map(listing => IdentityMeasures.key(node.evidence.title) -> (listing.venue -> node.evidence.measured)))
+    val titleGroups = nodes.flatMap(node => node.listings.map(listing => IdentityMeasures.key(node.evidence.title) -> (IdentityMeasures.Backer(listing.venue, CatalogueSources.factSource(listing)) -> node.evidence.measured)))
       .groupMap(_._1)(_._2)
     val wholeTitles = nodes.map(node => sanitize(node.evidence.cleanTitle)).filter(_.nonEmpty).toSet
     val reachedByTitle = nodes.groupBy(titleOf).filter(_._1.nonEmpty).map { case (title, sameTitled) =>
