@@ -12,9 +12,20 @@
 #   scripts/local-mirror/service.sh uninstall   # stop + remove the agent
 #   scripts/local-mirror/service.sh status      # show state + pid
 #   scripts/local-mirror/service.sh logs        # tail the agent log
+#   scripts/local-mirror/service.sh agent       # what launchd runs (see below)
 #
-# Prereqs (one-time): MONGODB_MOVIES_MIRROR_URI set in .env.local (see README),
-# and key-based ssh to the prod Mongo host working NON-INTERACTIVELY —
+# THE SECRET. mirror.sh needs MONGODB_URI, which lives only in the Touch ID vault
+# (`secrets`, namespace `movies`) — there is no .env.local any more. A LaunchAgent
+# has no terminal, and mirror.sh deliberately EXITS to be restarted (a database
+# supervisor died, its own code changed); if launchd restarted mirror.sh directly,
+# every restart would re-exec it under `secrets run` and raise a fresh Touch ID
+# dialog, at login and overnight alike. So launchd runs `service.sh agent`, which
+# reads MONGODB_URI from the vault ONCE (one Touch ID when the agent starts — at
+# login, or on `install`) and then restarts mirror.sh itself, the variable
+# inherited. The value is held only in that process's environment: never written
+# into the plist, the log, or any file.
+#
+# Prereqs (one-time): key-based ssh to the prod Mongo host working NON-INTERACTIVELY —
 # `ssh -o BatchMode=yes root@<host> true` must succeed, because launchd has no
 # terminal to answer a passphrase prompt with (see prod-tunnel.sh).
 set -euo pipefail
@@ -32,7 +43,7 @@ case "${1:-}" in
     # bare PATH that wouldn't find ssh/brew/mongosh). Resolve them in this
     # shell — which has the user's full PATH — and keep their dirs, de-duped.
     dirs=""
-    for t in bash ssh brew mongosh nc; do
+    for t in bash ssh brew mongosh nc secrets; do
       p="$(command -v "$t" 2>/dev/null || true)"
       if [ -z "$p" ]; then echo "[service] WARN: '$t' not found in PATH — the agent may fail to find it" >&2
       else dirs="$dirs:$(cd "$(dirname "$p")" && pwd)"; fi
@@ -49,7 +60,8 @@ case "${1:-}" in
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>$HERE/mirror.sh</string>
+    <string>$HERE/service.sh</string>
+    <string>agent</string>
   </array>
   <key>WorkingDirectory</key><string>$ROOT</string>
   <key>EnvironmentVariables</key>
@@ -83,6 +95,27 @@ PLIST
   logs)
     tail -n 40 -f "$LOG"
     ;;
+  agent)
+    # Not exec: when the vault says no (Touch ID declined, or timed out with
+    # nobody at the Mac) launchd's KeepAlive would otherwise re-prompt every
+    # ThrottleInterval. Wait a while instead, then let launchd try again.
+    if [ -z "${MONGODB_URI:-}" ]; then
+      secrets run movies MONGODB_URI -- "$BASH" "$0" agent && exit 0
+      echo "[service] could not read MONGODB_URI from the Touch ID vault — asking again in 10 minutes" >&2
+      sleep 600
+      exit 1
+    fi
+    child=""
+    trap '[ -z "$child" ] || kill "$child" 2>/dev/null; exit 0' TERM INT
+    while true; do
+      "$BASH" "$HERE/mirror.sh" &
+      child=$!
+      wait "$child" || true
+      child=""
+      echo "[service] mirror.sh exited — restarting it in 10s"
+      sleep 10
+    done
+    ;;
   *)
-    echo "usage: $0 {install|uninstall|status|logs}" >&2; exit 1;;
+    echo "usage: $0 {install|uninstall|status|logs|agent}" >&2; exit 1;;
 esac

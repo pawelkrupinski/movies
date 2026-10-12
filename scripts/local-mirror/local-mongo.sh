@@ -12,7 +12,7 @@
 # argument for one definition.
 #
 # Sourcing must stay side-effect free (mirror-resilience-spec.sh asserts that
-# sourcing mirror.sh reads no .env.local and starts nothing), so this file is a
+# sourcing mirror.sh asks the vault for nothing and starts nothing), so this file is a
 # function definition and nothing else.
 
 # Ensure the local mirror Mongo (native, brew-managed) answers, re-running the

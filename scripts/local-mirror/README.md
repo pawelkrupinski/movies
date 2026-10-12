@@ -62,12 +62,19 @@ starts reading a collection the sync doesn't carry.
    brew install mongodb-community@7.0     # matches prod 7.0.x
    ```
 
-2. **Point the web app's `/debug` at the mirror.** Add to `.env.local` (leave
-   `MONGODB_URI` as-is — it stays the prod tunnel for everything else):
+2. **Point the web app's `/debug` at the mirror.** Export, in the shell that runs
+   the web app (it is not a secret, so it never goes in the vault):
 
    ```
-   MONGODB_MOVIES_MIRROR_URI=mongodb://127.0.0.1:28017/kinowo_prod_mirror?directConnection=true
+   export MONGODB_MOVIES_MIRROR_URI='mongodb://127.0.0.1:28017/kinowo_prod_mirror?directConnection=true'
    ```
+
+   `mirror.sh` itself needs no setting for it: that is its default target
+   (override with the same variable). The one secret it needs, prod's
+   `MONGODB_URI`, comes from the Touch ID vault — when it is not in the
+   environment, `mirror.sh` re-runs itself under `secrets run movies MONGODB_URI`
+   (one Touch ID) and rewrites the vault's in-cluster address to the tunnel
+   (`prod_tunnel_uri` in `prod-tunnel.sh`). There is no `.env.local` any more.
 
 3. **Check you can reach prod Mongo over ssh.** The tunnel is an ssh local
    forward, opened by `scripts/local-mirror/prod-tunnel.sh` — the single
@@ -79,8 +86,8 @@ starts reading a collection the sync doesn't carry.
    ssh -o BatchMode=yes root@178.105.221.61 true      # must exit 0, silently
    ```
 
-   Override the target with `KINOWO_MONGO_SSH=<user>@<host>` in `.env.local`
-   (or in the environment) if the database is moved or a rescue host stands in.
+   Override the target with `KINOWO_MONGO_SSH=<user>@<host>` in the environment
+   if the database is moved or a rescue host stands in.
 
 4. **Start the mirror + sync** — either in a terminal (`scripts/local-mirror/mirror.sh`)
    or, better, as a login service (next section). It brings up the native Mongo
@@ -109,7 +116,17 @@ scripts/local-mirror/service.sh logs        # tail the agent log
 scripts/local-mirror/service.sh uninstall   # stop + remove the agent
 ```
 
-The agent runs `mirror.sh`, a self-healing daemon: it brings up its **own**
+The agent runs `service.sh agent`, which asks the Touch ID vault for
+`MONGODB_URI` ONCE — a Touch ID dialog when the agent starts (at login, and on
+`install`) — and then runs `mirror.sh`, restarting it whenever it exits with the
+variable inherited. It does not let launchd restart `mirror.sh` directly: the
+daemon exits on purpose to be restarted (a dead supervisor, its own code
+changing), and each of those would otherwise raise a fresh dialog. If the
+dialog is declined or times out, the agent waits 10 minutes before launchd
+asks again. The secret lives only in that process's environment — never in the
+plist or the log.
+
+`mirror.sh` is a self-healing daemon: it brings up its **own**
 ssh tunnel when nothing already serves `:27017` (and uses an existing
 one — e.g. `sbt run`'s — when there is, never fighting it), re-ensures the native
 Mongo via `brew services` if it's stopped, re-seeds when a mirror is empty **or
@@ -123,9 +140,8 @@ services` cannot start it falls back to `mongod --config $(brew --prefix)/etc/mo
 `scripts/local-mirror/start-local-mongo-spec.sh`. Logs:
 `~/Library/Logs/kinowo-local-mirror.log`, trimmed to its last 2000 lines
 whenever it passes 8MB (in place — launchd holds an append fd on it, so renaming
-would strand the agent writing to the old inode). Prereqs:
-`MONGODB_MOVIES_MIRROR_URI` set (above) and non-interactive ssh to the Mongo
-host working.
+would strand the agent writing to the old inode). Prereqs: `MONGODB_URI` in the
+Touch ID vault and non-interactive ssh to the Mongo host working.
 
 ## Running the web + worker stack locally (`kinowo_local`)
 
@@ -401,7 +417,7 @@ the manual lever, but a wedge no longer needs it.
 
 `mirror.sh` is sourceable for that spec: everything below the
 `[ "${BASH_SOURCE[0]}" = "${0}" ] || return 0` guard runs only when it is
-executed, so sourcing defines the functions and reads no `.env.local`.
+executed, so sourcing defines the functions and asks the vault for nothing.
 
 > **CI was repointed too, and no longer tunnels via Fly.**
 > `.github/workflows/record-scrape-fixtures.yml` (through
@@ -418,7 +434,7 @@ scripts/local-mirror/service.sh uninstall   # stop the sync agent
 brew services stop mongodb-community@7.0     # stop the Mongo
 ```
 
-Then remove `MONGODB_MOVIES_MIRROR_URI` from `.env.local`. To wipe the data,
+Then stop exporting `MONGODB_MOVIES_MIRROR_URI` for the web app. To wipe the data,
 `rm -rf "$(brew --prefix)/var/mongodb"` while it's stopped.
 
 ## Ports

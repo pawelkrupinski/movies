@@ -22,32 +22,38 @@
 # deployment-wide one is Unauthorized for these credentials) and mongosh is
 # single-threaded, so N databases means N supervised children, not one loop.
 #
-# Reads MONGODB_URI (prod tunnel = source), MONGODB_MOVIES_MIRROR_URI (local =
-# target) and the optional KINOWO_MIRROR_DBS (space/comma-separated prod
-# databases; default: every kinowo* database the tunnel exposes) from
-# .env.local. Long-running — leave it in its own terminal; Ctrl-C to stop. The
-# web app reads the mirror only when MONGODB_MOVIES_MIRROR_URI is set (see web
-# modules.Wiring); unset → /debug reads prod directly, exactly as before.
+# Reads, from the environment:
+#   MONGODB_URI                prod tunnel = source. A SECRET: when it is not set,
+#                              this script re-runs itself under
+#                              `secrets run movies MONGODB_URI` (one Touch ID).
+#   MONGODB_MOVIES_MIRROR_URI  local = target (default:
+#                              mongodb://127.0.0.1:$LOCAL_MIRROR_PORT/kinowo_prod_mirror?directConnection=true)
+#   KINOWO_MIRROR_DBS          optional, space/comma-separated prod databases
+#                              (default: every kinowo* database the tunnel exposes)
+# Long-running — leave it in its own terminal; Ctrl-C to stop (or run it as a
+# login agent: service.sh). The web app reads the mirror only when ITS
+# MONGODB_MOVIES_MIRROR_URI is set (see web modules.Wiring); unset → /debug reads
+# prod directly, exactly as before.
 #
 # Usage:  scripts/local-mirror/mirror.sh [--reseed]
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(cd "$HERE/../.." && pwd)"
-# Shared plumbing for every prod-sourced local script: envval (the .env.local
-# reader), the tunnel, and — where relevant — the local Mongo starter. Sourced
-# HERE, above the first envval call, because it is what defines it. Sourcing is
-# side-effect free by contract, so an early source starts nothing.
+# Shared plumbing for every prod-sourced local script: ensure_vault_env (the
+# environment-else-vault secret lookup), the tunnel, and — where relevant — the
+# local Mongo starter. Sourcing is side-effect free by contract, so an early
+# source starts nothing.
 . "$HERE/prod-tunnel.sh"
 . "$HERE/local-mongo.sh"
 
-# Reading .env.local is a STARTUP step, not a load-time one: mirror-resilience-spec.sh
+# Reading the endpoints is a STARTUP step, not a load-time one: mirror-resilience-spec.sh
 # sources this file for `supervise_db` alone and supplies its own endpoints, and it
-# must not need — or touch — real credentials to do that.
+# must not need — or touch — real credentials to do that. MONGODB_URI is already
+# in the environment by now: the startup body re-execs under the vault first. The
+# vault's value names the in-cluster address; prod_tunnel_uri points it at the tunnel.
 load_endpoints() {
-  SRC="$(envval MONGODB_URI)"
-  DST="$(envval MONGODB_MOVIES_MIRROR_URI)"
-  [ -n "$SRC" ] || { echo "[mirror] set MONGODB_URI in .env.local (prod tunnel = sync source)" >&2; exit 1; }
-  [ -n "$DST" ] || { echo "[mirror] set MONGODB_MOVIES_MIRROR_URI in .env.local (local mirror = sync target)" >&2; exit 1; }
+  [ -n "${MONGODB_URI:-}" ] || { echo "[mirror] MONGODB_URI is not set (prod tunnel = sync source)" >&2; exit 1; }
+  SRC="$(prod_tunnel_uri "$MONGODB_URI")"
+  DST="${MONGODB_MOVIES_MIRROR_URI:-mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/kinowo_prod_mirror?directConnection=true}"
 
   # Tune the prod source connection: zlib wire compression so the seed cursor and
   # change stream carry ~6x less data over the tunnel (the uncompressed mongodump
@@ -62,10 +68,8 @@ load_endpoints() {
 
   # What prod-tunnel.sh health-checks the tunnel with. It has to be an
   # AUTHENTICATED ping, not a TCP probe: the port answering says nothing about
-  # whether anything is behind it (see prod_tunnel_answers). Also tell it where
-  # .env.local is, so the ssh target can be overridden there.
+  # whether anything is behind it (see prod_tunnel_answers).
   TUNNEL_PROBE_URI="$SRC"
-  PROD_TUNNEL_ENV_FILE="$ROOT/.env.local"
 }
 
 # ── Keep our own log from growing without bound ──────────────────────────────
@@ -108,7 +112,7 @@ trap cleanup EXIT INT TERM
 # themselves (`*_prod_mirror`) live on the LOCAL instance, never on prod, so
 # there is nothing to exclude from this listing.
 discover_dbs() {
-  local configured; configured="$(envval KINOWO_MIRROR_DBS | tr ',' ' ')"
+  local configured; configured="$(printf '%s' "${KINOWO_MIRROR_DBS:-}" | tr ',' ' ')"
   if [ -n "$configured" ]; then echo "$configured"; return 0; fi
   mongosh "$SRCZ" --quiet --eval \
     'db.adminCommand({listDatabases:1,nameOnly:true}).databases.map(d=>d.name).filter(n=>/^kinowo/.test(n)).join(" ")' \
@@ -344,8 +348,12 @@ await_supervisor_exit() {
 # ── Fan out: one supervised tailer per database ──────────────────────────────
 # Everything below runs only when this file is EXECUTED. Sourced (by
 # mirror-resilience-spec.sh, which drives `supervise_db` against stubs) it must
-# define the functions and stop — no .env.local read, no tunnel, no children.
+# define the functions and stop — no vault lookup, no tunnel, no children.
 [ "${BASH_SOURCE[0]}" = "${0}" ] || return 0
+
+# The one secret, before anything else runs: set (by service.sh's launchd wrapper,
+# or a caller that exported it) → used as-is; unset → start over under the vault.
+ensure_vault_env MONGODB_URI -- "$BASH" "$0" "$@" || exit 1
 
 # The tunnel has to be up before we can list databases, so ensure it first;
 # after that each child re-ensures it independently. `cleanup` already kills our

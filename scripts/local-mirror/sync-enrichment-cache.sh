@@ -26,9 +26,10 @@
 # what prod knows and leaves the rest. The TTL index on `fetchedAt` expires
 # anything stale on either side within a day.
 #
-# Reads from .env.local (line-by-line, NOT sourced — the Mongo URIs contain
-# `&`/`?`):
-#   MONGO_ROOT_URI    prod tunnel = sync SOURCE (falls back to MONGODB_URI)
+# Reads, from the environment:
+#   MONGO_ROOT_URI    prod tunnel = sync SOURCE (falls back to MONGODB_URI). A
+#                     SECRET: when neither is set, this script re-runs itself under
+#                     `secrets run movies MONGO_ROOT_URI` (one Touch ID).
 #   KINOWO_MONGO_SSH  ssh target for the prod tunnel (optional; see prod-tunnel.sh)
 #   LOCAL_MONGO_URI   sync TARGET (default: mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true)
 #
@@ -37,11 +38,10 @@
 #           country…    pl / de / uk / us / es (default: all five)
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(cd "$HERE/../.." && pwd)"
-# Shared plumbing for every prod-sourced local script: envval (the .env.local
-# reader), the tunnel, and — where relevant — the local Mongo starter. Sourced
-# HERE, above the first envval call, because it is what defines it. Sourcing is
-# side-effect free by contract, so an early source starts nothing.
+# Shared plumbing for every prod-sourced local script: ensure_vault_env (the
+# environment-else-vault secret lookup), the tunnel, and — where relevant — the
+# local Mongo starter. Sourcing is side-effect free by contract, so an early
+# source starts nothing.
 . "$HERE/prod-tunnel.sh"
 . "$HERE/local-mongo.sh"
 
@@ -58,9 +58,12 @@ done
 [ ${#COUNTRIES[@]} -gt 0 ] || COUNTRIES=(pl de uk us es)
 
 
-SRC="$(envval MONGO_ROOT_URI)"; [ -n "$SRC" ] || SRC="$(envval MONGODB_URI)"
-DST="$(envval LOCAL_MONGO_URI)"; DST="${DST:-mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true}"
-[ -n "$SRC" ] || { echo "[enrich-cache] set MONGO_ROOT_URI (or MONGODB_URI) in .env.local" >&2; exit 1; }
+# An exported MONGODB_URI stands in for the root one, as it always has; only when
+# neither is set does the vault get asked — and then for the root credential.
+[ -n "${MONGODB_URI:-}" ] || ensure_vault_env MONGO_ROOT_URI -- "$BASH" "$0" "$@" || exit 1
+# The vault's URIs name the in-cluster address; the dump goes through the tunnel.
+SRC="$(prod_tunnel_uri "${MONGO_ROOT_URI:-${MONGODB_URI:-}}")"
+DST="${LOCAL_MONGO_URI:-mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true}"
 
 # ── ensure the prod tunnel (source), starting our OWN ssh forward only when
 # nothing already serves :27017 — never fighting a tunnel someone else owns.

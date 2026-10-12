@@ -41,7 +41,9 @@
 #   once-daily and gate on it, so a leftover `scrape@<today>` record makes a
 #   restarted local stack skip the scrape and never repopulate kinowo_local.
 #
-# PROD reads MONGODB_URI (prod tunnel) + MONGODB_DB from .env.local.
+# PROD reads MONGODB_URI (prod tunnel) from the environment, else from the Touch ID
+#      vault (the script re-runs itself under `secrets run movies MONGODB_URI`), and
+#      MONGODB_DB from the environment (default `kinowo`, Poland's database).
 # LOCAL defaults to mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true
 #       and db `kinowo_local`; override with LOCAL_MONGO_URI / LOCAL_MONGO_DB.
 #
@@ -52,11 +54,10 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="$(cd "$HERE/.." && pwd)"
-# Shared plumbing for every prod-sourced local script: envval (the .env.local
-# reader), the tunnel, and — where relevant — the local Mongo starter. Sourced
-# HERE, above the first envval call, because it is what defines it. Sourcing is
-# side-effect free by contract, so an early source starts nothing.
+# Shared plumbing for every prod-sourced local script: ensure_vault_env (the
+# environment-else-vault secret lookup), the tunnel, and — where relevant — the
+# local Mongo starter. Sourcing is side-effect free by contract, so an early
+# source starts nothing.
 . "$HERE/local-mirror/prod-tunnel.sh"
 
 # The country whose Deployments are scaled around the wipe. `MONGODB_DB` names the
@@ -91,10 +92,9 @@ if [ "$MODE" = "local" ]; then
   URI="${LOCAL_MONGO_URI:-mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true}"
   DB="${LOCAL_MONGO_DB:-kinowo_local}"
 else
-  URI="$(envval MONGODB_URI)"
-  DB="$(envval MONGODB_DB)"
-  [ -n "$URI" ] || { echo "[reset] set MONGODB_URI in .env.local (prod tunnel)" >&2; exit 1; }
-  [ -n "$DB" ]  || { echo "[reset] set MONGODB_DB in .env.local" >&2; exit 1; }
+  ensure_vault_env MONGODB_URI -- "$BASH" "$0" "$@" || exit 1
+  URI="$(prod_tunnel_uri "$MONGODB_URI")"
+  DB="${MONGODB_DB:-kinowo}"
 fi
 
 echo "[reset] $MODE — target db '$DB'; ${DRY:+would }drop: ${COLLECTIONS[*]}"

@@ -13,7 +13,7 @@
 #
 # WHY AN SSH PORT-FORWARD AND NOT A REMOTE DUMP. Everything downstream speaks
 # the Mongo wire protocol to 127.0.0.1:27017 — seed.js, tail.js, staleness.js,
-# mongodump, mongorestore, and the app's own MONGODB_URI in .env.local. A local
+# mongodump, mongorestore, and the app's own MONGODB_URI (from the vault). A local
 # forward is a drop-in for what `flyctl proxy` published on the same port, so
 # NOTHING else changed: no URI rewrites, no credentials moved, no new files.
 # Dumping on mongo-1 and streaming the result back cannot work here anyway — the
@@ -26,10 +26,9 @@
 # reach it). Only the loopback one is reachable from inside an ssh session, so
 # that is the far end of the forward.
 #
-# Configuration, in precedence order:
+# Configuration — not a secret, so the environment or a committed default, never a file:
 #   $KINOWO_MONGO_SSH      environment override (a one-off, or a rescue host)
-#   KINOWO_MONGO_SSH=      in .env.local
-#   root@178.105.221.61       mongo-1's public address, as pinned in
+#   root@178.105.221.61    mongo-1's public address, as pinned in
 #                          infra/nix/hosts/mongo-1/default.nix
 #
 # Contract for callers:
@@ -37,40 +36,23 @@
 #   * set $TUNNEL_PROBE_URI — a Mongo URI (with credentials) to health-check
 #                         with; without it the check degrades to a bare TCP
 #                         probe, which is exactly the weak check described below
-#   * set $PROD_TUNNEL_ENV_FILE — path to .env.local, if the ssh target may be
-#                         configured there
 #   * call `close_prod_tunnel` from your own EXIT/INT/TERM trap
 #
 # Sourcing this file must stay side-effect free: mirror.sh sources it at load
-# time, and mirror-resilience-spec.sh asserts that sourcing mirror.sh reads no
-# .env.local and starts nothing. So everything below is a function definition.
-
-# Read one key out of an env file, the way the app's own tools.Env does.
+# time, and mirror-resilience-spec.sh asserts that sourcing mirror.sh asks the
+# vault for nothing and starts nothing. So everything below is a function
+# definition.
 #
-# Line-by-line, NOT `source`: .env.local's Mongo URIs carry `&` and `?`, which a
-# shell source would treat as backgrounding and globbing. `|| true` so a missing
-# key (grep exit 1 under pipefail) yields empty output instead of aborting the
-# caller before it can print a friendly message.
-#
-# This lives here because every prod-sourced script — mirror.sh,
-# sync-enrichment-cache.sh, ../reset-corpus.sh — already
-# source this file, and every one of them had defined a byte-identical copy of
-# it. The file below used a seventh inline copy whose comment said it "matches
-# envval in each caller"; a comment promising that two blocks stay identical is
-# the cheapest possible substitute for making them one.
-#
-#   envval KEY [file]   — file defaults to $PROD_TUNNEL_ENV_FILE, then $ROOT/.env.local
-envval() {
-  local file="${2:-${PROD_TUNNEL_ENV_FILE:-${ROOT:-.}/.env.local}}"
-  { grep -E "^$1=" "$file" 2>/dev/null || true; } | head -1 | cut -d= -f2- \
-    | sed -e 's/^["'"'"']//' -e 's/["'"'"']$//'
-}
+# It also brings ensure_vault_env (../vault-env.sh) with it: every caller of this
+# file needs a prod Mongo URI, and that is a secret — the environment's, else the
+# Touch ID vault's. There is no .env.local to read it from any more (2026-10-09).
+# shellcheck source=scripts/vault-env.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/vault-env.sh"
 
 # Declare what this caller is and what it talks to, in one line instead of the
-# three-assignment preamble every caller copied. The env file defaults to
-# $ROOT/.env.local, which is what all three passed anyway.
+# two-assignment preamble every caller copied.
 #
-#   init_prod_tunnel <tag> <probe-uri> [env-file]
+#   init_prod_tunnel <tag> <probe-uri>
 #
 # Callers still install their own EXIT trap: what has to be torn down differs
 # (the sync scripts also remove a mktemp dir, reset-corpus does not), and a
@@ -78,7 +60,34 @@ envval() {
 init_prod_tunnel() {
   TUNNEL_TAG="$1"
   TUNNEL_PROBE_URI="$2"
-  PROD_TUNNEL_ENV_FILE="${3:-${ROOT:-.}/.env.local}"
+}
+
+# The laptop's view of a prod Mongo URI.
+#
+# The vault's MONGODB_URI / MONGO_ROOT_URI are what the CLUSTER uses: they name
+# the in-cluster address (10.20.0.13:27017), which a laptop cannot route to. The
+# old .env.local carried a hand-edited copy pointed at the tunnel instead; rather
+# than keep a second vault key in step with the first, every laptop-side script
+# derives the tunnel form from the one real value, here:
+#   * the host list after the credentials becomes 127.0.0.1:27017 (this tunnel),
+#   * the query carries directConnection=true — a replica-set member reached
+#     through a forward must not be "discovered" past it to addresses the laptop
+#     cannot reach — replacing any directConnection already there,
+#   * credentials, database path and every other query parameter are kept.
+# Idempotent, so an exported URI that is already in tunnel form passes through.
+#
+#   prod_tunnel_uri <uri>   — prints the rewritten URI
+prod_tunnel_uri() {
+  local rest="${1#*://}" creds="" tail query
+  case "$rest" in *@*) creds="${rest%%@*}@"; rest="${rest#*@}" ;; esac
+  tail="${rest#"${rest%%[/?]*}"}"                 # drop the host list: what's left is /path?query
+  case "$tail" in /*) ;; *) tail="/$tail" ;; esac
+  case "$tail" in
+    *\?*) query="${tail#*\?}"; tail="${tail%%\?*}"
+          query="$(printf '%s' "$query" | tr '&' '\n' | { grep -v '^directConnection=' || true; } | paste -sd'&' -)" ;;
+    *)    query="" ;;
+  esac
+  printf 'mongodb://%s127.0.0.1:27017%s?%sdirectConnection=true\n' "$creds" "$tail" "${query:+$query&}"
 }
 
 # The pid of a tunnel WE started. Empty means the port is served by someone
@@ -87,12 +96,7 @@ PROD_TUNNEL_PID=""
 
 # Resolved lazily, never at source time — see the side-effect note above.
 prod_tunnel_target() {
-  if [ -n "${KINOWO_MONGO_SSH:-}" ]; then printf '%s\n' "$KINOWO_MONGO_SSH"; return 0; fi
-  local from_env=""
-  if [ -n "${PROD_TUNNEL_ENV_FILE:-}" ] && [ -f "$PROD_TUNNEL_ENV_FILE" ]; then
-    from_env="$(envval KINOWO_MONGO_SSH "$PROD_TUNNEL_ENV_FILE")"
-  fi
-  printf '%s\n' "${from_env:-root@178.105.221.61}"
+  printf '%s\n' "${KINOWO_MONGO_SSH:-root@178.105.221.61}"
 }
 
 # Does prod actually ANSWER on :27017, or is the port merely accepting?

@@ -267,15 +267,15 @@ check "the parent stops watching the moment a database supervisor dies" \
 
 # ── Sourcing must be side-effect free ────────────────────────────────────────
 # The spec above depends on it, and so does anything else that wants these
-# functions: reading .env.local or opening a tunnel at load time would make the
-# file untestable and leak a temp file per source.
+# functions: asking the vault for a secret or opening a tunnel at load time would
+# make the file untestable and leak a temp file per source.
 sourced_cleanly() {
   local out
   out="$( ( . "$HERE/mirror.sh" && declare -F supervise_db >/dev/null && echo SOURCED ) 2>&1 )"
   [ "$out" = "SOURCED" ]
 }
 
-check "sourcing defines the functions without reading .env.local or starting anything" \
+check "sourcing defines the functions without asking the vault or starting anything" \
   sourced_cleanly
 
 # ── The prod tunnel: reaching the RIGHT host, and knowing when it isn't ──────
@@ -329,27 +329,89 @@ check "a tunnel held by another process is never adopted or killed" close_only_t
 
 # Where the tunnel points is configuration, and the default has to be the host
 # prod actually lives on — a default still naming the Fly app would send every
-# one of these scripts to a stopped machine.
+# one of these scripts to a stopped machine. It is NOT a secret, so it is an
+# environment variable with a committed default and nothing else: no file, no vault.
 target_precedence_and_default() {
   (
     # shellcheck source=/dev/null
     . "$HERE/prod-tunnel.sh"
-    local envfile; envfile="$(mktemp -t kinowo-tunnel-env)"
-    echo "KINOWO_MONGO_SSH=root@from-env-file" > "$envfile"
-
     # Hermetic against the caller's own shell: an exported KINOWO_MONGO_SSH would
     # otherwise win every assertion below. (An `X="" [ "$(...)" ]` prefix does not
     # do this -- it scopes to `[`, and the substitution has already run by then.)
-    unset KINOWO_MONGO_SSH PROD_TUNNEL_ENV_FILE
-    [ "$(prod_tunnel_target)" = "root@178.105.221.61" ] || { rm -f "$envfile"; return 1; }
-    [ "$(PROD_TUNNEL_ENV_FILE="$envfile" prod_tunnel_target)" = "root@from-env-file" ] || { rm -f "$envfile"; return 1; }
-    [ "$(PROD_TUNNEL_ENV_FILE="$envfile" KINOWO_MONGO_SSH="root@override" prod_tunnel_target)" = "root@override" ] \
-      || { rm -f "$envfile"; return 1; }
-    rm -f "$envfile"
+    unset KINOWO_MONGO_SSH
+    [ "$(prod_tunnel_target)" = "root@178.105.221.61" ] || return 1
+    [ "$(KINOWO_MONGO_SSH="root@override" prod_tunnel_target)" = "root@override" ]
   )
 }
-check "the ssh target defaults to mongo-1 and is overridable by env then .env.local" \
+check "the ssh target defaults to mongo-1 and is overridable by the environment" \
   target_precedence_and_default
+
+# ── Secrets: the environment first, the Touch ID vault otherwise ─────────────
+# There is no .env.local any more (2026-10-09). MONGODB_URI — the only secret the
+# mirror needs — comes from the environment when set (the launchd wrapper in
+# service.sh, a caller that exported it), and otherwise mirror.sh re-runs itself
+# under `secrets run movies MONGODB_URI`. A fake `secrets` on PATH records how it
+# was called; the real vault is never touched.
+echo "[spec] secrets"
+FAKE_BIN="$(mktemp -d -t kinowo-fake-secrets)"
+SECRETS_CALLS="$FAKE_BIN/calls"
+cat > "$FAKE_BIN/secrets" <<'FAKE'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$SECRETS_CALLS"
+FAKE
+chmod +x "$FAKE_BIN/secrets"
+export SECRETS_CALLS
+
+# A missing MONGODB_URI must send mirror.sh to the vault for exactly that key —
+# and nothing else, before it touches Mongo, a tunnel or a child process.
+reexecs_under_the_vault() {
+  rm -f "$SECRETS_CALLS"
+  env -u MONGODB_URI PATH="$FAKE_BIN:$PATH" MIRROR_LOG="$FAKE_BIN/mirror.log" \
+    "$BASH" "$HERE/mirror.sh" --reseed >/dev/null 2>&1 || return 1
+  [ "$(cat "$SECRETS_CALLS" 2>/dev/null)" = "run movies MONGODB_URI -- $BASH $HERE/mirror.sh --reseed" ]
+}
+check "a missing MONGODB_URI re-execs mirror.sh under \`secrets run movies MONGODB_URI\`" \
+  reexecs_under_the_vault
+
+# An exported MONGODB_URI is used as-is, with no vault lookup; the mirror target
+# is not a secret and defaults to the local mirror database.
+exported_uri_skips_the_vault() {
+  rm -f "$SECRETS_CALLS"
+  (
+    # shellcheck source=/dev/null
+    . "$HERE/mirror.sh"
+    unset MONGODB_MOVIES_MIRROR_URI LOCAL_MIRROR_PORT
+    # The vault's value names the in-cluster host; the mirror reads it via the tunnel.
+    PATH="$FAKE_BIN:$PATH" MONGODB_URI="mongodb://u:p@10.20.0.13:27017/kinowo?authSource=admin" load_endpoints
+    [ "$SRC" = "mongodb://u:p@127.0.0.1:27017/kinowo?authSource=admin&directConnection=true" ] || return 1
+    [ "$TUNNEL_PROBE_URI" = "$SRC" ] || return 1
+    [ "$DST" = "mongodb://127.0.0.1:28017/kinowo_prod_mirror?directConnection=true" ] || return 1
+    [ "$(MONGODB_MOVIES_MIRROR_URI="mongodb://elsewhere/x" MONGODB_URI=x load_endpoints; echo "$DST")" = "mongodb://elsewhere/x" ]
+  ) || return 1
+  [ ! -e "$SECRETS_CALLS" ]
+}
+check "an exported MONGODB_URI is used, via the tunnel, without touching the vault" exported_uri_skips_the_vault
+# Under launchd there is no terminal, and mirror.sh deliberately EXITS to be
+# restarted (a supervisor died, its own code changed). If every restart went back
+# to the vault, each would raise a fresh Touch ID dialog — at login, overnight —
+# so the agent's program is `service.sh agent`: it reads MONGODB_URI from the
+# vault ONCE and then restarts mirror.sh itself, with the variable inherited.
+agent_reads_the_vault_once() {
+  local home; home="$(mktemp -d -t kinowo-agent-home)"
+  printf '#!/bin/sh\nexit 0\n' > "$FAKE_BIN/launchctl"; chmod +x "$FAKE_BIN/launchctl"
+  HOME="$home" PATH="$FAKE_BIN:$PATH" "$BASH" "$HERE/service.sh" install >/dev/null 2>&1 || { rm -rf "$home"; return 1; }
+  local plist="$home/Library/LaunchAgents/pl.kinowo.local-mirror.plist" args
+  args="$(tr -d ' \n' < "$plist" | sed -E 's|.*<key>ProgramArguments</key><array>(.*)</array><key>WorkingDirectory.*|\1|')"
+  rm -rf "$home"
+  [ "$args" = "<string>/bin/bash</string><string>$HERE/service.sh</string><string>agent</string>" ] || return 1
+
+  rm -f "$SECRETS_CALLS"
+  env -u MONGODB_URI PATH="$FAKE_BIN:$PATH" "$BASH" "$HERE/service.sh" agent >/dev/null 2>&1 || return 1
+  [ "$(cat "$SECRETS_CALLS" 2>/dev/null)" = "run movies MONGODB_URI -- $BASH $HERE/service.sh agent" ]
+}
+check "the launchd agent asks the vault once, then supervises mirror.sh itself" agent_reads_the_vault_once
+
+rm -rf "$FAKE_BIN"
 
 if [ "$failures" -gt 0 ]; then echo "[spec] $failures failure(s)"; exit 1; fi
 echo "[spec] all cases pass"
