@@ -180,18 +180,17 @@ object CopiedFeedDetector {
     fingerprints.result().distinct
   }
 
-  /** The part of a booking link naming the venue and the session: its path and query. Scheme and
-   *  host are dropped — one ticketing backend serves one session from regional mirrors (Veezi's
-   *  ticketing.us. and ticketing.useast.). */
+  /** The part of a booking link naming the venue and the session: everything past the scheme.
+   *  The HOST stays: a ticketing backend that gives each venue its own subdomain names the venue
+   *  only there, and numbers each venue's sessions on its own counter — admit-one's
+   *  `reelquinton.` and `reelborehamwood.admit-one.co.uk` both sold `/?p=seats&perfCode=20303`,
+   *  which with the host dropped (until 2026-10-12) read as one venue listing the other's feed. A
+   *  copied feed copies the links themselves, host and all. */
   private[roster] def sessionOf(url: String): String = url.substring(sessionStart(url))
 
-  private def sessionStart(url: String): Int = {
-    val afterScheme = url.indexOf("://")
-    if (afterScheme < 0) 0
-    else url.indexOf('/', afterScheme + 3) match {
-      case -1 => url.length
-      case i  => i
-    }
+  private def sessionStart(url: String): Int = url.indexOf("://") match {
+    case -1 => 0
+    case i  => i + 3
   }
 
   /** `hash64(sessionOf(url))`: two MurmurHash3 string hashes of the session, read in place. */

@@ -24,11 +24,11 @@ class CopiedFeedDetectorSpec extends AnyFlatSpec with Matchers {
 
   private val start = LocalDateTime.of(2026, 10, 1, 12, 0)
 
-  /** `films` listings of four showtimes each, every showtime booked through `host`/`site`'s own session. */
-  private def feed(venue: Cinema, site: String, films: Int = 5, host: String = "ticketing.us.veezi.com"): Seq[CinemaMovie] =
+  /** `films` listings of four showtimes each, every showtime booked through `site`'s own Veezi session. */
+  private def feed(venue: Cinema, site: String, films: Int = 5): Seq[CinemaMovie] =
     (1 to films).map { f =>
       CinemaMovie(Movie(s"Film $f"), venue, None, None, None, Nil, Nil,
-        (1 to 4).map(s => Showtime(start.plusHours(f * 10L + s), Some(s"https://$host/purchase/$site-$f-$s?siteToken=$site"))))
+        (1 to 4).map(s => Showtime(start.plusHours(f * 10L + s), Some(s"https://ticketing.us.veezi.com/purchase/$site-$f-$s?siteToken=$site"))))
     }
 
   private final class World(seedArchive: Seq[ArchivedScrape] = Nil) {
@@ -38,11 +38,27 @@ class CopiedFeedDetectorSpec extends AnyFlatSpec with Matchers {
       PrometheusExposition.sample(PrometheusExposition.render(registry), CopiedFeedDetector.Name, """country="pl"""")
   }
 
-  "CopiedFeedDetector" should "flag a venue whose listings book through another venue's own sessions, whatever host serves them" in {
+  "CopiedFeedDetector" should "flag a venue whose listings book through another venue's own sessions" in {
     val w = new World
-    w.detector.venueScraped(parkRidge, feed(parkRidge, "parkridge", host = "ticketing.useast.veezi.com"))
-    w.detector.venueScraped(pickwick, feed(pickwick, "parkridge"))   // Park Ridge's sessions, another mirror
+    w.detector.venueScraped(parkRidge, feed(parkRidge, "parkridge"))
+    w.detector.venueScraped(pickwick, feed(pickwick, "parkridge"))   // Park Ridge's very links
     w.detector.copiedPairs shouldBe Set(Seq(pickwick, parkRidge).map(_.displayName).sorted match { case Seq(a, b) => (a, b) })
+  }
+
+  // 2026-10-08..10: Reel Cinema Quinton and Borehamwood held DuplicateVenueListing (uk) for two days,
+  // each "listing 6 of its 12 listings" through the other's sessions. Both book on admit-one, which
+  // names the venue in the HOST (reelquinton. vs reelborehamwood.admit-one.co.uk) and numbers each
+  // venue's performances on its own counter, so `/?p=seats&perfCode=20303` is a session at both
+  // (8 perfCodes in common over the fortnight probed live 2026-10-12).
+  it should "not flag two venues whose own booking hosts happen to number their sessions alike" in {
+    def admitOne(venue: Cinema, tenant: String) = feed(venue, "x").zipWithIndex.map { case (film, f) =>
+      film.copy(showtimes = film.showtimes.zipWithIndex.map { case (s, i) =>
+        s.copy(bookingUrl = Some(s"https://$tenant.admit-one.co.uk/?p=seats&perfCode=${20300 + f * 4 + i}")) })
+    }
+    val w = new World
+    w.detector.venueScraped(parkRidge, admitOne(parkRidge, "reelquinton"))
+    w.detector.venueScraped(pickwick, admitOne(pickwick, "reelborehamwood"))
+    w.detector.copiedPairs shouldBe empty
   }
 
   it should "not flag chain-mates running one grid, each booking through its own sessions" in {
