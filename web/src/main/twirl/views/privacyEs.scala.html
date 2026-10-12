@@ -1,0 +1,99 @@
+@(country: models.Country, languages: Seq[String])
+@*
+  Spanish privacy policy — a full translation of `privacyPl`, so the Spanish
+  deployment and the es-ES store listings have a policy in their own language
+  instead of falling back to English.
+
+  The supervisory authority named is Spain's AEPD, since Spanish is what the
+  Spanish deployment serves (as the English text names the ICO); the substance
+  is otherwise identical to the Polish text. A change to any one language needs
+  the same change in all the others.
+*@
+@_legalPage(country, lang = "es", heading = "Política de privacidad", contactLabel = "Contacto",
+            updated = Some("Última actualización: 25 de julio de 2026"), languages = languages) {
+  <p>
+    Esta política explica qué datos personales trata
+    <strong>@country.brandName</strong> (cartelera de cines, disponible en la
+    web y como aplicación para Android e iOS), con qué finalidad y sobre qué
+    base, y qué derechos tienes en relación con ese tratamiento.
+  </p>
+
+  <h2>1. Responsable del tratamiento</h2>
+  <p>
+    El responsable del tratamiento es <strong>Paweł Krupiński</strong>, autor
+    de la aplicación. Para cualquier consulta sobre privacidad o protección de
+    datos, escribe a
+    <a href="mailto:@controllers.LegalContact.Email">@controllers.LegalContact.Email</a>.
+  </p>
+
+  <h2>2. Qué datos tratamos</h2>
+  <p>Usar la aplicación sin iniciar sesión <strong>no requiere ningún dato personal</strong>. Cuando inicias sesión, tratamos:</p>
+  <ul>
+    <li><strong>Datos de inicio de sesión de Facebook, Google o Apple</strong> — tu identificador de usuario en ese proveedor, tu dirección de correo electrónico (si la compartes), tu nombre y apellidos como nombre visible y la URL de tu foto de perfil.</li>
+    <li><strong>Ajustes de la cuenta</strong> — tus preferencias en la aplicación, es decir, la lista de películas ocultas y de cines desactivados, sincronizada entre tus dispositivos.</li>
+    <li><strong>Cookies estrictamente necesarias</strong> — una cookie de sesión firmada que mantiene tu sesión iniciada. No usamos cookies de seguimiento ni de publicidad.</li>
+  </ul>
+  <p class="muted">
+    Las aplicaciones móviles pueden pedir acceso a tu ubicación para sugerirte
+    la ciudad más cercana. La ubicación se usa solo en el dispositivo: nunca se
+    nos envía ni se guarda.
+  </p>
+  <p class="muted">
+    La cartelera, las notas y las descripciones de las películas proceden de
+    fuentes públicas de terceros (TMDB, Filmweb, IMDb y otras) y no son datos
+    personales de nuestros usuarios.
+  </p>
+
+  <h2>3. Finalidad y base jurídica</h2>
+  <ul>
+    <li><strong>Autenticarte y gestionar tu cuenta</strong>, y sincronizar tus ajustes entre dispositivos — necesario para prestar el servicio que has solicitado: artículo 6.1.b) del RGPD.</li>
+    <li><strong>Mantener la aplicación segura y funcionando correctamente</strong> — nuestro interés legítimo: artículo 6.1.f) del RGPD.</li>
+  </ul>
+
+  <h2>4. Con quién compartimos los datos</h2>
+  <p>
+    <strong>No vendemos datos personales</strong> ni los compartimos con
+    terceros con fines de marketing. Solo los tratan los proveedores que hacen
+    técnicamente posible la aplicación, siguiendo nuestras instrucciones:
+  </p>
+  <ul>
+    <li><strong>Proveedores de inicio de sesión</strong> — Meta (Facebook), Google y Apple, que facilitan los datos de inicio de sesión, conforme a sus propias políticas de privacidad.</li>
+    <li><strong>Proveedores de infraestructura</strong> — el alojamiento de la aplicación y la base de datos en la que se guarda tu cuenta.</li>
+  </ul>
+
+  <h2>5. Cuánto tiempo conservamos los datos</h2>
+  <p>
+    Conservamos los datos de tu cuenta mientras uses la aplicación. Cuando se
+    elimina la cuenta, todo lo asociado a ella se borra de forma permanente
+    (véase el apartado 7).
+  </p>
+
+  <h2>6. Tus derechos</h2>
+  <p>De acuerdo con el RGPD, tienes derecho a:</p>
+  <ul>
+    <li>acceder a tus datos y recibir una copia de ellos,</li>
+    <li>rectificar los datos inexactos,</li>
+    <li>la supresión de tus datos (el «derecho al olvido»),</li>
+    <li>la limitación del tratamiento,</li>
+    <li>la portabilidad de los datos,</li>
+    <li>oponerte al tratamiento,</li>
+    <li>presentar una reclamación ante una autoridad de control — la Agencia Española de Protección de Datos (AEPD) en España, o la autoridad de tu país en la UE.</li>
+  </ul>
+
+  <h2>7. Eliminar tus datos</h2>
+  <p>
+    Puedes eliminar tu cuenta y todo lo guardado con ella en cualquier momento
+    desde la propia aplicación: elige la opción de eliminar la cuenta en los
+    ajustes de tu cuenta. Así se borran de forma permanente tu perfil y tus
+    preferencias guardadas. También puedes pedirnos que eliminemos tus datos
+    escribiendo a
+    <a href="mailto:@controllers.LegalContact.Email">@controllers.LegalContact.Email</a>.
+  </p>
+
+  <h2>8. Cambios en esta política</h2>
+  <p>
+    Esta política puede actualizarse a medida que evolucione la aplicación. La
+    versión vigente está siempre disponible en esta dirección, y la fecha de su
+    última actualización aparece al principio de la página.
+  </p>
+}

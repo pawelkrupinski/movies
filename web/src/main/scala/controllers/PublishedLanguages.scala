@@ -11,9 +11,8 @@ import java.util.Locale
  *  language rather than 404ing — a bare URL is what an old link, or someone
  *  typing it, will hit.
  *
- *  Shared by `/privacy-policy` and `/support`, which publish different language
- *  sets (the policy has no Spanish translation yet, the support page does) but
- *  resolve them identically.
+ *  Shared by `/privacy-policy` and `/support`, which both publish every
+ *  language in `LanguageNames.Codes`.
  */
 object PublishedLanguages {
   def resolve(requested: Option[String], published: Set[String], deployment: models.Country): String =

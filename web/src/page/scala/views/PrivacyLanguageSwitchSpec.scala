@@ -57,7 +57,7 @@ class PrivacyLanguageSwitchSpec extends AnyFlatSpec with Matchers with BeforeAnd
     onPolicy { page =>
       page.evalString("document.documentElement.lang") shouldBe "en"
       page.evalString("JSON.stringify([...document.querySelectorAll('.lang-switch option')].map(o => o.value))") shouldBe
-        """["pl","en","de"]"""
+        """["pl","en","de","es"]"""
       page.evalString("document.querySelector('.lang-switch select').value") shouldBe "en"
     }
   }
@@ -73,6 +73,10 @@ class PrivacyLanguageSwitchSpec extends AnyFlatSpec with Matchers with BeforeAnd
       choose(page, "pl")
       page.evalString("location.pathname") shouldBe Path
       page.evalString("document.querySelector('h1').textContent") shouldBe "Polityka prywatności"
+
+      choose(page, "es")
+      page.evalString("location.pathname") shouldBe Path
+      page.evalString("document.querySelector('h1').textContent") shouldBe "Política de privacidad"
     }
   }
 }

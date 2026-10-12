@@ -19,7 +19,9 @@ class SupportControllerSpec extends AnyFlatSpec with Matchers {
   private def support(lang: Option[String]): String =
     contentAsString(controller.support(lang).apply(FakeRequest("GET", "/support")))
 
-  private val published = Seq("pl", "en", "de", "es")
+  // Every language the site offers must have its own support page: a language
+  // added to the navbar picker without one fails the per-language checks below.
+  private val published = LanguageNames.Codes
 
   it should "render Polish when asked for pl" in {
     val html = support(Some("pl"))
@@ -52,6 +54,7 @@ class SupportControllerSpec extends AnyFlatSpec with Matchers {
   it should "carry a reachable contact address in every language" in {
     for (lang <- published) withClue(s"lang=$lang: ") {
       val html = support(Some(lang))
+      html should include (s"""<html lang="$lang"""")
       html should include (s"mailto:${LegalContact.Email}")
       html should include (LegalContact.Email)
     }

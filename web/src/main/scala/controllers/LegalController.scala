@@ -8,7 +8,7 @@ import play.api.mvc._
 // one.
 class LegalController(cc: ControllerComponents, country: models.Country) extends AbstractController(cc) {
 
-  /** `/privacy-policy?lang=pl|en|de` — the language comes from the LINK, not
+  /** `/privacy-policy?lang=pl|en|de|es` — the language comes from the LINK, not
    *  from the deployment; see [[PublishedLanguages]] for why, and for how an
    *  unknown or absent `lang` falls back instead of 404ing.
    */
@@ -16,14 +16,16 @@ class LegalController(cc: ControllerComponents, country: models.Country) extends
     Ok(policy(PublishedLanguages.resolve(lang, published.toSet, country)))
   }
 
-  /** In the order the page's language picker lists them. */
-  private val published = Seq("pl", "en", "de")
+  /** Every language the site offers, in the navbar picker's order — a new
+   *  language needs its policy translation before it ships (LegalControllerSpec
+   *  fails otherwise). */
+  private val published = LanguageNames.Codes
 
   private def policy(language: String): play.twirl.api.Html = language match {
     case "pl" => views.html.privacyPl(country, published)
     case "de" => views.html.privacyDe(country, published)
-    // English doubles as the fallback for a deployment whose language we don't
-    // publish a policy in yet.
+    case "es" => views.html.privacyEs(country, published)
+    // English answers a deployment language outside `LanguageNames.Codes`.
     case _    => views.html.privacyEn(country, published)
   }
 }

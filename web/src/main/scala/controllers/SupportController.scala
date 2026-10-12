@@ -19,17 +19,15 @@ class SupportController(cc: ControllerComponents, country: models.Country) exten
     Ok(page(PublishedLanguages.resolve(lang, published, country)))
   }
 
-  /** Spanish is published here even though the privacy policy has no Spanish
-   *  translation yet: Spain is a live App Store territory, and the support URL
-   *  is the one Apple actually reads. */
-  private val published = Set("pl", "en", "de", "es")
+  /** Every language the site offers — a new language needs its support page
+   *  translated before it ships (SupportControllerSpec fails otherwise). */
+  private val published = LanguageNames.Codes.toSet
 
   private def page(language: String): play.twirl.api.Html = language match {
     case "pl" => views.html.supportPl(country)
     case "de" => views.html.supportDe(country)
     case "es" => views.html.supportEs(country)
-    // English doubles as the fallback for a deployment whose language we don't
-    // publish a support page in yet.
+    // English answers a deployment language outside `LanguageNames.Codes`.
     case _    => views.html.supportEn(country)
   }
 }

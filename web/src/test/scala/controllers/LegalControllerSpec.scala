@@ -39,12 +39,23 @@ class LegalControllerSpec extends AnyFlatSpec with Matchers {
     html should include ("Verantwortlicher")
   }
 
-  // Every language is a COMPLETE policy — the English page used to be a stub
-  // that said "the full text is Polish only", which is not something an app
-  // store will accept as a privacy policy.
-  it should "carry the full section set in every language, not a stub" in {
-    for (lang <- Seq("pl", "en", "de")) withClue(s"lang=$lang: ") {
+  it should "render Spanish when asked for es" in {
+    val html = policy(Some("es"))
+    html should include ("""<html lang="es"""")
+    html should include ("Política de privacidad")
+    html should include ("responsable del tratamiento")
+  }
+
+  // Every language the site offers (the navbar picker's `LanguageNames.Codes`)
+  // gets a COMPLETE policy in that language — adding a language to the picker
+  // without translating the policy fails here, instead of the new language's
+  // store listings quietly getting English. The English page also used to be a
+  // stub that said "the full text is Polish only", which is not something an
+  // app store will accept as a privacy policy.
+  it should "carry the full policy in every language the site offers, not a stub or a fallback" in {
+    for (lang <- LanguageNames.Codes) withClue(s"lang=$lang: ") {
       val html = policy(Some(lang))
+      html should include (s"""<html lang="$lang"""")
       // 8 numbered sections, a contact address and a last-updated date.
       for (section <- 1 to 8) html should include (s">$section.")
       html should include ("pawel.krupinski@gmail.com")
@@ -59,6 +70,11 @@ class LegalControllerSpec extends AnyFlatSpec with Matchers {
     val html = contentAsString(german.privacy(None)(FakeRequest(GET, "/privacy-policy")))
     html should include ("""<html lang="de"""")
     html should include ("Showtimes")
+  }
+
+  it should "answer a bare link on the Spanish deployment in Spanish" in {
+    val spain = new LegalController(Helpers.stubControllerComponents(), models.Country.Spain)
+    contentAsString(spain.privacy(None)(FakeRequest(GET, "/privacy-policy"))) should include ("""<html lang="es"""")
   }
 
   it should "fall back for a language we don't publish rather than 404" in {
