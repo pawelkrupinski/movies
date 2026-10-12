@@ -8,6 +8,8 @@ DerivedData/
 .build/
 Package.resolved
 *.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+# The workspace Xcode generates on opening Package.swift: rebuilt on every open, nothing to share.
+.swiftpm/
 
 # macOS noise.
 .DS_Store
