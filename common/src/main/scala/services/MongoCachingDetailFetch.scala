@@ -101,10 +101,12 @@ class MongoCachingDetailFetch(
     Try(Await.result(c.find(Filters.and(Filters.eq("_id", idOf(url)), Filters.gt("expireAt", java.util.Date.from(clock.instant())))).headOption(), 10.seconds))
       .toOption.flatten
       .flatMap { document =>
-        document.get("bodyGzip").flatMap(stored => Try(MongoCachingDetailFetch.decompress(stored.asBinary().getData)).toOption).map(Right(_))
-          // Stored before bodies were compressed (2026-10-12); every such document expires within one TTL of the deploy.
-          .orElse(Option(document.getString("body")).map(Right(_)))
+        // The plain fields first: this code's every write leaves exactly one of the three, so a `body` or `goneStatus`
+        // beside a `bodyGzip` is the later write of a pod running the code from before compression (2026-10-12) — a
+        // rollback — which `$set` its own field and left the gzip. Such documents expire within one TTL of it.
+        Option(document.getString("body")).map(Right(_))
           .orElse(Option(document.getInteger("goneStatus")).map(status => Left(status.intValue())))
+          .orElse(document.get("bodyGzip").flatMap(stored => Try(MongoCachingDetailFetch.decompress(stored.asBinary().getData)).toOption).map(Right(_)))
       }
 
   private def store(c: MongoCollection[Document], url: String, outcome: Either[Int, String]): Unit =

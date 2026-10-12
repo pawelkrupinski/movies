@@ -191,6 +191,29 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     under.gets shouldBe 0
   }
 
+  /** A rollback runs the code from before compression beside this: it `$set`s a fresh `body` (or `goneStatus`) and
+   *  leaves the `bodyGzip` this code wrote, which this code never does — its every write clears both — so a plain
+   *  field beside `bodyGzip` is always the newer write, and serving the gzip would serve the stale page. */
+  it should "serve what a pre-compression writer stored last over the gzipped body it left beside it" in {
+    val url = s"https://chain/film/rollback-${System.nanoTime()}"
+    val id  = s"${Chain.name}|$url"
+    new MongoCachingDetailFetch(new CountingFetch { override def get(u: String): String = { gets += 1; "<html>old</html>" } },
+      Some(db), 1.hour, Chain, new services.TtlIndexMismatches, tools.MongoTtlSpecClock.Pinned).get(url)
+    storedDocument(id).get("bodyGzip") should not be empty
+    // The pre-compression store, exactly: `$set body`, `$unset goneStatus`.
+    Await.result(db.getCollection(collName).updateOne(Filters.eq("_id", id), org.mongodb.scala.model.Updates.combine(
+      org.mongodb.scala.model.Updates.set("body", "<html>new</html>"), org.mongodb.scala.model.Updates.unset("goneStatus"))).toFuture(), SpecTimeouts.Io)
+    val reader = new CountingFetch
+    new MongoCachingDetailFetch(reader, Some(db), 1.hour, Chain, new services.TtlIndexMismatches, tools.MongoTtlSpecClock.Pinned).get(url) shouldBe "<html>new</html>"
+    reader.gets shouldBe 0
+
+    // …and its remembered 404 (`$set goneStatus`, `$unset body`), likewise over the gzip.
+    Await.result(db.getCollection(collName).updateOne(Filters.eq("_id", id), org.mongodb.scala.model.Updates.combine(
+      org.mongodb.scala.model.Updates.set("goneStatus", 404), org.mongodb.scala.model.Updates.unset("body"))).toFuture(), SpecTimeouts.Io)
+    the [tools.HttpStatusException] thrownBy new MongoCachingDetailFetch(reader, Some(db), 1.hour, Chain,
+      new services.TtlIndexMismatches, tools.MongoTtlSpecClock.Pinned).get(url) should have (Symbol("code") (404))
+  }
+
   it should "NOT be remembered when the failure is transient, so a 5xx still retries" in {
     val url   = s"https://chain/film/flaky-${System.nanoTime()}"
     val under = new CountingFetch {
