@@ -82,4 +82,8 @@ private[cinemas] object SpanishOwnSourcesData {
     "E0863" -> "https://fan.artesiete.es/Cine/4/Artesiete-Fan",   // Artesiete Fan
     "E1041" -> "https://latorre.artesiete.es/Cine/21/Artesiete-La-Torre",   // Artesiete La Torre
   )
+
+  /** Whether the venue is read off a Spanish own source rather than SensaCine. */
+  def ownSourced(theaterId: String): Boolean =
+    taquilla.contains(theaterId) || artesiete.contains(theaterId)
 }

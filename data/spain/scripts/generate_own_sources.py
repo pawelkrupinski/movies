@@ -57,7 +57,11 @@ def render(taquilla, artesiete):
               "  val artesiete: Map[String, String] = Map("]
     lines += [f"    {scala_string(tid)} -> {scala_string(v['page'])},   // {v['name']}"
               for tid, v in sorted(artesiete.items())]
-    lines += ["  )", "}", ""]
+    lines += ["  )", "",
+              "  /** Whether the venue is read off a Spanish own source rather than SensaCine. */",
+              "  def ownSourced(theaterId: String): Boolean =",
+              "    taquilla.contains(theaterId) || artesiete.contains(theaterId)",
+              "}", ""]
     return "\n".join(lines)
 
 

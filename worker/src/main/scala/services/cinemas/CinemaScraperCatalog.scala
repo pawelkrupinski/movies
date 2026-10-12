@@ -2525,7 +2525,7 @@ class CinemaScraperCatalog(
   val spanishSensacineFallback: Map[Cinema, String] =
     models.Country.Spain.cities.flatMap(_.cinemas)
       .flatMap(c => models.SpanishRoster.theaterIdByCinema.get(c)
-        .filter(id => SpanishOwnSourcesData.taquilla.contains(id) || SpanishOwnSourcesData.artesiete.contains(id)).map(c -> _))
+        .filter(SpanishOwnSourcesData.ownSourced).map(c -> _))
       .toMap
 
   /** Where every kinoprogramm.com fallback reads its films' catalogue pages: one page per
