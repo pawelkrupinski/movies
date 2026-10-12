@@ -367,8 +367,14 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     phoenix.fetch().flatMap(_.showtimes) should have size 52
     c.flicksFallbackSlugs.get(PhoenixCinemaEastFinchley).value shouldBe
       ChainFlicksFallback.FlicksFallback(FlicksMarket.UnitedKingdom, "phoenix-cinema-east-finchley")
+    // Ilkley had no Flicks showtime either; Savoy only sells its tickets, so its programme
+    // is read off the box office's root page.
+    val ilkley = c.all.find(_.cinema == IlkleyCinema).value
+    ilkley shouldBe a [SavoyClient]
+    ilkley.sourceUrl.value shouldBe "https://book.ilkleycinema.co.uk/IlkleyCinema.dll/"
+    ilkley.fetch().flatMap(_.showtimes) should have size 166
     val savoyVenues = c.all.collect { case s: SavoyClient => s.cinema }
-    savoyVenues should have size 43
+    savoyVenues should have size 64
     // Every one keeps its Flicks slug, so a box-office outage falls back rather than blanks.
     savoyVenues.filterNot(c.flicksFallbackSlugs.contains) shouldBe empty
   }

@@ -7,8 +7,6 @@ import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, MonthDay, Period}
-import java.time.format.TextStyle
-import java.util.Locale
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -100,11 +98,6 @@ object TheOldCourtClient {
    *  single card instead of two near-duplicate rows. */
   private val StrandSuffixPat = """\s*\((?:Independent film|The Old Courters)\)\s*$""".r
 
-  private val MonthsByAbbreviation: Map[String, Int] =
-    (1 to 12).map { m =>
-      java.time.Month.of(m).getDisplayName(TextStyle.SHORT, Locale.UK).toLowerCase(Locale.ROOT).take(3) -> m
-    }.toMap
-
   private case class RawSlot(
     title:      String,
     dateTime:   LocalDateTime,
@@ -148,7 +141,7 @@ object TheOldCourtClient {
   def parseWhen(text: String, today: LocalDate): Option[LocalDateTime] =
     WhenPat.findFirstMatchIn(text).flatMap { m =>
       for {
-        month    <- MonthsByAbbreviation.get(m.group(2).toLowerCase(Locale.ROOT).take(3))
+        month    <- ScraperParse.englishMonth(m.group(2))
         time     <- ScraperParse.clockAt(m, 3)
         dayMonth <- Try(MonthDay.of(month, m.group(1).toInt)).toOption
         date     <- ScraperParse.upcomingDate(dayMonth, today, grace = Period.ofDays(1))

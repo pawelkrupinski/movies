@@ -10473,8 +10473,13 @@ services.cinemas.uk.OdeonParser$RawOdeonShowtime
 services.cinemas.uk.OdeonParser$RawOdeonShowtime$
 services.cinemas.uk.SavoyClient
 services.cinemas.uk.SavoyClient$
+services.cinemas.uk.SavoyClient$BoxOffice$
+services.cinemas.uk.SavoyClient$Listing
+services.cinemas.uk.SavoyClient$Programme
+services.cinemas.uk.SavoyClient$Programme$
 services.cinemas.uk.SavoyClient$Slot
 services.cinemas.uk.SavoyClient$Slot$
+services.cinemas.uk.SavoyClient$WhatsOn$
 services.cinemas.uk.SpektrixClient
 services.cinemas.uk.SpektrixClient$
 services.cinemas.uk.SpektrixClient$$anon$1

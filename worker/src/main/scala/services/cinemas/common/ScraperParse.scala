@@ -90,6 +90,15 @@ private[cinemas] object ScraperParse {
   def polishMonthAbbrev(token: String): Option[Int] =
     PolishMonthAbbrevs.get(token.trim.toLowerCase(Locale.ROOT))
 
+  private val EnglishMonthAbbrevs: Map[String, Int] =
+    (1 to 12).map(m => java.time.Month.of(m).name.toLowerCase(Locale.ROOT).take(3) -> m).toMap
+
+  /** The month number for an English month name or abbreviation by its first three
+    * letters, case-insensitively ("Oct", "Sept", "September" → 9 for the last two);
+    * `None` for anything that is not one. */
+  def englishMonth(token: String): Option[Int] =
+    Some(token.trim.toLowerCase(Locale.ROOT)).filter(_.length >= 3).flatMap(t => EnglishMonthAbbrevs.get(t.take(3)))
+
   /** The month number for a Polish month token in any spelling the cinema
     * pages use — genitive ("września"), nominative ("wrzesień") or the
     * three-letter abbreviation ("wrz") — case-insensitively. */

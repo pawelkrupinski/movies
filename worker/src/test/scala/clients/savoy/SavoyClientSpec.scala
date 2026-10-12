@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
-import models.PhoenixCinemaEastFinchley
+import models.{IlkleyCinema, PhoenixCinemaAndArtCentreLeicester, PhoenixCinemaEastFinchley, WetherbyFilmTheatre}
 import services.cinemas.uk.SavoyClient
 
 import java.time.{LocalDate, LocalDateTime}
@@ -74,5 +74,74 @@ class SavoyClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   "SavoyClient.parse" should "refuse a page without the Events literal rather than call it an empty programme" in {
     an[IllegalArgumentException] should be thrownBy
       SavoyClient.parse("<html><body>Maintenance</body></html>", Base, PhoenixCinemaEastFinchley, today)
+  }
+}
+
+/** Replays 2026-10-12 captures of three booking-only Savoy hosts' root pages
+ *  (`WriteSavoy`): Ilkley Cinema's `book.ilkleycinema.co.uk/IlkleyCinema.dll/`, the
+ *  Phoenix Leicester's `tickets.phoenix.org.uk/PhoenixCinemaLeicester.dll/` and Wetherby
+ *  Film Theatre's `book.wetherbycinema.com/WetherbyFilmTheatre.dll/`.
+ *
+ *  Ilkley and Wetherby had no showtime from Flicks at all; their `WhatsOn` is an empty
+ *  shell, the programme lives on the box office's root page. */
+class SavoyBoxOfficeSpec extends AnyFlatSpec with Matchers with OptionValues {
+
+  private val today = LocalDate.of(2026, 10, 12)
+  private def scrape(dllBase: String, cinema: models.Cinema, on: LocalDate = today) =
+    new SavoyClient(new FakeHttpFetch("savoy"), dllBase, cinema, on, SavoyClient.BoxOffice).fetch()
+
+  private val IlkleyBase = "https://book.ilkleycinema.co.uk/IlkleyCinema.dll/"
+  private val ilkley     = scrape(IlkleyBase, IlkleyCinema)
+  private val ilkleyBy   = ilkley.map(cm => cm.movie.title -> cm).toMap
+
+  "SavoyClient on a booking-only host" should "read Ilkley's whole programme off the box office's root page" in {
+    ilkley.size shouldBe 39
+    ilkley.flatMap(_.showtimes).size shouldBe 166
+    ilkley.map(_.cinema).toSet shouldBe Set(IlkleyCinema)
+    ilkley.flatMap(_.showtimes).map(_.dateTime.toLocalDate).max shouldBe LocalDate.of(2027, 5, 30)
+  }
+
+  it should "put each dated row's times under the film heading above it, with its booking link" in {
+    val film = ilkleyBy("Sense and Sensibility")
+    film.showtimes.take(3).map(_.dateTime) shouldBe Seq(
+      LocalDateTime.of(2026, 10, 12, 16, 0), LocalDateTime.of(2026, 10, 12, 16, 50), LocalDateTime.of(2026, 10, 12, 20, 0))
+    film.showtimes.head.bookingUrl.value shouldBe
+      s"${IlkleyBase}TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1030.TcsWebTab_1031.TcsPerformance_12626215.TcsSection_523880"
+    film.filmUrl.value shouldBe s"${IlkleyBase}TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1030.TcsWebTab_1031.TcsProgramme_12591345"
+    film.externalIds shouldBe Map("savoy" -> "12591345")
+    // Ilkley's synopsis placeholder is "tbc": no synopsis rather than that word.
+    film.synopsis shouldBe None
+  }
+
+  it should "drop performances before today" in {
+    val later = scrape(IlkleyBase, IlkleyCinema, LocalDate.of(2026, 10, 14))
+    later.flatMap(_.showtimes).map(_.dateTime.toLocalDate).min shouldBe LocalDate.of(2026, 10, 14)
+  }
+
+  it should "read a time printed before the booking button, the certificate and the subtitled note" in {
+    val leicester = scrape("https://tickets.phoenix.org.uk/PhoenixCinemaLeicester.dll/", PhoenixCinemaAndArtCentreLeicester)
+    leicester.flatMap(_.showtimes) should have size 175
+    val pressure = leicester.find(_.movie.title == "Pressure").value
+    pressure.showtimes.take(2).map(s => (s.dateTime, s.format)) shouldBe Seq(
+      LocalDateTime.of(2026, 10, 12, 15, 30) -> Nil,
+      LocalDateTime.of(2026, 10, 15, 15, 30) -> List("SUB"))
+    pressure.ageRating shouldBe Some("12A")
+    pressure.posterUrl shouldBe Some("https://images.savoysystems.co.uk/PHL/13765630.jpg")
+  }
+
+  it should "take the film from the block's title heading where the template links none" in {
+    val wetherby = scrape("https://book.wetherbycinema.com/WetherbyFilmTheatre.dll/", WetherbyFilmTheatre)
+    wetherby.flatMap(_.showtimes) should have size 149
+    val film = wetherby.find(_.movie.title == "Sense and Sensibility").value
+    film.showtimes.head.dateTime shouldBe LocalDateTime.of(2026, 10, 12, 16, 0)
+    film.posterUrl shouldBe Some("https://images.savoysystems.co.uk/WFT/3801100.jpeg")
+    film.synopsis.value should startWith ("An irresistible new take on Jane Austen")
+    wetherby.map(_.movie.title) should contain ("National Theatre Live: The Misanthrope")
+    wetherby.map(_.movie.title).filter(_.endsWith("/")) shouldBe empty
+  }
+
+  "SavoyClient.BoxOffice" should "refuse a page that is no Savoy performance list rather than call it an empty programme" in {
+    an[IllegalArgumentException] should be thrownBy
+      SavoyClient.BoxOffice.parse("<html><body>Maintenance</body></html>", IlkleyBase, IlkleyCinema, today)
   }
 }
