@@ -3,8 +3,6 @@ package services.movies
 import models.SourceData
 import services.cinemas.CountryNames
 
-import java.util.Locale
-
 /**
  * What every cinema client's parser hands the pipeline is SANE field by field, over every corpus
  * ([[CorpusShapeSpec]]): each cinema slot of every film the Polish fixture boot built, and each
@@ -46,6 +44,10 @@ class CinemaSlotInvariantsSpec extends CorpusShapeSpec {
     Seq("ARNIE & BARNEY – RETTEN DAS WASSER" -> 2034, "Hirten" -> 2040, "No Good Men" -> 2051).map { case (listing, year) =>
       AllowedListing.anywhere(listing) ->
         s"kinoheld's catalogue productionYear $year, 2026-10-12 (run 38196151886): $RecordedBeforeFix (KinoheldClient reads a year past next year as none)"
+    } ++
+    Seq("Bad Moms X-mas (Mums Night Off)", "Hocus Pocus", "The Hunger Games: Mockingjay Part 2", "The Polar Express (Pyjama Party)").map { listing =>
+      AllowedListing("Savoy Cinema Corby", listing) ->
+        s"cast 'USA', the venue typing its credits a field over, 2026-10-12 (run 38251516862): $RecordedBeforeFix (SavoyClient.Credits reads each field by what it holds)"
     }
 
   override protected val awaitingReRecord: Set[AllowedListing] = recordedBeforeFix.keySet
@@ -115,25 +117,12 @@ object CinemaSlotInvariantsSpec {
   /** The corpus was captured in 2026: a release year past this is a misread number, not a film. */
   private val LatestYear     = 2030
 
-  /** Every country's name as each served language spells it ("Vereinigte Staaten", "Estados
-   *  Unidos"), lower-cased — `CountryNames` folds only the spellings the Polish corpus used. */
-  private val CountryNamesAnyLanguage: Set[String] =
-    (for {
-      iso      <- Locale.getISOCountries.toSet
-      language <- Set(Locale.ENGLISH, Locale.GERMAN, Locale.of("es"), Locale.of("pl"))
-      name      = Locale.of("", iso).getDisplayCountry(language)
-      if name.nonEmpty && name != iso
-    } yield name.toLowerCase(Locale.ROOT))
-
-  private def isCountry(name: String): Boolean =
-    CountryNames.isPolish(name) || CountryNamesAnyLanguage.contains(name.toLowerCase(Locale.ROOT))
-
   /** Each shape rule `slot` breaks, as `rule: value`. */
   def violations(slot: SourceData): Seq[String] = {
     val people = (slot.director ++ slot.cast).map(_.trim).filter(_.nonEmpty).flatMap { person =>
       if (Runtime.matches(person)) Some(s"person-is-runtime: $person")
       else if (DateOrNumber.matches(person)) Some(s"person-is-date-or-number: $person")
-      else if (isCountry(person)) Some(s"person-is-country: $person")
+      else if (CountryNames.isCountry(person)) Some(s"person-is-country: $person")
       else if (CreditLabel.findFirstIn(person).isDefined) Some(s"person-carries-credit-label: $person")
       else Option.when(YearInName.findFirstIn(person).isDefined)(s"person-carries-year: $person")
     }

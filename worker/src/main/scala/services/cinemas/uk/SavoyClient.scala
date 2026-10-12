@@ -5,6 +5,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
 import play.api.libs.json._
+import services.cinemas.CountryNames
 import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse, SlotsToMovies}
 import services.cinemas.pl.OnlyMovieEventsFilter
 import tools.{HttpFetch, HttpRead}
@@ -128,23 +129,43 @@ object SavoyClient {
         (event \ field).asOpt[String].map(unescape).filter(_.nonEmpty)
       def names(field: String): Seq[String] =
         text(field).toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty)
+      val credits = Credits.read(names("Director"), names("Year"), names("Cast"), names("Country"))
       CinemaMovie(
         movie = Movie(
           title          = title,
           runtimeMinutes = (event \ "RunningTime").asOpt[Int].filter(_ > 0),
           releaseYear    = text("Year").flatMap(ScraperParse.yearIn),
-          countries      = names("Country")
+          countries      = credits.countries
         ),
         cinema      = cinema,
         posterUrl   = text("ImageURL"),
         filmUrl     = text("URL"),
         synopsis    = text("Synopsis"),
-        cast        = names("Cast"),
-        director    = names("Director"),
+        cast        = credits.cast,
+        director    = credits.director,
         showtimes   = showtimes,
         externalIds = (event \ "ID").asOpt[Long].map(id => Map("savoy" -> id.toString)).getOrElse(Map.empty),
         ageRating   = text("Rating").flatMap(BbfcAlt.findFirstMatchIn(_)).flatMap(m => AgeRating.normalize(m.group(1)))
       )
+    }
+  }
+
+  /** An event's credits, read by what each field holds. A venue types its credits into the template's own
+   *  fields, and one has them a field over: Savoy Corby's "Cast" holds the country ("USA"), its "Country" the
+   *  actors and its "Year" the director (2026-10-12: Hocus Pocus, The Polar Express, Mockingjay Part 2). The tell
+   *  is a "Cast" of nothing but countries, or an empty one beside a "Country" listing several names none of which
+   *  is a country; then each field is read as the one it stands for. */
+  private[uk] final case class Credits(director: Seq[String], cast: Seq[String], countries: Seq[String])
+
+  private[uk] object Credits {
+    def read(director: Seq[String], year: Seq[String], cast: Seq[String], country: Seq[String]): Credits = {
+      val shifted = (cast.nonEmpty && cast.forall(CountryNames.isCountry)) ||
+        (cast.isEmpty && country.size >= 2 && !country.exists(CountryNames.isCountry))
+      if (!shifted) Credits(director, cast, country)
+      else Credits(
+        director  = if (director.nonEmpty) director else year.filter(ScraperParse.yearIn(_).isEmpty),
+        cast      = country,
+        countries = cast)
     }
   }
 

@@ -10485,6 +10485,8 @@ services.cinemas.uk.OdeonParser$RawOdeonShowtime$
 services.cinemas.uk.SavoyClient
 services.cinemas.uk.SavoyClient$
 services.cinemas.uk.SavoyClient$BoxOffice$
+services.cinemas.uk.SavoyClient$Credits
+services.cinemas.uk.SavoyClient$Credits$
 services.cinemas.uk.SavoyClient$Listing
 services.cinemas.uk.SavoyClient$Programme
 services.cinemas.uk.SavoyClient$Programme$

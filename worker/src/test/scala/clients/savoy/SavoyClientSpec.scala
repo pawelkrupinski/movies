@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
-import models.{IlkleyCinema, PhoenixCinemaAndArtCentreLeicester, PhoenixCinemaEastFinchley, WetherbyFilmTheatre}
+import models.{IlkleyCinema, PhoenixCinemaAndArtCentreLeicester, PhoenixCinemaEastFinchley, SavoyCinemaCorby, WetherbyFilmTheatre}
 import services.cinemas.uk.SavoyClient
 
 import java.time.{LocalDate, LocalDateTime}
@@ -74,6 +74,31 @@ class SavoyClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   "SavoyClient.parse" should "refuse a page without the Events literal rather than call it an empty programme" in {
     an[IllegalArgumentException] should be thrownBy
       SavoyClient.parse("<html><body>Maintenance</body></html>", Base, PhoenixCinemaEastFinchley, today)
+  }
+
+  // Replays a 2026-10-12 capture of https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn (`WriteSavoy`): the venue types
+  // its credits a field over — "Cast":"USA", "Country":"Bette Midler, …", "Year":"Kenny Ortega" — so the recording
+  // of run 38251516862 carried "USA" as the cast of Hocus Pocus and three more films.
+  private lazy val corby = new SavoyClient(new FakeHttpFetch("savoy"), "https://savoycorby.co.uk/SavoyCorby.dll/",
+    SavoyCinemaCorby, today).fetch().map(cm => cm.movie.title -> cm).toMap
+
+  "SavoyClient.fetch (Savoy Corby)" should "read each credit by what it holds when the venue types them a field over" in {
+    val hocusPocus = corby("Hocus Pocus")
+    hocusPocus.cast shouldBe Seq("Bette Midler", "Sarah Jessica Parker", "Kathy Najimy")
+    hocusPocus.movie.countries shouldBe Seq("USA")
+    hocusPocus.director shouldBe Seq("Kenny Ortega")
+    corby("The Polar Express (Pyjama Party)").cast should contain ("Tom Hanks (voice)")
+    corby("Bad Moms X-mas (Mums Night Off)").cast shouldBe empty
+    corby("Bad Moms X-mas (Mums Night Off)").movie.countries shouldBe Seq("USA")
+    corby("Home Alone").cast should contain ("Joe Pesci")
+    corby("Home Alone").movie.countries shouldBe empty
+  }
+
+  it should "leave the credits of a venue that keys them right where they are" in {
+    val pressure = byTitle("Pressure")
+    pressure.director shouldBe Seq("Anthony Maras")
+    byTitle("The Social Reckoning").movie.countries shouldBe Seq("USA")
+    byTitle("The Social Reckoning").cast should contain ("Jeremy Allen White")
   }
 }
 

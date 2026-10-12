@@ -207,4 +207,18 @@ object CountryNames {
   )
 
   def isPolish(name: String): Boolean = Polish.contains(canonical(name))
+
+  /** Every country's name as each served language spells it ("Vereinigte Staaten", "Estados Unidos"),
+   *  lower-cased — the alias map folds only the spellings the Polish corpus used. */
+  private lazy val NamesAnyLanguage: Set[String] =
+    for {
+      iso      <- Locale.getISOCountries.toSet
+      language <- Set(Locale.ENGLISH, Locale.GERMAN, Locale.of("es"), Locale.of("pl"))
+      name      = Locale.of("", iso).getDisplayCountry(language)
+      if name.nonEmpty && name != iso
+    } yield name.toLowerCase(Locale.ROOT)
+
+  /** Whether `name` names a country, in any served language or a spelling the alias map knows ("USA"). */
+  def isCountry(name: String): Boolean =
+    isPolish(name) || NamesAnyLanguage.contains(name.trim.toLowerCase(Locale.ROOT))
 }

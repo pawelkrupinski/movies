@@ -7,10 +7,15 @@ import services.cinemas.uk.SavoyClient
 /** Measure the live Savoy Systems venues read from a booking-only box office's root page
  *  — film and showtime count and last date, the measurement their wiring was decided on —
  *  and, with `--record`, re-record the pages SavoyClientSpec replays under
- *  test/resources/fixtures/savoy/: Phoenix East Finchley's `WhatsOn` and the box offices
- *  of Ilkley Cinema, the Phoenix Leicester and Wetherby Film Theatre. Pass venue names to run only those. */
+ *  test/resources/fixtures/savoy/: the `WhatsOn` pages of Phoenix East Finchley and Savoy Corby
+ *  and the box offices of Ilkley Cinema, the Phoenix Leicester and Wetherby Film Theatre. Pass
+ *  venue names to run only those. */
 object WriteSavoy {
-  private val PhoenixEastFinchley = "https://www.phoenixcinema.co.uk/PhoenixCinemaLondon.dll/"
+  /** Full venue sites, the programme in the `WhatsOn` page's literal. */
+  private val WhatsOnSites: Seq[(String, Cinema)] = Seq(
+    "https://www.phoenixcinema.co.uk/PhoenixCinemaLondon.dll/" -> PhoenixCinemaEastFinchley,
+    "https://savoycorby.co.uk/SavoyCorby.dll/"                 -> SavoyCinemaCorby
+  )
 
   /** Booking-only hosts: the venue's own site is elsewhere, Savoy only sells the tickets. */
   val BoxOffices: Seq[(String, Cinema)] = Seq(
@@ -38,7 +43,7 @@ object WriteSavoy {
     "https://riversidewoodbridge.savoysystems.co.uk/RiversideWoodbridge.dll/"                 -> RiversideTheatreWoodbridge
   )
 
-  private val Recorded: Set[Cinema] = Set(PhoenixCinemaEastFinchley, IlkleyCinema, PhoenixCinemaAndArtCentreLeicester, WetherbyFilmTheatre)
+  private val Recorded: Set[Cinema] = Set(PhoenixCinemaEastFinchley, SavoyCinemaCorby, IlkleyCinema, PhoenixCinemaAndArtCentreLeicester, WetherbyFilmTheatre)
 
   def main(args: Array[String]): Unit = {
     val record = args.contains("--record")
@@ -48,9 +53,9 @@ object WriteSavoy {
     def wanted(cinema: Cinema) = asked.isEmpty || asked.contains(cinema.displayName)
     def http(cinema: Cinema) = if (record && Recorded(cinema)) new RecordingHttpFetch("savoy", live) else live
 
-    if (wanted(PhoenixCinemaEastFinchley))
-      measure(PhoenixCinemaEastFinchley,
-        new SavoyClient(http(PhoenixCinemaEastFinchley), PhoenixEastFinchley, PhoenixCinemaEastFinchley, today))
+    WhatsOnSites.filter { case (_, cinema) => wanted(cinema) }.foreach { case (dllBase, cinema) =>
+      measure(cinema, new SavoyClient(http(cinema), dllBase, cinema, today))
+    }
     BoxOffices.filter { case (_, cinema) => wanted(cinema) }.foreach { case (dllBase, cinema) =>
       measure(cinema, new SavoyClient(http(cinema), dllBase, cinema, today, SavoyClient.BoxOffice))
     }
