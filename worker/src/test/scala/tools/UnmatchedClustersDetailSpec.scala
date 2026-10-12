@@ -18,16 +18,18 @@ class UnmatchedClustersDetailSpec extends AnyFlatSpec with Matchers {
   private def key(l: Listing) = ListingKey.serialised(l.key)
   private val facts = Some(DetailFacts(Some(2026), Seq("Louisa Proske"), Some(210), None))
 
-  private val cineworld = Seq("macbeth", "tosca", "secret-screening").map(s => listing(s"https://www.cineworld.co.uk/films/1-$s"))
+  private val cineworld = (1 to UnmatchedClusters.RefusedHostListings).map(n => listing(s"https://www.cineworld.co.uk/films/$n-macbeth"))
   private val omniplex  = Seq("macbeth", "tosca").map(s => listing(s"https://www.omniplex.ie/whatson/$s"))
+  // one page of a small house left unread (PL, run 38315368375: Kino Marzenie's) is no refusal of the recording's reads
+  private val marzenie  = Seq(listing("https://www.kinomarzenie.pl/repertuar/macbeth"))
 
   private def capture(details: Map[String, Option[DetailFacts]]) =
-    UnmatchedClusters.Capture(Country.all.head, cineworld ++ omniplex, Nil, Map.empty, Map.empty, details,
-      (cineworld ++ omniplex).map(key).toSet, Map.empty, Map.empty)
+    UnmatchedClusters.Capture(Country.all.head, cineworld ++ omniplex ++ marzenie, Nil, Map.empty, Map.empty, details,
+      (cineworld ++ omniplex ++ marzenie).map(key).toSet, Map.empty, Map.empty)
 
   "A capture's detail check" should "name the host it marks as having detail for every listing of which it stores none" in {
     val partlyRead = (omniplex.take(1).map(l => key(l) -> facts) ++ omniplex.drop(1).map(l => key(l) -> None)).toMap
-    UnmatchedClusters.hostsMissingDetail(capture(partlyRead)) shouldBe Map("www.cineworld.co.uk" -> 3)
+    UnmatchedClusters.hostsMissingDetail(capture(partlyRead)) shouldBe Map("www.cineworld.co.uk" -> UnmatchedClusters.RefusedHostListings)
   }
 
   it should "pass a capture holding some detail of every host it marks" in {

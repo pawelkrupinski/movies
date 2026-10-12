@@ -55,14 +55,20 @@ object UnmatchedClusters {
    *  of none of, with how many listings it marks: a host that refused the corpus recording's every detail read — the UK
    *  capture of 2026-10-12 over recording 38103789067, whose Cineworld box-office API reads were all 403'd: 384 listings
    *  with detail, none stored, read by the agreement as no venue facts at all (77 "RBO … Macbeth" right takes lost). A
-   *  capture holding one is not to be checked in: re-record the corpus once the host answers again. */
+   *  capture holding one is not to be checked in: re-record the corpus once the host answers again. A host counts once it
+   *  marks [[RefusedHostListings]] listings: a small house's one page left unread is no refusal (PL, run 38315368375:
+   *  Kino Marzenie's single listing). */
   def hostsMissingDetail(capture: Capture): Map[String, Int] = {
     val hostOf = capture.listings.flatMap(l => l.page.flatMap(page => scala.util.Try(java.net.URI.create(page).getHost).toOption.flatMap(Option(_)))
       .map(ListingKey.serialised(l.key) -> _)).toMap
     capture.withDetail.toSeq.flatMap(key => hostOf.get(key).map(_ -> key)).groupBy(_._1).collect {
-      case (host, marked) if marked.forall { case (_, key) => capture.details.get(key).flatten.isEmpty } => host -> marked.size
+      case (host, marked) if marked.size >= RefusedHostListings && marked.forall { case (_, key) => capture.details.get(key).flatten.isEmpty } =>
+        host -> marked.size
     }
   }
+
+  /** The listings a host marks before [[hostsMissingDetail]] reads none of its detail stored as the recording refused. */
+  val RefusedHostListings = 10
 
   // ── what the agreement makes of the clusters ─────────────────────────────────────────────
 
