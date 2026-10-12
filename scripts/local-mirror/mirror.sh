@@ -114,12 +114,12 @@ trap cleanup EXIT INT TERM
 discover_dbs() {
   local configured; configured="$(printf '%s' "${KINOWO_MIRROR_DBS:-}" | tr ',' ' ')"
   if [ -n "$configured" ]; then echo "$configured"; return 0; fi
-  mongosh "$SRCZ" --quiet --eval \
+  mongosh_at "$SRCZ" --quiet --eval \
     'db.adminCommand({listDatabases:1,nameOnly:true}).databases.map(d=>d.name).filter(n=>/^kinowo/.test(n)).join(" ")' \
     2>/dev/null | tail -1
 }
 
-reseed()   { mongosh "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$1'" --file "$HERE/mirror-targets.js" --file "$HERE/seed.js"; }
+reseed()   { mongosh_at "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$1'" --file "$HERE/mirror-targets.js" --file "$HERE/seed.js"; }
 
 # Re-seed, treating a failure as a recoverable cycle rather than the end of this
 # supervisor — 0 to carry on, non-zero for the caller to `continue` on.
@@ -226,7 +226,7 @@ code_changed() {
 needs_reseed() {
   local code
   set +e
-  mongosh "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$1'" \
+  mongosh_at "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$1'" \
     --file "$HERE/mirror-targets.js" --file "$HERE/staleness-rule.js" --file "$HERE/staleness.js"
   code=$?
   set -e
@@ -261,7 +261,7 @@ supervise_db() {
     local retargeted=0 drifted=0 polls=0
 
     set +e
-    mongosh "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$srcdb'" \
+    mongosh_at "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$srcdb'" \
       --file "$HERE/mirror-targets.js" --file "$HERE/stream-start.js" --file "$HERE/tail.js" &
     local tailpid=$!
     # Watch for a retarget while the tailer streams. An empty reading means the

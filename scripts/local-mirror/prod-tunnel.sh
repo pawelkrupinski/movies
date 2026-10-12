@@ -112,13 +112,21 @@ prod_tunnel_target() {
 # The probe URI's own serverSelectionTimeoutMS is replaced with a short one: the
 # sync URIs set 10s so a loaded tunnel doesn't fail a real query, but that is a
 # 10s stall per cycle when we are only asking "is anything there".
+# `mongosh URI ARGS…` without the URI — and the password in it — on mongosh's command line, where
+# `ps` shows it to every user: the URI travels in the environment, and the shell connects to it
+# before any other --eval or --file runs (every one of them then sees that `db`).
+mongosh_at() {
+  local uri="$1"; shift
+  KINOWO_MONGOSH_URI="$uri" mongosh --nodb --eval 'db = connect(process.env.KINOWO_MONGOSH_URI)' "$@"
+}
+
 prod_tunnel_answers() {
   nc -z -w2 127.0.0.1 27017 2>/dev/null || return 1
   [ -n "${TUNNEL_PROBE_URI:-}" ] || return 0        # nothing to authenticate with; TCP is all we have
   local probe; probe="$(printf '%s' "$TUNNEL_PROBE_URI" | sed -E 's/[?&]serverSelectionTimeoutMS=[0-9]+//g')"
   case "$probe" in *\?*) probe="$probe&serverSelectionTimeoutMS=3000" ;;
                    *)    probe="$probe?serverSelectionTimeoutMS=3000" ;; esac
-  mongosh "$probe" --quiet --eval 'db.adminCommand({ping:1})' >/dev/null 2>&1
+  mongosh_at "$probe" --quiet --eval 'db.adminCommand({ping:1})' >/dev/null 2>&1
 }
 
 # Bring the tunnel up if prod isn't answering, and keep it OURS. Returns 0 when

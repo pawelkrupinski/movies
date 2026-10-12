@@ -10,7 +10,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-reset-corpus.XXXXXX")"
 trap 'rm -rf "$SCRATCH"' EXIT
 FAKE="$SCRATCH/bin"; mkdir -p "$FAKE"
-export TUNNEL_UP="$SCRATCH/tunnel-up"
+export TUNNEL_UP="$SCRATCH/tunnel-up" ARGV_LOG="$SCRATCH/mongosh-argv"
 cat > "$FAKE/secrets" <<'FAKE_EOF'
 #!/usr/bin/env bash
 shift 2
@@ -20,7 +20,7 @@ exec "$@"
 FAKE_EOF
 printf '#!/usr/bin/env bash\ntouch "$TUNNEL_UP"; exec sleep 30\n' > "$FAKE/ssh"
 printf '#!/bin/sh\n[ -e "$TUNNEL_UP" ]\n' > "$FAKE/nc"
-printf '#!/bin/sh\n[ -e "$TUNNEL_UP" ] || exit 1\necho 0\n' > "$FAKE/mongosh"
+printf '#!/bin/sh\necho "$*" >> "$ARGV_LOG"\n[ -e "$TUNNEL_UP" ] || exit 1\necho 0\n' > "$FAKE/mongosh"
 printf '#!/bin/sh\nexit 0\n' > "$FAKE/kubectl"
 chmod +x "$FAKE"/*
 
@@ -37,6 +37,8 @@ check "Germany's corpus is kinowo_de, never Poland's" "kinowo_de" "$(target "$(r
 out="$(reset de kinowo)"; status=$?
 check "an exported MONGODB_DB naming another country's database is refused" "1" "$status"
 check "…before anything is targeted" "" "$(target "$out")"
+check "the prod URI's password never reaches mongosh's command line, where ps shows it" \
+  "" "$(grep -F 'u:p@' "$ARGV_LOG")"
 check "a matching exported MONGODB_DB is accepted" "kinowo_uk" "$(target "$(reset uk kinowo_uk)")"
 
 spec_summary

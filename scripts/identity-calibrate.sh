@@ -81,7 +81,7 @@ if [[ "${1:-}" == "--extract-prod" ]]; then
   ensure_prod_tunnel || { echo "prod Mongo unreachable on 127.0.0.1:27017 — can you 'ssh' to the mongo host? (see scripts/local-mirror/prod-tunnel.sh)" >&2; exit 1; }
   mkdir -p "$PROD"
   for db in kinowo kinowo_uk kinowo_de kinowo_es kinowo_us; do
-    KINOWO_CALIBRATE_DB=$db mongosh "$uri" --quiet scripts/identity-calibrate/extract-prod.js > "$PROD/prod-$db.jsonl"
+    KINOWO_CALIBRATE_DB=$db mongosh_at "$uri" --quiet --file scripts/identity-calibrate/extract-prod.js > "$PROD/prod-$db.jsonl"
     echo "prod snapshot $db: $(wc -l < "$PROD/prod-$db.jsonl") rows"
   done
 fi

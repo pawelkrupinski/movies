@@ -148,7 +148,7 @@ open_tunnel() {
 }
 
 require_local_mongo() {
-  mongosh "$URI" --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1 && return 0
+  mongosh_at "$URI" --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1 && return 0
   echo "[reset] local Mongo not reachable at $URI — start it with scripts/local-mirror/start-local-mongo.sh" >&2
   exit 1
 }
@@ -165,7 +165,7 @@ echo "[reset] ${DRY:+[dry-run] }collections in '$DB':"
 # `getSiblingDB($DB)` targets the db explicitly — the --local URI carries no db,
 # so a bare `db` would resolve to `test`.
 COLLS_JS="$(printf '"%s",' "${COLLECTIONS[@]}")"
-mongosh "$URI" --quiet --eval "
+mongosh_at "$URI" --quiet --eval "
   var dry = ${DRY:-0} == 1;
   var target = db.getSiblingDB('$DB');
   var wanted = [${COLLS_JS%,}];
