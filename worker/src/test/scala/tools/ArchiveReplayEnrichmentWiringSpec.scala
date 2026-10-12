@@ -364,10 +364,14 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     val wiring  = new ArchiveReplayWiring(Country.UnitedKingdom, new InMemoryScrapeArchiveRepository,
       Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), new FetchOnlyStorage, fixtureTree,
       settings.FixtureRoot.RepositoryRelative, Some(missing))
+    // Paced, n asks sleep at least (n - 1) x 200 ms — a floor a sleep never undercuts — so the bound
+    // sits at that floor, not at a guess of how fast an unpaced run is on a loaded machine.
+    val asks    = 10
+    val pacedMs = (asks - 1) * 200L
     val started = System.nanoTime()
-    (1 to 4).foreach(i => an [Exception] should be thrownBy wiring.httpFetch.get(s"https://www.flicks.co.uk/movie/unrecorded-$i/"))
+    (1 to asks).foreach(i => an [Exception] should be thrownBy wiring.httpFetch.get(s"https://www.flicks.co.uk/movie/unrecorded-$i/"))
     val elapsedMs = (System.nanoTime() - started) / 1000000
-    withClue(s"four refusals on a 200 ms-paced host took ${elapsedMs} ms: ") { elapsedMs should be < 300L }
+    withClue(s"$asks refusals on a 200 ms-paced host took ${elapsedMs} ms: ") { elapsedMs should be < pacedMs }
     missing.size should be >= 1
   }
 
