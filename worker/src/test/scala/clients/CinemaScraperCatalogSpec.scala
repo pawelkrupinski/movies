@@ -11,7 +11,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper}
 import services.cinemas.pl._
 import services.cinemas.us.{AlamoDrafthouseClient, CinemaPlusClient, SquarespaceEventsClient, UsChainVenues}
-import services.cinemas.uk.{CineworldClient, SavoyClient, SpektrixClient, TicketsolveClient}
+import services.cinemas.uk.{CineworldClient, NovaCinemaClient, SavoyClient, SpektrixClient, TicketsolveClient}
 import services.cinemas.us.{AmcClient, RegalClient}
 import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
 import services.freshness.{Freshness, FreshnessKind}
@@ -412,6 +412,17 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val ticketsolveVenues = c.all.collect { case t: TicketsolveClient => t.cinema }
     ticketsolveVenues should have size 9
     ticketsolveVenues.filterNot(c.flicksFallbackSlugs.contains) shouldBe empty
+  }
+
+  // Nova Cinema Woking's seven screens never had a Flicks showtime; its own home page
+  // lists seven months of them.
+  it should "wire Nova Cinema Woking to its own site with flicks kept as the fallback" in {
+    val c    = catalog(direct = new FakeHttpFetch("nova"), today = LocalDate.of(2026, 10, 12))
+    val nova = c.all.find(_.cinema == NovaCinemaWoking).value
+    nova shouldBe a [NovaCinemaClient]
+    nova.fetch().flatMap(_.showtimes) should have size 249
+    c.flicksFallbackSlugs.get(NovaCinemaWoking).value shouldBe
+      ChainFlicksFallback.FlicksFallback(FlicksMarket.UnitedKingdom, "nova-cinema-ambassadors-woking")
   }
 
   it should "wire UK chain venues to their own-site client with flicks kept as the fallback" in {

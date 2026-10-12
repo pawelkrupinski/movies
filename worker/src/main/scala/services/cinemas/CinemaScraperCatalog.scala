@@ -6,7 +6,7 @@ import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, MultiListi
 import services.cinemas.pl._
 import services.cinemas.common.{CineamoClient, FlicksClient, FlicksMarket, KinoheldClient, KinoprogrammClient, WixEventsClient}
 import services.cinemas.de.{GermanFeed, GermanSources, RexSchifferstadtClient}
-import services.cinemas.uk.{CineworldClient, OdeonClient, SavoyClient, SpektrixClient, TheOldCourtClient, TicketsolveClient}
+import services.cinemas.uk.{CineworldClient, NovaCinemaClient, OdeonClient, SavoyClient, SpektrixClient, TheOldCourtClient, TicketsolveClient}
 import services.cinemas.es.{ArtesieteClient, OcineClient, SpanishOwnSourcesData, TaquillaClient, TaquillaVenue}
 import services.cinemas.us.{AlamoDrafthouseClient, CinemaPlusClient, SquarespaceEventsClient, UsChainVenues, UsIndependentVenues}
 import services.movies.TitleNormalizer
@@ -1008,7 +1008,7 @@ class CinemaScraperCatalog(
     flicks("leatherhead-theatre-cinema-leatherhead", LeatherheadTheatreCinemaLeatherhead),
     savoy("https://thelexicinema.co.uk/TheLexiCinema.dll/", LexiKensalRise),
     flicks("lumiere-romford", LumiereRomford),
-    flicks("nova-cinema-ambassadors-woking", NovaCinemaWoking),
+    new NovaCinemaClient(http, NovaCinemaWoking, venueClock.today(UnitedKingdom)),
     odeon("995", OdeonCinemaActon),
     odeon("695", OdeonCinemaBeckenham),
     odeon("570", OdeonCinemaEpsom),

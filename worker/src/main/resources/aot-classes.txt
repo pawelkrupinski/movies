@@ -10461,6 +10461,10 @@ services.cinemas.uk.CineworldClient
 services.cinemas.uk.CineworldClient$
 services.cinemas.uk.CineworldParser
 services.cinemas.uk.CineworldParser$
+services.cinemas.uk.NovaCinemaClient
+services.cinemas.uk.NovaCinemaClient$
+services.cinemas.uk.NovaCinemaClient$Slot
+services.cinemas.uk.NovaCinemaClient$Slot$
 services.cinemas.uk.OdeonAuthHarvester
 services.cinemas.uk.OdeonAuthHarvester$
 services.cinemas.uk.OdeonClient

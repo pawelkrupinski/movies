@@ -375,10 +375,11 @@ object ChainFlicksFallback {
     OdeonNorwich -> "odeon-cinema-norwich",
   )
 
-  /** UK independents read from their own box office — Savoy Systems
+  /** UK independents read from their own box office or site — Savoy Systems
    *  ([[services.cinemas.uk.SavoyClient]]), Spektrix
    *  ([[services.cinemas.uk.SpektrixClient]]) or Ticketsolve
-   *  ([[services.cinemas.uk.TicketsolveClient]]) — because Flicks lists them with
+   *  ([[services.cinemas.uk.TicketsolveClient]]), or a one-venue client such as
+   *  [[services.cinemas.uk.NovaCinemaClient]] — because Flicks lists them with
    *  few or no times. Flicks stays their fallback, the same arrangement as the chains:
    *  should the box office fail or come back empty, the venue reads Flicks again. */
   val ukOwnSiteSlugs: Map[Cinema, String] = Map(
@@ -437,6 +438,7 @@ object ChainFlicksFallback {
     MowlemTheatre -> "mowlem-swanage",
     NerveCentreLondonderry -> "nerve-centre-londonderry",
     NeuaddDwyforPwllheli -> "neuadd-dwyfor-pwllheli",
+    NovaCinemaWoking -> "nova-cinema-ambassadors-woking",
     Number8Pershore -> "number-8-pershore",
     OldMarketHallShrewsbury -> "old-market-hall-shrewsbury",
     PalaceCinemaGorlestonOnSea -> "palace-cinema-gorleston-on-sea",
