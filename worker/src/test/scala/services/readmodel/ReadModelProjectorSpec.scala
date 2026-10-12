@@ -20,8 +20,6 @@ import java.time.LocalDateTime
  */
 class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
 
-  private val Unlisted = ReadModelProjectionMetrics.UnlistedOutcome
-
   private def at(d: String): Showtime = Showtime(LocalDateTime.parse(d), bookingUrl = Some("https://book"))
 
   private val fid = s"${titleNormalizer.sanitize("Foo")}|2024"
@@ -923,60 +921,17 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   it should "prune every unlisted venue row up to its cap" in {
     val (rm, m, _, lines) = sweepAfterSilentlyDropping(20)
     rm.findAllScreenings() should have size 2
-    m.unlistedVenues.toSeq shouldBe Seq(20 -> Unlisted.Pruned)
+    m.unlistedVenues.toSeq shouldBe Seq(20 -> false)
     lines.map(_.takeWhile(_ != ' ')) shouldBe Seq("WARN")
   }
 
   it should "prune none of them past its cap, and say so as an error" in {
     val (rm, m, before, lines) = sweepAfterSilentlyDropping(21)
     rm.findAllScreenings().map(_._id) should contain theSameElementsAs before
-    m.unlistedVenues.toSeq shouldBe Seq(21 -> Unlisted.Withheld)
+    m.unlistedVenues.toSeq shouldBe Seq(21 -> true)
     lines should have size 1
     lines.head should startWith ("ERROR")
     lines.head should include ("pruning NONE")
-  }
-
-  // A RE-FILE IS NOT A MISSED REMOVAL. A deploy that moves venues to another city's page (2026-10-09..11:
-  // Germany's, the US's, the UK's and Spain's town pages) leaves every one of them served under the OLD
-  // city too, once the boot heal has written the new row -- DE 1,029 rows, US 1,508. Over the cap the
-  // sweep withheld them all, and only the daily content check removed them, a slice at a time (DE 20-68
-  // rows an hour, a day to drain). A row whose card serves the same venue under ANOTHER city right now is
-  // explained -- pruning it never leaves the venue unserved -- so it is pruned whatever the count.
-  private def sweepAfterRefiling(venues: Int, servedUnderNewCity: Int): (InMemoryReadModelRepository, RecordingReadModelProjectionMetrics, Seq[String], Seq[String]) = {
-    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
-    val rm = new InMemoryReadModelRepository()
-    val m  = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
-    val cinemas = Cinema.all.distinct.filter(City.forCinema(_).nonEmpty).take(venues)
-    cinemas should have size venues.toLong
-    repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1),
-      data = cinemas.map(c => (c: Source) -> venueSlot("Foo", Seq(at("2026-06-12T20:00")))).toMap))
-    projector.onMovieUpsert(repository.findAll().head)
-    val current = rm.findAllScreenings()
-    current should have size venues.toLong
-    // Each venue as an older roster filed it; the new city's row served for only some of them.
-    current.foreach(row => rm.upsertScreening(row.copy(_id = s"${row.filmId}|old-region|${row.cinema}", city = "old-region")))
-    current.drop(servedUnderNewCity).foreach(row => rm.deleteScreening(row._id))
-    val lines = tools.LogCapture.capture(classOf[ReadModelProjector].getName)(projector.pruneOrphans())
-      .filter(_.getFormattedMessage.contains("no longer lists the venue")).map(e => s"${e.getLevel} ${e.getFormattedMessage}")
-    projector.stop()
-    (rm, m, current.map(_._id), lines)
-  }
-
-  it should "prune every re-filed venue row in one sweep, however many past the cap" in {
-    val (rm, m, current, lines) = sweepAfterRefiling(venues = 30, servedUnderNewCity = 30)
-    rm.findAllScreenings().map(_._id) should contain theSameElementsAs current
-    m.unlistedVenues.toSeq shouldBe Seq(30 -> Unlisted.Refiled)
-    lines.map(_.takeWhile(_ != ' ')) shouldBe Seq("INFO")
-  }
-
-  it should "hold a re-filed venue's old row until the new city's row is served" in {
-    // 25 venues whose new row the read model lacks: the sweep heals them, and their old rows -- unexplained
-    // when the sweep began, and over the cap -- are withheld this sweep, to be pruned as re-filed the next.
-    val (rm, m, current, _) = sweepAfterRefiling(venues = 30, servedUnderNewCity = 5)
-    rm.findAllScreenings().map(_._id) should contain allElementsOf current
-    rm.findAllScreenings().count(_._id.contains("|old-region|")) shouldBe 25
-    m.unlistedVenues.toSeq shouldBe Seq(5 -> Unlisted.Refiled, 25 -> Unlisted.Withheld)
   }
 
   "the unlisted-venue cap" should "be 20, or 1% of the venue rows when that is more" in {
@@ -1596,6 +1551,25 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   // dropped them. A venue the read model already serves the card at, under another city, is a RE-FILE:
   // the code moved it, no write was lost. Metered apart, so the boot's own count stays "lost writes".
   "the boot check" should "meter a venue the read model holds under another city as re-filed, not as a lost write" in {
+    val (_, m) = bootOverRefiledVenue()
+    m.heals.toSeq shouldBe Seq(ReadModelProjectionMetrics.HealTrigger.Boot -> 1, ReadModelProjectionMetrics.HealTrigger.Refile -> 1)
+  }
+
+  // THE RE-FILE DRAINS AT BOOT, NOT IN THE SWEEP. The boot seeds the memo from the read model, old-city
+  // rows included, so the heal's projection of a re-filed row deletes the old row in the same diff that
+  // writes the new one -- before the first prune sweep. Measured 2026-10-11 (DE 1,029 rows healed at
+  // 16:44Z, US 1,508 at 20:41Z): every DE sweep for the next 4.5 h found no unlisted venue at all, and
+  // `unlisted_venues{outcome="withheld"}` stayed 0 in every country -- no sweep ever met a mass of
+  // re-filed rows for its cap to hold back, so the sweep needs no re-file exemption from it.
+  it should "retire a re-filed venue's old-city row in the boot's own projection, before any sweep" in {
+    val (rm, _) = bootOverRefiledVenue()
+    rm.findAllScreenings().map(_._id).filter(_.contains("|old-region|")) shouldBe empty
+    rm.findAllScreenings() should have size 2
+  }
+
+  // Booted over a read model an older roster wrote: Foo's venue filed under a city this code no longer
+  // files it under, Bar's venue row simply gone. No sweep runs: the captured scheduler never fires one.
+  private def bootOverRefiledVenue(): (InMemoryReadModelRepository, RecordingReadModelProjectionMetrics) = {
     val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
                                                  slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
@@ -1615,11 +1589,9 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     rm.findAllScreenings().filter(_.filmId == cards("Bar")).foreach(row => rm.deleteScreening(row._id))
     val m      = new RecordingReadModelProjectionMetrics()
     val booted = new ReadModelProjector(repository, rm, rm, m, scheduler = new CapturingScheduler, clock = specClock)
-
     booted.start()
-
-    m.heals.toSeq shouldBe Seq(ReadModelProjectionMetrics.HealTrigger.Boot -> 1, ReadModelProjectionMetrics.HealTrigger.Refile -> 1)
     booted.stop()
+    (rm, m)
   }
 
   // The heals' share of readmodel_project_calls must be exactly the projections a heal made --

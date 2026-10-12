@@ -93,7 +93,7 @@ class ReadModelProjector(
   // it rather than accepting a second, separately-wired copy that could disagree.
   private val normalizer: services.movies.TitleNormalizer = movieRepository.normalizer
 
-  import ReadModelProjectionMetrics.{HealTrigger, Op, ProjectTrigger, PruneReason, ReconcileKind, RetireReason, Target, UnlistedOutcome}
+  import ReadModelProjectionMetrics.{HealTrigger, Op, ProjectTrigger, PruneReason, ReconcileKind, RetireReason, Target}
   import ReadModelProjector.{ContentSlices, DerivationPass, DerivationPassTickSeconds}
 
   // Diff state for minimal writes: the CONTENT HASH of the last-projected document per
@@ -689,10 +689,6 @@ class ReadModelProjector(
     // (us/chicago served Dracula: A Love Tale at a venue it had left for 22 hours, 2026-09-30).
     val screeningsByCard = screeningRefsBefore.map(_.groupBy(_.filmId))
     val unlisted = scala.collection.mutable.ArrayBuffer.empty[ScreeningRef]
-    // Of those, the rows whose card the read model ALREADY serves at the same venue under another city
-    // this row does list: a re-file -- a deploy moved the venue to another city's page -- not a missed
-    // removal, and explained whatever the count, since pruning it never leaves the venue unserved.
-    val refiled  = scala.collection.mutable.ArrayBuffer.empty[ScreeningRef]
     val healed = scala.collection.mutable.ArrayBuffer.empty[String]
     // The REPROJECT needs showtimes — it writes them. The PRUNE never looks at one: it
     // computes ids, and `filmIds` derives those from the cinema SLOTS, which the slots-only
@@ -712,14 +708,9 @@ class ReadModelProjector(
         if (!lastCardsByRow.contains(row.id.value)) lastCardsByRow.update(row.id.value, ids.toSet)
         // The slots-only view lists every venue the row has a slot at, spent or not, so a venue
         // outside it is one the row has left — never a phantom.
-        for (byCard <- screeningsByCard; served <- screeningsBefore) {
+        screeningsByCard.foreach { byCard =>
           lazy val listed = partition.screeningIds.toSet
-          ids.foreach { card =>
-            lazy val servedElsewhere = listed.iterator.filter(served).flatMap(ScreeningRef(_, card).venueKey).toSet
-            byCard.getOrElse(card, Nil).foreach { ref =>
-              if (!listed(ref._id)) (if (ref.venueKey.exists(servedElsewhere)) refiled else unlisted) += ref
-            }
-          }
+          ids.foreach(card => byCard.getOrElse(card, Nil).foreach(ref => if (!listed(ref._id)) unlisted += ref))
         }
         if (reproject)
           continuing(s"read-model $kind: a row failed to project")(reprojected += project(partition, ProjectTrigger.Reproject))
@@ -785,29 +776,19 @@ class ReadModelProjector(
       screeningRefsBefore.orElse(if (reproject) reader.findAllScreeningRefsChecked().answered else None).getOrElse {
         logger.warn(s"read-model $kind: the screening ids could not be read — no screening is pruned this tick."); Seq.empty
       }.iterator.filterNot(ref => liveIds(ref.filmId)).foreach(pruneScreening)
-      // A re-file is pruned whole, uncapped: the venue stays served under its new city. Capped, the
-      // 2026-10-09..11 town-page deploys left DE's 1,029 old rows to the daily content check, a slice
-      // per sweep. A delete is one small oplog entry; the boot heal's full-row writes dwarf them.
-      if (refiled.nonEmpty) {
-        refiled.foreach(pruneScreening)
-        metrics.recordUnlistedVenues(refiled.size, UnlistedOutcome.Refiled)
-        logger.info(s"read-model $kind sweep: pruned ${refiled.size} venue row(s) whose film no longer lists the venue " +
-          s"under that city but serves it under another — a re-filed venue: ${ReadModelProjector.idsForLog(refiled.map(_._id))}.")
-      }
       // A stream misses a removal now and then; one sweep finding a great many is far likelier a
       // comparison gone wrong — the slots-only view disagreeing with the projection about some shape
       // of row — and pruning on it would blank the served venues of a country. So past the cap the
       // sweep prunes none of them and says so loudly; the content check still rewrites each row.
-      // The cap guards against that fault alone — not Mongo write volume — so a re-file is exempt.
       val cap = ReadModelProjector.unlistedPruneCap(screeningRefsBefore.fold(0)(_.size))
       if (unlisted.sizeIs > cap) {
-        metrics.recordUnlistedVenues(unlisted.size, UnlistedOutcome.Withheld)
+        metrics.recordUnlistedVenues(unlisted.size, withheld = true)
         logger.error(s"read-model $kind sweep: ${unlisted.size} venue row(s) whose film no longer lists the venue, over the " +
           s"cap of $cap — pruning NONE; a disagreement between the slots-only view and the projection is likelier than " +
           s"that many missed removals: ${ReadModelProjector.idsForLog(unlisted.map(_._id))}.")
       } else if (unlisted.nonEmpty) {
         unlisted.foreach(pruneScreening)
-        metrics.recordUnlistedVenues(unlisted.size, UnlistedOutcome.Pruned)
+        metrics.recordUnlistedVenues(unlisted.size, withheld = false)
         logger.warn(s"read-model $kind sweep: pruned ${unlisted.size} venue row(s) whose film no longer lists the venue — " +
           s"a removal the change stream did not apply: ${ReadModelProjector.idsForLog(unlisted.map(_._id))}.")
       }
@@ -1477,8 +1458,7 @@ object ReadModelProjector {
 
   /** The most unlisted venue rows one sweep prunes: 20, or 1% of the read model's venue rows when
    *  that is more. A stream's missed removals come a few at a time (one on 2026-09-30); past this,
-   *  the comparison is the likelier fault, and the sweep prunes none. A re-filed venue's old-city row
-   *  does not count against it: its replacement is served, so it is explained (see `sweep`). */
+   *  the comparison is the likelier fault, and the sweep prunes none. */
   private[readmodel] def unlistedPruneCap(screeningRows: Int): Int = math.max(20, screeningRows / 100)
 
   /** How many row ids one heal line names before it summarises the rest. */

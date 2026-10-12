@@ -38,12 +38,10 @@ trait ReadModelProjectionMetrics {
    *  healthy reading; the cause says which path is losing writes. */
   def recordDrift(cause: String, documents: Int): Unit
 
-  /** A prune sweep found `rows` venue rows whose film no longer lists the venue, by `outcome`
-   *  ([[ReadModelProjectionMetrics.UnlistedOutcome]]): `refiled` -- the card serves the venue under
-   *  another city, a deploy moved it, pruned whatever the count -- or a removal the change stream did
-   *  not apply, `pruned`, or `withheld` all as over the cap (`ReadModelProjector.unlistedPruneCap`).
-   *  `refiled` follows a roster deploy; otherwise zero is the healthy reading. */
-  def recordUnlistedVenues(rows: Int, outcome: String): Unit
+  /** A prune sweep found `rows` venue rows whose film no longer lists the venue -- removals the
+   *  change stream did not apply -- and pruned them, or `withheld` them all as over the cap
+   *  (`ReadModelProjector.unlistedPruneCap`). Zero is the healthy reading. */
+  def recordUnlistedVenues(rows: Int, withheld: Boolean): Unit
 
   /** One `ReadModelProjection.projectAll` ran for a source row. Fed from
    *  [[ReadModelProjector.project]]; `..._calls_total` is how many rows were projected.
@@ -145,9 +143,6 @@ object ReadModelProjectionMetrics {
   object RetireReason { val VariantGone = "variant-gone"; val RowDeleted = "row-deleted"; val RowUnready = "row-unready" }
   /** Which pass healed a row: the scheduled prune sweep, or the check `start()` runs at boot. */
   object HealTrigger { val Sweep = "sweep"; val Boot = "boot"; val Refile = "refile" }
-  /** What a prune sweep did with the venue rows a live card no longer lists — the `outcome` label on
-   *  `readmodel_unlisted_venues`. */
-  object UnlistedOutcome { val Pruned = "pruned"; val Withheld = "withheld"; val Refiled = "refiled" }
   /** What asked for one projection — the `trigger` label on `readmodel_project_calls`.
    *  `ReadModelProjectionTriggerUnaccounted` compares only the `stream` share against the three
    *  change-stream cursors' events: every other trigger re-projects rows no event asked for, BY
@@ -195,7 +190,6 @@ object ReadModelProjectionMetrics {
   val PruneReasons:  Seq[String]  = Seq(PruneReason.RowGone, PruneReason.VariantGone)
   val RetireReasons: Seq[String]  = Seq(RetireReason.VariantGone, RetireReason.RowDeleted, RetireReason.RowUnready)
   val HealTriggers: Seq[String]   = Seq(HealTrigger.Sweep, HealTrigger.Boot, HealTrigger.Refile)
-  val UnlistedOutcomes: Seq[String] = Seq(UnlistedOutcome.Pruned, UnlistedOutcome.Withheld, UnlistedOutcome.Refiled)
   val MetadataOutcomes: Seq[String] = Seq(MetadataOutcome.Reused, MetadataOutcome.Recomputed)
   val VenueOutcomes: Seq[String] = Seq(VenueOutcome.Rebuilt, VenueOutcome.Reused)
   val CardParts: Seq[String] = Seq(CardPart.Title, CardPart.Poster, CardPart.Facts, CardPart.Synopsis,
@@ -212,7 +206,7 @@ object ReadModelProjectionMetrics {
     def recordFilmPruned(reason: String, count: Int): Unit        = ()
     def recordCardRetired(reason: String): Unit                   = ()
     def recordDrift(cause: String, documents: Int): Unit          = ()
-    def recordUnlistedVenues(rows: Int, outcome: String): Unit    = ()
+    def recordUnlistedVenues(rows: Int, withheld: Boolean): Unit  = ()
     def recordProject(trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit = ()
     def recordWriteBurst(trigger: ReadModelProjectionMetrics.ProjectTrigger, seconds: Double): Unit = ()
     def recordMetadataProjection(trigger: ReadModelProjectionMetrics.ProjectTrigger, reused: Boolean): Unit = ()
