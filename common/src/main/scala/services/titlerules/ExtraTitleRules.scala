@@ -310,6 +310,11 @@ object ExtraTitleRules {
     // Found by SearchQueryMarkersSpec over the recorded UK corpus (2026-10-04): chain strands billed ahead of the film.
     prog("xtra-pp-4dx-rewind",        """(?i)^\(4DX\s+Rewind\)\s*""",              "'(4DX Rewind) <film>' Cineworld 4DX re-release strand (Shrek, Twisters, Toy Story — ~34 venues each)"),
     prog("xtra-pp-relaxed-screening", """(?i)^Relaxed\s+Screening\s*[:|–—-]\s*""", "'Relaxed Screening: <film>' Everyman sensory-friendly strand (Forgotten Island)"),
+    // The other special-audience strands billed the same way, found by SearchQueryMarkersSpec over the UK recording of
+    // 2026-10-12 (run 38251516862) — the audience labels ScreeningTokens already refuses as badges.
+    prog("xtra-pp-audience-strand",
+      """(?iu)^(?:Parents?\s*(?:&|and)\s*Bab(?:y|ies)|Dementia\s+Friendly|Autism\s+Friendly|Silver\s+Screen)(?:\s+(?:Screening|Club))?\s*[:|–—-]\s*""",
+      "'Parent & Baby Screening: <film>' / 'Dementia Friendly: <film>' / 'Silver Screen: <film>' special-audience strand (Lighthouse Poole: Sense & Sensibility, White Christmas, Holy Days)"),
     prog("xtra-pp-horror-season",     """(?i)^Horror\s+Season\s+\d{4}\s+""",         "'Horror Season 2026 <film>' Cineworld seasonal strand, no separator (Dracula)")
   )
 
@@ -436,6 +441,29 @@ object ExtraTitleRules {
     searchStrip("xtra-audiodeskrypcja-suffix",     """(?iu)\s*[-–—]\s*(?:z\s+)?audiodeskrypcj\p{L}*.*$""",  "'<film> - audiodeskrypcją (na słuchawki), napisy dla osób nie(do)słyszących i PJM' accessible-screening suffix (Kino Sokół: Lalka)"),
     searchStrip("xtra-film-pl-suffix",             """(?u)(?<=\S)\s+(?i:film)\s+PL\s*$""",                "'<film> Film PL' venue tail (Kino CKiF: Lalka, Mistyczka, Czas, który nie nadszedł)"),
     searchStrip("xtra-age-bo-pipe-suffix",         """(?iu)\s*\|\s*BO\s*\|?\s*$""",                     "'<film> | 2D | DUB | BO |' trailing 'BO' (bez ograniczeń) age tag behind the format pipes, which searchQuery then re-peels (Kino Milenium)"),
+    // Found by SearchQueryMarkersSpec over the UK recording of 2026-10-12 (run 38251516862). A screening note billed
+    // after the film — a special audience, a Q&A, a matinee — and a box office's own certificate and running time.
+    // The note in asterisks first, then the running time, then the certificate, each exposing the next at the end;
+    // all before the 4K rules, so a print tag a certificate sat behind ("Dracula (1958) 4K Restoration - Cert 12A")
+    // is trailing for them.
+    searchStrip("xtra-asterisk-note-suffix",       """(?<=\S)\s+\*[^*]+\*\s*$""",
+      "'<film> … *SUBTITLED MATINEE*' screening note in asterisks (Electric Palace Bridport: Pressure, Sense and Sensibility)"),
+    searchStrip("xtra-runtime-suffix",             """(?iu)\s*\(?(?<![\p{L}\p{N}])\d{2,3}\s*mins?(?:\s+TBC)?\)?(?:\s+TBC)?\s*$""",
+      "'<film> (15) (2026) 100 mins' / '(160 mins TBC)' box-office running time (Electric Palace Bridport)"),
+    searchStrip("xtra-certificate-suffix",
+      """(?iu)\s*(?:[-–—]\s*Cert(?:ificate)?\.?\s+(?:U|PG|12A?|15|18|TBC)|\((?:Cert\.?\s+)?(?:U|PG|12A?|15|18|TBC)(?:\s+TBC)?\))(?=\s*(?:\(\d{4}\)\s*)?$)""",
+      "'<film> - Cert 12A' / '<film> (15 TBC) (2026)' / '<film> (Cert TBC)' BBFC certificate the box office bills in the title (Lighthouse Poole, Electric Palace Bridport); a '(YYYY)' after it stays"),
+    // A Q&A after a plus, glued or spaced ("+Q&A with Graham Fellows", "Records+ Q&A", "plus live Q&A") and whatever
+    // follows it, where the seed's spaced "+ <event>" strip stops at a bracket ("+ Q&A (18)") — but only when the
+    // brackets after it balance, so a Q&A inside a festival's note is the bracketed rule's.
+    searchStrip("xtra-qa-paren-note",              """(?iu)(?<=\S)\s*\([^()]*(?<![\p{L}\p{N}])Q\s*&\s*A(?![\p{L}\p{N}])[^()]*\)\s*$""",
+      "'<film> (London Breeze Film Festival UK Premiere + Q&A)' bracketed festival note naming a Q&A (Riverside Studios: Delupi, Man Baby, Synthesized)"),
+    searchStrip("xtra-qa-plus-tail",
+      """(?iu)\s*(?:\+|(?<![\p{L}\p{N}])plus(?=\s))\s*(?:(?:live|in[-\s]person|recorded)\s+)?Q\s*&\s*A(?![\p{L}\p{N}])[^()]*(?:\([^()]*\)[^()]*)*$""",
+      "'<film> +Q&A' / '<film> plus live Q&A' / '<film>+ Q&A' / '<film> + Q&A (zoom)' Q&A-night tail (Brewery Arts Centre Kendal, ARC Stockton, Rio Dalston, ICA, Electric Palace Bridport)"),
+    searchStrip("xtra-audience-suffix",
+      """(?iu)\s*[-–—|]\s*(?:Relaxed|Parents?\s*(?:&|and)\s*Bab(?:y|ies)|Dementia\s+Friendly|Autism\s+Friendly|Silver\s+Screen)(?:\s+(?:Screening|Club))?\s*$""",
+      "'<film> - Relaxed Screening' / '<film> - Parent & Baby' special-audience screening after the film (Broadway Nottingham: Wildwood, Arrietty, Ghosts)"),
     // Found by SearchQueryMarkersSpec over the recorded UK / US / DE / ES corpora (2026-10-04).
     // A parenthesised anniversary note, whatever else it bills ("(25th Anniversary)", "(30th Anniversary, 4K
     // Restoration)", "(50th Anniversary 4K Restoration)"): the seed anniversary suffix takes only a bare one. The
@@ -443,7 +471,7 @@ object ExtraTitleRules {
     // rules, so the print tag a note sat behind ("Donnie Darko 4K (25th Anniversary)") is trailing for them.
     searchStrip("xtra-paren-anniversary-note",     """(?iu)(?<=\S)\s*\(\s*\d+(?:st|nd|rd|th)\s+Anniversary\b[^()]*\)\s*$""",
       "'<film> [4K] (25th Anniversary)' / '<film> (30th Anniversary, 4K Restoration)' parenthesised anniversary re-release note (Showcase: Donnie Darko, Scream; Cineworld: Rocky)"),
-    searchStrip("xtra-4k-restoration-suffix",      """(?iu)\s*(?:\(\s*4K\s+(?:Restoration|Remaster(?:ed)?)\s*\)|(?:\s*[-–—|]\s*|\s+)4K\s+(?:Restoration|Remaster(?:ed)?|Director['’]?s\s+Cut))\s*$""", "'<film> (4K Restoration)' / '<film> [-] 4K RESTORATION' / '<film> 4K Director's Cut' print tag (Cineworld: Arrietty, Dracula; Alamo: Cemetery Man; US: Cabin Fever)"),
+    searchStrip("xtra-4k-restoration-suffix",      """(?iu)\s*(?:\(\s*4K\s+(?:Restoration|Remaster(?:ed)?)\s*\)|(?:\s*[-–—|]\s*|\s+)4K\s+(?:(?:Restoration|Remaster(?:ed)?)(?:\s*[-–—]\s*Director['’]?s\s+Cut)?|Director['’]?s\s+Cut))\s*$""", "'<film> (4K Restoration)' / '<film> [-] 4K RESTORATION' / '<film> 4K Director's Cut' / '<film> 4K Restoration - Directors Cut' print tag (Cineworld: Arrietty, Dracula; Alamo: Cemetery Man; US: Cabin Fever; Windmill Littlehampton: Dracula)"),
     searchStrip("xtra-imax-experience-suffix",     """(?iu)\s*[-–—:]\s*(?:The\s+IMAX\s+Experience|Ein\s+IMAX(?:\s+3D)?[-\s]Erlebnis)\s*$""", "'<film> - The IMAX Experience' / '<film> - Ein IMAX 3D-Erlebnis' format billing (Cineworld: Dune: Part Three; ES: La Odisea; DE: A Beautiful Planet)"),
     searchStrip("xtra-fan-event-suffix",           """(?iu)\s+(?:RealD\s+)?(?:3D\s+)?Fan\s+Event\s*$""",   "'<film> RealD 3D Fan Event' early-screening event tail (US: Avengers: Doomsday)"),
     // Found by SearchQueryMarkersSpec over the recorded US / UK corpora (2026-10-05).
@@ -823,14 +851,17 @@ object ExtraTitleRules {
     // In front: up to two words and the "preview" closed by a separator. Behind: after a separator, or in brackets,
     // up to three qualifier words; bare, only the "early fan" / "all inclusive" qualifiers or a "…preview" compound,
     // so a film's own last words are never taken for a qualifier — and never a bare "Sneak Preview", which names none.
-    searchStrip("xtra-preview-prefix",             """(?iu)^(?:[\p{L}\p{N}]+[\s-]+){0,2}\p{L}*preview\s*[:–—-]\s*(?=\S)""",
-      "'Preview: <film>' / 'IMAX-Preview: <film>' / 'Early Fan Preview - <film>' / 'CINEVILLE PREVIEW: <film>' (DE 2026-10-12: CineStar, Astor, IL KINO)"),
-    searchStrip("xtra-preview-suffix",             """(?iu)(?:\s*[-–—|]\s*(?:[\p{L}\p{N}]+\s+){0,3}|\s*\(\s*(?:[\p{L}\p{N}]+\s+){0,3}(?=\p{L}*preview\s*\)\s*$)|(?<=\S)(?<!sneak)\s+(?:(?:early\s+)?fan\s+|all\s+inclusive\s+)?)\p{L}*preview\s*\)?\s*$""",
-      "'<film> - CineLady Preview' / '<film> (auch Early Fan Preview)' / '<film> EARLY FAN PREVIEW' / '<film> Mitternachtspreview' (DE 2026-10-12: CineStar, Studio Bielefeld, Das Lumen, CineCenter)"),
-    searchStrip("xtra-vorpremiere-prefix",         """(?iu)^(?:\p{L}+\s+)?vorpremiere\s*:\s*""",
-      "'Vorpremiere: <film>' / 'Prosecco Vorpremiere: <film>' German pre-premiere banner (DE 2026-10-12: Burg-Theater Uetersen)"),
-    searchStrip("xtra-vorpremiere-suffix",         """(?iu)(?<=\S)\s*[-–—]?\s*vorpremiere\s*$""",
-      "'<film> Vorpremiere' / '<film>-Vorpremiere' German pre-premiere tag (DE 2026-10-12: Multiplex Gelsenkirchen, Schauburg, Apollo Hannover)"),
+    searchStrip("xtra-preview-prefix",             """(?iu)^(?:[\p{L}\p{N}]+[\s-]+){0,2}\p{L}*preview\s*[:|–—-]\s*(?=\S)""",
+      "'Preview: <film>' / 'IMAX-Preview: <film>' / 'Early Fan Preview - <film>' / 'Early Fan Preview | <film>' / 'CINEVILLE PREVIEW: <film>' (DE 2026-10-12: CineStar, Astor, IL KINO, Filmwelt Lippe)"),
+    searchStrip("xtra-preview-suffix",             """(?iu)(?:\s*[-–—|]\s*(?:[\p{L}\p{N}]+\s+){0,3}|\s*\(\s*(?:[\p{L}\p{N}]+\s+){0,3}(?=\p{L}*preview\s*\)\s*$)|\s*"\s*(?:[\p{L}\p{N}]+\s+){0,3}(?=\p{L}*preview\s*"\s*$)|(?<=\S)(?<!sneak)\s+(?:(?:early\s+)?fan\s+|all\s+inclusive\s+)?)\p{L}*preview\s*[)"]?\s*$""",
+      "'<film> - CineLady Preview' / '<film> (auch Early Fan Preview)' / '<film> \"Early Fan Preview\"' / '<film> EARLY FAN PREVIEW' / '<film> Mitternachtspreview' (DE 2026-10-12: CineStar, Studio Bielefeld, Das Lumen, CineCenter, Beluga Kino)"),
+    // A festival's preview named after a pipe: the preview and the festival it previews go together.
+    searchStrip("xtra-preview-pipe-tail",          """(?iu)(?<=\S)\s*\|\s*\p{L}*preview(?![\p{L}\p{N}]).*$""",
+      "'<film> | Preview Osteuropäische Filmtage 2026' festival-preview tail (DE 2026-10-12: Zentralkino Dresden Minotaurus)"),
+    searchStrip("xtra-vorpremiere-prefix",         """(?iu)^(?:\p{L}+\s+)?vorpremiere\s*[:–—-]\s*(?=\S)""",
+      "'Vorpremiere: <film>' / 'Prosecco Vorpremiere: <film>' / 'Vorpremiere - <film>' German pre-premiere banner (DE 2026-10-12: Burg-Theater Uetersen, Casino Aschaffenburg)"),
+    searchStrip("xtra-vorpremiere-suffix",         """(?iu)(?<=\S)\s*(?:[-–—]\s*|\(\s*)?vorpremiere\s*\)?\s*$""",
+      "'<film> Vorpremiere' / '<film>-Vorpremiere' / '<film> (VORPREMIERE)' German pre-premiere tag (DE 2026-10-12: Multiplex Gelsenkirchen, Schauburg, Apollo Hannover, Movieland)"),
     // A German language version written INSIDE the title, where FormatTags' end-anchored peel cannot reach: a bracketed
     // tag before a strand, an alternate title or a second bracket ("Rascal Does Not Dream of a Dear Friend (OmU) -
     // CineAnime", "Shining (OmU) (Extended Cut)"), or a bare tag between a film's words, with the screen and language
@@ -845,6 +876,12 @@ object ExtraTitleRules {
     // hyphen joining the version to a word is the tell; a film's title never holds "OmU-".
     searchStrip("xtra-version-strand-tail",        """(?u)\s*(?:-\s*)?(?:\p{L}{2,6}\.\s*/?\s*)*(?:OmeU|OmdU|OmU)-\p{L}.*$""",
       "'<film>[ -chin./engl.]OmU-<strand>…' subtitled version and strand run onto the film (DE 2026-10-12: Apollo Hannover's Nachtstudio)"),
+    // A strand before a pipe and the screen format IN FRONT of the film after it ("Frauenfilmfestival | 2D Fassaden",
+    // "Senioren | 2D Ach, diese Lücke…"): the format word marks what follows as the film, so strand and format go
+    // together. Never a version word after the format — "Lalka | 2D DUBBING" is the film and its tag, FormatTags' to peel.
+    searchStrip("xtra-strand-pipe-screen-prefix",
+      """(?u)^[^|]{2,40}\|\s*(?i:[23]D)\s+(?=\p{Lu})(?!(?i:dub|dubb|dubbing|nap|napisy|lek|lektor|pl|eng|ov|omu|omeu|df|sub|subs)(?![\p{L}\p{N}]))""",
+      "'<strand> | 2D <film>' strand and screen format ahead of the film (DE 2026-10-12: Scala Tuttlingen's Frauenfilmfestival, Rittergarten, Senioren)"),
     searchStrip("xtra-leading-bare-screen",        """(?iu)^[23]d\s+(?=\p{L})""",
       "'3D <film>' screen format in front with no separator (any case: searchQuery's re-casing may lower it) (DE 2026-10-12: CineCenter Cloppenburg 3D Avengers: Doomsday)"),
     // The four below run last, after every separated premiere / pokaz / format strip has taken its whole spelling.

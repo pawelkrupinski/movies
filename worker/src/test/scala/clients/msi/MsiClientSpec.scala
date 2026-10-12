@@ -355,6 +355,17 @@ class MsiClientSpec
     leczyca.find(_.movie.title == "Lalka").value.showtimes.map(_.format).distinct shouldBe Seq(List("2D"))
   }
 
+  // Captured 2026-10-12 (`WriteKinoGornik`): "Baranek Shaun i kudłata bestia 2D Dubb. Kino Świat" — the abbreviated
+  // version's full stop where the comma usually is, which the recording of run 38251516862 searched whole.
+  it should "drop a distributor tail behind an abbreviated version's full stop" in {
+    val leczyca = new MsiClient(new FakeHttpFetch("kino-gornik-leczyca"), "https://kinogornik.eurobilet.pl",
+      KinoGornikLeczyca, today = LocalDate.of(2026, 10, 12)).fetch()
+    val baranek = leczyca.find(_.movie.title.startsWith("Baranek")).value
+    baranek.movie.title shouldBe "Baranek shaun i kudłata bestia"
+    baranek.showtimes.map(_.format).distinct shouldBe Seq(List("2D", "DUB"))
+    all (leczyca.map(_.movie.title)) should (not include "Kino świat" and not include "2d")
+  }
+
   // Every MSI month page embeds a `RepertoireEvents` array whose entries carry a
   // `PosterId` (served by the portal's own `ImageData.ashx`) and a `Description`
   // — the poster and synopsis identity resolution votes on. The scraper used to

@@ -82,6 +82,19 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("Forgotten Island (3-D)") shouldBe ("Forgotten Island", List("3D"))
   }
 
+  // The DE re-record of 2026-10-12 (run 38251516862): Astor Grand Cinema's language-qualified version, Bali-Kino's
+  // and Mathäser's version closed by a spaced dash, Mathäser's bracketed D-BOX seat note.
+  it should "come off in front closed by a dash, with its language qualifier, and behind a D-BOX note" in {
+    FormatTags.extractFormatTags("engl. OV: Der Herr der Ringe: Die Gefährten-Extended Version") shouldBe
+      ("Der Herr der Ringe: Die Gefährten-Extended Version", List("OV"))
+    FormatTags.extractFormatTags("OMU - SEARCHING FOR SUGAR MAN") shouldBe ("SEARCHING FOR SUGAR MAN", List("OmU"))
+    FormatTags.extractFormatTags("DF: OV - Dune Part I + II - Atmos (auch in D-BOX)") shouldBe ("Dune Part I + II", List("DF", "OV", "ATMOS"))
+    FormatTags.extractFormatTags("DF: Dune: Teil 1 + 2 - Atmos (auch in D-BOX)") shouldBe ("Dune: Teil 1 + 2", List("DF", "ATMOS"))
+    // A dash after a film's own first word stays: only a run of version words closes there.
+    FormatTags.extractFormatTags("Ovid - The Movie")._1 shouldBe "Ovid - The Movie"
+    FormatTags.extractFormatTags("English - Vinglish")._1 shouldBe "English - Vinglish"
+  }
+
   it should "leave a title that only contains such letters, or is nothing but the tag, whole" in {
     FormatTags.extractFormatTags("Johnny English")._1 shouldBe "Johnny English"
     FormatTags.extractFormatTags("The English Patient")._1 shouldBe "The English Patient"

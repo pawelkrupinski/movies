@@ -1329,6 +1329,64 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  /** Listings of the afternoon re-record of 2026-10-12 (run 38251516862) whose TMDB query kept a screening marker
+   *  (SearchQueryMarkersSpec over the recorded UK and DE corpora): a Q&A, a special audience, a box office's
+   *  certificate, running time and matinee note, a restoration's cut; a preview or Vorpremiere in a new spelling, a
+   *  version tag ahead of the film, a strand and its screen format. Through the whole query path. */
+  private val rerecordedScreeningMarkerListings: Seq[(String, String)] = Seq(
+    "HeadKandy: Beyond the Chair plus Live Q&A"                             -> "HeadKandy: Beyond the Chair",
+    "This Is Pete plus live Q&A"                                            -> "This Is Pete",
+    "3000 Feet +Live Q&A"                                                   -> "3000 Feet",
+    "Beavers, Beavers, Beavers +Q&A"                                        -> "Beavers, Beavers, Beavers",
+    "It's Nice Up North +Q&A with Graham Fellows"                           -> "It's Nice Up North",
+    "Postcards from the Peaks & We Wild Camp +Q&A"                          -> "Postcards from the Peaks & We Wild Camp",
+    "Doc 'n Roll: KING OF THEM ALL - The Story of King Records+ Q&A"        -> "Doc 'n Roll: King Of Them All - The Story of King Records",
+    "Doc'n'Roll FF: KitKatClub: Kinks of Berlin + Q&A (zoom)"               -> "Doc'n'Roll FF: KitKatClub: Kinks of Berlin",
+    "The Comic Strip Presents... PART 2 screenings + Q&A (18)"              -> "The Comic Strip Presents... PART 2 screenings",
+    "Delupi (London Breeze Film Festival UK Premiere + Q&A)"                -> "Delupi",
+    "Man Baby (London Breeze Film Festival Preview + Q&A + Props Table)"    -> "Man Baby",
+    "Arrietty  (Dubbed) - Relaxed Screening"                                -> "Arrietty",
+    "Wildwood - Relaxed Screening"                                          -> "Wildwood",
+    "Ghosts: The Possession of Button House - Parent & Baby"                -> "Ghosts: The Possession of Button House",
+    "Parent & Baby Screening: Sense & Sensibility - Cert PG"                -> "Sense & Sensibility",
+    "Dementia Friendly: White Christmas - Cert U"                           -> "White Christmas",
+    "Silver Screen: Holy Days - Cert 12A"                                   -> "Holy Days",
+    "Dracula (1958) 4K Restoration - Cert 12A"                              -> "Dracula (1958)",
+    "DRACULA (Hammer 1958) 4K Restoration - Directors Cut"                  -> "DRACULA (Hammer 1958)",
+    "Pressure (15 TBC) (2026) 100 mins *SUBTITLED MATINEE*"                 -> "Pressure (2026)",
+    "Its A Wonderful Life (U) (1946) 130 mins"                              -> "Its A Wonderful Life (1946)",
+    "Dune: Part Three \"Early Fan Preview\""                                -> "Dune: Part Three",
+    "Early Fan Preview | Dune: Part Three"                                  -> "Dune: Part Three",
+    "Vorpremiere - Dune: Part Three"                                        -> "Dune: Part Three",
+    "Minotaurus | Preview Osteuropäische Filmtage 2026"                     -> "Minotaurus",
+    "Frauenfilmfestival | 2D Fassaden"                                      -> "Fassaden",
+    "Rittergarten | 2D H wie Habicht"                                       -> "H wie Habicht",
+    "Senioren | 2D Ach, diese Lücke, diese entsetzliche Lücke"              -> "Ach, diese Lücke, diese entsetzliche Lücke"
+  )
+
+  "A screening marker the 2026-10-12 afternoon re-record billed" should "leave the listing's search query" in {
+    val titles = new TitleNormalizer(withExtras)
+    rerecordedScreeningMarkerListings.foreach { case (raw, query) =>
+      withClue(s"searchQuery of '$raw': ")(listingQuery(titles, models.KinoCentrum3D, raw) shouldBe query)
+    }
+  }
+
+  it should "be load-bearing — the seed rules alone search the marker along" in {
+    val titles = new TitleNormalizer(seedOnly)
+    rerecordedScreeningMarkerListings.foreach { case (raw, query) =>
+      withClue(s"seed searchQuery of '$raw': ")(listingQuery(titles, models.KinoCentrum3D, raw) should not be query)
+    }
+  }
+
+  it should "leave a film whose title merely holds the words, and a format tag after a pipe, alone" in {
+    val titles = new TitleNormalizer(withExtras)
+    Seq("Silver Screen", "Plus One", "The Parent Trap", "Relaxed", "M*A*S*H", "Ocean's Eleven", "Jaws 3-D",
+      "Apollo 13", "Vorpremiere").foreach { t =>
+      withClue(s"search('$t') unchanged: ")(withExtras.search(t) shouldBe t)
+    }
+    listingQuery(titles, models.KinoCentrum3D, "Lalka | 2D DUBBING") shouldBe "Lalka"
+  }
+
   /** Listings of the 2026-10-08 UK recording whose TMDB query kept a screening marker: a Showcase
    *  re-release billed with its print and an anniversary note, in either order. Through the whole query path. */
   private val anniversaryReleaseListings: Seq[((models.Cinema, String), String)] = Seq(

@@ -76,11 +76,16 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
     AllowedListing.anywhere("Classic Sneak – Couples") -> s"a classics sneak's theme, its film undisclosed: $NoFilmToFind",
     AllowedListing.anywhere("Classic Sneak – From Asia with Love") -> s"a classics sneak's theme, its film undisclosed: $NoFilmToFind",
     AllowedListing.anywhere("Classic Sneak – Melodrama") -> s"a classics sneak's theme, its film undisclosed: $NoFilmToFind",
-  ) ++ DroppedByTheClients.map(AllowedListing.anywhere(_) -> DroppedOnReRecord)
+    AllowedListing.anywhere("Arsenal Sneak Tübinger Kinos") -> s"a sneak branded with the venue's name: $NoFilmToFind",
+    AllowedListing.anywhere("Bowie on the Silver Screen: An Illustrated Talk by Adrian Wootton + The Man Who Fell to Earth") ->
+      "an illustrated talk billed with a film: an event plus a film matches neither (the double-bill rule)",
+    AllowedListing.anywhere("Space: 1999 4K Restoration Double Bill (U)") -> "a double bill: it matches neither film, by design",
+  ) ++ DroppedByTheClients.map(AllowedListing.anywhere(_) -> DroppedOnReRecord) ++ RecordedBeforeParserFix
 
   /** Listings the German clients drop as no screening at all since the 2026-10-12 recording was made
    *  (`NonMovieEventClassifier.isNonScreening`: a sneak billed with no film, a day pass): a re-record stops carrying them. */
-  override protected def awaitingReRecord: Set[AllowedListing] = DroppedByTheClients.map(AllowedListing.anywhere).toSet
+  override protected def awaitingReRecord: Set[AllowedListing] =
+    DroppedByTheClients.map(AllowedListing.anywhere).toSet ++ RecordedBeforeParserFix.keySet
 
   "every listing awaiting a re-record" should "be one the clients now drop as no screening" in {
     DroppedByTheClients.filterNot(services.cinemas.pl.NonMovieEventClassifier.isNonScreening) shouldBe empty
@@ -113,12 +118,21 @@ object SearchQueryMarkersSpec {
 
   private val DroppedOnReRecord = "no screening, which the German clients now drop (NonMovieEventClassifier.isNonScreening) — the recording predates the drop"
 
+  /** Listings a parser fix has already cured, whose recorded title still carries the marker: the recorded corpus is
+   *  the parser's OUTPUT, so a re-record stops carrying them. */
+  private val RecordedBeforeParserFix: Map[AllowedListing, String] = Map(
+    AllowedListing("Kino Górnik Łęczyca", "Baranek Shaun i kudłata bestia 2D Dubb. Kino Świat") ->
+      "the distributor tail behind 'Dubb.', 2026-10-12 (run 38251516862) — recorded before MsiClient's DistributorTail took a version's full stop for the comma")
+
   /** The 2026-10-12 DE recording's sneaks billed with no film and its day passes. */
   private val DroppedByTheClients: Seq[String] = Seq("Sneak", "Sneak OV", "Kult-Sneak", "Kult Sneak FSK 16", "Horror Sneak",
     "Horror Sneak FSK 18", "Sneak FSK 18", "Classic Sneak", "CLASSIC SNEAK", "Retro Sneak", "Cult Sneak of Horror", "SNEAK 1343",
     "OV-Sneak", "OV Sneak: The surprise preview", "The Original Sneak", "Original Sneak - Mystery Movie", "Sneak KW 43 26",
     "DIE KULT SNEAK KW 44 26", "DIE SNEAK DES JAHRES", "DIE SNEAK DES JAHRES [OmU]",
-    "DF Tagesticket 3.11.26", "DF Tagesticket 4.11.26", "DF Tagesticket 5.11.26", "DF Tagesticket 6.11.26", "DF Tagesticket 7.11.26")
+    "DF Tagesticket 3.11.26", "DF Tagesticket 4.11.26", "DF Tagesticket 5.11.26", "DF Tagesticket 6.11.26", "DF Tagesticket 7.11.26",
+    // …and those of the afternoon's re-record (run 38251516862), which the same drop covers.
+    "SNEAK", "Klassiker Sneak", "Horror Classics Sneak Vol. 83", "Grusel Sneak", "Cine Sneak", "SNEAK Extreme",
+    "KLASSIKER SNEAK REVIEW - Special - Live", "Sneak Impro - Theatersport geht ins Kino")
 
   /** A marker word or phrase, matched case-insensitively as whole words. */
   private def phrase(text: String): (String, Regex) =

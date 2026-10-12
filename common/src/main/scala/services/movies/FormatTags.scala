@@ -59,7 +59,7 @@ object FormatTags {
   private val PrintPreposition = """(?i)\s+(?:on|in|w)\s+(\d{2}mm|4k)\s*$""".r
   private val FormatBracketTag = """\s*\[[^\]]*\]\s*$""".r
   private val FormatParenTag   =
-    """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|ATMOS|4DX|dubbing|napisy|lektor|dubbed|subtitled|subtitles|35mm|70mm|4K(?!\s*restor)|OV|OmU|OmeU|Originalversion)\b[^)]*)\)\s*$""".r
+    """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|ATMOS|4DX|dubbing|napisy|lektor|dubbed|subtitled|subtitles|35mm|70mm|4K(?!\s*restor)|OV|OmU|OmeU|Originalversion|D-?BOX)\b[^)]*)\)\s*$""".r
   // German venues spell the original version out in brackets — "Verity (Original English Version)", "The Rocky
   // Horror Picture Show (1975/Original English Version)" — and bracket a hyphenated screen, "Forgotten Island
   // (3-D)". Both are rewritten to their token's own word before the strips, inside brackets only: a bare "3-D" is
@@ -67,12 +67,13 @@ object FormatTags {
   private val BracketedOriginalVersion  = """(?i)(?<=[(/])\s*original\s+(?:english\s+)?version\s*(?=\))""".r
   private val BracketedHyphenatedScreen = """(?i)\(\s*([234])-D\s*\)""".r
   // The same tags written IN FRONT of the title — "OV: Digger", "(OmU) Verity", "ATMOS/OV: Verity", "Dolby
-  // Cinema: Die Odyssee", "3D: Forgotten Island": brackets, or a colon, closing a run of nothing but format and
-  // version words. Only those words, so "Dune: Part Two" keeps its colon.
-  private val LeadingWord = """(?:dolby\s+cinema|dolby|atmos|imax|4dx|[23]d|ov|omu|omeu|df)"""
+  // Cinema: Die Odyssee", "3D: Forgotten Island", "engl. OV: Der Herr der Ringe", "OMU - Searching for Sugar Man":
+  // brackets, a colon, or a spaced dash closing a run of nothing but format and version words (a version's
+  // language qualifier, "engl.", among them). Only those words, so "Dune: Part Two" keeps its colon.
+  private val LeadingWord = """(?:dolby\s+cinema|dolby|atmos|imax|4dx|[23]d|ov|omu|omeu|df|engl\.?)"""
   private val LeadingWords = LeadingWord + """(?:(?:\s*[/,]\s*|\s+)""" + LeadingWord + """)*"""
   private val LeadingFormatTag =
-    ("""(?i)^\s*(?:\(\s*""" + LeadingWords + """\s*\)\s*:?|""" + LeadingWords + """\s*:)\s*(?=\S)""").r
+    ("""(?i)^\s*(?:\(\s*""" + LeadingWords + """\s*\)\s*:?|""" + LeadingWords + """(?:\s*:|\s+[-–—]\s))\s*(?=\S)""").r
   // Underscore-glued format/version tag — some bilety24 portals (Forum Bolesławiec)
   // join the version word straight to the title with an underscore:
   // "Supergirl_dubbing", "Spider-Man. Całkiem nowy dzień_3D". Un-glue ONLY before a

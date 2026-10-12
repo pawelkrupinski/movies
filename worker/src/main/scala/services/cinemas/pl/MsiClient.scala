@@ -155,7 +155,7 @@ object MsiClient {
    *  `ScraperParse.extractFormatTags` — a cross-client concern, not MSI-specific.) */
   private[cinemas] def cleanTitle(raw: String): (String, List[String]) = {
     val (film, tailTokens) = DistributorTail.findFirstMatchIn(raw) match {
-      case Some(m) => (raw.substring(0, m.start), (m.group(1) +: Option(m.group(2)).toSeq).flatMap(versionToken).toList)
+      case Some(m) => (raw.substring(0, m.start), (m.group(1) +: Option(m.group(2)).orElse(Option(m.group(3))).toSeq).flatMap(versionToken).toList)
       case None    => (raw, Nil)
     }
     val (stripped, tokens) = ScraperParse.extractFormatTags(film)
@@ -168,9 +168,12 @@ object MsiClient {
    *  dystybutor". Anchored on the screen format (2D/3D), an optional version
    *  word, then the comma and a comma-free tail to the end — so a title's own
    *  comma ("Powiedz mi, co czujesz") is never cut, and a mistyped version word
-   *  ("dubbind") is only tolerated in that slot. */
+   *  ("dubbind") is only tolerated in that slot. An abbreviated version's full
+   *  stop stands for the comma ("Baranek Shaun i kudłata bestia 2D Dubb. Kino
+   *  Świat", 2026-10-12) — only behind a version word, so a format closing a
+   *  sentence of the title is left alone. */
   private val DistributorTail =
-    """(?iu)[\s-]+([23]d)(?:\s+(dubb\p{L}*|napis\p{L}*|lektor|pl))?\s*,[^,]*$""".r
+    """(?iu)[\s-]+([23]d)(?:(?:\s+(dubb\p{L}*|napis\p{L}*|lektor|pl))?\s*,|\s+(dubb\p{L}*|napis\p{L}*|lektor)\.\s+(?=\S))[^,]*$""".r
 
   /** The display token a word of [[DistributorTail]] names — the screen format as
    *  typed, the version by its stem (so "dubbind" still reads as a dub). */

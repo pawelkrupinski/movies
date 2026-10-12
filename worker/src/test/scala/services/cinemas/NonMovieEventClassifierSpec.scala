@@ -300,6 +300,15 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
       withClue(t)(NonMovieEventClassifier.isMysteryScreening(t) shouldBe true))
   }
 
+  it should "name a sneak billed by its genre, its brand or its occasion" in {
+    // The DE recording of 2026-10-12 (run 38251516862): Casablanca-Programmkino, Filmpalast am ZKM, Zeise Kinos,
+    // Metropolis Kino — none names a film.
+    Seq("Grusel Sneak", "Cine Sneak", "SNEAK Extreme", "KLASSIKER SNEAK REVIEW - Special - Live").foreach(t =>
+      withClue(t)(NonMovieEventClassifier.isMysteryScreening(t) shouldBe true))
+    Seq("Classic Sneak – Melodrama", "Arsenal Sneak Tübinger Kinos", "Live Free or Die Hard").foreach(t =>
+      withClue(t)(NonMovieEventClassifier.isMysteryScreening(t) shouldBe false))
+  }
+
   // Ground truth: the German feeds' corpus (Cineamo / kinoheld / Filmstarts), prod 2026-10-12.
   "isNonScreening" should "drop the readings, gigs, comedy nights and passes a German venue sells beside its films" in {
     Seq(
