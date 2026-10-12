@@ -58,11 +58,13 @@ object CatalogueSources {
 
   /** Whose claim `listing`'s facts are, for counting the sources that back a film ([[IdentityMeasures.VenueBacking]]): the
    *  feed entry they were copied from ([[feedStated]]) — one claim however many venues the feed lists it at: its id, or
-   *  its page's last segment (kinoprogramm.com serves one entry under every venue's path) — else its venue's own. */
+   *  its page's last segment (kinoprogramm.com serves one entry under every venue's path) — else its venue's own: the
+   *  venue's name itself, so the corpus's title groups hold no new string for a venue's own claim
+   *  ([[IdentityMeasures.Backer]]). A feed's claim is keyed "c:…" or "p:…", no venue's name. */
   def factSource(listing: Listing): String =
     listing.catalogueIds.find(id => FeedIds(id.source)).map(_.key)
       .orElse(listing.page.flatMap(page => FeedPages.find(page.startsWith).map(feed => s"p:$feed${page.reverse.takeWhile(_ != '/').reverse}")))
-      .getOrElse(s"v:${listing.venue}")
+      .getOrElse(listing.venue)
 
   /** Are `listing`'s facts a feed catalogue's claim rather than its venue's ([[FeedIds]], [[FeedPages]])? */
   def feedStated(listing: Listing): Boolean = feedStated(listing.catalogueIds, listing.page)

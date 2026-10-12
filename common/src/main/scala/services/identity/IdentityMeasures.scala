@@ -1570,11 +1570,12 @@ object IdentityMeasures {
     pool.collect { case (id, f, Some(1)) if titleRelation(l, f) == Category("exact") => id }.distinct.sorted
 
   /** Who backs a film from a title group: the listing's venue, and whose claim its facts are — the venue's own, or the feed
-   *  entry they were copied from (`CatalogueSources.factSource`) — kept as one string per group entry, `venue` and
-   *  `source` joined by [[Backer.Join]]. A key holding no join is its venue's own claim. */
+   *  entry they were copied from (`CatalogueSources.factSource`) — kept as one string per group entry. A venue's own claim
+   *  is the venue's name itself, no new string per listing for the corpus's life; a feed's is `venue` and `source` joined
+   *  by [[Backer.Join]]. */
   object Backer {
     val Join = '\u0001'
-    def apply(venue: String, source: String): String = s"$venue$Join$source"
+    def apply(venue: String, source: String): String = if (source == venue) venue else s"$venue$Join$source"
     def venue(key: String): String  = { val at = key.indexOf(Join); if (at < 0) key else key.substring(0, at) }
     def source(key: String): String = { val at = key.indexOf(Join); if (at < 0) key else key.substring(at + 1) }
   }
