@@ -137,6 +137,40 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     ()
   }
 
+  /** The cache's oplog cost: every refresh past a document's expiry re-inserts it whole, and a
+   *  Flicks film page is ~230-370 KB of HTML (measured 2026-10-12: `kinowo_us.detail_cache`
+   *  ~300 KB per insert, 107 MB/h of oplog). Gzipped, the same page is ~25 KB. */
+  "A cached detail page" should "be stored compressed, a recorded Flicks film page well under its raw size" in {
+    val page  = clients.tools.FixtureFile.read("test/resources/fixtures/flicks/www.flicks.us/movie/pans-labyrinth.html")
+    val url   = s"https://www.flicks.us/movie/pans-labyrinth/${System.nanoTime()}"
+    val fetch = new MongoCachingDetailFetch(new CountingFetch { override def get(u: String): String = { gets += 1; page } },
+      Some(db), 1.hour, Chain, new services.TtlIndexMismatches)
+    fetch.get(url) shouldBe page
+    val stored = storedDocument(s"${Chain.name}|$url")
+    page.getBytes(java.nio.charset.StandardCharsets.UTF_8).length should be > 200_000
+    new org.bson.RawBsonDocument(stored.toBsonDocument, new org.bson.codecs.BsonDocumentCodec()).getByteBuffer.remaining() should be < 40_000
+  }
+
+  it should "be served back byte-for-byte identical to the page fetched, multi-byte text included" in {
+    val page   = clients.tools.FixtureFile.read("test/resources/fixtures/flicks/www.flicks.us/movie/pans-labyrinth.html") + " Zażółć gęślą jaźń 🎬"
+    val url    = s"https://www.flicks.us/movie/roundtrip/${System.nanoTime()}"
+    val writer = new CountingFetch { override def get(u: String): String = { gets += 1; page } }
+    val reader = new CountingFetch
+    new MongoCachingDetailFetch(writer, Some(db), 1.hour, Chain, new services.TtlIndexMismatches).get(url)
+    awaitStored(url)
+    new MongoCachingDetailFetch(reader, Some(db), 1.hour, Chain, new services.TtlIndexMismatches).get(url) shouldBe page
+    reader.gets shouldBe 0
+  }
+
+  it should "still serve a document stored before compression, as its plain `body`" in {
+    val url   = s"https://chain/film/legacy-${System.nanoTime()}"
+    val under = new CountingFetch
+    Await.result(db.getCollection(collName).insertOne(org.mongodb.scala.Document("_id" -> s"${Chain.name}|$url", "body" -> "<html>legacy</html>",
+      "fetchedAt" -> new java.util.Date(0L), "expireAt" -> java.util.Date.from(java.time.Instant.parse("2100-01-01T00:00:00Z")))).toFuture(), SpecTimeouts.Io)
+    new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, new services.TtlIndexMismatches).get(url) shouldBe "<html>legacy</html>"
+    under.gets shouldBe 0
+  }
+
   it should "NOT be remembered when the failure is transient, so a 5xx still retries" in {
     val url   = s"https://chain/film/flaky-${System.nanoTime()}"
     val under = new CountingFetch {

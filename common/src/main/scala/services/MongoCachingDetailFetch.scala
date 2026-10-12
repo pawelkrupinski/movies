@@ -11,7 +11,7 @@ import scala.util.Try
 
 /**
  * [[HttpFetch]] decorator that caches successful GET bodies in the ONE Mongo collection every chain
- * shares (`detail_cache`, keyed `<chain>|<url>`, each document expiring at its own `expireAt`) — the cross-server analogue
+ * shares (`detail_cache`, keyed `<chain>|<url>`, each document expiring at its own `expireAt`, its body gzipped) — the cross-server analogue
  * of [[tools.CachingDetailFetch]]. Several worker servers share one cache, so a
  * cinema chain's per-film detail page is fetched once per TTL across the WHOLE
  * fleet rather than once per process. Used for the national chains' detail fetch
@@ -99,15 +99,18 @@ class MongoCachingDetailFetch(
     Try(Await.result(c.find(Filters.and(Filters.eq("_id", idOf(url)), Filters.gt("expireAt", new java.util.Date()))).headOption(), 10.seconds))
       .toOption.flatten
       .flatMap { document =>
-        Option(document.getString("body")).map(Right(_))
+        document.get("bodyGzip").flatMap(stored => Try(MongoCachingDetailFetch.decompress(stored.asBinary().getData)).toOption).map(Right(_))
+          // Stored before bodies were compressed (2026-10-12); every such document expires within one TTL of the deploy.
+          .orElse(Option(document.getString("body")).map(Right(_)))
           .orElse(Option(document.getInteger("goneStatus")).map(status => Left(status.intValue())))
       }
 
   private def store(c: MongoCollection[Document], url: String, outcome: Either[Int, String]): Unit =
     Try {
       val payload = outcome.fold(
-        status => Updates.combine(Updates.set("goneStatus", status), Updates.unset("body")),
-        body   => Updates.combine(Updates.set("body", body), Updates.unset("goneStatus")))
+        status => Updates.combine(Updates.set("goneStatus", status), Updates.unset("bodyGzip"), Updates.unset("body")),
+        body   => Updates.combine(Updates.set("bodyGzip", new org.bson.BsonBinary(MongoCachingDetailFetch.compress(body))),
+                                  Updates.unset("body"), Updates.unset("goneStatus")))
       val now = System.currentTimeMillis()
       c.updateOne(
         Filters.eq("_id", idOf(url)),
@@ -132,4 +135,22 @@ final case class DetailCacheChain(name: String)
 object MongoCachingDetailFetch {
   /** The one collection every chain's detail cache shares. */
   val Collection = "detail_cache"
+
+  /** A body as stored: gzipped UTF-8. A refresh past a document's `expireAt` re-inserts it whole, so its
+   *  size is paid in oplog once per URL per TTL: a Flicks film page is 200-370 KB of HTML
+   *  (`kinowo_us.detail_cache`, measured 2026-10-12: ~300 KB per insert, 107 MB/h of oplog) and ~25 KB
+   *  gzipped. The whole page rather than the parsed fields because this is an [[HttpFetch]]: a reader
+   *  gets back exactly the string the site sent, hit or miss. */
+  private[services] def compress(body: String): Array[Byte] = {
+    val bytes = new java.io.ByteArrayOutputStream(body.length / 6 + 64)
+    val gzip  = new java.util.zip.GZIPOutputStream(bytes)
+    try gzip.write(body.getBytes(java.nio.charset.StandardCharsets.UTF_8)) finally gzip.close()
+    bytes.toByteArray
+  }
+
+  /** Throws on a corrupt payload, which [[MongoCachingDetailFetch]] reads as a miss and re-fetches. */
+  private[services] def decompress(stored: Array[Byte]): String = {
+    val gzip = new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(stored))
+    try new String(gzip.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8) finally gzip.close()
+  }
 }
