@@ -14,6 +14,7 @@ class SpanishFeedTextSpec extends AnyFlatSpec with Matchers with OptionValues {
     SpanishFeedText.certificate("Mayores de 7 años").value shouldBe "+7"
     // Ocine's Catalan detail spells the years "anys".
     SpanishFeedText.certificate("12 anys").value shouldBe "+12"
+    SpanishFeedText.certificate("12").value shouldBe "+12"   // Ocine's bare age
     SpanishFeedText.certificate("Apta").value shouldBe "APTA"
     SpanishFeedText.certificate("+18").value shouldBe "+18"
     SpanishFeedText.certificate("TP").value shouldBe "APTA"

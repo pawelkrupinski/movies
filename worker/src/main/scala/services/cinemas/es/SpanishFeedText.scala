@@ -32,5 +32,5 @@ private[es] object SpanishFeedText {
     else Years.findFirstMatchIn(folded).map(m => s"+${Option(m.group(1)).getOrElse(m.group(2))}")
       .orElse(Some(raw.trim.toUpperCase(Locale.ROOT)))
   }
-  private val Years = """(?:^m-|^\+|menores de )(\d{1,2})|(\d{1,2})\s*an[oy]s""".r
+  private val Years = """(?:^m-|^\+|menores de |^(?=\d{1,2}$))(\d{1,2})|(\d{1,2})\s*an[oy]s""".r
 }
