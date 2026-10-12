@@ -204,6 +204,21 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
     readingAt("2027-06-12T00:00:00Z", "2027-06-02T00:00:00Z") shouldBe ((10 * 86400).toDouble, 1.0)  // listed, then quiet
   }
 
+  // One that never reopens — a site rebuilt over winter, parsing to nothing — must not stay hidden all
+  // season: past its season's halfway point it counts like any venue, quiet since last season.
+  it should "count one that has listed nothing by its season's halfway point" in {
+    val rooftop  = models.RooftopFilmClubStratfordRoofEast          // UK window: May..September, halfway mid-July
+    val scrapers = Seq(new StubCinemaScraper(rooftop))
+    val stamps   = Map(rooftop.displayName -> ContentStamp(Some(Instant.parse("2026-09-20T18:00:00Z"))))
+    def staleAt(at: String) = {
+      val (c, _, _, stale) = censusWithStale(new StubArchive(stamps), scrapers, Clock.fixed(Instant.parse(at), ZoneOffset.UTC))
+      c.sample()
+      valueOf(stale)
+    }
+    staleAt("2027-07-10T00:00:00Z") shouldBe 0.0
+    staleAt("2027-07-20T00:00:00Z") shouldBe 1.0
+  }
+
   // Its alert compares today with yesterday's LOWEST reading, so a zero published at boot would
   // read as "yesterday none were stale" after every restart and page on a healthy roster.
   it should "publish nothing until its first reading, and hold the last one when the archive read fails" in {

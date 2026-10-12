@@ -40,7 +40,8 @@ object SeasonWindow {
  * and that silence is not a broken scraper or a closed venue. Off its season such a
  * venue is left out of the dead-venue pages, the content census and the closure sweep;
  * it is still scraped as usual, so it reappears the day it lists times. In season it is
- * treated exactly like any other venue.
+ * treated like any other venue — except by the content census, which waits for its first listing
+ * of the season (or the season's halfway point) before counting its quiet.
  *
  * [[offSeasonAt]] and the other `Instant` readings judge the UTC calendar: the window is whole
  * months and only a typical one, so the hours a venue's own midnight is away from UTC's change
@@ -77,6 +78,17 @@ enum Opening {
   def seasonOpenedAt(now: Instant): Option[Instant] = this match {
     case YearRound        => None
     case Seasonal(window) => window.openedOn(Opening.day(now)).map(_.atStartOfDay(ZoneOffset.UTC).toInstant)
+  }
+
+  /** Halfway through the season `now` falls in, for a seasonal venue in season: one that has
+   *  listed nothing by then is not late to open but dark for a reason. None otherwise. */
+  def seasonHalfwayAt(now: Instant): Option[Instant] = this match {
+    case YearRound        => None
+    case Seasonal(window) => window.openedOn(Opening.day(now)).map { opened =>
+      val months = (window.closes.getValue - window.opens.getValue + 12) % 12 + 1
+      val closed = opened.plusMonths(months)
+      LocalDate.ofEpochDay((opened.toEpochDay + closed.toEpochDay) / 2).atStartOfDay(ZoneOffset.UTC).toInstant
+    }
   }
 
   /** `since`, or when the season `now` falls in began if that is later: how long something has

@@ -173,7 +173,9 @@ object CinemaContentCensus {
    *  venues gone quiet every October. In season it counts only once it has listed something
    *  this season: on 1 May its last content is from September and most open-air screens list
    *  nothing until June, so counted from either date they would all turn stale together, every
-   *  spring. From its first listing on, it is held to the same week as any venue.
+   *  spring. From its first listing on, it is held to the same week as any venue — and so is
+   *  one that has listed nothing by its season's halfway point, which is no late opener but a
+   *  venue dark for a reason (a site rebuilt over winter, parsing to nothing).
    *
    *  A cinema missing from the archive counts the same as one archived with no content — in
    *  both cases we have never seen it produce a film. */
@@ -181,7 +183,8 @@ object CinemaContentCensus {
     roster.filterNot(_.opening.offSeasonAt(now)).flatMap { cinema =>
       val stamp       = stamps.getOrElse(cinema.displayName, ContentStamp(None))
       val notReopened = cinema.opening.seasonOpenedAt(now).exists(opened => stamp.lastContentAt.exists(_.isBefore(opened)))
-      Option.unless(notReopened)(stamp)
+      val stillEarly  = cinema.opening.seasonHalfwayAt(now).exists(now.isBefore)
+      Option.unless(notReopened && stillEarly)(stamp)
     }
 
   /** Pure: fold the in-season roster's stamps ([[inSeason]]) into the three readings. */
