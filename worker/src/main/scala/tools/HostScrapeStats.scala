@@ -30,7 +30,8 @@ import scala.concurrent.duration._
  * UCI Bochum and Kinopolis Bad Godesberg never once scraped). So a venue is held
  * to the LARGER of its host's usual time and its own, and a venue that has not
  * yet completed a scrape gets the ceiling: the host's median says nothing about
- * how big it is. A venue that stalls is still cut at twice its own usual time.
+ * how big it is. A venue that stalls is still cut, at twice that larger usual
+ * time — so a small venue on a slow host gets the host's slack, not twice its own.
  */
 class HostScrapeStats(
   window:     Int            = HostScrapeStats.DefaultWindow,
