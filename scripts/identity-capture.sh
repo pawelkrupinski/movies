@@ -65,7 +65,9 @@ if ! $dry && ! $fill_only && [ -z "${KINOWO_IDENTITY_FAMILY_URI:-}" ] && [ -z "$
 fi
 if ! $dry; then
     needed=(KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY=TMDB_API_KEY)
-    $reads_prod && needed+=(MONGODB_URI)
+    # Under its own name, NOT MONGODB_URI: the capture JVMs inherit this environment, and a
+    # MONGODB_URI there replaces each one's local throwaway database (IdentityCapture.environment).
+    $reads_prod && needed+=(KINOWO_PROD_MONGODB_URI=MONGODB_URI)
     ensure_vault_env "${needed[@]}" -- "$BASH" "$self" "$@" || exit 2
 fi
 
@@ -95,7 +97,8 @@ if ! $dry; then
 fi
 # The tunnel is for a capture's export only.
 if $reads_prod; then
-    init_prod_tunnel identity-capture "$(prod_tunnel_uri "$MONGODB_URI")"
+    init_prod_tunnel identity-capture "$(prod_tunnel_uri "$KINOWO_PROD_MONGODB_URI")"
+    unset KINOWO_PROD_MONGODB_URI
     trap close_prod_tunnel EXIT INT TERM
     ensure_prod_tunnel || { echo "[identity-capture] prod Mongo unreachable — can you 'ssh' to the mongo host? (see prod-tunnel.sh)" >&2; exit 1; }
     KINOWO_IDENTITY_FAMILY_URI=$TUNNEL_PROBE_URI
