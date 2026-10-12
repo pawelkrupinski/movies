@@ -309,6 +309,17 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
       withClue(t)(NonMovieEventClassifier.isMysteryScreening(t) shouldBe false))
   }
 
+  // The listings box-office staff create to try their own site: BFI Southbank's "Z Test Show
+  // please ignore" (cinemas.bfi.org.uk, 2026-10-12), Spektrix's "Website Test Event 2".
+  "isLiveEvent and isNonScreening" should "drop a box office's own test listing, in any feed" in {
+    Seq("Z Test Show please ignore", "Website Test Event 2", "TEST SCREENING - do not book").foreach { t =>
+      withClue(t)(NonMovieEventClassifier.isLiveEvent(t) shouldBe true)
+      withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe true)
+    }
+    Seq("The Test", "Test Pilot", "Screen Test", "Ignore All Previous Instructions", "Beta Test").foreach(t =>
+      withClue(t)(NonMovieEventClassifier.isLiveEvent(t) shouldBe false))
+  }
+
   // Ground truth: the German feeds' corpus (Cineamo / kinoheld / Filmstarts), prod 2026-10-12.
   "isNonScreening" should "drop the readings, gigs, comedy nights and passes a German venue sells beside its films" in {
     Seq(

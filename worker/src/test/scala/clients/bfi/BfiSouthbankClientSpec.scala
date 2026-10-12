@@ -23,8 +23,8 @@ class BfiSouthbankClientSpec extends AnyFlatSpec with Matchers with OptionValues
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
   "BfiSouthbankClient.fetch" should "read the Southbank programme Flicks never listed off the BFI's cinemas site" in {
-    results.size shouldBe 119
-    results.flatMap(_.showtimes).size shouldBe 351
+    results.size shouldBe 118
+    results.flatMap(_.showtimes).size shouldBe 350
     results.map(_.cinema).toSet shouldBe Set(BfiLondonSouthbank)
     results.flatMap(_.showtimes).map(_.dateTime.toLocalDate).max shouldBe LocalDate.of(2026, 11, 30)
     results.flatMap(_.showtimes).flatMap(_.room).toSet shouldBe Set("NFT1", "NFT2", "NFT3", "NFT4")
@@ -54,6 +54,11 @@ class BfiSouthbankClientSpec extends AnyFlatSpec with Matchers with OptionValues
     film.synopsis.value should startWith ("An ordinary man’s conscience is ignited")
     film.posterUrl.value should startWith ("https://cms.cinemas.bfi.org.uk/storage/media/")
     film.filmUrl.value shouldBe "https://cinemas.bfi.org.uk/whats-on/a-dry-white-season"
+  }
+
+  it should "leave out the test listing the box office made to try its site" in {
+    // "Z Test Show please ignore": one NFT4 performance, listed beside the films on 2026-10-12.
+    byTitle.keySet.filter(_.toLowerCase.contains("test show")) shouldBe empty
   }
 
   it should "leave the BFI IMAX's performances to that venue" in {

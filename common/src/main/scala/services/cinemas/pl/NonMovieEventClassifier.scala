@@ -131,12 +131,22 @@ object NonMovieEventClassifier {
    *  Rieu) still veto. Lazy: [[BroadcastMarkers]] is defined further down this object. */
   private lazy val NeutralBroadcastVeto = BroadcastMarkers.filterNot(_ == " live") :+ "live viewing"
 
-  /** Whether `title` is no screening at all, by what a feed in any language may read: a mystery screening, or a
-   *  [[NeutralPerformanceMarkers]] / standalone [[NeutralTalkMarkers]] event — never a screened broadcast. What the
-   *  feeds that cannot use the Polish stage vocabulary filter on (Cineamo, kinoheld, kinoprogramm.com, Webedia). */
+  /** The listings box-office staff create to try their own site, billed as such: BFI Southbank's "Z Test Show
+   *  please ignore" (2026-10-12), Spektrix's "Website Test Event 2". A test NAMED as a show, event or screening —
+   *  not "Screen Test" or "The Test", which are films — or a plea not to book it. */
+  private val TestListingMarkers = List(
+    """\btest\s+(?:show|event|screening|performance)s?\b""".r,
+    """\bplease\s+ignore\b|\bdo\s+not\s+book\b""".r
+  )
+  private def isTestListing(t: String): Boolean = TestListingMarkers.exists(_.findFirstIn(t).isDefined)
+
+  /** Whether `title` is no screening at all, by what a feed in any language may read: a mystery screening, a box
+   *  office's test listing, or a [[NeutralPerformanceMarkers]] / standalone [[NeutralTalkMarkers]] event — never a
+   *  screened broadcast. What the feeds that cannot use the Polish stage vocabulary filter on (Cineamo, kinoheld,
+   *  kinoprogramm.com, Webedia). */
   def isNonScreening(title: String): Boolean = {
     val t = title.toLowerCase(Locale.ROOT)
-    isMysteryScreening(title) || (!NeutralBroadcastVeto.exists(t.contains) && (
+    isMysteryScreening(title) || isTestListing(t) || (!NeutralBroadcastVeto.exists(t.contains) && (
       NeutralPerformanceMarkers.exists(_.findFirstIn(t).isDefined) ||
       (NeutralTalkMarkers.exists(_.findFirstIn(t).isDefined) && !hasBoltedOnFilm(t) && FilmMention.findFirstIn(t).isEmpty)))
   }
@@ -282,7 +292,8 @@ object NonMovieEventClassifier {
   def isScreenedBroadcast(title: String): Boolean =
     BroadcastMarkers.exists(title.toLowerCase(Locale.ROOT).contains)
 
-  /** True when `title` names a live stage/music event rather than a film.
+  /** True when `title` names a live stage/music event rather than a film — or a box office's test listing,
+   *  which is no film either.
    *
    *  `venueMarkers` lets ONE venue add its own programme's names — a castle's
    *  terrace season, a club night — without those names becoming national rules.
@@ -292,7 +303,8 @@ object NonMovieEventClassifier {
    *  `OnlyMovieEventsFilter.venueEventMarkers` for how a client supplies them. */
   def isLiveEvent(title: String, venueMarkers: Seq[Regex] = Nil): Boolean = {
     val t = title.toLowerCase(Locale.ROOT)
-    isPerformance(title, venueMarkers) || (!isScreenedBroadcast(t) && (isStandaloneDiscussion(t) || isStandaloneWorkshop(t)))
+    isPerformance(title, venueMarkers) || isTestListing(t) ||
+      (!isScreenedBroadcast(t) && (isStandaloneDiscussion(t) || isStandaloneWorkshop(t)))
   }
 
   /** [[isLiveEvent]] by what is PERFORMED alone — a concert, a stage play, a gala, a magic show, a voucher — without the

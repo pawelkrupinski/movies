@@ -114,11 +114,11 @@ object SpektrixClient {
   /** What a box office files under its films that is not a screening: a bundle of
    *  tickets, a voucher, a membership, a season pass, a seat dedication, the hire of
    *  captioning glasses ("WatchWord Glasses", 48 "performances" at Old Market Hall), and
-   *  the test events staff create to try the website ("Website Test Event 2", "Test
-   *  Walker Cinema"). Matched on the lower-cased title. */
+   *  a test listing named for its venue ("Test Walker Cinema"; one billed as a test event,
+   *  "Website Test Event 2", the shared classifier drops). Matched on the lower-cased title. */
   private val TicketProducts: Seq[Regex] = Seq(
     """\bbundle(s)?\b""".r, """\bgift\s+(card|voucher)""".r, """\bmembership""".r, """\bseason\s+pass""".r,
-    """\bname\s+a\s+seat\b""".r, """\bglasses\b""".r, """^test\b""".r, """\btest\s+event\b""".r
+    """\bname\s+a\s+seat\b""".r, """\bglasses\b""".r, """^test\b""".r
   )
 
   private case class Slot(event: JsObject, title: String, showtime: Showtime)
