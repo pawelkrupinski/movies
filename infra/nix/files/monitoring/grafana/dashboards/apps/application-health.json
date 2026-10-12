@@ -2326,8 +2326,8 @@
         },
         {
           "id": 110,
-          "title": "Worker — cinemas quiet for over a week (no film in 7+ days), by country",
-          "description": "Roster cinemas whose last content-bearing scrape is more than 7 days old, from kinowo_worker_cinema_content_stale_venues (CinemaContentCensus, every 30 minutes, off the scrape archive). The age panel above follows ONE venue, the roster's worst -- DE read 1,383h and the US 600h on 2026-09-24 -- so it cannot say whether that venue is alone; this counts them all. Never-content venues are not in it (the panel above counts those: they have no age). Closures are not modelled, so a season's dormant venues sit here too: read it for GROWTH. CinemaContentStaleVenuesGrowing fires when today's count is 3+ above yesterday's lowest and stays there a day -- one more venue going quiet a day is what a client-wide parser break (one skin change, every venue on it) looks like, and the scrape-staleness panels stay clean through it because the scrapes themselves succeed.",
+          "title": "Worker — cinemas quiet for over a week (no film in 7+ days), and seasonal venues not reopened by midseason, by country",
+          "description": "Roster cinemas whose last content-bearing scrape is more than 7 days old, from kinowo_worker_cinema_content_stale_venues (CinemaContentCensus, every 30 minutes, off the scrape archive). The age panel above follows ONE venue, the roster's worst -- DE read 1,383h and the US 600h on 2026-09-24 -- so it cannot say whether that venue is alone; this counts them all. Never-content venues are not in it (the panel above counts those: they have no age). Closures are not modelled, so a season's dormant venues sit here too: read it for GROWTH. CinemaContentStaleVenuesGrowing fires when today's count is 3+ above yesterday's lowest and stays there a day -- one more venue going quiet a day is what a client-wide parser break (one skin change, every venue on it) looks like, and the scrape-staleness panels stay clean through it because the scrapes themselves succeed. The 'not reopened' lines are kinowo_worker_seasonal_venues_not_reopened: in-season seasonal venues (open-air screens, drive-ins) that have listed nothing this season by its halfway point. They are kept out of the stale count all season -- a country's seasonal venues share one window, so they would all turn stale on the same day -- and any one of them is worth a look: SeasonalVenuesNotReopened fires when it has been above 0 for a day. Check the venue and retire it if it has closed.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -2356,6 +2356,15 @@
               "refId": "A",
               "expr": "max by (country) (kinowo_worker_cinema_content_stale_venues{country=~\"$country\"})",
               "legendFormat": "{{country}}",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
+              "refId": "B",
+              "expr": "max by (country) (kinowo_worker_seasonal_venues_not_reopened{country=~\"$country\"})",
+              "legendFormat": "{{country}} not reopened",
               "datasource": {
                 "type": "prometheus",
                 "uid": "local-prometheus"

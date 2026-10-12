@@ -113,6 +113,33 @@ tests:
         exp_alerts: []
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
+  # SEASONAL VENUES NOT REOPENED. PL has one past midseason from the start, through a restart:
+  # held a day -- fires. DE reads 0 throughout -- quiet. UK reads 1 for twelve hours, then the
+  # venue lists and it falls back to 0: never held a day -- quiet.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 10m
+    input_series:
+      - series: 'kinowo_worker_seasonal_venues_not_reopened{country="pl",instance="w1"}'
+        values: '1x100 stale 1x100'
+      - series: 'kinowo_worker_seasonal_venues_not_reopened{country="de",instance="w1"}'
+        values: '0x200'
+      - series: 'kinowo_worker_seasonal_venues_not_reopened{country="uk",instance="w1"}'
+        values: '1x72 0x128'
+    alert_rule_test:
+      - eval_time: 20h
+        alertname: SeasonalVenuesNotReopened
+        exp_alerts: []
+      - eval_time: 26h
+        alertname: SeasonalVenuesNotReopened
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: pl
+            exp_annotations:
+              summary: "pl has 1 seasonal venue(s) that listed nothing by midseason"
+              description: 'kinowo_worker_seasonal_venues_not_reopened has been above 0 for a day: a seasonal venue (open-air screen, drive-in) is in season and has listed no film since its season opened, past the halfway point when even late openers list. Check each venue''s site: retire the ones that have closed for good from the roster, and fix the parser of any that is screening.'
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
   # THE TWO SAMPLED AUDITS. 60 audited an hour in every country. PL confirms 10% of its content
   # sample and restarts once (its counters reset); DE 1% (under 2%). ES confirms everything but
   # has audited only 36 in six hours -- a worker just started -- and stays quiet under the floor.

@@ -41,7 +41,8 @@ object SeasonWindow {
  * venue is left out of the dead-venue pages, the content census and the closure sweep;
  * it is still scraped as usual, so it reappears the day it lists times. In season it is
  * treated like any other venue — except by the content census, which waits for its first listing
- * of the season (or the season's halfway point) before counting its quiet.
+ * of the season before counting its quiet, and past the season's halfway point counts one still
+ * unlisted as not reopened instead.
  *
  * [[offSeasonAt]] and the other `Instant` readings judge the UTC calendar: the window is whole
  * months and only a typical one, so the hours a venue's own midnight is away from UTC's change

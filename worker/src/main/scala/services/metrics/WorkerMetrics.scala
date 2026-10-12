@@ -118,6 +118,7 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   val (scrapeOldestAgeGauge, scrapeNeverScrapedGauge) = CinemaScrapeCensus.gauges(registry)
   val (contentOldestAgeGauge, neverContentGauge) = CinemaContentCensus.gauges(registry)
   val contentStaleVenuesGauge: Gauge = CinemaContentCensus.staleVenuesGauge(registry)
+  val seasonalNotReopenedGauge: Gauge = CinemaContentCensus.notReopenedGauge(registry)
   val (retiredVenueRowsGauge, retiredVenueFutureGauge) = RetiredVenueCensus.gauges(registry)
   val copiedFeedPairsGauge: Gauge = services.cinemas.roster.CopiedFeedDetector.gauge(registry)
 

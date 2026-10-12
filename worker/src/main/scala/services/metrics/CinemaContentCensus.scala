@@ -46,6 +46,11 @@ import scala.jdk.CollectionConverters._
  *     the season held `CinemaContentStaleVenuesGrowing` firing for 44 hours
  *     (2026-09-27..29). A parser break still counts, because it throws or comes
  *     back empty with nothing vouching for it.
+ *   - `kinowo_worker_seasonal_venues_not_reopened{country}` — how many seasonal
+ *     venues are in season and have listed nothing this season by its halfway point
+ *     ([[CinemaContentCensus.notReopened]]). They are kept out of the three above
+ *     all season, since the whole country's seasonal roster shares one window and
+ *     would turn stale on one day.
  *
  * Deliberately the same shape as [[CinemaScrapeCensus]]'s pair, and split for the
  * same reason: a cinema with no content has no age, so folding it into the age
@@ -71,6 +76,7 @@ class CinemaContentCensus(
   oldestAge:    Gauge,
   neverContent: Gauge,
   staleVenues:  Gauge,
+  notReopenedVenues: Gauge,
   country:      Country,
   clock:        Clock,
   override protected val sampleInterval: FiniteDuration = CinemaContentCensus.DefaultSampleInterval,
@@ -106,10 +112,12 @@ class CinemaContentCensus(
     if (lastRead.forall(at => !now.isBefore(at.plusMillis(rereadInterval.toMillis)))) read(now)
     // Never read whole: nothing to stand behind, so the gauges hold whatever they held.
     if (lastRead.isDefined) {
-      val census = quiet(inSeason(roster, stamps.asScala.toMap, now), now)
+      val held   = stamps.asScala.toMap
+      val census = quiet(inSeason(roster, held, now), now)
       oldestAge.labelValues(countryCode).set(census.oldestAgeSeconds)
       neverContent.labelValues(countryCode).set(census.neverContent.toDouble)
       staleVenues.labelValues(countryCode).set(census.staleVenues.toDouble)
+      notReopenedVenues.labelValues(countryCode).set(notReopened(roster, held, now).toDouble)
     }
   }
 
@@ -152,6 +160,7 @@ object CinemaContentCensus {
   val OldestAgeName    = "kinowo_worker_cinema_content_oldest_age_seconds"
   val NeverContentName = "kinowo_worker_cinema_never_content"
   val StaleVenuesName  = "kinowo_worker_cinema_content_stale_venues"
+  val NotReopenedName  = "kinowo_worker_seasonal_venues_not_reopened"
 
   /** A venue quiet this long is STALE. A week, because a repertory venue can legitimately go
    *  a few days between programmes (a Monday-to-Wednesday dark run, a festival gap), and every
@@ -173,19 +182,38 @@ object CinemaContentCensus {
    *  venues gone quiet every October. In season it counts only once it has listed something
    *  this season: on 1 May its last content is from September and most open-air screens list
    *  nothing until June, so counted from either date they would all turn stale together, every
-   *  spring. From its first listing on, it is held to the same week as any venue — and so is
-   *  one that has listed nothing by its season's halfway point, which is no late opener but a
-   *  venue dark for a reason (a site rebuilt over winter, parsing to nothing).
+   *  spring. From its first listing on, it is held to the same week as any venue.
+   *
+   *  One that never lists this season stays out of all three for the WHOLE season. It used to
+   *  join them at the season's halfway point, but every seasonal venue in a country shares one
+   *  window, so all the never-reopened ones turned stale on the same day (~16 July) and paged
+   *  `CinemaContentStaleVenuesGrowing` as a parser break once a year. [[notReopened]] counts them.
    *
    *  A cinema missing from the archive counts the same as one archived with no content — in
    *  both cases we have never seen it produce a film. */
   def inSeason(roster: Seq[models.Cinema], stamps: Map[String, ContentStamp], now: Instant): Seq[ContentStamp] =
     roster.filterNot(_.opening.offSeasonAt(now)).flatMap { cinema =>
-      val stamp       = stamps.getOrElse(cinema.displayName, ContentStamp(None))
-      val notReopened = cinema.opening.seasonOpenedAt(now).exists(opened => stamp.lastContentAt.exists(_.isBefore(opened)))
-      val stillEarly  = cinema.opening.seasonHalfwayAt(now).exists(now.isBefore)
-      Option.unless(notReopened && stillEarly)(stamp)
+      val stamp = stampOf(stamps, cinema)
+      Option.unless(listedBeforeThisSeason(cinema, stamp, now))(stamp)
     }
+
+  /** How many in-season seasonal venues have listed nothing this season by its halfway point — no
+   *  late opener by then, but a venue closed for good or a parser that broke over winter: worth
+   *  checking, and retiring if closed. One that has never listed anything at all is left to the
+   *  never-content gauge, which [[inSeason]] already counts it in. */
+  def notReopened(roster: Seq[models.Cinema], stamps: Map[String, ContentStamp], now: Instant): Int =
+    roster.count { cinema =>
+      !cinema.opening.offSeasonAt(now) &&
+        listedBeforeThisSeason(cinema, stampOf(stamps, cinema), now) &&
+        cinema.opening.seasonHalfwayAt(now).exists(halfway => !now.isBefore(halfway))
+    }
+
+  private def stampOf(stamps: Map[String, ContentStamp], cinema: models.Cinema): ContentStamp =
+    stamps.getOrElse(cinema.displayName, ContentStamp(None))
+
+  // A seasonal venue whose last listing predates this season's opening: it has not reopened (yet).
+  private def listedBeforeThisSeason(cinema: models.Cinema, stamp: ContentStamp, now: Instant): Boolean =
+    cinema.opening.seasonOpenedAt(now).exists(opened => stamp.lastContentAt.exists(_.isBefore(opened)))
 
   /** Pure: fold the in-season roster's stamps ([[inSeason]]) into the three readings. */
   def quiet(rows: Seq[ContentStamp], now: Instant): ContentCensus = {
@@ -215,6 +243,12 @@ object CinemaContentCensus {
   def staleVenuesGauge(registry: PrometheusRegistry): Gauge = Gauge.builder()
     .name(StaleVenuesName)
     .help("Cinemas in this country's roster whose last content-bearing scrape is more than 7 days old (never-content venues excluded: kinowo_worker_cinema_never_content counts those; so are venues whose own page last said they have no schedule). Most sources cannot say a venue is closed, so a season's dormant venues still sit here: watch it GROW day over day, which is what a parser break across a client's venues looks like.")
+    .labelNames("country")
+    .register(registry)
+
+  def notReopenedGauge(registry: PrometheusRegistry): Gauge = Gauge.builder()
+    .name(NotReopenedName)
+    .help("Seasonal cinemas (open-air screens, drive-ins) in this country's roster that are in season but have listed nothing this season by its halfway point. A late opener lists by then, so each one is likely closed for good or a parser that broke over winter: check the venue's site and retire the closed ones. Held out of kinowo_worker_cinema_content_stale_venues, where they all turned stale on the same day a year.")
     .labelNames("country")
     .register(registry)
 

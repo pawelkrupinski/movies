@@ -137,6 +137,34 @@ groups:
             venues in a region in autumn is a season closing.
 
       # -----------------------------------------------------------------------------------------
+      # A SEASONAL VENUE THAT NEVER REOPENED.
+      #
+      # kinowo_worker_seasonal_venues_not_reopened counts in-season seasonal venues (open-air
+      # screens, drive-ins: models.Opening.Seasonal) that have listed nothing this season by its
+      # halfway point (CinemaContentCensus.notReopened). They used to join the stale-venue count at
+      # that point instead, but every seasonal venue in a country shares one window, so all the
+      # never-reopened ones turned stale on the SAME day (~16 July in DE/PL/UK) and paged
+      # CinemaContentStaleVenuesGrowing as a parser break once a year. Here ANY such venue is worth
+      # a look -- a late opener lists by midseason -- so the level is the signal, not its growth.
+      #
+      # `max by (country)` across instances because each pod publishes the same archive-derived
+      # figure under its own `instance`; held a day so a venue that lists on the halfway day itself
+      # never pages. Off season the gauge reads 0, so a venue left unretired pages once a year.
+      - alert: SeasonalVenuesNotReopened
+        expr: max by (country) (last_over_time(kinowo_worker_seasonal_venues_not_reopened[1h])) > 0
+        for: 1d
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }} has {{ $value }} seasonal venue(s) that listed nothing by midseason"
+          description: >-
+            kinowo_worker_seasonal_venues_not_reopened has been above 0 for a day: a seasonal venue
+            (open-air screen, drive-in) is in season and has listed no film since its season
+            opened, past the halfway point when even late openers list. Check each venue's site:
+            retire the ones that have closed for good from the roster, and fix the parser of any
+            that is screening.
+
+      # -----------------------------------------------------------------------------------------
       # STORED CONTENT MATCHES A FRESH RE-READ.
       #
       # The worker's hourly content audit (ReadModelContentAudit) samples 50 cards, compares each

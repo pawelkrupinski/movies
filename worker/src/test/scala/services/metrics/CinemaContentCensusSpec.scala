@@ -56,11 +56,17 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
 
   private def censusWithStale(archive: ScrapeArchiveRepository, scrapers: Seq[CinemaScraper] = roster,
                               clock: Clock = Clock.fixed(now, ZoneOffset.UTC)) = {
+    val (c, oldestAge, neverContent, stale, _) = censusWithAll(archive, scrapers, clock)
+    (c, oldestAge, neverContent, stale)
+  }
+
+  private def censusWithAll(archive: ScrapeArchiveRepository, scrapers: Seq[CinemaScraper], clock: Clock) = {
     val registry = new PrometheusRegistry()
     val (oldestAge, neverContent) = CinemaContentCensus.gauges(registry)
-    val stale = CinemaContentCensus.staleVenuesGauge(registry)
-    val c = new CinemaContentCensus(scrapers, archive, oldestAge, neverContent, stale, Country.Poland, clock)
-    (c, oldestAge, neverContent, stale)
+    val stale       = CinemaContentCensus.staleVenuesGauge(registry)
+    val notReopened = CinemaContentCensus.notReopenedGauge(registry)
+    val c = new CinemaContentCensus(scrapers, archive, oldestAge, neverContent, stale, notReopened, Country.Poland, clock)
+    (c, oldestAge, neverContent, stale, notReopened)
   }
 
   private def valueOf(g: io.prometheus.metrics.core.metrics.Gauge) =
@@ -113,7 +119,7 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
     val registry = new PrometheusRegistry()
     val (oldestAge, neverContent) = CinemaContentCensus.gauges(registry)
     new CinemaContentCensus(Seq.empty, new StubArchive(Map.empty), oldestAge, neverContent,
-      CinemaContentCensus.staleVenuesGauge(registry), Country.Poland, Clock.fixed(now, ZoneOffset.UTC)).sample()
+      CinemaContentCensus.staleVenuesGauge(registry), CinemaContentCensus.notReopenedGauge(registry), Country.Poland, Clock.fixed(now, ZoneOffset.UTC)).sample()
     valueOf(neverContent) shouldBe 0.0
   }
 
@@ -205,18 +211,30 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
   }
 
   // One that never reopens — a site rebuilt over winter, parsing to nothing — must not stay hidden all
-  // season: past its season's halfway point it counts like any venue, quiet since last season.
-  it should "count one that has listed nothing by its season's halfway point" in {
-    val rooftop  = models.RooftopFilmClubStratfordRoofEast          // UK window: May..September, halfway mid-July
+  // season. But every seasonal venue in a country shares one window, so counting the never-reopened
+  // ones as stale from the halfway point stepped the stale gauge on one day a year (~16 July) and
+  // paged `CinemaContentStaleVenuesGrowing` as a parser break. They get a gauge of their own instead.
+  it should "count one that has listed nothing by its season's halfway point as not reopened, never as stale" in {
+    val rooftop  = models.RooftopFilmClubStratfordRoofEast          // UK window: May..September, halfway 2027-07-16
     val scrapers = Seq(new StubCinemaScraper(rooftop))
     val stamps   = Map(rooftop.displayName -> ContentStamp(Some(Instant.parse("2026-09-20T18:00:00Z"))))
-    def staleAt(at: String) = {
-      val (c, _, _, stale) = censusWithStale(new StubArchive(stamps), scrapers, Clock.fixed(Instant.parse(at), ZoneOffset.UTC))
+    def readingAt(at: String) = {
+      val (c, _, _, stale, notReopened) =
+        censusWithAll(new StubArchive(stamps), scrapers, Clock.fixed(Instant.parse(at), ZoneOffset.UTC))
       c.sample()
-      valueOf(stale)
+      (valueOf(stale), valueOf(notReopened))
     }
-    staleAt("2027-07-10T00:00:00Z") shouldBe 0.0
-    staleAt("2027-07-20T00:00:00Z") shouldBe 1.0
+    readingAt("2027-07-10T00:00:00Z") shouldBe ((0.0, 0.0))
+    readingAt("2027-07-20T00:00:00Z") shouldBe ((0.0, 1.0))
+  }
+
+  it should "leave a seasonal venue that has never listed anything to the never-content gauge alone" in {
+    val rooftop = models.RooftopFilmClubStratfordRoofEast
+    val (c, _, neverContent, _, notReopened) = censusWithAll(
+      new StubArchive(Map(rooftop.displayName -> ContentStamp(None))), Seq(new StubCinemaScraper(rooftop)),
+      Clock.fixed(Instant.parse("2027-07-20T00:00:00Z"), ZoneOffset.UTC))
+    c.sample()
+    (valueOf(neverContent), valueOf(notReopened)) shouldBe ((1.0, 0.0))
   }
 
   // Its alert compares today with yesterday's LOWEST reading, so a zero published at boot would
