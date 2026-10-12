@@ -24,11 +24,11 @@ class CopiedFeedDetectorSpec extends AnyFlatSpec with Matchers {
 
   private val start = LocalDateTime.of(2026, 10, 1, 12, 0)
 
-  /** `films` listings of four showtimes each, every showtime booked through `site`'s own Veezi session. */
-  private def feed(venue: Cinema, site: String, films: Int = 5): Seq[CinemaMovie] =
+  /** `films` listings of four showtimes each, every showtime booked through `host`/`site`'s own Veezi session. */
+  private def feed(venue: Cinema, site: String, films: Int = 5, host: String = "ticketing.us.veezi.com"): Seq[CinemaMovie] =
     (1 to films).map { f =>
       CinemaMovie(Movie(s"Film $f"), venue, None, None, None, Nil, Nil,
-        (1 to 4).map(s => Showtime(start.plusHours(f * 10L + s), Some(s"https://ticketing.us.veezi.com/purchase/$site-$f-$s?siteToken=$site"))))
+        (1 to 4).map(s => Showtime(start.plusHours(f * 10L + s), Some(s"https://$host/purchase/$site-$f-$s?siteToken=$site"))))
     }
 
   private final class World(seedArchive: Seq[ArchivedScrape] = Nil) {
@@ -42,6 +42,16 @@ class CopiedFeedDetectorSpec extends AnyFlatSpec with Matchers {
     val w = new World
     w.detector.venueScraped(parkRidge, feed(parkRidge, "parkridge"))
     w.detector.venueScraped(pickwick, feed(pickwick, "parkridge"))   // Park Ridge's very links
+    w.detector.copiedPairs shouldBe Set(Seq(pickwick, parkRidge).map(_.displayName).sorted match { case Seq(a, b) => (a, b) })
+  }
+
+  // The Syracuse IN Pickwick, 2026-09-23: Flicks booked it through the Park Ridge IL Pickwick's Veezi
+  // purchase ids served from another regional mirror -- ticketing.useast. vs ticketing.us. -- so the
+  // links differ as strings but name one session. Keeping the whole host (2026-10-12) lost this pair.
+  it should "flag a venue booking another's sessions through another regional mirror of one backend" in {
+    val w = new World
+    w.detector.venueScraped(parkRidge, feed(parkRidge, "parkridge", host = "ticketing.useast.veezi.com"))
+    w.detector.venueScraped(pickwick, feed(pickwick, "parkridge"))
     w.detector.copiedPairs shouldBe Set(Seq(pickwick, parkRidge).map(_.displayName).sorted match { case Seq(a, b) => (a, b) })
   }
 
@@ -196,7 +206,8 @@ class CopiedFeedDetectorSpec extends AnyFlatSpec with Matchers {
   "a venue's fingerprints" should "be exactly what cutting each session out of its link and hashing it gives" in {
     val rnd   = new scala.util.Random(20261001)
     val links = Seq("https://ticketing.us.veezi.com/purchase/", "http://useast.veezi.com/p/", "veezi-session-", "https://host.only",
-      "https://host.only/", "https://h/a?b=c&d=", "ftp://x/y")
+      "https://host.only/", "https://h/a?b=c&d=", "ftp://x/y", "https://reelquinton.admit-one.co.uk/?p=seats&perfCode=",
+      "https://h.x?q=", "https://a.b/c.d/")
     val films = (1 to 400).map { f =>
       val showtimes = (0 until rnd.nextInt(9)).map { s =>
         val url = Option.when(rnd.nextInt(8) > 0)(links(rnd.nextInt(links.size)) + (if (rnd.nextBoolean()) s"$f-${rnd.nextInt(4)}" else "x" * rnd.nextInt(3)))

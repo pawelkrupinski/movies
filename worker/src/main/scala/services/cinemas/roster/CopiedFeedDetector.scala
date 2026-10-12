@@ -180,33 +180,47 @@ object CopiedFeedDetector {
     fingerprints.result().distinct
   }
 
-  /** The part of a booking link naming the venue and the session: everything past the scheme.
-   *  The HOST stays: a ticketing backend that gives each venue its own subdomain names the venue
-   *  only there, and numbers each venue's sessions on its own counter — admit-one's
-   *  `reelquinton.` and `reelborehamwood.admit-one.co.uk` both sold `/?p=seats&perfCode=20303`,
-   *  which with the host dropped (until 2026-10-12) read as one venue listing the other's feed. A
-   *  copied feed copies the links themselves, host and all. */
-  private[roster] def sessionOf(url: String): String = url.substring(sessionStart(url))
+  /** The part of a booking link naming the venue and the session: the host's FIRST label, then its
+   *  path and query. The first label is where a backend giving each venue its own subdomain names
+   *  the venue — admit-one's `reelquinton.` and `reelborehamwood.admit-one.co.uk` both sold
+   *  `/?p=seats&perfCode=20303`, each venue numbering its sessions on its own counter, which with
+   *  the whole host dropped read as one venue listing the other's feed (2026-10-08..10). The rest of
+   *  the host is dropped: one backend serves one session from regional mirrors — Veezi's
+   *  `ticketing.us.` and `ticketing.useast.`, through which the Syracuse Pickwick listed the Park
+   *  Ridge one's sessions (2026-09-23). */
+  private[roster] def sessionOf(url: String): String = {
+    val (labelStart, labelEnd, pathStart) = sessionParts(url)
+    url.substring(labelStart, labelEnd) + url.substring(pathStart)
+  }
 
-  private def sessionStart(url: String): Int = url.indexOf("://") match {
-    case -1 => 0
-    case i  => i + 3
+  /** Where the host's first label starts and ends in `url`, and where its path (or query) starts;
+   *  a link with no scheme is all path. */
+  private def sessionParts(url: String): (Int, Int, Int) = url.indexOf("://") match {
+    case -1 => (0, 0, 0)
+    case i  =>
+      val host = i + 3
+      var path = host
+      while (path < url.length && url.charAt(path) != '/' && url.charAt(path) != '?') path += 1
+      val dot = url.indexOf('.', host)
+      (host, if (dot < 0 || dot > path) path else dot, path)
   }
 
   /** `hash64(sessionOf(url))`: two MurmurHash3 string hashes of the session, read in place. */
   private[roster] def sessionHash(url: String): Long = {
-    val start  = sessionStart(url)
-    val length = url.length - start
+    val (labelStart, labelEnd, pathStart) = sessionParts(url)
+    val labelLength = labelEnd - labelStart
+    val length      = labelLength + url.length - pathStart
+    def at(k: Int): Int = if (k < labelLength) url.charAt(labelStart + k) else url.charAt(pathStart + k - labelLength)
     var high   = HighSeed
     var low    = LowSeed
-    var i      = start
-    while (i + 1 < url.length) {
-      val data = (url.charAt(i) << 16) + url.charAt(i + 1)
+    var k      = 0
+    while (k + 1 < length) {
+      val data = (at(k) << 16) + at(k + 1)
       high = MurmurHash3.mix(high, data)
       low  = MurmurHash3.mix(low, data)
-      i += 2
+      k += 2
     }
-    if (i < url.length) { high = MurmurHash3.mixLast(high, url.charAt(i).toInt); low = MurmurHash3.mixLast(low, url.charAt(i).toInt) }
+    if (k < length) { high = MurmurHash3.mixLast(high, at(k)); low = MurmurHash3.mixLast(low, at(k)) }
     (MurmurHash3.finalizeHash(high, length).toLong << 32) | (MurmurHash3.finalizeHash(low, length) & 0xffffffffL)
   }
 
