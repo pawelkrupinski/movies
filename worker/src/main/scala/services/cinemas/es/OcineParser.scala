@@ -2,6 +2,7 @@ package services.cinemas.es
 
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import play.api.libs.json._
+import services.cinemas.es.SpanishFeedText.{certificate, field}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import java.util.Locale
@@ -54,7 +55,7 @@ object OcineParser {
   def film(json: String, baseUrl: String, cinema: Cinema, notAfter: LocalDate): Option[CinemaMovie] = {
     val root     = Json.parse(json)
     val id       = (root \ "id").asOpt[Long].getOrElse(throw new IllegalStateException(s"Ocine film body has no id: ${json.take(200)}"))
-    val rawTitle = text(root, "titol").getOrElse(throw new IllegalStateException(s"Ocine film $id has no title"))
+    val rawTitle = field(root, "titol").getOrElse(throw new IllegalStateException(s"Ocine film $id has no title"))
     val title    = cleanTitle(rawTitle)
 
     val variants = root +: (root \ "subPelicules").asOpt[Seq[JsValue]].getOrElse(Nil)
@@ -70,9 +71,9 @@ object OcineParser {
     Option.when(showtimes.nonEmpty) {
       val movie = Movie(
         title          = title,
-        runtimeMinutes = text(root, "durada").flatMap(_.toIntOption).filter(_ > 0),
-        genres         = text(root, "genereComercial").toSeq,
-        originalTitle  = text(root, "titolOriginal").filterNot(_.equalsIgnoreCase(title)),
+        runtimeMinutes = field(root, "durada").flatMap(_.toIntOption).filter(_ > 0),
+        genres         = field(root, "genereComercial").toSeq,
+        originalTitle  = field(root, "titolOriginal").filterNot(_.equalsIgnoreCase(title)),
         rawTitle       = Option.when(title != rawTitle)(rawTitle),
       )
       CinemaMovie(
@@ -83,13 +84,13 @@ object OcineParser {
         // the poster downstream.
         posterUrl   = None,
         filmUrl     = Some(s"$baseUrl/#/DetallPelicula/$id"),
-        synopsis    = text(root, "sinopsis"),
-        cast        = Seq("actor1", "actor2", "actriu1", "actriu2").flatMap(text(root, _)),
-        director    = text(root, "director").toSeq.flatMap(_.split(',').map(_.trim).filter(_.nonEmpty)),
+        synopsis    = field(root, "sinopsis"),
+        cast        = Seq("actor1", "actor2", "actriu1", "actriu2").flatMap(field(root, _)),
+        director    = field(root, "director").toSeq.flatMap(_.split(',').map(_.trim).filter(_.nonEmpty)),
         showtimes   = showtimes,
         externalIds = Map("ocine" -> id.toString),
-        trailerUrl  = text(root, "videoExtern"),
-        ageRating   = text(root, "classificacio").map(ageLabel),
+        trailerUrl  = field(root, "videoExtern"),
+        ageRating   = field(root, "classificacio").flatMap(certificate),
       )
     }
   }
@@ -105,7 +106,7 @@ object OcineParser {
     } yield Showtime(
       LocalDateTime.of(date, time),
       (s \ "planificacio").asOpt[Long].map(plan => s"$baseUrl/?plan=$plan&extern=1&idioma=es"),
-      text(s, "nomSala"),
+      field(s, "nomSala"),
       format,
     )
 
@@ -167,14 +168,4 @@ object OcineParser {
 
   private val TrailingMarker =
     """(?iu)(?:\s*[(\[](?:català|catalán|catala|vose|vos|vo|v\.o\.s\.e\.|euskera|2d|3d|4d|4dx|atmos|iv|screen\s*x|kids|urban|ice|premium|sala\s+[\p{L}\d ]+)[)\]])+\s*$""".r
-
-  /** "12 años" → "+12", the way SensaCine and a Spanish listing print it;
-   *  a word ("Apta") is kept, upper-cased to SensaCine's spelling. */
-  private def ageLabel(raw: String): String =
-    AgeYears.findFirstMatchIn(raw).map(m => s"+${m.group(1)}").getOrElse(raw.toUpperCase(Locale.ROOT))
-
-  private val AgeYears = """^(\d+)\s*(?:años|anys)?$""".r
-
-  private def text(js: JsValue, key: String): Option[String] =
-    (js \ key).asOpt[String].map(_.trim).filter(_.nonEmpty)
 }

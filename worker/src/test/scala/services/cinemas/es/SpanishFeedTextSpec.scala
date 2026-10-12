@@ -7,11 +7,14 @@ import play.api.libs.json.Json
 
 class SpanishFeedTextSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  "certificate" should "spell Taquilla's and Artesiete's certificates the SensaCine way" in {
+  "certificate" should "spell Taquilla's, Artesiete's and Ocine's certificates the SensaCine way" in {
     SpanishFeedText.certificate("M-12").value shouldBe "+12"
     SpanishFeedText.certificate("NO RECOMENDADA PARA MENORES DE 16 AÑOS").value shouldBe "+16"
     SpanishFeedText.certificate("No Recomendada para Menores de 16 años").value shouldBe "+16"
     SpanishFeedText.certificate("Mayores de 7 años").value shouldBe "+7"
+    // Ocine's Catalan detail spells the years "anys".
+    SpanishFeedText.certificate("12 anys").value shouldBe "+12"
+    SpanishFeedText.certificate("Apta").value shouldBe "APTA"
     SpanishFeedText.certificate("+18").value shouldBe "+18"
     SpanishFeedText.certificate("TP").value shouldBe "APTA"
     SpanishFeedText.certificate("APTA PARA TODOS LOS PÚBLICOS").value shouldBe "APTA"

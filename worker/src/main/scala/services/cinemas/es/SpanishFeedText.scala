@@ -6,7 +6,7 @@ import tools.TextNormalization
 import java.util.Locale
 
 /** How the Spanish box-office feeds (taquilla.com's JSON, Artesiete's session
- *  props) spell a field and a certificate, read the one way every Spanish own-source
+ *  props, Ocine's ticketing API) spell a field and a certificate, read the one way every Spanish own-source
  *  parser shares. */
 private[es] object SpanishFeedText {
 
@@ -22,7 +22,7 @@ private[es] object SpanishFeedText {
     }.filter(_.nonEmpty)
 
   /** The certificate the way SensaCine prints it: "+12" for "M-12", "+16" and "NO
-   *  RECOMENDADA PARA MENORES DE 16 AÑOS", "+7" for "Mayores de 7 años"; "APTA" for
+   *  RECOMENDADA PARA MENORES DE 16 AÑOS", "+7" for "Mayores de 7 años" and Catalan "7 anys"; "APTA" for
    *  "TP" and "APTA PARA TODOS LOS PÚBLICOS"; none while it is pending ("PDC",
    *  "Pendiente de Calificacion") or a placeholder ("-"). Anything else upper-cased. */
   def certificate(raw: String): Option[String] = {
@@ -32,5 +32,5 @@ private[es] object SpanishFeedText {
     else Years.findFirstMatchIn(folded).map(m => s"+${Option(m.group(1)).getOrElse(m.group(2))}")
       .orElse(Some(raw.trim.toUpperCase(Locale.ROOT)))
   }
-  private val Years = """(?:^m-|^\+|menores de )(\d{1,2})|(\d{1,2})\s*anos""".r
+  private val Years = """(?:^m-|^\+|menores de )(\d{1,2})|(\d{1,2})\s*an[oy]s""".r
 }
