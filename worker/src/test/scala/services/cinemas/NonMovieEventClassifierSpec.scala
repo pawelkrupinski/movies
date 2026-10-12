@@ -378,4 +378,18 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
       "Vaiana: wersja karaoke", "Vaiana - Karaoke-Version"
     ).foreach(t => withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe false))
   }
+
+  it should "keep a film whose own title is a trio, a duo or a workshop, and drop the act or class billed as one" in {
+    // A trio or duo is an act only as a performer's band ("Hanne Kah Duo"), a workshop a class only as the event bills
+    // it ("WORKSHOP: SOUND DESIGN", "Schreibworkshop", "Workshops für Kinder") — the bare word is a film's own title.
+    Seq("Trio", "Duo", "Trio (2024)", "The Workshop", "Workshop").foreach(t =>
+      withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe false))
+    Seq("Hanne Kah Duo", "Ansa Sauermann Trio: Keine weiteren Fragen", "WORKSHOP: SOUND DESIGN", "Schreibworkshop",
+      "Workshops für Kinder", "Workshop mit Anna Maier").foreach(t =>
+      withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe true))
+  }
+
+  it should "keep a Spanish title saying \"quizás\", which only begins like a quiz" in {
+    Seq("Quizás, quizás, quizás", "Quizá mañana").foreach(t => withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe false))
+  }
 }

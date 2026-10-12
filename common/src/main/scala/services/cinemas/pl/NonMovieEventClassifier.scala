@@ -112,7 +112,9 @@ object NonMovieEventClassifier {
     """^live:\s""".r,                       // "LIVE: SBB – SMALL BIG BAND" — not "Berliner Philharmoniker LIVE: …", a relay
     """\btribute[\s-]+(?:band|show|abend|by)\b""".r, // not "Die Tribute von Panem"
     """\bbig\s?band\b|houseband\b|\bfeat\.\s""".r, // not a bare "& Band": "Dieter Thomas Kuhn & Band" is a documentary
-    """(?<!\b(?:das|die|der|the|ein|a) )\b(?:trio|duo)\b""".r, // not "Das Trio" (1998), nor a "Quartett" (2013)
+    // A trio or duo as a performer's band — the word after a name ("Hanne Kah Duo"), never the bare word nor an
+    // article's: "Trio", "Duo" and "Das Trio" (1998) are films' own titles, as is a "Quartett" (2013).
+    """(?<=\p{L}\s)(?<!\b(?:das|die|der|the|ein|a)\s)\b(?:trio|duo)\b""".r,
     """zauber(?:kunst|show|keller|ei\b)|travestie""".r
   )
   private val NeutralTalkMarkers = List(
@@ -122,10 +124,13 @@ object NonMovieEventClassifier {
     """vortrag\b""".r,                      // "Fachvortrag", "Multivisionsvortrag"
     """\bmultivision|live-reportage""".r,   // a travel photographer's slide show, presented live
     """\btour\s+20\d\d\b""".r,              // "Moritz Hohl: Musst du wissen – Tour 2027" (a "Kurz Film Tour 2026" names its films)
-    """\bworkshops?\b""".r,
+    // A workshop as the class bills itself — "WORKSHOP: SOUND DESIGN", a compound ("Schreibworkshop"), the plural, or
+    // who it is for or with — never the bare word, a film's own: "The Workshop", "Workshop".
+    """(?<=[\p{L}-])workshop|\bworkshops\b|^workshop\s*[:–-]|\bworkshop\s+(?:für|mit|for|with)\s""".r,
     // A quiz or a slam as the event bills it — a compound ("QuizKino Live", "Quizlabor Leipzig", "PubUp-Kino-Quiz"), a
-    // quiz night, a poetry slam — never the bare word, a film's own: "Quiz Show" (1994, DE corpus 2026-10-12), "Slam".
-    """(?<=[\p{L}-])quiz|quiz(?=\p{L})|\bquiz[\s-]+(?:night|nacht|abend)\b""".r,
+    // quiz night, a poetry slam — never the bare word, a film's own: "Quiz Show" (1994, DE corpus 2026-10-12), "Slam";
+    // nor the Spanish "quizá(s)", which only begins like one.
+    """(?<=[\p{L}-])quiz|quiz(?=\p{L})(?!á)|\bquiz[\s-]+(?:night|nacht|abend)\b""".r,
     """\b(?:poetry|science|lyrik|dichter)[\s-]*slam\b""".r
   )
   private val FilmMention = """film""".r
