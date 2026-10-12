@@ -355,6 +355,20 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
     delegate.calls shouldBe 2
   }
 
+  // Recordings made before that fix carry such refusals in their restored cache, for up to its
+  // expiry: one written down is no answer either, so a recording asks again instead of replaying it.
+  it should "ask again where an earlier recording wrote down an open circuit's refusal" in {
+    val url = "https://v3.sg.media-imdb.com/suggestion/d/dune.json"
+    val delegate = new ScriptedHttpFetch(Map(url -> (() => """{"d":[]}""")))
+    val store = new InMemoryEnrichmentCacheStore()
+    val cache = new EnrichmentCache(store, persistSuccesses = false, transients = EnrichmentCache.Transients.Recorded)
+    cache.remember(CachingEnrichmentFetch.keyOf("GET", url), CachedResponse.failureOf(
+      new CircuitOpenException("v3.sg.media-imdb.com", 60000L, Some("HTTP 429")), "GET"))
+
+    new CachingEnrichmentFetch(cache, delegate).get(url) shouldBe """{"d":[]}"""
+    delegate.calls shouldBe 1
+  }
+
   // A HERMETIC replay can only answer what the recording wrote down, and a transient
   // failure left unwritten is a request the replay has no answer for: measured on Poland's
   // and the UK's samples, every gap a hermetic replay of the published tree hit was one of

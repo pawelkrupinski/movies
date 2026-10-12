@@ -108,6 +108,9 @@ class CachingEnrichmentFetch(cache: EnrichmentCache, underlying: HttpFetch,
    *  sees pass 2 fail exactly the way pass 1 did. */
   private def replay(key: String, request: CachedResponse.Failed => CachingEnrichmentFetch.Replayed): Option[CachedResponse] =
     cache.lookup(key) match {
+      // An open circuit's refusal that a recording made before refusals stopped being remembered
+      // wrote down: no answer either, so a miss — the fetch below asks again and overwrites it.
+      case Some(failed: CachedResponse.Failed) if CachingEnrichmentFetch.isRecordedRefusal(failed) => None
       case Some(failed: CachedResponse.Failed) =>
         val replayed = request(failed)
         replayedFailure(replayed)
@@ -123,6 +126,10 @@ object CachingEnrichmentFetch {
    *  and what was remembered of it. */
   final case class Replayed(verb: String, url: String, body: Option[(String, String)], failed: CachedResponse.Failed,
                             withHeaders: Boolean = false)
+
+  /** A remembered failure that is our own breaker's refusal, in the shape `CachedResponse.failureOf` wrote it. */
+  private[tools] def isRecordedRefusal(failed: CachedResponse.Failed): Boolean =
+    failed.status.isEmpty && failed.message.startsWith(s"${classOf[CircuitOpenException].getName}: ")
 
   /** The remembered shape a String-returning verb accepts as its answer. */
   private val asBody: PartialFunction[CachedResponse, String] = { case CachedResponse.Body(text) => text }
