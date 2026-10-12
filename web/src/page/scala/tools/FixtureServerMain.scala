@@ -173,6 +173,8 @@ object FixtureServerMain {
     val landingPages: Map[String, String] = landings(pickerFragments)
     // The other countries' picker panes those landings fetch once they are up.
     val pickerApi = new controllers.PickerController(play.api.test.Helpers.stubControllerComponents(), pickerFragments)
+    // The country-agnostic update-gate rule the iOS LocalServer suite decodes.
+    val clientSupportApi = new controllers.ClientSupportController(play.api.test.Helpers.stubControllerComponents())
 
     // Resolve `/{city}/…` to (City, in-city sub-path). The first path segment
     // is matched against the known cities; an unknown first segment → None.
@@ -235,6 +237,7 @@ object FixtureServerMain {
       val path    = exchange.getRequestURI.getPath
       val action  =
         if (path.startsWith("/api/picker/")) Some(pickerApi.fragment(path.stripPrefix("/api/picker/"), request.getQueryString("v")))
+        else if (path == "/api/client-support") Some(clientSupportApi.clientSupport())
         else resolve(path).flatMap { case (c, sub) => apiAction(c, sub, request) }
       action match {
         case None         => false
