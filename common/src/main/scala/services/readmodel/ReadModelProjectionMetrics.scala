@@ -71,8 +71,10 @@ trait ReadModelProjectionMetrics {
    *  "the change-stream event hadn't arrived yet" — this is that signal. A projection
    *  whose write phase runs long while the computation phase (`recordProject`) stays
    *  short points at the write loop itself (city count, Mongo round-trip cost), not at
-   *  resolve/synopsisByCity/ratings. */
-  def recordWriteBurst(seconds: Double): Unit
+   *  resolve/synopsisByCity/ratings. `trigger` is what asked for the projection, as in `recordProject`: a
+   *  heal or a derivation pass writes a film's venues whole, so only the stream's share says what the
+   *  incremental path costs. */
+  def recordWriteBurst(trigger: ReadModelProjectionMetrics.ProjectTrigger, seconds: Double): Unit
 
   /** One projection decided whether to REUSE cached metadata or RECOMPUTE it.
    *  `reused=true` is the optimisation win: the row's metadata inputs were unchanged
@@ -206,7 +208,7 @@ object ReadModelProjectionMetrics {
     def recordDrift(cause: String, documents: Int): Unit          = ()
     def recordUnlistedVenues(rows: Int, withheld: Boolean): Unit  = ()
     def recordProject(trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit = ()
-    def recordWriteBurst(seconds: Double): Unit                       = ()
+    def recordWriteBurst(trigger: ReadModelProjectionMetrics.ProjectTrigger, seconds: Double): Unit = ()
     def recordMetadataProjection(trigger: ReadModelProjectionMetrics.ProjectTrigger, reused: Boolean): Unit = ()
     def recordVenueProjection(rebuilt: Int, reused: Int): Unit     = ()
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()

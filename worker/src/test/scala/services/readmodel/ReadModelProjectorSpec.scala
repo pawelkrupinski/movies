@@ -1198,28 +1198,30 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     m.projectCalls(ReadModelProjectionMetrics.ProjectTrigger.Stream) shouldBe 1
   }
 
-  "the write-burst metric" should "time the write phase separately, and only for a row that reaches it" in {
+  "the write-burst metric" should "time the write phase separately, by trigger, and only for a row that reaches it" in {
     // Distinguishes "still computing" from "still writing" from "the event hadn't arrived
     // yet" for a slow multi-city projection — see `recordWriteBurst`'s doc.
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
     val m = new RecordingReadModelProjectionMetrics()
     val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    import ReadModelProjectionMetrics.ProjectTrigger
 
-    // A ready row projected via the change-stream path reaches the write phase → timed.
+    // A ready row projected via the change-stream path reaches the write phase → timed, as the stream's.
     projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
-    m.writeBurstSeconds should have size 1
-    m.writeBurstSeconds.head should be >= 0.0
+    m.writeBursts.map(_._1) shouldBe Seq(ProjectTrigger.Stream)
+    m.writeBursts.head._2 should be >= 0.0
 
     // A row still enriching is held back BEFORE the write phase (and before
     // recordProject too) — it must not buy a write-burst reading either.
     val notReady = MovieRecord(imdbRating = Some(7.0), data = Map[Source, SourceData](Multikino -> slot(Seq(at("2026-06-12T20:00")))))
     projector.onMovieUpsert(StoredMovieRecord.synthesised("Foo", Some(2024), notReady, services.movies.SingleCountryNormalizer.titleNormalizer))
-    m.writeBurstSeconds should have size 1
+    m.writeBursts should have size 1
 
-    // A full reproject sweep reaches the write phase for the live row → one more timing.
+    // A full reproject sweep reaches the write phase for the live row → one more timing, under ITS trigger:
+    // a whole-film write is no measure of what the incremental path costs (ReadModelProjectionWritePerCallHigh).
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projector.reconcile()
-    m.writeBurstSeconds should have size 2
+    m.writeBursts.map(_._1) shouldBe Seq(ProjectTrigger.Stream, ProjectTrigger.Reproject)
   }
 
   it should "attribute CPU from the thread CPU clock, not from wall-clock" in {

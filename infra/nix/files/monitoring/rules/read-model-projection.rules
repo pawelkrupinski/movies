@@ -1008,28 +1008,32 @@ groups:
       # the fix (US p99 0.9-2.5s both sides, pinned against its 2.5s top bucket) so a threshold on
       # it would catch nothing this rule does not.
       #
-      # NOT WHILE A DERIVATION PASS IS IN THE WINDOW. A new derivation re-projects the whole corpus
-      # once per worker, rewriting every document (2026-09-26 13:05-13:13Z: US 55,627 in 8 minutes,
-      # ES 4,477), and those 8 minutes held the US and ES 3h means over 20 ms until 16:05Z. That is the
-      # write burst the code means to make, so a 3h window holding any `trigger="derivation"`
-      # projection is not read; a regression shipped with the derivation change pages an hour after
-      # the pass leaves the window.
+      # ONLY THE STREAM'S CALLS (2026-10-12). The rule is about what the INCREMENTAL path costs per
+      # event, and every other trigger writes a film whole by design. It used to drop a window that
+      # held a derivation pass (2026-09-26 13:05-13:13Z: US 55,627 documents in 8 minutes held the US
+      # and ES means over 20 ms until 16:05Z), but the boot HEAL does the same and was not dropped:
+      # a deploy that re-files venues under new town pages re-projects most of a corpus at boot
+      # (ES 10-10 07:13Z, DE 10-11 16:44Z 1,029 rows and 20:42Z 115, US 10-11 20:41Z 1,508), and each
+      # held its 3h mean over 20 ms -- DE 44 ms, ES 64, US 108 -- and paged an hour later, a write
+      # burst the code meant to make. The histogram carries the projection's `trigger` since then,
+      # and the stream's share alone is read, whatever else runs in the window. `=~"stream|"` also
+      # matches the unlabelled series of the builds before it, so `bin/backtest-alerts` still
+      # replays the 09-08..09-23 US incident against the history that has no `trigger`.
       - alert: ReadModelProjectionWritePerCallHigh
         expr: >-
           (
-            sum by (country) (rate(kinowo_worker_readmodel_write_burst_seconds_sum[3h]))
-            / sum by (country) (rate(kinowo_worker_readmodel_write_burst_seconds_count[3h]))
+            sum by (country) (rate(kinowo_worker_readmodel_write_burst_seconds_sum{trigger=~"stream|"}[3h]))
+            / sum by (country) (rate(kinowo_worker_readmodel_write_burst_seconds_count{trigger=~"stream|"}[3h]))
           ) > 0.020
-          and on (country) sum by (country) (rate(kinowo_worker_readmodel_write_burst_seconds_count[3h])) > 0.02
-          unless on (country) sum by (country) (increase(kinowo_worker_readmodel_project_calls_total{trigger="derivation"}[3h])) > 0
+          and on (country) sum by (country) (rate(kinowo_worker_readmodel_write_burst_seconds_count{trigger=~"stream|"}[3h])) > 0.02
         for: 1h
         labels:
           severity: warning
         annotations:
           summary: "{{ $labels.country }}'s read-model projections spend {{ $value | humanizeDuration }} writing per call"
           description: >-
-            The write half of a read-model projection in "{{ $labels.country }}" has averaged over
-            20 ms per call for the last 3h, for an hour. Every country runs at 3-7 ms since the
+            The write half of a change-stream read-model projection in "{{ $labels.country }}" has
+            averaged over 20 ms per call for the last 3h, for an hour. Every country runs at 3-7 ms since the
             2026-09-23 venue-scoping fix; the US ran at 27-47 ms before it, when every venue change
             rebuilt and re-diffed the film's whole screenings set. Check panel 33 first: a rebuilt
             line tracking reused means scoping broke again (ReadModelVenueRebuildShareHigh fires

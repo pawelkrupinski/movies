@@ -385,7 +385,7 @@ class ReadModelProjector(
     // is a real loss the heal must repair.
     val served = kept.flatMap(card => lastScreenings.ids(card).toSet)
     healedClean.updateWith(rowId)(_.map { case (hash, phantoms) => (hash, phantoms -- served) }.filter(_._2.nonEmpty))
-    metrics.recordWriteBurst(writing.seconds)
+    metrics.recordWriteBurst(trigger, writing.seconds)
     val drift = drifted.result()
     if (drift.nonEmpty) sweepDrift += RowDrift(rowId, causes.result(), drift.mkString("; "))
     written

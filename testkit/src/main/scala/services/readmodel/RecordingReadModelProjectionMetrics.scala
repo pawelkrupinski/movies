@@ -8,7 +8,8 @@ final class RecordingReadModelProjectionMetrics extends ReadModelProjectionMetri
   val sweeps = scala.collection.mutable.Buffer.empty[(String, Boolean)]
   val projectDurations = scala.collection.mutable.Buffer.empty[Double]
   val projectCpuSeconds = scala.collection.mutable.Buffer.empty[Double]
-  val writeBurstSeconds = scala.collection.mutable.Buffer.empty[Double]
+  /** Each write phase's trigger and wall-clock. */
+  val writeBursts = scala.collection.mutable.Buffer.empty[(ReadModelProjectionMetrics.ProjectTrigger, Double)]
   /** Each metadata projection's trigger, and whether it reused the cached metadata. */
   val metadataProjections = scala.collection.mutable.Buffer.empty[(ReadModelProjectionMetrics.ProjectTrigger, Boolean)]
   def metadataReused: Int     = metadataProjections.count(_._2)
@@ -32,7 +33,7 @@ final class RecordingReadModelProjectionMetrics extends ReadModelProjectionMetri
     projectDurations  += wallSeconds
     projectCpuSeconds += cpuSeconds
   }
-  def recordWriteBurst(seconds: Double): Unit                   = writeBurstSeconds += seconds
+  def recordWriteBurst(trigger: ReadModelProjectionMetrics.ProjectTrigger, seconds: Double): Unit = writeBursts += (trigger -> seconds)
   def recordMetadataProjection(trigger: ReadModelProjectionMetrics.ProjectTrigger, reused: Boolean): Unit =
     metadataProjections += (trigger -> reused)
   var venuesRebuilt = 0

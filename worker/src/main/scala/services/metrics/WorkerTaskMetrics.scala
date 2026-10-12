@@ -82,7 +82,8 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   def recordCardWrite(changed: Set[String]): Unit               = series.recordCardWrite(countryCode, changed)
   def recordProject(trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit =
     series.recordProject(countryCode, trigger, wallSeconds, cpuSeconds)
-  def recordWriteBurst(seconds: Double): Unit                    = series.recordWriteBurst(countryCode, seconds)
+  def recordWriteBurst(trigger: ReadModelProjectionMetrics.ProjectTrigger, seconds: Double): Unit =
+    series.recordWriteBurst(countryCode, trigger, seconds)
   def recordMetadataProjection(trigger: ReadModelProjectionMetrics.ProjectTrigger, reused: Boolean): Unit =
     series.recordMetadataProjection(countryCode, trigger, reused)
   def recordVenueProjection(rebuilt: Int, reused: Int): Unit     = series.recordVenueProjection(countryCode, rebuilt, reused)
@@ -355,8 +356,8 @@ object WorkerTaskMetrics {
 
     private val readModelWriteBurst = Histogram.builder()
       .name("kinowo_worker_readmodel_write_burst_seconds")
-      .help("Wall-clock of the WRITE half of one project() call since boot, by country — writer.upsertMovie/diffScreenings for a single source row, once its variants are computed. Separate from readmodel_project_duration_seconds, which times only the computation before any write. On 2026-09-08 a wide UK release took up to ~40 minutes to reach all 73 of its cities after its source row turned ready, with nothing distinguishing computation, writing, or change-stream delivery as the slow part — this histogram is the write-phase half of that answer; a long write burst against a short project_duration for the same call points at the write loop (city count, Mongo round-trips), not at resolve/synopsisByCity/ratings.")
-      .labelNames("country")
+      .help("Wall-clock of the WRITE half of one project() call since boot, by country — writer.upsertMovie/diffScreenings for a single source row, once its variants are computed. Separate from readmodel_project_duration_seconds, which times only the computation before any write. On 2026-09-08 a wide UK release took up to ~40 minutes to reach all 73 of its cities after its source row turned ready, with nothing distinguishing computation, writing, or change-stream delivery as the slow part — this histogram is the write-phase half of that answer; a long write burst against a short project_duration for the same call points at the write loop (city count, Mongo round-trips), not at resolve/synopsisByCity/ratings. trigger is readmodel_project_calls' trigger: a heal, a derivation pass or the backfill writes a film's venues whole, so read the incremental path's cost on trigger=stream (ReadModelProjectionWritePerCallHigh does).")
+      .labelNames("country", "trigger")
       .classicUpperBounds(DurationBucketsSeconds*)
       .classicOnly()
       .register(registry)
@@ -522,7 +523,7 @@ object WorkerTaskMetrics {
         ReadModelProjectionMetrics.ProjectTrigger.values.foreach(t => readModelProjectCalls.labelValues(c, t.label).inc(0.0))
         readModelProjectCpu.labelValues(c).inc(0.0)       // ditto — the CPU-attribution counter the drivers panel stacks
         readModelProjectDuration.labelValues(c).observe(0.0) // materialize the histogram (_sum/_count/_bucket) from boot — no Grafana gap
-        readModelWriteBurst.labelValues(c).observe(0.0)      // ditto — the write-phase half of that same answer
+        ReadModelProjectionMetrics.ProjectTrigger.values.foreach(t => readModelWriteBurst.labelValues(c, t.label).observe(0.0)) // ditto — the write-phase half of that same answer
         ReadModelProjectionMetrics.ProjectTrigger.values.foreach(t =>
           ReadModelProjectionMetrics.MetadataOutcomes.foreach(o => readModelMetadataProjections.labelValues(c, t.label, o)))
         ReadModelProjectionMetrics.VenueOutcomes.foreach(o => readModelVenueProjections.labelValues(c, o))
@@ -586,8 +587,8 @@ object WorkerTaskMetrics {
       readModelProjectCalls.labelValues(country, trigger.label).inc()
     }
 
-    def recordWriteBurst(country: String, seconds: Double): Unit =
-      readModelWriteBurst.labelValues(country).observe(math.max(0.0, seconds))
+    def recordWriteBurst(country: String, trigger: ReadModelProjectionMetrics.ProjectTrigger, seconds: Double): Unit =
+      readModelWriteBurst.labelValues(country, trigger.label).observe(math.max(0.0, seconds))
 
     def recordMetadataProjection(country: String, trigger: ReadModelProjectionMetrics.ProjectTrigger, reused: Boolean): Unit =
       readModelMetadataProjections.labelValues(country, trigger.label,

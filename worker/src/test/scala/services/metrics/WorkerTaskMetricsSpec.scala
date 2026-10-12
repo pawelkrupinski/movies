@@ -125,6 +125,14 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     scrapePl(series) should include ("""kinowo_worker_readmodel_catchup_rows_total{country="pl"} 3""")
   }
 
+  it should "time a projection's write phase under its trigger, every trigger seeded from boot" in {
+    val (m, series) = newPl()
+    m.recordWriteBurst(services.readmodel.ReadModelProjectionMetrics.ProjectTrigger.Heal, 0.25)
+    val out = scrapePl(series)
+    out should include ("""kinowo_worker_readmodel_write_burst_seconds_sum{country="pl",trigger="heal"} 0.25""")
+    out should include ("""kinowo_worker_readmodel_write_burst_seconds_count{country="pl",trigger="stream"} 1""")
+  }
+
   "WorkerTaskMetrics" should "count enqueues by type and result" in {
     val (m, series) = newPl()
     m.recordEnqueue(TaskType.ScrapeCinema, WorkerTaskMetrics.EnqueueResult.Added)
