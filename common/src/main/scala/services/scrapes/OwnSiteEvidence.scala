@@ -40,7 +40,7 @@ object OwnSiteEvidence {
     case Failure(e: HttpStatusException) if HttpStatusException.isDurable(e.code) =>
       VenueSignal.Closure(s"own site $url answered HTTP ${e.code}")
     case Failure(UnresolvedHost()) =>
-      VenueSignal.Closure(s"own site $url does not resolve (no DNS record for ${hostOf(url)})")
+      VenueSignal.Closure(s"own site $url does not resolve (host ${hostOf(url)})")
     case Failure(e) =>
       VenueSignal.Silent(s"own site $url could not be read (${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("")})".take(300))
   }

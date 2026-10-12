@@ -52,8 +52,8 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     byTitle("Avengers: Doomsday").ageRating shouldBe Some("12A")
   }
 
-  // Watershed tails the certificate with a short box-office code: "Fatherland (12A) S" (72 shows
-  // across the feeds), "(12A) PS", "(18) CTBA". Left on, the title searched TMDB as "Fatherland (12A) S".
+  // Watershed tails the certificate with a short box-office code: "Fatherland (12A) S",
+  // "(12A) PS", "(18) CTBA" — 18 of its shows. Left on, the title searched TMDB as "Fatherland (12A) S".
   it should "lift a certificate that a short box-office code follows" in {
     val watershed = scrape("watershed", WatershedBristol).map(cm => cm.movie.title -> cm).toMap
     watershed.get("Fatherland").value.ageRating shouldBe Some("12A")
