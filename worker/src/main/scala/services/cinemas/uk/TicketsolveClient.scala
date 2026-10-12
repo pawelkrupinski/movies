@@ -44,8 +44,12 @@ import scala.util.Try
  * its acronym alone (Mwldan's "TMFS / CFFTM", Theatr Mwldan Film Society / Cymdeithas Ffilm:
  * "Hen", "The President's Cake") — unless it files teaching about film (the
  * Nerve Centre's "BFI Film Academy" is online masterclasses) or a stage show the film word
- * only describes (Theatr Colwyn's "Movie musicals" is a touring song-and-dance show). A certificate in the show's
- * name is no sign of a film: Mwldan's live shows carry them too ("Cardi Bach 2026 (U)").
+ * only describes (Theatr Colwyn's "Movie musicals" is a touring song-and-dance show).
+ * Whatever its category, a show the box office tags for Comscore, the cinema admissions
+ * tracker, is a film or relay: Theatr Colwyn's "reports_comscorefilm" also marks the Disney
+ * Junior screenings it files under "Children & Family" and the Paris ballet relays under
+ * "Ballet"; Neuadd Dwyfor tags its "comscore". A certificate in the show's name is no sign of
+ * a film: Mwldan's live shows carry them too ("Cardi Bach 2026 (U)").
  *
  * @param client the Ticketsolve client name, the feed host's first label.
  */
@@ -84,9 +88,16 @@ object TicketsolveClient {
    *  a stage show the film word only describes ("Movie musicals": a live cast singing film songs). */
   private val NotAScreening = """(?i)\b(academy|courses?|workshops?|masterclass(es)?|talks?|musicals?)\b""".r
 
-  private def isFilm(category: String): Boolean =
+  private def isFilmCategory(category: String): Boolean =
     (FilmWord.findFirstIn(category).isDefined || FilmSocietyAcronym.findFirstIn(category).isDefined) &&
       NotAScreening.findFirstIn(category).isEmpty
+
+  /** A tag reporting the show's admissions to Comscore: "comscore", "reports_comscorefilm". */
+  private def reportsToComscore(show: Element): Boolean =
+    show.select("> tags > tag").asScala.exists(_.text.toLowerCase(Locale.ROOT).contains("comscore"))
+
+  private def isFilm(show: Element): Boolean =
+    isFilmCategory(child(show, "event_category").getOrElse("")) || reportsToComscore(show)
 
   /** "Sense and Sensibility (U)", "Hay Fever (12A tbc)", "Manon (15 As Live)": the BBFC
    *  certificate the box office appends to the title. */
@@ -104,8 +115,8 @@ object TicketsolveClient {
     require(feed.selectFirst("venues") != null, "no <venues> root in the Ticketsolve feed")
 
     val slots = for {
-      show  <- feed.select("show").asScala.toSeq
-      category = child(show, "event_category").getOrElse("") if isFilm(category)
+      show  <- feed.select("show").asScala.toSeq if isFilm(show)
+      category = child(show, "event_category").getOrElse("")
       name  <- child(show, "name").toSeq
       event <- show.select("events > event").asScala.toSeq
       if !child(event, "status").map(_.toLowerCase(Locale.ROOT)).exists(Cancelled)

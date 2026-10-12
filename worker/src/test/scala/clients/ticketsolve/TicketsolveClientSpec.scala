@@ -136,6 +136,17 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     colwyn should contain ("Grease (Sing-a-long)") // the film itself, filed as "Film"
   }
 
+  it should "keep what the box office reports to Comscore as film, whatever its category" in {
+    // Theatr Colwyn tags its films and relays "reports_comscorefilm" (Neuadd Dwyfor: "comscore"),
+    // the Disney Junior screenings under "Children & Family" and the Paris ballet relays under "Ballet".
+    val colwyn = titles("theatrcolwyn", TheatrColwyn)
+    colwyn should contain allOf ("Disney Junior Cinema Club 2026", "Opéra de Paris Ballet Season - La Bayadère")
+    // Negative controls in the same categories, untagged: a live bubble show and a dance school's Nutcracker.
+    colwyn should not contain "The Bubble Wizard's Giant Bubble Show"
+    colwyn should not contain "Step One's The Nutcracker"
+    colwyn should have size 10
+  }
+
   "TicketsolveClient.parse" should "refuse a page that is no feed rather than call it an empty programme" in {
     an[IllegalArgumentException] should be thrownBy
       TicketsolveClient.parse("<html><body>Maintenance</body></html>", TheatrMwldanCardigan, today)
