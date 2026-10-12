@@ -94,6 +94,38 @@ class ApiCinemasSpec extends AnyFlatSpec with Matchers {
     contentAsString(controller().index("poznan")(FakeRequest())) should not include "CINEMA_SEASONS"
   }
 
+  // The payload is cached until the city's data moves, and nothing in the read model moves
+  // when a season ends: only the calendar does. The validator has to retire a copy that said
+  // "in season" the night the month turns, or a client revalidating on October 1st is told
+  // 304 and keeps September's verdict until the city next changes.
+  "a held seasons verdict" should "be retired at the month boundary, not 304'd, though the city's data never moved" in {
+    val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-30T21:30:00Z"))   // 23:30 in Berlin
+    val controller = germanController(clock)
+    def kreuzbergOffSeason(result: scala.concurrent.Future[play.api.mvc.Result]) =
+      (Json.parse(contentAsString(result)) \ "seasons").as[Seq[play.api.libs.json.JsValue]]
+        .find(s => (s \ "cinema").as[String] == "Freiluftkino Kreuzberg").map(s => (s \ "offSeason").as[Boolean])
+
+    val september = controller.apiCinemas(berlin.slug)(FakeRequest())
+    kreuzbergOffSeason(september) shouldBe Some(false)
+    val etag = header("ETag", september).get
+    status(controller.apiCinemas(berlin.slug)(FakeRequest().withHeaders("If-None-Match" -> etag))) shouldBe NOT_MODIFIED
+
+    clock.setTo(java.time.Instant.parse("2026-09-30T22:30:00Z"))                               // 00:30 on 1 October
+    val october = controller.apiCinemas(berlin.slug)(FakeRequest().withHeaders("If-None-Match" -> etag))
+    status(october) shouldBe OK
+    kreuzbergOffSeason(october) shouldBe Some(true)
+    header("ETag", october) should not be Some(etag)
+
+    // The listing page's `window.CINEMA_SEASONS` rides the same validator.
+    clock.setTo(java.time.Instant.parse("2026-09-30T21:30:00Z"))
+    val page = controller.index(berlin.slug)(FakeRequest())
+    contentAsString(page) should include (""""Freiluftkino Kreuzberg":{"opens":5,"closes":9,"offSeason":false}""")
+    clock.setTo(java.time.Instant.parse("2026-09-30T22:30:00Z"))
+    val nextPage = controller.index(berlin.slug)(FakeRequest().withHeaders("If-None-Match" -> header("ETag", page).get))
+    status(nextPage) shouldBe OK
+    contentAsString(nextPage) should include (""""Freiluftkino Kreuzberg":{"opens":5,"closes":9,"offSeason":true}""")
+  }
+
   "apiCinemas for an unknown city" should "404" in {
     status(controller().apiCinemas("nieznane")(FakeRequest())) shouldBe NOT_FOUND
   }
