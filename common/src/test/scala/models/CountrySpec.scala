@@ -428,10 +428,11 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   // Retired 2026-09-26, each 404ing since 2026-08-31 and confirmed closed:
   //   A0908 Kino Deutsches Haus (Munster) — hall now a hotel event room
   //   A0680 Kino Idstein — closed 2020, no successor
-  //   A2708 Kino im Badehaus Masserberg — Badehaus shut since 2016, no screenings resumed
+  //   A2708 Kino im Badehaus Masserberg — NOT closed (2026-10-12 recheck): the same
+  //         venue is rostered as kinoheld:1372, so it is retired as that one's duplicate
   //   A1688 Lichtwerk (Schmallenberg) — public cinema closed 2006
   //   A0613 Hof-Theater (Sigmaringen) — closed 2015 over fire safety
-  //   A0119 Burgtheater Gummersbach — no programme since a stalled 2020 renovation
+  //   A0119 Burgtheater Gummersbach — moved into the SEVEN Kinocenter (A2912), a duplicate
   //   A0100 Kino Center (Friedberg) — closed 2018, building demolished
   //   A0726 Kulturhaus Gotha — no cinema use; its own /kino page is gone
   //   A1547 Löwen-Lichtspiele Kenzingen — closed since 2022; re-add if the town's
@@ -463,6 +464,22 @@ class CountrySpec extends AnyFlatSpec with Matchers {
       val listed = retiredIds(country)
       listed should not be empty
       rostered intersect listed shouldBe empty
+    }
+  }
+
+  // A venue Filmstarts stopped listing under one id while another id we roster still
+  // serves it is a DUPLICATE, not a closure: "closed" would tell the closure sweep, and a
+  // reader of retired.json, that a cinema selling tickets is gone.
+  it should "retire a venue whose live twin is rostered as that twin's duplicate, not as closed" in {
+    val retired = Using.resource(scala.io.Source.fromFile("data/germany/retired.json")(using Codec.UTF8)) { source =>
+      Json.parse(source.mkString).as[JsObject]
+    }
+    val rostered = GermanRoster.venueKeyByCinema.values.toSet
+    Seq("A2708" -> "kinoheld:1372", "A0119" -> "A2912").foreach { case (gone, twin) =>
+      withClue(s"$gone: ") {
+        (retired \ gone \ "reason").as[String] shouldBe "duplicate"
+        rostered should contain (twin)
+      }
     }
   }
 

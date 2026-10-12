@@ -27,7 +27,7 @@ source the shipped German model is generated FROM. Germany has been live at
   admin1 (`scripts/geocode_cities.py`). The gazetteer `build_pages.py` reads,
   corrected by its `TOWN_COORDS`.
 - `theaters-raw.json` — the raw flat harvest (1,534 theaters).
-- **`retired.json`** — venues this country has retired (closed, duplicate or
+- **`retired.json`** — venues this country has retired (closed, duplicate, not-a-cinema or
   feedless), keyed by Filmstarts `theaterId`, each with its reason, date and evidence. The
   build drops them, so a re-harvest cannot bring one back, and `CountrySpec`
   fails if one is rostered anyway. To retire a venue, add it here and regenerate;

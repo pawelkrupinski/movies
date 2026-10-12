@@ -3,7 +3,7 @@
     "name": "Kino Kiste",
     "reason": "closed",
     "retiredOn": "2026-07-31",
-    "evidence": "Filmstarts 404; closed 31.12.2025"
+    "evidence": "Closed at the end of 2025: Bezirksamt Marzahn-Hellersdorf press release 22.12.2025 \"Kino Kiste schließt\" https://www.berlin.de/ba-marzahn-hellersdorf/aktuelles/pressemitteilungen/2025/pressemitteilung.1628654.php ; kiste.net answers nginx 404, kinoheld 1327 lists no shows (2026-10-12)."
   },
   "G01C9": {
     "name": "Inselkino Baltrum",
@@ -13,9 +13,9 @@
   },
   "A2843": {
     "name": "Heppel - Ettlich",
-    "reason": "closed",
+    "reason": "not-a-cinema",
     "retiredOn": "2026-07-31",
-    "evidence": "Filmstarts 404; now a Kleinkunst stage. NOT A1575 Neues Rottmann, a separate cinema"
+    "evidence": "A Kleinkunst stage in Schwabing: its October 2026 programme is comedy, improv and concerts, no films: https://www.heppel-ettlich.de (2026-10-12). NOT A1575 Neues Rottmann, a separate cinema."
   },
   "A2165": {
     "name": "Kino Babenhausen",
@@ -39,13 +39,13 @@
     "name": "Kino Idstein",
     "reason": "closed",
     "retiredOn": "2026-09-26",
-    "evidence": "Filmstarts 404; confirmed closed"
+    "evidence": "The Taunus Kinocenter (Wiesbadener Str. 9a) closed at the end of 2020 and the Wunderer family gave it up: http://www.allekinos.com/IDSTEINKinocenter.html ; Wiesbadener Kurier \"Taunus-Kino-Center in Idstein schließt\" (fire-safety costs). No shows on any source (2026-10-12)."
   },
   "A2708": {
     "name": "Kino im Badehaus Masserberg",
-    "reason": "closed",
+    "reason": "duplicate",
     "retiredOn": "2026-09-26",
-    "evidence": "Filmstarts 404; confirmed closed"
+    "evidence": "OPEN, and already rostered as kinoheld:1372 (Kurhausstraße 8, on the Suhl page), which lists 69 upcoming shows 2026-10-12..2027-01-01 (e.g. Tim und Struppi 16.10.2026). This Filmstarts id is the same venue, which Filmstarts stopped listing; it was never closed."
   },
   "A1688": {
     "name": "Lichtwerk",
@@ -61,15 +61,15 @@
   },
   "A0119": {
     "name": "Burgtheater Gummersbach",
-    "reason": "closed",
+    "reason": "duplicate",
     "retiredOn": "2026-09-26",
-    "evidence": "Filmstarts 404; confirmed closed"
+    "evidence": "Moved into the SEVEN Kinocenter, already rostered as A2912: kinoheld renamed its entry \"Burgtheater Gummersbach JETZT IM SEVEN\"; SEVEN is kinoheld 2247 / Cineamo 1257 with shows to 2027-06-05 (2026-10-12)."
   },
   "A0100": {
     "name": "Kino Center",
     "reason": "closed",
     "retiredOn": "2026-09-26",
-    "evidence": "Filmstarts 404; confirmed closed (Friedberg, Hessen)"
+    "evidence": "Its own site says \"Achtung wir haben geschlossen\" after 35 years (farewell page, (c) 2018): https://kinocenter-friedberg.de/ (Friedberg, Hessen; re-read 2026-10-12)."
   },
   "A0726": {
     "name": "Kulturhaus Gotha",
@@ -81,7 +81,7 @@
     "name": "Löwen-Lichtspiele Kenzingen",
     "reason": "closed",
     "retiredOn": "2026-09-26",
-    "evidence": "Filmstarts 404; closed, the town plans a reopening: re-add if it happens"
+    "evidence": "Closed 12.12.2021 (Badische Zeitung \"Bei den Kenzinger Löwen-Lichtspielen gehen bald die Lichter aus\"); the council voted on 26.03.2026 to buy the building, reopening possibly 2027: https://www.badische-zeitung.de/was-darf-kultur-eine-stadt-kosten-kenzinger-rat-debattiert-ueber-kauf-des-kinos-loewen-lichtspiele . Re-add if it reopens."
   },
   "A1824": {
     "name": "Kinomobil Stuttgart - Alte Kelter Besigheim",
@@ -99,13 +99,13 @@
     "name": "Holi Filmtheater",
     "reason": "closed",
     "retiredOn": "2026-09-27",
-    "evidence": "Filmstarts 404; kinoprogramm.com \"keine Aufführungen bekannt\". Closed 25 May 2025 after the building was sold (kino-oehringen.de \"Holi schließt\", Heilbronner Stimme). NOT A0837 Scala Filmtheater, the same operator's other Öhringen cinema, which stays. Re-checked 2026-09-27: HTTP 404."
+    "evidence": "Closed 25.05.2025 after the building was sold (kino-oehringen.de \"Holi schließt\", Heilbronner Stimme); kinoheld 631/2791 list no shows, the Holi page frozen since 2025-05-26 (2026-10-12). NOT A0837 Scala Filmtheater, the same operator's other Öhringen cinema, which stays (kinoheld 1128 lists its shows)."
   },
   "A1458": {
     "name": "Kinett",
-    "reason": "closed",
+    "reason": "not-a-cinema",
     "retiredOn": "2026-09-27",
-    "evidence": "Filmstarts 404; kinoprogramm.com \"keine Aufführungen bekannt\". kinett-kusel.de is now a concert and culture club with only the occasional film talk, no film programme. Re-checked 2026-09-27: HTTP 404."
+    "evidence": "A culture centre, pub and live club: its October 2026 programme is an exhibition, concerts and a poetry slam, no film programme: https://www.kinett-kusel.de (2026-10-12)."
   },
   "A1578": {
     "name": "Olympia Winnenden",
