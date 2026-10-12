@@ -63,14 +63,35 @@ class ApiCinemasSpec extends AnyFlatSpec with Matchers {
     (json \ "seasons").toOption shouldBe None
   }
 
-  it should "name a city's seasonal venues with their window as month numbers" in {
-    val kreuzberg = models.GermanRoster.theaterIdByCinema.map(_.swap)("A2198")    // Freiluftkino Kreuzberg
-    val page      = models.City.all.find(_.cinemas.contains(kreuzberg)).get
-    val json      = Json.parse(contentAsString(controller(models.Country.Germany).apiCinemas(page.slug)(FakeRequest())))
+  private val kreuzberg = models.GermanRoster.theaterIdByCinema.map(_.swap)("A2198")    // Freiluftkino Kreuzberg
+  private val berlin    = models.City.all.find(_.cinemas.contains(kreuzberg)).get
+  private def at(instant: String) = java.time.Clock.fixed(java.time.Instant.parse(instant), java.time.ZoneOffset.UTC)
+  private def germanController(clock: java.time.Clock): MovieController =
+    TestMovieController.build(Seq.empty, servingCountry = models.Country.Germany, clock = clock)._1
+
+  it should "name a city's seasonal venues with their window as month numbers, and whether today is outside it" in {
+    val json      = Json.parse(contentAsString(germanController(at("2026-11-20T12:00:00Z")).apiCinemas(berlin.slug)(FakeRequest())))
     val seasons   = (json \ "seasons").as[Seq[play.api.libs.json.JsValue]]
-    seasons should contain (Json.obj("cinema" -> "Freiluftkino Kreuzberg", "opens" -> 5, "closes" -> 9))
+    seasons should contain (Json.obj("cinema" -> "Freiluftkino Kreuzberg", "opens" -> 5, "closes" -> 9, "offSeason" -> true))
     seasons.map(s => (s \ "cinema").as[String]) should not contain "Kino Central Berlin"
     seasons.map(s => (s \ "cinema").as[String]).toSet.subsetOf((json \ "cinemas").as[Seq[String]].toSet) shouldBe true
+  }
+
+  it should "read the server's own clock: in July the open-air screen is in season" in {
+    val json = Json.parse(contentAsString(germanController(at("2026-07-15T12:00:00Z")).apiCinemas(berlin.slug)(FakeRequest())))
+    (json \ "seasons").as[Seq[play.api.libs.json.JsValue]].find(s => (s \ "cinema").as[String] == "Freiluftkino Kreuzberg")
+      .map(s => (s \ "offSeason").as[Boolean]) shouldBe Some(false)
+  }
+
+  // The web filter panel reads the same verdict off the listing page, never re-deriving it.
+  "the listing page" should "hand its script the seasonal venues with the server's off-season verdict" in {
+    val html = contentAsString(germanController(at("2026-11-20T12:00:00Z")).index(berlin.slug)(FakeRequest()))
+    html should include ("window.CINEMA_SEASONS")
+    html should include (""""Freiluftkino Kreuzberg":{"opens":5,"closes":9,"offSeason":true}""")
+  }
+
+  it should "emit no seasons where the city has none" in {
+    contentAsString(controller().index("poznan")(FakeRequest())) should not include "CINEMA_SEASONS"
   }
 
   "apiCinemas for an unknown city" should "404" in {

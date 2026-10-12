@@ -4134,6 +4134,44 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── Seasonal venues (open-air, drive-in) ─────────────────────────────────────
+  //
+  // `window.CINEMA_SEASONS` carries the server's verdict on which venues are out of
+  // season. The fixture city has none, so the tests mark its real cinemas seasonal.
+  private def withSeasons(body: CdpPage => Any): Unit =
+    onPath("/") { page =>
+      try body(page)
+      finally page.eval("localStorage.removeItem('disabledCinemas'); 0")
+    }
+
+  "an out-of-season cinema in the filter panel" should "carry a muted 'back in season' line and sink to the bottom of its list" in {
+    withSeasons { page =>
+      page.eval("__filtry.seasons([ALL_CINEMAS[0]], [ALL_CINEMAS[1]]); localStorage.setItem('disabledCinemas', '[]'); buildCinemaPanel()")
+      val (outOfSeason, inSeason) = (page.evalString("ALL_CINEMAS[0]"), page.evalString("ALL_CINEMAS[1]"))
+      page.evalString("__filtry.rowOrder().slice(-1)[0]") shouldBe outOfSeason
+      page.evalString("__filtry.rowOrder()[0]") shouldBe inSeason
+      page.evalString("__filtry.seasonLine(ALL_CINEMAS[0])") shouldBe "wraca w sezonie · maj–wrz"
+      page.evalString("__filtry.seasonLine(ALL_CINEMAS[1])") shouldBe ""            // in season: as any venue
+      page.evalBool("getComputedStyle(document.querySelector('.cinema-season')).display === 'block'") shouldBe true
+
+      // In a split city it sinks to the bottom of its own area, not of the whole panel.
+      page.eval("__filtry.areas(2); buildCinemaPanel()")
+      page.evalString("__filtry.rowOrder(document.querySelector('.cinema-area-cinemas')).slice(-1)[0]") shouldBe outOfSeason
+    }
+  }
+
+  "the empty listing" should "say the cinemas left are back in season, not that nothing is on" in {
+    withSeasons { page =>
+      page.eval("__filtry.onlyOffSeason('Kino Letnie')")
+      page.evalBool("document.getElementById('no-films').style.display !== 'none'") shouldBe true
+      page.evalString("document.getElementById('no-films').textContent") shouldBe "Kino Letnie wraca w sezonie (maj–wrz)"
+
+      // A year-round cinema with nothing on left beside it: the usual message.
+      page.eval("ALL_CINEMAS.push('Kino Całoroczne'); localStorage.setItem('disabledCinemas', JSON.stringify(ALL_CINEMAS.filter(c => c !== 'Kino Letnie' && c !== 'Kino Całoroczne'))); applyFilters()")
+      page.evalString("document.getElementById('no-films').textContent") shouldBe "Brak repertuaru."
+    }
+  }
+
   // ── City-entry area picker (split cities) ────────────────────────────────────
   //
   // First visit to a split city surfaces a modal to choose which areas to show —

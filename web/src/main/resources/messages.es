@@ -71,6 +71,24 @@ hidden.title=Películas ocultas
 empty.repertoire=No hay cartelera.
 empty.films=No hay películas.
 
+# ── Seasonal venues (open-air, drive-in) ─────────────────────────────────────
+# The filter panel second line "back in season · May–Sept", and the empty listing
+# when only out-of-season venues are selected: "{0} is back in season (May–Sept)".
+season.back=vuelve en temporada
+season.isBack={0} vuelve en temporada
+season.month.1=ene
+season.month.2=feb
+season.month.3=mar
+season.month.4=abr
+season.month.5=may
+season.month.6=jun
+season.month.7=jul
+season.month.8=ago
+season.month.9=sept
+season.month.10=oct
+season.month.11=nov
+season.month.12=dic
+
 # ── Browse (filtered film list) ─────────────────────────────────────────────
 browse.htmlTitle={0} – Cartelera de cine en {1}
 browse.ogTitle={0} — Cartelera de cine en {1}

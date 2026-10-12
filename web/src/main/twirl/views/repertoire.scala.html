@@ -40,7 +40,7 @@
 @_loginModal(oauthProviders)
 @_hiddenModal()
 
-@_sharedJsConfig(allCinemas, cinemaPills, oauthProviders, pinnedToday)
+@_sharedJsConfig(allCinemas, cinemaPills, oauthProviders, pinnedToday, controllers.CinemaSeasons.byName(city.cinemas, renderedAt.toLocalDate))
 <script defer src="@routes.Assets.versioned("js/i18n.js")"></script>
 <script defer src="@routes.Assets.versioned("js/shared.js")"></script>
 

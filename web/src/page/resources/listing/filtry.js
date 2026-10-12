@@ -56,6 +56,31 @@
     pickerAreasChecked: function () {
       return Array.prototype.filter.call(pickerAreas(), function (c) { return c.checked; }).length;
     },
+    // Make the cinemas in `off` seasonal and out of season, those in `on` seasonal and in it —
+    // May..September, as the server's `window.CINEMA_SEASONS` would carry them.
+    seasons: function (off, on) {
+      var seasons = {};
+      off.forEach(function (c) { seasons[c] = { opens: 5, closes: 9, offSeason: true }; });
+      (on || []).forEach(function (c) { seasons[c] = { opens: 5, closes: 9, offSeason: false }; });
+      window.CINEMA_SEASONS = seasons;
+    },
+    // The cinema rows' names, top to bottom, in `root` (the whole panel by default).
+    rowOrder: function (root) {
+      return all('input[data-cinema]', root || document.getElementById('cinema-list')).map(function (c) { return c.dataset.cinema; });
+    },
+    // The muted second line under the row of `name`, or '' when it has none.
+    seasonLine: function (name) {
+      var box = document.querySelector('#cinema-list input[data-cinema="' + CSS.escape(name) + '"]');
+      var line = box.parentElement.querySelector('.cinema-season');
+      return line ? line.textContent : '';
+    },
+    // A cinema `name` with no films, out of season, and the only one the filter leaves on.
+    onlyOffSeason: function (name) {
+      ALL_CINEMAS.push(name);
+      window.__filtry.seasons([name]);
+      localStorage.setItem('disabledCinemas', JSON.stringify(ALL_CINEMAS.filter(function (c) { return c !== name; })));
+      applyFilters();
+    },
     // What `disabledCinemas` holds.
     disabled: function () { return JSON.parse(localStorage.getItem('disabledCinemas') || '[]'); },
     // Untick the first cinema row if it is ticked; its label, or '' if it was not.

@@ -50,9 +50,12 @@ enum Opening {
   case Seasonal(window: SeasonWindow)
 
   /** Is the venue outside its season at `now`? Never for a year-round venue. */
-  def offSeasonAt(now: Instant): Boolean = this match {
+  def offSeasonAt(now: Instant): Boolean = offSeasonOn(Opening.day(now))
+
+  /** Is the venue outside its season on `date` — the city's own day, where a page has one? */
+  def offSeasonOn(date: LocalDate): Boolean = this match {
     case YearRound        => false
-    case Seasonal(window) => !window.contains(Opening.day(now).getMonth)
+    case Seasonal(window) => !window.contains(date.getMonth)
   }
 
   /** When the season `now` falls in began, for a seasonal venue in season: what happened

@@ -78,6 +78,24 @@ hidden.title=Ukryte filmy
 empty.repertoire=Brak repertuaru.
 empty.films=Brak filmów.
 
+# ── Seasonal venues (open-air, drive-in) ─────────────────────────────────────
+# The filter panel second line "back in season · May–Sept", and the empty listing
+# when only out-of-season venues are selected: "{0} is back in season (May–Sept)".
+season.back=wraca w sezonie
+season.isBack={0} wraca w sezonie
+season.month.1=sty
+season.month.2=lut
+season.month.3=mar
+season.month.4=kwi
+season.month.5=maj
+season.month.6=cze
+season.month.7=lip
+season.month.8=sie
+season.month.9=wrz
+season.month.10=paź
+season.month.11=lis
+season.month.12=gru
+
 # ── Browse (filtered film list) ─────────────────────────────────────────────
 # {0} = heading (genre / director / …), {1} = city nominative.
 browse.htmlTitle={0} – Repertuar kinowy {1}

@@ -1345,6 +1345,39 @@
     return j === sub.length;
   }
 
+  // ── Seasonal venues ───────────────────────────────────────────────────────
+
+  // An open-air screen or drive-in (`window.CINEMA_SEASONS`, by display name):
+  // `{opens, closes, offSeason}`. `offSeason` is the server's verdict on its own
+  // clock — read here, never re-derived from the months, so the panel, the apps
+  // and the worker always agree on which venues are out of season.
+  function cinemaSeason(cinema) {
+    return (window.CINEMA_SEASONS || {})[cinema] || null;
+  }
+  function isOffSeason(cinema) {
+    const season = cinemaSeason(cinema);
+    return !!(season && season.offSeason);
+  }
+  // Out-of-season venues sink to the bottom of their list; the order is otherwise kept.
+  function seasonOrdered(cinemas) {
+    return cinemas.filter(c => !isOffSeason(c)).concat(cinemas.filter(isOffSeason));
+  }
+  // A translatable span: `applyLanguage` re-words it on a language switch.
+  function i18nSpan(key, arg0) {
+    const span = document.createElement('span');
+    span.setAttribute('data-i18n', key);
+    if (arg0 != null) span.setAttribute('data-i18n-arg0', arg0);
+    span.textContent = window.t(key, arg0 != null ? [arg0] : undefined);
+    return span;
+  }
+  // "May–Sept", each month its own translatable span.
+  function appendSeasonWindow(parent, season) {
+    parent.appendChild(i18nSpan('season.month.' + season.opens));
+    parent.appendChild(document.createTextNode('–'));
+    parent.appendChild(i18nSpan('season.month.' + season.closes));
+  }
+  window.seasonOrdered = seasonOrdered;
+
   // ── Cinema-filter panel ───────────────────────────────────────────────────
 
   // The per-cinema checkbox row (`data-cinema` carries the display-name so
@@ -1372,7 +1405,22 @@
       applyFilters();
     };
     label.appendChild(checkbox);
-    label.appendChild(document.createTextNode(' ' + (CINEMA_PILLS[cinema] || cinema)));
+    const name = ' ' + (CINEMA_PILLS[cinema] || cinema);
+    if (isOffSeason(cinema)) {
+      // Out of season: the name, and under it a muted "back in season · May–Sept".
+      const block = document.createElement('span');
+      block.className = 'cinema-name';
+      block.appendChild(document.createTextNode(name));
+      const line = document.createElement('span');
+      line.className = 'cinema-season';
+      line.appendChild(i18nSpan('season.back'));
+      line.appendChild(document.createTextNode(' · '));
+      appendSeasonWindow(line, cinemaSeason(cinema));
+      block.appendChild(line);
+      label.appendChild(block);
+    } else {
+      label.appendChild(document.createTextNode(name));
+    }
     return label;
   }
 
@@ -1419,7 +1467,7 @@
     const body = document.createElement('div');
     body.className = 'submenu-list cinema-area-cinemas';
     body.style.display = 'none';                          // collapsed by default
-    area.cinemas.forEach(c => body.appendChild(buildCinemaRow(c)));
+    seasonOrdered(area.cinemas).forEach(c => body.appendChild(buildCinemaRow(c)));
 
     makeFoldHeader(fold, body);
     // The rest of the row (its padding) still folds on a click, as it always did.
@@ -1442,7 +1490,7 @@
     if (areas.length) {
       areas.forEach(area => list.appendChild(buildAreaGroup(area)));
     } else {
-      ALL_CINEMAS.forEach(cinema => list.appendChild(buildCinemaRow(cinema)));
+      seasonOrdered(ALL_CINEMAS).forEach(cinema => list.appendChild(buildCinemaRow(cinema)));
     }
     syncAreaCheckboxes();
     syncAllCheckbox();
@@ -1764,7 +1812,19 @@
 
   function updateEmptyState(visibleCount) {
     const noFilms = document.getElementById('no-films');
-    if (visibleCount === 0) {
+    // Every cinema the filter leaves is out of season: say when they are back,
+    // not that there is nothing on.
+    const disabled = getDisabledCinemas();
+    const left = ALL_CINEMAS.filter(c => !disabled.includes(c));
+    if (visibleCount === 0 && left.length && left.every(isOffSeason)) {
+      noFilms.removeAttribute('data-i18n');
+      noFilms.textContent = '';
+      noFilms.appendChild(i18nSpan('season.isBack', left.map(c => CINEMA_PILLS[c] || c).join(', ')));
+      noFilms.appendChild(document.createTextNode(' ('));
+      appendSeasonWindow(noFilms, cinemaSeason(left[0]));
+      noFilms.appendChild(document.createTextNode(')'));
+      noFilms.style.display = '';
+    } else if (visibleCount === 0) {
       noFilms.setAttribute('data-i18n', 'empty.repertoire');
       noFilms.textContent = window.t('empty.repertoire');
       noFilms.style.display = '';

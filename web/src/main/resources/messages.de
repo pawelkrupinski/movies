@@ -71,6 +71,24 @@ hidden.title=Ausgeblendete Filme
 empty.repertoire=Keine Vorstellungen.
 empty.films=Keine Filme.
 
+# ── Seasonal venues (open-air, drive-in) ─────────────────────────────────────
+# The filter panel second line "back in season · May–Sept", and the empty listing
+# when only out-of-season venues are selected: "{0} is back in season (May–Sept)".
+season.back=öffnet wieder
+season.isBack={0} öffnet wieder
+season.month.1=Jan.
+season.month.2=Feb.
+season.month.3=März
+season.month.4=Apr.
+season.month.5=Mai
+season.month.6=Juni
+season.month.7=Juli
+season.month.8=Aug.
+season.month.9=Sept.
+season.month.10=Okt.
+season.month.11=Nov.
+season.month.12=Dez.
+
 # ── Browse (filtered film list) ─────────────────────────────────────────────
 browse.htmlTitle={0} – Kinoprogramm {1}
 browse.ogTitle={0} — Kinoprogramm {1}

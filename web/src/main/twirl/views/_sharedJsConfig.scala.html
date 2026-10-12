@@ -1,4 +1,4 @@
-@(allCinemas: Seq[String], cinemaPills: Map[String, String], oauthProviders: Set[String], pinnedToday: Option[java.time.LocalDate] = None)(implicit city: models.City, messages: play.api.i18n.Messages)
+@(allCinemas: Seq[String], cinemaPills: Map[String, String], oauthProviders: Set[String], pinnedToday: Option[java.time.LocalDate] = None, cinemaSeasons: play.api.libs.json.JsObject = play.api.libs.json.JsObject.empty)(implicit city: models.City, messages: play.api.i18n.Messages)
 @*
    Inline-`<script>` block that emits the page-bound JS constants
    the externalized `shared.js` reads at top level:
@@ -28,6 +28,11 @@
      list. `window.`-scoped (not a lexical const) so buildCinemaPanel reads it and
      tests can override. *@
   window.CINEMA_AREAS       = @controllers.ScriptJson.embed(play.api.libs.json.Json.toJson(city.areas.map(g => play.api.libs.json.Json.obj("name" -> g.area.label, "slug" -> g.area.slug, "cinemas" -> g.cinemaDisplayNames))));
+  @* The page's seasonal venues (open-air, drive-in) by name: `{opens, closes, offSeason}`,
+     `offSeason` decided on the server's clock (`controllers.CinemaSeasons`) so the filter
+     panel never re-derives it. Emitted only where there are any; shared.js reads
+     `window.CINEMA_SEASONS || {}`. *@
+  @if(cinemaSeasons.value.nonEmpty){window.CINEMA_SEASONS = @controllers.ScriptJson.embed(cinemaSeasons);}
   const CURRENT_CITY        = "@city.slug";
   @* The clock every day boundary this page draws is measured on — the city's,
      never the visitor's device. It matches what the server already resolves in
