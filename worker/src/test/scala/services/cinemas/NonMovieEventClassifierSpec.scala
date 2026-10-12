@@ -202,6 +202,17 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
     terraceSeason.foreach(t => withClue(s"$t\n")(NonMovieEventClassifier.isLiveEvent(t, marker) shouldBe true))
   }
 
+  // ACME Screening Room (Lambertville, NJ) bills its talks in English, after the film:
+  // "post-screening Q&A", "Plus Q&A" — the English counterparts of "pokaz" and "+".
+  it should "keep a film billed with an English post-screening Q&A, and still drop a bare one" in {
+    Seq(
+      "Spotlight on Cinema: “The Peasants” with Introduction by Dylan Mayer AND post-screening Q&A with writers/directors DK Welchman and Hugh Welchman",
+      "Pollock Plus Q&A with Carol Cruickshanks",
+      "My 9/11: Reflecting on the 25th Anniversary Plus Q&A with filmmaker"
+    ).foreach(t => withClue(s"$t\n")(NonMovieEventClassifier.isLiveEvent(t) shouldBe false))
+    NonMovieEventClassifier.isLiveEvent("Q&A with Carol Cruickshanks") shouldBe true
+  }
+
   it should "keep the films those events sit beside on the same page" in {
     val films = Seq(
       "CZERWONY KAPTUREK", "KRONIKA WYPADKÓW MIŁOSNYCH", "OPOWIEŚĆ O ZŁOTEJ RYBCE",

@@ -10,7 +10,7 @@ import services.cinemas.de.{GermanFeed, GermanSources}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper}
 import services.cinemas.pl._
-import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
+import services.cinemas.us.{AlamoDrafthouseClient, SquarespaceEventsClient, UsChainVenues}
 import services.cinemas.uk.{CineworldClient, SavoyClient, SpektrixClient}
 import services.cinemas.us.{AmcClient, RegalClient}
 import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
@@ -476,6 +476,19 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       fallback.slug shouldBe UsRoster.flicksSlugByCinema(cin)
       c.all.find(_.cinema == cin).value should not be a [FlicksClient]
     }
+  }
+
+  // ACME Screening Room was retired as closed on 2026-10-12 off flicks.us's 404 alone
+  // while its own site sold a festival. Its primary is that site now, with NO Flicks
+  // fallback: a fallback that can only 404 would corroborate the next false closure,
+  // so the closure sweep has to judge the venue on its own site's answers.
+  it should "scrape ACME Screening Room off its own site, with no flicks.us fallback" in {
+    val c    = catalog()
+    val acme = UsRoster.byDisplayName("ACME Screening Room Lambertville")
+    val primary = c.all.find(_.cinema == acme).value
+    primary shouldBe a [SquarespaceEventsClient]
+    primary.sourceUrl shouldBe Some("https://www.acmescreeningroom.org/now-playing")
+    c.flicksFallbackSlugs.get(acme) shouldBe None
   }
 
   // US chain venues are matched by DISPLAY NAME, which makes a typo silent: the

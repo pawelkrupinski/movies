@@ -186,10 +186,12 @@ object NonMovieEventClassifier {
   )
 
   /** Substrings that mark a real film the discussion is bolted onto: a `+`/`|`
-   *  joining film and extra, or a screening word. Their presence vetoes the
+   *  joining film and extra (or the spelled-out " plus " of "Pollock Plus Q&A with
+   *  Carol Cruickshanks"), or a screening word, Polish or English ("…AND
+   *  post-screening Q&A with writers/directors"). Their presence vetoes the
    *  [[DiscussionMarkers]] verdict (but NOT the concert/folk markers above —
    *  a "Koncert + support" is still an event). */
-  private val FilmAttachmentSignals = List("+", "|", "pokaz", "seans", "przedpremiera")
+  private val FilmAttachmentSignals = List("+", "|", " plus ", "pokaz", "seans", "przedpremiera", "screening")
   private def hasBoltedOnFilm(t: String): Boolean = FilmAttachmentSignals.exists(t.contains)
   private def isStandaloneDiscussion(t: String): Boolean =
     DiscussionMarkers.exists(_.findFirstIn(t).isDefined) && !hasBoltedOnFilm(t)

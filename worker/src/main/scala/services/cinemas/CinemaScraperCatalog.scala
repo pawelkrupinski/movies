@@ -8,7 +8,7 @@ import services.cinemas.common.{CineamoClient, FlicksClient, FlicksMarket, Kinoh
 import services.cinemas.de.{GermanFeed, GermanSources}
 import services.cinemas.uk.{CineworldClient, OdeonClient, SavoyClient, SpektrixClient, TheOldCourtClient}
 import services.cinemas.es.{ArtesieteClient, OcineClient, SpanishOwnSourcesData, TaquillaClient, TaquillaVenue}
-import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
+import services.cinemas.us.{AlamoDrafthouseClient, SquarespaceEventsClient, UsChainVenues, UsIndependentVenues}
 import services.movies.TitleNormalizer
 
 import java.time.{Clock, LocalDate, ZoneId}
@@ -2019,7 +2019,8 @@ class CinemaScraperCatalog(
   // one scraper per cinema, keyed by the PAGE slug City.slug uses.
   //
   // A venue named in `UsChainVenues` gets its CHAIN'S OWN site as the primary and
-  // keeps flicks.us as the fallback (below); every other venue is flicks.us
+  // keeps flicks.us as the fallback (below); one named in `UsIndependentVenues` gets
+  // its own site with no fallback (Flicks dropped it); every other venue is flicks.us
   // primary as before, its slug from UsRoster.flicksSlugByCinema. Same client and
   // same residential egress as the UK for the Flicks leg — only the market
   // differs, which is what keeps the two markets' pace gates and 429 back-offs
@@ -2064,10 +2065,19 @@ class CinemaScraperCatalog(
       .orElse(UsChainVenues.landmark.get(name).map(webedia(GatsbyBoxOfficeClient.LandmarkBaseUrl, _, cinema)))
   }
 
+  /** The own-site primary for a US independent Flicks no longer lists, or `None`.
+   *  No Flicks fallback: see `UsIndependentVenues`. Its own site answers our
+   *  datacenter egress directly (200 from the fleet, 2026-10-12), so plain `http`. */
+  private def usIndependentScraper(cinema: Cinema): Option[CinemaScraper] =
+    UsIndependentVenues.squarespace.get(cinema.displayName).map { venue =>
+      val zone = TimeZones.named(venue.zoneId)
+      new SquarespaceEventsClient(http, venue.siteUrl, venue.eventsPath, cinema, zone, today = venueClock.today(zone))
+    }
+
   private val usBaseByCity: Map[String, Seq[CinemaScraper]] =
     models.Country.UnitedStates.cities.map { city =>
       city.slug -> city.cinemas.map { c =>
-        usChainScraper(c).getOrElse(flicksUs(models.UsRoster.flicksSlugByCinema(c), c))
+        usChainScraper(c).orElse(usIndependentScraper(c)).getOrElse(flicksUs(models.UsRoster.flicksSlugByCinema(c), c))
       }
     }.toMap
 

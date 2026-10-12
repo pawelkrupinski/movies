@@ -4,7 +4,7 @@ import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.ChainFlicksFallback
-import services.cinemas.us.UsChainVenues
+import services.cinemas.us.{UsChainVenues, UsIndependentVenues}
 import tools.{HostPolicies, RateLimitedHttpFetch}
 
 import scala.concurrent.duration.*
@@ -84,12 +84,12 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
   /** US venues whose scrape actually reaches the PACED flicks.us origin on the happy
    *  path — the US counterpart of the UK figure above. 79 of them (Alamo 40,
    *  Landmark 26, Showcase US 13) went own-site-primary and now cost flicks.us
-   *  nothing in steady state, reaching it only after the 6h fallback grace.
-   *  Derived from `UsChainVenues`, so wiring a venue to a chain (or back to Flicks)
-   *  moves this number automatically. */
+   *  nothing in steady state, reaching it only after the 6h fallback grace; the
+   *  `UsIndependentVenues` never reach it at all. Derived from both maps, so wiring a
+   *  venue to its own site (or back to Flicks) moves this number automatically. */
   private def UsFlicksPrimaryVenues =
     Country.UnitedStates.cities.flatMap(_.cinemas).distinct
-      .count(c => !UsChainVenues.all.contains(c.displayName))
+      .count(c => !UsChainVenues.all.contains(c.displayName) && !UsIndependentVenues.all.contains(c.displayName))
 
   /** flicks.co.uk requests one UK venue costs per sweep: the programme page
    *  `planChunks` reads its `data-date` list off, plus one day-page per advertised
