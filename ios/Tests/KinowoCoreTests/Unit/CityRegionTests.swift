@@ -85,15 +85,7 @@ final class CityRegionTests: XCTestCase {
     /// The bundled seed is the list the app actually opens on, so the states have
     /// to be there in it — not merely supported by the model.
     func testTheBundledSeedCarriesEveryUsState() throws {
-        // Decoded here rather than through `CatalogStore`, which is an app-target
-        // type this Foundation-only test target cannot see.
-        struct Seed: Decodable {
-            struct Body: Decodable { let cities: [City] }
-            let catalog: Body
-        }
-        let seeded = try JSONDecoder()
-            .decode(Seed.self, from: try AppSources.data("Kinowo/catalog-seed.json"))
-            .catalog.cities
+        let seeded = try bundledSeed()
 
         // The first step lists all 55 states/territories: 52 split into
         // several places and show as a heading, while DC, American Samoa and
@@ -122,5 +114,49 @@ final class CityRegionTests: XCTestCase {
         XCTAssertTrue(seeded.inCountry("pl").allSatisfy { $0.region != nil })
         XCTAssertEqual(seeded.regions(inCountry: "pl").count, 16)
         XCTAssertTrue(seeded.regions(inCountry: "pl").contains("Wielkopolskie"))
+    }
+
+    /// A place whose state collapsed onto it alone keeps that state's name as
+    /// an alias, and search answers to it the way the web's `data-alias` does:
+    /// typing "guam" must find the row that reads "Dededo Village area".
+    func testSearchFindsACollapsedCityByItsGroupsName() throws {
+        let seeded = try bundledSeed()
+        func found(_ query: String) -> [String] {
+            seeded.searchRows(matching: query, inCountry: "us").compactMap { row -> String? in
+                if case .city(let city) = row { return city.slug }
+                return nil
+            }
+        }
+        XCTAssertEqual(found("guam"), ["dededo-village"])
+        XCTAssertEqual(found("American Samoa"), ["pago-pago"])
+        XCTAssertEqual(found("district of col"), ["washington"])
+        // The first picker step's own filter answers to the alias as well.
+        XCTAssertTrue(seeded.topLevelRows(matching: "guam", inCountry: "us").contains {
+            if case .city(let city) = $0 { return city.slug == "dededo-village" }
+            return false
+        })
+        // And the flat list a country-wide match reads.
+        XCTAssertEqual(seeded.matching("merseyside", inCountry: "uk").map(\.slug), ["liverpool"])
+    }
+
+    /// Optional on the wire, like `region`: an older server's catalog decodes.
+    func testAliasesAreOptionalOnTheWire() throws {
+        let bare = #"{"slug":"poznan","name":"Poznań","lat":52.41,"lon":16.93,"country":"pl"}"#
+        XCTAssertNil(try JSONDecoder().decode(City.self, from: Data(bare.utf8)).aliases)
+        let aliased = #"{"slug":"dededo-village","name":"Dededo Village area","lat":13.5,"lon":144.8,"country":"us","aliases":["Guam"]}"#
+        XCTAssertEqual(try JSONDecoder().decode(City.self, from: Data(aliased.utf8)).aliases, ["Guam"])
+    }
+
+    /// The seed the app opens on. Decoded here rather than through
+    /// `CatalogStore`, an app-target type this Foundation-only test target
+    /// cannot see.
+    private func bundledSeed() throws -> [City] {
+        struct Seed: Decodable {
+            struct Body: Decodable { let cities: [City] }
+            let catalog: Body
+        }
+        return try JSONDecoder()
+            .decode(Seed.self, from: try AppSources.data("Kinowo/catalog-seed.json"))
+            .catalog.cities
     }
 }

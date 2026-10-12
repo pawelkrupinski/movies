@@ -120,6 +120,18 @@ object Catalog {
         val subregionOf = c.cityGroups.flatMap { g =>
           g.groups.filter(_.soleCity.isEmpty).flatMap(sub => sub.allCities.map(_.slug -> sub.label))
         }.toMap
+        // The names a COLLAPSED group keeps findable by, at whichever level it
+        // collapsed (`CityGroup.searchAliases`): the District of Columbia, Guam
+        // and American Samoa over their one place, Merseyside over Liverpool,
+        // and the pages folded into it. The web's picker search reads the same
+        // list (`data-alias`); without it here, an app user typing "guam" finds
+        // nothing, the row being "Dededo Village area". Absent where nothing
+        // collapsed or the group's name is the place's own.
+        def everyGroup(groups: Seq[CityGroup]): Seq[CityGroup] =
+          groups.flatMap(g => g +: everyGroup(g.groups))
+        val aliasesOf = everyGroup(c.cityGroups)
+          .flatMap(g => g.soleCity.filter(_ => g.searchAliases.nonEmpty).map(_.slug -> g.searchAliases))
+          .toMap
         // The city's own zone, but ONLY where it differs from the country's — the
         // field a client falls back from, so writing it out where it would say the
         // same thing costs bytes and says nothing. Four countries keep one zone
@@ -138,10 +150,11 @@ object Catalog {
         orderedCities.map { city =>
           val region = regionOf.get(city.slug).fold("")(label => s""","region":"$label"""")
           val subregion = subregionOf.get(city.slug).fold("")(label => s""","subregion":"$label"""")
+          val aliases = aliasesOf.get(city.slug).fold("")(names => names.map(n => s""""$n"""").mkString(""","aliases":[""", ",", "]"))
           val zone   = city.zoneId.getId
           val tz     = if (zone == countryZone) "" else s""","timezone":"$zone""""
           val former = formerSlugsOf.get(city.slug).fold("")(slugs => slugs.map(s => s""""$s"""").mkString(""","formerSlugs":[""", ",", "]"))
-          s"""{"slug":"${city.slug}","name":"${city.labels.nominative}","lat":${city.lat},"lon":${city.lon},"country":"${c.code}"$region$subregion$tz$former}"""
+          s"""{"slug":"${city.slug}","name":"${city.labels.nominative}","lat":${city.lat},"lon":${city.lon},"country":"${c.code}"$region$subregion$aliases$tz$former}"""
         }
       }
       .mkString("[", ",", "]")

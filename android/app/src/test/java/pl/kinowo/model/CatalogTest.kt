@@ -58,6 +58,16 @@ class CatalogTest {
      * A city carries its OWN zone only where it differs from its country's, so
      * most cities have none and must fall back rather than fail to decode.
      */
+    /** A collapsed group's own name rides along as an alias where there is
+     *  one, and a catalog without the field (an older server) still decodes. */
+    @Test
+    fun parsesCityAliasesWhenPresent() {
+        val json = """{"countries":[{"code":"us","name":"United States","baseUrl":"https://showtimes.cc/us","language":"en","brand":"Showtimes","timezone":"America/Los_Angeles"}],"cities":[{"slug":"dededo-village","name":"Dededo Village area","lat":13.5,"lon":144.8,"country":"us","aliases":["Guam"]},{"slug":"los-angeles","name":"Los Angeles","lat":34.05,"lon":-118.3,"country":"us","region":"California"}]}"""
+        val c = Catalog.parseBody(json)!!
+        assertEquals(listOf("Guam"), c.cities[0].aliases)
+        assertEquals(emptyList<String>(), c.cities[1].aliases)
+    }
+
     @Test
     fun parsesPerCityTimezoneWhenPresent() {
         val json = """{"countries":[{"code":"us","name":"United States","baseUrl":"https://showtimes.cc/us","language":"en","brand":"Showtimes","timezone":"America/Los_Angeles"}],"cities":[{"slug":"knoxville","name":"Knoxville","lat":35.9,"lon":-83.9,"country":"us","region":"Tennessee","timezone":"America/New_York"},{"slug":"los-angeles","name":"Los Angeles","lat":34.05,"lon":-118.3,"country":"us","region":"California"}]}"""

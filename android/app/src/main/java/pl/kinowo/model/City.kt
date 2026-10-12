@@ -70,7 +70,21 @@ data class City(
      * seed), same shape as [region].
      */
     val formerSlugs: List<String> = emptyList(),
+    /**
+     * Other names search should find this city by: the group it was pulled up
+     * out of when that group held only it (Guam over "Dededo Village area",
+     * Merseyside over Liverpool), and pages folded into it. The web's picker
+     * reads the same list (`data-alias`). Read through [matchesFolded]. Carried
+     * by `/api/catalog` (and the bundled seed), same shape as [region].
+     */
+    val aliases: List<String> = emptyList(),
 )
+
+/** Whether [City.name] or any of [City.aliases] contains the already-folded
+ *  query [q]. Every search over cities goes through here, so an alias is
+ *  found wherever the name would be. */
+fun City.matchesFolded(q: String): Boolean =
+    (listOf(name) + aliases).any { Cities.searchFold(it).contains(q) }
 
 /** Each former slug ([City.formerSlugs]) → the city that answers at it now. */
 fun List<City>.currentSlugByFormer(): Map<String, String> =
@@ -581,7 +595,7 @@ private fun mergedPickerRows(cities: List<City>, groupField: (City) -> String?, 
             if (seen.add(group) && (q.isEmpty() || Cities.searchFold(group).contains(q))) {
                 rows.add(CityPickerRow.Heading(group))
             }
-        } else if (q.isEmpty() || Cities.searchFold(city.name).contains(q)) {
+        } else if (q.isEmpty() || city.matchesFolded(q)) {
             rows.add(CityPickerRow.CityRow(city))
         }
     }
@@ -640,7 +654,7 @@ fun List<City>.searchRows(query: String, countryCode: String): List<CitySearchRo
         ) {
             rows.add(CitySearchRow.Subregion(subregion, region))
         }
-        if (Cities.searchFold(city.name).contains(q)) {
+        if (city.matchesFolded(q)) {
             rows.add(CitySearchRow.CityRow(city))
         }
     }
@@ -664,7 +678,7 @@ val CitySearchRow.rowKey: String
 fun List<City>.matching(query: String, countryCode: String): List<City> {
     val q = Cities.searchFold(query.trim())
     val cities = sortedForPicker(countryCode)
-    return if (q.isEmpty()) cities else cities.filter { Cities.searchFold(it.name).contains(q) }
+    return if (q.isEmpty()) cities else cities.filter { it.matchesFolded(q) }
 }
 
 /** The default city for [countryCode] — its first entry in this list, or null. */

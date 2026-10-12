@@ -96,7 +96,7 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
   it should "carry each city with its owning country's code" in {
     val j = Catalog.json
     j should include("""{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252,"country":"pl","region":"Wielkopolskie"}""")
-    j should include("""{"slug":"london","name":"London","lat":51.5074,"lon":-0.1278,"country":"uk","region":"England"}""")
+    j should include("""{"slug":"london","name":"London","lat":51.5074,"lon":-0.1278,"country":"uk","region":"England","aliases":["Greater London"]}""")
   }
 
   it should "name the group a GROUPED country finds a city through, and only there" in {
@@ -135,6 +135,24 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     // its region step.
     cityEntry("bremen")      should include(""""region":"Bremen"""")
     cityEntry("bremerhaven") should include(""""region":"Bremen"""")
+  }
+
+  it should "keep a collapsed group's own names searchable as the city's aliases" in {
+    val j = Catalog.json
+    def cityEntry(slug: String) =
+      j.split("\\{").find(_.contains(s""""slug":"$slug"""")).getOrElse(fail(s"no $slug entry"))
+    // The web folds these into the picker search (`data-alias`, from
+    // `CityGroup.searchAliases`); without them in the catalog, an app user who
+    // types "guam" finds nothing, because the row reads "Dededo Village area".
+    cityEntry("washington")     should include(""""aliases":["District of Columbia"]""")
+    cityEntry("dededo-village") should include(""""aliases":["Guam"]""")
+    cityEntry("pago-pago")      should include(""""aliases":["American Samoa"]""")
+    // One level down too: a UK county that collapsed onto its one place.
+    cityEntry("liverpool")      should include(""""aliases":["Merseyside"]""")
+    // Nothing to add where the group's name IS the place's, or nothing collapsed.
+    cityEntry("cheshire")    should not include "aliases"
+    cityEntry("los-angeles") should not include "aliases"
+    cityEntry("poznan")      should not include "aliases"
   }
 
   it should "name the SUB-group only where it holds more than one city" in {

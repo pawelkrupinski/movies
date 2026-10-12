@@ -39,6 +39,14 @@ struct City: Codable, Hashable {
     /// Carried by `/api/catalog` (and the bundled seed), same shape as `region`.
     var subregion: String? = nil
 
+    /// Other names search should find this city by: the group it was pulled up
+    /// out of when that group held only it (Guam over "Dededo Village area",
+    /// Merseyside over Liverpool), and pages folded into it. The web's picker
+    /// reads the same list (`data-alias`). `nil` almost everywhere.
+    ///
+    /// Carried by `/api/catalog` (and the bundled seed), same shape as `region`.
+    var aliases: [String]? = nil
+
     /// This city's own IANA zone, where it differs from its country's; `nil`
     /// otherwise — which is every city of the four countries that keep one zone
     /// throughout, so the field costs nothing there.
@@ -442,7 +450,14 @@ struct City: Codable, Hashable {
     /// box shows the whole list).
     func matches(_ query: String) -> Bool {
         let q = City.searchFold(query.trimmingCharacters(in: .whitespaces))
-        return q.isEmpty || City.searchFold(name).contains(q)
+        return q.isEmpty || matches(folded: q)
+    }
+
+    /// Whether `name` or any of `aliases` contains the already-folded query.
+    /// Every search over cities goes through here, so an alias is found
+    /// wherever the name would be.
+    func matches(folded q: String) -> Bool {
+        ([name] + (aliases ?? [])).contains { City.searchFold($0).contains(q) }
     }
 
     /// Great-circle distance in kilometres between two coordinates.
@@ -536,7 +551,7 @@ extension City {
             if let group = groupField(city) {
                 guard seen.insert(group).inserted else { continue }
                 if q.isEmpty || City.searchFold(group).contains(q) { rows.append(.heading(group)) }
-            } else if q.isEmpty || City.searchFold(city.name).contains(q) {
+            } else if q.isEmpty || city.matches(folded: q) {
                 rows.append(.city(city))
             }
         }
@@ -652,7 +667,7 @@ extension Array where Element == City {
                City.searchFold(subregion).contains(q) {
                 rows.append(.subregion(subregion, region: region))
             }
-            if City.searchFold(city.name).contains(q) {
+            if city.matches(folded: q) {
                 rows.append(.city(city))
             }
         }

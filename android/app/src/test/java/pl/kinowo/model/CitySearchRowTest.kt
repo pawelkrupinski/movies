@@ -66,4 +66,17 @@ class CitySearchRowTest {
         val lodz = City("lodz", "Łódź", 51.77, 19.46, "pl", "Łódzkie")
         assertEquals(listOf(CitySearchRow.Region("Łódzkie")), listOf(lodz).searchRows("lodzkie", "pl"))
     }
+
+    /** A place whose state collapsed onto it alone keeps that state's name as
+     *  an alias, and every search answers to it the way the web's `data-alias`
+     *  does: "guam" must find the row that reads "Dededo Village area". */
+    @Test
+    fun aCollapsedCityIsFoundByItsGroupsName() {
+        val dededo = City("dededo-village", "Dededo Village area", 13.5, 144.8, "us", aliases = listOf("Guam"))
+        val austin = City("austin", "Austin", 30.27, -97.74, "us", "Texas")
+        val us = listOf(dededo, austin)
+        assertEquals(listOf(CitySearchRow.CityRow(dededo)), us.searchRows("guam", "us"))
+        assertEquals(listOf(CityPickerRow.CityRow(dededo)), us.topLevelRows("guam", "us"))
+        assertEquals(listOf(dededo), us.matching("guam", "us"))
+    }
 }
