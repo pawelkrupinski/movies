@@ -293,8 +293,30 @@ incidents:
       each hour, so the fleet drained ~50 pages an hour while recent films' ratings-only re-draws
       -- with Germany's 2,900 new films all in their first week -- queued more: 0 at 20:30Z, 2,536
       at 07:00Z, all Germany's. Real; fixed by re-scraping only cards whose picture moved beyond
-      the rating badges.
+      the rating badges. The drain-time rule reads 40-75 hours of backlog at the pace observed,
+      over its 36 from 03:10Z.
     source: kinowo_worker_share_cards_rescrape_waiting{country="de"}; ALERTS{alertname="ShareCardRescrapesNotDraining"} 03:53..04:08Z; VictoriaLogs "rate-limited the re-scrape" 21:27..07:00Z
     start: 2026-10-12T02:00:00Z
     end: 2026-10-12T07:00:00Z
     expect_firing: [ShareCardRescrapesNotDraining]
+
+  - id: facebook-rescrape-queue-held-at-quota-2026-10-09
+    description: >-
+      Ratings-only re-draws kept ~100-260 pages waiting all day while the fleet sent its ~50 an
+      hour, and the old size rule ("no smaller than three hours ago") paged 06:10-08:00Z. Every
+      page still went out within about five hours -- at most 7.3 hours of backlog at the pace
+      observed -- so the drain-time rule stays quiet.
+    source: sum(max by (country) (kinowo_worker_share_cards_rescrape_waiting)) and sum(increase(kinowo_worker_share_cards_rescrape_total{outcome="sent"}[6h])) 10-09 00:00..10-10 08:00Z; ALERTS{alertname="ShareCardRescrapesNotDraining"} 06:10..08:00Z
+    start: 2026-10-09T00:00:00Z
+    end: 2026-10-10T08:00:00Z
+    expect_quiet: [ShareCardRescrapesNotDraining]
+
+  - id: facebook-rescrape-template-backlog-draining-2026-10-03
+    description: >-
+      A template change queued ~1,100 pages at 18:30Z; the fleet drained them at ~50 an hour
+      while new changes kept arriving, to empty on 10-07 13:00Z. A backlog draining at the quota's
+      pace: at most 32 hours of it at the pace observed, so the drain-time rule stays quiet.
+    source: sum(max by (country) (kinowo_worker_share_cards_rescrape_waiting)) and sum(increase(kinowo_worker_share_cards_rescrape_total{outcome="sent"}[6h])) 10-03 18:00..10-07 13:00Z
+    start: 2026-10-03T18:00:00Z
+    end: 2026-10-07T13:00:00Z
+    expect_quiet: [ShareCardRescrapesNotDraining]
