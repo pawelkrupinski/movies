@@ -13,7 +13,7 @@ object RepositoryReadSwallows {
       "Try(Await.result(") ->
       "a dev /debug label's freshness stamp: None reads as 'freshness unknown', which is what a failed read is; logged",
     ("common/src/main/scala/services/MongoCachingDetailFetch.scala", "cached",
-      "Try(Await.result(c.find(Filters.and(Filters.eq(\"_id\", idOf(url)), Filters.gt(\"expireAt\", new java.util.Date()))).headOption(), 10.seconds))") ->
+      "Try(Await.result(c.find(Filters.and(Filters.eq(\"_id\", idOf(url)), Filters.gt(\"expireAt\", java.util.Date.from(clock.instant())))).headOption(), 10.seconds))") ->
       "a CACHE read: a miss refetches from the source, the safe direction, and costs one fetch",
     ("common/src/main/scala/services/MongoIndex.scala", "uniqueNow",
       "Try(Await.result(database.getCollection[Document](collection).listIndexes().toFuture(), Timeout)).toOption.exists(_.exists { spec =>") ->

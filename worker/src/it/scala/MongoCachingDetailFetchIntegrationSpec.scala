@@ -52,8 +52,8 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
   "Two MongoCachingDetailFetch instances sharing a collection" should "fetch the underlying only once for the same URL" in {
     val url   = s"https://chain/film/${System.nanoTime()}"
     val under = new CountingFetch
-    val serverA = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches)
-    val serverB = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches)
+    val serverA = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches, clock = tools.MongoTtlSpecClock.Pinned)
+    val serverB = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches, clock = tools.MongoTtlSpecClock.Pinned)
 
     serverA.get(url) shouldBe s"<html>$url</html>" // fetches + stores
     awaitStored(url)                               // wait out the fire-and-forget store (no race)
@@ -64,7 +64,7 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
 
   it should "re-fetch a different URL (cache is per-URL)" in {
     val under = new CountingFetch
-    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches)
+    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches, clock = tools.MongoTtlSpecClock.Pinned)
     server.get(s"https://chain/a/${System.nanoTime()}")
     server.get(s"https://chain/b/${System.nanoTime()}")
     under.gets shouldBe 2
@@ -79,8 +79,8 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     val under = new CountingFetch {
       override def get(u: String): String = { gets += 1; throw new tools.HttpStatusException(404, "GET", u, None) }
     }
-    val serverA = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches)
-    val serverB = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches)
+    val serverA = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches, clock = tools.MongoTtlSpecClock.Pinned)
+    val serverB = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches, clock = tools.MongoTtlSpecClock.Pinned)
 
     a [tools.HttpStatusException] should be thrownBy serverA.get(url)
     awaitStored(url)
@@ -94,7 +94,7 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     val under = new CountingFetch {
       override def get(u: String): String = { gets += 1; throw new tools.HttpStatusException(410, "GET", u, None) }
     }
-    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches)
+    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches, clock = tools.MongoTtlSpecClock.Pinned)
     a [tools.HttpStatusException] should be thrownBy server.get(url)
     awaitStored(url)
     the [tools.HttpStatusException] thrownBy server.get(url) should have (Symbol("code") (410))
@@ -105,8 +105,8 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
    *  instant): Helios's 2h and Cinema City's 6h can share it, which per-collection indexes could not —
    *  two chains asking for one meant one expiry silently losing. */
   "Chains with different TTLs" should "share the one collection, each document expiring on its own chain's TTL" in {
-    val helios      = new MongoCachingDetailFetch(new CountingFetch, Some(db), 2.hours, services.DetailCacheChain("helios"), new services.TtlIndexMismatches)
-    val cinemaCity  = new MongoCachingDetailFetch(new CountingFetch, Some(db), 6.hours, services.DetailCacheChain("cinema-city"), new services.TtlIndexMismatches)
+    val helios      = new MongoCachingDetailFetch(new CountingFetch, Some(db), 2.hours, services.DetailCacheChain("helios"), new services.TtlIndexMismatches, tools.MongoTtlSpecClock.Pinned)
+    val cinemaCity  = new MongoCachingDetailFetch(new CountingFetch, Some(db), 6.hours, services.DetailCacheChain("cinema-city"), new services.TtlIndexMismatches, tools.MongoTtlSpecClock.Pinned)
     val (h, c)      = (s"https://helios.pl/api/movie/${System.nanoTime()}", s"https://www.cinema-city.pl/filmy/${System.nanoTime()}")
     helios.get(h); cinemaCity.get(c)
     def lifetime(id: String): Long = {
@@ -123,8 +123,28 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     val under = new CountingFetch
     Await.result(db.getCollection(collName).insertOne(org.mongodb.scala.Document("_id" -> s"${Chain.name}|$url", "body" -> "<html>stale</html>",
       "fetchedAt" -> new java.util.Date(0L), "expireAt" -> new java.util.Date(1000L))).toFuture(), SpecTimeouts.Io)
-    new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, new services.TtlIndexMismatches).get(url) shouldBe s"<html>$url</html>"
+    new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, new services.TtlIndexMismatches, tools.MongoTtlSpecClock.Pinned).get(url) shouldBe s"<html>$url</html>"
     under.gets shouldBe 1
+  }
+
+  "A cached detail page's expiry" should "be stamped from the injected clock, not the host's" in {
+    val url   = s"https://chain/film/clocked-${System.nanoTime()}"
+    val now   = tools.MongoTtlSpecClock.Pinned
+    new MongoCachingDetailFetch(new CountingFetch, Some(db), 1.hour, Chain, new services.TtlIndexMismatches, now).get(url)
+    val stored = storedDocument(s"${Chain.name}|$url")
+    stored.get("fetchedAt").map(_.asDateTime().getValue) shouldBe Some(now.millis())
+    stored.get("expireAt").map(_.asDateTime().getValue) shouldBe Some(now.millis() + 1.hour.toMillis)
+  }
+
+  it should "be judged against the injected clock, so a page past it is re-fetched" in {
+    val url   = s"https://chain/film/clock-expired-${System.nanoTime()}"
+    val now   = tools.MongoTtlSpecClock.Pinned
+    new MongoCachingDetailFetch(new CountingFetch, Some(db), 1.hour, Chain, new services.TtlIndexMismatches, now).get(url)
+    awaitStored(url)
+    val later = new CountingFetch
+    new MongoCachingDetailFetch(later, Some(db), 1.hour, Chain, new services.TtlIndexMismatches,
+      java.time.Clock.offset(now, java.time.Duration.ofHours(2))).get(url)
+    later.gets shouldBe 1
   }
 
   /** The index is built on a daemon thread, so poll for it rather than race a sleep. */
@@ -144,7 +164,7 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     val page  = clients.tools.FixtureFile.read("test/resources/fixtures/flicks/www.flicks.us/movie/pans-labyrinth.html")
     val url   = s"https://www.flicks.us/movie/pans-labyrinth/${System.nanoTime()}"
     val fetch = new MongoCachingDetailFetch(new CountingFetch { override def get(u: String): String = { gets += 1; page } },
-      Some(db), 1.hour, Chain, new services.TtlIndexMismatches)
+      Some(db), 1.hour, Chain, new services.TtlIndexMismatches, tools.MongoTtlSpecClock.Pinned)
     fetch.get(url) shouldBe page
     val stored = storedDocument(s"${Chain.name}|$url")
     page.getBytes(java.nio.charset.StandardCharsets.UTF_8).length should be > 200_000
@@ -156,9 +176,9 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     val url    = s"https://www.flicks.us/movie/roundtrip/${System.nanoTime()}"
     val writer = new CountingFetch { override def get(u: String): String = { gets += 1; page } }
     val reader = new CountingFetch
-    new MongoCachingDetailFetch(writer, Some(db), 1.hour, Chain, new services.TtlIndexMismatches).get(url)
+    new MongoCachingDetailFetch(writer, Some(db), 1.hour, Chain, new services.TtlIndexMismatches, tools.MongoTtlSpecClock.Pinned).get(url)
     awaitStored(url)
-    new MongoCachingDetailFetch(reader, Some(db), 1.hour, Chain, new services.TtlIndexMismatches).get(url) shouldBe page
+    new MongoCachingDetailFetch(reader, Some(db), 1.hour, Chain, new services.TtlIndexMismatches, tools.MongoTtlSpecClock.Pinned).get(url) shouldBe page
     reader.gets shouldBe 0
   }
 
@@ -166,8 +186,8 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     val url   = s"https://chain/film/legacy-${System.nanoTime()}"
     val under = new CountingFetch
     Await.result(db.getCollection(collName).insertOne(org.mongodb.scala.Document("_id" -> s"${Chain.name}|$url", "body" -> "<html>legacy</html>",
-      "fetchedAt" -> new java.util.Date(0L), "expireAt" -> java.util.Date.from(tools.MongoTtlSpecClock.Pinned.instant()))).toFuture(), SpecTimeouts.Io)
-    new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, new services.TtlIndexMismatches).get(url) shouldBe "<html>legacy</html>"
+      "fetchedAt" -> new java.util.Date(0L), "expireAt" -> java.util.Date.from(tools.MongoTtlSpecClock.Pinned.instant().plusSeconds(3600)))).toFuture(), SpecTimeouts.Io)
+    new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, new services.TtlIndexMismatches, tools.MongoTtlSpecClock.Pinned).get(url) shouldBe "<html>legacy</html>"
     under.gets shouldBe 0
   }
 
@@ -176,7 +196,7 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     val under = new CountingFetch {
       override def get(u: String): String = { gets += 1; throw new tools.HttpStatusException(503, "GET", u, None) }
     }
-    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches)
+    val server = new MongoCachingDetailFetch(under, Some(db), 1.hour, Chain, ttlMismatches = new services.TtlIndexMismatches, clock = tools.MongoTtlSpecClock.Pinned)
     a [tools.HttpStatusException] should be thrownBy server.get(url)
     a [tools.HttpStatusException] should be thrownBy server.get(url)
     under.gets shouldBe 2

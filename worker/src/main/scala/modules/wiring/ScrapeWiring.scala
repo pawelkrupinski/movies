@@ -37,7 +37,7 @@ trait ScrapeWiring { self: WorkerWiring =>
     // across worker servers, not just within one process: one `detail_cache` collection for
     // every chain, each document expiring on its own chain's TTL (see the class doc).
     (chain, h, ttl) => new MongoCachingDetailFetch(h, mongoConnection.database, ttl, services.DetailCacheChain(chain),
-      workerMetrics.ttlIndexMismatches),
+      workerMetrics.ttlIndexMismatches, clock),
     // Kino Kryterium (bilety.ck105.koszalin.pl) times out our Fly egress IP AND
     // every Decodo proxy IP at the TCP layer, so a direct scrape came back empty
     // → a permanent white /uptime bar. Only Zyte's true-residential network

@@ -34,7 +34,9 @@ class MongoCachingDetailFetch(
   chain:          DetailCacheChain,
   // Where a TTL index this cache could not bring into line is recorded — the process's
   // one set, which the worker's gauge reads.
-  ttlMismatches:  TtlIndexMismatches
+  ttlMismatches:  TtlIndexMismatches,
+  // What `fetchedAt`/`expireAt` are stamped from, and what a cached document's expiry is judged against.
+  clock:          java.time.Clock
 ) extends HttpFetch with Logging {
 
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(MongoCachingDetailFetch.Collection))
@@ -96,7 +98,7 @@ class MongoCachingDetailFetch(
    *  neither field reads as `None` — the safe direction, since it just re-fetches. */
   private def cached(c: MongoCollection[Document], url: String): Option[Either[Int, String]] =
     // Not past its own expiry, whatever the TTL reaper (a ~60s sweep) has got round to.
-    Try(Await.result(c.find(Filters.and(Filters.eq("_id", idOf(url)), Filters.gt("expireAt", new java.util.Date()))).headOption(), 10.seconds))
+    Try(Await.result(c.find(Filters.and(Filters.eq("_id", idOf(url)), Filters.gt("expireAt", java.util.Date.from(clock.instant())))).headOption(), 10.seconds))
       .toOption.flatten
       .flatMap { document =>
         document.get("bodyGzip").flatMap(stored => Try(MongoCachingDetailFetch.decompress(stored.asBinary().getData)).toOption).map(Right(_))
@@ -111,7 +113,7 @@ class MongoCachingDetailFetch(
         status => Updates.combine(Updates.set("goneStatus", status), Updates.unset("bodyGzip"), Updates.unset("body")),
         body   => Updates.combine(Updates.set("bodyGzip", new org.bson.BsonBinary(MongoCachingDetailFetch.compress(body))),
                                   Updates.unset("body"), Updates.unset("goneStatus")))
-      val now = System.currentTimeMillis()
+      val now = clock.millis()
       c.updateOne(
         Filters.eq("_id", idOf(url)),
         Updates.combine(
