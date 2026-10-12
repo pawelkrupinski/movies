@@ -37,7 +37,7 @@ out=$(SECRETS_BIN="$FAKE" bash -c '
   . "'"$HERE"'/log.sh"; . "'"$HERE"'/app-store-credentials.sh"
   load_app_store_credentials
   p8="$API_PRIVATE_KEYS_DIR/AuthKey_$APP_STORE_KEY_ID.p8"
-  printf "%s|%s|%s|%s\n" "$APP_STORE_KEY_ID" "$APP_STORE_ISSUER_ID" "$(head -1 "$p8")" "$(stat -f %Lp "$p8")"
+  printf "%s|%s|%s|%s\n" "$APP_STORE_KEY_ID" "$APP_STORE_ISSUER_ID" "$(head -1 "$p8")" "$(stat -c %a "$p8" 2>/dev/null || stat -f %Lp "$p8")"
   printf "%s\n" "$API_PRIVATE_KEYS_DIR"' 2>&1)
 check "exits 0 with the vault unlocked" "0" "$?"
 line=$(printf '%s\n' "$out" | head -1)
