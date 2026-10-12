@@ -67,8 +67,8 @@ final class CityTests: XCTestCase {
         XCTAssertNil(City.all.nearestWithin100km(lat: 0, lon: 0))
     }
 
-    func testUkRosterIsTheFullSeventyNineRegions() {
-        XCTAssertEqual(City.all.inCountry("uk").count, 79)
+    func testUkRosterIsTheFullSeventySixRegions() {
+        XCTAssertEqual(City.all.inCountry("uk").count, 76)
         XCTAssertEqual(City.all.inCountry("uk").first?.slug, "london")   // hand order
         XCTAssertTrue(City.all.inCountry("uk").allSatisfy { $0.country == "uk" })
     }
@@ -99,9 +99,9 @@ final class CityTests: XCTestCase {
     // ── catalogue (global union, per-country order) ───────────────
 
     func testAllIsTheGlobalUnionOfPolishAndUkCities() {
-        XCTAssertEqual(City.all.count, 259)                 // 180 PL + 79 UK
+        XCTAssertEqual(City.all.count, 256)                 // 180 PL + 76 UK
         XCTAssertEqual(City.all.inCountry("pl").count, 180)
-        XCTAssertEqual(City.all.inCountry("uk").count, 79)
+        XCTAssertEqual(City.all.inCountry("uk").count, 76)
     }
 
     /// The data-driven rosters are deliberately absent from the compile-time

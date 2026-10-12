@@ -95,25 +95,27 @@ final class CityRegionTests: XCTestCase {
             .decode(Seed.self, from: try AppSources.data("Kinowo/catalog-seed.json"))
             .catalog.cities
 
-        // 48 of the 55 states/territories actually split into several metros —
-        // the other 7 (Delaware, Vermont, Rhode Island, DC, American Samoa,
-        // Guam, the Virgin Islands) are single-metro and collapse onto their
-        // one city instead (`CityGroup.soleCity`), the same way a UK county
-        // with one place needs no region tap either.
-        XCTAssertEqual(seeded.regions(inCountry: "us").count, 48)
+        // The first step lists all 55 states/territories: 52 split into
+        // several places and show as a heading, while DC, American Samoa and
+        // Guam hold one place each and collapse onto it (`CityGroup.soleCity`),
+        // shown as a direct row, the same way a UK county with one place
+        // needs no region tap either.
+        let top = seeded.topLevelRows(matching: "", inCountry: "us")
+        XCTAssertEqual(seeded.regions(inCountry: "us").count, 52)
         XCTAssertTrue(seeded.regions(inCountry: "us").contains("California"))
-        // Every US city is PLACED somewhere reachable: a grouped state (region)
-        // or a collapsed single-metro one (a direct row on the region step).
-        let collapsed: Set<String> = [
-            "delaware", "vermont", "rhode-island", "district-of-columbia",
-            "american-samoa", "guam", "virgin-islands",
-        ]
-        for city in seeded.inCountry("us") {
-            if collapsed.contains(city.slug) {
-                XCTAssertNil(city.region, "\(city.slug) should have collapsed onto its one metro")
-            } else {
-                XCTAssertNotNil(city.region, "\(city.slug) has no region and would be unreachable")
-            }
+        XCTAssertEqual(top.count, 55)
+        // Every US city is reachable: under a region heading, or as a direct
+        // row on that first step. Checked against the rows the picker builds,
+        // not a list of slugs, which went stale when the seed renamed
+        // district-of-columbia to washington, guam to dededo-village and
+        // american-samoa to pago-pago.
+        let directRows = Set(top.compactMap { row -> String? in
+            if case .city(let city) = row { return city.slug }
+            return nil
+        })
+        XCTAssertEqual(directRows, ["washington", "pago-pago", "dededo-village"])
+        for city in seeded.inCountry("us") where city.region == nil {
+            XCTAssertTrue(directRows.contains(city.slug), "\(city.slug) has no region and is not a direct row, so it is unreachable")
         }
         // Poland is grouped by voivodeship: every page — major city, town or
         // cluster — carries its own, and all 16 are there.
