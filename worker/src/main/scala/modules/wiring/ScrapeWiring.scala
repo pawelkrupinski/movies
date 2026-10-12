@@ -136,7 +136,8 @@ trait ScrapeWiring { self: WorkerWiring =>
   // (put() runs before onEvent), so no store round-trip is needed.
   protected def filmwebFallbackOnEvent: (FallbackState, FallbackEvent) => Unit =
     (state, event) => {
-      FallbackAlert.messageFor(state, event).foreach(fallbackPager(services.alerts.TelegramAlertKind.fallback(event.event)))
+      val opening = models.Cinema.byDisplayName.get(state.cinema).fold[models.Opening](models.Opening.YearRound)(_.opening)
+      FallbackAlert.messageFor(state, event, opening).foreach(fallbackPager(services.alerts.TelegramAlertKind.fallback(event.event)))
       uptimeMonitor.tagService(state.cinema, CinemaClientMarkers.tagsFor(clientMarkers.get(state.cinema), sourceUrls.get(state.cinema), state.active))
     }
 

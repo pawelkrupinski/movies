@@ -2,7 +2,7 @@ package services.cinemas
 
 import services.cinemas.ScriptedCinemaScraper.{NoShowtimes, OneMovie}
 import services.alerts.FallbackAlert
-import models.{CinemaMovie, Multikino}
+import models.{CinemaMovie, Multikino, Opening}
 import services.fallback.{FallbackEvent, FallbackState, InMemoryFallbackStore}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
@@ -51,7 +51,7 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
     def advance(d: FiniteDuration): Unit = clock = clock.plusMillis(d.toMillis)
     /** The Telegram pages that would actually go out — what each onEvent resolves
      *  to via FallbackAlert (gated on `alerted`), in fire order. */
-    def alerts: Seq[String] = events.toList.flatMap { case (s, e) => FallbackAlert.messageFor(s, e) }
+    def alerts: Seq[String] = events.toList.flatMap { case (s, e) => FallbackAlert.messageFor(s, e, Opening.YearRound) }
     /** Drive one failing tick, swallowing the re-raised throw a grace tick emits. */
     def tickSwallowing(): Unit = try { scraper.fetch(); () } catch { case _: RuntimeException => () }
   }

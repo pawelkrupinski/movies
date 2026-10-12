@@ -93,7 +93,7 @@ class CinemaContentCensus(
   // per-country too (each worker writes its own database), but scoping to the
   // roster keeps a cinema that has been dropped from the catalogue out of the
   // count instead of pinning it high forever.
-  private val roster: Seq[String] = scrapers.map(_.cinema.displayName).distinct
+  private val roster: Seq[models.Cinema] = scrapers.map(_.cinema).distinctBy(_.displayName)
 
   oldestAge.labelValues(countryCode).set(0.0)
   neverContent.labelValues(countryCode).set(0.0)
@@ -106,7 +106,7 @@ class CinemaContentCensus(
     if (lastRead.forall(at => !now.isBefore(at.plusMillis(rereadInterval.toMillis)))) read(now)
     // Never read whole: nothing to stand behind, so the gauges hold whatever they held.
     if (lastRead.isDefined) {
-      val census = quiet(roster, stamps.asScala.toMap, now)
+      val census = quiet(inSeason(roster, now), stamps.asScala.toMap, now)
       oldestAge.labelValues(countryCode).set(census.oldestAgeSeconds)
       neverContent.labelValues(countryCode).set(census.neverContent.toDouble)
       staleVenues.labelValues(countryCode).set(census.staleVenues.toDouble)
@@ -166,6 +166,13 @@ object CinemaContentCensus {
    *  them — they have no age, and their own gauge counts them — and neither is a venue whose
    *  source last said it has no schedule). */
   case class ContentCensus(oldestAgeSeconds: Double, neverContent: Int, staleVenues: Int)
+
+  /** The roster's venues that are expected to be screening at `now`: a seasonal venue
+   *  ([[models.Opening.Seasonal]]) off its season is dark by design, and counted in none
+   *  of the three gauges — Germany's ~180 open-air screens would otherwise read as that many
+   *  venues gone quiet every October. In season it counts like any other. */
+  def inSeason(roster: Seq[models.Cinema], now: Instant): Seq[String] =
+    roster.filterNot(_.opening.offSeasonAt(now)).map(_.displayName)
 
   /** Pure: fold the roster against its archive stamps. A cinema missing from the
    *  archive counts the same as one archived with no content — in both cases we

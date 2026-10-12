@@ -29,7 +29,9 @@ final class GoneVenueAlertingArchive(
   import GoneVenueAlertingArchive._
 
   override protected def storeBarren(cinema: Cinema, city: Option[String], attempt: BarrenAttempt): Unit = {
-    val watched = attempt.outcome == ScrapeOutcome.Failed && !pagedElsewhere(cinema.displayName)
+    // A seasonal venue's page going away off its season is the season ending, not the venue.
+    val watched = attempt.outcome == ScrapeOutcome.Failed && !pagedElsewhere(cinema.displayName) &&
+      !cinema.opening.offSeasonAt(attempt.at)
     // The count before this attempt, so only the attempt that MOVES it onto the
     // threshold pages: the retries of that run leave it there, and would page again.
     val before  = if (watched) underlying.find(cinema).flatMap(_.lastBarren).flatMap(_.failedRuns) else None

@@ -112,6 +112,18 @@ class ClosureSweepSpec extends AnyFlatSpec with Matchers {
     h.ledger.confirmed().keySet shouldBe Set(hochland.displayName)
   }
 
+  // Freiluftkino Kreuzberg's page answers 404 every winter: that is the season ending, not the venue.
+  it should "never retire a seasonal venue on its off-season silence" in {
+    val freiluftkino = GermanRoster.theaterIdByCinema.map(_.swap)("A2198")
+    val h = new Harness(Seq(ClosureCandidate(freiluftkino, hasFallback = true)))
+    h.clock = Instant.parse("2026-12-01T09:00:00Z")
+    h.gone(freiluftkino, h.clock.minus(60, DAYS)); h.emptyFallback(freiluftkino, h.clock.minus(60, DAYS))
+    h.sweep.sweep()
+    h.requested shouldBe empty
+    h.pages shouldBe empty
+    h.ledger.confirmed() shouldBe empty
+  }
+
   // A failed read is not data: a partial archive would make every unread venue look
   // like one with no evidence, and withdraw every confirmed closure.
   it should "change nothing when the archive could not be read in full" in {

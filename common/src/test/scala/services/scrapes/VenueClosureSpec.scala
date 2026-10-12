@@ -1,6 +1,7 @@
 package services.scrapes
 
-import models.Cinema
+import models.{Cinema, SeasonWindow}
+import models.Opening.{Seasonal, YearRound}
 import org.scalatest.EitherValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -35,59 +36,83 @@ class VenueClosureSpec extends AnyFlatSpec with Matchers with EitherValues {
       emptyFallback = Some(FallbackState.EmptySpell(since, lastSeen))))
 
   "A venue with a fallback" should "be closed when the primary is gone and the fallback has listed nothing for two weeks" in {
-    val evidence = VenueClosure.judge(gone(daysAgo(20)), listedEmpty(daysAgo(15)), hasFallback = true, now).value
+    val evidence = VenueClosure.judge(gone(daysAgo(20)), listedEmpty(daysAgo(15)), hasFallback = true, YearRound, now).value
     evidence.goneSince shouldBe daysAgo(20)
     evidence.primaryError shouldBe NotFound
     evidence.fallback shouldBe VenueClosure.FallbackEvidence.ListedEmpty(daysAgo(15), now)
   }
 
   it should "not be closed while the fallback's empty spell is under two weeks old" in {
-    VenueClosure.judge(gone(daysAgo(20)), listedEmpty(daysAgo(13)), hasFallback = true, now).isLeft shouldBe true
+    VenueClosure.judge(gone(daysAgo(20)), listedEmpty(daysAgo(13)), hasFallback = true, YearRound, now).isLeft shouldBe true
   }
 
   // A fallback that only ever errored has said nothing about the venue.
   it should "not be closed when the fallback never answered empty" in {
     val erroredOnly = listedEmpty(daysAgo(15)).map(_.copy(emptyFallback = None))
-    VenueClosure.judge(gone(daysAgo(20)), erroredOnly, hasFallback = true, now).isLeft shouldBe true
-    VenueClosure.judge(gone(daysAgo(20)), None, hasFallback = true, now).isLeft shouldBe true
+    VenueClosure.judge(gone(daysAgo(20)), erroredOnly, hasFallback = true, YearRound, now).isLeft shouldBe true
+    VenueClosure.judge(gone(daysAgo(20)), None, hasFallback = true, YearRound, now).isLeft shouldBe true
   }
 
   // An empty spell nobody has re-confirmed lately may since have ended unrecorded.
   it should "not be closed on an empty spell last confirmed over three days ago" in {
-    VenueClosure.judge(gone(daysAgo(20)), listedEmpty(daysAgo(15), lastSeen = daysAgo(4)), hasFallback = true, now)
+    VenueClosure.judge(gone(daysAgo(20)), listedEmpty(daysAgo(15), lastSeen = daysAgo(4)), hasFallback = true, YearRound, now)
       .isLeft shouldBe true
   }
 
   "A venue" should "not be closed while its primary has been gone under two weeks" in {
-    VenueClosure.judge(gone(daysAgo(13)), listedEmpty(daysAgo(13)), hasFallback = true, now).isLeft shouldBe true
+    VenueClosure.judge(gone(daysAgo(13)), listedEmpty(daysAgo(13)), hasFallback = true, YearRound, now).isLeft shouldBe true
   }
 
   // Blocked, throttled or broken describes a page that EXISTS.
   it should "not be closed on a failure that is not 404/410" in {
     val forbidden = gone(daysAgo(40), error = "HttpStatusException: HTTP 403 for GET https://www.filmstarts.de/x/")
-    VenueClosure.judge(forbidden, listedEmpty(daysAgo(40)), hasFallback = true, now).isLeft shouldBe true
+    VenueClosure.judge(forbidden, listedEmpty(daysAgo(40)), hasFallback = true, YearRound, now).isLeft shouldBe true
   }
 
   // A row nobody is probing any more says nothing about today.
   it should "not be closed when the primary has not been probed for over three days" in {
-    VenueClosure.judge(gone(daysAgo(40), lastAttempt = daysAgo(4)), listedEmpty(daysAgo(30)), hasFallback = true, now)
+    VenueClosure.judge(gone(daysAgo(40), lastAttempt = daysAgo(4)), listedEmpty(daysAgo(30)), hasFallback = true, YearRound, now)
       .isLeft shouldBe true
   }
 
   it should "not be closed while it is serving" in {
     val serving = ArchivedScrape(cinema, None, Some(SuccessfulScrape(daysAgo(1), listingComplete = true, Nil)), None)
-    VenueClosure.judge(serving, listedEmpty(daysAgo(30)), hasFallback = true, now).isLeft shouldBe true
+    VenueClosure.judge(serving, listedEmpty(daysAgo(30)), hasFallback = true, YearRound, now).isLeft shouldBe true
   }
 
   // With no second source to corroborate it, the primary alone has to hold longer.
   "A venue with no fallback" should "be closed only once its primary has been gone four weeks" in {
-    VenueClosure.judge(gone(daysAgo(27)), None, hasFallback = false, now).isLeft shouldBe true
-    VenueClosure.judge(gone(daysAgo(28)), None, hasFallback = false, now).value.fallback shouldBe
+    VenueClosure.judge(gone(daysAgo(27)), None, hasFallback = false, YearRound, now).isLeft shouldBe true
+    VenueClosure.judge(gone(daysAgo(28)), None, hasFallback = false, YearRound, now).value.fallback shouldBe
       VenueClosure.FallbackEvidence.NoFallback
   }
 
   "The verdict's reason" should "name what is still missing" in {
-    VenueClosure.judge(gone(daysAgo(13)), listedEmpty(daysAgo(15)), hasFallback = true, now).left.value should
+    VenueClosure.judge(gone(daysAgo(13)), listedEmpty(daysAgo(15)), hasFallback = true, YearRound, now).left.value should
       include ("gone 13 days")
+  }
+
+  // Germany's window is May..September; `now` (2026-09-27) is in season.
+  private val openAir = Seasonal(SeasonWindow.Germany)
+
+  private def goneAt(probed: Instant, since: Instant) = ArchivedScrape(cinema, None, lastSuccess = None,
+    lastBarren = Some(BarrenAttempt(probed, ScrapeOutcome.Failed, Some(NotFound), Some(since))))
+
+  "A seasonal venue" should "never be judged closed out of its season, however long its page has been gone" in {
+    val winter        = Instant.parse("2026-11-20T09:00:00Z")
+    val goneAllAutumn = goneAt(winter, since = winter.minus(60, DAYS))
+    VenueClosure.judge(goneAllAutumn, None, hasFallback = false, YearRound, winter).isRight shouldBe true
+    VenueClosure.judge(goneAllAutumn, None, hasFallback = false, openAir, winter).left.value should include ("out of season")
+  }
+
+  it should "count a gone spell from the day its season opened, not from the winter before it" in {
+    val mayTenth          = Instant.parse("2026-05-10T09:00:00Z")
+    val goneSinceFebruary = goneAt(mayTenth, since = Instant.parse("2026-02-01T00:00:00Z"))
+    VenueClosure.judge(goneSinceFebruary, None, hasFallback = false, YearRound, mayTenth).isRight shouldBe true
+    VenueClosure.judge(goneSinceFebruary, None, hasFallback = false, openAir, mayTenth).left.value should include ("gone 9 days")
+  }
+
+  it should "be judged like any other venue in season" in {
+    VenueClosure.judge(gone(daysAgo(20)), listedEmpty(daysAgo(15)), hasFallback = true, openAir, now).isRight shouldBe true
   }
 }

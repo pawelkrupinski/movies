@@ -1,6 +1,6 @@
 package services.alerts
 
-import models.{Cinema, KinoMuza, Multikino}
+import models.{Cinema, KinoMuza, Multikino, RooftopFilmClubStratfordRoofEast}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.scrapes.{InMemoryScrapeArchiveRepository, ScrapeAttempt}
@@ -16,22 +16,22 @@ class GoneVenueAlertingArchiveSpec extends AnyFlatSpec with Matchers {
   private val Start = Instant.parse("2026-09-20T08:00:00Z")
   private val Gone  = "HttpStatusException: HTTP 404 for GET https://www.filmstarts.de/kinoprogramm/kino/A1560/"
 
-  private class Harness(withFallback: Set[Cinema] = Set.empty) {
+  private class Harness(withFallback: Set[Cinema] = Set.empty, start: Instant = Start) {
     val pages   = ListBuffer.empty[String]
     val archive = new GoneVenueAlertingArchive(new InMemoryScrapeArchiveRepository,
       pagedElsewhere = withFallback.map(_.displayName), notify = message => { pages += message; () })
     private var run = 0
     def failRun(cinema: Cinema = KinoMuza, error: String = Gone): Unit = {
-      archive.record(ScrapeAttempt(cinema, Cinema.cityOf(cinema), Start.plusSeconds(run * 36000L),
+      archive.record(ScrapeAttempt(cinema, Cinema.cityOf(cinema), start.plusSeconds(run * 36000L),
         listingComplete = true, films = Seq.empty, error = Some(error)))
       run += 1
     }
     /** A retry of the last run, a minute after it — the reaper's immediate retries. */
     def retry(cinema: Cinema = KinoMuza): Unit =
-      archive.record(ScrapeAttempt(cinema, Cinema.cityOf(cinema), Start.plusSeconds((run - 1) * 36000L + 60),
+      archive.record(ScrapeAttempt(cinema, Cinema.cityOf(cinema), start.plusSeconds((run - 1) * 36000L + 60),
         listingComplete = true, films = Seq.empty, error = Some(Gone)))
     def emptyRun(cinema: Cinema = KinoMuza): Unit = {
-      archive.record(ScrapeAttempt(cinema, Cinema.cityOf(cinema), Start.plusSeconds(run * 36000L),
+      archive.record(ScrapeAttempt(cinema, Cinema.cityOf(cinema), start.plusSeconds(run * 36000L),
         listingComplete = true, films = Seq.empty))
       run += 1
     }
@@ -44,6 +44,18 @@ class GoneVenueAlertingArchiveSpec extends AnyFlatSpec with Matchers {
     h.failRun()
     h.pages should have size 1
     h.pages.head should (include (KinoMuza.displayName) and include ("3 scrape runs") and include (Gone))
+  }
+
+  // A rooftop screen's page going away in winter is its season ending. In season it pages like any venue.
+  it should "not page for a seasonal venue whose page goes away off its season" in {
+    val rooftop = RooftopFilmClubStratfordRoofEast   // UK window: May..September; Start is 2026-09-20
+    val inSeason = new Harness
+    (1 to 3).foreach(_ => inSeason.failRun(rooftop))
+    inSeason.pages should have size 1
+
+    val winter = new Harness(start = Instant.parse("2026-11-20T08:00:00Z"))
+    (1 to 3).foreach(_ => winter.failRun(rooftop))
+    winter.pages shouldBe empty
   }
 
   it should "page only once per failing spell" in {

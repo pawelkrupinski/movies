@@ -33,7 +33,7 @@ class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchi
     val verdicts = collection.mutable.Map.empty[String, Either[String, ClosureEvidence]]
     val complete = archive.scan(_.foreach { (row: ArchivedScrape) =>
       byName.get(row.cinema.displayName).foreach(c =>
-        verdicts(c.cinema.displayName) = VenueClosure.judge(row, fallbacks.get(c.cinema.displayName), c.hasFallback, now))
+        verdicts(c.cinema.displayName) = VenueClosure.judge(row, fallbacks.get(c.cinema.displayName), c.hasFallback, c.cinema.opening, now))
     })
     if (!complete.isComplete) logger.warn("Closure sweep skipped: the scrape archive could not be read in full.")
     else settle(byName, verdicts.toMap, now)
