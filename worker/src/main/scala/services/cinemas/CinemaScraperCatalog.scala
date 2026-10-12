@@ -1943,9 +1943,9 @@ class CinemaScraperCatalog(
     case GermanFeed.Kinoprogramm(path)    =>
       new KinoprogrammClient(http, path, cinema, today = venueClock.today(KinoprogrammClient.Zone), filmPages = kinoprogrammFilmPages)
     case GermanFeed.WixEvents(page, postcode) =>
-      new WixEventsClient(http, page, postcode, cinema, today = venueClock.todayAt(cinema, models.TimeZones.Germany))
+      new WixEventsClient(http, page, postcode, TimeZones.Germany, cinema, today = venueClock.todayAt(cinema, TimeZones.Germany))
     case GermanFeed.RexSchifferstadt(page) =>
-      new RexSchifferstadtClient(http, page, cinema, today = venueClock.todayAt(cinema, models.TimeZones.Germany))
+      new RexSchifferstadtClient(http, page, cinema, today = venueClock.todayAt(cinema, TimeZones.Germany))
   }
 
   /** Each rostered German venue's sources, primary first ([[GermanSources]]: the per-venue

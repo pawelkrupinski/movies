@@ -1,7 +1,7 @@
 package clients.own_sites_de
 
 import clients.tools.FakeHttpFetch
-import models.{Cinema, GermanRoster}
+import models.{Cinema, GermanRoster, TimeZones}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -17,7 +17,7 @@ class WixEventsClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   private val steinhaus: Cinema = GermanRoster.theaterIdByCinema.collectFirst { case (c, "A2231") => c }.value
 
   private def fetch(today: LocalDate) =
-    new WixEventsClient(new FakeHttpFetch("steinhaus-bautzen", strict = true), Page, "02625", steinhaus, today).fetch()
+    new WixEventsClient(new FakeHttpFetch("steinhaus-bautzen", strict = true), Page, "02625", TimeZones.Germany, steinhaus, today).fetch()
 
   private val movies = fetch(LocalDate.of(2026, 10, 12))
 
@@ -50,6 +50,6 @@ class WixEventsClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   it should "fail on a page with no events data rather than report an empty programme" in {
-    an[IllegalStateException] should be thrownBy WixEventsClient.parse("<html></html>", "02625", steinhaus)
+    an[IllegalStateException] should be thrownBy WixEventsClient.parse("<html></html>", "02625", TimeZones.Germany, steinhaus)
   }
 }
