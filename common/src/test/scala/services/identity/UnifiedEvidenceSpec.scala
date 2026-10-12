@@ -144,6 +144,28 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     vetoes(worlds.signals.getOrElse(_, 0.0)) should contain("edition.apart")
   }
 
+  "the model's lean a family leans to too" should "fill a current release, never an older namesake a one-off event fits" in {
+    // PL Kino Kosmos "Człowiek znikąd | uroczysty pokaz odrestaurowanego filmu" (Kłyk's restored Silesian western, in
+    // no film database): the model leans to the 2010 Korean "The Man from Nowhere", Polish "Człowiek znikąd", Filmweb
+    // leans to it too and IMDb takes it — two weak signals a pinned fill took it on, as it takes Kawalski's 2026 "Lalka"
+    // (PL Kino CK Lublin) on the same two
+    val listings = Seq(listing(KinoMuza, "Człowiek znikąd | uroczysty pokaz odrestaurowanego filmu"))
+    def filled(year: Int) = {
+      val korean  = IdentityMeasures.Film("Człowiek Znikąd", Some("아저씨"), Nil, Some(year), Some(119), Some(Seq("이정범")), None, None, imdbNumber = 1527788)
+      val record  = SourceRecord(korean.copy(title = "The Man from Nowhere", originalTitle = Some("Ajeossi"), directors = Some(Seq("Lee Jeong-beom")),
+        imdbNumber = 0), Map("imdb" -> "tt1527788"))
+      val verdicts = Seq(took(VoterFamily.Imdb, record), FamilyVerdict(VoterFamily.Filmweb, None, Seq(record), leaning = Some(record)),
+        took(VoterFamily.Wiki, SourceRecord(film("Człowiek znikąd", 1961, "Eldar Ryazanov", 81), Map("imdb" -> "tt0054739", "wikidata" -> "Q4508581"))))
+      val lean     = Some(ResolverDecision.Leaning(51608, 1527788))
+      val decision = ResolverDecision(listings.map(_.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil, leaning = lean, candidate = lean)()
+      UnifiedRules.resolver.filled(contenders(ClusterEvidence(listings, decision,
+        Seq(IdentityResolver.NodeEvidence(listings.map(_.key), Seq(candidate(51608, korean, 0.08)))), verdicts, Nil, _ => None, thisYear = 2026)))
+        .map { case (contender, rule) => contender.film -> rule }
+    }
+    filled(2010) shouldBe None
+    filled(2025) shouldBe Some("tmdb:51608" -> "model.lean&count.leaning&title.namesIt&film.current")
+  }
+
   "a pinned rule" should "fire on a conjunction of signals and absences" in {
     val signals = Map("family.filmweb.took" -> 1.0, "model.logit" -> -3.5)
     UnifiedRules.fires("family.filmweb.took&!model.unscored", signals.getOrElse(_, 0.0)) shouldBe true

@@ -57,8 +57,12 @@ object UnifiedEvidence {
    *  spojrzenie": Wikidata takes Konovalov's 2026 film, the festival dates and credits it; docs/design/identity-resolver.md §20.12).
    *  `cast.venue`: the venue's own synopsis and cast field name two whole names of the film's top-billed TMDB cast, and
    *  none of any other candidate's ([[CastEvidence]]; its value, how many) — PL Kino CK Lublin's "Lalka" names
-   *  Dorociński, Urzędowska and Kondrat of Kawalski's 2026 film. */
-  val PinnedSignals: Seq[String] = Seq("families.current", "family.facts", "cast.venue")
+   *  Dorociński, Urzędowska and Kondrat of Kawalski's 2026 film.
+   *  `film.current`: the film released this year or last — what a fill on weak signals asks besides, as `venues.current`
+   *  and `families.current` do: an older namesake fits a one-off event as well as a title (PL Kino Kosmos "Człowiek
+   *  znikąd | uroczysty pokaz odrestaurowanego filmu", Kłyk's restored western: the model's and Filmweb's lean, and
+   *  IMDb's take, are the 2010 Korean film). */
+  val PinnedSignals: Seq[String] = Seq("families.current", "family.facts", "cast.venue", "film.current")
 
   /** The NON-COMPENSATORY guards: a contender one of these fires on is no film to take, whatever else speaks for it — the
    *  agreement stage's vetoes (several works billed, a stage work, another film's own title, the
@@ -186,6 +190,8 @@ object UnifiedEvidence {
       val votes  = Agreement.factVotes(asStated, records)
       val namesIt = c.listings.nonEmpty && c.listings.forall(Agreement.namesIt(_, records.map(_.film)))
       val nearest = contender.tmdb.toSeq.flatMap(id => c.posters.flatMap(_.get(id).flatten)).minOption
+      // released this year or last: a current release, not a one-off event an older namesake fits
+      val current = records.flatMap(_.film.year).maxOption.exists(_ >= c.thisYear - 1)
       val flags: Seq[(String, Boolean)] = Seq(
         // as the stage takes it: by the TMDB id the agreed record links (or IMDb's find of its IMDb id), else as IMDb's
         // film — an agreed record linking neither is taken as nothing (DE "André Rieus Weihnachtskonzert 2026")
@@ -203,7 +209,7 @@ object UnifiedEvidence {
         "listing.facts"       -> votes(Agreement.ListingFacts),
         "listing.runtime"     -> votes(Agreement.ListingRuntime),
         "listing.contradicts" -> Agreement.contradictedByAnyListing(c.listings, contender.record),
-        "venues.current"      -> (venues >= Agreement.WidelyBilled && records.flatMap(_.film.year).maxOption.exists(_ >= c.thisYear - 1)),
+        "venues.current"      -> (venues >= Agreement.WidelyBilled && current),
         "title.namesIt"       -> namesIt,
         "title.namesNone"     -> !namesIt,
         // another edition than the title numbers ("League of Legends Worlds 26" against the Worlds25 record)
@@ -223,7 +229,7 @@ object UnifiedEvidence {
       def and(on: Boolean) = if (on) takers else 0.0
       // [[PinnedSignals]]' families.current and family.facts
       val databaseTook    = VoterFamily.values.exists(f => f.namesFilms && took(f))
-      val familiesCurrent = takers >= 2 && databaseTook && records.flatMap(_.film.year).maxOption.exists(_ >= c.thisYear - 1)
+      val familiesCurrent = takers >= 2 && databaseTook && current
       val familyFacts     = databaseTook && votes(Agreement.ListingFacts)
       val castNamed       = castTake.collect { case (b, named) if b eq contender => named }.getOrElse(Nil)
       val counts = Seq("count.takers" -> takers, "count.leaning" -> leaning, "count.takersLessDissent" -> math.max(0.0, takers - dissent),
@@ -232,6 +238,7 @@ object UnifiedEvidence {
         "and.posterTakers" -> and(nearest.exists(_ <= PosterEvidence.VoteBits)),
         "and.leanTakers" -> and(contender.tmdb.exists(id => c.decision.leaning.exists(_.film == id))),
         "families.current" -> (if (familiesCurrent) 1.0 else 0.0), "family.facts" -> (if (familyFacts) 1.0 else 0.0),
+        "film.current" -> (if (current) 1.0 else 0.0),
         "cast.venue" -> castNamed.size.toDouble).filter(_._2 != 0.0)
       val signals = counts.toMap ++ flags.collect { case (name, true) => name -> 1.0 }.toMap ++
         open.map(_.probability).maxOption.map(p => "model.logit" -> logit(p)).filter(_._2 != 0.0) ++
