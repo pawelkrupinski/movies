@@ -1931,7 +1931,7 @@ object GermanRoster {
 
 // ── United States (Flicks) — data-driven from the full roster ────────────────
 // `UsRosterData` (generated from data/us/pages.json) carries 2,001 town and
-// cluster pages / 5,009 cinemas. Same shape as `GermanCinema`: each venue is
+// cluster pages / 5,010 cinemas. Same shape as `GermanCinema`: each venue is
 // built ONCE in `UsRoster` and reused everywhere, so one `Source` instance
 // serves the page, `Cinema.byCity` and the scrape catalog, and identity
 // equality holds like the hand-authored `case object` cinemas.

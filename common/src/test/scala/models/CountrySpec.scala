@@ -119,12 +119,12 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.UnitedStates.cities.map(_.slug) should contain allOf (
       "los-angeles", "new-york", "houston", "washington", "san-juan", "naples")
     Country.UnitedStates.bySlug.get("texas") shouldBe None
-    // Every place carries venues, and the roster totals 5,009 (5,031 less one feedless venue, the
-    // closed Alamo Drafthouse Naples and the 20 closures retired 2026-10-12). That corpus is ~6x the
+    // Every place carries venues, and the roster totals 5,010 (5,031 less one feedless venue, the
+    // closed Alamo Drafthouse Naples and the 19 closures retired 2026-10-12). That corpus is ~6x the
     // UK's, the fact that drives the US worker's 840-minute cadence rather than the UK's 420 (a ~10h
     // sweep has to fit inside its own cadence).
     all(Country.UnitedStates.cities.map(_.cinemas.size)) should be > 0
-    Country.UnitedStates.cities.flatMap(_.cinemas).size shouldBe 5009
+    Country.UnitedStates.cities.flatMap(_.cinemas).size shouldBe 5010
   }
 
   /** Every place in `group` in its country's own collation — the order a reader

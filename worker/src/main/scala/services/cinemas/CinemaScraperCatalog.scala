@@ -2015,7 +2015,7 @@ class CinemaScraperCatalog(
     }.toMap
 
   // ── United States (chain-primary, Flicks for the rest) ───────────────────
-  // Data-driven from the full UsRoster (2,001 town and cluster pages / 5,009 cinemas):
+  // Data-driven from the full UsRoster (2,001 town and cluster pages / 5,010 cinemas):
   // one scraper per cinema, keyed by the PAGE slug City.slug uses.
   //
   // A venue named in `UsChainVenues` gets its CHAIN'S OWN site as the primary and

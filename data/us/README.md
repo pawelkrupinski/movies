@@ -89,7 +89,7 @@ python3 data/us/scripts/generate_roster.py      # needs timezonefinder
 
 **Time zones** are resolved per PAGE from its venues' coordinates (the majority
 clock, `generate_roster.zone_for`); a venue across a zone line from the rest of its
-page carries its own (`UsRosterData.venueZones`, 4 of 5,009), which `VenueClock`
+page carries its own (`UsRosterData.venueZones`, 4 of 5,010), which `VenueClock`
 reads before its page's.
 
 ## Re-harvesting

@@ -978,7 +978,7 @@ private[models] object GermanPage {
  *  at state lines, and `/los-angeles/` listed Lancaster. A cluster may cross a
  *  state line; the picker files it under its anchor's state.
  *
- *  The roster (5,009 cinemas over 2,001 pages) is generated into `UsRosterData`
+ *  The roster (5,010 cinemas over 2,001 pages) is generated into `UsRosterData`
  *  and materialised by [[UsRoster]]; instances are built ONCE (in
  *  `City.usCities`), so identity equality holds just like the hand-authored
  *  `case object` cities.

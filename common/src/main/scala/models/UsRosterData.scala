@@ -1,6 +1,6 @@
 // GENERATED from data/us/pages.json by data/us/scripts/generate_roster.py
 // — do NOT edit by hand. Full US cinema roster: 2,001 pages over 55 states and
-// territories / 5,009 cinemas (Flicks, www.flicks.us). Regenerate after re-harvesting or
+// territories / 5,010 cinemas (Flicks, www.flicks.us). Regenerate after re-harvesting or
 // re-clustering; see data/us/README.md.
 package models
 
@@ -7167,7 +7167,8 @@ private[models] object UsRosterData {
     ("King-Koal Theaters", "King-Koal Theaters", "king-koal-theaters", "Utah", "Price"),
     ("Price Theatre", "Price Theatre", "price-theatre", "Utah", "Price")
   ))
-  private def p_princeton: R = ("princeton", "princeton-new-jersey", "Princeton", "New Jersey", 40.3487, -74.659, "America/New_York", true, Seq("Princeton", "North Brunswick", "Hillsborough", "White Horse", "Hightstown", "Ten Mile Run"), Seq(
+  private def p_princeton: R = ("princeton", "princeton-new-jersey", "Princeton", "New Jersey", 40.3487, -74.659, "America/New_York", true, Seq("Princeton", "North Brunswick", "Hillsborough", "White Horse", "Hightstown", "Lambertville", "Ten Mile Run"), Seq(
+    ("ACME Screening Room Lambertville", "ACME Screening Room Lambertville", "acme-screening-room-lambertville", "New Jersey", "Lambertville"),
     ("AMC Marketfair Princeton 10", "AMC Marketfair Princeton 10", "amc-marketfair-princeton-10", "New Jersey", "Princeton"),
     ("Princeton Garden Theatre", "Princeton Garden Theatre", "princeton-garden-theatre", "New Jersey", "Princeton"),
     ("Hillsborough Cinemas 10", "Hillsborough Cinemas 10", "hillsborough-cinemas-10", "New Jersey", "Hillsborough"),

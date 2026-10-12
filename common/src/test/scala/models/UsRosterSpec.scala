@@ -28,8 +28,8 @@ class UsRosterSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   it should "hold every venue exactly once — a re-cut, not a re-harvest" in {
     val venues = City.usCities.flatMap(_.cinemas)
-    venues should have size 5009
-    venues.distinct should have size 5009
+    venues should have size 5010
+    venues.distinct should have size 5010
     venues.toSet shouldBe UsRoster.byDisplayName.values.toSet
   }
 
