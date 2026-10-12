@@ -32,7 +32,7 @@ class DatabaseOwnerIntegrationSpec extends AnyFlatSpec with Matchers with tools.
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "database-owner-race") { db =>
       tools.ConcurrentInstances.rounds(20, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
         new DatabaseOwner(db).owner().foreach(_ => db.getCollection(DatabaseOwner.Collection)
-          .drop().toFuture().pipe(scala.concurrent.Await.result(_, scala.concurrent.duration.Duration(10, "s"))))
+          .drop().toFuture().pipe(scala.concurrent.Await.result(_, tools.SpecTimeouts.Io)))
         val claims = tools.ConcurrentInstances.race(Seq(Country.Poland, Country.Germany)
           .map(country => () => new DatabaseOwner(db).claim(country)), Some(round))
         claims.count(_.isRight) shouldBe 1

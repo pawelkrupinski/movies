@@ -59,7 +59,7 @@ class NoLiteralWaitBoundSpec extends AnyFlatSpec with Matchers {
   )
 
   private val DurationLiteral =
-    """^\s*(?:\d[\d_]*(?:\.\d+)?\s*\.?\s*(?:nanos?|nanoseconds?|micros?|microseconds?|millis?|milliseconds?|seconds?|minutes?|hours?|days?)\b|(?:Finite)?Duration\s*\(\s*\d|(?:java\.time\.)?Duration\.(?:of|from)\w*\(\s*\d)""".r
+    """^\s*(?:\d[\d_]*(?:\.\d+)?\s*\.?\s*(?:nanos?|nanoseconds?|micros?|microseconds?|millis?|milliseconds?|seconds?|minutes?|hours?|days?)\b|(?:[\w.]+\.)?(?:Finite)?Duration\s*\(\s*\d|(?:[\w.]+\.)?Duration\.(?:of|from)\w*\(\s*\d)""".r
   private val NumberLiteral = """^\s*\d[\d_]*L?\s*$""".r
   private val TimeUnitArgument =
     """^\s*(?:[\w.]+\.)?(?:NANOSECONDS|MICROSECONDS|MILLISECONDS|SECONDS|MINUTES|HOURS|DAYS)\s*$""".r
@@ -126,6 +126,7 @@ class NoLiteralWaitBoundSpec extends AnyFlatSpec with Matchers {
   "the literal-bound matcher" should "catch every bound shape with a literal in it" in {
     literalBoundLines("Await.result(f, 10.seconds)") shouldBe Seq(1)
     literalBoundLines("Await.ready(\n  f,\n  Duration(5, SECONDS))") shouldBe Seq(1)
+    literalBoundLines("f.pipe(scala.concurrent.Await.result(_, scala.concurrent.duration.Duration(10, \"s\")))") shouldBe Seq(1)
     literalBoundLines("x\nAwait.result(store.find(id), 2.minutes).map(_.size)") shouldBe Seq(2)
     literalBoundLines("latch.await(5, TimeUnit.SECONDS) shouldBe true") shouldBe Seq(1)
     literalBoundLines("done.await(30, java.util.concurrent.TimeUnit.SECONDS)") shouldBe Seq(1)
@@ -179,7 +180,45 @@ class NoLiteralWaitBoundSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "keep every allowlist entry pointing at a line that still bounds a wait by a literal" in {
+  // The bound nobody writes down: a suite that mixes in ScalaTest's `Eventually` and calls a bare
+  // `eventually(…)` waits ScalaTest's DEFAULT patience — 150 ms — a literal one hop away, in the
+  // library. MovieChangeStreamSpec had twelve such waits on its apply thread, and under a loaded
+  // machine (load ~200, 2026-10-12) the thread ran later than 150 ms and the spec failed and passed
+  // on a rerun.
+  private val MixesInScalaTestEventually = """\bwith\s+(?:org\.scalatest\.concurrent\.)?Eventually\b""".r
+
+  private val BoundPatience = """^\s*(?:[\w.]*\.)?(?:timeout|Timeout)\(""".r
+
+  /** Whether `code` mixes in ScalaTest's Eventually, keeps its default patience, and calls `eventually`
+   *  without a timeout of its own (first argument `timeout(…)`, or a `(using …)` patience after it). */
+  private[tools] def waitsOnDefaultPatience(code: String): Boolean = {
+    val src = StringLiteral.replaceAllIn(code, "\"\"")
+    MixesInScalaTestEventually.findFirstIn(src).isDefined && !src.contains("patienceConfig") &&
+      EventuallyCall.findAllMatchIn(src).exists { m =>
+        val open  = m.end - 1
+        val args  = argumentsAt(src, open)
+        val first = topLevelParts(args).headOption.getOrElse("")
+        val after = src.substring((open + args.length + 2).min(src.length)).dropWhile(_.isWhitespace)
+        !BoundPatience.findFirstIn(first).isDefined && !after.startsWith("(using ")
+      }
+  }
+
+  "the default-patience matcher" should "flag a bare eventually in a suite keeping ScalaTest's default patience" in {
+    waitsOnDefaultPatience("class S extends AnyFlatSpec with org.scalatest.concurrent.Eventually {\n eventually(x shouldBe 1) }") shouldBe true
+    waitsOnDefaultPatience("class S extends AnyFlatSpec with Eventually {\n  eventually(timeout(SpecTimeouts.Settle), interval(i))(x shouldBe 1) }") shouldBe false
+    waitsOnDefaultPatience("class S extends AnyFlatSpec with Eventually {\n  override implicit val patienceConfig: PatienceConfig = p\n  eventually(x shouldBe 1) }") shouldBe false
+    waitsOnDefaultPatience("class S extends AnyFlatSpec with Eventually {\n  eventually(x shouldBe 1)(using patience, implicitly) }") shouldBe false
+    waitsOnDefaultPatience("class S extends AnyFlatSpec with Eventually {\n  eventually(x shouldBe 1)\n  f(y)(using g) }") shouldBe true
+    waitsOnDefaultPatience("class S extends AnyFlatSpec {\n  Eventually.poll(SpecTimeouts.Settle)(x) }") shouldBe false
+  }
+
+  "test sources" should "give every ScalaTest Eventually suite a patience from SpecTimeouts, never the 150 ms default" in {
+    val found = sources.collect { case (path, src) if waitsOnDefaultPatience(src) => path.toString }
+    withClue("These suites mix in ScalaTest's Eventually and wait its default 150 ms patience. Override " +
+      "`patienceConfig` with `timeout = SpecTimeouts.Settle`:\n" + found.mkString("\n") + "\n")(found shouldBe empty)
+  }
+
+  "test sources" should "keep every allowlist entry pointing at a line that still bounds a wait by a literal" in {
     val stale = Allowlist.keys.toSeq.filterNot { case (file, snippet) =>
       snippet.isEmpty && Files.exists(Paths.get(file)) ||
         flagged.exists { case (f, line, _) => f == file && line.contains(snippet) }

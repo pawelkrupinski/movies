@@ -137,7 +137,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
         ShareCardRef("__it-rm-sharecard__", Some("f1.jpg?v=0123456789abcdef"))))
     } finally {
       scala.concurrent.Await.ready(client2.getDatabase(ownDb).drop().toFuture(),
-        scala.concurrent.duration.Duration(10, "seconds"))
+        tools.SpecTimeouts.Io)
       fresh.close(); client2.close()
     }
   }
@@ -156,14 +156,14 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
         city = "poznan", cinema = "Cinema", filmUrl = None, showtimes = Nil))
       val names = scala.concurrent.Await.result(
         client2.getDatabase(ownDb).getCollection("web_screenings").listIndexes().toFuture(),
-        scala.concurrent.duration.Duration(10, "seconds")).flatMap(_.get("name").map(_.asString().getValue)).toSet
+        tools.SpecTimeouts.Io).flatMap(_.get("name").map(_.asString().getValue)).toSet
       withClue(s"an index nothing queries still costs a write on every projector upsert — " +
                s"re-add one only alongside the query that needs it (found $names): ") {
         names shouldBe Set("_id_")
       }
     } finally {
       scala.concurrent.Await.ready(client2.getDatabase(ownDb).drop().toFuture(),
-        scala.concurrent.duration.Duration(10, "seconds"))
+        tools.SpecTimeouts.Io)
       fresh.close(); client2.close()
     }
   }

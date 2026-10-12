@@ -26,6 +26,12 @@ import scala.collection.mutable
  */
 class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest.concurrent.Eventually {
 
+  // Every `eventually` here waits on the apply thread. ScalaTest's default patience is 150 ms, which a
+  // loaded machine's scheduler outlasts (load ~200, 2026-10-12: failed, then passed on a rerun).
+  override implicit val patienceConfig: PatienceConfig =
+    PatienceConfig(timeout = org.scalatest.time.Span(SpecTimeouts.Settle.toMillis, org.scalatest.time.Millis),
+      interval = org.scalatest.time.Span(15, org.scalatest.time.Millis))
+
   /** Hands the observer back so the spec can push events; counts the opens, since ONE
    *  shared cursor for any number of listeners is the point of the fan-out. */
   private final class HandFedSource extends MovieChangeStream.Source {
