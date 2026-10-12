@@ -20,7 +20,7 @@ object ShareCardUrl {
     s"${ForwardedUrl.originOf(country.ogOrigin)}/share-cards/${country.code}/$file"
 
   /** `movie`'s share card, or None while it has none. */
-  private def film(movie: ResolvedMovie, country: Country): Option[String] =
+  def film(movie: ResolvedMovie, country: Country): Option[String] =
     movie.shareCard.map(onDisk(country, _))
 
   /** The city's share card — a film page's fallback, and the repertoire page's image. */

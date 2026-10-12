@@ -1,0 +1,120 @@
+@import controllers.ShareCardGalleryController.Gallery
+@(gallery: Gallery)
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Share cards — @gallery.country.code.toUpperCase(java.util.Locale.ROOT)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font: 13px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 24px; }
+    h1 { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+    .sub { color: #666; font-size: 11px; margin-bottom: 14px; max-width: 760px; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .tabs button { font: inherit; cursor: pointer; background: #1c1c1c; color: #999; border: 1px solid #333;
+      border-radius: 4px; padding: 4px 12px; }
+    .tabs button[aria-selected="true"] { color: #fff; border-color: #8ab4f8; }
+    .panel[hidden] { display: none; }
+    .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+    input[type=search] { font: inherit; background: #000; color: #fff; border: 1px solid #444; border-radius: 4px;
+      padding: 4px 8px; width: 320px; max-width: 100%; }
+    .count { color: #777; font-size: 11px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+    .card[hidden] { display: none; }
+    .card img { display: block; width: 100%; aspect-ratio: 1200 / 630; background: #161616; border-radius: 4px; }
+    .card .none { display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 1200 / 630;
+      background: #161616; border: 1px dashed #333; border-radius: 4px; color: #c97a7a; }
+    .card .label { margin-top: 4px; color: #ddd; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .card .label a { color: #ddd; text-decoration: none; }
+    .card .meta { color: #666; font-size: 11px; }
+    .pending { color: #d4a24c; }
+  </style>
+</head>
+<body>
+  <h1>Share cards — @gallery.country.code.toUpperCase(java.util.Locale.ROOT)</h1>
+  <div class="sub">
+    Every card this country's pages name as their preview image, at the address a preview scraper fetches.
+    A city with no card yet shows the country's home card; a film with none uses its city's.
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" data-tab="cities" aria-selected="true">Cities (@gallery.cities.size)</button>
+    <button type="button" role="tab" data-tab="films" aria-selected="false">Films (@gallery.films.size@if(gallery.filmsWithoutCard > 0){, @gallery.filmsWithoutCard without a card})</button>
+  </div>
+
+  <section class="panel" data-panel="cities">
+    <div class="bar">
+      <input type="search" placeholder="Search cities" aria-label="Search cities" autocomplete="off">
+      <span class="count"></span>
+    </div>
+    <div class="grid">
+      @for(city <- gallery.cities) {
+        <figure class="card" data-search="@city.name @city.slug">
+          @for(image <- city.image) { <a href="@image"><img src="@image" loading="lazy" alt="@city.name"></a> }
+          <figcaption class="label"><a href="@routes.MovieController.index(city.slug)">@city.name</a></figcaption>
+          <div class="meta">@city.slug</div>
+        </figure>
+      }
+    </div>
+  </section>
+
+  <section class="panel" data-panel="films" hidden>
+    <div class="bar">
+      <input type="search" placeholder="Search films" aria-label="Search films" autocomplete="off">
+      <span class="count"></span>
+    </div>
+    <div class="grid">
+      @for(film <- gallery.films) {
+        <figure class="card" data-search="@film.title @film.year.getOrElse("")">
+          @film.image match {
+            case Some(image) => { <a href="@image"><img src="@image" loading="lazy" alt="@film.title"></a> }
+            case None        => { <div class="none">no card</div> }
+          }
+          <figcaption class="label">@film.title</figcaption>
+          <div class="meta">@film.year.getOrElse("—")@if(film.pending){ · <span class="pending">pending</span>}</div>
+        </figure>
+      }
+    </div>
+  </section>
+
+  <script>
+    (function () {
+      // Accent- and case-blind, so "lodz" finds Łódź and "zurich" Zürich.
+      function fold(text) {
+        return text.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l').replace(/Ł/g, 'L').toLowerCase();
+      }
+
+      document.querySelectorAll('.panel').forEach(function (panel) {
+        var input = panel.querySelector('input[type=search]');
+        var count = panel.querySelector('.count');
+        var cards = Array.prototype.map.call(panel.querySelectorAll('.card'), function (card) {
+          return { card: card, text: fold(card.dataset.search) };
+        });
+        function apply() {
+          var words = fold(input.value).split(/\s+/).filter(Boolean);
+          var shown = 0;
+          cards.forEach(function (entry) {
+            var match = words.every(function (word) { return entry.text.indexOf(word) >= 0; });
+            entry.card.hidden = !match;
+            if (match) shown++;
+          });
+          count.textContent = shown + ' of ' + cards.length;
+        }
+        input.addEventListener('input', apply);
+        apply();
+      });
+
+      var tabs = document.querySelectorAll('[data-tab]');
+      function show(name) {
+        tabs.forEach(function (tab) { tab.setAttribute('aria-selected', String(tab.dataset.tab === name)); });
+        document.querySelectorAll('.panel').forEach(function (panel) { panel.hidden = panel.dataset.panel !== name; });
+        history.replaceState(null, '', '#' + name);
+      }
+      tabs.forEach(function (tab) { tab.addEventListener('click', function () { show(tab.dataset.tab); }); });
+      if (location.hash === '#films') show('films');
+    })();
+  </script>
+</body>
+</html>

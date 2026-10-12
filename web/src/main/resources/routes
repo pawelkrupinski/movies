@@ -251,6 +251,11 @@ POST    /admin/identity/pins             controllers.IdentityAdminController.cre
 + nocsrf
 POST    /admin/identity/pins/remove      controllers.IdentityAdminController.removePin()
 
+# ── Admin: share cards ──────────────────────────────────────────────────────
+# Every city and film share card this country's pages name, in two searchable tabs,
+# to look over by eye. Read-only; same login + ADMIN_ALLOWLIST gate.
+GET     /admin/share-cards               controllers.ShareCardGalleryController.index()
+
 # ── Debug: identity review ──────────────────────────────────────────────────
 # Dev-only (404 in prod, like the rest of /debug): the clusters the resolver left
 # unmatched, those it rated matchable and still left, and those it matched lately,
