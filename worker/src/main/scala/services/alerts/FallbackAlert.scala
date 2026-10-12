@@ -22,7 +22,8 @@ import java.time.Duration
  * definition it never entered fallback. `SourceFallbackScraper` fires it once per
  * failing spell, so there is no flood to suppress here — except for a seasonal venue
  * ([[Opening.Seasonal]]) off its season, which nothing serving it is exactly what its
- * winter looks like.
+ * winter looks like. A spell suppressed that way is fired once more on its first
+ * in-season tick, and pages then.
  */
 object FallbackAlert {
   def messageFor(state: FallbackState, event: FallbackEvent, opening: Opening): Option[String] = event.event match {

@@ -289,10 +289,12 @@ class SourceFallbackScraper(
    *  So it pages, ONCE per failing spell: repeated every tick the alert would be
    *  worth nothing, and the state is otherwise the grace state — still
    *  `active = false`, because we are not serving a fallback, we are serving
-   *  nothing. A primary success clears `failingSince` and so re-arms it. */
+   *  nothing. A primary success clears `failingSince` and so re-arms it. A seasonal
+   *  venue's spell that began off its season fires once more on its first in-season
+   *  tick: the alert drops the off-season one (`FallbackAlert`), so it paged nothing. */
   private def recordUncovered(previous: Option[FallbackState], nowI: Instant, reason: String, answer: FallbackAnswer): Unit = {
     val base = previous.getOrElse(initialState)
-    if (alreadyPagedUncovered(base)) store.put(stillFailing(base, nowI, reason, answer))
+    if (alreadyPagedUncovered(base, nowI)) store.put(stillFailing(base, nowI, reason, answer))
     else {
       val event = FallbackEvent(nowI, FallbackEvent.Uncovered, reason)
       val next  = stillFailing(base, nowI, reason, answer)
@@ -305,11 +307,14 @@ class SourceFallbackScraper(
   /** Have we already paged for THIS failing spell? The newest history entry is the
    *  spell's own UNCOVERED only while the spell lasts: any later transition
    *  (ENTER / PROBE_FAILED / RECOVERED) pushes itself in front, and a success clears
-   *  `failingSince`, so the next spell's entry cannot be mistaken for this one's. */
-  private def alreadyPagedUncovered(base: FallbackState): Boolean =
+   *  `failingSince`, so the next spell's entry cannot be mistaken for this one's.
+   *  An entry from off the venue's season paged nothing, so it stands only while
+   *  `nowI` is off season too. */
+  private def alreadyPagedUncovered(base: FallbackState, nowI: Instant): Boolean =
     base.history.headOption.exists(entry =>
       entry.event == FallbackEvent.Uncovered &&
-        base.failingSince.exists(since => !entry.at.isBefore(since)))
+        base.failingSince.exists(since => !entry.at.isBefore(since)) &&
+        (!cinema.opening.offSeasonAt(entry.at) || cinema.opening.offSeasonAt(nowI)))
 
   /** The persisted shape of "the primary is down and we are not on fallback",
    *  shared by the silent grace ticks and the one that pages. */

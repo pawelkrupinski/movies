@@ -2,7 +2,7 @@ package services.cinemas
 
 import services.cinemas.ScriptedCinemaScraper.{NoShowtimes, OneMovie}
 import services.alerts.FallbackAlert
-import models.{CinemaMovie, Multikino, Opening}
+import models.{Cinema, CinemaMovie, Multikino, RooftopFilmClubStratfordRoofEast}
 import services.fallback.{FallbackEvent, FallbackState, InMemoryFallbackStore}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
@@ -26,6 +26,7 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
     grace:       FiniteDuration = 6.hours,
     trigger:     Option[FallbackAfter] = None,
     name:        String = "Filmweb",
+    cinema:      Cinema = Multikino,
     // Shared across harnesses to model a worker restart: a fresh scraper, the same persisted state.
     val store:   InMemoryFallbackStore = new InMemoryFallbackStore
   ) {
@@ -36,7 +37,7 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
       def getZone: java.time.ZoneId              = java.time.ZoneOffset.UTC
       override def withZone(zone: java.time.ZoneId): java.time.Clock = this
     })
-    val primary = ScriptedCinemaScraper(primaryPlan, repeatLast = true)
+    val primary = ScriptedCinemaScraper(primaryPlan, forCinema = cinema, repeatLast = true)
     var clock: Instant = Instant.parse("2026-06-10T08:00:00Z")
     val events = collection.mutable.ListBuffer.empty[(FallbackState, FallbackEvent)]
     val scraper = new SourceFallbackScraper(
@@ -46,12 +47,12 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
       now = () => clock, baseBackoff = base, maxBackoff = 60.minutes, fallbackAfter = trigger.getOrElse(FallbackAfter.FailingFor(grace)),
       onEvent = (s, e) => events += ((s, e))
     )
-    def bucket = monitor.history(Service).last   // newest: history is oldest-first
-    def state  = store.get(Service)
+    def bucket = monitor.history(cinema.displayName).last   // newest: history is oldest-first
+    def state  = store.get(cinema.displayName)
     def advance(d: FiniteDuration): Unit = clock = clock.plusMillis(d.toMillis)
     /** The Telegram pages that would actually go out — what each onEvent resolves
      *  to via FallbackAlert (gated on `alerted`), in fire order. */
-    def alerts: Seq[String] = events.toList.flatMap { case (s, e) => FallbackAlert.messageFor(s, e, Opening.YearRound) }
+    def alerts: Seq[String] = events.toList.flatMap { case (s, e) => FallbackAlert.messageFor(s, e, cinema.opening) }
     /** Drive one failing tick, swallowing the re-raised throw a grace tick emits. */
     def tickSwallowing(): Unit = try { scraper.fetch(); () } catch { case _: RuntimeException => () }
   }
@@ -373,6 +374,22 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
     h.advance(1.day);  h.tickSwallowing()
     h.alerts should have size 1
     h.state.map(_.history.size) shouldBe Some(1)
+  }
+
+  // A spell that began off its season pages UNCOVERED there, and the alert drops it: nothing serving a
+  // rooftop in April is its winter. Taken as "already paged", that spell never paged when its season began.
+  it should "page UNCOVERED again once a spell that began off its season runs into the season" in {
+    val h = new Harness(Seq(Left(boom)), filmweb = None, cinema = RooftopFilmClubStratfordRoofEast)  // May..September
+    h.clock = Instant.parse("2027-04-30T08:00:00Z")
+    h.tickSwallowing()
+    h.advance(6.hours + 1.minute); h.tickSwallowing()   // 04-30 14:01: uncovered, off season
+    h.advance(1.hour);             h.tickSwallowing()
+    h.alerts shouldBe empty
+    h.advance(10.hours);           h.tickSwallowing()   // 05-01 01:01: the season has begun
+    h.advance(1.hour);             h.tickSwallowing()
+    h.advance(1.day);              h.tickSwallowing()
+    h.alerts should have size 1
+    h.events.map(_._2.event) shouldBe List(FallbackEvent.Uncovered, FallbackEvent.Uncovered)
   }
 
   it should "re-arm the UNCOVERED page after the primary recovers and dies again" in {
