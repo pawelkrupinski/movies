@@ -42,7 +42,13 @@ class OwnSiteEvidenceSpec extends AnyFlatSpec with Matchers {
     page("<h1>Das Kino ist dauerhaft geschlossen</h1>").observed should include ("dauerhaft geschlossen")
     page("<p>We have   PERMANENTLY\nclosed. Thank you.</p>") shouldBe a[VenueSignal.Closure]
     page("<p>El cine ha cerrado definitivamente</p>") shouldBe a[VenueSignal.Closure]
-    page("<p>Kino zostało zamknięte</p>") shouldBe a[VenueSignal.Closure]
+    page("<p>Kino zostało zamknięte na stałe</p>") shouldBe a[VenueSignal.Closure]
+  }
+
+  // A notice that names no permanence is a pause: renovation, "until further notice".
+  it should "show life on a temporary closure notice" in {
+    page("<p>Kino zostało zamknięte z powodu remontu</p>") shouldBe a[VenueSignal.Life]
+    page("<p>Kino zostało zamknięte do odwołania</p>") shouldBe a[VenueSignal.Life]
   }
 
   it should "show closure when the domain is parked or for sale, even when only a script names the parking service" in {
