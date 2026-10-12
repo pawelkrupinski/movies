@@ -369,4 +369,13 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
       "The Comedy of Terrors", "Slumdog Millionaire", "The First Slam Dunk"
     ).foreach(t => withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe false))
   }
+
+  it should "keep a film whose own title is a quiz, a slam, a karaoke or a stand-up word" in {
+    // "Quiz Show" (1994) is in the recorded DE corpus of 2026-10-12, and a sing-along "Vaiana: wersja karaoke" in the PL
+    // one: the bare word is a film's as often as an event's, so only the event's own billing of it drops a listing.
+    Seq(
+      "Quiz Show", "Quiz Lady", "Slam", "Grand Slam", "Stand Up Guys", "Stand Up and Fight", "Karaoke",
+      "Vaiana: wersja karaoke", "Vaiana - Karaoke-Version"
+    ).foreach(t => withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe false))
+  }
 }

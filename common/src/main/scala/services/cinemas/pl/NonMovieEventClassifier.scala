@@ -96,8 +96,10 @@ object NonMovieEventClassifier {
     """\btheatersport\b""".r,
     """(?:kasperl|figuren|kinder|puppen|schatten|laienspiel-?)theater|puppenspiel|theaterveranstaltung""".r,
     """\bcomedy[\s-]*(?:show|night|slam|live|abend)\b""".r,
-    """\bstand[\s-]?up\b""".r,
-    """\bkaraoke\b""".r,
+    // Stand-up and karaoke as the EVENT bills them — hyphenated or glued, or with its night: a bare "Stand Up" or
+    // "Karaoke" is a film's own title ("Stand Up Guys", "Karaoke" (2022), a sing-along "Vaiana: wersja karaoke").
+    """\bstand-?up\b|\bstand\s+up\s+comedy\b""".r,
+    """\bkaraoke[\s-]*(?:live|night|nacht|abend|party|show)\b""".r,
     """^gottesdienst\b""".r,
     """andacht\b""".r,                      // "Musikalische Abendandacht"
     """turnier\b""".r,                      // "Tischkickerturnier": compounds end in it
@@ -121,8 +123,10 @@ object NonMovieEventClassifier {
     """\bmultivision|live-reportage""".r,   // a travel photographer's slide show, presented live
     """\btour\s+20\d\d\b""".r,              // "Moritz Hohl: Musst du wissen – Tour 2027" (a "Kurz Film Tour 2026" names its films)
     """\bworkshops?\b""".r,
-    """\bquiz""".r,                         // "QuizKino Live", "Quizlabor Leipzig"
-    """\bslam\b(?![\s-]*dunk)""".r
+    // A quiz or a slam as the event bills it — a compound ("QuizKino Live", "Quizlabor Leipzig", "PubUp-Kino-Quiz"), a
+    // quiz night, a poetry slam — never the bare word, a film's own: "Quiz Show" (1994, DE corpus 2026-10-12), "Slam".
+    """(?<=[\p{L}-])quiz|quiz(?=\p{L})|\bquiz[\s-]+(?:night|nacht|abend)\b""".r,
+    """\b(?:poetry|science|lyrik|dichter)[\s-]*slam\b""".r
   )
   private val FilmMention = """film""".r
 
