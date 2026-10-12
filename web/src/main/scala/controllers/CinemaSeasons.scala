@@ -8,9 +8,12 @@ import java.time.LocalDate
 /** A seasonal venue's typical window, months 1..12 both inclusive, and whether `today`
  *  falls outside it: `{"cinema": "Freiluftkino Kreuzberg", "opens": 5, "closes": 9, "offSeason": true}`.
  *
- *  `offSeason` is decided HERE, on the server's injected clock, and every client reads it
- *  rather than re-deriving it from the months — so the web, iOS and Android can never
- *  disagree with each other or with the worker about which venues are out of season. */
+ *  `offSeason` is decided HERE, on the server's injected clock and the city's own day
+ *  ([[Opening.offSeasonOn]]), and every client reads it rather than re-deriving it from the
+ *  months — so the web, iOS and Android never disagree with each other. The worker judges
+ *  the UTC day ([[Opening.offSeasonAt]]) instead, so for the hours a city's midnight is away
+ *  from UTC's either side of a month boundary, the page and the worker's census or alerts can
+ *  disagree about a venue whose season opens or closes that night. */
 case class ApiCinemaSeason(cinema: String, opens: Int, closes: Int, offSeason: Boolean)
 
 object ApiCinemaSeason {
