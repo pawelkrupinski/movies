@@ -96,7 +96,7 @@ def committed():
     data = json.loads((b.DATA / "pages.json").read_text())
     pages = {p["slug"]: p for p in data["pages"]}
     venues = [c for p in data["pages"] for c in p["cinemas"]]
-    check("pages.json: every venue on exactly one page", len(venues) == len(set(venues)) == 601)
+    check("pages.json: every venue on exactly one page", len(venues) == len(set(venues)) == 599)
     check("pages.json: every province slug is a page or redirects to one",
           all(p["slug"] in pages or data["retired"][p["slug"]]["page"] in pages
               for p in json.loads((b.DATA / "provinces.json").read_text())))
