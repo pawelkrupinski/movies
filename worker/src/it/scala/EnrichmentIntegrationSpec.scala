@@ -25,7 +25,11 @@ import tools.RealHttpFetch
 class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelTestExecution with tools.SuiteConfiguration {
 
   private val tmdbApiKey = configuration.tmdbApiKey
-  assume(tmdbApiKey.isDefined, "TMDB_API_KEY not set")
+
+  // Each test cancelled, not the suite: an `assume` in the constructor ABORTS the suite, which sbt
+  // counts as an error — so every local itAll without the key went red on a spec that never ran.
+  override def withFixture(test: NoArgTest): org.scalatest.Outcome =
+    if (tmdbApiKey.isEmpty) org.scalatest.Canceled("TMDB_API_KEY not set") else super.withFixture(test)
 
   private lazy val tmdb = new TmdbClient(new RealHttpFetch, apiKey = tmdbApiKey)
   private lazy val imdb = new ImdbClient(new RealHttpFetch)
