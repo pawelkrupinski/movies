@@ -2111,6 +2111,28 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       (linked ++ others).map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1175842)))
   }
 
+  "A stage house's relay of a work" should "not take a screen namesake of the work" in {
+    // DE "Paris Opera Ballett: Romeo und Julia" ×2 took Zeffirelli's 1968 film by its pooled evidence at 50.7%, and
+    // "RB&O Live: Tosca (Oper)" the 1976 film: TMDB holds no record of either relay.
+    val films = Seq(F(6003, "Romeo und Julia", 1968, "Franco Zeffirelli", 138, 9.8967, alternatives = Seq("Romeo and Juliet")),
+      F(91745, "Romeo und Julia", 2013, "Carlo Carlei", 118, 4.6407), F(144003, "Tosca", 1976, "Gianfranco De Bosio", 117, 2.5028))
+    val relays = Seq(KinoMuza, Helios).map(listing(_, "Paris Opera Ballett: Romeo und Julia")) :+ listing(Multikino, "RB&O Live: Tosca (Oper)")
+    val r = shipped(relays, films)
+    withClue(relays.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(relays.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(None))
+  }
+
+  it should "still take a record billing its house, and a film whose own title carries the word" in {
+    val films = Seq(F(1702789, "RBO 2026/27: Romeo und Julia (The Royal Ballet)", 2027, "", 0, 0.5),
+      F(6003, "Romeo und Julia", 1968, "Franco Zeffirelli", 138, 9.8967), F(9001, "Das Phantom der Oper", 2004, "Joel Schumacher", 143, 8.0))
+    val relay   = listing(KinoMuza, "RBO 2026/27: Romeo und Julia (The Royal Ballet)", Some(2027))
+    val phantom = listing(Helios, "Das Phantom der Oper", Some(2004), Some("Joel Schumacher"))
+    val r = shipped(Seq(relay, phantom), films)
+    withClue(Seq(relay, phantom).map(l => r.decisionOf(l.key).render).mkString("\n")) {
+      r.decisionOf(relay.key).film shouldBe Some(1702789)
+      r.decisionOf(phantom.key).film shouldBe Some(9001)
+    }
+  }
+
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {
     weights.version shouldBe "test-fixture-2"
     IdentityCalibration.resolver.scopes.keySet shouldBe weights.scopes.keySet

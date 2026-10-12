@@ -67,6 +67,8 @@ object IdentityMeasures {
     /** How many years an anniversary the title or original title bills celebrates ("30th Anniversary"), once per listing. */
     private[identity] lazy val anniversary: Option[Int] = (Seq(title) ++ rawTitle ++ originalTitle).iterator
       .flatMap(t => IdentityMeasures.AnniversaryYears.findFirstMatchIn(t)).map(_.group(1).toInt).nextOption()
+    /** Does the title name an opera or ballet house ([[IdentityMeasures.screenNamesake]]), once per listing: every candidate asks. */
+    private[identity] lazy val billsAStageHouse: Boolean = IdentityMeasures.billsAStageHouse(titles)
     /** The title's words, once per listing: a director's surname heading it is read against every candidate. */
     private[identity] lazy val titleWords: Seq[String] = ownForms.head.words
     private[identity] lazy val shapeKeys: Seq[String] = shapes.map(IdentityMeasures.key)
@@ -226,6 +228,23 @@ object IdentityMeasures {
       .map { case (id, listingWork) => filmWorks.getOrElse(id, Nil).sortBy(_.mkString(" ")).flatMap(billedUnder(listing, listingWork, film, _, s"work:$id")) }
       .find(_.nonEmpty).flatMap(_.headOption)
   }
+
+  /** Words naming an opera or ballet HOUSE, or its relay, in the languages venues bill one in: a title carrying one bills a
+   *  STAGING ("Paris Opera Ballett: …", "RB&O Live: Tosca (Oper)", "Balet z Opery Paryskiej …", "RBO …", "ROH …"). The
+   *  word as its own token: "Dreigroschenoper" or "Operation" is no house. */
+  private val StageHouseWords: Set[String] = Set("opera", "operas", "oper", "opern", "opery", "operze", "ballet", "ballets", "ballett",
+    "balet", "baletu", "balletto", "bolshoi", "bolschoi", "bolszoj", "staatsoper", "glyndebourne", "rbo", "roh")
+
+  /** Is `f` a SCREEN NAMESAKE of the work a stage house's relay bills: the listing's title names an opera or ballet house
+   *  beside the work ([[StageHouseWords]]) and none of the film's own titles bills one? A house's banner names its
+   *  STAGING: DE "Paris Opera Ballett: Romeo und Julia" is the ballet's relay, not Zeffirelli's 1968 film of the play,
+   *  however TMDB ranks it, and "RB&O Live: Tosca (Oper)" not the 1976 film. A staging's record bills its house ("RBO
+   *  2026/27: …", "The Metropolitan Opera: …", "BALLET LIVE. MANON. ROYAL ÓPERA HOUSE"); a bare one is no house's
+   *  that the listing can tell. */
+  def screenNamesake(listing: Listing, film: Film): Boolean =
+    listing.billsAStageHouse && !film.ownTitleTokens.exists(_.exists(StageHouseWords))
+  /** Does one of `titles` name an opera or ballet house ([[StageHouseWords]])? */
+  private[identity] def billsAStageHouse(titles: Seq[String]): Boolean = titles.exists(title => TitleContainment.tokens(title).exists(StageHouseWords))
 
   /** Does the film's record bill the listing's work under the listing's OWN house — the banner the
    *  listing puts on the work, spelt as the record spells it or learned to be it (`Houses.same`)?

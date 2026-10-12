@@ -22,8 +22,9 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
     IdentityMeasures.namesSeasonProduction(listing, film) && !IdentityMeasures.billing(listing, film).exists(houses.other)
 
   /** Does the listing's own evidence rule the film out: a learned cannot-link, its facts'
-   *  probability below the certified cut, a season its title names that the film is not of, or
-   *  its season's production of its work by ANOTHER house than its banner's (`houses`). */
+   *  probability below the certified cut, a season its title names that the film is not of,
+   *  its season's production of its work by ANOTHER house than its banner's (`houses`), or a screen
+   *  namesake of the work its stage house's banner bills ([[IdentityMeasures.screenNamesake]]). */
   def evidenceDenies(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean =
     evidenceDenial(listing, film, measures).isDefined
 
@@ -31,6 +32,9 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
   def evidenceDenial(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Option[String] =
     ListingConstraints.seasonsApart(listing.seasonYear, IdentityMeasures.filmSeason(film), film.year).map(_.toString)
       .orElse(Option.when(IdentityMeasures.namesSeasonProduction(listing, film) && !namesItsSeasonProduction(listing, film))("another house's season production"))
+      // a credit the venue publishes names its staging's record whatever TMDB titles it
+      .orElse(Option.when(IdentityMeasures.screenNamesake(listing, film) && !IdentityMeasures.sameDirector(measures))(
+        "a screen namesake of the work its stage house's billing names"))
       .orElse(ListingConstraints.learnedListingFilm(calibration, measures, weights.factsProbability(measures)).map(_.toString))
 
   /** Does `n`'s title name the film only by a PIECE that is its venue's own name or place — every
