@@ -2516,12 +2516,15 @@ class CinemaScraperCatalog(
   val germanFallbackFeeds: Map[Cinema, Seq[GermanFeed]] =
     models.Country.Germany.cities.flatMap(_.cinemas).map(c => c -> germanFeeds(c).tail).filter(_._2.nonEmpty).toMap
 
-  /** Each Spanish venue read off taquilla.com, by the SensaCine theaterId its FALLBACK reads
-   *  ([[sensacineScraper]]): where it was scraped before, and whose near weeks Taquilla
-   *  had to match to take it over (`data/spain/taquilla.json`). */
+  /** Each SensaCine-listed Spanish venue read off another source — taquilla.com or
+   *  Artesiete's own page ([[SpanishOwnSourcesData]]) — by the SensaCine theaterId its
+   *  FALLBACK reads ([[sensacineScraper]]): where it was scraped before, and what the
+   *  other source had to beat to take it over (`data/spain/taquilla.json`,
+   *  `data/spain/artesiete.json`). */
   val spanishSensacineFallback: Map[Cinema, String] =
     models.Country.Spain.cities.flatMap(_.cinemas)
-      .flatMap(c => models.SpanishRoster.theaterIdByCinema.get(c).filter(SpanishOwnSourcesData.taquilla.contains).map(c -> _))
+      .flatMap(c => models.SpanishRoster.theaterIdByCinema.get(c)
+        .filter(id => SpanishOwnSourcesData.taquilla.contains(id) || SpanishOwnSourcesData.artesiete.contains(id)).map(c -> _))
       .toMap
 
   /** Where every kinoprogramm.com fallback reads its films' catalogue pages: one page per

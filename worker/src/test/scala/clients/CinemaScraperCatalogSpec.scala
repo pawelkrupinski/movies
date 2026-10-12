@@ -672,7 +672,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     scrapers.head.scrapeHosts shouldBe Set("www.taquilla.com")
     c.spanishSensacineFallback.get(ingenio) shouldBe Some("E0433")
     c.sensacineScraper("E0433", ingenio).scrapeHosts shouldBe Set("www.sensacine.com")
-    c.spanishSensacineFallback.size shouldBe 60
+    c.spanishSensacineFallback.size shouldBe 71   // 60 Taquilla venues, 11 Artesiete
     // A pair the name rule left for review, decided by the page's address: the
     // Campanar page is the row SensaCine serves, not its idle duplicate.
     c.all.find(_.cinema == spanishVenue("E0773")).value.scrapeHosts shouldBe Set("www.taquilla.com")
@@ -697,7 +697,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // session (data/spain/artesiete.json). Two trade under other names on SensaCine:
   // Multicines Úbeda and Multicines Bahia Mar. Segovia's subdomain, timing out on
   // 2026-10-12's first try, answered (from the worker's IP too) on the retry.
-  "Spain's Artesiete venues" should "read the chain's own venue page, not SensaCine" in {
+  "Spain's Artesiete venues" should "read the chain's own venue page, keeping SensaCine as their fallback" in {
     val c = catalog()
     Seq(
       "E0716" -> "https://segovia.artesiete.es/Cine/13/Artesiete-Segovia",
@@ -710,6 +710,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       val venue = spanishVenue(theaterId)
       withClue(s"${venue.displayName}: ") {
         c.all.filter(_.cinema == venue).map(_.sourceUrl) shouldBe Seq(Some(page))
+        c.spanishSensacineFallback.get(venue) shouldBe Some(theaterId)
       }
     }
   }

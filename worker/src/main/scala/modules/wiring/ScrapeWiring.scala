@@ -181,7 +181,7 @@ trait ScrapeWiring { self: WorkerWiring =>
     cinemaScraperCatalog.germanFallbackFeeds
 
   /** Cinema → the SensaCine theaterId its fallback reads, for Spanish venues whose primary
-   *  is taquilla.com. */
+   *  is taquilla.com or Artesiete's own page. */
   protected def spanishSensacineFallback: Map[Cinema, String] =
     cinemaScraperCatalog.spanishSensacineFallback
 
@@ -202,8 +202,8 @@ trait ScrapeWiring { self: WorkerWiring =>
    *     that lists a showtime, once its primary has failed [[GermanFailedRuns]] SEPARATE
    *     runs: German venues are scraped ~10-hourly, so a 6h window would hand over on the
    *     second failure;
-   *   - a Spanish venue read off taquilla.com → SensaCine, where it was read before, once
-   *     its primary has failed [[SpanishFailedRuns]] separate runs (the 7-hourly sweep has
+   *   - a Spanish venue read off taquilla.com or Artesiete's own page → SensaCine, where it
+   *     was read before, once its primary has failed [[SpanishFailedRuns]] separate runs (the 7-hourly sweep has
    *     the same 6h-window problem);
    *   - an eligible single venue in a Filmweb country (Poland) → Filmweb. Outside
    *     Poland Filmweb lists nothing, so a wrapper there could only page "Filmweb has
@@ -234,7 +234,7 @@ trait ScrapeWiring { self: WorkerWiring =>
    *  chain: several, so one bad scrape — or two — rides out on the last good listing. */
   private val GermanFailedRuns = 3
 
-  /** Separate failed runs of taquilla.com before a Spanish venue hands back to SensaCine:
+  /** Separate failed runs of its own source before a Spanish venue hands back to SensaCine:
    *  two, so one bad scrape rides out on the last good listing. */
   private val SpanishFailedRuns = 2
 
