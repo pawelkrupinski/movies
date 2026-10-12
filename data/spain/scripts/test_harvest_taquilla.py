@@ -98,12 +98,13 @@ def test_taquilla_must_carry_the_near_days_sensacine_does():
     assert not ht.decide(served, days, {"2026-10-12": 20, "2026-10-13": 20, "2026-12-17": 9}, H)[0]
 
 
-def test_generate_refuses_a_venue_the_roster_lacks_or_ocine_serves():
-    problems = gos.problems({"E1", "E2", "E3"}, {"E3"}, {"E1": {}, "E9": {}, "E3": {}})
+def test_generate_refuses_a_venue_the_roster_lacks_ocine_serves_or_two_sources_claim():
+    problems = gos.problems({"E1", "E2", "E3"}, {"E3"}, {"E1": {}, "E9": {}}, {"E1": {}, "E3": {}})
     assert any("E9 is not a roster venue" in p for p in problems)
-    assert any("E3 is an Ocine venue" in p for p in problems)
-    assert len(problems) == 2
-    assert gos.problems({"E1"}, set(), {"E1": {}}) == []
+    assert any("artesiete.json: E3 is an Ocine venue" in p for p in problems)
+    assert any("E1 is in both" in p for p in problems)
+    assert len(problems) == 3
+    assert gos.problems({"E1", "E2"}, set(), {"E1": {}}, {"E2": {}}) == []
 
 
 if __name__ == "__main__":

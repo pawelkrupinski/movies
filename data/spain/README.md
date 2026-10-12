@@ -262,6 +262,15 @@ python3 data/spain/scripts/test_harvest_taquilla.py
 python3 data/spain/scripts/generate_own_sources.py
 ```
 
+### Artesiete: `artesiete.json`
+
+Hand-kept, like `ocine.json`: the Artesiete chain's venues, by `theaterId`, each
+with its page on the chain's own site (`<venue>.artesiete.es/Cine/<id>/<slug>`),
+which embeds every session on sale — two months out, room and format on each —
+in one HTML-escaped prop. `ArtesieteClient` reads that page instead of SensaCine.
+The file's `_comment` says how each venue was matched and why Segovia is not on
+it. `generate_own_sources.py` refuses a venue both files name.
+
 **A re-harvest is not free.** `displayName` is the wire key every stored
 showtime is filed under, so a venue whose name changes upstream arrives as a
 NEW venue and its history stays filed under the old name. Re-run the pipeline

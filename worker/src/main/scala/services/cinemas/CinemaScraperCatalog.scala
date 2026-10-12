@@ -7,7 +7,7 @@ import services.cinemas.pl._
 import services.cinemas.common.{CineamoClient, FlicksClient, FlicksMarket, KinoheldClient, KinoprogrammClient}
 import services.cinemas.de.{GermanFeed, GermanSources}
 import services.cinemas.uk.{CineworldClient, OdeonClient, TheOldCourtClient}
-import services.cinemas.es.{OcineClient, SpanishOwnSourcesData, TaquillaClient, TaquillaVenue}
+import services.cinemas.es.{ArtesieteClient, OcineClient, SpanishOwnSourcesData, TaquillaClient, TaquillaVenue}
 import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
 import services.movies.TitleNormalizer
 
@@ -1977,16 +1977,22 @@ class CinemaScraperCatalog(
   private def taquilla(venue: TaquillaVenue, cinema: Cinema): TaquillaClient =
     new TaquillaClient(http, venue, cinema, today = venueClock.todayAt(cinema, TaquillaClient.Zone))
 
-  /** A SensaCine-listed Spanish venue's scraper: taquilla.com where
-   *  [[SpanishOwnSourcesData]] names it, SensaCine otherwise. */
+  // Artesiete venues read the chain's own venue page — two months of sessions with
+  // room and format, against SensaCine's weeks; see `data/spain/artesiete.json`.
+  private def artesiete(page: String, cinema: Cinema): ArtesieteClient =
+    new ArtesieteClient(http, page, cinema)
+
+  /** A SensaCine-listed Spanish venue's scraper: its chain's own page or taquilla.com
+   *  where [[SpanishOwnSourcesData]] names one, SensaCine otherwise. */
   private def spanishListed(theaterId: String, cinema: Cinema): CinemaScraper =
-    SpanishOwnSourcesData.taquilla.get(theaterId).map(taquilla(_, cinema))
+    SpanishOwnSourcesData.artesiete.get(theaterId).map(artesiete(_, cinema))
+      .orElse(SpanishOwnSourcesData.taquilla.get(theaterId).map(taquilla(_, cinema)))
       .getOrElse(sensacine(theaterId, cinema))
 
   // Spain — data-driven from the full SpanishRoster (240 town pages / 601 cinemas):
   // one scraper per cinema, keyed by the PAGE slug City.slug uses — the venue's
-  // own chain server where the roster names one, then taquilla.com where
-  // `SpanishOwnSourcesData` names it, SensaCine otherwise. Keyed off
+  // own chain server where the roster names one, then its chain's own page or
+  // taquilla.com where `SpanishOwnSourcesData` names one, SensaCine otherwise. Keyed off
   // `Country.Spain.cities` rather than off `SpanishRoster.places`, because
   // the slug a page is finally addressable under is decided in
   // `City.spanishCities` (one of them is qualified away from a US metro's) and

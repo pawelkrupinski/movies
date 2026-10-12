@@ -9747,6 +9747,11 @@ services.cinemas.de.GermanSources
 services.cinemas.de.GermanSources$
 services.cinemas.de.GermanSourcesData
 services.cinemas.de.GermanSourcesData$
+services.cinemas.es.ArtesieteClient
+services.cinemas.es.ArtesieteParser
+services.cinemas.es.ArtesieteParser$
+services.cinemas.es.ArtesieteParser$$anon$1
+services.cinemas.es.ArtesieteParser$$anon$2
 services.cinemas.es.OcineClient
 services.cinemas.es.OcineClient$
 services.cinemas.es.OcineParser

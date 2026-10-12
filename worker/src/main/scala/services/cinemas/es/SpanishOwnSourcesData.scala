@@ -1,6 +1,6 @@
-// GENERATED from data/spain/taquilla.json by
+// GENERATED from data/spain/taquilla.json + data/spain/artesiete.json by
 // data/spain/scripts/generate_own_sources.py -- do NOT edit by hand.
-// 56 venues off taquilla.com; see data/spain/README.md.
+// 56 venues off taquilla.com, 10 off Artesiete's own pages; see data/spain/README.md.
 package services.cinemas.es
 
 private[cinemas] object SpanishOwnSourcesData {
@@ -62,5 +62,19 @@ private[cinemas] object SpanishOwnSourcesData {
     "E1042" -> TaquillaVenue("96559", "/cadiz/yelmo-cines-premium-bahia-sur-cadiz"),   // Yelmo Cines Premium Bahía Sur
     "E2902" -> TaquillaVenue("96746", "/pontevedra/yelmo-cines-premium-vialia-vigo-pontevedra"),   // Yelmo Cines Premium Vialia Vigo
     "E2916" -> TaquillaVenue("33225", "/san-sebastian-de-los-reyes/yelmo-cines-plaza-norte-2-san-sebastian-de-los-reyes"),   // Yelmo Cines Plaza Norte 2
+  )
+
+  /** SensaCine theaterId -> the venue's page on its own Artesiete subdomain. */
+  val artesiete: Map[String, String] = Map(
+    "E0489" -> "https://lucena.artesiete.es/Cine/19/Artesiete-Lucena",   // Artesiete Lucena
+    "E0491" -> "https://bahia.artesiete.es/Cine/33/Artesiete-Bahia",   // Multicines Bahia Mar
+    "E0538" -> "https://ubeda.artesiete.es/Cine/20/Cines-Ubeda",   // Multicines Úbeda
+    "E0720" -> "https://ecija.artesiete.es/Cine/11/Artesiete-Ecija",   // Artesiete Écija
+    "E0722" -> "https://www.artesiete.es/Cine/26/Artesiete-Alhsur",   // Artesiete Alhsur
+    "E0723" -> "https://terrazas.artesiete.es/Cine/1/Artesiete-terrazas",   // Artesiete Las Terrazas
+    "E0803" -> "https://alfares.artesiete.es/Cine/8/Artesiete-Alfares",   // Artesiete Los Alfares
+    "E0805" -> "https://holea.artesiete.es/Cine/2/Artesiete-Holea",   // Artesiete Holea
+    "E0863" -> "https://fan.artesiete.es/Cine/4/Artesiete-Fan",   // Artesiete Fan
+    "E1041" -> "https://latorre.artesiete.es/Cine/21/Artesiete-La-Torre",   // Artesiete La Torre
   )
 }

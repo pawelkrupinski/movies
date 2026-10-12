@@ -581,6 +581,26 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       "https://www.taquilla.com/json2/search/calendar") should not be empty
   }
 
+  // Artesiete's own venue pages sell two months out with room and format on every
+  // session (data/spain/artesiete.json). Two trade under other names on SensaCine:
+  // Multicines Úbeda and Multicines Bahia Mar. Segovia's subdomain never answered.
+  "Spain's Artesiete venues" should "read the chain's own venue page, not SensaCine" in {
+    val c = catalog()
+    Seq(
+      "E0723" -> "https://terrazas.artesiete.es/Cine/1/Artesiete-terrazas",
+      "E1041" -> "https://latorre.artesiete.es/Cine/21/Artesiete-La-Torre",
+      "E0722" -> "https://www.artesiete.es/Cine/26/Artesiete-Alhsur",
+      "E0538" -> "https://ubeda.artesiete.es/Cine/20/Cines-Ubeda",
+      "E0491" -> "https://bahia.artesiete.es/Cine/33/Artesiete-Bahia",
+    ).foreach { case (theaterId, page) =>
+      val venue = spanishVenue(theaterId)
+      withClue(s"${venue.displayName}: ") {
+        c.all.filter(_.cinema == venue).map(_.sourceUrl) shouldBe Seq(Some(page))
+      }
+    }
+    c.all.find(_.cinema == spanishVenue("E0716")).value.scrapeHosts shouldBe Set("www.sensacine.com")
+  }
+
   "Germany's venues" should "be scraped under the town page they are on, with their fallback chain kept" in {
     // The pages were 35 km regions until 2026-10: the Main-Taunus Kinopolis was on
     // /frankfurt-am-main/; Sulzbach (Taunus) clusters with Hofheim now.

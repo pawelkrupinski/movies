@@ -15,7 +15,7 @@
 #   data/spain/town-coords.json → data/spain/scripts/build_pages.py   → data/spain/pages.json
 #   data/germany, data/spain, data/us → their generate_roster.py     → *RosterData.scala
 #   data/germany/venue-sources.json → data/germany/scripts/generate_sources.py → GermanSourcesData.scala
-#   data/spain/taquilla.json → data/spain/scripts/generate_own_sources.py → SpanishOwnSourcesData.scala
+#   data/spain/{taquilla,artesiete}.json → data/spain/scripts/generate_own_sources.py → SpanishOwnSourcesData.scala
 #
 # An edit to any link that skips the regeneration below it compiles, passes every spec that
 # reads the stale output, and ships a roster that disagrees with itself. (The catalog seeds
