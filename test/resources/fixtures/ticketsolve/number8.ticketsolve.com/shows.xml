@@ -1,0 +1,3250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<venues>
+  <venue id="426564578">
+    <name>
+      <![CDATA[Number 8]]>
+    </name>
+    <shows>
+      <show id="1173667471">
+        <name>
+          <![CDATA[Christmas with the Flowers Band 2026]]>
+        </name>
+        <description>
+          <![CDATA[<p><span>The 2024 National Champion Band of Great Britain return to Number 8 for an afternoon of festive favourites. There really will be something for everyone on the programme with repertoire ranging from Christmas classics, festive film music, original music for brass band, and much more.</span></p><p><span>There will also be the opportunity for audience participation with some traditional Christmas carols accompanied by the band. Flowers Band&rsquo;s star soloists will be on display once again with seasonal solos, and the afternoon will all be tied together with the witty commentary of the band&rsquo;s conductor, Paul Holland.</span></p><p><br></p><p><span>&pound;20; Seniors &pound;17.50; Child &pound;5 + &pound;1.20 per ticket if booked online</span></p>]]>
+        </description>
+        <event_category>Show Hires</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173667471/events</url>
+        <version>137</version>
+        <tags>
+          <tag>brass</tag>
+          <tag>event</tag>
+          <tag>live_music</tag>
+          <tag>music</tag>
+          <tag>show_hires</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/yswjvi4zl9cl3qolv3u2ojeyfr5y/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/yswjvi4zl9cl3qolv3u2ojeyfr5y/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/yswjvi4zl9cl3qolv3u2ojeyfr5y/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428727206">
+            <name>
+              <![CDATA[19 Dec 2026 - 14:00 @ Number 8 Christmas with the Flowers Band 2026]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-19T14:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-19T14:00:00+00:00</opening_time_iso>
+            <event_number>428727206</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173667471/events/428727206/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173667471/events/428727206.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668464">
+        <name>
+          <![CDATA[Coyote vs ACME (PG)]]>
+        </name>
+        <description>
+          <![CDATA[<div>After decades of humiliating product failures in his pursuit of the Road Runner, a tenacious Wile E. Coyote hires a down-on-his-luck attorney. Together, they sue the profit-obsessed Acme Corporation the manufacturer of anything and everything used by the Looney Tunes characters.</div><div><br></div><div>Thu 26 Nov &ndash; 7.30pm; Mon 30 Nov &ndash; 11.00am</div><div>Dir: Dave Green, running time tbc</div><div>Tickets: &pound;9.50 (&pound;9.00) + 80p if booked online</div><div><b>This film contains flashing images which may affect viewers who are susceptible to photosensitive epilepsy.</b></div><div><br></div><div>https://www.youtube.com/watch?v=FF8CPvF-SJE</div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668464/events</url>
+        <version>75</version>
+        <tags>
+          <tag>film</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/l8ht0mnghyw87efekyjkt7jozsax/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/l8ht0mnghyw87efekyjkt7jozsax/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/l8ht0mnghyw87efekyjkt7jozsax/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734678">
+            <name>
+              <![CDATA[26 Nov 2026 - 19:30 @ Number 8 Coyote vs ACME (PG)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-26T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-26T19:30:00+00:00</opening_time_iso>
+            <event_number>428734678</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668464/events/428734678/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668464/events/428734678.xml</url>
+            </feed>
+          </event>
+          <event id="428734679">
+            <name>
+              <![CDATA[30 Nov 2026 - 11:00 @ Number 8 Coyote vs ACME (PG)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-30T11:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-30T11:00:00+00:00</opening_time_iso>
+            <event_number>428734679</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668464/events/428734679/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668464/events/428734679.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668463">
+        <name>
+          <![CDATA[Digger (15)]]>
+        </name>
+        <description>
+          <![CDATA[<div>In this dark, satirical comedy starring Tom Cruise, the most powerful man in the world embarks on a frantic mission to prove he is humanity&apos;s saviour before the disaster he&apos;s unleashed destroys everything.</div><div><br></div><div>Mon 23 Nov &ndash; 7.30pm; Tue 24 Nov &ndash; 7.30pm; Fri 27 Nov &ndash; 2.00pm</div><div>Dir. Alejandro Gonzalez Inarritu, 2hrs 9mins</div><div>Tickets: &pound;9.50 (&pound;9.00) + 80p if booked online</div><div>https://www.youtube.com/watch?v=qORTe1wW3Wg</div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668463/events</url>
+        <version>29</version>
+        <tags>
+          <tag>film</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/kfcumah81eqe6on8ga1v9ytog586/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/kfcumah81eqe6on8ga1v9ytog586/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/kfcumah81eqe6on8ga1v9ytog586/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734675">
+            <name>
+              <![CDATA[23 Nov 2026 - 19:30 @ Number 8 Digger (15)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-23T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-23T19:30:00+00:00</opening_time_iso>
+            <event_number>428734675</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668463/events/428734675/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668463/events/428734675.xml</url>
+            </feed>
+          </event>
+          <event id="428734676">
+            <name>
+              <![CDATA[24 Nov 2026 - 19:30 @ Number 8 Digger (15)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-24T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-24T19:30:00+00:00</opening_time_iso>
+            <event_number>428734676</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668463/events/428734676/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668463/events/428734676.xml</url>
+            </feed>
+          </event>
+          <event id="428734677">
+            <name>
+              <![CDATA[27 Nov 2026 - 14:00 @ Number 8 Digger (15)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-27T14:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-27T14:00:00+00:00</opening_time_iso>
+            <event_number>428734677</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668463/events/428734677/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668463/events/428734677.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668458">
+        <name>
+          <![CDATA[Divertimento (cert tbc)]]>
+        </name>
+        <description>
+          <![CDATA[<div>Determined, gifted 17 year old musician Zahia, has a dream &ndash; to become a conductor. As the daughter of Algerian immigrants the odds are stacked against her as she strives to make music accessible to all. Inspired by the real life story of renowned female conductor Zahia Ziouari.</div><div><br></div><div>French with subtitles. Join our French language caf&eacute; before the screening (see p.2)</div><div>Thu 12 Nov &ndash; 7.30pm
+Dir. Marie-Castille Mention-Schaar, 1hr 50mins</div><div>&pound;7 Student tickets</div><div>Tickets: &pound;9.50 (&pound;9.00) + 80p if booked online</div><div>https://www.youtube.com/watch?v=fhTuQBmB0Hg</div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668458/events</url>
+        <version>69</version>
+        <tags>
+          <tag>film</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/9b724rq8l9nzrktktb2raty8u0p4/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/9b724rq8l9nzrktktb2raty8u0p4/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/9b724rq8l9nzrktktb2raty8u0p4/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734666">
+            <name>
+              <![CDATA[12 Nov 2026 - 19:30 @ Number 8 Divertimento (cert tbc)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-12T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-12T19:30:00+00:00</opening_time_iso>
+            <event_number>428734666</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668458/events/428734666/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668458/events/428734666.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668234">
+        <name>
+          <![CDATA[Fallen Angels by Noël Coward]]>
+        </name>
+        <description>
+          <![CDATA[<div><b>Please note: this screening is a recorded live performance&nbsp;</b></div><div><br></div><div>Sparkling, dizzying, and deliciously potent, Fallen Angels, No&euml;l Coward&rsquo;s champagne-fresh comedy
+of bad manners, shocked and delighted audiences at its 1925 premiere.&nbsp;</div><div><br></div><div>Two upper-class wives, their
+husbands away for the day, share a few toasts to their pre-marital dalliances&mdash;with the same man,
+who just may be en route from France to visit. Old rivalries and past scandals bubble to the surface
+in this intoxicating romp from one of theatre&rsquo;s comedy masters.&nbsp;</div><div><br></div><div>Starring Golden Globe-winner Rose Byrne (If I Had Legs I&rsquo;d Kick You) and Tony Award winner Kelli
+O&rsquo;Hara (The King and I), with Tracee Chimo, Mark Consuelos (making his Broadway debut),
+Christopher Fitzgerald and Aasif Mandvi, this new Roundabout Theatre and Tony Award-winning
+production of &lsquo;pure escapist fun&rsquo; (The New York Times) was filmed live on stage at Broadway&rsquo;s Todd
+Haimes Theatre and now comes to the big screen.&nbsp;</div><div><br></div><div>Tickets: &pound;16, Seniors &pound;15, Students &pound;10 + &pound;1.20&nbsp;per ticket if booked online (Friends &pound;1 discount)</div><div><p><b>https://www.youtube.com/watch?v=UPe63HYOypc</b></p></div>]]>
+        </description>
+        <event_category>Event Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668234/events</url>
+        <version>108</version>
+        <tags>
+          <tag>event_cinema</tag>
+          <tag>friends</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/7ury0tcqoew64c0h6f10x9qa72rs/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/7ury0tcqoew64c0h6f10x9qa72rs/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/7ury0tcqoew64c0h6f10x9qa72rs/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428733100">
+            <name>
+              <![CDATA[22 Oct 2026 - 19:00 @ Number 8 Fallen Angels by Noël Coward]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-22T19:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-22T19:00:00+01:00</opening_time_iso>
+            <event_number>428733100</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668234/events/428733100/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668234/events/428733100.xml</url>
+            </feed>
+          </event>
+          <event id="428733101">
+            <name>
+              <![CDATA[25 Oct 2026 - 14:00 @ Number 8 Fallen Angels by Noël Coward]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-25T14:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-25T14:00:00+00:00</opening_time_iso>
+            <event_number>428733101</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668234/events/428733101/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668234/events/428733101.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668418">
+        <name>
+          <![CDATA[Festive Folk 2026]]>
+        </name>
+        <description>
+          <![CDATA[<p>Join us for our Christmas show, an evening of carols,
+wassails, winter folk songs and swing &amp; jazz Christmas favourites.
+Heartwarming music bringing the festive season to life. </p>
+
+<p>Hosted by Julie July with special guests &ndash; exceptional jazz
+guitarist Caley Groves, folk rock legend Dik Cadbury, singer-songwriter Carol
+Lee Sampson, Guitarist Steve Rezillo, drummer Keith Baker, multi-talented
+guitarist &amp; fiddle player Jools Street.</p>
+
+<p>It&rsquo;s bound to be a favourite so book early folks!!</p>
+
+<p>Tickets: &pound;18.50 (plus &pound;1.20 per ticket if booked online)</p>]]>
+        </description>
+        <event_category>Live Event</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668418/events</url>
+        <version>69</version>
+        <tags>
+          <tag>festive</tag>
+          <tag>folk</tag>
+          <tag>live</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/0021smocdu9ckp8ybfy7quzpvbfc/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/0021smocdu9ckp8ybfy7quzpvbfc/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/0021smocdu9ckp8ybfy7quzpvbfc/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734384">
+            <name>
+              <![CDATA[23 Dec 2026 - 19:30 @ Number 8 Festive Folk 2026]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-23T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-23T19:30:00+00:00</opening_time_iso>
+            <event_number>428734384</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668418/events/428734384/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668418/events/428734384.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668387">
+        <name>
+          <![CDATA[Foyer Folk: Sian & Rob Colquhoun]]>
+        </name>
+        <description>
+          <![CDATA[<p>This close-harmony Americana duo combines original
+songwriting with the energy of bluegrass and old-time music. Featuring
+clawhammer banjo, flat picked guitar, flat-foot dancing and rich vocal
+harmonies, they deliver dynamic, roots-driven performances.</p>
+
+<p>Tickets: &pound;12 (plus &pound;1.20 per ticket if booked online)</p>]]>
+        </description>
+        <event_category>Foyer Event</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668387/events</url>
+        <version>65</version>
+        <tags>
+          <tag>folk</tag>
+          <tag>foyer</tag>
+          <tag>foyer_folk</tag>
+        </tags>
+        <images>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734344">
+            <name>
+              <![CDATA[17 Oct 2026 - 20:00 @ Number 8 Foyer Folk: Sian & Rob Colquhoun]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-17T20:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-17T20:00:00+01:00</opening_time_iso>
+            <event_number>428734344</event_number>
+            <venue_layout>Foyer 70</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668387/events/428734344</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668387/events/428734344.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668388">
+        <name>
+          <![CDATA[Foyer Folk: Sunjay]]>
+        </name>
+        <description>
+          <![CDATA[<p>Blending blues, country and folk traditions, his
+performances showcase exceptional musicianship, encyclopaedic musical
+knowledge, and a sharp sense of humour, creating a truly memorable evening.</p>
+
+<p>Tickets: &pound;12 (plus &pound;1.20 per ticket if booked online)</p>]]>
+        </description>
+        <event_category>Foyer Event</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668388/events</url>
+        <version>65</version>
+        <tags>
+          <tag>folk</tag>
+          <tag>foyer</tag>
+          <tag>foyer_folk</tag>
+        </tags>
+        <images>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734345">
+            <name>
+              <![CDATA[14 Nov 2026 - 20:00 @ Number 8 Foyer Folk: Sunjay]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-14T20:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-14T20:00:00+00:00</opening_time_iso>
+            <event_number>428734345</event_number>
+            <venue_layout>Foyer 70</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668388/events/428734345</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668388/events/428734345.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173667972">
+        <name>
+          <![CDATA[GIANT - The Play]]>
+        </name>
+        <description>
+          <![CDATA[<p><span>GIANT, the 5-star critically acclaimed play starring John Lithgow (<i>Killers
+of the Flower Moon</i>, <i>The Crown</i>) as Roald Dahl, comes to the big
+screen.&nbsp;</span></p><p><span><br></span></p><p><span>Winner of 3 Olivier Awards&reg; including Best Play and a Tony Award&reg; for
+Best Actor in a Play (John Lithgow), the production was filmed live in London&rsquo;s
+West End ahead of its sold-out Broadway run.&nbsp;</span></p><p><span style="font-size:0.75rem;">The stellar cast includes Aya Cash
+(</span><i style="font-size:0.75rem;">The Boys, The Franchise, You&rsquo;re the Worst</i><span style="font-size:0.75rem;">)</span><span style="font-size:0.75rem;">, Elliot Levey (</span><i style="font-size:0.75rem;">Cold War, Patriots, Good</i><span style="font-size:0.75rem;">)
+and Rachael Stirling (</span><i style="font-size:0.75rem;">The Divine Mrs S</i><span style="font-size:0.75rem;">).</span></p>
+
+
+
+<p><span>A world-famous children&rsquo;s author under threat. A battle of wills in
+the wake of scandal. And one chance to make amends...It&rsquo;s the summer of 1983, <i>The
+Witches</i> is about to hit the shelves and Roald Dahl is making last-minute
+edits. But the outcry at his recent,
+explicitly antisemitic article won&rsquo;t die down. Across a single afternoon at his
+family home, and rocked by an unexpectedly explosive confrontation, Dahl is
+forced to choose: make a public apology or risk his name and reputation.&nbsp;</span></p><p><span>Inspired by real events, GIANT<i> </i>explores with dark humour the
+difference between considered opinion and dangerous rhetoric offering a
+complicated portrait of a fiendishly charismatic icon. </span></p><p><span><br></span></p><p>Tickets: &pound;16, Seniors &pound;15, Students &pound;10 (Friends &pound;1 discount) (plus &pound;1.20 per ticket if booked online)
+2hrs 16mins<span></span></p>]]>
+        </description>
+        <event_category>Event Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173667972/events</url>
+        <version>116</version>
+        <tags>
+          <tag>event_cinema</tag>
+          <tag>friends</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/z9wzyb3j3kmoc1lbzy1e34963qp9/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/z9wzyb3j3kmoc1lbzy1e34963qp9/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/z9wzyb3j3kmoc1lbzy1e34963qp9/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428731147">
+            <name>
+              <![CDATA[22 Nov 2026 - 14:00 @ Number 8 GIANT - The Play]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-22T14:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-22T14:00:00+00:00</opening_time_iso>
+            <event_number>428731147</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173667972/events/428731147/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173667972/events/428731147.xml</url>
+            </feed>
+          </event>
+          <event id="428731148">
+            <name>
+              <![CDATA[27 Nov 2026 - 19:00 @ Number 8 GIANT - The Play]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-27T19:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-27T19:00:00+00:00</opening_time_iso>
+            <event_number>428731148</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173667972/events/428731148/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173667972/events/428731148.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668414">
+        <name>
+          <![CDATA[GreenMatthews: Gaudete]]>
+        </name>
+        <description>
+          <![CDATA[<p>Following on from GreenMatthews&apos; 12 years of successful
+touring Christmas shows, Gaudete! is an expanded lineup playing new and
+exciting arrangements of Chris and Sophie&rsquo;s popular festive fare. Featuring
+Emily Baines on early woodwinds and Richard Heacock on violin, their music is
+lush, rich and heartwarming &ndash; perfectly evoking the Spirit of Christmas Past.
+Their repertoire spans 600 years from the Middle Ages to the 20th century. </p>
+
+<p>Featuring Christmas carols, winter folk songs, toe-tapping
+tunes and a plethora of weird and wonderful instruments, Gaudete! brings the
+festive season to life in a riot of sound and colour!</p>
+
+<p>Tickets: &pound;20, Child &pound;12 (plus &pound;1.20 per ticket if booked
+online)</p>]]>
+        </description>
+        <event_category>Live Event</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668414/events</url>
+        <version>69</version>
+        <tags>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/vhpb5vly7hj3y060uhtc9denzn5d/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/vhpb5vly7hj3y060uhtc9denzn5d/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/vhpb5vly7hj3y060uhtc9denzn5d/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734380">
+            <name>
+              <![CDATA[18 Dec 2026 - 19:30 @ Number 8 GreenMatthews: Gaudete]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-18T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-18T19:30:00+00:00</opening_time_iso>
+            <event_number>428734380</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668414/events/428734380/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668414/events/428734380.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668386">
+        <name>
+          <![CDATA[Hadestown: The Musical]]>
+        </name>
+        <description>
+          <![CDATA[<p>Filmed live on stage in London&rsquo;s West End and featuring the
+original Broadway stars, Hadestown invites audiences on a hell-raising journey
+to the underworld and back.</p>
+
+<p>Hadestown: The Musical&nbsp;is the genre-defying musical
+blending modern American folk music with New Orleans-inspired jazz to reimagine
+a sweeping ancient tale&nbsp;of two intertwining love stories,&nbsp;that of
+young dreamers Orpheus and Eurydice, and King Hades and his wife Persephone.</p>
+
+<p>Tickets: &pound;17, Seniors &pound;16, Child &pound;10 (plus &pound;1.20 per ticket
+if booked online)</p><p><b>This screening contains flashing images which may affect viewers who are susceptible to photosensitive epilepsy.</b></p><p>https://www.youtube.com/watch?v=dsDiZmc9L9U</p>
+
+<p><br></p>]]>
+        </description>
+        <event_category>Event Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668386/events</url>
+        <version>82</version>
+        <tags>
+          <tag>event_cinema</tag>
+          <tag>musical</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/083g1n4qbsi6z2w6riv4bvp6fr8i/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/083g1n4qbsi6z2w6riv4bvp6fr8i/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/083g1n4qbsi6z2w6riv4bvp6fr8i/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734342">
+            <name>
+              <![CDATA[13 Oct 2026 - 19:00 @ Number 8 Hadestown: The Musical]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-13T19:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-13T19:00:00+01:00</opening_time_iso>
+            <event_number>428734342</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668386/events/428734342/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668386/events/428734342.xml</url>
+            </feed>
+          </event>
+          <event id="428734343">
+            <name>
+              <![CDATA[18 Oct 2026 - 14:00 @ Number 8 Hadestown: The Musical]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-18T14:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-18T14:00:00+01:00</opening_time_iso>
+            <event_number>428734343</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668386/events/428734343/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668386/events/428734343.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668461">
+        <name>
+          <![CDATA[Heart of the Beast (12A)]]>
+        </name>
+        <description>
+          <![CDATA[<div>After a harrowing plane crash, a Special Forces officer (Brad Pitt) and his combat dog find themselves stranded deep in the Alaskan wilderness. Together, they are forced into a brutal fight for survival against the elements.</div><div><br></div><div>Tue 17 Nov &ndash; 7.30pm; Fri 20 Nov &ndash; 2.00pm &amp; 7.30pm</div><div>Dir. David Ayer, 1hr 41mins</div><div>Tickets: &pound;9.50 (&pound;9.00) + 80p if booked online</div><div>https://www.youtube.com/watch?v=JFQcDFhNh4o</div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668461/events</url>
+        <version>72</version>
+        <tags>
+          <tag>film</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/s6phgf5hf2e0i8rqxquzirgkuckn/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/s6phgf5hf2e0i8rqxquzirgkuckn/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/s6phgf5hf2e0i8rqxquzirgkuckn/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734671">
+            <name>
+              <![CDATA[17 Nov 2026 - 19:30 @ Number 8 Heart of the Beast (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-17T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-17T19:30:00+00:00</opening_time_iso>
+            <event_number>428734671</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668461/events/428734671/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668461/events/428734671.xml</url>
+            </feed>
+          </event>
+          <event id="428734672">
+            <name>
+              <![CDATA[20 Nov 2026 - 14:00 @ Number 8 Heart of the Beast (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-20T14:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-20T14:00:00+00:00</opening_time_iso>
+            <event_number>428734672</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668461/events/428734672/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668461/events/428734672.xml</url>
+            </feed>
+          </event>
+          <event id="428734673">
+            <name>
+              <![CDATA[20 Nov 2026 - 19:30 @ Number 8 Heart of the Beast (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-20T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-20T19:30:00+00:00</opening_time_iso>
+            <event_number>428734673</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668461/events/428734673/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668461/events/428734673.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668403">
+        <name>
+          <![CDATA[John-Philip]]>
+        </name>
+        <description>
+          <![CDATA[<p>From the USA to the UK, international vocalist John-Philip
+has spent more than 21 years captivating audiences in theatres and aboard
+international cruise ships with his powerful voice, dynamic stage presence, and
+passion for unforgettable music.</p>
+
+<p>Join him for a spectacular evening that journeys through the
+timeless songs that have inspired generations, from beloved classics and
+musical theatre favourites to soaring power ballads and contemporary hits.</p>
+
+<p>Whether rediscovering treasured memories or experiencing
+these songs anew, audiences will be swept up in an uplifting celebration of
+music, emotion, and exceptional vocals. It&rsquo;s an evening of unforgettable
+melodies, cherished moments, and the thrill of a live concert experience.</p>
+
+<p>Tickets: &pound;18, Friends &pound;17 (plus &pound;1.20 per ticket if booked
+online)</p>]]>
+        </description>
+        <event_category>Live Event</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668403/events</url>
+        <version>71</version>
+        <tags>
+          <tag>friends</tag>
+          <tag>live</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/wy5rznn9x3sedp01z8hw1107vkz1/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/wy5rznn9x3sedp01z8hw1107vkz1/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/wy5rznn9x3sedp01z8hw1107vkz1/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734371">
+            <name>
+              <![CDATA[16 Oct 2026 - 19:30 @ Number 8 John-Philip]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-16T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-16T19:30:00+01:00</opening_time_iso>
+            <event_number>428734371</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668403/events/428734371/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668403/events/428734371.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668406">
+        <name>
+          <![CDATA[King Pleasure and the Biscuit Boys]]>
+        </name>
+        <description>
+          <![CDATA[<p>With nearly 7,000 performances across 27 countries in 40
+years, King Pleasure &amp; The Biscuit Boys are one of the world&rsquo;s leading
+jump, jive and swing bands. Their rough, tough, high-energy sound has wowed
+audiences from the UK to the USA, Russia, and Europe. </p>
+
+<p>They&rsquo;ve opened for legends including BB King, Cab Calloway
+and Ray Charles, toured with the Blues Brothers Band, and appeared on dozens of
+radio and TV shows. Renowned for dazzling musicianship and riveting stage
+performances, they&rsquo;re rightly called the Kings of Swing. This gig, celebrating
+40 years on the road, promises an unforgettable night.</p>
+
+<p>Tickets: &pound;22.00 (plus &pound;1.20 per ticket if booked online)</p>]]>
+        </description>
+        <event_category>Live Event</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668406/events</url>
+        <version>69</version>
+        <tags>
+          <tag>live</tag>
+          <tag>live_music</tag>
+          <tag>music</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/v7mlnahmau599pbc5etpvplxrara/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/v7mlnahmau599pbc5etpvplxrara/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/v7mlnahmau599pbc5etpvplxrara/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734374">
+            <name>
+              <![CDATA[13 Nov 2026 - 19:30 @ Number 8 King Pleasure and the Biscuit Boys]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-13T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-13T19:30:00+00:00</opening_time_iso>
+            <event_number>428734374</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668406/events/428734374/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668406/events/428734374.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668456">
+        <name>
+          <![CDATA[MadFabulous (12A)]]>
+        </name>
+        <description>
+          <![CDATA[<div>Inspired by the true story of Henry Paget, the unlikely British aristocrat who smashed society&rsquo;s notions of class, gender and decorum, squandering a multimillion fortune before his heart-breaking untimely death. A riotous, uncompromising celebration of otherness.</div><div><br></div><div>Tue 3 Nov &ndash; 7.30pm</div><div>Dir. Celyn Jones, 1hr 48mins</div><div>Tickets: &pound;9.50 (&pound;9.00) + 80p if booked online</div><div>https://www.youtube.com/watch?v=xuggTtSpnyI</div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668456/events</url>
+        <version>68</version>
+        <tags>
+          <tag>film</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/wucizbzezzq7v9mh1bs7vvpdn4av/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/wucizbzezzq7v9mh1bs7vvpdn4av/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/wucizbzezzq7v9mh1bs7vvpdn4av/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734662">
+            <name>
+              <![CDATA[03 Nov 2026 - 19:30 @ Number 8 MadFabulous (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-03T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-03T19:30:00+00:00</opening_time_iso>
+            <event_number>428734662</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668456/events/428734662/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668456/events/428734662.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668424">
+        <name>
+          <![CDATA[Metropolitan Opera: Macbeth]]>
+        </name>
+        <description>
+          <![CDATA[<p>Two of opera&rsquo;s most extraordinary artists return to <i>The
+Met: Live in HD</i> for Verdi&rsquo;s thrilling take on the immortal Shakesperean
+tale of the scheming couple determined to seize power at any cost. Baritone
+Quinn Kelsey is the Scottish king haunted by the ghosts of his murderous ascent
+to the throne, opposite soprano Lise Davidsen as the power-mad Lady Macbeth,
+whose ruinous ambition damns them both. Rounding out the all-star cast are
+tenor Freddie De Tommaso as Macduff and bass-baritone Ryan Speedo Green as
+Banquo.</p>
+
+<p>Tickets: &pound;17, Seniors &pound;16 (plus &pound;1.20 per ticket if booked
+online)</p><p><b>https://www.youtube.com/watch?v=SdOflhu5-1E</b></p>]]>
+        </description>
+        <event_category>Event Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668424/events</url>
+        <version>71</version>
+        <tags>
+          <tag>event_cinema</tag>
+          <tag>opera</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/h3c3nbmliylytom22i7gwb6dluvk/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/h3c3nbmliylytom22i7gwb6dluvk/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/h3c3nbmliylytom22i7gwb6dluvk/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734393">
+            <name>
+              <![CDATA[20 Oct 2026 - 18:00 @ Number 8 Metropolitan Opera: Macbeth]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-20T18:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-20T18:00:00+01:00</opening_time_iso>
+            <event_number>428734393</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668424/events/428734393/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668424/events/428734393.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668448">
+        <name>
+          <![CDATA[Mistura (cert tbc)]]>
+        </name>
+        <description>
+          <![CDATA[<p><span>In 1960&rsquo;s Lima</span><span>,
+Norma&rsquo;s life unravels after her husband abandons her and she faces the scorn of
+the society elite. However, she, along with people from local marginalised
+communities, opens a luxury restaurant and redefines her life. Join our <i>Spanish
+language caf&eacute;</i> before the screening (see p.2)</span></p>
+
+<p><span>Dir. Ricardo de
+Montreuil, running time tbc, Spanish with subtitles</span></p>
+
+<p>Tickets: &pound;9.50 (&pound;9.00) + 80p if booked online</p><p>&pound;7 student ticket price</p>
+
+<p><span><span><span>https://www.youtube.com/watch?v=zSo8U0M-lZU</span></span></span><span></span></p>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668448/events</url>
+        <version>71</version>
+        <tags>
+          <tag>film</tag>
+          <tag>foreign_language</tag>
+          <tag>spanish</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/dc6rynphczk1kmpgrpj2rzczpgrc/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/dc6rynphczk1kmpgrpj2rzczpgrc/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/dc6rynphczk1kmpgrpj2rzczpgrc/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734469">
+            <name>
+              <![CDATA[15 Oct 2026 - 19:30 @ Number 8 Mistura (cert tbc)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-15T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-15T19:30:00+01:00</opening_time_iso>
+            <event_number>428734469</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668448/events/428734469/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668448/events/428734469.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668405">
+        <name>
+          <![CDATA[Murder at the Abbey 2: I Love The Smell of Pershore In The Morning]]>
+        </name>
+        <description>
+          <![CDATA[<p>Following the success of our first sold-out evening, Number
+8, in partnership with Aspects of Crime and The Bullington Press, is delighted
+to present the return of Murder at the Abbey.</p>
+
+<p>Our stellar guest authors are <b>Mark Billingham, Miranda
+Dickinson (writing as M.J. White), Luca Veste, Paul Burke and Guy Hale.</b></p>
+
+<p>Mark Billingham, one of Britain&apos;s most celebrated crime
+writers, heads the bill alongside Sunday Times bestselling author Miranda
+Dickinson, whose M.J. White crime novels have quickly established her as a
+major voice in the genre. They are joined by bestselling crime novelist Luca
+Veste, acclaimed crime writer Paul Burke, and novelist Guy Hale.</p>
+
+<p>All of the authors will have books available to purchase and
+sign after the event.</p>
+
+<p>Tickets: &pound;16, Friends &pound;15 (plus &pound;1.20 per ticket if
+booked online)</p>
+
+<p><br></p>]]>
+        </description>
+        <event_category>Live Event</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668405/events</url>
+        <version>72</version>
+        <tags>
+          <tag>book</tag>
+          <tag>friends</tag>
+          <tag>literature</tag>
+          <tag>live</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/pr0llswq9o6373ig7z77er4x9ezn/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/pr0llswq9o6373ig7z77er4x9ezn/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/pr0llswq9o6373ig7z77er4x9ezn/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734373">
+            <name>
+              <![CDATA[06 Nov 2026 - 19:30 @ Number 8 Murder at the Abbey 2: I Love The Smell of Pershore In The Morning]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-06T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-06T19:30:00+00:00</opening_time_iso>
+            <event_number>428734373</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668405/events/428734373/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668405/events/428734373.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668433">
+        <name>
+          <![CDATA[New Year's Eve Concert with the Berliner Philharmoniker]]>
+        </name>
+        <description>
+          <![CDATA[<p>Can classical music be humorous? Absolutely, as the Berliner
+Philharmoniker and chief conductor Kirill Petrenko show in their 2026 New
+Year&rsquo;s Eve Concert. Parodies of Haydn and Mozart in Prokofiev&rsquo;s <i>Symphonie
+Classique</i>; Shostakovich&rsquo;s witty <i>Double Concerto for Piano and Trumpet</i>;
+and a fireworks display of mischief in Richard Strauss&rsquo;s <i>Till Eulenspiegel&rsquo;s
+Merry Pranks</i> make for a joyful programme to ring in the New Year. Enjoy
+this lively celebration on screen at Number 8!</p>
+
+<p>Tickets: &pound;17.50 (includes a glass of fizz) (plus &pound;1.20 per
+ticket if booked online)</p>]]>
+        </description>
+        <event_category>Event Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668433/events</url>
+        <version>70</version>
+        <tags>
+          <tag>classical</tag>
+          <tag>event_cinema</tag>
+          <tag>music</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/qf1ulvx8whf1gpiac3jh7ojez0ss/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/qf1ulvx8whf1gpiac3jh7ojez0ss/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/qf1ulvx8whf1gpiac3jh7ojez0ss/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734421">
+            <name>
+              <![CDATA[31 Dec 2026 - 17:00 @ Number 8 New Year's Eve Concert with the Berliner Philharmoniker]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-31T17:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-31T17:00:00+00:00</opening_time_iso>
+            <event_number>428734421</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668433/events/428734421/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668433/events/428734421.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668753">
+        <name>
+          <![CDATA[NT Live: Golden Boy (15 tbc)]]>
+        </name>
+        <description>
+          <![CDATA[<p><span>Josh O&rsquo;Connor (<i>The Crown</i>;
+<i>Challengers</i>) leads the cast in this searing revival of Clifford Odets&rsquo;
+knockout American classic.</span></p>
+
+
+
+<p><span>1930s New York, at the
+height of the Depression. Joe Bonaparte is a gifted young violinist with a
+future in music, until a chance at fame and fortune lures him into the brutal
+world of professional boxing. He must confront what he&rsquo;s willing to sacrifice,
+who he&rsquo;s willing to become and how to find his place in a world that demands he
+choose a side.</span></p>
+
+
+
+<p>Brought to life with a live string quartet and
+filmed live from the Almeida Theatre<span>, Olivier Award-winner
+Sam Yates (<i>Vanya</i>) directs this propulsive drama exploring ambition,
+identity, and the high price of success.&nbsp;</span></p>
+
+
+
+<p><span>This broadcast will be pre
+recorded</span></p>
+
+<p><b></b></p>
+
+<p><span>Tickets; &pound;16, Seniors &pound;15,
+Student &pound;10 + &pound;1.20 per ticket if booked online</span></p>
+
+<p><span>3hrs (tbc)</span></p>]]>
+        </description>
+        <event_category>Event Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668753/events</url>
+        <version>53</version>
+        <tags>
+          <tag>drama</tag>
+          <tag>event_cinema</tag>
+          <tag>nt_live</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/9jczpout9119a8wokelwhmec0bke/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/9jczpout9119a8wokelwhmec0bke/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/9jczpout9119a8wokelwhmec0bke/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428740560">
+            <name>
+              <![CDATA[05 Nov 2026 - 19:00 @ Number 8 NT Live: Golden Boy (15 tbc)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-05T19:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-05T19:00:00+00:00</opening_time_iso>
+            <event_number>428740560</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668753/events/428740560/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668753/events/428740560.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668392">
+        <name>
+          <![CDATA[Number 8 Quiz December 2026]]>
+        </name>
+        <description>
+          <![CDATA[<span>Join us for an evening of
+trivia and put your knowledge to the test. Teams of up to four players are
+welcome, so bring your friends and see if your tea, can come out on top. &pound;2 per
+person&nbsp;</span>+ &pound;1.20 per ticket if booked online.]]>
+        </description>
+        <event_category>Foyer Event</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668392/events</url>
+        <version>67</version>
+        <tags>
+          <tag>foyer</tag>
+          <tag>quiz</tag>
+        </tags>
+        <images>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734349">
+            <name>
+              <![CDATA[17 Dec 2026 - 20:00 @ Number 8 Number 8 Quiz December 2026]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-17T20:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-17T20:00:00+00:00</opening_time_iso>
+            <event_number>428734349</event_number>
+            <venue_layout>Foyer 50</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668392/events/428734349</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668392/events/428734349.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668391">
+        <name>
+          <![CDATA[Number 8 Quiz November 2026]]>
+        </name>
+        <description>
+          <![CDATA[<span>Join us for an evening of
+trivia and put your knowledge to the test. Teams of up to four players are
+welcome, so bring your friends and see if your tea, can come out on top. &pound;2 per
+person&nbsp;</span>+ &pound;1.20 per ticket if booked online.]]>
+        </description>
+        <event_category>Foyer Event</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668391/events</url>
+        <version>68</version>
+        <tags>
+          <tag>foyer</tag>
+          <tag>quiz</tag>
+        </tags>
+        <images>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734348">
+            <name>
+              <![CDATA[20 Nov 2026 - 20:00 @ Number 8 Number 8 Quiz November 2026]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-20T20:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-20T20:00:00+00:00</opening_time_iso>
+            <event_number>428734348</event_number>
+            <venue_layout>Foyer 50</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668391/events/428734348</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668391/events/428734348.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668390">
+        <name>
+          <![CDATA[Number 8 Quiz October 2026]]>
+        </name>
+        <description>
+          <![CDATA[<span>Join us for an evening of
+trivia and put your knowledge to the test. Teams of up to four players are
+welcome, so bring your friends and see if your tea, can come out on top. &pound;2 per
+person&nbsp;</span>+ &pound;1.20 per ticket if booked online.]]>
+        </description>
+        <event_category>Foyer Event</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668390/events</url>
+        <version>71</version>
+        <tags>
+          <tag>foyer</tag>
+          <tag>quiz</tag>
+        </tags>
+        <images>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734347">
+            <name>
+              <![CDATA[23 Oct 2026 - 20:00 @ Number 8 Number 8 Quiz October 2026]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-23T20:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-23T20:00:00+01:00</opening_time_iso>
+            <event_number>428734347</event_number>
+            <venue_layout>Foyer 50</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668390/events/428734347</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668390/events/428734347.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668410">
+        <name>
+          <![CDATA[One Night in Dublin]]>
+        </name>
+        <description>
+          <![CDATA[<p>Join whiskey-loving fisherman Danny and his straight-talking
+wife Rosie for a night of laughter, music and mischief in this brand-new
+production of One Night In Dublin. </p>
+
+<p>A band of award-winning musicians, including live fiddle and
+accordion, cover all of your favourite sing-along Irish classics including
+Galway Girl, Tell Me Ma, The Irish Rover, Dirty Old Town, Whiskey In The Jar,
+The Wild Rover, Galway Shawl and more. </p>
+
+<p>Packed with heart, humour and classic hits, it&rsquo;s like St.
+Patrick&rsquo;s night every night &ndash; with extra craic and a whole lot of hooley! </p>
+
+<p>Cast subject to change</p>
+
+<p>Tickets: &pound;26.50 (plus &pound;1.20 per ticket if booked online)</p>]]>
+        </description>
+        <event_category>Live Event</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668410/events</url>
+        <version>69</version>
+        <tags>
+          <tag>folk</tag>
+          <tag>irish</tag>
+          <tag>live</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/6brjfgkjihm7guuxp8pjzsglf9j5/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/6brjfgkjihm7guuxp8pjzsglf9j5/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/6brjfgkjihm7guuxp8pjzsglf9j5/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734378">
+            <name>
+              <![CDATA[21 Nov 2026 - 19:30 @ Number 8 One Night in Dublin]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-21T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-21T19:30:00+00:00</opening_time_iso>
+            <event_number>428734378</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668410/events/428734378/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668410/events/428734378.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173669223">
+        <name>
+          <![CDATA[Opéra de Paris: La Bayadère]]>
+        </name>
+        <description>
+          <![CDATA[<div>In a dreamlike India where a magnificent elephant parades before the rajah&rsquo;s lavish palace and a golden 
+idol follows a fan dance, the ballet tells the story of the ill-fated love between the warrior Solor and Nikiya, 
+a sacred temple dancer.&nbsp;</div><div><br></div><div>A jewel of the Paris Opera repertoire, La Bayad&egrave;re dazzles with its virtuosic variations, impressive 
+ensemble scenes and the purity of its &ldquo;Kingdom of the Shades&rdquo; act, in which 32 dancers in white tutus 
+slowly trace their arabesques with an almost magical poetry.&nbsp;</div><div><br></div><div>Choreography: Rudolf Nureyev, after Marius Petipa&nbsp;</div><div>Music: Ludwig Minkus&nbsp;</div><div>Adaptation, arrangement: John Lanchberry&nbsp;</div><div>Conductor: Koen Kessels 
+Cinema&nbsp;</div><div>Director: Julien Condemine&nbsp;</div><div><br></div><div><span style="font-size:0.875rem;">Cast: (subject to change) Doroth&eacute;e Gilbert (Nikiya), Hugo Marchand (Solor), Roxane Stojanov 
+(Gamzatti), Paris opera Premi&egrave;res Danseuses and Premiers Danseurs , the Paris Opera Corps de 
+Ballet&nbsp;</span></div><div><br></div><div>&nbsp;Ballet in three acts.</div>]]>
+        </description>
+        <event_category>Event Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173669223/events</url>
+        <version>12</version>
+        <tags>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/rk9s3nea3n55y3es8uwg8jhkvhc5/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/rk9s3nea3n55y3es8uwg8jhkvhc5/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/rk9s3nea3n55y3es8uwg8jhkvhc5/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428742366">
+            <name>
+              <![CDATA[31 Jan 2027 - 14:00 @ Number 8 Opéra de Paris: La Bayadère]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2027-01-31T14:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2027-01-31T14:00:00+00:00</opening_time_iso>
+            <event_number>428742366</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173669223/events/428742366/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173669223/events/428742366.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173669225">
+        <name>
+          <![CDATA[Opéra de Paris: Notre Dame de Paris]]>
+        </name>
+        <description>
+          <![CDATA[<div>From Victor Hugo&rsquo;s rich novel, Roland Petit creates a vivid and theatrical fresco of colour and intensity/ 
+Between Esmeralda in love with Captain Phoebus, Frollo tormented by his desire and the hunchback 
+Quasimodo, a tragic story unfolds against a medieval backdrop, where a fickle crowd swings between joy 
+and cruelty.&nbsp;</div><div><br></div><div>Combining neoclassical dance and the spirit of music hall, Roland Petit surrounded himself with the 
+leading creatives talents of the time: Maurice Jarre for the music, Ren&eacute; Allio for the sets and Yves Saint 
+Laurent for the costumes, which he wanted &ldquo;as colourful as the stained glass windows of a 
+cathedral&rdquo;.</div><div><b><br></b></div><div>
+<b>Tickets:&nbsp;</b><strong style="font-size:0.875rem;">&pound;17, Seniors &pound;16 (plus &pound;1.20 per ticket if booked online)</strong>
+</div>]]>
+        </description>
+        <event_category>Event Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173669225/events</url>
+        <version>12</version>
+        <tags>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/571h8nnfvkeo7u3n77kphhy28x7y/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/571h8nnfvkeo7u3n77kphhy28x7y/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/571h8nnfvkeo7u3n77kphhy28x7y/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428742368">
+            <name>
+              <![CDATA[14 Feb 2027 - 14:00 @ Number 8 Opéra de Paris: Notre Dame de Paris]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2027-02-14T14:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2027-02-14T14:00:00+00:00</opening_time_iso>
+            <event_number>428742368</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173669225/events/428742368/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173669225/events/428742368.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173669068">
+        <name>
+          <![CDATA[Pershore Flower Club - Annual Christmas Demonstration 2026]]>
+        </name>
+        <description>
+          <![CDATA[<div>Pershore Flower Club invites you to join us for our Annual Evening demonstration at Number 8 Theatre, Pershore WR10 1BG on Thursday 19th November 2026 at 7.30pm.&nbsp;</div><div><br></div><div>Come and enjoy a relaxing evening with a NAFAS National Demonstrator, Coral Gardiner, creating beautiful flower arrangments. Her title for these arrangements is &apos;Treemendous Christmas&apos;. At the end of the evening, these stunning arrangements will all be raffled along with many other prizes.&nbsp;</div><div><br></div><div>Tickets are &pound;15.00 each and can be bought from Number 8 Theatre&apos;s Box Office (01386 555488) and online at www.number8.org</div><div><br></div><div>We feel sure you will enjoy the evening and if you would like to join us at our Club evenings in Bishampton Village Hall WR10 2LY, we meet every third Wednesday of the month (apart from August and December) at 7.30pm.&nbsp;</div>]]>
+        </description>
+        <event_category>Show Hires</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173669068/events</url>
+        <version>30</version>
+        <tags>
+          <tag>show_hires</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/vvsnq2457dva6fdp6wovsmeyfcev/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/vvsnq2457dva6fdp6wovsmeyfcev/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/vvsnq2457dva6fdp6wovsmeyfcev/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428741611">
+            <name>
+              <![CDATA[19 Nov 2026 - 19:30 @ Number 8 Pershore Flower Club - Annual Christmas Demonstration 2026]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-19T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-19T19:30:00+00:00</opening_time_iso>
+            <event_number>428741611</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173669068/events/428741611/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173669068/events/428741611.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668419">
+        <name>
+          <![CDATA[PODS: Elf - The Musical]]>
+        </name>
+        <description>
+          <![CDATA[<p>It&rsquo;s time to find your inner elf as Pershore Operatic and
+Dramatic Society bring the festive smash hit Elf The Musical to life in
+December 2026!&nbsp;</p>
+
+
+
+<p>Elf The Musical, is leaping off the screen and onto the
+Number 8 stage, bursting with laugh-out-loud comedy, toe-tapping songs, and
+enough holiday cheer to fill Santa&rsquo;s sleigh.&nbsp;</p>
+
+
+
+<p>Follow Buddy, a human raised by elves, as he journeys from
+the North Pole to New York City to discover his true family and remind us all
+that &lsquo;the best way to spread Christmas cheer is singing loud for all to
+hear.&rsquo;&nbsp;</p>
+
+<p>Tickets: Mon &pound;15 (Child &pound;12); Tue &ndash; Thu &pound;17 (Child &pound;14); Fri, Sat matinee and evening &pound;19 (Child &pound;16)&nbsp; + &pound;1.20 per ticket if booked
+online</p>
+
+<p>Running time tbc</p>]]>
+        </description>
+        <event_category>PODS</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668419/events</url>
+        <version>90</version>
+        <tags>
+          <tag>family</tag>
+          <tag>festive</tag>
+          <tag>live</tag>
+          <tag>pods</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/00t5wpqo5gylfj38p7q9ppv3pg39/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/00t5wpqo5gylfj38p7q9ppv3pg39/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/00t5wpqo5gylfj38p7q9ppv3pg39/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734385">
+            <name>
+              <![CDATA[07 Dec 2026 - 19:30 @ Number 8 PODS: Elf - The Musical]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-07T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-07T19:30:00+00:00</opening_time_iso>
+            <event_number>428734385</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668419/events/428734385/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668419/events/428734385.xml</url>
+            </feed>
+          </event>
+          <event id="428734386">
+            <name>
+              <![CDATA[08 Dec 2026 - 19:30 @ Number 8 PODS: Elf - The Musical]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-08T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-08T19:30:00+00:00</opening_time_iso>
+            <event_number>428734386</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668419/events/428734386/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668419/events/428734386.xml</url>
+            </feed>
+          </event>
+          <event id="428734387">
+            <name>
+              <![CDATA[09 Dec 2026 - 19:30 @ Number 8 PODS: Elf - The Musical]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-09T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-09T19:30:00+00:00</opening_time_iso>
+            <event_number>428734387</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668419/events/428734387/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668419/events/428734387.xml</url>
+            </feed>
+          </event>
+          <event id="428734388">
+            <name>
+              <![CDATA[10 Dec 2026 - 19:30 @ Number 8 PODS: Elf - The Musical]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-10T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-10T19:30:00+00:00</opening_time_iso>
+            <event_number>428734388</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668419/events/428734388/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668419/events/428734388.xml</url>
+            </feed>
+          </event>
+          <event id="428734490">
+            <name>
+              <![CDATA[11 Dec 2026 - 19:30 @ Number 8 PODS: Elf - The Musical]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-11T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-11T19:30:00+00:00</opening_time_iso>
+            <event_number>428734490</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668419/events/428734490/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668419/events/428734490.xml</url>
+            </feed>
+          </event>
+          <event id="428734489">
+            <name>
+              <![CDATA[12 Dec 2026 - 14:30 @ Number 8 PODS: Elf - The Musical]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-12T14:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-12T14:30:00+00:00</opening_time_iso>
+            <event_number>428734489</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668419/events/428734489/seats</url>
+            <status>sold out</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668419/events/428734489.xml</url>
+            </feed>
+          </event>
+          <event id="428734491">
+            <name>
+              <![CDATA[12 Dec 2026 - 19:30 @ Number 8 PODS: Elf - The Musical]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-12T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-12T19:30:00+00:00</opening_time_iso>
+            <event_number>428734491</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668419/events/428734491/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668419/events/428734491.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668466">
+        <name>
+          <![CDATA[Pop Up Painting: Georgia O'Keeffe - 'Red Poppy IV']]>
+        </name>
+        <description>
+          <![CDATA[Join artist Kay Mullet for a relaxed and inspiring evening of painting. With all materials provided, you&rsquo;ll create a famous artwork to take home, guided step by step by Kay.<div><br></div><div>Georgia O&rsquo;Keeffe was an American artist and best known for her paintings of enlarged flowers, New York skyscrapers, and New Mexico landscapes.</div><div><br></div><div>&pound;30 per workshop (includes a glass of wine or soft drink &amp; nibbles) + &pound;1.20 per ticket if booked online</div>]]>
+        </description>
+        <event_category>Adult Workshops</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668466/events</url>
+        <version>68</version>
+        <tags>
+          <tag>adult_workshop</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/fm0pwut0si2au8yob8o1tuyq3l5q/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/fm0pwut0si2au8yob8o1tuyq3l5q/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/fm0pwut0si2au8yob8o1tuyq3l5q/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734681">
+            <name>
+              <![CDATA[15 Oct 2026 - 19:00 @ Number 8 Pop Up Painting: Georgia O'Keeffe - 'Red Poppy IV']]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-15T19:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-15T19:00:00+01:00</opening_time_iso>
+            <event_number>428734681</event_number>
+            <venue_layout>Abbey Room 12</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668466/events/428734681</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668466/events/428734681.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668467">
+        <name>
+          <![CDATA[Pop Up Painting: Van Gogh - 'Starry Night']]>
+        </name>
+        <description>
+          <![CDATA[<div><span style="font-size:0.875rem;">Join artist Kay Mullet for a relaxed and inspiring evening of painting. With all materials provided, you&rsquo;ll create a famous&nbsp;</span></div><div><span style="font-size:0.875rem;">artwork to take home, guided step by step by Kay.</span></div><div><span style="font-size:0.875rem;"><br></span></div><div>Explore your inner Van Gogh and recreate your own version of one of his most celebrated works.<span style="font-size:0.875rem;"></span>
+</div><div><br></div><div>&pound;30 per workshop (includes a glass of wine or soft drink &amp; nibbles) + &pound;1.20 per ticket if booked online</div>]]>
+        </description>
+        <event_category>Adult Workshops</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668467/events</url>
+        <version>68</version>
+        <tags>
+          <tag>adult_workshop</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/a0n6j7fu5917qknvkowntf29x2ox/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/a0n6j7fu5917qknvkowntf29x2ox/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/a0n6j7fu5917qknvkowntf29x2ox/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734682">
+            <name>
+              <![CDATA[19 Nov 2026 - 19:00 @ Number 8 Pop Up Painting: Van Gogh - 'Starry Night']]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-19T19:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-19T19:00:00+00:00</opening_time_iso>
+            <event_number>428734682</event_number>
+            <venue_layout>Abbey Room 12</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668467/events/428734682</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668467/events/428734682.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668455">
+        <name>
+          <![CDATA[Practical Magic 2 (12A)]]>
+        </name>
+        <description>
+          <![CDATA[<p><span>In this much anticipated sequel, a multi-generational
+family of witches, cursed to be loveless for centuries, attempts to break the
+spell by confronting dark secrets and sacrificing for each other. Starring
+Nicole Kidman and Sandra Bullock.</span></p>
+
+<p><span>Join us for our practical magic foyer event on Sat 31
+Oct from 6.30pm</span></p>
+
+<p><span>Dir. Susanne Beer, 2hrs 10 mins</span></p><p><span>The screening on Monday evening will have subtitles for those with hearing loss</span></p>
+
+<p>Tickets: &pound;9.50 (&pound;9.00) + 80p if booked online</p>
+
+<p><a href="https://www.youtube.com/watch?v=Ho10_4IX1jE"><span><span>https://www.youtube.com/watch?v=Ho10_4IX1jE</span></span></a><span></span></p>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668455/events</url>
+        <version>60</version>
+        <tags>
+          <tag>film</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/zaitkdr9xxswvs6d2t7bswcvfpzz/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/zaitkdr9xxswvs6d2t7bswcvfpzz/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/zaitkdr9xxswvs6d2t7bswcvfpzz/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734494">
+            <name>
+              <![CDATA[31 Oct 2026 - 19:30 @ Number 8 Practical Magic 2 (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-31T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-31T19:30:00+00:00</opening_time_iso>
+            <event_number>428734494</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668455/events/428734494/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668455/events/428734494.xml</url>
+            </feed>
+          </event>
+          <event id="428734496">
+            <name>
+              <![CDATA[02 Nov 2026 - 11:00 @ Number 8 Practical Magic 2 (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-02T11:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-02T11:00:00+00:00</opening_time_iso>
+            <event_number>428734496</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668455/events/428734496/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668455/events/428734496.xml</url>
+            </feed>
+          </event>
+          <event id="428734495">
+            <name>
+              <![CDATA[02 Nov 2026 - 19:30 @ Number 8 Practical Magic 2 (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-02T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-02T19:30:00+00:00</opening_time_iso>
+            <event_number>428734495</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668455/events/428734495/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668455/events/428734495.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668457">
+        <name>
+          <![CDATA[Pressure (12A)]]>
+        </name>
+        <description>
+          <![CDATA[<div>In the tense 72 hours before D-Day, General Dwight D. Eisenhower (Brendan Fraser) and Captain James Stagg (Andrew Scott) face an impossible choice--launch the most dangerous seaborne invasion in history or risk losing the war altogether.</div><div><br></div><div>Sat 7 Nov &ndash; 7.30pm; Mon 9 Nov &ndash; 11.00am &amp; 7.30pm</div><div>Dir. Anthony Maras, 1hr 40mins</div><div>Tickets: &pound;9.50 (&pound;9.00) + 80p if booked online</div><div>https://www.youtube.com/watch?v=_gQwG9Xi13g</div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668457/events</url>
+        <version>74</version>
+        <tags>
+          <tag>film</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/6e38or5rs1fq0gmwoasrsqswxckd/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/6e38or5rs1fq0gmwoasrsqswxckd/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/6e38or5rs1fq0gmwoasrsqswxckd/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734663">
+            <name>
+              <![CDATA[07 Nov 2026 - 19:30 @ Number 8 Pressure (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-07T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-07T19:30:00+00:00</opening_time_iso>
+            <event_number>428734663</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668457/events/428734663/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668457/events/428734663.xml</url>
+            </feed>
+          </event>
+          <event id="428734664">
+            <name>
+              <![CDATA[09 Nov 2026 - 11:00 @ Number 8 Pressure (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-09T11:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-09T11:00:00+00:00</opening_time_iso>
+            <event_number>428734664</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668457/events/428734664/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668457/events/428734664.xml</url>
+            </feed>
+          </event>
+          <event id="428734665">
+            <name>
+              <![CDATA[09 Nov 2026 - 19:30 @ Number 8 Pressure (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-09T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-09T19:30:00+00:00</opening_time_iso>
+            <event_number>428734665</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668457/events/428734665/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668457/events/428734665.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668428">
+        <name>
+          <![CDATA[Royal Ballet: Manon]]>
+        </name>
+        <description>
+          <![CDATA[<p>In the seedy underbelly of 18th-century Paris, money is
+king. Nothing is sacred &ndash; even love itself can be bought for the right price. A
+native of this hedonistic underworld, Manon is caught between twin desires when
+she falls in love with the student Des Grieux. Steadfast and devoted, he offers
+the possibility of an honourable life. Yet, the riches promised by the world of
+Parisian society remain tempting...</p>
+
+<p>Tickets: &pound;17, Seniors &pound;16 (plus &pound;1.20 per ticket if booked
+online)</p><p>https://www.youtube.com/watch?v=r2bDFbpRFpo</p>]]>
+        </description>
+        <event_category>Event Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668428/events</url>
+        <version>73</version>
+        <tags>
+          <tag>ballet</tag>
+          <tag>event_cinema</tag>
+          <tag>royal_ballet</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/ohyfb915u7ptm0gi4zjch9cgzytl/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/ohyfb915u7ptm0gi4zjch9cgzytl/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/ohyfb915u7ptm0gi4zjch9cgzytl/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734405">
+            <name>
+              <![CDATA[27 Oct 2026 - 19:15 @ Number 8 Royal Ballet: Manon]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-27T19:15:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-27T19:15:00+00:00</opening_time_iso>
+            <event_number>428734405</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668428/events/428734405/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668428/events/428734405.xml</url>
+            </feed>
+          </event>
+          <event id="428734406">
+            <name>
+              <![CDATA[01 Nov 2026 - 14:00 @ Number 8 Royal Ballet: Manon]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-01T14:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-01T14:00:00+00:00</opening_time_iso>
+            <event_number>428734406</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668428/events/428734406/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668428/events/428734406.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668431">
+        <name>
+          <![CDATA[Royal Ballet: The Nutcracker]]>
+        </name>
+        <description>
+          <![CDATA[<p>At a cosy Christmas party, young Clara meets the mysterious
+magician Drosselmeyer, who gives her a nutcracker doll. When the house is
+asleep, Clara sneaks downstairs in search of the doll only to be whisked away
+on a journey into fantastical landscapes of flurried snow and glittering
+confections where toys come alive and magic never stops. </p>
+
+<p>Peter Wright&rsquo;s production of this festive family favourite
+sparkles to the wondrous swell of Tchaikovsky&rsquo;s orchestral score.</p>
+
+<p>Tickets: &pound;17, Seniors &pound;16, Child &pound;10 (plus &pound;1.20 per ticket
+if booked online)</p><p><b><a href="https://www.youtube.com/watch?v=-gpHw-cXgik">https://www.youtube.com/watch?v=-gpHw-cXgik</a></b></p>]]>
+        </description>
+        <event_category>Event Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668431/events</url>
+        <version>76</version>
+        <tags>
+          <tag>ballet</tag>
+          <tag>event_cinema</tag>
+          <tag>family</tag>
+          <tag>festive</tag>
+          <tag>royal_ballet</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/bw8732v68qya9vpg3zmgi0vihxgh/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/bw8732v68qya9vpg3zmgi0vihxgh/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/bw8732v68qya9vpg3zmgi0vihxgh/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734419">
+            <name>
+              <![CDATA[01 Dec 2026 - 19:15 @ Number 8 Royal Ballet: The Nutcracker]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-01T19:15:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-01T19:15:00+00:00</opening_time_iso>
+            <event_number>428734419</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668431/events/428734419/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668431/events/428734419.xml</url>
+            </feed>
+          </event>
+          <event id="428734420">
+            <name>
+              <![CDATA[22 Dec 2026 - 14:00 @ Number 8 Royal Ballet: The Nutcracker]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-22T14:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-22T14:00:00+00:00</opening_time_iso>
+            <event_number>428734420</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668431/events/428734420/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668431/events/428734420.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668429">
+        <name>
+          <![CDATA[Royal Opera: Carmen]]>
+        </name>
+        <description>
+          <![CDATA[<p>Under the oppressive heat of the Spanish sun, the fiercely
+independent Carmen attracts the attention of Don Jos&eacute;. She warns him not to
+fall in love with her, but his obsession knows no bounds. Damiano Michieletto&rsquo;s
+searing production returns, casting scorching light on the lust, violence and
+destructive desire of Bizet&rsquo;s ever-popular opera.</p>
+
+<p>Tickets: &pound;17, Seniors &pound;16 (plus &pound;1.20 per ticket if booked
+online)</p><p><b>https://www.youtube.com/watch?v=5V60jlBMG4Q</b></p>]]>
+        </description>
+        <event_category>Event Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668429/events</url>
+        <version>72</version>
+        <tags>
+          <tag>event_cinema</tag>
+          <tag>opera</tag>
+          <tag>royal_opera</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/eavw9ioastqvdpoxzvx2asgjtlsf/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/eavw9ioastqvdpoxzvx2asgjtlsf/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/eavw9ioastqvdpoxzvx2asgjtlsf/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734408">
+            <name>
+              <![CDATA[10 Nov 2026 - 19:00 @ Number 8 Royal Opera: Carmen]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-10T19:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-10T19:00:00+00:00</opening_time_iso>
+            <event_number>428734408</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668429/events/428734408/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668429/events/428734408.xml</url>
+            </feed>
+          </event>
+          <event id="428734409">
+            <name>
+              <![CDATA[15 Nov 2026 - 14:00 @ Number 8 Royal Opera: Carmen]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-15T14:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-15T14:00:00+00:00</opening_time_iso>
+            <event_number>428734409</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668429/events/428734409/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668429/events/428734409.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668449">
+        <name>
+          <![CDATA[Sense & Sensibility (U)]]>
+        </name>
+        <description>
+          <![CDATA[<p><span>An irresistible new take on Jane Austen&apos;s iconic Sense
+and Sensibility: a charming, witty, and relatable story of love and sisterhood.</span><span> Following their father&apos;s death, the
+Dashwood sisters, Elinor and Marianne face sudden destitution and must navigate
+the paths of romance and societal expectation to secure their futures.</span></p>
+
+<p><span>Dir. Georgia
+Oakley, 2hr 12 mins</span></p>
+
+<p>Tickets: &pound;9.50 (&pound;9.00) + 80p if booked online</p>
+
+<p><span><span><span>https://www.youtube.com/watch?v=AFKIdPsFJyE</span></span></span><span></span></p>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668449/events</url>
+        <version>72</version>
+        <tags>
+          <tag>costume_drama</tag>
+          <tag>film</tag>
+          <tag>literary_adaptation</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/vkw52x0yrki2pm46so66gyko3xnj/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/vkw52x0yrki2pm46so66gyko3xnj/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/vkw52x0yrki2pm46so66gyko3xnj/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734474">
+            <name>
+              <![CDATA[16 Oct 2026 - 14:00 @ Number 8 Sense & Sensibility (U)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-16T14:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-16T14:00:00+01:00</opening_time_iso>
+            <event_number>428734474</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668449/events/428734474/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668449/events/428734474.xml</url>
+            </feed>
+          </event>
+          <event id="428734475">
+            <name>
+              <![CDATA[19 Oct 2026 - 11:00 @ Number 8 Sense & Sensibility (U)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-19T11:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-19T11:00:00+01:00</opening_time_iso>
+            <event_number>428734475</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668449/events/428734475/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668449/events/428734475.xml</url>
+            </feed>
+          </event>
+          <event id="428734476">
+            <name>
+              <![CDATA[19 Oct 2026 - 19:30 @ Number 8 Sense & Sensibility (U)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-19T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-19T19:30:00+01:00</opening_time_iso>
+            <event_number>428734476</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668449/events/428734476/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668449/events/428734476.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668452">
+        <name>
+          <![CDATA[Shaun the Sheep - The Beast of Mossy Bottom (U)]]>
+        </name>
+        <description>
+          <![CDATA[<p><span>On Halloween Eve at Mossy Bottom Farm, excitement
+turns to dismay when the clumsy Farmer ruins the pumpkin patch. Shaun tries
+fixing it with science experiments, but things go wrong when a wild beast
+appears in the woods.</span></p>
+
+<p><b><span>Child
+tickets &pound;5</span></b></p>
+
+<p><span>Dirs. Steve
+Cox, Matthew Walker, 1hr 20mins</span></p><p><span>The screening on Thu 29 will be a Relaxed Screening</span></p>
+
+<p>Tickets: &pound;9.50 (&pound;9.00) + 80p if booked online</p><p><b>This film contains flashing images which may affect viewers who are susceptible to photosensitive epilepsy.</b></p>
+
+<p><a href="https://www.youtube.com/watch?v=UZ46Smi6mOw"><span><span>https://www.youtube.com/watch?v=zjIl6pFT54M</span></span></a><span></span></p>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668452/events</url>
+        <version>76</version>
+        <tags>
+          <tag>family_film</tag>
+          <tag>film</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/msvf5bce245jfcit9zv4kzhfc9d8/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/msvf5bce245jfcit9zv4kzhfc9d8/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/msvf5bce245jfcit9zv4kzhfc9d8/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734483">
+            <name>
+              <![CDATA[26 Oct 2026 - 11:00 @ Number 8 Shaun the Sheep - The Beast of Mossy Bottom (U)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-26T11:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-26T11:00:00+00:00</opening_time_iso>
+            <event_number>428734483</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668452/events/428734483/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668452/events/428734483.xml</url>
+            </feed>
+          </event>
+          <event id="428734485">
+            <name>
+              <![CDATA[27 Oct 2026 - 11:00 @ Number 8 Shaun the Sheep - The Beast of Mossy Bottom (U)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-27T11:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-27T11:00:00+00:00</opening_time_iso>
+            <event_number>428734485</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668452/events/428734485/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668452/events/428734485.xml</url>
+            </feed>
+          </event>
+          <event id="428734486">
+            <name>
+              <![CDATA[29 Oct 2026 - 14:00 @ Number 8 Shaun the Sheep - The Beast of Mossy Bottom (U)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-29T14:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-29T14:00:00+00:00</opening_time_iso>
+            <event_number>428734486</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668452/events/428734486/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668452/events/428734486.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173667529">
+        <name>
+          <![CDATA[Tarantara - A Concert in Aid of Guide Dogs]]>
+        </name>
+        <description>
+          <![CDATA[<p>ALL FUNDS RAISED WILL GO DIRECTLY TO&nbsp;<b>GUIDE DOGS FOR
+THE BLIND</b></p>
+
+<p>Following a highly successful concert in Malvern in November
+2024, Tarantara are delighted to be invited again to raise money for&nbsp;<b>Guide
+Dogs for the Blind.</b>&nbsp; We are being supported by the 6 local Guide Dogs
+Fundraising Groups from Worcester, Stratford-on-Avon &amp; North Cotswolds,
+Cheltenham, Redditch &amp; Bromsgrove, Malvern &amp; Ledbury and Leamington
+Spa.&nbsp;</p><p>We hope to fill the wonderful
+theatre at the&nbsp;<b>Number 8 Arts Centre</b>&nbsp;in the centre of Pershore
+and we will be joined by some of the amazing guide dogs - puppies in training,
+working dogs, breeding dogs and ambassador dogs.&nbsp;&nbsp;<span style="font-size:0.75rem;">Tarantara is truly a
+&apos;choir for all tastes&apos; and will be performing a variety of music from pop to
+classical and everything in between.&nbsp; However, it&apos;s more than likely that
+the wonderful dogs will still steal the limelight!</span></p>
+
+<p>Tickets will only be available through the&nbsp;<b>Number 8
+Box Office</b>.</p><p>In the meantime, if you
+would like more information then please contact&nbsp;<b>Rod Arthur</b>&nbsp;on&nbsp;<b>07796
+193840</b>&nbsp;or by e-mail on&nbsp;<a href="mailto:treasurer@tarantara.org.uk"><b>tre</b></a><a href="mailto:treasurer@tarantara.org.uk"><b>asurer@tarantara.org.uk</b></a>.&nbsp;&nbsp;</p><p>As well as being the Treasurer for Tarantara choir, Rod is also a Puppy Raiser
+for Guide Dogs.</p>]]>
+        </description>
+        <event_category>Show Hires</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173667529/events</url>
+        <version>130</version>
+        <tags>
+          <tag>event</tag>
+          <tag>live_music</tag>
+          <tag>music</tag>
+          <tag>show_hires</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/jozy0mh9dr8ua9bpo19rp410glya/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/jozy0mh9dr8ua9bpo19rp410glya/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/jozy0mh9dr8ua9bpo19rp410glya/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428727526">
+            <name>
+              <![CDATA[24 Oct 2026 - 19:30 @ Number 8 Tarantara - A Concert in Aid of Guide Dogs]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-24T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-24T19:30:00+01:00</opening_time_iso>
+            <event_number>428727526</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173667529/events/428727526/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173667529/events/428727526.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668404">
+        <name>
+          <![CDATA[The Brain Bending Science Illusion Show]]>
+        </name>
+        <description>
+          <![CDATA[<p>Join The Magical Mr West and his corvid companion Crowbert
+on a journey into the brain bending world of science illusions! Prepare to be
+astounded by cognitive conundrums, mind melting mysteries and spectacular
+surreal psychology.</p>
+
+
+
+<p>Alongside impossible optical illusions and baffling tricks
+you can try at home, discover the devious deceptions and wily wordplay used to
+sell us ideas. Can you believe your eyes? Can you trust your own brain?
+Can Crowbert use the tricks he learns to start a new career in advertising? </p>
+
+
+
+<p>Following the success of &ldquo;Adventures in Science&rdquo; The Magical
+Mr West returns with another spectacular science show for all the family.</p>
+
+<p>Ticket: &pound;11.50, Child &pound;8.50 (plus &pound;1.20 per ticket if booked
+online)</p>]]>
+        </description>
+        <event_category>Live Event</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668404/events</url>
+        <version>70</version>
+        <tags>
+          <tag>childrens_theatre</tag>
+          <tag>family</tag>
+          <tag>family_theatre</tag>
+          <tag>live</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/yo0vb6z3b1a8r4si71zn6k0heocb/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/yo0vb6z3b1a8r4si71zn6k0heocb/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/yo0vb6z3b1a8r4si71zn6k0heocb/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734372">
+            <name>
+              <![CDATA[24 Oct 2026 - 14:00 @ Number 8 The Brain Bending Science Illusion Show]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-24T14:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-24T14:00:00+01:00</opening_time_iso>
+            <event_number>428734372</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668404/events/428734372/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668404/events/428734372.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668451">
+        <name>
+          <![CDATA[The Cycle of Love (12A)]]>
+        </name>
+        <description>
+          <![CDATA[<p><span>A love story
+like no other. The extraordinary true story of PK, a 23-year-old street artist
+from Delhi who sets off with a handful of paint brushes and a second-hand
+bicycle on a 6,000 mile journey across Europe and Asia to find Lotta, the woman
+who captured his heart during her visit to India.</span></p>
+
+<p><span>Dir. Orlando
+von Einsiedel, 1hr 38mins</span></p>
+
+<p>Tickets: &pound;9.50 (&pound;9.00) + 80p if booked online</p>
+
+<p><span><span><span>https://www.youtube.com/watch?v=biXpA5aJPug</span></span></span><span></span></p>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668451/events</url>
+        <version>76</version>
+        <tags>
+          <tag>film</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/dnyyf2zuavpt96u1ittbajf207wk/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/dnyyf2zuavpt96u1ittbajf207wk/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/dnyyf2zuavpt96u1ittbajf207wk/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734478">
+            <name>
+              <![CDATA[23 Oct 2026 - 14:00 @ Number 8 The Cycle of Love (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-23T14:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-23T14:00:00+01:00</opening_time_iso>
+            <event_number>428734478</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668451/events/428734478/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668451/events/428734478.xml</url>
+            </feed>
+          </event>
+          <event id="428740694">
+            <name>
+              <![CDATA[23 Oct 2026 - 19:30 @ Number 8 The Cycle of Love (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-23T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-23T19:30:00+01:00</opening_time_iso>
+            <event_number>428740694</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668451/events/428740694/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668451/events/428740694.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173667468">
+        <name>
+          <![CDATA[The Flowers Band In Concert 2026]]>
+        </name>
+        <description>
+          <![CDATA[<p><span>The 2024 National Champion Band of Great Britain return to Number 8 for an afternoon concert with a programme that has something for everyone. From film music to brass band classics, original music written for the Flowers Band, and world class soloists, this concert is sure to entertain.</span></p><p><span>More details of the programme will be released in due course.</span></p><p>This event is a Private Hire organised by Flowers Band.</p><p>&pound;19 Full, &pound;17.50 Concessions, &pound;5 for 16 and under + &pound;1.20 per ticket if booked online</p>]]>
+        </description>
+        <event_category>Show Hires</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173667468/events</url>
+        <version>141</version>
+        <tags>
+          <tag>brass</tag>
+          <tag>event</tag>
+          <tag>live_music</tag>
+          <tag>music</tag>
+          <tag>show_hires</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/42kia2vj97jlx1yf5ytnw2sdjmdv/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/42kia2vj97jlx1yf5ytnw2sdjmdv/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/42kia2vj97jlx1yf5ytnw2sdjmdv/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428727201">
+            <name>
+              <![CDATA[31 Oct 2026 - 14:00 @ Number 8 The Flowers Band In Concert 2026]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-31T14:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-31T14:00:00+00:00</opening_time_iso>
+            <event_number>428727201</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173667468/events/428727201/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173667468/events/428727201.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668447">
+        <name>
+          <![CDATA[The Incomer (12A)]]>
+        </name>
+        <description>
+          <![CDATA[<p><span>A comedy drama set on a remote Scottish isle, where
+siblings Isla and Sandy hunt birds and talk to mythical beings while fighting
+off outsiders. Their lives change when Daniel (Domhnall Gleeson), an awkward
+government official arrives to relocate them.</span></p>
+
+<p><span>Dir. Louis
+Paxton, 1hr 42mins&nbsp;<i>A</i>D)))</span></p><p><span>The Monday evening screening of this film will have subtitles for those with hearing loss</span></p>
+
+<p>Tickets: &pound;9.50 (&pound;9.00) + 80p if booked online</p>
+
+<p><span><span><span>https://www.youtube.com/watch?v=vJ6TSvmnUEE</span></span></span><span></span></p>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668447/events</url>
+        <version>74</version>
+        <tags>
+          <tag>film</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/ze262vnurf0ysvtlkm6b7i59zvzv/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/ze262vnurf0ysvtlkm6b7i59zvzv/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/ze262vnurf0ysvtlkm6b7i59zvzv/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734467">
+            <name>
+              <![CDATA[12 Oct 2026 - 11:00 @ Number 8 The Incomer (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-12T11:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-12T11:00:00+01:00</opening_time_iso>
+            <event_number>428734467</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668447/events/428734467/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668447/events/428734467.xml</url>
+            </feed>
+          </event>
+          <event id="428734466">
+            <name>
+              <![CDATA[12 Oct 2026 - 19:30 @ Number 8 The Incomer (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-12T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-12T19:30:00+01:00</opening_time_iso>
+            <event_number>428734466</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668447/events/428734466/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668447/events/428734466.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668460">
+        <name>
+          <![CDATA[The Inn of the Sixth Happiness (PG)]]>
+        </name>
+        <description>
+          <![CDATA[<div>Join us for Monday Memories with this 1958 classic starring Ingrid Bergman. Based on the true story of Gladys Aylward, a British missionary in China during the tumultuous years leading up to the Second World War.  While managing the local inn she embarks on a perilous trek to lead orphans to safety during the Japanese invasion.</div><div><br></div><div>Mon 16 Nov &ndash; 11.00am &amp; 7.30pm</div><div>Dir. Mark Robson, 2hrs 31mins</div><div>Tickets: &pound;7 + 80p if booked online</div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668460/events</url>
+        <version>71</version>
+        <tags>
+          <tag>film</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/q6p31rea0n3ekz9kpxuyg8fuf56c/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/q6p31rea0n3ekz9kpxuyg8fuf56c/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/q6p31rea0n3ekz9kpxuyg8fuf56c/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734668">
+            <name>
+              <![CDATA[16 Nov 2026 - 11:00 @ Number 8 The Inn of the Sixth Happiness (PG)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-16T11:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-16T11:00:00+00:00</opening_time_iso>
+            <event_number>428734668</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668460/events/428734668/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668460/events/428734668.xml</url>
+            </feed>
+          </event>
+          <event id="428734690">
+            <name>
+              <![CDATA[16 Nov 2026 - 19:30 @ Number 8 The Inn of the Sixth Happiness (PG)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-16T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-16T19:30:00+00:00</opening_time_iso>
+            <event_number>428734690</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668460/events/428734690/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668460/events/428734690.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668462">
+        <name>
+          <![CDATA[The Summer Book (PG)]]>
+        </name>
+        <description>
+          <![CDATA[<div>A young girl, Sophia spends the summer with her father (Anders Danielsen Lie) and grandmother (Glenn Close) on a small island in the Gulf of Finland, as the family grapples with the recent death of Sophia&apos;s mother. Based on the much-loved novel by Tove Jansson.</div><div><br></div><div>Mon 23 Nov &ndash; 11.00am
+Dir: Charlie McDowell, 1hr 35mins</div><div>Tickets: &pound;9.50 (&pound;9.00) + 80p if booked online</div><div>https://www.youtube.com/watch?v=_ZfIALnLZnI</div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668462/events</url>
+        <version>68</version>
+        <tags>
+          <tag>film</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/vguf6v615d4920ajcvgywy8umpqj/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/vguf6v615d4920ajcvgywy8umpqj/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/vguf6v615d4920ajcvgywy8umpqj/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734674">
+            <name>
+              <![CDATA[23 Nov 2026 - 11:00 @ Number 8 The Summer Book (PG)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-23T11:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-23T11:00:00+00:00</opening_time_iso>
+            <event_number>428734674</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668462/events/428734674/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668462/events/428734674.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668454">
+        <name>
+          <![CDATA[The Witch (15)]]>
+        </name>
+        <description>
+          <![CDATA[
+
+<div><span>In 1630s New
+England, a devout Puritan family is banished from their settlement and forced
+to live on the edge of a foreboding forest. When their infant son is kidnapped
+and killed by a witch, paranoia, religious hysteria, and demonic forces slowly
+tear the family apart from the inside. With Anya Taylor-Joy.</span></div><div><span><br></span></div>
+
+<div><span style="font-size:0.75rem;">Dir. Robert
+Eggers, 1hr 29mins</span></div><div><span style="font-size:0.75rem;"><br></span></div>
+
+<div>Magical Discount &ndash; Tickets: &pound;7&nbsp;+ 80p if booked online</div>
+
+<p><span><span><span>https://www.youtube.com/watch?v=iQXmlf3Sefg</span></span></span><span></span></p>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668454/events</url>
+        <version>69</version>
+        <tags>
+          <tag>film</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/jsws75fn8ck0fn33aplmht6ttr23/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/jsws75fn8ck0fn33aplmht6ttr23/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/jsws75fn8ck0fn33aplmht6ttr23/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734493">
+            <name>
+              <![CDATA[30 Oct 2026 - 19:30 @ Number 8 The Witch (15)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-30T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-30T19:30:00+00:00</opening_time_iso>
+            <event_number>428734493</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668454/events/428734493/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668454/events/428734493.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668453">
+        <name>
+          <![CDATA[The Witches of Eastwick (18)]]>
+        </name>
+        <description>
+          <![CDATA[<p><span>In this classic
+1987 film, three friends (Cher, Susan Sarandon, Michelle Pfeiffer) living in a
+small, New England town wish for the perfect man. A devilish stranger (Jack
+Nicholson) arrives, opening their eyes to their own magical powers and causing
+chaos in the community.</span></p>
+
+<p><span>Dir. George
+Miller, 1hr 53mins</span></p>
+
+<p>Magical Discount - Tickets: &pound;7 + 80p if booked online</p>
+
+<p><span><a href="https://www.youtube.com/watch?v=cL3XhQjfXfc"><span><span>https://www.youtube.com/watch?v=cL3XhQjfXfc</span></span></a></span></p>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668453/events</url>
+        <version>68</version>
+        <tags>
+          <tag>film</tag>
+        </tags>
+        <images>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734492">
+            <name>
+              <![CDATA[29 Oct 2026 - 19:30 @ Number 8 The Witches of Eastwick (18)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-29T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-29T19:30:00+00:00</opening_time_iso>
+            <event_number>428734492</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668453/events/428734492/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668453/events/428734492.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668450">
+        <name>
+          <![CDATA[Tony (15)]]>
+        </name>
+        <description>
+          <![CDATA[<p><span>A 19-year-old
+Anthony Bourdain travels to Provincetown and stumbles into the chaotic world of
+a restaurant kitchen, setting off a summer that will shape the course of his
+life.</span></p>
+
+<p><span>Featuring an
+extraordinary lead performance from Dominic Sessa as a young Bourdain and
+fantastic supporting performances from Emilia Jones, Leo Woodall, and a
+never-better Antonio Banderas, Tonyis a funny, warm, and endlessly
+charming treat - hugely enjoyable for anyone, whether you&apos;re an ardent Bourdain
+fan or barely know the name.</span></p>
+
+<p><span>Dir. Matt
+Johnson, 1hr 46mins <i>A</i>D)))</span></p>
+
+<p>Tickets: &pound;9.50 (&pound;9.00) + 80p if booked online</p>
+
+<p><span><span><span>https://www.youtube.com/watch?v=k1MVnzd2aVc</span></span></span><span></span></p>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668450/events</url>
+        <version>70</version>
+        <tags>
+          <tag>film</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/u1ujm5rkd4ii1fs19sxu8vettphv/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/u1ujm5rkd4ii1fs19sxu8vettphv/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/u1ujm5rkd4ii1fs19sxu8vettphv/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734477">
+            <name>
+              <![CDATA[17 Oct 2026 - 19:30 @ Number 8 Tony (15)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-17T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-17T19:30:00+01:00</opening_time_iso>
+            <event_number>428734477</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668450/events/428734477/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668450/events/428734477.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173668459">
+        <name>
+          <![CDATA[Verity (15)]]>
+        </name>
+        <description>
+          <![CDATA[A dark psychological romantic thriller based on Colleen Hoover&rsquo;s best-selling novel. Lowen Ashleigh (Dakota Johnson), a struggling writer is hired to finish a bestselling series for injured author Verity Crawford (Anne Hathaway). Lowen uncovers Verity&apos;s secret manuscript, which details chilling admissions about her family&apos;s tragic past.&nbsp;<div><br></div><div><span style="font-size:0.875rem;">Sat 14 Nov &ndash; 7.30pm
+Dir. Michael Showalter, 1hr 57mins</span></div><div>Tickets: &pound;9.50 (&pound;9.00) + 80p if booked online</div><div>https://www.youtube.com/watch?v=wbMNy_djxGk</div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173668459/events</url>
+        <version>75</version>
+        <tags>
+          <tag>film</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/anbp500ep829qxxaxvaacmvch0vo/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/anbp500ep829qxxaxvaacmvch0vo/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/anbp500ep829qxxaxvaacmvch0vo/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428734667">
+            <name>
+              <![CDATA[14 Nov 2026 - 19:30 @ Number 8 Verity (15)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-14T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-14T19:30:00+00:00</opening_time_iso>
+            <event_number>428734667</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173668459/events/428734667/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173668459/events/428734667.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="1173669133">
+        <name>
+          <![CDATA[Worcester Philharmonic Orchestra: New Year Family Favourites]]>
+        </name>
+        <description>
+          <![CDATA[<p>Saturday 9 January 2027 at 2.30pm.</p>
+
+<p>Start the New Year with music, colour and celebration
+with the <b>Worcester Philharmonic
+Orchestra</b> at our <strong>New Year Family Favourites.</strong> </p>
+
+<p>Introduced by conductor <strong>Dan Watson</strong>,
+this sparkling concert brings together music to delight audiences of all ages.
+Enjoy the charm of Quilter&rsquo;s <em>Children&rsquo;s Overture</em>, the drama and
+dazzling melodies of Khachaturian&rsquo;s <em>Masquerade Suite</em>, the elegant
+sounds of R. Strauss&rsquo;s <em>Wind Serenade</em>, and Bizet&rsquo;s irresistible <em>L&rsquo;Arl&eacute;sienne
+Suite</em>.</p>
+
+<p>With plenty of energy, atmosphere and musical magic,
+it&rsquo;s the perfect way to begin the year together.</p>
+
+<p><strong>Tickets &pound;17, under-16s &pound;5.</strong> Book now at <a href="http://www.number8.org"><strong><span>www.number8.org</span></strong></a>
+or call the Number 8 box office on <strong>01386 555488</strong>.</p>]]>
+        </description>
+        <event_category>Show Hires</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://number8.ticketsolve.com/shows/1173669133/events</url>
+        <version>24</version>
+        <tags>
+          <tag>show_hires</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/8vq6sa9ppqemezns6ebktpns8iqg/66b1733aa90d97346182386a3ac538e615c9cc950bc0fb69333ff989ee7aaa46</url>
+            <url size="medium">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/8vq6sa9ppqemezns6ebktpns8iqg/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d2qtepfzmrxn9w.cloudfront.net/as-assets/variants/8vq6sa9ppqemezns6ebktpns8iqg/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="428741821">
+            <name>
+              <![CDATA[09 Jan 2027 - 14:30 @ Number 8 Worcester Philharmonic Orchestra: New Year Family Favourites]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2027-01-09T14:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2027-01-09T14:30:00+00:00</opening_time_iso>
+            <event_number>428741821</event_number>
+            <venue_layout>Main Auditorium</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://number8.ticketsolve.com/shows/1173669133/events/428741821/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://number8.ticketsolve.com/shows/1173669133/events/428741821.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+    </shows>
+  </venue>
+</venues>
+
+<!-- __CACHE__ -->

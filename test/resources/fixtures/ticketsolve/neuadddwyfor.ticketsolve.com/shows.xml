@@ -1,0 +1,3134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<venues>
+  <venue id="126564702">
+    <name>
+      <![CDATA[Llyfrgell Pwllheli]]>
+    </name>
+    <shows>
+      <show id="873638994">
+        <name>
+          <![CDATA[Clwb Creu (Addas i Blant Oedran Cynradd / Suitable for primary School Aged Children)]]>
+        </name>
+        <description>
+          <![CDATA[<div><font size="4">Creative club for children&nbsp;</font></div><div><font size="4"><br></font></div><div>
+<font size="4"><b>Suitable for primary School Aged Children</b><font><br></font>
+
+
+</font>
+</div><div><font size="4"><br></font></div><div><div><font size="4">A weekly arts and crafts workshop for young people with a different theme every Saturday:</font></div></div><div><br></div><div>
+<p>
+
+
+
+
+
+
+
+</p>
+<p><i><b>August 29 </b>&lsquo;Dancers&rsquo;</i></p>
+<p><b>September 12th &nbsp;</b><i>Llŷn Coastal Festival</i></p>
+<p><b>September 19th </b><i>International Red Panda Day</i></p>
+<p><b>September 26th &nbsp;</b><i>Our 450th special: Books</i></p>
+<p><b>October 3rd &lsquo;</b><i>Mor
+a Thonnau</i><b>&rsquo;</b></p>
+<p><b>October 10th NO CLUB</b></p>
+<p><b>October 17th</b><i>&nbsp;Spaghetti Monster</i></p>
+<p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</p>
+<p><b>October 24th </b><i>Mutant Blobs</i></p>
+<p><b>October 31st </b><i>Zombie Hands</i></p>
+</div><div>
+<p><br></p>
+</div><div>
+<div><p><font size="4"><b>We ask that an adult stays with the children during the
+session, especially children under the age of 8</b>.</font></p></div>
+</div>]]>
+        </description>
+        <event_category>Llyfrgell / Library</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873638994/events</url>
+        <version>1499</version>
+        <tags>
+          <tag>clwbcreu</tag>
+          <tag>llyfrgelloeddgwynedd</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/mszzti1nylvjb90y0ybwbzoby19r/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/mszzti1nylvjb90y0ybwbzoby19r/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/mszzti1nylvjb90y0ybwbzoby19r/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129702467">
+            <name>
+              <![CDATA[17 Oct 2026 - 10:30 @ Llyfrgell Pwllheli Clwb Creu (Addas i Blant Oedran Cynradd / Suitable for primary School Aged Children)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-17T10:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-17T10:30:00+01:00</opening_time_iso>
+            <event_number>129702467</event_number>
+            <venue_layout>Llyfrgell Pwllheli (12)</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873638994/events/129702467</url>
+            <status>sold out</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873638994/events/129702467.xml</url>
+            </feed>
+          </event>
+          <event id="129702468">
+            <name>
+              <![CDATA[24 Oct 2026 - 10:30 @ Llyfrgell Pwllheli Clwb Creu (Addas i Blant Oedran Cynradd / Suitable for primary School Aged Children)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-24T10:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-24T10:30:00+01:00</opening_time_iso>
+            <event_number>129702468</event_number>
+            <venue_layout>Llyfrgell Pwllheli (12)</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873638994/events/129702468</url>
+            <status>sold out</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873638994/events/129702468.xml</url>
+            </feed>
+          </event>
+          <event id="129702483">
+            <name>
+              <![CDATA[31 Oct 2026 - 10:30 @ Llyfrgell Pwllheli Clwb Creu (Addas i Blant Oedran Cynradd / Suitable for primary School Aged Children)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-31T10:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-31T10:30:00+00:00</opening_time_iso>
+            <event_number>129702483</event_number>
+            <venue_layout>Llyfrgell Pwllheli (12)</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873638994/events/129702483</url>
+            <status>sold out</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873638994/events/129702483.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>sold out</status>
+      </show>
+      <show id="873657648">
+        <name>
+          <![CDATA[Clwb Lego Club Llyfrgell Pwllheli Library addas i blant 5 - 10 oed / suitable for children aged 5-10]]>
+        </name>
+        <description>
+          <![CDATA[<span>Lego Club suitable for children aged 5-10.&nbsp;</span><div></div><div><b><br></b></div><div><b>We ask that an adult to stay with the children especially those under 8 years of age.</b></div>]]>
+        </description>
+        <event_category>Llyfrgell / Library</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events</url>
+        <version>519</version>
+        <tags>
+          <tag>llyfrgelloeddgwynedd</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/jpxdbme4xpp8jmhp7v8ir4ty7t8d/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/jpxdbme4xpp8jmhp7v8ir4ty7t8d/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/jpxdbme4xpp8jmhp7v8ir4ty7t8d/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129709985">
+            <name>
+              <![CDATA[12 Oct 2026 - 15:45 @ Llyfrgell Pwllheli Clwb Lego Club Llyfrgell Pwllheli Library addas i blant 5 - 10 oed / suitable for children aged 5-10]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-12T15:45:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-12T15:45:00+01:00</opening_time_iso>
+            <event_number>129709985</event_number>
+            <venue_layout>Llyfrgell Pwllheli (8)</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709985</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709985.xml</url>
+            </feed>
+          </event>
+          <event id="129709986">
+            <name>
+              <![CDATA[19 Oct 2026 - 15:45 @ Llyfrgell Pwllheli Clwb Lego Club Llyfrgell Pwllheli Library addas i blant 5 - 10 oed / suitable for children aged 5-10]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-19T15:45:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-19T15:45:00+01:00</opening_time_iso>
+            <event_number>129709986</event_number>
+            <venue_layout>Llyfrgell Pwllheli (8)</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709986</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709986.xml</url>
+            </feed>
+          </event>
+          <event id="129709987">
+            <name>
+              <![CDATA[26 Oct 2026 - 15:45 @ Llyfrgell Pwllheli Clwb Lego Club Llyfrgell Pwllheli Library addas i blant 5 - 10 oed / suitable for children aged 5-10]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-26T15:45:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-26T15:45:00+00:00</opening_time_iso>
+            <event_number>129709987</event_number>
+            <venue_layout>Llyfrgell Pwllheli (8)</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709987</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709987.xml</url>
+            </feed>
+          </event>
+          <event id="129709988">
+            <name>
+              <![CDATA[02 Nov 2026 - 15:45 @ Llyfrgell Pwllheli Clwb Lego Club Llyfrgell Pwllheli Library addas i blant 5 - 10 oed / suitable for children aged 5-10]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-02T15:45:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-02T15:45:00+00:00</opening_time_iso>
+            <event_number>129709988</event_number>
+            <venue_layout>Llyfrgell Pwllheli (8)</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709988</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709988.xml</url>
+            </feed>
+          </event>
+          <event id="129709989">
+            <name>
+              <![CDATA[09 Nov 2026 - 15:45 @ Llyfrgell Pwllheli Clwb Lego Club Llyfrgell Pwllheli Library addas i blant 5 - 10 oed / suitable for children aged 5-10]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-09T15:45:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-09T15:45:00+00:00</opening_time_iso>
+            <event_number>129709989</event_number>
+            <venue_layout>Llyfrgell Pwllheli (8)</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709989</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709989.xml</url>
+            </feed>
+          </event>
+          <event id="129709990">
+            <name>
+              <![CDATA[16 Nov 2026 - 15:45 @ Llyfrgell Pwllheli Clwb Lego Club Llyfrgell Pwllheli Library addas i blant 5 - 10 oed / suitable for children aged 5-10]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-16T15:45:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-16T15:45:00+00:00</opening_time_iso>
+            <event_number>129709990</event_number>
+            <venue_layout>Llyfrgell Pwllheli (8)</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709990</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709990.xml</url>
+            </feed>
+          </event>
+          <event id="129709991">
+            <name>
+              <![CDATA[23 Nov 2026 - 15:45 @ Llyfrgell Pwllheli Clwb Lego Club Llyfrgell Pwllheli Library addas i blant 5 - 10 oed / suitable for children aged 5-10]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-23T15:45:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-23T15:45:00+00:00</opening_time_iso>
+            <event_number>129709991</event_number>
+            <venue_layout>Llyfrgell Pwllheli (8)</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709991</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709991.xml</url>
+            </feed>
+          </event>
+          <event id="129709992">
+            <name>
+              <![CDATA[30 Nov 2026 - 15:45 @ Llyfrgell Pwllheli Clwb Lego Club Llyfrgell Pwllheli Library addas i blant 5 - 10 oed / suitable for children aged 5-10]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-30T15:45:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-30T15:45:00+00:00</opening_time_iso>
+            <event_number>129709992</event_number>
+            <venue_layout>Llyfrgell Pwllheli (8)</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709992</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709992.xml</url>
+            </feed>
+          </event>
+          <event id="129709993">
+            <name>
+              <![CDATA[07 Dec 2026 - 15:45 @ Llyfrgell Pwllheli Clwb Lego Club Llyfrgell Pwllheli Library addas i blant 5 - 10 oed / suitable for children aged 5-10]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-07T15:45:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-07T15:45:00+00:00</opening_time_iso>
+            <event_number>129709993</event_number>
+            <venue_layout>Llyfrgell Pwllheli (8)</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709993</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709993.xml</url>
+            </feed>
+          </event>
+          <event id="129709994">
+            <name>
+              <![CDATA[14 Dec 2026 - 15:45 @ Llyfrgell Pwllheli Clwb Lego Club Llyfrgell Pwllheli Library addas i blant 5 - 10 oed / suitable for children aged 5-10]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-14T15:45:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-14T15:45:00+00:00</opening_time_iso>
+            <event_number>129709994</event_number>
+            <venue_layout>Llyfrgell Pwllheli (8)</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709994</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709994.xml</url>
+            </feed>
+          </event>
+          <event id="129709995">
+            <name>
+              <![CDATA[21 Dec 2026 - 15:45 @ Llyfrgell Pwllheli Clwb Lego Club Llyfrgell Pwllheli Library addas i blant 5 - 10 oed / suitable for children aged 5-10]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-21T15:45:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-21T15:45:00+00:00</opening_time_iso>
+            <event_number>129709995</event_number>
+            <venue_layout>Llyfrgell Pwllheli (8)</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709995</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873657648/events/129709995.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873681766">
+        <name>
+          <![CDATA[Clwb Llyfr i Ffilm / Book to Film Club]]>
+        </name>
+        <description>
+          <![CDATA[<span>Do you enjoy reading books? Do you love watching films? Would you like to meet new people and discuss book-to-film adaptations? If so, this club is for you.</span><div><span><br></span></div><div><span>Join us for an informal and friendly meeting where we&rsquo;ll explore the book, the film, and how the story has been adapted for the screen.&nbsp;</span></div><div><span><br></span></div><div><span><b>Up-coming book club reads:</b></span></div><div><br></div><div><br></div><div><div>A dedicated bookshelf in the library holds copies reserved for anyone who wants to take part. Simply take a copy to the desk or use the self‑service machine to borrow it with your library card. <b>Please note we are waiting for this season&apos;s books to arrive.</b>
+</div></div><div><br></div><div>
+<div><b>Dates to be confirmed:</b></div>
+<div>
+<p>The Dog Stars &ndash; Peter Heller</p>
+
+<p>Sense and Sensibilty &ndash; Jane Austen</p>
+
+<p>Sunrise on the Reaping &ndash; Suzanne Collins</p>
+
+<p>Verity &ndash; Colleen Hoover&nbsp;</p>
+<p>The Book of Magic &ndash; Alcie Hoffman&nbsp;</p>
+
+<p>Klara and the Sun &ndash; Kazuo Ishiguro&nbsp;</p>
+</div>
+<div></div>
+</div>]]>
+        </description>
+        <event_category>Llenyddiaeth / Literature</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873681766/events</url>
+        <version>149</version>
+        <tags>
+          <tag>bookclub</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/mbtfc1hpwtfj5lio2k65a6efzj95/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/mbtfc1hpwtfj5lio2k65a6efzj95/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/mbtfc1hpwtfj5lio2k65a6efzj95/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129707244">
+            <name>
+              <![CDATA[21 Oct 2026 - 19:00 @ Llyfrgell Pwllheli - (opening time 18:45) Clwb Llyfr i Ffilm / Book to Film Club]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-21T19:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-21T18:45:00+01:00</opening_time_iso>
+            <event_number>129707244</event_number>
+            <venue_layout>Llyfrgell Pwllheli (30)</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute>The Dog Star</event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873681766/events/129707244</url>
+            <status>sold out</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873681766/events/129707244.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>sold out</status>
+      </show>
+    </shows>
+  </venue>
+  <venue id="126562805">
+    <name>
+      <![CDATA[Neuadd Dwyfor]]>
+    </name>
+    <shows>
+      <show id="873689909">
+        <name>
+          <![CDATA[A Child's Christmas in Wales - Lighthouse Theatre]]>
+        </name>
+        <description>
+          <![CDATA[<p><strong><i></i></strong></p>
+
+<p><strong><i></i></strong></p>
+
+<p><strong><i></i></strong></p>
+
+<p><strong><span>Lighthouse Theatre</span></strong></p>
+
+<p><strong><span>presents</span></strong></p>
+
+<p><strong></strong></p>
+
+<p><strong><span>A Child&apos;s Christmas</span></strong></p>
+
+<p><strong><span>by</span></strong></p>
+
+<p><strong><span>Dylan Thomas and Richard Burton</span></strong></p>
+
+<p><strong></strong></p>
+
+<p><strong><i></i></strong></p>
+
+<p><strong><span>A Child&apos;s Christmas in Wales by Dylan Thomas</span></strong></p>
+
+<p><strong><i><span>&lsquo;Snow
+grew overnight on the roofs of the houses&rsquo;</span></i></strong></p>
+
+<p><span>Dylan Thomas and Richard Burton
+are icons of twentieth century Wales. They have produced stories about
+Christmases in Wales that rival Charles Dickens&rsquo; short stories about Christmas
+in nineteenth century England. In some ways &nbsp;Thomas and Burton can be
+accused of inventing Christmas in exactly the same way Dickens is responsible
+for creating the Christmas that we enjoy so wholeheartedly.</span></p>
+
+<p><span>For all of that, however,
+Burton and Thomas were actors whose love of words shines through these two
+short but heart-warming stories.</span></p>
+
+<p><span>Described by the South Wales
+Evening Post as &lsquo;a joy&rsquo;, this &lsquo;Welsh Icons Xmas show&rsquo; performed by two actors
+has proved hugely popular - Join Lighthouse as they conjure up Christmas in the
+air....</span></p>
+
+<p><span>&quot;</span><span> Mae&apos;r
+Nadolig wedi ddechre&apos;n bendant nawr.&quot;</span></p>
+
+<p><span>&quot;</span><span>Two mesmerising performances. A wonderful afternoon of festive
+theatre.&quot;</span></p>
+
+<p><em><span>&lsquo;There
+were very few white Christmases in my part of Wales&rsquo;</span></em><span>&hellip;.</span></p>
+
+<p><b><span>A Christmas Story by Richard Burton</span></b></p>]]>
+        </description>
+        <event_category>Theatr</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873689909/events</url>
+        <version>87</version>
+        <tags>
+          <tag>lighthouse</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/czusdpn4zx4tsoh11cnpz99mrkld/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/czusdpn4zx4tsoh11cnpz99mrkld/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/czusdpn4zx4tsoh11cnpz99mrkld/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129700342">
+            <name>
+              <![CDATA[16 Dec 2026 - 19:00 @ Neuadd Dwyfor - (opening time 18:45) A Child's Christmas in Wales - Lighthouse Theatre]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-16T19:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-16T18:45:00+00:00</opening_time_iso>
+            <event_number>129700342</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873689909/events/129700342/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873689909/events/129700342.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873689907">
+        <name>
+          <![CDATA[André Rieu’s 2026 Christmas Concert: Let it Snow]]>
+        </name>
+        <description>
+          <![CDATA[<span>This holiday season, celebrate the most wonderful time of the year on the big screen with
+Andr&eacute; Rieu&apos;s 2026 Christmas Concert &ndash; Let It Snow.</span><div><span><br></span></div><div><span>This heartwarming festive spectacular,
+filled with beloved Christmas classics, enchanting waltzes, and magical surprises, will
+leave you smiling long after the final encore.</span></div><div><span><br></span></div><div><span>Joined by his world-famous Johann Strauss Orchestra, exceptional sopranos, and a
+powerful 120-voice male choir, Andr&eacute; brings the spirit of Christmas to life in an
+unforgettable musical event.</span></div><div><span><br></span></div><div><span>Overflowing with music, laughter, and holiday cheer, this
+concert is perfect for the whole family.&nbsp;</span></div><div><span><br></span></div><div><span>Whether you&apos;re surrounded by snow or simply dreaming of it, experience the magic of
+Christmas on the big screen with those you love. Wrap up your year with Let It Snow &ndash; only in cinemas!</span></div>]]>
+        </description>
+        <event_category>Darllediad Byw / Live Broadcast</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873689907/events</url>
+        <version>86</version>
+        <tags>
+          <tag>comscore</tag>
+          <tag>neuadddwyfor</tag>
+          <tag>pieceofmagic</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/w7r2820hyuhx8aueyw7sqas1m3ku/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/w7r2820hyuhx8aueyw7sqas1m3ku/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/w7r2820hyuhx8aueyw7sqas1m3ku/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129700338">
+            <name>
+              <![CDATA[14 Dec 2026 - 10:30 @ Neuadd Dwyfor - (opening time 10:00) André Rieu’s 2026 Christmas Concert: Let it Snow]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-14T10:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-14T10:00:00+00:00</opening_time_iso>
+            <event_number>129700338</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873689907/events/129700338/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873689907/events/129700338.xml</url>
+            </feed>
+          </event>
+          <event id="129700335">
+            <name>
+              <![CDATA[15 Dec 2026 - 19:00 @ Neuadd Dwyfor - (opening time 18:45) André Rieu’s 2026 Christmas Concert: Let it Snow]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-15T19:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-15T18:45:00+00:00</opening_time_iso>
+            <event_number>129700335</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873689907/events/129700335/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873689907/events/129700335.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873691116">
+        <name>
+          <![CDATA[Bara Caws: Bugail Geifr]]>
+        </name>
+        <description>
+          <![CDATA[<p><b><i><span>Bara
+Caws has hit the Big 50! Just think what this remarkable company has given us
+as a nation over the years. The serious, the challenging, the entertainment and
+fun. Hours and hours of showing ourselves to ourselves, and shocking us into
+self-recognition from time to time.</span></i></b></p>
+
+<p><b><i></i></b></p>
+
+<p><b><i><span>How to
+respond to this?That&rsquo;s up to you. But
+let&rsquo;s try.</span></i></b></p>
+
+<p><b><i><span>My own
+response is&nbsp;Y Bugail Geifr. I&rsquo;ve called it a verse-drama in the form of a
+monologue. Its only purpose is to pay blunt, unflinching tribute to the Company
+from someone who has had the privilege of writing several shows for them. To
+say Thank You &mdash; that&rsquo;s all. But in a way that asks the question: What is the
+beating heart of theatre? It is also a song of praise to theatre itself.</span></i></b></p>
+
+<p><b><i></i></b></p>
+
+<p><b><i><span>And to
+get Dyfan Roberts into action! One of the company&rsquo;s founding fathers. It&rsquo;s for
+the voice of a particular actor that I write these days.It is Dyfan&rsquo;s voice
+that shines through this piece. But there are other voices too &mdash; voices that
+have contributed to the life of Bara Caws.</span></i></b></p>
+
+<p><b><i><span>Y Bugail
+Geifr is full of spirits. One actor&hellip; but a multitude of individuals.</span></i></b></p>
+
+<p><b><i></i></b></p>
+
+<p><b><i><span>Aled
+Jones Williams.</span></i></b></p>
+
+<p><b><i></i></b></p>
+
+<p><b><i><span>This is
+the last theatre play of the giant of a playwright Aled Jones Williams who has
+been part of the theatrical landscape here in Wales for over three decades.</span></i></b></p>
+
+<p><b><i></i></b></p>
+
+<p><b><i><span>His last
+treasure? A gift to Theatr Bara Caws as we begin our 50th anniversary
+celebrations.</span></i></b></p>
+
+<p><b><i></i></b></p>
+
+<p><b><i><span>A play
+specially written for Dyfan Roberts, one of the founders of the Company back in
+1976/77.</span></i></b></p>
+
+<p><b><i></i></b></p>
+
+<p><b><i><span>Ffion
+Dafis</span></i></b></p>
+
+<p><b><i></i></b></p>
+
+<p><span>Cast :
+Dyfan Roberts </span></p>
+
+<p><span>Director
+: Betsan Llwyd </span></p>]]>
+        </description>
+        <event_category>Theatr</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873691116/events</url>
+        <version>45</version>
+        <tags>
+          <tag>bara_caws</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/ibqx2nxzve3qau7v79puhps57hvp/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/ibqx2nxzve3qau7v79puhps57hvp/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/ibqx2nxzve3qau7v79puhps57hvp/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129710047">
+            <name>
+              <![CDATA[05 Nov 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:15) Bara Caws: Bugail Geifr]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-05T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-05T19:15:00+00:00</opening_time_iso>
+            <event_number>129710047</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691116/events/129710047/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691116/events/129710047.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873676168">
+        <name>
+          <![CDATA[Cabarela]]>
+        </name>
+        <description>
+          <![CDATA[<div>Tickets on sale 07/09/2026</div><div><span style="font-size:0.75rem;"><br></span></div><div><span style="font-size:0.75rem;">Christmas wouldn&apos;t be Christmas without spending
+a night with the mischievous Cabarela.</span></div><div>
+
+<p>Buy your tickets, dust off your sequins and ding
+dong! Here we come!</p>
+</div>]]>
+        </description>
+        <event_category>Cerddoriaeth / Music</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873676168/events</url>
+        <version>320</version>
+        <tags>
+          <tag>cabarela</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/epol15nu06vux3tglvpbj197nihf/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/epol15nu06vux3tglvpbj197nihf/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/epol15nu06vux3tglvpbj197nihf/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129700417">
+            <name>
+              <![CDATA[17 Dec 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:15) Cabarela]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-17T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-17T19:15:00+00:00</opening_time_iso>
+            <event_number>129700417</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873676168/events/129700417/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873676168/events/129700417.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873691112">
+        <name>
+          <![CDATA[CAF: Welsh Work]]>
+        </name>
+        <description>
+          <![CDATA[<b></b><p><span>These 11 brand new animated short films by Welsh and Wales-based artists span personal journeys, surreal comedy, mythology and landscape-led stories. From stop motion, to experimental first films to a BAFTA-longlisted short - Welsh Work celebrates a remarkable diversity of voices, techniques, styles and stories. After the screening join the team from Cardiff Animation Festival to take part in a collaborative animation.&nbsp;</span></p><ul style="margin-top:0;margin-bottom:0;padding-inline-start:48px;">
+<li style="list-style-type:disc;font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;"><p style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;">Brain Space - </span><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;">Dir. Laura Tofarides</span></p></li>
+<li style="list-style-type:disc;font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;"><p style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;">Meal Deal</span><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"> - Dir. Niamh McArdle, Amy Mulcahy, Anais Mia Diane Kheir</span></p></li>
+<li style="list-style-type:disc;font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;"><p style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;">Project Massacre</span><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"> - Dir. Megan Powell&nbsp;</span></p></li>
+<li style="list-style-type:disc;font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;"><p style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;">Thou Canst Ever Return</span><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"> - Dir. Dexter George Clifford-Keane</span></p></li>
+<li style="list-style-type:disc;font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;"><p style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;">Crybaby</span><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"> - Dir. Eleri Edwards</span></p></li>
+<li style="list-style-type:disc;font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;"><p style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;">Coed Y Papur</span><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"> - Dir. Paddy Merrigan</span></p></li>
+<li style="list-style-type:disc;font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;"><p style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;">The Green Lady</span><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"> - Dir. Robert Brown</span></p></li>
+<li style="list-style-type:disc;font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;"><p style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;">Gossip/Clecs</span><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"> - Dir. Harri Shanahan</span></p></li>
+<li style="list-style-type:disc;font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;"><p style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;">All Hail The Duck King</span><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"> - Dir. Tommy Howlett</span></p></li>
+<li style="list-style-type:disc;font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;"><p style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;">9 To 5</span><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"> - Dir. Castiel Collyer</span></p></li>
+<li style="list-style-type:disc;font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;"><p style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;">Liminal Roots</span><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"> - Dir. Aliyah Harfoot</span></p></li>
+<li style="list-style-type:disc;font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;"><p style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;">Holm</span><span style="font-size:11pt;font-family:'Helvetica Neue',sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;"> - Dir. Nico Dafydd</span></p></li>
+</ul><div>
+<b>Supported by: Ffilm Cymru Wales, Film Hub Wales, Atebol.&nbsp;</b><font color="#000000"><span style="font-size:14.6667px;"></span></font>
+</div>]]>
+        </description>
+        <event_category>Sinema / Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873691112/events</url>
+        <version>58</version>
+        <tags>
+          <tag>caf</tag>
+          <tag>comscore</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/i23jtew6vdkwri6xfx1997zj4shg/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/i23jtew6vdkwri6xfx1997zj4shg/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/i23jtew6vdkwri6xfx1997zj4shg/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+          <property>
+            <name>Cyngor Tystysgrif / Certificate Advisory:</name>
+            <value>15+</value>
+          </property>
+          <property>
+            <name>Is-deitlau / Subtitles</name>
+            <value>Saesneg / English</value>
+          </property>
+          <property>
+            <name>Nodiadau Cynnwys:</name>
+            <value>Themâu camdriniaeth, alcohol, noethni, hunan-niweidio, a delweddau sy’n fflachio.</value>
+          </property>
+          <property>
+            <name>Content Notes:</name>
+            <value>Themes of Abuse, Alcohol, Nudity, Self-Harm, Flashing Images.</value>
+          </property>
+        </properties>
+        <events>
+          <event id="129710031">
+            <name>
+              <![CDATA[24 Oct 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:00) CAF: Welsh Work]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-24T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-24T19:00:00+01:00</opening_time_iso>
+            <event_number>129710031</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691112/events/129710031/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691112/events/129710031.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873691106">
+        <name>
+          <![CDATA[CAF: Yr Injan Fach Fentrus (U)]]>
+        </name>
+        <description>
+          <![CDATA[<p>Yr Injan Fach Fentrus/The Little Engine That Could (1991) is a story about a cheerful little train named Tillie who must help a special birthday train cross a dangerous mountain to reach a nearby town for an upcoming birthday party.</p><p style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><span style='font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(0, 0, 0);background-color:transparent;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;'>Following </span><span style='font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(34, 34, 34);background-color:transparent;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;'>Yr Injan Fach Fentrus </span><span style='font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(0, 0, 0);background-color:transparent;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;'>there will be a screening of family friendly animated short films made in Wales. After the screening join the team from Cardiff Animation Festival to take part in a collaborative animation featuring Tillie the little engine!&nbsp;</span></p><ul style="margin-top:0px;margin-bottom:0px;padding-inline-start:48px;">
+<li style='list-style-type:disc;font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(0, 0, 0);background-color:transparent;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;'><p style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><span style='font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(34, 34, 34);background-color:transparent;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;'>Yr Injan Fach Fentrus - Dir. </span><span style="font-size:11pt;font-family:Arial, sans-serif;color:rgb(0, 0, 0);background-color:transparent;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;">Dave Edwards</span></p></li>
+<li style="list-style-type:disc;font-size:11pt;font-family:Arial, sans-serif;color:rgb(0, 0, 0);background-color:transparent;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;"><p style="line-height:1.38;background-color:#ffffff;margin-top:0pt;margin-bottom:0pt;"><span style='font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(34, 34, 34);background-color:transparent;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;'>Lemon and Elderflower</span><span style='font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(34, 34, 34);background-color:transparent;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;'> - Dir. Ilenia Cotardo</span></p></li>
+<li style='list-style-type:disc;font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(34, 34, 34);background-color:transparent;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;'><p style="line-height:1.38;background-color:#ffffff;margin-top:0pt;margin-bottom:0pt;"><span style='font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(34, 34, 34);background-color:transparent;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;'>Pre-Venge</span><span style='font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(34, 34, 34);background-color:transparent;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;'> - Dir. Thomas Lucas&nbsp;</span></p></li>
+<li style='list-style-type:disc;font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(34, 34, 34);background-color:transparent;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;'><p style="line-height:1.38;background-color:#ffffff;margin-top:0pt;margin-bottom:0pt;"><span style='font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(34, 34, 34);background-color:transparent;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;'>First Flight</span><span style='font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(34, 34, 34);background-color:transparent;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;'> - Dir. Molly Hill</span></p></li>
+<li style='list-style-type:disc;font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(34, 34, 34);background-color:transparent;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;'><p style="line-height:1.38;background-color:#ffffff;margin-top:0pt;margin-bottom:0pt;"><span style='font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(34, 34, 34);background-color:transparent;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;'>Bwgan</span><span style='font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(34, 34, 34);background-color:transparent;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;'> - Dir. Hywel Prytherch Roberts&nbsp;</span></p></li>
+<li style='list-style-type:disc;font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(34, 34, 34);background-color:transparent;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;'><p style="line-height:1.38;background-color:rgb(255, 255, 255);margin-top:0pt;margin-bottom:0pt;"><span style='font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(34, 34, 34);background-color:transparent;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;'>Fulfilament</span><span style='font-size:11pt;font-family:"Helvetica Neue", sans-serif;color:rgb(34, 34, 34);background-color:transparent;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre-wrap;'> - Dir. Rhiannon Evans </span></p></li>
+</ul><div><font color="#222222"><span style="font-size:14.6667px;"><br></span></font></div><div>
+<b>Supported by: Ffilm Cymru Wales, Film Hub Wales, Atebol.&nbsp;</b><font color="#222222"><span style="font-size:14.6667px;"></span></font>
+</div>]]>
+        </description>
+        <event_category>Sinema / Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873691106/events</url>
+        <version>58</version>
+        <tags>
+          <tag>caf</tag>
+          <tag>comscore</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/s7v3y4gv4fylnpgx0j8c0mf78d4v/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/s7v3y4gv4fylnpgx0j8c0mf78d4v/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/s7v3y4gv4fylnpgx0j8c0mf78d4v/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+          <property>
+            <name>Is-deitlau</name>
+            <value>Cymraeg gydag is-deitlau Saesneg</value>
+          </property>
+          <property>
+            <name>Subtitles</name>
+            <value>Welsh with English subtitles</value>
+          </property>
+        </properties>
+        <events>
+          <event id="129710027">
+            <name>
+              <![CDATA[24 Oct 2026 - 14:30 @ Neuadd Dwyfor - (opening time 14:00) CAF: Yr Injan Fach Fentrus (U)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-24T14:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-24T14:00:00+01:00</opening_time_iso>
+            <event_number>129710027</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691106/events/129710027/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691106/events/129710027.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873691101">
+        <name>
+          <![CDATA[Calvin Price: Born Gifted UK Tour 2027]]>
+        </name>
+        <description>
+          <![CDATA[<b></b><p><span>An Evening of Spirit Communication with Calvin Price &ndash; The Evidential Medium</span></p><p><span>Join renowned psychic medium Calvin Price for a powerful and uplifting evening exploring the continuing connection between this world and the next.</span></p><p><span>With over a decade of professional experience demonstrating mediumship across the UK and Ireland, Calvin is known for his genuine approach, warm personality, and heartfelt evidence from loved ones in Spirit. He toured the UK as a guest medium with the late Colin Fry and has also worked alongside the late Derek Acorah&mdash;experiences that shaped his professionalism and compassionate delivery of messages from Spirit.</span></p><p><span>From an early age, Calvin recognised his connection to the spirit world, a calling that continues to help others find comfort, healing, and reassurance. During this special evening, audience members may receive messages delivered with honesty, compassion, and respect. Each demonstration is unique and often filled with emotion, laughter, and meaningful moments that remind us our loved ones are never truly gone.</span></p><p><span>Stay after the show for a special Book Signing &amp; Meet with Calvin in the auditorium.</span></p><p><span>Minimum Age 16+( accompanied by an adult)</span><span style="font-size:11pt;font-family:Arial,sans-serif;color:#000000;background-color:transparent;font-weight:700;font-style:italic;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;">This event is for entertainment purposes only.</span></p>]]>
+        </description>
+        <event_category>Theatr</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873691101/events</url>
+        <version>80</version>
+        <tags>
+          <tag>calvin_price</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="10">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/makpvuk6cqxd85asj5ybzvqgf5bb/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/makpvuk6cqxd85asj5ybzvqgf5bb/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/makpvuk6cqxd85asj5ybzvqgf5bb/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+          <image priority="5">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/mmmhcsou8hja8cejj1jlhl4yknvq/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/mmmhcsou8hja8cejj1jlhl4yknvq/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/mmmhcsou8hja8cejj1jlhl4yknvq/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129710001">
+            <name>
+              <![CDATA[13 May 2027 - 19:30 @ Neuadd Dwyfor - (opening time 19:15) Calvin Price: Born Gifted UK Tour 2027]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2027-05-13T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2027-05-13T19:15:00+01:00</opening_time_iso>
+            <event_number>129710001</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691101/events/129710001/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691101/events/129710001.xml</url>
+            </feed>
+          </event>
+          <event id="129710004">
+            <name>
+              <![CDATA[21 Oct 2027 - 19:30 @ Neuadd Dwyfor - (opening time 19:15) Calvin Price: Born Gifted UK Tour 2027]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2027-10-21T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2027-10-21T19:15:00+01:00</opening_time_iso>
+            <event_number>129710004</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691101/events/129710004/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691101/events/129710004.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873690731">
+        <name>
+          <![CDATA[Dementia Friendly: Valley Of Song (U)]]>
+        </name>
+        <description>
+          <![CDATA[<p><strong>Join us for a special screening designed for people living with dementia, their families, and carers.</strong></p><p>During the film, sound levels will be lower to create a calmer environment, and the lights will remain gently lit to ensure comfort and safety.</p><p>A warm welcome to all &ndash; come and enjoy a relaxed and inclusive cinema experience.</p><p><strong>Tickets &pound;5</strong>, including a companion or carer ticket</p>]]>
+        </description>
+        <event_category>Sinema / Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873690731/events</url>
+        <version>18</version>
+        <tags>
+          <tag>comscore</tag>
+          <tag>neuadddwyfor</tag>
+          <tag>park_circus</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/p17haknc73pnpv53pkdfv9x3ir44/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/p17haknc73pnpv53pkdfv9x3ir44/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/p17haknc73pnpv53pkdfv9x3ir44/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129707228">
+            <name>
+              <![CDATA[22 Oct 2026 - 12:30 @ Neuadd Dwyfor - (opening time 12:00) Dementia Friendly: Valley Of Song (U)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-22T12:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-22T12:00:00+01:00</opening_time_iso>
+            <event_number>129707228</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873690731/events/129707228/seats</url>
+            <status>sold out</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873690731/events/129707228.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>sold out</status>
+      </show>
+      <show id="873691093">
+        <name>
+          <![CDATA[Digger (15)]]>
+        </name>
+        <description>
+          <![CDATA[<span>Academy Award-winning
+filmmaker Alejandro G. I&ntilde;&aacute;rritu returns with his original film&nbsp;<i>DIGGER</i>,
+starring Tom Cruise in the title role.</span><div><span><br>The most powerful man in the world embarks on a frantic mission to prove he is
+humanity&rsquo;s saviour before the disaster he&rsquo;s unleashed destroys everything.</span></div><div><span><br>Tom Cruise stars alongside Oscar winner Riz Ahmed, John Goodman, Oscar nominee
+Sandra H&uuml;ller, Michael Stuhlbarg, and Oscar nominee Jesse Plemons.</span></div><div>
+<span><br></span><b>Ticket prices increase by &pound;1.50 on the day of screening.</b><span></span>
+</div>]]>
+        </description>
+        <event_category>Sinema / Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873691093/events</url>
+        <version>133</version>
+        <tags>
+          <tag>comscore</tag>
+          <tag>neuadddwyfor</tag>
+          <tag>warnerbros</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/pldanv1a8okdbiydiftmq0nxa6ok/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/pldanv1a8okdbiydiftmq0nxa6ok/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/pldanv1a8okdbiydiftmq0nxa6ok/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129709969">
+            <name>
+              <![CDATA[16 Oct 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:00) Digger (15)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-16T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-16T19:00:00+01:00</opening_time_iso>
+            <event_number>129709969</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691093/events/129709969/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691093/events/129709969.xml</url>
+            </feed>
+          </event>
+          <event id="129709970">
+            <name>
+              <![CDATA[17 Oct 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:00) Digger (15)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-17T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-17T19:00:00+01:00</opening_time_iso>
+            <event_number>129709970</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691093/events/129709970/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691093/events/129709970.xml</url>
+            </feed>
+          </event>
+          <event id="129710061">
+            <name>
+              <![CDATA[19 Oct 2026 - 10:30 @ Neuadd Dwyfor - (opening time 10:00) Digger (15)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-19T10:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-19T10:00:00+01:00</opening_time_iso>
+            <event_number>129710061</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691093/events/129710061/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691093/events/129710061.xml</url>
+            </feed>
+          </event>
+          <event id="129709971">
+            <name>
+              <![CDATA[20 Oct 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:00) Digger (15)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-20T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-20T19:00:00+01:00</opening_time_iso>
+            <event_number>129709971</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691093/events/129709971/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691093/events/129709971.xml</url>
+            </feed>
+          </event>
+          <event id="129710063">
+            <name>
+              <![CDATA[21 Oct 2026 - 14:30 @ Neuadd Dwyfor - (opening time 14:00) Digger (15)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-21T14:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-21T14:00:00+01:00</opening_time_iso>
+            <event_number>129710063</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691093/events/129710063/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691093/events/129710063.xml</url>
+            </feed>
+          </event>
+          <event id="129709972">
+            <name>
+              <![CDATA[21 Oct 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:00) Digger (15)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-21T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-21T19:00:00+01:00</opening_time_iso>
+            <event_number>129709972</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691093/events/129709972/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691093/events/129709972.xml</url>
+            </feed>
+          </event>
+          <event id="129709973">
+            <name>
+              <![CDATA[22 Oct 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:00) Digger (15)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-22T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-22T19:00:00+01:00</opening_time_iso>
+            <event_number>129709973</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute>Is-deitlau / Subtitles</event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691093/events/129709973/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691093/events/129709973.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873689520">
+        <name>
+          <![CDATA[Diod a Dylunio - Peintio Crochenwaith / Drink and Design - Pottery Painting]]>
+        </name>
+        <description>
+          <![CDATA[<div>Join us for a relaxed evening of <strong>pottery painting with Pot a Phaent</strong> at Neuadd Dwyfor!</div><div><br></div><div><div>Whether you&apos;re feeling creative or just fancy a different night out with friends, you&apos;ll be able to paint your own ceramic piece while enjoying a drink from the bar. 🖌️✨</div></div><div>
+<div>Bar open throughout the evening&nbsp;</div>
+<div><span style="font-size:0.875rem;">Special drinks offers available</span></div>
+<div>No experience needed&nbsp;</div>
+<div>Limited spaces</div>
+</div><div><br></div><div><div>Book now and create something truly unique to take home! 💕</div></div>]]>
+        </description>
+        <event_category>Gweithdy / Workshop</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873689520/events</url>
+        <version>94</version>
+        <tags>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/1dklagejkub282c1rpo9zzohhfku/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/1dklagejkub282c1rpo9zzohhfku/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/1dklagejkub282c1rpo9zzohhfku/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129696987">
+            <name>
+              <![CDATA[06 Nov 2026 - 06:30 @ Neuadd Dwyfor - (opening time 06:00) Diod a Dylunio - Peintio Crochenwaith / Drink and Design - Pottery Painting]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-06T06:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-06T06:00:00+00:00</opening_time_iso>
+            <event_number>129696987</event_number>
+            <venue_layout>Diod  a Dylunio Capasity 30</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873689520/events/129696987</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873689520/events/129696987.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873690487">
+        <name>
+          <![CDATA[Disney Junior Cinema Club 2026]]>
+        </name>
+        <description>
+          <![CDATA[<p><i><span>This October, sing, dance and
+play at the movies with Disney Junior Cinema Club!</span></i></p>
+
+<p><i></i></p>
+
+<p><i><span>Packed with fun for
+preschoolers and their grown-ups, this interactive big-screen experience brings
+together some favourite Disney Junior stories from Mickey Mouse Clubhouse+,
+Minnie&apos;s Bow-Toons: Pet Hotel, Marvel&apos;s Iron Man and His Awesome Friends, Sofia
+the First: Royal Magic and Toy Story Toons, in a fun-filled extravaganza!
+Expect sing-alongs, dance moments, exciting games and magical surprises, where
+audience participation is a must.</span></i></p>
+
+<p><i></i></p>
+
+<p><i><span>For the very first time,
+families can join two on-screen hosts on a brand-new adventure around
+Disneyland Paris, for the ultimate Disney Junior playdate!</span></i></p>
+
+<p><i><span>It&apos;s a magical, value-packed
+movie party for the whole family to enjoy together.</span></i></p>]]>
+        </description>
+        <event_category>Sinema / Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873690487/events</url>
+        <version>112</version>
+        <tags>
+          <tag>comscore</tag>
+          <tag>disney</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/vvdh2mu54batrms5uqej4qt13hl8/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/vvdh2mu54batrms5uqej4qt13hl8/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/vvdh2mu54batrms5uqej4qt13hl8/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129706577">
+            <name>
+              <![CDATA[24 Oct 2026 - 10:30 @ Neuadd Dwyfor - (opening time 10:00) Disney Junior Cinema Club 2026]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-24T10:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-24T10:00:00+01:00</opening_time_iso>
+            <event_number>129706577</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873690487/events/129706577/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873690487/events/129706577.xml</url>
+            </feed>
+          </event>
+          <event id="129706578">
+            <name>
+              <![CDATA[27 Oct 2026 - 10:30 @ Neuadd Dwyfor - (opening time 10:00) Disney Junior Cinema Club 2026]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-27T10:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-27T10:00:00+00:00</opening_time_iso>
+            <event_number>129706578</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873690487/events/129706578/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873690487/events/129706578.xml</url>
+            </feed>
+          </event>
+          <event id="129706579">
+            <name>
+              <![CDATA[28 Oct 2026 - 10:30 @ Neuadd Dwyfor - (opening time 10:00) Disney Junior Cinema Club 2026]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-28T10:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-28T10:00:00+00:00</opening_time_iso>
+            <event_number>129706579</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873690487/events/129706579/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873690487/events/129706579.xml</url>
+            </feed>
+          </event>
+          <event id="129706580">
+            <name>
+              <![CDATA[29 Oct 2026 - 10:30 @ Neuadd Dwyfor - (opening time 10:00) Disney Junior Cinema Club 2026]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-29T10:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-29T10:00:00+00:00</opening_time_iso>
+            <event_number>129706580</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873690487/events/129706580/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873690487/events/129706580.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873689903">
+        <name>
+          <![CDATA[English National Ballet presents The Sleeping Beauty]]>
+        </name>
+        <description>
+          <![CDATA[<p><span>Join us for a
+spectacular recording of Sir Kenneth MacMillan&rsquo;s exquisite ballet, performed in
+a limited run at The Royal Albert Hall, with performances that will leave you
+spellbound.</span></p>
+
+<p><span>For wonder and enchantment, look no further than this
+classic fairytale ballet. Experience all that is grand, gleaming and gorgeous
+in a stunning version of one of the world&rsquo;s favourite stories.</span></p>
+
+<p><span>As a baby, Princess Aurora is cursed by the wicked
+Carabosse: on her 16th birthday, she will prick her finger and die. Her
+godmother the Lilac Fairy alters the spell so Aurora will not die, but sleep
+for 100 years. Only a true love&rsquo;s kiss can break the spell and awaken her.</span></p>
+
+<p><span>From
+Aurora&rsquo;s christening in the grand hall of the palace, to her jubilant wedding
+celebrations, the bewitching fairy tale is brought to life before your eyes.</span></p>]]>
+        </description>
+        <event_category>Darllediad Byw / Live Broadcast</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873689903/events</url>
+        <version>79</version>
+        <tags>
+          <tag>cinematik</tag>
+          <tag>comscore</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/p7unrvnl2x2vaa04h328ssq1g6d8/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/p7unrvnl2x2vaa04h328ssq1g6d8/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/p7unrvnl2x2vaa04h328ssq1g6d8/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129700320">
+            <name>
+              <![CDATA[14 Oct 2026 - 19:00 @ Neuadd Dwyfor - (opening time 18:45) English National Ballet presents The Sleeping Beauty]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-14T19:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-14T18:45:00+01:00</opening_time_iso>
+            <event_number>129700320</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873689903/events/129700320/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873689903/events/129700320.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873678270">
+        <name>
+          <![CDATA[Ensemble Cymru: Yr Ystafell Gerdd / The Music Room]]>
+        </name>
+        <description>
+          <![CDATA[<p><i><span>Ensemble Cymru begins its new season with an utterly gorgeous
+violin and harp recital, presenting music by a myriad of composers from
+Donizetti to Schumann and including Saint-Saens&rsquo;s brilliant and luxuriant
+Fantaisie for violin and harp, written at the turn of the twentieth century
+when the composer was at the height of his fame.&nbsp;</span></i></p><p><i><span><br></span></i></p><p>Sat 10 Oct, 4pm<i><span></span></i></p><p>Anne Denholm-Blair &ndash; telyn | harp</p><p>
+
+</p><p>Elenid Owen &ndash; feiol&iacute;n | violin&nbsp;</p><p><br></p><p>Mon 15 Mar, 11am</p><p>Nicola Pearce &ndash; sielo | cello</p><p>
+
+</p><p>Richard Ormrod &ndash; piano&nbsp;</p>
+
+<p><br></p><p>Mon 12 Apr, 11am</p><p>Huw Clement Evans &ndash; obo | oboe</p><p>
+
+</p><p>Richard Ormrod &ndash; piano&nbsp;</p>]]>
+        </description>
+        <event_category>Cerddoriaeth / Music</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873678270/events</url>
+        <version>407</version>
+        <tags>
+          <tag>ensemble</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/mkr74m6swqpj8gjp93v5qy7j7fqg/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/mkr74m6swqpj8gjp93v5qy7j7fqg/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/mkr74m6swqpj8gjp93v5qy7j7fqg/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+          <property>
+            <name>Trel / Trailer</name>
+            <value>https://www.youtube.com/watch?v=C_omvtBTV1g</value>
+          </property>
+        </properties>
+        <events>
+          <event id="129710057">
+            <name>
+              <![CDATA[15 Mar 2027 - 11:00 @ Neuadd Dwyfor - (opening time 10:45) Ensemble Cymru: Yr Ystafell Gerdd / The Music Room]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2027-03-15T11:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2027-03-15T10:45:00+00:00</opening_time_iso>
+            <event_number>129710057</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873678270/events/129710057/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873678270/events/129710057.xml</url>
+            </feed>
+          </event>
+          <event id="129710058">
+            <name>
+              <![CDATA[12 Apr 2027 - 11:00 @ Neuadd Dwyfor - (opening time 10:45) Ensemble Cymru: Yr Ystafell Gerdd / The Music Room]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2027-04-12T11:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2027-04-12T10:45:00+01:00</opening_time_iso>
+            <event_number>129710058</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873678270/events/129710058/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873678270/events/129710058.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873691214">
+        <name>
+          <![CDATA[Forgotten Island (PG)]]>
+        </name>
+        <description>
+          <![CDATA[<p>Best friends Jo and Raissa find a portal to the island of Nakali on their last night before parting ways. To get home, they must race to escape before they lose all their memories of each other.<em></em></p><p><br></p><p><b>Ticket prices increase by &pound;1.50 on the day of screening.</b></p><p><br></p>]]>
+        </description>
+        <event_category>Sinema / Cinema</event_category>
+        <production_company_name>Universal</production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events</url>
+        <version>260</version>
+        <tags>
+          <tag>comscore</tag>
+          <tag>neuadddwyfor</tag>
+          <tag>universal</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/hig9dm4mwky878xjofr91ezzihrm/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/hig9dm4mwky878xjofr91ezzihrm/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/hig9dm4mwky878xjofr91ezzihrm/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129713159">
+            <name>
+              <![CDATA[23 Oct 2026 - 14:30 @ Neuadd Dwyfor - (opening time 14:00) Forgotten Island (PG)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-23T14:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-23T14:00:00+01:00</opening_time_iso>
+            <event_number>129713159</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129713159/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129713159.xml</url>
+            </feed>
+          </event>
+          <event id="129713292">
+            <name>
+              <![CDATA[24 Oct 2026 - 12:00 @ Neuadd Dwyfor - (opening time 11:45) Forgotten Island (PG)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-24T12:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-24T11:45:00+01:00</opening_time_iso>
+            <event_number>129713292</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129713292/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129713292.xml</url>
+            </feed>
+          </event>
+          <event id="129712861">
+            <name>
+              <![CDATA[26 Oct 2026 - 14:30 @ Neuadd Dwyfor - (opening time 14:00) Forgotten Island (PG)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-26T14:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-26T14:00:00+00:00</opening_time_iso>
+            <event_number>129712861</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129712861/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129712861.xml</url>
+            </feed>
+          </event>
+          <event id="129712862">
+            <name>
+              <![CDATA[27 Oct 2026 - 14:30 @ Neuadd Dwyfor - (opening time 14:00) Forgotten Island (PG)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-27T14:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-27T14:00:00+00:00</opening_time_iso>
+            <event_number>129712862</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129712862/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129712862.xml</url>
+            </feed>
+          </event>
+          <event id="129712863">
+            <name>
+              <![CDATA[28 Oct 2026 - 14:30 @ Neuadd Dwyfor - (opening time 14:00) Forgotten Island (PG)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-28T14:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-28T14:00:00+00:00</opening_time_iso>
+            <event_number>129712863</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129712863/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129712863.xml</url>
+            </feed>
+          </event>
+          <event id="129712864">
+            <name>
+              <![CDATA[29 Oct 2026 - 14:30 @ Neuadd Dwyfor - (opening time 14:00) Forgotten Island (PG)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-29T14:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-29T14:00:00+00:00</opening_time_iso>
+            <event_number>129712864</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129712864/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129712864.xml</url>
+            </feed>
+          </event>
+          <event id="129712865">
+            <name>
+              <![CDATA[30 Oct 2026 - 10:30 @ Neuadd Dwyfor - (opening time 10:00) Forgotten Island (PG)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-30T10:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-30T10:00:00+00:00</opening_time_iso>
+            <event_number>129712865</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129712865/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129712865.xml</url>
+            </feed>
+          </event>
+          <event id="129712868">
+            <name>
+              <![CDATA[30 Oct 2026 - 14:30 @ Neuadd Dwyfor - (opening time 14:00) Forgotten Island (PG)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-30T14:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-30T14:00:00+00:00</opening_time_iso>
+            <event_number>129712868</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129712868/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129712868.xml</url>
+            </feed>
+          </event>
+          <event id="129712866">
+            <name>
+              <![CDATA[31 Oct 2026 - 10:30 @ Neuadd Dwyfor - (opening time 10:00) Forgotten Island (PG)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-31T10:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-31T10:00:00+00:00</opening_time_iso>
+            <event_number>129712866</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129712866/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129712866.xml</url>
+            </feed>
+          </event>
+          <event id="129712869">
+            <name>
+              <![CDATA[31 Oct 2026 - 14:30 @ Neuadd Dwyfor - (opening time 14:00) Forgotten Island (PG)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-31T14:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-31T14:00:00+00:00</opening_time_iso>
+            <event_number>129712869</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129712869/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691214/events/129712869.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873688720">
+        <name>
+          <![CDATA[GIANT - The Play (15)]]>
+        </name>
+        <description>
+          <![CDATA[<div>GIANT, the 5-star critically acclaimed play starring John Lithgow (Killers of the Flower Moon, The
+Crown) as Roald Dahl, comes to the big screen. Winner of 3 Olivier Awards&reg; including Best Play and a
+Tony Award&reg; for Best Actor in a Play (John Lithgow), the production was filmed live in London&rsquo;s
+West End ahead of its sold-out Broadway run. The stellar cast includes Aya Cash (The Boys, The
+Franchise, You&rsquo;re the Worst), Elliot Levey (Cold War, Patriots, Good) and Rachael Stirling (The Divine
+Mrs S).</div><div><br></div><div>A world-famous children&rsquo;s author under threat. A battle of wills in the wake of scandal. And one
+chance to make amends...It&rsquo;s the summer of 1983, The Witches is about to hit the shelves and Roald
+Dahl is making last-minute edits. But the outcry at his recent, explicitly antisemitic article won&rsquo;t die
+down. Across a single afternoon at his family home, and rocked by an unexpectedly explosive
+confrontation, Dahl is forced to choose: make a public apology or risk his name and reputation.
+Inspired by real events, GIANT explores with dark humour the difference between considered
+opinion and dangerous rhetoric offering a complicated portrait of a fiendishly charismatic icon.</div><div><br></div><div>
+<p><b>Credits</b></p>
+
+<p><b>Cast:</b>&nbsp;John Lithgow, Aya Cash, Elliot Levey, Rachael Stirling</p>
+
+<p><b>Director: </b>Nicholas Hytner</p>
+
+<p><b>Written By: </b>Mark Rosenblatt</p>
+
+<p><b>Designed By: </b>Bob Crowley</p>
+
+<p><b>Production Company: </b>Trafalgar Releasing</p>
+
+<p><b>Production Year: </b>2025</p>
+
+<p><b>Country of Origin: </b>UK</p>
+</div>]]>
+        </description>
+        <event_category>Darllediad Byw / Live Broadcast</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873688720/events</url>
+        <version>136</version>
+        <tags>
+          <tag>comscore</tag>
+          <tag>neuadddwyfor</tag>
+          <tag>trafalgar</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/ehiuse0sjvqqgc3enzzmii1zgh1f/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/ehiuse0sjvqqgc3enzzmii1zgh1f/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/ehiuse0sjvqqgc3enzzmii1zgh1f/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+          <property>
+            <name>Hyd / Length:</name>
+            <value>136 munud</value>
+          </property>
+          <property>
+            <name>Trel / Trailer</name>
+            <value>https://www.youtube.com/watch?v=nuDxd6TDVdk</value>
+          </property>
+        </properties>
+        <events>
+          <event id="129693797">
+            <name>
+              <![CDATA[23 Nov 2026 - 10:30 @ Neuadd Dwyfor - (opening time 10:00) GIANT - The Play (15)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-23T10:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-23T10:00:00+00:00</opening_time_iso>
+            <event_number>129693797</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873688720/events/129693797/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873688720/events/129693797.xml</url>
+            </feed>
+          </event>
+          <event id="129693796">
+            <name>
+              <![CDATA[24 Nov 2026 - 19:00 @ Neuadd Dwyfor - (opening time 18:45) GIANT - The Play (15)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-24T19:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-24T18:45:00+00:00</opening_time_iso>
+            <event_number>129693796</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873688720/events/129693796/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873688720/events/129693796.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873689949">
+        <name>
+          <![CDATA[Lighthouse Theatre: The Chimes: Dickens on Air]]>
+        </name>
+        <description>
+          <![CDATA[<p><span>Lighthouse Theatre and Pontardawe Arts Centre </span></p>
+
+<p><span>present</span></p>
+
+
+
+<p><span>WAFR: Playhouse of the Air in</span></p>
+
+<p><span>The Chimes: Dickens on Air</span></p>
+
+<p><span>&apos;A Festive Story to Ring the Old Year Out and the
+New Year In.&apos;</span></p>
+
+
+
+<p><span>It is Christmas 1950 in New York and the actors of WAFR: Playhouse of
+the Air gather for their annual festive broadcast...There is a new government,
+a new hope, a new world, so what better than a new play? And there is no better
+story-teller than Charles Dickens - and there is no better man to keep
+Christmas than he! </span></p>
+
+
+
+<p><span>Trotty Veck is a ticket-porter &ndash; a man who fetches and carries packages,
+letters and deliveries for a small sixpence here and there. He doesn&rsquo;t have
+much but he is happy, gentle and lives a simple, obedient life.</span></p>
+
+<p><span>That&nbsp;life is given its order&nbsp;by the sound of the bells of his
+local church &ndash; breakfast, lunch, dinner all from the sound of the bells. He
+sometimes even hears them speaking to him&hellip;</span></p>
+
+<p><span>In the run-up to the festive season Trotty&nbsp;falls asleep after a
+long day&rsquo;s carrying and delivering. Woken by the&nbsp;church bells, The Chimes,
+and then summoned up the tower by their mysterious power, he has just one
+chance to change this world&hellip; but will he listen to the bells?</span></p>
+
+<p><span>The Chimes is a Victorian It&rsquo;s a Wonderful Life filled with all of the
+master story-teller&rsquo;s colourful characters and heart-rending poignancy.</span></p>
+
+
+
+<p><span>Fresh their hugely popular adaptations of A Christmas Carol and
+Casablanca, Lighthouse Theatre brings their signature live radio play style to
+this classic by the most theatrical of authors. There will be jingles, carols,
+music and &ndash; of course &ndash; bells!&hellip;this show is sure to be fast and funny,
+inventive and entertaining; but most of all a Christmas treat to reinforce the
+message of this festive time of the year&hellip;</span></p>
+
+
+
+<p><span>Recommended for ages 10 and above.</span></p>
+
+<p><span>Presented in conjunction with Arts Council Wales</span></p>]]>
+        </description>
+        <event_category></event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873689949/events</url>
+        <version>85</version>
+        <tags>
+          <tag>lighthouse</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/piv9dh0vtt84uzlqt1bcil9o1b5r/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/piv9dh0vtt84uzlqt1bcil9o1b5r/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/piv9dh0vtt84uzlqt1bcil9o1b5r/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129700431">
+            <name>
+              <![CDATA[25 Nov 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:15) Lighthouse Theatre: The Chimes: Dickens on Air]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-25T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-25T19:15:00+00:00</opening_time_iso>
+            <event_number>129700431</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873689949/events/129700431/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873689949/events/129700431.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873688554">
+        <name>
+          <![CDATA[Noson Film Glasurol: Carrie (15) (1976)]]>
+        </name>
+        <description>
+          <![CDATA[<div>Carrie White, a shy, friendless teenage girl who is sheltered by her domineering, religious mother, unleashes her telekinetic powers after being humiliated by her classmates at her senior prom.<b></b>
+</div><b><div><b><br></b></div>A limited number of tickets are available for &pound;5. You are welcome to bring takeaway with you to eat during the film. The theatre will be laid out with comfortable chairs and tables, and the balcony will be open. The Bar will be open from 6.30pm onwards, and you are welcome to get more drinks during the film. Look out for special offers on drinks during the evening.</b>]]>
+        </description>
+        <event_category>Sinema / Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873688554/events</url>
+        <version>129</version>
+        <tags>
+          <tag>comscore</tag>
+          <tag>neuadddwyfor</tag>
+          <tag>park_circus</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/lctgn4ia6bwaykop7jxh5od155it/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/lctgn4ia6bwaykop7jxh5od155it/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/lctgn4ia6bwaykop7jxh5od155it/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129693139">
+            <name>
+              <![CDATA[02 Nov 2026 - 19:30 @ Neuadd Dwyfor - (opening time 18:30) Noson Film Glasurol: Carrie (15) (1976)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-02T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-02T18:30:00+00:00</opening_time_iso>
+            <event_number>129693139</event_number>
+            <venue_layout>Noson Ffilm Glasurol / Classic Film Night (1)</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873688554/events/129693139/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873688554/events/129693139.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873688552">
+        <name>
+          <![CDATA[Noson Film Glasurol: E.T. The Extra Terrestrial (U)]]>
+        </name>
+        <description>
+          <![CDATA[<b>A limited number of tickets are available for &pound;5. You are welcome to bring takeaway with you to eat during the film. The theatre will be laid out with comfortable chairs and tables, and the balcony will be open. The Bar will be open from 6.30pm onwards, and you are welcome to get more drinks during the film. Look out for special offers on drinks during the evening.</b><div><b><br></b></div><div>After a gentle alien becomes stranded on Earth, he is discovered and befriended by a 10-year-old boy named Elliott. Bringing him into his suburban California house, Elliott introduces E.T., as he is dubbed, to his brother, Michael, and sister, Gertie, and they decide to keep his existence a secret. Soon, however, he falls ill, resulting in government intervention and a dire situation for both him and Elliott.<b></b>
+</div>]]>
+        </description>
+        <event_category>Sinema / Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873688552/events</url>
+        <version>125</version>
+        <tags>
+          <tag>comscore</tag>
+          <tag>neuadddwyfor</tag>
+          <tag>park_circus</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/4ugkgcrnh7wek8fc08b7p8i6ppaj/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/4ugkgcrnh7wek8fc08b7p8i6ppaj/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/4ugkgcrnh7wek8fc08b7p8i6ppaj/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129693138">
+            <name>
+              <![CDATA[12 Oct 2026 - 19:30 @ Neuadd Dwyfor - (opening time 18:30) Noson Film Glasurol: E.T. The Extra Terrestrial (U)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-12T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-12T18:30:00+01:00</opening_time_iso>
+            <event_number>129693138</event_number>
+            <venue_layout>Noson Ffilm Glasurol / Classic Film Night (1)</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873688552/events/129693138/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873688552/events/129693138.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873688793">
+        <name>
+          <![CDATA[Noson Yng Nghwmni Hywel a Beti]]>
+        </name>
+        <description>
+          <![CDATA[<div>
+<h3>Welsh language production</h3>
+<h3><br></h3>
+<h3>AN EVENING WITH HYWEL AND BETI</h3>
+<p>Ad/lib Cymru presents two icons of Welsh broadcasting: <strong>Hywel Gwynfryn and Beti George</strong>. Both are now in their eighties, but they must be eating something very special for breakfast because they each look much younger than their years! It is also wonderful that both continue to work regularly with S4C and, of course, BBC Radio Cymru. Without doubt, the world of Welsh broadcasting would be much poorer without them.</p>
+<p>Their voices and faces have been part of Welsh homes since the 1960s. Just imagine the stories they have to tell.</p>
+<p>In <strong>An Evening with Hywel and Beti</strong>, audiences will have the opportunity to hear those stories as Hywel and Beti come together on stage. During the first half of the show, Hywel will interview Beti, and in the second half, Beti will turn the tables and interview Hywel.</p>
+<p>We will hear about Beti&rsquo;s early years in Coed-y-Bryn, Ceredigion, as well as Hywel&rsquo;s childhood on Anglesey, many years before they both made their way to Cardiff &ndash; Hywel to study at the Welsh College of Music and Drama in the 1960s, and Beti following a period with the BBC in Swansea.</p>
+<p>A truly unique and memorable evening not to be missed.</p>
+</div>]]>
+        </description>
+        <event_category>Theatr</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873688793/events</url>
+        <version>135</version>
+        <tags>
+          <tag>adlib</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/8coyubqe1ya37evyv2icxmc18oy3/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/8coyubqe1ya37evyv2icxmc18oy3/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/8coyubqe1ya37evyv2icxmc18oy3/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129694634">
+            <name>
+              <![CDATA[13 Oct 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:15) Noson Yng Nghwmni Hywel a Beti]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-13T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-13T19:15:00+01:00</opening_time_iso>
+            <event_number>129694634</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873688793/events/129694634/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873688793/events/129694634.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873688794">
+        <name>
+          <![CDATA[Noson Yng Nghwmni Sue Roderick]]>
+        </name>
+        <description>
+          <![CDATA[<div>
+<h3>An Evening with Sue Roderick</h3>
+<p>This special event looks back on the life and career of the actress from Porthmadog. Sue began singing from a young age and performed with Treflyn Jones in the duo <strong>&ldquo;Treflyn a Siwsan.&rdquo;</strong> At just ten years old, she appeared on <em>Disc a Dawn</em> (BBC Wales). Four years later, she auditioned for <strong>Cwmni Theatr Cymru</strong>. Although she was considered too young to start working with the company, she was offered singing lessons by Betty Roberts, wife of the company&rsquo;s director, Wilbert Roberts. After leaving school, Sue returned to work with Cwmni Theatr Cymru.</p>
+<p>In 1987, she appeared in <strong>Codi Pais</strong> (HTV), an entertainment programme featuring sketches and songs. The show broke new ground for women in comedy, showcasing the talents of Sue alongside Siw Hughes, Gillian Elisa and Eirlys Parri.</p>
+<p>Sue was one of the leading actors in the acclaimed film <strong>Hedd Wyn</strong>, attending the Academy Awards and meeting a number of Hollywood&rsquo;s biggest stars. She also appeared in <strong>Twin Town</strong>, playing Lucy Cartwright. During the 1990s, she starred in television dramas including <em>Minafod</em>, <em>Y Palmant Aur</em> and <em>Yr Heliwr</em>, before joining the cast of <strong>Pobol y Cwm</strong> as Cassie Morris, co-owner of the Deri Arms with her husband, Teg. After leaving the soap in 2003, she returned to <em>Pobol y Cwm</em> at the end of 2018 in a storyline involving the scattering of Mrs Mac&rsquo;s ashes.</p>
+<p>The Deri was not the only fictional pub where Sue worked. She also played <strong>Megan Morgan</strong>, a barmaid in the <strong>Rovers Return</strong> in <em>Coronation Street</em>, alongside Alec Gilroy and Bet Lynch.</p>
+<p>During the first half of the evening, <strong>Ieuan Rhys</strong> will interview Sue about her life and career, while the second half will give audience members the opportunity to ask their own questions.</p>
+<p>And who knows&mdash;perhaps Sue will even treat us to a song or two before the night is over!</p>
+<p>An enjoyable evening in the company of one of Wales&rsquo;s busiest and most beloved actors. A night to remember.</p>
+</div>]]>
+        </description>
+        <event_category>Theatr</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873688794/events</url>
+        <version>131</version>
+        <tags>
+          <tag>adlib</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/pikd7cupuk1xnc98lh58ozd8rjtq/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/pikd7cupuk1xnc98lh58ozd8rjtq/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/pikd7cupuk1xnc98lh58ozd8rjtq/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129694635">
+            <name>
+              <![CDATA[08 Nov 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:15) Noson Yng Nghwmni Sue Roderick]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-08T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-08T19:15:00+00:00</opening_time_iso>
+            <event_number>129694635</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873688794/events/129694635/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873688794/events/129694635.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873690028">
+        <name>
+          <![CDATA[NT Live: Golden Boy]]>
+        </name>
+        <description>
+          <![CDATA[<p><b><span>Golden Boy&nbsp;</span></b><span>by Clifford Odets<b></b></span></p>
+
+<p><span>directed by Sam Yates</span></p>
+
+
+
+<p><span>Josh O&rsquo;Connor (<i>The Crown</i>; <i>Challengers</i>)
+leads the cast in this searing revival of Clifford Odets&rsquo; knockout American
+classic. </span></p>
+
+
+
+<p><span>1930s New York, at the height of the
+Depression. Joe Bonaparte is a gifted young violinist with a future in music,
+until a chance at fame and fortune lures him into the brutal world of
+professional boxing. He must confront what he&rsquo;s willing to sacrifice, who he&rsquo;s
+willing to become and how to find his place in a world that demands he choose a
+side. </span></p>
+
+
+
+<p><span>Brought to life with a live string quartet
+and filmed live from the Almeida Theatre, Olivier Award-winner Sam Yates (<i>Vanya</i>)
+directs this propulsive drama exploring ambition, identity, and the high price
+of success. </span><span></span></p>]]>
+        </description>
+        <event_category>Sinema / Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873690028/events</url>
+        <version>86</version>
+        <tags>
+          <tag>comscore</tag>
+          <tag>neuadddwyfor</tag>
+          <tag>ntlive</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/pf19hyjkag937xbaueee031zc9un/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/pf19hyjkag937xbaueee031zc9un/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/pf19hyjkag937xbaueee031zc9un/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129701105">
+            <name>
+              <![CDATA[26 Nov 2026 - 19:00 @ Neuadd Dwyfor - (opening time 18:45) NT Live: Golden Boy]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-26T19:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-26T18:45:00+00:00</opening_time_iso>
+            <event_number>129701105</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873690028/events/129701105/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873690028/events/129701105.xml</url>
+            </feed>
+          </event>
+          <event id="129701106">
+            <name>
+              <![CDATA[02 Dec 2026 - 14:30 @ Neuadd Dwyfor - (opening time 14:00) NT Live: Golden Boy]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-02T14:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-02T14:00:00+00:00</opening_time_iso>
+            <event_number>129701106</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873690028/events/129701106/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873690028/events/129701106.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873691583">
+        <name>
+          <![CDATA[NT Live: Hay Fever]]>
+        </name>
+        <description>
+          <![CDATA[<p>Hay Fever by No&euml;l Coward</p><p>directed by Emily Burns</p><p>Emmy and Tony winner Christine Baranski makes her West End debut alongside Academy Award-nominated stage and screen legend Richard E. Grant in No&euml;l Coward&rsquo;s irresistible comedy.</p><p>Judith Bliss retired from her life-on-stage and she misses the applause. Idling away at their country home, the rest of the family are too self-involved to be a good audience. So, Judith invites a young fan as her guest for the weekend. But unbeknownst to her, each of the Blisses has a guest of their own arriving at the very same time.</p><p>Filmed live from the West End, Emily Burns directs this stinging new production.</p>]]>
+        </description>
+        <event_category>Sinema / Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873691583/events</url>
+        <version>41</version>
+        <tags>
+          <tag>comscore</tag>
+          <tag>neuadddwyfor</tag>
+          <tag>ntlive</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/rl8go48vagzh6cjhtm6f6r6ohq4j/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/rl8go48vagzh6cjhtm6f6r6ohq4j/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/rl8go48vagzh6cjhtm6f6r6ohq4j/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129716631">
+            <name>
+              <![CDATA[14 Jan 2027 - 19:00 @ Neuadd Dwyfor - (opening time 18:45) NT Live: Hay Fever]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2027-01-14T19:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2027-01-14T18:45:00+00:00</opening_time_iso>
+            <event_number>129716631</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691583/events/129716631/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691583/events/129716631.xml</url>
+            </feed>
+          </event>
+          <event id="129716632">
+            <name>
+              <![CDATA[25 Jan 2027 - 10:30 @ Neuadd Dwyfor - (opening time 10:15) NT Live: Hay Fever]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2027-01-25T10:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2027-01-25T10:15:00+00:00</opening_time_iso>
+            <event_number>129716632</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[Dangosiad gydag isdeitlau / Subtitled screening]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691583/events/129716632/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691583/events/129716632.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873688292">
+        <name>
+          <![CDATA[NT Live: The Misanthrope]]>
+        </name>
+        <description>
+          <![CDATA[<p><b><span>The Misanthrope </span></b><span>by Martin
+Crimp </span></p>
+
+<p><span>after
+Moli&egrave;re</span></p>
+
+<p><span>directed
+by Indhu Rubasingham</span></p>
+
+
+
+<p><span>Award-winner Sandra Oh (<i>Killing Eve</i>) plays
+the title role in this razor-sharp&nbsp;reimagining of Moli&egrave;re&rsquo;s classic dark
+comedy.</span></p>
+
+<p><span></span></p>
+
+<p><span>Telling the truth isn&rsquo;t always that simple. Alice,
+a brilliant novelist, despises the carefully constructed lies of modern
+society. But the more she challenges those around her, the fiercer the backlash
+becomes. Soon, she must confront the price of speaking her truth in a world
+that would rather silence her. </span></p>
+
+<p><span></span></p>
+
+<p><span>Filmed live on stage at the National Theatre,
+Indhu Rubasingham directs Martin Crimp&rsquo;s (<i>Cyrano de </i>Bergerac) highly
+anticipated play.</span></p>]]>
+        </description>
+        <event_category>Darllediad Byw / Live Broadcast</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873688292/events</url>
+        <version>139</version>
+        <tags>
+          <tag>comscore</tag>
+          <tag>neuadddwyfor</tag>
+          <tag>ntlive</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/qv4cuoyoafqwgmnufcpgvzhxlz0m/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/qv4cuoyoafqwgmnufcpgvzhxlz0m/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/qv4cuoyoafqwgmnufcpgvzhxlz0m/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129692297">
+            <name>
+              <![CDATA[12 Oct 2026 - 10:30 @ Neuadd Dwyfor - (opening time 10:00) NT Live: The Misanthrope]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-12T10:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-12T10:00:00+01:00</opening_time_iso>
+            <event_number>129692297</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873688292/events/129692297/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873688292/events/129692297.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873689905">
+        <name>
+          <![CDATA[OPRA Cymru Fflamau Penyberth]]>
+        </name>
+        <description>
+          <![CDATA[<p><b><span>Fflamau Penyberth</span></b><span>&nbsp;marks the ninetieth anniversary of a turning point in the
+history of Wales. OPRA Cymru has commissioned Gareth Glyn (&lsquo;Wythnos yng Nghymru
+Fydd&rsquo;, &lsquo;Peth Bach &rsquo;di Cawr&rsquo;, and the recent opera film &lsquo;Tanau&rsquo;r Lloer&rsquo;) to turn
+political history into opera. Join this unique celebration of nationhood, as we
+remember the three giants on whose shoulders Wales now stands! (With English
+subtitles)</span></p>]]>
+        </description>
+        <event_category>Opera</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873689905/events</url>
+        <version>93</version>
+        <tags>
+          <tag>neuadddwyfor</tag>
+          <tag>opracymru</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/szbr0dsu7c0yxwko6qi1u4zauipq/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/szbr0dsu7c0yxwko6qi1u4zauipq/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/szbr0dsu7c0yxwko6qi1u4zauipq/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129700322">
+            <name>
+              <![CDATA[19 Nov 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:15) OPRA Cymru Fflamau Penyberth]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-19T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-19T19:15:00+00:00</opening_time_iso>
+            <event_number>129700322</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873689905/events/129700322/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873689905/events/129700322.xml</url>
+            </feed>
+          </event>
+          <event id="129700323">
+            <name>
+              <![CDATA[05 Dec 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:15) OPRA Cymru Fflamau Penyberth]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-05T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-05T19:15:00+00:00</opening_time_iso>
+            <event_number>129700323</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873689905/events/129700323/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873689905/events/129700323.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873691098">
+        <name>
+          <![CDATA[Practical Magic 2 (12A)]]>
+        </name>
+        <description>
+          <![CDATA[<span>Starring Sandra Bullock and Nicole Kidman, Practical Magic 2 returns to a world steeped in moonlit mischief and powerful ancestral magic, as the Owens sisters must confront the dark curse that threatens to unravel their family once and for all in a must-see cinematic event of fun, magic and mayhem.</span><div><span><br></span></div><div>
+<b>Ticket prices increase by &pound;1.50 on the day of screening.</b><span></span>
+</div>]]>
+        </description>
+        <event_category>Sinema / Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873691098/events</url>
+        <version>102</version>
+        <tags>
+          <tag>comscore</tag>
+          <tag>neuadddwyfor</tag>
+          <tag>warnerbros</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/n1ni4n59n6sd52y6rr7q0x0s1wmm/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/n1ni4n59n6sd52y6rr7q0x0s1wmm/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/n1ni4n59n6sd52y6rr7q0x0s1wmm/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129709978">
+            <name>
+              <![CDATA[23 Oct 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:00) Practical Magic 2 (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-23T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-23T19:00:00+01:00</opening_time_iso>
+            <event_number>129709978</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691098/events/129709978/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691098/events/129709978.xml</url>
+            </feed>
+          </event>
+          <event id="129709982">
+            <name>
+              <![CDATA[26 Oct 2026 - 10:30 @ Neuadd Dwyfor - (opening time 10:00) Practical Magic 2 (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-26T10:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-26T10:00:00+00:00</opening_time_iso>
+            <event_number>129709982</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691098/events/129709982/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691098/events/129709982.xml</url>
+            </feed>
+          </event>
+          <event id="129709979">
+            <name>
+              <![CDATA[27 Oct 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:00) Practical Magic 2 (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-27T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-27T19:00:00+00:00</opening_time_iso>
+            <event_number>129709979</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691098/events/129709979/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691098/events/129709979.xml</url>
+            </feed>
+          </event>
+          <event id="129709980">
+            <name>
+              <![CDATA[28 Oct 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:00) Practical Magic 2 (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-28T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-28T19:00:00+00:00</opening_time_iso>
+            <event_number>129709980</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691098/events/129709980/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691098/events/129709980.xml</url>
+            </feed>
+          </event>
+          <event id="129709981">
+            <name>
+              <![CDATA[29 Oct 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:00) Practical Magic 2 (12A)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-29T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-29T19:00:00+00:00</opening_time_iso>
+            <event_number>129709981</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute>Is-deitlau / Subtitles</event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691098/events/129709981/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691098/events/129709981.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873691092">
+        <name>
+          <![CDATA[Sense and Sensibility (U)]]>
+        </name>
+        <description>
+          <![CDATA[<span>From Focus Features and Working Title comes an irresistible new take on Jane Austen&rsquo;s iconic Sense and Sensibility: a charming, witty, and deeply relatable story of love.</span><div><span><br></span></div><div>
+<b>Ticket prices increase by &pound;1.50 on the day of screening.</b><span></span>
+</div>]]>
+        </description>
+        <event_category>Sinema / Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873691092/events</url>
+        <version>109</version>
+        <tags>
+          <tag>comscore</tag>
+          <tag>neuadddwyfor</tag>
+          <tag>universal</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/oflox35fcy4w5esd00t9zn0cy48h/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/oflox35fcy4w5esd00t9zn0cy48h/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/oflox35fcy4w5esd00t9zn0cy48h/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129709966">
+            <name>
+              <![CDATA[14 Oct 2026 - 14:30 @ Neuadd Dwyfor - (opening time 14:00) Sense and Sensibility (U)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-14T14:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-14T14:00:00+01:00</opening_time_iso>
+            <event_number>129709966</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691092/events/129709966/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691092/events/129709966.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873688523">
+        <name>
+          <![CDATA[Sycharth Yn Fy Ngwaed]]>
+        </name>
+        <description>
+          <![CDATA[<i><span>Our concert &quot;Sycharth yn fy ngwaed&quot; is an opportunity to hear
+the 14 new songs on our new CD on one night, together with other songs from
+past shows.</span></i>]]>
+        </description>
+        <event_category>Cerddoriaeth / Music</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873688523/events</url>
+        <version>142</version>
+        <tags>
+          <tag>cwmnitheatrmaldwyn</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/3728xhqg8ns3682b17jta43vuoj1/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/3728xhqg8ns3682b17jta43vuoj1/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/3728xhqg8ns3682b17jta43vuoj1/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129693047">
+            <name>
+              <![CDATA[07 Nov 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:15) Sycharth Yn Fy Ngwaed]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-07T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-07T19:15:00+00:00</opening_time_iso>
+            <event_number>129693047</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873688523/events/129693047/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873688523/events/129693047.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873688672">
+        <name>
+          <![CDATA[Te Angladd]]>
+        </name>
+        <description>
+          <![CDATA[<p><span>A Theatr Cymru production, in association with Galeri Caernarfon</span></p><p><b><span>Te Angladd</span></b></p><p><span>By Gruffudd Owen</span></p><p><span>Hymns, tributes and the laying‑to‑rest of the buffet&hellip;</span></p><p><span>Following the smash-hit success of<b>Parti Priodas</b>, Lowri and Idris are back in Gruffudd Owen&rsquo;s brand-new play,<b>Te Angladd</b>.</span></p><p><span>With Mared Llywelyn and Mark Henry-Davies returning as Lowri, Idris and all the other characters, this is one farewell you won&rsquo;t forget.</span></p><p><span>Age Guidance: 16+</span></p><p><span>Contains strong language and adult themes including alcohol addiction and grief</span></p>]]>
+        </description>
+        <event_category>Theatr</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873688672/events</url>
+        <version>153</version>
+        <tags>
+          <tag>neuadddwyfor</tag>
+          <tag>theatrcymru</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/5vx2h70pdvh4c83uk3fzo7zb8s05/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/5vx2h70pdvh4c83uk3fzo7zb8s05/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/5vx2h70pdvh4c83uk3fzo7zb8s05/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+          <property>
+            <name>Oed / Age:</name>
+            <value>16+</value>
+          </property>
+          <property>
+            <name>Rhybydd:</name>
+            <value>Yn cynnwys iaith gref a themau aeddfed yn cynnwys dibyniaeth ar alcohol a galar</value>
+          </property>
+          <property>
+            <name>Warning:</name>
+            <value>Contains strong language and adult themes including alcohol addiction and grief</value>
+          </property>
+        </properties>
+        <events>
+          <event id="129693510">
+            <name>
+              <![CDATA[19 Mar 2027 - 19:30 @ Neuadd Dwyfor - (opening time 19:15) Te Angladd]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2027-03-19T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2027-03-19T19:15:00+00:00</opening_time_iso>
+            <event_number>129693510</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873688672/events/129693510/seats</url>
+            <status>sold out</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873688672/events/129693510.xml</url>
+            </feed>
+          </event>
+          <event id="129710077">
+            <name>
+              <![CDATA[20 Mar 2027 - 19:30 @ Neuadd Dwyfor - (opening time 19:15) Te Angladd]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2027-03-20T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2027-03-20T19:15:00+00:00</opening_time_iso>
+            <event_number>129710077</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873688672/events/129710077/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873688672/events/129710077.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873672667">
+        <name>
+          <![CDATA[The FM Songbook The Ultimate Fleetwood Mac Tribute]]>
+        </name>
+        <description>
+          <![CDATA[<div>
+<h2>The FM Songbook - The Ultimate Tribute to Fleetwood Mac</h2>
+<p><em>(formerly The Fleetwood Mac Songbook)</em></p>
+<blockquote>
+<p>&ldquo;Witnessing The FM Songbook live in action, is like capturing a little sprinkling of stardust&rdquo;.</p>
+<p><strong>Kelly Scanlon, Far Out Magazine</strong></p>
+</blockquote>
+<p>Earning rave reviews wherever they play and ranked in the &apos;Top 20 Tribute Artists &amp; Bands in the UK&rsquo; by Champions UK plc Entertainment Agency, six-piece tribute band &apos;The FM Songbook&apos; are not to be missed.</p>
+<p>The band perform a spell binding tribute performance of the stellar &apos;songbook&apos; of &apos;Fleetwood Mac&apos;, drawing from over SIX decades of hits from one of the greatest and most loved bands in music history. Their set of course includes soft rock anthems from the &apos;Rumours&apos; album and the shimmering 80s brilliance of &apos;Tango in the Night&apos; and there&rsquo;s a very respectful top hat nod to the raw blues of the &apos;Peter Green&apos; era. There may even be a Stevie solo in there somewhere!</p>
+<p>Expect all the classics; <strong>Dreams, Go Your Own Way, Don&rsquo;t Stop, Silver Springs, Everywhere, Songbird, The Chain, Tusk</strong> plus so many more and get ready to sing, dance and relive the magic of Fleetwood Mac.</p>
+<p>Attention to detail ensures the unmistakable &apos;Mac&apos; sound is recreated faithfully - the exceptional three-part harmonies are a standout &ndash; this show is a masterclass in musical magic.</p>
+<p>You will be assured of a night to remember in the company of these fine musicians - an unforgettable evening suitable for all ages.</p>
+</div>]]>
+        </description>
+        <event_category>Cerddoriaeth / Music</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873672667/events</url>
+        <version>455</version>
+        <tags>
+          <tag>blackfriday</tag>
+          <tag>fleetwoodunchained</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/v040igm67c3vhgnlvg928l2heujr/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/v040igm67c3vhgnlvg928l2heujr/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/v040igm67c3vhgnlvg928l2heujr/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129693034">
+            <name>
+              <![CDATA[04 Jun 2027 - 19:30 @ Neuadd Dwyfor - (opening time 19:15) The FM Songbook The Ultimate Fleetwood Mac Tribute]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2027-06-04T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2027-06-04T19:15:00+01:00</opening_time_iso>
+            <event_number>129693034</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873672667/events/129693034/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873672667/events/129693034.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873691099">
+        <name>
+          <![CDATA[The Pout-Pout Fish (PG)]]>
+        </name>
+        <description>
+          <![CDATA[<span>Living on a rundown shipwreck, Mr. Fish one day discovers a hyperactive young sea dragon Pip - who had mistaken his home for a junkyard - pilfering his belongings. The heated argument that ensues leaves both their houses in ruin. But there is hope. Embarking on a seemingly impossible quest in search of the mythical &quot;Shimmer&quot; to grant them a wish, there&apos;s only one problem: someone else is on the hunt.</span>]]>
+        </description>
+        <event_category>Sinema / Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873691099/events</url>
+        <version>80</version>
+        <tags>
+          <tag>comscore</tag>
+          <tag>neuadddwyfor</tag>
+          <tag>vertigo_releasing</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/nco5vvhr7k0erg9uga3geqwsb4tu/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/nco5vvhr7k0erg9uga3geqwsb4tu/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/nco5vvhr7k0erg9uga3geqwsb4tu/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129710040">
+            <name>
+              <![CDATA[17 Oct 2026 - 14:30 @ Neuadd Dwyfor - (opening time 14:00) The Pout-Pout Fish (PG)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-17T14:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-17T14:00:00+01:00</opening_time_iso>
+            <event_number>129710040</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873691099/events/129710040/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873691099/events/129710040.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873689366">
+        <name>
+          <![CDATA[The Silent Volunteer]]>
+        </name>
+        <description>
+          <![CDATA[<p><span>In a moving tribute to all
+those affected by the Aberfan disaster, The Silent Volunteer asks the question,
+&ldquo;Have we learnt from our mistakes?&rdquo; Lovingly performed by a cast affected by
+what happened that Friday morning 60 years ago, the play explores the enormous
+role volunteers played in the aftermath, and how the events of 1966 have
+continued to shape mining communities ever since.</span></p>
+
+<p><span>The
+Silent Volunteer is a play about voices that have not yet found the words to
+speak &mdash; but who want the world to know the Aberfan disaster was not &ldquo;an act of
+God&rdquo;, and that future disasters in former mining areas can and must be
+prevented.</span></p>
+
+<p><span>Avant
+Cymru presents The Silent Volunteer, a play by Sue Bevan, alongside an
+exhibition and Q&amp;A in partnership with Coalfield Regeneration.</span></p>
+
+<p><span>To
+mark the 60th anniversary of the Aberfan Disaster, the descendants of the
+volunteers are opening up a conversation about how this history continues to
+shape mining communities today &mdash; and why remembering, listening and learning
+still matters.</span></p>]]>
+        </description>
+        <event_category>Theatr</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873689366/events</url>
+        <version>101</version>
+        <tags>
+          <tag>avant</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/hkbkb0r1vo1ip91plegc7ff8zinh/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/hkbkb0r1vo1ip91plegc7ff8zinh/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/hkbkb0r1vo1ip91plegc7ff8zinh/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129696186">
+            <name>
+              <![CDATA[15 Oct 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:15) The Silent Volunteer]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-15T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-15T19:15:00+01:00</opening_time_iso>
+            <event_number>129696186</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873689366/events/129696186/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873689366/events/129696186.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873690833">
+        <name>
+          <![CDATA[TOM MEIGHAN - RAW 26]]>
+        </name>
+        <description>
+          <![CDATA[<p><span>He brought the house down last time&mdash;and now he&rsquo;s back!</span></p>
+
+<p><span>bscene, in partnership with The Broken Wing Club, is proud to
+bring one of British rock&rsquo;s most formidable frontmen back to Pwllheli for
+another unmissable, up-close live performance at Neuadd Dwyfor.</span></p>
+
+<p><span>As the former lead vocalist of Kasabian, Tom Meighan propelled
+the band to multi-platinum album sales, headlining iconic stages from
+Glastonbury and Reading &amp; Leeds to arena tours across the globe. Renowned
+for his raw vocal power and electric stage presence, Tom returns to Gwynedd
+with a high-energy setlist packed with classic stadium anthems&mdash;including
+Empire, Club Foot, L.S.F., and Fire&mdash;alongside his acclaimed solo work.</span></p>
+
+<p><span>Opening the night is the incredible Delbhoy Kennedy, setting the
+tone with a standout support set.</span></p>
+
+<p><span>With limited venue capacity, this show offers a rare chance to
+experience a true stadium-level voice in an intimate, standing theatre
+environment.</span></p>]]>
+        </description>
+        <event_category></event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873690833/events</url>
+        <version>40</version>
+        <tags>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/99647wevhf45vnk0azzsorwswzgo/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/99647wevhf45vnk0azzsorwswzgo/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/99647wevhf45vnk0azzsorwswzgo/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129707478">
+            <name>
+              <![CDATA[14 Nov 2026 - 19:00 @ Neuadd Dwyfor - (opening time 19:00) TOM MEIGHAN - RAW 26]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-14T19:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-14T19:00:00+00:00</opening_time_iso>
+            <event_number>129707478</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873690833/events/129707478/seats</url>
+            <status>sold out</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873690833/events/129707478.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>sold out</status>
+      </show>
+      <show id="873685711">
+        <name>
+          <![CDATA[Tommy Cooper]]>
+        </name>
+        <description>
+          <![CDATA[<p><b><span>A brand new production from the guys that brought
+you Steptoe &amp; Son!</span></b></p><p><b><span><br>Tommy Cooper, one of the greatest ever comedians, is back! Expertly performed
+by Phil Hoyles - the UK&apos;s number one impersonator - he brings you all of the
+&apos;tom&apos;-foolery, jokes, songs, laughs, magic, failed magic, and energy, that the
+original funnyman presented all those years ago!
+<br>
+Renowned theatre magazine The Stage describes Phil&apos;s portrayal as &quot;a
+carbon copy in look, voice and humour&quot; and &quot;as near to the genuine
+article as you can get&quot;!</span></b></p><p><b><span><br>He&apos;s got the height, the laugh and the Fez - all we need is you! Come along and
+join us for a trip down memory lane, a jolly good laugh and an evening of
+belly-aching nostalgia.</span></b></p><p><b><span><br>This show is being produced by Cattle Productions Ltd. who have a distinguished
+reputation in the revival and recreation of classic comedy, ensuring that these
+true icons are never forgotten.</span></b></p><p><b><span><br>We are also supporting local charity RNLI Abersoch Lifeboat Station from the
+proceeds.</span></b></p>]]>
+        </description>
+        <event_category>Theatr</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873685711/events</url>
+        <version>201</version>
+        <tags>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/q6afkqnmyslxq7u9ao9fqrdx82ko/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/q6afkqnmyslxq7u9ao9fqrdx82ko/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/q6afkqnmyslxq7u9ao9fqrdx82ko/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129681555">
+            <name>
+              <![CDATA[10 Sep 2027 - 19:30 @ Neuadd Dwyfor - (opening time 19:15) Tommy Cooper]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2027-09-10T19:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2027-09-10T19:15:00+01:00</opening_time_iso>
+            <event_number>129681555</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873685711/events/129681555/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873685711/events/129681555.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873689466">
+        <name>
+          <![CDATA[Twin Town + Q&A Kevin Allen (18)]]>
+        </name>
+        <description>
+          <![CDATA[<div>
+<b>This... is Welsh film. Discover new stories, Re-watch the classics. Celebrate 130 years of cinema in Wales</b><span></span>
+</div><span><div><span><br></span></div>Join us for a special screening of the iconic dark comedy Twin Town with our special guest director of the film Kevin Allen. Julian and Jeremy, two brothers known as the &quot;Lewis Twins&quot;, prefer to spend their time on drugs and joyriding. When their father, Fatty Lewis, breaks his leg working for local bigwig Bryn Cartwright, they show up demanding compensation. Underestimating the vicious humour of the twins, Bryn brusquely refuses to pay for the uninsured Fatty and unleashes a ferocious feud.</span><div><span><br></span></div><div>
+<b>Ticket prices increase by &pound;1.50 on the day of screening apart from Monday morning and Wednesday afternoon screening.</b><span></span>
+</div><div><b><br></b></div><div>
+<b>Supported by Film Hub Wales as part of the BFI Film Audience Network (FAN), made possible by the National Lottery.</b><b></b>
+</div>]]>
+        </description>
+        <event_category>Sinema / Cinema</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://neuadddwyfor.ticketsolve.com/shows/873689466/events</url>
+        <version>115</version>
+        <tags>
+          <tag>comscore</tag>
+          <tag>neuadddwyfor</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/wch8nh0kyatlvwa9rufw7y5zmygh/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/wch8nh0kyatlvwa9rufw7y5zmygh/6428308680a2820b32ca9af5ca523d295e68c5119095c3d9f4a769458f8227e4</url>
+            <url size="thumb">https://d235gwso45fsgz.cloudfront.net/as-assets/variants/wch8nh0kyatlvwa9rufw7y5zmygh/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="129696643">
+            <name>
+              <![CDATA[31 Oct 2026 - 19:30 @ Neuadd Dwyfor - (opening time 19:00) Twin Town + Q&A Kevin Allen (18)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-31T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-31T19:00:00+00:00</opening_time_iso>
+            <event_number>129696643</event_number>
+            <venue_layout>Neuadd Dwyfor 2021</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://neuadddwyfor.ticketsolve.com/shows/873689466/events/129696643/seats</url>
+            <status>available</status>
+            <feed>
+              <url>https://neuadddwyfor.ticketsolve.com/shows/873689466/events/129696643.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+    </shows>
+  </venue>
+</venues>
+
+<!-- __CACHE__ -->

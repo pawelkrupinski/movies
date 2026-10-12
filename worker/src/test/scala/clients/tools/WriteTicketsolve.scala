@@ -27,7 +27,8 @@ object WriteTicketsolve {
   )
 
   /** The feeds TicketsolveClientSpec replays; the rest are fetched to measure only. */
-  private val Recorded = Set("mwldan", "nervecentre", "pocklingtonartscentre")
+  private val Recorded = Set("mwldan", "nervecentre", "pocklingtonartscentre", "watershed", "chapter", "theatrcolwyn",
+    "pontardaweartscentre", "neuadddwyfor", "number8")
 
   def main(args: Array[String]): Unit = {
     val record = args.contains("--record")

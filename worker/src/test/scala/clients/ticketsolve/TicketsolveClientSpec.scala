@@ -4,13 +4,15 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
-import models.{NerveCentreLondonderry, TheatrMwldanCardigan}
+import models.{ChapterCardiff, NeuaddDwyforPwllheli, NerveCentreLondonderry, Number8Pershore, PocklingtonArtsCentre,
+  PontardaweArtsCentre, TheatrColwyn, TheatrMwldanCardigan, WatershedBristol}
 import services.cinemas.uk.TicketsolveClient
 
 import java.time.{LocalDate, LocalDateTime}
 
-/** Replays 2026-10-12 captures of two Ticketsolve feeds (`WriteTicketsolve`):
- *  `mwldan.ticketsolve.com/shows.xml` and `nervecentre.ticketsolve.com/shows.xml`.
+/** Replays 2026-10-12 captures of every rostered Ticketsolve feed (`WriteTicketsolve --record`),
+ *  `<client>.ticketsolve.com/shows.xml`: Mwldan, the Nerve Centre, Pocklington, Watershed,
+ *  Chapter, Theatr Colwyn, Pontardawe, Neuadd Dwyfor and Number 8.
  *
  *  Theatr Mwldan's three screens and the Nerve Centre's cinema had no showtime from
  *  Flicks, their only source; both box offices publish the whole programme as XML. */
@@ -83,6 +85,48 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     titles.filter(_.contains("Masterclass")) shouldBe empty
     nerve.find(_.movie.title == "Corpse Bride").value.showtimes.map(s => (s.dateTime, s.room)) should contain (
       LocalDateTime.of(2026, 10, 30, 14, 0) -> Some("Cinema One"))
+  }
+
+  private def titles(client: String, cinema: models.Cinema) = scrape(client, cinema).map(_.movie.title).toSet
+
+  "Each client's own filing" should "keep its films and relays, and none of its gigs, talks, workshops or seat sponsorships" in {
+    val chapter = titles("chapter", ChapterCardiff)
+    chapter should have size 40
+    chapter should contain ("BFI London Film Festival 2026: The Debut")
+    chapter should not contain "Drones Comedy Club"                            // "Events"
+    chapter should not contain "Tara Clerkin Trio + support from ZIEGENKITZ"   // "Music"
+
+    val pontardawe = titles("pontardaweartscentre", PontardaweArtsCentre)
+    pontardawe should have size 20
+    pontardawe should contain ("Kendal Mountain Film Festival 27")
+    pontardawe should not contain "Lindisfarne"                                                         // "Music"
+    pontardawe should not contain "Christmas Wreath Making Class with Master Florist Jonathan Lloyd-Davies" // "Workshops"
+
+    val dwyfor = titles("neuadddwyfor", NeuaddDwyforPwllheli)
+    dwyfor should have size 18
+    dwyfor should contain ("NT Live: The Misanthrope") // "Darllediad Byw / Live Broadcast"
+    dwyfor should not contain "TOM MEIGHAN - RAW 26"   // uncategorised, and no certificate
+    dwyfor.filter(_.startsWith("Diod a Dylunio")) shouldBe empty // "Gweithdy / Workshop"
+
+    val number8 = titles("number8", Number8Pershore)
+    number8 should have size 29
+    number8 should contain ("Royal Opera: Carmen")                      // "Event Cinema"
+    number8 should not contain "King Pleasure and the Biscuit Boys"     // "Live Event"
+    number8.filter(_.startsWith("Pop Up Painting")) shouldBe empty      // "Adult Workshops"
+    number8.filter(_.startsWith("Number 8 Quiz")) shouldBe empty        // "Foyer Event"
+
+    titles("pocklingtonartscentre", PocklingtonArtsCentre) should not contain "Seat Sponsorship" // uncategorised
+
+    val watershed = titles("watershed", WatershedBristol)
+    watershed.filter(_.startsWith("Golden Boy")) should not be empty           // "Event Cinema"
+    watershed.filter(_.startsWith("Seat Sponsorship")) shouldBe empty          // "Seat Sponsorship"
+    watershed should not contain "The Knot Makers"                             // "Lunchtime Talk"
+    watershed should not contain "Make Shift - Come Unstuck Sessions"          // "Workshop"
+  }
+
+  it should "keep a relay filed as recorded live" in {
+    // Theatr Colwyn files the National Theatre relay as "Recorded Live".
+    titles("theatrcolwyn", TheatrColwyn) should contain ("NT Live: Golden Boy")
   }
 
   "TicketsolveClient.parse" should "refuse a page that is no feed rather than call it an empty programme" in {

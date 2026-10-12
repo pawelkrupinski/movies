@@ -37,7 +37,8 @@ import scala.util.Try
  * WHICH SHOWS ARE FILMS. Each client names its own `event_category`, so the rule is its
  * own filing: a category naming film or cinema — "Film", "Cinema 2D / Sinema 2D",
  * "Event Cinema", "Access - Cinema Subtitled" — or a broadcast, the opera, ballet and
- * theatre relays ("Live Broadcast Events / Achlysuron Darlledu Byw": all 27 of Mwldan's
+ * theatre relays, however the client words it (Theatr Colwyn's NT Live is "Recorded Live";
+ * Mwldan's "Live Broadcast Events / Achlysuron Darlledu Byw": all 27
  * on 2026-10-12 are NT Live, Royal Ballet & Opera, Met Opera or Exhibition on Screen; its
  * gigs are filed apart, as "Live TM / TM Byw") — or a film society, which may file under
  * its acronym alone (Mwldan's "TMFS / CFFTM", Theatr Mwldan Film Society / Cymdeithas Ffilm:
@@ -69,8 +70,10 @@ object TicketsolveClient {
   def feedUrl(client: String): String = s"https://$client.ticketsolve.com/shows.xml"
 
   /** A category naming film or a relay, word-bounded: "Film", "Cinema 2D / Sinema 2D",
-   *  "Event Cinema", "Access - Cinema Subtitled", "Live Broadcast Events". */
-  private val FilmWord = """(?i)\b(films?|cinema|sinema|screens?|screenings?|movies?|broadcasts?)\b""".r
+   *  "Event Cinema", "Access - Cinema Subtitled", "Live Broadcast Events", "Recorded Live",
+   *  "Satellite Live". "Live" alone is no relay: it files the gigs too ("Live TM / TM Byw"). */
+  private val FilmWord =
+    """(?i)\b(films?|cinema|sinema|screens?|screenings?|movies?|broadcasts?|relays?|satellite|recorded\s+live)\b""".r
 
   /** A film society's acronym, which names no film word: "TMFS" in "TMFS / CFFTM". Upper
    *  case only, so it reads an acronym, not a word ending in "fs". */
