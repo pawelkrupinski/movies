@@ -1,46 +1,26 @@
 <html><body>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="UEA Film50: Creative Authorship and the James Bond Franchise, Past and Future" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+<section id="shows" class="scrollableList" aria-live="polite" data-astro-cid-ao2b2dul>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <button class="disabled" aria-disabled="true" disabled data-astro-cid-3cu7ytnt>18:30</button>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Mon 30 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="UEA Film50: Creative Authorship and the James Bond Franchise, Past and Future" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <button class="disabled" aria-disabled="true" disabled data-astro-cid-3cu7ytnt>18:30</button>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £6.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>BFI Reuben Library</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="status" data-astro-cid-y4ln3hac>Sold out</p>
+    </div>
+   </li>
+  </ul>
  </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £6.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>BFI Reuben Library</p>
- </div>
-</div>
-<div class="performanceDetails" data-astro-cid-tuzbvmmy>
- <div data-ga-show-title="When Film Studies Was Young" data-astro-cid-tuzbvmmy>
-  <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=seatSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DA5CD10B9-1442-48AC-A413-AAFFE14A66DE%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:30 Monday 2 November BFI Reuben Library" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:30</a>
- </div>
- <div data-astro-cid-tuzbvmmy>
-  <p class="minPrice" data-astro-cid-tuzbvmmy>From £6.50</p>
- </div>
-</div>
-<div class="performanceDetails" data-astro-cid-tuzbvmmy>
- <div data-ga-show-title="Revisiting Ealing Studios" data-astro-cid-tuzbvmmy>
-  <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=seatSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D0AFD192C-197D-479A-A1C5-D1672C5FF672%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:30 Monday 9 November BFI Reuben Library" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:30</a>
- </div>
- <div data-astro-cid-tuzbvmmy>
-  <p class="minPrice" data-astro-cid-tuzbvmmy>From £6.50</p>
- </div>
-</div>
-<div class="performanceDetails" data-astro-cid-tuzbvmmy>
- <div data-ga-show-title="Film Feminisms from Norwich – Legacies and Lineages" data-astro-cid-tuzbvmmy>
-  <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=seatSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D665E495C-F2E6-4EF1-8F92-C79E0C000516%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:30 Monday 16 November BFI Reuben Library" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:30</a>
- </div>
- <div data-astro-cid-tuzbvmmy>
-  <p class="minPrice" data-astro-cid-tuzbvmmy>From £6.50</p>
- </div>
-</div>
-<div class="performanceDetails" data-astro-cid-tuzbvmmy>
- <div data-ga-show-title="The Legacies and Futures of Doctor Who" data-astro-cid-tuzbvmmy>
-  <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=seatSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D6DE81340-F012-4B26-8719-E268AF61AC3A%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:30 Monday 23 November BFI Reuben Library" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:30</a>
- </div>
- <div data-astro-cid-tuzbvmmy>
-  <p class="minPrice" data-astro-cid-tuzbvmmy>From £6.50</p>
- </div>
-</div>
+</section>
 </body></html>

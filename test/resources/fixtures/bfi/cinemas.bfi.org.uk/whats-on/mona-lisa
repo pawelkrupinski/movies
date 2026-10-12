@@ -1,114 +1,51 @@
 <html><body>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Mona Lisa + Q&amp;A with Lola Young and actor Cathy Tyson" data-ga-vanue="BFI Southbank" data-ga-show-format="35mm" data-astro-cid-y4ln3hac>
+<section id="shows" class="scrollableList" aria-live="polite" data-astro-cid-ao2b2dul>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D16F44ECA-0DD7-41E8-9420-4990051A238B%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="19:00 Wednesday 11 November NFT1" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>19:00</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Wed 11 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Mona Lisa + Q&amp;A with Lola Young and actor Cathy Tyson" data-ga-vanue="BFI Southbank" data-ga-show-format="35mm" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D16F44ECA-0DD7-41E8-9420-4990051A238B%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="19:00 Wednesday 11 November NFT1" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>19:00</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £14.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT1</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>35mm</p>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="extras" data-astro-cid-y4ln3hac>Q&amp;A with Lola Young and actor Cathy Tyson</p>
+    </div>
+   </li>
+  </ul>
  </div>
  <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £14.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT1</p>
+  <h3 data-astro-cid-y4ln3hac>Tue 24 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Mona Lisa" data-ga-vanue="BFI Southbank" data-ga-show-format="35mm" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DF3FB70AD-6934-41E2-A7A5-2CDC36D12916%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:45 Tuesday 24 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:45</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £14.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT2</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>35mm</p>
+    </div>
+   </li>
+  </ul>
  </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Mona Lisa" data-ga-vanue="BFI Southbank" data-ga-show-format="35mm" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DF3FB70AD-6934-41E2-A7A5-2CDC36D12916%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:45 Tuesday 24 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:45</a>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £14.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT2</p>
- </div>
-</div>
-<div class="performanceDetails" data-astro-cid-tuzbvmmy>
- <div data-ga-show-title="Saint Omer" data-astro-cid-tuzbvmmy>
-  <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D3315E03A-5D16-4A22-BF41-C6867AF08A6E%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:15 Tuesday 17 November NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:15</a>
- </div>
- <div data-astro-cid-tuzbvmmy>
-  <p class="minPrice" data-astro-cid-tuzbvmmy>From £14.50</p>
- </div>
-</div>
-<div class="performanceDetails" data-astro-cid-tuzbvmmy>
- <div data-ga-show-title="Saint Omer" data-astro-cid-tuzbvmmy>
-  <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D31ECBD1F-7CBA-4F69-BCC2-702402F90C80%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:35 Monday 30 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:35</a>
- </div>
- <div data-astro-cid-tuzbvmmy>
-  <p class="minPrice" data-astro-cid-tuzbvmmy>From £14.50</p>
- </div>
-</div>
-<div class="performanceDetails" data-astro-cid-tuzbvmmy>
- <div data-ga-show-title="Loving" data-astro-cid-tuzbvmmy>
-  <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D7586F4DD-8C4C-44C7-BD60-630C08A0034F%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="17:50 Thursday 29 October NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>17:50</a>
- </div>
- <div data-astro-cid-tuzbvmmy>
-  <p class="minPrice" data-astro-cid-tuzbvmmy>From £14.50</p>
- </div>
-</div>
-<div class="performanceDetails" data-astro-cid-tuzbvmmy>
- <div data-ga-show-title="Loving" data-astro-cid-tuzbvmmy>
-  <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D992D4895-5836-4AA2-AF61-558766492ECD%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:35 Saturday 21 November NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:35</a>
- </div>
- <div data-astro-cid-tuzbvmmy>
-  <p class="minPrice" data-astro-cid-tuzbvmmy>From £14.50</p>
- </div>
-</div>
-<div class="performanceDetails" data-astro-cid-tuzbvmmy>
- <div data-ga-show-title="The Crying Game" data-astro-cid-tuzbvmmy>
-  <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DD72A060C-A1B0-46B5-BC4A-A57A51411B73%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:40 Tuesday 3 November NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:40</a>
- </div>
- <div data-astro-cid-tuzbvmmy>
-  <p class="minPrice" data-astro-cid-tuzbvmmy>From £14.50</p>
- </div>
-</div>
-<div class="performanceDetails" data-astro-cid-tuzbvmmy>
- <div data-ga-show-title="The Crying Game" data-astro-cid-tuzbvmmy>
-  <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D62130B8C-C70D-4375-B310-38699D9FE140%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:10 Friday 27 November NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:10</a>
- </div>
- <div data-astro-cid-tuzbvmmy>
-  <p class="minPrice" data-astro-cid-tuzbvmmy>From £14.50</p>
- </div>
-</div>
-<div class="performanceDetails" data-astro-cid-tuzbvmmy>
- <div data-ga-show-title="35 Shots of Rum" data-astro-cid-tuzbvmmy>
-  <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DAE7E3C9B-3F98-45B5-B1BD-7C9D3E1DC1D2%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:10 Saturday 7 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:10</a>
- </div>
- <div data-astro-cid-tuzbvmmy>
-  <p class="minPrice" data-astro-cid-tuzbvmmy>From £14.50</p>
- </div>
-</div>
-<div class="performanceDetails" data-astro-cid-tuzbvmmy>
- <div data-ga-show-title="35 Shots of Rum" data-astro-cid-tuzbvmmy>
-  <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DC9D85D3E-31EE-46E2-A43D-7E2D7ED3D904%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:40 Friday 27 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:40</a>
- </div>
- <div data-astro-cid-tuzbvmmy>
-  <p class="minPrice" data-astro-cid-tuzbvmmy>From £14.50</p>
- </div>
-</div>
-<div class="performanceDetails" data-astro-cid-tuzbvmmy>
- <div data-ga-show-title="NW" data-astro-cid-tuzbvmmy>
-  <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DA9F1D7D0-F2C5-4F92-A51E-D23C70BE2334%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:00 Saturday 14 November NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:00</a>
- </div>
- <div data-astro-cid-tuzbvmmy>
-  <p class="minPrice" data-astro-cid-tuzbvmmy>From £14.50</p>
- </div>
-</div>
-<div class="performanceDetails" data-astro-cid-tuzbvmmy>
- <div data-ga-show-title="Kokomo City" data-astro-cid-tuzbvmmy>
-  <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D692BBE8D-67C8-4E80-9CD8-DC5BB55EB9D6%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:15 Thursday 19 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:15</a>
- </div>
- <div data-astro-cid-tuzbvmmy>
-  <p class="minPrice" data-astro-cid-tuzbvmmy>From £14.50</p>
- </div>
-</div>
-<div class="performanceDetails" data-astro-cid-tuzbvmmy>
- <div data-ga-show-title="Kokomo City" data-astro-cid-tuzbvmmy>
-  <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D4F6B80F7-3010-42EC-A84D-F6F6D2599B80%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:45 Saturday 28 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:45</a>
- </div>
- <div data-astro-cid-tuzbvmmy>
-  <p class="minPrice" data-astro-cid-tuzbvmmy>From £14.50</p>
- </div>
-</div>
+</section>
 </body></html>

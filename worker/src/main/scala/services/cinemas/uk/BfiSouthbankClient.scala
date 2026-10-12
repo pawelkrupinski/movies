@@ -27,14 +27,21 @@ import scala.util.{Failure, Success, Try}
  *   1. `GET /whats-on/show-list-page.partial?page=N` — 24 film cards a page, from 1 until
  *      a page has none: title, `/whats-on/<slug>`, synopsis, runtime (`PT1H47M`), year,
  *      image, BBFC badge.
- *   2. `GET /whats-on/<slug>` — the film's performances, one block each:
+ *   2. `GET /whats-on/<slug>` — the film's performances in `section#shows`, under a heading
+ *      per day:
  *      {{{
+ *      <h3>Fri 23 Oct</h3>
  *      <div class="performanceDetails" data-ga-vanue="BFI Southbank" …>
  *        <a href="https://whatson.bfi.org.uk/Online/login.asp?…" aria-label="20:40 Friday 23 October NFT3">20:40</a>
+ *        … <p>NFT3</p>
  *      }}}
- *      The label carries no year; it is placed by [[ScraperParse.upcomingDate]]. (Some
- *      pages also carry a `<bfi-calendar>` with ISO times, but not all: Deep Cover's seven
- *      performances are only in the blocks.)
+ *      A sold-out performance draws `<button class="disabled">18:00</button>` instead of the
+ *      link — no booking URL, no label — and is kept, as a sold-out showing is still showing
+ *      (Ghosts: The Possession of Button House's only one, 2026-10-12). So the day is read off
+ *      the heading, which carries no year and is placed by [[ScraperParse.upcomingDate]], the
+ *      time off the link or button, and the screen off its own line. (Some pages also carry a
+ *      `<bfi-calendar>` with ISO times, but not all: Deep Cover's seven performances are only
+ *      in the blocks.)
  *
  * About 150 requests a scrape (117 films on 2026-10-12, seven weeks ahead), the film pages
  * read two at a time; one that fails drops only its film and leaves the listing
@@ -95,8 +102,8 @@ object BfiSouthbankClient {
 
   private val Slug = """^/whats-on/([a-z0-9][a-z0-9-]*)$""".r
 
-  /** "20:40 Friday 23 October NFT3": time, weekday, day, month, screen. */
-  private val Label = s"""^\\s*${ScraperParse.ClockParts}\\s+[A-Za-z]+\\s+(\\d{1,2})\\s+([A-Za-z]+)\\s+(.+?)\\s*$$""".r
+  /** A day heading, "Fri 23 Oct": weekday, day, month. */
+  private val DayHeading = """^\s*[A-Za-z]+\s+(\d{1,2})\s+([A-Za-z]+)\s*$""".r
 
   /** The BBFC badge the card draws as an inline SVG, its `<title>BBFC 15_RGB</title>`
    *  URL-encoded in the `data:` source. */
@@ -136,24 +143,35 @@ object BfiSouthbankClient {
     row.select("span").asScala.map(_.text.trim).collectFirst { case y if y.matches("\\d{4}") => y }
       .flatMap(ScraperParse.yearIn)
 
-  /** A film page's performances on a Southbank screen from `today` on. */
-  def performances(html: String, today: LocalDate): Seq[Showtime] =
-    Jsoup.parse(html, BaseUrl).select("div.performanceDetails").asScala.toSeq
-      .filter(_.attr("data-ga-vanue").trim.equalsIgnoreCase(Venue))
-      .flatMap(block => Option(block.selectFirst("a[aria-label]")))
-      .flatMap { link =>
+  /** A film page's performances on a Southbank screen from `today` on: each block in
+   *  `section#shows` on the day of the heading nearest before it. */
+  def performances(html: String, today: LocalDate): Seq[Showtime] = {
+    val shows = Jsoup.parse(html, BaseUrl).select("section#shows h3, section#shows div.performanceDetails").asScala.toSeq
+    val dated = shows.scanLeft((Option.empty[LocalDate], Option.empty[Element])) {
+      case (_, heading) if heading.tagName == "h3" => (dayOf(heading.text, today), None)
+      case ((day, _), block)                       => (day, Some(block))
+    }
+    dated.collect { case (Some(day), Some(block)) if !day.isBefore(today) && block.attr("data-ga-vanue").trim.equalsIgnoreCase(Venue) => (day, block) }
+      .flatMap { case (day, block) =>
         for {
-          m        <- Label.findFirstMatchIn(link.attr("aria-label"))
-          time     <- ScraperParse.clockAt(m, 1)
-          month    <- ScraperParse.englishMonth(m.group(4))
-          dayMonth <- ScraperParse.monthDay(m.group(3).toInt, month)
-          day      <- ScraperParse.upcomingDate(dayMonth, today) if !day.isBefore(today)
-          screen    = m.group(5) if Screen.matches(screen)
+          sale   <- Option(block.selectFirst("a, button"))
+          time   <- ScraperParse.parseHHmm(sale.text)
+          screen <- block.select("p").asScala.map(_.text.trim).find(Screen.matches)
         } yield Showtime(
           dateTime   = day.atTime(time),
-          bookingUrl = Some(link.attr("abs:href")).filter(_.startsWith("http")),
+          bookingUrl = Some(sale.attr("abs:href")).filter(_.startsWith("http")),
           room       = Some(screen))
       }.distinct
+  }
+
+  /** The date a day heading ("Fri 23 Oct") names, placed in the year that keeps it upcoming. */
+  private def dayOf(heading: String, today: LocalDate): Option[LocalDate] =
+    for {
+      m        <- DayHeading.findFirstMatchIn(heading)
+      month    <- ScraperParse.englishMonth(m.group(2))
+      dayMonth <- ScraperParse.monthDay(m.group(1).toInt, month)
+      day      <- ScraperParse.upcomingDate(dayMonth, today)
+    } yield day
 
   /** The cards joined to their film pages' performances (by slug): one [[CinemaMovie]] per
    *  film with any. */

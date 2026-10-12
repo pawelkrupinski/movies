@@ -1,146 +1,243 @@
 <html><body>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
+<section id="shows" class="scrollableList" aria-live="polite" data-astro-cid-ao2b2dul>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DE98BB606-02EE-4E70-AA78-8677BF8BE986%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="14:40 Friday 13 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>14:40</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Fri 13 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DE98BB606-02EE-4E70-AA78-8677BF8BE986%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="14:40 Friday 13 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>14:40</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £9</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT4</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>4K Restoration</p>
+    </div>
+   </li>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D585A8080-AEA2-48FC-944F-0FC2A5972F49%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:35 Friday 13 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:35</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £14.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT4</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>4K Restoration</p>
+    </div>
+   </li>
+  </ul>
  </div>
  <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £9</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT4</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D585A8080-AEA2-48FC-944F-0FC2A5972F49%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:35 Friday 13 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:35</a>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £14.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT4</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DBFF65B08-340C-4073-AE4B-9C7925A996AC%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="14:50 Saturday 14 November NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>14:50</a>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £14.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT3</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DBAF613C9-DFB8-4989-BCB6-0F34D7395657%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="17:50 Saturday 14 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>17:50</a>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £14.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT4</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D8BFC3B56-0520-461A-91C0-14CB4F3F201D%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="15:10 Sunday 15 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>15:10</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Sat 14 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DBFF65B08-340C-4073-AE4B-9C7925A996AC%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="14:50 Saturday 14 November NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>14:50</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £14.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT3</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>4K Restoration</p>
+    </div>
+   </li>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DBAF613C9-DFB8-4989-BCB6-0F34D7395657%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="17:50 Saturday 14 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>17:50</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £14.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT4</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>4K Restoration</p>
+    </div>
+   </li>
+  </ul>
  </div>
  <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £14.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT4</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D13E6E6CE-0091-4EFC-8E35-922CF890CFFA%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="14:40 Monday 16 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>14:40</a>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £9</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT4</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D93B026B6-DA6D-4033-88B5-7E75EC3D445F%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:35 Monday 16 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:35</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Sun 15 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D8BFC3B56-0520-461A-91C0-14CB4F3F201D%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="15:10 Sunday 15 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>15:10</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £14.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT4</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>4K Restoration</p>
+    </div>
+   </li>
+  </ul>
  </div>
  <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £14.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT4</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DFB2F7370-C0DA-47A7-831D-8C115ABFF306%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="14:40 Tuesday 17 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>14:40</a>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £9</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT4</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DBD2848F8-C59B-4270-81FB-FEC58BC86835%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:35 Tuesday 17 November NFT1" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:35</a>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £14.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT1</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DCCB1F070-56D0-4F44-B56D-5B8D309102B2%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="12:10 Wednesday 18 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>12:10</a>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £9</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT4</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D6751873F-EC90-4C34-AF79-021614C5C3E4%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:30 Wednesday 18 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:30</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Mon 16 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D13E6E6CE-0091-4EFC-8E35-922CF890CFFA%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="14:40 Monday 16 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>14:40</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £9</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT4</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>4K Restoration</p>
+    </div>
+   </li>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D93B026B6-DA6D-4033-88B5-7E75EC3D445F%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:35 Monday 16 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:35</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £14.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT4</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>4K Restoration</p>
+    </div>
+   </li>
+  </ul>
  </div>
  <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £14.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT2</p>
+  <h3 data-astro-cid-y4ln3hac>Tue 17 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DFB2F7370-C0DA-47A7-831D-8C115ABFF306%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="14:40 Tuesday 17 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>14:40</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £9</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT4</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>4K Restoration</p>
+    </div>
+   </li>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DBD2848F8-C59B-4270-81FB-FEC58BC86835%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:35 Tuesday 17 November NFT1" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:35</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £14.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT1</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>4K Restoration</p>
+    </div>
+   </li>
+  </ul>
  </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D800D5889-14E7-4825-A007-3DBF6E81EBAB%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="12:10 Thursday 19 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>12:10</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Wed 18 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DCCB1F070-56D0-4F44-B56D-5B8D309102B2%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="12:10 Wednesday 18 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>12:10</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £9</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT4</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>4K Restoration</p>
+    </div>
+   </li>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D6751873F-EC90-4C34-AF79-021614C5C3E4%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:30 Wednesday 18 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:30</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £14.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT2</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>4K Restoration</p>
+    </div>
+   </li>
+  </ul>
  </div>
  <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £9</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT4</p>
+  <h3 data-astro-cid-y4ln3hac>Thu 19 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Marie Antoinette" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D800D5889-14E7-4825-A007-3DBF6E81EBAB%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="12:10 Thursday 19 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>12:10</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £9</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT4</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>4K Restoration</p>
+    </div>
+   </li>
+  </ul>
  </div>
-</div>
+</section>
 </body></html>

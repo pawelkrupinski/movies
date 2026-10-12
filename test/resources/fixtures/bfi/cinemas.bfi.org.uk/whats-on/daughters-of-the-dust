@@ -1,38 +1,73 @@
 <html><body>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Daughters of the Dust" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+<section id="shows" class="scrollableList" aria-live="polite" data-astro-cid-ao2b2dul>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D8E5F58FC-16C7-453F-AD7C-5094308D50CE%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:10 Saturday 31 October NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:10</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Sat 31 Oct</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Daughters of the Dust" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D8E5F58FC-16C7-453F-AD7C-5094308D50CE%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:10 Saturday 31 October NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:10</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £9.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT2</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p data-astro-cid-y4ln3hac>English language subtitles</p>
+    </div>
+   </li>
+  </ul>
  </div>
  <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £9.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT2</p>
+  <h3 data-astro-cid-y4ln3hac>Wed 11 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Daughters of the Dust + intro by Rogan Graham, BFI Film Programmer" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D3BEF308D-E58E-46FA-A636-0E2992E740C8%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:10 Wednesday 11 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:10</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £9.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT2</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p data-astro-cid-y4ln3hac>English language subtitles</p>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="extras" data-astro-cid-y4ln3hac>Intro by Rogan Graham, BFI Film Programmer</p>
+    </div>
+   </li>
+  </ul>
  </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Daughters of the Dust + intro by Rogan Graham, BFI Film Programmer" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D3BEF308D-E58E-46FA-A636-0E2992E740C8%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:10 Wednesday 11 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:10</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Sat 28 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Daughters of the Dust" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DE8B608C5-7B51-4E93-8F71-4FDB83794DC3%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="15:00 Saturday 28 November NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>15:00</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £9.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT3</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p data-astro-cid-y4ln3hac>English language subtitles</p>
+    </div>
+   </li>
+  </ul>
  </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £9.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT2</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Daughters of the Dust" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DE8B608C5-7B51-4E93-8F71-4FDB83794DC3%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="15:00 Saturday 28 November NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>15:00</a>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £9.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT3</p>
- </div>
-</div>
+</section>
 </body></html>

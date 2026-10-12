@@ -1,0 +1,43 @@
+<html><body>
+<section id="shows" class="scrollableList" aria-live="polite" data-astro-cid-ao2b2dul>
+ <div data-astro-cid-y4ln3hac>
+  <h3 data-astro-cid-y4ln3hac>Wed 21 Oct</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Manhunter: The Final Cut" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DD9C50BE4-1151-428F-9C7E-E6D946990FE6%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="12:15 Wednesday 21 October NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>12:15</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £9</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT4</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>4K Restoration</p>
+    </div>
+   </li>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Manhunter: The Final Cut" data-ga-vanue="BFI Southbank" data-ga-show-format="4K Restoration" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D20C07157-704E-4BEA-94DA-1F9CDD821B57%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:30 Wednesday 21 October NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:30</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £14.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT3</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>4K Restoration</p>
+    </div>
+   </li>
+  </ul>
+ </div>
+</section>
+</body></html>

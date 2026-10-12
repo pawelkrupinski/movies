@@ -1,6 +1,98 @@
 <html><body>
 <article class="showCard" itemscope itemtype="http://schema.org/Event" data-astro-cid-idhbdnaf>
  <div class="showImage" data-astro-cid-idhbdnaf>
+  <img src="/_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Fdcb7bd50-57ca-4539-b6ca-842d9d45e880.jpeg&amp;w=1280&amp;h=720&amp;f=webp&amp;fit=cover&amp;position=left+top" srcset="/_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Fdcb7bd50-57ca-4539-b6ca-842d9d45e880.jpeg&amp;w=640&amp;h=360&amp;f=webp&amp;fit=cover&amp;position=left+top 640w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Fdcb7bd50-57ca-4539-b6ca-842d9d45e880.jpeg&amp;w=750&amp;h=422&amp;f=webp&amp;fit=cover&amp;position=left+top 750w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Fdcb7bd50-57ca-4539-b6ca-842d9d45e880.jpeg&amp;w=828&amp;h=466&amp;f=webp&amp;fit=cover&amp;position=left+top 828w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Fdcb7bd50-57ca-4539-b6ca-842d9d45e880.jpeg&amp;w=1080&amp;h=608&amp;f=webp&amp;fit=cover&amp;position=left+top 1080w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Fdcb7bd50-57ca-4539-b6ca-842d9d45e880.jpeg&amp;w=1280&amp;h=720&amp;f=webp&amp;fit=cover&amp;position=left+top 1280w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Fdcb7bd50-57ca-4539-b6ca-842d9d45e880.jpeg&amp;w=1668&amp;h=938&amp;f=webp&amp;fit=cover&amp;position=left+top 1668w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Fdcb7bd50-57ca-4539-b6ca-842d9d45e880.jpeg&amp;w=2048&amp;h=1152&amp;f=webp&amp;fit=cover&amp;position=left+top 2048w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Fdcb7bd50-57ca-4539-b6ca-842d9d45e880.jpeg&amp;w=2560&amp;h=1440&amp;f=webp&amp;fit=cover&amp;position=left+top 2560w" alt loading="lazy" data-astro-cid-idhbdnaf="true" decoding="async" sizes="(min-width: 1280px) 1280px, 100vw" data-astro-image="constrained" data-astro-image-fit="cover" data-astro-image-pos="left-top" width="1280" height="720">
+ </div>
+ <div class="cardContent" data-astro-cid-idhbdnaf>
+  <div data-astro-cid-idhbdnaf>
+   <h3 data-astro-cid-idhbdnaf="true"><a class="card-link" data-ga-event="showcard_click" data-ga-show-title="The Fortune Cookie" href="/whats-on/the-fortune-cookie" data-astro-cid-idhbdnaf>The Fortune Cookie</a></h3>
+   <p data-astro-cid-idhbdnaf>Lemmon and Matthau shine in Billy Wilder’s tale of a high-profile accident serving up a golden ticket to riches and sympathy for a reluctant cameraman.</p>
+  </div>
+  <div class="workData" role="group" aria-label="Show information" data-astro-cid-idhbdnaf>
+   <time itemprop="duration" datetime="PT2H5M" data-astro-cid-idhbdnaf>2h 5m</time><span aria-hidden="true" data-astro-cid-idhbdnaf>|</span><span data-astro-cid-idhbdnaf>1966</span><span aria-hidden="true" data-astro-cid-idhbdnaf>|</span><img src="data:image/svg+xml,%3c?xml%20version='1.0'%20encoding='utf-8'?%3e%3c!--%20Generator:%20Adobe%20Illustrator%2020.1.0,%20SVG%20Export%20Plug-In%20.%20SVG%20Version:%206.00%20Build%200)%20--%3e%3csvg%20version='1.0'%20id='Layer_1'%20xmlns='http://www.w3.org/2000/svg'%20xmlns:xlink='http://www.w3.org/1999/xlink'%20x='0px'%20y='0px'%20viewBox='0%200%20318.2%20283.5'%20style='enable-background:new%200%200%20318.2%20283.5;'%20xml:space='preserve'%3e%3cstyle%20type='text/css'%3e%20.st0{fill:%23FFFFFF;}%20.st1{fill:%230AC700;}%20%3c/style%3e%3cg%3e%3cpath%20d='M314.3,238.8L185,14.9C179.6,5.6,170,0,159.2,0s-20.4,5.6-25.8,14.9L4.1,238.8c-5.4,9.3-5.4,20.5,0,29.8%20c5.4,9.3,15,14.9,25.8,14.9h258.5c10.8,0,20.4-5.6,25.8-14.9C319.6,259.2,319.6,248.1,314.3,238.8z'/%3e%3cpath%20class='st0'%20d='M309.9,241.3L180.7,17.4C176.2,9.6,168.2,5,159.2,5s-17,4.6-21.5,12.4L8.4,241.3c-4.5,7.8-4.5,17.1,0,24.8%20c4.5,7.8,12.5,12.4,21.5,12.4h258.5c9,0,17-4.6,21.5-12.4C314.4,258.3,314.4,249,309.9,241.3z'/%3e%3cpath%20class='st1'%20d='M169.9,23.6c-2.4-4.1-6.6-6.2-10.7-6.2s-8.3,2.1-10.7,6.2L19.2,247.5c-4.8,8.3,1.2,18.6,10.7,18.6h258.5%20c9.5,0,15.5-10.3,10.7-18.6L169.9,23.6z'/%3e%3cpath%20class='st0'%20d='M199.1,136.6V199c-0.1,11.2-0.1,20.5-10.7,29.5c-10.1,8.8-23.2,9.7-29.9,9.7c-6,0-11.9-0.7-17.5-2.7%20c-11.8-4.1-18.1-12.6-20.4-20.1c-1.3-4.4-1.3-7.4-1.4-19.8v-59.1h18.5v60.9c0,4.2-0.1,8.3,1.3,12.1c3.8,9.5,14.2,10.7,20.1,10.7%20c2.9,0,10.4-0.1,15.9-4.9c5.5-4.9,5.5-10.5,5.5-18.8v-59.9H199.1z'/%3e%3c/g%3e%3c/svg%3e" alt="BBFC U rating" width="27" height="27" data-astro-cid-idhbdnaf>
+  </div>
+ </div>
+ <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="The Fortune Cookie" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Wednesday 18 November and Sunday 29 November" aria-expanded="false" aria-controls="performance-list-8ea5ed1e-46e0-4fee-b94a-7f87341f281e" commandfor="performance-list-8ea5ed1e-46e0-4fee-b94a-7f87341f281e" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+   <h4 data-astro-cid-tuzbvmmy>Wed 18 Nov <span>and</span> Sun 29 Nov</h4>
+  </button>
+  <div class="performanceList" id="performance-list-8ea5ed1e-46e0-4fee-b94a-7f87341f281e" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+   <div data-astro-cid-tuzbvmmy>
+    <h4 aria-label="Wednesday 18 November" data-astro-cid-tuzbvmmy>Wed 18 Nov</h4>
+    <ul data-astro-cid-tuzbvmmy>
+     <li data-astro-cid-tuzbvmmy>
+      <div class="performanceDetails" data-astro-cid-tuzbvmmy>
+       <div data-ga-show-title="The Fortune Cookie" data-astro-cid-tuzbvmmy>
+        <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D1B9FAFC2-93DC-4A5C-AEC8-6D22369592C8%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:35 Wednesday 18 November NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:35</a>
+       </div>
+       <div data-astro-cid-tuzbvmmy>
+        <p class="minPrice" data-astro-cid-tuzbvmmy>From £14.50</p>
+       </div>
+      </div>
+     </li>
+    </ul>
+   </div>
+   <div data-astro-cid-tuzbvmmy>
+    <h4 aria-label="Sunday 29 November" data-astro-cid-tuzbvmmy>Sun 29 Nov</h4>
+    <ul data-astro-cid-tuzbvmmy>
+     <li data-astro-cid-tuzbvmmy>
+      <div class="performanceDetails" data-astro-cid-tuzbvmmy>
+       <div data-ga-show-title="The Fortune Cookie" data-astro-cid-tuzbvmmy>
+        <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D27653E1C-A0BE-48FE-96E2-E2A235094B2F%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="14:50 Sunday 29 November NFT1" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>14:50</a>
+       </div>
+       <div data-astro-cid-tuzbvmmy>
+        <p class="minPrice" data-astro-cid-tuzbvmmy>From £14.50</p>
+       </div>
+      </div>
+     </li>
+    </ul>
+   </div>
+   <button type="button" commandfor="performance-list-8ea5ed1e-46e0-4fee-b94a-7f87341f281e" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="The Fortune Cookie" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+  </div>
+ </div>
+</article>
+<article class="showCard" itemscope itemtype="http://schema.org/Event" data-astro-cid-idhbdnaf>
+ <div class="showImage" data-astro-cid-idhbdnaf>
+  <img src="/_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Ffrankenstein-01-1773910657.jpeg&amp;w=1280&amp;h=720&amp;f=webp&amp;fit=cover&amp;position=center" srcset="/_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Ffrankenstein-01-1773910657.jpeg&amp;w=640&amp;h=360&amp;f=webp&amp;fit=cover&amp;position=center 640w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Ffrankenstein-01-1773910657.jpeg&amp;w=750&amp;h=422&amp;f=webp&amp;fit=cover&amp;position=center 750w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Ffrankenstein-01-1773910657.jpeg&amp;w=828&amp;h=466&amp;f=webp&amp;fit=cover&amp;position=center 828w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Ffrankenstein-01-1773910657.jpeg&amp;w=1080&amp;h=608&amp;f=webp&amp;fit=cover&amp;position=center 1080w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Ffrankenstein-01-1773910657.jpeg&amp;w=1280&amp;h=720&amp;f=webp&amp;fit=cover&amp;position=center 1280w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Ffrankenstein-01-1773910657.jpeg&amp;w=1668&amp;h=938&amp;f=webp&amp;fit=cover&amp;position=center 1668w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Ffrankenstein-01-1773910657.jpeg&amp;w=2048&amp;h=1152&amp;f=webp&amp;fit=cover&amp;position=center 2048w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2Ffrankenstein-01-1773910657.jpeg&amp;w=2560&amp;h=1440&amp;f=webp&amp;fit=cover&amp;position=center 2560w" alt loading="lazy" data-astro-cid-idhbdnaf="true" decoding="async" sizes="(min-width: 1280px) 1280px, 100vw" data-astro-image="constrained" data-astro-image-fit="cover" data-astro-image-pos="center" width="1280" height="720">
+ </div>
+ <div class="cardContent" data-astro-cid-idhbdnaf>
+  <div data-astro-cid-idhbdnaf>
+   <h3 data-astro-cid-idhbdnaf="true"><a class="card-link" data-ga-event="showcard_click" data-ga-show-title="Frankenstein" href="/whats-on/frankenstein" data-astro-cid-idhbdnaf>Frankenstein</a></h3>
+   <p data-astro-cid-idhbdnaf>Mary Shelley’s classic novel is brought to life by Guillermo del Toro in this award-winning tour de force.</p>
+  </div>
+  <div class="workData" role="group" aria-label="Show information" data-astro-cid-idhbdnaf>
+   <time itemprop="duration" datetime="PT2H30M" data-astro-cid-idhbdnaf>2h 30m</time><span aria-hidden="true" data-astro-cid-idhbdnaf>|</span><span data-astro-cid-idhbdnaf>2025</span><span aria-hidden="true" data-astro-cid-idhbdnaf>|</span><img src="data:image/svg+xml,%3c?xml%20version='1.0'%20encoding='utf-8'?%3e%3c!--%20Generator:%20Adobe%20Illustrator%2020.1.0,%20SVG%20Export%20Plug-In%20.%20SVG%20Version:%206.00%20Build%200)%20--%3e%3csvg%20version='1.0'%20id='Layer_1'%20xmlns='http://www.w3.org/2000/svg'%20xmlns:xlink='http://www.w3.org/1999/xlink'%20x='0px'%20y='0px'%20viewBox='0%200%20283.5%20283.5'%20style='enable-background:new%200%200%20283.5%20283.5;'%20xml:space='preserve'%3e%3cstyle%20type='text/css'%3e%20.st0{fill:%23FFFFFF;}%20.st1{fill:%23FB4F93;}%20%3c/style%3e%3ctitle%3eBBFC%2015_RGB%3c/title%3e%3cg%3e%3ccircle%20cx='141.7'%20cy='141.7'%20r='141.7'/%3e%3ccircle%20class='st0'%20cx='141.7'%20cy='141.7'%20r='136.8'/%3e%3ccircle%20class='st1'%20cx='141.7'%20cy='141.7'%20r='124.3'/%3e%3cpath%20class='st0'%20d='M114,90.4v99.5H95.9V133c0-9.4,0-12.2-8.1-12.2H71.6v-11.3h1.9c9.3-0.1,21.8-0.3,25.8-19L114,90.4L114,90.4z'%20/%3e%3cpath%20class='st0'%20d='M191.2,106.8h-38.8l-3.4,22c4.4-4.4,11.5-7.4,19.2-7.4c17.7,0,30.2,13.1,30.2,33.2c0,20.5-13.4,36.7-37,36.7%20c-6.6,0-13.1-1.2-18.9-4.1c-13.9-7.4-14.9-20.2-15.3-25.1l20.6-1.5c0.4,10.2,6.8,14.7,14.3,14.7c3.4,0,6.3-0.7,8.7-2.4%20c4.4-2.9,7.5-9.9,7.5-17.7c0-12.4-7.7-18.7-16.5-18.7c-6.8,0-12.5,3.1-14.9,9.3l-16.7-1l7.1-54.7h55.3L191.2,106.8z'/%3e%3c/g%3e%3c/svg%3e" alt="BBFC 15 rating" width="27" height="27" data-astro-cid-idhbdnaf>
+  </div>
+ </div>
+ <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Frankenstein" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Friday 30 October" aria-expanded="false" aria-controls="performance-list-d8b9fb48-2a7b-4d14-b9b6-2de7b0eacc16" commandfor="performance-list-d8b9fb48-2a7b-4d14-b9b6-2de7b0eacc16" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+   <h4 data-astro-cid-tuzbvmmy>Fri 30 Oct</h4>
+  </button>
+  <div class="performanceList" id="performance-list-d8b9fb48-2a7b-4d14-b9b6-2de7b0eacc16" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+   <div data-astro-cid-tuzbvmmy>
+    <h4 aria-label="Friday 30 October" data-astro-cid-tuzbvmmy>Fri 30 Oct</h4>
+    <ul data-astro-cid-tuzbvmmy>
+     <li data-astro-cid-tuzbvmmy>
+      <div class="performanceDetails" data-astro-cid-tuzbvmmy>
+       <div data-ga-show-title="Frankenstein" data-astro-cid-tuzbvmmy>
+        <a href="https://whatson.bfi.org.uk/imax/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DB83D0FEA-5174-40EC-9321-F1300154F5C3%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:30 Friday 30 October BFI IMAX" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:30</a>
+       </div>
+       <div data-astro-cid-tuzbvmmy>
+        <p class="minPrice" data-astro-cid-tuzbvmmy>From £20</p>
+       </div>
+      </div>
+      <div class="tagsWrapper" data-astro-cid-tuzbvmmy>
+       <p class="formats" data-astro-cid-tuzbvmmy>IMAX (with laser)</p>
+      </div>
+     </li>
+    </ul>
+   </div>
+   <button type="button" commandfor="performance-list-d8b9fb48-2a7b-4d14-b9b6-2de7b0eacc16" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Frankenstein" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+  </div>
+ </div>
+</article>
+<article class="showCard" itemscope itemtype="http://schema.org/Event" data-astro-cid-idhbdnaf>
+ <div class="showImage" data-astro-cid-idhbdnaf>
   <img src="/_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F892af191-128e-4eb2-aa62-8cd20ba56778.jpeg&amp;w=1280&amp;h=720&amp;f=webp&amp;fit=cover&amp;position=left+top" srcset="/_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F892af191-128e-4eb2-aa62-8cd20ba56778.jpeg&amp;w=640&amp;h=360&amp;f=webp&amp;fit=cover&amp;position=left+top 640w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F892af191-128e-4eb2-aa62-8cd20ba56778.jpeg&amp;w=750&amp;h=422&amp;f=webp&amp;fit=cover&amp;position=left+top 750w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F892af191-128e-4eb2-aa62-8cd20ba56778.jpeg&amp;w=828&amp;h=466&amp;f=webp&amp;fit=cover&amp;position=left+top 828w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F892af191-128e-4eb2-aa62-8cd20ba56778.jpeg&amp;w=1080&amp;h=608&amp;f=webp&amp;fit=cover&amp;position=left+top 1080w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F892af191-128e-4eb2-aa62-8cd20ba56778.jpeg&amp;w=1280&amp;h=720&amp;f=webp&amp;fit=cover&amp;position=left+top 1280w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F892af191-128e-4eb2-aa62-8cd20ba56778.jpeg&amp;w=1668&amp;h=938&amp;f=webp&amp;fit=cover&amp;position=left+top 1668w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F892af191-128e-4eb2-aa62-8cd20ba56778.jpeg&amp;w=2048&amp;h=1152&amp;f=webp&amp;fit=cover&amp;position=left+top 2048w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F892af191-128e-4eb2-aa62-8cd20ba56778.jpeg&amp;w=2560&amp;h=1440&amp;f=webp&amp;fit=cover&amp;position=left+top 2560w" alt loading="lazy" data-astro-cid-idhbdnaf="true" decoding="async" sizes="(min-width: 1280px) 1280px, 100vw" data-astro-image="constrained" data-astro-image-fit="cover" data-astro-image-pos="left-top" width="1280" height="720">
  </div>
  <div class="cardContent" data-astro-cid-idhbdnaf>
@@ -17,10 +109,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Frankenweenie" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Sunday 25 October to Saturday 28 November" aria-expanded="false" aria-controls="performance-list-9adf591f-406e-4eea-9e4a-b2b69c043939" commandfor="performance-list-9adf591f-406e-4eea-9e4a-b2b69c043939" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Sunday 25 October to Saturday 28 November" aria-expanded="false" aria-controls="performance-list-2cd51b04-54f2-48ec-93e1-ada79084630f" commandfor="performance-list-2cd51b04-54f2-48ec-93e1-ada79084630f" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Sun 25 Oct <span>to</span> Sat 28 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-9adf591f-406e-4eea-9e4a-b2b69c043939" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-2cd51b04-54f2-48ec-93e1-ada79084630f" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Sunday 25 October" data-astro-cid-tuzbvmmy>Sun 25 Oct</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -72,7 +164,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-9adf591f-406e-4eea-9e4a-b2b69c043939" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Frankenweenie" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-2cd51b04-54f2-48ec-93e1-ada79084630f" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Frankenweenie" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -93,10 +185,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Ganja and Hess" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Friday 30 October and Tuesday 24 November" aria-expanded="false" aria-controls="performance-list-94f9f90a-fc53-42ff-9920-b9ba9623a213" commandfor="performance-list-94f9f90a-fc53-42ff-9920-b9ba9623a213" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Friday 30 October and Tuesday 24 November" aria-expanded="false" aria-controls="performance-list-688e0361-b675-4f26-8fca-b160329b0270" commandfor="performance-list-688e0361-b675-4f26-8fca-b160329b0270" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Fri 30 Oct <span>and</span> Tue 24 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-94f9f90a-fc53-42ff-9920-b9ba9623a213" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-688e0361-b675-4f26-8fca-b160329b0270" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Friday 30 October" data-astro-cid-tuzbvmmy>Fri 30 Oct</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -130,7 +222,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-94f9f90a-fc53-42ff-9920-b9ba9623a213" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Ganja and Hess" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-688e0361-b675-4f26-8fca-b160329b0270" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Ganja and Hess" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -154,10 +246,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Ghosts: The Possession of Button House" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Wednesday 21 October" aria-expanded="false" aria-controls="performance-list-b8c99a25-b90a-4c13-a682-00647b58a411" commandfor="performance-list-b8c99a25-b90a-4c13-a682-00647b58a411" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Wednesday 21 October" aria-expanded="false" aria-controls="performance-list-afd4b0ee-c6cb-4ae9-82ca-4ac7bafb64e4" commandfor="performance-list-afd4b0ee-c6cb-4ae9-82ca-4ac7bafb64e4" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Wed 21 Oct</h4>
   </button>
-  <div class="performanceList" id="performance-list-b8c99a25-b90a-4c13-a682-00647b58a411" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-afd4b0ee-c6cb-4ae9-82ca-4ac7bafb64e4" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Wednesday 21 October" data-astro-cid-tuzbvmmy>Wed 21 Oct</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -182,7 +274,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-b8c99a25-b90a-4c13-a682-00647b58a411" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Ghosts: The Possession of Button House" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-afd4b0ee-c6cb-4ae9-82ca-4ac7bafb64e4" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Ghosts: The Possession of Button House" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -200,10 +292,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Godzilla Minus Zero" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Tuesday 3 November to Thursday 12 November" aria-expanded="false" aria-controls="performance-list-a955cae5-01f9-4095-a8a9-3cbfcd3fcb37" commandfor="performance-list-a955cae5-01f9-4095-a8a9-3cbfcd3fcb37" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Tuesday 3 November to Thursday 12 November" aria-expanded="false" aria-controls="performance-list-76fa2214-340b-4db2-903f-2fa0213c12d8" commandfor="performance-list-76fa2214-340b-4db2-903f-2fa0213c12d8" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Tue 3 Nov <span>to</span> Thu 12 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-a955cae5-01f9-4095-a8a9-3cbfcd3fcb37" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-76fa2214-340b-4db2-903f-2fa0213c12d8" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Tuesday 3 November" data-astro-cid-tuzbvmmy>Tue 3 Nov</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -299,7 +391,7 @@
      </li>
     </ul>
    </div>
-   <a class="showMoreLink outline" href="/whats-on/godzilla-minus-zero" data-astro-cid-tuzbvmmy>Show other screenings</a><button type="button" commandfor="performance-list-a955cae5-01f9-4095-a8a9-3cbfcd3fcb37" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Godzilla Minus Zero" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <a class="showMoreLink outline" href="/whats-on/godzilla-minus-zero" data-astro-cid-tuzbvmmy>Show other screenings</a><button type="button" commandfor="performance-list-76fa2214-340b-4db2-903f-2fa0213c12d8" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Godzilla Minus Zero" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -318,10 +410,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Good Morning, Britain: TV-am Revisited" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Tuesday 24 November" aria-expanded="false" aria-controls="performance-list-44289c8f-9f77-4ed8-a201-8d4f28964009" commandfor="performance-list-44289c8f-9f77-4ed8-a201-8d4f28964009" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Tuesday 24 November" aria-expanded="false" aria-controls="performance-list-2e471484-2a56-4639-a5e4-0b90881f5107" commandfor="performance-list-2e471484-2a56-4639-a5e4-0b90881f5107" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Tue 24 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-44289c8f-9f77-4ed8-a201-8d4f28964009" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-2e471484-2a56-4639-a5e4-0b90881f5107" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Tuesday 24 November" data-astro-cid-tuzbvmmy>Tue 24 Nov</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -337,7 +429,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-44289c8f-9f77-4ed8-a201-8d4f28964009" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Good Morning, Britain: TV-am Revisited" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-2e471484-2a56-4639-a5e4-0b90881f5107" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Good Morning, Britain: TV-am Revisited" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -358,10 +450,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Hell on Earth: The Desecration and Resurrection of The Devils" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Monday 9 November" aria-expanded="false" aria-controls="performance-list-6f863e63-659a-4d7b-b6fd-1a4653517cb5" commandfor="performance-list-6f863e63-659a-4d7b-b6fd-1a4653517cb5" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Monday 9 November" aria-expanded="false" aria-controls="performance-list-17d90b6f-f7d0-4da4-a6c9-40d513e895e2" commandfor="performance-list-17d90b6f-f7d0-4da4-a6c9-40d513e895e2" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Mon 9 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-6f863e63-659a-4d7b-b6fd-1a4653517cb5" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-17d90b6f-f7d0-4da4-a6c9-40d513e895e2" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Monday 9 November" data-astro-cid-tuzbvmmy>Mon 9 Nov</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -380,7 +472,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-6f863e63-659a-4d7b-b6fd-1a4653517cb5" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Hell on Earth: The Desecration and Resurrection of The Devils" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-17d90b6f-f7d0-4da4-a6c9-40d513e895e2" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Hell on Earth: The Desecration and Resurrection of The Devils" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -398,10 +490,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Hold Back the Dawn" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Saturday 31 October and Sunday 22 November" aria-expanded="false" aria-controls="performance-list-22e587e9-a286-45e7-8a13-93c8e3488a8e" commandfor="performance-list-22e587e9-a286-45e7-8a13-93c8e3488a8e" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Saturday 31 October and Sunday 22 November" aria-expanded="false" aria-controls="performance-list-12e40fb8-4021-4988-917a-27c1b562d191" commandfor="performance-list-12e40fb8-4021-4988-917a-27c1b562d191" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Sat 31 Oct <span>and</span> Sun 22 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-22e587e9-a286-45e7-8a13-93c8e3488a8e" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-12e40fb8-4021-4988-917a-27c1b562d191" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Saturday 31 October" data-astro-cid-tuzbvmmy>Sat 31 Oct</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -432,7 +524,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-22e587e9-a286-45e7-8a13-93c8e3488a8e" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Hold Back the Dawn" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-12e40fb8-4021-4988-917a-27c1b562d191" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Hold Back the Dawn" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -450,10 +542,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Hope" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Sunday 25 October" aria-expanded="false" aria-controls="performance-list-ec0dd6a4-a46a-4751-b5c3-700a3c808cb2" commandfor="performance-list-ec0dd6a4-a46a-4751-b5c3-700a3c808cb2" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Sunday 25 October" aria-expanded="false" aria-controls="performance-list-f7d82bb3-de65-4324-b968-bf60343b822d" commandfor="performance-list-f7d82bb3-de65-4324-b968-bf60343b822d" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Sun 25 Oct</h4>
   </button>
-  <div class="performanceList" id="performance-list-ec0dd6a4-a46a-4751-b5c3-700a3c808cb2" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-f7d82bb3-de65-4324-b968-bf60343b822d" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Sunday 25 October" data-astro-cid-tuzbvmmy>Sun 25 Oct</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -475,7 +567,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-ec0dd6a4-a46a-4751-b5c3-700a3c808cb2" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Hope" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-f7d82bb3-de65-4324-b968-bf60343b822d" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Hope" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -496,10 +588,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="House of Usher (aka The Fall of the House of Usher)" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Tuesday 20 October and Saturday 14 November" aria-expanded="false" aria-controls="performance-list-6d791b75-a3a7-4e1d-99fd-c0268853d23a" commandfor="performance-list-6d791b75-a3a7-4e1d-99fd-c0268853d23a" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Tuesday 20 October and Saturday 14 November" aria-expanded="false" aria-controls="performance-list-91d319e6-1dda-4f39-a6ac-7429016c59cc" commandfor="performance-list-91d319e6-1dda-4f39-a6ac-7429016c59cc" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Tue 20 Oct <span>and</span> Sat 14 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-6d791b75-a3a7-4e1d-99fd-c0268853d23a" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-91d319e6-1dda-4f39-a6ac-7429016c59cc" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Tuesday 20 October" data-astro-cid-tuzbvmmy>Tue 20 Oct</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -539,7 +631,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-6d791b75-a3a7-4e1d-99fd-c0268853d23a" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="House of Usher (aka The Fall of the House of Usher)" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-91d319e6-1dda-4f39-a6ac-7429016c59cc" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="House of Usher (aka The Fall of the House of Usher)" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -557,10 +649,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Irma la Douce" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Sunday 15 November and Monday 30 November" aria-expanded="false" aria-controls="performance-list-804555ee-56cf-4f5e-a4a2-51c35e613134" commandfor="performance-list-804555ee-56cf-4f5e-a4a2-51c35e613134" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Sunday 15 November and Monday 30 November" aria-expanded="false" aria-controls="performance-list-60f75430-d935-48e1-a7eb-e3613ccd5f81" commandfor="performance-list-60f75430-d935-48e1-a7eb-e3613ccd5f81" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Sun 15 Nov <span>and</span> Mon 30 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-804555ee-56cf-4f5e-a4a2-51c35e613134" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-60f75430-d935-48e1-a7eb-e3613ccd5f81" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Sunday 15 November" data-astro-cid-tuzbvmmy>Sun 15 Nov</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -591,7 +683,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-804555ee-56cf-4f5e-a4a2-51c35e613134" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Irma la Douce" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-60f75430-d935-48e1-a7eb-e3613ccd5f81" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Irma la Douce" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -610,10 +702,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Julie Corman in Conversation" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Thursday 12 November" aria-expanded="false" aria-controls="performance-list-15b71cf2-7a34-443b-bac1-7479af57a2d4" commandfor="performance-list-15b71cf2-7a34-443b-bac1-7479af57a2d4" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Thursday 12 November" aria-expanded="false" aria-controls="performance-list-e6978d27-3780-434c-a69a-be33e5dee6eb" commandfor="performance-list-e6978d27-3780-434c-a69a-be33e5dee6eb" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Thu 12 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-15b71cf2-7a34-443b-bac1-7479af57a2d4" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-e6978d27-3780-434c-a69a-be33e5dee6eb" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Thursday 12 November" data-astro-cid-tuzbvmmy>Thu 12 Nov</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -632,7 +724,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-15b71cf2-7a34-443b-bac1-7479af57a2d4" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Julie Corman in Conversation" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-e6978d27-3780-434c-a69a-be33e5dee6eb" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Julie Corman in Conversation" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -653,10 +745,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Ken Russell’s The Devils" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Friday 23 October to Thursday 12 November" aria-expanded="false" aria-controls="performance-list-7cc93281-49b6-446d-8be7-a39072241994" commandfor="performance-list-7cc93281-49b6-446d-8be7-a39072241994" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Friday 23 October to Thursday 12 November" aria-expanded="false" aria-controls="performance-list-712ce632-60a0-4985-80fc-9965a7ea8c78" commandfor="performance-list-712ce632-60a0-4985-80fc-9965a7ea8c78" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Fri 23 Oct <span>to</span> Thu 12 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-7cc93281-49b6-446d-8be7-a39072241994" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-712ce632-60a0-4985-80fc-9965a7ea8c78" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Friday 23 October" data-astro-cid-tuzbvmmy>Fri 23 Oct</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -762,7 +854,7 @@
      </li>
     </ul>
    </div>
-   <a class="showMoreLink outline" href="/whats-on/the-devils" data-astro-cid-tuzbvmmy>Show other screenings</a><button type="button" commandfor="performance-list-7cc93281-49b6-446d-8be7-a39072241994" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Ken Russell’s The Devils" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <a class="showMoreLink outline" href="/whats-on/the-devils" data-astro-cid-tuzbvmmy>Show other screenings</a><button type="button" commandfor="performance-list-712ce632-60a0-4985-80fc-9965a7ea8c78" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Ken Russell’s The Devils" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -780,10 +872,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Kiss Me, Stupid" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Saturday 21 November and Friday 27 November" aria-expanded="false" aria-controls="performance-list-a3227f18-8801-4e80-b8a3-26748088600c" commandfor="performance-list-a3227f18-8801-4e80-b8a3-26748088600c" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Saturday 21 November and Friday 27 November" aria-expanded="false" aria-controls="performance-list-a7327140-a324-4222-b8ff-4fbce98f6fd5" commandfor="performance-list-a7327140-a324-4222-b8ff-4fbce98f6fd5" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Sat 21 Nov <span>and</span> Fri 27 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-a3227f18-8801-4e80-b8a3-26748088600c" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-a7327140-a324-4222-b8ff-4fbce98f6fd5" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Saturday 21 November" data-astro-cid-tuzbvmmy>Sat 21 Nov</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -814,7 +906,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-a3227f18-8801-4e80-b8a3-26748088600c" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Kiss Me, Stupid" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-a7327140-a324-4222-b8ff-4fbce98f6fd5" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Kiss Me, Stupid" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -832,10 +924,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Kokomo City" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Thursday 19 November and Saturday 28 November" aria-expanded="false" aria-controls="performance-list-8484c701-34b4-472e-8005-28ad2ff04766" commandfor="performance-list-8484c701-34b4-472e-8005-28ad2ff04766" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Thursday 19 November and Saturday 28 November" aria-expanded="false" aria-controls="performance-list-9d95a9fb-115b-41e8-b000-424c472231c2" commandfor="performance-list-9d95a9fb-115b-41e8-b000-424c472231c2" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Thu 19 Nov <span>and</span> Sat 28 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-8484c701-34b4-472e-8005-28ad2ff04766" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-9d95a9fb-115b-41e8-b000-424c472231c2" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Thursday 19 November" data-astro-cid-tuzbvmmy>Thu 19 Nov</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -875,7 +967,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-8484c701-34b4-472e-8005-28ad2ff04766" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Kokomo City" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-9d95a9fb-115b-41e8-b000-424c472231c2" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Kokomo City" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -896,10 +988,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Lady" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Sunday 1 November" aria-expanded="false" aria-controls="performance-list-c478c99c-ec71-4e97-8c7e-6d0904ebb93b" commandfor="performance-list-c478c99c-ec71-4e97-8c7e-6d0904ebb93b" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Sunday 1 November" aria-expanded="false" aria-controls="performance-list-f6fe74a3-388a-4591-9e02-05ec07d1a5bb" commandfor="performance-list-f6fe74a3-388a-4591-9e02-05ec07d1a5bb" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Sun 1 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-c478c99c-ec71-4e97-8c7e-6d0904ebb93b" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-f6fe74a3-388a-4591-9e02-05ec07d1a5bb" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Sunday 1 November" data-astro-cid-tuzbvmmy>Sun 1 Nov</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -921,7 +1013,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-c478c99c-ec71-4e97-8c7e-6d0904ebb93b" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Lady" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-f6fe74a3-388a-4591-9e02-05ec07d1a5bb" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Lady" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -942,10 +1034,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Loving" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Thursday 29 October and Saturday 21 November" aria-expanded="false" aria-controls="performance-list-be85c635-04e2-453b-8a58-e9dad6270c49" commandfor="performance-list-be85c635-04e2-453b-8a58-e9dad6270c49" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Thursday 29 October and Saturday 21 November" aria-expanded="false" aria-controls="performance-list-10f13484-08e9-4e49-bffd-e7bdb11429af" commandfor="performance-list-10f13484-08e9-4e49-bffd-e7bdb11429af" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Thu 29 Oct <span>and</span> Sat 21 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-be85c635-04e2-453b-8a58-e9dad6270c49" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-10f13484-08e9-4e49-bffd-e7bdb11429af" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Thursday 29 October" data-astro-cid-tuzbvmmy>Thu 29 Oct</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -982,7 +1074,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-be85c635-04e2-453b-8a58-e9dad6270c49" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Loving" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-10f13484-08e9-4e49-bffd-e7bdb11429af" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Loving" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -1000,10 +1092,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Machine Gun Kelly" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Monday 19 October and Saturday 14 November" aria-expanded="false" aria-controls="performance-list-ccd7abca-a8ef-4b1d-ad75-5251f58b1d27" commandfor="performance-list-ccd7abca-a8ef-4b1d-ad75-5251f58b1d27" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Monday 19 October and Saturday 14 November" aria-expanded="false" aria-controls="performance-list-ad93a069-2b04-4770-be39-e45c7b248386" commandfor="performance-list-ad93a069-2b04-4770-be39-e45c7b248386" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Mon 19 Oct <span>and</span> Sat 14 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-ccd7abca-a8ef-4b1d-ad75-5251f58b1d27" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-ad93a069-2b04-4770-be39-e45c7b248386" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Monday 19 October" data-astro-cid-tuzbvmmy>Mon 19 Oct</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -1040,7 +1132,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-ccd7abca-a8ef-4b1d-ad75-5251f58b1d27" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Machine Gun Kelly" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-ad93a069-2b04-4770-be39-e45c7b248386" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Machine Gun Kelly" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -1059,10 +1151,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Mandabi" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Thursday 22 October to Sunday 29 November" aria-expanded="false" aria-controls="performance-list-c4633f66-6ed8-4f72-ac49-83bf7ea951d2" commandfor="performance-list-c4633f66-6ed8-4f72-ac49-83bf7ea951d2" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Thursday 22 October to Sunday 29 November" aria-expanded="false" aria-controls="performance-list-ca960684-1cea-4d77-9760-0828397234b7" commandfor="performance-list-ca960684-1cea-4d77-9760-0828397234b7" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Thu 22 Oct <span>to</span> Sun 29 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-c4633f66-6ed8-4f72-ac49-83bf7ea951d2" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-ca960684-1cea-4d77-9760-0828397234b7" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Thursday 22 October" data-astro-cid-tuzbvmmy>Thu 22 Oct</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -1126,7 +1218,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-c4633f66-6ed8-4f72-ac49-83bf7ea951d2" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Mandabi" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-ca960684-1cea-4d77-9760-0828397234b7" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Mandabi" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -1144,10 +1236,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Marie Antoinette" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Friday 13 November to Thursday 19 November" aria-expanded="false" aria-controls="performance-list-f7d89a51-3304-44a7-94dc-6c46f99a6bec" commandfor="performance-list-f7d89a51-3304-44a7-94dc-6c46f99a6bec" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Friday 13 November to Thursday 19 November" aria-expanded="false" aria-controls="performance-list-3b1c89bb-c224-4ed1-8170-a4774b5985e9" commandfor="performance-list-3b1c89bb-c224-4ed1-8170-a4774b5985e9" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Fri 13 Nov <span>to</span> Thu 19 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-f7d89a51-3304-44a7-94dc-6c46f99a6bec" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-3b1c89bb-c224-4ed1-8170-a4774b5985e9" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Friday 13 November" data-astro-cid-tuzbvmmy>Fri 13 Nov</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -1228,7 +1320,7 @@
      </li>
     </ul>
    </div>
-   <a class="showMoreLink outline" href="/whats-on/marie-antoinette" data-astro-cid-tuzbvmmy>Show other screenings</a><button type="button" commandfor="performance-list-f7d89a51-3304-44a7-94dc-6c46f99a6bec" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Marie Antoinette" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <a class="showMoreLink outline" href="/whats-on/marie-antoinette" data-astro-cid-tuzbvmmy>Show other screenings</a><button type="button" commandfor="performance-list-3b1c89bb-c224-4ed1-8170-a4774b5985e9" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Marie Antoinette" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -1246,10 +1338,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Mark Kermode Live in 3D at the BFI" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Monday 9 November" aria-expanded="false" aria-controls="performance-list-1f8d83ed-6711-43b6-8c62-d6bb00959b3c" commandfor="performance-list-1f8d83ed-6711-43b6-8c62-d6bb00959b3c" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Monday 9 November" aria-expanded="false" aria-controls="performance-list-ba5f9189-aab9-4daa-9802-094dfe1194d9" commandfor="performance-list-ba5f9189-aab9-4daa-9802-094dfe1194d9" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Mon 9 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-1f8d83ed-6711-43b6-8c62-d6bb00959b3c" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-ba5f9189-aab9-4daa-9802-094dfe1194d9" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Monday 9 November" data-astro-cid-tuzbvmmy>Mon 9 Nov</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -1268,7 +1360,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-1f8d83ed-6711-43b6-8c62-d6bb00959b3c" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Mark Kermode Live in 3D at the BFI" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-ba5f9189-aab9-4daa-9802-094dfe1194d9" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Mark Kermode Live in 3D at the BFI" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -1287,10 +1379,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Martin McDonagh in Conversation" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Wednesday 28 October" aria-expanded="false" aria-controls="performance-list-6945d9bf-8c26-46f9-9344-cb94227221d5" commandfor="performance-list-6945d9bf-8c26-46f9-9344-cb94227221d5" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Wednesday 28 October" aria-expanded="false" aria-controls="performance-list-b0349639-089f-4d24-8eef-4eb7722cd4b3" commandfor="performance-list-b0349639-089f-4d24-8eef-4eb7722cd4b3" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Wed 28 Oct</h4>
   </button>
-  <div class="performanceList" id="performance-list-6945d9bf-8c26-46f9-9344-cb94227221d5" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-b0349639-089f-4d24-8eef-4eb7722cd4b3" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Wednesday 28 October" data-astro-cid-tuzbvmmy>Wed 28 Oct</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -1309,7 +1401,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-6945d9bf-8c26-46f9-9344-cb94227221d5" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Martin McDonagh in Conversation" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-b0349639-089f-4d24-8eef-4eb7722cd4b3" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Martin McDonagh in Conversation" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>
@@ -1327,10 +1419,10 @@
   </div>
  </div>
  <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Mauvaise Graine" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Monday 26 October and Saturday 7 November" aria-expanded="false" aria-controls="performance-list-78d09e18-fad0-441d-a26c-fd37878c59f0" commandfor="performance-list-78d09e18-fad0-441d-a26c-fd37878c59f0" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Monday 26 October and Saturday 7 November" aria-expanded="false" aria-controls="performance-list-71eec4e8-276e-4a10-ad2d-a4a775b12c89" commandfor="performance-list-71eec4e8-276e-4a10-ad2d-a4a775b12c89" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
    <h4 data-astro-cid-tuzbvmmy>Mon 26 Oct <span>and</span> Sat 7 Nov</h4>
   </button>
-  <div class="performanceList" id="performance-list-78d09e18-fad0-441d-a26c-fd37878c59f0" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+  <div class="performanceList" id="performance-list-71eec4e8-276e-4a10-ad2d-a4a775b12c89" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
    <div data-astro-cid-tuzbvmmy>
     <h4 aria-label="Monday 26 October" data-astro-cid-tuzbvmmy>Mon 26 Oct</h4>
     <ul data-astro-cid-tuzbvmmy>
@@ -1367,71 +1459,7 @@
      </li>
     </ul>
    </div>
-   <button type="button" commandfor="performance-list-78d09e18-fad0-441d-a26c-fd37878c59f0" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Mauvaise Graine" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
-  </div>
- </div>
-</article>
-<article class="showCard" itemscope itemtype="http://schema.org/Event" data-astro-cid-idhbdnaf>
- <div class="showImage" data-astro-cid-idhbdnaf>
-  <img src="/_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F765dfd56-e939-4565-a19e-71d698a648d2.jpeg&amp;w=1280&amp;h=720&amp;f=webp&amp;fit=cover&amp;position=center" srcset="/_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F765dfd56-e939-4565-a19e-71d698a648d2.jpeg&amp;w=640&amp;h=360&amp;f=webp&amp;fit=cover&amp;position=center 640w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F765dfd56-e939-4565-a19e-71d698a648d2.jpeg&amp;w=750&amp;h=422&amp;f=webp&amp;fit=cover&amp;position=center 750w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F765dfd56-e939-4565-a19e-71d698a648d2.jpeg&amp;w=828&amp;h=466&amp;f=webp&amp;fit=cover&amp;position=center 828w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F765dfd56-e939-4565-a19e-71d698a648d2.jpeg&amp;w=1080&amp;h=608&amp;f=webp&amp;fit=cover&amp;position=center 1080w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F765dfd56-e939-4565-a19e-71d698a648d2.jpeg&amp;w=1280&amp;h=720&amp;f=webp&amp;fit=cover&amp;position=center 1280w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F765dfd56-e939-4565-a19e-71d698a648d2.jpeg&amp;w=1668&amp;h=938&amp;f=webp&amp;fit=cover&amp;position=center 1668w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F765dfd56-e939-4565-a19e-71d698a648d2.jpeg&amp;w=2048&amp;h=1152&amp;f=webp&amp;fit=cover&amp;position=center 2048w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F765dfd56-e939-4565-a19e-71d698a648d2.jpeg&amp;w=2560&amp;h=1440&amp;f=webp&amp;fit=cover&amp;position=center 2560w" alt loading="lazy" data-astro-cid-idhbdnaf="true" decoding="async" sizes="(min-width: 1280px) 1280px, 100vw" data-astro-image="constrained" data-astro-image-fit="cover" data-astro-image-pos="center" width="1280" height="720">
- </div>
- <div class="cardContent" data-astro-cid-idhbdnaf>
-  <div data-astro-cid-idhbdnaf>
-   <p class="show-type" data-astro-cid-idhbdnaf>Members<span class="show-type-separator" data-astro-cid-idhbdnaf> • </span>Talk</p>
-   <h3 data-astro-cid-idhbdnaf="true"><a class="card-link" data-ga-event="showcard_click" data-ga-show-title="Member Salon: Ken Russell’s The Devils" href="/whats-on/member-salon-ken-russells-the-devils" data-astro-cid-idhbdnaf>Member Salon: Ken Russell’s The Devils</a></h3>
-   <p data-astro-cid-idhbdnaf>Join us to discuss the controversy, art and meaning of Ken Russell’s controversial drama.</p>
-  </div>
- </div>
-</article>
-<article class="showCard" itemscope itemtype="http://schema.org/Event" data-astro-cid-idhbdnaf>
- <div class="showImage" data-astro-cid-idhbdnaf>
-  <img src="/_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F5c2d5da6-03d2-45fd-95e9-242de278e794.jpeg&amp;w=1280&amp;h=720&amp;f=webp&amp;fit=cover&amp;position=center" srcset="/_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F5c2d5da6-03d2-45fd-95e9-242de278e794.jpeg&amp;w=640&amp;h=360&amp;f=webp&amp;fit=cover&amp;position=center 640w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F5c2d5da6-03d2-45fd-95e9-242de278e794.jpeg&amp;w=750&amp;h=422&amp;f=webp&amp;fit=cover&amp;position=center 750w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F5c2d5da6-03d2-45fd-95e9-242de278e794.jpeg&amp;w=828&amp;h=466&amp;f=webp&amp;fit=cover&amp;position=center 828w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F5c2d5da6-03d2-45fd-95e9-242de278e794.jpeg&amp;w=1080&amp;h=608&amp;f=webp&amp;fit=cover&amp;position=center 1080w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F5c2d5da6-03d2-45fd-95e9-242de278e794.jpeg&amp;w=1280&amp;h=720&amp;f=webp&amp;fit=cover&amp;position=center 1280w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F5c2d5da6-03d2-45fd-95e9-242de278e794.jpeg&amp;w=1668&amp;h=938&amp;f=webp&amp;fit=cover&amp;position=center 1668w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F5c2d5da6-03d2-45fd-95e9-242de278e794.jpeg&amp;w=2048&amp;h=1152&amp;f=webp&amp;fit=cover&amp;position=center 2048w, /_image?href=https%3A%2F%2Fcms.cinemas.bfi.org.uk%2Fstorage%2Fmedia%2F5c2d5da6-03d2-45fd-95e9-242de278e794.jpeg&amp;w=2560&amp;h=1440&amp;f=webp&amp;fit=cover&amp;position=center 2560w" alt loading="lazy" data-astro-cid-idhbdnaf="true" decoding="async" sizes="(min-width: 1280px) 1280px, 100vw" data-astro-image="constrained" data-astro-image-fit="cover" data-astro-image-pos="center" width="1280" height="720">
- </div>
- <div class="cardContent" data-astro-cid-idhbdnaf>
-  <div data-astro-cid-idhbdnaf>
-   <h3 data-astro-cid-idhbdnaf="true"><a class="card-link" data-ga-event="showcard_click" data-ga-show-title="Midnight" href="/whats-on/midnight" data-astro-cid-idhbdnaf>Midnight</a></h3>
-   <p data-astro-cid-idhbdnaf>In another Leisen-Wilder classic, a showgirl faking wealth and status is drawn into a plot to break up a relationship.</p>
-  </div>
-  <div class="workData" role="group" aria-label="Show information" data-astro-cid-idhbdnaf>
-   <time itemprop="duration" datetime="PT1H34M" data-astro-cid-idhbdnaf>1h 34m</time><span aria-hidden="true" data-astro-cid-idhbdnaf>|</span><span data-astro-cid-idhbdnaf>1939</span><span aria-hidden="true" data-astro-cid-idhbdnaf>|</span><img src="data:image/svg+xml,%3c?xml%20version='1.0'%20encoding='utf-8'?%3e%3c!--%20Generator:%20Adobe%20Illustrator%2020.1.0,%20SVG%20Export%20Plug-In%20.%20SVG%20Version:%206.00%20Build%200)%20--%3e%3csvg%20version='1.0'%20id='Layer_1'%20xmlns='http://www.w3.org/2000/svg'%20xmlns:xlink='http://www.w3.org/1999/xlink'%20x='0px'%20y='0px'%20viewBox='0%200%20318.2%20283.5'%20style='enable-background:new%200%200%20318.2%20283.5;'%20xml:space='preserve'%3e%3cstyle%20type='text/css'%3e%20.st0{fill:%23FFFFFF;}%20.st1{fill:%230AC700;}%20%3c/style%3e%3cg%3e%3cpath%20d='M314.3,238.8L185,14.9C179.6,5.6,170,0,159.2,0s-20.4,5.6-25.8,14.9L4.1,238.8c-5.4,9.3-5.4,20.5,0,29.8%20c5.4,9.3,15,14.9,25.8,14.9h258.5c10.8,0,20.4-5.6,25.8-14.9C319.6,259.2,319.6,248.1,314.3,238.8z'/%3e%3cpath%20class='st0'%20d='M309.9,241.3L180.7,17.4C176.2,9.6,168.2,5,159.2,5s-17,4.6-21.5,12.4L8.4,241.3c-4.5,7.8-4.5,17.1,0,24.8%20c4.5,7.8,12.5,12.4,21.5,12.4h258.5c9,0,17-4.6,21.5-12.4C314.4,258.3,314.4,249,309.9,241.3z'/%3e%3cpath%20class='st1'%20d='M169.9,23.6c-2.4-4.1-6.6-6.2-10.7-6.2s-8.3,2.1-10.7,6.2L19.2,247.5c-4.8,8.3,1.2,18.6,10.7,18.6h258.5%20c9.5,0,15.5-10.3,10.7-18.6L169.9,23.6z'/%3e%3cpath%20class='st0'%20d='M199.1,136.6V199c-0.1,11.2-0.1,20.5-10.7,29.5c-10.1,8.8-23.2,9.7-29.9,9.7c-6,0-11.9-0.7-17.5-2.7%20c-11.8-4.1-18.1-12.6-20.4-20.1c-1.3-4.4-1.3-7.4-1.4-19.8v-59.1h18.5v60.9c0,4.2-0.1,8.3,1.3,12.1c3.8,9.5,14.2,10.7,20.1,10.7%20c2.9,0,10.4-0.1,15.9-4.9c5.5-4.9,5.5-10.5,5.5-18.8v-59.9H199.1z'/%3e%3c/g%3e%3c/svg%3e" alt="BBFC U rating" width="27" height="27" data-astro-cid-idhbdnaf>
-  </div>
- </div>
- <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Midnight" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
-  <button type="button" class="performanceToggle" aria-label="Friday 30 October and Wednesday 11 November" aria-expanded="false" aria-controls="performance-list-df7d4dc1-15b3-49e3-bd32-a2b1944e869c" commandfor="performance-list-df7d4dc1-15b3-49e3-bd32-a2b1944e869c" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
-   <h4 data-astro-cid-tuzbvmmy>Fri 30 Oct <span>and</span> Wed 11 Nov</h4>
-  </button>
-  <div class="performanceList" id="performance-list-df7d4dc1-15b3-49e3-bd32-a2b1944e869c" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
-   <div data-astro-cid-tuzbvmmy>
-    <h4 aria-label="Friday 30 October" data-astro-cid-tuzbvmmy>Fri 30 Oct</h4>
-    <ul data-astro-cid-tuzbvmmy>
-     <li data-astro-cid-tuzbvmmy>
-      <div class="performanceDetails" data-astro-cid-tuzbvmmy>
-       <div data-ga-show-title="Midnight" data-astro-cid-tuzbvmmy>
-        <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D75E4ED42-30D1-4C8D-ADCB-566C47E84154%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:10 Friday 30 October NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:10</a>
-       </div>
-       <div data-astro-cid-tuzbvmmy>
-        <p class="minPrice" data-astro-cid-tuzbvmmy>From £14.50</p>
-       </div>
-      </div>
-     </li>
-    </ul>
-   </div>
-   <div data-astro-cid-tuzbvmmy>
-    <h4 aria-label="Wednesday 11 November" data-astro-cid-tuzbvmmy>Wed 11 Nov</h4>
-    <ul data-astro-cid-tuzbvmmy>
-     <li data-astro-cid-tuzbvmmy>
-      <div class="performanceDetails" data-astro-cid-tuzbvmmy>
-       <div data-ga-show-title="Midnight" data-astro-cid-tuzbvmmy>
-        <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D4ADFD7EA-B30A-4866-B87F-1415F28AB207%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:50 Wednesday 11 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:50</a>
-       </div>
-       <div data-astro-cid-tuzbvmmy>
-        <p class="minPrice" data-astro-cid-tuzbvmmy>From £14.50</p>
-       </div>
-      </div>
-     </li>
-    </ul>
-   </div>
-   <button type="button" commandfor="performance-list-df7d4dc1-15b3-49e3-bd32-a2b1944e869c" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Midnight" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+   <button type="button" commandfor="performance-list-71eec4e8-276e-4a10-ad2d-a4a775b12c89" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Mauvaise Graine" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
   </div>
  </div>
 </article>

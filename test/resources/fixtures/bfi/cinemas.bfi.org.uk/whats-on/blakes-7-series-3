@@ -1,14 +1,29 @@
 <html><body>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Blake’s 7: Series 3 + Q&amp;A with actor Jan Chappell" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+<section id="shows" class="scrollableList" aria-live="polite" data-astro-cid-ao2b2dul>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <button class="disabled" aria-disabled="true" disabled data-astro-cid-3cu7ytnt>12:00</button>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Sat 31 Oct</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Blake’s 7: Series 3 + Q&amp;A with actor Jan Chappell" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <button class="disabled" aria-disabled="true" disabled data-astro-cid-3cu7ytnt>12:00</button>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £17</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT1</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="status" data-astro-cid-y4ln3hac>Sold out</p>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="extras" data-astro-cid-y4ln3hac>Q&amp;A with actor Jan Chappell</p>
+    </div>
+   </li>
+  </ul>
  </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £17</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT1</p>
- </div>
-</div>
+</section>
 </body></html>

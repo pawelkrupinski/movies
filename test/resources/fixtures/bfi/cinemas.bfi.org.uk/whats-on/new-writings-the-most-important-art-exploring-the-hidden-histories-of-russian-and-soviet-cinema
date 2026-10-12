@@ -1,14 +1,23 @@
 <html><body>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="New Writings: The Most Important Art – Exploring the Hidden Histories of Russian and Soviet Cinema" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+<section id="shows" class="scrollableList" aria-live="polite" data-astro-cid-ao2b2dul>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=seatSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DBA405BDF-3883-4722-9D49-967DF8321C6A%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:30 Monday 19 October BFI Reuben Library" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:30</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Mon 19 Oct</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="New Writings: The Most Important Art – Exploring the Hidden Histories of Russian and Soviet Cinema" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=seatSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DBA405BDF-3883-4722-9D49-967DF8321C6A%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:30 Monday 19 October BFI Reuben Library" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:30</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £6.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>BFI Reuben Library</p>
+     </div>
+    </div>
+   </li>
+  </ul>
  </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £6.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>BFI Reuben Library</p>
- </div>
-</div>
+</section>
 </body></html>

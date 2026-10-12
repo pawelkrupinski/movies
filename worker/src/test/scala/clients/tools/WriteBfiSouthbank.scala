@@ -15,8 +15,9 @@ import scala.jdk.CollectionConverters._
  *
  *  A scrape reads ~150 pages of ~170 KB each, nearly all of it markup, styles and scripts
  *  the client never reads, so a recorded page is trimmed to what it does: a list page to
- *  its `article.showCard`s, a film page to its `div.performanceDetails` (`--trim-only` redoes
- *  just that on the recorded tree). */
+ *  its `article.showCard`s, a film page to its `section#shows` — the day headings and the
+ *  performance blocks under them, a sold-out one included (`--trim-only` redoes just that on
+ *  the recorded tree). */
 object WriteBfiSouthbank {
   private val FixtureTree = Paths.get("test/resources/fixtures/bfi")
 
@@ -38,7 +39,7 @@ object WriteBfiSouthbank {
   private def trim(file: Path): Unit = {
     val page = Jsoup.parse(new String(Files.readAllBytes(file), UTF_8))
     page.select("script, style, svg").remove()
-    val keep = if (file.getFileName.toString.startsWith("show-list-page")) "article.showCard" else "div.performanceDetails"
+    val keep = if (file.getFileName.toString.startsWith("show-list-page")) "article.showCard" else "section#shows"
     val kept = page.select(keep).asScala.map(_.outerHtml).mkString("\n")
     Files.write(file, s"<html><body>\n$kept\n</body></html>\n".getBytes(UTF_8))
   }

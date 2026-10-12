@@ -1,14 +1,26 @@
 <html><body>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Avengers: Endgame Encore" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX (with laser)" data-astro-cid-y4ln3hac>
+<section id="shows" class="scrollableList" aria-live="polite" data-astro-cid-ao2b2dul>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/imax/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DE2DD5893-D47C-4805-B881-491946DA3D1B%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="12:15 Saturday 24 October BFI IMAX" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>12:15</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Sat 24 Oct</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Avengers: Endgame Encore" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX (with laser)" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/imax/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DE2DD5893-D47C-4805-B881-491946DA3D1B%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="12:15 Saturday 24 October BFI IMAX" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>12:15</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £22</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
+      <p data-astro-cid-y4ln3hac>BFI IMAX</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>IMAX (with laser)</p>
+    </div>
+   </li>
+  </ul>
  </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £22</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
-  <p data-astro-cid-y4ln3hac>BFI IMAX</p>
- </div>
-</div>
+</section>
 </body></html>

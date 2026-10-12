@@ -1,26 +1,48 @@
 <html><body>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Emil and the Detectives" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+<section id="shows" class="scrollableList" aria-live="polite" data-astro-cid-ao2b2dul>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D2504CB23-249A-4F00-B45D-5C789273FC29%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="12:15 Saturday 24 October NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>12:15</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Sat 24 Oct</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Emil and the Detectives" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D2504CB23-249A-4F00-B45D-5C789273FC29%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="12:15 Saturday 24 October NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>12:15</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £8</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT2</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p data-astro-cid-y4ln3hac>English language subtitles</p>
+    </div>
+   </li>
+  </ul>
  </div>
  <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £8</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT2</p>
+  <h3 data-astro-cid-y4ln3hac>Sat 14 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Emil and the Detectives" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D1F15C3F0-A25F-45BB-866A-13220AB0EF9B%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="12:15 Saturday 14 November NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>12:15</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £8</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT3</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p data-astro-cid-y4ln3hac>English language subtitles</p>
+    </div>
+   </li>
+  </ul>
  </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Emil and the Detectives" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D1F15C3F0-A25F-45BB-866A-13220AB0EF9B%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="12:15 Saturday 14 November NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>12:15</a>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £8</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT3</p>
- </div>
-</div>
+</section>
 </body></html>

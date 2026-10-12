@@ -11,7 +11,8 @@ import java.time.{LocalDate, LocalDateTime}
 
 /** Replays a 2026-10-12 capture of cinemas.bfi.org.uk (`WriteBfiSouthbank`): its seven
  *  `whats-on/show-list-page.partial?page=N` pages and every film page they link, each
- *  trimmed to the film cards and performance blocks the client reads.
+ *  trimmed to the film cards and the `section#shows` (day headings and performance blocks)
+ *  the client reads.
  *
  *  BFI Southbank never had a showtime from Flicks, its only source. */
 class BfiSouthbankClientSpec extends AnyFlatSpec with Matchers with OptionValues {
@@ -22,8 +23,8 @@ class BfiSouthbankClientSpec extends AnyFlatSpec with Matchers with OptionValues
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
   "BfiSouthbankClient.fetch" should "read the Southbank programme Flicks never listed off the BFI's cinemas site" in {
-    results.size shouldBe 106
-    results.flatMap(_.showtimes).size shouldBe 325
+    results.size shouldBe 119
+    results.flatMap(_.showtimes).size shouldBe 351
     results.map(_.cinema).toSet shouldBe Set(BfiLondonSouthbank)
     results.flatMap(_.showtimes).map(_.dateTime.toLocalDate).max shouldBe LocalDate.of(2026, 11, 30)
     results.flatMap(_.showtimes).flatMap(_.room).toSet shouldBe Set("NFT1", "NFT2", "NFT3", "NFT4")
@@ -36,6 +37,13 @@ class BfiSouthbankClientSpec extends AnyFlatSpec with Matchers with OptionValues
       LocalDateTime.of(2026, 11, 2, 18, 20)  -> "NFT4",
       LocalDateTime.of(2026, 11, 25, 18, 10) -> "NFT2")
     film.showtimes.head.bookingUrl.value should startWith ("https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp")
+  }
+
+  it should "keep a sold-out performance, whose only date is its day heading" in {
+    // Sold out, the block draws a disabled <button>18:00</button> under <h3>Wed 21 Oct</h3>:
+    // no booking link, no aria-label. It is the film's only performance.
+    byTitle("Ghosts: The Possession of Button House - Preview").showtimes shouldBe Seq(
+      models.Showtime(LocalDateTime.of(2026, 10, 21, 18, 0), None, room = Some("NFT1")))
   }
 
   it should "carry the card's runtime, year, certificate, synopsis and original image" in {
@@ -59,13 +67,19 @@ class BfiSouthbankClientSpec extends AnyFlatSpec with Matchers with OptionValues
 
   "BfiSouthbankClient.performances" should "read the blocks of a page that carries no calendar" in {
     BfiSouthbankClient.performances(
-      """<div class="performanceDetails" data-ga-vanue="BFI Southbank"><a href="https://whatson.bfi.org.uk/x" aria-label="14:00 Monday 16 November NFT1">14:00</a></div>""",
+      shows("Mon 16 Nov", """<a href="https://whatson.bfi.org.uk/x" aria-label="14:00 Monday 16 November NFT1">14:00</a>""", "NFT1"),
       today) shouldBe Seq(models.Showtime(LocalDateTime.of(2026, 11, 16, 14, 0), Some("https://whatson.bfi.org.uk/x"), room = Some("NFT1")))
   }
 
   it should "leave out the talks the site sells in the BFI Reuben Library" in {
     BfiSouthbankClient.performances(
-      """<div class="performanceDetails" data-ga-vanue="BFI Southbank"><a href="https://whatson.bfi.org.uk/x" aria-label="18:30 Thursday 5 November BFI Reuben Library">18:30</a></div>""",
+      shows("Thu 5 Nov", """<a href="https://whatson.bfi.org.uk/x" aria-label="18:30 Thursday 5 November BFI Reuben Library">18:30</a>""", "BFI Reuben Library"),
       today) shouldBe empty
   }
+
+  /** A film page's `section#shows` with one day and one Southbank performance on `screen`,
+   *  shaped as the recorded pages are. */
+  private def shows(day: String, time: String, screen: String) =
+    s"""<section id="shows"><div><h3>$day</h3><ul><li><div class="performanceDetails" data-ga-vanue="BFI Southbank">""" +
+      s"""<div><div>$time</div></div><div><p>From £9.50</p><p><span>BFI Southbank</span></p><p>$screen</p></div></div></li></ul></div></section>"""
 }

@@ -1,38 +1,64 @@
 <html><body>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Babymother" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+<section id="shows" class="scrollableList" aria-live="polite" data-astro-cid-ao2b2dul>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DDEADE176-DB04-4F1E-9D39-D724A148CC3C%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="12:40 Sunday 25 October NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>12:40</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Sun 25 Oct</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Babymother" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DDEADE176-DB04-4F1E-9D39-D724A148CC3C%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="12:40 Sunday 25 October NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>12:40</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £9.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT4</p>
+     </div>
+    </div>
+   </li>
+  </ul>
  </div>
  <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £9.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT4</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Babymother" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D52538635-544E-446A-9B61-F65EA8F2025F%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="21:15 Tuesday 3 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>21:15</a>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £9.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT2</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Babymother + intro by director Julian Henriques and producer Parminder Vir" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DE48F4480-22D6-41C0-A742-6A70DE6006EE%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:15 Monday 16 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:15</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Tue 3 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Babymother" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D52538635-544E-446A-9B61-F65EA8F2025F%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="21:15 Tuesday 3 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>21:15</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £9.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT2</p>
+     </div>
+    </div>
+   </li>
+  </ul>
  </div>
  <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £9.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT2</p>
+  <h3 data-astro-cid-y4ln3hac>Mon 16 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Babymother + intro by director Julian Henriques and producer Parminder Vir" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DE48F4480-22D6-41C0-A742-6A70DE6006EE%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:15 Monday 16 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:15</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £9.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT2</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="extras" data-astro-cid-y4ln3hac>Intro by director Julian Henriques and producer Parminder Vir</p>
+    </div>
+   </li>
+  </ul>
  </div>
-</div>
+</section>
 </body></html>

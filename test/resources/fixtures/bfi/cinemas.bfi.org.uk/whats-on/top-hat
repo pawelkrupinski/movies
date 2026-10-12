@@ -1,14 +1,23 @@
 <html><body>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Parent and Baby: Top Hat" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+<section id="shows" class="scrollableList" aria-live="polite" data-astro-cid-ao2b2dul>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=seatSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D2CB85275-E9B7-4F35-82B4-3A96103AB342%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="11:00 Friday 30 October NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>11:00</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Fri 30 Oct</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Parent and Baby: Top Hat" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=seatSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D2CB85275-E9B7-4F35-82B4-3A96103AB342%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="11:00 Friday 30 October NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>11:00</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £9.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT3</p>
+     </div>
+    </div>
+   </li>
+  </ul>
  </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £9.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT3</p>
- </div>
-</div>
+</section>
 </body></html>

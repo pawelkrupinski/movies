@@ -1,86 +1,143 @@
 <html><body>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Digger" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX (with laser)" data-astro-cid-y4ln3hac>
+<section id="shows" class="scrollableList" aria-live="polite" data-astro-cid-ao2b2dul>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/imax/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D45316514-4086-4E28-A323-6A0C9178FC6C%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:30 Monday 12 October BFI IMAX" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:30</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Mon 12 Oct</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Digger" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX (with laser)" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/imax/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D45316514-4086-4E28-A323-6A0C9178FC6C%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:30 Monday 12 October BFI IMAX" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:30</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £24</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
+      <p data-astro-cid-y4ln3hac>BFI IMAX</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>IMAX (with laser)</p>
+    </div>
+   </li>
+  </ul>
  </div>
  <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £24</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
-  <p data-astro-cid-y4ln3hac>BFI IMAX</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Digger" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX (with laser)" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/imax/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DC3CE9A49-C07B-4027-831C-A9906990C96B%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="14:00 Tuesday 13 October BFI IMAX" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>14:00</a>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £24</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
-  <p data-astro-cid-y4ln3hac>BFI IMAX</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Digger" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX (with laser)" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/imax/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D03682FBC-15C1-4069-8F82-6D1DF7947D1A%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:45 Tuesday 13 October BFI IMAX" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:45</a>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £24</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
-  <p data-astro-cid-y4ln3hac>BFI IMAX</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Digger" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX (with laser)" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/imax/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DB04A4B08-FFC8-4A9E-A31B-7D889EE8040F%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="14:15 Wednesday 14 October BFI IMAX" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>14:15</a>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £24</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
-  <p data-astro-cid-y4ln3hac>BFI IMAX</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Digger" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX (with laser)" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/imax/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D24AD9FDA-B947-43BA-953E-70AF6E0710F2%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:30 Wednesday 14 October BFI IMAX" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:30</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Tue 13 Oct</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Digger" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX (with laser)" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/imax/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DC3CE9A49-C07B-4027-831C-A9906990C96B%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="14:00 Tuesday 13 October BFI IMAX" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>14:00</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £24</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
+      <p data-astro-cid-y4ln3hac>BFI IMAX</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>IMAX (with laser)</p>
+    </div>
+   </li>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Digger" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX (with laser)" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/imax/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D03682FBC-15C1-4069-8F82-6D1DF7947D1A%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:45 Tuesday 13 October BFI IMAX" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:45</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £24</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
+      <p data-astro-cid-y4ln3hac>BFI IMAX</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>IMAX (with laser)</p>
+    </div>
+   </li>
+  </ul>
  </div>
  <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £24</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
-  <p data-astro-cid-y4ln3hac>BFI IMAX</p>
+  <h3 data-astro-cid-y4ln3hac>Wed 14 Oct</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Digger" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX (with laser)" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/imax/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DB04A4B08-FFC8-4A9E-A31B-7D889EE8040F%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="14:15 Wednesday 14 October BFI IMAX" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>14:15</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £24</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
+      <p data-astro-cid-y4ln3hac>BFI IMAX</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>IMAX (with laser)</p>
+    </div>
+   </li>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Digger" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX (with laser)" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/imax/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D24AD9FDA-B947-43BA-953E-70AF6E0710F2%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:30 Wednesday 14 October BFI IMAX" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:30</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £24</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
+      <p data-astro-cid-y4ln3hac>BFI IMAX</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>IMAX (with laser)</p>
+    </div>
+   </li>
+  </ul>
  </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Digger" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX (with laser)" data-astro-cid-y4ln3hac>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/imax/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D8A6CB7E5-D878-4BD1-8A1D-A4F385FDF329%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="15:00 Thursday 15 October BFI IMAX" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>15:00</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Thu 15 Oct</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Digger" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX (with laser)" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/imax/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D8A6CB7E5-D878-4BD1-8A1D-A4F385FDF329%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="15:00 Thursday 15 October BFI IMAX" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>15:00</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £24</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
+      <p data-astro-cid-y4ln3hac>BFI IMAX</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>IMAX (with laser)</p>
+    </div>
+   </li>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Digger" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX (with laser)" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/imax/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DAFEAC422-7BD0-4D78-802F-1CE7C68061F5%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:15 Thursday 15 October BFI IMAX" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:15</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £24</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
+      <p data-astro-cid-y4ln3hac>BFI IMAX</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>IMAX (with laser)</p>
+    </div>
+   </li>
+  </ul>
  </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £24</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
-  <p data-astro-cid-y4ln3hac>BFI IMAX</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Digger" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX (with laser)" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/imax/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DAFEAC422-7BD0-4D78-802F-1CE7C68061F5%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:15 Thursday 15 October BFI IMAX" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:15</a>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £24</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
-  <p data-astro-cid-y4ln3hac>BFI IMAX</p>
- </div>
-</div>
+</section>
 </body></html>

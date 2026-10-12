@@ -1,38 +1,61 @@
 <html><body>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Crooklyn" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+<section id="shows" class="scrollableList" aria-live="polite" data-astro-cid-ao2b2dul>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D197242BE-4FDF-4EF6-A22E-1FEFA21ED273%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="14:40 Thursday 5 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>14:40</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Thu 5 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Crooklyn" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D197242BE-4FDF-4EF6-A22E-1FEFA21ED273%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="14:40 Thursday 5 November NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>14:40</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £6.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT4</p>
+     </div>
+    </div>
+   </li>
+  </ul>
  </div>
  <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £6.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT4</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Crooklyn" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DCEF1B742-2507-46EF-A208-1A853D5386AD%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:00 Monday 9 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:00</a>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £9.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT2</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Crooklyn" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DFE319E14-B0F0-47F1-BD1C-DE6AF8F402EE%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:30 Saturday 21 November NFT1" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:30</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Mon 9 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Crooklyn" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DCEF1B742-2507-46EF-A208-1A853D5386AD%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:00 Monday 9 November NFT2" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:00</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £9.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT2</p>
+     </div>
+    </div>
+   </li>
+  </ul>
  </div>
  <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £9.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT1</p>
+  <h3 data-astro-cid-y4ln3hac>Sat 21 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Crooklyn" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DFE319E14-B0F0-47F1-BD1C-DE6AF8F402EE%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="20:30 Saturday 21 November NFT1" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>20:30</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £9.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT1</p>
+     </div>
+    </div>
+   </li>
+  </ul>
  </div>
-</div>
+</section>
 </body></html>

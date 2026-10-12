@@ -1,62 +1,130 @@
 <html><body>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Preview: Dune: Part Three" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX 70mm" data-astro-cid-y4ln3hac>
+<section id="shows" class="scrollableList" aria-live="polite" data-astro-cid-ao2b2dul>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <button class="disabled" aria-disabled="true" disabled data-astro-cid-3cu7ytnt>14:00</button>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Tue 15 Dec</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Preview: Dune: Part Three" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX 70mm" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <button class="disabled" aria-disabled="true" disabled data-astro-cid-3cu7ytnt>14:00</button>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £26</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
+      <p data-astro-cid-y4ln3hac>BFI IMAX</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="status" data-astro-cid-y4ln3hac>Sold out</p>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>IMAX 70mm</p>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="extras" data-astro-cid-y4ln3hac>Preview</p>
+    </div>
+   </li>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Preview: Dune: Part Three" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX 70mm" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <button class="disabled" aria-disabled="true" disabled data-astro-cid-3cu7ytnt>21:00</button>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £26</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
+      <p data-astro-cid-y4ln3hac>BFI IMAX</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="status" data-astro-cid-y4ln3hac>Sold out</p>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>IMAX 70mm</p>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="extras" data-astro-cid-y4ln3hac>Preview</p>
+    </div>
+   </li>
+  </ul>
  </div>
  <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £26</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
-  <p data-astro-cid-y4ln3hac>BFI IMAX</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Preview: Dune: Part Three" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX 70mm" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <button class="disabled" aria-disabled="true" disabled data-astro-cid-3cu7ytnt>21:00</button>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £26</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
-  <p data-astro-cid-y4ln3hac>BFI IMAX</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Dune: Part Three" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX 70mm" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <button class="disabled" aria-disabled="true" disabled data-astro-cid-3cu7ytnt>18:45</button>
-  </div>
- </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £24</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
-  <p data-astro-cid-y4ln3hac>BFI IMAX</p>
- </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Dune: Part Three" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX 70mm" data-astro-cid-y4ln3hac>
- <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <button class="disabled" aria-disabled="true" disabled data-astro-cid-3cu7ytnt>21:00</button>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Fri 18 Dec</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Dune: Part Three" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX 70mm" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <button class="disabled" aria-disabled="true" disabled data-astro-cid-3cu7ytnt>18:45</button>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £24</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
+      <p data-astro-cid-y4ln3hac>BFI IMAX</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="status" data-astro-cid-y4ln3hac>Sold out</p>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>IMAX 70mm</p>
+    </div>
+   </li>
+  </ul>
  </div>
  <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £24</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
-  <p data-astro-cid-y4ln3hac>BFI IMAX</p>
+  <h3 data-astro-cid-y4ln3hac>Sat 19 Dec</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Dune: Part Three" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX 70mm" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <button class="disabled" aria-disabled="true" disabled data-astro-cid-3cu7ytnt>21:00</button>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £24</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
+      <p data-astro-cid-y4ln3hac>BFI IMAX</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="status" data-astro-cid-y4ln3hac>Sold out</p>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>IMAX 70mm</p>
+    </div>
+   </li>
+  </ul>
  </div>
-</div>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Dune: Part Three" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX 70mm" data-astro-cid-y4ln3hac>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <button class="disabled" aria-disabled="true" disabled data-astro-cid-3cu7ytnt>20:30</button>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Sun 20 Dec</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Dune: Part Three" data-ga-vanue="BFI IMAX, Waterloo" data-ga-show-format="IMAX 70mm" data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <button class="disabled" aria-disabled="true" disabled data-astro-cid-3cu7ytnt>20:30</button>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £24</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
+      <p data-astro-cid-y4ln3hac>BFI IMAX</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="status" data-astro-cid-y4ln3hac>Sold out</p>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="formats" data-astro-cid-y4ln3hac>IMAX 70mm</p>
+    </div>
+   </li>
+  </ul>
  </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £24</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI IMAX, Waterloo</span></p>
-  <p data-astro-cid-y4ln3hac>BFI IMAX</p>
- </div>
-</div>
+</section>
 </body></html>

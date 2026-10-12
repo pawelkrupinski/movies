@@ -1,14 +1,26 @@
 <html><body>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Animated Shorts from the BFI Film Fund + Q&amp;A with filmmakers and BFI Filmmaking Fund representatives" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+<section id="shows" class="scrollableList" aria-live="polite" data-astro-cid-ao2b2dul>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D409A1693-D100-4B9F-86B5-1F1B560C67D1%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:15 Wednesday 28 October NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:15</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Wed 28 Oct</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Animated Shorts from the BFI Film Fund + Q&amp;A with filmmakers and BFI Filmmaking Fund representatives" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3D409A1693-D100-4B9F-86B5-1F1B560C67D1%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:15 Wednesday 28 October NFT3" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:15</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £14.50</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT3</p>
+     </div>
+    </div>
+    <div class="tagsWrapper" data-astro-cid-y4ln3hac>
+     <p class="extras" data-astro-cid-y4ln3hac>Q&amp;A with filmmakers and BFI Filmmaking Fund representatives</p>
+    </div>
+   </li>
+  </ul>
  </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £14.50</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT3</p>
- </div>
-</div>
+</section>
 </body></html>

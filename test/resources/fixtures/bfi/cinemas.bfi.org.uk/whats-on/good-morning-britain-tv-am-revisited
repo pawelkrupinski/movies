@@ -1,14 +1,23 @@
 <html><body>
-<div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Good Morning, Britain: TV-am Revisited" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+<section id="shows" class="scrollableList" aria-live="polite" data-astro-cid-ao2b2dul>
  <div data-astro-cid-y4ln3hac>
-  <div data-astro-cid-y4ln3hac>
-   <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DED9D3FDE-38B5-436A-B6A8-F2C9F7FCF0F4%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:00 Tuesday 24 November NFT1" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:00</a>
-  </div>
+  <h3 data-astro-cid-y4ln3hac>Tue 24 Nov</h3>
+  <ul data-astro-cid-y4ln3hac>
+   <li data-astro-cid-y4ln3hac>
+    <div class="performanceDetails" data-ga-show-page-widget data-ga-show-title="Good Morning, Britain: TV-am Revisited" data-ga-vanue="BFI Southbank" data-ga-show-format data-astro-cid-y4ln3hac>
+     <div data-astro-cid-y4ln3hac>
+      <div data-astro-cid-y4ln3hac>
+       <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DED9D3FDE-38B5-436A-B6A8-F2C9F7FCF0F4%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="18:00 Tuesday 24 November NFT1" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>18:00</a>
+      </div>
+     </div>
+     <div data-astro-cid-y4ln3hac>
+      <p data-astro-cid-y4ln3hac>From £17</p>
+      <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
+      <p data-astro-cid-y4ln3hac>NFT1</p>
+     </div>
+    </div>
+   </li>
+  </ul>
  </div>
- <div data-astro-cid-y4ln3hac>
-  <p data-astro-cid-y4ln3hac>From £17</p>
-  <p data-astro-cid-y4ln3hac><span data-astro-cid-y4ln3hac>BFI Southbank</span></p>
-  <p data-astro-cid-y4ln3hac>NFT1</p>
- </div>
-</div>
+</section>
 </body></html>
