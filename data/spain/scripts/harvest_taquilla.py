@@ -258,19 +258,36 @@ def decide(served, taquilla_days, taquilla_sessions, horizon):
     return True, f"Taquilla reaches {max(taquilla_days)} vs SensaCine {max(served)}, {theirs} vs {ours} near"
 
 
-def keep_moved(previous, taquilla_days):
-    """Whether a venue ALREADY on Taquilla (`previous`, its taquilla.json row) stays there.
+def days_ahead(first, last):
+    """Days from ISO date `first` to ISO date `last`."""
+    return (datetime.date.fromisoformat(last) - datetime.date.fromisoformat(first)).days
+
+
+def moved_on(previous, measured):
+    """The day a taquilla.json row was measured onto Taquilla: its own `movedOn`, or --
+    for a row written before rows carried one -- the file's `measured` date."""
+    return previous.get("movedOn") or measured
+
+
+def keep_moved(previous, taquilla_days, today, measured):
+    """Whether a venue ALREADY on Taquilla (`previous`, its taquilla.json row) stays there;
+    `measured` is the file's top-level date, for a row without its own `movedOn`.
 
     showtimes.cc serves such a venue from Taquilla, so `served_by_day` measures Taquilla
     against itself and `decide` would always find it reaches no further -- flipping the
     venue back to SensaCine every other run. Nothing here reads SensaCine directly, so the
-    verdict stands unless Taquilla's own data got worse: it sells no day, or it now ends
-    before the SensaCine last day measured when the venue moved."""
+    verdict stands unless Taquilla's own data got worse: it sells no day, or it now runs
+    fewer days ahead of today than SensaCine ran ahead of the day the venue moved. (Reach,
+    not dates: once SensaCine's old last day passes, any calendar would end after it.)"""
     if not taquilla_days:
         return False, "Taquilla sells no day"
     then = previous.get("sensacineLastDay")
-    if then and max(taquilla_days) < then:
-        return False, f"Taquilla now ends {max(taquilla_days)}, before SensaCine's {then} when it moved"
+    if then:
+        reach_then = days_ahead(moved_on(previous, measured), then)
+        reach_now = days_ahead(today, max(taquilla_days))
+        if reach_now < reach_then:
+            return False, (f"Taquilla now runs {reach_now} days ahead (to {max(taquilla_days)}), "
+                           f"SensaCine ran {reach_then} days when it moved")
     return True, previous["why"]
 
 
@@ -360,13 +377,14 @@ def main():
         r, t = by_tid[tid], taquilla[chosen[tid]]
         if tid in moved:
             last, gained = moved[tid].get("sensacineLastDay"), moved[tid].get("sessionsGained", 0)
-            serve, why = keep_moved(moved[tid], days[tid])
+            since = moved_on(moved[tid], previous.get("measured"))
+            serve, why = keep_moved(moved[tid], days[tid], today, previous.get("measured"))
         else:
-            last = max(served[r["name"]], default=None)
+            last, since = max(served[r["name"]], default=None), today
             serve, why = decide(served[r["name"]], days[tid], by_venue[tid], horizon)
             gained = sum(n for d, n in by_venue[tid].items() if last is None or d > last)
         row = {"name": r["name"], "taquillaName": t["name"], "path": chosen[tid], "venueId": t["venueId"],
-               "sensacineLastDay": last, "taquillaLastDay": days[tid][-1] if days[tid] else None,
+               "movedOn": since, "sensacineLastDay": last, "taquillaLastDay": days[tid][-1] if days[tid] else None,
                "sessionsGained": gained, "why": why}
         (venues.__setitem__(tid, row) if serve else kept.append(row))
 

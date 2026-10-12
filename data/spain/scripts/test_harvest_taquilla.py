@@ -132,12 +132,25 @@ def test_a_venue_already_on_taquilla_is_not_judged_by_its_own_feed():
     moved = {"sensacineLastDay": "2026-10-15", "why": "Taquilla reaches 2026-12-15 vs SensaCine 2026-10-15"}
     days = ["2026-10-12", "2026-12-15"]
     assert not ht.decide({"2026-10-12": 35, "2026-12-15": 4}, days, {"2026-10-12": 35}, H)[0]
-    assert ht.keep_moved(moved, days)[0]
-    # ...until Taquilla's own data gets worse: nothing on sale, or short of where
-    # SensaCine reached when the venue moved.
-    assert not ht.keep_moved(moved, [])[0]
-    serve, why = ht.keep_moved(moved, ["2026-10-12", "2026-10-14"])
-    assert not serve and "2026-10-15" in why
+    assert ht.keep_moved(moved, days, "2026-10-12", "2026-10-12")[0]
+    # ...until Taquilla's own data gets worse: nothing on sale, or reaching fewer days
+    # ahead than SensaCine did when the venue moved (3 days, measured 2026-10-12).
+    assert not ht.keep_moved(moved, [], "2026-10-12", "2026-10-12")[0]
+    serve, why = ht.keep_moved(moved, ["2026-10-12", "2026-10-14"], "2026-10-12", "2026-10-12")
+    assert not serve and "3 days" in why
+
+
+def test_a_moved_venue_is_judged_by_how_far_ahead_taquilla_runs_not_by_an_old_date():
+    # SensaCine reached 3 days ahead on the move (2026-10-12 -> 10-15). Weeks later that
+    # date has long passed: a calendar selling one day ahead is still thinner.
+    moved = {"sensacineLastDay": "2026-10-15", "why": "moved"}
+    serve, why = ht.keep_moved(moved, ["2026-11-01", "2026-11-02"], "2026-11-01", "2026-10-12")
+    assert not serve and "1 days" in why
+    assert ht.keep_moved(moved, ["2026-11-01", "2026-11-04"], "2026-11-01", "2026-10-12")[0]
+    # A row's own movedOn wins over the file's measured date (reach then: 1 day).
+    later = {**moved, "movedOn": "2026-10-14"}
+    assert ht.keep_moved(later, ["2026-11-01", "2026-11-02"], "2026-11-01", "2026-10-12")[0]
+    assert not ht.keep_moved(later, ["2026-11-01"], "2026-11-01", "2026-10-12")[0]
 
 
 def test_generate_refuses_a_venue_the_roster_lacks_ocine_serves_or_two_sources_claim():
