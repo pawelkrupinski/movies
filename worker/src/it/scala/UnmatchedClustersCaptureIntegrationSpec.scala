@@ -88,12 +88,12 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
       val capture = UnmatchedClusters.Capture(c.country, subset, decisions, recording.queries.asScala.toMap, recording.films.asScala.toMap,
         recording.details.asScala.toMap, recording.withDetail.asScala.toSet, filed, finds.asScala.toMap, recording.casts.asScala.toMap, asked.unreachable)
       val written = configuration.identityUnmatchedCapture.get.value.resolve(s"${c.country.code}.json.gz")
-      UnmatchedClusters.write(written, capture)
-      // written first, for the log and the artifact to show; but never a capture its recording's detail reads were refused for
+      // never a capture its recording's detail reads were refused for: unwritten, the run's PR keeps the checked-in one
       withClue(s"[${c.label}] listings marked as having venue detail, none of their host's stored — the recording's detail reads " +
         "were refused; re-record the corpus once the host answers (host -> listings): ") {
         UnmatchedClusters.hostsMissingDetail(capture) shouldBe empty
       }
+      UnmatchedClusters.write(written, capture)
 
       // the capture must replay to exactly what was captured
       val reread   = UnmatchedClusters.read(written)
