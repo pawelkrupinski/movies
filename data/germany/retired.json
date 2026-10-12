@@ -106,5 +106,11 @@
     "reason": "closed",
     "retiredOn": "2026-09-27",
     "evidence": "Filmstarts 404; kinoprogramm.com \"keine Aufführungen bekannt\". kinett-kusel.de is now a concert and culture club with only the occasional film talk, no film programme. Re-checked 2026-09-27: HTTP 404."
+  },
+  "A1578": {
+    "name": "Olympia Winnenden",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Filmstarts 404 since 2026-08-31; kinoprogramm.com, kinoheld (1411) and Cineamo list no show; allekinos.com: closed 16.03.2020, Corona Re-checked 2026-10-12: HTTP 404."
   }
 }

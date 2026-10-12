@@ -1,6 +1,6 @@
 // GENERATED from data/germany/pages.json by data/germany/scripts/generate_roster.py
 // — do NOT edit by hand. Full German cinema roster: 451 pages over 16 Bundesländer /
-// 1,579 cinemas (Filmstarts, and the ones only Cineamo or kinoheld list). Regenerate after adding venues or re-clustering;
+// 1,578 cinemas (Filmstarts, and the ones only Cineamo or kinoheld list). Regenerate after adding venues or re-clustering;
 // see data/germany/README.md.
 package models
 
@@ -814,11 +814,10 @@ private[models] object GermanRosterData {
   private def p_aurich: R = ("aurich", "aurich-niedersachsen", "Aurich", "Niedersachsen", 53.4696, 7.4824, false, Seq("Aurich"), Seq(
     ("Kino Aurich", "Kino Aurich", "A2911", Some("/kino/aurich/kino-aurich-57096"), "Aurich")
   ))
-  private def p_backnang: R = ("backnang", "backnang-baden-wuerttemberg", "Backnang", "Baden-Württemberg", 48.9474, 9.4372, true, Seq("Backnang", "Winnenden", "Allmersbach im Tal"), Seq(
+  private def p_backnang: R = ("backnang", "backnang-baden-wuerttemberg", "Backnang", "Baden-Württemberg", 48.9474, 9.4372, true, Seq("Backnang", "Allmersbach im Tal"), Seq(
     ("Kino Universum Backnang", "Kino Universum Backnang", "A1656", Some("/kino/backnang/kino-universum-32680"), "Backnang"),
     ("Traumpalast Backnang", "Traumpalast Backnang", "A1430", Some("/kino/backnang/traumpalast-backnang-32679"), "Backnang"),
-    ("Kinomobil Stuttgart - Bürgersaal", "Kinomobil Stuttgart - Bürgersaal", "A2557", None, "Allmersbach im Tal"),
-    ("Olympia Winnenden", "Olympia Winnenden", "A1578", Some("/kino/winnenden/olympia-33066"), "Winnenden")
+    ("Kinomobil Stuttgart - Bürgersaal", "Kinomobil Stuttgart - Bürgersaal", "A2557", None, "Allmersbach im Tal")
   ))
   private def p_bad_aibling: R = ("bad-aibling", "bad-aibling-bayern", "Bad Aibling", "Bayern", 47.8638, 12.0106, true, Seq("Bad Aibling", "Rosenheim"), Seq(
     ("Aibvision Filmtheater und Lindenkino", "Aibvision Filmtheater und Lindenkino", "A1543", Some("/kino/bad-aibling/aibvision-filmtheater-32681"), "Bad Aibling"),

@@ -97,8 +97,8 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     // GermanPagesSpec and data/germany/).
     Country.Germany.cities should have size 451
     Country.Germany.cities.map(_.slug) should contain allOf ("berlin", "muenchen", "koeln", "hamburg", "frankfurt-am-main")
-    // Every page carries cinemas; the roster totals 1,579 venues.
-    Country.Germany.cities.flatMap(_.cinemas).size shouldBe 1579
+    // Every page carries cinemas; the roster totals 1,578 venues.
+    Country.Germany.cities.flatMap(_.cinemas).size shouldBe 1578
   }
 
   "Country.UnitedStates" should "be an English, Filmweb-free deployment (Flicks-sourced) on its own database" in {
