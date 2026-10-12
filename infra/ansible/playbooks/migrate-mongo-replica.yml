@@ -2,9 +2,8 @@
 # Move the kinowo database from one mongod host to another WITHOUT TAKING IT DOWN, by making the new
 # host a member of the existing replica set and then handing it the primary.
 #
-#   set -a; . .env.local; set +a
 #   cd infra/ansible
-#   ansible-playbook playbooks/migrate-mongo-replica.yml \
+#   secrets run movies HETZNER_API_TOKEN MONGO_ROOT_URI -- ansible-playbook playbooks/migrate-mongo-replica.yml \
 #     -e migrate_source=mongo-1 -e migrate_target=mongo-2 -e migrate_confirmed=mongo-2 \
 #     -e migrate_phase=join
 #
@@ -162,8 +161,9 @@
       ansible.builtin.assert:
         that: migrate_admin_uri | length > 0
         fail_msg: >-
-          Neither KINOWO_MONGO_ROOT_URI nor MONGO_ROOT_URI is set. Source .env.local first
-          (`set -a; . .env.local; set +a`). It must be a `root` credential over loopback --
+          Neither KINOWO_MONGO_ROOT_URI nor MONGO_ROOT_URI is set. Run the playbook under the vault
+          (`secrets run movies HETZNER_API_TOKEN MONGO_ROOT_URI -- ansible-playbook ...`). It must be a
+          `root` credential over loopback --
           see the note on migrate_admin_uri for why the application credential will not do.
 
     - name: Read the replica set as it stands

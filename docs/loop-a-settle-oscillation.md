@@ -213,9 +213,9 @@ legs (27 and 73 minutes) to CI.
 - Convergence Mongo on **:27117** — `scripts/convergence-local.sh pl` creates it.
 - `itAll` replica set on **:28017**, with `MONGODB_DB` unset (pinning one DB makes specs
   drop each other's).
-- `TMDB_API_KEY` comes from the root `.env.local`, and `Env` reads from the **working
-  directory** — so copy *only that line* into the worktree. Never the whole file: its
-  `MONGODB_URI` points at the prod tunnel.
+- `TMDB_API_KEY` comes from the Touch ID vault (`secrets get movies TMDB_API_KEY`), passed
+  inline to the one command — never the vault's `MONGODB_URI`, which is production's.
+  (At the time of this loop it was a line of the since-retired `.env.local`.)
 - `gh` auth, for the `convergence-fixtures` release asset.
 
 Pre-authorised by Paweł: snapshot churn is expected and fine; merge

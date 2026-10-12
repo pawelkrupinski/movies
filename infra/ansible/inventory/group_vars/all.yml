@@ -178,7 +178,7 @@ kinowo_mongo_host: >-
 kinowo_mongo_private_address: "{{ hostvars[kinowo_mongo_host].hcloud_private_ipv4 }}"
 
 # The application's own database name, which is what gets dumped and restored. It is read from the
-# environment because that is where the app itself reads it (repo-root .env.local, MONGODB_DB) and a
+# environment because that is where the app itself reads it (MONGODB_DB, default kinowo) and a
 # second copy here would be a second thing to keep in step -- with the failure mode that a migration
 # faithfully copies the wrong database and verifies it against itself.
 kinowo_mongo_database: "{{ lookup('ansible.builtin.env', 'MONGODB_DB') | default('kinowo', true) }}"

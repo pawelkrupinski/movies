@@ -273,9 +273,9 @@ search for `PYEOF`). Key logic:
 see the top of this document.* The notes below are how it was rebuilt on 2026-06-28
 after the original lived in a throwaway worktree and was removed:
 
-**Inputs**: prod `movies` collection (via `scripts/local-mirror/prod-tunnel.sh`
-+ `MONGODB_URI` from `.env.local`); live TMDB / Filmweb / IMDb APIs
-(`TMDB_API_KEY` in `.env.local`).
+**Inputs**: prod `movies` collection (via `scripts/with-prod-mongo.sh`, which
+takes `MONGODB_URI` from the Touch ID vault and opens the prod tunnel); live
+TMDB / Filmweb / IMDb APIs (`TMDB_API_KEY`, from the vault too).
 
 **Algorithm per mode**:
 

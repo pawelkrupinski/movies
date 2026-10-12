@@ -22,8 +22,10 @@ OAuth + `ADMIN_ALLOWLIST` (`web/.../controllers/AdminAction.scala`); an anonymou
 1. Mongo lives on the Hetzner host **`mongo-1`**, reached over an ssh forward
    (`scripts/local-mirror/prod-tunnel.sh`), usually already running — check with
    `ps aux | grep 'ssh -N -L 27017'`. The old `flyctl proxy` route died with the
-   Hetzner migration; do not reach for it. Connect with `MONGODB_URI` from the
-   root checkout's `.env.local` (it already points at `127.0.0.1:27017`).
+   Hetzner migration; do not reach for it. Connect with
+   `scripts/with-prod-mongo.sh bash -c 'mongosh "$MONGODB_URI"'` — it reads
+   `MONGODB_URI` from the Touch ID vault, rewrites it to `127.0.0.1:27017` and
+   opens the forward if nothing answers there.
 2. **Sweep ALL FIVE countries.** Each country's uptime lives in its own database —
    `kinowo` (PL), `kinowo_uk`, `kinowo_de`, `kinowo_us`, `kinowo_es`
    (`Country.mongoDb`, `common/.../models/Country.scala`) — on the SAME
@@ -3554,7 +3556,7 @@ bar; every out-of-window title measured was a concert / stand-up / theatre that
 ### Test-infra note for the next run: how to run `itAll` locally here
 
 Worth 10 minutes of a future run's time. A fresh auto worktree has **no
-`.env.local`**, and `itAll` is only `addCommandAlias("itAll", "all
+credentials of its own** (secrets live only in the Touch ID vault), and `itAll` is only `addCommandAlias("itAll", "all
 web/IntegrationTest/test worker/IntegrationTest/test")` — it sets nothing up. So
 a bare `sbt itAll` aborts every Mongo-backed spec with *"MONGODB_URI not set"*.
 Run it as:
@@ -3562,7 +3564,7 @@ Run it as:
 ```
 MONGODB_URI="mongodb://127.0.0.1:28017/?directConnection=true" \
 MONGODB_DB="kinowo_it_<something-unique>" \
-TMDB_API_KEY=$(grep '^TMDB_API_KEY=' /Users/pawel/projects/movies/.env.local | cut -d= -f2-) \
+TMDB_API_KEY=$(secrets get movies TMDB_API_KEY) \
 sbt itAll
 ```
 

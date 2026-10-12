@@ -66,8 +66,8 @@ scripts/convergence-local.sh de convergenceGermanySample   # any alias, same pai
 ```
 
 It reads `TMDB_API_KEY` (required) and `OMDB_API_KEY` (optional) from the environment or,
-inline, from the Touch ID vault (`secrets get movies TMDB_API_KEY`) — never from a
-`.env.local`, whose `MONGODB_URI` is production's. Mongo: `MONGODB_URI` if set, else the
+inline, from the Touch ID vault (`secrets get movies TMDB_API_KEY`) — and never the
+vault's `MONGODB_URI`, which is production's. Mongo: `MONGODB_URI` if set, else the
 itAll mongod on `:28017`, else a throwaway `mongo:8.3.11` on `:27117`; every run's
 databases sit under a unique `MONGODB_DB` prefix and the suite drops them.
 

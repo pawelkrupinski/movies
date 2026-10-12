@@ -4,8 +4,8 @@ What breaks when each credential is revoked, which alert says so, and how to put
 Commands carry `<placeholders>`; a real value never goes into this file, a commit, or a command line
 on a remote host (pipe it over stdin instead -- an argv sits in the remote process list).
 
-Fresh values are kept in the repo-root `.env.local` of the ROOT checkout, or the Touch ID store
-(`secrets set movies <KEY>`, value on stdin) -- see `~/projects/secrets/README.md`.
+Fresh values are kept ONLY in the Touch ID store (`secrets set movies <KEY>`, value on stdin) -- see
+`~/projects/secrets/README.md`. There is no `.env.local` any more (deleted 2026-10-09).
 
 `kubectl` below means the fleet cluster, never the default `rancher-desktop` context:
 
@@ -37,7 +37,7 @@ tag stops pulling. The Secret holds a GitHub token with `read:packages` ONLY (ne
 pushes with, never a Fly token), built from the environment so the token is never typed:
 
 ```
-GHCR_PULL_TOKEN=$(secrets get movies GHCR_PULL_TOKEN)   # or read it from .env.local
+GHCR_PULL_TOKEN=$(secrets get movies GHCR_PULL_TOKEN)
 kubectl -n kinowo create secret docker-registry ghcr-pull \
   --docker-server=ghcr.io --docker-username=<github-user> --docker-password="$GHCR_PULL_TOKEN" \
   --dry-run=client -o yaml | kubectl apply -f -

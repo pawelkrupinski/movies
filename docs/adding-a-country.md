@@ -446,8 +446,9 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
    address, TMDB/OMDb, the OAuth client pairs, Sentry, the admin allowlist), so a
    sixth country inherits it by existing — `movies-gitops/web/README.md` lists
    the keys. Only a value genuinely specific to the new country would need adding,
-   and the Secret is built from the repo-root `.env.local` and piped over SSH
-   rather than passed as arguments, so no value ever reaches a process list.
+   and the Secret is built from the Touch ID vault (`infra/k8s-secrets/secrets.map`,
+   pushed by `infra/bin/push-k8s-secrets`) rather than passed as arguments, so no
+   value ever reaches a process list.
    **OAuth login needs nothing either, and that is deliberate.** It used to need a
    per-country redirect URI registered by hand in both the Google and Facebook
    consoles — a manual, provider-side step that nothing in a deploy could check

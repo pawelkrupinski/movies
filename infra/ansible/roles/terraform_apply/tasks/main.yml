@@ -176,17 +176,17 @@
       apply without stating what the plan is allowed to do.
     quiet: true
 
-# READ FROM THE ENVIRONMENT, NOT BY PARSING .env.local. Whoever invokes this has already done
-# `set -a; . .env.local`, and the SHELL is the thing that defines what that file means -- which
-# quoting to strip, which escapes to honour. bitcashier tried twice to reimplement that in Jinja and
-# each attempt produced a value Terraform treated as a real change; one of them proposed REPLACING a
-# storage box holding backups because a captured group came out as the literal two-character string
-# `\1`. The fix is to stop reimplementing the shell.
+# READ FROM THE ENVIRONMENT, NEVER BY PARSING A FILE. Whoever invokes this runs it under the Touch ID
+# vault (`secrets run movies HETZNER_API_TOKEN -- ansible-playbook ...`), which puts the value in the
+# environment exactly as stored. (When the source was a .env.local, retired 2026-10-09, bitcashier
+# tried twice to reimplement shell quoting in Jinja and each attempt produced a value Terraform
+# treated as a real change; one of them proposed REPLACING a storage box holding backups because a
+# captured group came out as the literal two-character string `\1`.)
 #
-# THE NAMES DIFFER ON THE TWO SIDES AND THAT IS THE TRAP: the repo-root .env.local calls it
-# HETZNER_API_TOKEN, the hcloud provider reads HCLOUD_TOKEN (infra/terraform/provider.tf says so).
-# This is the one place the two are bridged. inventory/hcloud.yml reads the .env.local name directly
-# because the inventory plugin takes it as a parameter rather than from the environment.
+# THE NAMES DIFFER ON THE TWO SIDES AND THAT IS THE TRAP: the vault calls it HETZNER_API_TOKEN, the
+# hcloud provider reads HCLOUD_TOKEN (infra/terraform/provider.tf says so). This is the one place the
+# two are bridged. inventory/hcloud.yml reads the vault's name directly because the inventory plugin
+# takes it as a parameter rather than from the environment.
 #
 # TERRAFORM CLOUD'S OWN CREDENTIAL IS DELIBERATELY NOT HERE. The `remote` backend authenticates from
 # ~/.terraform.d/credentials.tfrc.json, written by `terraform login`, or from
@@ -207,10 +207,11 @@
     that:
       - terraform_env[item] | length > 0
     fail_msg: >-
-      {{ item }} is empty in the environment. Source the repo-root .env.local before running this
-      (`set -a; . .env.local; set +a`) -- a bare `ansible-playbook` inherits none of it. If the value
-      is missing from .env.local itself, supply the real one: do NOT placeholder it, because
-      Terraform reads an empty string as a real value, and on a ForceNew attribute that is a destroy.
+      {{ item }} is empty in the environment. Run this under the Touch ID vault
+      (`secrets run movies HETZNER_API_TOKEN -- ansible-playbook ...`) -- a bare `ansible-playbook`
+      has no token. If the value is missing from the vault itself, store the real one there: do NOT
+      placeholder it, because Terraform reads an empty string as a real value, and on a ForceNew
+      attribute that is a destroy.
     quiet: true
   loop: "{{ terraform_env.keys() | list }}"
 

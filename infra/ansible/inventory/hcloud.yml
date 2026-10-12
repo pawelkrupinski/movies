@@ -14,8 +14,8 @@
 # labelled wrongly is one that the wrong playbook can.
 plugin: hetzner.hcloud.hcloud
 
-# Read from the environment rather than written here. The name follows the repo-root .env.local
-# (HETZNER_API_TOKEN), NOT the HCLOUD_TOKEN that the Terraform provider and the hcloud CLI read.
+# Read from the environment rather than written here (run under `secrets run movies
+# HETZNER_API_TOKEN -- ...`). The name follows the Touch ID vault (HETZNER_API_TOKEN), NOT the HCLOUD_TOKEN that the Terraform provider and the hcloud CLI read.
 # roles/terraform_apply is where the two names are bridged, in one place.
 #
 # `ansible-inventory --graph` with this unset lists no hosts and does not say why, which reads as an

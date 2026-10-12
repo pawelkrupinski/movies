@@ -1,10 +1,10 @@
 ---
 # Deploy one NixOS host's configuration -- or a whole role group's -- from this repository.
 #
-#   set -a; . .env.local; set +a          # HETZNER_API_TOKEN, for the dynamic inventory
-#   ansible-playbook playbooks/deploy-nixos-host.yml -e target=mongo-1
-#   ansible-playbook playbooks/deploy-nixos-host.yml -e target=role_monitoring
-#   ansible-playbook playbooks/deploy-nixos-host.yml -e target=all
+#   # HETZNER_API_TOKEN, for the dynamic inventory, from the Touch ID vault (one Touch ID):
+#   secrets run movies HETZNER_API_TOKEN -- ansible-playbook playbooks/deploy-nixos-host.yml -e target=mongo-1
+#   secrets run movies HETZNER_API_TOKEN -- ansible-playbook playbooks/deploy-nixos-host.yml -e target=role_monitoring
+#   secrets run movies HETZNER_API_TOKEN -- ansible-playbook playbooks/deploy-nixos-host.yml -e target=all
 #
 # ALL THE WORK IS roles/nixos_deploy'S -- rsync the flake to the target and `nixos-rebuild switch`
 # there, with an evaluation and a sops check on the controller first and a failed-unit check

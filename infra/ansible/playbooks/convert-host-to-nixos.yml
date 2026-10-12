@@ -8,8 +8,7 @@
 # offers no recovery from its side, and everything on that disk that is not declared in the flake is
 # gone.
 #
-#   set -a; . .env.local; set +a
-#   ansible-playbook playbooks/convert-host-to-nixos.yml \
+#   secrets run movies HETZNER_API_TOKEN -- ansible-playbook playbooks/convert-host-to-nixos.yml \
 #     -e target=mongo-1 -e convert_role=mongo -e convert_confirmed=mongo-1
 #
 # WHY IT EXISTS. infra/terraform/modules/server/vars.tf records that every host here is bootstrapped

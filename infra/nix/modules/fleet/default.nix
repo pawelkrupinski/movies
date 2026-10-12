@@ -332,8 +332,8 @@
     fleet.autoApply.attribute = lib.mkDefault config.networking.hostName;
 
     # THE CI KEYPAIRS, minted 2026-08-29. Both halves below are PUBLIC and belong in the repository;
-    # their private halves live in the repo-root .env.local and as GitHub Actions secrets, and
-    # nowhere else.
+    # their private halves live as GitHub Actions secrets and in the operator's Touch ID vault, and
+    # nowhere else (no longer in a .env.local, retired 2026-10-09).
     #
     # WHY THERE ARE TWO OF THEM, because one would look like enough: they answer different
     # questions, and collapsing them would give CI a power it must not have.
