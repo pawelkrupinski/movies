@@ -200,6 +200,9 @@ jobs:
                       bash scripts/identity-measure-ci-test.sh
                       bash scripts/vault-env-test.sh
                       bash scripts/with-prod-mongo-test.sh
+                      bash scripts/identity-capture-test.sh
+                      bash scripts/reset-corpus-test.sh
+                      bash scripts/local-mirror/mongosh-at-spec.sh
                       python3 scripts/ci/flake_verdict_test.py
                       python3 scripts/test_aot_class_list.py
                       python3 scripts/test_convergence_findings.py

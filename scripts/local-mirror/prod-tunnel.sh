@@ -112,13 +112,10 @@ prod_tunnel_target() {
 # The probe URI's own serverSelectionTimeoutMS is replaced with a short one: the
 # sync URIs set 10s so a loaded tunnel doesn't fail a real query, but that is a
 # 10s stall per cycle when we are only asking "is anything there".
-# `mongosh URI ARGS…` without the URI — and the password in it — on mongosh's command line, where
-# `ps` shows it to every user: the URI travels in the environment, and the shell connects to it
-# before any other --eval or --file runs (every one of them then sees that `db`).
-mongosh_at() {
-  local uri="$1"; shift
-  KINOWO_MONGOSH_URI="$uri" mongosh --nodb --eval 'db = connect(process.env.KINOWO_MONGOSH_URI)' "$@"
-}
+# `mongosh URI ARGS…` with the URI kept off mongosh's command line — see mongosh-at.sh. To run it in
+# the BACKGROUND, call "$MONGOSH_AT" itself: a backgrounded function's $! is a subshell, not mongosh.
+MONGOSH_AT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/mongosh-at.sh"
+mongosh_at() { "$MONGOSH_AT" "$@"; }
 
 prod_tunnel_answers() {
   nc -z -w2 127.0.0.1 27017 2>/dev/null || return 1

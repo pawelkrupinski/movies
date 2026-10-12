@@ -261,7 +261,7 @@ supervise_db() {
     local retargeted=0 drifted=0 polls=0
 
     set +e
-    mongosh_at "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$srcdb'" \
+    "$MONGOSH_AT" "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$srcdb'" \
       --file "$HERE/mirror-targets.js" --file "$HERE/stream-start.js" --file "$HERE/tail.js" &
     local tailpid=$!
     # Watch for a retarget while the tailer streams. An empty reading means the
