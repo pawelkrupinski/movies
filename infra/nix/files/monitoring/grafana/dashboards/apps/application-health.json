@@ -473,7 +473,7 @@
     {
       "id": 9028,
       "title": "kinowo — cities dark by design (every venue out of season)",
-      "description": "Per country, how many cities have ONLY seasonal venues (open-air, summer, drive-in) and all of them outside their season right now: sum of kinowo_worker_city_off_season, which the worker's CorpusCensus publishes per city every 5 min off the calendar alone (models.City.offSeasonAt). Those cities serve no film by design, and CityDarkInBothTiers stands down for them; a city with any year-round venue is never counted. Steps at month boundaries as countries' season windows open and close (models.SeasonWindow); a step at any other time is the roster's seasonal set changing.",
+      "description": "Per country, how many cities have ONLY seasonal venues (open-air, summer, drive-in) and all of them outside their season, or in their season window's final month, right now: sum of kinowo_worker_city_off_season, which the worker's CorpusCensus publishes per city every 5 min off the calendar alone (models.City.mayBeDarkAt). Those cities may serve no film by design, and CityDarkInBothTiers stands down for them; a city with any year-round venue is never counted. Steps at month boundaries as countries' season windows open and close (models.SeasonWindow); a step at any other time is the roster's seasonal set changing.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",

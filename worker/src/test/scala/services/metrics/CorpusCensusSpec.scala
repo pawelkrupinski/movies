@@ -310,8 +310,8 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
   // dark there is still a lost scrape.
   "the off-season gauge" should "read 1 only for a city whose every venue is out of season, and follow the calendar" in {
     val winter      = java.time.Instant.parse("2026-01-15T12:00:00Z")
-    val allSeasonal = City.all.find(c => c.offSeasonAt(winter)).getOrElse(fail("no city whose every venue is seasonal"))
-    val mixed       = City.all.find(c => c.cinemas.exists(_.opening != models.Opening.YearRound) && !c.offSeasonAt(winter))
+    val allSeasonal = City.all.find(c => c.mayBeDarkAt(winter)).getOrElse(fail("no city whose every venue is seasonal"))
+    val mixed       = City.all.find(c => c.cinemas.exists(_.opening != models.Opening.YearRound) && !c.mayBeDarkAt(winter))
                         .getOrElse(fail("no city with a seasonal venue beside a year-round one"))
     val yearRound   = City.bySlug("poznan").get
     val clock       = new tools.MutableClock(winter)
@@ -328,5 +328,32 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     clock.setTo(java.time.Instant.parse("2026-07-15T12:00:00Z"))
     census.publish()
     offSeason(allSeasonal) shouldBe Some(0.0)
+  }
+
+  // A seasonal-only town's programme ended on 09-27 with its window running to 09-30: the city went dark by design
+  // three days before the gauge said so, and CityDarkInBothTiers paged for it. A typical window cannot say which day
+  // of its last month a venue closes, so the whole final month counts.
+  it should "read 1 through the final month of a seasonal-only city's window, and 0 for a city with a year-round venue" in {
+    val septemberClose = (o: models.Opening) => o match {
+      case models.Opening.Seasonal(window) => window.closes == java.time.Month.SEPTEMBER
+      case models.Opening.YearRound        => false
+    }
+    val seasonalTown = City.all.find(c => c.cinemas.nonEmpty && c.cinemas.forall(v => septemberClose(v.opening)))
+                      .getOrElse(fail("no city whose every venue's season closes in September"))
+    val yearRound = City.bySlug("poznan").get
+    val clock     = new tools.MutableClock(java.time.Instant.parse("2026-09-28T12:00:00Z"))
+    val registry  = new PrometheusRegistry()
+    val census    = new CorpusCensus(cacheOver(splitRepository()), WorkerCorpusMetrics.gauge(registry),
+      WorkerSourceFilmsMetrics.gauge(registry), WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry),
+      WorkerCitySeasonMetrics.gauge(registry), "xx", Seq(seasonalTown, yearRound), clock)
+    def offSeason(city: City): Option[Double] =
+      PrometheusExposition.sample(PrometheusExposition.render(registry), WorkerCitySeasonMetrics.Name, s"""city="${city.slug}",country="xx"""")
+
+    census.publish()
+    (offSeason(seasonalTown), offSeason(yearRound)) shouldBe (Some(1.0), Some(0.0))
+
+    clock.setTo(java.time.Instant.parse("2026-08-31T12:00:00Z"))
+    census.publish()
+    offSeason(seasonalTown) shouldBe Some(0.0)
   }
 }

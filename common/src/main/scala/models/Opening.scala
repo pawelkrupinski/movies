@@ -42,8 +42,10 @@ object SeasonWindow {
  * it is still scraped as usual, so it reappears the day it lists times. In season it is
  * treated exactly like any other venue.
  *
- * Judged on the UTC calendar: the window is whole months and only a typical one, so the
- * hours a venue's own midnight is away from UTC's change nothing worth a zone lookup.
+ * [[offSeasonAt]] and the other `Instant` readings judge the UTC calendar: the window is whole
+ * months and only a typical one, so the hours a venue's own midnight is away from UTC's change
+ * nothing worth a zone lookup. [[offSeasonOn]] takes the caller's own day instead — a page judges
+ * its city's — so the two can disagree for those hours either side of a month boundary.
  */
 enum Opening {
   case YearRound
@@ -51,6 +53,18 @@ enum Opening {
 
   /** Is the venue outside its season at `now`? Never for a year-round venue. */
   def offSeasonAt(now: Instant): Boolean = offSeasonOn(Opening.day(now))
+
+  /** Might the venue be dark by design at `now`: off its season, or in its window's final
+   *  month? The window is a typical one in whole months, so it cannot say which day of that
+   *  month a venue's programme ends — a rooftop's ended on 27 September with its window
+   *  running to the 30th. Wider than [[offSeasonAt]], so it suits only a reader that would
+   *  otherwise call a venue's darkness a fault. Never for a year-round venue. */
+  def mayBeDarkAt(now: Instant): Boolean = this match {
+    case YearRound        => false
+    case Seasonal(window) =>
+      val month = Opening.day(now).getMonth
+      !window.contains(month) || month == window.closes
+  }
 
   /** Is the venue outside its season on `date` — the city's own day, where a page has one? */
   def offSeasonOn(date: LocalDate): Boolean = this match {

@@ -250,8 +250,10 @@ groups:
   # A CITY WHOSE EVERY VENUE IS OUT OF SEASON is not here either: a town whose only screen is an
   # open-air cinema or a drive-in has films all summer, six days running, and none from the month
   # its season closes -- exactly Butte's shape, and dark by design. The worker says which cities
-  # those are (`kinowo_worker_city_off_season`, 1 when every venue is seasonal and off-season); a
-  # city with any year-round venue reads 0 and alerts as before. Absent (a worker restart) reads as
+  # those are (`kinowo_worker_city_off_season`, 1 when every venue is seasonal and either off-season
+  # or in its window's final month: the window is whole months, and a programme can end any day of
+  # its last one -- one ended 09-27 with its window running to 09-30, and paged); a city with any
+  # year-round venue reads 0 and alerts as before. Absent (a worker restart) reads as
   # in season: the arm can only quieten the alert, never hold it.
   #
   # A CITY THAT LEFT THE ROSTER is not here: the worker stops counting it and the series goes, rather

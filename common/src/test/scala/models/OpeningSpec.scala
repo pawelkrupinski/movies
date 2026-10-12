@@ -43,6 +43,19 @@ class OpeningSpec extends AnyFlatSpec with Matchers {
     Opening.YearRound.seasonOpenedAt(at("2026-08-01")) shouldBe None
   }
 
+  // Stratford's rooftop ended its programme on 09-27 with the window running to 09-30: a typical
+  // window cannot say which day of its last month a venue closes, so the whole month may be dark.
+  it should "count as possibly dark off its season and through its window's final month; a year-round one never" in {
+    val openAir = Opening.Seasonal(SeasonWindow.Germany)                 // May..September
+    openAir.mayBeDarkAt(at("2026-08-31")) shouldBe false
+    openAir.mayBeDarkAt(at("2026-09-01")) shouldBe true
+    openAir.mayBeDarkAt(at("2026-09-30")) shouldBe true
+    openAir.mayBeDarkAt(at("2026-12-01")) shouldBe true
+    openAir.mayBeDarkAt(at("2026-05-01")) shouldBe false
+    Opening.Seasonal(SeasonWindow(Month.NOVEMBER, Month.FEBRUARY)).mayBeDarkAt(at("2027-02-10")) shouldBe true
+    Opening.YearRound.mayBeDarkAt(at("2026-09-15")) shouldBe false
+  }
+
   private def venue(name: String): Cinema = Cinema.byDisplayName(name)
 
   "The rosters" should "make each country's open-air, summer and drive-in screens seasonal, in its own window" in {
