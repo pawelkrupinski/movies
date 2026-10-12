@@ -16,9 +16,12 @@ import services.scrapes.{BarrenAttempt, ForwardingScrapeArchive, GoneUpstream, S
  * aggregator outage (5xx, 403, timeouts) fails every venue it lists at once, and
  * one page per venue would bury the one that means something.
  *
- * Pages on the attempt whose run brings the count ONTO the threshold — not on the
- * retries of that run, which leave it there — so a spell pages once and a later
- * spell (after any run that fetched) can page again, with no state of its own.
+ * Pages on the attempt whose run brings the count onto or over the threshold IN SEASON —
+ * not on the retries of that run, which leave it there — so a spell pages once and a
+ * later spell (after any run that fetched) can page again, with no state of its own.
+ * Off-season runs still count, so a seasonal venue gone since the winter is past the
+ * threshold by its season's first run: that run pages, because the attempt before it
+ * was off season and paged nothing.
  */
 final class GoneVenueAlertingArchive(
   underlying:         ScrapeArchiveRepository,
@@ -32,12 +35,14 @@ final class GoneVenueAlertingArchive(
     // A seasonal venue's page going away off its season is the season ending, not the venue.
     val watched = attempt.outcome == ScrapeOutcome.Failed && !pagedElsewhere(cinema.displayName) &&
       !cinema.opening.offSeasonAt(attempt.at)
-    // The count before this attempt, so only the attempt that MOVES it onto the
-    // threshold pages: the retries of that run leave it there, and would page again.
-    val before  = if (watched) underlying.find(cinema).flatMap(_.lastBarren).flatMap(_.failedRuns) else None
+    // The attempt before this one, so only the attempt that MOVES the count onto the threshold —
+    // or is the first in season to find it there — pages: the retries of that run would page again.
+    val before  = if (watched) underlying.find(cinema).flatMap(_.lastBarren) else None
+    val alreadyPaged = before.exists(previous =>
+      previous.failedRuns.exists(_ >= FailedRuns) && !cinema.opening.offSeasonAt(previous.at))
     // Filed as every forwarding archive files it, so the source's word that it lists no schedule reaches the store.
     super.storeBarren(cinema, city, attempt)
-    if (watched && !before.contains(FailedRuns))
+    if (watched && !alreadyPaged)
       // Read back rather than re-derive, so the count paged on is the one the archive
       // holds. Neither step can fail the scrape: the Mongo archive's reads and the
       // Telegram send each handle their own failures.
@@ -50,8 +55,8 @@ object GoneVenueAlertingArchive {
   val FailedRuns: Int = 3
 
   private[alerts] def messageFor(cinema: Cinema, barren: BarrenAttempt): Option[String] =
-    Option.when(barren.failedRuns.contains(FailedRuns) && GoneUpstream.saysPageIsGone(barren.error))(
-      s"🚨 ${cinema.displayName} — its page has answered gone on $FailedRuns scrape runs in a row " +
+    barren.failedRuns.filter(runs => runs >= FailedRuns && GoneUpstream.saysPageIsGone(barren.error)).map(runs =>
+      s"🚨 ${cinema.displayName} — its page has answered gone on $runs scrape runs in a row " +
       s"(failing since ${barren.runStartedAt}), and no fallback covers it.\n" +
       s"Reason: ${barren.error.getOrElse("")}\n" +
       "That is what a closed venue (or a retired upstream id) looks like — check whether it still exists.")

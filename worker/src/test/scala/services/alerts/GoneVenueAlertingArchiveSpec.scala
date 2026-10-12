@@ -58,6 +58,20 @@ class GoneVenueAlertingArchiveSpec extends AnyFlatSpec with Matchers {
     winter.pages shouldBe empty
   }
 
+  // Its winter runs still count, so by the season's first in-season run the count is far past three:
+  // paging only on "exactly three" never paged at all for a rooftop that stayed gone into May.
+  it should "page on the first in-season run of a spell that began off its season, and only once" in {
+    val rooftop = RooftopFilmClubStratfordRoofEast   // UK window: May..September
+    val h = new Harness(start = Instant.parse("2027-04-29T08:00:00Z"))   // runs 10 h apart
+    (1 to 4).foreach(_ => h.failRun(rooftop))        // 04-29 08:00 .. 04-30 14:00: off season
+    h.pages shouldBe empty
+    h.failRun(rooftop)                               // 05-01 00:00: the season's first run, its fifth
+    h.retry(rooftop)
+    h.failRun(rooftop)
+    h.pages should have size 1
+    h.pages.head should (include (rooftop.displayName) and include ("5 scrape runs"))
+  }
+
   it should "page only once per failing spell" in {
     val h = new Harness
     (1 to 6).foreach(_ => h.failRun())
