@@ -57,8 +57,21 @@ mkdir -p "$work"
 
 # The integration classpath, compiled once: every country's JVM runs on it.
 echo "[identity-capture] compiling the integration classpath"
-sbt -batch -error "export worker/IntegrationTest/fullClasspath" | tail -n 1 > "$work/classpath"
-[ -s "$work/classpath" ] || { echo "[identity-capture] sbt printed no classpath" >&2; exit 1; }
+# sbt's whole output goes to a log, and only a line that IS a classpath is kept: on 2026-10-12 the
+# first scheduled run handed `java -cp` whatever sbt printed last and died "Could not find or load
+# main class scripts.IdentityCapture" with the reason swallowed.
+if ! sbt -batch "worker/IntegrationTest/compile" "export worker/IntegrationTest/fullClasspath" > "$work/sbt.log" 2>&1; then
+    cat "$work/sbt.log" >&2
+    echo "[identity-capture] sbt failed to compile the integration classpath (log above)" >&2
+    exit 1
+fi
+grep -E '^/[^ ]*worker/target/[^ ]*test-classes' "$work/sbt.log" | tail -n 1 > "$work/classpath" || true
+classes=$(tr ':' '\n' < "$work/classpath" | grep -E '/worker/target/[^/]+/test-classes$' || true)
+if [ -z "$classes" ] || [ ! -f "$classes/scripts/IdentityCapture.class" ]; then
+    cat "$work/sbt.log" >&2
+    echo "[identity-capture] no classpath holding scripts.IdentityCapture in sbt's output (log above)" >&2
+    exit 1
+fi
 
 if ! $dry; then
     if [ -z "${KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY:-}" ]; then
