@@ -11,7 +11,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper}
 import services.cinemas.pl._
 import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
-import services.cinemas.uk.CineworldClient
+import services.cinemas.uk.{CineworldClient, SavoyClient}
 import services.cinemas.us.{AmcClient, RegalClient}
 import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
 import services.freshness.{Freshness, FreshnessKind}
@@ -356,6 +356,23 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // slug — a regression that dropped either would silently lose coverage the day a
   // chain API changed shape. (Before this wiring these venues WERE FlicksClients
   // and the slug map was empty, so this test fails on the pre-change catalogue.)
+  // Phoenix East Finchley never had a showtime from Flicks; its own Savoy Systems box
+  // office sells eight months ahead. Measured 2026-10-12, each Savoy venue wired here
+  // lists at least as many showtimes on its own site as the live read model held from
+  // Flicks, so it reads its own site first and keeps Flicks as the fallback.
+  it should "wire UK Savoy Systems venues to their own box office with flicks kept as the fallback" in {
+    val c = catalog(direct = new FakeHttpFetch("savoy"), today = LocalDate.of(2026, 10, 12))
+    val phoenix = c.all.find(_.cinema == PhoenixCinemaEastFinchley).value
+    phoenix shouldBe a [SavoyClient]
+    phoenix.fetch().flatMap(_.showtimes) should have size 52
+    c.flicksFallbackSlugs.get(PhoenixCinemaEastFinchley).value shouldBe
+      ChainFlicksFallback.FlicksFallback(FlicksMarket.UnitedKingdom, "phoenix-cinema-east-finchley")
+    val savoyVenues = c.all.collect { case s: SavoyClient => s.cinema }
+    savoyVenues should have size 43
+    // Every one keeps its Flicks slug, so a box-office outage falls back rather than blanks.
+    savoyVenues.filterNot(c.flicksFallbackSlugs.contains) shouldBe empty
+  }
+
   it should "wire UK chain venues to their own-site client with flicks kept as the fallback" in {
     val c = catalog()
     c.all.find(_.cinema == CineworldSheffield).value shouldBe a [CineworldClient]
@@ -370,8 +387,8 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     // Odeon was 102 until Basingstoke closed on 31 Aug 2026 and Odeon dropped it
     // from its own estate — see OdeonVenueMapSpec.
     // AMC and Regal are NOT among them — see the US chain test below for why.
-    ChainFlicksFallback.ukSlugs should have size 342
-    c.flicksFallbackSlugs should have size 342 + 78
+    ChainFlicksFallback.ukChainSlugs should have size 342
+    c.flicksFallbackSlugs should have size ChainFlicksFallback.ukSlugs.size + 78
 
     // Regal stays ON the aggregator, and must NOT carry a fallback entry either —
     // a flicks primary with a flicks fallback would just re-fetch the same URL on
@@ -390,7 +407,8 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     c.flicksFallbackSlugs.keys.foreach { cin =>
       val primary = c.all.find(_.cinema == cin).value
       primary should not be a [FlicksClient]      // moved off the aggregator…
-      primary.chain shouldBe true                 // …onto an own-site chain source
+      // …onto an own-site chain source, or an independent's own box office.
+      primary.chain shouldBe !ChainFlicksFallback.ukOwnSiteSlugs.contains(cin)
     }
   }
 

@@ -10461,6 +10461,10 @@ services.cinemas.uk.OdeonParser$OdeonSite
 services.cinemas.uk.OdeonParser$OdeonSite$
 services.cinemas.uk.OdeonParser$RawOdeonShowtime
 services.cinemas.uk.OdeonParser$RawOdeonShowtime$
+services.cinemas.uk.SavoyClient
+services.cinemas.uk.SavoyClient$
+services.cinemas.uk.SavoyClient$Slot
+services.cinemas.uk.SavoyClient$Slot$
 services.cinemas.uk.TheOldCourtClient
 services.cinemas.uk.TheOldCourtClient$
 services.cinemas.uk.TheOldCourtClient$RawSlot

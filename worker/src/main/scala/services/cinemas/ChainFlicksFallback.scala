@@ -10,11 +10,11 @@ import services.cinemas.common.FlicksMarket
  *
  * `CinemaScraperCatalog.flicksFallbackSlugs` exposes this to `WorkerWiring`, which
  * builds a fallback `FlicksClient` on demand when a chain venue's own scrape has
- * been failing for the grace window. GENERATED from the per-chain venue maps under
- * `docs/venue-maps`
- * alongside the chain-primary catalogue entries — every cinema here is catalogued
- * under its chain client, never under `flicks(...)`, so it is primary + fallback
- * without being double-wired.
+ * been failing for the grace window. The chain half is GENERATED from the per-chain
+ * venue maps under `docs/venue-maps` alongside the chain-primary catalogue entries;
+ * the independents read from their own box office ([[ukOwnSiteSlugs]]) are hand-kept.
+ * Every cinema here is catalogued under its own-site client, never under
+ * `flicks(...)`, so it is primary + fallback without being double-wired.
  */
 object ChainFlicksFallback {
 
@@ -24,9 +24,13 @@ object ChainFlicksFallback {
    *  `flicks.co.uk` would simply 404. */
   case class FlicksFallback(market: FlicksMarket, slug: String)
 
+  /** Every UK venue whose own-site client is primary, with its flicks.co.uk slug:
+   *  the chains and the independents alike. */
+  def ukSlugs: Map[Cinema, String] = ukChainSlugs ++ ukOwnSiteSlugs
+
   /** The UK chain venues (Cineworld / Vue / Showcase / Everyman / Odeon) and
    *  their flicks.co.uk slugs. */
-  val ukSlugs: Map[Cinema, String] = Map(
+  val ukChainSlugs: Map[Cinema, String] = Map(
     CineworldAldershot -> "cineworld-aldershot",
     CineworldAshford -> "cineworld-ashford",
     CineworldAshtonUnderLyne -> "cineworld-ashton-under-lyne",
@@ -369,6 +373,57 @@ object ChainFlicksFallback {
     OdeonMiddlesbrough -> "odeon-middlesbrough",
     OdeonNorthampton -> "odeon-northampton",
     OdeonNorwich -> "odeon-cinema-norwich",
+  )
+
+  /** UK independents read from their own box office — Savoy Systems
+   *  ([[services.cinemas.uk.SavoyClient]]) or Spektrix
+   *  ([[services.cinemas.uk.SpektrixClient]]) — because Flicks lists them with
+   *  few or no times. Flicks stays their fallback, the same arrangement as the chains:
+   *  should the box office fail or come back empty, the venue reads Flicks again. */
+  val ukOwnSiteSlugs: Map[Cinema, String] = Map(
+    ActOneActon -> "act-one-acton",
+    AldeburghCinema -> "aldeburgh-cinema",
+    CinemaSaltcoatsPremierLeisure -> "premier-saltcoats",
+    CultplexManchester -> "cultplex-manchester",
+    ElectricPalaceHarwich -> "electric-palace-harwich",
+    ElectricPalaceHastings -> "electric-palace-hastings",
+    ElyCommunityCinema -> "ely-community-cinema",
+    EmpireTheatreHalstead -> "empire-theatre-halstead-park",
+    FilmhouseNewlyn -> "filmhouse-newlyn",
+    ForumCinemaHexham -> "forum-hexham",
+    FuturistCinema -> "lume-cinema-and-cafe",
+    HebdenBridgePicturehouse -> "picturehouse-hebden-bridge",
+    KavanaghCinemaHerneBay -> "kavanagh-herne-bay",
+    KeswickAlhambra -> "alhambra-keswick",
+    KingsCinemaNewmarket -> "kings-cinema-newmarket",
+    LexiKensalRise -> "lexi-kensal-rise",
+    LoewenCinema -> "loewen-mablethorpe",
+    LonsdaleAlhambraPenrith -> "lonsdale-alhambra-penrith",
+    MagicLanternTywyn -> "magic-lantern-llansern-hud-tywyn",
+    MockingbirdCinemaKitchenBirmingham -> "mockingbird-cinema-kitchen-birmingham",
+    MorayPlayhouse -> "moray-playhouse-elgin",
+    PhoenixCinemaEastFinchley -> "phoenix-cinema-east-finchley",
+    PiccadillyCinemaLeicester -> "piccadilly-leicester",
+    PlazaCommunityCinemaLiverpool -> "plaza-crosby",
+    PublicHallBrynamman -> "public-hall-brynamman",
+    RegalCinemaFordingbridge -> "regal-fordingbridge",
+    RegalStowmarket -> "regal-stowmarket",
+    RegentMarple -> "regent-marple",
+    RioDalston -> "rio-dalston",
+    RitzCinemaThirsk -> "ritz-thirsk",
+    SavoyBoston -> "savoy-boston",
+    SavoyCinemaCatterickGarrison -> "savoy-cinema-catterick-garrison",
+    SavoyCinemaCorby -> "savoy-corby",
+    SavoyDoncaster -> "savoy-doncaster",
+    SavoyGrantham -> "savoy-grantham",
+    SavoyWorksop -> "savoy-worksop",
+    TheArzner -> "the-arzner",
+    TheFlavel -> "flavel-dartmouth",
+    TheForumNorthallerton -> "the-forum-northallerton",
+    TheOdysseyStAlbans -> "odyssey-st-albans",
+    TheRitzCinemaWorkington -> "the-ritz-cinema-workington",
+    TowerCinemaSkegness -> "tower-skegness",
+    WindmillLittlehampton -> "windmill-littlehampton",
   )
 
   /** Every chain venue that keeps a Flicks aggregator fallback, with the market
