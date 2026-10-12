@@ -54,10 +54,10 @@ class DayScrollOnSwipeTest {
         val zone = ZoneId.of("Europe/Warsaw")
         val today = LocalDate.now(zone).format(DateTimeFormatter.ISO_DATE)
         val tomorrow = LocalDate.now(zone).plusDays(1).format(DateTimeFormatter.ISO_DATE)
-        // The same movie F-i plays on BOTH days (shared keys); only F-0..F-6 play tomorrow.
         fun cs(time: String) = listOf(CinemaShowings("Multikino", showtimes = listOf(Showtime(time))))
-        // Today: 40 films. Tomorrow: only the first 7 (a much shorter day, as in
-        // Poznań). Times increment so today sorts F-0..F-39, tomorrow F-0..F-6.
+        // Today: 40 films. Tomorrow: only the first TomorrowFilms (7) of them, under
+        // the same keys (a much shorter day, as in Poznań). Times increment so today
+        // sorts F-0..F-39, tomorrow F-0..F-6.
         val all = (0 until 40).map { i ->
             val showings = buildList {
                 add(DayShowings(today, "label", cs("08:%02d".format(i))))
