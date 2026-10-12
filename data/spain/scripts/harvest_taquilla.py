@@ -120,8 +120,41 @@ def parse_venue_page(text):
     return vid.group(1), html.unescape(title.group(1)).strip(), postcodes[0] if postcodes else None, address
 
 
-def match(roster, taquilla):
-    """{theaterId: taquilla path} for the confident matches, plus the review lines."""
+# The pairs the name rule left for review, decided by hand against each page's address
+# (2026-10-12): roster theaterId -> its Taquilla page, or None for a roster venue on no
+# page. A verdict overrides the automatic match for that venue.
+DECIDED = {
+    # Two roster rows at Carrer de Sant Pere 9, 08221 -- the page's address. SensaCine
+    # serves Cinema Catalunya; "Club Catalunya" is the same house's film-club listing.
+    "E0304": "/terrassa/cinema-catalunya-terrassa",
+    "E0420": None,
+    # Same postcode 30001: Rex is C/ Vara de Rey, the page's street; Centrofama (Puerta
+    # Nueva) has its own page, which gives no postcode.
+    "E0690": "/murcia/neocine-rex-murcia",
+    "E0193": "/murcia/neocine-centrofama-murcia",
+    # 29600 holds both: the page is CC La Cañada, Carretera de Ojén. Cines Gran Marbella
+    # (Puerto Banús) has no Taquilla page.
+    "E0390": "/marbella/kinepolis-marbella-la-canada",
+    "E0427": None,
+    # One cinema, two roster rows at Av. de Tirso de Molina 16 (CC Mercado de Campanar):
+    # E0773 is the row SensaCine serves, E0248 an idle duplicate.
+    "E0773": "/valencia/yelmo-campanar-valencia",
+    "E0248": None,
+    # The page "Cines Florida Guridi" is San Prudencio 6 -- Guridi's address; Florida is
+    # San Prudencio 22-24 and has no page of its own.
+    "E0763": "/vitoria-gasteiz/cines-florida-guridi-vitoria-gasteiz",
+    "E0346": None,
+    # "CC. Las Arenas" is the shopping centre's page; the cinema is "Cine Yelmo Las Arenas".
+    "E0754": "/las-palmas-de-gran-canaria/yelmo-cines-las-arenas-palmas-de-gran-canaria-las",
+    # Two pages for one cinema at Av. de la Vital 10 (ids 38461, 33213), and neither sells
+    # a day: nothing says which Taquilla keeps, so none -- re-decide when one sells.
+    "E0036": None,
+}
+
+
+def match(roster, taquilla, decided=DECIDED):
+    """{theaterId: taquilla path} for the confident matches, plus the review lines.
+    A venue in `decided` takes its hand-checked verdict instead."""
     by_postcode = defaultdict(list)
     for path, v in taquilla.items():
         if v["postcode"]:
@@ -132,6 +165,10 @@ def match(roster, taquilla):
 
     chosen, review = {}, []
     for r in roster:
+        if r["theaterId"] in decided:
+            if decided[r["theaterId"]] in taquilla:
+                chosen[r["theaterId"]] = decided[r["theaterId"]]
+            continue
         candidates = [(name_score(r["name"], taquilla[p]["name"]), p) for p in by_postcode.get(r.get("postcode"), [])]
         candidates = [c for c in candidates if c[0][0] >= 0.5]
         if not candidates:

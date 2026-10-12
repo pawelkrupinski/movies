@@ -58,12 +58,40 @@ def test_the_closer_name_wins_a_shared_postcode():
     assert chosen == {"E0381": "/barcelona/cinesa-diagonal-barcelona"} and review == []
 
 
+CAMPANAR = dict([_venue("/valencia/yelmo-campanar-valencia", "Yelmo Campanar", "46015")])
+CAMPANAR_ROSTER = [{"theaterId": "E0248", "name": "Yelmo Cines Campanar", "town": "Valencia", "postcode": "46015"},
+                   {"theaterId": "E0773", "name": "Yelmo Cines Mercado de Campanar", "town": "Valencia",
+                    "postcode": "46015"}]
+
+
 def test_two_roster_venues_on_one_page_are_left_for_review():
-    taquilla = dict([_venue("/valencia/yelmo-campanar-valencia", "Yelmo Campanar", "46015")])
-    roster = [{"theaterId": "E0248", "name": "Yelmo Cines Campanar", "town": "Valencia", "postcode": "46015"},
-              {"theaterId": "E0773", "name": "Yelmo Campanar", "town": "Valencia", "postcode": "46015"}]
-    chosen, review = ht.match(roster, taquilla)
+    chosen, review = ht.match(CAMPANAR_ROSTER, CAMPANAR, decided={})
     assert chosen == {} and len(review) == 2
+
+
+def test_a_hand_checked_verdict_settles_a_pair_the_names_cannot():
+    # The page's address, Av. de Tirso de Molina 16, is the Mercado de Campanar centre
+    # both roster rows give; E0773 is the row SensaCine serves, E0248 its idle twin.
+    chosen, review = ht.match(CAMPANAR_ROSTER, CAMPANAR)
+    assert chosen == {"E0773": "/valencia/yelmo-campanar-valencia"} and review == []
+
+
+def test_every_review_pair_of_the_2026_10_12_harvest_has_a_verdict():
+    for tid in ("E0304", "E0420", "E0193", "E0690", "E0390", "E0427", "E0248", "E0773",
+                "E0346", "E0763", "E0754", "E0036"):
+        assert tid in ht.DECIDED, tid
+    # A verdict names a page once: two roster rows on one page is the doubt it settles.
+    pages = [p for p in ht.DECIDED.values() if p]
+    assert len(pages) == len(set(pages))
+
+
+def test_a_verdict_of_none_keeps_the_venue_off_every_page():
+    # Cines Gran Marbella (Puerto Banús) shares only the postcode with La Cañada's page.
+    taquilla = dict([_venue("/marbella/kinepolis-marbella-la-canada", "Kinépolis Marbella La Cañada", "29600")])
+    roster = [{"theaterId": "E0390", "name": "Kinépolis La Cañada", "town": "Marbella", "postcode": "29600"},
+              {"theaterId": "E0427", "name": "Cines Gran Marbella", "town": "Marbella", "postcode": "29600"}]
+    chosen, review = ht.match(roster, taquilla)
+    assert chosen == {"E0390": "/marbella/kinepolis-marbella-la-canada"} and review == []
 
 
 def test_without_a_shared_postcode_the_names_must_agree_in_the_same_town():

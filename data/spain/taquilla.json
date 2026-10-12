@@ -2,11 +2,21 @@
  "_comment": [
   "The Spanish roster venues scraped off taquilla.com (services.cinemas.es.TaquillaClient) instead of SensaCine, which stays their fallback. WRITTEN by data/spain/scripts/harvest_taquilla.py (this comment survives a rerun); generate_own_sources.py turns it into SpanishOwnSourcesData.scala.",
   "Measured 2026-10-12: 181 roster venues matched a Taquilla venue page (postcode + name), and a venue moves only where Taquilla is a SUPERSET of what showtimes.cc served that day — it reaches past SensaCine's last day AND carries >= 95% of SensaCine's sessions over the near fortnight. 56 did: 34 Yelmo, 9 Kinépolis, 6 mk2, 5 Neocine, IMF Ondara, Multicines El Hornillo (their calendars run to 2026-12-15..2027-06-05, SensaCine's to 2026-10-12..11-08), +2203 sessions past SensaCine's last day.",
-  "NOT moved: no Cinesa (Taquilla sells only four days of it); no venue SensaCine lists nothing for — Taquilla sold no day at any of them either; mk2 Palacio de Hielo, Multicine Atlántida and eight more that were thinner on the near days. Left out for review rather than guessed: two roster venues claiming one page (Yelmo Campanar E0248/E0773, Kinépolis Marbella E0390/E0427, Neocine Rex, Cinema Catalunya Terrassa, Florida Guridi) and two pages tying for one venue (Yelmo Las Arenas, Abc Gandia).",
+  "NOT moved: no Cinesa (Taquilla sells only four days of it); no venue SensaCine lists nothing for — Taquilla sold no day at any of them either; mk2 Palacio de Hielo, Multicine Atlántida and eight more that were thinner on the near days. The twelve roster venues the name rule left for review (two rows on one page, or two pages tying for one venue) are decided by address in harvest_taquilla.py's DECIDED; the rerun that day moved four more by the same rule — Yelmo Mercado de Campanar (E0773, not its idle twin E0248), Kinépolis La Cañada (E0390, not Puerto Banús' Gran Marbella), Yelmo Las Arenas (E0754, not the shopping centre's page) and Neocine Centrofama (E0193, its own page, not Rex's) — making 60, +2314 sessions. Cinema Catalunya, Neocine Rex and Guridi matched pages that sell no day; Abc Gandia's two pages for one cinema sell none either, so it stays unmatched.",
   "Per venue: path + venueId are what the client reads; the rest is the measurement that put it here."
  ],
  "measured": "2026-10-12",
  "venues": {
+  "E0193": {
+   "name": "Neocine Centrofama",
+   "taquillaName": "Neocine Centrofama",
+   "path": "/murcia/neocine-centrofama-murcia",
+   "venueId": "53439",
+   "sensacineLastDay": "2026-10-15",
+   "taquillaLastDay": "2026-12-15",
+   "sessionsGained": 1,
+   "why": "Taquilla reaches 2026-12-15 vs SensaCine 2026-10-15, 35 vs 32 near"
+  },
   "E0205": {
    "name": "Yelmo Cines Imaginalia",
    "taquillaName": "Cine Yelmo Imaginalia",
@@ -66,6 +76,16 @@
    "taquillaLastDay": "2026-12-20",
    "sessionsGained": 38,
    "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 140 vs 139 near"
+  },
+  "E0390": {
+   "name": "Kinépolis La Cañada",
+   "taquillaName": "Kinépolis Marbella La Cañada",
+   "path": "/marbella/kinepolis-marbella-la-canada",
+   "venueId": "364307",
+   "sensacineLastDay": "2026-11-07",
+   "taquillaLastDay": "2026-12-20",
+   "sessionsGained": 34,
+   "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-07, 145 vs 140 near"
   },
   "E0396": {
    "name": "Kinépolis Mataró Parc",
@@ -427,6 +447,16 @@
    "sessionsGained": 20,
    "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 134 vs 127 near"
   },
+  "E0754": {
+   "name": "Yelmo Cines Las Arenas",
+   "taquillaName": "Cine Yelmo Las Arenas",
+   "path": "/las-palmas-de-gran-canaria/yelmo-cines-las-arenas-palmas-de-gran-canaria-las",
+   "venueId": "33231",
+   "sensacineLastDay": "2026-11-08",
+   "taquillaLastDay": "2027-06-05",
+   "sessionsGained": 41,
+   "why": "Taquilla reaches 2027-06-05 vs SensaCine 2026-11-08, 191 vs 160 near"
+  },
   "E0756": {
    "name": "Kinépolis Barcelona Full Splau",
    "taquillaName": "Kinépolis Barcelona Splau",
@@ -436,6 +466,16 @@
    "taquillaLastDay": "2026-12-20",
    "sessionsGained": 64,
    "why": "Taquilla reaches 2026-12-20 vs SensaCine 2026-11-08, 383 vs 401 near"
+  },
+  "E0773": {
+   "name": "Yelmo Cines Mercado de Campanar",
+   "taquillaName": "Cine Yelmo Campanar",
+   "path": "/valencia/yelmo-campanar-valencia",
+   "venueId": "49994",
+   "sensacineLastDay": "2026-11-07",
+   "taquillaLastDay": "2027-06-05",
+   "sessionsGained": 35,
+   "why": "Taquilla reaches 2027-06-05 vs SensaCine 2026-11-07, 242 vs 231 near"
   },
   "E0786": {
    "name": "Yelmo Cines Boulevard",

@@ -248,7 +248,8 @@ also sold through taquilla.com, whose venue calendars run months past
 SensaCine's (advance sales, opera and ballet relays). `scripts/harvest_taquilla.py`
 walks Taquilla's city carteleras for its venue pages, matches each roster venue
 on postcode + name (same town + exact name where the postcodes disagree; ties
-and a page two venues claim are printed for review, never guessed), and moves a
+and a page two venues claim are printed for review, never guessed — a reviewed
+pair's verdict, read off the page's address, goes in the script's `DECIDED`), and moves a
 venue to `TaquillaClient` only when Taquilla is a SUPERSET of what
 showtimes.cc serves today: it reaches past SensaCine's last day AND carries at
 least 95% of SensaCine's sessions on the near fortnight. Cinesa never qualifies

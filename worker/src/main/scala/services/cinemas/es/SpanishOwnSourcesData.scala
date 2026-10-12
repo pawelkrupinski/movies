@@ -1,17 +1,19 @@
 // GENERATED from data/spain/taquilla.json + data/spain/artesiete.json by
 // data/spain/scripts/generate_own_sources.py -- do NOT edit by hand.
-// 56 venues off taquilla.com, 10 off Artesiete's own pages; see data/spain/README.md.
+// 60 venues off taquilla.com, 10 off Artesiete's own pages; see data/spain/README.md.
 package services.cinemas.es
 
 private[cinemas] object SpanishOwnSourcesData {
   /** SensaCine theaterId -> the venue on taquilla.com. */
   val taquilla: Map[String, TaquillaVenue] = Map(
+    "E0193" -> TaquillaVenue("53439", "/murcia/neocine-centrofama-murcia"),   // Neocine Centrofama
     "E0205" -> TaquillaVenue("33189", "/albacete/yelmo-cines-imaginalia-albacete"),   // Yelmo Cines Imaginalia
     "E0209" -> TaquillaVenue("35590", "/alcobendas/cines-kinepolis-diversia-abaco-alcobendas"),   // Kinépolis Madrid Diversia
     "E0283" -> TaquillaVenue("90802", "/huarte/yelmo-cines-itaroa-huarte-uharte-navarra"),   // Yelmo Cines Itaroa
     "E0291" -> TaquillaVenue("177432", "/madrid/yelmo-cines-premium-parque-corredor-madrid"),   // Yelmo Cines Premium Parque Corredor
     "E0332" -> TaquillaVenue("33147", "/cadiz/mk2-bahia-de-cadiz-cines-premium"),   // mk2 Bahía de Cádiz
     "E0359" -> TaquillaVenue("364308", "/almeria/kinepolis-almeria-mediterraneo"),   // Kinépolis Almería Mediterráneo
+    "E0390" -> TaquillaVenue("364307", "/marbella/kinepolis-marbella-la-canada"),   // Kinépolis La Cañada
     "E0396" -> TaquillaVenue("228149", "/mataro/kinepolis-mataro-parc"),   // Kinépolis Mataró Parc
     "E0411" -> TaquillaVenue("33176", "/alcala-de-guadaira/mk2-cines-los-alcores-alcala-de-guadaira"),   // mk2 Alcores
     "E0412" -> TaquillaVenue("33184", "/toledo/mk2-cines-luz-del-tajo-toledo"),   // mk2 Luz del Tajo
@@ -48,7 +50,9 @@ private[cinemas] object SpanishOwnSourcesData {
     "E0684" -> TaquillaVenue("88088", "/lugo/yelmo-as-termas-lugo"),   // Yelmo Cines As Termas
     "E0733" -> TaquillaVenue("170586", "/logrono/yelmo-cines-premium-berceo-la-rioja"),   // Yelmo Cines Premium Berceo
     "E0735" -> TaquillaVenue("33222", "/abrera/yelmo-cines-abrera"),   // Yelmo Cines Abrera
+    "E0754" -> TaquillaVenue("33231", "/las-palmas-de-gran-canaria/yelmo-cines-las-arenas-palmas-de-gran-canaria-las"),   // Yelmo Cines Las Arenas
     "E0756" -> TaquillaVenue("346235", "/barcelona/kinepolis-barcelona-splau"),   // Kinépolis Barcelona Full Splau
+    "E0773" -> TaquillaVenue("49994", "/valencia/yelmo-campanar-valencia"),   // Yelmo Cines Mercado de Campanar
     "E0786" -> TaquillaVenue("33221", "/vitoria-gasteiz/yelmo-cines-boulevard-vitoria-gasteiz"),   // Yelmo Cines Boulevard
     "E0806" -> TaquillaVenue("91238", "/castelldefels/yelmo-cines-castelldefels-castelldefels-barcelona"),   // Yelmo Cines Premium Castelldefels
     "E0807" -> TaquillaVenue("33217", "/tarragona/yelmo-cines-parc-central-tarragona"),   // Yelmo Cines Parc Central
