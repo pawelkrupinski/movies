@@ -2849,7 +2849,7 @@
       }
     },
     "citygate.back_to_region": {
-      "comment": "Back control on the picker's third step (a UK subregion's city list, e.g. West Midlands) — returns to the region's own list.",
+      "comment": "Back control on the picker's third step (a UK subregion's city list, e.g. Glamorgan) — returns to the region's own list.",
       "extractionState": "manual",
       "localizations": {
         "de": {

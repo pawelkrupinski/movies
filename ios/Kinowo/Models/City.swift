@@ -639,7 +639,7 @@ extension Array where Element == City {
     }
 
     /// The SECOND picker step, within one `region`: each subregion's heading
-    /// (reached only for the UK's West Midlands / Glamorgan / Antrim today)
+    /// (reached only for the UK's Glamorgan / Antrim today)
     /// interleaved with that region's own directly-listed cities — narrowed
     /// to `query`.
     func secondLevelRows(matching query: String, inCountry countryCode: String, region: String) -> [City.PickerRow] {

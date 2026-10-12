@@ -1,9 +1,13 @@
 import XCTest
 
 /// The UK picker's THIRD step: a county that actually holds more than one
-/// city (West Midlands → Birmingham/Dudley/Sandwell) gets its own tap and its
-/// own back button, distinct from the second step's "back to regions". Every
-/// other English county stays a flat row on the second step, unaffected.
+/// city in the bundled seed (Glamorgan → Cardiff/Glamorgan) gets its own tap
+/// and its own back button, distinct from the second step's "back to
+/// regions". Every other Welsh county stays a flat row on the second step,
+/// unaffected. This runs against the bundled seed, so it must name a county
+/// that still splits there — West Midlands stopped doing so when Dudley and
+/// Sandwell were folded into Birmingham (`CitySubregionTests` keeps it as a
+/// synthetic fixture for the mechanism).
 final class CountySubregionPickerUITests: XCTestCase {
     var app: XCUIApplication!
 
@@ -44,72 +48,52 @@ final class CountySubregionPickerUITests: XCTestCase {
         XCTAssertTrue(uk.waitForExistence(timeout: 5), "No 'United Kingdom' country pill on the picker")
         uk.tap()
 
-        let england = app.buttons["England"]
-        XCTAssertTrue(england.waitForExistence(timeout: 5), "No 'England' region row after switching to the UK")
-        england.tap()
+        let wales = app.buttons["Wales"]
+        XCTAssertTrue(wales.waitForExistence(timeout: 5), "No 'Wales' region row after switching to the UK")
+        wales.tap()
     }
 
     override func tearDownWithError() throws { app = nil }
 
-    func testWestMidlandsOpensItsOwnCitiesAndTheOtherCountiesStayFlat() throws {
-        // West Midlands now sits interleaved in its own alphabetical position
-        // among England's ~49 rows (the fix for the "West Midlands out of
-        // order" bug), which is well below the fold — search narrows to it,
-        // same as `CityChoiceSearchUITests` does for a city below the fold.
-        // "cheshire" (a collapsed county reading as a direct row) sits well
-        // ABOVE the fold and needs no search — proof this step still mixes
-        // group headings and direct cities, same list.
-        XCTAssertTrue(app.buttons["Cheshire"].waitForExistence(timeout: 5),
-                      "Cheshire should be a direct row on England's list")
+    func testGlamorganOpensItsOwnCitiesAndTheOtherCountiesStayFlat() throws {
+        // "Gwent" (a county holding one place, reading as a direct row) sits on
+        // the same list — proof this step still mixes group headings and
+        // direct cities.
+        XCTAssertTrue(app.buttons["Gwent"].waitForExistence(timeout: 5),
+                      "Gwent should be a direct row on Wales' list")
 
-        let search = app.textFields[A11y.CityGate.searchField]
-        XCTAssertTrue(search.waitForExistence(timeout: 5), "No search field on the picker")
-        search.tap()
-        search.typeText("west mid")
+        // Glamorgan is the Welsh county holding more than one city — it shows
+        // as a group row, and its members are not listed individually yet.
+        let glamorgan = app.buttons["Glamorgan"]
+        XCTAssertTrue(glamorgan.waitForExistence(timeout: 5), "No 'Glamorgan' group row under Wales")
+        XCTAssertFalse(app.buttons["Cardiff"].exists, "Cardiff should be behind the Glamorgan group")
 
-        // West Midlands is the one English county holding more than one city —
-        // it shows as a group row, not a direct city, on England's list.
-        let westMidlands = app.buttons["West Midlands"]
-        XCTAssertTrue(westMidlands.waitForExistence(timeout: 5), "No 'West Midlands' group row under England")
-        // Its members are not listed individually yet.
-        XCTAssertFalse(app.buttons["Birmingham"].exists, "Birmingham should be behind the West Midlands group")
+        glamorgan.tap()
 
-        westMidlands.tap()
-
-        XCTAssertTrue(app.buttons["Birmingham"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Dudley"].exists)
-        XCTAssertTrue(app.buttons["Sandwell"].exists)
-        // Nothing from the rest of England leaks into the county's own list.
-        XCTAssertFalse(app.buttons["Cheshire"].exists, "Cheshire should not appear inside West Midlands")
+        XCTAssertTrue(app.buttons["Cardiff"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Glamorgan"].exists, "Glamorgan's namesake place should be listed inside it")
+        // Nothing from the rest of Wales leaks into the county's own list.
+        XCTAssertFalse(app.buttons["Gwent"].exists, "Gwent should not appear inside Glamorgan")
     }
 
     func testBackFromASubregionReturnsToItsRegionNotTheTopRegionList() throws {
-        // West Midlands sits well below the fold in England's alphabetical
-        // list — search narrows to it, same as the test above.
-        let search = app.textFields[A11y.CityGate.searchField]
-        XCTAssertTrue(search.waitForExistence(timeout: 5), "No search field on the picker")
-        search.tap()
-        search.typeText("west mid")
-        app.buttons["West Midlands"].tap()
-        XCTAssertTrue(app.buttons["Birmingham"].waitForExistence(timeout: 5))
+        let glamorgan = app.buttons["Glamorgan"]
+        XCTAssertTrue(glamorgan.waitForExistence(timeout: 5), "No 'Glamorgan' group row under Wales")
+        glamorgan.tap()
+        XCTAssertTrue(app.buttons["Cardiff"].waitForExistence(timeout: 5))
 
         let back = app.buttons[A11y.CityGate.backToRegionButton]
         XCTAssertTrue(back.waitForExistence(timeout: 5), "No back button on the subregion step")
         back.tap()
 
-        // Back on England's list, query reset — "Cheshire" (well above the
-        // fold) is back, proving the step reset rather than landing on the
-        // top nation list. Re-search to confirm West Midlands is a group row
-        // again too, not still showing its own cities.
-        XCTAssertTrue(app.buttons["Cheshire"].waitForExistence(timeout: 5),
-                      "Did not return to England's own list")
-        XCTAssertFalse(app.buttons["Birmingham"].exists, "Still showing West Midlands' cities after going back")
+        // Back on Wales' own list — "Gwent" is back and Cardiff is behind its
+        // group again, proving the step reset rather than landing on the top
+        // nation list.
+        XCTAssertTrue(app.buttons["Gwent"].waitForExistence(timeout: 5),
+                      "Did not return to Wales' own list")
+        XCTAssertFalse(app.buttons["Cardiff"].exists, "Still showing Glamorgan's cities after going back")
+        XCTAssertTrue(app.buttons["Glamorgan"].exists, "Glamorgan should be a group row again after going back")
         // The nation list itself never reappeared — only one "back" was hit.
-        XCTAssertFalse(app.buttons["Scotland"].exists)
-
-        search.tap()
-        search.typeText("west mid")
-        XCTAssertTrue(app.buttons["West Midlands"].waitForExistence(timeout: 5),
-                      "West Midlands should be a group row again after going back")
+        XCTAssertFalse(app.buttons["England"].exists)
     }
 }
