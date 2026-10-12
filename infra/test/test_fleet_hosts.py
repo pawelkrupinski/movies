@@ -63,7 +63,22 @@ class FakeFlake:
         return self.addresses[name], None
 
 
-FLEET = {"mongo-1": "2.28.56.140", "monitoring-1": "128.140.49.167", "k3s-worker-1": "2.28.47.31"}
+FLEET = {"mongo-1": "178.105.221.61", "monitoring-1": "128.140.49.167", "k3s-worker-1": "2.28.47.31"}
+
+
+class TheExampleRosterIsTheRealOne(unittest.TestCase):
+    def test_every_address_matches_the_hosts_own_declaration(self):
+        # FLEET is test data, but it stood in for the real fleet long enough that mongo-1's move to
+        # 178.105.221.61 left it naming the retired address -- read each host's own nix file instead.
+        import pathlib
+        import re
+        hosts = pathlib.Path(__file__).resolve().parents[1] / "nix" / "hosts"
+        declared = {}
+        for path in hosts.glob("*/default.nix"):
+            found = re.search(r'^\s*publicAddress\s*=\s*"([^"]*)";', path.read_text(), re.MULTILINE)
+            if found:
+                declared[path.parent.name] = found.group(1)
+        self.assertEqual({name: declared.get(name) for name in FLEET}, FLEET)
 
 
 class AddressComesFromTheFlake(unittest.TestCase):
