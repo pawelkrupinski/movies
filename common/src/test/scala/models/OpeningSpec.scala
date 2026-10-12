@@ -56,6 +56,15 @@ class OpeningSpec extends AnyFlatSpec with Matchers {
     Opening.YearRound.mayBeDarkAt(at("2026-09-15")) shouldBe false
   }
 
+  it should "put its season's halfway point midway between the window's first day and the day after it closes" in {
+    val openAir = Opening.Seasonal(SeasonWindow.Germany)                 // 05-01 .. 10-01: 153 days
+    openAir.seasonHalfwayAt(at("2026-06-10")) shouldBe Some(Instant.parse("2026-07-16T00:00:00Z"))
+    openAir.seasonHalfwayAt(at("2026-12-01")) shouldBe None
+    val winter  = Opening.Seasonal(SeasonWindow(Month.NOVEMBER, Month.FEBRUARY))  // 11-01 .. 03-01: 120 days
+    winter.seasonHalfwayAt(at("2027-01-15")) shouldBe Some(Instant.parse("2026-12-31T00:00:00Z"))
+    Opening.YearRound.seasonHalfwayAt(at("2026-08-01")) shouldBe None
+  }
+
   private def venue(name: String): Cinema = Cinema.byDisplayName(name)
 
   "The rosters" should "make each country's open-air, summer and drive-in screens seasonal, in its own window" in {
