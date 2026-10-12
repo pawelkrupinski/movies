@@ -11,6 +11,7 @@ struct KinowoApp: App {
     @StateObject private var authService: AuthService
     @StateObject private var sync: StateSyncService
     @StateObject private var deepLink = DeepLinkCoordinator()
+    @StateObject private var clientSupport = ClientSupportStore()
     /// The one poster disk cache: the grid and detail images read it through
     /// the environment, `store` purges it daily.
     private let posters: PosterStore
@@ -81,7 +82,7 @@ struct KinowoApp: App {
 
     var body: some Scene {
         WindowGroup {
-            root
+            gatedRoot
                 .environmentObject(store)
                 .environmentObject(details)
                 .environmentObject(catalog)
@@ -113,6 +114,10 @@ struct KinowoApp: App {
                 .preferredColorScheme(.dark)
                 .tint(Color(red: 0.42, green: 0.67, blue: 0.87))
                 .task { await authService.checkSession() }
+                // Minimum-supported-version gate, asked of the same deployment
+                // as `/api/catalog`. Fails open: only a definite "below the
+                // minimum" answer swaps the app for `UpdateRequiredView`.
+                .task { await clientSupport.check(baseURL: kinowoBaseURL) }
                 .task { await resolveStorefrontLanguage() }
                 // A kinowo.net Universal Link (or kinowo:// link) opened the
                 // app. Switch the city eagerly so the CityGate flips straight to
@@ -156,6 +161,17 @@ struct KinowoApp: App {
             details.use(citySlug: link.citySlug)
         }
         deepLink.pending = link
+    }
+
+    /// `root`, unless the server says this build is no longer supported —
+    /// then a full-screen block whose only way out is the App Store.
+    @ViewBuilder
+    private var gatedRoot: some View {
+        if let storeURL = clientSupport.requiredUpdate {
+            UpdateRequiredView(storeURL: storeURL)
+        } else {
+            root
+        }
     }
 
     /// Normally `ContentView`. In DEBUG, setting the `KINOWO_TUNING` launch

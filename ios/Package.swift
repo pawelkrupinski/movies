@@ -79,8 +79,8 @@ let authTargets: [Target] = []
 //   which is false (so a no-op) in the Xcode build where no such module
 //   exists, and true only here — `@testable` because none of those types are
 //   `public`, and widening that surface just for this target isn't worth it.
-//   `DetailsStore.swift`, `CountrySwitch.swift` and `ConditionalListEndpoint.swift` ride along under the same `#if canImport` guard.
-// - `KinowoNetworkingTests` — `RepertoireStore` / `DetailsStore` unit tests (Combine;
+//   `DetailsStore.swift`, `CountrySwitch.swift`, `ConditionalListEndpoint.swift` and `ClientSupportStore.swift` ride along under the same `#if canImport` guard.
+// - `KinowoNetworkingTests` — `RepertoireStore` / `DetailsStore` / `ClientSupportStore` unit tests (Combine;
 //   macOS/iOS only).
 #if canImport(Combine)
 let networkingTargets: [Target] = [
@@ -93,6 +93,7 @@ let networkingTargets: [Target] = [
             "Networking/DetailsStore.swift",
             "Networking/CountrySwitch.swift",
             "Networking/ConditionalListEndpoint.swift",
+            "Networking/ClientSupportStore.swift",
         ]
     ),
     .testTarget(
@@ -146,6 +147,7 @@ let package = Package(
                 "Views/ShowingsView.swift",
                 "Views/ShowtimePillStyle.swift",
                 "Views/ShowtimeTuningScreen.swift",
+                "Views/UpdateRequiredView.swift",
                 "ContentView.swift",
                 "KinowoApp.swift",
                 "DeepLinkCoordinator.swift",
@@ -158,6 +160,7 @@ let package = Package(
                 "Networking/DetailsStore.swift",
                 "Networking/CountrySwitch.swift",
                 "Networking/ConditionalListEndpoint.swift",
+                "Networking/ClientSupportStore.swift",
                 // App-target catalog store: URLSession + Bundle.main + UserDefaults.
                 "Networking/CatalogStore.swift",
                 "Storage",

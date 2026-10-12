@@ -17,7 +17,7 @@ import scala.util.Using
  * response cacheable and identical for everyone (a verdict would vary by query and
  * could not be revalidated), and the comparison a client has to do is one tuple
  * compare — see [[ClientVersion.isSupported]], which is the reference the Kotlin
- * and Swift implementations mirror.
+ * and Swift (`ios/Kinowo/Models/ClientSupport.swift`) implementations mirror.
  *
  * Values come from the committed `client-support.properties`; dropping support is
  * a deploy, deliberately, so the decision sits in git history beside the release

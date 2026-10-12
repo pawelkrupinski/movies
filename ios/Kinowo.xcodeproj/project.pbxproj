@@ -13,6 +13,7 @@
 		DD00000000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000004 /* Assets.xcassets */; };
 		DD00000000000000000E01 /* Country.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E01 /* Country.swift */; };
 		DD00000000000000000E07 /* CatalogCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E07 /* CatalogCache.swift */; };
+		DD0000000000000000A5C1 /* ClientSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000A5C1 /* ClientSupport.swift */; };
 		DD00000000000000000E02 /* CountrySelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E02 /* CountrySelection.swift */; };
 		DD00000000000000000E09 /* LanguageSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E09 /* LanguageSelection.swift */; };
 		DD00000000000000000E03 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E03 /* Localizable.xcstrings */; };
@@ -59,6 +60,7 @@
 		DD00000000000000000042 /* DetailsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000042 /* DetailsStore.swift */; };
 		DD00000000000000000CF1 /* CountrySwitch.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000CF1 /* CountrySwitch.swift */; };
 		DD00000000000000000CF2 /* ConditionalListEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000CF2 /* ConditionalListEndpoint.swift */; };
+		DD0000000000000000A5C2 /* ClientSupportStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000A5C2 /* ClientSupportStore.swift */; };
 		DD00000000000000000E06 /* CatalogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E06 /* CatalogStore.swift */; };
 		DD00000000000000000018 /* FilmDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000018 /* FilmDetailView.swift */; };
 		DD00000000000000000019 /* FlowLayoutMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000019 /* FlowLayoutMath.swift */; };
@@ -103,6 +105,7 @@
 		DD00000000000000000304 /* HiddenFilmsFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000304 /* HiddenFilmsFilter.swift */; };
 		DD00000000000000000303 /* CitySwitchSuppressor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000303 /* CitySwitchSuppressor.swift */; };
 		DD00000000000000000301 /* CityGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000301 /* CityGate.swift */; };
+		DD0000000000000000A5C3 /* UpdateRequiredView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000A5C3 /* UpdateRequiredView.swift */; };
 		DD00000000000000000302 /* LocationCityResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000302 /* LocationCityResolver.swift */; };
 /* End PBXBuildFile section */
 
@@ -124,6 +127,7 @@
 		CC00000000000000000004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CC00000000000000000E01 /* Country.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Country.swift; sourceTree = "<group>"; };
 		CC00000000000000000E07 /* CatalogCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogCache.swift; sourceTree = "<group>"; };
+		CC0000000000000000A5C1 /* ClientSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientSupport.swift; sourceTree = "<group>"; };
 		CC00000000000000000E02 /* CountrySelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountrySelection.swift; sourceTree = "<group>"; };
 		CC00000000000000000E09 /* LanguageSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageSelection.swift; sourceTree = "<group>"; };
 		CC00000000000000000E03 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
@@ -170,6 +174,7 @@
 		CC00000000000000000042 /* DetailsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsStore.swift; sourceTree = "<group>"; };
 		CC00000000000000000CF1 /* CountrySwitch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountrySwitch.swift; sourceTree = "<group>"; };
 		CC00000000000000000CF2 /* ConditionalListEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConditionalListEndpoint.swift; sourceTree = "<group>"; };
+		CC0000000000000000A5C2 /* ClientSupportStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientSupportStore.swift; sourceTree = "<group>"; };
 		CC00000000000000000E06 /* CatalogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogStore.swift; sourceTree = "<group>"; };
 		CC00000000000000000018 /* FilmDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailView.swift; sourceTree = "<group>"; };
 		CC00000000000000000019 /* FlowLayoutMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayoutMath.swift; sourceTree = "<group>"; };
@@ -214,6 +219,7 @@
 		CC00000000000000000304 /* HiddenFilmsFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiddenFilmsFilter.swift; sourceTree = "<group>"; };
 		CC00000000000000000303 /* CitySwitchSuppressor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitySwitchSuppressor.swift; sourceTree = "<group>"; };
 		CC00000000000000000301 /* CityGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityGate.swift; sourceTree = "<group>"; };
+		CC0000000000000000A5C3 /* UpdateRequiredView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateRequiredView.swift; sourceTree = "<group>"; };
 		CC00000000000000000302 /* LocationCityResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationCityResolver.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -299,6 +305,7 @@
 				CC00000000000000000300 /* City.swift */,
 				CC00000000000000000E01 /* Country.swift */,
 				CC00000000000000000E07 /* CatalogCache.swift */,
+				CC0000000000000000A5C1 /* ClientSupport.swift */,
 				CC00000000000000000304 /* HiddenFilmsFilter.swift */,
 				CC00000000000000000303 /* CitySwitchSuppressor.swift */,
 				CC00000000000000000006 /* Filters.swift */,
@@ -320,6 +327,7 @@
 				CC00000000000000000042 /* DetailsStore.swift */,
 				CC00000000000000000CF1 /* CountrySwitch.swift */,
 				CC00000000000000000CF2 /* ConditionalListEndpoint.swift */,
+				CC0000000000000000A5C2 /* ClientSupportStore.swift */,
 				CC00000000000000000E06 /* CatalogStore.swift */,
 				CC00000000000000000035 /* TrailerEmbedHTML.swift */,
 				CC00000000000000000050 /* PosterStore.swift */,
@@ -349,6 +357,7 @@
 			isa = PBXGroup;
 			children = (
 				CC00000000000000000301 /* CityGate.swift */,
+				CC0000000000000000A5C3 /* UpdateRequiredView.swift */,
 				CC00000000000000000260 /* CinemaFilterSectionView.swift */,
 				CC0000000000000000000B /* FilmGridView.swift */,
 				CC0000000000000000000C /* FilmCardView.swift */,
@@ -551,6 +560,7 @@
 				DD00000000000000000042 /* DetailsStore.swift in Sources */,
 				DD00000000000000000CF1 /* CountrySwitch.swift in Sources */,
 				DD00000000000000000CF2 /* ConditionalListEndpoint.swift in Sources */,
+				DD0000000000000000A5C2 /* ClientSupportStore.swift in Sources */,
 				DD00000000000000000E06 /* CatalogStore.swift in Sources */,
 				DD00000000000000000018 /* FilmDetailView.swift in Sources */,
 				DD00000000000000000019 /* FlowLayoutMath.swift in Sources */,
@@ -565,11 +575,13 @@
 				DD00000000000000000300 /* City.swift in Sources */,
 				DD00000000000000000E01 /* Country.swift in Sources */,
 				DD00000000000000000E07 /* CatalogCache.swift in Sources */,
+				DD0000000000000000A5C1 /* ClientSupport.swift in Sources */,
 				DD00000000000000000E02 /* CountrySelection.swift in Sources */,
 				DD00000000000000000E09 /* LanguageSelection.swift in Sources */,
 				DD00000000000000000304 /* HiddenFilmsFilter.swift in Sources */,
 				DD00000000000000000303 /* CitySwitchSuppressor.swift in Sources */,
 				DD00000000000000000301 /* CityGate.swift in Sources */,
+				DD0000000000000000A5C3 /* UpdateRequiredView.swift in Sources */,
 				DD00000000000000000302 /* LocationCityResolver.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
