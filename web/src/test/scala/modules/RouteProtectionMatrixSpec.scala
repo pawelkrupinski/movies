@@ -147,7 +147,7 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
       normalizer = services.movies.SingleCountryNormalizer.titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val auth        = new AuthController(cc, Map.empty, users, new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
     val userState   = new UserStateController(cc, null, null, null,
-      new services.metrics.LegacyUserStateMetrics(new io.prometheus.metrics.model.registry.PrometheusRegistry(), "pl", java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)), users, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
+      users, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
     val uptime      = new UptimeController(cc, adminAction, null, null, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
     val tasks       = new TasksController(cc, adminAction, null, null, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
     val facebook    = new FacebookDataDeletionController(cc, models.Country.Poland, None, users, null)

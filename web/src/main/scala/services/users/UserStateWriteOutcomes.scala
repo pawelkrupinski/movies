@@ -25,8 +25,8 @@ object UserStateWriteOutcomes {
     val Hide      = "hide"
     val Unhide    = "unhide"
     val Clear     = "clear"
-    val LegacyPut = "legacy_put"
-    val all: Seq[String] = Seq(Hide, Unhide, Clear, LegacyPut)
+    val Language  = "language"
+    val all: Seq[String] = Seq(Hide, Unhide, Clear, Language)
 
     def of(change: HiddenFilmsChange): String = change match {
       case _: HiddenFilmsChange.Hide   => Hide

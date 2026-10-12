@@ -15,7 +15,7 @@ import scala.concurrent.Await
  *
  * This used to be `UserStateRepository.upsert`, on the production trait, where nothing in
  * production called it: every request-path write is one of the atomic, field-scoped
- * pipelines (`changeHiddenFilms`, `patchLegacyState`), because a whole-row replace racing
+ * pipelines (`changeHiddenFilms`, `setLanguage`), because a whole-row replace racing
  * a hide on another pod erases one of them. Keeping the replace on the trait invited
  * exactly that write back into the request path, so it lives here instead; the in-memory
  * store keeps its own `upsert` for seeding.

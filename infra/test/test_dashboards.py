@@ -345,15 +345,15 @@ class ApplicationDashboardCoverage(unittest.TestCase):
 class InProcessRecencyGauges(unittest.TestCase):
     """A "when did X last happen" gauge held in a pod's memory forgets on every restart.
 
-    `kinowo_web_legacy_userstate_put_last_called_seconds` is the retirement signal for the
-    legacy PUT /api/me/state: "no calls in N days" is what says it can go. But the web pod
-    only knows about calls since IT booted, so a panel reading the raw gauge can never show
+    `kinowo_web_route_last_called_seconds` is the retirement signal for every route: "no
+    calls in N days" is what says one can go. But the web pod only knows about calls since
+    IT booted, so a panel reading the raw gauge can never show
     more than the pod's uptime -- every deploy resets it to "no calls since boot", and the
     thirty-day reading the decision needs never arrives. Prometheus remembers across
     restarts; the panel has to ask it, with a `max_over_time` over the whole window.
     """
 
-    RECENCY_GAUGES = ("kinowo_web_legacy_userstate_put_last_called_seconds",)
+    RECENCY_GAUGES = ("kinowo_web_route_last_called_seconds",)
 
     def test_a_recency_panel_reads_across_pod_restarts(self):
         exprs = [

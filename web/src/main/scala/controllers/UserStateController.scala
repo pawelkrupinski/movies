@@ -4,43 +4,36 @@ import models.UserState
 import play.api.Logging
 import play.api.libs.json.{JsNull, JsValue, Json}
 import play.api.mvc._
-import services.metrics.LegacyUserStateMetrics
-import services.users.{AccountDeletion, HiddenFilmsChange, LegacyStatePatch, UserChangeTimeCache, UserRepository, UserStateRepository}
+import services.users.{AccountDeletion, HiddenFilmsChange, UserChangeTimeCache, UserRepository, UserStateRepository}
 
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
 /**
- * REST endpoint for the authenticated user's personalization state —
- * hidden films, (for legacy clients only — see `hiddenFilms()`) disabled
- * cinemas, and language.
+ * REST endpoint for the authenticated user's personalization state — the
+ * per-country hidden films and the language pick.
  *
- * `get()`/`put()` are the original pair: full-state, no conditional-GET
- * support, kept running unchanged for clients that still call them —
- * `put()` also feeds `LegacyUserStateMetrics` on every call, the signal
- * that decides when it's safe to delete them. `hiddenFilms()` /
- * `hideFilm()` / `unhideFilm()` / `clearHiddenFilms()` are the granular,
- * per-country replacement for hiddenFilms specifically: `ETag`/
- * `Last-Modified` + 304 support on the read side, idempotent per-title
- * writes on the other. `language` has no granular successor — it's a
- * single explicit pick, not a set, so it stays on `get()`/`put()`.
+ * `hiddenFilms()` / `hideFilm()` / `unhideFilm()` / `clearHiddenFilms()` are
+ * the granular, per-country hidden-films API: `ETag`/`Last-Modified` + 304
+ * support on the read side, idempotent per-title writes on the other.
  *
- * Shape (both directions, legacy):
- *   { "hiddenFilms":     [titles…],
- *     "disabledCinemas": [cinema display names…],
+ * `get()`/`put()` (`/api/me/state`) carry the language pick, which has no
+ * granular successor — it's a single explicit pick, not a set. They once
+ * carried the global `hiddenFilms`/`disabledCinemas` sets too; every client
+ * since app 2.0.9 (2026-09-20), and the web, sends `{"language": …}` alone, so
+ * `put()` now writes language only and IGNORES any set an ancient build still
+ * sends (see `put()`). `get()` still answers with the stored, now-frozen sets
+ * beside the language, because the pre-2.0.9 iOS decoder required
+ * `hiddenFilms` and a build that old may still be installed:
+ *   { "hiddenFilms":     [titles…],                       // frozen, never written
+ *     "disabledCinemas": [cinema display names…],         // frozen, never written
  *     "language":        "pl" | "en" | "de" | "es" | null }
- *
- * `language`, unlike the two sets, carries no union semantics: a client
- * either overwrites it with a pick of its own, or leaves it out of the
- * body to keep whatever is stored (same partial-update rule as the sets —
- * see `fromJson`).
  */
 class UserStateController(
   cc:                   ControllerComponents,
   userStateRepository:   UserStateRepository,
   accountDeletion:      AccountDeletion,
   userChangeTimeCache:  UserChangeTimeCache,
-  legacyUserStateMetrics: LegacyUserStateMetrics,
   userRepository:       UserRepository,
   // Stamps every change; the stored stamps' newer-than rules compare against it.
   clock:                java.time.Clock
@@ -87,7 +80,7 @@ class UserStateController(
   /** `GET /api/me/:country/hidden-films` — the hiddenFilms-only successor to
    *  `get()`, scoped to ONE country: unlike a cinema display name, a film
    *  title is not globally unique across countries, so the legacy single
-   *  global `hiddenFilms` set (still served by `get()`/`put()`) can't be the
+   *  global `hiddenFilms` set (still served, frozen, by `get()`) can't be the
    *  per-country model's foundation — this reads `hiddenFilmsByCountry`
    *  instead. `country` is part of the path (not a query param) and must be
    *  a recognised code, or 400.
@@ -97,14 +90,11 @@ class UserStateController(
    *  `304`, following the precedence HTTP requires — `If-None-Match`, when
    *  present, is authoritative and `If-Modified-Since` is not even consulted
    *  (RFC 7232 §3.3), since only the ETag reflects hiddenFilms specifically:
-   *  `updatedAt` is still the whole row's timestamp, so an old client's legacy
-   *  `PUT /api/me/state` touching only disabledCinemas would otherwise look
-   *  like a hiddenFilms change too.
+   *  `updatedAt` is still the whole row's timestamp, so a language pick
+   *  (`PUT /api/me/state`) would otherwise look like a hiddenFilms change too.
    *
    *  disabledCinemas is deliberately absent from both the payload and the
-   *  validators — it stopped being a server-synced field (kept device-local
-   *  from here on); `get()`/`put()` still carry it for whatever legacy clients
-   *  still send it.
+   *  validators — it stopped being a server-synced field (device-local now).
    *
    *  `If-Modified-Since`-only requests get a further fast path: `userChangeTimeCache`
    *  may already prove nothing changed, answering the 304 with no read from
@@ -218,7 +208,7 @@ class UserStateController(
    *  answered from the bucket and `updatedAt` the store holds right after it —
    *  never a copy computed here, which a concurrent write could already have
    *  moved past. An applied change always bumps `updatedAt`, even a no-op one —
-   *  same "every write bumps it" behaviour the legacy PUT has. A 503 when the
+   *  same "every write bumps it" behaviour the language PUT has. A 503 when the
    *  store could not write at all. */
   private def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange)(respond: (Set[String], Instant) => Result): Result =
     userStateRepository.changeHiddenFilms(userId, country, change, clock.instant()) match {
@@ -233,28 +223,24 @@ class UserStateController(
     Ok(body).withHeaders("ETag" -> hiddenFilmsETag(body), "Last-Modified" -> httpDate(updatedAt))
   }
 
+  /** `PUT /api/me/state` — the language pick. `language` present and a known
+   *  code sets it, an explicit `null` clears it, an unknown code or non-string
+   *  is a 400; absent leaves the stored pick alone and writes nothing at all.
+   *
+   *  Every other key is IGNORED, including the retired `hiddenFilms` /
+   *  `disabledCinemas` sets — never written, never validated. Only a pre-2.0.9
+   *  app build still sends them, beside its language; refusing the body would
+   *  lose that language too, for a set the server stopped keeping. The answer
+   *  is the stored state after the write, same shape as `get()`. */
   def put(): Action[JsValue] = Action(parse.json) { request =>
-    // Every call that isn't the web's own language push, regardless of outcome
-    // — even a 401 or a malformed body is evidence SOMETHING out there still
-    // sends what the granular API replaced, which is exactly what decides
-    // whether that half can go. A `{"language": …}`-only body is this
-    // endpoint's intended, ongoing use (`language` has no granular successor;
-    // shared.js PUTs it on every pick) and would pin the gauge at "just now"
-    // forever. See LegacyUserStateMetrics.
-    if (!isLanguageOnly(request.body)) legacyUserStateMetrics.recordPutCall()
     SignedInUser.answering(signedInUserId(request) match {
       case None         => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(userId) =>
-        // PUT is a partial update over the stored row (see fromJson): fields
-        // the body omits keep their stored value, so a client that only
-        // models some of the sets can't wipe the others. The store sets only
-        // the fields present, atomically, so a concurrent hide survives it too.
-        fromJson(request.body) match {
-          case Left(reason) => BadRequest(Json.obj("error" -> reason))
-          case Right(patch) if (patch.hiddenFilms ++ patch.disabledCinemas).exists(_.size > MaxHiddenPerCountry) =>
-            EntityTooLarge(Json.obj("error" -> s"at most $MaxHiddenPerCountry entries per set"))
-          case Right(patch) =>
-            userStateRepository.patchLegacyState(userId, patch, clock.instant())
+        languageFrom(request.body) match {
+          case Left(reason)  => BadRequest(Json.obj("error" -> reason))
+          case Right(None)   => readState(userId)(state => Ok(toJson(state)))
+          case Right(Some(language)) =>
+            userStateRepository.setLanguage(userId, language, clock.instant())
               .fold(ServiceUnavailable(Json.obj("error" -> "state could not be saved — retry")))(state => Ok(toJson(state)))
         }
     })
@@ -293,14 +279,11 @@ object UserStateController {
    *  what it bounds is a script growing one row toward Mongo's 16 MB limit. */
   val MaxHiddenPerCountry = 5000
 
-  /** A body carrying `language` and nothing else — the one PUT that isn't a
-   *  legacy set sync. */
-  def isLanguageOnly(body: JsValue): Boolean =
-    body.asOpt[play.api.libs.json.JsObject].exists(_.keys == Set("language"))
-
   /** Render a `UserState` to its wire JSON. Sorted lists at the wire
    *  edge so the response is deterministic (helps caching and makes
-   *  spec assertions stable); the in-memory model stays a Set.
+   *  spec assertions stable); the in-memory model stays a Set. The two
+   *  global sets are frozen — kept only for the pre-2.0.9 decoders (see the
+   *  class doc).
    */
   def toJson(state: UserState): JsValue = Json.obj(
     "hiddenFilms"     -> state.hiddenFilms.toSeq.sorted,
@@ -330,46 +313,20 @@ object UserStateController {
   def parseHttpDate(value: String): Option[Instant] =
     scala.util.Try(DateTimeFormatter.RFC_1123_DATE_TIME.parse(value)).map(Instant.from).toOption
 
-  /** Parse a wire JSON into the PARTIAL update it asks for: a field present in
-   *  the body overwrites that set, a field the body omits keeps the stored
-   *  value (and a present-but-empty array clears it). This lets a client send
-   *  only the fields it owns without re-shipping, and without wiping the ones
-   *  it doesn't model — the rule that mattered when the web carried two fields
-   *  the mobile apps did not, and that stays because the next such field
-   *  should not have to rediscover it. `hiddenFilmsByCountry` isn't
-   *  expressible here at all, so a legacy PUT can never touch it. Wrong shape
-   *  (non-array value, non-string element), an unknown language, or an entry
-   *  longer than [[MaxTitleLength]] returns Left with a hint.
-   */
-  def fromJson(body: JsValue): Either[String, LegacyStatePatch] = {
-    def stringSet(field: String): Either[String, Option[Set[String]]] =
-      (body \ field).toOption match {
-        case None          => Right(None)
-        case Some(jsArray) =>
-          jsArray.asOpt[Seq[String]] match {
-            case Some(seq) if seq.exists(_.length > MaxTitleLength) => Left(s"$field entries must be at most $MaxTitleLength characters")
-            case Some(seq) => Right(Some(seq.toSet))
-            case None      => Left(s"$field must be an array of strings")
-          }
-      }
-    // Present and a known code → overwrite; present and `null` → clear
-    // (a client that wants to give up its pick sends this, though none do
-    // today); absent → keep the stored value, same rule as the sets above.
-    def language: Either[String, Option[Option[String]]] =
-      (body \ "language").toOption match {
-        case None            => Right(None)
-        case Some(JsNull)    => Right(Some(None))
-        case Some(jsValue) =>
-          jsValue.asOpt[String] match {
-            case Some(code) if LanguageNames.Codes.contains(code) => Right(Some(Some(code)))
-            case Some(code) => Left(s"language must be one of ${LanguageNames.Codes.mkString(", ")}, got $code")
-            case None       => Left("language must be a string")
-          }
-      }
-    for {
-      hf   <- stringSet("hiddenFilms")
-      dc   <- stringSet("disabledCinemas")
-      lang <- language
-    } yield LegacyStatePatch(hf, dc, lang)
-  }
+  /** The language change a `PUT /api/me/state` body asks for: `None` when the
+   *  body carries no `language` (keep the stored pick), `Some(None)` for an
+   *  explicit `null` (clear it — no client sends one today), `Some(Some(code))`
+   *  for a known code. Left with a hint for an unknown code or a non-string.
+   *  Every other key is ignored — see `put()`. */
+  def languageFrom(body: JsValue): Either[String, Option[Option[String]]] =
+    (body \ "language").toOption match {
+      case None          => Right(None)
+      case Some(JsNull)  => Right(Some(None))
+      case Some(jsValue) =>
+        jsValue.asOpt[String] match {
+          case Some(code) if LanguageNames.Codes.contains(code) => Right(Some(Some(code)))
+          case Some(code) => Left(s"language must be one of ${LanguageNames.Codes.mkString(", ")}, got $code")
+          case None       => Left("language must be a string")
+        }
+    }
 }

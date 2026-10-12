@@ -1,6 +1,5 @@
 package controllers
 
-import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.UserState
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -8,8 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsNull, Json}
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
-import services.metrics.LegacyUserStateMetrics
-import services.users.{AccountDeletion, HiddenFilmsChange, InMemoryUserRepository, LegacyStatePatch, InMemoryUserStateRepository, NoUserChangeTimeCache, UserChangeTimeCache}
+import services.users.{AccountDeletion, HiddenFilmsChange, InMemoryUserRepository, InMemoryUserStateRepository, NoUserChangeTimeCache, UserChangeTimeCache}
 
 import java.time.Instant
 
@@ -32,13 +30,12 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     prefilled:       Option[UserState] = None,
     changeTimeCache: UserChangeTimeCache = NoUserChangeTimeCache,
     stateRepository: InMemoryUserStateRepository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned),
-    legacyMetrics:   LegacyUserStateMetrics = new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", specClock),
     userRepository:  InMemoryUserRepository = new InMemoryUserRepository
   ): (UserStateController, InMemoryUserStateRepository, InMemoryUserRepository) = {
     userRepository.upsert(testUser("u1")) // the suite's default signed-in identity
     prefilled.foreach(stateRepository.upsert)
     val accountDeletion = new AccountDeletion(userRepository, stateRepository)
-    (new UserStateController(Helpers.stubControllerComponents(), stateRepository, accountDeletion, changeTimeCache, legacyMetrics, userRepository, specClock), stateRepository, userRepository)
+    (new UserStateController(Helpers.stubControllerComponents(), stateRepository, accountDeletion, changeTimeCache, userRepository, specClock), stateRepository, userRepository)
   }
 
   /** Counts `find` calls so a fast-path test can prove storage was never
@@ -348,7 +345,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
       Instant.parse("2026-05-19T12:00:00.123Z")
   }
 
-  "a legacy PUT /api/me/state" should "not erase, nor be erased by, per-title hides racing it" in {
+  "a language PUT /api/me/state" should "not erase, nor be erased by, per-title hides racing it" in {
     val (ctl, repository, _) = fixture()
     val pool   = java.util.concurrent.Executors.newFixedThreadPool(16)
     val titles = (1 to 32).map(i => s"Film $i")
@@ -356,33 +353,22 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
       val writes = titles.flatMap(t => Seq(
         pool.submit(() => status(ctl.hideFilm("pl", t)(FakeRequest("PUT", "/api/me/pl/hidden-films/x").withSession("userId" -> "u1")))),
         pool.submit(() => status(ctl.put()(FakeRequest("PUT", "/api/me/state").withSession("userId" -> "u1")
-          .withBody(Json.obj("language" -> "en", "disabledCinemas" -> Json.arr("Kino"))))))))
+          .withBody(Json.obj("language" -> "en")))))))
       writes.map(_.get).distinct shouldBe Seq(OK)
     } finally pool.shutdown()
 
     val stored = repository.find("u1").value
     stored.hiddenFilmsByCountry("pl") shouldBe titles.toSet
     stored.language shouldBe Some("en")
-    stored.disabledCinemas shouldBe Set("Kino")
   }
 
   it should "503 when the store could not write at all" in {
     val failing = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned) {
-      override def patchLegacyState(userId: String, patch: LegacyStatePatch, now: Instant): Option[UserState] = None
+      override def setLanguage(userId: String, language: Option[String], now: Instant): Option[UserState] = None
     }
     val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), stateRepository = failing)
     val result = ctl.put()(FakeRequest("PUT", "/api/me/state").withSession("userId" -> "u1").withBody(Json.obj("language" -> "en")))
     status(result) shouldBe SERVICE_UNAVAILABLE
-  }
-
-  it should "400 an entry longer than any real title, and 413 a set past the per-set bound — storing nothing" in {
-    val (ctl, repository, _) = fixture(Some(storedFor("pl", "Madagaskar")))
-    def put(body: play.api.libs.json.JsObject) =
-      status(ctl.put()(FakeRequest("PUT", "/api/me/state").withSession("userId" -> "u1").withBody(body)))
-
-    put(Json.obj("hiddenFilms" -> Json.arr("x" * (UserStateController.MaxTitleLength + 1)))) shouldBe BAD_REQUEST
-    put(Json.obj("disabledCinemas" -> (0 to UserStateController.MaxHiddenPerCountry).map(i => s"Kino $i"))) shouldBe REQUEST_ENTITY_TOO_LARGE
-    repository.find("u1").value shouldBe storedFor("pl", "Madagaskar")
   }
 
   // ── GET /api/me/:country/hidden-films — userChangeTimeCache fast path ────
@@ -537,82 +523,44 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     repository.find("anyone")         shouldBe empty
   }
 
-  // The usage-metric records EVERY call, even a 401 — see LegacyUserStateMetrics:
-  // "something still calls this URL at all" is the retirement question, and an
-  // anonymous/malformed call is still evidence of that.
-  it should "record the call on the legacy-usage gauge even when anonymous" in {
-    val registry = new PrometheusRegistry()
-    val metrics  = new LegacyUserStateMetrics(registry, "pl", specClock)
-    val (ctl, _, _) = fixture(legacyMetrics = metrics)
-    ctl.put()(FakeRequest("PUT", "/api/me/state").withBody(Json.obj("hiddenFilms" -> Json.arr("X"))))
-
-    services.metrics.PrometheusExposition.render(registry) should include ("kinowo_web_legacy_userstate_put_last_called_seconds")
-  }
-
-  // `language` has no granular successor and the web client itself PUTs it
-  // here on every explicit pick (shared.js's `pushStateToServer`) — that is
-  // the endpoint's intended, ongoing use, not a legacy client. Counting it
-  // would pin the retirement gauge at "called just now" forever and hide
-  // whether any client still sends the sets the granular API replaced.
-  it should "leave the legacy-usage gauge alone for a language-only body" in {
-    val registry = new PrometheusRegistry()
-    val metrics  = new LegacyUserStateMetrics(registry, "pl", specClock)
-    val (ctl, _, _) = fixture(legacyMetrics = metrics)
-    status(ctl.put()(FakeRequest("PUT", "/api/me/state").withSession("userId" -> "u1")
-      .withBody(Json.obj("language" -> "en")))) shouldBe OK
-
-    services.metrics.PrometheusExposition.render(registry) should not include ("kinowo_web_legacy_userstate_put_last_called_seconds{")
-  }
-
-  it should "replace the user's state with the request body" in {
-    val initial = UserState("u1", Set("OLD"), Set.empty, specClock.instant())
+  // The sets' half of this PUT is retired: every client since 2.0.9 (and the
+  // web) sends `{"language": …}` alone. An ancient app build may still send its
+  // hiddenFilms/disabledCinemas alongside — its language must still land, and
+  // the sets it carries must not be written.
+  it should "save the language a legacy body carries, writing neither set it also sends" in {
+    val initial = UserState("u1", Set("OLD HIDE"), Set("OLD CINEMA"), specClock.instant())
     val (ctl, repository, _) = fixture(Some(initial))
-    val request = FakeRequest("PUT", "/api/me/state")
-      .withSession("userId" -> "u1")
-      .withBody(Json.obj(
-        "hiddenFilms"     -> Json.arr("Hidden A")
-      ))
+    val request = FakeRequest("PUT", "/api/me/state").withSession("userId" -> "u1")
+      .withBody(Json.obj("language" -> "en", "hiddenFilms" -> Json.arr("New Hide"), "disabledCinemas" -> Json.arr()))
 
-    val result = ctl.put()(request)
+    status(ctl.put()(request)) shouldBe OK
+    val stored = repository.find("u1").value
+    stored.language        shouldBe Some("en")
+    stored.hiddenFilms     shouldBe Set("OLD HIDE")
+    stored.disabledCinemas shouldBe Set("OLD CINEMA")
+  }
+
+  it should "ignore a malformed or oversized set rather than refuse the language beside it" in {
+    val (ctl, repository, _) = fixture()
+    def put(body: play.api.libs.json.JsObject) =
+      status(ctl.put()(FakeRequest("PUT", "/api/me/state").withSession("userId" -> "u1").withBody(body)))
+
+    put(Json.obj("language" -> "de", "hiddenFilms" -> "not-an-array")) shouldBe OK
+    repository.find("u1").value.language shouldBe Some("de")
+    put(Json.obj("language" -> "es", "disabledCinemas" -> (0 to UserStateController.MaxHiddenPerCountry).map(i => s"Kino $i"))) shouldBe OK
+    repository.find("u1").value.language shouldBe Some("es")
+    repository.find("u1").value.disabledCinemas shouldBe empty
+  }
+
+  it should "write nothing for a body that carries no language, answering with the stored state" in {
+    val initial = UserState("u1", Set("H"), Set("C"), specClock.instant(), language = Some("de"))
+    val (ctl, repository, _) = fixture(Some(initial))
+    val result = ctl.put()(FakeRequest("PUT", "/api/me/state").withSession("userId" -> "u1")
+      .withBody(Json.obj("hiddenFilms" -> Json.arr("X"))))
+
     status(result) shouldBe OK
-
-    val stored = repository.find("u1").value
-    stored.hiddenFilms     shouldBe Set("Hidden A")
-    stored.disabledCinemas shouldBe empty
-  }
-
-  // THE RULE OUTLIVES THE FIELDS IT WAS WRITTEN FOR. This covered a client that sent only the
-  // sets it modelled while the web carried two more (`selectedMovies` / `favouriteRooms`, retired
-  // with the plan page). Both remaining fields are now modelled by every client, so the omission
-  // is constructed rather than incidental — but the rule is the contract, and the next field added
-  // on one platform before the other depends on it.
-  it should "preserve a field the body omits, rather than clearing it" in {
-    val initial = UserState(
-      userId          = "u1",
-      hiddenFilms     = Set("OLD HIDE"),
-      disabledCinemas = Set("OLD CINEMA"),
-      updatedAt       = specClock.instant()
-    )
-    val (ctl, repository, _) = fixture(Some(initial))
-    val request = FakeRequest("PUT", "/api/me/state")
-      .withSession("userId" -> "u1")
-      .withBody(Json.obj("hiddenFilms" -> Json.arr("New Hide")))
-
-    status(ctl.put()(request)) shouldBe OK
-    val stored = repository.find("u1").value
-    stored.hiddenFilms     shouldBe Set("New Hide")    // present → replaced
-    stored.disabledCinemas shouldBe Set("OLD CINEMA")  // absent  → preserved
-  }
-
-  it should "still clear a field when the body sends it as an explicit empty array" in {
-    val initial = UserState("u1", Set("H"), Set("C"), specClock.instant())
-    val (ctl, repository, _) = fixture(Some(initial))
-    val request = FakeRequest("PUT", "/api/me/state")
-      .withSession("userId" -> "u1")
-      .withBody(Json.obj("disabledCinemas" -> Json.arr()))
-    status(ctl.put()(request)) shouldBe OK
-    repository.find("u1").value.disabledCinemas shouldBe empty    // present-but-empty → cleared
-    repository.find("u1").value.hiddenFilms     shouldBe Set("H") // absent → preserved
+    contentAsJson(result) shouldBe UserStateController.toJson(initial)
+    repository.find("u1").value shouldBe initial
   }
 
   it should "set a language pick" in {
@@ -624,7 +572,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     repository.find("u1").value.language shouldBe Some("es")
   }
 
-  it should "preserve a stored language the body omits, same as the sets" in {
+  it should "preserve a stored language the body omits" in {
     val initial = UserState("u1", Set.empty, Set.empty, specClock.instant(), language = Some("de"))
     val (ctl, repository, _) = fixture(Some(initial))
     val request = FakeRequest("PUT", "/api/me/state")
@@ -659,20 +607,20 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val (ctl, _, _) = fixture()
     val request = FakeRequest("PUT", "/api/me/state")
       .withSession("userId" -> "u1")
-      .withBody(Json.obj("hiddenFilms" -> Json.arr("A")))
+      .withBody(Json.obj("language" -> "pl"))
     val result = ctl.put()(request)
 
-    (contentAsJson(result) \ "hiddenFilms").as[Seq[String]] shouldBe Seq("A")
+    (contentAsJson(result) \ "language").as[String] shouldBe "pl"
   }
 
-  it should "400 a malformed payload (wrong type) and not touch storage" in {
+  it should "400 a language that is not a string and not touch storage" in {
     val (ctl, repository, _) = fixture()
     val request = FakeRequest("PUT", "/api/me/state")
       .withSession("userId" -> "u1")
-      .withBody(Json.obj("hiddenFilms" -> "not-an-array"))
+      .withBody(Json.obj("language" -> Json.arr("en")))
     val result = ctl.put()(request)
     status(result)               shouldBe BAD_REQUEST
-    (contentAsJson(result) \ "error").as[String] should include ("hiddenFilms")
+    (contentAsJson(result) \ "error").as[String] should include ("language")
     repository.find("u1")              shouldBe empty
   }
 
@@ -698,28 +646,5 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val sess = session(result)
     sess.get("userId")           shouldBe empty
     sess.get("extra")            shouldBe empty
-  }
-
-  // ── Pure helpers (also covered indirectly by the action specs above) ────
-
-  "UserStateController.fromJson" should "keep base fields the body omits and overwrite the ones it sends" in {
-    val base = UserState("u1", Set("H"), Set("D"), specClock.instant())
-    UserStateController.fromJson(Json.obj("hiddenFilms" -> Json.arr("H2"))).map(_.applyTo(base)) match {
-      case Right(s) =>
-        s.hiddenFilms     shouldBe Set("H2")  // present → overwritten
-        s.disabledCinemas shouldBe Set("D")   // absent  → preserved
-      case Left(reason) => fail(s"expected Right, got Left($reason)")
-    }
-  }
-
-  // `fromJson` has no field for hiddenFilmsByCountry at all — this legacy body can't touch it in
-  // either direction. Were the patch ever to build a fresh `UserState` instead of copying the
-  // stored one, the constructor's `Map.empty` default would silently wipe every per-country hide.
-  it should "never wipe hiddenFilmsByCountry — a field this legacy body can't even express" in {
-    val base = UserState("u1", Set("H"), Set("D"), specClock.instant(), Map("pl" -> Set("Kept Across A Legacy PUT")))
-    UserStateController.fromJson(Json.obj("hiddenFilms" -> Json.arr("H2"))).map(_.applyTo(base)) match {
-      case Right(s)      => s.hiddenFilmsByCountry shouldBe base.hiddenFilmsByCountry
-      case Left(reason)  => fail(s"expected Right, got Left($reason)")
-    }
   }
 }

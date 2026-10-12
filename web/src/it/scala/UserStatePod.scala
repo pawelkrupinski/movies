@@ -1,13 +1,11 @@
 package integration
 
 import controllers.UserStateController
-import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.User
 import org.mongodb.scala.MongoDatabase
 import play.api.libs.json.Json
 import play.api.mvc.Result
 import play.api.test.{FakeRequest, Helpers}
-import services.metrics.LegacyUserStateMetrics
 import services.users._
 
 import java.time.{Clock, Instant}
@@ -54,7 +52,7 @@ object UserStatePod {
    *  `HiddenFilmsConcurrentWritesIntegrationSpec`, which drives one pod's controller. */
   def controller(states: UserStateRepository, users: UserRepository, changeTimes: UserChangeTimeCache, clock: Clock): UserStateController =
     new UserStateController(Helpers.stubControllerComponents(), states, new AccountDeletion(users, states), changeTimes,
-      new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", clock), users, clock)
+      users, clock)
 
   /** A user row for `id`, so `SignedInUser` accepts a session naming it. Returns `id`. */
   def signIn(users: UserRepository, id: String): String = {

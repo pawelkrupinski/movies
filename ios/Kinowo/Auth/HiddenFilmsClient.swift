@@ -20,10 +20,9 @@ enum HiddenFilmsFetchResult: Equatable {
 
 /// The per-country granular hidden-films API — `GET`/`PUT`/`DELETE
 /// /api/me/:country/hidden-films(/:title)`. Replaces the old bulk
-/// `UserStateClient` (`GET`/`PUT /api/me/state`), which is now UNUSED by
-/// this app build: the server keeps serving it for older builds that
-/// haven't updated (it feeds a retirement-usage gauge there), but nothing
-/// here calls it any more. `disabledCinemas` never appears here at all —
+/// `UserStateClient` (`GET`/`PUT /api/me/state`, deleted): that endpoint now
+/// carries only the language pick (`LanguageClient`) — the server ignores any
+/// hiddenFilms an older build still PUTs there. `disabledCinemas` never appears here at all —
 /// it stopped being a server-synced field before this client existed (see
 /// `UserPreferences.setDisabledCinemas`).
 protocol HiddenFilmsClient: AnyObject {

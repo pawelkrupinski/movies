@@ -48,10 +48,8 @@ final class HttpLanguageClient: LanguageClient {
         return try JSONDecoder().decode(WireLanguage.self, from: data).language
     }
 
-    // PUT /api/me/state is a partial update — a field this body omits keeps
-    // its stored value, so sending `language` alone can never wipe the
-    // hiddenFilms/disabledCinemas an older client (or this app, before this
-    // split) left there. `language: String?`'s synthesized `Codable`
+    // PUT /api/me/state writes only `language` (the server ignores any other
+    // key). `language: String?`'s synthesized `Codable`
     // conformance already does the right thing with no extra code: encoding
     // OMITS the key when nil rather than sending an explicit JSON `null` —
     // which matters, because the server treats an absent key as "leave the

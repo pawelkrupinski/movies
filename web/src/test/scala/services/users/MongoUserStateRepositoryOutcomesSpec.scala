@@ -8,7 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
-import services.metrics.{LegacyUserStateMetrics, PrometheusExposition, UserStateWriteMetrics}
+import services.metrics.{PrometheusExposition, UserStateWriteMetrics}
 import services.users.UserStateWriteOutcomes.{Endpoint, Outcome}
 
 import java.time.Instant
@@ -37,13 +37,13 @@ class MongoUserStateRepositoryOutcomesSpec extends AnyFlatSpec with Matchers {
     store.changeHiddenFilms("u", "pl", HiddenFilmsChange.Hide("Film", 10), now) shouldBe None
     store.changeHiddenFilms("u", "pl", HiddenFilmsChange.Unhide("Film"), now) shouldBe None
     store.changeHiddenFilms("u", "pl", HiddenFilmsChange.Clear, now) shouldBe None
-    store.patchLegacyState("u", LegacyStatePatch(None, None, Some(Some("en"))), now) shouldBe None
+    store.setLanguage("u", Some("en"), now) shouldBe None
 
     seen.toList shouldBe List(
       Endpoint.Hide      -> Outcome.Unavailable,
       Endpoint.Unhide    -> Outcome.Unavailable,
       Endpoint.Clear     -> Outcome.Unavailable,
-      Endpoint.LegacyPut -> Outcome.Unavailable)
+      Endpoint.Language -> Outcome.Unavailable)
   }
 
   "a write the Mongo driver throws on" should "answer 503 and count as store_failure on the exported counter" in {
@@ -61,7 +61,7 @@ class MongoUserStateRepositoryOutcomesSpec extends AnyFlatSpec with Matchers {
     users.upsert(User(id = "u", provider = "google", providerSub = "G-u", email = None, displayName = None,
       avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH))
     val controller = new UserStateController(Helpers.stubControllerComponents(), store,
-      new AccountDeletion(users, store), NoUserChangeTimeCache, new LegacyUserStateMetrics(registry, "pl", clock), users, clock)
+      new AccountDeletion(users, store), NoUserChangeTimeCache, users, clock)
 
     val result = controller.hideFilm("pl", "Film")(FakeRequest("PUT", "/api/me/pl/hidden-films/Film").withSession("userId" -> "u"))
 

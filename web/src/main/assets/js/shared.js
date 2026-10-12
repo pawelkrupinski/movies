@@ -2349,9 +2349,8 @@
   //
   // HIDDEN FILMS ONLY — disabledCinemas stopped being a server-synced field
   // (it's device-local now, see `setDisabledCinemas`) and this section never
-  // touches the legacy `/api/me/state` endpoints at all any more (neither
-  // read nor write) — those stay running, unchanged, purely for whatever
-  // older app build still calls them.
+  // touches `/api/me/state` at all (neither read nor write) — that endpoint
+  // now carries only the language pick (see below).
   //
   // The granular per-country API (`GET`/`PUT`/`DELETE
   // /api/me/:country/hidden-films(/:title)`) replaces the old single bulk

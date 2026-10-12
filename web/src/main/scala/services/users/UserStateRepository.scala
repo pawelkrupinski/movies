@@ -17,11 +17,11 @@ import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
- * Per-user state store — hidden films + disabled cinemas + /plan picks
- * one document per user. Read on every
- * page load for authenticated users (so the rendered page reflects their
- * server-side state, not stale localStorage); written when they hide a
- * film / disable a cinema / change their /plan state.
+ * Per-user state store — per-country hidden films and the language pick,
+ * one document per user. Read by `/api/me/state` and
+ * `/api/me/:country/hidden-films`; written when the user hides or unhides a
+ * film, or picks a language. The global `hiddenFilms` / `disabledCinemas`
+ * sets are no longer written by anything — see `UserState`.
  *
  * Trait + Mongo impl + in-memory impl mirror `UserRepository`.
  */
@@ -33,16 +33,14 @@ trait UserStateRepository {
    *  read — never `None`, which the controller would serve as an empty state. */
   def find(userId: String): Option[UserState]
 
-  /** Set the fields a legacy `PUT /api/me/state` body carried (see
-   *  [[LegacyStatePatch]]) in ONE atomic step — creating the row if there is
-   *  none — stamp `updatedAt` per `UserState.nextUpdatedAt` from `now`, and
-   *  return the row as it stands right after. Fields the patch leaves out, and
-   *  `hiddenFilmsByCountry` always, are untouched — so a hide landing at the
-   *  same moment survives it (the whole-row read-modify-write this replaced
-   *  had to detect and retry that race, and 503'd once it lost five in a row).
+  /** Set `userId`'s language pick (`None` clears it) in ONE atomic step —
+   *  creating the row if there is none — stamp `updatedAt` per
+   *  `UserState.nextUpdatedAt` from `now`, and return the row as it stands
+   *  right after. Nothing else on the row is touched, so a hide landing at the
+   *  same moment survives it.
    *
    *  `None` only when the store could not perform the write at all. */
-  def patchLegacyState(userId: String, patch: LegacyStatePatch, now: Instant): Option[UserState]
+  def setLanguage(userId: String, language: Option[String], now: Instant): Option[UserState]
 
   /** Apply `change` to `userId`'s `country` bucket in ONE atomic step —
    *  creating the row if there is none — and return the row as it stands
@@ -166,8 +164,8 @@ class MongoUserStateRepository(
     atomically(userId, s"changeHiddenFilms($userId, $country)", Endpoint.of(change),
       MongoUserStateRepository.hiddenFilmsPipeline(country, change, now))
 
-  def patchLegacyState(userId: String, patch: LegacyStatePatch, now: Instant): Option[UserState] =
-    atomically(userId, s"patchLegacyState($userId)", Endpoint.LegacyPut, MongoUserStateRepository.legacyStatePipeline(patch, now))
+  def setLanguage(userId: String, language: Option[String], now: Instant): Option[UserState] =
+    atomically(userId, s"setLanguage($userId)", Endpoint.Language, MongoUserStateRepository.languagePipeline(language, now))
 
   /** Run `update` against `userId`'s row as one `findOneAndUpdate` — upserting
    *  when there is no row — and answer with the row right after it, reporting
@@ -298,10 +296,9 @@ object MongoUserStateRepository {
   private def stamped(now: Instant): BsonDocument =
     op("$max", new BsonDateTime(now.toEpochMilli), op("$add", field("updatedAt"), new BsonInt32(1)))
 
-  /** A legacy set: `replacement` when given, else the stored one — or empty
-   *  on the upsert's insert, since the codec needs both sets on every row. */
-  private def legacySet(name: String, replacement: Option[Set[String]] = None): Field[BsonValue] =
-    Field(name, replacement.fold[BsonValue](orEmpty(name))(v => literal(strings(v))))
+  /** A legacy global set, nothing writes any more: the stored one, or empty on
+   *  the upsert's insert, since the codec needs both sets on every row. */
+  private def legacySet(name: String): Field[BsonValue] = Field(name, orEmpty(name))
 
   /** [[HiddenFilmsChange.applyTo]] plus the `updatedAt` stamp — neither applied
    *  when the change declines. */
@@ -327,15 +324,15 @@ object MongoUserStateRepository {
     ).toBsonDocument)
   }
 
-  /** [[LegacyStatePatch.applyTo]] plus the `updatedAt` stamp. A cleared
-   *  language is `$$REMOVE`d — the codec reads an absent field as `None`. */
-  private[users] def legacyStatePipeline(patch: LegacyStatePatch, now: Instant): Seq[BsonDocument] = {
-    val language = patch.language.map(pick =>
-      Field[BsonValue]("language", pick.fold[BsonValue](new BsonString("$$REMOVE"))(l => literal(new BsonString(l)))))
-    val fields = Seq(legacySet("hiddenFilms", patch.hiddenFilms), legacySet("disabledCinemas", patch.disabledCinemas)) ++
-      language :+ Field[BsonValue]("updatedAt", stamped(now))
-    Seq(Aggregates.set(fields*).toBsonDocument)
-  }
+  /** The language pick plus the `updatedAt` stamp. A cleared language is
+   *  `$$REMOVE`d — the codec reads an absent field as `None`. */
+  private[users] def languagePipeline(language: Option[String], now: Instant): Seq[BsonDocument] =
+    Seq(Aggregates.set(
+      Field[BsonValue]("language", language.fold[BsonValue](new BsonString("$$REMOVE"))(l => literal(new BsonString(l)))),
+      Field[BsonValue]("updatedAt", stamped(now)),
+      legacySet("hiddenFilms"),
+      legacySet("disabledCinemas")
+    ).toBsonDocument)
 }
 
 class InMemoryUserStateRepository(clock: java.time.Clock) extends UserStateRepository {
@@ -355,11 +352,11 @@ class InMemoryUserStateRepository(clock: java.time.Clock) extends UserStateRepos
     published(state)
   }
 
-  def patchLegacyState(userId: String, patch: LegacyStatePatch, now: Instant): Option[UserState] = {
+  def setLanguage(userId: String, language: Option[String], now: Instant): Option[UserState] = {
     val after = synchronized {
       val stored = store.get(userId)
-      val next   = patch.applyTo(stored.getOrElse(UserState.empty(userId, now)))
-        .copy(updatedAt = UserState.nextUpdatedAt(stored.map(_.updatedAt), now))
+      val next   = stored.getOrElse(UserState.empty(userId, now))
+        .copy(language = language, updatedAt = UserState.nextUpdatedAt(stored.map(_.updatedAt), now))
       store(userId) = next
       next
     }

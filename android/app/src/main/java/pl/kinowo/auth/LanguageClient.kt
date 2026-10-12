@@ -61,10 +61,8 @@ class HttpLanguageClient(
         }
     }
 
-    // PUT /api/me/state is a partial update — a field this body omits keeps
-    // its stored value, so sending `language` alone can never wipe the
-    // hiddenFilms/disabledCinemas an older client (or this app, before this
-    // split) left there. `language`'s default (null) plus this `Json`'s
+    // PUT /api/me/state writes only `language` (the server ignores any other
+    // key). `language`'s default (null) plus this `Json`'s
     // default `encodeDefaults = false` OMITS the key entirely rather than
     // sending an explicit `null` when there's nothing to push — this method
     // is never actually called with one, but the wire shape stays correct

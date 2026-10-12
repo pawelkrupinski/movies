@@ -870,70 +870,6 @@
       ]
     },
     {
-      "type": "stat",
-      "title": "Legacy PUT /api/me/state \u2014 time since last call",
-      "description": "How long ago the legacy full-state PUT /api/me/state last carried a hidden-films or disabled-cinemas set, by country (the web's own language-only PUT is its intended use and is not counted -- fixed 2026-09-23, before which this read 'just now' for ever). Read across pod restarts with max_over_time over 60 days: the gauge lives in the pod's memory and a deploy forgets it, so the raw gauge could never show more than one pod's uptime. GREEN at 30 days is the retirement signal: no shipped client still syncs sets through this endpoint. No value = no such call in 60 days (or since the gauge shipped). Pair with the request-rate-by-route panel for volume.",
-      "id": 16,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "local-prometheus"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 59,
-        "w": 12,
-        "h": 6
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "dtdurations",
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "yellow",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 2592000
-              }
-            ]
-          },
-          "noValue": "no legacy set-sync call in 60 days"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "horizontal",
-        "textMode": "value_and_name",
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "time() - max by (country) (max_over_time(kinowo_web_legacy_userstate_put_last_called_seconds[60d]))",
-          "legendFormat": "{{country}}",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "local-prometheus"
-          }
-        }
-      ]
-    },
-    {
       "type": "timeseries",
       "title": "Paid egress (Zyte / Decodo) \u2014 requests by provider and outcome",
       "description": "Every request the workers sent through a PAID egress provider, by provider and outcome (kinowo_worker_paid_egress_total). Zyte is billed per request and carries only Kino Kryterium's scrapes and Odeon's twice-daily token harvest, so it should stay a thin line; a Zyte line that is all http_401 is a refused key. Breaker fast-fails are not counted: they send nothing.",
@@ -1053,7 +989,7 @@
     {
       "type": "timeseries",
       "title": "User-state writes by endpoint and outcome",
-      "description": "Every atomic write to a signed-in visitor's state (kinowo_web_user_state_writes_total): hide / unhide / clear per country, and the legacy full-state PUT. `conflict` is two first writes for one user racing -- harmless now the writes are atomic, and it succeeded on the retry. `store_failure` (Mongo threw) and `unavailable` (no users store) are the two ways a write answers 503; UserStateWritesFailing (web-errors.rules) alerts on the 503s per /api/me route. NOT scoped by $country (this is the inbound half).",
+      "description": "Every atomic write to a signed-in visitor's state (kinowo_web_user_state_writes_total): hide / unhide / clear per country, and the language pick (PUT /api/me/state). `conflict` is two first writes for one user racing -- harmless now the writes are atomic, and it succeeded on the retry. `store_failure` (Mongo threw) and `unavailable` (no users store) are the two ways a write answers 503; UserStateWritesFailing (web-errors.rules) alerts on the 503s per /api/me route. NOT scoped by $country (this is the inbound half).",
       "id": 19,
       "datasource": {
         "type": "prometheus",

@@ -3,7 +3,7 @@ package deploy
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.{CacheOccupancy, LegacyUserStateMetrics, UserStateIndexMetrics, UserStateWriteMetrics, WebCacheMetrics, WebDecodeFailureMetrics, WebHostMetrics, WebHttpMetrics}
+import services.metrics.{CacheOccupancy, UserStateIndexMetrics, UserStateWriteMetrics, WebCacheMetrics, WebDecodeFailureMetrics, WebHostMetrics, WebHttpMetrics}
 
 import java.io.File
 import scala.jdk.CollectionConverters._
@@ -46,7 +46,6 @@ class GrafanaWebMetricCoverageSpec extends AnyFlatSpec with Matchers {
     new WebHttpMetrics(registry, "pl")
     new WebHostMetrics(registry, "pl")
     new WebCacheMetrics(registry, "pl", Seq("probe" -> (() => CacheOccupancy(entries = 0L))))
-    new LegacyUserStateMetrics(registry, "pl", java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
     new UserStateWriteMetrics(registry, "pl")
     new UserStateIndexMetrics(registry, "pl")
     new WebDecodeFailureMetrics(registry, "pl")

@@ -20,13 +20,13 @@ class UserStateWriteMetricsSpec extends AnyFlatSpec with Matchers {
     val metrics  = new UserStateWriteMetrics(registry, "pl")
     metrics.record(Endpoint.Hide, Outcome.Ok)
     metrics.record(Endpoint.Hide, Outcome.Conflict)
-    metrics.record(Endpoint.LegacyPut, Outcome.StoreFailure)
-    metrics.record(Endpoint.LegacyPut, Outcome.StoreFailure)
+    metrics.record(Endpoint.Language, Outcome.StoreFailure)
+    metrics.record(Endpoint.Language, Outcome.StoreFailure)
 
     val text = PrometheusExposition.render(registry)
     text should include ("""kinowo_web_user_state_writes_total{country="pl",endpoint="hide",outcome="ok"} 1""")
     text should include ("""kinowo_web_user_state_writes_total{country="pl",endpoint="hide",outcome="conflict"} 1""")
-    text should include ("""kinowo_web_user_state_writes_total{country="pl",endpoint="legacy_put",outcome="store_failure"} 2""")
+    text should include ("""kinowo_web_user_state_writes_total{country="pl",endpoint="language",outcome="store_failure"} 2""")
     text should include ("""kinowo_web_user_state_writes_total{country="pl",endpoint="unhide",outcome="ok"} 0""")
   }
 }

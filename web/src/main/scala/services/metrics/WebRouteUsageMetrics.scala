@@ -10,7 +10,7 @@ import scala.jdk.CollectionConverters._
 
 /**
  * The retirement signal for EVERY route: when each route pattern was last called,
- * by which kind of client — the general form of [[LegacyUserStateMetrics]].
+ * by which kind of client.
  *
  * `kinowo_web_http_requests_total` already says HOW OFTEN a route is hit; it can't
  * say "safe to retire", for two reasons this closes:

@@ -20,8 +20,11 @@ import java.time.Instant
 // (tests, mostly) keeps compiling.
 case class UserState(
   userId:               String,
-  hiddenFilms:          Set[String],             // legacy — see `UserStateController.get()`/`put()`
-  disabledCinemas:      Set[String],              // legacy — cinema-hiding is device-local now
+  // Both legacy global sets are FROZEN: nothing writes them since `PUT /api/me/state` became
+  // language-only. They stay on the row (and in `GET /api/me/state`) because the pre-2.0.9 iOS
+  // decoder required `hiddenFilms`; dropping them is a schema change for a later cleanup.
+  hiddenFilms:          Set[String],
+  disabledCinemas:      Set[String],
   updatedAt:            Instant,
   hiddenFilmsByCountry: Map[String, Set[String]] = Map.empty,
   language:             Option[String] = None

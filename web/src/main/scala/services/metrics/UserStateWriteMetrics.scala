@@ -22,7 +22,7 @@ class UserStateWriteMetrics(registry: PrometheusRegistry, country: String) exten
   private val writes: Counter = Counter.builder()
     .name("kinowo_web_user_state_writes")
     .help("Atomic writes to a signed-in visitor's state since boot, by country, endpoint (hide / unhide / " +
-      "clear / legacy_put) and outcome (ok; conflict = raced another first write and succeeded on the retry; " +
+      "clear / language) and outcome (ok; conflict = raced another first write and succeeded on the retry; " +
       "store_failure = the store threw, answered 503; unavailable = no users store, answered 503).")
     .labelNames("country", "endpoint", "outcome")
     .register(registry)

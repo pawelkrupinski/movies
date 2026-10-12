@@ -159,7 +159,7 @@ class SharedUsersMigrationSpec extends AnyFlatSpec with Matchers {
     val changeStreamLiveness                          = services.movies.ChangeStreamLiveness.unwatched(_root_.tools.SpecClock.Pinned)
     def enabled                                       = true
     def find(userId: String): Option[UserState]       = None
-    def patchLegacyState(userId: String, patch: services.users.LegacyStatePatch, now: java.time.Instant): Option[UserState] = None
+    def setLanguage(userId: String, language: Option[String], now: java.time.Instant): Option[UserState] = None
     def changeHiddenFilms(userId: String, country: String, change: services.users.HiddenFilmsChange, now: java.time.Instant): Option[UserState] = None
     def delete(userId: String): Unit                  = ()
     def close(): Unit                                 = ()

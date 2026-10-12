@@ -1,13 +1,11 @@
 package controllers
 
-import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.UserState
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
-import services.metrics.LegacyUserStateMetrics
 import services.users.{AccountDeletion, InMemoryUserRepository, InMemoryUserStateRepository, NoUserChangeTimeCache}
 
 import java.time.Instant
@@ -26,7 +24,7 @@ class HiddenFilmsLimitsSpec extends AnyFlatSpec with Matchers {
     val states = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
     states.upsert(UserState("u1", Set.empty, Set.empty, Instant.EPOCH, Map("pl" -> bucket)))
     (new UserStateController(Helpers.stubControllerComponents(), states, new AccountDeletion(users, states),
-      NoUserChangeTimeCache, new LegacyUserStateMetrics(new PrometheusRegistry(), "pl", clock), users, clock), states)
+      NoUserChangeTimeCache, users, clock), states)
   }
 
   private def hide(ctl: UserStateController, title: String) =

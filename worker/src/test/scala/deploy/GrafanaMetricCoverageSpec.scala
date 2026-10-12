@@ -112,14 +112,6 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     // divides. Missing from this list, they were the one alert input charted nowhere.
     "kinowo_fallback_active_venues",
     "kinowo_fallback_total_venues",
-    // The legacy `PUT /api/me/state` retirement signal — see
-    // `services.metrics.LegacyUserStateMetrics`'s class doc. Charted on
-    // kinowo-http.json as `time() - max_over_time(…[60d])` (the pod forgets it on restart);
-    // `GrafanaWebMetricCoverageSpec` (web module) confirms it's genuinely on
-    // the web registry. Missing from this hand-maintained list read as
-    // "exported by nothing" here even though it's real — the same failure
-    // mode this list's own comment warns about.
-    "kinowo_web_legacy_userstate_put_last_called_seconds",
     // When each route was last called, by client kind, plus the routes
     // inventory — the general retirement signal, `WebRouteUsageMetrics`.
     "kinowo_web_route_last_called_seconds",

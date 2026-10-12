@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import java.time.Instant
 
 /** What the atomic writes — `UserStateRepository.changeHiddenFilms` and
- *  `patchLegacyState` — must do, stated once and run
+ *  `setLanguage` — must do, stated once and run
  *  against every store — the in-memory one here in `UserStateRepositorySpec`,
  *  Mongo's update pipeline in `UserRepositoryIntegrationSpec`. The two
  *  implement the same meaning in two languages (Scala vs. an update pipeline),
@@ -85,27 +85,27 @@ trait UserStateWritesContract { this: AnyFlatSpec & Matchers =>
       change(id, HiddenFilmsChange.Unhide("$size")).hiddenFilmsByCountry("pl") shouldBe titles - "$size"
     }
 
-    s"$storeName.patchLegacyState" should "set only the fields the patch carries, keeping the rest and every country's hides" in {
-      val id     = userId("patch")
+    s"$storeName.setLanguage" should "set only the language, keeping the legacy sets and every country's hides" in {
+      val id     = userId("language")
       val stored = UserState(id, Set("H"), Set("D"), Stamp, Map("pl" -> Set("Kept")), Some("pl"))
       seed(stored)
-      val after  = writesStore.patchLegacyState(id, LegacyStatePatch(disabledCinemas = Some(Set("$Kino", "a.b")), language = Some(Some("en"))), Stamp.plusSeconds(1)).value
-      after shouldBe stored.copy(disabledCinemas = Set("$Kino", "a.b"), language = Some("en"), updatedAt = Stamp.plusSeconds(1))
+      val after  = writesStore.setLanguage(id, Some("en"), Stamp.plusSeconds(1)).value
+      after shouldBe stored.copy(language = Some("en"), updatedAt = Stamp.plusSeconds(1))
       writesStore.find(id).value shouldBe after
     }
 
-    it should "clear the language on an explicit null, and empty a set on an empty one" in {
-      val id = userId("patch-clear")
+    it should "clear the language on None" in {
+      val id = userId("language-clear")
       seed(UserState(id, Set("H"), Set("D"), Stamp, language = Some("pl")))
-      writesStore.patchLegacyState(id, LegacyStatePatch(hiddenFilms = Some(Set.empty), language = Some(None)), Stamp.plusSeconds(1)).value shouldBe
-        UserState(id, Set.empty, Set("D"), Stamp.plusSeconds(1))
+      writesStore.setLanguage(id, None, Stamp.plusSeconds(1)).value shouldBe
+        UserState(id, Set("H"), Set("D"), Stamp.plusSeconds(1))
     }
 
     it should "create the row when there is none, and move updatedAt even within one millisecond" in {
-      val id = userId("patch-new")
-      writesStore.patchLegacyState(id, LegacyStatePatch(language = Some(Some("de"))), Stamp).value shouldBe
+      val id = userId("language-new")
+      writesStore.setLanguage(id, Some("de"), Stamp).value shouldBe
         UserState(id, Set.empty, Set.empty, Stamp, language = Some("de"))
-      writesStore.patchLegacyState(id, LegacyStatePatch(), Stamp).value.updatedAt shouldBe Stamp.plusMillis(1)
+      writesStore.setLanguage(id, Some("de"), Stamp).value.updatedAt shouldBe Stamp.plusMillis(1)
     }
   }
 }

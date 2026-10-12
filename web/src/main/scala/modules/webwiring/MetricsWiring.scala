@@ -2,7 +2,7 @@ package modules.webwiring
 
 import controllers.{MetricsController, WebMovieMetrics}
 import modules.Wiring
-import services.metrics.{LegacyUserStateMetrics, UserStateIndexMetrics, UserStateWriteMetrics, WebDecodeFailureMetrics, WebCacheMetrics, WebHostMetrics, WebHttpMetrics, WebJvmMetrics, WebRenderMetrics, WebRouteUsageMetrics}
+import services.metrics.{UserStateIndexMetrics, UserStateWriteMetrics, WebDecodeFailureMetrics, WebCacheMetrics, WebHostMetrics, WebHttpMetrics, WebJvmMetrics, WebRenderMetrics, WebRouteUsageMetrics}
 
 /** ── /metrics ──────────────────────────────────────────────────────────────
  *  Everything the web tier exposes to Prometheus, on ONE registry: the served
@@ -52,14 +52,10 @@ trait MetricsWiring { self: Wiring =>
       case _                                  => Nil
     }))
   lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor, filmwebFallbackStore, webMovieMetrics, webJvmMetrics, metricsCountry.code, clock)
-  // Retirement signal for the legacy PUT /api/me/state — see the class doc.
-  // Safe as `lazy`, unlike webHostMetrics/webCacheMetrics above: userStateController
-  // (below, in UsersWiring) holds a reference and is itself forced at boot by
-  // the router, so this gets forced too — nothing here needs an eager `val`.
-  lazy val legacyUserStateMetrics = new LegacyUserStateMetrics(webJvmMetrics.registry, metricsCountry.code, clock)
   // Every atomic user-state write, by endpoint and outcome — see the class doc.
-  // Lazy for the same reason as the line above: `userStateRepository` (UsersWiring)
-  // holds it and is forced at boot through the router.
+  // Safe as `lazy`, unlike webHostMetrics/webCacheMetrics above: `userStateRepository`
+  // (UsersWiring) holds it and is forced at boot through the router, so this gets
+  // forced too — nothing here needs an eager `val`.
   lazy val userStateWriteMetrics = new UserStateWriteMetrics(webJvmMetrics.registry, metricsCountry.code)
   lazy val webDecodeFailureMetrics = new WebDecodeFailureMetrics(webJvmMetrics.registry, metricsCountry.code)
   // Whether `userStates` has its unique userId index — see the class doc. Lazy, as above.
