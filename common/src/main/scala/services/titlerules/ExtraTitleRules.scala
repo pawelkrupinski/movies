@@ -840,6 +840,11 @@ object ExtraTitleRules {
       "'<film> (OmU) - <strand>' / '<film> (OmU) (Extended Cut)' bracketed version inside the title (DE 2026-10-12: CineStar CineAnime, Türkische Filmtage, Club Manufaktur)"),
     searchStrip("xtra-inner-version-word",         """(?u)(?:\s+(?:[23]D|engl\.?|dt\.?))*\s+(?:OmeU|OmdU|OmU|OV)(?=\s+\p{L})""",
       "'<film> 2D engl OV <rest>' bare version between a film's words (DE 2026-10-12: Luxor Heidelberg Spiderman, Cineplex Herr der Ringe Ext. OV Trilogie)"),
+    // A subtitled version run into a strand behind the film, often glued to its last word — the venue's own box-office
+    // name, served so by kinoheld ("BUGONIAOmU-Nachtstudio-engl.OmU", "HARD BOILED -chin./engl.OmU-Nachtstudio-"). The
+    // hyphen joining the version to a word is the tell; a film's title never holds "OmU-".
+    searchStrip("xtra-version-strand-tail",        """(?u)\s*(?:-\s*)?(?:\p{L}{2,6}\.\s*/?\s*)*(?:OmeU|OmdU|OmU)-\p{L}.*$""",
+      "'<film>[ -chin./engl.]OmU-<strand>…' subtitled version and strand run onto the film (DE 2026-10-12: Apollo Hannover's Nachtstudio)"),
     searchStrip("xtra-leading-bare-screen",        """(?iu)^[23]d\s+(?=\p{L})""",
       "'3D <film>' screen format in front with no separator (any case: searchQuery's re-casing may lower it) (DE 2026-10-12: CineCenter Cloppenburg 3D Avengers: Doomsday)"),
     // The four below run last, after every separated premiere / pokaz / format strip has taken its whole spelling.

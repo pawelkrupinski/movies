@@ -66,7 +66,9 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
     AllowedListing.anywhere("WORLD OF ANIMATION: SPIRITED AWAY (SUBTITLED) - DRAG BRUNCH") ->
       s"a drag brunch billed with a strand and a film: an event plus a film matches neither (the double-bill rule)",
     AllowedListing.anywhere("Hope Sneak") ->
-      "TODO(rule): a sneak of the film Hope (Na Hong-jin, 2025); a bare ' Sneak' suffix strip would equally search a venue's branded sneak ('Movietown Sneak') as a film — parked",
+      ("a preview of the film Hope (Na Hong-jin, 2025) billed '<film> Sneak' — the very shape of a venue's own branded sneak that " +
+        "names no film ('Movietown Sneak', 'Filmrausch Sneak' below), so no rule can strip the word without searching a venue's " +
+        "name as a film; the listing stays unmatched rather than risk a wrong match"),
     AllowedListing.anywhere("Movietown Sneak") -> s"a sneak branded with the venue's name: $NoFilmToFind",
     AllowedListing.anywhere("SPECIAL: Filmrausch Sneak") -> s"a sneak branded with the venue's name: $NoFilmToFind",
     AllowedListing.anywhere("endstation.sneak.abend") -> s"a sneak night branded with the venue's name: $NoFilmToFind",
@@ -74,8 +76,6 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
     AllowedListing.anywhere("Classic Sneak – Couples") -> s"a classics sneak's theme, its film undisclosed: $NoFilmToFind",
     AllowedListing.anywhere("Classic Sneak – From Asia with Love") -> s"a classics sneak's theme, its film undisclosed: $NoFilmToFind",
     AllowedListing.anywhere("Classic Sneak – Melodrama") -> s"a classics sneak's theme, its film undisclosed: $NoFilmToFind",
-    AllowedListing.anywhere("HARD BOILED -chin./engl.OmU-Nachtstudio-") ->
-      "TODO(rule): languages, version and a strand glued into one dash-run behind the film (Apollo Hannover) — parked",
   ) ++ DroppedByTheClients.map(AllowedListing.anywhere(_) -> DroppedOnReRecord)
 
   /** Listings the German clients drop as no screening at all since the 2026-10-12 recording was made

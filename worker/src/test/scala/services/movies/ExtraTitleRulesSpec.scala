@@ -1303,6 +1303,9 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Halloween - Special: Shining (OmU) (Extended Cut)"                     -> "Halloween - Special: Shining (Extended Cut)",
     "Herr der Ringe Ext. OV Trilogie"                                       -> "Herr der Ringe Ext. Trilogie",
     "Spiderman - 2D engl OV Brand New Day -"                                -> "Spiderman - Brand New Day",
+    "HARD BOILED -chin./engl.OmU-Nachtstudio-"                              -> "Hard Boiled",
+    "BUGONIAOmU-Nachtstudio-engl.OmU"                                       -> "BUGONIA",
+    "KitKatClub - Kinks of BerlinOmU-Nachtstudio - dtOmeU"                  -> "KitKatClub - Kinks of Berlin",
     "Corpus Delicti (deutsch with English subs)"                            -> "Corpus Delicti"
   )
 
