@@ -33,4 +33,24 @@ bash "$work/android/scripts/devtest-shuffled.sh" 7 >/dev/null 2>&1
 check "every class runs alone, though a run reads stdin" "a.One a.Three a.Two" \
   "$(sort "$STUB_LOG" | tr '\n' ' ' | sed 's/ $//')"
 
+# Each run writes its report to the SAME Gradle paths, so a failing class's report is
+# overwritten by the next class's unless the harness keeps it.
+cat > "$work/android/scripts/devtest.sh" <<'STUB'
+#!/usr/bin/env bash
+cat >/dev/null
+class="${@: -1}"
+app="$(cd "$(dirname "${BASH_SOURCE[0]}")/../app" && pwd)"
+rm -rf "$app/build/reports/androidTests/connected" "$app/build/outputs/androidTest-results/connected"
+mkdir -p "$app/build/reports/androidTests/connected" "$app/build/outputs/androidTest-results/connected"
+echo "report of $class" > "$app/build/reports/androidTests/connected/index.html"
+echo "result of $class" > "$app/build/outputs/androidTest-results/connected/TEST.xml"
+[ "$class" != a.Two ]
+STUB
+chmod +x "$work/android/scripts/devtest.sh"
+bash "$work/android/scripts/devtest-shuffled.sh" 7 >/dev/null 2>&1
+kept="$work/android/app/build/order-independence"
+check "a failing class keeps its own report" "report of a.Two" "$(cat "$kept/a.Two/reports/index.html" 2>/dev/null)"
+check "a failing class keeps its own result XML" "result of a.Two" "$(cat "$kept/a.Two/results/TEST.xml" 2>/dev/null)"
+check "only failing classes are kept" "a.Two" "$(cd "$kept" 2>/dev/null && find . -mindepth 1 -maxdepth 1 | sed 's|^\./||' | sort | tr '\n' ' ' | sed 's/ $//')"
+
 spec_summary

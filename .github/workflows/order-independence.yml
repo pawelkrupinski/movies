@@ -232,9 +232,9 @@ jobs:
               uses: actions/upload-artifact@v6
               with:
                   name: android-instrumented-order-independence-report
-                  path: |
-                      android/app/build/reports/androidTests/connected
-                      android/app/build/outputs/androidTest-results/connected
+                  # One directory per failing class (devtest-shuffled.sh keeps them): the
+                  # Gradle report paths hold only the LAST class's run.
+                  path: android/app/build/order-independence
                   if-no-files-found: ignore
 
     swift:

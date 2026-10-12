@@ -25,12 +25,22 @@ ordered="$(printf '%s\n' "$classes" | seeded_order "$seed")"
 count="$(printf '%s\n' "$ordered" | wc -l | tr -d ' ')"
 echo "devtest-shuffled: seed $seed — $count classes, each alone — reproduce with android/scripts/devtest-shuffled.sh $seed $*"
 
+# Every class's run writes its report to the same Gradle paths, so a failing class's
+# report would be overwritten by the next class's: keep a copy per failing class.
+kept="$android/app/build/order-independence"
+rm -rf "$kept"
+keep_report() {
+    mkdir -p "$kept/$1"
+    cp -R "$android/app/build/reports/androidTests/connected" "$kept/$1/reports" 2>/dev/null || true
+    cp -R "$android/app/build/outputs/androidTest-results/connected" "$kept/$1/results" 2>/dev/null || true
+}
+
 failed=()
 while IFS= read -r class; do
     echo "::group::$class"
     # </dev/null: stdin is the class list this loop reads, and adb and Gradle's client
     # both read theirs — a run would swallow every class after it.
-    if ! "$android/scripts/devtest.sh" "$@" "$class" </dev/null; then failed+=("$class"); fi
+    if ! "$android/scripts/devtest.sh" "$@" "$class" </dev/null; then failed+=("$class"); keep_report "$class"; fi
     echo "::endgroup::"
 done <<<"$ordered"
 
