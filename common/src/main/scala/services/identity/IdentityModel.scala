@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie}
-import services.movies.{ListingKey, ScrapeListing, SlotFields, TitleNormalizer}
+import services.movies.{ListingKey, ScrapeListing, SlotFields, TitleNormalizer, TitleText}
 
 /*
  * The identity resolver's vocabulary (docs/design/identity-resolver.md, phase 2). Everything here
@@ -171,12 +171,17 @@ object Listing {
   private def knowsDays(days: ScreeningDays): Boolean = !days.isEmpty && !days.isUnknown
 
 
-  /** `cm` as `cinema` lists it. Blank director names and non-positive runtimes are absent. */
-  def of(cinema: Cinema, cm: CinemaMovie, normalizer: TitleNormalizer): Listing = Listing(
+  /** `cm` as `cinema` lists it. Blank director names and non-positive runtimes are absent. Its title as every title is
+   *  read ([[TitleText.tidy]]): a box office filing a film library-style ("Tribute von Panem - Mockingjay Teil 2 (WA: 2026),
+   *  Die") is searched and measured as "Die Tribute von Panem - …", as its family key already reads it — searched as filed,
+   *  only its pieces found films, and it leaned to "Catching Fire". The raw title stays as published. */
+  def of(cinema: Cinema, cm: CinemaMovie, normalizer: TitleNormalizer): Listing = tidied(cinema, cm, normalizer, TitleText.tidy(cm.movie.title))
+
+  private def tidied(cinema: Cinema, cm: CinemaMovie, normalizer: TitleNormalizer, title: String): Listing = Listing(
     cinema        = cinema,
     key           = ListingKey.of(cinema, cm),
     rawTitle      = cm.movie.rawTitle.getOrElse(cm.movie.title),
-    title         = cm.movie.title,
+    title         = title,
     cleanTitle    = ScrapeListing.cleanTitle(cinema, cm.movie.title, normalizer)._1,
     year          = cm.movie.releaseYear,
     directors     = cm.director.flatMap(credited).filter(_.nonEmpty).distinct.sorted,
@@ -185,7 +190,7 @@ object Listing {
     originalTitle = cm.movie.originalTitle.map(_.trim).filter(_.nonEmpty),
     countries     = cm.movie.countries.map(_.trim).filter(_.nonEmpty).distinct.sorted,
     catalogueIds  = CatalogueId.of(cm),
-    searchTitle   = Some(normalizer.apiQuery(cm.movie.title).trim).filter(q => q.nonEmpty && q != cm.movie.title.trim),
+    searchTitle   = Some(normalizer.apiQuery(cm.movie.title).trim).filter(q => q.nonEmpty && q != title.trim),
     // as the card serves it ([[services.movies.CinemaSlotBuilder]]): absolute against its page, escaped — a site-relative
     // `img src` (PL Kino Roma's "/app/assets/movie/…") is a link no poster fetch takes
     poster        = SlotFields.url(cm.posterUrl, SlotFields.url(cm.filmUrl, None)),

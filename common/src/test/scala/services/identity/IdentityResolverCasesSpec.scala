@@ -2133,6 +2133,42 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  "A library-filed re-release title" should "be searched with its article in front, and take its film" in {
+    // DE Filmpalast venues bill "Tribute von Panem - Mockingjay Teil 2 (WA: 2026), Die" ×5. Searched as filed, only its
+    // pieces found films ("Tribute von Panem" ranks Catching Fire first) and its no-match leaned to Catching Fire.
+    // TMDB's de-DE answers, as its search gave them (2026-10-12); any other question finds nothing.
+    val films = Seq(F(101299, "Die Tribute von Panem – Catching Fire", 2013, "Francis Lawrence", 146, 40),
+      F(131631, "Die Tribute von Panem – Mockingjay Teil 1", 2014, "Francis Lawrence", 123, 45),
+      F(70160, "Die Tribute von Panem – The Hunger Games", 2012, "Gary Ross", 142, 35),
+      F(131634, "Die Tribute von Panem – Mockingjay Teil 2", 2015, "Francis Lawrence", 137, 30),
+      F(1300968, "Die Tribute von Panem: Sunrise on the Reaping", 2026, "Francis Lawrence", 0, 30),
+      F(1755383, "Die Zauberflöte - Mozartwoche 2026", 2026, "", 0, 1))
+    val searched = Map(
+      "Tribute von Panem"     -> Seq(101299, 131631, 70160, 131634, 1300968),
+      "Die Tribute von Panem" -> Seq(101299, 131631, 70160, 131634, 1300968),
+      "2026), Die"            -> Seq(1755383),
+      "Die Tribute von Panem - Mockingjay Teil 2 (WA: 2026)" -> Seq(131631, 131634),
+      "Die Tribute von Panem - Mockingjay Teil 2 (WA"        -> Seq(131631, 131634),
+      "Mockingjay Teil 2"     -> Seq(131634))
+    val table = new FilmTable(films, normalizer)
+    val lookups = new IdentityLookups {
+      def hasDetail(l: Listing): Boolean = false
+      def detail(l: Listing): Answer[Option[DetailFacts]] = Answer.Known(None)
+      def film(id: Int): Answer[Option[IdentityMeasures.Film]] = table.film(id)
+      def candidates(q: CandidateQuery): Answer[Seq[Hit]] = q match {
+        case CandidateQuery.Title(text) => Answer.Known(searched.getOrElse(text.trim, Nil).flatMap(id => films.find(_.id == id))
+          .map(f => Hit(f.id, f.title, None, Some(f.year), f.popularity)))
+        case _ => Answer.Known(Nil)
+      }
+    }
+    val filed = Seq(KinoMuza, Helios).map(venue => Listing.of(venue, models.CinemaMovie(models.Movie("Tribute von Panem - Mockingjay Teil 2 (WA: 2026), Die"),
+      venue, None, None, None, Nil, Nil, Seq(models.Showtime(java.time.LocalDateTime.of(2099, 3, 1, 18, 0), None))), normalizer))
+    val r = IdentityResolver.resolve(filed, lookups, normalizer, IdentityCalibration.resolver)
+    withClue(filed.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(filed.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(131634)))
+    filed.head.title shouldBe "Die Tribute von Panem - Mockingjay Teil 2 (WA: 2026)"
+    filed.head.rawTitle shouldBe "Tribute von Panem - Mockingjay Teil 2 (WA: 2026), Die"
+  }
+
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {
     weights.version shouldBe "test-fixture-2"
     IdentityCalibration.resolver.scopes.keySet shouldBe weights.scopes.keySet
