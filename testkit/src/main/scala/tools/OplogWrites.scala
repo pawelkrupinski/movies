@@ -2,7 +2,7 @@ package tools
 
 import org.bson.BsonTimestamp
 import org.mongodb.scala.bson.Document
-import org.mongodb.scala.model.{Filters, Sorts}
+import org.mongodb.scala.model.{Accumulators, Aggregates, Filters, Sorts}
 import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
 
 import scala.concurrent.Await
@@ -42,6 +42,13 @@ final class OplogWrites(uri: String, database: String, collections: Seq[String] 
 
   /** Writes to the database since this counter was created. */
   def count(): Long = Await.result(oplog.countDocuments(sinceFilter).toFuture(), SpecTimeouts.Io)
+
+  /** The bytes those writes took in the oplog — what a write costs the replica set's oplog window, which a
+   *  whole-document rewrite of an unchanged or barely changed document spends for nothing. */
+  def bytes(): Long =
+    Await.result(oplog.aggregate(Seq(Aggregates.filter(sinceFilter),
+      Aggregates.group(null, Accumulators.sum("bytes", Document("$bsonSize" -> "$$ROOT"))))).toFuture(), SpecTimeouts.Io)
+      .headOption.flatMap(_.get("bytes")).map(v => if (v.isInt32) v.asInt32.getValue.toLong else v.asInt64.getValue).getOrElse(0L)
 
   /** WHICH writes: one line per operation since this counter was created — its collection,
    *  the document it hit and, for an update, the fields it set or unset. A count names no

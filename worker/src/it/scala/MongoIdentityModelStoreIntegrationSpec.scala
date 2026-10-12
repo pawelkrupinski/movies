@@ -75,3 +75,51 @@ class MongoIdentityModelStoreIntegrationSpec extends AnyFlatSpec with Matchers w
     store.written shouldBe 203L
   }
 }
+
+/** What a large family's write costs the oplog. A US film's family holds ~3,000 listings and its document ~1.3 MB;
+ *  written as a replacement, every move of it — a listing joining, its corpus digest changing — was the whole document
+ *  in the oplog, ~230 MB/h across the countries and the largest share of the replica set's oplog window. */
+class MongoIdentityModelStoreOplogIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
+
+  private def large(venues: Seq[String], digest: Long) = LargeIdentityFamily.of(venues, digest)
+  private val venues = LargeIdentityFamily.venues(3000)
+
+  private def withStore(label: String)(body: (MongoIdentityModelStore, () => tools.OplogWrites) => Unit): Unit = {
+    val client = org.mongodb.scala.MongoClient(mongoTarget.uri.value)
+    val name   = tools.IntegrationCorpusDatabase.named(mongoTarget, label)
+    val db     = client.getDatabase(name)
+    try body(new MongoIdentityModelStore(db), () => new tools.OplogWrites(mongoTarget.uri.value, name, Seq(MongoIdentityModelStore.FamiliesCollection)))
+    finally { Await.result(db.drop().toFuture(), SpecTimeouts.Io); client.close() }
+  }
+
+  private def documentBytes(family: StoredFamily): Int = {
+    val out = new org.bson.io.BasicOutputBuffer()
+    new org.bson.codecs.BsonDocumentCodec().encode(new org.bson.BsonBinaryWriter(out), MongoIdentityModelStore.encode(family),
+      org.bson.codecs.EncoderContext.builder().build())
+    out.getSize
+  }
+
+  "a large family's write" should "log only its changed digest when its corpus digest alone moved" in withStore("model-oplog-digest") { (store, oplog) =>
+    val family = large(venues, digest = 1L)
+    store.replace(Set.empty, Seq(family))
+    val writes = oplog()
+    try {
+      store.replace(Set.empty, Seq(family.copy(digest = 2L)))
+      withClue(s"a ${documentBytes(family)}-byte family: ") { writes.bytes() should (be > 0L and be < 1000L) }
+      store.families() shouldBe Seq(family.copy(digest = 2L))
+    } finally writes.close()
+  }
+
+  it should "log about the listing that joined it, not the whole document" in withStore("model-oplog-joined") { (store, oplog) =>
+    val family = large(venues, digest = 1L)
+    store.replace(Set.empty, Seq(family))
+    val joined = large(venues :+ "Cinemark Theatre 1500 B", digest = 2L)
+    joined.id shouldBe family.id
+    val writes = oplog()
+    try {
+      store.replace(Set.empty, Seq(joined))
+      withClue(s"a ${documentBytes(joined)}-byte family: ") { writes.bytes() should (be > 0L and be < 20000L) }
+      store.families() shouldBe Seq(joined)
+    } finally writes.close()
+  }
+}

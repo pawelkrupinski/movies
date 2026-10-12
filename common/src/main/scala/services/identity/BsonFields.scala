@@ -21,6 +21,16 @@ private[identity] object BsonFields {
     reader.readEndArray()
   }
 
+  /** The elements of a listing-keyed array the reader is at, stored flat or split into buckets of arrays
+   *  ([[services.identity.MongoIdentityModelStore.bucketed]]); true when it was bucketed. */
+  def bucketed(reader: BsonReader)(element: => Unit): Boolean = {
+    var split = false
+    array(reader) {
+      if (reader.getCurrentBsonType == BsonType.ARRAY) { split = true; array(reader)(element) } else element
+    }
+    split
+  }
+
   def strings(reader: BsonReader): Vector[String] = { val all = Vector.newBuilder[String]; array(reader)(all += reader.readString()); all.result() }
   def stringSet(reader: BsonReader): Set[String]  = { val all = Set.newBuilder[String]; array(reader)(all += reader.readString()); all.result() }
   def intSet(reader: BsonReader): Set[Int]        = { val all = Set.newBuilder[Int]; array(reader)(all += reader.readInt32()); all.result() }

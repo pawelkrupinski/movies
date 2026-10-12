@@ -1,9 +1,9 @@
 package services.identity
 
 import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonInt64, BsonString}
+import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonInt64, BsonString, BsonValue}
 import org.bson.codecs.configuration.CodecRegistries
-import org.mongodb.scala.model.{Filters, Projections, ReplaceOneModel, ReplaceOptions}
+import org.mongodb.scala.model.{Filters, Projections, ReplaceOptions, UpdateOneModel, UpdateOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import services.movies.ListingKey
 
@@ -68,7 +68,13 @@ final class MongoIdentityModelStore(db: MongoDatabase) extends IdentityModelStor
    *
    *  Only what moved is written: a family whose content digest matches the stored one is left alone.
    *  A rules change re-resolves every family and nearly all decide what they did before; written
-   *  whole, each such boot rewrote every family document (~101 MB of oplog per rollout). */
+   *  whole, each such boot rewrote every family document (~101 MB of oplog per rollout).
+   *
+   *  What moved is written as the document's replacement through an update pipeline, not a `replaceOne`: Mongo logs
+   *  a pipeline update as the diff between the stored document and the new one, a replacement whole. A large family
+   *  moves by a listing joining it or its corpus digest changing, and its document is up to ~1.6 MB (US): written
+   *  whole, each such move was its whole document in the oplog, ~230 MB/h across the countries — the oplog's largest
+   *  source. The arrays a listing joins are [[bucketed]] so that the diff stays the size of what moved. */
   def replace(removed: Set[String], added: Seq[StoredFamily]): Unit = {
     if (removed.nonEmpty) Await.result(collection.deleteMany(Filters.in("_id", removed.toSeq*)).toFuture(), Timeout)
     added.grouped(WriteBatch).foreach { batch =>
@@ -79,7 +85,8 @@ final class MongoIdentityModelStore(db: MongoDatabase) extends IdentityModelStor
       val moved  = docs.filterNot { case (id, doc) => stored.get(id).flatten.contains(doc.getInt64(ContentField).getValue) }
       if (moved.nonEmpty) {
         Await.result(collection.bulkWrite(moved.map { case (id, doc) =>
-          ReplaceOneModel(Filters.equal("_id", id), Document(doc), ReplaceOptions().upsert(true)) }).toFuture(), Timeout)
+          UpdateOneModel(Filters.equal("_id", id), Seq(Document("$replaceWith" -> Document("$literal" -> doc))),
+            UpdateOptions().upsert(true)) }).toFuture(), Timeout)
         documentsWritten.addAndGet(moved.size.toLong)
       }
     }
@@ -104,6 +111,31 @@ object MongoIdentityModelStore {
   val WriteBatch         = 500
   private val RulesDocument = "rules"
 
+  /** About how many entries one bucket of a family's listing-keyed array holds ([[bucketed]]). */
+  val ListingsPerBucket = 16
+
+  /** A listing-keyed array of a family — its listings, the node of each, a decision's members — as it is stored:
+   *  flat below twice [[ListingsPerBucket]] entries, else split into a power-of-two count of buckets by the hash of
+   *  each entry's listing key, each bucket in the entries' own order. Mongo logs an update as the diff of the two
+   *  documents array index by array index, so in one sorted array a listing joining a ~3,000-listing family shifted
+   *  every entry after it, and the diff was up to the whole document; bucketed, only the entries of its bucket shift.
+   *  The count changes only as the array doubles, and a reader takes either layout ([[BsonFields.bucketed]]). */
+  private[identity] def bucketed[A](entries: Seq[A])(key: A => ListingKey, encode: A => BsonValue): BsonArray = {
+    val count = Integer.highestOneBit(math.max(1, entries.size / ListingsPerBucket))
+    if (count == 1) BsonArray.fromIterable(entries.map(encode))
+    else {
+      val buckets = Array.fill(count)(new BsonArray())
+      entries.foreach(entry => buckets(Math.floorMod(ListingKey.serialised(key(entry)).hashCode, count)).add(encode(entry)))
+      BsonArray.fromIterable(buckets.toSeq)
+    }
+  }
+
+  /** A decision's members, bucketed when they are in the sorted order a reader of buckets restores; else as they
+   *  stand. */
+  private def members(keys: Seq[ListingKey]): BsonValue =
+    if (keys.lazyZip(keys.drop(1)).forall(ListingKey.ordering.lteq)) bucketed(keys)(identity, ListingKeyBson.encode)
+    else ListingKeyBson.encodeAll(keys)
+
   private def strings(values: Iterable[String]) = BsonArray.fromIterable(values.toSeq.sorted.map(BsonString(_)))
   private def ints(values: Iterable[Int]) = BsonArray.fromIterable(values.toSeq.sorted.map(BsonInt32(_)))
   private def queries(values: Iterable[CandidateQuery]) = strings(values.map(_.sortKey))
@@ -113,15 +145,15 @@ object MongoIdentityModelStore {
     val reads  = family.reads
     new BsonDocument()
       .append("_id", BsonString(stored.id))
-      .append("listings", ListingKeyBson.encodeAll(family.listings.toSeq.sorted(using ListingKey.ordering)))
-      .append("decisions", BsonArray.fromIterable(family.decisions.map(ResolverDecisionBson.encode)))
+      .append("listings", bucketed(family.listings.toSeq.sorted(using ListingKey.ordering))(identity, ListingKeyBson.encode))
+      .append("decisions", BsonArray.fromIterable(family.decisions.map(ResolverDecisionBson.encodeWith(_, members))))
       .append("blockKeys", strings(family.blockKeys))
       .append("queries", queries(family.queries))
       .append("films", ints(family.films))
       .append("reads", new BsonDocument()
         .append("titles", strings(reads.titles)).append("groups", strings(reads.groups)).append("segments", strings(reads.segments))
         .append("banners", strings(reads.banners)).append("films", ints(reads.films)).append("queries", queries(reads.queries)))
-      .append("nodes", BsonArray.fromIterable(family.nodeKeys.toSeq.sortBy(_._1)(using ListingKey.ordering).map { case (listing, node) =>
+      .append("nodes", bucketed(family.nodeKeys.toSeq.sortBy(_._1)(using ListingKey.ordering))(_._1, { case (listing, node) =>
         new BsonDocument().append("listing", ListingKeyBson.encode(listing)).append("node", BsonString(node)) }))
       .append("digest", BsonInt64(stored.digest))
   }
@@ -150,7 +182,7 @@ object MongoIdentityModelStore {
     var digest: java.lang.Long                  = null
     BsonFields.document(reader) {
       case "_id"       => id = reader.readString()
-      case "listings"  => listings = { val all = Set.newBuilder[ListingKey]; BsonFields.array(reader)(all += ListingKeyBson.read(reader)); all.result() }
+      case "listings"  => listings = { val all = Set.newBuilder[ListingKey]; BsonFields.bucketed(reader)(all += ListingKeyBson.read(reader)); all.result() }
       case "decisions" => decisions = { val all = Vector.newBuilder[ResolverDecision]; BsonFields.array(reader)(all += ResolverDecisionBson.read(reader)); all.result() }
       case "blockKeys" => blockKeys = BsonFields.stringSet(reader)
       case "queries"   => queries = readQueries(reader)
@@ -158,7 +190,7 @@ object MongoIdentityModelStore {
       case "reads"     => reads = readReads(reader)
       case "nodes"     => nodes = {
         val all = Vector.newBuilder[(ListingKey, String)]
-        BsonFields.array(reader) {
+        BsonFields.bucketed(reader) {
           var key: ListingKey = null
           var node: String    = null
           BsonFields.document(reader) {

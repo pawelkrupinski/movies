@@ -8,8 +8,12 @@ import scala.jdk.CollectionConverters._
  *  decision uses (`identity_model_families`). */
 object ResolverDecisionBson {
 
-  def encode(decision: ResolverDecision): BsonDocument = new BsonDocument()
-    .append("members", ListingKeyBson.encodeAll(decision.members))
+  def encode(decision: ResolverDecision): BsonDocument = encodeWith(decision, ListingKeyBson.encodeAll)
+
+  /** `members` encodes the decision's members: flat as [[encode]] has them, or in a store's own layout
+   *  ([[MongoIdentityModelStore.bucketed]]), which [[read]] reads back in their sorted order. */
+  def encodeWith(decision: ResolverDecision, members: Seq[services.movies.ListingKey] => BsonValue): BsonDocument = new BsonDocument()
+    .append("members", members(decision.members))
     .append("film", decision.film.fold[BsonValue](BsonNull())(BsonInt32(_)))
     .append("confidence", BsonDouble(decision.confidence))
     .append("basis", BsonString(decision.basis.toString))
@@ -43,7 +47,11 @@ object ResolverDecisionBson {
     var unanswered                                = 0
     var agreed                                    = Map.empty[String, String]
     BsonFields.document(reader) {
-      case "members"        => members = { val all = Vector.newBuilder[services.movies.ListingKey]; BsonFields.array(reader)(all += ListingKeyBson.read(reader)); all.result() }
+      case "members"        => members = {
+                                 val all = Vector.newBuilder[services.movies.ListingKey]
+                                 if (BsonFields.bucketed(reader)(all += ListingKeyBson.read(reader))) all.result().sorted(using services.movies.ListingKey.ordering)
+                                 else all.result()
+                               }
       case "film"           => film = BsonFields.when(reader, BsonType.INT32)(reader.readInt32())
       case "confidence"     => confidence = BsonFields.number(reader, "confidence")
       case "basis"          => basis = reader.readString()
