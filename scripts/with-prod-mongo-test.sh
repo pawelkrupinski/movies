@@ -67,6 +67,14 @@ check "a pre-set MONGODB_URI skips the vault" "" "$(grep '^secrets' "$CALLS")"
 check "…and is still rewritten to the tunnel, MONGODB_DB kept" \
   "URI=mongodb://me:pw@127.0.0.1:27017/kinowo_uk?authSource=admin&directConnection=true DB=kinowo_uk" "$out"
 
+# macOS's own /bin/bash is 3.2, where an empty array under `set -u` is "unbound": run without
+# --root (no flags) it aborted before reaching the vault.
+if [ -x /bin/bash ] && [ "$(/bin/bash -c 'echo ${BASH_VERSINFO[0]}')" -lt 4 ]; then
+  out="$(run /bin/bash "$REPO_ROOT/scripts/with-prod-mongo.sh" bash -c show_env 2>/dev/null)"
+  check "runs under bash 3.2 without --root" \
+    "URI=mongodb://u:p@127.0.0.1:27017/kinowo?authSource=MONGODB_URI&directConnection=true DB=kinowo" "$out"
+fi
+
 out="$(run "$REPO_ROOT/scripts/with-prod-mongo.sh" --root bash -c show_env 2>/dev/null)"
 check "--root asks the vault for MONGO_ROOT_URI" \
   "secrets run movies MONGO_ROOT_URI -- $BASH $REPO_ROOT/scripts/with-prod-mongo.sh --root bash -c show_env" \

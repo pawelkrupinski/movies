@@ -29,7 +29,8 @@ flags=()
 if [ "${1:-}" = "--root" ]; then key=MONGO_ROOT_URI; flags=(--root); shift; fi
 [ $# -gt 0 ] || { echo "usage: $0 [--root] <command...>" >&2; exit 2; }
 
-ensure_vault_env "$key" -- "$BASH" "$0" "${flags[@]}" "$@" || exit 1
+# `${flags[@]+…}`: bash 3.2 (macOS's /bin/bash) calls an empty array unbound under `set -u`.
+ensure_vault_env "$key" -- "$BASH" "$0" ${flags[@]+"${flags[@]}"} "$@" || exit 1
 
 uri="$(prod_tunnel_uri "${!key}")"
 init_prod_tunnel with-prod-mongo "$uri"
