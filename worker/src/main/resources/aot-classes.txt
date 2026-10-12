@@ -10492,6 +10492,10 @@ services.cinemas.uk.TheOldCourtClient
 services.cinemas.uk.TheOldCourtClient$
 services.cinemas.uk.TheOldCourtClient$RawSlot
 services.cinemas.uk.TheOldCourtClient$RawSlot$
+services.cinemas.uk.TicketsolveClient
+services.cinemas.uk.TicketsolveClient$
+services.cinemas.uk.TicketsolveClient$Slot
+services.cinemas.uk.TicketsolveClient$Slot$
 services.cinemas.us.AlamoDrafthouseClient
 services.cinemas.us.AlamoDrafthouseClient$
 services.cinemas.us.AlamoDrafthouseParser

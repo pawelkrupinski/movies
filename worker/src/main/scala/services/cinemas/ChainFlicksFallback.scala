@@ -376,8 +376,9 @@ object ChainFlicksFallback {
   )
 
   /** UK independents read from their own box office — Savoy Systems
-   *  ([[services.cinemas.uk.SavoyClient]]) or Spektrix
-   *  ([[services.cinemas.uk.SpektrixClient]]) — because Flicks lists them with
+   *  ([[services.cinemas.uk.SavoyClient]]), Spektrix
+   *  ([[services.cinemas.uk.SpektrixClient]]) or Ticketsolve
+   *  ([[services.cinemas.uk.TicketsolveClient]]) — because Flicks lists them with
    *  few or no times. Flicks stays their fallback, the same arrangement as the chains:
    *  should the box office fail or come back empty, the venue reads Flicks again. */
   val ukOwnSiteSlugs: Map[Cinema, String] = Map(
@@ -390,6 +391,7 @@ object ChainFlicksFallback {
     BreweryArtsCentreKendal -> "brewery-arts-centre-kendal",
     BroadwayCinemaNottingham -> "broadway-nottingham",
     BuxtonCinemaPavilionArtsCentre -> "buxton-cinema",
+    ChapterCardiff -> "chapter-cardiff",
     ChichesterCinemaAtNewPark -> "chichester-cinema-at-new-park",
     CineLumiereLondon -> "cine-lumiere-london",
     CinebowlUttoxeter -> "cinebowl-uttoxeter",
@@ -433,6 +435,9 @@ object ChainFlicksFallback {
     MockingbirdCinemaKitchenBirmingham -> "mockingbird-cinema-kitchen-birmingham",
     MorayPlayhouse -> "moray-playhouse-elgin",
     MowlemTheatre -> "mowlem-swanage",
+    NerveCentreLondonderry -> "nerve-centre-londonderry",
+    NeuaddDwyforPwllheli -> "neuadd-dwyfor-pwllheli",
+    Number8Pershore -> "number-8-pershore",
     OldMarketHallShrewsbury -> "old-market-hall-shrewsbury",
     PalaceCinemaGorlestonOnSea -> "palace-cinema-gorleston-on-sea",
     PavilionsTeignmouth -> "pavilions-teignmouth",
@@ -443,6 +448,8 @@ object ChainFlicksFallback {
     PlazaCommunityCinemaLiverpool -> "plaza-crosby",
     PloughArtsCentreTorrington -> "plough-arts-centre-torrington",
     PlymouthArtsCinema -> "plymouth-arts-cinema-plymouth",
+    PocklingtonArtsCentre -> "pocklington-arts-centre",
+    PontardaweArtsCentre -> "pontardawe-arts-centre",
     PublicHallBrynamman -> "public-hall-brynamman",
     QuadDerby -> "quad-derby",
     RegalCinemaFordingbridge -> "regal-fordingbridge",
@@ -477,9 +484,12 @@ object ChainFlicksFallback {
     ThePolyFalmouth -> "the-poly-falmouth",
     TheRexCinemaBerkhamsted -> "rex-berkhamsted",
     TheRitzCinemaWorkington -> "the-ritz-cinema-workington",
+    TheatrColwyn -> "theatr-colwyn-colwyn-bay",
     TheatrGwaunFishguard -> "theatr-gwaun-fishguard",
+    TheatrMwldanCardigan -> "theatr-mwldan-cardigan",
     TowerCinemaSkegness -> "tower-skegness",
     TownerEastbourneCinema -> "towner-eastbourne-cinema",
+    WatershedBristol -> "watershed-bristol",
     WetherbyFilmTheatre -> "wetherby-film-theatre-wetherby",
     WindmillLittlehampton -> "windmill-littlehampton",
   )

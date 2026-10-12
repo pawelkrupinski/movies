@@ -11,7 +11,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper}
 import services.cinemas.pl._
 import services.cinemas.us.{AlamoDrafthouseClient, CinemaPlusClient, SquarespaceEventsClient, UsChainVenues}
-import services.cinemas.uk.{CineworldClient, SavoyClient, SpektrixClient}
+import services.cinemas.uk.{CineworldClient, SavoyClient, SpektrixClient, TicketsolveClient}
 import services.cinemas.us.{AmcClient, RegalClient}
 import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
 import services.freshness.{Freshness, FreshnessKind}
@@ -396,6 +396,22 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val spektrixVenues = c.all.collect { case s: SpektrixClient => s.cinema }
     spektrixVenues should have size 37
     spektrixVenues.filterNot(c.flicksFallbackSlugs.contains) shouldBe empty
+  }
+
+  // Theatr Mwldan's three screens never had a Flicks showtime; its Ticketsolve feed sells
+  // five months ahead. Measured 2026-10-12, each Ticketsolve venue wired here lists at
+  // least as many showtimes in its feed as the live read model held from Flicks.
+  it should "wire UK Ticketsolve venues to their own box office with flicks kept as the fallback" in {
+    val c      = catalog(direct = new FakeHttpFetch("ticketsolve"), today = LocalDate.of(2026, 10, 12))
+    val mwldan = c.all.find(_.cinema == TheatrMwldanCardigan).value
+    mwldan shouldBe a [TicketsolveClient]
+    mwldan.fetch().flatMap(_.showtimes) should have size 180
+    c.flicksFallbackSlugs.get(TheatrMwldanCardigan).value shouldBe
+      ChainFlicksFallback.FlicksFallback(FlicksMarket.UnitedKingdom, "theatr-mwldan-cardigan")
+    c.all.find(_.cinema == NerveCentreLondonderry).value.fetch().flatMap(_.showtimes) should have size 14
+    val ticketsolveVenues = c.all.collect { case t: TicketsolveClient => t.cinema }
+    ticketsolveVenues should have size 9
+    ticketsolveVenues.filterNot(c.flicksFallbackSlugs.contains) shouldBe empty
   }
 
   it should "wire UK chain venues to their own-site client with flicks kept as the fallback" in {

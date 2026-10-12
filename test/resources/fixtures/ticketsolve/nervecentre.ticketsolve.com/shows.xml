@@ -1,0 +1,1527 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<venues>
+  <venue id="126560900">
+    <name>
+      <![CDATA[Nerve Centre]]>
+    </name>
+    <shows>
+      <show id="873667440">
+        <name>
+          <![CDATA[Bell X1 | Good Bones Tour 2026]]>
+        </name>
+        <description>
+          <![CDATA[<p><b style="font-size:inherit;">Bell X1 are an Irish musical group, the members of which are Paul Noonan, Dave Geraghty and Dominic Phillips.</b></p><p>Formed in 1999, they have released 8 studio albums, 4 of which having been nominated for the&nbsp;<strong>Choice Music Prize</strong>. Over the past 2 decades they have become recognised as one of Ireland&rsquo;s most popular live performers.</p><p>They are known for their versatile musical palette, lyrical dexterity and catalogue of popular singles. Their albums vary in sound and style, their range taking in pop, alternative, indie, hard rock, post-punk, acoustic, lo-fi, folk-rock, ballad, synth-pop, new wave and electronica.</p><p>With their signature blend of heartfelt lyrics, rich harmonies and inventive musicianship, this promises to be a magical live experience not to be missed.</p>]]>
+        </description>
+        <event_category>Music</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667440/events</url>
+        <version>64</version>
+        <tags>
+          <tag>bellx12026</tag>
+          <tag>fanclub</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/jh6bmyr2lx7ju3fmyeb5w81lv9xi/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/jh6bmyr2lx7ju3fmyeb5w81lv9xi/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/jh6bmyr2lx7ju3fmyeb5w81lv9xi/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128664667">
+            <name>
+              <![CDATA[11 Dec 2026 - 20:00 @ Nerve Centre - (opening time 19:00) Bell X1 | Good Bones Tour 2026]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-11T20:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-11T19:00:00+00:00</opening_time_iso>
+            <event_number>128664667</event_number>
+            <venue_layout>Venue</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667440/events/128664667</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667440/events/128664667.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873666999">
+        <name>
+          <![CDATA[CAOTHAN: I’M NOT EVEN SORRY]]>
+        </name>
+        <description>
+          <![CDATA[<h2><b>Caothan is coming to Nerve Centre for a night of honest, hilarious stories you probably shouldn&apos;t be laughing at!</b></h2><div><b><br></b></div><div>
+<b>Caothan</b> is a comedian and content creator from Derry known for his brutally honest storytelling, chaotic humour and unfiltered personality, and is bringing his new show <i><b>CAOTHAN: I&apos;M NOT EVEN SORRY </b></i>to Nerve Centre.</div><div><br></div><div>Withnearly 40,000 TikTok followers, he has built a rapidly growing online and live audience across the UK and Ireland, with highlights including having sold-out headline shows across Northern Ireland, and opening for Mammy Banter.</div><div><br></div><div>Expect chaos, oversharing and absolutely zero filter.</div><div><br></div><div>* This event will be seated. If you have additional access requirements, please contact <b>info@nervecentre.org</b> in advance.</div>]]>
+        </description>
+        <event_category>Comedy</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873666999/events</url>
+        <version>74</version>
+        <tags>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/fin54oyub25xejkctxype4nsagb9/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/fin54oyub25xejkctxype4nsagb9/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/fin54oyub25xejkctxype4nsagb9/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128662224">
+            <name>
+              <![CDATA[29 Jan 2027 - 20:30 @ Nerve Centre - (opening time 20:00) CAOTHAN: I’M NOT EVEN SORRY]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2027-01-29T20:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2027-01-29T20:00:00+00:00</opening_time_iso>
+            <event_number>128662224</event_number>
+            <venue_layout>Venue</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873666999/events/128662224</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873666999/events/128662224.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873667407">
+        <name>
+          <![CDATA[Chasing Abbey]]>
+        </name>
+        <description>
+          <![CDATA[<div><strong>Tickets on&nbsp;﻿sale&nbsp;Friday 11 September&nbsp;at 10am.</strong></div><div><strong><br></strong></div>Chasing Abbey are an award-winning trio from Tullamore, Ireland...&nbsp;<div><br></div><div>&nbsp;...songwriters, producers, and multi-instrumentalists known for their explosive fusion of electronic production and Celtic influences. Formed after meeting in school, the group have gone on to achieve multiple platinum singles, sell-out venues across the world, and built a reputation for their powerful live performances.﻿&nbsp;</div><div><br></div><div>With recent releases T.A.L Ar&iacute;s is Ar&iacute;s and &Iacute;or&oacute;nta continuing to gain momentum and positioning themselves among the band&rsquo;s most successful tracks to date, the trio have also teased multiple new releases in the coming months, setting the stage for an even bigger chapter ahead.
+
+As they continue to push boundaries and bring their electronic Celtic sound to a global audience, Chasing Abbey are firmly on track for a landmark year and beyond.</div>]]>
+        </description>
+        <event_category>Music</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667407/events</url>
+        <version>55</version>
+        <tags>
+          <tag>chasingabbey</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/m7kc3x1ptlmjha2p0tscq2cgckel/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/m7kc3x1ptlmjha2p0tscq2cgckel/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/m7kc3x1ptlmjha2p0tscq2cgckel/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128664543">
+            <name>
+              <![CDATA[02 Jan 2027 - 20:00 @ Nerve Centre - (opening time 19:00) Chasing Abbey]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2027-01-02T20:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2027-01-02T19:00:00+00:00</opening_time_iso>
+            <event_number>128664543</event_number>
+            <venue_layout>Venue</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667407/events/128664543</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667407/events/128664543.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873667487">
+        <name>
+          <![CDATA[Corpse Bride]]>
+        </name>
+        <description>
+          <![CDATA[<div>
+<b><i>This film contains a sequence of flashing lights which might affect customers who are susceptible to photosensitive epilepsy.</i></b><br>
+</div><div><br></div>This stop-motion animated feature follows the story of Victor, a young man who is whisked away to the underworld and wed to a mysterious Corpse Bride, while his real fianc&eacute;e waits bereft in the land of the living. Though existence in the Land of the Dead proves to be a lot more colourful than his strict Victorian upbringing, Victor learns that there is nothing in this world, or the next, that can keep him away from his one true love.<div><br></div><div>
+<i>Images courtesy of Park Circus/Warner Bros.</i><br>
+</div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667487/events</url>
+        <version>45</version>
+        <tags>
+          <tag>film</tag>
+          <tag>nervecinema</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/aubzx5ptfy2q3cna0fs4u0bcd558/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/aubzx5ptfy2q3cna0fs4u0bcd558/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/aubzx5ptfy2q3cna0fs4u0bcd558/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128664823">
+            <name>
+              <![CDATA[30 Oct 2026 - 14:00 @ Nerve Centre Corpse Bride]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-30T14:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-30T14:00:00+00:00</opening_time_iso>
+            <event_number>128664823</event_number>
+            <venue_layout>Cinema One</venue_layout>
+            <comment>
+              <![CDATA[This film contains a sequence of flashing lights which might affect customers who are susceptible to photosensitive epilepsy.]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667487/events/128664823</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667487/events/128664823.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873667965">
+        <name>
+          <![CDATA[Escape the Internet]]>
+        </name>
+        <description>
+          <![CDATA[<span><b>Part live show. Part big-screen game. Part interactive adventure. This is unlike anything we&apos;ve hosted before.</b></span><div>
+<br style="font-style:normal;font-weight:400;letter-spacing:normal;text-align:start;text-indent:0px;white-space:normal;background-color:rgb(255, 255, 255);"><span>Escape the Internet transforms Nerve Centre into a live cinematic game world, where the audience becomes part of the action.</span>
+</div><div>
+<br style="font-style:normal;font-weight:400;letter-spacing:normal;text-align:start;text-indent:0px;white-space:normal;background-color:rgb(255, 255, 255);"><span>Led by comedian, Lucas Rizzotto, you&apos;ll watch an animated story unfold on the big screen, but this isn&apos;t a show where you simply sit back and watch. Using your phone, you&apos;ll take part in games, make choices and interact with everyone else in the room as the story develops around you.</span>
+</div><div>
+<br style="font-style:normal;font-weight:400;letter-spacing:normal;text-align:start;text-indent:0px;white-space:normal;background-color:rgb(255, 255, 255);"><span>Expect big laughs, unexpected decisions, playful challenges and plenty of moments you&apos;ll want to talk about afterwards.</span>
+</div><div>
+<br style="font-style:normal;font-weight:400;letter-spacing:normal;text-align:start;text-indent:0px;white-space:normal;background-color:rgb(255, 255, 255);"><span>Come with friends or come on your own, the whole idea is to get a room full of people playing, laughing and connecting together. The experience has been designed around interactions that reveal a little about how you and the people around you think about everything from ethics to love.</span>
+</div><div>
+<br style="font-style:normal;font-weight:400;letter-spacing:normal;text-align:start;text-indent:0px;white-space:normal;background-color:rgb(255, 255, 255);"><span>You haven&apos;t experienced anything quite like this at Nerve Centre before. Are you ready to escape the internet?</span>
+</div>]]>
+        </description>
+        <event_category>Comedy</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667965/events</url>
+        <version>32</version>
+        <tags>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/kfuh0qxuqtj7vud5djaoujh3a3fs/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/kfuh0qxuqtj7vud5djaoujh3a3fs/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/kfuh0qxuqtj7vud5djaoujh3a3fs/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128665958">
+            <name>
+              <![CDATA[04 Nov 2026 - 19:00 @ Nerve Centre - (opening time 18:00) Escape the Internet]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-04T19:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-04T18:00:00+00:00</opening_time_iso>
+            <event_number>128665958</event_number>
+            <venue_layout>Venue</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667965/events/128665958</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667965/events/128665958.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873666818">
+        <name>
+          <![CDATA[Everybody Digs Bill Evans]]>
+        </name>
+        <description>
+          <![CDATA[<div>June 1961, NYC: Bill Evans (Anders Danielsen Lie) has found his musical voice and created the perfect trio, including bass player Scott LaFaro (Will Sach), said to be his soulmate through music. A residency at New York&rsquo;s Village Vanguard culminates in the live taping of two of the greatest jazz records of all time in one night. Ten days later, LaFaro dies in a car crash. Numb with grief, Evans stops playing.</div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873666818/events</url>
+        <version>79</version>
+        <tags>
+          <tag>film</tag>
+          <tag>nervecinema</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/rmr79bushzfd49zgu9jwja6vum4b/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/rmr79bushzfd49zgu9jwja6vum4b/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/rmr79bushzfd49zgu9jwja6vum4b/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128661780">
+            <name>
+              <![CDATA[14 Oct 2026 - 19:00 @ Nerve Centre Everybody Digs Bill Evans]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-14T19:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-14T19:00:00+01:00</opening_time_iso>
+            <event_number>128661780</event_number>
+            <venue_layout>Cinema One</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873666818/events/128661780</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873666818/events/128661780.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873666690">
+        <name>
+          <![CDATA[Good Vibrations | Rip It Up]]>
+        </name>
+        <description>
+          <![CDATA[<i><b>Nerve Centre presents a special programme, Loud, Young and Free as part of Rip It Up, a UK-wide film season made possible with the support of the BFI Film Audience Network, awarding funds by The National Lottery.</b></i><div><br></div><div>Terri Hooley (Richard Dormer) is a radical, rebel and music-lover in 1970s Belfast, when the bloody conflict known as the Troubles shuts down his city. As all his friends take sides and take up arms, Terri opens a record shop on the most bombed half-mile in Europe and calls it Good Vibrations.
+
+Through it he discovers a compelling voice of resistance in the city&rsquo;s nascent underground punk scene. Galvanizing the young musicians into action, he becomes the unlikely leader of a motley band of kids and punks who join him in his mission to create a new community, an Alternative Ulster, to bring his city back to life.</div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873666690/events</url>
+        <version>82</version>
+        <tags>
+          <tag>film</tag>
+          <tag>nervecinema</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/u681dp5ubudj4lumnrtc5te4jvdt/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/u681dp5ubudj4lumnrtc5te4jvdt/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/u681dp5ubudj4lumnrtc5te4jvdt/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128661573">
+            <name>
+              <![CDATA[21 Oct 2026 - 19:00 @ Nerve Centre Good Vibrations | Rip It Up]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-21T19:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-21T19:00:00+01:00</opening_time_iso>
+            <event_number>128661573</event_number>
+            <venue_layout>Cinema One</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873666690/events/128661573</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873666690/events/128661573.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873667496">
+        <name>
+          <![CDATA[Gremlins]]>
+        </name>
+        <description>
+          <![CDATA[With its Christmas lights and dusting of snow, Kingston Falls is an idyllic small town. It&rsquo;s home to Billy Peltzer, a teenager who has just received an unusual present from his father with a specific set of instructions. In order to look after the strange, furry creature known as Gizmo, Billy has to follow three simple rules: keep him away from water, bright lights and, most importantly, never ever feed him after midnight&hellip;&nbsp;<div><br></div><div><i>Images courtesy of Park Circus/Warner Bros.</i></div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667496/events</url>
+        <version>43</version>
+        <tags>
+          <tag>film</tag>
+          <tag>nervecinema</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/f18cfknvohspd4snz70qq2ol9zv8/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/f18cfknvohspd4snz70qq2ol9zv8/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/f18cfknvohspd4snz70qq2ol9zv8/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128664827">
+            <name>
+              <![CDATA[29 Oct 2026 - 16:00 @ Nerve Centre Gremlins]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-29T16:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-29T16:00:00+00:00</opening_time_iso>
+            <event_number>128664827</event_number>
+            <venue_layout>Cinema One</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667496/events/128664827</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667496/events/128664827.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873667493">
+        <name>
+          <![CDATA[Hocus Pocus]]>
+        </name>
+        <description>
+          <![CDATA[<div>You&rsquo;re in for a devil of a time when three outlandishly wild witches&mdash;Bette Midler, Sarah Jessica Parker and Kathy Najimy&mdash;return from 17th-century Salem after they&rsquo;re accidentally conjured up by some unsuspecting pranksters! It&rsquo;s a night full of zany fun and comic chaos once the tricky 300-year-old trio sets out to cast a spell on the town and reclaim their youth&mdash;but first they must outwit three kids and a talking cat! Loaded with bewitching laughs, <i>Hocus Pocus</i> is an outrageously wild comedy that&rsquo;s sure to entertain everyone!</div><div><br></div><div>
+<i>Images courtesy of Park Circus/Disney.</i><br>
+</div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667493/events</url>
+        <version>43</version>
+        <tags>
+          <tag>film</tag>
+          <tag>nervecinema</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/bm68jmtkp72g8we3xmq4pzw1s5zd/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/bm68jmtkp72g8we3xmq4pzw1s5zd/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/bm68jmtkp72g8we3xmq4pzw1s5zd/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128664825">
+            <name>
+              <![CDATA[28 Oct 2026 - 14:00 @ Nerve Centre Hocus Pocus]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-28T14:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-28T14:00:00+00:00</opening_time_iso>
+            <event_number>128664825</event_number>
+            <venue_layout>Cinema One</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667493/events/128664825</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667493/events/128664825.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873647493">
+        <name>
+          <![CDATA[Journeywork, a Creative Life by Dave Duggan]]>
+        </name>
+        <description>
+          <![CDATA[<div><span><b>Order Now:<i>&nbsp;Journeywork, a Creative Life</i>&nbsp;by Dave Duggan</b><br><br></span></div><div></div><div>
+<em>Journeywork, a Creative Life</em>, the latest work of creative non-fiction by acclaimed writer Dave Duggan.</div><div></div><div>This collection of thirteen essays offers an intimate look into the arc of a creative life, blending memoir, medical reflections and insights into the creative process.</div><div></div><div>Secure your copy today for &pound;12.99</div>]]>
+        </description>
+        <event_category></event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873647493/events</url>
+        <version>491</version>
+        <tags>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/ykidtxoayq47w9nwmq6i4jyomtmr/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/ykidtxoayq47w9nwmq6i4jyomtmr/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/ykidtxoayq47w9nwmq6i4jyomtmr/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128577045">
+            <name>
+              <![CDATA[31 Dec 2026 (all day) @ Nerve Centre Journeywork, a Creative Life by Dave Duggan]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-31T00:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-31T00:00:00+00:00</opening_time_iso>
+            <event_number>128577045</event_number>
+            <venue_layout>General Admission</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873647493/events/128577045</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873647493/events/128577045.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873667524">
+        <name>
+          <![CDATA[Labyrinth]]>
+        </name>
+        <description>
+          <![CDATA[Suburban teenager Sarah (Jennifer Connelly) is forced to baby-sit her baby brother and, in her frustration, wishes that the infant would be taken away. When this wish is unexpectedly granted by the magical Goblin King (David Bowie), Sarah is given only 13 hours to solve the dangerous and wonderful labyrinth which leads to Goblin Castle and rescue her brother. Left with no choice, she sets out on a dangerous adventure in a land where nothing is what it seems.&nbsp;<div><br></div><div><i>Images courtesy of Park Circus/Sony.</i></div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667524/events</url>
+        <version>43</version>
+        <tags>
+          <tag>film</tag>
+          <tag>nervecinema</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/6t01r93qhui1kfoo2xn0v9rftbuz/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/6t01r93qhui1kfoo2xn0v9rftbuz/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/6t01r93qhui1kfoo2xn0v9rftbuz/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128664835">
+            <name>
+              <![CDATA[30 Oct 2026 - 16:00 @ Nerve Centre Labyrinth]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-30T16:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-30T16:00:00+00:00</opening_time_iso>
+            <event_number>128664835</event_number>
+            <venue_layout>Cinema One</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667524/events/128664835</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667524/events/128664835.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873666418">
+        <name>
+          <![CDATA[Marquee Square Heroes | A Tribute to the Music of Fish Era Marillion]]>
+        </name>
+        <description>
+          <![CDATA[<h2><strong>Marquee Square Heroes return to Nerve Centre for another evening celebrating the music of classic Marillion!</strong></h2><p>&quot;So here I am once more...&quot;</p><p>Marquee Square Heroes pay tribute to Marillion&apos;s years with Fish, recreating the powerful storytelling, atmosphere and musicianship that made the band one of the most distinctive names in British progressive rock.</p><p>Expect an unforgettable journey through the classic albums <i><b>Script for a Jester&apos;s Tear, Fugazi, Misplaced Childhood</b></i> and <i style="font-weight:bold;">Clutching at Straws, </i>performed with the passion, precision and attention to detail these extraordinary songs deserve.</p><p>Featuring experienced musicians from the progressive rock scene, including contemporaries from Marillion&apos;s legendary Marquee days, Marquee Square Heroes capture the drama, nostalgia and sheer power of this remarkable period in the band&apos;s history.</p><p>Whether you joined them last time or are seeing them for the first time, come and experience an evening dedicated to one of progressive rock&apos;s most iconic catalogues.</p><p><b>Welcome back to the circus...</b></p>]]>
+        </description>
+        <event_category>Nerve Venue</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873666418/events</url>
+        <version>102</version>
+        <tags>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/ce08220hyd6x9oxmp1mqie2fhb16/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/ce08220hyd6x9oxmp1mqie2fhb16/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/ce08220hyd6x9oxmp1mqie2fhb16/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128661099">
+            <name>
+              <![CDATA[03 Apr 2027 - 20:00 @ Nerve Centre - (opening time 19:00) Marquee Square Heroes | A Tribute to the Music of Fish Era Marillion]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2027-04-03T20:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2027-04-03T19:00:00+01:00</opening_time_iso>
+            <event_number>128661099</event_number>
+            <venue_layout>General Admission</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873666418/events/128661099</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873666418/events/128661099.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873662308">
+        <name>
+          <![CDATA[Moving Pictures — Rush Tribute 2026]]>
+        </name>
+        <description>
+          <![CDATA[<b>&quot;If you missed seeing RUSH live, MOVING PICTURES is as close as you&apos;ll ever get to the real thing.&quot; Moshville Times&nbsp;</b><div><br></div><div>These guys (and girl) are one of the hardest working tributes on the planet touring the UK, Europe, Brazil and Canada including Lakeside Park for Neil Peart&apos;s family and Massey Hall for RUSHfest Canada in August 2025.&nbsp;</div><div><br></div><div>2026 celebrates 50 years of RUSH&apos;s 2112 album.  This show sees Moving Pictures play the 2112 suite in full as well as songs from every RUSH era.&nbsp;</div><div><br></div><div>Whether you&apos;re a die-hard Rush fan or simply appreciate great live music, don&apos;t miss your chance to experience the magic of Moving Pictures in person.&nbsp;</div><div><br></div><div>MovingPicturesUK.com</div>]]>
+        </description>
+        <event_category>Music</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873662308/events</url>
+        <version>254</version>
+        <tags>
+          <tag>movingpictures</tag>
+          <tag>music</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/9n7qvqn38l6g7h6c5yn05yj84f7o/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/9n7qvqn38l6g7h6c5yn05yj84f7o/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/9n7qvqn38l6g7h6c5yn05yj84f7o/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128644602">
+            <name>
+              <![CDATA[05 Nov 2026 - 20:00 @ Nerve Centre - (opening time 19:00) Moving Pictures — Rush Tribute 2026]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-05T20:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-05T19:00:00+00:00</opening_time_iso>
+            <event_number>128644602</event_number>
+            <venue_layout>Venue</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873662308/events/128644602</url>
+            <status>sold out</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873662308/events/128644602.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>sold out</status>
+      </show>
+      <show id="873667678">
+        <name>
+          <![CDATA[Our Space | Pre-Halloween Show]]>
+        </name>
+        <description>
+          <![CDATA[<h2><b>As we &quot;fear-up&quot; for&nbsp;Halloween, we bring you our latest offering of live music.</b></h2><p><strong>Youth Engagement Services</strong> @ <strong>Our Space</strong> is committed to providing opportunities for young people to experience live music and giving young bands a platform they relish.﻿</p><p>This night brings together some of Derry&rsquo;s finest young bands, with performances from <strong>Skins</strong>, <strong>Yours Truly</strong>, <strong>L&Iacute;R</strong> and <strong>Blue Voodoo</strong>.</p><p>Don&apos;t miss out... get in quick and secure your ticket!﻿</p><p><strong>This is an under 18&rsquo;s no alcohol show.</strong></p>]]>
+        </description>
+        <event_category>Music</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667678/events</url>
+        <version>36</version>
+        <tags>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/wao9oxo8trcdjhvp29jkw9e85qtn/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/wao9oxo8trcdjhvp29jkw9e85qtn/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/wao9oxo8trcdjhvp29jkw9e85qtn/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128665236">
+            <name>
+              <![CDATA[16 Oct 2026 - 19:00 @ Nerve Centre - (opening time 18:30) Our Space | Pre-Halloween Show]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-16T19:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-16T18:30:00+01:00</opening_time_iso>
+            <event_number>128665236</event_number>
+            <venue_layout>Venue</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667678/events/128665236</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667678/events/128665236.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873666771">
+        <name>
+          <![CDATA[Queen at Sea]]>
+        </name>
+        <description>
+          <![CDATA[<div>The film follows Amanda (Juliette Binoche) and her stepfather, Martin (Tom Courtney), at odds over a moral quandary involving Amanda&rsquo;s mother, Leslie (Anna Calder-Marshall). In the advanced stages of dementia, they quarrel over whether Leslie has lost all ability to make critical decisions in her own best interests, and, if so, who is responsible &ndash; a spouse, a child, an institution &ndash; for making such a determination? As Amanda and Martin are forced to make increasingly difficult choices, the repercussions spiral out of their control.</div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873666771/events</url>
+        <version>80</version>
+        <tags>
+          <tag>film</tag>
+          <tag>nervecinema</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/cak4410db6xt7a328g4z7edklh0j/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/cak4410db6xt7a328g4z7edklh0j/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/cak4410db6xt7a328g4z7edklh0j/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128661643">
+            <name>
+              <![CDATA[20 Oct 2026 - 19:00 @ Nerve Centre Queen at Sea]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-20T19:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-20T19:00:00+01:00</opening_time_iso>
+            <event_number>128661643</event_number>
+            <venue_layout>Cinema One</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873666771/events/128661643</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873666771/events/128661643.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873661710">
+        <name>
+          <![CDATA[Scummy Mummies: Hot Mess]]>
+        </name>
+        <description>
+          <![CDATA[MUMS&apos; NIGHT OUT!&nbsp;<div><br></div><div>Helen and Ellie are BACK with a brand new comedy show that will have you laughing till you wee. From menopause to mansplaining, teenagers to Tinder, no subject is safe.
+
+Featuring brand new songs, sketches, stand-up, and of course, sparkly new catsuits.
+
+Bring your mates, bring your mum, bring your partner if they&apos;re feeling brave enough... It&apos;s a big Scummy party!&nbsp;</div>]]>
+        </description>
+        <event_category>Comedy</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873661710/events</url>
+        <version>265</version>
+        <tags>
+          <tag>scummymummies</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/9wul3sxrlw9fm0zuexhm5e6vr2jy/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/9wul3sxrlw9fm0zuexhm5e6vr2jy/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/9wul3sxrlw9fm0zuexhm5e6vr2jy/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128642152">
+            <name>
+              <![CDATA[06 Nov 2026 - 19:30 @ Nerve Centre - (opening time 19:00) Scummy Mummies: Hot Mess]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-06T19:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-06T19:00:00+00:00</opening_time_iso>
+            <event_number>128642152</event_number>
+            <venue_layout>Venue</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873661710/events/128642152</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873661710/events/128642152.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873667294">
+        <name>
+          <![CDATA[Seventh Heaven: 'The Motherland' EP Launch]]>
+        </name>
+        <description>
+          <![CDATA[<h2><b>You&apos;ve heard them &apos;RIOT&apos;... now prepare for &apos;The Motherland&apos;!</b></h2><p>After their head-banging single launch for&nbsp;<strong>&apos;RIOT&apos;&nbsp;</strong>in January,&nbsp;<strong>Seventh Heaven&nbsp;</strong>takes to the stage once again in Nerve Centre alongside the Belfast alternative bands&nbsp;<strong>Wilde Rose&nbsp;</strong>and&nbsp;<strong>Haze&nbsp;</strong>for Seventh Heaven&rsquo;s debut EP&nbsp;<em><strong>The Motherland</strong></em>.</p><p>It will be a night filled with raw energy, serving as a thank you for all the support throughout the years from all the hometown fans.<strong style="margin:0px;padding:0px;border:0px;font-style:inherit;font-variant:inherit;font-weight:bold;font-size:inherit;line-height:inherit;font-family:inherit;vertical-align:baseline;"><strong style="margin:0px;padding:0px;border:0px;font-style:inherit;font-variant:inherit;font-weight:bold;font-size:inherit;line-height:inherit;font-family:inherit;vertical-align:baseline;"><strong style="margin:0px;padding:0px;border:0px;font-style:inherit;font-variant:inherit;font-weight:bold;font-size:inherit;line-height:inherit;font-family:inherit;vertical-align:baseline;"><br></strong></strong></strong></p><p><strong><strong><strong>* This event will be standing only. If you require seating or have additional access requirements, please contact&nbsp;<a>info@nervecentre.org&nbsp;</a>in advance.</strong></strong></strong></p>]]>
+        </description>
+        <event_category>Music</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667294/events</url>
+        <version>51</version>
+        <tags>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/orufymk0a3nt7puloidw1c6makbs/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/orufymk0a3nt7puloidw1c6makbs/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/orufymk0a3nt7puloidw1c6makbs/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128663995">
+            <name>
+              <![CDATA[23 Oct 2026 (all day) @ Nerve Centre - (opening time 19:00) Seventh Heaven: 'The Motherland' EP Launch]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-23T00:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-23T19:00:00+01:00</opening_time_iso>
+            <event_number>128663995</event_number>
+            <venue_layout>Venue</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667294/events/128663995</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667294/events/128663995.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873667462">
+        <name>
+          <![CDATA[Sunset Theory | Youth Show]]>
+        </name>
+        <description>
+          <![CDATA[<h2><b>Sunset Theory is returning to Nerve Centre for another exciting performance!</b></h2><p>After an amazing sell-out gig, <b>Sunset Theory</b> are excited to get back on the stage, welcoming their new guitarist to the group. Get ready for their biggest, loudest and best set yet.</p><p>Supporting are one of Belfast&apos;s finest up-and-coming groups <b>Sunbleach</b>, and local midwest emo(ish) lads <b>The Waiting Room Magazines</b>.</p><p><b>This is an under 18s no alcohol show and will end at 10pm. You must be aged 14+ to attend the gig.</b></p><p><b>* This event will be standing only. If you require seating or have additional access requirements, please contact info@nervecentre.org in advance.</b></p>]]>
+        </description>
+        <event_category>Music</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667462/events</url>
+        <version>46</version>
+        <tags>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/vqqihv2sjcb59fbyb3fqqrhy5u39/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/vqqihv2sjcb59fbyb3fqqrhy5u39/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/vqqihv2sjcb59fbyb3fqqrhy5u39/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128664775">
+            <name>
+              <![CDATA[13 Nov 2026 (all day) @ Nerve Centre - (opening time 19:00) Sunset Theory | Youth Show]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-11-13T00:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-11-13T19:00:00+00:00</opening_time_iso>
+            <event_number>128664775</event_number>
+            <venue_layout>Venue</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667462/events/128664775</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667462/events/128664775.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873667512">
+        <name>
+          <![CDATA[The Exorcist (Extended Director's Cut)]]>
+        </name>
+        <description>
+          <![CDATA[<div>Belief in evil. Belief that evil can be cast out. From these two strands of faith, author William Peter Blatty and director William Friedkin wove <i>The Exorcist</i>, the frightening and realistic story of an innocent girl inhabited by a malevolent entity. This is the terrifying tale of her mother&apos;s frantic resolve to save her and two priests - one doubt-ridden, the other a rock of faith - joined in battling ultimate evil.</div><div><br></div><div>
+<i>Images courtesy of Park Circus/Warner Bros.</i><br>
+</div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667512/events</url>
+        <version>45</version>
+        <tags>
+          <tag>film</tag>
+          <tag>nervecinema</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/fw8zkjj38efrcf3811kkugc2hp3b/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/fw8zkjj38efrcf3811kkugc2hp3b/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/fw8zkjj38efrcf3811kkugc2hp3b/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128664832">
+            <name>
+              <![CDATA[29 Oct 2026 - 19:00 @ Nerve Centre The Exorcist (Extended Director's Cut)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-29T19:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-29T19:00:00+00:00</opening_time_iso>
+            <event_number>128664832</event_number>
+            <venue_layout>Cinema One</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667512/events/128664832</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667512/events/128664832.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873667490">
+        <name>
+          <![CDATA[The Goonies]]>
+        </name>
+        <description>
+          <![CDATA[With brothers Mikey (Sean Astin) and Brand&apos;s (Josh Brolin) house slated for demolition by greedy land developers, the boys decide their only hope lies in finding a long-lost treasure. They uncover a treasure map and with their friends descend to a subterranean sea and an abandoned galleon in this fun-filled, fast-paced adventure.&nbsp;<div><br></div><div><i>Images courtesy of Park Circus/Warner Bros.</i></div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667490/events</url>
+        <version>43</version>
+        <tags>
+          <tag>film</tag>
+          <tag>nervecinema</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/c4orbioaxtquqgold9b4okfuv1vu/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/c4orbioaxtquqgold9b4okfuv1vu/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/c4orbioaxtquqgold9b4okfuv1vu/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128664824">
+            <name>
+              <![CDATA[28 Oct 2026 - 16:00 @ Nerve Centre The Goonies]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-28T16:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-28T16:00:00+00:00</opening_time_iso>
+            <event_number>128664824</event_number>
+            <venue_layout>Cinema One</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667490/events/128664824</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667490/events/128664824.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873665283">
+        <name>
+          <![CDATA[The Mumford & Sons Story: Awake My Soul]]>
+        </name>
+        <description>
+          <![CDATA[<h2><strong>A stomp, a roar, a singalong celebration.</strong></h2><p><strong>The Mumford &amp; Sons Story&nbsp;</strong>recreates the epic rise of﻿ the foot-stomping folk-rock giants who took the﻿ world by storm.</p><p>Four powerhouse musicians, decked out in﻿waistcoats, skinny jeans, and some glorious beards,﻿ deliver a barnstorming celebration of Mumford &amp;﻿ Sons&rsquo; unmistakable sound and unstoppable journey﻿ to global fame!</p><p>Packed with all the anthems you love &mdash; &apos;<strong>Little Lion Man</strong>&apos;, &apos;<strong>I Will Wait</strong>&apos;, &apos;<strong>The Cave</strong>&apos; &mdash; and&nbsp;featuring songs from all five albums &mdash;&nbsp;<em><strong>Delta</strong></em>,&nbsp;<em><strong>Rushmere</strong></em>,&nbsp;<em><strong>Believe&nbsp;</strong></em>and more &mdash; this show is pure festival energy bottled up for one unforgettable night!</p>]]>
+        </description>
+        <event_category>Nerve Venue</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873665283/events</url>
+        <version>139</version>
+        <tags>
+          <tag>mumford</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/bigz3qp11avfqjovr2yhlnbv8gkt/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/bigz3qp11avfqjovr2yhlnbv8gkt/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/bigz3qp11avfqjovr2yhlnbv8gkt/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128653965">
+            <name>
+              <![CDATA[02 Jun 2027 (all day) @ Nerve Centre - (opening time 20:00) The Mumford & Sons Story: Awake My Soul]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2027-06-02T00:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2027-06-02T20:00:00+01:00</opening_time_iso>
+            <event_number>128653965</event_number>
+            <venue_layout>Venue</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873665283/events/128653965</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873665283/events/128653965.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873667494">
+        <name>
+          <![CDATA[The Nightmare Before Christmas]]>
+        </name>
+        <description>
+          <![CDATA[Can Christmas be saved? Bored with the same old scare-and-scream routine, Jack Skellington, the Pumpkin King of Halloween Town, longs to spread the joy of Christmas. But his merry mission puts Santa in jeopardy and creates a nightmare for good little boys and girls everywhere!&nbsp;<div><br></div><div><i>Images courtesy of Park Circus/Disney.</i></div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667494/events</url>
+        <version>43</version>
+        <tags>
+          <tag>film</tag>
+          <tag>nervecinema</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/sqlscvrnvsl7q7wvlituva4j31ld/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/sqlscvrnvsl7q7wvlituva4j31ld/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/sqlscvrnvsl7q7wvlituva4j31ld/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128664826">
+            <name>
+              <![CDATA[29 Oct 2026 - 14:00 @ Nerve Centre The Nightmare Before Christmas]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-29T14:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-29T14:00:00+00:00</opening_time_iso>
+            <event_number>128664826</event_number>
+            <venue_layout>Cinema One</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667494/events/128664826</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667494/events/128664826.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873667541">
+        <name>
+          <![CDATA[The Shining (Extended Cut)]]>
+        </name>
+        <description>
+          <![CDATA[All work and no play makes Oscar&reg;-winning actor Jack Nicholson-the caretaker of an isolated resort-go way off the deep end, terrorising his young son and wife (Shelley Duvall). Nicholson plays Jack Torrance, who&apos;s come to the elegant, isolated Overlook Hotel as off-season caretaker. Torrance has never been there before-or has he? The answer lies in a ghostly time warp of madness and murder.<div><br></div><div>
+<i>Images courtesy of Park Circus/Warner Bros.</i><br>
+</div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667541/events</url>
+        <version>43</version>
+        <tags>
+          <tag>film</tag>
+          <tag>nervecinema</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/hr9v6hqgzvpojxc3lzd7shxvzmss/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/hr9v6hqgzvpojxc3lzd7shxvzmss/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/hr9v6hqgzvpojxc3lzd7shxvzmss/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128664850">
+            <name>
+              <![CDATA[30 Oct 2026 - 19:00 @ Nerve Centre The Shining (Extended Cut)]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-30T19:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-30T19:00:00+00:00</opening_time_iso>
+            <event_number>128664850</event_number>
+            <venue_layout>Cinema One</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667541/events/128664850</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667541/events/128664850.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873667510">
+        <name>
+          <![CDATA[The Wicker Man]]>
+        </name>
+        <description>
+          <![CDATA[When a young girl mysteriously disappears, Police Sergeant Howie (Edward Woodward) travels to a remote Scottish island to investigate. But this pastoral community, led by the strange Lord Summerisle (Christopher Lee), is not what it seems as the devoutly religious detective soon uncovers a secret society of wanton lust and pagan blasphemy.&nbsp;<div><br></div><div><i>Images courtesy of Park Circus/STUDIOCANAL.</i></div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667510/events</url>
+        <version>48</version>
+        <tags>
+          <tag>film</tag>
+          <tag>nervecinema</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/n264pujwzgbjowgrcyg5pxwg89zc/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/n264pujwzgbjowgrcyg5pxwg89zc/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/n264pujwzgbjowgrcyg5pxwg89zc/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128664831">
+            <name>
+              <![CDATA[28 Oct 2026 - 19:00 @ Nerve Centre The Wicker Man]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-28T19:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-28T19:00:00+00:00</opening_time_iso>
+            <event_number>128664831</event_number>
+            <venue_layout>Cinema One</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667510/events/128664831</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667510/events/128664831.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873666617">
+        <name>
+          <![CDATA[Three Floors | Italian Film Club]]>
+        </name>
+        <description>
+          <![CDATA[<i><b>Italian Film Club at Nerve Cinema, a series of ongoing screenings showcases Italian culture and Italian language through contemporary and classic titles from Italian cinema.</b></i><div>
+&nbsp;<div>Nanni Moretti&rsquo;s beautifully crafted melodrama, <i>Three Floors Up</i>, charts the interconnected lives of the residents in an elegant apartment block in Rome. Capturing their emotional travails at five-year intervals, Moretti weaves together stories of love, loyalty, loss and loneliness.</div>
+</div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873666617/events</url>
+        <version>84</version>
+        <tags>
+          <tag>film</tag>
+          <tag>nervecinema</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/40i2qoyim01s22kknii04kbort7j/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/40i2qoyim01s22kknii04kbort7j/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/40i2qoyim01s22kknii04kbort7j/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128661468">
+            <name>
+              <![CDATA[13 Oct 2026 - 19:00 @ Nerve Centre Three Floors | Italian Film Club]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-13T19:00:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-13T19:00:00+01:00</opening_time_iso>
+            <event_number>128661468</event_number>
+            <venue_layout>Cinema One</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873666617/events/128661468</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873666617/events/128661468.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873667509">
+        <name>
+          <![CDATA[Wallace and Gromit: Curse of the Were-Rabbit]]>
+        </name>
+        <description>
+          <![CDATA[Oscar&reg;-winning claymation about the chase for a giant rabbit terrorising a town&apos;s allotments and vegetable patches days before the annual vegetable-growing competition. As Wallace and his trusty companion are called into action with their pest control business, a dastardly Lord Victor Quartermaine competes to capture the Were-Rabbit and win the heart of a beautiful lady.&nbsp;<div><br></div><div><i>Images courtesy of Park Circus/Universal.</i></div>]]>
+        </description>
+        <event_category>Film</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667509/events</url>
+        <version>43</version>
+        <tags>
+          <tag>film</tag>
+          <tag>nervecinema</tag>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/nlyl04nj8ynddrycbfp6vfj8k120/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/nlyl04nj8ynddrycbfp6vfj8k120/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/nlyl04nj8ynddrycbfp6vfj8k120/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128664828">
+            <name>
+              <![CDATA[31 Oct 2026 - 14:00 @ Nerve Centre Wallace and Gromit: Curse of the Were-Rabbit]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-10-31T14:00:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-10-31T14:00:00+00:00</opening_time_iso>
+            <event_number>128664828</event_number>
+            <venue_layout>Cinema One</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667509/events/128664828</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667509/events/128664828.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+    </shows>
+  </venue>
+  <venue id="126564821">
+    <name>
+      <![CDATA[Nerve Centre Bar]]>
+    </name>
+    <shows>
+      <show id="873667951">
+        <name>
+          <![CDATA[Community Games Night]]>
+        </name>
+        <description>
+          <![CDATA[<div><b>Join us for our Community Games night!</b></div><div><b><br></b></div><div><b>*For 16&ndash;25 years only.&nbsp;</b></div><div><br></div><div>Come along, grab some<b> pizza</b> and play games like <b>Mario Kart, Super Smash Bros, Wii Sports, Beat Saber, Kingspray </b>and<b> more...&nbsp;</b>
+</div><div><br></div><div>This event is part of our<b> Kinship Project</b> which gives young people decision-making power over the types of events we offer at Nerve Centre.&nbsp;</div><div><br></div><div>The event will be hosted by members of our Kinship Core Cohort which is made up of past Nerve Centre Participants aged 16&ndash;25.&nbsp;</div>]]>
+        </description>
+        <event_category>Kinship</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667951/events</url>
+        <version>39</version>
+        <tags>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/1wgathabrypoznszsnemhtzdo1fu/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/1wgathabrypoznszsnemhtzdo1fu/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/1wgathabrypoznszsnemhtzdo1fu/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128665915">
+            <name>
+              <![CDATA[13 Oct 2026 - 18:30 @ Nerve Centre Bar - (opening time 18:00) Community Games Night]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-13T18:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-13T18:00:00+01:00</opening_time_iso>
+            <event_number>128665915</event_number>
+            <venue_layout>Nerve Centre Bar</venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667951/events/128665915</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667951/events/128665915.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+    </shows>
+  </venue>
+  <venue id="126565058">
+    <name>
+      <![CDATA[Online ]]>
+    </name>
+    <shows>
+      <show id="873667139">
+        <name>
+          <![CDATA[Big Screen, Small Screen: Getting Your Films to Audiences | Online Masterclass Series]]>
+        </name>
+        <description>
+          <![CDATA[<span>As part of BFI Film Academy Northern Ireland, this free online masterclass series connects young people aged 16&ndash;25 with industry professionals to explore the skills, knowledge and practical know-how that can help turn an interest in film and TV into a career.</span><div><span><br></span></div><div>You&apos;ve made your film &mdash; now what? This session explores every route to getting your work seen, from festivals and community screenings to streaming platforms and social-first release strategies.</div><div>
+<br style="margin:0px;padding:0px;background-color:rgb(243, 243, 243);">With guest speakers Katie Bignell from Festival Formula&nbsp;and Rob Munday from Short of the Week&nbsp;who&apos;ve built careers helping short films find their audience, you&apos;ll leave knowing exactly where, and how, to submit your next project.<span></span>
+</div>]]>
+        </description>
+        <event_category>BFI Film Academy</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667139/events</url>
+        <version>55</version>
+        <tags>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/o9hek987k8g6vcbbgpfu5g9yhf7e/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/o9hek987k8g6vcbbgpfu5g9yhf7e/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/o9hek987k8g6vcbbgpfu5g9yhf7e/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128663528">
+            <name>
+              <![CDATA[14 Dec 2026 - 18:30 @ Online  Big Screen, Small Screen: Getting Your Films to Audiences | Online Masterclass Series]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2026-12-14T18:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2026-12-14T18:30:00+00:00</opening_time_iso>
+            <event_number>128663528</event_number>
+            <venue_layout>Online </venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667139/events/128663528</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667139/events/128663528.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873667140">
+        <name>
+          <![CDATA[From Idea to Income: Building Your Brand and Your Business | Online Masterclass Series]]>
+        </name>
+        <description>
+          <![CDATA[<span>As part of BFI Film Academy Northern Ireland, this free online masterclass series connects young people aged 16&ndash;25 with industry professionals to explore the skills, knowledge and practical know-how that can help turn an interest in film and TV into a career.</span><div><span><br></span></div><div>Got a creative idea and wondering if it could actually pay the bills? This panel session brings together company founders Dog Ears Studios and Enter Yes&nbsp;from Northern Ireland&apos;s own animation, VFX and games industries to talk pricing, cash flow, and what it really takes to build something of your own in film and TV.<span></span>
+</div>]]>
+        </description>
+        <event_category>BFI Film Academy</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667140/events</url>
+        <version>55</version>
+        <tags>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/bhfjsciyepa4x2hn54pm6149rmjr/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/bhfjsciyepa4x2hn54pm6149rmjr/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/bhfjsciyepa4x2hn54pm6149rmjr/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128663530">
+            <name>
+              <![CDATA[25 Jan 2027 - 18:30 @ Online  From Idea to Income: Building Your Brand and Your Business | Online Masterclass Series]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2027-01-25T18:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2027-01-25T18:30:00+00:00</opening_time_iso>
+            <event_number>128663530</event_number>
+            <venue_layout>Online </venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667140/events/128663530</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667140/events/128663530.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873667141">
+        <name>
+          <![CDATA[Going It Alone: Real Talk on Freelance Filmmaking | Online Masterclass Series]]>
+        </name>
+        <description>
+          <![CDATA[<span>As part of BFI Film Academy Northern Ireland, this free online masterclass series connects young people aged 16&ndash;25 with industry professionals to explore the skills, knowledge and practical know-how that can help turn an interest in film and TV into a career.</span><div><span><br></span></div><div>Freelance life in film and TV is exciting but nobody hands you a manual. This honest, practical session, hosted byMission Accomplished, covers the basics of managing money as a freelancer, navigating relationships on set, setting boundaries, and looking after your wellbeing when work isn&apos;t steady.</div><div>
+<br style="margin:0px;padding:0px;background-color:rgb(243, 243, 243);">No sugar-coating, just the real talk you need before you go it alone.<span></span>
+</div>]]>
+        </description>
+        <event_category>BFI Film Academy</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667141/events</url>
+        <version>57</version>
+        <tags>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/jowkd4xm7n9iwo0f7hhsv78xm3xt/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/jowkd4xm7n9iwo0f7hhsv78xm3xt/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/jowkd4xm7n9iwo0f7hhsv78xm3xt/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128663531">
+            <name>
+              <![CDATA[22 Feb 2027 - 18:30 @ Online  Going It Alone: Real Talk on Freelance Filmmaking | Online Masterclass Series]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="GMT">2027-02-22T18:30:00+00:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="GMT">2027-02-22T18:30:00+00:00</opening_time_iso>
+            <event_number>128663531</event_number>
+            <venue_layout>Online </venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667141/events/128663531</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667141/events/128663531.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+      <show id="873667138">
+        <name>
+          <![CDATA[Stand Out and Step Up: Portfolios & CVs That Get You Noticed | Online Masterclass Series]]>
+        </name>
+        <description>
+          <![CDATA[<span>As part of BFI Film Academy Northern Ireland, this free online masterclass series connects young people aged 16&ndash;25 with industry professionals to explore the skills, knowledge and practical know-how that can help turn an interest in film and TV into a career.</span><div><span><br></span></div><div>Your portfolio is your first impression &mdash; make it count. This session covers what makes a strong show reel for every role (not just directing and camera), how to write a CV that actually gets read, and how to build your presence online.</div><div>
+<br style="margin:0px;padding:0px;">With direct feedback on participants&apos; own materials, you&apos;ll come away with practical, ready-to-use improvements.<span></span>
+</div>]]>
+        </description>
+        <event_category>BFI Film Academy</event_category>
+        <production_company_name></production_company_name>
+        <priority>0</priority>
+        <url>https://nervecentre.ticketsolve.com/shows/873667138/events</url>
+        <version>55</version>
+        <tags>
+        </tags>
+        <images>
+          <image priority="0">
+            <url size="large">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/bdy5m0irbifk15r46s1xupfvt6cr/a6206d8b8848d1f5f779dd436f25589e3a792fee204effd13dccee565e881abd</url>
+            <url size="medium">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/bdy5m0irbifk15r46s1xupfvt6cr/7790667b1499641e0a482fd470ef3a3eb0b7d17469237a4cb9f28a097afaa2aa</url>
+            <url size="thumb">https://dc40ra2rfm3rp.cloudfront.net/as-assets/variants/bdy5m0irbifk15r46s1xupfvt6cr/7c367cff06fd518c1ca8f9254efb0ec25a25cd43a892ea5364918efafd429189</url>
+            <alt/>
+          </image>
+        </images>
+        <properties>
+        </properties>
+        <events>
+          <event id="128663527">
+            <name>
+              <![CDATA[19 Oct 2026 - 18:30 @ Online  Stand Out and Step Up: Portfolios & CVs That Get You Noticed | Online Masterclass Series]]>
+            </name>
+            <date_time_iso format="ISO 8601" zone="IST">2026-10-19T18:30:00+01:00</date_time_iso>
+            <opening_time_iso format="ISO 8601" zone="IST">2026-10-19T18:30:00+01:00</opening_time_iso>
+            <event_number>128663527</event_number>
+            <venue_layout>Online </venue_layout>
+            <comment>
+              <![CDATA[]]>
+            </comment>
+            <event_attribute></event_attribute>
+            <url>https://nervecentre.ticketsolve.com/shows/873667138/events/128663527</url>
+            <status>available</status>
+            <feed>
+              <url>https://nervecentre.ticketsolve.com/shows/873667138/events/128663527.xml</url>
+            </feed>
+          </event>
+        </events>
+        <status>available</status>
+      </show>
+    </shows>
+  </venue>
+</venues>
+
+<!-- __CACHE__ -->
