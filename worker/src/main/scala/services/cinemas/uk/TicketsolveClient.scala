@@ -49,7 +49,10 @@ import scala.util.Try
  * tracker, is a film or relay: Theatr Colwyn's "reports_comscorefilm" also marks the Disney
  * Junior screenings it files under "Children & Family" and the Paris ballet relays under
  * "Ballet"; Neuadd Dwyfor tags its "comscore". A certificate in the show's name is no sign of
- * a film: Mwldan's live shows carry them too ("Cardi Bach 2026 (U)").
+ * a film where the client files the show — Mwldan's live shows carry them too ("Cardi Bach
+ * 2026 (U)") — but it is the only sign on a show the client left uncategorised: Watershed's
+ * "Preview: The Debut (15)". None of the recorded feeds' uncategorised gigs, talks or seat
+ * sponsorships carries one, and a venue's age limit ("(18+)") is no certificate.
  *
  * @param client the Ticketsolve client name, the feed host's first label.
  */
@@ -96,12 +99,14 @@ object TicketsolveClient {
   private def reportsToComscore(show: Element): Boolean =
     show.select("> tags > tag").asScala.exists(_.text.toLowerCase(Locale.ROOT).contains("comscore"))
 
-  private def isFilm(show: Element): Boolean =
-    isFilmCategory(child(show, "event_category").getOrElse("")) || reportsToComscore(show)
+  private def isFilm(show: Element): Boolean = reportsToComscore(show) || (child(show, "event_category") match {
+    case Some(category) => isFilmCategory(category)
+    case None           => child(show, "name").exists(TitleCertificate.findFirstIn(_).isDefined)
+  })
 
   /** "Sense and Sensibility (U)", "Hay Fever (12A tbc)", "Manon (15 As Live)": the BBFC
-   *  certificate the box office appends to the title. */
-  private val TitleCertificate = """\s*\(\s*(U|PG|12A?|15|18)\b[^)]*\)\s*$""".r
+   *  certificate the box office appends to the title — not a venue's age limit, "(18+)". */
+  private val TitleCertificate = """\s*\(\s*(U|PG|12A?|15|18)\b(?!\+)[^)]*\)\s*$""".r
 
   /** Event statuses that mean the screening is not happening. */
   private val Cancelled = Set("cancelled", "canceled", "postponed")

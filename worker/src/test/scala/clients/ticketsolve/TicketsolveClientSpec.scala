@@ -147,7 +147,28 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     colwyn should have size 10
   }
 
-  "TicketsolveClient.parse" should "refuse a page that is no feed rather than call it an empty programme" in {
+  it should "keep an uncategorised show that carries a film certificate" in {
+    // Watershed leaves two previews uncategorised; its other uncategorised shows carry no certificate.
+    val watershed = titles("watershed", WatershedBristol)
+    watershed should contain allOf ("Preview: The Debut", "Preview: All Rivers Spill Their Stories to the Sea + director Q&A")
+    watershed should not contain "Spooky Family Creative Technology Workshop"
+    watershed should not contain "Supporters Evening 2026"
+    watershed should not contain "Spike Island x Watershed: 2026 Film London Jarman Award"
+    watershed should have size 57
+  }
+
+  "TicketsolveClient.parse" should "not read a venue's age limit on an uncategorised show as a film certificate" in {
+    // Mwldan files a club night "Clwb Mwldan: Sonic Sounds (18+)"; uncategorised, it would be no film.
+    val feed =
+      """<venues><venue><shows>
+        |<show id="1"><name>Club Night (18+)</name><event_category></event_category><events><event>
+        |<date_time_iso>2026-10-20T22:00:00+01:00</date_time_iso></event></events></show>
+        |</shows></venue></venues>""".stripMargin
+    TicketsolveClient.parse(feed, WatershedBristol, today) shouldBe empty
+    TicketsolveClient.parse(feed.replace("(18+)", "(18)"), WatershedBristol, today).map(_.movie.title) shouldBe Seq("Club Night")
+  }
+
+  it should "refuse a page that is no feed rather than call it an empty programme" in {
     an[IllegalArgumentException] should be thrownBy
       TicketsolveClient.parse("<html><body>Maintenance</body></html>", TheatrMwldanCardigan, today)
   }
