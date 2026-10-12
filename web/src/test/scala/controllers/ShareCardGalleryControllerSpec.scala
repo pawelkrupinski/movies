@@ -47,6 +47,14 @@ class ShareCardGalleryControllerSpec extends AnyFlatSpec with Matchers {
     html.indexOf(">Belle<") should be < html.indexOf(">Diuna<")
   }
 
+  it should "switch to the same page in every other country, this one selected" in {
+    val html = page()
+    Country.switchable.size should be > 1
+    Country.switchable.foreach { c =>
+      html should include(s"""<option value="${c.webUrl.get}/admin/share-cards"${if (c == Country.Poland) " selected" else ""}>""")
+    }
+  }
+
   it should "refuse anyone not signed in" in {
     status(controller().index(FakeRequest("GET", "/admin/share-cards"))) shouldBe UNAUTHORIZED
   }

@@ -10,7 +10,9 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font: 13px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 24px; }
-    h1 { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+    /* The title and the country switcher share one row, as on /uptime and /tasks. */
+    .page-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+    h1 { font-size: 16px; font-weight: 600; color: #fff; }
     .sub { color: #666; font-size: 11px; margin-bottom: 14px; max-width: 760px; }
     .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
     .tabs button { font: inherit; cursor: pointer; background: #1c1c1c; color: #999; border: 1px solid #333;
@@ -33,7 +35,10 @@
   </style>
 </head>
 <body>
-  <h1>Share cards — @gallery.country.code.toUpperCase(java.util.Locale.ROOT)</h1>
+  <div class="page-head">
+    <h1>Share cards</h1>
+    @_countrySwitch("/admin/share-cards", gallery.country)
+  </div>
   <div class="sub">
     Every card this country's pages name as their preview image, at the address a preview scraper fetches.
     A city with no card yet shows the country's home card; a film with none uses its city's.

@@ -33,7 +33,7 @@ class ShareCardGalleryPageSpec extends AnyFlatSpec with Matchers with BeforeAndA
 
   override def beforeAll(): Unit = {
     chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
-    if (chrome.nonEmpty) server = new TestHttpServer({ case "/admin/share-cards" => html })
+    if (chrome.nonEmpty) server = new TestHttpServer({ case "/admin/share-cards" | "/other-country/admin/share-cards" => html })
   }
 
   override def afterAll(): Unit = {
@@ -95,6 +95,18 @@ class ShareCardGalleryPageSpec extends AnyFlatSpec with Matchers with BeforeAndA
       count(page, "films") shouldBe "1 of 3"
       page.eval("__dom.click('[data-tab=cities]')")
       shown(page, "cities") shouldBe Seq("Poznań")
+    }
+  }
+
+  // The switch's options name the other countries' real hosts; one is pointed back at this server.
+  it should "switch country onto the same page, keeping the open tab" in {
+    onPage { page =>
+      page.eval("__dom.click('[data-tab=films]')")
+      page.eval("document.querySelector('.country-switch').options[1].value = location.origin + '/other-country/admin/share-cards'")
+      page.eval("var s = document.querySelector('.country-switch'); s.selectedIndex = 1; s.dispatchEvent(new Event('change'))")
+      page.waitFor("location.pathname === '/other-country/admin/share-cards' && document.readyState === 'complete'")
+      page.evalString("location.hash") shouldBe "#films"
+      panelHidden(page, "films") shouldBe false
     }
   }
 

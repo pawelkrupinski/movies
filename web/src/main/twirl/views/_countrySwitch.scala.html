@@ -1,12 +1,13 @@
 @(path: String, current: models.Country)
-@* Country dimension for the standalone ADMIN pages (/uptime, /tasks).
+@* Country dimension for the standalone ADMIN pages (/uptime, /tasks, /admin/share-cards).
 
    Each of these pages is scoped to the ONE country its deployment serves — the
    uptime bars and the task queue both come off that country's own worker and
    Mongo db. Surface which, and — when more than one country is deployed
    (`Country.switchable`) — let you hop to the SAME page on the other country's
-   host, so switching keeps your place instead of dumping you on a landing page.
-   `path` is that page's path ("/uptime", "/tasks"), appended to each country's
+   host, so switching keeps your place instead of dumping you on a landing page —
+   the address's `#…` too (the share-card page's open tab). `path` is that page's
+   path ("/uptime", "/tasks", "/admin/share-cards"), appended to each country's
    `webUrl`.
 
    Deliberately NOT shared with `_debugNavbar`'s switcher: that one carries a Dev
@@ -17,7 +18,7 @@
    Callers own the surrounding header layout (`.page-head`); this owns only the
    control and its own appearance. *@
 @if(models.Country.switchable.sizeIs > 1) {
-  <select class="country-switch" aria-label="Country" onchange="location.href=this.value">
+  <select class="country-switch" aria-label="Country" onchange="location.href=this.value+location.hash">
     @for(c <- models.Country.switchable) {
       <option value="@{c.webUrl.get}@path"@if(c == current){ selected}>@c.displayName</option>
     }
