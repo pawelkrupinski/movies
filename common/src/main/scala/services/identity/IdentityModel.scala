@@ -175,27 +175,28 @@ object Listing {
    *  read ([[TitleText.tidy]]): a box office filing a film library-style ("Tribute von Panem - Mockingjay Teil 2 (WA: 2026),
    *  Die") is searched and measured as "Die Tribute von Panem - …", as its family key already reads it — searched as filed,
    *  only its pieces found films, and it leaned to "Catching Fire". The raw title stays as published. */
-  def of(cinema: Cinema, cm: CinemaMovie, normalizer: TitleNormalizer): Listing = tidied(cinema, cm, normalizer, TitleText.tidy(cm.movie.title))
-
-  private def tidied(cinema: Cinema, cm: CinemaMovie, normalizer: TitleNormalizer, title: String): Listing = Listing(
-    cinema        = cinema,
-    key           = ListingKey.of(cinema, cm),
-    rawTitle      = cm.movie.rawTitle.getOrElse(cm.movie.title),
-    title         = title,
-    cleanTitle    = ScrapeListing.cleanTitle(cinema, cm.movie.title, normalizer)._1,
-    year          = cm.movie.releaseYear,
-    directors     = cm.director.flatMap(credited).filter(_.nonEmpty).distinct.sorted,
-    runtime       = cm.movie.runtimeMinutes.filter(_ > 0),
-    page          = cm.filmUrl.map(_.trim).filter(_.nonEmpty),
-    originalTitle = cm.movie.originalTitle.map(_.trim).filter(_.nonEmpty),
-    countries     = cm.movie.countries.map(_.trim).filter(_.nonEmpty).distinct.sorted,
-    catalogueIds  = CatalogueId.of(cm),
-    searchTitle   = Some(normalizer.apiQuery(cm.movie.title).trim).filter(q => q.nonEmpty && q != title.trim),
-    // as the card serves it ([[services.movies.CinemaSlotBuilder]]): absolute against its page, escaped — a site-relative
-    // `img src` (PL Kino Roma's "/app/assets/movie/…") is a link no poster fetch takes
-    poster        = SlotFields.url(cm.posterUrl, SlotFields.url(cm.filmUrl, None)),
-    screenings    = ScreeningDays.of(cm.showtimes.map(_.dateTime.toLocalDate)),
-    names         = venueNames(cm))
+  def of(cinema: Cinema, cm: CinemaMovie, normalizer: TitleNormalizer): Listing = {
+    val title = TitleText.tidy(cm.movie.title)
+    Listing(
+      cinema        = cinema,
+      key           = ListingKey.of(cinema, cm),
+      rawTitle      = cm.movie.rawTitle.getOrElse(cm.movie.title),
+      title         = title,
+      cleanTitle    = ScrapeListing.cleanTitle(cinema, cm.movie.title, normalizer)._1,
+      year          = cm.movie.releaseYear,
+      directors     = cm.director.flatMap(credited).filter(_.nonEmpty).distinct.sorted,
+      runtime       = cm.movie.runtimeMinutes.filter(_ > 0),
+      page          = cm.filmUrl.map(_.trim).filter(_.nonEmpty),
+      originalTitle = cm.movie.originalTitle.map(_.trim).filter(_.nonEmpty),
+      countries     = cm.movie.countries.map(_.trim).filter(_.nonEmpty).distinct.sorted,
+      catalogueIds  = CatalogueId.of(cm),
+      searchTitle   = Some(normalizer.apiQuery(title).trim).filter(q => q.nonEmpty && q != title.trim),
+      // as the card serves it ([[services.movies.CinemaSlotBuilder]]): absolute against its page, escaped — a site-relative
+      // `img src` (PL Kino Roma's "/app/assets/movie/…") is a link no poster fetch takes
+      poster        = SlotFields.url(cm.posterUrl, SlotFields.url(cm.filmUrl, None)),
+      screenings    = ScreeningDays.of(cm.showtimes.map(_.dateTime.toLocalDate)),
+      names         = venueNames(cm))
+  }
 
   /** What `cm`'s own synopsis and cast field name — its matching-only excerpt where the venue cut the synopsis (MSI) — none
    *  where a feed copied them from its catalogue entry. */

@@ -2244,6 +2244,9 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(filed.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(filed.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(131634)))
     filed.head.title shouldBe "Die Tribute von Panem - Mockingjay Teil 2 (WA: 2026)"
     filed.head.rawTitle shouldBe "Tribute von Panem - Mockingjay Teil 2 (WA: 2026), Die"
+    // its search form is the tidied title's, never the filed one's
+    filed.head.searchTitle shouldBe Some(normalizer.apiQuery(filed.head.title).trim).filter(_ != filed.head.title)
+    filed.head.searchTitle.exists(_.endsWith(", Die")) shouldBe false
   }
 
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {
