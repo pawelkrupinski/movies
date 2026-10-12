@@ -19,7 +19,16 @@ is that the local toolchain is missing (e.g. no full Xcode for
   Unit specs for controllers, services, enrichment, clients, models.
 - **`sbt itAll`** (or `sbt web/IntegrationTest/test` /
   `worker/IntegrationTest/test`) — `*/src/it/scala/` specs that wire
-  fakes + the real cache/repository.
+  fakes + the real cache/repository. Locally run it as
+  **`scripts/it-local.sh`** (any sbt command as the argument, default
+  `itAll`): it starts a mongod of the run's own on a free port and
+  removes it afterwards. On the shared `:28017` server other agents'
+  heavy runs (identity shadows, convergence legs) saturate its write
+  tickets and journal, and light suites fail on 10 s Mongo round trips —
+  seven did on 2026-10-12, all green on a private server under the same
+  machine load. If you do use `:28017`, give the run a `MONGODB_DB` no
+  other live run holds: `IntegrationRunClaim` refuses a second live run
+  on one prefix by name.
 - **`sbt web/PageTest/test`** — `web/src/page/scala/views/PageJsBehaviourSpec`
   drives real Chrome over CDP against Twirl-rendered fixtures. Covers
   `web/src/main/assets/js/`, the inline `<script>` blocks in

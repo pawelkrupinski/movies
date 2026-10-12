@@ -57,9 +57,8 @@ object IntegrationMongo {
            |it already has ("Dotted (1902)"). `.env.local` points MONGODB_URI at the
            |prod tunnel, so this fires whenever an ssh forward onto :27017 is up.
            |
-           |Run against a throwaway instead:
-           |  scripts/local-mirror/start-local-mongo.sh
-           |  MONGODB_URI='mongodb://127.0.0.1:28017/?directConnection=true' MONGODB_DB=kinowo_it sbt itAll
+           |Run against a throwaway instead — a mongod of the run's own:
+           |  scripts/it-local.sh
            |
            |Deliberately targeting a throwaway REMOTE? Set $OverrideVar=1.""".stripMargin)
 

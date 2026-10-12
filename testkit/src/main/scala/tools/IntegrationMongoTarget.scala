@@ -12,8 +12,12 @@ import settings.{MongoDatabaseName, MongoUri, ProcessConfiguration, RemoteIntegr
  */
 final case class IntegrationMongoTarget(uri: MongoUri, databasePrefix: MongoDatabaseName, remoteAllowed: RemoteIntegrationAllowed) {
 
-  /** Refuse a real cluster unless one was deliberately allowed — see [[IntegrationMongo]]. */
-  def requireThrowaway(): Unit = IntegrationMongo.requireThrowaway(uri.value, remoteAllowed.value)
+  /** Refuse a real cluster unless one was deliberately allowed — see [[IntegrationMongo]] — and a
+   *  prefix another live run holds ([[IntegrationRunClaim]]). */
+  def requireThrowaway(): Unit = {
+    IntegrationMongo.requireThrowaway(uri.value, remoteAllowed.value)
+    IntegrationRunClaim.claim(this)
+  }
 }
 
 object IntegrationMongoTarget {

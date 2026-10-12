@@ -29,7 +29,7 @@ class IntegrationMongoSpec extends AnyFlatSpec with Matchers {
     val thrown = the [IllegalStateException] thrownBy
       IntegrationMongo.requireThrowaway(prodTunnel, overrideSet = false)
     thrown.getMessage should include ("Refusing to run integration tests")
-    thrown.getMessage should include ("start-local-mongo.sh")   // says how to fix it
+    thrown.getMessage should include ("scripts/it-local.sh")   // says how to fix it
   }
 
   it should "refuse an Atlas SRV cluster" in {
