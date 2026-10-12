@@ -41,7 +41,15 @@ object UnmatchedClusters {
                            withDetail: Set[String], families: Map[String, BsonDocument], finds: Map[String, Option[Int]],
                            /** Each candidate's top-billed cast the fill read ([[IdentityLookups.cast]]): none in a capture
                             *  recorded before the cast evidence, whose replay knows no cast. */
-                           casts: Map[Int, Option[Seq[String]]] = Map.empty)
+                           casts: Map[Int, Option[Seq[String]]] = Map.empty,
+                           /** The family questions the capture asked and never got answered ([[AgreementQuestionRounds]]: a
+                            *  host that blackholed every attempt) — held no answer, so the replay leaves them open as
+                            *  production leaves a failed fetch's, and the next capture asks them again. */
+                           unreachable: Set[(VoterFamily, String)] = Set.empty)
+
+  /** The family questions `wanted` that `capture` holds no reason to leave open: those it gave up on as unreachable aside,
+   *  every question the stage asks of a complete capture is answered. */
+  def unasked(capture: Capture, wanted: Set[(VoterFamily, String)]): Set[(VoterFamily, String)] = wanted -- capture.unreachable
 
   // ── what the agreement makes of the clusters ─────────────────────────────────────────────
 
@@ -203,6 +211,8 @@ object UnmatchedClusters {
       .append("withDetail", array(capture.withDetail.toSeq.sorted.map(new BsonString(_))))
       .append("families", array(capture.families.toSeq.sortBy(_._1).map { case (id, doc) => new BsonDocument("_id", new BsonString(id)).append("doc", doc) }))
       .append("finds", array(capture.finds.toSeq.sortBy(_._1).map { case (imdb, tmdb) => new BsonDocument("imdb", new BsonString(imdb)).append("tmdb", tmdb.fold[BsonValue](new BsonNull)(new BsonInt32(_))) }))
+      .append("unreachable", array(capture.unreachable.toSeq.sortBy { case (family, question) => (family.ordinal, question) }.map { case (family, question) =>
+        new BsonDocument("family", new BsonString(family.label)).append("question", new BsonString(question)) }))
       .append("casts", array(capture.casts.toSeq.sortBy(_._1).map { case (id, cast) => new BsonDocument("id", new BsonInt32(id)).append("cast", cast.fold[BsonValue](new BsonNull)(strings)) }))
     Files.createDirectories(path.getParent)
     val out = new GZIPOutputStream(Files.newOutputStream(path))
@@ -223,7 +233,11 @@ object UnmatchedClusters {
       d.getArray("withDetail").getValues.asScala.map(_.asString.getValue).toSet,
       docs("families").map(f => f.getString("_id").getValue -> f.getDocument("doc")).toMap,
       docs("finds").map(f => f.getString("imdb").getValue -> Option(f.get("tmdb")).filterNot(_.isNull).map(_.asNumber.intValue)).toMap,
-      (if (d.containsKey("casts")) docs("casts") else Nil).map(f => f.getInt32("id").getValue -> Option(f.get("cast")).filterNot(_.isNull).map(_ => stringsOf(f, "cast"))).toMap)
+      (if (d.containsKey("casts")) docs("casts") else Nil).map(f => f.getInt32("id").getValue -> Option(f.get("cast")).filterNot(_.isNull).map(_ => stringsOf(f, "cast"))).toMap,
+      (if (d.containsKey("unreachable")) docs("unreachable") else Nil).map { u =>
+        val label = u.getString("family").getValue
+        VoterFamily.values.find(_.label == label).getOrElse(sys.error(s"no family $label in $path")) -> u.getString("question").getValue
+      }.toSet)
   }
 
   private def array(values: Seq[BsonValue]): BsonArray = new BsonArray(values.asJava)

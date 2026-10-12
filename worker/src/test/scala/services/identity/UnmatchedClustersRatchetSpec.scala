@@ -29,7 +29,8 @@ class UnmatchedClustersRatchetSpec extends AnyFlatSpec with Matchers {
       "(UnmatchedClustersCaptureIntegrationSpec): ") {
       outcome.model.unknownQueries shouldBe 0
       outcome.model.unknownFilms shouldBe 0
-      outcome.stage.wanted shouldBe empty
+      // a question the capture gave up on as unreachable is left open as production leaves a failed fetch's
+      UnmatchedClusters.unasked(capture, outcome.stage.wanted) shouldBe empty
       outcome.stage.wantedFinds shouldBe empty
       outcome.stage.wantedPosters shouldBe empty
       outcome.stage.wantedCatalogue shouldBe empty

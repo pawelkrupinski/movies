@@ -76,41 +76,29 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
 
       // the records of the films the model leaned to and weighed best: what a take names, and what pooled facts read
       (decisions.flatMap(_.leaning.map(_.film)) ++ decisions.flatMap(_.trace.nodes.values.flatMap(_.candidate))).distinct.foreach(recording.film)
-      var outcome = UnmatchedClusters.agree(decisions, subset, recording, answers, store.version, tmdbOf, c.normalizer, posterStore,
+      def agree() = UnmatchedClusters.agree(decisions, subset, recording, answers, store.version, tmdbOf, c.normalizer, posterStore,
         modules.wiring.IdentityCutoverWiring.identities(c.country.code), catalogue.answers,
           modules.wiring.IdentityCutoverWiring.listedOn(c.country.code))
-      var rounds  = 0
-      while ((outcome.stage.wanted.nonEmpty || outcome.stage.wantedPosters.nonEmpty || outcome.stage.wantedCatalogue.nonEmpty) && rounds < 12) {
-        rounds += 1
-        val open = outcome.stage.wanted.toSeq
-        val unhashed = outcome.stage.wantedPosters.toSeq
-        println(s"[${c.label}] capture round $rounds: ${open.size} open family question(s), ${unhashed.size} poster(s)")
-        posters.file(posterStore, unhashed)
-        catalogue.file(outcome.stage.wantedCatalogue)
-        open.groupBy(_._1).toSeq.map { case (family, asks) =>
-          java.util.concurrent.CompletableFuture.runAsync { () =>
-            asks.map(_._2).grouped(4).foreach(_.map(question => java.util.concurrent.CompletableFuture.runAsync(() =>
-              { Try(AgreementQuestions.file(store, family, sources(family), question)); () })).foreach(_.join()))
-          }
-        }.foreach(_.join())
-        outcome = UnmatchedClusters.agree(decisions, subset, recording, answers, store.version, tmdbOf, c.normalizer, posterStore,
-        modules.wiring.IdentityCutoverWiring.identities(c.country.code), catalogue.answers,
-          modules.wiring.IdentityCutoverWiring.listedOn(c.country.code))
-      }
+      // a question its host never answers is given up on, kept in the fixture as unreachable, and asked again next capture
+      val asked = new AgreementQuestionRounds(store, sources, c.label).run(() => agree())(_.stage.wanted,
+        pending = o => o.stage.wantedPosters.nonEmpty || o.stage.wantedCatalogue.nonEmpty,
+        beside = { o => posters.file(posterStore, o.stage.wantedPosters.toSeq); catalogue.file(o.stage.wantedCatalogue) })
+      val (outcome, rounds) = (asked.outcome, asked.rounds)
       val filed = docs.get(TmdbKind.Family, docs.fetchedBefore(TmdbKind.Family, Long.MaxValue).map(_._1))
       val capture = UnmatchedClusters.Capture(c.country, subset, decisions, recording.queries.asScala.toMap, recording.films.asScala.toMap,
-        recording.details.asScala.toMap, recording.withDetail.asScala.toSet, filed, finds.asScala.toMap, recording.casts.asScala.toMap)
+        recording.details.asScala.toMap, recording.withDetail.asScala.toSet, filed, finds.asScala.toMap, recording.casts.asScala.toMap, asked.unreachable)
       val written = configuration.identityUnmatchedCapture.get.value.resolve(s"${c.country.code}.json.gz")
       UnmatchedClusters.write(written, capture)
 
       // the capture must replay to exactly what was captured
-      val replayed = UnmatchedClusters.replay(UnmatchedClusters.read(written))
-      replayed.stage.wanted shouldBe empty
+      val reread   = UnmatchedClusters.read(written)
+      val replayed = UnmatchedClusters.replay(reread)
+      UnmatchedClusters.unasked(reread, replayed.stage.wanted) shouldBe empty
       replayed.stage.wantedPosters shouldBe empty
       replayed.stage.wantedCatalogue shouldBe empty
       UnmatchedClusters.takes(capture, replayed) shouldBe UnmatchedClusters.takes(capture, outcome)
       println(s"[${c.label}] captured ${subset.size} listings in ${decisions.size} clusters; ${capture.queries.size} queries, ${capture.films.size} films, " +
-        s"${filed.size} family answers after $rounds round(s); takes ${UnmatchedClusters.takes(capture, outcome).size}")
+        s"${filed.size} family answers after $rounds round(s), ${asked.unreachable.size} unreachable; takes ${UnmatchedClusters.takes(capture, outcome).size}")
       // the venue pages the recorded tree lacks of the captured listings and the model's pooled takes (`LiveGapLeaf.readAhead`)
       // — the page, and every gap met that holds its detail beside it (`LiveGapLeaf.gapsOf`: by its page's slug or its
       // catalogue id) — read live and kept, for the next run to answer; what reading every unread page would cost beside it

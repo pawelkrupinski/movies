@@ -113,23 +113,11 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
       identities = modules.wiring.IdentityCutoverWiring.identities(c.country.code), catalogue = catalogue.answers,
       listedOn = modules.wiring.IdentityCutoverWiring.listedOn(c.country.code), correctionPostersAtOnce = Int.MaxValue, correctionsPerApply = Int.MaxValue)
     val byKey = listings.map(l => l.key -> l).toMap
-    var rounds = 0
-    var taken  = stage.apply(resolution, byKey.get, store.version)
-    while ((stage.wanted.nonEmpty || stage.wantedPosters.nonEmpty || stage.wantedCatalogue.nonEmpty) && rounds < 12) {
-      rounds += 1
-      val open = stage.wanted.toSeq
-      println(s"[${c.label}] agreement round $rounds: ${open.size} open question(s), ${stage.wantedPosters.size} poster(s)")
-      posters.file(posterStore, stage.wantedPosters.toSeq)
-      catalogue.file(stage.wantedCatalogue)
-      // each family's questions four at a time, as the experiment read the sites unblocked
-      open.groupBy(_._1).toSeq.map { case (family, asks) =>
-        java.util.concurrent.CompletableFuture.runAsync { () =>
-          asks.map(_._2).grouped(4).foreach(_.map(question => java.util.concurrent.CompletableFuture.runAsync(() =>
-            { Try(AgreementQuestions.file(store, family, sources(family), question)); () })).foreach(_.join()))
-        }
-      }.foreach(_.join())
-      taken = stage.apply(resolution, byKey.get, store.version)
-    }
+    // each family's questions four at a time, as the experiment read the sites unblocked; one its host never answers given up
+    val asked = new AgreementQuestionRounds(store, sources, s"${c.label} agreement").run(() => stage.apply(resolution, byKey.get, store.version))(
+      _ => stage.wanted, pending = _ => stage.wantedPosters.nonEmpty || stage.wantedCatalogue.nonEmpty,
+      beside = { _ => posters.file(posterStore, stage.wantedPosters.toSeq); catalogue.file(stage.wantedCatalogue) })
+    val (taken, rounds) = (asked.outcome, asked.rounds)
     // every answer the stage read, in the family seed's format: what `integration.ModelTakeCorrectionCost` measures over
     Files.writeString(dir.resolve(s"answers-${c.country.code}.jsonl"), answered.get(TmdbKind.Family, answered.fetchedBefore(TmdbKind.Family, Long.MaxValue)
       .map(_._1)).toSeq.sortBy(_._1).map { case (id, d) =>

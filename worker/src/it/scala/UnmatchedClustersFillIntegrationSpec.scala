@@ -66,40 +66,34 @@ class UnmatchedClustersFillIntegrationSpec extends AnyFlatSpec with Matchers {
         store.version, tmdbOf, services.movies.TitleNormalizer.forCountry(country), posterStore,
         modules.wiring.IdentityCutoverWiring.identities(country.code), catalogue.answers,
           modules.wiring.IdentityCutoverWiring.listedOn(country.code))
-      var outcome = agree()
-      var rounds  = 0
-      while ((outcome.stage.wanted.nonEmpty || outcome.stage.wantedPosters.nonEmpty || outcome.stage.wantedCatalogue.nonEmpty ||
-              outcome.stage.wantedFinds.nonEmpty || (live.isDefined && (!lookups.queries.isEmpty || !lookups.films.isEmpty))) && rounds < 12) {
-        rounds += 1
-        println(s"[${country.code}] fill round $rounds: ${outcome.stage.wanted.size} family question(s), ${outcome.stage.wantedPosters.size} poster(s), " +
-          s"${outcome.stage.wantedCatalogue.size} catalogue question(s), ${outcome.stage.wantedFinds.size} find(s)")
-        posters.file(posterStore, outcome.stage.wantedPosters.toSeq)
-        catalogue.file(outcome.stage.wantedCatalogue)
-        outcome.stage.wantedFinds.foreach(tmdbOf)
-        live.foreach { tmdbLookups =>
-          val queries = lookups.queries.asScala.toSeq.flatMap(query => tmdbLookups.candidates(query).toOption.map(query -> _))
-          val films   = lookups.films.asScala.toSeq.flatMap(id => tmdbLookups.film(id).toOption.map(id -> _))
-          println(s"[${country.code}] fill round $rounds: ${queries.size} TMDB search(es), ${films.size} TMDB record(s) answered live")
-          capture = capture.copy(queries = capture.queries ++ queries, films = capture.films ++ films)
-        }
-        outcome.stage.wanted.toSeq.groupBy(_._1).toSeq.map { case (family, asks) =>
-          java.util.concurrent.CompletableFuture.runAsync { () =>
-            asks.map(_._2).grouped(4).foreach(_.map(question => java.util.concurrent.CompletableFuture.runAsync(() =>
-              { Try(AgreementQuestions.file(store, family, sources(family), question)); () })).foreach(_.join()))
+      // a question its host never answers is given up on, kept in the fixture as unreachable, and asked again next time
+      val asked = new AgreementQuestionRounds(store, sources, s"${country.code} fill").run(() => agree())(_.stage.wanted,
+        pending = o => o.stage.wantedPosters.nonEmpty || o.stage.wantedCatalogue.nonEmpty || o.stage.wantedFinds.nonEmpty ||
+          (live.isDefined && (!lookups.queries.isEmpty || !lookups.films.isEmpty)),
+        beside = { o =>
+          println(s"[${country.code}] fill: ${o.stage.wantedPosters.size} poster(s), ${o.stage.wantedCatalogue.size} catalogue question(s), ${o.stage.wantedFinds.size} find(s)")
+          posters.file(posterStore, o.stage.wantedPosters.toSeq)
+          catalogue.file(o.stage.wantedCatalogue)
+          o.stage.wantedFinds.foreach(tmdbOf)
+          live.foreach { tmdbLookups =>
+            val queries = lookups.queries.asScala.toSeq.flatMap(query => tmdbLookups.candidates(query).toOption.map(query -> _))
+            val films   = lookups.films.asScala.toSeq.flatMap(id => tmdbLookups.film(id).toOption.map(id -> _))
+            println(s"[${country.code}] fill: ${queries.size} TMDB search(es), ${films.size} TMDB record(s) answered live")
+            capture = capture.copy(queries = capture.queries ++ queries, films = capture.films ++ films)
           }
-        }.foreach(_.join())
-        outcome = agree()
-      }
+        })
+      val (outcome, rounds) = (asked.outcome, asked.rounds)
       outcome.model.unknownQueries shouldBe 0
       val filed = docs.get(TmdbKind.Family, docs.fetchedBefore(TmdbKind.Family, Long.MaxValue).map(_._1))
-      UnmatchedClusters.write(path, capture.copy(families = filed, finds = finds.asScala.toMap))
-      val replayed = UnmatchedClusters.replay(UnmatchedClusters.read(path))
-      replayed.stage.wanted shouldBe empty
+      UnmatchedClusters.write(path, capture.copy(families = filed, finds = finds.asScala.toMap, unreachable = asked.unreachable))
+      val reread   = UnmatchedClusters.read(path)
+      val replayed = UnmatchedClusters.replay(reread)
+      UnmatchedClusters.unasked(reread, replayed.stage.wanted) shouldBe empty
       replayed.stage.wantedFinds shouldBe empty
       replayed.stage.wantedPosters shouldBe empty
       replayed.stage.wantedCatalogue shouldBe empty
       replayed.unanswered shouldBe empty
-      println(s"[${country.code}] filled after $rounds round(s): ${filed.size} family answers, ${finds.size} finds")
+      println(s"[${country.code}] filled after $rounds round(s): ${filed.size} family answers, ${finds.size} finds, ${asked.unreachable.size} unreachable")
     }
   }
 }
