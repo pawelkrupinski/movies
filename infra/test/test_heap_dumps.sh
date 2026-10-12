@@ -166,6 +166,29 @@ check "but the newest-dump time stays the newest death's" \
   "$(grep '^kinowo_heapdumps_newest_timestamp_seconds{dir="worker-uk"}' <<< "$out")"
 check "a directory holding only requested dumps reports no death" "kinowo_heapdumps_newest_timestamp_seconds{dir=\"worker-us\"} 0" \
   "$(grep '^kinowo_heapdumps_newest_timestamp_seconds{dir="worker-us"}' <<< "$out")"
+# ONLY A NAME A DYING JVM WRITES IS A DEATH: this start's -XX:HeapDumpPath (<dir>_<pod>_<start>),
+# the watchdog's wedge-*, and a leftover java_pid1 the prune renamed oom-*. A dump taken by hand from
+# the node (scripts/ops/dumpheap.py, jcmd) carries whatever name its taker chose -- on 2026-10-07 two
+# of them, uk-gc-creep-1007 and uk-after-1007, paged as worker-uk deaths -- so the rule is an
+# allowlist of the dying names, not a denylist of the asked-for ones.
+r="$tmp/rep-handmade"
+dump "$r/worker-uk/worker-uk_pod_20260101T000000Z.hprof.gz" 100 202601010000
+dump "$r/worker-uk/uk-gc-creep-1007.hprof.gz" 100 202601020000
+dump "$r/worker-uk/uk-after-1007.hprof" 100 202601030000
+dump "$r/worker-de/wedge-1790687125837.hprof.gz" 100 202601020000
+dump "$r/worker-pl/oom-20260102T000000Z-pid1.hprof" 100 202601020000
+out="$(run report "$r")"
+check "a hand-named dump still counts toward what is kept" "kinowo_heapdumps_files{dir=\"worker-uk\"} 3" \
+  "$(grep '^kinowo_heapdumps_files{dir="worker-uk"}' <<< "$out")"
+check "but does not move the newest-death time" \
+  "kinowo_heapdumps_newest_timestamp_seconds{dir=\"worker-uk\"} $(mtime "$r/worker-uk/worker-uk_pod_20260101T000000Z.hprof.gz")" \
+  "$(grep '^kinowo_heapdumps_newest_timestamp_seconds{dir="worker-uk"}' <<< "$out")"
+check "the watchdog's wedge dump is a death" \
+  "kinowo_heapdumps_newest_timestamp_seconds{dir=\"worker-de\"} $(mtime "$r/worker-de/wedge-1790687125837.hprof.gz")" \
+  "$(grep '^kinowo_heapdumps_newest_timestamp_seconds{dir="worker-de"}' <<< "$out")"
+check "a renamed java_pid1 dump is a death" \
+  "kinowo_heapdumps_newest_timestamp_seconds{dir=\"worker-pl\"} $(mtime "$r/worker-pl/oom-20260102T000000Z-pid1.hprof")" \
+  "$(grep '^kinowo_heapdumps_newest_timestamp_seconds{dir="worker-pl"}' <<< "$out")"
 
 echo "dump-file"
 check "names pod, country and start time for the web (KINOWO_COUNTRY)" "1" \

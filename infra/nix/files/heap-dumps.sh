@@ -208,11 +208,14 @@ case "$cmd" in
     echo "# TYPE kinowo_heapdumps_files gauge"
     echo "# HELP kinowo_heapdumps_bytes Bytes of heap dumps kept on the node, per app-country directory."
     echo "# TYPE kinowo_heapdumps_bytes gauge"
-    # THE NEWEST DEATH, NOT THE NEWEST FILE: a dump somebody asked for (the worker's POST /heapdump
-    # writes requested-<millis>.hprof) is kept and counted like any other, but it is not a JVM dying,
-    # and HeapDumpWritten reads this gauge. Two such dumps, taken while measuring the heap on
-    # 2026-09-29, paged as worker deaths.
-    echo "# HELP kinowo_heapdumps_newest_timestamp_seconds Write time of the newest heap dump a JVM wrote as it died (OOM or wedged watchdog) per directory; requested dumps are excluded (0 = none)."
+    # THE NEWEST DEATH, NOT THE NEWEST FILE: HeapDumpWritten reads this gauge, so only the names a
+    # dying JVM writes count -- this start's -XX:HeapDumpPath (`dump-file`: <dir>_<pod>_<start>), the
+    # liveness watchdog's wedge-<millis>, and a java_pid1 the prune renamed oom-*. Every other dump
+    # (POST /heapdump's requested-*, or one taken by hand from the node under any name) is kept and
+    # counted like any other, but is not a JVM dying. An allowlist because a denylist cannot know
+    # what a person will call a dump: requested-* paged on 2026-09-29, and two hand-named ones
+    # (uk-gc-creep-1007, uk-after-1007) paged as worker-uk deaths on 2026-10-07.
+    echo "# HELP kinowo_heapdumps_newest_timestamp_seconds Write time of the newest heap dump a JVM wrote as it died (OOM or wedged watchdog) per directory; requested and hand-taken dumps are excluded (0 = none)."
     echo "# TYPE kinowo_heapdumps_newest_timestamp_seconds gauge"
     if [ -d "$root" ]; then
       for d in "$root"/*/; do
@@ -223,7 +226,7 @@ case "$cmd" in
         if [ -n "$listing" ]; then
           while read -r m s p; do
             files=$((files + 1)); bytes=$((bytes + s))
-            case "${p##*/}" in requested-*) continue ;; esac
+            case "${p##*/}" in "${name}"_*|wedge-*|oom-*) ;; *) continue ;; esac
             if [ "$m" -gt "$newest" ]; then newest=$m; fi
           done <<< "$listing"
         fi

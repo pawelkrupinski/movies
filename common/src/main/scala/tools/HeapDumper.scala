@@ -23,8 +23,8 @@ import scala.util.{Failure, Success, Try}
  *
  * The worker's `POST /heapdump` uses it too, for a heap that is merely suspicious. The
  * [[HeapDumper.Reason]] names the file, and that name is all the node's heap-dump timer
- * sees: its report (infra/nix/files/heap-dumps.sh) keeps `requested-*` out of the
- * newest-death time HeapDumpWritten alerts on, so looking at a heap never pages as a
+ * sees: its report (infra/nix/files/heap-dumps.sh) counts only `wedge-*` (and the JVM's own
+ * OOM dumps) toward the newest-death time HeapDumpWritten alerts on, so looking at a heap never pages as a
  * worker dying.
  *
  * `dumpHeap` won't overwrite an existing file, so the filename carries a
