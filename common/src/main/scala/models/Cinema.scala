@@ -2060,7 +2060,7 @@ object UsRoster {
 
 // ── Spain (SensaCine) — data-driven from the full roster ─────────────────────
 // `SpanishRosterData` (generated from data/spain/pages.json + provinces.json + ocine.json)
-// carries 240 town and cluster pages / 601 cinemas. Same shape as `GermanCinema` and
+// carries 240 town and cluster pages / 599 cinemas. Same shape as `GermanCinema` and
 // `UsCinema`: each venue is built ONCE in `SpanishRoster` and reused everywhere, so one
 // `Source` instance serves the page, `Cinema.byCity` and the scrape catalog, and
 // identity equality holds like the hand-authored `case object` cinemas.

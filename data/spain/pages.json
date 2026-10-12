@@ -1411,8 +1411,7 @@
     "Badajoz"
    ],
    "cinemas": [
-    "Yelmo Cines Premium El Faro",
-    "mk2 Conquistadores"
+    "Yelmo Cines Premium El Faro"
    ],
    "qualifiedSlug": "badajoz-extremadura"
   },
@@ -2406,7 +2405,6 @@
    "lon": 2.2877,
    "towns": [
     "Granollers",
-    "Sant Celoni",
     "La Garriga",
     "Cànoves i Samalús"
    ],
@@ -2414,8 +2412,7 @@
     "Cine Alhambra",
     "Cinema Edison",
     "Ocine Granollers",
-    "Cinema Esbarjo",
-    "Ocine Sant Celoni Altrium"
+    "Cinema Esbarjo"
    ],
    "qualifiedSlug": "granollers-cataluna"
   },

@@ -1014,7 +1014,7 @@ private[models] object UsCity {
  *  (`data/spain/scripts/build_pages.py`); until 2026-10 a Spanish page was a
  *  whole province, and `/barcelona/` listed Berga, 100 km away.
  *
- *  The roster (601 cinemas over 240 pages) is generated into `SpanishRosterData`
+ *  The roster (599 cinemas over 240 pages) is generated into `SpanishRosterData`
  *  and materialised by [[SpanishRoster]]; instances are built ONCE (in
  *  `City.spanishCities`), so identity equality holds just like the hand-authored
  *  `case object` cities.

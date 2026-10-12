@@ -1998,7 +1998,7 @@ class CinemaScraperCatalog(
       .orElse(SpanishOwnSourcesData.taquilla.get(theaterId).map(taquilla(_, cinema)))
       .getOrElse(sensacine(theaterId, cinema))
 
-  // Spain — data-driven from the full SpanishRoster (240 town pages / 601 cinemas):
+  // Spain — data-driven from the full SpanishRoster (240 town pages / 599 cinemas):
   // one scraper per cinema, keyed by the PAGE slug City.slug uses — the venue's
   // own chain server where the roster names one, then its chain's own page or
   // taquilla.com where `SpanishOwnSourcesData` names one, SensaCine otherwise. Keyed off

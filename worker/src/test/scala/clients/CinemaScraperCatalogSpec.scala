@@ -715,11 +715,10 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   }
 
   // Ocine Tudela's ticketing server did not answer on 443 (connect timeout,
-  // 2026-09-25) while SensaCine lists its full week, and Ocine Sant Celoni Altrium
-  // has no ticketing server the chain links to at all — both stay on SensaCine.
+  // 2026-09-25) while SensaCine lists its full week, so it stays on SensaCine.
   it should "leave the Ocine venues without a reachable own server on SensaCine" in {
     val c = catalog()
-    Seq("E0317", "E0745").foreach { theaterId =>
+    Seq("E0317").foreach { theaterId =>
       val venue = spanishVenue(theaterId)
       withClue(s"${venue.displayName}: ") {
         c.all.find(_.cinema == venue).value.scrapeHosts shouldBe Set("www.sensacine.com")

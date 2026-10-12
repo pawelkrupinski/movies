@@ -300,7 +300,7 @@ object Country {
    *
    *  Its cities are Poland's shape of page — a major city's own venues, a town of
    *  three or more, a cluster of small towns ([[SpanishPage]]) — 240 of them,
-   *  grouped in the picker by province. 601 venues, a third of Germany's roster,
+   *  grouped in the picker by province. 599 venues, a third of Germany's roster,
    *  so its worker is sized like the UK's rather than like Germany's.
    *
    *  It shares a client with Germany but NOT a request budget: `www.sensacine.com`

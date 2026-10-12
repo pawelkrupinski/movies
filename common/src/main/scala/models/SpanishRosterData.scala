@@ -1,5 +1,5 @@
 // GENERATED from data/spain/pages.json by data/spain/scripts/generate_roster.py
-// — do NOT edit by hand. Full Spanish cinema roster: 240 pages / 601 cinemas (SensaCine, plus the Ocine
+// — do NOT edit by hand. Full Spanish cinema roster: 240 pages / 599 cinemas (SensaCine, plus the Ocine
 // venues it does not list, from data/spain/ocine.json).
 // Regenerate with `python3 data/spain/scripts/generate_roster.py` after re-clustering;
 // see data/spain/README.md.
@@ -363,8 +363,7 @@ private[models] object SpanishRosterData {
     ("Multicines La Dehesa - Islantilla", "Multicines La Dehesa - Islantilla", Some("E0516"), None)
   ))
   private def p_badajoz: R = ("badajoz", "badajoz-extremadura", "Badajoz", "Badajoz", 38.8779, -6.9706, "Europe/Madrid", false, Seq("Badajoz"), Seq(
-    ("Yelmo Cines Premium El Faro", "Yelmo Cines Premium El Faro", Some("E1038"), None),
-    ("mk2 Conquistadores", "mk2 Conquistadores", Some("E0408"), None)
+    ("Yelmo Cines Premium El Faro", "Yelmo Cines Premium El Faro", Some("E1038"), None)
   ))
   private def p_barakaldo: R = ("barakaldo", "barakaldo-pais-vasco", "Barakaldo", "Vizcaya", 43.2964, -2.9881, "Europe/Madrid", true, Seq("Barakaldo", "Getxo", "Santurtzi", "Leioa"), Seq(
     ("Autocine Getxo", "Autocine Getxo", Some("E0880"), None),
@@ -572,12 +571,11 @@ private[models] object SpanishRosterData {
   private def p_golmayo: R = ("golmayo", "golmayo-castilla-y-leon", "Golmayo", "Soria", 41.7662, -2.5227, "Europe/Madrid", false, Seq("Golmayo"), Seq(
     ("Cines Lara", "Cines Lara", Some("E0356"), None)
   ))
-  private def p_granollers: R = ("granollers", "granollers-cataluna", "Granollers", "Barcelona", 41.608, 2.2877, "Europe/Madrid", true, Seq("Granollers", "Sant Celoni", "La Garriga", "Cànoves i Samalús"), Seq(
+  private def p_granollers: R = ("granollers", "granollers-cataluna", "Granollers", "Barcelona", 41.608, 2.2877, "Europe/Madrid", true, Seq("Granollers", "La Garriga", "Cànoves i Samalús"), Seq(
     ("Cine Alhambra", "Cine Alhambra", Some("E0827"), None),
     ("Cinema Edison", "Cinema Edison", Some("G02RB"), None),
     ("Ocine Granollers", "Ocine Granollers", Some("E0507"), Some("tickets.ocinegranollers.es")),
-    ("Cinema Esbarjo", "Cinema Esbarjo", Some("E0889"), None),
-    ("Ocine Sant Celoni Altrium", "Ocine Sant Celoni Altrium", Some("E0745"), None)
+    ("Cinema Esbarjo", "Cinema Esbarjo", Some("E0889"), None)
   ))
   private def p_guadalajara: R = ("guadalajara", "guadalajara-castilla-la-mancha", "Guadalajara", "Guadalajara", 40.6286, -3.1618, "Europe/Madrid", true, Seq("Guadalajara", "Azuqueca de Henares"), Seq(
     ("Cultura Azuqueca", "Cultura Azuqueca", Some("E0955"), None),

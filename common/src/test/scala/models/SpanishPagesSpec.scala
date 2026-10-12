@@ -57,7 +57,7 @@ class SpanishPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
     val onPages = Country.Spain.cities.flatMap(_.cinemas)
     onPages.distinct should have size onPages.size
     onPages.toSet shouldBe SpanishRoster.byCity.flatMap(_._2).toSet
-    onPages should have size 601
+    onPages should have size 599
   }
 
   "Spain's picker" should "group every page by province, major cities beside their clusters" in {
