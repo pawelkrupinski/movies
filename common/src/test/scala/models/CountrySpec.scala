@@ -480,6 +480,12 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Poland.brandName shouldBe "Kinowo"   // the brand keeps its Polish name at home
   }
 
+  "Every city of every country" should "list at least one cinema — a city whose last one retired is removed, its slug redirected" in {
+    forAll(Country.all) { country =>
+      country.cities.filter(_.cinemas.isEmpty).map(_.slug) shouldBe empty
+    }
+  }
+
   "Every country" should "map to a distinct database (no two share one db)" in {
     val dbs = Country.all.map(_.mongoDb)
     dbs.distinct.size shouldBe dbs.size
