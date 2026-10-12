@@ -129,6 +129,13 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     titles("theatrcolwyn", TheatrColwyn) should contain ("NT Live: Golden Boy")
   }
 
+  it should "not read a stage show as film for a film word used of its genre" in {
+    // "Movie musicals": a touring song-and-dance show of film songs, with a live cast.
+    val colwyn = titles("theatrcolwyn", TheatrColwyn)
+    colwyn should not contain "Epic Movie Musicals"
+    colwyn should contain ("Grease (Sing-a-long)") // the film itself, filed as "Film"
+  }
+
   "TicketsolveClient.parse" should "refuse a page that is no feed rather than call it an empty programme" in {
     an[IllegalArgumentException] should be thrownBy
       TicketsolveClient.parse("<html><body>Maintenance</body></html>", TheatrMwldanCardigan, today)

@@ -42,8 +42,9 @@ import scala.util.Try
  * on 2026-10-12 are NT Live, Royal Ballet & Opera, Met Opera or Exhibition on Screen; its
  * gigs are filed apart, as "Live TM / TM Byw") — or a film society, which may file under
  * its acronym alone (Mwldan's "TMFS / CFFTM", Theatr Mwldan Film Society / Cymdeithas Ffilm:
- * "Hen", "The President's Cake") — unless it files teaching about film: the
- * Nerve Centre's "BFI Film Academy" is online masterclasses. A certificate in the show's
+ * "Hen", "The President's Cake") — unless it files teaching about film (the
+ * Nerve Centre's "BFI Film Academy" is online masterclasses) or a stage show the film word
+ * only describes (Theatr Colwyn's "Movie musicals" is a touring song-and-dance show). A certificate in the show's
  * name is no sign of a film: Mwldan's live shows carry them too ("Cardi Bach 2026 (U)").
  *
  * @param client the Ticketsolve client name, the feed host's first label.
@@ -79,8 +80,9 @@ object TicketsolveClient {
    *  case only, so it reads an acronym, not a word ending in "fs". */
   private val FilmSocietyAcronym = """\b[A-Z]{0,4}FS\b""".r
 
-  /** …unless it files teaching about film rather than a screening ("BFI Film Academy"). */
-  private val NotAScreening = """(?i)\b(academy|courses?|workshops?|masterclass(es)?|talks?)\b""".r
+  /** …unless it files teaching about film rather than a screening ("BFI Film Academy"), or
+   *  a stage show the film word only describes ("Movie musicals": a live cast singing film songs). */
+  private val NotAScreening = """(?i)\b(academy|courses?|workshops?|masterclass(es)?|talks?|musicals?)\b""".r
 
   private def isFilm(category: String): Boolean =
     (FilmWord.findFirstIn(category).isDefined || FilmSocietyAcronym.findFirstIn(category).isDefined) &&
