@@ -153,6 +153,29 @@ def test_a_moved_venue_is_judged_by_how_far_ahead_taquilla_runs_not_by_an_old_da
     assert not ht.keep_moved(later, ["2026-11-01"], "2026-11-01", "2026-10-12")[0]
 
 
+def test_a_failed_calendar_fetch_is_unknown_not_empty():
+    assert ht.calendar_days(503, "") is None
+    assert ht.calendar_days(200, '{"objects": {"2026-10-13": 4, "2026-10-12": 2, "2026-10-14": 0}}') == [
+        "2026-10-12", "2026-10-13"]
+    assert ht.calendar_days(200, '{"objects": []}') == []
+
+
+def test_every_moved_venue_is_kept_judged_or_dropped_out_loud():
+    row = {"name": "Yelmo Ideal", "sensacineLastDay": "2026-10-15", "why": "moved"}
+    moved = {"E1": row, "E2": {**row, "name": "Gone"}, "E3": {**row, "name": "Flaky"}, "E4": {**row, "name": "Empty"}}
+    days = {"E1": ["2026-10-12", "2026-12-01"], "E3": None, "E4": []}
+    verdicts = ht.judge_moved(moved, days, "2026-10-12", "2026-10-12")
+    assert verdicts["E1"] == ("serve", "moved")
+    # The crawl or match lost its page (404, renamed, left for review): dropped, but said so.
+    assert verdicts["E2"][0] == "drop" and "page" in verdicts["E2"][1]
+    # A calendar fetch that failed says nothing: the previous row stands.
+    assert verdicts["E3"][0] == "unknown"
+    # A calendar that answered and sells nothing is a real demotion.
+    assert verdicts["E4"] == ("drop", "Taquilla sells no day")
+    assert ht.dropped_lines(moved, verdicts) == ["DROPPED Empty: Taquilla sells no day",
+                                                 f"DROPPED Gone: {verdicts['E2'][1]}"]
+
+
 def test_generate_refuses_a_venue_the_roster_lacks_ocine_serves_or_two_sources_claim():
     problems = gos.problems({"E1", "E2", "E3"}, {"E3"}, {"E1": {}, "E9": {}}, {"E1": {}, "E3": {}})
     assert any("E9 is not a roster venue" in p for p in problems)

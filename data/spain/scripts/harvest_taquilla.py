@@ -28,8 +28,10 @@ primary only when Taquilla is a SUPERSET -- its calendar reaches past SensaCine'
 day AND carries >= 95% of SensaCine's sessions on the near fortnight's days -- or when
 SensaCine lists nothing and Taquilla sells at least one day. A venue already in
 taquilla.json is served from Taquilla, so showtimes.cc can no longer say what SensaCine
-has for it: it keeps its verdict unless Taquilla's own calendar got worse (`keep_moved`).
-Everything else stays on its current source.
+has for it: it keeps its verdict unless Taquilla's own calendar got worse (`keep_moved`),
+keeps its previous row when this run's calendar fetch failed, and is printed `DROPPED`
+when it goes back -- including when this run's crawl or match lost its page
+(`judge_moved`). Everything else stays on its current source.
 
 Usage:
   python3 data/spain/scripts/harvest_taquilla.py   # -> data/spain/taquilla.json
@@ -291,6 +293,39 @@ def keep_moved(previous, taquilla_days, today, measured):
     return True, previous["why"]
 
 
+def judge_moved(moved, days, today, measured):
+    """{theaterId: (verdict, why)} for every venue already on Taquilla (`moved`, the
+    previous taquilla.json rows), `days` holding each matched venue's calendar -- None
+    where the fetch failed. "serve" keeps it on Taquilla; "unknown" (no calendar this
+    run) keeps its previous row untouched, since a failed fetch says nothing; "drop" sends
+    it back to SensaCine, including when this run's crawl or match lost its page."""
+    verdicts = {}
+    for tid, row in moved.items():
+        if tid not in days:
+            verdicts[tid] = ("drop", "this run's crawl or match no longer finds its Taquilla page")
+        elif days[tid] is None:
+            verdicts[tid] = ("unknown", "calendar fetch failed")
+        else:
+            serve, why = keep_moved(row, days[tid], today, measured)
+            verdicts[tid] = ("serve" if serve else "drop", why)
+    return verdicts
+
+
+def dropped_lines(moved, verdicts):
+    """A `DROPPED <name>: <why>` line per moved venue this run sends back, by name."""
+    return sorted(f"DROPPED {moved[tid]['name']}: {why}" for tid, (verdict, why) in verdicts.items()
+                  if verdict == "drop")
+
+
+def calendar_days(status, text):
+    """The days a calendar response sells, sorted -- or None when the fetch failed, which
+    is unknown rather than a calendar selling nothing."""
+    if status != 200:
+        return None
+    days = json.loads(text).get("objects") or {}
+    return sorted(d for d, n in days.items() if n > 0)
+
+
 SUPERSET_SHARE = 0.95
 NEAR_DAYS = 14
 
@@ -341,8 +376,7 @@ def main():
     def calendar(tid):
         vid = taquilla[chosen[tid]]["venueId"]
         status, _, text = fx.get(f"/json2/search/calendar?lang=es&t10venue={vid}&t10type=15&t10num=-1")
-        days = (json.loads(text).get("objects") or {}) if status == 200 else {}
-        return sorted(d for d, n in days.items() if n > 0)
+        return calendar_days(status, text)
 
     def sessions(job):
         vid, day = job
@@ -372,13 +406,23 @@ def main():
     for (tid, _, day), n in counts.items():
         by_venue[tid][day] = n
 
+    verdicts = judge_moved(moved, days, today, previous.get("measured"))
     venues, kept = {}, []
     for tid in tids:
         r, t = by_tid[tid], taquilla[chosen[tid]]
         if tid in moved:
-            last, gained = moved[tid].get("sensacineLastDay"), moved[tid].get("sessionsGained", 0)
+            verdict, why = verdicts[tid]
             since = moved_on(moved[tid], previous.get("measured"))
-            serve, why = keep_moved(moved[tid], days[tid], today, previous.get("measured"))
+            if verdict == "unknown":
+                print(f"UNKNOWN {r['name']!r}: {why}, previous row kept")
+                venues[tid] = {**moved[tid], "movedOn": since}
+                continue
+            if verdict == "drop":
+                continue
+            last, gained, serve = moved[tid].get("sensacineLastDay"), moved[tid].get("sessionsGained", 0), True
+        elif days[tid] is None:
+            kept.append({"name": r["name"], "taquillaName": t["name"], "why": "calendar fetch failed"})
+            continue
         else:
             last, since = max(served[r["name"]], default=None), today
             serve, why = decide(served[r["name"]], days[tid], by_venue[tid], horizon)
@@ -388,7 +432,7 @@ def main():
                "sessionsGained": gained, "why": why}
         (venues.__setitem__(tid, row) if serve else kept.append(row))
 
-    for line in review:
+    for line in review + dropped_lines(moved, verdicts):
         print(line)
     for row in sorted(kept, key=lambda r: r["name"]):
         print(f"KEPT {row['name']!r} -> {row['taquillaName']!r}: {row['why']}")
