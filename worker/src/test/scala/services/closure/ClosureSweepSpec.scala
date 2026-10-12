@@ -92,6 +92,42 @@ class ClosureSweepSpec extends AnyFlatSpec with Matchers with org.scalatest.Lone
     h.pages should have size 1
   }
 
+  // The workflow's live re-check may keep the venue (no PR), or its PR may sit unmerged:
+  // either way the venue is still on the roster, and a ledger that stayed Closed would never
+  // ask again — /uptime would say "retirement pending" for good.
+  it should "request the retirement again, and page, when a closed venue is still on the roster two weeks later" in {
+    val h = new Harness(Seq(ClosureCandidate(hochland, hasFallback = true)))
+    h.closed()
+    h.sweep.sweep()
+    h.clock = now.plus(ClosureSweep.RetirementOverdue).minusSeconds(60)
+    h.closed()
+    h.sweep.sweep()                                   // not yet overdue
+    h.requested should have size 1
+    h.pages should have size 1
+
+    h.clock = now.plus(ClosureSweep.RetirementOverdue)
+    h.closed()
+    h.sweep.sweep()
+    h.requested.map(_._2.map(_.entry.id)) shouldBe Seq(Seq("A0609"), Seq("A0609"))
+    h.pages should have size 2
+    h.pages.last should (include (hochland.displayName) and include ("still on the roster") and include ("requested again"))
+    h.ledger.entries()(hochland.displayName) shouldBe LedgerEntry(LedgerKind.Closed, h.clock, h.requested.last._2.head.evidence)
+
+    h.sweep.sweep()                                   // asked again just now: quiet until the next fortnight
+    h.requested should have size 2
+  }
+
+  it should "page a hand retirement again when the venue is still on the roster two weeks later" in {
+    val h = new Harness(Seq(ClosureCandidate(hochland, hasFallback = true)), withDispatch = false)
+    h.closed()
+    h.sweep.sweep()
+    h.clock = now.plus(ClosureSweep.RetirementOverdue)
+    h.closed()
+    h.sweep.sweep()
+    h.pages should have size 2
+    h.pages.last should (include ("still on the roster") and include ("retire by hand"))
+  }
+
   // ACME Screening Room, Lambertville: flicks.us 404'd it for weeks, nothing else listed it,
   // and it was retired as "closed" — while its own site sold tickets to its October festival.
   it should "never retire a venue its aggregator dropped while its own site is live with a programme (ACME)" in {

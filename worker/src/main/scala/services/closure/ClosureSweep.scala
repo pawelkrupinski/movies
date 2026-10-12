@@ -19,7 +19,8 @@ final case class ClosureCandidate(cinema: Cinema, hasFallback: Boolean, page: Op
  *
  *  - A venue newly CLOSED — its sources dropped it and the venue itself shows it has
  *    closed — is paged ONCE with its evidence and, when it sits in a data-driven roster,
- *    handed to [[RetirementDispatch]], which opens the PR that removes it.
+ *    handed to [[RetirementDispatch]], which opens the PR that removes it. One still on the
+ *    roster [[ClosureSweep.RetirementOverdue]] after that is paged and handed over again.
  *  - A venue newly SOURCE-DROPPED — its sources dropped it but nothing shows the venue
  *    closed — is paged ONCE as a coverage gap that needs a new source, and kept on the
  *    ledger, which /uptime lists. It is never retired.
@@ -51,6 +52,12 @@ class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchi
   private def settle(byName: Map[String, ClosureCandidate], drops: Map[String, Either[String, SourceDrop]], now: Instant): Unit = {
     val raised = ledger.entries()
     (raised.keySet -- byName.keySet).foreach(ledger.withdraw)
+    // Still a candidate, so still on the roster, this long after its retirement was asked for.
+    def overdue(name: String): Boolean =
+      raised.get(name).exists(entry => entry.kind == LedgerKind.Closed && !now.isBefore(entry.at.plus(ClosureSweep.RetirementOverdue)))
+    def closedLead(name: String): String =
+      if (overdue(name)) s"🪦 $name still looks closed and is still on the roster, its retirement asked for on ${ClosureSweep.day(raised(name).at)}"
+      else s"🪦 $name looks closed"
 
     val verdicts = byName.map { case (name, candidate) =>
       name -> VenueClosure.judge(drops.getOrElse(name, Left("no scrape on record")), checks.signals(candidate.cinema, _))
@@ -72,7 +79,7 @@ class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchi
             if (previous.contains(LedgerKind.Closed)) s"↩️ $name no longer looks closed: its retirement is withdrawn (close its PR if one is open). It"
             else s"📡 $name"
           notify(s"$opening is dropped by its sources but not shown closed — a coverage gap that needs a new source. $line")
-        case (Verdict.Closed(drop, signals), previous) if !previous.contains(LedgerKind.Closed) =>
+        case (Verdict.Closed(drop, signals), previous) if !previous.contains(LedgerKind.Closed) || overdue(name) =>
           newlyClosed += ((byName(name).cinema, drop, signals))
         case _ => ()
       }
@@ -83,7 +90,7 @@ class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchi
     byHand.foreach { case (cinema, drop, signals) =>
       val line = ClosureSweep.evidenceLine(drop, signals)
       ledger.record(cinema.displayName, LedgerEntry(LedgerKind.Closed, now, line))
-      notify(s"🪦 ${cinema.displayName} looks closed — retire by hand. $line")
+      notify(s"${closedLead(cinema.displayName)} — retire by hand. $line")
     }
 
     inRoster.groupBy { case (cinema, _, _) => RosterEntry.of(cinema).get.directory }.foreach { case (directory, venues) =>
@@ -95,7 +102,8 @@ class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchi
         dispatch.get.request(directory, requests)
         requests.foreach { request =>
           ledger.record(request.name, LedgerEntry(LedgerKind.Closed, now, request.evidence))
-          notify(s"🪦 ${request.name} looks closed — retirement PR requested. ${request.evidence}")
+          val requested = if (overdue(request.name)) "retirement PR requested again (close any older one still open)" else "retirement PR requested"
+          notify(s"${closedLead(request.name)} — $requested. ${request.evidence}")
         }
       } catch {
         case NonFatal(e) =>
@@ -106,6 +114,14 @@ class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchi
 }
 
 object ClosureSweep {
+  /** How long a CLOSED venue may stay on the roster before the sweep asks again. The
+   *  dispatch returning 2xx only starts the workflow: its live re-check may keep the venue
+   *  (and open no PR), or the PR may sit unmerged. A venue retired goes off the roster within
+   *  days of the request; one still on it two weeks later needs a fresh re-check and a page,
+   *  and a fortnight keeps a blip-kept venue from paging daily. While a PR is open, asking
+   *  again opens a second PR — the page says so, and the older one can be closed. */
+  val RetirementOverdue: java.time.Duration = java.time.Duration.ofDays(14)
+
   private def day(instant: Instant): LocalDate = LocalDate.ofInstant(instant, ZoneOffset.UTC)
 
   /** The evidence in one line, for the page, the ledger and the PR body: what the
