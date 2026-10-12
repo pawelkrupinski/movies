@@ -11,7 +11,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper}
 import services.cinemas.pl._
 import services.cinemas.us.{AlamoDrafthouseClient, CinemaPlusClient, SquarespaceEventsClient, UsChainVenues}
-import services.cinemas.uk.{CineworldClient, NovaCinemaClient, SavoyClient, SpektrixClient, TicketsolveClient}
+import services.cinemas.uk.{BfiSouthbankClient, CineworldClient, NovaCinemaClient, SavoyClient, SpektrixClient, TicketsolveClient}
 import services.cinemas.us.{AmcClient, RegalClient}
 import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
 import services.freshness.{Freshness, FreshnessKind}
@@ -423,6 +423,18 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     nova.fetch().flatMap(_.showtimes) should have size 249
     c.flicksFallbackSlugs.get(NovaCinemaWoking).value shouldBe
       ChainFlicksFallback.FlicksFallback(FlicksMarket.UnitedKingdom, "nova-cinema-ambassadors-woking")
+  }
+
+  // BFI Southbank never had a Flicks showtime; the BFI's new cinemas site lists its four
+  // NFT screens seven weeks ahead, while the BFI IMAX it also sells keeps reading Flicks.
+  it should "wire BFI Southbank to the BFI's cinemas site with flicks kept as the fallback" in {
+    val c   = catalog(direct = new FakeHttpFetch("bfi"), today = LocalDate.of(2026, 10, 12))
+    val bfi = c.all.find(_.cinema == BfiLondonSouthbank).value
+    bfi shouldBe a [BfiSouthbankClient]
+    bfi.fetch().flatMap(_.showtimes) should have size 325
+    c.flicksFallbackSlugs.get(BfiLondonSouthbank).value shouldBe
+      ChainFlicksFallback.FlicksFallback(FlicksMarket.UnitedKingdom, "bfi-london-southbank")
+    c.all.find(_.cinema == BfiLondonImax).value shouldBe a [FlicksClient]
   }
 
   it should "wire UK chain venues to their own-site client with flicks kept as the fallback" in {

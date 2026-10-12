@@ -10457,6 +10457,13 @@ services.cinemas.roster.VenueSourcePage$
 services.cinemas.roster.VenueSourcePage$Bilety24Organiser$
 services.cinemas.roster.VenueSourcePage$Bilety24Organiser$$anon$1
 services.cinemas.roster.VenueSourcePage$Filmweb$
+services.cinemas.uk.BfiSouthbankClient
+services.cinemas.uk.BfiSouthbankClient$
+services.cinemas.uk.BfiSouthbankClient$$anon$1
+services.cinemas.uk.BfiSouthbankClient$Card
+services.cinemas.uk.BfiSouthbankClient$Card$
+services.cinemas.uk.BfiSouthbankClient$Slot
+services.cinemas.uk.BfiSouthbankClient$Slot$
 services.cinemas.uk.CineworldClient
 services.cinemas.uk.CineworldClient$
 services.cinemas.uk.CineworldParser

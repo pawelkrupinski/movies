@@ -1,0 +1,39 @@
+<html><body>
+<article class="showCard" itemscope itemtype="http://schema.org/Event" data-astro-cid-idhbdnaf>
+ <div class="cardContent" data-astro-cid-idhbdnaf>
+  <div data-astro-cid-idhbdnaf>
+   <h3 data-astro-cid-idhbdnaf="true"><a class="card-link" data-ga-event="showcard_click" data-ga-show-title="Z Test Show please ignore" href="/whats-on/z-test-show-please-ignore" data-astro-cid-idhbdnaf>Z Test Show please ignore</a></h3>
+   <div class="tagsWrapper" data-astro-cid-idhbdnaf>
+    <p class="extras" data-astro-cid-idhbdnaf>Special screening available</p>
+   </div>
+   <p data-astro-cid-idhbdnaf>test</p>
+  </div>
+ </div>
+ <div class="show-performances performanceData" data-ga-show-card data-ga-show-title="Z Test Show please ignore" data-astro-cid-idhbdnaf="true" data-astro-cid-tuzbvmmy>
+  <button type="button" class="performanceToggle" aria-label="Thursday 15 October" aria-expanded="false" aria-controls="performance-list-b866230a-e2f0-45a0-b328-dcf55cad0dc0" commandfor="performance-list-b866230a-e2f0-45a0-b328-dcf55cad0dc0" command="--openPerformances" data-ga-event="showcard_expand" data-astro-cid-tuzbvmmy>
+   <h4 data-astro-cid-tuzbvmmy>Thu 15 Oct</h4>
+  </button>
+  <div class="performanceList" id="performance-list-b866230a-e2f0-45a0-b328-dcf55cad0dc0" hidden role="region" aria-label="Performance times" data-astro-cid-tuzbvmmy>
+   <div data-astro-cid-tuzbvmmy>
+    <h4 aria-label="Thursday 15 October" data-astro-cid-tuzbvmmy>Thu 15 Oct</h4>
+    <ul data-astro-cid-tuzbvmmy>
+     <li data-astro-cid-tuzbvmmy>
+      <div class="performanceDetails" data-astro-cid-tuzbvmmy>
+       <div data-ga-show-title="Z Test Show please ignore" data-astro-cid-tuzbvmmy>
+        <a href="https://whatson.bfi.org.uk/Online/login.asp?targetPage=mapSelect.asp%3FBOset%3A%3AWSmap%3A%3Aseatmap%3A%3Aperformance_ids%3DEFC59B78-2156-49B2-A14F-8FCC81D84366%26from_cinemas%3Dtrue&amp;from_cinemas=true" aria-label="10:10 Thursday 15 October NFT4" data-ga-event="booking_click" data-astro-cid-3cu7ytnt>10:10</a>
+       </div>
+       <div data-astro-cid-tuzbvmmy>
+        <p class="minPrice" data-astro-cid-tuzbvmmy>From £6.50</p>
+       </div>
+      </div>
+      <div class="tagsWrapper" data-astro-cid-tuzbvmmy>
+       <p class="extras" data-astro-cid-tuzbvmmy>Extras updated 10.42</p>
+      </div>
+     </li>
+    </ul>
+   </div>
+   <button type="button" commandfor="performance-list-b866230a-e2f0-45a0-b328-dcf55cad0dc0" command="--closePerformances" aria-label="Hide showtimes" data-ga-show-title="Z Test Show please ignore" data-ga-event="showcard_collapse" data-astro-cid-tuzbvmmy></button>
+  </div>
+ </div>
+</article>
+</body></html>

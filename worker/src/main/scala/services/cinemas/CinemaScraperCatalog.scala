@@ -6,7 +6,7 @@ import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, MultiListi
 import services.cinemas.pl._
 import services.cinemas.common.{CineamoClient, FlicksClient, FlicksMarket, KinoheldClient, KinoprogrammClient, WixEventsClient}
 import services.cinemas.de.{GermanFeed, GermanSources, RexSchifferstadtClient}
-import services.cinemas.uk.{CineworldClient, NovaCinemaClient, OdeonClient, SavoyClient, SpektrixClient, TheOldCourtClient, TicketsolveClient}
+import services.cinemas.uk.{BfiSouthbankClient, CineworldClient, NovaCinemaClient, OdeonClient, SavoyClient, SpektrixClient, TheOldCourtClient, TicketsolveClient}
 import services.cinemas.es.{ArtesieteClient, OcineClient, SpanishOwnSourcesData, TaquillaClient, TaquillaVenue}
 import services.cinemas.us.{AlamoDrafthouseClient, CinemaPlusClient, SquarespaceEventsClient, UsChainVenues, UsIndependentVenues}
 import services.movies.TitleNormalizer
@@ -947,7 +947,7 @@ class CinemaScraperCatalog(
     savoyBoxOffice("http://arthousecrouchend.savoysystems.co.uk/ArthouseCrouchEnd.dll/", ArthouseCrouchEnd),
     flicks("barbican-london-cinema-1", BarbicanLondonCinema1),
     flicks("bfi-london-imax", BfiLondonImax),
-    flicks("bfi-london-southbank", BfiLondonSouthbank),
+    new BfiSouthbankClient(http, BfiLondonSouthbank, venueClock.today(UnitedKingdom)),
     flicks("castle-cinema-hackney", CastleCinemaHackney),
     flicks("sidcup-storyteller", SidcupStoryteller),
     flicks("chiswick-cinema", ChiswickCinema),
