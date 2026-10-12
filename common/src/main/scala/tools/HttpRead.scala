@@ -172,6 +172,9 @@ object HttpRead {
  * its `CWUDNSAI` iframe, and the `SWJIYLWA` script only on a body too small to be a page
  * (the JS challenge is a bare head with that script and nothing else). Since the fallback
  * chain fails a leg on a match, a false positive here fails a healthy proxied read.
+ *
+ * LiteSpeed's reCAPTCHA gate ("Bot Verification", posting to `/.lsrecap/recaptcha`) is matched
+ * on its form action, which only the gate page carries.
  */
 object ChallengePage {
   /** Bodies under this many characters are a bare interstitial, never a real listing. */
@@ -186,7 +189,8 @@ object ChallengePage {
     contains("Incapsula incident ID")               -> "Incapsula",
     contains("_Incapsula_Resource?CWUDNSAI")        -> "Incapsula",
     ((body: String) => body.length < InterstitialMaxLength && body.contains("_Incapsula_Resource?SWJIYLWA")) -> "Incapsula",
-    contains("px-captcha")                          -> "PerimeterX"
+    contains("px-captcha")                          -> "PerimeterX",
+    contains("/.lsrecap/recaptcha")                 -> "LiteSpeed"
   )
 
   private def contains(marker: String): String => Boolean = body => body.indexOf(marker, 0, math.min(body.length, SearchedChars)) >= 0

@@ -16,7 +16,7 @@ import services.cinemas.us.{AmcClient, RegalClient}
 import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
 import services.freshness.{Freshness, FreshnessKind}
 
-import java.time.LocalDate
+import java.time.{LocalDate, LocalDateTime}
 import scala.concurrent.duration._
 
 /**
@@ -86,6 +86,22 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val movies  = scraper.fetch()  // reads the ada-kino-studyjne fixture via bnFetch
     movies should not be empty
     movies.map(_.cinema).toSet shouldBe Set(AdaKinoStudyjne)
+  }
+
+  // kinomarzenie.pl's LiteSpeed answers a browser User-Agent from the worker's Hetzner IP with a reCAPTCHA page
+  // (every page: /repertuar, the day partials, the film pages) and has since 2026-09-30, while every Decodo IP gets the
+  // programme — so Kino Marzenie egresses through the residential seam. Fixtures captured 2026-10-12: /repertuar and
+  // its first week of day partials, LALKA on the 12th at 16:00 and 19:15.
+  it should "route Kino Marzenie through the residential seam, not the shared http" in {
+    val scraper = catalog(biletyna = "kino-marzenie-2026-10-12", today = LocalDate.of(2026, 10, 12)).all.find(_.cinema == KinoMarzenie).value
+    val chunked = scraper match {
+      case c: services.cinemas.common.ChunkedCinemaScraper => c
+      case other => fail(s"Kino Marzenie is scraped by ${other.getClass.getSimpleName}, not a chunked scraper")
+    }
+    val movies  = chunked.fetchChunk(chunked.planChunks().head)
+    movies.find(_.movie.title == "LALKA").value.showtimes.map(_.dateTime) should contain allOf (
+      LocalDateTime.of(2026, 10, 12, 16, 0),
+      LocalDateTime.of(2026, 10, 12, 19, 15))
   }
 
   // Kino Śnieżka (Dębica) moved its box office off MSI (bilety.mokdebica.pl now

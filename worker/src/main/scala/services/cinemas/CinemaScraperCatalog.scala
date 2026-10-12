@@ -661,7 +661,8 @@ class CinemaScraperCatalog(
   private val zielonaGoraScrapers  = Seq(cinemaCity("1087", CinemaCityZielonaGora))
   private val tychyScrapers        = Seq(multikino("0053", MultikinoTychy))
   private val walbrzychScrapers    = Seq(cinemaCity("1091", CinemaCityWalbrzych), bilety24Subdomain(KinoApolloWalbrzych))
-  private val tarnowScrapers       = Seq(multikino("0050", MultikinoTarnow), msi(KinoMillenium), new KinoMarzenieClient(http, KinoMarzenie, today))
+  private val tarnowScrapers       = Seq(multikino("0050", MultikinoTarnow), msi(KinoMillenium), // LiteSpeed reCAPTCHA-gates a browser UA from our Hetzner IP (since 2026-09-30), not a Decodo IP
+    new KinoMarzenieClient(bnFetch, KinoMarzenie, today))
   private val wloclawekScrapers    = Seq(multikino("0008", MultikinoWloclawek))
   private val legnicaScrapers      = Seq(helios(HeliosNuxt.Legnica), bilety24Subdomain(KinoPiast))
   private val plockScrapers        = Seq(helios(HeliosNuxt.Plock), noveKino("przedwiosnie", KinoPrzedwiosnie))

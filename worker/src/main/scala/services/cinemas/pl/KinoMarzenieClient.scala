@@ -29,6 +29,11 @@ import scala.jdk.CollectionConverters._
  * scrape and the venue sat red for a week with no Filmweb cover. A chunked
  * cinema is scraped as its own per-chunk tasks, each bounded by itself.
  *
+ * Egress: the site's LiteSpeed answers a browser User-Agent from the worker's
+ * Hetzner IP with a reCAPTCHA "Bot Verification" page on every one of these
+ * URLs (since 2026-09-30), while a Decodo residential IP gets the programme —
+ * so the catalogue hands this client the residential `bnFetch` seam.
+ *
  * Booking is delegated to the parent org's own MSI ticketing backend
  * (`marzenieonline.tck.pl/MSI/...`), linked directly off each showtime with no
  * iframe embed — so it's the listing page, not the ticketing domain, that's

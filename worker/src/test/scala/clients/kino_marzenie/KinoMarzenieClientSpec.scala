@@ -119,6 +119,15 @@ class KinoMarzenieChunkedSpec extends AnyFlatSpec with Matchers with OptionValue
     tools.ReadOutcome.isAbsent(refused) shouldBe false
   }
 
+  // Recorded 2026-10-12 from the worker's Hetzner host with the worker's browser User-Agent: LiteSpeed's reCAPTCHA
+  // gate, served in place of /repertuar (and the day partials and film pages) since 2026-09-30. It is a block, not a
+  // redesign — named as one, so the proxied route falls past a leg that gets it and the venue's error says what it is.
+  it should "refuse LiteSpeed's bot verification as the challenge it is, not as a markup change" in {
+    val challenged = new KinoMarzenieClient(new FakeHttpFetch("kino-marzenie-litespeed-challenge"), KinoMarzenie, today = LocalDate.of(2026, 10, 12))
+    val refused = the[tools.UnexpectedBodyException] thrownBy challenged.planChunks()
+    refused.why shouldBe "a LiteSpeed challenge page"
+  }
+
   it should "read a week's chunk one partial per day" in {
     val movies = client.fetchChunk(client.planChunks().head)
     movies.find(_.movie.title == "LALKA").value.showtimes.map(_.dateTime) should contain allOf (

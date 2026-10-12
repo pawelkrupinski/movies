@@ -115,6 +115,16 @@ class HttpReadSpec extends AnyFlatSpec with Matchers {
     ChallengePage.detect("""{"results":[{"id":1018,"title":"Mulholland Drive"}]}""") shouldBe None
   }
 
+  // LiteSpeed's reCAPTCHA gate, as kinomarzenie.pl served it to the worker's Hetzner IP for a browser User-Agent from
+  // 2026-09-30 (trimmed): a bare "Bot Verification" page posting to `/.lsrecap/recaptcha`. Unrecognised, it read as a
+  // markup change ("no 'calendar-slider' in the page") and a proxied leg it answered would count as having served.
+  it should "recognise LiteSpeed's reCAPTCHA bot verification" in {
+    ChallengePage.detect(
+      """<!DOCTYPE html><html><head><title>Bot Verification</title></head><body><div class="panel">
+        |<h3 class="title">Verifying that you are not a robot...</h3>
+        |<form id="lsrecaptcha-form" method="POST" action="/.lsrecap/recaptcha?"></form></div></body></html>""".stripMargin) shouldBe Some("LiteSpeed")
+  }
+
   // A film page from Flicks is ~350 KB, and searching all of it for eight markers was 17% of a US detail drain's CPU
   // (JFR, run 37622335270 and after). Every vendor's interstitial is a page of a few KB with its marks near the top,
   // so a body is searched in its first SearchedChars: a challenge page whole, a long page only where one would say so.
