@@ -9558,6 +9558,16 @@
     "reused"
    ]
   },
+  "kinowo_worker_readmodel_write_burst_seconds_count": {
+   "trigger": {
+    "same_as": "kinowo_worker_readmodel_metadata_projections_total"
+   }
+  },
+  "kinowo_worker_readmodel_write_burst_seconds_sum": {
+   "trigger": {
+    "same_as": "kinowo_worker_readmodel_metadata_projections_total"
+   }
+  },
   "kinowo_worker_resolution_total": {
    "outcome": [
     "hit_memory",

@@ -63,6 +63,11 @@ EVENT_ONLY_VALUES = {
     ("kinowo_worker_telegram_notifications_total", "job", "kinowo-worker"),
     ("kinowo_worker_telegram_notifications_total", "outcome", "sent"),
     ("kinowo_worker_telegram_notifications_total", "outcome", "failed"),
+    # HISTORY, not a value: the write burst had no `trigger` label before 7d59bc7e3, and
+    # ReadModelProjectionWritePerCallHigh's `trigger=~"stream|"` keeps the empty branch so the
+    # unlabelled series it fired on can still be replayed (alert-incidents.yml).
+    ("kinowo_worker_readmodel_write_burst_seconds_count", "trigger", ""),
+    ("kinowo_worker_readmodel_write_burst_seconds_sum", "trigger", ""),
 }
 
 
