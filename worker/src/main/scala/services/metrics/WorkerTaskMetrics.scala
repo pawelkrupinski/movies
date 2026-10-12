@@ -312,7 +312,7 @@ object WorkerTaskMetrics {
 
     private val readModelHeals = Counter.builder()
       .name("kinowo_worker_readmodel_heals")
-      .help("Ready source rows re-projected because the read model lacked one of their cards or venues, by country and trigger (sweep=the 30-min prune sweep, boot=the check start() runs). Each is a row the change-stream path should already have written — a card it retired and never restored, a slot event it missed — so ZERO is the healthy reading and a recurring rate is a stream-path defect: on 2026-09-22 a TMDB re-try made rows briefly unready (readmodel_cards_retired{reason=row-unready} ~500/day) and only these heals, ~26 a day and 30 minutes late each, put the cards back. Alerted by ReadModelHealsRecurring.")
+      .help("Ready source rows re-projected because the read model lacked one of their cards or venues, by country and trigger (sweep=the 30-min prune sweep, boot=the check start() runs, refile=a boot row whose every missing venue the read model serves under ANOTHER city: a deploy moved the venue, no write was lost — not counted as boot). Each is a row the change-stream path should already have written — a card it retired and never restored, a slot event it missed — so ZERO is the healthy reading and a recurring rate is a stream-path defect: on 2026-09-22 a TMDB re-try made rows briefly unready (readmodel_cards_retired{reason=row-unready} ~500/day) and only these heals, ~26 a day and 30 minutes late each, put the cards back. Alerted by ReadModelHealsRecurring.")
       .labelNames("country", "trigger")
       .register(registry)
 

@@ -1545,6 +1545,38 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     booted.stop()
   }
 
+  // A deploy that files a venue under another city (2026-10-11: Germany's and the US's town pages) leaves
+  // the read model holding the film at that venue under the OLD city, and the boot heals the new id for
+  // most of the corpus -- DE 1,029 rows, US 1,508 -- which BootHealLarge read as the change stream having
+  // dropped them. A venue the read model already serves the card at, under another city, is a RE-FILE:
+  // the code moved it, no write was lost. Metered apart, so the boot's own count stays "lost writes".
+  "the boot check" should "meter a venue the read model holds under another city as re-filed, not as a lost write" in {
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val rm = new InMemoryReadModelRepository()
+    Seq("Foo" -> 1, "Bar" -> 2).foreach { case (title, tmdbId) =>
+      repository.upsert(title, Some(2024), MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
+        Multikino -> SourceData(title = Some(title), showtimes = Seq(at("2026-06-12T20:00"))))))
+    }
+    val previous = new ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), clock = specClock)
+    repository.findAll().foreach(previous.onMovieUpsert)
+    previous.stop()
+    val cards = rm.findAllMovies().map(c => c.title -> c._id).toMap
+    // Foo's venue row as an older roster filed it; Bar's simply gone.
+    rm.findAllScreenings().filter(_.filmId == cards("Foo")).foreach { row =>
+      rm.deleteScreening(row._id)
+      rm.upsertScreening(row.copy(_id = s"${row.filmId}|old-region|${row.cinema}", city = "old-region"))
+    }
+    rm.findAllScreenings().filter(_.filmId == cards("Bar")).foreach(row => rm.deleteScreening(row._id))
+    val m      = new RecordingReadModelProjectionMetrics()
+    val booted = new ReadModelProjector(repository, rm, rm, m, scheduler = new CapturingScheduler, clock = specClock)
+
+    booted.start()
+
+    m.heals.toSeq shouldBe Seq(ReadModelProjectionMetrics.HealTrigger.Boot -> 1, ReadModelProjectionMetrics.HealTrigger.Refile -> 1)
+    booted.stop()
+  }
+
   // The heals' share of readmodel_project_calls must be exactly the projections a heal made --
   // not the rows the slots-only scan named. A row gone by the time the heal reads it whole
   // (deleted or re-keyed in between) is never projected, and the heal-check meter this share

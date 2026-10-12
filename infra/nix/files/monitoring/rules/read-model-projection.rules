@@ -866,6 +866,12 @@ groups:
       #
       # NO `for:`: the counter is read through increase() over an hour, which bridges the restart
       # that produced the heals, and the hour is how long it stays visible.
+      #
+      # NOT A RE-FILE (2026-10-12). A deploy that files venues under other cities -- the town pages:
+      # UK 10-09 22:08Z, ES 10-10 07:13Z, DE 10-11 16:44Z (1,029 rows) and 20:42Z (115), US 10-11
+      # 20:41Z (1,508) -- leaves every moved venue's row under its old city id, and the boot writes
+      # the new one. No write was lost, so the boot check meters a row whose every missing venue the
+      # read model still serves under another city as `trigger="refile"`, which this rule leaves out.
       - alert: BootHealLarge
         expr: >-
           sum by (country) (increase(kinowo_worker_readmodel_heals_total{trigger="boot"}[1h])) > 50

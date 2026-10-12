@@ -1235,6 +1235,10 @@ tests:
         values: '0x90 6x60'
       - series: 'kinowo_worker_readmodel_heals_total{country="de",trigger="sweep"}'
         values: '0x90 400x60'
+      # US 2026-10-11 20:41Z: the boot after the town-pages deploy re-filed 1,508 rows' venues under
+      # their new cities. A deploy moving venues, not a lost write: metered as `refile`, quiet here.
+      - series: 'kinowo_worker_readmodel_heals_total{country="us",trigger="refile"}'
+        values: '0x90 1508x60'
     alert_rule_test:
       - eval_time: 90m
         alertname: BootHealLarge

@@ -142,7 +142,7 @@ object ReadModelProjectionMetrics {
   /** Why the change-stream path retired a card on its own. */
   object RetireReason { val VariantGone = "variant-gone"; val RowDeleted = "row-deleted"; val RowUnready = "row-unready" }
   /** Which pass healed a row: the scheduled prune sweep, or the check `start()` runs at boot. */
-  object HealTrigger { val Sweep = "sweep"; val Boot = "boot" }
+  object HealTrigger { val Sweep = "sweep"; val Boot = "boot"; val Refile = "refile" }
   /** What asked for one projection — the `trigger` label on `readmodel_project_calls`.
    *  `ReadModelProjectionTriggerUnaccounted` compares only the `stream` share against the three
    *  change-stream cursors' events: every other trigger re-projects rows no event asked for, BY
@@ -189,7 +189,7 @@ object ReadModelProjectionMetrics {
   val ReconcileKinds: Seq[String] = Seq(ReconcileKind.Prune)
   val PruneReasons:  Seq[String]  = Seq(PruneReason.RowGone, PruneReason.VariantGone)
   val RetireReasons: Seq[String]  = Seq(RetireReason.VariantGone, RetireReason.RowDeleted, RetireReason.RowUnready)
-  val HealTriggers: Seq[String]   = Seq(HealTrigger.Sweep, HealTrigger.Boot)
+  val HealTriggers: Seq[String]   = Seq(HealTrigger.Sweep, HealTrigger.Boot, HealTrigger.Refile)
   val MetadataOutcomes: Seq[String] = Seq(MetadataOutcome.Reused, MetadataOutcome.Recomputed)
   val VenueOutcomes: Seq[String] = Seq(VenueOutcome.Rebuilt, VenueOutcome.Reused)
   val CardParts: Seq[String] = Seq(CardPart.Title, CardPart.Poster, CardPart.Facts, CardPart.Synopsis,

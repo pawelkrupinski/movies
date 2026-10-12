@@ -1269,17 +1269,26 @@ class ReadModelProjector(
     val cardIds = reader.findAllMovieIdsChecked().answered
     val cardsRead  = cardIds.isDefined
     val cards      = cardIds.fold(Set.empty[String])(_.toSet)
-    val venues     = reader.findAllScreeningRefsChecked().answered.map(_.map(_._id).toSet)
+    val refs       = reader.findAllScreeningRefsChecked().answered
+    val venues     = refs.map(_.map(_._id).toSet)
+    // Each (card, venue) the read model serves, whichever city it is filed under: a missing venue row
+    // whose card and venue are here under ANOTHER city is a re-file -- a deploy moved the venue's
+    // city (2026-10-11: Germany's and the US's town pages, 1,029 and 1,508 rows) -- not a lost write.
+    val filed      = refs.fold(Set.empty[(String, String)])(_.iterator.flatMap(_.venueKey).toSet)
     // The check reads slots only (ids derive from the slot titles, never from a
     // showtime); the few rows it names are then read whole, showtimes included. An
     // incomplete card read heals nothing: "no cards" and "could not read" differ.
     // The boot hydrate's rows when it handed them over (see [[BootCorpusStudy]]); otherwise a read of its own.
-    val missing = scala.collection.mutable.ListBuffer.empty[(services.movies.FilmId, Int, Seq[String], Seq[String])]
+    val missing = scala.collection.mutable.ListBuffer.empty[(services.movies.FilmId, Int, Seq[String], Seq[String], Boolean)]
+    def refiled(filmIds: Seq[String], venue: String): Boolean =
+      filmIds.filter(card => venue.startsWith(card + "|")).maxByOption(_.length)
+        .flatMap(card => ScreeningRef(venue, card).venueKey).exists(filed)
     def check(id: services.movies.FilmId, filmIds: Seq[String], screeningIds: Seq[String], metadataHash: => Int): Unit = {
       lastCardsByRow.update(id.value, filmIds.toSet)
       val absentCards  = filmIds.filterNot(cards)
       val absentVenues = venues.fold(Seq.empty[String])(has => screeningIds.filterNot(has))
-      if (absentCards.nonEmpty || absentVenues.nonEmpty) missing += ((id, metadataHash, absentCards, absentVenues))
+      if (absentCards.nonEmpty || absentVenues.nonEmpty)
+        missing += ((id, metadataHash, absentCards, absentVenues, absentCards.isEmpty && absentVenues.forall(refiled(filmIds, _))))
     }
     val complete = cardsRead && study.fold(movieRepository.foreachRecordWithSlots { row =>
       if (row.record.readyToProject) {
@@ -1289,15 +1298,21 @@ class ReadModelProjector(
     }.isComplete) { rows => rows.foreach(row => check(row.id, row.filmIds, row.screeningIds, row.metadataHash)); true }
     if (!cardsRead) logger.warn("read model: the card ids could not be read at boot — nothing healed; the prune sweep retries.")
     // Each row guarded, as in the sweep: one failed write must not leave every later row unhealed.
-    val projected = missing.flatMap { case (id, metadataHash, absentCards, absentVenues) =>
+    val projected = missing.flatMap { case (id, metadataHash, absentCards, absentVenues, refile) =>
       continuing(s"read model: healing $id at boot failed")(lock.synchronized(heal(id, metadataHash, absentCards, absentVenues)))
-        .flatten.map(id.value -> _) }
-    val healed = projected.collect { case (id, true) => id }
+        .flatten.map(written => (id.value, written, refile)) }
+    val (refiledRows, lostRows) = projected.collect { case (id, true, refile) => (id, refile) }.partition(_._2)
+    val healed = lostRows.map(_._1)
     if (healed.nonEmpty) {
       metrics.recordHeal(HealTrigger.Boot, healed.size)
       logger.warn(s"read model: projected ${healed.size} ready row(s) missing a card or a venue at boot" +
         (if (complete) "" else " (source scan incomplete — the rest heal on their next change)") +
         s": ${ReadModelProjector.idsForLog(healed)}.")
+    }
+    if (refiledRows.nonEmpty) {
+      metrics.recordHeal(HealTrigger.Refile, refiledRows.size)
+      logger.info(s"read model: projected ${refiledRows.size} ready row(s) at boot whose venues the read model serves under " +
+        s"another city — this code files them elsewhere: ${ReadModelProjector.idsForLog(refiledRows.map(_._1))}.")
     }
   }.recover { case exception => logger.warn(s"read-model missing-card check failed, skipped: ${exception.getMessage}") }
 

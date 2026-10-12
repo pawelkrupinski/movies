@@ -14,7 +14,14 @@ class ScreeningRefSpec extends AnyFlatSpec with Matchers {
     ScreeningRef("f1a2b3~imax|london|BFI IMAX", "f1a2b3").citySlug shouldBe Some("london")
   }
 
-  it should "be None for an id not shaped as the projection writes them" in {
+  "A screening ref's venue key" should "be its card and venue without the city, so one venue filed under two cities matches" in {
+    ScreeningRef("f1a2b3~imax|london|BFI IMAX", "f1a2b3").venueKey shouldBe Some(("f1a2b3~imax", "BFI IMAX"))
+    ScreeningRef("Diuna|2021|zielona-gora|Cinema City", "Diuna|2021").venueKey shouldBe
+      ScreeningRef("Diuna|2021|lubuskie|Cinema City", "Diuna|2021").venueKey
+    ScreeningRef("f1a2b3|poznan", "f1a2b3").venueKey shouldBe None
+  }
+
+  "A screening ref's city" should "be None for an id not shaped as the projection writes them" in {
     ScreeningRef("other|poznan|Kino Muza", "f1a2b3").citySlug shouldBe None
     ScreeningRef("f1a2b3|poznan", "f1a2b3").citySlug shouldBe None
   }

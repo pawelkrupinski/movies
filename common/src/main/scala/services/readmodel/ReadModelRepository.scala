@@ -31,11 +31,19 @@ final case class ScreeningRef(_id: String, filmId: String) {
    *  being the film id or `<film>~<variant>` (`ReadModelProjection.screeningId`). A film id may
    *  itself hold a `|` (a legacy `title|year` id), so the city is found AFTER the film id, never by
    *  splitting the whole id. None for an id not shaped so. */
-  def citySlug: Option[String] =
+  def citySlug: Option[String] = parts.map(_._2)
+
+  /** The card and the venue the row is for, without the city it is filed under: two rows with the
+   *  same key are one venue's showings of one card, filed under two cities. */
+  def venueKey: Option[(String, String)] = parts.map((card, _, venue) => (card, venue))
+
+  /** (card, city, venue) off `<card>|<city>|<venue>`. */
+  private def parts: Option[(String, String, String)] =
     Option.when(_id.startsWith(filmId))(_id.substring(filmId.length)).flatMap { rest =>
       val afterCard = rest.indexOf('|')
       val end       = if (afterCard < 0) -1 else rest.indexOf('|', afterCard + 1)
-      Option.when(end > afterCard + 1)(rest.substring(afterCard + 1, end))
+      Option.when(end > afterCard + 1)(
+        (filmId + rest.substring(0, afterCard), rest.substring(afterCard + 1, end), rest.substring(end + 1)))
     }
 }
 
