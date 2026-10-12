@@ -286,6 +286,13 @@ jobs:
                       -derivedDataPath build/dd \
                       CODE_SIGNING_ALLOWED=NO
 
+            # Boot the simulator BEFORE the loop, after the build (booting beside the build
+            # starved the 3-core runner, 3451eee5d). Otherwise its ~2-4 min cold boot lands on
+            # whichever class sorts first, whose app launch then times out (CardShareMenuUITests,
+            # run 38270450938) — a failure of the harness's order, not of the class.
+            - name: Boot the simulator
+              run: xcrun simctl bootstatus "${DESTINATION##*id=}" -b
+
             # Each XCUITest class on its own, so none can lean on state another left behind.
             # Every class runs even after a failure; the job fails at the end, naming them.
             # Each test is bounded (a hung one fails at its allowance, naming itself), and so
