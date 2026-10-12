@@ -61,7 +61,6 @@ object NovaCinemaClient {
    *  Nova appends after a bar. */
   private val Strand = """\s+\|\s+[^|]+$""".r
 
-  private val Clock = s"""${ScraperParse.ClockPartsDotted}\\s*([ap]\\.?m\\.?)?""".r
   private val CertificateAlt = """(?i)^\s*(\S+)\s+certificate""".r
   private val Minutes = """(\d+)\s*Min""".r
   private val ScreenName = """(?i)screen\s+\d+""".r
@@ -83,8 +82,7 @@ object NovaCinemaClient {
       title  = Strand.replaceFirstIn(raw, "").trim if title.nonEmpty
       card  <- show.select(".screening-card[data-date]").asScala.toSeq
       day   <- Try(LocalDate.parse(card.attr("data-date"))).toOption.toSeq if !day.isBefore(today)
-      time  <- Option(card.selectFirst("h5")).flatMap(h => Clock.findFirstMatchIn(h.text))
-                 .flatMap(ScraperParse.meridiemClockAt(_, 1, 3)).toSeq
+      time  <- Option(card.selectFirst("h5")).flatMap(h => ScraperParse.meridiemClockIn(h.text)).toSeq
     } yield Slot(show, raw, title, Showtime(
       dateTime   = day.atTime(time),
       bookingUrl = Option(card.selectFirst("a.cta[href]")).map(_.attr("abs:href")).filter(_.nonEmpty),

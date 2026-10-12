@@ -139,6 +139,19 @@ private[cinemas] object ScraperParse {
       else time
     }
 
+  private val MeridiemClock = raw"""(?i)$ClockPartsDotted\s*([ap]\.?m\.?)?""".r
+
+  /** The first clock in `text`, colon or dot, 24-hour or marked as [[meridiemClockAt]] reads
+    * it: "16:00", "3:30pm", "7.45 P.M.". */
+  def meridiemClockIn(text: String): Option[LocalTime] =
+    MeridiemClock.findFirstMatchIn(text).flatMap(meridiemClockAt(_, 1, 3))
+
+  private val SubtitleWord = """(?i)\bsubtitle""".r
+
+  /** Whether a performance note or category flags the screening subtitled: "(Descriptive
+    * subtitles)", "Access - Cinema Subtitled". */
+  def mentionsSubtitles(text: String): Boolean = SubtitleWord.findFirstIn(text).isDefined
+
   /** ISO `2026-09-06` or the day-first `6.09.2026` / `06-09-2026` / `06/09/2026`
     * the Polish cinema pages spell their dates in. Groups 1-3 are the ISO
     * year/month/day, groups 4-6 the day-first day/month/year. */

@@ -4,7 +4,7 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
-import services.cinemas.common.{AgeRating, CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse, SlotsToMovies}
 import services.cinemas.pl.OnlyMovieEventsFilter
 import tools.{HttpFetch, HttpRead}
 
@@ -76,9 +76,6 @@ object TicketsolveClient {
   private def isFilm(category: String): Boolean =
     FilmWord.findFirstIn(category).isDefined && NotAScreening.findFirstIn(category).isEmpty
 
-  /** A category flagging its screenings subtitled ("Access - Cinema Subtitled"). */
-  private val Subtitled = """(?i)\bsubtitle""".r
-
   /** "Sense and Sensibility (U)", "Hay Fever (12A tbc)", "Manon (15 As Live)": the BBFC
    *  certificate the box office appends to the title. */
   private val TitleCertificate = """\s*\(\s*(U|PG|12A?|15|18)\b[^)]*\)\s*$""".r
@@ -107,7 +104,7 @@ object TicketsolveClient {
       dateTime   = start,
       bookingUrl = child(event, "url"),
       room       = child(event, "venue_layout"),
-      format     = if (Subtitled.findFirstIn(category).isDefined) List("SUB") else Nil))
+      format     = if (ScraperParse.mentionsSubtitles(category)) List("SUB") else Nil)) // "Access - Cinema Subtitled"
 
     SlotsToMovies.fold(slots, _.title, _.showtime) { (title, group, showtimes) =>
       val show = group.head.show

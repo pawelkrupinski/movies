@@ -172,14 +172,7 @@ object SavoyClient {
   /** "Monday 12 Oct 2026" — the weekday is ignored. */
   private val RowDate = """(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})""".r
 
-  /** "16:00", "3:30pm", "7.45 pm". */
-  private val RowTime = s"""${ScraperParse.ClockPartsDotted}\\s*([ap]\\.?m\\.?)?""".r
-
   private val ProgrammeId = """TcsProgramme_(\d+)""".r
-
-  /** A performance note such as "(Descriptive subtitles)" — the box office's own
-   *  subtitled flag, which the `WhatsOn` literal carries as `"SU":"Y"`. */
-  private val Subtitled = """(?i)\bsubtitle""".r
 
   /** "(12A)" or "(Cert.TBC)" after the title link. */
   private val Certificate = """\((?:Cert\.?\s*)?([^)]+)\)""".r
@@ -229,11 +222,13 @@ object SavoyClient {
     for {
       day  <- rowDate(dateCell.text).toSeq if !day.isBefore(today)
       span <- Option(dateCell.parent).toSeq.flatMap(_.select("span.StartTimeAndStatus").asScala)
-      time <- RowTime.findFirstMatchIn(span.text).flatMap(ScraperParse.meridiemClockAt(_, 1, 3)).toSeq
+      time <- ScraperParse.meridiemClockIn(span.text).toSeq
     } yield programme -> Showtime(
       dateTime   = day.atTime(time),
       bookingUrl = Option(span.selectFirst("a[href]")).map(_.attr("abs:href")).filter(_.nonEmpty),
-      format     = if (Subtitled.findFirstIn(span.text).isDefined) List("SUB") else Nil)
+      // A performance note such as "(Descriptive subtitles)": the box office's own subtitled
+      // flag, which the `WhatsOn` literal carries as `"SU":"Y"`.
+      format     = if (ScraperParse.mentionsSubtitles(span.text)) List("SUB") else Nil)
 
   /** The film a `TcsProgramme_` link — or, where the template links none, the block's
    *  title heading ("Sense and Sensibility / SHOWTIMES") — names; `None` for an untitled

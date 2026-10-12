@@ -40,9 +40,12 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.clock("19", "30-21") shouldBe None
   }
 
-  "meridiemClockAt" should "read a 12-hour clock by its marker, and a 24-hour one whatever the marker" in {
-    val pattern = raw"""(?i)${ScraperParse.ClockParts}\s*([ap]\.?m\.?)?""".r
-    def read(text: String) = pattern.findFirstMatchIn(text).flatMap(ScraperParse.meridiemClockAt(_, 1, 3))
+  "meridiemClockIn" should "read a 12-hour clock by its marker, and a 24-hour one whatever the marker" in {
+    def read(text: String) = ScraperParse.meridiemClockIn(text)
+    read("Screen 2 · 3:30pm") shouldBe Some(LocalTime.of(15, 30))
+    read("7.45 pm") shouldBe Some(LocalTime.of(19, 45))
+    read("16:00") shouldBe Some(LocalTime.of(16, 0))
+    read("no time") shouldBe None
     read("7:05 pm") shouldBe Some(LocalTime.of(19, 5))
     read("7:05 P.M.") shouldBe Some(LocalTime.of(19, 5))
     read("12:10 am") shouldBe Some(LocalTime.of(0, 10))
@@ -52,6 +55,13 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     read("19:30 pm") shouldBe Some(LocalTime.of(19, 30))
     read("0:15 am") shouldBe Some(LocalTime.of(0, 15))
     read("25:00 pm") shouldBe None
+  }
+
+  "mentionsSubtitles" should "spot a subtitle note or category, not a word that merely contains one" in {
+    ScraperParse.mentionsSubtitles("(Descriptive subtitles)") shouldBe true
+    ScraperParse.mentionsSubtitles("Access - Cinema Subtitled") shouldBe true
+    ScraperParse.mentionsSubtitles("Relaxed screening") shouldBe false
+    ScraperParse.mentionsSubtitles("Nosubtitle") shouldBe false
   }
 
   "DayMonthYearPat" should "capture a month name that carries a diacritic" in {
