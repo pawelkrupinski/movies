@@ -167,6 +167,14 @@ def drifted(towns, pos, previous_centres, max_km):
             if previous_centres(t) and min(km(pos[t], c) for c in previous_centres(t)) > max_km]
 
 
+def held_by(cinemas, venue_town, page_of_town):
+    """page → how many of a gone page's `cinemas` it holds now — the `held` that
+    `heir` takes. A venue whose town is on no page counts for none: its town's last
+    cinema was retired, and the gazetteer (`venue_town`) still places it, because
+    it keeps every venue it ever placed."""
+    return collections.Counter(page_of_town[venue_town[v]] for v in cinemas if venue_town.get(v) in page_of_town)
+
+
 def heir(held, centre, result):
     """The page a page that stopped existing now redirects to: the one holding
     most of its venues (`held`, page → how many); on a tie, a major city's, then

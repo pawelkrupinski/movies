@@ -137,6 +137,13 @@ def synthetic():
     _, retired = run(TOWNS, VENUES, closed)
     check("a page none of whose venues is left goes to the page nearest it",
           retired["atchison"]["page"] == "liberty")
+    # towns.json keeps placing a retired venue, so its town is known but is on no page.
+    atchison = dict(TOWNS + [town("Atchison", "Kansas", 60, 0, 10_000)])
+    at = [(v, (atchison[t]["lat"], atchison[t]["lon"])) for t, v in VENUES]
+    placed = {**{v: t for t, v in VENUES}, "at1": "Atchison, Kansas"}
+    pages_closed, retired = b.build(at, placed, atchison, {**previous, "atchison": metro(["at1"], 60, 0, "Atchison, Kansas")}, {})
+    check("a town whose last cinema retired, still placed in towns.json, redirects to the page nearest it",
+          retired["atchison"]["page"] == "liberty" and "atchison" not in {p["slug"] for p in pages_closed})
 
     chain = {"old-metro": {"page": "central-oregon", "qualifiedSlug": "old-metro"}}
     _, retired = run(TOWNS, VENUES, previous, chain)

@@ -225,7 +225,7 @@ def build(venues, venue_town, towns, previous, prior_retired, rules=RULES):
     def heir(old):
         if old.get("anchor") in page_of_town:
             return page_of_town[old["anchor"]]
-        held = collections.Counter(page_of_town[venue_town[v]] for v in old["cinemas"] if v in venue_town)
+        held = town_pages.held_by(old["cinemas"], venue_town, page_of_town)
         return town_pages.heir(held, (old["lat"], old["lon"]), result)
     gone = {slug: heir(old) for slug, old in previous.items() if slug not in result}
     retired = town_pages.retire(gone, {k: v["page"] for k, v in prior_retired.items()}, result)
