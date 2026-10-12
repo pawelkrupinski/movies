@@ -199,52 +199,6 @@ cinemaScrapes:
 showings:
   2026-06-09  Kino Rialto                   18:00
 
-=== Audiencja - National Theatre Live 2026 ===
-displayTitle:      Audiencja - National Theatre Live 2026
-cinemaTitles:      Audiencja - National Theatre Live 2026
-runtimeMinutes:    165
-releaseYear:       2026
-countries:         Wielka Brytania
-posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8213S2R.jpg
-synopsis.length:   908
-cast:              Helen Mirren
-director:          Stephen Daldry
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
-cinemaFilmUrls:
-  Cinema City Kinepolis = https://www.cinema-city.pl/filmy/audiencja-national-theatre-live-2026/8213s2r
-cinemaScrapes:
-  Cinema City / — / —
-  Cinema City Arkadia / Audiencja - National Theatre Live 2026 / 2026
-  Cinema City Bemowo / Audiencja - National Theatre Live 2026 / 2026
-  Cinema City Bonarka / Audiencja - National Theatre Live 2026 / 2026
-  Cinema City Bydgoszcz / Audiencja - National Theatre Live 2026 / 2026
-  Cinema City Bytom / Audiencja - National Theatre Live 2026 / 2026
-  Cinema City Czerwona Droga / Audiencja - National Theatre Live 2026 / 2026
-  Cinema City Gliwice / Audiencja - National Theatre Live 2026 / 2026
-  Cinema City Kazimierz / Audiencja - National Theatre Live 2026 / 2026
-  Cinema City Kinepolis / Audiencja - National Theatre Live 2026 / 2026
-  Cinema City Lublin Plaza / Audiencja - National Theatre Live 2026 / 2026
-  Cinema City Manufaktura / Audiencja - National Theatre Live 2026 / 2026
-  Cinema City Mokotów / Audiencja - National Theatre Live 2026 / 2026
-  Cinema City Promenada / Audiencja - National Theatre Live 2026 / 2026
-  Cinema City Punkt 44 / Audiencja - National Theatre Live 2026 / 2026
-  Cinema City Wałbrzych / Audiencja - National Theatre Live 2026 / 2026
-  Cinema City Wolność / Audiencja - National Theatre Live 2026 / 2026
-  Cinema City Wroclavia / Audiencja - National Theatre Live 2026 / 2026
-  Cinema City Zielona Góra / Audiencja - National Theatre Live 2026 / 2026
-showings:
-  2026-08-15  Cinema City Kinepolis         15:30 Sala 5 2D/NAP
-  2026-08-16  Cinema City Kinepolis         15:30 Sala 5 2D/NAP
-
 === Babystar ===
 displayTitle:      Babystar
 cinemaTitles:      Babystar
@@ -5674,38 +5628,56 @@ cinemaScrapes:
 showings:
   2026-06-13  Kino Muza                     19:00 Sala 1
 
-=== Nie martw się, nic mi nie jest ===
-displayTitle:      Nie martw się, nic mi nie jest
-cinemaTitles:      Nie martw się, nic mi nie jest
-runtimeMinutes:    82
-releaseYear:       2024
-countries:         Belgia, Luksemburg
-posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7216D2R.jpg
-synopsis.length:   581
-cast:              Lanna de Palmaert, Émilie Dequenne, Stéphane De Groodt, Raphaëlle Lubansu, Tania Garbarski
-director:          Solange Cicurel
-tmdbId:            1161751
-imdbId:            tt28484870
-originalTitle:     TKT (T'inquiète)
-imdbRating:        6.2
+=== National Theatre Live: Audiencja ===
+displayTitle:      National Theatre Live: Audiencja
+cinemaTitles:      Audiencja - National Theatre Live 2026 | Audiencja | TEATR W KINIE | National Theatre Live
+runtimeMinutes:    165
+releaseYear:       2026
+countries:         Wielka Brytania
+posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8213S2R.jpg
+synopsis.length:   908
+cast:              Helen Mirren
+director:          Stephen Daldry
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
 metascore:         —
 rottenTomatoes:    —
-filmwebRating:     5.8
+filmwebRating:     —
 metacriticUrl:     —
 rottenTomatoesUrl: —
-filmwebUrl:        https://www.filmweb.pl/film/Nie+martw+si%C4%99%2C+nic+mi+nie+jest-2024-10067581
+filmwebUrl:        —
 cinemaFilmUrls:
-  Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/nie-martw-sie-nic-mi-nie-jest/7216d2r
+  Cinema City Kinepolis = https://www.cinema-city.pl/filmy/audiencja-national-theatre-live-2026/8213s2r
 cinemaScrapes:
   Cinema City / — / —
-  Cinema City Poznań Plaza / Nie martw się, nic mi nie jest / 2024
-  Janosik / Nie martw się, nic mi nie jest / —
+  Cinema City Arkadia / Audiencja - National Theatre Live 2026 / 2026
+  Cinema City Bemowo / Audiencja - National Theatre Live 2026 / 2026
+  Cinema City Bonarka / Audiencja - National Theatre Live 2026 / 2026
+  Cinema City Bydgoszcz / Audiencja - National Theatre Live 2026 / 2026
+  Cinema City Bytom / Audiencja - National Theatre Live 2026 / 2026
+  Cinema City Czerwona Droga / Audiencja - National Theatre Live 2026 / 2026
+  Cinema City Gliwice / Audiencja - National Theatre Live 2026 / 2026
+  Cinema City Kazimierz / Audiencja - National Theatre Live 2026 / 2026
+  Cinema City Kinepolis / Audiencja - National Theatre Live 2026 / 2026
+  Cinema City Lublin Plaza / Audiencja - National Theatre Live 2026 / 2026
+  Cinema City Manufaktura / Audiencja - National Theatre Live 2026 / 2026
+  Cinema City Mokotów / Audiencja - National Theatre Live 2026 / 2026
+  Cinema City Promenada / Audiencja - National Theatre Live 2026 / 2026
+  Cinema City Punkt 44 / Audiencja - National Theatre Live 2026 / 2026
+  Cinema City Wałbrzych / Audiencja - National Theatre Live 2026 / 2026
+  Cinema City Wolność / Audiencja - National Theatre Live 2026 / 2026
+  Cinema City Wroclavia / Audiencja - National Theatre Live 2026 / 2026
+  Cinema City Zielona Góra / Audiencja - National Theatre Live 2026 / 2026
+  Gdyńskie Centrum Filmowe / Audiencja | TEATR W KINIE | National Theatre Live / —
 showings:
-  2026-06-10  Cinema City Poznań Plaza      12:45 Sala 7 2D/DUB
+  2026-08-15  Cinema City Kinepolis         15:30 Sala 5 2D/NAP
+  2026-08-16  Cinema City Kinepolis         15:30 Sala 5 2D/NAP
 
-=== Niebezpieczne związki - National Theatre Live 2026 ===
-displayTitle:      Niebezpieczne związki - National Theatre Live 2026
-cinemaTitles:      Niebezpieczne związki - National Theatre Live 2026
+=== National Theatre Live: Niebezpieczne związki ===
+displayTitle:      National Theatre Live: Niebezpieczne związki
+cinemaTitles:      Niebezpieczne związki - National Theatre Live 2026 | Niebezpieczne związki | TEATR W KINIE | National Theatre Live
 runtimeMinutes:    150
 releaseYear:       2026
 countries:         Wielka Brytania
@@ -5745,9 +5717,99 @@ cinemaScrapes:
   Cinema City Wolność / Niebezpieczne związki - National Theatre Live 2026 / 2026
   Cinema City Wroclavia / Niebezpieczne związki - National Theatre Live 2026 / 2026
   Cinema City Zielona Góra / Niebezpieczne związki - National Theatre Live 2026 / 2026
+  Gdyńskie Centrum Filmowe / Niebezpieczne związki | TEATR W KINIE | National Theatre Live / —
 showings:
   2026-07-11  Cinema City Kinepolis         15:00 Sala 5 2D/NAP
   2026-07-12  Cinema City Kinepolis         15:00 Sala 5 2D/NAP
+
+=== National Theatre Live: Playboy zachodniego świata ===
+displayTitle:      National Theatre Live: Playboy zachodniego świata
+cinemaTitles:      NT Live: Playboy zachodniego świata | Playboy zachodniego świata - National Theatre Live 2026 | Playboy zachodniego świata | TEATR W KINIE | National Theatre Live
+runtimeMinutes:    150
+releaseYear:       2026
+countries:         Wielka Brytania
+posterUrl:         https://img.helios.pl/pliki/film/nt-live-playboy-zachodniego-swiata/nt-live-playboy-zachodniego-swiata-plakat-21911.jpg
+synopsis.length:   607
+cast:              Nicola Coughlan, Siobhán McSweeney, Éanna Hardwicke
+director:          Caitríona McLaughlin
+tmdbId:            —
+imdbId:            —
+originalTitle:     —
+imdbRating:        —
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     —
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        —
+cinemaFilmUrls:
+  Cinema City Kinepolis = https://www.cinema-city.pl/filmy/playboy-zachodniego-swiata-national-theatre-live-2026/8211s2r
+  Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/nt-live-playboy-zachodniego-swiata-2589
+cinemaScrapes:
+  Cinema City / — / —
+  Cinema City Arkadia / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Cinema City Bemowo / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Cinema City Bonarka / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Cinema City Bydgoszcz / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Cinema City Bytom / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Cinema City Czerwona Droga / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Cinema City Gliwice / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Cinema City Kazimierz / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Cinema City Kinepolis / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Cinema City Lublin Plaza / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Cinema City Manufaktura / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Cinema City Mokotów / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Cinema City Promenada / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Cinema City Punkt 44 / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Cinema City Wałbrzych / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Cinema City Wolność / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Cinema City Wroclavia / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Cinema City Zielona Góra / Playboy zachodniego świata - National Theatre Live 2026 / 2026
+  Gdyńskie Centrum Filmowe / Playboy zachodniego świata | TEATR W KINIE | National Theatre Live / —
+  Helios Alfa / NT Live: Playboy zachodniego świata / —
+  Helios Bielsko-Biała / NT Live: Playboy zachodniego świata / —
+  Helios Blue City / NT Live: Playboy zachodniego świata / —
+  Helios Forum / NT Live: Playboy zachodniego świata / —
+  Helios Katowice / NT Live: Playboy zachodniego świata / —
+  Helios Magnolia Park / NT Live: Playboy zachodniego świata / —
+  Helios Olsztyn / NT Live: Playboy zachodniego świata / —
+  Helios Posnania / NT Live: Playboy zachodniego świata / —
+  Helios Riviera / NT Live: Playboy zachodniego świata / —
+  Helios Solaris / NT Live: Playboy zachodniego świata / —
+  Helios Łódź / NT Live: Playboy zachodniego świata / —
+showings:
+  2026-06-20  Cinema City Kinepolis         15:00 Sala 5 2D/NAP
+  2026-06-21  Cinema City Kinepolis         15:00 Sala 5 2D/NAP
+  2026-06-21  Helios Posnania               15:00 2D/NAP
+
+=== Nie martw się, nic mi nie jest ===
+displayTitle:      Nie martw się, nic mi nie jest
+cinemaTitles:      Nie martw się, nic mi nie jest
+runtimeMinutes:    82
+releaseYear:       2024
+countries:         Belgia, Luksemburg
+posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7216D2R.jpg
+synopsis.length:   581
+cast:              Lanna de Palmaert, Émilie Dequenne, Stéphane De Groodt, Raphaëlle Lubansu, Tania Garbarski
+director:          Solange Cicurel
+tmdbId:            1161751
+imdbId:            tt28484870
+originalTitle:     TKT (T'inquiète)
+imdbRating:        6.2
+metascore:         —
+rottenTomatoes:    —
+filmwebRating:     5.8
+metacriticUrl:     —
+rottenTomatoesUrl: —
+filmwebUrl:        https://www.filmweb.pl/film/Nie+martw+si%C4%99%2C+nic+mi+nie+jest-2024-10067581
+cinemaFilmUrls:
+  Cinema City Poznań Plaza = https://www.cinema-city.pl/filmy/nie-martw-sie-nic-mi-nie-jest/7216d2r
+cinemaScrapes:
+  Cinema City / — / —
+  Cinema City Poznań Plaza / Nie martw się, nic mi nie jest / 2024
+  Janosik / Nie martw się, nic mi nie jest / —
+showings:
+  2026-06-10  Cinema City Poznań Plaza      12:45 Sala 7 2D/DUB
 
 === Niedźwiedzie nie istnieją ===
 displayTitle:      Niedźwiedzie nie istnieją
@@ -6079,43 +6141,6 @@ cinemaScrapes:
   Kino Żak / Nowa Fala | Przegląd Nowego Kina Francuskiego / —
 showings:
   2026-06-12  Kino Muza                     19:00 Sala 1
-
-=== NT Live: Playboy zachodniego świata ===
-displayTitle:      NT Live: Playboy zachodniego świata
-cinemaTitles:      NT Live: Playboy zachodniego świata
-runtimeMinutes:    150
-releaseYear:       —
-countries:         —
-posterUrl:         https://img.helios.pl/pliki/film/nt-live-playboy-zachodniego-swiata/nt-live-playboy-zachodniego-swiata-plakat-21911.jpg
-synopsis.length:   —
-cast:              —
-director:          —
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
-cinemaFilmUrls:
-  Helios Posnania = https://helios.pl/poznan/kino-helios/wydarzenie/nt-live-playboy-zachodniego-swiata-2589
-cinemaScrapes:
-  Helios Alfa / NT Live: Playboy zachodniego świata / —
-  Helios Bielsko-Biała / NT Live: Playboy zachodniego świata / —
-  Helios Blue City / NT Live: Playboy zachodniego świata / —
-  Helios Forum / NT Live: Playboy zachodniego świata / —
-  Helios Katowice / NT Live: Playboy zachodniego świata / —
-  Helios Magnolia Park / NT Live: Playboy zachodniego świata / —
-  Helios Olsztyn / NT Live: Playboy zachodniego świata / —
-  Helios Posnania / NT Live: Playboy zachodniego świata / —
-  Helios Riviera / NT Live: Playboy zachodniego świata / —
-  Helios Solaris / NT Live: Playboy zachodniego świata / —
-  Helios Łódź / NT Live: Playboy zachodniego świata / —
-showings:
-  2026-06-21  Helios Posnania               15:00 2D/NAP
 
 === O dziewczynie skaczącej przez czas ===
 displayTitle:      O dziewczynie skaczącej przez czas
@@ -6868,52 +6893,6 @@ cinemaScrapes:
   Kino Pionier 1907 / PIEP*ZYĆ MICKIEWICZA 3 / 2026
 showings:
   2026-06-11  Helios Posnania               10:00 Sala 6 2D/ORG
-
-=== Playboy zachodniego świata - National Theatre Live 2026 ===
-displayTitle:      Playboy zachodniego świata - National Theatre Live 2026
-cinemaTitles:      Playboy zachodniego świata - National Theatre Live 2026
-runtimeMinutes:    150
-releaseYear:       2026
-countries:         Wielka Brytania
-posterUrl:         https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8211S2R.jpg
-synopsis.length:   607
-cast:              Nicola Coughlan, Siobhán McSweeney, Éanna Hardwicke
-director:          Caitríona McLaughlin
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
-cinemaFilmUrls:
-  Cinema City Kinepolis = https://www.cinema-city.pl/filmy/playboy-zachodniego-swiata-national-theatre-live-2026/8211s2r
-cinemaScrapes:
-  Cinema City / — / —
-  Cinema City Arkadia / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-  Cinema City Bemowo / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-  Cinema City Bonarka / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-  Cinema City Bydgoszcz / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-  Cinema City Bytom / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-  Cinema City Czerwona Droga / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-  Cinema City Gliwice / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-  Cinema City Kazimierz / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-  Cinema City Kinepolis / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-  Cinema City Lublin Plaza / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-  Cinema City Manufaktura / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-  Cinema City Mokotów / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-  Cinema City Promenada / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-  Cinema City Punkt 44 / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-  Cinema City Wałbrzych / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-  Cinema City Wolność / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-  Cinema City Wroclavia / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-  Cinema City Zielona Góra / Playboy zachodniego świata - National Theatre Live 2026 / 2026
-showings:
-  2026-06-20  Cinema City Kinepolis         15:00 Sala 5 2D/NAP
-  2026-06-21  Cinema City Kinepolis         15:00 Sala 5 2D/NAP
 
 === Plenerowe Pałacowe: Amelia ===
 displayTitle:      Plenerowe Pałacowe: Amelia

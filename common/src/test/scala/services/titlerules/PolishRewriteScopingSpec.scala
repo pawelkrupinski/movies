@@ -105,4 +105,19 @@ class PolishRewriteScopingSpec extends AnyFlatSpec with Matchers {
     formatRule.countryScopeValid shouldBe true
     formatRule("Avatar 3D") shouldBe "Avatar 3 D"
   }
+
+  // A broadcaster's banner is the same proper name in every country's listings — Germany, the UK and Poland all
+  // bill "National Theatre Live" — so writing it pins no row to a foreign key. Scoping it to every country would
+  // instead hang the other countries' values off each one's rule graph (CountryIsolationMatrixSpec).
+  "a canonical rewrite to a proper name" should "apply in every country without declaring any" in {
+    val banner = TitleRule("test-proper-name", RuleScope.Canonical, None,
+      """(?iu)^NT\s+Live\s*:\s*(\S.*)$""", "National Theatre Live: $1", applyAll = false, order = 0,
+      writesProperName = true)
+    banner.countries shouldBe None
+    banner.countryScopeValid shouldBe true
+    banner("NT Live: Audiencja") shouldBe "National Theatre Live: Audiencja"
+    Country.all.foreach { c =>
+      withClue(s"$c: ")(sanitizeFor(c, "NT Live: Audience") shouldBe sanitizeFor(c, "National Theatre Live: Audience"))
+    }
+  }
 }

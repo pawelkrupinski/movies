@@ -61,7 +61,10 @@ object ReadModelDerivation {
     // key it groups by, so the tagged listing joins its film's card.
     Derivation(DerivationVersion("acb3f7f8f6df518c"), DerivationScope.Full),
     // A card's poster fallback chain stops at three venues plus TMDB / IMDb (`MovieRecord.fallbackPosterUrls`).
-    Derivation(DerivationVersion("0f72666029377308"), DerivationScope.Cards))
+    Derivation(DerivationVersion("0f72666029377308"), DerivationScope.Cards),
+    // A live-relay broadcast's banner comes in one spelling ("NT Live: X", "X - National Theatre Live 2026",
+    // "RBO 26/27: X (Royal Ballet)" → "National Theatre Live: X", "Royal Ballet & Opera: X"): one card per production.
+    Derivation(DerivationVersion("a0adc5be65f4e421"), DerivationScope.Cards))
 
   def current: DerivationVersion = History.last.version
 

@@ -44,7 +44,11 @@ case class TitleRule(
   // everywhere spelled a German film "Minions i Monster" and keyed it
   // `minionsimonster` — a key no German cinema slot can ever produce, so every
   // settle re-canonicalised the row.
-  countries:   Option[Set[Country]] = None
+  countries:   Option[Set[Country]] = None,
+  // True when the words `replacement` writes are a PROPER NAME every country's cinemas bill alike — a
+  // broadcaster's banner ("Royal Ballet & Opera", "National Theatre Live") — rather than words of one language.
+  // Such a rewrite is as language-neutral as a strip, so it may stay unscoped (see [[countryScopeValid]]).
+  writesProperName: Boolean = false
 ) {
   /** True when this rule is in force for the country a process serves. A rule
    *  with no declared countries applies everywhere. */
@@ -89,7 +93,7 @@ case class TitleRule(
    *  format-tag and bracketed-year strips that are most of the ~227 rules; only
    *  the one genuinely dangerous shape has to declare. */
   val countryScopeValid: Boolean =
-    !rewritesWords || countries.nonEmpty || scope != RuleScope.Canonical
+    !rewritesWords || writesProperName || countries.nonEmpty || scope != RuleScope.Canonical
 
   /** True when the pattern is anchored to the START of the title (a `^`, after an
    *  optional leading inline-flag group like `(?i)`) — i.e. a prefix/banner rule

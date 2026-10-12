@@ -950,6 +950,107 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // ── live-relay broadcasts: one production, one banner spelling ─────────────
+  // Every spelling below is a real listing from the recorded fixtures (kinoheld + cineamo for Germany; Flicks,
+  // Spektrix, Cineworld, Showcase for the UK; Multikino, Cinema City, Helios, Gdyńskie Centrum Filmowe and
+  // prod-movies/titles.txt for Poland; the US hard-cluster corpus). Each group is ONE production its country's
+  // venues billed apart — before the rules each spelling keyed, and showed, its own card.
+  private def countryRules(c: models.Country) = TitleRuleSet.forCountry(c)
+  private def countrySeed(c: models.Country) = TitleRuleSet(TitleRules.all.filter(_.appliesTo(c)))
+
+  private val broadcastGroups: Seq[(models.Country, String, Seq[String])] = {
+    import models.Country._
+    Seq(
+      (Germany, "Royal Ballet & Opera: Romeo und Julia", Seq(
+        "RBO 26/27: Romeo und Julia (Royal Ballet) (Aufz.)",
+        "RBO 2026/27: Romeo und Julia (The Royal Ballet)",
+        "RBO 2026/27: Romeo und Julia (Royal Ballet)")),
+      (Germany, "Royal Ballet & Opera: Carmen", Seq(
+        "RBO 26/27: Carmen (Royal Opera)",
+        "RBO 2026/27: Carmen (The Royal Opera)",
+        "RBO Live 2026/27: Carmen (Royal Opera)",
+        "Royal Ballet & Opera 2026/27: Carmen")),
+      (Germany, "Royal Ballet & Opera: Der Nussknacker", Seq(
+        "RBO 26/27: Der Nussknacker (Royal Ballet) (Aufz.)",
+        "RBO 2026/27: Der Nussknacker (The Royal Ballet)")),
+      (Germany, "National Theatre Live: Audience", Seq(
+        "NT Live: Audience",
+        "National Theatre Live: Audience")),
+      (UnitedKingdom, "Royal Ballet & Opera: Swan Lake", Seq(
+        "RBO Cinema Season 2026-27: Swan Lake",
+        "Royal Ballet & Opera 2026/27: Swan Lake",
+        "The Royal Ballet: Swan Lake")),
+      (UnitedKingdom, "Royal Ballet & Opera: Tosca", Seq(
+        "RBO Cinema Season 2026-27: Tosca",
+        "Royal Ballet & Opera -Tosca (2027)",
+        "Royal Ballet and Opera: Tosca")),
+      (UnitedKingdom, "National Theatre Live: Golden Boy", Seq(
+        "NT Live: Golden Boy",
+        "National Theatre Live: Golden Boy")),
+      (UnitedStates, "The Metropolitan Opera: Otello", Seq(
+        "The Metropolitan Opera 2026/27: Otello",
+        "Met Opera 2026-27: Otello",
+        "Met Opera: Otello",
+        "MET Opera: Otello (2027)",
+        "The Metropolitan Opera: Otello (2027)")),
+      (Poland, "National Theatre Live: Audiencja", Seq(
+        "NT Live: Audiencja",
+        "NT Live Audiencja",
+        "Audiencja - National Theatre Live 2026",
+        "Audiencja | TEATR W KINIE | National Theatre Live")),
+      (Poland, "National Theatre Live: Playboy zachodniego świata", Seq(
+        "NT Live: Playboy zachodniego świata",
+        "Playboy zachodniego świata - National Theatre Live 2026",
+        "Playboy zachodniego świata | TEATR W KINIE | National Theatre Live")),
+      (Poland, "Royal Ballet & Opera: Manon", Seq(
+        "Royal Ballet and Opera Sezon Kinowy 2026-27: Manon",
+        "Royal Ballet & Opera 2026/27: Manon")),
+      (Poland, "The Metropolitan Opera: Samson i dalila", Seq(
+        "Samson i dalila | metropolitan opera: live in hd 2026/27"))
+    )
+  }
+
+  "the live-relay broadcast rules" should "give every spelling of one production one banner and one key" in {
+    broadcastGroups.foreach { case (country, unified, spellings) =>
+      val rules = countryRules(country)
+      spellings.foreach { s =>
+        withClue(s"[$country] canonical('$s'): ")(rules.canonical(normalize(s)) shouldBe unified)
+        withClue(s"[$country] mergeKey('$s'): ")(mergeKey(rules, s) shouldBe mergeKey(rules, unified))
+      }
+    }
+  }
+
+  it should "be load-bearing — the seed rules leave each production split across its spellings" in {
+    broadcastGroups.filter(_._3.size > 1).foreach { case (country, _, spellings) =>
+      withClue(s"[$country] seed keys of ${spellings.mkString(" / ")}: ")(
+        spellings.map(mergeKey(countrySeed(country), _)).distinct.size should be > 1)
+    }
+  }
+
+  it should "keep the banner, so a broadcast never folds onto a film of the work's name" in {
+    broadcastGroups.foreach { case (country, unified, _) =>
+      val work = unified.substring(unified.indexOf(": ") + 2)
+      withClue(s"[$country] '$unified' vs '$work': ")(
+        mergeKey(countryRules(country), unified) should not be mergeKey(countryRules(country), work))
+    }
+  }
+
+  it should "leave alone a banner that IS the listing, and titles that merely mention a house or a season" in {
+    Seq(
+      "The Metropolitan Opera 2026-27 Live in HD Series",
+      "The Metropolitan Opera 2026-2027 Special Program",
+      "Met Opera Live in HD",
+      "Royal Ballet & Opera Live",
+      "The Royal Ballet",
+      "Uwierz w ducha | 10/10 Klasyka filmowa",
+      "Katy Perry: The Lifetimes Tour - Live From Paris",
+      "September 5 - The Day Terror Went Live",
+      "Manon"
+    ).foreach { t =>
+      withClue(s"canonical('$t') unchanged: ")(countryRules(models.Country.UnitedKingdom).canonical(t) shouldBe t)
+    }
+  }
+
   // A screen-format tag glued BETWEEN the film and a premiere marker — the real "ODYSEJA - 2D napisy -
   // Premiera Krajowa" (Kino Hel, Konin): `FormatTags` peels format only from the END, so the premiere strip
   // takes the format with it — for the lookup; the screening keeps its row.

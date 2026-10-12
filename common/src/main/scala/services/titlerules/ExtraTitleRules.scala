@@ -56,6 +56,11 @@ object ExtraTitleRules {
   /** The countries a Polish-language rewrite may touch. */
   private val PolishOnly: Option[Set[Country]] = Some(Set(Country.Poland))
 
+  /** A Canonical rewrite to a broadcaster's PROPER NAME ("Royal Ballet & Opera", "National Theatre Live") — the
+   *  same words in every country's listings, so unscoped like a strip; see [[TitleRule.writesProperName]]. */
+  private def canonProperName(id: String, pattern: String, replacement: String, note: String): TitleRule =
+    canon(id, pattern, replacement, note).copy(writesProperName = true)
+
   private def perCinema(id: String, cinemaId: String, pattern: String, note: String): TitleRule =
     TitleRule(id, PerCinema, Some(cinemaId), pattern, "", applyAll = false, order = 0, note = Some(note))
 
@@ -987,7 +992,52 @@ object ExtraTitleRules {
       """(?iu)^Niesamowite\s+przygody\s+skarpetek\s+(?:III|3)\b.*$""",
       "Niesamowite przygody skarpetek 3. Ale kosmos!",
       "Collapse every spelling of the TMDB-no-match 'Niesamowite przygody skarpetek 3. Ale kosmos!' (Roman III, the Cinema-City source-truncated 'Ale ko', the subtitle-less '…skarpetek 3', the format-tagged variants) onto one canonical title. The '3'/'III' requirement keeps films 1 (no number) and 2 (…skarpetek 2.) as their own rows. POLAND ONLY: the replacement writes Polish words, so it must not reach another country's corpus even though the pattern is unlikely to match there.",
-      countries = PolishOnly)
+      countries = PolishOnly),
+    // Live-relay broadcasts: one production, billed under its house's banner in as many spellings as there are
+    // ticketing systems — Germany alone lists Romeo und Julia as "RBO 26/27: … (Royal Ballet) (Aufz.)", "RBO
+    // 2026/27: … (The Royal Ballet)" and "RBO Live 2026/27: …", and Poland lists one NT Live play three ways
+    // ("NT Live: Audiencja", "Audiencja - National Theatre Live 2026", "Audiencja | TEATR W KINIE | National
+    // Theatre Live"). Each spelling keyed its own row and showed its own card. These rules unify the BANNER —
+    // they never strip it: the broadcast stays its own card, apart from any film of the work's name (a ballet
+    // 'Manon' is not a film 'Manon'; see the fourteenth-wave note above). Ordered after the bracketed-year strip,
+    // which first takes the '(2027)' some venues append. Real spellings from every country's recorded fixtures
+    // are in ExtraTitleRulesSpec.
+    //
+    // 1. The SEASON in a house banner ("RBO 26/27:", "RBO Cinema Season 2026-27:", "Royal Ballet and Opera Sezon
+    //    Kinowy 2026-27:", "Met Opera 2026-27:"), generic in the house: one production carries one season, and
+    //    half the venues leave it out ("Met Opera: Manon", "Royal Ballet and Opera: Tosca"). Needs the colon, so a
+    //    banner that IS the listing ("The Metropolitan Opera 2026-27 Live in HD Series") keeps its season.
+    canon("xtra-canonical-broadcast-season",
+      """(?iu)^(\p{L}[\p{L}\p{N}&'.+ ]{0,60}?)\s+(?:(?:Live|Cinema\s+Season|Sezon\s+Kinowy|Kinosaison|Season|Saison|Spielzeit|Temporada)\s+)?(?:19|20)?\d{2}\s*[-/–]\s*(?:19|20)?\d{2}\s*:\s*""",
+      "$1: ",
+      "'<house> [Live | Cinema Season | Sezon Kinowy …] 2026/27: <work>' live-relay season token — dropped from the banner so every season spelling (26/27, 2026/27, 2026-27) and the season-less form share one title"),
+    // 2. Royal Ballet & Opera under its acronym, its 'and'/'i'/'+' spellings, or one of its two companies (the
+    //    "The Royal Ballet: Manon" banner, the German "(The Royal Ballet)" credit after the work), plus the German
+    //    "(Aufz.)" recording tag — an encore-like note on the showing, never part of the production's name.
+    canonProperName("xtra-canonical-royal-ballet-opera",
+      """(?iu)^(?:RBO|Royal\s+Ballet\s*(?:&|\+|and|und|i|y)\s*Opera|The\s+Royal\s+(?:Ballet|Opera))\s*(?::|\s[-–—]|-)\s*(\S.*?)(?:\s*\((?:The\s+)?Royal\s+(?:Ballet|Opera)\))?(?:\s*\(Aufz(?:\.|eichnung)\))?\s*$""",
+      "Royal Ballet & Opera: $1",
+      "'RBO: <work> (The Royal Ballet) (Aufz.)' / 'Royal Ballet and Opera: <work>' / 'The Royal Opera: <work>' — one house banner"),
+    // 3. The Met, prefixed ("Met Opera:", "The MET Opera:") or — Kino 1410's shape — after the work
+    //    ("CARMEN | Metropolitan Opera: Live in HD 2026/27").
+    canonProperName("xtra-canonical-met-opera-suffix",
+      """(?iu)^(\S.*?)\s*\|\s*(?:The\s+)?Metropolitan\s+Opera(?::\s*Live\s+in\s+HD)?(?:\s+(?:19|20)\d{2}\s*[-/]\s*\d{2,4})?\s*$""",
+      "The Metropolitan Opera: $1",
+      "'<work> | Metropolitan Opera: Live in HD 2026/27' — the Met's banner after the work, moved to the front"),
+    canonProperName("xtra-canonical-met-opera",
+      """(?iu)^(?:The\s+)?(?:Met|Metropolitan)\s+Opera\s*:\s*(\S.*)$""",
+      "The Metropolitan Opera: $1",
+      "'Met Opera: <work>' / 'The MET Opera: <work>' — one house banner"),
+    // 4. National Theatre Live, prefixed ("NT Live: <play>", "NT Live <play>") or after the play — Cinema City's
+    //    "<play> - National Theatre Live 2026" and Gdynia's "<play> | TEATR W KINIE | National Theatre Live".
+    canonProperName("xtra-canonical-nt-live-suffix",
+      """(?iu)^(\S.*?)\s*(?:\|\s*Teatr\s+w\s+kinie\s*)?(?:\||\s[-–—])\s*(?:NT|National\s+Theatre)\s+Live(?:\s+(?:19|20)\d{2})?\s*$""",
+      "National Theatre Live: $1",
+      "'<play> - National Theatre Live 2026' / '<play> | TEATR W KINIE | National Theatre Live' — the banner after the play, moved to the front"),
+    canonProperName("xtra-canonical-nt-live",
+      """(?iu)^(?:NT|National\s+Theatre)\s+Live\s*(?::\s*|\s)(\S.*)$""",
+      "National Theatre Live: $1",
+      "'NT Live: <play>' / 'NT Live <play>' — one house banner")
   )
 
   /** Per-cinema (client) cleanups — venue-specific junk too narrow to globalise
