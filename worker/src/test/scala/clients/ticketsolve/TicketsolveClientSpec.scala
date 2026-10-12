@@ -24,10 +24,10 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   private val byTitle = mwldan.map(cm => cm.movie.title -> cm).toMap
 
   "TicketsolveClient.fetch" should "read Theatr Mwldan's whole cinema programme off the feed" in {
-    mwldan.size shouldBe 21
-    mwldan.flatMap(_.showtimes).size shouldBe 180
+    mwldan.size shouldBe 44
+    mwldan.flatMap(_.showtimes).size shouldBe 236
     mwldan.map(_.cinema).toSet shouldBe Set(TheatrMwldanCardigan)
-    mwldan.flatMap(_.showtimes).map(_.dateTime.toLocalDate).max shouldBe LocalDate.of(2027, 3, 14)
+    mwldan.flatMap(_.showtimes).map(_.dateTime.toLocalDate).max shouldBe LocalDate.of(2027, 6, 12)
   }
 
   it should "read each screening's local time, screen and booking link, once though the feed repeats it per venue" in {
@@ -50,9 +50,11 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     byTitle("Avengers: Doomsday").ageRating shouldBe Some("12A")
   }
 
-  it should "leave out a relay category that also sells live gigs" in {
-    // "Live Broadcast Events" sells Royal Ballet relays beside Clwb Mwldan's club nights.
-    mwldan.map(_.movie.title).filter(_.startsWith("Royal Ballet")) shouldBe empty
+  it should "keep the relays filed under a broadcast category, but not the gigs filed as live" in {
+    // All 27 "Live Broadcast Events" shows are relays (NT Live, Royal Ballet & Opera, Met Opera,
+    // Exhibition on Screen); Clwb Mwldan's club nights are filed under "Live TM / TM Byw".
+    byTitle("Royal Ballet & Opera: Manon").ageRating shouldBe Some("15")
+    byTitle.keySet should contain allOf ("National Theatre Live: Hay Fever", "Exhibition On Screen - Monet")
     mwldan.map(_.movie.title).filter(_.startsWith("Clwb Mwldan")) shouldBe empty
   }
 

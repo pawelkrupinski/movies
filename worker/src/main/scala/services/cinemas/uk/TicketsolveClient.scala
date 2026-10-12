@@ -32,15 +32,16 @@ import scala.util.Try
  *     </event></events></show>…
  * }}}
  *
- * One request is the venue's whole scrape, every date it sells (Mwldan: nine months).
+ * One request is the venue's whole scrape, every date it sells (Mwldan: eight months).
  *
  * WHICH SHOWS ARE FILMS. Each client names its own `event_category`, so the rule is its
  * own filing: a category naming film or cinema — "Film", "Cinema 2D / Sinema 2D",
- * "Event Cinema" (the opera and theatre relays), "Access - Cinema Subtitled" — unless it
- * files teaching about film: the Nerve Centre's "BFI Film Academy" is online
- * masterclasses. A relay category that names no film — Mwldan's "Live Broadcast Events",
- * Wyeside's "Satellite Live" — is left out: the same category also sells the venue's
- * live gigs, and nothing in the feed tells them apart.
+ * "Event Cinema", "Access - Cinema Subtitled" — or a broadcast, the opera, ballet and
+ * theatre relays ("Live Broadcast Events / Achlysuron Darlledu Byw": all 27 of Mwldan's
+ * on 2026-10-12 are NT Live, Royal Ballet & Opera, Met Opera or Exhibition on Screen; its
+ * gigs are filed apart, as "Live TM / TM Byw") — unless it files teaching about film: the
+ * Nerve Centre's "BFI Film Academy" is online masterclasses. A certificate in the show's
+ * name is no sign of a film: Mwldan's live shows carry them too ("Cardi Bach 2026 (U)").
  *
  * @param client the Ticketsolve client name, the feed host's first label.
  */
@@ -65,9 +66,9 @@ object TicketsolveClient {
 
   def feedUrl(client: String): String = s"https://$client.ticketsolve.com/shows.xml"
 
-  /** A category naming film, word-bounded: "Film", "Cinema 2D / Sinema 2D", "Event Cinema",
-   *  "Access - Cinema Subtitled". */
-  private val FilmWord = """(?i)\b(films?|cinema|sinema|screens?|screenings?|movies?)\b""".r
+  /** A category naming film or a relay, word-bounded: "Film", "Cinema 2D / Sinema 2D",
+   *  "Event Cinema", "Access - Cinema Subtitled", "Live Broadcast Events". */
+  private val FilmWord = """(?i)\b(films?|cinema|sinema|screens?|screenings?|movies?|broadcasts?)\b""".r
 
   /** …unless it files teaching about film rather than a screening ("BFI Film Academy"). */
   private val NotAScreening = """(?i)\b(academy|courses?|workshops?|masterclass(es)?|talks?)\b""".r
