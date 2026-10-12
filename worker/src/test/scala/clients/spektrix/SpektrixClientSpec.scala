@@ -116,5 +116,20 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     SpektrixClient.filmsOf(events).map(e => (e \ "id").as[String]) shouldBe Seq("1", "4", "5")
   }
 
+  "SpektrixClient.parse" should "read the building off its site and venue attributes, not a website's" in {
+    // `attribute_Website`, `attribute_TheatreWebsiteGenre`, `attribute_EDISiteNumber` carry
+    // "site" inside another word: read as the building, they put the performance elsewhere
+    // and their value came off the title as a building tag.
+    val events = Json.parse(
+      """[{"id":"1","name":"Nosferatu (Drama)","attribute_Film":true,"attribute_Sitename":"Gala",
+        |  "attribute_TheatreWebsiteGenre":"Drama"}]""".stripMargin).as[play.api.libs.json.JsArray]
+    val instances = Json.parse(
+      """[{"event":{"id":"1"},"start":"2026-10-20T19:30:00","attribute_Website":"https://gala.example",
+        |  "attribute_TheatreWebsiteCommission":"No","attribute_EDISiteNumber":"50110"}]""".stripMargin).as[play.api.libs.json.JsArray]
+    val films = SpektrixClient.parse(events, instances, GalaCinemaDurham, today, venue = Some("Gala"))
+    films.map(_.movie.title) shouldBe Seq("Nosferatu (Drama)")
+    films.flatMap(_.showtimes).map(_.dateTime) shouldBe Seq(LocalDateTime.of(2026, 10, 20, 19, 30))
+  }
+
   private def objects(json: String): Seq[JsObject] = Json.parse(json).as[Seq[JsObject]]
 }

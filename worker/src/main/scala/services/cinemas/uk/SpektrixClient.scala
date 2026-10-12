@@ -95,8 +95,11 @@ object SpektrixClient {
    *  `attribute_EventCinema` (Broadway's opera and ballet relays). */
   private val FilmKey = """(?i)(film|cinema|screen|movie)""".r
 
-  /** Attributes naming the building a performance is in. */
-  private val VenueAttribute = """(?i)attribute_\w*(venue|site\w*|location)""".r
+  /** Attributes naming the building a performance is in: `attribute_Venue`,
+   *  `attribute_Location`, `attribute_WebsiteLocation`, `attribute_Site`, `attribute_Sitename`
+   *  — "site" only as the key's own word, so not `attribute_Website`,
+   *  `attribute_TheatreWebsiteGenre` or `attribute_EDISiteNumber`. */
+  private val VenueAttribute = """(?i)attribute_(\w*(?:venue|location)|site(?:name)?)""".r
 
   /** Instance attributes naming the screen a performance is in. */
   private val RoomAttribute = """(?i)attribute_(screen\w*|auditorium|room)""".r
