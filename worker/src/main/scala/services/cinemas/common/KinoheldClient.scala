@@ -64,19 +64,19 @@ class KinoheldClient(
 
   def fetch(): Seq[CinemaMovie] = {
     val referenceDay = today
-    val shows = readAllPages().filterNot(_.dateTime.toLocalDate.isBefore(referenceDay))
+    val shows = readAllPages(latestYear = referenceDay.getYear + 1).filterNot(_.dateTime.toLocalDate.isBefore(referenceDay))
     toMovies(shows, cinema)
   }
 
   /** Every page of the programme. The first page failing fails the scrape — the source
    *  answered nothing; a later one failing keeps what came before it and marks the
    *  listing incomplete, so the cache does not prune the films only that page held. */
-  private def readAllPages(): Seq[Show] = {
+  private def readAllPages(latestYear: Int): Seq[Show] = {
     val shows = Seq.newBuilder[Show]
     var page  = 1
     var more  = true
     while (more) {
-      val read = Try(parsePage(HttpRead.postPage(http, ApiUrl, requestBody(venue.cinemaId, page))))
+      val read = Try(parsePage(HttpRead.postPage(http, ApiUrl, requestBody(venue.cinemaId, page)), latestYear))
       if (page == 1) read.failed.foreach(throw _)
       read.failed.foreach(ListingReads.pageFailed)
       read.foreach(p => shows ++= p.shows)
@@ -153,23 +153,26 @@ object KinoheldClient {
   )
 
   /** Parse one `programShows` response. A response without the programme — GraphQL
-   *  `errors`, a changed schema — throws rather than reading as a venue with nothing on. */
-  def parsePage(body: String): Page = {
+   *  `errors`, a changed schema — throws rather than reading as a venue with nothing on.
+   *  `latestYear` is the latest production year a screened film can have: the catalogue's
+   *  `productionYear` is hand-typed, and files "Hirten" (2025) under 2040 — a year past it
+   *  reads as none. */
+  def parsePage(body: String, latestYear: Int): Page = {
     val js       = Json.parse(body)
     val program  = (js \ "data" \ "programShows").toOption.filter(_.isInstanceOf[JsObject]).getOrElse(
       throw new IllegalStateException(s"kinoheld answered no programShows: ${(js \ "errors").toOption.getOrElse(js).toString.take(300)}"))
     Page(
-      shows        = (program \ "data").as[Seq[JsValue]].flatMap(parseShow),
+      shows        = (program \ "data").as[Seq[JsValue]].flatMap(parseShow(_, latestYear)),
       hasMorePages = (program \ "paginatorInfo" \ "hasMorePages").asOpt[Boolean].getOrElse(false)
     )
   }
 
-  private def parseShow(js: JsValue): Option[Show] =
+  private def parseShow(js: JsValue, latestYear: Int): Option[Show] =
     for {
       name     <- (js \ "name").asOpt[String].map(_.trim)
       dateTime <- (js \ "beginning").asOpt[String].flatMap(s => Try(OffsetDateTime.parse(s)).toOption)
                     .map(_.atZoneSameInstant(Zone).toLocalDateTime)
-      film     <- filmOf(name, js \ "movie")
+      film     <- filmOf(name, js \ "movie", latestYear)
     } yield Show(
       film       = film,
       dateTime   = dateTime,
@@ -189,7 +192,7 @@ object KinoheldClient {
       show   <- text(js \ "urlSlug")
     } yield s"$SiteUrl/kino/$city/$cinema/vorstellung/$show"
 
-  private def filmOf(showName: String, movie: JsLookupResult): Option[Film] = {
+  private def filmOf(showName: String, movie: JsLookupResult, latestYear: Int): Option[Film] = {
     val linked = for {
       id    <- (movie \ "id").asOpt[String]
       title <- text(movie \ "title")
@@ -202,7 +205,7 @@ object KinoheldClient {
           originalTitle  = original.filter(_ != title),
           slug           = text(movie \ "urlSlug"),
           runtimeMinutes = (movie \ "duration").asOpt[Int].filter(_ > 0),
-          year           = text(movie \ "productionYear").flatMap(y => Try(y.take(4).toInt).toOption),
+          year           = text(movie \ "productionYear").flatMap(y => Try(y.take(4).toInt).toOption).filter(_ <= latestYear),
           countries      = names(movie \ "productionCountries"),
           genres         = names(movie \ "genres"),
           director       = names(movie \ "directors"),

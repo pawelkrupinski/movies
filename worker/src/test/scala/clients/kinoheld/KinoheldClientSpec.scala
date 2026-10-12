@@ -12,8 +12,9 @@ import java.io.IOException
 import java.time.{LocalDate, LocalDateTime}
 import scala.collection.mutable.ListBuffer
 
-/** Replays five venues' real kinoheld.de programmes, every `programShows` page,
- *  recorded on 2026-10-11 by [[WriteKinoheld]] (see it for why each venue is there). */
+/** Replays six venues' real kinoheld.de programmes, every `programShows` page,
+ *  recorded on 2026-10-11 (Arthaus-Kino Bonn's on 2026-10-12) by [[WriteKinoheld]]
+ *  (see it for why each venue is there). */
 class KinoheldClientSpec extends AnyFlatSpec with Matchers {
 
   private val Today  = LocalDate.of(2026, 10, 11)
@@ -80,7 +81,7 @@ class KinoheldClientSpec extends AnyFlatSpec with Matchers {
 
   it should "throw on a GraphQL error rather than read a venue with nothing on" in {
     val errors = """{"errors":[{"message":"Variable \"$cinema\" of required type \"ID!\" was not provided."}]}"""
-    an[IllegalStateException] should be thrownBy KinoheldClient.parsePage(errors)
+    an[IllegalStateException] should be thrownBy KinoheldClient.parsePage(errors, latestYear = Today.getYear + 1)
   }
 
   it should "give each show its start in German wall-clock time, its room and its booking deep-link" in {
@@ -131,6 +132,16 @@ class KinoheldClientSpec extends AnyFlatSpec with Matchers {
     shaun.posterUrl.get should startWith ("https://static.kinoheld.de/images/film/shaun-das-schaf-spuk-im-kuerbisfeld-96025")
     shaun.trailerUrl shouldBe Some("https://www.youtube.com/watch?v=Ik8diQEcRiI")
     shaun.ageRating shouldBe Some("FSK 0")
+  }
+
+  // kinoheld's catalogue files "Hirten" (Bergers, 2025) under productionYear "2040", and other films under 2034 and
+  // 2051 (recorded DE corpus, 2026-10-12): a slip no film screened today can have, read as no year rather than one
+  // that vetoes every candidate.
+  it should "read a catalogue year past next year as unpublished" in {
+    val bonn = scrape("Arthaus-Kino Bonn")
+    film(bonn, "Hirten").movie.releaseYear shouldBe None
+    film(bonn, "Hirten").movie.runtimeMinutes shouldBe Some(113)
+    film(bonn, "Spaziergang nach Syrakus").movie.releaseYear shouldBe Some(2026)
   }
 
   // The linked film's facts are kinoheld's catalogue claim, which the identity resolver must

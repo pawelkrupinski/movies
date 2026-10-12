@@ -42,7 +42,11 @@ class CinemaSlotInvariantsSpec extends CorpusShapeSpec {
       AllowedListing(venue, listing) ->
         s"director = the whole credits line (and 'Lalka' cut at 'SUBS)'), 2026-10-03: $RecordedBeforeFix (SystemBiletowy's 'aktorzy' label, FormatTags' bracket guard)"
     }.toMap + (AllowedListing("Kino Parczew", "Supermocni") ->
-      s"director '..', the site's placeholder for an unknown one, 2026-10-09 (run 37877199615): $RecordedBeforeFix (KinoParczewClient keeps only names with a letter)")
+      s"director '..', the site's placeholder for an unknown one, 2026-10-09 (run 37877199615): $RecordedBeforeFix (KinoParczewClient keeps only names with a letter)") ++
+    Seq("ARNIE & BARNEY – RETTEN DAS WASSER" -> 2034, "Hirten" -> 2040, "No Good Men" -> 2051).map { case (listing, year) =>
+      AllowedListing.anywhere(listing) ->
+        s"kinoheld's catalogue productionYear $year, 2026-10-12 (run 38196151886): $RecordedBeforeFix (KinoheldClient reads a year past next year as none)"
+    }
 
   override protected val awaitingReRecord: Set[AllowedListing] = recordedBeforeFix.keySet
 
@@ -53,6 +57,11 @@ class CinemaSlotInvariantsSpec extends CorpusShapeSpec {
       "the venue's own feed truncated the title (no rule or parser cuts 'kinie'); the listing has since left the feed, so it cannot be re-checked",
     AllowedListing.anywhere("Umamusume: Pretty Derby - Beginning of a") ->
       "Cinema City's feed cuts long titles (as it cut 'skarpetek 3. Ale ko'): the source's own spelling, nothing to read better",
+    AllowedListing.anywhere("Lieblingsmenschen - Die außergewöhnliche  Freundschaft von A") -> (
+      "the venue's box office cuts names at 60 characters ('…von Agnes und Amir'), and Cineamo serves only that name and its English " +
+        "record ('Agnes & Amir', kept as the original title): the source's own spelling, nothing to read better"),
+    AllowedListing.anywhere("Timo Wopp LIVE: Work Hard. Play Hard. BEST OF") ->
+      "the comedian's tour is called 'Work Hard. Play Hard. Best Of' — its title does end on 'of'",
     AllowedListing("Kino Rialto", "EKIPA ZWIERZAKÓW") -> (
       "TODO(parser): the checked-in 2026-07-29 corpus has Rialto's 'Reż.' line glued to its production line (director " +
         "'Caroline Origer Belgia', 'Francja', … '85 minut'); the event page has left the programme (not in the 2026-10-04 " +
