@@ -26,8 +26,10 @@
 #   DECODO_PROXY_USER   REQUIRED — the Decodo residential-proxy credentials the
 #   DECODO_PROXY_PASS   Multikino / biletyna scrapes egress through (their WAF
 #                       blocks a datacenter IP, a GitHub runner's included).
-# All are auto-loaded from .env.local locally; the script exits 1 if a required
-# one is still missing rather than recording a silently-partial corpus.
+# CI sets them as secrets. Locally, a missing one is read from the Touch ID vault:
+# the script re-runs itself under `secrets run movies <the missing keys>` (one
+# Touch ID). It exits 1 if a required one is still missing rather than recording
+# a silently-partial corpus.
 #
 # Args:
 #   $1  optional path for a zip of the corpus. When given, the recorded tree is
@@ -39,27 +41,14 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT"
 
-# Local convenience: pull the upstream keys from the gitignored .env.local
-# when they aren't already in the environment. CI sets them as secrets, so the
-# file is absent there and this is a no-op.
-#
-# We extract ONLY the keys we need rather than `source`-ing the whole file —
-# .env.local also holds values bash can't safely execute (e.g. a comma-joined
-# Fly token), and sourcing would abort the run on the first such line.
-load_env_key() {
-    local key="$1" line val
-    line="$(grep -E "^[[:space:]]*(export[[:space:]]+)?${key}=" "$REPO_ROOT/.env.local" | tail -n1 || true)"
-    [ -n "$line" ] || return 0
-    val="${line#*=}"                       # drop everything up to the first =
-    val="${val%\"}"; val="${val#\"}"       # strip a surrounding pair of "…"
-    val="${val%\'}"; val="${val#\'}"       # …or '…'
-    export "$key=$val"
-}
-if [ -f "$REPO_ROOT/.env.local" ]; then
-    [ -n "${TMDB_API_KEY:-}" ] || load_env_key TMDB_API_KEY
-    [ -n "${DECODO_PROXY_USER:-}" ] || load_env_key DECODO_PROXY_USER
-    [ -n "${DECODO_PROXY_PASS:-}" ] || load_env_key DECODO_PROXY_PASS
-fi
+# Local convenience: a key that isn't in the environment comes from the Touch ID
+# vault — the script re-runs itself under `secrets run`, naming only the missing
+# keys. A CI runner has every key set (and no `secrets` CLI), so this is a no-op
+# there; anything still missing is caught by the check below either way.
+# shellcheck source=scripts/vault-env.sh
+. "$REPO_ROOT/scripts/vault-env.sh"
+ensure_vault_env TMDB_API_KEY DECODO_PROXY_USER DECODO_PROXY_PASS \
+    -- "$BASH" "$REPO_ROOT/.github/scripts/record-country-fixture.sh" "$@" 2>/dev/null || true
 
 # Without TMDB_API_KEY the whole enrichment cascade (TMDB → IMDb → MC → RT →
 # Filmweb) 401s and captures nothing; without the proxy credentials the
@@ -71,7 +60,7 @@ missing=""
 [ -n "${DECODO_PROXY_USER:-}" ] || missing="$missing DECODO_PROXY_USER"
 [ -n "${DECODO_PROXY_PASS:-}" ] || missing="$missing DECODO_PROXY_PASS"
 if [ -n "$missing" ]; then
-    echo "::error::Missing required key(s):$missing — set them in the environment or .env.local before recording." >&2
+    echo "::error::Missing required key(s):$missing — set them in the environment (or the Touch ID vault, namespace movies) before recording." >&2
     exit 1
 fi
 

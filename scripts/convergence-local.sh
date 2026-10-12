@@ -14,7 +14,7 @@
 #
 # TMDB_API_KEY is the one input nothing replays around (TmdbClient short-circuits without it).
 # It comes from the environment if set, else from the Touch ID vault, INLINE into sbt's env only —
-# never from a `.env.local`, whose MONGODB_URI is production's. OMDB_API_KEY likewise, optional
+# never the vault's MONGODB_URI, which is production's. OMDB_API_KEY likewise, optional
 # (CI has it; without it the OMDb rung of ImdbIdResolver is absent).
 #
 # Every collection runs on a real MongoDB replica set (change streams and the staging fold's

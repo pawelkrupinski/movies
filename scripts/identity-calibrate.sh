@@ -15,7 +15,9 @@
 #   PROD      optional dir for the production snapshot. With --extract-prod the snapshot is (re)read
 #             from production first: READ-ONLY find() over movies + movie_slots of every country
 #             database (scripts/identity-calibrate/extract-prod.js), through the local prod tunnel
-#             (scripts/local-mirror/prod-tunnel.sh; 127.0.0.1:27017) and .env.local's MONGODB_URI.
+#             (scripts/local-mirror/prod-tunnel.sh; 127.0.0.1:27017, opened if nothing answers there) with
+#             MONGODB_URI — exported, else the Touch ID vault's (the script re-runs itself under
+#             `secrets run movies MONGODB_URI`), rewritten to the tunnel by prod_tunnel_uri.
 #             Without PROD no listing has a proposal to corroborate, so nothing is labelled.
 #
 # The report formats numbers in the JVM locale: the command pins it to en-US ("0.97", not "0,97").
@@ -34,6 +36,7 @@
 #   CASES lists {"listingKey","tmdbId","name"} whose probabilities the report shows under both the
 #   naive-Bayes and the joint model (evaluation only). WEIGHTS/LABELS redirect the two artefacts.
 set -euo pipefail
+self="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 cd "$(dirname "$0")/.."
 
 if [[ "${1:-}" == "--refit" ]]; then
@@ -69,10 +72,13 @@ EPSILON="${EPSILON:-certified}"
 VERSION="${VERSION:-calibration-$(date -u +%Y-%m-%d)}"
 
 if [[ "${1:-}" == "--extract-prod" ]]; then
-  env_file="${ENV_FILE:-.env.local}"
-  uri=$(grep '^MONGODB_URI=' "$env_file" | head -1 | cut -d= -f2- | sed 's/^"//;s/"$//')
-  [[ -n "$uri" ]] || { echo "MONGODB_URI not in $env_file" >&2; exit 1; }
-  nc -z 127.0.0.1 27017 || { echo "no prod tunnel on 127.0.0.1:27017 — start one with scripts/local-mirror/prod-tunnel.sh" >&2; exit 1; }
+  # shellcheck source=scripts/local-mirror/prod-tunnel.sh
+  . scripts/local-mirror/prod-tunnel.sh
+  ensure_vault_env MONGODB_URI -- "$BASH" "$self" "$@" || exit 1
+  uri="$(prod_tunnel_uri "$MONGODB_URI")"
+  init_prod_tunnel identity-calibrate "$uri"
+  trap close_prod_tunnel EXIT
+  ensure_prod_tunnel || { echo "prod Mongo unreachable on 127.0.0.1:27017 — can you 'ssh' to the mongo host? (see scripts/local-mirror/prod-tunnel.sh)" >&2; exit 1; }
   mkdir -p "$PROD"
   for db in kinowo kinowo_uk kinowo_de kinowo_es kinowo_us; do
     KINOWO_CALIBRATE_DB=$db mongosh "$uri" --quiet scripts/identity-calibrate/extract-prod.js > "$PROD/prod-$db.jsonl"

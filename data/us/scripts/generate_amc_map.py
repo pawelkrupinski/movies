@@ -18,8 +18,10 @@ A venue with no row keeps its flicks.us scraper, which is why the unmatched tail
 harmless: those 13 are sites AMC's roster no longer carries (closed or sold) and
 the aggregator is the only source that still lists them.
 
-Requires ZYTE_API_KEY in .env.local: every amctheatres.com host Cloudflare-blocks
-plain datacenter/ISP clients, so the roster is fetched through the Zyte seam.
+Requires ZYTE_API_KEY — from the environment, else the Touch ID vault (the script
+re-runs itself under `secrets run movies ZYTE_API_KEY`): every amctheatres.com host
+Cloudflare-blocks plain datacenter/ISP clients, so the roster is fetched through the
+Zyte seam.
 """
 import base64
 import collections
@@ -32,6 +34,8 @@ import sys
 import time
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+from vault_env import ensure_vault_env  # noqa: E402 -- found via the path set just above
 GRAPH = "https://graph.amctheatres.com/"
 
 # A row is kept only when the join is one of these, in order. Anything else is
@@ -39,32 +43,6 @@ GRAPH = "https://graph.amctheatres.com/"
 NAME_TIE_BREAK_KM = 25.0   # a name match this close is the same venue
 NEAR_KM           = 1.0    # ...or an unnamed match this close with an agreeing ZIP
 VERY_NEAR_KM      = 0.3    # ...or this close regardless of ZIP
-
-
-def zyte_key():
-    """The Zyte key, from the environment or from a .env.local we can find.
-
-    Checked out as a git WORKTREE the repo has no .env.local of its own — it lives
-    in the main checkout — so the main worktree's copy is tried too rather than
-    making the script only runnable from one directory.
-    """
-    if os.environ.get("ZYTE_API_KEY"):
-        return os.environ["ZYTE_API_KEY"]
-    candidates = [os.path.join(ROOT, ".env.local")]
-    try:
-        main_checkout = subprocess.run(
-            ["git", "-C", ROOT, "worktree", "list", "--porcelain"],
-            capture_output=True, text=True).stdout.split("\n")[0].removeprefix("worktree ")
-        candidates.append(os.path.join(main_checkout, ".env.local"))
-    except Exception:
-        pass
-    for path in candidates:
-        if not os.path.exists(path):
-            continue
-        for line in open(path):
-            if line.startswith("ZYTE_API_KEY="):
-                return line.split("=", 1)[1].strip().strip('"').strip("'")
-    sys.exit(f"ZYTE_API_KEY not in the environment nor in any of: {candidates}")
 
 
 def graphql(query, key):
@@ -141,8 +119,9 @@ def match(venue, roster):
 
 
 def main():
+    ensure_vault_env("ZYTE_API_KEY")
     print("fetching AMC's own theatre roster...")
-    roster = amc_roster(zyte_key())
+    roster = amc_roster(os.environ["ZYTE_API_KEY"])
     venues = [v for v in json.load(open(os.path.join(ROOT, "data", "us", "venues.json")))
               if v["title"].startswith("AMC")]
     print(f"AMC roster: {len(roster)}   our AMC venues: {len(venues)}")

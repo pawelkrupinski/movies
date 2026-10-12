@@ -32,7 +32,9 @@ No blocking (403/429/Cloudflare challenge) was observed at any point in
 this crawl using a normal desktop Chrome User-Agent with urllib.request.
 """
 import json
+import os
 import re
+import sys
 import time
 import unicodedata
 import urllib.error
@@ -45,24 +47,22 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 HEADERS = {"User-Agent": UA, "Accept-Language": "de-DE,de;q=0.9,en;q=0.8"}
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "scripts"))
+from vault_env import ensure_vault_env  # noqa: E402 -- found via the path set just above
+
+
 # Route through the Decodo residential proxy — filmstarts (Webedia/CF) hard
 # rate-limits (429) a direct bulk crawl; the prod worker already scrapes it via
-# this proxy. Reads DECODO_PROXY_USER/PASS from the repo .env.local.
+# this proxy. DECODO_PROXY_USER/PASS come from the environment, else the Touch ID
+# vault (ensure_vault_env re-runs the script under `secrets run`). Never without
+# them: a direct crawl is exactly what gets rate-limited into a partial roster.
 def _proxy_opener():
-    env = {}
-    try:
-        for l in open("/Users/pawel/projects/movies/.env.local"):
-            if "=" in l and not l.startswith("#"):
-                k, v = l.split("=", 1); env[k] = v.strip()
-    except OSError:
-        pass
-    u, p = env.get("DECODO_PROXY_USER"), env.get("DECODO_PROXY_PASS")
-    if not (u and p):
-        return urllib.request.build_opener()
-    px = f"http://{u}:{p}@isp.decodo.com:10001"
+    ensure_vault_env("DECODO_PROXY_USER", "DECODO_PROXY_PASS")
+    px = f"http://{os.environ['DECODO_PROXY_USER']}:{os.environ['DECODO_PROXY_PASS']}@isp.decodo.com:10001"
     return urllib.request.build_opener(urllib.request.ProxyHandler({"http": px, "https": px}))
 
-OPENER = _proxy_opener()
+
+OPENER = None  # built in main(), so importing this module neither asks the vault nor re-execs
 
 MAX_WORKERS = 4
 REQUEST_DELAY = 0.4
@@ -206,6 +206,8 @@ def crawl_city(city_id: str, city_name: str, bundesland: str):
 
 
 def main():
+    global OPENER
+    OPENER = _proxy_opener()
     index_html = fetch(f"{BASE}/kinoprogramm/")
     landers = [(m.group(1), strip_tags(m.group(2)))
                for m in LANDER_LINK_RE.finditer(index_html)]
