@@ -1126,7 +1126,6 @@ private[models] object SpanishRosterData {
    *  (data/scripts/seasonal_venues.py): their display names as generated above. */
   val seasonal: Set[String] = Set(
     "Autocine Getxo",
-    "Autocine Gijón",
     "Autocine Resquitx - Golmés",
     "Autocinema Tenerife",
     "Centro de Arte y Cine de Verano Soto del Real",

@@ -9387,7 +9387,6 @@ private[models] object UsRosterData {
     "Madera 2 Drive-in",
     "Magic City Drive-in Barberton",
     "Mahoning Drive-in",
-    "Malco Summer Drive-in Memphis",
     "Malta Drive-in",
     "Mansfield Drive-in Theatre",
     "Mayfield Road Drive-In",
