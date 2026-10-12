@@ -106,7 +106,7 @@ class CinemaContentCensus(
     if (lastRead.forall(at => !now.isBefore(at.plusMillis(rereadInterval.toMillis)))) read(now)
     // Never read whole: nothing to stand behind, so the gauges hold whatever they held.
     if (lastRead.isDefined) {
-      val census = quiet(inSeason(roster, now), stamps.asScala.toMap, now)
+      val census = quiet(inSeason(roster, stamps.asScala.toMap, now), now)
       oldestAge.labelValues(countryCode).set(census.oldestAgeSeconds)
       neverContent.labelValues(countryCode).set(census.neverContent.toDouble)
       staleVenues.labelValues(countryCode).set(census.staleVenues.toDouble)
@@ -167,18 +167,23 @@ object CinemaContentCensus {
    *  source last said it has no schedule). */
   case class ContentCensus(oldestAgeSeconds: Double, neverContent: Int, staleVenues: Int)
 
-  /** The roster's venues that are expected to be screening at `now`: a seasonal venue
-   *  ([[models.Opening.Seasonal]]) off its season is dark by design, and counted in none
+  /** The stamps of the roster's venues that are expected to be screening at `now`. A seasonal
+   *  venue ([[models.Opening.Seasonal]]) off its season is dark by design, and counted in none
    *  of the three gauges — Germany's ~180 open-air screens would otherwise read as that many
-   *  venues gone quiet every October. In season it counts like any other. */
-  def inSeason(roster: Seq[models.Cinema], now: Instant): Seq[String] =
-    roster.filterNot(_.opening.offSeasonAt(now)).map(_.displayName)
+   *  venues gone quiet every October. In season it counts like any other, its quiet aged from
+   *  the season's first day at the earliest: on 1 May its last content is from September, and
+   *  aged from then every open-air screen would read stale at once, every spring.
+   *
+   *  A cinema missing from the archive counts the same as one archived with no content — in
+   *  both cases we have never seen it produce a film. */
+  def inSeason(roster: Seq[models.Cinema], stamps: Map[String, ContentStamp], now: Instant): Seq[ContentStamp] =
+    roster.filterNot(_.opening.offSeasonAt(now)).map { cinema =>
+      val stamp = stamps.getOrElse(cinema.displayName, ContentStamp(None))
+      stamp.copy(lastContentAt = stamp.lastContentAt.map(cinema.opening.sinceThisSeason(_, now)))
+    }
 
-  /** Pure: fold the roster against its archive stamps. A cinema missing from the
-   *  archive counts the same as one archived with no content — in both cases we
-   *  have never seen it produce a film. */
-  def quiet(roster: Seq[String], stamps: Map[String, ContentStamp], now: Instant): ContentCensus = {
-    val rows = roster.map(cinema => stamps.getOrElse(cinema, ContentStamp(None)))
+  /** Pure: fold the in-season roster's stamps ([[inSeason]]) into the three readings. */
+  def quiet(rows: Seq[ContentStamp], now: Instant): ContentCensus = {
     def agesSeconds(of: Seq[ContentStamp]): Seq[Double] =
       of.flatMap(_.lastContentAt).map(at => (now.toEpochMilli - at.toEpochMilli) / 1000.0)
     ContentCensus(

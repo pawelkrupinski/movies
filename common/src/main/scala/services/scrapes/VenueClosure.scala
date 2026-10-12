@@ -100,8 +100,7 @@ object VenueClosure {
     def heldFor(instant: Instant, duration: FiniteDuration): Boolean = JDuration.between(instant, now).toMillis >= duration.toMillis
     def fresh(instant: Instant): Boolean = !heldFor(instant, FreshWithin)
     // A spell counts from when this season opened at the earliest: before it, a seasonal venue is dark anyway.
-    val seasonOpened = opening.seasonOpenedAt(now)
-    def thisSeason(since: Instant): Instant = seasonOpened.filter(_.isAfter(since)).getOrElse(since)
+    def thisSeason(since: Instant): Instant = opening.sinceThisSeason(since, now)
     val needed = if (hasFallback) ConfirmAfter else ConfirmAfterUncorroborated
     def held(what: String, since: Instant, lastSeen: Instant): Either[String, Unit] = for {
       _ <- Either.cond(heldFor(thisSeason(since), ConfirmAfter), (), s"fallback $what ${daysSince(thisSeason(since))} days, needs ${ConfirmAfter.toDays}")

@@ -64,6 +64,11 @@ enum Opening {
     case YearRound        => None
     case Seasonal(window) => window.openedOn(Opening.day(now)).map(_.atStartOfDay(ZoneOffset.UTC).toInstant)
   }
+
+  /** `since`, or when the season `now` falls in began if that is later: how long something has
+   *  held is counted within this season only, never across the dark months before it. */
+  def sinceThisSeason(since: Instant, now: Instant): Instant =
+    seasonOpenedAt(now).filter(_.isAfter(since)).getOrElse(since)
 }
 
 object Opening {
