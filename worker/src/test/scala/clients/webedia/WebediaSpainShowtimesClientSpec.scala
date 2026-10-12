@@ -300,6 +300,38 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
     all(days.map(LocalDate.parse)) should be >= LocalDate.of(2026, 9, 1)
   }
 
+  // 2026-10-04..06: four seasonal venues (Teatro Bretón, Cinema Casino, Cine de Verano de Archena,
+  // Terraza de Verano) went a week without a film, each page advertising no day at all, and held
+  // CinemaContentStaleVenuesGrowing (es) firing for a day — an empty plan read the same as a parser
+  // that stopped matching. SensaCine's venue page says the venue has nothing on; the plan carries it.
+  /** A real SensaCine venue page advertising no day (theater E0986, Teatro Bretón, Haro, captured
+   *  2026-10-12). Source URL: https://www.sensacine.com/cines/cine/E0986/ */
+  private def noDaysPage: String = FixtureFile.read("test/resources/fixtures/webedia-es/theater-E0986-venue-page.html")
+
+  "planSchedule" should "say the source listed no schedule for a venue page advertising no day" in {
+    val plan = clientOver(new ScriptedByUrlHttpFetch(_ => noDaysPage)).planSchedule()
+    plan.keys shouldBe empty
+    plan.noScheduleListed shouldBe true
+  }
+
+  it should "vouch for nothing when the page advertises days, only none inside the horizon" in {
+    val farOut = new WebediaShowtimesClient(new ScriptedByUrlHttpFetch(_ => venuePage), WebediaMarket.Spain, "E0291", venue,
+      today = LocalDate.of(2027, 1, 1)).planSchedule()
+    farOut.keys shouldBe empty
+    farOut.noScheduleListed shouldBe false
+  }
+
+  it should "not claim no schedule for a venue with days" in {
+    val plan = clientOver(new ScriptedByUrlHttpFetch(_ => venuePage)).planSchedule()
+    plan.keys should not be empty
+    plan.noScheduleListed shouldBe false
+  }
+
+  it should "still throw for a page that lost the days attribute" in {
+    an[IllegalStateException] should be thrownBy
+      clientOver(new ScriptedByUrlHttpFetch(_ => noDaysPage.replace("data-showtimes-dates", "data-days-v2"))).planSchedule()
+  }
+
   private def fakeClient() =
     new WebediaShowtimesClient(
       new FakeHttpFetch("webedia-es"), WebediaMarket.Spain, "E0291", venue,

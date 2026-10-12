@@ -85,18 +85,24 @@ class WebediaShowtimesClient(
    *  — the market's markup changed, or a block/error page came back — is a
    *  discovery failure too, so `parseShowtimeDates` returns `None` and we throw
    *  rather than silently scraping nothing. An attribute that IS present but
-   *  lists no days is a legitimately empty venue (empty result, kept by the
-   *  empty-guard), not a failure. Bounded to `[today, today+MaxHorizonDays]` so a
+   *  lists no days is a legitimately empty venue, not a failure — the page itself
+   *  saying so ([[planSchedule]]). Bounded to `[today, today+MaxHorizonDays]` so a
    *  stray attribute date can't balloon the chunk fan-out. */
-  def planChunks(): Seq[String] = {
+  def planChunks(): Seq[String] = planSchedule().keys
+
+  /** [[planChunks]], plus whether an empty plan is the PAGE saying the venue has no
+   *  schedule: the attribute present and naming no day at all, which is what a summer
+   *  cinema closed for the season renders (2026-10-04..06: four Spanish ones held
+   *  CinemaContentStaleVenuesGrowing for a day without it). Days advertised only past the
+   *  horizon vouch for nothing and stay a plain empty; a missing attribute still throws. */
+  override def planSchedule(): ChunkPlan = {
     val url  = sourceUrl.getOrElse(throw new IllegalStateException("WebediaShowtimesClient has no sourceUrl"))
     val html = HttpRead.page(http, url)
     val day  = today
-    parseShowtimeDates(html)
-      .getOrElse(throw new IllegalStateException(
-        s"$url carries no data-showtimes-dates attribute — ${market.host} markup changed?"))
-      .filter(d => !d.isBefore(day) && !d.isAfter(day.plusDays(MaxHorizonDays.toLong)))
-      .map(_.toString)
+    val all  = parseShowtimeDates(html).getOrElse(throw new IllegalStateException(
+      s"$url carries no data-showtimes-dates attribute — ${market.host} markup changed?"))
+    if (all.isEmpty) ChunkPlan.NoScheduleListed
+    else ChunkPlan.of(all.filter(d => !d.isBefore(day) && !d.isAfter(day.plusDays(MaxHorizonDays.toLong))).map(_.toString))
   }
 
   /** Fetch + parse ONE day into that day's films. A page-1 fetch failure THROWS
