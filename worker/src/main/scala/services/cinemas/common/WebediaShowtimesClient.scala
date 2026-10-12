@@ -1,5 +1,6 @@
 package services.cinemas.common
 
+import services.cinemas.pl.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
@@ -122,7 +123,9 @@ class WebediaShowtimesClient(
     val first = parsePage(HttpRead.page(http, showtimesUrl(market.host, theaterId, date, 1)), market)
     val extra = ListingPages.readMore("webedia-spillover", 2 to first.totalPages, (p: Int) => showtimesUrl(market.host, theaterId, date, p))(HttpRead.page(http, _))
       .flatMap { case (_, page) => parsePage(page, market).films }
-    (first.films ++ extra).map(raw => toCinemaMovie(raw, raw.showtimes))
+    (first.films ++ extra)
+      .filterNot(raw => NonMovieEventClassifier.isNonScreening(raw.title))
+      .map(raw => toCinemaMovie(raw, raw.showtimes))
   }
 
   /** Merge every day's films into the venue's listing: one row per Webedia film

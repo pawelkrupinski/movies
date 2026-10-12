@@ -50,11 +50,70 @@ object NonMovieEventClassifier {
     """\bcinesneak\b""".r
   )
 
-  /** Whether `title` is a mystery screening ([[MysteryScreeningMarkers]]) — the one part of
-   *  this classifier a non-Polish feed reads. */
+  /** Whether `title` is a mystery screening ([[MysteryScreeningMarkers]], or a title made of nothing but a
+   *  sneak's own words — [[BareSneak]]). */
   def isMysteryScreening(title: String): Boolean = {
     val t = title.toLowerCase(Locale.ROOT)
-    MysteryScreeningMarkers.exists(_.findFirstIn(t).isDefined)
+    MysteryScreeningMarkers.exists(_.findFirstIn(t).isDefined) || isBareSneak(t)
+  }
+
+  /** A sneak billed with no film: "Sneak", "Kult-Sneak", "Horror Sneak FSK 18", "OV-Sneak", "Sneak 1343", "Horror
+   *  Classics Sneak Vol. 83", "Cult Sneak of Horror" (German venues, prod 2026-10-12: 48 cards titled just "Sneak").
+   *  Every word must be one a sneak bills itself with, so a sneak that NAMES its film ("Hope Sneak") is that film's
+   *  preview and stays, as do "Sneakers" and "Sneaks". */
+  private val SneakWords = Set("sneak", "ov", "omu", "omeu", "kult", "cult", "horror", "classic", "classics",
+    "klassiker", "retro", "fsk", "of", "vol", "preview", "die", "des", "jahres", "the")
+  private def isBareSneak(lower: String): Boolean = {
+    val words = lower.split("""[^\p{L}\p{N}]+""").filter(_.nonEmpty)
+    words.contains("sneak") && words.forall(w => SneakWords.contains(w) || w.forall(_.isDigit))
+  }
+
+  /** Non-screenings whose vocabulary no film title in ANY of our languages shares, so a feed in any language may
+   *  read them — unlike [[EventMarkers]], whose Polish words ("tribute", "jazz", "teatr") are words of German and
+   *  English film titles ("Die Tribute von Panem", "All that Jazz"). Found in the German feeds (Cineamo, kinoheld,
+   *  Filmstarts — prod 2026-10-12), which sell a venue's readings, gigs, comedy nights and day passes beside its
+   *  films:
+   *   - performed: a concert BILLED as one ("Konzert der JazzKur BigBand", "KONZERT: Acoustic Rock Night" — a
+   *     leading "Konzert", not "Konzert-Special: Ozzy & Black Sabbath", the concert film), cabaret, improv,
+   *     comedy shows, karaoke, a church service, a tournament, a day/festival pass, a closed day;
+   *   - talked: a reading, a lecture, a quiz, a slam — only standing alone, since a venue bolts them onto a film
+   *     as often ("Becoming Kim + Filmgespräch", "Zeise Shortfilm Slam", "Saw (Horror-Filmnacht Special-Quiz)"),
+   *     the same rule as [[isStandaloneDiscussion]]. */
+  private val NeutralPerformanceMarkers = List(
+    """^konzert(?:lesung)?\b(?!-)""".r,
+    """\bkabarett""".r,
+    """\bimprotheater\b""".r,
+    """\btheatersport\b""".r,
+    """\bcomedy[\s-]+(?:show|night|slam|live|abend)\b""".r,
+    """\bstand[\s-]?up\b""".r,
+    """\bkaraoke\b""".r,
+    """^gottesdienst\b""".r,
+    """turnier\b""".r,                      // "Tischkickerturnier": compounds end in it
+    """\btages(?:ticket|karte)\b""".r,
+    """\bfestival[\s-]?pass\b""".r,
+    """\bruhetag\b""".r
+  )
+  private val NeutralTalkMarkers = List(
+    """\blesung\b""".r,
+    """\bvortrag\b""".r,
+    """\bquiz\b""".r,
+    """\bslam\b(?![\s-]*dunk)""".r
+  )
+  private val FilmMention = """film""".r
+
+  /** The broadcast veto without its bare " live": a comedy night bills itself "Comedy LIVE!", a karaoke night
+   *  "Karaoke LIVE", and neither is a broadcast. The named broadcasts (Met, Royal Ballet & Opera, NT Live, André
+   *  Rieu) still veto. Lazy: [[BroadcastMarkers]] is defined further down this object. */
+  private lazy val NeutralBroadcastVeto = BroadcastMarkers.filterNot(_ == " live")
+
+  /** Whether `title` is no screening at all, by what a feed in any language may read: a mystery screening, or a
+   *  [[NeutralPerformanceMarkers]] / standalone [[NeutralTalkMarkers]] event — never a screened broadcast. What the
+   *  feeds that cannot use the Polish stage vocabulary filter on (Cineamo, kinoheld, kinoprogramm.com, Webedia). */
+  def isNonScreening(title: String): Boolean = {
+    val t = title.toLowerCase(Locale.ROOT)
+    isMysteryScreening(title) || (!NeutralBroadcastVeto.exists(t.contains) && (
+      NeutralPerformanceMarkers.exists(_.findFirstIn(t).isDefined) ||
+      (NeutralTalkMarkers.exists(_.findFirstIn(t).isDefined) && !hasBoltedOnFilm(t) && FilmMention.findFirstIn(t).isEmpty)))
   }
 
   /** Word-anchored markers of a live stage/music event. Anchored on `\b` so

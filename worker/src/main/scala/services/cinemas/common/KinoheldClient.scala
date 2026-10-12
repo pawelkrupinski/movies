@@ -266,10 +266,11 @@ object KinoheldClient {
 
   /** Merge a venue's shows into one row per film — kinoheld's film id where the link is
    *  trusted, the venue's own name otherwise — showtimes de-duplicated and in time order.
-   *  A venue's mystery screening ("Sneak Preview") names no film and is left out, as
-   *  [[KinoprogrammClient]] leaves it out. */
+   *  A venue's mystery screening ("Sneak Preview") names no film and is left out, as is a
+   *  reading, gig or day pass it sells beside its films — `NonMovieEventClassifier.isNonScreening`,
+   *  as [[KinoprogrammClient]] leaves them out. */
   private[common] def toMovies(shows: Seq[Show], cinema: Cinema): Seq[CinemaMovie] =
-    shows.filterNot(show => NonMovieEventClassifier.isMysteryScreening(show.film.title))
+    shows.filterNot(show => NonMovieEventClassifier.isNonScreening(show.film.title))
       .groupBy(show => show.film.id.getOrElse("name:" + show.film.title)).toSeq.map { case (_, same) =>
         val film = same.head.film
         CinemaMovie(

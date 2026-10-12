@@ -67,9 +67,10 @@ class KinoprogrammClient(
     }
     // The page lists a venue's mystery screening as a film ("Sneak Preview", CineStar's
     // "CineSneak"), where Filmstarts gives the slot no film at all: it names nothing a card
-    // could resolve. Only the non-film classifier's mystery markers apply — its Polish stage
-    // vocabulary would drop "Die Tribute von Panem".
-    val listed = films.result().filterNot(film => NonMovieEventClassifier.isMysteryScreening(film.title))
+    // could resolve; likewise a reading, a gig or a day pass. Only the classifier's
+    // language-neutral markers apply (`isNonScreening`) — its Polish stage vocabulary would
+    // drop "Die Tribute von Panem".
+    val listed = films.result().filterNot(film => NonMovieEventClassifier.isNonScreening(film.title))
     toMovies(listed, cinema, sourceUrl, filmDetail)
   }
 

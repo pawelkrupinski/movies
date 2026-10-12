@@ -61,6 +61,22 @@ class CineamoClientSpec extends AnyFlatSpec with Matchers {
     reads.complete shouldBe false
   }
 
+  // A venue sells its readings and slams through Cineamo beside its films (prod 2026-10-12: "Lesung mit Cornelia
+  // Tomaschko", "Poetry Slam November"). The recorded Dettelbach programme has none, so its "Hope" is billed as two
+  // such real titles: both go, the venue's films stay.
+  it should "leave out a reading or a slam the venue sells beside its films" in {
+    val retitled = new GetOnlyHttpFetch {
+      private val real = new FakeHttpFetch("cineamo")
+      def get(url: String): String =
+        real.get(url).replace("\"name\": \"Hope\"", "\"name\": \"Lesung mit Cornelia Tomaschko\"")
+          .replace("\"name\": \"Digger\"", "\"name\": \"Poetry Slam November\"")
+    }
+    val titles = client("Cineplex Cineworld Dettelbach", retitled).fetch().map(_.movie.title)
+    titles should not contain "Lesung mit Cornelia Tomaschko"
+    titles should not contain "Poetry Slam November"
+    titles should contain ("Shaun das Schaf - Spuk im Kürbisfeld")
+  }
+
   it should "throw on a body without the paging envelope rather than read a venue with nothing on" in {
     an[IllegalStateException] should be thrownBy CineamoClient.parsePage("""{"title":"Not Found","status":404}""")
   }

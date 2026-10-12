@@ -131,9 +131,10 @@ object CineamoClient {
   }
 
   /** One row per film the venue titles alike, showtimes de-duplicated and in time order;
-   *  a mystery screening ("Sneak Preview") names no film and is left out. */
+   *  a mystery screening ("Sneak Preview") names no film and is left out, as is a reading, gig or day pass
+   *  the venue sells beside its films (`NonMovieEventClassifier.isNonScreening`). */
   private[common] def toMovies(showings: Seq[Showing], cinema: Cinema): Seq[CinemaMovie] =
-    showings.filterNot(s => NonMovieEventClassifier.isMysteryScreening(s.title))
+    showings.filterNot(s => NonMovieEventClassifier.isNonScreening(s.title))
       .groupBy(_.title).toSeq.map { case (title, same) =>
         val film = same.head
         CinemaMovie(

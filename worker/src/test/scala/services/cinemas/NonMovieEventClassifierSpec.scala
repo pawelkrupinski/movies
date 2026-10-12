@@ -271,4 +271,35 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
     Seq("Die Tribute von Panem - The Hunger Games", "Sneakers - Die Lautlosen", "Sneaks").foreach(
       NonMovieEventClassifier.isMysteryScreening(_) shouldBe false)
   }
+
+  it should "name a sneak billed with no film, and keep one that names its film" in {
+    // German venues, prod 2026-10-12: 48 cards were titled just "Sneak".
+    Seq("Sneak", "Kult-Sneak", "Horror Sneak FSK 18", "OV-Sneak", "Sneak 1343", "Horror Classics Sneak Vol. 83",
+      "Cult Sneak of Horror", "Kult Sneak FSK 16", "Retro Sneak", "Klassiker Sneak").foreach(t =>
+      withClue(t)(NonMovieEventClassifier.isMysteryScreening(t) shouldBe true))
+    Seq("Hope Sneak", "Classic Sneak – Couples", "Sneaky Pete").foreach(t =>
+      withClue(t)(NonMovieEventClassifier.isMysteryScreening(t) shouldBe false))
+  }
+
+  // Ground truth: the German feeds' corpus (Cineamo / kinoheld / Filmstarts), prod 2026-10-12.
+  "isNonScreening" should "drop the readings, gigs, comedy nights and passes a German venue sells beside its films" in {
+    Seq(
+      "Konzert der JazzKur BigBand, Bad Wörishofen", "KONZERT: Acoustic Rock Night", "Konzert verbotene musik - verbotene musiker",
+      "Konzertlesung „Sehnsuchtslied“", "Improtheater: Sie werden lachen, es geht um den Tod", "Sneak Impro - Theatersport geht ins Kino",
+      "Stand-Up Comedy Night", "Punchline Comedy Show", "Comedy LIVE!: Stefan Danziger - Neues Programm (VORPREMIERE)",
+      "Karaoke LIVE", "Gottesdienst", "Tischkickerturnier", "DF Tagesticket 3.11.26", "Montags ruhetag", "Montag Ruhetag",
+      "Eine unmöglich schöne Reise - Lesung zur Alpenüberquerung", "Gude, Ihr Labbe! - Lesung mit Peter Kunz", "Lesung henni nachtsheim",
+      "VORTRAG Frank Retzlaff", "PubUp-Kino-Quiz", "Ostberlin Poetry Slam Herbst", "OMV Poetry Slam", "Sneak"
+    ).foreach(t => withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe true))
+  }
+
+  it should "keep films, concert films, broadcasts and a film with its talk bolted on" in {
+    Seq(
+      "Konzert-Special: Ozzy & Black Sabbath: Back To The Beginning", "Rammstein – Live in Mexico City", "Stummfilm-Konzert",
+      "Die Tribute von Panem - The Hunger Games", "All that Jazz (OV)", "Saw (Horror-Filmnacht Special-Quiz um 21:30 Uhr)",
+      "Zeise Shortfilm Slam", "Becoming Kim + Filmgespräch mit Regisseurin Susanne Kim",
+      "Live - Vortrag: Südafrika - Der Kinofilm", "MET Opera Live im Kino: Macbeth", "Hope Sneak",
+      "The Comedy of Terrors", "Slumdog Millionaire", "The First Slam Dunk"
+    ).foreach(t => withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe false))
+  }
 }
