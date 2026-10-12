@@ -3,7 +3,7 @@ package services.cinemas.us
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
 import services.cinemas.pl.OnlyMovieEventsFilter
 import tools.{HttpFetch, HttpRead, ReadOutcome}
 
@@ -85,7 +85,7 @@ object CinemaPlusClient {
   def dayUrl(pageUrl: String, day: LocalDate): String = s"$pageUrl?date=$day"
 
   private val DayId = """js-(\d{4}-\d{2}-\d{2})""".r
-  private val Clock = """(?i)^(\d{1,2}):(\d{2})\s*([ap])\.?m?\.?$""".r
+  private val Clock = raw"""(?i)^${ScraperParse.ClockParts}\s*([ap])\.?m?\.?$$""".r
 
   final case class Slot(title: String, card: Element, showtime: Showtime)
 
@@ -105,12 +105,8 @@ object CinemaPlusClient {
   }
 
   /** "6:00p" / "11:30a" → the time of day; anything else is not a showtime button. */
-  def timeOf(label: String): Option[LocalTime] = label.trim match {
-    case Clock(h, m, ap) =>
-      val hour12 = h.toInt % 12
-      Some(LocalTime.of(if (ap.equalsIgnoreCase("p")) hour12 + 12 else hour12, m.toInt))
-    case _ => None
-  }
+  def timeOf(label: String): Option[LocalTime] =
+    Clock.findFirstMatchIn(label.trim).flatMap(ScraperParse.meridiemClockAt(_, 1, 3))
 
   /** One day page's film cards → a slot per showtime button, on `day`. */
   def slots(page: Document, day: LocalDate, cinema: Cinema): Seq[Slot] =
