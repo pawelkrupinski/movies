@@ -34,6 +34,15 @@ def test_retires_only_a_page_that_answers_gone():
     assert "403" in dict((v["id"], why) for v, why in kept)["A4"]
 
 
+def test_rechecks_the_page_the_primary_scrapes_when_the_sweep_names_one():
+    # ACME Screening Room: Flicks 404s it for good, but the venue is scraped off its own
+    # site, so only that site's page can say it closed.
+    own = dict(venue("acme"), page="https://www.acmescreeningroom.org/now-playing")
+    statuses = {"https://www.acmescreeningroom.org/now-playing": "200", PAGE.format(id="acme"): "404"}
+    added, kept = rv.decide({}, [own], PAGE, statuses.__getitem__, "2026-10-12")
+    assert added == {} and kept == [(own, "page answered 200, not 404/410")], (added, kept)
+
+
 def test_skips_a_venue_already_retired_without_probing_it():
     def refuse(url):
         raise AssertionError(f"probed {url}")

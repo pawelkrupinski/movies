@@ -262,7 +262,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   /** Every scraped venue, with whether [[fallbackFor]] gives it a fallback feed — what
    *  [[services.closure.ClosureSweep]] needs to judge it closed. */
   lazy val closureCandidates: Seq[services.closure.ClosureCandidate] =
-    countryScrapers.map(s => services.closure.ClosureCandidate(s.cinema, fallbackFor(s.cinema, FallbackEligibility.eligible(s)).isDefined))
+    countryScrapers.map(s => services.closure.ClosureCandidate(s.cinema, fallbackFor(s.cinema, FallbackEligibility.eligible(s)).isDefined, s.sourceUrl))
 
   /** Rolling per-host and per-venue scrape-duration stats backing the adaptive scrape timeout.
    *  In-memory by design — it adds no Mongo write load (the throttle this guards

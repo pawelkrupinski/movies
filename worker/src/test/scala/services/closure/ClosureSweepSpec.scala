@@ -15,7 +15,7 @@ import java.time.{Clock, Instant, ZoneOffset}
  * retirement request per newly confirmed closure, and a withdrawal for one that
  * shows life again before it is retired.
  */
-class ClosureSweepSpec extends AnyFlatSpec with Matchers {
+class ClosureSweepSpec extends AnyFlatSpec with Matchers with org.scalatest.LoneElement {
 
   private val now = Instant.parse("2026-09-27T09:00:00Z")
   private def daysAgo(days: Long) = now.minus(days, DAYS)
@@ -67,6 +67,20 @@ class ClosureSweepSpec extends AnyFlatSpec with Matchers {
     h.sweep.sweep()                                   // still closed tomorrow: nothing new to say
     h.requested should have size 1
     h.pages should have size 1
+  }
+
+  // The workflow re-checks the page the sweep names, so it must be the page whose 404 is
+  // the evidence: the primary's own (ACME Screening Room's site), not the aggregator a
+  // venue scraped off its own site may have dropped for good.
+  it should "send the page its primary scrapes, for the workflow to re-check" in {
+    val page = "https://kino.example/programm"
+    val h = new Harness(Seq(ClosureCandidate(hochland, hasFallback = true, page = Some(page))))
+    h.gone(hochland, daysAgo(20)); h.emptyFallback(hochland, daysAgo(15))
+    h.sweep.sweep()
+    val request = h.requested.flatMap(_._2).loneElement
+    request.page shouldBe Some(page)
+    (GitHubRetirementDispatch.venueJson(request) \ "page").as[String] shouldBe page
+    (GitHubRetirementDispatch.venueJson(request.copy(page = None)) \ "page").toOption shouldBe None
   }
 
   it should "say nothing for a venue that is not yet confirmed" in {

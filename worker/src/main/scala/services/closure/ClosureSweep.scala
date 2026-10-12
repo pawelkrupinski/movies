@@ -9,8 +9,10 @@ import services.scrapes.{ArchivedScrape, ScrapeArchiveRepository, VenueClosure}
 import java.time.{Clock, Instant, LocalDate, ZoneOffset}
 import scala.util.control.NonFatal
 
-/** A rostered venue the sweep judges, and whether it has a fallback feed to corroborate it. */
-final case class ClosureCandidate(cinema: Cinema, hasFallback: Boolean)
+/** A rostered venue the sweep judges, whether it has a fallback feed to corroborate it, and
+ *  the page its primary scrapes (`CinemaScraper.sourceUrl`) — the page whose 404 is the
+ *  evidence, so the one the retirement workflow re-checks. */
+final case class ClosureCandidate(cinema: Cinema, hasFallback: Boolean, page: Option[String] = None)
 
 /**
  * Runs every rostered venue through [[VenueClosure]] once a day. A venue newly confirmed
@@ -59,7 +61,7 @@ class ClosureSweep(candidates: () => Seq[ClosureCandidate], archive: ScrapeArchi
     }
 
     inRoster.groupBy { case (cinema, _) => RosterEntry.of(cinema).get.directory }.foreach { case (directory, venues) =>
-      val requests = venues.map { case (cinema, evidence) => RetirementRequest(RosterEntry.of(cinema).get, cinema.displayName, evidence) }
+      val requests = venues.map { case (cinema, evidence) => RetirementRequest(RosterEntry.of(cinema).get, cinema.displayName, evidence, byName(cinema.displayName).page) }
       try {
         dispatch.get.request(directory, requests)
         venues.foreach { case (cinema, evidence) =>

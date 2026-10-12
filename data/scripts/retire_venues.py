@@ -4,8 +4,9 @@
 
 The worker (ClosureSweep) has already judged each venue closed from weeks of
 evidence; this is the second, independent check, made at PR time and from
-outside the fleet: each venue's own page on its aggregator must answer 404 or
-410 NOW. Anything else, including a 200, a 403 from a runner the site blocks,
+outside the fleet: the page the venue's primary scrapes must answer 404 or 410
+NOW — the "page" the sweep sends for a venue scraped off its own site, its
+aggregator page otherwise. Anything else, including a 200, a 403 from a runner the site blocks,
 or a timeout, keeps the venue, and the PR body says why.
 
 A venue that passes is appended to data/<roster>/retired.json (which the
@@ -14,7 +15,7 @@ roster size that CountrySpec pins and the comments quote is lowered to match.
 
 Usage:
   python3 data/scripts/retire_venues.py --roster germany \\
-      --venues '[{"id": "A1451", "name": "...", "evidence": "..."}]' --body pr-body.md
+      --venues '[{"id": "A1451", "name": "...", "evidence": "...", "page": "https://..."}]' --body pr-body.md
 Prints the number retired; writes the PR body to --body.
 """
 import argparse
@@ -33,7 +34,8 @@ import retired_venues  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
-# The page each roster's scraper reads, which the sweep saw answering 404/410.
+# The page each roster's aggregator scraper reads, which the sweep saw answering 404/410 — re-checked
+# for a venue the sweep sends no "page" of its own for.
 PAGE = {
     "germany": "https://www.filmstarts.de/kinoprogramm/kino/{id}/",
     "spain":   "https://www.sensacine.com/cines/cine/{id}/",
@@ -95,7 +97,7 @@ def decide(retired: dict, venues: list, page: str, status_of, today: str):
         if venue_id in retired:
             kept.append((venue, "already retired"))
             continue
-        status = status_of(page.format(id=venue_id))
+        status = status_of(venue.get("page") or page.format(id=venue_id))
         if status.isdigit() and int(status) in GONE:
             added[venue_id] = {"name": venue["name"], "reason": "closed", "retiredOn": today,
                                "evidence": f"{venue['evidence']} Re-checked {today}: HTTP {status}."}

@@ -1,7 +1,7 @@
 package services.closure
 
 import models.{Cinema, GermanRoster, SpanishRoster, UsRoster}
-import play.api.libs.json.Json
+import play.api.libs.json.{JsObject, Json}
 import services.scrapes.VenueClosure.ClosureEvidence
 
 import java.net.URI
@@ -23,7 +23,10 @@ object RosterEntry {
       .orElse(UsRoster.flicksSlugByCinema.get(cinema).map(RosterEntry(RosterDirectory("us"), _)))
 }
 
-final case class RetirementRequest(entry: RosterEntry, name: String, evidence: ClosureEvidence)
+/** `page`: the primary's own page, which the workflow re-checks in place of the roster's
+ *  aggregator page — a venue scraped off its own site (ACME Screening Room, which Flicks
+ *  dropped) is closed only if THAT page is gone. */
+final case class RetirementRequest(entry: RosterEntry, name: String, evidence: ClosureEvidence, page: Option[String] = None)
 
 /** Asks for confirmed-closed venues to be taken off their roster. THROWS when the
  *  request did not go through, so the sweep can try again next time. */
@@ -54,8 +57,9 @@ object GitHubRetirementDispatch {
   val Endpoint = "https://api.github.com/repos/pawelkrupinski/movies/actions/workflows/retire-venues.yml/dispatches"
 
   /** One venue as the workflow reads it: its id, name, and the evidence for the PR body. */
-  def venueJson(venue: RetirementRequest) = Json.obj(
+  def venueJson(venue: RetirementRequest): JsObject = Json.obj(
     "id"       -> venue.entry.id,
     "name"     -> venue.name,
-    "evidence" -> ClosureSweep.evidenceLine(venue.evidence))
+    "evidence" -> ClosureSweep.evidenceLine(venue.evidence)) ++
+    venue.page.fold(Json.obj())(page => Json.obj("page" -> page))
 }
