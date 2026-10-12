@@ -80,9 +80,9 @@ empty.films=Brak filmów.
 
 # ── Seasonal venues (open-air, drive-in) ─────────────────────────────────────
 # The filter panel second line "back in season · May–Sept", and the empty listing
-# when only out-of-season venues are selected: "{0} is back in season (May–Sept)".
+# when only out-of-season venues are selected: "Out of season: {0} (May–Sept)".
 season.back=wraca w sezonie
-season.isBack={0} wraca w sezonie
+season.isBack=Poza sezonem: {0}
 season.month.1=sty
 season.month.2=lut
 season.month.3=mar

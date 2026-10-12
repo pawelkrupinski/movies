@@ -4160,11 +4160,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  "the empty listing" should "say the cinemas left are back in season, not that nothing is on" in {
+  "the empty listing" should "say the cinemas left are out of season, not that nothing is on" in {
     withSeasons { page =>
       page.eval("__filtry.onlyOffSeason('Kino Letnie')")
       page.evalBool("document.getElementById('no-films').style.display !== 'none'") shouldBe true
-      page.evalString("document.getElementById('no-films').textContent") shouldBe "Kino Letnie wraca w sezonie (maj–wrz)"
+      page.evalString("document.getElementById('no-films').textContent") shouldBe "Poza sezonem: Kino Letnie (maj–wrz)"
 
       // A year-round cinema with nothing on left beside it: the usual message.
       page.eval("ALL_CINEMAS.push('Kino Całoroczne'); localStorage.setItem('disabledCinemas', JSON.stringify(ALL_CINEMAS.filter(c => c !== 'Kino Letnie' && c !== 'Kino Całoroczne'))); applyFilters()")

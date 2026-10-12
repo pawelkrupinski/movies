@@ -1812,7 +1812,7 @@
 
   function updateEmptyState(visibleCount) {
     const noFilms = document.getElementById('no-films');
-    // Every cinema the filter leaves is out of season: say when they are back,
+    // Every cinema the filter leaves is out of season: say so, and when its season runs,
     // not that there is nothing on.
     const disabled = getDisabledCinemas();
     const left = ALL_CINEMAS.filter(c => !disabled.includes(c));
