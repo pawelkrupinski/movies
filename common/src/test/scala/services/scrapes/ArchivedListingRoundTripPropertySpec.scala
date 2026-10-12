@@ -64,7 +64,8 @@ class ArchivedListingRoundTripPropertySpec extends IdentityPropertySpec {
     since    <- Gen.option(Gen.choose(0L, 2000000000000L).map(Instant.ofEpochMilli))
     failed   <- Gen.option(Gen.choose(0, 50))
     vouched  <- Gen.oneOf(None, Some(true))
-  } yield BarrenAttemptDto(at, outcome, error, since, failed, vouched)
+    source   <- genOptionalText
+  } yield BarrenAttemptDto(at, outcome, error, since, failed, vouched, source)
 
   private val genRow: Gen[StoredScrapeDto] = for {
     city      <- genOptionalText

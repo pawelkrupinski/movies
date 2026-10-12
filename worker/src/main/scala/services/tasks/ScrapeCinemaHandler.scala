@@ -85,14 +85,15 @@ class ScrapeCinemaHandler(
         Done
       case Some(scraper) =>
         val cinema = scraper.cinema
-        // A venue whose page has 404'd for over a day is re-probed once a day, not
+        // A venue whose page has 404'd for over a day — the page its scraper reads NOW, not one it
+        // was read from before a re-sourcing — is re-probed once a day, not
         // once a window: nothing about the roster can bring it back (both
         // aggregators keep dead venues in the sitemaps we harvest from), so every
         // attempt in between is a request that cannot succeed. Stamped as it skips
         // — an unstamped cinema is what makes the reaper re-enqueue it every tick
         // and jump the queue ahead of healthy ones.
         val now = clock.instant()
-        if (scrapeArchive.find(cinema).exists(row => GoneUpstream.skipScrape(row, now))) {
+        if (scrapeArchive.find(cinema).exists(row => GoneUpstream.skipScrape(row, scraper.sourceKey, now))) {
           logger.info(s"Skipping ${cinema.displayName}: its page has been 404ing for over " +
             s"${GoneUpstream.MinimumAge.toHours}h; next probe in ${GoneUpstream.RecheckInterval.toHours}h.")
           outcome.skipped(key)

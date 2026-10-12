@@ -58,15 +58,17 @@ case class BarrenAttemptDto(
   failedRuns: Option[Int] = None,
   // Written only when true, so a row from before the field existed — and every
   // unvouched empty or failure — decodes as false.
-  noScheduleListed: Option[Boolean] = None
+  noScheduleListed: Option[Boolean] = None,
+  // The source the attempt read; absent on rows written before the field existed (an unknown source).
+  sourceKey: Option[String] = None
 ) {
   def toDomain: Option[BarrenAttempt] =
-    ScrapeOutcome.byLabel(outcome).map(o => BarrenAttempt(at, o, error, since, failedRuns, noScheduleListed.contains(true)))
+    ScrapeOutcome.byLabel(outcome).map(o => BarrenAttempt(at, o, error, since, failedRuns, noScheduleListed.contains(true), sourceKey))
 }
 
 object BarrenAttemptDto {
   def from(b: BarrenAttempt): BarrenAttemptDto =
-    BarrenAttemptDto(b.at, b.outcome.label, b.error, b.since, b.failedRuns, Option.when(b.noScheduleListed)(true))
+    BarrenAttemptDto(b.at, b.outcome.label, b.error, b.since, b.failedRuns, Option.when(b.noScheduleListed)(true), b.sourceKey)
 }
 
 /** Storage DTO for one cinema's archive row — the macro codec target for the

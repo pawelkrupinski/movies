@@ -102,7 +102,13 @@ case class BarrenAttempt(
   // for. Only ever true on an [[ScrapeOutcome.Empty]]: a throw vouches for nothing. Not carried
   // forward by [[BarrenAttempt.continuing]] — each attempt answers for itself, so a later failure
   // or an unvouched empty clears it. See [[ScrapeAttempt.noScheduleListed]].
-  noScheduleListed: Boolean = false
+  noScheduleListed: Boolean = false,
+  // The upstream listing that produced this attempt (`CinemaScraper.sourceKey`) — what a 404 is a
+  // verdict ON. A venue re-wired to another source has not been heard from at its new one, so the
+  // gone-page back-off ([[GoneUpstream.skipScrape]]) holds only while the venue's scraper still
+  // reads this source. `None` on a row written before the field existed: an unknown source, which
+  // never parks a venue — one probe re-records it with its source.
+  sourceKey: Option[String] = None
 ) {
   /** When this barren run started — `since` once one has been carried, else this
    *  attempt itself. */
@@ -114,10 +120,15 @@ object BarrenAttempt {
    *  when there is one, otherwise its own. Pure, and called by every
    *  implementation at the point where it already holds the row it is replacing —
    *  a real store and a fake must not disagree about when a run began. */
-  def continuing(existing: Option[BarrenAttempt], attempt: BarrenAttempt): BarrenAttempt =
+  def continuing(existing: Option[BarrenAttempt], attempt: BarrenAttempt): BarrenAttempt = {
+    // A different known source is a different page: its run starts over, so a re-sourced venue is
+    // not parked on its old source's age. An unrecorded source (a row from before the field) can't
+    // be told apart and continues — resetting would restart every long-dead venue's streak at once.
+    val sameRun = existing.filterNot(previous => previous.sourceKey.isDefined && previous.sourceKey != attempt.sourceKey)
     attempt.copy(
-      since      = Some(existing.map(_.runStartedAt).getOrElse(attempt.at)),
-      failedRuns = failedRunsAfter(existing, attempt))
+      since      = Some(sameRun.map(_.runStartedAt).getOrElse(attempt.at)),
+      failedRuns = failedRunsAfter(sameRun, attempt))
+  }
 
   /** A failure in a new run ([[SeparateRuns]]) extends the previous failure's count,
    *  a retry of the same run leaves it; anything else ends the streak. An uncounted
@@ -201,7 +212,7 @@ trait ScrapeArchiveRepository {
         SuccessfulScrape(attempt.at, attempt.listingComplete, attempt.films))
     case barren =>
       storeBarren(attempt.cinema, attempt.city, BarrenAttempt(attempt.at, barren, attempt.error,
-        noScheduleListed = barren == ScrapeOutcome.Empty && attempt.noScheduleListed))
+        noScheduleListed = barren == ScrapeOutcome.Empty && attempt.noScheduleListed, sourceKey = attempt.sourceKey))
   }
 
   /** Persist a scrape that HAS content: replace the row's listing and drop any
@@ -295,7 +306,9 @@ case class ScrapeAttempt(
   error:           Option[String] = None,
   // The scraper's source affirmatively said there is no schedule (see
   // `CinemaScraper.noScheduleListed`). Read only when the attempt is EMPTY.
-  noScheduleListed: Boolean = false
+  noScheduleListed: Boolean = false,
+  // The scraper's `CinemaScraper.sourceKey`, kept on a barren marker ([[BarrenAttempt.sourceKey]]).
+  sourceKey:       Option[String] = None
 ) {
   def outcome: ScrapeOutcome =
     if (error.isDefined) ScrapeOutcome.Failed

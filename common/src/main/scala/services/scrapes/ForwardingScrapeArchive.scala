@@ -14,7 +14,7 @@ abstract class ForwardingScrapeArchive(underlying: ScrapeArchiveRepository) exte
 
   protected def storeBarren(cinema: Cinema, city: Option[String], attempt: BarrenAttempt): Unit =
     underlying.record(ScrapeAttempt(cinema, city, attempt.at, listingComplete = true, films = Nil, error = attempt.error,
-      noScheduleListed = attempt.noScheduleListed))
+      noScheduleListed = attempt.noScheduleListed, sourceKey = attempt.sourceKey))
 
   override def find(cinema: Cinema): Option[ArchivedScrape]       = underlying.find(cinema)
   override def read(cinema: Cinema): scala.util.Try[Option[ArchivedScrape]] = underlying.read(cinema)

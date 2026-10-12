@@ -21,9 +21,13 @@ class GoneUpstreamSpec extends AnyFlatSpec with Matchers {
   private val now    = Instant.parse("2026-08-31T09:00:00Z")
   private val cinema = Cinema.all.head
 
-  private def rowFailing(error: String, since: Instant, lastAttempt: Instant = now) =
+  // The source a gone row's 404s came from — the Flicks page the scraper still reads, unless a spec
+  // says otherwise.
+  private val Flicks = Some("flicks.us/cinema/acme-theatre-riverton")
+
+  private def rowFailing(error: String, since: Instant, lastAttempt: Instant = now, source: Option[String] = Flicks) =
     ArchivedScrape(cinema, None, lastSuccess = None,
-      lastBarren = Some(BarrenAttempt(lastAttempt, ScrapeOutcome.Failed, Some(error), Some(since))))
+      lastBarren = Some(BarrenAttempt(lastAttempt, ScrapeOutcome.Failed, Some(error), Some(since), sourceKey = source)))
 
   private val NotFound = "HttpStatusException: HTTP 404 for GET https://www.flicks.us/cinema/acme-theatre-riverton/"
 
@@ -98,19 +102,33 @@ class GoneUpstreamSpec extends AnyFlatSpec with Matchers {
 
   "the re-check window" should "skip a gone venue until its next daily probe is due" in {
     val since = now.minusSeconds(40 * 3600)
-    GoneUpstream.skipScrape(rowFailing(NotFound, since, lastAttempt = now.minusSeconds(3600)), now) shouldBe true
+    GoneUpstream.skipScrape(rowFailing(NotFound, since, lastAttempt = now.minusSeconds(3600)), Flicks, now) shouldBe true
+  }
+
+  // A 404 condemns the page that answered it. ACME Screening Room, moved off a dead Flicks page onto
+  // its own site, stayed parked on Flicks' verdict — the new source had never been asked.
+  it should "not skip a venue whose scraper now reads a different source from the one that 404'd" in {
+    val row = rowFailing(NotFound, now.minusSeconds(40 * 3600), lastAttempt = now.minusSeconds(3600))
+    GoneUpstream.skipScrape(row, Some("acmescreeningroom.org/events"), now) shouldBe false
+  }
+
+  // A marker from before sources were recorded can't say which page 404'd; it parks nothing, and the
+  // probe it lets through records one.
+  it should "not skip on a gone marker that recorded no source" in {
+    val row = rowFailing(NotFound, now.minusSeconds(40 * 3600), lastAttempt = now.minusSeconds(3600), source = None)
+    GoneUpstream.skipScrape(row, Flicks, now) shouldBe false
   }
 
   // The only way out of quarantine is a scrape that works, so one has to happen.
   it should "let a gone venue be probed again once the interval has passed" in {
     val since = now.minusSeconds(200 * 3600)
     val stale = now.minusSeconds(GoneUpstream.RecheckInterval.toSeconds + 60)
-    GoneUpstream.skipScrape(rowFailing(NotFound, since, lastAttempt = stale), now) shouldBe false
+    GoneUpstream.skipScrape(rowFailing(NotFound, since, lastAttempt = stale), Flicks, now) shouldBe false
   }
 
   it should "never skip a venue that is merely failing" in {
     val row = rowFailing("HttpStatusException: HTTP 500 for GET https://x/", now.minusSeconds(200 * 3600))
-    GoneUpstream.skipScrape(row, now) shouldBe false
+    GoneUpstream.skipScrape(row, Flicks, now) shouldBe false
   }
 
   "the barren run" should "carry its start forward across attempts, and reset on a success" in {
@@ -125,6 +143,24 @@ class GoneUpstreamSpec extends AnyFlatSpec with Matchers {
     // A row written before the field existed reads as "since its own attempt" —
     // never as a run reaching back to the epoch, which would quarantine it at once.
     BarrenAttempt(now, ScrapeOutcome.Failed, Some(NotFound)).runStartedAt shouldBe now
+  }
+
+  // A re-sourced venue's new page has not been 404ing for the old page's days: if it fails too, its
+  // own run — and its own 24h — starts from its own first failure.
+  it should "start a new run when the attempt comes from a different source" in {
+    val old  = BarrenAttempt.continuing(None, BarrenAttempt(now.minusSeconds(96 * 3600), ScrapeOutcome.Failed, Some(NotFound), sourceKey = Flicks))
+    val next = BarrenAttempt.continuing(Some(old), BarrenAttempt(now, ScrapeOutcome.Failed, Some(NotFound), sourceKey = Some("acmescreeningroom.org/events")))
+    next.runStartedAt shouldBe now
+    next.failedRuns   shouldBe Some(1)
+  }
+
+  // A row from before sources were recorded can't be told apart from the same page, so it continues:
+  // restarting would re-age every long-dead venue on the day this shipped.
+  it should "continue a run whose earlier marker recorded no source" in {
+    val legacy = BarrenAttempt(now.minusSeconds(96 * 3600), ScrapeOutcome.Failed, Some(NotFound), since = Some(now.minusSeconds(96 * 3600)))
+    val next   = BarrenAttempt.continuing(Some(legacy), BarrenAttempt(now, ScrapeOutcome.Failed, Some(NotFound), sourceKey = Flicks))
+    next.runStartedAt shouldBe legacy.at
+    next.sourceKey    shouldBe Flicks
   }
 
   "the 24h delay" should "be measured from the run's start, not the last attempt" in {

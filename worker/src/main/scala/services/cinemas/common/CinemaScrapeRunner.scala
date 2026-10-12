@@ -71,7 +71,8 @@ class CinemaScrapeRunner(
       listingComplete  = listingComplete,
       films            = movies,
       error            = error,
-      noScheduleListed = scraper.noScheduleListed
+      noScheduleListed = scraper.noScheduleListed,
+      sourceKey        = scraper.sourceKey
     ))
 
   /** Exception messages are often null (NPE, some driver errors); fall back to

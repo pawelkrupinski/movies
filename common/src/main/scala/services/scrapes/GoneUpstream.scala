@@ -83,11 +83,19 @@ object GoneUpstream {
       .map(_.runStartedAt)
       .filter(since => JDuration.between(since, now).toMillis >= MinimumAge.toMillis)
 
-  /** Should this cinema be skipped on this tick? Only a gone venue is ever
-   *  skipped, and only until its next re-check falls due — measured from the last
-   *  ATTEMPT, so the interval is between probes rather than between failures. */
-  def skipScrape(row: ArchivedScrape, now: Instant): Boolean =
+  /** Should this cinema, read today from `source` (its scraper's `CinemaScraper.sourceKey`), be
+   *  skipped on this tick? Only a gone venue is ever skipped, and only until its next re-check falls
+   *  due — measured from the last ATTEMPT, so the interval is between probes rather than between
+   *  failures.
+   *
+   *  And only while it is still read from the source that answered gone: a 404 condemns a page, not
+   *  a venue. ACME Screening Room was moved off a dead Flicks page onto its own site and stayed
+   *  parked on Flicks' verdict. A marker with no recorded source (written before
+   *  [[BarrenAttempt.sourceKey]] existed) is an unknown source and parks nothing; its next probe
+   *  records one. */
+  def skipScrape(row: ArchivedScrape, source: Option[String], now: Instant): Boolean =
     isGone(row, now) &&
       row.lastBarren.exists(barren =>
-        JDuration.between(barren.at, now).toMillis < RecheckInterval.toMillis)
+        barren.sourceKey.isDefined && barren.sourceKey == source &&
+          JDuration.between(barren.at, now).toMillis < RecheckInterval.toMillis)
 }

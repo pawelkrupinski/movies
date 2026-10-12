@@ -114,4 +114,13 @@ class ScrapeArchiveCodecsSpec extends AnyFlatSpec with Matchers {
     out.toJson should not include(""""bookingUrl":""")
     codec.decode(new BsonDocumentReader(out), DecoderContext.builder().build()) shouldBe film
   }
+
+  // The gone-page back-off reads which source a 404 came from; a marker that lost it on the way through
+  // storage would park nothing, and one written before the field reads back as an unknown source.
+  "a barren marker" should "keep the source it was read from through storage" in {
+    val marker = BarrenAttempt(java.time.Instant.parse("2026-10-11T00:00:00Z"), ScrapeOutcome.Failed, Some("HTTP 404"),
+      sourceKey = Some("flicks.us/cinema/acme"))
+    BarrenAttemptDto.from(marker).toDomain shouldBe Some(marker)
+    BarrenAttemptDto.from(marker.copy(sourceKey = None)).toDomain.flatMap(_.sourceKey) shouldBe None
+  }
 }
