@@ -46,6 +46,12 @@ class UnmatchedClustersRatchetSpec extends AnyFlatSpec with Matchers {
     captures.map(_.country.code).toSet shouldBe Set("pl", "uk", "de", "es", "us")
   }
 
+  it should "hold the venue detail of every host it marks as having detail" in {
+    val missing = captures.map(capture => capture.country.code -> UnmatchedClusters.hostsMissingDetail(capture)).filter(_._2.nonEmpty)
+    withClue("a capture marks listings as having venue detail and holds none of a host's — its recording's reads were refused; " +
+      s"re-record the corpus (country -> host -> listings): ") { missing shouldBe empty }
+  }
+
   "the resolver and the agreement over the unmatched clusters" should "take no film a label denies or contradicts" in {
     val wrong = takes.filter(take => UnmatchedClusters.verdict(take, labels).contains(false))
     withClue(wrong.map(UnmatchedClusters.takeLine).mkString("WRONG takes:\n", "\n", "\n")) { wrong shouldBe empty }

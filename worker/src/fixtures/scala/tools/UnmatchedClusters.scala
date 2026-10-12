@@ -51,6 +51,19 @@ object UnmatchedClusters {
    *  every question the stage asks of a complete capture is answered. */
   def unasked(capture: Capture, wanted: Set[(VoterFamily, String)]): Set[(VoterFamily, String)] = wanted -- capture.unreachable
 
+  /** The hosts (of the listings' pages) that `capture` marks as having venue detail (`withDetail`) and holds the detail
+   *  of none of, with how many listings it marks: a host that refused the corpus recording's every detail read — the UK
+   *  capture of 2026-10-12 over recording 38103789067, whose Cineworld box-office API reads were all 403'd: 384 listings
+   *  with detail, none stored, read by the agreement as no venue facts at all (77 "RBO … Macbeth" right takes lost). A
+   *  capture holding one is not to be checked in: re-record the corpus once the host answers again. */
+  def hostsMissingDetail(capture: Capture): Map[String, Int] = {
+    val hostOf = capture.listings.flatMap(l => l.page.flatMap(page => scala.util.Try(java.net.URI.create(page).getHost).toOption.flatMap(Option(_)))
+      .map(ListingKey.serialised(l.key) -> _)).toMap
+    capture.withDetail.toSeq.flatMap(key => hostOf.get(key).map(_ -> key)).groupBy(_._1).collect {
+      case (host, marked) if marked.forall { case (_, key) => capture.details.get(key).flatten.isEmpty } => host -> marked.size
+    }
+  }
+
   // ── what the agreement makes of the clusters ─────────────────────────────────────────────
 
   /** The model's no-match decisions, and what the agreement stage made of them — and every TMDB question the stage asked
