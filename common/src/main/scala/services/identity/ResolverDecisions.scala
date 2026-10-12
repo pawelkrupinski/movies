@@ -58,8 +58,11 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
         Some(ResolverDecision.Leaning(lean.tmdbId, lean.film.imdbNumber))
       case _ => None
     }
-    // the best-ranked TMDB film the pooled evidence weighed that no member denies: the agreement stage's TMDB voter
-    val candidate = if (film.isDefined) None else eligible.headOption.map(_.candidate)
+    // the best-ranked TMDB film the pooled evidence weighed that no member denies: the agreement stage's TMDB voter — none
+    // where the release veto took out a film ranked above it, as the veto adds no evidence for its namesake
+    // ([[ReleaseVeto]]: PL "Stan wyjątkowy", Brešan's 2018 film best only once Hřebejk's 2024 one was vetoed)
+    val candidate = if (film.isDefined || scored.takeWhile(_.denied).exists(_.denial.exists(ReleaseVeto.vetoes))) None
+      else eligible.headOption.map(_.candidate)
       .filterNot(best => cluster.exists(node => families.denies(node, best.tmdbId)))
       .map(best => ResolverDecision.Leaning(best.tmdbId, best.film.imdbNumber))
     ResolverDecision(cluster.flatMap(_.listings.map(_.key)).sorted, film, confidence, basis,

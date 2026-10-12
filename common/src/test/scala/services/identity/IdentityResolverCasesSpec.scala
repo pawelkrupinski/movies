@@ -1546,6 +1546,21 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "make the namesake released there no TMDB vote when it takes nothing: the veto adds no evidence for a film" in {
+    // PL Kino za Rogiem Cafe's bare "Stan wyjątkowy" ×1: Hřebejk's 2024 film, TMDB's first hit, dates no Polish release;
+    // Brešan's 2018 film, ranked under it, does — and stood as the model's best candidate, the agreement's TMDB vote
+    // completing IMDb's take of it to a quorum
+    val unreleased = F(1325178, "Stan wyjątkowy", 2024, "", 0, 3, releaseCountries = Some("CZ"))
+    val released   = F(581759, "Stan wyjątkowy", 2018, "", 0, 1, releaseCountries = Some("PLHR"))
+    val bare = listing(Rialto, "Stan wyjątkowy")
+    val d = IdentityResolver.resolve(Seq(bare), new FilmTable(Seq(unreleased, released), normalizer), normalizer, withoutClasses).decisionOf(bare.key)
+    withClue(d.render) {
+      d.film shouldBe None
+      d.explanation.mkString should include ("vetoed: not released in PL, as namesake 581759 is")
+      d.candidate shouldBe None
+    }
+  }
+
   it should "veto nothing the listing's own facts back, nor on release dates TMDB was not asked for, nor when no namesake is released there" in {
     val released = F(923171, "Obcy w domu", 1986, "", 0, 3, releaseCountries = Some("PL"))
     val namesake = F(56669, "Obcy w domu", 1989, "", 0, 1, releaseCountries = Some("CAUS"))
