@@ -62,5 +62,18 @@ class OwnSiteEvidenceSpec extends AnyFlatSpec with Matchers {
   "The checked-in websites" should "name each venue's own site, and skip the comment" in {
     VenueWebsites.checkedIn.of("ACME Screening Room Lambertville") shouldBe Some("https://www.acmescreeningroom.org/")
     VenueWebsites.checkedIn.of("_comment") shouldBe None
+    VenueWebsites.checkedIn.of("Acme Theatre Riverton") shouldBe Some("https://barrycinemas.com/acme-theater-riverton")
+    VenueWebsites.checkedIn.of("Kino im Badehaus Masserberg") shouldBe Some("http://kino.masserberg.de")
+  }
+
+  // The list is keyed by display name, an exact lookup: a misspelt or retired name
+  // never matches, and that venue is silently judged without its own site.
+  it should "key every site by the display name of a venue on a roster" in {
+    val keys = scala.util.Using.resource(getClass.getResourceAsStream("/venue-websites.json")) { in =>
+      play.api.libs.json.Json.parse(in).as[play.api.libs.json.JsObject].value.toMap
+    }.collect { case (venue, play.api.libs.json.JsString(url)) if !venue.startsWith("_") => venue -> url }
+    val rostered = models.City.allModelled.flatMap(_.cinemas).map(_.displayName).toSet
+    keys.keySet -- rostered shouldBe empty
+    all(keys.values) should startWith regex "https?://"
   }
 }
