@@ -24,6 +24,15 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("Lawrence of Arabia in 70mm") shouldBe ("Lawrence of Arabia", List("70MM"))
   }
 
+  they should "take the preposition a screen format is billed with" in {
+    // The corpora of 2026-10-12: "3D" alone left "… The Tour Live In", "Carmen in", "… Premieres in".
+    FormatTags.extractFormatTags("Billie Eilish - Hit Me Hard And Soft: The Tour Live In 3D") shouldBe
+      ("Billie Eilish - Hit Me Hard And Soft: The Tour Live", List("3D"))
+    FormatTags.extractFormatTags("Carmen in 3D") shouldBe ("Carmen", List("3D"))
+    FormatTags.extractFormatTags("Dune: Part Two Fan First Premieres in IMAX") shouldBe ("Dune: Part Two Fan First Premieres", List("IMAX"))
+    FormatTags.extractFormatTags("Avatar w 3D") shouldBe ("Avatar", List("3D"))
+  }
+
   // Balagueró's "[REC]" (US corpus 2026-10-01) came out as no title at all: served as an empty card.
   they should "never take a tag that is the whole title" in {
     FormatTags.extractFormatTags("[REC]") shouldBe ("[REC]", Nil)

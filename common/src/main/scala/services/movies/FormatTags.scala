@@ -54,9 +54,10 @@ object FormatTags {
     "sub", "subs", "subtitled", "subtitles", "dubbed", "35mm", "70mm", "4k",
     "ov", "omu", "omeu", "df", "engl", "originalversion")
   private val FormatSeparators = Set("-", "–", "—", "|", "/", ":")
-  // "… - ON 35MM", "… in 70mm", Kino Kolory's "REQUIEM DLA SNU w 4K": the print is billed with a preposition,
-  // which goes with it (left behind, the title ended "REQUIEM DLA SNU w").
-  private val PrintPreposition = """(?i)\s+(?:on|in|w)\s+(\d{2}mm|4k)\s*$""".r
+  // "… - ON 35MM", "… in 70mm", Kino Kolory's "REQUIEM DLA SNU w 4K", "Carmen in 3D", "… The Tour Live In 3D": a
+  // print or a screen is billed with a preposition, which goes with it (left behind, the title ended "REQUIEM DLA
+  // SNU w", "… The Tour Live In").
+  private val FormatPreposition = """(?i)\s+(?:on|in|w)\s+(\d{2}mm|4k|[23]d|imax|4dx)\s*$""".r
   private val FormatBracketTag = """\s*\[[^\]]*\]\s*$""".r
   private val FormatParenTag   =
     """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|ATMOS|4DX|dubbing|napisy|lektor|dubbed|subtitled|subtitles|35mm|70mm|4K(?!\s*restor)|OV|OmU|OmeU|Originalversion|D-?BOX)\b[^)]*)\)\s*$""".r
@@ -148,7 +149,7 @@ object FormatTags {
    *  token. A Ukrainian dub/lektor tag is kept whole (guard) and yields no token. */
   def extractFormatTags(raw: String): (String, List[String]) = {
     val spelled = BracketedHyphenatedScreen.replaceAllIn(BracketedOriginalVersion.replaceAllIn(raw, "OV"), "($1D)")
-    var t    = PrintPreposition.replaceAllIn(GluedFormatDash.replaceAllIn(GluedFormatSlash.replaceAllIn(
+    var t    = FormatPreposition.replaceAllIn(GluedFormatDash.replaceAllIn(GluedFormatSlash.replaceAllIn(
                  GluedFormatUnderscore.replaceAllIn(GluedVersionHyphen.replaceAllIn(spelled.replaceAll("\\s+", " ").trim, " - "), " "), " "), " - "), " $1")
     var previous = ""
     val dropped = scala.collection.mutable.Set.empty[String]
