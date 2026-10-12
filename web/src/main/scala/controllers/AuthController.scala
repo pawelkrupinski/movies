@@ -25,7 +25,7 @@ import scala.util.{Failure, Success, Try}
  *     for a profile via `OauthProvider.exchangeCode`, upsert the
  *     `User`, set `userId` in the session, redirect home.
  *
- * Plus a single logout endpoint that drops the session, and the pair that hands
+ * Plus a single logout endpoint that signs the account out on every device, and the pair that hands
  * a live session to a deployment the cookie cannot reach:
  *
  *   - GET `/auth/sso/start?to=<base url>` — on the deployment the visitor is
@@ -350,37 +350,25 @@ class AuthController(
     })
   }
 
-  /** Sign out every OTHER session for this account — every cookie issued
-   *  before this call, on every device and every deployment, since
-   *  `sessionVersion` lives on the one shared `users` row every deployment's
-   *  `SignedInUser` check reads (see its doc comment). THIS request's own
-   *  session is re-established against the bumped row in the same response,
-   *  so the caller stays signed in here — only the other copies stop
-   *  resolving. Unlike [[logout]], this needs no sibling-domain hop: the
-   *  version lives on the row, not the cookie, so bumping it once is already
-   *  visible to every deployment's next check. */
-  def revokeSessions(): Action[AnyContent] = Action { request =>
-    SignedInUser.answering(SignedInUser(request, userRepository) match {
-      case None => Unauthorized(Json.obj("error" -> "not logged in"))
-      case Some(user) =>
-        userRepository.revokeSessions(user.id) match {
-          case None =>
-            ServiceUnavailable(Json.obj("error" -> "sessions could not be revoked — retry"))
-          case Some(revoked) =>
-            Ok(Json.obj("sessionVersion" -> revoked.sessionVersion))
-              .withSession(SignedInUser.establish(request.session, revoked))
-        }
-    })
-  }
-
-  /** Sign out — HERE, and on the other domain too.
+  /** Sign out — EVERYWHERE: every browser, every app, every deployment.
    *
-   *  The pairing at sign-in establishes a session on both domains, so clearing
-   *  only this one leaves the visitor signed out where they clicked and still
-   *  signed in a domain away. That is worse than never pairing at all: "log out"
-   *  has to mean logged out, and the half that survives is the half nobody
-   *  expects to find. Same one hop, in the other direction. */
+   *  The account's `sessionVersion` is bumped first, which fails the
+   *  `SignedInUser` check for every cookie issued before it — the web's on
+   *  every device and the native apps' (theirs is the same session cookie,
+   *  handed out by `/auth/token`) — on every deployment, since they all read
+   *  the one shared `users` row. Only a session that still resolves bumps it:
+   *  an anonymous caller, or a cookie an earlier logout already killed, must
+   *  not sign the account out of the sessions it has opened since. A store
+   *  that cannot be read or written is logged and does not stop THIS cookie
+   *  being dropped — logging out never fails here.
+   *
+   *  The version bump already reaches the other domain's session, but its
+   *  cookie still names the account until it is next checked, so the visitor
+   *  is sent through that domain's [[ssoLogout]] too: the pairing at sign-in
+   *  establishes a session on both, and "log out" has to mean the far cookie
+   *  is gone, not merely dead. Same one hop, in the other direction. */
   def logout(): Action[AnyContent] = Action { request =>
+    revokeEverySession(request)
     val landing = routes.LandingController.index().url
     val target  = models.Country.siblingOfOrigin(ForwardedUrl.base(request)) match {
       case None          => landing
@@ -393,6 +381,15 @@ class AuthController(
     // thing at all to a browser, a proxy, or anyone reading the response.
     signedOut(Redirect(target).withNewSession)
   }
+
+  private def revokeEverySession(request: RequestHeader): Unit =
+    try SignedInUser(request, userRepository).foreach { user =>
+      if (userRepository.revokeSessions(user.id).isEmpty)
+        logger.warn(s"logout: sessions of ${user.id} could not be revoked; only this cookie is dropped")
+    } catch {
+      case SignedInUser.LookupFailed(exception) =>
+        logger.warn(s"logout: user unreadable, only this cookie is dropped: ${exception.getMessage}")
+    }
 
   /** The far half of [[logout]]: drop the session on this domain and send the
    *  visitor back where they pressed the button.

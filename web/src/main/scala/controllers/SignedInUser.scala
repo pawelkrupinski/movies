@@ -19,12 +19,12 @@ import scala.util.control.NonFatal
  *
  * `sessionVersion` is the revocation check: the cookie carries a copy of
  * `User.sessionVersion` as of sign-in, and a request is only honoured when
- * that copy still matches the row's CURRENT value. "Sign out everywhere"
+ * that copy still matches the row's CURRENT value. Every logout
  * bumps the row's version, which instantly fails this check for every cookie
  * issued before the bump — on every device, since it's the same shared row
  * every deployment reads. A cookie with no stamp (issued before this key
  * existed) reads as `0`, matching a fresh row's own default, so an existing
- * session keeps working unrevoked until its owner signs out everywhere.
+ * session keeps working unrevoked until its owner next logs out.
  *
  * The check is only as current as the row it reads, which is why the
  * `UserRepository` a pod hands this is the shared store itself, uncached (see

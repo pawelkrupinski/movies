@@ -12,7 +12,7 @@ import scala.concurrent.Future
  * Every write route is `nocsrf` — the browser JS calls them with `fetch`, the
  * native apps with a plain HTTP client, Meta server-to-server — so Play's token
  * check guards none of them. Without this filter, the only thing standing between
- * another site's page and a visitor's `/api/me` delete, "sign out everywhere", or
+ * another site's page and a visitor's `/api/me` delete, a logout of every device, or
  * an admin's `/admin/config/set` is the session cookie's SameSite attribute (and,
  * for PUT/DELETE and JSON bodies, CORS refusing credentials). This is the second
  * layer, independent of the cookie: a cross-site write is refused before any

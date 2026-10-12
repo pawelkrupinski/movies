@@ -23,7 +23,7 @@ trait UsersWiring { self: Wiring =>
   // cookie), the apex pod answers `/auth/…` for all of them, and a rolling
   // deploy runs two of one country side by side. A per-process copy of a row
   // is invisible to every other pod's writes, and both rows here are ones those
-  // writes change: `sessionVersion` ("sign out everywhere" kept working on every
+  // writes change: `sessionVersion` (a logout's revoked cookie kept working on every
   // other pod for the copy's hour, and signed the asking device out of them),
   // and the hidden-films sets (a pod wrote back the row as IT last saw it,
   // erasing another country's hide, and answered reads with the old set for ten

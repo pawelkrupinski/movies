@@ -777,52 +777,93 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     header("Cache-Control", result).value shouldBe PerUserResponse.CacheControl
   }
 
-  // ── POST /auth/sessions/revoke ("sign out everywhere") ──────────────────
+  // ── POST /auth/logout signs out EVERY session ───────────────────────────
 
-  "POST /auth/sessions/revoke" should "401 anonymous requests" in {
-    val (ctl, _, _) = fixture()
-    status(ctl.revokeSessions()(FakeRequest("POST", "/auth/sessions/revoke"))) shouldBe UNAUTHORIZED
+  private def logoutAs(ctl: AuthController, session: play.api.mvc.Session) =
+    ctl.logout()(FakeRequest("POST", "/auth/logout").withSession(session.data.toSeq*))
+
+  /** A browser signed in as the account stands now. */
+  private def browserSession(repository: InMemoryUserRepository, email: String) =
+    SignedInUser.establish(play.api.mvc.Session(), repository.findById(email).value)
+
+  /** The session `/auth/token` hands a native app — `Profile` is alice@example.com. */
+  private def appSession(ctl: AuthController) =
+    session(ctl.token()(FakeRequest("POST", "/auth/token").withBody(play.api.libs.json.Json.obj(
+      "provider" -> "google", "token" -> "C", "redirectUri" -> "kinowo://auth"))))
+
+  private def meAs(ctl: AuthController, session: play.api.mvc.Session) =
+    status(ctl.me()(FakeRequest("GET", "/api/me").withSession(session.data.toSeq*)))
+
+  // Logout is global: the laptop's cookie and the phone app's cookie (what
+  // `/auth/token` hands the native apps) are separate sessions of one account,
+  // and signing out of either must leave neither answering `/api/me`.
+  "AuthController.logout" should "sign out every other session of the account — another browser and the app" in {
+    val (ctl, repository, _) = fixture(new FakeProvider("google", Profile))
+    val email   = signedIn(repository, "alice@example.com")
+    val laptop  = browserSession(repository, email)
+    val desktop = browserSession(repository, email)
+    val app     = appSession(ctl)
+    Seq(laptop, desktop, app).map(meAs(ctl, _)) shouldBe Seq(OK, OK, OK)
+
+    status(logoutAs(ctl, laptop)) shouldBe SEE_OTHER
+
+    meAs(ctl, desktop) shouldBe UNAUTHORIZED
+    meAs(ctl, app)     shouldBe UNAUTHORIZED
   }
 
-  it should "bump the account's sessionVersion" in {
+  it should "let the app's logout sign out the browser too" in {
+    val (ctl, repository, _) = fixture(new FakeProvider("google", Profile))
+    val email   = signedIn(repository, "alice@example.com")
+    val browser = browserSession(repository, email)
+    val app     = appSession(ctl)
+
+    status(logoutAs(ctl, app)) shouldBe SEE_OTHER
+
+    meAs(ctl, browser) shouldBe UNAUTHORIZED
+  }
+
+  it should "redirect an anonymous caller home, revoking nothing" in {
+    val (ctl, repository, _) = fixture()
+    val email  = signedIn(repository, "alice@example.com")
+    val result = ctl.logout()(FakeRequest("POST", "/auth/logout"))
+
+    status(result) shouldBe SEE_OTHER
+    redirectLocation(result) shouldBe Some("/")
+    repository.findById(email).value.sessionVersion shouldBe 0
+  }
+
+  // A cookie a previous logout already killed names no one any more: replaying
+  // it must not sign the account out of the sessions it has opened since.
+  it should "leave a newer session alone when the cookie logging out was already revoked" in {
     val (ctl, repository, _) = fixture()
     val email = signedIn(repository, "alice@example.com")
-    ctl.revokeSessions()(FakeRequest("POST", "/auth/sessions/revoke").withSession("userId" -> email))
-    repository.findById(email).value.sessionVersion shouldBe 1
+    val stale = browserSession(repository, email)
+    repository.revokeSessions(email)
+    val fresh = browserSession(repository, email)
+
+    status(logoutAs(ctl, stale)) shouldBe SEE_OTHER
+
+    meAs(ctl, fresh) shouldBe OK
   }
 
-  // A revoke the store could not write must not answer as though it landed:
-  // the caller would believe every other device signed out while none were.
-  it should "503, and hand out no new session, when the store could not bump the version" in {
+  // The store being unreachable can stop the other devices signing out, but
+  // never this one: the cookie here is discarded all the same.
+  it should "still sign this browser out when the user store cannot be read" in {
     val repository = new InMemoryUserRepository {
-      override def revokeSessions(id: String): Option[models.User] = None
+      override def findById(id: String): Option[models.User] = throw new RuntimeException("mongo down")
     }
     val ctl = new AuthController(Helpers.stubControllerComponents(), Map.empty, repository,
       new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk), models.Country.Poland, clock = fixedClk)
-    val email  = signedIn(repository, "alice@example.com")
-    val result = ctl.revokeSessions()(FakeRequest("POST", "/auth/sessions/revoke").withSession("userId" -> email))
+    val result = ctl.logout()(FakeRequest("POST", "/auth/logout").withSession("userId" -> "alice@example.com"))
 
-    status(result) shouldBe SERVICE_UNAVAILABLE
-    header("Set-Cookie", result) shouldBe empty
-  }
-
-  // The whole point: an OLDER cookie (still naming sessionVersion 0, as if
-  // issued before this call) must stop resolving once the row's version has
-  // moved on — otherwise "sign out everywhere" only ever signs out the one
-  // request that asked for it.
-  it should "make every OTHER session naming the pre-bump version fail SignedInUser afterwards" in {
-    val (ctl, repository, _) = fixture()
-    val email = signedIn(repository, "alice@example.com")
-    ctl.revokeSessions()(FakeRequest("POST", "/auth/sessions/revoke").withSession("userId" -> email))
-
-    val staleSession = play.api.mvc.Session(Map("userId" -> email, "sessionVersion" -> "0"))
-    SignedInUser(FakeRequest().withSession(staleSession.data.toSeq*), repository) shouldBe empty
+    status(result) shouldBe SEE_OTHER
+    session(result).get("userId") shouldBe empty
   }
 
   // A revoke landing between a sign-in's read of the row and its write: the
   // store keeps the revoke, and the cookie the sign-in hands out must carry the
   // version the row holds now, or the fresh sign-in is dead on arrival.
-  it should "hand a sign-in racing a revoke a session that is valid after it" in {
+  "A sign-in racing a logout elsewhere" should "get a session that is valid after it" in {
     class RevokedMidSignIn extends InMemoryUserRepository {
       @volatile var revokeOnNextRead = false
       override def findById(id: String): Option[models.User] = {
@@ -841,16 +882,6 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
       .withSession(started.data.toSeq*))
     repository.findById("alice@example.com").value.sessionVersion shouldBe 1
     SignedInUser(FakeRequest().withSession(session(back).data.toSeq*), repository).map(_.id) shouldBe Some("alice@example.com")
-  }
-
-  it should "re-establish THIS request's own session against the bumped version, so the caller stays signed in" in {
-    val (ctl, repository, _) = fixture()
-    val email = signedIn(repository, "alice@example.com")
-    val result = ctl.revokeSessions()(FakeRequest("POST", "/auth/sessions/revoke").withSession("userId" -> email))
-
-    status(result) shouldBe OK
-    val freshSession = session(result)
-    SignedInUser(FakeRequest().withSession(freshSession.data.toSeq*), repository).value.id shouldBe email
   }
 
 }

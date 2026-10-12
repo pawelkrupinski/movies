@@ -18,12 +18,12 @@ import java.time.Instant
  * `sessionVersion` is the revocation counter every issued session cookie
  * carries a copy of (see `SignedInUser`). Bumping it invalidates every
  * cookie issued before that moment, on every device and every deployment —
- * "log out everywhere" needs nothing more than incrementing this one field,
+ * a logout (which always signs out everywhere) needs nothing more than incrementing this one field,
  * since the shared `users` database is what every deployment's session check
  * already reads. Defaulted so every existing row (no such field yet) reads
  * as `0`, matching a freshly-issued cookie's own default (see
  * `SignedInUser.apply`) — a pre-existing session keeps working, unrevoked,
- * until its owner explicitly signs out everywhere.
+ * until its owner next logs out.
  */
 case class User(
   id:             String,

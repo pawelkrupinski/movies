@@ -39,7 +39,7 @@ class CrossSiteWriteFilterSpec extends AnyFlatSpec with Matchers with BeforeAndA
   }
 
   it should "refuse every unsafe method a cross-site page can issue" in {
-    Seq("POST" -> "/auth/sessions/revoke", "PUT" -> "/api/me/state", "PATCH" -> "/api/me/state",
+    Seq("POST" -> "/auth/logout", "PUT" -> "/api/me/state", "PATCH" -> "/api/me/state",
         "POST" -> "/admin/config/set", "POST" -> "/tasks/run/x").foreach { case (method, path) =>
       withClue(s"$method $path: ") {
         rejected(status(method, path, "Sec-Fetch-Site" -> "cross-site")) shouldBe true
@@ -62,7 +62,7 @@ class CrossSiteWriteFilterSpec extends AnyFlatSpec with Matchers with BeforeAndA
   // Sec-Fetch-Site, but a cross-site write from one still names its page in
   // Origin (every POST/PUT/DELETE) or, failing that, Referer.
   it should "refuse a write whose Origin is foreign when the browser sends no Sec-Fetch-Site" in {
-    rejected(status("POST", "/auth/sessions/revoke", "Origin" -> "https://evil.example")) shouldBe true
+    rejected(status("POST", "/auth/logout", "Origin" -> "https://evil.example")) shouldBe true
     rejected(status("DELETE", "/api/me", "Origin" -> "null")) shouldBe true
   }
 

@@ -66,7 +66,6 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     // Signing out needs no identity: the worst a forged one does is sign you out,
     // and the cross-site filter refuses even that.
     ("POST",   "/auth/logout")                           -> Protection(Auth.Public,   Csrf.CrossSiteFilter),
-    ("POST",   "/auth/sessions/revoke")                  -> Protection(Auth.SignedIn, Csrf.CrossSiteFilter),
     // The credential IS the body: a provider ID token / a one-shot code + verifier.
     ("POST",   "/auth/token")                            -> Protection(Auth.Public,   Csrf.CrossSiteFilter),
     ("POST",   "/auth/exchange")                         -> Protection(Auth.Public,   Csrf.CrossSiteFilter),
@@ -188,7 +187,7 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
   private def concrete(path: String): String = ":[a-zA-Z]+|\\*[a-zA-Z]+".r.replaceAllIn(path, "pl")
 
-  /** Signed in as `user` as the account stands NOW: `/auth/sessions/revoke`,
+  /** Signed in as `user` as the account stands NOW: `/auth/logout`,
    *  probed along the way, bumps the account's session version and so signs out
    *  every session minted before it. */
   private def signedInAs(user: models.User)(request: FakeRequest[AnyContentAsEmpty.type]) =

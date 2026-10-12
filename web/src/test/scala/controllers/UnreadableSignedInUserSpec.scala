@@ -31,7 +31,6 @@ class UnreadableSignedInUserSpec extends AnyFlatSpec with Matchers {
   "every session lookup" should "answer a per-user 503 when the user cannot be read" in {
     Seq(
       "me"             -> auth.me()(signedIn("GET", "/api/me")),
-      "revokeSessions" -> auth.revokeSessions()(signedIn("POST", "/api/me/sessions/revoke")),
       "ssoStart"       -> auth.ssoStart()(signedIn("GET", s"/auth/sso/start?to=${Country.UnitedKingdom.webUrl.get}")),
       "admin"          -> new AdminAction(Helpers.stubBodyParser(), users, settings.AdminAllowlist(Set("alice@example.com")))
                             .async(_ => Future.successful(Results.Ok("admin")))(signedIn("GET", "/admin"))

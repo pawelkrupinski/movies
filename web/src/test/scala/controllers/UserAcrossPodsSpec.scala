@@ -90,7 +90,7 @@ class UserAcrossPodsSpec extends AnyFlatSpec with Matchers {
     (contentAsJson(fresh) \ "hiddenFilms").as[Seq[String]] shouldBe Seq("Film")
   }
 
-  "sign out everywhere" should "reject the revoked cookie on a pod that had already seen it" in {
+  "a logout on one pod" should "reject the account's other cookies on a pod that had already seen them" in {
     val fleet   = new Fleet
     val apex    = fleet.authPod()
     val sibling = fleet.authPod()
@@ -99,21 +99,9 @@ class UserAcrossPodsSpec extends AnyFlatSpec with Matchers {
 
     // The laptop's cookie is in use on the sibling pod…
     status(sibling.me()(as(laptop)(FakeRequest("GET", "/api/me")))) shouldBe OK
-    // …when Alice, on her phone, signs out every other session.
-    status(apex.revokeSessions()(as(phone)(FakeRequest("POST", "/auth/sessions/revoke")))) shouldBe OK
+    // …when Alice signs out on her phone, answered by the apex pod.
+    status(apex.logout()(as(phone)(FakeRequest("POST", "/auth/logout")))) shouldBe SEE_OTHER
 
     status(sibling.me()(as(laptop)(FakeRequest("GET", "/api/me")))) shouldBe UNAUTHORIZED
-  }
-
-  it should "keep the device that asked signed in on every pod" in {
-    val fleet   = new Fleet
-    val apex    = fleet.authPod()
-    val sibling = fleet.authPod()
-
-    status(sibling.me()(as(aliceSession)(FakeRequest("GET", "/api/me")))) shouldBe OK
-    val revoke = apex.revokeSessions()(as(aliceSession)(FakeRequest("POST", "/auth/sessions/revoke")))
-    val reissued = session(revoke)
-
-    status(sibling.me()(as(reissued)(FakeRequest("GET", "/api/me")))) shouldBe OK
   }
 }

@@ -46,7 +46,7 @@ trait UserRepository {
    *  revoke already killed. A store that could not write answers `user`. */
   def upsert(user: User): User
 
-  /** "Sign out everywhere": bump `id`'s `sessionVersion` by one in ONE atomic
+  /** Logout, which signs out everywhere: bump `id`'s `sessionVersion` by one in ONE atomic
    *  step and answer the row right after it — `None` when there is no such row
    *  (or the store could not write). Never a read-then-write, which two
    *  requests at once could each bump to the same value. */
