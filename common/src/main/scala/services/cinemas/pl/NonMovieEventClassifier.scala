@@ -80,25 +80,47 @@ object NonMovieEventClassifier {
    *     comedy shows, karaoke, a church service, a tournament, a day/festival pass, a closed day;
    *   - talked: a reading, a lecture, a quiz, a slam — only standing alone, since a venue bolts them onto a film
    *     as often ("Becoming Kim + Filmgespräch", "Zeise Shortfilm Slam", "Saw (Horror-Filmnacht Special-Quiz)"),
-   *     the same rule as [[isStandaloneDiscussion]]. */
+   *     the same rule as [[isStandaloneDiscussion]];
+   *   - billed: a venue's own stage act named by its performer, read only where the billing says so (DE recording
+   *     of 2026-10-12) — a comedian's "neues Programm", a "LIVE:" night, a "Tour 2027", a trio, duo or "feat.", a
+   *     magic show, a puppet theatre, a "Buchlesung" or "Multivisionsvortrag" (compounds end in the word). A name
+   *     with nothing beside it ("Andy Strauß") stays: the title cannot tell an act from a film. */
   private val NeutralPerformanceMarkers = List(
-    """^konzert(?:lesung)?\b(?!-)""".r,
-    """\bkabarett""".r,
+    """(?:^|[:|]\s*)konzert(?:lesung)?\b(?!-)""".r,
+    """(?:benefiz|jubiläums|advents|tango)konzert""".r,
+    """konzerte?\s+mit\b""".r,
+    """kabarett""".r,                       // "Musikkabarett", "Frauenkabarett": compounds too
     """\bimprotheater\b""".r,
+    """\bimpro[\s-]?(?:show|festival)""".r,
     """\btheatersport\b""".r,
-    """\bcomedy[\s-]+(?:show|night|slam|live|abend)\b""".r,
+    """(?:kasperl|figuren|kinder|puppen|schatten|laienspiel-?)theater|puppenspiel|theaterveranstaltung""".r,
+    """\bcomedy[\s-]*(?:show|night|slam|live|abend)\b""".r,
     """\bstand[\s-]?up\b""".r,
     """\bkaraoke\b""".r,
     """^gottesdienst\b""".r,
+    """andacht\b""".r,                      // "Musikalische Abendandacht"
     """turnier\b""".r,                      // "Tischkickerturnier": compounds end in it
     """\btages(?:ticket|karte)\b""".r,
     """\bfestival[\s-]?pass\b""".r,
-    """\bruhetag\b""".r
+    """\bruhetag\b""".r,
+    // An act billed by its programme or its band rather than by a film:
+    """\bneue[nms]?\s+programm""".r,        // "Philipp Weber mit seinem neuen Programm „ABMARSCH!…“"
+    """\bjahresrückblick""".r,              // "Holger Paetz … der satirische Jahresrückblick"
+    """^live:\s""".r,                       // "LIVE: SBB – SMALL BIG BAND" — not "Berliner Philharmoniker LIVE: …", a relay
+    """\btribute[\s-]+(?:band|show|abend|by)\b""".r, // not "Die Tribute von Panem"
+    """\bbig\s?band\b|houseband\b|\bfeat\.\s""".r, // not a bare "& Band": "Dieter Thomas Kuhn & Band" is a documentary
+    """(?<!\b(?:das|die|der|the|ein|a) )\b(?:trio|duo)\b""".r, // not "Das Trio" (1998), nor a "Quartett" (2013)
+    """zauber(?:kunst|show|keller|ei\b)|travestie""".r
   )
   private val NeutralTalkMarkers = List(
-    """\blesung\b""".r,
-    """\bvortrag\b""".r,
-    """\bquiz\b""".r,
+    """lesung\b""".r,                       // "Buchlesung", "Märchenlesung", "Premierenlesung"
+    """\bleseshow""".r,
+    """\bliest\s+(?:aus|was|vor|die|der|das|den)\b""".r, // "Melanie Raabe liest aus: Daisy"
+    """vortrag\b""".r,                      // "Fachvortrag", "Multivisionsvortrag"
+    """\bmultivision|live-reportage""".r,   // a travel photographer's slide show, presented live
+    """\btour\s+20\d\d\b""".r,              // "Moritz Hohl: Musst du wissen – Tour 2027" (a "Kurz Film Tour 2026" names its films)
+    """\bworkshops?\b""".r,
+    """\bquiz""".r,                         // "QuizKino Live", "Quizlabor Leipzig"
     """\bslam\b(?![\s-]*dunk)""".r
   )
   private val FilmMention = """film""".r
@@ -106,7 +128,7 @@ object NonMovieEventClassifier {
   /** The broadcast veto without its bare " live": a comedy night bills itself "Comedy LIVE!", a karaoke night
    *  "Karaoke LIVE", and neither is a broadcast. The named broadcasts (Met, Royal Ballet & Opera, NT Live, André
    *  Rieu) still veto. Lazy: [[BroadcastMarkers]] is defined further down this object. */
-  private lazy val NeutralBroadcastVeto = BroadcastMarkers.filterNot(_ == " live")
+  private lazy val NeutralBroadcastVeto = BroadcastMarkers.filterNot(_ == " live") :+ "live viewing"
 
   /** Whether `title` is no screening at all, by what a feed in any language may read: a mystery screening, or a
    *  [[NeutralPerformanceMarkers]] / standalone [[NeutralTalkMarkers]] event — never a screened broadcast. What the

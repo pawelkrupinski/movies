@@ -312,6 +312,34 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
     ).foreach(t => withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe true))
   }
 
+  it should "drop a stage act a German venue bills by its performer, programme, band or show" in {
+    // The DE recording of 2026-10-12 (Cineamo / kinoheld / Filmstarts): acts with no film record, unmatched.
+    Seq(
+      "Philipp Weber mit seinem neuen Programm „ABMARSCH! Zum Gipfel der Frechheit“", "WELTHITS AUF HESSISCH - NEUES PROGRAMM",
+      "SATIRISCHER JAHRESRÜCKBLICK von SEVERIN GROEBNER", "LIVE: SBB – SMALL BIG BAND", "Moritz Hohl: Musst du wissen – Tour 2027",
+      "QUOTIME - STATUS QUO TRIBUTE BAND", "ELVIS - TRIBUTE ABEND", "Hamburg Blues Band feat. Will Wilde",
+      "Robbin Kapsalis & Grand Jam Houseband", "Hanne Kah Duo", "Ansa Sauermann Trio: Keine weiteren Fragen",
+      "Benefizkonzert STERNSTUNDEN in der Heilig-Kreuz-Kirche", "fdsmusicdays: Konzert mit Anne Haigis",
+      "Zugvogeltage: Konzert: Nordischer Zugfolk mit DreyBartLang", "Elegant im Porzellanladen - Musikkabarett Schwarze Grütze",
+      "BRAIN LOADING – Die Comedy-Improshow", "Queer Me Up Comedyshow", "KASPERLTHEATER ZIRBELZUNDER: DER KUCHENDIEB",
+      "Pipi Langstrumpf - Figurentheater Ingolstadt", "SCHNEEWITTCHEN - THEATERVERANSTALTUNG", "Zaubershow für Kinder - Zauberkunst hoch²",
+      "Mindtrix - Zauberei & Mentalmagie", "Täuschungsmanöver Travestie Show", "Musikalische Abendandacht",
+      "Buchlesung: Der Kardiologe - Protokoll eines Verbrechens", "Melanie Raabe liest aus: Daisy - und all deine Geheimnisse werden mir gehören",
+      "ABENTEUER HIMALAYA - MULTIVISIONSVORTRAG", "Marokko (Live-Reportage)", "WORKSHOP: SOUND DESIGN", "QuizKino Live"
+    ).foreach(t => withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe true))
+  }
+
+  it should "keep the films and relays those billings resemble" in {
+    // Real films and broadcasts across the five recorded corpora of 2026-10-12, each carrying a film record.
+    Seq(
+      "Das weiße Band", "Und es war Sommer - Dieter Thomas Kuhn & Band", "Quartett", "Com Felipe Quartett", "Das Trio",
+      "Berliner Philharmoniker LIVE: Das Silvesterkonzert 2026-27", "Berliner Philharmoniker LIVE: New Year’s Eve Concert 2025",
+      "RB&O Live: Tosca (Oper)", "Ralph Turnheim live: Der Seeräuber (1926)", "Kurz Film Tour 2026 - Rolle 3",
+      "BTS World Tour Arirang - Live Viewing", "Kinokonzert: Mut zum Leben", "Live - Vortrag: Portugal - Der Wanderfilm:",
+      "WORKSHOP: FILMDREH", "Kino Workshop für Kinder + Film: Der wilde Roboter", "Die Tribute von Panem - Mockingjay: Teil 1"
+    ).foreach(t => withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe false))
+  }
+
   it should "keep films, concert films, broadcasts and a film with its talk bolted on" in {
     Seq(
       "Konzert-Special: Ozzy & Black Sabbath: Back To The Beginning", "Rammstein – Live in Mexico City", "Stummfilm-Konzert",
