@@ -88,6 +88,15 @@ class JdkParityOptionsSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // Not a JDK 25 parity row, but the same question asked of the same launcher: does the worker's
+  // options file leave the flag set once the JVM has read it. Without a pre-touch the heap is
+  // committed at boot and paged in only on first use, so worker-pl's RSS stepped +120 MB minutes into
+  // a boot (2026-10-07 22:06, 10-12 01:22: the off-book gap -45 -> +76 MB) and that bounded step read
+  // as a climb to JvmResidentNearContainerLimit's predict_linear.
+  "the worker JVM" should "page its whole heap in at boot, so its RSS does not step up when the heap is first used" in {
+    finalFlags(Seq("jdk25-parity.options", "worker.options").flatMap(options)).get("AlwaysPreTouch") shouldBe Some("true")
+  }
+
   "the TLS client" should "offer JDK 25's key-exchange groups, without the post-quantum hybrid in front" in {
     val tls = run(options("jdk25-parity.options") ++ Seq("-XshowSettings:security:tls", "-version"))
     val groups = tls.linesIterator.dropWhile(!_.contains("Enabled Named Groups")).drop(1)

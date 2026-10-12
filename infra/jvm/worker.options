@@ -30,3 +30,9 @@
 # peak 30 s ~1.25 cores (was 1.4-2.1); at 3, us JIT at 5 min -16% more (77-95 -> 68-84 s); neither cost
 # CPU 10-30 minutes after boot. 4 measured no different from 3 on us/pl/uk boots, so 3 it stays.
 -XX:CompileThresholdScaling=3
+# Page the whole heap in at boot rather than on first use. -Xms equals -Xmx, so the heap is committed
+# from the start but its pages reach RSS only when first written: worker-pl's RSS stepped +120 MB
+# 13-23 minutes into a boot (2026-10-07 22:06, 10-12 01:22 -- NMT's committed total unchanged, the
+# off-book gap -45 -> +76 MB), and that bounded step read as a climb on JvmResidentNearContainerLimit's
+# 30-minute predict_linear. Touching ~0.5-1.2 GB costs well under a second of a boot.
+-XX:+AlwaysPreTouch
