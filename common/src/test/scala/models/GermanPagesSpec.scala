@@ -149,5 +149,12 @@ class GermanPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
     GermanRoster.theaterIdByCinema(venue("UCI Bochum")) shouldBe "A1216"   // the id sweep's: Filmstarts lists it
   }
 
+  // Filmstarts still lists the Central at its old Maxstrasse address beside its present
+  // one in the Bürgerbräu; only the second has a programme (data/germany/retired.json).
+  "a cinema that moved" should "be on its page once, at its present address" in {
+    page("wuerzburg").cinemas.map(_.displayName) should contain theSameElementsAs Seq(
+      "Central im Bürgerbräu", "CinemaxX Würzburg")
+  }
+
   private def forAll[A](xs: Iterable[A])(f: A => Unit): Unit = org.scalatest.Inspectors.forAll(xs)(f)
 }

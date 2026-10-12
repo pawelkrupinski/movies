@@ -1,6 +1,6 @@
 // GENERATED from data/germany/pages.json by data/germany/scripts/generate_roster.py
 // — do NOT edit by hand. Full German cinema roster: 448 pages over 16 Bundesländer /
-// 1,543 cinemas (Filmstarts, and the ones only Cineamo or kinoheld list). Regenerate after adding venues or re-clustering;
+// 1,542 cinemas (Filmstarts, and the ones only Cineamo or kinoheld list). Regenerate after adding venues or re-clustering;
 // see data/germany/README.md.
 package models
 
@@ -582,7 +582,6 @@ private[models] object GermanRosterData {
   ))
   private def p_wuerzburg: R = ("wuerzburg", "wuerzburg-bayern", "Würzburg", "Bayern", 49.7939, 9.9512, false, Seq("Würzburg"), Seq(
     ("Central im Bürgerbräu", "Central im Bürgerbräu", "A2742", Some("/kino/wuerzburg/central-im-buergerbraeu-88817"), "Würzburg"),
-    ("Central Programmkino", "Central Programmkino", "A2621", Some("/kino/wuerzburg/central-78717"), "Würzburg"),
     ("CinemaxX Würzburg", "CinemaxX Würzburg", "A0263", Some("/kino/wuerzburg/cinemaxx-38998"), "Würzburg")
   ))
   private def p_fuerth: R = ("fuerth", "fuerth-bayern", "Fürth", "Bayern", 49.4759, 10.9886, false, Seq("Fürth"), Seq(

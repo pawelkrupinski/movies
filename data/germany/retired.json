@@ -322,5 +322,11 @@
     "reason": "not-a-cinema",
     "retiredOn": "2026-10-12",
     "evidence": "A stage theatre (Kammerspiele Landshut, Bauhofstrasse 1), not a cinema (https://en.wikipedia.org/wiki/Kleines_theater_%E2%80%93_Kammerspiele_Landshut); no film programme on any source."
+  },
+  "A2621": {
+    "name": "Central Programmkino",
+    "reason": "duplicate",
+    "retiredOn": "2026-10-12",
+    "evidence": "The Central's old Maxstrasse 2 listing; the cinema is now Central im Buergerbraeu (A2742, Frankfurter Str. 87), rostered and served (Cineamo 1081). Its site central-bb.de sells through kinoheld's 'central-programmkino' (cinema MTI5MzIwNA in its sitefactory, 133 shows to 2027-06 on 2026-10-12) -- the same slug as kinoheld 1067, A2742's. A2621 has no showtimes on any source."
   }
 }
