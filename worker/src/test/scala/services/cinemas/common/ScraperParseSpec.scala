@@ -60,6 +60,7 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
   it should "not take a word after the clock that merely starts with a marker as one" in {
     def read(text: String) = ScraperParse.meridiemClockIn(text)
     read("12:00 Amazing Grace") shouldBe Some(LocalTime.of(12, 0))
+    read("12:00 Amélie") shouldBe Some(LocalTime.of(12, 0))
     read("7:00 AMC relay") shouldBe Some(LocalTime.of(7, 0))
     read("3:15 Pmplus") shouldBe Some(LocalTime.of(3, 15))
     read("3:30pm, Screen 2") shouldBe Some(LocalTime.of(15, 30))

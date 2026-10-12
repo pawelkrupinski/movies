@@ -140,7 +140,7 @@ private[cinemas] object ScraperParse {
     }
 
   // The marker must end its word: "12:00 Amazing Grace" is noon, not midnight.
-  private val MeridiemClock = raw"""(?i)$ClockPartsDotted\s*([ap]\.?m\.?(?![a-z]))?""".r
+  private val MeridiemClock = raw"""(?i)$ClockPartsDotted\s*([ap]\.?m\.?(?!\p{L}))?""".r
 
   /** The first clock in `text`, colon or dot, 24-hour or marked as [[meridiemClockAt]] reads
     * it: "16:00", "3:30pm", "7.45 P.M.". */
