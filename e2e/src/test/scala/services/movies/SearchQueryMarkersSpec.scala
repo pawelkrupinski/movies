@@ -24,7 +24,6 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
   import SearchQueryMarkersSpec._
 
   private val NoFilmToFind = "an event billing with no film a title search could find"
-  private val Strand = "TODO(rule): a strand suffix after the format tag, so FormatTags' end-anchored strip misses it — parked"
 
   protected def rule = "search every listing without a screening marker"
 
@@ -66,7 +65,26 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
       "TODO(rule): a festival banner AND a glued '+napisy SDH' accessibility tail on one listing — parked",
     AllowedListing.anywhere("WORLD OF ANIMATION: SPIRITED AWAY (SUBTITLED) - DRAG BRUNCH") ->
       s"a drag brunch billed with a strand and a film: an event plus a film matches neither (the double-bill rule)",
-  )
+    AllowedListing.anywhere("Hope Sneak") ->
+      "TODO(rule): a sneak of the film Hope (Na Hong-jin, 2025); a bare ' Sneak' suffix strip would equally search a venue's branded sneak ('Movietown Sneak') as a film — parked",
+    AllowedListing.anywhere("Movietown Sneak") -> s"a sneak branded with the venue's name: $NoFilmToFind",
+    AllowedListing.anywhere("SPECIAL: Filmrausch Sneak") -> s"a sneak branded with the venue's name: $NoFilmToFind",
+    AllowedListing.anywhere("endstation.sneak.abend") -> s"a sneak night branded with the venue's name: $NoFilmToFind",
+    AllowedListing.anywhere("Sneak_nov + Filmquiz") -> s"November's sneak with a film quiz: $NoFilmToFind",
+    AllowedListing.anywhere("Classic Sneak – Couples") -> s"a classics sneak's theme, its film undisclosed: $NoFilmToFind",
+    AllowedListing.anywhere("Classic Sneak – From Asia with Love") -> s"a classics sneak's theme, its film undisclosed: $NoFilmToFind",
+    AllowedListing.anywhere("Classic Sneak – Melodrama") -> s"a classics sneak's theme, its film undisclosed: $NoFilmToFind",
+    AllowedListing.anywhere("HARD BOILED -chin./engl.OmU-Nachtstudio-") ->
+      "TODO(rule): languages, version and a strand glued into one dash-run behind the film (Apollo Hannover) — parked",
+  ) ++ DroppedByTheClients.map(AllowedListing.anywhere(_) -> DroppedOnReRecord)
+
+  /** Listings the German clients drop as no screening at all since the 2026-10-12 recording was made
+   *  (`NonMovieEventClassifier.isNonScreening`: a sneak billed with no film, a day pass): a re-record stops carrying them. */
+  override protected def awaitingReRecord: Set[AllowedListing] = DroppedByTheClients.map(AllowedListing.anywhere).toSet
+
+  "every listing awaiting a re-record" should "be one the clients now drop as no screening" in {
+    DroppedByTheClients.filterNot(services.cinemas.pl.NonMovieEventClassifier.isNonScreening) shouldBe empty
+  }
 
   "the marker matcher" should "find each screening marker the rules strip, and nothing in a plain title" in {
     markersIn(Country.Poland, "Lalka | 13+ | PREMIERA!!!") shouldBe Seq("premiera")
@@ -92,6 +110,15 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
 }
 
 object SearchQueryMarkersSpec {
+
+  private val DroppedOnReRecord = "no screening, which the German clients now drop (NonMovieEventClassifier.isNonScreening) — the recording predates the drop"
+
+  /** The 2026-10-12 DE recording's sneaks billed with no film and its day passes. */
+  private val DroppedByTheClients: Seq[String] = Seq("Sneak", "Sneak OV", "Kult-Sneak", "Kult Sneak FSK 16", "Horror Sneak",
+    "Horror Sneak FSK 18", "Sneak FSK 18", "Classic Sneak", "CLASSIC SNEAK", "Retro Sneak", "Cult Sneak of Horror", "SNEAK 1343",
+    "OV-Sneak", "OV Sneak: The surprise preview", "The Original Sneak", "Original Sneak - Mystery Movie", "Sneak KW 43 26",
+    "DIE KULT SNEAK KW 44 26", "DIE SNEAK DES JAHRES", "DIE SNEAK DES JAHRES [OmU]",
+    "DF Tagesticket 3.11.26", "DF Tagesticket 4.11.26", "DF Tagesticket 5.11.26", "DF Tagesticket 6.11.26", "DF Tagesticket 7.11.26")
 
   /** A marker word or phrase, matched case-insensitively as whole words. */
   private def phrase(text: String): (String, Regex) =

@@ -38,7 +38,7 @@ object FormatTags {
     "sub" -> "SUB", "subs" -> "SUB", "subtitled" -> "SUB", "subtitles" -> "SUB", "dubbed" -> "DUB",
     "35mm" -> "35MM", "70mm" -> "70MM", "4k" -> "4K",
     // Germany's language versions, which its venues write into the title as often as into a field.
-    "ov" -> "OV", "omu" -> "OmU", "omeu" -> "OmeU", "df" -> "DF"
+    "ov" -> "OV", "omu" -> "OmU", "omeu" -> "OmeU", "df" -> "DF", "originalversion" -> "OV"
   )
 
   // FORMAT/version words only — screen format (2D/3D/IMAX/4DX/Dolby/Atmos) and
@@ -52,14 +52,14 @@ object FormatTags {
     "2d", "3d", "imax", "4dx", "dolby", "atmos",
     "dubbing", "dubb", "dub", "napisy", "nap", "lektor", "lek",
     "sub", "subs", "subtitled", "subtitles", "dubbed", "35mm", "70mm", "4k",
-    "ov", "omu", "omeu", "df", "engl")
+    "ov", "omu", "omeu", "df", "engl", "originalversion")
   private val FormatSeparators = Set("-", "–", "—", "|", "/", ":")
   // "… - ON 35MM", "… in 70mm", Kino Kolory's "REQUIEM DLA SNU w 4K": the print is billed with a preposition,
   // which goes with it (left behind, the title ended "REQUIEM DLA SNU w").
   private val PrintPreposition = """(?i)\s+(?:on|in|w)\s+(\d{2}mm|4k)\s*$""".r
   private val FormatBracketTag = """\s*\[[^\]]*\]\s*$""".r
   private val FormatParenTag   =
-    """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|ATMOS|4DX|dubbing|napisy|lektor|dubbed|subtitled|subtitles|35mm|70mm|4K(?!\s*restor)|OV|OmU|OmeU)\b[^)]*)\)\s*$""".r
+    """(?i)\s*\((?:[^)]*\b(?:2D|3D|IMAX|DOLBY|ATMOS|4DX|dubbing|napisy|lektor|dubbed|subtitled|subtitles|35mm|70mm|4K(?!\s*restor)|OV|OmU|OmeU|Originalversion)\b[^)]*)\)\s*$""".r
   // German venues spell the original version out in brackets — "Verity (Original English Version)", "The Rocky
   // Horror Picture Show (1975/Original English Version)" — and bracket a hyphenated screen, "Forgotten Island
   // (3-D)". Both are rewritten to their token's own word before the strips, inside brackets only: a bare "3-D" is
@@ -91,6 +91,9 @@ object FormatTags {
   // drops like "Digger - OmU"; the space before it keeps a hyphenated title ("Spider-Man") whole.
   private val GluedFormatDash =
     ("(?i)\\s[-–](?=(?:" + FormatVersionWords.toSeq.sortBy(-_.length).mkString("|") + """)\b)""").r
+  // …or by a bare hyphen, with no space at all — "Glaube-OmU" (Kino Utopia, DE recording 2026-10-12). Only a German
+  // version word in its own casing and at the very end, so "Spider-Man" and "X-Men" stay whole.
+  private val GluedVersionHyphen = """(?<=\p{L})-(?=(?:OmeU|OmU|OV)$)""".r
 
   // Ukrainian-screening guard (see class doc). `DubLektorWord` are the guarded
   // trailing tokens; `UaWord` is the exact preceding token; `UaGuardedTag` matches
@@ -145,7 +148,7 @@ object FormatTags {
   def extractFormatTags(raw: String): (String, List[String]) = {
     val spelled = BracketedHyphenatedScreen.replaceAllIn(BracketedOriginalVersion.replaceAllIn(raw, "OV"), "($1D)")
     var t    = PrintPreposition.replaceAllIn(GluedFormatDash.replaceAllIn(GluedFormatSlash.replaceAllIn(
-                 GluedFormatUnderscore.replaceAllIn(spelled.replaceAll("\\s+", " ").trim, " "), " "), " - "), " $1")
+                 GluedFormatUnderscore.replaceAllIn(GluedVersionHyphen.replaceAllIn(spelled.replaceAll("\\s+", " ").trim, " - "), " "), " "), " - "), " $1")
     var previous = ""
     val dropped = scala.collection.mutable.Set.empty[String]
     def uaGuarded(tag: String): Boolean = UaGuardedTag.findFirstIn(tag).isDefined

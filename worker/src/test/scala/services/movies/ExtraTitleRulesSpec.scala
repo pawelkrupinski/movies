@@ -1176,6 +1176,55 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  /** Listings of the 2026-10-12 German recording whose TMDB query kept a screening marker
+   *  (SearchQueryMarkersSpec over the recorded corpus): a preview / Vorpremiere billed before or after its film, and
+   *  a language version written inside the title rather than at its end. Through the whole query path. */
+  private val germanScreeningMarkerListings: Seq[(String, String)] = Seq(
+    "Preview: Dune: Part Three"                                             -> "Dune: Part Three",
+    "IMAX-Preview: Godzilla Minus Zero"                                     -> "Godzilla Minus Zero",
+    "Early Fan Preview - Dune: Part Three"                                  -> "Dune: Part Three",
+    "OV: Early Fan Preview - Dune: Part Three 70mm"                         -> "Dune: Part Three",
+    "CINEVILLE PREVIEW: LA BOLA NEGRA"                                      -> "La bola negra",
+    "Der perfekte Urlaub - CineLady Preview"                                -> "Der perfekte Urlaub",
+    "Dune: Part Three (Early Fan Preview)"                                  -> "Dune: Part Three",
+    "Dune: Part Three (auch Early Fan Preview)"                             -> "Dune: Part Three",
+    "Der Perfekte Urlaub (auch All Inclusive Preview)"                      -> "Der Perfekte Urlaub",
+    "Dune: Part Three PREVIEW"                                              -> "Dune: Part Three",
+    "Dune: Part Three EARLY FAN PREVIEW"                                    -> "Dune: Part Three",
+    "Dune: Part Three Originalversion EARLY FAN PREVIEW"                    -> "Dune: Part Three",
+    "3D Avengers: Doomsday Mitternachtspreview"                             -> "Avengers: Doomsday",
+    "Prosecco Vorpremiere: Der Perfekte Urlaub"                             -> "Der Perfekte Urlaub",
+    "Clayface Vorpremiere"                                                  -> "Clayface",
+    "Dune: Part Three  Vorpremiere"                                         -> "Dune: Part Three",
+    "CLUB KIDMonGay-Vorpremiere"                                            -> "CLUB KIDMonGay",
+    "Rascal Does Not Dream of a Dear Friend (OmU) - CineAnime"              -> "Rascal Does Not Dream of a Dear Friend - CineAnime",
+    "Türkische Filmtage: Bildigin Gibi Degil (OmeU) - Not what you think"   -> "Türkische Filmtage: Bildigin Gibi Degil - Not what you think",
+    "Halloween - Special: Shining (OmU) (Extended Cut)"                     -> "Halloween - Special: Shining (Extended Cut)",
+    "Herr der Ringe Ext. OV Trilogie"                                       -> "Herr der Ringe Ext. Trilogie",
+    "Spiderman - 2D engl OV Brand New Day -"                                -> "Spiderman - Brand New Day",
+    "Corpus Delicti (deutsch with English subs)"                            -> "Corpus Delicti"
+  )
+
+  "A screening marker the 2026-10-12 German recording billed" should "leave the listing's search query" in {
+    val titles = new TitleNormalizer(withExtras)
+    germanScreeningMarkerListings.foreach { case (raw, query) =>
+      withClue(s"searchQuery of '$raw': ")(listingQuery(titles, models.KinoCentrum3D, raw) shouldBe query)
+    }
+  }
+
+  it should "be load-bearing — the seed rules alone search the marker along" in {
+    val titles = new TitleNormalizer(seedOnly)
+    germanScreeningMarkerListings.foreach { case (raw, query) =>
+      withClue(s"seed searchQuery of '$raw': ")(listingQuery(titles, models.KinoCentrum3D, raw) should not be query)
+    }
+  }
+
+  it should "leave a title that merely contains the words alone" in {
+    Seq("The Preview Man", "Previews of Coming Attractions", "Sneak Preview", "Jaws 3-D", "OVO", "Love Actually").foreach { t =>
+      withClue(s"search('$t') unchanged: ")(withExtras.search(t) shouldBe t)
+    }
+  }
+
   /** Listings of the 2026-10-08 UK recording whose TMDB query kept a screening marker: a Showcase
    *  re-release billed with its print and an anniversary note, in either order. Through the whole query path. */
   private val anniversaryReleaseListings: Seq[((models.Cinema, String), String)] = Seq(

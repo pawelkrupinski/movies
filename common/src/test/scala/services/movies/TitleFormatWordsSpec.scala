@@ -59,6 +59,17 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("The Rocky Horror Picture Show (1975/Original English Version)") shouldBe ("The Rocky Horror Picture Show", List("OV"))
   }
 
+  // The DE recording of 2026-10-12: a version glued to the title by a bare hyphen (Kino Utopia), or spelled as one word
+  // (Das Lumen Solingen, CineStar Cubix's "(Hebr. Originalversion mit engl. UT)").
+  it should "come off glued to the title, or spelled as one word" in {
+    FormatTags.extractFormatTags("Glaube-OmU") shouldBe ("Glaube", List("OmU"))
+    FormatTags.extractFormatTags("Dune: Part Three Originalversion") shouldBe ("Dune: Part Three", List("OV"))
+    FormatTags.extractFormatTags("Checkout (Hebr. Originalversion mit engl. UT)") shouldBe ("Checkout", List("OV"))
+    // Only a version word glued at the very end: a hyphenated title keeps its hyphen.
+    FormatTags.extractFormatTags("Spider-Man")._1 shouldBe "Spider-Man"
+    FormatTags.extractFormatTags("X-OVerdrive")._1 shouldBe "X-OVerdrive"
+  }
+
   it should "come off in FRONT of the title too, alone or beside a screen format" in {
     FormatTags.extractFormatTags("OV: Digger") shouldBe ("Digger", List("OV"))
     FormatTags.extractFormatTags("OmU: Rascal Does Not Dream of a Dear Friend") shouldBe ("Rascal Does Not Dream of a Dear Friend", List("OmU"))

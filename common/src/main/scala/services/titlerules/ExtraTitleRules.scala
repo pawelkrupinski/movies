@@ -715,7 +715,7 @@ object ExtraTitleRules {
     // subtitles]') shapes and the 'eng' abbreviation. Anchored on a leading
     // separator + the exact 'subtitles' keyword so a real title can't be amputated.
     // (Sakr w Canaria → TMDB 1358036, Fatherland (Ojczyzna) → 1437696.)
-    searchStrip("xtra-english-subtitles-suffix",    """(?iu)\s*[-–—\[(]\s*\+?\s*eng(?:lish)?\s+sub(?:s|titles)?(?:\s+only)?\s*[\])]?\s*$""", "'<film> - english subtitles' / '<film> [eng subtitles only]' English-subtitled-screening marker — sibling of xtra-ukrainski-lang-suffix; query-only strip so the EN-subtitle screening keeps its own row but resolves the base film (Sakr w Canaria → TMDB 1358036, Fatherland (Ojczyzna) → 1437696)"),
+    searchStrip("xtra-english-subtitles-suffix",    """(?iu)\s*[-–—\[(]\s*\+?\s*(?:(?<=[\[(])\p{L}+\s+with\s+)?eng(?:lish)?\s+sub(?:s|titles)?(?:\s+only)?\s*[\])]?\s*$""", "'<film> - english subtitles' / '<film> [eng subtitles only]' / '<film> (deutsch with English subs)' English-subtitled-screening marker — sibling of xtra-ukrainski-lang-suffix; query-only strip so the EN-subtitle screening keeps its own row but resolves the base film (Sakr w Canaria → TMDB 1358036, Fatherland (Ojczyzna) → 1437696)"),
     // The same marker in Polish — '<film> (z angielskimi napisami)' (Kino TOMI) — which
     // the paren format strip misses ("napisami" is not the "napisy" token). Same
     // treatment: own row, query stripped to the base film.
@@ -812,6 +812,31 @@ object ExtraTitleRules {
     // An encore is a repeat showing of a broadcast, never part of its title: US "The Metropolitan Opera: Così fan
     // tutte ENCORE (2026)" ×7 found nothing on TMDB until the word came off. Never the whole title ("Encore").
     searchStrip("xtra-encore-suffix",              """(?i)(?<=\S)\s+encore(?=\s*(?:\(\d{4}\))?\s*$)""", "'<broadcast> ENCORE (2026)' encore-screening tag"),
+    // A preview billed with its film, in German and English programmes alike: the DE recording of 2026-10-12 searched
+    // "Preview: Dune: Part Three" ×23, "Der perfekte Urlaub - CineLady Preview" ×25 and a dozen other spellings, and
+    // found nothing. A preview with NO film ("Sneak Preview") is the clients' to drop (NonMovieEventClassifier).
+    // In front: up to two words and the "preview" closed by a separator. Behind: after a separator, or in brackets,
+    // up to three qualifier words; bare, only the "early fan" / "all inclusive" qualifiers or a "…preview" compound,
+    // so a film's own last words are never taken for a qualifier — and never a bare "Sneak Preview", which names none.
+    searchStrip("xtra-preview-prefix",             """(?iu)^(?:[\p{L}\p{N}]+[\s-]+){0,2}\p{L}*preview\s*[:–—-]\s*(?=\S)""",
+      "'Preview: <film>' / 'IMAX-Preview: <film>' / 'Early Fan Preview - <film>' / 'CINEVILLE PREVIEW: <film>' (DE 2026-10-12: CineStar, Astor, IL KINO)"),
+    searchStrip("xtra-preview-suffix",             """(?iu)(?:\s*[-–—|]\s*(?:[\p{L}\p{N}]+\s+){0,3}|\s*\(\s*(?:[\p{L}\p{N}]+\s+){0,3}(?=\p{L}*preview\s*\)\s*$)|(?<=\S)(?<!sneak)\s+(?:(?:early\s+)?fan\s+|all\s+inclusive\s+)?)\p{L}*preview\s*\)?\s*$""",
+      "'<film> - CineLady Preview' / '<film> (auch Early Fan Preview)' / '<film> EARLY FAN PREVIEW' / '<film> Mitternachtspreview' (DE 2026-10-12: CineStar, Studio Bielefeld, Das Lumen, CineCenter)"),
+    searchStrip("xtra-vorpremiere-prefix",         """(?iu)^(?:\p{L}+\s+)?vorpremiere\s*:\s*""",
+      "'Vorpremiere: <film>' / 'Prosecco Vorpremiere: <film>' German pre-premiere banner (DE 2026-10-12: Burg-Theater Uetersen)"),
+    searchStrip("xtra-vorpremiere-suffix",         """(?iu)(?<=\S)\s*[-–—]?\s*vorpremiere\s*$""",
+      "'<film> Vorpremiere' / '<film>-Vorpremiere' German pre-premiere tag (DE 2026-10-12: Multiplex Gelsenkirchen, Schauburg, Apollo Hannover)"),
+    // A German language version written INSIDE the title, where FormatTags' end-anchored peel cannot reach: a bracketed
+    // tag before a strand, an alternate title or a second bracket ("Rascal Does Not Dream of a Dear Friend (OmU) -
+    // CineAnime", "Shining (OmU) (Extended Cut)"), or a bare tag between a film's words, with the screen and language
+    // words billed beside it ("Spiderman - 2D engl OV Brand New Day"). In their own casing only: re-cased, a shouted
+    // title's "OV" is lower-case, and "OVO" or "Love" never match a whole word.
+    searchStrip("xtra-inner-version-bracket",      """(?u)\s*[(\[]\s*(?:OmeU|OmdU|OmU|OV)\s*[)\]](?=\s*\S)""",
+      "'<film> (OmU) - <strand>' / '<film> (OmU) (Extended Cut)' bracketed version inside the title (DE 2026-10-12: CineStar CineAnime, Türkische Filmtage, Club Manufaktur)"),
+    searchStrip("xtra-inner-version-word",         """(?u)(?:\s+(?:[23]D|engl\.?|dt\.?))*\s+(?:OmeU|OmdU|OmU|OV)(?=\s+\p{L})""",
+      "'<film> 2D engl OV <rest>' bare version between a film's words (DE 2026-10-12: Luxor Heidelberg Spiderman, Cineplex Herr der Ringe Ext. OV Trilogie)"),
+    searchStrip("xtra-leading-bare-screen",        """(?iu)^[23]d\s+(?=\p{L})""",
+      "'3D <film>' screen format in front with no separator (any case: searchQuery's re-casing may lower it) (DE 2026-10-12: CineCenter Cloppenburg 3D Avengers: Doomsday)"),
     // The four below run last, after every separated premiere / pokaz / format strip has taken its whole spelling.
     // A chain's event-programme label after the film ("Godzilla Minus Zero (IMAX) - Event Projekt", every
     // Helios venue), then a parenthesised screening-event note ("(specjalny przedpremierowy pokaz nocny)")
