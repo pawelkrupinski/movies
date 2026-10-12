@@ -94,7 +94,15 @@ if [ "$MODE" = "local" ]; then
 else
   ensure_vault_env MONGODB_URI -- "$BASH" "$0" "$@" || exit 1
   URI="$(prod_tunnel_uri "$MONGODB_URI")"
-  DB="${MONGODB_DB:-kinowo}"
+  # The database is the COUNTRY's (models.Country.mongoDb): Poland's is `kinowo`, every other
+  # `kinowo_<cc>`. It must be the one whose web/worker get scaled to zero below, so an exported
+  # MONGODB_DB naming another country's is refused rather than wiped while that country serves.
+  if [ "$COUNTRY" = pl ]; then country_db=kinowo; else country_db="kinowo_$COUNTRY"; fi
+  if [ -n "${MONGODB_DB:-}" ] && [ "$MONGODB_DB" != "$country_db" ]; then
+    echo "[reset] MONGODB_DB=$MONGODB_DB is not $COUNTRY's database ($country_db) — refusing" >&2
+    exit 1
+  fi
+  DB="$country_db"
 fi
 
 echo "[reset] $MODE — target db '$DB'; ${DRY:+would }drop: ${COLLECTIONS[*]}"
