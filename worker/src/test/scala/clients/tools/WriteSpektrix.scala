@@ -51,11 +51,12 @@ object WriteSpektrix {
     ("dundeeca", DundeeContemporaryArtsDCA, None),
     ("tynesidecinema", TynesideNewcastle, None),
     ("warwickartscentre", WarwickArtsCentreCoventry, None),
-    ("showroomworkstation", ShowroomSheffield, None)
+    ("showroomworkstation", ShowroomSheffield, None),
+    ("theploughartscentre", PloughArtsCentreTorrington, None)
   )
 
   /** The clients SpektrixClientSpec replays; the rest are fetched to measure only. */
-  private val Recorded = Set("ica", "galadurham", "broadwaynottingham", "theatresevern")
+  private val Recorded = Set("ica", "galadurham", "broadwaynottingham", "theatresevern", "theploughartscentre")
 
   def main(args: Array[String]): Unit = {
     val record = args.contains("--record")

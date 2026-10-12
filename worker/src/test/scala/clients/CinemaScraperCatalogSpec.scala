@@ -391,8 +391,10 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       ChainFlicksFallback.FlicksFallback(FlicksMarket.UnitedKingdom, "institute-of-contemporary-arts")
     // The two buildings one client sells are two venues, each reading only its own.
     c.all.find(_.cinema == EmpireTheatreConsett).value.fetch().flatMap(_.showtimes) should have size 23
+    // The Plough Torrington never had a Flicks time; its Spektrix files films as "Film".
+    c.all.find(_.cinema == PloughArtsCentreTorrington).value.fetch().flatMap(_.showtimes) should have size 19
     val spektrixVenues = c.all.collect { case s: SpektrixClient => s.cinema }
-    spektrixVenues should have size 36
+    spektrixVenues should have size 37
     spektrixVenues.filterNot(c.flicksFallbackSlugs.contains) shouldBe empty
   }
 

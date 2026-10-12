@@ -441,6 +441,7 @@ object ChainFlicksFallback {
     PiccadillyCinemaLeicester -> "piccadilly-leicester",
     PictureHouseUckfield -> "picturehouse-uckfield",
     PlazaCommunityCinemaLiverpool -> "plaza-crosby",
+    PloughArtsCentreTorrington -> "plough-arts-centre-torrington",
     PlymouthArtsCinema -> "plymouth-arts-cinema-plymouth",
     PublicHallBrynamman -> "public-hall-brynamman",
     QuadDerby -> "quad-derby",

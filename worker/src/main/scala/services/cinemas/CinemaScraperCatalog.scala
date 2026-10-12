@@ -1322,7 +1322,7 @@ class CinemaScraperCatalog(
     odeon("086", OdeonCinemaExeter),
     savoyBoxOffice("http://pavilionsteignmouth.savoysystems.co.uk/PavilionsTeignmouth.dll/", PavilionsTeignmouth),
     flicks("picturehouse-exeter", PicturehouseExeter),
-    flicks("plough-arts-centre-torrington", PloughArtsCentreTorrington),
+    spektrix("theploughartscentre", PloughArtsCentreTorrington),
     flicks("radway-sidmouth", RadwaySidmouth),
     flicks("savoy-exmouth", SavoyScottCinemasExmouth),
     savoyBoxOffice("http://thebeehive.savoysystems.co.uk/TheBeehive.dll/", TheBeehiveHoniton),
