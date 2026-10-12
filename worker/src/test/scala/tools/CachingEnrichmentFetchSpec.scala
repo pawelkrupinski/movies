@@ -332,6 +332,29 @@ class CachingEnrichmentFetchSpec extends AnyFlatSpec with Matchers {
     cache.statistics.transient shouldBe 1
   }
 
+  // An open breaker (or the fleet pacer) refusing a request is our own stack saying "come back
+  // in openForMs" — nothing reached the host, so it is no answer to remember. Remembered, it
+  // outlived its window by the whole run: Germany's recording (run 38251516862) had 10,123 IMDb
+  // suggestion lookups refused in the one second the breaker opened, and replayed that refusal
+  // 42,596 times over the next hour while the resolver's deferred retries came back for them —
+  // 15,144 candidate queries unanswered and tmdbId 5.3% under production.
+  it should "not remember an open circuit's refusal, so the deferred retry reaches the host" in {
+    var refuse = true
+    val delegate = new ScriptedHttpFetch(Map("https://v3.sg.media-imdb.com/suggestion/d/dune.json" -> (() =>
+      if (refuse) throw new CircuitOpenException("v3.sg.media-imdb.com", 60000L, Some("HTTP 429")) else """{"d":[]}""")))
+    val store = new InMemoryEnrichmentCacheStore()
+    val fetch = new CachingEnrichmentFetch(
+      new EnrichmentCache(store, persistSuccesses = false, transients = EnrichmentCache.Transients.Recorded), delegate)
+
+    val refused = the [CircuitOpenException] thrownBy fetch.get("https://v3.sg.media-imdb.com/suggestion/d/dune.json")
+    withClue("the caller must still see the refusal as one, so it defers by openForMs: ") { refused.openForMs shouldBe 60000L }
+    withClue("a refusal is not a failure to write down for a hermetic replay: ") { store.loadAll() shouldBe empty }
+
+    refuse = false
+    fetch.get("https://v3.sg.media-imdb.com/suggestion/d/dune.json") shouldBe """{"d":[]}"""
+    delegate.calls shouldBe 2
+  }
+
   // A HERMETIC replay can only answer what the recording wrote down, and a transient
   // failure left unwritten is a request the replay has no answer for: measured on Poland's
   // and the UK's samples, every gap a hermetic replay of the published tree hit was one of

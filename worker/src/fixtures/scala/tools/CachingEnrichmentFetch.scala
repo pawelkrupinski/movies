@@ -22,6 +22,8 @@ import scala.util.control.NonFatal
  * doesn't have; if only successes were remembered, every pass would re-ask the
  * live service for every one of those misses — the slowest part of the sweep and
  * the part whose answer is least stable. A remembered 404 is a remembered verdict.
+ * The one failure NOT remembered is a [[CircuitOpenException]]: the request was never
+ * sent, so there is nothing the host said to hold a later pass to.
  *
  * A cached failure is REVIVED, not merely reported: an [[HttpStatusException]]
  * comes back as an `HttpStatusException` carrying its original status, because
@@ -88,6 +90,11 @@ class CachingEnrichmentFetch(cache: EnrichmentCache, underlying: HttpFetch,
             cache.remember(key, encode(fetched))
             fetched
           } catch {
+            // Our own breaker or fleet pacer refusing to send: no answer, only "come back in
+            // `openForMs`", which production's callers do (they defer by it). Remembered, that
+            // window lasted the whole run — every deferred retry got the refusal back (run
+            // 38251516862: 10,123 IMDb lookups refused in one second, unanswered for an hour).
+            case refused: CircuitOpenException => throw refused
             case NonFatal(failure) =>
               cache.remember(key, CachedResponse.failureOf(failure, method))
               throw failure
