@@ -77,7 +77,7 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   def recordFilmPruned(reason: String, count: Int): Unit        = series.recordFilmPruned(countryCode, reason, count)
   def recordCardRetired(reason: String): Unit                   = series.recordCardRetired(countryCode, reason)
   def recordDrift(cause: String, documents: Int): Unit          = series.recordDrift(countryCode, cause, documents)
-  def recordUnlistedVenues(rows: Int, withheld: Boolean): Unit  = series.recordUnlistedVenues(countryCode, rows, withheld)
+  def recordUnlistedVenues(rows: Int, outcome: String): Unit    = series.recordUnlistedVenues(countryCode, rows, outcome)
   def recordCatchUp(rows: Int): Unit                            = series.recordCatchUp(countryCode, rows)
   def recordCardWrite(changed: Set[String]): Unit               = series.recordCardWrite(countryCode, changed)
   def recordProject(trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit =
@@ -336,7 +336,7 @@ object WorkerTaskMetrics {
 
     private val readModelUnlistedVenues = Counter.builder()
       .name("kinowo_worker_readmodel_unlisted_venues")
-      .help("Venue rows a prune sweep found under a live card whose film no longer lists the venue, by country and outcome: `pruned`, or `withheld` when one sweep found more than its cap (20, or 1% of the venue rows) and pruned none -- a disagreement between the slots-only view and the projection being likelier than that many missed removals. Each is a removal the change stream did not apply; before this sweep only the daily content check found them (Dracula: A Love Tale served at the Music Box Chicago for 22 hours after leaving it, 2026-09-30). Zero is the healthy reading; any `withheld` is a bug to look at.")
+      .help("Venue rows a prune sweep found under a live card whose film no longer lists the venue, by country and outcome. `refiled`: the card serves the same venue under another city right now -- a roster deploy moved the venue to another city's page -- so the old city's row is pruned whatever the count (until 2026-10-12 these were withheld, and the 10-09..11 town-page deploys left DE's old rows draining a slice at a time for a day). `pruned`: a removal the change stream did not apply; before this sweep only the daily content check found them (Dracula: A Love Tale served at the Music Box Chicago for 22 hours after leaving it, 2026-09-30). `withheld`: one sweep found more of those than its cap (20, or 1% of the venue rows) and pruned none -- a disagreement between the slots-only view and the projection being likelier than that many missed removals. `refiled` follows a roster deploy; otherwise zero is the healthy reading, and any `withheld` is a bug to look at.")
       .labelNames("country", "outcome")
       .register(registry)
 
@@ -515,7 +515,7 @@ object WorkerTaskMetrics {
         ReadModelProjectionMetrics.PruneReasons.foreach(r => readModelFilmsPruned.labelValues(c, r).inc(0.0))
         ReadModelProjectionMetrics.RetireReasons.foreach(r => readModelCardsRetired.labelValues(c, r).inc(0.0))
         ReadModelProjectionMetrics.DriftCauses.foreach(cause => readModelDriftWrites.labelValues(c, cause).inc(0.0)) // zero is the healthy reading, so it must be drawn
-        Seq("pruned", "withheld").foreach(o => readModelUnlistedVenues.labelValues(c, o).inc(0.0)) // ditto
+        ReadModelProjectionMetrics.UnlistedOutcomes.foreach(o => readModelUnlistedVenues.labelValues(c, o).inc(0.0)) // ditto
         readModelCatchUpRows.labelValues(c).inc(0.0) // ditto — zero is the healthy reading, so it must be drawn
         ReadModelProjectionMetrics.HealTriggers.foreach(t => readModelHeals.labelValues(c, t).inc(0.0)) // ditto
         // Every trigger at 0 from boot: ReadModelProjectionTriggerUnaccounted reads `stream` alone,
@@ -564,8 +564,8 @@ object WorkerTaskMetrics {
     def recordCardRetired(country: String, reason: String): Unit =
       readModelCardsRetired.labelValues(country, reason).inc()
 
-    def recordUnlistedVenues(country: String, rows: Int, withheld: Boolean): Unit =
-      if (rows > 0) readModelUnlistedVenues.labelValues(country, if (withheld) "withheld" else "pruned").inc(rows.toDouble)
+    def recordUnlistedVenues(country: String, rows: Int, outcome: String): Unit =
+      if (rows > 0) readModelUnlistedVenues.labelValues(country, outcome).inc(rows.toDouble)
 
     def recordDrift(country: String, cause: String, documents: Int): Unit =
       if (documents > 0) readModelDriftWrites.labelValues(country, cause).inc(documents.toDouble)

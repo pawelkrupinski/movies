@@ -25,9 +25,9 @@ final class RecordingReadModelProjectionMetrics extends ReadModelProjectionMetri
   /** Documents the content check rewrote, by what drifted. */
   val drift = scala.collection.mutable.Map.empty[String, Int].withDefaultValue(0)
   def recordDrift(cause: String, documents: Int): Unit          = drift(cause) += documents
-  /** Each sweep's unlisted venue rows, and whether they were withheld as over the cap. */
-  val unlistedVenues = scala.collection.mutable.Buffer.empty[(Int, Boolean)]
-  def recordUnlistedVenues(rows: Int, withheld: Boolean): Unit   = unlistedVenues += (rows -> withheld)
+  /** Each sweep's unlisted venue rows, by outcome ([[ReadModelProjectionMetrics.UnlistedOutcome]]). */
+  val unlistedVenues = scala.collection.mutable.Buffer.empty[(Int, String)]
+  def recordUnlistedVenues(rows: Int, outcome: String): Unit     = unlistedVenues += (rows -> outcome)
   def recordProject(trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit = {
     projectTriggers   += trigger
     projectDurations  += wallSeconds
