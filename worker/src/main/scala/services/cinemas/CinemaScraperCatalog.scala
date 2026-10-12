@@ -928,10 +928,11 @@ class CinemaScraperCatalog(
   // that can't get through either, throws → flicks fallback.
   private def odeon(id: String, cinema: Cinema): OdeonClient =
     new OdeonClient(odeonFetch, id, cinema, odeonAuthToken, today = venueClock.today(UnitedKingdom))
-  // UK independents whose own box office (Savoy Systems, Spektrix) lists what Flicks
-  // does not — the same own-site PRIMARY + flicks FALLBACK arrangement as the chains
-  // above (see [[ChainFlicksFallback.ukOwnSiteSlugs]]). Both origins answer our
-  // egress directly.
+  // UK independents whose own box office (Savoy Systems, Spektrix, Ticketsolve — and
+  // the single-venue NovaCinemaClient and BfiSouthbankClient built inline below) lists
+  // what Flicks does not — the same own-site PRIMARY + flicks FALLBACK arrangement as the
+  // chains above (see [[ChainFlicksFallback.ukOwnSiteSlugs]]). Every one of these
+  // origins answers our egress directly.
   private def savoy(dllBase: String, cinema: Cinema): SavoyClient =
     new SavoyClient(http, dllBase, cinema, today = venueClock.today(UnitedKingdom))
   // A booking-only host: the venue's site is elsewhere, Savoy only sells its tickets.
