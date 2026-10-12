@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(KinowoCore)
+@testable import KinowoCore
+#endif
 
 /// The account's language pick — the one thing still riding the legacy
 /// `/api/me/state` document now that hiddenFilms moved to `HiddenFilmsClient`
@@ -40,7 +43,7 @@ final class HttpLanguageClient: LanguageClient {
 
     func fetch() async throws -> String? {
         var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("api/me/state"))
-        request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue(KinowoUserAgent.value, forHTTPHeaderField: "User-Agent")
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw URLError(.userAuthenticationRequired)

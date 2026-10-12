@@ -29,6 +29,7 @@ import PackageDescription
 let authTargets: [Target] = [
     .target(
         name: "KinowoAuth",
+        dependencies: ["KinowoCore"],
         path: "Kinowo",
         sources: [
             "Auth/UserProfile.swift",
@@ -36,6 +37,7 @@ let authTargets: [Target] = [
             "Auth/LanguageClient.swift",
             "Auth/StateSyncService.swift",
             "Auth/PkceVerifier.swift",
+            "Auth/AuthRequests.swift",
             "Storage/UserPreferences.swift",
             // The country registry + persisted selection: `kinowoBaseURL`
             // (UserProfile) and `UserPreferences` route the API base URL and

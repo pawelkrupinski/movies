@@ -184,7 +184,7 @@ final class RepertoireStore: ObservableObject {
         let catalogURL = City.apiURL(base: deployment, slug: city, endpoint: "cinemas")
         do {
             var request = URLRequest(url: catalogURL)
-            request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
+            request.setValue(KinowoUserAgent.value, forHTTPHeaderField: "User-Agent")
             let (data, response) = try await session.data(for: request)
             // Same late-landing guard as `reload`: the switch already cleared
             // `catalog` for the new city, don't refill it with the old one's.

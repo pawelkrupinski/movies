@@ -61,6 +61,8 @@
 		DD00000000000000000CF1 /* CountrySwitch.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000CF1 /* CountrySwitch.swift */; };
 		DD00000000000000000CF2 /* ConditionalListEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000CF2 /* ConditionalListEndpoint.swift */; };
 		DD0000000000000000A5C2 /* ClientSupportStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000A5C2 /* ClientSupportStore.swift */; };
+		DD0000000000000000A5D2 /* KinowoUserAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000A5D2 /* KinowoUserAgent.swift */; };
+		DD0000000000000000A5D1 /* AuthRequests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000A5D1 /* AuthRequests.swift */; };
 		DD00000000000000000E06 /* CatalogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E06 /* CatalogStore.swift */; };
 		DD00000000000000000018 /* FilmDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000018 /* FilmDetailView.swift */; };
 		DD00000000000000000019 /* FlowLayoutMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000019 /* FlowLayoutMath.swift */; };
@@ -175,6 +177,8 @@
 		CC00000000000000000CF1 /* CountrySwitch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountrySwitch.swift; sourceTree = "<group>"; };
 		CC00000000000000000CF2 /* ConditionalListEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConditionalListEndpoint.swift; sourceTree = "<group>"; };
 		CC0000000000000000A5C2 /* ClientSupportStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientSupportStore.swift; sourceTree = "<group>"; };
+		CC0000000000000000A5D2 /* KinowoUserAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KinowoUserAgent.swift; sourceTree = "<group>"; };
+		CC0000000000000000A5D1 /* AuthRequests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthRequests.swift; sourceTree = "<group>"; };
 		CC00000000000000000E06 /* CatalogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogStore.swift; sourceTree = "<group>"; };
 		CC00000000000000000018 /* FilmDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailView.swift; sourceTree = "<group>"; };
 		CC00000000000000000019 /* FlowLayoutMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayoutMath.swift; sourceTree = "<group>"; };
@@ -290,6 +294,7 @@
 				CC00000000000000000033 /* UserProfile.swift */,
 				CC00000000000000000034 /* HiddenFilmsClient.swift */,
 				CC00000000000000000037 /* LanguageClient.swift */,
+				CC0000000000000000A5D1 /* AuthRequests.swift */,
 				CC000000000000000000A1 /* PkceVerifier.swift */,
 			);
 			path = Auth;
@@ -328,6 +333,7 @@
 				CC00000000000000000CF1 /* CountrySwitch.swift */,
 				CC00000000000000000CF2 /* ConditionalListEndpoint.swift */,
 				CC0000000000000000A5C2 /* ClientSupportStore.swift */,
+				CC0000000000000000A5D2 /* KinowoUserAgent.swift */,
 				CC00000000000000000E06 /* CatalogStore.swift */,
 				CC00000000000000000035 /* TrailerEmbedHTML.swift */,
 				CC00000000000000000050 /* PosterStore.swift */,
@@ -561,6 +567,8 @@
 				DD00000000000000000CF1 /* CountrySwitch.swift in Sources */,
 				DD00000000000000000CF2 /* ConditionalListEndpoint.swift in Sources */,
 				DD0000000000000000A5C2 /* ClientSupportStore.swift in Sources */,
+				DD0000000000000000A5D2 /* KinowoUserAgent.swift in Sources */,
+				DD0000000000000000A5D1 /* AuthRequests.swift in Sources */,
 				DD00000000000000000E06 /* CatalogStore.swift in Sources */,
 				DD00000000000000000018 /* FilmDetailView.swift in Sources */,
 				DD00000000000000000019 /* FlowLayoutMath.swift in Sources */,

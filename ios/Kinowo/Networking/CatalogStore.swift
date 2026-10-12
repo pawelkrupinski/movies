@@ -64,7 +64,7 @@ final class CatalogStore: ObservableObject {
 
     private func fetch(baseURL: URL, now: Date) async {
         var request = URLRequest(url: baseURL.appendingPathComponent("api").appendingPathComponent("catalog"))
-        request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue(KinowoUserAgent.value, forHTTPHeaderField: "User-Agent")
         request.cachePolicy = .reloadIgnoringLocalCacheData
         if let etag { request.setValue(etag, forHTTPHeaderField: "If-None-Match") }
         do {

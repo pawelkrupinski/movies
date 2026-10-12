@@ -4,6 +4,9 @@ import Foundation
 #if canImport(KinowoCore)
 @testable import KinowoCore
 #endif
+#if canImport(KinowoAuth)
+@testable import KinowoAuth
+#endif
 
 /// What one `ConditionalListEndpoint.fetch` came back with.
 enum ConditionalFetchOutcome<Payload> {
@@ -83,7 +86,7 @@ final class ConditionalListEndpoint<Payload: Codable> {
         let deployment = base
         do {
             var request = URLRequest(url: requestURL)
-            request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
+            request.setValue(KinowoUserAgent.value, forHTTPHeaderField: "User-Agent")
             request.cachePolicy = .reloadIgnoringLocalCacheData
             if let lm = await cache.lastModified(deployment: deployment, city: city) {
                 request.setValue(lm, forHTTPHeaderField: "If-Modified-Since")

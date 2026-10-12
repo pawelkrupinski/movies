@@ -173,7 +173,7 @@ final class PosterStore: @unchecked Sendable {
 
     private static func download(_ url: URL, through session: URLSession) async -> Data? {
         var request = URLRequest(url: url)
-        request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue(KinowoUserAgent.value, forHTTPHeaderField: "User-Agent")
         // Completion-handler `dataTask` bridged through a continuation
         // rather than the async `data(for:)` — the latter isn't available
         // on the Linux swift-corelibs-foundation toolchain CI compiles

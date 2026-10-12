@@ -5,6 +5,9 @@ import Combine
 #if canImport(KinowoCore)
 @testable import KinowoCore
 #endif
+#if canImport(KinowoAuth)
+@testable import KinowoAuth
+#endif
 
 /// The minimum-supported-version gate: on launch, asks the deployment's
 /// `/api/client-support` whether this build is still served, and publishes the
@@ -30,7 +33,7 @@ final class ClientSupportStore: ObservableObject {
 
     func check(baseURL: URL) async {
         var request = URLRequest(url: baseURL.appendingPathComponent("api").appendingPathComponent("client-support"))
-        request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue(KinowoUserAgent.value, forHTTPHeaderField: "User-Agent")
         guard let (data, response) = try? await session.data(for: request),
               let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
               let support = ClientSupport.decode(data)

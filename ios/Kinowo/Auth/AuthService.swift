@@ -98,10 +98,7 @@ final class AuthService: NSObject, ObservableObject {
     // MARK: - Server communication
 
     private func exchangeCode(_ code: String, verifier: String) async throws {
-        var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("auth/exchange"))
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try NativeSignIn.exchangeBody(code: code, verifier: verifier)
+        let request = AuthRequests.exchange(base: kinowoBaseURL, body: try NativeSignIn.exchangeBody(code: code, verifier: verifier))
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw URLError(.userAuthenticationRequired)
@@ -112,10 +109,7 @@ final class AuthService: NSObject, ObservableObject {
     private func sendToken(provider: String, token: String, fullName: String? = nil) async throws {
         var body: [String: String] = ["provider": provider, "token": token]
         if let name = fullName { body["fullName"] = name }
-        var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("auth/token"))
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(body)
+        let request = AuthRequests.token(base: kinowoBaseURL, body: try JSONEncoder().encode(body))
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw URLError(.userAuthenticationRequired)
@@ -125,8 +119,7 @@ final class AuthService: NSObject, ObservableObject {
 
     func fetchMe() async {
         do {
-            var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("api/me"))
-            request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
+            let request = AuthRequests.me(base: kinowoBaseURL)
             let (data, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
             self.user = try JSONDecoder().decode(UserProfile.self, from: data)
@@ -138,9 +131,7 @@ final class AuthService: NSObject, ObservableObject {
     }
 
     func signOut() async {
-        var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("auth/logout"))
-        request.httpMethod = "POST"
-        _ = try? await session.data(for: request)
+        _ = try? await session.data(for: AuthRequests.logout(base: kinowoBaseURL))
         user = nil
         if let cookies = HTTPCookieStorage.shared.cookies(for: kinowoBaseURL) {
             cookies.forEach { HTTPCookieStorage.shared.deleteCookie($0) }
@@ -148,9 +139,7 @@ final class AuthService: NSObject, ObservableObject {
     }
 
     func deleteAccount() async {
-        var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("api/me"))
-        request.httpMethod = "DELETE"
-        _ = try? await session.data(for: request)
+        _ = try? await session.data(for: AuthRequests.deleteAccount(base: kinowoBaseURL))
         user = nil
         if let cookies = HTTPCookieStorage.shared.cookies(for: kinowoBaseURL) {
             cookies.forEach { HTTPCookieStorage.shared.deleteCookie($0) }

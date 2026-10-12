@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(KinowoCore)
+@testable import KinowoCore
+#endif
 
 /// One country's hidden-films state as the server hands it back — from a
 /// fetch OR a write, since every write endpoint echoes the resulting state
@@ -109,7 +112,7 @@ final class HttpHiddenFilmsClient: HiddenFilmsClient {
     }
 
     private static func applyCommonHeaders(_ request: inout URLRequest) {
-        request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue(KinowoUserAgent.value, forHTTPHeaderField: "User-Agent")
     }
 
     private static func decode(data: Data, response: HTTPURLResponse) throws -> HiddenFilmsResult {
