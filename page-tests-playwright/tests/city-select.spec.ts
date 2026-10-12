@@ -338,14 +338,14 @@ test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
   });
 });
 
-// Germany lists 436 town pages — a major city's own venues, a town of three or
+// Germany lists 448 town pages — a major city's own venues, a town of three or
 // more, or a cluster of small towns ("Bayreuth und Umgebung") — under the 16
 // Bundesländer, which is what a visitor knows them by. One level, like Poland's
 // voivodeships.
 test.describe('grouped city landing (Germany)', { tag: '@agnostic' }, () => {
   test('the page carries every page under its Bundesland, collated as German', async ({ page }) => {
     await page.goto('/landing-de', { waitUntil: 'domcontentloaded' });
-    await expect(placeLinks(page)).toHaveCount(446);
+    await expect(placeLinks(page)).toHaveCount(448);
     // Two of the 16 hold one page each and are pulled up: the city-states
     // Berlin and Hamburg, which share their page's name.
     await expect(rootPlaces(page)).toHaveText(['Berlin', 'Hamburg']);
